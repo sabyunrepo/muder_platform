@@ -32,4 +32,9 @@ const (
 	ErrPlayerNotFound   = "PLAYER_NOT_FOUND"
 	ErrPlayerNotInGame  = "PLAYER_NOT_IN_GAME"
 	ErrPlayerAlreadyIn  = "PLAYER_ALREADY_IN_GAME"
+
+	// Room errors
+	ErrRoomNotFound   = "ROOM_NOT_FOUND"
+	ErrRoomFull       = "ROOM_FULL"
+	ErrRoomNotWaiting = "ROOM_NOT_WAITING"
 )

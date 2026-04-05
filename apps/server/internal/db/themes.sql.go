@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countThemeCharacters = `-- name: CountThemeCharacters :one
+SELECT count(*) FROM theme_characters WHERE theme_id = $1
+`
+
+func (q *Queries) CountThemeCharacters(ctx context.Context, themeID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countThemeCharacters, themeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createTheme = `-- name: CreateTheme :one
 INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, config_json)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -104,6 +115,24 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 	return i, err
 }
 
+const deleteTheme = `-- name: DeleteTheme :exec
+DELETE FROM themes WHERE id = $1
+`
+
+func (q *Queries) DeleteTheme(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTheme, id)
+	return err
+}
+
+const deleteThemeCharacter = `-- name: DeleteThemeCharacter :exec
+DELETE FROM theme_characters WHERE id = $1
+`
+
+func (q *Queries) DeleteThemeCharacter(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteThemeCharacter, id)
+	return err
+}
+
 const getTheme = `-- name: GetTheme :one
 SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at FROM themes WHERE id = $1
 `
@@ -160,6 +189,25 @@ func (q *Queries) GetThemeBySlug(ctx context.Context, slug string) (Theme, error
 	return i, err
 }
 
+const getThemeCharacter = `-- name: GetThemeCharacter :one
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order FROM theme_characters WHERE id = $1
+`
+
+func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCharacter, error) {
+	row := q.db.QueryRow(ctx, getThemeCharacter, id)
+	var i ThemeCharacter
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.Description,
+		&i.ImageUrl,
+		&i.IsCulprit,
+		&i.SortOrder,
+	)
+	return i, err
+}
+
 const getThemeCharacters = `-- name: GetThemeCharacters :many
 SELECT id, theme_id, name, description, image_url, is_culprit, sort_order FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
 `
@@ -181,6 +229,91 @@ func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]
 			&i.ImageUrl,
 			&i.IsCulprit,
 			&i.SortOrder,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllRooms = `-- name: ListAllRooms :many
+SELECT id, theme_id, host_id, code, status, max_players, is_private, created_at, updated_at FROM rooms ORDER BY created_at DESC LIMIT $1 OFFSET $2
+`
+
+type ListAllRoomsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListAllRooms(ctx context.Context, arg ListAllRoomsParams) ([]Room, error) {
+	rows, err := q.db.Query(ctx, listAllRooms, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Room{}
+	for rows.Next() {
+		var i Room
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.HostID,
+			&i.Code,
+			&i.Status,
+			&i.MaxPlayers,
+			&i.IsPrivate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllThemes = `-- name: ListAllThemes :many
+SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at FROM themes ORDER BY created_at DESC LIMIT $1 OFFSET $2
+`
+
+type ListAllThemesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListAllThemes(ctx context.Context, arg ListAllThemesParams) ([]Theme, error) {
+	rows, err := q.db.Query(ctx, listAllThemes, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Theme{}
+	for rows.Next() {
+		var i Theme
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatorID,
+			&i.Title,
+			&i.Slug,
+			&i.Description,
+			&i.CoverImage,
+			&i.MinPlayers,
+			&i.MaxPlayers,
+			&i.DurationMin,
+			&i.Price,
+			&i.Status,
+			&i.ConfigJson,
+			&i.Version,
+			&i.PublishedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -277,6 +410,131 @@ func (q *Queries) ListThemesByCreator(ctx context.Context, creatorID uuid.UUID) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateTheme = `-- name: UpdateTheme :one
+UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5,
+  min_players = $6, max_players = $7, duration_min = $8, price = $9, updated_at = NOW()
+WHERE id = $1
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at
+`
+
+type UpdateThemeParams struct {
+	ID          uuid.UUID   `json:"id"`
+	Title       string      `json:"title"`
+	Slug        string      `json:"slug"`
+	Description pgtype.Text `json:"description"`
+	CoverImage  pgtype.Text `json:"cover_image"`
+	MinPlayers  int32       `json:"min_players"`
+	MaxPlayers  int32       `json:"max_players"`
+	DurationMin int32       `json:"duration_min"`
+	Price       int32       `json:"price"`
+}
+
+func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme, error) {
+	row := q.db.QueryRow(ctx, updateTheme,
+		arg.ID,
+		arg.Title,
+		arg.Slug,
+		arg.Description,
+		arg.CoverImage,
+		arg.MinPlayers,
+		arg.MaxPlayers,
+		arg.DurationMin,
+		arg.Price,
+	)
+	var i Theme
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.CoverImage,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.DurationMin,
+		&i.Price,
+		&i.Status,
+		&i.ConfigJson,
+		&i.Version,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateThemeCharacter = `-- name: UpdateThemeCharacter :one
+UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, sort_order = $6
+WHERE id = $1
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order
+`
+
+type UpdateThemeCharacterParams struct {
+	ID          uuid.UUID   `json:"id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	ImageUrl    pgtype.Text `json:"image_url"`
+	IsCulprit   bool        `json:"is_culprit"`
+	SortOrder   int32       `json:"sort_order"`
+}
+
+func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeCharacterParams) (ThemeCharacter, error) {
+	row := q.db.QueryRow(ctx, updateThemeCharacter,
+		arg.ID,
+		arg.Name,
+		arg.Description,
+		arg.ImageUrl,
+		arg.IsCulprit,
+		arg.SortOrder,
+	)
+	var i ThemeCharacter
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.Description,
+		&i.ImageUrl,
+		&i.IsCulprit,
+		&i.SortOrder,
+	)
+	return i, err
+}
+
+const updateThemeConfigJson = `-- name: UpdateThemeConfigJson :one
+UPDATE themes SET config_json = $2, version = version + 1, updated_at = NOW()
+WHERE id = $1
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at
+`
+
+type UpdateThemeConfigJsonParams struct {
+	ID         uuid.UUID       `json:"id"`
+	ConfigJson json.RawMessage `json:"config_json"`
+}
+
+func (q *Queries) UpdateThemeConfigJson(ctx context.Context, arg UpdateThemeConfigJsonParams) (Theme, error) {
+	row := q.db.QueryRow(ctx, updateThemeConfigJson, arg.ID, arg.ConfigJson)
+	var i Theme
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.CoverImage,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.DurationMin,
+		&i.Price,
+		&i.Status,
+		&i.ConfigJson,
+		&i.Version,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const updateThemeStatus = `-- name: UpdateThemeStatus :one

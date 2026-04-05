@@ -64,6 +64,12 @@ tasks:
     cmds:
       - sqlc generate
 
+  # ─── API ─────────────────────────────────────────────
+  api:types:
+    desc: Generate TypeScript types from OpenAPI spec
+    cmds:
+      - npx openapi-typescript apps/server/api/openapi.yaml -o packages/shared/api/types.ts
+
   # ─── TypeScript (pnpm + turbo) ───────────────────────
   ts:install:
     desc: Install Node.js dependencies

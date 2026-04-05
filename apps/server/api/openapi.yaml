@@ -1,0 +1,1455 @@
+openapi: 3.1.0
+info:
+  title: MMP v3 API
+  version: 1.0.0
+  description: Murder Mystery Platform v3 — Real-time multiplayer murder mystery game platform API.
+  contact:
+    name: MMP Team
+
+servers:
+  - url: /api/v1
+
+security: []
+
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: Profile
+    description: User profile operations
+  - name: Themes
+    description: Public theme browsing
+  - name: Rooms
+    description: Game room management
+  - name: Editor
+    description: Theme/character creation (CREATOR/ADMIN)
+  - name: Admin
+    description: Platform administration (ADMIN)
+
+paths:
+  # ─── Auth ────────────────────────────────────────────────
+  /auth/callback:
+    post:
+      operationId: authCallback
+      tags: [Auth]
+      summary: OAuth callback — exchange provider code for tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthCallbackRequest"
+      responses:
+        "200":
+          description: Token pair returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      operationId: authRefresh
+      tags: [Auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenRequest"
+      responses:
+        "200":
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      operationId: authLogout
+      tags: [Auth]
+      summary: Logout and invalidate refresh token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/me:
+    get:
+      operationId: authMe
+      tags: [Auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # ─── Profile ─────────────────────────────────────────────
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [Profile]
+      summary: Get own profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Profile returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    put:
+      operationId: updateProfile
+      tags: [Profile]
+      summary: Update own profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /users/{id}:
+    get:
+      operationId: getPublicProfile
+      tags: [Profile]
+      summary: Get public profile by user ID
+      parameters:
+        - $ref: "#/components/parameters/UserIdPath"
+      responses:
+        "200":
+          description: Public profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicProfileResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Themes (public) ────────────────────────────────────
+  /themes:
+    get:
+      operationId: listThemes
+      tags: [Themes]
+      summary: List published themes
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: List of themes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ThemeSummary"
+
+  /themes/{id}:
+    get:
+      operationId: getTheme
+      tags: [Themes]
+      summary: Get theme by ID
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      responses:
+        "200":
+          description: Theme detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThemeResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /themes/slug/{slug}:
+    get:
+      operationId: getThemeBySlug
+      tags: [Themes]
+      summary: Get theme by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Theme detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThemeResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /themes/{id}/characters:
+    get:
+      operationId: listThemeCharacters
+      tags: [Themes]
+      summary: List characters for a theme
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      responses:
+        "200":
+          description: Characters list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CharacterResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Rooms ──────────────────────────────────────────────
+  /rooms:
+    get:
+      operationId: listRooms
+      tags: [Rooms]
+      summary: List public rooms
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Room list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoomResponse"
+    post:
+      operationId: createRoom
+      tags: [Rooms]
+      summary: Create a new room
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomRequest"
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /rooms/{id}:
+    get:
+      operationId: getRoom
+      tags: [Rooms]
+      summary: Get room detail with players
+      parameters:
+        - $ref: "#/components/parameters/RoomIdPath"
+      responses:
+        "200":
+          description: Room detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/code/{code}:
+    get:
+      operationId: getRoomByCode
+      tags: [Rooms]
+      summary: Get room by invite code
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        "200":
+          description: Room detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomDetailResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/{id}/join:
+    post:
+      operationId: joinRoom
+      tags: [Rooms]
+      summary: Join a room
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoomIdPath"
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /rooms/{id}/leave:
+    post:
+      operationId: leaveRoom
+      tags: [Rooms]
+      summary: Leave a room
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoomIdPath"
+      responses:
+        "200":
+          description: Left the room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Editor ─────────────────────────────────────────────
+  /editor/themes:
+    get:
+      operationId: listEditorThemes
+      tags: [Editor]
+      summary: List own themes (creator view)
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Creator's themes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EditorThemeSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: createEditorTheme
+      tags: [Editor]
+      summary: Create a new theme
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateThemeRequest"
+      responses:
+        "201":
+          description: Theme created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorThemeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /editor/themes/{id}:
+    put:
+      operationId: updateEditorTheme
+      tags: [Editor]
+      summary: Update a theme
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateThemeRequest"
+      responses:
+        "200":
+          description: Updated theme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorThemeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteEditorTheme
+      tags: [Editor]
+      summary: Delete a theme
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /editor/themes/{id}/publish:
+    post:
+      operationId: publishEditorTheme
+      tags: [Editor]
+      summary: Publish a theme
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      responses:
+        "200":
+          description: Published theme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorThemeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /editor/themes/{id}/unpublish:
+    post:
+      operationId: unpublishEditorTheme
+      tags: [Editor]
+      summary: Unpublish a theme
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      responses:
+        "200":
+          description: Unpublished theme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorThemeResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /editor/themes/{id}/characters:
+    post:
+      operationId: createEditorCharacter
+      tags: [Editor]
+      summary: Create a character for a theme
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCharacterRequest"
+      responses:
+        "201":
+          description: Character created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorCharacterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /editor/characters/{id}:
+    put:
+      operationId: updateEditorCharacter
+      tags: [Editor]
+      summary: Update a character
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CharacterIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCharacterRequest"
+      responses:
+        "200":
+          description: Updated character
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorCharacterResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      operationId: deleteEditorCharacter
+      tags: [Editor]
+      summary: Delete a character
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CharacterIdPath"
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /editor/themes/{id}/config:
+    put:
+      operationId: updateEditorThemeConfig
+      tags: [Editor]
+      summary: Update theme config JSON
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw theme configuration JSON
+      responses:
+        "200":
+          description: Updated theme with new config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EditorThemeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # ─── Admin ──────────────────────────────────────────────
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [Admin]
+      summary: List all users
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/users/{id}:
+    get:
+      operationId: getAdminUser
+      tags: [Admin]
+      summary: Get user detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserIdPath"
+      responses:
+        "200":
+          description: User detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/users/{id}/role:
+    put:
+      operationId: updateAdminUserRole
+      tags: [Admin]
+      summary: Update user role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/UserIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleRequest"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/themes:
+    get:
+      operationId: listAdminThemes
+      tags: [Admin]
+      summary: List all themes (admin view)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Theme list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminThemeSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/themes/{id}/unpublish:
+    post:
+      operationId: unpublishAdminTheme
+      tags: [Admin]
+      summary: Force-unpublish a theme
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ThemeIdPath"
+      responses:
+        "200":
+          description: Unpublished theme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminThemeSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/rooms:
+    get:
+      operationId: listAdminRooms
+      tags: [Admin]
+      summary: List all rooms (admin view)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Room list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoomSummary"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/rooms/{id}/close:
+    post:
+      operationId: closeAdminRoom
+      tags: [Admin]
+      summary: Force-close a room
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/RoomIdPath"
+      responses:
+        "204":
+          description: Room closed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  # ─── Security ────────────────────────────────────────────
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  # ─── Parameters ──────────────────────────────────────────
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+    UserIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    ThemeIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    RoomIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    CharacterIdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  # ─── Responses ───────────────────────────────────────────
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+    Conflict:
+      description: Conflict with current state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetail"
+
+  # ─── Schemas ─────────────────────────────────────────────
+  schemas:
+    # ── Error ──────────────────────────────────────────────
+    ProblemDetail:
+      type: object
+      description: RFC 9457 Problem Details
+      required: [type, title, status, detail, code]
+      properties:
+        type:
+          type: string
+          description: URI reference identifying the problem type
+        title:
+          type: string
+          description: Short human-readable summary
+        status:
+          type: integer
+          description: HTTP status code
+        detail:
+          type: string
+          description: Human-readable explanation
+        code:
+          type: string
+          description: Application-specific error code
+        instance:
+          type: string
+          description: URI reference identifying the specific occurrence
+
+    # ── Generic ────────────────────────────────────────────
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    # ── Auth ───────────────────────────────────────────────
+    AuthCallbackRequest:
+      type: object
+      required: [provider, code, nickname]
+      properties:
+        provider:
+          type: string
+          minLength: 1
+          description: OAuth provider name (e.g. "google", "kakao")
+        code:
+          type: string
+          minLength: 1
+          description: Authorization code from OAuth provider
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 30
+          description: Display name for new accounts
+
+    RefreshTokenRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+          minLength: 1
+
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+          description: Token TTL in seconds
+
+    UserResponse:
+      type: object
+      required: [id, nickname, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        email:
+          type: string
+          format: email
+        avatar_url:
+          type: string
+          format: uri
+        role:
+          type: string
+
+    # ── Profile ────────────────────────────────────────────
+    UpdateProfileRequest:
+      type: object
+      required: [nickname]
+      properties:
+        nickname:
+          type: string
+          minLength: 2
+          maxLength: 30
+        avatar_url:
+          type: string
+          format: uri
+
+    ProfileResponse:
+      type: object
+      required: [id, nickname, role, coin_balance]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        email:
+          type: string
+          format: email
+        avatar_url:
+          type: string
+          format: uri
+        role:
+          type: string
+        coin_balance:
+          type: integer
+
+    PublicProfileResponse:
+      type: object
+      required: [id, nickname]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        avatar_url:
+          type: string
+          format: uri
+
+    # ── Theme (public) ─────────────────────────────────────
+    ThemeSummary:
+      type: object
+      required: [id, title, slug, min_players, max_players, duration_min, price, creator_id]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        cover_image:
+          type: string
+          format: uri
+        min_players:
+          type: integer
+        max_players:
+          type: integer
+        duration_min:
+          type: integer
+        price:
+          type: integer
+        creator_id:
+          type: string
+          format: uuid
+
+    ThemeResponse:
+      type: object
+      required: [id, title, slug, min_players, max_players, duration_min, price, creator_id, status, version, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        cover_image:
+          type: string
+          format: uri
+        min_players:
+          type: integer
+        max_players:
+          type: integer
+        duration_min:
+          type: integer
+        price:
+          type: integer
+        creator_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+        config_json:
+          type: object
+        version:
+          type: integer
+        published_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    CharacterResponse:
+      type: object
+      required: [id, name, sort_order]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        image_url:
+          type: string
+          format: uri
+        sort_order:
+          type: integer
+
+    # ── Room ───────────────────────────────────────────────
+    CreateRoomRequest:
+      type: object
+      required: [theme_id, max_players, is_private]
+      properties:
+        theme_id:
+          type: string
+          format: uuid
+        max_players:
+          type: integer
+          minimum: 2
+          maximum: 20
+        is_private:
+          type: boolean
+
+    RoomResponse:
+      type: object
+      required: [id, theme_id, host_id, code, status, max_players, is_private, player_count, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        theme_id:
+          type: string
+          format: uuid
+        host_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        status:
+          type: string
+        max_players:
+          type: integer
+        is_private:
+          type: boolean
+        player_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    PlayerInfo:
+      type: object
+      required: [user_id, is_ready]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        is_ready:
+          type: boolean
+
+    RoomDetailResponse:
+      type: object
+      required: [id, theme_id, host_id, code, status, max_players, is_private, player_count, created_at, players]
+      properties:
+        id:
+          type: string
+          format: uuid
+        theme_id:
+          type: string
+          format: uuid
+        host_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        status:
+          type: string
+        max_players:
+          type: integer
+        is_private:
+          type: boolean
+        player_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerInfo"
+
+    # ── Editor ─────────────────────────────────────────────
+    CreateThemeRequest:
+      type: object
+      required: [title, min_players, max_players, duration_min]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 2000
+        cover_image:
+          type: string
+          format: uri
+        min_players:
+          type: integer
+          minimum: 2
+          maximum: 20
+        max_players:
+          type: integer
+          minimum: 2
+          maximum: 20
+        duration_min:
+          type: integer
+          minimum: 10
+          maximum: 300
+        price:
+          type: integer
+          minimum: 0
+
+    UpdateThemeRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 100
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 2000
+        cover_image:
+          type: string
+          format: uri
+        min_players:
+          type: integer
+          minimum: 2
+          maximum: 20
+        max_players:
+          type: integer
+          minimum: 2
+          maximum: 20
+        duration_min:
+          type: integer
+          minimum: 10
+          maximum: 300
+        price:
+          type: integer
+          minimum: 0
+
+    CreateCharacterRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 2000
+        image_url:
+          type: string
+          format: uri
+        is_culprit:
+          type: boolean
+          default: false
+        sort_order:
+          type: integer
+          minimum: 0
+
+    UpdateCharacterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 2000
+        image_url:
+          type: string
+          format: uri
+        is_culprit:
+          type: boolean
+        sort_order:
+          type: integer
+          minimum: 0
+
+    EditorThemeSummary:
+      type: object
+      required: [id, title, status, min_players, max_players, version, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+        min_players:
+          type: integer
+        max_players:
+          type: integer
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    EditorThemeResponse:
+      type: object
+      required: [id, title, slug, min_players, max_players, duration_min, price, status, version, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        cover_image:
+          type: string
+          format: uri
+        min_players:
+          type: integer
+        max_players:
+          type: integer
+        duration_min:
+          type: integer
+        price:
+          type: integer
+        status:
+          type: string
+        config_json:
+          type: object
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    EditorCharacterResponse:
+      type: object
+      required: [id, theme_id, name, is_culprit, sort_order]
+      properties:
+        id:
+          type: string
+          format: uuid
+        theme_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        image_url:
+          type: string
+          format: uri
+        is_culprit:
+          type: boolean
+        sort_order:
+          type: integer
+
+    # ── Admin ──────────────────────────────────────────────
+    UpdateRoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          minLength: 1
+
+    UserSummary:
+      type: object
+      required: [id, nickname, role, coin_balance, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        nickname:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+        coin_balance:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    AdminThemeSummary:
+      type: object
+      required: [id, creator_id, title, status, min_players, max_players, price, version, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        creator_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+        min_players:
+          type: integer
+        max_players:
+          type: integer
+        price:
+          type: integer
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    RoomSummary:
+      type: object
+      required: [id, theme_id, host_id, code, status, max_players, is_private, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        theme_id:
+          type: string
+          format: uuid
+        host_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        status:
+          type: string
+        max_players:
+          type: integer
+        is_private:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time

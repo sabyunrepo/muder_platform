@@ -99,6 +99,46 @@ func (q *Queries) GetUserByProvider(ctx context.Context, arg GetUserByProviderPa
 	return i, err
 }
 
+const listUsers = `-- name: ListUsers :many
+SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2
+`
+
+type ListUsersParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error) {
+	rows, err := q.db.Query(ctx, listUsers, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Nickname,
+			&i.Email,
+			&i.AvatarUrl,
+			&i.Role,
+			&i.Provider,
+			&i.ProviderID,
+			&i.CoinBalance,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateCoinBalance = `-- name: UpdateCoinBalance :one
 UPDATE users SET coin_balance = coin_balance + $2, updated_at = NOW()
 WHERE id = $1 AND coin_balance + $2 >= 0
@@ -142,6 +182,35 @@ type UpdateUserParams struct {
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, updateUser, arg.ID, arg.Nickname, arg.AvatarUrl)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Nickname,
+		&i.Email,
+		&i.AvatarUrl,
+		&i.Role,
+		&i.Provider,
+		&i.ProviderID,
+		&i.CoinBalance,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateUserRole = `-- name: UpdateUserRole :one
+UPDATE users SET role = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
+`
+
+type UpdateUserRoleParams struct {
+	ID   uuid.UUID `json:"id"`
+	Role string    `json:"role"`
+}
+
+func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUserRole, arg.ID, arg.Role)
 	var i User
 	err := row.Scan(
 		&i.ID,

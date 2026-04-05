@@ -10,6 +10,12 @@ import (
 
 	"github.com/mmp-platform/server/internal/config"
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/domain/admin"
+	"github.com/mmp-platform/server/internal/domain/auth"
+	"github.com/mmp-platform/server/internal/domain/editor"
+	"github.com/mmp-platform/server/internal/domain/profile"
+	"github.com/mmp-platform/server/internal/domain/room"
+	"github.com/mmp-platform/server/internal/domain/theme"
 	"github.com/mmp-platform/server/internal/health"
 	"github.com/mmp-platform/server/internal/infra/cache"
 	"github.com/mmp-platform/server/internal/infra/lock"
@@ -24,7 +30,6 @@ func main() {
 	// 1. Config
 	cfg, err := config.Load()
 	if err != nil {
-		// Use a temporary logger for startup errors only.
 		startupLogger := zerolog.New(os.Stderr).With().Timestamp().Logger()
 		startupLogger.Fatal().Err(err).Msg("failed to load config")
 	}
@@ -72,30 +77,43 @@ func main() {
 	logger.Info().Msg("redis connected")
 
 	locker := lock.NewRedisLocker(redisCache.Client())
+	_ = locker // used in later phases
 
 	// 5. sqlc Queries
 	queries := db.New(pool)
 
-	// Suppress unused variable warnings until services consume them.
-	_ = locker
-	_ = queries
+	// 6. Domain Services
+	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), logger)
+	profileSvc := profile.NewService(queries, logger)
+	roomSvc := room.NewService(queries, logger)
+	themeSvc := theme.NewService(queries, logger)
+	editorSvc := editor.NewService(queries, logger)
+	adminSvc := admin.NewService(queries, logger)
 
-	// 6. WebSocket Hub
+	// 7. Domain Handlers
+	authHandler := auth.NewHandler(authSvc)
+	profileHandler := profile.NewHandler(profileSvc)
+	roomHandler := room.NewHandler(roomSvc)
+	themeHandler := theme.NewHandler(themeSvc)
+	editorHandler := editor.NewHandler(editorSvc)
+	adminHandler := admin.NewHandler(adminSvc)
+
+	// 8. WebSocket Hub
 	wsRouter := ws.NewRouter(logger)
 	wsHub := ws.NewHub(wsRouter, ws.NoopPubSub{}, logger)
 	defer wsHub.Stop()
 	logger.Info().Msg("websocket hub started")
 
-	// 7. HTTP Router
+	// 9. HTTP Router
 	r := chi.NewRouter()
 
-	// 7. Middleware (order matters: outermost first)
+	// 10. Global Middleware (order matters: outermost first)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.Recovery)
 	r.Use(middleware.CORS(cfg.IsDevelopment(), cfg.CORSOrigins))
 
-	// 8. Health endpoints (with DB + Redis checks)
+	// 11. Health endpoints
 	healthHandler := health.NewHandler(
 		pool.Ping,
 		func(ctx context.Context) error { return redisCache.Ping(ctx) },
@@ -103,11 +121,11 @@ func main() {
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
 
-	// 10. SEO pages
+	// 12. SEO pages
 	seoHandler := seo.NewHandler(cfg.BaseURL, logger)
 	seoHandler.RegisterRoutes(r)
 
-	// 11. WebSocket endpoints
+	// 13. WebSocket endpoints
 	wsCfg := ws.UpgradeConfig{
 		AllowedOrigins: cfg.CORSOrigins,
 		DevMode:        cfg.IsDevelopment(),
@@ -116,7 +134,75 @@ func main() {
 	r.Get("/ws/game", gameUpgrade)
 	r.Get("/ws/social", gameUpgrade)
 
-	// 12. Server start + graceful shutdown
+	// 14. JWT auth config
+	jwtCfg := middleware.JWTConfig{Secret: []byte(cfg.JWTSecret)}
+
+	// 15. REST API v1
+	r.Route("/api/v1", func(r chi.Router) {
+		// --- Public endpoints ---
+		r.Post("/auth/callback", authHandler.HandleCallback)
+		r.Post("/auth/refresh", authHandler.HandleRefresh)
+
+		r.Get("/themes", themeHandler.ListPublished)
+		r.Get("/themes/{id}", themeHandler.GetTheme)
+		r.Get("/themes/slug/{slug}", themeHandler.GetThemeBySlug)
+		r.Get("/themes/{id}/characters", themeHandler.GetCharacters)
+
+		r.Get("/rooms", roomHandler.ListWaitingRooms)
+		r.Get("/rooms/{id}", roomHandler.GetRoom)
+		r.Get("/rooms/code/{code}", roomHandler.GetRoomByCode)
+
+		r.Get("/users/{id}", profileHandler.GetPublicProfile)
+
+		// --- Authenticated endpoints ---
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Auth(jwtCfg))
+
+			// Auth
+			r.Post("/auth/logout", authHandler.HandleLogout)
+			r.Get("/auth/me", authHandler.HandleMe)
+
+			// Profile
+			r.Get("/profile", profileHandler.GetProfile)
+			r.Put("/profile", profileHandler.UpdateProfile)
+
+			// Rooms
+			r.Post("/rooms", roomHandler.CreateRoom)
+			r.Post("/rooms/{id}/join", roomHandler.JoinRoom)
+			r.Post("/rooms/{id}/leave", roomHandler.LeaveRoom)
+
+			// --- Creator endpoints (CREATOR, ADMIN) ---
+			r.Route("/editor", func(r chi.Router) {
+				r.Use(middleware.RequireRole("CREATOR", "ADMIN"))
+
+				r.Get("/themes", editorHandler.ListMyThemes)
+				r.Post("/themes", editorHandler.CreateTheme)
+				r.Put("/themes/{id}", editorHandler.UpdateTheme)
+				r.Delete("/themes/{id}", editorHandler.DeleteTheme)
+				r.Post("/themes/{id}/publish", editorHandler.PublishTheme)
+				r.Post("/themes/{id}/unpublish", editorHandler.UnpublishTheme)
+				r.Post("/themes/{id}/characters", editorHandler.CreateCharacter)
+				r.Put("/characters/{id}", editorHandler.UpdateCharacter)
+				r.Delete("/characters/{id}", editorHandler.DeleteCharacter)
+				r.Put("/themes/{id}/config", editorHandler.UpdateConfigJson)
+			})
+
+			// --- Admin endpoints (ADMIN only) ---
+			r.Route("/admin", func(r chi.Router) {
+				r.Use(middleware.RequireRole("ADMIN"))
+
+				r.Get("/users", adminHandler.ListUsers)
+				r.Get("/users/{id}", adminHandler.GetUser)
+				r.Put("/users/{id}/role", adminHandler.UpdateUserRole)
+				r.Get("/themes", adminHandler.ListAllThemes)
+				r.Post("/themes/{id}/unpublish", adminHandler.ForceUnpublishTheme)
+				r.Get("/rooms", adminHandler.ListAllRooms)
+				r.Post("/rooms/{id}/close", adminHandler.ForceCloseRoom)
+			})
+		})
+	})
+
+	// 16. Server start + graceful shutdown
 	srv := server.New(cfg.Port, r, logger)
 	if err := srv.Start(); err != nil {
 		logger.Fatal().Err(err).Msg("server exited with error")

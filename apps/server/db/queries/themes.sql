@@ -27,3 +27,37 @@ SELECT * FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order;
 INSERT INTO theme_characters (theme_id, name, description, image_url, is_culprit, sort_order)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
+
+-- name: UpdateTheme :one
+UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5,
+  min_players = $6, max_players = $7, duration_min = $8, price = $9, updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteTheme :exec
+DELETE FROM themes WHERE id = $1;
+
+-- name: UpdateThemeConfigJson :one
+UPDATE themes SET config_json = $2, version = version + 1, updated_at = NOW()
+WHERE id = $1
+RETURNING *;
+
+-- name: GetThemeCharacter :one
+SELECT * FROM theme_characters WHERE id = $1;
+
+-- name: UpdateThemeCharacter :one
+UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, sort_order = $6
+WHERE id = $1
+RETURNING *;
+
+-- name: DeleteThemeCharacter :exec
+DELETE FROM theme_characters WHERE id = $1;
+
+-- name: CountThemeCharacters :one
+SELECT count(*) FROM theme_characters WHERE theme_id = $1;
+
+-- name: ListAllThemes :many
+SELECT * FROM themes ORDER BY created_at DESC LIMIT $1 OFFSET $2;
+
+-- name: ListAllRooms :many
+SELECT * FROM rooms ORDER BY created_at DESC LIMIT $1 OFFSET $2;

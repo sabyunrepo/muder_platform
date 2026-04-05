@@ -18,3 +18,11 @@ RETURNING *;
 UPDATE users SET coin_balance = coin_balance + $2, updated_at = NOW()
 WHERE id = $1 AND coin_balance + $2 >= 0
 RETURNING *;
+
+-- name: ListUsers :many
+SELECT * FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2;
+
+-- name: UpdateUserRole :one
+UPDATE users SET role = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING *;

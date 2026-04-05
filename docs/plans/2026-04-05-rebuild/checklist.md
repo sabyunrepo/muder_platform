@@ -33,9 +33,16 @@
 - [x] Exploration 4개 (floor/room/timed_exploration, location_clue) — 44 테스트
 - [x] Clue Distribution 5개 (conditional/starting/round/timed_clue, trade_clue) — 60 테스트
 
-## Phase 6: REST API 도메인
-- [ ] auth, room, theme, editor, coin/payment, profile, admin
-- [ ] OpenAPI spec + TS 타입 생성
+## Phase 6: REST API 도메인 ✅
+- [x] auth (OAuth callback, JWT, refresh rotation, logout, me) — 7 테스트
+- [x] profile (get, update, public view) — 6 테스트
+- [x] room (create, join, leave, list, code lookup) — 8 테스트
+- [x] theme (list published, get by ID/slug, characters) — 6 테스트
+- [x] editor (theme/character CRUD, publish/unpublish, configJson) — 12 테스트
+- [x] admin (user/theme/room management, role change) — 9 테스트
+- [x] 공유 인프라: httputil (JSON/pagination), JWT middleware, RequireRole — 8 테스트
+- [x] main.go DI 조립 + /api/v1/ 라우트 등록
+- [x] OpenAPI 3.1 spec (29 endpoints, 27 schemas) + Taskfile api:types 태스크
 
 ## Phase 7: 프론트엔드
 - [ ] React Router + pages/ + features/ + 3레이어 상태
@@ -69,4 +76,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~5 완료
+**진행:** 2026-04-05 Phase 0~6 완료

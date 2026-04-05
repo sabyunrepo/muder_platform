@@ -1,0 +1,98 @@
+package auth
+
+import (
+	"net/http"
+
+	"github.com/google/uuid"
+
+	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/httputil"
+	"github.com/mmp-platform/server/internal/middleware"
+)
+
+// Handler holds HTTP handlers for auth endpoints.
+type Handler struct {
+	svc Service
+}
+
+// NewHandler creates a new auth Handler.
+func NewHandler(svc Service) *Handler {
+	return &Handler{svc: svc}
+}
+
+type callbackRequest struct {
+	Provider string `json:"provider" validate:"required"`
+	Code     string `json:"code" validate:"required"`
+	Nickname string `json:"nickname" validate:"required,min=2,max=20"`
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
+// HandleCallback handles POST /auth/callback.
+func (h *Handler) HandleCallback(w http.ResponseWriter, r *http.Request) {
+	var req callbackRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	pair, err := h.svc.OAuthCallback(r.Context(), req.Provider, req.Code, req.Nickname)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, pair)
+}
+
+// HandleRefresh handles POST /auth/refresh.
+func (h *Handler) HandleRefresh(w http.ResponseWriter, r *http.Request) {
+	var req refreshRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	pair, err := h.svc.RefreshToken(r.Context(), req.RefreshToken)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, pair)
+}
+
+// HandleLogout handles POST /auth/logout. Requires authentication.
+func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	if err := h.svc.Logout(r.Context(), userID); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+}
+
+// HandleMe handles GET /auth/me. Requires authentication.
+func (h *Handler) HandleMe(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	user, err := h.svc.GetCurrentUser(r.Context(), userID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, user)
+}
