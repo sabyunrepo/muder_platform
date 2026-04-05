@@ -16,6 +16,7 @@ type Config struct {
 	RedisURL    string `env:"REDIS_URL" required:"true"`
 	CORSOrigins string `env:"CORS_ORIGINS" default:"http://localhost:5173"`
 	BaseURL     string `env:"BASE_URL" default:"http://localhost:5173"`
+	JWTSecret   string `env:"JWT_SECRET" default:"dev-secret-change-me"`
 }
 
 // IsDevelopment returns true if the application is running in development mode.

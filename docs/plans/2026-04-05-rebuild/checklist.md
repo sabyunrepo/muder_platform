@@ -22,8 +22,8 @@
 - [x] GameProgressionEngine (strategy, script/hybrid/event, action_dispatcher)
 - [x] PhaseEngine + modules↔phases 교차 검증
 
-## Phase 4: WebSocket 인프라
-- [ ] Hub, Client, Session, Router, Auth, 브로드캐스트, 재연결, Redis PubSub
+## Phase 4: WebSocket 인프라 ✅
+- [x] Hub, Client, Session, Router, Auth, 브로드캐스트, 재연결, Redis PubSub
 
 ## Phase 5: 게임 모듈 이식 (29개)
 - [ ] Core 4개 → Progression 8개 → Communication 5개
@@ -65,4 +65,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~3 완료
+**진행:** 2026-04-05 Phase 0~4 완료

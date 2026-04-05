@@ -17,6 +17,7 @@ import (
 	"github.com/mmp-platform/server/internal/middleware"
 	"github.com/mmp-platform/server/internal/seo"
 	"github.com/mmp-platform/server/internal/server"
+	"github.com/mmp-platform/server/internal/ws"
 )
 
 func main() {
@@ -75,11 +76,17 @@ func main() {
 	// 5. sqlc Queries
 	queries := db.New(pool)
 
-	// Suppress unused variable warnings until Phase 3 services consume them.
+	// Suppress unused variable warnings until services consume them.
 	_ = locker
 	_ = queries
 
-	// 6. Router
+	// 6. WebSocket Hub
+	wsRouter := ws.NewRouter(logger)
+	wsHub := ws.NewHub(wsRouter, ws.NoopPubSub{}, logger)
+	defer wsHub.Stop()
+	logger.Info().Msg("websocket hub started")
+
+	// 7. HTTP Router
 	r := chi.NewRouter()
 
 	// 7. Middleware (order matters: outermost first)
@@ -96,11 +103,16 @@ func main() {
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
 
-	// 9. SEO pages
+	// 10. SEO pages
 	seoHandler := seo.NewHandler(cfg.BaseURL, logger)
 	seoHandler.RegisterRoutes(r)
 
-	// 10. Server start + graceful shutdown
+	// 11. WebSocket endpoints
+	gameUpgrade := ws.UpgradeHandler(wsHub, ws.DefaultPlayerIDExtractor, logger)
+	r.Get("/ws/game", gameUpgrade)
+	r.Get("/ws/social", gameUpgrade)
+
+	// 12. Server start + graceful shutdown
 	srv := server.New(cfg.Port, r, logger)
 	if err := srv.Start(); err != nil {
 		logger.Fatal().Err(err).Msg("server exited with error")
