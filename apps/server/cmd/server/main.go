@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -8,7 +9,11 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/config"
+	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/health"
+	"github.com/mmp-platform/server/internal/infra/cache"
+	"github.com/mmp-platform/server/internal/infra/lock"
+	"github.com/mmp-platform/server/internal/infra/postgres"
 	"github.com/mmp-platform/server/internal/middleware"
 	"github.com/mmp-platform/server/internal/seo"
 	"github.com/mmp-platform/server/internal/server"
@@ -49,25 +54,53 @@ func main() {
 			Logger()
 	}
 
-	// 3. Router
+	// 3. PostgreSQL
+	pool, err := postgres.New(cfg.DatabaseURL)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to connect to postgres")
+	}
+	defer pool.Close()
+	logger.Info().Msg("postgres connected")
+
+	// 4. Redis (cache + lock)
+	redisCache, err := cache.NewRedis(cfg.RedisURL)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to connect to redis")
+	}
+	defer redisCache.Close()
+	logger.Info().Msg("redis connected")
+
+	locker := lock.NewRedisLocker(redisCache.Client())
+
+	// 5. sqlc Queries
+	queries := db.New(pool)
+
+	// Suppress unused variable warnings until Phase 3 services consume them.
+	_ = locker
+	_ = queries
+
+	// 6. Router
 	r := chi.NewRouter()
 
-	// 4. Middleware (order matters: outermost first)
+	// 7. Middleware (order matters: outermost first)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.Recovery)
 	r.Use(middleware.CORS(cfg.IsDevelopment(), cfg.CORSOrigins))
 
-	// 5. Health endpoints
-	healthHandler := health.NewHandler()
+	// 8. Health endpoints (with DB + Redis checks)
+	healthHandler := health.NewHandler(
+		pool.Ping,
+		func(ctx context.Context) error { return redisCache.Ping(ctx) },
+	)
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
 
-	// 6. SEO pages
+	// 9. SEO pages
 	seoHandler := seo.NewHandler(cfg.BaseURL, logger)
 	seoHandler.RegisterRoutes(r)
 
-	// 7. Server start + graceful shutdown
+	// 10. Server start + graceful shutdown
 	srv := server.New(cfg.Port, r, logger)
 	if err := srv.Start(); err != nil {
 		logger.Fatal().Err(err).Msg("server exited with error")
