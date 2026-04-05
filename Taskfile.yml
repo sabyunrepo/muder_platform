@@ -4,6 +4,7 @@ vars:
   GO_MODULE: github.com/mmp/murder-platform
   GO_SRC: ./apps/server
   GO_BIN: ./bin
+  DEV_DATABASE_URL: postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable
 
 tasks:
   # ─── Go ───────────────────────────────────────────────
@@ -43,19 +44,19 @@ tasks:
     desc: Run database migrations
     dir: "{{.GO_SRC}}"
     cmds:
-      - goose -dir db/migrations postgres "${DATABASE_URL:-postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable}" up
+      - goose -dir db/migrations postgres "${DATABASE_URL:-{{.DEV_DATABASE_URL}}}" up
 
   db:migrate:down:
     desc: Rollback last database migration
     dir: "{{.GO_SRC}}"
     cmds:
-      - goose -dir db/migrations postgres "${DATABASE_URL:-postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable}" down
+      - goose -dir db/migrations postgres "${DATABASE_URL:-{{.DEV_DATABASE_URL}}}" down
 
   db:migrate:status:
     desc: Show migration status
     dir: "{{.GO_SRC}}"
     cmds:
-      - goose -dir db/migrations postgres "${DATABASE_URL:-postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable}" status
+      - goose -dir db/migrations postgres "${DATABASE_URL:-{{.DEV_DATABASE_URL}}}" status
 
   db:sqlc:
     desc: Generate sqlc code

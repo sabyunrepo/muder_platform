@@ -13,8 +13,8 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (nickname, email, avatar_url, role, provider, provider_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users (nickname, email, avatar_url, provider, provider_id)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
 `
 
@@ -22,7 +22,6 @@ type CreateUserParams struct {
 	Nickname   string      `json:"nickname"`
 	Email      pgtype.Text `json:"email"`
 	AvatarUrl  pgtype.Text `json:"avatar_url"`
-	Role       string      `json:"role"`
 	Provider   string      `json:"provider"`
 	ProviderID string      `json:"provider_id"`
 }
@@ -32,7 +31,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Nickname,
 		arg.Email,
 		arg.AvatarUrl,
-		arg.Role,
 		arg.Provider,
 		arg.ProviderID,
 	)
@@ -103,7 +101,7 @@ func (q *Queries) GetUserByProvider(ctx context.Context, arg GetUserByProviderPa
 
 const updateCoinBalance = `-- name: UpdateCoinBalance :one
 UPDATE users SET coin_balance = coin_balance + $2, updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND coin_balance + $2 >= 0
 RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
 `
 
