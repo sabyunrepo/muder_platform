@@ -1,5 +1,7 @@
 import type { ApiError } from "@mmp/shared";
 
+import { ApiHttpError, isApiError } from "@/lib/api-error";
+
 const BASE_URL = "/api";
 
 interface RequestOptions extends Omit<RequestInit, "body"> {
@@ -8,6 +10,7 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
 
 class ApiClient {
   private baseUrl: string;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -26,30 +29,119 @@ class ApiClient {
     return response.json() as Promise<T>;
   }
 
+  /** 토큰 갱신이 불필요한 경로 */
+  private static readonly SKIP_REFRESH_PATHS = [
+    "/v1/auth/refresh",
+    "/v1/auth/callback",
+  ];
+
+  private async tryRefresh(): Promise<boolean> {
+    // 동시 요청 dedupe
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      try {
+        // 동적 import 대신 직접 store 접근 (순환 의존 방지)
+        const { useAuthStore } = await import("@/stores/authStore");
+        const { refreshToken, setTokens, logout } = useAuthStore.getState();
+
+        if (!refreshToken) {
+          logout();
+          return false;
+        }
+
+        const res = await fetch(`${this.baseUrl}/v1/auth/refresh`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (!res.ok) {
+          logout();
+          return false;
+        }
+
+        const data = await res.json();
+        setTokens(data.access_token, data.refresh_token);
+        return true;
+      } catch {
+        const { useAuthStore } = await import("@/stores/authStore");
+        useAuthStore.getState().logout();
+        return false;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
+  }
+
   private async rawFetch(
     path: string,
     options: RequestOptions = {},
+    isRetry = false,
   ): Promise<Response> {
     const { body, headers: customHeaders, ...rest } = options;
 
     const headers = new Headers(customHeaders);
-    headers.set("Content-Type", "application/json");
+    if (body) {
+      headers.set("Content-Type", "application/json");
+    }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...rest,
-      headers,
-      credentials: "include",
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    // Authorization 헤더 자동 설정
+    if (!headers.has("Authorization")) {
+      const { useAuthStore } = await import("@/stores/authStore");
+      const accessToken = useAuthStore.getState().accessToken;
+      if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+      }
+    }
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        ...rest,
+        headers,
+        credentials: "include",
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch {
+      throw new ApiHttpError({
+        status: 0,
+        type: "about:blank",
+        title: "Network Error",
+        detail: "서버에 연결할 수 없습니다. 네트워크를 확인해주세요.",
+        code: "NETWORK_ERROR",
+      });
+    }
+
+    // 401 자동 토큰 갱신 (무한루프 방지: 재시도 아닐 때 + refresh/callback 경로 제외)
+    if (
+      response.status === 401 &&
+      !isRetry &&
+      !ApiClient.SKIP_REFRESH_PATHS.some((p) => path.startsWith(p))
+    ) {
+      const refreshed = await this.tryRefresh();
+      if (refreshed) {
+        return this.rawFetch(path, options, true);
+      }
+    }
 
     if (!response.ok) {
-      const error: ApiError = await response.json().catch(() => ({
-        status: response.status,
-        type: "about:blank",
-        title: response.statusText,
-        detail: "An unexpected error occurred",
-      }));
-      throw error;
+      const body = await response.json().catch(() => null);
+      const apiError: ApiError = isApiError(body)
+        ? body
+        : {
+            status: response.status,
+            type: "about:blank",
+            title: response.statusText,
+            detail: "예기치 않은 오류가 발생했습니다.",
+            code: "INTERNAL_ERROR",
+          };
+      throw new ApiHttpError(apiError);
     }
 
     return response;
