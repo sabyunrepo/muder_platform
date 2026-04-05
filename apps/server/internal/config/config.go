@@ -15,8 +15,11 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL" required:"true"`
 	RedisURL    string `env:"REDIS_URL" required:"true"`
 	CORSOrigins string `env:"CORS_ORIGINS" default:"http://localhost:5173"`
-	BaseURL     string `env:"BASE_URL" default:"http://localhost:5173"`
-	JWTSecret   string `env:"JWT_SECRET" default:"dev-secret-change-me"`
+	BaseURL      string `env:"BASE_URL" default:"http://localhost:5173"`
+	JWTSecret    string `env:"JWT_SECRET" default:"dev-secret-change-me"`
+	SentryDSN    string `env:"SENTRY_DSN" default:""`
+	OTelEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT" default:""`
+	AppVersion   string `env:"APP_VERSION" default:"0.1.0"`
 }
 
 // IsDevelopment returns true if the application is running in development mode.

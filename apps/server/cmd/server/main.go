@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/config"
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/domain/admin"
@@ -19,7 +20,9 @@ import (
 	"github.com/mmp-platform/server/internal/health"
 	"github.com/mmp-platform/server/internal/infra/cache"
 	"github.com/mmp-platform/server/internal/infra/lock"
+	otelPkg "github.com/mmp-platform/server/internal/infra/otel"
 	"github.com/mmp-platform/server/internal/infra/postgres"
+	sentryPkg "github.com/mmp-platform/server/internal/infra/sentry"
 	"github.com/mmp-platform/server/internal/middleware"
 	"github.com/mmp-platform/server/internal/seo"
 	"github.com/mmp-platform/server/internal/server"
@@ -58,6 +61,40 @@ func main() {
 			Timestamp().
 			Str("service", "mmp-server").
 			Logger()
+	}
+
+	// 2.5. Dev mode for error responses
+	apperror.SetDevMode(cfg.IsDevelopment())
+
+	// 2.6. OTel LogHook (injects trace_id/span_id into log events)
+	logger = logger.Hook(otelPkg.LogHook{})
+
+	// 2.7. Sentry
+	sentryCleanup, err := sentryPkg.Init(sentryPkg.Config{
+		DSN:         cfg.SentryDSN,
+		Environment: cfg.Env,
+		Release:     cfg.AppVersion,
+		Debug:       cfg.IsDevelopment(),
+	})
+	if err != nil {
+		logger.Warn().Err(err).Msg("sentry init failed, continuing without sentry")
+	} else {
+		defer sentryCleanup()
+	}
+
+	// 2.8. OpenTelemetry
+	otelCleanup, err := otelPkg.Init(context.Background(), otelPkg.Config{
+		Endpoint:    cfg.OTelEndpoint,
+		ServiceName: "mmp-server",
+		Version:     cfg.AppVersion,
+		Environment: cfg.Env,
+		Insecure:    cfg.IsDevelopment(),
+		SampleRate:  0.1,
+	})
+	if err != nil {
+		logger.Warn().Err(err).Msg("otel init failed, continuing without tracing")
+	} else {
+		defer otelCleanup(context.Background())
 	}
 
 	// 3. PostgreSQL
@@ -110,6 +147,7 @@ func main() {
 	// 10. Global Middleware (order matters: outermost first)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
+	r.Use(sentryPkg.Middleware) // Sentry hub before Recovery so panics are captured
 	r.Use(middleware.Recovery)
 	r.Use(middleware.CORS(cfg.IsDevelopment(), cfg.CORSOrigins))
 

@@ -2,6 +2,7 @@ package apperror
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -118,5 +119,163 @@ func TestWriteError_WithInstance(t *testing.T) {
 
 	if body.Instance != "/api/v1/games/123" {
 		t.Errorf("expected instance '/api/v1/games/123', got %q", body.Instance)
+	}
+}
+
+func TestWriteError_WithParams(t *testing.T) {
+	appErr := BadRequest("invalid player count").
+		WithParams(map[string]any{"min": 4, "max": 10})
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
+
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	params, ok := body["params"].(map[string]any)
+	if !ok {
+		t.Fatal("expected params in response")
+	}
+	if params["min"] != float64(4) {
+		t.Errorf("expected params.min=4, got %v", params["min"])
+	}
+	if params["max"] != float64(10) {
+		t.Errorf("expected params.max=10, got %v", params["max"])
+	}
+}
+
+func TestWriteError_WithFieldErrors(t *testing.T) {
+	errs := []FieldError{
+		{Field: "name", Message: "required", Code: "REQUIRED"},
+		{Field: "email", Message: "invalid format", Code: "INVALID_FORMAT"},
+	}
+	appErr := Validation("validation failed", errs)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
+
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("expected status 422, got %d", res.StatusCode)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	errList, ok := body["errors"].([]any)
+	if !ok {
+		t.Fatal("expected errors array in response")
+	}
+	if len(errList) != 2 {
+		t.Errorf("expected 2 field errors, got %d", len(errList))
+	}
+
+	first := errList[0].(map[string]any)
+	if first["field"] != "name" {
+		t.Errorf("expected first error field 'name', got %q", first["field"])
+	}
+}
+
+func TestWriteError_DevMode_DebugInfo(t *testing.T) {
+	SetDevMode(true)
+	defer SetDevMode(false)
+
+	cause := errors.New("connection refused")
+	appErr := Internal("database error").Wrap(cause)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	debug, ok := body["debug"].(map[string]any)
+	if !ok {
+		t.Fatal("expected debug info in dev mode response")
+	}
+	if debug["internal"] != "connection refused" {
+		t.Errorf("expected internal 'connection refused', got %q", debug["internal"])
+	}
+
+	// In dev mode, 5xx detail should NOT be masked.
+	if body["detail"] != "database error" {
+		t.Errorf("expected original detail in dev mode, got %q", body["detail"])
+	}
+}
+
+func TestWriteError_ProdMode_MaskedDetail(t *testing.T) {
+	SetDevMode(false)
+	defer SetDevMode(false)
+
+	appErr := Internal("sensitive database info leaked")
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body["detail"] != "an unexpected error occurred" {
+		t.Errorf("expected masked detail in prod mode, got %q", body["detail"])
+	}
+
+	// No debug info in production.
+	if body["debug"] != nil {
+		t.Error("expected no debug info in prod mode")
+	}
+}
+
+func TestWriteError_WrappedError_Logging(t *testing.T) {
+	cause := errors.New("pg: connection timeout")
+	appErr := Internal("database unavailable").Wrap(cause)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+	// This test verifies the wrapped error path executes without panic.
+	// The Internal field should be used for logging (verified by no panic).
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusInternalServerError {
+		t.Errorf("expected status 500, got %d", res.StatusCode)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body["code"] != ErrInternal {
+		t.Errorf("expected code %q, got %v", ErrInternal, body["code"])
 	}
 }

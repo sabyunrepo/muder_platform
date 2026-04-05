@@ -14,6 +14,12 @@ export interface ApiError {
   instance?: string;
   code?: string;
   errors?: FieldError[];
+  params?: Record<string, unknown>;
+  trace_id?: string;
+  debug?: {
+    internal?: string;
+    stack?: string;
+  };
 }
 
 export interface FieldError {

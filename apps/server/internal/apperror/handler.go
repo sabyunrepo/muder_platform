@@ -4,18 +4,40 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sync/atomic"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // problemResponse is the RFC 9457 Problem Details JSON structure.
 type problemResponse struct {
-	Type     string `json:"type"`
-	Title    string `json:"title"`
-	Status   int    `json:"status"`
-	Detail   string `json:"detail"`
-	Code     string `json:"code"`
-	Instance string `json:"instance,omitempty"`
+	Type     string         `json:"type"`
+	Title    string         `json:"title"`
+	Status   int            `json:"status"`
+	Detail   string         `json:"detail"`
+	Code     string         `json:"code"`
+	Instance string         `json:"instance,omitempty"`
+	Params   map[string]any `json:"params,omitempty"`
+	Errors   []FieldError   `json:"errors,omitempty"`
+	TraceID  string         `json:"trace_id,omitempty"`
+	Debug    *debugInfo     `json:"debug,omitempty"`
+}
+
+// debugInfo holds development-only diagnostic information.
+type debugInfo struct {
+	Internal string `json:"internal,omitempty"`
+	Stack    string `json:"stack,omitempty"`
+}
+
+// devMode controls whether debug information is included in error responses.
+// Uses atomic.Bool for concurrent safety (safe to call SetDevMode during tests).
+var devMode atomic.Bool
+
+// SetDevMode enables or disables development mode for error responses.
+func SetDevMode(dev bool) {
+	devMode.Store(dev)
 }
 
 // WriteError writes an error as an RFC 9457 Problem Details JSON response.
@@ -29,9 +51,30 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		appErr = Internal("an unexpected error occurred")
 		logger.Error().Err(err).Msg("unhandled error")
 	} else if appErr.Status >= 500 {
-		logger.Error().Err(err).Str("code", appErr.Code).Msg(appErr.Title)
+		// 5xx: log with internal cause if available
+		logEvent := logger.Error().Str("code", appErr.Code)
+		if appErr.Internal != nil {
+			logEvent = logEvent.Err(appErr.Internal)
+		} else {
+			logEvent = logEvent.Err(err)
+		}
+		logEvent.Msg(appErr.Title)
 	} else {
 		logger.Warn().Str("code", appErr.Code).Msg(appErr.Detail)
+	}
+
+	// Capture 5xx errors to Sentry if configured.
+	if appErr.Status >= 500 {
+		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetTag("error.code", appErr.Code)
+				if appErr.Internal != nil {
+					hub.CaptureException(appErr.Internal)
+				} else {
+					hub.CaptureException(err)
+				}
+			})
+		}
 	}
 
 	typeURI := appErr.Type
@@ -46,6 +89,27 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		Detail:   appErr.Detail,
 		Code:     appErr.Code,
 		Instance: appErr.Instance,
+		Params:   appErr.Params,
+		Errors:   appErr.Errors,
+	}
+
+	// Include trace_id in error response if OTel is active.
+	span := trace.SpanFromContext(r.Context())
+	if sc := span.SpanContext(); sc.IsValid() {
+		resp.TraceID = sc.TraceID().String()
+	}
+
+	// Mask 5xx details in production to prevent internal info leakage.
+	isDev := devMode.Load()
+	if !isDev && resp.Status >= 500 {
+		resp.Detail = "an unexpected error occurred"
+	}
+
+	// Include debug info only in development mode.
+	if isDev && appErr.Internal != nil {
+		resp.Debug = &debugInfo{
+			Internal: appErr.Internal.Error(),
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/problem+json")
