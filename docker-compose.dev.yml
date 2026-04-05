@@ -1,0 +1,10 @@
+# Development override — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile.dev
+    volumes:
+      - ./apps/server:/build
+    environment:
+      APP_ENV: development

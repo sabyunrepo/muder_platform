@@ -1,0 +1,16 @@
+{
+  "name": "@mmp/ui-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.css",
+  "exports": {
+    ".": "./src/index.css",
+    "./colors": "./src/colors.css",
+    "./typography": "./src/typography.css",
+    "./spacing": "./src/spacing.css"
+  },
+  "scripts": {
+    "clean": "rm -rf .turbo"
+  },
+  "files": ["src/**/*.css"]
+}

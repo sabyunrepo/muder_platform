@@ -1,0 +1,121 @@
+{{define "head"}}
+    <meta name="description" content="Murder Mystery Platform 이용약관">
+    <link rel="canonical" href="{{.BaseURL}}/terms">
+    <meta property="og:title" content="이용약관 — Murder Mystery Platform">
+    <meta property="og:url" content="{{.BaseURL}}/terms">
+    <meta property="og:type" content="website">
+    <style>
+        .legal-content h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .legal-date {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+
+        .legal-content h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent);
+        }
+
+        .legal-content p,
+        .legal-content ul {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .legal-content ul {
+            padding-left: 1.5rem;
+        }
+
+        .legal-content li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+{{end}}
+
+{{template "layout" .}}
+
+{{define "content"}}
+<div class="legal-content">
+    <h1>이용약관</h1>
+    <p class="legal-date">시행일: 2026년 4월 5일</p>
+
+    <h2>제1조 (목적)</h2>
+    <p>
+        이 약관은 Murder Mystery Platform(이하 "MMP")이 제공하는 온라인 머더미스터리 게임 서비스의
+        이용에 관한 조건 및 절차, 기타 필요한 사항을 규정함을 목적으로 합니다.
+    </p>
+
+    <h2>제2조 (정의)</h2>
+    <ul>
+        <li><strong>"서비스"</strong>란 MMP가 제공하는 실시간 멀티플레이어 머더미스터리 게임 및 관련 기능 일체를 말합니다.</li>
+        <li><strong>"회원"</strong>이란 이 약관에 동의하고 MMP에 가입하여 서비스를 이용하는 자를 말합니다.</li>
+        <li><strong>"테마"</strong>란 서비스에서 제공하는 개별 게임 시나리오를 말합니다.</li>
+    </ul>
+
+    <h2>제3조 (약관의 효력 및 변경)</h2>
+    <p>
+        이 약관은 서비스 화면에 게시하거나 기타의 방법으로 회원에게 공지함으로써 효력이 발생합니다.
+        MMP는 관련 법령을 위배하지 않는 범위에서 이 약관을 변경할 수 있으며,
+        변경 시 적용일자 7일 전부터 공지합니다.
+    </p>
+
+    <h2>제4조 (회원가입)</h2>
+    <p>
+        이용자는 MMP가 정한 가입 양식에 따라 회원정보를 기입하고 이 약관에 동의함으로써
+        회원가입을 신청합니다. MMP는 신청자에게 서비스 이용을 승낙함을 원칙으로 합니다.
+    </p>
+
+    <h2>제5조 (서비스의 제공)</h2>
+    <p>MMP는 다음의 서비스를 제공합니다.</p>
+    <ul>
+        <li>실시간 멀티플레이어 머더미스터리 게임</li>
+        <li>음성 채팅 기능</li>
+        <li>테마 탐색 및 게임 매칭</li>
+        <li>게임 기록 조회</li>
+    </ul>
+
+    <h2>제6조 (이용자의 의무)</h2>
+    <p>이용자는 다음 행위를 해서는 안 됩니다.</p>
+    <ul>
+        <li>타인의 정보를 도용하는 행위</li>
+        <li>서비스 운영을 방해하는 행위</li>
+        <li>다른 이용자에게 불쾌감을 주는 행위 (욕설, 비방 등)</li>
+        <li>게임 내 부정행위 (핵, 버그 악용 등)</li>
+        <li>서비스를 이용한 영리 활동 (MMP의 사전 승인 없이)</li>
+    </ul>
+
+    <h2>제7조 (서비스 이용 제한)</h2>
+    <p>
+        MMP는 이용자가 제6조의 의무를 위반한 경우, 사전 통보 후 서비스 이용을
+        제한하거나 회원 자격을 상실시킬 수 있습니다.
+    </p>
+
+    <h2>제8조 (면책)</h2>
+    <p>
+        MMP는 천재지변, 전시, 사변 등 불가항력적 사유로 서비스를 제공할 수 없는 경우
+        책임이 면제됩니다. 이용자의 귀책사유로 인한 서비스 이용 장애에 대해서도
+        MMP는 책임지지 않습니다.
+    </p>
+
+    <h2>제9조 (분쟁 해결)</h2>
+    <p>
+        서비스 이용과 관련하여 분쟁이 발생한 경우, 양 당사자는 성실히 협의하여 해결합니다.
+        협의가 이루어지지 않을 경우, 민사소송법상의 관할 법원에 소를 제기할 수 있습니다.
+    </p>
+
+    <h2>제10조 (연락처)</h2>
+    <p>
+        서비스 관련 문의는 아래 연락처로 보내주세요.<br>
+        이메일: <a href="mailto:support@mmp.example.com">support@mmp.example.com</a>
+    </p>
+</div>
+{{end}}

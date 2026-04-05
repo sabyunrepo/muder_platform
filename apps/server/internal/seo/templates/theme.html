@@ -1,0 +1,168 @@
+{{define "head"}}
+    <meta name="description" content="{{.Description}}">
+    <link rel="canonical" href="{{.CanonicalURL}}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{{.Title}} — Murder Mystery Platform">
+    <meta property="og:description" content="{{.Description}}">
+    <meta property="og:url" content="{{.CanonicalURL}}">
+    {{if .ImageURL}}<meta property="og:image" content="{{.BaseURL}}{{.ImageURL}}">{{end}}
+    <meta property="og:site_name" content="Murder Mystery Platform">
+    <meta property="og:locale" content="ko_KR">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{.Title}} — Murder Mystery Platform">
+    <meta name="twitter:description" content="{{.Description}}">
+    {{if .ImageURL}}<meta name="twitter:image" content="{{.BaseURL}}{{.ImageURL}}">{{end}}
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {{.JSONLD}}
+    </script>
+
+    <style>
+        .theme-hero {
+            margin-bottom: 2rem;
+        }
+
+        .theme-hero img {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .theme-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        .theme-description {
+            font-size: 1.0625rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+            line-height: 1.75;
+        }
+
+        .theme-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .meta-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+        }
+
+        .meta-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .meta-value {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .theme-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tag {
+            display: inline-block;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            padding: 0.25rem 0.875rem;
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+        }
+
+        .cta-section {
+            text-align: center;
+            padding: 2rem;
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+        }
+
+        .cta-section p {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: var(--accent);
+            color: var(--bg-primary);
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            border-radius: var(--radius);
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+
+        .cta-button:hover {
+            background-color: var(--accent-hover);
+            color: var(--bg-primary);
+            text-decoration: none;
+        }
+    </style>
+{{end}}
+
+{{template "layout" .}}
+
+{{define "content"}}
+    {{if .ImageURL}}
+    <div class="theme-hero">
+        <img src="{{.ImageURL}}" alt="{{.Title}} 테마 이미지">
+    </div>
+    {{end}}
+
+    <h1 class="theme-title">{{.Title}}</h1>
+    <p class="theme-description">{{.Description}}</p>
+
+    <div class="theme-meta">
+        <div class="meta-card">
+            <div class="meta-label">플레이어 수</div>
+            <div class="meta-value">{{.Players}}</div>
+        </div>
+        <div class="meta-card">
+            <div class="meta-label">소요 시간</div>
+            <div class="meta-value">{{.Duration}}</div>
+        </div>
+        <div class="meta-card">
+            <div class="meta-label">난이도</div>
+            <div class="meta-value">{{.Difficulty}}</div>
+        </div>
+    </div>
+
+    {{if .Tags}}
+    <div class="theme-tags">
+        {{range .Tags}}
+        <span class="tag">#{{.}}</span>
+        {{end}}
+    </div>
+    {{end}}
+
+    <div class="cta-section">
+        <p>이 테마로 게임을 시작해보세요!</p>
+        <a href="/" class="cta-button">앱에서 플레이하기</a>
+    </div>
+{{end}}

@@ -1,0 +1,104 @@
+{{define "head"}}
+    <meta name="description" content="Murder Mystery Platform 개인정보처리방침">
+    <link rel="canonical" href="{{.BaseURL}}/privacy">
+    <meta property="og:title" content="개인정보처리방침 — Murder Mystery Platform">
+    <meta property="og:url" content="{{.BaseURL}}/privacy">
+    <meta property="og:type" content="website">
+    <style>
+        .legal-content h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .legal-date {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+        }
+
+        .legal-content h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--accent);
+        }
+
+        .legal-content p,
+        .legal-content ul {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .legal-content ul {
+            padding-left: 1.5rem;
+        }
+
+        .legal-content li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+{{end}}
+
+{{template "layout" .}}
+
+{{define "content"}}
+<div class="legal-content">
+    <h1>개인정보처리방침</h1>
+    <p class="legal-date">시행일: 2026년 4월 5일</p>
+
+    <h2>1. 개인정보의 수집 및 이용 목적</h2>
+    <p>Murder Mystery Platform(이하 "MMP")은 다음의 목적을 위해 개인정보를 처리합니다.</p>
+    <ul>
+        <li>회원가입 및 본인 인증</li>
+        <li>게임 서비스 제공 및 운영</li>
+        <li>서비스 개선 및 신규 기능 개발</li>
+        <li>고객 문의 및 불만 처리</li>
+    </ul>
+
+    <h2>2. 수집하는 개인정보 항목</h2>
+    <ul>
+        <li><strong>필수 항목:</strong> 이메일 주소, 닉네임, 비밀번호(암호화 저장)</li>
+        <li><strong>선택 항목:</strong> 프로필 이미지</li>
+        <li><strong>자동 수집:</strong> 접속 IP, 접속 일시, 서비스 이용 기록, 기기 정보</li>
+    </ul>
+
+    <h2>3. 개인정보의 보유 및 이용 기간</h2>
+    <p>
+        이용자의 개인정보는 회원 탈퇴 시까지 보유하며, 탈퇴 후 지체 없이 파기합니다.
+        다만, 관계 법령에 의해 보존이 필요한 경우 해당 법령에서 정한 기간 동안 보관합니다.
+    </p>
+    <ul>
+        <li>계약 또는 청약철회에 관한 기록: 5년 (전자상거래법)</li>
+        <li>접속 기록: 3개월 (통신비밀보호법)</li>
+    </ul>
+
+    <h2>4. 개인정보의 제3자 제공</h2>
+    <p>
+        MMP는 이용자의 동의 없이 개인정보를 제3자에게 제공하지 않습니다.
+        다만, 법률에 특별한 규정이 있는 경우는 예외로 합니다.
+    </p>
+
+    <h2>5. 개인정보의 파기</h2>
+    <p>
+        보유 기간이 경과하거나 처리 목적이 달성된 경우, 지체 없이 해당 개인정보를 파기합니다.
+        전자적 파일은 복구 불가능한 방법으로 삭제하며, 종이 문서는 분쇄하거나 소각합니다.
+    </p>
+
+    <h2>6. 이용자의 권리</h2>
+    <p>이용자는 언제든지 다음의 권리를 행사할 수 있습니다.</p>
+    <ul>
+        <li>개인정보 열람 요청</li>
+        <li>개인정보 정정 및 삭제 요청</li>
+        <li>개인정보 처리 정지 요청</li>
+        <li>회원 탈퇴 요청</li>
+    </ul>
+
+    <h2>7. 연락처</h2>
+    <p>
+        개인정보 관련 문의는 아래 연락처로 보내주세요.<br>
+        이메일: <a href="mailto:privacy@mmp.example.com">privacy@mmp.example.com</a>
+    </p>
+</div>
+{{end}}

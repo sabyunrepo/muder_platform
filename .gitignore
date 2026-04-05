@@ -1,0 +1,51 @@
+# ─── Dependencies ──────────────────────────────────────
+node_modules/
+
+# ─── Build outputs ─────────────────────────────────────
+dist/
+build/
+.next/
+.turbo/
+out/
+
+# ─── Go ────────────────────────────────────────────────
+bin/
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# ─── Environment ───────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Test / Coverage ──────────────────────────────────
+coverage/
+*.cover
+*.out
+__snapshots__/
+
+# ─── Docker ────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── IDE ───────────────────────────────────────────────
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Misc ──────────────────────────────────────────────
+*.log
+*.pid
+*.seed
+*.tsbuildinfo

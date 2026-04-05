@@ -1,0 +1,30 @@
+:root {
+  /* Background */
+  --color-bg-primary: #0f172a;    /* slate-900 */
+  --color-bg-deep: #020617;       /* slate-950 */
+
+  /* Surface */
+  --color-surface-primary: #1e293b;  /* slate-800 */
+  --color-surface-elevated: #1e2738; /* slate-850 approx */
+
+  /* Text */
+  --color-text-primary: #f8fafc;   /* slate-50 */
+  --color-text-secondary: #f1f5f9; /* slate-100 */
+  --color-text-muted: #e2e8f0;    /* slate-200 */
+
+  /* Accent */
+  --color-accent: #fbbf24;        /* amber-400 */
+  --color-accent-hover: #f59e0b;  /* amber-500 */
+
+  /* Error */
+  --color-error: #f87171;         /* red-400 */
+  --color-error-hover: #ef4444;   /* red-500 */
+
+  /* Success */
+  --color-success: #34d399;       /* emerald-400 */
+  --color-success-hover: #10b981; /* emerald-500 */
+
+  /* Border */
+  --color-border: #334155;        /* slate-700 */
+  --color-border-accent: #fbbf24; /* amber-400 */
+}
