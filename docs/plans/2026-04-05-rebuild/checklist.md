@@ -14,8 +14,8 @@
 - [x] Go SEO: html/template (themes, privacy, terms)
 - [x] CLAUDE.md
 
-## Phase 2: 데이터 레이어
-- [ ] DB 스키마 (goose migration) + sqlc 설정 + Redis 레이어 (cache, lock)
+## Phase 2: 데이터 레이어 ✅
+- [x] DB 스키마 (goose migration 6개, 8 테이블) + sqlc 설정 (33 쿼리) + Redis 레이어 (cache.Provider, lock.Locker)
 
 ## Phase 3: 게임 엔진 코어
 - [ ] 모듈 시스템 (types, registry, eventbus, base)
@@ -65,4 +65,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0 완료
+**진행:** 2026-04-05 Phase 0~2 완료
