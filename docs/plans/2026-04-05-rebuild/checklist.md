@@ -25,9 +25,13 @@
 ## Phase 4: WebSocket 인프라 ✅
 - [x] Hub, Client, Session, Router, Auth, 브로드캐스트, 재연결, Redis PubSub
 
-## Phase 5: 게임 모듈 이식 (29개)
-- [ ] Core 4개 → Progression 8개 → Communication 5개
-- [ ] Decision 3개 → Exploration 4개 → Clue Distribution 5개
+## Phase 5: 게임 모듈 이식 (29개) ✅
+- [x] Core 4개 (connection, room, ready, clue_interaction) — 39 테스트
+- [x] Progression 8개 (script/hybrid/event, skip_consensus, gm/consensus_control, reading, ending) — 38 테스트
+- [x] Communication 5개 (text_chat, whisper, group_chat, voice_chat, spatial_voice) — 62 테스트
+- [x] Decision 3개 (voting, accusation, hidden_mission) — 43 테스트
+- [x] Exploration 4개 (floor/room/timed_exploration, location_clue) — 44 테스트
+- [x] Clue Distribution 5개 (conditional/starting/round/timed_clue, trade_clue) — 60 테스트
 
 ## Phase 6: REST API 도메인
 - [ ] auth, room, theme, editor, coin/payment, profile, admin
@@ -65,4 +69,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~4 완료
+**진행:** 2026-04-05 Phase 0~5 완료
