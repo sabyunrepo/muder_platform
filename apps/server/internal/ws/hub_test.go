@@ -290,9 +290,10 @@ func TestHub_Unregister(t *testing.T) {
 	// Unregister c1. Note: Unregister calls c.Close() which closes the send channel,
 	// so we need to handle that. Since our test client has nil conn, Close() will panic
 	// on c.conn.Close(). We work around by putting c1 in a session and verifying counts.
-	// Actually, let's test via the hub's internal state directly.
+	// Test via the hub's internal state directly.
 	h.mu.Lock()
 	h.removeClientLocked(c1)
+	delete(h.players, c1.ID)
 	h.mu.Unlock()
 
 	if got := h.ClientCount(); got != 1 {
@@ -317,6 +318,7 @@ func TestHub_Unregister_FromSession(t *testing.T) {
 	// Remove from session directly (avoids Close on nil conn).
 	h.mu.Lock()
 	h.removeClientLocked(c)
+	delete(h.players, c.ID)
 	h.mu.Unlock()
 
 	if h.HasSession(sessionID) {

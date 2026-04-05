@@ -36,6 +36,7 @@ type Client struct {
 	hub       *Hub
 	send      chan []byte
 	seq       uint64 // monotonic server sequence number (atomic)
+	closed    atomic.Bool
 	logger    zerolog.Logger
 	closedOnce sync.Once
 }
@@ -168,16 +169,27 @@ func (c *Client) WritePump() {
 	}
 }
 
-// SendMessage marshals the envelope, stamps it with a monotonic sequence number,
-// and queues it for delivery. If the send buffer is full the message is dropped
-// (slow client protection).
+// SendMessage shallow-copies the envelope, stamps it with a per-client monotonic
+// sequence number, and queues it for delivery. If the send buffer is full or the
+// client is closed, the message is dropped.
 func (c *Client) SendMessage(env *Envelope) {
-	env.Seq = atomic.AddUint64(&c.seq, 1)
-	env.TS = time.Now().UnixMilli()
+	if c.closed.Load() {
+		return
+	}
 
-	data, err := json.Marshal(env)
+	// Shallow copy so concurrent broadcasts don't share seq/ts mutations.
+	stamped := *env
+	stamped.Seq = atomic.AddUint64(&c.seq, 1)
+	stamped.TS = time.Now().UnixMilli()
+
+	data, err := json.Marshal(&stamped)
 	if err != nil {
-		c.logger.Error().Err(err).Str("type", env.Type).Msg("failed to marshal envelope")
+		c.logger.Error().Err(err).Str("type", stamped.Type).Msg("failed to marshal envelope")
+		return
+	}
+
+	// Double-check after marshal — Close() may have fired in the meantime.
+	if c.closed.Load() {
 		return
 	}
 
@@ -185,8 +197,8 @@ func (c *Client) SendMessage(env *Envelope) {
 	case c.send <- data:
 	default:
 		c.logger.Warn().
-			Str("type", env.Type).
-			Uint64("seq", env.Seq).
+			Str("type", stamped.Type).
+			Uint64("seq", stamped.Seq).
 			Int("bufLen", len(c.send)).
 			Msg("send buffer full, dropping message")
 	}
@@ -196,7 +208,10 @@ func (c *Client) SendMessage(env *Envelope) {
 func (c *Client) Close() {
 	c.closedOnce.Do(func() {
 		c.logger.Debug().Msg("closing client connection")
+		c.closed.Store(true)
 		close(c.send)
-		_ = c.conn.Close()
+		if c.conn != nil {
+			_ = c.conn.Close()
+		}
 	})
 }

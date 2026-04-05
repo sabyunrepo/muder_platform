@@ -2,9 +2,17 @@ package ws
 
 import (
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+)
+
+const (
+	// reconnectBufferAge is how long messages are kept for reconnection replay.
+	reconnectBufferAge = 60 * time.Second
+	// reconnectBufferSize is the max number of messages per session buffer.
+	reconnectBufferSize = 1000
 )
 
 // Hub manages all connected WebSocket clients, organized by game session.
@@ -15,6 +23,10 @@ type Hub struct {
 	sessions map[uuid.UUID]map[uuid.UUID]*Client
 	// lobby holds clients not yet in a game session.
 	lobby map[uuid.UUID]*Client
+	// players is a global index for O(1) player lookups.
+	players map[uuid.UUID]*Client
+	// buffers holds per-session reconnection buffers.
+	buffers map[uuid.UUID]*ReconnectBuffer
 
 	register   chan *Client
 	unregister chan *Client
@@ -32,6 +44,8 @@ func NewHub(router *Router, pubsub PubSub, logger zerolog.Logger) *Hub {
 	h := &Hub{
 		sessions:   make(map[uuid.UUID]map[uuid.UUID]*Client),
 		lobby:      make(map[uuid.UUID]*Client),
+		players:    make(map[uuid.UUID]*Client),
+		buffers:    make(map[uuid.UUID]*ReconnectBuffer),
 		register:   make(chan *Client, 64),
 		unregister: make(chan *Client, 64),
 		router:     router,
@@ -51,6 +65,7 @@ func (h *Hub) run() {
 		case client := <-h.register:
 			h.mu.Lock()
 			h.lobby[client.ID] = client
+			h.players[client.ID] = client
 			h.mu.Unlock()
 			h.logger.Info().
 				Stringer("playerId", client.ID).
@@ -59,6 +74,7 @@ func (h *Hub) run() {
 		case client := <-h.unregister:
 			h.mu.Lock()
 			h.removeClientLocked(client)
+			delete(h.players, client.ID)
 			h.mu.Unlock()
 			client.Close()
 			h.logger.Info().
@@ -79,6 +95,7 @@ func (h *Hub) removeClientLocked(c *Client) {
 			delete(sess, c.ID)
 			if len(sess) == 0 {
 				delete(h.sessions, c.SessionID)
+				// Clean up empty session buffer after a delay (keep for reconnection).
 			}
 		}
 	} else {
@@ -86,14 +103,22 @@ func (h *Hub) removeClientLocked(c *Client) {
 	}
 }
 
-// Register queues a client for registration.
+// Register queues a client for registration. Safe to call after Stop().
 func (h *Hub) Register(c *Client) {
-	h.register <- c
+	select {
+	case h.register <- c:
+	case <-h.done:
+		c.Close()
+	}
 }
 
-// Unregister queues a client for removal.
+// Unregister queues a client for removal. Safe to call after Stop().
 func (h *Hub) Unregister(c *Client) {
-	h.unregister <- c
+	select {
+	case h.unregister <- c:
+	case <-h.done:
+		c.Close()
+	}
 }
 
 // JoinSession moves a client from the lobby into a game session.
@@ -112,6 +137,11 @@ func (h *Hub) JoinSession(c *Client, sessionID uuid.UUID) {
 		h.sessions[sessionID] = sess
 	}
 	sess[c.ID] = c
+
+	// Ensure session has a reconnect buffer.
+	if _, ok := h.buffers[sessionID]; !ok {
+		h.buffers[sessionID] = NewReconnectBuffer(reconnectBufferAge, reconnectBufferSize)
+	}
 
 	h.logger.Info().
 		Stringer("playerId", c.ID).
@@ -133,7 +163,8 @@ func (h *Hub) LeaveSession(c *Client) {
 		Msg("client returned to lobby")
 }
 
-// BroadcastToSession sends an envelope to every client in the given session.
+// BroadcastToSession sends an envelope to every client in the given session
+// and records it in the session's reconnection buffer.
 func (h *Hub) BroadcastToSession(sessionID uuid.UUID, env *Envelope) {
 	h.mu.RLock()
 	sess, ok := h.sessions[sessionID]
@@ -146,18 +177,50 @@ func (h *Hub) BroadcastToSession(sessionID uuid.UUID, env *Envelope) {
 	for _, c := range sess {
 		clients = append(clients, c)
 	}
+	buf := h.buffers[sessionID]
 	h.mu.RUnlock()
+
+	// Push to reconnection buffer before sending.
+	if buf != nil {
+		buf.Push(env)
+	}
 
 	for _, c := range clients {
 		c.SendMessage(env)
 	}
 }
 
-// SendToPlayer sends an envelope to a specific player by ID.
-// Searches sessions first, then lobby.
+// ReplayToClient sends missed messages from the session buffer to a reconnecting client.
+func (h *Hub) ReplayToClient(c *Client, lastSeq uint64) {
+	if c.SessionID == uuid.Nil {
+		return
+	}
+
+	h.mu.RLock()
+	buf := h.buffers[c.SessionID]
+	h.mu.RUnlock()
+
+	if buf == nil {
+		return
+	}
+
+	missed := buf.Since(lastSeq)
+	for _, env := range missed {
+		c.SendMessage(env)
+	}
+
+	h.logger.Debug().
+		Stringer("playerId", c.ID).
+		Stringer("sessionId", c.SessionID).
+		Uint64("lastSeq", lastSeq).
+		Int("replayed", len(missed)).
+		Msg("replayed missed messages")
+}
+
+// SendToPlayer sends an envelope to a specific player by ID. O(1) lookup.
 func (h *Hub) SendToPlayer(playerID uuid.UUID, env *Envelope) {
 	h.mu.RLock()
-	c := h.findClientLocked(playerID)
+	c := h.players[playerID]
 	h.mu.RUnlock()
 
 	if c == nil {
@@ -178,7 +241,7 @@ func (h *Hub) Whisper(fromID, toID uuid.UUID, env *Envelope) {
 		Msg("whisper")
 
 	h.mu.RLock()
-	target := h.findClientLocked(toID)
+	target := h.players[toID]
 	h.mu.RUnlock()
 
 	if target == nil {
@@ -189,20 +252,6 @@ func (h *Hub) Whisper(fromID, toID uuid.UUID, env *Envelope) {
 		return
 	}
 	target.SendMessage(env)
-}
-
-// findClientLocked searches all sessions and lobby for a player.
-// Caller must hold h.mu (read lock).
-func (h *Hub) findClientLocked(playerID uuid.UUID) *Client {
-	for _, sess := range h.sessions {
-		if c, ok := sess[playerID]; ok {
-			return c
-		}
-	}
-	if c, ok := h.lobby[playerID]; ok {
-		return c
-	}
-	return nil
 }
 
 // Route dispatches an inbound envelope to the router.
@@ -237,11 +286,7 @@ func (h *Hub) ClientCount() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	count := len(h.lobby)
-	for _, sess := range h.sessions {
-		count += len(sess)
-	}
-	return count
+	return len(h.players)
 }
 
 // SessionCount returns the number of active sessions.
@@ -261,7 +306,26 @@ func (h *Hub) HasSession(sessionID uuid.UUID) bool {
 	return ok && len(sess) > 0
 }
 
-// Stop shuts down the hub event loop.
+// SessionBuffer returns the reconnect buffer for a session (or nil).
+func (h *Hub) SessionBuffer(sessionID uuid.UUID) *ReconnectBuffer {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	return h.buffers[sessionID]
+}
+
+// Stop shuts down the hub event loop and closes all connected clients.
 func (h *Hub) Stop() {
 	close(h.done)
+
+	// Close all connected clients to prevent goroutine leaks.
+	h.mu.Lock()
+	for _, c := range h.players {
+		c.Close()
+	}
+	h.lobby = make(map[uuid.UUID]*Client)
+	h.sessions = make(map[uuid.UUID]map[uuid.UUID]*Client)
+	h.players = make(map[uuid.UUID]*Client)
+	h.buffers = make(map[uuid.UUID]*ReconnectBuffer)
+	h.mu.Unlock()
 }

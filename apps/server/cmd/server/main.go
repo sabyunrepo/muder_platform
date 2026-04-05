@@ -108,7 +108,11 @@ func main() {
 	seoHandler.RegisterRoutes(r)
 
 	// 11. WebSocket endpoints
-	gameUpgrade := ws.UpgradeHandler(wsHub, ws.DefaultPlayerIDExtractor, logger)
+	wsCfg := ws.UpgradeConfig{
+		AllowedOrigins: cfg.CORSOrigins,
+		DevMode:        cfg.IsDevelopment(),
+	}
+	gameUpgrade := ws.UpgradeHandler(wsHub, ws.DefaultPlayerIDExtractor, wsCfg, logger)
 	r.Get("/ws/game", gameUpgrade)
 	r.Get("/ws/social", gameUpgrade)
 

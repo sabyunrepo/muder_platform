@@ -54,8 +54,8 @@ const (
 	ErrCodeUnauthorized  ErrorCode = 4001
 	ErrCodeSessionFull   ErrorCode = 4002
 	ErrCodeRateLimited   ErrorCode = 4003
-	ErrCodeInternalError ErrorCode = 4010
 	ErrCodeNotFound      ErrorCode = 4004
+	ErrCodeInternalError ErrorCode = 4010
 )
 
 // ErrorPayload is sent as the payload of "error" type messages.
