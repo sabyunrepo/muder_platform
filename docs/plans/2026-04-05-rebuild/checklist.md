@@ -17,10 +17,10 @@
 ## Phase 2: 데이터 레이어 ✅
 - [x] DB 스키마 (goose migration 6개, 8 테이블) + sqlc 설정 (33 쿼리) + Redis 레이어 (cache.Provider, lock.Locker)
 
-## Phase 3: 게임 엔진 코어
-- [ ] 모듈 시스템 (types, registry, eventbus, base)
-- [ ] GameProgressionEngine (strategy, script/hybrid/event, action_dispatcher)
-- [ ] PhaseEngine + modules↔phases 교차 검증
+## Phase 3: 게임 엔진 코어 ✅
+- [x] 모듈 시스템 (types, registry, eventbus, base)
+- [x] GameProgressionEngine (strategy, script/hybrid/event, action_dispatcher)
+- [x] PhaseEngine + modules↔phases 교차 검증
 
 ## Phase 4: WebSocket 인프라
 - [ ] Hub, Client, Session, Router, Auth, 브로드캐스트, 재연결, Redis PubSub
@@ -65,4 +65,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~2 완료
+**진행:** 2026-04-05 Phase 0~3 완료
