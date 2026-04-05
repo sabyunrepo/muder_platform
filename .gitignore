@@ -11,6 +11,7 @@ out/
 # ─── Go ────────────────────────────────────────────────
 bin/
 vendor/
+apps/server/server
 *.exe
 *.exe~
 *.dll
