@@ -1,7 +1,0 @@
-{
-  "tool_name": "mcp__plugin_oh-my-claudecode_t__lsp_diagnostics",
-  "tool_input_preview": "{\"file\":\"/Users/sabyun/goinfre/muder_platform/packages/game-logic/src/timer.ts\"}",
-  "error": "Language server 'typescript-language-server' not found.\nInstall with: npm install -g typescript-language-server typescript",
-  "timestamp": "2026-04-05T07:21:46.724Z",
-  "retry_count": 6
-}
