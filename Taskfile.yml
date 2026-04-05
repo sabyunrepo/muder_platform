@@ -27,16 +27,41 @@ tasks:
 
   go:generate:
     desc: Run sqlc and Go generate
-    dir: "{{.GO_SRC}}"
     cmds:
-      - sqlc generate
-      - go generate ./...
+      - task: db:sqlc
+      - cmd: go generate ./...
+        dir: "{{.GO_SRC}}"
 
   go:tidy:
     desc: Tidy Go modules
     dir: "{{.GO_SRC}}"
     cmds:
       - go mod tidy
+
+  # ─── Database ────────────────────────────────────────
+  db:migrate:
+    desc: Run database migrations
+    dir: "{{.GO_SRC}}"
+    cmds:
+      - goose -dir db/migrations postgres "${DATABASE_URL:-postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable}" up
+
+  db:migrate:down:
+    desc: Rollback last database migration
+    dir: "{{.GO_SRC}}"
+    cmds:
+      - goose -dir db/migrations postgres "${DATABASE_URL:-postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable}" down
+
+  db:migrate:status:
+    desc: Show migration status
+    dir: "{{.GO_SRC}}"
+    cmds:
+      - goose -dir db/migrations postgres "${DATABASE_URL:-postgres://mmp:mmp_dev@localhost:5432/mmf?sslmode=disable}" status
+
+  db:sqlc:
+    desc: Generate sqlc code
+    dir: "{{.GO_SRC}}/db"
+    cmds:
+      - sqlc generate
 
   # ─── TypeScript (pnpm + turbo) ───────────────────────
   ts:install:
