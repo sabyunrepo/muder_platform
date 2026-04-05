@@ -23,7 +23,7 @@ func NewHandler(svc Service) *Handler {
 type callbackRequest struct {
 	Provider string `json:"provider" validate:"required"`
 	Code     string `json:"code" validate:"required"`
-	Nickname string `json:"nickname" validate:"required,min=2,max=20"`
+	Nickname string `json:"nickname" validate:"required,min=2,max=30"`
 }
 
 type refreshRequest struct {

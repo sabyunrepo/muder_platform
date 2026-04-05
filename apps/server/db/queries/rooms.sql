@@ -7,6 +7,18 @@ SELECT * FROM rooms WHERE code = $1;
 -- name: ListWaitingRooms :many
 SELECT * FROM rooms WHERE status = 'WAITING' AND is_private = FALSE ORDER BY created_at DESC LIMIT $1 OFFSET $2;
 
+-- name: ListWaitingRoomsWithCount :many
+SELECT r.*, (SELECT count(*) FROM room_players rp WHERE rp.room_id = r.id)::int AS player_count
+FROM rooms r
+WHERE r.status = 'WAITING' AND r.is_private = FALSE
+ORDER BY r.created_at DESC LIMIT $1 OFFSET $2;
+
+-- name: GetRoomForUpdate :one
+SELECT * FROM rooms WHERE id = $1 FOR UPDATE;
+
+-- name: GetRoomPlayerCount :one
+SELECT count(*) FROM room_players WHERE room_id = $1;
+
 -- name: CreateRoom :one
 INSERT INTO rooms (theme_id, host_id, code, max_players, is_private)
 VALUES ($1, $2, $3, $4, $5)

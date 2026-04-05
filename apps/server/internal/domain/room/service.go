@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -58,13 +59,15 @@ type Service interface {
 }
 
 type service struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 	logger  zerolog.Logger
 }
 
 // NewService creates a new room service.
-func NewService(queries *db.Queries, logger zerolog.Logger) Service {
+func NewService(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logger) Service {
 	return &service{
+		pool:    pool,
 		queries: queries,
 		logger:  logger.With().Str("domain", "room").Logger(),
 	}
@@ -96,7 +99,7 @@ func generateRoomCode() (string, error) {
 	return string(result), nil
 }
 
-// CreateRoom creates a new room and adds the host as the first player.
+// CreateRoom creates a new room and adds the host as the first player in a single transaction.
 func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
 	code, err := generateRoomCode()
 	if err != nil {
@@ -104,7 +107,16 @@ func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRo
 		return nil, apperror.Internal("failed to generate room code")
 	}
 
-	room, err := s.queries.CreateRoom(ctx, db.CreateRoomParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to begin transaction")
+		return nil, apperror.Internal("failed to create room")
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	room, err := qtx.CreateRoom(ctx, db.CreateRoomParams{
 		ThemeID:    req.ThemeID,
 		HostID:     hostID,
 		Code:       code,
@@ -116,12 +128,17 @@ func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRo
 		return nil, apperror.Internal("failed to create room")
 	}
 
-	if err := s.queries.AddRoomPlayer(ctx, db.AddRoomPlayerParams{
+	if err := qtx.AddRoomPlayer(ctx, db.AddRoomPlayerParams{
 		RoomID: room.ID,
 		UserID: hostID,
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("failed to add host as player")
 		return nil, apperror.Internal("failed to add host to room")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		s.logger.Error().Err(err).Msg("failed to commit create room transaction")
+		return nil, apperror.Internal("failed to create room")
 	}
 
 	s.logger.Info().
@@ -171,9 +188,9 @@ func (s *service) GetRoomByCode(ctx context.Context, code string) (*RoomDetailRe
 	return s.buildRoomDetail(ctx, room)
 }
 
-// ListWaitingRooms returns public waiting rooms with pagination.
+// ListWaitingRooms returns public waiting rooms with player counts.
 func (s *service) ListWaitingRooms(ctx context.Context, limit, offset int32) ([]RoomResponse, error) {
-	rooms, err := s.queries.ListWaitingRooms(ctx, db.ListWaitingRoomsParams{
+	rooms, err := s.queries.ListWaitingRoomsWithCount(ctx, db.ListWaitingRoomsWithCountParams{
 		Limit:  limit,
 		Offset: offset,
 	})
@@ -184,14 +201,34 @@ func (s *service) ListWaitingRooms(ctx context.Context, limit, offset int32) ([]
 
 	result := make([]RoomResponse, len(rooms))
 	for i, r := range rooms {
-		result[i] = mapRoomResponse(r, 0)
+		result[i] = RoomResponse{
+			ID:          r.ID,
+			ThemeID:     r.ThemeID,
+			HostID:      r.HostID,
+			Code:        r.Code,
+			Status:      r.Status,
+			MaxPlayers:  r.MaxPlayers,
+			IsPrivate:   r.IsPrivate,
+			PlayerCount: int(r.PlayerCount),
+			CreatedAt:   r.CreatedAt,
+		}
 	}
 	return result, nil
 }
 
-// JoinRoom adds a user to a room after validation checks.
+// JoinRoom adds a user to a room with row-level locking to prevent TOCTOU races.
 func (s *service) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error {
-	room, err := s.queries.GetRoom(ctx, roomID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to begin transaction")
+		return apperror.Internal("failed to join room")
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	// SELECT FOR UPDATE locks the room row until commit.
+	room, err := qtx.GetRoomForUpdate(ctx, roomID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
@@ -204,7 +241,7 @@ func (s *service) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error 
 		return apperror.New(apperror.ErrRoomNotWaiting, http.StatusConflict, "room is not in waiting state")
 	}
 
-	players, err := s.queries.GetRoomPlayers(ctx, roomID)
+	players, err := qtx.GetRoomPlayers(ctx, roomID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to get room players")
 		return apperror.Internal("failed to get room players")
@@ -220,11 +257,16 @@ func (s *service) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error 
 		}
 	}
 
-	if err := s.queries.AddRoomPlayer(ctx, db.AddRoomPlayerParams{
+	if err := qtx.AddRoomPlayer(ctx, db.AddRoomPlayerParams{
 		RoomID: roomID,
 		UserID: userID,
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("failed to add player to room")
+		return apperror.Internal("failed to join room")
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		s.logger.Error().Err(err).Msg("failed to commit join room transaction")
 		return apperror.Internal("failed to join room")
 	}
 
@@ -236,9 +278,19 @@ func (s *service) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error 
 	return nil
 }
 
-// LeaveRoom removes a user from a room. If the host leaves, the room is closed.
+// LeaveRoom removes a user from a room with row-level locking.
+// If the host leaves, the room is closed.
 func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error {
-	room, err := s.queries.GetRoom(ctx, roomID)
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to begin transaction")
+		return apperror.Internal("failed to leave room")
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+
+	room, err := qtx.GetRoomForUpdate(ctx, roomID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
@@ -247,7 +299,7 @@ func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 		return apperror.Internal("failed to get room")
 	}
 
-	players, err := s.queries.GetRoomPlayers(ctx, roomID)
+	players, err := qtx.GetRoomPlayers(ctx, roomID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to get room players for leave")
 		return apperror.Internal("failed to get room players")
@@ -266,31 +318,36 @@ func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 
 	// If the host leaves, close the room.
 	if room.HostID == userID {
-		if err := s.queries.UpdateRoomStatus(ctx, db.UpdateRoomStatusParams{
+		if err := qtx.UpdateRoomStatus(ctx, db.UpdateRoomStatusParams{
 			ID:     roomID,
 			Status: "CLOSED",
 		}); err != nil {
 			s.logger.Error().Err(err).Msg("failed to close room")
 			return apperror.Internal("failed to close room")
 		}
-		s.logger.Info().
-			Str("room_id", roomID.String()).
-			Msg("host left, room closed")
-		return nil
+	} else {
+		if err := qtx.RemoveRoomPlayer(ctx, db.RemoveRoomPlayerParams{
+			RoomID: roomID,
+			UserID: userID,
+		}); err != nil {
+			s.logger.Error().Err(err).Msg("failed to remove player from room")
+			return apperror.Internal("failed to leave room")
+		}
 	}
 
-	if err := s.queries.RemoveRoomPlayer(ctx, db.RemoveRoomPlayerParams{
-		RoomID: roomID,
-		UserID: userID,
-	}); err != nil {
-		s.logger.Error().Err(err).Msg("failed to remove player from room")
+	if err := tx.Commit(ctx); err != nil {
+		s.logger.Error().Err(err).Msg("failed to commit leave room transaction")
 		return apperror.Internal("failed to leave room")
 	}
 
-	s.logger.Info().
-		Str("room_id", roomID.String()).
-		Str("user_id", userID.String()).
-		Msg("player left room")
+	if room.HostID == userID {
+		s.logger.Info().Str("room_id", roomID.String()).Msg("host left, room closed")
+	} else {
+		s.logger.Info().
+			Str("room_id", roomID.String()).
+			Str("user_id", userID.String()).
+			Msg("player left room")
+	}
 
 	return nil
 }

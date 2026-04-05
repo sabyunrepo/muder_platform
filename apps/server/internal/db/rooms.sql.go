@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -104,6 +105,38 @@ func (q *Queries) GetRoomByCode(ctx context.Context, code string) (Room, error) 
 	return i, err
 }
 
+const getRoomForUpdate = `-- name: GetRoomForUpdate :one
+SELECT id, theme_id, host_id, code, status, max_players, is_private, created_at, updated_at FROM rooms WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetRoomForUpdate(ctx context.Context, id uuid.UUID) (Room, error) {
+	row := q.db.QueryRow(ctx, getRoomForUpdate, id)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.HostID,
+		&i.Code,
+		&i.Status,
+		&i.MaxPlayers,
+		&i.IsPrivate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getRoomPlayerCount = `-- name: GetRoomPlayerCount :one
+SELECT count(*) FROM room_players WHERE room_id = $1
+`
+
+func (q *Queries) GetRoomPlayerCount(ctx context.Context, roomID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getRoomPlayerCount, roomID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getRoomPlayers = `-- name: GetRoomPlayers :many
 SELECT room_id, user_id, character_id, is_ready, joined_at FROM room_players WHERE room_id = $1
 `
@@ -162,6 +195,62 @@ func (q *Queries) ListWaitingRooms(ctx context.Context, arg ListWaitingRoomsPara
 			&i.IsPrivate,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWaitingRoomsWithCount = `-- name: ListWaitingRoomsWithCount :many
+SELECT r.id, r.theme_id, r.host_id, r.code, r.status, r.max_players, r.is_private, r.created_at, r.updated_at, (SELECT count(*) FROM room_players rp WHERE rp.room_id = r.id)::int AS player_count
+FROM rooms r
+WHERE r.status = 'WAITING' AND r.is_private = FALSE
+ORDER BY r.created_at DESC LIMIT $1 OFFSET $2
+`
+
+type ListWaitingRoomsWithCountParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListWaitingRoomsWithCountRow struct {
+	ID          uuid.UUID `json:"id"`
+	ThemeID     uuid.UUID `json:"theme_id"`
+	HostID      uuid.UUID `json:"host_id"`
+	Code        string    `json:"code"`
+	Status      string    `json:"status"`
+	MaxPlayers  int32     `json:"max_players"`
+	IsPrivate   bool      `json:"is_private"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	PlayerCount int32     `json:"player_count"`
+}
+
+func (q *Queries) ListWaitingRoomsWithCount(ctx context.Context, arg ListWaitingRoomsWithCountParams) ([]ListWaitingRoomsWithCountRow, error) {
+	rows, err := q.db.Query(ctx, listWaitingRoomsWithCount, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListWaitingRoomsWithCountRow{}
+	for rows.Next() {
+		var i ListWaitingRoomsWithCountRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.HostID,
+			&i.Code,
+			&i.Status,
+			&i.MaxPlayers,
+			&i.IsPrivate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PlayerCount,
 		); err != nil {
 			return nil, err
 		}

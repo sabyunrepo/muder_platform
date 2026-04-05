@@ -32,7 +32,7 @@ type PublicProfileResponse struct {
 
 // UpdateProfileRequest is the payload for updating a user's profile.
 type UpdateProfileRequest struct {
-	Nickname  string  `json:"nickname" validate:"required,min=2,max=20"`
+	Nickname  string  `json:"nickname" validate:"required,min=2,max=30"`
 	AvatarURL *string `json:"avatar_url" validate:"omitempty,url"`
 }
 

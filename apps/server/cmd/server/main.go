@@ -85,7 +85,7 @@ func main() {
 	// 6. Domain Services
 	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), logger)
 	profileSvc := profile.NewService(queries, logger)
-	roomSvc := room.NewService(queries, logger)
+	roomSvc := room.NewService(pool, queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, logger)
 	adminSvc := admin.NewService(queries, logger)
