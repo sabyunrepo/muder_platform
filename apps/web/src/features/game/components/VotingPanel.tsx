@@ -41,7 +41,7 @@ function VoteBar({
   const animatedVotes = useCountUp(result.votes);
   const widthPct = maxVotes > 0 ? (animatedVotes / maxVotes) * 100 : 0;
   const barColor = isTop ? "bg-amber-500" : "bg-slate-600";
-  const delay = `${staggerIndex * 300}ms`;
+  const delay = `${staggerIndex * 100}ms`;
 
   return (
     <div

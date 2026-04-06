@@ -115,7 +115,7 @@ func (h *WSHandler) handlePlay(c *ws.Client, env *ws.Envelope) {
 		return
 	}
 
-	h.hub.BroadcastToSession(c.SessionID, broadcast)
+	h.hub.BroadcastToSessionEphemeral(c.SessionID, broadcast)
 
 	h.logger.Debug().
 		Str("soundId", payload.SoundID).
