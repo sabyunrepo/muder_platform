@@ -56,7 +56,7 @@ export interface RoomPlayer {
   id: string;
   user_id: string;
   nickname: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   is_host: boolean;
   is_ready: boolean;
   joined_at: string;

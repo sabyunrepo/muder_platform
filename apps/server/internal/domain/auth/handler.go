@@ -125,6 +125,28 @@ func (h *Handler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"message": "logged out"})
 }
 
+// HandleDeleteAccount handles DELETE /auth/account. Requires authentication.
+func (h *Handler) HandleDeleteAccount(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	var req DeleteAccountRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	if err := h.svc.DeleteAccount(r.Context(), userID, req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // HandleMe handles GET /auth/me. Requires authentication.
 func (h *Handler) HandleMe(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFrom(r.Context())

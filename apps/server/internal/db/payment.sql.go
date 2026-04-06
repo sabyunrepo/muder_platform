@@ -12,63 +12,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const listActivePackages = `-- name: ListActivePackages :many
-SELECT id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is_active, created_at, updated_at FROM coin_packages
-WHERE is_active = true AND platform = $1
-ORDER BY sort_order
+const confirmPayment = `-- name: ConfirmPayment :one
+UPDATE payments
+SET status = 'CONFIRMED', payment_key = $2, confirmed_at = NOW()
+WHERE id = $1 AND status = 'PENDING'
+RETURNING id, user_id, package_id, payment_key, idempotency_key, provider, status, amount_krw, base_coins, bonus_coins, refunded_at, confirmed_at, created_at, updated_at
 `
 
-func (q *Queries) ListActivePackages(ctx context.Context, platform string) ([]CoinPackage, error) {
-	rows, err := q.db.Query(ctx, listActivePackages, platform)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CoinPackage{}
-	for rows.Next() {
-		var i CoinPackage
-		if err := rows.Scan(
-			&i.ID,
-			&i.Platform,
-			&i.Name,
-			&i.PriceKrw,
-			&i.BaseCoins,
-			&i.BonusCoins,
-			&i.SortOrder,
-			&i.IsActive,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type ConfirmPaymentParams struct {
+	ID         uuid.UUID   `json:"id"`
+	PaymentKey pgtype.Text `json:"payment_key"`
 }
 
-const getPackageByID = `-- name: GetPackageByID :one
-SELECT id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is_active, created_at, updated_at FROM coin_packages WHERE id = $1
-`
-
-func (q *Queries) GetPackageByID(ctx context.Context, id uuid.UUID) (CoinPackage, error) {
-	row := q.db.QueryRow(ctx, getPackageByID, id)
-	var i CoinPackage
+func (q *Queries) ConfirmPayment(ctx context.Context, arg ConfirmPaymentParams) (Payment, error) {
+	row := q.db.QueryRow(ctx, confirmPayment, arg.ID, arg.PaymentKey)
+	var i Payment
 	err := row.Scan(
 		&i.ID,
-		&i.Platform,
-		&i.Name,
-		&i.PriceKrw,
+		&i.UserID,
+		&i.PackageID,
+		&i.PaymentKey,
+		&i.IdempotencyKey,
+		&i.Provider,
+		&i.Status,
+		&i.AmountKrw,
 		&i.BaseCoins,
 		&i.BonusCoins,
-		&i.SortOrder,
-		&i.IsActive,
+		&i.RefundedAt,
+		&i.ConfirmedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const countPaymentsByUser = `-- name: CountPaymentsByUser :one
+SELECT COUNT(*) FROM payments WHERE user_id = $1
+`
+
+func (q *Queries) CountPaymentsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPaymentsByUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const createPackage = `-- name: CreatePackage :one
@@ -78,13 +64,13 @@ RETURNING id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is
 `
 
 type CreatePackageParams struct {
-	Platform  string `json:"platform"`
-	Name      string `json:"name"`
-	PriceKrw  int32  `json:"price_krw"`
-	BaseCoins int32  `json:"base_coins"`
-	BonusCoins int32 `json:"bonus_coins"`
-	SortOrder int32  `json:"sort_order"`
-	IsActive  bool   `json:"is_active"`
+	Platform   string `json:"platform"`
+	Name       string `json:"name"`
+	PriceKrw   int32  `json:"price_krw"`
+	BaseCoins  int32  `json:"base_coins"`
+	BonusCoins int32  `json:"bonus_coins"`
+	SortOrder  int32  `json:"sort_order"`
+	IsActive   bool   `json:"is_active"`
 }
 
 func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (CoinPackage, error) {
@@ -113,50 +99,8 @@ func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (C
 	return i, err
 }
 
-const updatePackage = `-- name: UpdatePackage :one
-UPDATE coin_packages
-SET name = $2, price_krw = $3, base_coins = $4, bonus_coins = $5, sort_order = $6, is_active = $7
-WHERE id = $1
-RETURNING id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is_active, created_at, updated_at
-`
-
-type UpdatePackageParams struct {
-	ID         uuid.UUID `json:"id"`
-	Name       string    `json:"name"`
-	PriceKrw   int32     `json:"price_krw"`
-	BaseCoins  int32     `json:"base_coins"`
-	BonusCoins int32     `json:"bonus_coins"`
-	SortOrder  int32     `json:"sort_order"`
-	IsActive   bool      `json:"is_active"`
-}
-
-func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (CoinPackage, error) {
-	row := q.db.QueryRow(ctx, updatePackage,
-		arg.ID,
-		arg.Name,
-		arg.PriceKrw,
-		arg.BaseCoins,
-		arg.BonusCoins,
-		arg.SortOrder,
-		arg.IsActive,
-	)
-	var i CoinPackage
-	err := row.Scan(
-		&i.ID,
-		&i.Platform,
-		&i.Name,
-		&i.PriceKrw,
-		&i.BaseCoins,
-		&i.BonusCoins,
-		&i.SortOrder,
-		&i.IsActive,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const createPayment = `-- name: CreatePayment :one
+
 INSERT INTO payments (user_id, package_id, idempotency_key, provider, amount_krw, base_coins, bonus_coins)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, user_id, package_id, payment_key, idempotency_key, provider, status, amount_krw, base_coins, bonus_coins, refunded_at, confirmed_at, created_at, updated_at
@@ -172,6 +116,9 @@ type CreatePaymentParams struct {
 	BonusCoins     int32     `json:"bonus_coins"`
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Payments
+// ═══════════════════════════════════════════════════════════════════
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error) {
 	row := q.db.QueryRow(ctx, createPayment,
 		arg.UserID,
@@ -196,6 +143,38 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 		&i.BonusCoins,
 		&i.RefundedAt,
 		&i.ConfirmedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const failPayment = `-- name: FailPayment :exec
+UPDATE payments SET status = 'FAILED'
+WHERE id = $1 AND status = 'PENDING'
+`
+
+func (q *Queries) FailPayment(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, failPayment, id)
+	return err
+}
+
+const getPackageByID = `-- name: GetPackageByID :one
+SELECT id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is_active, created_at, updated_at FROM coin_packages WHERE id = $1
+`
+
+func (q *Queries) GetPackageByID(ctx context.Context, id uuid.UUID) (CoinPackage, error) {
+	row := q.db.QueryRow(ctx, getPackageByID, id)
+	var i CoinPackage
+	err := row.Scan(
+		&i.ID,
+		&i.Platform,
+		&i.Name,
+		&i.PriceKrw,
+		&i.BaseCoins,
+		&i.BonusCoins,
+		&i.SortOrder,
+		&i.IsActive,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -254,48 +233,45 @@ func (q *Queries) GetPaymentByIdempotencyKey(ctx context.Context, idempotencyKey
 	return i, err
 }
 
-const confirmPayment = `-- name: ConfirmPayment :one
-UPDATE payments
-SET status = 'CONFIRMED', payment_key = $2, confirmed_at = NOW()
-WHERE id = $1 AND status = 'PENDING'
-RETURNING id, user_id, package_id, payment_key, idempotency_key, provider, status, amount_krw, base_coins, bonus_coins, refunded_at, confirmed_at, created_at, updated_at
+const listActivePackages = `-- name: ListActivePackages :many
+
+SELECT id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is_active, created_at, updated_at FROM coin_packages
+WHERE is_active = true AND platform = $1
+ORDER BY sort_order
 `
 
-type ConfirmPaymentParams struct {
-	ID         uuid.UUID `json:"id"`
-	PaymentKey pgtype.Text `json:"payment_key"`
-}
-
-func (q *Queries) ConfirmPayment(ctx context.Context, arg ConfirmPaymentParams) (Payment, error) {
-	row := q.db.QueryRow(ctx, confirmPayment, arg.ID, arg.PaymentKey)
-	var i Payment
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.PackageID,
-		&i.PaymentKey,
-		&i.IdempotencyKey,
-		&i.Provider,
-		&i.Status,
-		&i.AmountKrw,
-		&i.BaseCoins,
-		&i.BonusCoins,
-		&i.RefundedAt,
-		&i.ConfirmedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const failPayment = `-- name: FailPayment :exec
-UPDATE payments SET status = 'FAILED'
-WHERE id = $1 AND status = 'PENDING'
-`
-
-func (q *Queries) FailPayment(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, failPayment, id)
-	return err
+// ═══════════════════════════════════════════════════════════════════
+// Coin Packages
+// ═══════════════════════════════════════════════════════════════════
+func (q *Queries) ListActivePackages(ctx context.Context, platform string) ([]CoinPackage, error) {
+	rows, err := q.db.Query(ctx, listActivePackages, platform)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CoinPackage{}
+	for rows.Next() {
+		var i CoinPackage
+		if err := rows.Scan(
+			&i.ID,
+			&i.Platform,
+			&i.Name,
+			&i.PriceKrw,
+			&i.BaseCoins,
+			&i.BonusCoins,
+			&i.SortOrder,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPaymentsByUser = `-- name: ListPaymentsByUser :many
@@ -346,13 +322,45 @@ func (q *Queries) ListPaymentsByUser(ctx context.Context, arg ListPaymentsByUser
 	return items, nil
 }
 
-const countPaymentsByUser = `-- name: CountPaymentsByUser :one
-SELECT COUNT(*) FROM payments WHERE user_id = $1
+const updatePackage = `-- name: UpdatePackage :one
+UPDATE coin_packages
+SET name = $2, price_krw = $3, base_coins = $4, bonus_coins = $5, sort_order = $6, is_active = $7
+WHERE id = $1
+RETURNING id, platform, name, price_krw, base_coins, bonus_coins, sort_order, is_active, created_at, updated_at
 `
 
-func (q *Queries) CountPaymentsByUser(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countPaymentsByUser, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+type UpdatePackageParams struct {
+	ID         uuid.UUID `json:"id"`
+	Name       string    `json:"name"`
+	PriceKrw   int32     `json:"price_krw"`
+	BaseCoins  int32     `json:"base_coins"`
+	BonusCoins int32     `json:"bonus_coins"`
+	SortOrder  int32     `json:"sort_order"`
+	IsActive   bool      `json:"is_active"`
+}
+
+func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (CoinPackage, error) {
+	row := q.db.QueryRow(ctx, updatePackage,
+		arg.ID,
+		arg.Name,
+		arg.PriceKrw,
+		arg.BaseCoins,
+		arg.BonusCoins,
+		arg.SortOrder,
+		arg.IsActive,
+	)
+	var i CoinPackage
+	err := row.Scan(
+		&i.ID,
+		&i.Platform,
+		&i.Name,
+		&i.PriceKrw,
+		&i.BaseCoins,
+		&i.BonusCoins,
+		&i.SortOrder,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }

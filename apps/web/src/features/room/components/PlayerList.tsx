@@ -9,7 +9,7 @@ interface RoomPlayer {
   id: string;
   user_id: string;
   nickname: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   is_host: boolean;
   is_ready: boolean;
   joined_at: string;
@@ -29,9 +29,9 @@ function PlayerCard({ player }: { player: RoomPlayer }) {
     <Card className="flex items-center gap-3 p-3">
       {/* 아바타 */}
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-slate-300">
-        {player.profile_image ? (
+        {player.avatar_url ? (
           <img
-            src={player.profile_image}
+            src={player.avatar_url}
             alt={player.nickname}
             className="h-full w-full rounded-full object-cover"
           />

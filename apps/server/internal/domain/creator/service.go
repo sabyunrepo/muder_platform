@@ -3,10 +3,12 @@ package creator
 import (
 	"context"
 	"errors"
+	"math/big"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -56,7 +58,12 @@ func (s *creatorService) GetDashboard(ctx context.Context, creatorID uuid.UUID) 
 }
 
 func (s *creatorService) GetThemeStats(ctx context.Context, creatorID, themeID uuid.UUID, from, to time.Time) ([]DailyStatResponse, error) {
-	rows, err := s.queries.GetThemeDailyStats(ctx, themeID, creatorID, from, to)
+	rows, err := s.queries.GetThemeDailyStats(ctx, db.GetThemeDailyStatsParams{
+		ThemeID:     themeID,
+		CreatorID:   creatorID,
+		CreatedAt:   from,
+		CreatedAt_2: to,
+	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to get theme stats")
 		return nil, apperror.Internal("failed to get theme stats")
@@ -64,7 +71,7 @@ func (s *creatorService) GetThemeStats(ctx context.Context, creatorID, themeID u
 	result := make([]DailyStatResponse, 0, len(rows))
 	for _, r := range rows {
 		result = append(result, DailyStatResponse{
-			Date:          r.StatDate.Format("2006-01-02"),
+			Date:          r.StatDate.Time.Format("2006-01-02"),
 			SalesCount:    r.SalesCount,
 			DailyEarnings: r.DailyEarnings,
 		})
@@ -73,7 +80,11 @@ func (s *creatorService) GetThemeStats(ctx context.Context, creatorID, themeID u
 }
 
 func (s *creatorService) ListEarnings(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]EarningResponse, int64, error) {
-	rows, err := s.queries.ListEarningsByCreator(ctx, creatorID, limit, offset)
+	rows, err := s.queries.ListEarningsByCreator(ctx, db.ListEarningsByCreatorParams{
+		CreatorID: creatorID,
+		Limit:     limit,
+		Offset:    offset,
+	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to list earnings")
 		return nil, 0, apperror.Internal("failed to list earnings")
@@ -100,7 +111,11 @@ func (s *creatorService) ListEarnings(ctx context.Context, creatorID uuid.UUID, 
 }
 
 func (s *creatorService) ListSettlements(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]SettlementResponse, int64, error) {
-	rows, err := s.queries.ListSettlementsByCreator(ctx, creatorID, limit, offset)
+	rows, err := s.queries.ListSettlementsByCreator(ctx, db.ListSettlementsByCreatorParams{
+		CreatorID: creatorID,
+		Limit:     limit,
+		Offset:    offset,
+	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to list settlements")
 		return nil, 0, apperror.Internal("failed to list settlements")
@@ -207,12 +222,12 @@ func (s *creatorService) HandleThemeRefunded(ctx context.Context, event eventbus
 func toSettlementResponse(s db.Settlement) SettlementResponse {
 	resp := SettlementResponse{
 		ID:          s.ID,
-		PeriodStart: s.PeriodStart,
-		PeriodEnd:   s.PeriodEnd,
+		PeriodStart: s.PeriodStart.Time.Format("2006-01-02"),
+		PeriodEnd:   s.PeriodEnd.Time.Format("2006-01-02"),
 		TotalCoins:  s.TotalCoins,
-		TotalKRW:    s.TotalKRW,
+		TotalKRW:    s.TotalKrw,
 		TaxType:     s.TaxType,
-		TaxRate:     s.TaxRate,
+		TaxRate:     numericToFloat64(s.TaxRate),
 		TaxAmount:   s.TaxAmount,
 		NetAmount:   s.NetAmount,
 		Status:      s.Status,
@@ -227,4 +242,19 @@ func toSettlementResponse(s db.Settlement) SettlementResponse {
 		resp.PaidOutAt = &t
 	}
 	return resp
+}
+
+// numericToFloat64 converts a pgtype.Numeric (Int × 10^Exp) to float64.
+func numericToFloat64(n pgtype.Numeric) float64 {
+	if !n.Valid || n.Int == nil {
+		return 0
+	}
+	val, _ := new(big.Float).SetInt(n.Int).Float64()
+	for i := int32(0); i < n.Exp; i++ {
+		val *= 10
+	}
+	for i := int32(0); i < -n.Exp; i++ {
+		val /= 10
+	}
+	return val
 }

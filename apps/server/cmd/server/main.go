@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/zerolog"
 
@@ -211,6 +213,14 @@ func main() {
 	seoHandler := seo.NewHandler(cfg.BaseURL, logger)
 	seoHandler.RegisterRoutes(r)
 
+	// 14.5. Static file serving (avatars)
+	{
+		fs := http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads")))
+		r.Handle("/uploads/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fs.ServeHTTP(w, r)
+		}))
+	}
+
 	// 15. WebSocket endpoints
 	wsCfg := ws.UpgradeConfig{
 		AllowedOrigins: cfg.CORSOrigins,
@@ -253,10 +263,14 @@ func main() {
 			// Auth
 			r.Post("/auth/logout", authHandler.HandleLogout)
 			r.Get("/auth/me", authHandler.HandleMe)
+			r.Delete("/auth/account", authHandler.HandleDeleteAccount)
 
 			// Profile
 			r.Get("/profile", profileHandler.GetProfile)
 			r.Put("/profile", profileHandler.UpdateProfile)
+				r.Put("/profile/avatar", profileHandler.UpdateAvatar)
+			r.Get("/profile/notifications", profileHandler.GetNotificationPrefs)
+			r.Put("/profile/notifications", profileHandler.UpdateNotificationPrefs)
 
 			// Voice
 			r.Post("/voice/token", voiceHandler.GetToken)

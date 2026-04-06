@@ -19,7 +19,7 @@ interface UserResponse {
   id: string;
   nickname: string;
   email: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   role: string;
   provider: string;
 }
@@ -70,7 +70,7 @@ function AuthCallbackPage() {
           id: me.id,
           nickname: me.nickname,
           email: me.email,
-          profileImage: me.profile_image,
+          profileImage: me.avatar_url,
           role: me.role as "user" | "creator" | "admin",
           provider: me.provider,
         });

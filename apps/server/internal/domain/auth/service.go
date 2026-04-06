@@ -33,6 +33,11 @@ type UserResponse struct {
 	Role      string    `json:"role"`
 }
 
+// DeleteAccountRequest holds the payload for account deletion.
+type DeleteAccountRequest struct {
+	Password string `json:"password" validate:"required"`
+}
+
 // Service defines the auth domain operations.
 type Service interface {
 	OAuthCallback(ctx context.Context, provider, code, nickname string) (*TokenPair, error)
@@ -41,6 +46,7 @@ type Service interface {
 	RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error)
 	Logout(ctx context.Context, userID uuid.UUID) error
 	GetCurrentUser(ctx context.Context, userID uuid.UUID) (*UserResponse, error)
+	DeleteAccount(ctx context.Context, userID uuid.UUID, req DeleteAccountRequest) error
 }
 
 type service struct {
@@ -264,7 +270,7 @@ func (s *service) Register(ctx context.Context, email, password, nickname string
 	}
 
 	// Check if email already exists.
-	_, err := s.queries.GetUserByEmail(ctx, email)
+	_, err := s.queries.GetUserByEmail(ctx, pgtype.Text{String: email, Valid: true})
 	if err == nil {
 		return nil, apperror.Conflict("email already registered")
 	}
@@ -281,8 +287,8 @@ func (s *service) Register(ctx context.Context, email, password, nickname string
 
 	user, err := s.queries.CreateUserWithPassword(ctx, db.CreateUserWithPasswordParams{
 		Nickname:     nickname,
-		Email:        email,
-		PasswordHash: string(hash),
+		Email:        pgtype.Text{String: email, Valid: true},
+		PasswordHash: pgtype.Text{String: string(hash), Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create user")
@@ -299,7 +305,7 @@ func (s *service) Login(ctx context.Context, email, password string) (*TokenPair
 		return nil, apperror.BadRequest("email and password are required")
 	}
 
-	user, err := s.queries.GetUserByEmail(ctx, email)
+	user, err := s.queries.GetUserByEmail(ctx, pgtype.Text{String: email, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.Unauthorized("invalid email or password")
@@ -317,6 +323,35 @@ func (s *service) Login(ctx context.Context, email, password string) (*TokenPair
 	}
 
 	return s.generateTokenPair(ctx, user.ID, user.Role)
+}
+
+// DeleteAccount soft-deletes the user account after verifying identity.
+// OAuth-only users (no password_hash) may delete without a password.
+func (s *service) DeleteAccount(ctx context.Context, userID uuid.UUID, req DeleteAccountRequest) error {
+	user, err := s.queries.GetUser(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.Unauthorized("authentication required")
+		}
+		s.logger.Error().Err(err).Str("user_id", userID.String()).Msg("failed to get user for deletion")
+		return apperror.Internal("failed to get user")
+	}
+
+	// Password users must confirm with their password.
+	if user.PasswordHash.Valid && user.PasswordHash.String != "" {
+		if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(req.Password)); err != nil {
+			return apperror.Unauthorized("authentication required")
+		}
+	}
+
+	if err := s.queries.SoftDeleteUser(ctx, userID); err != nil {
+		s.logger.Error().Err(err).Str("user_id", userID.String()).Msg("failed to soft delete user")
+		return apperror.Internal("failed to delete account")
+	}
+
+	s.revokeAllTokens(ctx, userID.String())
+	s.logger.Info().Str("user_id", userID.String()).Msg("user account soft deleted")
+	return nil
 }
 
 // mapUserResponse converts a db.User to a public UserResponse.

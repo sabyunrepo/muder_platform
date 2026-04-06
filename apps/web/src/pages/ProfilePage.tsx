@@ -1,6 +1,11 @@
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { useProfile } from "@/features/profile/api";
-import { ProfileForm, ProfileStats } from "@/features/profile/components";
+import {
+  ProfileForm,
+  ProfileStats,
+  NotificationSettings,
+  DangerZone,
+} from "@/features/profile/components";
 import { Button, Spinner, Badge } from "@/shared/components/ui";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +64,7 @@ export default function ProfilePage() {
       <ProfileForm
         nickname={data.nickname}
         email={data.email}
-        profileImage={data.profile_image}
+        profileImage={data.avatar_url}
         role={data.role}
         provider={data.provider}
       />
@@ -70,6 +75,19 @@ export default function ProfilePage() {
         winCount={data.win_count}
         createdAt={data.created_at}
       />
+
+      {/* 알림 설정 */}
+      <section>
+        <div className="rounded-xl border border-slate-700 bg-slate-900 p-6">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+            알림 설정
+          </h2>
+          <NotificationSettings />
+        </div>
+      </section>
+
+      {/* 위험 구역 */}
+      <DangerZone />
     </div>
   );
 }

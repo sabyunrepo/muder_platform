@@ -13,27 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ═══════════════════════════════════════════════════════════════════
-// Coin Balance
-// ═══════════════════════════════════════════════════════════════════
-
-const getUserForCoinUpdate = `-- name: GetUserForCoinUpdate :one
-SELECT id, coin_balance_base, coin_balance_bonus FROM users WHERE id = $1 FOR UPDATE
-`
-
-type GetUserForCoinUpdateRow struct {
-	ID               uuid.UUID `json:"id"`
-	CoinBalanceBase  int64     `json:"coin_balance_base"`
-	CoinBalanceBonus int64     `json:"coin_balance_bonus"`
-}
-
-func (q *Queries) GetUserForCoinUpdate(ctx context.Context, id uuid.UUID) (GetUserForCoinUpdateRow, error) {
-	row := q.db.QueryRow(ctx, getUserForCoinUpdate, id)
-	var i GetUserForCoinUpdateRow
-	err := row.Scan(&i.ID, &i.CoinBalanceBase, &i.CoinBalanceBonus)
-	return i, err
-}
-
 const addCoinBalance = `-- name: AddCoinBalance :exec
 UPDATE users
 SET coin_balance_base = coin_balance_base + $2, coin_balance_bonus = coin_balance_bonus + $3
@@ -49,164 +28,6 @@ type AddCoinBalanceParams struct {
 func (q *Queries) AddCoinBalance(ctx context.Context, arg AddCoinBalanceParams) error {
 	_, err := q.db.Exec(ctx, addCoinBalance, arg.ID, arg.CoinBalanceBase, arg.CoinBalanceBonus)
 	return err
-}
-
-const getCoinBalance = `-- name: GetCoinBalance :one
-SELECT coin_balance_base, coin_balance_bonus FROM users WHERE id = $1
-`
-
-type GetCoinBalanceRow struct {
-	CoinBalanceBase  int64 `json:"coin_balance_base"`
-	CoinBalanceBonus int64 `json:"coin_balance_bonus"`
-}
-
-func (q *Queries) GetCoinBalance(ctx context.Context, id uuid.UUID) (GetCoinBalanceRow, error) {
-	row := q.db.QueryRow(ctx, getCoinBalance, id)
-	var i GetCoinBalanceRow
-	err := row.Scan(&i.CoinBalanceBase, &i.CoinBalanceBonus)
-	return i, err
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// Coin Transactions
-// ═══════════════════════════════════════════════════════════════════
-
-const createCoinTransaction = `-- name: CreateCoinTransaction :one
-INSERT INTO coin_transactions (user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description, created_at
-`
-
-type CreateCoinTransactionParams struct {
-	UserID           uuid.UUID `json:"user_id"`
-	Type             string    `json:"type"`
-	BaseAmount       int32     `json:"base_amount"`
-	BonusAmount      int32     `json:"bonus_amount"`
-	BalanceAfterBase  int64    `json:"balance_after_base"`
-	BalanceAfterBonus int64    `json:"balance_after_bonus"`
-	ReferenceType    *string   `json:"reference_type"`
-	ReferenceID      *string   `json:"reference_id"`
-	Description      *string   `json:"description"`
-}
-
-func (q *Queries) CreateCoinTransaction(ctx context.Context, arg CreateCoinTransactionParams) (CoinTransaction, error) {
-	row := q.db.QueryRow(ctx, createCoinTransaction,
-		arg.UserID,
-		arg.Type,
-		arg.BaseAmount,
-		arg.BonusAmount,
-		arg.BalanceAfterBase,
-		arg.BalanceAfterBonus,
-		arg.ReferenceType,
-		arg.ReferenceID,
-		arg.Description,
-	)
-	var i CoinTransaction
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Type,
-		&i.BaseAmount,
-		&i.BonusAmount,
-		&i.BalanceAfterBase,
-		&i.BalanceAfterBonus,
-		&i.ReferenceType,
-		&i.ReferenceID,
-		&i.Description,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const listCoinTransactions = `-- name: ListCoinTransactions :many
-SELECT id, user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description, created_at FROM coin_transactions
-WHERE user_id = $1
-ORDER BY created_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListCoinTransactionsParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	Limit  int32     `json:"limit"`
-	Offset int32     `json:"offset"`
-}
-
-func (q *Queries) ListCoinTransactions(ctx context.Context, arg ListCoinTransactionsParams) ([]CoinTransaction, error) {
-	rows, err := q.db.Query(ctx, listCoinTransactions, arg.UserID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CoinTransaction{}
-	for rows.Next() {
-		var i CoinTransaction
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Type,
-			&i.BaseAmount,
-			&i.BonusAmount,
-			&i.BalanceAfterBase,
-			&i.BalanceAfterBonus,
-			&i.ReferenceType,
-			&i.ReferenceID,
-			&i.Description,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listCoinTransactionsByType = `-- name: ListCoinTransactionsByType :many
-SELECT id, user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description, created_at FROM coin_transactions
-WHERE user_id = $1 AND type = $2
-ORDER BY created_at DESC
-LIMIT $3 OFFSET $4
-`
-
-type ListCoinTransactionsByTypeParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	Type   string    `json:"type"`
-	Limit  int32     `json:"limit"`
-	Offset int32     `json:"offset"`
-}
-
-func (q *Queries) ListCoinTransactionsByType(ctx context.Context, arg ListCoinTransactionsByTypeParams) ([]CoinTransaction, error) {
-	rows, err := q.db.Query(ctx, listCoinTransactionsByType, arg.UserID, arg.Type, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []CoinTransaction{}
-	for rows.Next() {
-		var i CoinTransaction
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Type,
-			&i.BaseAmount,
-			&i.BonusAmount,
-			&i.BalanceAfterBase,
-			&i.BalanceAfterBonus,
-			&i.ReferenceType,
-			&i.ReferenceID,
-			&i.Description,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const countCoinTransactions = `-- name: CountCoinTransactions :one
@@ -236,11 +57,83 @@ func (q *Queries) CountCoinTransactionsByType(ctx context.Context, arg CountCoin
 	return count, err
 }
 
+const countPurchasedThemes = `-- name: CountPurchasedThemes :one
+SELECT COUNT(*) FROM theme_purchases
+WHERE user_id = $1 AND status = 'COMPLETED'
+`
+
+func (q *Queries) CountPurchasedThemes(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPurchasedThemes, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countRecentRefunds = `-- name: CountRecentRefunds :one
+SELECT COUNT(*) FROM theme_purchases
+WHERE user_id = $1 AND status = 'REFUNDED' AND refunded_at > NOW() - INTERVAL '30 days'
+`
+
+func (q *Queries) CountRecentRefunds(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRecentRefunds, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createCoinTransaction = `-- name: CreateCoinTransaction :one
+
+INSERT INTO coin_transactions (user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description, created_at
+`
+
+type CreateCoinTransactionParams struct {
+	UserID            uuid.UUID   `json:"user_id"`
+	Type              string      `json:"type"`
+	BaseAmount        int32       `json:"base_amount"`
+	BonusAmount       int32       `json:"bonus_amount"`
+	BalanceAfterBase  int64       `json:"balance_after_base"`
+	BalanceAfterBonus int64       `json:"balance_after_bonus"`
+	ReferenceType     pgtype.Text `json:"reference_type"`
+	ReferenceID       pgtype.Text `json:"reference_id"`
+	Description       pgtype.Text `json:"description"`
+}
+
 // ═══════════════════════════════════════════════════════════════════
-// Theme Purchases
+// Coin Transactions
 // ═══════════════════════════════════════════════════════════════════
+func (q *Queries) CreateCoinTransaction(ctx context.Context, arg CreateCoinTransactionParams) (CoinTransaction, error) {
+	row := q.db.QueryRow(ctx, createCoinTransaction,
+		arg.UserID,
+		arg.Type,
+		arg.BaseAmount,
+		arg.BonusAmount,
+		arg.BalanceAfterBase,
+		arg.BalanceAfterBonus,
+		arg.ReferenceType,
+		arg.ReferenceID,
+		arg.Description,
+	)
+	var i CoinTransaction
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Type,
+		&i.BaseAmount,
+		&i.BonusAmount,
+		&i.BalanceAfterBase,
+		&i.BalanceAfterBonus,
+		&i.ReferenceType,
+		&i.ReferenceID,
+		&i.Description,
+		&i.CreatedAt,
+	)
+	return i, err
+}
 
 const createThemePurchase = `-- name: CreateThemePurchase :one
+
 INSERT INTO theme_purchases (user_id, theme_id, coin_price, base_coins_used, bonus_coins_used, refundable_until)
 VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '7 days')
 RETURNING id, user_id, theme_id, coin_price, base_coins_used, bonus_coins_used, status, has_played, refundable_until, refunded_at, created_at
@@ -254,6 +147,9 @@ type CreateThemePurchaseParams struct {
 	BonusCoinsUsed int32     `json:"bonus_coins_used"`
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Theme Purchases
+// ═══════════════════════════════════════════════════════════════════
 func (q *Queries) CreateThemePurchase(ctx context.Context, arg CreateThemePurchaseParams) (ThemePurchase, error) {
 	row := q.db.QueryRow(ctx, createThemePurchase,
 		arg.UserID,
@@ -276,6 +172,22 @@ func (q *Queries) CreateThemePurchase(ctx context.Context, arg CreateThemePurcha
 		&i.RefundedAt,
 		&i.CreatedAt,
 	)
+	return i, err
+}
+
+const getCoinBalance = `-- name: GetCoinBalance :one
+SELECT coin_balance_base, coin_balance_bonus FROM users WHERE id = $1
+`
+
+type GetCoinBalanceRow struct {
+	CoinBalanceBase  int64 `json:"coin_balance_base"`
+	CoinBalanceBonus int64 `json:"coin_balance_bonus"`
+}
+
+func (q *Queries) GetCoinBalance(ctx context.Context, id uuid.UUID) (GetCoinBalanceRow, error) {
+	row := q.db.QueryRow(ctx, getCoinBalance, id)
+	var i GetCoinBalanceRow
+	err := row.Scan(&i.CoinBalanceBase, &i.CoinBalanceBonus)
 	return i, err
 }
 
@@ -358,45 +270,121 @@ func (q *Queries) GetThemePurchaseForRefund(ctx context.Context, arg GetThemePur
 	return i, err
 }
 
-const refundThemePurchase = `-- name: RefundThemePurchase :one
-UPDATE theme_purchases
-SET status = 'REFUNDED', refunded_at = NOW()
-WHERE id = $1 AND status = 'COMPLETED'
-RETURNING id, user_id, theme_id, coin_price, base_coins_used, bonus_coins_used, status, has_played, refundable_until, refunded_at, created_at
+const getUserForCoinUpdate = `-- name: GetUserForCoinUpdate :one
+
+SELECT id, coin_balance_base, coin_balance_bonus FROM users WHERE id = $1 FOR UPDATE
 `
 
-func (q *Queries) RefundThemePurchase(ctx context.Context, id uuid.UUID) (ThemePurchase, error) {
-	row := q.db.QueryRow(ctx, refundThemePurchase, id)
-	var i ThemePurchase
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.ThemeID,
-		&i.CoinPrice,
-		&i.BaseCoinsUsed,
-		&i.BonusCoinsUsed,
-		&i.Status,
-		&i.HasPlayed,
-		&i.RefundableUntil,
-		&i.RefundedAt,
-		&i.CreatedAt,
-	)
+type GetUserForCoinUpdateRow struct {
+	ID               uuid.UUID `json:"id"`
+	CoinBalanceBase  int64     `json:"coin_balance_base"`
+	CoinBalanceBonus int64     `json:"coin_balance_bonus"`
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Coin Balance
+// ═══════════════════════════════════════════════════════════════════
+func (q *Queries) GetUserForCoinUpdate(ctx context.Context, id uuid.UUID) (GetUserForCoinUpdateRow, error) {
+	row := q.db.QueryRow(ctx, getUserForCoinUpdate, id)
+	var i GetUserForCoinUpdateRow
+	err := row.Scan(&i.ID, &i.CoinBalanceBase, &i.CoinBalanceBonus)
 	return i, err
 }
 
-const markThemePlayed = `-- name: MarkThemePlayed :exec
-UPDATE theme_purchases SET has_played = true
-WHERE user_id = $1 AND theme_id = $2 AND status = 'COMPLETED'
+const listCoinTransactions = `-- name: ListCoinTransactions :many
+SELECT id, user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description, created_at FROM coin_transactions
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
 `
 
-type MarkThemePlayedParams struct {
-	UserID  uuid.UUID `json:"user_id"`
-	ThemeID uuid.UUID `json:"theme_id"`
+type ListCoinTransactionsParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Limit  int32     `json:"limit"`
+	Offset int32     `json:"offset"`
 }
 
-func (q *Queries) MarkThemePlayed(ctx context.Context, arg MarkThemePlayedParams) error {
-	_, err := q.db.Exec(ctx, markThemePlayed, arg.UserID, arg.ThemeID)
-	return err
+func (q *Queries) ListCoinTransactions(ctx context.Context, arg ListCoinTransactionsParams) ([]CoinTransaction, error) {
+	rows, err := q.db.Query(ctx, listCoinTransactions, arg.UserID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CoinTransaction{}
+	for rows.Next() {
+		var i CoinTransaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.BaseAmount,
+			&i.BonusAmount,
+			&i.BalanceAfterBase,
+			&i.BalanceAfterBonus,
+			&i.ReferenceType,
+			&i.ReferenceID,
+			&i.Description,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCoinTransactionsByType = `-- name: ListCoinTransactionsByType :many
+SELECT id, user_id, type, base_amount, bonus_amount, balance_after_base, balance_after_bonus, reference_type, reference_id, description, created_at FROM coin_transactions
+WHERE user_id = $1 AND type = $2
+ORDER BY created_at DESC
+LIMIT $3 OFFSET $4
+`
+
+type ListCoinTransactionsByTypeParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Type   string    `json:"type"`
+	Limit  int32     `json:"limit"`
+	Offset int32     `json:"offset"`
+}
+
+func (q *Queries) ListCoinTransactionsByType(ctx context.Context, arg ListCoinTransactionsByTypeParams) ([]CoinTransaction, error) {
+	rows, err := q.db.Query(ctx, listCoinTransactionsByType,
+		arg.UserID,
+		arg.Type,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []CoinTransaction{}
+	for rows.Next() {
+		var i CoinTransaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Type,
+			&i.BaseAmount,
+			&i.BonusAmount,
+			&i.BalanceAfterBase,
+			&i.BalanceAfterBonus,
+			&i.ReferenceType,
+			&i.ReferenceID,
+			&i.Description,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPurchasedThemes = `-- name: ListPurchasedThemes :many
@@ -466,26 +454,43 @@ func (q *Queries) ListPurchasedThemes(ctx context.Context, arg ListPurchasedThem
 	return items, nil
 }
 
-const countPurchasedThemes = `-- name: CountPurchasedThemes :one
-SELECT COUNT(*) FROM theme_purchases
-WHERE user_id = $1 AND status = 'COMPLETED'
+const markThemePlayed = `-- name: MarkThemePlayed :exec
+UPDATE theme_purchases SET has_played = true
+WHERE user_id = $1 AND theme_id = $2 AND status = 'COMPLETED'
 `
 
-func (q *Queries) CountPurchasedThemes(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countPurchasedThemes, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+type MarkThemePlayedParams struct {
+	UserID  uuid.UUID `json:"user_id"`
+	ThemeID uuid.UUID `json:"theme_id"`
 }
 
-const countRecentRefunds = `-- name: CountRecentRefunds :one
-SELECT COUNT(*) FROM theme_purchases
-WHERE user_id = $1 AND status = 'REFUNDED' AND refunded_at > NOW() - INTERVAL '30 days'
+func (q *Queries) MarkThemePlayed(ctx context.Context, arg MarkThemePlayedParams) error {
+	_, err := q.db.Exec(ctx, markThemePlayed, arg.UserID, arg.ThemeID)
+	return err
+}
+
+const refundThemePurchase = `-- name: RefundThemePurchase :one
+UPDATE theme_purchases
+SET status = 'REFUNDED', refunded_at = NOW()
+WHERE id = $1 AND status = 'COMPLETED'
+RETURNING id, user_id, theme_id, coin_price, base_coins_used, bonus_coins_used, status, has_played, refundable_until, refunded_at, created_at
 `
 
-func (q *Queries) CountRecentRefunds(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countRecentRefunds, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
+func (q *Queries) RefundThemePurchase(ctx context.Context, id uuid.UUID) (ThemePurchase, error) {
+	row := q.db.QueryRow(ctx, refundThemePurchase, id)
+	var i ThemePurchase
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ThemeID,
+		&i.CoinPrice,
+		&i.BaseCoinsUsed,
+		&i.BonusCoinsUsed,
+		&i.Status,
+		&i.HasPlayed,
+		&i.RefundableUntil,
+		&i.RefundedAt,
+		&i.CreatedAt,
+	)
+	return i, err
 }

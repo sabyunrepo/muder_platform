@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
@@ -37,7 +38,11 @@ func (h *AdminHandler) ListAllSettlements(w http.ResponseWriter, r *http.Request
 	status := r.URL.Query().Get("status")
 	pg := httputil.ParsePagination(r, 20, 100)
 
-	rows, err := h.queries.ListSettlementsByStatus(r.Context(), status, pg.Limit, pg.Offset)
+	rows, err := h.queries.ListSettlementsByStatus(r.Context(), db.ListSettlementsByStatusParams{
+		Column1: status,
+		Limit:   pg.Limit,
+		Offset:  pg.Offset,
+	})
 	if err != nil {
 		h.logger.Error().Err(err).Msg("failed to list settlements")
 		apperror.WriteError(w, r, apperror.Internal("failed to list settlements"))
@@ -54,9 +59,26 @@ func (h *AdminHandler) ListAllSettlements(w http.ResponseWriter, r *http.Request
 	result := make([]AdminSettlementResponse, 0, len(rows))
 	for _, row := range rows {
 		result = append(result, AdminSettlementResponse{
-			SettlementResponse: toSettlementResponse(row.Settlement),
-			CreatorID:          row.CreatorID,
-			CreatorNickname:    row.CreatorNickname,
+			SettlementResponse: toSettlementResponse(db.Settlement{
+				ID:          row.ID,
+				CreatorID:   row.CreatorID,
+				PeriodStart: row.PeriodStart,
+				PeriodEnd:   row.PeriodEnd,
+				TotalCoins:  row.TotalCoins,
+				TotalKrw:    row.TotalKrw,
+				TaxType:     row.TaxType,
+				TaxRate:     row.TaxRate,
+				TaxAmount:   row.TaxAmount,
+				NetAmount:   row.NetAmount,
+				Status:      row.Status,
+				ApprovedBy:  row.ApprovedBy,
+				ApprovedAt:  row.ApprovedAt,
+				PaidOutAt:   row.PaidOutAt,
+				CreatedAt:   row.CreatedAt,
+				UpdatedAt:   row.UpdatedAt,
+			}),
+			CreatorID:       row.CreatorID,
+			CreatorNickname: row.CreatorNickname,
 		})
 	}
 
@@ -80,7 +102,10 @@ func (h *AdminHandler) ApproveSettlement(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	settlement, err := h.queries.ApproveSettlement(r.Context(), settlementID, adminID)
+	settlement, err := h.queries.ApproveSettlement(r.Context(), db.ApproveSettlementParams{
+		ID:         settlementID,
+		ApprovedBy: pgtype.UUID{Bytes: adminID, Valid: true},
+	})
 	if err != nil {
 		h.logger.Error().Err(err).Str("settlement_id", settlementID.String()).Msg("failed to approve settlement")
 		apperror.WriteError(w, r, apperror.New(apperror.ErrSettlementInvalidStatus, http.StatusConflict, "settlement cannot be approved (invalid status)"))
@@ -137,7 +162,7 @@ func (h *AdminHandler) GetRevenue(w http.ResponseWriter, r *http.Request) {
 
 	httputil.WriteJSON(w, http.StatusOK, RevenueResponse{
 		TotalCoins:      row.TotalCoins,
-		TotalKRW:        row.TotalKRW,
+		TotalKRW:        row.TotalKrw,
 		TotalTax:        row.TotalTax,
 		TotalNet:        row.TotalNet,
 		SettlementCount: row.SettlementCount,
@@ -197,8 +222,8 @@ func (h *AdminHandler) GrantCoins(w http.ResponseWriter, r *http.Request) {
 		BonusAmount:       req.BonusCoins,
 		BalanceAfterBase:  user.CoinBalanceBase + int64(req.BaseCoins),
 		BalanceAfterBonus: user.CoinBalanceBonus + int64(req.BonusCoins),
-		ReferenceType:     &refType,
-		Description:       &desc,
+		ReferenceType: pgtype.Text{String: refType, Valid: true},
+		Description:   pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		h.logger.Error().Err(err).Msg("failed to create coin transaction")

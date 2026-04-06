@@ -13,31 +13,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createFriendRequest = `-- name: CreateFriendRequest :one
-INSERT INTO friendships (requester_id, addressee_id, status)
-VALUES ($1, $2, 'PENDING')
-RETURNING id, requester_id, addressee_id, status, created_at, updated_at
-`
-
-type CreateFriendRequestParams struct {
-	RequesterID uuid.UUID `json:"requester_id"`
-	AddresseeID uuid.UUID `json:"addressee_id"`
-}
-
-func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendRequestParams) (Friendship, error) {
-	row := q.db.QueryRow(ctx, createFriendRequest, arg.RequesterID, arg.AddresseeID)
-	var i Friendship
-	err := row.Scan(
-		&i.ID,
-		&i.RequesterID,
-		&i.AddresseeID,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const acceptFriendRequest = `-- name: AcceptFriendRequest :one
 UPDATE friendships SET status = 'ACCEPTED', updated_at = NOW()
 WHERE id = $1 AND addressee_id = $2 AND status = 'PENDING'
@@ -63,18 +38,202 @@ func (q *Queries) AcceptFriendRequest(ctx context.Context, arg AcceptFriendReque
 	return i, err
 }
 
-const rejectFriendRequest = `-- name: RejectFriendRequest :exec
-UPDATE friendships SET status = 'REJECTED', updated_at = NOW()
-WHERE id = $1 AND addressee_id = $2 AND status = 'PENDING'
+const addChatRoomMember = `-- name: AddChatRoomMember :exec
+
+INSERT INTO chat_room_members (chat_room_id, user_id)
+VALUES ($1, $2)
+ON CONFLICT DO NOTHING
 `
 
-type RejectFriendRequestParams struct {
-	ID          uuid.UUID `json:"id"`
+type AddChatRoomMemberParams struct {
+	ChatRoomID uuid.UUID `json:"chat_room_id"`
+	UserID     uuid.UUID `json:"user_id"`
+}
+
+// ════════��═══════════════════════��══════════════════════════════════
+// Chat Room Members
+// ═══════════════════════��═══════════════════════════��═══════════════
+func (q *Queries) AddChatRoomMember(ctx context.Context, arg AddChatRoomMemberParams) error {
+	_, err := q.db.Exec(ctx, addChatRoomMember, arg.ChatRoomID, arg.UserID)
+	return err
+}
+
+const countFriends = `-- name: CountFriends :one
+SELECT COUNT(*) FROM friendships
+WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'ACCEPTED'
+`
+
+func (q *Queries) CountFriends(ctx context.Context, requesterID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countFriends, requesterID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countPendingRequests = `-- name: CountPendingRequests :one
+SELECT COUNT(*) FROM friendships
+WHERE addressee_id = $1 AND status = 'PENDING'
+`
+
+func (q *Queries) CountPendingRequests(ctx context.Context, addresseeID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countPendingRequests, addresseeID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUnreadMessages = `-- name: CountUnreadMessages :one
+SELECT COUNT(*) FROM chat_messages cm
+JOIN chat_room_members crm ON cm.chat_room_id = crm.chat_room_id
+WHERE crm.chat_room_id = $1
+  AND crm.user_id = $2
+  AND cm.created_at > crm.last_read_at
+`
+
+type CountUnreadMessagesParams struct {
+	ChatRoomID uuid.UUID `json:"chat_room_id"`
+	UserID     uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) CountUnreadMessages(ctx context.Context, arg CountUnreadMessagesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadMessages, arg.ChatRoomID, arg.UserID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createBlock = `-- name: CreateBlock :one
+
+INSERT INTO user_blocks (blocker_id, blocked_id)
+VALUES ($1, $2)
+RETURNING id, blocker_id, blocked_id, created_at
+`
+
+type CreateBlockParams struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+}
+
+// ═══════��══════════════════════���══════════════════════════════���═════
+// User Blocks
+// ════════════════��═══════════════════════════════════════════════��══
+func (q *Queries) CreateBlock(ctx context.Context, arg CreateBlockParams) (UserBlock, error) {
+	row := q.db.QueryRow(ctx, createBlock, arg.BlockerID, arg.BlockedID)
+	var i UserBlock
+	err := row.Scan(
+		&i.ID,
+		&i.BlockerID,
+		&i.BlockedID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createChatMessage = `-- name: CreateChatMessage :one
+
+INSERT INTO chat_messages (chat_room_id, sender_id, content, message_type)
+VALUES ($1, $2, $3, $4)
+RETURNING id, chat_room_id, sender_id, content, message_type, created_at
+`
+
+type CreateChatMessageParams struct {
+	ChatRoomID  uuid.UUID `json:"chat_room_id"`
+	SenderID    uuid.UUID `json:"sender_id"`
+	Content     string    `json:"content"`
+	MessageType string    `json:"message_type"`
+}
+
+// ══════════��═════════════════════════════════════════════════��══════
+// Chat Messages
+// ══���════════════════════════════════���═══════════════════════════════
+func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessageParams) (ChatMessage, error) {
+	row := q.db.QueryRow(ctx, createChatMessage,
+		arg.ChatRoomID,
+		arg.SenderID,
+		arg.Content,
+		arg.MessageType,
+	)
+	var i ChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ChatRoomID,
+		&i.SenderID,
+		&i.Content,
+		&i.MessageType,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createChatRoom = `-- name: CreateChatRoom :one
+
+INSERT INTO chat_rooms (type, name, created_by)
+VALUES ($1, $2, $3)
+RETURNING id, type, name, created_by, created_at
+`
+
+type CreateChatRoomParams struct {
+	Type      string      `json:"type"`
+	Name      pgtype.Text `json:"name"`
+	CreatedBy uuid.UUID   `json:"created_by"`
+}
+
+// ════════��═════════════════════════════════════════════════════════���
+// Chat Rooms
+// ══���════════════════════════════���═══════════════════════════���═══════
+func (q *Queries) CreateChatRoom(ctx context.Context, arg CreateChatRoomParams) (ChatRoom, error) {
+	row := q.db.QueryRow(ctx, createChatRoom, arg.Type, arg.Name, arg.CreatedBy)
+	var i ChatRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Type,
+		&i.Name,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const createFriendRequest = `-- name: CreateFriendRequest :one
+
+INSERT INTO friendships (requester_id, addressee_id, status)
+VALUES ($1, $2, 'PENDING')
+RETURNING id, requester_id, addressee_id, status, created_at, updated_at
+`
+
+type CreateFriendRequestParams struct {
+	RequesterID uuid.UUID `json:"requester_id"`
 	AddresseeID uuid.UUID `json:"addressee_id"`
 }
 
-func (q *Queries) RejectFriendRequest(ctx context.Context, arg RejectFriendRequestParams) error {
-	_, err := q.db.Exec(ctx, rejectFriendRequest, arg.ID, arg.AddresseeID)
+// ═══════════════════════════════════════════════════════════════════
+// Friendships
+// ══════════���════════════��═══════════════════════════════════════════
+func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendRequestParams) (Friendship, error) {
+	row := q.db.QueryRow(ctx, createFriendRequest, arg.RequesterID, arg.AddresseeID)
+	var i Friendship
+	err := row.Scan(
+		&i.ID,
+		&i.RequesterID,
+		&i.AddresseeID,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteBlock = `-- name: DeleteBlock :exec
+DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2
+`
+
+type DeleteBlockParams struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+}
+
+func (q *Queries) DeleteBlock(ctx context.Context, arg DeleteBlockParams) error {
+	_, err := q.db.Exec(ctx, deleteBlock, arg.BlockerID, arg.BlockedID)
 	return err
 }
 
@@ -84,13 +243,90 @@ WHERE id = $1 AND (requester_id = $2 OR addressee_id = $2)
 `
 
 type DeleteFriendshipParams struct {
-	ID     uuid.UUID `json:"id"`
-	UserID uuid.UUID `json:"user_id"`
+	ID          uuid.UUID `json:"id"`
+	RequesterID uuid.UUID `json:"requester_id"`
 }
 
 func (q *Queries) DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) error {
-	_, err := q.db.Exec(ctx, deleteFriendship, arg.ID, arg.UserID)
+	_, err := q.db.Exec(ctx, deleteFriendship, arg.ID, arg.RequesterID)
 	return err
+}
+
+const deleteFriendshipBetween = `-- name: DeleteFriendshipBetween :exec
+DELETE FROM friendships
+WHERE (requester_id = $1 AND addressee_id = $2)
+   OR (requester_id = $2 AND addressee_id = $1)
+`
+
+type DeleteFriendshipBetweenParams struct {
+	RequesterID uuid.UUID `json:"requester_id"`
+	AddresseeID uuid.UUID `json:"addressee_id"`
+}
+
+func (q *Queries) DeleteFriendshipBetween(ctx context.Context, arg DeleteFriendshipBetweenParams) error {
+	_, err := q.db.Exec(ctx, deleteFriendshipBetween, arg.RequesterID, arg.AddresseeID)
+	return err
+}
+
+const findDMRoom = `-- name: FindDMRoom :one
+SELECT cr.id, cr.type, cr.name, cr.created_by, cr.created_at FROM chat_rooms cr
+JOIN chat_room_members m1 ON cr.id = m1.chat_room_id AND m1.user_id = $1
+JOIN chat_room_members m2 ON cr.id = m2.chat_room_id AND m2.user_id = $2
+WHERE cr.type = 'DM'
+LIMIT 1
+`
+
+type FindDMRoomParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	UserID_2 uuid.UUID `json:"user_id_2"`
+}
+
+func (q *Queries) FindDMRoom(ctx context.Context, arg FindDMRoomParams) (ChatRoom, error) {
+	row := q.db.QueryRow(ctx, findDMRoom, arg.UserID, arg.UserID_2)
+	var i ChatRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Type,
+		&i.Name,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getChatMessage = `-- name: GetChatMessage :one
+SELECT id, chat_room_id, sender_id, content, message_type, created_at FROM chat_messages WHERE id = $1
+`
+
+func (q *Queries) GetChatMessage(ctx context.Context, id int64) (ChatMessage, error) {
+	row := q.db.QueryRow(ctx, getChatMessage, id)
+	var i ChatMessage
+	err := row.Scan(
+		&i.ID,
+		&i.ChatRoomID,
+		&i.SenderID,
+		&i.Content,
+		&i.MessageType,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getChatRoom = `-- name: GetChatRoom :one
+SELECT id, type, name, created_by, created_at FROM chat_rooms WHERE id = $1
+`
+
+func (q *Queries) GetChatRoom(ctx context.Context, id uuid.UUID) (ChatRoom, error) {
+	row := q.db.QueryRow(ctx, getChatRoom, id)
+	var i ChatRoom
+	err := row.Scan(
+		&i.ID,
+		&i.Type,
+		&i.Name,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getFriendship = `-- name: GetFriendship :one
@@ -136,6 +372,195 @@ func (q *Queries) GetFriendshipBetween(ctx context.Context, arg GetFriendshipBet
 	return i, err
 }
 
+const isBlocked = `-- name: IsBlocked :one
+SELECT EXISTS(
+    SELECT 1 FROM user_blocks
+    WHERE (blocker_id = $1 AND blocked_id = $2)
+       OR (blocker_id = $2 AND blocked_id = $1)
+) AS is_blocked
+`
+
+type IsBlockedParams struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+}
+
+func (q *Queries) IsBlocked(ctx context.Context, arg IsBlockedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isBlocked, arg.BlockerID, arg.BlockedID)
+	var is_blocked bool
+	err := row.Scan(&is_blocked)
+	return is_blocked, err
+}
+
+const isChatRoomMember = `-- name: IsChatRoomMember :one
+SELECT EXISTS(
+    SELECT 1 FROM chat_room_members
+    WHERE chat_room_id = $1 AND user_id = $2
+) AS is_member
+`
+
+type IsChatRoomMemberParams struct {
+	ChatRoomID uuid.UUID `json:"chat_room_id"`
+	UserID     uuid.UUID `json:"user_id"`
+}
+
+func (q *Queries) IsChatRoomMember(ctx context.Context, arg IsChatRoomMemberParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isChatRoomMember, arg.ChatRoomID, arg.UserID)
+	var is_member bool
+	err := row.Scan(&is_member)
+	return is_member, err
+}
+
+const listBlocks = `-- name: ListBlocks :many
+SELECT ub.id, ub.blocker_id, ub.blocked_id, ub.created_at, u.nickname AS blocked_nickname, u.avatar_url AS blocked_avatar
+FROM user_blocks ub
+JOIN users u ON ub.blocked_id = u.id
+WHERE ub.blocker_id = $1
+ORDER BY ub.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListBlocksParams struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	Limit     int32     `json:"limit"`
+	Offset    int32     `json:"offset"`
+}
+
+type ListBlocksRow struct {
+	ID              uuid.UUID   `json:"id"`
+	BlockerID       uuid.UUID   `json:"blocker_id"`
+	BlockedID       uuid.UUID   `json:"blocked_id"`
+	CreatedAt       time.Time   `json:"created_at"`
+	BlockedNickname string      `json:"blocked_nickname"`
+	BlockedAvatar   pgtype.Text `json:"blocked_avatar"`
+}
+
+func (q *Queries) ListBlocks(ctx context.Context, arg ListBlocksParams) ([]ListBlocksRow, error) {
+	rows, err := q.db.Query(ctx, listBlocks, arg.BlockerID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBlocksRow{}
+	for rows.Next() {
+		var i ListBlocksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BlockerID,
+			&i.BlockedID,
+			&i.CreatedAt,
+			&i.BlockedNickname,
+			&i.BlockedAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listChatMessages = `-- name: ListChatMessages :many
+SELECT cm.id, cm.chat_room_id, cm.sender_id, cm.content, cm.message_type, cm.created_at, u.nickname AS sender_nickname, u.avatar_url AS sender_avatar
+FROM chat_messages cm
+JOIN users u ON cm.sender_id = u.id
+WHERE cm.chat_room_id = $1
+ORDER BY cm.id ASC
+LIMIT $2 OFFSET $3
+`
+
+type ListChatMessagesParams struct {
+	ChatRoomID uuid.UUID `json:"chat_room_id"`
+	Limit      int32     `json:"limit"`
+	Offset     int32     `json:"offset"`
+}
+
+type ListChatMessagesRow struct {
+	ID             int64       `json:"id"`
+	ChatRoomID     uuid.UUID   `json:"chat_room_id"`
+	SenderID       uuid.UUID   `json:"sender_id"`
+	Content        string      `json:"content"`
+	MessageType    string      `json:"message_type"`
+	CreatedAt      time.Time   `json:"created_at"`
+	SenderNickname string      `json:"sender_nickname"`
+	SenderAvatar   pgtype.Text `json:"sender_avatar"`
+}
+
+func (q *Queries) ListChatMessages(ctx context.Context, arg ListChatMessagesParams) ([]ListChatMessagesRow, error) {
+	rows, err := q.db.Query(ctx, listChatMessages, arg.ChatRoomID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListChatMessagesRow{}
+	for rows.Next() {
+		var i ListChatMessagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ChatRoomID,
+			&i.SenderID,
+			&i.Content,
+			&i.MessageType,
+			&i.CreatedAt,
+			&i.SenderNickname,
+			&i.SenderAvatar,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listChatRoomMembers = `-- name: ListChatRoomMembers :many
+SELECT crm.chat_room_id, crm.user_id, crm.last_read_at, crm.joined_at, u.nickname, u.avatar_url
+FROM chat_room_members crm
+JOIN users u ON crm.user_id = u.id
+WHERE crm.chat_room_id = $1
+ORDER BY crm.joined_at
+`
+
+type ListChatRoomMembersRow struct {
+	ChatRoomID uuid.UUID   `json:"chat_room_id"`
+	UserID     uuid.UUID   `json:"user_id"`
+	LastReadAt time.Time   `json:"last_read_at"`
+	JoinedAt   time.Time   `json:"joined_at"`
+	Nickname   string      `json:"nickname"`
+	AvatarUrl  pgtype.Text `json:"avatar_url"`
+}
+
+func (q *Queries) ListChatRoomMembers(ctx context.Context, chatRoomID uuid.UUID) ([]ListChatRoomMembersRow, error) {
+	rows, err := q.db.Query(ctx, listChatRoomMembers, chatRoomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListChatRoomMembersRow{}
+	for rows.Next() {
+		var i ListChatRoomMembersRow
+		if err := rows.Scan(
+			&i.ChatRoomID,
+			&i.UserID,
+			&i.LastReadAt,
+			&i.JoinedAt,
+			&i.Nickname,
+			&i.AvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFriends = `-- name: ListFriends :many
 SELECT u.id, u.nickname, u.avatar_url, u.role, f.id AS friendship_id, f.created_at
 FROM friendships f
@@ -149,9 +574,9 @@ LIMIT $2 OFFSET $3
 `
 
 type ListFriendsParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	Limit  int32     `json:"limit"`
-	Offset int32     `json:"offset"`
+	RequesterID uuid.UUID `json:"requester_id"`
+	Limit       int32     `json:"limit"`
+	Offset      int32     `json:"offset"`
 }
 
 type ListFriendsRow struct {
@@ -164,7 +589,7 @@ type ListFriendsRow struct {
 }
 
 func (q *Queries) ListFriends(ctx context.Context, arg ListFriendsParams) ([]ListFriendsRow, error) {
-	rows, err := q.db.Query(ctx, listFriends, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listFriends, arg.RequesterID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -188,18 +613,6 @@ func (q *Queries) ListFriends(ctx context.Context, arg ListFriendsParams) ([]Lis
 		return nil, err
 	}
 	return items, nil
-}
-
-const countFriends = `-- name: CountFriends :one
-SELECT COUNT(*) FROM friendships
-WHERE (requester_id = $1 OR addressee_id = $1) AND status = 'ACCEPTED'
-`
-
-func (q *Queries) CountFriends(ctx context.Context, userID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countFriends, userID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
 }
 
 const listPendingRequests = `-- name: ListPendingRequests :many
@@ -257,206 +670,24 @@ func (q *Queries) ListPendingRequests(ctx context.Context, arg ListPendingReques
 	return items, nil
 }
 
-const countPendingRequests = `-- name: CountPendingRequests :one
-SELECT COUNT(*) FROM friendships
-WHERE addressee_id = $1 AND status = 'PENDING'
-`
-
-func (q *Queries) CountPendingRequests(ctx context.Context, addresseeID uuid.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countPendingRequests, addresseeID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const createBlock = `-- name: CreateBlock :one
-INSERT INTO user_blocks (blocker_id, blocked_id)
-VALUES ($1, $2)
-RETURNING id, blocker_id, blocked_id, created_at
-`
-
-type CreateBlockParams struct {
-	BlockerID uuid.UUID `json:"blocker_id"`
-	BlockedID uuid.UUID `json:"blocked_id"`
-}
-
-func (q *Queries) CreateBlock(ctx context.Context, arg CreateBlockParams) (UserBlock, error) {
-	row := q.db.QueryRow(ctx, createBlock, arg.BlockerID, arg.BlockedID)
-	var i UserBlock
-	err := row.Scan(
-		&i.ID,
-		&i.BlockerID,
-		&i.BlockedID,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const deleteBlock = `-- name: DeleteBlock :exec
-DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2
-`
-
-type DeleteBlockParams struct {
-	BlockerID uuid.UUID `json:"blocker_id"`
-	BlockedID uuid.UUID `json:"blocked_id"`
-}
-
-func (q *Queries) DeleteBlock(ctx context.Context, arg DeleteBlockParams) error {
-	_, err := q.db.Exec(ctx, deleteBlock, arg.BlockerID, arg.BlockedID)
-	return err
-}
-
-const listBlocks = `-- name: ListBlocks :many
-SELECT ub.id, ub.blocker_id, ub.blocked_id, ub.created_at, u.nickname AS blocked_nickname, u.avatar_url AS blocked_avatar
-FROM user_blocks ub
-JOIN users u ON ub.blocked_id = u.id
-WHERE ub.blocker_id = $1
-ORDER BY ub.created_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListBlocksRow struct {
-	ID              uuid.UUID   `json:"id"`
-	BlockerID       uuid.UUID   `json:"blocker_id"`
-	BlockedID       uuid.UUID   `json:"blocked_id"`
-	CreatedAt       time.Time   `json:"created_at"`
-	BlockedNickname string      `json:"blocked_nickname"`
-	BlockedAvatar   pgtype.Text `json:"blocked_avatar"`
-}
-
-type ListBlocksParams struct {
-	BlockerID uuid.UUID `json:"blocker_id"`
-	Limit     int32     `json:"limit"`
-	Offset    int32     `json:"offset"`
-}
-
-func (q *Queries) ListBlocks(ctx context.Context, arg ListBlocksParams) ([]ListBlocksRow, error) {
-	rows, err := q.db.Query(ctx, listBlocks, arg.BlockerID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListBlocksRow{}
-	for rows.Next() {
-		var i ListBlocksRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.BlockerID,
-			&i.BlockedID,
-			&i.CreatedAt,
-			&i.BlockedNickname,
-			&i.BlockedAvatar,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const isBlocked = `-- name: IsBlocked :one
-SELECT EXISTS(
-    SELECT 1 FROM user_blocks
-    WHERE (blocker_id = $1 AND blocked_id = $2)
-       OR (blocker_id = $2 AND blocked_id = $1)
-) AS is_blocked
-`
-
-type IsBlockedParams struct {
-	BlockerID uuid.UUID `json:"blocker_id"`
-	BlockedID uuid.UUID `json:"blocked_id"`
-}
-
-func (q *Queries) IsBlocked(ctx context.Context, arg IsBlockedParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isBlocked, arg.BlockerID, arg.BlockedID)
-	var isBlocked bool
-	err := row.Scan(&isBlocked)
-	return isBlocked, err
-}
-
-const createChatRoom = `-- name: CreateChatRoom :one
-INSERT INTO chat_rooms (type, name, created_by)
-VALUES ($1, $2, $3)
-RETURNING id, type, name, created_by, created_at
-`
-
-type CreateChatRoomParams struct {
-	Type      string      `json:"type"`
-	Name      pgtype.Text `json:"name"`
-	CreatedBy uuid.UUID   `json:"created_by"`
-}
-
-func (q *Queries) CreateChatRoom(ctx context.Context, arg CreateChatRoomParams) (ChatRoom, error) {
-	row := q.db.QueryRow(ctx, createChatRoom, arg.Type, arg.Name, arg.CreatedBy)
-	var i ChatRoom
-	err := row.Scan(
-		&i.ID,
-		&i.Type,
-		&i.Name,
-		&i.CreatedBy,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getChatRoom = `-- name: GetChatRoom :one
-SELECT id, type, name, created_by, created_at FROM chat_rooms WHERE id = $1
-`
-
-func (q *Queries) GetChatRoom(ctx context.Context, id uuid.UUID) (ChatRoom, error) {
-	row := q.db.QueryRow(ctx, getChatRoom, id)
-	var i ChatRoom
-	err := row.Scan(
-		&i.ID,
-		&i.Type,
-		&i.Name,
-		&i.CreatedBy,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const findDMRoom = `-- name: FindDMRoom :one
-SELECT cr.id, cr.type, cr.name, cr.created_by, cr.created_at FROM chat_rooms cr
-JOIN chat_room_members m1 ON cr.id = m1.chat_room_id AND m1.user_id = $1
-JOIN chat_room_members m2 ON cr.id = m2.chat_room_id AND m2.user_id = $2
-WHERE cr.type = 'DM'
-`
-
-type FindDMRoomParams struct {
-	UserID1 uuid.UUID `json:"user_id_1"`
-	UserID2 uuid.UUID `json:"user_id_2"`
-}
-
-func (q *Queries) FindDMRoom(ctx context.Context, arg FindDMRoomParams) (ChatRoom, error) {
-	row := q.db.QueryRow(ctx, findDMRoom, arg.UserID1, arg.UserID2)
-	var i ChatRoom
-	err := row.Scan(
-		&i.ID,
-		&i.Type,
-		&i.Name,
-		&i.CreatedBy,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const listUserChatRooms = `-- name: ListUserChatRooms :many
 SELECT cr.id, cr.type, cr.name, cr.created_at,
        m.last_read_at,
-       (SELECT COUNT(*) FROM chat_messages cm
-        WHERE cm.chat_room_id = cr.id AND cm.created_at > m.last_read_at) AS unread_count,
-       (SELECT cm2.content FROM chat_messages cm2
-        WHERE cm2.chat_room_id = cr.id ORDER BY cm2.id DESC LIMIT 1) AS last_message,
-       (SELECT cm3.created_at FROM chat_messages cm3
-        WHERE cm3.chat_room_id = cr.id ORDER BY cm3.id DESC LIMIT 1) AS last_message_at
+       COALESCE(s.unread_count, 0) AS unread_count,
+       s.last_message,
+       s.last_message_at
 FROM chat_rooms cr
 JOIN chat_room_members m ON cr.id = m.chat_room_id
+LEFT JOIN LATERAL (
+    SELECT
+        COUNT(*) FILTER (WHERE cm.created_at > m.last_read_at) AS unread_count,
+        (ARRAY_AGG(cm.content ORDER BY cm.id DESC))[1] AS last_message,
+        MAX(cm.created_at) AS last_message_at
+    FROM chat_messages cm
+    WHERE cm.chat_room_id = cr.id
+) s ON true
 WHERE m.user_id = $1
-ORDER BY last_message_at DESC NULLS LAST
+ORDER BY s.last_message_at DESC NULLS LAST
 LIMIT $2 OFFSET $3
 `
 
@@ -467,14 +698,14 @@ type ListUserChatRoomsParams struct {
 }
 
 type ListUserChatRoomsRow struct {
-	ID            uuid.UUID          `json:"id"`
-	Type          string             `json:"type"`
-	Name          pgtype.Text        `json:"name"`
-	CreatedAt     time.Time          `json:"created_at"`
-	LastReadAt    time.Time          `json:"last_read_at"`
-	UnreadCount   int64              `json:"unread_count"`
-	LastMessage   pgtype.Text        `json:"last_message"`
-	LastMessageAt pgtype.Timestamptz `json:"last_message_at"`
+	ID            uuid.UUID   `json:"id"`
+	Type          string      `json:"type"`
+	Name          pgtype.Text `json:"name"`
+	CreatedAt     time.Time   `json:"created_at"`
+	LastReadAt    time.Time   `json:"last_read_at"`
+	UnreadCount   int64       `json:"unread_count"`
+	LastMessage   interface{} `json:"last_message"`
+	LastMessageAt interface{} `json:"last_message_at"`
 }
 
 func (q *Queries) ListUserChatRooms(ctx context.Context, arg ListUserChatRoomsParams) ([]ListUserChatRoomsRow, error) {
@@ -506,19 +737,18 @@ func (q *Queries) ListUserChatRooms(ctx context.Context, arg ListUserChatRoomsPa
 	return items, nil
 }
 
-const addChatRoomMember = `-- name: AddChatRoomMember :exec
-INSERT INTO chat_room_members (chat_room_id, user_id)
-VALUES ($1, $2)
-ON CONFLICT DO NOTHING
+const rejectFriendRequest = `-- name: RejectFriendRequest :exec
+UPDATE friendships SET status = 'REJECTED', updated_at = NOW()
+WHERE id = $1 AND addressee_id = $2 AND status = 'PENDING'
 `
 
-type AddChatRoomMemberParams struct {
-	ChatRoomID uuid.UUID `json:"chat_room_id"`
-	UserID     uuid.UUID `json:"user_id"`
+type RejectFriendRequestParams struct {
+	ID          uuid.UUID `json:"id"`
+	AddresseeID uuid.UUID `json:"addressee_id"`
 }
 
-func (q *Queries) AddChatRoomMember(ctx context.Context, arg AddChatRoomMemberParams) error {
-	_, err := q.db.Exec(ctx, addChatRoomMember, arg.ChatRoomID, arg.UserID)
+func (q *Queries) RejectFriendRequest(ctx context.Context, arg RejectFriendRequestParams) error {
+	_, err := q.db.Exec(ctx, rejectFriendRequest, arg.ID, arg.AddresseeID)
 	return err
 }
 
@@ -536,69 +766,6 @@ func (q *Queries) RemoveChatRoomMember(ctx context.Context, arg RemoveChatRoomMe
 	return err
 }
 
-const listChatRoomMembers = `-- name: ListChatRoomMembers :many
-SELECT crm.chat_room_id, crm.user_id, crm.last_read_at, crm.joined_at, u.nickname, u.avatar_url
-FROM chat_room_members crm
-JOIN users u ON crm.user_id = u.id
-WHERE crm.chat_room_id = $1
-ORDER BY crm.joined_at
-`
-
-type ListChatRoomMembersRow struct {
-	ChatRoomID uuid.UUID   `json:"chat_room_id"`
-	UserID     uuid.UUID   `json:"user_id"`
-	LastReadAt time.Time   `json:"last_read_at"`
-	JoinedAt   time.Time   `json:"joined_at"`
-	Nickname   string      `json:"nickname"`
-	AvatarUrl  pgtype.Text `json:"avatar_url"`
-}
-
-func (q *Queries) ListChatRoomMembers(ctx context.Context, chatRoomID uuid.UUID) ([]ListChatRoomMembersRow, error) {
-	rows, err := q.db.Query(ctx, listChatRoomMembers, chatRoomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListChatRoomMembersRow{}
-	for rows.Next() {
-		var i ListChatRoomMembersRow
-		if err := rows.Scan(
-			&i.ChatRoomID,
-			&i.UserID,
-			&i.LastReadAt,
-			&i.JoinedAt,
-			&i.Nickname,
-			&i.AvatarUrl,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const isChatRoomMember = `-- name: IsChatRoomMember :one
-SELECT EXISTS(
-    SELECT 1 FROM chat_room_members
-    WHERE chat_room_id = $1 AND user_id = $2
-) AS is_member
-`
-
-type IsChatRoomMemberParams struct {
-	ChatRoomID uuid.UUID `json:"chat_room_id"`
-	UserID     uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) IsChatRoomMember(ctx context.Context, arg IsChatRoomMemberParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isChatRoomMember, arg.ChatRoomID, arg.UserID)
-	var isMember bool
-	err := row.Scan(&isMember)
-	return isMember, err
-}
-
 const updateLastReadAt = `-- name: UpdateLastReadAt :exec
 UPDATE chat_room_members SET last_read_at = NOW()
 WHERE chat_room_id = $1 AND user_id = $2
@@ -611,141 +778,5 @@ type UpdateLastReadAtParams struct {
 
 func (q *Queries) UpdateLastReadAt(ctx context.Context, arg UpdateLastReadAtParams) error {
 	_, err := q.db.Exec(ctx, updateLastReadAt, arg.ChatRoomID, arg.UserID)
-	return err
-}
-
-const createChatMessage = `-- name: CreateChatMessage :one
-INSERT INTO chat_messages (chat_room_id, sender_id, content, message_type)
-VALUES ($1, $2, $3, $4)
-RETURNING id, chat_room_id, sender_id, content, message_type, created_at
-`
-
-type CreateChatMessageParams struct {
-	ChatRoomID  uuid.UUID `json:"chat_room_id"`
-	SenderID    uuid.UUID `json:"sender_id"`
-	Content     string    `json:"content"`
-	MessageType string    `json:"message_type"`
-}
-
-func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessageParams) (ChatMessage, error) {
-	row := q.db.QueryRow(ctx, createChatMessage, arg.ChatRoomID, arg.SenderID, arg.Content, arg.MessageType)
-	var i ChatMessage
-	err := row.Scan(
-		&i.ID,
-		&i.ChatRoomID,
-		&i.SenderID,
-		&i.Content,
-		&i.MessageType,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const listChatMessages = `-- name: ListChatMessages :many
-SELECT cm.id, cm.chat_room_id, cm.sender_id, cm.content, cm.message_type, cm.created_at, u.nickname AS sender_nickname, u.avatar_url AS sender_avatar
-FROM chat_messages cm
-JOIN users u ON cm.sender_id = u.id
-WHERE cm.chat_room_id = $1
-ORDER BY cm.id DESC
-LIMIT $2 OFFSET $3
-`
-
-type ListChatMessagesParams struct {
-	ChatRoomID uuid.UUID `json:"chat_room_id"`
-	Limit      int32     `json:"limit"`
-	Offset     int32     `json:"offset"`
-}
-
-type ListChatMessagesRow struct {
-	ID             int64       `json:"id"`
-	ChatRoomID     uuid.UUID   `json:"chat_room_id"`
-	SenderID       uuid.UUID   `json:"sender_id"`
-	Content        string      `json:"content"`
-	MessageType    string      `json:"message_type"`
-	CreatedAt      time.Time   `json:"created_at"`
-	SenderNickname string      `json:"sender_nickname"`
-	SenderAvatar   pgtype.Text `json:"sender_avatar"`
-}
-
-func (q *Queries) ListChatMessages(ctx context.Context, arg ListChatMessagesParams) ([]ListChatMessagesRow, error) {
-	rows, err := q.db.Query(ctx, listChatMessages, arg.ChatRoomID, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListChatMessagesRow{}
-	for rows.Next() {
-		var i ListChatMessagesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ChatRoomID,
-			&i.SenderID,
-			&i.Content,
-			&i.MessageType,
-			&i.CreatedAt,
-			&i.SenderNickname,
-			&i.SenderAvatar,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getChatMessage = `-- name: GetChatMessage :one
-SELECT id, chat_room_id, sender_id, content, message_type, created_at FROM chat_messages WHERE id = $1
-`
-
-func (q *Queries) GetChatMessage(ctx context.Context, id int64) (ChatMessage, error) {
-	row := q.db.QueryRow(ctx, getChatMessage, id)
-	var i ChatMessage
-	err := row.Scan(
-		&i.ID,
-		&i.ChatRoomID,
-		&i.SenderID,
-		&i.Content,
-		&i.MessageType,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const countUnreadMessages = `-- name: CountUnreadMessages :one
-SELECT COUNT(*) FROM chat_messages cm
-JOIN chat_room_members crm ON cm.chat_room_id = crm.chat_room_id
-WHERE crm.chat_room_id = $1
-  AND crm.user_id = $2
-  AND cm.created_at > crm.last_read_at
-`
-
-type CountUnreadMessagesParams struct {
-	ChatRoomID uuid.UUID `json:"chat_room_id"`
-	UserID     uuid.UUID `json:"user_id"`
-}
-
-func (q *Queries) CountUnreadMessages(ctx context.Context, arg CountUnreadMessagesParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countUnreadMessages, arg.ChatRoomID, arg.UserID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const deleteFriendshipBetween = `-- name: DeleteFriendshipBetween :exec
-DELETE FROM friendships
-WHERE (requester_id = $1 AND addressee_id = $2)
-   OR (requester_id = $2 AND addressee_id = $1)
-`
-
-type DeleteFriendshipBetweenParams struct {
-	UserID1 uuid.UUID `json:"user_id_1"`
-	UserID2 uuid.UUID `json:"user_id_2"`
-}
-
-func (q *Queries) DeleteFriendshipBetween(ctx context.Context, arg DeleteFriendshipBetweenParams) error {
-	_, err := q.db.Exec(ctx, deleteFriendshipBetween, arg.UserID1, arg.UserID2)
 	return err
 }

@@ -192,8 +192,8 @@ func (s *friendService) RemoveFriend(ctx context.Context, friendshipID, userID u
 	}
 
 	err = s.queries.DeleteFriendship(ctx, db.DeleteFriendshipParams{
-		ID:     friendshipID,
-		UserID: userID,
+		ID:          friendshipID,
+		RequesterID: userID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to remove friend")
@@ -210,9 +210,9 @@ func (s *friendService) RemoveFriend(ctx context.Context, friendshipID, userID u
 
 func (s *friendService) ListFriends(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]FriendResponse, error) {
 	rows, err := s.queries.ListFriends(ctx, db.ListFriendsParams{
-		UserID: userID,
-		Limit:  limit,
-		Offset: offset,
+		RequesterID: userID,
+		Limit:       limit,
+		Offset:      offset,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to list friends")
@@ -264,8 +264,8 @@ func (s *friendService) BlockUser(ctx context.Context, blockerID, blockedID uuid
 
 	// Remove any existing friendship between the two users.
 	_ = s.queries.DeleteFriendshipBetween(ctx, db.DeleteFriendshipBetweenParams{
-		UserID1: blockerID,
-		UserID2: blockedID,
+		RequesterID: blockerID,
+		AddresseeID: blockedID,
 	})
 
 	_, err := s.queries.CreateBlock(ctx, db.CreateBlockParams{
@@ -377,8 +377,8 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 
 	// Try to find existing DM room inside the lock.
 	room, err := qtx.FindDMRoom(ctx, db.FindDMRoomParams{
-		UserID1: userID,
-		UserID2: otherID,
+		UserID:   userID,
+		UserID_2: otherID,
 	})
 	if err == nil {
 		tx.Rollback(ctx)
@@ -509,15 +509,19 @@ func (s *chatService) ListMyRooms(ctx context.Context, userID uuid.UUID, limit, 
 	result := make([]ChatRoomSummary, len(rows))
 	for i, r := range rows {
 		var lastMsgAt *time.Time
-		if r.LastMessageAt.Valid {
-			lastMsgAt = &r.LastMessageAt.Time
+		if ts, ok := r.LastMessageAt.(pgtype.Timestamptz); ok && ts.Valid {
+			lastMsgAt = &ts.Time
+		}
+		var lastMsg string
+		if txt, ok := r.LastMessage.(pgtype.Text); ok {
+			lastMsg = textToString(txt)
 		}
 		result[i] = ChatRoomSummary{
 			ID:            r.ID,
 			Type:          r.Type,
 			Name:          textToString(r.Name),
 			UnreadCount:   r.UnreadCount,
-			LastMessage:   textToString(r.LastMessage),
+			LastMessage:   lastMsg,
 			LastMessageAt: lastMsgAt,
 		}
 	}
