@@ -9,12 +9,14 @@ COPY packages/ packages/
 COPY tooling/ tooling/
 RUN pnpm install --frozen-lockfile
 COPY apps/web/ apps/web/
-RUN pnpm --filter @mmp/web build
+# Build dependency packages first, then web
+RUN pnpm --filter @mmp/shared build && \
+    pnpm --filter @mmp/ws-client build && \
+    pnpm --filter @mmp/game-logic build && \
+    pnpm --filter @mmp/web build
 
-# Stage 2: Serve (local test only; production uses Cloudflare Pages)
+# Stage 2: Serve via Nginx
 FROM nginx:alpine
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/templates/default.conf.template
-ENV PUBLIC_DOMAIN=dev.mystery-place.com
-ENV CDN_DOMAIN=https://cdn.mystery-place.com
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

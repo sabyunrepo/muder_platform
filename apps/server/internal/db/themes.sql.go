@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -25,8 +26,8 @@ func (q *Queries) CountThemeCharacters(ctx context.Context, themeID uuid.UUID) (
 }
 
 const createTheme = `-- name: CreateTheme :one
-INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, config_json)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, config_json)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, status, config_json, version, published_at, created_at, updated_at
 `
 
@@ -40,6 +41,7 @@ type CreateThemeParams struct {
 	MaxPlayers  int32           `json:"max_players"`
 	DurationMin int32           `json:"duration_min"`
 	Price       int32           `json:"price"`
+	CoinPrice   int32           `json:"coin_price"`
 	ConfigJson  json.RawMessage `json:"config_json"`
 }
 
@@ -54,6 +56,7 @@ func (q *Queries) CreateTheme(ctx context.Context, arg CreateThemeParams) (Theme
 		arg.MaxPlayers,
 		arg.DurationMin,
 		arg.Price,
+		arg.CoinPrice,
 		arg.ConfigJson,
 	)
 	var i Theme
@@ -377,36 +380,39 @@ func (q *Queries) ListPublishedThemes(ctx context.Context, arg ListPublishedThem
 }
 
 const listThemesByCreator = `-- name: ListThemesByCreator :many
-SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, status, config_json, version, published_at, created_at, updated_at FROM themes WHERE creator_id = $1 ORDER BY created_at DESC
+SELECT id, title, status, min_players, max_players, coin_price, version, created_at
+FROM themes WHERE creator_id = $1 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListThemesByCreator(ctx context.Context, creatorID uuid.UUID) ([]Theme, error) {
+type ListThemesByCreatorRow struct {
+	ID         uuid.UUID `json:"id"`
+	Title      string    `json:"title"`
+	Status     string    `json:"status"`
+	MinPlayers int32     `json:"min_players"`
+	MaxPlayers int32     `json:"max_players"`
+	CoinPrice  int32     `json:"coin_price"`
+	Version    int32     `json:"version"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+func (q *Queries) ListThemesByCreator(ctx context.Context, creatorID uuid.UUID) ([]ListThemesByCreatorRow, error) {
 	rows, err := q.db.Query(ctx, listThemesByCreator, creatorID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Theme{}
+	items := []ListThemesByCreatorRow{}
 	for rows.Next() {
-		var i Theme
+		var i ListThemesByCreatorRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.CreatorID,
 			&i.Title,
-			&i.Slug,
-			&i.Description,
-			&i.CoverImage,
+			&i.Status,
 			&i.MinPlayers,
 			&i.MaxPlayers,
-			&i.DurationMin,
-			&i.Price,
 			&i.CoinPrice,
-			&i.Status,
-			&i.ConfigJson,
 			&i.Version,
-			&i.PublishedAt,
 			&i.CreatedAt,
-			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -420,8 +426,9 @@ func (q *Queries) ListThemesByCreator(ctx context.Context, creatorID uuid.UUID) 
 
 const updateTheme = `-- name: UpdateTheme :one
 UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5,
-  min_players = $6, max_players = $7, duration_min = $8, price = $9, updated_at = NOW()
-WHERE id = $1
+  min_players = $6, max_players = $7, duration_min = $8, price = $9, coin_price = $10,
+  version = version + 1, updated_at = NOW()
+WHERE id = $1 AND version = $11
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, status, config_json, version, published_at, created_at, updated_at
 `
 
@@ -435,6 +442,8 @@ type UpdateThemeParams struct {
 	MaxPlayers  int32       `json:"max_players"`
 	DurationMin int32       `json:"duration_min"`
 	Price       int32       `json:"price"`
+	CoinPrice   int32       `json:"coin_price"`
+	Version     int32       `json:"version"`
 }
 
 func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme, error) {
@@ -448,6 +457,8 @@ func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme
 		arg.MaxPlayers,
 		arg.DurationMin,
 		arg.Price,
+		arg.CoinPrice,
+		arg.Version,
 	)
 	var i Theme
 	err := row.Scan(
@@ -511,17 +522,18 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 
 const updateThemeConfigJson = `-- name: UpdateThemeConfigJson :one
 UPDATE themes SET config_json = $2, version = version + 1, updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND version = $3
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, status, config_json, version, published_at, created_at, updated_at
 `
 
 type UpdateThemeConfigJsonParams struct {
 	ID         uuid.UUID       `json:"id"`
 	ConfigJson json.RawMessage `json:"config_json"`
+	Version    int32           `json:"version"`
 }
 
 func (q *Queries) UpdateThemeConfigJson(ctx context.Context, arg UpdateThemeConfigJsonParams) (Theme, error) {
-	row := q.db.QueryRow(ctx, updateThemeConfigJson, arg.ID, arg.ConfigJson)
+	row := q.db.QueryRow(ctx, updateThemeConfigJson, arg.ID, arg.ConfigJson, arg.Version)
 	var i Theme
 	err := row.Scan(
 		&i.ID,

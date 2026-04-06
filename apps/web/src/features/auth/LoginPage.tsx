@@ -1,7 +1,28 @@
-import { Navigate } from "react-router";
+import { useState } from "react";
+import { Navigate, useNavigate } from "react-router";
 import { LogIn } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { getOAuthUrl } from "@/features/auth/oauth-urls";
+import { api } from "@/services/api";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface TokenPair {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}
+
+interface UserResponse {
+  id: string;
+  nickname: string;
+  email: string;
+  profile_image: string | null;
+  role: string;
+  provider: string;
+}
 
 // ---------------------------------------------------------------------------
 // 컴포넌트
@@ -9,10 +30,18 @@ import { getOAuthUrl } from "@/features/auth/oauth-urls";
 
 function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const navigate = useNavigate();
+
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // 이미 로그인 상태면 로비로 이동
   if (isAuthenticated) {
-    return <Navigate to="/lobby" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const handleKakaoLogin = () => {
@@ -23,18 +52,109 @@ function LoginPage() {
     window.location.href = getOAuthUrl("google");
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      const endpoint = mode === "register" ? "/v1/auth/register" : "/v1/auth/login";
+      const body = mode === "register"
+        ? { email, password, nickname }
+        : { email, password };
+
+      const tokens = await api.post<TokenPair>(endpoint, body);
+      useAuthStore.getState().setTokens(tokens.access_token, tokens.refresh_token);
+
+      const user = await api.get<UserResponse>("/v1/auth/me");
+      useAuthStore.getState().setUser({
+        id: user.id,
+        nickname: user.nickname,
+        email: user.email,
+        profileImage: user.profile_image,
+        role: user.role as "user" | "creator" | "admin",
+        provider: user.provider,
+      });
+
+      navigate("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "로그인에 실패했습니다");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
       <div className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 p-8 shadow-2xl">
         {/* 로고 + 제목 */}
-        <div className="mb-8 flex flex-col items-center gap-3">
+        <div className="mb-6 flex flex-col items-center gap-3">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10">
             <LogIn className="h-7 w-7 text-amber-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-100">로그인</h1>
+          <h1 className="text-2xl font-bold text-slate-100">
+            {mode === "login" ? "로그인" : "회원가입"}
+          </h1>
           <p className="text-sm text-slate-400">
             Murder Mystery Platform에 오신 것을 환영합니다
           </p>
+        </div>
+
+        {/* 이메일/비밀번호 폼 */}
+        <form onSubmit={handleSubmit} className="mb-6 flex flex-col gap-3">
+          {mode === "register" && (
+            <input
+              type="text"
+              placeholder="닉네임"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              required
+              minLength={2}
+              maxLength={30}
+              className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+            />
+          )}
+          <input
+            type="email"
+            placeholder="이메일"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+          />
+          <input
+            type="password"
+            placeholder="비밀번호"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={4}
+            className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+          />
+          {error && (
+            <p className="text-sm text-red-400">{error}</p>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
+            className="text-sm text-slate-400 hover:text-amber-400"
+          >
+            {mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
+          </button>
+        </form>
+
+        {/* 구분선 */}
+        <div className="mb-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-700" />
+          <span className="text-xs text-slate-500">또는</span>
+          <div className="h-px flex-1 bg-slate-700" />
         </div>
 
         {/* OAuth 버튼 */}
@@ -45,7 +165,6 @@ function LoginPage() {
             onClick={handleKakaoLogin}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] px-4 py-3 text-sm font-semibold text-[#191919] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
           >
-            {/* 카카오 심볼 */}
             <svg
               className="h-5 w-5"
               viewBox="0 0 24 24"
@@ -63,7 +182,6 @@ function LoginPage() {
             onClick={handleGoogleLogin}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-900 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
           >
-            {/* 구글 심볼 */}
             <svg
               className="h-5 w-5"
               viewBox="0 0 24 24"

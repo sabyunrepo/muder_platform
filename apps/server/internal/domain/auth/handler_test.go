@@ -38,6 +38,14 @@ func (m *mockService) GetCurrentUser(ctx context.Context, userID uuid.UUID) (*Us
 	return m.getCurrentFn(ctx, userID)
 }
 
+func (m *mockService) Login(ctx context.Context, email, password string) (*TokenPair, error) {
+	return nil, nil
+}
+
+func (m *mockService) Register(ctx context.Context, email, password, nickname string) (*TokenPair, error) {
+	return nil, nil
+}
+
 func jsonBody(t *testing.T, v any) *bytes.Buffer {
 	t.Helper()
 	buf := new(bytes.Buffer)

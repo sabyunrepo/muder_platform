@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
@@ -35,6 +36,8 @@ type UserResponse struct {
 // Service defines the auth domain operations.
 type Service interface {
 	OAuthCallback(ctx context.Context, provider, code, nickname string) (*TokenPair, error)
+	Register(ctx context.Context, email, password, nickname string) (*TokenPair, error)
+	Login(ctx context.Context, email, password string) (*TokenPair, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*TokenPair, error)
 	Logout(ctx context.Context, userID uuid.UUID) error
 	GetCurrentUser(ctx context.Context, userID uuid.UUID) (*UserResponse, error)
@@ -252,6 +255,68 @@ func (s *service) revokeAllTokens(ctx context.Context, userID string) {
 			break
 		}
 	}
+}
+
+// Register creates a new user with email/password.
+func (s *service) Register(ctx context.Context, email, password, nickname string) (*TokenPair, error) {
+	if email == "" || password == "" || nickname == "" {
+		return nil, apperror.BadRequest("email, password, and nickname are required")
+	}
+
+	// Check if email already exists.
+	_, err := s.queries.GetUserByEmail(ctx, email)
+	if err == nil {
+		return nil, apperror.Conflict("email already registered")
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		s.logger.Error().Err(err).Msg("failed to check existing user")
+		return nil, apperror.Internal("failed to check existing user")
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to hash password")
+		return nil, apperror.Internal("failed to hash password")
+	}
+
+	user, err := s.queries.CreateUserWithPassword(ctx, db.CreateUserWithPasswordParams{
+		Nickname:     nickname,
+		Email:        email,
+		PasswordHash: string(hash),
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to create user")
+		return nil, apperror.Internal("failed to create user")
+	}
+
+	s.logger.Info().Str("user_id", user.ID.String()).Msg("new user registered with password")
+	return s.generateTokenPair(ctx, user.ID, user.Role)
+}
+
+// Login authenticates a user with email/password.
+func (s *service) Login(ctx context.Context, email, password string) (*TokenPair, error) {
+	if email == "" || password == "" {
+		return nil, apperror.BadRequest("email and password are required")
+	}
+
+	user, err := s.queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.Unauthorized("invalid email or password")
+		}
+		s.logger.Error().Err(err).Msg("failed to look up user by email")
+		return nil, apperror.Internal("failed to look up user")
+	}
+
+	if !user.PasswordHash.Valid {
+		return nil, apperror.Unauthorized("invalid email or password")
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(password)); err != nil {
+		return nil, apperror.Unauthorized("invalid email or password")
+	}
+
+	return s.generateTokenPair(ctx, user.ID, user.Role)
 }
 
 // mapUserResponse converts a db.User to a public UserResponse.

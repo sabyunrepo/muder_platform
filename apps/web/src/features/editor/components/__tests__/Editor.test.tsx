@@ -448,7 +448,7 @@ describe("CharactersTab", () => {
     });
 
     render(<CharactersTab themeId="theme-1" />);
-    expect(screen.getByText("등록된 캐릭터가 없습니다")).toBeDefined();
+    expect(screen.getByText("등장인물 없음")).toBeDefined();
   });
 
   it("캐릭터 이름을 렌더링한다", () => {

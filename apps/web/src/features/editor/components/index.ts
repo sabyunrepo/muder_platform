@@ -1,6 +1,9 @@
 export { EditorDashboard } from "./EditorDashboard";
 export { ThemeEditor } from "./ThemeEditor";
+export { EditorLayout } from "./EditorLayout";
 export { PublishBar } from "./PublishBar";
+export { SaveIndicator } from "./SaveIndicator";
+export { SectionDivider } from "./SectionDivider";
 export { OverviewTab } from "./OverviewTab";
 export { CharactersTab } from "./CharactersTab";
 export { CharacterForm } from "./CharacterForm";

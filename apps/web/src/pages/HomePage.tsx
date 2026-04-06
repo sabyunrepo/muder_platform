@@ -1,7 +1,10 @@
 import { Search } from "lucide-react";
+import { useNavigate } from "react-router";
 import { Layout } from "@/shared/components/Layout";
 
 export default function HomePage() {
+  const navigate = useNavigate();
+
   return (
     <Layout>
       <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center gap-6">
@@ -16,6 +19,7 @@ export default function HomePage() {
         </p>
         <button
           type="button"
+          onClick={() => navigate("/login")}
           className="mt-4 rounded-lg bg-amber-500 px-6 py-3 font-semibold text-slate-950 transition-colors hover:bg-amber-400"
         >
           시작하기

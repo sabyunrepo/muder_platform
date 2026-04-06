@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 
@@ -132,9 +132,11 @@ function CategorySection({
 
 export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   const configJson = theme.config_json ?? {};
-  const serverModules = (
-    Array.isArray(configJson.modules) ? configJson.modules : []
-  ) as string[];
+  const serverModules = useMemo(
+    () => (Array.isArray(configJson.modules) ? (configJson.modules as string[]) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [JSON.stringify(configJson.modules)],
+  );
 
   const [selectedModules, setSelectedModules] = useState<string[]>(serverModules);
   const updateConfig = useUpdateConfigJson(themeId);
@@ -142,7 +144,7 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   // Sync local state when server data changes (e.g. after save)
   useEffect(() => {
     setSelectedModules(serverModules);
-  }, [JSON.stringify(serverModules)]);
+  }, [serverModules]);
 
   const isDirty = JSON.stringify(selectedModules.slice().sort()) !== JSON.stringify(serverModules.slice().sort());
 
@@ -236,7 +238,7 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
             onToggle={handleToggle}
             onSelectAll={handleSelectAll}
             onDeselectAll={handleDeselectAll}
-            isPending={false}
+            isPending={updateConfig.isPending}
           />
         ))}
       </div>
