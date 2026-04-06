@@ -120,7 +120,7 @@ LEFT JOIN LATERAL (
         (ARRAY_AGG(cm.content ORDER BY cm.id DESC))[1] AS last_message,
         MAX(cm.created_at) AS last_message_at
     FROM chat_messages cm
-    WHERE cm.chat_room_id = cr.id
+    WHERE cm.chat_room_id = cr.id AND cm.deleted_at IS NULL
 ) s ON true
 WHERE m.user_id = $1
 ORDER BY s.last_message_at DESC NULLS LAST
@@ -131,8 +131,8 @@ LIMIT $2 OFFSET $3;
 -- ═══════════════════════��═══════════════════════════��═══════════════
 
 -- name: AddChatRoomMember :exec
-INSERT INTO chat_room_members (chat_room_id, user_id)
-VALUES ($1, $2)
+INSERT INTO chat_room_members (chat_room_id, user_id, role)
+VALUES (@chat_room_id, @user_id, @role)
 ON CONFLICT DO NOTHING;
 
 -- name: RemoveChatRoomMember :exec
@@ -160,15 +160,15 @@ WHERE chat_room_id = $1 AND user_id = $2;
 -- ══���════════════════════════════════���═══════════════════════════════
 
 -- name: CreateChatMessage :one
-INSERT INTO chat_messages (chat_room_id, sender_id, content, message_type)
-VALUES ($1, $2, $3, $4)
+INSERT INTO chat_messages (chat_room_id, sender_id, content, message_type, metadata)
+VALUES (@chat_room_id, @sender_id, @content, @message_type, @metadata)
 RETURNING *;
 
 -- name: ListChatMessages :many
 SELECT cm.*, u.nickname AS sender_nickname, u.avatar_url AS sender_avatar
 FROM chat_messages cm
 JOIN users u ON cm.sender_id = u.id
-WHERE cm.chat_room_id = $1
+WHERE cm.chat_room_id = $1 AND cm.deleted_at IS NULL
 ORDER BY cm.id ASC
 LIMIT $2 OFFSET $3;
 
@@ -180,4 +180,57 @@ SELECT COUNT(*) FROM chat_messages cm
 JOIN chat_room_members crm ON cm.chat_room_id = crm.chat_room_id
 WHERE crm.chat_room_id = $1
   AND crm.user_id = $2
-  AND cm.created_at > crm.last_read_at;
+  AND cm.created_at > crm.last_read_at
+  AND cm.deleted_at IS NULL;
+
+-- ═══════════════════════════════════════════════════════════════════
+-- New queries for Phase 7.5
+-- ═══════════════════════════════════════════════════════════════════
+
+-- name: SoftDeleteChatMessage :exec
+UPDATE chat_messages SET deleted_at = NOW()
+WHERE id = $1 AND sender_id = $2 AND deleted_at IS NULL;
+
+-- name: GetChatRoomMemberRole :one
+SELECT role FROM chat_room_members
+WHERE chat_room_id = $1 AND user_id = $2;
+
+-- name: UpdateChatRoomMemberRole :exec
+UPDATE chat_room_members SET role = $3
+WHERE chat_room_id = $1 AND user_id = $2;
+
+-- name: UpdateChatRoomName :one
+UPDATE chat_rooms SET name = $2
+WHERE id = $1
+RETURNING *;
+
+-- name: ListChatMessagesCursor :many
+SELECT cm.*, u.nickname AS sender_nickname, u.avatar_url AS sender_avatar
+FROM chat_messages cm
+JOIN users u ON cm.sender_id = u.id
+WHERE cm.chat_room_id = $1 AND cm.id < $2 AND cm.deleted_at IS NULL
+ORDER BY cm.id DESC
+LIMIT $3;
+
+-- name: CountTotalUnreadMessages :one
+SELECT COALESCE(SUM(cnt), 0)::bigint AS total_unread
+FROM (
+    SELECT COUNT(*) AS cnt
+    FROM chat_messages cm
+    JOIN chat_room_members crm ON cm.chat_room_id = crm.chat_room_id
+    WHERE crm.user_id = $1
+      AND cm.created_at > crm.last_read_at
+      AND cm.deleted_at IS NULL
+) sub;
+
+-- name: SearchFriendsByNickname :many
+SELECT u.id, u.nickname, u.avatar_url, u.role, f.id AS friendship_id, f.created_at
+FROM friendships f
+JOIN users u ON (
+    CASE WHEN f.requester_id = $1 THEN f.addressee_id ELSE f.requester_id END = u.id
+)
+WHERE (f.requester_id = $1 OR f.addressee_id = $1)
+  AND f.status = 'ACCEPTED'
+  AND u.nickname ILIKE '%' || $2 || '%'
+ORDER BY u.nickname
+LIMIT $3;

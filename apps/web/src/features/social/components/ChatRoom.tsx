@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, MessageCircle } from "lucide-react";
+import { Send, MessageCircle, Gamepad2, Trophy } from "lucide-react";
 import { Button, Spinner, EmptyState } from "@/shared/components/ui";
 import {
   useChatMessages,
@@ -8,6 +8,8 @@ import {
 } from "@/features/social/api";
 import type { ChatMessageResponse } from "@/features/social/api";
 import { useAuthStore } from "@/stores/authStore";
+import { useConnectionStore } from "@/stores/connectionStore";
+import { useSocialStore, selectRoomTypingUsers } from "@/stores/socialStore";
 import { MAX_MESSAGE_LENGTH } from "@/features/social/constants";
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,52 @@ function MessageBubble({ message, isMine }: MessageBubbleProps) {
     return (
       <div className="py-1 text-center text-xs italic text-slate-500">
         {message.content}
+      </div>
+    );
+  }
+
+  // Game invite card
+  if (message.message_type === "GAME_INVITE") {
+    return (
+      <div className={`flex flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}>
+        {!isMine && (
+          <span className={`text-xs font-semibold ${getNicknameColor(message.sender_nickname)}`}>
+            {message.sender_nickname}
+          </span>
+        )}
+        <div className="max-w-[75%] rounded-xl border border-amber-700/50 bg-amber-900/20 p-3">
+          <div className="flex items-center gap-2 text-amber-400">
+            <Gamepad2 className="h-4 w-4" />
+            <span className="text-sm font-semibold">게임 초대</span>
+          </div>
+          <p className="mt-1 text-sm text-slate-300">{message.content}</p>
+        </div>
+        <span className="text-[10px] text-slate-600">
+          {formatMessageTime(message.created_at)}
+        </span>
+      </div>
+    );
+  }
+
+  // Game result card
+  if (message.message_type === "GAME_RESULT") {
+    return (
+      <div className={`flex flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}>
+        {!isMine && (
+          <span className={`text-xs font-semibold ${getNicknameColor(message.sender_nickname)}`}>
+            {message.sender_nickname}
+          </span>
+        )}
+        <div className="max-w-[75%] rounded-xl border border-emerald-700/50 bg-emerald-900/20 p-3">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <Trophy className="h-4 w-4" />
+            <span className="text-sm font-semibold">게임 결과</span>
+          </div>
+          <p className="mt-1 text-sm text-slate-300">{message.content}</p>
+        </div>
+        <span className="text-[10px] text-slate-600">
+          {formatMessageTime(message.created_at)}
+        </span>
       </div>
     );
   }
@@ -86,8 +134,11 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
   const [text, setText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentUser = useAuthStore((s) => s.user);
+  const socialClient = useConnectionStore((s) => s.socialClient);
+  const typingUsers = useSocialStore(selectRoomTypingUsers(roomId));
   const { data: messages, isLoading } = useChatMessages(roomId);
   const sendMessage = useSendMessage(roomId);
   const markAsRead = useMarkAsRead(roomId);
@@ -104,6 +155,16 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
     }
   }, [messages]);
 
+  // Send typing indicator (debounced)
+  const sendTypingEvent = useCallback(() => {
+    if (!socialClient) return;
+    if (typingTimerRef.current) return; // Already sent recently
+    socialClient.send("chat:typing" as any, { room_id: roomId });
+    typingTimerRef.current = setTimeout(() => {
+      typingTimerRef.current = null;
+    }, 300);
+  }, [socialClient, roomId]);
+
   // Auto-resize textarea
   const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
@@ -114,7 +175,11 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
     const el = e.target;
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-  }, []);
+    // Send typing indicator
+    if (value.trim()) {
+      sendTypingEvent();
+    }
+  }, [sendTypingEvent]);
 
   function handleSend() {
     const trimmed = text.trim();
@@ -176,6 +241,15 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
           </div>
         )}
       </div>
+
+      {/* Typing indicator */}
+      {typingUsers.length > 0 && (
+        <div className="px-4 py-1">
+          <span className="text-xs text-slate-500 animate-pulse">
+            입력 중...
+          </span>
+        </div>
+      )}
 
       {/* Input bar */}
       <div className="border-t border-slate-700 px-4 py-3">

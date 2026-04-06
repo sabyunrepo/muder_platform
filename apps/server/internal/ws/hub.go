@@ -15,6 +15,9 @@ const (
 	reconnectBufferSize = 1000
 )
 
+// compile-time interface check
+var _ ClientHub = (*Hub)(nil)
+
 // Hub manages all connected WebSocket clients, organized by game session.
 // It runs a single event-loop goroutine that processes register/unregister
 // events, keeping the internal maps free of lock contention.

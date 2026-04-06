@@ -13,9 +13,11 @@ import {
   BadgeDollarSign,
   BarChart3,
   CircleDollarSign,
+  MessageCircle,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
+import { useSocialStore, selectTotalUnread } from "@/stores/socialStore";
 
 // ---------------------------------------------------------------------------
 // 사이드바 메뉴 항목 타입
@@ -38,6 +40,7 @@ const menuSections: MenuSection[] = [
   {
     items: [
       { to: "/lobby", label: "로비", icon: Gamepad2 },
+      { to: "/social", label: "소셜", icon: MessageCircle },
       { to: "/shop", label: "상점", icon: Coins },
       { to: "/my-themes", label: "내 테마", icon: Library },
     ],
@@ -94,6 +97,7 @@ export function Sidebar() {
   const user = useAuthStore((s) => s.user);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const totalUnread = useSocialStore(selectTotalUnread);
 
   const userRole = user?.role ?? "user";
 
@@ -162,6 +166,11 @@ export function Sidebar() {
                   >
                     <item.icon className="h-5 w-5" />
                     {item.label}
+                    {item.to === "/social" && totalUnread > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-bold text-slate-900">
+                        {totalUnread > 99 ? "99+" : totalUnread}
+                      </span>
+                    )}
                   </NavLink>
                 ))}
               </div>

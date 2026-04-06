@@ -46,6 +46,7 @@ const (
 	ErrChatRoomNotFound       = "CHAT_ROOM_NOT_FOUND"
 	ErrChatNotMember          = "CHAT_NOT_MEMBER"
 	ErrChatInvalidMsgType     = "CHAT_INVALID_MESSAGE_TYPE"
+	ErrChatBlocked            = "CHAT_BLOCKED"
 
 	// Payment errors
 	ErrPaymentDuplicate          = "PAYMENT_DUPLICATE"

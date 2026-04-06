@@ -28,8 +28,8 @@ interface ChatReadPayload {
 }
 
 interface ChatTypingPayload {
-  chat_room_id: string;
-  user_ids: string[];
+  room_id: string;
+  user_id: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,9 +39,11 @@ interface ChatTypingPayload {
 const SOCIAL_EVENT = {
   FRIEND_ONLINE: "friend:online",
   FRIEND_OFFLINE: "friend:offline",
+  FRIEND_REQUEST: "friend:request",
+  FRIEND_ACCEPTED: "friend:accepted",
   CHAT_MESSAGE: "chat:message",
-  CHAT_READ: "chat:read",
-  CHAT_TYPING: "chat:typing",
+  CHAT_READ_RECEIPT: "chat:read_receipt",
+  CHAT_TYPING_INDICATOR: "chat:typing_indicator",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -115,29 +117,52 @@ export function useSocialSync(): void {
       },
     );
 
-    // chat:read → invalidate room queries
+    // chat:read_receipt → invalidate room queries
     subscribe<ChatReadPayload>(
       client,
-      SOCIAL_EVENT.CHAT_READ,
+      SOCIAL_EVENT.CHAT_READ_RECEIPT,
       (payload) => {
-        queryClient.invalidateQueries({
-          queryKey: socialKeys.chatRoom(payload.chat_room_id),
-        });
         queryClient.invalidateQueries({
           queryKey: socialKeys.chatRooms(),
         });
       },
     );
 
-    // chat:typing → update typing indicator
+    // chat:typing_indicator → update typing indicator
     subscribe<ChatTypingPayload>(
       client,
-      SOCIAL_EVENT.CHAT_TYPING,
+      SOCIAL_EVENT.CHAT_TYPING_INDICATOR,
       (payload) => {
         actionsRef.current.setTyping(
-          payload.chat_room_id,
-          payload.user_ids,
+          payload.room_id,
+          [payload.user_id],
         );
+        // Auto-clear typing after 3 seconds
+        setTimeout(() => {
+          actionsRef.current.setTyping(payload.room_id, []);
+        }, 3000);
+      },
+    );
+
+    // friend:request → invalidate pending requests
+    subscribe<Record<string, unknown>>(
+      client,
+      SOCIAL_EVENT.FRIEND_REQUEST,
+      () => {
+        queryClient.invalidateQueries({
+          queryKey: socialKeys.pending(),
+        });
+      },
+    );
+
+    // friend:accepted → invalidate friends list
+    subscribe<Record<string, unknown>>(
+      client,
+      SOCIAL_EVENT.FRIEND_ACCEPTED,
+      () => {
+        queryClient.invalidateQueries({
+          queryKey: socialKeys.friends(),
+        });
       },
     );
 

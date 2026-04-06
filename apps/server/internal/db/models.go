@@ -13,12 +13,14 @@ import (
 )
 
 type ChatMessage struct {
-	ID          int64     `json:"id"`
-	ChatRoomID  uuid.UUID `json:"chat_room_id"`
-	SenderID    uuid.UUID `json:"sender_id"`
-	Content     string    `json:"content"`
-	MessageType string    `json:"message_type"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          int64              `json:"id"`
+	ChatRoomID  uuid.UUID          `json:"chat_room_id"`
+	SenderID    uuid.UUID          `json:"sender_id"`
+	Content     string             `json:"content"`
+	MessageType string             `json:"message_type"`
+	CreatedAt   time.Time          `json:"created_at"`
+	Metadata    json.RawMessage    `json:"metadata"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type ChatRoom struct {
@@ -27,6 +29,7 @@ type ChatRoom struct {
 	Name      pgtype.Text `json:"name"`
 	CreatedBy uuid.UUID   `json:"created_by"`
 	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 type ChatRoomMember struct {
@@ -34,6 +37,7 @@ type ChatRoomMember struct {
 	UserID     uuid.UUID `json:"user_id"`
 	LastReadAt time.Time `json:"last_read_at"`
 	JoinedAt   time.Time `json:"joined_at"`
+	Role       string    `json:"role"`
 }
 
 type CoinPackage struct {

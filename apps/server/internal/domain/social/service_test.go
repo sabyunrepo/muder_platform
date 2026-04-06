@@ -810,8 +810,8 @@ func TestTextToString(t *testing.T) {
 // ===========================================================================
 
 func TestValidMessageTypes(t *testing.T) {
-	valid := []string{"TEXT", "SYSTEM", "GAME_INVITE", "GAME_RESULT"}
-	invalid := []string{"INVALID", "text", "", "IMAGE", "VIDEO"}
+	valid := []string{"TEXT", "IMAGE", "SYSTEM", "GAME_INVITE", "GAME_RESULT"}
+	invalid := []string{"INVALID", "text", "", "VIDEO"}
 
 	for _, mt := range valid {
 		if !validMessageTypes[mt] {
