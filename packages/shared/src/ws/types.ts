@@ -41,6 +41,9 @@ export const WsEventType = {
   // Module
   MODULE_EVENT: "module:event",
   MODULE_STATE: "module:state",
+
+  // Sound
+  SOUND_PLAY: "sound:play",
 } as const;
 
 export type WsEventType = (typeof WsEventType)[keyof typeof WsEventType];

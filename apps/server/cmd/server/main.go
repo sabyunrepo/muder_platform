@@ -22,6 +22,7 @@ import (
 	"github.com/mmp-platform/server/internal/domain/profile"
 	"github.com/mmp-platform/server/internal/domain/room"
 	"github.com/mmp-platform/server/internal/domain/social"
+	"github.com/mmp-platform/server/internal/domain/sound"
 	"github.com/mmp-platform/server/internal/domain/theme"
 	"github.com/mmp-platform/server/internal/domain/voice"
 	"github.com/mmp-platform/server/internal/eventbus"
@@ -190,6 +191,10 @@ func main() {
 	wsHub := ws.NewHub(wsRouter, ws.NoopPubSub{}, logger)
 	defer wsHub.Stop()
 	logger.Info().Msg("websocket hub started")
+
+	// 10.1. Sound WS Handler
+	soundWSHandler := sound.NewWSHandler(wsHub, logger)
+	wsRouter.Handle("sound", soundWSHandler.Handle)
 
 	// 11. HTTP Router
 	r := chi.NewRouter()

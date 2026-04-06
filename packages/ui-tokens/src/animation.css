@@ -1,0 +1,115 @@
+/*
+ * MMP v3 — Animation Design Tokens
+ * Easing curves, durations, and keyframes shared across web and mobile.
+ */
+
+@theme {
+  /* Easing curves */
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-stagger: 50ms;
+
+  /* Keyframes: fade-in */
+  --animate-fade-in: fade-in var(--duration-normal) var(--ease-smooth);
+
+  /* Keyframes: slide-in-top */
+  --animate-slide-in-top: slide-in-top var(--duration-normal) var(--ease-spring);
+
+  /* Keyframes: slide-out-top */
+  --animate-slide-out-top: slide-out-top var(--duration-normal) var(--ease-exit);
+
+  /* Keyframes: fade-slide-up (player card enter) */
+  --animate-fade-slide-up: fade-slide-up var(--duration-normal) var(--ease-spring);
+
+  /* Keyframes: fade-slide-right (player card exit) */
+  --animate-fade-slide-right: fade-slide-right var(--duration-fast) var(--ease-exit);
+
+  /* Keyframes: scale-pulse (countdown) */
+  --animate-scale-pulse: scale-pulse var(--duration-slow) var(--ease-spring);
+
+  /* Duration: slower (for reveal sequences) */
+  --duration-slower: 1s;
+
+  /* Keyframes: glow-expand (reveal line) */
+  --animate-glow-expand: glow-expand var(--duration-slower) var(--ease-smooth);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-top {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-out-top {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-slide-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes scale-pulse {
+  0% {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes glow-expand {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}

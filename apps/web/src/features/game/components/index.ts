@@ -9,3 +9,4 @@ export { PhaseTransition } from "./PhaseTransition";
 export { GameChat } from "./GameChat";
 export { ChatMessage } from "./ChatMessage";
 export type { ChatMessageProps } from "./ChatMessage";
+export { NetworkOverlay } from "./NetworkOverlay";
