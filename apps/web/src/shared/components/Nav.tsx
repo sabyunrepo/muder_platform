@@ -4,6 +4,7 @@ import { Menu, User, LogOut, ChevronDown } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 import { useAuth } from "@/hooks/useAuth";
+import { CoinBalance } from "@/features/payment/components/CoinBalance";
 
 // ---------------------------------------------------------------------------
 // 상단 네비게이션 바
@@ -34,8 +35,10 @@ export function Nav() {
         </Link>
       </div>
 
-      {/* 우측: 유저 메뉴 또는 로그인 링크 */}
-      <div className="relative">
+      {/* 우측: 코인 잔액 + 유저 메뉴 또는 로그인 링크 */}
+      <div className="flex items-center gap-3">
+        {isAuthenticated && user && <CoinBalance />}
+        <div className="relative">
         {isAuthenticated && user ? (
           <>
             <button
@@ -100,6 +103,7 @@ export function Nav() {
             로그인
           </Link>
         )}
+        </div>
       </div>
     </header>
   );
