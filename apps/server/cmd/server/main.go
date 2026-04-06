@@ -186,15 +186,28 @@ func main() {
 	creatorHandler := creator.NewHandler(creatorSvc)
 	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
 
-	// 10. WebSocket Hub
+	// 10. WebSocket Hub (Game)
 	wsRouter := ws.NewRouter(logger)
 	wsHub := ws.NewHub(wsRouter, ws.NoopPubSub{}, logger)
 	defer wsHub.Stop()
-	logger.Info().Msg("websocket hub started")
+	logger.Info().Msg("game websocket hub started")
 
 	// 10.1. Sound WS Handler
 	soundWSHandler := sound.NewWSHandler(wsHub, logger)
 	wsRouter.Handle("sound", soundWSHandler.Handle)
+
+	// 10.2. Social WebSocket Hub (separate from game)
+	socialRouter := ws.NewRouter(logger)
+	socialHub := ws.NewSocialHub(socialRouter, logger)
+	defer socialHub.Stop()
+	logger.Info().Msg("social websocket hub started")
+
+	// 10.3. Social WS Handler + Presence
+	presenceProvider := social.NewPresenceProvider(redisCache.Client())
+	socialWSHandler := social.NewSocialWSHandler(socialHub, chatSvc, friendSvc, presenceProvider, queries, logger)
+	socialRouter.Handle("chat", socialWSHandler.HandleChat)
+	socialRouter.Handle("friend", socialWSHandler.HandleFriend)
+	socialRouter.Handle("presence", socialWSHandler.HandlePresence)
 
 	// 11. HTTP Router
 	r := chi.NewRouter()
@@ -233,7 +246,13 @@ func main() {
 	}
 	gameUpgrade := ws.UpgradeHandler(wsHub, ws.DefaultPlayerIDExtractor, wsCfg, logger)
 	r.Get("/ws/game", gameUpgrade)
-	r.Get("/ws/social", gameUpgrade)
+
+	socialExtractor := ws.JWTPlayerIDExtractor([]byte(cfg.JWTSecret))
+	if cfg.IsDevelopment() {
+		socialExtractor = ws.DefaultPlayerIDExtractor
+	}
+	socialUpgrade := ws.UpgradeHandler(socialHub, socialExtractor, wsCfg, logger)
+	r.Get("/ws/social", socialUpgrade)
 
 	// 16. JWT auth config
 	jwtCfg := middleware.JWTConfig{Secret: []byte(cfg.JWTSecret)}

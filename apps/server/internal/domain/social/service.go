@@ -21,6 +21,7 @@ import (
 // validMessageTypes defines the allowed message types for chat messages.
 var validMessageTypes = map[string]bool{
 	"TEXT":        true,
+	"IMAGE":       true,
 	"SYSTEM":      true,
 	"GAME_INVITE": true,
 	"GAME_RESULT": true,
@@ -359,6 +360,19 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 		return nil, apperror.BadRequest("cannot create DM room with yourself")
 	}
 
+	// Block check: cannot DM a blocked/blocking user.
+	blocked, err := s.queries.IsBlocked(ctx, db.IsBlockedParams{
+		BlockerID: userID,
+		BlockedID: otherID,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to check block status for DM")
+		return nil, apperror.Internal("failed to create DM room")
+	}
+	if blocked {
+		return nil, apperror.New(apperror.ErrChatBlocked, http.StatusForbidden, "cannot create DM with blocked user")
+	}
+
 	// Acquire advisory lock to prevent duplicate DM rooms for the same pair.
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -402,6 +416,7 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 	if err := qtx.AddChatRoomMember(ctx, db.AddChatRoomMemberParams{
 		ChatRoomID: room.ID,
 		UserID:     userID,
+		Role:       "MEMBER",
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("failed to add member to DM room")
 		return nil, apperror.Internal("failed to create DM room")
@@ -410,6 +425,7 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 	if err := qtx.AddChatRoomMember(ctx, db.AddChatRoomMemberParams{
 		ChatRoomID: room.ID,
 		UserID:     otherID,
+		Role:       "MEMBER",
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("failed to add member to DM room")
 		return nil, apperror.Internal("failed to create DM room")
@@ -458,10 +474,11 @@ func (s *chatService) CreateGroupRoom(ctx context.Context, creatorID uuid.UUID, 
 		return nil, apperror.Internal("failed to create group room")
 	}
 
-	// Add creator as member.
+	// Add creator as OWNER.
 	if err := qtx.AddChatRoomMember(ctx, db.AddChatRoomMemberParams{
 		ChatRoomID: room.ID,
 		UserID:     creatorID,
+		Role:       "OWNER",
 	}); err != nil {
 		s.logger.Error().Err(err).Msg("failed to add creator to group room")
 		return nil, apperror.Internal("failed to create group room")
@@ -475,6 +492,7 @@ func (s *chatService) CreateGroupRoom(ctx context.Context, creatorID uuid.UUID, 
 		if err := qtx.AddChatRoomMember(ctx, db.AddChatRoomMemberParams{
 			ChatRoomID: room.ID,
 			UserID:     memberID,
+			Role:       "MEMBER",
 		}); err != nil {
 			s.logger.Error().Err(err).Msg("failed to add member to group room")
 			return nil, apperror.Internal("failed to create group room")
@@ -547,6 +565,35 @@ func (s *chatService) SendMessage(ctx context.Context, roomID, senderID uuid.UUI
 		return nil, err
 	}
 
+	// Block check for DM rooms: cannot send to blocked/blocking user.
+	room, err := s.queries.GetChatRoom(ctx, roomID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to get chat room for block check")
+		return nil, apperror.Internal("failed to send message")
+	}
+	if room.Type == "DM" {
+		members, err := s.queries.ListChatRoomMembers(ctx, roomID)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to list members for block check")
+			return nil, apperror.Internal("failed to send message")
+		}
+		for _, m := range members {
+			if m.UserID != senderID {
+				blocked, err := s.queries.IsBlocked(ctx, db.IsBlockedParams{
+					BlockerID: senderID,
+					BlockedID: m.UserID,
+				})
+				if err != nil {
+					s.logger.Error().Err(err).Msg("failed to check block status")
+					return nil, apperror.Internal("failed to send message")
+				}
+				if blocked {
+					return nil, apperror.New(apperror.ErrChatBlocked, http.StatusForbidden, "cannot send message to blocked user")
+				}
+			}
+		}
+	}
+
 	content = strings.TrimSpace(content)
 	if content == "" {
 		return nil, apperror.BadRequest("message content is required")
@@ -567,6 +614,7 @@ func (s *chatService) SendMessage(ctx context.Context, roomID, senderID uuid.UUI
 		SenderID:    senderID,
 		Content:     content,
 		MessageType: messageType,
+		Metadata:    []byte("{}"),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create chat message")

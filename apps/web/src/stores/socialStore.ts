@@ -119,3 +119,11 @@ export const selectUnreadCount = (roomId: string) => (s: SocialState) =>
 
 export const selectRoomTypingUsers = (roomId: string) => (s: SocialState) =>
   s.typingUsers.get(roomId) ?? [];
+
+export const selectTotalUnread = (s: SocialState) => {
+  let total = 0;
+  for (const count of s.unreadCounts.values()) {
+    total += count;
+  }
+  return total;
+};

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
@@ -61,9 +62,39 @@ func DefaultPlayerIDExtractor(r *http.Request) (uuid.UUID, error) {
 	return uuid.Parse(raw)
 }
 
+// JWTPlayerIDExtractor returns a PlayerIDExtractor that validates a JWT token
+// from the "token" query parameter and extracts the user ID from the subject claim.
+// This is used for WebSocket connections where Authorization headers are not available.
+func JWTPlayerIDExtractor(secret []byte) PlayerIDExtractor {
+	return func(r *http.Request) (uuid.UUID, error) {
+		tokenStr := r.URL.Query().Get("token")
+		if tokenStr == "" {
+			return uuid.Nil, ErrMissingPlayerID
+		}
+
+		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, ErrQueryAuthNotAllowed
+			}
+			return secret, nil
+		})
+		if err != nil || !token.Valid {
+			return uuid.Nil, ErrQueryAuthNotAllowed
+		}
+
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			return uuid.Nil, ErrQueryAuthNotAllowed
+		}
+
+		sub, _ := claims.GetSubject()
+		return uuid.Parse(sub)
+	}
+}
+
 // UpgradeHandler returns an http.HandlerFunc that upgrades HTTP to WebSocket
 // and registers the client with the Hub.
-func UpgradeHandler(hub *Hub, extractPlayerID PlayerIDExtractor, cfg UpgradeConfig, logger zerolog.Logger) http.HandlerFunc {
+func UpgradeHandler(hub ClientHub, extractPlayerID PlayerIDExtractor, cfg UpgradeConfig, logger zerolog.Logger) http.HandlerFunc {
 	log := logger.With().Str("component", "ws.upgrade").Logger()
 	up := newUpgrader(cfg)
 

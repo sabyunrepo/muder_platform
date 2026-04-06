@@ -28,12 +28,20 @@ const (
 	sendBufSize = 256
 )
 
+// ClientHub is the minimal interface a Client needs from its hub.
+// Both Hub (game) and SocialHub implement this.
+type ClientHub interface {
+	Register(c *Client)
+	Unregister(c *Client)
+	Route(sender *Client, env *Envelope)
+}
+
 // Client represents a single WebSocket connection (one player).
 type Client struct {
 	ID        uuid.UUID
 	SessionID uuid.UUID // game session this client belongs to (zero if lobby)
 	conn      *websocket.Conn
-	hub       *Hub
+	hub       ClientHub
 	send      chan []byte
 	seq       uint64 // monotonic server sequence number (atomic)
 	closed    atomic.Bool
@@ -42,7 +50,7 @@ type Client struct {
 }
 
 // NewClient creates a Client bound to the given connection and hub.
-func NewClient(id uuid.UUID, conn *websocket.Conn, hub *Hub, logger zerolog.Logger) *Client {
+func NewClient(id uuid.UUID, conn *websocket.Conn, hub ClientHub, logger zerolog.Logger) *Client {
 	return &Client{
 		ID:     id,
 		conn:   conn,
