@@ -31,6 +31,7 @@ import (
 	"github.com/mmp-platform/server/internal/infra/lock"
 	otelPkg "github.com/mmp-platform/server/internal/infra/otel"
 	"github.com/mmp-platform/server/internal/infra/postgres"
+	"github.com/mmp-platform/server/internal/infra/storage"
 	sentryPkg "github.com/mmp-platform/server/internal/infra/sentry"
 	"github.com/mmp-platform/server/internal/middleware"
 	"github.com/mmp-platform/server/internal/seo"
@@ -137,6 +138,26 @@ func main() {
 	roomSvc := room.NewService(pool, queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
+
+	// Phase 7.7: Media storage provider
+	// R2 provider는 환경변수가 없으면 nil — 로컬 개발에서 미디어 기능 비활성화
+	var storageProvider storage.Provider
+	if cfg.R2AccountID != "" {
+		r2Cfg := storage.R2Config{
+			AccountID:       cfg.R2AccountID,
+			AccessKeyID:     cfg.R2AccessKeyID,
+			SecretAccessKey: cfg.R2SecretAccessKey,
+			BucketName:      cfg.R2BucketName,
+			PublicURL:       cfg.R2PublicURL,
+		}
+		var err error
+		storageProvider, err = storage.NewR2Provider(r2Cfg, logger)
+		if err != nil {
+			logger.Fatal().Err(err).Msg("failed to init R2 provider")
+		}
+	}
+	mediaSvc := editor.NewMediaService(queries, storageProvider, logger)
+	mediaHandler := editor.NewMediaHandler(mediaSvc)
 	adminSvc := admin.NewService(queries, logger)
 	friendSvc := social.NewFriendService(queries, logger)
 	chatSvc := social.NewChatService(pool, queries, logger)
@@ -388,6 +409,13 @@ func main() {
 				// Contents
 				r.Get("/themes/{id}/content/{key}", editorHandler.GetContent)
 				r.Put("/themes/{id}/content/{key}", editorHandler.UpsertContent)
+				// Media
+				r.Get("/themes/{id}/media", mediaHandler.ListMedia)
+				r.Post("/themes/{id}/media/upload-url", mediaHandler.RequestUpload)
+				r.Post("/themes/{id}/media/confirm", mediaHandler.ConfirmUpload)
+				r.Post("/themes/{id}/media/youtube", mediaHandler.CreateYouTube)
+				r.Patch("/media/{id}", mediaHandler.UpdateMedia)
+				r.Delete("/media/{id}", mediaHandler.DeleteMedia)
 				// Validation
 				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
 			})

@@ -44,13 +44,18 @@
 - [x] main.go DI 조립 + /api/v1/ 라우트 등록
 - [x] OpenAPI 3.1 spec (29 endpoints, 27 schemas) + Taskfile api:types 태스크
 
-## Phase 7: 프론트엔드
-- [ ] React Router + pages/ + features/ + 3레이어 상태
-- [ ] WsClient (@mmp/ws-client) + 모듈별 동적 스토어
-- [ ] 게임 UI (모듈별), 에디터, 로비, 결제, 프로필
+## Phase 7: 프론트엔드 ✅
+- [x] React Router + pages/ (25개 라우트) + features/ + lazy loading + Suspense
+- [x] WsClient (@mmp/ws-client, 355줄) + moduleStoreFactory (모듈별 동적 스토어)
+- [x] Zustand 3레이어 (authStore, connectionStore, uiStore, gameStore)
+- [x] 게임 UI (14개 컴포넌트: VotingPanel, AccusationPanel, CluePanel, ExplorationPanel, GameHUD 등)
+- [x] 에디터, 로비, 결제, 프로필, 소셜 페이지 전체 구현
 
-## Phase 7.5: 소셜 (친구 + 채팅)
-- [ ] DB + FriendService + ChatService + /ws/social + 읽음 확인 + 게임 연동
+## Phase 7.5: 소셜 (친구 + 채팅) ✅
+- [x] DB (친구/차단/채팅방/메시지 테이블, 마이그레이션 00007+00014)
+- [x] FriendService + ChatService + /ws/social (SocialHub, 라우터, 핸들러)
+- [x] 읽음 확인 (MarkAsRead) + 게임 연동 (GAME_INVITE, GAME_RESULT)
+- [x] 프론트엔드: ChatRoom, ChatList, FriendsList, useSocialSync 훅
 
 ## Phase 7.6: 결제 + 수익/통계 ✅
 - [x] PaymentProvider(Strategy+Mock) + CoinService + CreatorService + SettlementPipeline
@@ -62,9 +67,15 @@
 - [x] 제작자 대시보드 (통계 차트, 수익, 정산) + Admin 정산 관리
 - [x] Go 39 테스트 PASS + FE ~23 테스트 + TypeScript 0 errors
 
-## Phase 7.7: 오디오/미디어
-- [ ] theme_media DB + AudioManager + 미디어 라이브러리 탭
-- [ ] ReadingModule + 리딩 UI + BGM 크로스페이드
+## Phase 7.7: 오디오/미디어 (진행중)
+- [x] AudioManager (SFX 전용, Web Audio API, LRU 캐싱, rate limiting)
+- [x] SoundControl UI (마스터/SFX 볼륨), AudioProvider, soundRegistry
+- [x] ReadingModule 서버 모듈 (대사 줄 단위 진행/점프)
+- [ ] theme_media DB 테이블 + API (CRUD, R2 업로드, YouTube oEmbed)
+- [ ] AudioManager 확장: BGM 레이어 + Voice 레이어 + 크로스페이드 2초
+- [ ] 에디터 미디어 라이브러리 탭 (업로드/YouTube/미리듣기/MediaPicker)
+- [ ] 리딩 UI 프론트엔드 (대사 표시, 음성 연동, advanceMode)
+- [ ] PhaseAction 확장 (PLAY_MEDIA, SET_BGM, STOP_AUDIO)
 
 ## Phase 7.8: 에디터 확장
 - [ ] 엔딩 분기 + 버전 관리 + 교차 검증 + 미리보기
@@ -82,4 +93,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~6 완료, 2026-04-06 Phase 7-C~7.5+7.6 완료
+**진행:** 2026-04-05 Phase 0~6 완료, 2026-04-06 Phase 7+7.5+7.6+A/B/C/E 완료, Phase 7.7 부분완료(SFX AudioManager+ReadingModule BE)

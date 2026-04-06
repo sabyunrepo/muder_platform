@@ -78,4 +78,13 @@ const (
 	// Theme price errors
 	ErrThemePriceNotSet     = "THEME_PRICE_NOT_SET"
 	ErrThemePriceOutOfRange = "THEME_PRICE_OUT_OF_RANGE"
+
+	// Media errors
+	ErrMediaInvalidType   = "MEDIA_INVALID_TYPE"
+	ErrMediaInvalidURL    = "MEDIA_INVALID_URL"
+	ErrMediaTooLarge      = "MEDIA_TOO_LARGE"
+	ErrMediaLimitExceeded = "MEDIA_LIMIT_EXCEEDED"
+	ErrMediaStorageFull   = "MEDIA_STORAGE_FULL"
+	ErrMediaUploadExpired = "MEDIA_UPLOAD_EXPIRED"
+	ErrMediaOEmbedFailed  = "MEDIA_OEMBED_FAILED"
 )
