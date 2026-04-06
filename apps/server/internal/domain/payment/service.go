@@ -25,19 +25,21 @@ type PaymentService interface {
 
 // paymentService implements PaymentService.
 type paymentService struct {
-	queries  *db.Queries
-	provider PaymentProvider
-	bus      *eventbus.Bus
-	logger   zerolog.Logger
+	queries      *db.Queries
+	provider     PaymentProvider
+	providerName string
+	bus          *eventbus.Bus
+	logger       zerolog.Logger
 }
 
 // NewService creates a new payment service.
-func NewService(queries *db.Queries, provider PaymentProvider, bus *eventbus.Bus, logger zerolog.Logger) PaymentService {
+func NewService(queries *db.Queries, provider PaymentProvider, providerName string, bus *eventbus.Bus, logger zerolog.Logger) PaymentService {
 	return &paymentService{
-		queries:  queries,
-		provider: provider,
-		bus:      bus,
-		logger:   logger.With().Str("domain", "payment").Logger(),
+		queries:      queries,
+		provider:     provider,
+		providerName: providerName,
+		bus:          bus,
+		logger:       logger.With().Str("domain", "payment").Logger(),
 	}
 }
 
@@ -114,7 +116,7 @@ func (s *paymentService) CreatePayment(ctx context.Context, userID uuid.UUID, re
 		UserID:         userID,
 		PackageID:      req.PackageID,
 		IdempotencyKey: req.IdempotencyKey,
-		Provider:       "mock", // TODO: derive from config
+		Provider:       s.providerName,
 		AmountKrw:      pkg.PriceKrw,
 		BaseCoins:      pkg.BaseCoins,
 		BonusCoins:     pkg.BonusCoins,
@@ -191,7 +193,9 @@ func (s *paymentService) ConfirmPayment(ctx context.Context, userID uuid.UUID, r
 			Stringer("payment_id", confirmed.ID).
 			Msg("failed to publish PaymentConfirmed event")
 		// Event failure is logged but does not fail the confirmation response.
-		// A reconciliation job should handle missed events.
+		// TODO(phase8): Implement reconciliation job - query CONFIRMED payments
+		// without matching CHARGE coin_transaction and credit missing coins.
+		// See: docs/plans/2026-04-06-phase76-payment-design.md [M5]
 	}
 
 	s.logger.Info().

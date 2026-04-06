@@ -142,7 +142,7 @@ func main() {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to create payment provider")
 	}
-	paymentSvc := payment.NewService(queries, paymentProvider, bus, logger)
+	paymentSvc := payment.NewService(queries, paymentProvider, "mock", bus, logger)
 
 	// Coin
 	coinSvc := coin.NewService(pool, queries, bus, logger)

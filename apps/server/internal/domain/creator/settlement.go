@@ -102,6 +102,9 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 		// Tax calculation (default: individual 3.3%).
 		taxType := "INDIVIDUAL"
 		taxRate := IndividualTaxRate
+		// Tax truncation policy: truncate toward zero (floor).
+		// Example: 10,012 KRW × 3.3% = 330.396 → 330 KRW
+		// This is intentional — we never overcharge tax.
 		taxAmount := int64(float64(totalKRW) * taxRate)
 		netAmount := totalKRW - taxAmount
 

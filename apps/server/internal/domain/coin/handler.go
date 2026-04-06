@@ -45,6 +45,11 @@ func (h *Handler) ListTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	txType := r.URL.Query().Get("type")
+	validTypes := map[string]bool{"": true, "CHARGE": true, "PURCHASE": true, "REFUND": true, "ADMIN_GRANT": true, "ADMIN_REVOKE": true}
+	if !validTypes[txType] {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid transaction type"))
+		return
+	}
 	pg := httputil.ParsePagination(r, 20, 100)
 
 	items, total, err := h.svc.ListTransactions(r.Context(), userID, txType, pg.Limit, pg.Offset)
