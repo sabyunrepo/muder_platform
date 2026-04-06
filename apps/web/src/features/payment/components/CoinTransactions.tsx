@@ -10,6 +10,7 @@ import { useTransactions } from "@/features/coin/api";
 import type { CoinTransaction } from "@/features/coin/api";
 import { TRANSACTION_TYPE_LABEL } from "@/features/coin/constants";
 import type { CoinTransactionType } from "@/features/coin/constants";
+import { formatDateTime } from "@/shared/utils/format";
 
 // ---------------------------------------------------------------------------
 // 코인 이력 (타입별 필터 탭)
@@ -38,16 +39,6 @@ const TYPE_VARIANT: Record<
   ADMIN_REVOKE: "danger",
 };
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function TransactionRow({ tx }: { tx: CoinTransaction }) {
   const amount = tx.base_amount + tx.bonus_amount;
   const isPositive = amount >= 0;
@@ -56,7 +47,7 @@ function TransactionRow({ tx }: { tx: CoinTransaction }) {
   return (
     <tr className="border-b border-slate-800 last:border-b-0">
       <td className="px-4 py-3 text-sm text-slate-300">
-        {formatDate(tx.created_at)}
+        {formatDateTime(tx.created_at)}
       </td>
       <td className="px-4 py-3">
         <Badge variant={TYPE_VARIANT[tx.type]} size="sm">
@@ -125,16 +116,16 @@ export function CoinTransactions() {
             <table className="w-full">
               <thead className="bg-slate-800/50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                     날짜
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                     타입
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                     변동
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                     잔액
                   </th>
                 </tr>

@@ -10,9 +10,7 @@ export function CoinBalance() {
   const navigate = useNavigate();
   const { data: balance } = useBalance();
 
-  const total = balance
-    ? balance.base_coins + balance.bonus_coins
-    : 0;
+  const total = balance ? balance.total_coins : 0;
 
   return (
     <button

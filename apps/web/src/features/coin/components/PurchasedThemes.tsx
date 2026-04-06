@@ -10,18 +10,11 @@ import { Spinner } from '@/shared/components/ui/Spinner';
 import { usePurchasedThemes, type PurchasedTheme } from '../api';
 import { COIN_PAGE_SIZE } from '../constants';
 import { RefundModal } from './RefundModal';
+import { formatDate } from '@/shared/utils/format';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
-}
 
 function canRefund(purchase: PurchasedTheme): boolean {
   if (purchase.status !== 'COMPLETED') return false;

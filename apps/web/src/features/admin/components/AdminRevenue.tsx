@@ -1,17 +1,11 @@
 import { Coins, Banknote, CheckCircle, FileText } from "lucide-react";
 import { Card, Spinner } from "@/shared/components/ui";
 import { useAdminRevenue } from "@/features/admin/api";
+import { formatKRW } from "@/shared/utils/format";
 
 // ---------------------------------------------------------------------------
 // 포맷 헬퍼
 // ---------------------------------------------------------------------------
-
-function formatKRW(amount: number): string {
-  return new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: "KRW",
-  }).format(amount);
-}
 
 function formatNumber(n: number): string {
   return new Intl.NumberFormat("ko-KR").format(n);

@@ -10,6 +10,7 @@ import { usePaymentHistory } from "@/features/payment/api";
 import type { PaymentResponse } from "@/features/payment/api";
 import { PAYMENT_STATUS_LABEL } from "@/features/payment/constants";
 import type { PaymentStatus } from "@/features/payment/constants";
+import { formatDate } from "@/shared/utils/format";
 
 // ---------------------------------------------------------------------------
 // 결제 내역
@@ -25,14 +26,6 @@ const STATUS_VARIANT: Record<
   REFUNDED: "info",
   CANCELLED: "default",
 };
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-}
 
 function PaymentRow({ payment }: { payment: PaymentResponse }) {
   const totalCoins = payment.base_coins + payment.bonus_coins;
@@ -87,16 +80,16 @@ export function PaymentHistory() {
         <table className="w-full">
           <thead className="bg-slate-800/50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                 날짜
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                 금액
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
+              <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
                 상태
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
+              <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
                 코인
               </th>
             </tr>

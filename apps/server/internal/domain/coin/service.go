@@ -210,7 +210,7 @@ func (s *coinService) PurchaseTheme(ctx context.Context, userID uuid.UUID, theme
 	}
 
 	// Bonus-first depletion strategy.
-	bonusUsed := min64(user.CoinBalanceBonus, price)
+	bonusUsed := min(user.CoinBalanceBonus, price)
 	baseUsed := price - bonusUsed
 
 	// Deduct coins.
@@ -533,12 +533,4 @@ func (s *coinService) toPurchaseResponse(p db.ThemePurchase) *PurchaseResponse {
 		HasPlayed:       p.HasPlayed,
 		CreatedAt:       p.CreatedAt,
 	}
-}
-
-// min64 returns the smaller of two int64 values.
-func min64(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
 }

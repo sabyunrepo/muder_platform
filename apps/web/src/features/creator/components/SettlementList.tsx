@@ -8,6 +8,7 @@ import {
   SETTLEMENT_STATUS_LABEL,
   type SettlementStatus,
 } from "../constants";
+import { formatKRW } from "@/shared/utils/format";
 
 const STATUS_VARIANT: Record<
   SettlementStatus,
@@ -18,10 +19,6 @@ const STATUS_VARIANT: Record<
   PAID_OUT: "success",
   CANCELLED: "danger",
 };
-
-function formatKRW(amount: number): string {
-  return `\u20A9${amount.toLocaleString("ko-KR")}`;
-}
 
 function formatPeriod(start: string, end: string): string {
   const s = new Date(start).toLocaleDateString("ko-KR");
@@ -71,22 +68,22 @@ export function SettlementList() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-700">
-              <th className="py-3 text-left text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-left text-sm font-medium text-slate-400">
                 기간
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 총 코인
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 총 금액
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 세금
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 실지급액
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 상태
               </th>
             </tr>

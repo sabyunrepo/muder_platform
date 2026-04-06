@@ -20,6 +20,7 @@ import {
 } from "@/features/admin/api";
 import type { AdminSettlement } from "@/features/admin/api";
 import { ADMIN_PAGE_SIZE } from "@/features/admin/constants";
+import { formatKRW } from "@/shared/utils/format";
 
 // ---------------------------------------------------------------------------
 // 상태 뱃지 매핑
@@ -46,13 +47,6 @@ const STATUS_OPTIONS = [
 // ---------------------------------------------------------------------------
 // 금액 포맷
 // ---------------------------------------------------------------------------
-
-function formatKRW(amount: number): string {
-  return new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: "KRW",
-  }).format(amount);
-}
 
 function formatNumber(n: number): string {
   return new Intl.NumberFormat("ko-KR").format(n);
@@ -186,24 +180,24 @@ export function AdminSettlements() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-slate-800 bg-slate-900/50">
                 <tr>
-                  <th className="px-4 py-3 font-medium text-slate-400">
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400">
                     제작자
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-400">기간</th>
-                  <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400">기간</th>
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                     코인
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                     금액
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                     세금
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                     실지급액
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-400">상태</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">액션</th>
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400">상태</th>
+                  <th scope="col" className="px-4 py-3 font-medium text-slate-400">액션</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800">

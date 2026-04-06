@@ -16,6 +16,7 @@ import {
   useUpdatePackage,
 } from "@/features/admin/api";
 import type { AdminCoinPackage } from "@/features/admin/api";
+import { formatKRW } from "@/shared/utils/format";
 
 // ---------------------------------------------------------------------------
 // 패키지 폼 상태
@@ -62,13 +63,6 @@ const PLATFORM_OPTIONS = [
 // 금액 포맷
 // ---------------------------------------------------------------------------
 
-function formatKRW(amount: number): string {
-  return new Intl.NumberFormat("ko-KR", {
-    style: "currency",
-    currency: "KRW",
-  }).format(amount);
-}
-
 function formatNumber(n: number): string {
   return new Intl.NumberFormat("ko-KR").format(n);
 }
@@ -90,9 +84,10 @@ export function AdminPackages() {
   const updateMutation = useUpdatePackage();
 
   const isLoading = webLoading || mobileLoading;
+  // Admin API returns full AdminCoinPackage fields; cast once at data level.
   const allPackages = [
-    ...(webPackages ?? []),
-    ...(mobilePackages ?? []),
+    ...((webPackages ?? []) as unknown as AdminCoinPackage[]),
+    ...((mobilePackages ?? []) as unknown as AdminCoinPackage[]),
   ].sort((a, b) => a.sort_order - b.sort_order);
 
   // 모달 열기: 추가
@@ -208,25 +203,25 @@ export function AdminPackages() {
           <table className="w-full text-left text-sm">
             <thead className="border-b border-slate-800 bg-slate-900/50">
               <tr>
-                <th className="px-4 py-3 font-medium text-slate-400">
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400">
                   플랫폼
                 </th>
-                <th className="px-4 py-3 font-medium text-slate-400">이름</th>
-                <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400">이름</th>
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                   가격
                 </th>
-                <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                   기본
                 </th>
-                <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                   보너스
                 </th>
-                <th className="px-4 py-3 font-medium text-slate-400 text-right">
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400 text-right">
                   합계
                 </th>
-                <th className="px-4 py-3 font-medium text-slate-400">상태</th>
-                <th className="px-4 py-3 font-medium text-slate-400">순서</th>
-                <th className="px-4 py-3 font-medium text-slate-400">액션</th>
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400">상태</th>
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400">순서</th>
+                <th scope="col" className="px-4 py-3 font-medium text-slate-400">액션</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800">
@@ -280,7 +275,7 @@ export function AdminPackages() {
                         variant="ghost"
                         leftIcon={<Pencil className="h-3.5 w-3.5" />}
                         onClick={() =>
-                          openEdit(pkg as unknown as AdminCoinPackage)
+                          openEdit(pkg)
                         }
                       >
                         수정

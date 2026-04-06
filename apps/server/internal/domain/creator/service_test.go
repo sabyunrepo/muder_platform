@@ -2,14 +2,11 @@ package creator
 
 import (
 	"context"
-	"net/http"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 
-	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/eventbus"
 )
 
@@ -299,10 +296,3 @@ func TestRevenueShare_IntegerArithmetic(t *testing.T) {
 		})
 	}
 }
-
-// Ensure unused imports are consumed.
-var (
-	_ = pgx.ErrNoRows
-	_ = http.StatusOK
-	_ = apperror.Internal
-)

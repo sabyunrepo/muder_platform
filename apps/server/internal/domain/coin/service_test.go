@@ -367,26 +367,27 @@ func TestHandlePaymentConfirmed(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Unit test for bonus-first depletion logic (min64)
+// Unit test for bonus-first depletion logic (builtin min)
 // ---------------------------------------------------------------------------
 
-func TestMin64(t *testing.T) {
+func TestBonusFirstDepletion(t *testing.T) {
 	tests := []struct {
-		name     string
-		a, b     int64
-		expected int64
+		name        string
+		bonusBalance int64
+		price       int64
+		expectBonus int64
 	}{
-		{"a < b", 10, 20, 10},
-		{"a > b", 20, 10, 10},
-		{"a == b", 15, 15, 15},
-		{"zero a", 0, 10, 0},
-		{"zero b", 10, 0, 0},
+		{"bonus covers partial", 10, 20, 10},
+		{"bonus exceeds price", 20, 10, 10},
+		{"bonus equals price", 15, 15, 15},
+		{"zero bonus", 0, 10, 0},
+		{"zero price", 10, 0, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := min64(tt.a, tt.b)
-			if got != tt.expected {
-				t.Errorf("min64(%d, %d) = %d, want %d", tt.a, tt.b, got, tt.expected)
+			bonusUsed := min(tt.bonusBalance, tt.price)
+			if bonusUsed != tt.expectBonus {
+				t.Errorf("min(%d, %d) = %d, want %d", tt.bonusBalance, tt.price, bonusUsed, tt.expectBonus)
 			}
 		})
 	}

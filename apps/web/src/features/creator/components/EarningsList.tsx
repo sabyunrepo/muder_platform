@@ -38,22 +38,22 @@ export function EarningsList() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-700">
-              <th className="py-3 text-left text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-left text-sm font-medium text-slate-400">
                 날짜
               </th>
-              <th className="py-3 text-left text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-left text-sm font-medium text-slate-400">
                 테마명
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 총 코인
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 제작자 몫 (70%)
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 플랫폼 (30%)
               </th>
-              <th className="py-3 text-right text-sm font-medium text-slate-400">
+              <th scope="col" className="py-3 text-right text-sm font-medium text-slate-400">
                 정산 상태
               </th>
             </tr>
