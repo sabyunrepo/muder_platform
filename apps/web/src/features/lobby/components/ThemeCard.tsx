@@ -1,4 +1,4 @@
-import { Users, Clock, Play, Star } from 'lucide-react';
+import { Users, Clock, Play, Star, Coins } from 'lucide-react';
 import { Card, Badge } from '@/shared/components/ui';
 import type { ThemeSummary } from '../api';
 
@@ -41,7 +41,13 @@ export function ThemeCard({ theme, onClick }: ThemeCardProps) {
           <div className={`h-full w-full ${GRADIENT_PLACEHOLDER}`} />
         )}
         {/* 난이도 Badge (이미지 위 우상단) */}
-        <div className="absolute right-2 top-2">
+        <div className="absolute right-2 top-2 flex items-center gap-1.5">
+          {theme.coin_price > 0 && (
+            <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-sm text-amber-400">
+              <Coins className="h-3.5 w-3.5" />
+              {theme.coin_price.toLocaleString()}
+            </span>
+          )}
           <Badge variant={difficultyVariant[theme.difficulty] ?? 'default'}>
             {difficultyLabel[theme.difficulty] ?? theme.difficulty}
           </Badge>
@@ -72,6 +78,12 @@ export function ThemeCard({ theme, onClick }: ThemeCardProps) {
           <span className="inline-flex items-center gap-1 text-amber-400">
             <Star className="h-3.5 w-3.5 fill-amber-400" />
             {theme.rating.toFixed(1)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Coins className="h-3.5 w-3.5" />
+            {theme.coin_price > 0
+              ? `${theme.coin_price.toLocaleString()} 코인`
+              : '무료'}
           </span>
         </div>
       </div>

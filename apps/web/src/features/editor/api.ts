@@ -28,6 +28,7 @@ export interface EditorThemeResponse {
   max_players: number;
   duration_min: number;
   price: number;
+  coin_price: number;
   status: ThemeStatus;
   config_json: Record<string, unknown> | null;
   version: number;
@@ -52,6 +53,7 @@ export interface CreateThemeRequest {
   max_players: number;
   duration_min: number;
   price?: number;
+  coin_price?: number;
 }
 
 export interface UpdateThemeRequest {
@@ -62,6 +64,7 @@ export interface UpdateThemeRequest {
   max_players?: number;
   duration_min?: number;
   price?: number;
+  coin_price?: number;
 }
 
 export interface CreateCharacterRequest {

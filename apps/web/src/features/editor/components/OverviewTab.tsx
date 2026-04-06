@@ -21,6 +21,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   const [maxPlayers, setMaxPlayers] = useState(theme.max_players);
   const [durationMin, setDurationMin] = useState(theme.duration_min);
   const [price, setPrice] = useState(theme.price);
+  const [coinPrice, setCoinPrice] = useState(theme.coin_price);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -35,6 +36,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     setMaxPlayers(theme.max_players);
     setDurationMin(theme.duration_min);
     setPrice(theme.price);
+    setCoinPrice(theme.coin_price);
     setErrors({});
   }, [theme.version]);
 
@@ -70,6 +72,10 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
       next.price = '가격은 0 이상이어야 합니다';
     }
 
+    if (coinPrice < 0 || coinPrice > 100000) {
+      next.coinPrice = '코인 가격은 0~100,000 사이여야 합니다';
+    }
+
     return next;
   }
 
@@ -88,6 +94,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
       max_players: maxPlayers,
       duration_min: durationMin,
       price,
+      coin_price: coinPrice,
     };
 
     updateTheme.mutate(body, {
@@ -176,6 +183,17 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
         onChange={(e) => setPrice(Number(e.target.value))}
         min={0}
         error={errors.price}
+      />
+
+      <Input
+        label="코인 가격"
+        type="number"
+        value={coinPrice}
+        onChange={(e) => setCoinPrice(Number(e.target.value))}
+        min={0}
+        max={100000}
+        placeholder="0 (무료)"
+        error={errors.coinPrice}
       />
 
       <Button type="submit" isLoading={updateTheme.isPending}>
