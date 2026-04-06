@@ -1,6 +1,6 @@
 # Phase 7.6: 결제 + 수익/통계 — 설계 문서
 
-> 승인일: 2026-04-06
+> 승인일: 2026-04-06 | 보안 리뷰 반영: 2026-04-06
 
 ## 요구사항 요약
 
@@ -12,7 +12,7 @@
 | 패키지 | DB 테이블 관리 (이벤트 보너스 대응) |
 | 웹/모바일 | 플랫폼별 패키지 구분 (가격·보너스 차등) |
 | 테마 가격 | 제작자 자유 설정 (100 ~ 100,000코인) |
-| 환불 | 구매 후 7일 이내 가능 |
+| 환불 | 구매 후 7일 이내 + 미플레이 시에만 가능 |
 | 정산 주기 | 매주 월요일, 7일 유예 경과 건만 |
 | 최소 정산 | 10,000원 미달 시 이월 |
 | 수익 분배 | 제작자 70% / 플랫폼 30% |
@@ -59,9 +59,46 @@ type PaymentProvider interface {
     CreatePayment(ctx context.Context, req CreatePaymentRequest) (*PaymentResult, error)
     ConfirmPayment(ctx context.Context, paymentKey string) (*PaymentResult, error)
     RefundPayment(ctx context.Context, paymentKey string, reason string) error
-    HandleWebhook(ctx context.Context, body []byte) (*WebhookEvent, error)
+    // 보안: headers 포함 — HMAC-SHA256 서명 검증 필수
+    HandleWebhook(ctx context.Context, headers http.Header, body []byte) (*WebhookEvent, error)
 }
 ```
+
+### 보안 원칙
+
+**[S1] 서버 사이드 금액 결정**: `POST /payments/create`는 `package_id`만 수신.
+금액/코인은 서버가 `coin_packages` 테이블에서 조회. 클라이언트가 보낸 금액은 절대 신뢰하지 않음.
+
+**[S2] 웹훅 서명 검증**: `HandleWebhook`은 `http.Header`에서 HMAC-SHA256 서명 검증 후 파싱.
+서명 불일치 시 401 반환. 타임스탬프 5분 초과 시 거부 (리플레이 방지).
+웹훅 엔드포인트는 JWT 미들웨어 제외, PG 서명으로 인증.
+
+**[S3] 자전 거래 방지**: `creator_id == user_id`인 테마 구매 차단.
+서비스 레이어 + creator_earnings 생성 시 이중 검증.
+
+**[S4] 환불 조건 3중 검증**:
+1. 7일 이내 (`refundable_until > NOW()`, 서버 TIMESTAMPTZ 기준)
+2. 미플레이 (`session_players`에 해당 theme의 game_session 참여 기록 없음)
+3. 미환불 (`status = 'COMPLETED'`)
+→ 하나라도 실패 시 환불 거부
+
+**[S5] DB 레벨 무결성 가드레일**:
+- `CHECK (coin_balance_base >= 0)`, `CHECK (coin_balance_bonus >= 0)` — 음수 잔액 원천 차단
+- 무료 테마(0코인) 환불 요청 거부
+
+**[S6] 가격 스냅샷**: `payments` 테이블에 생성 시점의 가격/코인 스냅샷 저장.
+`POST /payments/confirm`은 `payments` 테이블 값 사용, 현재 `coin_packages` 값 무시.
+
+**[S7] 유저 스코프 쿼리**: `/payments/history`, `/coins/*` 등 "내" 엔드포인트는
+`user_id`를 JWT 컨텍스트에서만 추출. 요청 파라미터로 `user_id` 수신 금지.
+
+**[S8] 정산 취소 복구**: `settlement.status = CANCELLED` 시
+관련 `creator_earnings.settled = false, settlement_id = NULL`로 복구 → 다음 배치에 재포함.
+
+**[S9] 환불 남용 방지**: 30일 내 3회 환불 초과 시 이후 환불은 Admin 수동 승인 필요.
+
+**[S10] 결제 PII 로깅**: `payment_key`는 마지막 4자리만 로깅.
+웹훅 바디는 INFO 이상에서 로깅 금지. 에러 응답에 내부 키 노출 금지.
 
 ### EventBus (도메인 간 느슨한 결합)
 
@@ -113,7 +150,8 @@ payment/ ──publish──→ EventBus ←──subscribe── coin/
 **theme_purchases** — 테마 구매
 - id UUID PK, user_id FK, theme_id FK
 - coin_price, base_coins_used, bonus_coins_used
-- status(COMPLETED/REFUNDED), refundable_until(구매+7일)
+- status(COMPLETED/REFUNDED), refundable_until(구매+7일, TIMESTAMPTZ)
+- has_played BOOLEAN DEFAULT false — 게임 세션 참여 시 true로 변경 [S4]
 - UNIQUE(user_id, theme_id)
 
 **creator_earnings** — 제작자 수익 (건별)
@@ -129,7 +167,7 @@ payment/ ──publish──→ EventBus ←──subscribe── coin/
 
 ### 기존 테이블 확장
 
-- `users` + `coin_balance_base INT DEFAULT 0`, `coin_balance_bonus INT DEFAULT 0`
+- `users` + `coin_balance_base BIGINT DEFAULT 0 CHECK (>= 0)`, `coin_balance_bonus BIGINT DEFAULT 0 CHECK (>= 0)` [S5]
 - `themes` + `coin_price INT DEFAULT 0 CHECK (0..100000)`
 
 ### 코인 소진 순서
@@ -230,8 +268,17 @@ features/
 ### 코인 충전
 
 ```
-POST /payments/create → PENDING
-POST /payments/confirm → CONFIRMED
+POST /payments/create { package_id, idempotency_key }  ← 금액 수신 안 함 [S1]
+  → PaymentService:
+      1. coin_packages에서 package_id로 가격/코인 조회 [S1]
+      2. idempotency_key 중복 체크 (같은 키+다른 파라미터 → 422) [S1]
+      3. payments 테이블에 스냅샷 저장 (amount_krw, base_coins, bonus_coins) [S6]
+      4. MockProvider.CreatePayment() → status=PENDING
+
+POST /payments/confirm { payment_key }
+  → PaymentService:
+      1. payments 테이블에서 스냅샷된 코인 값 사용 (coin_packages 재조회 안 함) [S6]
+      2. MockProvider.ConfirmPayment() → status=CONFIRMED
   → EventBus(PaymentConfirmed)
   → CoinService: TX { UPDATE users balance += coins, INSERT coin_transactions(CHARGE) }
 ```
@@ -239,23 +286,41 @@ POST /payments/confirm → CONFIRMED
 ### 테마 구매
 
 ```
-POST /coins/purchase-theme
-  → CoinService: TX { SELECT users FOR UPDATE, 보너스먼저소진,
-      UPDATE users balance -= coins, INSERT coin_transactions(PURCHASE),
-      INSERT theme_purchases(refundable_until=+7d) }
+POST /coins/purchase-theme { theme_id }
+  → CoinService:
+      1. theme.creator_id == user_id 체크 → 거부 [S3]
+      2. TX { SELECT users FOR UPDATE, 보너스먼저소진,
+         UPDATE users balance -= coins, INSERT coin_transactions(PURCHASE),
+         INSERT theme_purchases(refundable_until=NOW()+7d, has_played=false) }
   → EventBus(ThemePurchased)
-  → CreatorService: INSERT creator_earnings(70%/30%)
+  → CreatorService:
+      1. creator_id != purchaser_id 재검증 [S3]
+      2. INSERT creator_earnings(70%/30%)
 ```
 
 ### 환불
 
 ```
 POST /coins/refund-theme
-  → CoinService: TX { refundable_until 체크,
-      UPDATE theme_purchases(REFUNDED), UPDATE users balance += coins,
-      INSERT coin_transactions(REFUND) }
+  → CoinService: TX {
+      1. refundable_until > NOW() 체크 [S4]
+      2. has_played == false 체크 [S4] — 플레이한 테마 환불 불가
+      3. status == 'COMPLETED' 체크
+      4. 무료 테마(coin_price == 0) 거부 [S5]
+      5. 30일 내 환불 횟수 체크 (3회 초과 시 거부) [S9]
+      6. UPDATE theme_purchases(REFUNDED), UPDATE users balance += coins,
+         INSERT coin_transactions(REFUND) }
   → EventBus(ThemeRefunded)
   → CreatorService: DELETE creator_earnings
+```
+
+### 테마 플레이 마킹
+
+```
+게임 세션 시작 시 (game:start 이벤트):
+  → 해당 session의 모든 player에 대해
+    UPDATE theme_purchases SET has_played = true
+    WHERE user_id = player.id AND theme_id = session.theme_id
 ```
 
 ### 정산 배치 (매주 월요일)
@@ -272,21 +337,27 @@ POST /coins/refund-theme
 
 ## 에러 코드
 
-| 코드 | HTTP | 설명 |
-|------|------|------|
-| PAYMENT_DUPLICATE | 409 | 중복 결제 (idempotency_key) |
-| PAYMENT_NOT_FOUND | 404 | 결제 건 없음 |
-| PAYMENT_INVALID_STATUS | 409 | 상태 전이 불가 |
-| PAYMENT_PROVIDER_ERROR | 502 | PG사 오류 |
-| COIN_INSUFFICIENT | 400 | 잔액 부족 |
-| COIN_BALANCE_MISMATCH | 500 | 이력 불일치 (내부 알림) |
-| PURCHASE_ALREADY_OWNED | 409 | 이미 구매한 테마 |
-| PURCHASE_NOT_FOUND | 404 | 구매 기록 없음 |
-| REFUND_EXPIRED | 400 | 7일 초과 |
-| REFUND_ALREADY_DONE | 409 | 이미 환불됨 |
-| SETTLEMENT_INVALID_STATUS | 409 | 정산 상태 전이 불가 |
-| THEME_PRICE_NOT_SET | 400 | 가격 미설정 |
-| THEME_PRICE_OUT_OF_RANGE | 400 | 100~100,000 범위 초과 |
+| 코드 | HTTP | 설명 | 보안 |
+|------|------|------|------|
+| PAYMENT_DUPLICATE | 409 | 중복 결제 (idempotency_key) | |
+| PAYMENT_IDEMPOTENCY_MISMATCH | 422 | 같은 키에 다른 파라미터 | S1 |
+| PAYMENT_NOT_FOUND | 404 | 결제 건 없음 | |
+| PAYMENT_INVALID_STATUS | 409 | 상태 전이 불가 | |
+| PAYMENT_PROVIDER_ERROR | 502 | PG사 오류 | |
+| PAYMENT_WEBHOOK_INVALID | 401 | 웹훅 서명 검증 실패 | S2 |
+| COIN_INSUFFICIENT | 400 | 잔액 부족 | |
+| COIN_BALANCE_MISMATCH | 500 | 이력 불일치 (내부 알림) | |
+| PURCHASE_ALREADY_OWNED | 409 | 이미 구매한 테마 | |
+| PURCHASE_SELF_THEME | 403 | 자기 테마 구매 불가 | S3 |
+| PURCHASE_NOT_FOUND | 404 | 구매 기록 없음 | |
+| REFUND_EXPIRED | 400 | 7일 초과 | S4 |
+| REFUND_ALREADY_PLAYED | 400 | 플레이한 테마 환불 불가 | S4 |
+| REFUND_ALREADY_DONE | 409 | 이미 환불됨 | |
+| REFUND_FREE_THEME | 400 | 무료 테마 환불 불가 | S5 |
+| REFUND_LIMIT_EXCEEDED | 429 | 30일 내 3회 초과, Admin 승인 필요 | S9 |
+| SETTLEMENT_INVALID_STATUS | 409 | 정산 상태 전이 불가 | |
+| THEME_PRICE_NOT_SET | 400 | 가격 미설정 | |
+| THEME_PRICE_OUT_OF_RANGE | 400 | 100~100,000 범위 초과 | |
 
 ## 동시성 보호
 
