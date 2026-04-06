@@ -123,6 +123,7 @@ export function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/room/:id" element={<RoomPage />} />
                   <Route path="/editor" element={<EditorPage />} />
+                  <Route path="/editor/:id" element={<EditorPage />} />
                   <Route path="/admin" element={<AdminPage />} />
                   <Route path="/users/:id" element={<PublicProfilePage />} />
                 </Route>
