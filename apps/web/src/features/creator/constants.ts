@@ -9,7 +9,7 @@ export type SettlementStatus =
   | "CANCELLED";
 
 export const SETTLEMENT_STATUS_LABEL: Record<SettlementStatus, string> = {
-  CALCULATED: "정산 완료",
+  CALCULATED: "정산 대기",
   APPROVED: "승인됨",
   PAID_OUT: "지급 완료",
   CANCELLED: "취소됨",
