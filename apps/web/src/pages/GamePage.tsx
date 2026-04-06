@@ -17,6 +17,7 @@ import {
   CluePanel,
   ExplorationPanel,
 } from "@/features/game/components";
+import { AudioProvider } from "@/features/audio/AudioProvider";
 
 // ---------------------------------------------------------------------------
 // 다른 에이전트가 생성 중인 컴포넌트 (lazy import)
@@ -111,6 +112,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
     phase === GamePhase.INVESTIGATION || phase === GamePhase.VOTING;
 
   return (
+    <AudioProvider>
     <div className="flex h-screen flex-col bg-slate-950">
       {/* 상단: GameHUD */}
       <Suspense fallback={null}>
@@ -164,6 +166,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
         </div>
       )}
     </div>
+    </AudioProvider>
   );
 }
 

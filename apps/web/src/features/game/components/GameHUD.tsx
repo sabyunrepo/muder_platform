@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Timer } from "lucide-react";
 import {
   getRemainingTime,
@@ -8,6 +8,12 @@ import {
 } from "@mmp/game-logic";
 import { useGameStore } from "@/stores/gameStore";
 import { PHASE_LABEL, PHASE_COLOR } from "../constants";
+
+const SoundControl = lazy(() =>
+  import("@/features/audio/components/SoundControl").then((m) => ({
+    default: m.SoundControl,
+  })),
+);
 
 // ---------------------------------------------------------------------------
 // GameHUD
@@ -65,10 +71,15 @@ export function GameHUD() {
           </div>
         )}
 
-        {/* 오른쪽: 라운드 표시 */}
-        <span className="text-xs font-medium text-slate-400">
-          라운드 {round}
-        </span>
+        {/* 오른쪽: 라운드 + 사운드 */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-400">
+            라운드 {round}
+          </span>
+          <Suspense fallback={null}>
+            <SoundControl />
+          </Suspense>
+        </div>
       </div>
 
       {/* 하단: 진행바 */}

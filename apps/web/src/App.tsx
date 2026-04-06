@@ -7,6 +7,7 @@ import { queryClient } from "@/services/queryClient";
 import { useAuthStore } from "@/stores/authStore";
 import { api } from "@/services/api";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { NetworkBanner } from "@/shared/components/NetworkBanner";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
 
 // ---------------------------------------------------------------------------
@@ -16,6 +17,7 @@ import ProtectedRoute from "@/shared/components/ProtectedRoute";
 // 퍼블릭
 const HomePage = lazy(() => import("@/pages/HomePage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const OfflinePage = lazy(() => import("@/pages/OfflinePage"));
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const AuthCallbackPage = lazy(
   () => import("@/features/auth/AuthCallbackPage"),
@@ -140,6 +142,7 @@ export function App() {
     <GlobalErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
+          <NetworkBanner />
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* 퍼블릭 */}
@@ -202,6 +205,7 @@ export function App() {
                 </Route>
               </Route>
 
+              <Route path="/offline" element={<OfflinePage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>

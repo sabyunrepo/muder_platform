@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { User, Vote } from "lucide-react";
 import { WsEventType } from "@mmp/shared";
 import type { Player } from "@mmp/shared";
@@ -6,6 +6,7 @@ import type { Player } from "@mmp/shared";
 import { Button, Badge, Card } from "@/shared/components/ui";
 import { useGameStore, selectAlivePlayers, selectMyPlayerId } from "@/stores/gameStore";
 import { useModuleStore } from "@/stores/moduleStoreFactory";
+import { useCountUp } from "../hooks/useCountUp";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +21,51 @@ interface VotingResult {
 interface VotingPanelProps {
   send: (type: WsEventType, payload: unknown) => void;
   moduleId: string;
+}
+
+// ---------------------------------------------------------------------------
+// 개별 투표 바 (훅은 조건부 호출 불가 → 컴포넌트 분리)
+// ---------------------------------------------------------------------------
+
+function VoteBar({
+  result,
+  maxVotes,
+  isTop,
+  staggerIndex,
+}: {
+  result: VotingResult;
+  maxVotes: number;
+  isTop: boolean;
+  staggerIndex: number;
+}) {
+  const animatedVotes = useCountUp(result.votes);
+  const widthPct = maxVotes > 0 ? (animatedVotes / maxVotes) * 100 : 0;
+  const barColor = isTop ? "bg-amber-500" : "bg-slate-600";
+  const delay = `${staggerIndex * 300}ms`;
+
+  return (
+    <div
+      className="motion-safe:animate-fade-slide-up space-y-1"
+      style={
+        {
+          "--stagger-index": staggerIndex,
+          animationDelay: delay,
+          animationFillMode: "backwards",
+        } as React.CSSProperties
+      }
+    >
+      <div className="flex items-center justify-between text-sm">
+        <span className="text-slate-200">{result.nickname}</span>
+        <span className="font-medium text-amber-400">{animatedVotes}표</span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+        <div
+          className={`h-full rounded-full ${barColor} transition-all duration-500`}
+          style={{ width: `${widthPct}%` }}
+        />
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -47,6 +93,12 @@ export function VotingPanel({ send, moduleId }: VotingPanelProps) {
     ? Math.max(...results.map((r) => r.votes), 1)
     : 1;
 
+  // 낮은 득표 → 높은 득표 순 정렬 (stagger: 작은 것부터 공개)
+  const sortedResults = useMemo(
+    () => (hasResults ? [...results].sort((a, b) => a.votes - b.votes) : []),
+    [hasResults, results],
+  );
+
   /** 투표 전송 */
   const handleVote = (targetId: string) => {
     if (votedTargetId) return; // 이미 투표함
@@ -71,23 +123,18 @@ export function VotingPanel({ send, moduleId }: VotingPanelProps) {
         </p>
       )}
 
-      {/* 투표 결과 (결과 수신 시) */}
+      {/* 투표 결과 (결과 수신 시) — 낮은 득표 → 높은 득표 순 stagger */}
       {hasResults && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-slate-300">투표 결과</h4>
-          {results.map((r) => (
-            <div key={r.playerId} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-200">{r.nickname}</span>
-                <span className="text-amber-400 font-medium">{r.votes}표</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
-                <div
-                  className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                  style={{ width: `${(r.votes / maxVotes) * 100}%` }}
-                />
-              </div>
-            </div>
+          {sortedResults.map((r, i) => (
+            <VoteBar
+              key={r.playerId}
+              result={r}
+              maxVotes={maxVotes}
+              isTop={r.votes === maxVotes}
+              staggerIndex={i}
+            />
           ))}
         </div>
       )}

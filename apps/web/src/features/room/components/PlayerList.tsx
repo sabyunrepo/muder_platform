@@ -24,9 +24,14 @@ interface PlayerListProps {
 // 플레이어 카드
 // ---------------------------------------------------------------------------
 
-function PlayerCard({ player }: { player: RoomPlayer }) {
+function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
   return (
-    <Card className="flex items-center gap-3 p-3">
+    <Card
+      className="motion-safe:animate-fade-slide-up flex items-center gap-3 p-3"
+      style={
+        { "--stagger-index": index, animationDelay: `calc(var(--stagger-index) * 50ms)`, animationFillMode: "backwards" } as React.CSSProperties
+      }
+    >
       {/* 아바타 */}
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-slate-300">
         {player.avatar_url ? (
@@ -89,8 +94,8 @@ export function PlayerList({ players, maxPlayers }: PlayerListProps) {
 
   return (
     <div className="flex flex-col gap-2">
-      {players.map((player) => (
-        <PlayerCard key={player.id} player={player} />
+      {players.map((player, index) => (
+        <PlayerCard key={player.id} player={player} index={index} />
       ))}
       {Array.from({ length: emptySlots }, (_, i) => (
         <EmptySlot key={`empty-${i}`} />
