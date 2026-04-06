@@ -19,7 +19,7 @@ interface UserResponse {
   id: string;
   nickname: string;
   email: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   role: string;
   provider: string;
 }
@@ -71,7 +71,7 @@ function LoginPage() {
         id: user.id,
         nickname: user.nickname,
         email: user.email,
-        profileImage: user.profile_image,
+        profileImage: user.avatar_url,
         role: user.role as "user" | "creator" | "admin",
         provider: user.provider,
       });

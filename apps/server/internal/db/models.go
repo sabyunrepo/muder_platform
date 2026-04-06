@@ -12,6 +12,79 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ChatMessage struct {
+	ID          int64     `json:"id"`
+	ChatRoomID  uuid.UUID `json:"chat_room_id"`
+	SenderID    uuid.UUID `json:"sender_id"`
+	Content     string    `json:"content"`
+	MessageType string    `json:"message_type"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type ChatRoom struct {
+	ID        uuid.UUID   `json:"id"`
+	Type      string      `json:"type"`
+	Name      pgtype.Text `json:"name"`
+	CreatedBy uuid.UUID   `json:"created_by"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+type ChatRoomMember struct {
+	ChatRoomID uuid.UUID `json:"chat_room_id"`
+	UserID     uuid.UUID `json:"user_id"`
+	LastReadAt time.Time `json:"last_read_at"`
+	JoinedAt   time.Time `json:"joined_at"`
+}
+
+type CoinPackage struct {
+	ID         uuid.UUID `json:"id"`
+	Platform   string    `json:"platform"`
+	Name       string    `json:"name"`
+	PriceKrw   int32     `json:"price_krw"`
+	BaseCoins  int32     `json:"base_coins"`
+	BonusCoins int32     `json:"bonus_coins"`
+	SortOrder  int32     `json:"sort_order"`
+	IsActive   bool      `json:"is_active"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type CoinTransaction struct {
+	ID                int64       `json:"id"`
+	UserID            uuid.UUID   `json:"user_id"`
+	Type              string      `json:"type"`
+	BaseAmount        int32       `json:"base_amount"`
+	BonusAmount       int32       `json:"bonus_amount"`
+	BalanceAfterBase  int64       `json:"balance_after_base"`
+	BalanceAfterBonus int64       `json:"balance_after_bonus"`
+	ReferenceType     pgtype.Text `json:"reference_type"`
+	ReferenceID       pgtype.Text `json:"reference_id"`
+	Description       pgtype.Text `json:"description"`
+	CreatedAt         time.Time   `json:"created_at"`
+}
+
+type CreatorEarning struct {
+	ID                 uuid.UUID   `json:"id"`
+	CreatorID          uuid.UUID   `json:"creator_id"`
+	ThemeID            uuid.UUID   `json:"theme_id"`
+	PurchaseID         uuid.UUID   `json:"purchase_id"`
+	TotalCoins         int32       `json:"total_coins"`
+	CreatorShareCoins  int32       `json:"creator_share_coins"`
+	PlatformShareCoins int32       `json:"platform_share_coins"`
+	Settled            bool        `json:"settled"`
+	SettlementID       pgtype.UUID `json:"settlement_id"`
+	CreatedAt          time.Time   `json:"created_at"`
+}
+
+type Friendship struct {
+	ID          uuid.UUID `json:"id"`
+	RequesterID uuid.UUID `json:"requester_id"`
+	AddresseeID uuid.UUID `json:"addressee_id"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type GameSession struct {
 	ID           uuid.UUID          `json:"id"`
 	RoomID       uuid.UUID          `json:"room_id"`
@@ -21,6 +94,31 @@ type GameSession struct {
 	StateJson    json.RawMessage    `json:"state_json"`
 	StartedAt    time.Time          `json:"started_at"`
 	EndedAt      pgtype.Timestamptz `json:"ended_at"`
+}
+
+type NotificationPreference struct {
+	UserID     uuid.UUID `json:"user_id"`
+	GameInvite bool      `json:"game_invite"`
+	RoomStatus bool      `json:"room_status"`
+	Marketing  bool      `json:"marketing"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+type Payment struct {
+	ID             uuid.UUID          `json:"id"`
+	UserID         uuid.UUID          `json:"user_id"`
+	PackageID      uuid.UUID          `json:"package_id"`
+	PaymentKey     pgtype.Text        `json:"payment_key"`
+	IdempotencyKey uuid.UUID          `json:"idempotency_key"`
+	Provider       string             `json:"provider"`
+	Status         string             `json:"status"`
+	AmountKrw      int32              `json:"amount_krw"`
+	BaseCoins      int32              `json:"base_coins"`
+	BonusCoins     int32              `json:"bonus_coins"`
+	RefundedAt     pgtype.Timestamptz `json:"refunded_at"`
+	ConfirmedAt    pgtype.Timestamptz `json:"confirmed_at"`
+	CreatedAt      time.Time          `json:"created_at"`
+	UpdatedAt      time.Time          `json:"updated_at"`
 }
 
 type Room struct {
@@ -59,6 +157,25 @@ type SessionPlayer struct {
 	IsAlive     bool      `json:"is_alive"`
 }
 
+type Settlement struct {
+	ID          uuid.UUID          `json:"id"`
+	CreatorID   uuid.UUID          `json:"creator_id"`
+	PeriodStart pgtype.Date        `json:"period_start"`
+	PeriodEnd   pgtype.Date        `json:"period_end"`
+	TotalCoins  int32              `json:"total_coins"`
+	TotalKrw    int32              `json:"total_krw"`
+	TaxType     string             `json:"tax_type"`
+	TaxRate     pgtype.Numeric     `json:"tax_rate"`
+	TaxAmount   int32              `json:"tax_amount"`
+	NetAmount   int32              `json:"net_amount"`
+	Status      string             `json:"status"`
+	ApprovedBy  pgtype.UUID        `json:"approved_by"`
+	ApprovedAt  pgtype.Timestamptz `json:"approved_at"`
+	PaidOutAt   pgtype.Timestamptz `json:"paid_out_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
+}
+
 type Theme struct {
 	ID          uuid.UUID          `json:"id"`
 	CreatorID   uuid.UUID          `json:"creator_id"`
@@ -70,13 +187,13 @@ type Theme struct {
 	MaxPlayers  int32              `json:"max_players"`
 	DurationMin int32              `json:"duration_min"`
 	Price       int32              `json:"price"`
-	CoinPrice   int32              `json:"coin_price"`
 	Status      string             `json:"status"`
 	ConfigJson  json.RawMessage    `json:"config_json"`
 	Version     int32              `json:"version"`
 	PublishedAt pgtype.Timestamptz `json:"published_at"`
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
+	CoinPrice   int32              `json:"coin_price"`
 }
 
 type ThemeCharacter struct {
@@ -89,73 +206,45 @@ type ThemeCharacter struct {
 	SortOrder   int32       `json:"sort_order"`
 }
 
-type User struct {
-	ID               uuid.UUID   `json:"id"`
-	Nickname         string      `json:"nickname"`
-	Email            pgtype.Text `json:"email"`
-	AvatarUrl        pgtype.Text `json:"avatar_url"`
-	Role             string      `json:"role"`
-	Provider         string      `json:"provider"`
-	ProviderID       string      `json:"provider_id"`
-	CoinBalance      int64       `json:"coin_balance"`
-	CoinBalanceBase  int64       `json:"coin_balance_base"`
-	CoinBalanceBonus int64       `json:"coin_balance_bonus"`
-	CreatedAt        time.Time   `json:"created_at"`
-	UpdatedAt        time.Time   `json:"updated_at"`
+type ThemeClue struct {
+	ID          uuid.UUID   `json:"id"`
+	ThemeID     uuid.UUID   `json:"theme_id"`
+	LocationID  pgtype.UUID `json:"location_id"`
+	Name        string      `json:"name"`
+	Description pgtype.Text `json:"description"`
+	ImageUrl    pgtype.Text `json:"image_url"`
+	IsCommon    bool        `json:"is_common"`
+	Level       int32       `json:"level"`
+	ClueType    string      `json:"clue_type"`
+	SortOrder   int32       `json:"sort_order"`
+	CreatedAt   time.Time   `json:"created_at"`
 }
 
-type Friendship struct {
-	ID          uuid.UUID `json:"id"`
-	RequesterID uuid.UUID `json:"requester_id"`
-	AddresseeID uuid.UUID `json:"addressee_id"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-}
-
-type UserBlock struct {
+type ThemeContent struct {
 	ID        uuid.UUID `json:"id"`
-	BlockerID uuid.UUID `json:"blocker_id"`
-	BlockedID uuid.UUID `json:"blocked_id"`
-	CreatedAt time.Time `json:"created_at"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+	Key       string    `json:"key"`
+	Body      string    `json:"body"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type ChatRoom struct {
+type ThemeLocation struct {
+	ID                   uuid.UUID   `json:"id"`
+	ThemeID              uuid.UUID   `json:"theme_id"`
+	MapID                uuid.UUID   `json:"map_id"`
+	Name                 string      `json:"name"`
+	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
+	SortOrder            int32       `json:"sort_order"`
+	CreatedAt            time.Time   `json:"created_at"`
+}
+
+type ThemeMap struct {
 	ID        uuid.UUID   `json:"id"`
-	Type      string      `json:"type"`
-	Name      pgtype.Text `json:"name"`
-	CreatedBy uuid.UUID   `json:"created_by"`
+	ThemeID   uuid.UUID   `json:"theme_id"`
+	Name      string      `json:"name"`
+	ImageUrl  pgtype.Text `json:"image_url"`
+	SortOrder int32       `json:"sort_order"`
 	CreatedAt time.Time   `json:"created_at"`
-}
-
-type ChatRoomMember struct {
-	ChatRoomID uuid.UUID `json:"chat_room_id"`
-	UserID     uuid.UUID `json:"user_id"`
-	LastReadAt time.Time `json:"last_read_at"`
-	JoinedAt   time.Time `json:"joined_at"`
-}
-
-type ChatMessage struct {
-	ID          int64     `json:"id"`
-	ChatRoomID  uuid.UUID `json:"chat_room_id"`
-	SenderID    uuid.UUID `json:"sender_id"`
-	Content     string    `json:"content"`
-	MessageType string    `json:"message_type"`
-	CreatedAt   time.Time `json:"created_at"`
-}
-
-type CoinTransaction struct {
-	ID               int64     `json:"id"`
-	UserID           uuid.UUID `json:"user_id"`
-	Type             string    `json:"type"`
-	BaseAmount       int32     `json:"base_amount"`
-	BonusAmount      int32     `json:"bonus_amount"`
-	BalanceAfterBase  int64    `json:"balance_after_base"`
-	BalanceAfterBonus int64    `json:"balance_after_bonus"`
-	ReferenceType    *string   `json:"reference_type"`
-	ReferenceID      *string   `json:"reference_id"`
-	Description      *string   `json:"description"`
-	CreatedAt        time.Time `json:"created_at"`
 }
 
 type ThemePurchase struct {
@@ -172,64 +261,26 @@ type ThemePurchase struct {
 	CreatedAt       time.Time          `json:"created_at"`
 }
 
-type CoinPackage struct {
-	ID         uuid.UUID `json:"id"`
-	Platform   string    `json:"platform"`
-	Name       string    `json:"name"`
-	PriceKrw   int32     `json:"price_krw"`
-	BaseCoins  int32     `json:"base_coins"`
-	BonusCoins int32     `json:"bonus_coins"`
-	SortOrder  int32     `json:"sort_order"`
-	IsActive   bool      `json:"is_active"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+type User struct {
+	ID               uuid.UUID          `json:"id"`
+	Nickname         string             `json:"nickname"`
+	Email            pgtype.Text        `json:"email"`
+	AvatarUrl        pgtype.Text        `json:"avatar_url"`
+	Role             string             `json:"role"`
+	Provider         string             `json:"provider"`
+	ProviderID       string             `json:"provider_id"`
+	CoinBalance      int64              `json:"coin_balance"`
+	CreatedAt        time.Time          `json:"created_at"`
+	UpdatedAt        time.Time          `json:"updated_at"`
+	CoinBalanceBase  int64              `json:"coin_balance_base"`
+	CoinBalanceBonus int64              `json:"coin_balance_bonus"`
+	PasswordHash     pgtype.Text        `json:"password_hash"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
 }
 
-type Payment struct {
-	ID             uuid.UUID          `json:"id"`
-	UserID         uuid.UUID          `json:"user_id"`
-	PackageID      uuid.UUID          `json:"package_id"`
-	PaymentKey     pgtype.Text        `json:"payment_key"`
-	IdempotencyKey uuid.UUID          `json:"idempotency_key"`
-	Provider       string             `json:"provider"`
-	Status         string             `json:"status"`
-	AmountKrw      int32              `json:"amount_krw"`
-	BaseCoins      int32              `json:"base_coins"`
-	BonusCoins     int32              `json:"bonus_coins"`
-	RefundedAt     pgtype.Timestamptz `json:"refunded_at"`
-	ConfirmedAt    pgtype.Timestamptz `json:"confirmed_at"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
-}
-
-type CreatorEarning struct {
-	ID                 uuid.UUID          `json:"id"`
-	CreatorID          uuid.UUID          `json:"creator_id"`
-	ThemeID            uuid.UUID          `json:"theme_id"`
-	PurchaseID         uuid.UUID          `json:"purchase_id"`
-	TotalCoins         int32              `json:"total_coins"`
-	CreatorShareCoins  int32              `json:"creator_share_coins"`
-	PlatformShareCoins int32              `json:"platform_share_coins"`
-	Settled            bool               `json:"settled"`
-	SettlementID       pgtype.UUID        `json:"settlement_id"`
-	CreatedAt          time.Time          `json:"created_at"`
-}
-
-type Settlement struct {
-	ID          uuid.UUID          `json:"id"`
-	CreatorID   uuid.UUID          `json:"creator_id"`
-	PeriodStart string             `json:"period_start"`
-	PeriodEnd   string             `json:"period_end"`
-	TotalCoins  int32              `json:"total_coins"`
-	TotalKRW    int32              `json:"total_krw"`
-	TaxType     string             `json:"tax_type"`
-	TaxRate     float64            `json:"tax_rate"`
-	TaxAmount   int32              `json:"tax_amount"`
-	NetAmount   int32              `json:"net_amount"`
-	Status      string             `json:"status"`
-	ApprovedBy  pgtype.UUID        `json:"approved_by"`
-	ApprovedAt  pgtype.Timestamptz `json:"approved_at"`
-	PaidOutAt   pgtype.Timestamptz `json:"paid_out_at"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
+type UserBlock struct {
+	ID        uuid.UUID `json:"id"`
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+	CreatedAt time.Time `json:"created_at"`
 }

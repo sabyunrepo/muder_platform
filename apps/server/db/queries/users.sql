@@ -34,3 +34,6 @@ SELECT * FROM users WHERE email = $1 AND provider = 'local';
 INSERT INTO users (nickname, email, password_hash, provider, provider_id)
 VALUES ($1, $2, $3, 'local', $2)
 RETURNING *;
+
+-- name: SoftDeleteUser :exec
+UPDATE users SET deleted_at = NOW(), nickname = 'deleted_user', avatar_url = NULL WHERE id = $1;

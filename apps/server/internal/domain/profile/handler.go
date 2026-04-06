@@ -75,3 +75,69 @@ func (h *Handler) GetPublicProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
+
+// UpdateAvatar handles PUT /profile/avatar (authenticated, multipart/form-data).
+func (h *Handler) UpdateAvatar(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	if err := r.ParseMultipartForm(5 << 20); err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("file too large or invalid multipart form (max 5MB)"))
+		return
+	}
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("avatar file is required"))
+		return
+	}
+	defer file.Close()
+
+	resp, err := h.svc.UpdateAvatar(r.Context(), userID, file, header)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
+// GetNotificationPrefs handles GET /profile/notifications (authenticated).
+func (h *Handler) GetNotificationPrefs(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	resp, err := h.svc.GetNotificationPrefs(r.Context(), userID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
+// UpdateNotificationPrefs handles PUT /profile/notifications (authenticated).
+func (h *Handler) UpdateNotificationPrefs(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	var req UpdateNotificationPrefsRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	resp, err := h.svc.UpdateNotificationPrefs(r.Context(), userID, req)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}

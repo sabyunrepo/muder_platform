@@ -1,16 +1,24 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@/services/api";
+import { profileApi } from "@/services/profileApi";
 import { queryClient } from "@/services/queryClient";
+import { useAuthStore } from "@/stores/authStore";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
+export interface NotificationPrefs {
+  game_invite: boolean;
+  room_status: boolean;
+  marketing: boolean;
+}
+
 interface ProfileResponse {
   id: string;
   nickname: string;
   email: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   role: string;
   provider: string;
   bio: string | null;
@@ -23,13 +31,13 @@ interface ProfileResponse {
 interface UpdateProfileRequest {
   nickname?: string;
   bio?: string;
-  profile_image?: string | null;
+  avatar_url?: string | null;
 }
 
 interface PublicProfileResponse {
   id: string;
   nickname: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   bio: string | null;
   total_games: number;
   win_count: number;
@@ -76,6 +84,58 @@ export function useUpdateProfile() {
       api.put<ProfileResponse>("/v1/profile", body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: profileKeys.me() });
+    },
+  });
+}
+
+export function useUploadAvatar() {
+  return useMutation<{ avatar_url: string }, Error, Blob>({
+    mutationFn: (file) => profileApi.uploadAvatar(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: profileKeys.me() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 알림 설정
+// ---------------------------------------------------------------------------
+
+export const notificationKeys = {
+  all: ["notifications"] as const,
+  prefs: () => [...notificationKeys.all, "prefs"] as const,
+};
+
+export function useNotificationPrefs() {
+  return useQuery<NotificationPrefs>({
+    queryKey: notificationKeys.prefs(),
+    queryFn: () => api.get<NotificationPrefs>("/v1/profile/notifications"),
+  });
+}
+
+export function useUpdateNotificationPrefs() {
+  return useMutation<NotificationPrefs, Error, NotificationPrefs>({
+    mutationFn: (body) =>
+      api.put<NotificationPrefs>("/v1/profile/notifications", body),
+    onSuccess: (data) => {
+      queryClient.setQueryData(notificationKeys.prefs(), data);
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 계정 삭제
+// ---------------------------------------------------------------------------
+
+export function useDeleteAccount() {
+  const logout = useAuthStore((s) => s.logout);
+
+  return useMutation<void, Error, { password?: string }>({
+    mutationFn: ({ password }) =>
+      api.deleteVoid("/v1/auth/account", { body: password ? { password } : {} }),
+    onSuccess: () => {
+      queryClient.clear();
+      logout();
     },
   });
 }

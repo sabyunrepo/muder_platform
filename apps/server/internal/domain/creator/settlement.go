@@ -3,10 +3,12 @@ package creator
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -79,8 +81,8 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 	}
 
 	now := time.Now()
-	periodEnd := now.Format("2006-01-02")
-	periodStart := now.AddDate(0, 0, -7).Format("2006-01-02")
+	periodEndTime := now
+	periodStartTime := now.AddDate(0, 0, -7)
 
 	var settled, skipped int
 
@@ -118,14 +120,18 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 
 			qtx := p.queries.WithTx(tx)
 
+			var taxRateNumeric pgtype.Numeric
+			if encErr := taxRateNumeric.Scan(strconv.FormatFloat(taxRate, 'f', 6, 64)); encErr != nil {
+				return fmt.Errorf("encode tax rate: %w", encErr)
+			}
 			settlement, createErr := qtx.CreateSettlement(ctx, db.CreateSettlementParams{
 				CreatorID:   row.CreatorID,
-				PeriodStart: periodStart,
-				PeriodEnd:   periodEnd,
+				PeriodStart: pgtype.Date{Time: periodStartTime, Valid: true},
+				PeriodEnd:   pgtype.Date{Time: periodEndTime, Valid: true},
 				TotalCoins:  int32(row.TotalCreatorCoins),
-				TotalKRW:    int32(totalKRW),
+				TotalKrw:    int32(totalKRW),
 				TaxType:     taxType,
-				TaxRate:     taxRate,
+				TaxRate:     taxRateNumeric,
 				TaxAmount:   int32(taxAmount),
 				NetAmount:   int32(netAmount),
 			})
@@ -133,7 +139,10 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 				return fmt.Errorf("create settlement: %w", createErr)
 			}
 
-			if settleErr := qtx.SettleEarnings(ctx, row.CreatorID, settlement.ID); settleErr != nil {
+			if settleErr := qtx.SettleEarnings(ctx, db.SettleEarningsParams{
+				CreatorID:    row.CreatorID,
+				SettlementID: pgtype.UUID{Bytes: settlement.ID, Valid: true},
+			}); settleErr != nil {
 				return fmt.Errorf("settle earnings: %w", settleErr)
 			}
 
@@ -185,7 +194,7 @@ func (p *SettlementPipeline) CancelAndRestore(ctx context.Context, settlementID 
 	}
 
 	// Restore earnings to unsettled state.
-	if err := qtx.UnsettleEarningsBySettlement(ctx, settlementID); err != nil {
+	if err := qtx.UnsettleEarningsBySettlement(ctx, pgtype.UUID{Bytes: settlementID, Valid: true}); err != nil {
 		p.logger.Error().Err(err).Str("settlement_id", settlementID.String()).Msg("failed to unsettle earnings")
 		return fmt.Errorf("failed to unsettle earnings: %w", err)
 	}

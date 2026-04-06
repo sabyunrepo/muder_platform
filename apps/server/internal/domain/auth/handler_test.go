@@ -46,6 +46,10 @@ func (m *mockService) Register(ctx context.Context, email, password, nickname st
 	return nil, nil
 }
 
+func (m *mockService) DeleteAccount(_ context.Context, _ uuid.UUID, _ DeleteAccountRequest) error {
+	return nil
+}
+
 func jsonBody(t *testing.T, v any) *bytes.Buffer {
 	t.Helper()
 	buf := new(bytes.Buffer)

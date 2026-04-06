@@ -64,9 +64,9 @@ export default function PublicProfilePage() {
       {/* 헤더: 아바타 + 닉네임 + 가입일 */}
       <Card className="flex items-center gap-5 p-6">
         <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 border border-slate-700">
-          {data.profile_image ? (
+          {data.avatar_url ? (
             <img
-              src={data.profile_image}
+              src={data.avatar_url}
               alt={data.nickname}
               className="h-full w-full object-cover"
             />

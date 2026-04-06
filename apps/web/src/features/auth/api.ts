@@ -11,7 +11,7 @@ interface UserResponse {
   id: string;
   nickname: string;
   email: string;
-  profile_image: string | null;
+  avatar_url: string | null;
   role: string;
   provider: string;
   created_at: string;

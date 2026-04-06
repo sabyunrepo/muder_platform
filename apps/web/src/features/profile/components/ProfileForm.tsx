@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
-import { User as UserIcon, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Input, Badge } from "@/shared/components/ui";
 import { useUpdateProfile } from "../api";
 import { useAuthStore } from "@/stores/authStore";
+import { AvatarSection } from "@/components/profile/AvatarSection";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,7 +23,7 @@ interface ProfileFormProps {
 // ---------------------------------------------------------------------------
 
 const NICKNAME_MIN = 2;
-const NICKNAME_MAX = 20;
+const NICKNAME_MAX = 30;
 
 /** OAuth 제공자 표시 이름 */
 const providerLabel: Record<string, string> = {
@@ -90,7 +91,7 @@ export function ProfileForm({
               setUser({
                 ...currentUser,
                 nickname: data.nickname,
-                profileImage: data.profile_image,
+                profileImage: data.avatar_url,
               });
             }
             toast.success("프로필이 저장되었습니다.");
@@ -107,25 +108,7 @@ export function ProfileForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* 아바타 */}
-      <div className="flex items-center gap-4">
-        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-800 border border-slate-700">
-          {profileImage ? (
-            <img
-              src={profileImage}
-              alt={nickname}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <UserIcon className="h-10 w-10 text-slate-500" />
-          )}
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm text-slate-400">프로필 이미지</p>
-          <p className="text-xs text-slate-500">
-            이미지 업로드는 추후 지원 예정입니다.
-          </p>
-        </div>
-      </div>
+      <AvatarSection avatarUrl={profileImage} nickname={nickname} />
 
       {/* 닉네임 */}
       <Input

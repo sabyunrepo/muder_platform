@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,6 +33,18 @@ func (m *mockService) GetPublicProfile(ctx context.Context, userID uuid.UUID) (*
 
 func (m *mockService) UpdateProfile(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*ProfileResponse, error) {
 	return m.updateProfileFn(ctx, userID, req)
+}
+
+func (m *mockService) UpdateAvatar(_ context.Context, _ uuid.UUID, _ multipart.File, _ *multipart.FileHeader) (*AvatarResponse, error) {
+	return nil, nil
+}
+
+func (m *mockService) GetNotificationPrefs(_ context.Context, _ uuid.UUID) (*NotificationPrefsResponse, error) {
+	return nil, nil
+}
+
+func (m *mockService) UpdateNotificationPrefs(_ context.Context, _ uuid.UUID, _ UpdateNotificationPrefsRequest) (*NotificationPrefsResponse, error) {
+	return nil, nil
 }
 
 func withUserID(ctx context.Context, userID uuid.UUID) context.Context {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
@@ -114,9 +115,9 @@ func (s *coinService) ListTransactions(ctx context.Context, userID uuid.UUID, tx
 			BonusAmount:       int(t.BonusAmount),
 			BalanceAfterBase:  t.BalanceAfterBase,
 			BalanceAfterBonus: t.BalanceAfterBonus,
-			ReferenceType:     t.ReferenceType,
-			ReferenceID:       t.ReferenceID,
-			Description:       t.Description,
+			ReferenceType:     pgTextPtr(t.ReferenceType),
+			ReferenceID:       pgTextPtr(t.ReferenceID),
+			Description:       pgTextPtr(t.Description),
 			CreatedAt:         t.CreatedAt,
 		}
 	}
@@ -238,9 +239,9 @@ func (s *coinService) PurchaseTheme(ctx context.Context, userID uuid.UUID, theme
 		BonusAmount:       int32(-bonusUsed),
 		BalanceAfterBase:  balanceAfterBase,
 		BalanceAfterBonus: balanceAfterBonus,
-		ReferenceType:     &refType,
-		ReferenceID:       &refID,
-		Description:       &desc,
+		ReferenceType: pgtype.Text{String: refType, Valid: true},
+		ReferenceID:   pgtype.Text{String: refID, Valid: true},
+		Description:   pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create coin transaction")
@@ -367,9 +368,9 @@ func (s *coinService) RefundTheme(ctx context.Context, userID uuid.UUID, purchas
 		BonusAmount:       int32(bonusRefund),
 		BalanceAfterBase:  user.CoinBalanceBase,
 		BalanceAfterBonus: user.CoinBalanceBonus,
-		ReferenceType:     &refType,
-		ReferenceID:       &refID,
-		Description:       &desc,
+		ReferenceType: pgtype.Text{String: refType, Valid: true},
+		ReferenceID:   pgtype.Text{String: refID, Valid: true},
+		Description:   pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create refund transaction")
@@ -482,9 +483,9 @@ func (s *coinService) HandlePaymentConfirmed(ctx context.Context, event eventbus
 		BonusAmount:       int32(e.BonusCoins),
 		BalanceAfterBase:  user.CoinBalanceBase + baseCoins,
 		BalanceAfterBonus: user.CoinBalanceBonus + bonusCoins,
-		ReferenceType:     &refType,
-		ReferenceID:       &refID,
-		Description:       &desc,
+		ReferenceType: pgtype.Text{String: refType, Valid: true},
+		ReferenceID:   pgtype.Text{String: refID, Valid: true},
+		Description:   pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create charge transaction")
@@ -515,6 +516,15 @@ func (s *coinService) HandleGameStarted(ctx context.Context, event eventbus.Even
 		}
 	}
 	return nil
+}
+
+// pgTextPtr converts a pgtype.Text to a *string (nil if not valid).
+func pgTextPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	s := t.String
+	return &s
 }
 
 // toPurchaseResponse converts a DB ThemePurchase to a PurchaseResponse.
