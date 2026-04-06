@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 )
 
@@ -14,12 +15,18 @@ type PaymentProvider interface {
 	HandleWebhook(ctx context.Context, headers http.Header, body []byte) (*WebhookEvent, error)
 }
 
-// NewPaymentProvider creates a provider based on config (Factory pattern)
-func NewPaymentProvider(providerName string) PaymentProvider {
+// NewPaymentProvider creates a provider based on config (Factory pattern).
+// H2: isDev guard prevents mock provider from being used in production.
+func NewPaymentProvider(providerName string, isDev bool) (PaymentProvider, error) {
 	switch providerName {
-	// case "toss": return NewTossProvider(...)
-	// case "stripe": return NewStripeProvider(...)
+	case "mock":
+		if !isDev {
+			return nil, fmt.Errorf("mock provider not allowed in production")
+		}
+		return NewMockProvider(), nil
+	// case "toss": return NewTossProvider(...), nil
+	// case "stripe": return NewStripeProvider(...), nil
 	default:
-		return NewMockProvider()
+		return nil, fmt.Errorf("unknown payment provider: %s", providerName)
 	}
 }

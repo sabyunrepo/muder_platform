@@ -277,7 +277,7 @@ func (h *AdminHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) RunSettlement(w http.ResponseWriter, r *http.Request) {
 	if err := h.pipeline.RunWeekly(r.Context()); err != nil {
 		h.logger.Error().Err(err).Msg("manual settlement run failed")
-		apperror.WriteError(w, r, apperror.Internal("settlement run failed: "+err.Error()))
+		apperror.WriteError(w, r, apperror.Internal("settlement run failed"))
 		return
 	}
 

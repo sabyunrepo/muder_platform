@@ -66,10 +66,11 @@ type RevenueResponse struct {
 }
 
 // GrantCoinsReq is the request body for admin coin grants.
+// H4: gte=0 prevents negative coin grants.
 type GrantCoinsReq struct {
 	UserID      uuid.UUID `json:"user_id" validate:"required"`
-	BaseCoins   int32     `json:"base_coins"`
-	BonusCoins  int32     `json:"bonus_coins"`
+	BaseCoins   int32     `json:"base_coins" validate:"gte=0"`
+	BonusCoins  int32     `json:"bonus_coins" validate:"gte=0"`
 	Description string    `json:"description" validate:"required"`
 }
 

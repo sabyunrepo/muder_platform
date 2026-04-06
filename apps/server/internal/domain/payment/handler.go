@@ -29,6 +29,12 @@ func (h *Handler) ListPackages(w http.ResponseWriter, r *http.Request) {
 		platform = "WEB"
 	}
 
+	// H3: Validate platform parameter.
+	if platform != "WEB" && platform != "MOBILE" {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid platform: must be WEB or MOBILE"))
+		return
+	}
+
 	packages, err := h.svc.ListPackages(r.Context(), platform)
 	if err != nil {
 		apperror.WriteError(w, r, err)

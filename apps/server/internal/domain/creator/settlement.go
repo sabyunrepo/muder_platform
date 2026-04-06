@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 
@@ -14,25 +16,29 @@ import (
 
 // Settlement pipeline constants.
 const (
-	CoinToKRWRate     = 12.5
-	MinSettlementKRW  = 10000
-	IndividualTaxRate = 0.033
-	BusinessTaxRate   = 0.10
-	SettlementLockKey = "settlement:weekly"
-	SettlementLockTTL = 10 * time.Minute
+	// CoinToKRWNumerator / CoinToKRWDenominator = 12.5 KRW per coin (integer arithmetic).
+	CoinToKRWNumerator   = 125
+	CoinToKRWDenominator = 10
+	MinSettlementKRW     int64 = 10000
+	IndividualTaxRate          = 0.033
+	BusinessTaxRate            = 0.10
+	SettlementLockKey          = "settlement:weekly"
+	SettlementLockTTL          = 10 * time.Minute
 )
 
 // SettlementPipeline runs weekly settlement batch processing.
 type SettlementPipeline struct {
 	queries *db.Queries
+	pool    *pgxpool.Pool
 	redis   *redis.Client
 	logger  zerolog.Logger
 }
 
 // NewSettlementPipeline creates a new settlement pipeline.
-func NewSettlementPipeline(queries *db.Queries, rdb *redis.Client, logger zerolog.Logger) *SettlementPipeline {
+func NewSettlementPipeline(queries *db.Queries, pool *pgxpool.Pool, rdb *redis.Client, logger zerolog.Logger) *SettlementPipeline {
 	return &SettlementPipeline{
 		queries: queries,
+		pool:    pool,
 		redis:   rdb,
 		logger:  logger.With().Str("component", "settlement_pipeline").Logger(),
 	}
@@ -80,13 +86,14 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 
 	// 3. Process each creator's unsettled earnings.
 	for _, row := range unsettled {
-		totalKRW := int32(float64(row.TotalCreatorCoins) * CoinToKRWRate)
+		// H1: Integer arithmetic to avoid float64 precision loss. int64 to prevent overflow.
+		totalKRW := int64(row.TotalCreatorCoins) * CoinToKRWNumerator / CoinToKRWDenominator
 
 		// Skip if below minimum settlement threshold (carry over to next week).
-		if int(totalKRW) < MinSettlementKRW {
+		if totalKRW < MinSettlementKRW {
 			p.logger.Debug().
 				Str("creator_id", row.CreatorID.String()).
-				Int32("total_krw", totalKRW).
+				Int64("total_krw", totalKRW).
 				Msg("below minimum settlement, carrying over")
 			skipped++
 			continue
@@ -95,43 +102,56 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 		// Tax calculation (default: individual 3.3%).
 		taxType := "INDIVIDUAL"
 		taxRate := IndividualTaxRate
-		taxAmount := int32(float64(totalKRW) * taxRate)
+		taxAmount := int64(float64(totalKRW) * taxRate)
 		netAmount := totalKRW - taxAmount
 
-		// Create settlement record.
-		settlement, err := p.queries.CreateSettlement(ctx, db.CreateSettlementParams{
-			CreatorID:   row.CreatorID,
-			PeriodStart: periodStart,
-			PeriodEnd:   periodEnd,
-			TotalCoins:  int32(row.TotalCreatorCoins),
-			TotalKRW:    totalKRW,
-			TaxType:     taxType,
-			TaxRate:     taxRate,
-			TaxAmount:   taxAmount,
-			NetAmount:   netAmount,
-		})
-		if err != nil {
-			p.logger.Error().Err(err).
-				Str("creator_id", row.CreatorID.String()).
-				Msg("failed to create settlement")
-			continue
-		}
+		// C1: Wrap CreateSettlement + SettleEarnings in a per-creator transaction.
+		if err := func() error {
+			tx, txErr := p.pool.BeginTx(ctx, pgx.TxOptions{})
+			if txErr != nil {
+				return fmt.Errorf("begin tx: %w", txErr)
+			}
+			defer tx.Rollback(ctx) //nolint:errcheck
 
-		// Mark related earnings as settled.
-		if err := p.queries.SettleEarnings(ctx, row.CreatorID, settlement.ID); err != nil {
-			p.logger.Error().Err(err).
+			qtx := p.queries.WithTx(tx)
+
+			settlement, createErr := qtx.CreateSettlement(ctx, db.CreateSettlementParams{
+				CreatorID:   row.CreatorID,
+				PeriodStart: periodStart,
+				PeriodEnd:   periodEnd,
+				TotalCoins:  int32(row.TotalCreatorCoins),
+				TotalKRW:    int32(totalKRW),
+				TaxType:     taxType,
+				TaxRate:     taxRate,
+				TaxAmount:   int32(taxAmount),
+				NetAmount:   int32(netAmount),
+			})
+			if createErr != nil {
+				return fmt.Errorf("create settlement: %w", createErr)
+			}
+
+			if settleErr := qtx.SettleEarnings(ctx, row.CreatorID, settlement.ID); settleErr != nil {
+				return fmt.Errorf("settle earnings: %w", settleErr)
+			}
+
+			if commitErr := tx.Commit(ctx); commitErr != nil {
+				return fmt.Errorf("commit: %w", commitErr)
+			}
+
+			p.logger.Info().
 				Str("creator_id", row.CreatorID.String()).
 				Str("settlement_id", settlement.ID.String()).
-				Msg("failed to settle earnings")
+				Int64("total_krw", totalKRW).
+				Int64("net_amount", netAmount).
+				Msg("settlement created")
+			return nil
+		}(); err != nil {
+			p.logger.Error().Err(err).
+				Str("creator_id", row.CreatorID.String()).
+				Msg("failed to process settlement")
 			continue
 		}
 
-		p.logger.Info().
-			Str("creator_id", row.CreatorID.String()).
-			Str("settlement_id", settlement.ID.String()).
-			Int32("total_krw", totalKRW).
-			Int32("net_amount", netAmount).
-			Msg("settlement created")
 		settled++
 	}
 
@@ -144,18 +164,32 @@ func (p *SettlementPipeline) RunWeekly(ctx context.Context) error {
 }
 
 // CancelAndRestore cancels a settlement and restores earnings to unsettled state [S8].
+// C2: Both operations are wrapped in a single transaction to prevent data inconsistency.
 func (p *SettlementPipeline) CancelAndRestore(ctx context.Context, settlementID uuid.UUID) error {
-	// Cancel the settlement record.
-	_, err := p.queries.CancelSettlement(ctx, settlementID)
+	tx, err := p.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
+		p.logger.Error().Err(err).Str("settlement_id", settlementID.String()).Msg("failed to begin transaction")
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	qtx := p.queries.WithTx(tx)
+
+	// Cancel the settlement record.
+	if _, err := qtx.CancelSettlement(ctx, settlementID); err != nil {
 		p.logger.Error().Err(err).Str("settlement_id", settlementID.String()).Msg("failed to cancel settlement")
 		return fmt.Errorf("failed to cancel settlement: %w", err)
 	}
 
 	// Restore earnings to unsettled state.
-	if err := p.queries.UnsettleEarningsBySettlement(ctx, settlementID); err != nil {
+	if err := qtx.UnsettleEarningsBySettlement(ctx, settlementID); err != nil {
 		p.logger.Error().Err(err).Str("settlement_id", settlementID.String()).Msg("failed to unsettle earnings")
 		return fmt.Errorf("failed to unsettle earnings: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		p.logger.Error().Err(err).Str("settlement_id", settlementID.String()).Msg("failed to commit cancel transaction")
+		return fmt.Errorf("failed to commit cancel transaction: %w", err)
 	}
 
 	p.logger.Info().Str("settlement_id", settlementID.String()).Msg("settlement cancelled and earnings restored")

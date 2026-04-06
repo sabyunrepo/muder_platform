@@ -2,12 +2,12 @@ package creator
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/eventbus"
 )
@@ -44,7 +44,7 @@ func (s *creatorService) GetDashboard(ctx context.Context, creatorID uuid.UUID) 
 	row, err := s.queries.GetCreatorDashboard(ctx, creatorID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to get dashboard")
-		return nil, fmt.Errorf("failed to get creator dashboard: %w", err)
+		return nil, apperror.Internal("failed to get creator dashboard")
 	}
 	return &DashboardResponse{
 		TotalEarnings:     row.TotalEarnings,
@@ -57,7 +57,7 @@ func (s *creatorService) GetThemeStats(ctx context.Context, creatorID, themeID u
 	rows, err := s.queries.GetThemeDailyStats(ctx, themeID, creatorID, from, to)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to get theme stats")
-		return nil, fmt.Errorf("failed to get theme stats: %w", err)
+		return nil, apperror.Internal("failed to get theme stats")
 	}
 	result := make([]DailyStatResponse, 0, len(rows))
 	for _, r := range rows {
@@ -74,12 +74,12 @@ func (s *creatorService) ListEarnings(ctx context.Context, creatorID uuid.UUID, 
 	rows, err := s.queries.ListEarningsByCreator(ctx, creatorID, limit, offset)
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to list earnings")
-		return nil, 0, fmt.Errorf("failed to list earnings: %w", err)
+		return nil, 0, apperror.Internal("failed to list earnings")
 	}
 	total, err := s.queries.CountEarningsByCreator(ctx, creatorID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to count earnings")
-		return nil, 0, fmt.Errorf("failed to count earnings: %w", err)
+		return nil, 0, apperror.Internal("failed to count earnings")
 	}
 	result := make([]EarningResponse, 0, len(rows))
 	for _, r := range rows {
@@ -101,12 +101,12 @@ func (s *creatorService) ListSettlements(ctx context.Context, creatorID uuid.UUI
 	rows, err := s.queries.ListSettlementsByCreator(ctx, creatorID, limit, offset)
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to list settlements")
-		return nil, 0, fmt.Errorf("failed to list settlements: %w", err)
+		return nil, 0, apperror.Internal("failed to list settlements")
 	}
 	total, err := s.queries.CountSettlementsByCreator(ctx, creatorID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("creator_id", creatorID.String()).Msg("failed to count settlements")
-		return nil, 0, fmt.Errorf("failed to count settlements: %w", err)
+		return nil, 0, apperror.Internal("failed to count settlements")
 	}
 	result := make([]SettlementResponse, 0, len(rows))
 	for _, r := range rows {
@@ -118,7 +118,12 @@ func (s *creatorService) ListSettlements(ctx context.Context, creatorID uuid.UUI
 func (s *creatorService) HandleThemePurchased(ctx context.Context, event eventbus.Event) error {
 	e, ok := event.(eventbus.ThemePurchased)
 	if !ok {
-		return fmt.Errorf("unexpected event type: %T", event)
+		return apperror.Internal("unexpected event type for ThemePurchased")
+	}
+
+	// M4: Skip earnings for free theme purchases.
+	if e.TotalCoins == 0 {
+		return nil
 	}
 
 	creatorShare := int32(e.TotalCoins) * creatorSharePercent / 100
@@ -137,7 +142,7 @@ func (s *creatorService) HandleThemePurchased(ctx context.Context, event eventbu
 			Str("purchase_id", e.PurchaseID.String()).
 			Str("creator_id", e.CreatorID.String()).
 			Msg("failed to create earning")
-		return fmt.Errorf("failed to create earning: %w", err)
+		return apperror.Internal("failed to create earning")
 	}
 
 	s.logger.Info().
@@ -152,7 +157,7 @@ func (s *creatorService) HandleThemePurchased(ctx context.Context, event eventbu
 func (s *creatorService) HandleThemeRefunded(ctx context.Context, event eventbus.Event) error {
 	e, ok := event.(eventbus.ThemeRefunded)
 	if !ok {
-		return fmt.Errorf("unexpected event type: %T", event)
+		return apperror.Internal("unexpected event type for ThemeRefunded")
 	}
 
 	err := s.queries.DeleteEarningByPurchase(ctx, e.PurchaseID)
@@ -160,7 +165,7 @@ func (s *creatorService) HandleThemeRefunded(ctx context.Context, event eventbus
 		s.logger.Error().Err(err).
 			Str("purchase_id", e.PurchaseID.String()).
 			Msg("failed to delete earning on refund")
-		return fmt.Errorf("failed to delete earning: %w", err)
+		return apperror.Internal("failed to delete earning")
 	}
 
 	s.logger.Info().
