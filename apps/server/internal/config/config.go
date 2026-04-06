@@ -20,11 +20,21 @@ type Config struct {
 	SentryDSN    string `env:"SENTRY_DSN" default:""`
 	OTelEndpoint string `env:"OTEL_EXPORTER_OTLP_ENDPOINT" default:""`
 	AppVersion   string `env:"APP_VERSION" default:"0.1.0"`
+
+	// LiveKit voice chat configuration
+	LiveKitURL       string `env:"LIVEKIT_URL" default:""`
+	LiveKitAPIKey    string `env:"LIVEKIT_API_KEY" default:""`
+	LiveKitAPISecret string `env:"LIVEKIT_API_SECRET" default:""`
 }
 
 // IsDevelopment returns true if the application is running in development mode.
 func (c *Config) IsDevelopment() bool {
 	return c.Env == "development"
+}
+
+// HasLiveKit returns true if LiveKit configuration is present.
+func (c *Config) HasLiveKit() bool {
+	return c.LiveKitURL != "" && c.LiveKitAPIKey != "" && c.LiveKitAPISecret != ""
 }
 
 // Load reads configuration from environment variables using struct tags.
