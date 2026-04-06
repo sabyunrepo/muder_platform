@@ -3,6 +3,7 @@ package social
 import (
 	"context"
 	"errors"
+	"hash/fnv"
 	"net/http"
 	"strings"
 	"time"
@@ -148,7 +149,19 @@ func (s *friendService) AcceptRequest(ctx context.Context, friendshipID, userID 
 }
 
 func (s *friendService) RejectRequest(ctx context.Context, friendshipID, userID uuid.UUID) error {
-	err := s.queries.RejectFriendRequest(ctx, db.RejectFriendRequestParams{
+	// Verify the request exists and belongs to this user.
+	f, err := s.queries.GetFriendship(ctx, friendshipID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.New(apperror.ErrFriendshipNotFound, http.StatusNotFound, "friend request not found")
+		}
+		return apperror.Internal("failed to reject friend request")
+	}
+	if f.AddresseeID != userID || f.Status != "PENDING" {
+		return apperror.New(apperror.ErrFriendshipNotFound, http.StatusNotFound, "pending friend request not found")
+	}
+
+	err = s.queries.RejectFriendRequest(ctx, db.RejectFriendRequestParams{
 		ID:          friendshipID,
 		AddresseeID: userID,
 	})
@@ -166,7 +179,19 @@ func (s *friendService) RejectRequest(ctx context.Context, friendshipID, userID 
 }
 
 func (s *friendService) RemoveFriend(ctx context.Context, friendshipID, userID uuid.UUID) error {
-	err := s.queries.DeleteFriendship(ctx, db.DeleteFriendshipParams{
+	// Verify the friendship exists and involves this user.
+	f, err := s.queries.GetFriendship(ctx, friendshipID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.New(apperror.ErrFriendshipNotFound, http.StatusNotFound, "friendship not found")
+		}
+		return apperror.Internal("failed to remove friend")
+	}
+	if f.RequesterID != userID && f.AddresseeID != userID {
+		return apperror.New(apperror.ErrFriendshipNotFound, http.StatusNotFound, "friendship not found")
+	}
+
+	err = s.queries.DeleteFriendship(ctx, db.DeleteFriendshipParams{
 		ID:     friendshipID,
 		UserID: userID,
 	})
@@ -236,6 +261,12 @@ func (s *friendService) BlockUser(ctx context.Context, blockerID, blockedID uuid
 	if blockerID == blockedID {
 		return apperror.BadRequest("cannot block yourself")
 	}
+
+	// Remove any existing friendship between the two users.
+	_ = s.queries.DeleteFriendshipBetween(ctx, db.DeleteFriendshipBetweenParams{
+		UserID1: blockerID,
+		UserID2: blockedID,
+	})
 
 	_, err := s.queries.CreateBlock(ctx, db.CreateBlockParams{
 		BlockerID: blockerID,
@@ -308,25 +339,23 @@ func NewChatService(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logg
 	}
 }
 
+// dmLockKey returns a deterministic advisory lock key for a DM user pair.
+func dmLockKey(a, b uuid.UUID) int64 {
+	if a.String() > b.String() {
+		a, b = b, a
+	}
+	h := fnv.New64a()
+	h.Write(a[:])
+	h.Write(b[:])
+	return int64(h.Sum64())
+}
+
 func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uuid.UUID) (*ChatRoomResponse, error) {
 	if userID == otherID {
 		return nil, apperror.BadRequest("cannot create DM room with yourself")
 	}
 
-	// Try to find existing DM room.
-	room, err := s.queries.FindDMRoom(ctx, db.FindDMRoomParams{
-		UserID1: userID,
-		UserID2: otherID,
-	})
-	if err == nil {
-		return s.buildChatRoomResponse(ctx, room)
-	}
-	if !errors.Is(err, pgx.ErrNoRows) {
-		s.logger.Error().Err(err).Msg("failed to find DM room")
-		return nil, apperror.Internal("failed to get or create DM room")
-	}
-
-	// Create new DM room in a transaction.
+	// Acquire advisory lock to prevent duplicate DM rooms for the same pair.
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
@@ -334,8 +363,29 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 	}
 	defer tx.Rollback(ctx)
 
+	lockKey := dmLockKey(userID, otherID)
+	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", lockKey); err != nil {
+		s.logger.Error().Err(err).Msg("failed to acquire advisory lock")
+		return nil, apperror.Internal("failed to create DM room")
+	}
+
 	qtx := s.queries.WithTx(tx)
 
+	// Try to find existing DM room inside the lock.
+	room, err := qtx.FindDMRoom(ctx, db.FindDMRoomParams{
+		UserID1: userID,
+		UserID2: otherID,
+	})
+	if err == nil {
+		tx.Rollback(ctx)
+		return s.buildChatRoomResponse(ctx, room)
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		s.logger.Error().Err(err).Msg("failed to find DM room")
+		return nil, apperror.Internal("failed to get or create DM room")
+	}
+
+	// Create new DM room inside the same transaction.
 	room, err = qtx.CreateChatRoom(ctx, db.CreateChatRoomParams{
 		Type:      "DM",
 		CreatedBy: userID,

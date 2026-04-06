@@ -97,7 +97,13 @@ SELECT * FROM chat_rooms WHERE id = $1;
 SELECT cr.* FROM chat_rooms cr
 JOIN chat_room_members m1 ON cr.id = m1.chat_room_id AND m1.user_id = $1
 JOIN chat_room_members m2 ON cr.id = m2.chat_room_id AND m2.user_id = $2
-WHERE cr.type = 'DM';
+WHERE cr.type = 'DM'
+LIMIT 1;
+
+-- name: DeleteFriendshipBetween :exec
+DELETE FROM friendships
+WHERE (requester_id = $1 AND addressee_id = $2)
+   OR (requester_id = $2 AND addressee_id = $1);
 
 -- name: ListUserChatRooms :many
 SELECT cr.id, cr.type, cr.name, cr.created_at,

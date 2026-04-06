@@ -726,3 +726,19 @@ func (q *Queries) CountUnreadMessages(ctx context.Context, arg CountUnreadMessag
 	err := row.Scan(&count)
 	return count, err
 }
+
+const deleteFriendshipBetween = `-- name: DeleteFriendshipBetween :exec
+DELETE FROM friendships
+WHERE (requester_id = $1 AND addressee_id = $2)
+   OR (requester_id = $2 AND addressee_id = $1)
+`
+
+type DeleteFriendshipBetweenParams struct {
+	UserID1 uuid.UUID `json:"user_id_1"`
+	UserID2 uuid.UUID `json:"user_id_2"`
+}
+
+func (q *Queries) DeleteFriendshipBetween(ctx context.Context, arg DeleteFriendshipBetweenParams) error {
+	_, err := q.db.Exec(ctx, deleteFriendshipBetween, arg.UserID1, arg.UserID2)
+	return err
+}
