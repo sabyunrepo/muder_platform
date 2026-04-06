@@ -17,12 +17,12 @@ CREATE TABLE coin_packages (
 CREATE TRIGGER trg_coin_packages_updated_at BEFORE UPDATE ON coin_packages FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 INSERT INTO coin_packages (platform, name, price_krw, base_coins, bonus_coins, sort_order) VALUES
-    ('WEB',    '400 코인',  5000,  400,   0, 1),
-    ('WEB',    '840 코인',  10000, 840,  40, 2),
-    ('WEB',    '2650 코인', 30000, 2650, 250, 3),
-    ('MOBILE', '400 코인',  5500,  400,   0, 1),
-    ('MOBILE', '800 코인',  11000, 800,   0, 2),
-    ('MOBILE', '2450 코인', 33000, 2450,  50, 3);
+    ('WEB',    '400 코인',   5000,  400,    0, 1),
+    ('WEB',    '840 코인',  10000,  800,   40, 2),
+    ('WEB',    '2,650 코인', 30000, 2400,  250, 3),
+    ('MOBILE', '400 코인',   5500,  400,    0, 1),
+    ('MOBILE', '800 코인',  11000,  800,    0, 2),
+    ('MOBILE', '2,450 코인', 33000, 2400,   50, 3);
 
 -- ── 결제 ──────────────────────────────────────────────────
 CREATE TABLE payments (
