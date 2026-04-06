@@ -13,11 +13,15 @@ import (
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/domain/admin"
 	"github.com/mmp-platform/server/internal/domain/auth"
+	"github.com/mmp-platform/server/internal/domain/coin"
+	"github.com/mmp-platform/server/internal/domain/creator"
 	"github.com/mmp-platform/server/internal/domain/editor"
+	"github.com/mmp-platform/server/internal/domain/payment"
 	"github.com/mmp-platform/server/internal/domain/profile"
 	"github.com/mmp-platform/server/internal/domain/room"
 	"github.com/mmp-platform/server/internal/domain/social"
 	"github.com/mmp-platform/server/internal/domain/theme"
+	"github.com/mmp-platform/server/internal/eventbus"
 	"github.com/mmp-platform/server/internal/health"
 	"github.com/mmp-platform/server/internal/infra/cache"
 	"github.com/mmp-platform/server/internal/infra/lock"
@@ -120,7 +124,10 @@ func main() {
 	// 5. sqlc Queries
 	queries := db.New(pool)
 
-	// 6. Domain Services
+	// 6. EventBus
+	bus := eventbus.New(logger)
+
+	// 7. Domain Services
 	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), logger)
 	profileSvc := profile.NewService(queries, logger)
 	roomSvc := room.NewService(pool, queries, logger)
@@ -130,7 +137,27 @@ func main() {
 	friendSvc := social.NewFriendService(queries, logger)
 	chatSvc := social.NewChatService(pool, queries, logger)
 
-	// 7. Domain Handlers
+	// Payment provider
+	paymentProvider, err := payment.NewPaymentProvider("mock", cfg.IsDevelopment())
+	if err != nil {
+		logger.Fatal().Err(err).Msg("failed to create payment provider")
+	}
+	paymentSvc := payment.NewService(queries, paymentProvider, bus, logger)
+
+	// Coin
+	coinSvc := coin.NewService(pool, queries, bus, logger)
+
+	// Creator + Settlement
+	creatorSvc := creator.NewService(queries, logger)
+	settlementPipeline := creator.NewSettlementPipeline(queries, pool, redisCache.Client(), logger)
+
+	// 8. EventBus subscriptions
+	bus.Subscribe(eventbus.TypePaymentConfirmed, coinSvc.HandlePaymentConfirmed)
+	bus.Subscribe(eventbus.TypeThemePurchased, creatorSvc.HandleThemePurchased)
+	bus.Subscribe(eventbus.TypeThemeRefunded, creatorSvc.HandleThemeRefunded)
+	bus.Subscribe(eventbus.TypeGameStarted, coinSvc.HandleGameStarted)
+
+	// 9. Domain Handlers
 	authHandler := auth.NewHandler(authSvc)
 	profileHandler := profile.NewHandler(profileSvc)
 	roomHandler := room.NewHandler(roomSvc)
@@ -138,24 +165,28 @@ func main() {
 	editorHandler := editor.NewHandler(editorSvc)
 	adminHandler := admin.NewHandler(adminSvc)
 	socialHandler := social.NewHandler(friendSvc, chatSvc)
+	paymentHandler := payment.NewHandler(paymentSvc, paymentProvider)
+	coinHandler := coin.NewHandler(coinSvc)
+	creatorHandler := creator.NewHandler(creatorSvc)
+	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
 
-	// 8. WebSocket Hub
+	// 10. WebSocket Hub
 	wsRouter := ws.NewRouter(logger)
 	wsHub := ws.NewHub(wsRouter, ws.NoopPubSub{}, logger)
 	defer wsHub.Stop()
 	logger.Info().Msg("websocket hub started")
 
-	// 9. HTTP Router
+	// 11. HTTP Router
 	r := chi.NewRouter()
 
-	// 10. Global Middleware (order matters: outermost first)
+	// 12. Global Middleware (order matters: outermost first)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(sentryPkg.Middleware) // Sentry hub before Recovery so panics are captured
 	r.Use(middleware.Recovery)
 	r.Use(middleware.CORS(cfg.IsDevelopment(), cfg.CORSOrigins))
 
-	// 11. Health endpoints
+	// 13. Health endpoints
 	healthHandler := health.NewHandler(
 		pool.Ping,
 		func(ctx context.Context) error { return redisCache.Ping(ctx) },
@@ -163,11 +194,11 @@ func main() {
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
 
-	// 12. SEO pages
+	// 14. SEO pages
 	seoHandler := seo.NewHandler(cfg.BaseURL, logger)
 	seoHandler.RegisterRoutes(r)
 
-	// 13. WebSocket endpoints
+	// 15. WebSocket endpoints
 	wsCfg := ws.UpgradeConfig{
 		AllowedOrigins: cfg.CORSOrigins,
 		DevMode:        cfg.IsDevelopment(),
@@ -176,10 +207,10 @@ func main() {
 	r.Get("/ws/game", gameUpgrade)
 	r.Get("/ws/social", gameUpgrade)
 
-	// 14. JWT auth config
+	// 16. JWT auth config
 	jwtCfg := middleware.JWTConfig{Secret: []byte(cfg.JWTSecret)}
 
-	// 15. REST API v1
+	// 17. REST API v1
 	r.Route("/api/v1", func(r chi.Router) {
 		// --- Public endpoints ---
 		r.Post("/auth/callback", authHandler.HandleCallback)
@@ -195,6 +226,10 @@ func main() {
 		r.Get("/rooms/code/{code}", roomHandler.GetRoomByCode)
 
 		r.Get("/users/{id}", profileHandler.GetPublicProfile)
+
+		// Payment (public — no JWT required) [S2]
+		r.Get("/payments/packages", paymentHandler.ListPackages)
+		r.Post("/payments/webhook", paymentHandler.HandleWebhook)
 
 		// --- Authenticated endpoints ---
 		r.Group(func(r chi.Router) {
@@ -212,6 +247,22 @@ func main() {
 			r.Post("/rooms", roomHandler.CreateRoom)
 			r.Post("/rooms/{id}/join", roomHandler.JoinRoom)
 			r.Post("/rooms/{id}/leave", roomHandler.LeaveRoom)
+
+			// --- Payment endpoints (authed) ---
+			r.Route("/payments", func(r chi.Router) {
+				r.Post("/create", paymentHandler.CreatePayment)
+				r.Post("/confirm", paymentHandler.ConfirmPayment)
+				r.Get("/history", paymentHandler.GetPaymentHistory)
+			})
+
+			// --- Coin endpoints ---
+			r.Route("/coins", func(r chi.Router) {
+				r.Get("/balance", coinHandler.GetBalance)
+				r.Get("/transactions", coinHandler.ListTransactions)
+				r.Post("/purchase-theme", coinHandler.PurchaseTheme)
+				r.Post("/refund-theme", coinHandler.RefundTheme)
+				r.Get("/purchased-themes", coinHandler.ListPurchasedThemes)
+			})
 
 			// --- Social endpoints ---
 			r.Route("/social", func(r chi.Router) {
@@ -239,6 +290,16 @@ func main() {
 			})
 
 			// --- Creator endpoints (CREATOR, ADMIN) ---
+			r.Route("/creator", func(r chi.Router) {
+				r.Use(middleware.RequireRole("CREATOR", "ADMIN"))
+
+				r.Get("/dashboard", creatorHandler.GetDashboard)
+				r.Get("/themes/{id}/stats", creatorHandler.GetThemeStats)
+				r.Get("/earnings", creatorHandler.ListEarnings)
+				r.Get("/settlements", creatorHandler.ListSettlements)
+			})
+
+			// --- Editor endpoints (CREATOR, ADMIN) ---
 			r.Route("/editor", func(r chi.Router) {
 				r.Use(middleware.RequireRole("CREATOR", "ADMIN"))
 
@@ -265,11 +326,28 @@ func main() {
 				r.Post("/themes/{id}/unpublish", adminHandler.ForceUnpublishTheme)
 				r.Get("/rooms", adminHandler.ListAllRooms)
 				r.Post("/rooms/{id}/close", adminHandler.ForceCloseRoom)
+
+				// Settlement & revenue
+				r.Get("/settlements", creatorAdminHandler.ListAllSettlements)
+				r.Patch("/settlements/{id}/approve", creatorAdminHandler.ApproveSettlement)
+				r.Patch("/settlements/{id}/payout", creatorAdminHandler.PayoutSettlement)
+				r.Patch("/settlements/{id}/cancel", creatorAdminHandler.CancelSettlement)
+				r.Get("/revenue", creatorAdminHandler.GetRevenue)
+
+				// Coin management
+				r.Post("/coins/grant", creatorAdminHandler.GrantCoins)
+
+				// Package management
+				r.Post("/packages", creatorAdminHandler.CreatePackage)
+				r.Patch("/packages/{id}", creatorAdminHandler.UpdatePackage)
+
+				// Settlement batch
+				r.Post("/settlements/run", creatorAdminHandler.RunSettlement)
 			})
 		})
 	})
 
-	// 16. Server start + graceful shutdown
+	// 18. Server start + graceful shutdown
 	srv := server.New(cfg.Port, r, logger)
 	if err := srv.Start(); err != nil {
 		logger.Fatal().Err(err).Msg("server exited with error")
