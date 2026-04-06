@@ -166,6 +166,23 @@ func (h *Hub) LeaveSession(c *Client) {
 // BroadcastToSession sends an envelope to every client in the given session
 // and records it in the session's reconnection buffer.
 func (h *Hub) BroadcastToSession(sessionID uuid.UUID, env *Envelope) {
+	h.broadcastToSession(sessionID, env, uuid.Nil, true)
+}
+
+// BroadcastToSessionExcept sends an envelope to every client in the session
+// except the specified sender, and records it in the reconnection buffer.
+func (h *Hub) BroadcastToSessionExcept(sessionID uuid.UUID, env *Envelope, excludeID uuid.UUID) {
+	h.broadcastToSession(sessionID, env, excludeID, true)
+}
+
+// BroadcastToSessionEphemeral sends an envelope to every client in the session
+// but does NOT record it in the reconnection buffer. Use for ephemeral events
+// like sound effects that should not be replayed on reconnect.
+func (h *Hub) BroadcastToSessionEphemeral(sessionID uuid.UUID, env *Envelope) {
+	h.broadcastToSession(sessionID, env, uuid.Nil, false)
+}
+
+func (h *Hub) broadcastToSession(sessionID uuid.UUID, env *Envelope, excludeID uuid.UUID, buffer bool) {
 	h.mu.RLock()
 	sess, ok := h.sessions[sessionID]
 	if !ok {
@@ -181,11 +198,14 @@ func (h *Hub) BroadcastToSession(sessionID uuid.UUID, env *Envelope) {
 	h.mu.RUnlock()
 
 	// Push to reconnection buffer before sending.
-	if buf != nil {
+	if buffer && buf != nil {
 		buf.Push(env)
 	}
 
 	for _, c := range clients {
+		if excludeID != uuid.Nil && c.ID == excludeID {
+			continue
+		}
 		c.SendMessage(env)
 	}
 }

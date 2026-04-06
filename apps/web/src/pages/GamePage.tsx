@@ -19,6 +19,7 @@ import {
   NetworkOverlay,
 } from "@/features/game/components";
 import { AudioProvider } from "@/features/audio/AudioProvider";
+import { GameErrorBoundary } from "@/components/error";
 
 // ---------------------------------------------------------------------------
 // 다른 에이전트가 생성 중인 컴포넌트 (lazy import)
@@ -114,6 +115,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
 
   return (
     <AudioProvider>
+    <GameErrorBoundary>
     <NetworkOverlay />
     <div className="flex h-screen flex-col bg-slate-950">
       {/* 상단: GameHUD */}
@@ -168,6 +170,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
         </div>
       )}
     </div>
+    </GameErrorBoundary>
     </AudioProvider>
   );
 }
