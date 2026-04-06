@@ -28,10 +28,10 @@ interface StatCard {
 }
 
 const STAT_CARDS: StatCard[] = [
-  { label: "총 판매 코인", icon: Coins, color: "text-amber-400" },
-  { label: "총 매출", icon: Banknote, color: "text-emerald-400" },
-  { label: "지급 완료액", icon: CheckCircle, color: "text-blue-400" },
-  { label: "미지급 잔액", icon: FileText, color: "text-rose-400" },
+  { label: "총 코인", icon: Coins, color: "text-amber-400" },
+  { label: "총 매출 (KRW)", icon: Banknote, color: "text-emerald-400" },
+  { label: "총 세금", icon: CheckCircle, color: "text-blue-400" },
+  { label: "순수익", icon: FileText, color: "text-rose-400" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -65,10 +65,10 @@ export function AdminRevenue() {
   }
 
   const values = [
-    formatNumber(data.total_coins_sold),
-    formatKRW(data.total_revenue_krw),
-    formatKRW(data.total_payouts_krw),
-    formatKRW(data.pending_payouts_krw),
+    formatNumber(data.total_coins),
+    formatKRW(data.total_krw),
+    formatKRW(data.total_tax),
+    formatKRW(data.total_net),
   ];
 
   return (

@@ -99,8 +99,8 @@ func (h *Handler) ListEarnings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
-		"earnings": earnings,
-		"total":    total,
+		"data":  earnings,
+		"total": total,
 	})
 }
 
@@ -120,7 +120,7 @@ func (h *Handler) ListSettlements(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
-		"settlements": settlements,
-		"total":       total,
+		"data":  settlements,
+		"total": total,
 	})
 }

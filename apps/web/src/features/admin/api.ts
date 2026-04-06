@@ -28,10 +28,11 @@ export interface AdminSettlement {
 }
 
 export interface RevenueStats {
-  total_revenue_krw: number;
-  total_coins_sold: number;
-  total_payouts_krw: number;
-  pending_payouts_krw: number;
+  total_coins: number;
+  total_krw: number;
+  total_tax: number;
+  total_net: number;
+  settlement_count: number;
 }
 
 export interface AdminCoinPackage {
@@ -91,7 +92,7 @@ export function useAdminSettlements(
 export function useApproveSettlement() {
   return useMutation<void, Error, string>({
     mutationFn: (settlementId) =>
-      api.postVoid(`/v1/admin/settlements/${settlementId}/approve`),
+      api.patchVoid(`/v1/admin/settlements/${settlementId}/approve`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.settlements() });
     },
@@ -101,7 +102,7 @@ export function useApproveSettlement() {
 export function usePayoutSettlement() {
   return useMutation<void, Error, string>({
     mutationFn: (settlementId) =>
-      api.postVoid(`/v1/admin/settlements/${settlementId}/payout`),
+      api.patchVoid(`/v1/admin/settlements/${settlementId}/payout`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.settlements() });
     },
@@ -111,7 +112,7 @@ export function usePayoutSettlement() {
 export function useCancelSettlement() {
   return useMutation<void, Error, string>({
     mutationFn: (settlementId) =>
-      api.postVoid(`/v1/admin/settlements/${settlementId}/cancel`),
+      api.patchVoid(`/v1/admin/settlements/${settlementId}/cancel`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.settlements() });
     },
@@ -149,7 +150,7 @@ export function useGrantCoins() {
   return useMutation<
     void,
     Error,
-    { user_id: string; base_amount: number; bonus_amount: number; reason: string }
+    { user_id: string; base_coins: number; bonus_coins: number; description: string }
   >({
     mutationFn: (body) => api.postVoid("/v1/admin/coins/grant", body),
     onSuccess: () => {

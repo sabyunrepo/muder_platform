@@ -16,8 +16,7 @@ export interface CreatorDashboard {
 export interface DailyStat {
   date: string;
   sales_count: number;
-  total_coins: number;
-  creator_coins: number;
+  daily_earnings: number;
 }
 
 export interface CreatorEarning {

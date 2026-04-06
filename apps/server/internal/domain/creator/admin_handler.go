@@ -61,8 +61,8 @@ func (h *AdminHandler) ListAllSettlements(w http.ResponseWriter, r *http.Request
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
-		"settlements": result,
-		"total":       total,
+		"data":  result,
+		"total": total,
 	})
 }
 
@@ -150,6 +150,11 @@ func (h *AdminHandler) GrantCoins(w http.ResponseWriter, r *http.Request) {
 	var req GrantCoinsReq
 	if err := httputil.ReadJSON(r, &req); err != nil {
 		apperror.WriteError(w, r, err)
+		return
+	}
+
+	if req.BaseCoins == 0 && req.BonusCoins == 0 {
+		apperror.WriteError(w, r, apperror.BadRequest("at least one of base_coins or bonus_coins must be positive"))
 		return
 	}
 

@@ -37,7 +37,7 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
 
   const maxCoins = useMemo(() => {
     if (!stats || stats.length === 0) return 1;
-    return Math.max(...stats.map((s) => s.total_coins), 1);
+    return Math.max(...stats.map((s) => s.daily_earnings), 1);
   }, [stats]);
 
   if (isLoading) {
@@ -122,13 +122,13 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
               <div className="relative w-full flex-1 flex items-end">
                 <div
                   style={{
-                    height: `${(s.total_coins / maxCoins) * 100}%`,
+                    height: `${(s.daily_earnings / maxCoins) * 100}%`,
                   }}
                   className="w-full rounded-t bg-emerald-500 transition-colors group-hover:bg-emerald-400"
                 />
               </div>
               <div className="pointer-events-none absolute -top-8 hidden rounded bg-slate-700 px-2 py-1 text-xs text-slate-200 group-hover:block">
-                {s.total_coins.toLocaleString("ko-KR")}
+                {s.daily_earnings.toLocaleString("ko-KR")}
               </div>
             </div>
           ))}

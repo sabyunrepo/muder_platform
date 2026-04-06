@@ -46,9 +46,9 @@ export function AdminCoinGrant() {
     grantMutation.mutate(
       {
         user_id: userId.trim(),
-        base_amount: base,
-        bonus_amount: bonus,
-        reason: reason.trim(),
+        base_coins: base,
+        bonus_coins: bonus,
+        description: reason.trim(),
       },
       {
         onSuccess: () => {
