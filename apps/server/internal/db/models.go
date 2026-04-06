@@ -201,3 +201,34 @@ type Payment struct {
 	CreatedAt      time.Time          `json:"created_at"`
 	UpdatedAt      time.Time          `json:"updated_at"`
 }
+
+type CreatorEarning struct {
+	ID                 uuid.UUID          `json:"id"`
+	CreatorID          uuid.UUID          `json:"creator_id"`
+	ThemeID            uuid.UUID          `json:"theme_id"`
+	PurchaseID         uuid.UUID          `json:"purchase_id"`
+	TotalCoins         int32              `json:"total_coins"`
+	CreatorShareCoins  int32              `json:"creator_share_coins"`
+	PlatformShareCoins int32              `json:"platform_share_coins"`
+	Settled            bool               `json:"settled"`
+	SettlementID       pgtype.UUID        `json:"settlement_id"`
+	CreatedAt          time.Time          `json:"created_at"`
+}
+
+type Settlement struct {
+	ID          uuid.UUID          `json:"id"`
+	CreatorID   uuid.UUID          `json:"creator_id"`
+	PeriodStart string             `json:"period_start"`
+	PeriodEnd   string             `json:"period_end"`
+	TotalCoins  int32              `json:"total_coins"`
+	TotalKRW    int32              `json:"total_krw"`
+	TaxType     string             `json:"tax_type"`
+	TaxRate     float64            `json:"tax_rate"`
+	TaxAmount   int32              `json:"tax_amount"`
+	NetAmount   int32              `json:"net_amount"`
+	Status      string             `json:"status"`
+	ApprovedBy  pgtype.UUID        `json:"approved_by"`
+	ApprovedAt  pgtype.Timestamptz `json:"approved_at"`
+	PaidOutAt   pgtype.Timestamptz `json:"paid_out_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+}
