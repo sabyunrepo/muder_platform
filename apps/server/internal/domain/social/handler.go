@@ -198,7 +198,8 @@ func (h *Handler) ListBlocks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	blocks, err := h.friends.ListBlocks(r.Context(), userID)
+	pg := httputil.ParsePagination(r, 20, 50)
+	blocks, err := h.friends.ListBlocks(r.Context(), userID, pg.Limit, pg.Offset)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return

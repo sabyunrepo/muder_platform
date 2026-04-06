@@ -36,7 +36,7 @@ type FriendService interface {
 	ListPendingRequests(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]PendingRequestResponse, error)
 	BlockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error
 	UnblockUser(ctx context.Context, blockerID, blockedID uuid.UUID) error
-	ListBlocks(ctx context.Context, userID uuid.UUID) ([]BlockResponse, error)
+	ListBlocks(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]BlockResponse, error)
 }
 
 // ChatService defines chat domain operations.
@@ -303,8 +303,12 @@ func (s *friendService) UnblockUser(ctx context.Context, blockerID, blockedID uu
 	return nil
 }
 
-func (s *friendService) ListBlocks(ctx context.Context, userID uuid.UUID) ([]BlockResponse, error) {
-	rows, err := s.queries.ListBlocks(ctx, userID)
+func (s *friendService) ListBlocks(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]BlockResponse, error) {
+	rows, err := s.queries.ListBlocks(ctx, db.ListBlocksParams{
+		BlockerID: userID,
+		Limit:     limit,
+		Offset:    offset,
+	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to list blocks")
 		return nil, apperror.Internal("failed to list blocks")
@@ -426,6 +430,10 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 }
 
 func (s *chatService) CreateGroupRoom(ctx context.Context, creatorID uuid.UUID, name string, memberIDs []uuid.UUID) (*ChatRoomResponse, error) {
+	if len(memberIDs) > 50 {
+		return nil, apperror.BadRequest("group room cannot have more than 50 members")
+	}
+
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, apperror.BadRequest("group name is required")

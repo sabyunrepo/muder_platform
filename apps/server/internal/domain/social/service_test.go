@@ -30,7 +30,7 @@ type mockFriendService struct {
 	listPendingFn        func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]PendingRequestResponse, error)
 	blockUserFn          func(ctx context.Context, blockerID, blockedID uuid.UUID) error
 	unblockUserFn        func(ctx context.Context, blockerID, blockedID uuid.UUID) error
-	listBlocksFn         func(ctx context.Context, userID uuid.UUID) ([]BlockResponse, error)
+	listBlocksFn         func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]BlockResponse, error)
 }
 
 func (m *mockFriendService) SendRequest(ctx context.Context, requesterID, addresseeID uuid.UUID) (*FriendshipResponse, error) {
@@ -89,9 +89,9 @@ func (m *mockFriendService) UnblockUser(ctx context.Context, blockerID, blockedI
 	return nil
 }
 
-func (m *mockFriendService) ListBlocks(ctx context.Context, userID uuid.UUID) ([]BlockResponse, error) {
+func (m *mockFriendService) ListBlocks(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]BlockResponse, error) {
 	if m.listBlocksFn != nil {
-		return m.listBlocksFn(ctx, userID)
+		return m.listBlocksFn(ctx, userID, limit, offset)
 	}
 	return nil, nil
 }

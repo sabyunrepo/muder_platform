@@ -72,7 +72,8 @@ SELECT ub.*, u.nickname AS blocked_nickname, u.avatar_url AS blocked_avatar
 FROM user_blocks ub
 JOIN users u ON ub.blocked_id = u.id
 WHERE ub.blocker_id = $1
-ORDER BY ub.created_at DESC;
+ORDER BY ub.created_at DESC
+LIMIT $2 OFFSET $3;
 
 -- name: IsBlocked :one
 SELECT EXISTS(
@@ -108,16 +109,21 @@ WHERE (requester_id = $1 AND addressee_id = $2)
 -- name: ListUserChatRooms :many
 SELECT cr.id, cr.type, cr.name, cr.created_at,
        m.last_read_at,
-       (SELECT COUNT(*) FROM chat_messages cm
-        WHERE cm.chat_room_id = cr.id AND cm.created_at > m.last_read_at) AS unread_count,
-       (SELECT cm2.content FROM chat_messages cm2
-        WHERE cm2.chat_room_id = cr.id ORDER BY cm2.id DESC LIMIT 1) AS last_message,
-       (SELECT cm3.created_at FROM chat_messages cm3
-        WHERE cm3.chat_room_id = cr.id ORDER BY cm3.id DESC LIMIT 1) AS last_message_at
+       COALESCE(s.unread_count, 0) AS unread_count,
+       s.last_message,
+       s.last_message_at
 FROM chat_rooms cr
 JOIN chat_room_members m ON cr.id = m.chat_room_id
+LEFT JOIN LATERAL (
+    SELECT
+        COUNT(*) FILTER (WHERE cm.created_at > m.last_read_at) AS unread_count,
+        (ARRAY_AGG(cm.content ORDER BY cm.id DESC))[1] AS last_message,
+        MAX(cm.created_at) AS last_message_at
+    FROM chat_messages cm
+    WHERE cm.chat_room_id = cr.id
+) s ON true
 WHERE m.user_id = $1
-ORDER BY last_message_at DESC NULLS LAST
+ORDER BY s.last_message_at DESC NULLS LAST
 LIMIT $2 OFFSET $3;
 
 -- ════════��═══════════════════════��══════════════════════════════════

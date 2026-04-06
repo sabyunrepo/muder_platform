@@ -312,6 +312,7 @@ FROM user_blocks ub
 JOIN users u ON ub.blocked_id = u.id
 WHERE ub.blocker_id = $1
 ORDER BY ub.created_at DESC
+LIMIT $2 OFFSET $3
 `
 
 type ListBlocksRow struct {
@@ -323,8 +324,14 @@ type ListBlocksRow struct {
 	BlockedAvatar   pgtype.Text `json:"blocked_avatar"`
 }
 
-func (q *Queries) ListBlocks(ctx context.Context, blockerID uuid.UUID) ([]ListBlocksRow, error) {
-	rows, err := q.db.Query(ctx, listBlocks, blockerID)
+type ListBlocksParams struct {
+	BlockerID uuid.UUID `json:"blocker_id"`
+	Limit     int32     `json:"limit"`
+	Offset    int32     `json:"offset"`
+}
+
+func (q *Queries) ListBlocks(ctx context.Context, arg ListBlocksParams) ([]ListBlocksRow, error) {
+	rows, err := q.db.Query(ctx, listBlocks, arg.BlockerID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
