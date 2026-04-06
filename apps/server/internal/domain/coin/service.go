@@ -90,7 +90,16 @@ func (s *coinService) ListTransactions(ctx context.Context, userID uuid.UUID, tx
 		return nil, 0, apperror.Internal("failed to list transactions")
 	}
 
-	total, err := s.queries.CountCoinTransactions(ctx, userID)
+	// M2: Use type-filtered count when txType is specified for correct pagination.
+	var total int64
+	if txType == "" {
+		total, err = s.queries.CountCoinTransactions(ctx, userID)
+	} else {
+		total, err = s.queries.CountCoinTransactionsByType(ctx, db.CountCoinTransactionsByTypeParams{
+			UserID: userID,
+			Type:   txType,
+		})
+	}
 	if err != nil {
 		s.logger.Error().Err(err).Stringer("user_id", userID).Msg("failed to count coin transactions")
 		return nil, 0, apperror.Internal("failed to count transactions")
@@ -161,13 +170,16 @@ func (s *coinService) PurchaseTheme(ctx context.Context, userID uuid.UUID, theme
 			return nil, apperror.Internal("failed to purchase theme")
 		}
 
-		_ = s.bus.Publish(ctx, eventbus.ThemePurchased{
+		// M5: Log event publish failures instead of silent drop.
+		if err := s.bus.Publish(ctx, eventbus.ThemePurchased{
 			PurchaseID: purchase.ID,
 			UserID:     userID,
 			CreatorID:  theme.CreatorID,
 			ThemeID:    themeID,
 			TotalCoins: 0,
-		})
+		}); err != nil {
+			s.logger.Warn().Err(err).Stringer("purchase_id", purchase.ID).Msg("event publish failed for free theme purchase, manual reconciliation may be needed")
+		}
 
 		return s.toPurchaseResponse(purchase), nil
 	}
@@ -254,13 +266,16 @@ func (s *coinService) PurchaseTheme(ctx context.Context, userID uuid.UUID, theme
 	}
 
 	// Publish event (best-effort, outside transaction).
-	_ = s.bus.Publish(ctx, eventbus.ThemePurchased{
+	// M5: Log event publish failures instead of silent drop.
+	if err := s.bus.Publish(ctx, eventbus.ThemePurchased{
 		PurchaseID: purchase.ID,
 		UserID:     userID,
 		CreatorID:  theme.CreatorID,
 		ThemeID:    themeID,
 		TotalCoins: int(coinPrice),
-	})
+	}); err != nil {
+		s.logger.Warn().Err(err).Stringer("purchase_id", purchase.ID).Msg("event publish failed for theme purchase, manual reconciliation may be needed")
+	}
 
 	return s.toPurchaseResponse(purchase), nil
 }
@@ -367,13 +382,16 @@ func (s *coinService) RefundTheme(ctx context.Context, userID uuid.UUID, purchas
 	}
 
 	// Fetch theme for creator_id (best-effort for event).
+	// M5: Log event publish failures instead of silent drop.
 	theme, themeErr := s.queries.GetTheme(ctx, purchase.ThemeID)
 	if themeErr == nil {
-		_ = s.bus.Publish(ctx, eventbus.ThemeRefunded{
+		if err := s.bus.Publish(ctx, eventbus.ThemeRefunded{
 			PurchaseID: purchaseID,
 			UserID:     userID,
 			CreatorID:  theme.CreatorID,
-		})
+		}); err != nil {
+			s.logger.Warn().Err(err).Stringer("purchase_id", purchaseID).Msg("event publish failed for theme refund, manual reconciliation may be needed")
+		}
 	}
 
 	return nil

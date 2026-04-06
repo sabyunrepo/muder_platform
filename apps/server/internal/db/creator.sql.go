@@ -56,6 +56,29 @@ func (q *Queries) CreateEarning(ctx context.Context, arg CreateEarningParams) (C
 	return i, err
 }
 
+const getEarningByPurchaseID = `-- name: GetEarningByPurchaseID :one
+SELECT id, creator_id, theme_id, purchase_id, total_coins, creator_share_coins, platform_share_coins, settled, settlement_id, created_at
+FROM creator_earnings WHERE purchase_id = $1
+`
+
+func (q *Queries) GetEarningByPurchaseID(ctx context.Context, purchaseID uuid.UUID) (CreatorEarning, error) {
+	row := q.db.QueryRow(ctx, getEarningByPurchaseID, purchaseID)
+	var i CreatorEarning
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.ThemeID,
+		&i.PurchaseID,
+		&i.TotalCoins,
+		&i.CreatorShareCoins,
+		&i.PlatformShareCoins,
+		&i.Settled,
+		&i.SettlementID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const deleteEarningByPurchase = `-- name: DeleteEarningByPurchase :exec
 DELETE FROM creator_earnings WHERE purchase_id = $1
 `
@@ -255,7 +278,7 @@ func (q *Queries) UnsettleEarningsBySettlement(ctx context.Context, settlementID
 const createSettlement = `-- name: CreateSettlement :one
 INSERT INTO settlements (creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at
+RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at, updated_at
 `
 
 type CreateSettlementParams struct {
@@ -299,12 +322,13 @@ func (q *Queries) CreateSettlement(ctx context.Context, arg CreateSettlementPara
 		&i.ApprovedAt,
 		&i.PaidOutAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getSettlement = `-- name: GetSettlement :one
-SELECT id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at
+SELECT id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at, updated_at
 FROM settlements WHERE id = $1
 `
 
@@ -327,6 +351,7 @@ func (q *Queries) GetSettlement(ctx context.Context, id uuid.UUID) (Settlement, 
 		&i.ApprovedAt,
 		&i.PaidOutAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -335,7 +360,7 @@ const approveSettlement = `-- name: ApproveSettlement :one
 UPDATE settlements
 SET status = 'APPROVED', approved_by = $2, approved_at = NOW()
 WHERE id = $1 AND status = 'CALCULATED'
-RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at
+RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at, updated_at
 `
 
 func (q *Queries) ApproveSettlement(ctx context.Context, id, approvedBy uuid.UUID) (Settlement, error) {
@@ -357,6 +382,7 @@ func (q *Queries) ApproveSettlement(ctx context.Context, id, approvedBy uuid.UUI
 		&i.ApprovedAt,
 		&i.PaidOutAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -365,7 +391,7 @@ const payoutSettlement = `-- name: PayoutSettlement :one
 UPDATE settlements
 SET status = 'PAID_OUT', paid_out_at = NOW()
 WHERE id = $1 AND status = 'APPROVED'
-RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at
+RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at, updated_at
 `
 
 func (q *Queries) PayoutSettlement(ctx context.Context, id uuid.UUID) (Settlement, error) {
@@ -387,6 +413,7 @@ func (q *Queries) PayoutSettlement(ctx context.Context, id uuid.UUID) (Settlemen
 		&i.ApprovedAt,
 		&i.PaidOutAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -395,7 +422,7 @@ const cancelSettlement = `-- name: CancelSettlement :one
 UPDATE settlements
 SET status = 'CANCELLED'
 WHERE id = $1 AND status IN ('CALCULATED', 'APPROVED')
-RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at
+RETURNING id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at, updated_at
 `
 
 func (q *Queries) CancelSettlement(ctx context.Context, id uuid.UUID) (Settlement, error) {
@@ -417,12 +444,13 @@ func (q *Queries) CancelSettlement(ctx context.Context, id uuid.UUID) (Settlemen
 		&i.ApprovedAt,
 		&i.PaidOutAt,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listSettlementsByCreator = `-- name: ListSettlementsByCreator :many
-SELECT id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at
+SELECT id, creator_id, period_start, period_end, total_coins, total_krw, tax_type, tax_rate, tax_amount, net_amount, status, approved_by, approved_at, paid_out_at, created_at, updated_at
 FROM settlements
 WHERE creator_id = $1
 ORDER BY created_at DESC
@@ -454,6 +482,7 @@ func (q *Queries) ListSettlementsByCreator(ctx context.Context, creatorID uuid.U
 			&i.ApprovedAt,
 			&i.PaidOutAt,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -474,7 +503,7 @@ func (q *Queries) CountSettlementsByCreator(ctx context.Context, creatorID uuid.
 }
 
 const listSettlementsByStatus = `-- name: ListSettlementsByStatus :many
-SELECT s.id, s.creator_id, s.period_start, s.period_end, s.total_coins, s.total_krw, s.tax_type, s.tax_rate, s.tax_amount, s.net_amount, s.status, s.approved_by, s.approved_at, s.paid_out_at, s.created_at, u.nickname AS creator_nickname
+SELECT s.id, s.creator_id, s.period_start, s.period_end, s.total_coins, s.total_krw, s.tax_type, s.tax_rate, s.tax_amount, s.net_amount, s.status, s.approved_by, s.approved_at, s.paid_out_at, s.created_at, s.updated_at, u.nickname AS creator_nickname
 FROM settlements s
 JOIN users u ON s.creator_id = u.id
 WHERE ($1::varchar = '' OR s.status = $1)
@@ -512,6 +541,7 @@ func (q *Queries) ListSettlementsByStatus(ctx context.Context, status string, li
 			&i.ApprovedAt,
 			&i.PaidOutAt,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.CreatorNickname,
 		); err != nil {
 			return nil, err

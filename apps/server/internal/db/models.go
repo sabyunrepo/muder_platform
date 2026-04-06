@@ -231,4 +231,5 @@ type Settlement struct {
 	ApprovedAt  pgtype.Timestamptz `json:"approved_at"`
 	PaidOutAt   pgtype.Timestamptz `json:"paid_out_at"`
 	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
 }

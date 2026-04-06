@@ -2,9 +2,11 @@ package creator
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -160,7 +162,33 @@ func (s *creatorService) HandleThemeRefunded(ctx context.Context, event eventbus
 		return apperror.Internal("unexpected event type for ThemeRefunded")
 	}
 
-	err := s.queries.DeleteEarningByPurchase(ctx, e.PurchaseID)
+	// M1: Check if earning exists and whether it has been settled.
+	earning, err := s.queries.GetEarningByPurchaseID(ctx, e.PurchaseID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// Earning already deleted or never created (e.g. free theme). Nothing to do.
+			s.logger.Info().
+				Str("purchase_id", e.PurchaseID.String()).
+				Msg("no earning found for refunded purchase, skipping")
+			return nil
+		}
+		s.logger.Error().Err(err).
+			Str("purchase_id", e.PurchaseID.String()).
+			Msg("failed to get earning for refund")
+		return apperror.Internal("failed to get earning for refund")
+	}
+
+	// If earning is already settled, do NOT delete — manual reconciliation required.
+	if earning.Settled {
+		s.logger.Warn().
+			Str("purchase_id", e.PurchaseID.String()).
+			Str("creator_id", e.CreatorID.String()).
+			Str("earning_id", earning.ID.String()).
+			Msg("earning already settled, skipping delete — manual reconciliation required")
+		return nil
+	}
+
+	err = s.queries.DeleteEarningByPurchase(ctx, e.PurchaseID)
 	if err != nil {
 		s.logger.Error().Err(err).
 			Str("purchase_id", e.PurchaseID.String()).

@@ -37,6 +37,9 @@ LIMIT $3 OFFSET $4;
 -- name: CountCoinTransactions :one
 SELECT COUNT(*) FROM coin_transactions WHERE user_id = $1;
 
+-- name: CountCoinTransactionsByType :one
+SELECT COUNT(*) FROM coin_transactions WHERE user_id = $1 AND type = $2;
+
 -- ═══════════════════════════════════════════════════════════════════
 -- Theme Purchases
 -- ═══════════════════════════════════════════════════════════════════

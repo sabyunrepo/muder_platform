@@ -7,6 +7,9 @@ INSERT INTO creator_earnings (creator_id, theme_id, purchase_id, total_coins, cr
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
+-- name: GetEarningByPurchaseID :one
+SELECT * FROM creator_earnings WHERE purchase_id = $1;
+
 -- name: DeleteEarningByPurchase :exec
 DELETE FROM creator_earnings WHERE purchase_id = $1;
 
@@ -107,7 +110,7 @@ LIMIT $2 OFFSET $3;
 SELECT COUNT(*) FROM settlements WHERE creator_id = $1;
 
 -- name: ListSettlementsByStatus :many
-SELECT s.*, u.nickname AS creator_nickname
+SELECT s.id, s.creator_id, s.period_start, s.period_end, s.total_coins, s.total_krw, s.tax_type, s.tax_rate, s.tax_amount, s.net_amount, s.status, s.approved_by, s.approved_at, s.paid_out_at, s.created_at, s.updated_at, u.nickname AS creator_nickname
 FROM settlements s
 JOIN users u ON s.creator_id = u.id
 WHERE ($1::varchar = '' OR s.status = $1)

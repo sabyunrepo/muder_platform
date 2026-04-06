@@ -220,6 +220,22 @@ func (q *Queries) CountCoinTransactions(ctx context.Context, userID uuid.UUID) (
 	return count, err
 }
 
+const countCoinTransactionsByType = `-- name: CountCoinTransactionsByType :one
+SELECT COUNT(*) FROM coin_transactions WHERE user_id = $1 AND type = $2
+`
+
+type CountCoinTransactionsByTypeParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Type   string    `json:"type"`
+}
+
+func (q *Queries) CountCoinTransactionsByType(ctx context.Context, arg CountCoinTransactionsByTypeParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countCoinTransactionsByType, arg.UserID, arg.Type)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Theme Purchases
 // ═══════════════════════════════════════════════════════════════════
