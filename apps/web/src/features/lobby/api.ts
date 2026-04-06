@@ -18,6 +18,7 @@ export interface ThemeSummary {
   thumbnail_url: string | null;
   play_count: number;
   rating: number;
+  coin_price: number;
 }
 
 export interface ThemeResponse extends ThemeSummary {

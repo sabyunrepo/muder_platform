@@ -52,9 +52,15 @@
 ## Phase 7.5: 소셜 (친구 + 채팅)
 - [ ] DB + FriendService + ChatService + /ws/social + 읽음 확인 + 게임 연동
 
-## Phase 7.6: 결제 + 수익/통계
-- [ ] PaymentProvider + CoinService + EarningService + StatisticsService
-- [ ] 제작자 대시보드 + Admin 정산
+## Phase 7.6: 결제 + 수익/통계 ✅
+- [x] PaymentProvider(Strategy+Mock) + CoinService + CreatorService + SettlementPipeline
+- [x] EventBus 이벤트 기반 도메인 연결 (PaymentConfirmed, ThemePurchased, ThemeRefunded, GameStarted)
+- [x] DB: 6 테이블 + users/themes 확장, 41 sqlc 쿼리
+- [x] REST API: 22 endpoints (payment 5 + coin 5 + creator 4 + admin 8)
+- [x] 보안: S1~S10 준수 (서버사이드 가격, 웹훅 서명, 자전거래 방지, 환불 3중검증, DB CHECK)
+- [x] 프론트엔드: 22 React Query hooks, 15+ 컴포넌트, 13 라우트
+- [x] 제작자 대시보드 (통계 차트, 수익, 정산) + Admin 정산 관리
+- [x] Go 39 테스트 PASS + FE ~23 테스트 + TypeScript 0 errors
 
 ## Phase 7.7: 오디오/미디어
 - [ ] theme_media DB + AudioManager + 미디어 라이브러리 탭
@@ -76,4 +82,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~6 완료
+**진행:** 2026-04-05 Phase 0~6 완료, 2026-04-06 Phase 7-C~7.5+7.6 완료

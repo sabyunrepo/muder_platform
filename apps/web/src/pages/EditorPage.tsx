@@ -1,7 +1,13 @@
+import { useParams } from "react-router";
+import { EditorDashboard } from "@/features/editor/components";
+import { ThemeEditor } from "@/features/editor/components";
+
 export default function EditorPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-100">테마 에디터</h1>
-    </div>
-  );
+  const { id } = useParams<{ id: string }>();
+
+  if (id) {
+    return <ThemeEditor themeId={id} />;
+  }
+
+  return <EditorDashboard />;
 }

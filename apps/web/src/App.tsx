@@ -29,6 +29,38 @@ const EditorPage = lazy(() => import("@/pages/EditorPage"));
 const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const PublicProfilePage = lazy(() => import("@/pages/PublicProfilePage"));
 const GamePage = lazy(() => import("@/pages/GamePage"));
+const SocialPage = lazy(() => import("@/pages/SocialPage"));
+
+// Shop
+const ShopPage = lazy(() => import("@/pages/ShopPage"));
+const ShopHistoryPage = lazy(() => import("@/pages/ShopHistoryPage"));
+
+// My Themes
+const MyThemesPage = lazy(() => import("@/pages/MyThemesPage"));
+
+// Creator
+const CreatorDashboardPage = lazy(
+  () => import("@/pages/CreatorDashboardPage"),
+);
+const CreatorThemeStatsPage = lazy(
+  () => import("@/pages/CreatorThemeStatsPage"),
+);
+const CreatorEarningsPage = lazy(
+  () => import("@/pages/CreatorEarningsPage"),
+);
+const CreatorSettlementsPage = lazy(
+  () => import("@/pages/CreatorSettlementsPage"),
+);
+
+// Admin (payment management)
+const AdminSettlementsPage = lazy(
+  () => import("@/pages/AdminSettlementsPage"),
+);
+const AdminRevenuePage = lazy(() => import("@/pages/AdminRevenuePage"));
+const AdminPackagesPage = lazy(() => import("@/pages/AdminPackagesPage"));
+const AdminCoinGrantPage = lazy(
+  () => import("@/pages/AdminCoinGrantPage"),
+);
 
 // ---------------------------------------------------------------------------
 // 로딩 폴백
@@ -123,8 +155,50 @@ export function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/room/:id" element={<RoomPage />} />
                   <Route path="/editor" element={<EditorPage />} />
-                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/editor/:id" element={<EditorPage />} />
+                  <Route path="/social" element={<SocialPage />} />
                   <Route path="/users/:id" element={<PublicProfilePage />} />
+
+                  {/* Shop */}
+                  <Route path="/shop" element={<ShopPage />} />
+                  <Route path="/shop/history" element={<ShopHistoryPage />} />
+
+                  {/* My Themes */}
+                  <Route path="/my-themes" element={<MyThemesPage />} />
+
+                  {/* Creator */}
+                  <Route path="/creator" element={<CreatorDashboardPage />} />
+                  <Route
+                    path="/creator/:id/stats"
+                    element={<CreatorThemeStatsPage />}
+                  />
+                  <Route
+                    path="/creator/earnings"
+                    element={<CreatorEarningsPage />}
+                  />
+                  <Route
+                    path="/creator/settlements"
+                    element={<CreatorSettlementsPage />}
+                  />
+
+                  {/* Admin */}
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route
+                    path="/admin/settlements"
+                    element={<AdminSettlementsPage />}
+                  />
+                  <Route
+                    path="/admin/revenue"
+                    element={<AdminRevenuePage />}
+                  />
+                  <Route
+                    path="/admin/packages"
+                    element={<AdminPackagesPage />}
+                  />
+                  <Route
+                    path="/admin/coins"
+                    element={<AdminCoinGrantPage />}
+                  />
                 </Route>
               </Route>
 

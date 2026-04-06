@@ -17,29 +17,7 @@ export interface ChatMessageProps {
 // 닉네임 색상 해시
 // ---------------------------------------------------------------------------
 
-/** 닉네임 문자열 해시 → 8가지 색상 중 선택 */
-const NICKNAME_COLORS = [
-  "text-amber-400",
-  "text-emerald-400",
-  "text-sky-400",
-  "text-rose-400",
-  "text-violet-400",
-  "text-teal-400",
-  "text-orange-400",
-  "text-pink-400",
-] as const;
-
-function hashNickname(nickname: string): number {
-  let hash = 0;
-  for (let i = 0; i < nickname.length; i++) {
-    hash = (hash * 31 + nickname.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function getNicknameColor(nickname: string): string {
-  return NICKNAME_COLORS[hashNickname(nickname) % NICKNAME_COLORS.length]!;
-}
+import { getNicknameColor } from "@/shared/utils/nickname";
 
 // ---------------------------------------------------------------------------
 // 시간 포맷
