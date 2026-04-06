@@ -251,6 +251,23 @@ type ThemeMap struct {
 	CreatedAt time.Time   `json:"created_at"`
 }
 
+type ThemeMedium struct {
+	ID         uuid.UUID   `json:"id"`
+	ThemeID    uuid.UUID   `json:"theme_id"`
+	Name       string      `json:"name"`
+	Type       string      `json:"type"`
+	SourceType string      `json:"source_type"`
+	Url        pgtype.Text `json:"url"`
+	StorageKey pgtype.Text `json:"storage_key"`
+	Duration   pgtype.Int4 `json:"duration"`
+	FileSize   pgtype.Int8 `json:"file_size"`
+	MimeType   pgtype.Text `json:"mime_type"`
+	Tags       []string    `json:"tags"`
+	SortOrder  int32       `json:"sort_order"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
 type ThemePurchase struct {
 	ID              uuid.UUID          `json:"id"`
 	UserID          uuid.UUID          `json:"user_id"`

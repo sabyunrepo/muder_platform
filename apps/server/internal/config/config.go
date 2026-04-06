@@ -25,6 +25,13 @@ type Config struct {
 	LiveKitURL       string `env:"LIVEKIT_URL" default:""`
 	LiveKitAPIKey    string `env:"LIVEKIT_API_KEY" default:""`
 	LiveKitAPISecret string `env:"LIVEKIT_API_SECRET" default:""`
+
+	// Cloudflare R2 media storage configuration
+	R2AccountID       string `env:"R2_ACCOUNT_ID" default:""`
+	R2AccessKeyID     string `env:"R2_ACCESS_KEY_ID" default:""`
+	R2SecretAccessKey string `env:"R2_SECRET_ACCESS_KEY" default:""`
+	R2BucketName      string `env:"R2_BUCKET_NAME" default:""`
+	R2PublicURL       string `env:"R2_PUBLIC_URL" default:""`
 }
 
 // IsDevelopment returns true if the application is running in development mode.
