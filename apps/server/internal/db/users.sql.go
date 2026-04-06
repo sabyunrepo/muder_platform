@@ -15,7 +15,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (nickname, email, avatar_url, provider, provider_id)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
+RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -44,6 +44,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Provider,
 		&i.ProviderID,
 		&i.CoinBalance,
+		&i.CoinBalanceBase,
+		&i.CoinBalanceBonus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -51,7 +53,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at FROM users WHERE id = $1
+SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -66,6 +68,8 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Provider,
 		&i.ProviderID,
 		&i.CoinBalance,
+		&i.CoinBalanceBase,
+		&i.CoinBalanceBonus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -73,7 +77,7 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const getUserByProvider = `-- name: GetUserByProvider :one
-SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at FROM users WHERE provider = $1 AND provider_id = $2
+SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at FROM users WHERE provider = $1 AND provider_id = $2
 `
 
 type GetUserByProviderParams struct {
@@ -93,6 +97,8 @@ func (q *Queries) GetUserByProvider(ctx context.Context, arg GetUserByProviderPa
 		&i.Provider,
 		&i.ProviderID,
 		&i.CoinBalance,
+		&i.CoinBalanceBase,
+		&i.CoinBalanceBonus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -100,7 +106,7 @@ func (q *Queries) GetUserByProvider(ctx context.Context, arg GetUserByProviderPa
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2
+SELECT id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2
 `
 
 type ListUsersParams struct {
@@ -126,6 +132,8 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 			&i.Provider,
 			&i.ProviderID,
 			&i.CoinBalance,
+			&i.CoinBalanceBase,
+			&i.CoinBalanceBonus,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -142,7 +150,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]User, e
 const updateCoinBalance = `-- name: UpdateCoinBalance :one
 UPDATE users SET coin_balance = coin_balance + $2, updated_at = NOW()
 WHERE id = $1 AND coin_balance + $2 >= 0
-RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
+RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at
 `
 
 type UpdateCoinBalanceParams struct {
@@ -162,6 +170,8 @@ func (q *Queries) UpdateCoinBalance(ctx context.Context, arg UpdateCoinBalancePa
 		&i.Provider,
 		&i.ProviderID,
 		&i.CoinBalance,
+		&i.CoinBalanceBase,
+		&i.CoinBalanceBonus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -171,7 +181,7 @@ func (q *Queries) UpdateCoinBalance(ctx context.Context, arg UpdateCoinBalancePa
 const updateUser = `-- name: UpdateUser :one
 UPDATE users SET nickname = $2, avatar_url = $3, updated_at = NOW()
 WHERE id = $1
-RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
+RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -192,6 +202,8 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Provider,
 		&i.ProviderID,
 		&i.CoinBalance,
+		&i.CoinBalanceBase,
+		&i.CoinBalanceBonus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -201,7 +213,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 const updateUserRole = `-- name: UpdateUserRole :one
 UPDATE users SET role = $2, updated_at = NOW()
 WHERE id = $1
-RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, created_at, updated_at
+RETURNING id, nickname, email, avatar_url, role, provider, provider_id, coin_balance, coin_balance_base, coin_balance_bonus, created_at, updated_at
 `
 
 type UpdateUserRoleParams struct {
@@ -221,6 +233,8 @@ func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) 
 		&i.Provider,
 		&i.ProviderID,
 		&i.CoinBalance,
+		&i.CoinBalanceBase,
+		&i.CoinBalanceBonus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
