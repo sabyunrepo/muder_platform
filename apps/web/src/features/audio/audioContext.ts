@@ -15,10 +15,12 @@ export function unlockAudioContext(): void {
 }
 
 // iOS/Safari: AudioContext must be resumed from a user gesture.
+// Do NOT use { once: true } — iOS may re-suspend after tab background/foreground.
 if (typeof document !== "undefined") {
-  const unlock = () => {
-    unlockAudioContext();
-  };
-  document.addEventListener("click", unlock, { once: true });
-  document.addEventListener("touchstart", unlock, { once: true });
+  const unlock = () => unlockAudioContext();
+  document.addEventListener("click", unlock);
+  document.addEventListener("touchstart", unlock);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") unlock();
+  });
 }

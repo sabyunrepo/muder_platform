@@ -41,7 +41,7 @@ export function NetworkBanner() {
       aria-live="assertive"
       className={`fixed top-0 w-full z-[60] h-10 flex items-center justify-center gap-2 backdrop-blur-sm ${
         isOffline ? 'bg-red-900/90' : 'bg-emerald-900/90'
-      } ${exiting ? 'animate-slide-out-top' : 'animate-slide-in-top'}`}
+      } ${exiting ? 'motion-safe:animate-slide-out-top' : 'motion-safe:animate-slide-in-top'}`}
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {isOffline ? (

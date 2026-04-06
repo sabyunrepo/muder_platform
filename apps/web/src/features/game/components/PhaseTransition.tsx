@@ -19,14 +19,19 @@ export function PhaseTransition() {
   const prevPhaseRef = useRef<GamePhase | null>(null);
   const [displayPhase, setDisplayPhase] = useState<GamePhase | null>(null);
   const [stage, setStage] = useState<"idle" | "enter" | "exit">("idle");
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const dismiss = useCallback(() => {
     setStage("exit");
-    const timer = setTimeout(() => {
+    exitTimerRef.current = setTimeout(() => {
       setStage("idle");
       setDisplayPhase(null);
     }, BANNER_EXIT_MS);
-    return () => clearTimeout(timer);
+  }, []);
+
+  // Cleanup exit timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(exitTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -37,7 +42,7 @@ export function PhaseTransition() {
 
     if (phase && phase !== prevPhaseRef.current) {
       prevPhaseRef.current = phase;
-      // 이미 표시 중이면 displayPhase만 교체 (깜빡임 방지)
+      clearTimeout(exitTimerRef.current);
       setDisplayPhase(phase);
       setStage("enter");
 

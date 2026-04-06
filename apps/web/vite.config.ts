@@ -13,17 +13,18 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api/, /^\/ws/],
+        navigateFallbackDenylist: [/^\/api/, /^\/ws/, /^\/auth/],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
-            handler: "NetworkOnly",
+            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith("/api/"),
+            handler: "NetworkOnly" as const,
           },
           {
-            urlPattern: /^\/assets\/sounds\//,
-            handler: "CacheFirst",
+            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith("/assets/sounds/"),
+            handler: "CacheFirst" as const,
             options: {
               cacheName: "sound-cache",
+              cacheableResponse: { statuses: [0, 200] },
               expiration: {
                 maxEntries: 30,
                 maxAgeSeconds: 7 * 24 * 60 * 60,
@@ -31,10 +32,11 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: /^\/assets\//,
-            handler: "CacheFirst",
+            urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith("/assets/"),
+            handler: "CacheFirst" as const,
             options: {
               cacheName: "asset-cache",
+              cacheableResponse: { statuses: [0, 200] },
               expiration: {
                 maxEntries: 200,
                 maxAgeSeconds: 30 * 24 * 60 * 60,

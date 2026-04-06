@@ -13,17 +13,16 @@ const (
 	SoundPlayerLeave  SoundID = "player_leave"
 )
 
-var allowedSounds = map[SoundID]bool{
-	SoundPhaseChange:  true,
-	SoundVoteResult:   true,
-	SoundTimerWarning: true,
-	SoundRevealStart:  true,
-	SoundRevealResult: true,
-	SoundPlayerJoin:   true,
-	SoundPlayerLeave:  true,
-}
-
 // IsValidSound reports whether the given ID is an allowed sound.
+// Uses switch instead of map to prevent mutation and enable compile-time safety.
+// IMPORTANT: Keep in sync with packages/shared/src/ws/types.ts SOUND_IDS
+// and apps/web/src/features/audio/soundRegistry.ts SOUND_MAP.
 func IsValidSound(id string) bool {
-	return allowedSounds[SoundID(id)]
+	switch SoundID(id) {
+	case SoundPhaseChange, SoundVoteResult, SoundTimerWarning,
+		SoundRevealStart, SoundRevealResult, SoundPlayerJoin, SoundPlayerLeave:
+		return true
+	default:
+		return false
+	}
 }

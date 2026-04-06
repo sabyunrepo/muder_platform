@@ -17,7 +17,8 @@ import ProtectedRoute from "@/shared/components/ProtectedRoute";
 // 퍼블릭
 const HomePage = lazy(() => import("@/pages/HomePage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
-const OfflinePage = lazy(() => import("@/pages/OfflinePage"));
+// OfflinePage는 오프라인에서도 렌더링해야 하므로 eager import
+import OfflinePage from "@/pages/OfflinePage";
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const AuthCallbackPage = lazy(
   () => import("@/features/auth/AuthCallbackPage"),

@@ -30,27 +30,19 @@ export function NetworkOverlay() {
       : `${seconds}초`;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-slate-950/80 flex flex-col items-center justify-center gap-4 animate-fade-in">
+    <div className="fixed inset-0 z-[70] bg-slate-950/80 flex flex-col items-center justify-center gap-4 motion-safe:animate-fade-in">
       <WifiOff className="h-12 w-12 text-slate-400" />
       <p className="text-sm text-slate-300">재연결 중...</p>
       <Spinner size="md" />
       <p className="text-xs text-slate-500">{timeDisplay} 경과</p>
 
-      {elapsed >= 30 && elapsed < 60 && (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => window.location.reload()}
-        >
-          다시 연결하기
-        </Button>
-      )}
-
-      {elapsed >= 60 && (
+      {elapsed >= 30 && (
         <div className="flex flex-col items-center gap-3">
-          <p className="text-xs text-slate-400">
-            게임이 종료되었을 수 있습니다
-          </p>
+          {elapsed >= 60 && (
+            <p className="text-xs text-slate-400">
+              게임이 종료되었을 수 있습니다
+            </p>
+          )}
           <div className="flex gap-2">
             <Button
               variant="secondary"
@@ -59,15 +51,17 @@ export function NetworkOverlay() {
             >
               다시 연결하기
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                window.location.href = '/lobby';
-              }}
-            >
-              로비로 돌아가기
-            </Button>
+            {elapsed >= 60 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  window.location.href = '/lobby';
+                }}
+              >
+                로비로 돌아가기
+              </Button>
+            )}
           </div>
         </div>
       )}

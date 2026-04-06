@@ -16,6 +16,7 @@ import {
   AccusationPanel,
   CluePanel,
   ExplorationPanel,
+  NetworkOverlay,
 } from "@/features/game/components";
 import { AudioProvider } from "@/features/audio/AudioProvider";
 
@@ -113,6 +114,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
 
   return (
     <AudioProvider>
+    <NetworkOverlay />
     <div className="flex h-screen flex-col bg-slate-950">
       {/* 상단: GameHUD */}
       <Suspense fallback={null}>

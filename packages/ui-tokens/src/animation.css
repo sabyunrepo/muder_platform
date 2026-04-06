@@ -33,8 +33,11 @@
   /* Keyframes: scale-pulse (countdown) */
   --animate-scale-pulse: scale-pulse var(--duration-slow) var(--ease-spring);
 
+  /* Duration: slower (for reveal sequences) */
+  --duration-slower: 1s;
+
   /* Keyframes: glow-expand (reveal line) */
-  --animate-glow-expand: glow-expand 1s var(--ease-smooth);
+  --animate-glow-expand: glow-expand var(--duration-slower) var(--ease-smooth);
 }
 
 @keyframes fade-in {
@@ -102,9 +105,11 @@
 
 @keyframes glow-expand {
   from {
-    width: 0;
+    transform: scaleX(0);
+    transform-origin: left;
   }
   to {
-    width: 100%;
+    transform: scaleX(1);
+    transform-origin: left;
   }
 }
