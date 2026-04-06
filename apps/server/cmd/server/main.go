@@ -21,6 +21,7 @@ import (
 	"github.com/mmp-platform/server/internal/domain/room"
 	"github.com/mmp-platform/server/internal/domain/social"
 	"github.com/mmp-platform/server/internal/domain/theme"
+	"github.com/mmp-platform/server/internal/domain/voice"
 	"github.com/mmp-platform/server/internal/eventbus"
 	"github.com/mmp-platform/server/internal/health"
 	"github.com/mmp-platform/server/internal/infra/cache"
@@ -147,6 +148,18 @@ func main() {
 	// Coin
 	coinSvc := coin.NewService(pool, queries, bus, logger)
 
+	// Voice
+	var voiceProvider voice.VoiceProvider
+	if cfg.HasLiveKit() {
+		voiceProvider = voice.NewLiveKitProvider(cfg.LiveKitURL, cfg.LiveKitAPIKey, cfg.LiveKitAPISecret)
+		logger.Info().Msg("livekit voice provider initialized")
+	} else {
+		voiceProvider = voice.NewMockProvider(logger)
+		logger.Info().Msg("mock voice provider initialized (no livekit config)")
+	}
+	voiceSvc := voice.NewService(voiceProvider, queries, cfg.LiveKitURL, logger)
+	voiceHandler := voice.NewHandler(voiceSvc)
+
 	// Creator + Settlement
 	creatorSvc := creator.NewService(queries, logger)
 	settlementPipeline := creator.NewSettlementPipeline(queries, pool, redisCache.Client(), logger)
@@ -244,6 +257,9 @@ func main() {
 			// Profile
 			r.Get("/profile", profileHandler.GetProfile)
 			r.Put("/profile", profileHandler.UpdateProfile)
+
+			// Voice
+			r.Post("/voice/token", voiceHandler.GetToken)
 
 			// Rooms
 			r.Post("/rooms", roomHandler.CreateRoom)

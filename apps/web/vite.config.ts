@@ -10,6 +10,15 @@ export default defineConfig({
       "@": resolve(__dirname, "src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          livekit: ["livekit-client"],
+        },
+      },
+    },
+  },
   server: {
     port: 3000,
     proxy: {
