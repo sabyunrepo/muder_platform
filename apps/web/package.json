@@ -12,11 +12,15 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mmp/game-logic": "workspace:*",
     "@mmp/shared": "workspace:*",
     "@mmp/ui-tokens": "workspace:*",
+    "@mmp/ws-client": "workspace:*",
     "@sentry/react": "^10.47.0",
     "@tanstack/react-query": "^5.96.2",
+    "dompurify": "^3.3.3",
     "lucide-react": "^0.468.0",
+    "marked": "^17.0.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-error-boundary": "^6.1.1",
@@ -28,6 +32,7 @@
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/dompurify": "^3.2.0",
     "@types/node": "^25.5.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

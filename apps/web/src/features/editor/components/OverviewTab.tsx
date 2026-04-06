@@ -1,12 +1,89 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { toast } from 'sonner';
+import { ImagePlus } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
-import { Input } from '@/shared/components/ui/Input';
 import {
   useUpdateTheme,
   type EditorThemeResponse,
   type UpdateThemeRequest,
 } from '@/features/editor/api';
+import { SectionDivider } from './SectionDivider';
+
+// ---------------------------------------------------------------------------
+// SpecField — inline number input with label + unit
+// ---------------------------------------------------------------------------
+
+interface SpecFieldProps {
+  label: string;
+  unit: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  error?: string;
+}
+
+function SpecField({ label, unit, value, onChange, min, max, error }: SpecFieldProps) {
+  return (
+    <div className="rounded-sm border border-slate-800 bg-slate-900 p-3">
+      <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-slate-600">
+        {label}
+      </div>
+      <div className="mt-1 flex items-baseline gap-1">
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full bg-transparent text-2xl font-mono font-bold text-slate-200 focus:outline-none focus:text-amber-400 transition-colors"
+        />
+        <span className="text-xs text-slate-600">{unit}</span>
+      </div>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PriceField — same shape but for price inputs
+// ---------------------------------------------------------------------------
+
+interface PriceFieldProps {
+  label: string;
+  unit: string;
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  max?: number;
+  error?: string;
+}
+
+function PriceField({ label, unit, value, onChange, min, max, error }: PriceFieldProps) {
+  return (
+    <div className="rounded-sm border border-slate-800 bg-slate-900 p-3">
+      <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-slate-600">
+        {label}
+      </div>
+      <div className="mt-1 flex items-baseline gap-1">
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full bg-transparent text-xl font-mono font-bold text-slate-200 focus:outline-none focus:text-amber-400 transition-colors"
+        />
+        <span className="text-xs text-slate-600">{unit}</span>
+      </div>
+      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// OverviewTab
+// ---------------------------------------------------------------------------
 
 interface OverviewTabProps {
   themeId: string;
@@ -16,72 +93,43 @@ interface OverviewTabProps {
 export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   const [title, setTitle] = useState(theme.title);
   const [description, setDescription] = useState(theme.description ?? '');
-  const [coverImage, setCoverImage] = useState(theme.cover_image ?? '');
   const [minPlayers, setMinPlayers] = useState(theme.min_players);
   const [maxPlayers, setMaxPlayers] = useState(theme.max_players);
   const [durationMin, setDurationMin] = useState(theme.duration_min);
   const [price, setPrice] = useState(theme.price);
   const [coinPrice, setCoinPrice] = useState(theme.coin_price);
-
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const updateTheme = useUpdateTheme(themeId);
 
-  // Sync form state when server data changes (e.g. after save)
   useEffect(() => {
     setTitle(theme.title);
     setDescription(theme.description ?? '');
-    setCoverImage(theme.cover_image ?? '');
     setMinPlayers(theme.min_players);
     setMaxPlayers(theme.max_players);
     setDurationMin(theme.duration_min);
     setPrice(theme.price);
     setCoinPrice(theme.coin_price);
     setErrors({});
-  }, [theme.version]);
+  }, [theme.id, theme.version]);
 
   function validate(): Record<string, string> {
     const next: Record<string, string> = {};
-
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      next.title = '제목은 필수입니다';
-    } else if (trimmedTitle.length > 100) {
-      next.title = '제목은 100자 이하여야 합니다';
-    }
-
-    if (description.length > 2000) {
-      next.description = '설명은 2000자 이하여야 합니다';
-    }
-
-    if (minPlayers < 2 || minPlayers > 20) {
-      next.minPlayers = '최소 인원은 2~20 사이여야 합니다';
-    }
-
-    if (maxPlayers < 2 || maxPlayers > 20) {
-      next.maxPlayers = '최대 인원은 2~20 사이여야 합니다';
-    } else if (maxPlayers < minPlayers) {
-      next.maxPlayers = '최대 인원은 최소 인원 이상이어야 합니다';
-    }
-
-    if (durationMin < 10 || durationMin > 300) {
-      next.durationMin = '진행 시간은 10~300분 사이여야 합니다';
-    }
-
-    if (price < 0) {
-      next.price = '가격은 0 이상이어야 합니다';
-    }
-
-    if (coinPrice < 0 || coinPrice > 100000) {
-      next.coinPrice = '코인 가격은 0~100,000 사이여야 합니다';
-    }
-
+    if (!trimmedTitle) next.title = '제목은 필수입니다';
+    else if (trimmedTitle.length > 100) next.title = '제목은 100자 이하여야 합니다';
+    if (description.length > 2000) next.description = '설명은 2000자 이하여야 합니다';
+    if (minPlayers < 2 || minPlayers > 20) next.minPlayers = '최소 인원은 2~20 사이여야 합니다';
+    if (maxPlayers < 2 || maxPlayers > 20) next.maxPlayers = '최대 인원은 2~20 사이여야 합니다';
+    else if (maxPlayers < minPlayers) next.maxPlayers = '최대 인원은 최소 인원 이상이어야 합니다';
+    if (durationMin < 10 || durationMin > 300) next.durationMin = '진행 시간은 10~300분 사이여야 합니다';
+    if (price < 0) next.price = '가격은 0 이상이어야 합니다';
+    if (coinPrice < 0 || coinPrice > 100000) next.coinPrice = '코인 가격은 0~100,000 사이여야 합니다';
     return next;
   }
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-
     const validationErrors = validate();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
@@ -89,7 +137,6 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     const body: UpdateThemeRequest = {
       title: title.trim(),
       description: description || undefined,
-      cover_image: coverImage || undefined,
       min_players: minPlayers,
       max_players: maxPlayers,
       duration_min: durationMin,
@@ -98,107 +145,139 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     };
 
     updateTheme.mutate(body, {
-      onSuccess: () => {
-        toast.success('테마가 수정되었습니다');
-      },
-      onError: (err) => {
-        toast.error(err.message || '테마 수정에 실패했습니다');
-      },
+      onSuccess: () => toast.success('테마가 수정되었습니다'),
+      onError: (err) => toast.error(err.message || '테마 수정에 실패했습니다'),
     });
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="제목"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="테마 제목"
-        required
-        maxLength={100}
-        error={errors.title}
-      />
+    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl px-4 py-6">
+      {/* ── 기본 정보 ── */}
+      <SectionDivider label="기본 정보" />
 
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="overview-description" className="text-sm font-medium text-slate-300">
-          설명
-        </label>
-        <textarea
-          id="overview-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="테마에 대한 설명을 입력하세요"
-          maxLength={2000}
-          rows={4}
-          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-        />
-        {errors.description && (
-          <p className="text-sm text-red-400">{errors.description}</p>
-        )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[180px_1fr]">
+        {/* Thumbnail */}
+        <div
+          className="aspect-[3/2] cursor-pointer rounded-sm border border-dashed border-slate-800 bg-slate-900 flex flex-col items-center justify-center gap-2 hover:border-slate-700 transition-colors group overflow-hidden"
+          role="button"
+          tabIndex={0}
+          aria-label="커버 이미지 업로드"
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
+        >
+          {theme.cover_image ? (
+            <img
+              src={theme.cover_image}
+              alt="커버 이미지"
+              className="h-full w-full object-cover rounded-sm"
+            />
+          ) : (
+            <>
+              <ImagePlus className="h-6 w-6 text-slate-700 group-hover:text-slate-500 transition-colors" />
+              <span className="text-[10px] text-slate-700 group-hover:text-slate-500 transition-colors">
+                커버 이미지
+              </span>
+            </>
+          )}
+        </div>
+
+        {/* Text fields */}
+        <div className="flex flex-col gap-3">
+          {/* 제목 */}
+          <div>
+            <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-slate-600 mb-1">
+              제목
+            </div>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="테마 제목"
+              maxLength={100}
+              className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
+            />
+            {errors.title && <p className="mt-1 text-xs text-red-400">{errors.title}</p>}
+          </div>
+
+          {/* 세부 설명 */}
+          <div>
+            <div className="text-[10px] font-mono font-medium uppercase tracking-wider text-slate-600 mb-1">
+              세부 설명
+            </div>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="테마에 대한 세부 설명을 입력하세요"
+              maxLength={2000}
+              rows={3}
+              className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors resize-none"
+            />
+            {errors.description && <p className="mt-1 text-xs text-red-400">{errors.description}</p>}
+          </div>
+        </div>
       </div>
 
-      <Input
-        label="커버 이미지 URL"
-        type="url"
-        value={coverImage}
-        onChange={(e) => setCoverImage(e.target.value)}
-        placeholder="https://example.com/image.jpg"
-      />
+      {/* ── 게임 스펙 ── */}
+      <SectionDivider label="게임 스펙" />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Input
+      <div className="grid grid-cols-3 gap-3">
+        <SpecField
           label="최소 인원"
-          type="number"
+          unit="명"
           value={minPlayers}
-          onChange={(e) => setMinPlayers(Number(e.target.value))}
+          onChange={setMinPlayers}
           min={2}
           max={20}
           error={errors.minPlayers}
         />
-        <Input
+        <SpecField
           label="최대 인원"
-          type="number"
+          unit="명"
           value={maxPlayers}
-          onChange={(e) => setMaxPlayers(Number(e.target.value))}
+          onChange={setMaxPlayers}
           min={2}
           max={20}
           error={errors.maxPlayers}
         />
+        <SpecField
+          label="플레이 시간"
+          unit="분"
+          value={durationMin}
+          onChange={setDurationMin}
+          min={10}
+          max={300}
+          error={errors.durationMin}
+        />
       </div>
 
-      <Input
-        label="진행 시간 (분)"
-        type="number"
-        value={durationMin}
-        onChange={(e) => setDurationMin(Number(e.target.value))}
-        min={10}
-        max={300}
-        error={errors.durationMin}
-      />
+      {/* ── 가격 설정 ── */}
+      <SectionDivider label="가격 설정" />
 
-      <Input
-        label="가격"
-        type="number"
-        value={price}
-        onChange={(e) => setPrice(Number(e.target.value))}
-        min={0}
-        error={errors.price}
-      />
+      <div className="grid grid-cols-2 gap-3">
+        <PriceField
+          label="가격"
+          unit="원"
+          value={price}
+          onChange={setPrice}
+          min={0}
+          error={errors.price}
+        />
+        <PriceField
+          label="코인 가격"
+          unit="코인"
+          value={coinPrice}
+          onChange={setCoinPrice}
+          min={0}
+          max={100000}
+          error={errors.coinPrice}
+        />
+      </div>
 
-      <Input
-        label="코인 가격"
-        type="number"
-        value={coinPrice}
-        onChange={(e) => setCoinPrice(Number(e.target.value))}
-        min={0}
-        max={100000}
-        placeholder="0 (무료)"
-        error={errors.coinPrice}
-      />
-
-      <Button type="submit" isLoading={updateTheme.isPending}>
-        저장
-      </Button>
+      {/* Save */}
+      <div className="mt-8 flex justify-end">
+        <Button type="submit" isLoading={updateTheme.isPending}>
+          저장
+        </Button>
+      </div>
     </form>
   );
 }

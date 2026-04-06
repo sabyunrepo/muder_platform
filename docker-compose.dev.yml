@@ -1,10 +1,27 @@
 # Development override — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Dev mode: DB/Redis/Server만 실행, 프론트는 Vite dev server 사용
 services:
   server:
     build:
-      context: .
-      dockerfile: apps/server/Dockerfile.dev
+      context: ./apps/server
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:8080"
+      - "9090:9090"
     volumes:
       - ./apps/server:/build
     environment:
       APP_ENV: development
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  # 개발 시 프론트는 Vite dev server 사용하므로 web 서비스 비활성화
+  web:
+    profiles:
+      - disabled

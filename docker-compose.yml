@@ -5,8 +5,6 @@ services:
       POSTGRES_DB: mmf
       POSTGRES_USER: mmp
       POSTGRES_PASSWORD: mmp_dev
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,11 +12,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - internal
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -27,14 +25,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    networks:
+      - internal
 
   server:
     build:
-      context: .
-      dockerfile: apps/server/Dockerfile
-    ports:
-      - "8080:8080"
-      - "9090:9090"
+      context: ./apps/server
+      dockerfile: Dockerfile
     environment:
       PORT: "8080"
       APP_ENV: development
@@ -45,7 +42,24 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - internal
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - internal
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  internal:
+    driver: bridge

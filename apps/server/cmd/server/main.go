@@ -132,7 +132,7 @@ func main() {
 	profileSvc := profile.NewService(queries, logger)
 	roomSvc := room.NewService(pool, queries, logger)
 	themeSvc := theme.NewService(queries, logger)
-	editorSvc := editor.NewService(queries, logger)
+	editorSvc := editor.NewService(queries, pool, logger)
 	adminSvc := admin.NewService(queries, logger)
 	friendSvc := social.NewFriendService(queries, logger)
 	chatSvc := social.NewChatService(pool, queries, logger)
@@ -214,6 +214,8 @@ func main() {
 	r.Route("/api/v1", func(r chi.Router) {
 		// --- Public endpoints ---
 		r.Post("/auth/callback", authHandler.HandleCallback)
+		r.Post("/auth/register", authHandler.HandleRegister)
+		r.Post("/auth/login", authHandler.HandleLogin)
 		r.Post("/auth/refresh", authHandler.HandleRefresh)
 
 		r.Get("/themes", themeHandler.ListPublished)
@@ -309,10 +311,31 @@ func main() {
 				r.Delete("/themes/{id}", editorHandler.DeleteTheme)
 				r.Post("/themes/{id}/publish", editorHandler.PublishTheme)
 				r.Post("/themes/{id}/unpublish", editorHandler.UnpublishTheme)
+				r.Get("/themes/{id}/characters", editorHandler.ListCharacters)
 				r.Post("/themes/{id}/characters", editorHandler.CreateCharacter)
 				r.Put("/characters/{id}", editorHandler.UpdateCharacter)
 				r.Delete("/characters/{id}", editorHandler.DeleteCharacter)
 				r.Put("/themes/{id}/config", editorHandler.UpdateConfigJson)
+				// Maps
+				r.Get("/themes/{id}/maps", editorHandler.ListMaps)
+				r.Post("/themes/{id}/maps", editorHandler.CreateMap)
+				r.Put("/maps/{id}", editorHandler.UpdateMap)
+				r.Delete("/maps/{id}", editorHandler.DeleteMap)
+				// Locations
+				r.Get("/themes/{id}/locations", editorHandler.ListLocations)
+				r.Post("/themes/{id}/maps/{mapId}/locations", editorHandler.CreateLocation)
+				r.Put("/locations/{id}", editorHandler.UpdateLocation)
+				r.Delete("/locations/{id}", editorHandler.DeleteLocation)
+				// Clues
+				r.Get("/themes/{id}/clues", editorHandler.ListClues)
+				r.Post("/themes/{id}/clues", editorHandler.CreateClue)
+				r.Put("/clues/{id}", editorHandler.UpdateClue)
+				r.Delete("/clues/{id}", editorHandler.DeleteClue)
+				// Contents
+				r.Get("/themes/{id}/content/{key}", editorHandler.GetContent)
+				r.Put("/themes/{id}/content/{key}", editorHandler.UpsertContent)
+				// Validation
+				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
 			})
 
 			// --- Admin endpoints (ADMIN only) ---

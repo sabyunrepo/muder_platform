@@ -5,14 +5,15 @@ SELECT * FROM themes WHERE id = $1;
 SELECT * FROM themes WHERE slug = $1;
 
 -- name: ListThemesByCreator :many
-SELECT * FROM themes WHERE creator_id = $1 ORDER BY created_at DESC;
+SELECT id, title, status, min_players, max_players, coin_price, version, created_at
+FROM themes WHERE creator_id = $1 ORDER BY created_at DESC;
 
 -- name: ListPublishedThemes :many
 SELECT * FROM themes WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT $1 OFFSET $2;
 
 -- name: CreateTheme :one
-INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, config_json)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, config_json)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: UpdateThemeStatus :one
@@ -30,8 +31,9 @@ RETURNING *;
 
 -- name: UpdateTheme :one
 UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5,
-  min_players = $6, max_players = $7, duration_min = $8, price = $9, updated_at = NOW()
-WHERE id = $1
+  min_players = $6, max_players = $7, duration_min = $8, price = $9, coin_price = $10,
+  version = version + 1, updated_at = NOW()
+WHERE id = $1 AND version = $11
 RETURNING *;
 
 -- name: DeleteTheme :exec
@@ -39,7 +41,7 @@ DELETE FROM themes WHERE id = $1;
 
 -- name: UpdateThemeConfigJson :one
 UPDATE themes SET config_json = $2, version = version + 1, updated_at = NOW()
-WHERE id = $1
+WHERE id = $1 AND version = $3
 RETURNING *;
 
 -- name: GetThemeCharacter :one

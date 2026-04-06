@@ -26,8 +26,53 @@ type callbackRequest struct {
 	Nickname string `json:"nickname" validate:"required,min=2,max=30"`
 }
 
+type registerRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=4"`
+	Nickname string `json:"nickname" validate:"required,min=2,max=30"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
 type refreshRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
+}
+
+// HandleRegister handles POST /auth/register.
+func (h *Handler) HandleRegister(w http.ResponseWriter, r *http.Request) {
+	var req registerRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	pair, err := h.svc.Register(r.Context(), req.Email, req.Password, req.Nickname)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusCreated, pair)
+}
+
+// HandleLogin handles POST /auth/login.
+func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	pair, err := h.svc.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	httputil.WriteJSON(w, http.StatusOK, pair)
 }
 
 // HandleCallback handles POST /auth/callback.

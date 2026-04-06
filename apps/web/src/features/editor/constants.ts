@@ -1,17 +1,19 @@
+import { FileText, BookOpen, Users, Settings, Code } from "lucide-react";
 import type { ThemeStatus } from "./api";
 
 // ---------------------------------------------------------------------------
 // Editor Tabs
 // ---------------------------------------------------------------------------
 
-export type EditorTab = "overview" | "characters" | "modules" | "config";
-
-export const EDITOR_TABS: { key: EditorTab; label: string }[] = [
-  { key: "overview", label: "개요" },
-  { key: "characters", label: "캐릭터" },
-  { key: "modules", label: "모듈" },
-  { key: "config", label: "설정 JSON" },
+export const EDITOR_TABS = [
+  { key: "overview" as const, label: "기본정보", icon: FileText },
+  { key: "story" as const, label: "스토리", icon: BookOpen },
+  { key: "characters" as const, label: "등장인물", icon: Users },
+  { key: "design" as const, label: "게임설계", icon: Settings },
+  { key: "advanced" as const, label: "고급", icon: Code },
 ];
+
+export type EditorTab = (typeof EDITOR_TABS)[number]["key"];
 
 // ---------------------------------------------------------------------------
 // Theme Status

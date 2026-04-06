@@ -143,19 +143,19 @@ export function App() {
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
               {/* 퍼블릭 */}
-              <Route path="/" element={<HomePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-              {/* 인증 필요 — 게임은 전체화면 (MainLayout 밖) */}
+              {/* 인증 필요 — 게임/에디터 상세는 전체화면 (MainLayout 밖) */}
               <Route element={<ProtectedRoute />}>
                 <Route path="/game/:id" element={<GamePage />} />
+                <Route path="/editor/:id" element={<EditorPage />} />
                 <Route element={<MainLayout />}>
+                  <Route path="/" element={<LobbyPage />} />
                   <Route path="/lobby" element={<LobbyPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/room/:id" element={<RoomPage />} />
                   <Route path="/editor" element={<EditorPage />} />
-                  <Route path="/editor/:id" element={<EditorPage />} />
                   <Route path="/social" element={<SocialPage />} />
                   <Route path="/users/:id" element={<PublicProfilePage />} />
 

@@ -61,6 +61,67 @@ func (m *mockService) DeleteCharacter(ctx context.Context, creatorID, charID uui
 func (m *mockService) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error) {
 	return m.updateConfigFn(ctx, creatorID, themeID, config)
 }
+func (m *mockService) ListCharacters(ctx context.Context, creatorID, themeID uuid.UUID) ([]CharacterResponse, error) {
+	return nil, nil
+}
+func (m *mockService) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
+	return nil, nil
+}
+
+// Maps
+func (m *mockService) CreateMap(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMapRequest) (*MapResponse, error) {
+	return nil, nil
+}
+func (m *mockService) UpdateMap(ctx context.Context, creatorID, mapID uuid.UUID, req UpdateMapRequest) (*MapResponse, error) {
+	return nil, nil
+}
+func (m *mockService) DeleteMap(ctx context.Context, creatorID, mapID uuid.UUID) error {
+	return nil
+}
+func (m *mockService) ListMaps(ctx context.Context, creatorID, themeID uuid.UUID) ([]MapResponse, error) {
+	return nil, nil
+}
+
+// Locations
+func (m *mockService) CreateLocation(ctx context.Context, creatorID, themeID, mapID uuid.UUID, req CreateLocationRequest) (*LocationResponse, error) {
+	return nil, nil
+}
+func (m *mockService) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID, req UpdateLocationRequest) (*LocationResponse, error) {
+	return nil, nil
+}
+func (m *mockService) DeleteLocation(ctx context.Context, creatorID, locID uuid.UUID) error {
+	return nil
+}
+func (m *mockService) ListLocations(ctx context.Context, creatorID, themeID uuid.UUID) ([]LocationResponse, error) {
+	return nil, nil
+}
+
+// Clues
+func (m *mockService) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, req CreateClueRequest) (*ClueResponse, error) {
+	return nil, nil
+}
+func (m *mockService) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, req UpdateClueRequest) (*ClueResponse, error) {
+	return nil, nil
+}
+func (m *mockService) DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error {
+	return nil
+}
+func (m *mockService) ListClues(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueResponse, error) {
+	return nil, nil
+}
+
+// Contents
+func (m *mockService) GetContent(ctx context.Context, creatorID, themeID uuid.UUID, key string) (*ContentResponse, error) {
+	return nil, nil
+}
+func (m *mockService) UpsertContent(ctx context.Context, creatorID, themeID uuid.UUID, key string, body string) (*ContentResponse, error) {
+	return nil, nil
+}
+
+// Validation
+func (m *mockService) ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ValidationResponse, error) {
+	return nil, nil
+}
 
 // --- test helpers ---
 

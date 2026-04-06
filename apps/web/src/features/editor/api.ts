@@ -14,6 +14,7 @@ export interface EditorThemeSummary {
   status: ThemeStatus;
   min_players: number;
   max_players: number;
+  coin_price: number;
   version: number;
   created_at: string;
 }
@@ -57,14 +58,14 @@ export interface CreateThemeRequest {
 }
 
 export interface UpdateThemeRequest {
-  title?: string;
+  title: string;
   description?: string;
   cover_image?: string;
-  min_players?: number;
-  max_players?: number;
-  duration_min?: number;
-  price?: number;
-  coin_price?: number;
+  min_players: number;
+  max_players: number;
+  duration_min: number;
+  price: number;
+  coin_price: number;
 }
 
 export interface CreateCharacterRequest {
@@ -84,6 +85,68 @@ export interface UpdateCharacterRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Maps / Locations / Clues / Contents / Validation types
+// ---------------------------------------------------------------------------
+
+export interface MapResponse {
+  id: string;
+  theme_id: string;
+  name: string;
+  image_url: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface CreateMapRequest {
+  name: string;
+  image_url?: string;
+  sort_order?: number;
+}
+
+export interface LocationResponse {
+  id: string;
+  theme_id: string;
+  map_id: string;
+  name: string;
+  restricted_characters: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ClueResponse {
+  id: string;
+  theme_id: string;
+  location_id: string | null;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  is_common: boolean;
+  level: number;
+  clue_type: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface ContentResponse {
+  id: string;
+  theme_id: string;
+  key: string;
+  body: string;
+  updated_at: string;
+}
+
+export interface ValidationResponse {
+  valid: boolean;
+  errors: string[];
+  stats: {
+    characters: number;
+    maps: number;
+    locations: number;
+    clues: number;
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Query Keys
 // ---------------------------------------------------------------------------
 
@@ -93,6 +156,14 @@ export const editorKeys = {
   theme: (id: string) => [...editorKeys.all, "themes", id] as const,
   characters: (themeId: string) =>
     [...editorKeys.all, "themes", themeId, "characters"] as const,
+  maps: (themeId: string) =>
+    [...editorKeys.all, "themes", themeId, "maps"] as const,
+  locations: (themeId: string) =>
+    [...editorKeys.all, "themes", themeId, "locations"] as const,
+  clues: (themeId: string) =>
+    [...editorKeys.all, "themes", themeId, "clues"] as const,
+  content: (themeId: string, key: string) =>
+    [...editorKeys.all, "themes", themeId, "content", key] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -171,6 +242,31 @@ export function useUnpublishTheme(themeId: string) {
   });
 }
 
+export function useEditorContent(themeId: string, key: string) {
+  return useQuery<ContentResponse>({
+    queryKey: editorKeys.content(themeId, key),
+    queryFn: () => api.get<ContentResponse>(`/v1/editor/themes/${themeId}/content/${key}`),
+    enabled: !!themeId && !!key,
+    retry: false,
+  });
+}
+
+export function useUpsertContent(themeId: string, key: string) {
+  return useMutation<ContentResponse, Error, { body: string }>({
+    mutationFn: (data) =>
+      api.put<ContentResponse>(`/v1/editor/themes/${themeId}/content/${key}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: editorKeys.content(themeId, key) });
+    },
+  });
+}
+
+export function useValidateTheme(themeId: string) {
+  return useMutation<ValidationResponse, Error, void>({
+    mutationFn: () => api.post<ValidationResponse>(`/v1/editor/themes/${themeId}/validate`),
+  });
+}
+
 export function useUpdateConfigJson(themeId: string) {
   return useMutation<EditorThemeResponse, Error, Record<string, unknown>>({
     mutationFn: (config) =>
@@ -185,19 +281,13 @@ export function useUpdateConfigJson(themeId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Character Queries (theme detail에서 characters 필드로 제공되지만,
-// 별도 쿼리가 필요한 경우를 위해 theme 상세에서 추출)
+// Character Queries
 // ---------------------------------------------------------------------------
 
 export function useEditorCharacters(themeId: string) {
   return useQuery<EditorCharacterResponse[]>({
     queryKey: editorKeys.characters(themeId),
-    queryFn: async () => {
-      const theme = await api.get<EditorThemeResponse & { characters?: EditorCharacterResponse[] }>(
-        `/v1/editor/themes/${themeId}`,
-      );
-      return theme.characters ?? [];
-    },
+    queryFn: () => api.get<EditorCharacterResponse[]>(`/v1/editor/themes/${themeId}/characters`),
     enabled: !!themeId,
   });
 }

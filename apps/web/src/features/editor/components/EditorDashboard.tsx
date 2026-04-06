@@ -52,9 +52,9 @@ function CreateThemeForm({ onSubmit, isLoading, onCancel }: CreateThemeFormProps
     const min = Number(minPlayers);
     const max = Number(maxPlayers);
     const dur = Number(durationMin);
-    if (!Number.isInteger(min) || min < 2) next.minPlayers = "최소 2명 이상";
-    if (!Number.isInteger(max) || max < min) next.maxPlayers = "최소 인원보다 커야 합니다";
-    if (!Number.isInteger(dur) || dur < 10) next.durationMin = "최소 10분 이상";
+    if (!Number.isInteger(min) || min < 2 || min > 20) next.minPlayers = "2~20명 사이로 입력해주세요";
+    if (!Number.isInteger(max) || max < min || max > 20) next.maxPlayers = "최소 인원보다 크고 20명 이하여야 합니다";
+    if (!Number.isInteger(dur) || dur < 10 || dur > 300) next.durationMin = "10~300분 사이로 입력해주세요";
     if (price && (Number.isNaN(Number(price)) || Number(price) < 0))
       next.price = "올바른 가격을 입력해주세요";
     setErrors(next);
