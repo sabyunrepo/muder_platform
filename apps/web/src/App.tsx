@@ -29,6 +29,7 @@ const EditorPage = lazy(() => import("@/pages/EditorPage"));
 const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const PublicProfilePage = lazy(() => import("@/pages/PublicProfilePage"));
 const GamePage = lazy(() => import("@/pages/GamePage"));
+const SocialPage = lazy(() => import("@/pages/SocialPage"));
 
 // ---------------------------------------------------------------------------
 // 로딩 폴백
@@ -125,6 +126,7 @@ export function App() {
                   <Route path="/editor" element={<EditorPage />} />
                   <Route path="/editor/:id" element={<EditorPage />} />
                   <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/social" element={<SocialPage />} />
                   <Route path="/users/:id" element={<PublicProfilePage />} />
                 </Route>
               </Route>

@@ -100,3 +100,43 @@ type User struct {
 	CreatedAt   time.Time   `json:"created_at"`
 	UpdatedAt   time.Time   `json:"updated_at"`
 }
+
+type Friendship struct {
+	ID          uuid.UUID `json:"id"`
+	RequesterID uuid.UUID `json:"requester_id"`
+	AddresseeID uuid.UUID `json:"addressee_id"`
+	Status      string    `json:"status"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type UserBlock struct {
+	ID        uuid.UUID `json:"id"`
+	BlockerID uuid.UUID `json:"blocker_id"`
+	BlockedID uuid.UUID `json:"blocked_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ChatRoom struct {
+	ID        uuid.UUID   `json:"id"`
+	Type      string      `json:"type"`
+	Name      pgtype.Text `json:"name"`
+	CreatedBy uuid.UUID   `json:"created_by"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+type ChatRoomMember struct {
+	ChatRoomID uuid.UUID `json:"chat_room_id"`
+	UserID     uuid.UUID `json:"user_id"`
+	LastReadAt time.Time `json:"last_read_at"`
+	JoinedAt   time.Time `json:"joined_at"`
+}
+
+type ChatMessage struct {
+	ID          int64     `json:"id"`
+	ChatRoomID  uuid.UUID `json:"chat_room_id"`
+	SenderID    uuid.UUID `json:"sender_id"`
+	Content     string    `json:"content"`
+	MessageType string    `json:"message_type"`
+	CreatedAt   time.Time `json:"created_at"`
+}

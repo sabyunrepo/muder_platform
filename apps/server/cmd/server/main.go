@@ -16,6 +16,7 @@ import (
 	"github.com/mmp-platform/server/internal/domain/editor"
 	"github.com/mmp-platform/server/internal/domain/profile"
 	"github.com/mmp-platform/server/internal/domain/room"
+	"github.com/mmp-platform/server/internal/domain/social"
 	"github.com/mmp-platform/server/internal/domain/theme"
 	"github.com/mmp-platform/server/internal/health"
 	"github.com/mmp-platform/server/internal/infra/cache"
@@ -126,6 +127,8 @@ func main() {
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, logger)
 	adminSvc := admin.NewService(queries, logger)
+	friendSvc := social.NewFriendService(queries, logger)
+	chatSvc := social.NewChatService(pool, queries, logger)
 
 	// 7. Domain Handlers
 	authHandler := auth.NewHandler(authSvc)
@@ -134,6 +137,7 @@ func main() {
 	themeHandler := theme.NewHandler(themeSvc)
 	editorHandler := editor.NewHandler(editorSvc)
 	adminHandler := admin.NewHandler(adminSvc)
+	socialHandler := social.NewHandler(friendSvc, chatSvc)
 
 	// 8. WebSocket Hub
 	wsRouter := ws.NewRouter(logger)
@@ -208,6 +212,31 @@ func main() {
 			r.Post("/rooms", roomHandler.CreateRoom)
 			r.Post("/rooms/{id}/join", roomHandler.JoinRoom)
 			r.Post("/rooms/{id}/leave", roomHandler.LeaveRoom)
+
+			// --- Social endpoints ---
+			r.Route("/social", func(r chi.Router) {
+				// Friends
+				r.Post("/friends/request", socialHandler.SendFriendRequest)
+				r.Post("/friends/{id}/accept", socialHandler.AcceptFriendRequest)
+				r.Post("/friends/{id}/reject", socialHandler.RejectFriendRequest)
+				r.Delete("/friends/{id}", socialHandler.RemoveFriend)
+				r.Get("/friends", socialHandler.ListFriends)
+				r.Get("/friends/pending", socialHandler.ListPendingRequests)
+
+				// Blocks
+				r.Post("/blocks", socialHandler.BlockUser)
+				r.Delete("/blocks/{id}", socialHandler.UnblockUser)
+				r.Get("/blocks", socialHandler.ListBlocks)
+
+				// Chat
+				r.Post("/chat/dm", socialHandler.GetOrCreateDMRoom)
+				r.Post("/chat/group", socialHandler.CreateGroupRoom)
+				r.Get("/chat/rooms", socialHandler.ListMyRooms)
+				r.Get("/chat/rooms/{id}/members", socialHandler.GetRoomMembers)
+				r.Post("/chat/rooms/{id}/messages", socialHandler.SendMessage)
+				r.Get("/chat/rooms/{id}/messages", socialHandler.ListMessages)
+				r.Post("/chat/rooms/{id}/read", socialHandler.MarkAsRead)
+			})
 
 			// --- Creator endpoints (CREATOR, ADMIN) ---
 			r.Route("/editor", func(r chi.Router) {

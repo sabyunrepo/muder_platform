@@ -37,4 +37,13 @@ const (
 	ErrRoomNotFound   = "ROOM_NOT_FOUND"
 	ErrRoomFull       = "ROOM_FULL"
 	ErrRoomNotWaiting = "ROOM_NOT_WAITING"
+
+	// Social errors
+	ErrFriendRequestSelf      = "FRIEND_REQUEST_SELF"
+	ErrFriendRequestDuplicate = "FRIEND_REQUEST_DUPLICATE"
+	ErrFriendRequestBlocked   = "FRIEND_REQUEST_BLOCKED"
+	ErrFriendshipNotFound     = "FRIENDSHIP_NOT_FOUND"
+	ErrChatRoomNotFound       = "CHAT_ROOM_NOT_FOUND"
+	ErrChatNotMember          = "CHAT_NOT_MEMBER"
+	ErrChatInvalidMsgType     = "CHAT_INVALID_MESSAGE_TYPE"
 )
