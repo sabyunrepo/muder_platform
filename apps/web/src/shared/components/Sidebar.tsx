@@ -1,5 +1,19 @@
 import { NavLink } from "react-router";
-import { Gamepad2, PenTool, Shield, X } from "lucide-react";
+import {
+  Gamepad2,
+  PenTool,
+  Shield,
+  X,
+  Coins,
+  Library,
+  LayoutDashboard,
+  Wallet,
+  FileText,
+  Package,
+  BadgeDollarSign,
+  BarChart3,
+  CircleDollarSign,
+} from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
 
@@ -14,10 +28,50 @@ interface MenuItem {
   roles?: Array<"user" | "creator" | "admin">;
 }
 
-const menuItems: MenuItem[] = [
-  { to: "/lobby", label: "로비", icon: Gamepad2 },
-  { to: "/editor", label: "에디터", icon: PenTool, roles: ["creator", "admin"] },
-  { to: "/admin", label: "관리자", icon: Shield, roles: ["admin"] },
+interface MenuSection {
+  title?: string;
+  roles?: Array<"user" | "creator" | "admin">;
+  items: MenuItem[];
+}
+
+const menuSections: MenuSection[] = [
+  {
+    items: [
+      { to: "/lobby", label: "로비", icon: Gamepad2 },
+      { to: "/shop", label: "상점", icon: Coins },
+      { to: "/my-themes", label: "내 테마", icon: Library },
+    ],
+  },
+  {
+    items: [
+      {
+        to: "/editor",
+        label: "에디터",
+        icon: PenTool,
+        roles: ["creator", "admin"],
+      },
+    ],
+  },
+  {
+    title: "제작자",
+    roles: ["creator", "admin"],
+    items: [
+      { to: "/creator", label: "대시보드", icon: LayoutDashboard },
+      { to: "/creator/earnings", label: "수익", icon: Wallet },
+      { to: "/creator/settlements", label: "정산", icon: FileText },
+    ],
+  },
+  {
+    title: "관리자",
+    roles: ["admin"],
+    items: [
+      { to: "/admin", label: "관리자 홈", icon: Shield },
+      { to: "/admin/settlements", label: "정산 관리", icon: BadgeDollarSign },
+      { to: "/admin/revenue", label: "매출", icon: BarChart3 },
+      { to: "/admin/packages", label: "패키지", icon: Package },
+      { to: "/admin/coins", label: "코인 지급", icon: CircleDollarSign },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -43,10 +97,16 @@ export function Sidebar() {
 
   const userRole = user?.role ?? "user";
 
-  // 역할 기반 필터링
-  const visibleItems = menuItems.filter(
-    (item) => !item.roles || item.roles.includes(userRole),
-  );
+  // 역할 기반 섹션 필터링
+  const visibleSections = menuSections
+    .filter((section) => !section.roles || section.roles.includes(userRole))
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.roles || item.roles.includes(userRole),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   return (
     <>
@@ -81,17 +141,31 @@ export function Sidebar() {
         </div>
 
         {/* 메뉴 */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {visibleItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={navLinkClass}
-              onClick={() => setSidebarOpen(false)}
-            >
-              <item.icon className="h-5 w-5" />
-              {item.label}
-            </NavLink>
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          {visibleSections.map((section, idx) => (
+            <div key={section.title ?? idx}>
+              {idx > 0 && (
+                <hr className="my-3 border-slate-800" />
+              )}
+              {section.title && (
+                <p className="mb-2 px-4 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  {section.title}
+                </p>
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={navLinkClass}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.label}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
       </aside>
