@@ -8,6 +8,7 @@ import {
 import { MediaToolbar, type MediaFilter } from "./MediaToolbar";
 import { MediaCard } from "./MediaCard";
 import { MediaDetail } from "./MediaDetail";
+import { MediaUploadModal } from "./MediaUploadModal";
 import { usePreviewPlayer } from "./usePreviewPlayer";
 
 // ---------------------------------------------------------------------------
@@ -25,8 +26,8 @@ export interface MediaTabProps {
 export function MediaTab({ themeId }: MediaTabProps) {
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Modal state — D3/D4 will wire actual modals.
-  const [, setUploadOpen] = useState(false);
+  // Modal state — D4 will wire YouTube modal.
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [, setYoutubeOpen] = useState(false);
 
   // Backend MediaType only supports BGM/SFX/VOICE today; the "VIDEO" pill is
@@ -112,8 +113,12 @@ export function MediaTab({ themeId }: MediaTabProps) {
         )}
       </div>
 
-      {/* Modal placeholders — wired in D3/D4 */}
-      {/* <MediaUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} themeId={themeId} /> */}
+      <MediaUploadModal
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        themeId={themeId}
+      />
+      {/* YouTubeAddModal wired in D4 */}
       {/* <YouTubeAddModal open={youtubeOpen} onClose={() => setYoutubeOpen(false)} themeId={themeId} /> */}
     </div>
   );
