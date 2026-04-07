@@ -1,7 +1,7 @@
 <!-- STATUS-START -->
-**Active**: Phase 8.0 — Engine Integration Layer — Wave 1/5 (skeletons)
-**PR**: PR-1 + PR-2 (parallel)
-**Task**: Spawn W1 parallel agents (SessionManager + Hub lifecycle)
+**Active**: Phase 8.0 — Engine Integration Layer — Wave 2/5 (infra)
+**PR**: PR-3 (BaseModuleHandler + EventMapping)
+**Task**: PR-3 sequential execution (BaseModuleHandler infra + Manager DI)
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-08
@@ -29,28 +29,29 @@ PR별 상세 task 정의는 `refs/pr-N-*.md` (이 파일은 요약 + 진행 체�
 
 ---
 
-## Wave 1 — Skeletons (parallel ×2)
+## Wave 1 — Skeletons (parallel ×2) ✅
 
-### PR-1: SessionManager + Session actor — refs/pr-1-skeleton.md
-- [ ] `internal/session/types.go` (SessionMessage / MessageKind / SessionStatus)
-- [ ] `internal/session/manager.go` (Start/Stop/Get/Restore stub)
-- [ ] `internal/session/session.go` (Run loop + handleMessage + panic recover)
-- [ ] `internal/session/panic_guard.go` (3회 누적 abort)
-- [ ] `internal/engine/engine.go` lock 제거 (sync.RWMutex 삭제)
-- [ ] `internal/session/{manager,session,panic}_test.go` + `go test -race`
+### PR-1: SessionManager + Session actor — PR #17 (merged 74129fc)
+- [x] `internal/session/types.go` (SessionMessage / MessageKind / SessionStatus / TriggerPayload / GMOverridePayload)
+- [x] `internal/session/manager.go` (Start/Stop/Get/Restore stub + onAbort wired + Stop waits goroutine)
+- [x] `internal/session/session.go` (Run loop + handleMessage + non-blocking reply + ctx.Done close)
+- [x] `internal/session/panic_guard.go` (3회 누적 abort + panic_type + debug.Stack)
+- [x] `internal/engine/engine.go` lock 제거 (sync.RWMutex 삭제)
+- [x] `internal/session/{manager,session,panic,main}_test.go` + goleak + `-race -count=10`
+- 후속: Manager.Stop(ctx, reason) 시그니처 → PR-3 DI 시점에 처리
 
-### PR-2: Hub lifecycle listener — refs/pr-2-hub-lifecycle.md
-- [ ] `internal/ws/lifecycle.go` (SessionLifecycleListener interface)
-- [ ] `internal/ws/hub.go` (RegisterLifecycleListener + notify on un/register)
-- [ ] reconnect 감지 로직 (JoinSession 경로)
-- [ ] `internal/ws/{hub,hub_lifecycle}_test.go` + race
+### PR-2: Hub lifecycle listener — PR #16 (merged daa56b8)
+- [x] `internal/ws/lifecycle.go` (SessionLifecycleListener interface)
+- [x] `internal/ws/hub.go` (RegisterLifecycleListener + notify on un/register + LeaveSession graceful + gcAllRecentLeft sweeper)
+- [x] reconnect 감지 로직 (JoinSession 경로 + 30s window + slice deep-copy + defer recover)
+- [x] `internal/ws/{hub,hub_lifecycle}_test.go` + `-race -count=10`
 
-### Wave 1 gate
-- [ ] PR-1, PR-2 모든 task ✅
-- [ ] 4-reviewer 병렬 리뷰 pass / fix-loop ≤ 3
-- [ ] `go test -race ./...` pass
-- [ ] PR-1 → PR-2 순차 merge to main
-- [ ] User 확인 → Wave 2 진입
+### Wave 1 gate ✅
+- [x] PR-1, PR-2 모든 task ✅
+- [x] 4-reviewer 병렬 리뷰 pass / fix-loop iteration 1 (8 HIGH/MEDIUM 해결)
+- [x] `go test -race ./internal/{session,engine,ws}/...` pass
+- [x] PR-1 → PR-2 순차 merge to main
+- [x] User 확인 → Wave 2 진입
 
 ---
 
