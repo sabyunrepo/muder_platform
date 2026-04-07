@@ -506,3 +506,84 @@ func TestReadingModule_BuildState(t *testing.T) {
 		t.Errorf("advanceMode = %v, want player", state["advanceMode"])
 	}
 }
+
+func TestReadingModule_HandleVoiceEnded(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"TotalLines": 3,
+		"Lines": [
+			{"AdvanceBy": "voice", "VoiceID": "v0"},
+			{"AdvanceBy": "gm", "VoiceID": "v1"},
+			{"AdvanceBy": "voice", "VoiceID": "v2"}
+		]
+	}`)
+
+	t.Run("voice line: voice_ended advances", func(t *testing.T) {
+		m := NewReadingModule()
+		deps := newTestDeps(t)
+		if err := m.Init(context.Background(), deps, cfg); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
+		// On line 0 (voice). HandleVoiceEnded should advance to line 1.
+		if err := m.HandleVoiceEnded(context.Background(), "v0"); err != nil {
+			t.Fatalf("HandleVoiceEnded() error = %v", err)
+		}
+		state := m.GetState()
+		if state.CurrentIndex != 1 {
+			t.Errorf("CurrentIndex = %d, want 1", state.CurrentIndex)
+		}
+	})
+
+	t.Run("gm line: voice_ended is a no-op", func(t *testing.T) {
+		m := NewReadingModule()
+		deps := newTestDeps(t)
+		if err := m.Init(context.Background(), deps, cfg); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
+		// Manually advance past the voice line via HandleVoiceEnded.
+		if err := m.HandleVoiceEnded(context.Background(), "v0"); err != nil {
+			t.Fatalf("setup voice_ended error = %v", err)
+		}
+		// Now on gm line — voice_ended should be ignored.
+		if err := m.HandleVoiceEnded(context.Background(), "v1"); err != nil {
+			t.Fatalf("HandleVoiceEnded gm-line error = %v", err)
+		}
+		state := m.GetState()
+		if state.CurrentIndex != 1 {
+			t.Errorf("CurrentIndex = %d, want 1 (no-op on gm line)", state.CurrentIndex)
+		}
+	})
+}
+
+func TestReadingModule_GetReadingStateWire(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"TotalLines": 2,
+		"BGMId": "bgm-1",
+		"Lines": [
+			{"AdvanceBy": "gm", "VoiceID": "v0", "Speaker": "narrator"},
+			{"AdvanceBy": "gm", "VoiceID": "v1"}
+		]
+	}`)
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), newTestDeps(t), cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	wire := m.GetReadingStateWire()
+	if wire.CurrentIndex != 0 {
+		t.Errorf("CurrentIndex = %d, want 0", wire.CurrentIndex)
+	}
+	if wire.BgmMediaID != "bgm-1" {
+		t.Errorf("BgmMediaID = %q, want bgm-1", wire.BgmMediaID)
+	}
+	if wire.Status != "playing" {
+		t.Errorf("Status = %q, want playing", wire.Status)
+	}
+	// Lines should be valid JSON.
+	var lines []map[string]any
+	if err := json.Unmarshal(wire.Lines, &lines); err != nil {
+		t.Fatalf("Lines is not valid JSON: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Errorf("len(Lines) = %d, want 2", len(lines))
+	}
+}
