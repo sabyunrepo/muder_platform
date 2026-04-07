@@ -292,7 +292,7 @@ func TestHub_Unregister(t *testing.T) {
 	// on c.conn.Close(). We work around by putting c1 in a session and verifying counts.
 	// Test via the hub's internal state directly.
 	h.mu.Lock()
-	h.removeClientLocked(c1)
+	h.removeClientLocked(c1, false)
 	delete(h.players, c1.ID)
 	h.mu.Unlock()
 
@@ -317,7 +317,7 @@ func TestHub_Unregister_FromSession(t *testing.T) {
 
 	// Remove from session directly (avoids Close on nil conn).
 	h.mu.Lock()
-	h.removeClientLocked(c)
+	h.removeClientLocked(c, false)
 	delete(h.players, c.ID)
 	h.mu.Unlock()
 
@@ -565,5 +565,50 @@ func TestRouter_Namespaces_Empty(t *testing.T) {
 	ns := r.Namespaces()
 	if len(ns) != 0 {
 		t.Errorf("Namespaces() len = %d, want 0 for empty router", len(ns))
+	}
+}
+
+// --- RegisterLifecycleListener tests ---
+
+// TestHub_RegisterLifecycleListener_NilIsNoop verifies that passing nil to
+// RegisterLifecycleListener does not panic and does not add a nil entry to the
+// listener slice (which would panic on the first notify call).
+func TestHub_RegisterLifecycleListener_NilIsNoop(t *testing.T) {
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	// Should not panic.
+	h.RegisterLifecycleListener(nil)
+
+	h.lifecycleMu.RLock()
+	count := len(h.lifecycleListeners)
+	h.lifecycleMu.RUnlock()
+
+	if count != 0 {
+		t.Errorf("lifecycleListeners len = %d after nil register, want 0", count)
+	}
+}
+
+// TestHub_RegisterLifecycleListener_MultipleRegistrations verifies that multiple
+// non-nil listeners can all be registered and are all retained.
+func TestHub_RegisterLifecycleListener_MultipleRegistrations(t *testing.T) {
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	// Use fakeLifecycleListener (defined in hub_lifecycle_test.go) as a concrete type.
+	l1 := &fakeLifecycleListener{}
+	l2 := &fakeLifecycleListener{}
+	l3 := &fakeLifecycleListener{}
+
+	h.RegisterLifecycleListener(l1)
+	h.RegisterLifecycleListener(l2)
+	h.RegisterLifecycleListener(l3)
+
+	h.lifecycleMu.RLock()
+	count := len(h.lifecycleListeners)
+	h.lifecycleMu.RUnlock()
+
+	if count != 3 {
+		t.Errorf("lifecycleListeners len = %d, want 3", count)
 	}
 }
