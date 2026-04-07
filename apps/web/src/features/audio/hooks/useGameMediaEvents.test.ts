@@ -39,6 +39,11 @@ vi.mock("@/stores/connectionStore", () => ({
 import { useGameMediaEvents } from "./useGameMediaEvents";
 import { AudioOrchestratorContext } from "../audioOrchestratorContext";
 import type { AudioOrchestrator } from "../AudioOrchestrator";
+import {
+  useReadingStore,
+  type ReadingLineWire,
+  type ReadingStateSnapshot,
+} from "@/stores/readingStore";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -188,5 +193,163 @@ describe("useGameMediaEvents", () => {
     unmount();
 
     expect(unsubMock).toHaveBeenCalled();
+  });
+
+  // -------------------------------------------------------------------------
+  // Reading events (Phase F3)
+  // -------------------------------------------------------------------------
+
+  describe("reading:* events", () => {
+    beforeEach(() => {
+      // Reset the real readingStore between tests.
+      useReadingStore.getState().clear();
+    });
+
+    it("registers handlers for all 6 reading:* events", () => {
+      renderWithOrchestrator(makeOrchestrator());
+
+      expect(handlers.has(WsEventType.READING_STARTED)).toBe(true);
+      expect(handlers.has(WsEventType.READING_LINE_CHANGED)).toBe(true);
+      expect(handlers.has(WsEventType.READING_PAUSED)).toBe(true);
+      expect(handlers.has(WsEventType.READING_RESUMED)).toBe(true);
+      expect(handlers.has(WsEventType.READING_COMPLETED)).toBe(true);
+      expect(handlers.has(WsEventType.READING_STATE)).toBe(true);
+    });
+
+    it("reading:started → readingStore.startSection", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      const lines: ReadingLineWire[] = [
+        { index: 0, text: "hello", advanceBy: "gm" },
+        { index: 1, text: "world", advanceBy: "voice" },
+      ];
+
+      handlers.get(WsEventType.READING_STARTED)!(
+        { sectionId: "sec-1", lines },
+        1,
+      );
+
+      const state = useReadingStore.getState();
+      expect(state.sectionId).toBe("sec-1");
+      expect(state.lines).toEqual(lines);
+      expect(state.currentIndex).toBe(0);
+      expect(state.status).toBe("playing");
+    });
+
+    it("reading:line_changed → readingStore.showLine", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      // Seed the store with lines so showLine has something to clamp to.
+      useReadingStore.getState().startSection("sec-1", [
+        { index: 0, text: "a", advanceBy: "gm" },
+        { index: 1, text: "b", advanceBy: "gm" },
+        { index: 2, text: "c", advanceBy: "gm" },
+      ]);
+
+      handlers.get(WsEventType.READING_LINE_CHANGED)!({ lineIndex: 2 }, 1);
+
+      expect(useReadingStore.getState().currentIndex).toBe(2);
+    });
+
+    it("reading:paused → readingStore.pauseSection with reason", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      useReadingStore
+        .getState()
+        .startSection("sec-1", [
+          { index: 0, text: "a", advanceBy: "gm" },
+        ]);
+
+      handlers.get(WsEventType.READING_PAUSED)!({ reason: "voice" }, 1);
+
+      const state = useReadingStore.getState();
+      expect(state.status).toBe("paused");
+      expect(state.pausedReason).toBe("voice");
+    });
+
+    it("reading:paused → defaults reason to 'paused' when omitted", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      useReadingStore
+        .getState()
+        .startSection("sec-1", [
+          { index: 0, text: "a", advanceBy: "gm" },
+        ]);
+
+      handlers.get(WsEventType.READING_PAUSED)!({}, 1);
+
+      expect(useReadingStore.getState().pausedReason).toBe("paused");
+    });
+
+    it("reading:resumed → readingStore.resumeSection", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      useReadingStore
+        .getState()
+        .startSection("sec-1", [
+          { index: 0, text: "a", advanceBy: "gm" },
+        ]);
+      useReadingStore.getState().pauseSection("voice");
+
+      handlers.get(WsEventType.READING_RESUMED)!({}, 1);
+
+      const state = useReadingStore.getState();
+      expect(state.status).toBe("playing");
+      expect(state.pausedReason).toBe(null);
+    });
+
+    it("reading:completed → readingStore.completeSection", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      useReadingStore
+        .getState()
+        .startSection("sec-1", [
+          { index: 0, text: "a", advanceBy: "gm" },
+        ]);
+
+      handlers.get(WsEventType.READING_COMPLETED)!({}, 1);
+
+      expect(useReadingStore.getState().status).toBe("completed");
+    });
+
+    it("reading:state → readingStore.restoreFromSnapshot", () => {
+      renderWithOrchestrator(makeOrchestrator());
+      const snapshot: ReadingStateSnapshot = {
+        sectionId: "sec-9",
+        lines: [
+          { index: 0, text: "x", advanceBy: "gm" },
+          { index: 1, text: "y", advanceBy: "voice" },
+        ],
+        currentIndex: 1,
+        status: "paused",
+        pausedReason: "voice",
+      };
+
+      handlers.get(WsEventType.READING_STATE)!(snapshot, 1);
+
+      const state = useReadingStore.getState();
+      expect(state.sectionId).toBe("sec-9");
+      expect(state.lines).toEqual(snapshot.lines);
+      expect(state.currentIndex).toBe(1);
+      expect(state.status).toBe("paused");
+      expect(state.pausedReason).toBe("voice");
+    });
+
+    it("reading handlers do NOT touch the orchestrator", () => {
+      const orch = makeOrchestrator();
+      renderWithOrchestrator(orch);
+
+      handlers.get(WsEventType.READING_STARTED)!(
+        {
+          sectionId: "sec-1",
+          lines: [{ index: 0, text: "a", advanceBy: "gm" }],
+          bgmMediaId: "bgm-1",
+        },
+        1,
+      );
+      handlers.get(WsEventType.READING_LINE_CHANGED)!({ lineIndex: 0 }, 1);
+      handlers.get(WsEventType.READING_PAUSED)!({ reason: "voice" }, 1);
+      handlers.get(WsEventType.READING_RESUMED)!({}, 1);
+      handlers.get(WsEventType.READING_COMPLETED)!({}, 1);
+
+      expect(orch.handleSetBgm).not.toHaveBeenCalled();
+      expect(orch.handlePlayVoice).not.toHaveBeenCalled();
+      expect(orch.handlePlayMedia).not.toHaveBeenCalled();
+      expect(orch.handleStopAll).not.toHaveBeenCalled();
+    });
   });
 });
