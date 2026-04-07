@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -95,10 +96,67 @@ func ValidateConfig(config GameConfig) error {
 		}
 	}
 
+	// 6. Media asset reference validation
+	if len(config.MediaAssets) > 0 || hasMediaReferences(config) {
+		mediaSet := make(map[string]bool, len(config.MediaAssets))
+		for _, asset := range config.MediaAssets {
+			mediaSet[asset.ID] = true
+		}
+		for _, phase := range config.Phases {
+			if phase.BGMId != "" && !mediaSet[phase.BGMId] {
+				errs = append(errs, fmt.Sprintf("phase %q references unknown media %q", phase.ID, phase.BGMId))
+			}
+			if phase.ReadingSection != nil && phase.ReadingSection.BGMId != "" && !mediaSet[phase.ReadingSection.BGMId] {
+				errs = append(errs, fmt.Sprintf("phase %q readingSection references unknown media %q", phase.ID, phase.ReadingSection.BGMId))
+			}
+			for _, action := range append(append([]PhaseActionPayload{}, phase.OnEnter...), phase.OnExit...) {
+				if action.Action != ActionPlayMedia && action.Action != ActionSetBGM {
+					continue
+				}
+				var p struct {
+					MediaID string `json:"mediaId"`
+				}
+				if len(action.Params) == 0 {
+					continue
+				}
+				if err := json.Unmarshal(action.Params, &p); err != nil || p.MediaID == "" {
+					continue
+				}
+				if !mediaSet[p.MediaID] {
+					errs = append(errs, fmt.Sprintf("phase %q action %s references unknown media %q", phase.ID, action.Action, p.MediaID))
+				}
+			}
+		}
+	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("config validation:\n  - %s", strings.Join(errs, "\n  - "))
 	}
 	return nil
+}
+
+// hasMediaReferences reports whether the config contains any media references that
+// would require the mediaAssets catalog to be populated.
+func hasMediaReferences(config GameConfig) bool {
+	for _, phase := range config.Phases {
+		if phase.BGMId != "" {
+			return true
+		}
+		if phase.ReadingSection != nil && phase.ReadingSection.BGMId != "" {
+			return true
+		}
+		for _, action := range phase.OnEnter {
+			if action.Action == ActionPlayMedia || action.Action == ActionSetBGM {
+				return true
+			}
+		}
+		for _, action := range phase.OnExit {
+			if action.Action == ActionPlayMedia || action.Action == ActionSetBGM {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func validateAction(action PhaseActionPayload, enabled map[string]bool) error {

@@ -22,6 +22,7 @@ const (
 	ActionPlaySound           PhaseAction = "PLAY_SOUND"
 	ActionPlayMedia           PhaseAction = "PLAY_MEDIA"
 	ActionSetBGM              PhaseAction = "SET_BGM"
+	ActionStopAudio           PhaseAction = "STOP_AUDIO"
 	ActionMuteChat            PhaseAction = "MUTE_CHAT"
 	ActionUnmuteChat          PhaseAction = "UNMUTE_CHAT"
 	ActionOpenGroupChat       PhaseAction = "OPEN_GROUP_CHAT"
@@ -39,14 +40,22 @@ type PhaseActionPayload struct {
 
 // PhaseConfig defines a single phase in configJson.phases[].
 type PhaseConfig struct {
-	ID          string               `json:"id"`
-	Name        string               `json:"name"`
-	Type        string               `json:"type"`                  // e.g. "discussion", "investigation", "voting"
-	Duration    int                  `json:"duration,omitempty"`    // seconds, 0 = unlimited
-	OnEnter     []PhaseActionPayload `json:"onEnter,omitempty"`
-	OnExit      []PhaseActionPayload `json:"onExit,omitempty"`
-	Triggers    []TriggerConfig      `json:"triggers,omitempty"`    // Hybrid/Event용
-	NextPhaseID string               `json:"nextPhaseId,omitempty"` // Event용 (비선형)
+	ID             string                `json:"id"`
+	Name           string                `json:"name"`
+	Type           string                `json:"type"`                     // e.g. "discussion", "investigation", "voting"
+	Duration       int                   `json:"duration,omitempty"`       // seconds, 0 = unlimited
+	BGMId          string                `json:"bgmId,omitempty"`          // phase-level BGM (auto SET_BGM on enter)
+	ReadingSection *ReadingSectionConfig `json:"readingSection,omitempty"` // optional reading dialogue section
+	OnEnter        []PhaseActionPayload  `json:"onEnter,omitempty"`
+	OnExit         []PhaseActionPayload  `json:"onExit,omitempty"`
+	Triggers       []TriggerConfig       `json:"triggers,omitempty"`    // Hybrid/Event용
+	NextPhaseID    string                `json:"nextPhaseId,omitempty"` // Event용 (비선형)
+}
+
+// ReadingSectionConfig describes an optional reading (dialogue) section inside a phase.
+// When present, the ReadingModule takes over and the BGMId here overrides phase BGM.
+type ReadingSectionConfig struct {
+	BGMId string `json:"bgmId,omitempty"`
 }
 
 // TriggerConfig defines a conditional trigger for Hybrid/Event strategies.
@@ -69,11 +78,21 @@ type PhaseInfo struct {
 
 // GameConfig represents the parsed configJson from a theme.
 type GameConfig struct {
-	Strategy    string            `json:"strategy"`    // "script", "hybrid", "event"
-	GmMode      string            `json:"gmMode"`      // "REQUIRED", "NONE", "OPTIONAL"
-	Phases      []PhaseConfig     `json:"phases"`
-	Modules     []ModuleConfig    `json:"modules"`
-	Settings    json.RawMessage   `json:"settings,omitempty"`
+	Strategy    string          `json:"strategy"` // "script", "hybrid", "event"
+	GmMode      string          `json:"gmMode"`   // "REQUIRED", "NONE", "OPTIONAL"
+	Phases      []PhaseConfig   `json:"phases"`
+	Modules     []ModuleConfig  `json:"modules"`
+	MediaAssets []MediaAsset    `json:"mediaAssets,omitempty"` // media asset catalog for reference validation
+	Settings    json.RawMessage `json:"settings,omitempty"`
+}
+
+// MediaAsset is a minimal media catalog entry included in configJson for validation.
+// Populated on theme publish from theme_media; used by validators to check bgmId references.
+type MediaAsset struct {
+	ID       string `json:"id"`                 // theme_media.id
+	Type     string `json:"type"`               // "BGM" | "SFX" | "VOICE"
+	URL      string `json:"url,omitempty"`      // resolved URL (CDN or YouTube)
+	Duration int    `json:"duration,omitempty"` // seconds, 0 = unknown
 }
 
 // ModuleConfig is the per-module configuration from configJson.modules[].
