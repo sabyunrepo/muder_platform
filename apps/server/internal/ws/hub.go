@@ -80,6 +80,9 @@ func NewHub(router *Router, pubsub PubSub, logger zerolog.Logger) *Hub {
 // run is the main event loop. All register/unregister mutations happen here
 // to avoid lock contention on the hot path.
 func (h *Hub) run() {
+	gcTicker := time.NewTicker(time.Minute)
+	defer gcTicker.Stop()
+
 	for {
 		select {
 		case client := <-h.register:
@@ -94,7 +97,7 @@ func (h *Hub) run() {
 		case client := <-h.unregister:
 			h.mu.Lock()
 			sessionID := client.SessionID // capture before removal clears it
-			h.removeClientLocked(client)
+			h.removeClientLocked(client, true)
 			delete(h.players, client.ID)
 			h.mu.Unlock()
 			client.Close()
@@ -105,6 +108,9 @@ func (h *Hub) run() {
 				h.notifyPlayerLeft(sessionID, client.ID, false)
 			}
 
+		case <-gcTicker.C:
+			h.gcAllRecentLeft()
+
 		case <-h.done:
 			return
 		}
@@ -112,11 +118,12 @@ func (h *Hub) run() {
 }
 
 // removeClientLocked removes the client from lobby or its session.
-// When removed from a session it records the departure time in recentLeftAt
-// for reconnect detection. Entries older than reconnectWindow are GC'd lazily
-// on the next JoinSession call for the same session.
+// When recordLeave is true and the client is in a session, it records the
+// departure time in recentLeftAt for reconnect detection. Pass recordLeave=false
+// when the client is merely switching sessions (JoinSession path) to avoid
+// polluting recentLeftAt with entries that will never be matched.
 // Caller must hold h.mu (write lock).
-func (h *Hub) removeClientLocked(c *Client) {
+func (h *Hub) removeClientLocked(c *Client, recordLeave bool) {
 	if c.SessionID != uuid.Nil {
 		if sess, ok := h.sessions[c.SessionID]; ok {
 			delete(sess, c.ID)
@@ -125,8 +132,10 @@ func (h *Hub) removeClientLocked(c *Client) {
 				// Keep buffer alive for reconnection replay.
 			}
 		}
-		// Record departure for reconnect window tracking.
-		h.recentLeftAt[recentLeftKey(c.SessionID, c.ID)] = time.Now()
+		if recordLeave {
+			// Record departure for reconnect window tracking.
+			h.recentLeftAt[recentLeftKey(c.SessionID, c.ID)] = time.Now()
+		}
 	} else {
 		delete(h.lobby, c.ID)
 	}
@@ -163,14 +172,16 @@ func (h *Hub) JoinSession(c *Client, sessionID uuid.UUID) {
 	h.mu.Lock()
 
 	// Detect reconnect before removing the client from its current location,
-	// because removeClientLocked will overwrite recentLeftAt for this player.
+	// because removeClientLocked would otherwise overwrite recentLeftAt.
 	isReconnect := h.isReconnectLocked(sessionID, c.ID)
 
 	// GC expired entries in recentLeftAt for this session.
 	h.gcRecentLeftLocked(sessionID)
 
-	// Remove from current location (may update recentLeftAt if already in a session).
-	h.removeClientLocked(c)
+	// Remove from current location. recordLeave=false: the player is switching
+	// sessions (or joining from lobby), not truly disconnecting, so we must not
+	// write a new recentLeftAt entry that would spuriously fire OnPlayerRejoined.
+	h.removeClientLocked(c, false)
 
 	// Add to session.
 	c.SessionID = sessionID
@@ -230,17 +241,23 @@ func (h *Hub) gcRecentLeftLocked(sessionID uuid.UUID) {
 }
 
 // LeaveSession moves a client back to the lobby.
+// If the client was in a session, all registered SessionLifecycleListeners are
+// notified via OnPlayerLeft(graceful=true) after the lock is released.
 func (h *Hub) LeaveSession(c *Client) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	h.removeClientLocked(c)
+	oldSessionID := c.SessionID // capture before removeClientLocked clears it
+	h.removeClientLocked(c, true)
 	c.SessionID = uuid.Nil
 	h.lobby[c.ID] = c
+	h.mu.Unlock()
 
 	h.logger.Info().
 		Stringer("playerId", c.ID).
 		Msg("client returned to lobby")
+
+	if oldSessionID != uuid.Nil {
+		h.notifyPlayerLeft(oldSessionID, c.ID, true)
+	}
 }
 
 // BroadcastToSession sends an envelope to every client in the given session
@@ -428,15 +445,28 @@ func (h *Hub) RegisterLifecycleListener(l SessionLifecycleListener) {
 
 // notifyPlayerLeft fires OnPlayerLeft on all registered listeners in a goroutine
 // so that the hub event loop is never blocked by slow listener implementations.
+// The listener slice is copied under RLock so that concurrent RegisterLifecycleListener
+// calls (which may trigger a backing-array reallocation via append) cannot race with
+// the goroutine's iteration. A deferred recover() prevents a panicking listener from
+// crashing the process.
 func (h *Hub) notifyPlayerLeft(sessionID, playerID uuid.UUID, graceful bool) {
 	h.lifecycleMu.RLock()
-	listeners := h.lifecycleListeners
+	listeners := append([]SessionLifecycleListener(nil), h.lifecycleListeners...)
 	h.lifecycleMu.RUnlock()
 
 	if len(listeners) == 0 {
 		return
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				h.logger.Error().
+					Interface("panic", r).
+					Stringer("sessionId", sessionID).
+					Stringer("playerId", playerID).
+					Msg("lifecycle listener panicked in OnPlayerLeft")
+			}
+		}()
 		for _, l := range listeners {
 			l.OnPlayerLeft(sessionID, playerID, graceful)
 		}
@@ -445,19 +475,43 @@ func (h *Hub) notifyPlayerLeft(sessionID, playerID uuid.UUID, graceful bool) {
 
 // notifyPlayerRejoined fires OnPlayerRejoined on all registered listeners in a
 // goroutine so that the hub event loop is never blocked.
+// Same copy-under-RLock and panic-recovery guarantees as notifyPlayerLeft.
 func (h *Hub) notifyPlayerRejoined(sessionID, playerID uuid.UUID) {
 	h.lifecycleMu.RLock()
-	listeners := h.lifecycleListeners
+	listeners := append([]SessionLifecycleListener(nil), h.lifecycleListeners...)
 	h.lifecycleMu.RUnlock()
 
 	if len(listeners) == 0 {
 		return
 	}
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				h.logger.Error().
+					Interface("panic", r).
+					Stringer("sessionId", sessionID).
+					Stringer("playerId", playerID).
+					Msg("lifecycle listener panicked in OnPlayerRejoined")
+			}
+		}()
 		for _, l := range listeners {
 			l.OnPlayerRejoined(sessionID, playerID)
 		}
 	}()
+}
+
+// gcAllRecentLeft removes all recentLeftAt entries older than reconnectWindow.
+// Called by the run() event loop once per minute so that stale entries from
+// sessions whose players never reconnected are eventually freed.
+func (h *Hub) gcAllRecentLeft() {
+	now := time.Now()
+	h.mu.Lock()
+	for key, leftAt := range h.recentLeftAt {
+		if now.Sub(leftAt) > reconnectWindow {
+			delete(h.recentLeftAt, key)
+		}
+	}
+	h.mu.Unlock()
 }
 
 // Stop shuts down the hub event loop and closes all connected clients.

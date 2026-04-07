@@ -76,8 +76,9 @@ func TestLifecycle_OnPlayerLeft_CalledOnDisconnect(t *testing.T) {
 	h.JoinSession(c, sessionID)
 
 	// Simulate disconnect: remove directly (avoids Close on nil conn).
+	// recordLeave=true so recentLeftAt is populated (mirrors what run() does).
 	h.mu.Lock()
-	h.removeClientLocked(c)
+	h.removeClientLocked(c, true)
 	delete(h.players, c.ID)
 	h.mu.Unlock()
 	// Manually fire notify (mirrors what run() does after removeClientLocked).
@@ -119,9 +120,9 @@ func TestLifecycle_OnPlayerRejoined_CalledOnReconnectWithinWindow(t *testing.T) 
 	registerAndWait(h, c1)
 	h.JoinSession(c1, sessionID)
 
-	// Disconnect (via run loop channel to set recentLeftAt properly).
+	// Disconnect (recordLeave=true so recentLeftAt is populated for reconnect detection).
 	h.mu.Lock()
-	h.removeClientLocked(c1)
+	h.removeClientLocked(c1, true)
 	delete(h.players, c1.ID)
 	h.mu.Unlock()
 
@@ -245,6 +246,85 @@ func TestLifecycle_OnPlayerLeft_ViaRunLoop(t *testing.T) {
 	}
 	if got.PlayerID != playerID {
 		t.Errorf("run-loop: OnPlayerLeft playerID = %v, want %v", got.PlayerID, playerID)
+	}
+}
+
+// TestLifecycle_LeaveSession_FiresGracefulLeft verifies that a voluntary
+// LeaveSession call notifies listeners with OnPlayerLeft(graceful=true).
+func TestLifecycle_LeaveSession_FiresGracefulLeft(t *testing.T) {
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	listener := &fakeLifecycleListener{}
+	h.RegisterLifecycleListener(listener)
+
+	sessionID := uuid.New()
+	playerID := uuid.New()
+
+	c := newTestClient(h, playerID)
+	registerAndWait(h, c)
+	h.JoinSession(c, sessionID)
+
+	// Voluntary leave — client goes back to lobby.
+	h.LeaveSession(c)
+
+	if !waitForCondition(t, 500*time.Millisecond, func() bool { return listener.leftCount() == 1 }) {
+		t.Fatalf("OnPlayerLeft not called after LeaveSession; got %d calls", listener.leftCount())
+	}
+
+	listener.mu.Lock()
+	got := listener.leftCalls[0]
+	listener.mu.Unlock()
+
+	if got.SessionID != sessionID {
+		t.Errorf("LeaveSession: OnPlayerLeft sessionID = %v, want %v", got.SessionID, sessionID)
+	}
+	if got.PlayerID != playerID {
+		t.Errorf("LeaveSession: OnPlayerLeft playerID = %v, want %v", got.PlayerID, playerID)
+	}
+	if !got.Graceful {
+		t.Error("LeaveSession: OnPlayerLeft graceful = false, want true")
+	}
+}
+
+// TestLifecycle_GlobalGCSweeper verifies that gcAllRecentLeft() removes stale
+// entries from recentLeftAt across all sessions (not just the current one).
+func TestLifecycle_GlobalGCSweeper(t *testing.T) {
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	sid1, sid2 := uuid.New(), uuid.New()
+	pid1, pid2, pid3 := uuid.New(), uuid.New(), uuid.New()
+
+	stale := time.Now().Add(-(reconnectWindow + time.Second))
+	fresh := time.Now().Add(-time.Second) // well within window
+
+	h.mu.Lock()
+	h.recentLeftAt[recentLeftKey(sid1, pid1)] = stale // should be swept
+	h.recentLeftAt[recentLeftKey(sid2, pid2)] = stale // should be swept
+	h.recentLeftAt[recentLeftKey(sid1, pid3)] = fresh // must survive
+	h.mu.Unlock()
+
+	h.gcAllRecentLeft()
+
+	h.mu.Lock()
+	remaining := len(h.recentLeftAt)
+	_, pid3Alive := h.recentLeftAt[recentLeftKey(sid1, pid3)]
+	_, pid1Gone := h.recentLeftAt[recentLeftKey(sid1, pid1)]
+	_, pid2Gone := h.recentLeftAt[recentLeftKey(sid2, pid2)]
+	h.mu.Unlock()
+
+	if remaining != 1 {
+		t.Errorf("recentLeftAt len = %d after gcAllRecentLeft, want 1", remaining)
+	}
+	if !pid3Alive {
+		t.Error("fresh entry was incorrectly swept")
+	}
+	if pid1Gone {
+		t.Error("stale entry sid1/pid1 should have been swept but survives")
+	}
+	if pid2Gone {
+		t.Error("stale entry sid2/pid2 should have been swept but survives")
 	}
 }
 

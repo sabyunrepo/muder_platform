@@ -292,7 +292,7 @@ func TestHub_Unregister(t *testing.T) {
 	// on c.conn.Close(). We work around by putting c1 in a session and verifying counts.
 	// Test via the hub's internal state directly.
 	h.mu.Lock()
-	h.removeClientLocked(c1)
+	h.removeClientLocked(c1, false)
 	delete(h.players, c1.ID)
 	h.mu.Unlock()
 
@@ -317,7 +317,7 @@ func TestHub_Unregister_FromSession(t *testing.T) {
 
 	// Remove from session directly (avoids Close on nil conn).
 	h.mu.Lock()
-	h.removeClientLocked(c)
+	h.removeClientLocked(c, false)
 	delete(h.players, c.ID)
 	h.mu.Unlock()
 
