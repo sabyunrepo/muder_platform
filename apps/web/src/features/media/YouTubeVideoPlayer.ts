@@ -3,8 +3,9 @@
  * YouTubePlayer (visible mode). Used for cutscenes and evidence videos.
  *
  * onEnded/onReady callbacks added before `load` are buffered locally and
- * forwarded once the underlying YT player exists. This avoids losing
- * subscriptions made during component mount, before media is selected.
+ * forwarded once the underlying YT player exists. Each subscription holds
+ * a mutable { unsub } cell so the unsubscribe closure returned to callers
+ * correctly targets the real YT unsubscribe after flushing.
  */
 
 import {
@@ -13,12 +14,21 @@ import {
 } from "../audio/YouTubePlayer";
 import type { VideoMedia, VideoPlayer } from "./VideoPlayer";
 
+interface Subscription {
+  unsub: (() => void) | null;
+}
+
+interface SubEntry {
+  cb: () => void;
+  sub: Subscription;
+}
+
 export class YouTubeVideoPlayer implements VideoPlayer {
   private yt: YouTubePlayer | null = null;
   private container: HTMLElement | null = null;
   private currentMedia: VideoMedia | null = null;
-  private endedListeners: (() => void)[] = [];
-  private readyListeners: (() => void)[] = [];
+  private endedSubs: SubEntry[] = [];
+  private readySubs: SubEntry[] = [];
 
   attachTo(container: HTMLElement): void {
     this.container = container;
@@ -37,10 +47,14 @@ export class YouTubeVideoPlayer implements VideoPlayer {
       );
     }
 
-    // Tear down any prior player.
+    // Tear down any prior player. Any existing subscriptions pointed at it
+    // become stale — clear their unsub cells so they'll be re-attached to
+    // the new player below.
     if (this.yt) {
       this.yt.destroy();
       this.yt = null;
+      for (const entry of this.endedSubs) entry.sub.unsub = null;
+      for (const entry of this.readySubs) entry.sub.unsub = null;
     }
 
     const yt = createYouTubePlayer();
@@ -52,11 +66,13 @@ export class YouTubeVideoPlayer implements VideoPlayer {
     this.yt = yt;
     this.currentMedia = media;
 
-    // Flush buffered listeners onto the real player.
-    for (const cb of this.endedListeners) yt.onEnded(cb);
-    this.endedListeners = [];
-    for (const cb of this.readyListeners) yt.onReady(cb);
-    this.readyListeners = [];
+    // Flush buffered (or re-attach stale) listeners onto the real player.
+    for (const entry of this.endedSubs) {
+      if (!entry.sub.unsub) entry.sub.unsub = yt.onEnded(entry.cb);
+    }
+    for (const entry of this.readySubs) {
+      if (!entry.sub.unsub) entry.sub.unsub = yt.onReady(entry.cb);
+    }
   }
 
   async play(): Promise<void> {
@@ -76,18 +92,26 @@ export class YouTubeVideoPlayer implements VideoPlayer {
   }
 
   onEnded(cb: () => void): () => void {
-    if (this.yt) return this.yt.onEnded(cb);
-    this.endedListeners.push(cb);
+    const sub: Subscription = { unsub: null };
+    if (this.yt) sub.unsub = this.yt.onEnded(cb);
+    const entry: SubEntry = { cb, sub };
+    this.endedSubs.push(entry);
     return () => {
-      this.endedListeners = this.endedListeners.filter((l) => l !== cb);
+      sub.unsub?.();
+      sub.unsub = null;
+      this.endedSubs = this.endedSubs.filter((e) => e !== entry);
     };
   }
 
   onReady(cb: () => void): () => void {
-    if (this.yt) return this.yt.onReady(cb);
-    this.readyListeners.push(cb);
+    const sub: Subscription = { unsub: null };
+    if (this.yt) sub.unsub = this.yt.onReady(cb);
+    const entry: SubEntry = { cb, sub };
+    this.readySubs.push(entry);
     return () => {
-      this.readyListeners = this.readyListeners.filter((l) => l !== cb);
+      sub.unsub?.();
+      sub.unsub = null;
+      this.readySubs = this.readySubs.filter((e) => e !== entry);
     };
   }
 
@@ -96,13 +120,22 @@ export class YouTubeVideoPlayer implements VideoPlayer {
   }
 
   destroy(): void {
+    // Release any live YT unsubs before tearing down.
+    for (const entry of this.endedSubs) {
+      entry.sub.unsub?.();
+      entry.sub.unsub = null;
+    }
+    for (const entry of this.readySubs) {
+      entry.sub.unsub?.();
+      entry.sub.unsub = null;
+    }
     if (this.yt) {
       this.yt.destroy();
       this.yt = null;
     }
     this.container = null;
     this.currentMedia = null;
-    this.endedListeners = [];
-    this.readyListeners = [];
+    this.endedSubs = [];
+    this.readySubs = [];
   }
 }

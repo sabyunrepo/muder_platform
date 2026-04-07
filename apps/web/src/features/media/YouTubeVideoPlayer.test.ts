@@ -151,6 +151,70 @@ describe("YouTubeVideoPlayer", () => {
     player.pause(); // should not throw
   });
 
+  it("buffered onEnded subscription can be unsubscribed after load", async () => {
+    // Regression: previously the unsubscribe closure only targeted the local
+    // buffered array, so calling it after load() was a no-op and the real YT
+    // listener leaked.
+    const realUnsub = vi.fn();
+    const ytInstance = {
+      load: vi.fn().mockResolvedValue(undefined),
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+      stop: vi.fn(),
+      setVolume: vi.fn(),
+      onEnded: vi.fn().mockReturnValue(realUnsub),
+      onReady: vi.fn().mockReturnValue(() => {}),
+      getCurrentTime: vi.fn().mockReturnValue(0),
+      destroy: vi.fn(),
+    };
+    mockedCreate.mockReturnValueOnce(ytInstance as never);
+
+    const player = new YouTubeVideoPlayer();
+    player.attachTo(makeContainer());
+
+    const cb = vi.fn();
+    const unsubscribe = player.onEnded(cb);
+
+    await player.load(ytMedia);
+
+    // After load, the buffered callback should be attached to the real player.
+    expect(ytInstance.onEnded).toHaveBeenCalledWith(cb);
+    expect(realUnsub).not.toHaveBeenCalled();
+
+    // Now the unsubscribe returned before load must actually detach the
+    // real listener.
+    unsubscribe();
+    expect(realUnsub).toHaveBeenCalledTimes(1);
+  });
+
+  it("buffered onReady subscription can be unsubscribed after load", async () => {
+    const realUnsub = vi.fn();
+    const ytInstance = {
+      load: vi.fn().mockResolvedValue(undefined),
+      play: vi.fn().mockResolvedValue(undefined),
+      pause: vi.fn(),
+      stop: vi.fn(),
+      setVolume: vi.fn(),
+      onEnded: vi.fn().mockReturnValue(() => {}),
+      onReady: vi.fn().mockReturnValue(realUnsub),
+      getCurrentTime: vi.fn().mockReturnValue(0),
+      destroy: vi.fn(),
+    };
+    mockedCreate.mockReturnValueOnce(ytInstance as never);
+
+    const player = new YouTubeVideoPlayer();
+    player.attachTo(makeContainer());
+
+    const cb = vi.fn();
+    const unsubscribe = player.onReady(cb);
+
+    await player.load(ytMedia);
+    expect(ytInstance.onReady).toHaveBeenCalledWith(cb);
+
+    unsubscribe();
+    expect(realUnsub).toHaveBeenCalledTimes(1);
+  });
+
   it("destroys the previous YT player when load is called twice", async () => {
     const player = new YouTubeVideoPlayer();
     player.attachTo(makeContainer());

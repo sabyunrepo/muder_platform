@@ -130,6 +130,21 @@ describe("MediaUploadModal", () => {
     );
   });
 
+  it("rejects audio/mp4 (m4a) — backend does not accept it", () => {
+    // Regression: FE previously accepted audio/mp4 but backend
+    // AllowedAudioMIMEs rejects it, leading to confusing post-upload errors.
+    renderModal(true);
+    const input = screen.getByTestId(
+      "media-upload-input",
+    ) as HTMLInputElement;
+    const file = makeFile("song.m4a", 1024, "audio/mp4");
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "지원하지 않는 파일 형식입니다",
+    );
+  });
+
   it("type select works", () => {
     renderModal(true);
     const input = screen.getByTestId(
@@ -207,6 +222,51 @@ describe("MediaUploadModal", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert").textContent).toContain("서버 에러"),
     );
+  });
+
+  it("passes an AbortSignal to uploadMediaFile", async () => {
+    mockedUpload.mockResolvedValueOnce({});
+    renderModal(true);
+    fireEvent.change(screen.getByTestId("media-upload-input"), {
+      target: { files: [makeFile("a.mp3", 1024)] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "업로드" }));
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalled());
+    const args = mockedUpload.mock.calls[0][0];
+    expect(args.signal).toBeInstanceOf(AbortSignal);
+    expect(args.signal.aborted).toBe(false);
+  });
+
+  it("업로드 취소 button aborts the signal and clears uploading state", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    mockedUpload.mockImplementationOnce(
+      (params: any) =>
+        new Promise((_resolve, reject) => {
+          capturedSignal = params.signal;
+          params.signal.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          );
+        }),
+    );
+    renderModal(true);
+    fireEvent.change(screen.getByTestId("media-upload-input"), {
+      target: { files: [makeFile("a.mp3", 1024)] },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "업로드" }));
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalled());
+
+    const abortBtn = screen.getByRole("button", {
+      name: "업로드 취소",
+    }) as HTMLButtonElement;
+    fireEvent.click(abortBtn);
+
+    expect(capturedSignal?.aborted).toBe(true);
+    await waitFor(() => {
+      expect(
+        (screen.getByRole("button", { name: "업로드" }) as HTMLButtonElement)
+          .textContent,
+      ).toBe("업로드");
+    });
   });
 
   it("cancel during upload is disabled", async () => {

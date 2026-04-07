@@ -1,4 +1,10 @@
-import { useEffect, useState, type ChangeEvent, type DragEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+} from "react";
 import { Upload, X } from "lucide-react";
 
 import {
@@ -19,13 +25,10 @@ export interface MediaUploadModalProps {
 }
 
 const MAX_SIZE = 20 * 1024 * 1024;
-const ALLOWED_MIME = [
-  "audio/mpeg",
-  "audio/wav",
-  "audio/ogg",
-  "audio/mp4",
-  "audio/aac",
-];
+// Must match backend `AllowedAudioMIMEs` exactly. Adding formats here without
+// backend support causes confusing "rejected after upload" errors.
+const ALLOWED_MIME = ["audio/mpeg", "audio/wav", "audio/ogg"];
+const ACCEPT_ATTR = ALLOWED_MIME.join(",");
 
 // ---------------------------------------------------------------------------
 // MediaUploadModal
@@ -47,8 +50,26 @@ export function MediaUploadModal({
   const requestUrlMutation = useRequestUploadUrl(themeId);
   const confirmMutation = useConfirmUpload(themeId);
 
+  // Abort controller for the in-flight upload. Re-created per upload attempt.
+  const controllerRef = useRef<AbortController | null>(null);
+  // Guards setState after unmount or abort.
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Cancel any in-flight upload on unmount.
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     if (!open) {
+      // Abort any in-flight upload when the modal is closed via prop change.
+      controllerRef.current?.abort();
+      controllerRef.current = null;
       setFile(null);
       setName("");
       setType("BGM");
@@ -65,7 +86,7 @@ export function MediaUploadModal({
       return;
     }
     if (!ALLOWED_MIME.includes(f.type)) {
-      setError("지원하지 않는 파일 형식입니다 (MP3, WAV, OGG, M4A, AAC)");
+      setError("지원하지 않는 파일 형식입니다 (MP3, WAV, OGG)");
       return;
     }
     setError(null);
@@ -88,6 +109,11 @@ export function MediaUploadModal({
 
   const handleUpload = async () => {
     if (!file) return;
+    // Abort any pre-existing controller and create a fresh one for this attempt.
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
     setUploading(true);
     setError(null);
     setProgress(0);
@@ -99,15 +125,37 @@ export function MediaUploadModal({
         name: name || file.name,
         requestUploadUrl: requestUrlMutation.mutateAsync,
         confirmUpload: confirmMutation.mutateAsync,
-        onProgress: setProgress,
+        onProgress: (p) => {
+          if (isMountedRef.current && !controller.signal.aborted) {
+            setProgress(p);
+          }
+        },
+        signal: controller.signal,
       });
+      if (!isMountedRef.current || controller.signal.aborted) return;
       onClose();
     } catch (err) {
+      if (!isMountedRef.current || controller.signal.aborted) return;
       const message = err instanceof Error ? err.message : "업로드 실패";
       setError(message);
     } finally {
-      setUploading(false);
+      if (controllerRef.current === controller) {
+        controllerRef.current = null;
+      }
+      if (isMountedRef.current) {
+        setUploading(false);
+      }
     }
+  };
+
+  const handleAbort = () => {
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    // The aborted upload rejects and we've guarded the catch path, so
+    // we have to clear uploading state here.
+    setUploading(false);
+    setProgress(0);
+    setError("업로드가 취소되었습니다");
   };
 
   if (!open) return null;
@@ -162,9 +210,12 @@ export function MediaUploadModal({
               </p>
             </>
           ) : (
-            <p className="text-sm text-slate-400">
-              파일을 드래그하거나 클릭하여 선택
-            </p>
+            <>
+              <p className="text-sm text-slate-400">
+                파일을 드래그하거나 클릭하여 선택
+              </p>
+              <p className="mt-1 text-xs text-slate-500">(MP3, WAV, OGG)</p>
+            </>
           )}
         </div>
         <input
@@ -172,7 +223,7 @@ export function MediaUploadModal({
           data-testid="media-upload-input"
           type="file"
           className="hidden"
-          accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,audio/aac"
+          accept={ACCEPT_ATTR}
           onChange={handleInputChange}
         />
 
@@ -229,9 +280,16 @@ export function MediaUploadModal({
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="mt-1 text-center text-xs text-slate-400">
-              {progress}% 업로드 중...
-            </p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-xs text-slate-400">{progress}% 업로드 중...</p>
+              <button
+                type="button"
+                onClick={handleAbort}
+                className="text-xs text-rose-300 hover:text-rose-200"
+              >
+                업로드 취소
+              </button>
+            </div>
           </div>
         )}
 

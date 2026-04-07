@@ -61,8 +61,10 @@ export interface UpdateMediaRequest {
 }
 
 // Reference info returned in 409 problem-details `params.references`.
+// Backend shape: { type, id, name } — e.g. { type: "reading_section", id: "...", name: "..." }
 export interface MediaReferenceInfo {
-  section_id: string;
+  type: string;
+  id: string;
   name: string;
 }
 
