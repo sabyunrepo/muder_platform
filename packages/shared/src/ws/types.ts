@@ -44,6 +44,15 @@ export const WsEventType = {
 
   // Sound
   SOUND_PLAY: "sound:play",
+
+  // Audio (Phase 7.7) — server → client
+  AUDIO_SET_BGM: "audio:set_bgm",
+  AUDIO_PLAY_VOICE: "audio:play_voice",
+  AUDIO_PLAY_MEDIA: "audio:play_media",
+  AUDIO_STOP: "audio:stop",
+
+  // Reading (Phase 7.7) — client → server
+  READING_VOICE_ENDED: "reading:voice_ended",
 } as const;
 
 export type WsEventType = (typeof WsEventType)[keyof typeof WsEventType];
