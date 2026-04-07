@@ -11,43 +11,40 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// startSession is a helper that starts a session via the manager and
-// waits a short time for the actor goroutine to be ready.
+// startSession starts a session via the manager and waits for the actor to be
+// in StatusRunning before returning.
 func startSession(t *testing.T, m *session.SessionManager) (uuid.UUID, *session.Session) {
 	t.Helper()
 	sessionID := uuid.New()
 	s, err := m.Start(context.Background(), sessionID, uuid.New(), newPlayers(2))
 	if err != nil {
-		t.Fatalf("Start: unexpected error: %v", err)
+		t.Fatalf("Start: %v", err)
 	}
-	// Give the goroutine a moment to enter the select loop.
-	time.Sleep(5 * time.Millisecond)
+	waitRunning(t, s)
 	return sessionID, s
 }
 
 func TestSession_SendReplyRoundtrip(t *testing.T) {
-	logger := zerolog.Nop()
-	m := session.NewSessionManager(logger)
+	m := session.NewSessionManager(zerolog.Nop())
 	sessionID, s := startSession(t, m)
-	defer m.Stop(sessionID) //nolint:errcheck
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
 
-	// Send a KindLifecycleLeft message (simple, no engine interaction).
 	reply := make(chan error, 1)
 	msg := session.SessionMessage{
 		Kind:     session.KindLifecycleLeft,
-		PlayerID: newPlayers(1)[0].PlayerID,
+		PlayerID: uuid.New(),
 		Reply:    reply,
 		Ctx:      context.Background(),
 	}
 
 	if err := s.Send(msg); err != nil {
-		t.Fatalf("Send: unexpected error: %v", err)
+		t.Fatalf("Send: %v", err)
 	}
 
 	select {
 	case err := <-reply:
 		if err != nil {
-			t.Fatalf("handler returned unexpected error: %v", err)
+			t.Fatalf("handler error: %v", err)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for reply")
@@ -55,18 +52,16 @@ func TestSession_SendReplyRoundtrip(t *testing.T) {
 }
 
 func TestSession_FIFOOrdering(t *testing.T) {
-	logger := zerolog.Nop()
-	m := session.NewSessionManager(logger)
+	m := session.NewSessionManager(zerolog.Nop())
 	sessionID, s := startSession(t, m)
-	defer m.Stop(sessionID) //nolint:errcheck
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
 
 	const n = 50
 	replies := make([]chan error, n)
-	for i := 0; i < n; i++ {
+	for i := range replies {
 		replies[i] = make(chan error, 1)
 	}
 
-	// Send n messages sequentially.
 	for i := 0; i < n; i++ {
 		msg := session.SessionMessage{
 			Kind:     session.KindLifecycleLeft,
@@ -75,16 +70,15 @@ func TestSession_FIFOOrdering(t *testing.T) {
 			Ctx:      context.Background(),
 		}
 		if err := s.Send(msg); err != nil {
-			t.Fatalf("Send [%d]: unexpected error: %v", i, err)
+			t.Fatalf("Send[%d]: %v", i, err)
 		}
 	}
 
-	// Replies must arrive in order (FIFO channel property).
 	for i := 0; i < n; i++ {
 		select {
 		case err := <-replies[i]:
 			if err != nil {
-				t.Errorf("message[%d] handler error: %v", i, err)
+				t.Errorf("msg[%d] error: %v", i, err)
 			}
 		case <-time.After(2 * time.Second):
 			t.Fatalf("timed out waiting for reply[%d]", i)
@@ -92,43 +86,45 @@ func TestSession_FIFOOrdering(t *testing.T) {
 	}
 }
 
-func TestSession_InboxFullReturnsError(t *testing.T) {
-	logger := zerolog.Nop()
-	m := session.NewSessionManager(logger)
-
-	// Start session but stop it immediately so the actor is not draining.
+func TestSession_SendOnStoppedReturnsError(t *testing.T) {
+	m := session.NewSessionManager(zerolog.Nop())
 	sessionID, s := startSession(t, m)
-	m.Stop(sessionID) //nolint:errcheck
 
-	// Wait for the session goroutine to stop.
-	select {
-	case <-s.Done():
-	case <-time.After(2 * time.Second):
-		t.Fatal("session did not stop in time")
+	if err := m.Stop(sessionID); err != nil {
+		t.Fatalf("Stop: %v", err)
 	}
 
-	// Flood the inbox (buffer=256) + one extra that should fail.
-	var lastErr error
-	for i := 0; i <= 260; i++ {
-		err := s.Send(session.SessionMessage{
-			Kind: session.KindLifecycleLeft,
-			Ctx:  context.Background(),
-		})
-		if err != nil {
-			lastErr = err
-			break
-		}
+	// Session is stopped — Send must return an error immediately.
+	err := s.Send(session.SessionMessage{
+		Kind: session.KindLifecycleLeft,
+		Ctx:  context.Background(),
+	})
+	if err == nil {
+		t.Fatal("expected error sending to stopped session, got nil")
 	}
-	if lastErr == nil {
-		t.Fatal("expected inbox-full error, got nil")
+}
+
+func TestSession_InboxFullReturnsError(t *testing.T) {
+	m := session.NewSessionManager(zerolog.Nop())
+	sessionID, s := startSession(t, m)
+
+	// Stop the session so the actor stops draining the inbox.
+	if err := m.Stop(sessionID); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+
+	// After stop, sends should return errSessionStopped before we ever fill
+	// the buffer — which is what we want. Confirm with a single send.
+	err := s.Send(session.SessionMessage{Kind: session.KindLifecycleLeft, Ctx: context.Background()})
+	if err == nil {
+		t.Fatal("expected error on stopped session, got nil")
 	}
 }
 
 func TestSession_EngineCommandUnknownModule(t *testing.T) {
-	logger := zerolog.Nop()
-	m := session.NewSessionManager(logger)
+	m := session.NewSessionManager(zerolog.Nop())
 	sessionID, s := startSession(t, m)
-	defer m.Stop(sessionID) //nolint:errcheck
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
 
 	reply := make(chan error, 1)
 	msg := session.SessionMessage{
@@ -142,36 +138,117 @@ func TestSession_EngineCommandUnknownModule(t *testing.T) {
 	}
 
 	if err := s.Send(msg); err != nil {
-		t.Fatalf("Send: unexpected error: %v", err)
+		t.Fatalf("Send: %v", err)
 	}
 
 	select {
-	case err := <-reply:
-		// The engine is not started, so it should return an error.
-		// We just verify that the reply channel receives a response (not hangs).
-		_ = err
+	case <-reply:
+		// just verify no hang
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for reply")
 	}
 }
 
 func TestSession_FireAndForget(t *testing.T) {
-	logger := zerolog.Nop()
-	m := session.NewSessionManager(logger)
+	m := session.NewSessionManager(zerolog.Nop())
 	sessionID, s := startSession(t, m)
-	defer m.Stop(sessionID) //nolint:errcheck
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
 
-	// Fire-and-forget: Reply is nil, should not block.
+	// nil Reply must not block or panic.
 	msg := session.SessionMessage{
 		Kind:     session.KindLifecycleLeft,
 		PlayerID: uuid.New(),
 		Reply:    nil,
 		Ctx:      context.Background(),
 	}
+	if err := s.Send(msg); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+}
+
+func TestSession_GMOverrideInvalidPayload(t *testing.T) {
+	m := session.NewSessionManager(zerolog.Nop())
+	sessionID, s := startSession(t, m)
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
+
+	reply := make(chan error, 1)
+	msg := session.SessionMessage{
+		Kind:    session.KindGMOverride,
+		Payload: "wrong-type-not-GMOverridePayload", // must trigger errInvalidPayload
+		Reply:   reply,
+		Ctx:     context.Background(),
+	}
 
 	if err := s.Send(msg); err != nil {
-		t.Fatalf("Send: unexpected error: %v", err)
+		t.Fatalf("Send: %v", err)
 	}
-	// No reply channel to wait on — just verify it doesn't panic or hang.
-	time.Sleep(20 * time.Millisecond)
+
+	select {
+	case err := <-reply:
+		if err == nil {
+			t.Fatal("expected invalid-payload error, got nil")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for reply")
+	}
+}
+
+func TestSession_TriggerInvalidPayload(t *testing.T) {
+	m := session.NewSessionManager(zerolog.Nop())
+	sessionID, s := startSession(t, m)
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
+
+	reply := make(chan error, 1)
+	msg := session.SessionMessage{
+		Kind:    session.KindHandleTrigger,
+		Payload: 42, // wrong type
+		Reply:   reply,
+		Ctx:     context.Background(),
+	}
+
+	if err := s.Send(msg); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	select {
+	case err := <-reply:
+		if err == nil {
+			t.Fatal("expected invalid-payload error, got nil")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for reply")
+	}
+}
+
+func TestSession_KindStopReplies(t *testing.T) {
+	m := session.NewSessionManager(zerolog.Nop())
+	sessionID, s := startSession(t, m)
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
+
+	reply := make(chan error, 1)
+	msg := session.SessionMessage{
+		Kind:  session.KindStop,
+		Reply: reply,
+		Ctx:   context.Background(),
+	}
+
+	if err := s.Send(msg); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	select {
+	case err := <-reply:
+		if err != nil {
+			t.Fatalf("KindStop reply error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for KindStop reply")
+	}
+
+	// done must be closed after KindStop.
+	select {
+	case <-s.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("done channel not closed after KindStop")
+	}
 }

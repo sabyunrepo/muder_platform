@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/session"
@@ -12,19 +13,27 @@ import (
 
 func newTestManager(t *testing.T) *session.SessionManager {
 	t.Helper()
-	logger := zerolog.Nop()
-	return session.NewSessionManager(logger)
+	return session.NewSessionManager(zerolog.Nop())
 }
 
 func newPlayers(n int) []session.PlayerState {
 	players := make([]session.PlayerState, n)
 	for i := range players {
-		players[i] = session.PlayerState{
-			PlayerID:  uuid.New(),
-			Connected: true,
-		}
+		players[i] = session.PlayerState{PlayerID: uuid.New(), Connected: true}
 	}
 	return players
+}
+
+// waitRunning polls until s.Status() == StatusRunning or the deadline passes.
+func waitRunning(t *testing.T, s *session.Session) {
+	t.Helper()
+	for i := 0; i < 200; i++ {
+		if s.Status() == session.StatusRunning {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatal("session did not reach StatusRunning within 200ms")
 }
 
 func TestSessionManager_StartAndGet(t *testing.T) {
@@ -32,44 +41,40 @@ func TestSessionManager_StartAndGet(t *testing.T) {
 	ctx := context.Background()
 
 	sessionID := uuid.New()
-	themeID := uuid.New()
-	players := newPlayers(3)
-
-	s, err := m.Start(ctx, sessionID, themeID, players)
+	s, err := m.Start(ctx, sessionID, uuid.New(), newPlayers(3))
 	if err != nil {
-		t.Fatalf("Start: unexpected error: %v", err)
+		t.Fatalf("Start: %v", err)
 	}
 	if s == nil {
-		t.Fatal("Start: returned nil session")
+		t.Fatal("Start returned nil")
 	}
 	if s.ID != sessionID {
-		t.Fatalf("Start: session ID mismatch: got %v want %v", s.ID, sessionID)
+		t.Fatalf("ID mismatch: got %v want %v", s.ID, sessionID)
 	}
-	defer m.Stop(sessionID) //nolint:errcheck
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
 
 	got := m.Get(sessionID)
 	if got == nil {
-		t.Fatal("Get: expected session, got nil")
+		t.Fatal("Get returned nil")
 	}
 	if got != s {
-		t.Fatal("Get: returned different session pointer than Start")
+		t.Fatal("Get returned different pointer than Start")
 	}
 }
 
 func TestSessionManager_StopRemovesSession(t *testing.T) {
 	m := newTestManager(t)
-	ctx := context.Background()
-
 	sessionID := uuid.New()
-	_, err := m.Start(ctx, sessionID, uuid.New(), newPlayers(2))
+
+	s, err := m.Start(context.Background(), sessionID, uuid.New(), newPlayers(2))
 	if err != nil {
-		t.Fatalf("Start: unexpected error: %v", err)
+		t.Fatalf("Start: %v", err)
 	}
+	waitRunning(t, s)
 
 	if err := m.Stop(sessionID); err != nil {
-		t.Fatalf("Stop: unexpected error: %v", err)
+		t.Fatalf("Stop: %v", err)
 	}
-
 	if got := m.Get(sessionID); got != nil {
 		t.Fatalf("Get after Stop: expected nil, got %v", got)
 	}
@@ -77,59 +82,57 @@ func TestSessionManager_StopRemovesSession(t *testing.T) {
 
 func TestSessionManager_StopNonExistent(t *testing.T) {
 	m := newTestManager(t)
-	err := m.Stop(uuid.New())
-	if err == nil {
-		t.Fatal("Stop on non-existent session: expected error, got nil")
+	if err := m.Stop(uuid.New()); err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }
 
 func TestSessionManager_GetNonExistent(t *testing.T) {
 	m := newTestManager(t)
-	got := m.Get(uuid.New())
-	if got != nil {
-		t.Fatalf("Get on non-existent session: expected nil, got %v", got)
+	if got := m.Get(uuid.New()); got != nil {
+		t.Fatalf("expected nil, got %v", got)
 	}
 }
 
-func TestSessionManager_StartDuplicateSessionIDRejected(t *testing.T) {
+func TestSessionManager_StartDuplicateRejected(t *testing.T) {
 	m := newTestManager(t)
 	ctx := context.Background()
-
 	sessionID := uuid.New()
-	themeID := uuid.New()
 
-	s1, err := m.Start(ctx, sessionID, themeID, newPlayers(1))
+	s1, err := m.Start(ctx, sessionID, uuid.New(), newPlayers(1))
 	if err != nil {
-		t.Fatalf("first Start: unexpected error: %v", err)
+		t.Fatalf("first Start: %v", err)
 	}
-	defer m.Stop(sessionID) //nolint:errcheck
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
 
-	s2, err := m.Start(ctx, sessionID, themeID, newPlayers(1))
+	s2, err := m.Start(ctx, sessionID, uuid.New(), newPlayers(1))
 	if err == nil {
-		t.Fatal("second Start with same sessionID: expected error, got nil")
+		t.Fatal("second Start: expected error, got nil")
 	}
 	if s2 != nil {
-		t.Fatal("second Start with same sessionID: expected nil session")
+		t.Fatal("second Start: expected nil session")
 	}
 	_ = s1
 }
 
-func TestSessionManager_ConcurrentStart(t *testing.T) {
+// TestSessionManager_ConcurrentStartDifferentIDs starts 20 sessions with
+// different IDs concurrently — all must succeed.
+func TestSessionManager_ConcurrentStartDifferentIDs(t *testing.T) {
 	m := newTestManager(t)
 	ctx := context.Background()
+	const n = 20
 
-	const goroutines = 20
-	ids := make([]uuid.UUID, goroutines)
+	ids := make([]uuid.UUID, n)
 	for i := range ids {
 		ids[i] = uuid.New()
 	}
 
 	var wg sync.WaitGroup
-	errs := make([]error, goroutines)
-	sessions := make([]*session.Session, goroutines)
+	errs := make([]error, n)
+	sessions := make([]*session.Session, n)
 
-	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	wg.Add(n)
+	for i := 0; i < n; i++ {
 		i := i
 		go func() {
 			defer wg.Done()
@@ -140,22 +143,76 @@ func TestSessionManager_ConcurrentStart(t *testing.T) {
 
 	for i, err := range errs {
 		if err != nil {
-			t.Errorf("goroutine %d: unexpected error: %v", i, err)
+			t.Errorf("[%d] unexpected error: %v", i, err)
 		}
 		if sessions[i] == nil {
-			t.Errorf("goroutine %d: expected session, got nil", i)
+			t.Errorf("[%d] nil session", i)
 		}
-		_ = m.Stop(ids[i])
+		m.Stop(ids[i]) //nolint:errcheck
 	}
+}
+
+// TestSessionManager_ConcurrentStartSameID races N goroutines all trying to
+// Start the same sessionID — exactly one must win; the rest get an error.
+func TestSessionManager_ConcurrentStartSameID(t *testing.T) {
+	m := newTestManager(t)
+	ctx := context.Background()
+	sessionID := uuid.New()
+
+	const n = 20
+	var wg sync.WaitGroup
+	errs := make([]error, n)
+	sessions := make([]*session.Session, n)
+
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		i := i
+		go func() {
+			defer wg.Done()
+			sessions[i], errs[i] = m.Start(ctx, sessionID, uuid.New(), newPlayers(2))
+		}()
+	}
+	wg.Wait()
+
+	winners := 0
+	for i := 0; i < n; i++ {
+		if errs[i] == nil {
+			winners++
+		}
+	}
+	if winners != 1 {
+		t.Fatalf("expected exactly 1 winner, got %d", winners)
+	}
+	m.Stop(sessionID) //nolint:errcheck
 }
 
 func TestSessionManager_RestoreNotImplemented(t *testing.T) {
 	m := newTestManager(t)
 	_, err := m.Restore(context.Background(), uuid.New())
-	if err == nil {
-		t.Fatal("Restore: expected ErrNotImplemented, got nil")
-	}
 	if err != session.ErrNotImplemented {
-		t.Fatalf("Restore: expected ErrNotImplemented, got %v", err)
+		t.Fatalf("expected ErrNotImplemented, got %v", err)
+	}
+}
+
+func TestSessionManager_StopWaitsForGoroutine(t *testing.T) {
+	m := newTestManager(t)
+	sessionID := uuid.New()
+
+	s, err := m.Start(context.Background(), sessionID, uuid.New(), newPlayers(1))
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	waitRunning(t, s)
+
+	if err := m.Stop(sessionID); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+
+	// After Stop returns, the done channel must already be closed.
+	select {
+	case <-s.Done():
+		// correct
+	default:
+		t.Fatal("done channel not closed after Stop returned")
 	}
 }
