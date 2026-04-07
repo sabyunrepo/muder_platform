@@ -3,6 +3,13 @@ description: (sabyun) 실행 중인 autopilot 일시 정지 + state 저장 (/pla
 allowed-tools: Bash Read Write
 ---
 
+## Pre-flight check
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**Note**: pre-flight failures don't block stopping — pausing state saving works regardless of hooks.
+
+---
+
 Stop the autopilot loop gracefully.
 
 ## Steps

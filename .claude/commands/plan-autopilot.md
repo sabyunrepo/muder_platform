@@ -1,6 +1,25 @@
 ---
 description: (sabyun) Wave 기반 병렬 자동 실행 루프 (sub-agent + worktree + 4 parallel reviewers)
 argument-hint: [--until WAVE] [--only PR-N] [--dry-run]
+allowed-tools: Read Write Edit Bash Task
+---
+
+## Pre-flight check (MUST NOT SKIP)
+
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**If the pre-flight above shows any ❌ or 🛑 STOP markers:**
+1. Read the recovery steps in the output
+2. Fix `.claude/settings.json` by copying the fresh template
+3. Verify with `jq . .claude/settings.json`
+4. Re-run this command
+
+**Do NOT proceed with autopilot execution until pre-flight passes cleanly.**
+Do not assume `.claude/scripts/` should exist — it shouldn't. Scripts live at
+`$HOME/.claude/skills/plan-autopilot/scripts/` and hooks reference them by
+absolute path. If a hook command uses a relative `.claude/scripts/` path, that's
+a linter regression — fix settings.json.
+
 ---
 
 Execute the active plan using wave-based parallel sub-agents.

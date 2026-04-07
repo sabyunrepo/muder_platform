@@ -1,7 +1,15 @@
 ---
 description: (sabyun) 플랜 디렉터리를 현재 active plan으로 활성화
 argument-hint: <plan-directory>
-allowed-tools: Read Write Bash(git*) Bash(jq*) Bash(mv*) Bash(mkdir*)
+allowed-tools: Read Write Bash(git*) Bash(jq*) Bash(mv*) Bash(mkdir*) Bash(*/plan-preflight.sh)
+---
+
+## Pre-flight check
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**If pre-flight shows ❌**: fix `.claude/settings.json` FIRST, then retry this command.
+The pre-flight failure usually means hooks won't fire, so activating a plan would be pointless.
+
 ---
 
 Activate plan at `$ARGUMENTS` as the current active plan.

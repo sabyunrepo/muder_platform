@@ -1,6 +1,13 @@
 ---
 description: (sabyun) 현재 active plan을 완료 처리하고 archive
-allowed-tools: Read Write Bash(jq*) Bash(git*) Bash(mv*) Bash(mkdir*) Bash(rm*)
+allowed-tools: Read Write Bash(jq*) Bash(git*) Bash(mv*) Bash(mkdir*) Bash(rm*) Bash(*/plan-preflight.sh)
+---
+
+## Pre-flight check
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**If pre-flight shows ❌**: settings.json is broken, but finishing the plan is still possible (just archives files). Proceed carefully and warn the user to fix settings.json before starting the next plan.
+
 ---
 
 Archive current active plan as completed.

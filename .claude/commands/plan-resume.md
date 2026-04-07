@@ -1,9 +1,16 @@
 ---
 description: (sabyun) /clear 후 전체 컨텍스트 복원 — design + plan + checklist + progress + git 한번에 로드
-allowed-tools: Read Bash(jq*) Bash(git*)
+allowed-tools: Read Bash(jq*) Bash(git*) Bash(cat*) Bash(*/plan-preflight.sh)
 ---
 
 Full context restore — read all plan files and summarize current state.
+
+## Pre-flight check
+
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**If pre-flight shows ❌, the first thing to do after restore is fix settings.json.**
+Continue reading plan files even if pre-flight fails — the context is still useful.
 
 ## Preload live data
 
