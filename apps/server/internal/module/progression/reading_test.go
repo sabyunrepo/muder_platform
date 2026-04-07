@@ -3,9 +3,11 @@ package progression
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 )
 
@@ -161,6 +163,123 @@ func TestReadingModule_JumpToLastLine(t *testing.T) {
 	if !completed {
 		t.Error("expected completed when jumping to last line")
 	}
+}
+
+func TestReadingModule_AdvanceAuthorization(t *testing.T) {
+	// Config with 4 lines, each with a different advanceBy semantics.
+	// Line indices:
+	//   0 -> "gm"             (current line; advance moves to 1)
+	//   1 -> "role:detective"
+	//   2 -> "voice"
+	//   3 -> (last)
+	cfg := json.RawMessage(`{
+		"TotalLines": 4,
+		"Lines": [
+			{"AdvanceBy": "gm"},
+			{"AdvanceBy": "role:detective"},
+			{"AdvanceBy": "voice"},
+			{"AdvanceBy": "gm"}
+		]
+	}`)
+
+	newModule := func(t *testing.T) *ReadingModule {
+		t.Helper()
+		m := NewReadingModule()
+		if err := m.Init(context.Background(), newTestDeps(t), cfg); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
+		return m
+	}
+
+	assertCode := func(t *testing.T, err error, wantCode string) {
+		t.Helper()
+		if err == nil {
+			t.Fatalf("expected error with code %q, got nil", wantCode)
+		}
+		var ae *apperror.AppError
+		if !errors.As(err, &ae) {
+			t.Fatalf("expected *apperror.AppError, got %T: %v", err, err)
+		}
+		if ae.Code != wantCode {
+			t.Fatalf("expected code %q, got %q", wantCode, ae.Code)
+		}
+	}
+
+	t.Run("gm line: host can advance", func(t *testing.T) {
+		m := newModule(t)
+		err := m.HandleAdvance(context.Background(), uuid.New(), true, "")
+		if err != nil {
+			t.Fatalf("HandleAdvance() error = %v", err)
+		}
+	})
+
+	t.Run("gm line: non-host cannot advance", func(t *testing.T) {
+		m := newModule(t)
+		err := m.HandleAdvance(context.Background(), uuid.New(), false, "detective")
+		assertCode(t, err, apperror.ErrReadingAdvanceForbidden)
+	})
+
+	t.Run("role line: matching role can advance", func(t *testing.T) {
+		m := newModule(t)
+		// move to line index 1 (role:detective is on line 1)
+		if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+			t.Fatalf("setup advance error = %v", err)
+		}
+		// now currentLineIndex == 1; advancing requires detective role
+		err := m.HandleAdvance(context.Background(), uuid.New(), false, "detective")
+		if err != nil {
+			t.Fatalf("HandleAdvance() detective error = %v", err)
+		}
+	})
+
+	t.Run("role line: other role cannot advance", func(t *testing.T) {
+		m := newModule(t)
+		if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+			t.Fatalf("setup advance error = %v", err)
+		}
+		err := m.HandleAdvance(context.Background(), uuid.New(), false, "suspect")
+		assertCode(t, err, apperror.ErrReadingAdvanceForbidden)
+	})
+
+	t.Run("voice line: manual advance forbidden for everyone", func(t *testing.T) {
+		m := newModule(t)
+		// advance twice to land on line index 2 (voice)
+		if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+			t.Fatalf("setup advance 1 error = %v", err)
+		}
+		if err := m.HandleAdvance(context.Background(), uuid.New(), false, "detective"); err != nil {
+			t.Fatalf("setup advance 2 error = %v", err)
+		}
+		// currentLineIndex == 2; voice line — host attempt
+		err := m.HandleAdvance(context.Background(), uuid.New(), true, "")
+		assertCode(t, err, apperror.ErrReadingAdvanceForbidden)
+	})
+
+	t.Run("invalid advanceBy string", func(t *testing.T) {
+		badCfg := json.RawMessage(`{
+			"TotalLines": 2,
+			"Lines": [
+				{"AdvanceBy": "wat"},
+				{"AdvanceBy": "gm"}
+			]
+		}`)
+		m := NewReadingModule()
+		if err := m.Init(context.Background(), newTestDeps(t), badCfg); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
+		err := m.HandleAdvance(context.Background(), uuid.New(), true, "")
+		assertCode(t, err, apperror.ErrReadingInvalidAdvanceBy)
+	})
+
+	t.Run("no current line: out of range", func(t *testing.T) {
+		emptyCfg := json.RawMessage(`{"TotalLines": 0}`)
+		m := NewReadingModule()
+		if err := m.Init(context.Background(), newTestDeps(t), emptyCfg); err != nil {
+			t.Fatalf("Init() error = %v", err)
+		}
+		err := m.HandleAdvance(context.Background(), uuid.New(), true, "")
+		assertCode(t, err, apperror.ErrReadingLineOutOfRange)
+	})
 }
 
 func TestReadingModule_BuildState(t *testing.T) {
