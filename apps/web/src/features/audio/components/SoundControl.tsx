@@ -1,7 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Volume2, VolumeX, Music } from "lucide-react";
+import { Volume2, VolumeX, Music, Mic } from "lucide-react";
 
-import { useAudioStore, selectIsMuted, selectMasterVolume, selectSfxVolume } from "@/stores/audioStore";
+import {
+  useAudioStore,
+  selectIsMuted,
+  selectMasterVolume,
+  selectSfxVolume,
+  selectVoiceVolume,
+} from "@/stores/audioStore";
 
 // ---------------------------------------------------------------------------
 // VolumeSlider
@@ -62,8 +68,10 @@ export function SoundControl() {
   const isMuted = useAudioStore(selectIsMuted);
   const masterVolume = useAudioStore(selectMasterVolume);
   const sfxVolume = useAudioStore(selectSfxVolume);
+  const voiceVolume = useAudioStore(selectVoiceVolume);
   const setMasterVolume = useAudioStore((s) => s.setMasterVolume);
   const setSfxVolume = useAudioStore((s) => s.setSfxVolume);
+  const setVoiceVolume = useAudioStore((s) => s.setVoiceVolume);
   const toggleMute = useAudioStore((s) => s.toggleMute);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -141,6 +149,13 @@ export function SoundControl() {
               icon={<Volume2 className="h-3.5 w-3.5" />}
               value={masterVolume}
               onChange={setMasterVolume}
+              disabled={isMuted}
+            />
+            <VolumeSlider
+              label="음성"
+              icon={<Mic className="h-3.5 w-3.5" />}
+              value={voiceVolume}
+              onChange={setVoiceVolume}
               disabled={isMuted}
             />
             <VolumeSlider
