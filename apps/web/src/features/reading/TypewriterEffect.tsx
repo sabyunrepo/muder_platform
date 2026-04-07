@@ -23,6 +23,14 @@ export function TypewriterEffect({
 }: TypewriterEffectProps) {
   const [displayed, setDisplayed] = useState("");
   const completedRef = useRef(false);
+  // Keep the latest onComplete in a ref so the reveal effect does not
+  // restart when the parent re-renders with a fresh inline callback. Prior
+  // versions listed onComplete in the effect deps and would jump back to
+  // index 0 on every parent render, defeating the typewriter animation.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     completedRef.current = false;
@@ -48,7 +56,7 @@ export function TypewriterEffect({
         timer = setTimeout(tick, interval);
       } else if (!completedRef.current) {
         completedRef.current = true;
-        onComplete?.();
+        onCompleteRef.current?.();
       }
     };
 
@@ -58,14 +66,16 @@ export function TypewriterEffect({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [text, durationMs, speedMsPerChar, onComplete]);
+    // onComplete is intentionally omitted — captured via ref above so that
+    // a new callback identity from the parent does not reset the reveal.
+  }, [text, durationMs, speedMsPerChar]);
 
   const handleSkip = () => {
     if (displayed.length < text.length) {
       setDisplayed(text);
       if (!completedRef.current) {
         completedRef.current = true;
-        onComplete?.();
+        onCompleteRef.current?.();
       }
     }
   };

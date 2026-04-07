@@ -73,7 +73,7 @@ const sampleSection: ReadingSectionResponse = {
       Text: "누구냐?",
       Speaker: "Alice",
       VoiceMediaID: "",
-      AdvanceBy: "role:Alice",
+      AdvanceBy: "role:c1",
     },
   ],
 };
@@ -116,23 +116,40 @@ afterEach(() => {
 
 describe("computeSmartAdvanceBy", () => {
   it("narration → gm", () => {
-    expect(computeSmartAdvanceBy({ Speaker: "나레이션" }, true)).toBe("gm");
+    expect(computeSmartAdvanceBy({ Speaker: "나레이션" }, true, characters)).toBe(
+      "gm",
+    );
   });
 
   it("voice attached → voice", () => {
     expect(
-      computeSmartAdvanceBy({ Speaker: "Alice", VoiceMediaID: "m-1" }, false),
+      computeSmartAdvanceBy(
+        { Speaker: "Alice", VoiceMediaID: "m-1" },
+        false,
+        characters,
+      ),
     ).toBe("voice");
   });
 
-  it("character speaker → role:<name>", () => {
-    expect(computeSmartAdvanceBy({ Speaker: "Alice" }, false)).toBe(
-      "role:Alice",
+  it("character speaker → role:<character.id>", () => {
+    // Speaker is a display name; resolved to the stable character id so the
+    // advance permission check on the server (which compares role ids) works.
+    expect(
+      computeSmartAdvanceBy({ Speaker: "Alice" }, false, characters),
+    ).toBe("role:c1");
+    expect(computeSmartAdvanceBy({ Speaker: "Bob" }, false, characters)).toBe(
+      "role:c2",
     );
   });
 
+  it("unknown speaker (no matching character) → gm fallback", () => {
+    expect(
+      computeSmartAdvanceBy({ Speaker: "Nobody" }, false, characters),
+    ).toBe("gm");
+  });
+
   it("empty fallback → gm", () => {
-    expect(computeSmartAdvanceBy({}, false)).toBe("gm");
+    expect(computeSmartAdvanceBy({}, false, characters)).toBe("gm");
   });
 });
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Music, Plus, RefreshCcw, Save, Trash2, X } from "lucide-react";
 
 import { queryClient } from "@/services/queryClient";
+import { isApiHttpError } from "@/lib/api-error";
 
 import {
   readingKeys,
@@ -43,11 +44,22 @@ function toDraft(section: ReadingSectionResponse): DraftState {
   };
 }
 
+/**
+ * Recognize an optimistic-lock conflict from the API layer. Uses the
+ * structured ApiHttpError thrown by the API client (status 409 is the
+ * canonical signal) instead of substring-matching error messages, which is
+ * brittle against locale-specific text. Falls back to the legacy substring
+ * check only for tests that stub with a plain Error("HTTP 409 Conflict").
+ */
 function isConflictError(err: unknown): boolean {
   if (!err) return false;
+  if (isApiHttpError(err) && err.status === 409) return true;
+  // Legacy: tests sometimes throw a plain Error whose message contains the
+  // HTTP status. Keep substring fallback narrow — only accept "409" after a
+  // word boundary to avoid false positives on unrelated numeric strings.
   const msg =
     err instanceof Error ? err.message : typeof err === "string" ? err : "";
-  return msg.includes("409") || msg.toLowerCase().includes("conflict");
+  return /\b409\b/.test(msg) || msg.toLowerCase().includes("conflict");
 }
 
 // ---------------------------------------------------------------------------

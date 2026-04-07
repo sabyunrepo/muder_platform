@@ -25,8 +25,12 @@ var _ ws.ReadingModuleAPI = (*ReadingModuleAdapter)(nil)
 
 // readingLineWire is the camelCase JSON shape sent across the WS for each
 // reading line. Mirrors the storage struct in progression.readingLineConfig
-// but with the wire-friendly tags FE consumers expect.
+// but with the wire-friendly tags FE consumers expect. Index and text are
+// required so the FE can render dialogue correctly; the ReadingOverlay keys
+// off index and renders text via TypewriterEffect.
 type readingLineWire struct {
+	Index        int    `json:"index"`
+	Text         string `json:"text,omitempty"`
 	VoiceID      string `json:"voiceId,omitempty"`
 	AdvanceBy    string `json:"advanceBy,omitempty"`
 	Speaker      string `json:"speaker,omitempty"`
@@ -37,10 +41,21 @@ type readingLineWire struct {
 // progression.GetReadingStateWire(). It's intentionally local to the adapter
 // so the ws and progression packages stay decoupled.
 type readingLineStorage struct {
+	Index        int    `json:"Index"`
+	Text         string `json:"Text,omitempty"`
 	VoiceID      string `json:"VoiceID,omitempty"`
 	AdvanceBy    string `json:"AdvanceBy,omitempty"`
 	Speaker      string `json:"Speaker,omitempty"`
 	VoiceMediaID string `json:"VoiceMediaID,omitempty"`
+}
+
+// ConvertReadingLinesToCamelCase is the exported version used by the WS
+// layer when forwarding the reading.started engine event, where the payload
+// carries lines in the raw storage (PascalCase) shape and must be converted
+// before broadcast. See convertLinesToCamelCase for the internal helper the
+// adapter uses on the reconnect snapshot path.
+func ConvertReadingLinesToCamelCase(raw json.RawMessage) json.RawMessage {
+	return convertLinesToCamelCase(raw)
 }
 
 // convertLinesToCamelCase reads PascalCase-tagged lines from the storage
@@ -58,6 +73,8 @@ func convertLinesToCamelCase(raw json.RawMessage) json.RawMessage {
 	wire := make([]readingLineWire, len(storage))
 	for i, s := range storage {
 		wire[i] = readingLineWire{
+			Index:        s.Index,
+			Text:         s.Text,
 			VoiceID:      s.VoiceID,
 			AdvanceBy:    s.AdvanceBy,
 			Speaker:      s.Speaker,

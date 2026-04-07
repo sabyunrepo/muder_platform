@@ -57,8 +57,8 @@ func TestReadingModuleAdapter_GetReadingStateSnapshot_CamelCaseLines(t *testing.
 		"TotalLines": 2,
 		"BGMId": "bgm-1",
 		"Lines": [
-			{"AdvanceBy": "voice", "Speaker": "NPC", "VoiceMediaID": "v-1"},
-			{"AdvanceBy": "gm"}
+			{"Index": 0, "Text": "안녕, 누구 있어?", "AdvanceBy": "voice", "Speaker": "NPC", "VoiceMediaID": "v-1"},
+			{"Index": 1, "Text": "조용한 밤이었다.", "AdvanceBy": "gm"}
 		]
 	}`)
 	a := newAdapter(t, cfg)
@@ -78,15 +78,16 @@ func TestReadingModuleAdapter_GetReadingStateSnapshot_CamelCaseLines(t *testing.
 	}
 	got := string(full)
 
-	// camelCase keys must be present.
-	for _, want := range []string{`"voiceMediaId"`, `"advanceBy"`, `"speaker"`} {
+	// camelCase keys must be present — including index and text, which are
+	// required for the FE ReadingOverlay to render dialogue.
+	for _, want := range []string{`"voiceMediaId"`, `"advanceBy"`, `"speaker"`, `"index"`, `"text"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("snapshot JSON missing camelCase key %s\npayload: %s", want, got)
 		}
 	}
 
 	// PascalCase storage keys must NOT leak through.
-	for _, bad := range []string{`"VoiceMediaID"`, `"AdvanceBy"`, `"Speaker"`} {
+	for _, bad := range []string{`"VoiceMediaID"`, `"AdvanceBy"`, `"Speaker"`, `"Index"`, `"Text"`} {
 		if strings.Contains(got, bad) {
 			t.Errorf("snapshot JSON leaked PascalCase key %s\npayload: %s", bad, got)
 		}
@@ -108,6 +109,20 @@ func TestReadingModuleAdapter_GetReadingStateSnapshot_CamelCaseLines(t *testing.
 	}
 	if lines[0]["advanceBy"] != "voice" {
 		t.Errorf("lines[0].advanceBy = %v, want voice", lines[0]["advanceBy"])
+	}
+	// Index/Text round-trip from storage PascalCase through camelCase wire.
+	if lines[0]["text"] != "안녕, 누구 있어?" {
+		t.Errorf("lines[0].text = %v, want 안녕, 누구 있어?", lines[0]["text"])
+	}
+	// JSON numbers decode as float64; line 0 is Index 0.
+	if got := lines[0]["index"]; got != float64(0) {
+		t.Errorf("lines[0].index = %v, want 0", got)
+	}
+	if lines[1]["text"] != "조용한 밤이었다." {
+		t.Errorf("lines[1].text = %v, want 조용한 밤이었다.", lines[1]["text"])
+	}
+	if got := lines[1]["index"]; got != float64(1) {
+		t.Errorf("lines[1].index = %v, want 1", got)
 	}
 }
 

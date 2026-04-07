@@ -3,6 +3,13 @@ import type { ReadingLineWire, ReadingStatus } from "@/stores/readingStore";
 
 export interface ReadingControlsProps {
   line: ReadingLineWire;
+  /**
+   * The current user's role **id** (NOT display name). This is the stable
+   * character identifier the engine's advance permission resolver returns,
+   * and matches the role token stored inside `advanceBy: "role:<id>"`. The
+   * editor writes role:id, the server compares role:id, so the client must
+   * also pass role:id here — do not pass the character display name.
+   */
   currentUserRole: string | null;
   isHost: boolean;
   status: ReadingStatus;

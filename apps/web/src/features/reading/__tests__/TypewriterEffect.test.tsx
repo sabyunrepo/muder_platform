@@ -118,6 +118,53 @@ describe("TypewriterEffect", () => {
     expect(onComplete).toHaveBeenCalledTimes(1);
   });
 
+  it("does NOT restart the reveal when parent re-renders with a new onComplete identity", () => {
+    // Regression for H3: the effect previously listed onComplete in its
+    // dependency array, so a parent re-render with an inline callback
+    // reset the reveal back to character 0.
+    const { rerender } = render(
+      <TypewriterEffect text="abcdef" speedMsPerChar={20} onComplete={() => {}} />
+    );
+    const node = screen.getByTestId("typewriter-text");
+
+    act(() => {
+      vi.advanceTimersByTime(60);
+    });
+    expect(node.textContent).toBe("abc");
+
+    // Re-render with a fresh callback identity — reveal must continue, not reset.
+    rerender(
+      <TypewriterEffect text="abcdef" speedMsPerChar={20} onComplete={() => {}} />
+    );
+    expect(node.textContent).toBe("abc");
+
+    act(() => {
+      vi.advanceTimersByTime(20);
+    });
+    expect(node.textContent).toBe("abcd");
+  });
+
+  it("calls the LATEST onComplete after parent re-renders with a new callback", () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(
+      <TypewriterEffect text="hi" speedMsPerChar={10} onComplete={first} />
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(10);
+    });
+
+    rerender(<TypewriterEffect text="hi" speedMsPerChar={10} onComplete={second} />);
+
+    act(() => {
+      vi.advanceTimersByTime(10);
+    });
+
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it("renders empty when text is empty string", () => {
     render(<TypewriterEffect text="" speedMsPerChar={20} />);
     const node = screen.getByTestId("typewriter-text");

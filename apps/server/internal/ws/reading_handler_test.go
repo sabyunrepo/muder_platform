@@ -487,6 +487,7 @@ func TestReadingWSHandler_ForwardEvent(t *testing.T) {
 		wantWS    string
 		wantOK    bool
 	}{
+		{"reading.started", TypeReadingStarted, true},
 		{"reading.line_changed", TypeReadingLineChanged, true},
 		{"reading.paused", TypeReadingPaused, true},
 		{"reading.resumed", TypeReadingResumed, true},
@@ -509,10 +510,105 @@ func TestReadingWSHandler_ForwardEvent(t *testing.T) {
 	for _, b := range broadcaster.broadcasts {
 		gotTypes[b.env.Type] = true
 	}
-	for _, want := range []string{TypeReadingLineChanged, TypeReadingPaused, TypeReadingResumed, TypeReadingCompleted} {
+	for _, want := range []string{TypeReadingStarted, TypeReadingLineChanged, TypeReadingPaused, TypeReadingResumed, TypeReadingCompleted} {
 		if !gotTypes[want] {
 			t.Errorf("expected broadcast of %q, got %v", want, gotTypes)
 		}
+	}
+}
+
+func TestReadingWSHandler_ForwardEvent_ReadingStartedConvertsToCamelCase(t *testing.T) {
+	// The engine publishes reading.started with lines in PascalCase storage
+	// form. The forwarder must decode them and re-emit with camelCase keys
+	// so the FE readingStore.startSection handler sees the expected shape,
+	// and must also inject sectionId from the resolver.
+	resolver := newFakeResolver(nil)
+	resolver.sectionID = "sec-xyz"
+	broadcaster := &fakeBroadcaster{}
+	sessionID := uuid.New()
+
+	h := NewReadingWSHandler(broadcaster, resolver, zerolog.Nop())
+
+	rawPayload := map[string]any{
+		"bgmMediaId": "bgm-1",
+		"totalLines": 2,
+		"lines": []map[string]any{
+			{
+				"Index":        0,
+				"Text":         "hello",
+				"Speaker":      "narrator",
+				"AdvanceBy":    "gm",
+				"VoiceMediaID": "v-1",
+			},
+			{
+				"Index":     1,
+				"Text":      "world",
+				"Speaker":   "Alice",
+				"AdvanceBy": "role:alice",
+			},
+		},
+	}
+	if ok := h.ForwardEvent(sessionID, "reading.started", rawPayload); !ok {
+		t.Fatal("ForwardEvent(reading.started) returned false")
+	}
+
+	broadcaster.mu.Lock()
+	defer broadcaster.mu.Unlock()
+	var env *Envelope
+	for _, b := range broadcaster.broadcasts {
+		if b.env.Type == TypeReadingStarted {
+			env = b.env
+			break
+		}
+	}
+	if env == nil {
+		t.Fatal("no reading:started envelope broadcast")
+	}
+
+	body := string(env.Payload)
+	for _, want := range []string{`"index"`, `"text"`, `"speaker"`, `"advanceBy"`, `"voiceMediaId"`, `"sectionId"`, `"bgmMediaId"`} {
+		if !containsString(body, want) {
+			t.Errorf("envelope missing camelCase key %s\nbody: %s", want, body)
+		}
+	}
+	for _, bad := range []string{`"Index"`, `"Text"`, `"Speaker"`, `"AdvanceBy"`, `"VoiceMediaID"`} {
+		if containsString(body, bad) {
+			t.Errorf("envelope leaked PascalCase key %s\nbody: %s", bad, body)
+		}
+	}
+
+	var decoded struct {
+		SectionID  string `json:"sectionId"`
+		BgmMediaID string `json:"bgmMediaId"`
+		TotalLines int    `json:"totalLines"`
+		Lines      []struct {
+			Index        int    `json:"index"`
+			Text         string `json:"text"`
+			Speaker      string `json:"speaker"`
+			AdvanceBy    string `json:"advanceBy"`
+			VoiceMediaID string `json:"voiceMediaId"`
+		} `json:"lines"`
+	}
+	if err := json.Unmarshal(env.Payload, &decoded); err != nil {
+		t.Fatalf("decode envelope: %v", err)
+	}
+	if decoded.SectionID != "sec-xyz" {
+		t.Errorf("sectionId = %q, want sec-xyz", decoded.SectionID)
+	}
+	if decoded.BgmMediaID != "bgm-1" {
+		t.Errorf("bgmMediaId = %q, want bgm-1", decoded.BgmMediaID)
+	}
+	if decoded.TotalLines != 2 {
+		t.Errorf("totalLines = %d, want 2", decoded.TotalLines)
+	}
+	if len(decoded.Lines) != 2 {
+		t.Fatalf("lines len = %d, want 2", len(decoded.Lines))
+	}
+	if decoded.Lines[0].Text != "hello" || decoded.Lines[0].Index != 0 {
+		t.Errorf("line[0] = %+v, want {index:0, text:hello}", decoded.Lines[0])
+	}
+	if decoded.Lines[1].AdvanceBy != "role:alice" {
+		t.Errorf("line[1].advanceBy = %q, want role:alice", decoded.Lines[1].AdvanceBy)
 	}
 }
 

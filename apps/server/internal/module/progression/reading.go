@@ -61,6 +61,8 @@ type readingConfig struct {
 }
 
 type readingLineConfig struct {
+	Index        int    `json:"Index"`
+	Text         string `json:"Text,omitempty"`
 	VoiceID      string `json:"VoiceID,omitempty"`
 	AdvanceBy    string `json:"AdvanceBy,omitempty"`
 	Speaker      string `json:"Speaker,omitempty"`
@@ -309,6 +311,22 @@ func (m *ReadingModule) Init(ctx context.Context, deps engine.ModuleDeps, config
 			Payload: map[string]any{"mediaId": m.bgmId, "fadeMs": 1000},
 		})
 	}
+
+	// Emit reading.started so the WS bridge can push a reading:started
+	// envelope to all connected session clients. Lines are emitted in the
+	// raw storage (PascalCase) shape; the bridge converts to camelCase wire
+	// format before broadcast. A defensive copy is taken so downstream
+	// subscribers cannot mutate module-owned state.
+	linesCopy := make([]readingLineConfig, len(m.lines))
+	copy(linesCopy, m.lines)
+	deps.EventBus.Publish(engine.Event{
+		Type: "reading.started",
+		Payload: map[string]any{
+			"lines":      linesCopy,
+			"bgmMediaId": m.bgmId,
+			"totalLines": m.totalLines,
+		},
+	})
 
 	return nil
 }

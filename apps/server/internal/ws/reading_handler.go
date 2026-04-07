@@ -19,6 +19,7 @@ const (
 
 	// S→C
 	TypeReadingState       = "reading:state"
+	TypeReadingStarted     = "reading:started"
 	TypeReadingLineChanged = "reading:line_changed"
 	TypeReadingPaused      = "reading:paused"
 	TypeReadingResumed     = "reading:resumed"
@@ -264,10 +265,89 @@ func (h *ReadingWSHandler) PushReadingStateTo(sender ReadingClientSender, sessio
 // to WS clients as reading:* envelopes. The mapping is intentionally explicit
 // so a typo in the engine layer doesn't silently leak unrelated events.
 var readingEventBridge = map[string]string{
+	"reading.started":      TypeReadingStarted,
 	"reading.line_changed": TypeReadingLineChanged,
 	"reading.paused":       TypeReadingPaused,
 	"reading.resumed":      TypeReadingResumed,
 	"reading.completed":    TypeReadingCompleted,
+}
+
+// readingStartedLineStorage mirrors progression.readingLineConfig (PascalCase)
+// and is used only to decode the raw storage shape the reading module
+// publishes via reading.started. It stays local to the ws package so there is
+// no import cycle with the bridge package.
+type readingStartedLineStorage struct {
+	Index        int    `json:"Index"`
+	Text         string `json:"Text,omitempty"`
+	VoiceID      string `json:"VoiceID,omitempty"`
+	AdvanceBy    string `json:"AdvanceBy,omitempty"`
+	Speaker      string `json:"Speaker,omitempty"`
+	VoiceMediaID string `json:"VoiceMediaID,omitempty"`
+}
+
+// readingStartedLineWire is the camelCase per-line shape FE consumers expect
+// inside the reading:started envelope. Mirrors bridge.readingLineWire —
+// duplicated here because ws cannot import bridge.
+type readingStartedLineWire struct {
+	Index        int    `json:"index"`
+	Text         string `json:"text,omitempty"`
+	VoiceID      string `json:"voiceId,omitempty"`
+	AdvanceBy    string `json:"advanceBy,omitempty"`
+	Speaker      string `json:"speaker,omitempty"`
+	VoiceMediaID string `json:"voiceMediaId,omitempty"`
+}
+
+// readingStartedPayloadWire is the envelope payload broadcast to FE as
+// reading:started. bgmMediaId is omitted when empty to match the rest of the
+// reading envelope contract (FE treats absent as "no section BGM override").
+type readingStartedPayloadWire struct {
+	SectionID  string                   `json:"sectionId"`
+	Lines      []readingStartedLineWire `json:"lines"`
+	BgmMediaID string                   `json:"bgmMediaId,omitempty"`
+	TotalLines int                      `json:"totalLines,omitempty"`
+}
+
+// convertReadingStartedPayload decodes the engine reading.started payload
+// (which carries lines in PascalCase storage form) into the camelCase FE
+// wire shape. The resolver supplies the owning sectionId since the reading
+// module itself does not track it. On decode failure the returned payload
+// has an empty lines slice so the outer envelope remains valid JSON.
+func (h *ReadingWSHandler) convertReadingStartedPayload(sessionID uuid.UUID, payload any) readingStartedPayloadWire {
+	out := readingStartedPayloadWire{
+		SectionID: h.resolver.LookupSectionID(sessionID),
+		Lines:     []readingStartedLineWire{},
+	}
+	// Round-trip through JSON so we can accept either a map[string]any or a
+	// typed struct from the engine.
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		h.logger.Error().Err(err).Msg("reading.started: marshal payload")
+		return out
+	}
+	var decoded struct {
+		Lines      []readingStartedLineStorage `json:"lines"`
+		BgmMediaID string                      `json:"bgmMediaId,omitempty"`
+		TotalLines int                         `json:"totalLines,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		h.logger.Error().Err(err).Msg("reading.started: decode payload")
+		return out
+	}
+	out.BgmMediaID = decoded.BgmMediaID
+	out.TotalLines = decoded.TotalLines
+	wire := make([]readingStartedLineWire, len(decoded.Lines))
+	for i, s := range decoded.Lines {
+		wire[i] = readingStartedLineWire{
+			Index:        s.Index,
+			Text:         s.Text,
+			VoiceID:      s.VoiceID,
+			AdvanceBy:    s.AdvanceBy,
+			Speaker:      s.Speaker,
+			VoiceMediaID: s.VoiceMediaID,
+		}
+	}
+	out.Lines = wire
+	return out
 }
 
 // ForwardEvent converts an engine reading.* event to a ws envelope and
@@ -285,7 +365,16 @@ func (h *ReadingWSHandler) ForwardEvent(sessionID uuid.UUID, eventType string, p
 		h.logger.Warn().Str("event", eventType).Msg("ForwardEvent called but hub is nil")
 		return false
 	}
-	env, err := NewEnvelope(wsType, payload)
+
+	// reading.started needs per-line PascalCase → camelCase conversion
+	// because the engine module publishes raw storage shapes. All other
+	// reading.* events already use camelCase on the wire.
+	var wirePayload any = payload
+	if eventType == "reading.started" {
+		wirePayload = h.convertReadingStartedPayload(sessionID, payload)
+	}
+
+	env, err := NewEnvelope(wsType, wirePayload)
 	if err != nil {
 		h.logger.Error().Err(err).Str("event", eventType).Msg("failed to marshal reading event envelope")
 		return false

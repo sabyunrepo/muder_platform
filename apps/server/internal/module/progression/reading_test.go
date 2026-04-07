@@ -655,6 +655,72 @@ func TestReadingModule_HandleVoiceEnded_StaleVoiceMediaID(t *testing.T) {
 	}
 }
 
+func TestReadingModule_EmitsReadingStartedOnInit(t *testing.T) {
+	// reading.started is consumed by the WS bridge to push the initial
+	// line buffer to all clients. It must include every line with the
+	// PascalCase storage shape so the bridge can convert to camelCase.
+	cfg := json.RawMessage(`{
+		"TotalLines": 2,
+		"BGMId": "bgm-1",
+		"Lines": [
+			{"Index": 0, "Text": "hello", "Speaker": "narrator", "AdvanceBy": "gm"},
+			{"Index": 1, "Text": "world", "Speaker": "Alice", "AdvanceBy": "role:alice"}
+		]
+	}`)
+
+	deps := newTestDeps(t)
+
+	var started engine.Event
+	var startedCount int
+	deps.EventBus.Subscribe("reading.started", func(e engine.Event) {
+		started = e
+		startedCount++
+	})
+
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if startedCount != 1 {
+		t.Fatalf("reading.started emitted %d times, want 1", startedCount)
+	}
+	payload, ok := started.Payload.(map[string]any)
+	if !ok {
+		t.Fatalf("reading.started payload type = %T, want map[string]any", started.Payload)
+	}
+	if payload["bgmMediaId"] != "bgm-1" {
+		t.Errorf("bgmMediaId = %v, want bgm-1", payload["bgmMediaId"])
+	}
+	if payload["totalLines"] != 2 {
+		t.Errorf("totalLines = %v, want 2", payload["totalLines"])
+	}
+	// Re-marshal and decode to verify storage shape flows through — index
+	// and text must be present on every line.
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	var decoded struct {
+		Lines []readingLineConfig `json:"lines"`
+	}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	if len(decoded.Lines) != 2 {
+		t.Fatalf("lines length = %d, want 2", len(decoded.Lines))
+	}
+	if decoded.Lines[0].Text != "hello" || decoded.Lines[0].Index != 0 {
+		t.Errorf("line[0] = %+v, want {Index:0, Text:hello}", decoded.Lines[0])
+	}
+	if decoded.Lines[1].Text != "world" || decoded.Lines[1].Index != 1 {
+		t.Errorf("line[1] = %+v, want {Index:1, Text:world}", decoded.Lines[1])
+	}
+	if decoded.Lines[1].AdvanceBy != "role:alice" {
+		t.Errorf("line[1].AdvanceBy = %q, want role:alice", decoded.Lines[1].AdvanceBy)
+	}
+}
+
 func TestReadingModule_GetReadingStateWire(t *testing.T) {
 	cfg := json.RawMessage(`{
 		"TotalLines": 2,

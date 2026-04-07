@@ -36,6 +36,10 @@ export function ReadingLineRow({
   const isNarration = line.Speaker === "나레이션";
   const advanceBy = line.AdvanceBy ?? "";
   const isRoleAdvance = advanceBy.startsWith("role:");
+  // The role token stored inside advanceBy is the canonical character id
+  // (matches the engine's permission resolver which returns role IDs, never
+  // display names). The <select> below therefore uses character.id as the
+  // option value and resolves to display name only for rendering.
   const currentRoleId = isRoleAdvance ? advanceBy.slice("role:".length) : "";
 
   const advanceMode: "gm" | "voice" | "role" = isRoleAdvance
@@ -56,6 +60,7 @@ export function ReadingLineRow({
       next.AdvanceBy = computeSmartAdvanceBy(
         next,
         speaker === "나레이션",
+        characters,
       ) as ReadingLineDTO["AdvanceBy"];
     }
     onChange(next);
@@ -75,6 +80,7 @@ export function ReadingLineRow({
       next.AdvanceBy = computeSmartAdvanceBy(
         next,
         isNarration,
+        characters,
       ) as ReadingLineDTO["AdvanceBy"];
     }
     onChange(next);
@@ -85,15 +91,15 @@ export function ReadingLineRow({
       const first = characters[0];
       onChange({
         ...line,
-        AdvanceBy: first ? (`role:${first.name}` as const) : "",
+        AdvanceBy: first ? (`role:${first.id}` as const) : "",
       });
       return;
     }
     onChange({ ...line, AdvanceBy: val as ReadingLineDTO["AdvanceBy"] });
   }
 
-  function handleRoleSelect(name: string) {
-    onChange({ ...line, AdvanceBy: `role:${name}` as const });
+  function handleRoleSelect(id: string) {
+    onChange({ ...line, AdvanceBy: `role:${id}` as const });
   }
 
   return (
@@ -179,7 +185,7 @@ export function ReadingLineRow({
           >
             {characters.length === 0 && <option value="">--</option>}
             {characters.map((c) => (
-              <option key={c.id} value={c.name}>
+              <option key={c.id} value={c.id}>
                 {c.name}
               </option>
             ))}
