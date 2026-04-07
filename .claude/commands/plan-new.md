@@ -1,7 +1,16 @@
 ---
 description: (sabyun) 새 phase 플랜 저작 — brainstorming + writing-plans + plan-autopilot 템플릿 통합
 argument-hint: <topic>
-allowed-tools: Read Write Edit Bash(mkdir*) Bash(git*) Bash(cp*) Bash(wc*)
+allowed-tools: Read Write Edit Bash(mkdir*) Bash(git*) Bash(cp*) Bash(wc*) Bash(*/plan-preflight.sh)
+---
+
+## Pre-flight check
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**If pre-flight shows ❌**: fix `.claude/settings.json` FIRST, then retry. A broken settings.json means hooks won't fire, so even a perfectly authored plan won't get PreToolUse protection during execution.
+
+If this is a fresh project with no active plan yet (pre-flight warns "active-plan.json not found"), that's expected — `/plan-new` creates one.
+
 ---
 
 Start a new phase plan for: **$ARGUMENTS**

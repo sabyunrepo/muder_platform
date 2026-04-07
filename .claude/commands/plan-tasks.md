@@ -1,11 +1,17 @@
 ---
 description: (sabyun) Task 트리 + 진행률 % 시각화 (wave/PR별 상태 아이콘)
-allowed-tools: Bash(jq*) Bash(grep*) Bash(wc*) Bash(find*)
+allowed-tools: Bash(jq*) Bash(grep*) Bash(wc*) Bash(find*) Bash(*/plan-preflight.sh) Bash(*/plan-tasks.sh)
 ---
 
 # Plan Tasks
 
-!`~/.claude/skills/plan-autopilot/scripts/plan-tasks.sh`
+## Pre-flight
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+
+**If pre-flight shows ❌, stop and fix settings.json first.**
+
+## Task tree
+!`$HOME/.claude/skills/plan-autopilot/scripts/plan-tasks.sh`
 
 ---
 
