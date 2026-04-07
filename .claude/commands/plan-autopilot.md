@@ -1,5 +1,5 @@
 ---
-description: Run wave-based autopilot execution loop
+description: (sabyun) Wave 기반 병렬 자동 실행 루프 (sub-agent + worktree + 4 parallel reviewers)
 argument-hint: [--until WAVE] [--only PR-N] [--dry-run]
 ---
 

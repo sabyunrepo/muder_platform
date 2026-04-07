@@ -1,5 +1,5 @@
 ---
-description: Show task tree with progress percentages
+description: (sabyun) Task 트리 + 진행률 % 시각화 (wave/PR별 상태 아이콘)
 allowed-tools: Bash(jq*) Bash(grep*) Bash(wc*) Bash(find*)
 ---
 

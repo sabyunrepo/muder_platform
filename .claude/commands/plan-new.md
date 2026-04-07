@@ -1,5 +1,5 @@
 ---
-description: Author a new phase plan via brainstorming + writing-plans + plan-autopilot templates
+description: (sabyun) 새 phase 플랜 저작 — brainstorming + writing-plans + plan-autopilot 템플릿 통합
 argument-hint: <topic>
 allowed-tools: Read Write Edit Bash(mkdir*) Bash(git*) Bash(cp*) Bash(wc*)
 ---

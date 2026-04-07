@@ -1,5 +1,5 @@
 ---
-description: Quick snapshot of current active plan state
+description: (sabyun) 현재 active plan 상태 빠른 스냅샷 (wave/PR/task + git 상태)
 allowed-tools: Bash(jq*) Bash(git*) Bash(cat*) Bash(sed*)
 ---
 

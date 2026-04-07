@@ -1,5 +1,5 @@
 ---
-description: Activate a plan directory as the current active plan
+description: (sabyun) 플랜 디렉터리를 현재 active plan으로 활성화
 argument-hint: <plan-directory>
 allowed-tools: Read Write Bash(git*) Bash(jq*) Bash(mv*) Bash(mkdir*)
 ---

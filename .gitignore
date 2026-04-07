@@ -54,3 +54,13 @@ Thumbs.db
 
 # ─── Worktrees ────────────────────────────────────────
 .worktrees/
+
+# ─── plan-autopilot (local runtime) ───────────────────
+.claude/autopilot-state.json
+.pr-body.tmp
+
+# ─── Local reference material (not versioned) ────────
+claude_skill_create.pdf
+
+# ─── Playwright ───────────────────────────────────────
+.playwright-mcp/

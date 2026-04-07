@@ -1,5 +1,5 @@
 ---
-description: Stop running autopilot and save state
+description: (sabyun) 실행 중인 autopilot 일시 정지 + state 저장 (/plan-resume으로 재개 가능)
 allowed-tools: Bash Read Write
 ---
 

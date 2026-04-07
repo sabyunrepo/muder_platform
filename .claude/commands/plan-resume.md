@@ -1,5 +1,5 @@
 ---
-description: Full context restore for resuming work after /clear
+description: (sabyun) /clear 후 전체 컨텍스트 복원 — design + plan + checklist + progress + git 한번에 로드
 allowed-tools: Read Bash(jq*) Bash(git*)
 ---
 

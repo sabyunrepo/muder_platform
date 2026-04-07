@@ -1,5 +1,5 @@
 ---
-description: Archive current active plan as completed
+description: (sabyun) 현재 active plan을 완료 처리하고 archive
 allowed-tools: Read Write Bash(jq*) Bash(git*) Bash(mv*) Bash(mkdir*) Bash(rm*)
 ---
 
