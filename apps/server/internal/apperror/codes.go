@@ -25,8 +25,11 @@ const (
 	ErrGameAlreadyOver = "GAME_ALREADY_OVER"
 
 	// Session errors
-	ErrSessionNotFound = "SESSION_NOT_FOUND"
-	ErrSessionExpired  = "SESSION_EXPIRED"
+	ErrSessionNotFound  = "SESSION_NOT_FOUND"
+	ErrSessionExpired   = "SESSION_EXPIRED"
+	ErrSessionStopped   = "SESSION_STOPPED"
+	ErrSessionInboxFull = "SESSION_INBOX_FULL"
+	ErrInvalidPayload   = "INVALID_PAYLOAD"
 
 	// Player errors
 	ErrPlayerNotFound   = "PLAYER_NOT_FOUND"

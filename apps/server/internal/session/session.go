@@ -2,12 +2,12 @@ package session
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
+	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 	"github.com/rs/zerolog"
 )
@@ -20,6 +20,31 @@ const (
 	// snapshotInterval is how often the actor checks whether a dirty snapshot
 	// should be flushed to Redis (PR-7 will act on this tick).
 	snapshotInterval = 5 * time.Second
+)
+
+// Sentinel errors returned by Send so callers (PR-3 BaseModuleHandler) can map
+// them to the correct HTTP/WS status codes without string matching.
+var (
+	// errInboxFull is returned when the session inbox channel is at capacity.
+	errInboxFull = apperror.New(
+		apperror.ErrSessionInboxFull,
+		http.StatusServiceUnavailable,
+		"session inbox full — try again shortly",
+	)
+
+	// errSessionStopped is returned when Send is called on a stopped session.
+	errSessionStopped = apperror.New(
+		apperror.ErrSessionStopped,
+		http.StatusGone,
+		"session has been stopped",
+	)
+
+	// errInvalidPayload is returned when a message carries the wrong payload type.
+	errInvalidPayload = apperror.New(
+		apperror.ErrInvalidPayload,
+		http.StatusBadRequest,
+		"invalid message payload type",
+	)
 )
 
 // Session is the single-goroutine actor that owns a GameProgressionEngine.
@@ -44,8 +69,8 @@ type Session struct {
 	// players tracks per-player connection state.
 	players map[uuid.UUID]*PlayerState
 
-	// status is the current lifecycle state. Written by the Run goroutine only;
-	// read atomically by external callers via Status().
+	// status is the current lifecycle state. Written atomically by stop() and
+	// in the ctx.Done() exit path; read atomically by Status().
 	status atomic.Int32
 
 	// panicCount is the cumulative number of panics recovered in handleMessage.
@@ -86,8 +111,7 @@ func newSession(
 
 // Run is the actor event loop. It MUST be called in its own goroutine.
 // It returns when ctx is cancelled or the done channel is closed.
-//
-// status is written ONLY inside this goroutine to avoid data races.
+// On return the done channel is always closed and status is StatusStopped.
 func (s *Session) Run(ctx context.Context) {
 	s.status.Store(int32(StatusRunning))
 	s.logger.Info().Msg("session actor started")
@@ -106,21 +130,35 @@ func (s *Session) Run(ctx context.Context) {
 			return
 		case <-ctx.Done():
 			s.logger.Info().Msg("session actor stopped via context cancellation")
-			s.status.Store(int32(StatusStopped))
+			// stop() is idempotent: closes done and sets StatusStopped atomically.
+			// This ensures any caller blocked on <-s.Done() unblocks, and the
+			// engine gets an opportunity to clean up via the manager's Stop path.
+			s.stop()
 			return
 		}
 	}
 }
 
-// Send delivers a message to the session inbox.
-// It is non-blocking if the inbox has capacity; drops the message and
-// returns an error if the inbox is full (back-pressure signal).
+// Send delivers a message to the session inbox without blocking.
+// Returns errSessionStopped if the session is no longer running,
+// or errInboxFull if the inbox buffer is at capacity.
 func (s *Session) Send(msg SessionMessage) error {
+	// Check stopped first to avoid silently buffering into a dead session.
+	select {
+	case <-s.done:
+		return errSessionStopped
+	default:
+	}
+
 	select {
 	case s.inbox <- msg:
 		return nil
 	default:
-		return fmt.Errorf("session %s: inbox full, message dropped (kind=%d)", s.ID, msg.Kind)
+		s.logger.Warn().
+			Str("session_id", s.ID.String()).
+			Int("kind", int(msg.Kind)).
+			Msg("session inbox full, message dropped")
+		return errInboxFull
 	}
 }
 
@@ -137,7 +175,6 @@ func (s *Session) Status() SessionStatus {
 
 // stop closes the done channel and atomically marks status as stopped.
 // Safe to call multiple times (idempotent via select guard).
-// Uses atomic.Store so it is safe to call from any goroutine.
 func (s *Session) stop() {
 	select {
 	case <-s.done:
@@ -166,44 +203,79 @@ func (s *Session) handleMessage(msg SessionMessage) {
 	switch msg.Kind {
 	case KindEngineCommand:
 		err = s.handleEngineCommand(msg)
+
 	case KindLifecycleLeft:
 		err = s.handleLifecycleLeft(msg)
+
 	case KindLifecycleRejoined:
 		err = s.handleLifecycleRejoined(msg)
+
 	case KindAdvance:
 		_, err = s.engine.Advance(msg.Ctx)
+
 	case KindGMOverride:
-		phaseID, _ := msg.Payload.(string)
-		err = s.engine.GMOverride(msg.Ctx, phaseID)
-	case KindHandleTrigger:
-		type triggerPayload struct {
-			TriggerType string
-			Condition   json.RawMessage
+		// Use exported GMOverridePayload so callers outside the package can
+		// construct valid messages. Swallowing an !ok with a zero-value string
+		// would silently jump to phase "" — we return a typed error instead.
+		p, ok := msg.Payload.(GMOverridePayload)
+		if !ok {
+			err = errInvalidPayload
+		} else {
+			err = s.engine.GMOverride(msg.Ctx, p.PhaseID)
 		}
-		if tp, ok := msg.Payload.(triggerPayload); ok {
+
+	case KindHandleTrigger:
+		// Use exported TriggerPayload — the local type trick in the original code
+		// made it impossible for external callers to construct valid messages.
+		tp, ok := msg.Payload.(TriggerPayload)
+		if !ok {
+			err = errInvalidPayload
+		} else {
 			err = s.engine.HandleTrigger(msg.Ctx, tp.TriggerType, tp.Condition)
 		}
+
 	case KindCriticalSnapshot:
 		// PR-7 will implement actual snapshot; for now just acknowledge.
 		s.logger.Debug().Msg("critical snapshot requested (not yet implemented)")
+
 	case KindStop:
 		s.stop()
+		// Reply before returning so callers waiting on a KindStop reply don't hang.
+		s.replyTo(msg, nil)
 		return
+
 	default:
-		s.logger.Warn().Int("kind", int(msg.Kind)).Msg("unknown message kind")
+		s.logger.Warn().Int("kind", int(msg.Kind)).Msg("unknown message kind, dropping")
 	}
 
-	if msg.Reply != nil {
-		msg.Reply <- err
+	s.replyTo(msg, err)
+}
+
+// replyTo sends err to msg.Reply in a non-blocking select. If the receiver
+// has abandoned the channel, the send is dropped with a warning log rather
+// than blocking the actor goroutine.
+func (s *Session) replyTo(msg SessionMessage, err error) {
+	if msg.Reply == nil {
+		return
+	}
+	select {
+	case msg.Reply <- err:
+	default:
+		s.logger.Warn().
+			Str("session_id", s.ID.String()).
+			Int("kind", int(msg.Kind)).
+			Msg("orphaned reply channel, dropping response")
 	}
 }
 
 func (s *Session) handleEngineCommand(msg SessionMessage) error {
-	var raw json.RawMessage
-	if msg.Payload != nil {
-		if p, ok := msg.Payload.(EngineCommandPayload); ok {
-			raw = p.RawPayload
-		}
+	p, ok := msg.Payload.(EngineCommandPayload)
+	if !ok && msg.Payload != nil {
+		return errInvalidPayload
+	}
+	var raw []byte
+	if ok {
+		raw = p.RawPayload
 	}
 	return s.engine.HandleMessage(msg.Ctx, msg.PlayerID, msg.ModuleName, msg.MsgType, raw)
 }
@@ -229,3 +301,6 @@ func (s *Session) handleLifecycleRejoined(msg SessionMessage) error {
 func (s *Session) maybeSnapshot() {
 	// no-op until PR-7
 }
+
+// Ensure atomic.Int32 is used (not the bare int32 field embedded incorrectly).
+var _ = (*atomic.Int32)(nil)

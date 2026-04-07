@@ -35,7 +35,7 @@ const (
 type SessionMessage struct {
 	Kind     MessageKind
 	PlayerID uuid.UUID
-	// Payload holds kind-specific data (e.g. json.RawMessage, string for phaseID).
+	// Payload holds kind-specific data. Use the typed payload structs below.
 	Payload any
 	// ModuleName is set for KindEngineCommand to route to the correct module.
 	ModuleName string
@@ -69,4 +69,18 @@ type PlayerState struct {
 // EngineCommandPayload is the structured payload for KindEngineCommand messages.
 type EngineCommandPayload struct {
 	RawPayload json.RawMessage
+}
+
+// TriggerPayload is the structured payload for KindHandleTrigger messages.
+// Exported so callers outside the package (PR-3 BaseModuleHandler, PR-2 hub
+// callbacks) can construct valid KindHandleTrigger messages.
+type TriggerPayload struct {
+	TriggerType string
+	Condition   json.RawMessage
+}
+
+// GMOverridePayload is the structured payload for KindGMOverride messages.
+// Exported for the same reason as TriggerPayload.
+type GMOverridePayload struct {
+	PhaseID string
 }
