@@ -27,6 +27,17 @@ const ERROR_MESSAGES: Record<string, string> = {
   ROOM_FULL: "방이 가득 찼습니다.",
   ROOM_NOT_WAITING: "현재 참가할 수 없는 방입니다.",
 
+  // Reading
+  READING_SECTION_NOT_FOUND: "리딩 섹션을 찾을 수 없습니다.",
+  READING_ADVANCE_FORBIDDEN: "리딩을 진행할 권한이 없습니다.",
+  READING_INVALID_ADVANCE_BY: "리딩 진행 모드가 올바르지 않습니다.",
+  READING_LINE_OUT_OF_RANGE: "리딩 줄이 범위를 벗어났습니다.",
+  READING_VOICE_REQUIRED: "음성 자동 진행 모드에는 음성 파일이 필요합니다.",
+
+  // Media
+  MEDIA_REFERENCE_IN_USE: "이 미디어는 다른 곳에서 사용 중이라 삭제할 수 없습니다.",
+  MEDIA_NOT_IN_THEME: "이 테마에 속하지 않은 미디어입니다.",
+
   // Generic
   BAD_REQUEST: "잘못된 요청입니다.",
   UNAUTHORIZED: "인증이 필요합니다.",
