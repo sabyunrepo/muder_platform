@@ -208,6 +208,46 @@ func TestLifecycle_MultipleListeners(t *testing.T) {
 	}
 }
 
+// TestLifecycle_OnPlayerLeft_ViaRunLoop verifies that the full path
+// run() → unregister channel → removeClientLocked → notifyPlayerLeft
+// correctly fires OnPlayerLeft with the session captured before removal.
+func TestLifecycle_OnPlayerLeft_ViaRunLoop(t *testing.T) {
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	listener := &fakeLifecycleListener{}
+	h.RegisterLifecycleListener(listener)
+
+	sessionID := uuid.New()
+	playerID := uuid.New()
+
+	// Register client and join session.
+	c := newTestClient(h, playerID)
+	registerAndWait(h, c)
+	h.JoinSession(c, sessionID)
+
+	// Trigger unregister via the channel (the real run-loop path).
+	// We can't call Unregister(c) because it calls c.Close() which panics on nil conn.
+	// Instead enqueue directly into the unregister channel so run() processes it.
+	h.unregister <- c
+
+	// Wait for OnPlayerLeft to arrive.
+	if !waitForCondition(t, 500*time.Millisecond, func() bool { return listener.leftCount() == 1 }) {
+		t.Fatalf("OnPlayerLeft not fired via run() loop within timeout; got %d calls", listener.leftCount())
+	}
+
+	listener.mu.Lock()
+	got := listener.leftCalls[0]
+	listener.mu.Unlock()
+
+	if got.SessionID != sessionID {
+		t.Errorf("run-loop: OnPlayerLeft sessionID = %v, want %v", got.SessionID, sessionID)
+	}
+	if got.PlayerID != playerID {
+		t.Errorf("run-loop: OnPlayerLeft playerID = %v, want %v", got.PlayerID, playerID)
+	}
+}
+
 // TestLifecycle_Race verifies that concurrent RegisterLifecycleListener and
 // notifyPlayerLeft/notifyPlayerRejoined calls do not produce a data race.
 // Run with: go test -race ./internal/ws/...
