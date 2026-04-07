@@ -124,7 +124,7 @@ func (h *ReadingWSHandler) handleAdvance(c *Client, _ *Envelope) {
 
 	mod := h.resolver.LookupModule(c.SessionID)
 	if mod == nil {
-		c.SendMessage(newReadingError(apperror.ErrReadingLineOutOfRange, "reading: module not active"))
+		c.SendMessage(newReadingError(ErrCodeNotFound, apperror.ErrReadingSectionNotFound, "reading: module not active"))
 		return
 	}
 
@@ -322,15 +322,22 @@ func appErrorToWSCode(ae *apperror.AppError) ErrorCode {
 	case apperror.ErrReadingInvalidAdvanceBy,
 		apperror.ErrReadingVoiceRequired:
 		return ErrCodeBadMessage
+	case apperror.ErrMediaReferenceInUse:
+		// No dedicated WS conflict code; surface as a bad-message-style
+		// rejection so the FE can show a "still in use" toast. The string
+		// apperror code travels in the body for finer-grained handling.
+		return ErrCodeBadMessage
 	}
 	return ErrCodeInternalError
 }
 
 // newReadingError builds a ws error envelope tagged with a reading error code
-// for cases where the module isn't even reachable (e.g. inactive).
-func newReadingError(code, detail string) *Envelope {
+// for cases where the module isn't even reachable (e.g. inactive). The caller
+// supplies both the numeric WS code (for FE routing) and the apperror string
+// code (for fine-grained handling).
+func newReadingError(wsCode ErrorCode, code, detail string) *Envelope {
 	return MustEnvelope(TypeError, ErrorPayload{
-		Code:    ErrCodeNotFound,
+		Code:    wsCode,
 		Message: code + ": " + detail,
 	})
 }

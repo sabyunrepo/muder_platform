@@ -44,17 +44,31 @@ func TestReadingModule_Init(t *testing.T) {
 }
 
 func TestReadingModule_HandleMessage(t *testing.T) {
+	// Note: the legacy "reading:advance" and "reading:voice_ended" branches
+	// of HandleMessage are now intentionally gated and return
+	// ErrReadingAdvanceForbidden — production callers must route through
+	// HandleAdvance / HandleVoiceEnded so the per-line permission and
+	// stale-race guards apply. Only the jump and unknown-message branches
+	// remain as legitimate HandleMessage cases.
 	tests := []struct {
 		name      string
 		msgType   string
 		payload   json.RawMessage
 		wantErr   bool
+		wantCode  string
 		wantEvent string
 	}{
 		{
-			name:      "advance line",
-			msgType:   "reading:advance",
-			wantEvent: "reading.line_changed",
+			name:     "advance forbidden via legacy path",
+			msgType:  "reading:advance",
+			wantErr:  true,
+			wantCode: apperror.ErrReadingAdvanceForbidden,
+		},
+		{
+			name:     "voice_ended forbidden via legacy path",
+			msgType:  "reading:voice_ended",
+			wantErr:  true,
+			wantCode: apperror.ErrReadingAdvanceForbidden,
 		},
 		{
 			name:      "jump to line",
@@ -102,6 +116,15 @@ func TestReadingModule_HandleMessage(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HandleMessage() error = %v, wantErr %v", err, tt.wantErr)
 			}
+			if tt.wantCode != "" {
+				var ae *apperror.AppError
+				if !errors.As(err, &ae) {
+					t.Fatalf("expected *apperror.AppError, got %T: %v", err, err)
+				}
+				if ae.Code != tt.wantCode {
+					t.Errorf("error code = %q, want %q", ae.Code, tt.wantCode)
+				}
+			}
 			if tt.wantEvent != "" && received != tt.wantEvent {
 				t.Errorf("expected event %q, got %q", tt.wantEvent, received)
 			}
@@ -126,7 +149,7 @@ func TestReadingModule_Completion(t *testing.T) {
 	playerID := uuid.New()
 
 	// Advance from 0 to 1
-	if err := m.HandleMessage(context.Background(), playerID, "reading:advance", nil); err != nil {
+	if err := m.HandleAdvance(context.Background(), playerID, true, ""); err != nil {
 		t.Fatalf("advance error = %v", err)
 	}
 	if completed {
@@ -134,7 +157,7 @@ func TestReadingModule_Completion(t *testing.T) {
 	}
 
 	// Advance from 1 to 2 (last line, index = totalLines-1)
-	if err := m.HandleMessage(context.Background(), playerID, "reading:advance", nil); err != nil {
+	if err := m.HandleAdvance(context.Background(), playerID, true, ""); err != nil {
 		t.Fatalf("advance error = %v", err)
 	}
 	if !completed {
@@ -552,6 +575,84 @@ func TestReadingModule_HandleVoiceEnded(t *testing.T) {
 			t.Errorf("CurrentIndex = %d, want 1 (no-op on gm line)", state.CurrentIndex)
 		}
 	})
+}
+
+func TestReadingModule_HandleVoiceEnded_StaleVoiceID(t *testing.T) {
+	// Two voice lines: current line has VoiceID v0. A stale voice_ended for
+	// v1 must NOT advance the line and must NOT publish any event.
+	cfg := json.RawMessage(`{
+		"TotalLines": 2,
+		"Lines": [
+			{"AdvanceBy": "voice", "VoiceID": "v0"},
+			{"AdvanceBy": "voice", "VoiceID": "v1"}
+		]
+	}`)
+
+	m := NewReadingModule()
+	deps := newTestDeps(t)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	var lineChanged int
+	deps.EventBus.Subscribe("reading.line_changed", func(e engine.Event) {
+		lineChanged++
+	})
+
+	// Stale voice id: should be silently ignored.
+	if err := m.HandleVoiceEnded(context.Background(), "stale-id-99"); err != nil {
+		t.Fatalf("HandleVoiceEnded stale-id error = %v", err)
+	}
+	if got := m.GetState().CurrentIndex; got != 0 {
+		t.Errorf("currentIndex advanced on stale voice id: got %d, want 0", got)
+	}
+	if lineChanged != 0 {
+		t.Errorf("reading.line_changed published on stale voice id: count = %d", lineChanged)
+	}
+
+	// Empty voice id: accepted (backward compat) — should advance.
+	if err := m.HandleVoiceEnded(context.Background(), ""); err != nil {
+		t.Fatalf("HandleVoiceEnded empty error = %v", err)
+	}
+	if got := m.GetState().CurrentIndex; got != 1 {
+		t.Errorf("currentIndex after empty voice id: got %d, want 1", got)
+	}
+
+	// Matching voice id on the current line: should advance.
+	if err := m.HandleVoiceEnded(context.Background(), "v1"); err != nil {
+		t.Fatalf("HandleVoiceEnded match error = %v", err)
+	}
+}
+
+func TestReadingModule_HandleVoiceEnded_StaleVoiceMediaID(t *testing.T) {
+	// VoiceMediaID is the production-shape field; ensure it's checked too.
+	cfg := json.RawMessage(`{
+		"TotalLines": 2,
+		"Lines": [
+			{"AdvanceBy": "voice", "VoiceMediaID": "media-5"},
+			{"AdvanceBy": "voice", "VoiceMediaID": "media-6"}
+		]
+	}`)
+
+	m := NewReadingModule()
+	deps := newTestDeps(t)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	if err := m.HandleVoiceEnded(context.Background(), "media-1"); err != nil {
+		t.Fatalf("HandleVoiceEnded stale media error = %v", err)
+	}
+	if got := m.GetState().CurrentIndex; got != 0 {
+		t.Errorf("currentIndex advanced on stale media id: got %d, want 0", got)
+	}
+
+	if err := m.HandleVoiceEnded(context.Background(), "media-5"); err != nil {
+		t.Fatalf("HandleVoiceEnded match media error = %v", err)
+	}
+	if got := m.GetState().CurrentIndex; got != 1 {
+		t.Errorf("currentIndex after match: got %d, want 1", got)
+	}
 }
 
 func TestReadingModule_GetReadingStateWire(t *testing.T) {

@@ -104,6 +104,13 @@ func (m *ReadingModule) resolveAdvanceBy(idx int) string {
 // check because the server itself is the source of truth for media end.
 // On non-voice lines this is a no-op (the timing race between client-reported
 // voice end and a player advance is resolved in the player's favor).
+//
+// voiceID is validated against the current line's expected voice id to
+// prevent stale-race exploits. Empty voiceID is accepted for backward
+// compatibility with clients that don't track media ids; a mismatched
+// non-empty voiceID is silently ignored (the legitimate late voice_ended of
+// a previous line can race against a manual advance, so this must not
+// surface as an error).
 func (m *ReadingModule) HandleVoiceEnded(ctx context.Context, voiceID string) error {
 	m.mu.Lock()
 	if !m.isActive {
@@ -121,6 +128,19 @@ func (m *ReadingModule) HandleVoiceEnded(ctx context.Context, voiceID string) er
 		// the media completed on the client.
 		m.mu.Unlock()
 		return nil
+	}
+	// Stale-race guard: when the client reports a voice id, it must match
+	// the current line's expected voice id. Empty id from the client is
+	// accepted for backward compatibility.
+	if voiceID != "" {
+		expected := m.lines[m.currentLineIndex].VoiceMediaID
+		if expected == "" {
+			expected = m.lines[m.currentLineIndex].VoiceID
+		}
+		if expected != "" && expected != voiceID {
+			m.mu.Unlock()
+			return nil
+		}
 	}
 
 	// Perform the advance under the held lock (mirrors HandleAdvance).
@@ -315,67 +335,19 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 
 	switch msgType {
 	case "reading:advance":
-		if !m.isActive {
-			m.mu.Unlock()
-			return fmt.Errorf("reading: module not active")
-		}
-		if m.totalLines <= 0 {
-			m.mu.Unlock()
-			return fmt.Errorf("reading: no lines configured")
-		}
-		if m.currentLineIndex >= m.totalLines-1 {
-			// Already at last line, mark completed
-			m.isActive = false
-			totalLines := m.totalLines
-			m.mu.Unlock()
-
-			m.deps.EventBus.Publish(engine.Event{
-				Type:    "reading.completed",
-				Payload: map[string]any{"totalLines": totalLines},
-			})
-			return nil
-		}
-
-		m.currentLineIndex++
-		lineIndex := m.currentLineIndex
-		totalLines := m.totalLines
-		voiceID := m.resolveVoiceID(lineIndex)
-		completed := m.currentLineIndex >= m.totalLines-1
-		if completed {
-			m.isActive = false
-		}
+		// Legacy path: refuse all advance attempts here. Real callers MUST
+		// route through HandleAdvance (which enforces host/role permission
+		// per advanceBy) — bypassing it would be a security regression.
 		m.mu.Unlock()
-
-		m.deps.EventBus.Publish(engine.Event{
-			Type: "reading.line_changed",
-			Payload: map[string]any{
-				"lineIndex":  lineIndex,
-				"totalLines": totalLines,
-				"voiceId":    voiceID,
-			},
-		})
-
-		// Check if this was the last line
-		if completed {
-			m.deps.EventBus.Publish(engine.Event{
-				Type:    "reading.completed",
-				Payload: map[string]any{"totalLines": totalLines},
-			})
-		}
-		return nil
+		return apperror.New(apperror.ErrReadingAdvanceForbidden, http.StatusForbidden,
+			"reading: advance must go through HandleAdvance")
 
 	case "reading:voice_ended":
-		if !m.isActive {
-			m.mu.Unlock()
-			return nil
-		}
-		if m.advanceMode != "auto" {
-			m.mu.Unlock()
-			return nil // non-auto modes ignore voice_ended
-		}
+		// Legacy path: refuse here. Real callers MUST route through
+		// HandleVoiceEnded directly so the voiceID stale-race guard applies.
 		m.mu.Unlock()
-		// Trigger advance by recursing (self message)
-		return m.HandleMessage(ctx, playerID, "reading:advance", nil)
+		return apperror.New(apperror.ErrReadingAdvanceForbidden, http.StatusForbidden,
+			"reading: voice_ended must go through HandleVoiceEnded")
 
 	case "reading:jump":
 		if !m.isActive {
