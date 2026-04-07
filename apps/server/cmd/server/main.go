@@ -158,6 +158,8 @@ func main() {
 	}
 	mediaSvc := editor.NewMediaService(queries, storageProvider, logger)
 	mediaHandler := editor.NewMediaHandler(mediaSvc)
+	readingSvc := editor.NewReadingService(queries, logger)
+	readingHandler := editor.NewReadingHandler(readingSvc)
 	adminSvc := admin.NewService(queries, logger)
 	friendSvc := social.NewFriendService(queries, logger)
 	chatSvc := social.NewChatService(pool, queries, logger)
@@ -416,6 +418,12 @@ func main() {
 				r.Post("/themes/{id}/media/youtube", mediaHandler.CreateYouTube)
 				r.Patch("/media/{id}", mediaHandler.UpdateMedia)
 				r.Delete("/media/{id}", mediaHandler.DeleteMedia)
+
+				// Reading sections
+				r.Get("/themes/{id}/reading-sections", readingHandler.ListReadingSections)
+				r.Post("/themes/{id}/reading-sections", readingHandler.CreateReadingSection)
+				r.Patch("/reading-sections/{id}", readingHandler.UpdateReadingSection)
+				r.Delete("/reading-sections/{id}", readingHandler.DeleteReadingSection)
 				// Validation
 				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
 			})

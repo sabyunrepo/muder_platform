@@ -169,6 +169,32 @@ func TestValidateConfig_StrategyModuleMismatch(t *testing.T) {
 	}
 }
 
+func TestPlayMediaPayload_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload PlayMediaPayload
+		wantErr bool
+	}{
+		{"empty", PlayMediaPayload{MediaID: "m1"}, false},
+		{"cutscene mode", PlayMediaPayload{MediaID: "m1", Mode: "cutscene"}, false},
+		{"inline mode", PlayMediaPayload{MediaID: "m1", Mode: "inline"}, false},
+		{"invalid mode", PlayMediaPayload{MediaID: "m1", Mode: "foo"}, true},
+		{"pause behavior", PlayMediaPayload{MediaID: "m1", BgmBehavior: "pause"}, false},
+		{"keep behavior", PlayMediaPayload{MediaID: "m1", BgmBehavior: "keep"}, false},
+		{"stop behavior", PlayMediaPayload{MediaID: "m1", BgmBehavior: "stop"}, false},
+		{"invalid behavior", PlayMediaPayload{MediaID: "m1", BgmBehavior: "foo"}, true},
+		{"full valid", PlayMediaPayload{MediaID: "m1", Mode: "cutscene", Skippable: true, BgmBehavior: "pause"}, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.payload.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() err=%v wantErr=%v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateConfig_LockModuleTargetDisabled(t *testing.T) {
 	config := GameConfig{
 		Strategy: "script",

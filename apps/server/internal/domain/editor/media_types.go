@@ -16,6 +16,7 @@ const (
 	MediaTypeBGM   = "BGM"
 	MediaTypeSFX   = "SFX"
 	MediaTypeVoice = "VOICE"
+	MediaTypeVideo = "VIDEO"
 
 	SourceTypeFile    = "FILE"
 	SourceTypeYouTube = "YOUTUBE"
@@ -30,7 +31,7 @@ var AllowedAudioMIMEs = map[string]string{
 
 type RequestMediaUploadRequest struct {
 	Name     string `json:"name" validate:"required,min=1,max=200"`
-	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE"`
+	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
 	MimeType string `json:"mime_type" validate:"required"`
 	FileSize int64  `json:"file_size" validate:"required,min=1"`
 }
@@ -47,13 +48,13 @@ type ConfirmUploadRequest struct {
 
 type CreateMediaYouTubeRequest struct {
 	Name string `json:"name" validate:"required,min=1,max=200"`
-	Type string `json:"type" validate:"required,oneof=BGM SFX VOICE"`
+	Type string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
 	URL  string `json:"url" validate:"required,url"`
 }
 
 type UpdateMediaRequest struct {
 	Name      string   `json:"name" validate:"required,min=1,max=200"`
-	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE"`
+	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
 	Duration  *int32   `json:"duration,omitempty"`
 	Tags      []string `json:"tags" validate:"max=10,dive,max=50"`
 	SortOrder int32    `json:"sort_order" validate:"min=0"`

@@ -67,15 +67,20 @@
 - [x] 제작자 대시보드 (통계 차트, 수익, 정산) + Admin 정산 관리
 - [x] Go 39 테스트 PASS + FE ~23 테스트 + TypeScript 0 errors
 
-## Phase 7.7: 오디오/미디어 (진행중)
+## Phase 7.7: 오디오/미디어 ✅
 - [x] AudioManager (SFX 전용, Web Audio API, LRU 캐싱, rate limiting)
 - [x] SoundControl UI (마스터/SFX 볼륨), AudioProvider, soundRegistry
 - [x] ReadingModule 서버 모듈 (대사 줄 단위 진행/점프)
-- [ ] theme_media DB 테이블 + API (CRUD, R2 업로드, YouTube oEmbed)
-- [ ] AudioManager 확장: BGM 레이어 + Voice 레이어 + 크로스페이드 2초
-- [ ] 에디터 미디어 라이브러리 탭 (업로드/YouTube/미리듣기/MediaPicker)
-- [ ] 리딩 UI 프론트엔드 (대사 표시, 음성 연동, advanceMode)
-- [ ] PhaseAction 확장 (PLAY_MEDIA, SET_BGM, STOP_AUDIO)
+- [x] theme_media DB 테이블 + API (CRUD, R2 업로드, YouTube oEmbed) — Step 1
+- [x] PhaseAction 확장 (PLAY_MEDIA, SET_BGM, STOP_AUDIO, bgmBehavior) — Step 2
+- [x] 4채널 Web Audio 그래프 (master/bgm/voice/sfx) + BgmManager/VoiceManager/YouTubePlayer + AudioOrchestrator — Step 3
+- [x] 에디터 미디어 라이브러리 탭 (업로드/YouTube/미리듣기/MediaPicker) — Step 4
+- [x] 리딩 UI 프론트엔드 (ReadingOverlay, 줄 단위 advanceBy, TypewriterEffect) — Step 5
+- [x] 비디오 지원 (YouTube 컷신 + 증거 영상, VideoPlayer IF 추상화)
+- [x] 리딩 섹션 편집기 (스토리 탭 내, 줄 단위 advanceBy)
+- [x] 인게임 4채널 SoundControl (floating popover)
+- [x] reading paused/resumed/state 이벤트 (presence + reconnect)
+- [x] ReadingWSHandler (권한 검증 + voiceID stale guard) + ReadingModuleAdapter (camelCase wire)
 
 ## Phase 7.8: 에디터 확장
 - [ ] 엔딩 분기 + 버전 관리 + 교차 검증 + 미리보기
@@ -93,4 +98,4 @@
 - [ ] Expo + @mmp/ws-client + 푸시 + 스토어 배포
 
 ---
-**진행:** 2026-04-05 Phase 0~6 완료, 2026-04-06 Phase 7+7.5+7.6+A/B/C/E 완료, Phase 7.7 부분완료(SFX AudioManager+ReadingModule BE)
+**진행:** 2026-04-05 Phase 0~6 완료, 2026-04-06 Phase 7+7.5+7.6+A/B/C/E 완료, 2026-04-07 Phase 7.7 완료 (media DB + 엔진 통합 + FE 오디오/비디오/리딩/에디터, 37 커밋)

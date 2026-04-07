@@ -125,6 +125,18 @@ type Payment struct {
 	UpdatedAt      time.Time          `json:"updated_at"`
 }
 
+type ReadingSection struct {
+	ID         uuid.UUID       `json:"id"`
+	ThemeID    uuid.UUID       `json:"theme_id"`
+	Name       string          `json:"name"`
+	BgmMediaID pgtype.UUID     `json:"bgm_media_id"`
+	Lines      json.RawMessage `json:"lines"`
+	SortOrder  int32           `json:"sort_order"`
+	Version    int32           `json:"version"`
+	CreatedAt  time.Time       `json:"created_at"`
+	UpdatedAt  time.Time       `json:"updated_at"`
+}
+
 type Room struct {
 	ID         uuid.UUID `json:"id"`
 	ThemeID    uuid.UUID `json:"theme_id"`

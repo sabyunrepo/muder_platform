@@ -4,6 +4,7 @@ import DOMPurify from 'dompurify';
 import { Columns2, AlignLeft, Eye } from 'lucide-react';
 import { useEditorContent, useUpsertContent } from '@/features/editor/api';
 import { useAutoSave } from '@/features/editor/hooks/useAutoSave';
+import { ReadingSectionList } from './reading/ReadingSectionList';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,7 +115,8 @@ export function StoryTab({ themeId }: StoryTabProps) {
       </div>
 
       {/* Editor / Preview panes */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-y-auto">
+       <div className="flex min-h-[40vh]">
         {/* Editor pane */}
         {showEditor && (
           <div className={`flex flex-col ${viewMode === 'split' ? 'w-1/2 border-r border-slate-800' : 'w-full'}`}>
@@ -144,6 +146,12 @@ export function StoryTab({ themeId }: StoryTabProps) {
             )}
           </div>
         )}
+       </div>
+
+        {/* Reading sections — Phase 7.7 */}
+        <div className="border-t border-slate-800 px-5 py-6">
+          <ReadingSectionList themeId={themeId} />
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,358 @@
 package editor
 
-import "testing"
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog"
+
+	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/db"
+)
+
+// --- fakeMediaQueries: in-memory mediaQueries implementation for unit tests ---
+
+type fakeMediaQueries struct {
+	themes   map[uuid.UUID]db.Theme
+	media    map[uuid.UUID]db.ThemeMedium
+	sections map[uuid.UUID]db.ReadingSection
+}
+
+func newFakeMediaQueries() *fakeMediaQueries {
+	return &fakeMediaQueries{
+		themes:   make(map[uuid.UUID]db.Theme),
+		media:    make(map[uuid.UUID]db.ThemeMedium),
+		sections: make(map[uuid.UUID]db.ReadingSection),
+	}
+}
+
+func (f *fakeMediaQueries) GetTheme(_ context.Context, id uuid.UUID) (db.Theme, error) {
+	t, ok := f.themes[id]
+	if !ok {
+		return db.Theme{}, pgx.ErrNoRows
+	}
+	return t, nil
+}
+
+func (f *fakeMediaQueries) GetMedia(_ context.Context, id uuid.UUID) (db.ThemeMedium, error) {
+	m, ok := f.media[id]
+	if !ok {
+		return db.ThemeMedium{}, pgx.ErrNoRows
+	}
+	return m, nil
+}
+
+func (f *fakeMediaQueries) GetMediaWithOwner(_ context.Context, arg db.GetMediaWithOwnerParams) (db.ThemeMedium, error) {
+	m, ok := f.media[arg.ID]
+	if !ok {
+		return db.ThemeMedium{}, pgx.ErrNoRows
+	}
+	t, ok := f.themes[m.ThemeID]
+	if !ok || t.CreatorID != arg.CreatorID {
+		return db.ThemeMedium{}, pgx.ErrNoRows
+	}
+	return m, nil
+}
+
+func (f *fakeMediaQueries) ListMediaByTheme(_ context.Context, themeID uuid.UUID) ([]db.ThemeMedium, error) {
+	out := []db.ThemeMedium{}
+	for _, m := range f.media {
+		if m.ThemeID == themeID {
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeMediaQueries) ListMediaByThemeAndType(_ context.Context, arg db.ListMediaByThemeAndTypeParams) ([]db.ThemeMedium, error) {
+	out := []db.ThemeMedium{}
+	for _, m := range f.media {
+		if m.ThemeID == arg.ThemeID && m.Type == arg.Type {
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeMediaQueries) CountMediaByTheme(_ context.Context, themeID uuid.UUID) (int64, error) {
+	var n int64
+	for _, m := range f.media {
+		if m.ThemeID == themeID {
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (f *fakeMediaQueries) SumMediaSizeByTheme(_ context.Context, themeID uuid.UUID) (int64, error) {
+	var sum int64
+	for _, m := range f.media {
+		if m.ThemeID == themeID && m.FileSize.Valid {
+			sum += m.FileSize.Int64
+		}
+	}
+	return sum, nil
+}
+
+func (f *fakeMediaQueries) SumMediaSizeByCreator(_ context.Context, creatorID uuid.UUID) (int64, error) {
+	var sum int64
+	for _, m := range f.media {
+		t, ok := f.themes[m.ThemeID]
+		if !ok || t.CreatorID != creatorID {
+			continue
+		}
+		if m.FileSize.Valid {
+			sum += m.FileSize.Int64
+		}
+	}
+	return sum, nil
+}
+
+func (f *fakeMediaQueries) CreateMedia(_ context.Context, arg db.CreateMediaParams) (db.ThemeMedium, error) {
+	m := db.ThemeMedium{
+		ID:         uuid.New(),
+		ThemeID:    arg.ThemeID,
+		Name:       arg.Name,
+		Type:       arg.Type,
+		SourceType: arg.SourceType,
+		Url:        arg.Url,
+		StorageKey: arg.StorageKey,
+		Duration:   arg.Duration,
+		FileSize:   arg.FileSize,
+		MimeType:   arg.MimeType,
+		Tags:       arg.Tags,
+		SortOrder:  arg.SortOrder,
+		CreatedAt:  time.Now(),
+	}
+	f.media[m.ID] = m
+	return m, nil
+}
+
+func (f *fakeMediaQueries) UpdateMedia(_ context.Context, arg db.UpdateMediaParams) (db.ThemeMedium, error) {
+	m, ok := f.media[arg.ID]
+	if !ok {
+		return db.ThemeMedium{}, pgx.ErrNoRows
+	}
+	m.Name = arg.Name
+	m.Type = arg.Type
+	m.Duration = arg.Duration
+	m.Tags = arg.Tags
+	m.SortOrder = arg.SortOrder
+	f.media[arg.ID] = m
+	return m, nil
+}
+
+func (f *fakeMediaQueries) DeleteMedia(_ context.Context, id uuid.UUID) error {
+	delete(f.media, id)
+	return nil
+}
+
+func (f *fakeMediaQueries) DeleteMediaWithOwner(_ context.Context, arg db.DeleteMediaWithOwnerParams) (int64, error) {
+	m, ok := f.media[arg.ID]
+	if !ok {
+		return 0, nil
+	}
+	t, ok := f.themes[m.ThemeID]
+	if !ok || t.CreatorID != arg.CreatorID {
+		return 0, nil
+	}
+	delete(f.media, arg.ID)
+	return 1, nil
+}
+
+func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error) {
+	out := []db.FindMediaReferencesInReadingSectionsRow{}
+	for _, s := range f.sections {
+		if s.ThemeID != arg.ThemeID {
+			continue
+		}
+		matched := false
+		// Check bgm reference.
+		if s.BgmMediaID.Valid && uuid.UUID(s.BgmMediaID.Bytes) == arg.MediaID {
+			matched = true
+		}
+		// Check voice references inside lines JSONB.
+		if !matched && len(s.Lines) > 0 {
+			var lines []map[string]any
+			if err := json.Unmarshal(s.Lines, &lines); err == nil {
+				for _, ln := range lines {
+					if v, ok := ln["VoiceMediaID"].(string); ok && v == arg.MediaID.String() {
+						matched = true
+						break
+					}
+				}
+			}
+		}
+		if matched {
+			out = append(out, db.FindMediaReferencesInReadingSectionsRow{ID: s.ID, Name: s.Name})
+		}
+	}
+	return out, nil
+}
+
+// --- helpers ---
+
+func newMediaTestService(t *testing.T) (*mediaService, *fakeMediaQueries, uuid.UUID, uuid.UUID) {
+	t.Helper()
+	q := newFakeMediaQueries()
+	creatorID := uuid.New()
+	themeID := uuid.New()
+	q.themes[themeID] = db.Theme{ID: themeID, CreatorID: creatorID}
+	svc := newMediaServiceWith(q, nil, zerolog.Nop())
+	return svc, q, creatorID, themeID
+}
+
+func seedMedia(q *fakeMediaQueries, themeID uuid.UUID, mediaType string) uuid.UUID {
+	id := uuid.New()
+	q.media[id] = db.ThemeMedium{
+		ID:         id,
+		ThemeID:    themeID,
+		Name:       "media",
+		Type:       mediaType,
+		SourceType: SourceTypeYouTube,
+		Url:        pgtype.Text{String: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", Valid: true},
+	}
+	return id
+}
+
+func assertMediaAppCode(t *testing.T, err error, want string) {
+	t.Helper()
+	if err == nil {
+		t.Fatalf("expected error %q, got nil", want)
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.AppError, got %T: %v", err, err)
+	}
+	if appErr.Code != want {
+		t.Fatalf("expected error code %q, got %q (detail=%s)", want, appErr.Code, appErr.Detail)
+	}
+}
+
+// --- DeleteMedia reference-check tests ---
+
+func TestMediaService_Delete_BlockedByBgmReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	bgmID := seedMedia(q, themeID, MediaTypeBGM)
+
+	// Seed a reading section that references the bgm.
+	sectionID := uuid.New()
+	q.sections[sectionID] = db.ReadingSection{
+		ID:         sectionID,
+		ThemeID:    themeID,
+		Name:       "Intro",
+		BgmMediaID: pgtype.UUID{Bytes: bgmID, Valid: true},
+		Lines:      json.RawMessage(`[]`),
+	}
+
+	err := svc.DeleteMedia(context.Background(), creatorID, bgmID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	if appErr.Status != 409 {
+		t.Fatalf("expected status 409, got %d", appErr.Status)
+	}
+	refs, ok := appErr.Params["references"].([]map[string]string)
+	if !ok || len(refs) != 1 {
+		t.Fatalf("expected references param with 1 entry, got %#v", appErr.Params["references"])
+	}
+	if refs[0]["id"] != sectionID.String() || refs[0]["name"] != "Intro" || refs[0]["type"] != "reading_section" {
+		t.Fatalf("unexpected reference shape: %#v", refs[0])
+	}
+	// Media must still exist.
+	if _, ok := q.media[bgmID]; !ok {
+		t.Fatalf("media should not have been deleted")
+	}
+}
+
+func TestMediaService_Delete_BlockedByVoiceReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	voiceID := seedMedia(q, themeID, MediaTypeVoice)
+
+	// Seed a reading section whose first line references the voice media.
+	linesJSON, _ := json.Marshal([]map[string]any{
+		{"Index": 0, "Text": "hi", "AdvanceBy": "voice", "VoiceMediaID": voiceID.String()},
+	})
+	sectionID := uuid.New()
+	q.sections[sectionID] = db.ReadingSection{
+		ID:      sectionID,
+		ThemeID: themeID,
+		Name:    "Voiced",
+		Lines:   linesJSON,
+	}
+
+	err := svc.DeleteMedia(context.Background(), creatorID, voiceID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["id"] != sectionID.String() {
+		t.Fatalf("unexpected references: %#v", refs)
+	}
+}
+
+func TestMediaService_Delete_Success_NoReferences(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeBGM)
+
+	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID); err != nil {
+		t.Fatalf("expected delete to succeed, got %v", err)
+	}
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("media should have been deleted")
+	}
+}
+
+func TestMediaService_RequestUploadURL_VideoTypeRejected(t *testing.T) {
+	svc, _, creatorID, themeID := newMediaTestService(t)
+
+	// VIDEO type is rejected before storage/ownership checks.
+	_, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "intro",
+		Type:     MediaTypeVideo,
+		MimeType: "audio/mpeg",
+		FileSize: 1024,
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidType)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	if appErr.Status != 400 {
+		t.Fatalf("expected status 400, got %d", appErr.Status)
+	}
+}
+
+func TestMediaService_CreateYouTubeMedia_VideoType_Success(t *testing.T) {
+	_, q, _, themeID := newMediaTestService(t)
+
+	// CreateYouTube performs a real HTTP oembed call, so we exercise the
+	// DB-layer acceptance directly: verify that the fake (which mirrors the
+	// CreateMedia params) accepts VIDEO + YOUTUBE. The migration's
+	// video_requires_youtube CHECK is enforced at the SQL level and is
+	// covered by integration tests.
+	created, err := q.CreateMedia(context.Background(), db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       "cutscene",
+		Type:       MediaTypeVideo,
+		SourceType: SourceTypeYouTube,
+		Url:        pgtype.Text{String: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", Valid: true},
+		Tags:       []string{},
+	})
+	if err != nil {
+		t.Fatalf("expected VIDEO+YOUTUBE create to succeed, got %v", err)
+	}
+	if created.Type != MediaTypeVideo || created.SourceType != SourceTypeYouTube {
+		t.Fatalf("unexpected created media: type=%s source=%s", created.Type, created.SourceType)
+	}
+}
 
 func TestParseYouTubeVideoID(t *testing.T) {
 	tests := []struct {

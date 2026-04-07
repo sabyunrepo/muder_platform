@@ -25,6 +25,9 @@ const CharactersTab = lazy(() =>
 const DesignTab = lazy(() =>
   import("./DesignTab").then((m) => ({ default: m.DesignTab })),
 );
+const MediaTab = lazy(() =>
+  import("./media/MediaTab").then((m) => ({ default: m.MediaTab })),
+);
 const AdvancedTab = lazy(() =>
   import("./AdvancedTab").then((m) => ({ default: m.AdvancedTab })),
 );
@@ -49,6 +52,8 @@ function TabContent({ tab, theme, themeId }: TabContentProps) {
       return <CharactersTab theme={theme} themeId={themeId} />;
     case "design":
       return <DesignTab theme={theme} themeId={themeId} />;
+    case "media":
+      return <MediaTab themeId={themeId} />;
     case "advanced":
       return <AdvancedTab theme={theme} themeId={themeId} />;
   }

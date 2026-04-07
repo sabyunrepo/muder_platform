@@ -44,6 +44,24 @@ export const WsEventType = {
 
   // Sound
   SOUND_PLAY: "sound:play",
+
+  // Audio (Phase 7.7) — server → client
+  AUDIO_SET_BGM: "audio:set_bgm",
+  AUDIO_PLAY_VOICE: "audio:play_voice",
+  AUDIO_PLAY_MEDIA: "audio:play_media",
+  AUDIO_STOP: "audio:stop",
+
+  // Reading (Phase 7.7) — server → client
+  READING_STARTED: "reading:started",
+  READING_LINE_CHANGED: "reading:line_changed",
+  READING_PAUSED: "reading:paused",
+  READING_RESUMED: "reading:resumed",
+  READING_COMPLETED: "reading:completed",
+  READING_STATE: "reading:state",
+
+  // Reading (Phase 7.7) — client → server
+  READING_VOICE_ENDED: "reading:voice_ended",
+  READING_ADVANCE: "reading:advance",
 } as const;
 
 export type WsEventType = (typeof WsEventType)[keyof typeof WsEventType];
