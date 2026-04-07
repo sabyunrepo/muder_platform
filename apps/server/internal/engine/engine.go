@@ -4,15 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 
 	"github.com/google/uuid"
 )
 
 // GameProgressionEngine orchestrates the game lifecycle:
 // strategy selection → module init → phase progression → cleanup.
+//
+// Thread-safety contract: GameProgressionEngine is NOT thread-safe.
+// Callers MUST serialize all method calls. The session.Session actor is the
+// ONLY authorized caller — it runs in a single goroutine and owns this engine
+// exclusively. Do NOT call engine methods from any other goroutine.
 type GameProgressionEngine struct {
-	mu         sync.RWMutex
 	sessionID  uuid.UUID
 	config     GameConfig
 	strategy   ProgressionStrategy
@@ -35,9 +38,6 @@ func NewEngine(sessionID uuid.UUID, logger Logger) *GameProgressionEngine {
 // Start initializes the engine: parses config, creates modules, selects strategy,
 // initializes everything, and enters the first phase.
 func (e *GameProgressionEngine) Start(ctx context.Context, configJSON json.RawMessage) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if e.started {
 		return fmt.Errorf("engine: already started")
 	}
@@ -97,9 +97,6 @@ func (e *GameProgressionEngine) Start(ctx context.Context, configJSON json.RawMe
 
 // Advance moves to the next phase, executing onExit → advance → onEnter.
 func (e *GameProgressionEngine) Advance(ctx context.Context) (bool, error) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if !e.started {
 		return false, fmt.Errorf("engine: not started")
 	}
@@ -133,9 +130,6 @@ func (e *GameProgressionEngine) Advance(ctx context.Context) (bool, error) {
 
 // GMOverride jumps to a specific phase via the engine (onExit → SkipTo → onEnter).
 func (e *GameProgressionEngine) GMOverride(ctx context.Context, phaseID string) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if !e.started {
 		return fmt.Errorf("engine: not started")
 	}
@@ -162,9 +156,6 @@ func (e *GameProgressionEngine) GMOverride(ctx context.Context, phaseID string) 
 
 // HandleTrigger evaluates a trigger and transitions phases through the engine lifecycle.
 func (e *GameProgressionEngine) HandleTrigger(ctx context.Context, triggerType string, condition json.RawMessage) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if !e.started {
 		return fmt.Errorf("engine: not started")
 	}
@@ -198,9 +189,6 @@ func (e *GameProgressionEngine) HandleTrigger(ctx context.Context, triggerType s
 
 // HandleMessage routes a player message to the appropriate module.
 func (e *GameProgressionEngine) HandleMessage(ctx context.Context, playerID uuid.UUID, moduleName string, msgType string, payload json.RawMessage) error {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
 	if !e.started {
 		return fmt.Errorf("engine: not started")
 	}
@@ -213,9 +201,6 @@ func (e *GameProgressionEngine) HandleMessage(ctx context.Context, playerID uuid
 
 // BuildState returns the full engine state for client synchronization.
 func (e *GameProgressionEngine) BuildState() (json.RawMessage, error) {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
 	state := map[string]any{
 		"sessionId": e.sessionID,
 		"phase":     e.strategy.CurrentPhase(),
@@ -237,9 +222,6 @@ func (e *GameProgressionEngine) BuildState() (json.RawMessage, error) {
 
 // Stop gracefully shuts down the engine: cleanup modules → strategy → eventbus.
 func (e *GameProgressionEngine) Stop(ctx context.Context) error {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	if !e.started {
 		return nil
 	}
@@ -265,9 +247,6 @@ func (e *GameProgressionEngine) EventBus() *EventBus {
 
 // CurrentPhase returns the active phase info.
 func (e *GameProgressionEngine) CurrentPhase() *PhaseInfo {
-	e.mu.RLock()
-	defer e.mu.RUnlock()
-
 	if e.strategy == nil {
 		return nil
 	}

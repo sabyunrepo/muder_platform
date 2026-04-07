@@ -164,7 +164,8 @@ type ModuleDeps struct {
 type ModuleFactory func() Module
 
 // ProgressionStrategy defines how the game advances through phases.
-// All methods must be called under external synchronization (engine mutex).
+// All methods must be called by the session actor goroutine — no external
+// synchronization is required because GameProgressionEngine is not thread-safe.
 type ProgressionStrategy interface {
 	// Init initializes the strategy with the phase configuration.
 	Init(ctx context.Context, config GameConfig) error
