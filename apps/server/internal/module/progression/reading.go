@@ -28,6 +28,28 @@ type ReadingModule struct {
 	currentLineIndex int
 	totalLines       int
 	isActive         bool
+	status           readingStatus
+	pausedReason     string
+}
+
+// readingStatus describes whether the reading flow is currently advancing,
+// halted (waiting on a missing player), or not yet/no longer active.
+type readingStatus string
+
+const (
+	readingStatusIdle    readingStatus = "idle"
+	readingStatusPlaying readingStatus = "playing"
+	readingStatusPaused  readingStatus = "paused"
+)
+
+// ReadingState is an immutable snapshot of the reading module state suitable
+// for sending to a reconnecting client via the reading.state event.
+type ReadingState struct {
+	SectionID    string              `json:"sectionId"`
+	CurrentIndex int                 `json:"currentIndex"`
+	Lines        []readingLineConfig `json:"lines"`
+	BgmMediaID   string              `json:"bgmMediaId,omitempty"`
+	Status       string              `json:"status"`
 }
 
 type readingConfig struct {
@@ -195,6 +217,8 @@ func (m *ReadingModule) Init(ctx context.Context, deps engine.ModuleDeps, config
 	}
 	m.currentLineIndex = 0
 	m.isActive = true
+	m.status = readingStatusPlaying
+	m.pausedReason = ""
 
 	// If section BGM configured, emit override on activation
 	if m.bgmId != "" {
@@ -330,6 +354,132 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 	default:
 		m.mu.Unlock()
 		return fmt.Errorf("reading: unknown message type %q", msgType)
+	}
+}
+
+// HandlePlayerLeft is invoked by the WS handler when a player disconnects.
+// The handler resolves whether the leaving player is the host and which
+// role IDs they owned, then calls this method. If the current line's
+// effective advanceBy depends on the leaving party, the module enters the
+// paused state and emits reading.paused. Voice-driven lines are unaffected
+// since they advance on media end, not on a player action.
+func (m *ReadingModule) HandlePlayerLeft(ctx context.Context, hostLeaving bool, leftRoleIDs []string) {
+	m.mu.Lock()
+	if !m.isActive || m.status != readingStatusPlaying {
+		m.mu.Unlock()
+		return
+	}
+	if m.totalLines <= 0 || m.currentLineIndex < 0 || m.currentLineIndex >= m.totalLines {
+		m.mu.Unlock()
+		return
+	}
+	advanceBy := m.resolveAdvanceBy(m.currentLineIndex)
+	needsPause := false
+	switch {
+	case advanceBy == "gm" && hostLeaving:
+		needsPause = true
+	case strings.HasPrefix(advanceBy, "role:"):
+		need := strings.TrimPrefix(advanceBy, "role:")
+		for _, r := range leftRoleIDs {
+			if r == need {
+				needsPause = true
+				break
+			}
+		}
+	}
+	if !needsPause {
+		m.mu.Unlock()
+		return
+	}
+	m.status = readingStatusPaused
+	m.pausedReason = "player_left"
+	lineIndex := m.currentLineIndex
+	m.mu.Unlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "reading.paused",
+		Payload: map[string]any{
+			"lineIndex": lineIndex,
+			"advanceBy": advanceBy,
+			"reason":    "player_left",
+		},
+	})
+}
+
+// HandlePlayerRejoined is invoked by the WS handler when the previously
+// missing party returns. If the rejoining party satisfies the current line's
+// advanceBy requirement, the module returns to the playing state and emits
+// reading.resumed.
+func (m *ReadingModule) HandlePlayerRejoined(ctx context.Context, hostRejoining bool, rejoinedRoleIDs []string) {
+	m.mu.Lock()
+	if m.status != readingStatusPaused {
+		m.mu.Unlock()
+		return
+	}
+	if m.totalLines <= 0 || m.currentLineIndex < 0 || m.currentLineIndex >= m.totalLines {
+		m.mu.Unlock()
+		return
+	}
+	advanceBy := m.resolveAdvanceBy(m.currentLineIndex)
+	canResume := false
+	switch {
+	case advanceBy == "gm" && hostRejoining:
+		canResume = true
+	case strings.HasPrefix(advanceBy, "role:"):
+		need := strings.TrimPrefix(advanceBy, "role:")
+		for _, r := range rejoinedRoleIDs {
+			if r == need {
+				canResume = true
+				break
+			}
+		}
+	}
+	if !canResume {
+		m.mu.Unlock()
+		return
+	}
+	m.status = readingStatusPlaying
+	m.pausedReason = ""
+	lineIndex := m.currentLineIndex
+	m.mu.Unlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "reading.resumed",
+		Payload: map[string]any{
+			"lineIndex": lineIndex,
+			"advanceBy": advanceBy,
+		},
+	})
+}
+
+// GetState returns an immutable snapshot of the current reading state for
+// reconnecting clients. The Lines slice is copied so that callers cannot
+// mutate internal module state.
+func (m *ReadingModule) GetState() ReadingState {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	linesCopy := make([]readingLineConfig, len(m.lines))
+	copy(linesCopy, m.lines)
+
+	status := string(m.status)
+	if status == "" {
+		if m.isActive {
+			status = string(readingStatusPlaying)
+		} else {
+			status = string(readingStatusIdle)
+		}
+	}
+
+	return ReadingState{
+		// SectionID is reserved for future use; the reading module currently
+		// does not track its owning section identifier — the WS handler can
+		// inject it when broadcasting if needed.
+		SectionID:    "",
+		CurrentIndex: m.currentLineIndex,
+		Lines:        linesCopy,
+		BgmMediaID:   m.bgmId,
+		Status:       status,
 	}
 }
 

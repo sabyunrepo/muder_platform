@@ -282,6 +282,198 @@ func TestReadingModule_AdvanceAuthorization(t *testing.T) {
 	})
 }
 
+func TestReadingModule_PausedOnPlayerLeave_RoleLine(t *testing.T) {
+	// Config: line 0 is gm, line 1 is role:detective. Advance to line 1
+	// then have detective leave -> expect reading.paused.
+	cfg := json.RawMessage(`{
+		"TotalLines": 3,
+		"Lines": [
+			{"AdvanceBy": "gm"},
+			{"AdvanceBy": "role:detective"},
+			{"AdvanceBy": "gm"}
+		]
+	}`)
+
+	deps := newTestDeps(t)
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	// Move to line index 1 (role:detective)
+	if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+		t.Fatalf("setup advance error = %v", err)
+	}
+
+	var paused engine.Event
+	deps.EventBus.Subscribe("reading.paused", func(e engine.Event) {
+		paused = e
+	})
+
+	m.HandlePlayerLeft(context.Background(), false, []string{"detective"})
+
+	if paused.Type != "reading.paused" {
+		t.Fatalf("expected reading.paused event, got %q", paused.Type)
+	}
+	payload, ok := paused.Payload.(map[string]any)
+	if !ok {
+		t.Fatalf("expected map payload, got %T", paused.Payload)
+	}
+	if payload["reason"] != "player_left" {
+		t.Errorf("expected reason player_left, got %v", payload["reason"])
+	}
+	state := m.GetState()
+	if state.Status != "paused" {
+		t.Errorf("expected status paused, got %q", state.Status)
+	}
+}
+
+func TestReadingModule_PausedOnHostLeave_GmLine(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"TotalLines": 2,
+		"Lines": [
+			{"AdvanceBy": "gm"},
+			{"AdvanceBy": "gm"}
+		]
+	}`)
+
+	deps := newTestDeps(t)
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	var pausedFired bool
+	deps.EventBus.Subscribe("reading.paused", func(e engine.Event) {
+		pausedFired = true
+	})
+
+	m.HandlePlayerLeft(context.Background(), true, nil)
+	if !pausedFired {
+		t.Errorf("expected reading.paused on host leave with gm line")
+	}
+	if m.GetState().Status != "paused" {
+		t.Errorf("expected status paused")
+	}
+}
+
+func TestReadingModule_NoEventOnPlayerLeave_VoiceLine(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"TotalLines": 3,
+		"Lines": [
+			{"AdvanceBy": "gm"},
+			{"AdvanceBy": "voice"},
+			{"AdvanceBy": "gm"}
+		]
+	}`)
+
+	deps := newTestDeps(t)
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	// move to line index 1 (voice)
+	if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+		t.Fatalf("setup advance error = %v", err)
+	}
+
+	var pausedFired bool
+	deps.EventBus.Subscribe("reading.paused", func(e engine.Event) {
+		pausedFired = true
+	})
+
+	m.HandlePlayerLeft(context.Background(), false, []string{"detective"})
+	if pausedFired {
+		t.Errorf("voice line must not pause on player leave")
+	}
+	m.HandlePlayerLeft(context.Background(), true, nil)
+	if pausedFired {
+		t.Errorf("voice line must not pause on host leave")
+	}
+}
+
+func TestReadingModule_ResumedAfterPlayerRejoin(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"TotalLines": 3,
+		"Lines": [
+			{"AdvanceBy": "gm"},
+			{"AdvanceBy": "role:detective"},
+			{"AdvanceBy": "gm"}
+		]
+	}`)
+
+	deps := newTestDeps(t)
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+		t.Fatalf("setup advance error = %v", err)
+	}
+	m.HandlePlayerLeft(context.Background(), false, []string{"detective"})
+	if m.GetState().Status != "paused" {
+		t.Fatalf("setup: expected paused state")
+	}
+
+	var resumedFired bool
+	deps.EventBus.Subscribe("reading.resumed", func(e engine.Event) {
+		resumedFired = true
+	})
+
+	m.HandlePlayerRejoined(context.Background(), false, []string{"detective"})
+	if !resumedFired {
+		t.Errorf("expected reading.resumed event")
+	}
+	if m.GetState().Status != "playing" {
+		t.Errorf("expected status playing, got %q", m.GetState().Status)
+	}
+}
+
+func TestReadingModule_GetState(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"TotalLines": 4,
+		"BGMId": "bgm-1",
+		"Lines": [
+			{"AdvanceBy": "gm", "Speaker": "narrator"},
+			{"AdvanceBy": "role:detective", "VoiceMediaID": "voice-1"},
+			{"AdvanceBy": "voice"},
+			{"AdvanceBy": "gm"}
+		]
+	}`)
+
+	deps := newTestDeps(t)
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	// advance once -> currentIndex 1
+	if err := m.HandleAdvance(context.Background(), uuid.New(), true, ""); err != nil {
+		t.Fatalf("advance error = %v", err)
+	}
+
+	state := m.GetState()
+	if state.CurrentIndex != 1 {
+		t.Errorf("currentIndex = %d, want 1", state.CurrentIndex)
+	}
+	if state.BgmMediaID != "bgm-1" {
+		t.Errorf("bgmMediaId = %q, want bgm-1", state.BgmMediaID)
+	}
+	if state.Status != "playing" {
+		t.Errorf("status = %q, want playing", state.Status)
+	}
+	if len(state.Lines) != 4 {
+		t.Errorf("expected 4 lines, got %d", len(state.Lines))
+	}
+	if state.Lines[1].AdvanceBy != "role:detective" {
+		t.Errorf("expected role:detective, got %q", state.Lines[1].AdvanceBy)
+	}
+	// Snapshot must be independent — mutating returned slice must not affect module
+	state.Lines[0].AdvanceBy = "mutated"
+	state2 := m.GetState()
+	if state2.Lines[0].AdvanceBy == "mutated" {
+		t.Errorf("GetState() must return an independent snapshot")
+	}
+}
+
 func TestReadingModule_BuildState(t *testing.T) {
 	deps := newTestDeps(t)
 	m := NewReadingModule()
