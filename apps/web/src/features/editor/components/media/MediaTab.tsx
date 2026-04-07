@@ -1,0 +1,120 @@
+import { useMemo, useState } from "react";
+import { Spinner } from "@/shared/components/ui";
+import {
+  useMediaList,
+  type MediaResponse,
+  type MediaType,
+} from "@/features/editor/mediaApi";
+import { MediaToolbar, type MediaFilter } from "./MediaToolbar";
+import { MediaCard } from "./MediaCard";
+import { MediaDetail } from "./MediaDetail";
+import { usePreviewPlayer } from "./usePreviewPlayer";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface MediaTabProps {
+  themeId: string;
+}
+
+// ---------------------------------------------------------------------------
+// MediaTab
+// ---------------------------------------------------------------------------
+
+export function MediaTab({ themeId }: MediaTabProps) {
+  const [filter, setFilter] = useState<MediaFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Modal state — D3/D4 will wire actual modals.
+  const [, setUploadOpen] = useState(false);
+  const [, setYoutubeOpen] = useState(false);
+
+  // Backend MediaType only supports BGM/SFX/VOICE today; the "VIDEO" pill is
+  // forward-compat. Pass it through anyway — once the backend lands VIDEO it
+  // will Just Work without UI changes.
+  const queryType: MediaType | undefined =
+    filter === "all" ? undefined : (filter as MediaType);
+
+  const { data: mediaList, isLoading, isError } = useMediaList(themeId, queryType);
+  const media: MediaResponse[] = useMemo(() => mediaList ?? [], [mediaList]);
+  const selected = media.find((m) => m.id === selectedId) ?? null;
+
+  const { playingId, toggle: togglePreview, stop: stopPreview } = usePreviewPlayer();
+
+  const handleFilterChange = (next: MediaFilter) => {
+    setFilter(next);
+    setSelectedId(null);
+    stopPreview();
+  };
+
+  const handleClose = () => {
+    setSelectedId(null);
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      <MediaToolbar
+        filter={filter}
+        onFilterChange={handleFilterChange}
+        onUploadClick={() => setUploadOpen(true)}
+        onYouTubeClick={() => setYoutubeOpen(true)}
+      />
+
+      <div className="flex flex-1 gap-4 overflow-hidden p-4">
+        {/* List */}
+        <div className="flex-1 overflow-y-auto">
+          {isLoading ? (
+            <div
+              className="flex h-full items-center justify-center"
+              role="status"
+              aria-label="미디어 로딩 중"
+            >
+              <Spinner />
+            </div>
+          ) : isError ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-xs text-rose-400">미디어 목록을 불러오지 못했습니다</p>
+            </div>
+          ) : media.length === 0 ? (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
+                미디어 없음
+              </p>
+            </div>
+          ) : (
+            <div
+              className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4"
+              role="list"
+              aria-label="미디어 목록"
+            >
+              {media.map((m) => (
+                <div role="listitem" key={m.id}>
+                  <MediaCard
+                    media={m}
+                    selected={selectedId === m.id}
+                    onClick={() => setSelectedId(m.id)}
+                    isPreviewPlaying={playingId === m.id}
+                    onPreviewToggle={() => {
+                      if (m.url) togglePreview(m.id, m.url);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Detail */}
+        {selected && (
+          <aside className="w-96 shrink-0 overflow-y-auto border-l border-slate-800 pl-4">
+            <MediaDetail media={selected} themeId={themeId} onClose={handleClose} />
+          </aside>
+        )}
+      </div>
+
+      {/* Modal placeholders — wired in D3/D4 */}
+      {/* <MediaUploadModal open={uploadOpen} onClose={() => setUploadOpen(false)} themeId={themeId} /> */}
+      {/* <YouTubeAddModal open={youtubeOpen} onClose={() => setYoutubeOpen(false)} themeId={themeId} /> */}
+    </div>
+  );
+}
