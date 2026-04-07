@@ -9,6 +9,7 @@ import { MediaToolbar, type MediaFilter } from "./MediaToolbar";
 import { MediaCard } from "./MediaCard";
 import { MediaDetail } from "./MediaDetail";
 import { MediaUploadModal } from "./MediaUploadModal";
+import { YouTubeAddModal } from "./YouTubeAddModal";
 import { usePreviewPlayer } from "./usePreviewPlayer";
 
 // ---------------------------------------------------------------------------
@@ -26,15 +27,12 @@ export interface MediaTabProps {
 export function MediaTab({ themeId }: MediaTabProps) {
   const [filter, setFilter] = useState<MediaFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // Modal state — D4 will wire YouTube modal.
+  // Modal state.
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [, setYoutubeOpen] = useState(false);
+  const [youtubeOpen, setYoutubeOpen] = useState(false);
 
-  // Backend MediaType only supports BGM/SFX/VOICE today; the "VIDEO" pill is
-  // forward-compat. Pass it through anyway — once the backend lands VIDEO it
-  // will Just Work without UI changes.
   const queryType: MediaType | undefined =
-    filter === "all" ? undefined : (filter as MediaType);
+    filter === "all" ? undefined : filter;
 
   const { data: mediaList, isLoading, isError } = useMediaList(themeId, queryType);
   const media: MediaResponse[] = useMemo(() => mediaList ?? [], [mediaList]);
@@ -118,8 +116,11 @@ export function MediaTab({ themeId }: MediaTabProps) {
         onClose={() => setUploadOpen(false)}
         themeId={themeId}
       />
-      {/* YouTubeAddModal wired in D4 */}
-      {/* <YouTubeAddModal open={youtubeOpen} onClose={() => setYoutubeOpen(false)} themeId={themeId} /> */}
+      <YouTubeAddModal
+        open={youtubeOpen}
+        onClose={() => setYoutubeOpen(false)}
+        themeId={themeId}
+      />
     </div>
   );
 }

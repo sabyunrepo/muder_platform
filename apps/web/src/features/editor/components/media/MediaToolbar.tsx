@@ -5,12 +5,7 @@ import type { MediaType } from "@/features/editor/mediaApi";
 // Types
 // ---------------------------------------------------------------------------
 
-/**
- * Filter includes "VIDEO" in the UI even though backend MediaType currently
- * only supports BGM/SFX/VOICE. Backend will add VIDEO before E2E (parallel
- * task). Until then, the VIDEO pill produces an empty list.
- */
-export type MediaFilter = MediaType | "VIDEO" | "all";
+export type MediaFilter = MediaType | "all";
 
 export interface MediaToolbarProps {
   filter: MediaFilter;
