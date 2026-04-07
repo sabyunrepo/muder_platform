@@ -68,6 +68,50 @@ func (q *Queries) DeleteReadingSectionWithOwner(ctx context.Context, arg DeleteR
 	return result.RowsAffected(), nil
 }
 
+const findMediaReferencesInReadingSections = `-- name: FindMediaReferencesInReadingSections :many
+SELECT DISTINCT rs.id, rs.name FROM reading_sections rs
+WHERE rs.theme_id = $1
+  AND (
+    rs.bgm_media_id = $2::uuid
+    OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
+      WHERE line->>'VoiceMediaID' = $2::text
+    )
+  )
+`
+
+type FindMediaReferencesInReadingSectionsParams struct {
+	ThemeID uuid.UUID `json:"theme_id"`
+	MediaID uuid.UUID `json:"media_id"`
+}
+
+type FindMediaReferencesInReadingSectionsRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+// Returns reading sections that reference the given media as bgm_media_id
+// OR inside any line's VoiceMediaID (PascalCase key — matches engine struct serialization).
+func (q *Queries) FindMediaReferencesInReadingSections(ctx context.Context, arg FindMediaReferencesInReadingSectionsParams) ([]FindMediaReferencesInReadingSectionsRow, error) {
+	rows, err := q.db.Query(ctx, findMediaReferencesInReadingSections, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindMediaReferencesInReadingSectionsRow{}
+	for rows.Next() {
+		var i FindMediaReferencesInReadingSectionsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getReadingSection = `-- name: GetReadingSection :one
 SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at FROM reading_sections WHERE id = $1
 `

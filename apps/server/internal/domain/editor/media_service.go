@@ -33,8 +33,27 @@ type MediaService interface {
 	GetMediaPlayURL(ctx context.Context, sessionID, mediaID uuid.UUID) (string, error)
 }
 
+// mediaQueries is the subset of db.Queries that mediaService depends on.
+// Defined as an interface so unit tests can substitute a fake implementation
+// without spinning up Postgres.
+type mediaQueries interface {
+	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
+	GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error)
+	GetMediaWithOwner(ctx context.Context, arg db.GetMediaWithOwnerParams) (db.ThemeMedium, error)
+	ListMediaByTheme(ctx context.Context, themeID uuid.UUID) ([]db.ThemeMedium, error)
+	ListMediaByThemeAndType(ctx context.Context, arg db.ListMediaByThemeAndTypeParams) ([]db.ThemeMedium, error)
+	CountMediaByTheme(ctx context.Context, themeID uuid.UUID) (int64, error)
+	SumMediaSizeByTheme(ctx context.Context, themeID uuid.UUID) (int64, error)
+	SumMediaSizeByCreator(ctx context.Context, creatorID uuid.UUID) (int64, error)
+	CreateMedia(ctx context.Context, arg db.CreateMediaParams) (db.ThemeMedium, error)
+	UpdateMedia(ctx context.Context, arg db.UpdateMediaParams) (db.ThemeMedium, error)
+	DeleteMedia(ctx context.Context, id uuid.UUID) error
+	DeleteMediaWithOwner(ctx context.Context, arg db.DeleteMediaWithOwnerParams) (int64, error)
+	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
+}
+
 type mediaService struct {
-	q       *db.Queries
+	q       mediaQueries
 	storage storage.Provider
 	logger  zerolog.Logger
 }
@@ -42,6 +61,12 @@ type mediaService struct {
 // NewMediaService constructs a MediaService.
 // Theme ownership checks are performed directly via db.Queries to minimize the dependency surface.
 func NewMediaService(q *db.Queries, storageProvider storage.Provider, logger zerolog.Logger) MediaService {
+	return newMediaServiceWith(q, storageProvider, logger)
+}
+
+// newMediaServiceWith is the test-friendly constructor that accepts the
+// narrower mediaQueries interface so a fake can be injected.
+func newMediaServiceWith(q mediaQueries, storageProvider storage.Provider, logger zerolog.Logger) *mediaService {
 	return &mediaService{
 		q:       q,
 		storage: storageProvider,
@@ -388,6 +413,29 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		}
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
 		return apperror.Internal("failed to get media")
+	}
+
+	// Block deletion if the media is referenced by any reading section
+	// (either as bgmMediaId or inside a line's voiceMediaId).
+	refs, err := s.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
+		ThemeID: media.ThemeID,
+		MediaID: mediaID,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check media references")
+		return apperror.Internal("failed to check media references")
+	}
+	if len(refs) > 0 {
+		refList := make([]map[string]string, len(refs))
+		for i, r := range refs {
+			refList[i] = map[string]string{
+				"type": "reading_section",
+				"id":   r.ID.String(),
+				"name": r.Name,
+			}
+		}
+		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by reading sections").
+			WithParams(map[string]any{"references": refList})
 	}
 
 	if media.SourceType == SourceTypeFile && media.StorageKey.Valid && s.storage != nil {
