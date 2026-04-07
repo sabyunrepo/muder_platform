@@ -1,0 +1,27 @@
+---
+description: Stop running autopilot and save state
+allowed-tools: Bash Read Write
+---
+
+Stop the autopilot loop gracefully.
+
+## Steps
+
+1. Save current state:
+   ```bash
+   ~/.claude/skills/plan-autopilot/scripts/autopilot-loop.sh pause user_request
+   ```
+2. This creates `.claude/autopilot-state.json` with current wave, PR, timestamp, reason.
+3. **Note**: Sub-agents already in flight cannot be interrupted. They'll finish their current step.
+4. Report:
+   ```
+   ⏸ Autopilot paused.
+
+   Current: <wave> <pr>
+   Paused: <timestamp>
+
+   Resume: /plan-autopilot (or /plan-resume for full context)
+   Abort entirely: rm .claude/autopilot-state.json + /plan-status to verify
+   ```
+
+`.claude/active-plan.json` is NOT deleted — the plan stays active, just execution is paused.

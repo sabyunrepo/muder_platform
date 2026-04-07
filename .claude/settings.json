@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "command": ".claude/scripts/plan-status.sh --verbose"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "command": ".claude/scripts/plan-status.sh --compact"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": ".claude/scripts/plan-guard.sh"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "command": ".claude/scripts/plan-remind.sh"
+      },
+      {
+        "matcher": "Read",
+        "command": ".claude/scripts/plan-track-reads.sh"
+      }
+    ]
+  }
+}
