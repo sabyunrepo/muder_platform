@@ -283,6 +283,22 @@ func (e *GameProgressionEngine) enterCurrentPhase(ctx context.Context) error {
 	}
 	for _, pc := range e.config.Phases {
 		if pc.ID == phase.ID {
+			// Auto-inject SET_BGM ahead of user-defined onEnter when the phase
+			// declares a bgmId. onEnter actions can still override afterwards.
+			if pc.BGMId != "" {
+				bgmParams, _ := json.Marshal(map[string]any{
+					"mediaId": pc.BGMId,
+					"fadeMs":  1500,
+				})
+				bgmAction := PhaseActionPayload{
+					Action: ActionSetBGM,
+					Params: bgmParams,
+				}
+				if err := e.dispatcher.Dispatch(ctx, bgmAction); err != nil {
+					// Best-effort: log and continue — BGM failure must not block phase entry.
+					e.logger.Printf("engine: failed to dispatch auto SET_BGM for phase %s: %v", pc.ID, err)
+				}
+			}
 			return e.dispatcher.DispatchBatch(ctx, pc.OnEnter)
 		}
 	}

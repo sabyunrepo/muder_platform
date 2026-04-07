@@ -8,5 +8,6 @@ import (
 	_ "github.com/mmp-platform/server/internal/module/core"
 	_ "github.com/mmp-platform/server/internal/module/decision"
 	_ "github.com/mmp-platform/server/internal/module/exploration"
+	_ "github.com/mmp-platform/server/internal/module/media"
 	_ "github.com/mmp-platform/server/internal/module/progression"
 )

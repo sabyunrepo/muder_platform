@@ -18,6 +18,8 @@ type ReadingModule struct {
 	// config
 	advanceMode    string // "gm", "auto", "player"
 	defaultVoiceID string
+	bgmId          string
+	lines          []readingLineConfig
 
 	// state
 	currentLineIndex int
@@ -26,9 +28,15 @@ type ReadingModule struct {
 }
 
 type readingConfig struct {
-	AdvanceMode    string `json:"AdvanceMode"`
-	DefaultVoiceID string `json:"DefaultVoiceID"`
-	TotalLines     int    `json:"TotalLines"`
+	AdvanceMode    string              `json:"AdvanceMode"`
+	DefaultVoiceID string              `json:"DefaultVoiceID"`
+	TotalLines     int                 `json:"TotalLines"`
+	Lines          []readingLineConfig `json:"Lines,omitempty"`
+	BGMId          string              `json:"BGMId,omitempty"`
+}
+
+type readingLineConfig struct {
+	VoiceID string `json:"VoiceID,omitempty"`
 }
 
 // NewReadingModule creates a new ReadingModule instance.
@@ -58,11 +66,32 @@ func (m *ReadingModule) Init(ctx context.Context, deps engine.ModuleDeps, config
 
 	m.advanceMode = cfg.AdvanceMode
 	m.defaultVoiceID = cfg.DefaultVoiceID
+	m.bgmId = cfg.BGMId
+	m.lines = cfg.Lines
 	m.totalLines = cfg.TotalLines
+	if m.totalLines == 0 && len(m.lines) > 0 {
+		m.totalLines = len(m.lines)
+	}
 	m.currentLineIndex = 0
 	m.isActive = true
 
+	// If section BGM configured, emit override on activation
+	if m.bgmId != "" {
+		deps.EventBus.Publish(engine.Event{
+			Type:    "audio.set_bgm",
+			Payload: map[string]any{"mediaId": m.bgmId, "fadeMs": 1000},
+		})
+	}
+
 	return nil
+}
+
+// resolveVoiceID returns the voiceID for a given line index, falling back to default.
+func (m *ReadingModule) resolveVoiceID(idx int) string {
+	if idx >= 0 && idx < len(m.lines) && m.lines[idx].VoiceID != "" {
+		return m.lines[idx].VoiceID
+	}
+	return m.defaultVoiceID
 }
 
 func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, msgType string, payload json.RawMessage) error {
@@ -94,6 +123,7 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 		m.currentLineIndex++
 		lineIndex := m.currentLineIndex
 		totalLines := m.totalLines
+		voiceID := m.resolveVoiceID(lineIndex)
 		completed := m.currentLineIndex >= m.totalLines-1
 		if completed {
 			m.isActive = false
@@ -101,8 +131,12 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 		m.mu.Unlock()
 
 		m.deps.EventBus.Publish(engine.Event{
-			Type:    "reading.line_changed",
-			Payload: map[string]any{"lineIndex": lineIndex, "totalLines": totalLines},
+			Type: "reading.line_changed",
+			Payload: map[string]any{
+				"lineIndex":  lineIndex,
+				"totalLines": totalLines,
+				"voiceId":    voiceID,
+			},
 		})
 
 		// Check if this was the last line
@@ -113,6 +147,19 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 			})
 		}
 		return nil
+
+	case "reading:voice_ended":
+		if !m.isActive {
+			m.mu.Unlock()
+			return nil
+		}
+		if m.advanceMode != "auto" {
+			m.mu.Unlock()
+			return nil // non-auto modes ignore voice_ended
+		}
+		m.mu.Unlock()
+		// Trigger advance by recursing (self message)
+		return m.HandleMessage(ctx, playerID, "reading:advance", nil)
 
 	case "reading:jump":
 		if !m.isActive {
@@ -134,6 +181,7 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 		m.currentLineIndex = p.LineIndex
 		lineIndex := m.currentLineIndex
 		totalLines := m.totalLines
+		voiceID := m.resolveVoiceID(lineIndex)
 		completed := m.currentLineIndex >= m.totalLines-1
 		if completed {
 			m.isActive = false
@@ -141,8 +189,12 @@ func (m *ReadingModule) HandleMessage(ctx context.Context, playerID uuid.UUID, m
 		m.mu.Unlock()
 
 		m.deps.EventBus.Publish(engine.Event{
-			Type:    "reading.line_changed",
-			Payload: map[string]any{"lineIndex": lineIndex, "totalLines": totalLines},
+			Type: "reading.line_changed",
+			Payload: map[string]any{
+				"lineIndex":  lineIndex,
+				"totalLines": totalLines,
+				"voiceId":    voiceID,
+			},
 		})
 
 		// Check if jumped to last line
@@ -188,7 +240,17 @@ func (m *ReadingModule) Schema() json.RawMessage {
 		"properties": {
 			"AdvanceMode": {"type": "string", "enum": ["gm", "auto", "player"], "default": "gm"},
 			"DefaultVoiceID": {"type": "string"},
-			"TotalLines": {"type": "integer", "minimum": 0}
+			"TotalLines": {"type": "integer", "minimum": 0},
+			"BGMId": {"type": "string"},
+			"Lines": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"properties": {
+						"VoiceID": {"type": "string"}
+					}
+				}
+			}
 		}
 	}`)
 }
