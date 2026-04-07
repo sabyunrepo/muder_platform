@@ -78,6 +78,30 @@ export function createAudioOrchestrator(
   let cutsceneBgmKindAtStart: "file" | "youtube" | null = null;
   let disposed = false;
 
+  // Track master/bgm/mute state internally so YouTube (which lives outside
+  // the Web Audio graph) can have an effective volume computed and applied.
+  // Web Audio graph handles file BGM natively through channel gains, but the
+  // YouTube IFrame runs out-of-process — we must forward volume changes to
+  // it manually.
+  let masterVolume = 1;
+  let bgmVolume = 1;
+  let muted = false;
+
+  function effectiveYouTubeVolume(): number {
+    if (muted) return 0;
+    // YouTubePlayer.setVolume expects 0..1 (converts to 0..100 internally).
+    return Math.max(0, Math.min(1, masterVolume * bgmVolume));
+  }
+
+  function applyYouTubeVolume(): void {
+    if (!activeYouTubePlayer) return;
+    try {
+      activeYouTubePlayer.setVolume(effectiveYouTubeVolume());
+    } catch {
+      // ignore
+    }
+  }
+
   function notifyBgmId(id: string | null): void {
     activeBgmMediaId = id;
     try {
@@ -146,6 +170,13 @@ export function createAudioOrchestrator(
       activeYouTubePlayer = player;
       try {
         await player.load({ videoId: payload.videoId, hidden: true });
+        // Apply current master*bgm volume (mute-aware) before playing so we
+        // don't leak audio at an unintended level.
+        try {
+          player.setVolume(effectiveYouTubeVolume());
+        } catch {
+          // ignore
+        }
         await player.play();
       } catch (err) {
         if (import.meta.env?.DEV) {
@@ -243,6 +274,29 @@ export function createAudioOrchestrator(
 
   function setChannelVolume(channel: AudioChannel, volume: number): void {
     graph.setChannelVolume(channel, volume);
+
+    // Track master/bgm state for YouTube routing. The audioStore drives mute
+    // via `master` channel being set to 0 when isMuted → so we treat a master
+    // value of exactly 0 as mute. Any other value updates the stored master.
+    if (channel === "master") {
+      if (volume === 0) {
+        muted = true;
+      } else {
+        muted = false;
+        masterVolume = volume;
+      }
+    } else if (channel === "bgm") {
+      bgmVolume = volume;
+    }
+
+    // If YouTube BGM is the active source, forward the combined volume —
+    // the Web Audio channel gain has no effect on the IFrame player.
+    if (
+      activeBgmKind === "youtube" &&
+      (channel === "master" || channel === "bgm")
+    ) {
+      applyYouTubeVolume();
+    }
   }
 
   function setReadingVoiceEndedHandler(

@@ -61,7 +61,29 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
   let activeIdx: 0 | 1 = 0; // currently audible slot
   let currentTrackId: string | null = null;
   let pendingFadeEnd: number | null = null; // ctx time when current fade completes
+  let cleanupTimer: ReturnType<typeof setTimeout> | null = null;
+  let stopTimer: ReturnType<typeof setTimeout> | null = null;
+  // Resolver for the in-flight stop() promise, so we can settle it
+  // immediately if the stopTimer is cancelled (dispose or preempting play).
+  let stopResolver: (() => void) | null = null;
   let disposed = false;
+
+  function clearTimers(): void {
+    if (cleanupTimer !== null) {
+      clearTimeout(cleanupTimer);
+      cleanupTimer = null;
+    }
+    if (stopTimer !== null) {
+      clearTimeout(stopTimer);
+      stopTimer = null;
+    }
+    if (stopResolver !== null) {
+      // Resolve the pending stop() promise so callers aren't stuck.
+      const resolve = stopResolver;
+      stopResolver = null;
+      resolve();
+    }
+  }
 
   function inactive(): Slot {
     return slots[activeIdx === 0 ? 1 : 0];
@@ -100,6 +122,9 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
 
     // Same-track no-op
     if (currentTrackId === track.id) return;
+
+    // Cancel any pending cleanup/stop timers — a new track is starting.
+    clearTimers();
 
     // If a crossfade is mid-flight, finish it instantly so we can start a fresh one.
     if (pendingFadeEnd !== null) {
@@ -148,7 +173,8 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
 
     // Schedule cleanup of the previously-active slot once fade completes.
     const fadeEndAt = pendingFadeEnd;
-    setTimeout(() => {
+    cleanupTimer = setTimeout(() => {
+      cleanupTimer = null;
       // If a newer play() preempted us, this stale timer is irrelevant.
       if (disposed) return;
       if (pendingFadeEnd !== fadeEndAt) return;
@@ -174,6 +200,9 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
     if (disposed) return;
     if (currentTrackId === null && pendingFadeEnd === null) return;
 
+    // Cancel any pending cleanup/stop timers — we're starting a new stop fade.
+    clearTimers();
+
     if (pendingFadeEnd !== null) {
       settleInFlightFade();
     }
@@ -182,6 +211,7 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
     const fadeSec = fade / 1000;
     const now = ctx.currentTime;
     const cur = active();
+    const curIdx = activeIdx;
 
     cur.gain.gain.cancelScheduledValues(now);
     cur.gain.gain.setValueAtTime(cur.gain.gain.value, now);
@@ -190,7 +220,27 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
     currentTrackId = null;
 
     await new Promise<void>((resolve) => {
-      setTimeout(() => {
+      stopResolver = resolve;
+      stopTimer = setTimeout(() => {
+        stopTimer = null;
+        const done = stopResolver;
+        stopResolver = null;
+        // Guard: if a new track started between stop() and this timer firing,
+        // bail out — we must not clear the new track's audio.src.
+        if (disposed) {
+          done?.();
+          return;
+        }
+        if (currentTrackId !== null) {
+          done?.();
+          return;
+        }
+        // Guard: if active slot swapped (e.g. via a new play() that was then
+        // stopped differently), do not touch the wrong slot.
+        if (activeIdx !== curIdx) {
+          done?.();
+          return;
+        }
         try {
           cur.audio.pause();
         } catch {
@@ -198,7 +248,7 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
         }
         cur.audio.src = "";
         cur.trackId = null;
-        resolve();
+        done?.();
       }, fade);
     });
   }
@@ -230,6 +280,7 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
   function dispose(): void {
     if (disposed) return;
     disposed = true;
+    clearTimers();
     for (const slot of slots) {
       try {
         slot.audio.pause();

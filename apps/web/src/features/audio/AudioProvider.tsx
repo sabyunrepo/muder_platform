@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { useAudioStore } from "@/stores/audioStore";
 import { createAudioManager, type AudioManager } from "./AudioManager";
@@ -98,15 +98,15 @@ function buildAudioStack(): AudioStack | null {
 // ---------------------------------------------------------------------------
 
 export function AudioProvider({ children }: { children: React.ReactNode }) {
-  const stackRef = useRef<AudioStack | null>(null);
   const [stack, setStack] = useState<AudioStack | null>(null);
 
-  // Build stack ONCE on mount (StrictMode-safe via ref check).
+  // Build stack ONCE on mount. Rely on normal useEffect cleanup for disposal.
+  // StrictMode double-mount is fine: the first mount builds + disposes, then
+  // the second mount builds a fresh stack. Subscribers registered in the
+  // first mount are torn down before the second mount runs.
   useEffect(() => {
-    if (stackRef.current) return;
     const built = buildAudioStack();
     if (!built) return;
-    stackRef.current = built;
     setStack(built);
 
     // Sync initial volumes from store → orchestrator.
@@ -134,57 +134,44 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       } catch {
         // ignore
       }
-      stackRef.current = null;
       setStack(null);
     };
   }, []);
 
   // ----- Volume → orchestrator subscriptions ------------------------------
-
-  // master / mute
+  //
+  // One effect subscribes to the entire audioStore; subscriber reads fresh
+  // state via getState() rather than closure-captured variables. A `cancelled`
+  // flag ensures we don't touch a disposed stack if the subscribe callback
+  // races with unmount.
   useEffect(() => {
     if (!stack) return;
-    return useAudioStore.subscribe((state, prev) => {
+    let cancelled = false;
+    const unsubscribe = useAudioStore.subscribe((state, prev) => {
+      if (cancelled) return;
       if (
-        state.masterVolume === prev.masterVolume &&
-        state.isMuted === prev.isMuted
+        state.masterVolume !== prev.masterVolume ||
+        state.isMuted !== prev.isMuted
       ) {
-        return;
+        const effective = state.isMuted ? 0 : state.masterVolume;
+        stack.orchestrator.setChannelVolume("master", effective);
+        stack.audioManager.setVolume("master", effective);
       }
-      const effective = state.isMuted ? 0 : state.masterVolume;
-      stack.orchestrator.setChannelVolume("master", effective);
-      // legacy AudioManager mirror
-      stack.audioManager.setVolume("master", effective);
+      if (state.bgmVolume !== prev.bgmVolume) {
+        stack.orchestrator.setChannelVolume("bgm", state.bgmVolume);
+      }
+      if (state.voiceVolume !== prev.voiceVolume) {
+        stack.orchestrator.setChannelVolume("voice", state.voiceVolume);
+      }
+      if (state.sfxVolume !== prev.sfxVolume) {
+        stack.orchestrator.setChannelVolume("sfx", state.sfxVolume);
+        stack.audioManager.setVolume("sfx", state.sfxVolume);
+      }
     });
-  }, [stack]);
-
-  // bgm
-  useEffect(() => {
-    if (!stack) return;
-    return useAudioStore.subscribe((state, prev) => {
-      if (state.bgmVolume === prev.bgmVolume) return;
-      stack.orchestrator.setChannelVolume("bgm", state.bgmVolume);
-    });
-  }, [stack]);
-
-  // voice
-  useEffect(() => {
-    if (!stack) return;
-    return useAudioStore.subscribe((state, prev) => {
-      if (state.voiceVolume === prev.voiceVolume) return;
-      stack.orchestrator.setChannelVolume("voice", state.voiceVolume);
-    });
-  }, [stack]);
-
-  // sfx
-  useEffect(() => {
-    if (!stack) return;
-    return useAudioStore.subscribe((state, prev) => {
-      if (state.sfxVolume === prev.sfxVolume) return;
-      stack.orchestrator.setChannelVolume("sfx", state.sfxVolume);
-      // legacy AudioManager mirror
-      stack.audioManager.setVolume("sfx", state.sfxVolume);
-    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [stack]);
 
   // ----- Game WS event subscriptions --------------------------------------

@@ -217,4 +217,60 @@ describe("BgmManager", () => {
     await mgr.play({ id: "t1", url: "u1" });
     expect(mgr.getCurrentTrackId()).toBe(null);
   });
+
+  it("dispose during mid-crossfade clears timers (no leak)", async () => {
+    const clearSpy = vi.spyOn(global, "clearTimeout");
+    const mgr = createBgmManager({ graph: makeGraph() });
+    await mgr.play({ id: "t1", url: "u1" });
+    // cleanupTimer is now pending. Dispose BEFORE it fires.
+    const clearCountBefore = clearSpy.mock.calls.length;
+    mgr.dispose();
+    expect(clearSpy.mock.calls.length).toBeGreaterThan(clearCountBefore);
+
+    // Advance past the scheduled fade time; the cleanup callback must NOT
+    // mutate any slot state (it was cleared).
+    vi.advanceTimersByTime(5000);
+    expect(mgr.getCurrentTrackId()).toBe(null);
+    clearSpy.mockRestore();
+  });
+
+  it("dispose during pending stop timer clears it (no leak)", async () => {
+    const clearSpy = vi.spyOn(global, "clearTimeout");
+    const mgr = createBgmManager({ graph: makeGraph() });
+    await mgr.play({ id: "t1", url: "u1" });
+    // Advance past crossfade so the cleanup timer fires and we have a clean state.
+    vi.advanceTimersByTime(2000);
+    const stopPromise = mgr.stop();
+    // stopTimer is now pending.
+    const clearCountBefore = clearSpy.mock.calls.length;
+    mgr.dispose();
+    expect(clearSpy.mock.calls.length).toBeGreaterThan(clearCountBefore);
+
+    // Resolve the pending stop promise so we don't leak it.
+    vi.advanceTimersByTime(5000);
+    await stopPromise;
+    clearSpy.mockRestore();
+  });
+
+  it("rapid stop → play: stale stop timer does not clear new track's audio.src", async () => {
+    const mgr = createBgmManager({ graph: makeGraph() });
+    await mgr.play({ id: "t1", url: "u1" });
+    vi.advanceTimersByTime(2000); // let first crossfade complete
+
+    // Start stop fade (will schedule stopTimer).
+    const stopPromise = mgr.stop();
+    // Immediately start a new track BEFORE the stop timer fires.
+    await mgr.play({ id: "t2", url: "u2" });
+
+    // Now let all timers fire.
+    vi.advanceTimersByTime(5000);
+    await stopPromise;
+
+    // The new track must still be tracked and its audio element must not
+    // have had its src cleared by the stale stop timer.
+    expect(mgr.getCurrentTrackId()).toBe("t2");
+    const t2Audio = allAudios.find((a) => a.src === "u2");
+    expect(t2Audio).toBeDefined();
+    expect(t2Audio!.src).toBe("u2");
+  });
 });

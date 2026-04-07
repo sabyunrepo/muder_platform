@@ -382,6 +382,86 @@ describe("AudioOrchestrator", () => {
       h.orchestrator.setChannelVolume("bgm", 0.42);
       expect(h.graph.setChannelVolume).toHaveBeenCalledWith("bgm", 0.42);
     });
+
+    it("forwards bgm volume to active YouTube player (master * bgm)", async () => {
+      // Establish master=1.0, bgm=1.0 baseline.
+      h.orchestrator.setChannelVolume("master", 1);
+      h.orchestrator.setChannelVolume("bgm", 1);
+
+      await h.orchestrator.handleSetBgm({
+        mediaId: "y1",
+        sourceType: "YOUTUBE",
+        videoId: "vid12345678",
+      });
+      const yt = h.ytPlayers[0];
+      (yt.setVolume as ReturnType<typeof vi.fn>).mockClear();
+
+      h.orchestrator.setChannelVolume("bgm", 0.5);
+      // Effective volume = master(1) * bgm(0.5) = 0.5
+      expect(yt.setVolume).toHaveBeenCalledWith(0.5);
+    });
+
+    it("forwards master volume to active YouTube player", async () => {
+      h.orchestrator.setChannelVolume("master", 1);
+      h.orchestrator.setChannelVolume("bgm", 0.8);
+
+      await h.orchestrator.handleSetBgm({
+        mediaId: "y1",
+        sourceType: "YOUTUBE",
+        videoId: "vid12345678",
+      });
+      const yt = h.ytPlayers[0];
+      (yt.setVolume as ReturnType<typeof vi.fn>).mockClear();
+
+      h.orchestrator.setChannelVolume("master", 0.5);
+      // master(0.5) * bgm(0.8) = 0.4
+      expect(yt.setVolume).toHaveBeenCalledWith(
+        expect.closeTo(0.4, 5) as unknown as number,
+      );
+    });
+
+    it("master=0 mutes YouTube BGM immediately", async () => {
+      h.orchestrator.setChannelVolume("master", 1);
+      h.orchestrator.setChannelVolume("bgm", 1);
+
+      await h.orchestrator.handleSetBgm({
+        mediaId: "y1",
+        sourceType: "YOUTUBE",
+        videoId: "vid12345678",
+      });
+      const yt = h.ytPlayers[0];
+      (yt.setVolume as ReturnType<typeof vi.fn>).mockClear();
+
+      h.orchestrator.setChannelVolume("master", 0);
+      expect(yt.setVolume).toHaveBeenCalledWith(0);
+    });
+
+    it("does not call YouTube setVolume when bgm is a FILE source", async () => {
+      await h.orchestrator.handleSetBgm({
+        mediaId: "f1",
+        sourceType: "FILE",
+        url: "u1",
+      });
+      // No YouTube player was created, so nothing to forward.
+      expect(h.ytPlayers).toHaveLength(0);
+      h.orchestrator.setChannelVolume("bgm", 0.3);
+      expect(h.graph.setChannelVolume).toHaveBeenCalledWith("bgm", 0.3);
+    });
+
+    it("applies current effective volume when a YouTube player is first created", async () => {
+      h.orchestrator.setChannelVolume("master", 0.6);
+      h.orchestrator.setChannelVolume("bgm", 0.5);
+      await h.orchestrator.handleSetBgm({
+        mediaId: "y1",
+        sourceType: "YOUTUBE",
+        videoId: "vid12345678",
+      });
+      const yt = h.ytPlayers[0];
+      // Expect setVolume called with 0.6 * 0.5 = 0.3 during load.
+      expect(yt.setVolume).toHaveBeenCalledWith(
+        expect.closeTo(0.3, 5) as unknown as number,
+      );
+    });
   });
 
   describe("setReadingVoiceEndedHandler", () => {
