@@ -95,6 +95,15 @@ type MediaAsset struct {
 	Duration int    `json:"duration,omitempty"` // seconds, 0 = unknown
 }
 
+// PlayMediaPayload is the params shape for ActionPlayMedia phase actions.
+// The server validates the enum shape; clients decide actual playback.
+type PlayMediaPayload struct {
+	MediaID     string `json:"mediaId"`
+	Mode        string `json:"mode,omitempty"`        // "" | "cutscene" | "inline"
+	Skippable   bool   `json:"skippable,omitempty"`
+	BgmBehavior string `json:"bgmBehavior,omitempty"` // "" | "pause" | "keep" | "stop"
+}
+
 // ModuleConfig is the per-module configuration from configJson.modules[].
 type ModuleConfig struct {
 	Name     string          `json:"name"`

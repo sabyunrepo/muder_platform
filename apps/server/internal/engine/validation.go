@@ -159,6 +159,22 @@ func hasMediaReferences(config GameConfig) bool {
 	return false
 }
 
+// Validate checks that the PlayMediaPayload enum fields are within allowed values.
+// Empty strings are accepted for backward compatibility.
+func (p PlayMediaPayload) Validate() error {
+	switch p.Mode {
+	case "", "cutscene", "inline":
+	default:
+		return fmt.Errorf("invalid mode %q (allowed: cutscene, inline)", p.Mode)
+	}
+	switch p.BgmBehavior {
+	case "", "pause", "keep", "stop":
+	default:
+		return fmt.Errorf("invalid bgmBehavior %q (allowed: pause, keep, stop)", p.BgmBehavior)
+	}
+	return nil
+}
+
 func validateAction(action PhaseActionPayload, enabled map[string]bool) error {
 	// LOCK/UNLOCK target a specific module.
 	if action.Action == ActionLockModule || action.Action == ActionUnlockModule {
