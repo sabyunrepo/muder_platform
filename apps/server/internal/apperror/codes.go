@@ -87,4 +87,15 @@ const (
 	ErrMediaStorageFull   = "MEDIA_STORAGE_FULL"
 	ErrMediaUploadExpired = "MEDIA_UPLOAD_EXPIRED"
 	ErrMediaOEmbedFailed  = "MEDIA_OEMBED_FAILED"
+
+	// Reading errors
+	ErrReadingSectionNotFound  = "READING_SECTION_NOT_FOUND"
+	ErrReadingAdvanceForbidden = "READING_ADVANCE_FORBIDDEN"
+	ErrReadingInvalidAdvanceBy = "READING_INVALID_ADVANCE_BY"
+	ErrReadingLineOutOfRange   = "READING_LINE_OUT_OF_RANGE"
+	ErrReadingVoiceRequired    = "READING_VOICE_REQUIRED"
+
+	// Media playback runtime errors
+	ErrMediaReferenceInUse = "MEDIA_REFERENCE_IN_USE"
+	ErrMediaNotInTheme     = "MEDIA_NOT_IN_THEME"
 )
