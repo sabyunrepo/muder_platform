@@ -19,9 +19,9 @@
     ],
     "started_at": "2026-04-08",
     "started_commit": "52fd23e",
-    "current_wave": "W1",
-    "current_pr": "PR-1",
-    "current_task": "Spawn W1 parallel agents (SessionManager + Hub lifecycle)",
+    "current_wave": "W2",
+    "current_pr": "PR-3",
+    "current_task": "BaseModuleHandler + EventMapping infra (sequential, single PR)",
     "status": "pending",
     "blockers": [],
     "waves": [
@@ -77,22 +77,25 @@
       "PR-1": {
         "title": "SessionManager + Session actor skeleton",
         "depends_on": ["PR-0"],
-        "scope": ["apps/server/internal/session/**"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
+        "scope": ["apps/server/internal/session/**", "apps/server/internal/engine/engine.go"],
+        "tasks_total": 6,
+        "tasks_done": 6,
+        "status": "completed",
         "branch": "feat/phase-8.0/pr-1-session-manager",
-        "commit": null
+        "commit": "74129fc",
+        "merged_via_pr": [17],
+        "deferred": ["Manager.Stop ctx+reason signature → PR-3 DI"]
       },
       "PR-2": {
         "title": "Hub lifecycle listener",
         "depends_on": ["PR-0"],
-        "scope": ["apps/server/internal/ws/hub.go", "apps/server/internal/ws/hub_test.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
+        "scope": ["apps/server/internal/ws/hub.go", "apps/server/internal/ws/hub_test.go", "apps/server/internal/ws/lifecycle.go", "apps/server/internal/ws/hub_lifecycle_test.go"],
+        "tasks_total": 4,
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-8.0/pr-2-hub-lifecycle",
-        "commit": null
+        "commit": "daa56b8",
+        "merged_via_pr": [16]
       },
       "PR-3": {
         "title": "BaseModuleHandler + EventMapping",
