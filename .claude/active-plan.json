@@ -1,0 +1,169 @@
+{
+  "active": {
+    "id": "phase-8.0-engine-integration",
+    "name": "Phase 8.0 — Engine Integration Layer",
+    "dir": "docs/plans/2026-04-08-engine-integration",
+    "design": "docs/plans/2026-04-08-engine-integration/design.md",
+    "plan": "docs/plans/2026-04-08-engine-integration/plan.md",
+    "checklist": "docs/plans/2026-04-08-engine-integration/checklist.md",
+    "progress_memory": "memory/project_phase80_progress.md",
+    "scope": [
+      "apps/server/internal/session/**",
+      "apps/server/internal/ws/hub.go",
+      "apps/server/internal/ws/base_module_handler*",
+      "apps/server/internal/ws/handlers/**",
+      "apps/server/internal/bridge/**",
+      "apps/server/internal/engine/**",
+      "apps/server/internal/domain/room/**",
+      "apps/server/cmd/server/main.go"
+    ],
+    "started_at": "2026-04-08",
+    "started_commit": "52fd23e",
+    "current_wave": "W0",
+    "current_pr": "PR-0",
+    "current_task": "plan.md + checklist refs + PR-0 commit",
+    "status": "in_progress",
+    "blockers": [],
+    "waves": [
+      {
+        "id": "W0",
+        "name": "docs-and-infra",
+        "mode": "sequential",
+        "prs": ["PR-0"]
+      },
+      {
+        "id": "W1",
+        "name": "skeletons",
+        "mode": "parallel",
+        "prs": ["PR-1", "PR-2"]
+      },
+      {
+        "id": "W2",
+        "name": "infra",
+        "mode": "sequential",
+        "prs": ["PR-3"]
+      },
+      {
+        "id": "W3",
+        "name": "pattern-reference",
+        "mode": "sequential",
+        "prs": ["PR-4"]
+      },
+      {
+        "id": "W4",
+        "name": "parallel-wiring",
+        "mode": "parallel",
+        "prs": ["PR-5", "PR-6", "PR-7", "PR-8"]
+      },
+      {
+        "id": "W5",
+        "name": "observability",
+        "mode": "sequential",
+        "prs": ["PR-9"]
+      }
+    ],
+    "prs": {
+      "PR-0": {
+        "title": "Docs + plan-autopilot infra",
+        "depends_on": [],
+        "scope": ["docs/plans/2026-04-08-engine-integration/**", ".claude/**", "CLAUDE.md", "memory/**"],
+        "tasks_total": 10,
+        "tasks_done": 5,
+        "status": "in_progress",
+        "branch": "feat/phase-8.0/pr-0-docs-infra",
+        "commit": null
+      },
+      "PR-1": {
+        "title": "SessionManager + Session actor skeleton",
+        "depends_on": ["PR-0"],
+        "scope": ["apps/server/internal/session/**"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-1-session-manager",
+        "commit": null
+      },
+      "PR-2": {
+        "title": "Hub lifecycle listener",
+        "depends_on": ["PR-0"],
+        "scope": ["apps/server/internal/ws/hub.go", "apps/server/internal/ws/hub_test.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-2-hub-lifecycle",
+        "commit": null
+      },
+      "PR-3": {
+        "title": "BaseModuleHandler + EventMapping",
+        "depends_on": ["PR-1", "PR-2"],
+        "scope": ["apps/server/internal/ws/base_module_handler*", "apps/server/internal/session/event_mapping*", "apps/server/internal/session/registry.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-3-base-handler",
+        "commit": null
+      },
+      "PR-4": {
+        "title": "Reading module wired (pattern reference)",
+        "depends_on": ["PR-3"],
+        "scope": ["apps/server/internal/ws/handlers/reading.go", "apps/server/internal/session/registry_reading.go", "apps/server/internal/session/event_mapping_reading.go", "apps/server/internal/bridge/reading_bridge.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-4-reading-wired",
+        "commit": null
+      },
+      "PR-5": {
+        "title": "Core 4 modules wired",
+        "depends_on": ["PR-4"],
+        "scope": ["apps/server/internal/ws/handlers/core_*.go", "apps/server/internal/session/registry_core.go", "apps/server/internal/session/event_mapping_core.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-5-core-modules",
+        "commit": null
+      },
+      "PR-6": {
+        "title": "Progression 7 modules wired",
+        "depends_on": ["PR-4"],
+        "scope": ["apps/server/internal/ws/handlers/progression_*.go", "apps/server/internal/session/registry_progression.go", "apps/server/internal/session/event_mapping_progression.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-6-progression-modules",
+        "commit": null
+      },
+      "PR-7": {
+        "title": "Redis snapshot + Lazy restore",
+        "depends_on": ["PR-4"],
+        "scope": ["apps/server/internal/session/snapshot*", "apps/server/internal/session/restore*", "apps/server/internal/session/registry_snapshot.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-7-snapshot-restore",
+        "commit": null
+      },
+      "PR-8": {
+        "title": "Game start API + abort + idle timeout",
+        "depends_on": ["PR-4"],
+        "scope": ["apps/server/internal/domain/room/**", "apps/server/cmd/server/main.go"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-8-game-start-api",
+        "commit": null
+      },
+      "PR-9": {
+        "title": "Observability (Prometheus + OTel)",
+        "depends_on": ["PR-5", "PR-6", "PR-7", "PR-8"],
+        "scope": ["apps/server/internal/session/metrics*", "apps/server/internal/ws/metrics*"],
+        "tasks_total": 0,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-8.0/pr-9-observability",
+        "commit": null
+      }
+    }
+  },
+  "history": []
+}

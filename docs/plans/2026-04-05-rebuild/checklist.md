@@ -85,7 +85,16 @@
 ## Phase 7.8: 에디터 확장
 - [ ] 엔딩 분기 + 버전 관리 + 교차 검증 + 미리보기
 
-## Phase 8: 통합 + QA
+## Phase 8.0: Engine Integration Layer ⭐ 현재 작업
+- [ ] Engine spine + Core 4 + Progression 8 = 12 모듈 wired
+- [ ] Wave 기반 병렬 실행 (9 PRs, 5 waves: W1×2 + W2 + W3 + W4×4 + W5)
+- [ ] 상세: `docs/plans/2026-04-08-engine-integration/` (design + plan + checklist + 9 PR refs)
+- [ ] plan-autopilot 스킬로 자동 실행 (sub-agent + isolation:worktree + 4 parallel reviewers)
+
+## Phase 8.0.x: 나머지 17 모듈 wiring (후속)
+- [ ] Communication 5 + Decision 3 + Exploration 4 + Clue Distribution 5 (Phase 8.0 패턴 복사)
+
+## Phase 8.1 (구 Phase 8): 통합 + QA
 - [ ] E2E (Playwright) + 성능 테스트 + 보안 점검 + K8s 배포
 
 ## Phase 8.5: 보안/테스트/i18n
