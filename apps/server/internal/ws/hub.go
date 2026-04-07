@@ -8,6 +8,10 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// reconnectWindow is how long after a player disconnects that a new JoinSession
+// call with the same playerID in the same session is considered a reconnect.
+const reconnectWindow = 30 * time.Second
+
 const (
 	// reconnectBufferAge is how long messages are kept for reconnection replay.
 	reconnectBufferAge = 60 * time.Second
@@ -40,21 +44,34 @@ type Hub struct {
 
 	mu   sync.RWMutex
 	done chan struct{}
+
+	// Lifecycle listener support.
+	// lifecycleMu protects lifecycleListeners (separate from mu to avoid
+	// priority inversion between the hot-path broadcast lock and listener calls).
+	lifecycleMu        sync.RWMutex
+	lifecycleListeners []SessionLifecycleListener
+
+	// recentLeftAt tracks when each (sessionID, playerID) pair last disconnected
+	// so that JoinSession can detect reconnects within reconnectWindow.
+	// Key format: sessionID.String() + "/" + playerID.String()
+	// Protected by mu (same lock as sessions map).
+	recentLeftAt map[string]time.Time
 }
 
 // NewHub creates a Hub and starts its event loop.
 func NewHub(router *Router, pubsub PubSub, logger zerolog.Logger) *Hub {
 	h := &Hub{
-		sessions:   make(map[uuid.UUID]map[uuid.UUID]*Client),
-		lobby:      make(map[uuid.UUID]*Client),
-		players:    make(map[uuid.UUID]*Client),
-		buffers:    make(map[uuid.UUID]*ReconnectBuffer),
-		register:   make(chan *Client, 64),
-		unregister: make(chan *Client, 64),
-		router:     router,
-		pubsub:     pubsub,
-		logger:     logger.With().Str("component", "ws.hub").Logger(),
-		done:       make(chan struct{}),
+		sessions:     make(map[uuid.UUID]map[uuid.UUID]*Client),
+		lobby:        make(map[uuid.UUID]*Client),
+		players:      make(map[uuid.UUID]*Client),
+		buffers:      make(map[uuid.UUID]*ReconnectBuffer),
+		recentLeftAt: make(map[string]time.Time),
+		register:     make(chan *Client, 64),
+		unregister:   make(chan *Client, 64),
+		router:       router,
+		pubsub:       pubsub,
+		logger:       logger.With().Str("component", "ws.hub").Logger(),
+		done:         make(chan struct{}),
 	}
 	go h.run()
 	return h
@@ -76,6 +93,7 @@ func (h *Hub) run() {
 
 		case client := <-h.unregister:
 			h.mu.Lock()
+			sessionID := client.SessionID // capture before removal clears it
 			h.removeClientLocked(client)
 			delete(h.players, client.ID)
 			h.mu.Unlock()
@@ -83,6 +101,9 @@ func (h *Hub) run() {
 			h.logger.Info().
 				Stringer("playerId", client.ID).
 				Msg("client unregistered")
+			if sessionID != uuid.Nil {
+				h.notifyPlayerLeft(sessionID, client.ID, false)
+			}
 
 		case <-h.done:
 			return
@@ -91,6 +112,9 @@ func (h *Hub) run() {
 }
 
 // removeClientLocked removes the client from lobby or its session.
+// When removed from a session it records the departure time in recentLeftAt
+// for reconnect detection. Entries older than reconnectWindow are GC'd lazily
+// on the next JoinSession call for the same session.
 // Caller must hold h.mu (write lock).
 func (h *Hub) removeClientLocked(c *Client) {
 	if c.SessionID != uuid.Nil {
@@ -98,12 +122,19 @@ func (h *Hub) removeClientLocked(c *Client) {
 			delete(sess, c.ID)
 			if len(sess) == 0 {
 				delete(h.sessions, c.SessionID)
-				// Clean up empty session buffer after a delay (keep for reconnection).
+				// Keep buffer alive for reconnection replay.
 			}
 		}
+		// Record departure for reconnect window tracking.
+		h.recentLeftAt[recentLeftKey(c.SessionID, c.ID)] = time.Now()
 	} else {
 		delete(h.lobby, c.ID)
 	}
+}
+
+// recentLeftKey builds the map key for recentLeftAt.
+func recentLeftKey(sessionID, playerID uuid.UUID) string {
+	return sessionID.String() + "/" + playerID.String()
 }
 
 // Register queues a client for registration. Safe to call after Stop().
@@ -125,11 +156,20 @@ func (h *Hub) Unregister(c *Client) {
 }
 
 // JoinSession moves a client from the lobby into a game session.
+// If the same playerID disconnected from this session within reconnectWindow,
+// the join is treated as a reconnect and all registered SessionLifecycleListeners
+// are notified via OnPlayerRejoined. Otherwise it is a fresh join (no notification).
 func (h *Hub) JoinSession(c *Client, sessionID uuid.UUID) {
 	h.mu.Lock()
-	defer h.mu.Unlock()
 
-	// Remove from current location.
+	// Detect reconnect before removing the client from its current location,
+	// because removeClientLocked will overwrite recentLeftAt for this player.
+	isReconnect := h.isReconnectLocked(sessionID, c.ID)
+
+	// GC expired entries in recentLeftAt for this session.
+	h.gcRecentLeftLocked(sessionID)
+
+	// Remove from current location (may update recentLeftAt if already in a session).
 	h.removeClientLocked(c)
 
 	// Add to session.
@@ -146,10 +186,47 @@ func (h *Hub) JoinSession(c *Client, sessionID uuid.UUID) {
 		h.buffers[sessionID] = NewReconnectBuffer(reconnectBufferAge, reconnectBufferSize)
 	}
 
+	// Clear the recentLeftAt entry now that the player has rejoined.
+	if isReconnect {
+		delete(h.recentLeftAt, recentLeftKey(sessionID, c.ID))
+	}
+
+	h.mu.Unlock()
+
 	h.logger.Info().
 		Stringer("playerId", c.ID).
 		Stringer("sessionId", sessionID).
+		Bool("reconnect", isReconnect).
 		Msg("client joined session")
+
+	if isReconnect {
+		h.notifyPlayerRejoined(sessionID, c.ID)
+	}
+}
+
+// isReconnectLocked returns true if the player disconnected from sessionID within
+// reconnectWindow. Caller must hold h.mu (read or write).
+func (h *Hub) isReconnectLocked(sessionID, playerID uuid.UUID) bool {
+	leftAt, ok := h.recentLeftAt[recentLeftKey(sessionID, playerID)]
+	if !ok {
+		return false
+	}
+	return time.Since(leftAt) <= reconnectWindow
+}
+
+// gcRecentLeftLocked removes stale entries (older than reconnectWindow) from
+// recentLeftAt for the given session. Caller must hold h.mu (write lock).
+func (h *Hub) gcRecentLeftLocked(sessionID uuid.UUID) {
+	prefix := sessionID.String() + "/"
+	now := time.Now()
+	for key, leftAt := range h.recentLeftAt {
+		// Only GC entries for this session to keep the loop bounded.
+		if len(key) > len(prefix) && key[:len(prefix)] == prefix {
+			if now.Sub(leftAt) > reconnectWindow {
+				delete(h.recentLeftAt, key)
+			}
+		}
+	}
 }
 
 // LeaveSession moves a client back to the lobby.
@@ -335,6 +412,52 @@ func (h *Hub) SessionBuffer(sessionID uuid.UUID) *ReconnectBuffer {
 	defer h.mu.RUnlock()
 
 	return h.buffers[sessionID]
+}
+
+// RegisterLifecycleListener registers l to receive player lifecycle callbacks.
+// Passing nil is a no-op (ignored silently). Safe to call concurrently.
+// Listeners are called in registration order.
+func (h *Hub) RegisterLifecycleListener(l SessionLifecycleListener) {
+	if l == nil {
+		return
+	}
+	h.lifecycleMu.Lock()
+	h.lifecycleListeners = append(h.lifecycleListeners, l)
+	h.lifecycleMu.Unlock()
+}
+
+// notifyPlayerLeft fires OnPlayerLeft on all registered listeners in a goroutine
+// so that the hub event loop is never blocked by slow listener implementations.
+func (h *Hub) notifyPlayerLeft(sessionID, playerID uuid.UUID, graceful bool) {
+	h.lifecycleMu.RLock()
+	listeners := h.lifecycleListeners
+	h.lifecycleMu.RUnlock()
+
+	if len(listeners) == 0 {
+		return
+	}
+	go func() {
+		for _, l := range listeners {
+			l.OnPlayerLeft(sessionID, playerID, graceful)
+		}
+	}()
+}
+
+// notifyPlayerRejoined fires OnPlayerRejoined on all registered listeners in a
+// goroutine so that the hub event loop is never blocked.
+func (h *Hub) notifyPlayerRejoined(sessionID, playerID uuid.UUID) {
+	h.lifecycleMu.RLock()
+	listeners := h.lifecycleListeners
+	h.lifecycleMu.RUnlock()
+
+	if len(listeners) == 0 {
+		return
+	}
+	go func() {
+		for _, l := range listeners {
+			l.OnPlayerRejoined(sessionID, playerID)
+		}
+	}()
 }
 
 // Stop shuts down the hub event loop and closes all connected clients.
