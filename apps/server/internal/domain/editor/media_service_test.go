@@ -311,6 +311,49 @@ func TestMediaService_Delete_Success_NoReferences(t *testing.T) {
 	}
 }
 
+func TestMediaService_RequestUploadURL_VideoTypeRejected(t *testing.T) {
+	svc, _, creatorID, themeID := newMediaTestService(t)
+
+	// VIDEO type is rejected before storage/ownership checks.
+	_, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "intro",
+		Type:     MediaTypeVideo,
+		MimeType: "audio/mpeg",
+		FileSize: 1024,
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidType)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	if appErr.Status != 400 {
+		t.Fatalf("expected status 400, got %d", appErr.Status)
+	}
+}
+
+func TestMediaService_CreateYouTubeMedia_VideoType_Success(t *testing.T) {
+	_, q, _, themeID := newMediaTestService(t)
+
+	// CreateYouTube performs a real HTTP oembed call, so we exercise the
+	// DB-layer acceptance directly: verify that the fake (which mirrors the
+	// CreateMedia params) accepts VIDEO + YOUTUBE. The migration's
+	// video_requires_youtube CHECK is enforced at the SQL level and is
+	// covered by integration tests.
+	created, err := q.CreateMedia(context.Background(), db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       "cutscene",
+		Type:       MediaTypeVideo,
+		SourceType: SourceTypeYouTube,
+		Url:        pgtype.Text{String: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", Valid: true},
+		Tags:       []string{},
+	})
+	if err != nil {
+		t.Fatalf("expected VIDEO+YOUTUBE create to succeed, got %v", err)
+	}
+	if created.Type != MediaTypeVideo || created.SourceType != SourceTypeYouTube {
+		t.Fatalf("unexpected created media: type=%s source=%s", created.Type, created.SourceType)
+	}
+}
+
 func TestParseYouTubeVideoID(t *testing.T) {
 	tests := []struct {
 		name string

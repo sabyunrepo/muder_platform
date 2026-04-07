@@ -133,6 +133,11 @@ func (s *mediaService) ListMedia(ctx context.Context, creatorID, themeID uuid.UU
 // --- RequestUpload ---
 
 func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uuid.UUID, req RequestMediaUploadRequest) (*UploadURLResponse, error) {
+	// VIDEO type is YOUTUBE-only in Phase 7.7 (FileVideoPlayer not implemented).
+	// Reject early before storage/ownership checks so the error is deterministic.
+	if req.Type == MediaTypeVideo {
+		return nil, apperror.New(apperror.ErrMediaInvalidType, 400, "VIDEO type requires YOUTUBE source in Phase 7.7")
+	}
 	if err := s.requireStorage(); err != nil {
 		return nil, err
 	}
