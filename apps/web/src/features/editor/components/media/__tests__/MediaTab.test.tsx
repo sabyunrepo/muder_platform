@@ -9,12 +9,18 @@ const {
   useMediaListMock,
   useUpdateMediaMock,
   useDeleteMediaMock,
+  useRequestUploadUrlMock,
+  useConfirmUploadMock,
+  useCreateYouTubeMediaMock,
   toastSuccess,
   toastError,
 } = vi.hoisted(() => ({
   useMediaListMock: vi.fn(),
   useUpdateMediaMock: vi.fn(),
   useDeleteMediaMock: vi.fn(),
+  useRequestUploadUrlMock: vi.fn(),
+  useConfirmUploadMock: vi.fn(),
+  useCreateYouTubeMediaMock: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -23,6 +29,9 @@ vi.mock("@/features/editor/mediaApi", () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
   useUpdateMedia: () => useUpdateMediaMock(),
   useDeleteMedia: () => useDeleteMediaMock(),
+  useRequestUploadUrl: () => useRequestUploadUrlMock(),
+  useConfirmUpload: () => useConfirmUploadMock(),
+  useCreateYouTubeMedia: () => useCreateYouTubeMediaMock(),
 }));
 
 vi.mock("sonner", () => ({
@@ -105,6 +114,9 @@ function mutationStub() {
 beforeEach(() => {
   useUpdateMediaMock.mockReturnValue(mutationStub());
   useDeleteMediaMock.mockReturnValue(mutationStub());
+  useRequestUploadUrlMock.mockReturnValue(mutationStub());
+  useConfirmUploadMock.mockReturnValue(mutationStub());
+  useCreateYouTubeMediaMock.mockReturnValue(mutationStub());
 });
 
 afterEach(() => {
