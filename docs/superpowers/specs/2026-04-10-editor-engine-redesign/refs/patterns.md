@@ -154,42 +154,29 @@ processor.SetNext(&GenreProcessor{plugin: p}).SetNext(&WinChecker{plugin: p}).Se
 
 **효과**: 새 검증/처리 단계를 체인에 삽입만으로 추가 가능
 
-### 2.3 Composite (단서 의존성 그래프)
+### 2.3 Graph (단서 의존성)
 
 **위치**: `internal/clue/graph.go`
-**목적**: 단서 간 의존성/조합을 트리 구조로 표현
+**목적**: 단서 간 의존성/조합을 인접 리스트 그래프로 표현
 
 ```go
-// ClueNode — 단서 노드 (Composite)
-type ClueNode interface {
-    ID() string
-    CanDiscover(playerID string, state GameState) bool
-    Dependencies() []ClueNode
+// ClueGraph — 단서 의존성/조합 그래프 (인접 리스트)
+type ClueGraph struct {
+    nodes map[string]*ClueGraphNode
+    edges map[string][]ClueEdge
 }
 
-// LeafClue — 단일 단서 (의존성 없음)
-type LeafClue struct {
-    id   string
-    spec ClueSpec
-}
+// 위상 정렬로 발견 가능 순서 계산
+func (g *ClueGraph) TopologicalSort() ([]string, error)
 
-// DependencyClue — 선행 단서가 필요한 단서
-type DependencyClue struct {
-    id       string
-    spec     ClueSpec
-    required []ClueNode  // AND 조건
-}
+// 순환 참조 검출
+func (g *ClueGraph) DetectCycles() [][]string
 
-// CombinationClue — 조합으로 발견되는 단서
-type CombinationClue struct {
-    id      string
-    spec    ClueSpec
-    sources []ClueNode  // 모두 보유해야 발견
-    result  ClueNode    // 조합 결과
-}
+// 조합 규칙 조회
+func (g *ClueGraph) FindCombination(inputClueIDs []string) *Clue
 ```
 
-**효과**: 복잡한 단서 관계를 재귀적으로 평가 가능
+**효과**: 복잡한 단서 관계를 그래프 알고리즘으로 평가
 
 ### 2.4 Adapter (Bridge Layer)
 

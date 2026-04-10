@@ -6,37 +6,33 @@
 
 ## PostgreSQL 스키마
 
-### Event Store
+### Audit Log (Event Sourcing 간소화)
+
+> Review 피드백 반영: Full Event Store 대신 append-only audit log + Redis hot state.
+> 복잡도를 대폭 감소하면서 디버깅/복구에 필요한 기능만 유지.
 
 ```sql
--- 이벤트 로그 (모든 상태 변경)
-CREATE TABLE game_events (
+-- 게임 이벤트 감사 로그 (INSERT only, 읽기는 디버깅/복구 시에만)
+CREATE TABLE game_audit_log (
     id          BIGSERIAL PRIMARY KEY,
-    stream_id   UUID NOT NULL,
+    session_id  UUID NOT NULL,
     event_type  VARCHAR(100) NOT NULL,
     data        JSONB NOT NULL,
-    version     BIGINT NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (stream_id, version)
+    created_at  TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_events_stream ON game_events (stream_id, version);
-CREATE INDEX idx_events_type ON game_events (event_type, created_at);
+CREATE INDEX idx_audit_session ON game_audit_log (session_id, created_at);
+CREATE INDEX idx_audit_type ON game_audit_log (event_type, created_at);
 
--- 스냅샷 정책: 둘 중 하나 충족 시 즉시 (OR)
---   (a) 마지막 스냅샷 이후 100개 이벤트 누적
---   (b) 마지막 스냅샷 이후 5초 경과 + dirty 상태
---   (c) critical 이벤트 (phase_changed, game_ended) → 즉시, 조건 무시
+-- 스냅샷 (Redis → PG, 주기적 5s 간격 + critical 즉시)
 CREATE TABLE game_snapshots (
     id           BIGSERIAL PRIMARY KEY,
-    stream_id    UUID NOT NULL,
-    version      BIGINT NOT NULL,
+    session_id   UUID NOT NULL,
     state        JSONB NOT NULL,
     plugin_state JSONB,
     is_critical  BOOLEAN DEFAULT FALSE,
-    created_at   TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (stream_id, version)
+    created_at   TIMESTAMPTZ DEFAULT NOW()
 );
-CREATE INDEX idx_snapshots_stream ON game_snapshots (stream_id, version DESC);
+CREATE INDEX idx_snapshots_session ON game_snapshots (session_id, created_at DESC);
 ```
 
 ### Theme (에디터에서 제작)
