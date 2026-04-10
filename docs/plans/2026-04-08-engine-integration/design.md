@@ -1,7 +1,9 @@
 # Phase 8.0 — Engine Integration Layer 설계 (index)
 
-> **상태**: 확정 (2026-04-08, brainstorming 합의 완료)
-> **다음 단계**: `plan.md` 작성 → 9개 PR 시리즈 wave 기반 병렬 실행
+> **상태**: SUPERSEDED (2026-04-10) — Phase 9.0 Editor + Engine Redesign으로 대체
+> **이유**: 아키텍처 재설계 (GenrePlugin + Audit Log + React Flow 에디터)
+> **후속**: `docs/plans/2026-04-10-editor-engine-redesign/`
+> **완료 PR**: PR-0, PR-1, PR-2 (Session Actor + Hub Lifecycle 코드는 재사용)
 > **상위 설계 참조**: `docs/plans/2026-04-05-rebuild/refs/game-engine.md`, `architecture.md`
 > **MD 200줄 제한**: 이 index 포함 모든 문서 <200줄. 상세는 `refs/`로 분할.
 

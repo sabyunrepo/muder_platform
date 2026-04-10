@@ -1,173 +1,294 @@
 {
   "active": {
-    "id": "phase-8.0-engine-integration",
-    "name": "Phase 8.0 — Engine Integration Layer",
-    "dir": "docs/plans/2026-04-08-engine-integration",
-    "design": "docs/plans/2026-04-08-engine-integration/design.md",
-    "plan": "docs/plans/2026-04-08-engine-integration/plan.md",
-    "checklist": "docs/plans/2026-04-08-engine-integration/checklist.md",
-    "progress_memory": "memory/project_phase80_progress.md",
+    "id": "phase-9.0-editor-engine-redesign",
+    "name": "Phase 9.0 — Editor + Engine Redesign",
+    "dir": "docs/plans/2026-04-10-editor-engine-redesign",
+    "design": "docs/plans/2026-04-10-editor-engine-redesign/design.md",
+    "plan": "docs/plans/2026-04-10-editor-engine-redesign/plan.md",
+    "checklist": "docs/plans/2026-04-10-editor-engine-redesign/checklist.md",
+    "progress_memory": "memory/project_phase90_progress.md",
+    "spec": "docs/superpowers/specs/2026-04-10-editor-engine-redesign/design.md",
     "scope": [
-      "apps/server/internal/session/**",
-      "apps/server/internal/ws/hub.go",
-      "apps/server/internal/ws/base_module_handler*",
-      "apps/server/internal/ws/handlers/**",
-      "apps/server/internal/bridge/**",
       "apps/server/internal/engine/**",
-      "apps/server/internal/domain/room/**",
-      "apps/server/cmd/server/main.go"
+      "apps/server/internal/session/**",
+      "apps/server/internal/auditlog/**",
+      "apps/server/internal/clue/**",
+      "apps/server/internal/genre/**",
+      "apps/server/internal/ws/**",
+      "apps/server/internal/bridge/**",
+      "apps/web/src/features/editor/**",
+      "apps/web/src/features/game/**"
     ],
-    "started_at": "2026-04-08",
-    "started_commit": "52fd23e",
-    "current_wave": "W2",
-    "current_pr": "PR-3",
-    "current_task": "BaseModuleHandler + EventMapping infra (sequential, single PR)",
+    "started_at": "2026-04-10",
+    "started_commit": "77e835c",
+    "current_wave": "A-W1",
+    "current_pr": "PR-A1",
+    "current_task": "GenrePlugin Core + Optional interfaces + Registry",
     "status": "pending",
     "blockers": [],
     "waves": [
       {
-        "id": "W0",
-        "name": "docs-and-infra",
-        "mode": "sequential",
-        "prs": ["PR-0"]
-      },
-      {
-        "id": "W1",
-        "name": "skeletons",
+        "id": "A-W1",
+        "name": "engine-core-interfaces",
         "mode": "parallel",
-        "prs": ["PR-1", "PR-2"]
+        "prs": ["PR-A1", "PR-A2", "PR-A3"]
       },
       {
-        "id": "W2",
-        "name": "infra",
+        "id": "A-W2",
+        "name": "engine-phase-processor",
         "mode": "sequential",
-        "prs": ["PR-3"]
+        "prs": ["PR-A4", "PR-A5"]
       },
       {
-        "id": "W3",
-        "name": "pattern-reference",
-        "mode": "sequential",
-        "prs": ["PR-4"]
-      },
-      {
-        "id": "W4",
-        "name": "parallel-wiring",
+        "id": "A-W3",
+        "name": "engine-clue-rules",
         "mode": "parallel",
-        "prs": ["PR-5", "PR-6", "PR-7", "PR-8"]
+        "prs": ["PR-A6", "PR-A7"]
       },
       {
-        "id": "W5",
-        "name": "observability",
+        "id": "B",
+        "name": "murder-mystery-genre",
         "mode": "sequential",
-        "prs": ["PR-9"]
+        "prs": ["PR-B1", "PR-B2", "PR-B3", "PR-B4", "PR-B5"]
+      },
+      {
+        "id": "C",
+        "name": "editor-l1-template-studio",
+        "mode": "waves",
+        "prs": ["PR-C1", "PR-C2", "PR-C3", "PR-C4", "PR-C5", "PR-C6", "PR-C7"]
+      },
+      {
+        "id": "D",
+        "name": "editor-l2-timeline",
+        "mode": "waves",
+        "prs": ["PR-D1", "PR-D2", "PR-D3", "PR-D4", "PR-D5", "PR-D6", "PR-D7"]
+      },
+      {
+        "id": "E",
+        "name": "editor-l3-node-editor",
+        "mode": "sequential",
+        "prs": ["PR-E1", "PR-E2", "PR-E3", "PR-E4"]
+      },
+      {
+        "id": "F",
+        "name": "crime-scene-genre",
+        "mode": "waves",
+        "prs": ["PR-F1", "PR-F2", "PR-F3", "PR-F4"]
+      },
+      {
+        "id": "G",
+        "name": "additional-genres",
+        "mode": "waves",
+        "prs": ["PR-G1", "PR-G2", "PR-G3", "PR-G4", "PR-G5"]
       }
     ],
     "prs": {
-      "PR-0": {
-        "title": "Docs + plan-autopilot infra",
+      "PR-A1": {
+        "title": "GenrePlugin Core + Optional + Registry",
         "depends_on": [],
-        "scope": ["docs/plans/2026-04-08-engine-integration/**", ".claude/**", "CLAUDE.md", "memory/**"],
-        "tasks_total": 10,
-        "tasks_done": 10,
-        "status": "completed",
-        "branch": "feat/phase-8.0/pr-0-docs-infra",
-        "commit": "b1d35b8",
-        "merged_via_pr": [11, 12, 13]
+        "status": "pending"
       },
-      "PR-1": {
-        "title": "SessionManager + Session actor skeleton",
-        "depends_on": ["PR-0"],
-        "scope": ["apps/server/internal/session/**", "apps/server/internal/engine/engine.go"],
-        "tasks_total": 6,
-        "tasks_done": 6,
-        "status": "completed",
-        "branch": "feat/phase-8.0/pr-1-session-manager",
-        "commit": "74129fc",
-        "merged_via_pr": [17],
-        "deferred": ["Manager.Stop ctx+reason signature → PR-3 DI"]
+      "PR-A2": {
+        "title": "EventBus (EventListener)",
+        "depends_on": [],
+        "status": "pending"
       },
-      "PR-2": {
-        "title": "Hub lifecycle listener",
-        "depends_on": ["PR-0"],
-        "scope": ["apps/server/internal/ws/hub.go", "apps/server/internal/ws/hub_test.go", "apps/server/internal/ws/lifecycle.go", "apps/server/internal/ws/hub_lifecycle_test.go"],
-        "tasks_total": 4,
-        "tasks_done": 4,
-        "status": "completed",
-        "branch": "feat/phase-8.0/pr-2-hub-lifecycle",
-        "commit": "daa56b8",
-        "merged_via_pr": [16]
+      "PR-A3": {
+        "title": "Audit Log (PG append-only + snapshot)",
+        "depends_on": [],
+        "status": "pending"
       },
-      "PR-3": {
-        "title": "BaseModuleHandler + EventMapping",
-        "depends_on": ["PR-1", "PR-2"],
-        "scope": ["apps/server/internal/ws/base_module_handler*", "apps/server/internal/session/event_mapping*", "apps/server/internal/session/registry.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-3-base-handler",
-        "commit": null
+      "PR-A4": {
+        "title": "PhaseEngine (stateless wrapper)",
+        "depends_on": ["PR-A1"],
+        "status": "pending"
       },
-      "PR-4": {
-        "title": "Reading module wired (pattern reference)",
-        "depends_on": ["PR-3"],
-        "scope": ["apps/server/internal/ws/handlers/reading.go", "apps/server/internal/session/registry_reading.go", "apps/server/internal/session/event_mapping_reading.go", "apps/server/internal/bridge/reading_bridge.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-4-reading-wired",
-        "commit": null
+      "PR-A5": {
+        "title": "EventProcessor chain",
+        "depends_on": ["PR-A1", "PR-A2", "PR-A4"],
+        "status": "pending"
       },
-      "PR-5": {
-        "title": "Core 4 modules wired",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/server/internal/ws/handlers/core_*.go", "apps/server/internal/session/registry_core.go", "apps/server/internal/session/event_mapping_core.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-5-core-modules",
-        "commit": null
+      "PR-A6": {
+        "title": "Clue System (Graph + Validator + Visibility)",
+        "depends_on": [],
+        "status": "pending"
       },
-      "PR-6": {
-        "title": "Progression 7 modules wired",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/server/internal/ws/handlers/progression_*.go", "apps/server/internal/session/registry_progression.go", "apps/server/internal/session/event_mapping_progression.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-6-progression-modules",
-        "commit": null
+      "PR-A7": {
+        "title": "Rule Evaluator (jsonlogic)",
+        "depends_on": [],
+        "status": "pending"
       },
-      "PR-7": {
-        "title": "Redis snapshot + Lazy restore",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/server/internal/session/snapshot*", "apps/server/internal/session/restore*", "apps/server/internal/session/registry_snapshot.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-7-snapshot-restore",
-        "commit": null
+      "PR-B1": {
+        "title": "MurderMysteryPlugin skeleton",
+        "depends_on": ["PR-A1"],
+        "status": "pending"
       },
-      "PR-8": {
-        "title": "Game start API + abort + idle timeout",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/server/internal/domain/room/**", "apps/server/cmd/server/main.go"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-8-game-start-api",
-        "commit": null
+      "PR-B2": {
+        "title": "StartingClue + RoundClue",
+        "depends_on": ["PR-B1"],
+        "status": "pending"
       },
-      "PR-9": {
-        "title": "Observability (Prometheus + OTel)",
-        "depends_on": ["PR-5", "PR-6", "PR-7", "PR-8"],
-        "scope": ["apps/server/internal/session/metrics*", "apps/server/internal/ws/metrics*"],
-        "tasks_total": 0,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-8.0/pr-9-observability",
-        "commit": null
+      "PR-B3": {
+        "title": "ConditionalClue",
+        "depends_on": ["PR-B1", "PR-A6"],
+        "status": "pending"
+      },
+      "PR-B4": {
+        "title": "Voting + Accusation",
+        "depends_on": ["PR-B1"],
+        "status": "pending"
+      },
+      "PR-B5": {
+        "title": "Hooks + WinCheck + E2E",
+        "depends_on": ["PR-B2", "PR-B3", "PR-B4"],
+        "status": "pending"
+      },
+      "PR-C1": {
+        "title": "EditorLayout + UIStore",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-C2": {
+        "title": "GenreSelector + presets",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-C3": {
+        "title": "SchemaDrivenForm (rhf + zod)",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-C4": {
+        "title": "Character CRUD",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-C5": {
+        "title": "Clue list + graph view",
+        "depends_on": ["PR-C3"],
+        "status": "pending"
+      },
+      "PR-C6": {
+        "title": "Auto-save + validation",
+        "depends_on": ["PR-C1"],
+        "status": "pending"
+      },
+      "PR-C7": {
+        "title": "Genre preset API",
+        "depends_on": ["PR-C2"],
+        "status": "pending"
+      },
+      "PR-D1": {
+        "title": "React Flow canvas",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-D2": {
+        "title": "PhaseNode/StartNode/EndNode",
+        "depends_on": ["PR-D1"],
+        "status": "pending"
+      },
+      "PR-D3": {
+        "title": "Timeline View",
+        "depends_on": ["PR-D2"],
+        "status": "pending"
+      },
+      "PR-D4": {
+        "title": "Module Palette",
+        "depends_on": ["PR-D1"],
+        "status": "pending"
+      },
+      "PR-D5": {
+        "title": "Phase Config Panel",
+        "depends_on": ["PR-C3"],
+        "status": "pending"
+      },
+      "PR-D6": {
+        "title": "JSON Logic rule editor",
+        "depends_on": ["PR-C3"],
+        "status": "pending"
+      },
+      "PR-D7": {
+        "title": "Phase template CRUD API",
+        "depends_on": ["PR-D3"],
+        "status": "pending"
+      },
+      "PR-E1": {
+        "title": "ConditionNode + ActionNode + EventTriggerNode",
+        "depends_on": ["PR-D1"],
+        "status": "pending"
+      },
+      "PR-E2": {
+        "title": "Clue graph view + ClueComboNode",
+        "depends_on": ["PR-A6"],
+        "status": "pending"
+      },
+      "PR-E3": {
+        "title": "dagre layout + simulation",
+        "depends_on": ["PR-E1", "PR-E2"],
+        "status": "pending"
+      },
+      "PR-E4": {
+        "title": "Undo/Redo (immer + zustand)",
+        "depends_on": ["PR-D1"],
+        "status": "pending"
+      },
+      "PR-F1": {
+        "title": "CrimeScenePlugin",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-F2": {
+        "title": "LocationRestriction + VisibilitySpec",
+        "depends_on": ["PR-F1"],
+        "status": "pending"
+      },
+      "PR-F3": {
+        "title": "CrimeSceneView frontend",
+        "depends_on": ["PR-F1"],
+        "status": "pending"
+      },
+      "PR-F4": {
+        "title": "Architecture validation",
+        "depends_on": ["PR-F1", "PR-F2", "PR-F3"],
+        "status": "pending"
+      },
+      "PR-G1": {
+        "title": "ScriptKillPlugin",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR2": {
+        "title": "JubenshaPlugin",
+        "depends_on": [],
+        "status": "pending"
+      },
+      "PR-G3": {
+        "title": "ScriptKill + Jubensha Views",
+        "depends_on": ["PR-G1", "PR-G2"],
+        "status": "pending"
+      },
+      "PR-G4": {
+        "title": "Genre presets",
+        "depends_on": ["PR-G1", "PR-G2"],
+        "status": "pending"
+      },
+      "PR-G5": {
+        "title": "Cross-genre integration tests",
+        "depends_on": ["PR-F4", "PR-G3", "PR-G4"],
+        "status": "pending"
       }
     }
   },
-  "history": []
+  "history": [
+    {
+      "id": "phase-8.0-engine-integration",
+      "name": "Phase 8.0 — Engine Integration Layer",
+      "status": "superseded",
+      "completed_prs": ["PR-0", "PR-1", "PR-2"],
+      "superseded_at": "2026-04-10",
+      "superseded_by": "phase-9.0-editor-engine-redesign",
+      "reason": "Architecture redesign: GenrePlugin + Audit Log + React Flow editor"
+    }
+  ]
 }
