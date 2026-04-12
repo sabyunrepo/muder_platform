@@ -1,6 +1,12 @@
-# Phase 9.0 — Editor + Engine Redesign (index)
+# Phase 9.0 — Editor + Engine Redesign (index) [SUPERSEDED]
 
-> **상태**: 진행 예정 (2026-04-10)
+> **⚠️ SUPERSEDED (2026-04-12)**: 이 plan 은 GenrePlugin 중심 설계였으나, 재논의 결과
+> Composable Module + JSON Template 방향으로 교체됨. 새 plan 참조:
+> `docs/plans/2026-04-12-composable-module-engine-redesign/`
+>
+> 본 디렉터리는 히스토리 보존용. 작업 지시 소스로 사용 금지.
+>
+> **원본 상태**: 진행 예정 (2026-04-10)
 > **상위 설계**: `docs/superpowers/specs/2026-04-10-editor-engine-redesign/design.md`
 > **선행**: Phase 8.0 (superseded) — Session Actor, Hub, Manager 코드 재사용
 > **MD 200줄 제한**: 이 index만. PR별 상세는 `refs/` 분할.
