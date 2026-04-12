@@ -27,8 +27,8 @@
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
     "current_wave": "W5",
-    "current_pr": "PR-T1",
-    "current_task": "internal/template loader, validator, schema merger",
+    "current_pr": "PR-T2",
+    "current_task": "4 genre N preset JSON templates",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -285,10 +285,10 @@
           "apps/server/internal/server/router.go"
         ],
         "tasks_total": 7,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 7,
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-t1-template-loader",
-        "commit": null
+        "commit": "52b1fa8"
       },
       "PR-T2": {
         "title": "4 장르 N 프리셋 JSON Templates",
