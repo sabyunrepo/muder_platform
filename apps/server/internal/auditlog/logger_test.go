@@ -3,6 +3,8 @@ package auditlog
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -214,5 +216,67 @@ func TestDBLogger_StopDrainsPending(t *testing.T) {
 
 	if got := ma.appendCount.Load(); got != n {
 		t.Fatalf("expected %d persisted events after Stop, got %d", n, got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DBLogger — Stop is idempotent (double-Stop must not panic on closed chan)
+// ---------------------------------------------------------------------------
+
+func TestDBLogger_StopIdempotent(t *testing.T) {
+	ma := &mockAppender{}
+	l := newTestDBLogger(ma)
+	l.Start()
+
+	// Calling Stop multiple times must be safe — no double-close panic.
+	l.Stop()
+	l.Stop()
+	l.Stop()
+
+	// Append after stop must return ErrStopped.
+	if err := l.Append(context.Background(), validEvent()); !errors.Is(err, ErrStopped) {
+		t.Fatalf("expected ErrStopped after Stop, got %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DBLogger — concurrent Append during Stop: no panic, no deadlock, post-Stop
+// Appends return ErrStopped instead of racing with the drain loop.
+// ---------------------------------------------------------------------------
+
+func TestDBLogger_ConcurrentAppendDuringStop(t *testing.T) {
+	ma := &mockAppender{}
+	l := newTestDBLogger(ma)
+	l.Start()
+
+	const writers = 20
+	var wg sync.WaitGroup
+	start := make(chan struct{})
+
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			for j := 0; j < 50; j++ {
+				err := l.Append(context.Background(), validEvent())
+				if errors.Is(err, ErrStopped) {
+					return
+				}
+				// ErrBufferFull is tolerated under contention.
+			}
+		}()
+	}
+
+	close(start)
+	// Small scheduling nudge so some Appends land before Stop.
+	time.Sleep(2 * time.Millisecond)
+	l.Stop()
+	wg.Wait()
+
+	// Post-Stop Appends must always return ErrStopped (never panic on a
+	// closed channel), and Stop itself must not panic on double-close.
+	if err := l.Append(context.Background(), validEvent()); !errors.Is(err, ErrStopped) {
+		t.Fatalf("post-Stop Append: expected ErrStopped, got %v", err)
 	}
 }

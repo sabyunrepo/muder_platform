@@ -3,6 +3,7 @@ package auditlog
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/rs/zerolog"
 )
@@ -34,12 +35,14 @@ const defaultBufferSize = 1024
 // Events are buffered and flushed by an internal goroutine, making
 // Append non-blocking under normal load.
 type DBLogger struct {
-	store  *Store
-	ch     chan AuditEvent
-	log    zerolog.Logger
-	wg     sync.WaitGroup
-	once   sync.Once
-	stopCh chan struct{}
+	store     *Store
+	ch        chan AuditEvent
+	log       zerolog.Logger
+	wg        sync.WaitGroup
+	startOnce sync.Once
+	stopOnce  sync.Once
+	stopped   atomic.Bool
+	stopCh    chan struct{}
 	// persistFn overrides the default store.Append call. Used in tests only.
 	persistFn func(AuditEvent)
 }
@@ -56,22 +59,32 @@ func NewDBLogger(store *Store, log zerolog.Logger) *DBLogger {
 
 // Start launches the background flush goroutine. It is safe to call only once.
 func (l *DBLogger) Start() {
-	l.once.Do(func() {
+	l.startOnce.Do(func() {
 		l.wg.Add(1)
 		go l.flush()
 	})
 }
 
 // Stop signals the flush goroutine to drain the buffer and exit.
-// Blocks until all pending events are processed or context is done.
+// Safe to call multiple times. Blocks until all pending events are drained.
+//
+// Stop sets the stopped gate BEFORE closing stopCh so concurrent Appends
+// cannot enqueue events that would race with the drain loop exit.
 func (l *DBLogger) Stop() {
-	close(l.stopCh)
-	l.wg.Wait()
+	l.stopOnce.Do(func() {
+		l.stopped.Store(true)
+		close(l.stopCh)
+		l.wg.Wait()
+	})
 }
 
 // Append validates the event and enqueues it for async persistence.
-// Returns ErrBufferFull if the internal channel is at capacity.
+// Returns ErrStopped if the logger has been stopped, or ErrBufferFull if the
+// internal channel is at capacity.
 func (l *DBLogger) Append(_ context.Context, evt AuditEvent) error {
+	if l.stopped.Load() {
+		return ErrStopped
+	}
 	if err := evt.Validate(); err != nil {
 		return err
 	}

@@ -16,6 +16,9 @@ import (
 // ErrBufferFull is returned when the DBLogger internal channel is full.
 var ErrBufferFull = errors.New("auditlog: buffer full")
 
+// ErrStopped is returned by DBLogger.Append when Stop has already been called.
+var ErrStopped = errors.New("auditlog: logger stopped")
+
 // Querier is the subset of db.Queries used by Store.
 // Defined as an interface to allow test injection.
 type Querier interface {
