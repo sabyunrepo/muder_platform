@@ -1,4 +1,4 @@
-import { FileText, BookOpen, Users, Settings, Music, Code } from "lucide-react";
+import { FileText, BookOpen, Users, Settings, Music, Code, LayoutTemplate } from "lucide-react";
 import type { ThemeStatus } from "./api";
 
 // ---------------------------------------------------------------------------
@@ -12,6 +12,7 @@ export const EDITOR_TABS = [
   { key: "design" as const, label: "게임설계", icon: Settings },
   { key: "media" as const, label: "미디어", icon: Music },
   { key: "advanced" as const, label: "고급", icon: Code },
+  { key: "template" as const, label: "템플릿", icon: LayoutTemplate },
 ];
 
 export type EditorTab = (typeof EDITOR_TABS)[number]["key"];
