@@ -5,15 +5,6 @@ import (
 	"encoding/json"
 )
 
-// PluginConfigSchema describes the JSON Schema for a Plugin's configuration.
-// Used by the editor to auto-generate configuration UI.
-// Named PluginConfigSchema to avoid collision with the legacy ConfigSchema interface
-// in types.go (owned by PR-A4 for deletion).
-type PluginConfigSchema struct {
-	// Schema is a JSON Schema document (draft-07 or later).
-	Schema json.RawMessage `json:"schema"`
-}
-
 // Plugin is the core interface that every genre plugin must implement.
 // It contains exactly 7 methods — the minimum required for the engine to
 // manage the plugin lifecycle. Additional capabilities are expressed through
@@ -35,7 +26,7 @@ type Plugin interface {
 
 	// GetConfigSchema returns the JSON Schema that describes the plugin's
 	// configuration surface. The editor uses this to render configuration UI.
-	GetConfigSchema() PluginConfigSchema
+	GetConfigSchema() json.RawMessage
 
 	// DefaultConfig returns the plugin's default configuration as raw JSON.
 	// The engine uses this when no session-specific config is provided.

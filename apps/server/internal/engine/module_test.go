@@ -18,8 +18,8 @@ type stubCorePlugin struct{}
 func (s *stubCorePlugin) ID() string      { return "stub_core" }
 func (s *stubCorePlugin) Name() string    { return "Stub Core" }
 func (s *stubCorePlugin) Version() string { return "0.1.0" }
-func (s *stubCorePlugin) GetConfigSchema() PluginConfigSchema {
-	return PluginConfigSchema{Schema: json.RawMessage(`{}`)}
+func (s *stubCorePlugin) GetConfigSchema() json.RawMessage {
+	return json.RawMessage(`{}`)
 }
 func (s *stubCorePlugin) DefaultConfig() json.RawMessage                  { return json.RawMessage(`{}`) }
 func (s *stubCorePlugin) Init(_ context.Context, _ json.RawMessage) error { return nil }
@@ -31,8 +31,8 @@ type stubFullPlugin struct{}
 func (s *stubFullPlugin) ID() string      { return "stub_full" }
 func (s *stubFullPlugin) Name() string    { return "Stub Full" }
 func (s *stubFullPlugin) Version() string { return "0.2.0" }
-func (s *stubFullPlugin) GetConfigSchema() PluginConfigSchema {
-	return PluginConfigSchema{Schema: json.RawMessage(`{"type":"object"}`)}
+func (s *stubFullPlugin) GetConfigSchema() json.RawMessage {
+	return json.RawMessage(`{"type":"object"}`)
 }
 func (s *stubFullPlugin) DefaultConfig() json.RawMessage                  { return json.RawMessage(`{"enabled":true}`) }
 func (s *stubFullPlugin) Init(_ context.Context, _ json.RawMessage) error { return nil }
