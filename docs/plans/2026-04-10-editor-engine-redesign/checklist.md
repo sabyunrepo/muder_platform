@@ -29,8 +29,8 @@
 - [ ] Phase 8.0 Migration: `engine/types.go` → plugin.go 교체, GameProgressionEngine 제거
 
 #### PR-A2: EventBus (EventListener)
-- [ ] `engine/event_bus.go` — EventListener interface, Subscribe, Publish (에러 수집)
-- [ ] `engine/event_bus_test.go` — error isolation, 동시 구독, 성능
+- [x] `engine/event_bus.go` — EventListener interface, Subscribe, Publish (에러 수집)
+- [x] `engine/event_bus_test.go` — error isolation, 동시 구독, 성능
 - [ ] Phase 8.0 Migration: 기존 EventBus callback → EventListener 인터페이스 전환
 
 #### PR-A3: Audit Log (PG)
