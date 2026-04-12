@@ -39,17 +39,28 @@ func NewStore(pool *pgxpool.Pool) *Store {
 	return &Store{pool: pool}
 }
 
-// Append persists evt to the database, assigning the next seq
-// atomically inside a serializable transaction.
+// Append persists evt to the database, assigning the next seq atomically.
+// An advisory lock keyed on the session_id ensures only one writer at a time
+// increments the per-session sequence counter, preventing duplicate-key races
+// under concurrent load without requiring retry logic in the caller. The lock
+// is transaction-scoped (pg_advisory_xact_lock), so it's released automatically
+// on commit or rollback. Cross-session writers do not contend with each other.
 func (s *Store) Append(ctx context.Context, evt AuditEvent) error {
 	if err := evt.Validate(); err != nil {
 		return err
 	}
 
 	return pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{
-		IsoLevel:   pgx.Serializable,
+		IsoLevel:   pgx.ReadCommitted,
 		AccessMode: pgx.ReadWrite,
 	}, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx,
+			"SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+			evt.SessionID.String(),
+		); err != nil {
+			return err
+		}
+
 		q := db.New(tx)
 
 		seq, err := q.LatestSeq(ctx, evt.SessionID)
