@@ -270,8 +270,48 @@ func (m *TimedClueModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- SerializableModule ---
+
+func (m *TimedClueModule) SaveState(_ context.Context) (engine.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	data, err := json.Marshal(timedClueState{
+		DistributedCount: m.distributedCount,
+		MaxAutoClues:     m.config.MaxAutoClues,
+		IsActive:         m.isActive,
+		Interval:         m.config.Interval,
+		TargetMode:       m.config.TargetMode,
+	})
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("timed_clue: save state: %w", err)
+	}
+	return engine.GameState{
+		Modules: map[string]json.RawMessage{
+			m.Name(): data,
+		},
+	}, nil
+}
+
+func (m *TimedClueModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	var s timedClueState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return fmt.Errorf("timed_clue: restore state: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.distributedCount = s.DistributedCount
+	m.isActive = s.IsActive
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*TimedClueModule)(nil)
-	_ engine.ConfigSchema = (*TimedClueModule)(nil)
+	_ engine.Module             = (*TimedClueModule)(nil)
+	_ engine.ConfigSchema       = (*TimedClueModule)(nil)
+	_ engine.SerializableModule = (*TimedClueModule)(nil)
 )

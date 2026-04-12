@@ -212,8 +212,101 @@ func (m *RoundClueModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- PhaseHookModule ---
+
+func (m *RoundClueModule) OnPhaseEnter(_ context.Context, phase engine.Phase) error {
+	// Phase names may encode round info (e.g. "round_1", "discussion_2").
+	// EventBus subscription in Init() remains the primary trigger since
+	// phase.changed payload carries the round number explicitly.
+	return nil
+}
+
+func (m *RoundClueModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// --- GameEventHandler ---
+
+func (m *RoundClueModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	if event.Type != "round_clue:status" {
+		return fmt.Errorf("round_clue: unsupported event type %q", event.Type)
+	}
+	return nil
+}
+
+func (m *RoundClueModule) Apply(_ context.Context, event engine.GameEvent, _ *engine.GameState) error {
+	if event.Type != "round_clue:status" {
+		return fmt.Errorf("round_clue: unsupported event type %q", event.Type)
+	}
+	// Status queries are read-only; state is returned via BuildState.
+	return nil
+}
+
+// --- SerializableModule ---
+
+func (m *RoundClueModule) SaveState(_ context.Context) (engine.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	data, err := json.Marshal(roundClueState{
+		CurrentRound:      m.currentRound,
+		DistributedRounds: m.distributedRounds,
+	})
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("round_clue: save state: %w", err)
+	}
+	return engine.GameState{
+		Modules: map[string]json.RawMessage{
+			m.Name(): data,
+		},
+	}, nil
+}
+
+func (m *RoundClueModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	var s roundClueState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return fmt.Errorf("round_clue: restore state: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentRound = s.CurrentRound
+	m.distributedRounds = s.DistributedRounds
+	if m.distributedRounds == nil {
+		m.distributedRounds = make(map[int]bool)
+	}
+	return nil
+}
+
+// --- RuleProvider ---
+
+func (m *RoundClueModule) GetRules() []engine.Rule {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	rules := make([]engine.Rule, 0, len(m.distributions))
+	for _, dist := range m.distributions {
+		logic, _ := json.Marshal(map[string]any{
+			"==": []any{map[string]any{"var": "round"}, dist.Round},
+		})
+		rules = append(rules, engine.Rule{
+			ID:          fmt.Sprintf("round_clue_r%d_%s", dist.Round, dist.ClueID),
+			Description: fmt.Sprintf("Distribute clue %s at round %d", dist.ClueID, dist.Round),
+			Logic:       logic,
+		})
+	}
+	return rules
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*RoundClueModule)(nil)
-	_ engine.ConfigSchema = (*RoundClueModule)(nil)
+	_ engine.Module             = (*RoundClueModule)(nil)
+	_ engine.ConfigSchema       = (*RoundClueModule)(nil)
+	_ engine.PhaseHookModule    = (*RoundClueModule)(nil)
+	_ engine.GameEventHandler   = (*RoundClueModule)(nil)
+	_ engine.SerializableModule = (*RoundClueModule)(nil)
+	_ engine.RuleProvider       = (*RoundClueModule)(nil)
 )

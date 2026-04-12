@@ -248,3 +248,106 @@ func TestRoundClueModule_Cleanup(t *testing.T) {
 		t.Fatal("expected distributedRounds nil after cleanup")
 	}
 }
+
+func TestRoundClueModule_SaveRestoreState(t *testing.T) {
+	deps := newTestDeps()
+	cfg := json.RawMessage(`{
+		"distributions": [
+			{"round": 1, "clueId": "c1", "targetCode": "detective"}
+		]
+	}`)
+	m := NewRoundClueModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	// Simulate round change.
+	deps.EventBus.Publish(engine.Event{
+		Type:    "phase.changed",
+		Payload: map[string]any{"round": float64(1)},
+	})
+	time.Sleep(10 * time.Millisecond)
+
+	// Save state.
+	gs, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+	if _, ok := gs.Modules["round_clue"]; !ok {
+		t.Fatal("expected round_clue key in GameState.Modules")
+	}
+
+	// Restore into fresh module.
+	m2 := NewRoundClueModule()
+	_ = m2.Init(context.Background(), newTestDeps(), nil)
+	if err := m2.RestoreState(context.Background(), uuid.New(), gs); err != nil {
+		t.Fatalf("RestoreState failed: %v", err)
+	}
+
+	m2.mu.RLock()
+	if m2.currentRound != 1 {
+		t.Fatalf("expected currentRound=1, got %d", m2.currentRound)
+	}
+	if !m2.distributedRounds[1] {
+		t.Fatal("expected round 1 marked as distributed")
+	}
+	m2.mu.RUnlock()
+}
+
+func TestRoundClueModule_GameEventHandler(t *testing.T) {
+	m := NewRoundClueModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+
+	err := m.Validate(context.Background(), engine.GameEvent{Type: "round_clue:status"}, engine.GameState{})
+	if err != nil {
+		t.Fatalf("Validate should accept round_clue:status: %v", err)
+	}
+
+	err = m.Validate(context.Background(), engine.GameEvent{Type: "unknown"}, engine.GameState{})
+	if err == nil {
+		t.Fatal("Validate should reject unknown type")
+	}
+
+	err = m.Apply(context.Background(), engine.GameEvent{Type: "round_clue:status"}, nil)
+	if err != nil {
+		t.Fatalf("Apply should succeed for status: %v", err)
+	}
+}
+
+func TestRoundClueModule_GetRules(t *testing.T) {
+	cfg := json.RawMessage(`{
+		"distributions": [
+			{"round": 1, "clueId": "c1", "targetCode": "detective"},
+			{"round": 2, "clueId": "c2", "targetCode": "butler"}
+		]
+	}`)
+	m := NewRoundClueModule()
+	if err := m.Init(context.Background(), newTestDeps(), cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	rules := m.GetRules()
+	if len(rules) != 2 {
+		t.Fatalf("expected 2 rules, got %d", len(rules))
+	}
+
+	var logic map[string]any
+	if err := json.Unmarshal(rules[0].Logic, &logic); err != nil {
+		t.Fatalf("rule Logic not valid JSON: %v", err)
+	}
+	if _, ok := logic["=="]; !ok {
+		t.Fatal("expected '==' operator in round rule")
+	}
+}
+
+func TestRoundClueModule_PhaseHookModule(t *testing.T) {
+	m := NewRoundClueModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+
+	if err := m.OnPhaseEnter(context.Background(), "round_1"); err != nil {
+		t.Fatalf("OnPhaseEnter failed: %v", err)
+	}
+	if err := m.OnPhaseExit(context.Background(), "round_1"); err != nil {
+		t.Fatalf("OnPhaseExit failed: %v", err)
+	}
+}

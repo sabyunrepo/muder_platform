@@ -567,3 +567,48 @@ func TestTradeClueModule_Cleanup(t *testing.T) {
 		t.Fatal("expected activeShows nil after cleanup")
 	}
 }
+
+func TestTradeClueModule_SaveRestoreState(t *testing.T) {
+	m := NewTradeClueModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, nil); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	// Set some state.
+	m.mu.Lock()
+	m.exchangeAllowed = true
+	m.activeProposals["p1"] = &TradeProposal{
+		ID:            "p1",
+		ProposerID:    uuid.New(),
+		TargetID:      "butler",
+		OfferedClueID: "c1",
+		Status:        "pending",
+	}
+	m.mu.Unlock()
+
+	// Save state.
+	gs, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+	if _, ok := gs.Modules["trade_clue"]; !ok {
+		t.Fatal("expected trade_clue key in GameState.Modules")
+	}
+
+	// Restore into fresh module.
+	m2 := NewTradeClueModule()
+	_ = m2.Init(context.Background(), newTestDeps(), nil)
+	if err := m2.RestoreState(context.Background(), uuid.New(), gs); err != nil {
+		t.Fatalf("RestoreState failed: %v", err)
+	}
+
+	m2.mu.RLock()
+	if !m2.exchangeAllowed {
+		t.Fatal("expected exchangeAllowed=true after restore")
+	}
+	if len(m2.activeProposals) != 1 {
+		t.Fatalf("expected 1 active proposal, got %d", len(m2.activeProposals))
+	}
+	m2.mu.RUnlock()
+}

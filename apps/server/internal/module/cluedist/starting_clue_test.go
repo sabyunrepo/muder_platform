@@ -224,3 +224,97 @@ func TestStartingClueModule_Cleanup(t *testing.T) {
 		t.Fatal("expected distributions nil after cleanup")
 	}
 }
+
+func TestStartingClueModule_PhaseHookModule(t *testing.T) {
+	deps := newTestDeps()
+	cfg := json.RawMessage(`{
+		"distributeAt": "game_start",
+		"startingClues": {"detective": ["c1"]}
+	}`)
+	m := NewStartingClueModule()
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	var distributed bool
+	deps.EventBus.Subscribe("clue.starting_distributed", func(_ engine.Event) {
+		distributed = true
+	})
+
+	// OnPhaseEnter with game_start config should trigger distribution.
+	if err := m.OnPhaseEnter(context.Background(), "introduction"); err != nil {
+		t.Fatalf("OnPhaseEnter failed: %v", err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	if !distributed {
+		t.Fatal("expected distribution via OnPhaseEnter")
+	}
+
+	// Second call should not re-distribute (once-only guard).
+	distributed = false
+	if err := m.OnPhaseEnter(context.Background(), "discussion"); err != nil {
+		t.Fatalf("OnPhaseEnter failed: %v", err)
+	}
+	if distributed {
+		t.Fatal("should not distribute twice")
+	}
+
+	// OnPhaseExit is a no-op.
+	if err := m.OnPhaseExit(context.Background(), "introduction"); err != nil {
+		t.Fatalf("OnPhaseExit failed: %v", err)
+	}
+}
+
+func TestStartingClueModule_SaveRestoreState(t *testing.T) {
+	m := NewStartingClueModule()
+	deps := newTestDeps()
+	cfg := json.RawMessage(`{
+		"distributeAt": "game_start",
+		"startingClues": {"detective": ["c1", "c2"]}
+	}`)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	// Trigger distribution.
+	deps.EventBus.Publish(engine.Event{Type: "game.started"})
+	time.Sleep(10 * time.Millisecond)
+
+	// Save state.
+	gs, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+	if _, ok := gs.Modules["starting_clue"]; !ok {
+		t.Fatal("expected starting_clue key in GameState.Modules")
+	}
+
+	// Restore into a fresh module.
+	m2 := NewStartingClueModule()
+	_ = m2.Init(context.Background(), newTestDeps(), nil)
+	if err := m2.RestoreState(context.Background(), uuid.New(), gs); err != nil {
+		t.Fatalf("RestoreState failed: %v", err)
+	}
+
+	m2.mu.RLock()
+	if !m2.distributed {
+		t.Fatal("expected distributed=true after restore")
+	}
+	if len(m2.distributions) != 1 {
+		t.Fatalf("expected 1 distribution entry, got %d", len(m2.distributions))
+	}
+	m2.mu.RUnlock()
+}
+
+func TestStartingClueModule_RestoreState_NoKey(t *testing.T) {
+	m := NewStartingClueModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+
+	// RestoreState with empty modules should be no-op.
+	err := m.RestoreState(context.Background(), uuid.New(), engine.GameState{
+		Modules: map[string]json.RawMessage{},
+	})
+	if err != nil {
+		t.Fatalf("RestoreState with no key should succeed: %v", err)
+	}
+}

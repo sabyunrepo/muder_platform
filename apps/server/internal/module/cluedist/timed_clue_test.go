@@ -273,3 +273,54 @@ func TestTimedClueModule_Cleanup(t *testing.T) {
 		t.Fatal("expected playerClueCount nil after cleanup")
 	}
 }
+
+func TestTimedClueModule_SaveRestoreState(t *testing.T) {
+	m := NewTimedClueModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, nil); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
+	// Activate and distribute once.
+	_ = m.handleStart()
+	m.mu.Lock()
+	m.distributedCount = 3
+	m.mu.Unlock()
+
+	// Save state.
+	gs, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState failed: %v", err)
+	}
+	if _, ok := gs.Modules["timed_clue"]; !ok {
+		t.Fatal("expected timed_clue key in GameState.Modules")
+	}
+
+	// Restore into fresh module.
+	m2 := NewTimedClueModule()
+	_ = m2.Init(context.Background(), newTestDeps(), nil)
+	if err := m2.RestoreState(context.Background(), uuid.New(), gs); err != nil {
+		t.Fatalf("RestoreState failed: %v", err)
+	}
+
+	m2.mu.RLock()
+	if m2.distributedCount != 3 {
+		t.Fatalf("expected distributedCount=3, got %d", m2.distributedCount)
+	}
+	if !m2.isActive {
+		t.Fatal("expected isActive=true after restore")
+	}
+	m2.mu.RUnlock()
+}
+
+func TestTimedClueModule_RestoreState_NoKey(t *testing.T) {
+	m := NewTimedClueModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+
+	err := m.RestoreState(context.Background(), uuid.New(), engine.GameState{
+		Modules: map[string]json.RawMessage{},
+	})
+	if err != nil {
+		t.Fatalf("RestoreState with no key should succeed: %v", err)
+	}
+}

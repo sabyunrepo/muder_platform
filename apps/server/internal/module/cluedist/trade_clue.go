@@ -441,9 +441,56 @@ func (m *TradeClueModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
+// --- SerializableModule ---
+
+func (m *TradeClueModule) SaveState(_ context.Context) (engine.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	data, err := json.Marshal(tradeClueState{
+		ActiveProposals: m.activeProposals,
+		ActiveShows:     m.activeShows,
+		ExchangeAllowed: m.exchangeAllowed,
+		Config:          m.config,
+	})
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("trade_clue: save state: %w", err)
+	}
+	return engine.GameState{
+		Modules: map[string]json.RawMessage{
+			m.Name(): data,
+		},
+	}, nil
+}
+
+func (m *TradeClueModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	var s tradeClueState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return fmt.Errorf("trade_clue: restore state: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.activeProposals = s.ActiveProposals
+	if m.activeProposals == nil {
+		m.activeProposals = make(map[string]*TradeProposal)
+	}
+	m.activeShows = s.ActiveShows
+	if m.activeShows == nil {
+		m.activeShows = make(map[string]*ShowSession)
+	}
+	m.exchangeAllowed = s.ExchangeAllowed
+	m.config = s.Config
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*TradeClueModule)(nil)
-	_ engine.ConfigSchema = (*TradeClueModule)(nil)
-	_ engine.PhaseReactor = (*TradeClueModule)(nil)
+	_ engine.Module             = (*TradeClueModule)(nil)
+	_ engine.ConfigSchema       = (*TradeClueModule)(nil)
+	_ engine.PhaseReactor       = (*TradeClueModule)(nil)
+	_ engine.SerializableModule = (*TradeClueModule)(nil)
 )

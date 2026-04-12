@@ -177,8 +177,69 @@ func (m *StartingClueModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- PhaseHookModule ---
+
+func (m *StartingClueModule) OnPhaseEnter(_ context.Context, phase engine.Phase) error {
+	// Distribute on phase entry based on distributeAt config.
+	// The once-only guard in distribute() prevents double execution
+	// when EventBus subscription also fires.
+	switch m.config.DistributeAt {
+	case "game_start", "first_phase":
+		m.distribute()
+	case "after_reading":
+		// "after_reading" is not a phase name but a game event;
+		// handled by EventBus subscription in Init().
+	}
+	return nil
+}
+
+func (m *StartingClueModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// --- SerializableModule ---
+
+func (m *StartingClueModule) SaveState(_ context.Context) (engine.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	data, err := json.Marshal(startingClueState{
+		Distributed:        m.distributed,
+		DistributionConfig: m.distributions,
+	})
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("starting_clue: save state: %w", err)
+	}
+	return engine.GameState{
+		Modules: map[string]json.RawMessage{
+			m.Name(): data,
+		},
+	}, nil
+}
+
+func (m *StartingClueModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	var s startingClueState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return fmt.Errorf("starting_clue: restore state: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.distributed = s.Distributed
+	m.distributions = s.DistributionConfig
+	if m.distributions == nil {
+		m.distributions = make(map[string][]string)
+	}
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*StartingClueModule)(nil)
-	_ engine.ConfigSchema = (*StartingClueModule)(nil)
+	_ engine.Module             = (*StartingClueModule)(nil)
+	_ engine.ConfigSchema       = (*StartingClueModule)(nil)
+	_ engine.PhaseHookModule    = (*StartingClueModule)(nil)
+	_ engine.SerializableModule = (*StartingClueModule)(nil)
 )

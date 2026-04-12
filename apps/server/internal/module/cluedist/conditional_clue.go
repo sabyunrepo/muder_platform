@@ -239,8 +239,80 @@ func (m *ConditionalClueModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- GameEventHandler ---
+
+func (m *ConditionalClueModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "clue.acquired", "conditional:status":
+		return nil
+	default:
+		return fmt.Errorf("conditional_clue: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *ConditionalClueModule) Apply(_ context.Context, event engine.GameEvent, _ *engine.GameState) error {
+	switch event.Type {
+	case "clue.acquired":
+		var payload struct {
+			ClueID string `json:"clueId"`
+		}
+		if event.Payload != nil {
+			if err := json.Unmarshal(event.Payload, &payload); err != nil {
+				return fmt.Errorf("conditional_clue: invalid clue.acquired payload: %w", err)
+			}
+		}
+		if payload.ClueID != "" {
+			m.onClueAcquired(payload.ClueID)
+		}
+		return nil
+	case "conditional:status":
+		return nil
+	default:
+		return fmt.Errorf("conditional_clue: unsupported event type %q", event.Type)
+	}
+}
+
+// --- RuleProvider ---
+
+func (m *ConditionalClueModule) GetRules() []engine.Rule {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	rules := make([]engine.Rule, 0, len(m.dependencies))
+	for _, dep := range m.dependencies {
+		var logic json.RawMessage
+		if dep.Mode == "ANY" {
+			// Any prerequisite unlocks the clue.
+			orClauses := make([]any, 0, len(dep.PrerequisiteClueIDs))
+			for _, prereq := range dep.PrerequisiteClueIDs {
+				orClauses = append(orClauses, map[string]any{
+					"var": "clues." + prereq,
+				})
+			}
+			logic, _ = json.Marshal(map[string]any{"or": orClauses})
+		} else {
+			// All prerequisites required.
+			andClauses := make([]any, 0, len(dep.PrerequisiteClueIDs))
+			for _, prereq := range dep.PrerequisiteClueIDs {
+				andClauses = append(andClauses, map[string]any{
+					"var": "clues." + prereq,
+				})
+			}
+			logic, _ = json.Marshal(map[string]any{"and": andClauses})
+		}
+		rules = append(rules, engine.Rule{
+			ID:          fmt.Sprintf("conditional_unlock_%s", dep.ClueID),
+			Description: fmt.Sprintf("Unlock %s when prerequisites met (%s)", dep.ClueID, dep.Mode),
+			Logic:       logic,
+		})
+	}
+	return rules
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*ConditionalClueModule)(nil)
-	_ engine.ConfigSchema = (*ConditionalClueModule)(nil)
+	_ engine.Module           = (*ConditionalClueModule)(nil)
+	_ engine.ConfigSchema     = (*ConditionalClueModule)(nil)
+	_ engine.GameEventHandler = (*ConditionalClueModule)(nil)
+	_ engine.RuleProvider     = (*ConditionalClueModule)(nil)
 )
