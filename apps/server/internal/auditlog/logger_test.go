@@ -33,13 +33,14 @@ func (m *mockAppender) append(ctx context.Context, evt AuditEvent) error {
 // newTestDBLogger builds a DBLogger that uses a mock persist function.
 func newTestDBLogger(ma *mockAppender) *DBLogger {
 	l := &DBLogger{
-		store:  nil, // not used — persistFn overrides
-		ch:     make(chan AuditEvent, defaultBufferSize),
-		log:    zerolog.Nop(),
-		stopCh: make(chan struct{}),
+		store:          nil, // not used — persistFn overrides
+		ch:             make(chan queuedEvent, defaultBufferSize),
+		log:            zerolog.Nop(),
+		stopCh:         make(chan struct{}),
+		persistTimeout: defaultPersistTimeout,
 	}
-	l.persistFn = func(evt AuditEvent) {
-		_ = ma.append(context.Background(), evt)
+	l.persistFn = func(ctx context.Context, evt AuditEvent) error {
+		return ma.append(ctx, evt)
 	}
 	return l
 }
@@ -117,13 +118,14 @@ func TestDBLogger_BufferFull(t *testing.T) {
 	}
 	// Tiny buffer (2) so it fills quickly.
 	l := &DBLogger{
-		store:  nil,
-		ch:     make(chan AuditEvent, 2),
-		log:    zerolog.Nop(),
-		stopCh: make(chan struct{}),
+		store:          nil,
+		ch:             make(chan queuedEvent, 2),
+		log:            zerolog.Nop(),
+		stopCh:         make(chan struct{}),
+		persistTimeout: defaultPersistTimeout,
 	}
-	l.persistFn = func(evt AuditEvent) {
-		_ = ma.append(context.Background(), evt)
+	l.persistFn = func(ctx context.Context, evt AuditEvent) error {
+		return ma.append(ctx, evt)
 	}
 	l.Start()
 
@@ -140,10 +142,9 @@ func TestDBLogger_BufferFull(t *testing.T) {
 	if err != ErrBufferFull {
 		t.Fatalf("expected ErrBufferFull, got %v", err)
 	}
-	// Unblock and clean up.
+	// Unblock and clean up via public Stop (idempotent-safe).
 	close(blockCh)
-	close(l.stopCh)
-	l.wg.Wait()
+	l.Stop()
 }
 
 // ---------------------------------------------------------------------------
@@ -159,8 +160,8 @@ func TestNewDBLogger_Constructor(t *testing.T) {
 		t.Fatal("NewDBLogger returned nil")
 	}
 	// Override persist so the nil pool isn't dereferenced.
-	l.persistFn = func(evt AuditEvent) {
-		_ = ma.append(context.Background(), evt)
+	l.persistFn = func(ctx context.Context, evt AuditEvent) error {
+		return ma.append(ctx, evt)
 	}
 	l.Start()
 	defer l.Stop()
@@ -278,5 +279,75 @@ func TestDBLogger_ConcurrentAppendDuringStop(t *testing.T) {
 	// closed channel), and Stop itself must not panic on double-close.
 	if err := l.Append(context.Background(), validEvent()); !errors.Is(err, ErrStopped) {
 		t.Fatalf("post-Stop Append: expected ErrStopped, got %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DBLogger — Append honours caller context cancellation
+// ---------------------------------------------------------------------------
+
+func TestDBLogger_Append_RespectsContextCancellation(t *testing.T) {
+	ma := &mockAppender{}
+	l := newTestDBLogger(ma)
+	l.Start()
+	defer l.Stop()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // already cancelled
+
+	err := l.Append(ctx, validEvent())
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled from cancelled-ctx Append, got %v", err)
+	}
+	// The cancelled event must NOT have been enqueued/persisted.
+	time.Sleep(20 * time.Millisecond)
+	if got := ma.appendCount.Load(); got != 0 {
+		t.Fatalf("expected 0 persisted events for cancelled ctx, got %d", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// DBLogger — caller ctx is propagated into persist (not context.Background)
+// ---------------------------------------------------------------------------
+
+type ctxKey string
+
+func TestDBLogger_Append_PropagatesContextToPersist(t *testing.T) {
+	const keyName ctxKey = "trace-id"
+	want := "trace-abc-123"
+
+	gotCh := make(chan context.Context, 1)
+	l := &DBLogger{
+		store:          nil,
+		ch:             make(chan queuedEvent, defaultBufferSize),
+		log:            zerolog.Nop(),
+		stopCh:         make(chan struct{}),
+		persistTimeout: defaultPersistTimeout,
+	}
+	l.persistFn = func(ctx context.Context, _ AuditEvent) error {
+		gotCh <- ctx
+		return nil
+	}
+	l.Start()
+	defer l.Stop()
+
+	ctx := context.WithValue(context.Background(), keyName, want)
+	if err := l.Append(ctx, validEvent()); err != nil {
+		t.Fatalf("Append unexpected error: %v", err)
+	}
+
+	select {
+	case got := <-gotCh:
+		// The persistFn ctx must carry the caller's trace value through
+		// (even after being wrapped in WithTimeout).
+		if v, _ := got.Value(keyName).(string); v != want {
+			t.Fatalf("persist ctx lost caller value: got %q, want %q", v, want)
+		}
+		// Timeout wrapper must still be active.
+		if _, hasDeadline := got.Deadline(); !hasDeadline {
+			t.Fatal("expected persist ctx to carry a deadline from persistTimeout")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("persistFn was not called")
 	}
 }
