@@ -21,12 +21,13 @@
 ### Wave 1 — 기본 인터페이스 (parallel ×3)
 
 #### PR-A1: GenrePlugin Core + Optional + Registry
-- [ ] `engine/plugin.go` — GenrePlugin Core (7 methods)
-- [ ] `engine/plugin_optional.go` — GameEventHandler, WinChecker, PhaseHookPlugin, SerializablePlugin, RuleProvider
-- [ ] `engine/registry.go` — NewRegistry(), Register(), Create(), List()
-- [ ] `genre/shared/connection.go` — 공통 접속 로직 (모든 Plugin이 사용)
-- [ ] `engine/plugin_test.go` — type assertion 동작, mock plugin 격리 테스트
-- [ ] Phase 8.0 Migration: `engine/types.go` → plugin.go 교체, GameProgressionEngine 제거
+- [x] `engine/module_types.go` — GameEvent, GameState, Phase, PhaseDefinition, WinResult, Rule
+- [x] `engine/module.go` — Plugin Core interface (7 methods) + PluginConfigSchema
+- [x] `engine/module_optional.go` — GameEventHandler, WinChecker, PhaseHookPlugin, SerializablePlugin, RuleProvider
+- [x] `engine/module_registry.go` — NewPluginRegistry(), Register(), New(), List()
+- [x] `engine/module_test.go` — stubCorePlugin, stubFullPlugin, type assertion + registry coverage (100% new files)
+- [ ] `genre/shared/connection.go` — 공통 접속 로직 (PR-B1로 이동)
+- [ ] Phase 8.0 Migration: legacy types.go/engine.go 제거 (PR-A4로 이동)
 
 #### PR-A2: EventBus (EventListener)
 - [ ] `engine/event_bus.go` — EventListener interface, Subscribe, Publish (에러 수집)
