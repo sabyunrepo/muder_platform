@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
-**Wave**: W3
-**PR**: PR-A7 (JSON Logic Rule Evaluator)
-**Task**: engine/rule_evaluator.go + tests + cross-engine parity
+**Wave**: W4
+**PR**: PR-B1 (cluedist Module Migration)
+**Task**: module/cluedist migration to new Module interface
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -56,9 +56,13 @@
 - [x] internal/clue/visibility.go — VisibilityRule, ComputeVisible (scope priority: player>role>team>all)
 - [x] internal/clue/*_test.go 97.0% coverage (target 85%)
 
-### PR-A7 — JSON Logic Rule Evaluator
-- [ ] engine/rule_evaluator.go
-- [ ] engine/rule_evaluator_test.go — 크로스 엔진 패리티
+### PR-A7 — JSON Logic Rule Evaluator ✅
+- [x] engine/rule_evaluator.go — RuleEvaluator, SetContext, Evaluate, EvaluateAll, IsValid, toBool
+- [x] engine/rule_evaluator_test.go — 15 unit tests (operators, var, concurrency, edge cases)
+- [x] engine/rule_evaluator_parity_test.go — 49 golden fixtures, json-logic-js cross-engine parity
+- [x] testdata/rule_parity_fixtures.json — shared fixture file
+- [x] jsonlogic/v3 v3.9.0 dependency added
+- [x] Coverage ~95% (target 85%), race clean
 
 ## Wave 4 — Module Migration (parallel ×4)
 

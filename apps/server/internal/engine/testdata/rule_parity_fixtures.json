@@ -1,0 +1,62 @@
+[
+  {"name": "eq_true", "rule": {"==": [1, 1]}, "data": {}, "expected": true},
+  {"name": "eq_false", "rule": {"==": [1, 2]}, "data": {}, "expected": false},
+  {"name": "neq", "rule": {"!=": [1, 2]}, "data": {}, "expected": true},
+  {"name": "lt", "rule": {"<": [1, 2]}, "data": {}, "expected": true},
+  {"name": "gt", "rule": {">": [2, 1]}, "data": {}, "expected": true},
+  {"name": "lte", "rule": {"<=": [2, 2]}, "data": {}, "expected": true},
+  {"name": "gte", "rule": {">=": [3, 2]}, "data": {}, "expected": true},
+
+  {"name": "and_tt", "rule": {"and": [true, true]}, "data": {}, "expected": true},
+  {"name": "and_tf", "rule": {"and": [true, false]}, "data": {}, "expected": false},
+  {"name": "or_ft", "rule": {"or": [false, true]}, "data": {}, "expected": true},
+  {"name": "or_ff", "rule": {"or": [false, false]}, "data": {}, "expected": false},
+  {"name": "not_true", "rule": {"!": [true]}, "data": {}, "expected": false},
+  {"name": "not_false", "rule": {"!": [false]}, "data": {}, "expected": true},
+  {"name": "double_not", "rule": {"!!": [1]}, "data": {}, "expected": true},
+  {"name": "double_not_zero", "rule": {"!!": [0]}, "data": {}, "expected": false},
+
+  {"name": "if_true", "rule": {"if": [true, 1, 0]}, "data": {}, "expected": 1},
+  {"name": "if_false", "rule": {"if": [false, 1, 0]}, "data": {}, "expected": 0},
+  {"name": "if_nested", "rule": {"if": [false, 1, true, 2, 3]}, "data": {}, "expected": 2},
+
+  {"name": "add", "rule": {"+": [1, 2, 3]}, "data": {}, "expected": 6},
+  {"name": "subtract", "rule": {"-": [10, 3]}, "data": {}, "expected": 7},
+  {"name": "multiply", "rule": {"*": [3, 4]}, "data": {}, "expected": 12},
+  {"name": "divide", "rule": {"/": [10, 2]}, "data": {}, "expected": 5},
+  {"name": "modulo", "rule": {"%": [7, 3]}, "data": {}, "expected": 1},
+
+  {"name": "min", "rule": {"min": [3, 1, 2]}, "data": {}, "expected": 1},
+  {"name": "max", "rule": {"max": [3, 1, 2]}, "data": {}, "expected": 3},
+
+  {"name": "in_array", "rule": {"in": ["a", ["a", "b", "c"]]}, "data": {}, "expected": true},
+  {"name": "not_in_array", "rule": {"in": ["d", ["a", "b", "c"]]}, "data": {}, "expected": false},
+  {"name": "in_string", "rule": {"in": ["oo", "foobar"]}, "data": {}, "expected": true},
+
+  {"name": "cat", "rule": {"cat": ["hello", " ", "world"]}, "data": {}, "expected": "hello world"},
+  {"name": "substr", "rule": {"substr": ["foobar", 3]}, "data": {}, "expected": "bar"},
+  {"name": "substr_len", "rule": {"substr": ["foobar", 0, 3]}, "data": {}, "expected": "foo"},
+
+  {"name": "var_simple", "rule": {"var": "x"}, "data": {"x": 42}, "expected": 42},
+  {"name": "var_nested", "rule": {"var": "a.b.c"}, "data": {"a": {"b": {"c": 99}}}, "expected": 99},
+  {"name": "var_default", "rule": {"var": ["missing", "fallback"]}, "data": {}, "expected": "fallback"},
+  {"name": "var_array_index", "rule": {"var": "arr.1"}, "data": {"arr": [10, 20, 30]}, "expected": 20},
+
+  {"name": "merge", "rule": {"merge": [[1, 2], [3, 4]]}, "data": {}, "expected": [1, 2, 3, 4]},
+
+  {"name": "map", "rule": {"map": [{"var": "nums"}, {"*": [{"var": ""}, 2]}]}, "data": {"nums": [1, 2, 3]}, "expected": [2, 4, 6]},
+  {"name": "filter", "rule": {"filter": [{"var": "nums"}, {">": [{"var": ""}, 2]}]}, "data": {"nums": [1, 2, 3, 4]}, "expected": [3, 4]},
+  {"name": "reduce", "rule": {"reduce": [{"var": "nums"}, {"+": [{"var": "current"}, {"var": "accumulator"}]}, 0]}, "data": {"nums": [1, 2, 3]}, "expected": 6},
+  {"name": "all", "rule": {"all": [{"var": "nums"}, {">": [{"var": ""}, 0]}]}, "data": {"nums": [1, 2, 3]}, "expected": true},
+  {"name": "none", "rule": {"none": [{"var": "nums"}, {"<": [{"var": ""}, 0]}]}, "data": {"nums": [1, 2, 3]}, "expected": true},
+  {"name": "some", "rule": {"some": [{"var": "nums"}, {"==": [{"var": ""}, 2]}]}, "data": {"nums": [1, 2, 3]}, "expected": true},
+
+  {"name": "missing_one", "rule": {"missing": ["a", "b"]}, "data": {"a": 1}, "expected": ["b"]},
+  {"name": "missing_none", "rule": {"missing": ["a"]}, "data": {"a": 1}, "expected": []},
+  {"name": "missing_some", "rule": {"missing_some": [1, ["a", "b", "c"]]}, "data": {"a": 1}, "expected": []},
+
+  {"name": "game_phase_check", "rule": {"==": [{"var": "phase"}, "voting"]}, "data": {"phase": "voting", "modules": {}}, "expected": true},
+  {"name": "game_module_var", "rule": {">": [{"var": "modules.decision.votes"}, 3]}, "data": {"phase": "voting", "modules": {"decision": {"votes": 5}}}, "expected": true},
+  {"name": "game_complex", "rule": {"and": [{"==": [{"var": "phase"}, "voting"]}, {">": [{"var": "modules.decision.votes"}, {"var": "modules.decision.threshold"}]}]}, "data": {"phase": "voting", "modules": {"decision": {"votes": 5, "threshold": 3}}}, "expected": true},
+  {"name": "game_clue_revealed", "rule": {"in": ["knife", {"var": "modules.cluedist.revealed"}]}, "data": {"phase": "investigation", "modules": {"cluedist": {"revealed": ["knife", "letter"]}}}, "expected": true}
+]
