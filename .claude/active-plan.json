@@ -29,7 +29,7 @@
     "current_wave": "W7",
     "current_pr": "PR-V1",
     "current_task": "e2e Smoke + Module Isolation CI Gate",
-    "status": "in_progress",
+    "status": "completed",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
     "waves": [
@@ -349,10 +349,10 @@
           ".github/workflows/module-isolation.yml"
         ],
         "tasks_total": 7,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-9.0/pr-v1-e2e-smoke",
-        "commit": null
+        "tasks_done": 7,
+        "status": "completed",
+        "branch": "main",
+        "commit": "9d3d8a8"
       }
     }
   },
