@@ -9,6 +9,7 @@ import { api } from "@/services/api";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { NetworkBanner } from "@/shared/components/NetworkBanner";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
+import RoleRoute from "@/shared/components/RoleRoute";
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded 페이지
@@ -185,24 +186,26 @@ export function App() {
                     element={<CreatorSettlementsPage />}
                   />
 
-                  {/* Admin */}
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route
-                    path="/admin/settlements"
-                    element={<AdminSettlementsPage />}
-                  />
-                  <Route
-                    path="/admin/revenue"
-                    element={<AdminRevenuePage />}
-                  />
-                  <Route
-                    path="/admin/packages"
-                    element={<AdminPackagesPage />}
-                  />
-                  <Route
-                    path="/admin/coins"
-                    element={<AdminCoinGrantPage />}
-                  />
+                  {/* Admin — admin 역할만 접근 가능 */}
+                  <Route element={<RoleRoute roles={["admin"]} />}>
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route
+                      path="/admin/settlements"
+                      element={<AdminSettlementsPage />}
+                    />
+                    <Route
+                      path="/admin/revenue"
+                      element={<AdminRevenuePage />}
+                    />
+                    <Route
+                      path="/admin/packages"
+                      element={<AdminPackagesPage />}
+                    />
+                    <Route
+                      path="/admin/coins"
+                      element={<AdminCoinGrantPage />}
+                    />
+                  </Route>
                 </Route>
               </Route>
 
