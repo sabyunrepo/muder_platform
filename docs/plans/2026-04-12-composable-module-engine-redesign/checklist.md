@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W4
-**PR**: PR-B1 (cluedist Module Migration)
-**Task**: module/cluedist migration to new Module interface
+**PR**: PR-B2 (decision Module Migration)
+**Task**: module/decision migration to new Module interface
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -66,10 +66,10 @@
 
 ## Wave 4 — Module Migration (parallel ×4)
 
-### PR-B1 — cluedist 마이그
-- [ ] module/cluedist/*.go 새 인터페이스로 마이그
-- [ ] StartingClue/RoundClue/ConditionalClue Optional opt-in
-- [ ] Unit tests 유지
+### PR-B1 — cluedist 마이그 ✅ `5396be8`
+- [x] module/cluedist/*.go 새 인터페이스로 마이그
+- [x] StartingClue/RoundClue/ConditionalClue Optional opt-in
+- [x] Unit tests 유지 (88.8% coverage)
 
 ### PR-B2 — decision 마이그
 - [ ] module/decision/*.go 마이그

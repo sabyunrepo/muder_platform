@@ -27,8 +27,8 @@
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
     "current_wave": "W4",
-    "current_pr": "PR-B1",
-    "current_task": "module/cluedist migration to new Module interface",
+    "current_pr": "PR-B2",
+    "current_task": "module/decision migration to new Module interface",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -219,10 +219,10 @@
           "apps/server/internal/module/cluedist/**"
         ],
         "tasks_total": 4,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-b1-cluedist-migration",
-        "commit": null
+        "commit": "5396be8"
       },
       "PR-B2": {
         "title": "decision Module Migration",
