@@ -9,6 +9,7 @@ import { api } from "@/services/api";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { NetworkBanner } from "@/shared/components/NetworkBanner";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
+import RoleRoute from "@/shared/components/RoleRoute";
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded 페이지
@@ -170,39 +171,43 @@ export function App() {
                   {/* My Themes */}
                   <Route path="/my-themes" element={<MyThemesPage />} />
 
-                  {/* Creator */}
-                  <Route path="/creator" element={<CreatorDashboardPage />} />
-                  <Route
-                    path="/creator/:id/stats"
-                    element={<CreatorThemeStatsPage />}
-                  />
-                  <Route
-                    path="/creator/earnings"
-                    element={<CreatorEarningsPage />}
-                  />
-                  <Route
-                    path="/creator/settlements"
-                    element={<CreatorSettlementsPage />}
-                  />
+                  {/* Creator — creator 또는 admin 역할만 접근 가능 */}
+                  <Route element={<RoleRoute roles={["creator", "admin"]} />}>
+                    <Route path="/creator" element={<CreatorDashboardPage />} />
+                    <Route
+                      path="/creator/:id/stats"
+                      element={<CreatorThemeStatsPage />}
+                    />
+                    <Route
+                      path="/creator/earnings"
+                      element={<CreatorEarningsPage />}
+                    />
+                    <Route
+                      path="/creator/settlements"
+                      element={<CreatorSettlementsPage />}
+                    />
+                  </Route>
 
-                  {/* Admin */}
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route
-                    path="/admin/settlements"
-                    element={<AdminSettlementsPage />}
-                  />
-                  <Route
-                    path="/admin/revenue"
-                    element={<AdminRevenuePage />}
-                  />
-                  <Route
-                    path="/admin/packages"
-                    element={<AdminPackagesPage />}
-                  />
-                  <Route
-                    path="/admin/coins"
-                    element={<AdminCoinGrantPage />}
-                  />
+                  {/* Admin — admin 역할만 접근 가능 */}
+                  <Route element={<RoleRoute roles={["admin"]} />}>
+                    <Route path="/admin" element={<AdminPage />} />
+                    <Route
+                      path="/admin/settlements"
+                      element={<AdminSettlementsPage />}
+                    />
+                    <Route
+                      path="/admin/revenue"
+                      element={<AdminRevenuePage />}
+                    />
+                    <Route
+                      path="/admin/packages"
+                      element={<AdminPackagesPage />}
+                    />
+                    <Route
+                      path="/admin/coins"
+                      element={<AdminCoinGrantPage />}
+                    />
+                  </Route>
                 </Route>
               </Route>
 
