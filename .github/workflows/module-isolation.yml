@@ -1,0 +1,30 @@
+name: Module Isolation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/server/internal/module/**'
+      - 'apps/server/internal/engine/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  module-isolation:
+    name: Module Isolation Gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: apps/server/go.sum
+      - name: Module Isolation
+        run: ../../scripts/test-module-isolation.sh
+      - name: E2E Smoke Tests
+        run: go test -race -timeout 120s ./internal/e2e/...
