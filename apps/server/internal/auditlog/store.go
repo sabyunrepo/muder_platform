@@ -19,27 +19,52 @@ var ErrBufferFull = errors.New("auditlog: buffer full")
 // ErrStopped is returned by DBLogger.Append when Stop has already been called.
 var ErrStopped = errors.New("auditlog: logger stopped")
 
-// Querier is the subset of db.Queries used by Store.
-// Defined as an interface to allow test injection.
+// Querier is the subset of db.Queries used inside the Append transaction.
+// Keeping this as an interface is what makes TxRunner injectable for unit
+// tests: a fake runner calls its own stub Querier without touching postgres.
 type Querier interface {
 	AppendAuditEvent(ctx context.Context, arg db.AppendAuditEventParams) (db.AuditEvent, error)
 	ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.AuditEvent, error)
 	LatestSeq(ctx context.Context, sessionID uuid.UUID) (int64, error)
 }
 
+// TxRunner is a minimal seam for executing a read/write transaction against
+// the audit_events table. The concrete implementation (pgxTxRunner) acquires
+// the per-session advisory lock and hands the caller a sqlc Queries bound to
+// the open pgx.Tx. Tests may substitute a fake runner to drive error-path
+// unit tests without a real postgres instance.
+type TxRunner interface {
+	RunTx(ctx context.Context, sessionID uuid.UUID, fn func(q Querier) error) error
+}
+
 // Store wraps a pgxpool and sqlc Querier to provide thread-safe audit
 // event persistence. Seq assignment uses a read-then-insert transaction
 // to avoid lost-update races under concurrent writers.
 type Store struct {
-	pool *pgxpool.Pool
+	runner TxRunner
+	pool   *pgxpool.Pool // retained for non-tx reads (ListBySession, LatestSeq)
 }
 
-// NewStore constructs a Store. pool must not be nil.
+// NewStore constructs a Store backed by the given pgxpool. pool must not be nil.
 func NewStore(pool *pgxpool.Pool) *Store {
 	if pool == nil {
 		panic("auditlog: pool must not be nil")
 	}
-	return &Store{pool: pool}
+	return &Store{
+		runner: &pgxTxRunner{pool: pool},
+		pool:   pool,
+	}
+}
+
+// NewStoreWithRunner constructs a Store with a custom TxRunner. Intended for
+// unit tests that need to drive error-classification paths without spinning up
+// a testcontainer. pool may be nil when the caller does not exercise
+// ListBySession / LatestSeq.
+func NewStoreWithRunner(runner TxRunner, pool *pgxpool.Pool) *Store {
+	if runner == nil {
+		panic("auditlog: runner must not be nil")
+	}
+	return &Store{runner: runner, pool: pool}
 }
 
 // Append persists evt to the database, assigning the next seq atomically.
@@ -53,19 +78,7 @@ func (s *Store) Append(ctx context.Context, evt AuditEvent) error {
 		return err
 	}
 
-	return pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{
-		IsoLevel:   pgx.ReadCommitted,
-		AccessMode: pgx.ReadWrite,
-	}, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx,
-			"SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
-			evt.SessionID.String(),
-		); err != nil {
-			return err
-		}
-
-		q := db.New(tx)
-
+	return s.runner.RunTx(ctx, evt.SessionID, func(q Querier) error {
 		seq, err := q.LatestSeq(ctx, evt.SessionID)
 		if err != nil {
 			return err
@@ -96,6 +109,29 @@ func (s *Store) Append(ctx context.Context, evt AuditEvent) error {
 			Payload:   payload,
 		})
 		return err
+	})
+}
+
+// pgxTxRunner is the production TxRunner: it opens a real pgx read/write tx,
+// takes the per-session advisory lock, and hands the fn a sqlc Queries bound
+// to that tx.
+type pgxTxRunner struct {
+	pool *pgxpool.Pool
+}
+
+// RunTx implements TxRunner for pgxTxRunner.
+func (r *pgxTxRunner) RunTx(ctx context.Context, sessionID uuid.UUID, fn func(q Querier) error) error {
+	return pgx.BeginTxFunc(ctx, r.pool, pgx.TxOptions{
+		IsoLevel:   pgx.ReadCommitted,
+		AccessMode: pgx.ReadWrite,
+	}, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx,
+			"SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))",
+			sessionID.String(),
+		); err != nil {
+			return err
+		}
+		return fn(db.New(tx))
 	})
 }
 
