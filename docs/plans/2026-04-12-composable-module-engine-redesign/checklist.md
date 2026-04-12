@@ -1,10 +1,10 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W3
-**PR**: PR-A6 (Clue Graph Primitive)
-**Task**: clue/graph.go + validator + visibility + tests
+**PR**: PR-A7 (JSON Logic Rule Evaluator)
+**Task**: engine/rule_evaluator.go + tests + cross-engine parity
 **State**: pending
-**Blockers**: W2 cleanup (Plugin→Module rename + eventbus migration) before W3 start
+**Blockers**: none
 **Last updated**: 2026-04-12
 <!-- STATUS-END -->
 

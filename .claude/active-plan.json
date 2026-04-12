@@ -27,8 +27,8 @@
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
     "current_wave": "W3",
-    "current_pr": "PR-A6",
-    "current_task": "clue/graph.go + validator + visibility + tests",
+    "current_pr": "PR-A7",
+    "current_task": "engine/rule_evaluator.go + tests + cross-engine parity",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -188,10 +188,10 @@
           "apps/server/internal/clue/**"
         ],
         "tasks_total": 5,
-        "tasks_done": 0,
-        "status": "pending",
-        "branch": "feat/phase-9.0/pr-a6-clue-graph",
-        "commit": null
+        "tasks_done": 5,
+        "status": "completed",
+        "branch": "main",
+        "commit": "072f351"
       },
       "PR-A7": {
         "title": "JSON Logic Rule Evaluator",
