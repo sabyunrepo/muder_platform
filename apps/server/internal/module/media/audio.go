@@ -157,3 +157,44 @@ func (m *AudioModule) ReactTo(_ context.Context, action engine.PhaseActionPayloa
 	})
 	return nil
 }
+
+// --- PhaseHookModule ---
+
+func (m *AudioModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *AudioModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// --- GameEventHandler ---
+
+func (m *AudioModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "audio:play", "audio:stop", "audio:pause", "audio:resume":
+		return nil
+	default:
+		return fmt.Errorf("audio: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *AudioModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("audio: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module           = (*AudioModule)(nil)
+	_ engine.PhaseReactor     = (*AudioModule)(nil)
+	_ engine.PhaseHookModule  = (*AudioModule)(nil)
+	_ engine.GameEventHandler = (*AudioModule)(nil)
+)

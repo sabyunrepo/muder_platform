@@ -173,8 +173,43 @@ func (m *WhisperModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
+// --- GameEventHandler ---
+
+func (m *WhisperModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "whisper:send":
+		return nil
+	default:
+		return fmt.Errorf("whisper: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *WhisperModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("whisper: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
+// --- PhaseHookModule ---
+
+func (m *WhisperModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *WhisperModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module       = (*WhisperModule)(nil)
-	_ engine.PhaseReactor = (*WhisperModule)(nil)
+	_ engine.Module           = (*WhisperModule)(nil)
+	_ engine.PhaseReactor     = (*WhisperModule)(nil)
+	_ engine.GameEventHandler = (*WhisperModule)(nil)
+	_ engine.PhaseHookModule  = (*WhisperModule)(nil)
 )

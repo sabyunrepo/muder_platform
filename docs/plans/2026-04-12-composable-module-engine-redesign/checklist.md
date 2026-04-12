@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W4
-**PR**: PR-B4 (media + communication Module Migration)
-**Task**: module/media + communication migration to new Module interface
+**PR**: PR-T1 (Template Loader + Validator)
+**Task**: internal/template loader, validator, schema merger
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -82,10 +82,10 @@
 - [x] module/core/*.go (4 modules +GameEventHandler +SerializableModule)
 - [x] Unit tests 유지 + 새 인터페이스 테스트 추가
 
-### PR-B4 — media + communication 마이그
-- [ ] module/media/*.go (MediaPlayback/BGM)
-- [ ] module/communication/*.go (TextChat/GroupChat/Whisper)
-- [ ] Unit tests 유지
+### PR-B4 — media + communication 마이그 ✅ `e00246a`
+- [x] module/media/*.go (audio +PhaseHookModule +GameEventHandler)
+- [x] module/communication/*.go (text_chat, group_chat, whisper +GameEventHandler +SerializableModule +PhaseHookModule)
+- [x] Unit tests 유지
 
 ## Wave 5 — Template System (sequential)
 
