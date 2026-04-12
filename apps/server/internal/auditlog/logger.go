@@ -40,6 +40,8 @@ type DBLogger struct {
 	wg     sync.WaitGroup
 	once   sync.Once
 	stopCh chan struct{}
+	// persistFn overrides the default store.Append call. Used in tests only.
+	persistFn func(AuditEvent)
 }
 
 // NewDBLogger constructs a DBLogger. Call Start before using Append.
@@ -105,6 +107,10 @@ func (l *DBLogger) flush() {
 }
 
 func (l *DBLogger) persist(evt AuditEvent) {
+	if l.persistFn != nil {
+		l.persistFn(evt)
+		return
+	}
 	if err := l.store.Append(context.Background(), evt); err != nil {
 		l.log.Error().Err(err).
 			Str("session_id", evt.SessionID.String()).
