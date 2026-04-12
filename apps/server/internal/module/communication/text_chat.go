@@ -210,9 +210,33 @@ func (m *TextChatModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
+// --- GameEventHandler ---
+
+func (m *TextChatModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "chat:send":
+		return nil
+	default:
+		return fmt.Errorf("text_chat: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *TextChatModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("text_chat: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module       = (*TextChatModule)(nil)
-	_ engine.PhaseReactor = (*TextChatModule)(nil)
-	_ engine.ConfigSchema = (*TextChatModule)(nil)
+	_ engine.Module           = (*TextChatModule)(nil)
+	_ engine.PhaseReactor     = (*TextChatModule)(nil)
+	_ engine.ConfigSchema     = (*TextChatModule)(nil)
+	_ engine.GameEventHandler = (*TextChatModule)(nil)
 )

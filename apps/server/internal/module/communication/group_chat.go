@@ -372,9 +372,55 @@ func (m *GroupChatModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
+// --- GameEventHandler ---
+
+func (m *GroupChatModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "group:create", "group:invite", "group:send", "group:leave":
+		return nil
+	default:
+		return fmt.Errorf("group_chat: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *GroupChatModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("group_chat: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
+// --- SerializableModule ---
+
+func (m *GroupChatModule) SaveState(_ context.Context) (engine.GameState, error) {
+	data, err := m.BuildState()
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("group_chat: save state: %w", err)
+	}
+	return engine.GameState{Modules: map[string]json.RawMessage{m.Name(): data}}, nil
+}
+
+func (m *GroupChatModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	_, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	// Group state is complex (rooms, players); BuildState captures it for client sync.
+	// Full restore would require deserializing room structures — for now we accept
+	// that group state resets on restore (groups are re-created by players).
+	return nil
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module       = (*GroupChatModule)(nil)
-	_ engine.PhaseReactor = (*GroupChatModule)(nil)
-	_ engine.ConfigSchema = (*GroupChatModule)(nil)
+	_ engine.Module             = (*GroupChatModule)(nil)
+	_ engine.PhaseReactor       = (*GroupChatModule)(nil)
+	_ engine.ConfigSchema       = (*GroupChatModule)(nil)
+	_ engine.GameEventHandler   = (*GroupChatModule)(nil)
+	_ engine.SerializableModule = (*GroupChatModule)(nil)
 )
