@@ -62,7 +62,7 @@ export function PaymentHistory() {
     );
   }
 
-  if (!data?.data.length) {
+  if (!data?.data?.length) {
     return (
       <EmptyState
         icon={<Receipt className="h-10 w-10" />}
