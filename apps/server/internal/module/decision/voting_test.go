@@ -447,3 +447,255 @@ func TestVotingModule_CloseWhenNotOpen(t *testing.T) {
 		t.Error("expected error when closing voting that is not open")
 	}
 }
+
+// --- GameEventHandler tests ---
+
+func TestVotingModule_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  string
+		setup   func(m *VotingModule)
+		event   engine.GameEvent
+		wantErr bool
+	}{
+		{
+			name:   "valid vote:cast",
+			config: "",
+			setup: func(m *VotingModule) {
+				m.mu.Lock()
+				m.isOpen = true
+				m.mu.Unlock()
+			},
+			event: engine.GameEvent{
+				Type:    "vote:cast",
+				Payload: json.RawMessage(`{"playerId":"` + uuid.New().String() + `","targetCode":"char_A"}`),
+			},
+			wantErr: false,
+		},
+		{
+			name:   "vote:cast when closed",
+			config: "",
+			setup:  func(m *VotingModule) {},
+			event: engine.GameEvent{
+				Type:    "vote:cast",
+				Payload: json.RawMessage(`{"playerId":"` + uuid.New().String() + `","targetCode":"char_A"}`),
+			},
+			wantErr: true,
+		},
+		{
+			name:   "vote:cast abstain not allowed",
+			config: "",
+			setup: func(m *VotingModule) {
+				m.mu.Lock()
+				m.isOpen = true
+				m.mu.Unlock()
+			},
+			event: engine.GameEvent{
+				Type:    "vote:cast",
+				Payload: json.RawMessage(`{"playerId":"` + uuid.New().String() + `","targetCode":""}`),
+			},
+			wantErr: true,
+		},
+		{
+			name:   "vote:change with no prior vote",
+			config: "",
+			setup: func(m *VotingModule) {
+				m.mu.Lock()
+				m.isOpen = true
+				m.mu.Unlock()
+			},
+			event: engine.GameEvent{
+				Type:    "vote:change",
+				Payload: json.RawMessage(`{"playerId":"` + uuid.New().String() + `","targetCode":"char_A"}`),
+			},
+			wantErr: true,
+		},
+		{
+			name:   "unsupported event type",
+			config: "",
+			setup:  func(m *VotingModule) {},
+			event: engine.GameEvent{
+				Type:    "unknown",
+				Payload: json.RawMessage(`{}`),
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := initVotingModule(t, tt.config)
+			tt.setup(m)
+			err := m.Validate(context.Background(), tt.event, engine.GameState{})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestVotingModule_Apply(t *testing.T) {
+	m := initVotingModule(t, "")
+	m.mu.Lock()
+	m.isOpen = true
+	m.mu.Unlock()
+
+	pid := uuid.New()
+	state := engine.GameState{Modules: make(map[string]json.RawMessage)}
+	event := engine.GameEvent{
+		Type:    "vote:cast",
+		Payload: json.RawMessage(`{"playerId":"` + pid.String() + `","targetCode":"char_A"}`),
+	}
+
+	err := m.Apply(context.Background(), event, &state)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	// Verify state was updated.
+	if _, ok := state.Modules["voting"]; !ok {
+		t.Error("expected voting state in GameState.Modules")
+	}
+
+	// Verify internal vote recorded.
+	m.mu.RLock()
+	if m.votes[pid] != "char_A" {
+		t.Errorf("vote = %q, want %q", m.votes[pid], "char_A")
+	}
+	m.mu.RUnlock()
+}
+
+// --- WinChecker tests ---
+
+func TestVotingModule_CheckWin(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   engine.GameState
+		wantWon bool
+	}{
+		{
+			name:    "no voting state",
+			state:   engine.GameState{},
+			wantWon: false,
+		},
+		{
+			name: "voting open, no winner",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"voting": json.RawMessage(`{"isOpen":true,"winner":""}`),
+				},
+			},
+			wantWon: false,
+		},
+		{
+			name: "voting closed with winner",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"voting": json.RawMessage(`{"isOpen":false,"winner":"char_A","round":1}`),
+				},
+			},
+			wantWon: true,
+		},
+		{
+			name: "voting closed, tie (no winner)",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"voting": json.RawMessage(`{"isOpen":false,"winner":"","round":1}`),
+				},
+			},
+			wantWon: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewVotingModule()
+			result, err := m.CheckWin(context.Background(), tt.state)
+			if err != nil {
+				t.Fatalf("CheckWin: %v", err)
+			}
+			if result.Won != tt.wantWon {
+				t.Errorf("Won = %v, want %v", result.Won, tt.wantWon)
+			}
+		})
+	}
+}
+
+// --- SerializableModule tests ---
+
+func TestVotingModule_SaveRestoreState(t *testing.T) {
+	m := initVotingModule(t, `{"mode":"open","minParticipation":50}`)
+	pid := uuid.New()
+
+	// Open voting and cast a vote.
+	_ = m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionOpenVoting,
+		Params: json.RawMessage(`{"totalPlayers":6,"alivePlayers":5}`),
+	})
+	_ = m.HandleMessage(context.Background(), pid, "vote:cast", json.RawMessage(`{"targetCode":"char_A"}`))
+
+	// Save state.
+	savedState, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	// Create fresh module and restore.
+	m2 := initVotingModule(t, "")
+	if err := m2.RestoreState(context.Background(), uuid.Nil, savedState); err != nil {
+		t.Fatalf("RestoreState: %v", err)
+	}
+
+	m2.mu.RLock()
+	defer m2.mu.RUnlock()
+
+	if !m2.isOpen {
+		t.Error("expected isOpen=true after restore")
+	}
+	if m2.currentRound != 1 {
+		t.Errorf("currentRound = %d, want 1", m2.currentRound)
+	}
+	if m2.votes[pid] != "char_A" {
+		t.Errorf("restored vote = %q, want %q", m2.votes[pid], "char_A")
+	}
+	if m2.totalPlayers != 6 {
+		t.Errorf("totalPlayers = %d, want 6", m2.totalPlayers)
+	}
+	if m2.alivePlayers != 5 {
+		t.Errorf("alivePlayers = %d, want 5", m2.alivePlayers)
+	}
+	if m2.config.MinParticipation != 50 {
+		t.Errorf("config.MinParticipation = %d, want 50", m2.config.MinParticipation)
+	}
+}
+
+func TestVotingModule_RestoreState_NoModule(t *testing.T) {
+	m := initVotingModule(t, "")
+	err := m.RestoreState(context.Background(), uuid.Nil, engine.GameState{})
+	if err != nil {
+		t.Fatalf("RestoreState with empty state should not error: %v", err)
+	}
+}
+
+// --- RuleProvider tests ---
+
+func TestVotingModule_GetRules(t *testing.T) {
+	m := NewVotingModule()
+	rules := m.GetRules()
+	if len(rules) != 3 {
+		t.Fatalf("GetRules() returned %d rules, want 3", len(rules))
+	}
+
+	for _, rule := range rules {
+		if rule.ID == "" {
+			t.Error("rule has empty ID")
+		}
+		if rule.Description == "" {
+			t.Error("rule has empty Description")
+		}
+		var parsed any
+		if err := json.Unmarshal(rule.Logic, &parsed); err != nil {
+			t.Errorf("rule %q: Logic is not valid JSON: %v", rule.ID, err)
+		}
+	}
+}

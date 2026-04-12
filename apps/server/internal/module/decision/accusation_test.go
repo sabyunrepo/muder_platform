@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/engine"
 )
 
 func initAccusationModule(t *testing.T, configJSON string) *AccusationModule {
@@ -408,5 +409,270 @@ func TestAccusationModule_UnknownMessageType(t *testing.T) {
 	err := m.HandleMessage(context.Background(), uuid.New(), "unknown", nil)
 	if err == nil {
 		t.Error("expected error for unknown message type")
+	}
+}
+
+// --- GameEventHandler tests ---
+
+func TestAccusationModule_Validate_Accuse(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(m *AccusationModule)
+		payload string
+		wantErr bool
+	}{
+		{
+			name:    "valid accusation",
+			setup:   func(m *AccusationModule) {},
+			payload: `{"playerId":"` + uuid.New().String() + `","targetCode":"char_B"}`,
+			wantErr: false,
+		},
+		{
+			name:    "missing targetCode",
+			setup:   func(m *AccusationModule) {},
+			payload: `{"playerId":"` + uuid.New().String() + `","targetCode":""}`,
+			wantErr: true,
+		},
+		{
+			name: "accusation already active",
+			setup: func(m *AccusationModule) {
+				m.mu.Lock()
+				m.activeAccusation = &Accusation{AccuserID: uuid.New(), Votes: make(map[uuid.UUID]bool)}
+				m.mu.Unlock()
+			},
+			payload: `{"playerId":"` + uuid.New().String() + `","targetCode":"char_B"}`,
+			wantErr: true,
+		},
+		{
+			name: "max accusations reached",
+			setup: func(m *AccusationModule) {
+				m.mu.Lock()
+				m.accusationCount = 1
+				m.mu.Unlock()
+			},
+			payload: `{"playerId":"` + uuid.New().String() + `","targetCode":"char_B"}`,
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := initAccusationModule(t, "")
+			tt.setup(m)
+			event := engine.GameEvent{
+				Type:    "accusation:accuse",
+				Payload: json.RawMessage(tt.payload),
+			}
+			err := m.Validate(context.Background(), event, engine.GameState{})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestAccusationModule_Validate_Vote(t *testing.T) {
+	m := initAccusationModule(t, "")
+	accuserID := uuid.New()
+	accusedID := uuid.New()
+	m.mu.Lock()
+	m.activeAccusation = &Accusation{
+		AccuserID:      accuserID,
+		AccusedID:      accusedID,
+		AccusedCode:    "char_B",
+		Votes:          make(map[uuid.UUID]bool),
+		EligibleVoters: 4,
+	}
+	m.isActive = true
+	m.mu.Unlock()
+
+	// Valid voter.
+	voter := uuid.New()
+	event := engine.GameEvent{
+		Type:    "accusation:vote",
+		Payload: json.RawMessage(`{"playerId":"` + voter.String() + `","guilty":true}`),
+	}
+	if err := m.Validate(context.Background(), event, engine.GameState{}); err != nil {
+		t.Fatalf("valid voter should pass: %v", err)
+	}
+
+	// Accuser cannot vote.
+	event.Payload = json.RawMessage(`{"playerId":"` + accuserID.String() + `","guilty":true}`)
+	if err := m.Validate(context.Background(), event, engine.GameState{}); err == nil {
+		t.Error("accuser should not be able to vote")
+	}
+
+	// Accused cannot vote.
+	event.Payload = json.RawMessage(`{"playerId":"` + accusedID.String() + `","guilty":true}`)
+	if err := m.Validate(context.Background(), event, engine.GameState{}); err == nil {
+		t.Error("accused should not be able to vote")
+	}
+}
+
+func TestAccusationModule_Validate_UnsupportedEvent(t *testing.T) {
+	m := initAccusationModule(t, "")
+	event := engine.GameEvent{Type: "unknown", Payload: json.RawMessage(`{}`)}
+	if err := m.Validate(context.Background(), event, engine.GameState{}); err == nil {
+		t.Error("expected error for unsupported event type")
+	}
+}
+
+func TestAccusationModule_Apply_Accuse(t *testing.T) {
+	m := initAccusationModule(t, "")
+	m.timeNow = func() time.Time { return time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC) }
+	pid := uuid.New()
+
+	state := engine.GameState{Modules: make(map[string]json.RawMessage)}
+	event := engine.GameEvent{
+		Type:    "accusation:accuse",
+		Payload: json.RawMessage(`{"playerId":"` + pid.String() + `","targetCode":"char_B"}`),
+	}
+
+	if err := m.Apply(context.Background(), event, &state); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+
+	if _, ok := state.Modules["accusation"]; !ok {
+		t.Error("expected accusation state in GameState.Modules")
+	}
+	m.mu.RLock()
+	if m.activeAccusation == nil {
+		t.Error("expected active accusation after Apply")
+	}
+	m.mu.RUnlock()
+}
+
+func TestAccusationModule_Apply_Vote(t *testing.T) {
+	m := initAccusationModule(t, "")
+	accuserID := uuid.New()
+	m.mu.Lock()
+	m.activeAccusation = &Accusation{
+		AccuserID:   accuserID,
+		AccusedCode: "char_B",
+		Votes:       make(map[uuid.UUID]bool),
+	}
+	m.isActive = true
+	m.mu.Unlock()
+
+	voter := uuid.New()
+	state := engine.GameState{Modules: make(map[string]json.RawMessage)}
+	event := engine.GameEvent{
+		Type:    "accusation:vote",
+		Payload: json.RawMessage(`{"playerId":"` + voter.String() + `","guilty":true}`),
+	}
+
+	if err := m.Apply(context.Background(), event, &state); err != nil {
+		t.Fatalf("Apply vote: %v", err)
+	}
+
+	m.mu.RLock()
+	guilty, exists := m.activeAccusation.Votes[voter]
+	m.mu.RUnlock()
+	if !exists || !guilty {
+		t.Error("expected guilty vote recorded")
+	}
+}
+
+// --- WinChecker tests ---
+
+func TestAccusationModule_CheckWin(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   engine.GameState
+		wantWon bool
+	}{
+		{
+			name:    "no accusation state",
+			state:   engine.GameState{},
+			wantWon: false,
+		},
+		{
+			name: "no expulsion",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"accusation": json.RawMessage(`{"expelledCode":"","expelledIsCulprit":false}`),
+				},
+			},
+			wantWon: false,
+		},
+		{
+			name: "expelled but wrong person",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"accusation": json.RawMessage(`{"expelledCode":"char_B","expelledIsCulprit":false}`),
+				},
+			},
+			wantWon: false,
+		},
+		{
+			name: "expelled culprit -> win",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"accusation": json.RawMessage(`{"expelledCode":"char_B","expelledIsCulprit":true}`),
+				},
+			},
+			wantWon: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewAccusationModule()
+			result, err := m.CheckWin(context.Background(), tt.state)
+			if err != nil {
+				t.Fatalf("CheckWin: %v", err)
+			}
+			if result.Won != tt.wantWon {
+				t.Errorf("Won = %v, want %v", result.Won, tt.wantWon)
+			}
+		})
+	}
+}
+
+// --- PhaseHookModule tests ---
+
+func TestAccusationModule_OnPhaseEnter(t *testing.T) {
+	m := initAccusationModule(t, "")
+	m.mu.Lock()
+	m.accusationCount = 3
+	m.activeAccusation = &Accusation{AccuserID: uuid.New(), Votes: make(map[uuid.UUID]bool)}
+	m.isActive = true
+	m.mu.Unlock()
+
+	if err := m.OnPhaseEnter(context.Background(), engine.Phase("discussion")); err != nil {
+		t.Fatalf("OnPhaseEnter: %v", err)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.accusationCount != 0 {
+		t.Errorf("accusationCount = %d, want 0", m.accusationCount)
+	}
+	if m.activeAccusation != nil {
+		t.Error("expected activeAccusation nil after phase enter")
+	}
+	if m.isActive {
+		t.Error("expected isActive=false after phase enter")
+	}
+}
+
+func TestAccusationModule_OnPhaseExit(t *testing.T) {
+	m := initAccusationModule(t, "")
+	m.mu.Lock()
+	m.activeAccusation = &Accusation{AccuserID: uuid.New(), Votes: make(map[uuid.UUID]bool)}
+	m.isActive = true
+	m.mu.Unlock()
+
+	if err := m.OnPhaseExit(context.Background(), engine.Phase("discussion")); err != nil {
+		t.Fatalf("OnPhaseExit: %v", err)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.activeAccusation != nil {
+		t.Error("expected activeAccusation nil after phase exit")
+	}
+	if m.isActive {
+		t.Error("expected isActive=false after phase exit")
 	}
 }

@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W4
-**PR**: PR-B2 (decision Module Migration)
-**Task**: module/decision migration to new Module interface
+**PR**: PR-B3 (progression + exploration + core Module Migration)
+**Task**: module/progression + exploration + core migration to new Module interface
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -71,10 +71,10 @@
 - [x] StartingClue/RoundClue/ConditionalClue Optional opt-in
 - [x] Unit tests 유지 (88.8% coverage)
 
-### PR-B2 — decision 마이그
-- [ ] module/decision/*.go 마이그
-- [ ] Voting/Accusation/HiddenMission Optional opt-in
-- [ ] Unit tests 유지
+### PR-B2 — decision 마이그 ✅ `b5e175f`
+- [x] module/decision/*.go 마이그
+- [x] Voting/Accusation/HiddenMission Optional opt-in
+- [x] Unit tests 유지 (89.8% coverage)
 
 ### PR-B3 — progression + exploration 마이그
 - [ ] module/progression/*.go (Timer/Ready/Ending)

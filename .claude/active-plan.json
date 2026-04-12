@@ -27,8 +27,8 @@
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
     "current_wave": "W4",
-    "current_pr": "PR-B2",
-    "current_task": "module/decision migration to new Module interface",
+    "current_pr": "PR-B3",
+    "current_task": "module/progression + exploration + core migration to new Module interface",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -234,10 +234,10 @@
           "apps/server/internal/module/decision/**"
         ],
         "tasks_total": 4,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-b2-decision-migration",
-        "commit": null
+        "commit": "b5e175f"
       },
       "PR-B3": {
         "title": "progression + exploration + core Module Migration",
