@@ -99,10 +99,10 @@ func TestIntegration_FullSessionLifecycle(t *testing.T) {
 	bus := NewEventBus(logger)
 
 	phases := []PhaseDefinition{
-		{ID: "intro", Name: "Introduction", Type: "discussion", Duration: 60},
-		{ID: "investigation", Name: "Investigation", Type: "investigation", Duration: 120},
-		{ID: "voting", Name: "Final Vote", Type: "voting", Duration: 30},
-		{ID: "ending", Name: "Ending", Type: "ending"},
+		{ID: "intro", Name: "Introduction"},
+		{ID: "investigation", Name: "Investigation"},
+		{ID: "voting", Name: "Final Vote"},
+		{ID: "ending", Name: "Ending"},
 	}
 
 	pe := NewPhaseEngine(sessionID, modules, bus, audit, logger, phases)
@@ -285,7 +285,7 @@ func TestIntegration_EmptyModules(t *testing.T) {
 	logger := &testLogger{t}
 	bus := NewEventBus(logger)
 	pe := NewPhaseEngine(uuid.New(), nil, bus, nil, logger, []PhaseDefinition{
-		{ID: "only", Name: "Only Phase", Type: "discussion"},
+		{ID: "only", Name: "Only Phase"},
 	})
 
 	if err := pe.Start(ctx, nil); err != nil {

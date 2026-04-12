@@ -9,15 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// PhaseDefinition describes a single phase in a game template.
-// Loaded from theme JSON and passed to NewPhaseEngine.
-type PhaseDefinition struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Type     string `json:"type"`
-	Duration int    `json:"duration,omitempty"`
-}
-
 // AuditLogger writes structured audit events for observability.
 // Implemented by the auditlog package (PR-A3); a no-op stub is used in tests.
 type AuditLogger interface {
@@ -195,7 +186,7 @@ func (e *PhaseEngine) SkipToPhase(ctx context.Context, phaseID string) error {
 	}
 
 	for i, p := range e.phases {
-		if p.ID == phaseID {
+		if string(p.ID) == phaseID {
 			oldID := e.phases[e.current].ID
 			e.current = i
 
@@ -337,11 +328,9 @@ func (e *PhaseEngine) CurrentPhase() *PhaseInfo {
 func (e *PhaseEngine) phaseInfo(idx int) *PhaseInfo {
 	p := e.phases[idx]
 	return &PhaseInfo{
-		ID:       p.ID,
-		Name:     p.Name,
-		Type:     p.Type,
-		Index:    idx,
-		Duration: p.Duration,
+		ID:    string(p.ID),
+		Name:  p.Name,
+		Index: idx,
 	}
 }
 

@@ -103,9 +103,9 @@ func (r *recordingAuditLogger) eventsOfType(t string) []auditEntry {
 }
 
 var testPhaseDefinitions = []PhaseDefinition{
-	{ID: "intro", Name: "Introduction", Type: "discussion", Duration: 60},
-	{ID: "invest", Name: "Investigation", Type: "investigation", Duration: 120},
-	{ID: "vote", Name: "Voting", Type: "voting", Duration: 30},
+	{ID: "intro", Name: "Introduction"},
+	{ID: "invest", Name: "Investigation"},
+	{ID: "vote", Name: "Voting"},
 }
 
 func newTestPhaseEngine(t *testing.T, modules []Module, phases []PhaseDefinition) (*PhaseEngine, *recordingAuditLogger) {
