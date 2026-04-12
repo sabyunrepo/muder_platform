@@ -12,6 +12,14 @@ import (
 
 // --- test helpers ---
 
+// testLogger implements the Printf interface for testing.
+type testLogger struct{ t *testing.T }
+
+func (l *testLogger) Printf(format string, v ...any) {
+	l.t.Helper()
+	l.t.Logf(format, v...)
+}
+
 type stubCoreModule struct {
 	name      string
 	initErr   error
