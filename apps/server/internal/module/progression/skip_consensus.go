@@ -217,6 +217,23 @@ func (m *SkipConsensusModule) Schema() json.RawMessage {
 	}`)
 }
 
+// --- PhaseHookModule ---
+
+func (m *SkipConsensusModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *SkipConsensusModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*SkipConsensusModule)(nil)
+	_ engine.ConfigSchema    = (*SkipConsensusModule)(nil)
+	_ engine.PhaseHookModule = (*SkipConsensusModule)(nil)
+)
+
 func init() {
 	engine.Register("skip_consensus", func() engine.Module { return NewSkipConsensusModule() })
 }

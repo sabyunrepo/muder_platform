@@ -172,9 +172,33 @@ func (m *FloorExplorationModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- GameEventHandler ---
+
+func (m *FloorExplorationModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "floor:select", "floor:change":
+		return nil
+	default:
+		return fmt.Errorf("floor_exploration: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *FloorExplorationModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("floor_exploration: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*FloorExplorationModule)(nil)
-	_ engine.PhaseReactor = (*FloorExplorationModule)(nil)
-	_ engine.ConfigSchema = (*FloorExplorationModule)(nil)
+	_ engine.Module           = (*FloorExplorationModule)(nil)
+	_ engine.PhaseReactor     = (*FloorExplorationModule)(nil)
+	_ engine.ConfigSchema     = (*FloorExplorationModule)(nil)
+	_ engine.GameEventHandler = (*FloorExplorationModule)(nil)
 )

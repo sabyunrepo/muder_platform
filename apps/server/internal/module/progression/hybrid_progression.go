@@ -162,6 +162,23 @@ func (m *HybridProgressionModule) Schema() json.RawMessage {
 	}`)
 }
 
+// --- PhaseHookModule ---
+
+func (m *HybridProgressionModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *HybridProgressionModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*HybridProgressionModule)(nil)
+	_ engine.ConfigSchema    = (*HybridProgressionModule)(nil)
+	_ engine.PhaseHookModule = (*HybridProgressionModule)(nil)
+)
+
 func init() {
 	engine.Register("hybrid_progression", func() engine.Module { return NewHybridProgressionModule() })
 }

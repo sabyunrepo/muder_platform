@@ -156,3 +156,42 @@ func TestConnectionModule_Cleanup(t *testing.T) {
 		t.Fatal("expected players to be nil after cleanup")
 	}
 }
+
+func TestConnectionModule_SaveRestoreState(t *testing.T) {
+	m := NewConnectionModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	pid := uuid.New()
+	_ = m.HandleMessage(context.Background(), pid, "join_game", json.RawMessage(`{"sessionId":"s1","characterCode":"char_A","secretKey":"k"}`))
+
+	saved, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	m2 := NewConnectionModule()
+	_ = m2.Init(context.Background(), newTestDeps(), nil)
+	if err := m2.RestoreState(context.Background(), uuid.Nil, saved); err != nil {
+		t.Fatalf("RestoreState: %v", err)
+	}
+
+	m2.mu.RLock()
+	ps, ok := m2.players[pid]
+	m2.mu.RUnlock()
+	if !ok {
+		t.Fatal("expected player to be restored")
+	}
+	if ps.CharacterCode != "char_A" {
+		t.Errorf("characterCode = %q, want %q", ps.CharacterCode, "char_A")
+	}
+	if !ps.IsOnline {
+		t.Error("expected isOnline=true")
+	}
+}
+
+func TestConnectionModule_RestoreState_NoModule(t *testing.T) {
+	m := NewConnectionModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	if err := m.RestoreState(context.Background(), uuid.Nil, engine.GameState{}); err != nil {
+		t.Fatalf("RestoreState with empty state: %v", err)
+	}
+}

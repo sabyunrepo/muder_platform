@@ -137,3 +137,44 @@ func (m *ConnectionModule) Cleanup(_ context.Context) error {
 	m.players = nil
 	return nil
 }
+
+// --- SerializableModule ---
+
+func (m *ConnectionModule) SaveState(_ context.Context) (engine.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	statuses := make([]*PlayerStatus, 0, len(m.players))
+	for _, ps := range m.players {
+		statuses = append(statuses, ps)
+	}
+	data, err := json.Marshal(statuses)
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("connection: save state: %w", err)
+	}
+	return engine.GameState{Modules: map[string]json.RawMessage{m.Name(): data}}, nil
+}
+
+func (m *ConnectionModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	var statuses []*PlayerStatus
+	if err := json.Unmarshal(raw, &statuses); err != nil {
+		return fmt.Errorf("connection: restore state: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.players = make(map[uuid.UUID]*PlayerStatus, len(statuses))
+	for _, ps := range statuses {
+		m.players[ps.PlayerID] = ps
+	}
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module             = (*ConnectionModule)(nil)
+	_ engine.SerializableModule = (*ConnectionModule)(nil)
+)

@@ -163,6 +163,23 @@ func (m *EventProgressionModule) Schema() json.RawMessage {
 	}`)
 }
 
+// --- PhaseHookModule ---
+
+func (m *EventProgressionModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *EventProgressionModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*EventProgressionModule)(nil)
+	_ engine.ConfigSchema    = (*EventProgressionModule)(nil)
+	_ engine.PhaseHookModule = (*EventProgressionModule)(nil)
+)
+
 func init() {
 	engine.Register("event_progression", func() engine.Module { return NewEventProgressionModule() })
 }

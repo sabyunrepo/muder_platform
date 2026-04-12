@@ -135,3 +135,6 @@ func (m *RoomModule) Cleanup(_ context.Context) error {
 	m.phase = ""
 	return nil
 }
+
+// Compile-time interface checks.
+var _ engine.Module = (*RoomModule)(nil)

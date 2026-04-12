@@ -186,8 +186,32 @@ func (m *RoomBasedExplorationModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- GameEventHandler ---
+
+func (m *RoomBasedExplorationModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "room:move", "room:examine":
+		return nil
+	default:
+		return fmt.Errorf("room_exploration: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *RoomBasedExplorationModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("room_exploration: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*RoomBasedExplorationModule)(nil)
-	_ engine.ConfigSchema = (*RoomBasedExplorationModule)(nil)
+	_ engine.Module           = (*RoomBasedExplorationModule)(nil)
+	_ engine.ConfigSchema     = (*RoomBasedExplorationModule)(nil)
+	_ engine.GameEventHandler = (*RoomBasedExplorationModule)(nil)
 )

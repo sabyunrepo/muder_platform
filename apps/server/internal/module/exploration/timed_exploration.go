@@ -249,8 +249,49 @@ func (m *TimedExplorationModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- PhaseHookModule ---
+
+func (m *TimedExplorationModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.isActive = true
+	return nil
+}
+
+func (m *TimedExplorationModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.isActive = false
+	return nil
+}
+
+// --- GameEventHandler ---
+
+func (m *TimedExplorationModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "explore:move", "explore:examine":
+		return nil
+	default:
+		return fmt.Errorf("timed_exploration: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *TimedExplorationModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("timed_exploration: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*TimedExplorationModule)(nil)
-	_ engine.ConfigSchema = (*TimedExplorationModule)(nil)
+	_ engine.Module           = (*TimedExplorationModule)(nil)
+	_ engine.ConfigSchema     = (*TimedExplorationModule)(nil)
+	_ engine.PhaseHookModule  = (*TimedExplorationModule)(nil)
+	_ engine.GameEventHandler = (*TimedExplorationModule)(nil)
 )

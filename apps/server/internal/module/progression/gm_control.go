@@ -160,6 +160,28 @@ func (m *GmControlModule) Cleanup(ctx context.Context) error {
 	return nil
 }
 
+// --- PhaseHookModule ---
+
+func (m *GmControlModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.isActive = true
+	return nil
+}
+
+func (m *GmControlModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.isActive = false
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*GmControlModule)(nil)
+	_ engine.PhaseHookModule = (*GmControlModule)(nil)
+)
+
 func init() {
 	engine.Register("gm_control", func() engine.Module { return NewGmControlModule() })
 }
