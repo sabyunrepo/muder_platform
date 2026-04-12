@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -11,12 +12,17 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx stdlib driver for database/sql used by goose
 	"github.com/pressly/goose/v3"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/db"
 )
 
 // ---------------------------------------------------------------------------
@@ -116,6 +122,124 @@ func TestAuditEvent_Validate_Errors(t *testing.T) {
 	err = (AuditEvent{SessionID: uuid.New()}).Validate()
 	if err == nil {
 		t.Fatal("expected error for empty action")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// stubQuerier — drives error paths without postgres.
+// ---------------------------------------------------------------------------
+
+type stubQuerier struct {
+	latestSeqFn        func(ctx context.Context, sessionID uuid.UUID) (int64, error)
+	appendAuditEventFn func(ctx context.Context, arg db.AppendAuditEventParams) (db.AuditEvent, error)
+	listBySessionFn    func(ctx context.Context, sessionID uuid.UUID) ([]db.AuditEvent, error)
+}
+
+func (sq *stubQuerier) LatestSeq(ctx context.Context, sessionID uuid.UUID) (int64, error) {
+	return sq.latestSeqFn(ctx, sessionID)
+}
+func (sq *stubQuerier) AppendAuditEvent(ctx context.Context, arg db.AppendAuditEventParams) (db.AuditEvent, error) {
+	return sq.appendAuditEventFn(ctx, arg)
+}
+func (sq *stubQuerier) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.AuditEvent, error) {
+	return sq.listBySessionFn(ctx, sessionID)
+}
+
+// stubTxRunner calls fn with a stubQuerier — no real transaction.
+type stubTxRunner struct {
+	q *stubQuerier
+}
+
+func (r *stubTxRunner) RunTx(_ context.Context, _ uuid.UUID, fn func(q Querier) error) error {
+	return fn(r.q)
+}
+
+// ---------------------------------------------------------------------------
+// Store.Append error-classification tests (pure unit, no testcontainers)
+// ---------------------------------------------------------------------------
+
+func TestStore_Append_ErrorClassification(t *testing.T) {
+	noRows := pgx.ErrNoRows
+	uniqueViolation := &pgconn.PgError{Code: "23505"}
+	fkViolation := &pgconn.PgError{Code: "23503"}
+	genericDBErr := fmt.Errorf("connection reset by peer")
+
+	tests := []struct {
+		name       string
+		latestErr  error
+		appendErr  error
+		wantCode   string
+		wantPassTh bool // if true, expect the raw error (context errors)
+	}{
+		{
+			name:      "pgx.ErrNoRows from LatestSeq → NotFound",
+			latestErr: noRows,
+			wantCode:  apperror.ErrNotFound,
+		},
+		{
+			name:      "unique violation from AppendAuditEvent → Conflict",
+			appendErr: uniqueViolation,
+			wantCode:  apperror.ErrConflict,
+		},
+		{
+			name:      "FK violation from AppendAuditEvent → BadRequest",
+			appendErr: fkViolation,
+			wantCode:  apperror.ErrBadRequest,
+		},
+		{
+			name:      "generic DB error → Internal",
+			latestErr: genericDBErr,
+			wantCode:  apperror.ErrInternal,
+		},
+		{
+			name:       "context.Canceled passes through",
+			latestErr:  context.Canceled,
+			wantPassTh: true,
+		},
+		{
+			name:       "context.DeadlineExceeded passes through",
+			latestErr:  context.DeadlineExceeded,
+			wantPassTh: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sq := &stubQuerier{
+				latestSeqFn: func(_ context.Context, _ uuid.UUID) (int64, error) {
+					if tc.latestErr != nil {
+						return 0, tc.latestErr
+					}
+					return 0, nil
+				},
+				appendAuditEventFn: func(_ context.Context, _ db.AppendAuditEventParams) (db.AuditEvent, error) {
+					if tc.appendErr != nil {
+						return db.AuditEvent{}, tc.appendErr
+					}
+					return db.AuditEvent{}, nil
+				},
+			}
+			store := NewStoreWithRunner(&stubTxRunner{q: sq}, nil)
+
+			err := store.Append(context.Background(), makeEvent(uuid.New(), ActionPhaseEnter))
+			if err == nil {
+				t.Fatal("expected error, got nil")
+			}
+			if tc.wantPassTh {
+				// Context errors must be returned unwrapped.
+				if !errors.Is(err, tc.latestErr) {
+					t.Fatalf("expected pass-through %v, got %v", tc.latestErr, err)
+				}
+				return
+			}
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) {
+				t.Fatalf("expected *apperror.AppError, got %T: %v", err, err)
+			}
+			if appErr.Code != tc.wantCode {
+				t.Fatalf("expected code %s, got %s", tc.wantCode, appErr.Code)
+			}
+		})
 	}
 }
 

@@ -7,9 +7,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
 )
 
@@ -78,7 +80,7 @@ func (s *Store) Append(ctx context.Context, evt AuditEvent) error {
 		return err
 	}
 
-	return s.runner.RunTx(ctx, evt.SessionID, func(q Querier) error {
+	err := s.runner.RunTx(ctx, evt.SessionID, func(q Querier) error {
 		seq, err := q.LatestSeq(ctx, evt.SessionID)
 		if err != nil {
 			return err
@@ -110,6 +112,7 @@ func (s *Store) Append(ctx context.Context, evt AuditEvent) error {
 		})
 		return err
 	})
+	return wrapDBError(err)
 }
 
 // pgxTxRunner is the production TxRunner: it opens a real pgx read/write tx,
@@ -140,7 +143,7 @@ func (s *Store) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]Audit
 	q := db.New(s.pool)
 	rows, err := q.ListBySession(ctx, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, wrapDBError(err)
 	}
 	out := make([]AuditEvent, 0, len(rows))
 	for _, r := range rows {
@@ -152,7 +155,40 @@ func (s *Store) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]Audit
 // LatestSeq returns the highest seq stored for the session, or 0 if none.
 func (s *Store) LatestSeq(ctx context.Context, sessionID uuid.UUID) (int64, error) {
 	q := db.New(s.pool)
-	return q.LatestSeq(ctx, sessionID)
+	seq, err := q.LatestSeq(ctx, sessionID)
+	if err != nil {
+		return 0, wrapDBError(err)
+	}
+	return seq, nil
+}
+
+// wrapDBError classifies a raw database error into the appropriate AppError
+// variant. Context errors (Canceled, DeadlineExceeded) are returned as-is
+// since they are not database classification concerns.
+func wrapDBError(err error) error {
+	if err == nil {
+		return nil
+	}
+	// Context errors pass through unchanged.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	// pgx no-rows → NotFound.
+	if errors.Is(err, pgx.ErrNoRows) {
+		return apperror.NotFound("auditlog: no events for session").Wrap(err)
+	}
+	// Postgres-specific error codes.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505": // unique_violation
+			return apperror.Conflict("auditlog: duplicate seq for session").Wrap(err)
+		case "23503": // foreign_key_violation
+			return apperror.BadRequest("auditlog: invalid session_id reference").Wrap(err)
+		}
+	}
+	// Catch-all: internal database error.
+	return apperror.Internal("auditlog: database error").Wrap(err)
 }
 
 // rowToEvent converts a DB row to domain AuditEvent.
