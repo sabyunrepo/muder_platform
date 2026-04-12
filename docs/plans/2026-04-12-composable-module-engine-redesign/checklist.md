@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
-**Wave**: W4
-**PR**: PR-C1 (L1 SchemaDrivenForm MVP)
-**Task**: apps/web editor SchemaDrivenForm
+**Wave**: W7
+**PR**: PR-V1 (e2e Smoke + Module Isolation CI Gate)
+**Task**: e2e smoke tests
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -105,17 +105,21 @@
 
 ## Wave 6 — UI + Crime Scene (parallel ×2)
 
-### PR-C1 — L1 SchemaDrivenForm
-- [ ] apps/web/src/features/editor/SchemaDrivenForm.tsx
-- [ ] apps/web/src/features/editor/SchemaField.tsx (재귀)
-- [ ] apps/web/src/api/templateApi.ts (BaseAPI)
-- [ ] Vitest + MSW 테스트
+### PR-C1 — L1 SchemaDrivenForm ✅ merged
+- [x] templateApi.ts (React Query hooks, types)
+- [x] themeStore.ts (Zustand, genre/preset/config state)
+- [x] SchemaField.tsx (재귀 렌더러: string/number/boolean/enum/array/object)
+- [x] SchemaDrivenForm.tsx (JSON Schema → SchemaField[] 파싱)
+- [x] GenreSelect.tsx + PresetSelect.tsx (카드 기반 선택)
+- [x] TemplateConfigTab.tsx + EditorLayout 통합
+- [x] Vitest 27 tests (SchemaField 타입별 + 폼 + 선택 UI)
 
-### PR-F1 — CrimeScene Module
-- [ ] module/crime_scene/location.go
-- [ ] module/crime_scene/evidence.go
-- [ ] module/crime_scene/combination.go
-- [ ] Unit tests
+### PR-F1 — CrimeScene Module ✅ `fe46d1a`
+- [x] module/crime_scene/location.go (Move/Examine, RuleProvider, Serializable)
+- [x] module/crime_scene/evidence.go (Discover/Collect, PhaseHook, Serializable)
+- [x] module/crime_scene/combination.go (Combine, WinChecker, clue.Graph)
+- [x] register.go + blank import
+- [x] Unit + integration tests (93.2% coverage)
 
 ## Wave 7 — Verification
 

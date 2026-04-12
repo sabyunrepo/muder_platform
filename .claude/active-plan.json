@@ -26,9 +26,9 @@
     ],
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
-    "current_wave": "W6",
-    "current_pr": "PR-C1",
-    "current_task": "L1 Editor SchemaDrivenForm MVP",
+    "current_wave": "W7",
+    "current_pr": "PR-V1",
+    "current_task": "e2e Smoke + Module Isolation CI Gate",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -316,10 +316,10 @@
           "apps/web/src/stores/editor/**"
         ],
         "tasks_total": 7,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 7,
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-c1-schema-form",
-        "commit": null
+        "commit": "ce6c574"
       },
       "PR-F1": {
         "title": "CrimeScene Module (Location/Evidence/Combination)",
@@ -331,10 +331,10 @@
           "apps/server/internal/module/crime_scene/**"
         ],
         "tasks_total": 5,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 5,
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-f1-crime-scene",
-        "commit": null
+        "commit": "fe46d1a"
       },
       "PR-V1": {
         "title": "e2e Smoke + Module Isolation CI Gate",
