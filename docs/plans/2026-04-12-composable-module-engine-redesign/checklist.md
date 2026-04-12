@@ -38,8 +38,8 @@
 - [x] engine/phase_engine.go — PhaseEngine (linear phases, panic isolation, audit)
 - [x] engine/phase_engine_test.go — 20 golden tests + integration_test.go
 - [x] Delete: engine.go, strategy_*.go, dispatcher*.go, validation*.go (10 files, 1916 lines)
-- [ ] ⚠️ Delete: engine/eventbus.go (legacy callback) — PhaseEngine still uses it; migrate to TypedEventBus
-- [ ] ⚠️ Rename: Plugin → Module — worktree base mismatch; needs dedicated cleanup commit
+- [x] ✅ Rename: Plugin → Module — module.go/module_registry.go 삭제, PhaseHookModule/SerializableModule 리네임, SaveState 메서드 분리
+- [ ] ⏭️ EventBus migration → W4 연기 (모듈 마이그레이션과 함께 진행)
 - [x] session/session.go, session/manager.go 재배선 (→ PhaseEngine)
 - [x] go build && go test -race 전체 green (32 packages)
 
@@ -51,10 +51,10 @@
 ## Wave 3 — Primitives (sequential)
 
 ### PR-A6 — Clue Graph
-- [ ] internal/clue/graph.go
-- [ ] internal/clue/validator.go
-- [ ] internal/clue/visibility.go
-- [ ] internal/clue/*_test.go 75%+
+- [x] internal/clue/graph.go — Clue, Graph, Dependency (AND/OR), Resolve, HasCycle (Kahn's)
+- [x] internal/clue/validator.go — Validate (orphan, cycle, unreachable)
+- [x] internal/clue/visibility.go — VisibilityRule, ComputeVisible (scope priority: player>role>team>all)
+- [x] internal/clue/*_test.go 97.0% coverage (target 85%)
 
 ### PR-A7 — JSON Logic Rule Evaluator
 - [ ] engine/rule_evaluator.go
