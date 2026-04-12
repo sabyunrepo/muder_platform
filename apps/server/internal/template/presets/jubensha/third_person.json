@@ -1,0 +1,30 @@
+{
+  "id": "jubensha_3rd_person",
+  "genre": "jubensha",
+  "name": "Jubensha - Third Person",
+  "description": "Third-person jubensha with exploration, BGM, and narrative focus",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 7}},
+    {"id": "text_chat"},
+    {"id": "group_chat"},
+    {"id": "whisper"},
+    {"id": "round_clue", "config": {"totalRounds": 3}},
+    {"id": "starting_clue"},
+    {"id": "voting", "config": {"mode": "open", "minParticipation": 75, "tieBreaker": "revote", "maxRounds": 2}},
+    {"id": "hidden_mission"},
+    {"id": "ending", "config": {"RevealSteps": ["culprit", "timeline", "relationships", "mission_scores"]}},
+    {"id": "audio"}
+  ],
+  "phases": [
+    {"id": "lobby", "name": "Lobby"},
+    {"id": "prologue", "name": "Prologue", "duration": 600},
+    {"id": "act_1", "name": "Act 1", "duration": 1200, "actions": [{"action": "UNMUTE_CHAT", "target": "text_chat"}, {"action": "OPEN_GROUP_CHAT", "target": "group_chat"}]},
+    {"id": "act_2", "name": "Act 2", "duration": 1200},
+    {"id": "act_3", "name": "Act 3 - Finale", "duration": 1200},
+    {"id": "vote", "name": "Final Vote", "duration": 420, "actions": [{"action": "OPEN_VOTING", "target": "voting"}, {"action": "CLOSE_GROUP_CHAT", "target": "group_chat"}]},
+    {"id": "ending", "name": "Epilogue"}
+  ]
+}

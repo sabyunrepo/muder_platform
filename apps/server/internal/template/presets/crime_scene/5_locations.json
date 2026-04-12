@@ -1,0 +1,31 @@
+{
+  "id": "crime_scene_5loc",
+  "genre": "crime_scene",
+  "name": "Crime Scene Investigation (5 Locations)",
+  "description": "Extended crime scene with 5 locations, more evidence, and timed exploration",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 6}},
+    {"id": "text_chat"},
+    {"id": "location_clue", "config": {"showClueCount": true, "allowRepeatSearch": true}},
+    {"id": "floor_exploration", "config": {"allowChangeFloor": true, "showOccupancy": true}},
+    {"id": "timed_exploration", "config": {"explorationTime": 600, "warningTime": 60, "autoEndAction": "next_phase"}},
+    {"id": "clue_interaction", "config": {"drawLimit": 5, "duplicatePolicy": "exclusive"}},
+    {"id": "accusation", "config": {"maxPerRound": 2, "defenseTime": 120, "voteThreshold": 50}},
+    {"id": "ending", "config": {"RevealSteps": ["culprit", "timeline", "relationships"]}},
+    {"id": "audio"}
+  ],
+  "phases": [
+    {"id": "lobby", "name": "Lobby"},
+    {"id": "briefing", "name": "Case Briefing", "duration": 420},
+    {"id": "investigate_1", "name": "Investigation 1", "duration": 720, "actions": [{"action": "UNMUTE_CHAT", "target": "text_chat"}]},
+    {"id": "debrief_1", "name": "Debrief 1", "duration": 360},
+    {"id": "investigate_2", "name": "Investigation 2", "duration": 720},
+    {"id": "debrief_2", "name": "Debrief 2", "duration": 360},
+    {"id": "investigate_3", "name": "Final Investigation", "duration": 720},
+    {"id": "accusation", "name": "Final Accusation", "duration": 420},
+    {"id": "ending", "name": "Case Closed"}
+  ]
+}

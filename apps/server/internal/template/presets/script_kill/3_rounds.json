@@ -1,0 +1,27 @@
+{
+  "id": "script_kill_3r",
+  "genre": "script_kill",
+  "name": "Script Kill (3 Rounds)",
+  "description": "3-round script kill with scripted clue distribution, voting, and BGM",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 6}},
+    {"id": "text_chat"},
+    {"id": "round_clue", "config": {"totalRounds": 3}},
+    {"id": "voting", "config": {"mode": "secret", "minParticipation": 100, "tieBreaker": "no_result", "maxRounds": 1}},
+    {"id": "accusation", "config": {"maxPerRound": 1, "defenseTime": 60, "voteThreshold": 50}},
+    {"id": "ending", "config": {"RevealSteps": ["culprit", "timeline"]}},
+    {"id": "audio"}
+  ],
+  "phases": [
+    {"id": "lobby", "name": "Lobby"},
+    {"id": "script_read", "name": "Script Reading", "duration": 600},
+    {"id": "round_1", "name": "Round 1 - Clue & Discuss", "duration": 720, "actions": [{"action": "UNMUTE_CHAT", "target": "text_chat"}]},
+    {"id": "round_2", "name": "Round 2 - Clue & Discuss", "duration": 720},
+    {"id": "round_3", "name": "Round 3 - Final Clue", "duration": 720},
+    {"id": "vote", "name": "Final Vote", "duration": 300, "actions": [{"action": "OPEN_VOTING", "target": "voting"}]},
+    {"id": "ending", "name": "Truth Reveal"}
+  ]
+}
