@@ -356,6 +356,13 @@
       }
     }
   },
+  "completion": {
+    "finished_at": "2026-04-12",
+    "final_commit": "186315f",
+    "tasks_done": 86,
+    "tasks_total": 86,
+    "force_finished": false
+  },
   "history": [
     {
       "id": "phase-9.0-editor-engine-redesign",
