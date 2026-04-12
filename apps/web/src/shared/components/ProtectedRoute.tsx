@@ -8,28 +8,30 @@ import { useAuthStore } from "@/stores/authStore";
 /**
  * 인증된 사용자만 접근 가능한 라우트 가드.
  *
- * - refreshToken 없음 → /login 리다이렉트
- * - refreshToken 있고 accessToken 없음 → 로딩 (토큰 갱신 대기)
- * - isAuthenticated → 자식 렌더링 (Outlet)
+ * 조건 분리:
+ * - isLoading true → 스피너 (초기 토큰 갱신 대기)
+ * - !isLoading && !isAuthenticated → /login 리다이렉트
+ * - !isLoading && isAuthenticated → 자식 렌더링 (Outlet)
+ *
+ * accessToken에 직접 의존하지 않음 — isAuthenticated를 단일 진실 공급원으로 사용.
+ * 토큰 갱신 중에는 isLoading=true가 보장되므로 무한 스피너 방지.
  */
 function ProtectedRoute() {
-  const refreshToken = useAuthStore((s) => s.refreshToken);
-  const accessToken = useAuthStore((s) => s.accessToken);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isLoading = useAuthStore((s) => s.isLoading);
 
-  // refreshToken 자체가 없으면 비로그인 상태
-  if (!refreshToken) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // refreshToken은 있지만 아직 토큰 갱신/사용자 정보 로딩 중
-  if (!isAuthenticated || isLoading || !accessToken) {
+  // 초기화 / 토큰 갱신 진행 중
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
       </div>
     );
+  }
+
+  // 로딩 완료 후 미인증 → 로그인으로 이동
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

@@ -43,7 +43,7 @@ describe("ProtectedRoute", () => {
     });
   });
 
-  describe("refreshToken 없음", () => {
+  describe("isLoading false, isAuthenticated false", () => {
     it("/login으로 리다이렉트한다", () => {
       renderWithRouter();
 
@@ -52,7 +52,7 @@ describe("ProtectedRoute", () => {
     });
   });
 
-  describe("refreshToken 있고 로딩 중", () => {
+  describe("isLoading true (토큰 갱신 진행 중)", () => {
     it("스피너를 표시한다", () => {
       useAuthStore.setState({
         refreshToken: "refresh-token",
@@ -71,19 +71,18 @@ describe("ProtectedRoute", () => {
     });
   });
 
-  describe("refreshToken 있고 accessToken 없음 (토큰 갱신 대기)", () => {
-    it("스피너를 표시한다", () => {
+  describe("isLoading false, isAuthenticated false (accessToken 없음)", () => {
+    it("isAuthenticated 기준으로 /login으로 리다이렉트한다", () => {
       useAuthStore.setState({
         refreshToken: "refresh-token",
         accessToken: null,
-        isAuthenticated: true,
+        isAuthenticated: false,
         isLoading: false,
       });
 
-      const { container } = renderWithRouter();
+      renderWithRouter();
 
-      const spinner = container.querySelector(".animate-spin");
-      expect(spinner).not.toBeNull();
+      expect(screen.getByText("로그인 페이지")).toBeDefined();
       expect(screen.queryByText("보호된 페이지")).toBeNull();
     });
   });
