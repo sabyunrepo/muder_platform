@@ -26,7 +26,13 @@ type ProfileResponse struct {
 	Email       *string   `json:"email,omitempty"`
 	AvatarURL   *string   `json:"avatar_url,omitempty"`
 	Role        string    `json:"role"`
+	Provider    string    `json:"provider"`
+	Bio         *string   `json:"bio,omitempty"`
+	TotalGames  int32     `json:"total_games"`
+	WinCount    int32     `json:"win_count"`
 	CoinBalance int64     `json:"coin_balance"`
+	CreatedAt   string    `json:"created_at"`
+	UpdatedAt   string    `json:"updated_at"`
 }
 
 // PublicProfileResponse is the subset of profile visible to other users.
@@ -34,6 +40,10 @@ type PublicProfileResponse struct {
 	ID        uuid.UUID `json:"id"`
 	Nickname  string    `json:"nickname"`
 	AvatarURL *string   `json:"avatar_url,omitempty"`
+	Bio       *string   `json:"bio,omitempty"`
+	TotalGames int32    `json:"total_games"`
+	WinCount   int32    `json:"win_count"`
+	CreatedAt  string   `json:"created_at"`
 }
 
 // UpdateProfileRequest is the payload for updating a user's profile.
@@ -106,9 +116,13 @@ func (s *service) GetPublicProfile(ctx context.Context, userID uuid.UUID) (*Publ
 		return nil, apperror.Internal("failed to get profile")
 	}
 	return &PublicProfileResponse{
-		ID:        user.ID,
-		Nickname:  user.Nickname,
-		AvatarURL: textToPtr(user.AvatarUrl),
+		ID:         user.ID,
+		Nickname:   user.Nickname,
+		AvatarURL:  textToPtr(user.AvatarUrl),
+		Bio:        nil,
+		TotalGames: 0,
+		WinCount:   0,
+		CreatedAt:  user.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}, nil
 }
 
@@ -139,7 +153,13 @@ func toProfileResponse(u db.User) *ProfileResponse {
 		Email:       textToPtr(u.Email),
 		AvatarURL:   textToPtr(u.AvatarUrl),
 		Role:        u.Role,
+		Provider:    u.Provider,
+		Bio:         nil,
+		TotalGames:  0,
+		WinCount:    0,
 		CoinBalance: u.CoinBalance,
+		CreatedAt:   u.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+		UpdatedAt:   u.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"),
 	}
 }
 
