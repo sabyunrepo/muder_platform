@@ -12,6 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type AuditEvent struct {
+	ID        int64           `json:"id"`
+	SessionID uuid.UUID       `json:"session_id"`
+	Seq       int64           `json:"seq"`
+	ActorID   pgtype.UUID     `json:"actor_id"`
+	Action    string          `json:"action"`
+	ModuleID  pgtype.Text     `json:"module_id"`
+	Payload   json.RawMessage `json:"payload"`
+	CreatedAt time.Time       `json:"created_at"`
+}
+
 type ChatMessage struct {
 	ID          int64              `json:"id"`
 	ChatRoomID  uuid.UUID          `json:"chat_room_id"`
