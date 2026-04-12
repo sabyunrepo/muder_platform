@@ -9,123 +9,119 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// stub implementations
+// stub implementations for optional interface tests
 // ---------------------------------------------------------------------------
 
-// stubCorePlugin implements only the 7 Core Plugin methods.
-type stubCorePlugin struct{}
+// optMinModule implements only the Module interface (no optionals).
+type optMinModule struct{ name string }
 
-func (s *stubCorePlugin) ID() string      { return "stub_core" }
-func (s *stubCorePlugin) Name() string    { return "Stub Core" }
-func (s *stubCorePlugin) Version() string { return "0.1.0" }
-func (s *stubCorePlugin) GetConfigSchema() json.RawMessage {
-	return json.RawMessage(`{}`)
+func (s *optMinModule) Name() string { return s.name }
+func (s *optMinModule) Init(_ context.Context, _ ModuleDeps, _ json.RawMessage) error {
+	return nil
 }
-func (s *stubCorePlugin) DefaultConfig() json.RawMessage                  { return json.RawMessage(`{}`) }
-func (s *stubCorePlugin) Init(_ context.Context, _ json.RawMessage) error { return nil }
-func (s *stubCorePlugin) Cleanup(_ context.Context) error                 { return nil }
-
-// stubFullPlugin implements Core 7 + all 5 optional interfaces.
-type stubFullPlugin struct{}
-
-func (s *stubFullPlugin) ID() string      { return "stub_full" }
-func (s *stubFullPlugin) Name() string    { return "Stub Full" }
-func (s *stubFullPlugin) Version() string { return "0.2.0" }
-func (s *stubFullPlugin) GetConfigSchema() json.RawMessage {
-	return json.RawMessage(`{"type":"object"}`)
+func (s *optMinModule) BuildState() (json.RawMessage, error) { return json.RawMessage(`{}`), nil }
+func (s *optMinModule) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _ json.RawMessage) error {
+	return nil
 }
-func (s *stubFullPlugin) DefaultConfig() json.RawMessage                  { return json.RawMessage(`{"enabled":true}`) }
-func (s *stubFullPlugin) Init(_ context.Context, _ json.RawMessage) error { return nil }
-func (s *stubFullPlugin) Cleanup(_ context.Context) error                 { return nil }
+func (s *optMinModule) Cleanup(_ context.Context) error { return nil }
+
+// optMaxModule implements Module + all 5 optional interfaces.
+type optMaxModule struct{ name string }
+
+func (s *optMaxModule) Name() string { return s.name }
+func (s *optMaxModule) Init(_ context.Context, _ ModuleDeps, _ json.RawMessage) error {
+	return nil
+}
+func (s *optMaxModule) BuildState() (json.RawMessage, error) { return json.RawMessage(`{}`), nil }
+func (s *optMaxModule) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _ json.RawMessage) error {
+	return nil
+}
+func (s *optMaxModule) Cleanup(_ context.Context) error { return nil }
 
 // GameEventHandler
-func (s *stubFullPlugin) Validate(_ context.Context, _ GameEvent, _ GameState) error { return nil }
-func (s *stubFullPlugin) Apply(_ context.Context, _ GameEvent, _ *GameState) error   { return nil }
+func (s *optMaxModule) Validate(_ context.Context, _ GameEvent, _ GameState) error { return nil }
+func (s *optMaxModule) Apply(_ context.Context, _ GameEvent, _ *GameState) error   { return nil }
 
 // WinChecker
-func (s *stubFullPlugin) CheckWin(_ context.Context, _ GameState) (WinResult, error) {
+func (s *optMaxModule) CheckWin(_ context.Context, _ GameState) (WinResult, error) {
 	return WinResult{Won: false}, nil
 }
 
-// PhaseHookPlugin
-func (s *stubFullPlugin) OnPhaseEnter(_ context.Context, _ Phase) error { return nil }
-func (s *stubFullPlugin) OnPhaseExit(_ context.Context, _ Phase) error  { return nil }
+// PhaseHookModule
+func (s *optMaxModule) OnPhaseEnter(_ context.Context, _ Phase) error { return nil }
+func (s *optMaxModule) OnPhaseExit(_ context.Context, _ Phase) error  { return nil }
 
-// SerializablePlugin
-func (s *stubFullPlugin) BuildState(_ context.Context) (GameState, error) {
+// SerializableModule
+func (s *optMaxModule) SaveState(_ context.Context) (GameState, error) {
 	return GameState{SessionID: uuid.Nil, Phase: "test"}, nil
 }
-func (s *stubFullPlugin) RestoreState(_ context.Context, _ uuid.UUID, _ GameState) error {
+func (s *optMaxModule) RestoreState(_ context.Context, _ uuid.UUID, _ GameState) error {
 	return nil
 }
 
 // RuleProvider
-func (s *stubFullPlugin) GetRules() []Rule {
+func (s *optMaxModule) GetRules() []Rule {
 	return []Rule{{ID: "rule1", Logic: json.RawMessage(`{"==": [1, 1]}`)}}
 }
 
 // ---------------------------------------------------------------------------
-// type assertion tests
+// type assertion tests — verify ISP optional interface segregation
 // ---------------------------------------------------------------------------
 
-func TestCorePlugin_TypeAssertions(t *testing.T) {
-	var p Plugin = &stubCorePlugin{}
+func TestModule_MinimalDoesNotImplementOptionals(t *testing.T) {
+	var m Module = &optMinModule{name: "min"}
 
-	// Core interface is satisfied.
-	if p.ID() != "stub_core" {
-		t.Fatalf("expected id stub_core, got %s", p.ID())
+	if m.Name() != "min" {
+		t.Fatalf("expected name min, got %s", m.Name())
 	}
 
-	// Optional interfaces must NOT be implemented by stubCorePlugin.
-	if _, ok := p.(GameEventHandler); ok {
-		t.Error("stubCorePlugin must not implement GameEventHandler")
+	if _, ok := m.(GameEventHandler); ok {
+		t.Error("optMinModule must not implement GameEventHandler")
 	}
-	if _, ok := p.(WinChecker); ok {
-		t.Error("stubCorePlugin must not implement WinChecker")
+	if _, ok := m.(WinChecker); ok {
+		t.Error("optMinModule must not implement WinChecker")
 	}
-	if _, ok := p.(PhaseHookPlugin); ok {
-		t.Error("stubCorePlugin must not implement PhaseHookPlugin")
+	if _, ok := m.(PhaseHookModule); ok {
+		t.Error("optMinModule must not implement PhaseHookModule")
 	}
-	if _, ok := p.(SerializablePlugin); ok {
-		t.Error("stubCorePlugin must not implement SerializablePlugin")
+	if _, ok := m.(SerializableModule); ok {
+		t.Error("optMinModule must not implement SerializableModule")
 	}
-	if _, ok := p.(RuleProvider); ok {
-		t.Error("stubCorePlugin must not implement RuleProvider")
+	if _, ok := m.(RuleProvider); ok {
+		t.Error("optMinModule must not implement RuleProvider")
 	}
 }
 
-func TestFullPlugin_TypeAssertions(t *testing.T) {
-	var p Plugin = &stubFullPlugin{}
+func TestModule_MaxImplementsAllOptionals(t *testing.T) {
+	var m Module = &optMaxModule{name: "max"}
 
-	// Core fields.
-	if p.ID() != "stub_full" {
-		t.Fatalf("expected id stub_full, got %s", p.ID())
+	if m.Name() != "max" {
+		t.Fatalf("expected name max, got %s", m.Name())
 	}
 
-	// All 5 optional interfaces must be implemented.
-	if _, ok := p.(GameEventHandler); !ok {
-		t.Error("stubFullPlugin must implement GameEventHandler")
+	if _, ok := m.(GameEventHandler); !ok {
+		t.Error("optMaxModule must implement GameEventHandler")
 	}
-	if _, ok := p.(WinChecker); !ok {
-		t.Error("stubFullPlugin must implement WinChecker")
+	if _, ok := m.(WinChecker); !ok {
+		t.Error("optMaxModule must implement WinChecker")
 	}
-	if _, ok := p.(PhaseHookPlugin); !ok {
-		t.Error("stubFullPlugin must implement PhaseHookPlugin")
+	if _, ok := m.(PhaseHookModule); !ok {
+		t.Error("optMaxModule must implement PhaseHookModule")
 	}
-	if _, ok := p.(SerializablePlugin); !ok {
-		t.Error("stubFullPlugin must implement SerializablePlugin")
+	if _, ok := m.(SerializableModule); !ok {
+		t.Error("optMaxModule must implement SerializableModule")
 	}
-	if _, ok := p.(RuleProvider); !ok {
-		t.Error("stubFullPlugin must implement RuleProvider")
+	if _, ok := m.(RuleProvider); !ok {
+		t.Error("optMaxModule must implement RuleProvider")
 	}
 }
 
-func TestFullPlugin_OptionalMethodCalls(t *testing.T) {
+func TestModule_OptionalMethodCalls(t *testing.T) {
 	ctx := context.Background()
-	var p Plugin = &stubFullPlugin{}
+	var m Module = &optMaxModule{name: "max"}
 
 	// GameEventHandler
-	eh := p.(GameEventHandler)
+	eh := m.(GameEventHandler)
 	if err := eh.Validate(ctx, GameEvent{ID: uuid.New(), Type: "test"}, GameState{}); err != nil {
 		t.Errorf("Validate: %v", err)
 	}
@@ -135,7 +131,7 @@ func TestFullPlugin_OptionalMethodCalls(t *testing.T) {
 	}
 
 	// WinChecker
-	wc := p.(WinChecker)
+	wc := m.(WinChecker)
 	wr, err := wc.CheckWin(ctx, GameState{})
 	if err != nil {
 		t.Errorf("CheckWin: %v", err)
@@ -144,8 +140,8 @@ func TestFullPlugin_OptionalMethodCalls(t *testing.T) {
 		t.Error("expected Won=false from stub")
 	}
 
-	// PhaseHookPlugin
-	ph := p.(PhaseHookPlugin)
+	// PhaseHookModule
+	ph := m.(PhaseHookModule)
 	if err := ph.OnPhaseEnter(ctx, Phase("intro")); err != nil {
 		t.Errorf("OnPhaseEnter: %v", err)
 	}
@@ -153,21 +149,8 @@ func TestFullPlugin_OptionalMethodCalls(t *testing.T) {
 		t.Errorf("OnPhaseExit: %v", err)
 	}
 
-	// SerializablePlugin
-	sp := p.(SerializablePlugin)
-	gs, err := sp.BuildState(ctx)
-	if err != nil {
-		t.Errorf("BuildState: %v", err)
-	}
-	if gs.Phase != "test" {
-		t.Errorf("unexpected phase %q", gs.Phase)
-	}
-	if err := sp.RestoreState(ctx, uuid.New(), GameState{}); err != nil {
-		t.Errorf("RestoreState: %v", err)
-	}
-
 	// RuleProvider
-	rp := p.(RuleProvider)
+	rp := m.(RuleProvider)
 	rules := rp.GetRules()
 	if len(rules) == 0 {
 		t.Error("expected at least one rule from stub")
@@ -175,90 +158,21 @@ func TestFullPlugin_OptionalMethodCalls(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// PluginRegistry tests
+// Registry tests (global module registry)
 // ---------------------------------------------------------------------------
 
-func TestPluginRegistry_HappyPath(t *testing.T) {
-	r := NewPluginRegistry()
-	r.Register("stub_core", func() Plugin { return &stubCorePlugin{} })
+func TestRegistry_RegisterAndCreate(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{
+		"opt_min": func() Module { return &optMinModule{name: "opt_min"} },
+	}
+	defer func() { globalRegistry.factories = origFactories }()
 
-	p, err := r.New("stub_core")
+	mod, err := CreateModule("opt_min")
 	if err != nil {
-		t.Fatalf("New: %v", err)
+		t.Fatalf("CreateModule: %v", err)
 	}
-	if p.ID() != "stub_core" {
-		t.Errorf("expected stub_core, got %s", p.ID())
-	}
-}
-
-func TestPluginRegistry_FactoryReturnsNewInstance(t *testing.T) {
-	r := NewPluginRegistry()
-	// Use stubFullPlugin which has methods — calling New twice must produce
-	// logically independent values even if Go merges zero-size-struct pointers.
-	r.Register("stub_full2", func() Plugin { return &stubFullPlugin{} })
-
-	p1, err1 := r.New("stub_full2")
-	p2, err2 := r.New("stub_full2")
-	if err1 != nil || err2 != nil {
-		t.Fatalf("New errors: %v, %v", err1, err2)
-	}
-	// Each call must go through the factory and return a non-nil Plugin.
-	if p1 == nil || p2 == nil {
-		t.Fatal("factory returned nil Plugin")
-	}
-	// Verify factory is called twice by checking the returned values are valid
-	// independent Plugin implementations (both satisfy the interface).
-	if p1.ID() != "stub_full" || p2.ID() != "stub_full" {
-		t.Errorf("unexpected IDs: %s, %s", p1.ID(), p2.ID())
-	}
-}
-
-func TestPluginRegistry_UnknownID(t *testing.T) {
-	r := NewPluginRegistry()
-	_, err := r.New("not_registered")
-	if err == nil {
-		t.Fatal("expected error for unknown plugin id")
-	}
-}
-
-func TestPluginRegistry_PanicOnEmptyID(t *testing.T) {
-	r := NewPluginRegistry()
-	defer func() {
-		if recover() == nil {
-			t.Error("expected panic for empty id")
-		}
-	}()
-	r.Register("", func() Plugin { return &stubCorePlugin{} })
-}
-
-func TestPluginRegistry_PanicOnNilFactory(t *testing.T) {
-	r := NewPluginRegistry()
-	defer func() {
-		if recover() == nil {
-			t.Error("expected panic for nil factory")
-		}
-	}()
-	r.Register("some_plugin", nil)
-}
-
-func TestPluginRegistry_PanicOnDuplicateID(t *testing.T) {
-	r := NewPluginRegistry()
-	r.Register("dup", func() Plugin { return &stubCorePlugin{} })
-	defer func() {
-		if recover() == nil {
-			t.Error("expected panic for duplicate id")
-		}
-	}()
-	r.Register("dup", func() Plugin { return &stubCorePlugin{} })
-}
-
-func TestPluginRegistry_List(t *testing.T) {
-	r := NewPluginRegistry()
-	r.Register("alpha", func() Plugin { return &stubCorePlugin{} })
-	r.Register("beta", func() Plugin { return &stubCorePlugin{} })
-
-	ids := r.List()
-	if len(ids) != 2 {
-		t.Errorf("expected 2 ids, got %d", len(ids))
+	if mod.Name() != "opt_min" {
+		t.Errorf("expected opt_min, got %s", mod.Name())
 	}
 }

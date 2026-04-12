@@ -7,8 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// GameEvent is a domain event produced or consumed by a Plugin.
-// The payload is kept as raw JSON so plugins can decode into their own types.
+// GameEvent is a domain event produced or consumed by a Module.
+// The payload is kept as raw JSON so modules can decode into their own types.
 type GameEvent struct {
 	ID        uuid.UUID       `json:"id"`
 	SessionID uuid.UUID       `json:"sessionId"`
@@ -18,7 +18,7 @@ type GameEvent struct {
 }
 
 // GameState holds the full serialisable state of a running game session.
-// Each Plugin contributes a slice of raw JSON keyed by its ID.
+// Each Module contributes a slice of raw JSON keyed by its ID.
 type GameState struct {
 	SessionID uuid.UUID                  `json:"sessionId"`
 	Phase     string                     `json:"phase"`
@@ -54,7 +54,7 @@ type WinResult struct {
 
 // Rule represents a single evaluable game rule expressed as JSON Logic.
 type Rule struct {
-	// ID uniquely identifies the rule within a Plugin.
+	// ID uniquely identifies the rule within a Module.
 	ID string `json:"id"`
 	// Description is a human-readable label shown in the editor.
 	Description string `json:"description,omitempty"`

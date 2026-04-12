@@ -13,7 +13,7 @@ import (
 type ValidationState struct {
 	Phase             string
 	AllowedEventTypes []string
-	Modules           map[string]Plugin
+	Modules           map[string]Module
 }
 
 // Validator validates a GameEvent against the current ValidationState before
