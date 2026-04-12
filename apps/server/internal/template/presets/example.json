@@ -1,0 +1,40 @@
+{
+  "id": "example",
+  "genre": "murder_mystery",
+  "name": "Example Template",
+  "description": "A minimal example template for testing",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 6}},
+    {"id": "text_chat", "config": {"maxLength": 200}}
+  ],
+  "phases": [
+    {
+      "id": "lobby",
+      "name": "Lobby",
+      "description": "Players join and select characters"
+    },
+    {
+      "id": "introduction",
+      "name": "Introduction",
+      "duration": 300,
+      "actions": [
+        {"action": "MUTE_CHAT", "target": "text_chat"}
+      ]
+    },
+    {
+      "id": "discussion",
+      "name": "Discussion",
+      "duration": 600,
+      "actions": [
+        {"action": "UNMUTE_CHAT", "target": "text_chat"}
+      ]
+    },
+    {
+      "id": "ending",
+      "name": "Ending"
+    }
+  ]
+}
