@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W4
-**PR**: PR-T2 (4 장르 N 프리셋 JSON Templates)
-**Task**: template/presets JSON files
+**PR**: PR-C1 (L1 SchemaDrivenForm MVP)
+**Task**: apps/web editor SchemaDrivenForm
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -96,12 +96,12 @@
 - [x] internal/template/*_test.go — 20 tests, 87.4% coverage
 - [x] HTTP handler GET /api/templates, /{id}, /{id}/schema
 
-### PR-T2 — 4 장르 N 프리셋 JSON
-- [ ] template/presets/murder_mystery/*.json
-- [ ] template/presets/crime_scene/*.json
-- [ ] template/presets/script_kill/*.json
-- [ ] template/presets/jubensha/*.json
-- [ ] Golden test — 각 프리셋 loader 검증
+### PR-T2 — 4 장르 N 프리셋 JSON ✅ `f6073fc`
+- [x] template/presets/murder_mystery/*.json (3: classic_6p, expert_8p, quick_4p)
+- [x] template/presets/crime_scene/*.json (2: 3_locations, 5_locations)
+- [x] template/presets/script_kill/*.json (2: 3_rounds, 5_rounds)
+- [x] template/presets/jubensha/*.json (2: first_person, third_person)
+- [x] Golden test — load, validate, schema merge, genre coverage
 
 ## Wave 6 — UI + Crime Scene (parallel ×2)
 

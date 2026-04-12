@@ -26,9 +26,9 @@
     ],
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
-    "current_wave": "W5",
-    "current_pr": "PR-T2",
-    "current_task": "4 genre N preset JSON templates",
+    "current_wave": "W6",
+    "current_pr": "PR-C1",
+    "current_task": "L1 Editor SchemaDrivenForm MVP",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -300,10 +300,10 @@
           "apps/server/internal/template/presets_test.go"
         ],
         "tasks_total": 5,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 5,
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-t2-genre-presets",
-        "commit": null
+        "commit": "f6073fc"
       },
       "PR-C1": {
         "title": "L1 Editor SchemaDrivenForm (MVP)",
