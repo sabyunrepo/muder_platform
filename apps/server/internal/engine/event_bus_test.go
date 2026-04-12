@@ -1,14 +1,17 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -65,7 +68,7 @@ func TestTypedEventBus_MultipleSubscribersAllReceive(t *testing.T) {
 		}))
 	}
 
-	bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if count.Load() != 3 {
 		t.Fatalf("expected 3 calls, got %d", count.Load())
 	}
@@ -87,7 +90,7 @@ func TestTypedEventBus_UnsubscribePreventsCalls(t *testing.T) {
 	bus.Subscribe("evt", sub)
 	bus.Unsubscribe("evt", sub)
 
-	bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if called {
 		t.Fatal("subscriber should not be called after unsubscribe")
 	}
@@ -108,7 +111,7 @@ func TestTypedEventBus_UnsubscribeOnlyRemovesFirst(t *testing.T) {
 	// Unsubscribe removes only the first occurrence.
 	bus.Unsubscribe("evt", sub)
 
-	bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if count.Load() != 1 {
 		t.Fatalf("expected 1 call after removing one of two identical subs, got %d", count.Load())
 	}
@@ -124,7 +127,7 @@ func TestTypedEventBus_SubscribeAfterClosedIsNoOp(t *testing.T) {
 		return nil
 	}))
 	// Bus is closed, so Publish should also be a no-op.
-	bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if called {
 		t.Fatal("subscriber registered after close should never be called")
 	}
@@ -140,7 +143,7 @@ func TestTypedEventBus_PublishAfterCloseIsNoOp(t *testing.T) {
 	}))
 	bus.Close()
 
-	errs := bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	errs := bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if called {
 		t.Fatal("subscriber should not be called after Close")
 	}
@@ -169,7 +172,7 @@ func TestTypedEventBus_ConcurrentPublish(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			bus.Publish(context.Background(), GameEvent{Type:"concurrent"})
+			bus.Publish(context.Background(), GameEvent{Type: "concurrent"})
 		}()
 	}
 	wg.Wait()
@@ -193,7 +196,7 @@ func TestTypedEventBus_ConcurrentSubscribeAndPublish(t *testing.T) {
 		}()
 		go func() {
 			defer wg.Done()
-			bus.Publish(context.Background(), GameEvent{Type:"race"})
+			bus.Publish(context.Background(), GameEvent{Type: "race"})
 		}()
 	}
 	wg.Wait()
@@ -216,7 +219,7 @@ func TestTypedEventBus_PanicIsolation(t *testing.T) {
 		return nil
 	}))
 
-	errs := bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	errs := bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if !siblingCalled {
 		t.Fatal("sibling subscriber should be called even when prior subscriber panics")
 	}
@@ -237,7 +240,7 @@ func TestTypedEventBus_PanicErrorContainsTopic(t *testing.T) {
 		panic("boom")
 	}))
 
-	errs := bus.Publish(context.Background(), GameEvent{Type:"phase.advanced"})
+	errs := bus.Publish(context.Background(), GameEvent{Type: "phase.advanced"})
 	if len(errs) != 1 {
 		t.Fatalf("expected 1 error, got %d", len(errs))
 	}
@@ -263,7 +266,7 @@ func TestTypedEventBus_ErrorAggregation(t *testing.T) {
 	bus.Subscribe("evt", newSub(func(_ context.Context, _ GameEvent) error { return errB }))
 	bus.Subscribe("evt", newSub(func(_ context.Context, _ GameEvent) error { return nil }))
 
-	errs := bus.Publish(context.Background(), GameEvent{Type:"evt"})
+	errs := bus.Publish(context.Background(), GameEvent{Type: "evt"})
 	if len(errs) != 2 {
 		t.Fatalf("expected 2 errors, got %d", len(errs))
 	}
@@ -278,7 +281,7 @@ func TestTypedEventBus_UnknownTopicIsNoOp(t *testing.T) {
 	defer bus.Close()
 
 	// No subscribers registered for "unknown".
-	errs := bus.Publish(context.Background(), GameEvent{Type:"unknown.topic"})
+	errs := bus.Publish(context.Background(), GameEvent{Type: "unknown.topic"})
 	if len(errs) != 0 {
 		t.Fatalf("expected nil for unknown topic, got %v", errs)
 	}
@@ -304,12 +307,39 @@ func TestTypedEventBus_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // already cancelled
 
-	errs := bus.Publish(ctx, GameEvent{Type:"evt"})
+	errs := bus.Publish(ctx, GameEvent{Type: "evt"})
 	if len(errs) != 1 {
 		t.Fatalf("expected 1 error from cancelled context, got %d", len(errs))
 	}
 	if !errors.Is(errs[0], context.Canceled) {
 		t.Fatalf("expected context.Canceled, got %v", errs[0])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Panic log includes session_id field
+// ---------------------------------------------------------------------------
+
+func TestTypedEventBus_PanicLogIncludesSessionID(t *testing.T) {
+	var buf bytes.Buffer
+	log := zerolog.New(&buf)
+	bus := NewTypedEventBus(log)
+	defer bus.Close()
+
+	sid := uuid.New()
+	bus.Subscribe("panic.test", newSub(func(_ context.Context, _ GameEvent) error {
+		panic("test panic for session_id log check")
+	}))
+
+	bus.Publish(context.Background(), GameEvent{
+		ID:        uuid.New(),
+		SessionID: sid,
+		Type:      "panic.test",
+	})
+
+	output := buf.String()
+	if !strings.Contains(output, sid.String()) {
+		t.Fatalf("expected session_id %s in panic log output, got:\n%s", sid, output)
 	}
 }
 

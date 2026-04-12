@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -9,9 +10,11 @@ import (
 // GameEvent is a domain event produced or consumed by a Plugin.
 // The payload is kept as raw JSON so plugins can decode into their own types.
 type GameEvent struct {
-	ID      uuid.UUID       `json:"id"`
-	Type    string          `json:"type"`
-	Payload json.RawMessage `json:"payload,omitempty"`
+	ID        uuid.UUID       `json:"id"`
+	SessionID uuid.UUID       `json:"sessionId"`
+	Type      string          `json:"type"`
+	Timestamp time.Time       `json:"timestamp"`
+	Payload   json.RawMessage `json:"payload,omitempty"`
 }
 
 // GameState holds the full serialisable state of a running game session.

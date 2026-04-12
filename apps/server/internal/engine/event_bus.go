@@ -114,6 +114,7 @@ func (b *TypedEventBus) callSafe(ctx context.Context, sub Subscriber, evt GameEv
 		if r := recover(); r != nil {
 			stack := debug.Stack()
 			b.log.Error().
+				Str("session_id", evt.SessionID.String()).
 				Str("topic", evt.Type).
 				Interface("panic", r).
 				Bytes("stack", stack).
