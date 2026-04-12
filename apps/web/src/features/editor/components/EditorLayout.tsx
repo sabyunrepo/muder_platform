@@ -31,6 +31,9 @@ const MediaTab = lazy(() =>
 const AdvancedTab = lazy(() =>
   import("./AdvancedTab").then((m) => ({ default: m.AdvancedTab })),
 );
+const TemplateConfigTab = lazy(() =>
+  import("./TemplateConfigTab").then((m) => ({ default: m.TemplateConfigTab })),
+);
 
 // ---------------------------------------------------------------------------
 // TabContent
@@ -56,6 +59,8 @@ function TabContent({ tab, theme, themeId }: TabContentProps) {
       return <MediaTab themeId={themeId} />;
     case "advanced":
       return <AdvancedTab theme={theme} themeId={themeId} />;
+    case "template":
+      return <TemplateConfigTab />;
   }
 }
 
