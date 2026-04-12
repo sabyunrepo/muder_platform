@@ -1,35 +1,36 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
-**Wave**: W1
-**PR**: PR-A1 (Module Core + Registry)
-**Task**: Module Core 7 + Optional 5 + Registry + types + tests
+**Wave**: W2
+**PR**: PR-A4 (PhaseEngine + Legacy Deletion + Rename)
+**Task**: phase_engine skeleton + legacy delete + Plugin→Module rename
 **State**: pending
-**Blockers**: none
+**Blockers**: W1 merge complete, awaiting user confirm
 **Last updated**: 2026-04-12
 <!-- STATUS-END -->
 
 # Checklist
 
-## Wave 1 — Engine Foundation (parallel ×3)
+## Wave 1 — Engine Foundation (parallel ×3) ✅
 
-### PR-A1 — Module Core + Registry
-- [ ] engine/module_types.go — GameEvent, GameState, Phase, WinResult, Rule
-- [ ] engine/module.go — Core 7 interface (temp name Plugin)
-- [ ] engine/module_optional.go — 5 optionals
-- [ ] engine/module_registry.go — PluginRegistry (factory, panic on dup)
-- [ ] engine/module_test.go — type assertion + registry coverage 75%+
-- [ ] go build && go test -race 전체 green
+### PR-A1 — Module Core + Registry ✅ merged as `4317cdb`
+- [x] engine/module_types.go — GameEvent, GameState, Phase, WinResult, Rule
+- [x] engine/module.go — Core 7 interface (임시명 Plugin, PluginConfigSchema)
+- [x] engine/module_optional.go — 5 optionals
+- [x] engine/module_registry.go — PluginRegistry (factory, panic on dup)
+- [x] engine/module_test.go — type assertion + registry coverage (100% new files)
+- [x] go build && go test -race 전체 green
 
-### PR-A2 — EventBus Rewrite
-- [ ] engine/event_bus.go — typed pub/sub (replaces callback style)
-- [ ] engine/event_bus_test.go — race tests
-- [ ] 레거시 eventbus/** 는 건드리지 않음 (A4 에서 삭제)
+### PR-A2 — EventBus Rewrite ✅ merged as `fb7c592`
+- [x] engine/event_bus.go — typed pub/sub (TypedEventBus, uses engine.GameEvent.Type routing key)
+- [x] engine/event_bus_test.go — 14 race tests (panic isolation, 50-goroutine concurrent)
+- [x] 레거시 eventbus/** 건드리지 않음 (A4 에서 삭제)
 
-### PR-A3 — Audit Log Package
-- [ ] internal/auditlog/event.go — AuditEvent, AuditAction
-- [ ] internal/auditlog/logger.go — append-only logger
-- [ ] internal/auditlog/store.go — DB store (sqlc)
-- [ ] internal/auditlog/*_test.go — unit + integration
+### PR-A3 — Audit Log Package ✅ merged as `5082a8a`
+- [x] internal/auditlog/event.go — AuditEvent, AuditAction enum
+- [x] internal/auditlog/logger.go — NoOpLogger + DBLogger (buffered, graceful drain)
+- [x] internal/auditlog/store.go — DB store + pg_advisory_xact_lock for per-session seq serialize
+- [x] internal/auditlog/*_test.go — unit (NoOpLogger) + testcontainers integration (100-goroutine seq uniqueness)
+- [x] Migration `00018_audit_events` + sqlc queries committed
 
 ## Wave 2 — Engine Replacement (parallel ×2)
 

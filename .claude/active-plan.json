@@ -26,9 +26,9 @@
     ],
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
-    "current_wave": "W1",
-    "current_pr": "PR-A1",
-    "current_task": "Module Core 7 + Optional 5 + Registry + types + tests",
+    "current_wave": "W2",
+    "current_pr": "PR-A4",
+    "current_task": "phase_engine skeleton + legacy delete + Plugin→Module rename",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -37,43 +37,66 @@
         "id": "W1",
         "name": "Engine Foundation",
         "mode": "parallel",
-        "prs": ["PR-A1", "PR-A2", "PR-A3"]
+        "prs": [
+          "PR-A1",
+          "PR-A2",
+          "PR-A3"
+        ]
       },
       {
         "id": "W2",
         "name": "Engine Replacement (Big Bang)",
         "mode": "parallel",
-        "prs": ["PR-A4", "PR-A5"]
+        "prs": [
+          "PR-A4",
+          "PR-A5"
+        ]
       },
       {
         "id": "W3",
         "name": "Primitives",
         "mode": "sequential",
-        "prs": ["PR-A6", "PR-A7"]
+        "prs": [
+          "PR-A6",
+          "PR-A7"
+        ]
       },
       {
         "id": "W4",
         "name": "Module Migration",
         "mode": "parallel",
-        "prs": ["PR-B1", "PR-B2", "PR-B3", "PR-B4"]
+        "prs": [
+          "PR-B1",
+          "PR-B2",
+          "PR-B3",
+          "PR-B4"
+        ]
       },
       {
         "id": "W5",
         "name": "Template System",
         "mode": "sequential",
-        "prs": ["PR-T1", "PR-T2"]
+        "prs": [
+          "PR-T1",
+          "PR-T2"
+        ]
       },
       {
         "id": "W6",
         "name": "UI + CrimeScene",
         "mode": "parallel",
-        "prs": ["PR-C1", "PR-F1"]
+        "prs": [
+          "PR-C1",
+          "PR-F1"
+        ]
       },
       {
         "id": "W7",
         "name": "Verification",
         "mode": "sequential",
-        "prs": ["PR-V1"]
+        "prs": [
+          "PR-V1"
+        ]
       }
     ],
     "prs": {
@@ -89,9 +112,9 @@
         ],
         "tasks_total": 5,
         "tasks_done": 0,
-        "status": "pending",
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-a1-module-core",
-        "commit": null
+        "commit": "4317cdb"
       },
       "PR-A2": {
         "title": "EventBus Rewrite (Typed pub/sub)",
@@ -102,9 +125,9 @@
         ],
         "tasks_total": 3,
         "tasks_done": 0,
-        "status": "pending",
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-a2-event-bus",
-        "commit": null
+        "commit": "fb7c592"
       },
       "PR-A3": {
         "title": "Audit Log Package",
@@ -116,13 +139,17 @@
         ],
         "tasks_total": 6,
         "tasks_done": 0,
-        "status": "pending",
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-a3-audit-log",
-        "commit": null
+        "commit": "5082a8a"
       },
       "PR-A4": {
         "title": "PhaseEngine + Legacy Deletion + Rename (Big Bang)",
-        "depends_on": ["PR-A1", "PR-A2", "PR-A3"],
+        "depends_on": [
+          "PR-A1",
+          "PR-A2",
+          "PR-A3"
+        ],
         "scope": [
           "apps/server/internal/engine/phase_engine.go",
           "apps/server/internal/engine/phase_engine_test.go",
@@ -139,7 +166,9 @@
       },
       "PR-A5": {
         "title": "Validator Chain",
-        "depends_on": ["PR-A1"],
+        "depends_on": [
+          "PR-A1"
+        ],
         "scope": [
           "apps/server/internal/engine/validator.go",
           "apps/server/internal/engine/validator_test.go"
@@ -152,8 +181,12 @@
       },
       "PR-A6": {
         "title": "Clue Graph Primitive",
-        "depends_on": ["PR-A4"],
-        "scope": ["apps/server/internal/clue/**"],
+        "depends_on": [
+          "PR-A4"
+        ],
+        "scope": [
+          "apps/server/internal/clue/**"
+        ],
         "tasks_total": 5,
         "tasks_done": 0,
         "status": "pending",
@@ -162,7 +195,9 @@
       },
       "PR-A7": {
         "title": "JSON Logic Rule Evaluator",
-        "depends_on": ["PR-A6"],
+        "depends_on": [
+          "PR-A6"
+        ],
         "scope": [
           "apps/server/internal/engine/rule_evaluator.go",
           "apps/server/internal/engine/rule_evaluator_test.go",
@@ -176,8 +211,13 @@
       },
       "PR-B1": {
         "title": "cluedist Module Migration",
-        "depends_on": ["PR-A4", "PR-A7"],
-        "scope": ["apps/server/internal/module/cluedist/**"],
+        "depends_on": [
+          "PR-A4",
+          "PR-A7"
+        ],
+        "scope": [
+          "apps/server/internal/module/cluedist/**"
+        ],
         "tasks_total": 4,
         "tasks_done": 0,
         "status": "pending",
@@ -186,8 +226,13 @@
       },
       "PR-B2": {
         "title": "decision Module Migration",
-        "depends_on": ["PR-A4", "PR-A7"],
-        "scope": ["apps/server/internal/module/decision/**"],
+        "depends_on": [
+          "PR-A4",
+          "PR-A7"
+        ],
+        "scope": [
+          "apps/server/internal/module/decision/**"
+        ],
         "tasks_total": 4,
         "tasks_done": 0,
         "status": "pending",
@@ -196,7 +241,9 @@
       },
       "PR-B3": {
         "title": "progression + exploration + core Module Migration",
-        "depends_on": ["PR-A4"],
+        "depends_on": [
+          "PR-A4"
+        ],
         "scope": [
           "apps/server/internal/module/progression/**",
           "apps/server/internal/module/exploration/**",
@@ -210,7 +257,9 @@
       },
       "PR-B4": {
         "title": "media + communication Module Migration",
-        "depends_on": ["PR-A4"],
+        "depends_on": [
+          "PR-A4"
+        ],
         "scope": [
           "apps/server/internal/module/media/**",
           "apps/server/internal/module/communication/**"
@@ -223,7 +272,13 @@
       },
       "PR-T1": {
         "title": "Template Loader + Validator + Schema Merger",
-        "depends_on": ["PR-A4", "PR-B1", "PR-B2", "PR-B3", "PR-B4"],
+        "depends_on": [
+          "PR-A4",
+          "PR-B1",
+          "PR-B2",
+          "PR-B3",
+          "PR-B4"
+        ],
         "scope": [
           "apps/server/internal/template/**",
           "apps/server/internal/server/template_handler.go",
@@ -237,7 +292,9 @@
       },
       "PR-T2": {
         "title": "4 장르 N 프리셋 JSON Templates",
-        "depends_on": ["PR-T1"],
+        "depends_on": [
+          "PR-T1"
+        ],
         "scope": [
           "apps/server/internal/template/presets/**",
           "apps/server/internal/template/presets_test.go"
@@ -250,7 +307,9 @@
       },
       "PR-C1": {
         "title": "L1 Editor SchemaDrivenForm (MVP)",
-        "depends_on": ["PR-T1"],
+        "depends_on": [
+          "PR-T1"
+        ],
         "scope": [
           "apps/web/src/features/editor/**",
           "apps/web/src/api/templateApi.ts",
@@ -264,8 +323,13 @@
       },
       "PR-F1": {
         "title": "CrimeScene Module (Location/Evidence/Combination)",
-        "depends_on": ["PR-A4", "PR-A7"],
-        "scope": ["apps/server/internal/module/crime_scene/**"],
+        "depends_on": [
+          "PR-A4",
+          "PR-A7"
+        ],
+        "scope": [
+          "apps/server/internal/module/crime_scene/**"
+        ],
         "tasks_total": 5,
         "tasks_done": 0,
         "status": "pending",
@@ -274,7 +338,11 @@
       },
       "PR-V1": {
         "title": "e2e Smoke + Module Isolation CI Gate",
-        "depends_on": ["PR-C1", "PR-F1", "PR-T2"],
+        "depends_on": [
+          "PR-C1",
+          "PR-F1",
+          "PR-T2"
+        ],
         "scope": [
           "apps/server/internal/e2e/**",
           "scripts/test-module-isolation.sh",

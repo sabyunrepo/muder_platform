@@ -54,6 +54,7 @@ Thumbs.db
 
 # ─── Worktrees ────────────────────────────────────────
 .worktrees/
+.claude/worktrees/
 
 # ─── plan-autopilot (local runtime) ───────────────────
 .claude/autopilot-state.json

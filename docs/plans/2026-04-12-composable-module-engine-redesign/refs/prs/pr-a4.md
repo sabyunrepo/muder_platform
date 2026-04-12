@@ -22,7 +22,7 @@ Feature flag 없음. 리버트 = 레거시 전체 복원.
 1. **phase_engine skeleton** — JSON template 구동 phase machine, `Step(event)` 메서드, panic isolation
 2. **phase_engine tests** — golden tests, panic recover 검증
 3. **legacy delete** — GameProgressionEngine, strategies, dispatcher, validation, eventbus 삭제
-4. **rename** — `engine.Plugin → engine.Module` 전역 (gopls rename tool)
+4. **rename** — `engine.Plugin → engine.Module` 전역 (gopls rename tool). 추가로 `engine.PluginConfigSchema → engine.ConfigSchema` 복구 리네임 — PR-A1 이 legacy `engine.ConfigSchema` **interface** 와의 충돌을 피하려고 신규 struct 를 `PluginConfigSchema` 임시명으로 등록했음. legacy `types.go` 삭제 후 rename 필요.
 5. **rewire module/** — 32 파일 새 `Module` interface 구현 (Core 7 필수, Optional 는 opt-in)
 6. **rewire session/** — NewEngine 호출부 → NewPhaseEngine, Module wire
 7. **integration test** — session 생성 → phase 진행 → cleanup e2e 1 케이스
