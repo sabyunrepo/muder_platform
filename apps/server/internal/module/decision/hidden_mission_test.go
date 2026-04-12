@@ -481,3 +481,196 @@ func TestHiddenMissionModule_UnknownMessageType(t *testing.T) {
 		t.Error("expected error for unknown message type")
 	}
 }
+
+// --- SerializableModule tests ---
+
+func TestHiddenMissionModule_SaveRestoreState(t *testing.T) {
+	pid := uuid.New()
+	deps := newTestDeps()
+	cfg := map[string]any{
+		"verificationMode": "gm_verify",
+		"scoreWinnerTitle": "Star",
+		"playerMissions": map[string]any{
+			pid.String(): []map[string]any{
+				{"id": "m1", "type": "hold_clue", "description": "Hold clue_1", "points": 10, "verification": "auto", "targetClueId": "clue_1"},
+				{"id": "m2", "type": "custom", "description": "Custom", "points": 5, "verification": "gm_verify"},
+			},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+
+	m := NewHiddenMissionModule()
+	if err := m.Init(context.Background(), deps, data); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	// Complete a mission via event.
+	deps.EventBus.Publish(engine.Event{
+		Type: "clue.acquired",
+		Payload: map[string]any{
+			"playerId": pid.String(),
+			"clueId":   "clue_1",
+		},
+	})
+
+	// Save state.
+	savedState, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	// Restore into fresh module.
+	m2 := NewHiddenMissionModule()
+	if err := m2.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init m2: %v", err)
+	}
+	if err := m2.RestoreState(context.Background(), uuid.Nil, savedState); err != nil {
+		t.Fatalf("RestoreState: %v", err)
+	}
+
+	m2.mu.RLock()
+	defer m2.mu.RUnlock()
+
+	if m2.config.VerificationMode != "gm_verify" {
+		t.Errorf("config.VerificationMode = %q, want %q", m2.config.VerificationMode, "gm_verify")
+	}
+	if m2.config.ScoreWinnerTitle != "Star" {
+		t.Errorf("config.ScoreWinnerTitle = %q, want %q", m2.config.ScoreWinnerTitle, "Star")
+	}
+	if len(m2.playerMissions[pid]) != 2 {
+		t.Fatalf("expected 2 missions, got %d", len(m2.playerMissions[pid]))
+	}
+	if m2.playerMissions[pid][0].Completed != true {
+		t.Error("mission m1 should be completed after restore")
+	}
+	if m2.scores[pid] != 10 {
+		t.Errorf("score = %d, want 10", m2.scores[pid])
+	}
+	if len(m2.completedMissions[pid]) != 1 {
+		t.Errorf("completedMissions = %d, want 1", len(m2.completedMissions[pid]))
+	}
+}
+
+func TestHiddenMissionModule_RestoreState_NoModule(t *testing.T) {
+	m := initHiddenMissionModule(t, "")
+	err := m.RestoreState(context.Background(), uuid.Nil, engine.GameState{})
+	if err != nil {
+		t.Fatalf("RestoreState with empty state should not error: %v", err)
+	}
+}
+
+// --- WinChecker tests ---
+
+func TestHiddenMissionModule_CheckWin(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   engine.GameState
+		wantWon bool
+	}{
+		{
+			name:    "no hidden_mission state",
+			state:   engine.GameState{},
+			wantWon: false,
+		},
+		{
+			name: "no scores",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"hidden_mission": json.RawMessage(`{"config":{"verificationMode":"auto","showResultAt":"ending","scoreWinnerTitle":"MVP","affectsScore":true}}`),
+				},
+			},
+			wantWon: false,
+		},
+		{
+			name: "all scores zero",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"hidden_mission": json.RawMessage(`{"scores":{"` + uuid.New().String() + `":0},"config":{"verificationMode":"auto","showResultAt":"ending","scoreWinnerTitle":"MVP","affectsScore":true}}`),
+				},
+			},
+			wantWon: false,
+		},
+		{
+			name: "has MVP winner",
+			state: engine.GameState{
+				Modules: map[string]json.RawMessage{
+					"hidden_mission": json.RawMessage(`{"scores":{"` + uuid.New().String() + `":15},"config":{"verificationMode":"auto","showResultAt":"ending","scoreWinnerTitle":"MVP","affectsScore":true}}`),
+				},
+			},
+			wantWon: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := NewHiddenMissionModule()
+			m.config.ScoreWinnerTitle = "MVP"
+			result, err := m.CheckWin(context.Background(), tt.state)
+			if err != nil {
+				t.Fatalf("CheckWin: %v", err)
+			}
+			if result.Won != tt.wantWon {
+				t.Errorf("Won = %v, want %v", result.Won, tt.wantWon)
+			}
+		})
+	}
+}
+
+func TestHiddenMissionModule_CheckWin_MVPReason(t *testing.T) {
+	pid := uuid.New()
+	state := engine.GameState{
+		Modules: map[string]json.RawMessage{
+			"hidden_mission": json.RawMessage(`{"scores":{"` + pid.String() + `":20},"config":{"verificationMode":"auto","showResultAt":"ending","scoreWinnerTitle":"Star Player","affectsScore":true}}`),
+		},
+	}
+
+	m := NewHiddenMissionModule()
+	m.config.ScoreWinnerTitle = "Star Player"
+	result, err := m.CheckWin(context.Background(), state)
+	if err != nil {
+		t.Fatalf("CheckWin: %v", err)
+	}
+	if !result.Won {
+		t.Fatal("expected Won=true")
+	}
+	if len(result.WinnerIDs) != 1 || result.WinnerIDs[0] != pid {
+		t.Errorf("WinnerIDs = %v, want [%s]", result.WinnerIDs, pid)
+	}
+}
+
+// --- RuleProvider tests ---
+
+func TestHiddenMissionModule_GetRules(t *testing.T) {
+	m := NewHiddenMissionModule()
+	rules := m.GetRules()
+	if len(rules) != 3 {
+		t.Fatalf("GetRules() returned %d rules, want 3", len(rules))
+	}
+
+	expectedIDs := map[string]bool{
+		"mission.hold_clue":     false,
+		"mission.vote_target":   false,
+		"mission.transfer_clue": false,
+	}
+
+	for _, rule := range rules {
+		if _, ok := expectedIDs[rule.ID]; !ok {
+			t.Errorf("unexpected rule ID %q", rule.ID)
+		}
+		expectedIDs[rule.ID] = true
+
+		if rule.Description == "" {
+			t.Errorf("rule %q has empty Description", rule.ID)
+		}
+		var parsed any
+		if err := json.Unmarshal(rule.Logic, &parsed); err != nil {
+			t.Errorf("rule %q: Logic is not valid JSON: %v", rule.ID, err)
+		}
+	}
+
+	for id, found := range expectedIDs {
+		if !found {
+			t.Errorf("missing expected rule %q", id)
+		}
+	}
+}

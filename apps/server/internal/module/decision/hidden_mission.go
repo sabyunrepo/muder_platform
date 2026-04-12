@@ -380,8 +380,157 @@ func (m *HiddenMissionModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
+// --- SerializableModule ---
+
+type hiddenMissionSavedState struct {
+	Config            HiddenMissionConfig        `json:"config"`
+	PlayerMissions    map[string][]Mission        `json:"playerMissions"`
+	CompletedMissions map[string][]string         `json:"completedMissions"`
+	Scores            map[string]int              `json:"scores"`
+}
+
+func (m *HiddenMissionModule) SaveState(_ context.Context) (engine.GameState, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	pm := make(map[string][]Mission, len(m.playerMissions))
+	for pid, missions := range m.playerMissions {
+		pm[pid.String()] = missions
+	}
+	cm := make(map[string][]string, len(m.completedMissions))
+	for pid, ids := range m.completedMissions {
+		cm[pid.String()] = ids
+	}
+	sc := make(map[string]int, len(m.scores))
+	for pid, score := range m.scores {
+		sc[pid.String()] = score
+	}
+
+	data, err := json.Marshal(hiddenMissionSavedState{
+		Config:            m.config,
+		PlayerMissions:    pm,
+		CompletedMissions: cm,
+		Scores:            sc,
+	})
+	if err != nil {
+		return engine.GameState{}, fmt.Errorf("hidden_mission: save state: %w", err)
+	}
+	return engine.GameState{Modules: map[string]json.RawMessage{m.Name(): data}}, nil
+}
+
+func (m *HiddenMissionModule) RestoreState(_ context.Context, _ uuid.UUID, state engine.GameState) error {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return nil
+	}
+	var s hiddenMissionSavedState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return fmt.Errorf("hidden_mission: restore state: %w", err)
+	}
+
+	pm := make(map[uuid.UUID][]Mission, len(s.PlayerMissions))
+	for pidStr, missions := range s.PlayerMissions {
+		pid, err := uuid.Parse(pidStr)
+		if err != nil {
+			continue
+		}
+		pm[pid] = missions
+	}
+	cm := make(map[uuid.UUID][]string, len(s.CompletedMissions))
+	for pidStr, ids := range s.CompletedMissions {
+		pid, err := uuid.Parse(pidStr)
+		if err != nil {
+			continue
+		}
+		cm[pid] = ids
+	}
+	sc := make(map[uuid.UUID]int, len(s.Scores))
+	for pidStr, score := range s.Scores {
+		pid, err := uuid.Parse(pidStr)
+		if err != nil {
+			continue
+		}
+		sc[pid] = score
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.config = s.Config
+	m.playerMissions = pm
+	m.completedMissions = cm
+	m.scores = sc
+	return nil
+}
+
+// --- WinChecker ---
+
+func (m *HiddenMissionModule) CheckWin(_ context.Context, state engine.GameState) (engine.WinResult, error) {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return engine.WinResult{Won: false}, nil
+	}
+
+	var s hiddenMissionState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return engine.WinResult{}, fmt.Errorf("hidden_mission: check win: %w", err)
+	}
+
+	// Find the player with the highest score (MVP).
+	if len(s.Scores) == 0 {
+		return engine.WinResult{Won: false}, nil
+	}
+
+	var mvpID uuid.UUID
+	maxScore := 0
+	for pid, score := range s.Scores {
+		if score > maxScore {
+			maxScore = score
+			mvpID = pid
+		}
+	}
+
+	if maxScore == 0 {
+		return engine.WinResult{Won: false}, nil
+	}
+
+	m.mu.RLock()
+	title := m.config.ScoreWinnerTitle
+	m.mu.RUnlock()
+
+	return engine.WinResult{
+		Won:       true,
+		WinnerIDs: []uuid.UUID{mvpID},
+		Reason:    fmt.Sprintf("hidden_mission: %s awarded with %d points", title, maxScore),
+	}, nil
+}
+
+// --- RuleProvider ---
+
+func (m *HiddenMissionModule) GetRules() []engine.Rule {
+	return []engine.Rule{
+		{
+			ID:          "mission.hold_clue",
+			Description: "Player holds a specific clue to complete mission",
+			Logic:       json.RawMessage(`{"in":[{"var":"targetClueId"},{"var":"player.clueIds"}]}`),
+		},
+		{
+			ID:          "mission.vote_target",
+			Description: "Player votes for a specific target to complete mission",
+			Logic:       json.RawMessage(`{"==":[{"var":"player.lastVote"},{"var":"targetCode"}]}`),
+		},
+		{
+			ID:          "mission.transfer_clue",
+			Description: "Player transfers any clue to complete mission",
+			Logic:       json.RawMessage(`{">":[{"var":"player.transferCount"},0]}`),
+		},
+	}
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module       = (*HiddenMissionModule)(nil)
-	_ engine.ConfigSchema = (*HiddenMissionModule)(nil)
+	_ engine.Module             = (*HiddenMissionModule)(nil)
+	_ engine.ConfigSchema       = (*HiddenMissionModule)(nil)
+	_ engine.SerializableModule = (*HiddenMissionModule)(nil)
+	_ engine.WinChecker         = (*HiddenMissionModule)(nil)
+	_ engine.RuleProvider       = (*HiddenMissionModule)(nil)
 )

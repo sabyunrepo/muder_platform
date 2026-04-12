@@ -36,12 +36,14 @@ type Accusation struct {
 
 // AccusationModule handles player accusation mechanics.
 type AccusationModule struct {
-	mu               sync.RWMutex
-	deps             engine.ModuleDeps
-	config           AccusationConfig
-	activeAccusation *Accusation
-	accusationCount  int
-	isActive         bool
+	mu                sync.RWMutex
+	deps              engine.ModuleDeps
+	config            AccusationConfig
+	activeAccusation  *Accusation
+	accusationCount   int
+	isActive          bool
+	expelledCode      string // code of most recently expelled player
+	expelledIsCulprit bool   // true when expelled player was the actual culprit
 
 	// timeNow is injectable for testing.
 	timeNow func() time.Time
@@ -239,6 +241,12 @@ func (m *AccusationModule) handleAccusationVote(playerID uuid.UUID, payload json
 	accusedCode := m.activeAccusation.AccusedCode
 	m.activeAccusation = nil
 	m.isActive = false
+	if expelled {
+		m.expelledCode = accusedCode
+		// expelledIsCulprit is determined externally (e.g. via engine cross-check).
+		// For now, flag it false; CheckWin reads it from state when set externally.
+		m.expelledIsCulprit = false
+	}
 	m.mu.Unlock()
 
 	m.deps.EventBus.Publish(engine.Event{
@@ -261,6 +269,8 @@ func (m *AccusationModule) handleReset() error {
 	m.accusationCount = 0
 	m.activeAccusation = nil
 	m.isActive = false
+	m.expelledCode = ""
+	m.expelledIsCulprit = false
 	return nil
 }
 
@@ -283,10 +293,12 @@ func (m *AccusationModule) Schema() json.RawMessage {
 }
 
 type accusationState struct {
-	ActiveAccusation *Accusation      `json:"activeAccusation"`
-	AccusationCount  int              `json:"accusationCount"`
-	IsActive         bool             `json:"isActive"`
-	Config           AccusationConfig `json:"config"`
+	ActiveAccusation  *Accusation      `json:"activeAccusation"`
+	AccusationCount   int              `json:"accusationCount"`
+	IsActive          bool             `json:"isActive"`
+	Config            AccusationConfig `json:"config"`
+	ExpelledCode      string           `json:"expelledCode,omitempty"`
+	ExpelledIsCulprit bool             `json:"expelledIsCulprit,omitempty"`
 }
 
 func (m *AccusationModule) BuildState() (json.RawMessage, error) {
@@ -294,10 +306,12 @@ func (m *AccusationModule) BuildState() (json.RawMessage, error) {
 	defer m.mu.RUnlock()
 
 	return json.Marshal(accusationState{
-		ActiveAccusation: m.activeAccusation,
-		AccusationCount:  m.accusationCount,
-		IsActive:         m.isActive,
-		Config:           m.config,
+		ActiveAccusation:  m.activeAccusation,
+		AccusationCount:   m.accusationCount,
+		IsActive:          m.isActive,
+		Config:            m.config,
+		ExpelledCode:      m.expelledCode,
+		ExpelledIsCulprit: m.expelledIsCulprit,
 	})
 }
 
@@ -307,11 +321,186 @@ func (m *AccusationModule) Cleanup(_ context.Context) error {
 
 	m.activeAccusation = nil
 	m.isActive = false
+	m.expelledCode = ""
+	m.expelledIsCulprit = false
+	return nil
+}
+
+// --- GameEventHandler ---
+
+type accuseEventPayload struct {
+	PlayerID   string `json:"playerId"`
+	TargetCode string `json:"targetCode"`
+	TargetID   string `json:"targetId,omitempty"`
+	Guilty     *bool  `json:"guilty,omitempty"` // for accusation:vote events
+}
+
+func (m *AccusationModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "accusation:accuse":
+		var p accuseEventPayload
+		if err := json.Unmarshal(event.Payload, &p); err != nil {
+			return fmt.Errorf("accusation: invalid event payload: %w", err)
+		}
+		if p.PlayerID == "" {
+			return fmt.Errorf("accusation: playerId is required")
+		}
+		if p.TargetCode == "" {
+			return fmt.Errorf("accusation: targetCode is required")
+		}
+		m.mu.RLock()
+		hasActive := m.activeAccusation != nil
+		countReached := m.accusationCount >= m.config.MaxPerRound
+		m.mu.RUnlock()
+		if hasActive {
+			return fmt.Errorf("accusation: an accusation is already active")
+		}
+		if countReached {
+			return fmt.Errorf("accusation: max accusations per round (%d) reached", m.config.MaxPerRound)
+		}
+		return nil
+
+	case "accusation:vote":
+		var p accuseEventPayload
+		if err := json.Unmarshal(event.Payload, &p); err != nil {
+			return fmt.Errorf("accusation: invalid event payload: %w", err)
+		}
+		if p.PlayerID == "" {
+			return fmt.Errorf("accusation: playerId is required")
+		}
+		m.mu.RLock()
+		acc := m.activeAccusation
+		m.mu.RUnlock()
+		if acc == nil {
+			return fmt.Errorf("accusation: no active accusation")
+		}
+		playerID, err := uuid.Parse(p.PlayerID)
+		if err != nil {
+			return fmt.Errorf("accusation: invalid playerId: %w", err)
+		}
+		if playerID == acc.AccuserID {
+			return fmt.Errorf("accusation: accuser cannot vote")
+		}
+		if playerID == acc.AccusedID {
+			return fmt.Errorf("accusation: accused cannot vote on own accusation")
+		}
+		return nil
+
+	default:
+		return fmt.Errorf("accusation: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *AccusationModule) Apply(_ context.Context, event engine.GameEvent, state *engine.GameState) error {
+	switch event.Type {
+	case "accusation:accuse":
+		var p accuseEventPayload
+		if err := json.Unmarshal(event.Payload, &p); err != nil {
+			return fmt.Errorf("accusation: apply: invalid payload: %w", err)
+		}
+		playerID, err := uuid.Parse(p.PlayerID)
+		if err != nil {
+			return fmt.Errorf("accusation: apply: invalid playerId: %w", err)
+		}
+		var targetID uuid.UUID
+		if p.TargetID != "" {
+			targetID, err = uuid.Parse(p.TargetID)
+			if err != nil {
+				return fmt.Errorf("accusation: apply: invalid targetId: %w", err)
+			}
+		}
+		deadline := m.timeNow().Add(time.Duration(m.config.DefenseTime) * time.Second)
+		m.mu.Lock()
+		m.activeAccusation = &Accusation{
+			AccuserID:       playerID,
+			AccusedID:       targetID,
+			AccusedCode:     p.TargetCode,
+			DefenseDeadline: deadline,
+			Votes:           make(map[uuid.UUID]bool),
+		}
+		m.accusationCount++
+		m.isActive = true
+		m.mu.Unlock()
+
+	case "accusation:vote":
+		var p accuseEventPayload
+		if err := json.Unmarshal(event.Payload, &p); err != nil {
+			return fmt.Errorf("accusation: apply: invalid payload: %w", err)
+		}
+		playerID, err := uuid.Parse(p.PlayerID)
+		if err != nil {
+			return fmt.Errorf("accusation: apply: invalid playerId: %w", err)
+		}
+		guilty := p.Guilty != nil && *p.Guilty
+		m.mu.Lock()
+		if m.activeAccusation != nil {
+			m.activeAccusation.Votes[playerID] = guilty
+		}
+		m.mu.Unlock()
+	}
+
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("accusation: apply: build state: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
+// --- WinChecker ---
+
+func (m *AccusationModule) CheckWin(_ context.Context, state engine.GameState) (engine.WinResult, error) {
+	raw, ok := state.Modules[m.Name()]
+	if !ok {
+		return engine.WinResult{Won: false}, nil
+	}
+
+	var s accusationState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		return engine.WinResult{}, fmt.Errorf("accusation: check win: %w", err)
+	}
+
+	// Win condition: an accusation was resolved and expelled player matches culprit.
+	// The culprit code is stored in the state when expulsion occurs.
+	if s.ExpelledCode == "" || !s.ExpelledIsCulprit {
+		return engine.WinResult{Won: false}, nil
+	}
+
+	return engine.WinResult{
+		Won:    true,
+		Reason: fmt.Sprintf("accusation: player %q correctly identified as culprit", s.ExpelledCode),
+	}, nil
+}
+
+// --- PhaseHookModule ---
+
+func (m *AccusationModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Reset accusation count when entering a new phase (new round of accusations).
+	m.accusationCount = 0
+	m.activeAccusation = nil
+	m.isActive = false
+	return nil
+}
+
+func (m *AccusationModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Lock down any in-progress accusation when leaving a phase.
+	m.activeAccusation = nil
+	m.isActive = false
 	return nil
 }
 
 // Compile-time interface checks.
 var (
-	_ engine.Module       = (*AccusationModule)(nil)
-	_ engine.ConfigSchema = (*AccusationModule)(nil)
+	_ engine.Module           = (*AccusationModule)(nil)
+	_ engine.ConfigSchema     = (*AccusationModule)(nil)
+	_ engine.GameEventHandler = (*AccusationModule)(nil)
+	_ engine.WinChecker       = (*AccusationModule)(nil)
+	_ engine.PhaseHookModule  = (*AccusationModule)(nil)
 )
