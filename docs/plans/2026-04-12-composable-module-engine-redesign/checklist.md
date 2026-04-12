@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W4
-**PR**: PR-B3 (progression + exploration + core Module Migration)
-**Task**: module/progression + exploration + core migration to new Module interface
+**PR**: PR-B4 (media + communication Module Migration)
+**Task**: module/media + communication migration to new Module interface
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -76,10 +76,11 @@
 - [x] Voting/Accusation/HiddenMission Optional opt-in
 - [x] Unit tests 유지 (89.8% coverage)
 
-### PR-B3 — progression + exploration 마이그
-- [ ] module/progression/*.go (Timer/Ready/Ending)
-- [ ] module/exploration/*.go
-- [ ] Unit tests 유지
+### PR-B3 — progression + exploration + core 마이그 ✅ `e76b66c`
+- [x] module/progression/*.go (8 modules +PhaseHookModule)
+- [x] module/exploration/*.go (4 modules +GameEventHandler +PhaseHookModule)
+- [x] module/core/*.go (4 modules +GameEventHandler +SerializableModule)
+- [x] Unit tests 유지 + 새 인터페이스 테스트 추가
 
 ### PR-B4 — media + communication 마이그
 - [ ] module/media/*.go (MediaPlayback/BGM)
