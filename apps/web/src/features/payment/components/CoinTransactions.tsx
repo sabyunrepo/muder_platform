@@ -104,7 +104,7 @@ export function CoinTransactions() {
         <div className="flex items-center justify-center py-20">
           <Spinner size="lg" />
         </div>
-      ) : !data?.data.length ? (
+      ) : !data?.data?.length ? (
         <EmptyState
           icon={<ArrowUpDown className="h-10 w-10" />}
           title="거래 내역이 없습니다"
