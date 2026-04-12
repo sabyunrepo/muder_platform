@@ -171,20 +171,22 @@ export function App() {
                   {/* My Themes */}
                   <Route path="/my-themes" element={<MyThemesPage />} />
 
-                  {/* Creator */}
-                  <Route path="/creator" element={<CreatorDashboardPage />} />
-                  <Route
-                    path="/creator/:id/stats"
-                    element={<CreatorThemeStatsPage />}
-                  />
-                  <Route
-                    path="/creator/earnings"
-                    element={<CreatorEarningsPage />}
-                  />
-                  <Route
-                    path="/creator/settlements"
-                    element={<CreatorSettlementsPage />}
-                  />
+                  {/* Creator — creator 또는 admin 역할만 접근 가능 */}
+                  <Route element={<RoleRoute roles={["creator", "admin"]} />}>
+                    <Route path="/creator" element={<CreatorDashboardPage />} />
+                    <Route
+                      path="/creator/:id/stats"
+                      element={<CreatorThemeStatsPage />}
+                    />
+                    <Route
+                      path="/creator/earnings"
+                      element={<CreatorEarningsPage />}
+                    />
+                    <Route
+                      path="/creator/settlements"
+                      element={<CreatorSettlementsPage />}
+                    />
+                  </Route>
 
                   {/* Admin — admin 역할만 접근 가능 */}
                   <Route element={<RoleRoute roles={["admin"]} />}>
