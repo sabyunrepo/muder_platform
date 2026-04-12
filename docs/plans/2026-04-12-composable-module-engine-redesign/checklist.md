@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
 **Wave**: W4
-**PR**: PR-T1 (Template Loader + Validator)
-**Task**: internal/template loader, validator, schema merger
+**PR**: PR-T2 (4 장르 N 프리셋 JSON Templates)
+**Task**: template/presets JSON files
 **State**: pending
 **Blockers**: none
 **Last updated**: 2026-04-12
@@ -89,11 +89,12 @@
 
 ## Wave 5 — Template System (sequential)
 
-### PR-T1 — Template Loader + Validator
-- [ ] internal/template/loader.go — go:embed
-- [ ] internal/template/validator.go — 모듈 schema merge 검증
-- [ ] internal/template/*_test.go
-- [ ] HTTP handler GET /api/templates/{id}/schema
+### PR-T1 — Template Loader + Validator ✅ `52b1fa8`
+- [x] internal/template/loader.go — go:embed presets/*.json, Load/List/LoadFromBytes
+- [x] internal/template/validator.go — registry check, duplicate, action target validation
+- [x] internal/template/schema_merger.go — ConfigSchema merge per module
+- [x] internal/template/*_test.go — 20 tests, 87.4% coverage
+- [x] HTTP handler GET /api/templates, /{id}, /{id}/schema
 
 ### PR-T2 — 4 장르 N 프리셋 JSON
 - [ ] template/presets/murder_mystery/*.json
