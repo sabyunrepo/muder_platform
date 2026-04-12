@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/skills/plan-autopilot/scripts/plan-status.sh --verbose"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-status.sh --verbose"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/skills/plan-autopilot/scripts/plan-status.sh --compact"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-status.sh --compact"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/skills/plan-autopilot/scripts/plan-guard.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-guard.sh"
           }
         ]
       }
@@ -37,7 +37,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/skills/plan-autopilot/scripts/plan-remind.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-remind.sh"
           }
         ]
       },
@@ -46,7 +46,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/skills/plan-autopilot/scripts/plan-track-reads.sh"
+            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-track-reads.sh"
           }
         ]
       }
