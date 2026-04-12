@@ -71,7 +71,7 @@ export function ProfileStats({
         <StatItem
           icon={<Gamepad2 className="h-5 w-5" />}
           label="총 게임"
-          value={totalGames > 0 ? String(totalGames) : "-"}
+          value={String(totalGames)}
         />
         <StatItem
           icon={<Trophy className="h-5 w-5" />}
@@ -81,7 +81,7 @@ export function ProfileStats({
         <StatItem
           icon={<Clock className="h-5 w-5" />}
           label="플레이 시간"
-          value="-"
+          value="(준비 중)"
         />
         <StatItem
           icon={<Calendar className="h-5 w-5" />}
