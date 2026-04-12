@@ -4,12 +4,12 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-	"path/filepath"
+	"io/fs"
 	"strings"
 	"sync"
 )
 
-//go:embed presets/*.json
+//go:embed all:presets
 var presetsFS embed.FS
 
 // Loader loads and caches templates from the embedded presets directory.
@@ -27,7 +27,7 @@ func NewLoader() *Loader {
 	}
 }
 
-// loadAll parses all embedded JSON files. Called lazily on first access.
+// loadAll parses all embedded JSON files recursively. Called lazily on first access.
 func (l *Loader) loadAll() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -36,33 +36,32 @@ func (l *Loader) loadAll() error {
 		return nil
 	}
 
-	entries, err := presetsFS.ReadDir("presets")
-	if err != nil {
-		l.loaded = true
-		return nil // empty presets dir is valid
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
-			continue
+	err := fs.WalkDir(presetsFS, "presets", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(d.Name(), ".json") {
+			return err
 		}
 
-		data, err := presetsFS.ReadFile(filepath.Join("presets", entry.Name()))
+		data, err := presetsFS.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("template: read %s: %w", entry.Name(), err)
+			return fmt.Errorf("template: read %s: %w", path, err)
 		}
 
 		var tmpl Template
 		if err := json.Unmarshal(data, &tmpl); err != nil {
-			return fmt.Errorf("template: parse %s: %w", entry.Name(), err)
+			return fmt.Errorf("template: parse %s: %w", path, err)
 		}
 
 		if tmpl.ID == "" {
-			tmpl.ID = strings.TrimSuffix(entry.Name(), ".json")
+			tmpl.ID = strings.TrimSuffix(d.Name(), ".json")
 		}
 
 		l.templates[tmpl.ID] = &tmpl
 		l.metas = append(l.metas, MetaFrom(&tmpl))
+		return nil
+	})
+	if err != nil {
+		l.loaded = true
+		return err
 	}
 
 	l.loaded = true

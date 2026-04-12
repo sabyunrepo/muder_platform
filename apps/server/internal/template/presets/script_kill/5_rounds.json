@@ -1,0 +1,31 @@
+{
+  "id": "script_kill_5r",
+  "genre": "script_kill",
+  "name": "Script Kill (5 Rounds)",
+  "description": "Extended 5-round script kill with whisper and hidden missions",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 8}},
+    {"id": "text_chat"},
+    {"id": "whisper"},
+    {"id": "round_clue", "config": {"totalRounds": 5}},
+    {"id": "voting", "config": {"mode": "secret", "minParticipation": 75, "tieBreaker": "revote", "maxRounds": 2}},
+    {"id": "accusation", "config": {"maxPerRound": 2, "defenseTime": 90, "voteThreshold": 50}},
+    {"id": "hidden_mission"},
+    {"id": "ending", "config": {"RevealSteps": ["culprit", "timeline", "mission_scores"]}},
+    {"id": "audio"}
+  ],
+  "phases": [
+    {"id": "lobby", "name": "Lobby"},
+    {"id": "script_read", "name": "Script Reading", "duration": 900},
+    {"id": "round_1", "name": "Round 1", "duration": 720, "actions": [{"action": "UNMUTE_CHAT", "target": "text_chat"}]},
+    {"id": "round_2", "name": "Round 2", "duration": 720},
+    {"id": "round_3", "name": "Round 3", "duration": 720},
+    {"id": "round_4", "name": "Round 4", "duration": 720},
+    {"id": "round_5", "name": "Final Round", "duration": 720},
+    {"id": "vote", "name": "Final Vote", "duration": 420, "actions": [{"action": "OPEN_VOTING", "target": "voting"}]},
+    {"id": "ending", "name": "Truth Reveal"}
+  ]
+}

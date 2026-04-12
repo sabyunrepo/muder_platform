@@ -1,0 +1,29 @@
+{
+  "id": "jubensha_1st_person",
+  "genre": "jubensha",
+  "name": "Jubensha - First Person",
+  "description": "Immersive first-person jubensha with group chat, whisper, and round-based clue distribution",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 6}},
+    {"id": "text_chat"},
+    {"id": "group_chat"},
+    {"id": "whisper"},
+    {"id": "round_clue", "config": {"totalRounds": 4}},
+    {"id": "voting", "config": {"mode": "secret", "minParticipation": 100, "tieBreaker": "no_result", "maxRounds": 1}},
+    {"id": "ending", "config": {"RevealSteps": ["culprit", "timeline", "relationships"]}},
+    {"id": "audio"}
+  ],
+  "phases": [
+    {"id": "lobby", "name": "Lobby"},
+    {"id": "script", "name": "Script Reading", "duration": 900},
+    {"id": "round_1", "name": "Round 1 - Share & Discuss", "duration": 900, "actions": [{"action": "UNMUTE_CHAT", "target": "text_chat"}, {"action": "OPEN_GROUP_CHAT", "target": "group_chat"}]},
+    {"id": "round_2", "name": "Round 2 - Share & Discuss", "duration": 900},
+    {"id": "round_3", "name": "Round 3 - Share & Discuss", "duration": 900},
+    {"id": "round_4", "name": "Final Round", "duration": 900},
+    {"id": "vote", "name": "Final Vote", "duration": 300, "actions": [{"action": "OPEN_VOTING", "target": "voting"}, {"action": "CLOSE_GROUP_CHAT", "target": "group_chat"}]},
+    {"id": "ending", "name": "Truth Reveal"}
+  ]
+}
