@@ -106,6 +106,9 @@ export function useWsClient(options: UseWsClientOptions): UseWsClientReturn {
 
   useEffect(() => {
     if (!autoConnect) return;
+
+    // accessToken이 확정되기 전까지 WS 연결을 시도하지 않는다.
+    // accessToken이 null/empty로 변경되면 cleanup에서 disconnect()가 실행된다.
     if (!accessToken) return;
 
     // game 엔드포인트는 sessionId가 있어야 연결
@@ -113,6 +116,7 @@ export function useWsClient(options: UseWsClientOptions): UseWsClientReturn {
 
     connect();
 
+    // token이 변경되거나 컴포넌트가 언마운트될 때 연결을 해제한다.
     return () => {
       disconnect();
     };
