@@ -257,3 +257,34 @@ func (m *ClueInteractionModule) Cleanup(_ context.Context) error {
 	m.acquiredClues = nil
 	return nil
 }
+
+// --- GameEventHandler ---
+
+func (m *ClueInteractionModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "draw_clue", "transfer_clue":
+		return nil
+	default:
+		return fmt.Errorf("clue_interaction: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *ClueInteractionModule) Apply(_ context.Context, event engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("clue_interaction: apply: build state: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module           = (*ClueInteractionModule)(nil)
+	_ engine.PhaseReactor     = (*ClueInteractionModule)(nil)
+	_ engine.ConfigSchema     = (*ClueInteractionModule)(nil)
+	_ engine.GameEventHandler = (*ClueInteractionModule)(nil)
+)

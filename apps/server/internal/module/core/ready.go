@@ -120,3 +120,60 @@ func (m *ReadyModule) Cleanup(_ context.Context) error {
 	m.totalPlayers = 0
 	return nil
 }
+
+// --- PhaseHookModule ---
+
+func (m *ReadyModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Reset ready states on phase enter.
+	m.readyPlayers = make(map[uuid.UUID]bool)
+	return nil
+}
+
+func (m *ReadyModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// --- GameEventHandler ---
+
+func (m *ReadyModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	if event.Type != "ready:toggle" {
+		return fmt.Errorf("ready: unsupported event type %q", event.Type)
+	}
+	return nil
+}
+
+func (m *ReadyModule) Apply(_ context.Context, event engine.GameEvent, state *engine.GameState) error {
+	var meta struct {
+		PlayerID string `json:"playerId"`
+	}
+	if err := json.Unmarshal(event.Payload, &meta); err != nil {
+		return fmt.Errorf("ready: apply: invalid payload: %w", err)
+	}
+	pid, err := uuid.Parse(meta.PlayerID)
+	if err != nil {
+		return fmt.Errorf("ready: apply: invalid playerId: %w", err)
+	}
+
+	m.mu.Lock()
+	m.readyPlayers[pid] = !m.readyPlayers[pid]
+	m.mu.Unlock()
+
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("ready: apply: build state: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module           = (*ReadyModule)(nil)
+	_ engine.PhaseHookModule  = (*ReadyModule)(nil)
+	_ engine.GameEventHandler = (*ReadyModule)(nil)
+)

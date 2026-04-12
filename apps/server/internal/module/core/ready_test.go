@@ -165,3 +165,54 @@ func TestReadyModule_Cleanup(t *testing.T) {
 		t.Fatal("expected readyPlayers to be nil after cleanup")
 	}
 }
+
+func TestReadyModule_OnPhaseEnter(t *testing.T) {
+	m := NewReadyModule()
+	_ = m.Init(context.Background(), newTestDeps(), json.RawMessage(`{"totalPlayers":3}`))
+	pid := uuid.New()
+	_ = m.HandleMessage(context.Background(), pid, "ready:toggle", nil)
+
+	if err := m.OnPhaseEnter(context.Background(), engine.Phase("discussion")); err != nil {
+		t.Fatalf("OnPhaseEnter: %v", err)
+	}
+	m.mu.RLock()
+	if len(m.readyPlayers) != 0 {
+		t.Error("expected readyPlayers reset after OnPhaseEnter")
+	}
+	m.mu.RUnlock()
+}
+
+func TestReadyModule_OnPhaseExit(t *testing.T) {
+	m := NewReadyModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	if err := m.OnPhaseExit(context.Background(), engine.Phase("lobby")); err != nil {
+		t.Fatalf("OnPhaseExit: %v", err)
+	}
+}
+
+func TestReadyModule_Validate(t *testing.T) {
+	m := NewReadyModule()
+	if err := m.Validate(context.Background(), engine.GameEvent{Type: "ready:toggle"}, engine.GameState{}); err != nil {
+		t.Fatalf("Validate ready:toggle: %v", err)
+	}
+	if err := m.Validate(context.Background(), engine.GameEvent{Type: "unknown"}, engine.GameState{}); err == nil {
+		t.Error("expected error for unknown event type")
+	}
+}
+
+func TestReadyModule_Apply(t *testing.T) {
+	m := NewReadyModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	pid := uuid.New()
+	state := engine.GameState{Modules: make(map[string]json.RawMessage)}
+	event := engine.GameEvent{
+		Type:    "ready:toggle",
+		Payload: json.RawMessage(`{"playerId":"` + pid.String() + `"}`),
+	}
+	if err := m.Apply(context.Background(), event, &state); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if _, ok := state.Modules["ready"]; !ok {
+		t.Error("expected ready state in GameState.Modules")
+	}
+}

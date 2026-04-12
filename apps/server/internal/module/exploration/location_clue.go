@@ -156,8 +156,32 @@ func (m *LocationClueModule) Schema() json.RawMessage {
 	return data
 }
 
+// --- GameEventHandler ---
+
+func (m *LocationClueModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
+	switch event.Type {
+	case "location:search":
+		return nil
+	default:
+		return fmt.Errorf("location_clue: unsupported event type %q", event.Type)
+	}
+}
+
+func (m *LocationClueModule) Apply(_ context.Context, _ engine.GameEvent, state *engine.GameState) error {
+	data, err := m.BuildState()
+	if err != nil {
+		return fmt.Errorf("location_clue: apply: %w", err)
+	}
+	if state.Modules == nil {
+		state.Modules = make(map[string]json.RawMessage)
+	}
+	state.Modules[m.Name()] = data
+	return nil
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module       = (*LocationClueModule)(nil)
-	_ engine.ConfigSchema = (*LocationClueModule)(nil)
+	_ engine.Module           = (*LocationClueModule)(nil)
+	_ engine.ConfigSchema     = (*LocationClueModule)(nil)
+	_ engine.GameEventHandler = (*LocationClueModule)(nil)
 )

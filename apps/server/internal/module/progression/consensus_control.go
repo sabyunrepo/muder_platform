@@ -224,6 +224,25 @@ func (m *ConsensusControlModule) Cleanup(ctx context.Context) error {
 	return nil
 }
 
+// --- PhaseHookModule ---
+
+func (m *ConsensusControlModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.proposals = make(map[string]*ConsensusProposal)
+	return nil
+}
+
+func (m *ConsensusControlModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*ConsensusControlModule)(nil)
+	_ engine.PhaseHookModule = (*ConsensusControlModule)(nil)
+)
+
 func init() {
 	engine.Register("consensus_control", func() engine.Module { return NewConsensusControlModule() })
 }

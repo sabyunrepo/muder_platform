@@ -620,6 +620,23 @@ func (m *ReadingModule) Schema() json.RawMessage {
 	}`)
 }
 
+// --- PhaseHookModule ---
+
+func (m *ReadingModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *ReadingModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*ReadingModule)(nil)
+	_ engine.ConfigSchema    = (*ReadingModule)(nil)
+	_ engine.PhaseHookModule = (*ReadingModule)(nil)
+)
+
 func init() {
 	engine.Register("reading", func() engine.Module { return NewReadingModule() })
 }

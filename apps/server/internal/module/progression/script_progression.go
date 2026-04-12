@@ -126,6 +126,23 @@ func (m *ScriptProgressionModule) Schema() json.RawMessage {
 	}`)
 }
 
+// --- PhaseHookModule ---
+
+func (m *ScriptProgressionModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+func (m *ScriptProgressionModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*ScriptProgressionModule)(nil)
+	_ engine.ConfigSchema    = (*ScriptProgressionModule)(nil)
+	_ engine.PhaseHookModule = (*ScriptProgressionModule)(nil)
+)
+
 func init() {
 	engine.Register("script_progression", func() engine.Module { return NewScriptProgressionModule() })
 }

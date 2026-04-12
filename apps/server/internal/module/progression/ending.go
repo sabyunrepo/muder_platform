@@ -171,6 +171,28 @@ func (m *EndingModule) Schema() json.RawMessage {
 	}`)
 }
 
+// --- PhaseHookModule ---
+
+func (m *EndingModule) OnPhaseEnter(_ context.Context, phase engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if string(phase) == "ending" || string(phase) == "reveal" {
+		m.isRevealing = true
+	}
+	return nil
+}
+
+func (m *EndingModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	return nil
+}
+
+// Compile-time interface checks.
+var (
+	_ engine.Module          = (*EndingModule)(nil)
+	_ engine.ConfigSchema    = (*EndingModule)(nil)
+	_ engine.PhaseHookModule = (*EndingModule)(nil)
+)
+
 func init() {
 	engine.Register("ending", func() engine.Module { return NewEndingModule() })
 }

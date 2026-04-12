@@ -344,3 +344,28 @@ func TestClueInteractionModule_Cleanup(t *testing.T) {
 		t.Fatal("expected playerDrawCounts to be nil after cleanup")
 	}
 }
+
+func TestClueInteractionModule_Validate(t *testing.T) {
+	m := NewClueInteractionModule()
+	if err := m.Validate(context.Background(), engine.GameEvent{Type: "draw_clue"}, engine.GameState{}); err != nil {
+		t.Fatalf("Validate draw_clue: %v", err)
+	}
+	if err := m.Validate(context.Background(), engine.GameEvent{Type: "transfer_clue"}, engine.GameState{}); err != nil {
+		t.Fatalf("Validate transfer_clue: %v", err)
+	}
+	if err := m.Validate(context.Background(), engine.GameEvent{Type: "unknown"}, engine.GameState{}); err == nil {
+		t.Error("expected error for unknown event type")
+	}
+}
+
+func TestClueInteractionModule_Apply(t *testing.T) {
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	state := engine.GameState{Modules: make(map[string]json.RawMessage)}
+	if err := m.Apply(context.Background(), engine.GameEvent{Type: "draw_clue"}, &state); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if _, ok := state.Modules["clue_interaction"]; !ok {
+		t.Error("expected clue_interaction state in GameState.Modules")
+	}
+}
