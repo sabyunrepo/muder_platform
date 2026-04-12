@@ -3,7 +3,7 @@
 **Wave**: W7
 **PR**: PR-V1 (e2e Smoke + Module Isolation CI Gate)
 **Task**: e2e smoke tests
-**State**: pending
+**State**: completed
 **Blockers**: none
 **Last updated**: 2026-04-12
 <!-- STATUS-END -->
@@ -123,7 +123,13 @@
 
 ## Wave 7 — Verification
 
-### PR-V1 — e2e Smoke
-- [ ] apps/server/internal/e2e/engine_v2_test.go
-- [ ] 4 장르 × 1 세션 (template load → session → phase → win/end)
-- [ ] 모듈 격리 CI 게이트 추가
+### PR-V1 — e2e Smoke ✅
+- [x] apps/server/internal/e2e/harness_test.go — reusable smoke harness
+- [x] apps/server/internal/e2e/murder_mystery_test.go — classic_6p smoke
+- [x] apps/server/internal/e2e/crime_scene_test.go — 3_locations smoke
+- [x] apps/server/internal/e2e/script_kill_test.go — 3_rounds smoke
+- [x] apps/server/internal/e2e/jubensha_test.go — first_person smoke
+- [x] scripts/test-module-isolation.sh — per-module test + cross-import check
+- [x] .github/workflows/module-isolation.yml — CI gate on PR to main
+- [x] go test -race ./internal/e2e/... green (1.5s)
+- [x] scripts/test-module-isolation.sh passes (all 8 modules isolated)
