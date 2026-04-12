@@ -29,22 +29,31 @@ func Register(name string, factory ModuleFactory) {
 	globalRegistry.factories[name] = factory
 }
 
-// CreateModules instantiates modules for a session based on the game config.
-// Returns only the enabled modules. Errors if a required module is not registered.
-func CreateModules(config GameConfig) (map[string]Module, error) {
+// CreateModule instantiates a single module by name from the global registry.
+func CreateModule(name string) (Module, error) {
 	globalRegistry.mu.RLock()
 	defer globalRegistry.mu.RUnlock()
 
-	modules := make(map[string]Module, len(config.Modules))
-	for _, mc := range config.Modules {
-		if !mc.Enabled {
-			continue
-		}
-		factory, ok := globalRegistry.factories[mc.Name]
+	factory, ok := globalRegistry.factories[name]
+	if !ok {
+		return nil, fmt.Errorf("engine: unknown module %q", name)
+	}
+	return factory(), nil
+}
+
+// CreateModulesBatch instantiates multiple modules by name.
+// Returns only successfully created modules. Errors if any name is unknown.
+func CreateModulesBatch(names []string) ([]Module, error) {
+	globalRegistry.mu.RLock()
+	defer globalRegistry.mu.RUnlock()
+
+	modules := make([]Module, 0, len(names))
+	for _, name := range names {
+		factory, ok := globalRegistry.factories[name]
 		if !ok {
-			return nil, fmt.Errorf("engine: unknown module %q", mc.Name)
+			return nil, fmt.Errorf("engine: unknown module %q", name)
 		}
-		modules[mc.Name] = factory()
+		modules = append(modules, factory())
 	}
 	return modules, nil
 }

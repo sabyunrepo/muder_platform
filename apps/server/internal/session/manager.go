@@ -64,7 +64,9 @@ func (m *SessionManager) Start(
 		return nil, errSessionAlreadyActive
 	}
 
-	eng := engine.NewEngine(sessionID, &zerologAdapter{logger: m.logger})
+	logger := &zerologAdapter{logger: m.logger}
+	bus := engine.NewEventBus(logger)
+	eng := engine.NewPhaseEngine(sessionID, nil, bus, nil, logger, nil)
 	s := newSession(sessionID, eng, players, m.logger)
 
 	// Wire the abort hook so panic_guard can remove the session from the map

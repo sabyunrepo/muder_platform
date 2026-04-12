@@ -15,7 +15,9 @@ import (
 func newBareSession(t *testing.T) *Session {
 	t.Helper()
 	id := uuid.New()
-	eng := engine.NewEngine(id, &zerologAdapter{logger: zerolog.Nop()})
+	logger := &zerologAdapter{logger: zerolog.Nop()}
+	bus := engine.NewEventBus(logger)
+	eng := engine.NewPhaseEngine(id, nil, bus, nil, logger, nil)
 	s := &Session{
 		ID:      id,
 		inbox:   make(chan SessionMessage, inboxBufferSize),

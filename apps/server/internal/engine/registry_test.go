@@ -1,71 +1,59 @@
 package engine
 
 import (
-	"context"
-	"encoding/json"
 	"testing"
-
-	"github.com/google/uuid"
 )
 
-// stubModule is a minimal Module implementation for testing.
-type stubModule struct {
-	name string
-}
-
-func (s *stubModule) Name() string { return s.name }
-func (s *stubModule) Init(_ context.Context, _ ModuleDeps, _ json.RawMessage) error {
-	return nil
-}
-func (s *stubModule) BuildState() (json.RawMessage, error) {
-	return json.Marshal(map[string]string{"name": s.name})
-}
-func (s *stubModule) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _ json.RawMessage) error {
-	return nil
-}
-func (s *stubModule) Cleanup(_ context.Context) error { return nil }
-
-func TestCreateModules_EnabledOnly(t *testing.T) {
-	// Reset global registry for test isolation.
+func TestCreateModule_Success(t *testing.T) {
 	origFactories := globalRegistry.factories
 	globalRegistry.factories = map[string]ModuleFactory{
-		"mod_a": func() Module { return &stubModule{name: "mod_a"} },
-		"mod_b": func() Module { return &stubModule{name: "mod_b"} },
+		"mod_a": func() Module { return &stubCoreModule{name: "mod_a"} },
 	}
 	defer func() { globalRegistry.factories = origFactories }()
 
-	config := GameConfig{
-		Modules: []ModuleConfig{
-			{Name: "mod_a", Enabled: true},
-			{Name: "mod_b", Enabled: false},
-		},
-	}
-
-	modules, err := CreateModules(config)
+	mod, err := CreateModule("mod_a")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if len(modules) != 1 {
-		t.Fatalf("expected 1 module, got %d", len(modules))
-	}
-	if _, ok := modules["mod_a"]; !ok {
-		t.Fatal("expected mod_a to be created")
+	if mod.Name() != "mod_a" {
+		t.Fatalf("expected mod_a, got %s", mod.Name())
 	}
 }
 
-func TestCreateModules_UnknownModuleError(t *testing.T) {
+func TestCreateModule_UnknownError(t *testing.T) {
 	origFactories := globalRegistry.factories
 	globalRegistry.factories = map[string]ModuleFactory{}
 	defer func() { globalRegistry.factories = origFactories }()
 
-	config := GameConfig{
-		Modules: []ModuleConfig{
-			{Name: "nonexistent", Enabled: true},
-		},
+	_, err := CreateModule("nonexistent")
+	if err == nil {
+		t.Fatal("expected error for unknown module")
 	}
+}
 
-	_, err := CreateModules(config)
+func TestCreateModulesBatch_Success(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{
+		"mod_a": func() Module { return &stubCoreModule{name: "mod_a"} },
+		"mod_b": func() Module { return &stubCoreModule{name: "mod_b"} },
+	}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	modules, err := CreateModulesBatch([]string{"mod_a", "mod_b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(modules) != 2 {
+		t.Fatalf("expected 2 modules, got %d", len(modules))
+	}
+}
+
+func TestCreateModulesBatch_UnknownError(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	_, err := CreateModulesBatch([]string{"nonexistent"})
 	if err == nil {
 		t.Fatal("expected error for unknown module")
 	}
@@ -74,8 +62,8 @@ func TestCreateModules_UnknownModuleError(t *testing.T) {
 func TestRegisteredModules(t *testing.T) {
 	origFactories := globalRegistry.factories
 	globalRegistry.factories = map[string]ModuleFactory{
-		"alpha": func() Module { return &stubModule{name: "alpha"} },
-		"beta":  func() Module { return &stubModule{name: "beta"} },
+		"alpha": func() Module { return &stubCoreModule{name: "alpha"} },
+		"beta":  func() Module { return &stubCoreModule{name: "beta"} },
 	}
 	defer func() { globalRegistry.factories = origFactories }()
 
@@ -88,7 +76,7 @@ func TestRegisteredModules(t *testing.T) {
 func TestHasModule(t *testing.T) {
 	origFactories := globalRegistry.factories
 	globalRegistry.factories = map[string]ModuleFactory{
-		"exists": func() Module { return &stubModule{name: "exists"} },
+		"exists": func() Module { return &stubCoreModule{name: "exists"} },
 	}
 	defer func() { globalRegistry.factories = origFactories }()
 

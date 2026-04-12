@@ -33,82 +33,35 @@ const (
 
 // PhaseActionPayload carries action-specific data.
 type PhaseActionPayload struct {
-	Action  PhaseAction     `json:"action"`
-	Target  string          `json:"target,omitempty"`  // target module name
-	Params  json.RawMessage `json:"params,omitempty"`  // action-specific params
-}
-
-// PhaseConfig defines a single phase in configJson.phases[].
-type PhaseConfig struct {
-	ID             string                `json:"id"`
-	Name           string                `json:"name"`
-	Type           string                `json:"type"`                     // e.g. "discussion", "investigation", "voting"
-	Duration       int                   `json:"duration,omitempty"`       // seconds, 0 = unlimited
-	BGMId          string                `json:"bgmId,omitempty"`          // phase-level BGM (auto SET_BGM on enter)
-	ReadingSection *ReadingSectionConfig `json:"readingSection,omitempty"` // optional reading dialogue section
-	OnEnter        []PhaseActionPayload  `json:"onEnter,omitempty"`
-	OnExit         []PhaseActionPayload  `json:"onExit,omitempty"`
-	Triggers       []TriggerConfig       `json:"triggers,omitempty"`    // Hybrid/Event용
-	NextPhaseID    string                `json:"nextPhaseId,omitempty"` // Event용 (비선형)
-}
-
-// ReadingSectionConfig describes an optional reading (dialogue) section inside a phase.
-// When present, the ReadingModule takes over and the BGMId here overrides phase BGM.
-type ReadingSectionConfig struct {
-	BGMId string `json:"bgmId,omitempty"`
-}
-
-// TriggerConfig defines a conditional trigger for Hybrid/Event strategies.
-type TriggerConfig struct {
-	Type      string          `json:"type"`      // "timer", "consensus", "event"
-	Condition json.RawMessage `json:"condition"` // strategy-specific
-	TargetID  string          `json:"targetId"`  // target phase ID
+	Action PhaseAction     `json:"action"`
+	Target string          `json:"target,omitempty"`
+	Params json.RawMessage `json:"params,omitempty"`
 }
 
 // PhaseInfo holds the runtime state of the current phase.
 type PhaseInfo struct {
-	ID        string          `json:"id"`
-	Name      string          `json:"name"`
-	Type      string          `json:"type"`
-	Index     int             `json:"index"`
-	Duration  int             `json:"duration"`
-	Elapsed   int             `json:"elapsed"`
-	State     json.RawMessage `json:"state,omitempty"`
-}
-
-// GameConfig represents the parsed configJson from a theme.
-type GameConfig struct {
-	Strategy    string          `json:"strategy"` // "script", "hybrid", "event"
-	GmMode      string          `json:"gmMode"`   // "REQUIRED", "NONE", "OPTIONAL"
-	Phases      []PhaseConfig   `json:"phases"`
-	Modules     []ModuleConfig  `json:"modules"`
-	MediaAssets []MediaAsset    `json:"mediaAssets,omitempty"` // media asset catalog for reference validation
-	Settings    json.RawMessage `json:"settings,omitempty"`
-}
-
-// MediaAsset is a minimal media catalog entry included in configJson for validation.
-// Populated on theme publish from theme_media; used by validators to check bgmId references.
-type MediaAsset struct {
-	ID       string `json:"id"`                 // theme_media.id
-	Type     string `json:"type"`               // "BGM" | "SFX" | "VOICE"
-	URL      string `json:"url,omitempty"`      // resolved URL (CDN or YouTube)
-	Duration int    `json:"duration,omitempty"` // seconds, 0 = unknown
-}
-
-// PlayMediaPayload is the params shape for ActionPlayMedia phase actions.
-// The server validates the enum shape; clients decide actual playback.
-type PlayMediaPayload struct {
-	MediaID     string `json:"mediaId"`
-	Mode        string `json:"mode,omitempty"`        // "" | "cutscene" | "inline"
-	Skippable   bool   `json:"skippable,omitempty"`
-	BgmBehavior string `json:"bgmBehavior,omitempty"` // "" | "pause" | "keep" | "stop"
-}
-
-// ModuleConfig is the per-module configuration from configJson.modules[].
-type ModuleConfig struct {
+	ID       string          `json:"id"`
 	Name     string          `json:"name"`
-	Enabled  bool            `json:"enabled"`
-	Settings json.RawMessage `json:"settings,omitempty"` // module-specific ConfigSchema
+	Type     string          `json:"type"`
+	Index    int             `json:"index"`
+	Duration int             `json:"duration"`
+	Elapsed  int             `json:"elapsed"`
+	State    json.RawMessage `json:"state,omitempty"`
+}
+
+// ActionRequiresModule maps PhaseActions to the module that must be enabled.
+// Actions not in this map are module-independent (e.g. BROADCAST_MESSAGE).
+var ActionRequiresModule = map[PhaseAction]string{
+	ActionResetDrawCount:      "clue_interaction",
+	ActionResetFloorSelection: "floor_exploration",
+	ActionSetClueLevel:        "clue_interaction",
+	ActionOpenVoting:          "voting",
+	ActionCloseVoting:         "voting",
+	ActionAllowExchange:       "trade_clue",
+	ActionMuteChat:            "text_chat",
+	ActionUnmuteChat:          "text_chat",
+	ActionOpenGroupChat:       "group_chat",
+	ActionCloseGroupChat:      "group_chat",
 }
 
 // --- Module Interfaces ---
@@ -134,7 +87,7 @@ type Module interface {
 // PhaseReactor is an optional interface for modules that respond to PhaseActions.
 // Only modules that need to react to phase transitions implement this.
 type PhaseReactor interface {
-	// ReactTo handles a PhaseAction dispatched by the ActionDispatcher.
+	// ReactTo handles a PhaseAction dispatched by the engine.
 	ReactTo(ctx context.Context, action PhaseActionPayload) error
 
 	// SupportedActions returns the set of PhaseActions this module handles.
@@ -162,34 +115,3 @@ type ModuleDeps struct {
 
 // ModuleFactory creates a new module instance per session (no singletons).
 type ModuleFactory func() Module
-
-// ProgressionStrategy defines how the game advances through phases.
-// All methods must be called by the session actor goroutine — no external
-// synchronization is required because GameProgressionEngine is not thread-safe.
-type ProgressionStrategy interface {
-	// Init initializes the strategy with the phase configuration.
-	Init(ctx context.Context, config GameConfig) error
-
-	// CurrentPhase returns the active phase info.
-	CurrentPhase() *PhaseInfo
-
-	// Advance moves to the next phase. Returns false if no more phases.
-	Advance(ctx context.Context) (hasNext bool, err error)
-
-	// SkipTo jumps to a specific phase (GM override).
-	SkipTo(ctx context.Context, phaseID string) error
-
-	// HandleTrigger evaluates a trigger event and returns the target phase ID
-	// if a transition should occur. Empty string means no transition.
-	// The engine orchestrator is responsible for running the exit/enter lifecycle.
-	HandleTrigger(ctx context.Context, triggerType string, condition json.RawMessage) (targetPhaseID string, err error)
-
-	// HandleConsensus processes a player consensus action.
-	HandleConsensus(ctx context.Context, playerID uuid.UUID, action string) error
-
-	// BuildState returns the strategy's current state for serialization.
-	BuildState() map[string]any
-
-	// Cleanup releases strategy resources.
-	Cleanup(ctx context.Context) error
-}

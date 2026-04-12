@@ -47,7 +47,7 @@ var (
 	)
 )
 
-// Session is the single-goroutine actor that owns a GameProgressionEngine.
+// Session is the single-goroutine actor that owns a PhaseEngine.
 // ALL mutations to the engine MUST flow through Session.inbox — no caller
 // may hold a reference to the engine and call its methods directly.
 //
@@ -64,7 +64,7 @@ type Session struct {
 	done chan struct{}
 
 	// engine is NOT thread-safe; only the Run goroutine may call its methods.
-	engine *engine.GameProgressionEngine
+	engine *engine.PhaseEngine
 
 	// players tracks per-player connection state.
 	players map[uuid.UUID]*PlayerState
@@ -87,7 +87,7 @@ type Session struct {
 // newSession constructs a Session. Call go s.Run(ctx) to start the actor loop.
 func newSession(
 	id uuid.UUID,
-	eng *engine.GameProgressionEngine,
+	eng *engine.PhaseEngine,
 	players []PlayerState,
 	logger zerolog.Logger,
 ) *Session {
@@ -211,7 +211,7 @@ func (s *Session) handleMessage(msg SessionMessage) {
 		err = s.handleLifecycleRejoined(msg)
 
 	case KindAdvance:
-		_, err = s.engine.Advance(msg.Ctx)
+		_, err = s.engine.AdvancePhase(msg.Ctx)
 
 	case KindGMOverride:
 		// Use exported GMOverridePayload so callers outside the package can
@@ -221,17 +221,20 @@ func (s *Session) handleMessage(msg SessionMessage) {
 		if !ok {
 			err = errInvalidPayload
 		} else {
-			err = s.engine.GMOverride(msg.Ctx, p.PhaseID)
+			err = s.engine.SkipToPhase(msg.Ctx, p.PhaseID)
 		}
 
 	case KindHandleTrigger:
-		// Use exported TriggerPayload — the local type trick in the original code
-		// made it impossible for external callers to construct valid messages.
+		// Triggers are handled via PhaseEngine.DispatchAction in the new design.
+		// Keep the message kind for backward compatibility; convert to a dispatch.
 		tp, ok := msg.Payload.(TriggerPayload)
 		if !ok {
 			err = errInvalidPayload
 		} else {
-			err = s.engine.HandleTrigger(msg.Ctx, tp.TriggerType, tp.Condition)
+			err = s.engine.DispatchAction(msg.Ctx, engine.PhaseActionPayload{
+				Action: engine.PhaseAction(tp.TriggerType),
+				Params: tp.Condition,
+			})
 		}
 
 	case KindCriticalSnapshot:
