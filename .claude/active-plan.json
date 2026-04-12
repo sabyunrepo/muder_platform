@@ -1,294 +1,299 @@
 {
   "active": {
-    "id": "phase-9.0-editor-engine-redesign",
-    "name": "Phase 9.0 — Editor + Engine Redesign",
-    "dir": "docs/plans/2026-04-10-editor-engine-redesign",
-    "design": "docs/plans/2026-04-10-editor-engine-redesign/design.md",
-    "plan": "docs/plans/2026-04-10-editor-engine-redesign/plan.md",
-    "checklist": "docs/plans/2026-04-10-editor-engine-redesign/checklist.md",
+    "id": "phase-9.0-composable-module-engine-redesign",
+    "name": "Phase 9.0 — Composable Module Engine Redesign",
+    "dir": "docs/plans/2026-04-12-composable-module-engine-redesign",
+    "design": "docs/plans/2026-04-12-composable-module-engine-redesign/design.md",
+    "plan": "docs/plans/2026-04-12-composable-module-engine-redesign/plan.md",
+    "checklist": "docs/plans/2026-04-12-composable-module-engine-redesign/checklist.md",
     "progress_memory": "memory/project_phase90_progress.md",
-    "spec": "docs/superpowers/specs/2026-04-10-editor-engine-redesign/design.md",
     "scope": [
       "apps/server/internal/engine/**",
-      "apps/server/internal/session/**",
-      "apps/server/internal/auditlog/**",
+      "apps/server/internal/module/**",
       "apps/server/internal/clue/**",
-      "apps/server/internal/genre/**",
-      "apps/server/internal/ws/**",
-      "apps/server/internal/bridge/**",
+      "apps/server/internal/auditlog/**",
+      "apps/server/internal/template/**",
+      "apps/server/internal/session/**",
+      "apps/server/internal/server/**",
+      "apps/server/internal/db/migrations/**",
+      "apps/server/internal/db/queries/**",
+      "apps/server/internal/e2e/**",
       "apps/web/src/features/editor/**",
-      "apps/web/src/features/game/**"
+      "apps/web/src/api/**",
+      "apps/web/src/stores/editor/**",
+      "scripts/**",
+      ".github/workflows/**"
     ],
-    "started_at": "2026-04-10",
-    "started_commit": "77e835c",
-    "current_wave": "A-W1",
+    "started_at": "2026-04-12",
+    "started_commit": "713ae39",
+    "current_wave": "W1",
     "current_pr": "PR-A1",
-    "current_task": "GenrePlugin Core + Optional interfaces + Registry",
-    "status": "pending",
+    "current_task": "Module Core 7 + Optional 5 + Registry + types + tests",
+    "status": "in_progress",
     "blockers": [],
+    "supersedes": "phase-9.0-editor-engine-redesign",
     "waves": [
       {
-        "id": "A-W1",
-        "name": "engine-core-interfaces",
+        "id": "W1",
+        "name": "Engine Foundation",
         "mode": "parallel",
         "prs": ["PR-A1", "PR-A2", "PR-A3"]
       },
       {
-        "id": "A-W2",
-        "name": "engine-phase-processor",
-        "mode": "sequential",
+        "id": "W2",
+        "name": "Engine Replacement (Big Bang)",
+        "mode": "parallel",
         "prs": ["PR-A4", "PR-A5"]
       },
       {
-        "id": "A-W3",
-        "name": "engine-clue-rules",
-        "mode": "parallel",
+        "id": "W3",
+        "name": "Primitives",
+        "mode": "sequential",
         "prs": ["PR-A6", "PR-A7"]
       },
       {
-        "id": "B",
-        "name": "murder-mystery-genre",
+        "id": "W4",
+        "name": "Module Migration",
+        "mode": "parallel",
+        "prs": ["PR-B1", "PR-B2", "PR-B3", "PR-B4"]
+      },
+      {
+        "id": "W5",
+        "name": "Template System",
         "mode": "sequential",
-        "prs": ["PR-B1", "PR-B2", "PR-B3", "PR-B4", "PR-B5"]
+        "prs": ["PR-T1", "PR-T2"]
       },
       {
-        "id": "C",
-        "name": "editor-l1-template-studio",
-        "mode": "waves",
-        "prs": ["PR-C1", "PR-C2", "PR-C3", "PR-C4", "PR-C5", "PR-C6", "PR-C7"]
+        "id": "W6",
+        "name": "UI + CrimeScene",
+        "mode": "parallel",
+        "prs": ["PR-C1", "PR-F1"]
       },
       {
-        "id": "D",
-        "name": "editor-l2-timeline",
-        "mode": "waves",
-        "prs": ["PR-D1", "PR-D2", "PR-D3", "PR-D4", "PR-D5", "PR-D6", "PR-D7"]
-      },
-      {
-        "id": "E",
-        "name": "editor-l3-node-editor",
+        "id": "W7",
+        "name": "Verification",
         "mode": "sequential",
-        "prs": ["PR-E1", "PR-E2", "PR-E3", "PR-E4"]
-      },
-      {
-        "id": "F",
-        "name": "crime-scene-genre",
-        "mode": "waves",
-        "prs": ["PR-F1", "PR-F2", "PR-F3", "PR-F4"]
-      },
-      {
-        "id": "G",
-        "name": "additional-genres",
-        "mode": "waves",
-        "prs": ["PR-G1", "PR-G2", "PR-G3", "PR-G4", "PR-G5"]
+        "prs": ["PR-V1"]
       }
     ],
     "prs": {
       "PR-A1": {
-        "title": "GenrePlugin Core + Optional + Registry",
+        "title": "Module Core + Optional Interfaces + Registry",
         "depends_on": [],
-        "status": "pending"
+        "scope": [
+          "apps/server/internal/engine/module.go",
+          "apps/server/internal/engine/module_optional.go",
+          "apps/server/internal/engine/module_types.go",
+          "apps/server/internal/engine/module_registry.go",
+          "apps/server/internal/engine/module_test.go"
+        ],
+        "tasks_total": 5,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a1-module-core",
+        "commit": null
       },
       "PR-A2": {
-        "title": "EventBus (EventListener)",
+        "title": "EventBus Rewrite (Typed pub/sub)",
         "depends_on": [],
-        "status": "pending"
+        "scope": [
+          "apps/server/internal/engine/event_bus.go",
+          "apps/server/internal/engine/event_bus_test.go"
+        ],
+        "tasks_total": 3,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a2-event-bus",
+        "commit": null
       },
       "PR-A3": {
-        "title": "Audit Log (PG append-only + snapshot)",
+        "title": "Audit Log Package",
         "depends_on": [],
-        "status": "pending"
+        "scope": [
+          "apps/server/internal/auditlog/**",
+          "apps/server/internal/db/migrations/*audit*",
+          "apps/server/internal/db/queries/audit_events.sql"
+        ],
+        "tasks_total": 6,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a3-audit-log",
+        "commit": null
       },
       "PR-A4": {
-        "title": "PhaseEngine (stateless wrapper)",
-        "depends_on": ["PR-A1"],
-        "status": "pending"
+        "title": "PhaseEngine + Legacy Deletion + Rename (Big Bang)",
+        "depends_on": ["PR-A1", "PR-A2", "PR-A3"],
+        "scope": [
+          "apps/server/internal/engine/phase_engine.go",
+          "apps/server/internal/engine/phase_engine_test.go",
+          "apps/server/internal/engine/**",
+          "apps/server/internal/eventbus/**",
+          "apps/server/internal/module/**",
+          "apps/server/internal/session/**"
+        ],
+        "tasks_total": 7,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a4-phase-engine-bigbang",
+        "commit": null
       },
       "PR-A5": {
-        "title": "EventProcessor chain",
-        "depends_on": ["PR-A1", "PR-A2", "PR-A4"],
-        "status": "pending"
+        "title": "Validator Chain",
+        "depends_on": ["PR-A1"],
+        "scope": [
+          "apps/server/internal/engine/validator.go",
+          "apps/server/internal/engine/validator_test.go"
+        ],
+        "tasks_total": 4,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a5-validator-chain",
+        "commit": null
       },
       "PR-A6": {
-        "title": "Clue System (Graph + Validator + Visibility)",
-        "depends_on": [],
-        "status": "pending"
+        "title": "Clue Graph Primitive",
+        "depends_on": ["PR-A4"],
+        "scope": ["apps/server/internal/clue/**"],
+        "tasks_total": 5,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a6-clue-graph",
+        "commit": null
       },
       "PR-A7": {
-        "title": "Rule Evaluator (jsonlogic)",
-        "depends_on": [],
-        "status": "pending"
+        "title": "JSON Logic Rule Evaluator",
+        "depends_on": ["PR-A6"],
+        "scope": [
+          "apps/server/internal/engine/rule_evaluator.go",
+          "apps/server/internal/engine/rule_evaluator_test.go",
+          "apps/server/internal/engine/rule_evaluator_parity_test.go"
+        ],
+        "tasks_total": 5,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-a7-rule-evaluator",
+        "commit": null
       },
       "PR-B1": {
-        "title": "MurderMysteryPlugin skeleton",
-        "depends_on": ["PR-A1"],
-        "status": "pending"
+        "title": "cluedist Module Migration",
+        "depends_on": ["PR-A4", "PR-A7"],
+        "scope": ["apps/server/internal/module/cluedist/**"],
+        "tasks_total": 4,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-b1-cluedist-migration",
+        "commit": null
       },
       "PR-B2": {
-        "title": "StartingClue + RoundClue",
-        "depends_on": ["PR-B1"],
-        "status": "pending"
+        "title": "decision Module Migration",
+        "depends_on": ["PR-A4", "PR-A7"],
+        "scope": ["apps/server/internal/module/decision/**"],
+        "tasks_total": 4,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-b2-decision-migration",
+        "commit": null
       },
       "PR-B3": {
-        "title": "ConditionalClue",
-        "depends_on": ["PR-B1", "PR-A6"],
-        "status": "pending"
+        "title": "progression + exploration + core Module Migration",
+        "depends_on": ["PR-A4"],
+        "scope": [
+          "apps/server/internal/module/progression/**",
+          "apps/server/internal/module/exploration/**",
+          "apps/server/internal/module/core/**"
+        ],
+        "tasks_total": 6,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-b3-progression-migration",
+        "commit": null
       },
       "PR-B4": {
-        "title": "Voting + Accusation",
-        "depends_on": ["PR-B1"],
-        "status": "pending"
+        "title": "media + communication Module Migration",
+        "depends_on": ["PR-A4"],
+        "scope": [
+          "apps/server/internal/module/media/**",
+          "apps/server/internal/module/communication/**"
+        ],
+        "tasks_total": 6,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-b4-media-comm-migration",
+        "commit": null
       },
-      "PR-B5": {
-        "title": "Hooks + WinCheck + E2E",
-        "depends_on": ["PR-B2", "PR-B3", "PR-B4"],
-        "status": "pending"
+      "PR-T1": {
+        "title": "Template Loader + Validator + Schema Merger",
+        "depends_on": ["PR-A4", "PR-B1", "PR-B2", "PR-B3", "PR-B4"],
+        "scope": [
+          "apps/server/internal/template/**",
+          "apps/server/internal/server/template_handler.go",
+          "apps/server/internal/server/router.go"
+        ],
+        "tasks_total": 7,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-t1-template-loader",
+        "commit": null
+      },
+      "PR-T2": {
+        "title": "4 장르 N 프리셋 JSON Templates",
+        "depends_on": ["PR-T1"],
+        "scope": [
+          "apps/server/internal/template/presets/**",
+          "apps/server/internal/template/presets_test.go"
+        ],
+        "tasks_total": 5,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-t2-genre-presets",
+        "commit": null
       },
       "PR-C1": {
-        "title": "EditorLayout + UIStore",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR-C2": {
-        "title": "GenreSelector + presets",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR-C3": {
-        "title": "SchemaDrivenForm (rhf + zod)",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR-C4": {
-        "title": "Character CRUD",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR-C5": {
-        "title": "Clue list + graph view",
-        "depends_on": ["PR-C3"],
-        "status": "pending"
-      },
-      "PR-C6": {
-        "title": "Auto-save + validation",
-        "depends_on": ["PR-C1"],
-        "status": "pending"
-      },
-      "PR-C7": {
-        "title": "Genre preset API",
-        "depends_on": ["PR-C2"],
-        "status": "pending"
-      },
-      "PR-D1": {
-        "title": "React Flow canvas",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR-D2": {
-        "title": "PhaseNode/StartNode/EndNode",
-        "depends_on": ["PR-D1"],
-        "status": "pending"
-      },
-      "PR-D3": {
-        "title": "Timeline View",
-        "depends_on": ["PR-D2"],
-        "status": "pending"
-      },
-      "PR-D4": {
-        "title": "Module Palette",
-        "depends_on": ["PR-D1"],
-        "status": "pending"
-      },
-      "PR-D5": {
-        "title": "Phase Config Panel",
-        "depends_on": ["PR-C3"],
-        "status": "pending"
-      },
-      "PR-D6": {
-        "title": "JSON Logic rule editor",
-        "depends_on": ["PR-C3"],
-        "status": "pending"
-      },
-      "PR-D7": {
-        "title": "Phase template CRUD API",
-        "depends_on": ["PR-D3"],
-        "status": "pending"
-      },
-      "PR-E1": {
-        "title": "ConditionNode + ActionNode + EventTriggerNode",
-        "depends_on": ["PR-D1"],
-        "status": "pending"
-      },
-      "PR-E2": {
-        "title": "Clue graph view + ClueComboNode",
-        "depends_on": ["PR-A6"],
-        "status": "pending"
-      },
-      "PR-E3": {
-        "title": "dagre layout + simulation",
-        "depends_on": ["PR-E1", "PR-E2"],
-        "status": "pending"
-      },
-      "PR-E4": {
-        "title": "Undo/Redo (immer + zustand)",
-        "depends_on": ["PR-D1"],
-        "status": "pending"
+        "title": "L1 Editor SchemaDrivenForm (MVP)",
+        "depends_on": ["PR-T1"],
+        "scope": [
+          "apps/web/src/features/editor/**",
+          "apps/web/src/api/templateApi.ts",
+          "apps/web/src/stores/editor/**"
+        ],
+        "tasks_total": 7,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-c1-schema-form",
+        "commit": null
       },
       "PR-F1": {
-        "title": "CrimeScenePlugin",
-        "depends_on": [],
-        "status": "pending"
+        "title": "CrimeScene Module (Location/Evidence/Combination)",
+        "depends_on": ["PR-A4", "PR-A7"],
+        "scope": ["apps/server/internal/module/crime_scene/**"],
+        "tasks_total": 5,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-f1-crime-scene",
+        "commit": null
       },
-      "PR-F2": {
-        "title": "LocationRestriction + VisibilitySpec",
-        "depends_on": ["PR-F1"],
-        "status": "pending"
-      },
-      "PR-F3": {
-        "title": "CrimeSceneView frontend",
-        "depends_on": ["PR-F1"],
-        "status": "pending"
-      },
-      "PR-F4": {
-        "title": "Architecture validation",
-        "depends_on": ["PR-F1", "PR-F2", "PR-F3"],
-        "status": "pending"
-      },
-      "PR-G1": {
-        "title": "ScriptKillPlugin",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR2": {
-        "title": "JubenshaPlugin",
-        "depends_on": [],
-        "status": "pending"
-      },
-      "PR-G3": {
-        "title": "ScriptKill + Jubensha Views",
-        "depends_on": ["PR-G1", "PR-G2"],
-        "status": "pending"
-      },
-      "PR-G4": {
-        "title": "Genre presets",
-        "depends_on": ["PR-G1", "PR-G2"],
-        "status": "pending"
-      },
-      "PR-G5": {
-        "title": "Cross-genre integration tests",
-        "depends_on": ["PR-F4", "PR-G3", "PR-G4"],
-        "status": "pending"
+      "PR-V1": {
+        "title": "e2e Smoke + Module Isolation CI Gate",
+        "depends_on": ["PR-C1", "PR-F1", "PR-T2"],
+        "scope": [
+          "apps/server/internal/e2e/**",
+          "scripts/test-module-isolation.sh",
+          ".github/workflows/module-isolation.yml"
+        ],
+        "tasks_total": 7,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-9.0/pr-v1-e2e-smoke",
+        "commit": null
       }
     }
   },
   "history": [
     {
-      "id": "phase-8.0-engine-integration",
-      "name": "Phase 8.0 — Engine Integration Layer",
-      "status": "superseded",
-      "completed_prs": ["PR-0", "PR-1", "PR-2"],
-      "superseded_at": "2026-04-10",
-      "superseded_by": "phase-9.0-editor-engine-redesign",
-      "reason": "Architecture redesign: GenrePlugin + Audit Log + React Flow editor"
+      "id": "phase-9.0-editor-engine-redesign",
+      "archived_at": "2026-04-12",
+      "archived_to": ".claude/archived_plans/phase-9.0-editor-engine-redesign.json",
+      "reason": "Superseded by composable-module direction after design review"
     }
   ]
 }

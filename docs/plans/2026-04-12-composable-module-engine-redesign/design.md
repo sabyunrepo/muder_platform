@@ -28,7 +28,7 @@ Phase 8.0 `Module` 인터페이스를 ISP 로 리파인먼트(Core 7 + Optional 
 - [Execution Model (Wave DAG)](refs/execution-model.md)
 - [Observability & Testing](refs/observability-testing.md)
 
-## PR Index — 15 PRs / 7 Waves
+## PR Index — 16 PRs / 7 Waves
 
 | Wave | 병렬 | PRs |
 |------|------|-----|
