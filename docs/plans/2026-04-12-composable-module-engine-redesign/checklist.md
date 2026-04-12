@@ -1,10 +1,10 @@
 <!-- STATUS-START -->
 **Active**: Phase 9.0 — Composable Module Engine Redesign
-**Wave**: W2
-**PR**: PR-A4 (PhaseEngine + Legacy Deletion + Rename)
-**Task**: phase_engine skeleton + legacy delete + Plugin→Module rename
+**Wave**: W3
+**PR**: PR-A6 (Clue Graph Primitive)
+**Task**: clue/graph.go + validator + visibility + tests
 **State**: pending
-**Blockers**: W1 merge complete, awaiting user confirm
+**Blockers**: W2 cleanup (Plugin→Module rename + eventbus migration) before W3 start
 **Last updated**: 2026-04-12
 <!-- STATUS-END -->
 
@@ -32,21 +32,21 @@
 - [x] internal/auditlog/*_test.go — unit (NoOpLogger) + testcontainers integration (100-goroutine seq uniqueness)
 - [x] Migration `00018_audit_events` + sqlc queries committed
 
-## Wave 2 — Engine Replacement (parallel ×2)
+## Wave 2 — Engine Replacement (parallel ×2) ✅
 
-### PR-A4 — PhaseEngine + Legacy Deletion + Rename (빅뱅)
-- [ ] engine/phase_engine.go — JSON template 구동
-- [ ] engine/phase_engine_test.go
-- [ ] Delete: engine.go, strategy_*.go, dispatcher.go, validation.go, types.go(legacy bits)
-- [ ] Delete: internal/eventbus/** 패키지
-- [ ] Rename: engine.Plugin → engine.Module (32 consumer 파일 동시 수정)
-- [ ] session/session.go, session/manager.go 재배선
-- [ ] go build && go test -race 전체 green
+### PR-A4 — PhaseEngine + Legacy Deletion + Rename ✅ merged as `96bbf27`
+- [x] engine/phase_engine.go — PhaseEngine (linear phases, panic isolation, audit)
+- [x] engine/phase_engine_test.go — 20 golden tests + integration_test.go
+- [x] Delete: engine.go, strategy_*.go, dispatcher*.go, validation*.go (10 files, 1916 lines)
+- [ ] ⚠️ Delete: engine/eventbus.go (legacy callback) — PhaseEngine still uses it; migrate to TypedEventBus
+- [ ] ⚠️ Rename: Plugin → Module — worktree base mismatch; needs dedicated cleanup commit
+- [x] session/session.go, session/manager.go 재배선 (→ PhaseEngine)
+- [x] go build && go test -race 전체 green (32 packages)
 
-### PR-A5 — Validator Chain
-- [ ] engine/validator.go — Validator interface + Chain
-- [ ] engine/validator_test.go
-- [ ] Replace validation.go 호출부
+### PR-A5 — Validator Chain ✅ merged as `2390add`
+- [x] engine/validator.go — Validator/Chain/PhaseValidator/PlayerValidator/ModuleValidator/EventValidator
+- [x] engine/validator_test.go — 12 tests (chain/phase/player/module)
+- [x] ValidationState (runtime) 별도 타입으로 GameState(serializable)와 분리
 
 ## Wave 3 — Primitives (sequential)
 

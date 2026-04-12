@@ -26,9 +26,9 @@
     ],
     "started_at": "2026-04-12",
     "started_commit": "713ae39",
-    "current_wave": "W2",
-    "current_pr": "PR-A4",
-    "current_task": "phase_engine skeleton + legacy delete + Plugin→Module rename",
+    "current_wave": "W3",
+    "current_pr": "PR-A6",
+    "current_task": "clue/graph.go + validator + visibility + tests",
     "status": "in_progress",
     "blockers": [],
     "supersedes": "phase-9.0-editor-engine-redesign",
@@ -160,9 +160,9 @@
         ],
         "tasks_total": 7,
         "tasks_done": 0,
-        "status": "pending",
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-a4-phase-engine-bigbang",
-        "commit": null
+        "commit": "96bbf27"
       },
       "PR-A5": {
         "title": "Validator Chain",
@@ -175,9 +175,9 @@
         ],
         "tasks_total": 4,
         "tasks_done": 0,
-        "status": "pending",
+        "status": "completed",
         "branch": "feat/phase-9.0/pr-a5-validator-chain",
-        "commit": null
+        "commit": "2390add"
       },
       "PR-A6": {
         "title": "Clue Graph Primitive",
