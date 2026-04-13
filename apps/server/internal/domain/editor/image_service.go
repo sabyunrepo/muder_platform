@@ -24,6 +24,7 @@ const (
 
 	ImageTargetCharacter = "character"
 	ImageTargetClue      = "clue"
+	ImageTargetCover     = "cover"
 )
 
 // AllowedImageMIMEs maps allowed image MIME types to their canonical extension.
@@ -49,10 +50,10 @@ type ImageConfirmResponse struct {
 
 // RequestImageUploadRequest is the body for POST .../images/upload-url.
 type RequestImageUploadRequest struct {
-	Target      string    `json:"target"`       // "character" | "clue"
-	TargetID    uuid.UUID `json:"target_id"`    // character or clue UUID
-	ContentType string    `json:"content_type"` // image/jpeg | image/png | image/webp
-	FileSize    int64     `json:"file_size"`    // bytes
+	Target      string     `json:"target"`       // "character" | "clue" | "cover"
+	TargetID    *uuid.UUID `json:"target_id"`    // character or clue UUID; omitted for "cover"
+	ContentType string     `json:"content_type"` // image/jpeg | image/png | image/webp
+	FileSize    int64      `json:"file_size"`    // bytes
 }
 
 // ConfirmImageUploadRequest is the body for POST .../images/confirm.
@@ -67,6 +68,7 @@ type imageQueries interface {
 	UpdateThemeCharacter(ctx context.Context, arg db.UpdateThemeCharacterParams) (db.ThemeCharacter, error)
 	GetClue(ctx context.Context, id uuid.UUID) (db.ThemeClue, error)
 	UpdateClue(ctx context.Context, arg db.UpdateClueParams) (db.ThemeClue, error)
+	UpdateThemeCoverImage(ctx context.Context, arg db.UpdateThemeCoverImageParams) error
 }
 
 // ImageService handles image upload flow for character avatars and clue images.
@@ -118,9 +120,9 @@ func (s *ImageService) RequestImageUpload(
 		return nil, err
 	}
 
-	if req.Target != ImageTargetCharacter && req.Target != ImageTargetClue {
+	if req.Target != ImageTargetCharacter && req.Target != ImageTargetClue && req.Target != ImageTargetCover {
 		return nil, apperror.New(apperror.ErrImageInvalidTarget, 400,
-			fmt.Sprintf("target must be %q or %q", ImageTargetCharacter, ImageTargetClue))
+			fmt.Sprintf("target must be %q, %q, or %q", ImageTargetCharacter, ImageTargetClue, ImageTargetCover))
 	}
 
 	ext, ok := AllowedImageMIMEs[req.ContentType]
@@ -139,7 +141,11 @@ func (s *ImageService) RequestImageUpload(
 	}
 
 	// Verify target exists and belongs to the theme.
-	storageKey, err := s.buildStorageKey(ctx, themeID, req.Target, req.TargetID, ext)
+	var targetID uuid.UUID
+	if req.TargetID != nil {
+		targetID = *req.TargetID
+	}
+	storageKey, err := s.buildStorageKey(ctx, themeID, req.Target, targetID, ext)
 	if err != nil {
 		return nil, err
 	}
@@ -257,6 +263,16 @@ func (s *ImageService) ConfirmImageUpload(
 			return nil, apperror.Internal("failed to update clue image")
 		}
 
+	case ImageTargetCover:
+		err = s.q.UpdateThemeCoverImage(ctx, db.UpdateThemeCoverImageParams{
+			ID:         themeID,
+			CoverImage: pgtype.Text{String: downloadURL, Valid: true},
+		})
+		if err != nil {
+			s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to update theme cover_image")
+			return nil, apperror.Internal("failed to update theme cover image")
+		}
+
 	default:
 		return nil, apperror.BadRequest("unrecognized upload key target")
 	}
@@ -306,6 +322,9 @@ func (s *ImageService) buildStorageKey(
 		}
 		return fmt.Sprintf("themes/%s/clues/%s/image%s", themeID, targetID, ext), nil
 
+	case ImageTargetCover:
+		return fmt.Sprintf("themes/%s/cover%s", themeID, ext), nil
+
 	default:
 		return "", apperror.New(apperror.ErrImageInvalidTarget, 400, "unknown target")
 	}
@@ -316,10 +335,24 @@ func (s *ImageService) buildStorageKey(
 //
 //	themes/{themeId}/characters/{charId}/avatar.{ext}  → "character", charId
 //	themes/{themeId}/clues/{clueId}/image.{ext}        → "clue", clueId
+//	themes/{themeId}/cover.{ext}                       → "cover", themeId
 func parseUploadKey(key string) (target string, id uuid.UUID, err error) {
 	parts := strings.Split(key, "/")
-	// themes / {themeId} / characters|clues / {id} / filename
-	if len(parts) != 5 || parts[0] != "themes" {
+	if len(parts) < 3 || parts[0] != "themes" {
+		return "", uuid.Nil, fmt.Errorf("unexpected key format")
+	}
+
+	// Cover: themes/{themeId}/cover.{ext}
+	if len(parts) == 3 && strings.HasPrefix(parts[2], "cover") {
+		themeID, parseErr := uuid.Parse(parts[1])
+		if parseErr != nil {
+			return "", uuid.Nil, fmt.Errorf("invalid theme uuid in key: %w", parseErr)
+		}
+		return ImageTargetCover, themeID, nil
+	}
+
+	// characters/clues: themes / {themeId} / characters|clues / {id} / filename
+	if len(parts) != 5 {
 		return "", uuid.Nil, fmt.Errorf("unexpected key format")
 	}
 	switch parts[2] {

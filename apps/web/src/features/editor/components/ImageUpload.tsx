@@ -10,7 +10,7 @@ import { uploadImage } from '@/features/editor/imageApi';
 export interface ImageUploadProps {
   themeId: string;
   targetId: string;
-  target: 'character' | 'clue';
+  target: 'character' | 'clue' | 'cover';
   currentImageUrl?: string | null;
   onUploaded: (url: string) => void;
   aspectRatio?: string;

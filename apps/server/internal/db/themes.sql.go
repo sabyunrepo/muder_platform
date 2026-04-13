@@ -578,6 +578,20 @@ func (q *Queries) UpdateThemeConfigJson(ctx context.Context, arg UpdateThemeConf
 	return i, err
 }
 
+const updateThemeCoverImage = `-- name: UpdateThemeCoverImage :exec
+UPDATE themes SET cover_image = $2, updated_at = NOW() WHERE id = $1
+`
+
+type UpdateThemeCoverImageParams struct {
+	ID         uuid.UUID   `json:"id"`
+	CoverImage pgtype.Text `json:"cover_image"`
+}
+
+func (q *Queries) UpdateThemeCoverImage(ctx context.Context, arg UpdateThemeCoverImageParams) error {
+	_, err := q.db.Exec(ctx, updateThemeCoverImage, arg.ID, arg.CoverImage)
+	return err
+}
+
 const updateThemeStatus = `-- name: UpdateThemeStatus :one
 UPDATE themes SET status = $2, published_at = CASE WHEN $2 = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
 WHERE id = $1

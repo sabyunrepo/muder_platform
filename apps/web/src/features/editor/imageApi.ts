@@ -8,8 +8,8 @@ import { editorKeys } from "@/features/editor/api";
 // ---------------------------------------------------------------------------
 
 export interface UploadUrlRequest {
-  target: "character" | "clue";
-  target_id: string;
+  target: "character" | "clue" | "cover";
+  target_id?: string;
   content_type: string;
   file_size: number;
 }
@@ -46,6 +46,7 @@ export function useConfirmImageUpload(themeId: string) {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.characters(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
     },
   });
 }
@@ -56,7 +57,7 @@ export function useConfirmImageUpload(themeId: string) {
 
 export async function uploadImage(
   themeId: string,
-  target: "character" | "clue",
+  target: "character" | "clue" | "cover",
   targetId: string,
   file: Blob,
   contentType: string,
@@ -66,9 +67,9 @@ export async function uploadImage(
     `/v1/editor/themes/${themeId}/images/upload-url`,
     {
       target,
-      target_id: targetId,
       content_type: contentType,
       file_size: file.size,
+      ...(target !== "cover" && { target_id: targetId }),
     },
   );
 

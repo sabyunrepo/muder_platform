@@ -765,7 +765,7 @@ func (s *service) GetContent(ctx context.Context, creatorID, themeID uuid.UUID, 
 	content, err := s.q.GetContent(ctx, db.GetContentParams{ThemeID: themeID, Key: key})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.NotFound("content not found")
+			return &ContentResponse{ThemeID: themeID, Key: key, Body: ""}, nil
 		}
 		s.logger.Error().Err(err).Msg("failed to get content")
 		return nil, apperror.Internal("failed to get content")

@@ -63,3 +63,6 @@ SELECT * FROM themes ORDER BY created_at DESC LIMIT $1 OFFSET $2;
 
 -- name: ListAllRooms :many
 SELECT * FROM rooms ORDER BY created_at DESC LIMIT $1 OFFSET $2;
+
+-- name: UpdateThemeCoverImage :exec
+UPDATE themes SET cover_image = $2, updated_at = NOW() WHERE id = $1;
