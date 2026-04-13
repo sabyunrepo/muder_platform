@@ -145,7 +145,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
         <GameHUD />
       </Suspense>
 
-      {/* 미션 토글 버튼 (게임 활성화 중) */}
+      {/* 미션 토글 버튼 (게임 활성화 중, RESULT 제외) */}
       {isGameActive && phase !== GamePhase.RESULT && (
         <div className="flex justify-end border-b border-slate-800 bg-slate-900/80 px-4 py-1.5">
           <button

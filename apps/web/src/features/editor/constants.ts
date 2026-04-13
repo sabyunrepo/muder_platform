@@ -100,7 +100,7 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     modules: [
       { id: "voting", name: "투표", description: "다수결 투표 시스템", supported: true, required: false },
       { id: "accusation", name: "고발", description: "범인 지목/변호", supported: true, required: false },
-      { id: "hidden_mission", name: "히든 미션", description: "비밀 임무 시스템", supported: false, required: false },
+      { id: "hidden_mission", name: "히든 미션", description: "비밀 임무 시스템", supported: true, required: false },
     ],
   },
   {
