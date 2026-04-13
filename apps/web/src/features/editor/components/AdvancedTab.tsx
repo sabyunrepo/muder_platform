@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Button, Badge } from '@/shared/components/ui';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { useUpdateConfigJson, useValidateTheme } from '@/features/editor/api';
 import { useEditorUI } from '@/features/editor/stores/editorUIStore';
 import type { EditorTab } from '@/features/editor/constants';
+import { validateGameDesign } from '@/features/editor/validation';
+import type { DesignWarning } from '@/features/editor/validation';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,7 +47,7 @@ function ValidationRow({ item, onNavigate }: ValidationRowProps) {
   const icons: Record<ValidationSeverity, React.ReactNode> = {
     ok: <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />,
     error: <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />,
-    warning: <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />,
+    warning: <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />,
   };
 
   const textColors: Record<ValidationSeverity, string> = {
@@ -119,11 +121,27 @@ export function AdvancedTab({ themeId, theme }: AdvancedTabProps) {
           severity: 'error',
           message: msg,
         }));
-        if (result.valid) {
+
+        // Client-side design warnings from config_json
+        const configJson = theme.config_json ?? {};
+        const designWarnings: DesignWarning[] = validateGameDesign(
+          configJson,
+          result.stats.clues,
+          result.stats.characters,
+        );
+        for (const w of designWarnings) {
+          items.push({
+            severity: w.type,
+            message: `[${w.category}] ${w.message}`,
+          });
+        }
+
+        const hasErrors = items.some((i) => i.severity === 'error');
+        if (!hasErrors) {
           items.unshift({ severity: 'ok', message: '모든 검증을 통과했습니다' });
           toast.success('검증 완료');
         } else {
-          toast.error(`검증 실패: ${result.errors.length}개 오류`);
+          toast.error(`검증 실패: ${items.filter((i) => i.severity === 'error').length}개 오류`);
         }
         setValidationItems(items);
       },
