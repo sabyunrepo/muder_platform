@@ -103,21 +103,30 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
                     }`}
                   >
                     {/* Toggle dot */}
-                    <button
-                      type="button"
+                    <span
+                      role="switch"
+                      aria-checked={isEnabled}
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggle(mod.id);
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggle(mod.id);
+                        }
+                      }}
                       aria-label={`${mod.name} ${isEnabled ? '비활성화' : '활성화'}`}
-                      className="shrink-0 focus:outline-none"
+                      className="shrink-0 cursor-pointer focus:outline-none"
                     >
                       <span
                         className={`block h-2 w-2 rounded-full transition-colors ${
                           isEnabled ? 'bg-amber-500' : 'bg-slate-700 group-hover:bg-slate-600'
                         }`}
                       />
-                    </button>
+                    </span>
                     <span className="truncate text-xs font-medium">{mod.name}</span>
                   </button>
                 );
