@@ -30,6 +30,14 @@ vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
   SchemaDrivenForm: () => null,
 }));
 
+// Mock subtab components that have external dependencies
+vi.mock('../../design/FlowSubTab', () => ({
+  FlowSubTab: () => <div>FlowSubTab 콘텐츠</div>,
+}));
+vi.mock('../../design/LocationsSubTab', () => ({
+  LocationsSubTab: () => <div>LocationsSubTab 콘텐츠</div>,
+}));
+
 vi.mock('@/features/editor/constants', () => ({
   MODULE_CATEGORIES: [
     {
@@ -110,14 +118,14 @@ describe('DesignTab', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
     fireEvent.click(screen.getByText('흐름'));
-    expect(screen.getByText('페이즈 타임라인 — 다음 PR에서 구현')).toBeDefined();
+    expect(screen.getByText('FlowSubTab 콘텐츠')).toBeDefined();
   });
 
   it('장소 탭 클릭 시 장소 콘텐츠로 전환된다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
     fireEvent.click(screen.getByText('장소'));
-    expect(screen.getByText('맵/장소 관리 — 다음 PR에서 구현')).toBeDefined();
+    expect(screen.getByText('LocationsSubTab 콘텐츠')).toBeDefined();
   });
 
   it('배치 탭 클릭 시 배치 콘텐츠로 전환된다', () => {

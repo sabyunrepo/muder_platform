@@ -111,16 +111,22 @@ describe('FlowSubTab', () => {
     fireEvent.click(screen.getByText('표준 머더미스터리 프리셋 적용'));
     expect(screen.getByText('5개')).toBeDefined();
 
+    // Flush the debounce for preset
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+
     // Click first delete button
     const deleteButtons = screen.getAllByLabelText('페이즈 삭제');
     fireEvent.click(deleteButtons[0]);
 
     expect(screen.getByText('4개')).toBeDefined();
 
+    // Flush the debounce for delete
     await act(async () => {
       vi.advanceTimersByTime(500);
     });
-    // mutate called twice: once for preset, once for delete
     expect(mutateMock).toHaveBeenCalledTimes(2);
   });
 
