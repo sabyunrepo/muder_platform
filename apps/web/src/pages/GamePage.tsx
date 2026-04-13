@@ -20,6 +20,8 @@ import {
   ReadingPanel,
   HiddenMissionCard,
   MissionResultOverlay,
+  TradeCluePanel,
+  TradeRequestNotification,
 } from "@/features/game/components";
 import { AudioProvider } from "@/features/audio/AudioProvider";
 import { GameErrorBoundary } from "@/components/error";
@@ -91,6 +93,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
   const phase = useGameStore(selectPhase);
   const isGameActive = useGameStore(selectIsGameActive);
 
+  // 단서 교환 요청 알림 (게임 활성화 중 항상 감지)
   // 연결 중 로딩
   if (wsState === WsClientState.CONNECTING) {
     return (
@@ -122,6 +125,8 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
     <AudioProvider>
     <GameErrorBoundary>
     <NetworkOverlay />
+    {/* 단서 교환 요청 알림 수신기 (게임 활성화 중 항상 마운트) */}
+    {isGameActive && <TradeRequestNotification send={send} />}
     {/* 미션 결과 오버레이 (RESULT 페이즈) */}
     {phase === GamePhase.RESULT && <MissionResultOverlay />}
     {/* 미션 카드 모달 (게임 활성화 중) */}
@@ -249,7 +254,10 @@ function PhaseContent({ phase, isGameActive, send }: PhaseContentProps) {
       return (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <ExplorationPanel send={send} moduleId="location_exploration" />
-          <CluePanel />
+          <div className="space-y-4">
+            <CluePanel />
+            <TradeCluePanel send={send} />
+          </div>
         </div>
       );
 

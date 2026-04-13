@@ -121,7 +121,7 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
       { id: "starting_clue", name: "시작 단서", description: "게임 시작 시 배포", supported: true, required: false },
       { id: "round_clue", name: "라운드 단서", description: "라운드별 단서 배포", supported: true, required: false },
       { id: "timed_clue", name: "시간 단서", description: "시간 경과 시 배포", supported: true, required: false },
-      { id: "trade_clue", name: "단서 교환", description: "플레이어 간 단서 교환", supported: false, required: false },
+      { id: "trade_clue", name: "단서 교환", description: "플레이어 간 단서 교환", supported: true, required: false },
     ],
   },
 ];
