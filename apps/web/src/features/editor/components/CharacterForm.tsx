@@ -8,6 +8,7 @@ import {
   useUpdateCharacter,
   type EditorCharacterResponse,
 } from '@/features/editor/api';
+import { ImageCropUpload } from '@/features/editor/components/ImageCropUpload';
 
 interface CharacterFormProps {
   themeId: string;
@@ -163,13 +164,25 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
           )}
         </div>
 
-        <Input
-          label="이미지 URL"
-          type="url"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://example.com/character.jpg"
-        />
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-medium text-slate-300">캐릭터 이미지</span>
+          <div className="flex items-center gap-4">
+            <ImageCropUpload
+              themeId={themeId}
+              targetId={character?.id ?? ''}
+              target="character"
+              currentImageUrl={imageUrl || null}
+              onUploaded={(url) => setImageUrl(url)}
+              size="lg"
+              shape="circle"
+            />
+            <p className="text-xs text-slate-500">
+              클릭하여 이미지를 업로드하세요
+              <br />
+              1:1 비율로 자동 자르기됩니다
+            </p>
+          </div>
+        </div>
 
         <div className="flex items-center gap-2">
           <input

@@ -14,7 +14,7 @@ type Config struct {
 	LogLevel    string `env:"LOG_LEVEL" default:"debug"`
 	DatabaseURL string `env:"DATABASE_URL" required:"true"`
 	RedisURL    string `env:"REDIS_URL" required:"true"`
-	CORSOrigins string `env:"CORS_ORIGINS" default:"http://localhost:5173"`
+	CORSOrigins string `env:"CORS_ORIGINS" default:"http://localhost:3000,http://localhost:5173"`
 	BaseURL      string `env:"BASE_URL" default:"http://localhost:5173"`
 	JWTSecret    string `env:"JWT_SECRET" default:"dev-secret-change-me"`
 	SentryDSN    string `env:"SENTRY_DSN" default:""`
@@ -42,6 +42,12 @@ func (c *Config) IsDevelopment() bool {
 // HasLiveKit returns true if LiveKit configuration is present.
 func (c *Config) HasLiveKit() bool {
 	return c.LiveKitURL != "" && c.LiveKitAPIKey != "" && c.LiveKitAPISecret != ""
+}
+
+// ServerBaseURL returns the base URL of this server for constructing local
+// storage upload/download URLs in dev mode.
+func (c *Config) ServerBaseURL() string {
+	return fmt.Sprintf("http://localhost:%d", c.Port)
 }
 
 // Load reads configuration from environment variables using struct tags.

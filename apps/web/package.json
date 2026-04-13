@@ -9,6 +9,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "npx playwright test --project=chromium",
+    "test:e2e:ui": "npx playwright test --project=chromium --ui",
+    "test:e2e:headed": "npx playwright test --project=chromium --headed",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,11 +29,13 @@
     "react-dom": "^19.0.0",
     "react-easy-crop": "^5.5.7",
     "react-error-boundary": "^6.1.1",
+    "react-image-crop": "^11.0.10",
     "react-router": "^7.1.0",
     "sonner": "^2.0.7",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

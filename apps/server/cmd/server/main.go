@@ -140,8 +140,9 @@ func main() {
 	editorSvc := editor.NewService(queries, pool, logger)
 
 	// Phase 7.7: Media storage provider
-	// R2 provider는 환경변수가 없으면 nil — 로컬 개발에서 미디어 기능 비활성화
+	// R2 credentials present → use R2. Otherwise fall back to local file storage for dev.
 	var storageProvider storage.Provider
+	var localStorageProvider *storage.LocalProvider
 	if cfg.R2AccountID != "" {
 		r2Cfg := storage.R2Config{
 			AccountID:       cfg.R2AccountID,
@@ -155,9 +156,16 @@ func main() {
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to init R2 provider")
 		}
+		logger.Info().Msg("R2 storage provider initialized")
+	} else {
+		localStorageProvider = storage.NewLocalProviderWithLogger("tmp/uploads", cfg.ServerBaseURL(), logger)
+		storageProvider = localStorageProvider
+		logger.Warn().Msg("local file storage provider initialized (dev only — do not use in production)")
 	}
 	mediaSvc := editor.NewMediaService(queries, storageProvider, logger)
 	mediaHandler := editor.NewMediaHandler(mediaSvc)
+	imageSvc := editor.NewImageService(queries, storageProvider, logger)
+	imageHandler := editor.NewImageHandler(imageSvc)
 	readingSvc := editor.NewReadingService(queries, logger)
 	readingHandler := editor.NewReadingHandler(readingSvc)
 	adminSvc := admin.NewService(queries, logger)
@@ -261,6 +269,12 @@ func main() {
 		r.Handle("/uploads/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			fs.ServeHTTP(w, r)
 		}))
+	}
+
+	// 14.6. Local storage upload/serve endpoints (dev only — skipped when R2 is active)
+	if localStorageProvider != nil {
+		r.Put("/api/v1/uploads/*", localStorageProvider.UploadHandler())
+		r.Get("/api/v1/uploads/*", localStorageProvider.ServeHandler())
 	}
 
 	// 15. WebSocket endpoints
@@ -416,6 +430,9 @@ func main() {
 				r.Post("/themes/{id}/media/youtube", mediaHandler.CreateYouTube)
 				r.Patch("/media/{id}", mediaHandler.UpdateMedia)
 				r.Delete("/media/{id}", mediaHandler.DeleteMedia)
+				// Images (character avatars + clue images)
+				r.Post("/themes/{id}/images/upload-url", imageHandler.RequestUpload)
+				r.Post("/themes/{id}/images/confirm", imageHandler.ConfirmUpload)
 
 				// Reading sections
 				r.Get("/themes/{id}/reading-sections", readingHandler.ListReadingSections)

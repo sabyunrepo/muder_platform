@@ -87,6 +87,28 @@ export interface UpdateCharacterRequest {
   sort_order?: number;
 }
 
+export interface CreateClueRequest {
+  name: string;
+  description?: string;
+  image_url?: string;
+  clue_type?: string;
+  level?: number;
+  is_common?: boolean;
+  sort_order?: number;
+  location_id?: string;
+}
+
+export interface UpdateClueRequest {
+  name?: string;
+  description?: string;
+  image_url?: string;
+  clue_type?: string;
+  level?: number;
+  is_common?: boolean;
+  sort_order?: number;
+  location_id?: string;
+}
+
 // ---------------------------------------------------------------------------
 // Maps / Locations / Clues / Contents / Validation types
 // ---------------------------------------------------------------------------
@@ -348,6 +370,54 @@ export function useDeleteCharacter(themeId: string) {
       api.deleteVoid(`/v1/editor/characters/${characterId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.characters(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Clue Queries
+// ---------------------------------------------------------------------------
+
+export function useEditorClues(themeId: string) {
+  return useQuery<ClueResponse[]>({
+    queryKey: editorKeys.clues(themeId),
+    queryFn: () => api.get<ClueResponse[]>(`/v1/editor/themes/${themeId}/clues`),
+    enabled: !!themeId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Clue Mutations
+// ---------------------------------------------------------------------------
+
+export function useCreateClue(themeId: string) {
+  return useMutation<ClueResponse, Error, CreateClueRequest>({
+    mutationFn: (body) =>
+      api.post<ClueResponse>(`/v1/editor/themes/${themeId}/clues`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+    },
+  });
+}
+
+export function useUpdateClue(themeId: string) {
+  return useMutation<ClueResponse, Error, { clueId: string; body: UpdateClueRequest }>({
+    mutationFn: ({ clueId, body }) =>
+      api.put<ClueResponse>(`/v1/editor/clues/${clueId}`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+    },
+  });
+}
+
+export function useDeleteClue(themeId: string) {
+  return useMutation<void, Error, string>({
+    mutationFn: (clueId) => api.deleteVoid(`/v1/editor/clues/${clueId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
     },
   });
