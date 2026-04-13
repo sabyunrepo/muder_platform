@@ -248,6 +248,10 @@ type ThemeClue struct {
 	ClueType    string      `json:"clue_type"`
 	SortOrder   int32       `json:"sort_order"`
 	CreatedAt   time.Time   `json:"created_at"`
+	IsUsable    bool        `json:"is_usable"`
+	UseEffect   pgtype.Text `json:"use_effect"`
+	UseTarget   pgtype.Text `json:"use_target"`
+	UseConsumed bool        `json:"use_consumed"`
 }
 
 type ThemeContent struct {

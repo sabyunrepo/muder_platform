@@ -704,6 +704,10 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 		Level:       req.Level,
 		ClueType:    req.ClueType,
 		SortOrder:   req.SortOrder,
+		IsUsable:    req.IsUsable,
+		UseEffect:   ptrToText(req.UseEffect),
+		UseTarget:   ptrToText(req.UseTarget),
+		UseConsumed: req.UseConsumed,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create clue")
@@ -732,6 +736,10 @@ func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, r
 		Level:       req.Level,
 		ClueType:    req.ClueType,
 		SortOrder:   req.SortOrder,
+		IsUsable:    req.IsUsable,
+		UseEffect:   ptrToText(req.UseEffect),
+		UseTarget:   ptrToText(req.UseTarget),
+		UseConsumed: req.UseConsumed,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update clue")
@@ -1003,6 +1011,10 @@ func toClueResponse(c db.ThemeClue) ClueResponse {
 		ClueType:    c.ClueType,
 		SortOrder:   c.SortOrder,
 		CreatedAt:   c.CreatedAt,
+		IsUsable:    c.IsUsable,
+		UseEffect:   textToPtr(c.UseEffect),
+		UseTarget:   textToPtr(c.UseTarget),
+		UseConsumed: c.UseConsumed,
 	}
 }
 
