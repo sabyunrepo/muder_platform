@@ -65,7 +65,9 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
         {activeSubTab === 'locations' && (
           <LocationsSubTab themeId={themeId} theme={theme} />
         )}
-        {activeSubTab === 'assignment' && <AssignmentSubTab />}
+        {activeSubTab === 'assignment' && (
+          <AssignmentSubTab themeId={themeId} theme={theme} />
+        )}
         {activeSubTab === 'settings' && (
           <SettingsSubTab themeId={themeId} theme={theme} />
         )}
