@@ -1,20 +1,20 @@
-<!-- STATUS:READY -->
+<!-- STATUS:W1_DONE -->
 # Phase 13.0 체크리스트
 
 ## Wave 1 (병렬)
 ### PR-1: 게임설계 서브탭 레이아웃 리팩토링
-- [ ] DesignTab을 서브탭 컨테이너로 리팩토링
-- [ ] 서브탭 네비게이션: 모듈/흐름/장소/배치/설정
-- [ ] 기존 모듈 토글 기능을 "모듈" 서브탭으로 이동
-- [ ] Vitest 테스트
+- [x] DesignTab을 서브탭 컨테이너로 리팩토링
+- [x] 서브탭 네비게이션: 모듈/흐름/장소/배치/설정
+- [x] 기존 모듈 토글 기능을 "모듈" 서브탭으로 이동
+- [x] Vitest 테스트
 
 ### PR-2: ConfigSchema API + SchemaDrivenForm
-- [ ] 백엔드: GET /api/v1/editor/module-schemas 엔드포인트
-- [ ] 백엔드: 모듈별 ConfigSchema JSON Schema 수집
-- [ ] 프론트: SchemaDrivenForm 컴포넌트 (string/number/boolean/enum/array)
-- [ ] 프론트: "설정" 서브탭에서 활성 모듈별 폼 렌더링
-- [ ] config_json.module_configs에 저장
-- [ ] Vitest 테스트
+- [x] 백엔드: GET /api/v1/editor/module-schemas 엔드포인트
+- [x] 백엔드: 모듈별 ConfigSchema JSON Schema 수집
+- [x] 프론트: SchemaDrivenForm 컴포넌트 (string/number/boolean/enum/array)
+- [x] 프론트: "설정" 서브탭에서 활성 모듈별 폼 렌더링
+- [x] config_json.module_configs에 저장
+- [x] Vitest 테스트
 
 ## Wave 2 (병렬)
 ### PR-3: 맵/장소 관리 UI

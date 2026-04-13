@@ -554,6 +554,16 @@ func (h *Handler) ValidateTheme(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
+// GetModuleSchemas handles GET /editor/module-schemas.
+func (h *Handler) GetModuleSchemas(w http.ResponseWriter, r *http.Request) {
+	schemas, err := h.svc.GetModuleSchemas(r.Context())
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"schemas": schemas})
+}
+
 // parseUUID extracts and parses a UUID from a chi URL parameter.
 func parseUUID(r *http.Request, param string) (uuid.UUID, error) {
 	s := chi.URLParam(r, param)
