@@ -18,11 +18,11 @@
 
 ## Wave 2 (병렬)
 ### PR-3: 맵/장소 관리 UI
-- [ ] 맵 CRUD UI (이름, 이미지)
-- [ ] 장소 CRUD UI (맵 선택 → 장소 추가/편집/삭제)
-- [ ] 에디터 API hooks (useEditorMaps, useEditorLocations)
-- [ ] "장소" 서브탭에 배치
-- [ ] Vitest 테스트
+- [x] 맵 CRUD UI (이름, 이미지)
+- [x] 장소 CRUD UI (맵 선택 → 장소 추가/편집/삭제)
+- [x] 에디터 API hooks (useEditorMaps, useEditorLocations)
+- [x] "장소" 서브탭에 배치
+- [x] Vitest 테스트
 
 ### PR-4: 페이즈 타임라인 UI
 - [ ] PhaseTimeline 컴포넌트 (수평 타임라인)
@@ -43,12 +43,12 @@
 - [x] Vitest 테스트
 
 ### PR-6: 캐릭터→단서/미션 배정 UI
-- [ ] CharacterAssignPanel 컴포넌트
-- [ ] 캐릭터 선택 → 시작 단서 체크박스 배정
-- [ ] 캐릭터 선택 → 히든 미션 추가/편집/삭제
-- [ ] config_json.character_clues, character_missions에 저장
-- [ ] "배치" 서브탭 (캐릭터 탭)에 배치
-- [ ] Vitest 테스트
+- [x] CharacterAssignPanel 컴포넌트
+- [x] 캐릭터 선택 → 시작 단서 체크박스 배정
+- [x] 캐릭터 선택 → 히든 미션 추가/편집/삭제
+- [x] config_json.character_clues, character_missions에 저장
+- [x] "배치" 서브탭 (캐릭터 탭)에 배치
+- [x] Vitest 테스트
 
 ## Wave 4
 ### PR-7: 통합 + 유효성 검증 강화

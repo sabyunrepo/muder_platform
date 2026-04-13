@@ -37,6 +37,9 @@ vi.mock('../../design/FlowSubTab', () => ({
 vi.mock('../../design/LocationsSubTab', () => ({
   LocationsSubTab: () => <div>LocationsSubTab 콘텐츠</div>,
 }));
+vi.mock('../../design/AssignmentSubTab', () => ({
+  AssignmentSubTab: () => <div>AssignmentSubTab 콘텐츠</div>,
+}));
 
 vi.mock('@/features/editor/constants', () => ({
   MODULE_CATEGORIES: [
@@ -132,7 +135,7 @@ describe('DesignTab', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
     fireEvent.click(screen.getByText('배치'));
-    expect(screen.getByText('단서/캐릭터 배치 — 다음 PR에서 구현')).toBeDefined();
+    expect(screen.getByText('AssignmentSubTab 콘텐츠')).toBeDefined();
   });
 
   it('설정 탭 클릭 시 설정 콘텐츠로 전환된다', () => {

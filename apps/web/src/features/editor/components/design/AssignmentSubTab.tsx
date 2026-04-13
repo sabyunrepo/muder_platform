@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Layout, Users } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { CluePlacementPanel } from './CluePlacementPanel';
+import { CharacterAssignPanel } from './CharacterAssignPanel';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -57,14 +58,7 @@ export function AssignmentSubTab({ themeId, theme }: AssignmentSubTabProps) {
           <CluePlacementPanel themeId={themeId} theme={theme} />
         )}
         {activeTab === 'character-assignment' && (
-          <div className="flex h-full items-center justify-center">
-            <div className="text-center">
-              <Users className="mx-auto mb-3 h-8 w-8 text-slate-700" />
-              <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
-                다음 PR에서 구현
-              </p>
-            </div>
-          </div>
+          <CharacterAssignPanel themeId={themeId} theme={theme} />
         )}
       </div>
     </div>
