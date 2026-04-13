@@ -177,6 +177,11 @@ func (s *ImageService) ConfirmImageUpload(
 		return nil, apperror.BadRequest("upload_key is required")
 	}
 
+	// Verify file was actually uploaded before proceeding.
+	if _, err := s.storage.HeadObject(ctx, uploadKey); err != nil {
+		return nil, apperror.BadRequest("file has not been uploaded yet")
+	}
+
 	// Derive download URL (permanent for R2 CDN; same URL for local).
 	downloadURL, err := s.storage.GenerateDownloadURL(ctx, uploadKey, 0)
 	if err != nil {

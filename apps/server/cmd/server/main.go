@@ -397,7 +397,6 @@ func main() {
 				r.Post("/themes", editorHandler.CreateTheme)
 				r.Put("/themes/{id}", editorHandler.UpdateTheme)
 				r.Delete("/themes/{id}", editorHandler.DeleteTheme)
-				r.Post("/themes/{id}/publish", editorHandler.PublishTheme)
 				r.Post("/themes/{id}/unpublish", editorHandler.UnpublishTheme)
 				r.Post("/themes/{id}/submit-review", editorHandler.SubmitForReview)
 				r.Get("/themes/{id}/characters", editorHandler.ListCharacters)

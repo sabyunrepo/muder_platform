@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -134,6 +135,15 @@ func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 		}
 
 		destPath := filepath.Join(l.baseDir, filepath.FromSlash(key))
+
+		// Guard against path traversal: ensure resolved path stays within baseDir.
+		absBase, _ := filepath.Abs(l.baseDir)
+		absDest, _ := filepath.Abs(destPath)
+		if !strings.HasPrefix(absDest, absBase+string(os.PathSeparator)) {
+			http.Error(w, "invalid path", http.StatusBadRequest)
+			return
+		}
+
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			l.log.Error().Err(err).Str("path", destPath).Msg("failed to create upload directory")
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -148,6 +158,7 @@ func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 		}
 		defer f.Close()
 
+		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB hard cap
 		if _, err := io.Copy(f, r.Body); err != nil {
 			l.log.Error().Err(err).Str("path", destPath).Msg("failed to write upload file")
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -175,6 +186,15 @@ func (l *LocalProvider) ServeHandler() http.HandlerFunc {
 		}
 
 		filePath := filepath.Join(l.baseDir, filepath.FromSlash(key))
+
+		// Guard against path traversal: ensure resolved path stays within baseDir.
+		absBase, _ := filepath.Abs(l.baseDir)
+		absDest, _ := filepath.Abs(filePath)
+		if !strings.HasPrefix(absDest, absBase+string(os.PathSeparator)) {
+			http.Error(w, "invalid path", http.StatusBadRequest)
+			return
+		}
+
 		http.ServeFile(w, r, filePath)
 	}
 }

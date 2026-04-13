@@ -14,6 +14,7 @@ SET status       = 'PUBLISHED',
     review_note  = $3,
     updated_at   = NOW()
 WHERE id = $1
+  AND status = 'PENDING_REVIEW'
 RETURNING *;
 
 -- name: RejectTheme :one
@@ -24,6 +25,7 @@ SET status      = 'REJECTED',
     review_note = $3,
     updated_at  = NOW()
 WHERE id = $1
+  AND status = 'PENDING_REVIEW'
 RETURNING *;
 
 -- name: SubmitThemeForReview :one
@@ -51,6 +53,7 @@ SET status      = 'SUSPENDED',
     review_note = $3,
     updated_at  = NOW()
 WHERE id = $1
+  AND status IN ('PUBLISHED', 'PENDING_REVIEW')
 RETURNING *;
 
 -- name: SetUserTrustedCreator :exec
