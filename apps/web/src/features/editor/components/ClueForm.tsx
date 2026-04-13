@@ -52,6 +52,12 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
   const [isCommon, setIsCommon] = useState(false);
   const [sortOrder, setSortOrder] = useState(0);
 
+  // Item usage fields
+  const [isUsable, setIsUsable] = useState(false);
+  const [useEffect_, setUseEffect] = useState('peek');
+  const [useTarget, setUseTarget] = useState('player');
+  const [useConsumed, setUseConsumed] = useState(true);
+
   // Pending image for new clue (staged upload)
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
@@ -80,6 +86,10 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         setLevel(clue.level ?? 1);
         setIsCommon(clue.is_common ?? false);
         setSortOrder(clue.sort_order ?? 0);
+        setIsUsable(clue.is_usable ?? false);
+        setUseEffect(clue.use_effect ?? 'peek');
+        setUseTarget(clue.use_target ?? 'player');
+        setUseConsumed(clue.use_consumed ?? true);
       } else {
         setName('');
         setDescription('');
@@ -88,6 +98,10 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         setLevel(1);
         setIsCommon(false);
         setSortOrder(0);
+        setIsUsable(false);
+        setUseEffect('peek');
+        setUseTarget('player');
+        setUseConsumed(true);
       }
       setPendingImage(null);
       setPendingPreview(null);
@@ -155,6 +169,10 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       level,
       is_common: isCommon,
       sort_order: sortOrder,
+      is_usable: isUsable,
+      use_effect: isUsable ? useEffect_ : undefined,
+      use_target: isUsable ? useTarget : undefined,
+      use_consumed: isUsable ? useConsumed : undefined,
     };
 
     if (isEditMode) {
@@ -376,6 +394,76 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
                 <label htmlFor="clue-is-common" className="text-sm font-medium text-slate-300">
                   공개 단서 (모든 플레이어 공유)
                 </label>
+              </div>
+
+              {/* 아이템 설정 */}
+              <div className="border-t border-slate-800 pt-3 mt-3 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="clue-is-usable"
+                    type="checkbox"
+                    checked={isUsable}
+                    onChange={(e) => setIsUsable(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900"
+                  />
+                  <label htmlFor="clue-is-usable" className="text-sm font-medium text-slate-300">
+                    사용 가능 (아이템)
+                  </label>
+                </div>
+
+                {isUsable && (
+                  <div className="ml-6 space-y-3">
+                    {/* Effect */}
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="clue-use-effect" className="text-sm font-medium text-slate-300">
+                        효과
+                      </label>
+                      <select
+                        id="clue-use-effect"
+                        value={useEffect_}
+                        onChange={(e) => setUseEffect(e.target.value)}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="peek">엿보기 (Peek)</option>
+                        <option value="steal">강탈 (Steal)</option>
+                        <option value="reveal">공개 (Reveal)</option>
+                        <option value="block">차단 (Block)</option>
+                        <option value="swap">교환 (Swap)</option>
+                      </select>
+                    </div>
+
+                    {/* Target */}
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="clue-use-target" className="text-sm font-medium text-slate-300">
+                        대상
+                      </label>
+                      <select
+                        id="clue-use-target"
+                        value={useTarget}
+                        onChange={(e) => setUseTarget(e.target.value)}
+                        className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      >
+                        <option value="player">플레이어</option>
+                        <option value="clue">단서</option>
+                        <option value="self">자신</option>
+                      </select>
+                    </div>
+
+                    {/* Consumed */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="clue-use-consumed"
+                        type="checkbox"
+                        checked={useConsumed}
+                        onChange={(e) => setUseConsumed(e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900"
+                      />
+                      <label htmlFor="clue-use-consumed" className="text-sm font-medium text-slate-300">
+                        사용 후 소멸
+                      </label>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -96,6 +96,10 @@ export interface CreateClueRequest {
   is_common?: boolean;
   sort_order?: number;
   location_id?: string;
+  is_usable?: boolean;
+  use_effect?: string;
+  use_target?: string;
+  use_consumed?: boolean;
 }
 
 export interface UpdateClueRequest {
@@ -107,6 +111,10 @@ export interface UpdateClueRequest {
   is_common?: boolean;
   sort_order?: number;
   location_id?: string;
+  is_usable?: boolean;
+  use_effect?: string;
+  use_target?: string;
+  use_consumed?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +158,10 @@ export interface ClueResponse {
   clue_type: string;
   sort_order: number;
   created_at: string;
+  is_usable: boolean;
+  use_effect: string | null;
+  use_target: string | null;
+  use_consumed: boolean;
 }
 
 export interface ContentResponse {
