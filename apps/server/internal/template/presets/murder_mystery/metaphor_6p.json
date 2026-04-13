@@ -1,0 +1,61 @@
+{
+  "id": "murder_mystery_metaphor_6p",
+  "genre": "murder_mystery",
+  "name": "메타포 (6인)",
+  "description": "13단계 순차 진행, 밀담+아이템+투표, 히든 미션 기반 머더미스터리",
+  "version": "1.0.0",
+  "modules": [
+    {"id": "connection"},
+    {"id": "room"},
+    {"id": "ready", "config": {"totalPlayers": 6}},
+    {"id": "text_chat", "config": {"maxLength": 500}},
+    {"id": "whisper"},
+    {"id": "group_chat"},
+    {"id": "clue_interaction", "config": {
+      "drawLimit": 4,
+      "initialClueLevel": 1,
+      "cumulativeLevel": true,
+      "duplicatePolicy": "exclusive"
+    }},
+    {"id": "trade_clue"},
+    {"id": "script_progression"},
+    {"id": "reading"},
+    {"id": "voting", "config": {
+      "mode": "secret",
+      "minParticipation": 100,
+      "tieBreaker": "revote",
+      "maxRounds": 2
+    }},
+    {"id": "hidden_mission", "config": {
+      "verificationMode": "self_report",
+      "showResultAt": "ending",
+      "affectsScore": true
+    }},
+    {"id": "ending", "config": {
+      "showTimeline": true,
+      "showMissionScores": true
+    }},
+    {"id": "consensus_control"}
+  ],
+  "phases": [
+    {"id": "lobby", "name": "대기실"},
+    {"id": "prologue", "name": "사건의 배경", "actions": [{"action": "MUTE_CHAT", "target": "text_chat"}]},
+    {"id": "character_select", "name": "캐릭터 선택"},
+    {"id": "opening", "name": "오프닝", "actions": [{"action": "MUTE_CHAT", "target": "text_chat"}]},
+    {"id": "introduction", "name": "자기소개", "duration": 300, "actions": [{"action": "UNMUTE_CHAT", "target": "text_chat"}]},
+    {"id": "investigation_1", "name": "1차 조사", "duration": 900, "actions": [
+      {"action": "RESET_DRAW_COUNT", "target": "clue_interaction"},
+      {"action": "SET_CLUE_LEVEL", "target": "clue_interaction", "params": {"level": 1}}
+    ]},
+    {"id": "discussion_1", "name": "1차 토의", "duration": 1200},
+    {"id": "secret_reveal", "name": "시크릿카드"},
+    {"id": "investigation_2", "name": "2차 조사", "duration": 900, "actions": [
+      {"action": "RESET_DRAW_COUNT", "target": "clue_interaction"},
+      {"action": "SET_CLUE_LEVEL", "target": "clue_interaction", "params": {"level": 2}}
+    ]},
+    {"id": "discussion_2", "name": "2차 토의", "duration": 1200},
+    {"id": "voting", "name": "투표", "duration": 300, "actions": [{"action": "OPEN_VOTING", "target": "voting"}]},
+    {"id": "action", "name": "액션"},
+    {"id": "ending", "name": "엔딩", "actions": [{"action": "SHOW_ENDING", "target": "ending"}]}
+  ]
+}
