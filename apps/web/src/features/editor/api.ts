@@ -6,7 +6,7 @@ import { queryClient } from "@/services/queryClient";
 // Types
 // ---------------------------------------------------------------------------
 
-export type ThemeStatus = "DRAFT" | "PUBLISHED";
+export type ThemeStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "UNPUBLISHED" | "SUSPENDED";
 
 export interface EditorThemeSummary {
   id: string;
@@ -34,6 +34,9 @@ export interface EditorThemeResponse {
   config_json: Record<string, unknown> | null;
   version: number;
   created_at: string;
+  review_note: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
 }
 
 export interface EditorCharacterResponse {
@@ -235,6 +238,17 @@ export function useUnpublishTheme(themeId: string) {
   return useMutation<EditorThemeResponse, Error, void>({
     mutationFn: () =>
       api.post<EditorThemeResponse>(`/v1/editor/themes/${themeId}/unpublish`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.themes() });
+    },
+  });
+}
+
+export function useSubmitForReview(themeId: string) {
+  return useMutation<EditorThemeResponse, Error, void>({
+    mutationFn: () =>
+      api.post<EditorThemeResponse>(`/v1/editor/themes/${themeId}/submit-review`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.themes() });

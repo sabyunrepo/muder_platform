@@ -70,6 +70,9 @@ type ThemeResponse struct {
 	ConfigJson  json.RawMessage `json:"config_json,omitempty"`
 	Version     int32           `json:"version"`
 	CreatedAt   time.Time       `json:"created_at"`
+	ReviewNote  *string         `json:"review_note,omitempty"`
+	ReviewedAt  *time.Time      `json:"reviewed_at,omitempty"`
+	ReviewedBy  *uuid.UUID      `json:"reviewed_by,omitempty"`
 }
 
 type ThemeSummary struct {
@@ -118,6 +121,7 @@ type Service interface {
 	ListMyThemes(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
 	PublishTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
 	UnpublishTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	SubmitForReview(ctx context.Context, userID, themeID uuid.UUID) (*ThemeResponse, error)
 	CreateCharacter(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
 	UpdateCharacter(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
 	DeleteCharacter(ctx context.Context, creatorID, charID uuid.UUID) error
@@ -283,6 +287,7 @@ func (s *service) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*
 	return toThemeResponse(theme), nil
 }
 
+// PublishTheme directly publishes a theme (admin-only use).
 func (s *service) PublishTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
 	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
 	if err != nil {
@@ -316,6 +321,7 @@ func (s *service) PublishTheme(ctx context.Context, creatorID, themeID uuid.UUID
 	return toThemeResponse(updated), nil
 }
 
+// UnpublishTheme moves a published theme to UNPUBLISHED status.
 func (s *service) UnpublishTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
 	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
 	if err != nil {
@@ -325,13 +331,61 @@ func (s *service) UnpublishTheme(ctx context.Context, creatorID, themeID uuid.UU
 		return nil, apperror.BadRequest("only published themes can be unpublished")
 	}
 
-	updated, err := s.q.UpdateThemeStatus(ctx, db.UpdateThemeStatusParams{
-		ID:     theme.ID,
-		Status: "DRAFT",
-	})
+	updated, err := s.q.UnpublishTheme(ctx, theme.ID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to unpublish theme")
 		return nil, apperror.Internal("failed to unpublish theme")
+	}
+	return toThemeResponse(updated), nil
+}
+
+// SubmitForReview submits a theme for admin review.
+// Trusted creators are auto-approved and published immediately.
+func (s *service) SubmitForReview(ctx context.Context, userID, themeID uuid.UUID) (*ThemeResponse, error) {
+	theme, err := s.getOwnedTheme(ctx, userID, themeID)
+	if err != nil {
+		return nil, err
+	}
+
+	if theme.Status != "DRAFT" && theme.Status != "REJECTED" {
+		return nil, apperror.BadRequest("only draft or rejected themes can be submitted for review")
+	}
+
+	charCount, err := s.q.CountThemeCharacters(ctx, theme.ID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to count characters")
+		return nil, apperror.Internal("failed to count characters")
+	}
+	if charCount < int64(theme.MinPlayers) {
+		return nil, apperror.BadRequest(fmt.Sprintf("theme requires at least %d characters, has %d", theme.MinPlayers, charCount))
+	}
+	if len(theme.ConfigJson) == 0 || string(theme.ConfigJson) == "{}" || string(theme.ConfigJson) == "null" {
+		return nil, apperror.BadRequest("theme config_json must be set before submitting")
+	}
+
+	trusted, err := s.q.GetUserTrustedCreator(ctx, userID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to check trusted creator status")
+		return nil, apperror.Internal("failed to check trusted creator status")
+	}
+
+	if trusted {
+		updated, err := s.q.ApproveTheme(ctx, db.ApproveThemeParams{
+			ID:         theme.ID,
+			ReviewedBy: pgtype.UUID{Bytes: userID, Valid: true},
+			ReviewNote: pgtype.Text{String: "auto-approved (trusted creator)", Valid: true},
+		})
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to auto-approve theme")
+			return nil, apperror.Internal("failed to auto-approve theme")
+		}
+		return toThemeResponse(updated), nil
+	}
+
+	updated, err := s.q.SubmitThemeForReview(ctx, theme.ID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to submit theme for review")
+		return nil, apperror.Internal("failed to submit theme for review")
 	}
 	return toThemeResponse(updated), nil
 }
@@ -884,6 +938,19 @@ func toThemeResponse(t db.Theme) *ThemeResponse {
 	}
 	if len(t.ConfigJson) > 0 && string(t.ConfigJson) != "null" {
 		resp.ConfigJson = t.ConfigJson
+	}
+	if t.ReviewNote.Valid {
+		s := t.ReviewNote.String
+		resp.ReviewNote = &s
+	}
+	if t.ReviewedAt.Valid {
+		ts := t.ReviewedAt.Time
+		resp.ReviewedAt = &ts
+	}
+	if t.ReviewedBy.Valid {
+		id := t.ReviewedBy.Bytes
+		uid := uuid.UUID(id)
+		resp.ReviewedBy = &uid
 	}
 	return resp
 }

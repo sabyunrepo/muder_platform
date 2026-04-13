@@ -221,6 +221,9 @@ type Theme struct {
 	CreatedAt   time.Time          `json:"created_at"`
 	UpdatedAt   time.Time          `json:"updated_at"`
 	CoinPrice   int32              `json:"coin_price"`
+	ReviewNote  pgtype.Text        `json:"review_note"`
+	ReviewedAt  pgtype.Timestamptz `json:"reviewed_at"`
+	ReviewedBy  pgtype.UUID        `json:"reviewed_by"`
 }
 
 type ThemeCharacter struct {
@@ -320,6 +323,7 @@ type User struct {
 	CoinBalanceBonus int64              `json:"coin_balance_bonus"`
 	PasswordHash     pgtype.Text        `json:"password_hash"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	TrustedCreator   bool               `json:"trusted_creator"`
 }
 
 type UserBlock struct {

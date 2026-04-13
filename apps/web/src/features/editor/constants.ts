@@ -23,12 +23,20 @@ export type EditorTab = (typeof EDITOR_TABS)[number]["key"];
 
 export const STATUS_LABEL: Record<ThemeStatus, string> = {
   DRAFT: "초안",
+  PENDING_REVIEW: "심사 대기",
   PUBLISHED: "출판됨",
+  REJECTED: "반려됨",
+  UNPUBLISHED: "비공개",
+  SUSPENDED: "정지됨",
 };
 
 export const STATUS_COLOR: Record<ThemeStatus, string> = {
   DRAFT: "bg-slate-600 text-slate-200",
+  PENDING_REVIEW: "bg-amber-600 text-amber-100",
   PUBLISHED: "bg-emerald-600 text-emerald-100",
+  REJECTED: "bg-red-600 text-red-100",
+  UNPUBLISHED: "bg-slate-500 text-slate-200",
+  SUSPENDED: "bg-red-800 text-red-200",
 };
 
 // ---------------------------------------------------------------------------

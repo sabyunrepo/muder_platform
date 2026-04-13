@@ -143,6 +143,23 @@ func (h *Handler) UnpublishTheme(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
+// SubmitForReview handles POST /editor/themes/{id}/submit-review.
+func (h *Handler) SubmitForReview(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	themeID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	resp, err := h.svc.SubmitForReview(r.Context(), userID, themeID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
 // CreateCharacter handles POST /editor/themes/{id}/characters.
 func (h *Handler) CreateCharacter(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())

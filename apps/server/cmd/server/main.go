@@ -208,6 +208,7 @@ func main() {
 	coinHandler := coin.NewHandler(coinSvc)
 	creatorHandler := creator.NewHandler(creatorSvc)
 	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
+	reviewHandler := admin.NewReviewHandler(queries, logger)
 
 	// 10. WebSocket Hub (Game)
 	wsRouter := ws.NewRouter(logger)
@@ -271,9 +272,6 @@ func main() {
 	r.Get("/ws/game", gameUpgrade)
 
 	socialExtractor := ws.JWTPlayerIDExtractor([]byte(cfg.JWTSecret))
-	if cfg.IsDevelopment() {
-		socialExtractor = ws.DefaultPlayerIDExtractor
-	}
 	socialUpgrade := ws.UpgradeHandler(socialHub, socialExtractor, wsCfg, logger)
 	r.Get("/ws/social", socialUpgrade)
 
@@ -378,16 +376,16 @@ func main() {
 				r.Get("/settlements", creatorHandler.ListSettlements)
 			})
 
-			// --- Editor endpoints (CREATOR, ADMIN) ---
+			// --- Editor endpoints (any authenticated user) ---
 			r.Route("/editor", func(r chi.Router) {
-				r.Use(middleware.RequireRole("CREATOR", "ADMIN"))
-
 				r.Get("/themes", editorHandler.ListMyThemes)
+				r.Get("/themes/{id}", editorHandler.GetTheme)
 				r.Post("/themes", editorHandler.CreateTheme)
 				r.Put("/themes/{id}", editorHandler.UpdateTheme)
 				r.Delete("/themes/{id}", editorHandler.DeleteTheme)
 				r.Post("/themes/{id}/publish", editorHandler.PublishTheme)
 				r.Post("/themes/{id}/unpublish", editorHandler.UnpublishTheme)
+				r.Post("/themes/{id}/submit-review", editorHandler.SubmitForReview)
 				r.Get("/themes/{id}/characters", editorHandler.ListCharacters)
 				r.Post("/themes/{id}/characters", editorHandler.CreateCharacter)
 				r.Put("/characters/{id}", editorHandler.UpdateCharacter)
@@ -435,10 +433,17 @@ func main() {
 				r.Get("/users", adminHandler.ListUsers)
 				r.Get("/users/{id}", adminHandler.GetUser)
 				r.Put("/users/{id}/role", adminHandler.UpdateUserRole)
+				r.Put("/users/{id}/trusted-creator", reviewHandler.SetTrustedCreator)
 				r.Get("/themes", adminHandler.ListAllThemes)
 				r.Post("/themes/{id}/unpublish", adminHandler.ForceUnpublishTheme)
 				r.Get("/rooms", adminHandler.ListAllRooms)
 				r.Post("/rooms/{id}/close", adminHandler.ForceCloseRoom)
+
+				// Review workflow
+				r.Get("/reviews", reviewHandler.ListPendingReviews)
+				r.Post("/reviews/{id}/approve", reviewHandler.ApproveTheme)
+				r.Post("/reviews/{id}/reject", reviewHandler.RejectTheme)
+				r.Post("/reviews/{id}/suspend", reviewHandler.SuspendTheme)
 
 				// Settlement & revenue
 				r.Get("/settlements", creatorAdminHandler.ListAllSettlements)
