@@ -10,3 +10,5 @@ export { GameChat } from "./GameChat";
 export { ChatMessage } from "./ChatMessage";
 export type { ChatMessageProps } from "./ChatMessage";
 export { NetworkOverlay } from "./NetworkOverlay";
+export { HiddenMissionCard } from "./HiddenMissionCard";
+export { MissionResultOverlay } from "./MissionResultOverlay";

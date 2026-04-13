@@ -3,7 +3,7 @@ import { useParams, Navigate } from "react-router";
 import { GamePhase } from "@mmp/shared";
 import type { WsEventType } from "@mmp/shared";
 import { WsClientState } from "@mmp/ws-client";
-import { MessageSquare, AlertTriangle } from "lucide-react";
+import { MessageSquare, AlertTriangle, Target } from "lucide-react";
 
 import { Spinner, Button } from "@/shared/components/ui";
 import { useWsClient } from "@/hooks/useWsClient";
@@ -17,6 +17,8 @@ import {
   CluePanel,
   ExplorationPanel,
   NetworkOverlay,
+  HiddenMissionCard,
+  MissionResultOverlay,
 } from "@/features/game/components";
 import { AudioProvider } from "@/features/audio/AudioProvider";
 import { GameErrorBoundary } from "@/components/error";
@@ -75,6 +77,8 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
   });
   useGameSync();
 
+  const [isMissionOpen, setIsMissionOpen] = useState(false);
+
   // unmount 시 게임/모듈 스토어 정리
   useEffect(() => {
     return () => {
@@ -117,11 +121,42 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
     <AudioProvider>
     <GameErrorBoundary>
     <NetworkOverlay />
+    {/* 미션 결과 오버레이 (RESULT 페이즈) */}
+    {phase === GamePhase.RESULT && <MissionResultOverlay />}
+    {/* 미션 카드 모달 (게임 활성화 중) */}
+    {isMissionOpen && isGameActive && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+        <div className="w-full max-w-md">
+          <HiddenMissionCard send={send} />
+          <button
+            type="button"
+            onClick={() => setIsMissionOpen(false)}
+            className="mt-3 w-full rounded-lg border border-slate-700 bg-slate-800 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
+    )}
     <div className="flex h-screen flex-col bg-slate-950">
       {/* 상단: GameHUD */}
       <Suspense fallback={null}>
         <GameHUD />
       </Suspense>
+
+      {/* 미션 토글 버튼 (게임 활성화 중, RESULT 제외) */}
+      {isGameActive && phase !== GamePhase.RESULT && (
+        <div className="flex justify-end border-b border-slate-800 bg-slate-900/80 px-4 py-1.5">
+          <button
+            type="button"
+            onClick={() => setIsMissionOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-amber-400"
+          >
+            <Target className="h-4 w-4" />
+            비밀 임무
+          </button>
+        </div>
+      )}
 
       {/* 페이즈 전환 오버레이 */}
       <Suspense fallback={null}>
