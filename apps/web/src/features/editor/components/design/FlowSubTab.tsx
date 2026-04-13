@@ -12,6 +12,7 @@ import { PhaseTimeline } from './PhaseTimeline';
 export type PhaseType = 'intro' | 'investigation' | 'discussion' | 'voting' | 'reveal' | 'result';
 
 export interface PhaseConfig {
+  id: string;
   type: PhaseType;
   label: string;
   duration: number;
@@ -22,20 +23,25 @@ export interface PhaseConfig {
 // Preset
 // ---------------------------------------------------------------------------
 
-const STANDARD_PRESET: PhaseConfig[] = [
-  { type: 'intro',         label: '소개', duration: 10, rounds: 1 },
-  { type: 'investigation', label: '조사', duration: 20, rounds: 1 },
-  { type: 'discussion',    label: '토론', duration: 15, rounds: 1 },
-  { type: 'voting',        label: '투표', duration:  5, rounds: 1 },
-  { type: 'reveal',        label: '공개', duration: 10, rounds: 1 },
-];
+function makePreset(): PhaseConfig[] {
+  return [
+    { id: crypto.randomUUID(), type: 'intro',         label: '소개', duration: 10, rounds: 1 },
+    { id: crypto.randomUUID(), type: 'investigation', label: '조사', duration: 20, rounds: 1 },
+    { id: crypto.randomUUID(), type: 'discussion',    label: '토론', duration: 15, rounds: 1 },
+    { id: crypto.randomUUID(), type: 'voting',        label: '투표', duration:  5, rounds: 1 },
+    { id: crypto.randomUUID(), type: 'reveal',        label: '공개', duration: 10, rounds: 1 },
+  ];
+}
 
-const DEFAULT_NEW_PHASE: PhaseConfig = {
-  type: 'investigation',
-  label: '조사',
-  duration: 10,
-  rounds: 1,
-};
+function makeNewPhase(): PhaseConfig {
+  return {
+    id: crypto.randomUUID(),
+    type: 'investigation',
+    label: '조사',
+    duration: 10,
+    rounds: 1,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -61,6 +67,13 @@ export function FlowSubTab({ themeId, theme }: FlowSubTabProps) {
 
   const [phases, setPhases] = useState<PhaseConfig[]>(serverPhases);
 
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   // Sync when server data changes
   useEffect(() => {
     setPhases(serverPhases());
@@ -84,13 +97,14 @@ export function FlowSubTab({ themeId, theme }: FlowSubTabProps) {
   );
 
   const applyPreset = () => {
-    setPhases(STANDARD_PRESET);
-    persist(STANDARD_PRESET);
+    const preset = makePreset();
+    setPhases(preset);
+    persist(preset);
   };
 
   const handleAdd = (afterIndex: number) => {
     const next = [...phases];
-    next.splice(afterIndex + 1, 0, { ...DEFAULT_NEW_PHASE });
+    next.splice(afterIndex + 1, 0, makeNewPhase());
     setPhases(next);
     persist(next);
   };

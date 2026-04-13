@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -69,6 +69,7 @@ const baseTheme = {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -78,6 +79,7 @@ afterEach(() => {
 
 describe('CharacterAssignPanel', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     useEditorCharactersMock.mockReturnValue({ data: mockCharacters, isLoading: false });
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: false });
@@ -101,24 +103,26 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('비밀 편지')).toBeDefined();
   });
 
-  it('단서 체크 시 mutate가 호출된다', () => {
+  it('단서 체크 시 mutate가 호출된다', async () => {
     render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
     fireEvent.click(screen.getByText('홍길동'));
 
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
 
+    await act(async () => { vi.advanceTimersByTime(500); });
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const cc = config.character_clues as Record<string, string[]>;
     expect(cc['char-1']).toContain('clue-1');
   });
 
-  it('미션 추가 버튼이 동작한다', () => {
+  it('미션 추가 버튼이 동작한다', async () => {
     render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
     fireEvent.click(screen.getByText('홍길동'));
     fireEvent.click(screen.getByText('추가'));
 
+    await act(async () => { vi.advanceTimersByTime(500); });
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const cm = config.character_missions as Record<string, unknown[]>;

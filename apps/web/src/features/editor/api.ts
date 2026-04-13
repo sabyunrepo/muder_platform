@@ -458,11 +458,6 @@ export function useDeleteClue(themeId: string) {
 // Map types
 // ---------------------------------------------------------------------------
 
-export interface CreateMapRequest {
-  name: string;
-  image_url?: string;
-}
-
 export interface UpdateMapRequest {
   name?: string;
   image_url?: string;

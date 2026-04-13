@@ -46,7 +46,7 @@ export function PhaseTimeline({ phases, onAdd, onChange, onDelete, onMove }: Pha
           </div>
         ) : (
           phases.map((phase, i) => (
-            <div key={i} className="flex shrink-0 items-start gap-2">
+            <div key={phase.id} className="flex shrink-0 items-start gap-2">
               {/* Connector line */}
               <div className="mt-[22px] h-px w-4 shrink-0 bg-slate-700" />
 

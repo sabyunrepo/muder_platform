@@ -556,6 +556,7 @@ func (h *Handler) ValidateTheme(w http.ResponseWriter, r *http.Request) {
 
 // GetModuleSchemas handles GET /editor/module-schemas.
 func (h *Handler) GetModuleSchemas(w http.ResponseWriter, r *http.Request) {
+	_ = middleware.UserIDFrom(r.Context()) // auth gate
 	schemas, err := h.svc.GetModuleSchemas(r.Context())
 	if err != nil {
 		apperror.WriteError(w, r, err)

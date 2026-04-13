@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from 'react';
-import { User, Plus, Trash2 } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { User } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import {
@@ -7,29 +7,17 @@ import {
   useEditorClues,
   useUpdateConfigJson,
 } from '@/features/editor/api';
+import { MissionEditor } from './MissionEditor';
+import type { Mission } from './MissionEditor';
 
 // ---------------------------------------------------------------------------
-// Types
+// Props
 // ---------------------------------------------------------------------------
-
-interface Mission {
-  id: string;
-  type: string;
-  description: string;
-  points: number;
-}
 
 interface CharacterAssignPanelProps {
   themeId: string;
   theme: EditorThemeResponse;
 }
-
-const MISSION_TYPES = [
-  { value: 'find', label: '찾기' },
-  { value: 'protect', label: '보호' },
-  { value: 'sabotage', label: '방해' },
-  { value: 'observe', label: '관찰' },
-];
 
 // ---------------------------------------------------------------------------
 // CharacterAssignPanel
@@ -40,6 +28,14 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const { data: clues } = useEditorClues(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<Record<string, unknown> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const characterClues = useMemo((): Record<string, string[]> => {
     const cc = (theme.config_json ?? {}).character_clues;
@@ -55,13 +51,16 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
   const saveConfig = useCallback(
     (updates: Record<string, unknown>) => {
-      updateConfig.mutate(
-        { ...(theme.config_json ?? {}), ...updates },
-        {
+      pendingRef.current = { ...(theme.config_json ?? {}), ...updates };
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        if (!pendingRef.current) return;
+        updateConfig.mutate(pendingRef.current, {
           onSuccess: () => toast.success('저장되었습니다'),
           onError: () => toast.error('저장에 실패했습니다'),
-        },
-      );
+        });
+        pendingRef.current = null;
+      }, 500);
     },
     [theme.config_json, updateConfig],
   );
@@ -81,10 +80,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
     (charId: string) => {
       const current = characterMissions[charId] ?? [];
       const mission: Mission = {
-        id: crypto.randomUUID(),
-        type: 'find',
-        description: '',
-        points: 10,
+        id: crypto.randomUUID(), type: 'find', description: '', points: 10,
       };
       saveConfig({
         character_missions: { ...characterMissions, [charId]: [...current, mission] },
@@ -200,79 +196,12 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
             </div>
 
             {/* 히든 미션 */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="text-xs font-medium text-slate-400">히든 미션</h4>
-                <button
-                  type="button"
-                  onClick={() => handleAddMission(selectedCharId!)}
-                  className="flex items-center gap-1 text-xs text-amber-400 hover:text-amber-300"
-                >
-                  <Plus className="h-3 w-3" />
-                  추가
-                </button>
-              </div>
-              {charMissions.length > 0 ? (
-                <div className="space-y-3">
-                  {charMissions.map((mission) => (
-                    <div
-                      key={mission.id}
-                      className="rounded border border-slate-800 bg-slate-900 p-3"
-                    >
-                      <div className="mb-2 flex items-center justify-between">
-                        <select
-                          value={mission.type}
-                          onChange={(e) =>
-                            handleMissionChange(selectedCharId!, mission.id, 'type', e.target.value)
-                          }
-                          className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
-                        >
-                          {MISSION_TYPES.map((t) => (
-                            <option key={t.value} value={t.value}>
-                              {t.label}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMission(selectedCharId!, mission.id)}
-                          aria-label="미션 삭제"
-                          className="text-slate-600 hover:text-red-400"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                      <input
-                        type="text"
-                        value={mission.description}
-                        onChange={(e) =>
-                          handleMissionChange(
-                            selectedCharId!, mission.id, 'description', e.target.value,
-                          )
-                        }
-                        placeholder="미션 설명"
-                        className="mb-2 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
-                      />
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">포인트:</span>
-                        <input
-                          type="number"
-                          value={mission.points}
-                          onChange={(e) =>
-                            handleMissionChange(
-                              selectedCharId!, mission.id, 'points', Number(e.target.value),
-                            )
-                          }
-                          className="w-16 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-600">미션이 없습니다</p>
-              )}
-            </div>
+            <MissionEditor
+              missions={charMissions}
+              onAdd={() => handleAddMission(selectedCharId!)}
+              onChange={(mid, field, val) => handleMissionChange(selectedCharId!, mid, field, val)}
+              onDelete={(mid) => handleDeleteMission(selectedCharId!, mid)}
+            />
           </div>
         ) : (
           <div className="flex h-full items-center justify-center">
