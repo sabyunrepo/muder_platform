@@ -35,12 +35,12 @@
 
 ## Wave 3 (병렬)
 ### PR-5: 단서→장소 배치 UI
-- [ ] CluePlacementPanel 컴포넌트
-- [ ] 좌: 미배치 단서 목록, 우: 장소별 단서 목록
-- [ ] 단서를 장소로 드래그앤드롭 또는 select 배정
-- [ ] config_json.clue_placement에 저장
-- [ ] "배치" 서브탭 (단서 탭)에 배치
-- [ ] Vitest 테스트
+- [x] CluePlacementPanel 컴포넌트
+- [x] 좌: 미배치 단서 목록, 우: 장소별 단서 목록
+- [x] 단서를 장소로 드래그앤드롭 또는 select 배정
+- [x] config_json.clue_placement에 저장
+- [x] "배치" 서브탭 (단서 탭)에 배치
+- [x] Vitest 테스트
 
 ### PR-6: 캐릭터→단서/미션 배정 UI
 - [ ] CharacterAssignPanel 컴포넌트
