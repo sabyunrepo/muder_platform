@@ -4,6 +4,7 @@ import type { EditorThemeResponse } from '@/features/editor/api';
 import { useUpdateConfigJson } from '@/features/editor/api';
 import { MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { ModuleInfo } from '@/features/editor/constants';
+import { LocationsSubTab } from './design/LocationsSubTab';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,11 +15,23 @@ interface DesignTabProps {
   theme: EditorThemeResponse;
 }
 
+type DesignSubTab = 'modules' | 'locations';
+
+const DESIGN_SUBTABS: { key: DesignSubTab; label: string }[] = [
+  { key: 'modules', label: '모듈' },
+  { key: 'locations', label: '장소' },
+];
+
 // ---------------------------------------------------------------------------
-// DesignTab
+// ModulesPanel — extracted from original DesignTab
 // ---------------------------------------------------------------------------
 
-export function DesignTab({ themeId, theme }: DesignTabProps) {
+interface ModulesPanelProps {
+  themeId: string;
+  theme: EditorThemeResponse;
+}
+
+function ModulesPanel({ themeId, theme }: ModulesPanelProps) {
   const serverModules = useMemo(
     () => {
       const cfg = theme.config_json ?? {};
@@ -42,7 +55,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
         ? prev.filter((id) => id !== moduleId)
         : [...prev, moduleId];
 
-      // Auto-save on toggle using latest server config to avoid stale closure
       updateConfig.mutate(
         { ...(theme.config_json ?? {}), modules: next },
         {
@@ -76,7 +88,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
 
           return (
             <div key={category.key} className="mb-4">
-              {/* Category header */}
               <div className="flex items-center justify-between px-4 pb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
                   {category.label}
@@ -86,7 +97,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
                 </span>
               </div>
 
-              {/* Module rows */}
               {category.modules.map((mod) => {
                 const isEnabled = selectedModules.includes(mod.id);
                 const isActive = activeModuleId === mod.id;
@@ -102,7 +112,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
                         : 'border-transparent text-slate-500 hover:bg-slate-900/50 hover:text-slate-300'
                     }`}
                   >
-                    {/* Toggle dot */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -131,7 +140,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {activeModule ? (
           <div className="max-w-lg">
-            {/* Module header */}
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-1">
                 <span
@@ -148,7 +156,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
               <p className="ml-[22px] text-xs text-slate-500">{activeModule.description}</p>
             </div>
 
-            {/* Toggle */}
             <div className="rounded-sm border border-slate-800 bg-slate-900 px-4 py-3 flex items-center justify-between">
               <span className="text-xs text-slate-400">모듈 활성화</span>
               <button
@@ -171,7 +178,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
               </button>
             </div>
 
-            {/* Settings placeholder */}
             <div className="mt-4 rounded-sm border border-dashed border-slate-800 px-4 py-8 text-center">
               <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
                 모듈 설정 — 추후 구현
@@ -186,6 +192,48 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
               </div>
             </div>
           </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DesignTab
+// ---------------------------------------------------------------------------
+
+export function DesignTab({ themeId, theme }: DesignTabProps) {
+  const [activeSubTab, setActiveSubTab] = useState<DesignSubTab>('modules');
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Sub-tab nav */}
+      <div className="flex h-9 shrink-0 items-center gap-1 border-b border-slate-800 bg-slate-950 px-4">
+        {DESIGN_SUBTABS.map((sub) => {
+          const isActive = activeSubTab === sub.key;
+          return (
+            <button
+              key={sub.key}
+              type="button"
+              onClick={() => setActiveSubTab(sub.key)}
+              className={`relative h-full px-3 text-xs font-medium transition-colors ${
+                isActive
+                  ? 'text-amber-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500'
+                  : 'text-slate-500 hover:text-slate-300'
+              }`}
+            >
+              {sub.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Sub-tab content */}
+      <div className="flex-1 overflow-hidden">
+        {activeSubTab === 'modules' ? (
+          <ModulesPanel themeId={themeId} theme={theme} />
+        ) : (
+          <LocationsSubTab themeId={themeId} theme={theme} />
         )}
       </div>
     </div>
