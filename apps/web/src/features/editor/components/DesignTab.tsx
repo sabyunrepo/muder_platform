@@ -4,6 +4,7 @@ import type { EditorThemeResponse } from '@/features/editor/api';
 import { useUpdateConfigJson } from '@/features/editor/api';
 import { MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { ModuleInfo } from '@/features/editor/constants';
+import { SettingsSubTab } from '@/features/editor/components/design/SettingsSubTab';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -171,12 +172,12 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
               </button>
             </div>
 
-            {/* Settings placeholder */}
-            <div className="mt-4 rounded-sm border border-dashed border-slate-800 px-4 py-8 text-center">
-              <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
-                모듈 설정 — 추후 구현
-              </p>
-            </div>
+            {/* Module settings */}
+            <SettingsSubTab
+              themeId={themeId}
+              theme={theme}
+              moduleId={activeModule.id}
+            />
           </div>
         ) : (
           <div className="flex h-full items-center justify-center">

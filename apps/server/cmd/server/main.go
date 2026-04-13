@@ -426,6 +426,8 @@ func main() {
 				r.Delete("/reading-sections/{id}", readingHandler.DeleteReadingSection)
 				// Validation
 				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
+				// Module schemas
+				r.Get("/module-schemas", editorHandler.GetModuleSchemas)
 			})
 
 			// --- Admin endpoints (ADMIN only) ---

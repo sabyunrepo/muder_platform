@@ -150,6 +150,12 @@ export interface ValidationResponse {
 // Query Keys
 // ---------------------------------------------------------------------------
 
+export type JSONSchema = import("@/features/editor/templateApi").JSONSchemaProperty;
+
+export interface ModuleSchemasResponse {
+  schemas: Record<string, JSONSchema>;
+}
+
 export const editorKeys = {
   all: ["editor"] as const,
   themes: () => [...editorKeys.all, "themes"] as const,
@@ -164,6 +170,7 @@ export const editorKeys = {
     [...editorKeys.all, "themes", themeId, "clues"] as const,
   content: (themeId: string, key: string) =>
     [...editorKeys.all, "themes", themeId, "content", key] as const,
+  moduleSchemas: () => [...editorKeys.all, "module-schemas"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -307,6 +314,18 @@ export function useCreateCharacter(themeId: string) {
       queryClient.invalidateQueries({ queryKey: editorKeys.characters(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Module Schemas
+// ---------------------------------------------------------------------------
+
+export function useModuleSchemas() {
+  return useQuery<ModuleSchemasResponse>({
+    queryKey: editorKeys.moduleSchemas(),
+    queryFn: () => api.get<ModuleSchemasResponse>("/v1/editor/module-schemas"),
+    staleTime: 5 * 60 * 1000, // schemas are static; cache for 5 min
   });
 }
 

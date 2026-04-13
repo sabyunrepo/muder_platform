@@ -21,6 +21,7 @@ import (
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/engine"
 )
 
 const (
@@ -151,6 +152,9 @@ type Service interface {
 
 	// Validation
 	ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ValidationResponse, error)
+
+	// Module schemas
+	GetModuleSchemas(ctx context.Context) (map[string]json.RawMessage, error)
 }
 
 // --- Implementation ---
@@ -962,4 +966,25 @@ func pgtypeUUIDToPtr(u pgtype.UUID) *uuid.UUID {
 	}
 	id := uuid.UUID(u.Bytes)
 	return &id
+}
+
+// GetModuleSchemas returns JSON Schema for all registered modules that implement ConfigSchema.
+func (s *service) GetModuleSchemas(_ context.Context) (map[string]json.RawMessage, error) {
+	names := engine.RegisteredModules()
+	schemas := make(map[string]json.RawMessage, len(names))
+
+	for _, name := range names {
+		mod, err := engine.CreateModule(name)
+		if err != nil {
+			s.logger.Warn().Str("module", name).Err(err).Msg("failed to create module for schema collection")
+			continue
+		}
+		cs, ok := mod.(engine.ConfigSchema)
+		if !ok {
+			continue
+		}
+		schemas[name] = cs.Schema()
+	}
+
+	return schemas, nil
 }
