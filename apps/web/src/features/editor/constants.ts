@@ -88,8 +88,8 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     label: "소통",
     modules: [
       { id: "text_chat", name: "텍스트 채팅", description: "전체/그룹 채팅", supported: true, required: false },
-      { id: "whisper", name: "귓속말", description: "1:1 비밀 메시지", supported: false, required: false },
-      { id: "group_chat", name: "그룹 채팅", description: "소그룹 채팅방", supported: false, required: false },
+      { id: "whisper", name: "귓속말", description: "1:1 비밀 메시지", supported: true, required: false },
+      { id: "group_chat", name: "그룹 채팅", description: "소그룹 채팅방", supported: true, required: false },
       { id: "voice_chat", name: "음성 채팅", description: "실시간 음성 통화", supported: false, required: false },
       { id: "spatial_voice", name: "공간 음성", description: "위치 기반 음성", supported: false, required: false },
     ],
