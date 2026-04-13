@@ -5,9 +5,10 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, useUpdateConfigJsonMock } = vi.hoisted(() => ({
+const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
+  useModuleSchemasMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -20,6 +21,13 @@ vi.mock('sonner', () => ({
 
 vi.mock('@/features/editor/api', () => ({
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
+  useModuleSchemas: () => useModuleSchemasMock(),
+}));
+
+vi.mock('@/features/editor/templateApi', () => ({}));
+
+vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
+  SchemaDrivenForm: () => null,
 }));
 
 vi.mock('@/features/editor/constants', () => ({
@@ -32,6 +40,7 @@ vi.mock('@/features/editor/constants', () => ({
       ],
     },
   ],
+  REQUIRED_MODULE_IDS: ['connection'],
 }));
 
 // ---------------------------------------------------------------------------
@@ -76,6 +85,7 @@ afterEach(() => {
 describe('DesignTab', () => {
   beforeEach(() => {
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: false });
+    useModuleSchemasMock.mockReturnValue({ data: null, isLoading: false });
   });
 
   it('서브탭 5개를 모두 렌더링한다', () => {
@@ -121,7 +131,7 @@ describe('DesignTab', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
     fireEvent.click(screen.getByText('설정'));
-    expect(screen.getByText('모듈 설정 — 다음 PR에서 구현')).toBeDefined();
+    expect(screen.getByText('설정 가능한 모듈이 없습니다')).toBeDefined();
   });
 
   it('모듈 탭이 기본 선택되어 모듈 사이드바가 표시된다', () => {
