@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button, Badge } from "@/shared/components/ui";
 import type { EditorThemeResponse } from "@/features/editor/api";
 import { useUpdateConfigJson } from "@/features/editor/api";
-import { MODULE_CATEGORIES } from "@/features/editor/constants";
+import { MODULE_CATEGORIES, REQUIRED_MODULE_IDS } from "@/features/editor/constants";
 import type { ModuleCategory } from "@/features/editor/constants";
 
 // ---------------------------------------------------------------------------
@@ -96,21 +96,33 @@ function CategorySection({
           <div className="space-y-2">
             {category.modules.map((mod) => {
               const checked = selectedModules.includes(mod.id);
+              const isRequired = mod.required;
+              const isDisabled = isPending || !mod.supported || isRequired;
               return (
                 <label
                   key={mod.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-md px-2 py-1.5 transition-colors hover:bg-slate-700/50"
+                  className={`flex items-start gap-3 rounded-md px-2 py-1.5 transition-colors ${
+                    isDisabled
+                      ? 'cursor-not-allowed opacity-40'
+                      : 'cursor-pointer hover:bg-slate-700/50'
+                  }`}
                 >
                   <input
                     type="checkbox"
-                    checked={checked}
-                    disabled={isPending}
+                    checked={isRequired ? true : checked}
+                    disabled={isDisabled}
                     onChange={() => onToggle(mod.id)}
                     className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500"
                   />
                   <div className="min-w-0">
                     <span className="block text-sm font-medium text-slate-200">
                       {mod.name}
+                      {isRequired && (
+                        <span className="ml-1.5 text-[10px] font-normal text-amber-500/60">(필수)</span>
+                      )}
+                      {!mod.supported && !isRequired && (
+                        <span className="ml-1.5 text-[10px] font-normal text-slate-600">(미지원)</span>
+                      )}
                     </span>
                     <span className="block text-xs text-slate-400">
                       {mod.description}
@@ -133,7 +145,11 @@ function CategorySection({
 export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   const configJson = theme.config_json ?? {};
   const serverModules = useMemo(
-    () => (Array.isArray(configJson.modules) ? (configJson.modules as string[]) : []),
+    () => {
+      const mods = Array.isArray(configJson.modules) ? (configJson.modules as string[]) : [];
+      // 코어 모듈 항상 포함
+      return Array.from(new Set([...REQUIRED_MODULE_IDS, ...mods]));
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [JSON.stringify(configJson.modules)],
   );
@@ -150,6 +166,8 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
 
   const handleToggle = useCallback(
     (moduleId: string) => {
+      // 필수 모듈은 토글 불가
+      if (REQUIRED_MODULE_IDS.includes(moduleId)) return;
       setSelectedModules((prev) =>
         prev.includes(moduleId)
           ? prev.filter((id) => id !== moduleId)
@@ -171,7 +189,8 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   const handleDeselectAll = useCallback(
     (moduleIds: string[]) => {
       setSelectedModules((prev) =>
-        prev.filter((id) => !moduleIds.includes(id)),
+        // 필수 모듈은 해제 불가
+        prev.filter((id) => !moduleIds.includes(id) || REQUIRED_MODULE_IDS.includes(id)),
       );
     },
     [],
