@@ -51,3 +51,27 @@ export interface GameState {
   phaseDeadline: number | null;
   createdAt: number;
 }
+
+/** Clue item use events (WebSocket). */
+export interface ClueItemDeclaredEvent {
+  userId: string;
+  clueName: string;
+}
+
+export interface ClueUsePromptEvent {
+  effect: string;
+  targetType: string;
+}
+
+export interface ClueUseResultEvent {
+  clueDetail: {
+    id: string;
+    title: string;
+    description: string | null;
+    category: string;
+  };
+}
+
+export interface ClueItemResolvedEvent {
+  userId: string;
+}
