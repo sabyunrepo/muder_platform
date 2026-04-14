@@ -134,3 +134,8 @@ export const REQUIRED_MODULE_IDS = MODULE_CATEGORIES
   .flatMap((c) => c.modules)
   .filter((m) => m.required)
   .map((m) => m.id);
+
+export const OPTIONAL_MODULE_CATEGORIES = MODULE_CATEGORIES.map((cat) => ({
+  ...cat,
+  modules: cat.modules.filter((m) => !m.required),
+})).filter((cat) => cat.modules.length > 0);

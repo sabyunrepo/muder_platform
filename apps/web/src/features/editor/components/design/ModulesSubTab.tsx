@@ -2,9 +2,9 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { useModuleSchemas, useUpdateConfigJson } from '@/features/editor/api';
-import { MODULE_CATEGORIES } from '@/features/editor/constants';
+import { OPTIONAL_MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { TemplateSchema } from '@/features/editor/templateApi';
-import { ModuleAccordionItem } from './ModuleAccordionItem';
+import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,7 +16,7 @@ interface ModulesSubTabProps {
 }
 
 // ---------------------------------------------------------------------------
-// ModulesSubTab — accordion list with inline ConfigSchema
+// ModulesSubTab — card + toggle UI (optional modules only)
 // ---------------------------------------------------------------------------
 
 export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
@@ -38,7 +38,6 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   }, [theme.config_json]);
 
   const [selectedModules, setSelectedModules] = useState<string[]>(serverModules);
-  const [openModuleId, setOpenModuleId] = useState<string | null>(null);
 
   useEffect(() => {
     setSelectedModules(serverModules);
@@ -81,14 +80,10 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     [moduleConfigs, theme.config_json, updateConfig],
   );
 
-  const handleOpenChange = useCallback((moduleId: string, open: boolean) => {
-    setOpenModuleId(open ? moduleId : null);
-  }, []);
-
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
     if (!moduleSchemasResp?.schemas) return {};
     const result: Record<string, TemplateSchema | null> = {};
-    for (const cat of MODULE_CATEGORIES) {
+    for (const cat of OPTIONAL_MODULE_CATEGORIES) {
       for (const mod of cat.modules) {
         const s = moduleSchemasResp.schemas[mod.id];
         result[mod.id] = s && s.type === 'object' ? (s as unknown as TemplateSchema) : null;
@@ -98,41 +93,79 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   }, [moduleSchemasResp]);
 
   return (
-    <div className="h-full overflow-y-auto">
-      {MODULE_CATEGORIES.map((category) => {
+    <div className="h-full overflow-y-auto p-4 space-y-6">
+      {OPTIONAL_MODULE_CATEGORIES.map((category) => {
         const activeCount = category.modules.filter((m) =>
           selectedModules.includes(m.id),
         ).length;
 
         return (
-          <div key={category.key} className="border-b border-slate-800 last:border-b-0">
+          <section key={category.key}>
             {/* Category header */}
-            <div className="flex items-center justify-between bg-slate-950 px-4 py-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
                 {category.label}
               </span>
-              <span className="text-[10px] font-mono text-slate-700">
+              <span className="text-[10px] font-mono text-slate-600">
                 {activeCount}/{category.modules.length}
               </span>
             </div>
 
-            {/* Module rows */}
-            <div className="bg-slate-950/50">
-              {category.modules.map((mod) => (
-                <ModuleAccordionItem
-                  key={mod.id}
-                  mod={mod}
-                  isEnabled={selectedModules.includes(mod.id)}
-                  isOpen={openModuleId === mod.id}
-                  schema={schemaMap[mod.id] ?? null}
-                  moduleConfig={moduleConfigs[mod.id] ?? {}}
-                  onToggle={handleToggle}
-                  onOpenChange={handleOpenChange}
-                  onConfigChange={handleConfigChange}
-                />
-              ))}
+            {/* Module cards */}
+            <div className="space-y-2">
+              {category.modules.map((mod) => {
+                const isEnabled = selectedModules.includes(mod.id);
+                const schema = schemaMap[mod.id] ?? null;
+
+                return (
+                  <div
+                    key={mod.id}
+                    className="rounded-lg border border-slate-700 bg-slate-800/50"
+                  >
+                    {/* Card header row */}
+                    <div className="flex items-center gap-3 p-3">
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-xs font-medium ${isEnabled ? 'text-slate-200' : 'text-slate-500'}`}>
+                          {mod.name}
+                        </p>
+                        <p className="text-[10px] text-slate-600 mt-0.5 truncate">
+                          {mod.description}
+                        </p>
+                      </div>
+                      {/* Toggle switch */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isEnabled}
+                        aria-label={`${mod.name} ${isEnabled ? '비활성화' : '활성화'}`}
+                        onClick={() => handleToggle(mod.id)}
+                        className={`relative shrink-0 h-5 w-9 rounded-full transition-colors focus:outline-none ${
+                          isEnabled ? 'bg-amber-500' : 'bg-slate-700'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                            isEnabled ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Inline config form when enabled and schema exists */}
+                    {isEnabled && schema && (
+                      <div className="border-t border-slate-700 px-3 py-3">
+                        <SchemaDrivenForm
+                          schema={schema}
+                          values={moduleConfigs[mod.id] ?? {}}
+                          onChange={(path, value) => handleConfigChange(mod.id, path, value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+          </section>
         );
       })}
     </div>

@@ -42,7 +42,11 @@ vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
 
 import { ModulesSubTab } from '../ModulesSubTab';
 import type { EditorThemeResponse } from '@/features/editor/api';
-import { MODULE_CATEGORIES, REQUIRED_MODULE_IDS } from '@/features/editor/constants';
+import {
+  MODULE_CATEGORIES,
+  OPTIONAL_MODULE_CATEGORIES,
+  REQUIRED_MODULE_IDS,
+} from '@/features/editor/constants';
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -87,55 +91,71 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('ModulesSubTab', () => {
-  it('카테고리 라벨이 렌더링된다', () => {
+  it('코어 모듈(required)이 렌더링되지 않는다', () => {
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
-    for (const category of MODULE_CATEGORIES) {
+    const coreModules = MODULE_CATEGORIES.find((c) => c.key === 'core')!.modules;
+    for (const mod of coreModules) {
+      expect(screen.queryByText(mod.name)).toBeNull();
+    }
+  });
+
+  it('optional 카테고리 라벨이 렌더링된다', () => {
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+
+    for (const category of OPTIONAL_MODULE_CATEGORIES) {
       expect(screen.getByText(category.label)).toBeDefined();
     }
   });
 
-  it('필수 모듈이 config_json에 포함된 경우 amber dot(비활성화 라벨)으로 표시된다', () => {
-    const themeWithRequired: EditorThemeResponse = {
-      ...baseTheme,
-      config_json: { modules: REQUIRED_MODULE_IDS },
-    };
-    render(<ModulesSubTab themeId="theme-1" theme={themeWithRequired} />);
+  it('코어 카테고리(코어)는 렌더링되지 않는다', () => {
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
-    const allModules = MODULE_CATEGORIES.flatMap((c) => c.modules);
-    for (const id of REQUIRED_MODULE_IDS) {
-      const mod = allModules.find((m) => m.id === id)!;
-      const btn = screen.getByLabelText(`${mod.name} 비활성화`);
-      expect(btn).toBeDefined();
-    }
+    // "코어" label should not appear since all its modules are required
+    expect(screen.queryByText('코어')).toBeNull();
   });
 
   it('토글 버튼 클릭 시 mutate가 호출된다', () => {
-    const nonRequired = MODULE_CATEGORIES.flatMap((c) => c.modules).find(
-      (m) => !m.required,
-    )!;
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
 
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
-    const toggleBtn = screen.getByLabelText(`${nonRequired.name} 활성화`);
+    const toggleBtn = screen.getByRole('switch', { name: `${optionalMod.name} 활성화` });
     fireEvent.click(toggleBtn);
 
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     expect(Array.isArray(config.modules)).toBe(true);
-    expect((config.modules as string[]).includes(nonRequired.id)).toBe(true);
+    expect((config.modules as string[]).includes(optionalMod.id)).toBe(true);
   });
 
-  it('활성화된 모듈에 스키마가 있으면 아코디언 펼침 시 SchemaDrivenForm이 렌더링된다', () => {
-    const firstMod = MODULE_CATEGORIES[0].modules[0];
+  it('활성화된 모듈 토글 클릭 시 목록에서 제거된다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
     const themeWithMod: EditorThemeResponse = {
       ...baseTheme,
-      config_json: { modules: [firstMod.id] },
+      config_json: { modules: [optionalMod.id] },
+    };
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithMod} />);
+
+    const toggleBtn = screen.getByRole('switch', { name: `${optionalMod.name} 비활성화` });
+    fireEvent.click(toggleBtn);
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect((config.modules as string[]).includes(optionalMod.id)).toBe(false);
+  });
+
+  it('활성화 + 스키마 있으면 SchemaDrivenForm이 바로 렌더링된다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+    const themeWithMod: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: { modules: [optionalMod.id] },
     };
     useModuleSchemasMock.mockReturnValue({
       data: {
         schemas: {
-          [firstMod.id]: { type: 'object', title: '테스트 설정', properties: {} },
+          [optionalMod.id]: { type: 'object', title: '테스트 설정', properties: {} },
         },
       },
       isLoading: false,
@@ -143,21 +163,17 @@ describe('ModulesSubTab', () => {
 
     render(<ModulesSubTab themeId="theme-1" theme={themeWithMod} />);
 
-    // Click the chevron/expand button
-    const expandBtn = screen.getByLabelText(`${firstMod.name} 설정 펼치기`);
-    fireEvent.click(expandBtn);
-
+    // No click needed — inline display
     expect(screen.getByTestId('schema-driven-form')).toBeDefined();
+    expect(screen.getByText('테스트 설정')).toBeDefined();
   });
 
-  it('비활성 모듈은 아코디언 확장 버튼이 없다', () => {
-    const nonRequired = MODULE_CATEGORIES.flatMap((c) => c.modules).find(
-      (m) => !m.required,
-    )!;
+  it('비활성 모듈은 스키마가 있어도 SchemaDrivenForm이 렌더링되지 않는다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
     useModuleSchemasMock.mockReturnValue({
       data: {
         schemas: {
-          [nonRequired.id]: { type: 'object', title: '설정', properties: {} },
+          [optionalMod.id]: { type: 'object', title: '설정', properties: {} },
         },
       },
       isLoading: false,
@@ -165,7 +181,17 @@ describe('ModulesSubTab', () => {
 
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
-    // Module is disabled — no expand button
-    expect(screen.queryByLabelText(`${nonRequired.name} 설정 펼치기`)).toBeNull();
+    expect(screen.queryByTestId('schema-driven-form')).toBeNull();
+  });
+
+  it('REQUIRED_MODULE_IDS의 모듈은 toggle 버튼이 없다', () => {
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+
+    const allModules = MODULE_CATEGORIES.flatMap((c) => c.modules);
+    for (const id of REQUIRED_MODULE_IDS) {
+      const mod = allModules.find((m) => m.id === id)!;
+      expect(screen.queryByRole('switch', { name: `${mod.name} 활성화` })).toBeNull();
+      expect(screen.queryByRole('switch', { name: `${mod.name} 비활성화` })).toBeNull();
+    }
   });
 });
