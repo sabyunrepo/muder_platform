@@ -14,17 +14,21 @@ import { StartNode } from "./StartNode";
 import { PhaseNode } from "./PhaseNode";
 import { EndingNode } from "./EndingNode";
 import { NodeDetailPanel } from "./NodeDetailPanel";
+import { branchNodeTypes, conditionEdgeTypes } from "./flowNodeRegistry";
 import type { FlowNodeType } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
-// Node types registry
+// Node / edge type registries
 // ---------------------------------------------------------------------------
 
 const nodeTypes: NodeTypes = {
   start: StartNode,
   phase: PhaseNode,
   ending: EndingNode,
+  ...branchNodeTypes,
 };
+
+const edgeTypes = { ...conditionEdgeTypes };
 
 // ---------------------------------------------------------------------------
 // Props
@@ -55,6 +59,7 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
     updateNodeData,
     deleteNode,
     onSelectionChange,
+    updateEdgeCondition,
   } = useFlowData(themeId);
 
   // Add node at canvas center
@@ -129,6 +134,10 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
             onConnect={onConnect}
             onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            deleteKeyCode="Delete"
+            edgesFocusable={true}
+            edgesReconnectable={true}
             fitView
             colorMode="dark"
           >
@@ -146,6 +155,8 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
               themeId={themeId}
               onUpdate={updateNodeData}
               onDelete={deleteNode}
+              edges={edges}
+              onEdgeConditionChange={updateEdgeCondition}
             />
           </div>
         )}
