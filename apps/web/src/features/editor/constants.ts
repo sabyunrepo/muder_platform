@@ -6,15 +6,15 @@ import type { ThemeStatus } from "./api";
 // ---------------------------------------------------------------------------
 
 export const EDITOR_TABS = [
-  { key: "overview" as const, label: "기본정보", icon: FileText },
-  { key: "story" as const, label: "스토리", icon: BookOpen },
-  { key: "characters" as const, label: "등장인물", icon: Users },
-  { key: "clues" as const, label: "단서", icon: Search },
-  { key: "design" as const, label: "게임설계", icon: Settings },
-  { key: "media" as const, label: "미디어", icon: Music },
-  { key: "advanced" as const, label: "고급", icon: Code },
-  { key: "template" as const, label: "템플릿", icon: LayoutTemplate },
-];
+  { key: "overview" as const, label: "기본정보", icon: FileText, always: true },
+  { key: "story" as const, label: "스토리", icon: BookOpen, always: true },
+  { key: "characters" as const, label: "등장인물", icon: Users, always: true },
+  { key: "clues" as const, label: "단서", icon: Search, always: true },
+  { key: "design" as const, label: "게임설계", icon: Settings, always: true },
+  { key: "media" as const, label: "미디어", icon: Music, always: false, requiredModule: "voice_chat" },
+  { key: "advanced" as const, label: "고급", icon: Code, always: true },
+  { key: "template" as const, label: "템플릿", icon: LayoutTemplate, always: true },
+] as const;
 
 export type EditorTab = (typeof EDITOR_TABS)[number]["key"];
 

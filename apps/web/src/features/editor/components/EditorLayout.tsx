@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "@/shared/components/ui";
@@ -41,6 +41,12 @@ export function EditorLayout({
   const navigate = useNavigate();
   const { activeTab } = useEditorUI();
   const [validationResult, setValidationResult] = useState<DesignWarning[] | null>(null);
+
+  const activeModules = useMemo(() => {
+    const cfg = theme.config_json as Record<string, unknown> | undefined;
+    const mods = cfg?.modules;
+    return Array.isArray(mods) ? (mods as string[]) : [];
+  }, [theme.config_json]);
 
   const handleValidate = () => {
     if (onValidate) {
@@ -113,7 +119,7 @@ export function EditorLayout({
       </header>
 
       {/* ── Tab nav ── */}
-      <EditorTabNav />
+      <EditorTabNav activeModules={activeModules} />
 
       {/* ── Validation panel ── */}
       {(validationResult ?? externalWarnings) && (
