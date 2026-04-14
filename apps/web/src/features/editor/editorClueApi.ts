@@ -3,6 +3,7 @@ import { api } from "@/services/api";
 import { queryClient } from "@/services/queryClient";
 import { editorKeys } from "./api";
 import type { ClueResponse, CreateClueRequest, UpdateClueRequest } from "./api";
+import { clueRelationKeys } from "./clueRelationApi";
 
 // ---------------------------------------------------------------------------
 // Clue Queries
@@ -48,6 +49,10 @@ export function useDeleteClue(themeId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+      // FK cascade removes clue_relations on DB side; invalidate to sync cache.
+      queryClient.invalidateQueries({
+        queryKey: clueRelationKeys.relations(themeId),
+      });
     },
   });
 }

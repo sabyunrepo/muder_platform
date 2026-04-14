@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 18.0 게임 런타임 — Wave 0/5
-**PR**: PR-0 (0%)
-**Task**: 시작 전
-**State**: not_started
+**PR**: PR-0 (100%)
+**Task**: 완료 — 7/7 tasks done
+**State**: done
 **Blockers**: none
 **Last updated**: 2026-04-15
 <!-- STATUS-END -->
@@ -16,14 +16,14 @@
 ## Wave 0 — Phase 17.5 Cleanup (sequential)
 
 ### PR-0: Phase 17.5 followup
-- [ ] Task 1 — `ClueRelationRequest/Response` → `editor/types.go` 분리
-- [ ] Task 2 — `useClueGraphData` onConnect debounce를 `autoSave` 로 일원화
-- [ ] Task 3 — `useDeleteClue` 성공 시 `clueRelationKeys` 크로스 invalidation
-- [ ] Task 4 — `useClueGraphData` 단위 테스트 (debounce coalescing, optimistic revert)
-- [ ] Task 5 — 서비스 통합 테스트 (testcontainers — FK cascade, TX rollback, cross-theme)
-- [ ] Task 6 — `validateClueGraph` Kahn queue → index pointer (O(n))
-- [ ] Task 7 — E2E `clue-relation.spec.ts` 기본 2건 MSW mock 으로 무조건 실행 가능화
-- [ ] Run after_task pipeline
+- [x] Task 1 — `ClueRelationRequest/Response` → `editor/types.go` 분리
+- [x] Task 2 — `useClueGraphData` onConnect debounce를 `autoSave` 로 일원화
+- [x] Task 3 — `useDeleteClue` 성공 시 `clueRelationKeys` 크로스 invalidation
+- [x] Task 4 — `useClueGraphData` 단위 테스트 (debounce coalescing, optimistic revert)
+- [x] Task 5 — 서비스 통합 테스트 (testcontainers — FK cascade, TX rollback, cross-theme)
+- [x] Task 6 — `validateClueGraph` Kahn queue → index pointer (O(n))
+- [x] Task 7 — E2E `clue-relation.spec.ts` 기본 2건 MSW mock 으로 무조건 실행 가능화
+- [x] Run after_task pipeline
 
 **Wave 0 gate**:
 - [ ] `go test -race ./internal/domain/editor/...` pass
