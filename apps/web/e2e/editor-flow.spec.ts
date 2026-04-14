@@ -6,12 +6,18 @@ const LOGIN_PASSWORD = "e2etest1234";
 
 test.describe("에디터 테마 제작 플로우", () => {
   test.beforeEach(async ({ page }) => {
+    // 백엔드가 없으면 스킵
+    const res = await page.request.get("http://localhost:8080/health").catch(() => null);
+    test.skip(!res || !res.ok(), "백엔드 서버가 실행되지 않음 — 이 테스트는 스킵됩니다");
+
     // 로그인
     await page.goto(`${BASE}/login`);
-    await page.fill('input[type="email"]', LOGIN_EMAIL);
-    await page.fill('input[type="password"]', LOGIN_PASSWORD);
-    await page.click('button[type="submit"]');
-    await page.waitForURL(`${BASE}/`);
+    await page.getByPlaceholder("이메일").fill(LOGIN_EMAIL);
+    await page.getByPlaceholder("비밀번호").fill(LOGIN_PASSWORD);
+    await page.getByRole("button", { name: "로그인" }).click();
+    await expect(page.getByRole("heading", { name: "로비" })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test("사이드바에 테마 제작 메뉴 노출", async ({ page }) => {
