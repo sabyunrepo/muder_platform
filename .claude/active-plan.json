@@ -5,9 +5,9 @@
   "design": "docs/plans/2026-04-14-editor-v2-port/design.md",
   "plan": "docs/plans/2026-04-14-editor-v2-port/plan.md",
   "checklist": "docs/plans/2026-04-14-editor-v2-port/checklist.md",
-  "current_wave": "W1",
-  "current_pr": "PR-1",
-  "state": "not_started",
+  "current_wave": "W4",
+  "current_pr": "PR-7",
+  "state": "completed",
   "waves": [
     {
       "id": "W1",
