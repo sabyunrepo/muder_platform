@@ -1,11 +1,19 @@
 import { describe, it, expect } from "vitest";
 import { createDefaultTemplate } from "../flowDefaults";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 describe("createDefaultTemplate", () => {
   it("returns 5 nodes and 4 edges", () => {
     const { nodes, edges } = createDefaultTemplate();
     expect(nodes).toHaveLength(5);
     expect(edges).toHaveLength(4);
+  });
+
+  it("generates valid UUID IDs for all nodes and edges", () => {
+    const { nodes, edges } = createDefaultTemplate();
+    for (const n of nodes) expect(n.id).toMatch(UUID_RE);
+    for (const e of edges) expect(e.id).toMatch(UUID_RE);
   });
 
   it("has exactly 1 start node", () => {
@@ -33,25 +41,19 @@ describe("createDefaultTemplate", () => {
 
   it("edges connect nodes sequentially", () => {
     const { nodes, edges } = createDefaultTemplate();
-    const nodeIds = nodes.map((n) => n.id);
-    for (const edge of edges) {
-      expect(nodeIds).toContain(edge.source);
-      expect(nodeIds).toContain(edge.target);
-    }
-    // Each consecutive pair is connected
     for (let i = 0; i < nodes.length - 1; i++) {
-      const hasEdge = edges.some(
-        (e) => e.source === nodes[i].id && e.target === nodes[i + 1].id,
-      );
-      expect(hasEdge).toBe(true);
+      expect(edges[i].source).toBe(nodes[i].id);
+      expect(edges[i].target).toBe(nodes[i + 1].id);
     }
   });
 
-  it("returns fresh copies on each call (no shared mutation)", () => {
+  it("returns unique IDs on each call", () => {
     const a = createDefaultTemplate();
     const b = createDefaultTemplate();
-    a.nodes[0].data = { label: "mutated" };
-    expect((b.nodes[0].data as { label?: string }).label).toBeUndefined();
+    const aIds = a.nodes.map((n) => n.id);
+    const bIds = b.nodes.map((n) => n.id);
+    // No overlap between two calls
+    expect(aIds.some((id) => bIds.includes(id))).toBe(false);
   });
 
   it("node positions are set correctly", () => {

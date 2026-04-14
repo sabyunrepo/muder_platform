@@ -28,6 +28,7 @@ export interface ImageCropUploadProps {
 
 const PREVIEW_SIZE = { sm: 64, md: 96, lg: 128 } as const;
 const CANVAS_OUTPUT_SIZE = 512;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB — must match backend MaxImageFileSize
 
 // ---------------------------------------------------------------------------
 // Component
@@ -60,6 +61,10 @@ export function ImageCropUpload({
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
+    if (file.size > MAX_IMAGE_SIZE) {
+      toast.error('이미지 크기는 5MB 이하여야 합니다');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = () => {
       setSrcUrl(reader.result as string);

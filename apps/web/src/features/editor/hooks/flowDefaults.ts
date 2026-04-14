@@ -6,69 +6,40 @@ import type { Node, Edge } from "@xyflow/react";
 
 const NODE_Y = 200;
 
-const DEFAULT_NODES: Node[] = [
-  {
-    id: "default-start",
-    type: "start",
-    position: { x: 0, y: NODE_Y },
-    data: {},
-  },
-  {
-    id: "default-phase-1",
-    type: "phase",
-    position: { x: 250, y: NODE_Y },
-    data: { label: "자기소개" },
-  },
-  {
-    id: "default-phase-2",
-    type: "phase",
-    position: { x: 500, y: NODE_Y },
-    data: { label: "자유조사" },
-  },
-  {
-    id: "default-phase-3",
-    type: "phase",
-    position: { x: 750, y: NODE_Y },
-    data: { label: "투표" },
-  },
-  {
-    id: "default-ending",
-    type: "ending",
-    position: { x: 1000, y: NODE_Y },
-    data: {},
-  },
-];
+interface TemplateNode {
+  type: string;
+  x: number;
+  label?: string;
+}
 
-const DEFAULT_EDGES: Edge[] = [
-  {
-    id: "default-edge-1",
-    source: "default-start",
-    target: "default-phase-1",
-  },
-  {
-    id: "default-edge-2",
-    source: "default-phase-1",
-    target: "default-phase-2",
-  },
-  {
-    id: "default-edge-3",
-    source: "default-phase-2",
-    target: "default-phase-3",
-  },
-  {
-    id: "default-edge-4",
-    source: "default-phase-3",
-    target: "default-ending",
-  },
+const TEMPLATE_NODES: TemplateNode[] = [
+  { type: "start", x: 0 },
+  { type: "phase", x: 250, label: "자기소개" },
+  { type: "phase", x: 500, label: "자유조사" },
+  { type: "phase", x: 750, label: "투표" },
+  { type: "ending", x: 1000 },
 ];
 
 // ---------------------------------------------------------------------------
-// Factory — returns fresh copies (no shared mutation risk)
+// Factory — generates fresh UUIDs on every call (backend requires UUID IDs)
 // ---------------------------------------------------------------------------
 
 export function createDefaultTemplate(): { nodes: Node[]; edges: Edge[] } {
-  return {
-    nodes: DEFAULT_NODES.map((n) => ({ ...n, data: { ...n.data } })),
-    edges: DEFAULT_EDGES.map((e) => ({ ...e })),
-  };
+  const nodes: Node[] = TEMPLATE_NODES.map((t) => ({
+    id: crypto.randomUUID(),
+    type: t.type,
+    position: { x: t.x, y: NODE_Y },
+    data: t.label ? { label: t.label } : {},
+  }));
+
+  const edges: Edge[] = [];
+  for (let i = 0; i < nodes.length - 1; i++) {
+    edges.push({
+      id: crypto.randomUUID(),
+      source: nodes[i].id,
+      target: nodes[i + 1].id,
+    });
+  }
+
+  return { nodes, edges };
 }

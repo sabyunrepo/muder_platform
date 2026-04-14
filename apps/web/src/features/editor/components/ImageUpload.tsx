@@ -18,6 +18,7 @@ export interface ImageUploadProps {
 }
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB — must match backend MaxImageFileSize
 type AcceptedType = (typeof ACCEPTED_TYPES)[number];
 
 function isAcceptedType(type: string): type is AcceptedType {
@@ -46,6 +47,10 @@ export function ImageUpload({
     async (file: File) => {
       if (!isAcceptedType(file.type)) {
         toast.error('JPEG, PNG, WebP 형식만 지원합니다');
+        return;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        toast.error('이미지 크기는 5MB 이하여야 합니다');
         return;
       }
 
@@ -134,7 +139,6 @@ export function ImageUpload({
         aria-label="이미지 파일 선택"
       />
 
-      {/* Drop zone / preview container */}
       <div
         role="button"
         tabIndex={0}
@@ -150,46 +154,28 @@ export function ImageUpload({
             ? 'border-amber-500 bg-amber-500/5'
             : 'border-slate-700 bg-slate-900 hover:border-amber-500 hover:bg-slate-800/50',
           isUploading ? 'pointer-events-none' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
+        ].filter(Boolean).join(' ')}
         aria-label={hasImage ? '이미지 변경' : '이미지 업로드'}
       >
-        {/* Existing / preview image */}
         {hasImage && (
-          <img
-            src={previewUrl}
-            alt="업로드된 이미지"
-            className="h-full w-full object-cover"
-          />
+          <img src={previewUrl} alt="업로드된 이미지" className="h-full w-full object-cover" />
         )}
-
-        {/* Placeholder (no image) */}
         {!hasImage && !isUploading && (
           <div className="flex flex-col items-center gap-2 p-4 text-slate-600">
             <ImagePlus className="h-8 w-8" />
             <span className="text-center text-[11px] leading-tight">
-              클릭하거나 이미지를
-              <br />
-              여기에 드래그하세요
+              클릭하거나 이미지를<br />여기에 드래그하세요
             </span>
           </div>
         )}
-
-        {/* Upload spinner overlay */}
         {isUploading && (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-950/70">
             <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
           </div>
         )}
-
-        {/* "변경" button overlay on existing image */}
         {hasImage && !isUploading && (
           <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-slate-950/80 to-transparent p-2 opacity-0 transition-opacity hover:opacity-100">
-            <span className="rounded-sm bg-slate-800/90 px-2 py-1 text-[11px] font-medium text-slate-200">
-              변경
-            </span>
-            {/* Clear button */}
+            <span className="rounded-sm bg-slate-800/90 px-2 py-1 text-[11px] font-medium text-slate-200">변경</span>
             <button
               type="button"
               onClick={handleClear}

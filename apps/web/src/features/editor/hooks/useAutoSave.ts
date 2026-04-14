@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { isApiHttpError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,6 +14,7 @@ interface UseAutoSaveOptions<T> {
   enabled?: boolean;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
+  onConflict?: () => void;
 }
 
 interface UseAutoSaveReturn {
@@ -33,6 +35,7 @@ export function useAutoSave<T>({
   enabled = true,
   onSuccess,
   onError,
+  onConflict,
 }: UseAutoSaveOptions<T>): UseAutoSaveReturn {
   const [status, setStatus] = useState<SaveStatus>("idle");
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -83,6 +86,11 @@ export function useAutoSave<T>({
       } catch (err) {
         isSavingRef.current = false;
         if (err instanceof Error && err.name === "AbortError") return;
+        if (isApiHttpError(err) && err.status === 409) {
+          setStatus("error");
+          onConflict?.();
+          return;
+        }
         setStatus("error");
         onError?.(err instanceof Error ? err : new Error(String(err)));
       }
