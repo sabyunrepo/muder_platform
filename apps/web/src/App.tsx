@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import { BrowserRouter, Routes, Route } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { GlobalErrorBoundary } from "@/components/error";
@@ -65,6 +65,7 @@ const AdminPackagesPage = lazy(() => import("@/pages/AdminPackagesPage"));
 const AdminCoinGrantPage = lazy(
   () => import("@/pages/AdminCoinGrantPage"),
 );
+const AdminReviewPage = lazy(() => import("@/pages/AdminReviewPage"));
 
 // ---------------------------------------------------------------------------
 // 로딩 폴백
@@ -160,7 +161,7 @@ export function App() {
                   <Route path="/lobby" element={<LobbyPage />} />
                   <Route path="/profile" element={<ProfilePage />} />
                   <Route path="/room/:id" element={<RoomPage />} />
-                  <Route path="/editor" element={<Navigate to="/my-themes" replace />} />
+                  <Route path="/editor" element={<EditorPage />} />
                   <Route path="/social" element={<SocialPage />} />
                   <Route path="/users/:id" element={<PublicProfilePage />} />
 
@@ -206,6 +207,10 @@ export function App() {
                     <Route
                       path="/admin/coins"
                       element={<AdminCoinGrantPage />}
+                    />
+                    <Route
+                      path="/admin/reviews"
+                      element={<AdminReviewPage />}
                     />
                   </Route>
                 </Route>

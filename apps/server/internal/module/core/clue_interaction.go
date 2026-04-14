@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
@@ -24,6 +25,15 @@ type ClueInteractionConfig struct {
 	AutoRevealClues      bool   `json:"autoRevealClues"`
 }
 
+// ItemUseState tracks an in-progress item use action.
+type ItemUseState struct {
+	UserID    uuid.UUID `json:"userId"`
+	ClueID    uuid.UUID `json:"clueId"`
+	Effect    string    `json:"effect"`
+	Target    string    `json:"target"`
+	StartedAt time.Time `json:"startedAt"`
+}
+
 // ClueInteractionModule handles clue drawing and transfer mechanics.
 type ClueInteractionModule struct {
 	mu               sync.RWMutex
@@ -32,6 +42,9 @@ type ClueInteractionModule struct {
 	playerDrawCounts map[uuid.UUID]int
 	currentClueLevel int
 	acquiredClues    map[uuid.UUID][]string
+	activeItemUse    *ItemUseState
+	usedItems        map[uuid.UUID][]uuid.UUID // playerID -> used clue IDs
+	itemTimeout      *time.Timer
 }
 
 // NewClueInteractionModule creates a new ClueInteractionModule instance.
@@ -48,6 +61,7 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	m.deps = deps
 	m.playerDrawCounts = make(map[uuid.UUID]int)
 	m.acquiredClues = make(map[uuid.UUID][]string)
+	m.usedItems = make(map[uuid.UUID][]uuid.UUID)
 
 	// Apply defaults first.
 	m.config = ClueInteractionConfig{
@@ -85,6 +99,12 @@ func (m *ClueInteractionModule) HandleMessage(ctx context.Context, playerID uuid
 		return m.handleDrawClue(ctx, playerID, payload)
 	case "transfer_clue":
 		return m.handleTransferClue(ctx, playerID, payload)
+	case "clue:use":
+		return m.handleItemUse(ctx, playerID, payload)
+	case "clue:use_target":
+		return m.handleItemUseTarget(ctx, playerID, payload)
+	case "clue:use_cancel":
+		return m.handleItemUseCancel(ctx, playerID)
 	default:
 		return fmt.Errorf("clue_interaction: unknown message type %q", msgType)
 	}
@@ -172,6 +192,161 @@ func (m *ClueInteractionModule) handleTransferClue(_ context.Context, playerID u
 	return nil
 }
 
+type itemUsePayload struct {
+	ClueID string `json:"clueId"`
+	Effect string `json:"effect"`
+	Target string `json:"target"`
+}
+
+type itemUseTargetPayload struct {
+	TargetPlayerID string `json:"targetPlayerId"`
+}
+
+func (m *ClueInteractionModule) handleItemUse(_ context.Context, playerID uuid.UUID, payload json.RawMessage) error {
+	var p itemUsePayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("clue_interaction: invalid clue:use payload: %w", err)
+	}
+	clueID, err := uuid.Parse(p.ClueID)
+	if err != nil {
+		return fmt.Errorf("clue_interaction: invalid clueId: %w", err)
+	}
+
+	m.mu.Lock()
+	if m.activeItemUse != nil {
+		m.mu.Unlock()
+		return fmt.Errorf("clue_interaction: item use already in progress")
+	}
+
+	m.activeItemUse = &ItemUseState{
+		UserID:    playerID,
+		ClueID:    clueID,
+		Effect:    p.Effect,
+		Target:    p.Target,
+		StartedAt: time.Now(),
+	}
+
+	timer := time.AfterFunc(30*time.Second, func() {
+		m.mu.Lock()
+		if m.activeItemUse != nil && m.activeItemUse.ClueID == clueID {
+			m.activeItemUse = nil
+		}
+		m.mu.Unlock()
+		m.deps.EventBus.Publish(engine.Event{
+			Type: "clue.item_timeout",
+			Payload: map[string]any{
+				"playerId": playerID.String(),
+				"clueId":   clueID.String(),
+			},
+		})
+	})
+	m.itemTimeout = timer
+	m.mu.Unlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.item_declared",
+		Payload: map[string]any{
+			"playerId": playerID.String(),
+			"clueId":   clueID.String(),
+		},
+	})
+	return nil
+}
+
+func (m *ClueInteractionModule) handleItemUseTarget(ctx context.Context, playerID uuid.UUID, payload json.RawMessage) error {
+	var p itemUseTargetPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("clue_interaction: invalid clue:use_target payload: %w", err)
+	}
+
+	m.mu.Lock()
+	if m.activeItemUse == nil {
+		m.mu.Unlock()
+		return fmt.Errorf("clue_interaction: no active item use")
+	}
+	if m.activeItemUse.UserID != playerID {
+		m.mu.Unlock()
+		return fmt.Errorf("clue_interaction: not the active item user")
+	}
+	state := *m.activeItemUse
+	m.mu.Unlock()
+
+	var resolveErr error
+	switch state.Effect {
+	case "peek":
+		resolveErr = m.handlePeekEffect(ctx, playerID, state.ClueID, p.TargetPlayerID)
+	case "":
+		// Effect not set in declaration — treat as unimplemented.
+		resolveErr = fmt.Errorf("clue_interaction: effect not specified")
+	default:
+		resolveErr = fmt.Errorf("clue_interaction: effect %q not implemented", state.Effect)
+	}
+
+	if resolveErr != nil {
+		return resolveErr
+	}
+
+	m.mu.Lock()
+	if m.itemTimeout != nil {
+		m.itemTimeout.Stop()
+		m.itemTimeout = nil
+	}
+	if m.activeItemUse != nil && m.activeItemUse.ClueID == state.ClueID {
+		m.usedItems[playerID] = append(m.usedItems[playerID], state.ClueID)
+		m.activeItemUse = nil
+	}
+	m.mu.Unlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.item_resolved",
+		Payload: map[string]any{
+			"playerId": playerID.String(),
+			"clueId":   state.ClueID.String(),
+			"effect":   state.Effect,
+		},
+	})
+	return nil
+}
+
+func (m *ClueInteractionModule) handlePeekEffect(_ context.Context, _ uuid.UUID, _ uuid.UUID, targetPlayerIDStr string) error {
+	targetPlayerID, err := uuid.Parse(targetPlayerIDStr)
+	if err != nil {
+		return fmt.Errorf("clue_interaction: invalid targetPlayerId: %w", err)
+	}
+
+	m.mu.RLock()
+	clues := make([]string, len(m.acquiredClues[targetPlayerID]))
+	copy(clues, m.acquiredClues[targetPlayerID])
+	m.mu.RUnlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.peek_result",
+		Payload: map[string]any{
+			"targetPlayerId": targetPlayerID.String(),
+			"clues":          clues,
+		},
+	})
+	return nil
+}
+
+func (m *ClueInteractionModule) handleItemUseCancel(_ context.Context, playerID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.activeItemUse == nil {
+		return fmt.Errorf("clue_interaction: no active item use")
+	}
+	if m.activeItemUse.UserID != playerID {
+		return fmt.Errorf("clue_interaction: not the active item user")
+	}
+	if m.itemTimeout != nil {
+		m.itemTimeout.Stop()
+		m.itemTimeout = nil
+	}
+	m.activeItemUse = nil
+	return nil
+}
+
 // --- PhaseReactor ---
 
 func (m *ClueInteractionModule) ReactTo(_ context.Context, action engine.PhaseActionPayload) error {
@@ -231,10 +406,12 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 }
 
 type clueInteractionState struct {
-	PlayerDrawCounts map[uuid.UUID]int      `json:"playerDrawCounts"`
-	CurrentClueLevel int                    `json:"currentClueLevel"`
-	AcquiredClues    map[uuid.UUID][]string `json:"acquiredClues"`
-	Config           ClueInteractionConfig  `json:"config"`
+	PlayerDrawCounts map[uuid.UUID]int        `json:"playerDrawCounts"`
+	CurrentClueLevel int                      `json:"currentClueLevel"`
+	AcquiredClues    map[uuid.UUID][]string   `json:"acquiredClues"`
+	Config           ClueInteractionConfig    `json:"config"`
+	UsedItems        map[uuid.UUID][]uuid.UUID `json:"usedItems"`
+	ActiveItemUse    *ItemUseState            `json:"activeItemUse,omitempty"`
 }
 
 func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {
@@ -246,6 +423,8 @@ func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {
 		CurrentClueLevel: m.currentClueLevel,
 		AcquiredClues:    m.acquiredClues,
 		Config:           m.config,
+		UsedItems:        m.usedItems,
+		ActiveItemUse:    m.activeItemUse,
 	})
 }
 
@@ -255,6 +434,12 @@ func (m *ClueInteractionModule) Cleanup(_ context.Context) error {
 
 	m.playerDrawCounts = nil
 	m.acquiredClues = nil
+	m.usedItems = nil
+	m.activeItemUse = nil
+	if m.itemTimeout != nil {
+		m.itemTimeout.Stop()
+		m.itemTimeout = nil
+	}
 	return nil
 }
 
@@ -262,7 +447,7 @@ func (m *ClueInteractionModule) Cleanup(_ context.Context) error {
 
 func (m *ClueInteractionModule) Validate(_ context.Context, event engine.GameEvent, _ engine.GameState) error {
 	switch event.Type {
-	case "draw_clue", "transfer_clue":
+	case "draw_clue", "transfer_clue", "clue:use", "clue:use_target", "clue:use_cancel":
 		return nil
 	default:
 		return fmt.Errorf("clue_interaction: unsupported event type %q", event.Type)

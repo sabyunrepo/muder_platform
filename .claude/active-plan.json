@@ -1,0 +1,13 @@
+{
+  "phase": "13.0",
+  "name": "game-design-editor",
+  "dir": "docs/plans/2026-04-13-game-design-editor",
+  "status": "ACTIVE",
+  "current_wave": 1,
+  "current_pr": null,
+  "created_at": "2026-04-13",
+  "git_base": "main",
+  "commits": {
+    "plan": "bc793f0"
+  }
+}

@@ -64,6 +64,10 @@ type CreateClueRequest struct {
 	Level       int32      `json:"level" validate:"min=1,max=10"`
 	ClueType    string     `json:"clue_type" validate:"required,oneof=normal weapon evidence alibi"`
 	SortOrder   int32      `json:"sort_order" validate:"min=0"`
+	IsUsable    bool       `json:"is_usable"`
+	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
+	UseTarget   *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
+	UseConsumed bool       `json:"use_consumed"`
 }
 
 type UpdateClueRequest struct {
@@ -75,6 +79,10 @@ type UpdateClueRequest struct {
 	Level       int32      `json:"level" validate:"min=1,max=10"`
 	ClueType    string     `json:"clue_type" validate:"required,oneof=normal weapon evidence alibi"`
 	SortOrder   int32      `json:"sort_order" validate:"min=0"`
+	IsUsable    bool       `json:"is_usable"`
+	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
+	UseTarget   *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
+	UseConsumed bool       `json:"use_consumed"`
 }
 
 type ClueResponse struct {
@@ -89,6 +97,10 @@ type ClueResponse struct {
 	ClueType    string     `json:"clue_type"`
 	SortOrder   int32      `json:"sort_order"`
 	CreatedAt   time.Time  `json:"created_at"`
+	IsUsable    bool       `json:"is_usable"`
+	UseEffect   *string    `json:"use_effect,omitempty"`
+	UseTarget   *string    `json:"use_target,omitempty"`
+	UseConsumed bool       `json:"use_consumed"`
 }
 
 // --- Content types ---

@@ -140,8 +140,9 @@ func main() {
 	editorSvc := editor.NewService(queries, pool, logger)
 
 	// Phase 7.7: Media storage provider
-	// R2 provider는 환경변수가 없으면 nil — 로컬 개발에서 미디어 기능 비활성화
+	// R2 credentials present → use R2. Otherwise fall back to local file storage for dev.
 	var storageProvider storage.Provider
+	var localStorageProvider *storage.LocalProvider
 	if cfg.R2AccountID != "" {
 		r2Cfg := storage.R2Config{
 			AccountID:       cfg.R2AccountID,
@@ -155,9 +156,16 @@ func main() {
 		if err != nil {
 			logger.Fatal().Err(err).Msg("failed to init R2 provider")
 		}
+		logger.Info().Msg("R2 storage provider initialized")
+	} else {
+		localStorageProvider = storage.NewLocalProviderWithLogger("tmp/uploads", cfg.ServerBaseURL(), logger)
+		storageProvider = localStorageProvider
+		logger.Warn().Msg("local file storage provider initialized (dev only — do not use in production)")
 	}
 	mediaSvc := editor.NewMediaService(queries, storageProvider, logger)
 	mediaHandler := editor.NewMediaHandler(mediaSvc)
+	imageSvc := editor.NewImageService(queries, storageProvider, logger)
+	imageHandler := editor.NewImageHandler(imageSvc)
 	readingSvc := editor.NewReadingService(queries, logger)
 	readingHandler := editor.NewReadingHandler(readingSvc)
 	adminSvc := admin.NewService(queries, logger)
@@ -208,6 +216,7 @@ func main() {
 	coinHandler := coin.NewHandler(coinSvc)
 	creatorHandler := creator.NewHandler(creatorSvc)
 	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
+	reviewHandler := admin.NewReviewHandler(queries, logger)
 
 	// 10. WebSocket Hub (Game)
 	wsRouter := ws.NewRouter(logger)
@@ -262,6 +271,12 @@ func main() {
 		}))
 	}
 
+	// 14.6. Local storage upload/serve endpoints (dev only — skipped when R2 is active)
+	if localStorageProvider != nil {
+		r.Put("/api/v1/uploads/*", localStorageProvider.UploadHandler())
+		r.Get("/api/v1/uploads/*", localStorageProvider.ServeHandler())
+	}
+
 	// 15. WebSocket endpoints
 	wsCfg := ws.UpgradeConfig{
 		AllowedOrigins: cfg.CORSOrigins,
@@ -271,9 +286,6 @@ func main() {
 	r.Get("/ws/game", gameUpgrade)
 
 	socialExtractor := ws.JWTPlayerIDExtractor([]byte(cfg.JWTSecret))
-	if cfg.IsDevelopment() {
-		socialExtractor = ws.DefaultPlayerIDExtractor
-	}
 	socialUpgrade := ws.UpgradeHandler(socialHub, socialExtractor, wsCfg, logger)
 	r.Get("/ws/social", socialUpgrade)
 
@@ -378,16 +390,15 @@ func main() {
 				r.Get("/settlements", creatorHandler.ListSettlements)
 			})
 
-			// --- Editor endpoints (CREATOR, ADMIN) ---
+			// --- Editor endpoints (any authenticated user) ---
 			r.Route("/editor", func(r chi.Router) {
-				r.Use(middleware.RequireRole("CREATOR", "ADMIN"))
-
 				r.Get("/themes", editorHandler.ListMyThemes)
+				r.Get("/themes/{id}", editorHandler.GetTheme)
 				r.Post("/themes", editorHandler.CreateTheme)
 				r.Put("/themes/{id}", editorHandler.UpdateTheme)
 				r.Delete("/themes/{id}", editorHandler.DeleteTheme)
-				r.Post("/themes/{id}/publish", editorHandler.PublishTheme)
 				r.Post("/themes/{id}/unpublish", editorHandler.UnpublishTheme)
+				r.Post("/themes/{id}/submit-review", editorHandler.SubmitForReview)
 				r.Get("/themes/{id}/characters", editorHandler.ListCharacters)
 				r.Post("/themes/{id}/characters", editorHandler.CreateCharacter)
 				r.Put("/characters/{id}", editorHandler.UpdateCharacter)
@@ -418,6 +429,9 @@ func main() {
 				r.Post("/themes/{id}/media/youtube", mediaHandler.CreateYouTube)
 				r.Patch("/media/{id}", mediaHandler.UpdateMedia)
 				r.Delete("/media/{id}", mediaHandler.DeleteMedia)
+				// Images (character avatars + clue images)
+				r.Post("/themes/{id}/images/upload-url", imageHandler.RequestUpload)
+				r.Post("/themes/{id}/images/confirm", imageHandler.ConfirmUpload)
 
 				// Reading sections
 				r.Get("/themes/{id}/reading-sections", readingHandler.ListReadingSections)
@@ -426,6 +440,8 @@ func main() {
 				r.Delete("/reading-sections/{id}", readingHandler.DeleteReadingSection)
 				// Validation
 				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
+				// Module schemas
+				r.Get("/module-schemas", editorHandler.GetModuleSchemas)
 			})
 
 			// --- Admin endpoints (ADMIN only) ---
@@ -435,10 +451,17 @@ func main() {
 				r.Get("/users", adminHandler.ListUsers)
 				r.Get("/users/{id}", adminHandler.GetUser)
 				r.Put("/users/{id}/role", adminHandler.UpdateUserRole)
+				r.Put("/users/{id}/trusted-creator", reviewHandler.SetTrustedCreator)
 				r.Get("/themes", adminHandler.ListAllThemes)
 				r.Post("/themes/{id}/unpublish", adminHandler.ForceUnpublishTheme)
 				r.Get("/rooms", adminHandler.ListAllRooms)
 				r.Post("/rooms/{id}/close", adminHandler.ForceCloseRoom)
+
+				// Review workflow
+				r.Get("/reviews", reviewHandler.ListPendingReviews)
+				r.Post("/reviews/{id}/approve", reviewHandler.ApproveTheme)
+				r.Post("/reviews/{id}/reject", reviewHandler.RejectTheme)
+				r.Post("/reviews/{id}/suspend", reviewHandler.SuspendTheme)
 
 				// Settlement & revenue
 				r.Get("/settlements", creatorAdminHandler.ListAllSettlements)

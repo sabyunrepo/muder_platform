@@ -143,6 +143,23 @@ func (h *Handler) UnpublishTheme(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
+// SubmitForReview handles POST /editor/themes/{id}/submit-review.
+func (h *Handler) SubmitForReview(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	themeID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	resp, err := h.svc.SubmitForReview(r.Context(), userID, themeID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
 // CreateCharacter handles POST /editor/themes/{id}/characters.
 func (h *Handler) CreateCharacter(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
@@ -535,6 +552,17 @@ func (h *Handler) ValidateTheme(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
+// GetModuleSchemas handles GET /editor/module-schemas.
+func (h *Handler) GetModuleSchemas(w http.ResponseWriter, r *http.Request) {
+	_ = middleware.UserIDFrom(r.Context()) // auth gate
+	schemas, err := h.svc.GetModuleSchemas(r.Context())
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"schemas": schemas})
 }
 
 // parseUUID extracts and parses a UUID from a chi URL parameter.

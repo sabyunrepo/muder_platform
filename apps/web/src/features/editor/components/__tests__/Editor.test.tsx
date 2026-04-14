@@ -51,6 +51,12 @@ vi.mock("sonner", () => ({
   toast: { success: toastSuccess, error: toastError },
 }));
 
+vi.mock("@/features/editor/templateApi", () => ({}));
+vi.mock("@/features/editor/components/SchemaDrivenForm", () => ({
+  SchemaDrivenForm: () => null,
+}));
+
+
 // ---------------------------------------------------------------------------
 // Mock: @/features/editor/api
 // ---------------------------------------------------------------------------
@@ -65,6 +71,8 @@ vi.mock("@/features/editor/api", () => ({
   useEditorCharacters: () => useEditorCharactersMock(),
   useDeleteCharacter: () => useDeleteCharacterMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
+  useModuleSchemas: () => ({ data: null, isLoading: false }),
+  useSubmitForReview: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -122,6 +130,7 @@ vi.mock("@/features/editor/constants", () => ({
       ],
     },
   ],
+  REQUIRED_MODULE_IDS: ["connection", "room"],
   EDITOR_TABS: [
     { key: "overview", label: "개요" },
     { key: "characters", label: "캐릭터" },
@@ -342,24 +351,24 @@ describe("PublishBar", () => {
     expect(screen.getByText("초안")).toBeDefined();
   });
 
-  it("DRAFT 테마에 '출판하기' 버튼을 표시한다", () => {
+  it("DRAFT 테마에 '심사 요청' 버튼을 표시한다", () => {
     render(<PublishBar theme={mockTheme} />);
-    expect(screen.getByText("출판하기")).toBeDefined();
+    expect(screen.getByText("심사 요청")).toBeDefined();
   });
 
-  it("PUBLISHED 테마에 '비공개로 전환' 버튼을 표시한다", () => {
+  it("PUBLISHED 테마에 '비공개 전환' 버튼을 표시한다", () => {
     render(<PublishBar theme={mockPublishedTheme} />);
-    expect(screen.getByText("비공개로 전환")).toBeDefined();
+    expect(screen.getByText("비공개 전환")).toBeDefined();
   });
 
-  it("PUBLISHED 테마에는 '출판하기' 버튼이 없다", () => {
+  it("PUBLISHED 테마에는 '심사 요청' 버튼이 없다", () => {
     render(<PublishBar theme={mockPublishedTheme} />);
-    expect(screen.queryByText("출판하기")).toBeNull();
+    expect(screen.queryByText("심사 요청")).toBeNull();
   });
 
-  it("DRAFT 테마에는 '비공개로 전환' 버튼이 없다", () => {
+  it("DRAFT 테마에는 '비공개 전환' 버튼이 없다", () => {
     render(<PublishBar theme={mockTheme} />);
-    expect(screen.queryByText("비공개로 전환")).toBeNull();
+    expect(screen.queryByText("비공개 전환")).toBeNull();
   });
 });
 
@@ -599,18 +608,18 @@ describe("ModulesTab", () => {
     expect(votingCheckbox).not.toBeNull();
     expect(votingCheckbox.checked).toBe(true);
 
-    // 선택되지 않은 모듈은 체크 해제
+    // 필수 모듈(connection, room)도 항상 체크됨
     const connectionLabel = screen.getByText("접속 관리");
     const connectionCheckbox = connectionLabel
       .closest("label")
       ?.querySelector("input[type='checkbox']") as HTMLInputElement;
-    expect(connectionCheckbox.checked).toBe(false);
+    expect(connectionCheckbox.checked).toBe(true);
   });
 
   it("총 선택 개수를 표시한다", () => {
     render(<ModulesTab themeId="theme-1" theme={mockTheme} />);
 
-    // mockTheme에서 text_chat, voting 2개 선택 / 총 7개 모듈 (mock categories 합계)
-    expect(screen.getByText("2/7 모듈 선택됨")).toBeDefined();
+    // mockTheme에서 text_chat, voting + 필수 connection, room = 4개 / 총 7개 모듈
+    expect(screen.getByText("4/7 모듈 선택됨")).toBeDefined();
   });
 });

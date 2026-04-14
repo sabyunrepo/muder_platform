@@ -1,6 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { ImagePlus } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 import {
   useUpdateTheme,
@@ -8,6 +7,7 @@ import {
   type UpdateThemeRequest,
 } from '@/features/editor/api';
 import { SectionDivider } from './SectionDivider';
+import { CoverImageCropUpload } from './CoverImageCropUpload';
 
 // ---------------------------------------------------------------------------
 // SpecField — inline number input with label + unit
@@ -93,6 +93,7 @@ interface OverviewTabProps {
 export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   const [title, setTitle] = useState(theme.title);
   const [description, setDescription] = useState(theme.description ?? '');
+  const [coverImage, setCoverImage] = useState<string | null>(theme.cover_image || null);
   const [minPlayers, setMinPlayers] = useState(theme.min_players);
   const [maxPlayers, setMaxPlayers] = useState(theme.max_players);
   const [durationMin, setDurationMin] = useState(theme.duration_min);
@@ -105,6 +106,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   useEffect(() => {
     setTitle(theme.title);
     setDescription(theme.description ?? '');
+    setCoverImage(theme.cover_image || null);
     setMinPlayers(theme.min_players);
     setMaxPlayers(theme.max_players);
     setDurationMin(theme.duration_min);
@@ -137,6 +139,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     const body: UpdateThemeRequest = {
       title: title.trim(),
       description: description || undefined,
+      cover_image: coverImage || undefined,
       min_players: minPlayers,
       max_players: maxPlayers,
       duration_min: durationMin,
@@ -157,28 +160,12 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[180px_1fr]">
         {/* Thumbnail */}
-        <div
-          className="aspect-[3/2] cursor-pointer rounded-sm border border-dashed border-slate-800 bg-slate-900 flex flex-col items-center justify-center gap-2 hover:border-slate-700 transition-colors group overflow-hidden"
-          role="button"
-          tabIndex={0}
-          aria-label="커버 이미지 업로드"
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
-        >
-          {theme.cover_image ? (
-            <img
-              src={theme.cover_image}
-              alt="커버 이미지"
-              className="h-full w-full object-cover rounded-sm"
-            />
-          ) : (
-            <>
-              <ImagePlus className="h-6 w-6 text-slate-700 group-hover:text-slate-500 transition-colors" />
-              <span className="text-[10px] text-slate-700 group-hover:text-slate-500 transition-colors">
-                커버 이미지
-              </span>
-            </>
-          )}
-        </div>
+        <CoverImageCropUpload
+          themeId={themeId}
+          currentImageUrl={coverImage}
+          onUploaded={(url) => setCoverImage(url || null)}
+          className="w-full"
+        />
 
         {/* Text fields */}
         <div className="flex flex-col gap-3">

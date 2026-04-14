@@ -40,6 +40,14 @@
 - Factory 패턴: 세션별 독립 인스턴스 (싱글턴 금지)
 - init() + blank import 등록
 
+### 🔴 파일 크기 제한 (200줄 하드 리밋)
+모든 소스 파일은 200줄 이하. 예외 없음.
+- **대상**: `.ts`, `.tsx`, `.go`, `.md` 전부
+- **구현 전**: 200줄 초과 예상 시 미리 분할 설계
+- **분할 패턴**: 서브컴포넌트 추출 / 도메인별 API 파일 + 배럴 re-export / handler 분리
+- **서브에이전트**: 프롬프트에 "파일 200줄 이하" 반드시 명시
+- **검증**: 코드 리뷰 시 `wc -l` 체크 포함
+
 ### 버전 관리
 - Semantic Versioning, Conventional Commits (feat/fix/perf/docs/test/chore)
 - 브랜치: main, feat/*, fix/*
@@ -106,7 +114,7 @@
 - `/plan-stop` — 실행 중단 (state 저장)
 
 ### 필수 규칙
-- **모든 .md 파일 <200줄** (초과 시 `refs/` 분할 + index 패턴)
+- **모든 파일 <200줄** (.ts/.tsx/.go/.md — 초과 시 분할 필수)
 - **STATUS 마커 형식 유지** (hook 파싱)
 - **Wave 병렬 PR은 `isolation: "worktree"`**
 - **Review는 4 병렬 agent** (security/perf/arch/test-coverage)

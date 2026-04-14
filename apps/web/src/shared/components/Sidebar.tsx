@@ -1,7 +1,6 @@
 import { NavLink } from "react-router";
 import {
   Gamepad2,
-  PenTool,
   Shield,
   X,
   Coins,
@@ -14,6 +13,8 @@ import {
   BarChart3,
   CircleDollarSign,
   MessageCircle,
+  Palette,
+  ClipboardCheck,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useUIStore } from "@/stores/uiStore";
@@ -43,16 +44,7 @@ const menuSections: MenuSection[] = [
       { to: "/social", label: "소셜", icon: MessageCircle },
       { to: "/shop", label: "상점", icon: Coins },
       { to: "/my-themes", label: "내 테마", icon: Library },
-    ],
-  },
-  {
-    items: [
-      {
-        to: "/editor",
-        label: "에디터",
-        icon: PenTool,
-        roles: ["creator", "admin"],
-      },
+      { to: "/editor", label: "테마 제작", icon: Palette },
     ],
   },
   {
@@ -73,6 +65,7 @@ const menuSections: MenuSection[] = [
       { to: "/admin/revenue", label: "매출", icon: BarChart3 },
       { to: "/admin/packages", label: "패키지", icon: Package },
       { to: "/admin/coins", label: "코인 지급", icon: CircleDollarSign },
+      { to: "/admin/reviews", label: "테마 심사", icon: ClipboardCheck },
     ],
   },
 ];

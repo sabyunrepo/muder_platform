@@ -9,6 +9,7 @@ export interface ChatMessageProps {
   text: string;
   ts: number;
   isWhisper?: boolean;
+  isGroup?: boolean;
   isSystem?: boolean;
   isMine?: boolean;
 }
@@ -40,6 +41,7 @@ export const ChatMessage = memo(function ChatMessage({
   text,
   ts,
   isWhisper = false,
+  isGroup = false,
   isSystem = false,
   isMine = false,
 }: ChatMessageProps) {
@@ -68,6 +70,26 @@ export const ChatMessage = memo(function ChatMessage({
           <span className="text-[10px] text-slate-600">{formatTime(ts)}</span>
         </div>
         <p className="text-sm text-purple-200">{text}</p>
+      </div>
+    );
+  }
+
+  // 그룹 메시지
+  if (isGroup) {
+    return (
+      <div
+        className={`flex flex-col rounded border-l-2 border-teal-500 bg-teal-900/20 px-3 py-1.5 ${isMine ? "items-end" : "items-start"}`}
+      >
+        <div className="flex items-baseline gap-2">
+          <span className="text-[10px] font-medium text-teal-400">
+            그룹
+          </span>
+          <span className={`text-xs font-semibold ${getNicknameColor(nickname)}`}>
+            {nickname}
+          </span>
+          <span className="text-[10px] text-slate-600">{formatTime(ts)}</span>
+        </div>
+        <p className="text-sm text-teal-200">{text}</p>
       </div>
     );
   }

@@ -101,4 +101,9 @@ const (
 	// Media playback runtime errors
 	ErrMediaReferenceInUse = "MEDIA_REFERENCE_IN_USE"
 	ErrMediaNotInTheme     = "MEDIA_NOT_IN_THEME"
+
+	// Image upload errors
+	ErrImageInvalidType   = "IMAGE_INVALID_TYPE"
+	ErrImageInvalidTarget = "IMAGE_INVALID_TARGET"
+	ErrImageTooLarge      = "IMAGE_TOO_LARGE"
 )

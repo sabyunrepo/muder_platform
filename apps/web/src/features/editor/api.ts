@@ -6,7 +6,7 @@ import { queryClient } from "@/services/queryClient";
 // Types
 // ---------------------------------------------------------------------------
 
-export type ThemeStatus = "DRAFT" | "PUBLISHED";
+export type ThemeStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "UNPUBLISHED" | "SUSPENDED";
 
 export interface EditorThemeSummary {
   id: string;
@@ -34,6 +34,9 @@ export interface EditorThemeResponse {
   config_json: Record<string, unknown> | null;
   version: number;
   created_at: string;
+  review_note: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
 }
 
 export interface EditorCharacterResponse {
@@ -84,6 +87,36 @@ export interface UpdateCharacterRequest {
   sort_order?: number;
 }
 
+export interface CreateClueRequest {
+  name: string;
+  description?: string;
+  image_url?: string;
+  clue_type?: string;
+  level?: number;
+  is_common?: boolean;
+  sort_order?: number;
+  location_id?: string;
+  is_usable?: boolean;
+  use_effect?: string;
+  use_target?: string;
+  use_consumed?: boolean;
+}
+
+export interface UpdateClueRequest {
+  name?: string;
+  description?: string;
+  image_url?: string;
+  clue_type?: string;
+  level?: number;
+  is_common?: boolean;
+  sort_order?: number;
+  location_id?: string;
+  is_usable?: boolean;
+  use_effect?: string;
+  use_target?: string;
+  use_consumed?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Maps / Locations / Clues / Contents / Validation types
 // ---------------------------------------------------------------------------
@@ -125,6 +158,10 @@ export interface ClueResponse {
   clue_type: string;
   sort_order: number;
   created_at: string;
+  is_usable: boolean;
+  use_effect: string | null;
+  use_target: string | null;
+  use_consumed: boolean;
 }
 
 export interface ContentResponse {
@@ -150,6 +187,12 @@ export interface ValidationResponse {
 // Query Keys
 // ---------------------------------------------------------------------------
 
+export type JSONSchema = import("@/features/editor/templateApi").JSONSchemaProperty;
+
+export interface ModuleSchemasResponse {
+  schemas: Record<string, JSONSchema>;
+}
+
 export const editorKeys = {
   all: ["editor"] as const,
   themes: () => [...editorKeys.all, "themes"] as const,
@@ -164,6 +207,7 @@ export const editorKeys = {
     [...editorKeys.all, "themes", themeId, "clues"] as const,
   content: (themeId: string, key: string) =>
     [...editorKeys.all, "themes", themeId, "content", key] as const,
+  moduleSchemas: () => [...editorKeys.all, "module-schemas"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -242,6 +286,17 @@ export function useUnpublishTheme(themeId: string) {
   });
 }
 
+export function useSubmitForReview(themeId: string) {
+  return useMutation<EditorThemeResponse, Error, void>({
+    mutationFn: () =>
+      api.post<EditorThemeResponse>(`/v1/editor/themes/${themeId}/submit-review`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.themes() });
+    },
+  });
+}
+
 export function useEditorContent(themeId: string, key: string) {
   return useQuery<ContentResponse>({
     queryKey: editorKeys.content(themeId, key),
@@ -310,6 +365,18 @@ export function useCreateCharacter(themeId: string) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Module Schemas
+// ---------------------------------------------------------------------------
+
+export function useModuleSchemas() {
+  return useQuery<ModuleSchemasResponse>({
+    queryKey: editorKeys.moduleSchemas(),
+    queryFn: () => api.get<ModuleSchemasResponse>("/v1/editor/module-schemas"),
+    staleTime: 5 * 60 * 1000, // schemas are static; cache for 5 min
+  });
+}
+
 export function useUpdateCharacter(themeId: string) {
   return useMutation<
     EditorCharacterResponse,
@@ -338,3 +405,19 @@ export function useDeleteCharacter(themeId: string) {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Re-exports: Clue hooks (from editorClueApi.ts)
+// ---------------------------------------------------------------------------
+
+export { useEditorClues, useCreateClue, useUpdateClue, useDeleteClue } from "./editorClueApi";
+
+// ---------------------------------------------------------------------------
+// Re-exports: Map/Location types & hooks (from editorMapApi.ts)
+// ---------------------------------------------------------------------------
+
+export type { UpdateMapRequest, CreateLocationRequest, UpdateLocationRequest } from "./editorMapApi";
+export {
+  useEditorMaps, useCreateMap, useUpdateMap, useDeleteMap,
+  useEditorLocations, useCreateLocation, useUpdateLocation, useDeleteLocation,
+} from "./editorMapApi";
