@@ -7,8 +7,8 @@ import {
   useEditorClues,
   useUpdateConfigJson,
 } from '@/features/editor/api';
-import { MissionEditor } from './MissionEditor';
 import type { Mission } from './MissionEditor';
+import { CharacterDetailPanel } from './CharacterDetailPanel';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -66,53 +66,45 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   );
 
   const handleClueToggle = useCallback(
-    (charId: string, clueId: string, checked: boolean) => {
-      const current = characterClues[charId] ?? [];
-      const next = checked
-        ? [...current, clueId]
-        : current.filter((id) => id !== clueId);
-      saveConfig({ character_clues: { ...characterClues, [charId]: next } });
+    (clueId: string, checked: boolean) => {
+      if (!selectedCharId) return;
+      const current = characterClues[selectedCharId] ?? [];
+      const next = checked ? [...current, clueId] : current.filter((id) => id !== clueId);
+      saveConfig({ character_clues: { ...characterClues, [selectedCharId]: next } });
     },
-    [characterClues, saveConfig],
+    [characterClues, saveConfig, selectedCharId],
   );
 
-  const handleAddMission = useCallback(
-    (charId: string) => {
-      const current = characterMissions[charId] ?? [];
-      const mission: Mission = {
-        id: crypto.randomUUID(), type: 'find', description: '', points: 10,
-      };
-      saveConfig({
-        character_missions: { ...characterMissions, [charId]: [...current, mission] },
-      });
-    },
-    [characterMissions, saveConfig],
-  );
+  const handleAddMission = useCallback(() => {
+    if (!selectedCharId) return;
+    const current = characterMissions[selectedCharId] ?? [];
+    const mission: Mission = { id: crypto.randomUUID(), type: 'find', description: '', points: 10 };
+    saveConfig({ character_missions: { ...characterMissions, [selectedCharId]: [...current, mission] } });
+  }, [characterMissions, saveConfig, selectedCharId]);
 
   const handleDeleteMission = useCallback(
-    (charId: string, missionId: string) => {
-      const current = characterMissions[charId] ?? [];
+    (missionId: string) => {
+      if (!selectedCharId) return;
+      const current = characterMissions[selectedCharId] ?? [];
       saveConfig({
-        character_missions: {
-          ...characterMissions,
-          [charId]: current.filter((m) => m.id !== missionId),
-        },
+        character_missions: { ...characterMissions, [selectedCharId]: current.filter((m) => m.id !== missionId) },
       });
     },
-    [characterMissions, saveConfig],
+    [characterMissions, saveConfig, selectedCharId],
   );
 
   const handleMissionChange = useCallback(
-    (charId: string, missionId: string, field: keyof Mission, value: string | number) => {
-      const current = characterMissions[charId] ?? [];
+    (missionId: string, field: keyof Mission, value: string | number) => {
+      if (!selectedCharId) return;
+      const current = characterMissions[selectedCharId] ?? [];
       saveConfig({
         character_missions: {
           ...characterMissions,
-          [charId]: current.map((m) => (m.id === missionId ? { ...m, [field]: value } : m)),
+          [selectedCharId]: current.map((m) => (m.id === missionId ? { ...m, [field]: value } : m)),
         },
       });
     },
-    [characterMissions, saveConfig],
+    [characterMissions, saveConfig, selectedCharId],
   );
 
   if (charsLoading) {
@@ -134,14 +126,14 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
     );
   }
 
-  const selectedChar = characters.find((c) => c.id === selectedCharId);
+  const selectedChar = characters.find((c) => c.id === selectedCharId) ?? null;
   const charClueIds = selectedCharId ? (characterClues[selectedCharId] ?? []) : [];
   const charMissions = selectedCharId ? (characterMissions[selectedCharId] ?? []) : [];
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col md:flex-row">
       {/* ── Left: Character list ── */}
-      <aside className="w-60 shrink-0 overflow-y-auto border-r border-slate-800 py-2">
+      <aside className="shrink-0 overflow-y-auto border-b border-slate-800 py-2 md:w-60 md:border-b-0 md:border-r">
         {characters.map((char) => (
           <button
             key={char.id}
@@ -164,50 +156,16 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
       {/* ── Right: Detail ── */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
-        {selectedChar ? (
-          <div className="max-w-lg space-y-6">
-            <h3 className="text-sm font-semibold text-slate-200">{selectedChar.name}</h3>
-
-            {/* 시작 단서 배정 */}
-            <div>
-              <h4 className="mb-2 text-xs font-medium text-slate-400">시작 단서</h4>
-              {clues?.length ? (
-                <div className="space-y-1">
-                  {clues.map((clue) => (
-                    <label
-                      key={clue.id}
-                      className="flex items-center gap-2 rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={charClueIds.includes(clue.id)}
-                        onChange={(e) =>
-                          handleClueToggle(selectedCharId!, clue.id, e.target.checked)
-                        }
-                        className="accent-amber-500"
-                      />
-                      {clue.name}
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-600">단서가 없습니다</p>
-              )}
-            </div>
-
-            {/* 히든 미션 */}
-            <MissionEditor
-              missions={charMissions}
-              onAdd={() => handleAddMission(selectedCharId!)}
-              onChange={(mid, field, val) => handleMissionChange(selectedCharId!, mid, field, val)}
-              onDelete={(mid) => handleDeleteMission(selectedCharId!, mid)}
-            />
-          </div>
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-xs text-slate-600">좌측에서 캐릭터를 선택하세요</p>
-          </div>
-        )}
+        <CharacterDetailPanel
+          selectedChar={selectedChar}
+          clues={clues}
+          charClueIds={charClueIds}
+          charMissions={charMissions}
+          onClueToggle={handleClueToggle}
+          onAddMission={handleAddMission}
+          onChangeMission={handleMissionChange}
+          onDeleteMission={handleDeleteMission}
+        />
       </div>
     </div>
   );
