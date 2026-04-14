@@ -4,6 +4,13 @@ import { Layers } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { useUpdateConfigJson } from '@/features/editor/api';
 import { PhaseTimeline } from './PhaseTimeline';
+import { FlowCanvas } from './FlowCanvas';
+
+// ---------------------------------------------------------------------------
+// Feature flag — set to true in Phase 15.0 PR-7
+// ---------------------------------------------------------------------------
+
+export const FLOW_CANVAS_ENABLED = false;
 
 // ---------------------------------------------------------------------------
 // Types (exported for reuse in sub-components)
@@ -129,6 +136,10 @@ export function FlowSubTab({ themeId, theme }: FlowSubTabProps) {
     setPhases(next);
     persist(next);
   };
+
+  if (FLOW_CANVAS_ENABLED) {
+    return <FlowCanvas themeId={themeId} />;
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
