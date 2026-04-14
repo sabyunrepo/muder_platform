@@ -53,7 +53,7 @@ export const useConnectionStore = create<ConnectionState & ConnectionActions>()(
 
       const wsBase = buildWsBase();
       const client = new WsClient({
-        url: `${wsBase}/ws/game`,
+        url: `${wsBase}/ws/game?token=${encodeURIComponent(token)}`,
         token,
       });
 
@@ -73,7 +73,7 @@ export const useConnectionStore = create<ConnectionState & ConnectionActions>()(
 
       const wsBase = buildWsBase();
       const client = new WsClient({
-        url: `${wsBase}/ws/social`,
+        url: `${wsBase}/ws/social?token=${encodeURIComponent(token)}`,
         token,
       });
 

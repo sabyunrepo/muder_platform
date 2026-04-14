@@ -1,13 +1,136 @@
 {
-  "phase": "13.0",
-  "name": "game-design-editor",
-  "dir": "docs/plans/2026-04-13-game-design-editor",
-  "status": "ACTIVE",
-  "current_wave": 1,
-  "current_pr": null,
-  "created_at": "2026-04-13",
-  "git_base": "main",
-  "commits": {
-    "plan": "bc793f0"
-  }
+  "active": {
+    "id": "phase-15.0-flow-canvas",
+    "name": "Phase 15.0 — React Flow 게임 흐름 에디터",
+    "dir": "docs/plans/2026-04-14-flow-canvas",
+    "design": "docs/plans/2026-04-14-flow-canvas/design.md",
+    "plan": "docs/plans/2026-04-14-flow-canvas/plan.md",
+    "checklist": "docs/plans/2026-04-14-flow-canvas/checklist.md",
+    "progress_memory": "memory/project_phase150_progress.md",
+    "scope": [
+      "apps/server/internal/flow/**",
+      "apps/server/internal/database/migrations/**",
+      "apps/server/internal/database/queries/flow_*",
+      "apps/web/src/features/editor/flow/**",
+      "apps/web/src/api/flowApi.ts",
+      "apps/web/src/hooks/useFlowData.ts",
+      "apps/web/src/hooks/useFlowConditionData.ts"
+    ],
+    "started_at": "2026-04-14",
+    "started_commit": "f2005e5",
+    "current_wave": "W3",
+    "current_pr": "PR-5",
+    "current_task": "EndingNode.tsx",
+    "status": "in_progress",
+    "blockers": [],
+    "waves": [
+      {
+        "id": "W1",
+        "name": "DB + 캔버스 기초",
+        "mode": "parallel",
+        "prs": ["PR-1", "PR-2"]
+      },
+      {
+        "id": "W2",
+        "name": "노드 시스템",
+        "mode": "parallel",
+        "prs": ["PR-3", "PR-4"]
+      },
+      {
+        "id": "W3",
+        "name": "엔딩 + 조건",
+        "mode": "parallel",
+        "prs": ["PR-5", "PR-6"]
+      },
+      {
+        "id": "W4",
+        "name": "통합 + QA",
+        "mode": "sequential",
+        "prs": ["PR-7", "PR-8"]
+      }
+    ],
+    "prs": {
+      "PR-1": {
+        "title": "DB 스키마 + Go API",
+        "depends_on": [],
+        "scope": ["apps/server/internal/domain/flow/**", "apps/server/db/migrations/00021*", "apps/server/db/queries/flow.sql"],
+        "tasks_total": 8,
+        "tasks_done": 8,
+        "status": "done",
+        "branch": "feat/phase-15.0/PR-1",
+        "commit": "a58aa14"
+      },
+      "PR-2": {
+        "title": "React Flow 캔버스 기초",
+        "depends_on": [],
+        "scope": ["apps/web/src/features/editor/flow*", "apps/web/src/features/editor/hooks/useFlowData.ts", "apps/web/src/features/editor/components/design/Flow*"],
+        "tasks_total": 7,
+        "tasks_done": 7,
+        "status": "done",
+        "branch": "feat/phase-15.0/PR-2",
+        "commit": "1412802"
+      },
+      "PR-3": {
+        "title": "Phase 커스텀 노드",
+        "depends_on": ["PR-1"],
+        "scope": ["apps/web/src/features/editor/components/design/*Node*", "apps/web/src/features/editor/hooks/useFlowData.ts"],
+        "tasks_total": 7,
+        "tasks_done": 7,
+        "status": "done",
+        "branch": "feat/phase-15.0/PR-3",
+        "commit": "62b2d28"
+      },
+      "PR-4": {
+        "title": "Branch 노드 + 엣지",
+        "depends_on": ["PR-1"],
+        "scope": ["apps/web/src/features/editor/components/design/Branch*", "apps/web/src/features/editor/hooks/connection*"],
+        "tasks_total": 6,
+        "tasks_done": 6,
+        "status": "done",
+        "branch": "feat/phase-15.0/PR-4",
+        "commit": "0e8a6d4"
+      },
+      "PR-5": {
+        "title": "Ending 노드",
+        "depends_on": ["PR-3", "PR-4"],
+        "scope": ["apps/web/src/features/editor/flow/**"],
+        "tasks_total": 6,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-15.0/PR-5",
+        "commit": null
+      },
+      "PR-6": {
+        "title": "조건 규칙 빌더",
+        "depends_on": ["PR-4"],
+        "scope": ["apps/web/src/features/editor/flow/**", "apps/web/src/hooks/useFlowConditionData.ts"],
+        "tasks_total": 8,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-15.0/PR-6",
+        "commit": null
+      },
+      "PR-7": {
+        "title": "마이그레이션 + 통합",
+        "depends_on": ["PR-5", "PR-6"],
+        "scope": ["apps/server/internal/flow/**", "apps/web/src/features/editor/flow/**"],
+        "tasks_total": 6,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-15.0/PR-7",
+        "commit": null
+      },
+      "PR-8": {
+        "title": "테스트 + QA",
+        "depends_on": ["PR-7"],
+        "scope": ["apps/server/internal/flow/**", "apps/web/src/features/editor/flow/**"],
+        "tasks_total": 5,
+        "tasks_done": 0,
+        "status": "pending",
+        "branch": "feat/phase-15.0/PR-8",
+        "commit": null
+      }
+    }
+  },
+  "history": []
 }

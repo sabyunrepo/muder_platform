@@ -1,7 +1,8 @@
 import { Trash2 } from "lucide-react";
-import type { Node } from "@xyflow/react";
+import type { Node, Edge } from "@xyflow/react";
 import { PhaseNodePanel } from "./PhaseNodePanel";
 import { EndingNodePanel } from "./EndingNodePanel";
+import { BranchNodePanel } from "./BranchNodePanel";
 import type { FlowNodeData } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
@@ -13,6 +14,8 @@ interface NodeDetailPanelProps {
   themeId: string;
   onUpdate: (id: string, data: Partial<FlowNodeData>) => void;
   onDelete: (id: string) => void;
+  edges?: Edge[];
+  onEdgeConditionChange?: (edgeId: string, condition: Record<string, unknown>) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -24,6 +27,8 @@ export function NodeDetailPanel({
   themeId,
   onUpdate,
   onDelete,
+  edges = [],
+  onEdgeConditionChange,
 }: NodeDetailPanelProps) {
   if (!node) {
     return (
@@ -34,6 +39,13 @@ export function NodeDetailPanel({
   }
 
   const isStart = node.type === "start";
+
+  const handleEdgeConditionChange = (
+    edgeId: string,
+    condition: Record<string, unknown>,
+  ) => {
+    onEdgeConditionChange?.(edgeId, condition);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -49,6 +61,14 @@ export function NodeDetailPanel({
           <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} />
         ) : node.type === "ending" ? (
           <EndingNodePanel node={node} themeId={themeId} onUpdate={onUpdate} />
+        ) : node.type === "branch" ? (
+          <BranchNodePanel
+            node={node}
+            themeId={themeId}
+            onUpdate={onUpdate}
+            edges={edges}
+            onEdgeConditionChange={handleEdgeConditionChange}
+          />
         ) : (
           <div className="flex h-full items-center justify-center p-4">
             <span className="text-xs text-slate-500">

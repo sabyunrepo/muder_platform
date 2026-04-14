@@ -1,4 +1,4 @@
-<!-- STATUS: {"phase":"15.0","wave":"W1","pr":"","task":"","state":"pending"} -->
+<!-- STATUS: {"phase":"15.0","wave":"W3","pr":"PR-5","task":"EndingNode.tsx","state":"in_progress"} -->
 # Phase 15.0 — React Flow 게임 흐름 에디터 체크리스트
 
 > 부모: [design.md](design.md) | 실행: [plan.md](plan.md)
@@ -7,24 +7,24 @@
 
 ## Wave 1 — DB + 캔버스 기초 (parallel)
 
-### PR-1: DB 스키마 + Go API
-- [ ] DB 마이그레이션 (flow_nodes + flow_edges)
-- [ ] sqlc 쿼리 작성
-- [ ] models.go (FlowNode, FlowEdge, FlowGraph)
-- [ ] repository.go
-- [ ] service.go (GetFlow, SaveFlow, CRUD, DAG 검증)
-- [ ] handler.go (REST 핸들러 8개)
-- [ ] 라우터 등록
-- [ ] 단위 테스트
+### PR-1: DB 스키마 + Go API ✅
+- [x] DB 마이그레이션 (flow_nodes + flow_edges)
+- [x] sqlc 쿼리 작성
+- [x] models.go (FlowNode, FlowEdge, FlowGraph)
+- [x] validate.go (DAG 검증) + db_helpers.go
+- [x] service.go (GetFlow, SaveFlow, CRUD, DAG 검증)
+- [x] handler.go (REST 핸들러 8개)
+- [x] 라우터 등록
+- [x] 단위 테스트 (11 pass)
 
-### PR-2: React Flow 캔버스 기초
-- [ ] @xyflow/react 설치
-- [ ] flowApi.ts
-- [ ] useFlowData.ts
-- [ ] FlowCanvas.tsx
-- [ ] FlowToolbar.tsx
-- [ ] FlowSubTab 연동 (feature flag)
-- [ ] 기본 테스트
+### PR-2: React Flow 캔버스 기초 ✅
+- [x] @xyflow/react 설치
+- [x] flowTypes.ts + flowApi.ts
+- [x] useFlowData.ts
+- [x] FlowCanvas.tsx
+- [x] FlowToolbar.tsx
+- [x] FlowSubTab 연동 (feature flag)
+- [x] 기본 테스트 (8 pass)
 
 **Wave 1 gate**: build + test pass, API 동작, 빈 캔버스 렌더링
 
@@ -32,22 +32,22 @@
 
 ## Wave 2 — 노드 시스템 (parallel)
 
-### PR-3: Phase 커스텀 노드
-- [ ] StartNode.tsx
-- [ ] PhaseNode.tsx
-- [ ] PhaseNodePanel.tsx
-- [ ] NodeDetailPanel.tsx
-- [ ] 드래그 & 드롭
-- [ ] FlowCanvas 연결
-- [ ] 테스트
+### PR-3: Phase 커스텀 노드 ✅
+- [x] StartNode.tsx
+- [x] PhaseNode.tsx
+- [x] PhaseNodePanel.tsx
+- [x] NodeDetailPanel.tsx
+- [x] 드래그 & 드롭
+- [x] FlowCanvas 연결
+- [x] 테스트 (13 new, 245 total pass)
 
-### PR-4: Branch 노드 + 엣지
-- [ ] BranchNode.tsx
-- [ ] ConditionEdge.tsx
-- [ ] 연결 검증 유틸 (사이클 + 타입)
-- [ ] onConnect / onEdgesChange API 연동
-- [ ] FlowCanvas 업데이트
-- [ ] 테스트
+### PR-4: Branch 노드 + 엣지 ✅
+- [x] BranchNode.tsx
+- [x] ConditionEdge.tsx
+- [x] 연결 검증 유틸 (사이클 + 타입)
+- [x] useFlowConnections.ts + flowNodeRegistry.ts
+- [x] FlowCanvas 충돌 최소화 분리
+- [x] 테스트 (21 new, 266 total pass)
 
 **Wave 2 gate**: build + test pass, Phase/Branch 노드 동작
 
