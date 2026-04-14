@@ -21,6 +21,7 @@ type Service interface {
 	CreateEdge(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
 	UpdateEdge(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
 	DeleteEdge(ctx context.Context, creatorID, edgeID uuid.UUID) error
+	MigratePhases(ctx context.Context, themeID uuid.UUID, phases []map[string]any) error
 }
 
 type serviceImpl struct {

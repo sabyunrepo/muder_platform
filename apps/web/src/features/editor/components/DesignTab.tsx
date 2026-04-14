@@ -56,7 +56,7 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
           <ModulesSubTab themeId={themeId} theme={theme} />
         )}
         {activeSubTab === 'flow' && (
-          <FlowSubTab themeId={themeId} theme={theme} />
+          <FlowSubTab themeId={themeId} />
         )}
         {activeSubTab === 'locations' && (
           <LocationsSubTab themeId={themeId} theme={theme} />

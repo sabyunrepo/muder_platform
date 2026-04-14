@@ -171,6 +171,25 @@ func (h *Handler) DeleteEdge(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// MigrateFlow handles POST /editor/themes/{id}/flow/migrate.
+func (h *Handler) MigrateFlow(w http.ResponseWriter, r *http.Request) {
+	themeID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	var req MigrateFlowRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	if err := h.svc.MigratePhases(r.Context(), themeID, req.Phases); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // parseUUID extracts and parses a UUID from a chi URL parameter.
 func parseUUID(r *http.Request, param string) (uuid.UUID, error) {
 	s := chi.URLParam(r, param)
