@@ -103,6 +103,23 @@ type ClueResponse struct {
 	UseConsumed bool       `json:"use_consumed"`
 }
 
+// --- Clue relation types ---
+
+// ClueRelationRequest is the input for a single clue relation.
+type ClueRelationRequest struct {
+	SourceID uuid.UUID `json:"sourceId"`
+	TargetID uuid.UUID `json:"targetId"`
+	Mode     string    `json:"mode"` // "AND" or "OR"
+}
+
+// ClueRelationResponse is the output for a single clue relation.
+type ClueRelationResponse struct {
+	ID       uuid.UUID `json:"id"`
+	SourceID uuid.UUID `json:"sourceId"`
+	TargetID uuid.UUID `json:"targetId"`
+	Mode     string    `json:"mode"`
+}
+
 // --- Content types ---
 
 type ContentResponse struct {

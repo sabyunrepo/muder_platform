@@ -12,21 +12,6 @@ import (
 	"github.com/mmp-platform/server/internal/db"
 )
 
-// ClueRelationRequest is the input for a single clue relation.
-type ClueRelationRequest struct {
-	SourceID uuid.UUID `json:"sourceId"`
-	TargetID uuid.UUID `json:"targetId"`
-	Mode     string    `json:"mode"` // "AND" or "OR"
-}
-
-// ClueRelationResponse is the output for a single clue relation.
-type ClueRelationResponse struct {
-	ID       uuid.UUID `json:"id"`
-	SourceID uuid.UUID `json:"sourceId"`
-	TargetID uuid.UUID `json:"targetId"`
-	Mode     string    `json:"mode"`
-}
-
 const maxClueRelations = 500
 
 func (s *service) GetClueRelations(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error) {
