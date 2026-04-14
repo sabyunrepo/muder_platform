@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react';
+import { MissionTypeFields } from './MissionTypeFields';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -9,27 +10,53 @@ export interface Mission {
   type: string;
   description: string;
   points: number;
+  targetCharacterId?: string;
+  targetClueId?: string;
+  condition?: string;
+  quantity?: number;
+  secretContent?: string;
+  penalty?: number;
+  difficulty?: number;
+}
+
+export interface MissionEditorCharacter {
+  id: string;
+  name: string;
+}
+
+export interface MissionEditorClue {
+  id: string;
+  name: string;
 }
 
 interface MissionEditorProps {
   missions: Mission[];
+  characters?: MissionEditorCharacter[];
+  clues?: MissionEditorClue[];
   onAdd: () => void;
   onChange: (missionId: string, field: keyof Mission, value: string | number) => void;
   onDelete: (missionId: string) => void;
 }
 
-const MISSION_TYPES = [
-  { value: 'find', label: '찾기' },
+export const MISSION_TYPES = [
+  { value: 'kill', label: '살해' },
+  { value: 'possess', label: '보유' },
+  { value: 'secret', label: '비밀' },
   { value: 'protect', label: '보호' },
-  { value: 'sabotage', label: '방해' },
-  { value: 'observe', label: '관찰' },
 ];
 
 // ---------------------------------------------------------------------------
 // MissionEditor
 // ---------------------------------------------------------------------------
 
-export function MissionEditor({ missions, onAdd, onChange, onDelete }: MissionEditorProps) {
+export function MissionEditor({
+  missions,
+  characters = [],
+  clues = [],
+  onAdd,
+  onChange,
+  onDelete,
+}: MissionEditorProps) {
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
@@ -78,7 +105,7 @@ export function MissionEditor({ missions, onAdd, onChange, onDelete }: MissionEd
                 placeholder="미션 설명"
                 className="mb-2 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
               />
-              <div className="flex items-center gap-2">
+              <div className="mb-2 flex items-center gap-2">
                 <span className="text-xs text-slate-500">포인트:</span>
                 <input
                   type="number"
@@ -87,6 +114,12 @@ export function MissionEditor({ missions, onAdd, onChange, onDelete }: MissionEd
                   className="w-16 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
                 />
               </div>
+              <MissionTypeFields
+                mission={mission}
+                characters={characters}
+                clues={clues}
+                onChange={onChange}
+              />
             </div>
           ))}
         </div>

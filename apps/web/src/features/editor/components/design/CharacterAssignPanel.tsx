@@ -78,7 +78,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const handleAddMission = useCallback(() => {
     if (!selectedCharId) return;
     const current = characterMissions[selectedCharId] ?? [];
-    const mission: Mission = { id: crypto.randomUUID(), type: 'find', description: '', points: 10 };
+    const mission: Mission = { id: crypto.randomUUID(), type: 'kill', description: '', points: 10 };
     saveConfig({ character_missions: { ...characterMissions, [selectedCharId]: [...current, mission] } });
   }, [characterMissions, saveConfig, selectedCharId]);
 
@@ -158,6 +158,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <CharacterDetailPanel
           selectedChar={selectedChar}
+          characters={characters ?? []}
           clues={clues}
           charClueIds={charClueIds}
           charMissions={charMissions}
