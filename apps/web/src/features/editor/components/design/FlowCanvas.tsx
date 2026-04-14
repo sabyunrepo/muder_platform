@@ -7,13 +7,14 @@ import {
   type OnSelectionChangeParams,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFlowData } from "../../hooks/useFlowData";
 import { FlowToolbar } from "./FlowToolbar";
 import { StartNode } from "./StartNode";
 import { PhaseNode } from "./PhaseNode";
 import { EndingNode } from "./EndingNode";
 import { NodeDetailPanel } from "./NodeDetailPanel";
+import { FlowSimulationPanel } from "./FlowSimulationPanel";
 import { branchNodeTypes, conditionEdgeTypes } from "./flowNodeRegistry";
 import type { FlowNodeType } from "../../flowTypes";
 
@@ -44,6 +45,8 @@ interface FlowCanvasProps {
 
 export function FlowCanvas({ themeId }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [showSim, setShowSim] = useState(false);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const {
     nodes,
@@ -120,6 +123,8 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         isSaving={isSaving}
         onApplyPreset={applyPreset}
         hasNodes={nodes.length > 0}
+        onToggleSimulation={() => setShowSim((v) => !v)}
+        isSimulating={showSim}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Canvas */}
@@ -141,6 +146,7 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
             deleteKeyCode="Delete"
             edgesFocusable={true}
             edgesReconnectable={true}
+            nodeClassName={(node) => node.id === highlightId ? "!ring-2 !ring-amber-400" : ""}
             fitView
             colorMode="dark"
           >
@@ -150,9 +156,19 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
           </ReactFlow>
         </div>
 
-        {/* Detail panel — shown when a node is selected */}
-        {selectedNode && (
-          <div className="w-56 shrink-0 border-l border-slate-800 bg-slate-900 overflow-y-auto">
+        {/* Side panels */}
+        <div className="flex w-56 shrink-0 flex-col border-l border-slate-800 bg-slate-900 overflow-y-auto">
+          {showSim && (
+            <div className="border-b border-slate-800 p-3">
+              <FlowSimulationPanel
+                nodes={nodes}
+                edges={edges}
+                onHighlight={setHighlightId}
+                onClose={() => { setShowSim(false); setHighlightId(null); }}
+              />
+            </div>
+          )}
+          {selectedNode && (
             <NodeDetailPanel
               node={selectedNode}
               themeId={themeId}
@@ -161,8 +177,8 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
               edges={edges}
               onEdgeConditionChange={updateEdgeCondition}
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
