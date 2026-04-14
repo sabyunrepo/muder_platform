@@ -454,6 +454,7 @@ func main() {
 				r.Post("/themes/{id}/flow/edges", flowHandler.CreateEdge)
 				r.Patch("/themes/{id}/flow/edges/{edgeId}", flowHandler.UpdateEdge)
 				r.Delete("/themes/{id}/flow/edges/{edgeId}", flowHandler.DeleteEdge)
+				r.Post("/themes/{id}/flow/migrate", flowHandler.MigrateFlow)
 			})
 
 			// --- Admin endpoints (ADMIN only) ---

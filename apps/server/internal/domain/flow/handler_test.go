@@ -18,14 +18,15 @@ import (
 // --- mock service ---
 
 type mockService struct {
-	getFlowFn    func(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error)
-	saveFlowFn   func(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error)
-	createNodeFn func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error)
-	updateNodeFn func(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
-	deleteNodeFn func(ctx context.Context, creatorID, nodeID uuid.UUID) error
-	createEdgeFn func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
-	updateEdgeFn func(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
-	deleteEdgeFn func(ctx context.Context, creatorID, edgeID uuid.UUID) error
+	getFlowFn       func(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error)
+	saveFlowFn      func(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error)
+	createNodeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error)
+	updateNodeFn    func(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
+	deleteNodeFn    func(ctx context.Context, creatorID, nodeID uuid.UUID) error
+	createEdgeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
+	updateEdgeFn    func(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
+	deleteEdgeFn    func(ctx context.Context, creatorID, edgeID uuid.UUID) error
+	migratePhasesFn func(ctx context.Context, themeID uuid.UUID, phases []map[string]any) error
 }
 
 func (m *mockService) GetFlow(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error) {
@@ -51,6 +52,12 @@ func (m *mockService) UpdateEdge(ctx context.Context, creatorID, edgeID uuid.UUI
 }
 func (m *mockService) DeleteEdge(ctx context.Context, creatorID, edgeID uuid.UUID) error {
 	return m.deleteEdgeFn(ctx, creatorID, edgeID)
+}
+func (m *mockService) MigratePhases(ctx context.Context, themeID uuid.UUID, phases []map[string]any) error {
+	if m.migratePhasesFn != nil {
+		return m.migratePhasesFn(ctx, themeID, phases)
+	}
+	return nil
 }
 
 // --- helpers ---
@@ -146,3 +153,4 @@ func TestGetFlow_InvalidUUID(t *testing.T) {
 		t.Fatalf("expected 400, got %d", w.Code)
 	}
 }
+

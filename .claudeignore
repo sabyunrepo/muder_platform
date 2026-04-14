@@ -1,0 +1,38 @@
+# ─── Build artifacts & binaries ───────────────────────
+apps/server/tmp/
+apps/web/dist/
+
+# ─── Lock files (large, no value for Claude) ──────────
+pnpm-lock.yaml
+apps/server/go.sum
+
+# ─── Test artifacts & reports ─────────────────────────
+apps/web/playwright-report/
+apps/web/test-results/
+screenshots/
+
+# ─── Large binary/media files ─────────────────────────
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.mp3
+*.mp4
+
+# ─── IDE & tool caches ────────────────────────────────
+.omc/
+.playwright-mcp/
+.turbo/
+.worktrees/
+
+# ─── Archived plans (use QMD to search these) ─────────
+.claude/archived_plans/
+
+# ─── Generated E2E test output ────────────────────────
+apps/web/e2e/

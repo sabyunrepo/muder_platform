@@ -103,3 +103,8 @@ type UpdateEdgeRequest struct {
 	Label     *string         `json:"label,omitempty"`
 	SortOrder int32           `json:"sort_order"`
 }
+
+// MigrateFlowRequest carries legacy phases for migration to flow graph.
+type MigrateFlowRequest struct {
+	Phases []map[string]any `json:"phases"`
+}
