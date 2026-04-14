@@ -1,7 +1,8 @@
 import { useRef, useEffect } from "react";
 import type { Node } from "@xyflow/react";
 import { useUpdateFlowNode } from "../../flowApi";
-import type { FlowNodeData } from "../../flowTypes";
+import type { FlowNodeData, PhaseAction } from "../../flowTypes";
+import { ActionListEditor } from "./ActionListEditor";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,6 +109,58 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
         />
       </div>
+
+      {/* Auto-advance toggle */}
+      <div className="flex items-center justify-between">
+        <label className="text-[11px] text-slate-400">자동 진행</label>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={data.autoAdvance ?? false}
+          onClick={() => handleChange({ autoAdvance: !data.autoAdvance })}
+          className={`relative h-5 w-9 rounded-full transition-colors ${
+            data.autoAdvance ? "bg-amber-600" : "bg-slate-700"
+          }`}
+        >
+          <span
+            className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+              data.autoAdvance ? "translate-x-4" : ""
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Warning timer — only when autoAdvance */}
+      {data.autoAdvance && (
+        <div className="flex flex-col gap-1">
+          <label className="text-[11px] text-slate-400">경고 타이머 (초)</label>
+          <input
+            type="number"
+            min={0}
+            value={data.warningAt ?? ""}
+            onChange={(e) =>
+              handleChange({ warningAt: e.target.value ? Number(e.target.value) : undefined })
+            }
+            placeholder="30"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+          />
+        </div>
+      )}
+
+      {/* Divider */}
+      <div className="border-t border-slate-800" />
+
+      {/* onEnter / onExit actions */}
+      <ActionListEditor
+        label="진입 액션 (onEnter)"
+        actions={(data.onEnter as PhaseAction[]) ?? []}
+        onChange={(actions) => handleChange({ onEnter: actions })}
+      />
+      <ActionListEditor
+        label="퇴장 액션 (onExit)"
+        actions={(data.onExit as PhaseAction[]) ?? []}
+        onChange={(actions) => handleChange({ onExit: actions })}
+      />
     </div>
   );
 }
