@@ -18,42 +18,58 @@
     ],
     "started_at": "2026-04-14",
     "started_commit": "f2005e5",
-    "current_wave": "W3",
-    "current_pr": "PR-5",
-    "current_task": "EndingNode.tsx",
-    "status": "in_progress",
+    "current_wave": "W4",
+    "current_pr": "PR-8",
+    "current_task": "",
+    "status": "completed",
     "blockers": [],
     "waves": [
       {
         "id": "W1",
         "name": "DB + 캔버스 기초",
         "mode": "parallel",
-        "prs": ["PR-1", "PR-2"]
+        "prs": [
+          "PR-1",
+          "PR-2"
+        ]
       },
       {
         "id": "W2",
         "name": "노드 시스템",
         "mode": "parallel",
-        "prs": ["PR-3", "PR-4"]
+        "prs": [
+          "PR-3",
+          "PR-4"
+        ]
       },
       {
         "id": "W3",
         "name": "엔딩 + 조건",
         "mode": "parallel",
-        "prs": ["PR-5", "PR-6"]
+        "prs": [
+          "PR-5",
+          "PR-6"
+        ]
       },
       {
         "id": "W4",
         "name": "통합 + QA",
         "mode": "sequential",
-        "prs": ["PR-7", "PR-8"]
+        "prs": [
+          "PR-7",
+          "PR-8"
+        ]
       }
     ],
     "prs": {
       "PR-1": {
         "title": "DB 스키마 + Go API",
         "depends_on": [],
-        "scope": ["apps/server/internal/domain/flow/**", "apps/server/db/migrations/00021*", "apps/server/db/queries/flow.sql"],
+        "scope": [
+          "apps/server/internal/domain/flow/**",
+          "apps/server/db/migrations/00021*",
+          "apps/server/db/queries/flow.sql"
+        ],
         "tasks_total": 8,
         "tasks_done": 8,
         "status": "done",
@@ -63,7 +79,11 @@
       "PR-2": {
         "title": "React Flow 캔버스 기초",
         "depends_on": [],
-        "scope": ["apps/web/src/features/editor/flow*", "apps/web/src/features/editor/hooks/useFlowData.ts", "apps/web/src/features/editor/components/design/Flow*"],
+        "scope": [
+          "apps/web/src/features/editor/flow*",
+          "apps/web/src/features/editor/hooks/useFlowData.ts",
+          "apps/web/src/features/editor/components/design/Flow*"
+        ],
         "tasks_total": 7,
         "tasks_done": 7,
         "status": "done",
@@ -72,8 +92,13 @@
       },
       "PR-3": {
         "title": "Phase 커스텀 노드",
-        "depends_on": ["PR-1"],
-        "scope": ["apps/web/src/features/editor/components/design/*Node*", "apps/web/src/features/editor/hooks/useFlowData.ts"],
+        "depends_on": [
+          "PR-1"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/components/design/*Node*",
+          "apps/web/src/features/editor/hooks/useFlowData.ts"
+        ],
         "tasks_total": 7,
         "tasks_done": 7,
         "status": "done",
@@ -82,8 +107,13 @@
       },
       "PR-4": {
         "title": "Branch 노드 + 엣지",
-        "depends_on": ["PR-1"],
-        "scope": ["apps/web/src/features/editor/components/design/Branch*", "apps/web/src/features/editor/hooks/connection*"],
+        "depends_on": [
+          "PR-1"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/components/design/Branch*",
+          "apps/web/src/features/editor/hooks/connection*"
+        ],
         "tasks_total": 6,
         "tasks_done": 6,
         "status": "done",
@@ -92,45 +122,69 @@
       },
       "PR-5": {
         "title": "Ending 노드",
-        "depends_on": ["PR-3", "PR-4"],
-        "scope": ["apps/web/src/features/editor/flow/**"],
+        "depends_on": [
+          "PR-3",
+          "PR-4"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/components/design/Ending*"
+        ],
         "tasks_total": 6,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 6,
+        "status": "done",
         "branch": "feat/phase-15.0/PR-5",
-        "commit": null
+        "commit": "2285d53"
       },
       "PR-6": {
         "title": "조건 규칙 빌더",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/web/src/features/editor/flow/**", "apps/web/src/hooks/useFlowConditionData.ts"],
+        "depends_on": [
+          "PR-4"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/components/design/condition/**",
+          "apps/web/src/features/editor/components/design/BranchNodePanel.tsx"
+        ],
         "tasks_total": 8,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 8,
+        "status": "done",
         "branch": "feat/phase-15.0/PR-6",
-        "commit": null
+        "commit": "7317d7c"
       },
       "PR-7": {
         "title": "마이그레이션 + 통합",
-        "depends_on": ["PR-5", "PR-6"],
-        "scope": ["apps/server/internal/flow/**", "apps/web/src/features/editor/flow/**"],
+        "depends_on": [
+          "PR-5",
+          "PR-6"
+        ],
+        "scope": [
+          "apps/server/internal/domain/flow/migration*",
+          "apps/web/src/features/editor/components/design/FlowSubTab.tsx"
+        ],
         "tasks_total": 6,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 6,
+        "status": "done",
         "branch": "feat/phase-15.0/PR-7",
-        "commit": null
+        "commit": "35cbbe0"
       },
       "PR-8": {
         "title": "테스트 + QA",
-        "depends_on": ["PR-7"],
-        "scope": ["apps/server/internal/flow/**", "apps/web/src/features/editor/flow/**"],
+        "depends_on": [
+          "PR-7"
+        ],
+        "scope": [
+          "apps/server/internal/domain/flow/*_test.go",
+          "apps/web/src/features/editor/**/__tests__/*"
+        ],
         "tasks_total": 5,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 5,
+        "status": "done",
         "branch": "feat/phase-15.0/PR-8",
-        "commit": null
+        "commit": "2a46860"
       }
-    }
+    },
+    "finished_at": "2026-04-14",
+    "final_commit": "2a46860",
+    "force_finished": false
   },
   "history": []
 }
