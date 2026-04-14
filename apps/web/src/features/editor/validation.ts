@@ -129,8 +129,9 @@ export function validateClueGraph(
     .filter(([, d]) => d === 0)
     .map(([id]) => id);
   let visited = 0;
-  while (queue.length > 0) {
-    const node = queue.shift()!;
+  let head = 0;
+  while (head < queue.length) {
+    const node = queue[head++];
     visited++;
     for (const next of adj.get(node) ?? []) {
       const deg = (inDegree.get(next) ?? 1) - 1;
