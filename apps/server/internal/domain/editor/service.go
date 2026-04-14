@@ -147,6 +147,10 @@ type Service interface {
 	DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error
 	ListClues(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueResponse, error)
 
+	// Clue relations
+	GetClueRelations(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error)
+	ReplaceClueRelations(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error)
+
 	// Contents
 	GetContent(ctx context.Context, creatorID, themeID uuid.UUID, key string) (*ContentResponse, error)
 	UpsertContent(ctx context.Context, creatorID, themeID uuid.UUID, key string, body string) (*ContentResponse, error)
