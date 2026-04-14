@@ -4,6 +4,11 @@
 
 export type FlowNodeType = "start" | "phase" | "branch" | "ending";
 
+export interface PhaseAction {
+  type: string;
+  params?: Record<string, unknown>;
+}
+
 export interface FlowNodeData {
   label?: string;
   phase_type?: string;
@@ -12,6 +17,10 @@ export interface FlowNodeData {
   description?: string;
   score_multiplier?: number;
   default_edge_id?: string;
+  autoAdvance?: boolean;
+  warningAt?: number;
+  onEnter?: PhaseAction[];
+  onExit?: PhaseAction[];
 }
 
 export interface FlowNodeResponse {
