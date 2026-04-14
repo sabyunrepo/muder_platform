@@ -47,7 +47,7 @@ export function ValidationPanel({ warnings, onClose }: ValidationPanelProps) {
         <span className="text-xs text-emerald-400">
           검증 통과 — 문제가 없습니다
         </span>
-        <button type="button" onClick={onClose} className="text-slate-500 hover:text-slate-300">
+        <button type="button" onClick={onClose} aria-label="닫기" className="text-slate-500 hover:text-slate-300">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -63,7 +63,7 @@ export function ValidationPanel({ warnings, onClose }: ValidationPanelProps) {
           {errors.length > 0 && warns.length > 0 && ", "}
           {warns.length > 0 && `${warns.length}개 경고`}
         </span>
-        <button type="button" onClick={onClose} className="text-slate-500 hover:text-slate-300">
+        <button type="button" onClick={onClose} aria-label="닫기" className="text-slate-500 hover:text-slate-300">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>

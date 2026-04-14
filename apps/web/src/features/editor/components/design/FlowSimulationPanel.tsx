@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
-import { Play, SkipBack, SkipForward, RotateCcw, X } from "lucide-react";
+import { Play, SkipBack, SkipForward, RotateCcw, X, AlertTriangle } from "lucide-react";
 import type { Node, Edge } from "@xyflow/react";
+import type { FlowNodeData } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,7 +41,9 @@ function topoSort(nodes: Node[], edges: Edge[]): Node[] {
     }
   }
   const idOrder = new Map(sorted.map((id, i) => [id, i]));
-  return [...nodes].sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
+  const hasCycle = sorted.length < nodes.length;
+  const result = [...nodes].sort((a, b) => (idOrder.get(a.id) ?? 0) - (idOrder.get(b.id) ?? 0));
+  return { sorted: result, hasCycle };
 }
 
 // ---------------------------------------------------------------------------
@@ -53,7 +56,7 @@ export function FlowSimulationPanel({
   onHighlight,
   onClose,
 }: FlowSimulationPanelProps) {
-  const sorted = useMemo(() => topoSort(nodes, edges), [nodes, edges]);
+  const { sorted, hasCycle } = useMemo(() => topoSort(nodes, edges), [nodes, edges]);
   const phases = useMemo(
     () => sorted.filter((n) => n.type === "phase"),
     [sorted],
@@ -62,7 +65,7 @@ export function FlowSimulationPanel({
 
   const currentPhase = phases[currentIdx];
   const totalMinutes = phases.reduce(
-    (sum, n) => sum + ((n.data as { duration?: number }).duration ?? 0),
+    (sum, n) => sum + ((n.data as FlowNodeData).duration ?? 0),
     0,
   );
 
@@ -81,7 +84,7 @@ export function FlowSimulationPanel({
     return (
       <div className="flex items-center justify-between rounded border border-slate-700 bg-slate-900 px-4 py-3">
         <span className="text-xs text-slate-500">페이즈 노드가 없습니다</span>
-        <button type="button" onClick={handleClose} className="text-slate-500 hover:text-slate-300">
+        <button type="button" onClick={handleClose} aria-label="닫기" className="text-slate-500 hover:text-slate-300">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -89,8 +92,9 @@ export function FlowSimulationPanel({
   }
 
   const progress = ((currentIdx + 1) / phases.length) * 100;
-  const phaseDuration = (currentPhase?.data as { duration?: number })?.duration ?? 0;
-  const phaseLabel = (currentPhase?.data as { label?: string })?.label ?? "?";
+  const phaseData = currentPhase?.data as FlowNodeData | undefined;
+  const phaseDuration = phaseData?.duration ?? 0;
+  const phaseLabel = phaseData?.label ?? "?";
 
   return (
     <div className="flex flex-col gap-3 rounded border border-slate-700 bg-slate-900 p-4">
@@ -100,10 +104,18 @@ export function FlowSimulationPanel({
           <Play className="h-3.5 w-3.5 text-amber-400" />
           <span className="text-xs font-medium text-slate-300">흐름 시뮬레이션</span>
         </div>
-        <button type="button" onClick={handleClose} className="text-slate-500 hover:text-slate-300">
+        <button type="button" onClick={handleClose} aria-label="닫기" className="text-slate-500 hover:text-slate-300">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Cycle warning */}
+      {hasCycle && (
+        <div className="flex items-center gap-1.5 rounded bg-amber-950/30 px-2 py-1.5 text-[10px] text-amber-400">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          순환 참조가 감지되었습니다 — 일부 노드가 생략됩니다
+        </div>
+      )}
 
       {/* Progress bar */}
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
