@@ -18,6 +18,7 @@ import type { FlowNodeType, FlowNodeData } from "../flowTypes";
 import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from "./flowConverters";
 import { createDefaultTemplate } from "./flowDefaults";
 import { useEdgeCondition } from "./useEdgeCondition";
+import { useApplyPreset } from "./useApplyPreset";
 
 export function useFlowData(themeId: string) {
   const { data, isLoading } = useFlowGraph(themeId);
@@ -180,21 +181,13 @@ export function useFlowData(themeId: string) {
 
   const getNodes = useCallback(() => nodes, [nodes]);
   const { updateEdgeCondition } = useEdgeCondition(setEdges, getNodes, autoSave);
+  const { applyPreset } = useApplyPreset(setNodes, setEdges, autoSave);
 
   return {
-    nodes,
-    edges,
-    onNodesChange: handleNodesChange,
-    onEdgesChange: handleEdgesChange,
-    onConnect,
-    isLoading,
-    isSaving: saveFlow.isPending,
-    save,
-    selectedNode,
-    addNode,
-    updateNodeData,
-    deleteNode,
-    onSelectionChange,
-    updateEdgeCondition,
+    nodes, edges,
+    onNodesChange: handleNodesChange, onEdgesChange: handleEdgesChange,
+    onConnect, isLoading, isSaving: saveFlow.isPending, save,
+    selectedNode, addNode, updateNodeData, deleteNode,
+    onSelectionChange, updateEdgeCondition, applyPreset,
   };
 }

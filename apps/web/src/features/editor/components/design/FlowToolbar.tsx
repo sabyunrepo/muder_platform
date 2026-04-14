@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Save, ChevronDown } from "lucide-react";
+import { Plus, Save, ChevronDown, LayoutTemplate } from "lucide-react";
+import { FLOW_PRESETS, createPresetFlow } from "../../hooks/flowPresets";
+import type { Node, Edge } from "@xyflow/react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -9,6 +11,8 @@ interface FlowToolbarProps {
   onAddNode: (type: string) => void;
   onSave: () => void;
   isSaving: boolean;
+  onApplyPreset?: (nodes: Node[], edges: Edge[]) => void;
+  hasNodes?: boolean;
 }
 
 interface NodeOption {
@@ -27,15 +31,26 @@ const NODE_OPTIONS: NodeOption[] = [
 // FlowToolbar
 // ---------------------------------------------------------------------------
 
-export function FlowToolbar({ onAddNode, onSave, isSaving }: FlowToolbarProps) {
+export function FlowToolbar({
+  onAddNode,
+  onSave,
+  isSaving,
+  onApplyPreset,
+  hasNodes,
+}: FlowToolbarProps) {
   const [open, setOpen] = useState(false);
+  const [presetOpen, setPresetOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const presetRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as globalThis.Node)) {
         setOpen(false);
+      }
+      if (presetRef.current && !presetRef.current.contains(e.target as globalThis.Node)) {
+        setPresetOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClick);
@@ -81,6 +96,46 @@ export function FlowToolbar({ onAddNode, onSave, isSaving }: FlowToolbarProps) {
           </div>
         )}
       </div>
+
+      {/* Preset dropdown */}
+      {onApplyPreset && (
+        <div className="relative" ref={presetRef}>
+          <button
+            type="button"
+            onClick={() => setPresetOpen((v) => !v)}
+            className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400"
+          >
+            <LayoutTemplate className="h-3.5 w-3.5" />
+            프리셋
+            <ChevronDown className="h-3 w-3" />
+          </button>
+
+          {presetOpen && (
+            <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded border border-slate-700 bg-slate-800 py-1 shadow-lg">
+              {FLOW_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    if (hasNodes && !window.confirm("기존 흐름이 대체됩니다. 계속할까요?")) return;
+                    const flow = createPresetFlow(preset);
+                    onApplyPreset(flow.nodes, flow.edges);
+                    setPresetOpen(false);
+                  }}
+                  className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-slate-700"
+                >
+                  <span className="text-xs font-medium text-slate-200">
+                    {preset.label}
+                  </span>
+                  <span className="text-[10px] text-slate-500">
+                    {preset.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex-1" />
 

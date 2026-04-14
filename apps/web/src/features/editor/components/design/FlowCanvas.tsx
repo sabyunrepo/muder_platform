@@ -60,6 +60,7 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
     deleteNode,
     onSelectionChange,
     updateEdgeCondition,
+    applyPreset,
   } = useFlowData(themeId);
 
   // Add node at canvas center
@@ -117,6 +118,8 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         onAddNode={handleAddNode}
         onSave={save}
         isSaving={isSaving}
+        onApplyPreset={applyPreset}
+        hasNodes={nodes.length > 0}
       />
       <div className="flex flex-1 overflow-hidden">
         {/* Canvas */}
