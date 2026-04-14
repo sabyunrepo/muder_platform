@@ -23,6 +23,7 @@ SET status       = 'PUBLISHED',
     review_note  = $3,
     updated_at   = NOW()
 WHERE id = $1
+  AND status = 'PENDING_REVIEW'
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
 `
 
@@ -153,6 +154,7 @@ SET status      = 'REJECTED',
     review_note = $3,
     updated_at  = NOW()
 WHERE id = $1
+  AND status = 'PENDING_REVIEW'
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
 `
 
@@ -251,6 +253,7 @@ SET status      = 'SUSPENDED',
     review_note = $3,
     updated_at  = NOW()
 WHERE id = $1
+  AND status IN ('PUBLISHED', 'PENDING_REVIEW')
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
 `
 
