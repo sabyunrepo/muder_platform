@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Map, MapPin, Plus, Trash2 } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import { Button } from '@/shared/components/ui/Button';
-import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
+import type { EditorThemeResponse, MapResponse } from '@/features/editor/api';
 import {
   useEditorMaps,
   useCreateMap,
@@ -12,6 +12,8 @@ import {
   useCreateLocation,
   useDeleteLocation,
 } from '@/features/editor/api';
+import { AddNameInput } from './AddNameInput';
+import { LocationRow } from './LocationRow';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -20,84 +22,6 @@ import {
 interface LocationsSubTabProps {
   themeId: string;
   theme: EditorThemeResponse;
-}
-
-// ---------------------------------------------------------------------------
-// AddNameInput — inline name input for adding maps/locations
-// ---------------------------------------------------------------------------
-
-interface AddNameInputProps {
-  placeholder: string;
-  onAdd: (name: string) => void;
-  onCancel: () => void;
-  isPending: boolean;
-}
-
-function AddNameInput({ placeholder, onAdd, onCancel, isPending }: AddNameInputProps) {
-  const [value, setValue] = useState('');
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && value.trim()) onAdd(value.trim());
-    if (e.key === 'Escape') onCancel();
-  }
-
-  return (
-    <div className="flex items-center gap-1 px-2 py-1">
-      <input
-        autoFocus
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        disabled={isPending}
-        className="flex-1 min-w-0 rounded-sm bg-slate-800 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
-      />
-      <button
-        type="button"
-        onClick={() => value.trim() && onAdd(value.trim())}
-        disabled={!value.trim() || isPending}
-        className="text-[10px] text-amber-500 hover:text-amber-400 disabled:opacity-40 shrink-0"
-      >
-        추가
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="text-[10px] text-slate-600 hover:text-slate-400 shrink-0"
-      >
-        취소
-      </button>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// LocationRow
-// ---------------------------------------------------------------------------
-
-interface LocationRowProps {
-  location: LocationResponse;
-  onDelete: (id: string) => void;
-}
-
-function LocationRow({ location, onDelete }: LocationRowProps) {
-  return (
-    <div className="group flex items-start gap-2 rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 hover:border-slate-700">
-      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-600" />
-      <div className="flex-1 min-w-0">
-        <span className="text-xs font-medium text-slate-300">{location.name}</span>
-      </div>
-      <button
-        type="button"
-        onClick={() => onDelete(location.id)}
-        aria-label={`${location.name} 삭제`}
-        className="p-0.5 text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-      >
-        <Trash2 className="h-3 w-3" />
-      </button>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------

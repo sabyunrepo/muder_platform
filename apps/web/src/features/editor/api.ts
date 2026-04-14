@@ -407,166 +407,17 @@ export function useDeleteCharacter(themeId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Clue Queries
+// Re-exports: Clue hooks (from editorClueApi.ts)
 // ---------------------------------------------------------------------------
 
-export function useEditorClues(themeId: string) {
-  return useQuery<ClueResponse[]>({
-    queryKey: editorKeys.clues(themeId),
-    queryFn: () => api.get<ClueResponse[]>(`/v1/editor/themes/${themeId}/clues`),
-    enabled: !!themeId,
-  });
-}
+export { useEditorClues, useCreateClue, useUpdateClue, useDeleteClue } from "./editorClueApi";
 
 // ---------------------------------------------------------------------------
-// Clue Mutations
+// Re-exports: Map/Location types & hooks (from editorMapApi.ts)
 // ---------------------------------------------------------------------------
 
-export function useCreateClue(themeId: string) {
-  return useMutation<ClueResponse, Error, CreateClueRequest>({
-    mutationFn: (body) =>
-      api.post<ClueResponse>(`/v1/editor/themes/${themeId}/clues`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
-      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
-    },
-  });
-}
-
-export function useUpdateClue(themeId: string) {
-  return useMutation<ClueResponse, Error, { clueId: string; body: UpdateClueRequest }>({
-    mutationFn: ({ clueId, body }) =>
-      api.put<ClueResponse>(`/v1/editor/clues/${clueId}`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
-      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
-    },
-  });
-}
-
-export function useDeleteClue(themeId: string) {
-  return useMutation<void, Error, string>({
-    mutationFn: (clueId) => api.deleteVoid(`/v1/editor/clues/${clueId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
-      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Map types
-// ---------------------------------------------------------------------------
-
-export interface UpdateMapRequest {
-  name?: string;
-  image_url?: string;
-}
-
-export interface CreateLocationRequest {
-  name: string;
-  description?: string;
-  restricted_characters?: string[];
-}
-
-export interface UpdateLocationRequest {
-  name?: string;
-  description?: string;
-  restricted_characters?: string[];
-}
-
-// ---------------------------------------------------------------------------
-// Map Queries
-// ---------------------------------------------------------------------------
-
-export function useEditorMaps(themeId: string) {
-  return useQuery<MapResponse[]>({
-    queryKey: editorKeys.maps(themeId),
-    queryFn: () => api.get<MapResponse[]>(`/v1/editor/themes/${themeId}/maps`),
-    enabled: !!themeId,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Map Mutations
-// ---------------------------------------------------------------------------
-
-export function useCreateMap(themeId: string) {
-  return useMutation<MapResponse, Error, CreateMapRequest>({
-    mutationFn: (body) =>
-      api.post<MapResponse>(`/v1/editor/themes/${themeId}/maps`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.maps(themeId) });
-    },
-  });
-}
-
-export function useUpdateMap(themeId: string) {
-  return useMutation<MapResponse, Error, { mapId: string; body: UpdateMapRequest }>({
-    mutationFn: ({ mapId, body }) =>
-      api.put<MapResponse>(`/v1/editor/maps/${mapId}`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.maps(themeId) });
-    },
-  });
-}
-
-export function useDeleteMap(themeId: string) {
-  return useMutation<void, Error, string>({
-    mutationFn: (mapId) => api.deleteVoid(`/v1/editor/maps/${mapId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.maps(themeId) });
-      queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Location Queries
-// ---------------------------------------------------------------------------
-
-export function useEditorLocations(themeId: string) {
-  return useQuery<LocationResponse[]>({
-    queryKey: editorKeys.locations(themeId),
-    queryFn: () =>
-      api.get<LocationResponse[]>(`/v1/editor/themes/${themeId}/locations`),
-    enabled: !!themeId,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Location Mutations
-// ---------------------------------------------------------------------------
-
-export function useCreateLocation(themeId: string) {
-  return useMutation<LocationResponse, Error, { mapId: string; body: CreateLocationRequest }>({
-    mutationFn: ({ mapId, body }) =>
-      api.post<LocationResponse>(
-        `/v1/editor/themes/${themeId}/maps/${mapId}/locations`,
-        body,
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
-    },
-  });
-}
-
-export function useUpdateLocation(themeId: string) {
-  return useMutation<LocationResponse, Error, { locationId: string; body: UpdateLocationRequest }>({
-    mutationFn: ({ locationId, body }) =>
-      api.put<LocationResponse>(`/v1/editor/locations/${locationId}`, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
-    },
-  });
-}
-
-export function useDeleteLocation(themeId: string) {
-  return useMutation<void, Error, string>({
-    mutationFn: (locationId) =>
-      api.deleteVoid(`/v1/editor/locations/${locationId}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
-    },
-  });
-}
+export type { UpdateMapRequest, CreateLocationRequest, UpdateLocationRequest } from "./editorMapApi";
+export {
+  useEditorMaps, useCreateMap, useUpdateMap, useDeleteMap,
+  useEditorLocations, useCreateLocation, useUpdateLocation, useDeleteLocation,
+} from "./editorMapApi";

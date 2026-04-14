@@ -97,14 +97,16 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
     );
   }
 
-  // Build: locationId → clues placed there
-  const placedByLocation = new Map<string, typeof clues>([]);
-  for (const [clueId, locationId] of Object.entries(placement)) {
-    const clue = (clues ?? []).find((c) => c.id === clueId);
-    if (!clue) continue;
-    if (!placedByLocation.has(locationId)) placedByLocation.set(locationId, []);
-    placedByLocation.get(locationId)!.push(clue);
-  }
+  const placedByLocation = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof clues>>([]);
+    for (const [clueId, locationId] of Object.entries(placement)) {
+      const clue = (clues ?? []).find((c) => c.id === clueId);
+      if (!clue) continue;
+      if (!map.has(locationId)) map.set(locationId, []);
+      map.get(locationId)!.push(clue);
+    }
+    return map;
+  }, [clues, placement]);
 
   return (
     <div className="flex h-full gap-0 overflow-hidden">
