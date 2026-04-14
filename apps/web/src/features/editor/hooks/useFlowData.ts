@@ -18,8 +18,6 @@ import type { FlowNodeType, FlowNodeData } from "../flowTypes";
 import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from "./flowConverters";
 import { createDefaultTemplate } from "./flowDefaults";
 
-// ---------------------------------------------------------------------------
-
 export function useFlowData(themeId: string) {
   const { data, isLoading } = useFlowGraph(themeId);
   const saveFlow = useSaveFlow(themeId);
@@ -28,8 +26,11 @@ export function useFlowData(themeId: string) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialized = useRef(false);
 
-  const initialNodes: Node[] = (data?.nodes ?? []).map(toReactFlowNode);
-  const initialEdges: Edge[] = (data?.edges ?? []).map(toReactFlowEdge);
+  const serverNodes = data?.nodes ?? [];
+  const serverEdges = data?.edges ?? [];
+
+  const initialNodes: Node[] = serverNodes.map(toReactFlowNode);
+  const initialEdges: Edge[] = serverEdges.map(toReactFlowEdge);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -38,7 +39,9 @@ export function useFlowData(themeId: string) {
   // Sync server data; apply default template on first blank load
   useEffect(() => {
     if (!data) return;
-    if (data.nodes.length === 0 && data.edges.length === 0) {
+    const nodes_ = data.nodes ?? [];
+    const edges_ = data.edges ?? [];
+    if (nodes_.length === 0 && edges_.length === 0) {
       if (hasInitialized.current) return;
       hasInitialized.current = true;
       const tpl = createDefaultTemplate();
@@ -47,8 +50,8 @@ export function useFlowData(themeId: string) {
       saveFlow.mutate(toSaveRequest(tpl.nodes, tpl.edges));
       return;
     }
-    setNodes(data.nodes.map(toReactFlowNode));
-    setEdges(data.edges.map(toReactFlowEdge));
+    setNodes(nodes_.map(toReactFlowNode));
+    setEdges(edges_.map(toReactFlowEdge));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
@@ -106,7 +109,6 @@ export function useFlowData(themeId: string) {
     saveFlow.mutate(toSaveRequest(nodes, edges));
   }, [saveFlow, nodes, edges]);
 
-  // Add a new node at the given position (or canvas center as fallback)
   const addNode = useCallback(
     (type: FlowNodeType, position: XYPosition) => {
       createNode.mutate(
@@ -130,7 +132,6 @@ export function useFlowData(themeId: string) {
     [createNode, setNodes, edges, autoSave],
   );
 
-  // Update node data locally (panel edits — API call is handled by panel)
   const updateNodeData = useCallback(
     (id: string, patch: Partial<FlowNodeData>) => {
       setNodes((nds) => {

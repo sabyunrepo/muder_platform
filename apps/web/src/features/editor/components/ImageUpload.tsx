@@ -18,7 +18,7 @@ export interface ImageUploadProps {
 }
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB — must match backend MaxImageFileSize
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB — must match backend MaxImageFileSize
 type AcceptedType = (typeof ACCEPTED_TYPES)[number];
 
 function isAcceptedType(type: string): type is AcceptedType {
@@ -50,7 +50,7 @@ export function ImageUpload({
         return;
       }
       if (file.size > MAX_IMAGE_SIZE) {
-        toast.error('이미지 크기는 5MB 이하여야 합니다');
+        toast.error('이미지 크기는 10MB 이하여야 합니다');
         return;
       }
 

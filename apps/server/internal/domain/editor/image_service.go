@@ -20,7 +20,7 @@ import (
 
 // Image upload constants.
 const (
-	MaxImageFileSize = 5 << 20 // 5MB
+	MaxImageFileSize = 10 << 20 // 10MB
 
 	ImageTargetCharacter = "character"
 	ImageTargetClue      = "clue"
