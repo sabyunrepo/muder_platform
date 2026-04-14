@@ -17,6 +17,7 @@ import {
 import type { FlowNodeType, FlowNodeData } from "../flowTypes";
 import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from "./flowConverters";
 import { createDefaultTemplate } from "./flowDefaults";
+import { useEdgeCondition } from "./useEdgeCondition";
 
 export function useFlowData(themeId: string) {
   const { data, isLoading } = useFlowGraph(themeId);
@@ -36,7 +37,6 @@ export function useFlowData(themeId: string) {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
-  // Sync server data; apply default template on first blank load
   useEffect(() => {
     if (!data) return;
     const nodes_ = data.nodes ?? [];
@@ -55,7 +55,6 @@ export function useFlowData(themeId: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -93,7 +92,6 @@ export function useFlowData(themeId: string) {
     },
     [onEdgesChange, setEdges, nodes, autoSave],
   );
-
   const onConnect: OnConnect = useCallback(
     (connection) => {
       setEdges((eds) => {
@@ -141,7 +139,6 @@ export function useFlowData(themeId: string) {
         autoSave(next, edges);
         return next;
       });
-      // Keep selectedNode in sync
       setSelectedNode((prev) =>
         prev && prev.id === id
           ? { ...prev, data: { ...prev.data, ...patch } }
@@ -151,7 +148,6 @@ export function useFlowData(themeId: string) {
     [setNodes, edges, autoSave],
   );
 
-  // Delete a node
   const deleteNode = useCallback(
     (id: string) => {
       deleteNodeMutation.mutate(id, {
@@ -182,6 +178,9 @@ export function useFlowData(themeId: string) {
     [],
   );
 
+  const getNodes = useCallback(() => nodes, [nodes]);
+  const { updateEdgeCondition } = useEdgeCondition(setEdges, getNodes, autoSave);
+
   return {
     nodes,
     edges,
@@ -196,5 +195,6 @@ export function useFlowData(themeId: string) {
     updateNodeData,
     deleteNode,
     onSelectionChange,
+    updateEdgeCondition,
   };
 }
