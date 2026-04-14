@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { Puzzle, GitBranch, MapPin, Layout, Settings } from 'lucide-react';
+import { Puzzle, GitBranch, MapPin } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { ModulesSubTab } from './design/ModulesSubTab';
 import { FlowSubTab } from './design/FlowSubTab';
 import { LocationsSubTab } from './design/LocationsSubTab';
-import { AssignmentSubTab } from './design/AssignmentSubTab';
-import { SettingsSubTab } from './design/SettingsSubTab';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type SubTab = 'modules' | 'flow' | 'locations' | 'assignment' | 'settings';
+type SubTab = 'modules' | 'flow' | 'locations';
 
 interface DesignTabProps {
   themeId: string;
@@ -22,8 +20,6 @@ const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
   { key: 'modules', label: '모듈', icon: Puzzle },
   { key: 'flow', label: '흐름', icon: GitBranch },
   { key: 'locations', label: '장소', icon: MapPin },
-  { key: 'assignment', label: '배치', icon: Layout },
-  { key: 'settings', label: '설정', icon: Settings },
 ];
 
 // ---------------------------------------------------------------------------
@@ -64,12 +60,6 @@ export function DesignTab({ themeId, theme }: DesignTabProps) {
         )}
         {activeSubTab === 'locations' && (
           <LocationsSubTab themeId={themeId} theme={theme} />
-        )}
-        {activeSubTab === 'assignment' && (
-          <AssignmentSubTab themeId={themeId} theme={theme} />
-        )}
-        {activeSubTab === 'settings' && (
-          <SettingsSubTab themeId={themeId} theme={theme} />
         )}
       </div>
     </div>
