@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -26,6 +27,8 @@ type ClueRelationResponse struct {
 	Mode     string    `json:"mode"`
 }
 
+const maxClueRelations = 500
+
 func (s *service) GetClueRelations(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error) {
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
@@ -45,11 +48,36 @@ func (s *service) ReplaceClueRelations(ctx context.Context, creatorID, themeID u
 		return nil, err
 	}
 
-	// Build graph from existing clues to validate cycle.
+	// Build owned ID set from existing clues.
 	clues, err := s.q.ListCluesByTheme(ctx, themeID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to list clues for cycle check")
 		return nil, apperror.Internal("failed to list clues")
+	}
+
+	// H-3: request count cap.
+	if len(reqs) > maxClueRelations {
+		return nil, apperror.BadRequest(fmt.Sprintf("too many relations (max %d)", maxClueRelations))
+	}
+
+	// H-1: build owned ID set and validate each request.
+	ownedIDs := make(map[uuid.UUID]struct{}, len(clues))
+	for _, c := range clues {
+		ownedIDs[c.ID] = struct{}{}
+	}
+	for i, r := range reqs {
+		if r.SourceID == r.TargetID {
+			return nil, apperror.BadRequest(fmt.Sprintf("relation[%d]: sourceId and targetId must differ", i))
+		}
+		if _, ok := ownedIDs[r.SourceID]; !ok {
+			return nil, apperror.BadRequest(fmt.Sprintf("relation[%d]: sourceId does not belong to this theme", i))
+		}
+		if _, ok := ownedIDs[r.TargetID]; !ok {
+			return nil, apperror.BadRequest(fmt.Sprintf("relation[%d]: targetId does not belong to this theme", i))
+		}
+		if r.Mode != "AND" && r.Mode != "OR" {
+			return nil, apperror.BadRequest(fmt.Sprintf("relation[%d]: mode must be AND or OR, got %q", i, r.Mode))
+		}
 	}
 
 	g := clue.NewGraph()
@@ -83,23 +111,34 @@ func (s *service) ReplaceClueRelations(ctx context.Context, creatorID, themeID u
 		return nil, apperror.New("CYCLE_DETECTED", 400, "clue relation graph contains a cycle")
 	}
 
-	// Transactional replace.
+	// H-2: transactional bulk replace.
 	var results []ClueRelationResponse
 	err = pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
 		qtx := s.q.WithTx(tx)
 		if err := qtx.DeleteClueRelationsByTheme(ctx, themeID); err != nil {
 			return err
 		}
-		for _, r := range reqs {
-			row, err := qtx.InsertClueRelation(ctx, db.InsertClueRelationParams{
-				ThemeID:  themeID,
-				SourceID: r.SourceID,
-				TargetID: r.TargetID,
-				Mode:     r.Mode,
-			})
-			if err != nil {
-				return err
-			}
+		if len(reqs) == 0 {
+			return nil
+		}
+		sources := make([]uuid.UUID, len(reqs))
+		targets := make([]uuid.UUID, len(reqs))
+		modes := make([]string, len(reqs))
+		for i, r := range reqs {
+			sources[i] = r.SourceID
+			targets[i] = r.TargetID
+			modes[i] = r.Mode
+		}
+		rows, err := qtx.BulkInsertClueRelations(ctx, db.BulkInsertClueRelationsParams{
+			Column1: themeID,
+			Column2: sources,
+			Column3: targets,
+			Column4: modes,
+		})
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
 			results = append(results, ClueRelationResponse{
 				ID:       row.ID,
 				SourceID: row.SourceID,

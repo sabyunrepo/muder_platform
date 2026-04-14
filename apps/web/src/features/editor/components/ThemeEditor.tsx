@@ -1,10 +1,9 @@
 import { useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Spinner } from "@/shared/components/ui";
 import { useEditorTheme } from "@/features/editor/api";
 import { useEditorClues } from "@/features/editor/editorClueApi";
 import { validateGameDesign, validateClueGraph } from "@/features/editor/validation";
-import { api } from "@/services/api";
+import { useClueRelations } from "@/features/editor/clueRelationApi";
 import { EditorLayout } from "./EditorLayout";
 
 // ---------------------------------------------------------------------------
@@ -35,21 +34,10 @@ interface ThemeEditorProps {
   themeId: string;
 }
 
-interface ClueRelation {
-  id: string;
-  sourceId: string;
-  targetId: string;
-  mode: string;
-}
-
 export function ThemeEditor({ themeId }: ThemeEditorProps) {
   const { data: theme, isLoading, isError } = useEditorTheme(themeId);
   const { data: clues } = useEditorClues(themeId);
-  const { data: clueRelations } = useQuery<ClueRelation[]>({
-    queryKey: ["clue-relations", themeId],
-    queryFn: () => api.get<ClueRelation[]>(`/v1/editor/themes/${themeId}/clue-relations`),
-    enabled: !!themeId,
-  });
+  const { data: clueRelations } = useClueRelations(themeId);
 
   const handleValidate = useCallback(() => {
     if (!theme) return [];

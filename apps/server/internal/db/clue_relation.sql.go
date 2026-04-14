@@ -11,6 +11,51 @@ import (
 	"github.com/google/uuid"
 )
 
+const bulkInsertClueRelations = `-- name: BulkInsertClueRelations :many
+INSERT INTO clue_relations (theme_id, source_id, target_id, mode)
+SELECT $1::uuid, unnest($2::uuid[]), unnest($3::uuid[]), unnest($4::text[])
+RETURNING id, theme_id, source_id, target_id, mode, created_at
+`
+
+type BulkInsertClueRelationsParams struct {
+	Column1 uuid.UUID   `json:"column_1"`
+	Column2 []uuid.UUID `json:"column_2"`
+	Column3 []uuid.UUID `json:"column_3"`
+	Column4 []string    `json:"column_4"`
+}
+
+func (q *Queries) BulkInsertClueRelations(ctx context.Context, arg BulkInsertClueRelationsParams) ([]ClueRelation, error) {
+	rows, err := q.db.Query(ctx, bulkInsertClueRelations,
+		arg.Column1,
+		arg.Column2,
+		arg.Column3,
+		arg.Column4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ClueRelation{}
+	for rows.Next() {
+		var i ClueRelation
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.SourceID,
+			&i.TargetID,
+			&i.Mode,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const deleteClueRelationsByTheme = `-- name: DeleteClueRelationsByTheme :exec
 DELETE FROM clue_relations WHERE theme_id = $1
 `

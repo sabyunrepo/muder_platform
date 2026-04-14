@@ -60,7 +60,7 @@ export function useClueGraphData(
   const saveRelations = useSaveClueRelations(themeId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [nodes, , onNodesChange] = useNodesState<Node>(
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
     clues ? cluesToNodes(clues) : [],
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(
@@ -70,11 +70,9 @@ export function useClueGraphData(
   // Sync clues → nodes when data arrives
   useEffect(() => {
     if (clues) {
-      // useNodesState doesn't expose setNodes directly — we re-derive via
-      // calling onNodesChange with reset. Use a workaround via direct state.
+      setNodes(cluesToNodes(clues));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clues]);
+  }, [clues, setNodes]);
 
   // Sync relations → edges when data arrives
   useEffect(() => {
@@ -134,10 +132,10 @@ export function useClueGraphData(
                 saved,
               );
             },
-            onError: () => {
-              // Revert optimistic edge
+            onError: (err: Error) => {
+              const isCycle = err.message?.includes("CYCLE_DETECTED");
               setEdges((cur) => cur.filter((e) => e.id !== newEdge.id));
-              toast.error("순환 참조가 감지되어 관계를 추가할 수 없습니다");
+              toast.error(isCycle ? "순환 참조가 감지되어 관계를 추가할 수 없습니다" : "관계 저장에 실패했습니다");
               queryClient.invalidateQueries({
                 queryKey: clueRelationKeys.relations(themeId),
               });

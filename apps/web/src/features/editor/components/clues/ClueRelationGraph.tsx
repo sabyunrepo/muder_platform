@@ -1,5 +1,6 @@
+import { useCallback } from "react";
 import { Loader2 } from "lucide-react";
-import { ReactFlow, Background, Controls, Panel, type NodeTypes } from "@xyflow/react";
+import { ReactFlow, Background, Controls, Panel, type NodeTypes, type Edge } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEditorClues } from "@/features/editor/api";
 import { useClueGraphData } from "../../hooks/useClueGraphData";
@@ -34,9 +35,17 @@ export function ClueRelationGraph({ themeId }: ClueRelationGraphProps) {
     onNodesChange,
     onEdgesChange,
     onConnect,
+    onEdgeDelete,
     isLoading,
     isSaving,
   } = useClueGraphData(themeId, clues);
+
+  const handleEdgesDelete = useCallback(
+    (deleted: Edge[]) => {
+      deleted.forEach((e) => onEdgeDelete(e.id));
+    },
+    [onEdgeDelete],
+  );
 
   if (isLoading) {
     return (
@@ -69,6 +78,7 @@ export function ClueRelationGraph({ themeId }: ClueRelationGraphProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onEdgesDelete={handleEdgesDelete}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView

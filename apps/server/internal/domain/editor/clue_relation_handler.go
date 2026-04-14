@@ -35,6 +35,7 @@ func (h *Handler) ReplaceClueRelations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB cap
 	var reqs []ClueRelationRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqs); err != nil {
 		apperror.WriteError(w, r, apperror.BadRequest("invalid JSON: "+err.Error()))
