@@ -109,9 +109,9 @@ export function Modal({
       />
       <div
         ref={modalRef}
-        className={`relative w-full ${sizeClasses[size]} rounded-xl border border-slate-700 bg-slate-900 shadow-xl`}
+        className={`relative flex w-full flex-col ${sizeClasses[size]} max-h-[90vh] rounded-xl border border-slate-700 bg-slate-900 shadow-xl`}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-800 px-6 py-4">
           <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
           <button
             type="button"
@@ -122,9 +122,9 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="px-6 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
         {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
+          <div className="flex flex-shrink-0 items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
             {footer}
           </div>
         )}
