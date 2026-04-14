@@ -1,18 +1,41 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo, useEffect } from "react";
 import { EDITOR_TABS } from "@/features/editor/constants";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 
 // ---------------------------------------------------------------------------
-// EditorTabNav — scrollable tab navigation bar with fade hints
+// Props
 // ---------------------------------------------------------------------------
 
-export function EditorTabNav() {
+interface EditorTabNavProps {
+  activeModules?: string[];
+}
+
+// ---------------------------------------------------------------------------
+// EditorTabNav — scrollable tab navigation bar with dynamic filtering
+// ---------------------------------------------------------------------------
+
+export function EditorTabNav({ activeModules = [] }: EditorTabNavProps) {
   const { activeTab, setActiveTab } = useEditorUI();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const visibleTabs = useMemo(
+    () =>
+      EDITOR_TABS.filter(
+        (tab) => tab.always || activeModules.includes(tab.requiredModule ?? ""),
+      ),
+    [activeModules],
+  );
+
+  // If active tab is now hidden, fallback to overview
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [visibleTabs, activeTab, setActiveTab]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, index: number) => {
-      const count = EDITOR_TABS.length;
+      const count = visibleTabs.length;
       let next: number | null = null;
 
       if (e.key === "ArrowRight") next = (index + 1) % count;
@@ -22,16 +45,15 @@ export function EditorTabNav() {
 
       if (next !== null) {
         e.preventDefault();
-        setActiveTab(EDITOR_TABS[next].key);
+        setActiveTab(visibleTabs[next].key);
         tabRefs.current[next]?.focus();
       }
     },
-    [setActiveTab],
+    [setActiveTab, visibleTabs],
   );
 
   return (
     <div className="sticky top-12 z-40 h-10 shrink-0 border-b border-slate-800 bg-slate-950">
-      {/* Scroll fade hints */}
       <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-slate-950 to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-slate-950 to-transparent" />
       <nav
@@ -39,7 +61,7 @@ export function EditorTabNav() {
         aria-label="에디터 탭"
         className="flex h-full overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {EDITOR_TABS.map((tab, index) => {
+        {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab.key;
           return (
             <button
