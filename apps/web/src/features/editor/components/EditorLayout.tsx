@@ -1,73 +1,15 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Spinner } from "@/shared/components/ui";
-import type { EditorTab } from "@/features/editor/constants";
 import type { EditorThemeResponse } from "@/features/editor/api";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 import { SaveIndicator } from "./SaveIndicator";
 import { EditorTabNav } from "./EditorTabNav";
+import { TabContent } from "./TabContent";
+import { ValidationPanel } from "./ValidationPanel";
+import type { DesignWarning } from "@/features/editor/validation";
 import type { SaveStatus } from "@/features/editor/hooks/useAutoSave";
-
-// ---------------------------------------------------------------------------
-// Lazy tab components
-// ---------------------------------------------------------------------------
-
-const OverviewTab = lazy(() =>
-  import("./OverviewTab").then((m) => ({ default: m.OverviewTab })),
-);
-const StoryTab = lazy(() =>
-  import("./StoryTab").then((m) => ({ default: m.StoryTab })),
-);
-const CharactersTab = lazy(() =>
-  import("./CharactersTab").then((m) => ({ default: m.CharactersTab })),
-);
-const DesignTab = lazy(() =>
-  import("./DesignTab").then((m) => ({ default: m.DesignTab })),
-);
-const MediaTab = lazy(() =>
-  import("./media/MediaTab").then((m) => ({ default: m.MediaTab })),
-);
-const CluesTab = lazy(() =>
-  import("./CluesTab").then((m) => ({ default: m.CluesTab })),
-);
-const AdvancedTab = lazy(() =>
-  import("./AdvancedTab").then((m) => ({ default: m.AdvancedTab })),
-);
-const TemplateConfigTab = lazy(() =>
-  import("./TemplateConfigTab").then((m) => ({ default: m.TemplateConfigTab })),
-);
-
-// ---------------------------------------------------------------------------
-// TabContent
-// ---------------------------------------------------------------------------
-
-interface TabContentProps {
-  tab: EditorTab;
-  theme: EditorThemeResponse;
-  themeId: string;
-}
-
-function TabContent({ tab, theme, themeId }: TabContentProps) {
-  switch (tab) {
-    case "overview":
-      return <OverviewTab theme={theme} themeId={themeId} />;
-    case "story":
-      return <StoryTab themeId={themeId} />;
-    case "characters":
-      return <CharactersTab theme={theme} themeId={themeId} />;
-    case "clues":
-      return <CluesTab themeId={themeId} />;
-    case "design":
-      return <DesignTab theme={theme} themeId={themeId} />;
-    case "media":
-      return <MediaTab themeId={themeId} />;
-    case "advanced":
-      return <AdvancedTab theme={theme} themeId={themeId} />;
-    case "template":
-      return <TemplateConfigTab />;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // EditorLayout
@@ -81,7 +23,8 @@ interface EditorLayoutProps {
   onSave?: () => void;
   onRetry?: () => void;
   onPublish?: () => void;
-  onValidate?: () => void;
+  onValidate?: () => DesignWarning[];
+  validationWarnings?: DesignWarning[];
 }
 
 export function EditorLayout({
@@ -93,9 +36,18 @@ export function EditorLayout({
   onRetry,
   onPublish,
   onValidate,
+  validationWarnings: externalWarnings,
 }: EditorLayoutProps) {
   const navigate = useNavigate();
   const { activeTab } = useEditorUI();
+  const [validationResult, setValidationResult] = useState<DesignWarning[] | null>(null);
+
+  const handleValidate = () => {
+    if (onValidate) {
+      const result = onValidate();
+      setValidationResult(result);
+    }
+  };
 
   // Save on Ctrl+S / Cmd+S
   useEffect(() => {
@@ -145,7 +97,7 @@ export function EditorLayout({
 
         <button
           type="button"
-          onClick={onValidate}
+          onClick={handleValidate}
           className="h-7 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500"
         >
           검증
@@ -162,6 +114,16 @@ export function EditorLayout({
 
       {/* ── Tab nav ── */}
       <EditorTabNav />
+
+      {/* ── Validation panel ── */}
+      {(validationResult ?? externalWarnings) && (
+        <div className="shrink-0 border-b border-slate-800 px-3 py-2">
+          <ValidationPanel
+            warnings={validationResult ?? externalWarnings ?? []}
+            onClose={() => setValidationResult(null)}
+          />
+        </div>
+      )}
 
       {/* ── Content ── */}
       <div
