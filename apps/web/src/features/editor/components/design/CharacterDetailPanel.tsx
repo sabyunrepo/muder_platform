@@ -17,6 +17,7 @@ interface CharacterItem {
 
 interface CharacterDetailPanelProps {
   selectedChar: CharacterItem | null;
+  characters: CharacterItem[];
   clues: ClueItem[] | undefined;
   charClueIds: string[];
   charMissions: Mission[];
@@ -32,6 +33,7 @@ interface CharacterDetailPanelProps {
 
 export function CharacterDetailPanel({
   selectedChar,
+  characters,
   clues,
   charClueIds,
   charMissions,
@@ -80,6 +82,8 @@ export function CharacterDetailPanel({
       {/* 히든 미션 */}
       <MissionEditor
         missions={charMissions}
+        characters={characters}
+        clues={clues ?? []}
         onAdd={onAddMission}
         onChange={onChangeMission}
         onDelete={onDeleteMission}
