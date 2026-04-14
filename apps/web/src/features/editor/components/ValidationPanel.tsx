@@ -71,7 +71,7 @@ export function ValidationPanel({ warnings, onClose }: ValidationPanelProps) {
       {/* Items */}
       <ul className="max-h-48 overflow-y-auto py-1">
         {warnings.map((w, i) => (
-          <li key={i}>
+          <li key={`${w.type}-${w.category}-${i}`}>
             <button
               type="button"
               onClick={() => handleClick(w)}

@@ -41,6 +41,7 @@ export function EditorLayout({
   const navigate = useNavigate();
   const { activeTab } = useEditorUI();
   const [validationResult, setValidationResult] = useState<DesignWarning[] | null>(null);
+  const [dismissed, setDismissed] = useState(false);
 
   const activeModules = useMemo(() => {
     const cfg = theme.config_json as Record<string, unknown> | undefined;
@@ -52,6 +53,7 @@ export function EditorLayout({
     if (onValidate) {
       const result = onValidate();
       setValidationResult(result);
+      setDismissed(false);
     }
   };
 
@@ -122,11 +124,11 @@ export function EditorLayout({
       <EditorTabNav activeModules={activeModules} />
 
       {/* ── Validation panel ── */}
-      {(validationResult ?? externalWarnings) && (
+      {!dismissed && (validationResult ?? externalWarnings) && (
         <div className="shrink-0 border-b border-slate-800 px-3 py-2">
           <ValidationPanel
             warnings={validationResult ?? externalWarnings ?? []}
-            onClose={() => setValidationResult(null)}
+            onClose={() => { setValidationResult(null); setDismissed(true); }}
           />
         </div>
       )}

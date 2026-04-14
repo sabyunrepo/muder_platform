@@ -6,6 +6,8 @@ import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 // Props
 // ---------------------------------------------------------------------------
 
+const EMPTY_MODULES: string[] = [];
+
 interface EditorTabNavProps {
   activeModules?: string[];
 }
@@ -14,7 +16,7 @@ interface EditorTabNavProps {
 // EditorTabNav — scrollable tab navigation bar with dynamic filtering
 // ---------------------------------------------------------------------------
 
-export function EditorTabNav({ activeModules = [] }: EditorTabNavProps) {
+export function EditorTabNav({ activeModules = EMPTY_MODULES }: EditorTabNavProps) {
   const { activeTab, setActiveTab } = useEditorUI();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 

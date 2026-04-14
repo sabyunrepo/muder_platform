@@ -5,6 +5,7 @@
 export type FlowNodeType = "start" | "phase" | "branch" | "ending";
 
 export interface PhaseAction {
+  id?: string;
   type: string;
   params?: Record<string, unknown>;
 }

@@ -35,7 +35,7 @@ export function ActionListEditor({
   onChange,
 }: ActionListEditorProps) {
   const handleAdd = () => {
-    onChange([...actions, { type: "broadcast" }]);
+    onChange([...actions, { id: crypto.randomUUID(), type: "broadcast" }]);
   };
 
   const handleRemove = (index: number) => {
@@ -69,7 +69,7 @@ export function ActionListEditor({
 
       {actions.map((action, idx) => (
         <div
-          key={idx}
+          key={action.id ?? idx}
           className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-1.5"
         >
           <select
