@@ -31,8 +31,49 @@ export function PhaseTimeline({ phases, onAdd, onChange, onDelete, onMove }: Pha
         </span>
       </div>
 
-      {/* ── Timeline row ── */}
-      <div className="flex items-start gap-2 overflow-x-auto pb-2">
+      {/* ── Timeline ── horizontal on md+, vertical on mobile ── */}
+      {/* Mobile: vertical stack */}
+      <div className="flex flex-col gap-2 md:hidden">
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-3 shrink-0 rounded-full border-2 border-amber-500 bg-transparent" />
+          <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">START</span>
+        </div>
+        {phases.length === 0 ? (
+          <div className="flex items-center gap-2 pl-1">
+            <div className="h-4 w-px bg-slate-700" />
+            <AddButton onClick={() => onAdd(-1)} />
+          </div>
+        ) : (
+          phases.map((phase, i) => (
+            <div key={phase.id} className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 pl-1">
+                <div className="h-4 w-px bg-slate-700" />
+                <AddButton onClick={() => onAdd(i - 1)} />
+              </div>
+              <PhaseCard
+                phase={phase}
+                index={i}
+                total={phases.length}
+                onChange={onChange}
+                onDelete={onDelete}
+                onMove={onMove}
+                fullWidth
+              />
+            </div>
+          ))
+        )}
+        <div className="flex items-center gap-2 pl-1">
+          <div className="h-4 w-px bg-slate-700" />
+          <AddButton onClick={() => onAdd(phases.length - 1)} />
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-3 w-3 shrink-0 rounded-full border-2 border-slate-600 bg-transparent" />
+          <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">END</span>
+        </div>
+      </div>
+
+      {/* Desktop: horizontal scroll */}
+      <div className="hidden items-start gap-2 overflow-x-auto pb-2 md:flex">
         {/* Start marker */}
         <div className="flex shrink-0 flex-col items-center gap-1 pt-10">
           <div className="h-3 w-3 rounded-full border-2 border-amber-500 bg-transparent" />

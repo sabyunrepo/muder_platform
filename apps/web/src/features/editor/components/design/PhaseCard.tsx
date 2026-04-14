@@ -27,17 +27,18 @@ interface PhaseCardProps {
   onChange: (index: number, updated: PhaseConfig) => void;
   onDelete: (index: number) => void;
   onMove: (index: number, direction: 'left' | 'right') => void;
+  fullWidth?: boolean;
 }
 
 // ---------------------------------------------------------------------------
 // PhaseCard
 // ---------------------------------------------------------------------------
 
-export function PhaseCard({ phase, index, total, onChange, onDelete, onMove }: PhaseCardProps) {
+export function PhaseCard({ phase, index, total, onChange, onDelete, onMove, fullWidth = false }: PhaseCardProps) {
   const { Icon } = PHASE_META[phase.type] ?? { Icon: BookOpen };
 
   return (
-    <div className="flex w-44 shrink-0 flex-col gap-3 rounded-sm border border-slate-700 bg-slate-900 p-3">
+    <div className={`flex flex-col gap-3 rounded-sm border border-slate-700 bg-slate-900 p-3 ${fullWidth ? 'w-full' : 'w-44 shrink-0'}`}>
       {/* ── Type icon + select ── */}
       <div className="flex items-center gap-2">
         <Icon className="h-4 w-4 shrink-0 text-amber-400" />
