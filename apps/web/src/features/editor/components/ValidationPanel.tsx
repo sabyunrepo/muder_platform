@@ -12,6 +12,7 @@ const ERROR_TAB_MAP: Record<string, EditorTab> = {
   modules: "design",
   clues: "clues",
   characters: "characters",
+  clue_graph: "clues",
 };
 
 // ---------------------------------------------------------------------------
