@@ -1,15 +1,35 @@
 <!-- STATUS-START -->
-**Active**: Phase 18.0 게임 런타임 — 대기
-**PR**: -
-**Task**: Phase 17.5 완료 후 시작
-**State**: draft
-**Blockers**: Phase 17.5
-**Last updated**: 2026-04-14
+**Active**: Phase 18.0 게임 런타임 — Wave 0/5
+**PR**: PR-0 (0%)
+**Task**: 시작 전
+**State**: not_started
+**Blockers**: none
+**Last updated**: 2026-04-15
 <!-- STATUS-END -->
 
 # Phase 18.0 게임 런타임 통합 체크리스트
 
 > 부모: [design.md](design.md) | 실행: [plan.md](plan.md)
+
+---
+
+## Wave 0 — Phase 17.5 Cleanup (sequential)
+
+### PR-0: Phase 17.5 followup
+- [ ] Task 1 — `ClueRelationRequest/Response` → `editor/types.go` 분리
+- [ ] Task 2 — `useClueGraphData` onConnect debounce를 `autoSave` 로 일원화
+- [ ] Task 3 — `useDeleteClue` 성공 시 `clueRelationKeys` 크로스 invalidation
+- [ ] Task 4 — `useClueGraphData` 단위 테스트 (debounce coalescing, optimistic revert)
+- [ ] Task 5 — 서비스 통합 테스트 (testcontainers — FK cascade, TX rollback, cross-theme)
+- [ ] Task 6 — `validateClueGraph` Kahn queue → index pointer (O(n))
+- [ ] Task 7 — E2E `clue-relation.spec.ts` 기본 2건 MSW mock 으로 무조건 실행 가능화
+- [ ] Run after_task pipeline
+
+**Wave 0 gate**:
+- [ ] `go test -race ./internal/domain/editor/...` pass
+- [ ] `pnpm test` (editor/clue-relation 범위) pass
+- [ ] PR merged to main
+- [ ] User confirmed next wave
 
 ---
 
@@ -94,6 +114,7 @@
 
 ## Phase completion gate
 
+- [ ] Phase 17.5 followup 전부 처리 (W0)
 - [ ] 방→게임시작→페이즈순차→엔딩 전체 동작
 - [ ] 5개 모듈 UI 동작 (채팅/투표/단서/리딩/엔딩)
 - [ ] 재접속 스냅샷 복원
