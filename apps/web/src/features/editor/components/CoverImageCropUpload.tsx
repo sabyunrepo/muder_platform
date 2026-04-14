@@ -1,16 +1,12 @@
 import { useState, useRef, useCallback } from 'react';
-import ReactCrop, {
-  centerCrop,
-  makeAspectCrop,
-  type Crop,
-  type PixelCrop,
-} from 'react-image-crop';
+import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '@/shared/components/ui/Modal';
 import { Button } from '@/shared/components/ui/Button';
 import { uploadImage } from '@/features/editor/imageApi';
+import { getCroppedBlob, makeInitialCrop } from './cropUtils';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,60 +28,6 @@ const CANVAS_OUTPUT_HEIGHT = 640;
 const ASPECT_RATIO = 3 / 2;
 
 // ---------------------------------------------------------------------------
-// Helper: extract cropped blob from canvas at 960×640
-// ---------------------------------------------------------------------------
-
-function getCroppedBlob(
-  image: HTMLImageElement,
-  pixelCrop: PixelCrop,
-  contentType: string,
-): Promise<Blob> {
-  const canvas = document.createElement('canvas');
-  canvas.width = CANVAS_OUTPUT_WIDTH;
-  canvas.height = CANVAS_OUTPUT_HEIGHT;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not get canvas context');
-
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
-
-  ctx.drawImage(
-    image,
-    pixelCrop.x * scaleX,
-    pixelCrop.y * scaleY,
-    pixelCrop.width * scaleX,
-    pixelCrop.height * scaleY,
-    0,
-    0,
-    CANVAS_OUTPUT_WIDTH,
-    CANVAS_OUTPUT_HEIGHT,
-  );
-
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Canvas toBlob returned null'));
-      },
-      contentType,
-      0.92,
-    );
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Helper: make a centered 3:2 crop on image load
-// ---------------------------------------------------------------------------
-
-function makeInitialCrop(width: number, height: number): Crop {
-  return centerCrop(
-    makeAspectCrop({ unit: '%', width: 90 }, ASPECT_RATIO, width, height),
-    width,
-    height,
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -104,25 +46,17 @@ export function CoverImageCropUpload({
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [isUploading, setIsUploading] = useState(false);
 
-  // -- Open file picker
-  function handleClick() {
-    fileInputRef.current?.click();
-  }
+  function handleClick() { fileInputRef.current?.click(); }
 
-  // -- Clear current image
   function handleClear(e: React.MouseEvent) {
     e.stopPropagation();
     onUploaded('');
   }
 
-  // -- File selected → read as data URL and open modal
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Reset so the same file can be picked again
     e.target.value = '';
-
     const reader = new FileReader();
     reader.onload = () => {
       setSrcUrl(reader.result as string);
@@ -133,23 +67,21 @@ export function CoverImageCropUpload({
     reader.readAsDataURL(file);
   }
 
-  // -- Image loaded in <img> → set initial crop
   const handleImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { width, height } = e.currentTarget;
-    setCrop(makeInitialCrop(width, height));
+    setCrop(makeInitialCrop(width, height, ASPECT_RATIO));
   }, []);
 
-  // -- Confirm crop → extract blob → upload
   async function handleConfirm() {
     if (!imgRef.current || !completedCrop) {
       toast.error('먼저 이미지를 자르세요');
       return;
     }
-
     setIsUploading(true);
     try {
-      const contentType = 'image/png';
-      const blob = await getCroppedBlob(imgRef.current, completedCrop, contentType);
+      const { blob, contentType } = await getCroppedBlob(
+        imgRef.current, completedCrop, CANVAS_OUTPUT_WIDTH, CANVAS_OUTPUT_HEIGHT,
+      );
       const url = await uploadImage(themeId, 'cover', themeId, blob, contentType);
       onUploaded(url);
       setModalOpen(false);
@@ -162,27 +94,12 @@ export function CoverImageCropUpload({
     }
   }
 
-  function handleCancel() {
-    setModalOpen(false);
-    setSrcUrl(null);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  function handleCancel() { setModalOpen(false); setSrcUrl(null); }
 
   return (
     <>
-      {/* Hidden file input */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
-      {/* Cover preview / trigger */}
       <div
         className={`group relative aspect-[3/2] cursor-pointer overflow-hidden rounded-sm transition-colors ${
           currentImageUrl
@@ -192,28 +109,15 @@ export function CoverImageCropUpload({
         onClick={handleClick}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') handleClick();
-        }}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(); }}
         aria-label="커버 이미지 업로드"
       >
         {currentImageUrl ? (
           <>
-            <img
-              src={currentImageUrl}
-              alt="커버 이미지"
-              className="h-full w-full object-cover"
-            />
-
-            {/* Hover overlay — change */}
-            <span
-              className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
-              aria-hidden="true"
-            >
+            <img src={currentImageUrl} alt="커버 이미지" className="h-full w-full object-cover" />
+            <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
               <span className="text-sm font-medium text-white">변경</span>
             </span>
-
-            {/* Clear button */}
             <button
               type="button"
               onClick={handleClear}
@@ -231,7 +135,6 @@ export function CoverImageCropUpload({
         )}
       </div>
 
-      {/* Crop modal */}
       <Modal
         isOpen={modalOpen}
         onClose={handleCancel}
@@ -239,25 +142,15 @@ export function CoverImageCropUpload({
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={handleCancel} disabled={isUploading}>
-              취소
-            </Button>
+            <Button variant="secondary" onClick={handleCancel} disabled={isUploading}>취소</Button>
             <Button onClick={handleConfirm} disabled={isUploading || !completedCrop}>
-              {isUploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  업로드 중…
-                </>
-              ) : (
-                '확인'
-              )}
+              {isUploading ? <><Loader2 className="h-4 w-4 animate-spin" />업로드 중…</> : '확인'}
             </Button>
           </>
         }
       >
         <div className="flex flex-col items-center gap-4">
           <p className="text-sm text-slate-400">3:2 비율로 자를 영역을 선택하세요</p>
-
           <div className="max-h-[400px] overflow-auto rounded-lg bg-slate-950 p-2">
             {srcUrl && (
               <ReactCrop
