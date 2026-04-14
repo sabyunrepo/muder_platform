@@ -113,4 +113,4 @@
 - [x] 검증 에러 → 탭 이동 (ERROR_TAB_MAP + ValidationPanel)
 - [x] 동적 탭 동작 (always/requiredModule 필터링)
 - [x] Vitest 테스트 유지 (353/353)
-- [ ] `/plan-finish` 실행
+- [x] `/plan-finish` 실행
