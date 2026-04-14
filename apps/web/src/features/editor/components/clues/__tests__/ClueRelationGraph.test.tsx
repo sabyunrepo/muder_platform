@@ -86,7 +86,7 @@ describe("ClueRelationGraph", () => {
 
     render(<ClueRelationGraph themeId="t1" />);
 
-    expect(screen.getByText("단서가 없습니다")).toBeDefined();
+    expect(screen.getByText("단서를 먼저 추가하세요")).toBeDefined();
   });
 
   it("renders ReactFlow when clues exist", () => {
@@ -124,7 +124,7 @@ describe("ClueRelationGraph", () => {
 
     render(<ClueRelationGraph themeId="t1" />);
 
-    expect(screen.getByText("단서 간 관계를 추가하려면 노드를 연결하세요")).toBeDefined();
+    expect(screen.getByText("노드를 드래그하여 연결하면 의존 관계가 생성됩니다")).toBeDefined();
   });
 
   it("does not show placeholder when edges exist", () => {
@@ -145,6 +145,6 @@ describe("ClueRelationGraph", () => {
 
     render(<ClueRelationGraph themeId="t1" />);
 
-    expect(screen.queryByText("단서 간 관계를 추가하려면 노드를 연결하세요")).toBeNull();
+    expect(screen.queryByText("노드를 드래그하여 연결하면 의존 관계가 생성됩니다")).toBeNull();
   });
 });
