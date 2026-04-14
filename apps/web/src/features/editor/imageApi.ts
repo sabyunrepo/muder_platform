@@ -69,7 +69,7 @@ export async function uploadImage(
       target,
       content_type: contentType,
       file_size: file.size,
-      ...(target !== "cover" && { target_id: targetId }),
+      ...(target !== "cover" && targetId ? { target_id: targetId } : {}),
     },
   );
 
