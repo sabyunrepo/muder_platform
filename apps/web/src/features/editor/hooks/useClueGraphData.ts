@@ -56,7 +56,7 @@ export function useClueGraphData(
   themeId: string,
   clues: ClueResponse[] | undefined,
 ) {
-  const { data: relations } = useClueRelations(themeId);
+  const { data: relations, isLoading } = useClueRelations(themeId);
   const saveRelations = useSaveClueRelations(themeId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -116,16 +116,38 @@ export function useClueGraphData(
 
   const onConnect: OnConnect = useCallback(
     (connection) => {
+      // Optimistic add — revert on CYCLE_DETECTED (400)
+      const newEdge: Edge = {
+        id: `${connection.source}-${connection.target}-${Date.now()}`,
+        ...connection,
+        type: "relation",
+        data: { mode: "AND" },
+      };
       setEdges((eds) => {
-        const next = addEdge(
-          { ...connection, type: "relation", data: { mode: "AND" } },
-          eds,
-        );
-        autoSave(next);
+        const next = addEdge(newEdge, eds);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+          saveRelations.mutate(buildRequests(next), {
+            onSuccess: (saved) => {
+              queryClient.setQueryData(
+                clueRelationKeys.relations(themeId),
+                saved,
+              );
+            },
+            onError: () => {
+              // Revert optimistic edge
+              setEdges((cur) => cur.filter((e) => e.id !== newEdge.id));
+              toast.error("순환 참조가 감지되어 관계를 추가할 수 없습니다");
+              queryClient.invalidateQueries({
+                queryKey: clueRelationKeys.relations(themeId),
+              });
+            },
+          });
+        }, 1000);
         return next;
       });
     },
-    [setEdges, autoSave],
+    [setEdges, saveRelations, buildRequests, themeId],
   );
 
   const onEdgeDelete = useCallback(
@@ -152,6 +174,7 @@ export function useClueGraphData(
     onEdgesChange,
     onConnect,
     onEdgeDelete,
+    isLoading,
     isSaving: saveRelations.isPending,
   };
 }
