@@ -14,61 +14,10 @@ import {
   useCreateFlowNode,
   useDeleteFlowNode,
 } from "../flowApi";
-import type {
-  FlowNodeResponse,
-  FlowEdgeResponse,
-  SaveFlowRequest,
-  FlowNodeType,
-  FlowNodeData,
-} from "../flowTypes";
+import type { FlowNodeType, FlowNodeData } from "../flowTypes";
+import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from "./flowConverters";
+import { createDefaultTemplate } from "./flowDefaults";
 
-// ---------------------------------------------------------------------------
-// Converters: server ↔ ReactFlow
-// ---------------------------------------------------------------------------
-
-function toReactFlowNode(node: FlowNodeResponse): Node {
-  return {
-    id: node.id,
-    type: node.type,
-    position: { x: node.position_x, y: node.position_y },
-    data: { ...node.data },
-  };
-}
-
-function toReactFlowEdge(edge: FlowEdgeResponse): Edge {
-  return {
-    id: edge.id,
-    source: edge.source_id,
-    target: edge.target_id,
-    label: edge.label ?? undefined,
-    data: { condition: edge.condition, sort_order: edge.sort_order },
-  };
-}
-
-function toSaveRequest(nodes: Node[], edges: Edge[]): SaveFlowRequest {
-  return {
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      type: (n.type ?? "phase") as FlowNodeResponse["type"],
-      data: n.data as FlowNodeResponse["data"],
-      position_x: n.position.x,
-      position_y: n.position.y,
-    })),
-    edges: edges.map((e, i) => ({
-      id: e.id,
-      source_id: e.source,
-      target_id: e.target,
-      condition:
-        (e.data as { condition?: Record<string, unknown> } | undefined)
-          ?.condition ?? null,
-      label: typeof e.label === "string" ? e.label : null,
-      sort_order: i,
-    })),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Hook
 // ---------------------------------------------------------------------------
 
 export function useFlowData(themeId: string) {
@@ -77,6 +26,7 @@ export function useFlowData(themeId: string) {
   const createNode = useCreateFlowNode(themeId);
   const deleteNodeMutation = useDeleteFlowNode(themeId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasInitialized = useRef(false);
 
   const initialNodes: Node[] = (data?.nodes ?? []).map(toReactFlowNode);
   const initialEdges: Edge[] = (data?.edges ?? []).map(toReactFlowEdge);
@@ -85,12 +35,20 @@ export function useFlowData(themeId: string) {
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
-  // Sync when server data changes
+  // Sync server data; apply default template on first blank load
   useEffect(() => {
-    if (data) {
-      setNodes(data.nodes.map(toReactFlowNode));
-      setEdges(data.edges.map(toReactFlowEdge));
+    if (!data) return;
+    if (data.nodes.length === 0 && data.edges.length === 0) {
+      if (hasInitialized.current) return;
+      hasInitialized.current = true;
+      const tpl = createDefaultTemplate();
+      setNodes(tpl.nodes);
+      setEdges(tpl.edges);
+      saveFlow.mutate(toSaveRequest(tpl.nodes, tpl.edges));
+      return;
     }
+    setNodes(data.nodes.map(toReactFlowNode));
+    setEdges(data.edges.map(toReactFlowEdge));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
