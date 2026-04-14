@@ -37,9 +37,6 @@ vi.mock('../../design/FlowSubTab', () => ({
 vi.mock('../../design/LocationsSubTab', () => ({
   LocationsSubTab: () => <div>LocationsSubTab 콘텐츠</div>,
 }));
-vi.mock('../../design/AssignmentSubTab', () => ({
-  AssignmentSubTab: () => <div>AssignmentSubTab 콘텐츠</div>,
-}));
 
 vi.mock('@/features/editor/constants', () => ({
   MODULE_CATEGORIES: [
@@ -99,20 +96,24 @@ describe('DesignTab', () => {
     useModuleSchemasMock.mockReturnValue({ data: null, isLoading: false });
   });
 
-  it('서브탭 5개를 모두 렌더링한다', () => {
+  it('서브탭 3개를 모두 렌더링한다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
     expect(screen.getByText('모듈')).toBeDefined();
     expect(screen.getByText('흐름')).toBeDefined();
     expect(screen.getByText('장소')).toBeDefined();
-    expect(screen.getByText('배치')).toBeDefined();
-    expect(screen.getByText('설정')).toBeDefined();
+  });
+
+  it('배치, 설정 탭이 없다', () => {
+    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
+
+    expect(screen.queryByText('배치')).toBeNull();
+    expect(screen.queryByText('설정')).toBeNull();
   });
 
   it('기본 선택 탭은 모듈이다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
-    // 모듈 탭이 활성화되어 있으면 amber 색상 클래스를 가짐
     const modulesTab = screen.getByText('모듈').closest('button');
     expect(modulesTab?.className).toContain('border-amber-500');
   });
@@ -131,24 +132,9 @@ describe('DesignTab', () => {
     expect(screen.getByText('LocationsSubTab 콘텐츠')).toBeDefined();
   });
 
-  it('배치 탭 클릭 시 배치 콘텐츠로 전환된다', () => {
-    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
-
-    fireEvent.click(screen.getByText('배치'));
-    expect(screen.getByText('AssignmentSubTab 콘텐츠')).toBeDefined();
-  });
-
-  it('설정 탭 클릭 시 설정 콘텐츠로 전환된다', () => {
-    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
-
-    fireEvent.click(screen.getByText('설정'));
-    expect(screen.getByText('설정 가능한 모듈이 없습니다')).toBeDefined();
-  });
-
   it('모듈 탭이 기본 선택되어 모듈 사이드바가 표시된다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
-    // ModulesSubTab renders the category label
     expect(screen.getByText('코어')).toBeDefined();
   });
 });

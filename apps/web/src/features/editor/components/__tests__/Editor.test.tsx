@@ -147,6 +147,10 @@ vi.mock("../CharacterForm", () => ({
   CharacterForm: () => <div data-testid="character-form" />,
 }));
 
+vi.mock("../design/CharacterAssignPanel", () => ({
+  CharacterAssignPanel: () => <div>CharacterAssignPanel 콘텐츠</div>,
+}));
+
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
@@ -445,7 +449,7 @@ describe("CharactersTab", () => {
       isLoading: true,
     });
 
-    const { container } = render(<CharactersTab themeId="theme-1" />);
+    const { container } = render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
     const spinner = container.querySelector('[role="status"]');
     expect(spinner).not.toBeNull();
   });
@@ -456,7 +460,7 @@ describe("CharactersTab", () => {
       isLoading: false,
     });
 
-    render(<CharactersTab themeId="theme-1" />);
+    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
     expect(screen.getByText("등장인물 없음")).toBeDefined();
   });
 
@@ -466,7 +470,7 @@ describe("CharactersTab", () => {
       isLoading: false,
     });
 
-    render(<CharactersTab themeId="theme-1" />);
+    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
     expect(screen.getByText("탐정")).toBeDefined();
     expect(screen.getByText("범인 캐릭터")).toBeDefined();
   });
@@ -477,7 +481,7 @@ describe("CharactersTab", () => {
       isLoading: false,
     });
 
-    render(<CharactersTab themeId="theme-1" />);
+    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
     expect(screen.getByText("범인")).toBeDefined();
   });
 
@@ -487,7 +491,7 @@ describe("CharactersTab", () => {
       isLoading: false,
     });
 
-    render(<CharactersTab themeId="theme-1" />);
+    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
     expect(screen.getByText("캐릭터 추가")).toBeDefined();
   });
 });
