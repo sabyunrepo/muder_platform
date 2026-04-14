@@ -38,7 +38,8 @@ export function useSaveFlow(themeId: string) {
   return useMutation<FlowGraphResponse, Error, SaveFlowRequest>({
     mutationFn: (body) =>
       api.put<FlowGraphResponse>(`/v1/editor/themes/${themeId}/flow`, body),
-    onSuccess: () => invalidateGraph(themeId),
+    // No invalidation: local state is authoritative. Invalidating causes
+    // refetch → setNodes → ReactFlow position adjust → autoSave → PUT loop.
   });
 }
 
