@@ -4,16 +4,25 @@ import {
   MiniMap,
   Controls,
   type NodeTypes,
+  type OnSelectionChangeParams,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { useCallback, useRef } from "react";
 import { useFlowData } from "../../hooks/useFlowData";
 import { FlowToolbar } from "./FlowToolbar";
+import { StartNode } from "./StartNode";
+import { PhaseNode } from "./PhaseNode";
+import { NodeDetailPanel } from "./NodeDetailPanel";
+import type { FlowNodeType } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
-// Node types — custom nodes will be added in Phase 15.0 W2
+// Node types registry
 // ---------------------------------------------------------------------------
 
-const nodeTypes: NodeTypes = {};
+const nodeTypes: NodeTypes = {
+  start: StartNode,
+  phase: PhaseNode,
+};
 
 // ---------------------------------------------------------------------------
 // Props
@@ -28,6 +37,8 @@ interface FlowCanvasProps {
 // ---------------------------------------------------------------------------
 
 export function FlowCanvas({ themeId }: FlowCanvasProps) {
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
   const {
     nodes,
     edges,
@@ -37,13 +48,53 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
     isLoading,
     isSaving,
     save,
+    selectedNode,
+    addNode,
+    updateNodeData,
+    deleteNode,
+    onSelectionChange,
   } = useFlowData(themeId);
 
-  const handleAddNode = (type: string) => {
-    // Node creation handled via drag-and-drop or toolbar in W2
-    // For now, log intent — full implementation in Phase 15.0 W2
-    void type;
-  };
+  // Add node at canvas center
+  const handleAddNode = useCallback(
+    (type: string) => {
+      const wrapper = reactFlowWrapper.current;
+      const cx = wrapper ? wrapper.clientWidth / 2 : 300;
+      const cy = wrapper ? wrapper.clientHeight / 2 : 200;
+      addNode(type as FlowNodeType, { x: cx, y: cy });
+    },
+    [addNode],
+  );
+
+  // Drag over — allow drop
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  // Drop — create node at drop position
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const type = e.dataTransfer.getData("application/flow-node-type");
+      if (!type) return;
+      const wrapper = reactFlowWrapper.current;
+      if (!wrapper) return;
+      const rect = wrapper.getBoundingClientRect();
+      addNode(type as FlowNodeType, {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    },
+    [addNode],
+  );
+
+  const handleSelectionChange = useCallback(
+    (params: OnSelectionChangeParams) => {
+      onSelectionChange({ nodes: params.nodes });
+    },
+    [onSelectionChange],
+  );
 
   if (isLoading) {
     return (
@@ -60,21 +111,42 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         onSave={save}
         isSaving={isSaving}
       />
-      <div className="flex-1">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          fitView
-          colorMode="dark"
+      <div className="flex flex-1 overflow-hidden">
+        {/* Canvas */}
+        <div
+          ref={reactFlowWrapper}
+          className="flex-1"
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
         >
-          <Background />
-          <MiniMap />
-          <Controls />
-        </ReactFlow>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onSelectionChange={handleSelectionChange}
+            nodeTypes={nodeTypes}
+            fitView
+            colorMode="dark"
+          >
+            <Background />
+            <MiniMap />
+            <Controls />
+          </ReactFlow>
+        </div>
+
+        {/* Detail panel — shown when a node is selected */}
+        {selectedNode && (
+          <div className="w-56 shrink-0 border-l border-slate-800 bg-slate-900 overflow-y-auto">
+            <NodeDetailPanel
+              node={selectedNode}
+              themeId={themeId}
+              onUpdate={updateNodeData}
+              onDelete={deleteNode}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
