@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Save, ChevronDown, LayoutTemplate } from "lucide-react";
+import { Plus, Save, ChevronDown, LayoutTemplate, Play } from "lucide-react";
 import { FLOW_PRESETS, createPresetFlow } from "../../hooks/flowPresets";
 import type { Node, Edge } from "@xyflow/react";
 
@@ -13,6 +13,8 @@ interface FlowToolbarProps {
   isSaving: boolean;
   onApplyPreset?: (nodes: Node[], edges: Edge[]) => void;
   hasNodes?: boolean;
+  onToggleSimulation?: () => void;
+  isSimulating?: boolean;
 }
 
 interface NodeOption {
@@ -37,6 +39,8 @@ export function FlowToolbar({
   isSaving,
   onApplyPreset,
   hasNodes,
+  onToggleSimulation,
+  isSimulating,
 }: FlowToolbarProps) {
   const [open, setOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
@@ -135,6 +139,22 @@ export function FlowToolbar({
             </div>
           )}
         </div>
+      )}
+
+      {/* Simulation toggle */}
+      {onToggleSimulation && (
+        <button
+          type="button"
+          onClick={onToggleSimulation}
+          className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
+            isSimulating
+              ? "border-amber-600 bg-amber-950/30 text-amber-400"
+              : "border-slate-700 bg-slate-800 text-slate-300 hover:border-amber-500 hover:text-amber-400"
+          }`}
+        >
+          <Play className="h-3.5 w-3.5" />
+          시뮬레이션
+        </button>
       )}
 
       <div className="flex-1" />
