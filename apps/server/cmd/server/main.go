@@ -18,6 +18,7 @@ import (
 	"github.com/mmp-platform/server/internal/domain/coin"
 	"github.com/mmp-platform/server/internal/domain/creator"
 	"github.com/mmp-platform/server/internal/domain/editor"
+	"github.com/mmp-platform/server/internal/domain/flow"
 	"github.com/mmp-platform/server/internal/domain/payment"
 	"github.com/mmp-platform/server/internal/domain/profile"
 	"github.com/mmp-platform/server/internal/domain/room"
@@ -138,6 +139,8 @@ func main() {
 	roomSvc := room.NewService(pool, queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
+	flowSvc := flow.NewService(pool, logger)
+	flowHandler := flow.NewHandler(flowSvc)
 
 	// Phase 7.7: Media storage provider
 	// R2 credentials present → use R2. Otherwise fall back to local file storage for dev.
@@ -442,6 +445,15 @@ func main() {
 				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
 				// Module schemas
 				r.Get("/module-schemas", editorHandler.GetModuleSchemas)
+				// Flow (game flow canvas)
+				r.Get("/themes/{id}/flow", flowHandler.GetFlow)
+				r.Put("/themes/{id}/flow", flowHandler.SaveFlow)
+				r.Post("/themes/{id}/flow/nodes", flowHandler.CreateNode)
+				r.Patch("/themes/{id}/flow/nodes/{nodeId}", flowHandler.UpdateNode)
+				r.Delete("/themes/{id}/flow/nodes/{nodeId}", flowHandler.DeleteNode)
+				r.Post("/themes/{id}/flow/edges", flowHandler.CreateEdge)
+				r.Patch("/themes/{id}/flow/edges/{edgeId}", flowHandler.UpdateEdge)
+				r.Delete("/themes/{id}/flow/edges/{edgeId}", flowHandler.DeleteEdge)
 			})
 
 			// --- Admin endpoints (ADMIN only) ---
