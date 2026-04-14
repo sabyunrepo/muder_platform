@@ -47,6 +47,7 @@ export function useConfirmImageUpload(themeId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.characters(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
     },
   });
 }

@@ -4,8 +4,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mockPost } = vi.hoisted(() => ({
+const { mockPost, mockInvalidateQueries } = vi.hoisted(() => ({
   mockPost: vi.fn(),
+  mockInvalidateQueries: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ vi.mock("@/features/editor/api", () => ({
   editorKeys: {
     characters: (id: string) => ["editor", "characters", id],
     theme: (id: string) => ["editor", "theme", id],
+    clues: (id: string) => ["editor", "clues", id],
   },
 }));
 
@@ -32,14 +34,17 @@ vi.mock("@/features/editor/api", () => ({
 // ---------------------------------------------------------------------------
 
 vi.mock("@/services/queryClient", () => ({
-  queryClient: { invalidateQueries: vi.fn() },
+  queryClient: { invalidateQueries: mockInvalidateQueries },
 }));
 
 // ---------------------------------------------------------------------------
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { uploadImage } from "../imageApi";
+import { uploadImage, useConfirmImageUpload } from "../imageApi";
+import { renderHook } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -89,5 +94,40 @@ describe("uploadImage", () => {
   it("returns the image_url from confirm response", async () => {
     const url = await uploadImage(themeId, "character", targetId, blob, "image/webp");
     expect(url).toBe("https://cdn/image.webp");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useConfirmImageUpload — cache invalidation
+// ---------------------------------------------------------------------------
+
+describe("useConfirmImageUpload", () => {
+  const themeId = "theme-uuid-123";
+
+  function wrapper({ children }: { children: React.ReactNode }) {
+    const qc = new QueryClient();
+    return React.createElement(QueryClientProvider, { client: qc }, children);
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPost.mockResolvedValue({ image_url: "https://cdn/image.webp" });
+  });
+
+  it("invalidates characters, theme, and clues caches on success", async () => {
+    const { result } = renderHook(() => useConfirmImageUpload(themeId), { wrapper });
+
+    await result.current.mutateAsync({ upload_key: "key-abc" });
+
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["editor", "characters", themeId],
+    });
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["editor", "theme", themeId],
+    });
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ["editor", "clues", themeId],
+    });
+    expect(mockInvalidateQueries).toHaveBeenCalledTimes(3);
   });
 });
