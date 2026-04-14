@@ -93,7 +93,7 @@ export function useClueGraphData(
   );
 
   const autoSave = useCallback(
-    (eds: Edge[]) => {
+    (eds: Edge[], overrides?: { onError?: (err: Error) => void }) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         saveRelations.mutate(buildRequests(eds), {
@@ -104,7 +104,11 @@ export function useClueGraphData(
             );
           },
           onError: (err) => {
-            toast.error(err.message || "관계 저장에 실패했습니다");
+            if (overrides?.onError) {
+              overrides.onError(err);
+            } else {
+              toast.error(err.message || "관계 저장에 실패했습니다");
+            }
           },
         });
       }, 1000);
@@ -123,29 +127,24 @@ export function useClueGraphData(
       };
       setEdges((eds) => {
         const next = addEdge(newEdge, eds);
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-          saveRelations.mutate(buildRequests(next), {
-            onSuccess: (saved) => {
-              queryClient.setQueryData(
-                clueRelationKeys.relations(themeId),
-                saved,
-              );
-            },
-            onError: (err: Error) => {
-              const isCycle = err.message?.includes("CYCLE_DETECTED");
-              setEdges((cur) => cur.filter((e) => e.id !== newEdge.id));
-              toast.error(isCycle ? "순환 참조가 감지되어 관계를 추가할 수 없습니다" : "관계 저장에 실패했습니다");
-              queryClient.invalidateQueries({
-                queryKey: clueRelationKeys.relations(themeId),
-              });
-            },
-          });
-        }, 1000);
+        autoSave(next, {
+          onError: (err: Error) => {
+            const isCycle = err.message?.includes("CYCLE_DETECTED");
+            setEdges((cur) => cur.filter((e) => e.id !== newEdge.id));
+            toast.error(
+              isCycle
+                ? "순환 참조가 감지되어 관계를 추가할 수 없습니다"
+                : "관계 저장에 실패했습니다",
+            );
+            queryClient.invalidateQueries({
+              queryKey: clueRelationKeys.relations(themeId),
+            });
+          },
+        });
         return next;
       });
     },
-    [setEdges, saveRelations, buildRequests, themeId],
+    [setEdges, autoSave, themeId],
   );
 
   const onEdgeDelete = useCallback(
