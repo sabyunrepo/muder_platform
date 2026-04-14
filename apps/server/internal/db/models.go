@@ -51,6 +51,15 @@ type ChatRoomMember struct {
 	Role       string    `json:"role"`
 }
 
+type ClueRelation struct {
+	ID        uuid.UUID `json:"id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+	SourceID  uuid.UUID `json:"source_id"`
+	TargetID  uuid.UUID `json:"target_id"`
+	Mode      string    `json:"mode"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type CoinPackage struct {
 	ID         uuid.UUID `json:"id"`
 	Platform   string    `json:"platform"`
@@ -89,6 +98,28 @@ type CreatorEarning struct {
 	Settled            bool        `json:"settled"`
 	SettlementID       pgtype.UUID `json:"settlement_id"`
 	CreatedAt          time.Time   `json:"created_at"`
+}
+
+type FlowEdge struct {
+	ID        uuid.UUID   `json:"id"`
+	ThemeID   uuid.UUID   `json:"theme_id"`
+	SourceID  uuid.UUID   `json:"source_id"`
+	TargetID  uuid.UUID   `json:"target_id"`
+	Condition []byte      `json:"condition"`
+	Label     pgtype.Text `json:"label"`
+	SortOrder int32       `json:"sort_order"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+type FlowNode struct {
+	ID        uuid.UUID       `json:"id"`
+	ThemeID   uuid.UUID       `json:"theme_id"`
+	Type      string          `json:"type"`
+	Data      json.RawMessage `json:"data"`
+	PositionX float64         `json:"position_x"`
+	PositionY float64         `json:"position_y"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 type Friendship struct {
