@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -38,9 +39,11 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 
-	router *Router
-	pubsub PubSub
-	logger zerolog.Logger
+	router        *Router
+	pubsub        PubSub
+	registry      *EnvelopeRegistry
+	sessionSender SessionSender // nil until PR-2 wires it up
+	logger        zerolog.Logger
 
 	mu   sync.RWMutex
 	done chan struct{}
@@ -59,6 +62,8 @@ type Hub struct {
 }
 
 // NewHub creates a Hub and starts its event loop.
+// registry may be nil (no type-checking enforced until one is set via SetRegistry).
+// sender may be nil until PR-2 wires the session layer.
 func NewHub(router *Router, pubsub PubSub, logger zerolog.Logger) *Hub {
 	h := &Hub{
 		sessions:     make(map[uuid.UUID]map[uuid.UUID]*Client),
@@ -75,6 +80,18 @@ func NewHub(router *Router, pubsub PubSub, logger zerolog.Logger) *Hub {
 	}
 	go h.run()
 	return h
+}
+
+// SetRegistry attaches an EnvelopeRegistry so that Hub.Route validates message
+// types before forwarding. Call before accepting connections.
+func (h *Hub) SetRegistry(r *EnvelopeRegistry) {
+	h.registry = r
+}
+
+// SetSessionSender wires the session delivery layer (PR-2 adapter).
+// Messages with a client in a game session are forwarded via this sender.
+func (h *Hub) SetSessionSender(s SessionSender) {
+	h.sessionSender = s
 }
 
 // run is the main event loop. All register/unregister mutations happen here
@@ -371,15 +388,65 @@ func (h *Hub) Whisper(fromID, toID uuid.UUID, env *Envelope) {
 	target.SendMessage(env)
 }
 
-// Route dispatches an inbound envelope to the router.
+// Route dispatches an inbound envelope from a client.
 // Called from Client.ReadPump.
+//
+// Routing priority:
+//  1. Registry validation — rejects unknown types with WS error 4000.
+//  2. Session forwarding — if the client is in a game session AND a
+//     SessionSender is wired, the message is delivered to the session actor.
+//  3. Router fallback — all other messages (lobby, system) go to the Router.
 func (h *Hub) Route(sender *Client, env *Envelope) {
+	// 1. Registry validation (when a registry is configured).
+	if h.registry != nil && !isSystemType(env.Type) {
+		if !h.registry.IsKnown(env.Type) {
+			h.logger.Warn().
+				Str("type", env.Type).
+				Stringer("playerID", sender.ID).
+				Msg("unknown message type rejected")
+			sender.SendMessage(NewErrorEnvelope(ErrCodeBadMessage, "unknown message type: "+env.Type))
+			return
+		}
+	}
+
+	// 2. Session forwarding for in-session clients.
+	if sender.SessionID != uuid.Nil && h.sessionSender != nil {
+		msg := SessionMessage{
+			SessionID: sender.SessionID,
+			PlayerID:  sender.ID,
+			MsgType:   env.Type,
+			Payload:   env.Payload,
+			Ctx:       context.Background(),
+		}
+		if err := h.sessionSender.SendToSession(msg); err != nil {
+			h.logger.Error().
+				Err(err).
+				Stringer("sessionID", sender.SessionID).
+				Stringer("playerID", sender.ID).
+				Str("type", env.Type).
+				Msg("session send failed")
+			sender.SendMessage(NewErrorEnvelope(ErrCodeInternalError, "failed to deliver message"))
+		}
+		return
+	}
+
+	// 3. Router fallback (lobby messages, system messages, etc.).
 	if h.router == nil {
 		h.logger.Error().Msg("router not set, dropping message")
 		sender.SendMessage(NewErrorEnvelope(ErrCodeInternalError, "server misconfigured"))
 		return
 	}
 	h.router.Route(sender, env)
+}
+
+// isSystemType reports whether the envelope type is a built-in system message
+// that bypasses registry validation.
+func isSystemType(t string) bool {
+	switch t {
+	case TypePing, TypePong, TypeError, TypeConnected, TypeReconnect:
+		return true
+	}
+	return false
 }
 
 // SessionClients returns all clients in a given session.
