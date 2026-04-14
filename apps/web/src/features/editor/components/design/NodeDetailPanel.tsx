@@ -1,6 +1,7 @@
 import { Trash2 } from "lucide-react";
 import type { Node } from "@xyflow/react";
 import { PhaseNodePanel } from "./PhaseNodePanel";
+import { EndingNodePanel } from "./EndingNodePanel";
 import type { FlowNodeData } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,8 @@ export function NodeDetailPanel({
           </div>
         ) : node.type === "phase" ? (
           <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} />
+        ) : node.type === "ending" ? (
+          <EndingNodePanel node={node} themeId={themeId} onUpdate={onUpdate} />
         ) : (
           <div className="flex h-full items-center justify-center p-4">
             <span className="text-xs text-slate-500">

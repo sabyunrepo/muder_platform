@@ -12,6 +12,7 @@ import { useFlowData } from "../../hooks/useFlowData";
 import { FlowToolbar } from "./FlowToolbar";
 import { StartNode } from "./StartNode";
 import { PhaseNode } from "./PhaseNode";
+import { EndingNode } from "./EndingNode";
 import { NodeDetailPanel } from "./NodeDetailPanel";
 import type { FlowNodeType } from "../../flowTypes";
 
@@ -22,6 +23,7 @@ import type { FlowNodeType } from "../../flowTypes";
 const nodeTypes: NodeTypes = {
   start: StartNode,
   phase: PhaseNode,
+  ending: EndingNode,
 };
 
 // ---------------------------------------------------------------------------
