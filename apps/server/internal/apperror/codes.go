@@ -32,9 +32,9 @@ const (
 	ErrInvalidPayload   = "INVALID_PAYLOAD"
 
 	// Player errors
-	ErrPlayerNotFound   = "PLAYER_NOT_FOUND"
-	ErrPlayerNotInGame  = "PLAYER_NOT_IN_GAME"
-	ErrPlayerAlreadyIn  = "PLAYER_ALREADY_IN_GAME"
+	ErrPlayerNotFound  = "PLAYER_NOT_FOUND"
+	ErrPlayerNotInGame = "PLAYER_NOT_IN_GAME"
+	ErrPlayerAlreadyIn = "PLAYER_ALREADY_IN_GAME"
 
 	// Room errors
 	ErrRoomNotFound   = "ROOM_NOT_FOUND"
@@ -52,12 +52,12 @@ const (
 	ErrChatBlocked            = "CHAT_BLOCKED"
 
 	// Payment errors
-	ErrPaymentDuplicate          = "PAYMENT_DUPLICATE"
+	ErrPaymentDuplicate           = "PAYMENT_DUPLICATE"
 	ErrPaymentIdempotencyMismatch = "PAYMENT_IDEMPOTENCY_MISMATCH"
-	ErrPaymentNotFound           = "PAYMENT_NOT_FOUND"
-	ErrPaymentInvalidStatus      = "PAYMENT_INVALID_STATUS"
-	ErrPaymentProviderError      = "PAYMENT_PROVIDER_ERROR"
-	ErrPaymentWebhookInvalid     = "PAYMENT_WEBHOOK_INVALID"
+	ErrPaymentNotFound            = "PAYMENT_NOT_FOUND"
+	ErrPaymentInvalidStatus       = "PAYMENT_INVALID_STATUS"
+	ErrPaymentProviderError       = "PAYMENT_PROVIDER_ERROR"
+	ErrPaymentWebhookInvalid      = "PAYMENT_WEBHOOK_INVALID"
 
 	// Coin errors
 	ErrCoinInsufficient    = "COIN_INSUFFICIENT"
@@ -106,4 +106,7 @@ const (
 	ErrImageInvalidType   = "IMAGE_INVALID_TYPE"
 	ErrImageInvalidTarget = "IMAGE_INVALID_TARGET"
 	ErrImageTooLarge      = "IMAGE_TOO_LARGE"
+
+	// WebSocket message errors
+	ErrWSUnknownMessageType = "WS_UNKNOWN_MESSAGE_TYPE"
 )
