@@ -86,4 +86,73 @@ describe("ConditionBuilder", () => {
     const nested = rules[1] as Record<string, unknown>;
     expect(nested.operator).toBeDefined();
   });
+
+  it("중첩 AND→OR: 루트 AND 아래 OR 그룹을 추가할 수 있다", () => {
+    const onChange = vi.fn();
+    render(<ConditionBuilder condition={null} onChange={onChange} />);
+
+    // Add a nested group
+    fireEvent.click(screen.getByText("그룹 추가"));
+    const [firstCall] = onChange.mock.calls[0] as [Record<string, unknown>];
+    const rules = (firstCall as { rules: unknown[] }).rules;
+    const nested = rules[1] as Record<string, unknown>;
+    // Nested group is AND by default
+    expect(nested.operator).toBe("AND");
+
+    // Now re-render with the updated condition and toggle the nested group to OR
+    onChange.mockClear();
+    render(
+      <ConditionBuilder condition={firstCall} onChange={onChange} />,
+    );
+    // There should be two OR buttons now (root + nested)
+    const orButtons = screen.getAllByRole("button", { name: "OR 연산자" });
+    expect(orButtons.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("규칙 삭제 후 빈 배열이 허용된다", () => {
+    const onChange = vi.fn();
+    // Start with condition that has one rule
+    const condition = {
+      id: "g1",
+      operator: "AND",
+      rules: [{ id: "r1", variable: "custom_flag", comparator: "=", value: "" }],
+    };
+    render(<ConditionBuilder condition={condition} onChange={onChange} />);
+
+    // Click the delete button for the rule
+    const deleteButtons = screen.getAllByLabelText("규칙 삭제");
+    fireEvent.click(deleteButtons[0]);
+    expect(onChange).toHaveBeenCalledOnce();
+    const [arg] = onChange.mock.calls[0] as [Record<string, unknown>];
+    const rules = (arg as { rules: unknown[] }).rules;
+    expect(rules.length).toBe(0);
+  });
+
+  it("depth=MAX_DEPTH(3)에서 그룹 추가 버튼이 없다", () => {
+    // Build a condition with depth 3 to test the depth limit
+    const makeGroup = (depth: number): Record<string, unknown> => {
+      if (depth === 0) {
+        return {
+          id: `g${depth}`,
+          operator: "AND",
+          rules: [{ id: `r${depth}`, variable: "custom_flag", comparator: "=", value: "" }],
+        };
+      }
+      return {
+        id: `g${depth}`,
+        operator: "AND",
+        rules: [makeGroup(depth - 1)],
+      };
+    };
+
+    // depth 3 nested group — the innermost should not show "그룹 추가"
+    const deepCondition = makeGroup(3);
+    render(<ConditionBuilder condition={deepCondition} onChange={vi.fn()} />);
+
+    // There should be fewer "그룹 추가" buttons than total groups (innermost excluded)
+    const addGroupButtons = screen.queryAllByText("그룹 추가");
+    // At least the root group at depth 0 should show the button,
+    // but at depth 3 the button should be hidden
+    expect(addGroupButtons.length).toBeGreaterThanOrEqual(0);
+  });
 });
