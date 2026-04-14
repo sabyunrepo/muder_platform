@@ -19,16 +19,18 @@ import (
 // --- mock service ---
 
 type mockService struct {
-	createThemeFn    func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
-	updateThemeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
-	deleteThemeFn    func(ctx context.Context, creatorID, themeID uuid.UUID) error
-	listMyThemesFn   func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
-	publishThemeFn   func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	unpublishThemeFn func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	createCharFn     func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
-	updateCharFn     func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
-	deleteCharFn     func(ctx context.Context, creatorID, charID uuid.UUID) error
-	updateConfigFn   func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
+	createThemeFn         func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
+	updateThemeFn         func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
+	deleteThemeFn         func(ctx context.Context, creatorID, themeID uuid.UUID) error
+	listMyThemesFn        func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
+	publishThemeFn        func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	unpublishThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	createCharFn          func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
+	updateCharFn          func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
+	deleteCharFn          func(ctx context.Context, creatorID, charID uuid.UUID) error
+	updateConfigFn        func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
+	getClueRelationsFn    func(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error)
+	replaceClueRelationsFn func(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error)
 }
 
 func (m *mockService) CreateTheme(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error) {
@@ -108,6 +110,30 @@ func (m *mockService) DeleteClue(ctx context.Context, creatorID, clueID uuid.UUI
 }
 func (m *mockService) ListClues(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueResponse, error) {
 	return nil, nil
+}
+
+// SubmitForReview
+func (m *mockService) SubmitForReview(ctx context.Context, userID, themeID uuid.UUID) (*ThemeResponse, error) {
+	return nil, nil
+}
+
+// GetModuleSchemas
+func (m *mockService) GetModuleSchemas(ctx context.Context) (map[string]json.RawMessage, error) {
+	return nil, nil
+}
+
+// Clue relations
+func (m *mockService) GetClueRelations(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error) {
+	if m.getClueRelationsFn != nil {
+		return m.getClueRelationsFn(ctx, creatorID, themeID)
+	}
+	return []ClueRelationResponse{}, nil
+}
+func (m *mockService) ReplaceClueRelations(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error) {
+	if m.replaceClueRelationsFn != nil {
+		return m.replaceClueRelationsFn(ctx, creatorID, themeID, reqs)
+	}
+	return []ClueRelationResponse{}, nil
 }
 
 // Contents

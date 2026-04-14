@@ -422,6 +422,9 @@ func main() {
 				r.Post("/themes/{id}/clues", editorHandler.CreateClue)
 				r.Put("/clues/{id}", editorHandler.UpdateClue)
 				r.Delete("/clues/{id}", editorHandler.DeleteClue)
+				// Clue relations
+				r.Get("/themes/{id}/clue-relations", editorHandler.GetClueRelations)
+				r.Put("/themes/{id}/clue-relations", editorHandler.ReplaceClueRelations)
 				// Contents
 				r.Get("/themes/{id}/content/{key}", editorHandler.GetContent)
 				r.Put("/themes/{id}/content/{key}", editorHandler.UpsertContent)
