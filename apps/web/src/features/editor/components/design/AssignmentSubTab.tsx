@@ -34,13 +34,13 @@ export function AssignmentSubTab({ themeId, theme }: AssignmentSubTabProps) {
   return (
     <div className="flex h-full flex-col">
       {/* ── Inner tab nav ── */}
-      <nav className="flex shrink-0 border-b border-slate-800 bg-slate-950/60 px-3">
+      <nav className="flex shrink-0 overflow-x-auto border-b border-slate-800 bg-slate-950/60 px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {INNER_TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-1.5 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2 text-xs font-medium transition-colors ${
               activeTab === key
                 ? 'border-amber-500 text-amber-400'
                 : 'border-transparent text-slate-500 hover:text-slate-300'

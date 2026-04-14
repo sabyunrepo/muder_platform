@@ -64,9 +64,9 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   }, [activeModuleId]);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full flex-col md:flex-row">
       {/* ── Sidebar ── */}
-      <aside className="w-60 shrink-0 overflow-y-auto border-r border-slate-800 bg-slate-950 py-4">
+      <aside className="shrink-0 overflow-y-auto border-b border-slate-800 bg-slate-950 py-4 md:w-60 md:border-b-0 md:border-r">
         {MODULE_CATEGORIES.map((category) => {
           const categoryModuleIds = category.modules.map((m) => m.id);
           const activeCount = categoryModuleIds.filter((id) =>
