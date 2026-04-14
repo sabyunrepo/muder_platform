@@ -17,12 +17,13 @@ import (
 
 // mockService implements Service for testing.
 type mockService struct {
-	createRoomFn      func(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
-	getRoomFn         func(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error)
-	getRoomByCodeFn   func(ctx context.Context, code string) (*RoomDetailResponse, error)
-	listWaitingFn     func(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
-	joinRoomFn        func(ctx context.Context, roomID, userID uuid.UUID) error
-	leaveRoomFn       func(ctx context.Context, roomID, userID uuid.UUID) error
+	createRoomFn    func(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
+	getRoomFn       func(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error)
+	getRoomByCodeFn func(ctx context.Context, code string) (*RoomDetailResponse, error)
+	listWaitingFn   func(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
+	joinRoomFn      func(ctx context.Context, roomID, userID uuid.UUID) error
+	leaveRoomFn     func(ctx context.Context, roomID, userID uuid.UUID) error
+	startRoomFn     func(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
 func (m *mockService) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
@@ -47,6 +48,13 @@ func (m *mockService) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) er
 
 func (m *mockService) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error {
 	return m.leaveRoomFn(ctx, roomID, userID)
+}
+
+func (m *mockService) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error {
+	if m.startRoomFn != nil {
+		return m.startRoomFn(ctx, roomID, hostID, req)
+	}
+	return nil
 }
 
 // withAuth injects a user ID into the request context.

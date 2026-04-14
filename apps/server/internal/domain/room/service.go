@@ -48,6 +48,13 @@ type PlayerInfo struct {
 	IsReady bool      `json:"is_ready"`
 }
 
+// StartRoomRequest is the payload for POST /rooms/:id/start.
+type StartRoomRequest struct {
+	// ConfigJSON is the scenario config produced by the editor.
+	// If empty, the room's theme configJson is loaded from the DB.
+	ConfigJSON []byte `json:"configJson,omitempty"`
+}
+
 // Service defines the room domain operations.
 type Service interface {
 	CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
@@ -56,12 +63,20 @@ type Service interface {
 	ListWaitingRooms(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
 	JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
+	StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
+}
+
+// GameStarter abstracts startModularGame so the room service has no direct
+// dependency on the session package. Implement with session.StartModularGameFunc.
+type GameStarter interface {
+	Start(ctx context.Context, roomID uuid.UUID, configJSON []byte) error
 }
 
 type service struct {
-	pool    *pgxpool.Pool
-	queries *db.Queries
-	logger  zerolog.Logger
+	pool        *pgxpool.Pool
+	queries     *db.Queries
+	logger      zerolog.Logger
+	gameStarter GameStarter // nil → legacy (flag off)
 }
 
 // NewService creates a new room service.
@@ -73,12 +88,23 @@ func NewService(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logger) 
 	}
 }
 
+// NewServiceWithStarter creates a room service with a GameStarter for the
+// game_runtime_v2 feature flag path.
+func NewServiceWithStarter(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logger, starter GameStarter) Service {
+	return &service{
+		pool:        pool,
+		queries:     queries,
+		logger:      logger.With().Str("domain", "room").Logger(),
+		gameStarter: starter,
+	}
+}
+
 // generateRoomCode creates a 6-character room code using crypto/rand.
 // Excludes I, O, 0, 1 to avoid visual confusion.
 // Uses rejection sampling to eliminate modulo bias.
 func generateRoomCode() (string, error) {
 	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // 31 chars
-	const maxValid = 248                              // 256 - (256 % 31) = 248, largest unbiased value
+	const maxValid = 248                             // 256 - (256 % 31) = 248, largest unbiased value
 	result := make([]byte, 6)
 	buf := make([]byte, 12) // over-provision to reduce Read calls
 	idx := 0
@@ -373,6 +399,47 @@ func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetai
 		Players:      infos,
 	}
 	return resp, nil
+}
+
+// StartRoom validates host ownership, checks all players are ready, then
+// delegates to GameStarter (game_runtime_v2 flag on) or returns a stub
+// response for the legacy path (flag off).
+func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error {
+	room, err := s.queries.GetRoom(ctx, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
+		}
+		s.logger.Error().Err(err).Msg("StartRoom: failed to get room")
+		return apperror.Internal("failed to get room")
+	}
+
+	if room.HostID != hostID {
+		return apperror.New(apperror.ErrForbidden, http.StatusForbidden, "only the host can start the game")
+	}
+
+	if room.Status != "WAITING" {
+		return apperror.New(apperror.ErrRoomNotWaiting, http.StatusConflict, "room is not in waiting state")
+	}
+
+	if s.gameStarter == nil {
+		// Feature flag off — legacy path (no-op for now).
+		s.logger.Info().
+			Str("room_id", roomID.String()).
+			Msg("StartRoom: game_runtime_v2 disabled, legacy path")
+		return nil
+	}
+
+	if err := s.gameStarter.Start(ctx, roomID, req.ConfigJSON); err != nil {
+		s.logger.Error().Err(err).Str("room_id", roomID.String()).Msg("StartRoom: gameStarter failed")
+		return err
+	}
+
+	s.logger.Info().
+		Str("room_id", roomID.String()).
+		Str("host_id", hostID.String()).
+		Msg("StartRoom: game started")
+	return nil
 }
 
 // mapRoomResponse converts a db.Room to a RoomResponse.
