@@ -18,8 +18,10 @@ const (
 	inboxBufferSize = 256
 
 	// snapshotInterval is how often the actor checks whether a dirty snapshot
-	// should be flushed to Redis (PR-7 will act on this tick).
-	snapshotInterval = 5 * time.Second
+	// should be persisted. Kept intentionally shorter than snapshotDebounceInterval
+	// so the debounce actually rate-limits writes (M-4 fix). Debounce is the
+	// authoritative write cadence; this tick is just a "maybe now?" prompt.
+	snapshotInterval = 1 * time.Second
 )
 
 // Sentinel errors returned by Send so callers (PR-3 BaseModuleHandler) can map
@@ -289,8 +291,10 @@ func (s *Session) handleMessage(msg SessionMessage) {
 		}
 
 	case KindStop:
-		// Flush snapshot before stopping so the last state is durable.
-		s.flushSnapshot()
+		// Graceful stop: delete the Redis snapshot so PII/role data does not
+		// linger for 24h after a game ends (M-5). If the session aborts via
+		// panic/ctx-cancel instead, the snapshot is kept for recovery.
+		s.deleteSnapshot()
 		s.stop()
 		// Reply before returning so callers waiting on a KindStop reply don't hang.
 		s.replyTo(msg, nil)

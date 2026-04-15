@@ -13,6 +13,10 @@ import (
 // call with the same playerID in the same session is considered a reconnect.
 const reconnectWindow = 30 * time.Second
 
+// routeMsgTimeout bounds the SessionMessage.Ctx delivered to the actor so a
+// stuck handler can't occupy the goroutine indefinitely (M-1 fix).
+const routeMsgTimeout = 10 * time.Second
+
 const (
 	// reconnectBufferAge is how long messages are kept for reconnection replay.
 	reconnectBufferAge = 60 * time.Second
@@ -411,12 +415,17 @@ func (h *Hub) Route(sender *Client, env *Envelope) {
 
 	// 2. Session forwarding for in-session clients.
 	if sender.SessionID != uuid.Nil && h.sessionSender != nil {
+		// Bound the message context so a stuck handler can't occupy the actor
+		// indefinitely (M-1 fix). The inbox is non-blocking, so we can't defer
+		// cancel — rely on the timer to self-release at deadline.
+		msgCtx, cancel := context.WithTimeout(context.Background(), routeMsgTimeout)
+		_ = cancel
 		msg := SessionMessage{
 			SessionID: sender.SessionID,
 			PlayerID:  sender.ID,
 			MsgType:   env.Type,
 			Payload:   env.Payload,
-			Ctx:       context.Background(),
+			Ctx:       msgCtx,
 		}
 		if err := h.sessionSender.SendToSession(msg); err != nil {
 			h.logger.Error().

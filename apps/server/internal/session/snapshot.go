@@ -92,6 +92,24 @@ func (s *Session) flushSnapshot() {
 	s.persistSnapshot()
 }
 
+// deleteSnapshot proactively removes the Redis snapshot for this session.
+// Called on KindStop so PII (role, chat, clues) does not linger for 24h
+// after the game ends (M-5 fix). Errors are logged but never bubbled up —
+// snapshots auto-expire via TTL if delete fails.
+// MUST be called only from the actor goroutine.
+func (s *Session) deleteSnapshot() {
+	if s.cache == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := s.cache.Del(ctx, snapshotKey(s.ID)); err != nil {
+		s.logger.Warn().Err(err).Str("key", snapshotKey(s.ID)).Msg("snapshot: redis delete failed (will expire via TTL)")
+		return
+	}
+	s.logger.Debug().Str("session_id", s.ID.String()).Msg("snapshot: deleted from redis on session stop")
+}
+
 // SendSnapshot dispatches a player-aware snapshot rebuild to the session actor
 // so the PhaseEngine (non-thread-safe) is touched only from its own goroutine.
 // The actor reconstructs state via engine.BuildStateFor(playerID) so role-

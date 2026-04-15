@@ -45,9 +45,22 @@ func (r *EnvelopeRegistry) Register(typ string, fn DecoderFunc) {
 	r.decoders[typ] = fn
 }
 
+// maxTypeLength bounds attacker-controlled envelope type length to prevent
+// log flooding and bloat through oversized unknown-type strings (M-6 fix).
+const maxTypeLength = 64
+
 // Decode looks up the decoder for typ and applies it to raw.
-// Returns ErrUnknownMessageType (AppError) when the type is not registered.
+// Returns ErrUnknownMessageType (AppError) when the type is not registered
+// or exceeds maxTypeLength.
 func (r *EnvelopeRegistry) Decode(typ string, raw json.RawMessage) (any, error) {
+	if len(typ) > maxTypeLength {
+		return nil, apperror.New(
+			apperror.ErrWSUnknownMessageType,
+			http.StatusBadRequest,
+			"message type too long",
+		)
+	}
+
 	r.mu.RLock()
 	fn, ok := r.decoders[typ]
 	r.mu.RUnlock()
