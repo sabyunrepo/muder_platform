@@ -119,3 +119,54 @@ func TestEventBus_NoMatchingSubscribers(t *testing.T) {
 	// Should not panic even with no subscribers.
 	bus.Publish(Event{Type: "unknown"})
 }
+
+func TestEventBus_SubscribeAll_FiresForEveryType(t *testing.T) {
+	bus := NewEventBus(nil)
+	defer bus.Close()
+
+	var received []string
+	bus.SubscribeAll(func(e Event) { received = append(received, e.Type) })
+
+	bus.Publish(Event{Type: "phase:entered"})
+	bus.Publish(Event{Type: "clue.acquired"})
+	bus.Publish(Event{Type: "vote:tallied"})
+
+	if len(received) != 3 {
+		t.Fatalf("expected 3 events, got %d (%v)", len(received), received)
+	}
+}
+
+func TestEventBus_SubscribeAll_CoexistsWithTyped(t *testing.T) {
+	bus := NewEventBus(nil)
+	defer bus.Close()
+
+	var wildcardCount, typedCount atomic.Int64
+	bus.SubscribeAll(func(_ Event) { wildcardCount.Add(1) })
+	bus.Subscribe("phase:entered", func(_ Event) { typedCount.Add(1) })
+
+	bus.Publish(Event{Type: "phase:entered"})
+	bus.Publish(Event{Type: "clue.acquired"})
+
+	if wildcardCount.Load() != 2 {
+		t.Errorf("wildcard: expected 2, got %d", wildcardCount.Load())
+	}
+	if typedCount.Load() != 1 {
+		t.Errorf("typed: expected 1, got %d", typedCount.Load())
+	}
+}
+
+func TestEventBus_SubscribeAll_UnsubscribeRemovesWildcard(t *testing.T) {
+	bus := NewEventBus(nil)
+	defer bus.Close()
+
+	var count atomic.Int64
+	id := bus.SubscribeAll(func(_ Event) { count.Add(1) })
+
+	bus.Publish(Event{Type: "x"})
+	bus.Unsubscribe(id)
+	bus.Publish(Event{Type: "x"})
+
+	if count.Load() != 1 {
+		t.Fatalf("expected 1 (wildcard removed after unsubscribe), got %d", count.Load())
+	}
+}

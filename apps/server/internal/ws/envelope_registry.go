@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"sync"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -29,10 +30,12 @@ func NewEnvelopeRegistry() *EnvelopeRegistry {
 }
 
 // Register adds a decoder for the given message type.
-// Panics only on structural misuse (empty type or nil decoder).
-// Duplicate registration is idempotent — the first decoder wins and later
-// calls are silently ignored (L-1 fix: no more startup crash when two
-// independent init() paths bootstrap the same registry).
+// Panics on structural misuse (empty type, nil decoder) and on **conflicting**
+// duplicate (same type, different decoder) so a typo in a new registration
+// doesn't silently shadow a real one.
+// Idempotent only when the SAME decoder function is registered again
+// — allows two independent init() paths bootstrapping the same registry
+// without a startup crash.
 func (r *EnvelopeRegistry) Register(typ string, fn DecoderFunc) {
 	if typ == "" {
 		panic("ws: EnvelopeRegistry.Register: empty type")
@@ -42,9 +45,15 @@ func (r *EnvelopeRegistry) Register(typ string, fn DecoderFunc) {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if _, dup := r.decoders[typ]; dup {
-		// Idempotent — first-wins. Caller likely has duplicate bootstrap path.
-		return
+	if existing, dup := r.decoders[typ]; dup {
+		if reflect.ValueOf(existing).Pointer() == reflect.ValueOf(fn).Pointer() {
+			// Same decoder — idempotent, safe to ignore.
+			return
+		}
+		// Different decoder for the same type is almost certainly a programmer
+		// error (typo, copy-paste, name collision). Fail loudly so it surfaces
+		// at init time rather than as a runtime decode mismatch.
+		panic("ws: EnvelopeRegistry.Register: conflicting decoder for type " + typ)
 	}
 	r.decoders[typ] = fn
 }

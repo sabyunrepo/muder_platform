@@ -71,22 +71,51 @@ func TestEnvelopeRegistry_IsKnown(t *testing.T) {
 	}
 }
 
-func TestEnvelopeRegistry_DuplicateRegister_Idempotent(t *testing.T) {
+func TestEnvelopeRegistry_DuplicateRegister_SameFnIdempotent(t *testing.T) {
 	r := NewEnvelopeRegistry()
-	first := func(raw json.RawMessage) (any, error) { return "first", nil }
-	second := func(raw json.RawMessage) (any, error) { return "second", nil }
+	fn := func(raw json.RawMessage) (any, error) { return "ok", nil }
 
-	r.Register("game:start", first)
-	// Second registration must NOT panic; first-wins behaviour preserves
-	// the originally registered decoder (L-1 fix).
-	r.Register("game:start", second)
+	r.Register("game:start", fn)
+	// Second registration of the SAME decoder pointer must not panic
+	// (idempotent bootstrap path).
+	r.Register("game:start", fn)
 
 	got, err := r.Decode("game:start", json.RawMessage(`{}`))
 	if err != nil {
 		t.Fatalf("Decode: unexpected error: %v", err)
 	}
-	if got != "first" {
-		t.Errorf("Decode: expected first decoder to win, got %v", got)
+	if got != "ok" {
+		t.Errorf("Decode: expected %q, got %v", "ok", got)
+	}
+}
+
+func TestEnvelopeRegistry_DuplicateRegister_DifferentFnPanics(t *testing.T) {
+	r := NewEnvelopeRegistry()
+	first := func(raw json.RawMessage) (any, error) { return "first", nil }
+	second := func(raw json.RawMessage) (any, error) { return "second", nil }
+	r.Register("game:start", first)
+
+	defer func() {
+		if rec := recover(); rec == nil {
+			t.Error("Register: expected panic on conflicting decoder, got none")
+		}
+	}()
+	// Different decoder for the same type — programmer error, must panic.
+	r.Register("game:start", second)
+}
+
+func TestEnvelopeRegistry_Decode_RejectsOverlongType(t *testing.T) {
+	r := NewEnvelopeRegistry()
+	longType := ""
+	for i := 0; i <= maxTypeLength; i++ {
+		longType += "a"
+	}
+	if len(longType) <= maxTypeLength {
+		t.Fatalf("precondition: fixture length %d must exceed %d", len(longType), maxTypeLength)
+	}
+	_, err := r.Decode(longType, json.RawMessage(`{}`))
+	if err == nil {
+		t.Fatal("Decode: expected error for overlong type, got nil")
 	}
 }
 
@@ -135,6 +164,14 @@ func TestHub_Route_SessionForwarding_Success(t *testing.T) {
 	}
 	if got.MsgType != "game:vote" {
 		t.Errorf("Route: MsgType = %q, want %q", got.MsgType, "game:vote")
+	}
+	// M-1: the forwarded SessionMessage.Ctx must carry a deadline so a
+	// stuck actor handler cannot occupy the goroutine indefinitely.
+	if got.Ctx == nil {
+		t.Fatal("Route: SessionMessage.Ctx is nil, want a bounded context")
+	}
+	if _, ok := got.Ctx.Deadline(); !ok {
+		t.Error("Route: SessionMessage.Ctx has no deadline (M-1 regression)")
 	}
 }
 
