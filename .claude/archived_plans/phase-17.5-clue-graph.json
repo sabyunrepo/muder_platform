@@ -12,32 +12,22 @@
     {
       "id": "W1",
       "mode": "sequential",
-      "prs": [
-        "PR-1"
-      ],
+      "prs": ["PR-1"],
       "status": "done"
     },
     {
       "id": "W2",
       "mode": "parallel",
-      "prs": [
-        "PR-2",
-        "PR-3"
-      ],
+      "prs": ["PR-2", "PR-3"],
       "depends_on": "W1",
       "status": "done"
     },
     {
       "id": "W3",
       "mode": "sequential",
-      "prs": [
-        "PR-4"
-      ],
+      "prs": ["PR-4"],
       "depends_on": "W2",
       "status": "done"
     }
-  ],
-  "active": {
-    "current_wave": "W5"
-  }
+  ]
 }
