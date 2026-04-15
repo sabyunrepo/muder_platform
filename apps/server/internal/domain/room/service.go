@@ -423,11 +423,16 @@ func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req S
 	}
 
 	if s.gameStarter == nil {
-		// Feature flag off — legacy path (no-op for now).
-		s.logger.Info().
+		// Feature flag off — return 503 so clients get an explicit signal
+		// rather than a false success. (M-9 early fix)
+		s.logger.Warn().
 			Str("room_id", roomID.String()).
-			Msg("StartRoom: game_runtime_v2 disabled, legacy path")
-		return nil
+			Msg("StartRoom: game_runtime_v2 disabled, returning 503")
+		return apperror.New(
+			apperror.ErrServiceUnavailable,
+			http.StatusServiceUnavailable,
+			"game runtime not enabled",
+		)
 	}
 
 	if err := s.gameStarter.Start(ctx, roomID, req.ConfigJSON); err != nil {

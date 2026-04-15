@@ -9,12 +9,12 @@ import (
 
 // Config holds all application configuration loaded from environment variables.
 type Config struct {
-	Port        int    `env:"PORT" default:"8080"`
-	Env         string `env:"APP_ENV" default:"development"`
-	LogLevel    string `env:"LOG_LEVEL" default:"debug"`
-	DatabaseURL string `env:"DATABASE_URL" required:"true"`
-	RedisURL    string `env:"REDIS_URL" required:"true"`
-	CORSOrigins string `env:"CORS_ORIGINS" default:"http://localhost:3000,http://localhost:5173"`
+	Port         int    `env:"PORT" default:"8080"`
+	Env          string `env:"APP_ENV" default:"development"`
+	LogLevel     string `env:"LOG_LEVEL" default:"debug"`
+	DatabaseURL  string `env:"DATABASE_URL" required:"true"`
+	RedisURL     string `env:"REDIS_URL" required:"true"`
+	CORSOrigins  string `env:"CORS_ORIGINS" default:"http://localhost:3000,http://localhost:5173"`
 	BaseURL      string `env:"BASE_URL" default:"http://localhost:5173"`
 	JWTSecret    string `env:"JWT_SECRET" default:"dev-secret-change-me"`
 	SentryDSN    string `env:"SENTRY_DSN" default:""`
@@ -32,6 +32,10 @@ type Config struct {
 	R2SecretAccessKey string `env:"R2_SECRET_ACCESS_KEY" default:""`
 	R2BucketName      string `env:"R2_BUCKET_NAME" default:""`
 	R2PublicURL       string `env:"R2_PUBLIC_URL" default:""`
+
+	// Feature flags
+	// GameRuntimeV2 enables the Phase 18.x modular game runtime (default off).
+	GameRuntimeV2 bool `env:"GAME_RUNTIME_V2" default:"false"`
 }
 
 // IsDevelopment returns true if the application is running in development mode.
@@ -87,6 +91,12 @@ func Load() (*Config, error) {
 				return nil, fmt.Errorf("config: invalid integer for %s: %w", envKey, err)
 			}
 			fieldVal.SetInt(int64(intVal))
+		case reflect.Bool:
+			boolVal, err := strconv.ParseBool(envVal)
+			if err != nil {
+				return nil, fmt.Errorf("config: invalid boolean for %s: %w", envKey, err)
+			}
+			fieldVal.SetBool(boolVal)
 		default:
 			return nil, fmt.Errorf("config: unsupported field type %s for %s", fieldVal.Kind(), field.Name)
 		}

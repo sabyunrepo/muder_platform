@@ -37,6 +37,7 @@ import (
 	"github.com/mmp-platform/server/internal/middleware"
 	"github.com/mmp-platform/server/internal/seo"
 	"github.com/mmp-platform/server/internal/server"
+	"github.com/mmp-platform/server/internal/session"
 	"github.com/mmp-platform/server/internal/ws"
 )
 
@@ -133,10 +134,13 @@ func main() {
 	// 6. EventBus
 	bus := eventbus.New(logger)
 
-	// 7. Domain Services
+	// 7. Session manager (Phase 18.1 wiring — created before Hub so we can
+	// inject snapshot deps after Hub is ready).
+	sessionMgr := session.NewSessionManager(logger)
+
+	// 8. Domain Services
 	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), logger)
 	profileSvc := profile.NewService(queries, logger)
-	roomSvc := room.NewService(pool, queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
 	flowSvc := flow.NewService(pool, logger)
@@ -201,16 +205,15 @@ func main() {
 	creatorSvc := creator.NewService(queries, logger)
 	settlementPipeline := creator.NewSettlementPipeline(queries, pool, redisCache.Client(), logger)
 
-	// 8. EventBus subscriptions
+	// 9. EventBus subscriptions
 	bus.Subscribe(eventbus.TypePaymentConfirmed, coinSvc.HandlePaymentConfirmed)
 	bus.Subscribe(eventbus.TypeThemePurchased, creatorSvc.HandleThemePurchased)
 	bus.Subscribe(eventbus.TypeThemeRefunded, creatorSvc.HandleThemeRefunded)
 	bus.Subscribe(eventbus.TypeGameStarted, coinSvc.HandleGameStarted)
 
-	// 9. Domain Handlers
+	// 10. Domain Handlers
 	authHandler := auth.NewHandler(authSvc)
 	profileHandler := profile.NewHandler(profileSvc)
-	roomHandler := room.NewHandler(roomSvc)
 	themeHandler := theme.NewHandler(themeSvc)
 	editorHandler := editor.NewHandler(editorSvc)
 	adminHandler := admin.NewHandler(adminSvc)
@@ -221,40 +224,54 @@ func main() {
 	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
 	reviewHandler := admin.NewReviewHandler(queries, logger)
 
-	// 10. WebSocket Hub (Game)
+	// 11. WebSocket Hub (Game)
+	registry := ws.NewEnvelopeRegistry()
+	ws.BootstrapRegistry(registry)
 	wsRouter := ws.NewRouter(logger)
 	wsHub := ws.NewHub(wsRouter, ws.NoopPubSub{}, logger)
+	wsHub.SetRegistry(registry)
 	defer wsHub.Stop()
 	logger.Info().Msg("game websocket hub started")
 
-	// 10.1. Sound WS Handler
+	// 11.1. Wire session layer into Hub (Phase 18.1).
+	sessionMgr.InjectSnapshot(redisCache, wsHub)
+	wsHub.SetSessionSender(&managerSessionSender{mgr: sessionMgr})
+	wsHub.RegisterLifecycleListener(sessionMgr)
+
+	// 11.2. GameStarter for room service.
+	broadcaster := &hubBroadcaster{hub: wsHub}
+	gameStarter := session.NewGameStarter(sessionMgr, broadcaster, cfg.GameRuntimeV2, logger)
+	roomSvc := room.NewServiceWithStarter(pool, queries, logger, gameStarter)
+	roomHandler := room.NewHandler(roomSvc)
+
+	// 11.3. Sound WS Handler
 	soundWSHandler := sound.NewWSHandler(wsHub, logger)
 	wsRouter.Handle("sound", soundWSHandler.Handle)
 
-	// 10.2. Social WebSocket Hub (separate from game)
+	// 11.4. Social WebSocket Hub (separate from game)
 	socialRouter := ws.NewRouter(logger)
 	socialHub := ws.NewSocialHub(socialRouter, logger)
 	defer socialHub.Stop()
 	logger.Info().Msg("social websocket hub started")
 
-	// 10.3. Social WS Handler + Presence
+	// 11.5. Social WS Handler + Presence
 	presenceProvider := social.NewPresenceProvider(redisCache.Client())
 	socialWSHandler := social.NewSocialWSHandler(socialHub, chatSvc, friendSvc, presenceProvider, queries, logger)
 	socialRouter.Handle("chat", socialWSHandler.HandleChat)
 	socialRouter.Handle("friend", socialWSHandler.HandleFriend)
 	socialRouter.Handle("presence", socialWSHandler.HandlePresence)
 
-	// 11. HTTP Router
+	// 12. HTTP Router
 	r := chi.NewRouter()
 
-	// 12. Global Middleware (order matters: outermost first)
+	// 13. Global Middleware (order matters: outermost first)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Logger(logger))
 	r.Use(sentryPkg.Middleware) // Sentry hub before Recovery so panics are captured
 	r.Use(middleware.Recovery)
 	r.Use(middleware.CORS(cfg.IsDevelopment(), cfg.CORSOrigins))
 
-	// 13. Health endpoints
+	// 14. Health endpoints
 	healthHandler := health.NewHandler(
 		pool.Ping,
 		func(ctx context.Context) error { return redisCache.Ping(ctx) },
@@ -262,11 +279,11 @@ func main() {
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
 
-	// 14. SEO pages
+	// 15. SEO pages
 	seoHandler := seo.NewHandler(cfg.BaseURL, logger)
 	seoHandler.RegisterRoutes(r)
 
-	// 14.5. Static file serving (avatars)
+	// 15.5. Static file serving (avatars)
 	{
 		fs := http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads")))
 		r.Handle("/uploads/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -274,13 +291,13 @@ func main() {
 		}))
 	}
 
-	// 14.6. Local storage upload/serve endpoints (dev only — skipped when R2 is active)
+	// 15.6. Local storage upload/serve endpoints (dev only — skipped when R2 is active)
 	if localStorageProvider != nil {
 		r.Put("/api/v1/uploads/*", localStorageProvider.UploadHandler())
 		r.Get("/api/v1/uploads/*", localStorageProvider.ServeHandler())
 	}
 
-	// 15. WebSocket endpoints
+	// 16. WebSocket endpoints
 	wsCfg := ws.UpgradeConfig{
 		AllowedOrigins: cfg.CORSOrigins,
 		DevMode:        cfg.IsDevelopment(),
@@ -292,10 +309,10 @@ func main() {
 	socialUpgrade := ws.UpgradeHandler(socialHub, socialExtractor, wsCfg, logger)
 	r.Get("/ws/social", socialUpgrade)
 
-	// 16. JWT auth config
+	// 17. JWT auth config
 	jwtCfg := middleware.JWTConfig{Secret: []byte(cfg.JWTSecret)}
 
-	// 17. REST API v1
+	// 18. REST API v1
 	r.Route("/api/v1", func(r chi.Router) {
 		// --- Public endpoints ---
 		r.Post("/auth/callback", authHandler.HandleCallback)
@@ -341,6 +358,7 @@ func main() {
 			r.Post("/rooms", roomHandler.CreateRoom)
 			r.Post("/rooms/{id}/join", roomHandler.JoinRoom)
 			r.Post("/rooms/{id}/leave", roomHandler.LeaveRoom)
+			r.Post("/rooms/{id}/start", roomHandler.StartRoom)
 
 			// --- Payment endpoints (authed) ---
 			r.Route("/payments", func(r chi.Router) {
@@ -499,7 +517,7 @@ func main() {
 		})
 	})
 
-	// 18. Server start + graceful shutdown
+	// 19. Server start + graceful shutdown
 	srv := server.New(cfg.Port, r, logger)
 	if err := srv.Start(); err != nil {
 		logger.Fatal().Err(err).Msg("server exited with error")

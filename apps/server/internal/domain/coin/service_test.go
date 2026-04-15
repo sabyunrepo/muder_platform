@@ -20,10 +20,10 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockCoinSvc struct {
-	getBalanceFn         func(ctx context.Context, userID uuid.UUID) (*BalanceResponse, error)
-	purchaseThemeFn      func(ctx context.Context, userID, themeID uuid.UUID) (*PurchaseResponse, error)
-	refundThemeFn        func(ctx context.Context, userID, purchaseID uuid.UUID) error
-	handlePaymentConfFn  func(ctx context.Context, event eventbus.Event) error
+	getBalanceFn        func(ctx context.Context, userID uuid.UUID) (*BalanceResponse, error)
+	purchaseThemeFn     func(ctx context.Context, userID, themeID uuid.UUID) (*PurchaseResponse, error)
+	refundThemeFn       func(ctx context.Context, userID, purchaseID uuid.UUID) error
+	handlePaymentConfFn func(ctx context.Context, event eventbus.Event) error
 }
 
 func (m *mockCoinSvc) GetBalance(ctx context.Context, userID uuid.UUID) (*BalanceResponse, error) {
@@ -81,13 +81,13 @@ func TestPurchaseTheme_BonusFirst(t *testing.T) {
 				t.Errorf("expected userID %s, got %s", userID, uID)
 			}
 			return &PurchaseResponse{
-				ID:             uuid.New(),
-				ThemeID:        tID,
-				CoinPrice:      300,
-				BonusCoinsUsed: 300,
-				BaseCoinsUsed:  0,
+				ID:              uuid.New(),
+				ThemeID:         tID,
+				CoinPrice:       300,
+				BonusCoinsUsed:  300,
+				BaseCoinsUsed:   0,
 				RefundableUntil: time.Now().Add(7 * 24 * time.Hour),
-				CreatedAt:      time.Now(),
+				CreatedAt:       time.Now(),
 			}, nil
 		},
 	}
@@ -372,10 +372,10 @@ func TestHandlePaymentConfirmed(t *testing.T) {
 
 func TestBonusFirstDepletion(t *testing.T) {
 	tests := []struct {
-		name        string
+		name         string
 		bonusBalance int64
-		price       int64
-		expectBonus int64
+		price        int64
+		expectBonus  int64
 	}{
 		{"bonus covers partial", 10, 20, 10},
 		{"bonus exceeds price", 20, 10, 10},

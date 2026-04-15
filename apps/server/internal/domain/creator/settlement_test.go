@@ -13,8 +13,8 @@ func TestRunWeekly_CoinToKRW(t *testing.T) {
 	// H1: Integer arithmetic. CoinToKRWNumerator=125, CoinToKRWDenominator=10
 	// 800 coins * 125 / 10 = 10,000 KRW
 	tests := []struct {
-		name       string
-		coins      int64
+		name        string
+		coins       int64
 		expectedKRW int64
 	}{
 		{"800 coins → 10,000 KRW", 800, 10000},
@@ -37,8 +37,8 @@ func TestRunWeekly_CoinToKRW(t *testing.T) {
 func TestRunWeekly_MinimumThreshold(t *testing.T) {
 	// Below 10,000 KRW → skip settlement
 	tests := []struct {
-		name     string
-		coins    int64
+		name         string
+		coins        int64
 		shouldSettle bool
 	}{
 		{"799 coins → 9,987 KRW → skip", 799, false},

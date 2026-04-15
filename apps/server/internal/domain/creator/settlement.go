@@ -19,8 +19,8 @@ import (
 // Settlement pipeline constants.
 const (
 	// CoinToKRWNumerator / CoinToKRWDenominator = 12.5 KRW per coin (integer arithmetic).
-	CoinToKRWNumerator   = 125
-	CoinToKRWDenominator = 10
+	CoinToKRWNumerator         = 125
+	CoinToKRWDenominator       = 10
 	MinSettlementKRW     int64 = 10000
 	IndividualTaxRate          = 0.033
 	BusinessTaxRate            = 0.10

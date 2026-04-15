@@ -239,9 +239,9 @@ func (s *coinService) PurchaseTheme(ctx context.Context, userID uuid.UUID, theme
 		BonusAmount:       int32(-bonusUsed),
 		BalanceAfterBase:  balanceAfterBase,
 		BalanceAfterBonus: balanceAfterBonus,
-		ReferenceType: pgtype.Text{String: refType, Valid: true},
-		ReferenceID:   pgtype.Text{String: refID, Valid: true},
-		Description:   pgtype.Text{String: desc, Valid: true},
+		ReferenceType:     pgtype.Text{String: refType, Valid: true},
+		ReferenceID:       pgtype.Text{String: refID, Valid: true},
+		Description:       pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create coin transaction")
@@ -368,9 +368,9 @@ func (s *coinService) RefundTheme(ctx context.Context, userID uuid.UUID, purchas
 		BonusAmount:       int32(bonusRefund),
 		BalanceAfterBase:  user.CoinBalanceBase,
 		BalanceAfterBonus: user.CoinBalanceBonus,
-		ReferenceType: pgtype.Text{String: refType, Valid: true},
-		ReferenceID:   pgtype.Text{String: refID, Valid: true},
-		Description:   pgtype.Text{String: desc, Valid: true},
+		ReferenceType:     pgtype.Text{String: refType, Valid: true},
+		ReferenceID:       pgtype.Text{String: refID, Valid: true},
+		Description:       pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create refund transaction")
@@ -483,9 +483,9 @@ func (s *coinService) HandlePaymentConfirmed(ctx context.Context, event eventbus
 		BonusAmount:       int32(e.BonusCoins),
 		BalanceAfterBase:  user.CoinBalanceBase + baseCoins,
 		BalanceAfterBonus: user.CoinBalanceBonus + bonusCoins,
-		ReferenceType: pgtype.Text{String: refType, Valid: true},
-		ReferenceID:   pgtype.Text{String: refID, Valid: true},
-		Description:   pgtype.Text{String: desc, Valid: true},
+		ReferenceType:     pgtype.Text{String: refType, Valid: true},
+		ReferenceID:       pgtype.Text{String: refID, Valid: true},
+		Description:       pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create charge transaction")

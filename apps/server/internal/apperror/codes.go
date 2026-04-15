@@ -4,14 +4,15 @@ package apperror
 // All error codes follow the pattern: DOMAIN_REASON.
 const (
 	// Generic errors
-	ErrInternal     = "INTERNAL_ERROR"
-	ErrNotFound     = "NOT_FOUND"
-	ErrBadRequest   = "BAD_REQUEST"
-	ErrUnauthorized = "UNAUTHORIZED"
-	ErrForbidden    = "FORBIDDEN"
-	ErrConflict     = "CONFLICT"
-	ErrValidation   = "VALIDATION_ERROR"
-	ErrTimeout      = "TIMEOUT"
+	ErrInternal           = "INTERNAL_ERROR"
+	ErrNotFound           = "NOT_FOUND"
+	ErrBadRequest         = "BAD_REQUEST"
+	ErrUnauthorized       = "UNAUTHORIZED"
+	ErrForbidden          = "FORBIDDEN"
+	ErrConflict           = "CONFLICT"
+	ErrValidation         = "VALIDATION_ERROR"
+	ErrTimeout            = "TIMEOUT"
+	ErrServiceUnavailable = "SERVICE_UNAVAILABLE"
 
 	// Auth errors
 	ErrAuthTokenExpired = "AUTH_TOKEN_EXPIRED"

@@ -93,6 +93,12 @@ func startModularGame(
 	s := newSession(cfg.SessionID, eng, cfg.Players, logger)
 	s.onAbort = m.removeSession
 
+	// Wire snapshot dependencies so reconnecting players receive the current
+	// session state. Mirrors SessionManager.Start (H-2 fix).
+	if m.snapshotCache != nil && m.snapshotSender != nil {
+		s.injectSnapshot(m.snapshotCache, m.snapshotSender)
+	}
+
 	// Register EventMapping subscriptions before starting the engine so no
 	// events are missed during the first phase:entered publish inside Start().
 	if cfg.Broadcaster != nil {

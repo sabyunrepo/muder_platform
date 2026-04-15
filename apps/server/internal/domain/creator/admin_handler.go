@@ -222,8 +222,8 @@ func (h *AdminHandler) GrantCoins(w http.ResponseWriter, r *http.Request) {
 		BonusAmount:       req.BonusCoins,
 		BalanceAfterBase:  user.CoinBalanceBase + int64(req.BaseCoins),
 		BalanceAfterBonus: user.CoinBalanceBonus + int64(req.BonusCoins),
-		ReferenceType: pgtype.Text{String: refType, Valid: true},
-		Description:   pgtype.Text{String: desc, Valid: true},
+		ReferenceType:     pgtype.Text{String: refType, Valid: true},
+		Description:       pgtype.Text{String: desc, Valid: true},
 	})
 	if err != nil {
 		h.logger.Error().Err(err).Msg("failed to create coin transaction")
@@ -238,8 +238,8 @@ func (h *AdminHandler) GrantCoins(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
-		"user_id":    req.UserID,
-		"base_coins": req.BaseCoins,
+		"user_id":     req.UserID,
+		"base_coins":  req.BaseCoins,
 		"bonus_coins": req.BonusCoins,
 		"description": req.Description,
 	})

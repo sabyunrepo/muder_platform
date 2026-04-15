@@ -15,10 +15,10 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockCreatorSvc struct {
-	getDashboardFn        func(ctx context.Context, creatorID uuid.UUID) (*DashboardResponse, error)
-	getThemeStatsFn       func(ctx context.Context, creatorID, themeID uuid.UUID, from, to time.Time) ([]DailyStatResponse, error)
-	listEarningsFn        func(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]EarningResponse, int64, error)
-	listSettlementsFn     func(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]SettlementResponse, int64, error)
+	getDashboardFn         func(ctx context.Context, creatorID uuid.UUID) (*DashboardResponse, error)
+	getThemeStatsFn        func(ctx context.Context, creatorID, themeID uuid.UUID, from, to time.Time) ([]DailyStatResponse, error)
+	listEarningsFn         func(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]EarningResponse, int64, error)
+	listSettlementsFn      func(ctx context.Context, creatorID uuid.UUID, limit, offset int32) ([]SettlementResponse, int64, error)
 	handleThemePurchasedFn func(ctx context.Context, event eventbus.Event) error
 	handleThemeRefundedFn  func(ctx context.Context, event eventbus.Event) error
 }
@@ -266,14 +266,14 @@ func TestGetThemeStats(t *testing.T) {
 
 func TestRevenueShare_IntegerArithmetic(t *testing.T) {
 	tests := []struct {
-		name             string
-		totalCoins       int
-		expectCreator    int32
-		expectPlatform   int32
+		name           string
+		totalCoins     int
+		expectCreator  int32
+		expectPlatform int32
 	}{
 		{"1000 coins", 1000, 700, 300},
 		{"100 coins", 100, 70, 30},
-		{"1 coin", 1, 0, 1},      // integer truncation: 1*70/100 = 0
+		{"1 coin", 1, 0, 1}, // integer truncation: 1*70/100 = 0
 		{"10 coins", 10, 7, 3},
 		{"999 coins", 999, 699, 300}, // 999*70/100 = 699, platform = 999-699 = 300
 	}

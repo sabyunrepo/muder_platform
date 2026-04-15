@@ -19,17 +19,17 @@ import (
 // --- mock service ---
 
 type mockService struct {
-	createThemeFn         func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
-	updateThemeFn         func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
-	deleteThemeFn         func(ctx context.Context, creatorID, themeID uuid.UUID) error
-	listMyThemesFn        func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
-	publishThemeFn        func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	unpublishThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	createCharFn          func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
-	updateCharFn          func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
-	deleteCharFn          func(ctx context.Context, creatorID, charID uuid.UUID) error
-	updateConfigFn        func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
-	getClueRelationsFn    func(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error)
+	createThemeFn          func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
+	updateThemeFn          func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
+	deleteThemeFn          func(ctx context.Context, creatorID, themeID uuid.UUID) error
+	listMyThemesFn         func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
+	publishThemeFn         func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	unpublishThemeFn       func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	createCharFn           func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
+	updateCharFn           func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
+	deleteCharFn           func(ctx context.Context, creatorID, charID uuid.UUID) error
+	updateConfigFn         func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
+	getClueRelationsFn     func(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error)
 	replaceClueRelationsFn func(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error)
 }
 
