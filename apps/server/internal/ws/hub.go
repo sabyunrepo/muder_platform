@@ -2,6 +2,8 @@ package ws
 
 import (
 	"context"
+	"fmt"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -536,11 +538,16 @@ func (h *Hub) notifyPlayerLeft(sessionID, playerID uuid.UUID, graceful bool) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				// L-6: emit panic value as string to avoid file-path leakage;
+				// stack trace logged separately at debug level.
 				h.logger.Error().
-					Interface("panic", r).
+					Str("panic", fmt.Sprint(r)).
 					Stringer("sessionId", sessionID).
 					Stringer("playerId", playerID).
 					Msg("lifecycle listener panicked in OnPlayerLeft")
+				h.logger.Debug().
+					Bytes("stack", debug.Stack()).
+					Msg("lifecycle listener panic stack (OnPlayerLeft)")
 			}
 		}()
 		for _, l := range listeners {
@@ -563,11 +570,16 @@ func (h *Hub) notifyPlayerRejoined(sessionID, playerID uuid.UUID) {
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
+				// L-6: emit panic value as string to avoid file-path leakage;
+				// stack trace logged separately at debug level.
 				h.logger.Error().
-					Interface("panic", r).
+					Str("panic", fmt.Sprint(r)).
 					Stringer("sessionId", sessionID).
 					Stringer("playerId", playerID).
 					Msg("lifecycle listener panicked in OnPlayerRejoined")
+				h.logger.Debug().
+					Bytes("stack", debug.Stack()).
+					Msg("lifecycle listener panic stack (OnPlayerRejoined)")
 			}
 		}()
 		for _, l := range listeners {

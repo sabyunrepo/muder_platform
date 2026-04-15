@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
 **Active**: Phase 18.3 보안 하드닝 + CI 정비 — Wave 0/2
-**PR**: PR-0 (0%)
-**Task**: 시작 전
-**State**: not_started
+**PR**: PR-0 (100%) — PR #40 ready for review
+**Task**: 완료
+**State**: pr_open
 **Blockers**: none
 **Last updated**: 2026-04-15
 <!-- STATUS-END -->
@@ -15,19 +15,18 @@
 
 ## Wave 0 — 보안 + CI 병렬 (parallel ×2)
 
-### PR-0: Security hardening
-- [ ] Task 1 — M-7 Recovery path redaction: persist 시점에 engine.BuildStateFor(playerID) 결과를 playerID 별 `session:{id}:snapshot:{playerID}` 로 저장 (또는 블롭에서 role/whisper/private_clue 키 제거) + SendSnapshot recovery path 가 player-specific 블롭 조회
-- [ ] Task 2 — M-a startModularGame 실패 시 cleanup: bus.Close, modules Stop, adapter 해제 helper `cleanupOnStartFail` 추가
-- [ ] Task 3 — M-e KindStop 와 엔딩 플로우: 엔딩 phase 종료 → snapshot 필요성 검토, 필요 시 WS 이벤트 기반 final state broadcast 로 대체, 문서화
-- [ ] Task 4 — L-2 persistSnapshot/SendSnapshot/deleteSnapshot ctx parent 를 `s.Ctx()` 로 변경
-- [ ] Task 5 — L-6 panic dump: `Interface("panic", r)` → `Str("panic", fmt.Sprint(r))` + 스택을 debug 레벨로 분리
-- [ ] Task 6 — L-7 모듈 에러 메시지 원문 노출 축소: `starter.go` 에서 에러 wrapping 시 내부 경로 제거, 호스트 facing 은 generic + 로그에만 상세
-- [ ] Task 7 — 신규 단위 테스트 (redaction recovery path, cleanup 검증, ending 경로, ctx parent)
-- [ ] Run after_task pipeline per task
+### PR-0: Security hardening ✅
+- [x] Task 1 — M-7 Recovery path redaction: persist 시점에 engine.BuildStateFor(playerID) 결과를 playerID 별 `session:{id}:snapshot:{playerID}` 로 저장 + SendSnapshot recovery path 가 player-specific 블롭 조회
+- [x] Task 2 — M-a startModularGame 실패 시 cleanup: `cleanupOnStartFail(ctx, eng, logger)` helper 추가, 4개 실패 경로 모두 적용
+- [x] Task 3 — M-e KindStop 와 엔딩 플로우: 분석 완료 — KindStop 은 host explicit 호출만. 코드 변경 불필요. refs/ending-flow.md 작성
+- [x] Task 4 — L-2 persistSnapshot/deleteSnapshot/sendSnapshotFromCache ctx parent 를 `s.Ctx()` 로 변경
+- [x] Task 5 — L-6 panic dump: `Interface("panic", r)` → `Str("panic", fmt.Sprint(r))` + debug 레벨 스택 분리 (hub.go notifyPlayerLeft/notifyPlayerRejoined)
+- [x] Task 6 — L-7 모듈 에러 메시지 원문 노출 축소: starter.go BuildModules 에러 → generic "failed to initialise game modules"
+- [x] Task 7 — 신규 단위 테스트: snapshot_pr0_test.go (M-7 per-player blobs, M-a cleanup/duplicate, L-2 ctx cancel propagation)
 
 **PR-0 gate**:
-- [ ] `go test -race ./internal/session/... ./internal/engine/... ./internal/module/... ./internal/ws/...` pass
-- [ ] PR merged to main
+- [x] `go test -race ./internal/session/... ./internal/engine/... ./internal/module/... ./internal/ws/...` pass
+- [ ] PR merged to main (PR #40 open)
 
 ### PR-1: CI infra debt
 - [ ] Task 1 — CI-1 `config.TestLoad_Defaults`: `os.Unsetenv` 으로 env 격리 + t.Setenv 로 명시 세팅, main CI 녹색

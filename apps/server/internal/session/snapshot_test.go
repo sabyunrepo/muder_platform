@@ -78,6 +78,31 @@ func (f *fakeCache) hasKey(key string) bool {
 	return ok
 }
 
+// hasAnyKeyWithPrefix returns true if any cache key starts with prefix.
+func (f *fakeCache) hasAnyKeyWithPrefix(prefix string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k := range f.data {
+		if len(k) >= len(prefix) && k[:len(prefix)] == prefix {
+			return true
+		}
+	}
+	return false
+}
+
+// getFirstWithPrefix returns the value of the first key with the given prefix,
+// or nil if none found.
+func (f *fakeCache) getFirstWithPrefix(prefix string) []byte {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for k, v := range f.data {
+		if len(k) >= len(prefix) && k[:len(prefix)] == prefix {
+			return v
+		}
+	}
+	return nil
+}
+
 // fakeSender records SendToPlayer calls.
 type fakeSender struct {
 	mu       sync.Mutex
@@ -130,7 +155,7 @@ func startWithSnapshot(t *testing.T, c *fakeCache, sender *fakeSender) (uuid.UUI
 // ---------------------------------------------------------------------------
 
 // TestSnapshot_CriticalSnapshotPersistsToRedis verifies that KindCriticalSnapshot
-// causes the session to write a snapshot key into Redis.
+// causes the session to write per-player snapshot keys into Redis (M-7).
 func TestSnapshot_CriticalSnapshotPersistsToRedis(t *testing.T) {
 	cache := newFakeCache()
 	sender := &fakeSender{}
@@ -155,20 +180,20 @@ func TestSnapshot_CriticalSnapshotPersistsToRedis(t *testing.T) {
 		t.Fatal("timed out waiting for KindCriticalSnapshot reply")
 	}
 
-	// Allow the actor goroutine time to execute persistSnapshot.
+	// M-7: persistSnapshot now writes per-player blobs.
+	// Poll until at least one player-specific key appears.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		expectedKey := "session:" + sessionID.String() + ":snapshot"
-		if cache.hasKey(expectedKey) {
+		if cache.hasAnyKeyWithPrefix("session:" + sessionID.String() + ":snapshot:") {
 			return
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	t.Errorf("snapshot key not found in Redis after KindCriticalSnapshot")
+	t.Errorf("no per-player snapshot key found in Redis after KindCriticalSnapshot")
 }
 
-// TestSnapshot_Roundtrip verifies that the persisted JSON can be deserialised
-// and contains the expected session ID.
+// TestSnapshot_Roundtrip verifies that the persisted per-player JSON can be
+// deserialised and contains the expected session ID (M-7: per-player blobs).
 func TestSnapshot_Roundtrip(t *testing.T) {
 	fc := newFakeCache()
 	sender := &fakeSender{}
@@ -179,32 +204,28 @@ func TestSnapshot_Roundtrip(t *testing.T) {
 	_ = s.Send(session.SessionMessage{Kind: session.KindCriticalSnapshot, Reply: reply, Ctx: context.Background()})
 	<-reply
 
-	key := "session:" + sessionID.String() + ":snapshot"
+	// M-7: blobs are now per-player; poll for any player key.
+	prefix := "session:" + sessionID.String() + ":snapshot:"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	var raw []byte
 	for time.Now().Before(deadline) {
-		if v, err := fc.Get(context.Background(), key); err == nil {
-			raw = v
+		if raw = fc.getFirstWithPrefix(prefix); raw != nil {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
 	if raw == nil {
-		t.Fatal("snapshot not persisted")
+		t.Fatal("snapshot not persisted (no per-player key found)")
 	}
 
+	// Per-player blobs are raw engine state JSON (BuildStateFor output).
+	// Verify it is valid JSON and contains sessionId.
 	var snap map[string]interface{}
 	if err := json.Unmarshal(raw, &snap); err != nil {
-		t.Fatalf("unmarshal snapshot: %v", err)
+		t.Fatalf("unmarshal per-player snapshot: %v", err)
 	}
 	if snap["sessionId"] != sessionID.String() {
 		t.Errorf("sessionId mismatch: got %v, want %s", snap["sessionId"], sessionID)
-	}
-	if _, ok := snap["players"]; !ok {
-		t.Error("snapshot missing 'players' field")
-	}
-	if _, ok := snap["persistedAt"]; !ok {
-		t.Error("snapshot missing 'persistedAt' field")
 	}
 }
 
@@ -225,11 +246,11 @@ func TestSnapshot_SendSnapshotOnReconnect(t *testing.T) {
 	_ = s.Send(session.SessionMessage{Kind: session.KindCriticalSnapshot, Reply: reply, Ctx: context.Background()})
 	<-reply
 
-	// Wait for Redis write.
-	key := "session:" + sessionID.String() + ":snapshot"
+	// Wait for Redis write — M-7: per-player keys.
+	prefix := "session:" + sessionID.String() + ":snapshot:"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		if fc.hasKey(key) {
+		if fc.hasAnyKeyWithPrefix(prefix) {
 			break
 		}
 		time.Sleep(5 * time.Millisecond)
