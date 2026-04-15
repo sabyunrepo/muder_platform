@@ -2,7 +2,7 @@ import { Trophy, Home, RefreshCcw } from "lucide-react";
 import { WsEventType } from "@mmp/shared";
 
 import { Button, Card } from "@/shared/components/ui";
-import { useGameStore } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
 import { EndingPlayerCard } from "./EndingPlayerCard";
 import { ScoreChart } from "./ScoreChart";
 import type { PlayerEndingScore } from "./EndingPlayerCard";

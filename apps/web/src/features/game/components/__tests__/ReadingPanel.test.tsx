@@ -35,8 +35,8 @@ vi.mock("@/features/audio/hooks/useReadingAdvance", () => ({
 let mockIsHost = false;
 let mockMyRole: string | null = null;
 
-vi.mock("@/stores/gameStore", () => ({
-  useGameStore: (selector: (s: unknown) => unknown) => {
+vi.mock("@/stores/gameSessionStore", () => ({
+  useGameSessionStore: (selector: (s: unknown) => unknown) => {
     const fakeState = {
       myPlayerId: "player-1",
       myRole: mockMyRole,
@@ -54,6 +54,9 @@ vi.mock("@/stores/gameStore", () => ({
     };
     return selector(fakeState);
   },
+}));
+
+vi.mock("@/stores/gameSelectors", () => ({
   selectMyRole: (s: { myRole: string | null }) => s.myRole,
 }));
 

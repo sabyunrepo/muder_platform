@@ -1,7 +1,8 @@
 import { Suspense, lazy } from "react";
 import type { WsEventType } from "@mmp/shared";
 
-import { useGameStore, selectMyRole } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
+import { selectMyRole } from "@/stores/gameSelectors";
 import { useReadingAdvance } from "@/features/audio/hooks/useReadingAdvance";
 import { useReadingStore, selectSectionId, selectStatus } from "@/stores/readingStore";
 

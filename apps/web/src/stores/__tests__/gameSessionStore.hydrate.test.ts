@@ -6,7 +6,7 @@ vi.mock("@mmp/game-logic", () => ({
 }));
 
 import { syncServerTime } from "@mmp/game-logic";
-import { useGameStore } from "../gameStore";
+import { useGameSessionStore } from "../gameSessionStore";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,31 +49,33 @@ function makeState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+const BLANK_STATE = {
+  sessionId: null,
+  phase: null,
+  players: [],
+  modules: [],
+  round: 0,
+  phaseDeadline: null,
+  isGameActive: false,
+  myPlayerId: null,
+  myRole: null,
+};
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("gameStore.hydrateFromSnapshot", () => {
+describe("gameSessionStore.hydrateFromSnapshot", () => {
   beforeEach(() => {
-    useGameStore.setState({
-      sessionId: null,
-      phase: null,
-      players: [],
-      modules: [],
-      round: 0,
-      phaseDeadline: null,
-      isGameActive: false,
-      myPlayerId: null,
-      myRole: null,
-    });
+    useGameSessionStore.setState(BLANK_STATE);
     vi.clearAllMocks();
   });
 
   it("sets all game state fields from snapshot", () => {
     const state = makeState();
-    useGameStore.getState().hydrateFromSnapshot(state);
+    useGameSessionStore.getState().hydrateFromSnapshot(state);
 
-    const s = useGameStore.getState();
+    const s = useGameSessionStore.getState();
     expect(s.sessionId).toBe("session-hydrate");
     expect(s.phase).toBe("investigation");
     expect(s.players).toEqual(state.players);
@@ -84,54 +86,74 @@ describe("gameStore.hydrateFromSnapshot", () => {
   });
 
   it("preserves myPlayerId from existing store state", () => {
-    useGameStore.setState({ myPlayerId: "p1" });
+    useGameSessionStore.setState({ myPlayerId: "p1" });
     const state = makeState({
       players: [makePlayer({ id: "p1", role: "detective" as const })],
     });
-    useGameStore.getState().hydrateFromSnapshot(state);
+    useGameSessionStore.getState().hydrateFromSnapshot(state);
 
-    const s = useGameStore.getState();
+    const s = useGameSessionStore.getState();
     expect(s.myPlayerId).toBe("p1");
     expect(s.myRole).toBe("detective");
   });
 
   it("extracts myRole as null when myPlayerId is null", () => {
     const state = makeState();
-    useGameStore.getState().hydrateFromSnapshot(state);
+    useGameSessionStore.getState().hydrateFromSnapshot(state);
 
-    expect(useGameStore.getState().myRole).toBeNull();
+    expect(useGameSessionStore.getState().myRole).toBeNull();
   });
 
-  it("calls syncServerTime with createdAt", () => {
+  it("calls syncServerTime with createdAt on hydrate", () => {
     const state = makeState({ createdAt: 123456789 });
-    useGameStore.getState().hydrateFromSnapshot(state);
+    useGameSessionStore.getState().hydrateFromSnapshot(state);
 
     expect(syncServerTime).toHaveBeenCalledWith(123456789);
   });
 
-  it("replaces previous state fully on second hydration", () => {
-    useGameStore.getState().hydrateFromSnapshot(makeState({ sessionId: "old" }));
-    useGameStore.getState().hydrateFromSnapshot(makeState({ sessionId: "new", round: 7 }));
+  it("calls syncServerTime on initGame", () => {
+    const state = makeState({ createdAt: 111 });
+    useGameSessionStore.getState().initGame(state, "p1");
+    expect(syncServerTime).toHaveBeenCalledWith(111);
+  });
 
-    const s = useGameStore.getState();
+  it("calls syncServerTime on setGameState", () => {
+    const state = makeState({ createdAt: 222 });
+    useGameSessionStore.getState().setGameState(state);
+    expect(syncServerTime).toHaveBeenCalledWith(222);
+  });
+
+  it("replaces previous state fully on second hydration", () => {
+    useGameSessionStore.getState().hydrateFromSnapshot(makeState({ sessionId: "old" }));
+    useGameSessionStore.getState().hydrateFromSnapshot(makeState({ sessionId: "new", round: 7 }));
+
+    const s = useGameSessionStore.getState();
     expect(s.sessionId).toBe("new");
     expect(s.round).toBe(7);
   });
 
   it("is behaviourally identical to setGameState", () => {
     const state = makeState();
+    const store = useGameSessionStore.getState();
 
-    const store = useGameStore.getState();
     store.hydrateFromSnapshot(state);
-    const afterHydrate = { ...useGameStore.getState() };
+    const afterHydrate = { ...useGameSessionStore.getState() };
 
-    useGameStore.setState({ sessionId: null, phase: null, players: [], modules: [], round: 0, phaseDeadline: null, isGameActive: false, myPlayerId: null, myRole: null });
-
+    useGameSessionStore.setState(BLANK_STATE);
     store.setGameState(state);
-    const afterSetGameState = { ...useGameStore.getState() };
+    const afterSetGameState = { ...useGameSessionStore.getState() };
 
-    // Compare all domain fields (functions will differ by reference).
-    const domainFields = ["sessionId", "phase", "players", "modules", "round", "phaseDeadline", "isGameActive", "myPlayerId", "myRole"] as const;
+    const domainFields = [
+      "sessionId",
+      "phase",
+      "players",
+      "modules",
+      "round",
+      "phaseDeadline",
+      "isGameActive",
+      "myPlayerId",
+      "myRole",
+    ] as const;
     for (const field of domainFields) {
       expect(afterHydrate[field]).toEqual(afterSetGameState[field]);
     }
