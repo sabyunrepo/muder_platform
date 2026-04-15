@@ -174,7 +174,7 @@ func (m *SessionManager) OnPlayerLeft(sessionID, playerID uuid.UUID, _ bool) {
 	_ = s.Send(SessionMessage{
 		Kind:     KindLifecycleLeft,
 		PlayerID: playerID,
-		Ctx:      context.Background(),
+		Ctx:      s.Ctx(),
 	})
 }
 
@@ -190,7 +190,7 @@ func (m *SessionManager) OnPlayerRejoined(sessionID, playerID uuid.UUID) {
 	_ = s.Send(SessionMessage{
 		Kind:     KindLifecycleRejoined,
 		PlayerID: playerID,
-		Ctx:      context.Background(),
+		Ctx:      s.Ctx(),
 	})
 	// SendSnapshot is safe to call from any goroutine — it reads Redis and
 	// dispatches via the hub without touching session-internal state.
