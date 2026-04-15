@@ -13,6 +13,7 @@ import {
 } from '@/features/editor/api';
 import { AddNameInput } from './AddNameInput';
 import { LocationDetailPanel } from './LocationDetailPanel';
+import { LocationClueAssignPanel } from './LocationClueAssignPanel';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -27,7 +28,7 @@ interface LocationsSubTabProps {
 // LocationsSubTab
 // ---------------------------------------------------------------------------
 
-export function LocationsSubTab({ themeId }: LocationsSubTabProps) {
+export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const { data: maps, isLoading: mapsLoading } = useEditorMaps(themeId);
   const { data: locations, isLoading: locsLoading } = useEditorLocations(themeId);
   const createMap = useCreateMap(themeId);
@@ -36,11 +37,14 @@ export function LocationsSubTab({ themeId }: LocationsSubTabProps) {
   const deleteLocation = useDeleteLocation(themeId);
 
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [addingMap, setAddingMap] = useState(false);
   const [addingLocation, setAddingLocation] = useState(false);
 
   const selectedMap = maps?.find((m) => m.id === selectedMapId) ?? null;
   const mapLocations = locations?.filter((l) => l.map_id === selectedMapId) ?? [];
+  const selectedLocation =
+    mapLocations.find((l) => l.id === selectedLocationId) ?? null;
 
   function handleAddMap(name: string) {
     createMap.mutate(
@@ -60,7 +64,10 @@ export function LocationsSubTab({ themeId }: LocationsSubTabProps) {
     deleteMap.mutate(mapId, {
       onSuccess: () => {
         toast.success('맵이 삭제되었습니다');
-        if (selectedMapId === mapId) setSelectedMapId(null);
+        if (selectedMapId === mapId) {
+          setSelectedMapId(null);
+          setSelectedLocationId(null);
+        }
       },
       onError: () => toast.error('맵 삭제에 실패했습니다'),
     });
@@ -137,8 +144,16 @@ export function LocationsSubTab({ themeId }: LocationsSubTabProps) {
                 key={map.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => setSelectedMapId(isSelected ? null : map.id)}
-                onKeyDown={(e) => e.key === 'Enter' && setSelectedMapId(isSelected ? null : map.id)}
+                onClick={() => {
+                  setSelectedMapId(isSelected ? null : map.id);
+                  setSelectedLocationId(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setSelectedMapId(isSelected ? null : map.id);
+                    setSelectedLocationId(null);
+                  }
+                }}
                 className={`group flex w-full cursor-pointer items-center gap-2 border-l-2 px-3 py-1.5 text-left transition-colors ${
                   isSelected
                     ? 'border-amber-500 bg-slate-900 text-slate-200'
@@ -173,6 +188,45 @@ export function LocationsSubTab({ themeId }: LocationsSubTabProps) {
           onAddLocation={handleAddLocation}
           onDeleteLocation={handleDeleteLocation}
         />
+
+        {/* ── Location → Clue assignment ── */}
+        {selectedMap && mapLocations.length > 0 && (
+          <div className="mt-5 max-w-lg">
+            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+              <span>단서 배정 — 장소 선택</span>
+            </div>
+            <div className="mb-3 flex flex-wrap gap-1.5" role="listbox" aria-label="단서 배정할 장소 선택">
+              {mapLocations.map((loc) => {
+                const selected = selectedLocationId === loc.id;
+                return (
+                  <button
+                    type="button"
+                    key={loc.id}
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() =>
+                      setSelectedLocationId(selected ? null : loc.id)
+                    }
+                    className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                      selected
+                        ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
+                        : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                    }`}
+                  >
+                    {loc.name}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedLocation && (
+              <LocationClueAssignPanel
+                themeId={themeId}
+                theme={theme}
+                location={selectedLocation}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

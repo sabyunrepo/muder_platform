@@ -9,22 +9,28 @@ const {
   toastSuccess,
   toastError,
   mutateMock,
+  updateConfigMutateMock,
   useEditorMapsMock,
   useCreateMapMock,
   useDeleteMapMock,
   useEditorLocationsMock,
   useCreateLocationMock,
   useDeleteLocationMock,
+  useEditorCluesMock,
+  useUpdateConfigJsonMock,
 } = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   mutateMock: vi.fn(),
+  updateConfigMutateMock: vi.fn(),
   useEditorMapsMock: vi.fn(),
   useCreateMapMock: vi.fn(),
   useDeleteMapMock: vi.fn(),
   useEditorLocationsMock: vi.fn(),
   useCreateLocationMock: vi.fn(),
   useDeleteLocationMock: vi.fn(),
+  useEditorCluesMock: vi.fn(),
+  useUpdateConfigJsonMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -46,6 +52,8 @@ vi.mock("@/features/editor/api", () => ({
   useEditorLocations: () => useEditorLocationsMock(),
   useCreateLocation: () => useCreateLocationMock(),
   useDeleteLocation: () => useDeleteLocationMock(),
+  useEditorClues: () => useEditorCluesMock(),
+  useUpdateConfigJson: () => useUpdateConfigJsonMock(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -94,6 +102,26 @@ function defaultMutation() {
   return { mutate: mutateMock, isPending: false };
 }
 
+const mockClues = [
+  {
+    id: "clue-1",
+    theme_id: "theme-1",
+    location_id: null,
+    name: "단검",
+    description: null,
+    image_url: null,
+    is_common: false,
+    level: 1,
+    clue_type: "physical",
+    sort_order: 0,
+    created_at: "2026-04-13T00:00:00Z",
+    is_usable: false,
+    use_effect: null,
+    use_target: null,
+    use_consumed: false,
+  },
+];
+
 function setupDefaultMocks() {
   useEditorMapsMock.mockReturnValue({ data: mockMaps, isLoading: false });
   useEditorLocationsMock.mockReturnValue({ data: mockLocations, isLoading: false });
@@ -101,6 +129,11 @@ function setupDefaultMocks() {
   useDeleteMapMock.mockReturnValue(defaultMutation());
   useCreateLocationMock.mockReturnValue(defaultMutation());
   useDeleteLocationMock.mockReturnValue(defaultMutation());
+  useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
+  useUpdateConfigJsonMock.mockReturnValue({
+    mutate: updateConfigMutateMock,
+    isPending: false,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +158,11 @@ describe("LocationsSubTab", () => {
       useDeleteMapMock.mockReturnValue(defaultMutation());
       useCreateLocationMock.mockReturnValue(defaultMutation());
       useDeleteLocationMock.mockReturnValue(defaultMutation());
+      useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
+      useUpdateConfigJsonMock.mockReturnValue({
+        mutate: updateConfigMutateMock,
+        isPending: false,
+      });
 
       const { container } = render(
         <LocationsSubTab themeId="theme-1" theme={mockTheme} />,
@@ -213,8 +251,9 @@ describe("LocationsSubTab", () => {
     it("맵 선택 시 해당 맵의 장소만 표시한다", () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByText("저택 1층"));
-      expect(screen.getByText("거실")).toBeDefined();
-      expect(screen.getByText("주방")).toBeDefined();
+      // LocationDetailPanel row + clue-assignment picker option 두 곳에서 렌더됨
+      expect(screen.getAllByText("거실").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("주방").length).toBeGreaterThan(0);
       // 다른 맵의 장소는 표시되지 않아야 함
       expect(screen.queryByText("침실")).toBeNull();
     });
@@ -254,6 +293,46 @@ describe("LocationsSubTab", () => {
         { mapId: "map-1", body: { name: "서재" } },
         expect.any(Object),
       );
+    });
+  });
+
+  describe("단서 배정 패널", () => {
+    beforeEach(setupDefaultMocks);
+
+    it("맵 선택 시 장소 선택 picker 가 표시된다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      expect(screen.getByText(/단서 배정 — 장소 선택/)).toBeDefined();
+    });
+
+    it("location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      // location picker 의 "거실" 옵션 (option role). LocationDetailPanel 의 row 와
+      // 구분하기 위해 role=option 만 타겟.
+      const options = screen.getAllByRole("option", { name: "거실" });
+      fireEvent.click(options[0]);
+      expect(screen.getByLabelText("거실 단서 배정")).toBeDefined();
+      expect(screen.getByLabelText("단검 배정 토글")).toBeDefined();
+    });
+
+    it("chip 토글 시 useUpdateConfigJson.mutate 가 호출된다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      const options = screen.getAllByRole("option", { name: "거실" });
+      fireEvent.click(options[0]);
+      fireEvent.click(screen.getByLabelText("단검 배정 토글"));
+      expect(updateConfigMutateMock).toHaveBeenCalledOnce();
+      const [config] = updateConfigMutateMock.mock.calls[0] as [
+        Record<string, unknown>,
+      ];
+      const locs = config.locations as Array<{ id: string; clueIds: string[] }>;
+      expect(locs[0]).toEqual({ id: "loc-1", clueIds: ["clue-1"] });
+    });
+
+    it("맵 미선택 상태에서는 단서 배정 picker 가 표시되지 않는다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      expect(screen.queryByText(/단서 배정 — 장소 선택/)).toBeNull();
     });
   });
 });
