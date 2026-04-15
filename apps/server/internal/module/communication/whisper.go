@@ -153,15 +153,36 @@ func (m *WhisperModule) SupportedActions() []engine.PhaseAction {
 }
 
 type whisperState struct {
-	IsMuted bool `json:"isMuted"`
+	IsMuted  bool             `json:"isMuted"`
+	Messages []WhisperMessage `json:"messages,omitempty"`
 }
 
 func (m *WhisperModule) BuildState() (json.RawMessage, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	// Public state intentionally omits all whisper bodies — only the mute flag
+	// is disclosed globally. Per-player messages are returned via BuildStateFor.
 	return json.Marshal(whisperState{
 		IsMuted: m.isMuted,
+	})
+}
+
+// BuildStateFor implements engine.PlayerAwareModule — returns only the whisper
+// threads the caller participated in (sent or received). No other player's
+// private conversations are ever disclosed.
+func (m *WhisperModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var own []WhisperMessage
+	if msgs, ok := m.whispers[playerID]; ok {
+		own = make([]WhisperMessage, len(msgs))
+		copy(own, msgs)
+	}
+	return json.Marshal(whisperState{
+		IsMuted:  m.isMuted,
+		Messages: own,
 	})
 }
 

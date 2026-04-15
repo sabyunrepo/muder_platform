@@ -31,12 +31,12 @@ type RoundDistribution struct {
 
 // RoundClueModule distributes clues at specific round transitions.
 type RoundClueModule struct {
-	mu               sync.RWMutex
-	deps             engine.ModuleDeps
-	config           RoundClueConfig
-	distributions    []RoundDistribution
+	mu                sync.RWMutex
+	deps              engine.ModuleDeps
+	config            RoundClueConfig
+	distributions     []RoundDistribution
 	distributedRounds map[int]bool
-	currentRound     int
+	currentRound      int
 }
 
 // NewRoundClueModule creates a new RoundClueModule instance.
@@ -170,6 +170,14 @@ func (m *RoundClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
+// BuildStateFor implements engine.PlayerAwareModule. Round-clue state tracks
+// only which rounds have already triggered their distribution — distribution
+// itself is broadcast via `clue.round_distributed` events, so this aggregate
+// view carries no role-private data and is safe to share with every player.
+func (m *RoundClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 func (m *RoundClueModule) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -186,9 +194,9 @@ func (m *RoundClueModule) Schema() json.RawMessage {
 		"type": "object",
 		"properties": map[string]any{
 			"distributeMode": map[string]any{
-				"type":    "string",
-				"enum":    []string{"specific", "random", "all"},
-				"default": "specific",
+				"type":        "string",
+				"enum":        []string{"specific", "random", "all"},
+				"default":     "specific",
 				"description": "How clues are distributed each round",
 			},
 			"announcePublic": map[string]any{"type": "boolean", "default": true, "description": "Announce round clue distribution publicly"},
