@@ -200,11 +200,11 @@ func (m *TimedExplorationModule) CheckExpiry() {
 }
 
 type timedExplorationState struct {
-	IsActive        bool             `json:"isActive"`
-	IsLocked        bool             `json:"isLocked"`
-	Elapsed         int              `json:"elapsed"`
-	Remaining       int              `json:"remaining"`
-	Warning         bool             `json:"warning"`
+	IsActive        bool                 `json:"isActive"`
+	IsLocked        bool                 `json:"isLocked"`
+	Elapsed         int                  `json:"elapsed"`
+	Remaining       int                  `json:"remaining"`
+	Warning         bool                 `json:"warning"`
 	PlayerLocations map[uuid.UUID]string `json:"playerLocations"`
 }
 

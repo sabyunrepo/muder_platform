@@ -18,13 +18,13 @@ import (
 type fakeReadingModule struct {
 	mu sync.Mutex
 
-	advanceCalls     []advanceCall
-	voiceEndedCalls  []voiceEndedCall
-	leftCalls        []leftCall
-	rejoinCalls      []rejoinCall
-	advanceErr       error
-	voiceEndedErr    error
-	stateSnapshot    ReadingStateSnapshot
+	advanceCalls    []advanceCall
+	voiceEndedCalls []voiceEndedCall
+	leftCalls       []leftCall
+	rejoinCalls     []rejoinCall
+	advanceErr      error
+	voiceEndedErr   error
+	stateSnapshot   ReadingStateSnapshot
 }
 
 type advanceCall struct {
@@ -77,8 +77,8 @@ func (f *fakeReadingModule) GetReadingStateSnapshot() ReadingStateSnapshot {
 }
 
 type fakeResolver struct {
-	module    ReadingModuleAPI
-	roles     map[uuid.UUID]struct {
+	module ReadingModuleAPI
+	roles  map[uuid.UUID]struct {
 		roleID string
 		isHost bool
 	}
@@ -117,7 +117,7 @@ func (r *fakeResolver) LookupRole(_, playerID uuid.UUID) (string, bool, bool) {
 func (r *fakeResolver) LookupSectionID(_ uuid.UUID) string { return r.sectionID }
 
 type fakeBroadcaster struct {
-	mu        sync.Mutex
+	mu         sync.Mutex
 	broadcasts []struct {
 		sessionID uuid.UUID
 		env       *Envelope

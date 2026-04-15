@@ -161,4 +161,3 @@ func startModularGame(
 
 	return s, nil
 }
-

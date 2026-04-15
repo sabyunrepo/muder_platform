@@ -11,9 +11,9 @@ import (
 
 // fakeLifecycleListener records all OnPlayerLeft / OnPlayerRejoined calls.
 type fakeLifecycleListener struct {
-	mu       sync.Mutex
-	leftCalls     []lifecycleCall
-	rejoinCalls   []lifecycleCall
+	mu          sync.Mutex
+	leftCalls   []lifecycleCall
+	rejoinCalls []lifecycleCall
 }
 
 type lifecycleCall struct {

@@ -19,13 +19,13 @@ func TestTradeClueModule_Name(t *testing.T) {
 
 func TestTradeClueModule_Init(t *testing.T) {
 	tests := []struct {
-		name          string
-		config        json.RawMessage
-		wantTrade     bool
-		wantShow      bool
-		wantDuration  int
-		wantTimeout   int
-		wantErr       bool
+		name         string
+		config       json.RawMessage
+		wantTrade    bool
+		wantShow     bool
+		wantDuration int
+		wantTimeout  int
+		wantErr      bool
 	}{
 		{
 			name:         "defaults with nil config",

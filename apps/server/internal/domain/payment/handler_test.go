@@ -20,10 +20,10 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockPaymentSvc struct {
-	listPackagesFn    func(ctx context.Context, platform string) ([]PackageResponse, error)
-	createPaymentFn   func(ctx context.Context, userID uuid.UUID, req CreatePaymentReq) (*PaymentResponse, error)
-	confirmPaymentFn  func(ctx context.Context, userID uuid.UUID, req ConfirmPaymentReq) (*PaymentResponse, error)
-	getPaymentHistFn  func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]PaymentResponse, int64, error)
+	listPackagesFn   func(ctx context.Context, platform string) ([]PackageResponse, error)
+	createPaymentFn  func(ctx context.Context, userID uuid.UUID, req CreatePaymentReq) (*PaymentResponse, error)
+	confirmPaymentFn func(ctx context.Context, userID uuid.UUID, req ConfirmPaymentReq) (*PaymentResponse, error)
+	getPaymentHistFn func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]PaymentResponse, int64, error)
 }
 
 func (m *mockPaymentSvc) ListPackages(ctx context.Context, platform string) ([]PackageResponse, error) {
@@ -163,13 +163,13 @@ func TestCreatePayment_Success(t *testing.T) {
 				t.Errorf("expected packageID %s, got %s", packageID, req.PackageID)
 			}
 			return &PaymentResponse{
-				ID:        paymentID,
-				PackageID: packageID,
-				Status:    StatusPending,
-				AmountKRW: 5000,
-				BaseCoins: 500,
+				ID:         paymentID,
+				PackageID:  packageID,
+				Status:     StatusPending,
+				AmountKRW:  5000,
+				BaseCoins:  500,
 				BonusCoins: 50,
-				CreatedAt: now,
+				CreatedAt:  now,
 			}, nil
 		},
 	}

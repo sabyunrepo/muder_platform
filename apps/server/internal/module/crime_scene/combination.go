@@ -31,14 +31,14 @@ type CombinationConfig struct {
 
 // CombinationModule tracks completed combinations and derived clues per player.
 type CombinationModule struct {
-	mu          sync.RWMutex
-	deps        engine.ModuleDeps
-	config      CombinationConfig
-	comboByID   map[string]CombinationDef // id → def
-	graph       *clue.Graph
-	completed   map[uuid.UUID][]string // playerID → completed combination IDs
-	derived     map[uuid.UUID][]string // playerID → derived clue IDs
-	collected   map[uuid.UUID]map[string]bool // playerID → collected evidenceIDs (mirrored from evidence events)
+	mu        sync.RWMutex
+	deps      engine.ModuleDeps
+	config    CombinationConfig
+	comboByID map[string]CombinationDef // id → def
+	graph     *clue.Graph
+	completed map[uuid.UUID][]string        // playerID → completed combination IDs
+	derived   map[uuid.UUID][]string        // playerID → derived clue IDs
+	collected map[uuid.UUID]map[string]bool // playerID → collected evidenceIDs (mirrored from evidence events)
 }
 
 // NewCombinationModule creates a new CombinationModule instance.
@@ -217,14 +217,14 @@ func (m *CombinationModule) handleCombine(_ context.Context, playerID uuid.UUID,
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "combination.completed",
 		Payload: map[string]any{
-			"playerID":    playerID,
+			"playerID":      playerID,
 			"combinationID": combo.ID,
 		},
 	})
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "combination.clue_unlocked",
 		Payload: map[string]any{
-			"playerID":    playerID,
+			"playerID":     playerID,
 			"outputClueID": combo.OutputClueID,
 		},
 	})

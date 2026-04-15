@@ -30,9 +30,9 @@ var metaphorClueConfig = json.RawMessage(`{
 
 // clueModuleState는 BuildState 결과를 파싱하기 위한 로컬 구조체입니다.
 type clueModuleState struct {
-	PlayerDrawCounts map[uuid.UUID]int         `json:"playerDrawCounts"`
-	CurrentClueLevel int                       `json:"currentClueLevel"`
-	AcquiredClues    map[uuid.UUID][]string    `json:"acquiredClues"`
+	PlayerDrawCounts map[uuid.UUID]int          `json:"playerDrawCounts"`
+	CurrentClueLevel int                        `json:"currentClueLevel"`
+	AcquiredClues    map[uuid.UUID][]string     `json:"acquiredClues"`
 	Config           core.ClueInteractionConfig `json:"config"`
 	UsedItems        map[uuid.UUID][]uuid.UUID  `json:"usedItems"`
 	ActiveItemUse    *activeItemUseSnapshot     `json:"activeItemUse,omitempty"`

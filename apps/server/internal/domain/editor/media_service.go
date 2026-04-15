@@ -505,11 +505,11 @@ func (s *mediaService) GetMediaPlayURL(ctx context.Context, sessionID, mediaID u
 
 var (
 	youtubeHosts = map[string]bool{
-		"youtube.com":         true,
-		"www.youtube.com":     true,
-		"m.youtube.com":       true,
-		"music.youtube.com":   true,
-		"youtu.be":            true,
+		"youtube.com":       true,
+		"www.youtube.com":   true,
+		"m.youtube.com":     true,
+		"music.youtube.com": true,
+		"youtu.be":          true,
 	}
 	youtubeVideoIDRe = regexp.MustCompile(`^[a-zA-Z0-9_-]{11}$`)
 )

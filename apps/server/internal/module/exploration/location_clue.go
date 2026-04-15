@@ -16,12 +16,12 @@ func init() {
 
 // locationClueConfig holds the parsed configuration.
 type locationClueConfig struct {
-	ShowClueCount    bool `json:"showClueCount"`
+	ShowClueCount     bool `json:"showClueCount"`
 	AllowRepeatSearch bool `json:"allowRepeatSearch"`
 }
 
 var defaultLocationClueConfig = locationClueConfig{
-	ShowClueCount:    false,
+	ShowClueCount:     false,
 	AllowRepeatSearch: true,
 }
 
@@ -32,7 +32,7 @@ type LocationClueModule struct {
 	deps              engine.ModuleDeps
 	config            locationClueConfig
 	searchedLocations map[uuid.UUID]map[string]bool // playerID → locationID → searched
-	foundClues        map[uuid.UUID][]string         // playerID → clue IDs
+	foundClues        map[uuid.UUID][]string        // playerID → clue IDs
 }
 
 // NewLocationClueModule creates a new LocationClueModule instance.
@@ -120,7 +120,7 @@ func (m *LocationClueModule) AddFoundClue(playerID uuid.UUID, clueID string) {
 type locationClueState struct {
 	SearchedLocations map[uuid.UUID]map[string]bool `json:"searchedLocations"`
 	FoundClues        map[uuid.UUID][]string        `json:"foundClues"`
-	Config            locationClueConfig             `json:"config"`
+	Config            locationClueConfig            `json:"config"`
 }
 
 func (m *LocationClueModule) BuildState() (json.RawMessage, error) {

@@ -27,12 +27,12 @@ func TestConditionalClueModule_Name(t *testing.T) {
 
 func TestConditionalClueModule_Init(t *testing.T) {
 	tests := []struct {
-		name             string
-		config           json.RawMessage
-		wantAnnounceAll  bool
+		name               string
+		config             json.RawMessage
+		wantAnnounceAll    bool
 		wantAnnounceFinder bool
-		wantDepsLen      int
-		wantErr          bool
+		wantDepsLen        int
+		wantErr            bool
 	}{
 		{
 			name:               "defaults with nil config",

@@ -31,13 +31,13 @@ type ConsensusControlModule struct {
 
 // Valid consensus action types.
 var validConsensusActions = map[string]bool{
-	"START_GAME":        true,
-	"NEXT_PHASE":        true,
-	"NEXT_ROUND":        true,
-	"START_VOTING":      true,
-	"SHOW_ENDING":       true,
-	"READING_COMPLETE":  true,
-	"REVEAL_ALL_CLUES":  true,
+	"START_GAME":       true,
+	"NEXT_PHASE":       true,
+	"NEXT_ROUND":       true,
+	"START_VOTING":     true,
+	"SHOW_ENDING":      true,
+	"READING_COMPLETE": true,
+	"REVEAL_ALL_CLUES": true,
 }
 
 type consensusControlConfig struct {

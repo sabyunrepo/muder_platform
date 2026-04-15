@@ -26,10 +26,10 @@ type EndingModule struct {
 	deps engine.ModuleDeps
 
 	// config
-	revealSteps        []string
-	showTimeline       bool
-	showRelationships  bool
-	showMissionScores  bool
+	revealSteps       []string
+	showTimeline      bool
+	showRelationships bool
+	showMissionScores bool
 
 	// state
 	currentStep  int

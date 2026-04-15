@@ -138,7 +138,7 @@ func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRo
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return nil, apperror.Internal("failed to create room")
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	qtx := s.queries.WithTx(tx)
 
@@ -249,7 +249,7 @@ func (s *service) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error 
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return apperror.Internal("failed to join room")
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	qtx := s.queries.WithTx(tx)
 
@@ -312,7 +312,7 @@ func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return apperror.Internal("failed to leave room")
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	qtx := s.queries.WithTx(tx)
 

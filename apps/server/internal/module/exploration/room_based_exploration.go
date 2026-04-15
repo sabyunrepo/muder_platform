@@ -34,10 +34,10 @@ type RoomBasedExplorationModule struct {
 	mu              sync.RWMutex
 	deps            engine.ModuleDeps
 	config          roomBasedExplorationConfig
-	playerLocations map[uuid.UUID]string     // playerID → locationID
-	roomOccupancy   map[string][]uuid.UUID   // locationID → playerIDs
-	lastMove        map[uuid.UUID]time.Time  // playerID → last move time
-	nowFunc         func() time.Time         // for testing
+	playerLocations map[uuid.UUID]string    // playerID → locationID
+	roomOccupancy   map[string][]uuid.UUID  // locationID → playerIDs
+	lastMove        map[uuid.UUID]time.Time // playerID → last move time
+	nowFunc         func() time.Time        // for testing
 }
 
 // NewRoomBasedExplorationModule creates a new RoomBasedExplorationModule instance.

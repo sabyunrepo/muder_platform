@@ -9,12 +9,12 @@ import (
 // EventBus is a session-scoped, callback-based event system.
 // Each game session gets its own EventBus instance (no global singleton).
 type EventBus struct {
-	mu         sync.RWMutex
-	handlers   map[string][]handlerEntry
-	wildcards  []handlerEntry // invoked on every Publish (M-3 fix)
-	nextID     int
-	closed     bool
-	logger     Logger
+	mu        sync.RWMutex
+	handlers  map[string][]handlerEntry
+	wildcards []handlerEntry // invoked on every Publish (M-3 fix)
+	nextID    int
+	closed    bool
+	logger    Logger
 }
 
 type handlerEntry struct {
