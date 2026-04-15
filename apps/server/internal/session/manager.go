@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/infra/cache"
 	"github.com/rs/zerolog"
 )
 
@@ -40,6 +41,10 @@ type SessionManager struct {
 	mu       sync.Mutex
 	sessions map[uuid.UUID]*Session
 	logger   zerolog.Logger
+
+	// snapshot dependencies — optional; set via InjectSnapshot before Start calls.
+	snapshotCache  cache.Provider
+	snapshotSender ClientSender
 }
 
 // NewSessionManager creates an idle SessionManager.
@@ -72,6 +77,11 @@ func (m *SessionManager) Start(
 	// Wire the abort hook so panic_guard can remove the session from the map
 	// when the 3-strike threshold is reached (HIGH finding #5).
 	s.onAbort = m.removeSession
+
+	// Wire snapshot dependencies if available.
+	if m.snapshotCache != nil && m.snapshotSender != nil {
+		s.injectSnapshot(m.snapshotCache, m.snapshotSender)
+	}
 
 	m.sessions[sessionID] = s
 	m.mu.Unlock()
@@ -141,6 +151,50 @@ func (m *SessionManager) removeSession(sessionID uuid.UUID) {
 	m.mu.Lock()
 	delete(m.sessions, sessionID)
 	m.mu.Unlock()
+}
+
+// InjectSnapshot wires the cache provider and hub sender used for session
+// snapshot persistence and reconnect push. Call once at startup before any
+// sessions are created. Safe to call concurrently with no active sessions.
+func (m *SessionManager) InjectSnapshot(c cache.Provider, sender ClientSender) {
+	m.mu.Lock()
+	m.snapshotCache = c
+	m.snapshotSender = sender
+	m.mu.Unlock()
+}
+
+// OnPlayerLeft implements ws.SessionLifecycleListener.
+// Routes the disconnect event into the session actor so it can update
+// per-player connection state.
+func (m *SessionManager) OnPlayerLeft(sessionID, playerID uuid.UUID, _ bool) {
+	s := m.Get(sessionID)
+	if s == nil {
+		return
+	}
+	_ = s.Send(SessionMessage{
+		Kind:     KindLifecycleLeft,
+		PlayerID: playerID,
+		Ctx:      context.Background(),
+	})
+}
+
+// OnPlayerRejoined implements ws.SessionLifecycleListener.
+// Updates per-player connection state and pushes the current snapshot to the
+// reconnecting player so their client can hydrate without waiting for the next
+// game event.
+func (m *SessionManager) OnPlayerRejoined(sessionID, playerID uuid.UUID) {
+	s := m.Get(sessionID)
+	if s == nil {
+		return
+	}
+	_ = s.Send(SessionMessage{
+		Kind:     KindLifecycleRejoined,
+		PlayerID: playerID,
+		Ctx:      context.Background(),
+	})
+	// SendSnapshot is safe to call from any goroutine — it reads Redis and
+	// dispatches via the hub without touching session-internal state.
+	go s.SendSnapshot(playerID)
 }
 
 // zerologAdapter bridges engine.Logger to zerolog.Logger.

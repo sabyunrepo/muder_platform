@@ -63,10 +63,10 @@ interface PlayerLeftPayload {
  * 게임 세션에 참여 중인 최상위 컴포넌트에서 한 번만 호출한다.
  */
 export function useGameSync(): void {
-  // session:state — 전체 게임 상태 동기화
+  // session:state — 재접속 시 서버 스냅샷으로 전체 상태 복원
   useWsEvent<SessionStatePayload>("game", WsEventType.SESSION_STATE, (payload) => {
     syncServerTime(payload.ts);
-    useGameStore.getState().setGameState(payload.state);
+    useGameStore.getState().hydrateFromSnapshot(payload.state);
   });
 
   // game:phase:change — 페이즈 전환

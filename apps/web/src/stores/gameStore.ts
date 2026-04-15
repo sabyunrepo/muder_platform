@@ -35,6 +35,9 @@ export interface GameStoreActions {
 
   // 게임 상태 갱신
   setGameState: (state: GameState) => void;
+
+  /** 재접속 시 SESSION_STATE 스냅샷으로 전체 상태를 복원 (setGameState의 의미론적 별칭). */
+  hydrateFromSnapshot: (state: GameState) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -130,6 +133,21 @@ export const useGameStore = create<GameStoreState & GameStoreActions>()(
     },
 
     setGameState: (state) => {
+      const { myPlayerId } = get();
+      syncServerTime(state.createdAt);
+      set({
+        sessionId: state.sessionId,
+        phase: state.phase,
+        players: state.players,
+        modules: state.modules,
+        round: state.round,
+        phaseDeadline: state.phaseDeadline,
+        isGameActive: true,
+        myRole: extractMyRole(state.players, myPlayerId),
+      });
+    },
+
+    hydrateFromSnapshot: (state) => {
       const { myPlayerId } = get();
       syncServerTime(state.createdAt);
       set({
