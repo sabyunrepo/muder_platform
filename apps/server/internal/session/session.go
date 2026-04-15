@@ -85,22 +85,23 @@ type Session struct {
 	// Populated via injectSnapshot; zero-value means snapshot is disabled.
 	snapshotFields
 
-	// runCtx is set on Run entry and exposed via Ctx() so callbacks (e.g., lifecycle
-	// listeners) can bound their sends to the session's lifetime instead of
-	// context.Background(). Read-only after Run starts.
-	runCtx context.Context
+	// runCtx is set atomically on Run entry and exposed via Ctx() so callbacks
+	// (e.g., lifecycle listeners) can bound their sends to the session's lifetime
+	// instead of context.Background(). Using atomic.Pointer eliminates the data
+	// race between Run (writer) and OnPlayerLeft/Rejoined (readers). (H-1 fix)
+	runCtx atomic.Pointer[context.Context]
 
 	logger zerolog.Logger
 }
 
 // Ctx returns the session's run context. Before Run is called this returns
 // context.Background(). Once Run starts it returns the per-session context
-// which cancels when the session stops.
+// which cancels when the session stops. Safe for concurrent use.
 func (s *Session) Ctx() context.Context {
-	if s.runCtx == nil {
-		return context.Background()
+	if p := s.runCtx.Load(); p != nil {
+		return *p
 	}
-	return s.runCtx
+	return context.Background()
 }
 
 // newSession constructs a Session. Call go s.Run(ctx) to start the actor loop.
@@ -132,7 +133,7 @@ func newSession(
 // It returns when ctx is cancelled or the done channel is closed.
 // On return the done channel is always closed and status is StatusStopped.
 func (s *Session) Run(ctx context.Context) {
-	s.runCtx = ctx
+	s.runCtx.Store(&ctx)
 	s.status.Store(int32(StatusRunning))
 	s.logger.Info().Msg("session actor started")
 

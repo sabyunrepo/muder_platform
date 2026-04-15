@@ -17,13 +17,13 @@ import (
 
 // mockService implements Service for testing.
 type mockService struct {
-	listUsersFn          func(ctx context.Context, limit, offset int32) ([]UserSummary, error)
-	getUserFn            func(ctx context.Context, userID uuid.UUID) (*UserSummary, error)
-	updateUserRoleFn     func(ctx context.Context, userID uuid.UUID, role string) (*UserSummary, error)
-	listAllThemesFn      func(ctx context.Context, limit, offset int32) ([]ThemeSummary, error)
-	forceUnpublishFn     func(ctx context.Context, themeID uuid.UUID) (*ThemeSummary, error)
-	listAllRoomsFn       func(ctx context.Context, limit, offset int32) ([]RoomSummary, error)
-	forceCloseRoomFn     func(ctx context.Context, roomID uuid.UUID) error
+	listUsersFn      func(ctx context.Context, limit, offset int32) ([]UserSummary, error)
+	getUserFn        func(ctx context.Context, userID uuid.UUID) (*UserSummary, error)
+	updateUserRoleFn func(ctx context.Context, userID uuid.UUID, role string) (*UserSummary, error)
+	listAllThemesFn  func(ctx context.Context, limit, offset int32) ([]ThemeSummary, error)
+	forceUnpublishFn func(ctx context.Context, themeID uuid.UUID) (*ThemeSummary, error)
+	listAllRoomsFn   func(ctx context.Context, limit, offset int32) ([]RoomSummary, error)
+	forceCloseRoomFn func(ctx context.Context, roomID uuid.UUID) error
 }
 
 func (m *mockService) ListUsers(ctx context.Context, limit, offset int32) ([]UserSummary, error) {
