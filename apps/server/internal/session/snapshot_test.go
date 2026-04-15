@@ -184,7 +184,7 @@ func TestSnapshot_CriticalSnapshotPersistsToRedis(t *testing.T) {
 	// Poll until at least one player-specific key appears.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		if cache.hasAnyKeyWithPrefix("session:" + sessionID.String() + ":snapshot:") {
+		if cache.hasAnyKeyWithPrefix("mmp:session:" + sessionID.String() + ":snapshot:") {
 			return
 		}
 		time.Sleep(5 * time.Millisecond)
@@ -204,8 +204,8 @@ func TestSnapshot_Roundtrip(t *testing.T) {
 	_ = s.Send(session.SessionMessage{Kind: session.KindCriticalSnapshot, Reply: reply, Ctx: context.Background()})
 	<-reply
 
-	// M-7: blobs are now per-player; poll for any player key.
-	prefix := "session:" + sessionID.String() + ":snapshot:"
+	// M-7 + L-4: blobs are per-player under mmp: namespace.
+	prefix := "mmp:session:" + sessionID.String() + ":snapshot:"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	var raw []byte
 	for time.Now().Before(deadline) {
@@ -246,8 +246,8 @@ func TestSnapshot_SendSnapshotOnReconnect(t *testing.T) {
 	_ = s.Send(session.SessionMessage{Kind: session.KindCriticalSnapshot, Reply: reply, Ctx: context.Background()})
 	<-reply
 
-	// Wait for Redis write — M-7: per-player keys.
-	prefix := "session:" + sessionID.String() + ":snapshot:"
+	// Wait for Redis write — M-7 + L-4: per-player keys under mmp: namespace.
+	prefix := "mmp:session:" + sessionID.String() + ":snapshot:"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
 		if fc.hasAnyKeyWithPrefix(prefix) {

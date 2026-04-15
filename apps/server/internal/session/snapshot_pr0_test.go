@@ -46,7 +46,7 @@ func TestSnapshot_M7_RecoveryUsesPlayerSpecificBlob(t *testing.T) {
 	})
 	<-reply
 
-	prefix := "session:" + sessionID.String() + ":snapshot:"
+	prefix := "mmp:session:" + sessionID.String() + ":snapshot:"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) && !fc.hasAnyKeyWithPrefix(prefix) {
 		time.Sleep(5 * time.Millisecond)
@@ -86,7 +86,7 @@ func TestSnapshot_M7_NoPlayerIDCrossContamination(t *testing.T) {
 	})
 	<-reply
 
-	prefix := "session:" + sessionID.String() + ":snapshot:"
+	prefix := "mmp:session:" + sessionID.String() + ":snapshot:"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) && !fc.hasAnyKeyWithPrefix(prefix) {
 		time.Sleep(5 * time.Millisecond)
