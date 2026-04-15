@@ -1,13 +1,20 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, useUpdateFlowNodeMock } = vi.hoisted(() => ({
+const { mutateMock, useUpdateFlowNodeMock, toastError } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useUpdateFlowNodeMock: vi.fn(),
+  toastError: vi.fn(),
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: toastError },
 }));
 
 vi.mock("../../../flowApi", () => ({
@@ -15,6 +22,38 @@ vi.mock("../../../flowApi", () => ({
 }));
 
 import { PhaseNodePanel } from "../PhaseNodePanel";
+import { flowKeys } from "../../../flowTypes";
+import type { FlowGraphResponse } from "../../../flowTypes";
+
+// ---------------------------------------------------------------------------
+// Render helper with QueryClient
+// ---------------------------------------------------------------------------
+
+function renderWithClient(ui: ReactNode) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return {
+    qc,
+    ...render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>),
+  };
+}
+
+const makeGraph = (nodeId = "node-1", data: Record<string, unknown> = {}): FlowGraphResponse => ({
+  nodes: [
+    {
+      id: nodeId,
+      theme_id: "t1",
+      type: "phase",
+      position_x: 0,
+      position_y: 0,
+      data: { label: "테스트", ...data },
+      created_at: "2026-04-15T00:00:00Z",
+      updated_at: "2026-04-15T00:00:00Z",
+    },
+  ],
+  edges: [],
+});
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -35,6 +35,13 @@ func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.
 		s.logger.Error().Err(err).Msg("failed to update config")
 		return nil, apperror.Internal("failed to update config")
 	}
+	s.logger.Info().
+		Str("creator_id", creatorID.String()).
+		Str("theme_id", themeID.String()).
+		Int32("version_from", theme.Version).
+		Int32("version_to", updated.Version).
+		Int("config_bytes", len(config)).
+		Msg("theme config updated")
 	return toThemeResponse(updated), nil
 }
 

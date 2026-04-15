@@ -9,6 +9,16 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/mmp-platform/server/internal/template"
+
+	// Blank imports to register modules referenced by preset templates so
+	// MergeSchemasJSON can resolve each moduleID via engine.CreateModule.
+	_ "github.com/mmp-platform/server/internal/module/cluedist"
+	_ "github.com/mmp-platform/server/internal/module/communication"
+	_ "github.com/mmp-platform/server/internal/module/core"
+	_ "github.com/mmp-platform/server/internal/module/decision"
+	_ "github.com/mmp-platform/server/internal/module/exploration"
+	_ "github.com/mmp-platform/server/internal/module/media"
+	_ "github.com/mmp-platform/server/internal/module/progression"
 )
 
 // TestTemplateHandler exercises the three HTTP endpoints exposed by
@@ -81,6 +91,24 @@ func TestTemplateHandler(t *testing.T) {
 				r.Get("/templates/{id}", handler.GetTemplate)
 			},
 			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:   "get template schema returns merged json",
+			method: http.MethodGet,
+			path:   "/templates/" + sampleID + "/schema",
+			register: func(r chi.Router) {
+				r.Get("/templates/{id}/schema", handler.GetTemplateSchema)
+			},
+			wantStatus: http.StatusOK,
+			verify: func(t *testing.T, body []byte) {
+				var out map[string]any
+				if err := json.Unmarshal(body, &out); err != nil {
+					t.Fatalf("schema decode: %v; body=%s", err, body)
+				}
+				if len(out) == 0 {
+					t.Fatalf("schema returned empty json object")
+				}
+			},
 		},
 	}
 

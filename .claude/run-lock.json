@@ -1,11 +1,11 @@
 {
-  "owner_pid": 76685,
-  "run_id": "r-20260415-205940-f535",
-  "acquired_at": "2026-04-15T13:09:16Z",
-  "last_heartbeat": "2026-04-15T13:09:16Z",
-  "wave": "W3",
-  "pr": "PR-7",
-  "task": "W3 E2E + docs",
+  "owner_pid": 42628,
+  "run_id": "r-phase184-followup",
+  "acquired_at": "2026-04-15T23:26:07Z",
+  "last_heartbeat": "2026-04-15T23:26:07Z",
+  "wave": "FU",
+  "pr": "HIGH+MED",
+  "task": "18.4 post-archive followups",
   "worktree": null,
   "ab_experiment": null
 }

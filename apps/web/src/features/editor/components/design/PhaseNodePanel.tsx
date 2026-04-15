@@ -1,7 +1,14 @@
 import { useRef, useEffect, useCallback } from "react";
 import type { Node } from "@xyflow/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useUpdateFlowNode } from "../../flowApi";
-import type { FlowNodeData, PhaseAction } from "../../flowTypes";
+import type {
+  FlowGraphResponse,
+  FlowNodeData,
+  PhaseAction,
+} from "../../flowTypes";
+import { flowKeys } from "../../flowTypes";
 import { ActionListEditor } from "./ActionListEditor";
 
 // ---------------------------------------------------------------------------
@@ -31,8 +38,10 @@ const SAVE_DEBOUNCE_MS = 1500;
 
 export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
+  const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<FlowNodeData | null>(null);
+  const rollbackRef = useRef<FlowGraphResponse | undefined>(undefined);
   const data = node.data as FlowNodeData;
 
   /** Send the pending network write immediately and cancel the debounce timer. */
@@ -44,8 +53,34 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
     if (!pendingRef.current) return;
     const body = pendingRef.current;
     pendingRef.current = null;
-    updateNode.mutate({ nodeId: node.id, body: { data: body } });
-  }, [node.id, updateNode]);
+
+    // Optimistic update: patch the node inside the flow-graph cache so other
+    // subscribers (canvas) see the latest data without waiting for the PATCH
+    // response. Snapshot the previous graph for rollback on error.
+    const cacheKey = flowKeys.graph(themeId);
+    const previous = queryClient.getQueryData<FlowGraphResponse>(cacheKey);
+    if (previous) {
+      rollbackRef.current = previous;
+      queryClient.setQueryData<FlowGraphResponse>(cacheKey, {
+        ...previous,
+        nodes: previous.nodes.map((n) =>
+          n.id === node.id ? { ...n, data: { ...n.data, ...body } } : n,
+        ),
+      });
+    }
+
+    updateNode.mutate(
+      { nodeId: node.id, body: { data: body } },
+      {
+        onError: () => {
+          if (rollbackRef.current) {
+            queryClient.setQueryData(cacheKey, rollbackRef.current);
+          }
+          toast.error("저장에 실패했습니다");
+        },
+      },
+    );
+  }, [node.id, queryClient, themeId, updateNode]);
 
   useEffect(() => {
     return () => {

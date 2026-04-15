@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { Package, MapPin, Check } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type {
   EditorThemeResponse,
   LocationResponse,
   ClueResponse,
 } from '@/features/editor/api';
-import { useEditorClues, useUpdateConfigJson } from '@/features/editor/api';
+import { editorKeys, useEditorClues, useUpdateConfigJson } from '@/features/editor/api';
 import { readLocationClueIds, writeLocationClueIds } from '@/features/editor/editorTypes';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,8 @@ export function LocationClueAssignPanel({
   const { data: fetchedClues, isLoading } = useEditorClues(themeId);
   const clues = allClues ?? fetchedClues ?? [];
   const updateConfig = useUpdateConfigJson(themeId);
+  const queryClient = useQueryClient();
+  const rollbackRef = useRef<EditorThemeResponse | undefined>(undefined);
 
   const assignedIds = useMemo(
     () => readLocationClueIds(theme.config_json, location.id),
@@ -52,12 +55,30 @@ export function LocationClueAssignPanel({
 
   function commit(next: string[]) {
     const nextConfig = writeLocationClueIds(theme.config_json, location.id, next);
+
+    // Optimistic cache write: merge the next config into the theme snapshot so
+    // the chip state reflects immediately without waiting for the PATCH round-trip.
+    const cacheKey = editorKeys.theme(themeId);
+    const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+    if (previous) {
+      rollbackRef.current = previous;
+      queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
+        ...previous,
+        config_json: nextConfig,
+      });
+    }
+
     updateConfig.mutate(nextConfig, {
       onSuccess: () => {
         toast.success('단서 배정이 저장되었습니다');
         onChange?.(next);
       },
-      onError: () => toast.error('단서 배정 저장에 실패했습니다'),
+      onError: () => {
+        if (rollbackRef.current) {
+          queryClient.setQueryData(cacheKey, rollbackRef.current);
+        }
+        toast.error('단서 배정 저장에 실패했습니다');
+      },
     });
   }
 
