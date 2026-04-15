@@ -22,6 +22,18 @@ vi.mock('sonner', () => ({
 vi.mock('@/features/editor/api', () => ({
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   useModuleSchemas: () => useModuleSchemasMock(),
+  editorKeys: {
+    all: ['editor'],
+    theme: (id: string) => ['editor', 'themes', id],
+  },
+}));
+
+vi.mock('@/features/editor/editorConfigApi', () => ({
+  useUpdateConfigJson: () => useUpdateConfigJsonMock(),
+}));
+
+vi.mock('@/services/queryClient', () => ({
+  queryClient: { invalidateQueries: vi.fn() },
 }));
 
 vi.mock('@/features/editor/templateApi', () => ({}));
