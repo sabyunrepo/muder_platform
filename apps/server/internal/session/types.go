@@ -27,6 +27,9 @@ const (
 	KindHandleTrigger
 	// KindStop requests the session to gracefully shut down.
 	KindStop
+	// KindEngineStart starts the PhaseEngine with the provided module configs.
+	// Used by startModularGame to initialize the engine inside the actor goroutine.
+	KindEngineStart
 )
 
 // SessionMessage is the unified message type passed into Session.inbox.
@@ -83,4 +86,10 @@ type TriggerPayload struct {
 // Exported for the same reason as TriggerPayload.
 type GMOverridePayload struct {
 	PhaseID string
+}
+
+// EngineStartPayload is the structured payload for KindEngineStart messages.
+// Carries per-module JSON configs needed by PhaseEngine.Start.
+type EngineStartPayload struct {
+	ModuleConfigs map[string]json.RawMessage
 }

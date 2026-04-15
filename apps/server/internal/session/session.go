@@ -241,6 +241,14 @@ func (s *Session) handleMessage(msg SessionMessage) {
 		// PR-7 will implement actual snapshot; for now just acknowledge.
 		s.logger.Debug().Msg("critical snapshot requested (not yet implemented)")
 
+	case KindEngineStart:
+		p, ok := msg.Payload.(EngineStartPayload)
+		if !ok {
+			err = errInvalidPayload
+		} else {
+			err = s.engine.Start(msg.Ctx, p.ModuleConfigs)
+		}
+
 	case KindStop:
 		s.stop()
 		// Reply before returning so callers waiting on a KindStop reply don't hang.

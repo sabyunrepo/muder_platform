@@ -32,8 +32,8 @@ import (
 	"github.com/mmp-platform/server/internal/infra/lock"
 	otelPkg "github.com/mmp-platform/server/internal/infra/otel"
 	"github.com/mmp-platform/server/internal/infra/postgres"
-	"github.com/mmp-platform/server/internal/infra/storage"
 	sentryPkg "github.com/mmp-platform/server/internal/infra/sentry"
+	"github.com/mmp-platform/server/internal/infra/storage"
 	"github.com/mmp-platform/server/internal/middleware"
 	"github.com/mmp-platform/server/internal/seo"
 	"github.com/mmp-platform/server/internal/server"
@@ -330,7 +330,7 @@ func main() {
 			// Profile
 			r.Get("/profile", profileHandler.GetProfile)
 			r.Put("/profile", profileHandler.UpdateProfile)
-				r.Put("/profile/avatar", profileHandler.UpdateAvatar)
+			r.Put("/profile/avatar", profileHandler.UpdateAvatar)
 			r.Get("/profile/notifications", profileHandler.GetNotificationPrefs)
 			r.Put("/profile/notifications", profileHandler.UpdateNotificationPrefs)
 

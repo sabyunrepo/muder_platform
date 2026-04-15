@@ -110,6 +110,35 @@ func (h *Handler) JoinRoom(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "joined"})
 }
 
+// StartRoom handles POST /rooms/{id}/start (authenticated, host only).
+// With feature flag game_runtime_v2=on it delegates to startModularGame.
+func (h *Handler) StartRoom(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	roomID, err := uuid.Parse(idStr)
+	if err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid room ID"))
+		return
+	}
+
+	var req StartRoomRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		// Body is optional; ignore parse errors for an empty body.
+		req = StartRoomRequest{}
+	}
+
+	if err := h.svc.StartRoom(r.Context(), roomID, userID, req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "started"})
+}
+
 // LeaveRoom handles POST /rooms/{id}/leave (authenticated).
 func (h *Handler) LeaveRoom(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.UserIDFrom(r.Context())
