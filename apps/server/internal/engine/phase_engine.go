@@ -33,7 +33,7 @@ type PhaseEngine struct {
 	audit     AuditLogger
 	logger    Logger
 	phases    []PhaseDefinition
-	current   int  // index into phases, -1 = not started
+	current   int // index into phases, -1 = not started
 	started   bool
 	stopped   bool
 }
@@ -280,6 +280,29 @@ func (e *PhaseEngine) BuildState() (json.RawMessage, error) {
 		ms, err := mod.BuildState()
 		if err != nil {
 			return nil, fmt.Errorf("engine: module %q state failed: %w", mod.Name(), err)
+		}
+		moduleStates[mod.Name()] = ms
+	}
+	state["modules"] = moduleStates
+
+	return json.Marshal(state)
+}
+
+// BuildStateFor returns the engine state with player-aware module redaction
+// applied. Envelope structure is identical to BuildState — only the per-module
+// state maps differ based on the caller's identity. Used on reconnect so that
+// role-private data never reaches the wrong client. (Phase 18.1 B-2)
+func (e *PhaseEngine) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	state := map[string]any{
+		"sessionId": e.sessionID,
+		"phase":     e.CurrentPhase(),
+	}
+
+	moduleStates := make(map[string]json.RawMessage, len(e.modules))
+	for _, mod := range e.modules {
+		ms, err := BuildModuleStateFor(mod, playerID)
+		if err != nil {
+			return nil, fmt.Errorf("engine: module %q state_for failed: %w", mod.Name(), err)
 		}
 		moduleStates[mod.Name()] = ms
 	}
