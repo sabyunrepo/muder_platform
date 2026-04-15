@@ -1,10 +1,14 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse } from '@/features/editor/api';
-import { useModuleSchemas, useUpdateConfigJson } from '@/features/editor/api';
+import { useModuleSchemas, editorKeys } from '@/features/editor/api';
+import { useUpdateConfigJson } from '@/features/editor/editorConfigApi';
+import { queryClient } from '@/services/queryClient';
 import { OPTIONAL_MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { TemplateSchema } from '@/features/editor/templateApi';
 import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm';
+
+const CONFLICT_SNACKBAR_MSG = '동시 편집 충돌 — 최신 상태 다시 불러오기';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,7 +25,35 @@ interface ModulesSubTabProps {
 
 export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   const { data: moduleSchemasResp } = useModuleSchemas();
-  const updateConfig = useUpdateConfigJson(themeId);
+  // conflictRef distinguishes conflict-after-retry from generic errors in
+  // onError. useRef avoids re-creating the hook on every render.
+  const conflictRef = useRef(false);
+  const updateConfig = useUpdateConfigJson(themeId, {
+    onConflictAfterRetry: () => {
+      conflictRef.current = true;
+      queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+    },
+  });
+
+  const mutateConfig = useCallback(
+    (nextConfig: Record<string, unknown>, successMsg: string, errorMsg: string) => {
+      conflictRef.current = false;
+      updateConfig.mutate(
+        { ...nextConfig, version: theme.version },
+        {
+          onSuccess: () => toast.success(successMsg),
+          onError: () => {
+            if (conflictRef.current) {
+              toast.error(CONFLICT_SNACKBAR_MSG);
+            } else {
+              toast.error(errorMsg);
+            }
+          },
+        },
+      );
+    },
+    [theme.version, updateConfig],
+  );
 
   const serverModules = useMemo(() => {
     const cfg = theme.config_json ?? {};
@@ -50,18 +82,16 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
           ? prev.filter((id) => id !== moduleId)
           : [...prev, moduleId];
 
-        updateConfig.mutate(
+        mutateConfig(
           { ...(theme.config_json ?? {}), modules: next },
-          {
-            onSuccess: () => toast.success('모듈 설정이 저장되었습니다'),
-            onError: () => toast.error('모듈 설정 저장에 실패했습니다'),
-          },
+          '모듈 설정이 저장되었습니다',
+          '모듈 설정 저장에 실패했습니다',
         );
 
         return next;
       });
     },
-    [theme.config_json, updateConfig],
+    [theme.config_json, mutateConfig],
   );
 
   const handleConfigChange = useCallback(
@@ -72,12 +102,9 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
         ...(theme.config_json ?? {}),
         module_configs: { ...moduleConfigs, [moduleId]: updated },
       };
-      updateConfig.mutate(nextConfig, {
-        onSuccess: () => toast.success('설정이 저장되었습니다'),
-        onError: () => toast.error('설정 저장에 실패했습니다'),
-      });
+      mutateConfig(nextConfig, '설정이 저장되었습니다', '설정 저장에 실패했습니다');
     },
-    [moduleConfigs, theme.config_json, updateConfig],
+    [moduleConfigs, theme.config_json, mutateConfig],
   );
 
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
