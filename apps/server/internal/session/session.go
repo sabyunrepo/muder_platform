@@ -81,6 +81,10 @@ type Session struct {
 	// Typically set to SessionManager.removeSession.
 	onAbort func(uuid.UUID)
 
+	// snapshotFields holds optional Redis persist and hub send dependencies.
+	// Populated via injectSnapshot; zero-value means snapshot is disabled.
+	snapshotFields
+
 	logger zerolog.Logger
 }
 
@@ -211,7 +215,12 @@ func (s *Session) handleMessage(msg SessionMessage) {
 		err = s.handleLifecycleRejoined(msg)
 
 	case KindAdvance:
-		_, err = s.engine.AdvancePhase(msg.Ctx)
+		var advanced bool
+		advanced, err = s.engine.AdvancePhase(msg.Ctx)
+		if err == nil && advanced {
+			// Phase transition is a critical event — flush snapshot immediately.
+			s.flushSnapshot()
+		}
 
 	case KindGMOverride:
 		// Use exported GMOverridePayload so callers outside the package can
@@ -222,6 +231,9 @@ func (s *Session) handleMessage(msg SessionMessage) {
 			err = errInvalidPayload
 		} else {
 			err = s.engine.SkipToPhase(msg.Ctx, p.PhaseID)
+			if err == nil {
+				s.flushSnapshot()
+			}
 		}
 
 	case KindHandleTrigger:
@@ -235,13 +247,28 @@ func (s *Session) handleMessage(msg SessionMessage) {
 				Action: engine.PhaseAction(tp.TriggerType),
 				Params: tp.Condition,
 			})
+			if err == nil {
+				s.markDirty()
+			}
 		}
 
 	case KindCriticalSnapshot:
-		// PR-7 will implement actual snapshot; for now just acknowledge.
-		s.logger.Debug().Msg("critical snapshot requested (not yet implemented)")
+		s.flushSnapshot()
+
+	case KindEngineStart:
+		p, ok := msg.Payload.(EngineStartPayload)
+		if !ok {
+			err = errInvalidPayload
+		} else {
+			err = s.engine.Start(msg.Ctx, p.ModuleConfigs)
+			if err == nil {
+				s.markDirty()
+			}
+		}
 
 	case KindStop:
+		// Flush snapshot before stopping so the last state is durable.
+		s.flushSnapshot()
 		s.stop()
 		// Reply before returning so callers waiting on a KindStop reply don't hang.
 		s.replyTo(msg, nil)
@@ -297,12 +324,6 @@ func (s *Session) handleLifecycleRejoined(msg SessionMessage) error {
 		s.logger.Info().Str("player_id", msg.PlayerID.String()).Msg("player rejoined")
 	}
 	return nil
-}
-
-// maybeSnapshot is called on each snapshot ticker tick.
-// PR-7 will implement dirty-flag checking and Redis flush.
-func (s *Session) maybeSnapshot() {
-	// no-op until PR-7
 }
 
 // Ensure atomic.Int32 is used (not the bare int32 field embedded incorrectly).
