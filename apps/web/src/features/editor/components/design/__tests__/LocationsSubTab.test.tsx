@@ -54,7 +54,26 @@ vi.mock("@/features/editor/api", () => ({
   useDeleteLocation: () => useDeleteLocationMock(),
   useEditorClues: () => useEditorCluesMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
+  editorKeys: {
+    theme: (id: string) => ["editor", "themes", id] as const,
+  },
 }));
+
+// LocationClueAssignPanel (via LocationsSubTab) now calls `useQueryClient`; stub
+// it so the existing tests don't need a real provider.
+vi.mock("@tanstack/react-query", async () => {
+  const actual =
+    await vi.importActual<typeof import("@tanstack/react-query")>(
+      "@tanstack/react-query",
+    );
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      getQueryData: () => undefined,
+      setQueryData: () => undefined,
+    }),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Imports (after mocks)

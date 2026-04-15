@@ -27,6 +27,9 @@ vi.mock('sonner', () => ({
 vi.mock('@/features/editor/api', () => ({
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   useEditorClues: () => useEditorCluesMock(),
+  editorKeys: {
+    theme: (id: string) => ['editor', 'themes', id] as const,
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -125,13 +128,22 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+/** Render wrapped in a fresh QueryClient (component uses useQueryClient). */
+function renderQC(ui: ReactElement): { qc: QueryClient } {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+  return { qc };
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('LocationClueAssignPanel', () => {
   it('모든 clue가 chip으로 렌더링된다', () => {
-    render(
+    renderQC(
       <LocationClueAssignPanel
         themeId="theme-1"
         theme={baseTheme}
@@ -147,7 +159,7 @@ describe('LocationClueAssignPanel', () => {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', clueIds: ['clue-1'] }] },
     };
-    render(
+    renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
     );
     expect(screen.getByText('(1/2)')).toBeDefined();
@@ -158,7 +170,7 @@ describe('LocationClueAssignPanel', () => {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', clueIds: ['clue-1'] }] },
     };
-    render(
+    renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
     );
     const chip1 = screen.getByLabelText('단검 배정 토글');
@@ -168,7 +180,7 @@ describe('LocationClueAssignPanel', () => {
   });
 
   it('배정되지 않은 clue 클릭 시 clueIds에 추가되어 mutate가 호출된다', () => {
-    render(
+    renderQC(
       <LocationClueAssignPanel
         themeId="theme-1"
         theme={baseTheme}
@@ -188,7 +200,7 @@ describe('LocationClueAssignPanel', () => {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', clueIds: ['clue-1', 'clue-2'] }] },
     };
-    render(
+    renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
     );
     fireEvent.click(screen.getByLabelText('단검 배정 토글'));
@@ -202,7 +214,7 @@ describe('LocationClueAssignPanel', () => {
     // mutate 는 (config, { onSuccess }) 형태. 테스트에서 onSuccess 를 즉시 호출하도록 stub.
     mutateMock.mockImplementation((_cfg, opts) => opts?.onSuccess?.());
     const onChange = vi.fn();
-    render(
+    renderQC(
       <LocationClueAssignPanel
         themeId="theme-1"
         theme={baseTheme}
@@ -216,7 +228,7 @@ describe('LocationClueAssignPanel', () => {
 
   it('clue가 없으면 안내 메시지가 표시된다', () => {
     useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
-    render(
+    renderQC(
       <LocationClueAssignPanel
         themeId="theme-1"
         theme={baseTheme}
@@ -228,7 +240,7 @@ describe('LocationClueAssignPanel', () => {
 
   it('allClues prop이 주어지면 hook data 를 덮어쓴다', () => {
     useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
-    render(
+    renderQC(
       <LocationClueAssignPanel
         themeId="theme-1"
         theme={baseTheme}
@@ -241,7 +253,7 @@ describe('LocationClueAssignPanel', () => {
 
   it('isPending 중에는 chip 이 disabled 된다', () => {
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: true });
-    render(
+    renderQC(
       <LocationClueAssignPanel
         themeId="theme-1"
         theme={baseTheme}
@@ -250,5 +262,69 @@ describe('LocationClueAssignPanel', () => {
     );
     const chip = screen.getByLabelText('단검 배정 토글') as HTMLButtonElement;
     expect(chip.disabled).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: optimistic update + rollback (HIGH-2)
+// ---------------------------------------------------------------------------
+
+describe('LocationClueAssignPanel optimistic update + rollback', () => {
+  const cacheKey = ['editor', 'themes', 'theme-1'] as const;
+
+  it('commit 시 theme 캐시의 config_json 이 낙관 반영된다', () => {
+    const { qc } = renderQC(
+      <LocationClueAssignPanel
+        themeId="theme-1"
+        theme={baseTheme}
+        location={mockLocation}
+      />,
+    );
+    qc.setQueryData(cacheKey, baseTheme);
+
+    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+
+    const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
+    const locs = (cached?.config_json as { locations?: Array<{ id: string; clueIds: string[] }> })
+      ?.locations;
+    expect(locs?.[0]).toEqual({ id: 'loc-1', clueIds: ['clue-1'] });
+    expect(mutateMock).toHaveBeenCalledOnce();
+  });
+
+  it('mutate onError 시 이전 theme 로 rollback + 실패 토스트', () => {
+    mutateMock.mockImplementation((_cfg, opts) => opts?.onError?.(new Error('fail')));
+
+    const { qc } = renderQC(
+      <LocationClueAssignPanel
+        themeId="theme-1"
+        theme={baseTheme}
+        location={mockLocation}
+      />,
+    );
+    qc.setQueryData(cacheKey, baseTheme);
+
+    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+
+    const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
+    expect(cached?.config_json).toEqual({}); // rolled back to baseTheme.config_json
+    expect(toastError).toHaveBeenCalledWith('단서 배정 저장에 실패했습니다');
+  });
+
+  it('theme 캐시가 없으면 mutate 만 호출되고 rollback 대상도 없다', () => {
+    mutateMock.mockImplementation((_cfg, opts) => opts?.onError?.(new Error('fail')));
+    const { qc } = renderQC(
+      <LocationClueAssignPanel
+        themeId="theme-1"
+        theme={baseTheme}
+        location={mockLocation}
+      />,
+    );
+    // no setQueryData
+
+    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    expect(qc.getQueryData(cacheKey)).toBeUndefined();
+    expect(toastError).toHaveBeenCalled();
   });
 });
