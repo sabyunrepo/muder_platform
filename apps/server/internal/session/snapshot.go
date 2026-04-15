@@ -57,31 +57,41 @@ func (s *Session) maybeSnapshot() {
 	s.persistSnapshot()
 }
 
-// persistSnapshot serialises the current session state and writes it to Redis.
-// On serialisation failure it logs and continues — the game is never interrupted.
+// persistSnapshot serialises a per-player snapshot for every known player and
+// writes each to Redis under session:{id}:snapshot:{playerID} (M-7).
+// Uses s.Ctx() so the write is cancelled when the session stops (L-2).
+// On any failure it logs and continues — the game is never interrupted.
 // MUST be called only from the actor goroutine (race-free by design).
 func (s *Session) persistSnapshot() {
-	if s.cache == nil {
+	if s.cache == nil || s.engine == nil {
 		return
 	}
 
-	data, err := s.marshalSnapshot()
-	if err != nil {
-		s.logger.Error().Err(err).Msg("snapshot: marshal failed, skipping persist")
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(s.Ctx(), 3*time.Second)
 	defer cancel()
 
-	if err := s.cache.Set(ctx, snapshotKey(s.ID), data, snapshotTTL); err != nil {
-		s.logger.Error().Err(err).Str("key", snapshotKey(s.ID)).Msg("snapshot: redis write failed")
-		return
+	for playerID := range s.players {
+		raw, err := s.engine.BuildStateFor(playerID)
+		if err != nil {
+			s.logger.Error().Err(err).
+				Str("player_id", playerID.String()).
+				Msg("snapshot: BuildStateFor failed, skipping player blob")
+			continue
+		}
+		key := playerSnapshotKey(s.ID, playerID)
+		if err := s.cache.Set(ctx, key, raw, snapshotTTL); err != nil {
+			s.logger.Error().Err(err).
+				Str("key", key).
+				Msg("snapshot: redis write failed for player blob")
+		}
 	}
 
 	s.dirty = false
 	s.lastPersist = time.Now()
-	s.logger.Debug().Str("session_id", s.ID.String()).Msg("snapshot: persisted to redis")
+	s.logger.Debug().
+		Str("session_id", s.ID.String()).
+		Int("players", len(s.players)).
+		Msg("snapshot: per-player blobs persisted to redis")
 }
 
 // flushSnapshot forces an immediate persist regardless of dirty/debounce state.
@@ -92,22 +102,35 @@ func (s *Session) flushSnapshot() {
 	s.persistSnapshot()
 }
 
-// deleteSnapshot proactively removes the Redis snapshot for this session.
+// deleteSnapshot proactively removes all per-player Redis blobs for this session.
 // Called on KindStop so PII (role, chat, clues) does not linger for 24h
-// after the game ends (M-5 fix). Errors are logged but never bubbled up —
-// snapshots auto-expire via TTL if delete fails.
+// after the game ends (M-5 + M-7 fix).
+// Uses s.Ctx() so the delete inherits session lifetime (L-2).
+// Errors are logged but never bubbled up — snapshots auto-expire via TTL if delete fails.
 // MUST be called only from the actor goroutine.
 func (s *Session) deleteSnapshot() {
 	if s.cache == nil {
 		return
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(s.Ctx(), 3*time.Second)
 	defer cancel()
-	if err := s.cache.Del(ctx, snapshotKey(s.ID)); err != nil {
-		s.logger.Warn().Err(err).Str("key", snapshotKey(s.ID)).Msg("snapshot: redis delete failed (will expire via TTL)")
+
+	keys := make([]string, 0, len(s.players)+1)
+	for playerID := range s.players {
+		keys = append(keys, playerSnapshotKey(s.ID, playerID))
+	}
+	// Also delete the legacy session-level key (if it exists from older runs).
+	keys = append(keys, snapshotKey(s.ID))
+
+	if err := s.cache.Del(ctx, keys...); err != nil {
+		s.logger.Warn().Err(err).
+			Str("session_id", s.ID.String()).
+			Msg("snapshot: redis delete failed (will expire via TTL)")
 		return
 	}
-	s.logger.Debug().Str("session_id", s.ID.String()).Msg("snapshot: deleted from redis on session stop")
+	s.logger.Debug().
+		Str("session_id", s.ID.String()).
+		Msg("snapshot: per-player blobs deleted from redis on session stop")
 }
 
 // SendSnapshot dispatches a player-aware snapshot rebuild to the session actor
@@ -115,10 +138,8 @@ func (s *Session) deleteSnapshot() {
 // The actor reconstructs state via engine.BuildStateFor(playerID) so role-
 // private data never reaches the wrong client. (Phase 18.1 B-2)
 //
-// When the session is not StatusRunning (e.g. still recovering, or stopped),
-// we fall back to the Redis snapshot blob. WARNING: that blob is NOT yet
-// redacted per-player — this fallback MUST be revisited if we ever serve real
-// reconnects during recovery. Tracked as M-7 in Phase 18.2.
+// When the session is not StatusRunning (recovery path), we fall back to the
+// player-specific Redis blob written by persistSnapshot (M-7 fix).
 //
 // Safe to call from any goroutine.
 func (s *Session) SendSnapshot(playerID uuid.UUID) {
@@ -140,28 +161,33 @@ func (s *Session) SendSnapshot(playerID uuid.UUID) {
 		return
 	}
 
-	// Session is not running — fall back to the (non-redacted) Redis blob.
+	// Session is not running — use player-specific Redis blob (M-7).
 	s.sendSnapshotFromCache(playerID)
 }
 
-// sendSnapshotFromCache is the legacy Redis-blob path. MUST only be used when
-// the actor cannot be invoked (session not running). The blob is NOT redacted
-// per-player; tolerable because recovery-path reconnects should be rare and
-// the blob carries the same data the player could see before disconnect.
+// sendSnapshotFromCache reads the player-specific Redis blob and sends it.
+// Falls back to a session-level key if the player-specific key is missing
+// (e.g. old data written before M-7 fix). Uses s.Ctx() (L-2).
+// MUST only be used when the actor cannot be invoked (session not running).
 func (s *Session) sendSnapshotFromCache(playerID uuid.UUID) {
 	if s.cache == nil {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(s.Ctx(), 3*time.Second)
 	defer cancel()
 
-	data, err := s.cache.Get(ctx, snapshotKey(s.ID))
+	// Try player-specific key first (M-7).
+	data, err := s.cache.Get(ctx, playerSnapshotKey(s.ID, playerID))
 	if err != nil {
-		s.logger.Warn().Err(err).
-			Str("player_id", playerID.String()).
-			Msg("snapshot: redis get failed on reconnect")
-		return
+		// Fall back to legacy session-level key.
+		data, err = s.cache.Get(ctx, snapshotKey(s.ID))
+		if err != nil {
+			s.logger.Warn().Err(err).
+				Str("player_id", playerID.String()).
+				Msg("snapshot: redis get failed on reconnect (no player or session blob)")
+			return
+		}
 	}
 
 	var raw json.RawMessage = data
@@ -175,7 +201,7 @@ func (s *Session) sendSnapshotFromCache(playerID uuid.UUID) {
 	s.logger.Debug().
 		Str("player_id", playerID.String()).
 		Str("session_id", s.ID.String()).
-		Msg("snapshot: sent cached blob to reconnecting player (recovery path)")
+		Msg("snapshot: sent player-specific blob to reconnecting player (recovery path)")
 }
 
 // sendSnapshotForActor is called by the actor goroutine in response to

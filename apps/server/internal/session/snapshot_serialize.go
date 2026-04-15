@@ -37,8 +37,16 @@ type snapshotPlayer struct {
 }
 
 // snapshotKey returns the Redis key for the given session ID.
+// Used for the legacy/fallback full-session blob (kept for backward compat).
 func snapshotKey(id uuid.UUID) string {
 	return snapshotKeyPrefix + id.String() + snapshotKeySuffix
+}
+
+// playerSnapshotKey returns the Redis key for a per-player snapshot blob.
+// Format: session:{sessionID}:snapshot:{playerID}
+// Written by persistSnapshot (M-7); read by sendSnapshotFromCache.
+func playerSnapshotKey(sessionID, playerID uuid.UUID) string {
+	return snapshotKeyPrefix + sessionID.String() + snapshotKeySuffix + ":" + playerID.String()
 }
 
 // marshalSnapshot converts the in-memory session state to a JSON blob.

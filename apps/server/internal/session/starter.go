@@ -11,6 +11,16 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// cleanupOnStartFail releases engine resources allocated during startModularGame
+// when any failure path is taken before the session is fully operational.
+// Stops all modules via engine.Stop and closes the event bus (M-a fix).
+// Errors are logged but not returned — cleanup is best-effort.
+func cleanupOnStartFail(ctx context.Context, eng *engine.PhaseEngine, logger zerolog.Logger) {
+	if err := eng.Stop(ctx); err != nil {
+		logger.Warn().Err(err).Msg("startModularGame: cleanup engine stop error")
+	}
+}
+
 // errGameRuntimeDisabled is returned when startModularGame is called but the
 // feature flag is off. Callers should fall back to the legacy game path.
 var errGameRuntimeDisabled = apperror.New(
@@ -74,10 +84,11 @@ func startModularGame(
 		logger.Error().Err(err).
 			Str("session_id", cfg.SessionID.String()).
 			Msg("startModularGame: failed to build modules")
+		// L-7: expose only a generic message to the host; details are in server logs.
 		return nil, apperror.New(
 			apperror.ErrBadRequest,
 			http.StatusBadRequest,
-			"failed to build game modules: "+err.Error(),
+			"failed to initialise game modules",
 		)
 	}
 
@@ -116,6 +127,8 @@ func startModularGame(
 		Reply:   startReply,
 		Payload: EngineStartPayload{ModuleConfigs: moduleConfigs},
 	}); err != nil {
+		// M-a: clean up engine resources before returning.
+		cleanupOnStartFail(ctx, eng, logger)
 		s.stop()
 		return nil, err
 	}
@@ -123,6 +136,8 @@ func startModularGame(
 	m.mu.Lock()
 	if _, exists := m.sessions[cfg.SessionID]; exists {
 		m.mu.Unlock()
+		// M-a: clean up engine resources before returning.
+		cleanupOnStartFail(ctx, eng, logger)
 		s.stop()
 		return nil, errSessionAlreadyActive
 	}
@@ -140,6 +155,8 @@ func startModularGame(
 			m.mu.Lock()
 			delete(m.sessions, cfg.SessionID)
 			m.mu.Unlock()
+			// M-a: clean up engine resources before returning.
+			cleanupOnStartFail(ctx, eng, logger)
 			s.stop()
 			return nil, err
 		}
@@ -147,6 +164,8 @@ func startModularGame(
 		m.mu.Lock()
 		delete(m.sessions, cfg.SessionID)
 		m.mu.Unlock()
+		// M-a: clean up engine resources before returning.
+		cleanupOnStartFail(ctx, eng, logger)
 		s.stop()
 		return nil, ctx.Err()
 	}
@@ -161,4 +180,3 @@ func startModularGame(
 
 	return s, nil
 }
-

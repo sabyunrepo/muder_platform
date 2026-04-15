@@ -15,7 +15,8 @@ func TestSnapshot_KindStopDeletesSnapshot(t *testing.T) {
 	cache := newFakeCache()
 	sender := &fakeSender{}
 	sessionID, s, _ := startWithSnapshot(t, cache, sender)
-	key := "session:" + sessionID.String() + ":snapshot"
+	// M-7: per-player key prefix.
+	prefix := "session:" + sessionID.String() + ":snapshot:"
 
 	// Populate a snapshot first via KindCriticalSnapshot.
 	reply := make(chan error, 1)
@@ -33,13 +34,13 @@ func TestSnapshot_KindStopDeletesSnapshot(t *testing.T) {
 		t.Fatal("timed out waiting for KindCriticalSnapshot")
 	}
 
-	// Wait for the persist to land.
+	// Wait for the per-player blobs to land.
 	deadline := time.Now().Add(500 * time.Millisecond)
-	for time.Now().Before(deadline) && !cache.hasKey(key) {
+	for time.Now().Before(deadline) && !cache.hasAnyKeyWithPrefix(prefix) {
 		time.Sleep(5 * time.Millisecond)
 	}
-	if !cache.hasKey(key) {
-		t.Fatal("precondition: expected snapshot in cache before KindStop")
+	if !cache.hasAnyKeyWithPrefix(prefix) {
+		t.Fatal("precondition: expected per-player snapshot blobs in cache before KindStop")
 	}
 
 	// Graceful stop.
@@ -58,8 +59,8 @@ func TestSnapshot_KindStopDeletesSnapshot(t *testing.T) {
 		t.Fatal("timed out waiting for KindStop reply")
 	}
 
-	// The snapshot key must be gone.
-	if cache.hasKey(key) {
-		t.Errorf("snapshot key %q still present after KindStop (expected delete)", key)
+	// All per-player snapshot blobs must be gone.
+	if cache.hasAnyKeyWithPrefix(prefix) {
+		t.Errorf("per-player snapshot keys still present after KindStop (expected delete)")
 	}
 }
