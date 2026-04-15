@@ -1,12 +1,13 @@
 package engine
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
 
 func TestParseGameConfig_Valid(t *testing.T) {
-	data := []byte(`{"modules":[{"name":"clue_interaction","config":{}}]}`)
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[{"name":"clue_interaction","config":{}}]}`)
 	cfg, err := ParseGameConfig(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -20,7 +21,7 @@ func TestParseGameConfig_Valid(t *testing.T) {
 }
 
 func TestParseGameConfig_Empty(t *testing.T) {
-	data := []byte(`{"modules":[]}`)
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[]}`)
 	cfg, err := ParseGameConfig(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -44,7 +45,7 @@ func TestParseGameConfig_TooManyModules(t *testing.T) {
 	for i := range entries {
 		entries[i] = `{"name":"mod"}`
 	}
-	data := []byte(`{"modules":[` + strings.Join(entries, ",") + `]}`)
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[` + strings.Join(entries, ",") + `]}`)
 	_, err := ParseGameConfig(data)
 	if err == nil {
 		t.Fatal("expected error for >50 modules, got nil")
@@ -68,7 +69,7 @@ func TestBuildModules_Success(t *testing.T) {
 	cfg := &GameConfig{
 		Modules: []ModuleConfig{{Name: "test_mod"}},
 	}
-	mods, err := BuildModules(cfg)
+	mods, _, err := BuildModules(context.Background(), cfg, ModuleDeps{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -85,7 +86,7 @@ func TestBuildModules_UnknownModule(t *testing.T) {
 	cfg := &GameConfig{
 		Modules: []ModuleConfig{{Name: "nonexistent"}},
 	}
-	_, err := BuildModules(cfg)
+	_, _, err := BuildModules(context.Background(), cfg, ModuleDeps{})
 	if err == nil {
 		t.Fatal("expected error for unknown module, got nil")
 	}
@@ -106,7 +107,7 @@ func TestBuildModules_BlockedModule(t *testing.T) {
 	cfg := &GameConfig{
 		Modules: []ModuleConfig{{Name: "admin_mod"}},
 	}
-	_, err := BuildModules(cfg)
+	_, _, err := BuildModules(context.Background(), cfg, ModuleDeps{})
 	if err == nil {
 		t.Fatal("expected error for blocked module, got nil")
 	}
