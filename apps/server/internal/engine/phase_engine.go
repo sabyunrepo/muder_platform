@@ -33,7 +33,7 @@ type PhaseEngine struct {
 	audit     AuditLogger
 	logger    Logger
 	phases    []PhaseDefinition
-	current   int  // index into phases, -1 = not started
+	current   int // index into phases, -1 = not started
 	started   bool
 	stopped   bool
 }
