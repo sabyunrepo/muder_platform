@@ -4,7 +4,8 @@ import { WsEventType } from "@mmp/shared";
 import type { Player } from "@mmp/shared";
 
 import { Button, Badge, Card, Select } from "@/shared/components/ui";
-import { useGameStore, selectAlivePlayers, selectMyPlayerId } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
+import { selectAlivePlayers, selectMyPlayerId } from "@/stores/gameSelectors";
 import { useModuleStore } from "@/stores/moduleStoreFactory";
 
 // ---------------------------------------------------------------------------

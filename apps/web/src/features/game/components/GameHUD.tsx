@@ -6,7 +6,7 @@ import {
   getPhaseIndex,
   getPhaseCount,
 } from "@mmp/game-logic";
-import { useGameStore } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
 import { PHASE_LABEL, PHASE_COLOR } from "../constants";
 
 const SoundControl = lazy(() =>

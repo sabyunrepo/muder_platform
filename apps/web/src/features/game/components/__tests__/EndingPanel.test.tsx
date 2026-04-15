@@ -5,8 +5,8 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/stores/gameStore", () => ({
-  useGameStore: (selector: (s: unknown) => unknown) =>
+vi.mock("@/stores/gameSessionStore", () => ({
+  useGameSessionStore: (selector: (s: unknown) => unknown) =>
     selector({ sessionId: "sess-1" }),
 }));
 

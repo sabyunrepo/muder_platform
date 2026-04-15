@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { GamePhase } from "@mmp/shared";
-import { useGameStore } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
 import { PHASE_LABEL } from "../constants";
 
 // ---------------------------------------------------------------------------

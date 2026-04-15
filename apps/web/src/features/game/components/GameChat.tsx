@@ -4,7 +4,7 @@ import type { WsEventType } from "@mmp/shared";
 import { WsEventType as Events } from "@mmp/shared";
 import { Button, Input } from "@/shared/components/ui";
 import { useWsEvent } from "@/hooks/useWsEvent";
-import { useGameStore } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
 import { useModuleStore } from "@/stores/moduleStoreFactory";
 import { ChatMessage } from "./ChatMessage";
 import type { ChatMessageProps } from "./ChatMessage";

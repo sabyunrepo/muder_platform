@@ -3,7 +3,7 @@ import type { GamePhase, GameState, Player } from "@mmp/shared";
 import { syncServerTime } from "@mmp/game-logic";
 
 import { useAuthStore } from "@/stores/authStore";
-import { useGameStore } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
 import { getModuleStore, clearModuleStores } from "@/stores/moduleStoreFactory";
 import { useWsEvent } from "@/hooks/useWsEvent";
 

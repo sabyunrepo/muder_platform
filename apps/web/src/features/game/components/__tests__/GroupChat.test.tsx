@@ -30,8 +30,8 @@ vi.mock("@/stores/moduleStoreFactory", () => ({
 // Mock: gameStore
 // ---------------------------------------------------------------------------
 
-vi.mock("@/stores/gameStore", () => ({
-  useGameStore: (selector: (s: unknown) => unknown) => {
+vi.mock("@/stores/gameSessionStore", () => ({
+  useGameSessionStore: (selector: (s: unknown) => unknown) => {
     const fakeState = {
       players: mockPlayers,
       myPlayerId: mockMyPlayerId,

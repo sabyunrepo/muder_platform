@@ -8,7 +8,8 @@ import { MessageSquare, AlertTriangle, Target } from "lucide-react";
 import { Spinner, Button } from "@/shared/components/ui";
 import { useWsClient } from "@/hooks/useWsClient";
 import { useGameSync } from "@/hooks/useGameSync";
-import { useGameStore, selectPhase, selectIsGameActive } from "@/stores/gameStore";
+import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
+import { selectPhase, selectIsGameActive } from "@/stores/gameSelectors";
 import { clearModuleStores } from "@/stores/moduleStoreFactory";
 
 import {

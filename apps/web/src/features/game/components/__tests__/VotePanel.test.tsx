@@ -16,14 +16,17 @@ const { mockModuleData, mockPlayers, mockMyPlayerId } = vi.hoisted(() => ({
 // Mock: gameStore
 // ---------------------------------------------------------------------------
 
-vi.mock("@/stores/gameStore", () => ({
-  useGameStore: (selector: (s: unknown) => unknown) => {
+vi.mock("@/stores/gameSessionStore", () => ({
+  useGameSessionStore: (selector: (s: unknown) => unknown) => {
     const state = {
       players: mockPlayers,
       myPlayerId: mockMyPlayerId,
     };
     return selector(state);
   },
+}));
+
+vi.mock("@/stores/gameSelectors", () => ({
   selectAlivePlayers: (s: { players: Array<{ isAlive: boolean }> }) =>
     s.players.filter((p) => p.isAlive),
   selectMyPlayerId: (s: { myPlayerId: string }) => s.myPlayerId,
