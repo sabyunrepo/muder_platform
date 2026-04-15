@@ -5,7 +5,38 @@ import (
 	"testing"
 )
 
+// envVarsToClean lists all env vars read by Load() so tests start from a clean state.
+var envVarsToClean = []string{
+	"PORT", "APP_ENV", "LOG_LEVEL", "DATABASE_URL", "REDIS_URL",
+	"CORS_ORIGINS", "BASE_URL", "JWT_SECRET", "SENTRY_DSN",
+	"OTEL_EXPORTER_OTLP_ENDPOINT", "APP_VERSION",
+	"LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET",
+	"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
+	"R2_BUCKET_NAME", "R2_PUBLIC_URL",
+	"GAME_RUNTIME_V2",
+}
+
+// cleanEnv unsets all config-related env vars for the duration of the test,
+// restoring the originals via t.Cleanup. This ensures Load() sees a pristine
+// environment regardless of what is set in the caller's shell or CI.
+func cleanEnv(t *testing.T) {
+	t.Helper()
+	for _, k := range envVarsToClean {
+		prev, existed := os.LookupEnv(k)
+		if err := os.Unsetenv(k); err != nil {
+			t.Fatalf("cleanEnv: failed to unset %s: %v", k, err)
+		}
+		k := k // capture for closure
+		if existed {
+			t.Cleanup(func() { os.Setenv(k, prev) }) //nolint:errcheck
+		} else {
+			t.Cleanup(func() { os.Unsetenv(k) }) //nolint:errcheck
+		}
+	}
+}
+
 func TestLoad_Defaults(t *testing.T) {
+	cleanEnv(t)
 	// Set required fields so Load() doesn't fail.
 	t.Setenv("DATABASE_URL", "postgres://localhost/test")
 	t.Setenv("REDIS_URL", "redis://localhost:6379")
@@ -30,7 +61,7 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.RedisURL != "redis://localhost:6379" {
 		t.Errorf("expected RedisURL from env, got %q", cfg.RedisURL)
 	}
-	if cfg.CORSOrigins != "http://localhost:5173" {
+	if cfg.CORSOrigins != "http://localhost:3000,http://localhost:5173" {
 		t.Errorf("expected CORSOrigins default, got %q", cfg.CORSOrigins)
 	}
 	if cfg.BaseURL != "http://localhost:5173" {
@@ -39,6 +70,7 @@ func TestLoad_Defaults(t *testing.T) {
 }
 
 func TestLoad_CustomValues(t *testing.T) {
+	cleanEnv(t)
 	t.Setenv("PORT", "9090")
 	t.Setenv("APP_ENV", "production")
 	t.Setenv("LOG_LEVEL", "info")
@@ -70,8 +102,8 @@ func TestLoad_CustomValues(t *testing.T) {
 }
 
 func TestLoad_MissingDatabaseURL(t *testing.T) {
-	// Unset DATABASE_URL, set REDIS_URL.
-	os.Unsetenv("DATABASE_URL")
+	cleanEnv(t)
+	// DATABASE_URL intentionally not set; only REDIS_URL provided.
 	t.Setenv("REDIS_URL", "redis://localhost:6379")
 
 	_, err := Load()
@@ -81,9 +113,9 @@ func TestLoad_MissingDatabaseURL(t *testing.T) {
 }
 
 func TestLoad_MissingRedisURL(t *testing.T) {
-	// Set DATABASE_URL, unset REDIS_URL.
+	cleanEnv(t)
+	// REDIS_URL intentionally not set; only DATABASE_URL provided.
 	t.Setenv("DATABASE_URL", "postgres://localhost/test")
-	os.Unsetenv("REDIS_URL")
 
 	_, err := Load()
 	if err == nil {
@@ -92,6 +124,7 @@ func TestLoad_MissingRedisURL(t *testing.T) {
 }
 
 func TestLoad_InvalidPort(t *testing.T) {
+	cleanEnv(t)
 	t.Setenv("PORT", "not-a-number")
 	t.Setenv("DATABASE_URL", "postgres://localhost/test")
 	t.Setenv("REDIS_URL", "redis://localhost:6379")

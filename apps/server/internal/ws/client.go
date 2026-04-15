@@ -38,14 +38,14 @@ type ClientHub interface {
 
 // Client represents a single WebSocket connection (one player).
 type Client struct {
-	ID        uuid.UUID
-	SessionID uuid.UUID // game session this client belongs to (zero if lobby)
-	conn      *websocket.Conn
-	hub       ClientHub
-	send      chan []byte
-	seq       uint64 // monotonic server sequence number (atomic)
-	closed    atomic.Bool
-	logger    zerolog.Logger
+	ID         uuid.UUID
+	SessionID  uuid.UUID // game session this client belongs to (zero if lobby)
+	conn       *websocket.Conn
+	hub        ClientHub
+	send       chan []byte
+	seq        uint64 // monotonic server sequence number (atomic)
+	closed     atomic.Bool
+	logger     zerolog.Logger
 	closedOnce sync.Once
 }
 

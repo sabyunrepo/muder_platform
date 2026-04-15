@@ -64,10 +64,10 @@ type ChatRoomSummary struct {
 
 // ChatMemberResponse is a single member of a chat room.
 type ChatMemberResponse struct {
-	UserID    uuid.UUID `json:"user_id"`
-	Nickname  string    `json:"nickname"`
-	AvatarURL string    `json:"avatar_url"`
-	JoinedAt  time.Time `json:"joined_at"`
+	UserID     uuid.UUID `json:"user_id"`
+	Nickname   string    `json:"nickname"`
+	AvatarURL  string    `json:"avatar_url"`
+	JoinedAt   time.Time `json:"joined_at"`
 	LastReadAt time.Time `json:"last_read_at"`
 }
 

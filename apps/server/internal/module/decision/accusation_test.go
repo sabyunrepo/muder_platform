@@ -160,13 +160,13 @@ func TestAccusationModule_AccuseCreatesAccusation(t *testing.T) {
 
 func TestAccusationModule_Vote(t *testing.T) {
 	tests := []struct {
-		name            string
-		config          string
-		guiltyVotes     int
-		totalVoters     int
-		eligibleVoters  int
-		wantExpelled    bool
-		wantResolved    bool
+		name           string
+		config         string
+		guiltyVotes    int
+		totalVoters    int
+		eligibleVoters int
+		wantExpelled   bool
+		wantResolved   bool
 	}{
 		{
 			name:           "majority guilty -> expelled",

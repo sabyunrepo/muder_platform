@@ -379,7 +379,7 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return nil, apperror.Internal("failed to create DM room")
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	lockKey := dmLockKey(userID, otherID)
 	if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock($1)", lockKey); err != nil {
@@ -395,7 +395,7 @@ func (s *chatService) GetOrCreateDMRoom(ctx context.Context, userID, otherID uui
 		UserID_2: otherID,
 	})
 	if err == nil {
-		tx.Rollback(ctx)
+		_ = tx.Rollback(ctx)
 		return s.buildChatRoomResponse(ctx, room)
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -460,7 +460,7 @@ func (s *chatService) CreateGroupRoom(ctx context.Context, creatorID uuid.UUID, 
 		s.logger.Error().Err(err).Msg("failed to begin transaction")
 		return nil, apperror.Internal("failed to create group room")
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) //nolint:errcheck
 
 	qtx := s.queries.WithTx(tx)
 

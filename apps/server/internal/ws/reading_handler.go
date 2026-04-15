@@ -14,8 +14,8 @@ import (
 // Reading message types — both directions.
 const (
 	// C→S
-	TypeReadingAdvance     = "reading:advance"
-	TypeReadingVoiceEnded  = "reading:voice_ended"
+	TypeReadingAdvance    = "reading:advance"
+	TypeReadingVoiceEnded = "reading:voice_ended"
 
 	// S→C
 	TypeReadingState       = "reading:state"
@@ -369,7 +369,7 @@ func (h *ReadingWSHandler) ForwardEvent(sessionID uuid.UUID, eventType string, p
 	// reading.started needs per-line PascalCase → camelCase conversion
 	// because the engine module publishes raw storage shapes. All other
 	// reading.* events already use camelCase on the wire.
-	var wirePayload any = payload
+	wirePayload := payload
 	if eventType == "reading.started" {
 		wirePayload = h.convertReadingStartedPayload(sessionID, payload)
 	}

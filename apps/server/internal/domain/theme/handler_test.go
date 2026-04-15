@@ -106,20 +106,20 @@ func TestGetTheme_Success(t *testing.T) {
 			}
 			return &ThemeResponse{
 				ThemeSummary: ThemeSummary{
-					ID:         tid,
-					Title:      "Mystery Manor",
-					Slug:       "mystery-manor",
-					MinPlayers: 4,
-					MaxPlayers: 8,
+					ID:          tid,
+					Title:       "Mystery Manor",
+					Slug:        "mystery-manor",
+					MinPlayers:  4,
+					MaxPlayers:  8,
 					DurationMin: 90,
-					Price:      2000,
-					CreatorID:  uuid.New(),
+					Price:       2000,
+					CreatorID:   uuid.New(),
 				},
-				Status:     "PUBLISHED",
-				ConfigJson: json.RawMessage(`{"key":"value"}`),
-				Version:    1,
+				Status:      "PUBLISHED",
+				ConfigJson:  json.RawMessage(`{"key":"value"}`),
+				Version:     1,
 				PublishedAt: &now,
-				CreatedAt:  now,
+				CreatedAt:   now,
 			}, nil
 		},
 	}
@@ -189,17 +189,17 @@ func TestGetThemeBySlug_Success(t *testing.T) {
 			}
 			return &ThemeResponse{
 				ThemeSummary: ThemeSummary{
-					ID:         uuid.New(),
-					Title:      "Dark Mansion",
-					Slug:       "dark-mansion",
-					MinPlayers: 3,
-					MaxPlayers: 6,
+					ID:          uuid.New(),
+					Title:       "Dark Mansion",
+					Slug:        "dark-mansion",
+					MinPlayers:  3,
+					MaxPlayers:  6,
 					DurationMin: 45,
-					Price:      500,
-					CreatorID:  uuid.New(),
+					Price:       500,
+					CreatorID:   uuid.New(),
 				},
-				Status:  "PUBLISHED",
-				Version: 2,
+				Status:    "PUBLISHED",
+				Version:   2,
 				CreatedAt: time.Now().UTC(),
 			}, nil
 		},

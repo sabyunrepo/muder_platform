@@ -161,7 +161,6 @@ export function CoverImageCropUpload({
                 minWidth={50}
                 minHeight={33}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   ref={imgRef}
                   src={srcUrl}

@@ -37,13 +37,13 @@ type ProfileResponse struct {
 
 // PublicProfileResponse is the subset of profile visible to other users.
 type PublicProfileResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Nickname  string    `json:"nickname"`
-	AvatarURL *string   `json:"avatar_url,omitempty"`
-	Bio       *string   `json:"bio,omitempty"`
-	TotalGames int32    `json:"total_games"`
-	WinCount   int32    `json:"win_count"`
-	CreatedAt  string   `json:"created_at"`
+	ID         uuid.UUID `json:"id"`
+	Nickname   string    `json:"nickname"`
+	AvatarURL  *string   `json:"avatar_url,omitempty"`
+	Bio        *string   `json:"bio,omitempty"`
+	TotalGames int32     `json:"total_games"`
+	WinCount   int32     `json:"win_count"`
+	CreatedAt  string    `json:"created_at"`
 }
 
 // UpdateProfileRequest is the payload for updating a user's profile.

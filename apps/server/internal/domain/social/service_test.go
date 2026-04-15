@@ -22,15 +22,15 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockFriendService struct {
-	sendRequestFn        func(ctx context.Context, requesterID, addresseeID uuid.UUID) (*FriendshipResponse, error)
-	acceptRequestFn      func(ctx context.Context, friendshipID, userID uuid.UUID) (*FriendshipResponse, error)
-	rejectRequestFn      func(ctx context.Context, friendshipID, userID uuid.UUID) error
-	removeFriendFn       func(ctx context.Context, friendshipID, userID uuid.UUID) error
-	listFriendsFn        func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]FriendResponse, error)
-	listPendingFn        func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]PendingRequestResponse, error)
-	blockUserFn          func(ctx context.Context, blockerID, blockedID uuid.UUID) error
-	unblockUserFn        func(ctx context.Context, blockerID, blockedID uuid.UUID) error
-	listBlocksFn         func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]BlockResponse, error)
+	sendRequestFn   func(ctx context.Context, requesterID, addresseeID uuid.UUID) (*FriendshipResponse, error)
+	acceptRequestFn func(ctx context.Context, friendshipID, userID uuid.UUID) (*FriendshipResponse, error)
+	rejectRequestFn func(ctx context.Context, friendshipID, userID uuid.UUID) error
+	removeFriendFn  func(ctx context.Context, friendshipID, userID uuid.UUID) error
+	listFriendsFn   func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]FriendResponse, error)
+	listPendingFn   func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]PendingRequestResponse, error)
+	blockUserFn     func(ctx context.Context, blockerID, blockedID uuid.UUID) error
+	unblockUserFn   func(ctx context.Context, blockerID, blockedID uuid.UUID) error
+	listBlocksFn    func(ctx context.Context, userID uuid.UUID, limit, offset int32) ([]BlockResponse, error)
 }
 
 func (m *mockFriendService) SendRequest(ctx context.Context, requesterID, addresseeID uuid.UUID) (*FriendshipResponse, error) {

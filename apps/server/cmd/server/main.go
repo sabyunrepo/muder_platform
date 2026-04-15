@@ -106,7 +106,7 @@ func main() {
 	if err != nil {
 		logger.Warn().Err(err).Msg("otel init failed, continuing without tracing")
 	} else {
-		defer otelCleanup(context.Background())
+		defer otelCleanup(context.Background()) //nolint:errcheck
 	}
 
 	// 3. PostgreSQL

@@ -136,7 +136,6 @@ export function StoryTab({ themeId }: StoryTabProps) {
             {previewHtml ? (
               <div
                 className="prose prose-invert prose-sm prose-headings:font-mono prose-strong:text-amber-400 max-w-none px-5 py-4"
-                // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: previewHtml }}
               />
             ) : (

@@ -9,10 +9,10 @@ import (
 
 // NodeType constants for flow graph nodes.
 const (
-	NodeTypeStart   = "start"
-	NodeTypePhase   = "phase"
-	NodeTypeBranch  = "branch"
-	NodeTypeEnding  = "ending"
+	NodeTypeStart  = "start"
+	NodeTypePhase  = "phase"
+	NodeTypeBranch = "branch"
+	NodeTypeEnding = "ending"
 )
 
 // FlowNode represents a node in the game flow canvas.

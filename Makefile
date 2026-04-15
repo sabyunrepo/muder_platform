@@ -1,4 +1,4 @@
-.PHONY: up down build build-no-cache logs ps
+.PHONY: up down build build-no-cache logs ps lint lint-go lint-web
 
 # ---------------------------------------------------------------------------
 # Core commands
@@ -41,6 +41,21 @@ logs:
 ## ps — Show running services
 ps:
 	docker compose ps
+
+# ---------------------------------------------------------------------------
+# Lint
+# ---------------------------------------------------------------------------
+
+## lint — Run all linters (Go + Web)
+lint: lint-go lint-web
+
+## lint-go — Run golangci-lint v2 on apps/server (requires golangci-lint v2.11.4+)
+lint-go:
+	cd apps/server && golangci-lint run ./...
+
+## lint-web — Run ESLint on apps/web
+lint-web:
+	cd apps/web && pnpm lint
 
 # Prevent make from treating 'dev'/'prod' as file targets
 dev prod:

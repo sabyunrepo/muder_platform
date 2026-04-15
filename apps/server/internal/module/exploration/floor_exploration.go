@@ -133,8 +133,8 @@ func (m *FloorExplorationModule) SupportedActions() []engine.PhaseAction {
 }
 
 type floorExplorationState struct {
-	PlayerFloors   map[uuid.UUID]string `json:"playerFloors"`
-	FloorOccupancy map[string]int       `json:"floorOccupancy"`
+	PlayerFloors   map[uuid.UUID]string   `json:"playerFloors"`
+	FloorOccupancy map[string]int         `json:"floorOccupancy"`
 	Config         floorExplorationConfig `json:"config"`
 }
 

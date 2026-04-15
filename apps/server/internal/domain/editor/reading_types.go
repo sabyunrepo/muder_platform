@@ -14,9 +14,9 @@ const (
 
 // Reading advanceBy modes (must match progression.ReadingModule).
 const (
-	AdvanceByVoice    = "voice"
-	AdvanceByGM       = "gm"
-	AdvanceByRolePfx  = "role:"
+	AdvanceByVoice   = "voice"
+	AdvanceByGM      = "gm"
+	AdvanceByRolePfx = "role:"
 )
 
 // ReadingLineDTO is the JSON shape of a single reading line as stored in

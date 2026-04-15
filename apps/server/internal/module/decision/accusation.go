@@ -17,11 +17,11 @@ func init() {
 
 // AccusationConfig defines the settings for the accusation module.
 type AccusationConfig struct {
-	MaxPerRound    int  `json:"maxPerRound"`    // default 1
-	DefenseTime    int  `json:"defenseTime"`    // seconds, default 60
-	VoteThreshold  int  `json:"voteThreshold"`  // %, default 50
+	MaxPerRound     int  `json:"maxPerRound"`     // default 1
+	DefenseTime     int  `json:"defenseTime"`     // seconds, default 60
+	VoteThreshold   int  `json:"voteThreshold"`   // %, default 50
 	AllowSelfAccuse bool `json:"allowSelfAccuse"` // default false
-	DeadCanAccuse  bool `json:"deadCanAccuse"`  // default false
+	DeadCanAccuse   bool `json:"deadCanAccuse"`   // default false
 }
 
 // Accusation represents an active accusation.
@@ -66,11 +66,11 @@ func (m *AccusationModule) Init(_ context.Context, deps engine.ModuleDeps, confi
 
 	// Apply defaults.
 	m.config = AccusationConfig{
-		MaxPerRound:    1,
-		DefenseTime:    60,
-		VoteThreshold:  50,
+		MaxPerRound:     1,
+		DefenseTime:     60,
+		VoteThreshold:   50,
 		AllowSelfAccuse: false,
-		DeadCanAccuse:  false,
+		DeadCanAccuse:   false,
 	}
 
 	if config != nil && len(config) > 0 {
@@ -280,11 +280,11 @@ func (m *AccusationModule) Schema() json.RawMessage {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"maxPerRound":    map[string]any{"type": "integer", "default": 1, "minimum": 1},
-			"defenseTime":    map[string]any{"type": "integer", "default": 60, "minimum": 10, "description": "Defense time in seconds"},
-			"voteThreshold":  map[string]any{"type": "integer", "default": 50, "minimum": 1, "maximum": 100, "description": "Guilty vote % to expel"},
+			"maxPerRound":     map[string]any{"type": "integer", "default": 1, "minimum": 1},
+			"defenseTime":     map[string]any{"type": "integer", "default": 60, "minimum": 10, "description": "Defense time in seconds"},
+			"voteThreshold":   map[string]any{"type": "integer", "default": 50, "minimum": 1, "maximum": 100, "description": "Guilty vote % to expel"},
 			"allowSelfAccuse": map[string]any{"type": "boolean", "default": false},
-			"deadCanAccuse":  map[string]any{"type": "boolean", "default": false},
+			"deadCanAccuse":   map[string]any{"type": "boolean", "default": false},
 		},
 		"additionalProperties": false,
 	}

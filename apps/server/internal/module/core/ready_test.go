@@ -18,9 +18,9 @@ func TestReadyModule_Name(t *testing.T) {
 
 func TestReadyModule_Init(t *testing.T) {
 	tests := []struct {
-		name         string
-		config       json.RawMessage
-		wantTotal    int
+		name      string
+		config    json.RawMessage
+		wantTotal int
 	}{
 		{
 			name:      "nil config",

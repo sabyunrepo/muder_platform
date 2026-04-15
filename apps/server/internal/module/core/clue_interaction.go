@@ -393,11 +393,11 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 		"type": "object",
 		"properties": map[string]any{
 			"drawLimit":            map[string]any{"type": "integer", "default": 5, "minimum": 1, "description": "Maximum clue draws per player per phase"},
-			"initialClueLevel":    map[string]any{"type": "integer", "default": 1, "minimum": 1, "description": "Starting clue level"},
-			"cumulativeLevel":     map[string]any{"type": "boolean", "default": true, "description": "Whether higher levels include lower-level clues"},
-			"duplicatePolicy":     map[string]any{"type": "string", "enum": []string{"exclusive", "shared", "copy"}, "default": "exclusive", "description": "How duplicate clue draws are handled"},
+			"initialClueLevel":     map[string]any{"type": "integer", "default": 1, "minimum": 1, "description": "Starting clue level"},
+			"cumulativeLevel":      map[string]any{"type": "boolean", "default": true, "description": "Whether higher levels include lower-level clues"},
+			"duplicatePolicy":      map[string]any{"type": "string", "enum": []string{"exclusive", "shared", "copy"}, "default": "exclusive", "description": "How duplicate clue draws are handled"},
 			"commonClueVisibility": map[string]any{"type": "string", "enum": []string{"all", "finder_only", "same_location"}, "default": "all", "description": "Who can see common clues"},
-			"autoRevealClues":     map[string]any{"type": "boolean", "default": false, "description": "Automatically reveal clues when drawn"},
+			"autoRevealClues":      map[string]any{"type": "boolean", "default": false, "description": "Automatically reveal clues when drawn"},
 		},
 		"additionalProperties": false,
 	}
@@ -406,12 +406,12 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 }
 
 type clueInteractionState struct {
-	PlayerDrawCounts map[uuid.UUID]int        `json:"playerDrawCounts"`
-	CurrentClueLevel int                      `json:"currentClueLevel"`
-	AcquiredClues    map[uuid.UUID][]string   `json:"acquiredClues"`
-	Config           ClueInteractionConfig    `json:"config"`
+	PlayerDrawCounts map[uuid.UUID]int         `json:"playerDrawCounts"`
+	CurrentClueLevel int                       `json:"currentClueLevel"`
+	AcquiredClues    map[uuid.UUID][]string    `json:"acquiredClues"`
+	Config           ClueInteractionConfig     `json:"config"`
 	UsedItems        map[uuid.UUID][]uuid.UUID `json:"usedItems"`
-	ActiveItemUse    *ItemUseState            `json:"activeItemUse,omitempty"`
+	ActiveItemUse    *ItemUseState             `json:"activeItemUse,omitempty"`
 }
 
 func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {

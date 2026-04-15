@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
-	"github.com/mmp-platform/server/internal/template"
 	_ "github.com/mmp-platform/server/internal/module" // registers all modules via init()
+	"github.com/mmp-platform/server/internal/template"
 )
 
 // noopLogger satisfies engine.Logger with no output.

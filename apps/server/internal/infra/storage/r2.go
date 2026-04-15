@@ -21,7 +21,7 @@ const maxDeleteBatch = 1000
 type R2Config struct {
 	AccountID       string
 	AccessKeyID     string
-	SecretAccessKey  string
+	SecretAccessKey string
 	BucketName      string
 	PublicURL       string // CDN URL prefix (e.g., https://media.mmp.app)
 }

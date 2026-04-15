@@ -214,10 +214,10 @@ func (r *RedisPubSub) Close() error {
 // NoopPubSub is a no-op implementation of PubSub for single-node deployments and testing.
 type NoopPubSub struct{}
 
-func (NoopPubSub) Publish(context.Context, uuid.UUID, *Envelope) error   { return nil }
-func (NoopPubSub) Subscribe(context.Context, uuid.UUID) error             { return nil }
-func (NoopPubSub) Unsubscribe(context.Context, uuid.UUID) error           { return nil }
-func (NoopPubSub) Close() error                                           { return nil }
+func (NoopPubSub) Publish(context.Context, uuid.UUID, *Envelope) error { return nil }
+func (NoopPubSub) Subscribe(context.Context, uuid.UUID) error          { return nil }
+func (NoopPubSub) Unsubscribe(context.Context, uuid.UUID) error        { return nil }
+func (NoopPubSub) Close() error                                        { return nil }
 
 // compile-time interface checks
 var (

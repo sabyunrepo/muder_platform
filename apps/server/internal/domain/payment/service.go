@@ -234,13 +234,13 @@ func (s *paymentService) GetPaymentHistory(ctx context.Context, userID uuid.UUID
 // toPaymentResponse converts a db.Payment to a PaymentResponse.
 func toPaymentResponse(p db.Payment) *PaymentResponse {
 	resp := &PaymentResponse{
-		ID:        p.ID,
-		PackageID: p.PackageID,
-		Status:    p.Status,
-		AmountKRW: int(p.AmountKrw),
-		BaseCoins: int(p.BaseCoins),
+		ID:         p.ID,
+		PackageID:  p.PackageID,
+		Status:     p.Status,
+		AmountKRW:  int(p.AmountKrw),
+		BaseCoins:  int(p.BaseCoins),
 		BonusCoins: int(p.BonusCoins),
-		CreatedAt: p.CreatedAt,
+		CreatedAt:  p.CreatedAt,
 	}
 	if p.PaymentKey.Valid {
 		key := p.PaymentKey.String
