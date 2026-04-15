@@ -30,6 +30,10 @@ const (
 	// KindEngineStart starts the PhaseEngine with the provided module configs.
 	// Used by startModularGame to initialize the engine inside the actor goroutine.
 	KindEngineStart
+	// KindSnapshotFor requests a player-aware engine state rebuild and WS send.
+	// Runs inside the actor goroutine so PhaseEngine is touched thread-safely.
+	// (Phase 18.1 B-2: per-player snapshot redaction.)
+	KindSnapshotFor
 )
 
 // SessionMessage is the unified message type passed into Session.inbox.

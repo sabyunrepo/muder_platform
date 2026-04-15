@@ -256,9 +256,10 @@ func TestSnapshot_SendSnapshotOnReconnect(t *testing.T) {
 	}
 }
 
-// TestSnapshot_NoSendWhenCacheEmpty verifies that SendSnapshot is silent when
-// there is no snapshot in Redis (e.g. brand-new session).
-func TestSnapshot_NoSendWhenCacheEmpty(t *testing.T) {
+// TestSnapshot_SendsLivePlayerStateWhenCacheEmpty verifies that for a running
+// session SendSnapshot reconstructs the envelope from the live engine via
+// BuildStateFor even when Redis has no cached blob yet. (Phase 18.1 B-2)
+func TestSnapshot_SendsLivePlayerStateWhenCacheEmpty(t *testing.T) {
 	fc := newFakeCache()
 	sender := &fakeSender{}
 	sessionID, _, m := startWithSnapshot(t, fc, sender)
@@ -267,10 +268,19 @@ func TestSnapshot_NoSendWhenCacheEmpty(t *testing.T) {
 	playerID := uuid.New()
 	m.OnPlayerRejoined(sessionID, playerID)
 
-	// Give goroutine time to run.
-	time.Sleep(50 * time.Millisecond)
+	// Poll for the actor to flush the player-aware snapshot.
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) {
+		if sender.count() > 0 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
 
-	if sender.count() != 0 {
-		t.Errorf("expected no sends when cache empty, got %d", sender.count())
+	if sender.count() == 0 {
+		t.Fatal("expected live player-aware snapshot to be sent, got none")
+	}
+	if env := sender.lastEnvelope(); env.Type != "session:state" {
+		t.Errorf("envelope type: got %q, want %q", env.Type, "session:state")
 	}
 }
