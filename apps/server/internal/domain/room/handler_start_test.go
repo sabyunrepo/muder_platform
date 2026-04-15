@@ -23,7 +23,7 @@ func TestStartRoom_Success(t *testing.T) {
 	}
 	h := NewHandler(svc)
 
-	body, _ := json.Marshal(StartRoomRequest{ConfigJson: []byte(`{"modules":[]}`)})
+	body, _ := json.Marshal(StartRoomRequest{ConfigJSON: []byte(`{"modules":[]}`)})
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID.String()+"/start", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = withAuth(req, hostID)

@@ -1,0 +1,131 @@
+name: Phase 18.1 — Real-Backend E2E (nightly)
+
+# This is an OPTIONAL job that is NOT triggered on PR push.
+# It runs nightly or can be triggered manually.
+# It starts a real postgres/redis + Go server with GAME_RUNTIME_V2=true
+# and runs the real-backend Playwright smoke suite.
+
+on:
+  schedule:
+    # 02:00 UTC every day
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      game_runtime_v2:
+        description: "Enable GAME_RUNTIME_V2 feature flag"
+        required: false
+        default: "true"
+        type: string
+
+concurrency:
+  group: phase-18.1-real-backend
+  cancel-in-progress: true
+
+jobs:
+  real-backend-e2e:
+    name: Real-Backend E2E Smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: mmp_test
+          POSTGRES_USER: mmp
+          POSTGRES_PASSWORD: mmp_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://mmp:mmp_test@localhost:5432/mmp_test?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      GAME_RUNTIME_V2: ${{ github.event.inputs.game_runtime_v2 || 'true' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: apps/server/go.sum
+
+      - name: Build server
+        working-directory: apps/server
+        run: go build -o /tmp/mmp-server ./cmd/server
+
+      - name: Start server in background
+        run: |
+          /tmp/mmp-server &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          # Wait for the health endpoint to respond
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health; then
+              echo "Server ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start frontend dev server
+        working-directory: apps/web
+        run: |
+          pnpm dev &
+          echo "WEB_PID=$!" >> "$GITHUB_ENV"
+          # Wait for Vite to be ready
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000; then
+              echo "Frontend ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Run real-backend E2E smoke
+        working-directory: apps/web
+        env:
+          PLAYWRIGHT_BACKEND: "true"
+        run: pnpm exec playwright test e2e/game-session-live.spec.ts --reporter=list
+
+      - name: Stop background processes
+        if: always()
+        run: |
+          [ -n "$SERVER_PID" ] && kill "$SERVER_PID" || true
+          [ -n "$WEB_PID" ] && kill "$WEB_PID" || true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-real-backend-report
+          path: apps/web/playwright-report/
+          retention-days: 7
