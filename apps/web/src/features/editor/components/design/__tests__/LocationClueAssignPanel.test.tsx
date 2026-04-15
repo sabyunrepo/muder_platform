@@ -310,6 +310,52 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     expect(toastError).toHaveBeenCalledWith('단서 배정 저장에 실패했습니다');
   });
 
+  it('연속 토글에서 첫 mutation 실패 시 첫 토글 직전 상태로 rollback 된다 (M5 closure)', () => {
+    // 시나리오:
+    //   1) 초기 config_json = {}
+    //   2) 첫 토글 (clue-1 추가) — inflight
+    //   3) 두 번째 토글 (clue-2 추가) — inflight. 캐시는 clue-1,clue-2 로 optimistic 업데이트됨
+    //   4) 첫 요청이 onError 콜백을 호출
+    //   → mutation-scoped closure 가 포착한 "빈 config_json" 으로 rollback 되어야 한다.
+    //      (잘못 구현하면 두 번째 토글 직전의 {clue-1} 로 돌아가 state 가 유실됨)
+    const deferred: Array<(opts: unknown) => void> = [];
+    mutateMock.mockImplementation((_cfg, opts) => {
+      // onError 를 나중에 호출할 수 있도록 저장만 한다.
+      deferred.push(() => opts?.onError?.(new Error('fail')));
+    });
+
+    const onChange = vi.fn();
+    const { qc } = renderQC(
+      <LocationClueAssignPanel
+        themeId="theme-1"
+        theme={baseTheme}
+        location={mockLocation}
+        onChange={onChange}
+      />,
+    );
+    // 초기 캐시: 배정 없음
+    qc.setQueryData(cacheKey, baseTheme);
+
+    // 1st toggle: clue-1 추가 → 캐시 optimistic = {locations:[{loc-1,[clue-1]}]}
+    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+
+    // 2nd toggle: 같은 컴포넌트의 `theme` prop 은 불변이므로 여전히 baseTheme 기준이지만,
+    // queryClient 캐시는 1차 optimistic 결과를 반영 중. 두 번째 commit 이 이 시점 캐시를
+    // previous 로 캡처하도록 fire.
+    fireEvent.click(screen.getByLabelText('편지 배정 토글'));
+
+    expect(deferred).toHaveLength(2);
+
+    // 1st mutation 실패 → 1st closure 의 previous (baseTheme, config_json={}) 로 롤백
+    deferred[0]({});
+
+    const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
+    // 핵심 검증: 첫 토글 직전 상태로 롤백 (빈 config_json).
+    // 단일 rollbackRef 구현이었다면 두 번째 토글 직전 스냅샷(clue-1 포함)으로 잘못 복원됨.
+    expect(cached?.config_json).toEqual({});
+    expect(toastError).toHaveBeenCalledWith('단서 배정 저장에 실패했습니다');
+  });
+
   it('theme 캐시가 없으면 mutate 만 호출되고 rollback 대상도 없다', () => {
     mutateMock.mockImplementation((_cfg, opts) => opts?.onError?.(new Error('fail')));
     const { qc } = renderQC(

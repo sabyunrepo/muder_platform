@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { toast } from 'sonner';
 import { Package, MapPin, Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -45,7 +45,6 @@ export function LocationClueAssignPanel({
   const clues = allClues ?? fetchedClues ?? [];
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
-  const rollbackRef = useRef<EditorThemeResponse | undefined>(undefined);
 
   const assignedIds = useMemo(
     () => readLocationClueIds(theme.config_json, location.id),
@@ -58,10 +57,11 @@ export function LocationClueAssignPanel({
 
     // Optimistic cache write: merge the next config into the theme snapshot so
     // the chip state reflects immediately without waiting for the PATCH round-trip.
+    // Capture `previous` in closure per mutation so concurrent toggles each
+    // rollback to their own pre-state instead of sharing a single ref slot.
     const cacheKey = editorKeys.theme(themeId);
     const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
     if (previous) {
-      rollbackRef.current = previous;
       queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
         ...previous,
         config_json: nextConfig,
@@ -74,8 +74,8 @@ export function LocationClueAssignPanel({
         onChange?.(next);
       },
       onError: () => {
-        if (rollbackRef.current) {
-          queryClient.setQueryData(cacheKey, rollbackRef.current);
+        if (previous) {
+          queryClient.setQueryData(cacheKey, previous);
         }
         toast.error('단서 배정 저장에 실패했습니다');
       },

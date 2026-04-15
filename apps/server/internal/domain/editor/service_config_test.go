@@ -1,16 +1,20 @@
 package editor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/middleware"
 )
 
 // TestUpdateConfigJson_Service_Success verifies the happy path: a correct
@@ -198,5 +202,76 @@ func TestUpdateConfigJson_NotFound(t *testing.T) {
 	}
 	if appErr.Code != apperror.ErrNotFound {
 		t.Errorf("expected NOT_FOUND, got %s", appErr.Code)
+	}
+}
+
+// TestUpdateConfigJson_AuditLog_EmitsInfoWithRequestID verifies the success
+// path emits a structured audit log with theme_id, version transitions, and
+// the request_id injected by middleware.RequestID into the context. This is
+// the audit trail we rely on for operational forensics (who changed what,
+// correlated across the full trace).
+func TestUpdateConfigJson_AuditLog_EmitsInfoWithRequestID(t *testing.T) {
+	f := setupFixture(t)
+
+	// Build a logger that writes JSON into a buffer so we can inspect the
+	// structured fields, then rebuild a service over the fixture's pool/q
+	// using that logger.
+	buf := &bytes.Buffer{}
+	auditLogger := zerolog.New(buf)
+	svc := NewService(f.q, f.pool, auditLogger)
+
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	// Simulate middleware.RequestID by running the call inside a real HTTP
+	// request context wrapped by the middleware — this guarantees we exercise
+	// the same code path middleware uses in production.
+	const wantRID = "test-req-id-abc"
+	req := httptest.NewRequest("POST", "/x", nil)
+	req.Header.Set("X-Request-ID", wantRID)
+
+	var innerErr error
+	handler := middleware.RequestID(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		_, innerErr = svc.UpdateConfigJson(r.Context(), creatorID, themeID,
+			json.RawMessage(`{"phases":["intro"]}`))
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), req)
+	if innerErr != nil {
+		t.Fatalf("UpdateConfigJson: %v", innerErr)
+	}
+
+	// Decode the last JSON line — there should be exactly one Info emission
+	// from the success path.
+	line := bytes.TrimSpace(buf.Bytes())
+	if len(line) == 0 {
+		t.Fatal("expected audit log line, got empty buffer")
+	}
+	var entry map[string]interface{}
+	if err := json.Unmarshal(line, &entry); err != nil {
+		t.Fatalf("unmarshal audit log line %q: %v", string(line), err)
+	}
+
+	if got := entry["message"]; got != "theme config updated" {
+		t.Errorf("message: want %q, got %v", "theme config updated", got)
+	}
+	if got := entry["level"]; got != "info" {
+		t.Errorf("level: want info, got %v", got)
+	}
+	if got := entry["theme_id"]; got != themeID.String() {
+		t.Errorf("theme_id: want %s, got %v", themeID, got)
+	}
+	if got := entry["creator_id"]; got != creatorID.String() {
+		t.Errorf("creator_id: want %s, got %v", creatorID, got)
+	}
+	if got := entry["request_id"]; got != wantRID {
+		t.Errorf("request_id: want %q, got %v", wantRID, got)
+	}
+	// version_from=1 (initial), version_to=2 after first update. JSON numbers
+	// decode as float64.
+	if got, _ := entry["version_from"].(float64); got != 1 {
+		t.Errorf("version_from: want 1, got %v", entry["version_from"])
+	}
+	if got, _ := entry["version_to"].(float64); got != 2 {
+		t.Errorf("version_to: want 2, got %v", entry["version_to"])
 	}
 }

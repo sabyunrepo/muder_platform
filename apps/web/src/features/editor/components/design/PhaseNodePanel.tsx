@@ -41,7 +41,6 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
   const queryClient = useQueryClient();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<FlowNodeData | null>(null);
-  const rollbackRef = useRef<FlowGraphResponse | undefined>(undefined);
   const data = node.data as FlowNodeData;
 
   /** Send the pending network write immediately and cancel the debounce timer. */
@@ -56,11 +55,12 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
 
     // Optimistic update: patch the node inside the flow-graph cache so other
     // subscribers (canvas) see the latest data without waiting for the PATCH
-    // response. Snapshot the previous graph for rollback on error.
+    // response. Capture the previous graph snapshot in closure for rollback on
+    // error — mutation-scoped so concurrent flushes don't overwrite each
+    // other's rollback targets.
     const cacheKey = flowKeys.graph(themeId);
     const previous = queryClient.getQueryData<FlowGraphResponse>(cacheKey);
     if (previous) {
-      rollbackRef.current = previous;
       queryClient.setQueryData<FlowGraphResponse>(cacheKey, {
         ...previous,
         nodes: previous.nodes.map((n) =>
@@ -73,27 +73,31 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
       { nodeId: node.id, body: { data: body } },
       {
         onError: () => {
-          if (rollbackRef.current) {
-            queryClient.setQueryData(cacheKey, rollbackRef.current);
+          if (previous) {
+            queryClient.setQueryData(cacheKey, previous);
           }
+          // On unmount, the toast surface may be torn down; sonner tolerates
+          // a post-unmount call (silent no-op if host is gone).
           toast.error("저장에 실패했습니다");
         },
       },
     );
   }, [node.id, queryClient, themeId, updateNode]);
 
+  // Keep the latest flush reference so the unmount cleanup routes through the
+  // same optimistic + rollback path instead of a raw mutate call (M1).
+  const flushRef = useRef(flush);
+  useEffect(() => {
+    flushRef.current = flush;
+  }, [flush]);
+
   useEffect(() => {
     return () => {
       // Fire any pending save on unmount so the user doesn't lose edits when
       // they switch nodes or close the panel within the debounce window.
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-      if (pendingRef.current) {
-        updateNode.mutate({ nodeId: node.id, body: { data: pendingRef.current } });
-        pendingRef.current = null;
-      }
+      // Delegates to flush() so optimistic cache write + rollback closure stay
+      // consistent with the blur/debounce paths.
+      flushRef.current();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

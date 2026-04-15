@@ -237,6 +237,36 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
     expect(toastError).toHaveBeenCalledWith("저장에 실패했습니다");
   });
 
+  it("unmount 시 pending 변경도 flush()와 동일한 optimistic+rollback 경로를 탄다 (M1)", () => {
+    // onError 를 즉시 trigger 해서 rollback 경로까지 검증
+    mutateMock.mockImplementation((_body, opts) => opts?.onError?.(new Error("fail")));
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const original = makeGraph();
+    qc.setQueryData(flowKeys.graph("t1"), original);
+
+    const { unmount } = render(
+      <QueryClientProvider client={qc}>
+        <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    fireEvent.change(labelInput, { target: { value: "unmount-flush" } });
+    // Do NOT advance timers or blur — leave a pending write.
+    expect(mutateMock).not.toHaveBeenCalled();
+
+    unmount();
+
+    // flush() 경로를 탔으므로 mutate 가 호출되고, onError 시 rollback + toast 가 수행된다.
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    const cached = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
+    expect(cached?.nodes[0].data.label).toBe("테스트"); // rolled back
+    expect(toastError).toHaveBeenCalledWith("저장에 실패했습니다");
+  });
+
   it("graph 캐시가 없을 때는 rollback 없이 mutate만 호출된다", () => {
     const qc = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
