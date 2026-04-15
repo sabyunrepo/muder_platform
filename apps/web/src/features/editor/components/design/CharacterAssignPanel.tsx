@@ -110,7 +110,15 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       }
 
       // --- Debounced network write (1500ms, flush-on-blur).
-      pendingRef.current = { ...(theme.config_json ?? {}), ...updates };
+      // Merge basis priority (H-W2-1): accumulated pending > optimistic cache >
+      // theme.config_json fallback. Prevents loss of earlier edits made within
+      // the same debounce window on different keys.
+      const basis =
+        pendingRef.current ??
+        queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json ??
+        theme.config_json ??
+        {};
+      pendingRef.current = { ...basis, ...updates };
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
         debounceRef.current = null;

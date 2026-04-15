@@ -207,6 +207,33 @@ describe('CharacterAssignPanel', () => {
     expect(mutateMock).toHaveBeenCalledTimes(1);
   });
 
+  it('디바운스 창 안 여러 키 연속 편집 시 모든 변경이 병합되어 저장된다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    // 1) Toggle a clue at t=0 → character_clues enters pendingRef.
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    // 2) Partial debounce elapses — no mutation yet.
+    await act(async () => { vi.advanceTimersByTime(150); });
+    expect(mutateMock).not.toHaveBeenCalled();
+
+    // 3) Add a mission → character_missions must merge with existing pending
+    //    character_clues rather than overwrite it.
+    fireEvent.click(screen.getByText('추가'));
+
+    // 4) Full debounce window from the latest edit → single mutation.
+    await act(async () => { vi.advanceTimersByTime(1500); });
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+
+    const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    const cc = payload.character_clues as Record<string, string[]> | undefined;
+    const cm = payload.character_missions as Record<string, unknown[]> | undefined;
+    expect(cc?.['char-1']).toContain('clue-1');
+    expect(cm?.['char-1']).toHaveLength(1);
+  });
+
   it('캐릭터가 없으면 안내 메시지를 표시한다', () => {
     useEditorCharactersMock.mockReturnValue({ data: [], isLoading: false });
     renderPanel();
