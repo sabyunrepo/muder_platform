@@ -318,212 +318,38 @@ func main() {
 	jwtCfg := middleware.JWTConfig{Secret: []byte(cfg.JWTSecret)}
 
 	// 18. REST API v1
+	publicDeps := publicDeps{
+		auth:     authHandler,
+		theme:    themeHandler,
+		template: templateHandler,
+		room:     roomHandler,
+		profile:  profileHandler,
+		payment:  paymentHandler,
+	}
+	authedDeps := authedDeps{
+		auth:         authHandler,
+		profile:      profileHandler,
+		voice:        voiceHandler,
+		room:         roomHandler,
+		payment:      paymentHandler,
+		coin:         coinHandler,
+		social:       socialHandler,
+		creator:      creatorHandler,
+		creatorAdmin: creatorAdminHandler,
+		editor:       editorHandler,
+		flow:         flowHandler,
+		media:        mediaHandler,
+		image:        imageHandler,
+		reading:      readingHandler,
+		admin:        adminHandler,
+		review:       reviewHandler,
+	}
 	r.Route("/api/v1", func(r chi.Router) {
-		// --- Public endpoints ---
-		r.Post("/auth/callback", authHandler.HandleCallback)
-		r.Post("/auth/register", authHandler.HandleRegister)
-		r.Post("/auth/login", authHandler.HandleLogin)
-		r.Post("/auth/refresh", authHandler.HandleRefresh)
+		registerPublicRoutes(r, publicDeps)
 
-		r.Get("/themes", themeHandler.ListPublished)
-		r.Get("/themes/{id}", themeHandler.GetTheme)
-		r.Get("/themes/slug/{slug}", themeHandler.GetThemeBySlug)
-		r.Get("/themes/{id}/characters", themeHandler.GetCharacters)
-
-		// Preset templates (Phase 18.4 W0 PR-1)
-		r.Get("/templates", templateHandler.ListTemplates)
-		r.Get("/templates/{id}", templateHandler.GetTemplate)
-		r.Get("/templates/{id}/schema", templateHandler.GetTemplateSchema)
-
-		r.Get("/rooms", roomHandler.ListWaitingRooms)
-		r.Get("/rooms/{id}", roomHandler.GetRoom)
-		r.Get("/rooms/code/{code}", roomHandler.GetRoomByCode)
-
-		r.Get("/users/{id}", profileHandler.GetPublicProfile)
-
-		// Payment (public — no JWT required) [S2]
-		r.Get("/payments/packages", paymentHandler.ListPackages)
-		r.Post("/payments/webhook", paymentHandler.HandleWebhook)
-
-		// --- Authenticated endpoints ---
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(jwtCfg))
-
-			// Auth
-			r.Post("/auth/logout", authHandler.HandleLogout)
-			r.Get("/auth/me", authHandler.HandleMe)
-			r.Delete("/auth/account", authHandler.HandleDeleteAccount)
-
-			// Profile
-			r.Get("/profile", profileHandler.GetProfile)
-			r.Put("/profile", profileHandler.UpdateProfile)
-			r.Put("/profile/avatar", profileHandler.UpdateAvatar)
-			r.Get("/profile/notifications", profileHandler.GetNotificationPrefs)
-			r.Put("/profile/notifications", profileHandler.UpdateNotificationPrefs)
-
-			// Voice
-			r.Post("/voice/token", voiceHandler.GetToken)
-
-			// Rooms
-			r.Post("/rooms", roomHandler.CreateRoom)
-			r.Post("/rooms/{id}/join", roomHandler.JoinRoom)
-			r.Post("/rooms/{id}/leave", roomHandler.LeaveRoom)
-			r.Post("/rooms/{id}/start", roomHandler.StartRoom)
-
-			// --- Payment endpoints (authed) ---
-			r.Route("/payments", func(r chi.Router) {
-				r.Post("/create", paymentHandler.CreatePayment)
-				r.Post("/confirm", paymentHandler.ConfirmPayment)
-				r.Get("/history", paymentHandler.GetPaymentHistory)
-			})
-
-			// --- Coin endpoints ---
-			r.Route("/coins", func(r chi.Router) {
-				r.Get("/balance", coinHandler.GetBalance)
-				r.Get("/transactions", coinHandler.ListTransactions)
-				r.Post("/purchase-theme", coinHandler.PurchaseTheme)
-				r.Post("/refund-theme", coinHandler.RefundTheme)
-				r.Get("/purchased-themes", coinHandler.ListPurchasedThemes)
-			})
-
-			// --- Social endpoints ---
-			r.Route("/social", func(r chi.Router) {
-				// Friends
-				r.Post("/friends/request", socialHandler.SendFriendRequest)
-				r.Post("/friends/{id}/accept", socialHandler.AcceptFriendRequest)
-				r.Post("/friends/{id}/reject", socialHandler.RejectFriendRequest)
-				r.Delete("/friends/{id}", socialHandler.RemoveFriend)
-				r.Get("/friends", socialHandler.ListFriends)
-				r.Get("/friends/pending", socialHandler.ListPendingRequests)
-
-				// Blocks
-				r.Post("/blocks", socialHandler.BlockUser)
-				r.Delete("/blocks/{id}", socialHandler.UnblockUser)
-				r.Get("/blocks", socialHandler.ListBlocks)
-
-				// Chat
-				r.Post("/chat/dm", socialHandler.GetOrCreateDMRoom)
-				r.Post("/chat/group", socialHandler.CreateGroupRoom)
-				r.Get("/chat/rooms", socialHandler.ListMyRooms)
-				r.Get("/chat/rooms/{id}/members", socialHandler.GetRoomMembers)
-				r.Post("/chat/rooms/{id}/messages", socialHandler.SendMessage)
-				r.Get("/chat/rooms/{id}/messages", socialHandler.ListMessages)
-				r.Post("/chat/rooms/{id}/read", socialHandler.MarkAsRead)
-			})
-
-			// --- Creator endpoints (CREATOR, ADMIN) ---
-			r.Route("/creator", func(r chi.Router) {
-				r.Use(middleware.RequireRole("CREATOR", "ADMIN"))
-
-				r.Get("/dashboard", creatorHandler.GetDashboard)
-				r.Get("/themes/{id}/stats", creatorHandler.GetThemeStats)
-				r.Get("/earnings", creatorHandler.ListEarnings)
-				r.Get("/settlements", creatorHandler.ListSettlements)
-			})
-
-			// --- Editor endpoints (any authenticated user) ---
-			r.Route("/editor", func(r chi.Router) {
-				r.Get("/themes", editorHandler.ListMyThemes)
-				r.Get("/themes/{id}", editorHandler.GetTheme)
-				r.Post("/themes", editorHandler.CreateTheme)
-				r.Put("/themes/{id}", editorHandler.UpdateTheme)
-				r.Delete("/themes/{id}", editorHandler.DeleteTheme)
-				r.Post("/themes/{id}/unpublish", editorHandler.UnpublishTheme)
-				r.Post("/themes/{id}/submit-review", editorHandler.SubmitForReview)
-				r.Get("/themes/{id}/characters", editorHandler.ListCharacters)
-				r.Post("/themes/{id}/characters", editorHandler.CreateCharacter)
-				r.Put("/characters/{id}", editorHandler.UpdateCharacter)
-				r.Delete("/characters/{id}", editorHandler.DeleteCharacter)
-				r.Put("/themes/{id}/config", editorHandler.UpdateConfigJson)
-				// Maps
-				r.Get("/themes/{id}/maps", editorHandler.ListMaps)
-				r.Post("/themes/{id}/maps", editorHandler.CreateMap)
-				r.Put("/maps/{id}", editorHandler.UpdateMap)
-				r.Delete("/maps/{id}", editorHandler.DeleteMap)
-				// Locations
-				r.Get("/themes/{id}/locations", editorHandler.ListLocations)
-				r.Post("/themes/{id}/maps/{mapId}/locations", editorHandler.CreateLocation)
-				r.Put("/locations/{id}", editorHandler.UpdateLocation)
-				r.Delete("/locations/{id}", editorHandler.DeleteLocation)
-				// Clues
-				r.Get("/themes/{id}/clues", editorHandler.ListClues)
-				r.Post("/themes/{id}/clues", editorHandler.CreateClue)
-				r.Put("/clues/{id}", editorHandler.UpdateClue)
-				r.Delete("/clues/{id}", editorHandler.DeleteClue)
-				// Clue relations
-				r.Get("/themes/{id}/clue-relations", editorHandler.GetClueRelations)
-				r.Put("/themes/{id}/clue-relations", editorHandler.ReplaceClueRelations)
-				// Contents
-				r.Get("/themes/{id}/content/{key}", editorHandler.GetContent)
-				r.Put("/themes/{id}/content/{key}", editorHandler.UpsertContent)
-				// Media
-				r.Get("/themes/{id}/media", mediaHandler.ListMedia)
-				r.Post("/themes/{id}/media/upload-url", mediaHandler.RequestUpload)
-				r.Post("/themes/{id}/media/confirm", mediaHandler.ConfirmUpload)
-				r.Post("/themes/{id}/media/youtube", mediaHandler.CreateYouTube)
-				r.Patch("/media/{id}", mediaHandler.UpdateMedia)
-				r.Delete("/media/{id}", mediaHandler.DeleteMedia)
-				// Images (character avatars + clue images)
-				r.Post("/themes/{id}/images/upload-url", imageHandler.RequestUpload)
-				r.Post("/themes/{id}/images/confirm", imageHandler.ConfirmUpload)
-
-				// Reading sections
-				r.Get("/themes/{id}/reading-sections", readingHandler.ListReadingSections)
-				r.Post("/themes/{id}/reading-sections", readingHandler.CreateReadingSection)
-				r.Patch("/reading-sections/{id}", readingHandler.UpdateReadingSection)
-				r.Delete("/reading-sections/{id}", readingHandler.DeleteReadingSection)
-				// Validation
-				r.Post("/themes/{id}/validate", editorHandler.ValidateTheme)
-				// Module schemas
-				r.Get("/module-schemas", editorHandler.GetModuleSchemas)
-				// Flow (game flow canvas)
-				r.Get("/themes/{id}/flow", flowHandler.GetFlow)
-				r.Put("/themes/{id}/flow", flowHandler.SaveFlow)
-				r.Post("/themes/{id}/flow/nodes", flowHandler.CreateNode)
-				r.Patch("/themes/{id}/flow/nodes/{nodeId}", flowHandler.UpdateNode)
-				r.Delete("/themes/{id}/flow/nodes/{nodeId}", flowHandler.DeleteNode)
-				r.Post("/themes/{id}/flow/edges", flowHandler.CreateEdge)
-				r.Patch("/themes/{id}/flow/edges/{edgeId}", flowHandler.UpdateEdge)
-				r.Delete("/themes/{id}/flow/edges/{edgeId}", flowHandler.DeleteEdge)
-				r.Post("/themes/{id}/flow/migrate", flowHandler.MigrateFlow)
-			})
-
-			// --- Admin endpoints (ADMIN only) ---
-			r.Route("/admin", func(r chi.Router) {
-				r.Use(middleware.RequireRole("ADMIN"))
-
-				r.Get("/users", adminHandler.ListUsers)
-				r.Get("/users/{id}", adminHandler.GetUser)
-				r.Put("/users/{id}/role", adminHandler.UpdateUserRole)
-				r.Put("/users/{id}/trusted-creator", reviewHandler.SetTrustedCreator)
-				r.Get("/themes", adminHandler.ListAllThemes)
-				r.Post("/themes/{id}/unpublish", adminHandler.ForceUnpublishTheme)
-				r.Get("/rooms", adminHandler.ListAllRooms)
-				r.Post("/rooms/{id}/close", adminHandler.ForceCloseRoom)
-
-				// Review workflow
-				r.Get("/reviews", reviewHandler.ListPendingReviews)
-				r.Post("/reviews/{id}/approve", reviewHandler.ApproveTheme)
-				r.Post("/reviews/{id}/reject", reviewHandler.RejectTheme)
-				r.Post("/reviews/{id}/suspend", reviewHandler.SuspendTheme)
-
-				// Settlement & revenue
-				r.Get("/settlements", creatorAdminHandler.ListAllSettlements)
-				r.Patch("/settlements/{id}/approve", creatorAdminHandler.ApproveSettlement)
-				r.Patch("/settlements/{id}/payout", creatorAdminHandler.PayoutSettlement)
-				r.Patch("/settlements/{id}/cancel", creatorAdminHandler.CancelSettlement)
-				r.Get("/revenue", creatorAdminHandler.GetRevenue)
-
-				// Coin management
-				r.Post("/coins/grant", creatorAdminHandler.GrantCoins)
-
-				// Package management
-				r.Post("/packages", creatorAdminHandler.CreatePackage)
-				r.Patch("/packages/{id}", creatorAdminHandler.UpdatePackage)
-
-				// Settlement batch
-				r.Post("/settlements/run", creatorAdminHandler.RunSettlement)
-			})
+			registerAuthedRoutes(r, authedDeps)
 		})
 	})
 
