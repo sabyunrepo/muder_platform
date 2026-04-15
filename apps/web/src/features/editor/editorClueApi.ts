@@ -25,11 +25,32 @@ export function useCreateClue(themeId: string) {
   return useMutation<ClueResponse, Error, CreateClueRequest>({
     mutationFn: (body) =>
       api.post<ClueResponse>(`/v1/editor/themes/${themeId}/clues`, body),
-    onSuccess: () => {
+    onSuccess: (newClue) => {
+      // Optimistically append to the clue list so the UI reflects the new
+      // row immediately — prevents a flash of empty state while the
+      // follow-up invalidate roundtrips.
+      queryClient.setQueryData<ClueResponse[] | undefined>(
+        editorKeys.clues(themeId),
+        (old) => (old ? [...old, newClue] : [newClue]),
+      );
       queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
     },
   });
+}
+
+/**
+ * Merge an image_url onto a specific clue in the cache, then invalidate so
+ * a fresh fetch replaces the optimistic entry. Used by ClueForm after a
+ * background image upload completes post-create.
+ */
+export function mergeClueImage(themeId: string, clueId: string, imageUrl: string) {
+  queryClient.setQueryData<ClueResponse[] | undefined>(
+    editorKeys.clues(themeId),
+    (old) =>
+      old?.map((c) => (c.id === clueId ? { ...c, image_url: imageUrl } : c)),
+  );
+  queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
 }
 
 export function useUpdateClue(themeId: string) {

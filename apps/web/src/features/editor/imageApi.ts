@@ -63,7 +63,16 @@ export async function uploadImage(
   file: Blob,
   contentType: string,
 ): Promise<string> {
+  // Guard: caller must pass a concrete themeId. Without this, path becomes
+  // `/v1/editor/themes/undefined/images/upload-url` → 404.
+  if (!themeId) {
+    throw new Error("themeId is required for image upload");
+  }
+
   // 1. Get presigned URL
+  // NOTE: path intentionally starts with `/v1/...`; ApiClient prepends `/api`
+  // so full URL resolves to `/api/v1/editor/themes/{id}/images/upload-url`,
+  // which matches the backend route registered in main.go.
   const { upload_url, upload_key } = await api.post<UploadUrlResponse>(
     `/v1/editor/themes/${themeId}/images/upload-url`,
     {

@@ -9,6 +9,7 @@ import {
   useUpdateClue,
   type ClueResponse,
 } from '@/features/editor/api';
+import { mergeClueImage } from '@/features/editor/editorClueApi';
 import { uploadImage } from '@/features/editor/imageApi';
 import { ImageUpload } from './ImageUpload';
 
@@ -195,7 +196,13 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
           if (pendingImage && newClue.id) {
             setIsUploading(true);
             try {
-              await uploadImage(themeId, 'clue', newClue.id, pendingImage, pendingImage.type);
+              const uploadedUrl = await uploadImage(
+                themeId, 'clue', newClue.id, pendingImage, pendingImage.type,
+              );
+              // Merge image_url into the optimistic clue entry, then
+              // invalidate — without this, the invalidate from useCreateClue
+              // fires first with empty image_url and the row flashes blank.
+              mergeClueImage(themeId, newClue.id, uploadedUrl);
             } catch {
               toast.error('단서는 저장되었지만 이미지 업로드에 실패했습니다');
             } finally {
