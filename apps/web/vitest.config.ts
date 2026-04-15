@@ -5,6 +5,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": resolve(__dirname, "src"),
+      "@mmp/shared": resolve(__dirname, "../../packages/shared/src/index.ts"),
       "@mmp/ws-client": resolve(__dirname, "../../packages/ws-client/dist/index.js"),
       "@mmp/game-logic": resolve(__dirname, "../../packages/game-logic/dist/index.js"),
     },
