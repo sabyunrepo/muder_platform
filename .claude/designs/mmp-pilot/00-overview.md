@@ -6,7 +6,7 @@
 
 **이름: `mmp-pilot`** (alias: `/plan-go`)
 
-plan-autopilot의 wave 스케줄러·워크트리 엔진 위에, mmp 하네스의 6인 전문가 팀·공용 스킬·QMD/200줄 규칙을 얹은 **3-Layer 파일럿**. 단일 진입점 `/plan-go`에서 wave 자동 실행·단일 task·재개·중단·상태·아카이브를 모두 파생한다. 산출물은 `.claude/runs/{run-id}/…`로 일원화, 상태 스키마는 `active-plan.json` 확장. 옵션 `--ab`로 variant A/B 병렬 실행 → 메트릭 수집 → 자동 proposal → 검증된 것만 실제 파일 적용하는 자기개선 루프를 돌린다. 200줄 하드 리밋·QMD 우선·docs/plans 구조는 불변.
+plan-autopilot의 wave 스케줄러·워크트리 엔진 위에, mmp 하네스의 6인 전문가 팀·공용 스킬·QMD/크기 티어 규칙을 얹은 **3-Layer 파일럿**. 단일 진입점 `/plan-go`에서 wave 자동 실행·단일 task·재개·중단·상태·아카이브를 모두 파생한다. 산출물은 `.claude/runs/{run-id}/…`로 일원화, 상태 스키마는 `active-plan.json` 확장. 옵션 `--ab`로 variant A/B 병렬 실행 → 메트릭 수집 → 자동 proposal → 검증된 것만 실제 파일 적용하는 자기개선 루프를 돌린다. 파일 크기 티어(Go 500 / TS·TSX 400 / MD 200) + 함수 한도·QMD 우선·docs/plans 구조는 불변.
 
 ## 2. 3-Layer 다이어그램
 

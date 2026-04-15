@@ -21,7 +21,7 @@ MMP v3는 세션별 독립 인스턴스를 강제한다. 싱글턴/전역 상태
 └── events.go     # (선택) 내부 이벤트 타입
 ```
 
-각 파일 200줄 이하.
+각 Go 파일 500줄 이하, 함수 80줄 이하.
 
 ## 필수 패턴
 
@@ -82,7 +82,7 @@ func (m *Module) OnPhase(ctx context.Context, a phase.Action) error { ... }
 - Factory 서명에 deps 3개 초과 — 초과 시 `Deps` 구조체로 묶기
 
 ## 체크리스트
-- [ ] 파일 4-5개로 분할, 각 200줄 이하
+- [ ] 파일 4-5개로 분할, 각 500줄 이하 / 함수 80줄 이하
 - [ ] Factory가 세션별 독립 인스턴스 반환
 - [ ] ConfigSchema 단일 소스 + 검증 함수
 - [ ] `init() { Register(...) }` + blank import 추가

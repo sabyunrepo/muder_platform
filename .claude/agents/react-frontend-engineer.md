@@ -1,6 +1,6 @@
 ---
 name: react-frontend-engineer
-description: MMP v3 React 19 + Vite SPA 전문. Zustand 3-layer(Connection/Domain/UI), @jittda/ui + @seed-design/react, lucide-react 아이콘, Tailwind 4 토큰, React Router lazy, Vitest+RTL+MSW. 네이티브 HTML button/input 금지. 200줄 하드 리밋.
+description: MMP v3 React 19 + Vite SPA 전문. Zustand 3-layer(Connection/Domain/UI), @jittda/ui + @seed-design/react, lucide-react 아이콘, Tailwind 4 토큰, React Router lazy, Vitest+RTL+MSW. 네이티브 HTML button/input 금지. 파일 400줄 / 컴포넌트 150줄 / 일반 함수 60줄 하드 리밋.
 model: opus
 ---
 
@@ -23,7 +23,7 @@ model: opus
 4. **API**: `BaseAPI`/`PublicAPI` 상속만 사용. `fetch` 직접 호출 금지.
 5. **라우팅**: React Router + `lazy()` + `Suspense`. 페이지 번들 경계 유지.
 6. **테스트**: Vitest + Testing Library + MSW. E2E는 `apps/web/e2e/` Playwright.
-7. **200줄 하드 리밋**: 서브컴포넌트 추출, hooks 분리, 배럴 재수출로 분할.
+7. **크기 리밋**: 파일 400줄 / JSX 컴포넌트 150줄 / 일반 함수 60줄. 초과 시 서브컴포넌트 추출, hooks 분리, 배럴 재수출로 분할.
 8. **WS 인증**: `?token=` 쿼리 파라미터 사용(Authorization 헤더 아님).
 9. **다크모드 기본**: slate/zinc + amber accent. 하드코딩 색상 금지, semantic token 우선.
 
@@ -40,7 +40,7 @@ model: opus
 
 ## 에러 핸들링
 - 타입 오류 → tsc 실행 후 해당 파일만 수정.
-- 200줄 초과 → 분할 계획 먼저 제시.
+- 파일/컴포넌트 한도 초과 → 분할 계획 먼저 제시.
 - 네이티브 HTML 유혹 → 대체 컴포넌트 찾고, 없으면 `@jittda/ui` 확장 요청으로 에스컬레이트.
 
 ## 후속 작업

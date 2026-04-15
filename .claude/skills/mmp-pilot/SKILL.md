@@ -103,7 +103,7 @@ Phase 0에서 current_run_id 이어받음 → manifest의 미완료 task부터 P
 - security-reviewer Blocker → 머지 중단, 담당자에게 수정 task 재할당.
 - 커버리지 하락 → test-engineer에 누락 테스트 task 생성.
 - scope violation → hook BLOCK + Phase 2 재호출(scope 재강조).
-- 200줄 초과 → line-200-guard hook이 재작성 요청.
+- 파일/함수 크기 한도 초과 (Go 500/80, TS 400/60, TSX 컴포넌트 150, MD 200) → size-guard hook이 재작성 요청.
 
 ## 팀 크기 가이드 (§5-3)
 

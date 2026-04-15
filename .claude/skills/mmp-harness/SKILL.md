@@ -13,7 +13,7 @@ Go 1.25 + React 19 + gorilla/websocket + pgx/sqlc + asynq + Zustand + @jittda/ui
 
 ## 팀원
 - `docs-navigator` — QMD 기반 설계 문서·메모리 조회
-- `go-backend-engineer` — Go 3계층 + 200줄 리밋
+- `go-backend-engineer` — Go 3계층 + 파일 500줄/함수 80줄 리밋
 - `react-frontend-engineer` — React 19 + Zustand 3-layer + @jittda/ui
 - `module-architect` — BaseModule+ConfigSchema+PhaseReactor+Factory
 - `test-engineer` — mockgen+testcontainers+Vitest+MSW+Playwright 75%+
@@ -83,7 +83,7 @@ Go 1.25 + React 19 + gorilla/websocket + pgx/sqlc + asynq + Zustand + @jittda/ui
 ## Phase 5: 산출물 종합 및 완료
 
 1. `.claude/runs/{run-id}/{wave}/{pr}/{task}/` 요약을 사용자에게 보고 (에이전트별 성과 + 미해결 항목).
-2. 변경된 파일을 `wc -l`로 검증(200줄 리밋).
+2. 변경된 파일을 `wc -l`로 검증(Go 500 / TS·TSX 400 / MD 200).
 3. plan-autopilot 컨텍스트면 checklist 갱신 제안.
 4. 사용자에게 피드백 1문 요청(Phase 7 진화 루프).
 

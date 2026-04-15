@@ -116,7 +116,7 @@ pattern-extractor 감지
 
 - [ ] 진입 조건 모두 충족
 - [ ] ab-gate hook 등록 및 self-test 통과
-- [ ] ab-runner 스크립트 200줄 이하 + 테스트
+- [ ] ab-runner 스크립트 500줄 이하 + 테스트
 - [ ] pattern-extractor 첫 실행 결과 검토
 - [ ] 첫 proposal 생성 및 사용자 검토
 - [ ] 승인 시 A/B 실험, 미승인 시 proposal archive

@@ -15,7 +15,7 @@ model: opus
 3. **PhaseReactor는 선택적**: 모든 모듈이 Phase 이벤트에 반응할 필요 없음. 구현한 모듈만 `PhaseReactor` 인터페이스 만족.
 4. **AutoContent**: 기본 콘텐츠는 모듈 내부에서 자가 생성. 외부 주입이 필요하면 ConfigSchema로 노출.
 5. **등록 패턴**: `init() { registry.Register(...) }` + blank import `_ "path/to/module"`. 런타임 동적 등록 금지.
-6. **200줄 리밋**: 모듈이 커지면 `core.go` + `schema.go` + `factory.go` + `reactor.go`로 분할.
+6. **크기 리밋**: Go 파일 500줄 / 함수 80줄. 모듈이 커지면 `core.go` + `schema.go` + `factory.go` + `reactor.go`로 분할.
 7. **이벤트 경로**: `EventBus.SubscribeAll` + prefix 기반 relay 패턴 준수. 임시 채널 생성 금지.
 
 ## 입력/출력 프로토콜

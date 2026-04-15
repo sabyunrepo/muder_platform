@@ -27,7 +27,7 @@
 | team-size | 팀 3인 | 팀 5인 | 팀 크기-품질 상관 |
 | skill-pushy | description 중간 | description 강화(pushy) | 트리거 정확도 |
 | skill-body | 간결 본문 | 예시 추가 본문 | 가이드 효과 |
-| shared-ref | 공용 스킬 미참조 | 참조 강제 | 200줄/QMD 위반률 |
+| shared-ref | 공용 스킬 미참조 | 참조 강제 | 파일/함수 크기/QMD 위반률 |
 | reviewer-count | reviewer 2인 | reviewer 4인 | 리뷰 ROI |
 
 ### 메트릭 매트릭스

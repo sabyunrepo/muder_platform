@@ -11,7 +11,7 @@ MMP v3 프로젝트의 기존 /plan-* 커맨드 체계(plan-autopilot 포함)와
 
 ## A. 프로젝트
 - Repo: `/Users/sabyun/goinfre/muder_platform` (Go 1.25 backend + React 19 frontend + Expo)
-- 규칙: 200줄 하드 리밋(.go .ts .tsx .md), AppError+RFC 9457, zerolog, mockgen+testcontainers 75%+, Zustand 3-layer, @jittda/ui+@seed-design/react+lucide-react, QMD MCP 필수(docs/plans/, memory/ Grep 차단 Hook)
+- 규칙: 파일 크기 티어(Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 200), AppError+RFC 9457, zerolog, mockgen+testcontainers 75%+, Zustand 3-layer, @jittda/ui+@seed-design/react+lucide-react, QMD MCP 필수(docs/plans/, memory/ Grep 차단 Hook)
 - 활성 plan: Phase 18.3 보안 하드닝 (W0 PR-0 Task 1 진행중)
 
 ## B. 기존 시스템 1 — plan-* 커맨드
@@ -110,7 +110,7 @@ MMP v3 프로젝트의 기존 /plan-* 커맨드 체계(plan-autopilot 포함)와
 | 카테고리 | 지표 | 수집 방법 |
 |---------|------|----------|
 | 품질 | lint pass, 타입 pass, 테스트 pass, 커버리지 델타 | CI 명령 실행 |
-| 정확도 | scope 위반 수, 200줄 위반 수, hook BLOCK 수 | Hook 로그 파싱 |
+| 정확도 | scope 위반 수, 파일/함수 크기 위반 수, hook BLOCK 수 | Hook 로그 파싱 |
 | 효율 | 실행 시간, 토큰 사용량, 반복 횟수 | 세션 메타 수집 |
 | 보안 | security-reviewer Blocker 수, redaction 누락 | SUMMARY 파싱 |
 | 가독성 | 파일 평균 라인 수, 함수 복잡도 | 정적 분석 |
@@ -127,7 +127,7 @@ MMP v3 프로젝트의 기존 /plan-* 커맨드 체계(plan-autopilot 포함)와
 수집 → 분석 → 제안 → 검증(A/B) → 적용 → 회귀 모니터
 ```
 - **수집 단계**: 매 run 종료 시 SUMMARY + Hook 로그 + metric → `memory/mmp-pilot-metrics.jsonl`에 append
-- **분석 단계**: 최근 N run 집계 → 상습 약점 패턴 추출(예: "react-frontend-engineer가 200줄 위반 3건 이상 반복")
+- **분석 단계**: 최근 N run 집계 → 상습 약점 패턴 추출(예: "react-frontend-engineer가 컴포넌트 150줄 위반 3건 이상 반복")
 - **제안 단계**: 패턴별로 수정 proposal 자동 생성(에이전트 프롬프트 diff, 스킬 본문 diff, 공용 스킬 추가 등). 제안은 `proposals/{date}-{topic}.md`
 - **검증 단계**: 사용자 승인 시 A/B 실험으로 돌려 판정
 - **적용 단계**: B 승리 시 실제 파일에 반영 + CLAUDE.md 변경 이력 갱신 + proposal archived
@@ -149,7 +149,7 @@ MMP v3 프로젝트의 기존 /plan-* 커맨드 체계(plan-autopilot 포함)와
 - Regression 방어: scope 이탈, 락 leak, worktree 정리 실패, A/B 샌드박스 경계 침범
 
 # 제약
-- 200줄 하드 리밋 전 파일 적용
+- 파일 크기 티어 하드 리밋 전 파일 적용 (Go 500 / TS·TSX 400 / MD 200 + 함수 한도)
 - QMD MCP 우선
 - docs/plans/{date}-{topic}/ + memory/project_phase{N}_progress.md 구조 유지
 - Phase 18.3 무중단 전환
