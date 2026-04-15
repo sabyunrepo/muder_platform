@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -58,11 +59,16 @@ type Hub struct {
 	lifecycleMu        sync.RWMutex
 	lifecycleListeners []SessionLifecycleListener
 
-	// recentLeftAt tracks when each (sessionID, playerID) pair last disconnected
+	// recentLeftAt tracks when each playerID last disconnected per session,
 	// so that JoinSession can detect reconnects within reconnectWindow.
-	// Key format: sessionID.String() + "/" + playerID.String()
+	// Structure: sessionID → playerID → disconnect time.
+	// O(1) lookup per (session, player) pair — no prefix scan needed.
 	// Protected by mu (same lock as sessions map).
-	recentLeftAt map[string]time.Time
+	recentLeftAt map[uuid.UUID]map[uuid.UUID]time.Time
+
+	// closing is set to true when Stop() is called. broadcastToSession checks
+	// this flag so it does not write to maps that Stop() is clearing (L-5 fix).
+	closing atomic.Bool
 }
 
 // NewHub creates a Hub and starts its event loop.
@@ -74,7 +80,7 @@ func NewHub(router *Router, pubsub PubSub, logger zerolog.Logger) *Hub {
 		lobby:        make(map[uuid.UUID]*Client),
 		players:      make(map[uuid.UUID]*Client),
 		buffers:      make(map[uuid.UUID]*ReconnectBuffer),
-		recentLeftAt: make(map[string]time.Time),
+		recentLeftAt: make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		register:     make(chan *Client, 64),
 		unregister:   make(chan *Client, 64),
 		router:       router,
@@ -155,16 +161,14 @@ func (h *Hub) removeClientLocked(c *Client, recordLeave bool) {
 		}
 		if recordLeave {
 			// Record departure for reconnect window tracking.
-			h.recentLeftAt[recentLeftKey(c.SessionID, c.ID)] = time.Now()
+			if h.recentLeftAt[c.SessionID] == nil {
+				h.recentLeftAt[c.SessionID] = make(map[uuid.UUID]time.Time)
+			}
+			h.recentLeftAt[c.SessionID][c.ID] = time.Now()
 		}
 	} else {
 		delete(h.lobby, c.ID)
 	}
-}
-
-// recentLeftKey builds the map key for recentLeftAt.
-func recentLeftKey(sessionID, playerID uuid.UUID) string {
-	return sessionID.String() + "/" + playerID.String()
 }
 
 // Register queues a client for registration. Safe to call after Stop().
@@ -220,7 +224,12 @@ func (h *Hub) JoinSession(c *Client, sessionID uuid.UUID) {
 
 	// Clear the recentLeftAt entry now that the player has rejoined.
 	if isReconnect {
-		delete(h.recentLeftAt, recentLeftKey(sessionID, c.ID))
+		if sub := h.recentLeftAt[sessionID]; sub != nil {
+			delete(sub, c.ID)
+			if len(sub) == 0 {
+				delete(h.recentLeftAt, sessionID)
+			}
+		}
 	}
 
 	h.mu.Unlock()
@@ -239,7 +248,11 @@ func (h *Hub) JoinSession(c *Client, sessionID uuid.UUID) {
 // isReconnectLocked returns true if the player disconnected from sessionID within
 // reconnectWindow. Caller must hold h.mu (read or write).
 func (h *Hub) isReconnectLocked(sessionID, playerID uuid.UUID) bool {
-	leftAt, ok := h.recentLeftAt[recentLeftKey(sessionID, playerID)]
+	sub, ok := h.recentLeftAt[sessionID]
+	if !ok {
+		return false
+	}
+	leftAt, ok := sub[playerID]
 	if !ok {
 		return false
 	}
@@ -247,17 +260,21 @@ func (h *Hub) isReconnectLocked(sessionID, playerID uuid.UUID) bool {
 }
 
 // gcRecentLeftLocked removes stale entries (older than reconnectWindow) from
-// recentLeftAt for the given session. Caller must hold h.mu (write lock).
+// recentLeftAt for the given session. O(P) where P = players in session.
+// Caller must hold h.mu (write lock).
 func (h *Hub) gcRecentLeftLocked(sessionID uuid.UUID) {
-	prefix := sessionID.String() + "/"
+	sub, ok := h.recentLeftAt[sessionID]
+	if !ok {
+		return
+	}
 	now := time.Now()
-	for key, leftAt := range h.recentLeftAt {
-		// Only GC entries for this session to keep the loop bounded.
-		if len(key) > len(prefix) && key[:len(prefix)] == prefix {
-			if now.Sub(leftAt) > reconnectWindow {
-				delete(h.recentLeftAt, key)
-			}
+	for playerID, leftAt := range sub {
+		if now.Sub(leftAt) > reconnectWindow {
+			delete(sub, playerID)
 		}
+	}
+	if len(sub) == 0 {
+		delete(h.recentLeftAt, sessionID)
 	}
 }
 
@@ -301,6 +318,10 @@ func (h *Hub) BroadcastToSessionEphemeral(sessionID uuid.UUID, env *Envelope) {
 }
 
 func (h *Hub) broadcastToSession(sessionID uuid.UUID, env *Envelope, excludeID uuid.UUID, buffer bool) {
+	// L-5: if Stop() is in progress, the maps are being cleared — bail early.
+	if h.closing.Load() {
+		return
+	}
 	h.mu.RLock()
 	sess, ok := h.sessions[sessionID]
 	if !ok {
@@ -582,16 +603,25 @@ func (h *Hub) notifyPlayerRejoined(sessionID, playerID uuid.UUID) {
 func (h *Hub) gcAllRecentLeft() {
 	now := time.Now()
 	h.mu.Lock()
-	for key, leftAt := range h.recentLeftAt {
-		if now.Sub(leftAt) > reconnectWindow {
-			delete(h.recentLeftAt, key)
+	for sessionID, sub := range h.recentLeftAt {
+		for playerID, leftAt := range sub {
+			if now.Sub(leftAt) > reconnectWindow {
+				delete(sub, playerID)
+			}
+		}
+		if len(sub) == 0 {
+			delete(h.recentLeftAt, sessionID)
 		}
 	}
 	h.mu.Unlock()
 }
 
 // Stop shuts down the hub event loop and closes all connected clients.
+// It sets closing=true before acquiring the lock so concurrent broadcastToSession
+// calls bail out before touching the maps being cleared (L-5 fix).
 func (h *Hub) Stop() {
+	// Signal broadcast loops to stop before we wipe the maps.
+	h.closing.Store(true)
 	close(h.done)
 
 	// Close all connected clients to prevent goroutine leaks.

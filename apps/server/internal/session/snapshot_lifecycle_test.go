@@ -15,7 +15,7 @@ func TestSnapshot_KindStopDeletesSnapshot(t *testing.T) {
 	cache := newFakeCache()
 	sender := &fakeSender{}
 	sessionID, s, _ := startWithSnapshot(t, cache, sender)
-	key := "session:" + sessionID.String() + ":snapshot"
+	key := "mmp:session:" + sessionID.String() + ":snapshot"
 
 	// Populate a snapshot first via KindCriticalSnapshot.
 	reply := make(chan error, 1)
@@ -61,5 +61,45 @@ func TestSnapshot_KindStopDeletesSnapshot(t *testing.T) {
 	// The snapshot key must be gone.
 	if cache.hasKey(key) {
 		t.Errorf("snapshot key %q still present after KindStop (expected delete)", key)
+	}
+}
+
+// TestSnapshot_KeyHasMmpNamespacePrefix verifies that snapshots are written
+// under the "mmp:session:{id}:snapshot" key (L-4 fix). Old "session:{id}:snapshot"
+// keys auto-expire via 24h TTL.
+func TestSnapshot_KeyHasMmpNamespacePrefix(t *testing.T) {
+	cache := newFakeCache()
+	sender := &fakeSender{}
+	sessionID, s, m := startWithSnapshot(t, cache, sender)
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
+
+	reply := make(chan error, 1)
+	if err := s.Send(session.SessionMessage{
+		Kind: session.KindCriticalSnapshot, Reply: reply, Ctx: context.Background(),
+	}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	select {
+	case err := <-reply:
+		if err != nil {
+			t.Fatalf("KindCriticalSnapshot: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for KindCriticalSnapshot reply")
+	}
+
+	newKey := "mmp:session:" + sessionID.String() + ":snapshot"
+	oldKey := "session:" + sessionID.String() + ":snapshot"
+
+	deadline := time.Now().Add(500 * time.Millisecond)
+	for time.Now().Before(deadline) && !cache.hasKey(newKey) {
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if !cache.hasKey(newKey) {
+		t.Errorf("snapshot not found at namespaced key %q", newKey)
+	}
+	if cache.hasKey(oldKey) {
+		t.Errorf("snapshot written to legacy key %q; should use mmp: prefix", oldKey)
 	}
 }

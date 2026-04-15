@@ -158,7 +158,7 @@ func TestSnapshot_CriticalSnapshotPersistsToRedis(t *testing.T) {
 	// Allow the actor goroutine time to execute persistSnapshot.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
-		expectedKey := "session:" + sessionID.String() + ":snapshot"
+		expectedKey := "mmp:session:" + sessionID.String() + ":snapshot"
 		if cache.hasKey(expectedKey) {
 			return
 		}
@@ -179,7 +179,7 @@ func TestSnapshot_Roundtrip(t *testing.T) {
 	_ = s.Send(session.SessionMessage{Kind: session.KindCriticalSnapshot, Reply: reply, Ctx: context.Background()})
 	<-reply
 
-	key := "session:" + sessionID.String() + ":snapshot"
+	key := "mmp:session:" + sessionID.String() + ":snapshot"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	var raw []byte
 	for time.Now().Before(deadline) {
@@ -226,7 +226,7 @@ func TestSnapshot_SendSnapshotOnReconnect(t *testing.T) {
 	<-reply
 
 	// Wait for Redis write.
-	key := "session:" + sessionID.String() + ":snapshot"
+	key := "mmp:session:" + sessionID.String() + ":snapshot"
 	deadline := time.Now().Add(500 * time.Millisecond)
 	for time.Now().Before(deadline) {
 		if fc.hasKey(key) {

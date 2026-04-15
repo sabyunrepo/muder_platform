@@ -11,9 +11,9 @@ import (
 
 // fakeLifecycleListener records all OnPlayerLeft / OnPlayerRejoined calls.
 type fakeLifecycleListener struct {
-	mu       sync.Mutex
-	leftCalls     []lifecycleCall
-	rejoinCalls   []lifecycleCall
+	mu          sync.Mutex
+	leftCalls   []lifecycleCall
+	rejoinCalls []lifecycleCall
 }
 
 type lifecycleCall struct {
@@ -161,7 +161,9 @@ func TestLifecycle_NoRejoined_AfterWindowExpired(t *testing.T) {
 
 	// Manually insert a stale entry (disconnected > reconnectWindow ago).
 	h.mu.Lock()
-	h.recentLeftAt[recentLeftKey(sessionID, playerID)] = time.Now().Add(-(reconnectWindow + time.Second))
+	h.recentLeftAt[sessionID] = map[uuid.UUID]time.Time{
+		playerID: time.Now().Add(-(reconnectWindow + time.Second)),
+	}
 	h.mu.Unlock()
 
 	// JoinSession should NOT see this as a reconnect.
@@ -300,30 +302,47 @@ func TestLifecycle_GlobalGCSweeper(t *testing.T) {
 	fresh := time.Now().Add(-time.Second) // well within window
 
 	h.mu.Lock()
-	h.recentLeftAt[recentLeftKey(sid1, pid1)] = stale // should be swept
-	h.recentLeftAt[recentLeftKey(sid2, pid2)] = stale // should be swept
-	h.recentLeftAt[recentLeftKey(sid1, pid3)] = fresh // must survive
+	h.recentLeftAt[sid1] = map[uuid.UUID]time.Time{
+		pid1: stale, // should be swept
+		pid3: fresh, // must survive
+	}
+	h.recentLeftAt[sid2] = map[uuid.UUID]time.Time{
+		pid2: stale, // should be swept
+	}
 	h.mu.Unlock()
 
 	h.gcAllRecentLeft()
 
 	h.mu.Lock()
-	remaining := len(h.recentLeftAt)
-	_, pid3Alive := h.recentLeftAt[recentLeftKey(sid1, pid3)]
-	_, pid1Gone := h.recentLeftAt[recentLeftKey(sid1, pid1)]
-	_, pid2Gone := h.recentLeftAt[recentLeftKey(sid2, pid2)]
+	// After GC: sid2 sub-map is empty (deleted), sid1 has only pid3.
+	// Total session keys = 1 (sid1 only).
+	remainingSessions := len(h.recentLeftAt)
+	var pid3Alive, pid1Gone, pid2Gone bool
+	if sub1, ok := h.recentLeftAt[sid1]; ok {
+		_, pid3Alive = sub1[pid3]
+		_, hasPid1 := sub1[pid1]
+		pid1Gone = !hasPid1
+	} else {
+		pid1Gone = true
+	}
+	if sub2, ok := h.recentLeftAt[sid2]; ok {
+		_, hasPid2 := sub2[pid2]
+		pid2Gone = !hasPid2
+	} else {
+		pid2Gone = true
+	}
 	h.mu.Unlock()
 
-	if remaining != 1 {
-		t.Errorf("recentLeftAt len = %d after gcAllRecentLeft, want 1", remaining)
+	if remainingSessions != 1 {
+		t.Errorf("recentLeftAt session count = %d after gcAllRecentLeft, want 1", remainingSessions)
 	}
 	if !pid3Alive {
 		t.Error("fresh entry was incorrectly swept")
 	}
-	if pid1Gone {
+	if !pid1Gone {
 		t.Error("stale entry sid1/pid1 should have been swept but survives")
 	}
-	if pid2Gone {
+	if !pid2Gone {
 		t.Error("stale entry sid2/pid2 should have been swept but survives")
 	}
 }
@@ -366,4 +385,70 @@ func TestLifecycle_Race(t *testing.T) {
 	wg.Wait()
 	// Allow goroutines spawned by notify to finish.
 	time.Sleep(100 * time.Millisecond)
+}
+
+// TestHub_Stop_ClosingFlagBlocksBroadcast verifies that after Stop() sets the
+// closing flag, subsequent BroadcastToSession calls return immediately without
+// touching the session maps (L-5 fix: closing atomic.Bool).
+func TestHub_Stop_ClosingFlagBlocksBroadcast(t *testing.T) {
+	t.Parallel()
+
+	h := newTestHub(nil)
+	sessionID := uuid.New()
+
+	// Register and join a client so a session entry exists.
+	c := newTestClient(h, uuid.New())
+	registerAndWait(h, c)
+	h.JoinSession(c, sessionID)
+
+	env := MustEnvelope("game:event", nil)
+
+	// Drain the send buffer so we know the baseline.
+	initialCount := len(c.send)
+
+	// Set closing flag directly (same as Stop does) and verify broadcast is a no-op.
+	h.closing.Store(true)
+
+	h.BroadcastToSession(sessionID, env)
+	h.BroadcastToSessionExcept(sessionID, env, uuid.New())
+	h.BroadcastToSessionEphemeral(sessionID, env)
+
+	// No new messages should have reached the client.
+	if got := len(c.send); got != initialCount {
+		t.Errorf("closing flag did not block broadcast: send queue grew by %d", got-initialCount)
+	}
+}
+
+// TestHub_RecentLeftAt_PerSessionCleanup verifies that rejoining a session
+// removes the per-session sub-map entry and cleans up the session key when
+// empty — confirming O(1) sub-map GC (L-3 fix).
+func TestHub_RecentLeftAt_PerSessionCleanup(t *testing.T) {
+	t.Parallel()
+
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	sessionID := uuid.New()
+	playerID := uuid.New()
+
+	// Seed a recentLeftAt entry directly (simulates a prior disconnect).
+	h.mu.Lock()
+	h.recentLeftAt[sessionID] = map[uuid.UUID]time.Time{
+		playerID: time.Now(), // fresh — within reconnect window
+	}
+	h.mu.Unlock()
+
+	// JoinSession should detect reconnect and delete the entry.
+	c := newTestClient(h, playerID)
+	registerAndWait(h, c)
+	h.JoinSession(c, sessionID)
+
+	h.mu.Lock()
+	sub := h.recentLeftAt[sessionID]
+	h.mu.Unlock()
+
+	// After rejoining, sub-map for the session must be nil or empty.
+	if sub != nil && len(sub) > 0 {
+		t.Errorf("recentLeftAt[sessionID] has %d entries after rejoin, want 0", len(sub))
+	}
 }

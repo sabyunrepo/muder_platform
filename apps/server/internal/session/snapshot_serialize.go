@@ -12,7 +12,9 @@ import (
 const snapshotTTL = 24 * time.Hour
 
 // snapshotKeyPrefix is the Redis key prefix for session snapshots.
-const snapshotKeyPrefix = "session:"
+// The "mmp:" namespace prevents collisions with other Redis tenants (L-4 fix).
+// Old keys ("session:{id}:snapshot") auto-expire via snapshotTTL (24h).
+const snapshotKeyPrefix = "mmp:session:"
 
 // snapshotKeySuffix is the Redis key suffix for session snapshots.
 const snapshotKeySuffix = ":snapshot"
