@@ -397,6 +397,40 @@ func (m *VotingModule) BuildState() (json.RawMessage, error) {
 	return json.Marshal(state)
 }
 
+// BuildStateFor implements engine.PlayerAwareModule — in secret mode only the
+// caller's own vote is exposed (plus the aggregate voted count). Open mode is
+// public by design so behaviour mirrors BuildState().
+func (m *VotingModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	state := votingState{
+		IsOpen:       m.isOpen,
+		CurrentRound: m.currentRound,
+		Config:       m.config,
+	}
+
+	if m.config.Mode == "open" {
+		votes := make(map[string]string, len(m.votes))
+		for pid, target := range m.votes {
+			votes[pid.String()] = target
+		}
+		state.Votes = votes
+	} else {
+		state.VotedCount = len(m.votes)
+		if own, ok := m.votes[playerID]; ok {
+			state.Votes = map[string]string{playerID.String(): own}
+		}
+	}
+
+	if m.lastResult != nil {
+		state.Winner = m.lastResult.Winner
+		state.Round = m.lastResult.Round
+	}
+
+	return json.Marshal(state)
+}
+
 func (m *VotingModule) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

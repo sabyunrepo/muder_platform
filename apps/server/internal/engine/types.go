@@ -84,6 +84,28 @@ type Module interface {
 	Cleanup(ctx context.Context) error
 }
 
+// PlayerAwareModule is an optional interface for modules that must redact
+// or shape their state on a per-player basis (role-private data, whispers,
+// per-player clues, etc.). Modules that do NOT implement this interface are
+// assumed to have public state; BuildModuleStateFor falls back to BuildState.
+//
+// Implementations MUST NOT include any data the given player is not entitled
+// to see — this is the trust boundary for Phase 18.1 B-2 (snapshot redaction).
+type PlayerAwareModule interface {
+	// BuildStateFor returns the module state as visible to the given player.
+	BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
+}
+
+// BuildModuleStateFor returns the player-aware state for a module.
+// If the module implements PlayerAwareModule, its redacted state is returned;
+// otherwise the public BuildState() is used.
+func BuildModuleStateFor(m Module, playerID uuid.UUID) (json.RawMessage, error) {
+	if pam, ok := m.(PlayerAwareModule); ok {
+		return pam.BuildStateFor(playerID)
+	}
+	return m.BuildState()
+}
+
 // PhaseReactor is an optional interface for modules that respond to PhaseActions.
 // Only modules that need to react to phase transitions implement this.
 type PhaseReactor interface {

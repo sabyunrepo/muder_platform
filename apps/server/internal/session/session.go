@@ -272,6 +272,11 @@ func (s *Session) handleMessage(msg SessionMessage) {
 	case KindCriticalSnapshot:
 		s.flushSnapshot()
 
+	case KindSnapshotFor:
+		// Player-aware snapshot rebuild — executed inside the actor so the
+		// engine (non-thread-safe) is touched from its owning goroutine only.
+		s.sendSnapshotForActor(msg.PlayerID)
+
 	case KindEngineStart:
 		p, ok := msg.Payload.(EngineStartPayload)
 		if !ok {

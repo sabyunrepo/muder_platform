@@ -1,7 +1,7 @@
 <!-- STATUS-START -->
-**Active**: Phase 18.1 hotfix — Wave 0/2
-**PR**: PR-0 (100%)
-**Task**: Tasks 1-7 완료
+**Active**: Phase 18.1 hotfix — Wave 1/2
+**PR**: PR-1 (100%)
+**Task**: Tasks 1-5 완료 (snapshot per-player redaction)
 **State**: in_review
 **Blockers**: none
 **Last updated**: 2026-04-15
@@ -36,11 +36,11 @@
 ## Wave 1 — 병렬 hotfix (parallel ×3)
 
 ### PR-1: Snapshot per-player redaction (B-2)
-- [ ] Task 1 — `engine.Module` 인터페이스에 `BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)` 추가, `BaseModule` 에 기본 구현(= `BuildState` 위임)
-- [ ] Task 2 — 역할 민감 모듈(Role/Clue/Whisper/HiddenMission/Voting 등) 에 redaction override
-- [ ] Task 3 — `PhaseEngine.BuildStateFor(playerID)` 신설 + `Session.SendSnapshot` 이 해당 경로 사용
-- [ ] Task 4 — 단위 테스트: 역할 플레이어 A 스냅샷 ≠ 일반 플레이어 B 스냅샷 (deep-diff)
-- [ ] Task 5 — 재접속 E2E 에서 payload inspect 로 redaction 확인
+- [x] Task 1 — `engine.PlayerAwareModule` 옵셔널 인터페이스 + `BuildModuleStateFor` 헬퍼 (non-aware 모듈은 `BuildState` 로 fallback)
+- [x] Task 2 — 역할 민감 모듈(HiddenMission/Voting/Whisper/Trade/Starting/Round/Conditional/Timed Clue) 에 redaction override
+- [x] Task 3 — `PhaseEngine.BuildStateFor(playerID)` 신설
+- [x] Task 4 — `Session.SendSnapshot` 이 running 시 `KindSnapshotFor` 로 actor 재구성 경로 사용 (not-running recovery 시 Redis blob fallback + WARNING)
+- [x] Task 5 — 단위 테스트: `engine/build_state_for_test.go` (player A ≠ B + fallback 경로), `session/snapshot_test.go` (actor-dispatched rebuild 2명 재접속)
 
 ### PR-2: configJson trust boundary (B-3)
 - [ ] Task 1 — `room.handler.StartRoom`: `http.MaxBytesReader(256KB)` + `ReadJSON` 실패 시 명시 400

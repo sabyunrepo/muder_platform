@@ -19,7 +19,7 @@ func init() {
 type TradeClueConfig struct {
 	AllowTrade           bool `json:"allowTrade"`
 	AllowShow            bool `json:"allowShow"`
-	ShowDuration         int  `json:"showDuration"`         // seconds
+	ShowDuration         int  `json:"showDuration"` // seconds
 	ShowMaxViewers       int  `json:"showMaxViewers"`
 	RequireMutualTrade   bool `json:"requireMutualTrade"`
 	TradeProposalTimeout int  `json:"tradeProposalTimeout"` // seconds
@@ -170,10 +170,10 @@ func (m *TradeClueModule) handleTradePropose(playerID uuid.UUID, payload json.Ra
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "clue.trade_proposed",
 		Payload: map[string]any{
-			"proposalId":     proposalID,
-			"proposerId":     playerID.String(),
-			"targetCode":     p.TargetCode,
-			"offeredClueId":  p.OfferedClueID,
+			"proposalId":      proposalID,
+			"proposerId":      playerID.String(),
+			"targetCode":      p.TargetCode,
+			"offeredClueId":   p.OfferedClueID,
 			"requestedClueId": p.RequestedClueID,
 		},
 	})
@@ -212,10 +212,10 @@ func (m *TradeClueModule) handleTradeAccept(playerID uuid.UUID, payload json.Raw
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "clue.trade_accepted",
 		Payload: map[string]any{
-			"proposalId":     p.ProposalID,
-			"proposerId":     proposal.ProposerID.String(),
-			"accepterId":     playerID.String(),
-			"offeredClueId":  proposal.OfferedClueID,
+			"proposalId":      p.ProposalID,
+			"proposerId":      proposal.ProposerID.String(),
+			"accepterId":      playerID.String(),
+			"offeredClueId":   proposal.OfferedClueID,
 			"requestedClueId": proposal.RequestedClueID,
 		},
 	})
@@ -427,6 +427,41 @@ func (m *TradeClueModule) BuildState() (json.RawMessage, error) {
 	return json.Marshal(tradeClueState{
 		ActiveProposals: m.activeProposals,
 		ActiveShows:     m.activeShows,
+		ExchangeAllowed: m.exchangeAllowed,
+		Config:          m.config,
+	})
+}
+
+// BuildStateFor implements engine.PlayerAwareModule — exposes only the trade
+// proposals and show sessions the caller is party to (as proposer or target).
+// Other players' pending trades are never revealed.
+func (m *TradeClueModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	ownProposals := make(map[string]*TradeProposal)
+	for id, p := range m.activeProposals {
+		if p == nil {
+			continue
+		}
+		if p.ProposerID == playerID || p.TargetID == playerID.String() {
+			ownProposals[id] = p
+		}
+	}
+
+	ownShows := make(map[string]*ShowSession)
+	for id, s := range m.activeShows {
+		if s == nil {
+			continue
+		}
+		if s.OwnerID == playerID || s.ViewerID == playerID.String() {
+			ownShows[id] = s
+		}
+	}
+
+	return json.Marshal(tradeClueState{
+		ActiveProposals: ownProposals,
+		ActiveShows:     ownShows,
 		ExchangeAllowed: m.exchangeAllowed,
 		Config:          m.config,
 	})

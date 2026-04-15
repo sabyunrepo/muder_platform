@@ -25,7 +25,7 @@ type HiddenMissionConfig struct {
 // Mission represents a single hidden mission assigned to a player.
 type Mission struct {
 	ID           string `json:"id"`
-	Type         string `json:"type"`         // "hold_clue"|"vote_target"|"transfer_clue"|"survive"|"custom"
+	Type         string `json:"type"` // "hold_clue"|"vote_target"|"transfer_clue"|"survive"|"custom"
 	Description  string `json:"description"`
 	Points       int    `json:"points"`
 	Verification string `json:"verification"` // "auto"|"self_report"|"gm_verify"
@@ -341,7 +341,7 @@ func (m *HiddenMissionModule) Schema() json.RawMessage {
 }
 
 type hiddenMissionState struct {
-	Scores         map[uuid.UUID]int      `json:"scores,omitempty"`
+	Scores         map[uuid.UUID]int       `json:"scores,omitempty"`
 	PlayerMissions map[uuid.UUID][]Mission `json:"playerMissions,omitempty"`
 	Config         HiddenMissionConfig     `json:"config"`
 }
@@ -365,6 +365,28 @@ func (m *HiddenMissionModule) BuildState() (json.RawMessage, error) {
 	return json.Marshal(state)
 }
 
+// BuildStateFor implements engine.PlayerAwareModule — redacts other players'
+// missions (only the caller's own missions are ever disclosed). Scores remain
+// hidden until ShowResultAt == "ending", mirroring BuildState().
+func (m *HiddenMissionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	state := hiddenMissionState{
+		Config: m.config,
+	}
+
+	if m.config.ShowResultAt == "ending" {
+		state.Scores = m.scores
+	}
+
+	if own, ok := m.playerMissions[playerID]; ok && len(own) > 0 {
+		state.PlayerMissions = map[uuid.UUID][]Mission{playerID: own}
+	}
+
+	return json.Marshal(state)
+}
+
 func (m *HiddenMissionModule) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -383,10 +405,10 @@ func (m *HiddenMissionModule) Cleanup(_ context.Context) error {
 // --- SerializableModule ---
 
 type hiddenMissionSavedState struct {
-	Config            HiddenMissionConfig        `json:"config"`
-	PlayerMissions    map[string][]Mission        `json:"playerMissions"`
-	CompletedMissions map[string][]string         `json:"completedMissions"`
-	Scores            map[string]int              `json:"scores"`
+	Config            HiddenMissionConfig  `json:"config"`
+	PlayerMissions    map[string][]Mission `json:"playerMissions"`
+	CompletedMissions map[string][]string  `json:"completedMissions"`
+	Scores            map[string]int       `json:"scores"`
 }
 
 func (m *HiddenMissionModule) SaveState(_ context.Context) (engine.GameState, error) {

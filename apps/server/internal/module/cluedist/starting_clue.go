@@ -141,6 +141,20 @@ func (m *StartingClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
+// BuildStateFor implements engine.PlayerAwareModule — suppresses the full
+// characterCode → clueIDs distribution map (which would leak every player's
+// starting clues). Only the distributed flag is exposed per-player; per-player
+// clue delivery is handled out-of-band via clue.starting_distributed events.
+func (m *StartingClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return json.Marshal(startingClueState{
+		Distributed: m.distributed,
+		// DistributionConfig intentionally omitted — role-private data.
+	})
+}
+
 func (m *StartingClueModule) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -156,9 +170,9 @@ func (m *StartingClueModule) Schema() json.RawMessage {
 		"type": "object",
 		"properties": map[string]any{
 			"distributeAt": map[string]any{
-				"type":    "string",
-				"enum":    []string{"game_start", "first_phase", "after_reading"},
-				"default": "game_start",
+				"type":        "string",
+				"enum":        []string{"game_start", "first_phase", "after_reading"},
+				"default":     "game_start",
 				"description": "When to distribute starting clues",
 			},
 			"notifyPlayer": map[string]any{"type": "boolean", "default": true, "description": "Notify player when starting clues are distributed"},

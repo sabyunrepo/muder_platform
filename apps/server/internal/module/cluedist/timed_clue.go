@@ -24,15 +24,15 @@ type TimedClueConfig struct {
 
 // TimedClueModule distributes clues automatically at timed intervals.
 type TimedClueModule struct {
-	mu                sync.RWMutex
-	deps              engine.ModuleDeps
-	config            TimedClueConfig
-	distributedCount  int
-	lastDistribution  time.Time
-	isActive          bool
-	playerClueCount   map[uuid.UUID]int
-	timedCluePool     []string // pool of clue IDs to distribute
-	nextClueIndex     int
+	mu               sync.RWMutex
+	deps             engine.ModuleDeps
+	config           TimedClueConfig
+	distributedCount int
+	lastDistribution time.Time
+	isActive         bool
+	playerClueCount  map[uuid.UUID]int
+	timedCluePool    []string // pool of clue IDs to distribute
+	nextClueIndex    int
 
 	// nowFunc allows testing with a controllable clock.
 	nowFunc func() time.Time
@@ -234,6 +234,14 @@ func (m *TimedClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
+// BuildStateFor implements engine.PlayerAwareModule. Timed-clue state is
+// purely aggregate (counters and config), with per-player counts kept in a
+// private field and never surfaced via BuildState. Safe to share identically
+// with every player.
+func (m *TimedClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 func (m *TimedClueModule) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -253,14 +261,14 @@ func (m *TimedClueModule) Schema() json.RawMessage {
 			"interval":     map[string]any{"type": "integer", "default": 120, "minimum": 1, "description": "Seconds between auto-distributions"},
 			"maxAutoClues": map[string]any{"type": "integer", "default": 5, "minimum": 1, "description": "Maximum number of auto-distributed clues"},
 			"targetMode": map[string]any{
-				"type":    "string",
-				"enum":    []string{"all", "random_player", "least_clues"},
-				"default": "all",
+				"type":        "string",
+				"enum":        []string{"all", "random_player", "least_clues"},
+				"default":     "all",
 				"description": "Target selection mode for timed clue distribution",
 			},
 			"cluePool": map[string]any{
-				"type":  "array",
-				"items": map[string]any{"type": "string"},
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
 				"description": "Pool of clue IDs to distribute in order",
 			},
 		},

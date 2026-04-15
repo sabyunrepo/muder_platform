@@ -23,9 +23,9 @@ type ConditionalClueConfig struct {
 
 // ClueDependency defines a clue that unlocks when prerequisites are met.
 type ClueDependency struct {
-	ClueID             string `json:"clueId"`
+	ClueID              string   `json:"clueId"`
 	PrerequisiteClueIDs []string `json:"prerequisiteClueIds"`
-	Mode               string `json:"mode"` // "ALL" or "ANY"
+	Mode                string   `json:"mode"` // "ALL" or "ANY"
 }
 
 // ConditionalClueModule manages clues that unlock based on prerequisite conditions.
@@ -163,8 +163,8 @@ func (m *ConditionalClueModule) publishUnlocked(clueID string) {
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "clue.conditional_unlocked",
 		Payload: map[string]any{
-			"clueId":       clueID,
-			"announceAll":  m.config.AnnounceToAll,
+			"clueId":         clueID,
+			"announceAll":    m.config.AnnounceToAll,
 			"announceFinder": m.config.AnnounceToFinder,
 		},
 	})
@@ -202,6 +202,14 @@ func (m *ConditionalClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
+// BuildStateFor implements engine.PlayerAwareModule. Conditional-clue unlocks
+// are broadcast via `clue.conditional_unlocked` events and the visible
+// dependency list is already filtered to satisfied prerequisites, so the
+// aggregate view carries no role-private data.
+func (m *ConditionalClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 func (m *ConditionalClueModule) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -225,9 +233,9 @@ func (m *ConditionalClueModule) Schema() json.RawMessage {
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"clueId":             map[string]any{"type": "string"},
+						"clueId":              map[string]any{"type": "string"},
 						"prerequisiteClueIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-						"mode":               map[string]any{"type": "string", "enum": []string{"ALL", "ANY"}, "default": "ALL"},
+						"mode":                map[string]any{"type": "string", "enum": []string{"ALL", "ANY"}, "default": "ALL"},
 					},
 					"required": []string{"clueId", "prerequisiteClueIds"},
 				},
