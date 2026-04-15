@@ -1,17 +1,22 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, useEditorCharactersMock, useEditorCluesMock, useUpdateConfigJsonMock } =
-  vi.hoisted(() => ({
-    mutateMock: vi.fn(),
-    useEditorCharactersMock: vi.fn(),
-    useEditorCluesMock: vi.fn(),
-    useUpdateConfigJsonMock: vi.fn(),
-  }));
+const {
+  mutateMock,
+  useEditorCharactersMock,
+  useEditorCluesMock,
+  useUpdateConfigJsonMock,
+} = vi.hoisted(() => ({
+  mutateMock: vi.fn(),
+  useEditorCharactersMock: vi.fn(),
+  useEditorCluesMock: vi.fn(),
+  useUpdateConfigJsonMock: vi.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -22,6 +27,10 @@ vi.mock('sonner', () => ({
 }));
 
 vi.mock('@/features/editor/api', () => ({
+  editorKeys: {
+    all: ['editor'],
+    theme: (id: string) => ['editor', 'themes', id] as const,
+  },
   useEditorCharacters: () => useEditorCharactersMock(),
   useEditorClues: () => useEditorCluesMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
@@ -74,6 +83,24 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function renderPanel(themeArg: typeof baseTheme = baseTheme) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  // Seed cache so optimistic updates have a previous snapshot to roll back to.
+  qc.setQueryData(['editor', 'themes', 'theme-1'], themeArg);
+  const view = render(
+    <QueryClientProvider client={qc}>
+      <CharacterAssignPanel themeId="theme-1" theme={themeArg} />
+    </QueryClientProvider>,
+  );
+  return { ...view, qc };
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -86,52 +113,103 @@ describe('CharacterAssignPanel', () => {
   });
 
   it('캐릭터 목록을 렌더링한다', () => {
-    render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
+    renderPanel();
     expect(screen.getByText('홍길동')).toBeDefined();
     expect(screen.getByText('김철수')).toBeDefined();
   });
 
   it('범인 캐릭터에 "범인" 라벨이 표시된다', () => {
-    render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
+    renderPanel();
     expect(screen.getByText('범인')).toBeDefined();
   });
 
   it('캐릭터 선택 시 단서 체크박스가 표시된다', () => {
-    render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
+    renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
     expect(screen.getByText('피 묻은 칼')).toBeDefined();
     expect(screen.getByText('비밀 편지')).toBeDefined();
   });
 
-  it('단서 체크 시 mutate가 호출된다', async () => {
-    render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
+  it('debounce 1500ms 후에 mutate가 호출된다', async () => {
+    renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
 
     const checkboxes = screen.getAllByRole('checkbox');
     fireEvent.click(checkboxes[0]);
 
+    // Regression guard: 500ms (old window) must NOT fire.
     await act(async () => { vi.advanceTimersByTime(500); });
+    expect(mutateMock).not.toHaveBeenCalled();
+
+    // Full 1500ms window → exactly one mutation.
+    await act(async () => { vi.advanceTimersByTime(1000); });
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const cc = config.character_clues as Record<string, string[]>;
     expect(cc['char-1']).toContain('clue-1');
   });
 
-  it('미션 추가 버튼이 동작한다', async () => {
-    render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
+  it('optimistic update: 단서 체크 즉시 query cache가 갱신된다', () => {
+    const { qc } = renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    // Cache reflects the toggle synchronously — no debounce wait.
+    const cached = qc.getQueryData<typeof baseTheme>(['editor', 'themes', 'theme-1']);
+    const cc = cached?.config_json?.character_clues as Record<string, string[]>;
+    expect(cc['char-1']).toContain('clue-1');
+    // Network call is still pending.
+    expect(mutateMock).not.toHaveBeenCalled();
+  });
+
+  it('mutate 실패 시 optimistic update가 rollback된다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    await act(async () => { vi.advanceTimersByTime(1500); });
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    const [, opts] = mutateMock.mock.calls[0] as [
+      unknown,
+      { onError?: (e: Error) => void },
+    ];
+    expect(typeof opts?.onError).toBe('function');
+    // Invoking onError should not throw — rollback path writes previous snapshot.
+    expect(() => opts.onError?.(new Error('boom'))).not.toThrow();
+  });
+
+  it('미션 추가 버튼이 동작한다 (1500ms debounce)', async () => {
+    renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
     fireEvent.click(screen.getByText('추가'));
 
-    await act(async () => { vi.advanceTimersByTime(500); });
+    await act(async () => { vi.advanceTimersByTime(1500); });
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const cm = config.character_missions as Record<string, unknown[]>;
     expect(cm['char-1']).toHaveLength(1);
   });
 
+  it('다른 캐릭터 선택 시 pending save가 flush된다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    expect(mutateMock).not.toHaveBeenCalled();
+
+    // Switching characters should flush without waiting for the debounce.
+    fireEvent.click(screen.getByText('김철수'));
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+  });
+
   it('캐릭터가 없으면 안내 메시지를 표시한다', () => {
     useEditorCharactersMock.mockReturnValue({ data: [], isLoading: false });
-    render(<CharacterAssignPanel themeId="theme-1" theme={baseTheme} />);
+    renderPanel();
     expect(screen.getByText('캐릭터를 먼저 추가하세요')).toBeDefined();
   });
 });

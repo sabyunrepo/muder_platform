@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import type { Node } from "@xyflow/react";
 import { useUpdateFlowNode } from "../../flowApi";
 import type { FlowNodeData, PhaseAction } from "../../flowTypes";
@@ -22,6 +22,9 @@ const PHASE_TYPES = [
   { value: "intermission", label: "인터미션" },
 ];
 
+/** Debounce window for flow-node saves (W2 PR-5: 500→1500ms). */
+const SAVE_DEBOUNCE_MS = 1500;
+
 // ---------------------------------------------------------------------------
 // PhaseNodePanel — 페이즈 노드 편집 패널
 // ---------------------------------------------------------------------------
@@ -29,20 +32,46 @@ const PHASE_TYPES = [
 export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingRef = useRef<FlowNodeData | null>(null);
   const data = node.data as FlowNodeData;
+
+  /** Send the pending network write immediately and cancel the debounce timer. */
+  const flush = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (!pendingRef.current) return;
+    const body = pendingRef.current;
+    pendingRef.current = null;
+    updateNode.mutate({ nodeId: node.id, body: { data: body } });
+  }, [node.id, updateNode]);
 
   useEffect(() => {
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Fire any pending save on unmount so the user doesn't lose edits when
+      // they switch nodes or close the panel within the debounce window.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      if (pendingRef.current) {
+        updateNode.mutate({ nodeId: node.id, body: { data: pendingRef.current } });
+        pendingRef.current = null;
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
     onUpdate(node.id, patch);
+    const merged = { ...data, ...(pendingRef.current ?? {}), ...patch };
+    pendingRef.current = merged;
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      updateNode.mutate({ nodeId: node.id, body: { data: { ...data, ...patch } } });
-    }, 500);
+      debounceRef.current = null;
+      flush();
+    }, SAVE_DEBOUNCE_MS);
   };
 
   return (
@@ -58,6 +87,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           type="text"
           value={data.label ?? ""}
           onChange={(e) => handleChange({ label: e.target.value })}
+          onBlur={flush}
           placeholder="페이즈 이름"
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
         />
@@ -69,6 +99,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
         <select
           value={data.phase_type ?? ""}
           onChange={(e) => handleChange({ phase_type: e.target.value })}
+          onBlur={flush}
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
         >
           <option value="">선택 안 함</option>
@@ -90,6 +121,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           onChange={(e) =>
             handleChange({ duration: e.target.value ? Number(e.target.value) : undefined })
           }
+          onBlur={flush}
           placeholder="0"
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
         />
@@ -105,6 +137,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           onChange={(e) =>
             handleChange({ rounds: e.target.value ? Number(e.target.value) : undefined })
           }
+          onBlur={flush}
           placeholder="1"
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
         />
@@ -141,6 +174,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
             onChange={(e) =>
               handleChange({ warningAt: e.target.value ? Number(e.target.value) : undefined })
             }
+            onBlur={flush}
             placeholder="30"
             className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
           />
