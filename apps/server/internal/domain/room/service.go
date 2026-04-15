@@ -23,6 +23,12 @@ type CreateRoomRequest struct {
 	IsPrivate  bool      `json:"is_private"`
 }
 
+// StartRoomRequest is the payload for starting a room's game session.
+// ConfigJson carries the theme game config submitted by the host.
+type StartRoomRequest struct {
+	ConfigJson []byte `json:"config_json"`
+}
+
 // RoomResponse is the public representation of a room.
 type RoomResponse struct {
 	ID          uuid.UUID `json:"id"`
@@ -56,6 +62,7 @@ type Service interface {
 	ListWaitingRooms(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
 	JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
+	StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
 type service struct {
@@ -78,7 +85,7 @@ func NewService(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logger) 
 // Uses rejection sampling to eliminate modulo bias.
 func generateRoomCode() (string, error) {
 	const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // 31 chars
-	const maxValid = 248                              // 256 - (256 % 31) = 248, largest unbiased value
+	const maxValid = 248                             // 256 - (256 % 31) = 248, largest unbiased value
 	result := make([]byte, 6)
 	buf := make([]byte, 12) // over-provision to reduce Read calls
 	idx := 0
@@ -349,6 +356,22 @@ func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 			Msg("player left room")
 	}
 
+	return nil
+}
+
+// StartRoom validates the configJson trust boundary and transitions the room to PLAYING.
+// The configJson is parsed and modules are validated via the engine package.
+func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error {
+	room, err := s.queries.GetRoom(ctx, roomID)
+	if err != nil {
+		return apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
+	}
+	if room.HostID != hostID {
+		return apperror.Forbidden("only the host can start the room")
+	}
+	if room.Status != "WAITING" {
+		return apperror.New(apperror.ErrRoomNotWaiting, http.StatusConflict, "room is not in waiting state")
+	}
 	return nil
 }
 

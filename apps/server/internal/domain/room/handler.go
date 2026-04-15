@@ -11,6 +11,9 @@ import (
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
+// startBodyLimit is the maximum allowed body size for StartRoom (256 KiB).
+const startBodyLimit = 256 * 1024
+
 // Handler handles room HTTP endpoints.
 type Handler struct {
 	svc Service
@@ -130,4 +133,35 @@ func (h *Handler) LeaveRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "left"})
+}
+
+// StartRoom handles POST /rooms/{id}/start (authenticated, host only).
+// It enforces a 256 KiB body limit to protect the configJson trust boundary.
+func (h *Handler) StartRoom(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	roomID, err := uuid.Parse(idStr)
+	if err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid room ID"))
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, startBodyLimit)
+
+	var req StartRoomRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid start body"))
+		return
+	}
+
+	if err := h.svc.StartRoom(r.Context(), roomID, userID, req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "started"})
 }
