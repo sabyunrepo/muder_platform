@@ -1,0 +1,65 @@
+# E2E CI compose — Postgres + Redis + Go server (real binary)
+# Usage:
+#   docker compose -f docker-compose.e2e.yml up -d
+#   PLAYWRIGHT_BACKEND=1 pnpm exec playwright test
+#   docker compose -f docker-compose.e2e.yml down -v
+#
+# Env overrides:
+#   GAME_RUNTIME_V2  (default: true)
+#   SERVER_IMAGE     (default: built from source via Dockerfile)
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mmp_e2e
+      POSTGRES_USER: mmp
+      POSTGRES_PASSWORD: mmp_e2e
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmp -d mmp_e2e"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - e2e
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - e2e
+
+  server:
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    environment:
+      PORT: "8080"
+      APP_ENV: e2e
+      DATABASE_URL: postgres://mmp:mmp_e2e@postgres:5432/mmp_e2e?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      GAME_RUNTIME_V2: ${GAME_RUNTIME_V2:-true}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    networks:
+      - e2e
+
+networks:
+  e2e:
+    driver: bridge
