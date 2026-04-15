@@ -284,3 +284,47 @@ func TestSnapshot_SendsLivePlayerStateWhenCacheEmpty(t *testing.T) {
 		t.Errorf("envelope type: got %q, want %q", env.Type, "session:state")
 	}
 }
+
+// TestSnapshot_TwoReconnectsBothViaActor verifies that two reconnecting
+// players each receive a fresh envelope reconstructed by the actor (and not
+// pulled from a stale Redis blob). Exercises the KindSnapshotFor dispatch
+// path introduced in Phase 18.1 PR-1 for per-player redaction.
+func TestSnapshot_TwoReconnectsBothViaActor(t *testing.T) {
+	fc := newFakeCache()
+	sender := &fakeSender{}
+	sessionID, _, m := startWithSnapshot(t, fc, sender)
+	t.Cleanup(func() { m.Stop(sessionID) }) //nolint:errcheck
+
+	alice := uuid.New()
+	bob := uuid.New()
+	m.OnPlayerRejoined(sessionID, alice)
+	m.OnPlayerRejoined(sessionID, bob)
+
+	deadline := time.Now().Add(1 * time.Second)
+	for time.Now().Before(deadline) {
+		if sender.count() >= 2 {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if sender.count() < 2 {
+		t.Fatalf("expected 2 player-aware sends, got %d", sender.count())
+	}
+
+	// The test engine has no player-aware modules, but the envelope MUST still
+	// have type session:state and carry a well-formed engine-state JSON body.
+	env := sender.lastEnvelope()
+	if env.Type != "session:state" {
+		t.Errorf("envelope type: got %q, want session:state", env.Type)
+	}
+	var body struct {
+		SessionID string `json:"sessionId"`
+	}
+	if err := json.Unmarshal(env.Payload, &body); err != nil {
+		t.Fatalf("envelope payload not engine-state JSON: %v", err)
+	}
+	if body.SessionID != sessionID.String() {
+		t.Errorf("sessionId mismatch: got %q want %q", body.SessionID, sessionID)
+	}
+}
