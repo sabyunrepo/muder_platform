@@ -58,11 +58,24 @@ async function tryClickTab(page: Page, label: RegExp): Promise<boolean> {
 
 test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", () => {
   let state: MockState;
+  // Phase 18.5 M4 — 전역 PUT 0회 assertion. 어떤 시나리오에서도 /flow/nodes/ 로 향하는
+  // PUT 이 있으면 회귀 (CRIT-1 재발) 이므로 테스트가 실패한다.
+  let globalPutSeen: string[] = [];
 
   test.beforeEach(async ({ page }) => {
     state = freshState();
+    globalPutSeen = [];
+    page.on("request", (req) => {
+      if (req.method() === "PUT" && req.url().includes("/flow/nodes/")) {
+        globalPutSeen.push(req.url());
+      }
+    });
     await mockCommonApis(page, state);
     await loginAsE2EUser(page);
+  });
+
+  test.afterEach(() => {
+    expect(globalPutSeen).toEqual([]);
   });
 
   test("[1] 에디터 대시보드 진입 + 기존 테마 노출", async ({ page }) => {
@@ -73,7 +86,11 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.locator("body")).toContainText("E2E 골든패스");
   });
 
-  test("[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url", async ({ page }) => {
+  test("[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)", async ({ page }) => {
+    test.info().annotations.push({
+      type: "soft-skip",
+      description: "UI 렌더 실패 시 네트워크 레벨 회귀 가드만 유지 (state counter fallback)",
+    });
     // 프론트의 단서 탭 진입 + 업로드 트리거를 UI 로 시도하고, 네트워크에서 경로 확인
     const reqPromise = page
       .waitForRequest(
@@ -117,7 +134,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[3] 캐릭터 배정 탭 — starting_clue_ids UI 렌더/로드 확인", async ({ page }) => {
+  test("[3] 캐릭터 배정 탭 — starting_clue_ids UI 렌더/로드 확인 (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + checkbox soft" });
     const charReq = page
       .waitForRequest(
         (r) =>
@@ -140,7 +158,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[4] 단서 목록 GET — image_url 필드 렌더", async ({ page }) => {
+  test("[4] 단서 목록 GET — image_url 필드 렌더 (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + img soft" });
     state.clueImageURL = "https://mock-storage.example/themes/test/clues/c1/image.png";
 
     const clueReq = page
@@ -163,7 +182,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[5] clue-relations GET — 빈 결과 200", async ({ page }) => {
+  test("[5] clue-relations GET — 빈 결과 200 (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + state fallback" });
     const relReq = page
       .waitForRequest(
         (r) =>
@@ -182,7 +202,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(got !== null || state.clueRelationsCalls > 0).toBe(true);
   });
 
-  test("[6] 모듈 토글 → config PUT 409 silent rebase", async ({ page }) => {
+  test("[6] 모듈 토글 → config PUT 409 silent rebase (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "스위치 미렌더 시 auto-save wait" });
     await page.goto(`${BASE}/editor/${THEME_ID}/modules`);
     await tryClickTab(page, /모듈|module/i);
 
@@ -216,7 +237,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(state.conflictCountdown).toBeLessThanOrEqual(1);
   });
 
-  test("[7] 흐름 노드 편집 — PATCH 만, PUT 은 회귀 금지", async ({ page }) => {
+  test("[7] 흐름 노드 편집 — PATCH 만, PUT 은 회귀 금지 (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "React Flow 노드 미렌더 시 uiEdited=false" });
     const { putSeen } = await installFlowPutGuard(page);
 
     await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
@@ -247,7 +269,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(putSeen).toEqual([]);
   });
 
-  test("[8] 장소 탭 — locations[].clueIds 구조 UI 로드", async ({ page }) => {
+  test("[8] 장소 탭 — locations[].clueIds 구조 UI 로드 (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + chip soft" });
     const locReq = page
       .waitForRequest(
         (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/locations`) && r.method() === "GET",
@@ -270,7 +293,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[9] 템플릿 탭 GET /api/v1/templates", async ({ page }) => {
+  test("[9] 템플릿 탭 GET /api/v1/templates (network-only)", async ({ page }) => {
+    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + state fallback" });
     const tplReq = page
       .waitForRequest(
         (r) =>
