@@ -17,82 +17,115 @@
     ],
     "started_at": "2026-04-15",
     "started_commit": "cdd498e523b91775e87cc1baca5e50272cf7add1",
-    "current_wave": "W0",
-    "current_pr": "PR-1",
-    "current_task": "W0 PR-1: Backend route registration fixes (templates GET, flow PATCH 정리)",
-    "status": "pending",
+    "current_wave": "W1",
+    "current_pr": "W1-review",
+    "current_task": "W1 완료, 사용자 리뷰 대기 (W2 재개 전)",
+    "status": "waiting_review",
     "blockers": [],
     "waves": [
       {
         "id": "W0",
         "name": "backend-route-query",
         "mode": "parallel",
-        "prs": ["PR-1", "PR-2"]
+        "prs": [
+          "PR-1",
+          "PR-2"
+        ]
       },
       {
         "id": "W1",
         "name": "frontend-network-cache",
         "mode": "parallel",
-        "prs": ["PR-3", "PR-4"]
+        "prs": [
+          "PR-3",
+          "PR-4"
+        ]
       },
       {
         "id": "W2",
         "name": "frontend-ux",
         "mode": "parallel",
-        "prs": ["PR-5", "PR-6"]
+        "prs": [
+          "PR-5",
+          "PR-6"
+        ]
       },
       {
         "id": "W3",
         "name": "regression-docs",
         "mode": "sequential",
-        "prs": ["PR-7"]
+        "prs": [
+          "PR-7"
+        ]
       }
     ],
     "prs": {
       "PR-1": {
         "title": "Backend: templates route 등록 + flow PATCH 정리",
         "depends_on": [],
-        "scope": ["apps/server/cmd/server/main.go", "apps/server/internal/domain/server/template_handler.go"],
+        "scope": [
+          "apps/server/cmd/server/main.go",
+          "apps/server/internal/domain/server/template_handler.go"
+        ],
         "tasks_total": 4,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-18.4/PR-1",
-        "commit": null
+        "commit": "848f458"
       },
       "PR-2": {
         "title": "Backend: clue-relations empty + config 409 current_version",
         "depends_on": [],
-        "scope": ["apps/server/internal/domain/editor/**"],
+        "scope": [
+          "apps/server/internal/domain/editor/**"
+        ],
         "tasks_total": 4,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-18.4/PR-2",
-        "commit": null
+        "commit": "d5e318b"
       },
       "PR-3": {
         "title": "Frontend: upload-url path + clue image setQueryData",
-        "depends_on": ["PR-1"],
-        "scope": ["apps/web/src/features/editor/imageApi.ts", "apps/web/src/features/editor/components/ImageCropUpload.tsx", "apps/web/src/features/editor/components/design/ClueForm.tsx", "apps/web/src/features/editor/editorClueApi.ts"],
+        "depends_on": [
+          "PR-1"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/imageApi.ts",
+          "apps/web/src/features/editor/components/ImageCropUpload.tsx",
+          "apps/web/src/features/editor/components/design/ClueForm.tsx",
+          "apps/web/src/features/editor/editorClueApi.ts"
+        ],
         "tasks_total": 4,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-18.4/PR-3",
-        "commit": null
+        "commit": "cb1c394"
       },
       "PR-4": {
         "title": "Frontend: config 409 rebase + 1회 retry + Snackbar",
-        "depends_on": ["PR-2"],
-        "scope": ["apps/web/src/features/editor/editorConfigApi.ts", "apps/web/src/features/editor/components/design/ModulesSubTab.tsx"],
+        "depends_on": [
+          "PR-2"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/editorConfigApi.ts",
+          "apps/web/src/features/editor/components/design/ModulesSubTab.tsx"
+        ],
         "tasks_total": 4,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 4,
+        "status": "completed",
         "branch": "feat/phase-18.4/PR-4",
-        "commit": null
+        "commit": "6bd6d01"
       },
       "PR-5": {
         "title": "Frontend: optimistic update + debounce 1500ms + onBlur flush",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/web/src/features/editor/components/design/CharacterAssignPanel.tsx", "apps/web/src/features/editor/components/design/PhaseNodePanel.tsx"],
+        "depends_on": [
+          "PR-4"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/components/design/CharacterAssignPanel.tsx",
+          "apps/web/src/features/editor/components/design/PhaseNodePanel.tsx"
+        ],
         "tasks_total": 5,
         "tasks_done": 0,
         "status": "pending",
@@ -101,8 +134,13 @@
       },
       "PR-6": {
         "title": "Frontend: LocationClueAssignPanel + schema 확장",
-        "depends_on": ["PR-4"],
-        "scope": ["apps/web/src/features/editor/components/design/LocationsSubTab.tsx", "apps/web/src/features/editor/editorTypes.ts"],
+        "depends_on": [
+          "PR-4"
+        ],
+        "scope": [
+          "apps/web/src/features/editor/components/design/LocationsSubTab.tsx",
+          "apps/web/src/features/editor/editorTypes.ts"
+        ],
         "tasks_total": 5,
         "tasks_done": 0,
         "status": "pending",
@@ -111,8 +149,14 @@
       },
       "PR-7": {
         "title": "E2E + regression + docs + memory update",
-        "depends_on": ["PR-5", "PR-6"],
-        "scope": ["e2e/**", "memory/**"],
+        "depends_on": [
+          "PR-5",
+          "PR-6"
+        ],
+        "scope": [
+          "e2e/**",
+          "memory/**"
+        ],
         "tasks_total": 5,
         "tasks_done": 0,
         "status": "pending",

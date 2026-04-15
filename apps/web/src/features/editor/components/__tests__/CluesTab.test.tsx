@@ -11,7 +11,13 @@ const { useEditorCluesMock, useDeleteClueMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries: vi.fn() }) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: vi.fn(), setQueryData: vi.fn() }),
+  QueryClient: class {
+    invalidateQueries() {}
+    setQueryData() {}
+  },
+}));
 vi.mock('@/shared/components/ui/Spinner', () => ({
   Spinner: () => <div data-testid="spinner" />,
 }));
