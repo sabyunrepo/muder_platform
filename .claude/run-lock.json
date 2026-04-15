@@ -1,0 +1,11 @@
+{
+  "owner_pid": 76685,
+  "run_id": "r-20260415-205940-f535",
+  "acquired_at": "2026-04-15T13:09:16Z",
+  "last_heartbeat": "2026-04-15T13:09:16Z",
+  "wave": "W3",
+  "pr": "PR-7",
+  "task": "W3 E2E + docs",
+  "worktree": null,
+  "ab_experiment": null
+}
