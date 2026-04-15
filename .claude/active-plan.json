@@ -17,9 +17,9 @@
     ],
     "started_at": "2026-04-15",
     "started_commit": "cdd498e523b91775e87cc1baca5e50272cf7add1",
-    "current_wave": "W1",
-    "current_pr": "W1-review",
-    "current_task": "W1 완료, 사용자 리뷰 대기 (W2 재개 전)",
+    "current_wave": "W2",
+    "current_pr": "W2-review",
+    "current_task": "W2 완료, W3 진입 전 확인",
     "status": "waiting_review",
     "blockers": [],
     "waves": [
@@ -127,10 +127,10 @@
           "apps/web/src/features/editor/components/design/PhaseNodePanel.tsx"
         ],
         "tasks_total": 5,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 5,
+        "status": "completed",
         "branch": "feat/phase-18.4/PR-5",
-        "commit": null
+        "commit": "0ad006d"
       },
       "PR-6": {
         "title": "Frontend: LocationClueAssignPanel + schema 확장",
@@ -142,10 +142,10 @@
           "apps/web/src/features/editor/editorTypes.ts"
         ],
         "tasks_total": 5,
-        "tasks_done": 0,
-        "status": "pending",
+        "tasks_done": 5,
+        "status": "completed",
         "branch": "feat/phase-18.4/PR-6",
-        "commit": null
+        "commit": "9b800ff"
       },
       "PR-7": {
         "title": "E2E + regression + docs + memory update",
