@@ -38,6 +38,7 @@ import (
 	"github.com/mmp-platform/server/internal/seo"
 	"github.com/mmp-platform/server/internal/server"
 	"github.com/mmp-platform/server/internal/session"
+	"github.com/mmp-platform/server/internal/template"
 	"github.com/mmp-platform/server/internal/ws"
 )
 
@@ -224,6 +225,10 @@ func main() {
 	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
 	reviewHandler := admin.NewReviewHandler(queries, logger)
 
+	// Template loader + handler (Phase 18.4 W0 PR-1: expose preset templates).
+	templateLoader := template.NewLoader()
+	templateHandler := server.NewTemplateHandler(templateLoader)
+
 	// 11. WebSocket Hub (Game)
 	registry := ws.NewEnvelopeRegistry()
 	ws.BootstrapRegistry(registry)
@@ -324,6 +329,11 @@ func main() {
 		r.Get("/themes/{id}", themeHandler.GetTheme)
 		r.Get("/themes/slug/{slug}", themeHandler.GetThemeBySlug)
 		r.Get("/themes/{id}/characters", themeHandler.GetCharacters)
+
+		// Preset templates (Phase 18.4 W0 PR-1)
+		r.Get("/templates", templateHandler.ListTemplates)
+		r.Get("/templates/{id}", templateHandler.GetTemplate)
+		r.Get("/templates/{id}/schema", templateHandler.GetTemplateSchema)
 
 		r.Get("/rooms", roomHandler.ListWaitingRooms)
 		r.Get("/rooms/{id}", roomHandler.GetRoom)
