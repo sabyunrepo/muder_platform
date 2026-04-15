@@ -1,5 +1,19 @@
 # Murder Mystery Platform (MMP v3) — 프로젝트 규칙
 
+## 하네스: MMP v3 전체 개발
+
+**목표:** Go+React 풀스택 + 모듈 시스템 + 테스트 + 보안 리뷰를 6인 전문가 팀으로 조율한다.
+
+**트리거:** Go/React 코드 변경, 모듈 추가, 테스트 보강, 보안 검토 요청 시 `mmp-harness` 스킬을 사용하라. 단순 조회/질문은 직접 응답 가능.
+
+**구성:** `.claude/agents/` (docs-navigator, go-backend-engineer, react-frontend-engineer, module-architect, test-engineer, security-reviewer) + `.claude/skills/` (mmp-harness 오케스트레이터, mmp-qmd-first, mmp-200-line-rule, mmp-module-factory, mmp-test-strategy, mmp-security-rfc9457).
+
+**변경 이력:**
+| 날짜 | 변경 내용 | 대상 | 사유 |
+|------|----------|------|------|
+| 2026-04-15 | 초기 구성 | 전체 | harness 플러그인 기반 전프로젝트 범용 팀 구축 |
+| 2026-04-15 | mmp-pilot M0-M2 | `/plan-go`, mmp-pilot 스킬, run-*.sh, m3-cutover.sh, m4-plan.md | plan-autopilot↔하네스 통합 (M3 대기, M4 계획만 문서화). 상세: `.claude/designs/mmp-pilot/` |
+
 ## 프로젝트 개요
 다중 테마 실시간 멀티플레이어 머더미스터리 게임 플랫폼 v3 리빌드.
 새 레포에서 처음부터 작성. 기존 v2 코드 마이그레이션 아님.

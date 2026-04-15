@@ -51,5 +51,8 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "harness@harness-marketplace": true
   }
 }

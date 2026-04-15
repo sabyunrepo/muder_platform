@@ -1,8 +1,14 @@
 ---
-description: (sabyun) Wave 기반 병렬 자동 실행 루프 (sub-agent + worktree + 4 parallel reviewers)
+description: (sabyun) [DEPRECATED — use /plan-go] Wave 기반 병렬 자동 실행 루프 (sub-agent + worktree + 4 parallel reviewers)
 argument-hint: [--until WAVE] [--only PR-N] [--dry-run]
 allowed-tools: Read Write Edit Bash Task
 ---
+
+> ⚠️ **M2 Deprecation 경고**
+> 이 커맨드는 `mmp-pilot` 통합 체계로 대체 예정입니다.
+> 신규 실행은 `/plan-go` 사용 권장. 동일 플래그 + 추가 기능(`--task`, `--resume`, `--ab`, `--force-unlock`).
+> 기존 Phase(현재 18.3 등)는 안전하게 계속 동작합니다. 전환은 Phase 종료 후 `.claude/scripts/m3-cutover.sh`로 수행.
+> 상세: `.claude/designs/mmp-pilot/README.md`
 
 ## Pre-flight check (MUST NOT SKIP)
 
