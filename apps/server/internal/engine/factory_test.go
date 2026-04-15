@@ -1,0 +1,113 @@
+package engine
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestParseGameConfig_Valid(t *testing.T) {
+	data := []byte(`{"modules":[{"name":"clue_interaction","config":{}}]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 {
+		t.Fatalf("expected 1 module, got %d", len(cfg.Modules))
+	}
+	if cfg.Modules[0].Name != "clue_interaction" {
+		t.Fatalf("unexpected module name: %s", cfg.Modules[0].Name)
+	}
+}
+
+func TestParseGameConfig_Empty(t *testing.T) {
+	data := []byte(`{"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 0 {
+		t.Fatalf("expected 0 modules, got %d", len(cfg.Modules))
+	}
+}
+
+func TestParseGameConfig_UnknownField(t *testing.T) {
+	data := []byte(`{"modules":[],"evil_field":"injection"}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected error for unknown field, got nil")
+	}
+}
+
+func TestParseGameConfig_TooManyModules(t *testing.T) {
+	// Build a config with 51 modules.
+	entries := make([]string, 51)
+	for i := range entries {
+		entries[i] = `{"name":"mod"}`
+	}
+	data := []byte(`{"modules":[` + strings.Join(entries, ",") + `]}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected error for >50 modules, got nil")
+	}
+}
+
+func TestParseGameConfig_InvalidJSON(t *testing.T) {
+	_, err := ParseGameConfig([]byte(`not json`))
+	if err == nil {
+		t.Fatal("expected error for invalid JSON, got nil")
+	}
+}
+
+func TestBuildModules_Success(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{
+		"test_mod": func() Module { return &stubCoreModule{name: "test_mod"} },
+	}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	cfg := &GameConfig{
+		Modules: []ModuleConfig{{Name: "test_mod"}},
+	}
+	mods, err := BuildModules(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(mods) != 1 {
+		t.Fatalf("expected 1 module, got %d", len(mods))
+	}
+}
+
+func TestBuildModules_UnknownModule(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	cfg := &GameConfig{
+		Modules: []ModuleConfig{{Name: "nonexistent"}},
+	}
+	_, err := BuildModules(cfg)
+	if err == nil {
+		t.Fatal("expected error for unknown module, got nil")
+	}
+}
+
+// blockedModule implements HostSubmittable returning false (admin-only).
+type blockedModule struct{ stubCoreModule }
+
+func (b *blockedModule) IsHostSubmittable() bool { return false }
+
+func TestBuildModules_BlockedModule(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{
+		"admin_mod": func() Module { return &blockedModule{stubCoreModule{name: "admin_mod"}} },
+	}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	cfg := &GameConfig{
+		Modules: []ModuleConfig{{Name: "admin_mod"}},
+	}
+	_, err := BuildModules(cfg)
+	if err == nil {
+		t.Fatal("expected error for blocked module, got nil")
+	}
+}
