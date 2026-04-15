@@ -71,16 +71,23 @@ func TestEnvelopeRegistry_IsKnown(t *testing.T) {
 	}
 }
 
-func TestEnvelopeRegistry_DuplicateRegister_Panics(t *testing.T) {
+func TestEnvelopeRegistry_DuplicateRegister_Idempotent(t *testing.T) {
 	r := NewEnvelopeRegistry()
-	r.Register("game:start", func(raw json.RawMessage) (any, error) { return nil, nil })
+	first := func(raw json.RawMessage) (any, error) { return "first", nil }
+	second := func(raw json.RawMessage) (any, error) { return "second", nil }
 
-	defer func() {
-		if rec := recover(); rec == nil {
-			t.Error("Register: expected panic on duplicate type, got none")
-		}
-	}()
-	r.Register("game:start", func(raw json.RawMessage) (any, error) { return nil, nil })
+	r.Register("game:start", first)
+	// Second registration must NOT panic; first-wins behaviour preserves
+	// the originally registered decoder (L-1 fix).
+	r.Register("game:start", second)
+
+	got, err := r.Decode("game:start", json.RawMessage(`{}`))
+	if err != nil {
+		t.Fatalf("Decode: unexpected error: %v", err)
+	}
+	if got != "first" {
+		t.Errorf("Decode: expected first decoder to win, got %v", got)
+	}
 }
 
 // --- Hub.Route session forwarding tests ---
