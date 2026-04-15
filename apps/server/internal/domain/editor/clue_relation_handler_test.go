@@ -51,6 +51,39 @@ func TestGetClueRelations_OK(t *testing.T) {
 	}
 }
 
+// TestGetClueRelations_Empty verifies a newly created theme (no relations)
+// returns 200 + [], not 500. Regression test for the PR-2 bug where an empty
+// relation set was surfacing as Internal Server Error.
+func TestGetClueRelations_Empty(t *testing.T) {
+	ms := &mockService{
+		getClueRelationsFn: func(_ context.Context, _, _ uuid.UUID) ([]ClueRelationResponse, error) {
+			return []ClueRelationResponse{}, nil
+		},
+	}
+	h := NewHandler(ms)
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/themes/"+testThemeID.String()+"/clue-relations", nil)
+	r = withAuth(r)
+	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	w := httptest.NewRecorder()
+
+	h.GetClueRelations(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 for empty relations, got %d: %s", w.Code, w.Body.String())
+	}
+	var got []ClueRelationResponse
+	if err := json.NewDecoder(w.Body).Decode(&got); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if got == nil {
+		t.Fatal("expected empty slice (not null) in response body")
+	}
+	if len(got) != 0 {
+		t.Fatalf("expected 0 relations, got %d", len(got))
+	}
+}
+
 func TestReplaceClueRelations_OK(t *testing.T) {
 	ms := &mockService{
 		replaceClueRelationsFn: func(_ context.Context, _, _ uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error) {

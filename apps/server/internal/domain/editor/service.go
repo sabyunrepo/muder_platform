@@ -483,26 +483,9 @@ func (s *service) ListCharacters(ctx context.Context, creatorID, themeID uuid.UU
 	return out, nil
 }
 
-func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error) {
-	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
-	if err != nil {
-		return nil, err
-	}
-
-	updated, err := s.q.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{
-		ID:         themeID,
-		ConfigJson: config,
-		Version:    theme.Version,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.Conflict("theme was modified by another session")
-		}
-		s.logger.Error().Err(err).Msg("failed to update config")
-		return nil, apperror.Internal("failed to update config")
-	}
-	return toThemeResponse(updated), nil
-}
+// UpdateConfigJson is implemented in service_config.go to keep the optimistic
+// lock + RFC 9457 extensions logic isolated and to keep this file under the
+// 500-line limit (see docs/plans/2026-04-15-phase-18.4/design.md #2).
 
 // --- Maps ---
 

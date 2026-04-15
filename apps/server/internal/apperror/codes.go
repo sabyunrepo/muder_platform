@@ -110,4 +110,7 @@ const (
 
 	// WebSocket message errors
 	ErrWSUnknownMessageType = "WS_UNKNOWN_MESSAGE_TYPE"
+
+	// Editor errors
+	ErrEditorConfigVersionMismatch = "EDITOR_CONFIG_VERSION_MISMATCH"
 )

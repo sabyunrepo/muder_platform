@@ -13,16 +13,17 @@ import (
 
 // problemResponse is the RFC 9457 Problem Details JSON structure.
 type problemResponse struct {
-	Type     string         `json:"type"`
-	Title    string         `json:"title"`
-	Status   int            `json:"status"`
-	Detail   string         `json:"detail"`
-	Code     string         `json:"code"`
-	Instance string         `json:"instance,omitempty"`
-	Params   map[string]any `json:"params,omitempty"`
-	Errors   []FieldError   `json:"errors,omitempty"`
-	TraceID  string         `json:"trace_id,omitempty"`
-	Debug    *debugInfo     `json:"debug,omitempty"`
+	Type       string         `json:"type"`
+	Title      string         `json:"title"`
+	Status     int            `json:"status"`
+	Detail     string         `json:"detail"`
+	Code       string         `json:"code"`
+	Instance   string         `json:"instance,omitempty"`
+	Params     map[string]any `json:"params,omitempty"`
+	Errors     []FieldError   `json:"errors,omitempty"`
+	Extensions map[string]any `json:"extensions,omitempty"`
+	TraceID    string         `json:"trace_id,omitempty"`
+	Debug      *debugInfo     `json:"debug,omitempty"`
 }
 
 // debugInfo holds development-only diagnostic information.
@@ -83,14 +84,15 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 
 	resp := problemResponse{
-		Type:     typeURI,
-		Title:    appErr.Title,
-		Status:   appErr.Status,
-		Detail:   appErr.Detail,
-		Code:     appErr.Code,
-		Instance: appErr.Instance,
-		Params:   appErr.Params,
-		Errors:   appErr.Errors,
+		Type:       typeURI,
+		Title:      appErr.Title,
+		Status:     appErr.Status,
+		Detail:     appErr.Detail,
+		Code:       appErr.Code,
+		Instance:   appErr.Instance,
+		Params:     appErr.Params,
+		Errors:     appErr.Errors,
+		Extensions: appErr.Extensions,
 	}
 
 	// Include trace_id in error response if OTel is active.
