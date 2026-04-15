@@ -1,8 +1,8 @@
 <!-- STATUS-START -->
-**Active**: Phase 18.3 보안 하드닝 + CI 정비 — Wave 0/2
-**PR**: PR-0 (100%) — PR #40 ready for review
+**Active**: Phase 18.3 보안 하드닝 + CI 정비 — Wave 2/2
+**PR**: PR-4 (100%) — 완료
 **Task**: 완료
-**State**: pr_open
+**State**: completed
 **Blockers**: none
 **Last updated**: 2026-04-15
 <!-- STATUS-END -->
@@ -63,12 +63,12 @@
 
 ## Wave 2 — 풀 회귀 + 문서 (sequential)
 
-### PR-4: Regression + docs
-- [ ] Task 1 — `go test -race -count=1 ./...` 풀 수트 (config 포함) green
-- [ ] Task 2 — `pnpm test` + `pnpm exec tsc --noEmit` + `pnpm lint` 전부 pass
-- [ ] Task 3 — `memory/project_phase183_progress.md` 작성 + MEMORY.md 갱신
-- [ ] Task 4 — `feedback_ci_infra_debt.md` 갱신 (해결 항목 체크)
-- [ ] Task 5 — `/plan-finish`
+### PR-4: Regression + docs ✅
+- [x] Task 1 — `go test -race -count=1 ./...` 풀 수트 (config 포함) green
+- [x] Task 2 — `pnpm test` + `pnpm exec tsc --noEmit` + `pnpm lint` 전부 pass
+- [x] Task 3 — `memory/project_phase183_progress.md` 작성 + MEMORY.md 갱신
+- [x] Task 4 — `feedback_ci_infra_debt.md` 갱신 (해결 항목 체크)
+- [ ] Task 5 — `/plan-finish` (사용자가 직접 실행)
 
 **Wave 2 gate**: user 확인 + archive
 
@@ -76,9 +76,9 @@
 
 ## Phase completion gate
 
-- [ ] M-7/M-a/M-e 보안 3건 해결
-- [ ] Low 6건 (L-2~L-8) 해결
-- [ ] CI 부채 3건 해결
-- [ ] 풀 회귀 green
-- [ ] Memory 갱신
-- [ ] `/plan-finish` 실행
+- [x] M-7/M-a/M-e 보안 3건 해결
+- [x] Low 6건 (L-2~L-8) 해결
+- [x] CI 부채 3건 해결
+- [x] 풀 회귀 green
+- [x] Memory 갱신
+- [ ] `/plan-finish` 실행 (사용자 직접)
