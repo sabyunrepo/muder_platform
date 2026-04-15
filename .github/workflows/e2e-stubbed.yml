@@ -1,0 +1,157 @@
+name: E2E — Stubbed Backend
+
+# PR-required job: runs on every PR and push to main.
+# Uses a real Postgres + Redis + Go server so PLAYWRIGHT_BACKEND=1
+# is set, releasing the skip guard in all backend-gated spec files.
+# Three core scenarios always execute:
+#   1. 방 생성 → 시작 → 페이즈 진행  (game-session.spec.ts)
+#   2. 재접속 복원                    (game-reconnect.spec.ts)
+#   3. Redaction 확인               (game-redaction.spec.ts)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: e2e-stubbed-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e-stubbed:
+    name: E2E Stubbed Backend (Chromium)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: mmp_e2e
+          POSTGRES_USER: mmp
+          POSTGRES_PASSWORD: mmp_e2e
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U mmp -d mmp_e2e"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - "6379:6379"
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://mmp:mmp_e2e@localhost:5432/mmp_e2e?sslmode=disable
+      REDIS_URL: redis://localhost:6379
+      GAME_RUNTIME_V2: "true"
+      PLAYWRIGHT_BACKEND: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Go server ──────────────────────────────────────────────────────────
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: apps/server/go.sum
+
+      - name: Build server
+        working-directory: apps/server
+        run: go build -o /tmp/mmp-server ./cmd/server
+
+      - name: Start server
+        run: |
+          /tmp/mmp-server &
+          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/health; then
+              echo "Server ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+      # ── Node / pnpm ────────────────────────────────────────────────────────
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      # ── Frontend dev server ────────────────────────────────────────────────
+
+      - name: Start frontend
+        working-directory: apps/web
+        run: |
+          pnpm dev &
+          echo "WEB_PID=$!" >> "$GITHUB_ENV"
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000; then
+              echo "Frontend ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+
+      # ── Core E2E scenarios ─────────────────────────────────────────────────
+
+      - name: E2E — 방 생성·시작·페이즈
+        working-directory: apps/web
+        run: |
+          pnpm exec playwright test \
+            e2e/game-session.spec.ts \
+            --reporter=list \
+            --retries=1
+
+      - name: E2E — 재접속 복원
+        working-directory: apps/web
+        run: |
+          pnpm exec playwright test \
+            e2e/game-reconnect.spec.ts \
+            --reporter=list \
+            --retries=1
+
+      - name: E2E — Redaction 확인
+        working-directory: apps/web
+        run: |
+          pnpm exec playwright test \
+            e2e/game-redaction.spec.ts \
+            --reporter=list \
+            --retries=1
+
+      # ── Cleanup ────────────────────────────────────────────────────────────
+
+      - name: Stop background processes
+        if: always()
+        run: |
+          [ -n "$SERVER_PID" ] && kill "$SERVER_PID" || true
+          [ -n "$WEB_PID" ] && kill "$WEB_PID" || true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-stubbed-report
+          path: apps/web/playwright-report/
+          retention-days: 7
