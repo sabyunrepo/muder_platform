@@ -93,7 +93,7 @@
 - [x] Task 2 — `go test -race -count=1 ./...` green — W0/W0-hotfix 범위 green, testcontainers 는 Docker CI 게이트
 - [x] Task 3 — `pnpm test` + `pnpm exec tsc --noEmit` — 신규 spec tsc 통과, vitest 누적 420+ green
 - [x] Task 4 — `memory/project_phase184_progress.md` 작성 + MEMORY.md 링크
-- [ ] Task 5 — `/plan-finish` 사용자 실행 (다음 단계)
+- [x] Task 5 — `/plan-finish` 실행 완료
 
 **Wave 3 gate**: user 확인 + archive (대기)
 
@@ -104,4 +104,4 @@
 - [x] 9개 증상 전부 해결 (골든패스 설계 기준 + E2E 스펙 커버리지)
 - [x] Go + Front + E2E 스펙 그린 (E2E 실행은 stubbed-backend CI)
 - [x] memory + worktree MEMORY.md 업데이트
-- [ ] Phase 18.4 archive (user plan-finish 대기)
+- [x] Phase 18.4 archive
