@@ -9,11 +9,12 @@ import (
 // EventBus is a session-scoped, callback-based event system.
 // Each game session gets its own EventBus instance (no global singleton).
 type EventBus struct {
-	mu       sync.RWMutex
-	handlers map[string][]handlerEntry
-	nextID   int
-	closed   bool
-	logger   Logger
+	mu         sync.RWMutex
+	handlers   map[string][]handlerEntry
+	wildcards  []handlerEntry // invoked on every Publish (M-3 fix)
+	nextID     int
+	closed     bool
+	logger     Logger
 }
 
 type handlerEntry struct {
@@ -57,7 +58,24 @@ func (eb *EventBus) Subscribe(eventType string, handler EventHandler) int {
 	return id
 }
 
-// Unsubscribe removes a handler by subscription ID.
+// SubscribeAll registers a handler invoked for every published event
+// regardless of type. Used by EventMapping to relay all module events to
+// WS clients without maintaining a hardcoded type list (M-3 fix).
+// Returns a subscription ID for later unsubscription.
+func (eb *EventBus) SubscribeAll(handler EventHandler) int {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
+
+	if eb.closed {
+		return -1
+	}
+	eb.nextID++
+	id := eb.nextID
+	eb.wildcards = append(eb.wildcards, handlerEntry{id: id, fn: handler})
+	return id
+}
+
+// Unsubscribe removes a handler by subscription ID (type-specific or wildcard).
 func (eb *EventBus) Unsubscribe(subID int) {
 	eb.mu.Lock()
 	defer eb.mu.Unlock()
@@ -68,6 +86,12 @@ func (eb *EventBus) Unsubscribe(subID int) {
 				eb.handlers[eventType] = append(entries[:i], entries[i+1:]...)
 				return
 			}
+		}
+	}
+	for i, entry := range eb.wildcards {
+		if entry.id == subID {
+			eb.wildcards = append(eb.wildcards[:i], eb.wildcards[i+1:]...)
+			return
 		}
 	}
 }
@@ -81,8 +105,9 @@ func (eb *EventBus) Publish(event Event) {
 		return
 	}
 	// Copy handlers to release lock before calling them.
-	entries := make([]handlerEntry, len(eb.handlers[event.Type]))
-	copy(entries, eb.handlers[event.Type])
+	entries := make([]handlerEntry, 0, len(eb.handlers[event.Type])+len(eb.wildcards))
+	entries = append(entries, eb.handlers[event.Type]...)
+	entries = append(entries, eb.wildcards...)
 	eb.mu.RUnlock()
 
 	for _, entry := range entries {
@@ -109,4 +134,5 @@ func (eb *EventBus) Close() {
 
 	eb.closed = true
 	eb.handlers = nil
+	eb.wildcards = nil
 }

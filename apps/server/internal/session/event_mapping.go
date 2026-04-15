@@ -2,6 +2,7 @@ package session
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
@@ -22,10 +23,37 @@ type BroadcastEnvelope struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 }
 
-// engineEventTypes is the set of engine events relayed to WS clients.
-var engineEventTypes = []string{
-	"phase:entered",
-	"phase:exiting",
+// relayPrefixes is the set of event-type prefixes broadcast to WS clients.
+// Anything else (internal engine bookkeeping, test-only events) is dropped.
+// Expanded from the hardcoded phase-only list so module events reach clients
+// without a curated allowlist (M-3 fix).
+var relayPrefixes = []string{
+	"phase:",
+	"phase.",
+	"clue:",
+	"clue.",
+	"vote:",
+	"vote.",
+	"game:",
+	"game.",
+	"player:",
+	"player.",
+	"module:",
+	"module.",
+	"ready.",
+	"reading.",
+	"ending.",
+}
+
+// shouldRelay reports whether an engine event type should be broadcast
+// to WS clients.
+func shouldRelay(eventType string) bool {
+	for _, p := range relayPrefixes {
+		if strings.HasPrefix(eventType, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // registerEventMapping subscribes to engine events and relays them as WS
@@ -38,21 +66,21 @@ func registerEventMapping(
 	bc Broadcaster,
 	logger zerolog.Logger,
 ) {
-	for _, evtType := range engineEventTypes {
-		t := evtType // capture loop variable
-		bus.Subscribe(t, func(evt engine.Event) {
-			payload, err := json.Marshal(evt.Payload)
-			if err != nil {
-				logger.Error().Err(err).
-					Str("session_id", sessionID.String()).
-					Str("event_type", t).
-					Msg("registerEventMapping: failed to marshal event payload")
-				return
-			}
-			bc.BroadcastToSession(sessionID, BroadcastEnvelope{
-				Type:    t,
-				Payload: payload,
-			})
+	bus.SubscribeAll(func(evt engine.Event) {
+		if !shouldRelay(evt.Type) {
+			return
+		}
+		payload, err := json.Marshal(evt.Payload)
+		if err != nil {
+			logger.Error().Err(err).
+				Str("session_id", sessionID.String()).
+				Str("event_type", evt.Type).
+				Msg("registerEventMapping: failed to marshal event payload")
+			return
+		}
+		bc.BroadcastToSession(sessionID, BroadcastEnvelope{
+			Type:    evt.Type,
+			Payload: payload,
 		})
-	}
+	})
 }
