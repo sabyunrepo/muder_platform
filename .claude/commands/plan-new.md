@@ -5,7 +5,7 @@ allowed-tools: Read Write Edit Bash(mkdir*) Bash(git*) Bash(cp*) Bash(wc*) Bash(
 ---
 
 ## Pre-flight check
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌**: fix `.claude/settings.json` FIRST, then retry. A broken settings.json means hooks won't fire, so even a perfectly authored plan won't get PreToolUse protection during execution.
 
@@ -49,7 +49,7 @@ Invoke `superpowers:writing-plans` with:
 
 Create `docs/plans/YYYY-MM-DD-<slug>/`.
 
-Copy from `~/.claude/skills/plan-autopilot/templates/`:
+Copy from `~/.claude/skills/plan-go/templates/`:
 - `design.index.template.md` → `design.md`
 - `plan.index.template.md` → `plan.md`
 - `checklist.index.template.md` → `checklist.md` (STATUS marker at top!)
@@ -81,6 +81,6 @@ git commit -m "docs(<phase-id>): initial plan — design + plan + checklist"
 
 Report path. Next:
 - `/plan-start docs/plans/YYYY-MM-DD-<slug>` to activate
-- `/plan-autopilot` to execute
+- `/plan-go` to execute
 
-**Skill reference**: `~/.claude/skills/plan-autopilot/refs/authoring.md`
+**Skill reference**: `~/.claude/skills/plan-go/refs/authoring.md`

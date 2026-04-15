@@ -5,7 +5,7 @@ allowed-tools: Read Write Bash(git*) Bash(jq*) Bash(mv*) Bash(mkdir*) Bash(*/pla
 ---
 
 ## Pre-flight check
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌**: fix `.claude/settings.json` FIRST, then retry this command.
 The pre-flight failure usually means hooks won't fire, so activating a plan would be pointless.
@@ -26,7 +26,7 @@ Activate plan at `$ARGUMENTS` as the current active plan.
 4. Read `$ARGUMENTS/checklist.md` — verify STATUS marker present. Warn if missing.
 5. Check for existing `.claude/active-plan.json`:
    - If exists: offer to archive (`mv to .claude/archived_plans/<old-id>.json`) or abort.
-6. Generate `.claude/active-plan.json` from template `~/.claude/skills/plan-autopilot/templates/active-plan.template.json`:
+6. Generate `.claude/active-plan.json` from template `~/.claude/skills/plan-go/templates/active-plan.template.json`:
    - `id`, `name`, `dir`, `design`, `plan`, `checklist`, `progress_memory`
    - `scope`: extracted globs
    - `started_at`: today
@@ -51,6 +51,6 @@ Hooks are now active:
 - PreToolUse BLOCKS edits in scope until design+checklist read
 - PostToolUse reminds to update checklist
 
-Run /plan-autopilot to begin wave execution.
+Run /plan-go to begin wave execution.
 Run /plan-status to verify.
 ```

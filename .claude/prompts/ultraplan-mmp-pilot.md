@@ -23,13 +23,13 @@ MMP v3 프로젝트의 기존 /plan-* 커맨드 체계(plan-autopilot 포함)와
 ## C. 기존 시스템 2 — mmp 하네스
 - 에이전트 6(전원 opus): `docs-navigator, go-backend-engineer, react-frontend-engineer, module-architect, test-engineer, security-reviewer`
 - 스킬 6: `mmp-harness`(TeamCreate+TaskCreate+SendMessage 오케스트레이터), `mmp-qmd-first`, `mmp-200-line-rule`, `mmp-module-factory`, `mmp-test-strategy`, `mmp-security-rfc9457`
-- 산출물: `_workspace/{순서}_{에이전트}_{아티팩트}.md`
+- 산출물: `.claude/runs/{run-id}/{순서}_{에이전트}_{아티팩트}.md`
 - Phase 0: active-plan.json 읽어 scope 인식. Phase 5: 결과 종합 + checklist 갱신 제안
 
 ## D. 중복·충돌 지점
 1. plan-autopilot 4 내장 리뷰어 ↔ 하네스 security/test 에이전트 중복
 2. wave/worktree는 autopilot만, 전문가 팀은 하네스만
-3. 산출물 경로 이원화(.claude/worktrees/ vs _workspace/)
+3. 산출물 경로 이원화(.claude/worktrees/ vs .claude/runs/{run-id}/)
 4. 진행 기록 이원화(memory/progress.md vs SUMMARY 미정)
 5. 단일 task vs wave 단위 자동화 진입점 분리
 
@@ -78,13 +78,13 @@ MMP v3 프로젝트의 기존 /plan-* 커맨드 체계(plan-autopilot 포함)와
 
 ## R8. 마이그레이션
 - alias → deprecation 경고 → 제거 3단계
-- 기존 plan-autopilot.md, mmp-harness SKILL.md, `_workspace/` 경로를 신규 경로로 리디렉션
+- 기존 plan-autopilot.md, mmp-harness SKILL.md, `.claude/runs/{run-id}/` 경로를 신규 경로로 리디렉션
 - Phase 18.3 무중단 전환 가능성 검토
 
 ## R9. 파일별 변경 계획
 - **신규**: `/plan-go` 커맨드, `.claude/scripts/run-lock.sh`, `.claude/scripts/run-wave.sh`, `.claude/skills/mmp-pilot/SKILL.md`, SUMMARY 파서, ab 러너
 - **수정**: plan-start/status/tasks/resume/stop/finish, active-plan.json 스키마, CLAUDE.md, 6 agents 정의(runs/ 경로 반영)
-- **제거/deprecate**: plan-autopilot.md, `_workspace/` 참조, autopilot 4 내장 리뷰어 정의
+- **제거/deprecate**: plan-autopilot.md, `.claude/runs/{run-id}/` 참조, autopilot 4 내장 리뷰어 정의
 
 ## R10. **자체 A/B 테스트 + 자기 개선 루프 (핵심 추가 요구)**
 

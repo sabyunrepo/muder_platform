@@ -6,12 +6,12 @@ allowed-tools: Bash(jq*) Bash(grep*) Bash(wc*) Bash(find*) Bash(*/plan-preflight
 # Plan Tasks
 
 ## Pre-flight
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌, stop and fix settings.json first.**
 
 ## Task tree
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-tasks.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-tasks.sh`
 
 ---
 
@@ -22,6 +22,6 @@ Based on the tree above, highlight:
 - Estimated remaining work
 
 Suggest next action:
-- `/plan-autopilot` — start/resume automated execution
+- `/plan-go` — start/resume automated execution
 - `/plan-status` — quick state check
 - `/plan-resume` — full context restore after /clear

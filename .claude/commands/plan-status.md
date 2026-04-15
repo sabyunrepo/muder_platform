@@ -6,12 +6,12 @@ allowed-tools: Bash(jq*) Bash(git*) Bash(cat*) Bash(sed*) Bash(*/plan-preflight.
 # Plan Status
 
 ## Pre-flight
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌, stop and fix settings.json using the recovery steps above.**
 
 ## Active plan
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-status.sh --verbose`
+!`$HOME/.claude/skills/plan-go/scripts/plan-status.sh --verbose`
 
 ## Recent commits
 !`git log --oneline -5`
@@ -28,6 +28,6 @@ Based on the above, summarize:
 - Current wave + PR + task
 - Recent activity context
 - Next recommended action:
-  - `in_progress` → continue manually or `/plan-autopilot`
+  - `in_progress` → continue manually or `/plan-go`
   - `paused` → `/plan-resume`
   - `blocker` → list and suggest manual resolution

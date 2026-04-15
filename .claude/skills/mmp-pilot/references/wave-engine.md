@@ -8,7 +8,7 @@
 
 | 기존 (autopilot) | 신규 (pilot) |
 |-----------------|--------------|
-| `_workspace/...` | `.claude/runs/{run-id}/{wave}/{pr}/{task}/` |
+| `.claude/runs/{run-id}/...` | `.claude/runs/{run-id}/{wave}/{pr}/{task}/` |
 | `memory/project_phaseXX_progress.md` 직접 수정 | SUMMARY.md 생성 후 `summary-parse.sh` 경유 |
 | autopilot 4 내장 리뷰어 | Layer 2 팀의 `security-reviewer` + `test-engineer` |
 | 커맨드 `/plan-autopilot` | `/plan-go` (M2까지는 공존) |
@@ -38,7 +38,7 @@ done
 각 PR의 각 task에 대해:
 
 1. 오케스트레이터가 Layer 2 팀을 worktree CWD로 스폰.
-2. 팀은 `_workspace/` 대신 **메인 repo의 `.claude/runs/{run-id}/{wave}/{pr}/{task}/`** 에 산출물 작성.
+2. 팀은 `.claude/runs/{run-id}/` 대신 **메인 repo의 `.claude/runs/{run-id}/{wave}/{pr}/{task}/`** 에 산출물 작성.
    - worktree 내부에서도 메인 repo 경로로 write 가능(Git은 repo 루트 상대). symlink 아님.
    - 이유: 집계·메트릭을 메인 repo 한 곳에서 관리.
 3. 팀은 실제 코드 파일만 worktree 내부에 편집.

@@ -7,7 +7,7 @@ Full context restore — read all plan files and summarize current state.
 
 ## Pre-flight check
 
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌, the first thing to do after restore is fix settings.json.**
 Continue reading plan files even if pre-flight fails — the context is still useful.
@@ -83,7 +83,7 @@ Progress: <plan.progress_memory>
 
 --- Next Actions ---
 1. Continue current task manually
-2. /plan-autopilot — resume automated execution
+2. /plan-go — resume automated execution
 3. /plan-tasks — visual progress
 4. /plan-status — quick check
 ```

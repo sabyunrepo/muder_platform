@@ -103,10 +103,11 @@
 - **Build Filter** (PostToolUse Bash): 테스트/빌드 출력 30줄+ → 에러만 요약
 - **PreCompact** (PreCompact): 컨텍스트 압축 전 plan 상태 + git 상태 자동 보존
 
-## Active Plan Workflow (plan-autopilot)
+## Active Plan Workflow (mmp-pilot / /plan-go)
 
-이 프로젝트는 `plan-autopilot` 스킬로 phase 기반 개발을 관리합니다.
-- 스킬: `~/.claude/skills/plan-autopilot/SKILL.md`
+이 프로젝트는 `mmp-pilot` 스킬 + `/plan-go` 단일 진입점으로 phase 기반 개발을 관리합니다.
+- 스킬: `.claude/skills/mmp-pilot/SKILL.md`
+- 커맨드: `/plan-go` (plan-autopilot 대체, M3 cutover 2026-04-15 완료)
 - 활성 plan 포인터: `.claude/active-plan.json` (없으면 hook no-op)
 
 ### 현재 활성 plan
@@ -127,7 +128,7 @@
 
 ### 실행
 - `/plan-new <topic>` — brainstorming + writing-plans + 템플릿 저작
-- `/plan-autopilot` — wave 기반 자동 실행
+- `/plan-go` — wave 기반 자동 실행 + 단일 task + 재개 (mmp-pilot 통합)
 - `/plan-status`, `/plan-tasks` — 진행 상태
 - `/plan-resume` — `/clear` 후 컨텍스트 복원
 - `/plan-stop` — 실행 중단 (state 저장)
@@ -140,3 +141,4 @@
 - **Fix-loop 최대 3회** → 초과 시 user 개입
 - **Wave 머지 전 user 확인 1회**
 - **Feature flag default off** 로 in-flight wiring 보호
+

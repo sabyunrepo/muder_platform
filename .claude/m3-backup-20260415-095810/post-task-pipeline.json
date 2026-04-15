@@ -2,6 +2,7 @@
   "_comment": "plan-autopilot pipeline — maps each stage to existing skills (superpowers, oh-my-claudecode) with appropriate model selection. Opus for critical/complex judgment, Sonnet for mechanical work.",
   "version": 1,
   "default_mode": "subagent",
+
   "after_task": [
     {
       "name": "format",
@@ -22,6 +23,7 @@
       "action": "mark_task_complete"
     }
   ],
+
   "after_pr": [
     {
       "name": "full-test",
@@ -107,6 +109,7 @@
       "on_fail": "warn"
     }
   ],
+
   "after_wave": [
     {
       "name": "wave-test",
@@ -127,6 +130,7 @@
       "command": "~/.claude/skills/plan-autopilot/scripts/run-pipeline.sh --merge-wave {wave.id}"
     }
   ],
+
   "after_plan": [
     {
       "name": "finish",
@@ -139,6 +143,7 @@
       "command": "echo '🎉 Phase {plan.name} complete' >&2"
     }
   ],
+
   "fix_loop": {
     "max_iterations": 3,
     "agent": "oh-my-claudecode:executor",
@@ -152,6 +157,7 @@
       "effort": "high"
     }
   },
+
   "orchestration": {
     "parallel_dispatch_skill": "superpowers:dispatching-parallel-agents",
     "subagent_driven_skill": "superpowers:subagent-driven-development",
@@ -159,41 +165,20 @@
     "review_request_skill": "superpowers:requesting-code-review",
     "review_receive_skill": "superpowers:receiving-code-review"
   },
+
   "pr_model_overrides": {
     "_comment": "PR-specific model override. Complex PRs (actor pattern, snapshot algo) get Opus; mechanical copies get Sonnet.",
-    "PR-1": {
-      "model": "opus",
-      "effort": "high",
-      "reason": "Actor pattern + lock removal requires careful concurrency analysis"
-    },
-    "PR-7": {
-      "model": "opus",
-      "effort": "high",
-      "reason": "Snapshot/restore algorithm + schema versioning"
-    },
-    "PR-2": {
-      "model": "sonnet"
-    },
-    "PR-3": {
-      "model": "sonnet"
-    },
-    "PR-4": {
-      "model": "opus",
-      "reason": "Pattern reference — must be correct"
-    },
-    "PR-5": {
-      "model": "sonnet"
-    },
-    "PR-6": {
-      "model": "sonnet"
-    },
-    "PR-8": {
-      "model": "sonnet"
-    },
-    "PR-9": {
-      "model": "sonnet"
-    }
+    "PR-1": {"model": "opus", "effort": "high", "reason": "Actor pattern + lock removal requires careful concurrency analysis"},
+    "PR-7": {"model": "opus", "effort": "high", "reason": "Snapshot/restore algorithm + schema versioning"},
+    "PR-2": {"model": "sonnet"},
+    "PR-3": {"model": "sonnet"},
+    "PR-4": {"model": "opus", "reason": "Pattern reference — must be correct"},
+    "PR-5": {"model": "sonnet"},
+    "PR-6": {"model": "sonnet"},
+    "PR-8": {"model": "sonnet"},
+    "PR-9": {"model": "sonnet"}
   },
+
   "global": {
     "default_implement_model": "sonnet",
     "default_review_model": {
@@ -207,12 +192,6 @@
     "clear_between_prs": false,
     "max_parallel_prs_per_wave": 4,
     "max_parallel_reviewers": 4,
-    "notify_on": [
-      "abort",
-      "blocker",
-      "completion",
-      "fix_loop_exceeded",
-      "opus_escalation"
-    ]
+    "notify_on": ["abort", "blocker", "completion", "fix_loop_exceeded", "opus_escalation"]
   }
 }

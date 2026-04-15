@@ -71,7 +71,7 @@ task 성격에 따라 동적으로 2~6명 선정.
 
 - `/plan-go`는 신규 `.claude/runs/{run-id}/` 경로로 산출.
 - 내부적으로 **기존 plan-autopilot 엔진**($HOME/.claude/skills/plan-autopilot/scripts/)을 재사용하여 wave/worktree 실행.
-- 기존 `_workspace/` 경로는 더 이상 쓰지 않는다(하네스 통합분만 해당). autopilot 기존 산출물은 그대로 유지.
+- 기존 `.claude/runs/{run-id}/` 경로는 더 이상 쓰지 않는다(하네스 통합분만 해당). autopilot 기존 산출물은 그대로 유지.
 - `/plan-autopilot`은 여전히 동작(M2 deprecation 경고만). Phase 18.3 무중단.
 
 ## 에러 핸들링
