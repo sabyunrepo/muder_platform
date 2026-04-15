@@ -1,9 +1,15 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactElement } from "react";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
 
 vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => ({ mutate: vi.fn() }),
@@ -16,6 +22,14 @@ vi.mock("../../../flowApi", () => ({
 import { PhaseNodePanel } from "../PhaseNodePanel";
 
 afterEach(cleanup);
+
+/** Wrap render with a fresh QueryClient (PhaseNodePanel now uses useQueryClient). */
+function renderWithQC(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const makeNode = (data: Record<string, unknown> = {}) => ({
   id: "node-1",
@@ -30,7 +44,7 @@ const makeNode = (data: Record<string, unknown> = {}) => ({
 
 describe("PhaseNodePanel extended fields", () => {
   it("자동진행 토글이 렌더링된다", () => {
-    render(
+    renderWithQC(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -42,7 +56,7 @@ describe("PhaseNodePanel extended fields", () => {
 
   it("자동진행 토글 클릭 시 onUpdate가 호출된다", () => {
     const onUpdate = vi.fn();
-    render(
+    renderWithQC(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -54,7 +68,7 @@ describe("PhaseNodePanel extended fields", () => {
   });
 
   it("autoAdvance=true 시 경고타이머 입력이 표시된다", () => {
-    render(
+    renderWithQC(
       <PhaseNodePanel
         node={makeNode({ autoAdvance: true })}
         themeId="t1"
@@ -65,7 +79,7 @@ describe("PhaseNodePanel extended fields", () => {
   });
 
   it("autoAdvance=false 시 경고타이머가 숨겨진다", () => {
-    render(
+    renderWithQC(
       <PhaseNodePanel
         node={makeNode({ autoAdvance: false })}
         themeId="t1"
@@ -76,7 +90,7 @@ describe("PhaseNodePanel extended fields", () => {
   });
 
   it("onEnter 액션 섹션이 렌더링된다", () => {
-    render(
+    renderWithQC(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"

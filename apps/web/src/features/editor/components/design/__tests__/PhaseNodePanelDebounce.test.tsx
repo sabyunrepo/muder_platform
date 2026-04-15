@@ -87,7 +87,7 @@ afterEach(() => {
 
 describe("PhaseNodePanel debounce + onBlur flush", () => {
   it("debounce 1500ms 후에 mutate가 1회 호출된다", async () => {
-    render(
+    renderWithClient(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -112,7 +112,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
   });
 
   it("연속 change는 한 번만 저장된다 (debounce 재시작)", async () => {
-    render(
+    renderWithClient(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -131,7 +131,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
   });
 
   it("onBlur 발생 시 timer 대기 없이 즉시 저장된다", () => {
-    render(
+    renderWithClient(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -153,7 +153,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
   });
 
   it("select onBlur도 flush된다", () => {
-    render(
+    renderWithClient(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -172,7 +172,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
   });
 
   it("pending이 없으면 onBlur는 mutate를 호출하지 않는다", () => {
-    render(
+    renderWithClient(
       <PhaseNodePanel
         node={makeNode()}
         themeId="t1"
@@ -183,5 +183,77 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
     const labelInput = screen.getByPlaceholderText("페이즈 이름");
     fireEvent.blur(labelInput);
     expect(mutateMock).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: optimistic update + rollback (HIGH-2)
+// ---------------------------------------------------------------------------
+
+describe("PhaseNodePanel optimistic update + rollback", () => {
+  it("flush 시 flow-graph 캐시에 낙관 반영된다", () => {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    qc.setQueryData(flowKeys.graph("t1"), makeGraph());
+
+    render(
+      <QueryClientProvider client={qc}>
+        <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    fireEvent.change(labelInput, { target: { value: "낙관" } });
+    fireEvent.blur(labelInput); // flush
+
+    const cached = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
+    expect(cached?.nodes[0].data.label).toBe("낙관");
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("mutate onError 시 이전 graph 로 rollback + 실패 토스트", () => {
+    // mutate 실제 실행 시 onError 콜백을 즉시 호출하도록 stub
+    mutateMock.mockImplementation((_body, opts) => opts?.onError?.(new Error("fail")));
+
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const original = makeGraph();
+    qc.setQueryData(flowKeys.graph("t1"), original);
+
+    render(
+      <QueryClientProvider client={qc}>
+        <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    fireEvent.change(labelInput, { target: { value: "실패할 라벨" } });
+    fireEvent.blur(labelInput); // flush → mutate → onError → rollback
+
+    const cached = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
+    expect(cached?.nodes[0].data.label).toBe("테스트"); // rolled back
+    expect(toastError).toHaveBeenCalledWith("저장에 실패했습니다");
+  });
+
+  it("graph 캐시가 없을 때는 rollback 없이 mutate만 호출된다", () => {
+    const qc = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    // no setQueryData — no previous snapshot
+
+    render(
+      <QueryClientProvider client={qc}>
+        <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    fireEvent.change(labelInput, { target: { value: "cache-less" } });
+    fireEvent.blur(labelInput);
+
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    expect(qc.getQueryData(flowKeys.graph("t1"))).toBeUndefined();
   });
 });
