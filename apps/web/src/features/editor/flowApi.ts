@@ -65,7 +65,7 @@ export function useUpdateFlowNode(themeId: string) {
     { nodeId: string; body: Partial<FlowNodeResponse> }
   >({
     mutationFn: ({ nodeId, body }) =>
-      api.put<FlowNodeResponse>(
+      api.patch<FlowNodeResponse>(
         `/v1/editor/themes/${themeId}/flow/nodes/${nodeId}`,
         body,
       ),
@@ -103,7 +103,7 @@ export function useUpdateFlowEdge(themeId: string) {
     { edgeId: string; body: Partial<FlowEdgeResponse> }
   >({
     mutationFn: ({ edgeId, body }) =>
-      api.put<FlowEdgeResponse>(
+      api.patch<FlowEdgeResponse>(
         `/v1/editor/themes/${themeId}/flow/edges/${edgeId}`,
         body,
       ),
