@@ -1,10 +1,18 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+
+	"github.com/mmp-platform/server/internal/apperror"
 )
+
+// maxModulesPerGame is the maximum number of modules allowed per game config.
+// Enforced at parse time to bound DoS surface from host-submitted config.
+const maxModulesPerGame = 50
 
 // ModuleConfig is one entry from the configJson "modules" array.
 type ModuleConfig struct {
@@ -22,24 +30,38 @@ type GameConfig struct {
 	Modules []ModuleConfig    `json:"modules"`
 }
 
+// HostSubmittable is an optional interface for modules that can be submitted
+// by a host when starting a game. Modules that are admin-only should return false.
+// By default (interface not implemented), all registered modules are submittable.
+type HostSubmittable interface {
+	IsHostSubmittable() bool
+}
+
 // ParseGameConfig unmarshals a configJson blob into a GameConfig.
+// Rejects unknown fields and enforces maxModulesPerGame.
 func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	if len(raw) == 0 {
 		return nil, fmt.Errorf("engine: configJson is empty")
 	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+
 	var cfg GameConfig
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return nil, fmt.Errorf("engine: failed to parse configJson: %w", err)
+	if err := dec.Decode(&cfg); err != nil {
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
 	}
 	if len(cfg.Phases) == 0 {
 		return nil, fmt.Errorf("engine: configJson has no phases")
+	}
+	if len(cfg.Modules) > maxModulesPerGame {
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "too many modules")
 	}
 	return &cfg, nil
 }
 
 // BuildModules instantiates and initialises modules declared in cfg.
 // Modules are created in the order listed in cfg.Modules (the editor is
-// responsible for dependency-sorted ordering).
+// responsible for dependency-sorted ordering). Enforces HostSubmittable blocklist.
 // Returns the ordered module list and a map of name→rawConfig for PhaseEngine.Start.
 func BuildModules(
 	ctx context.Context,
@@ -61,7 +83,10 @@ func BuildModules(
 
 		mod, err := CreateModule(mc.Name)
 		if err != nil {
-			return nil, nil, fmt.Errorf("engine: %w", err)
+			return nil, nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "unknown module: "+mc.Name)
+		}
+		if hs, ok := mod.(HostSubmittable); ok && !hs.IsHostSubmittable() {
+			return nil, nil, apperror.New(apperror.ErrForbidden, http.StatusForbidden, "module not host-submittable: "+mc.Name)
 		}
 		modules = append(modules, mod)
 		configs[mc.Name] = mc.Config

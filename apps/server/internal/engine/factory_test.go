@@ -1,107 +1,113 @@
-package engine_test
+package engine
 
 import (
-	"context"
-	"encoding/json"
+	"strings"
 	"testing"
-
-	"github.com/google/uuid"
-	"github.com/mmp-platform/server/internal/engine"
 )
 
-// stubModule is a minimal Module used in factory tests.
-type stubModule struct{ name string }
-
-func (s *stubModule) Name() string { return s.name }
-func (s *stubModule) Init(_ context.Context, _ engine.ModuleDeps, _ json.RawMessage) error {
-	return nil
-}
-func (s *stubModule) BuildState() (json.RawMessage, error) { return json.RawMessage(`{}`), nil }
-func (s *stubModule) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _ json.RawMessage) error {
-	return nil
-}
-func (s *stubModule) Cleanup(_ context.Context) error { return nil }
-
 func TestParseGameConfig_Valid(t *testing.T) {
-	raw, _ := json.Marshal(map[string]any{
-		"phases":  []map[string]any{{"id": "p1", "name": "Phase 1"}},
-		"modules": []map[string]any{{"name": "mod_a"}},
-	})
-	cfg, err := engine.ParseGameConfig(raw)
+	data := []byte(`{"modules":[{"name":"clue_interaction","config":{}}]}`)
+	cfg, err := ParseGameConfig(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(cfg.Phases) != 1 {
-		t.Errorf("phases: want 1, got %d", len(cfg.Phases))
-	}
 	if len(cfg.Modules) != 1 {
-		t.Errorf("modules: want 1, got %d", len(cfg.Modules))
+		t.Fatalf("expected 1 module, got %d", len(cfg.Modules))
+	}
+	if cfg.Modules[0].Name != "clue_interaction" {
+		t.Fatalf("unexpected module name: %s", cfg.Modules[0].Name)
 	}
 }
 
 func TestParseGameConfig_Empty(t *testing.T) {
-	_, err := engine.ParseGameConfig(nil)
-	if err == nil {
-		t.Fatal("expected error for nil input")
+	data := []byte(`{"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 0 {
+		t.Fatalf("expected 0 modules, got %d", len(cfg.Modules))
 	}
 }
 
-func TestParseGameConfig_NoPhases(t *testing.T) {
-	raw, _ := json.Marshal(map[string]any{
-		"phases":  []any{},
-		"modules": []any{},
-	})
-	_, err := engine.ParseGameConfig(raw)
+func TestParseGameConfig_UnknownField(t *testing.T) {
+	data := []byte(`{"modules":[],"evil_field":"injection"}`)
+	_, err := ParseGameConfig(data)
 	if err == nil {
-		t.Fatal("expected error for empty phases")
+		t.Fatal("expected error for unknown field, got nil")
+	}
+}
+
+func TestParseGameConfig_TooManyModules(t *testing.T) {
+	// Build a config with 51 modules.
+	entries := make([]string, 51)
+	for i := range entries {
+		entries[i] = `{"name":"mod"}`
+	}
+	data := []byte(`{"modules":[` + strings.Join(entries, ",") + `]}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected error for >50 modules, got nil")
+	}
+}
+
+func TestParseGameConfig_InvalidJSON(t *testing.T) {
+	_, err := ParseGameConfig([]byte(`not json`))
+	if err == nil {
+		t.Fatal("expected error for invalid JSON, got nil")
+	}
+}
+
+func TestBuildModules_Success(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{
+		"test_mod": func() Module { return &stubCoreModule{name: "test_mod"} },
+	}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	cfg := &GameConfig{
+		Modules: []ModuleConfig{{Name: "test_mod"}},
+	}
+	mods, err := BuildModules(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(mods) != 1 {
+		t.Fatalf("expected 1 module, got %d", len(mods))
 	}
 }
 
 func TestBuildModules_UnknownModule(t *testing.T) {
-	cfg := &engine.GameConfig{
-		Phases: []engine.PhaseDefinition{{ID: "p1", Name: "P1"}},
-		Modules: []engine.ModuleConfig{
-			{Name: "not_registered_xyz"},
-		},
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{}
+	defer func() { globalRegistry.factories = origFactories }()
+
+	cfg := &GameConfig{
+		Modules: []ModuleConfig{{Name: "nonexistent"}},
 	}
-	deps := engine.ModuleDeps{SessionID: uuid.New()}
-	_, _, err := engine.BuildModules(context.Background(), cfg, deps)
+	_, err := BuildModules(cfg)
 	if err == nil {
-		t.Fatal("expected error for unknown module")
+		t.Fatal("expected error for unknown module, got nil")
 	}
 }
 
-func TestBuildModules_DuplicateModule(t *testing.T) {
-	// Register a temp factory only for this test.
-	// We can't easily clean up global registry, so use a unique name.
-	engine.Register("dup_test_mod_"+t.Name(), func() engine.Module {
-		return &stubModule{name: "dup_test_mod_" + t.Name()}
-	})
+// blockedModule implements HostSubmittable returning false (admin-only).
+type blockedModule struct{ stubCoreModule }
 
-	cfg := &engine.GameConfig{
-		Phases: []engine.PhaseDefinition{{ID: "p1", Name: "P1"}},
-		Modules: []engine.ModuleConfig{
-			{Name: "dup_test_mod_" + t.Name()},
-			{Name: "dup_test_mod_" + t.Name()},
-		},
-	}
-	deps := engine.ModuleDeps{SessionID: uuid.New()}
-	_, _, err := engine.BuildModules(context.Background(), cfg, deps)
-	if err == nil {
-		t.Fatal("expected error for duplicate module name in config")
-	}
-}
+func (b *blockedModule) IsHostSubmittable() bool { return false }
 
-func TestBuildModules_EmptyName(t *testing.T) {
-	cfg := &engine.GameConfig{
-		Phases: []engine.PhaseDefinition{{ID: "p1", Name: "P1"}},
-		Modules: []engine.ModuleConfig{
-			{Name: ""},
-		},
+func TestBuildModules_BlockedModule(t *testing.T) {
+	origFactories := globalRegistry.factories
+	globalRegistry.factories = map[string]ModuleFactory{
+		"admin_mod": func() Module { return &blockedModule{stubCoreModule{name: "admin_mod"}} },
 	}
-	deps := engine.ModuleDeps{SessionID: uuid.New()}
-	_, _, err := engine.BuildModules(context.Background(), cfg, deps)
+	defer func() { globalRegistry.factories = origFactories }()
+
+	cfg := &GameConfig{
+		Modules: []ModuleConfig{{Name: "admin_mod"}},
+	}
+	_, err := BuildModules(cfg)
 	if err == nil {
-		t.Fatal("expected error for empty module name")
+		t.Fatal("expected error for blocked module, got nil")
 	}
 }

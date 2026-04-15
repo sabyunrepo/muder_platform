@@ -21,11 +21,11 @@ func (l *testLogger) Printf(format string, v ...any) {
 }
 
 type stubCoreModule struct {
-	name      string
-	initErr   error
-	cleaned   bool
-	mu        sync.Mutex
-	messages  []string
+	name     string
+	initErr  error
+	cleaned  bool
+	mu       sync.Mutex
+	messages []string
 }
 
 func (s *stubCoreModule) Name() string { return s.name }
