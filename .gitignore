@@ -60,6 +60,9 @@ Thumbs.db
 .claude/autopilot-state.json
 .pr-body.tmp
 
+# ─── Go build artifacts ───────────────────────────────
+apps/server/tmp/
+
 # ─── Local reference material (not versioned) ────────
 claude_skill_create.pdf
 
