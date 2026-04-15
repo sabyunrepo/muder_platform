@@ -105,9 +105,25 @@ func startModularGame(
 		registerEventMapping(cfg.SessionID, bus, cfg.Broadcaster, logger)
 	}
 
+	// Pre-queue KindEngineStart into the inbox BEFORE inserting into the
+	// session map so external callers that look up the session via
+	// manager.Get cannot send KindEngineCommand ahead of KindEngineStart
+	// (M-2 TOCTOU fix). The buffered inbox accepts this send synchronously.
+	startReply := make(chan error, 1)
+	if err := s.Send(SessionMessage{
+		Kind:    KindEngineStart,
+		Ctx:     ctx,
+		Reply:   startReply,
+		Payload: EngineStartPayload{ModuleConfigs: moduleConfigs},
+	}); err != nil {
+		s.stop()
+		return nil, err
+	}
+
 	m.mu.Lock()
 	if _, exists := m.sessions[cfg.SessionID]; exists {
 		m.mu.Unlock()
+		s.stop()
 		return nil, errSessionAlreadyActive
 	}
 	m.sessions[cfg.SessionID] = s
@@ -115,14 +131,24 @@ func startModularGame(
 
 	go s.Run(ctx)
 
-	// Start the engine inside the actor to keep the concurrency contract.
-	// We send a synthetic KindEngineStart message that triggers Start().
-	if err := engineStart(ctx, s, eng, moduleConfigs, logger); err != nil {
+	// Wait for the actor to finish processing KindEngineStart. Any client
+	// messages that arrive after the map insert are guaranteed to be
+	// behind KindEngineStart in the inbox.
+	select {
+	case err := <-startReply:
+		if err != nil {
+			m.mu.Lock()
+			delete(m.sessions, cfg.SessionID)
+			m.mu.Unlock()
+			s.stop()
+			return nil, err
+		}
+	case <-ctx.Done():
 		m.mu.Lock()
 		delete(m.sessions, cfg.SessionID)
 		m.mu.Unlock()
 		s.stop()
-		return nil, err
+		return nil, ctx.Err()
 	}
 
 	logger.Info().
@@ -136,30 +162,3 @@ func startModularGame(
 	return s, nil
 }
 
-// engineStart calls PhaseEngine.Start synchronously by sending a dedicated
-// inbox message and waiting for the reply. This keeps Start() inside the
-// actor goroutine while still blocking the caller until the engine is ready.
-func engineStart(
-	ctx context.Context,
-	s *Session,
-	eng *engine.PhaseEngine,
-	moduleConfigs map[string]json.RawMessage,
-	logger zerolog.Logger,
-) error {
-	reply := make(chan error, 1)
-	msg := SessionMessage{
-		Kind:    KindEngineStart,
-		Ctx:     ctx,
-		Reply:   reply,
-		Payload: EngineStartPayload{ModuleConfigs: moduleConfigs},
-	}
-	if err := s.Send(msg); err != nil {
-		return err
-	}
-	select {
-	case err := <-reply:
-		return err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
-}
