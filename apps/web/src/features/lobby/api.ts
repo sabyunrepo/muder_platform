@@ -11,14 +11,18 @@ export interface ThemeSummary {
   title: string;
   slug: string;
   description: string;
-  player_count_min: number;
-  player_count_max: number;
-  duration_minutes: number;
-  difficulty: string;
-  thumbnail_url: string | null;
-  play_count: number;
-  rating: number;
+  // Server JSON (theme.service.go ThemeSummary) — min_players / max_players /
+  // duration_min / cover_image. Keep snake_case names aligned with backend.
+  min_players: number;
+  max_players: number;
+  duration_min: number;
+  cover_image?: string | null;
   coin_price: number;
+  // Not yet returned by the server — optional until the contract extends.
+  // See docs/plans/2026-04-16-e2e-recovery/refs/findings.md H6.
+  difficulty?: string;
+  play_count?: number;
+  rating?: number;
 }
 
 export interface ThemeResponse extends ThemeSummary {

@@ -30,9 +30,9 @@ export function ThemeCard({ theme, onClick }: ThemeCardProps) {
     <Card hoverable onClick={() => onClick(theme)} className="flex flex-col gap-3 p-0 overflow-hidden">
       {/* 썸네일 */}
       <div className="relative h-40 w-full">
-        {theme.thumbnail_url ? (
+        {theme.cover_image ? (
           <img
-            src={theme.thumbnail_url}
+            src={theme.cover_image}
             alt={theme.title}
             className="h-full w-full object-cover"
             loading="lazy"
@@ -48,9 +48,11 @@ export function ThemeCard({ theme, onClick }: ThemeCardProps) {
               {theme.coin_price.toLocaleString()}
             </span>
           )}
-          <Badge variant={difficultyVariant[theme.difficulty] ?? 'default'}>
-            {difficultyLabel[theme.difficulty] ?? theme.difficulty}
-          </Badge>
+          {theme.difficulty && (
+            <Badge variant={difficultyVariant[theme.difficulty] ?? 'default'}>
+              {difficultyLabel[theme.difficulty] ?? theme.difficulty}
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -65,20 +67,24 @@ export function ThemeCard({ theme, onClick }: ThemeCardProps) {
         <div className="mt-auto flex flex-wrap items-center gap-3 text-xs text-slate-400">
           <span className="inline-flex items-center gap-1">
             <Users className="h-3.5 w-3.5" />
-            {theme.player_count_min}-{theme.player_count_max}명
+            {theme.min_players}-{theme.max_players}명
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="h-3.5 w-3.5" />
-            {theme.duration_minutes}분
+            {theme.duration_min}분
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Play className="h-3.5 w-3.5" />
-            {theme.play_count.toLocaleString()}회
-          </span>
-          <span className="inline-flex items-center gap-1 text-amber-400">
-            <Star className="h-3.5 w-3.5 fill-amber-400" />
-            {theme.rating.toFixed(1)}
-          </span>
+          {theme.play_count !== undefined && (
+            <span className="inline-flex items-center gap-1">
+              <Play className="h-3.5 w-3.5" />
+              {theme.play_count.toLocaleString()}회
+            </span>
+          )}
+          {theme.rating !== undefined && (
+            <span className="inline-flex items-center gap-1 text-amber-400">
+              <Star className="h-3.5 w-3.5 fill-amber-400" />
+              {theme.rating.toFixed(1)}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1">
             <Coins className="h-3.5 w-3.5" />
             {theme.coin_price > 0

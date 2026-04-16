@@ -120,7 +120,7 @@ export default function RoomPage() {
   const nonHostPlayers = players.filter((p) => !p.is_host);
   const allReady =
     nonHostPlayers.length > 0 && nonHostPlayers.every((p) => p.is_ready);
-  const hasMinPlayers = players.length >= (room?.theme.player_count_min ?? 2);
+  const hasMinPlayers = players.length >= (room?.theme.min_players ?? 2);
 
   // ------ 로딩 / 에러 ------
 
