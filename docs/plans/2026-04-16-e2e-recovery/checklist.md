@@ -20,12 +20,19 @@
 - [ ] Task 4 — Vitest + lint 그린 유지
 - [ ] Task 5 — 변경 파일 ≤400줄 / 함수 ≤60줄 확인
 
-## W1 — PR-3: Workflow build fix + Theme seed
+## W1 — PR-3: Workflow ws-client build fix (theme seed deferred)
 
-- [x] Task 1 — `apps/server/db/seed/e2e-themes.sql` 신규 (published theme + 4 characters)
-- [x] Task 2 — `.github/workflows/e2e-stubbed.yml` 에 `Seed E2E theme` step 추가
+- [x] Task 1 — `apps/server/db/seed/e2e-themes.sql` 신규 (미사용 상태로 보존)
+- [~] Task 2 — Seed E2E theme step **비활성**: H6 ThemeCard crash 발견 후 workflow에서 제거
 - [x] Task 3 — seed SQL idempotent (ON CONFLICT slug + IF NOT EXISTS characters)
 - [x] Task 4 — **근본 원인 수정**: `Build workspace packages`에 `@mmp/ws-client` 추가 (findings.md H5)
+- [x] Task 5 — 진단 artifact 추가: server.log + test-results/ 업로드 (H6 증거 수집 완료)
+
+## H6 Follow-up (별도 PR 필요)
+
+- [ ] ThemeCard / server `ThemeSummary` 계약 정렬 (schema drift 수정)
+- [ ] Theme seed step 재활성화
+- [ ] createRoom 시나리오 green 확인
 
 ## W2 — PR-4: 회귀 + green gate
 

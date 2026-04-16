@@ -77,3 +77,38 @@ Vite가 앱을 제공하지 못하므로 placeholder가 영원히 없음 → 30s
 ## 다음 Task
 
 W1 PR-3(workspace build 수정)을 최우선으로 실행. E1 에러 해결되면 다음 run에서 테마 없음/테마 seed 필요 문제가 노출될 것이므로 theme seed PR도 병행.
+
+---
+
+## 2차 findings (PR #50 run `24499509545`, 2026-04-16)
+
+### 확인된 것 (ws-client fix 성공)
+
+- 서버 로그: login 200, `/api/v1/auth/me` 200, `/api/v1/themes` 200 모두 정상
+- Vite `vite:dep-scan` 에러 사라짐 — `@mmp/ws-client` dist build 성공 (6.49KB)
+- 로그인 폼 placeholders found, 폼 제출도 성공
+
+### 새 문제 (H6): ThemeCard 프론트/백 계약 불일치
+
+error-context.md 스냅샷:
+```
+heading "오류 발생" [level=1]
+Cannot read properties of undefined (reading 'toLocaleString')
+```
+
+**원인**: `apps/web/src/features/lobby/components/ThemeCard.tsx` 가 server JSON에 없는 필드를 참조.
+
+| Server (`theme.service.go`) | Frontend (`ThemeCard.tsx`) |
+|-----------------------------|----------------------------|
+| `min_players`, `max_players` | `player_count_min`, `player_count_max` |
+| `duration_min` | `duration_minutes` |
+| `cover_image` | `thumbnail_url` |
+| (없음) | `play_count`, `rating`, `difficulty` |
+
+Theme seed 이전엔 `themes` 테이블이 비어 있어 ThemeCard가 렌더되지 않아 숨겨진 버그였음. PR-3 seed가 **드러낸** 장기 부채.
+
+### 의사 결정
+
+- **PR-3 스코프 축소**: ws-client workflow fix만 유지. Seed step은 workflow에서 제거(SQL 파일은 future PR용으로 보존).
+- **H6 해결**은 별도 PR(PR-4 또는 신규 phase)로 이관. Theme seed 재활성화는 contract 정렬 후.
+- 이번 PR로 login `beforeEach` 통과 → createRoom 이후는 NO_THEMES skip으로 graceful. E2E gate에서 1단계 진전.
