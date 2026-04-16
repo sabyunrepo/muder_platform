@@ -47,14 +47,15 @@ async function createRoom(page: Parameters<typeof test>[1]): Promise<string> {
   const themeSelect = dialog.locator("select").first();
 
   if (await themeSelect.isVisible()) {
-    // 실제 테마 옵션(비disabled)이 로드될 때까지 대기 (최대 8초).
-    // 주의: native <select>의 option은 닫힌 상태에서 visible이 아니므로
-    // state: "attached"로 DOM 존재만 확인한다.
+    // 실제 테마 옵션(비disabled)이 로드될 때까지 대기 (최대 8초)
     let firstValue: string | null = null;
     try {
-      const enabledOption = themeSelect.locator("option:not([disabled])").first();
-      await enabledOption.waitFor({ state: "attached", timeout: 8_000 });
-      firstValue = await enabledOption.getAttribute("value");
+      // dialog 안의 select에서 enabled option 찾기
+      await themeSelect.locator("option:not([disabled])").first().waitFor({ timeout: 8_000 });
+      firstValue = await themeSelect
+        .locator("option:not([disabled])")
+        .first()
+        .getAttribute("value");
     } catch {
       firstValue = null;
     }
