@@ -1,0 +1,36 @@
+{
+  "id": "2026-04-16-phase-18.7-ci-hardening",
+  "name": "Phase 18.7 — CI/Test Automation Hardening",
+  "dir": "docs/plans/2026-04-16-phase-18.7-ci-hardening",
+  "started_at": "2026-04-16",
+  "finished_at": "2026-04-16",
+  "final_commit": "f8850f2",
+  "tasks_done": 8,
+  "tasks_total": 8,
+  "force_finished": false,
+  "waves": [
+    { "id": "H",  "name": "Hotfix (separated merge)",        "mode": "single",   "prs": ["#53"] },
+    { "id": "W1", "name": "Foundation (cache + repo)",       "mode": "parallel", "prs": ["#55", "#56"] },
+    { "id": "W2", "name": "Observability & Security",        "mode": "parallel", "prs": ["#58", "#59", "#57", "#60"] },
+    { "id": "W3", "name": "E2E Extension",                   "mode": "single",   "prs": ["#61"] },
+    { "id": "W4", "name": "Dependency Automation",           "mode": "single",   "prs": ["#62"] }
+  ],
+  "decisions": {
+    "repo_visibility": "private",
+    "codecov_token_registered_at": "2026-04-16T10:27:04Z",
+    "dependency_tool": "renovate-only",
+    "e2e_browsers": ["chromium", "firefox"],
+    "webkit_location": "phase-18.1-real-backend.yml (nightly only)",
+    "warn_only_policy_until": "2026-05-28"
+  },
+  "follow_up": [
+    "deps-bump PR (go-chi v5.2.2, Go 1.26.1 stdlib, dompurify/vite/esbuild)",
+    "matrix corepack → pnpm/action-setup@v5.0.0 일관화",
+    "harden-runner audit → block (+1주)",
+    "regression guard warn → enforce (2026-05-28)",
+    "Renovate GitHub App 설치 (user action)",
+    "Branch protection required checks 갱신 (user action)",
+    "Codecov badge token 반영 (user action)",
+    "Codecov token rotate (user action, 보안)"
+  ]
+}
