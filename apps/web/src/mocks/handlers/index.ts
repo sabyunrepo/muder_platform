@@ -14,6 +14,9 @@ export * from "./auth";
 export * from "./theme";
 export * from "./room";
 export * from "./clue";
+// Phase 18.8 PR-3 — game WS route factory (Playwright `routeWebSocket`).
+// HTTP handler 가 아니므로 `handlers` 배열에 포함하지 않는다 (msw HttpHandler 와 shape 다름).
+export * from "./game-ws";
 
 export const handlers = [
   ...authHandlers,
