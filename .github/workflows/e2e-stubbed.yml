@@ -127,6 +127,9 @@ jobs:
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Build workspace packages
+        run: pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" build
+
       # ── Frontend dev server ────────────────────────────────────────────────
 
       - name: Start frontend
