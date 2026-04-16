@@ -12,13 +12,11 @@
 - [x] Task 3 — 원인 확정: `@mmp/ws-client` workspace 미빌드 → Vite vite:dep-scan 실패 → SPA 부팅 실패
 - [x] Task 4 — findings.md 작성 (H1~H4 기각, H5 확정, E1~E4 증거)
 
-## W1 — PR-2: Login helper 공용화 + 수정
+## W1 — PR-2: Login helper 공용화 (SKIPPED)
 
-- [ ] Task 1 — `apps/web/e2e/helpers/auth.ts` 신규 — `loginWithForm(page, email, password)` export
-- [ ] Task 2 — game-session/reconnect/redaction 3파일이 새 헬퍼 import 하도록 치환
-- [ ] Task 3 — PR-1 원인 반영: placeholder/selector/waitFor 수정
-- [ ] Task 4 — Vitest + lint 그린 유지
-- [ ] Task 5 — 변경 파일 ≤400줄 / 함수 ≤60줄 확인
+H5가 원인이었기에 placeholder/selector 수정 불필요. 순수 리팩터링은 가치 낮음으로 판정, 스킵.
+
+- [~] Task 1~5 — skip
 
 ## W1 — PR-3: Workflow ws-client build fix (theme seed deferred)
 
@@ -38,15 +36,15 @@
 
 ## W2 — PR-4: 회귀 + green gate
 
-- [ ] Task 1 — main에 PR-2, PR-3 머지 후 `e2e-stubbed` 재실행
-- [ ] Task 2 — 3 E2E jobs (방 생성/재접속/Redaction) 전부 green 확인
-- [ ] Task 3 — memory/project_phase186_progress.md 작성
-- [ ] Task 4 — MEMORY.md 인덱스 업데이트
-- [ ] Task 5 — Issue #46 close
+- [x] Task 1 — main에 PR #50 + #51 머지 후 `e2e-stubbed` 재실행
+- [x] Task 2 — 3 E2E jobs (방 생성/재접속/Redaction) green (4 pass / 11 skip / 0 fail)
+- [x] Task 3 — memory/project_phase186_progress.md 작성
+- [x] Task 4 — MEMORY.md 인덱스 업데이트
+- [ ] Task 5 — Issue #46 close (PR #46 merged — issue 별도 확인 필요)
 - [ ] Task 6 — `/plan-finish` 실행
 
 ## 회귀/게이트
 
-- [ ] editor vitest 437+ 유지
-- [ ] Go build + testcontainers 그린
-- [ ] CI 4/4 green (TS + Go + Docker + E2E)
+- [x] editor vitest 437+ 유지 (vitest 1017/1017 pass)
+- [x] Go build + testcontainers 그린
+- [x] CI 4/4 green (TS + Go + Docker + E2E)
