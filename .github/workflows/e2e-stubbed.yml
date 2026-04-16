@@ -82,7 +82,7 @@ jobs:
 
       - name: Start server
         run: |
-          /tmp/mmp-server &
+          /tmp/mmp-server > /tmp/server.log 2>&1 &
           echo "SERVER_PID=$!" >> "$GITHUB_ENV"
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/health; then
@@ -198,3 +198,21 @@ jobs:
           name: playwright-e2e-stubbed-report
           path: apps/web/playwright-report/
           retention-days: 7
+
+      - name: Upload test-results (screenshots + traces)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-stubbed-test-results
+          path: apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmp-server-log
+          path: /tmp/server.log
+          retention-days: 7
+          if-no-files-found: ignore
