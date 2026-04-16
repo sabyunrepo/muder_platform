@@ -38,8 +38,18 @@ func TestUpdateConfigJson_Service_Success(t *testing.T) {
 	if resp.Version != 2 {
 		t.Errorf("expected version 2 after first update (initial=1), got %d", resp.Version)
 	}
-	if string(resp.ConfigJson) != `{"phases":["intro","discussion"]}` {
-		t.Errorf("unexpected config_json: %s", string(resp.ConfigJson))
+	// Compare as parsed JSON — postgres may re-serialize with whitespace.
+	var got, want map[string]any
+	if err := json.Unmarshal(resp.ConfigJson, &got); err != nil {
+		t.Fatalf("parse got config_json: %v", err)
+	}
+	if err := json.Unmarshal([]byte(`{"phases":["intro","discussion"]}`), &want); err != nil {
+		t.Fatalf("parse want: %v", err)
+	}
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(want)
+	if string(gotJSON) != string(wantJSON) {
+		t.Errorf("unexpected config_json: got=%s want=%s", gotJSON, wantJSON)
 	}
 }
 
