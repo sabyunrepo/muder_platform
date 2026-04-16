@@ -1,6 +1,6 @@
 # Murder Mystery Platform (MMP v3)
 
-[![codecov](https://codecov.io/gh/sabyunrepo/muder_platform/branch/main/graph/badge.svg)](https://codecov.io/gh/sabyunrepo/muder_platform)
+[![codecov](https://codecov.io/gh/sabyunrepo/muder_platform/branch/main/graph/badge.svg?token=ISPUL2KYLI)](https://codecov.io/gh/sabyunrepo/muder_platform)
 [![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovatebot)](https://github.com/sabyunrepo/muder_platform/issues?q=is%3Aissue+renovate)
 
 다중 테마 실시간 멀티플레이어 머더미스터리 게임 플랫폼 — v3 리빌드.
@@ -39,4 +39,4 @@ pnpm --filter @mmp/web test:coverage
 - 프론트엔드 flag: `frontend` (Vitest `coverage-final.json`)
 - 회귀 가드는 2026-05-28까지 **warn-only**, 이후 enforcement 별도 PR 예정.
 
-> Badge token이 필요하면 codecov.io 대시보드에서 graph token을 복사해 위 badge URL에 `?token=<TOKEN>` 쿼리를 추가.
+> Graph badge token은 위 badge URL의 `?token=` 파라미터에 반영됨 (public-safe, read-only graph access).
