@@ -13,6 +13,11 @@ vi.mock("@/features/profile/api", () => ({
     mutate: mutateMock,
     isPending: false,
   }),
+  useUploadAvatar: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock("@/stores/authStore", () => ({

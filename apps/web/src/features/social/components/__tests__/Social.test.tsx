@@ -79,6 +79,13 @@ vi.mock("@/features/social/api", () => ({
 vi.mock("@/stores/socialStore", () => ({
   useSocialStore: (selector: (s: unknown) => unknown) =>
     useSocialStoreMock(selector),
+  selectRoomTypingUsers: () => () => [],
+  selectOnlineFriends: () => new Set<string>(),
+  selectUnreadCounts: () => new Map<string, number>(),
+  selectTypingUsers: () => new Map<string, string[]>(),
+  selectIsFriendOnline: () => () => false,
+  selectUnreadCount: () => () => 0,
+  selectTotalUnread: () => 0,
 }));
 
 // ---------------------------------------------------------------------------
