@@ -1,0 +1,84 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+    "schedule:weekends",
+    ":prHourlyLimit2",
+    ":prConcurrentLimit10"
+  ],
+  "timezone": "Asia/Seoul",
+  "labels": ["renovate", "dependencies"],
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "rangeStrategy": "bump",
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/vendor/**",
+    ".claude/worktrees/**",
+    "docs/plans/**"
+  ],
+  "packageRules": [
+    {
+      "description": "Auto-merge security patches immediately (minor bumps on vulnerable versions only)",
+      "matchPackagePatterns": ["*"],
+      "vulnerabilityAlerts": { "enabled": true },
+      "osvVulnerabilityAlerts": true,
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group GitHub Actions updates into one PR monthly",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "schedule": ["on the first day of the month"]
+    },
+    {
+      "description": "Group Go stdlib + golang.org/x indirect bumps",
+      "matchManagers": ["gomod"],
+      "matchPackagePatterns": ["^golang.org/x/"],
+      "groupName": "golang-x"
+    },
+    {
+      "description": "Group pnpm devDependencies weekly",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "pnpm devDeps",
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "description": "Major bumps require manual review — no automerge",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["renovate", "dependencies", "major-bump"]
+    },
+    {
+      "description": "Docker base image updates",
+      "matchManagers": ["dockerfile"],
+      "groupName": "docker-base-images"
+    },
+    {
+      "description": "Keep postgres + redis images pinned manually (infra stability)",
+      "matchPackageNames": ["postgres", "redis"],
+      "enabled": false
+    }
+  ],
+  "postUpdateOptions": [
+    "gomodTidy",
+    "gomodUpdateImportPaths"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on the first day of the month"],
+    "commitMessageAction": "Refresh"
+  },
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "🤖 Renovate Dependency Dashboard",
+  "commitMessagePrefix": "chore(deps):",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "reviewersFromCodeOwners": true
+}

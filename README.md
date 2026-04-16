@@ -1,6 +1,7 @@
 # Murder Mystery Platform (MMP v3)
 
 [![codecov](https://codecov.io/gh/sabyunrepo/muder_platform/branch/main/graph/badge.svg)](https://codecov.io/gh/sabyunrepo/muder_platform)
+[![Renovate enabled](https://img.shields.io/badge/renovate-enabled-brightgreen?logo=renovatebot)](https://github.com/sabyunrepo/muder_platform/issues?q=is%3Aissue+renovate)
 
 다중 테마 실시간 멀티플레이어 머더미스터리 게임 플랫폼 — v3 리빌드.
 
