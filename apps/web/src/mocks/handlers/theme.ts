@@ -6,6 +6,13 @@
  * 와 일치 (snake_case, min_players/max_players/duration_min/price).
  *
  * 기본 데이터는 `apps/server/db/seed/e2e-themes.sql:19-25` 와 동일.
+ *
+ * NOTE — `coin_price` drift (PR-2 fix-loop 1):
+ *   FE `apps/web/src/features/lobby/api.ts:21` 의 `ThemeSummary` 는 `coin_price`
+ *   를 필수 필드로 선언한다 (DB column 은 `apps/server/db/migrations/00010_themes_coin_price.sql`
+ *   에서 추가됨). 서버 `ThemeSummary` Go struct 는 아직 `coin_price` 를 직렬화하지
+ *   않아 라이브 응답에는 누락되지만, mock 은 FE 계약을 정확히 따라야 컴포넌트가
+ *   `room.theme.coin_price` 를 안전하게 읽을 수 있다.
  */
 import { http, HttpResponse } from "msw";
 
@@ -22,6 +29,7 @@ export const E2E_THEME_SUMMARY = Object.freeze({
   max_players: 8,
   duration_min: 60,
   price: 0,
+  coin_price: 0,
   creator_id: E2E_CREATOR_ID,
 });
 

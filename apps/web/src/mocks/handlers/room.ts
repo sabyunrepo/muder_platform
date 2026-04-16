@@ -7,6 +7,13 @@
  *
  * shape 출처: `apps/server/internal/domain/room/service.go` RoomResponse / RoomDetailResponse
  * + `apps/web/src/features/lobby/api.ts` 클라이언트 RoomDetailResponse.
+ *
+ * NOTE — `players[*]` shape drift (PR-2 fix-loop 1):
+ *   서버 `PlayerInfo` Go struct (`apps/server/internal/domain/room/service.go:46-49`)
+ *   는 `user_id` + `is_ready` 두 필드만 직렬화한다. mock 은 이 라이브 응답에
+ *   정확히 맞춘다 — FE `RoomPlayer` 인터페이스가 더 많은 필드를 가지는 것은
+ *   별도 drift 이며 PR scope 밖. Mock 이 거짓 응답을 만들어 unit pass / e2e
+ *   fail 을 유발하는 것이 더 위험하므로 서버 진실을 SSOT 로 채택.
  */
 import { http, HttpResponse } from "msw";
 import { E2E_THEME_ID, E2E_THEME_SUMMARY } from "./theme";
@@ -33,15 +40,11 @@ function buildRoom(opts: { isPrivate?: boolean; maxPlayers?: number }) {
     max_players: opts.maxPlayers ?? E2E_THEME_SUMMARY.max_players,
     is_private: opts.isPrivate ?? false,
     created_at: "2026-04-16T00:00:00Z",
+    // 서버 PlayerInfo (user_id, is_ready) 두 필드만 직렬화. drift 정정.
     players: [
       {
-        id: "player-1",
         user_id: E2E_USER.id,
-        nickname: E2E_USER.nickname,
-        avatar_url: null,
-        is_host: true,
         is_ready: false,
-        joined_at: "2026-04-16T00:00:00Z",
       },
     ],
     theme: { ...E2E_THEME_SUMMARY },

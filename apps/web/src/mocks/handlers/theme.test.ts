@@ -35,7 +35,10 @@ describe("themeHandlers", () => {
       max_players: 8,
       duration_min: 60,
       price: 0,
+      // coin_price 는 FE `ThemeSummary` 계약 필수 필드 — drift 회귀 방지.
+      coin_price: 0,
     });
+    expect(body[0].coin_price).toBeDefined();
   });
 
   it("GET /v1/themes/:id returns full ThemeResponse", async () => {

@@ -17,7 +17,9 @@ const LOBBY_HEADING = "로비";
 const CREATE_ROOM_TIMEOUT = 8_000;
 const NAV_TIMEOUT = 20_000;
 const SYNC_TIMEOUT = 30_000;
-const SYNC_RETRY = 3;
+const PLAYER_JOIN_TIMEOUT = 10_000;
+const PLAYER_JOIN_POLL_INTERVAL = 200;
+const NETWORK_IDLE_TIMEOUT = 5_000;
 
 /**
  * /login 페이지로 이동해 자격 증명을 제출하고, 로비 도착을 기다린다.
@@ -84,9 +86,50 @@ export interface PartyResult {
 }
 
 /**
+ * 호스트 page 의 `request` 컨텍스트로 `/v1/rooms/<roomId>` 를 polling 하여
+ * `player_count === expected` 가 될 때까지 대기한다.
+ *
+ * 게스트가 `goto(/room/<id>)` 만 한 직후에는 join WS 핸드셰이크가 미완료
+ * 일 수 있어 GAME_START 가 거부될 수 있다 (race). UI testid 는 아직 없으므로
+ * REST API 의 권위 데이터를 polling 하는 것이 가장 신뢰 가능하다.
+ */
+async function waitForPlayerCount(
+  hostPage: Page,
+  roomId: string,
+  expected: number,
+  timeout: number = PLAYER_JOIN_TIMEOUT,
+): Promise<void> {
+  const deadline = Date.now() + timeout;
+  let lastCount = -1;
+  while (Date.now() < deadline) {
+    const res = await hostPage.request
+      .get(`${BASE}/v1/rooms/${roomId}`)
+      .catch(() => null);
+    if (res && res.ok()) {
+      const body = (await res.json().catch(() => null)) as {
+        player_count?: number;
+      } | null;
+      if (body && typeof body.player_count === "number") {
+        lastCount = body.player_count;
+        if (lastCount >= expected) return;
+      }
+    }
+    await hostPage.waitForTimeout(PLAYER_JOIN_POLL_INTERVAL);
+  }
+  throw new Error(
+    `waitForPlayerCount: room=${roomId} expected=${expected} last=${lastCount} (timeout=${timeout}ms)`,
+  );
+}
+
+/**
  * n 명짜리 파티를 만들어 호스트 + 게스트 page 들을 반환한다.
  * 각 참가자는 독립 BrowserContext 를 가지며, 호스트가 방을 만든 직후
  * 게스트가 `/room/<roomId>` 로 직접 접근해 join 한다.
+ *
+ * Fix-loop 1:
+ *  - 게스트 context 생성 + login + 방 입장 을 `Promise.all` 로 병렬화
+ *  - 마지막에 host 측에서 `player_count === n` 이 될 때까지 polling
+ *    → 후속 GAME_START 가 race 로 거부되는 일 없음
  *
  * 호출자 책임:
  *  - 사용 후 모든 context.close() 호출
@@ -107,37 +150,43 @@ export async function createPartyOfN(
     return { host: { context: hostContext, page: hostPage }, guests: [], roomId };
   }
 
-  const guests: PartyResult["guests"] = [];
-  for (let i = 1; i < n; i++) {
-    const ctx = await browser.newContext();
-    const page = await ctx.newPage();
-    await login(page, DEFAULT_EMAIL, DEFAULT_PASSWORD);
-    await page.goto(`${BASE}/room/${roomId}`);
-    guests.push({ context: ctx, page });
+  // 게스트들을 병렬로 생성 + join — 직렬 for 루프 대비 성능/시간 모두 개선.
+  const guestCount = n - 1;
+  const guests: PartyResult["guests"] = await Promise.all(
+    Array.from({ length: guestCount }, async () => {
+      const ctx = await browser.newContext();
+      const page = await ctx.newPage();
+      await login(page, DEFAULT_EMAIL, DEFAULT_PASSWORD);
+      await page.goto(`${BASE}/room/${roomId}`);
+      return { context: ctx, page };
+    }),
+  );
+
+  // 호스트에서 권위 데이터(REST) polling — race 없이 join 완료 보장.
+  if (n > 1) {
+    await waitForPlayerCount(hostPage, roomId, n);
   }
+
   return { host: { context: hostContext, page: hostPage }, guests, roomId };
 }
 
 /**
  * 모든 page 가 `/game/...` URL 에 도달할 때까지 대기한다.
- * SYNC_RETRY 번 retry 하며, 한 번이라도 timeout 이면 throw.
+ *
+ * Fix-loop 1: 동일 timeout 으로 3 번 retry 하던 패턴을 제거. retry 가
+ * flaky 를 마스킹할 뿐 root cause 를 가리지 못했다. 단일 `Promise.all`
+ * 로 navigation 을 기다린 뒤 `networkidle` 로 실 동기화 신호를 잡는다.
  */
 export async function waitForGamePage(
   pages: Page[],
   timeout: number = SYNC_TIMEOUT,
 ): Promise<void> {
-  let lastErr: unknown = null;
-  for (let attempt = 0; attempt < SYNC_RETRY; attempt++) {
-    try {
-      await Promise.all(
-        pages.map((p) => p.waitForURL(/\/game\//, { timeout })),
-      );
-      return;
-    } catch (err) {
-      lastErr = err;
-    }
-  }
-  throw lastErr instanceof Error
-    ? lastErr
-    : new Error("waitForGamePage: failed after retries");
+  await Promise.all(
+    pages.map((p) => p.waitForURL(/\/game\//, { timeout })),
+  );
+  await Promise.all(
+    pages.map((p) =>
+      p.waitForLoadState("networkidle", { timeout: NETWORK_IDLE_TIMEOUT }),
+    ),
+  );
 }

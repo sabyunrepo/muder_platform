@@ -44,6 +44,11 @@ async function fulfillFromMswResponse(route: Route, response: Response): Promise
 /**
  * Playwright `page.route` 에 MSW handler 들을 설치한다.
  *
+ * **Scope (fix-loop 1)**: `**\/v1/**` 만 가로챈다. 모든 handler 가
+ * `*\/v1/...` prefix 로 정의돼 있어 광역 `**\/*` 는 정적 asset / HMR /
+ * `/health` 등 무관 트래픽까지 가로채 불필요한 처리 비용 + 페이지 로드 지연을
+ * 유발했다. asset 은 그대로 통과시키고 API 만 mocking 한다.
+ *
  * @param page Playwright page
  * @param handlers MSW v2 RequestHandler 배열 (예: `handlers/index.ts` 의 `handlers`)
  */
@@ -51,7 +56,7 @@ export async function installMswRoutes(
   page: Page,
   handlers: RequestHandler[],
 ): Promise<void> {
-  await page.route("**/*", async (route, request) => {
+  await page.route("**/v1/**", async (route, request) => {
     const fetchReq = toFetchRequest(request);
     for (const handler of handlers) {
       const httpHandler = handler as HttpHandler;

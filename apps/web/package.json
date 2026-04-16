@@ -8,11 +8,16 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "_bootstrap:ws-client": "pnpm --filter @mmp/shared build && pnpm --filter @mmp/game-logic build && pnpm --filter @mmp/ws-client build",
+    "pretest": "pnpm _bootstrap:ws-client",
     "test": "vitest run",
+    "pretest:coverage": "pnpm _bootstrap:ws-client",
     "test:coverage": "vitest run --coverage",
+    "pretest:e2e": "pnpm _bootstrap:ws-client",
     "test:e2e": "npx playwright test --project=chromium",
     "test:e2e:ui": "npx playwright test --project=chromium --ui",
     "test:e2e:headed": "npx playwright test --project=chromium --headed",
+    "pretypecheck": "pnpm _bootstrap:ws-client",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
