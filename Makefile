@@ -1,4 +1,4 @@
-.PHONY: up down build build-no-cache logs ps lint lint-go lint-web
+.PHONY: up down build build-no-cache logs ps lint lint-go lint-web test migrate seed ci-local
 
 # ---------------------------------------------------------------------------
 # Core commands
@@ -56,6 +56,27 @@ lint-go:
 ## lint-web — Run ESLint on apps/web
 lint-web:
 	cd apps/web && pnpm lint
+
+# ---------------------------------------------------------------------------
+# Test / DB / Local CI parity
+# ---------------------------------------------------------------------------
+
+## test — Run Go + Web unit tests (local CI parity)
+test:
+	cd apps/server && go test -race ./...
+	cd apps/web && pnpm test
+
+## migrate — Apply goose migrations (requires DATABASE_URL)
+migrate:
+	cd apps/server && goose -dir db/migrations postgres "$(DATABASE_URL)" up
+
+## seed — Seed E2E fixtures (requires DATABASE_URL)
+seed:
+	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f apps/server/db/seed/e2e-themes.sql
+
+## ci-local — Reproduce GitHub Actions CI gate locally (lint + test)
+ci-local: lint-go lint-web test
+	@echo "✓ Local CI parity check passed"
 
 # Prevent make from treating 'dev'/'prod' as file targets
 dev prod:
