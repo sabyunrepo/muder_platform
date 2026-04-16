@@ -35,19 +35,19 @@ jobs:
         ports:
           - "5432:5432"
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd "pg_isready -U mmp -d mmp_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
       redis:
         image: redis:7-alpine
         ports:
           - "6379:6379"
         options: >-
           --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
 
     env:
       DATABASE_URL: postgres://mmp:mmp_test@localhost:5432/mmp_test?sslmode=disable
@@ -61,25 +61,79 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache-dependency-path: apps/server/go.sum
 
       - name: Build server
         working-directory: apps/server
         run: go build -o /tmp/mmp-server ./cmd/server
 
+      # ── DB migrations (Hotfix 2026-04-16: prior absence caused nightly failure
+      # when Phase 17.5 added 00022_clue_relations but this workflow never ran
+      # goose up). ──────────────────────────────────────────────────────────────
+
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
+
+      - name: Run goose migrations
+        working-directory: apps/server
+        run: |
+          goose -dir db/migrations postgres \
+            "host=localhost port=5432 user=mmp password=mmp_test dbname=mmp_test sslmode=disable" \
+            up
+
+      # ── Migration drift gate ──────────────────────────────────────────────────
+      # Compares the highest version_id in goose_db_version with the numeric
+      # prefix of the latest migration file. Any mismatch fails fast so a new
+      # migration landing without being applied here (today's 00022 incident)
+      # surfaces before the E2E job even starts.
+
+      - name: Verify migration drift
+        run: |
+          applied=$(PGPASSWORD=mmp_test psql -h localhost -U mmp -d mmp_test -tAc \
+            "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version;")
+          expected=$(ls apps/server/db/migrations/*.sql \
+            | sed -E 's|.*/0*([0-9]+)_.*|\1|' \
+            | sort -n | tail -1)
+          echo "goose_db_version=${applied} migrations_max=${expected}"
+          if [ "$applied" != "$expected" ]; then
+            echo "::error::Migration drift detected (applied=${applied}, expected=${expected})"
+            exit 1
+          fi
+
+      # ── Seed E2E fixtures (shared with e2e-stubbed.yml) ───────────────────────
+
       - name: Start server in background
         run: |
-          /tmp/mmp-server &
+          /tmp/mmp-server > /tmp/server.log 2>&1 &
           echo "SERVER_PID=$!" >> "$GITHUB_ENV"
-          # Wait for the health endpoint to respond
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/health; then
-              echo "Server ready"
+              echo "Server ready after ${i}s"
               break
             fi
             sleep 1
           done
+
+      - name: Seed E2E user
+        run: |
+          http_code=$(curl -s -o /tmp/seed.out -w "%{http_code}" \
+            -X POST http://localhost:8080/api/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"e2e@test.com","password":"e2etest1234","nickname":"E2E Tester"}')
+          if [ "$http_code" = "201" ] || [ "$http_code" = "409" ]; then
+            echo "Seed OK (http=$http_code)"
+          else
+            echo "::error::Seed failed (http=$http_code)"
+            cat /tmp/seed.out
+            exit 1
+          fi
+
+      - name: Seed E2E theme
+        run: |
+          PGPASSWORD=mmp_test psql -h localhost -U mmp -d mmp_test \
+            -v ON_ERROR_STOP=1 \
+            -f apps/server/db/seed/e2e-themes.sql
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -91,6 +145,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        # @mmp/ws-client is imported by apps/web and needs dist/ at vite dev time.
+        # Same fix as e2e-stubbed.yml PR #50.
+        run: pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" --filter "@mmp/ws-client" build
 
       - name: Install Playwright browsers
         working-directory: apps/web
@@ -129,3 +188,12 @@ jobs:
           name: playwright-real-backend-report
           path: apps/web/playwright-report/
           retention-days: 7
+
+      - name: Upload server log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmp-server-log-real-backend
+          path: /tmp/server.log
+          retention-days: 7
+          if-no-files-found: ignore
