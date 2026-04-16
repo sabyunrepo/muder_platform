@@ -5,12 +5,12 @@
 
 ---
 
-## W0 — PR-1: Investigate login timeout
+## W0 — PR-1: Investigate login timeout ✅ 완료 (2026-04-16)
 
-- [ ] Task 1 — PR #48 머지 후 trigger된 latest `e2e-stubbed` run 아티팩트 다운로드
-- [ ] Task 2 — `playwright-e2e-stubbed-report/` trace 로컬 뷰어로 분석
-- [ ] Task 3 — fill 실패 원인 확정 (placeholder 텍스트, 리다이렉트, hydration, 네트워크 등)
-- [ ] Task 4 — findings.md 에 증거(스크린샷/네트워크 타임라인) 정리
+- [x] Task 1 — run `24497907923` 로그 + artifact 다운로드
+- [x] Task 2 — Start frontend step 로그 분석 (trace.zip 불요 — vite 에러가 로그에 명시)
+- [x] Task 3 — 원인 확정: `@mmp/ws-client` workspace 미빌드 → Vite vite:dep-scan 실패 → SPA 부팅 실패
+- [x] Task 4 — findings.md 작성 (H1~H4 기각, H5 확정, E1~E4 증거)
 
 ## W1 — PR-2: Login helper 공용화 + 수정
 
@@ -20,12 +20,12 @@
 - [ ] Task 4 — Vitest + lint 그린 유지
 - [ ] Task 5 — 변경 파일 ≤400줄 / 함수 ≤60줄 확인
 
-## W1 — PR-3: Theme seed SQL + workflow step
+## W1 — PR-3: Workflow build fix + Theme seed
 
-- [ ] Task 1 — `apps/server/db/seed/e2e-themes.sql` 신규 (published theme 1건 + characters/clues 최소 fixture)
-- [ ] Task 2 — `.github/workflows/e2e-stubbed.yml` 에 `Seed E2E theme` step 추가 (Seed user 다음, Start server 전)
-- [ ] Task 3 — seed SQL idempotent 확인 (ON CONFLICT, 재실행 안전)
-- [ ] Task 4 — `go build ./...` 그린 (관련 파일 없지만 회귀 체크)
+- [x] Task 1 — `apps/server/db/seed/e2e-themes.sql` 신규 (published theme + 4 characters)
+- [x] Task 2 — `.github/workflows/e2e-stubbed.yml` 에 `Seed E2E theme` step 추가
+- [x] Task 3 — seed SQL idempotent (ON CONFLICT slug + IF NOT EXISTS characters)
+- [x] Task 4 — **근본 원인 수정**: `Build workspace packages`에 `@mmp/ws-client` 추가 (findings.md H5)
 
 ## W2 — PR-4: 회귀 + green gate
 
