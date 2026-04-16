@@ -1,13 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { login } from "./helpers/common";
 
 // ---------------------------------------------------------------------------
 // 상수
 // ---------------------------------------------------------------------------
 
-const BASE = "http://localhost:3000";
 const BACKEND = "http://localhost:8080";
-const LOGIN_EMAIL = "e2e@test.com";
-const LOGIN_PASSWORD = "e2etest1234";
 
 // ---------------------------------------------------------------------------
 // 헬퍼: 백엔드 가드
@@ -16,20 +14,6 @@ const LOGIN_PASSWORD = "e2etest1234";
 async function requireBackend(page: Parameters<typeof test>[1]) {
   const res = await page.request.get(`${BACKEND}/health`).catch(() => null);
   test.skip(!res || !res.ok(), "백엔드 서버가 실행되지 않음 — 이 테스트는 스킵됩니다");
-}
-
-// ---------------------------------------------------------------------------
-// 헬퍼: 로그인
-// ---------------------------------------------------------------------------
-
-async function login(page: Parameters<typeof test>[1]) {
-  await page.goto(`${BASE}/login`);
-  await page.getByPlaceholder("이메일").fill(LOGIN_EMAIL);
-  await page.getByPlaceholder("비밀번호").fill(LOGIN_PASSWORD);
-  await page.getByRole("button", { name: "로그인" }).click();
-  await expect(page.getByRole("heading", { name: "로비" })).toBeVisible({
-    timeout: 15_000,
-  });
 }
 
 // ---------------------------------------------------------------------------
