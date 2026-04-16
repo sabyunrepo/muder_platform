@@ -67,6 +67,17 @@ jobs:
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
 
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -20
+
+      - name: Upload Go coverage to Codecov
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
+        with:
+          files: apps/server/coverage.out
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: backend
+          fail_ci_if_error: false
+
       - name: Build server
         run: go build ./cmd/server
 
@@ -103,8 +114,45 @@ jobs:
       - name: Test
         run: pnpm turbo test
 
+      - name: Build workspace packages (for web coverage)
+        run: pnpm turbo build --filter=@mmp/web^...
+
+      - name: Web coverage
+        run: pnpm --filter @mmp/web test:coverage
+
+      - name: Upload Vitest coverage to Codecov
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5.5.4
+        with:
+          files: apps/web/coverage/coverage-final.json
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: frontend
+          fail_ci_if_error: false
+
+      - name: Vitest coverage PR summary
+        if: github.event_name == 'pull_request'
+        uses: davelosert/vitest-coverage-report-action@c0c9b09c93750ee1d8335d14e94ce3d6fc61df50 # v2.11.0
+        with:
+          vite-config-path: apps/web/vitest.config.ts
+          working-directory: apps/web
+
       - name: Build
         run: pnpm turbo build
+
+  coverage-guard:
+    name: Coverage Regression Guard (warn-only)
+    runs-on: ubuntu-latest
+    needs: [go-check, ts-check]
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Coverage delta placeholder
+        run: |
+          echo "::notice::Coverage regression guard is currently warn-only."
+          echo "::notice::Enforcement PR follow-up scheduled after 2026-05-28."
+          echo "::notice::Codecov dashboard provides delta visibility: https://codecov.io/gh/sabyunrepo/muder_platform"
 
   docker-build:
     name: Docker Build Check
