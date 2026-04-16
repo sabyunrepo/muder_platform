@@ -70,6 +70,16 @@ jobs:
         working-directory: apps/server
         run: go build -o /tmp/mmp-server ./cmd/server
 
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
+
+      - name: Run migrations
+        working-directory: apps/server
+        run: |
+          goose -dir db/migrations postgres \
+            "host=localhost port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            up
+
       - name: Start server
         run: |
           /tmp/mmp-server &
@@ -81,6 +91,24 @@ jobs:
             fi
             sleep 1
           done
+
+      # ── Seed E2E user (Issue #46) ──────────────────────────────────────────
+      # game-session/reconnect/redaction specs log in as e2e@test.com.
+      # Without this seed, login() times out at 30s and all scenarios fail.
+
+      - name: Seed E2E user
+        run: |
+          http_code=$(curl -s -o /tmp/seed.out -w "%{http_code}" \
+            -X POST http://localhost:8080/api/v1/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"e2e@test.com","password":"e2etest1234","nickname":"E2E Tester"}')
+          if [ "$http_code" = "201" ] || [ "$http_code" = "409" ]; then
+            echo "Seed OK (http=$http_code)"
+          else
+            echo "Seed failed (http=$http_code):"
+            cat /tmp/seed.out
+            exit 1
+          fi
 
       # ── Node / pnpm ────────────────────────────────────────────────────────
 
@@ -98,6 +126,9 @@ jobs:
       - name: Install Playwright browsers
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build workspace packages
+        run: pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" build
 
       # ── Frontend dev server ────────────────────────────────────────────────
 
