@@ -1,0 +1,8 @@
+{
+  "run_id": "r-20260415-205940-f535",
+  "mode": "wave",
+  "waves": ["W0","W1","W2","W3"],
+  "tasks_override": null,
+  "started_at": "2026-04-15T11:59:47Z",
+  "flags": {"dry_run": false, "ab": null, "team_max": 6}
+}

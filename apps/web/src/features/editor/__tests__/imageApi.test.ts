@@ -95,6 +95,26 @@ describe("uploadImage", () => {
     const url = await uploadImage(themeId, "character", targetId, blob, "image/webp");
     expect(url).toBe("https://cdn/image.webp");
   });
+
+  it("throws when themeId is empty and does not hit the API", async () => {
+    await expect(
+      uploadImage("", "character", targetId, blob, "image/webp"),
+    ).rejects.toThrow(/themeId/);
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("hits the single-prefix path /v1/editor/themes/.../images/upload-url", async () => {
+    await uploadImage(themeId, "clue", targetId, blob, "image/webp");
+    expect(mockPost).toHaveBeenNthCalledWith(
+      1,
+      `/v1/editor/themes/${themeId}/images/upload-url`,
+      expect.any(Object),
+    );
+    // Guard: no double /v1 prefix
+    const calledPath = mockPost.mock.calls[0][0] as string;
+    expect(calledPath).not.toMatch(/\/v1\/v1\//);
+    expect(calledPath).not.toMatch(/\/api\/v1\//);
+  });
 });
 
 // ---------------------------------------------------------------------------

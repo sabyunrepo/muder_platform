@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -20,8 +21,16 @@ vi.mock('sonner', () => ({
 }));
 
 vi.mock('@/features/editor/api', () => ({
-  useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   useModuleSchemas: () => useModuleSchemasMock(),
+  editorKeys: {
+    all: ['editor'],
+    theme: (id: string) => ['editor', 'themes', id],
+  },
+}));
+
+vi.mock('@/features/editor/editorConfigApi', () => ({
+  useUpdateConfigJson: (_id: string, opts?: { onConflictAfterRetry?: () => void }) =>
+    useUpdateConfigJsonMock(opts),
 }));
 
 vi.mock('@/services/queryClient', () => ({
@@ -76,8 +85,14 @@ const baseTheme: EditorThemeResponse = {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
+let capturedConflictHandler: (() => void) | undefined;
+
 beforeEach(() => {
-  useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: false });
+  capturedConflictHandler = undefined;
+  useUpdateConfigJsonMock.mockImplementation((opts?: { onConflictAfterRetry?: () => void }) => {
+    capturedConflictHandler = opts?.onConflictAfterRetry;
+    return { mutate: mutateMock, isPending: false };
+  });
   useModuleSchemasMock.mockReturnValue({ data: null, isLoading: false });
 });
 
@@ -182,6 +197,53 @@ describe('ModulesSubTab', () => {
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
     expect(screen.queryByTestId('schema-driven-form')).toBeNull();
+  });
+
+  it('mutate payload에 theme.version이 포함된다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+    const versionedTheme: EditorThemeResponse = { ...baseTheme, version: 42 };
+
+    render(<ModulesSubTab themeId="theme-1" theme={versionedTheme} />);
+
+    fireEvent.click(screen.getByRole('switch', { name: `${optionalMod.name} 활성화` }));
+
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(config.version).toBe(42);
+  });
+
+  it('conflict-after-retry 시 Snackbar 충돌 메시지를 표시한다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+    fireEvent.click(screen.getByRole('switch', { name: `${optionalMod.name} 활성화` }));
+
+    // Simulate hook's conflict path: first onConflictAfterRetry, then onError
+    capturedConflictHandler?.();
+    const [, callbacks] = mutateMock.mock.calls[0] as [
+      unknown,
+      { onError: () => void },
+    ];
+    callbacks.onError();
+
+    expect(toast.error).toHaveBeenCalledWith(
+      '동시 편집 충돌 — 최신 상태 다시 불러오기',
+    );
+  });
+
+  it('일반 에러는 기본 에러 메시지를 표시한다 (충돌 아님)', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+    fireEvent.click(screen.getByRole('switch', { name: `${optionalMod.name} 활성화` }));
+
+    // No conflict handler fired — regular failure
+    const [, callbacks] = mutateMock.mock.calls[0] as [
+      unknown,
+      { onError: () => void },
+    ];
+    callbacks.onError();
+
+    expect(toast.error).toHaveBeenCalledWith('모듈 설정 저장에 실패했습니다');
   });
 
   it('REQUIRED_MODULE_IDS의 모듈은 toggle 버튼이 없다', () => {

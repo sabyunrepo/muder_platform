@@ -14,7 +14,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-
 // ---------------------------------------------------------------------------
 // M-7: per-player snapshot blobs (redaction recovery path)
 // ---------------------------------------------------------------------------
@@ -182,5 +181,3 @@ func TestSnapshot_L2_CtxCancelPropagates(t *testing.T) {
 		t.Errorf("snapshot writes occurred after session stop (%d→%d) — ctx cancel may not be wired", countBefore, countAfter)
 	}
 }
-
-

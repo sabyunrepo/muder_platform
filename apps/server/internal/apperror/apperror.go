@@ -6,16 +6,22 @@ import (
 )
 
 // AppError represents an application error following RFC 9457 Problem Details.
+//
+// Extensions carries RFC 9457 "extension members": caller-specific fields that
+// surface inside the Problem Details body without being part of the standard
+// envelope. Use WithExtensions to attach (e.g. {"current_version": 42} on an
+// optimistic-lock 409). Extensions never leak into the Error() string.
 type AppError struct {
-	Type     string         `json:"type"`
-	Code     string         `json:"code"`
-	Status   int            `json:"status"`
-	Title    string         `json:"title"`
-	Detail   string         `json:"detail"`
-	Instance string         `json:"instance,omitempty"`
-	Params   map[string]any `json:"params,omitempty"`
-	Errors   []FieldError   `json:"errors,omitempty"`
-	Internal error          `json:"-"`
+	Type       string         `json:"type"`
+	Code       string         `json:"code"`
+	Status     int            `json:"status"`
+	Title      string         `json:"title"`
+	Detail     string         `json:"detail"`
+	Instance   string         `json:"instance,omitempty"`
+	Params     map[string]any `json:"params,omitempty"`
+	Errors     []FieldError   `json:"errors,omitempty"`
+	Extensions map[string]any `json:"extensions,omitempty"`
+	Internal   error          `json:"-"`
 }
 
 // Error implements the error interface.
@@ -128,6 +134,22 @@ func (e *AppError) WithErrors(errs []FieldError) *AppError {
 	if len(errs) > 0 {
 		copied.Errors = make([]FieldError, len(errs))
 		copy(copied.Errors, errs)
+	}
+	return &copied
+}
+
+// WithExtensions returns a copy of the error with RFC 9457 extension members
+// attached. Extensions surface as top-level fields in the Problem Details
+// response body (not nested under "params"), enabling caller-specific metadata
+// such as {"current_version": 42} on optimistic-lock conflicts. The map is
+// deep-copied to prevent shared mutation across goroutines.
+func (e *AppError) WithExtensions(ext map[string]any) *AppError {
+	copied := *e
+	if len(ext) > 0 {
+		copied.Extensions = make(map[string]any, len(ext))
+		for k, v := range ext {
+			copied.Extensions[k] = v
+		}
 	}
 	return &copied
 }

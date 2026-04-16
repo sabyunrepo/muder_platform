@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -21,6 +22,13 @@ func (s *service) GetClueRelations(ctx context.Context, creatorID, themeID uuid.
 
 	rows, err := s.q.ListClueRelationsByTheme(ctx, themeID)
 	if err != nil {
+		// Defensive: sqlc's :many returns an empty slice on no rows, but guard
+		// against any lower-layer driver variance that might surface
+		// pgx.ErrNoRows. An empty relation set is a normal state for a new
+		// theme, not a 500 condition.
+		if errors.Is(err, pgx.ErrNoRows) {
+			return []ClueRelationResponse{}, nil
+		}
 		s.logger.Error().Err(err).Msg("failed to list clue relations")
 		return nil, apperror.Internal("failed to list clue relations")
 	}

@@ -1,0 +1,11 @@
+{
+  "owner_pid": 51231,
+  "run_id": "r-phase185-wave1",
+  "acquired_at": "2026-04-15T23:51:32Z",
+  "last_heartbeat": "2026-04-15T23:51:32Z",
+  "wave": "W1",
+  "pr": "all",
+  "task": "Phase 18.5 full batch",
+  "worktree": null,
+  "ab_experiment": null
+}

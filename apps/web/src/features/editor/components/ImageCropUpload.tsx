@@ -85,6 +85,10 @@ export function ImageCropUpload({
       toast.error('먼저 이미지를 자르세요');
       return;
     }
+    if (!themeId || !targetId) {
+      toast.error('저장 후 이미지를 업로드할 수 있습니다');
+      return;
+    }
     setIsUploading(true);
     try {
       const { blob, contentType } = await getCroppedBlob(
@@ -135,7 +139,7 @@ export function ImageCropUpload({
         footer={
           <>
             <Button variant="secondary" onClick={handleCancel} disabled={isUploading}>취소</Button>
-            <Button onClick={handleConfirm} disabled={isUploading || !completedCrop}>
+            <Button onClick={handleConfirm} disabled={isUploading || !completedCrop || !themeId || !targetId}>
               {isUploading ? <><Loader2 className="h-4 w-4 animate-spin" />업로드 중…</> : '확인'}
             </Button>
           </>

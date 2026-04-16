@@ -1,14 +1,23 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { User } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import {
+  editorKeys,
   useEditorCharacters,
   useEditorClues,
   useUpdateConfigJson,
 } from '@/features/editor/api';
 import type { Mission } from './MissionEditor';
 import { CharacterDetailPanel } from './CharacterDetailPanel';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+/** Debounce window for config saves (W2 PR-5: 500→1500ms). */
+const SAVE_DEBOUNCE_MS = 1500;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -27,15 +36,11 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const { data: characters, isLoading: charsLoading } = useEditorCharacters(themeId);
   const { data: clues } = useEditorClues(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
+  const queryClient = useQueryClient();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<Record<string, unknown> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+  const rollbackRef = useRef<EditorThemeResponse | undefined>(undefined);
 
   const characterClues = useMemo((): Record<string, string[]> => {
     const cc = (theme.config_json ?? {}).character_clues;
@@ -49,20 +54,86 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       ? (cm as Record<string, Mission[]>) : {};
   }, [theme.config_json]);
 
+  /**
+   * Fire the pending save immediately (cancels debounce). Used by:
+   *   - `useEffect` cleanup on unmount
+   *   - `selectedCharId` change (switching characters should persist edits)
+   *   - explicit blur handler from {@link CharacterDetailPanel}
+   */
+  const flush = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (!pendingRef.current) return;
+    const payload = pendingRef.current;
+    pendingRef.current = null;
+    updateConfig.mutate(payload, {
+      onSuccess: () => toast.success('저장되었습니다'),
+      onError: () => {
+        // Rollback optimistic update on failure.
+        if (rollbackRef.current) {
+          queryClient.setQueryData(editorKeys.theme(themeId), rollbackRef.current);
+        }
+        toast.error('저장에 실패했습니다');
+      },
+    });
+  }, [queryClient, themeId, updateConfig]);
+
+  useEffect(() => {
+    return () => {
+      // Flush any pending edit so navigation away from the tab persists data.
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      if (pendingRef.current) {
+        updateConfig.mutate(pendingRef.current);
+        pendingRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const saveConfig = useCallback(
     (updates: Record<string, unknown>) => {
-      pendingRef.current = { ...(theme.config_json ?? {}), ...updates };
+      // --- Optimistic update: apply to query cache immediately so the UI
+      // reflects the change within the same tick. Rollback on error.
+      const cacheKey = editorKeys.theme(themeId);
+      const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+      if (previous) {
+        rollbackRef.current = previous;
+        queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
+          ...previous,
+          config_json: { ...(previous.config_json ?? {}), ...updates },
+        });
+      }
+
+      // --- Debounced network write (1500ms, flush-on-blur).
+      // Merge basis priority (H-W2-1): accumulated pending > optimistic cache >
+      // theme.config_json fallback. Prevents loss of earlier edits made within
+      // the same debounce window on different keys.
+      const basis =
+        pendingRef.current ??
+        queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json ??
+        theme.config_json ??
+        {};
+      pendingRef.current = { ...basis, ...updates };
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
-        if (!pendingRef.current) return;
-        updateConfig.mutate(pendingRef.current, {
-          onSuccess: () => toast.success('저장되었습니다'),
-          onError: () => toast.error('저장에 실패했습니다'),
-        });
-        pendingRef.current = null;
-      }, 500);
+        debounceRef.current = null;
+        flush();
+      }, SAVE_DEBOUNCE_MS);
     },
-    [theme.config_json, updateConfig],
+    [flush, queryClient, theme.config_json, themeId],
+  );
+
+  const handleSelectChar = useCallback(
+    (id: string) => {
+      flush();
+      setSelectedCharId(id);
+    },
+    [flush],
   );
 
   const handleClueToggle = useCallback(
@@ -131,14 +202,21 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const charMissions = selectedCharId ? (characterMissions[selectedCharId] ?? []) : [];
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div
+      className="flex h-full flex-col md:flex-row"
+      onBlur={(e) => {
+        // Flush pending config when focus leaves the panel entirely. `relatedTarget`
+        // is null when the user clicks outside React's focus tree (e.g. tab switch).
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flush();
+      }}
+    >
       {/* ── Left: Character list ── */}
       <aside className="shrink-0 overflow-y-auto border-b border-slate-800 py-2 md:w-60 md:border-b-0 md:border-r">
         {characters.map((char) => (
           <button
             key={char.id}
             type="button"
-            onClick={() => setSelectedCharId(char.id)}
+            onClick={() => handleSelectChar(char.id)}
             className={`flex w-full items-center gap-2 px-4 py-2 text-left text-xs transition-colors ${
               selectedCharId === char.id
                 ? 'bg-slate-800 text-amber-400'

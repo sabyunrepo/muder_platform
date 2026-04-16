@@ -1,0 +1,12 @@
+{
+  "id": "phase-18.4",
+  "name": "에디터 UX Bugfix",
+  "dir": "docs/plans/2026-04-15-editor-ux-bugfix",
+  "started_at": "2026-04-15",
+  "finished_at": "2026-04-15",
+  "final_commit": "5cdf70c",
+  "tasks_done": 46,
+  "tasks_total": 46,
+  "force_finished": false,
+  "summary": "에디터 UX 버그픽스 9건 + hotfix 3건 (W0-W3, 7 PR, 423 editor vitest tests, 9 E2E scenarios)"
+}
