@@ -28,11 +28,13 @@
 - [x] Task 4 — **근본 원인 수정**: `Build workspace packages`에 `@mmp/ws-client` 추가 (findings.md H5)
 - [x] Task 5 — 진단 artifact 추가: server.log + test-results/ 업로드 (H6 증거 수집 완료)
 
-## H6 Follow-up (별도 PR 필요)
+## W1 — PR-5 (H6): ThemeCard schema drift 수정
 
-- [ ] ThemeCard / server `ThemeSummary` 계약 정렬 (schema drift 수정)
-- [ ] Theme seed step 재활성화
-- [ ] createRoom 시나리오 green 확인
+- [x] Task 1 — `apps/web/src/features/lobby/api.ts` ThemeSummary 필드 이름 서버 snake_case와 정렬 (min_players / max_players / duration_min / cover_image)
+- [x] Task 2 — play_count / rating / difficulty optional 처리 + ThemeCard 방어 렌더
+- [x] Task 3 — LobbyPage filter/sort, CreateRoomModal, RoomPage 필드 이름 치환
+- [x] Task 4 — workflow `Seed E2E theme` step 재활성화
+- [x] Task 5 — typecheck + vitest 104 files / 1017 tests green 로컬 검증
 
 ## W2 — PR-4: 회귀 + green gate
 

@@ -53,7 +53,7 @@ export function CreateRoomModal({
 
   const themeOptions = (themes ?? []).map((t) => ({
     value: t.id,
-    label: `${t.title} (${t.player_count_min}-${t.player_count_max}명)`,
+    label: `${t.title} (${t.min_players}-${t.max_players}명)`,
   }));
 
   return (
@@ -98,7 +98,7 @@ export function CreateRoomModal({
         {currentTheme && (
           <Input
             label="최대 인원"
-            value={`${currentTheme.player_count_min} - ${currentTheme.player_count_max}명`}
+            value={`${currentTheme.min_players} - ${currentTheme.max_players}명`}
             readOnly
           />
         )}

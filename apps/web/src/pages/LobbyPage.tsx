@@ -193,7 +193,7 @@ function filterThemes(
     );
   }
 
-  // 난이도
+  // 난이도 (서버 미지원 — 값 있는 테마만 통과)
   if (filters.difficulty) {
     result = result.filter((t) => t.difficulty === filters.difficulty);
   }
@@ -203,7 +203,7 @@ function filterThemes(
   if (range) {
     const [min, max] = range;
     result = result.filter(
-      (t) => t.player_count_max >= min && t.player_count_min <= max,
+      (t) => t.max_players >= min && t.min_players <= max,
     );
   }
 
@@ -211,10 +211,10 @@ function filterThemes(
   result = [...result];
   switch (filters.sort) {
     case 'popular':
-      result.sort((a, b) => b.play_count - a.play_count);
+      result.sort((a, b) => (b.play_count ?? 0) - (a.play_count ?? 0));
       break;
     case 'rating':
-      result.sort((a, b) => b.rating - a.rating);
+      result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
       break;
     case 'latest':
     default:
