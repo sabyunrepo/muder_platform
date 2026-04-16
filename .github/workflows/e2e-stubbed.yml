@@ -3,10 +3,15 @@ name: E2E — Stubbed Backend
 # PR-required job: runs on every PR and push to main.
 # Uses a real Postgres + Redis + Go server so PLAYWRIGHT_BACKEND=1
 # is set, releasing the skip guard in all backend-gated spec files.
-# Three core scenarios always execute:
+#
+# Three core scenarios always execute, sharded 2× across two browsers:
 #   1. 방 생성 → 시작 → 페이즈 진행  (game-session.spec.ts)
 #   2. 재접속 복원                    (game-reconnect.spec.ts)
 #   3. Redaction 확인               (game-redaction.spec.ts)
+#
+# NOTE: job name changed from "E2E Stubbed Backend (Chromium)" to the matrix
+# form below. Branch-protection required-check labels MUST be updated after
+# this PR merges.
 
 on:
   push:
@@ -19,9 +24,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-stubbed:
-    name: E2E Stubbed Backend (Chromium)
+  e2e:
+    name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox]
+        shard: [1, 2]
 
     services:
       postgres:
@@ -142,9 +152,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
+      - name: Install Playwright browsers for matrix
         working-directory: apps/web
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
 
       - name: Build workspace packages
         # @mmp/ws-client is imported by apps/web and needs dist/ at vite dev time.
@@ -166,30 +176,17 @@ jobs:
             sleep 1
           done
 
-      # ── Core E2E scenarios ─────────────────────────────────────────────────
+      # ── Core E2E scenarios (sharded + browser matrix) ──────────────────────
 
-      - name: E2E — 방 생성·시작·페이즈
+      - name: Run E2E
         working-directory: apps/web
         run: |
           pnpm exec playwright test \
             e2e/game-session.spec.ts \
-            --reporter=list \
-            --retries=1
-
-      - name: E2E — 재접속 복원
-        working-directory: apps/web
-        run: |
-          pnpm exec playwright test \
             e2e/game-reconnect.spec.ts \
-            --reporter=list \
-            --retries=1
-
-      - name: E2E — Redaction 확인
-        working-directory: apps/web
-        run: |
-          pnpm exec playwright test \
             e2e/game-redaction.spec.ts \
-            --reporter=list \
+            --project=${{ matrix.browser }} \
+            --shard=${{ matrix.shard }}/2 \
             --retries=1
 
       # ── Cleanup ────────────────────────────────────────────────────────────
@@ -200,19 +197,20 @@ jobs:
           [ -n "$SERVER_PID" ] && kill "$SERVER_PID" || true
           [ -n "$WEB_PID" ] && kill "$WEB_PID" || true
 
-      - name: Upload Playwright report
+      - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-e2e-stubbed-report
-          path: apps/web/playwright-report/
+          name: blob-report-${{ matrix.browser }}-${{ matrix.shard }}
+          path: apps/web/blob-report/
           retention-days: 7
+          if-no-files-found: ignore
 
       - name: Upload test-results (screenshots + traces)
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-e2e-stubbed-test-results
+          name: playwright-test-results-${{ matrix.browser }}-${{ matrix.shard }}
           path: apps/web/test-results/
           retention-days: 7
           if-no-files-found: ignore
@@ -221,7 +219,53 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: mmp-server-log
+          name: mmp-server-log-${{ matrix.browser }}-${{ matrix.shard }}
           path: /tmp/server.log
           retention-days: 7
           if-no-files-found: ignore
+
+  merge-reports:
+    name: Merge Playwright reports
+    if: always()
+    needs: [e2e]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        # v5.0.0 reads packageManager from package.json automatically —
+        # no `version:` input to avoid ERR_PNPM_BAD_PM_VERSION collision.
+        uses: pnpm/action-setup@b307475762933b98ed359c036b0e51f26b63b74b # v5.0.0
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download blob reports
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge into HTML report
+        working-directory: apps/web
+        run: pnpm exec playwright merge-reports --reporter html ../../all-blob-reports
+
+      - name: Upload merged HTML report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-html-report
+          path: apps/web/playwright-report
+          retention-days: 7
