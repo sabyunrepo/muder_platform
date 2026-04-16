@@ -1,0 +1,70 @@
+title = "MMP v3 gitleaks config"
+
+# Extend the default gitleaks ruleset so we inherit all built-in rules
+# (AWS keys, GitHub PAT, Slack webhook, Stripe, Twilio, generic API keys, etc.)
+[extend]
+useDefault = true
+
+# ---------------------------------------------------------------------------
+# Project-specific rules (additive to default set)
+# ---------------------------------------------------------------------------
+
+[[rules]]
+id = "mmp-codecov-upload-token"
+description = "Codecov upload token (UUID v4 pattern)"
+regex = '''(?i)codecov[_-]?(?:upload[_-]?)?token[\"'\s:=]+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'''
+tags = ["secret", "codecov"]
+
+[[rules]]
+id = "mmp-db-url-plaintext"
+description = "Plaintext Postgres DB URL with inline password"
+regex = '''postgres(?:ql)?:\/\/[a-zA-Z0-9_.-]+:[^@\s'"]{4,}@'''
+tags = ["secret", "db"]
+
+[[rules]]
+id = "mmp-jwt-secret-hex"
+description = "High-entropy hex JWT secret (>=32 chars)"
+regex = '''(?i)(?:jwt[_-]?secret|auth[_-]?secret|session[_-]?secret)[\"'\s:=]+[a-f0-9]{32,}'''
+tags = ["secret", "jwt"]
+
+[[rules]]
+id = "mmp-jwt-secret-base64"
+description = "Base64 JWT secret (>=40 chars)"
+regex = '''(?i)(?:jwt[_-]?secret|auth[_-]?secret|session[_-]?secret)[\"'\s:=]+[A-Za-z0-9+/=]{40,}'''
+tags = ["secret", "jwt"]
+
+[[rules]]
+id = "mmp-npm-token"
+description = "NPM registry token"
+regex = '''npm_[A-Za-z0-9]{36}'''
+tags = ["secret", "npm"]
+
+# ---------------------------------------------------------------------------
+# Allowlist — test fixtures, local dev creds, e2e accounts
+# ---------------------------------------------------------------------------
+
+[allowlist]
+description = "Test fixtures + local dev passwords + e2e accounts"
+paths = [
+  '''apps/server/.*/fixtures/.*''',
+  '''apps/server/.*_test\.go$''',
+  '''apps/server/testdata/.*''',
+  '''apps/web/e2e/.*\.spec\.ts$''',
+  '''apps/web/.*/fixtures/.*''',
+  '''apps/web/.*\.test\.(ts|tsx|js|jsx)$''',
+  '''docker-compose.*\.ya?ml$''',
+  '''\.env\.example$''',
+  '''\.gitleaks\.toml$''',
+]
+regexes = [
+  # Local dev defaults (documented in docker-compose, never used in prod)
+  '''mmp_dev''',
+  '''mmp_e2e''',
+  '''mmp_test''',
+  # E2E test account password (project_local_auth.md documented)
+  '''e2etest1234''',
+  # Local dev DB URLs used in compose/README
+  '''postgres://mmp:mmp_dev@''',
+  '''postgres://mmp:mmp_test@''',
+  '''postgres://mmp:mmp_e2e@''',
+]
