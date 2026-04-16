@@ -70,6 +70,16 @@ jobs:
         working-directory: apps/server
         run: go build -o /tmp/mmp-server ./cmd/server
 
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
+
+      - name: Run migrations
+        working-directory: apps/server
+        run: |
+          goose -dir db/migrations postgres \
+            "host=localhost port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            up
+
       - name: Start server
         run: |
           /tmp/mmp-server &
