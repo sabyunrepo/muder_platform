@@ -80,13 +80,17 @@ func TestCreateRoom_Success(t *testing.T) {
 			if hID != hostID {
 				t.Fatalf("expected hostID %s, got %s", hostID, hID)
 			}
+			effective := int32(0)
+			if req.MaxPlayers != nil {
+				effective = *req.MaxPlayers
+			}
 			return &RoomResponse{
 				ID:          roomID,
 				ThemeID:     themeID,
 				HostID:      hostID,
 				Code:        "ABC123",
 				Status:      "WAITING",
-				MaxPlayers:  req.MaxPlayers,
+				MaxPlayers:  effective,
 				IsPrivate:   req.IsPrivate,
 				PlayerCount: 1,
 			}, nil
@@ -95,9 +99,10 @@ func TestCreateRoom_Success(t *testing.T) {
 
 	h := NewHandler(mock)
 
+	mp := int32(6)
 	body, _ := json.Marshal(CreateRoomRequest{
 		ThemeID:    themeID,
-		MaxPlayers: 6,
+		MaxPlayers: &mp,
 		IsPrivate:  false,
 	})
 
@@ -124,11 +129,106 @@ func TestCreateRoom_Success(t *testing.T) {
 	}
 }
 
+// TestCreateRoom_OmitMaxPlayers_FallbackApplied verifies that a body without
+// max_players is accepted (201) and the service sees req.MaxPlayers == nil so
+// it can apply the theme default fallback.
+func TestCreateRoom_OmitMaxPlayers_FallbackApplied(t *testing.T) {
+	roomID := uuid.New()
+	hostID := uuid.New()
+	themeID := uuid.New()
+
+	const themeDefault int32 = 8
+
+	mock := &mockService{
+		createRoomFn: func(_ context.Context, _ uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
+			if req.MaxPlayers != nil {
+				t.Fatalf("expected MaxPlayers nil, got %d", *req.MaxPlayers)
+			}
+			// Simulate service-side theme fallback.
+			return &RoomResponse{
+				ID:          roomID,
+				ThemeID:     themeID,
+				HostID:      hostID,
+				Code:        "FAL123",
+				Status:      "WAITING",
+				MaxPlayers:  themeDefault,
+				IsPrivate:   req.IsPrivate,
+				PlayerCount: 1,
+			}, nil
+		},
+	}
+
+	h := NewHandler(mock)
+
+	// Body intentionally omits max_players entirely.
+	body := []byte(`{"theme_id":"` + themeID.String() + `"}`)
+	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = withAuth(req, hostID)
+
+	rec := httptest.NewRecorder()
+	h.CreateRoom(rec, req)
+
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("expected status 201, got %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var resp RoomResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.MaxPlayers != themeDefault {
+		t.Fatalf("expected theme-default max_players=%d, got %d", themeDefault, resp.MaxPlayers)
+	}
+}
+
+// TestCreateRoom_MaxPlayersOutOfRange_Returns400 verifies that when the
+// service returns a VALIDATION_ERROR AppError (e.g. max_players outside the
+// theme's [min,max] range), the handler responds 400.
+func TestCreateRoom_MaxPlayersOutOfRange_Returns400(t *testing.T) {
+	hostID := uuid.New()
+	themeID := uuid.New()
+
+	mock := &mockService{
+		createRoomFn: func(_ context.Context, _ uuid.UUID, _ CreateRoomRequest) (*RoomResponse, error) {
+			return nil, apperror.New(
+				apperror.ErrValidation,
+				http.StatusBadRequest,
+				"max_players 20 is outside theme range [4, 8]",
+			)
+		},
+	}
+
+	h := NewHandler(mock)
+
+	// Body with max_players within the validator tag bounds (≤12) but that the
+	// service will reject as exceeding the theme's per-theme cap.
+	mp := int32(10)
+	body, _ := json.Marshal(CreateRoomRequest{
+		ThemeID:    themeID,
+		MaxPlayers: &mp,
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req = withAuth(req, hostID)
+
+	rec := httptest.NewRecorder()
+	h.CreateRoom(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d: %s", rec.Code, rec.Body.String())
+	}
+	if !bytes.Contains(rec.Body.Bytes(), []byte("VALIDATION_ERROR")) {
+		t.Fatalf("expected VALIDATION_ERROR in body, got: %s", rec.Body.String())
+	}
+}
+
 func TestCreateRoom_InvalidBody(t *testing.T) {
 	mock := &mockService{}
 	h := NewHandler(mock)
 
-	// Send invalid JSON (missing required fields).
+	// Missing required theme_id.
 	body := []byte(`{"is_private": true}`)
 	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")

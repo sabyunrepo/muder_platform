@@ -17,9 +17,13 @@ import (
 )
 
 // CreateRoomRequest is the payload for creating a new room.
+//
+// MaxPlayers is optional. When omitted (nil), the server falls back to the
+// theme's MaxPlayers value. When present, it must lie within the theme's
+// [MinPlayers, MaxPlayers] range, otherwise a VALIDATION_ERROR is returned.
 type CreateRoomRequest struct {
 	ThemeID    uuid.UUID `json:"theme_id" validate:"required"`
-	MaxPlayers int32     `json:"max_players" validate:"required,min=2,max=12"`
+	MaxPlayers *int32    `json:"max_players,omitempty" validate:"omitempty,min=2,max=12"`
 	IsPrivate  bool      `json:"is_private"`
 }
 
@@ -127,6 +131,27 @@ func generateRoomCode() (string, error) {
 
 // CreateRoom creates a new room and adds the host as the first player in a single transaction.
 func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
+	theme, err := s.queries.GetTheme(ctx, req.ThemeID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(apperror.ErrNotFound, http.StatusNotFound, "theme not found")
+		}
+		s.logger.Error().Err(err).Msg("failed to get theme for room creation")
+		return nil, apperror.Internal("failed to create room")
+	}
+
+	maxPlayers, fallback, err := resolveMaxPlayers(theme, req.MaxPlayers)
+	if err != nil {
+		return nil, err
+	}
+	if fallback {
+		s.logger.Info().
+			Str("theme_id", req.ThemeID.String()).
+			Int32("max_players", maxPlayers).
+			Str("source", "theme-fallback").
+			Msg("max_players omitted; applied theme default")
+	}
+
 	code, err := generateRoomCode()
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to generate room code")
@@ -146,7 +171,7 @@ func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRo
 		ThemeID:    req.ThemeID,
 		HostID:     hostID,
 		Code:       code,
-		MaxPlayers: req.MaxPlayers,
+		MaxPlayers: maxPlayers,
 		IsPrivate:  req.IsPrivate,
 	})
 	if err != nil {
@@ -173,17 +198,8 @@ func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRo
 		Str("code", code).
 		Msg("room created")
 
-	return &RoomResponse{
-		ID:          room.ID,
-		ThemeID:     room.ThemeID,
-		HostID:      room.HostID,
-		Code:        room.Code,
-		Status:      room.Status,
-		MaxPlayers:  room.MaxPlayers,
-		IsPrivate:   room.IsPrivate,
-		PlayerCount: 1,
-		CreatedAt:   room.CreatedAt,
-	}, nil
+	resp := mapRoomResponse(room, 1)
+	return &resp, nil
 }
 
 // GetRoom returns the room detail including player list.
