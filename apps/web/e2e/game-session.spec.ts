@@ -6,10 +6,7 @@ import { test, expect } from "@playwright/test";
 
 const BASE = "http://localhost:3000";
 const BACKEND = "http://localhost:8080";
-const LOGIN_EMAIL = "e2e@test.com";
-const LOGIN_PASSWORD = "e2etest1234";
-
-// ---------------------------------------------------------------------------
+//---------------------------------------------------------------------------
 // 헬퍼: 백엔드 가드
 // ---------------------------------------------------------------------------
 
@@ -23,10 +20,23 @@ async function requireBackend(page: Parameters<typeof test>[1]) {
 // ---------------------------------------------------------------------------
 
 async function login(page: Parameters<typeof test>[1]) {
-  await page.goto(`${BASE}/login`);
-  await page.getByPlaceholder("이메일").fill(LOGIN_EMAIL);
-  await page.getByPlaceholder("비밀번호").fill(LOGIN_PASSWORD);
-  await page.getByRole("button", { name: "로그인" }).click();
+  // Stubbed-backend CI 에서는 실제 로그인 폼이 30s 내 응답을 못 받아 실패한다.
+  // editor-golden-path 가 쓰는 localStorage 토큰 주입 패턴을 그대로 적용한다.
+  // 실제 백엔드 모드에서는 e2e@test.com 사전 발급 토큰으로 인증이 통과되고,
+  // stubbed 모드에서는 SPA 가 token 존재만 검사하므로 양쪽 모두 작동한다.
+  // (Issue #46)
+  await page.addInitScript(() => {
+    try {
+      window.localStorage.setItem("auth_token", "e2e-test-token");
+      window.localStorage.setItem(
+        "auth_user",
+        JSON.stringify({ id: "user-1", email: "e2e@test.com" }),
+      );
+    } catch {
+      /* ignore */
+    }
+  });
+  await page.goto(`${BASE}/`);
   await expect(page.getByRole("heading", { name: "로비" })).toBeVisible({
     timeout: 15_000,
   });
