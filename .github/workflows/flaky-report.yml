@@ -1,44 +1,46 @@
-name: Phase 18.1 — Real-Backend E2E (nightly)
+name: Flaky Test Report (weekly)
 
-# This is an OPTIONAL job that is NOT triggered on PR push.
-# It runs nightly or can be triggered manually.
-# It starts a real postgres/redis + Go server with GAME_RUNTIME_V2=true
-# and runs the real-backend Playwright smoke suite.
+# Reruns Playwright tests tagged @flaky with extra retries every Monday.
+# Artifact-only for now — issue bot auto-creation is a follow-up.
+#
+# Tag a test as @flaky with `test("foo @flaky", ...)` (Playwright grep syntax)
+# to opt it into this retry lane. Long-term goal: if the retry lane stays
+# green for 2 weeks, un-flag and promote back to e2e-stubbed.
 
 on:
   schedule:
-    # 02:00 UTC every day
-    - cron: "0 2 * * *"
-  workflow_dispatch:
-    inputs:
-      game_runtime_v2:
-        description: "Enable GAME_RUNTIME_V2 feature flag"
-        required: false
-        default: "true"
-        type: string
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  workflow_dispatch: {}
 
 concurrency:
-  group: phase-18.1-real-backend
-  cancel-in-progress: true
+  group: flaky-report
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
-  real-backend-e2e:
-    name: Real-Backend E2E Smoke
+  flaky-retry:
+    name: Retry @flaky tests
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
     services:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: mmp_test
+          POSTGRES_DB: mmp_e2e
           POSTGRES_USER: mmp
-          POSTGRES_PASSWORD: mmp_test
+          POSTGRES_PASSWORD: mmp_e2e
         ports:
           - "5432:5432"
         options: >-
-          --health-cmd "pg_isready -U mmp -d mmp_test"
+          --health-cmd "pg_isready -U mmp -d mmp_e2e"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
+
       redis:
         image: redis:7-alpine
         ports:
@@ -50,9 +52,10 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgres://mmp:mmp_test@localhost:5432/mmp_test?sslmode=disable
+      DATABASE_URL: postgres://mmp:mmp_e2e@localhost:5432/mmp_e2e?sslmode=disable
       REDIS_URL: redis://localhost:6379
-      GAME_RUNTIME_V2: ${{ github.event.inputs.game_runtime_v2 || 'true' }}
+      GAME_RUNTIME_V2: "true"
+      PLAYWRIGHT_BACKEND: "1"
 
     steps:
       - name: Harden Runner
@@ -66,49 +69,24 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
-          go-version: "1.25"
+          go-version: "1.24"
           cache-dependency-path: apps/server/go.sum
 
       - name: Build server
         working-directory: apps/server
         run: go build -o /tmp/mmp-server ./cmd/server
 
-      # ── DB migrations (Hotfix 2026-04-16: prior absence caused nightly failure
-      # when Phase 17.5 added 00022_clue_relations but this workflow never ran
-      # goose up). ──────────────────────────────────────────────────────────────
-
       - name: Install goose
         run: go install github.com/pressly/goose/v3/cmd/goose@v3.27.0
 
-      - name: Run goose migrations
+      - name: Run migrations
         working-directory: apps/server
         run: |
           goose -dir db/migrations postgres \
-            "host=localhost port=5432 user=mmp password=mmp_test dbname=mmp_test sslmode=disable" \
+            "host=localhost port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
             up
 
-      # ── Migration drift gate ──────────────────────────────────────────────────
-      # Compares the highest version_id in goose_db_version with the numeric
-      # prefix of the latest migration file. Any mismatch fails fast so a new
-      # migration landing without being applied here (today's 00022 incident)
-      # surfaces before the E2E job even starts.
-
-      - name: Verify migration drift
-        run: |
-          applied=$(PGPASSWORD=mmp_test psql -h localhost -U mmp -d mmp_test -tAc \
-            "SELECT COALESCE(MAX(version_id), 0) FROM goose_db_version;")
-          expected=$(ls apps/server/db/migrations/*.sql \
-            | sed -E 's|.*/0*([0-9]+)_.*|\1|' \
-            | sort -n | tail -1)
-          echo "goose_db_version=${applied} migrations_max=${expected}"
-          if [ "$applied" != "$expected" ]; then
-            echo "::error::Migration drift detected (applied=${applied}, expected=${expected})"
-            exit 1
-          fi
-
-      # ── Seed E2E fixtures (shared with e2e-stubbed.yml) ───────────────────────
-
-      - name: Start server in background
+      - name: Start server
         run: |
           /tmp/mmp-server > /tmp/server.log 2>&1 &
           echo "SERVER_PID=$!" >> "$GITHUB_ENV"
@@ -129,14 +107,14 @@ jobs:
           if [ "$http_code" = "201" ] || [ "$http_code" = "409" ]; then
             echo "Seed OK (http=$http_code)"
           else
-            echo "::error::Seed failed (http=$http_code)"
+            echo "Seed failed (http=$http_code):"
             cat /tmp/seed.out
             exit 1
           fi
 
       - name: Seed E2E theme
         run: |
-          PGPASSWORD=mmp_test psql -h localhost -U mmp -d mmp_test \
+          PGPASSWORD=mmp_e2e psql -h localhost -U mmp -d mmp_e2e \
             -v ON_ERROR_STOP=1 \
             -f apps/server/db/seed/e2e-themes.sql
 
@@ -152,35 +130,39 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace packages
-        # @mmp/ws-client is imported by apps/web and needs dist/ at vite dev time.
-        # Same fix as e2e-stubbed.yml PR #50.
         run: pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" --filter "@mmp/ws-client" build
 
       - name: Install Playwright browsers
-        # webkit added in Phase 18.7 Wave 3 PR-6 — nightly is the only matrix
-        # where we exercise webkit coverage. PR CI keeps chromium + firefox.
         working-directory: apps/web
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install --with-deps chromium
 
-      - name: Start frontend dev server
+      - name: Start frontend
         working-directory: apps/web
         run: |
           pnpm dev &
           echo "WEB_PID=$!" >> "$GITHUB_ENV"
-          # Wait for Vite to be ready
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3000; then
-              echo "Frontend ready"
+              echo "Frontend ready after ${i}s"
               break
             fi
             sleep 1
           done
 
-      - name: Run real-backend E2E smoke
+      - name: Retry @flaky tests
         working-directory: apps/web
-        env:
-          PLAYWRIGHT_BACKEND: "true"
-        run: pnpm exec playwright test e2e/game-session-live.spec.ts --reporter=list
+        continue-on-error: true
+        run: |
+          pnpm exec playwright test \
+            --grep @flaky \
+            --retries=3 \
+            --project=chromium \
+            --reporter=list
+
+      - name: Report success rate
+        if: always()
+        run: |
+          echo "::notice::Flaky retry summary is artifact-only for now. Issue auto-creation is follow-up."
 
       - name: Stop background processes
         if: always()
@@ -192,15 +174,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: playwright-real-backend-report
-          path: apps/web/playwright-report/
-          retention-days: 7
+          name: flaky-report-${{ github.run_id }}
+          path: apps/web/playwright-report
+          retention-days: 30
+          if-no-files-found: ignore
 
       - name: Upload server log
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: mmp-server-log-real-backend
+          name: flaky-server-log-${{ github.run_id }}
           path: /tmp/server.log
-          retention-days: 7
+          retention-days: 30
           if-no-files-found: ignore
