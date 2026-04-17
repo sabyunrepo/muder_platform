@@ -30,6 +30,23 @@ UPDATE rooms SET status = $2, updated_at = NOW() WHERE id = $1;
 -- name: GetRoomPlayers :many
 SELECT * FROM room_players WHERE room_id = $1;
 
+-- name: GetRoomPlayersWithUser :many
+-- Phase 18.8 follow-up (#5 RoomPlayer drift 정렬): buildRoomDetail 이 FE
+-- 에 전달하는 PlayerInfo 에 nickname/avatar_url/is_host 를 포함하도록 users
+-- JOIN 확장. 단순 count/state 조회는 기존 GetRoomPlayers 유지.
+SELECT
+    rp.room_id,
+    rp.user_id,
+    rp.character_id,
+    rp.is_ready,
+    rp.joined_at,
+    u.nickname,
+    u.avatar_url
+FROM room_players rp
+JOIN users u ON u.id = rp.user_id
+WHERE rp.room_id = $1
+ORDER BY rp.joined_at;
+
 -- name: AddRoomPlayer :exec
 INSERT INTO room_players (room_id, user_id) VALUES ($1, $2);
 

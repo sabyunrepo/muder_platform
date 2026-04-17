@@ -48,7 +48,7 @@ type: project
 | 2 | PR-1 security | validation 에러 detail에서 theme range 마스킹 (oracle 방어) | minor | open |
 | 3 | PR-1 code | ListWaitingRooms `mapRoomResponse` DRY 정리 | minor | open |
 | 4 | 백엔드 drift | `ThemeSummary.coin_price` 직렬화 추가 | medium | ✅ hotfix #2 |
-| 5 | 백엔드 drift | `RoomPlayer` 7-field ↔ 서버 PlayerInfo 2-field 정렬 | medium | open |
+| 5 | 백엔드 drift | `RoomPlayer` 7-field ↔ 서버 PlayerInfo 2-field 정렬 | medium | ✅ hotfix #3 (nickname/avatar_url/is_host 추가) |
 | 6 | PR-3 LOW | detective fallback 향후 차등 공개 도입 시 drift 가능 | low | open |
 | 7 | PR-4 docs | `refs/pr-4-...md` spec 문서 stale (POST/DELETE → GET/PUT) 반영 | low | open |
 | 8 | PR-4 LOW | PUT invalid payload 분기 vitest 추가 | low | open |

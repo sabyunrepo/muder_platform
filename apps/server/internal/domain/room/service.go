@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
@@ -47,9 +48,16 @@ type RoomDetailResponse struct {
 }
 
 // PlayerInfo is the public representation of a player in a room.
+//
+// Phase 18.8 follow-up (#5): FE `RoomPlayer` 가 nickname/avatar_url/is_host
+// 를 사용하므로 서버 SSOT 도 동일 필드를 직렬화한다. 기존 user_id/is_ready
+// 는 유지.
 type PlayerInfo struct {
-	UserID  uuid.UUID `json:"user_id"`
-	IsReady bool      `json:"is_ready"`
+	UserID    uuid.UUID `json:"user_id"`
+	Nickname  string    `json:"nickname"`
+	AvatarURL *string   `json:"avatar_url,omitempty"`
+	IsHost    bool      `json:"is_host"`
+	IsReady   bool      `json:"is_ready"`
 }
 
 // StartRoomRequest is the payload for POST /rooms/:id/start.
@@ -404,9 +412,10 @@ func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	return nil
 }
 
-// buildRoomDetail fetches players and assembles a RoomDetailResponse.
+// buildRoomDetail fetches players (with user JOIN) and assembles a
+// RoomDetailResponse. is_host 는 room.HostID 와 user_id 비교로 결정한다.
 func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetailResponse, error) {
-	players, err := s.queries.GetRoomPlayers(ctx, room.ID)
+	players, err := s.queries.GetRoomPlayersWithUser(ctx, room.ID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to get room players")
 		return nil, apperror.Internal("failed to get room players")
@@ -415,8 +424,11 @@ func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetai
 	infos := make([]PlayerInfo, len(players))
 	for i, p := range players {
 		infos[i] = PlayerInfo{
-			UserID:  p.UserID,
-			IsReady: p.IsReady,
+			UserID:    p.UserID,
+			Nickname:  p.Nickname,
+			AvatarURL: textToPtr(p.AvatarUrl),
+			IsHost:    p.UserID == room.HostID,
+			IsReady:   p.IsReady,
 		}
 	}
 
@@ -425,6 +437,14 @@ func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetai
 		Players:      infos,
 	}
 	return resp, nil
+}
+
+// textToPtr converts pgtype.Text to *string (nil when NULL).
+func textToPtr(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
 }
 
 // StartRoom validates host ownership, checks all players are ready, then

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const addRoomPlayer = `-- name: AddRoomPlayer :exec
@@ -156,6 +157,62 @@ func (q *Queries) GetRoomPlayers(ctx context.Context, roomID uuid.UUID) ([]RoomP
 			&i.CharacterID,
 			&i.IsReady,
 			&i.JoinedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getRoomPlayersWithUser = `-- name: GetRoomPlayersWithUser :many
+SELECT
+    rp.room_id,
+    rp.user_id,
+    rp.character_id,
+    rp.is_ready,
+    rp.joined_at,
+    u.nickname,
+    u.avatar_url
+FROM room_players rp
+JOIN users u ON u.id = rp.user_id
+WHERE rp.room_id = $1
+ORDER BY rp.joined_at
+`
+
+type GetRoomPlayersWithUserRow struct {
+	RoomID      uuid.UUID   `json:"room_id"`
+	UserID      uuid.UUID   `json:"user_id"`
+	CharacterID pgtype.UUID `json:"character_id"`
+	IsReady     bool        `json:"is_ready"`
+	JoinedAt    time.Time   `json:"joined_at"`
+	Nickname    string      `json:"nickname"`
+	AvatarUrl   pgtype.Text `json:"avatar_url"`
+}
+
+// Phase 18.8 follow-up (#5 RoomPlayer drift 정렬): buildRoomDetail 이 FE
+// 에 전달하는 PlayerInfo 에 nickname/avatar_url/is_host 를 포함하도록 users
+// JOIN 확장. 단순 count/state 조회는 기존 GetRoomPlayers 유지.
+func (q *Queries) GetRoomPlayersWithUser(ctx context.Context, roomID uuid.UUID) ([]GetRoomPlayersWithUserRow, error) {
+	rows, err := q.db.Query(ctx, getRoomPlayersWithUser, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetRoomPlayersWithUserRow{}
+	for rows.Next() {
+		var i GetRoomPlayersWithUserRow
+		if err := rows.Scan(
+			&i.RoomID,
+			&i.UserID,
+			&i.CharacterID,
+			&i.IsReady,
+			&i.JoinedAt,
+			&i.Nickname,
+			&i.AvatarUrl,
 		); err != nil {
 			return nil, err
 		}
