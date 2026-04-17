@@ -24,12 +24,21 @@ type: project
 
 ## 진행 중 Wave
 
-### W3 — CI Promotion (sequential) — 진입 대기
-- **PR-5** `ci(e2e): real-backend main push + workflow_dispatch` — 4 tasks
-  1. `phase-18.1-real-backend.yml`에 `push: [main]` 추가 (required 아님)
-  2. 실패 시 Slack/Discord 알림 step (staging 채널)
-  3. `e2e-stubbed.yml`에 `workflow_dispatch` 추가
-  4. `refs/ci-promotion.md`에 3일 green 후 required 승격 후속 PR 예약 기록
+### W3 — CI Promotion (sequential) ✅ 코드 머지 / 관측 단계
+- **PR-5** `8006efb` — `ci(e2e): real-backend main push + workflow_dispatch`
+  - `phase-18.1-real-backend.yml`에 `push:[main]` 트리거 + Slack staging 알림 step (failure() && push|schedule, secret 미등록 시 no-op)
+  - `e2e-stubbed.yml`에 `workflow_dispatch` 추가
+  - `refs/ci-promotion.md` (92줄) — Phase 18.9 required 승격 작업 + 알림 채널 staging→main 이관 + 검증 체크리스트
+  - YAML validation PASS, slackapi action SHA pinned (Phase 18.7 규약)
+- 4-reviewer 생략: PR-5는 단순 yaml/md 변경. 메인 self-check (yaml lint + SHA pin + no-PII)로 갈음.
+
+## 관측 단계 (Phase 종료 조건)
+
+1. 사용자 수동: repo Secrets에 `E2E_STAGING_SLACK_WEBHOOK_URL` 등록 (Slack 또는 Discord incoming-webhook)
+2. main push 후 `Actions` 탭에서 `Phase 18.1 — Real-Backend E2E` 자동 실행 확인
+3. 의도적 failing 커밋 push → staging 채널 메시지 도달 확인 → revert (또는 자연 발생 실패 1건으로 갈음)
+4. nightly + main push 합산 3일 연속 green
+5. 위 4건 만족 시 `/plan-finish` 실행 → Phase 18.9 (required 승격) 예약
 
 ## 후속 (Phase 18.9 또는 별도 PR로 적치)
 

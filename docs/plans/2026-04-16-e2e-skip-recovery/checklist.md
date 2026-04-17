@@ -1,9 +1,9 @@
 <!-- STATUS-START -->
-**Active**: Phase 18.8 E2E Skip Recovery — Wave 3/3
-**PR**: PR-5 (0%)
-**Task**: W3 진입 승인 대기
-**State**: pending
-**Blockers**: (none)
+**Active**: Phase 18.8 E2E Skip Recovery — 5/5 PR merged · 관측 단계
+**PR**: PR-5 (100%)
+**Task**: 3일 nightly green 관측 + alert 도달 검증
+**State**: observation
+**Blockers**: (none — Phase 종료는 사용자 수동 secret 등록 + 관측 후)
 **Last updated**: 2026-04-17
 <!-- STATUS-END -->
 
@@ -68,17 +68,17 @@
 
 ## Wave 3 — CI Promotion (sequential)
 
-### PR-5: ci(e2e): real-backend main push + workflow_dispatch
-- [ ] Task 1 — `phase-18.1-real-backend.yml`에 `push: [main]` 추가 (required 아님)
-- [ ] Task 2 — 실패 시 Slack/Discord 알림 step (staging 채널) 추가
-- [ ] Task 3 — `e2e-stubbed.yml`에 `workflow_dispatch` 추가
-- [ ] Task 4 — `refs/ci-promotion.md`에 3일 green 후 required 승격 후속 PR 예약 기록
+### PR-5: ci(e2e): real-backend main push + workflow_dispatch ✅ merged `8006efb`
+- [x] Task 1 — `phase-18.1-real-backend.yml`에 `push: [main]` 추가 (required 아님)
+- [x] Task 2 — 실패 시 Slack/Discord 알림 step (staging 채널, secret 미등록 시 no-op)
+- [x] Task 3 — `e2e-stubbed.yml`에 `workflow_dispatch` 추가
+- [x] Task 4 — `refs/ci-promotion.md` 신규 (92줄, Phase 18.9 승격 작업 + 검증 체크리스트)
 
-**Wave 3 gate**:
-- [ ] PR-5 merged
-- [ ] main push 후 real-backend workflow 자동 실행 확인
-- [ ] 의도적 실패 커밋으로 알림 도달 확인 후 revert
-- [ ] 3일 연속 nightly green
+**Wave 3 gate** ✅ (코드 머지) / 관측 단계 진행 중
+- [x] PR-5 merged
+- [ ] main push 후 real-backend workflow 자동 실행 확인 (다음 push로 검증)
+- [ ] 의도적 실패 커밋으로 알림 도달 확인 후 revert (사용자가 secret 등록 후 진행)
+- [ ] 3일 연속 nightly green (관측 시작: `8006efb` 머지 후)
 
 ---
 
