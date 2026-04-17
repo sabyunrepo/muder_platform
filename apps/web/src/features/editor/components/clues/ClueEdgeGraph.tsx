@@ -1,32 +1,33 @@
 import { useCallback } from "react";
 import { Loader2 } from "lucide-react";
-import { ReactFlow, Background, Controls, Panel, type NodeTypes, type Edge } from "@xyflow/react";
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  Panel,
+  type NodeTypes,
+  type Edge,
+} from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useEditorClues } from "@/features/editor/api";
-import { useClueGraphData } from "../../hooks/useClueGraphData";
+import { useClueEdgeData } from "../../hooks/useClueEdgeData";
 import { ClueNode } from "./ClueNode";
 import { RelationEdge } from "./RelationEdge";
 
 // ---------------------------------------------------------------------------
-// Node / edge type registries (stable references — defined outside component)
+// Phase 20 PR-6: ClueEdgeGraph — 정식 승격된 단서 관계 그래프.
+// 기존 ClueRelationGraph의 PoC를 `clue_edge_groups` API 기반으로 교체.
+// Trigger (AUTO/CRAFT) 토글은 PR-7+ 의 InspectorPanel에서 추가 예정.
 // ---------------------------------------------------------------------------
 
 const nodeTypes: NodeTypes = { clue: ClueNode };
 const edgeTypes = { relation: RelationEdge };
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
-interface ClueRelationGraphProps {
+interface ClueEdgeGraphProps {
   themeId: string;
 }
 
-// ---------------------------------------------------------------------------
-// ClueRelationGraph
-// ---------------------------------------------------------------------------
-
-export function ClueRelationGraph({ themeId }: ClueRelationGraphProps) {
+export function ClueEdgeGraph({ themeId }: ClueEdgeGraphProps) {
   const { data: clues } = useEditorClues(themeId);
 
   const {
@@ -38,7 +39,7 @@ export function ClueRelationGraph({ themeId }: ClueRelationGraphProps) {
     onEdgeDelete,
     isLoading,
     isSaving,
-  } = useClueGraphData(themeId, clues);
+  } = useClueEdgeData(themeId, clues);
 
   const handleEdgesDelete = useCallback(
     (deleted: Edge[]) => {
@@ -56,7 +57,6 @@ export function ClueRelationGraph({ themeId }: ClueRelationGraphProps) {
   }
 
   const hasClues = clues && clues.length > 0;
-
   if (!hasClues) {
     return (
       <div className="flex h-full items-center justify-center text-center">
@@ -90,7 +90,7 @@ export function ClueRelationGraph({ themeId }: ClueRelationGraphProps) {
         {edges.length === 0 && (
           <Panel position="top-center">
             <div className="rounded border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-400">
-              노드를 드래그하여 연결하면 의존 관계가 생성됩니다
+              노드를 드래그하여 연결하면 엣지가 생성됩니다
             </div>
           </Panel>
         )}

@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import type { Edge } from "@xyflow/react";
 
 // ---------------------------------------------------------------------------
-// Optimistic revert logic simulation
-// Tests the CYCLE_DETECTED revert pattern from useClueGraphData.onConnect
+// Optimistic revert logic simulation (Phase 20 PR-6)
+// Tests the EDGE_CYCLE_DETECTED revert pattern from useClueEdgeData.onConnect.
 // ---------------------------------------------------------------------------
 
 function simulateRevert(
@@ -11,7 +11,7 @@ function simulateRevert(
   newEdgeId: string,
   err: Error,
 ): Edge[] {
-  const isCycle = err.message?.includes("CYCLE_DETECTED");
+  const isCycle = err.message?.includes("EDGE_CYCLE_DETECTED");
   if (isCycle) {
     return edges.filter((e) => e.id !== newEdgeId);
   }
@@ -19,7 +19,7 @@ function simulateRevert(
 }
 
 describe("optimistic revert on mutation error", () => {
-  it("removes the optimistic edge on CYCLE_DETECTED", () => {
+  it("removes the optimistic edge on EDGE_CYCLE_DETECTED", () => {
     const newEdgeId = "clue-0-clue-1-1234";
     const edges: Edge[] = [
       { id: "existing", source: "clue-2", target: "clue-3" },
@@ -29,7 +29,7 @@ describe("optimistic revert on mutation error", () => {
     const result = simulateRevert(
       edges,
       newEdgeId,
-      new Error("CYCLE_DETECTED: graph contains a cycle"),
+      new Error("EDGE_CYCLE_DETECTED: graph contains a cycle"),
     );
 
     expect(result).toHaveLength(1);
@@ -43,11 +43,10 @@ describe("optimistic revert on mutation error", () => {
     ];
 
     const result = simulateRevert(edges, newEdgeId, new Error("network error"));
-
     expect(result).toHaveLength(1);
   });
 
-  it("does not remove unrelated edges on CYCLE_DETECTED", () => {
+  it("does not remove unrelated edges on EDGE_CYCLE_DETECTED", () => {
     const newEdgeId = "new-edge";
     const edges: Edge[] = [
       { id: "keep-1", source: "a", target: "b" },
@@ -58,18 +57,18 @@ describe("optimistic revert on mutation error", () => {
     const result = simulateRevert(
       edges,
       newEdgeId,
-      new Error("CYCLE_DETECTED"),
+      new Error("EDGE_CYCLE_DETECTED"),
     );
 
     expect(result).toHaveLength(2);
     expect(result.map((e) => e.id)).toEqual(["keep-1", "keep-2"]);
   });
 
-  it("handles empty edge list on CYCLE_DETECTED without throwing", () => {
+  it("handles empty edge list on EDGE_CYCLE_DETECTED without throwing", () => {
     const result = simulateRevert(
       [],
       "missing-edge",
-      new Error("CYCLE_DETECTED"),
+      new Error("EDGE_CYCLE_DETECTED"),
     );
     expect(result).toHaveLength(0);
   });

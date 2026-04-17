@@ -1,5 +1,5 @@
 /**
- * Phase 18.8 PR-4 — Clue + ClueRelation handlers shape validation.
+ * Phase 20 PR-6 — Clue + ClueEdge handlers shape validation.
  */
 import { describe, expect, it } from "vitest";
 import type { HttpHandler } from "msw";
@@ -7,7 +7,7 @@ import {
   clueHandlers,
   E2E_CLUE_IDS,
   E2E_CLUE_LIST,
-  E2E_CLUE_RELATION_LIST,
+  E2E_CLUE_EDGE_GROUPS,
 } from "./clue";
 import { E2E_THEME_ID } from "./theme";
 
@@ -26,7 +26,6 @@ function findHandler(method: string, pathContains: string): HttpHandler {
 
 describe("clueHandlers", () => {
   it("GET /v1/clues returns empty array (legacy/standalone)", async () => {
-    // path-suffix `*\/v1/clues` (no `editor/themes/` prefix).
     const handler = findHandler("GET", "*/v1/clues");
     const result = await handler.run({
       request: new Request("http://localhost/v1/clues"),
@@ -62,35 +61,42 @@ describe("clueHandlers", () => {
     expect(body).toEqual([]);
   });
 
-  it("GET editor clue-relations returns 2-edge fixture (camelCase array)", async () => {
-    const handler = findHandler("GET", "/clue-relations");
+  it("GET editor clue-edges returns 2-group fixture (camelCase, trigger+sources[])", async () => {
+    const handler = findHandler("GET", "/clue-edges");
     const result = await handler.run({
       request: new Request(
-        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-relations`,
+        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-edges`,
       ),
     });
     expect(result?.response?.status).toBe(200);
     const body = (await result!.response!.json()) as {
       id: string;
-      sourceId: string;
       targetId: string;
+      sources: string[];
+      trigger: string;
       mode: string;
     }[];
     expect(body).toHaveLength(2);
-    expect(body[0].sourceId).toBe(E2E_CLUE_IDS.c1);
     expect(body[0].targetId).toBe(E2E_CLUE_IDS.c2);
+    expect(body[0].sources).toEqual([E2E_CLUE_IDS.c1]);
+    expect(body[0].trigger).toBe("AUTO");
     expect(body[0].mode).toBe("AND");
-    expect(body).toEqual(E2E_CLUE_RELATION_LIST);
+    expect(body).toEqual(E2E_CLUE_EDGE_GROUPS);
   });
 
-  it("PUT editor clue-relations echoes requests as saved records", async () => {
-    const handler = findHandler("PUT", "/clue-relations");
+  it("PUT editor clue-edges echoes requests as saved records", async () => {
+    const handler = findHandler("PUT", "/clue-edges");
     const payload = [
-      { sourceId: E2E_CLUE_IDS.c1, targetId: E2E_CLUE_IDS.c3, mode: "AND" },
+      {
+        targetId: E2E_CLUE_IDS.c3,
+        sources: [E2E_CLUE_IDS.c1],
+        trigger: "CRAFT",
+        mode: "AND",
+      },
     ];
     const result = await handler.run({
       request: new Request(
-        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-relations`,
+        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-edges`,
         {
           method: "PUT",
           headers: { "content-type": "application/json" },
@@ -101,26 +107,26 @@ describe("clueHandlers", () => {
     expect(result?.response?.status).toBe(200);
     const body = (await result!.response!.json()) as {
       id: string;
-      sourceId: string;
       targetId: string;
+      sources: string[];
+      trigger: string;
       mode: string;
     }[];
     expect(body).toHaveLength(1);
-    expect(body[0].sourceId).toBe(E2E_CLUE_IDS.c1);
     expect(body[0].targetId).toBe(E2E_CLUE_IDS.c3);
+    expect(body[0].sources).toEqual([E2E_CLUE_IDS.c1]);
+    expect(body[0].trigger).toBe("CRAFT");
     expect(body[0].mode).toBe("AND");
     expect(body[0].id).toMatch(/^saved-/);
   });
 
-  // Phase 18.8 follow-up (#8): PUT invalid payload (non-array body) 분기 가드.
-  // handler 가 `Array.isArray(body)` false 경로에서 200 + [] 로 fallthrough
-  // 하는 동작을 회귀 방지로 고정한다. 서버 SSOT 는 400 으로 응답하지만,
-  // mock 은 stubbed 한정으로 관용적 동작 유지 (live spec 이 400 검증).
-  it("PUT clue-relations with non-array body returns 200 + empty array", async () => {
-    const handler = findHandler("PUT", "/themes/:themeId/clue-relations");
+  // Mock fallback for non-array body — server SSOT is 400, but the stub is
+  // tolerant so unrelated E2E flows don't crash on malformed PUTs.
+  it("PUT clue-edges with non-array body returns 200 + empty array", async () => {
+    const handler = findHandler("PUT", "/themes/:themeId/clue-edges");
     const result = await handler.run({
       request: new Request(
-        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-relations`,
+        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-edges`,
         {
           method: "PUT",
           headers: { "content-type": "application/json" },

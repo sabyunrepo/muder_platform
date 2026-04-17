@@ -121,14 +121,14 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     });
   });
 
-  // #5 clue-relations 빈 결과 200
-  await page.route(`**/v1/editor/themes/${THEME_ID}/clue-relations`, (r) => {
+  // #5 clue-edges 빈 결과 200 (Phase 20 PR-6: /clue-relations → /clue-edges)
+  await page.route(`**/v1/editor/themes/${THEME_ID}/clue-edges`, (r) => {
     if (r.request().method() === "PUT") return r.continue();
     state.clueRelationsCalls += 1;
     return r.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ relations: [], mode: "AND" }),
+      body: JSON.stringify([]),
     });
   });
 

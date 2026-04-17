@@ -14,7 +14,7 @@
  *  2. 단서 이미지 업로드 경로 /v1/editor/themes/{id}/images/upload-url (PR-3)
  *  3. 캐릭터 배정 탭 starting_clue_ids 구조 (PR-5)
  *  4. 단서 image_url 목록 응답 포함 (PR-3)
- *  5. clue-relations GET 200 빈 결과 (PR-2)
+ *  5. clue-edges GET 200 빈 결과 (PR-2; Phase 20 PR-6에서 URL 이전)
  *  6. 모듈 토글 → config PUT 409 silent rebase (PR-4)
  *  7. 흐름 노드 PATCH 만 허용, PUT 은 회귀 (W0/W1)
  *  8. 장소 탭 locations[].clueIds (PR-6)
@@ -182,12 +182,12 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[5] clue-relations GET — 빈 결과 200 (network-only)", async ({ page }) => {
+  test("[5] clue-edges GET — 빈 결과 200 (network-only)", async ({ page }) => {
     test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + state fallback" });
     const relReq = page
       .waitForRequest(
         (r) =>
-          r.url().includes(`/v1/editor/themes/${THEME_ID}/clue-relations`) &&
+          r.url().includes(`/v1/editor/themes/${THEME_ID}/clue-edges`) &&
           r.method() === "GET",
         { timeout: 10_000 },
       )
