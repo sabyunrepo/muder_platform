@@ -1,11 +1,11 @@
 # Phase 19 감사 — 체크리스트
 
 <!-- STATUS-START -->
-**Active**: Phase 19 Platform Deep Audit — W1 완료, W2 대기
-**Wave**: W1 → W2
-**Task**: W1 Foundation 산출물 4종 완료, W2 Specialists 6 병렬 시작 예정
-**State**: w1-complete
-**Blockers**: 없음 (18.8 observation은 별도 백그라운드)
+**Active**: Phase 19 Platform Deep Audit — W2 완료, W3a 대기
+**Wave**: W2 → W3a
+**Task**: W2 9 drafts 완료(총 90 Findings, P0 10 / P1 52 / P2 28), W3a Advisor intake 대기
+**State**: w2-complete
+**Blockers**: 없음
 **Last updated**: 2026-04-17
 <!-- STATUS-END -->
 
@@ -33,20 +33,26 @@
 - [x] test-engineer: `refs/shared/test-baseline.md` (166줄) — Go 988/44.6%, Vitest 108/1034, E2E 12/68, skip 35, flaky 0, 0% 패키지 9건
 - [x] W1 gate: 3 파일 존재 ✅ + 모듈 33개 ≥28 ✅
 
-## W2 — Specialists (병렬 6)
+## W2 — Specialists (병렬 9) ✅
 
-> W1 gate 통과 후 실행. 각 executor는 draft 하단에 `ADVISOR_ASK: Q1..Q3` 최대 3개.
+> W1 gate 통과 후 병렬 실행 완료. 각 draft 하단에 `Advisor-Ask Q1..Q3`.
 
-- [ ] 01 go-backend-engineer → `refs/audits/01-go-backend.md`
-- [ ] 02 react-frontend-engineer → `refs/audits/02-react-frontend.md`
-- [ ] 03 module-architect → `refs/audits/03-module-architect.md`
-- [ ] 04 test-engineer → `refs/audits/04-test-engineer.md`
-- [ ] 05 security-reviewer → `refs/audits/05-security.md`
-- [ ] 06 platform-perf-observability → `refs/audits/06-perf-observability.md`
-- [ ] 07 platform-design-a11y → `refs/audits/07-design-a11y.md`
-- [ ] 08 docs-navigator → `refs/audits/08-docs-navigator.md`
-- [ ] 09 go-backend + react-frontend 공동(mmp-ws-contract 스킬) → `refs/audits/09-ws-contract.md`
-- [ ] W2 gate (각 draft): `grep '^## Findings'` 통과 · finding 3-12개 · `wc -l ≤200` · `[cross:` ≥1 · P0+P1 비율 ≥50%
+- [x] 01 go-backend-engineer → `01-go-backend.md` (131줄, 8 Findings, P0:0/P1:5/P2:3, cross:13)
+- [x] 02 react-frontend-engineer → `02-react-frontend.md` (122줄, 10 Findings, P0:0/P1:5/P2:5, cross:8)
+- [x] 03 module-architect → `03-module-architect.md` (130줄, 6 Findings, P0:1/P1:3/P2:2, cross:7)
+- [x] 04 test-engineer → `04-test-engineer.md` (117줄, 10 Findings, P0:0/P1:6/P2:4, cross:11)
+- [x] 05 security-reviewer → `05-security.md` (172줄, 12 Findings, P0:4/P1:6/P2:2, cross:5영역)
+- [x] 06 platform-perf-observability → `06-perf-observability.md` (118줄, 10 Findings, P0:1/P1:4/P2:5, cross:4)
+- [x] 07 platform-design-a11y → `07-design-a11y.md` (144줄, 12 Findings, P0:2/P1:7/P2:3, cross:4)
+- [x] 08 docs-navigator → `08-docs-navigator.md` (126줄, 10 Findings, P0:0/P1:6/P2:4, cross:9)
+- [x] 09 ws-contract 공동 → `09-ws-contract.md` (171줄, 12 Findings, P0:2/P1:10/P2:0, cross:6영역)
+- [x] W2 gate — 모든 draft: ≤200줄 · 3-12 Findings · [cross:...] ≥1 · P0+P1 ≥50% ✅
+
+### W2 총계
+- 총 Finding **90건** (P0: 10 / P1: 52 / P2: 28)
+- 3자 WS 일치율 <4% — Phase 17.5~18.6 반복 회귀 검증됨
+- Security P0 4건(RFC 9457 우회·PlayerAware 25모듈 공백·token 평문 로그·auditlog 부재)
+- module-inventory 실측 교정: PlayerAwareModule 0/33 → **8/33**(W1 시드 오류, 05·03 공동 교정)
 
 ## W3a — Advisor Intake (직렬, 1회)
 
