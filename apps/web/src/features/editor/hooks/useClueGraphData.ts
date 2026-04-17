@@ -34,7 +34,7 @@ function cluesToNodes(clues: ClueResponse[]): Node[] {
       x: (i % COLS) * COL_GAP + 40,
       y: Math.floor(i / COLS) * ROW_GAP + 40,
     },
-    data: { label: clue.name, clueType: clue.type },
+    data: { label: clue.name },
   }));
 }
 

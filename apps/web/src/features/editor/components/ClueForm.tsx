@@ -40,6 +40,12 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCommon, setIsCommon] = useState(false);
 
+  // Level / sort order — UI removed (Phase 20 PR-1) but backend still requires
+  // them (level validate:min=1, sort_order validate:min=0). We hold defaults
+  // and, in edit mode, the clue's existing values so payloads stay valid.
+  const [level, setLevel] = useState(1);
+  const [sortOrder, setSortOrder] = useState(0);
+
   // Item usage fields
   const [isUsable, setIsUsable] = useState(false);
   const [useEffect_, setUseEffect] = useState('peek');
@@ -64,6 +70,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setDescription(clue.description ?? '');
       setImageUrl(clue.image_url ?? '');
       setIsCommon(clue.is_common ?? false);
+      setLevel(clue.level ?? 1);
+      setSortOrder(clue.sort_order ?? 0);
       setIsUsable(clue.is_usable ?? false);
       setUseEffect(clue.use_effect ?? 'peek');
       setUseTarget(clue.use_target ?? 'player');
@@ -73,6 +81,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setDescription('');
       setImageUrl('');
       setIsCommon(false);
+      setLevel(1);
+      setSortOrder(0);
       setIsUsable(false);
       setUseEffect('peek');
       setUseTarget('player');
@@ -121,6 +131,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         name: name.trim(),
         description: description || undefined,
         image_url: imageUrl || undefined,
+        level,
+        sort_order: sortOrder,
         is_common: isCommon,
         is_usable: isUsable,
         use_effect: isUsable ? useEffect_ : undefined,

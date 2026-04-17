@@ -6,7 +6,6 @@ import { Handle, Position, type NodeProps } from "@xyflow/react";
 
 interface ClueNodeData {
   label?: string;
-  clueType?: string;
   [key: string]: unknown;
 }
 
@@ -37,11 +36,6 @@ export function ClueNode({ data, selected }: NodeProps) {
         <span className="max-w-[140px] truncate text-xs font-medium text-slate-100">
           {nodeData.label ?? "단서"}
         </span>
-        {nodeData.clueType && (
-          <span className="text-[10px] text-slate-500">
-            {nodeData.clueType}
-          </span>
-        )}
       </div>
 
       {/* Source handle — bottom */}
