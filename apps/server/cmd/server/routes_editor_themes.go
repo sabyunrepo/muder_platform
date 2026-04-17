@@ -41,9 +41,9 @@ func registerEditorThemeRoutes(r chi.Router, deps authedDeps) {
 	r.Put("/clues/{id}", deps.editor.UpdateClue)
 	r.Delete("/clues/{id}", deps.editor.DeleteClue)
 
-	// Clue relations
-	r.Get("/themes/{id}/clue-relations", deps.editor.GetClueRelations)
-	r.Put("/themes/{id}/clue-relations", deps.editor.ReplaceClueRelations)
+	// Clue edges (Phase 20 PR-4: unified groups schema replacing clue-relations)
+	r.Get("/themes/{id}/clue-edges", deps.editor.GetClueEdges)
+	r.Put("/themes/{id}/clue-edges", deps.editor.ReplaceClueEdges)
 
 	// Contents
 	r.Get("/themes/{id}/content/{key}", deps.editor.GetContent)

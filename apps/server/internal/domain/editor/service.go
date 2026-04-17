@@ -144,9 +144,9 @@ type Service interface {
 	DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error
 	ListClues(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueResponse, error)
 
-	// Clue relations
-	GetClueRelations(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error)
-	ReplaceClueRelations(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error)
+	// Clue edges (Phase 20 PR-4 unified schema: groups + members)
+	GetClueEdges(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueEdgeGroupResponse, error)
+	ReplaceClueEdges(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueEdgeGroupRequest) ([]ClueEdgeGroupResponse, error)
 
 	// Contents
 	GetContent(ctx context.Context, creatorID, themeID uuid.UUID, key string) (*ContentResponse, error)

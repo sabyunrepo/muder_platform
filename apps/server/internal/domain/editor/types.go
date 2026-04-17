@@ -112,21 +112,27 @@ type ClueResponse struct {
 	HideRound   *int32     `json:"hide_round,omitempty"`
 }
 
-// --- Clue relation types ---
+// --- Clue edge (unified group) types ---
+//
+// Phase 20 PR-4: replaces ClueRelationRequest/Response. A "group" pairs one
+// target clue with N source clues under a (trigger, mode) semantic.
+//   - Trigger=AUTO: target auto-unlocks when mode (AND/OR) over sources is satisfied
+//   - Trigger=CRAFT: target stays locked until engine observes the full source
+//     set in evidence via a `combine` command (OR mode rejected by CHECK+service)
 
-// ClueRelationRequest is the input for a single clue relation.
-type ClueRelationRequest struct {
-	SourceID uuid.UUID `json:"sourceId"`
-	TargetID uuid.UUID `json:"targetId"`
-	Mode     string    `json:"mode"` // "AND" or "OR"
+type ClueEdgeGroupRequest struct {
+	TargetID uuid.UUID   `json:"targetId"`
+	Sources  []uuid.UUID `json:"sources"`
+	Trigger  string      `json:"trigger"`
+	Mode     string      `json:"mode"`
 }
 
-// ClueRelationResponse is the output for a single clue relation.
-type ClueRelationResponse struct {
-	ID       uuid.UUID `json:"id"`
-	SourceID uuid.UUID `json:"sourceId"`
-	TargetID uuid.UUID `json:"targetId"`
-	Mode     string    `json:"mode"`
+type ClueEdgeGroupResponse struct {
+	ID       uuid.UUID   `json:"id"`
+	TargetID uuid.UUID   `json:"targetId"`
+	Sources  []uuid.UUID `json:"sources"`
+	Trigger  string      `json:"trigger"`
+	Mode     string      `json:"mode"`
 }
 
 // --- Content types ---

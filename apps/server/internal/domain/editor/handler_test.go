@@ -19,18 +19,18 @@ import (
 // --- mock service ---
 
 type mockService struct {
-	createThemeFn          func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
-	updateThemeFn          func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
-	deleteThemeFn          func(ctx context.Context, creatorID, themeID uuid.UUID) error
-	listMyThemesFn         func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
-	publishThemeFn         func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	unpublishThemeFn       func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	createCharFn           func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
-	updateCharFn           func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
-	deleteCharFn           func(ctx context.Context, creatorID, charID uuid.UUID) error
-	updateConfigFn         func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
-	getClueRelationsFn     func(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error)
-	replaceClueRelationsFn func(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error)
+	createThemeFn      func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
+	updateThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
+	deleteThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID) error
+	listMyThemesFn     func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
+	publishThemeFn     func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	unpublishThemeFn   func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	createCharFn       func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
+	updateCharFn       func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
+	deleteCharFn       func(ctx context.Context, creatorID, charID uuid.UUID) error
+	updateConfigFn     func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
+	getClueEdgesFn     func(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueEdgeGroupResponse, error)
+	replaceClueEdgesFn func(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueEdgeGroupRequest) ([]ClueEdgeGroupResponse, error)
 }
 
 func (m *mockService) CreateTheme(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error) {
@@ -122,18 +122,18 @@ func (m *mockService) GetModuleSchemas(ctx context.Context) (map[string]json.Raw
 	return nil, nil
 }
 
-// Clue relations
-func (m *mockService) GetClueRelations(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueRelationResponse, error) {
-	if m.getClueRelationsFn != nil {
-		return m.getClueRelationsFn(ctx, creatorID, themeID)
+// Clue edges
+func (m *mockService) GetClueEdges(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueEdgeGroupResponse, error) {
+	if m.getClueEdgesFn != nil {
+		return m.getClueEdgesFn(ctx, creatorID, themeID)
 	}
-	return []ClueRelationResponse{}, nil
+	return []ClueEdgeGroupResponse{}, nil
 }
-func (m *mockService) ReplaceClueRelations(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueRelationRequest) ([]ClueRelationResponse, error) {
-	if m.replaceClueRelationsFn != nil {
-		return m.replaceClueRelationsFn(ctx, creatorID, themeID, reqs)
+func (m *mockService) ReplaceClueEdges(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueEdgeGroupRequest) ([]ClueEdgeGroupResponse, error) {
+	if m.replaceClueEdgesFn != nil {
+		return m.replaceClueEdgesFn(ctx, creatorID, themeID, reqs)
 	}
-	return []ClueRelationResponse{}, nil
+	return []ClueEdgeGroupResponse{}, nil
 }
 
 // Contents

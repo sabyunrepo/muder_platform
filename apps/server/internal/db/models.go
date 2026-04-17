@@ -51,12 +51,18 @@ type ChatRoomMember struct {
 	Role       string    `json:"role"`
 }
 
-type ClueRelation struct {
+type ClueEdgeGroup struct {
 	ID        uuid.UUID `json:"id"`
 	ThemeID   uuid.UUID `json:"theme_id"`
-	SourceID  uuid.UUID `json:"source_id"`
 	TargetID  uuid.UUID `json:"target_id"`
+	Trigger   string    `json:"trigger"`
 	Mode      string    `json:"mode"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ClueEdgeMember struct {
+	GroupID   uuid.UUID `json:"group_id"`
+	SourceID  uuid.UUID `json:"source_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
