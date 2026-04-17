@@ -66,6 +66,18 @@ test:
 	cd apps/server && go test -race ./...
 	cd apps/web && pnpm test
 
+## typecheck — TypeScript typecheck only
+typecheck:
+	cd apps/web && pnpm tsc --noEmit
+
+## build-web — Frontend build (turbo build)
+build-web:
+	cd apps/web && pnpm turbo build
+
+## build-server — Go server build
+build-server:
+	cd apps/server && go build ./cmd/server
+
 ## migrate — Apply goose migrations (requires DATABASE_URL)
 migrate:
 	cd apps/server && goose -dir db/migrations postgres "$(DATABASE_URL)" up
@@ -74,9 +86,11 @@ migrate:
 seed:
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -f apps/server/db/seed/e2e-themes.sql
 
-## ci-local — Reproduce GitHub Actions CI gate locally (lint + test)
-ci-local: lint-go lint-web test
-	@echo "✓ Local CI parity check passed"
+## ci-local — Reproduce GitHub Actions CI gate locally (lint + typecheck + test + build)
+##            Phase 20 기간: GitHub Actions 계정 비활성 상태이므로
+##            admin bypass merge 전에 반드시 이 체크 통과 후 진행할 것.
+ci-local: lint-go lint-web typecheck test build-server build-web
+	@echo "✓ Local CI parity check passed (lint + typecheck + test + build)"
 
 # Prevent make from treating 'dev'/'prod' as file targets
 dev prod:
