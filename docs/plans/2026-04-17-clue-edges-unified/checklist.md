@@ -47,10 +47,11 @@
 **Branch**: `feat/phase-20/PR-3-round-badge`
 **Depends**: PR-1
 
-- [ ] `apps/web/src/features/editor/utils/roundFormat.ts` 신규 (formatRoundRange)
-- [ ] ClueCard.tsx: 기존 clue_type/Lv 줄 → 라운드 배지 (없으면 생략)
-- [ ] ClueListRow.tsx: 타입 텍스트 → 라운드 배지
-- [ ] 단위 테스트: ClueCard/ClueListRow 렌더 스냅샷
+- [x] `apps/web/src/features/editor/utils/roundFormat.ts` 신규 (formatRoundRange: null/단일/열림/닫힘 4종)
+- [x] ClueCard.tsx: Lv.x 줄 → roundLabel 배지 (없으면 row 전체 생략)
+- [x] ClueListRow.tsx: Lv.x → 라운드 배지 span (없으면 생략, 공통 배지와 공존)
+- [x] 단위 테스트: roundFormat 5 + ClueCard 3 + ClueListRow 4 = 12 신규 (aria-label="라운드 범위" 기반)
+- [x] `make ci-local` 통과 (lint + typecheck + 1050+ tests + build)
 - [ ] PR 생성 → 머지 (PR-2 payload 타입에 의존하므로 PR-2 선행 merged 후 brown-bag)
 
 ## W3 — PR-4 통합 엣지 스키마
