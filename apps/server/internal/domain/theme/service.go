@@ -26,6 +26,7 @@ type ThemeSummary struct {
 	MaxPlayers  int32     `json:"max_players"`
 	DurationMin int32     `json:"duration_min"`
 	Price       int32     `json:"price"`
+	CoinPrice   int32     `json:"coin_price"`
 	CreatorID   uuid.UUID `json:"creator_id"`
 }
 
@@ -142,6 +143,7 @@ func toThemeSummary(t db.Theme) ThemeSummary {
 		MaxPlayers:  t.MaxPlayers,
 		DurationMin: t.DurationMin,
 		Price:       t.Price,
+		CoinPrice:   t.CoinPrice,
 		CreatorID:   t.CreatorID,
 	}
 }

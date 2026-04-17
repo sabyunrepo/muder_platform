@@ -42,18 +42,20 @@ type: project
 
 ## 후속 (Phase 18.9 또는 별도 PR로 적치)
 
-| # | 출처 | 항목 | severity |
-|---|---|---|---|
-| 1 | PR-1 security | theme.status='PUBLISHED' 필터 (CreateRoom GetTheme 권한 강화) | minor |
-| 2 | PR-1 security | validation 에러 detail에서 theme range 마스킹 (oracle 방어) | minor |
-| 3 | PR-1 code | ListWaitingRooms `mapRoomResponse` DRY 정리 | minor |
-| 4 | 백엔드 drift | `ThemeSummary.coin_price` 직렬화 추가 | medium |
-| 5 | 백엔드 drift | `RoomPlayer` 7-field ↔ 서버 PlayerInfo 2-field 정렬 | medium |
-| 6 | PR-3 LOW | detective fallback 향후 차등 공개 도입 시 drift 가능 | low |
-| 7 | PR-4 docs | `refs/pr-4-...md` spec 문서 stale (POST/DELETE → GET/PUT) 반영 | low |
-| 8 | PR-4 LOW | PUT invalid payload 분기 vitest 추가 | low |
-| 9 | PR-4 LOW | fitView 애니메이션 중 click flaky 모니터링 | low |
-| 10 | PR-3 MED | game-ws.ts 이중 캐스트 → 단일 캐스트 (정리 commit) | resolved |
+| # | 출처 | 항목 | severity | 상태 |
+|---|---|---|---|---|
+| 1 | PR-1 security | theme.status='PUBLISHED' 필터 (CreateRoom GetTheme 권한 강화) | minor | ✅ hotfix #2 |
+| 2 | PR-1 security | validation 에러 detail에서 theme range 마스킹 (oracle 방어) | minor | open |
+| 3 | PR-1 code | ListWaitingRooms `mapRoomResponse` DRY 정리 | minor | open |
+| 4 | 백엔드 drift | `ThemeSummary.coin_price` 직렬화 추가 | medium | ✅ hotfix #2 |
+| 5 | 백엔드 drift | `RoomPlayer` 7-field ↔ 서버 PlayerInfo 2-field 정렬 | medium | open |
+| 6 | PR-3 LOW | detective fallback 향후 차등 공개 도입 시 drift 가능 | low | open |
+| 7 | PR-4 docs | `refs/pr-4-...md` spec 문서 stale (POST/DELETE → GET/PUT) 반영 | low | open |
+| 8 | PR-4 LOW | PUT invalid payload 분기 vitest 추가 | low | open |
+| 9 | PR-4 LOW | fitView 애니메이션 중 click flaky 모니터링 | low | open |
+| 10 | PR-3 MED | game-ws.ts 이중 캐스트 → 단일 캐스트 | medium | ✅ commit `f1f95c8` |
+| 11 | CI 회귀 | fixtures.ts `use()` react-hooks/rules-of-hooks 오탐 | hotfix | ✅ hotfix #1 |
+| 12 | CI 회귀 | real-backend.yml firefox 미설치 → `--project=chromium` | hotfix | ✅ hotfix #1 |
 
 ## main commit history (Phase 18.8)
 

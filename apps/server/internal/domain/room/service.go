@@ -139,6 +139,16 @@ func (s *service) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRo
 		s.logger.Error().Err(err).Msg("failed to get theme for room creation")
 		return nil, apperror.Internal("failed to create room")
 	}
+	// PR-1 security follow-up: 공개되지 않은 theme (DRAFT / REVIEW_PENDING / ARCHIVED)
+	// ID 를 추측한 사용자가 방을 생성하지 못하도록 status 필터 추가. oracle 공격
+	// 방어를 위해 404 NotFound 로 응답한다 (존재 여부 자체를 숨김).
+	if theme.Status != "PUBLISHED" {
+		s.logger.Warn().
+			Str("theme_id", req.ThemeID.String()).
+			Str("status", theme.Status).
+			Msg("create room rejected: theme not published")
+		return nil, apperror.New(apperror.ErrNotFound, http.StatusNotFound, "theme not found")
+	}
 
 	maxPlayers, fallback, err := resolveMaxPlayers(theme, req.MaxPlayers)
 	if err != nil {
