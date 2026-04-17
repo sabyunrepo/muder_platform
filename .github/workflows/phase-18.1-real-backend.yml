@@ -185,7 +185,11 @@ jobs:
         working-directory: apps/web
         env:
           PLAYWRIGHT_BACKEND: "true"
-        run: pnpm exec playwright test e2e/game-session-live.spec.ts --reporter=list
+        # --project=chromium: playwright.config.ts 는 chromium + firefox 두 project 를
+        # 정의하므로 spec 실행 시 양쪽이 모두 호출된다. 본 workflow 는 install 단계에서
+        # chromium + webkit 만 다운로드하므로 firefox project 가 호출되면 launch fail.
+        # nightly real-backend smoke 는 chromium 으로만 검증한다 (Phase 18.8 hotfix #1).
+        run: pnpm exec playwright test e2e/game-session-live.spec.ts --project=chromium --reporter=list
 
       - name: Stop background processes
         if: always()
