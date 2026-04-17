@@ -1,5 +1,10 @@
 name: CI
 
+# (2026-04-17) Trivial nudge to re-trigger GitHub Actions event dispatcher.
+# Phase 20 PR-1 (PR #70) initially failed to trigger workflows despite
+# normal close/reopen + empty-commit retries. Touching the workflow file
+# forces the platform to re-evaluate and register runs.
+
 on:
   push:
     branches: [main]
