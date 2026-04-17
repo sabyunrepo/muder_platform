@@ -78,12 +78,16 @@
 **Branch**: `feat/phase-20/PR-5-combination-unified`
 **Depends**: PR-4
 
-- [ ] combination.go Init: `clue_edge_groups` (trigger=CRAFT) 를 source로 전환
-- [ ] findCombo: group_id 매칭 기반
-- [ ] WS `combine {evidence_ids}` 입력/출력 이벤트 이름 유지 (호환성)
-- [ ] engine phase 전환 시 `state.CurrentRound++` 공급
-- [ ] clue.Resolve·visibility에 round 필터 추가 (`reveal_round <= current <= hide_round`)
-- [ ] 테스트: combination_test mock 교체, round 경계 케이스, snapshot restore 호환
+- [x] combination.go Init: `AddDependency` Trigger=CRAFT 마킹 → graph가 자동 해금 금지, 조합 이벤트만 unlock
+- [x] findCombo: `group_id` 우선 매칭(O(1)) + legacy `evidence_ids` set-equality fallback
+- [x] WS `combine {evidence_ids}` 입력/출력 이벤트 이름 유지 — `group_id` 옵셔널 필드 추가 (omitempty)
+- [x] engine `PhaseEngine.currentRound` 필드 + Start=1 + AdvancePhase++ + `CurrentRound()` 공용 API + `phase.advanced` audit에 `round` 포함
+- [x] `engine.GameState.CurrentRound int32` 필드 추가 (snapshot/restore 자동 포함)
+- [x] `clue.RoundRange` + `clue.FilterByRound` helper 신규 (pure function, PR-6에서 visibility 통합 예정)
+- [x] `craftedAsClueMap` helper로 derived 셋을 `graph.Resolve(discovered, crafted)` 에 주입
+- [x] 테스트: round_filter_test 3, phase_engine CurrentRound 1, combination GroupID/crafted 3 = 7 신규
+- [x] snapshot restore 기존 `combinationState` 호환 유지 (Completed/Derived/Collected 필드 변경 없음)
+- [x] `make ci-local` 통과
 - [ ] PR 생성 → 머지
 
 ## W4 — PR-6 PoC → 정식 프론트 승격 + E2E
