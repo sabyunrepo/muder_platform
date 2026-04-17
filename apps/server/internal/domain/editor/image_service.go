@@ -255,7 +255,6 @@ func (s *ImageService) ConfirmImageUpload(
 			ImageUrl:    pgtype.Text{String: downloadURL, Valid: true},
 			IsCommon:    clue.IsCommon,
 			Level:       clue.Level,
-			ClueType:    clue.ClueType,
 			SortOrder:   clue.SortOrder,
 		})
 		if err != nil {

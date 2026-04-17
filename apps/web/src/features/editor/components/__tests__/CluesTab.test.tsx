@@ -61,8 +61,8 @@ import { CluesTab } from '../CluesTab';
 // ---------------------------------------------------------------------------
 
 const mockClues = [
-  { id: 'clue-1', name: '피 묻은 칼', clue_type: 'physical', level: 1, is_common: false, description: '', image_url: null },
-  { id: 'clue-2', name: '비밀 편지', clue_type: 'document', level: 2, is_common: true, description: '중요 편지', image_url: 'http://example.com/img.jpg' },
+  { id: 'clue-1', name: '피 묻은 칼', level: 1, is_common: false, description: '', image_url: null },
+  { id: 'clue-2', name: '비밀 편지', level: 2, is_common: true, description: '중요 편지', image_url: 'http://example.com/img.jpg' },
 ];
 
 afterEach(cleanup);
@@ -95,7 +95,6 @@ describe('CluesTab', () => {
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     render(<CluesTab themeId="theme-1" />);
     fireEvent.click(screen.getByLabelText('리스트 뷰'));
-    // ClueListRow renders type badge as mono text
     expect(screen.getAllByText('피 묻은 칼').length).toBeGreaterThan(0);
   });
 

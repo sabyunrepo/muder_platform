@@ -67,12 +67,12 @@ SELECT * FROM theme_clues WHERE location_id = $1 ORDER BY sort_order;
 SELECT * FROM theme_clues WHERE id = $1;
 
 -- name: CreateClue :one
-INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, is_usable, use_effect, use_target, use_consumed)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: UpdateClue :one
-UPDATE theme_clues SET location_id = $2, name = $3, description = $4, image_url = $5, is_common = $6, level = $7, clue_type = $8, sort_order = $9, is_usable = $10, use_effect = $11, use_target = $12, use_consumed = $13
+UPDATE theme_clues SET location_id = $2, name = $3, description = $4, image_url = $5, is_common = $6, level = $7, sort_order = $8, is_usable = $9, use_effect = $10, use_target = $11, use_consumed = $12
 WHERE id = $1
 RETURNING *;
 

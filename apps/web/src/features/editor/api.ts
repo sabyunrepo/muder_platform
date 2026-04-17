@@ -91,7 +91,6 @@ export interface CreateClueRequest {
   name: string;
   description?: string;
   image_url?: string;
-  clue_type?: string;
   level?: number;
   is_common?: boolean;
   sort_order?: number;
@@ -106,7 +105,6 @@ export interface UpdateClueRequest {
   name?: string;
   description?: string;
   image_url?: string;
-  clue_type?: string;
   level?: number;
   is_common?: boolean;
   sort_order?: number;
@@ -155,7 +153,6 @@ export interface ClueResponse {
   image_url: string | null;
   is_common: boolean;
   level: number;
-  clue_type: string;
   sort_order: number;
   created_at: string;
   is_usable: boolean;

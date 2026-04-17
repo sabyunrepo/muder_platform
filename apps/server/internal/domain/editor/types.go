@@ -62,7 +62,6 @@ type CreateClueRequest struct {
 	ImageURL    *string    `json:"image_url" validate:"omitempty,url"`
 	IsCommon    bool       `json:"is_common"`
 	Level       int32      `json:"level" validate:"min=1,max=10"`
-	ClueType    string     `json:"clue_type" validate:"required,oneof=normal weapon evidence alibi"`
 	SortOrder   int32      `json:"sort_order" validate:"min=0"`
 	IsUsable    bool       `json:"is_usable"`
 	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
@@ -77,7 +76,6 @@ type UpdateClueRequest struct {
 	ImageURL    *string    `json:"image_url" validate:"omitempty,url"`
 	IsCommon    bool       `json:"is_common"`
 	Level       int32      `json:"level" validate:"min=1,max=10"`
-	ClueType    string     `json:"clue_type" validate:"required,oneof=normal weapon evidence alibi"`
 	SortOrder   int32      `json:"sort_order" validate:"min=0"`
 	IsUsable    bool       `json:"is_usable"`
 	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
@@ -94,7 +92,6 @@ type ClueResponse struct {
 	ImageURL    *string    `json:"image_url,omitempty"`
 	IsCommon    bool       `json:"is_common"`
 	Level       int32      `json:"level"`
-	ClueType    string     `json:"clue_type"`
 	SortOrder   int32      `json:"sort_order"`
 	CreatedAt   time.Time  `json:"created_at"`
 	IsUsable    bool       `json:"is_usable"`
