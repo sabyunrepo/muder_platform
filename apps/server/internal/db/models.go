@@ -276,7 +276,6 @@ type ThemeClue struct {
 	ImageUrl    pgtype.Text `json:"image_url"`
 	IsCommon    bool        `json:"is_common"`
 	Level       int32       `json:"level"`
-	ClueType    string      `json:"clue_type"`
 	SortOrder   int32       `json:"sort_order"`
 	CreatedAt   time.Time   `json:"created_at"`
 	IsUsable    bool        `json:"is_usable"`

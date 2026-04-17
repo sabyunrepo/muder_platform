@@ -62,60 +62,60 @@ BEGIN
 
   -- ── 단서 (일반) ───────────────────────────────────────────────────────────
   -- 서재
-  INSERT INTO theme_clues (theme_id, location_id, name, description, level, clue_type, sort_order) VALUES
+  INSERT INTO theme_clues (theme_id, location_id, name, description, level, sort_order) VALUES
     (theme_id, loc_study, '찢긴 편지',
      '반쯤 찢긴 편지. 읽을 수 있는 부분에는 "…당신이 알면 모든 것이 끝난다…"라고 적혀 있다.',
-     1, 'normal', 0),
+     1, 0),
     (theme_id, loc_study, '숨겨진 일기장',
      '책상 서랍 안쪽에 숨겨진 가죽 표지 일기장. 최근 3개월간의 비밀 거래가 기록되어 있다.',
-     2, 'normal', 1);
+     2, 1);
 
   -- 거실
-  INSERT INTO theme_clues (theme_id, location_id, name, description, level, clue_type, sort_order) VALUES
+  INSERT INTO theme_clues (theme_id, location_id, name, description, level, sort_order) VALUES
     (theme_id, loc_living, '깨진 유리잔',
      '카펫 위에 흩어진 크리스탈 유리잔 조각. 사건 직전 격렬한 다툼이 있었음을 암시한다.',
-     1, 'normal', 0),
+     1, 0),
     (theme_id, loc_living, '혈흔 묻은 손수건',
      '소파 쿠션 아래 감춰진 고급 손수건. 한쪽 귀퉁이에 이니셜 "S"가 수놓여 있다.',
-     2, 'normal', 1);
+     2, 1);
 
   -- 정원
-  INSERT INTO theme_clues (theme_id, location_id, name, description, level, clue_type, sort_order) VALUES
+  INSERT INTO theme_clues (theme_id, location_id, name, description, level, sort_order) VALUES
     (theme_id, loc_garden, '발자국',
      '정원 흙 위에 찍힌 선명한 발자국. 방향은 지하실 입구를 향하고 있다.',
-     1, 'normal', 0),
+     1, 0),
     (theme_id, loc_garden, '버려진 장갑',
      '장미 덤불 사이에서 발견된 가죽 장갑 한 짝. 내부에 흙과 함께 작은 열쇠가 들어 있다.',
-     2, 'normal', 1);
+     2, 1);
 
   -- 지하실
-  INSERT INTO theme_clues (theme_id, location_id, name, description, level, clue_type, sort_order) VALUES
+  INSERT INTO theme_clues (theme_id, location_id, name, description, level, sort_order) VALUES
     (theme_id, loc_basement, '잠긴 상자',
      '낡은 목재 상자. 자물쇠가 잠겨 있어 열 수 없지만, 흔들면 무언가 딸그락거린다.',
-     1, 'normal', 0),
+     1, 0),
     (theme_id, loc_basement, '녹음기',
      '테이프가 반쯤 감긴 소형 녹음기. 재생하면 사건 당일 밤 나눈 대화가 들린다.',
-     2, 'normal', 1);
+     2, 1);
 
   -- ── 아이템 단서 (is_usable=true) ─────────────────────────────────────────
   -- 주: 아래 컬럼은 migration 00020_clue_items.sql 필요
   INSERT INTO theme_clues (
     theme_id, location_id,
     name, description,
-    level, clue_type,
+    level,
     is_usable, use_effect, use_target, use_consumed,
     sort_order
   ) VALUES
     (theme_id, NULL,
      '투시경',
      '특수 렌즈가 달린 낡은 투시경. 사용하면 상대방의 단서 목록 중 하나를 몰래 확인할 수 있다.',
-     1, 'item',
+     1,
      TRUE, 'peek', 'player', TRUE,
      100),
     (theme_id, NULL,
      '진실의 거울',
      '손에 쥐면 차갑게 느껴지는 작은 거울. 사용하면 지목한 플레이어의 단서 한 장을 볼 수 있다.',
-     1, 'item',
+     1,
      TRUE, 'peek', 'player', TRUE,
      101);
 

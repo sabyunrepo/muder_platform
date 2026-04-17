@@ -16,7 +16,7 @@ permissions:
 jobs:
   govulncheck:
     name: govulncheck (Go SCA)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 5
     steps:
       - name: Harden Runner
@@ -46,7 +46,7 @@ jobs:
 
   gitleaks:
     name: gitleaks (Secret scan)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 5
     steps:
       - name: Harden Runner

@@ -20,11 +20,6 @@ export function ClueListRow({ clue, onEdit, onDelete }: ClueListRowProps) {
       onKeyDown={(e) => e.key === 'Enter' && onEdit(clue)}
       className="group flex cursor-pointer items-center gap-3 rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 transition-all hover:border-slate-700 focus:outline-none"
     >
-      {/* Type badge */}
-      <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-500">
-        {clue.clue_type}
-      </span>
-
       {/* Name */}
       <span className="flex-1 truncate text-sm font-medium text-slate-200">{clue.name}</span>
 

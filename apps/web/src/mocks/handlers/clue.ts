@@ -15,7 +15,7 @@
  *   배열 응답으로 교체한다.
  *
  * **Shape (apps/server/internal/domain/editor/types.go)**:
- *   - ClueResponse: snake_case (id, theme_id, name, clue_type, level, sort_order, ...)
+ *   - ClueResponse: snake_case (id, theme_id, name, level, sort_order, ...)
  *   - ClueRelationResponse: camelCase (id, sourceId, targetId, mode)
  *
  * **Default fixture (PR-4 stubbed e2e)**:
@@ -44,7 +44,6 @@ const baseClue = {
   image_url: null as string | null,
   is_common: false,
   level: 1,
-  clue_type: "normal",
   created_at: "2026-04-16T00:00:00Z",
   is_usable: false,
   use_effect: null as string | null,

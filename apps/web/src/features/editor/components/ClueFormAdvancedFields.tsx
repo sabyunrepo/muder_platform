@@ -1,36 +1,20 @@
 import { ChevronDown } from 'lucide-react';
-import { Input } from '@/shared/components/ui/Input';
 
 // ---------------------------------------------------------------------------
 // ClueFormAdvancedFields
 //
-// Collapsible block for advanced clue settings: clue type, level, sort order,
-// is_common, and the item-usage block (is_usable + effect/target/consumed).
-// All state is owned by the parent ClueForm; this component is a controlled
-// view.
+// Collapsible block for advanced clue settings: is_common and the item-usage
+// block (is_usable + effect/target/consumed). All state is owned by the parent
+// ClueForm; this component is a controlled view.
+//
+// Phase 20 PR-1: the type / level / sort order UI was removed — the type field
+// had no game-logic effect, and level/sort order defaults are managed inside
+// ClueForm so they no longer need a surface here.
 // ---------------------------------------------------------------------------
-
-const CLUE_TYPES = [
-  { value: 'normal', label: '일반' },
-  { value: 'physical', label: '물리적 단서' },
-  { value: 'document', label: '문서' },
-  { value: 'testimony', label: '증언' },
-  { value: 'digital', label: '디지털' },
-  { value: 'other', label: '기타' },
-] as const;
 
 export interface ClueFormAdvancedFieldsProps {
   showAdvanced: boolean;
   onToggleAdvanced: () => void;
-
-  clueType: string;
-  onClueTypeChange: (value: string) => void;
-
-  level: number;
-  onLevelChange: (value: number) => void;
-
-  sortOrder: number;
-  onSortOrderChange: (value: number) => void;
 
   isCommon: boolean;
   onIsCommonChange: (value: boolean) => void;
@@ -51,12 +35,6 @@ export interface ClueFormAdvancedFieldsProps {
 export function ClueFormAdvancedFields({
   showAdvanced,
   onToggleAdvanced,
-  clueType,
-  onClueTypeChange,
-  level,
-  onLevelChange,
-  sortOrder,
-  onSortOrderChange,
   isCommon,
   onIsCommonChange,
   isUsable,
@@ -85,47 +63,6 @@ export function ClueFormAdvancedFields({
 
       {showAdvanced && (
         <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-          {/* Clue type */}
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="clue-type"
-              className="text-sm font-medium text-slate-300"
-            >
-              단서 유형
-            </label>
-            <select
-              id="clue-type"
-              value={clueType}
-              onChange={(e) => onClueTypeChange(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
-            >
-              {CLUE_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Level + Sort order */}
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label="발견 난이도"
-              type="number"
-              value={level}
-              onChange={(e) => onLevelChange(Number(e.target.value))}
-              min={1}
-              max={10}
-            />
-            <Input
-              label="정렬 순서"
-              type="number"
-              value={sortOrder}
-              onChange={(e) => onSortOrderChange(Number(e.target.value))}
-              min={0}
-            />
-          </div>
-
           {/* Is common */}
           <div className="flex items-center gap-2">
             <input

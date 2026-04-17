@@ -42,8 +42,8 @@ async function mockEditorApis(page: Parameters<typeof test>[1]["page"]) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify([
-        { id: FAKE_CLUE_A_ID, theme_id: FAKE_THEME_ID, name: "단서A", level: 1, clue_type: "normal", sort_order: 0, is_common: false, is_usable: false, use_consumed: false, created_at: new Date().toISOString() },
-        { id: FAKE_CLUE_B_ID, theme_id: FAKE_THEME_ID, name: "단서B", level: 1, clue_type: "normal", sort_order: 1, is_common: false, is_usable: false, use_consumed: false, created_at: new Date().toISOString() },
+        { id: FAKE_CLUE_A_ID, theme_id: FAKE_THEME_ID, name: "단서A", level: 1, sort_order: 0, is_common: false, is_usable: false, use_consumed: false, created_at: new Date().toISOString() },
+        { id: FAKE_CLUE_B_ID, theme_id: FAKE_THEME_ID, name: "단서B", level: 1, sort_order: 1, is_common: false, is_usable: false, use_consumed: false, created_at: new Date().toISOString() },
       ]),
     }),
   );

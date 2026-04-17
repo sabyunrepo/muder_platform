@@ -255,7 +255,6 @@ function cluePayload(state: MockState) {
     theme_id: THEME_ID,
     name: "첫 단서",
     level: 1,
-    clue_type: "normal",
     sort_order: 0,
     is_common: false,
     is_usable: false,

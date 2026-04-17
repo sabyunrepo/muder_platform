@@ -54,7 +54,6 @@ export const makeClue = (i: number): ClueResponse => ({
   image_url: null,
   is_common: false,
   level: 1,
-  clue_type: "normal",
   sort_order: i,
   created_at: "2026-04-15T00:00:00Z",
   is_usable: false,

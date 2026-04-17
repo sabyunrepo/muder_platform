@@ -44,11 +44,10 @@ describe("clueHandlers", () => {
       ),
     });
     expect(result?.response?.status).toBe(200);
-    const body = (await result!.response!.json()) as { id: string; name: string; theme_id: string; clue_type: string }[];
+    const body = (await result!.response!.json()) as { id: string; name: string; theme_id: string }[];
     expect(body).toHaveLength(3);
     expect(body[0].id).toBe(E2E_CLUE_IDS.c1);
     expect(body[0].theme_id).toBe(E2E_THEME_ID);
-    expect(body[0].clue_type).toBe("normal");
     expect(body).toEqual(E2E_CLUE_LIST);
   });
 

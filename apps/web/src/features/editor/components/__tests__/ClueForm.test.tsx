@@ -159,7 +159,6 @@ describe('ClueForm', () => {
     expect(createMutate).toHaveBeenCalledTimes(1);
     const [body] = createMutate.mock.calls[0];
     expect(body.name).toBe('증거물');
-    expect(body.clue_type).toBe('normal');
     expect(body.is_usable).toBe(false);
   });
 
@@ -215,7 +214,6 @@ describe('ClueForm', () => {
       image_url: null,
       is_common: false,
       level: 1,
-      clue_type: 'normal',
       sort_order: 0,
       created_at: '2026-04-15T00:00:00Z',
       is_usable: false,
