@@ -52,6 +52,10 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
   const [useTarget, setUseTarget] = useState('player');
   const [useConsumed, setUseConsumed] = useState(true);
 
+  // Round schedule (null = unbounded on that side)
+  const [revealRound, setRevealRound] = useState<number | null>(null);
+  const [hideRound, setHideRound] = useState<number | null>(null);
+
   // Pending image for new clue (staged upload)
   const [pendingImage, setPendingImage] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
@@ -76,6 +80,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setUseEffect(clue.use_effect ?? 'peek');
       setUseTarget(clue.use_target ?? 'player');
       setUseConsumed(clue.use_consumed ?? true);
+      setRevealRound(clue.reveal_round ?? null);
+      setHideRound(clue.hide_round ?? null);
     } else {
       setName('');
       setDescription('');
@@ -87,6 +93,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setUseEffect('peek');
       setUseTarget('player');
       setUseConsumed(true);
+      setRevealRound(null);
+      setHideRound(null);
     }
     setPendingImage(null);
     setPendingPreview(null);
@@ -104,6 +112,13 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     }
     if (description.length > 2000) {
       next.description = '설명은 2000자 이하여야 합니다';
+    }
+    if (
+      revealRound != null &&
+      hideRound != null &&
+      revealRound > hideRound
+    ) {
+      next.round = '공개 라운드는 사라짐 라운드보다 클 수 없습니다';
     }
     return next;
   }
@@ -138,6 +153,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         use_effect: isUsable ? useEffect_ : undefined,
         use_target: isUsable ? useTarget : undefined,
         use_consumed: isUsable ? useConsumed : undefined,
+        reveal_round: revealRound,
+        hide_round: hideRound,
       },
       pendingImage,
     );
@@ -217,6 +234,11 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
           onUseTargetChange={setUseTarget}
           useConsumed={useConsumed}
           onUseConsumedChange={setUseConsumed}
+          revealRound={revealRound}
+          onRevealRoundChange={setRevealRound}
+          hideRound={hideRound}
+          onHideRoundChange={setHideRound}
+          roundError={errors.round}
         />
       </form>
     </Modal>

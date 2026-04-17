@@ -35,12 +35,16 @@ type CreateLocationRequest struct {
 	Name                 string  `json:"name" validate:"required,min=1,max=100"`
 	RestrictedCharacters *string `json:"restricted_characters"`
 	SortOrder            int32   `json:"sort_order" validate:"min=0"`
+	FromRound            *int32  `json:"from_round" validate:"omitempty,min=1"`
+	UntilRound           *int32  `json:"until_round" validate:"omitempty,min=1"`
 }
 
 type UpdateLocationRequest struct {
 	Name                 string  `json:"name" validate:"required,min=1,max=100"`
 	RestrictedCharacters *string `json:"restricted_characters"`
 	SortOrder            int32   `json:"sort_order" validate:"min=0"`
+	FromRound            *int32  `json:"from_round" validate:"omitempty,min=1"`
+	UntilRound           *int32  `json:"until_round" validate:"omitempty,min=1"`
 }
 
 type LocationResponse struct {
@@ -51,6 +55,8 @@ type LocationResponse struct {
 	RestrictedCharacters *string   `json:"restricted_characters,omitempty"`
 	SortOrder            int32     `json:"sort_order"`
 	CreatedAt            time.Time `json:"created_at"`
+	FromRound            *int32    `json:"from_round,omitempty"`
+	UntilRound           *int32    `json:"until_round,omitempty"`
 }
 
 // --- Clue types ---
@@ -67,6 +73,8 @@ type CreateClueRequest struct {
 	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
 	UseTarget   *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
 	UseConsumed bool       `json:"use_consumed"`
+	RevealRound *int32     `json:"reveal_round" validate:"omitempty,min=1"`
+	HideRound   *int32     `json:"hide_round" validate:"omitempty,min=1"`
 }
 
 type UpdateClueRequest struct {
@@ -81,6 +89,8 @@ type UpdateClueRequest struct {
 	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
 	UseTarget   *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
 	UseConsumed bool       `json:"use_consumed"`
+	RevealRound *int32     `json:"reveal_round" validate:"omitempty,min=1"`
+	HideRound   *int32     `json:"hide_round" validate:"omitempty,min=1"`
 }
 
 type ClueResponse struct {
@@ -98,6 +108,8 @@ type ClueResponse struct {
 	UseEffect   *string    `json:"use_effect,omitempty"`
 	UseTarget   *string    `json:"use_target,omitempty"`
 	UseConsumed bool       `json:"use_consumed"`
+	RevealRound *int32     `json:"reveal_round,omitempty"`
+	HideRound   *int32     `json:"hide_round,omitempty"`
 }
 
 // --- Clue relation types ---

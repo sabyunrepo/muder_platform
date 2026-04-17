@@ -30,6 +30,25 @@ export interface ClueFormAdvancedFieldsProps {
 
   useConsumed: boolean;
   onUseConsumedChange: (value: boolean) => void;
+
+  /** Round at which the clue becomes visible (null = from round 1). */
+  revealRound: number | null;
+  onRevealRoundChange: (value: number | null) => void;
+
+  /** Round at which the clue is hidden (null = stays visible forever). */
+  hideRound: number | null;
+  onHideRoundChange: (value: number | null) => void;
+
+  /** Optional error banner (e.g. reveal > hide). */
+  roundError?: string;
+}
+
+function parseRoundInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return Math.floor(n);
 }
 
 export function ClueFormAdvancedFields({
@@ -45,6 +64,11 @@ export function ClueFormAdvancedFields({
   onUseTargetChange,
   useConsumed,
   onUseConsumedChange,
+  revealRound,
+  onRevealRoundChange,
+  hideRound,
+  onHideRoundChange,
+  roundError,
 }: ClueFormAdvancedFieldsProps) {
   return (
     <div className="space-y-3">
@@ -78,6 +102,56 @@ export function ClueFormAdvancedFields({
             >
               공개 단서 (모든 플레이어 공유)
             </label>
+          </div>
+
+          {/* Round schedule */}
+          <div className="space-y-1.5 border-t border-slate-800 pt-3">
+            <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+              라운드 스케줄
+            </div>
+            <div className="flex gap-2">
+              <div className="flex flex-1 flex-col gap-1">
+                <label
+                  htmlFor="clue-reveal-round"
+                  className="text-xs text-slate-400"
+                >
+                  공개 라운드
+                </label>
+                <input
+                  id="clue-reveal-round"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="1부터"
+                  value={revealRound ?? ''}
+                  onChange={(e) => onRevealRoundChange(parseRoundInput(e.target.value))}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+              <div className="flex flex-1 flex-col gap-1">
+                <label
+                  htmlFor="clue-hide-round"
+                  className="text-xs text-slate-400"
+                >
+                  사라짐 라운드
+                </label>
+                <input
+                  id="clue-hide-round"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="끝까지"
+                  value={hideRound ?? ''}
+                  onChange={(e) => onHideRoundChange(parseRoundInput(e.target.value))}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                />
+              </div>
+            </div>
+            {roundError && (
+              <p className="text-xs text-red-400" role="alert">
+                {roundError}
+              </p>
+            )}
           </div>
 
           {/* Item usage */}

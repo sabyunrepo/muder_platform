@@ -282,6 +282,8 @@ type ThemeClue struct {
 	UseEffect   pgtype.Text `json:"use_effect"`
 	UseTarget   pgtype.Text `json:"use_target"`
 	UseConsumed bool        `json:"use_consumed"`
+	RevealRound pgtype.Int4 `json:"reveal_round"`
+	HideRound   pgtype.Int4 `json:"hide_round"`
 }
 
 type ThemeContent struct {
@@ -300,6 +302,8 @@ type ThemeLocation struct {
 	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
 	SortOrder            int32       `json:"sort_order"`
 	CreatedAt            time.Time   `json:"created_at"`
+	FromRound            pgtype.Int4 `json:"from_round"`
+	UntilRound           pgtype.Int4 `json:"until_round"`
 }
 
 type ThemeMap struct {

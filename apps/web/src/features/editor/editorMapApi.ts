@@ -17,12 +17,17 @@ export interface CreateLocationRequest {
   name: string;
   description?: string;
   restricted_characters?: string[];
+  from_round?: number | null;
+  until_round?: number | null;
 }
 
 export interface UpdateLocationRequest {
   name?: string;
   description?: string;
   restricted_characters?: string[];
+  sort_order?: number;
+  from_round?: number | null;
+  until_round?: number | null;
 }
 
 // ---------------------------------------------------------------------------

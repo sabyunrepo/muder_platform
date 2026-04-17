@@ -99,6 +99,8 @@ export interface CreateClueRequest {
   use_effect?: string;
   use_target?: string;
   use_consumed?: boolean;
+  reveal_round?: number | null;
+  hide_round?: number | null;
 }
 
 export interface UpdateClueRequest {
@@ -113,6 +115,8 @@ export interface UpdateClueRequest {
   use_effect?: string;
   use_target?: string;
   use_consumed?: boolean;
+  reveal_round?: number | null;
+  hide_round?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,6 +146,8 @@ export interface LocationResponse {
   restricted_characters: string | null;
   sort_order: number;
   created_at: string;
+  from_round?: number | null;
+  until_round?: number | null;
 }
 
 export interface ClueResponse {
@@ -159,6 +165,8 @@ export interface ClueResponse {
   use_effect: string | null;
   use_target: string | null;
   use_consumed: boolean;
+  reveal_round?: number | null;
+  hide_round?: number | null;
 }
 
 export interface ContentResponse {

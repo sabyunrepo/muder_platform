@@ -29,17 +29,17 @@
 **Branch**: `feat/phase-20/PR-2-round-schedule`
 **Depends**: PR-1
 
-- [ ] migration 00025 (theme_clues.reveal_round/hide_round + theme_locations.from_round/until_round)
-- [ ] sqlc 재생성
-- [ ] types.go: 단서·장소 DTO에 round 필드 추가 (pointer nullable)
-- [ ] service_clue.go, service_location.go: round 필드 매핑
-- [ ] 프론트 api.ts: 단서·장소 응답 타입 확장, PATCH/POST payload에 round 포함
-- [ ] ClueForm.tsx: revealRound/hideRound state + AdvancedFields 폼
-- [ ] ClueFormAdvancedFields.tsx: localStorage 기반 PoC 제거, 부모 controlled 전환
-- [ ] LocationRow.tsx: localStorage 제거, useUpdateLocation 으로 저장
-- [ ] 서비스 레이어 의미적 검증: `reveal_round > hide_round` 거부
-- [ ] 테스트: clue/location handler round 필드 왕복, UI 입력→PATCH 연동
-- [ ] `make lint` + `make test` 통과
+- [x] migration 00025 (theme_clues.reveal_round/hide_round + theme_locations.from_round/until_round, CHECK constraints)
+- [x] sqlc 재생성 (pgtype.Int4 round 필드 확인)
+- [x] types.go: 단서·장소 DTO에 round 필드 추가 (pointer nullable, validate:min=1)
+- [x] service_clue.go, service_location.go: round 필드 매핑 + int32PtrToPgtype/pgtypeInt4ToPtr helper
+- [x] 프론트 api.ts + editorMapApi.ts: 응답 타입 + PATCH/POST payload round 포함
+- [x] ClueForm.tsx: revealRound/hideRound state + 편집 모드 로드 + submit 포함
+- [x] ClueFormAdvancedFields.tsx: parseRoundInput + 두 number input (controlled, 부모 state)
+- [x] LocationRow.tsx: useUpdateLocation 인라인 편집 (blur/Enter commit, 에러시 롤백)
+- [x] 서비스 레이어 검증: validateClueRoundOrder + validateLocationRoundOrder (400 AppError)
+- [x] 테스트: round_validation_test (12 서브케이스), ClueForm.test 3 신규, LocationsSubTab.test 4 신규
+- [x] `make ci-local` 통과 (lint + typecheck + test + build)
 - [ ] PR 생성 → 머지
 
 ## W2 — PR-3 라운드 배지 노출 (병렬)

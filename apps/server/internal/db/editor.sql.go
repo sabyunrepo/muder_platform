@@ -46,9 +46,9 @@ func (q *Queries) CountMapsByTheme(ctx context.Context, themeID uuid.UUID) (int6
 }
 
 const createClue = `-- name: CreateClue :one
-INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed
+INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round
 `
 
 type CreateClueParams struct {
@@ -64,6 +64,8 @@ type CreateClueParams struct {
 	UseEffect   pgtype.Text `json:"use_effect"`
 	UseTarget   pgtype.Text `json:"use_target"`
 	UseConsumed bool        `json:"use_consumed"`
+	RevealRound pgtype.Int4 `json:"reveal_round"`
+	HideRound   pgtype.Int4 `json:"hide_round"`
 }
 
 func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeClue, error) {
@@ -80,6 +82,8 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 		arg.UseEffect,
 		arg.UseTarget,
 		arg.UseConsumed,
+		arg.RevealRound,
+		arg.HideRound,
 	)
 	var i ThemeClue
 	err := row.Scan(
@@ -97,14 +101,16 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 		&i.UseEffect,
 		&i.UseTarget,
 		&i.UseConsumed,
+		&i.RevealRound,
+		&i.HideRound,
 	)
 	return i, err
 }
 
 const createLocation = `-- name: CreateLocation :one
-INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at
+INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, from_round, until_round)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round
 `
 
 type CreateLocationParams struct {
@@ -113,6 +119,8 @@ type CreateLocationParams struct {
 	Name                 string      `json:"name"`
 	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
 	SortOrder            int32       `json:"sort_order"`
+	FromRound            pgtype.Int4 `json:"from_round"`
+	UntilRound           pgtype.Int4 `json:"until_round"`
 }
 
 func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) (ThemeLocation, error) {
@@ -122,6 +130,8 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		arg.Name,
 		arg.RestrictedCharacters,
 		arg.SortOrder,
+		arg.FromRound,
+		arg.UntilRound,
 	)
 	var i ThemeLocation
 	err := row.Scan(
@@ -132,6 +142,8 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.FromRound,
+		&i.UntilRound,
 	)
 	return i, err
 }
@@ -264,7 +276,7 @@ func (q *Queries) DeleteMapWithOwner(ctx context.Context, arg DeleteMapWithOwner
 }
 
 const getClue = `-- name: GetClue :one
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE id = $1
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round FROM theme_clues WHERE id = $1
 `
 
 func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) {
@@ -285,12 +297,14 @@ func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) 
 		&i.UseEffect,
 		&i.UseTarget,
 		&i.UseConsumed,
+		&i.RevealRound,
+		&i.HideRound,
 	)
 	return i, err
 }
 
 const getClueWithOwner = `-- name: GetClueWithOwner :one
-SELECT c.id, c.theme_id, c.location_id, c.name, c.description, c.image_url, c.is_common, c.level, c.sort_order, c.created_at, c.is_usable, c.use_effect, c.use_target, c.use_consumed FROM theme_clues c
+SELECT c.id, c.theme_id, c.location_id, c.name, c.description, c.image_url, c.is_common, c.level, c.sort_order, c.created_at, c.is_usable, c.use_effect, c.use_target, c.use_consumed, c.reveal_round, c.hide_round FROM theme_clues c
 JOIN themes t ON c.theme_id = t.id
 WHERE c.id = $1 AND t.creator_id = $2
 `
@@ -318,6 +332,8 @@ func (q *Queries) GetClueWithOwner(ctx context.Context, arg GetClueWithOwnerPara
 		&i.UseEffect,
 		&i.UseTarget,
 		&i.UseConsumed,
+		&i.RevealRound,
+		&i.HideRound,
 	)
 	return i, err
 }
@@ -349,7 +365,7 @@ func (q *Queries) GetContent(ctx context.Context, arg GetContentParams) (ThemeCo
 }
 
 const getLocation = `-- name: GetLocation :one
-SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at FROM theme_locations WHERE id = $1
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round FROM theme_locations WHERE id = $1
 `
 
 func (q *Queries) GetLocation(ctx context.Context, id uuid.UUID) (ThemeLocation, error) {
@@ -363,12 +379,14 @@ func (q *Queries) GetLocation(ctx context.Context, id uuid.UUID) (ThemeLocation,
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.FromRound,
+		&i.UntilRound,
 	)
 	return i, err
 }
 
 const getLocationWithOwner = `-- name: GetLocationWithOwner :one
-SELECT l.id, l.theme_id, l.map_id, l.name, l.restricted_characters, l.sort_order, l.created_at FROM theme_locations l
+SELECT l.id, l.theme_id, l.map_id, l.name, l.restricted_characters, l.sort_order, l.created_at, l.from_round, l.until_round FROM theme_locations l
 JOIN themes t ON l.theme_id = t.id
 WHERE l.id = $1 AND t.creator_id = $2
 `
@@ -389,6 +407,8 @@ func (q *Queries) GetLocationWithOwner(ctx context.Context, arg GetLocationWithO
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.FromRound,
+		&i.UntilRound,
 	)
 	return i, err
 }
@@ -441,7 +461,7 @@ func (q *Queries) GetMapWithOwner(ctx context.Context, arg GetMapWithOwnerParams
 }
 
 const listCluesByLocation = `-- name: ListCluesByLocation :many
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE location_id = $1 ORDER BY sort_order
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round FROM theme_clues WHERE location_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUID) ([]ThemeClue, error) {
@@ -468,6 +488,8 @@ func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUI
 			&i.UseEffect,
 			&i.UseTarget,
 			&i.UseConsumed,
+			&i.RevealRound,
+			&i.HideRound,
 		); err != nil {
 			return nil, err
 		}
@@ -481,7 +503,7 @@ func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUI
 
 const listCluesByTheme = `-- name: ListCluesByTheme :many
 
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round FROM theme_clues WHERE theme_id = $1 ORDER BY sort_order
 `
 
 // ============================================================
@@ -511,6 +533,8 @@ func (q *Queries) ListCluesByTheme(ctx context.Context, themeID uuid.UUID) ([]Th
 			&i.UseEffect,
 			&i.UseTarget,
 			&i.UseConsumed,
+			&i.RevealRound,
+			&i.HideRound,
 		); err != nil {
 			return nil, err
 		}
@@ -554,7 +578,7 @@ func (q *Queries) ListContentsByTheme(ctx context.Context, themeID uuid.UUID) ([
 
 const listLocationsByMap = `-- name: ListLocationsByMap :many
 
-SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at FROM theme_locations WHERE map_id = $1 ORDER BY sort_order
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round FROM theme_locations WHERE map_id = $1 ORDER BY sort_order
 `
 
 // ============================================================
@@ -577,6 +601,8 @@ func (q *Queries) ListLocationsByMap(ctx context.Context, mapID uuid.UUID) ([]Th
 			&i.RestrictedCharacters,
 			&i.SortOrder,
 			&i.CreatedAt,
+			&i.FromRound,
+			&i.UntilRound,
 		); err != nil {
 			return nil, err
 		}
@@ -589,7 +615,7 @@ func (q *Queries) ListLocationsByMap(ctx context.Context, mapID uuid.UUID) ([]Th
 }
 
 const listLocationsByTheme = `-- name: ListLocationsByTheme :many
-SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) ListLocationsByTheme(ctx context.Context, themeID uuid.UUID) ([]ThemeLocation, error) {
@@ -609,6 +635,8 @@ func (q *Queries) ListLocationsByTheme(ctx context.Context, themeID uuid.UUID) (
 			&i.RestrictedCharacters,
 			&i.SortOrder,
 			&i.CreatedAt,
+			&i.FromRound,
+			&i.UntilRound,
 		); err != nil {
 			return nil, err
 		}
@@ -656,9 +684,10 @@ func (q *Queries) ListMapsByTheme(ctx context.Context, themeID uuid.UUID) ([]The
 }
 
 const updateClue = `-- name: UpdateClue :one
-UPDATE theme_clues SET location_id = $2, name = $3, description = $4, image_url = $5, is_common = $6, level = $7, sort_order = $8, is_usable = $9, use_effect = $10, use_target = $11, use_consumed = $12
+UPDATE theme_clues
+SET location_id = $2, name = $3, description = $4, image_url = $5, is_common = $6, level = $7, sort_order = $8, is_usable = $9, use_effect = $10, use_target = $11, use_consumed = $12, reveal_round = $13, hide_round = $14
 WHERE id = $1
-RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed
+RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round
 `
 
 type UpdateClueParams struct {
@@ -674,6 +703,8 @@ type UpdateClueParams struct {
 	UseEffect   pgtype.Text `json:"use_effect"`
 	UseTarget   pgtype.Text `json:"use_target"`
 	UseConsumed bool        `json:"use_consumed"`
+	RevealRound pgtype.Int4 `json:"reveal_round"`
+	HideRound   pgtype.Int4 `json:"hide_round"`
 }
 
 func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeClue, error) {
@@ -690,6 +721,8 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 		arg.UseEffect,
 		arg.UseTarget,
 		arg.UseConsumed,
+		arg.RevealRound,
+		arg.HideRound,
 	)
 	var i ThemeClue
 	err := row.Scan(
@@ -707,14 +740,17 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 		&i.UseEffect,
 		&i.UseTarget,
 		&i.UseConsumed,
+		&i.RevealRound,
+		&i.HideRound,
 	)
 	return i, err
 }
 
 const updateLocation = `-- name: UpdateLocation :one
-UPDATE theme_locations SET name = $2, restricted_characters = $3, sort_order = $4
+UPDATE theme_locations
+SET name = $2, restricted_characters = $3, sort_order = $4, from_round = $5, until_round = $6
 WHERE id = $1
-RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at
+RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round
 `
 
 type UpdateLocationParams struct {
@@ -722,6 +758,8 @@ type UpdateLocationParams struct {
 	Name                 string      `json:"name"`
 	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
 	SortOrder            int32       `json:"sort_order"`
+	FromRound            pgtype.Int4 `json:"from_round"`
+	UntilRound           pgtype.Int4 `json:"until_round"`
 }
 
 func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) (ThemeLocation, error) {
@@ -730,6 +768,8 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		arg.Name,
 		arg.RestrictedCharacters,
 		arg.SortOrder,
+		arg.FromRound,
+		arg.UntilRound,
 	)
 	var i ThemeLocation
 	err := row.Scan(
@@ -740,6 +780,8 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.FromRound,
+		&i.UntilRound,
 	)
 	return i, err
 }

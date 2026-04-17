@@ -10,12 +10,14 @@ const {
   toastError,
   mutateMock,
   updateConfigMutateMock,
+  updateLocationMutateMock,
   useEditorMapsMock,
   useCreateMapMock,
   useDeleteMapMock,
   useEditorLocationsMock,
   useCreateLocationMock,
   useDeleteLocationMock,
+  useUpdateLocationMock,
   useEditorCluesMock,
   useUpdateConfigJsonMock,
 } = vi.hoisted(() => ({
@@ -23,12 +25,14 @@ const {
   toastError: vi.fn(),
   mutateMock: vi.fn(),
   updateConfigMutateMock: vi.fn(),
+  updateLocationMutateMock: vi.fn(),
   useEditorMapsMock: vi.fn(),
   useCreateMapMock: vi.fn(),
   useDeleteMapMock: vi.fn(),
   useEditorLocationsMock: vi.fn(),
   useCreateLocationMock: vi.fn(),
   useDeleteLocationMock: vi.fn(),
+  useUpdateLocationMock: vi.fn(),
   useEditorCluesMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
 }));
@@ -52,6 +56,7 @@ vi.mock("@/features/editor/api", () => ({
   useEditorLocations: () => useEditorLocationsMock(),
   useCreateLocation: () => useCreateLocationMock(),
   useDeleteLocation: () => useDeleteLocationMock(),
+  useUpdateLocation: () => useUpdateLocationMock(),
   useEditorClues: () => useEditorCluesMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   editorKeys: {
@@ -147,6 +152,10 @@ function setupDefaultMocks() {
   useDeleteMapMock.mockReturnValue(defaultMutation());
   useCreateLocationMock.mockReturnValue(defaultMutation());
   useDeleteLocationMock.mockReturnValue(defaultMutation());
+  useUpdateLocationMock.mockReturnValue({
+    mutate: updateLocationMutateMock,
+    isPending: false,
+  });
   useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
   useUpdateConfigJsonMock.mockReturnValue({
     mutate: updateConfigMutateMock,
@@ -176,6 +185,10 @@ describe("LocationsSubTab", () => {
       useDeleteMapMock.mockReturnValue(defaultMutation());
       useCreateLocationMock.mockReturnValue(defaultMutation());
       useDeleteLocationMock.mockReturnValue(defaultMutation());
+      useUpdateLocationMock.mockReturnValue({
+        mutate: updateLocationMutateMock,
+        isPending: false,
+      });
       useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
       useUpdateConfigJsonMock.mockReturnValue({
         mutate: updateConfigMutateMock,
@@ -351,6 +364,69 @@ describe("LocationsSubTab", () => {
     it("맵 미선택 상태에서는 단서 배정 picker 가 표시되지 않는다", () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       expect(screen.queryByText(/단서 배정 — 장소 선택/)).toBeNull();
+    });
+  });
+
+  describe("LocationRow 라운드 편집", () => {
+    beforeEach(setupDefaultMocks);
+
+    it("등장/퇴장 라운드 입력이 각 장소 행마다 존재한다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      expect(screen.getByLabelText("거실 등장 라운드")).toBeDefined();
+      expect(screen.getByLabelText("거실 퇴장 라운드")).toBeDefined();
+    });
+
+    it("라운드 값 입력 후 blur 하면 useUpdateLocation.mutate 가 호출된다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      const fromInput = screen.getByLabelText("거실 등장 라운드") as HTMLInputElement;
+      fireEvent.change(fromInput, { target: { value: "2" } });
+      fireEvent.blur(fromInput);
+      expect(updateLocationMutateMock).toHaveBeenCalledOnce();
+      const [payload] = updateLocationMutateMock.mock.calls[0] as [
+        { locationId: string; body: Record<string, unknown> },
+      ];
+      expect(payload.locationId).toBe("loc-1");
+      expect(payload.body.from_round).toBe(2);
+      expect(payload.body.name).toBe("거실");
+    });
+
+    it("등장 > 퇴장 조합은 에러 토스트 후 저장되지 않는다", () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      const fromInput = screen.getByLabelText("거실 등장 라운드") as HTMLInputElement;
+      const untilInput = screen.getByLabelText("거실 퇴장 라운드") as HTMLInputElement;
+      fireEvent.change(untilInput, { target: { value: "2" } });
+      fireEvent.blur(untilInput);
+      updateLocationMutateMock.mockClear();
+      fireEvent.change(fromInput, { target: { value: "5" } });
+      fireEvent.blur(fromInput);
+      expect(updateLocationMutateMock).not.toHaveBeenCalled();
+      expect(toastError).toHaveBeenCalledWith(
+        "등장 라운드는 퇴장 라운드보다 클 수 없습니다",
+      );
+    });
+
+    it("값을 비우면 from_round 가 null 로 저장된다", () => {
+      useEditorLocationsMock.mockReturnValue({
+        data: [
+          { ...mockLocations[0], from_round: 2, until_round: 5 },
+          ...mockLocations.slice(1),
+        ],
+        isLoading: false,
+      });
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      fireEvent.click(screen.getByText("저택 1층"));
+      const fromInput = screen.getByLabelText("거실 등장 라운드") as HTMLInputElement;
+      fireEvent.change(fromInput, { target: { value: "" } });
+      fireEvent.blur(fromInput);
+      expect(updateLocationMutateMock).toHaveBeenCalledOnce();
+      const [payload] = updateLocationMutateMock.mock.calls[0] as [
+        { body: Record<string, unknown> },
+      ];
+      expect(payload.body.from_round).toBeNull();
+      expect(payload.body.until_round).toBe(5);
     });
   });
 });

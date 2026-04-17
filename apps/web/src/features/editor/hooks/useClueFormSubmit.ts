@@ -30,6 +30,8 @@ export interface ClueSubmitBody {
   use_effect?: string;
   use_target?: string;
   use_consumed?: boolean;
+  reveal_round?: number | null;
+  hide_round?: number | null;
 }
 
 export interface UseClueFormSubmitOptions {

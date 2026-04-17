@@ -10,6 +10,7 @@ import { LocationRow } from './LocationRow';
 // ---------------------------------------------------------------------------
 
 interface LocationDetailPanelProps {
+  themeId: string;
   selectedMap: MapResponse | null;
   mapLocations: LocationResponse[];
   addingLocation: boolean;
@@ -25,6 +26,7 @@ interface LocationDetailPanelProps {
 // ---------------------------------------------------------------------------
 
 export function LocationDetailPanel({
+  themeId,
   selectedMap,
   mapLocations,
   addingLocation,
@@ -82,6 +84,7 @@ export function LocationDetailPanel({
           {mapLocations.map((loc) => (
             <LocationRow
               key={loc.id}
+              themeId={themeId}
               location={loc}
               onDelete={onDeleteLocation}
             />
