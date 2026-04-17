@@ -1,11 +1,11 @@
 # Phase 19 감사 — 체크리스트
 
 <!-- STATUS-START -->
-**Active**: Phase 19 Platform Deep Audit — shadow plan (W0 작성 중)
-**Wave**: W0
-**Task**: 신규 에이전트·스킬·설계 파일 작성
-**State**: drafting
-**Blockers**: Phase 18.8 observation 완료 전까지 active 전환 금지
+**Active**: Phase 19 Platform Deep Audit — W1 완료, W2 대기
+**Wave**: W1 → W2
+**Task**: W1 Foundation 산출물 4종 완료, W2 Specialists 6 병렬 시작 예정
+**State**: w1-complete
+**Blockers**: 없음 (18.8 observation은 별도 백그라운드)
 **Last updated**: 2026-04-17
 <!-- STATUS-END -->
 
@@ -22,16 +22,16 @@
 - [ ] Phase 18.8 observation 완료 대기 (3일 nightly + alert 도달)
 - [ ] `/plan-start docs/plans/2026-04-17-platform-deep-audit/` (Phase 18.8 finish 후)
 
-## W1 — Foundation (병렬 3)
+## W1 — Foundation (병렬 3) ✅
 
-> 18.8 finish 이후 실행
+> 18.8 observation 기간 병렬 실행 (새 브랜치 `chore/phase-19-audit-w1`).
 
-- [ ] docs-navigator: `refs/shared/baseline.md` 작성 (wc -l, 테스트 수, 커버리지, 모듈 수, 미해결 Phase 후속)
-- [ ] docs-navigator: `refs/shared/severity-rubric.md` 확정 (P0/P1/P2 예시 포함)
-- [ ] docs-navigator: QMD coverage 검증 (mmp-plans · mmp-memory · mmp-specs 컬렉션에서 핵심 문서 6건 hit)
-- [ ] module-architect: 29개 모듈 인벤토리 및 `BaseModule`/`Factory`/`PhaseReactor`/`ConfigSchema` 준수 매트릭스
-- [ ] test-engineer: 현재 커버리지·skip·flaky·fixture 현황 snapshot
-- [ ] W1 gate: `scope-matrix · baseline · severity-rubric` 3 파일 존재 + `ls refs/shared/` 확인 + 모듈 ≥28개 열거
+- [x] docs-navigator: `refs/shared/baseline.md` (129줄) — Go 199 파일/38,284줄, Frontend 331/35,745, 500+ 초과 10, 400+ 초과 3, 테스트 988/108/12, Phase 후속 39건
+- [x] docs-navigator: `refs/shared/severity-rubric.md` (76줄) — P0/P1/P2 각 실사례 3건 + 경계 4건 + 9영역 P0 시드
+- [x] docs-navigator: QMD coverage 검증 — 6쿼리 중 search 2 hit + vector_search 보강 6/6
+- [x] module-architect: `refs/shared/module-inventory.md` (109줄) — 33 모듈 표 + 준수 비율 (engine.Module 100% / ConfigSchema 67% / PlayerAwareModule 0%)
+- [x] test-engineer: `refs/shared/test-baseline.md` (166줄) — Go 988/44.6%, Vitest 108/1034, E2E 12/68, skip 35, flaky 0, 0% 패키지 9건
+- [x] W1 gate: 3 파일 존재 ✅ + 모듈 33개 ≥28 ✅
 
 ## W2 — Specialists (병렬 6)
 
