@@ -25,18 +25,28 @@ func (noopAuditLogger) Log(context.Context, uuid.UUID, string, json.RawMessage) 
 //
 // Thread-safety contract: PhaseEngine is NOT thread-safe.
 // The session actor is the ONLY authorised caller.
+//
+// currentRound (Phase 20 PR-5) is the monotonic round counter. It starts at 1
+// on Start and increments every AdvancePhase — modules consult CurrentRound()
+// or subscribe to `phase:entered` (payload includes `round`) to gate clue /
+// location visibility against reveal_round/hide_round ranges.
 type PhaseEngine struct {
-	sessionID uuid.UUID
-	modules   []Module          // ordered module list
-	moduleMap map[string]Module // name → module for lookups
-	eventBus  *EventBus
-	audit     AuditLogger
-	logger    Logger
-	phases    []PhaseDefinition
-	current   int // index into phases, -1 = not started
-	started   bool
-	stopped   bool
+	sessionID    uuid.UUID
+	modules      []Module          // ordered module list
+	moduleMap    map[string]Module // name → module for lookups
+	eventBus     *EventBus
+	audit        AuditLogger
+	logger       Logger
+	phases       []PhaseDefinition
+	current      int // index into phases, -1 = not started
+	currentRound int32
+	started      bool
+	stopped      bool
 }
+
+// CurrentRound returns the active round index (1-based). Returns 0 before
+// Start and after the final AdvancePhase has exhausted the phase list.
+func (e *PhaseEngine) CurrentRound() int32 { return e.currentRound }
 
 // NewPhaseEngine constructs a PhaseEngine for one session.
 func NewPhaseEngine(
@@ -93,6 +103,7 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 
 	e.started = true
 	e.current = 0
+	e.currentRound = 1
 
 	e.auditEvent(ctx, "engine.started", map[string]any{
 		"sessionId":  e.sessionID.String(),
@@ -165,10 +176,13 @@ func (e *PhaseEngine) AdvancePhase(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
+	e.currentRound++
+
 	newPhase := e.phases[e.current]
 	e.auditEvent(ctx, "phase.advanced", map[string]any{
-		"from": oldPhase.ID,
-		"to":   newPhase.ID,
+		"from":  oldPhase.ID,
+		"to":    newPhase.ID,
+		"round": e.currentRound,
 	})
 
 	e.eventBus.Publish(Event{

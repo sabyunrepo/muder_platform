@@ -300,6 +300,81 @@ func TestCombinationModule_BuildState(t *testing.T) {
 	}
 }
 
+// Phase 20 PR-5: GroupID shortcut — clients can pass `group_id` to match
+// a specific clue_edge_groups row directly instead of relying on InputIDs
+// set equality.
+func TestCombinationModule_HandleMessage_Combine_ByGroupID(t *testing.T) {
+	m := NewCombinationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	playerID := uuid.New()
+	m.mu.Lock()
+	m.collected[playerID] = map[string]bool{"knife": true, "glove": true}
+	m.mu.Unlock()
+
+	err := m.HandleMessage(context.Background(), playerID,
+		"combine", json.RawMessage(`{"group_id":"combo1","evidence_ids":["knife","glove"]}`))
+	if err != nil {
+		t.Fatalf("combine by group_id: %v", err)
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if len(m.completed[playerID]) != 1 || m.completed[playerID][0] != "combo1" {
+		t.Fatalf("expected combo1 completed, got %v", m.completed[playerID])
+	}
+}
+
+// Phase 20 PR-5: GroupID with mismatched inputs must be rejected (protect
+// against clients sending a group id whose InputIDs don't match evidence_ids).
+func TestCombinationModule_HandleMessage_Combine_GroupIDMismatch(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	playerID := uuid.New()
+	m.mu.Lock()
+	m.collected[playerID] = map[string]bool{"note": true}
+	m.mu.Unlock()
+
+	// combo1 = knife+glove, but we send note → must reject.
+	err := m.HandleMessage(context.Background(), playerID,
+		"combine", json.RawMessage(`{"group_id":"combo1","evidence_ids":["note"]}`))
+	if err == nil {
+		t.Fatal("expected mismatch error")
+	}
+}
+
+// Phase 20 PR-5: after a successful combine, the derived output clue lands
+// in the `crafted` set. A subsequent graph.Resolve through checkNewCombos
+// should see it as available — verifying the crafted wiring is live.
+func TestCombinationModule_CraftedSetSurfacesOutput(t *testing.T) {
+	m := NewCombinationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	playerID := uuid.New()
+	m.mu.Lock()
+	m.collected[playerID] = map[string]bool{"knife": true, "glove": true}
+	m.mu.Unlock()
+
+	if err := m.HandleMessage(context.Background(), playerID,
+		"combine", json.RawMessage(`{"evidence_ids":["knife","glove"]}`)); err != nil {
+		t.Fatalf("combine: %v", err)
+	}
+
+	// After combine, derived holds weapon_set. craftedAsClueMap should
+	// reflect it.
+	m.mu.RLock()
+	crafted := m.craftedAsClueMap(playerID)
+	m.mu.RUnlock()
+	if !crafted["weapon_set"] {
+		t.Fatalf("expected crafted[weapon_set]=true, got %v", crafted)
+	}
+}
+
 func TestCombinationModule_Cleanup(t *testing.T) {
 	m := NewCombinationModule()
 	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {

@@ -16,6 +16,11 @@ func init() {
 }
 
 // CombinationDef describes a single evidence combination recipe.
+//
+// Phase 20 PR-5: ID doubles as the `clue_edge_groups.id` identifier when the
+// editor sources a CRAFT-trigger group. Clients MAY pass GroupID in a
+// `combine` payload to match directly — otherwise findCombo falls back to
+// matching the InputIDs set for backward compatibility.
 type CombinationDef struct {
 	ID           string   `json:"id"`
 	InputIDs     []string `json:"inputIds"`
@@ -95,10 +100,14 @@ func (m *CombinationModule) Init(_ context.Context, deps engine.ModuleDeps, conf
 			prereqs = append(prereqs, clue.ClueID(inputID))
 		}
 		if len(prereqs) > 0 {
+			// Phase 20 PR-5: mark dependency as CRAFT so graph.Resolve does
+			// NOT auto-unlock the output when prereqs are present. The output
+			// is promoted to the `crafted` set only by a valid combine event.
 			if err := m.graph.AddDependency(clue.Dependency{
 				ClueID:        clue.ClueID(c.OutputClueID),
 				Prerequisites: prereqs,
 				Mode:          clue.ModeAND,
+				Trigger:       clue.TriggerCRAFT,
 			}); err != nil {
 				return fmt.Errorf("combination: graph dep %q: %w", c.OutputClueID, err)
 			}
@@ -142,12 +151,15 @@ func (m *CombinationModule) Init(_ context.Context, deps engine.ModuleDeps, conf
 func (m *CombinationModule) checkNewCombos(playerID uuid.UUID) {
 	m.mu.RLock()
 	discovered := m.collectedAsClueMap(playerID)
+	crafted := m.craftedAsClueMap(playerID)
 	m.mu.RUnlock()
 
-	// Phase 20 PR-4: Resolve now takes a `crafted` set. Wiring it through is
-	// PR-5's job; until then we pass nil so CRAFT-trigger targets stay hidden
-	// and AUTO dependencies behave identically to pre-Phase-20.
-	available := m.graph.Resolve(discovered, nil)
+	// Phase 20 PR-5: `crafted` is the set of combination outputs already
+	// unlocked by a successful combine event. Graph.Resolve returns the union
+	// of discovered + crafted + any AUTO-trigger targets whose prerequisites
+	// fall within that union — CRAFT-trigger outputs stay hidden until they
+	// transition into `crafted` via handleCombine.
+	available := m.graph.Resolve(discovered, crafted)
 	for _, c := range available {
 		// Notify only newly-resolvable output clues (those that have prerequisites).
 		if _, hasDep := m.graph.DependenciesOf(c.ID); hasDep {
@@ -170,6 +182,17 @@ func (m *CombinationModule) collectedAsClueMap(playerID uuid.UUID) map[clue.Clue
 	return result
 }
 
+// craftedAsClueMap returns the player's derived (combine-unlocked) clue IDs
+// as a clue.ClueID set. Used by graph.Resolve to honour CRAFT triggers.
+func (m *CombinationModule) craftedAsClueMap(playerID uuid.UUID) map[clue.ClueID]bool {
+	ids := m.derived[playerID]
+	result := make(map[clue.ClueID]bool, len(ids))
+	for _, id := range ids {
+		result[clue.ClueID(id)] = true
+	}
+	return result
+}
+
 // HandleMessage processes player actions routed to this module.
 func (m *CombinationModule) HandleMessage(ctx context.Context, playerID uuid.UUID, msgType string, payload json.RawMessage) error {
 	switch msgType {
@@ -182,6 +205,10 @@ func (m *CombinationModule) HandleMessage(ctx context.Context, playerID uuid.UUI
 
 type combinePayload struct {
 	EvidenceIDs []string `json:"evidence_ids"`
+	// GroupID (Phase 20 PR-5) lets the editor-driven client match a specific
+	// clue_edge_groups row directly instead of relying on set equality over
+	// InputIDs. Optional: empty string falls back to the legacy set match.
+	GroupID string `json:"group_id,omitempty"`
 }
 
 func (m *CombinationModule) handleCombine(_ context.Context, playerID uuid.UUID, payload json.RawMessage) error {
@@ -197,7 +224,7 @@ func (m *CombinationModule) handleCombine(_ context.Context, playerID uuid.UUID,
 	defer m.mu.Unlock()
 
 	// Find a matching combination def.
-	combo, err := m.findCombo(p.EvidenceIDs)
+	combo, err := m.findCombo(p)
 	if err != nil {
 		return err
 	}
@@ -234,28 +261,49 @@ func (m *CombinationModule) handleCombine(_ context.Context, playerID uuid.UUID,
 	return nil
 }
 
-// findCombo finds a CombinationDef whose InputIDs exactly match the provided set.
-func (m *CombinationModule) findCombo(evidenceIDs []string) (CombinationDef, error) {
-	inputSet := make(map[string]bool, len(evidenceIDs))
-	for _, id := range evidenceIDs {
-		inputSet[id] = true
+// findCombo resolves a CombinationDef for a combine payload.
+//
+// Match order (Phase 20 PR-5):
+//  1. If p.GroupID is set, look up comboByID directly — the group_id shortcut
+//     is O(1) and authoritative when the editor-sourced identifier is known.
+//  2. Otherwise fall back to InputIDs set equality for backward compatibility
+//     with legacy clients that do not carry GroupID yet.
+func (m *CombinationModule) findCombo(p combinePayload) (CombinationDef, error) {
+	if p.GroupID != "" {
+		combo, ok := m.comboByID[p.GroupID]
+		if !ok {
+			return CombinationDef{}, fmt.Errorf("combination: unknown group_id %q", p.GroupID)
+		}
+		if !inputIDsMatch(combo.InputIDs, p.EvidenceIDs) {
+			return CombinationDef{}, fmt.Errorf("combination: evidence_ids do not match group %q", p.GroupID)
+		}
+		return combo, nil
 	}
+
 	for _, c := range m.comboByID {
-		if len(c.InputIDs) != len(evidenceIDs) {
-			continue
-		}
-		match := true
-		for _, id := range c.InputIDs {
-			if !inputSet[id] {
-				match = false
-				break
-			}
-		}
-		if match {
+		if inputIDsMatch(c.InputIDs, p.EvidenceIDs) {
 			return c, nil
 		}
 	}
 	return CombinationDef{}, fmt.Errorf("combination: no combination matches the provided evidence")
+}
+
+// inputIDsMatch reports whether two ID slices carry exactly the same set
+// (order-insensitive, size-sensitive).
+func inputIDsMatch(want, got []string) bool {
+	if len(want) != len(got) {
+		return false
+	}
+	set := make(map[string]bool, len(got))
+	for _, id := range got {
+		set[id] = true
+	}
+	for _, id := range want {
+		if !set[id] {
+			return false
+		}
+	}
+	return true
 }
 
 func (m *CombinationModule) hasCompleted(playerID uuid.UUID, comboID string) bool {
@@ -331,7 +379,7 @@ func (m *CombinationModule) Validate(_ context.Context, event engine.GameEvent, 
 		return fmt.Errorf("combination: invalid payload: %w", err)
 	}
 	m.mu.RLock()
-	_, err := m.findCombo(p.EvidenceIDs)
+	_, err := m.findCombo(p)
 	m.mu.RUnlock()
 	return err
 }
@@ -346,7 +394,7 @@ func (m *CombinationModule) Apply(_ context.Context, event engine.GameEvent, _ *
 		return fmt.Errorf("combination: apply: %w", err)
 	}
 	m.mu.Lock()
-	combo, err := m.findCombo(p.EvidenceIDs)
+	combo, err := m.findCombo(p)
 	if err != nil {
 		m.mu.Unlock()
 		return err

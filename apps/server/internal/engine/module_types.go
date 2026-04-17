@@ -19,10 +19,16 @@ type GameEvent struct {
 
 // GameState holds the full serialisable state of a running game session.
 // Each Module contributes a slice of raw JSON keyed by its ID.
+//
+// CurrentRound (Phase 20 PR-5) is the game's monotonic round counter — it
+// starts at 1 when the engine starts and increments once per AdvancePhase
+// call. Modules consult this to filter clue/location visibility against
+// reveal_round/hide_round and from_round/until_round.
 type GameState struct {
-	SessionID uuid.UUID                  `json:"sessionId"`
-	Phase     string                     `json:"phase"`
-	Modules   map[string]json.RawMessage `json:"modules,omitempty"`
+	SessionID    uuid.UUID                  `json:"sessionId"`
+	Phase        string                     `json:"phase"`
+	CurrentRound int32                      `json:"currentRound"`
+	Modules      map[string]json.RawMessage `json:"modules,omitempty"`
 }
 
 // Phase is a named step in the game flow (e.g. "introduction", "voting").
