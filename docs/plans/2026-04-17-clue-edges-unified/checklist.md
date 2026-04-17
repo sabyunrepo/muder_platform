@@ -1,0 +1,114 @@
+# Phase 20 — Checklist
+
+> 6 PR · 4 Wave. design.md 참조.
+
+## W1 — PR-1 clue_type 제거
+
+**Branch**: `feat/phase-20/PR-1-remove-clue-type`
+**Depends**: —
+**Scope**: `apps/server/db/migrations/00023_remove_clue_type.sql`, `apps/server/db/seed/metaphor.sql`, `apps/server/db/queries/editor.sql`, `apps/server/internal/db/editor.sql.go` (sqlc 재생성), `apps/server/internal/domain/editor/{types.go,service_clue.go,image_service.go}`, `apps/server/internal/domain/editor/clue_relation_test_fixture_test.go`, `apps/web/src/features/editor/api.ts`, `apps/web/src/features/editor/components/{ClueForm.tsx,ClueFormAdvancedFields.tsx,ClueCard.tsx,ClueListRow.tsx}`, `apps/web/src/features/editor/hooks/useClueFormSubmit.ts`, `apps/web/src/mocks/handlers/clue.ts`, `apps/web/src/features/editor/components/__tests__/*`
+
+- [ ] migration 00023 작성 (`ALTER TABLE theme_clues DROP COLUMN clue_type`)
+- [ ] seed/metaphor.sql 에서 clue_type 컬럼 참조 5군데 제거
+- [ ] db/queries/editor.sql 에서 clue_type 컬럼 제거 후 `make sqlc` (또는 `go generate`) 재생성
+- [ ] types.go: `CreateClueRequest/UpdateClueRequest/ClueResponse`에서 `ClueType` 삭제
+- [ ] service_clue.go, image_service.go: ClueType 매핑 삭제
+- [ ] clue_relation_test_fixture_test.go: `ClueType: "normal"` 삭제
+- [ ] 프론트 api.ts: `ClueResponse.clue_type` 삭제, 생성/수정 payload 타입에서 제거
+- [ ] ClueForm.tsx: `clueType/setClueType` state 삭제, ClueFormAdvancedFields 전달 제거
+- [ ] ClueFormAdvancedFields.tsx: clueType/level/sortOrder props 삭제 (이전 PoC 수정 완결)
+- [ ] useClueFormSubmit.ts: payload 타입에서 clue_type 제거
+- [ ] ClueCard.tsx, ClueListRow.tsx: clue_type 렌더 삭제 (다음 PR에서 라운드 배지로 대체)
+- [ ] mocks/handlers/clue.ts: `clue_type: "normal"` 픽스처 삭제
+- [ ] 관련 테스트 갱신: ClueForm.test, CluesTab.test, LocationClueAssignPanel.test, editorClueApi.test
+- [ ] `make lint` + `make test` 통과 확인
+- [ ] PR 생성 → 리뷰 → 머지
+
+## W2 — PR-2 라운드 스케줄 (컬럼+API+폼)
+
+**Branch**: `feat/phase-20/PR-2-round-schedule`
+**Depends**: PR-1
+
+- [ ] migration 00025 (theme_clues.reveal_round/hide_round + theme_locations.from_round/until_round)
+- [ ] sqlc 재생성
+- [ ] types.go: 단서·장소 DTO에 round 필드 추가 (pointer nullable)
+- [ ] service_clue.go, service_location.go: round 필드 매핑
+- [ ] 프론트 api.ts: 단서·장소 응답 타입 확장, PATCH/POST payload에 round 포함
+- [ ] ClueForm.tsx: revealRound/hideRound state + AdvancedFields 폼
+- [ ] ClueFormAdvancedFields.tsx: localStorage 기반 PoC 제거, 부모 controlled 전환
+- [ ] LocationRow.tsx: localStorage 제거, useUpdateLocation 으로 저장
+- [ ] 서비스 레이어 의미적 검증: `reveal_round > hide_round` 거부
+- [ ] 테스트: clue/location handler round 필드 왕복, UI 입력→PATCH 연동
+- [ ] `make lint` + `make test` 통과
+- [ ] PR 생성 → 머지
+
+## W2 — PR-3 라운드 배지 노출 (병렬)
+
+**Branch**: `feat/phase-20/PR-3-round-badge`
+**Depends**: PR-1
+
+- [ ] `apps/web/src/features/editor/utils/roundFormat.ts` 신규 (formatRoundRange)
+- [ ] ClueCard.tsx: 기존 clue_type/Lv 줄 → 라운드 배지 (없으면 생략)
+- [ ] ClueListRow.tsx: 타입 텍스트 → 라운드 배지
+- [ ] 단위 테스트: ClueCard/ClueListRow 렌더 스냅샷
+- [ ] PR 생성 → 머지 (PR-2 payload 타입에 의존하므로 PR-2 선행 merged 후 brown-bag)
+
+## W3 — PR-4 통합 엣지 스키마
+
+**Branch**: `feat/phase-20/PR-4-unified-edges`
+**Depends**: PR-1
+
+- [ ] migration 00024 (clue_relations drop + clue_edge_groups + clue_edge_members + CHECK)
+- [ ] db/queries/editor.sql: clue_relations 쿼리 삭제, 신규 edge_groups 쿼리 추가 (GetByTheme, UpsertGroup, DeleteGroup, ListMembersByGroup)
+- [ ] sqlc 재생성
+- [ ] types.go: `ClueEdgeGroupRequest/Response` 추가
+- [ ] clue_edge_service.go 신규 (기존 clue_relation_service.go 대체)
+- [ ] clue_edge_handler.go 신규, 엔드포인트 `GET/PUT /v1/editor/themes/:id/clue-edges`
+- [ ] 구 clue_relation_* 파일 삭제
+- [ ] internal/clue/graph.go: `Dependency.Trigger` 필드 + `Resolve(discovered, crafted)` 시그니처 확장
+- [ ] 사이클·CRAFT+OR 차단·500건 상한
+- [ ] apperror: `EDGE_CYCLE_DETECTED`, `EDGE_INVALID_CRAFT_OR`
+- [ ] 테스트: clue_edge_handler_test, graph_test (Trigger), visibility_test(round) 재작성
+- [ ] `make lint` + `make test`
+- [ ] PR 생성 → 머지
+
+## W3 — PR-5 CombinationModule 리팩터
+
+**Branch**: `feat/phase-20/PR-5-combination-unified`
+**Depends**: PR-4
+
+- [ ] combination.go Init: `clue_edge_groups` (trigger=CRAFT) 를 source로 전환
+- [ ] findCombo: group_id 매칭 기반
+- [ ] WS `combine {evidence_ids}` 입력/출력 이벤트 이름 유지 (호환성)
+- [ ] engine phase 전환 시 `state.CurrentRound++` 공급
+- [ ] clue.Resolve·visibility에 round 필터 추가 (`reveal_round <= current <= hide_round`)
+- [ ] 테스트: combination_test mock 교체, round 경계 케이스, snapshot restore 호환
+- [ ] PR 생성 → 머지
+
+## W4 — PR-6 PoC → 정식 프론트 승격 + E2E
+
+**Branch**: `feat/phase-20/PR-6-edges-ui-promote`
+**Depends**: PR-2, PR-4
+
+- [ ] `components/clues/poc/` → `components/clues/edges/` 이동 + 파일 rename (PoC→정식)
+- [ ] `fixtures.ts`, `roundStorage.ts` 삭제
+- [ ] ClueRelationGraph.tsx wrapper 해체, CluesTab에서 ClueEdgeGraph 직접 import
+- [ ] `clueEdgeApi.ts` 신규 (useClueEdges/useSaveClueEdges, editor.ts react-query)
+- [ ] 구 `clueRelationApi.ts` 삭제
+- [ ] `useClueEdgeData.ts` — fixtures 제거, API 연동, optimistic + CYCLE 롤백 유지, autoSave 1s debounce
+- [ ] ClueEdgeNode: roundLabel 데이터 API 연동
+- [ ] mount 시 `localStorage.removeItem("mmp-poc-rounds")` 1회
+- [ ] E2E `clue-edges-stubbed.spec.ts` (MSW): 팔레트 드래그→연결→CRAFT 전환→저장→리로드
+- [ ] 구 `clue-relation-stubbed.spec.ts` 업데이트/삭제
+- [ ] 전 테스트 + E2E 통과
+- [ ] PR 생성 → 머지
+
+---
+
+## 통합 verification (Phase 종료 조건 체크)
+
+- [ ] `rg -n "ClueType|clue_type" apps/` → 0 매치 (예상)
+- [ ] 에디터 라운드 편집 → 새로고침 → 서버에서 복원 확인
+- [ ] 관계 그래프 통합 UI: AUTO/CRAFT 3종 엣지 + 드래그 + Inspector
+- [ ] 실게임 세션 round 필터 동작
+- [ ] Vitest 전체 green, Go test race green, Playwright E2E green
