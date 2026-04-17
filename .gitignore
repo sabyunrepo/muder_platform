@@ -56,8 +56,10 @@ Thumbs.db
 .worktrees/
 .claude/worktrees/
 
-# ─── plan-autopilot (local runtime) ───────────────────
+# ─── plan-autopilot / mmp-pilot (local runtime) ──────
 .claude/autopilot-state.json
+.claude/run-lock.json
+.claude/runs/
 .pr-body.tmp
 
 # ─── Go build artifacts ───────────────────────────────
