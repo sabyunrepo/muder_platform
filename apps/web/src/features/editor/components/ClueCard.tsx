@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Trash2, Image } from 'lucide-react';
 import type { ClueResponse } from '@/features/editor/api';
+import { formatRoundRange } from '@/features/editor/utils/roundFormat';
 import { ImageUpload } from './ImageUpload';
 
 // ---------------------------------------------------------------------------
@@ -17,6 +18,7 @@ interface ClueCardProps {
 
 export function ClueCard({ clue, themeId, onEdit, onDelete, onImageUploaded }: ClueCardProps) {
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const roundLabel = formatRoundRange(clue.reveal_round, clue.hide_round);
 
   return (
     <div className="group rounded-sm border border-slate-800 bg-slate-900 transition-all hover:border-slate-700">
@@ -77,9 +79,16 @@ export function ClueCard({ clue, themeId, onEdit, onDelete, onImageUploaded }: C
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-2">
-            <span className="text-[11px] text-slate-600">Lv.{clue.level}</span>
-          </div>
+          {roundLabel && (
+            <div className="mt-0.5 flex items-center gap-2">
+              <span
+                aria-label="라운드 범위"
+                className="inline-flex items-center rounded-sm border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-300"
+              >
+                {roundLabel}
+              </span>
+            </div>
+          )}
           {clue.description && (
             <p className="mt-1 line-clamp-2 text-xs text-slate-500">{clue.description}</p>
           )}

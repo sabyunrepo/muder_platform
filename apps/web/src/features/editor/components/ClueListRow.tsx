@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import type { ClueResponse } from '@/features/editor/api';
+import { formatRoundRange } from '@/features/editor/utils/roundFormat';
 
 // ---------------------------------------------------------------------------
 // ClueListRow
@@ -12,6 +13,8 @@ interface ClueListRowProps {
 }
 
 export function ClueListRow({ clue, onEdit, onDelete }: ClueListRowProps) {
+  const roundLabel = formatRoundRange(clue.reveal_round, clue.hide_round);
+
   return (
     <div
       role="button"
@@ -23,8 +26,15 @@ export function ClueListRow({ clue, onEdit, onDelete }: ClueListRowProps) {
       {/* Name */}
       <span className="flex-1 truncate text-sm font-medium text-slate-200">{clue.name}</span>
 
-      {/* Level */}
-      <span className="shrink-0 text-[11px] text-slate-600">Lv.{clue.level}</span>
+      {/* Round range badge — hidden when unbounded on both sides */}
+      {roundLabel && (
+        <span
+          aria-label="라운드 범위"
+          className="shrink-0 rounded-sm border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-300"
+        >
+          {roundLabel}
+        </span>
+      )}
 
       {/* Common badge */}
       {clue.is_common && (
