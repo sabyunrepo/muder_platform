@@ -1,0 +1,151 @@
+# Phase 19 Backlog — PR 후보 + Wave 제안
+
+> **생성**: W3c Synthesis (2026-04-17)
+> **기반**: 9 audit drafts + advisor-consultations.md 8 cross-cutting
+> **포맷**: `/plan-new` 입력 호환
+
+## PR 후보 (9건 — PR-0 추가)
+
+### PR-0: MEMORY Canonical Migration — user home → repo
+- **Scope**: `memory/` (repo), `/Users/sabyun/.claude/projects/-Users-sabyun-goinfre-muder-platform/memory/` (user home, source), `MEMORY.md` 인덱스 갱신, `CLAUDE.md` QMD 컬렉션 메모 업데이트
+- **SSOT 결정 (사용자 확정)**: **Repo `memory/`가 canonical**. user home 34 파일 중 현재 repo에 없는 것들을 선별 복원. 이후 user home은 폐기(또는 read-only archive).
+- **Depends on**: 없음 (선행 필수 — Phase 19 모든 PR이 `memory/` 기준으로 작업)
+- **Rationale**: C-8 / F-docs-5. 2중화 해소. 팀 공유 원칙 복원. Phase 18.6 progress 등 repo 누락분 복구.
+- **Size**: S (≤4h) — 단순 파일 이동 + 인덱스 정리
+- **Risk**: Low
+- **Sub-tasks**:
+  1. user home 34 파일 ↔ repo `memory/` 4 파일 diff
+  2. 누락된 phase progress·feedback·reference 파일 복원 (최소 Phase 17.5~18.8 9건)
+  3. MEMORY.md 인덱스 갱신 (sabyun/.claude/projects 버전 기준)
+  4. QMD `mmp-memory` 컬렉션 path 변경 (`.claude/projects/...` → repo `memory/`)
+  5. user home archive 또는 read-only 처리
+
+
+
+### PR-1: WS Contract SSOT — **서버(envelope_catalog) 기준**, 프론트/MSW 맞춤
+- **Scope**: `apps/server/internal/ws/envelope_catalog.go` (SSOT), `apps/server/internal/ws/message.go`, `apps/server/internal/session/event_mapping.go`, `apps/web/src/mocks/handlers/**` (서버에 맞춤), `apps/web/src/stores/gameMessageHandlers.ts` (enum 재생성), `packages/shared/src/ws/types.ts` (codegen), `packages/ws-client/src/client.ts`, `.github/workflows/` (contract gate)
+- **SSOT 결정 (사용자 확정)**: **서버(envelope_catalog.go)가 source of truth**. 프론트·MSW는 서버에 맞춤. 프론트 `WsEventType` enum은 envelope_catalog에서 **codegen**으로 자동 생성.
+- **Depends on**: 없음 (먼저 실행)
+- **Rationale**: C-1 / F-ws-1·2·3·4·5·6·7·12. 3자 일치율 <4%, Phase 17.5~18.6 반복 회귀 근절.
+- **Size**: L (>2d)
+- **Risk**: Med (enum codegen이 수동 변경 리스크 제거)
+
+### PR-2: PlayerAwareModule Mandatory — 엔진 레벨 강제 + crime_scene 3 구현 + 테스트 백필
+- **Scope**: `apps/server/internal/module/crime_scene/{evidence,location,combination}/**`, `apps/server/internal/module/decision/{accusation,hidden_mission,voting}/**`, `apps/server/internal/engine/types.go`, `apps/server/internal/engine/snapshot_redaction_test.go`
+- **Depends on**: 없음 (병렬 가능)
+- **Rationale**: C-2 / F-module-1 P0 + F-sec-2 P0. Phase 18.1 B-2 redaction 반쪽 상태 해소. 25 모듈 fallback → 필수 구현 + 컴파일 타임 assertion + boot-fail gate.
+- **Size**: L (>2d)
+- **Risk**: Med (서버만, 테스트 확장)
+
+### PR-3: HTTP Error Standardization — http.Error → apperror + linter
+- **Scope**: `apps/server/internal/seo/**`, `apps/server/internal/infra/storage/local/**`, `apps/server/internal/ws/upgrade*`, `apps/server/internal/apperror/**`, `.golangci.yml` (depguard 룰)
+- **Depends on**: 없음
+- **Rationale**: C-3 / F-sec-1 P0 + F-go-1 P1(boundary→P0). 12 호출 지점 교체 + 재발 방지 컴파일 gate.
+- **Size**: M (≤2d)
+- **Risk**: Low
+
+### PR-4: File Size Refactor Wave — Go 10 + TS 3 파일 분할
+- **Scope**: `apps/server/internal/domain/social/service.go` (759→분할), `apps/server/internal/editor/handler.go` (26 endpoint 분할), `apps/server/internal/ws/hub.go` (lifecycle/broadcast 분리), `apps/server/internal/module/{progression/reading,decision/voting,decision/hidden_mission,cluedist/trade_clue,decision/accusation,crime_scene/combination}/**`, `apps/web/src/features/game/components/GameChat.tsx`, `apps/web/src/features/editor/api.ts`, `apps/web/src/features/social/components/FriendsList.tsx`
+- **Depends on**: PR-1 (WS envelope 영향받는 파일)
+- **Rationale**: C-4 / F-go-3·4 + F-react-1·3·4. CLAUDE.md hard limit 누적 위반 10+ 건.
+- **Size**: L (>2d)
+- **Risk**: Med (import 경로 대량 변경)
+
+### PR-5: Coverage Gate + mockgen 재도입 + 0% 패키지 전략
+- **Scope**: `.github/workflows/ci.yml`, `apps/web/vitest.config.ts`, `apps/server/internal/infra/otel/**` (테스트 추가), `apps/server/internal/infra/sentry/**`, `apps/server/internal/infra/storage/**`, `apps/server/cmd/server/**`, `apps/server/internal/db/**`, `codecov.yml`, 모든 Service 인터페이스 `//go:generate mockgen` 디렉티브 추가
+- **Depends on**: PR-3 (apperror 전환 후 측정 안정)
+- **Rationale**: C-5 / F-test-1·5 + F-perf-1 + F-test-4. (a) Go 75% warn-only → hard fail, (b) Frontend threshold 도입, (c) 0% 9 패키지 중 infra 3건 테스트 작성 / cmd/internal "intentionally excluded" 선언, (d) **mockgen 재도입 (사용자 결정): Service 인터페이스마다 `go:generate mockgen` 디렉티브, CI에서 `go generate ./...` diff 체크 gate**.
+- **Size**: L (>2d) — mockgen 도입으로 상향
+- **Risk**: High (머지 차단 리스크 + mockgen 도입이 기존 unit 테스트 대부분 재작성 필요)
+
+### PR-6: Auditlog Expansion — schema + auth/admin/review 배선
+- **Scope**: `apps/server/internal/db/migrations/**` (schema 변경: session_id NULLABLE + user_id column), `apps/server/internal/auditlog/**`, `apps/server/internal/domain/auth/service.go`, `apps/server/internal/admin/**`, `apps/server/internal/review/**`, 관련 테스트
+- **Depends on**: 없음
+- **Rationale**: C-6 / F-sec-4 P0. auth/admin/review handler 6+ 곳 auditlog.Log 주입, schema 확장, 단위 테스트.
+- **Size**: L (>2d)
+- **Risk**: Med (migration)
+
+### PR-7: Zustand Action Unification — applyWsEvent + .getState() 제거
+- **Scope**: `apps/web/src/stores/gameSessionStore.ts`, `apps/web/src/stores/gameMessageHandlers.ts`, `apps/web/src/hooks/useGameSync.ts`, `apps/web/src/stores/moduleStoreFactory.ts`, 관련 테스트
+- **Depends on**: PR-1 (envelope 표준화 후 단일 reducer 경로로 통합 가능)
+- **Rationale**: C-7 / F-react-5 + F-perf-7. Connection→Domain 이중 경로 통합, .getState() 16건 제거.
+- **Size**: M (≤2d)
+- **Risk**: Med (WS 이벤트 처리 버그 risk)
+
+### PR-8: Module Cache Isolation — Factory key sessionId namespace
+- **Scope**: `apps/web/src/stores/moduleStoreFactory.ts`, `apps/web/src/stores/gameSessionStore.ts` (resetGame 통합), 관련 테스트
+- **Depends on**: PR-7 (Zustand action unification 이후)
+- **Rationale**: C-8 / F-react-6. sessionId:moduleId 키 namespace + resetGame 연계 + dev warning. 서버 Factory 교차확인 필요(open decision).
+- **Size**: S (≤4h)
+- **Risk**: Low
+
+---
+
+## Resolved Decisions (사용자 확정 2026-04-17)
+
+1. ✅ **WS naming SSOT = 서버 기준** — `envelope_catalog.go`가 source of truth. 프론트 enum·MSW는 서버에 맞춤 + codegen으로 자동 생성. PR-1 범위에 codegen 포함.
+2. ✅ **@jittda/ui 감사 제외** — 이 프로젝트 의존성 아님(타 프로젝트 jittda-frontend-hub 전용). F-a11y-1은 감사 전제 오류로 제거. v3 실제 스택은 Tailwind 4 직접 사용.
+3. ✅ **mockgen 규약 유지 (재도입)** — CLAUDE.md 원칙대로 mockgen + testcontainers-go 사용. 현재 0건 → 재도입 CI gate 추가. PR-5 Coverage Gate에 "mockgen 도입" 서브태스크 포함.
+4. ✅ **MEMORY canonical = Repo (`memory/`)** — 사라진 user home 34 파일 중 필요한 것만 repo로 복원. Phase 19 implementation 첫 단계에서 migration 수행. 이후 MEMORY.md 인덱스 갱신 + user home `.claude/projects/...` 폐기.
+
+---
+
+## Open Decisions (None — 전부 Resolved)
+
+---
+
+## Wave 제안 (3 Wave + Wave 0, 총 9 PR)
+
+### Wave 0 — Pre-Flight (직렬 1)
+> 필수 선행. MEMORY 파편화 해소 후에야 Phase 19 전체 plan의 근거가 정돈됨.
+
+- **PR-0 MEMORY Canonical Migration** (S, Low risk) — user home → repo 복원 + QMD path 변경
+
+**Gate**: memory/ 재작성 + MEMORY.md 인덱스 갱신 + QMD reindex 완료
+
+### Wave 1 — Foundation Fixes (병렬 3)
+> 의존 없음 (PR-0 후)
+
+- **PR-1 WS Contract SSOT (서버 기준)** (L, Med) — codegen으로 수동 drift 방지
+- **PR-3 HTTP Error Standardization** (M, Low)
+- **PR-6 Auditlog Expansion** (L, Med, DB migration)
+
+**Gate**: 3 PR main 머지 + contract test CI 녹색
+
+### Wave 2 — Enforcement + Security (병렬 3)
+> Wave 1 이후 (envelope 표준 + apperror 배선 완료 후 측정)
+
+- **PR-2 PlayerAwareModule Mandatory** (L, Med) — 서버 redaction 완결
+- **PR-5 Coverage Gate Enforcement** (M, High risk) — 75%/threshold 강제
+- **PR-7 Zustand Action Unification** (M, Med) — PR-1 기반
+
+**Gate**: 커버리지 Go 70%+ · Frontend 60%+ · redaction test 전 모듈 통과
+
+### Wave 3 — Refactor + Cleanup (병렬 2)
+> Wave 1·2 이후 (envelope·coverage 안정 상태)
+
+- **PR-4 File Size Refactor Wave** (L, Med) — 13 파일 분할
+- **PR-8 Module Cache Isolation** (S, Low) — PR-7 기반
+
+**Gate**: 500+/400+ 파일 0건 · 세션 전환 E2E 테스트 추가
+
+### 독립 / 차후
+- ~~**P0 F-a11y-1** (@jittda/ui 0/278)~~ **REMOVED** — 사용자 확정: `@jittda/ui`는 이 프로젝트가 아닌 타 프로젝트(jittda-frontend-hub) 의존성. v3는 Tailwind 4 직접 사용이 정식 스택. 감사 전제 오류.
+- **P0 F-a11y-3** (outline-none 57건 focus-visible 없음): WCAG 2.4.7 실패 확정. 독립 hotfix PR.
+- **P0 F-sec-3** (voice token 평문 로그): 독립 hotfix PR (1시간 내)
+- **P2 백로그 28건**: Phase 20 이후 기술 부채 PR로 수렴
+
+---
+
+## 예상 리소스
+- Wave 0: 1 PR 직렬 ≈ 반나절
+- Wave 1: 3 PR 병렬 ≈ 3-4일
+- Wave 2: 3 PR 병렬 ≈ 4-5일 (mockgen 재도입 영향)
+- Wave 3: 2 PR 병렬 ≈ 2일
+- 독립 hotfix (2건): 1-2시간
+- **Phase 19 총 기간**: 약 11-13 영업일 (병렬 실행 기준)
+
+## 다음 액션
+1. 사용자가 본 backlog 검토 + Open Decisions 4건 답변
+2. `/plan-finish` Phase 19 audit (shadow) → `/plan-new` Phase 19 implementation
+3. 18.8 observation 3일 누적 후 `/plan-finish` 18.8 → Phase 18.9(required 승격)와 병행 진행
