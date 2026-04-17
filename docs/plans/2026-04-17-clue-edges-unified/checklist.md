@@ -8,20 +8,20 @@
 **Depends**: —
 **Scope**: `apps/server/db/migrations/00023_remove_clue_type.sql`, `apps/server/db/seed/metaphor.sql`, `apps/server/db/queries/editor.sql`, `apps/server/internal/db/editor.sql.go` (sqlc 재생성), `apps/server/internal/domain/editor/{types.go,service_clue.go,image_service.go}`, `apps/server/internal/domain/editor/clue_relation_test_fixture_test.go`, `apps/web/src/features/editor/api.ts`, `apps/web/src/features/editor/components/{ClueForm.tsx,ClueFormAdvancedFields.tsx,ClueCard.tsx,ClueListRow.tsx}`, `apps/web/src/features/editor/hooks/useClueFormSubmit.ts`, `apps/web/src/mocks/handlers/clue.ts`, `apps/web/src/features/editor/components/__tests__/*`
 
-- [ ] migration 00023 작성 (`ALTER TABLE theme_clues DROP COLUMN clue_type`)
-- [ ] seed/metaphor.sql 에서 clue_type 컬럼 참조 5군데 제거
-- [ ] db/queries/editor.sql 에서 clue_type 컬럼 제거 후 `make sqlc` (또는 `go generate`) 재생성
-- [ ] types.go: `CreateClueRequest/UpdateClueRequest/ClueResponse`에서 `ClueType` 삭제
-- [ ] service_clue.go, image_service.go: ClueType 매핑 삭제
-- [ ] clue_relation_test_fixture_test.go: `ClueType: "normal"` 삭제
-- [ ] 프론트 api.ts: `ClueResponse.clue_type` 삭제, 생성/수정 payload 타입에서 제거
-- [ ] ClueForm.tsx: `clueType/setClueType` state 삭제, ClueFormAdvancedFields 전달 제거
-- [ ] ClueFormAdvancedFields.tsx: clueType/level/sortOrder props 삭제 (이전 PoC 수정 완결)
-- [ ] useClueFormSubmit.ts: payload 타입에서 clue_type 제거
-- [ ] ClueCard.tsx, ClueListRow.tsx: clue_type 렌더 삭제 (다음 PR에서 라운드 배지로 대체)
-- [ ] mocks/handlers/clue.ts: `clue_type: "normal"` 픽스처 삭제
-- [ ] 관련 테스트 갱신: ClueForm.test, CluesTab.test, LocationClueAssignPanel.test, editorClueApi.test
-- [ ] `make lint` + `make test` 통과 확인
+- [x] migration 00023 작성 (`ALTER TABLE theme_clues DROP COLUMN clue_type`)
+- [x] seed/metaphor.sql 에서 clue_type 컬럼 참조 5군데 제거
+- [x] db/queries/editor.sql 에서 clue_type 컬럼 제거 후 `make sqlc` (또는 `go generate`) 재생성
+- [x] types.go: `CreateClueRequest/UpdateClueRequest/ClueResponse`에서 `ClueType` 삭제
+- [x] service_clue.go, image_service.go: ClueType 매핑 삭제
+- [x] clue_relation_test_fixture_test.go: `ClueType: "normal"` 삭제
+- [x] 프론트 api.ts: `ClueResponse.clue_type` 삭제, 생성/수정 payload 타입에서 제거
+- [x] ClueForm.tsx: `clueType/setClueType` state 삭제, ClueFormAdvancedFields 전달 제거
+- [x] ClueFormAdvancedFields.tsx: clueType/level/sortOrder props 삭제 (이전 PoC 수정 완결)
+- [x] useClueFormSubmit.ts: payload 타입에서 clue_type 제거
+- [x] ClueCard.tsx, ClueListRow.tsx: clue_type 렌더 삭제 (다음 PR에서 라운드 배지로 대체)
+- [x] mocks/handlers/clue.ts: `clue_type: "normal"` 픽스처 삭제
+- [x] 관련 테스트 갱신: ClueForm.test, CluesTab.test, LocationClueAssignPanel.test, editorClueApi.test (+ CluePlacementPanel, LocationsSubTab, useClueGraphData, clue.test.ts, e2e 픽스처 2건)
+- [x] `make lint` + `make test` 통과 확인 (go build/vet/-race ./..., golangci-lint, tsc, ESLint, Vitest 1034 tests)
 - [ ] PR 생성 → 리뷰 → 머지
 
 ## W2 — PR-2 라운드 스케줄 (컬럼+API+폼)

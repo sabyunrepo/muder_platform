@@ -131,7 +131,6 @@ const mockClues = [
     image_url: null,
     is_common: false,
     level: 1,
-    clue_type: "physical",
     sort_order: 0,
     created_at: "2026-04-13T00:00:00Z",
     is_usable: false,

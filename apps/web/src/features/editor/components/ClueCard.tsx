@@ -78,8 +78,6 @@ export function ClueCard({ clue, themeId, onEdit, onDelete, onImageUploaded }: C
             )}
           </div>
           <div className="mt-0.5 flex items-center gap-2">
-            <span className="text-[11px] font-mono text-slate-600">{clue.clue_type}</span>
-            <span className="text-[11px] text-slate-700">·</span>
             <span className="text-[11px] text-slate-600">Lv.{clue.level}</span>
           </div>
           {clue.description && (

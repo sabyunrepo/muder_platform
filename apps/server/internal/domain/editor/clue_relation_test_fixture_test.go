@@ -122,7 +122,6 @@ func (f *testFixture) createClue(t *testing.T, themeID uuid.UUID, name string) u
 		ThemeID:   themeID,
 		Name:      name,
 		Level:     1,
-		ClueType:  "normal",
 		SortOrder: 0,
 	})
 	if err != nil {

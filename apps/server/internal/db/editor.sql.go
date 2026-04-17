@@ -46,9 +46,9 @@ func (q *Queries) CountMapsByTheme(ctx context.Context, themeID uuid.UUID) (int6
 }
 
 const createClue = `-- name: CreateClue :one
-INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, is_usable, use_effect, use_target, use_consumed)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, created_at, is_usable, use_effect, use_target, use_consumed
+INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed
 `
 
 type CreateClueParams struct {
@@ -59,7 +59,6 @@ type CreateClueParams struct {
 	ImageUrl    pgtype.Text `json:"image_url"`
 	IsCommon    bool        `json:"is_common"`
 	Level       int32       `json:"level"`
-	ClueType    string      `json:"clue_type"`
 	SortOrder   int32       `json:"sort_order"`
 	IsUsable    bool        `json:"is_usable"`
 	UseEffect   pgtype.Text `json:"use_effect"`
@@ -76,7 +75,6 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 		arg.ImageUrl,
 		arg.IsCommon,
 		arg.Level,
-		arg.ClueType,
 		arg.SortOrder,
 		arg.IsUsable,
 		arg.UseEffect,
@@ -93,7 +91,6 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 		&i.ImageUrl,
 		&i.IsCommon,
 		&i.Level,
-		&i.ClueType,
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.IsUsable,
@@ -267,7 +264,7 @@ func (q *Queries) DeleteMapWithOwner(ctx context.Context, arg DeleteMapWithOwner
 }
 
 const getClue = `-- name: GetClue :one
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE id = $1
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE id = $1
 `
 
 func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) {
@@ -282,7 +279,6 @@ func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) 
 		&i.ImageUrl,
 		&i.IsCommon,
 		&i.Level,
-		&i.ClueType,
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.IsUsable,
@@ -294,7 +290,7 @@ func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) 
 }
 
 const getClueWithOwner = `-- name: GetClueWithOwner :one
-SELECT c.id, c.theme_id, c.location_id, c.name, c.description, c.image_url, c.is_common, c.level, c.clue_type, c.sort_order, c.created_at, c.is_usable, c.use_effect, c.use_target, c.use_consumed FROM theme_clues c
+SELECT c.id, c.theme_id, c.location_id, c.name, c.description, c.image_url, c.is_common, c.level, c.sort_order, c.created_at, c.is_usable, c.use_effect, c.use_target, c.use_consumed FROM theme_clues c
 JOIN themes t ON c.theme_id = t.id
 WHERE c.id = $1 AND t.creator_id = $2
 `
@@ -316,7 +312,6 @@ func (q *Queries) GetClueWithOwner(ctx context.Context, arg GetClueWithOwnerPara
 		&i.ImageUrl,
 		&i.IsCommon,
 		&i.Level,
-		&i.ClueType,
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.IsUsable,
@@ -446,7 +441,7 @@ func (q *Queries) GetMapWithOwner(ctx context.Context, arg GetMapWithOwnerParams
 }
 
 const listCluesByLocation = `-- name: ListCluesByLocation :many
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE location_id = $1 ORDER BY sort_order
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE location_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUID) ([]ThemeClue, error) {
@@ -467,7 +462,6 @@ func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUI
 			&i.ImageUrl,
 			&i.IsCommon,
 			&i.Level,
-			&i.ClueType,
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.IsUsable,
@@ -487,7 +481,7 @@ func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUI
 
 const listCluesByTheme = `-- name: ListCluesByTheme :many
 
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed FROM theme_clues WHERE theme_id = $1 ORDER BY sort_order
 `
 
 // ============================================================
@@ -511,7 +505,6 @@ func (q *Queries) ListCluesByTheme(ctx context.Context, themeID uuid.UUID) ([]Th
 			&i.ImageUrl,
 			&i.IsCommon,
 			&i.Level,
-			&i.ClueType,
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.IsUsable,
@@ -663,9 +656,9 @@ func (q *Queries) ListMapsByTheme(ctx context.Context, themeID uuid.UUID) ([]The
 }
 
 const updateClue = `-- name: UpdateClue :one
-UPDATE theme_clues SET location_id = $2, name = $3, description = $4, image_url = $5, is_common = $6, level = $7, clue_type = $8, sort_order = $9, is_usable = $10, use_effect = $11, use_target = $12, use_consumed = $13
+UPDATE theme_clues SET location_id = $2, name = $3, description = $4, image_url = $5, is_common = $6, level = $7, sort_order = $8, is_usable = $9, use_effect = $10, use_target = $11, use_consumed = $12
 WHERE id = $1
-RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, clue_type, sort_order, created_at, is_usable, use_effect, use_target, use_consumed
+RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed
 `
 
 type UpdateClueParams struct {
@@ -676,7 +669,6 @@ type UpdateClueParams struct {
 	ImageUrl    pgtype.Text `json:"image_url"`
 	IsCommon    bool        `json:"is_common"`
 	Level       int32       `json:"level"`
-	ClueType    string      `json:"clue_type"`
 	SortOrder   int32       `json:"sort_order"`
 	IsUsable    bool        `json:"is_usable"`
 	UseEffect   pgtype.Text `json:"use_effect"`
@@ -693,7 +685,6 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 		arg.ImageUrl,
 		arg.IsCommon,
 		arg.Level,
-		arg.ClueType,
 		arg.SortOrder,
 		arg.IsUsable,
 		arg.UseEffect,
@@ -710,7 +701,6 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 		&i.ImageUrl,
 		&i.IsCommon,
 		&i.Level,
-		&i.ClueType,
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.IsUsable,

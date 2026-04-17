@@ -38,10 +38,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
 
   // Advanced fields (hidden by default)
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [clueType, setClueType] = useState('normal');
-  const [level, setLevel] = useState(1);
   const [isCommon, setIsCommon] = useState(false);
-  const [sortOrder, setSortOrder] = useState(0);
 
   // Item usage fields
   const [isUsable, setIsUsable] = useState(false);
@@ -66,10 +63,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setName(clue.name);
       setDescription(clue.description ?? '');
       setImageUrl(clue.image_url ?? '');
-      setClueType(clue.clue_type ?? 'normal');
-      setLevel(clue.level ?? 1);
       setIsCommon(clue.is_common ?? false);
-      setSortOrder(clue.sort_order ?? 0);
       setIsUsable(clue.is_usable ?? false);
       setUseEffect(clue.use_effect ?? 'peek');
       setUseTarget(clue.use_target ?? 'player');
@@ -78,10 +72,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setName('');
       setDescription('');
       setImageUrl('');
-      setClueType('normal');
-      setLevel(1);
       setIsCommon(false);
-      setSortOrder(0);
       setIsUsable(false);
       setUseEffect('peek');
       setUseTarget('player');
@@ -130,10 +121,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         name: name.trim(),
         description: description || undefined,
         image_url: imageUrl || undefined,
-        clue_type: clueType,
-        level,
         is_common: isCommon,
-        sort_order: sortOrder,
         is_usable: isUsable,
         use_effect: isUsable ? useEffect_ : undefined,
         use_target: isUsable ? useTarget : undefined,
@@ -207,12 +195,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         <ClueFormAdvancedFields
           showAdvanced={showAdvanced}
           onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-          clueType={clueType}
-          onClueTypeChange={setClueType}
-          level={level}
-          onLevelChange={setLevel}
-          sortOrder={sortOrder}
-          onSortOrderChange={setSortOrder}
           isCommon={isCommon}
           onIsCommonChange={setIsCommon}
           isUsable={isUsable}
