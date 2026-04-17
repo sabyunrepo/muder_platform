@@ -151,7 +151,7 @@ export function createGameWsRoute(
         JSON.stringify(
           envelope(WsEventType.MODULE_STATE, {
             moduleId: "secret_card",
-            data: secret as unknown as Record<string, unknown>,
+            data: secret as Record<string, unknown>,
             ts: nowMs(),
           }),
         ),
