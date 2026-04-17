@@ -1,0 +1,167 @@
+{
+  "id": "phase-20-clue-edges-unified",
+  "name": "Phase 20 — 단서·장소 에디터 정식 승격",
+  "dir": "docs/plans/2026-04-17-clue-edges-unified",
+  "design": "docs/plans/2026-04-17-clue-edges-unified/design.md",
+  "plan": "docs/plans/2026-04-17-clue-edges-unified/design.md",
+  "checklist": "docs/plans/2026-04-17-clue-edges-unified/checklist.md",
+  "progress_memory": null,
+  "scope": [
+    "apps/server/db/migrations/00023_remove_clue_type.sql",
+    "apps/server/db/queries/editor.sql",
+    "apps/server/db/seed/metaphor.sql",
+    "apps/server/internal/db/editor.sql.go",
+    "apps/server/internal/domain/editor/types.go",
+    "apps/server/internal/domain/editor/service_clue.go",
+    "apps/server/internal/domain/editor/image_service.go",
+    "apps/server/internal/domain/editor/clue_relation_test_fixture_test.go",
+    "apps/web/src/features/editor/api.ts",
+    "apps/web/src/features/editor/components/ClueForm.tsx",
+    "apps/web/src/features/editor/components/ClueFormAdvancedFields.tsx",
+    "apps/web/src/features/editor/components/ClueCard.tsx",
+    "apps/web/src/features/editor/components/ClueListRow.tsx",
+    "apps/web/src/features/editor/hooks/useClueFormSubmit.ts",
+    "apps/web/src/mocks/handlers/clue.ts",
+    "apps/web/src/features/editor/components/__tests__/ClueForm.test.tsx",
+    "apps/web/src/features/editor/components/__tests__/CluesTab.test.tsx",
+    "apps/web/src/features/editor/__tests__/editorClueApi.test.ts",
+    "apps/web/src/features/editor/components/design/__tests__/LocationClueAssignPanel.test.tsx",
+    "apps/web/src/features/editor/components/design/__tests__/LocationsSubTab.test.tsx",
+    "apps/server/internal/db/models.go",
+    "apps/web/src/mocks/handlers/clue.test.ts",
+    "apps/web/src/features/editor/hooks/__tests__/useClueGraphData.test.ts",
+    "apps/web/src/features/editor/components/design/__tests__/CluePlacementPanel.test.tsx",
+    "apps/web/e2e/helpers/editor-golden-path-fixtures.ts",
+    "apps/web/e2e/clue-relation.spec.ts",
+    "apps/web/src/features/editor/components/clues/ClueNode.tsx",
+    "apps/web/src/features/editor/hooks/useClueGraphData.ts",
+    ".github/workflows/ci.yml",
+    ".github/workflows/e2e-stubbed.yml",
+    ".github/workflows/security-fast.yml",
+    ".github/workflows/security-deep.yml",
+    "Makefile"
+  ],
+  "started_at": "2026-04-17",
+  "started_commit": null,
+  "current_wave": "W2",
+  "current_pr": "PR-2",
+  "current_task": "라운드 스케줄 컬럼·API·폼 (theme_clues.reveal_round/hide_round + theme_locations.from_round/until_round)",
+  "status": "ready_to_start",
+  "blockers": [
+    "GitHub Actions 계정 레벨 disable (무료 플랜 2000분 초과). Phase 20 남은 PR들은 로컬 CI 검증 + admin bypass merge로 진행. 5월 1일 자동 리셋 예정."
+  ],
+  "waves": [
+    {
+      "id": "W1",
+      "name": "clue_type_cleanup",
+      "mode": "sequential",
+      "prs": [
+        "PR-1"
+      ]
+    },
+    {
+      "id": "W2",
+      "name": "round_schedule",
+      "mode": "parallel",
+      "prs": [
+        "PR-2",
+        "PR-3"
+      ]
+    },
+    {
+      "id": "W3",
+      "name": "unified_edges",
+      "mode": "sequential",
+      "prs": [
+        "PR-4",
+        "PR-5"
+      ]
+    },
+    {
+      "id": "W4",
+      "name": "frontend_promotion",
+      "mode": "sequential",
+      "prs": [
+        "PR-6"
+      ]
+    }
+  ],
+  "prs": {
+    "PR-1": {
+      "title": "feat(phase-20): clue_type 필드 제거",
+      "depends_on": [],
+      "scope": [
+        "apps/server/db/migrations/00023_remove_clue_type.sql",
+        "apps/server/db/queries/editor.sql",
+        "apps/server/db/seed/metaphor.sql",
+        "apps/server/internal/db/editor.sql.go",
+        "apps/server/internal/domain/editor/types.go",
+        "apps/server/internal/domain/editor/service_clue.go",
+        "apps/server/internal/domain/editor/image_service.go",
+        "apps/web/src/features/editor/api.ts",
+        "apps/web/src/features/editor/components/ClueForm.tsx",
+        "apps/web/src/features/editor/components/ClueFormAdvancedFields.tsx",
+        "apps/web/src/features/editor/components/ClueCard.tsx",
+        "apps/web/src/features/editor/components/ClueListRow.tsx",
+        "apps/web/src/features/editor/hooks/useClueFormSubmit.ts",
+        "apps/web/src/mocks/handlers/clue.ts"
+      ],
+      "tasks_total": 14,
+      "tasks_done": 0,
+      "status": "in_progress",
+      "branch": "feat/phase-20/pr-1-remove-clue-type",
+      "commit": null
+    },
+    "PR-2": {
+      "title": "feat(phase-20): 라운드 스케줄 컬럼·API·폼",
+      "depends_on": [
+        "PR-1"
+      ],
+      "status": "pending"
+    },
+    "PR-3": {
+      "title": "feat(phase-20): 단서 카드·리스트 라운드 배지",
+      "depends_on": [
+        "PR-1"
+      ],
+      "status": "pending"
+    },
+    "PR-4": {
+      "title": "feat(phase-20): clue_edge_groups 통합 스키마 + API",
+      "depends_on": [
+        "PR-1"
+      ],
+      "status": "pending"
+    },
+    "PR-5": {
+      "title": "feat(phase-20): CombinationModule 리팩터",
+      "depends_on": [
+        "PR-4"
+      ],
+      "status": "pending"
+    },
+    "PR-6": {
+      "title": "feat(phase-20): PoC → 정식 프론트 승격 + E2E",
+      "depends_on": [
+        "PR-2",
+        "PR-4"
+      ],
+      "status": "pending"
+    }
+  },
+  "runs": {},
+  "finished_at": "2026-04-17",
+  "final_commit": "d02b6de",
+  "tasks_done": 67,
+  "tasks_total": 73,
+  "force_finished": false,
+  "prs_merged": [
+    "#71",
+    "#72",
+    "#73",
+    "#74",
+    "#75",
+    "#76",
+    "#77"
+  ]
+}
