@@ -47,7 +47,7 @@ async function mockEditorApis(page: Parameters<typeof test>[1]["page"]) {
       ]),
     }),
   );
-  await page.route(`**/v1/editor/themes/${FAKE_THEME_ID}/clue-relations`, (r) => {
+  await page.route(`**/v1/editor/themes/${FAKE_THEME_ID}/clue-edges`, (r) => {
     if (r.request().method() === "PUT") return r.continue();
     return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([]) });
   });
@@ -57,7 +57,7 @@ async function mockEditorApis(page: Parameters<typeof test>[1]["page"]) {
 // CI-safe mocked tests (no backend required)
 // ---------------------------------------------------------------------------
 
-test.describe("Clue Relations (mocked — CI-safe)", () => {
+test.describe("Clue Edges (mocked — CI-safe, Phase 20 PR-6)", () => {
   test("editor 페이지 진입 시 테마 목록이 렌더링된다", async ({ page }) => {
     await mockEditorApis(page);
     await page.goto(`${BASE}/editor`);

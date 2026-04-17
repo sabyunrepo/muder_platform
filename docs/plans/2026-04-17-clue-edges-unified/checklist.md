@@ -95,18 +95,24 @@
 **Branch**: `feat/phase-20/PR-6-edges-ui-promote`
 **Depends**: PR-2, PR-4
 
-- [ ] `components/clues/poc/` → `components/clues/edges/` 이동 + 파일 rename (PoC→정식)
-- [ ] `fixtures.ts`, `roundStorage.ts` 삭제
-- [ ] ClueRelationGraph.tsx wrapper 해체, CluesTab에서 ClueEdgeGraph 직접 import
-- [ ] `clueEdgeApi.ts` 신규 (useClueEdges/useSaveClueEdges, editor.ts react-query)
-- [ ] 구 `clueRelationApi.ts` 삭제
-- [ ] `useClueEdgeData.ts` — fixtures 제거, API 연동, optimistic + CYCLE 롤백 유지, autoSave 1s debounce
-- [ ] ClueEdgeNode: roundLabel 데이터 API 연동
-- [ ] mount 시 `localStorage.removeItem("mmp-poc-rounds")` 1회
-- [ ] E2E `clue-edges-stubbed.spec.ts` (MSW): 팔레트 드래그→연결→CRAFT 전환→저장→리로드
-- [ ] 구 `clue-relation-stubbed.spec.ts` 업데이트/삭제
-- [ ] 전 테스트 + E2E 통과
+- [x] `clueEdgeApi.ts` 신규: `useClueEdges`/`useSaveClueEdges` + 타입 (targetId + sources[] + trigger + mode)
+- [x] `useClueEdgeData.ts` 신규: groups ↔ ReactFlow edges 변환 (1 group = 1 source 기본), optimistic add, EDGE_CYCLE_DETECTED/EDGE_INVALID_CRAFT_OR 롤백, 1s debounce autoSave
+- [x] `ClueEdgeGraph.tsx` 신규: ClueRelationGraph 대체, CluesTab에서 직접 import
+- [x] MSW `handlers/clue.ts`: `/clue-relations` 핸들러를 `/clue-edges` + ClueEdgeGroupResponse 로 교체 (E2E_CLUE_EDGE_GROUPS fixture 2건)
+- [x] 콜러 업데이트: ThemeEditor(validateClueGraph에 groups→flat relations 변환), CluesTab(ClueEdgeGraph import), editorClueApi(clueEdgeKeys invalidation)
+- [x] 구 파일 5개 삭제: clueRelationApi.ts, useClueGraphData.ts, ClueRelationGraph.tsx, ClueRelationGraph.test.tsx, useClueGraphData.test.ts
+- [x] 테스트 보정: `clue.test.ts` 6 케이스 재작성 (edges shape), `useClueEdgeData.revert.test.ts`(EDGE_CYCLE_DETECTED)
+- [x] E2E rename: `clue-relation-{stubbed,live}.spec.ts` + `clue-relation.spec.ts` → `clue-edges-*.spec.ts`, 내부 path 전부 `/clue-edges`
+- [x] golden-path fixtures: `/clue-relations` → `/clue-edges`, `{ relations: [], mode: "AND" }` → `[]` (shape 수정)
+- [x] `make ci-local` 통과 (lint + typecheck + Vitest 1060+ tests + build)
 - [ ] PR 생성 → 머지
+
+## W4 스코프 보정 (PR-6 실행 기록)
+
+원본 체크리스트의 일부 항목은 현재 워킹트리에 해당 파일이 없어 무효:
+- `components/clues/poc/` 디렉터리 없음 → `components/clues/` 아래 파일명만 rename
+- `fixtures.ts`, `roundStorage.ts`, `mmp-poc-rounds` localStorage 키 — 존재하지 않음 → skip
+- ClueEdgeNode 의 roundLabel 데이터 연동은 PR-3 배지 컴포넌트(ClueCard/ClueListRow)로 이미 수행; 그래프 노드 라벨에 라운드 삽입은 PR-7 후속으로 분리
 
 ---
 

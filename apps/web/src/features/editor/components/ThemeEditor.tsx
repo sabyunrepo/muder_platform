@@ -3,7 +3,7 @@ import { Spinner } from "@/shared/components/ui";
 import { useEditorTheme } from "@/features/editor/api";
 import { useEditorClues } from "@/features/editor/editorClueApi";
 import { validateGameDesign, validateClueGraph } from "@/features/editor/validation";
-import { useClueRelations } from "@/features/editor/clueRelationApi";
+import { useClueEdges } from "@/features/editor/clueEdgeApi";
 import { EditorLayout } from "./EditorLayout";
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ interface ThemeEditorProps {
 export function ThemeEditor({ themeId }: ThemeEditorProps) {
   const { data: theme, isLoading, isError } = useEditorTheme(themeId);
   const { data: clues } = useEditorClues(themeId);
-  const { data: clueRelations } = useClueRelations(themeId);
+  const { data: clueEdgeGroups } = useClueEdges(themeId);
 
   const handleValidate = useCallback(() => {
     if (!theme) return [];
@@ -47,12 +47,21 @@ export function ThemeEditor({ themeId }: ThemeEditorProps) {
     const chars = cfg.characters;
     const charCount = Array.isArray(chars) ? chars.length : 0;
     const gameWarnings = validateGameDesign(cfg, clueCount, charCount);
+    // Phase 20 PR-6: flatten edge groups (N sources × 1 target) into the
+    // legacy (sourceId, targetId, mode) shape validateClueGraph still accepts.
+    const flatRelations = (clueEdgeGroups ?? []).flatMap((g) =>
+      g.sources.map((src) => ({
+        sourceId: src,
+        targetId: g.targetId,
+        mode: g.mode,
+      })),
+    );
     const graphWarnings = validateClueGraph(
-      clueRelations ?? [],
+      flatRelations,
       (clues ?? []).map((c) => ({ id: c.id, name: c.name })),
     );
     return [...gameWarnings, ...graphWarnings];
-  }, [theme, clues, clueRelations]);
+  }, [theme, clues, clueEdgeGroups]);
 
   if (isLoading) return <FullPageSpinner />;
   if (isError || !theme) return <FullPageError message="테마를 찾을 수 없습니다" />;

@@ -1,5 +1,5 @@
 /**
- * Phase 18.8 PR-4 — Clue Relations (stubbed).
+ * Phase 18.8 PR-4 — Clue Edges (stubbed).
  *
  * `clue-relation-live.spec.ts` 의 stubbed 복제본. 본질은 "서버가 주는 단서
  * 그래프가 React Flow 로 올바르게 렌더되는지" — FE 렌더링 검증이므로, real
@@ -34,7 +34,7 @@ async function openRelationsTab(page: Page): Promise<void> {
   await expect(page.locator(".react-flow")).toBeVisible({ timeout: FLOW_TIMEOUT });
 }
 
-test.describe("Clue Relations (stubbed)", () => {
+test.describe("Clue Edges (stubbed)", () => {
   test.beforeEach(async ({ page }) => {
     await installMswRoutes(page, handlers);
     await login(page);

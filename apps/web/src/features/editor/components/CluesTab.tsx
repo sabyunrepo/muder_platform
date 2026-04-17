@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { LayoutList, GitBranch } from 'lucide-react';
 import { ClueListView } from './clues/ClueListView';
-import { ClueRelationGraph } from './clues/ClueRelationGraph';
+import { ClueEdgeGraph } from './clues/ClueEdgeGraph';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,7 +49,7 @@ export function CluesTab({ themeId }: CluesTabProps) {
       {/* SubTab Content */}
       <div className="min-h-0 flex-1">
         {activeSubTab === 'list' && <ClueListView themeId={themeId} />}
-        {activeSubTab === 'relations' && <ClueRelationGraph themeId={themeId} />}
+        {activeSubTab === 'relations' && <ClueEdgeGraph themeId={themeId} />}
       </div>
     </div>
   );

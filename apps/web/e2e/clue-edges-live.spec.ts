@@ -10,7 +10,7 @@ const LOGIN_PASSWORD = "e2etest1234";
 // Live tests — skipped when backend is unavailable
 // ---------------------------------------------------------------------------
 
-test.describe("Clue Relations (live)", () => {
+test.describe("Clue Edges (live)", () => {
   test.beforeEach(async ({ page }) => {
     const res = await page.request
       .get("http://localhost:8080/health")
@@ -59,7 +59,7 @@ test.describe("Clue Relations (live)", () => {
 
     const [request] = await Promise.all([
       page.waitForRequest(
-        (req) => req.url().includes("/clue-relations") && req.method() === "PUT",
+        (req) => req.url().includes("/clue-edges") && req.method() === "PUT",
         { timeout: 10_000 },
       ),
       (async () => {
@@ -72,7 +72,7 @@ test.describe("Clue Relations (live)", () => {
         await page.mouse.up();
       })(),
     ]);
-    expect(request.url()).toContain("/clue-relations");
+    expect(request.url()).toContain("/clue-edges");
   });
 
   test("관계 엣지 삭제 후 서버 반영", async ({ page }) => {
@@ -85,7 +85,7 @@ test.describe("Clue Relations (live)", () => {
 
     const [request] = await Promise.all([
       page.waitForRequest(
-        (req) => req.url().includes("/clue-relations") && req.method() === "PUT",
+        (req) => req.url().includes("/clue-edges") && req.method() === "PUT",
         { timeout: 10_000 },
       ),
       (async () => {
@@ -93,7 +93,7 @@ test.describe("Clue Relations (live)", () => {
         await page.keyboard.press("Delete");
       })(),
     ]);
-    expect(request.url()).toContain("/clue-relations");
+    expect(request.url()).toContain("/clue-edges");
   });
 
   test("cycle 감지 시 에러 토스트", async ({ page }) => {
@@ -101,7 +101,7 @@ test.describe("Clue Relations (live)", () => {
     await page.getByRole("tab", { name: /관계/i }).click();
     await expect(page.locator(".react-flow")).toBeVisible({ timeout: 10_000 });
 
-    await page.route("**/clue-relations", (route) => {
+    await page.route("**/clue-edges", (route) => {
       if (route.request().method() === "PUT") {
         route.fulfill({ status: 400, contentType: "application/json", body: JSON.stringify({ code: "CYCLE_DETECTED", message: "cycle" }) });
       } else {

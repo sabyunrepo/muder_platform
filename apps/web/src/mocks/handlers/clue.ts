@@ -1,26 +1,22 @@
 /**
- * Phase 18.8 PR-4 — Clue + ClueRelation handlers (MSW v2).
+ * Phase 20 PR-6 — Clue + ClueEdge handlers (MSW v2).
  *
  * **Routes (SSOT)**:
  *   `apps/server/internal/domain/editor/clue_handler.go`
- *   `apps/server/internal/domain/editor/clue_relation_handler.go`
- *   - GET    /v1/editor/themes/{themeId}/clues          → ClueResponse[]
- *   - GET    /v1/editor/themes/{themeId}/clue-relations → ClueRelationResponse[]
- *   - PUT    /v1/editor/themes/{themeId}/clue-relations → echo body (saved)
- *   - GET    /v1/clues                (legacy/standalone — empty array)
- *
- * **Shape drift 수정 (PR-2 → PR-4)**:
- *   PR-2 가 `{ relations, mode }` 객체로 잘못 응답했으나, FE 의 `useClueRelations`
- *   는 `useQuery<ClueRelationResponse[]>` — 즉 배열을 직접 기대한다. 본 PR 에서
- *   배열 응답으로 교체한다.
+ *   `apps/server/internal/domain/editor/clue_edge_handler.go`
+ *   - GET    /v1/editor/themes/{themeId}/clues       → ClueResponse[] (snake_case)
+ *   - GET    /v1/editor/themes/{themeId}/clue-edges  → ClueEdgeGroupResponse[]
+ *   - PUT    /v1/editor/themes/{themeId}/clue-edges  → echo body (saved groups)
+ *   - GET    /v1/clues                               (legacy — empty array)
  *
  * **Shape (apps/server/internal/domain/editor/types.go)**:
  *   - ClueResponse: snake_case (id, theme_id, name, level, sort_order, ...)
- *   - ClueRelationResponse: camelCase (id, sourceId, targetId, mode)
+ *   - ClueEdgeGroupResponse: camelCase
+ *     { id, targetId, sources[], trigger: "AUTO"|"CRAFT", mode: "AND"|"OR" }
  *
- * **Default fixture (PR-4 stubbed e2e)**:
- *   3 단서 + 2 엣지 (linear chain c1 → c2 → c3) — React Flow 노드/엣지 렌더 +
- *   클릭 highlight 시나리오 검증용.
+ * **Default fixture**: 3 clues + 2 edge groups (linear chain c1 → c2 → c3,
+ * single-source AUTO/AND groups) — matches the pre-PR-6 behavior so existing
+ * React Flow rendering and interaction tests keep working.
  */
 import { http, HttpResponse, type DefaultBodyType } from "msw";
 import { E2E_THEME_ID } from "./theme";
@@ -28,7 +24,7 @@ import { E2E_THEME_ID } from "./theme";
 const url = (path: string) => `*${path}`;
 
 // ---------------------------------------------------------------------------
-// Default clue + relation fixture (linear chain — orphan-edge free)
+// Default clue + edge group fixture (linear chain — orphan-edge free)
 // ---------------------------------------------------------------------------
 
 export const E2E_CLUE_IDS = Object.freeze({
@@ -57,17 +53,19 @@ export const E2E_CLUE_LIST = Object.freeze([
   { ...baseClue, id: E2E_CLUE_IDS.c3, name: "단서 C", sort_order: 3 },
 ]);
 
-export const E2E_CLUE_RELATION_LIST = Object.freeze([
+export const E2E_CLUE_EDGE_GROUPS = Object.freeze([
   {
     id: "00000000-0000-0000-0000-0000000000e1",
-    sourceId: E2E_CLUE_IDS.c1,
     targetId: E2E_CLUE_IDS.c2,
+    sources: [E2E_CLUE_IDS.c1],
+    trigger: "AUTO" as const,
     mode: "AND" as const,
   },
   {
     id: "00000000-0000-0000-0000-0000000000e2",
-    sourceId: E2E_CLUE_IDS.c2,
     targetId: E2E_CLUE_IDS.c3,
+    sources: [E2E_CLUE_IDS.c2],
+    trigger: "AUTO" as const,
     mode: "AND" as const,
   },
 ]);
@@ -88,21 +86,21 @@ export const clueHandlers = [
     return HttpResponse.json(E2E_CLUE_LIST, { status: 200 });
   }),
 
-  // Editor: clue-relation list (camelCase shape).
+  // Editor: clue-edges list (ClueEdgeGroupResponse[], camelCase).
   http.get(
-    url("/v1/editor/themes/:themeId/clue-relations"),
+    url("/v1/editor/themes/:themeId/clue-edges"),
     ({ params }) => {
       if (params.themeId !== E2E_THEME_ID) {
         return HttpResponse.json([], { status: 200 });
       }
-      return HttpResponse.json(E2E_CLUE_RELATION_LIST, { status: 200 });
+      return HttpResponse.json(E2E_CLUE_EDGE_GROUPS, { status: 200 });
     },
   ),
 
-  // Editor: clue-relation replace (PUT) — echoes incoming requests with new IDs
-  // so the FE optimistic update + queryClient.setQueryData can converge.
+  // Editor: clue-edges replace (PUT) — echoes incoming requests with fresh
+  // IDs so FE optimistic update + queryClient.setQueryData can converge.
   http.put(
-    url("/v1/editor/themes/:themeId/clue-relations"),
+    url("/v1/editor/themes/:themeId/clue-edges"),
     async ({ request, params }) => {
       if (params.themeId !== E2E_THEME_ID) {
         return HttpResponse.json([], { status: 200 });
@@ -114,11 +112,17 @@ export const clueHandlers = [
         return HttpResponse.json([], { status: 200 });
       }
       const saved = body.map((r, i) => {
-        const rec = r as { sourceId?: string; targetId?: string; mode?: string };
+        const rec = r as {
+          targetId?: string;
+          sources?: string[];
+          trigger?: string;
+          mode?: string;
+        };
         return {
           id: `saved-${i}-${Date.now()}`,
-          sourceId: rec.sourceId ?? "",
           targetId: rec.targetId ?? "",
+          sources: Array.isArray(rec.sources) ? rec.sources : [],
+          trigger: rec.trigger === "CRAFT" ? "CRAFT" : "AUTO",
           mode: rec.mode === "OR" ? "OR" : "AND",
         };
       });
