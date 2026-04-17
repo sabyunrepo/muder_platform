@@ -18,6 +18,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Phase 18.8 PR-5: 수동 트리거 추가. PR에서 stubbed CI를 재실행하거나
+  # 베타 단계에서 임시 시나리오 재현이 필요할 때 사용.
+  workflow_dispatch:
 
 concurrency:
   group: e2e-stubbed-${{ github.ref }}

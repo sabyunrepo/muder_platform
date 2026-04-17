@@ -9,6 +9,11 @@ on:
   schedule:
     # 02:00 UTC every day
     - cron: "0 2 * * *"
+  push:
+    # Phase 18.8 PR-5: post-merge 관측 트리거.
+    # required check 아님 — failing run이 main에 남아도 머지 차단 X.
+    # 3일 nightly + push green 이후 Phase 18.9에서 required로 승격.
+    branches: [main]
   workflow_dispatch:
     inputs:
       game_runtime_v2:
@@ -204,3 +209,32 @@ jobs:
           path: /tmp/server.log
           retention-days: 7
           if-no-files-found: ignore
+
+      # ── Phase 18.8 PR-5: failure notification (staging channel) ───────────────
+      # Notifies the staging Slack webhook on push/schedule failure.
+      # workflow_dispatch failures are skipped (manual re-run noise).
+      # Required secret: E2E_STAGING_SLACK_WEBHOOK_URL (사용자 수동 등록).
+      # 미등록 시 step은 no-op (조건부 skip). staging→main 채널 이관은
+      # 3일 green 누적 후 Phase 18.9 PR에서 처리.
+
+      - name: Notify staging channel on failure
+        if: failure() && (github.event_name == 'push' || github.event_name == 'schedule') && env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@485a9d42d3a73031f12ec201c457e2162c45d02d # v2.0.0
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.E2E_STAGING_SLACK_WEBHOOK_URL }}
+        with:
+          webhook: ${{ secrets.E2E_STAGING_SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": ":x: real-backend E2E failed (${{ github.event_name }})",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*real-backend E2E failed* on `${{ github.ref_name }}`\nCommit: <${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}|${{ github.sha }}>\nRun: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|#${{ github.run_id }}>\nTrigger: `${{ github.event_name }}`"
+                  }
+                }
+              ]
+            }
