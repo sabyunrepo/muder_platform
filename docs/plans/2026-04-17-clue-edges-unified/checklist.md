@@ -40,7 +40,7 @@
 - [x] 서비스 레이어 검증: validateClueRoundOrder + validateLocationRoundOrder (400 AppError)
 - [x] 테스트: round_validation_test (12 서브케이스), ClueForm.test 3 신규, LocationsSubTab.test 4 신규
 - [x] `make ci-local` 통과 (lint + typecheck + test + build)
-- [ ] PR 생성 → 머지
+- [x] PR 생성 → 머지
 
 ## W2 — PR-3 라운드 배지 노출 (병렬)
 
@@ -52,7 +52,7 @@
 - [x] ClueListRow.tsx: Lv.x → 라운드 배지 span (없으면 생략, 공통 배지와 공존)
 - [x] 단위 테스트: roundFormat 5 + ClueCard 3 + ClueListRow 4 = 12 신규 (aria-label="라운드 범위" 기반)
 - [x] `make ci-local` 통과 (lint + typecheck + 1050+ tests + build)
-- [ ] PR 생성 → 머지 (PR-2 payload 타입에 의존하므로 PR-2 선행 merged 후 brown-bag)
+- [x] PR 생성 → 머지 (PR-2 payload 타입에 의존하므로 PR-2 선행 merged 후 brown-bag)
 
 ## W3 — PR-4 통합 엣지 스키마
 
@@ -71,7 +71,7 @@
 - [x] apperror: `EDGE_CYCLE_DETECTED`, `EDGE_INVALID_CRAFT_OR` (400)
 - [x] 테스트: graph_test 4 신규 (CRAFT+OR 거부, default AUTO, craft hidden, craft→auto 체인), clue_edge_handler_test 6 신규
 - [x] `make ci-local` 통과 (lint + typecheck + test + build)
-- [ ] PR 생성 → 머지
+- [x] PR 생성 → 머지
 
 ## W3 — PR-5 CombinationModule 리팩터
 
@@ -88,7 +88,7 @@
 - [x] 테스트: round_filter_test 3, phase_engine CurrentRound 1, combination GroupID/crafted 3 = 7 신규
 - [x] snapshot restore 기존 `combinationState` 호환 유지 (Completed/Derived/Collected 필드 변경 없음)
 - [x] `make ci-local` 통과
-- [ ] PR 생성 → 머지
+- [x] PR 생성 → 머지
 
 ## W4 — PR-6 PoC → 정식 프론트 승격 + E2E
 
@@ -105,7 +105,7 @@
 - [x] E2E rename: `clue-relation-{stubbed,live}.spec.ts` + `clue-relation.spec.ts` → `clue-edges-*.spec.ts`, 내부 path 전부 `/clue-edges`
 - [x] golden-path fixtures: `/clue-relations` → `/clue-edges`, `{ relations: [], mode: "AND" }` → `[]` (shape 수정)
 - [x] `make ci-local` 통과 (lint + typecheck + Vitest 1060+ tests + build)
-- [ ] PR 생성 → 머지
+- [x] PR 생성 → 머지
 
 ## W4 스코프 보정 (PR-6 실행 기록)
 
@@ -118,8 +118,9 @@
 
 ## 통합 verification (Phase 종료 조건 체크)
 
-- [ ] `rg -n "ClueType|clue_type" apps/` → 0 매치 (예상)
-- [ ] 에디터 라운드 편집 → 새로고침 → 서버에서 복원 확인
-- [ ] 관계 그래프 통합 UI: AUTO/CRAFT 3종 엣지 + 드래그 + Inspector
-- [ ] 실게임 세션 round 필터 동작
-- [ ] Vitest 전체 green, Go test race green, Playwright E2E green
+- [x] `rg -n "ClueType|clue_type" apps/` → 런타임 코드 0 매치 (migration 00011/00023만 히스토리로 참조)
+- [x] 관계 그래프 통합 UI: AUTO/CRAFT 엣지 + 드래그 + CYCLE/CRAFT+OR 롤백 (PR-6 확인)
+- [x] `make ci-local` green — Vitest 1060+ + Go race (clue/editor/engine/module) + build
+- [ ] 스테이징 실게임 세션 round 필터 동작 (수동 QA 후속)
+- [ ] 에디터 라운드 편집 → 새로고침 → 서버 복원 (스테이징 DB 적용 후 수동 QA)
+- [ ] Playwright E2E 전체 시나리오 실행 — CI gate 재활성 후 (5월 1일 계정 리셋 대기)
