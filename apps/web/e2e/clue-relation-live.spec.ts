@@ -1,3 +1,5 @@
+// Stubbed 복제본: clue-relation-stubbed.spec.ts (Phase 18.8 PR-4)
+// 이 spec은 PLAYWRIGHT_BACKEND 환경에서만 실행. stubbed CI는 복제본으로 검증.
 import { test, expect } from "@playwright/test";
 
 const BASE = "http://localhost:3000";
