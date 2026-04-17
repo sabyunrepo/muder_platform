@@ -63,7 +63,6 @@ const ROLE_CARD: Record<GameRole, string> = {
   normal: "당신은 일반 시민입니다.",
 };
 
-let seqCounter = 0;
 const nowMs = (): number => Date.now();
 
 // ---------------------------------------------------------------------------
@@ -107,8 +106,21 @@ function buildSecretCard(role: GameRole): SecretCardPayload {
   };
 }
 
-function envelope<T>(type: string, payload: T): { type: string; payload: T; ts: number; seq: number } {
-  return { type, payload, ts: nowMs(), seq: ++seqCounter };
+/**
+ * Envelope factory — `seqCounter` 는 각 핸들러 invocation 별 closure 에 격리된다.
+ * 모듈 레벨 mutable 을 피해 Playwright worker 내 테스트 간 누적/race 를 방지.
+ */
+function makeEnvelopeFactory(): <T>(
+  type: string,
+  payload: T,
+) => { type: string; payload: T; ts: number; seq: number } {
+  let seqCounter = 0;
+  return <T>(type: string, payload: T) => ({
+    type,
+    payload,
+    ts: nowMs(),
+    seq: ++seqCounter,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -129,6 +141,7 @@ export function createGameWsRoute(
     partySize: optionsIn.partySize ?? 4,
   };
   return (ws: WebSocketRoute): void => {
+    const envelope = makeEnvelopeFactory();
     const state = buildSessionState(opts, role);
     const secret = buildSecretCard(role);
     queueMicrotask(() => {
@@ -155,6 +168,7 @@ export function createGameWsRoute(
  */
 export function createWhisperRoute(opts: WhisperRouteOptions): (ws: WebSocketRoute) => void {
   return (ws: WebSocketRoute): void => {
+    const envelope = makeEnvelopeFactory();
     queueMicrotask(() => {
       if (opts.receiverId !== opts.myPlayerId) return;
       ws.send(

@@ -126,6 +126,30 @@ test.describe("Game Redaction (stubbed) — MSW + routeWebSocket", () => {
   });
 
   // -------------------------------------------------------------------------
+  // 2b. Detective role — secret_card.contents 마스킹 + role_card 에 detective 안내
+  // -------------------------------------------------------------------------
+
+  test("detective 역할은 secret_card.contents 마스킹 + role_card 에 탐정 안내가 들어온다", async ({
+    page,
+  }) => {
+    await installGameWsRoute(page, "detective");
+    const frames = collectServerFrames(page);
+
+    await login(page);
+    await page.goto(GAME_URL);
+
+    const moduleFrame = await waitForFrame(frames, "module:state");
+    const data = moduleFrame.payload?.data as
+      | { contents?: string; role_card?: string }
+      | undefined;
+    // detective 도 살인자가 아니므로 비밀 텍스트는 마스킹.
+    expect(data?.contents).toBe("???");
+    // role_card 는 탐정용 안내 문구가 들어와야 한다.
+    expect(data?.role_card).toBeDefined();
+    expect(data?.role_card).toMatch(/탐정/);
+  });
+
+  // -------------------------------------------------------------------------
   // 3. Whisper 수신자 매칭 — DOM 노출
   // -------------------------------------------------------------------------
 
