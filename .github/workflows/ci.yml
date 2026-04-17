@@ -13,7 +13,7 @@ concurrency:
 jobs:
   go-check:
     name: Go Lint + Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     services:
       postgres:
         image: postgres:17-alpine
@@ -83,7 +83,7 @@ jobs:
 
   ts-check:
     name: TypeScript Lint + Test + Build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
@@ -140,7 +140,7 @@ jobs:
 
   coverage-guard:
     name: Coverage Regression Guard (warn-only)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [go-check, ts-check]
     steps:
       - name: Harden Runner
@@ -156,7 +156,7 @@ jobs:
 
   docker-build:
     name: Docker Build Check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: [go-check, ts-check]
     permissions:
       contents: read

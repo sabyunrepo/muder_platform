@@ -19,7 +19,7 @@ permissions:
 jobs:
   trivy:
     name: Trivy (container CVE)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - name: Harden Runner
@@ -66,7 +66,7 @@ jobs:
     # Standalone (not reusable workflow) because continue-on-error is
     # unsupported on `uses:` jobs.
     name: osv-scanner (lockfile SCA)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10
     permissions:
       contents: read
@@ -108,7 +108,7 @@ jobs:
 
   codeql:
     name: CodeQL (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 30
     strategy:
       fail-fast: false
