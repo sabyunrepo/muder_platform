@@ -71,12 +71,12 @@
 - **검증**: PR 리뷰 시 변경 파일 `wc -l` + 큰 함수 스캔
 
 ### 버전 관리
-- Semantic Versioning, Conventional Commits (feat/fix/perf/docs/test/chore)
-- 브랜치: main, feat/*, fix/*
+- Semantic Versioning, Conventional Commits (feat/fix/perf/docs/test/chore/ci)
+- 브랜치: main + feat/*, fix/*, docs/*, chore/*, test/*, ci/*, perf/* (상세는 § Git 워크플로우)
 
 ## 🔴 Git 워크플로우 (main 브랜치 보호)
 
-> **main 직접 push 금지.** 이 레포는 GitHub branch protection으로 PR 필수 + 15개 status check 필수가 걸려있다. bypass 권한이 있어도 사용하지 않는다.
+> **main 직접 push 금지.** 이 레포는 GitHub branch protection으로 PR 필수 + required status checks 필수가 걸려있다. bypass 권한이 있어도 사용하지 않는다. (현재 required 목록은 `gh api repos/<owner>/<repo>/branches/main/protection` 로 확인)
 
 ### 필수 규칙
 1. **모든 변경은 feature 브랜치 + PR** — 문서·계획·설정 파일이라도 예외 없음. Phase 19 감사 shadow plan, CLAUDE.md 규칙 업데이트, memory/ 편집 전부 포함.
@@ -99,7 +99,7 @@ git add <선택 파일>
 git commit -m "<type>(<scope>): <한글 요약>"
 
 # 3. 푸시
-git push -u origin <branch>
+git push -u origin <type>/<scope>-<slug>
 
 # 4. PR 생성 (사용자 승인 후)
 gh pr create --title "<type>(<scope>): <요약>" --body "$(cat <<'EOF'
@@ -111,17 +111,22 @@ gh pr create --title "<type>(<scope>): <요약>" --body "$(cat <<'EOF'
 EOF
 )"
 
-# 5. status check 15/15 통과 확인 후 사용자에게 머지 요청
+# 5. 모든 required status checks 통과 확인 후 사용자에게 머지 요청
 gh pr checks <N>  # 대기
 # 사용자 승인 시: gh pr merge <N> --squash (또는 사용자 지정 방식)
 ```
 
 ### 제외 대상 (커밋 스코프)
-다음 파일은 작업 스테이징에서 명시적으로 제외한다 (runtime artifact):
-- `.claude/active-plan.json` — autopilot 런타임 state
+
+**git이 추적하지만 런타임 변경은 커밋 금지** (plan-autopilot / mmp-pilot artifact):
+- `.claude/active-plan.json` — 현재 active plan 포인터
 - `.claude/run-lock.json` — 실행 lock
 - `.claude/runs/**` — run artifact
-- `.claude/plans/**` — 임시 plan 파일
+
+**`.gitignore`에 이미 포함됨** (참고, 실수로 `-f` 추가 금지):
+- `.claude/worktrees/`, `.worktrees/` — worktree 메타데이터·디렉터리
+- `.claude/autopilot-state.json` — autopilot 상태
+- `.pr-body.tmp` — PR 본문 임시
 
 ### 오염된 기록 (참고용)
 - `d1262a7` (2026-04-17, chore(phase-19): shadow plan 초안) — 이 규칙 수립 전 main 직접 push (bypass 경고 발생). revert 여부는 사용자 결정.
