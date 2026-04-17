@@ -6,9 +6,15 @@
 > **호출 예산**: 11 중 2 사용
 
 ## 총계
-- 총 Finding **90건** (P0: 10 / P1: 52 / P2: 28)
+- 총 Finding **89건** (P0: 9 / P1: 52 / P2: 28) — F-a11y-1 @jittda/ui finding 제거(감사 전제 오류, 사용자 확정)
 - Cross-cutting issue **8건** (W3a advisor intake 식별)
-- Synthesis PR 후보 **8건** (1:1 매핑)
+- Synthesis PR 후보 **9건** (PR-0 MEMORY migration 선행 추가)
+
+## ✅ Resolved Decisions (사용자 확정 2026-04-17)
+1. **WS naming SSOT = 서버 기준** (envelope_catalog.go). 프론트 enum·MSW 전부 서버 맞춤 + codegen
+2. **@jittda/ui 감사 제외** — 이 프로젝트 의존성 아님. 실제 스택 = Tailwind 4 직접 사용
+3. **mockgen 규약 유지 (재도입)** — PR-5 Coverage Gate에 `go:generate mockgen` 전면 도입 서브태스크
+4. **MEMORY canonical = Repo** (`memory/`). user home 34 파일 중 누락분 복원 → PR-0 선행
 
 ## P0 (10건, 다음 릴리스 전 필수)
 
@@ -23,10 +29,11 @@
 6. **F-ws-2**: `game:start`/`game:end` emitter 프로덕션 코드 부재(단위 테스트만) → **PR-1**
 7. **F-module-1**: crime_scene 3 모듈 PlayerAware 미구현(C-2와 중첩, PR-2로 흡수)
 
-### 관측/접근성 P0 (3건)
+### 관측/접근성 P0 (2건)
 8. **F-perf-1**: `infra/otel`·`sentry`·`storage` 0% 커버리지 — 관측 레이어 동작 증명 부재 → **PR-5**
-9. **F-a11y-1**: @jittda/ui 채택 **0/278** — 디자인 시스템 근간 미적용 → **독립 PR 또는 Phase 20 이관**
-10. **F-a11y-3**: `outline-none` 57건에 `focus-visible` 없음 — WCAG 2.4.7 Focus Visible 명백 실패 → **독립 PR**
+9. **F-a11y-3**: `outline-none` 57건에 `focus-visible` 없음 — WCAG 2.4.7 Focus Visible 명백 실패 → **독립 hotfix PR**
+
+~~**F-a11y-1** (@jittda/ui 0/278)~~ **REMOVED** — 사용자 확정: @jittda/ui는 이 프로젝트 의존성 아님(타 프로젝트 jittda-frontend-hub 전용). v3 실제 스택 = Tailwind 4 직접 사용.
 
 ## P1 (52건, 이번 분기)
 

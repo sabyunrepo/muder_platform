@@ -17,13 +17,12 @@
 
 ## Findings
 
-### F-a11y-1: Zero Adoption of @jittda/ui Design System Library
+### ~~F-a11y-1: Zero Adoption of @jittda/ui Design System Library~~ **WITHDRAWN (2026-04-17)**
 
-- **Severity**: P1
-- **Evidence**: `grep -rln "@jittda/ui" apps/web/src --include="*.tsx"` = 0 files. Scope-matrix.md hints adoption target; Button, Input, Card components reimplemented ad-hoc (Button.tsx:46, Input.tsx:35, Card.tsx:8-36).
-- **Impact**: Design token semantic coherence broken; future theme migrations (e.g., rebranding, dark mode overhaul) require scatter-gun fixes across 278 .tsx files instead of centralized library updates.
-- **Proposal**: Backport Button/Input/Card/Modal primitives to @jittda/ui wrapper; create aliased imports (`import { Button } from "@/ui"` → `@jittda/ui`); audit 10 high-traffic components (LoginPage, RoomPage, GameChat, Editor) for bulk migration. P0 post-decision: decide: adopt library or deprecate plan.
-- **Cross-refs**: [cross:react-frontend] (component refactor burden)
+- **Status**: **WITHDRAWN** — 감사 전제 오류. 사용자 확정(2026-04-17): `@jittda/ui`는 이 프로젝트(MMP v3) 의존성이 아님. 타 프로젝트(`jittda-frontend-hub`) 전용 디자인 시스템 라이브러리.
+- **Reason**: 글로벌 `~/.claude/CLAUDE.md`의 "프론트엔드 아키텍처 (Seed Design 3단계)" 규칙이 auto-loaded 되면서 감사에 잘못 반영됨. MMP v3 실제 스택은 Tailwind 4를 직접 사용하며 별도 컴포넌트 라이브러리 의존성 없음.
+- **Cross-refs**: 프로젝트 CLAUDE.md "기술 스택" 섹션 + "글로벌 CLAUDE.md 프론트엔드 섹션 무효" 경고 반영.
+- (원본 Finding 본문 삭제. 감사 history 보존용 stub만 유지.)
 
 ### F-a11y-2: Hardcoded Hex Colors in Tailwind Arbitrary Values
 
@@ -122,8 +121,8 @@
 | Native `<textarea>` elements | 13 | ≤10 | ✓ Low |
 | Native `<select>` elements | 25 | ≤15 | ⚠️ 25 instances; check Select wrapper |
 | Hex color hardcoding (`#[0-9a-fA-F]{3,8}`) | 22 | 0 (centralized tokens) | ❌ 22 arbitrary values |
-| @jittda/ui imports | 0 | ≥278 (all .tsx files) | ❌ 0% adoption |
-| @seed-design/react imports | 0 | ≥50 (layout primitives) | ❌ 0% adoption |
+| ~~@jittda/ui imports~~ | N/A | N/A | WITHDRAWN — 이 프로젝트 의존성 아님 |
+| ~~@seed-design/react imports~~ | N/A | N/A | WITHDRAWN — 이 프로젝트 의존성 아님 |
 | lucide-react imports | 134 | ≥100 | ✓ Standardized |
 | Other icon libs (react-icons, etc.) | 0 | 0 | ✓ None |
 | `outline-none` without `focus-visible:ring` | 57 / 278 | 0 (all have ring fallback) | ❌ 20.5% gap |
@@ -135,7 +134,7 @@
 
 ## Advisor-Ask
 
-1. **Q1**: Should @jittda/ui adoption be P0 gate for Phase 19 exit, or defer to Phase 20 design-tokens initiative? Current zero adoption breaks future dark mode/rebranding workflow.
+1. ~~**Q1**: Should @jittda/ui adoption be P0 gate~~ — **RESOLVED (2026-04-17)**: @jittda/ui 이 프로젝트 의존성 아님. Q1 withdrawn.
 2. **Q2**: Shall we prioritize axe-core + Playwright E2E a11y spec creation (test-baseline.md §5 notes 0 specs)? Recommend: mock 2 smoke pages (LoginPage, GameChat) with axe assertions as proof-of-concept before Phase 19 exit.
 3. **Q3**: Role="button" div-as-button pattern (9 instances) accumulates keyboard interaction debt. Should Phase 19 backlog include CSS-only Button component extraction task to reduce divs relying on custom onKeyDown?
 

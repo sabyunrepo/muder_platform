@@ -1,11 +1,11 @@
 # Phase 19 감사 — 체크리스트
 
 <!-- STATUS-START -->
-**Active**: Phase 19 Platform Deep Audit — W3 완료, synthesis 확정
-**Wave**: W3c (완료)
-**Task**: 감사 종결. executive-summary + phase19-backlog 확정. 사용자 검토 대기 + /plan-finish 대기
-**State**: synthesis-complete
-**Blockers**: Open Decisions 4건 (WS SSOT / jittda 스코프 / mockgen 규약 / MEMORY canonical) 사용자 답변 대기
+**Active**: Phase 19 Platform Deep Audit — W3 + Decisions 확정
+**Wave**: W3c (완료) + 4 decisions resolved
+**Task**: 감사 종결. 4 decisions 반영, F-a11y-1 withdrawn, QMD v2 hotel 추가, PR-0 MEMORY migration 신설. /plan-finish 대기
+**State**: decisions-resolved
+**Blockers**: 없음 (PR #69 머지 + /plan-new Phase 19 implementation)
 **Last updated**: 2026-04-17
 <!-- STATUS-END -->
 

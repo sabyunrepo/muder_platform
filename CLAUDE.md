@@ -20,11 +20,17 @@
 
 ## 기술 스택
 - **Backend**: Go 1.25 + gorilla/websocket + sqlc + pgx + asynq + go-redis
-- **Frontend**: React 19 + Vite (SPA) + Zustand + Tailwind CSS 4
+- **Frontend**: React 19 + Vite (SPA) + Zustand + **Tailwind CSS 4 (직접 사용)** + lucide-react (아이콘 전용)
 - **Mobile**: Expo (React Native)
 - **DB**: PostgreSQL + Redis
 - **Voice**: LiveKit
 - **Infra**: Docker (scratch) + K8s + Cloudflare Pages + GitHub Actions
+
+> **⚠️ 글로벌 CLAUDE.md 프론트엔드 섹션 무효**: `~/.claude/CLAUDE.md`의 "프론트엔드 아키텍처 (Seed Design 3단계 필수)" 규칙(@jittda/ui, @seed-design/react 사용)은 **이 프로젝트에 적용되지 않는다**. 그 규칙은 다른 프로젝트(jittda-frontend-hub 등) 전용. MMP v3는 Tailwind 4를 직접 사용하고 디자인 시스템 라이브러리 의존 없음.
+
+## 관련 프로젝트 (참조)
+- **MMP v2 (머더미스터리 호텔)**: `/Users/sabyun/goinfre/merdermistery_hotel/` (base 브랜치). 에디터·대기방·로비 UX 이식 원본. QMD 컬렉션 `mmp-v2-docs`로 인덱싱(98 파일).
+- v3는 **v2 코드를 마이그레이션하지 않음** — UX·플로우만 v3 기술 스택(React 19 + Tailwind 4 + Zustand)으로 재구현.
 
 ## 설계 문서
 `docs/plans/2026-04-05-rebuild/` — 설계 인덱스 + refs/ 상세
