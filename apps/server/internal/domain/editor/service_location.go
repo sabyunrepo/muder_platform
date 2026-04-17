@@ -113,6 +113,9 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
+	if err := validateLocationRoundOrder(req.FromRound, req.UntilRound); err != nil {
+		return nil, err
+	}
 	// verify map belongs to the theme via ownership check
 	_, err := s.q.GetMapWithOwner(ctx, db.GetMapWithOwnerParams{ID: mapID, CreatorID: creatorID})
 	if err != nil {
@@ -136,6 +139,8 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		Name:                 req.Name,
 		RestrictedCharacters: ptrToText(req.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
+		FromRound:            int32PtrToPgtype(req.FromRound),
+		UntilRound:           int32PtrToPgtype(req.UntilRound),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create location")
@@ -146,6 +151,9 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 }
 
 func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID, req UpdateLocationRequest) (*LocationResponse, error) {
+	if err := validateLocationRoundOrder(req.FromRound, req.UntilRound); err != nil {
+		return nil, err
+	}
 	l, err := s.q.GetLocationWithOwner(ctx, db.GetLocationWithOwnerParams{ID: locID, CreatorID: creatorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -159,6 +167,8 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		Name:                 req.Name,
 		RestrictedCharacters: ptrToText(req.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
+		FromRound:            int32PtrToPgtype(req.FromRound),
+		UntilRound:           int32PtrToPgtype(req.UntilRound),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update location")
@@ -166,6 +176,14 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	}
 	resp := toLocationResponse(updated)
 	return &resp, nil
+}
+
+// validateLocationRoundOrder enforces from_round <= until_round when both set.
+func validateLocationRoundOrder(from, until *int32) error {
+	if from != nil && until != nil && *from > *until {
+		return apperror.BadRequest("from_round must not be greater than until_round")
+	}
+	return nil
 }
 
 func (s *service) DeleteLocation(ctx context.Context, creatorID, locID uuid.UUID) error {
@@ -202,5 +220,7 @@ func toLocationResponse(l db.ThemeLocation) LocationResponse {
 		RestrictedCharacters: textToPtr(l.RestrictedCharacters),
 		SortOrder:            l.SortOrder,
 		CreatedAt:            l.CreatedAt,
+		FromRound:            pgtypeInt4ToPtr(l.FromRound),
+		UntilRound:           pgtypeInt4ToPtr(l.UntilRound),
 	}
 }

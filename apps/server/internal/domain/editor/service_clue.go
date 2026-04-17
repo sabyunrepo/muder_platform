@@ -38,6 +38,9 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
+	if err := validateClueRoundOrder(req.RevealRound, req.HideRound); err != nil {
+		return nil, err
+	}
 	count, err := s.q.CountCluesByTheme(ctx, themeID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to count clues")
@@ -59,6 +62,8 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 		UseEffect:   ptrToText(req.UseEffect),
 		UseTarget:   ptrToText(req.UseTarget),
 		UseConsumed: req.UseConsumed,
+		RevealRound: int32PtrToPgtype(req.RevealRound),
+		HideRound:   int32PtrToPgtype(req.HideRound),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create clue")
@@ -69,6 +74,9 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 }
 
 func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, req UpdateClueRequest) (*ClueResponse, error) {
+	if err := validateClueRoundOrder(req.RevealRound, req.HideRound); err != nil {
+		return nil, err
+	}
 	c, err := s.q.GetClueWithOwner(ctx, db.GetClueWithOwnerParams{ID: clueID, CreatorID: creatorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -90,6 +98,8 @@ func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, r
 		UseEffect:   ptrToText(req.UseEffect),
 		UseTarget:   ptrToText(req.UseTarget),
 		UseConsumed: req.UseConsumed,
+		RevealRound: int32PtrToPgtype(req.RevealRound),
+		HideRound:   int32PtrToPgtype(req.HideRound),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update clue")
@@ -97,6 +107,16 @@ func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, r
 	}
 	resp := toClueResponse(updated)
 	return &resp, nil
+}
+
+// validateClueRoundOrder ensures reveal_round <= hide_round when both are set.
+// Matches the DB CHECK in migration 00025 but returns a friendly 400 instead
+// of letting the constraint fire as a 500.
+func validateClueRoundOrder(reveal, hide *int32) error {
+	if reveal != nil && hide != nil && *reveal > *hide {
+		return apperror.BadRequest("reveal_round must not be greater than hide_round")
+	}
+	return nil
 }
 
 func (s *service) DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error {
@@ -170,6 +190,8 @@ func toClueResponse(c db.ThemeClue) ClueResponse {
 		UseEffect:   textToPtr(c.UseEffect),
 		UseTarget:   textToPtr(c.UseTarget),
 		UseConsumed: c.UseConsumed,
+		RevealRound: pgtypeInt4ToPtr(c.RevealRound),
+		HideRound:   pgtypeInt4ToPtr(c.HideRound),
 	}
 }
 

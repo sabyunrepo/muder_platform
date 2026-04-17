@@ -243,4 +243,84 @@ describe('ClueForm', () => {
     expect(screen.getByRole('alert').textContent).toContain('이름은 필수');
     expect(createMutate).not.toHaveBeenCalled();
   });
+
+  it('고급 설정의 공개/사라짐 라운드 입력이 payload에 포함된다', () => {
+    const onClose = vi.fn();
+    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
+
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '라운드 단서' },
+    });
+    fireEvent.click(screen.getByText('고급 설정'));
+    fireEvent.change(screen.getByLabelText('공개 라운드'), {
+      target: { value: '2' },
+    });
+    fireEvent.change(screen.getByLabelText('사라짐 라운드'), {
+      target: { value: '4' },
+    });
+
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(createMutate).toHaveBeenCalledTimes(1);
+    const [body] = createMutate.mock.calls[0];
+    expect(body.reveal_round).toBe(2);
+    expect(body.hide_round).toBe(4);
+  });
+
+  it('공개 > 사라짐 라운드 조합은 에러를 표시하고 mutate를 막는다', () => {
+    const onClose = vi.fn();
+    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
+
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '역전 단서' },
+    });
+    fireEvent.click(screen.getByText('고급 설정'));
+    fireEvent.change(screen.getByLabelText('공개 라운드'), {
+      target: { value: '5' },
+    });
+    fireEvent.change(screen.getByLabelText('사라짐 라운드'), {
+      target: { value: '2' },
+    });
+
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(
+      screen.getByText('공개 라운드는 사라짐 라운드보다 클 수 없습니다'),
+    ).toBeDefined();
+    expect(createMutate).not.toHaveBeenCalled();
+  });
+
+  it('edit 모드에서 기존 reveal_round/hide_round가 초기값으로 로드된다', () => {
+    const onClose = vi.fn();
+    const existing = {
+      id: 'clue-rr',
+      theme_id: 'theme-1',
+      location_id: null,
+      name: '기존 단서',
+      description: null,
+      image_url: null,
+      is_common: false,
+      level: 1,
+      sort_order: 0,
+      created_at: '2026-04-17T00:00:00Z',
+      is_usable: false,
+      use_effect: null,
+      use_target: null,
+      use_consumed: false,
+      reveal_round: 3,
+      hide_round: 7,
+    };
+
+    render(
+      <ClueForm themeId="theme-1" clue={existing} isOpen onClose={onClose} />,
+    );
+    fireEvent.click(screen.getByText('고급 설정'));
+
+    expect(
+      (screen.getByLabelText('공개 라운드') as HTMLInputElement).value,
+    ).toBe('3');
+    expect(
+      (screen.getByLabelText('사라짐 라운드') as HTMLInputElement).value,
+    ).toBe('7');
+  });
 });

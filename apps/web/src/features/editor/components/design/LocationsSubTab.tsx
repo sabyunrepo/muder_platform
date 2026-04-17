@@ -179,6 +179,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
       {/* ── Location detail ── */}
       <div className="flex-1 overflow-y-auto px-5 py-5">
         <LocationDetailPanel
+          themeId={themeId}
           selectedMap={selectedMap}
           mapLocations={mapLocations}
           addingLocation={addingLocation}

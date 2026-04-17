@@ -429,6 +429,21 @@ func ptrToText(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
+func int32PtrToPgtype(i *int32) pgtype.Int4 {
+	if i == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: *i, Valid: true}
+}
+
+func pgtypeInt4ToPtr(i pgtype.Int4) *int32 {
+	if !i.Valid {
+		return nil
+	}
+	v := i.Int32
+	return &v
+}
+
 var slugCleanRe = regexp.MustCompile(`[^a-z0-9-]+`)
 
 func generateSlug(title string) string {
