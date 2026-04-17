@@ -9,6 +9,12 @@
  *
  * Routes mock: `apps/web/src/mocks/handlers/clue.ts` (PR-4) +
  *   theme.ts (E2E_THEME_ID fixture) + auth.ts + room.ts.
+ *
+ * Phase 18.8 follow-up (#9 flaky monitor): 노드 클릭 인터랙션은 React Flow
+ * fitView 애니메이션 직후 호출되므로 layout settle 시점에 따라 click 이
+ * 비결정적일 수 있다. 현재 `toHaveCount` 명시 동기화 + FLOW_TIMEOUT 으로
+ * mitigated. CI shard 에서 flaky 가 관측되면 `.react-flow__viewport`
+ * waitFor 동기화 포인트를 추가하고 retry 는 도입하지 않는다 (race 마스킹).
  */
 import { test, expect, type Page } from "@playwright/test";
 import { handlers } from "../src/mocks/handlers";

@@ -26,12 +26,16 @@ scope_globs:
 ### Task 1 — clue handler 확장
 - PR-2에서 shell만 있는 `handlers/clue.ts`를 확장:
   ```ts
-  GET /v1/clue-relations   → 기본 { nodes: [...], edges: [...] }
-  GET /v1/clues            → 단서 배열 (ID 기반)
-  POST /v1/clue-relations  → 신규 엣지 생성 (stub echo)
-  DELETE /v1/clue-relations/:id → 204
+  GET  /v1/editor/themes/:themeId/clue-relations  → ClueRelationResponse[] (배열)
+  PUT  /v1/editor/themes/:themeId/clue-relations  → 갱신본 echo (replace 패턴)
+  GET  /v1/editor/themes/:themeId/clues           → ClueResponse[] (snake_case)
+  GET  /v1/clues                                  → [] (legacy/standalone)
   ```
 - 기본 fixture: 단서 3개 + 엣지 2개 (시나리오 2~3 커버)
+- **drift 정정 (Phase 18.8 follow-up #7)**: 본 spec 초안은 POST/DELETE 를
+  명시했으나 서버 SSOT (`apps/server/internal/domain/editor/clue_relation_handler.go`)
+  는 GET + PUT (배열 일괄 replace) 만 지원한다. 구현은 서버에 정렬했고
+  본 문서를 stale 상태에서 정정한다.
 
 ### Task 2 — clue-relation-stubbed.spec.ts
 - 구조는 `clue-relation-live.spec.ts` 참조

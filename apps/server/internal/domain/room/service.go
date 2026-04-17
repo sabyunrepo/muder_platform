@@ -259,19 +259,22 @@ func (s *service) ListWaitingRooms(ctx context.Context, limit, offset int32) ([]
 		return nil, apperror.Internal("failed to list rooms")
 	}
 
+	// Phase 18.8 follow-up (#3 DRY): sqlc Row 는 db.Room 필드를 평탄화한
+	// 형태이므로 임시 db.Room 으로 매핑한 뒤 공통 mapRoomResponse 를 호출한다.
+	// RoomResponse 필드 추가 시 두 경로의 동기화 누락 위험 제거.
 	result := make([]RoomResponse, len(rooms))
 	for i, r := range rooms {
-		result[i] = RoomResponse{
-			ID:          r.ID,
-			ThemeID:     r.ThemeID,
-			HostID:      r.HostID,
-			Code:        r.Code,
-			Status:      r.Status,
-			MaxPlayers:  r.MaxPlayers,
-			IsPrivate:   r.IsPrivate,
-			PlayerCount: int(r.PlayerCount),
-			CreatedAt:   r.CreatedAt,
+		room := db.Room{
+			ID:         r.ID,
+			ThemeID:    r.ThemeID,
+			HostID:     r.HostID,
+			Code:       r.Code,
+			Status:     r.Status,
+			MaxPlayers: r.MaxPlayers,
+			IsPrivate:  r.IsPrivate,
+			CreatedAt:  r.CreatedAt,
 		}
+		result[i] = mapRoomResponse(room, int(r.PlayerCount))
 	}
 	return result, nil
 }

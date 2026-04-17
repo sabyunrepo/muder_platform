@@ -79,6 +79,11 @@ function buildPlayer(
 }
 
 function buildSessionState(opts: Required<GameWsRouteOptions>, role: GameRole): GameState {
+  // Phase 18.8 follow-up (#6 monitor): detective 도 현재는 normal 과 동일한
+  // SECRET_REDACTED ("???") 마스킹 정책. 서버가 향후 "탐정에게는 단서 일부
+  // 공개" 같은 차등 redaction 을 도입하면 본 mock 도 정렬해야 한다 (drift
+  // 모니터). game-redaction-stubbed.spec.ts 의 detective 시나리오로 회귀
+  // 가드 가능.
   const myRoleEnum: Player["role"] =
     role === "murderer" ? "murderer" : role === "detective" ? "detective" : "civilian";
   const players: Player[] = [

@@ -112,4 +112,25 @@ describe("clueHandlers", () => {
     expect(body[0].mode).toBe("AND");
     expect(body[0].id).toMatch(/^saved-/);
   });
+
+  // Phase 18.8 follow-up (#8): PUT invalid payload (non-array body) 분기 가드.
+  // handler 가 `Array.isArray(body)` false 경로에서 200 + [] 로 fallthrough
+  // 하는 동작을 회귀 방지로 고정한다. 서버 SSOT 는 400 으로 응답하지만,
+  // mock 은 stubbed 한정으로 관용적 동작 유지 (live spec 이 400 검증).
+  it("PUT clue-relations with non-array body returns 200 + empty array", async () => {
+    const handler = findHandler("PUT", "/themes/:themeId/clue-relations");
+    const result = await handler.run({
+      request: new Request(
+        `http://localhost/v1/editor/themes/${E2E_THEME_ID}/clue-relations`,
+        {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ not: "an array" }),
+        },
+      ),
+    });
+    expect(result?.response?.status).toBe(200);
+    const body = await result!.response!.json();
+    expect(body).toEqual([]);
+  });
 });
