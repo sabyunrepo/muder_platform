@@ -35,7 +35,7 @@ type PlayerContext struct {
 // Hidden rules take precedence over grant rules at the same specificity.
 // More specific scopes (player > role > team > all) override less specific ones.
 func ComputeVisible(g *Graph, discovered map[ClueID]bool, rules []VisibilityRule, player PlayerContext) map[ClueID]bool {
-	available := g.Resolve(discovered)
+	available := g.Resolve(discovered, nil)
 	availSet := make(map[ClueID]bool, len(available))
 	for _, c := range available {
 		availSet[c.ID] = true

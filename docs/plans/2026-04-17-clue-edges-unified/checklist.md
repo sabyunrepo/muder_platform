@@ -59,18 +59,18 @@
 **Branch**: `feat/phase-20/PR-4-unified-edges`
 **Depends**: PR-1
 
-- [ ] migration 00024 (clue_relations drop + clue_edge_groups + clue_edge_members + CHECK)
-- [ ] db/queries/editor.sql: clue_relations 쿼리 삭제, 신규 edge_groups 쿼리 추가 (GetByTheme, UpsertGroup, DeleteGroup, ListMembersByGroup)
-- [ ] sqlc 재생성
-- [ ] types.go: `ClueEdgeGroupRequest/Response` 추가
-- [ ] clue_edge_service.go 신규 (기존 clue_relation_service.go 대체)
-- [ ] clue_edge_handler.go 신규, 엔드포인트 `GET/PUT /v1/editor/themes/:id/clue-edges`
-- [ ] 구 clue_relation_* 파일 삭제
-- [ ] internal/clue/graph.go: `Dependency.Trigger` 필드 + `Resolve(discovered, crafted)` 시그니처 확장
-- [ ] 사이클·CRAFT+OR 차단·500건 상한
-- [ ] apperror: `EDGE_CYCLE_DETECTED`, `EDGE_INVALID_CRAFT_OR`
-- [ ] 테스트: clue_edge_handler_test, graph_test (Trigger), visibility_test(round) 재작성
-- [ ] `make lint` + `make test`
+- [x] migration 00024 (clue_relations DROP + clue_edge_groups + clue_edge_members + CHECK trigger/mode/craft-or)
+- [x] db/queries/clue_edges.sql 신규 (List groups/members, Delete all, InsertGroup, BulkInsertMembers) — clue_relation.sql 삭제
+- [x] sqlc 재생성 → `ClueEdgeGroup` / `ClueEdgeMember` 모델 + Queries 메서드 생성
+- [x] types.go: `ClueEdgeGroupRequest/Response` (targetId + sources[] + trigger + mode), 구 ClueRelationRequest/Response 삭제
+- [x] clue_edge_service.go 신규 — Get/Replace + 헬퍼 3종 (validate, detectCycle, persist)
+- [x] clue_edge_handler.go 신규, 엔드포인트 `GET/PUT /v1/editor/themes/:id/clue-edges`
+- [x] 구 clue_relation_* 파일 5개 삭제 + 공용 fixture는 `test_fixture_test.go`로 분리
+- [x] internal/clue/graph.go: `Dependency.Trigger` + `Resolve(discovered, crafted)` — AUTO 자동 해금, CRAFT는 crafted 셋 필수
+- [x] 사이클 탐지 (Kahn) + CRAFT+OR 차단 + maxClueEdgeGroups=500 상한
+- [x] apperror: `EDGE_CYCLE_DETECTED`, `EDGE_INVALID_CRAFT_OR` (400)
+- [x] 테스트: graph_test 4 신규 (CRAFT+OR 거부, default AUTO, craft hidden, craft→auto 체인), clue_edge_handler_test 6 신규
+- [x] `make ci-local` 통과 (lint + typecheck + test + build)
 - [ ] PR 생성 → 머지
 
 ## W3 — PR-5 CombinationModule 리팩터

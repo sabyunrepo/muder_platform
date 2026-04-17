@@ -9,8 +9,8 @@ import (
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
-// GetClueRelations handles GET /editor/themes/{id}/clue-relations.
-func (h *Handler) GetClueRelations(w http.ResponseWriter, r *http.Request) {
+// GetClueEdges handles GET /editor/themes/{id}/clue-edges.
+func (h *Handler) GetClueEdges(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
 	themeID, err := parseUUID(r, "id")
 	if err != nil {
@@ -18,16 +18,16 @@ func (h *Handler) GetClueRelations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	relations, err := h.svc.GetClueRelations(r.Context(), creatorID, themeID)
+	edges, err := h.svc.GetClueEdges(r.Context(), creatorID, themeID)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, relations)
+	httputil.WriteJSON(w, http.StatusOK, edges)
 }
 
-// ReplaceClueRelations handles PUT /editor/themes/{id}/clue-relations.
-func (h *Handler) ReplaceClueRelations(w http.ResponseWriter, r *http.Request) {
+// ReplaceClueEdges handles PUT /editor/themes/{id}/clue-edges.
+func (h *Handler) ReplaceClueEdges(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
 	themeID, err := parseUUID(r, "id")
 	if err != nil {
@@ -36,16 +36,16 @@ func (h *Handler) ReplaceClueRelations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1 MB cap
-	var reqs []ClueRelationRequest
+	var reqs []ClueEdgeGroupRequest
 	if err := json.NewDecoder(r.Body).Decode(&reqs); err != nil {
 		apperror.WriteError(w, r, apperror.BadRequest("invalid JSON: "+err.Error()))
 		return
 	}
 
-	relations, err := h.svc.ReplaceClueRelations(r.Context(), creatorID, themeID, reqs)
+	edges, err := h.svc.ReplaceClueEdges(r.Context(), creatorID, themeID, reqs)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	httputil.WriteJSON(w, http.StatusOK, relations)
+	httputil.WriteJSON(w, http.StatusOK, edges)
 }

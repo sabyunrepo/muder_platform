@@ -139,7 +139,7 @@ func TestGraph_Clues_InsertionOrder(t *testing.T) {
 func TestGraph_Resolve_RootCluesAlwaysAvailable(t *testing.T) {
 	g := buildSimpleGraph(t)
 	// No clues discovered → root clues (knife, letter) available.
-	result := g.Resolve(nil)
+	result := g.Resolve(nil, nil)
 	ids := clueIDs(result)
 	assertContains(t, ids, "knife")
 	assertContains(t, ids, "letter")
@@ -150,7 +150,7 @@ func TestGraph_Resolve_RootCluesAlwaysAvailable(t *testing.T) {
 func TestGraph_Resolve_OR_OneSatisfied(t *testing.T) {
 	g := buildSimpleGraph(t)
 	discovered := map[ClueID]bool{"knife": true}
-	result := g.Resolve(discovered)
+	result := g.Resolve(discovered, nil)
 	ids := clueIDs(result)
 	assertContains(t, ids, "alibi")     // OR: knife is enough
 	assertNotContains(t, ids, "motive") // AND: needs letter too
@@ -159,7 +159,7 @@ func TestGraph_Resolve_OR_OneSatisfied(t *testing.T) {
 func TestGraph_Resolve_AND_AllSatisfied(t *testing.T) {
 	g := buildSimpleGraph(t)
 	discovered := map[ClueID]bool{"knife": true, "letter": true}
-	result := g.Resolve(discovered)
+	result := g.Resolve(discovered, nil)
 	ids := clueIDs(result)
 	assertContains(t, ids, "motive")
 	assertContains(t, ids, "alibi")
@@ -168,7 +168,7 @@ func TestGraph_Resolve_AND_AllSatisfied(t *testing.T) {
 func TestGraph_Resolve_DiscoveredIncluded(t *testing.T) {
 	g := buildSimpleGraph(t)
 	discovered := map[ClueID]bool{"motive": true}
-	result := g.Resolve(discovered)
+	result := g.Resolve(discovered, nil)
 	ids := clueIDs(result)
 	assertContains(t, ids, "motive")
 }
@@ -210,7 +210,7 @@ func TestGraph_DependenciesOf(t *testing.T) {
 
 func TestGraph_Resolve_EmptyGraph(t *testing.T) {
 	g := NewGraph()
-	result := g.Resolve(nil)
+	result := g.Resolve(nil, nil)
 	if len(result) != 0 {
 		t.Fatalf("expected 0, got %d", len(result))
 	}
@@ -225,14 +225,107 @@ func TestGraph_Resolve_ChainDependency(t *testing.T) {
 	g.AddDependency(Dependency{ClueID: "c", Prerequisites: []ClueID{"b"}, Mode: ModeAND})
 
 	// Only a discovered → b available, c not yet.
-	result := g.Resolve(map[ClueID]bool{"a": true})
+	result := g.Resolve(map[ClueID]bool{"a": true}, nil)
 	ids := clueIDs(result)
 	assertContains(t, ids, "b")
 	assertNotContains(t, ids, "c")
 
 	// a + b discovered → c available.
-	result = g.Resolve(map[ClueID]bool{"a": true, "b": true})
+	result = g.Resolve(map[ClueID]bool{"a": true, "b": true}, nil)
 	ids = clueIDs(result)
+	assertContains(t, ids, "c")
+}
+
+// --- Phase 20 PR-4: Trigger semantics ---
+
+func TestGraph_AddDependency_CraftPlusOR_Rejected(t *testing.T) {
+	g := NewGraph()
+	g.Add(Clue{ID: "a", Name: "A"})
+	g.Add(Clue{ID: "b", Name: "B"})
+	g.Add(Clue{ID: "c", Name: "C"})
+	err := g.AddDependency(Dependency{
+		ClueID:        "c",
+		Prerequisites: []ClueID{"a", "b"},
+		Mode:          ModeOR,
+		Trigger:       TriggerCRAFT,
+	})
+	if err == nil {
+		t.Fatal("expected error: CRAFT+OR should be rejected")
+	}
+}
+
+func TestGraph_AddDependency_DefaultsTriggerToAUTO(t *testing.T) {
+	g := NewGraph()
+	g.Add(Clue{ID: "a", Name: "A"})
+	g.Add(Clue{ID: "b", Name: "B"})
+	if err := g.AddDependency(Dependency{
+		ClueID:        "b",
+		Prerequisites: []ClueID{"a"},
+		Mode:          ModeAND,
+		// Trigger omitted → must default to AUTO
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	dep, ok := g.DependenciesOf("b")
+	if !ok {
+		t.Fatal("expected dependency for b")
+	}
+	if dep.Trigger != TriggerAUTO {
+		t.Fatalf("expected default AUTO, got %q", dep.Trigger)
+	}
+}
+
+func TestGraph_Resolve_CraftHiddenUntilExplicit(t *testing.T) {
+	g := NewGraph()
+	g.Add(Clue{ID: "a", Name: "A"})
+	g.Add(Clue{ID: "b", Name: "B"})
+	g.Add(Clue{ID: "c", Name: "C"}) // CRAFT target: a+b → c
+	if err := g.AddDependency(Dependency{
+		ClueID:        "c",
+		Prerequisites: []ClueID{"a", "b"},
+		Mode:          ModeAND,
+		Trigger:       TriggerCRAFT,
+	}); err != nil {
+		t.Fatalf("AddDependency: %v", err)
+	}
+
+	// Both prereqs discovered — CRAFT target should STAY hidden (no auto-unlock).
+	discovered := map[ClueID]bool{"a": true, "b": true}
+	ids := clueIDs(g.Resolve(discovered, nil))
+	assertContains(t, ids, "a")
+	assertContains(t, ids, "b")
+	assertNotContains(t, ids, "c")
+
+	// Engine explicitly adds c to the crafted set — now visible.
+	crafted := map[ClueID]bool{"c": true}
+	ids = clueIDs(g.Resolve(discovered, crafted))
+	assertContains(t, ids, "c")
+}
+
+func TestGraph_Resolve_AutoPrereqsSatisfiedByCrafted(t *testing.T) {
+	// AUTO target's prereq is a CRAFT target. Once the CRAFT target is crafted,
+	// the downstream AUTO target should unlock automatically.
+	g := NewGraph()
+	g.Add(Clue{ID: "a", Name: "A"})
+	g.Add(Clue{ID: "b", Name: "B"}) // CRAFT: a → b
+	g.Add(Clue{ID: "c", Name: "C"}) // AUTO:  b → c
+	g.AddDependency(Dependency{
+		ClueID:        "b",
+		Prerequisites: []ClueID{"a"},
+		Mode:          ModeAND,
+		Trigger:       TriggerCRAFT,
+	})
+	g.AddDependency(Dependency{
+		ClueID:        "c",
+		Prerequisites: []ClueID{"b"},
+		Mode:          ModeAND,
+		Trigger:       TriggerAUTO,
+	})
+
+	discovered := map[ClueID]bool{"a": true}
+	crafted := map[ClueID]bool{"b": true}
+	ids := clueIDs(g.Resolve(discovered, crafted))
+	assertContains(t, ids, "b")
 	assertContains(t, ids, "c")
 }
 

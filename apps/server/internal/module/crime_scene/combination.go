@@ -144,7 +144,10 @@ func (m *CombinationModule) checkNewCombos(playerID uuid.UUID) {
 	discovered := m.collectedAsClueMap(playerID)
 	m.mu.RUnlock()
 
-	available := m.graph.Resolve(discovered)
+	// Phase 20 PR-4: Resolve now takes a `crafted` set. Wiring it through is
+	// PR-5's job; until then we pass nil so CRAFT-trigger targets stay hidden
+	// and AUTO dependencies behave identically to pre-Phase-20.
+	available := m.graph.Resolve(discovered, nil)
 	for _, c := range available {
 		// Notify only newly-resolvable output clues (those that have prerequisites).
 		if _, hasDep := m.graph.DependenciesOf(c.ID); hasDep {
