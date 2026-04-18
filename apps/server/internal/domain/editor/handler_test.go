@@ -11,8 +11,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
@@ -213,7 +215,7 @@ func TestListMyThemes(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodGet, "/editor/themes", nil)
 	r = withAuth(r)
@@ -232,7 +234,7 @@ func TestCreateTheme_Success(t *testing.T) {
 			return sampleThemeResponse(), nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"title":"Test Theme","min_players":4,"max_players":8,"duration_min":60,"price":0}`
 	r := httptest.NewRequest(http.MethodPost, "/editor/themes", bytes.NewBufferString(body))
@@ -249,7 +251,7 @@ func TestCreateTheme_Success(t *testing.T) {
 
 func TestCreateTheme_InvalidBody(t *testing.T) {
 	ms := &mockService{}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	// missing required fields
 	body := `{"title":"X"}`
@@ -271,7 +273,7 @@ func TestUpdateTheme_Success(t *testing.T) {
 			return sampleThemeResponse(), nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"title":"Updated Theme","min_players":4,"max_players":8,"duration_min":60,"price":0}`
 	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+testThemeID.String(), bytes.NewBufferString(body))
@@ -293,7 +295,7 @@ func TestDeleteTheme_Success(t *testing.T) {
 			return nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodDelete, "/editor/themes/"+testThemeID.String(), nil)
 	r = withAuth(r)
@@ -313,7 +315,7 @@ func TestDeleteTheme_Forbidden(t *testing.T) {
 			return apperror.Forbidden("you do not own this theme")
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodDelete, "/editor/themes/"+testThemeID.String(), nil)
 	r = withAuth(r)
@@ -335,7 +337,7 @@ func TestPublishTheme_Success(t *testing.T) {
 			return resp, nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/publish", nil)
 	r = withAuth(r)
@@ -355,7 +357,7 @@ func TestUnpublishTheme_Success(t *testing.T) {
 			return sampleThemeResponse(), nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/unpublish", nil)
 	r = withAuth(r)
@@ -375,7 +377,7 @@ func TestCreateCharacter_Success(t *testing.T) {
 			return sampleCharResponse(), nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"name":"Detective","description":"A detective","is_culprit":false,"sort_order":0}`
 	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/characters", bytes.NewBufferString(body))
@@ -397,7 +399,7 @@ func TestUpdateCharacter_Success(t *testing.T) {
 			return sampleCharResponse(), nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"name":"Detective Updated","is_culprit":false,"sort_order":1}`
 	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+testCharID.String(), bytes.NewBufferString(body))
@@ -419,7 +421,7 @@ func TestDeleteCharacter_Success(t *testing.T) {
 			return nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodDelete, "/editor/characters/"+testCharID.String(), nil)
 	r = withAuth(r)
@@ -441,7 +443,7 @@ func TestUpdateConfigJson_Success(t *testing.T) {
 			return resp, nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"phases":["intro","discussion"]}`
 	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+testThemeID.String()+"/config", bytes.NewBufferString(body))

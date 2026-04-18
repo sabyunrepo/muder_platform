@@ -11,8 +11,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 )
 
 // mockService implements Service for testing.
@@ -71,7 +73,7 @@ func TestListUsers_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/users?limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -110,7 +112,7 @@ func TestGetUser_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/users/"+userID.String(), nil)
 	req = withChiParam(req, "id", userID.String())
@@ -143,7 +145,7 @@ func TestGetUser_NotFound(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/users/"+userID.String(), nil)
 	req = withChiParam(req, "id", userID.String())
@@ -175,7 +177,7 @@ func TestUpdateUserRole_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body, _ := json.Marshal(UpdateRoleRequest{Role: "ADMIN"})
 	req := httptest.NewRequest(http.MethodPut, "/admin/users/"+userID.String()+"/role", bytes.NewReader(body))
@@ -202,7 +204,7 @@ func TestUpdateUserRole_InvalidBody(t *testing.T) {
 	userID := uuid.New()
 
 	mock := &mockService{}
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	// Send invalid role value.
 	body := []byte(`{"role": "SUPERADMIN"}`)
@@ -228,7 +230,7 @@ func TestListAllThemes_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/themes?limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -263,7 +265,7 @@ func TestForceUnpublishTheme_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/themes/"+themeID.String()+"/unpublish", nil)
 	req = withChiParam(req, "id", themeID.String())
@@ -294,7 +296,7 @@ func TestListAllRooms_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/rooms?limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -325,7 +327,7 @@ func TestForceCloseRoom_Success(t *testing.T) {
 		},
 	}
 
-	h := NewHandler(mock)
+	h := NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/rooms/"+roomID.String()+"/close", nil)
 	req = withChiParam(req, "id", roomID.String())

@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -9,21 +11,31 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/httputil"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
 // ReviewHandler handles admin theme review endpoints.
+//
+// Phase 19 PR-6: mutating endpoints (approve / reject / suspend / trusted
+// creator) emit auditlog entries so moderation activity is attributable.
 type ReviewHandler struct {
 	q      *db.Queries
+	audit  auditlog.Logger
 	logger zerolog.Logger
 }
 
-// NewReviewHandler creates a new ReviewHandler.
-func NewReviewHandler(q *db.Queries, logger zerolog.Logger) *ReviewHandler {
+// NewReviewHandler creates a new ReviewHandler. nil audit falls back to
+// auditlog.NoOpLogger{} for tests.
+func NewReviewHandler(q *db.Queries, audit auditlog.Logger, logger zerolog.Logger) *ReviewHandler {
+	if audit == nil {
+		audit = auditlog.NoOpLogger{}
+	}
 	return &ReviewHandler{
 		q:      q,
+		audit:  audit,
 		logger: logger.With().Str("handler", "admin.review").Logger(),
 	}
 }
@@ -36,6 +48,31 @@ type ReviewActionRequest struct {
 // SetTrustedCreatorRequest is the request body for setting trusted creator status.
 type SetTrustedCreatorRequest struct {
 	Trusted bool `json:"trusted"`
+}
+
+func (h *ReviewHandler) recordAudit(ctx context.Context, action auditlog.AuditAction, actor, target *uuid.UUID, payload map[string]any) {
+	var raw json.RawMessage
+	if len(payload) > 0 {
+		if b, err := json.Marshal(payload); err == nil {
+			raw = b
+		} else {
+			h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog payload marshal failed")
+		}
+	}
+	// If no explicit target and the actor is known, pin both to the actor so
+	// the row has at least one identity (matches the identity CHECK).
+	if target == nil && actor != nil {
+		target = actor
+	}
+	evt := auditlog.AuditEvent{
+		ActorID: actor,
+		UserID:  target,
+		Action:  action,
+		Payload: raw,
+	}
+	if err := h.audit.Append(ctx, evt); err != nil {
+		h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog append failed")
+	}
 }
 
 // ListPendingReviews handles GET /admin/reviews.
@@ -73,6 +110,8 @@ func (h *ReviewHandler) ApproveTheme(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	h.recordAudit(r.Context(), auditlog.ActionReviewApprove, actorPtr(adminID), nil,
+		map[string]any{"theme_id": themeID.String(), "note": req.Note})
 	httputil.WriteJSON(w, http.StatusOK, theme)
 }
 
@@ -106,6 +145,8 @@ func (h *ReviewHandler) RejectTheme(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	h.recordAudit(r.Context(), auditlog.ActionReviewReject, actorPtr(adminID), nil,
+		map[string]any{"theme_id": themeID.String(), "note": req.Note})
 	httputil.WriteJSON(w, http.StatusOK, theme)
 }
 
@@ -139,6 +180,8 @@ func (h *ReviewHandler) SuspendTheme(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	h.recordAudit(r.Context(), auditlog.ActionReviewSuspend, actorPtr(adminID), nil,
+		map[string]any{"theme_id": themeID.String(), "note": req.Note})
 	httputil.WriteJSON(w, http.StatusOK, theme)
 }
 
@@ -165,6 +208,9 @@ func (h *ReviewHandler) SetTrustedCreator(w http.ResponseWriter, r *http.Request
 		apperror.WriteError(w, r, err)
 		return
 	}
+	adminID := middleware.UserIDFrom(r.Context())
+	h.recordAudit(r.Context(), auditlog.ActionAdminTrustedCreator, actorPtr(adminID), &userID,
+		map[string]any{"trusted": req.Trusted})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -184,4 +230,14 @@ func toPgtypeText(s string) pgtype.Text {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: s, Valid: true}
+}
+
+// actorPtr returns a pointer to uid, or nil when uid is the zero UUID.
+// Shared by the handler package so audit entries consistently collapse
+// the "no authenticated actor" case to nil rather than the zero UUID.
+func actorPtr(uid uuid.UUID) *uuid.UUID {
+	if uid == uuid.Nil {
+		return nil
+	}
+	return &uid
 }

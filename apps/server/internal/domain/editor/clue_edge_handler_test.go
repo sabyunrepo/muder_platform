@@ -9,8 +9,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 )
 
 func TestGetClueEdges_Empty(t *testing.T) {
@@ -19,7 +21,7 @@ func TestGetClueEdges_Empty(t *testing.T) {
 			return []ClueEdgeGroupResponse{}, nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodGet, "/editor/themes/"+testThemeID.String()+"/clue-edges", nil)
 	r = withAuth(r)
@@ -55,7 +57,7 @@ func TestGetClueEdges_OK(t *testing.T) {
 			}}, nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodGet, "/editor/themes/"+testThemeID.String()+"/clue-edges", nil)
 	r = withAuth(r)
@@ -92,7 +94,7 @@ func TestReplaceClueEdges_OK(t *testing.T) {
 			}}, nil
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body, _ := json.Marshal([]ClueEdgeGroupRequest{{
 		TargetID: uuid.New(),
@@ -122,7 +124,7 @@ func TestReplaceClueEdges_OK(t *testing.T) {
 
 func TestReplaceClueEdges_InvalidJSON(t *testing.T) {
 	ms := &mockService{}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+testThemeID.String()+"/clue-edges", bytes.NewReader([]byte("not json")))
 	r.Header.Set("Content-Type", "application/json")
@@ -143,7 +145,7 @@ func TestReplaceClueEdges_CycleDetected(t *testing.T) {
 			return nil, apperror.New("EDGE_CYCLE_DETECTED", 400, "clue edge graph contains a cycle")
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body, _ := json.Marshal([]ClueEdgeGroupRequest{{
 		TargetID: uuid.New(),
@@ -173,7 +175,7 @@ func TestReplaceClueEdges_InvalidCraftOR(t *testing.T) {
 			return nil, apperror.New("EDGE_INVALID_CRAFT_OR", 400, "edge[0]: CRAFT trigger does not allow OR mode")
 		},
 	}
-	h := NewHandler(ms)
+	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body, _ := json.Marshal([]ClueEdgeGroupRequest{{
 		TargetID: uuid.New(),

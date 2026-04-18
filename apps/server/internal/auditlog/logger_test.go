@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/db"
@@ -362,14 +363,14 @@ func TestDBLogger_RealPersistPath(t *testing.T) {
 	// Build a Store with a mock TxRunner instead of a real pgxpool.
 	var called atomic.Bool
 	sq := &stubQuerier{
-		latestSeqFn: func(_ context.Context, _ uuid.UUID) (int64, error) {
+		latestSeqFn: func(_ context.Context, _ pgtype.UUID) (int64, error) {
 			return 0, nil
 		},
 		appendAuditEventFn: func(_ context.Context, _ db.AppendAuditEventParams) (db.AuditEvent, error) {
 			called.Store(true)
 			return db.AuditEvent{}, nil
 		},
-		listBySessionFn: func(_ context.Context, _ uuid.UUID) ([]db.AuditEvent, error) {
+		listBySessionFn: func(_ context.Context, _ pgtype.UUID) ([]db.AuditEvent, error) {
 			return nil, nil
 		},
 	}

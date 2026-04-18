@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/config"
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/domain/admin"
@@ -139,8 +140,18 @@ func main() {
 	// inject snapshot deps after Hub is ready).
 	sessionMgr := session.NewSessionManager(logger)
 
-	// 8. Domain Services
-	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), logger)
+	// 8. Audit log pipeline (Phase 19 PR-6 — F-sec-4).
+	// DBLogger writes asynchronously; Start spawns the flush goroutine,
+	// Stop drains the queue at shutdown. Services that need to record
+	// identity-bound audit events accept the Logger as a dependency.
+	auditStore := auditlog.NewStore(pool)
+	auditLog := auditlog.NewDBLogger(auditStore, logger)
+	auditLog.Start()
+	defer auditLog.Stop()
+	logger.Info().Msg("auditlog started")
+
+	// 9. Domain Services
+	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), auditLog, logger)
 	profileSvc := profile.NewService(queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
@@ -216,14 +227,14 @@ func main() {
 	authHandler := auth.NewHandler(authSvc)
 	profileHandler := profile.NewHandler(profileSvc)
 	themeHandler := theme.NewHandler(themeSvc)
-	editorHandler := editor.NewHandler(editorSvc)
-	adminHandler := admin.NewHandler(adminSvc)
+	editorHandler := editor.NewHandler(editorSvc, auditLog, logger)
+	adminHandler := admin.NewHandler(adminSvc, auditLog, logger)
 	socialHandler := social.NewHandler(friendSvc, chatSvc)
 	paymentHandler := payment.NewHandler(paymentSvc, paymentProvider)
 	coinHandler := coin.NewHandler(coinSvc)
 	creatorHandler := creator.NewHandler(creatorSvc)
 	creatorAdminHandler := creator.NewAdminHandler(queries, pool, settlementPipeline, logger)
-	reviewHandler := admin.NewReviewHandler(queries, logger)
+	reviewHandler := admin.NewReviewHandler(queries, auditLog, logger)
 
 	// Template loader + handler (Phase 18.4 W0 PR-1: expose preset templates).
 	templateLoader := template.NewLoader()

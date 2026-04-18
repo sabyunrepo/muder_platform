@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -14,6 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/db"
 )
 
@@ -54,15 +56,32 @@ type service struct {
 	redis     *redis.Client
 	jwtSecret []byte
 	logger    zerolog.Logger
+	audit     auditlog.Logger
 }
 
 // NewService creates a new auth service.
-func NewService(queries *db.Queries, redisClient *redis.Client, jwtSecret []byte, logger zerolog.Logger) Service {
+//
+// Phase 19 PR-6: `audit` is optional — pass auditlog.NoOpLogger{} (or nil;
+// the constructor falls back to NoOp) when running in a test or bootstrap
+// context that does not wire the audit pipeline. In production the caller
+// is expected to inject a running auditlog.DBLogger so that login,
+// register, logout, and account-deletion events are captured.
+func NewService(
+	queries *db.Queries,
+	redisClient *redis.Client,
+	jwtSecret []byte,
+	audit auditlog.Logger,
+	logger zerolog.Logger,
+) Service {
+	if audit == nil {
+		audit = auditlog.NoOpLogger{}
+	}
 	return &service{
 		queries:   queries,
 		redis:     redisClient,
 		jwtSecret: jwtSecret,
 		logger:    logger.With().Str("domain", "auth").Logger(),
+		audit:     audit,
 	}
 }
 
@@ -74,6 +93,33 @@ func refreshKeyPrefix(userID string) string {
 // refreshKey returns the full Redis key for a specific refresh token.
 func refreshKey(userID, jti string) string {
 	return fmt.Sprintf("refresh:%s:%s", userID, jti)
+}
+
+// recordAudit persists a self-initiated (actor == user) auth event. The
+// payload map is marshalled to JSON; on marshal error the entry is logged
+// but the caller flow is not disturbed — auditlog is additive, never
+// blocks primary auth behaviour.
+func (s *service) recordAudit(ctx context.Context, action auditlog.AuditAction, userID uuid.UUID, payload map[string]any) {
+	var raw json.RawMessage
+	if len(payload) > 0 {
+		if b, err := json.Marshal(payload); err == nil {
+			raw = b
+		} else {
+			s.logger.Warn().Err(err).Str("action", string(action)).
+				Msg("auditlog payload marshal failed")
+		}
+	}
+	uid := userID
+	evt := auditlog.AuditEvent{
+		ActorID: &uid,
+		UserID:  &uid,
+		Action:  action,
+		Payload: raw,
+	}
+	if err := s.audit.Append(ctx, evt); err != nil {
+		s.logger.Warn().Err(err).Str("action", string(action)).
+			Str("user_id", uid.String()).Msg("auditlog append failed")
+	}
 }
 
 // OAuthCallback handles the OAuth callback flow.
@@ -88,6 +134,7 @@ func (s *service) OAuthCallback(ctx context.Context, provider, code, nickname st
 		Provider:   provider,
 		ProviderID: code,
 	})
+	created := false
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
 			s.logger.Error().Err(err).Str("provider", provider).Msg("failed to look up user by provider")
@@ -106,6 +153,7 @@ func (s *service) OAuthCallback(ctx context.Context, provider, code, nickname st
 			s.logger.Error().Err(err).Str("provider", provider).Msg("failed to create user")
 			return nil, apperror.Internal("failed to create user")
 		}
+		created = true
 		s.logger.Info().Str("user_id", user.ID.String()).Msg("new user created via OAuth")
 	}
 
@@ -113,6 +161,12 @@ func (s *service) OAuthCallback(ctx context.Context, provider, code, nickname st
 	if err != nil {
 		return nil, err
 	}
+
+	action := auditlog.ActionUserLogin
+	if created {
+		action = auditlog.ActionUserRegister
+	}
+	s.recordAudit(ctx, action, user.ID, map[string]any{"provider": provider})
 
 	return pair, nil
 }
@@ -199,6 +253,7 @@ func (s *service) RefreshToken(ctx context.Context, refreshTokenStr string) (*To
 func (s *service) Logout(ctx context.Context, userID uuid.UUID) error {
 	s.revokeAllTokens(ctx, userID.String())
 	s.logger.Info().Str("user_id", userID.String()).Msg("user logged out, all refresh tokens revoked")
+	s.recordAudit(ctx, auditlog.ActionUserLogout, userID, nil)
 	return nil
 }
 
@@ -296,6 +351,10 @@ func (s *service) Register(ctx context.Context, email, password, nickname string
 	}
 
 	s.logger.Info().Str("user_id", user.ID.String()).Msg("new user registered with password")
+	s.recordAudit(ctx, auditlog.ActionUserRegister, user.ID, map[string]any{
+		"method":   "password",
+		"nickname": user.Nickname,
+	})
 	return s.generateTokenPair(ctx, user.ID, user.Role)
 }
 
@@ -308,6 +367,8 @@ func (s *service) Login(ctx context.Context, email, password string) (*TokenPair
 	user, err := s.queries.GetUserByEmail(ctx, pgtype.Text{String: email, Valid: true})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
+			// No audit write — no identifiable user to attribute to.
+			// Rate limiting / WAF handles anonymous password guessing.
 			return nil, apperror.Unauthorized("invalid email or password")
 		}
 		s.logger.Error().Err(err).Msg("failed to look up user by email")
@@ -315,13 +376,19 @@ func (s *service) Login(ctx context.Context, email, password string) (*TokenPair
 	}
 
 	if !user.PasswordHash.Valid {
+		s.recordAudit(ctx, auditlog.ActionUserLoginFail, user.ID,
+			map[string]any{"reason": "no_password_set"})
 		return nil, apperror.Unauthorized("invalid email or password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(password)); err != nil {
+		s.recordAudit(ctx, auditlog.ActionUserLoginFail, user.ID,
+			map[string]any{"reason": "bad_password"})
 		return nil, apperror.Unauthorized("invalid email or password")
 	}
 
+	s.recordAudit(ctx, auditlog.ActionUserLogin, user.ID,
+		map[string]any{"method": "password"})
 	return s.generateTokenPair(ctx, user.ID, user.Role)
 }
 
@@ -351,6 +418,7 @@ func (s *service) DeleteAccount(ctx context.Context, userID uuid.UUID, req Delet
 
 	s.revokeAllTokens(ctx, userID.String())
 	s.logger.Info().Str("user_id", userID.String()).Msg("user account soft deleted")
+	s.recordAudit(ctx, auditlog.ActionUserDeleteAccount, userID, nil)
 	return nil
 }
 
