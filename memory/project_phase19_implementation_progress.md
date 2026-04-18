@@ -80,10 +80,24 @@ type: project
   - 설계: `refs/pr-2/pr-2a-engine-gate.md`
   - **F-sec-2 gate 해소** (실구현은 PR-2b)
 
+### W3 PR-4 파일 분할 (신규 완료 2026-04-18)
+- **PR-4 설계 문서** ✅ #99 (8c67fbc) — pr-4-split-design + 4 refs + backlog PR-4a/4b 재기입
+- **PR-4b TS 파일 분할** ✅ #100 (e754654) — editor/api.ts 428 + GameChat.tsx 423 + FriendsList.tsx 415 → 디렉터리 배럴 구조
+  - 3 파일 → 24 파일 · 모든 신규 ≤191줄, JSX ≤121줄
+  - 1047 tests pass · bundle size +0.27% (budget ≤3%)
+  - **F-react-3·4 해소**
+- **PR-4a Go 파일 분할** ✅ #102 (be2d0a6) — 6 모듈 디렉터리 승격 + 3 인프라 분할 + tally.go 추출
+  - 모듈 승격: reading 652/voting 639/hidden_mission 559/combination 543/trade_clue 532/accusation 515
+  - 인프라 분할: social/service 759→43 / ws/hub 649→175 / editor/service 505→185
+  - accusation.handleAccusationVote 101줄 → tally.go 순수함수 추출 (**F-go-4 1건 해소**)
+  - 5 커밋 · 전 패키지 go test ok · vet clean · build clean
+  - **F-go-3 해소 (in-scope 9 파일 모두 ≤500)**
+
 ### Follow-up 완료 (2026-04-18)
 - **PR-11 Store Cleanup Decoupling** ✅ #95 (bf3c3d9) — moduleStoreFactory ↔ gameSessionStore 순환 import 해소
 - **F-a11y-4 residual cleanup** ✅ #94 (46057ea) — bare outline-none 9건 + 체크박스 focus:ring 7건 정리
 - **PR-2 설계 문서 정리** ✅ #96 (0ed03a7) — pr-2-split-design + 5 refs + inventory 교정 + backlog 3엔트리 재기입
+- **PR-2a skill + CLAUDE.md 동기화** ✅ #101 (e2e4478) — mmp-module-factory SKILL §6 PlayerAware 게이트 추가 + CLAUDE.md 모듈 시스템 + 하네스 변경 이력
 
 ### 독립 hotfix (신규 완료 2026-04-18)
 - **F-a11y-3 focus-visible WCAG 2.4.7** ✅ #92 (049277f, 2026-04-18, squash-merged)
@@ -96,21 +110,20 @@ type: project
 
 ## 남은 PR
 
+### W3 차기 착수 (PR-2a gate + PR-4a 디렉터리 승격 완료로 의존성 해제)
+- **PR-2b PlayerAware 백필** (L, Med) — 12 stub 모듈 실구현 (clue_interaction · text_chat · group_chat · evidence · location · combination · accusation · 4 exploration · reading). BuildStateFor에 per-player redaction 추가. 설계: `refs/pr-2/pr-2b-module-backfill.md`
+  - PR-4a로 combination/accusation/reading 디렉터리 승격 완료 → state.go 분리 파일에서 BuildStateFor 구현 용이
+- **PR-2c craftedAsClueMap redaction** (S-M, Low) — D-MO-1 단독. combination/state.go 집중. PR-2b 선 머지 권장 (stub → real 충돌 회피).
+
 ### W2 잔여
 - **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장 ⏳
-
-### W3 진행 중 (PR-2a 완료로 PR-2b/c 의존성 해제)
-- **PR-2b PlayerAware 백필** (L, Med) — 12 stub 모듈 실구현 (clue_interaction / text_chat / group_chat / evidence / location / combination / accusation / 4 exploration / reading). 설계: `refs/pr-2/pr-2b-module-backfill.md`. PR-4 선행 권장 (combination/accusation/reading 500+ 파일 분할 필요).
-- **PR-2c craftedAsClueMap redaction** (S-M, Low) — D-MO-1. combination 전용. PR-2b 선 머지 권장.
-
-### W3 잔여
-- **PR-4 File Size Refactor** (L+, Med) — Go 12 + TS 4 (delta 추가: combination.go 533, editor/service.go 505, editor/api.ts 428)
 
 ### Follow-up 신설 (2026-04-18)
 - **PR-9 WS Auth Protocol** (L, Med) — IDENTIFY/RESUME/CHALLENGE/REVOKE. 쿼리 토큰 한계 보완. PR-1 이후
 - **PR-10 Runtime Payload Validation** (L, Med) — Go struct → JSON Schema → zod, 서버 송신 validator. PR-1 이후
-- **PR-11 Store Cleanup Decoupling** (XS, Low) — `moduleStoreFactory` ↔ `gameSessionStore` 순환 import 해소 (cleanup 함수 별도 파일 추출) — PR-8 리뷰 도출
-- **F-a11y-4** (XS, Low) — residual bare `outline-none` 7건 정리 + 체크박스 `focus:ring-amber-500` → `focus-visible:` — F-a11y-3 리뷰 도출
+
+### Pre-existing tech debt (PR-4a scope 외)
+- `editor/media_service.go` (653줄) / `editor/handler.go` (624줄) — 별도 파일 분할 후속 PR
 
 ## P0 해소 진행률
 
@@ -126,15 +139,42 @@ type: project
 
 **5/7 해소 (~71%)** — PR-2a gate로 F-sec-2 재발 차단. F-03/D-MO-1 실구현만 남음 (PR-2b/c).
 
+## 2026-04-18 세션 총결 (12 PR 머지, #91~#102)
+
+| # | PR | 효과 |
+|---|---|---|
+| #91 | PR-8 Module Cache Isolation | F-react-6 P1 |
+| #92 | F-a11y-3 focus-visible | WCAG 2.4.7 (60건) |
+| #93 | progress sync 1차 | — |
+| #94 | F-a11y-4 residual cleanup | outline-none 9 + 체크박스 7 |
+| #95 | PR-11 순환 import cleanup | PR-8 review HIGH |
+| #96 | PR-2 3분할 설계 + inventory 교정 | 설계 SSOT |
+| #97 | **PR-2a Engine Gate + PublicStateMarker** | **F-sec-2 gate 차단** |
+| #98 | progress sync 2차 | — |
+| #99 | PR-4 파일 분할 설계 + backlog 재기입 | — |
+| #100 | **PR-4b TS 파일 분할** | **F-react-3·4 해소** |
+| #101 | PR-2a skill + CLAUDE.md 동기화 | 규약 반영 |
+| #102 | **PR-4a Go 파일 분할** | **F-go-3·4 해소** |
+
+**핵심 성과**:
+- P0 5/7 해소 (71%) — F-sec-1/2(gate)/3/4, F-a11y-3
+- P1 F-react-3·4·6 해소
+- F-go-3·4 해소 (Go 파일 크기 한도)
+- PR-2a gate로 F-sec-2 재발 원천 차단 (compile + boot-fail)
+- in-scope 9 Go 파일 모두 ≤500줄, TS 3 파일 모두 ≤191줄
+
 ## 다음 세션 재개 방법
 
 ```bash
 cd /Users/sabyun/goinfre/muder_platform
 claude
 /plan-resume
-# 다음 목표: W2 PR-2 3분할 설계 착수 (P0 3건 동시 해소: F-03 + F-sec-2 + D-MO-1)
-#   또는 W3 PR-4 파일 분할 (CLAUDE.md 한도 위반 해소)
-#   또는 PR-11 순환 import cleanup (XS, 빠른 win)
+# 최우선 목표: PR-2b 12 모듈 BuildStateFor 실구현 (F-03 + F-sec-2 실구현 완결)
+#   - 선행 완료: PR-2a gate (#97) + PR-4a 디렉터리 승격 (#102)
+#   - 설계: refs/pr-2/pr-2b-module-backfill.md
+#
+# 이후 순서: PR-2c (D-MO-1) → PR-5 (Coverage+mockgen)
+# 또는 PR-9/10 follow-up → pre-existing tech debt (editor/handler 624, media_service 653)
 ```
 
 ## 참조
