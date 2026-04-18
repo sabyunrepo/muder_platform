@@ -1,6 +1,6 @@
 ---
 name: Phase 19 Platform Deep Audit — Implementation 진행 상황
-description: 9 PR backlog 구현 단계. W0/W1 일부 완료. P0 4→2 해소 진행 중
+description: 9 PR backlog 구현 단계. P0 7/7 완결 (PR-2c #107). W3 마무리 + 차기 PR-5/PR-9/PR-10 대기
 type: project
 ---
 
@@ -119,12 +119,15 @@ type: project
   - 33 신규 테스트 + helper 7 케이스 · 전 Go race test green · vet clean
   - **F-03 실구현 (evidence/location) + F-sec-2 실구현 (11/12) 해소**. combination PR-2c 머지 후 F-03 7/7 완결.
 
-## 남은 PR
+- **PR-2c craftedAsClueMap redaction (D-MO-1)** ✅ #107 (0b31271, 2026-04-18 admin squash-merge)
+  - `combination/state.go`: `snapshotFor(playerID)` helper + `BuildStateFor` real redaction — caller의 completed/derived/collected 엔트리만 노출, 타 플레이어 키 엘라이드. `BuildState`는 persistence/fixture 전용 docstring 경계
+  - `combination_test.go` 3 테스트 추가 (OnlyCallerVisible · EmptyForNewPlayer · CollectedMirror) + strings/jsonIsEmptyShape helper
+  - `scripts/check-playeraware-coverage.sh`: `ALLOW_STUB`에서 combination 제거 (현재 예외 0건 명시)
+  - `docs/plans/.../refs/pr-2/current-state.md`: combination 행 BuildStateFor O + §민감 필드 상세 PR-2c 완료 문구 교체
+  - 4 files · +206 / -15 · 전 Go race test green · vet/build clean · coverage lint clean (ALLOW_STUB 비움에도 위반 0)
+  - **F-03 crime_scene 3/3 (evidence + location + combination) 완결 + F-sec-2 12/12 real redaction 완결 + D-MO-1 해소**. 외부 API 불변
 
-### W3 차기 착수
-- **PR-2c craftedAsClueMap redaction** (S-M, Low) — D-MO-1 단독. `apps/server/internal/module/crime_scene/combination/state.go` BuildStateFor를 real per-player redaction으로 교체. 설계: `docs/plans/2026-04-17-platform-deep-audit/refs/pr-2/pr-2c-crafted-redaction.md`
-  - PR-2b 머지 완료 → stub 충돌 회피 가능
-  - combination은 현재 `scripts/check-playeraware-coverage.sh` ALLOW_STUB 예외 — PR-2c 머지 시 제거
+## 남은 PR
 
 ### W2 잔여
 - **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장 ⏳
@@ -140,15 +143,15 @@ type: project
 
 | # | Finding | 상태 | PR |
 |---|---------|------|-----|
-| F-03 | crime_scene PlayerAware | 🟡 evidence/location 해소 · combination PR-2c | PR-2a (#97) + PR-2b (#104) → PR-2c |
+| F-03 | crime_scene PlayerAware | ✅ 해소 (evidence + location + combination 3/3) | PR-2a (#97) + PR-2b (#104) + PR-2c (#107) |
 | F-sec-1 | RFC 9457 우회 12건 | ✅ 해소 | PR-3 (#85) |
-| F-sec-2 | PlayerAware 25/33 fallback | ✅ gate + 11 모듈 실구현 · combination PR-2c | PR-2a (#97) + PR-2b (#104) → PR-2c |
+| F-sec-2 | PlayerAware 25/33 fallback | ✅ 해소 (gate + 12 모듈 real redaction) | PR-2a (#97) + PR-2b (#104) + PR-2c (#107) |
 | F-sec-3 | voice token 평문 로그 | ✅ 해소 | hotfix (#83) |
 | F-sec-4 | auditlog 부재 | ✅ 해소 | PR-6 (#87) |
-| D-MO-1 | craftedAsClueMap (delta) | **미해소** | PR-2c 예정 |
+| D-MO-1 | craftedAsClueMap (delta) | ✅ 해소 | PR-2c (#107) |
 | F-a11y-3 | outline-none 60 | ✅ 해소 | hotfix (#92) |
 
-**6/7 해소 (~86%)** — PR-2b (#104)로 F-03 evidence/location + F-sec-2 11모듈 실구현 완료. combination(PR-2c) 머지 후 7/7 완결.
+**7/7 해소 (100%)** — PR-2c (#107)로 combination real per-player redaction 완결. Phase 19 P0 audit 전건 해소.
 
 ## 2026-04-18 세션 총결 (12 PR 머지, #91~#102)
 
@@ -179,20 +182,29 @@ type: project
 | # | PR | 효과 |
 |---|---|---|
 | #104 | **PR-2b 12 모듈 BuildStateFor 실구현** | **F-03 evidence/location + F-sec-2 11/12 해소** (combination PR-2c 남음) |
+| #107 | **PR-2c combination real per-player redaction (D-MO-1)** | **F-03 crime_scene 3/3 완결 + F-sec-2 12/12 완결 + D-MO-1 해소 → P0 7/7** |
+| #108 | **PR-2c hotfix — combination deadlock + redaction edge cases** | 4-agent 사후 리뷰 HIGH 1 + MEDIUM 2 반영 (handleCombine Publish-after-Unlock, uuid.Nil guard, Collected sort.Strings) + 4 신규 테스트 |
 
-누적 P0: 6/7 (86%). 다음 PR-2c 머지 시 7/7.
+**누적 P0: 7/7 (100%)** — Phase 19 implementation P0 audit 전건 해소. W3 PR-2·PR-4·PR-8 모두 닫힘 + hotfix 로 deadlock latent 제거. 남은 W2 PR-5 (Coverage+mockgen) 외 follow-up PR-9/PR-10/editor-handler 분할만 대기.
+
+### PR-2c 사후 4-agent 코드리뷰 요약 (2026-04-18)
+- **CRITICAL: 0**
+- **HIGH: 1** — handleCombine 이 `m.mu.Lock` 홀드 중 `EventBus.Publish` (deadlock latent, BuildStateFor 재진입 시 발현) → **#108 hotfix 해소**
+- **MEDIUM: 4** — uuid.Nil guard 부재(#108), Collected slice 비결정적 순서(#108), coverage lint regex 우회 가능, `PhaseEngine.BuildState()` godoc+승격 검토, `MMP_PLAYERAWARE_STRICT` env 제거 가능
+- **LOW: 5+** — jsonIsEmptyShape 중복, EmptyForNewPlayer 중복 guard, 3+ players · RestoreState→BuildStateFor · concurrent race(#108 ConcurrentBroadcast), `TestSnapshot_Redaction_CombinationCrafted` 세션 통합 테스트 부재
+
+**남은 follow-up PR 후보 (리뷰 기반)**:
+- **PR-2c-followup-A** (S, Med): `MMP_PLAYERAWARE_STRICT` env 제거 + `PhaseEngine.BuildState()` godoc 강화. 12/12 해소 후 escape hatch 불필요.
+- **PR-2c-followup-B** (M, Low): `check-playeraware-coverage.sh` AST 기반 재작성 — `m.snapshot()` 전체 marshal 패턴 / 2줄 delegate / 간접 helper 우회까지 차단.
+- **PR-2c-followup-C** (M, Med): session/snapshot_redaction_test.go 에 `TestSnapshot_Redaction_CombinationCrafted` 통합 테스트 추가 + 3+ players table-driven + `peerLeakAssert` helper 를 `engine/testutil/redaction.go` 로 export.
 
 ## 다음 세션 재개 방법
 
-### 🔴 선 작업 (세션 시작 직후, PR-2c 착수 전)
+### 🔴 선 작업 (세션 시작 직후)
 
-이 번 세션(2026-04-18 밤)에서 한 번 더 확인·정리해야 하는 메모리 동기화 잔무:
-
-- **repo memory/MEMORY.md** 인덱스는 이 PR로 최신화됨. `grep -n phase19_implementation memory/MEMORY.md`로 "W3 진행 중 PR-2b #104" 문구 확인.
-- **user home** `/Users/sabyun/.claude/projects/-Users-sabyun-goinfre-muder-platform/memory/MEMORY.md`
-  도 L21 근처에 동일 엔트리가 있는지 `grep -n phase19_implementation`로 확인. 없으면 repo와 동일하게 복사.
-- 로컬 `.claude/active-plan.json` `current_pr` 값이 `"PR-2c"`, `prs."PR-2c".status` 가 `"ready"` 인지 `jq` 로 확인.
-  없거나 값이 다르면 아래 PR-2c 스펙을 참조해 갱신.
+- **repo memory/MEMORY.md** L21 "P0 완결 7/7 (100%)" 문구 + PR-2c hotfix(#108) 반영 확인.
+- **user home** `/Users/sabyun/.claude/projects/-Users-sabyun-goinfre-muder-platform/memory/MEMORY.md` 도 L21 근처 동일 엔트리 확인. 없으면 repo 내용으로 복사.
+- 로컬 `.claude/active-plan.json` 는 PR-2c 머지 완료 반영. 다음 current_pr 후보(PR-5 / PR-9 / PR-10 / PR-2c-followup-A/B/C) 중 택일 혹은 `/plan-finish` 고려.
 
 ### 재개 스크립트
 
@@ -200,22 +212,19 @@ type: project
 cd /Users/sabyun/goinfre/muder_platform
 claude
 /plan-resume
-# 최우선 목표: PR-2c craftedAsClueMap redaction (S-M Low risk) — F-03 + D-MO-1 완결
-#   - 대상: apps/server/internal/module/crime_scene/combination/state.go
-#   - 설계: docs/plans/2026-04-17-platform-deep-audit/refs/pr-2/pr-2c-crafted-redaction.md
-#   - 선행 완료: PR-2b (#104) — stub 충돌 회피 완료
+# Phase 19 P0 전건 해소 — 다음 선택지:
+#   (A) PR-2c-followup-A MMP_PLAYERAWARE_STRICT 제거 + BuildState godoc (S, Med) — 리뷰 후속
+#   (B) PR-2c-followup-B coverage lint AST 재작성 (M, Low) — 리뷰 후속
+#   (C) PR-2c-followup-C session 통합 테스트 + 3+ players table + helper export (M, Med) — 리뷰 후속
+#   (D) PR-5 Coverage+mockgen (XL, High) — editor -2.9%p 회귀 복구 + CI 75% hard-fail. 3분할 권장.
+#   (E) PR-9 WS Auth Protocol (L, Med) — IDENTIFY/RESUME/CHALLENGE/REVOKE.
+#   (F) PR-10 Runtime Payload Validation (L, Med).
+#   (G) editor/handler.go 624 · media_service.go 653 분할 follow-up.
+#   (H) /plan-finish Phase 19 implementation — P0 완결 기준 종결, W3 cleanup 은 Phase 19.1 등으로 승격.
 #
-# 작업 순서:
-#   1. combination/state.go BuildStateFor stub → real per-player redaction
-#      - completed/derived/collected map을 caller 엔트리만 유지
-#      - craftedAsClueMap redaction (D-MO-1) — 핵심
-#   2. combination_test.go에 BuildStateFor 3 케이스 추가 (CallerOnly / NoEntry / NoCrossLeak)
-#   3. scripts/check-playeraware-coverage.sh의 ALLOW_STUB 배열에서 combination 경로 제거
-#   4. engine/build_state_for_test.go 회귀 확인
-#   5. 전 race test + coverage lint + PR 생성 + admin 머지
+# 권장 우선순위: A → B → C (리뷰 후속, scope 작고 압박 적음) → D (coverage gate 이전 mockgen) → E/F → G
 #
-# PR-2c 이후: PR-5 Coverage+mockgen (XL High)
-# 또는 PR-9 WS Auth / PR-10 Runtime validation / editor/handler 624·media_service 653 분할
+# delta audit: docs/plans/2026-04-18-architecture-audit-delta/
 ```
 
 ## 참조
