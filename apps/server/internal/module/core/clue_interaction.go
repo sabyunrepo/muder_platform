@@ -466,10 +466,19 @@ func (m *ClueInteractionModule) Apply(_ context.Context, event engine.GameEvent,
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will add player-specific redaction (each player should only see their
+// own playerDrawCounts / acquiredClues / usedItems / activeItemUse entries).
+func (m *ClueInteractionModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module           = (*ClueInteractionModule)(nil)
-	_ engine.PhaseReactor     = (*ClueInteractionModule)(nil)
-	_ engine.ConfigSchema     = (*ClueInteractionModule)(nil)
-	_ engine.GameEventHandler = (*ClueInteractionModule)(nil)
+	_ engine.Module            = (*ClueInteractionModule)(nil)
+	_ engine.PhaseReactor      = (*ClueInteractionModule)(nil)
+	_ engine.ConfigSchema      = (*ClueInteractionModule)(nil)
+	_ engine.GameEventHandler  = (*ClueInteractionModule)(nil)
+	_ engine.PlayerAwareModule = (*ClueInteractionModule)(nil)
 )

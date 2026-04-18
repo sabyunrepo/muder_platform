@@ -317,4 +317,5 @@ var (
 	_ engine.GameEventHandler   = (*RoundClueModule)(nil)
 	_ engine.SerializableModule = (*RoundClueModule)(nil)
 	_ engine.RuleProvider       = (*RoundClueModule)(nil)
+	_ engine.PlayerAwareModule  = (*RoundClueModule)(nil)
 )

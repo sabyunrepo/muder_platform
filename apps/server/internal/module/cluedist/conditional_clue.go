@@ -319,8 +319,9 @@ func (m *ConditionalClueModule) GetRules() []engine.Rule {
 
 // Compile-time interface assertions.
 var (
-	_ engine.Module           = (*ConditionalClueModule)(nil)
-	_ engine.ConfigSchema     = (*ConditionalClueModule)(nil)
-	_ engine.GameEventHandler = (*ConditionalClueModule)(nil)
-	_ engine.RuleProvider     = (*ConditionalClueModule)(nil)
+	_ engine.Module            = (*ConditionalClueModule)(nil)
+	_ engine.ConfigSchema      = (*ConditionalClueModule)(nil)
+	_ engine.GameEventHandler  = (*ConditionalClueModule)(nil)
+	_ engine.RuleProvider      = (*ConditionalClueModule)(nil)
+	_ engine.PlayerAwareModule = (*ConditionalClueModule)(nil)
 )

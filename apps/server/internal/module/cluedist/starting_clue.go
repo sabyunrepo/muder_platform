@@ -256,4 +256,5 @@ var (
 	_ engine.ConfigSchema       = (*StartingClueModule)(nil)
 	_ engine.PhaseHookModule    = (*StartingClueModule)(nil)
 	_ engine.SerializableModule = (*StartingClueModule)(nil)
+	_ engine.PlayerAwareModule  = (*StartingClueModule)(nil)
 )

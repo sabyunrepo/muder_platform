@@ -15,7 +15,13 @@ func init() {
 }
 
 // VoiceChatModule manages voice chat participation and mute state.
+//
+// PR-2a: declares public state — the participant roster (with mute flags)
+// is broadcast openly; voice tokens are fetched via a separate authenticated
+// endpoint and never carried in session state.
 type VoiceChatModule struct {
+	engine.PublicStateMarker
+
 	mu           sync.RWMutex
 	deps         engine.ModuleDeps
 	config       voiceChatConfig
@@ -178,5 +184,8 @@ func (m *VoiceChatModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
-// Compile-time interface check.
-var _ engine.Module = (*VoiceChatModule)(nil)
+// Compile-time interface checks.
+var (
+	_ engine.Module            = (*VoiceChatModule)(nil)
+	_ engine.PublicStateModule = (*VoiceChatModule)(nil)
+)

@@ -21,7 +21,12 @@ var defaultRevealSteps = []string{
 }
 
 // EndingModule manages the game ending reveal sequence.
+//
+// PR-2a: declares public state — reveal step progress is broadcast to all
+// players simultaneously by design (everyone sees the same ending reveal).
 type EndingModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -188,9 +193,10 @@ func (m *EndingModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*EndingModule)(nil)
-	_ engine.ConfigSchema    = (*EndingModule)(nil)
-	_ engine.PhaseHookModule = (*EndingModule)(nil)
+	_ engine.Module            = (*EndingModule)(nil)
+	_ engine.ConfigSchema      = (*EndingModule)(nil)
+	_ engine.PhaseHookModule   = (*EndingModule)(nil)
+	_ engine.PublicStateModule = (*EndingModule)(nil)
 )
 
 func init() {

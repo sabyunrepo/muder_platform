@@ -11,7 +11,13 @@ import (
 )
 
 // HybridProgressionModule combines consensus-based and event-driven phase advancement.
+//
+// PR-2a: declares public state — threshold and vote tallies are broadcast
+// to all players (votes map exposes each player's vote to everyone, which is
+// the designed UX for consensus visibility).
 type HybridProgressionModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -174,9 +180,10 @@ func (m *HybridProgressionModule) OnPhaseExit(_ context.Context, _ engine.Phase)
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*HybridProgressionModule)(nil)
-	_ engine.ConfigSchema    = (*HybridProgressionModule)(nil)
-	_ engine.PhaseHookModule = (*HybridProgressionModule)(nil)
+	_ engine.Module            = (*HybridProgressionModule)(nil)
+	_ engine.ConfigSchema      = (*HybridProgressionModule)(nil)
+	_ engine.PhaseHookModule   = (*HybridProgressionModule)(nil)
+	_ engine.PublicStateModule = (*HybridProgressionModule)(nil)
 )
 
 func init() {

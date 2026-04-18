@@ -635,4 +635,5 @@ var (
 	_ engine.WinChecker         = (*VotingModule)(nil)
 	_ engine.SerializableModule = (*VotingModule)(nil)
 	_ engine.RuleProvider       = (*VotingModule)(nil)
+	_ engine.PlayerAwareModule  = (*VotingModule)(nil)
 )

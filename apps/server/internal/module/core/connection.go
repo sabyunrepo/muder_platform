@@ -24,7 +24,12 @@ type PlayerStatus struct {
 }
 
 // ConnectionModule tracks online players in a game session.
+//
+// PR-2a: declares public state — player presence (online/offline) is shared
+// openly across the room for UI indicators.
 type ConnectionModule struct {
+	engine.PublicStateMarker
+
 	mu      sync.RWMutex
 	deps    engine.ModuleDeps
 	players map[uuid.UUID]*PlayerStatus
@@ -176,5 +181,6 @@ func (m *ConnectionModule) RestoreState(_ context.Context, _ uuid.UUID, state en
 // Compile-time interface checks.
 var (
 	_ engine.Module             = (*ConnectionModule)(nil)
+	_ engine.PublicStateModule  = (*ConnectionModule)(nil)
 	_ engine.SerializableModule = (*ConnectionModule)(nil)
 )

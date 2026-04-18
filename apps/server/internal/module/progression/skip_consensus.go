@@ -12,7 +12,12 @@ import (
 
 // SkipConsensusModule manages skip vote consensus for script progression.
 // Requires: script_progression module.
+//
+// PR-2a: declares public state — active request flag, votes, and required
+// ratio are shared by all players for the skip-prompt UI.
 type SkipConsensusModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -229,9 +234,10 @@ func (m *SkipConsensusModule) OnPhaseExit(_ context.Context, _ engine.Phase) err
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*SkipConsensusModule)(nil)
-	_ engine.ConfigSchema    = (*SkipConsensusModule)(nil)
-	_ engine.PhaseHookModule = (*SkipConsensusModule)(nil)
+	_ engine.Module            = (*SkipConsensusModule)(nil)
+	_ engine.ConfigSchema      = (*SkipConsensusModule)(nil)
+	_ engine.PhaseHookModule   = (*SkipConsensusModule)(nil)
+	_ engine.PublicStateModule = (*SkipConsensusModule)(nil)
 )
 
 func init() {

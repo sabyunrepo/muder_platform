@@ -84,10 +84,15 @@ type Module interface {
 	Cleanup(ctx context.Context) error
 }
 
-// PlayerAwareModule is an optional interface for modules that must redact
-// or shape their state on a per-player basis (role-private data, whispers,
-// per-player clues, etc.). Modules that do NOT implement this interface are
-// assumed to have public state; BuildModuleStateFor falls back to BuildState.
+// PlayerAwareModule is an interface for modules that must redact or shape
+// their state on a per-player basis (role-private data, whispers, per-player
+// clues, etc.).
+//
+// PR-2a (Phase 19, F-sec-2): Every registered module MUST implement this
+// interface OR explicitly declare itself as public-state via PublicStateModule
+// (embed engine.PublicStateMarker). The registry enforces this at init() time
+// so module authors cannot silently fall back to BuildState for data that
+// should be per-player redacted.
 //
 // Implementations MUST NOT include any data the given player is not entitled
 // to see — this is the trust boundary for Phase 18.1 B-2 (snapshot redaction).
@@ -96,9 +101,43 @@ type PlayerAwareModule interface {
 	BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
 }
 
+// PublicStateModule is a sentinel marker declaring that a module's state is
+// intentionally identical for every player (no per-player redaction required).
+// Modules with truly public state (room meta, audio cues, phase index, etc.)
+// embed engine.PublicStateMarker to satisfy this interface and pass the
+// PR-2a gate without implementing BuildStateFor.
+//
+// The sole method is unexported on purpose: only types that embed
+// PublicStateMarker can satisfy PublicStateModule, preventing external
+// packages from forging the opt-out by defining their own stub method.
+type PublicStateModule interface {
+	isPublicState()
+}
+
+// PublicStateMarker is the helper type module authors embed to satisfy
+// PublicStateModule from outside the engine package.
+//
+//	type RoomModule struct {
+//	    engine.PublicStateMarker
+//	    // ...fields
+//	}
+//
+// Embedding this marker is an explicit, auditable declaration that the
+// module's BuildState() output is safe to broadcast to every player.
+type PublicStateMarker struct{}
+
+// isPublicState satisfies PublicStateModule. Never call directly.
+func (PublicStateMarker) isPublicState() {}
+
 // BuildModuleStateFor returns the player-aware state for a module.
-// If the module implements PlayerAwareModule, its redacted state is returned;
-// otherwise the public BuildState() is used.
+//
+// Gate hierarchy (PR-2a):
+//  1. If the module implements PlayerAwareModule → BuildStateFor is called.
+//  2. Else if the module implements PublicStateModule → BuildState is called
+//     (module author has explicitly declared public state).
+//  3. Else (no marker and no BuildStateFor): registry should have panicked at
+//     init() time; this fallback preserves legacy behaviour when strict mode
+//     is disabled via MMP_PLAYERAWARE_STRICT=false.
 func BuildModuleStateFor(m Module, playerID uuid.UUID) (json.RawMessage, error) {
 	if pam, ok := m.(PlayerAwareModule); ok {
 		return pam.BuildStateFor(playerID)

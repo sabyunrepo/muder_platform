@@ -288,10 +288,19 @@ func (m *TimedExplorationModule) Apply(_ context.Context, _ engine.GameEvent, st
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will redact playerLocations for viewers whose config disables
+// cross-player visibility.
+func (m *TimedExplorationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module           = (*TimedExplorationModule)(nil)
-	_ engine.ConfigSchema     = (*TimedExplorationModule)(nil)
-	_ engine.PhaseHookModule  = (*TimedExplorationModule)(nil)
-	_ engine.GameEventHandler = (*TimedExplorationModule)(nil)
+	_ engine.Module            = (*TimedExplorationModule)(nil)
+	_ engine.ConfigSchema      = (*TimedExplorationModule)(nil)
+	_ engine.PhaseHookModule   = (*TimedExplorationModule)(nil)
+	_ engine.GameEventHandler  = (*TimedExplorationModule)(nil)
+	_ engine.PlayerAwareModule = (*TimedExplorationModule)(nil)
 )

@@ -555,4 +555,5 @@ var (
 	_ engine.SerializableModule = (*HiddenMissionModule)(nil)
 	_ engine.WinChecker         = (*HiddenMissionModule)(nil)
 	_ engine.RuleProvider       = (*HiddenMissionModule)(nil)
+	_ engine.PlayerAwareModule  = (*HiddenMissionModule)(nil)
 )

@@ -16,7 +16,14 @@ func init() {
 
 // SpatialVoiceModule manages location-based voice room assignments.
 // Requires: voice_chat, and one of floor_exploration or room_exploration.
+//
+// PR-2a: declares public state — player location → voice-room membership is
+// a shared map used by every client to render spatial audio UI. Client-side
+// filtering (distance/LOS) is enforced by the LiveKit room topology, not by
+// per-player state redaction.
 type SpatialVoiceModule struct {
+	engine.PublicStateMarker
+
 	mu              sync.RWMutex
 	deps            engine.ModuleDeps
 	config          spatialVoiceConfig
@@ -197,5 +204,8 @@ func (m *SpatialVoiceModule) Cleanup(_ context.Context) error {
 	return nil
 }
 
-// Compile-time interface check.
-var _ engine.Module = (*SpatialVoiceModule)(nil)
+// Compile-time interface checks.
+var (
+	_ engine.Module            = (*SpatialVoiceModule)(nil)
+	_ engine.PublicStateModule = (*SpatialVoiceModule)(nil)
+)

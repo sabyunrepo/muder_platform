@@ -528,4 +528,5 @@ var (
 	_ engine.ConfigSchema       = (*TradeClueModule)(nil)
 	_ engine.PhaseReactor       = (*TradeClueModule)(nil)
 	_ engine.SerializableModule = (*TradeClueModule)(nil)
+	_ engine.PlayerAwareModule  = (*TradeClueModule)(nil)
 )

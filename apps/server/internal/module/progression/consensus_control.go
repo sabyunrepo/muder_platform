@@ -20,7 +20,12 @@ type ConsensusProposal struct {
 
 // ConsensusControlModule manages player-driven consensus for game actions.
 // Auto-enabled when gmMode is NONE or OPTIONAL.
+//
+// PR-2a: declares public state — active proposals and per-player vote tallies
+// are broadcast to everyone (designed transparency for player-driven consensus).
 type ConsensusControlModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -239,8 +244,9 @@ func (m *ConsensusControlModule) OnPhaseExit(_ context.Context, _ engine.Phase) 
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*ConsensusControlModule)(nil)
-	_ engine.PhaseHookModule = (*ConsensusControlModule)(nil)
+	_ engine.Module            = (*ConsensusControlModule)(nil)
+	_ engine.PhaseHookModule   = (*ConsensusControlModule)(nil)
+	_ engine.PublicStateModule = (*ConsensusControlModule)(nil)
 )
 
 func init() {

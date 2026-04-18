@@ -233,10 +233,20 @@ func (m *TextChatModule) Apply(_ context.Context, _ engine.GameEvent, state *eng
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will add per-player filtering (e.g. redact blocked-user messages per
+// viewer, and omit the full history for late-joiners whose join_time is after
+// a given message's timestamp).
+func (m *TextChatModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module           = (*TextChatModule)(nil)
-	_ engine.PhaseReactor     = (*TextChatModule)(nil)
-	_ engine.ConfigSchema     = (*TextChatModule)(nil)
-	_ engine.GameEventHandler = (*TextChatModule)(nil)
+	_ engine.Module            = (*TextChatModule)(nil)
+	_ engine.PhaseReactor      = (*TextChatModule)(nil)
+	_ engine.ConfigSchema      = (*TextChatModule)(nil)
+	_ engine.GameEventHandler  = (*TextChatModule)(nil)
+	_ engine.PlayerAwareModule = (*TextChatModule)(nil)
 )

@@ -13,7 +13,11 @@ import (
 // ---------------------------------------------------------------------------
 
 // optMinModule implements only the Module interface (no optionals).
-type optMinModule struct{ name string }
+// PR-2a: embed PublicStateMarker to pass the F-sec-2 boot gate.
+type optMinModule struct {
+	PublicStateMarker
+	name string
+}
 
 func (s *optMinModule) Name() string { return s.name }
 func (s *optMinModule) Init(_ context.Context, _ ModuleDeps, _ json.RawMessage) error {
@@ -26,7 +30,11 @@ func (s *optMinModule) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _
 func (s *optMinModule) Cleanup(_ context.Context) error { return nil }
 
 // optMaxModule implements Module + all 5 optional interfaces.
-type optMaxModule struct{ name string }
+// PR-2a: embed PublicStateMarker to pass the F-sec-2 boot gate.
+type optMaxModule struct {
+	PublicStateMarker
+	name string
+}
 
 func (s *optMaxModule) Name() string { return s.name }
 func (s *optMaxModule) Init(_ context.Context, _ ModuleDeps, _ json.RawMessage) error {

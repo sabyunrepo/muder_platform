@@ -85,6 +85,14 @@ func BuildModules(
 		if err != nil {
 			return nil, nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "unknown module: "+mc.Name)
 		}
+		// PR-2a runtime gate: reject modules that slipped past Register()
+		// (e.g. tests that inject factories into globalRegistry directly).
+		// Only enforced in strict mode to preserve legacy fallback behaviour.
+		if strictGateEnabled() {
+			if err := assertModuleContract(mc.Name, mod); err != nil {
+				return nil, nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, err.Error())
+			}
+		}
 		if hs, ok := mod.(HostSubmittable); ok && !hs.IsHostSubmittable() {
 			return nil, nil, apperror.New(apperror.ErrForbidden, http.StatusForbidden, "module not host-submittable: "+mc.Name)
 		}

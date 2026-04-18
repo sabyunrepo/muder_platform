@@ -496,11 +496,20 @@ func (m *AccusationModule) OnPhaseExit(_ context.Context, _ engine.Phase) error 
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will redact the live vote tally per viewer — votes should only be
+// visible post-resolution to avoid strategic coercion during the vote.
+func (m *AccusationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module           = (*AccusationModule)(nil)
-	_ engine.ConfigSchema     = (*AccusationModule)(nil)
-	_ engine.GameEventHandler = (*AccusationModule)(nil)
-	_ engine.WinChecker       = (*AccusationModule)(nil)
-	_ engine.PhaseHookModule  = (*AccusationModule)(nil)
+	_ engine.Module            = (*AccusationModule)(nil)
+	_ engine.ConfigSchema      = (*AccusationModule)(nil)
+	_ engine.GameEventHandler  = (*AccusationModule)(nil)
+	_ engine.WinChecker        = (*AccusationModule)(nil)
+	_ engine.PhaseHookModule   = (*AccusationModule)(nil)
+	_ engine.PlayerAwareModule = (*AccusationModule)(nil)
 )

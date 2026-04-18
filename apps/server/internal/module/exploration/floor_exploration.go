@@ -195,10 +195,19 @@ func (m *FloorExplorationModule) Apply(_ context.Context, _ engine.GameEvent, st
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will redact playerFloors so each viewer only sees their own floor
+// assignment (currently the map leaks every player's floor selection).
+func (m *FloorExplorationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module           = (*FloorExplorationModule)(nil)
-	_ engine.PhaseReactor     = (*FloorExplorationModule)(nil)
-	_ engine.ConfigSchema     = (*FloorExplorationModule)(nil)
-	_ engine.GameEventHandler = (*FloorExplorationModule)(nil)
+	_ engine.Module            = (*FloorExplorationModule)(nil)
+	_ engine.PhaseReactor      = (*FloorExplorationModule)(nil)
+	_ engine.ConfigSchema      = (*FloorExplorationModule)(nil)
+	_ engine.GameEventHandler  = (*FloorExplorationModule)(nil)
+	_ engine.PlayerAwareModule = (*FloorExplorationModule)(nil)
 )

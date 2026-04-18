@@ -15,7 +15,12 @@ func init() {
 }
 
 // RoomModule manages character selection and room phase.
+//
+// PR-2a: declares public state — character map is broadcast to all players
+// for the lobby UI, and phase is a single game-wide value.
 type RoomModule struct {
+	engine.PublicStateMarker
+
 	mu         sync.RWMutex
 	deps       engine.ModuleDeps
 	characters map[string]uuid.UUID // characterCode → playerID
@@ -137,4 +142,7 @@ func (m *RoomModule) Cleanup(_ context.Context) error {
 }
 
 // Compile-time interface checks.
-var _ engine.Module = (*RoomModule)(nil)
+var (
+	_ engine.Module            = (*RoomModule)(nil)
+	_ engine.PublicStateModule = (*RoomModule)(nil)
+)

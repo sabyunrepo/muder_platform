@@ -13,7 +13,13 @@ import (
 // GmControlModule provides GM (Game Master) controls for session management.
 // Auto-enabled when gmMode is REQUIRED or OPTIONAL.
 // Does not implement ConfigSchema or PhaseReactor.
+//
+// PR-2a: declares public state — BuildState exposes gmPlayerId + isActive which
+// are broadcast to every player for the GM HUD. GM-command authorization is
+// enforced in HandleMessage (playerID == gmPlayerID), not via state redaction.
 type GmControlModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -178,8 +184,9 @@ func (m *GmControlModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*GmControlModule)(nil)
-	_ engine.PhaseHookModule = (*GmControlModule)(nil)
+	_ engine.Module            = (*GmControlModule)(nil)
+	_ engine.PhaseHookModule   = (*GmControlModule)(nil)
+	_ engine.PublicStateModule = (*GmControlModule)(nil)
 )
 
 func init() {
