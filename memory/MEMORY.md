@@ -49,6 +49,7 @@
 - [작업 루틴 강제](feedback_work_routine.md) — 시작 시 QMD 컨텍스트 로드, 완료 시 문서 업데이트+재인덱싱 필수
 - [main 직접 push 금지 · feature branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check, bypass 금지 (2026-04-17 `d1262a7` 사건 이후)
 - [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — QMD와 대칭 규칙, `/graphify query|explain|path` 우선, `--update` 증분만 사용 (2026-04-18)
+- [4-agent 코드리뷰는 admin-merge 전에 수행](feedback_4agent_review_before_admin_merge.md) — Auto mode + CI admin-skip 에서도 security/perf/arch/test 4 병렬 리뷰 선행. PR-2c (#107) 리뷰 생략 후 HIGH deadlock 이슈가 hotfix #108 로 발견된 사례 (2026-04-18)
 
 ## 코드 리뷰 패턴 & 프로세스
 - [코드 리뷰 패턴 통합](feedback_code_review_patterns.md) — Go/React/DB/보안/PWA/오디오 전 Phase 통합 패턴
