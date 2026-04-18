@@ -184,6 +184,18 @@ type: project
 
 ## 다음 세션 재개 방법
 
+### 🔴 선 작업 (세션 시작 직후, PR-2c 착수 전)
+
+이 번 세션(2026-04-18 밤)에서 한 번 더 확인·정리해야 하는 메모리 동기화 잔무:
+
+- **repo memory/MEMORY.md** 인덱스는 이 PR로 최신화됨. `grep -n phase19_implementation memory/MEMORY.md`로 "W3 진행 중 PR-2b #104" 문구 확인.
+- **user home** `/Users/sabyun/.claude/projects/-Users-sabyun-goinfre-muder-platform/memory/MEMORY.md`
+  도 L21 근처에 동일 엔트리가 있는지 `grep -n phase19_implementation`로 확인. 없으면 repo와 동일하게 복사.
+- 로컬 `.claude/active-plan.json` `current_pr` 값이 `"PR-2c"`, `prs."PR-2c".status` 가 `"ready"` 인지 `jq` 로 확인.
+  없거나 값이 다르면 아래 PR-2c 스펙을 참조해 갱신.
+
+### 재개 스크립트
+
 ```bash
 cd /Users/sabyun/goinfre/muder_platform
 claude

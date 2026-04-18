@@ -18,7 +18,7 @@
 - [Phase 18.7 완료](project_phase187_progress.md) — **완료** CI/Test Automation Hardening (Hotfix #53 + 7 PR #54-62, 4 Wave, migration drift gate/cache/SHA pin/Codecov/govulncheck/gitleaks/trivy/osv/CodeQL/SBOM/provenance/E2E shard+firefox/Renovate, 2026-04-16)
 - [Phase 18.8 플랜](project_phase188_plan.md) — **관측 stash** E2E Skip Recovery (5/5 PR merged, W3 PR-5 3일 green 관측 중, active-plan `.claude/active-plan.phase-18.8.json.bak`로 stash, 2026-04-17)
 - [Phase 19 Platform Deep Audit](project_phase19_audit_progress.md) — **완료** 9영역 심층 감사 + 8 cross-cutting + 9 PR backlog + 4 decisions resolved (Finding 89, PR #69, QMD v2 hotel 추가, 2026-04-17)
-- [Phase 19 Implementation](project_phase19_implementation_progress.md) — **W1 완료** 5 PR 머지 (#84 PR-0, #85 PR-3, #86 PR-1, #87 PR-6, #88 PR-7 + #83 hotfix + #89 sync). P0 4/6 해소. W2 진행 중 (PR-2/5 대기), 2026-04-18
+- [Phase 19 Implementation](project_phase19_implementation_progress.md) — **W3 진행 중** PR-2b #104 머지 완료 (11 모듈 BuildStateFor + cluedist 독립 path + coverage lint). P0 6/7 (86%). 차기 PR-2c combination craftedAsClueMap (D-MO-1), 2026-04-18
 - [Phase 20 플랜](project_phase20_plan.md) — 단서·장소 에디터 정식 승격 (6 PR, 4 Wave, 2026-04-17 시작)
 - [Phase 20 완료](project_phase20_progress.md) — **완료 + 스테이징 QA** 단서·장소 에디터 정식 승격 (6 PR #71~#77 + archive #78, 4 Wave, 2026-04-17). 통합 clue_edge_groups 스키마 + AUTO/CRAFT + CurrentRound + 라운드 필터 + 프론트 승격. 스테이징 DB 00020~00025 적용 + 라운드 왕복 QA 7/7 통과 (CHECK 제약 9건 활성 확인)
 - [에디터 개방 + 심사 + 이미지 업로드](project_editor_open_access.md) — 전유저 에디터, 게시 심사, 크롭 업로드 (2026-04-13)
