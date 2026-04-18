@@ -307,12 +307,29 @@ func (m *LocationModule) GetRules() []engine.Rule {
 	}
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will redact per-player history — each player should only see their
-// own movement history, not everyone else's positions trail.
-func (m *LocationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns location state redacted to the requesting player.
+// Only the caller's current position and movement history are included;
+// everyone else's positions and trails are withheld.
+//
+// Note: in scenarios where shared-knowledge location is the intended design
+// (e.g. open-map deduction), the scenario should instead opt out of
+// PlayerAware by embedding engine.PublicStateMarker. PR-2b treats positions
+// as private by default (F-sec-2 + F-03 Phase 18.1 B-2).
+func (m *LocationModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	positions := make(map[string]string, 1)
+	if loc, ok := m.positions[playerID]; ok {
+		positions[playerID.String()] = loc
+	}
+	history := make(map[string][]string, 1)
+	if locs, ok := m.history[playerID]; ok {
+		cp := make([]string, len(locs))
+		copy(cp, locs)
+		history[playerID.String()] = cp
+	}
+	return json.Marshal(locationState{Positions: positions, History: history})
 }
 
 // Compile-time interface assertions.
