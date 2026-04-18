@@ -1,11 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import {
-  getModuleStore,
-  useModuleStore,
-  clearModuleStores,
-  clearBySessionId,
-} from "../moduleStoreFactory";
+import { getModuleStore } from "../moduleStoreFactory";
+import { useModuleStore } from "../useModuleStore";
+import { clearBySessionId, clearModuleStores } from "../moduleStoreCleanup";
 import { useGameSessionStore } from "../gameSessionStore";
 
 // ---------------------------------------------------------------------------

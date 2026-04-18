@@ -1,7 +1,4 @@
 import { createStore, type StoreApi } from "zustand";
-import { useStore } from "zustand";
-
-import { useGameSessionStore } from "./gameSessionStore";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -21,10 +18,10 @@ export interface ModuleStoreActions {
   setActive: (active: boolean) => void;
 }
 
-type ModuleStore = ModuleStoreState & ModuleStoreActions;
+export type ModuleStore = ModuleStoreState & ModuleStoreActions;
 
 // ---------------------------------------------------------------------------
-// Factory
+// Factory internals
 // ---------------------------------------------------------------------------
 
 /**
@@ -36,8 +33,14 @@ const GLOBAL_NAMESPACE = "__global__";
 /**
  * 캐시 key 포맷: `${sessionId}:${moduleId}`.
  * 세션 전환 시 이전 세션의 모듈 state가 유출되지 않도록 namespace 분리.
+ *
+ * Phase 19 PR-11: 순환 import 해소를 위해 cleanup 함수는 `moduleStoreCleanup.ts`로
+ * 분리되었다. 해당 파일에서 이 Map을 직접 조작하기 위해 internal export로 노출한다.
+ * 외부 소비자는 `clearBySessionId` / `clearModuleStores` 공개 API를 사용할 것.
+ *
+ * @internal
  */
-const moduleStores = new Map<string, StoreApi<ModuleStore>>();
+export const _moduleStoresInternal = new Map<string, StoreApi<ModuleStore>>();
 
 function makeCacheKey(sessionId: string, moduleId: string): string {
   return `${sessionId}:${moduleId}`;
@@ -52,6 +55,10 @@ function createInitialState(moduleId: string, sessionId: string): ModuleStoreSta
     isActive: false,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Factory API
+// ---------------------------------------------------------------------------
 
 /**
  * 모듈 ID + sessionId에 해당하는 vanilla 스토어를 반환한다.
@@ -76,7 +83,7 @@ export function getModuleStore(
   }
 
   const key = makeCacheKey(namespace, moduleId);
-  const existing = moduleStores.get(key);
+  const existing = _moduleStoresInternal.get(key);
   if (existing) return existing;
 
   const store = createStore<ModuleStore>()((set) => ({
@@ -99,60 +106,8 @@ export function getModuleStore(
     },
   }));
 
-  moduleStores.set(key, store);
+  _moduleStoresInternal.set(key, store);
   return store;
-}
-
-/**
- * React 컴포넌트에서 모듈 스토어를 구독하는 hook.
- * sessionId는 명시 인자가 없으면 `useGameSessionStore`에서 자동으로 읽는다.
- * 세션이 바뀌면 다른 namespace의 스토어로 자동 전환된다.
- */
-export function useModuleStore(moduleId: string): ModuleStore;
-export function useModuleStore<T>(moduleId: string, selector: (s: ModuleStore) => T): T;
-export function useModuleStore<T>(
-  moduleId: string,
-  selector: (s: ModuleStore) => T,
-  sessionIdOverride: string | null,
-): T;
-export function useModuleStore<T>(
-  moduleId: string,
-  selector?: (s: ModuleStore) => T,
-  sessionIdOverride?: string | null,
-): T | ModuleStore {
-  // sessionId override가 명시되면 그 값을, 아니면 현재 게임 세션 id를 사용
-  const activeSessionId = useGameSessionStore((s) => s.sessionId);
-  const sessionId = sessionIdOverride !== undefined ? sessionIdOverride : activeSessionId;
-  const store = getModuleStore(moduleId, sessionId);
-  // selector가 없으면 전체 상태 반환
-  return useStore(store, selector ?? ((s) => s as unknown as T));
-}
-
-/**
- * 지정한 sessionId에 속한 모든 모듈 스토어를 reset 후 캐시에서 제거한다.
- * 다른 세션의 스토어는 보존된다. resetGame 직전 호출해 이전 세션의
- * 모듈 state가 유출되지 않도록 한다.
- */
-export function clearBySessionId(sessionId: string | null | undefined): void {
-  if (!sessionId) return;
-  const prefix = `${sessionId}:`;
-  for (const [key, store] of moduleStores.entries()) {
-    if (key.startsWith(prefix)) {
-      store.getState().reset();
-      moduleStores.delete(key);
-    }
-  }
-}
-
-/**
- * 전역 정리: 모든 세션의 모듈 스토어를 제거한다.
- * 로그아웃이나 앱 종료 등 명시적 teardown 상황에서만 호출.
- */
-export function clearModuleStores(): void {
-  for (const store of moduleStores.values()) {
-    store.getState().reset();
-  }
-  moduleStores.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -163,3 +118,18 @@ export const selectModuleData = (s: ModuleStoreState) => s.data;
 export const selectModuleIsActive = (s: ModuleStoreState) => s.isActive;
 export const selectModuleId = (s: ModuleStoreState) => s.moduleId;
 export const selectModuleSessionId = (s: ModuleStoreState) => s.sessionId;
+
+// ---------------------------------------------------------------------------
+// Backward-compatible re-exports
+// ---------------------------------------------------------------------------
+
+/**
+ * React hook 및 cleanup 함수는 각각 별도 파일로 분리되었지만, 기존 import 경로
+ * 호환성을 위해 여기서 re-export한다. 새 코드는 가능하면 `useModuleStore` /
+ * `moduleStoreCleanup` 경로를 직접 사용할 것.
+ *
+ * - `useModuleStore` → `./useModuleStore`
+ * - `clearBySessionId`, `clearModuleStores` → `./moduleStoreCleanup`
+ */
+export { useModuleStore } from "./useModuleStore";
+export { clearBySessionId, clearModuleStores } from "./moduleStoreCleanup";
