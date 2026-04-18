@@ -94,7 +94,7 @@ export function ClueFormAdvancedFields({
               type="checkbox"
               checked={isCommon}
               onChange={(e) => onIsCommonChange(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900"
+              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
             />
             <label
               htmlFor="clue-is-common"
@@ -162,7 +162,7 @@ export function ClueFormAdvancedFields({
                 type="checkbox"
                 checked={isUsable}
                 onChange={(e) => onIsUsableChange(e.target.checked)}
-                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900"
+                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
               />
               <label
                 htmlFor="clue-is-usable"
@@ -220,7 +220,7 @@ export function ClueFormAdvancedFields({
                     type="checkbox"
                     checked={useConsumed}
                     onChange={(e) => onUseConsumedChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900"
+                    className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                   />
                   <label
                     htmlFor="clue-use-consumed"

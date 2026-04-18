@@ -112,7 +112,7 @@ function CategorySection({
                     checked={isRequired ? true : checked}
                     disabled={isDisabled}
                     onChange={() => onToggle(mod.id)}
-                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500"
+                    className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                   />
                   <div className="min-w-0">
                     <span className="block text-sm font-medium text-slate-200">

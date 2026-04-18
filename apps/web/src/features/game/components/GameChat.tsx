@@ -268,7 +268,7 @@ export function GameChat({ send, fullWidth = false }: GameChatProps) {
       {activeTab === "whisper" && (
         <div className="border-b border-slate-800 px-3 py-2">
           <select
-            className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 outline-none focus:border-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+            className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-1.5 text-sm text-slate-200 focus:border-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
             value={whisperTarget}
             onChange={(e) => setWhisperTarget(e.target.value)}
           >
