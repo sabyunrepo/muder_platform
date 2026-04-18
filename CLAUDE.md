@@ -252,3 +252,11 @@ gh pr checks <N>  # 대기
 - `manifest.json` — 증분 업데이트용
 - `cache/` — AST/semantic 캐시 (재인덱싱 시 재사용)
 - `cost.json` — 토큰 누적
+
+### 팀 공유 Makefile target
+| 커맨드 | 용도 |
+|--------|------|
+| `make graphify-setup` | clone 직후 1회 — `pipx install graphifyy` + `graphify hook install` (post-commit/post-checkout) |
+| `make graphify-watch` | 코드 변경 실시간 감지 + AST 재빌드 (LLM 토큰 0). tmux/screen 안에서 실행 권장 |
+| `make graphify-update` | 마지막 커밋 이후 변경 코드만 증분 재추출 (AST, 토큰 0). hook 미설치 환경용 |
+- `.git/hooks/`는 gitignore이므로 **각 개발자/worktree가 `make graphify-setup`을 1회 직접 실행**해야 post-commit 자동 동기화가 활성화된다.

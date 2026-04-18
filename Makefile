@@ -1,4 +1,4 @@
-.PHONY: up down build build-no-cache logs ps lint lint-go lint-web test migrate seed ci-local
+.PHONY: up down build build-no-cache logs ps lint lint-go lint-web test migrate seed ci-local graphify-setup graphify-watch graphify-update
 
 # ---------------------------------------------------------------------------
 # Core commands
@@ -95,3 +95,29 @@ ci-local: lint-go lint-web typecheck test build-server build-web
 # Prevent make from treating 'dev'/'prod' as file targets
 dev prod:
 	@true
+
+# ---------------------------------------------------------------------------
+# Graphify (knowledge graph tooling)
+# ---------------------------------------------------------------------------
+
+## graphify-setup — graphify CLI + git hooks 설치 (clone 직후 1회)
+##                  pipx install graphifyy → graphify hook install
+##                  post-commit / post-checkout hook으로 `graphify update` 자동 실행
+graphify-setup:
+	@command -v graphify >/dev/null 2>&1 || { \
+		command -v pipx >/dev/null 2>&1 || { echo "pipx 필요: brew install pipx" >&2; exit 1; }; \
+		pipx install graphifyy; \
+	}
+	graphify hook install
+	@echo "✓ graphify CLI + git hooks 설치 완료"
+
+## graphify-watch — 코드 변경 감지 + AST 자동 재빌드 (LLM 토큰 0)
+##                  tmux/screen 안에서 백그라운드 실행 권장
+##                  MD/PDF 변경은 알림만 — 문서 대량 변경 시 `/graphify . --update` 권장
+graphify-watch:
+	graphify watch .
+
+## graphify-update — 마지막 커밋 이후 변경된 코드만 증분 재추출 (AST, 토큰 0)
+##                   post-commit hook 미설치 환경에서 수동 동기화용
+graphify-update:
+	graphify update .
