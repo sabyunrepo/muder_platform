@@ -37,29 +37,36 @@ func (m *CombinationModule) handleCombine(_ context.Context, playerID uuid.UUID,
 		return fmt.Errorf("combination: combine requires at least one evidence_id")
 	}
 
+	// Mutate state under lock, then release BEFORE publishing events. Holding
+	// m.mu while invoking a synchronous EventBus is a deadlock hazard — any
+	// subscriber that calls back into a module method acquiring m.mu (now
+	// realistic via BuildStateFor on the broadcast path) would block forever.
+	var (
+		combo    CombinationDef
+		produced bool
+	)
 	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Find a matching combination def.
 	combo, err := m.findCombo(p)
 	if err != nil {
+		m.mu.Unlock()
 		return err
 	}
-
-	// Verify player has all input evidence.
 	for _, inputID := range combo.InputIDs {
 		if !m.collected[playerID][inputID] {
+			m.mu.Unlock()
 			return fmt.Errorf("combination: invalid combine: missing evidence %q", inputID)
 		}
 	}
-
-	// Check not already completed.
-	if m.hasCompleted(playerID, combo.ID) {
-		return nil // idempotent
+	if !m.hasCompleted(playerID, combo.ID) {
+		m.completed[playerID] = append(m.completed[playerID], combo.ID)
+		m.derived[playerID] = append(m.derived[playerID], combo.OutputClueID)
+		produced = true
 	}
+	m.mu.Unlock()
 
-	m.completed[playerID] = append(m.completed[playerID], combo.ID)
-	m.derived[playerID] = append(m.derived[playerID], combo.OutputClueID)
+	if !produced {
+		return nil // idempotent replay
+	}
 
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "combination.completed",
