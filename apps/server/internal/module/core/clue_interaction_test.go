@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -588,5 +589,112 @@ func TestClueInteractionModule_ItemUse_BuildState(t *testing.T) {
 	}
 	if state.ActiveItemUse != nil {
 		t.Fatal("expected activeItemUse to be nil in state after resolution")
+	}
+}
+
+// --- PR-2b: PlayerAware redaction ---
+
+func TestClueInteractionModule_BuildStateFor_CallerOnly(t *testing.T) {
+	m := NewClueInteractionModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+
+	// Seed per-player state directly.
+	m.mu.Lock()
+	m.playerDrawCounts[alice] = 2
+	m.playerDrawCounts[bob] = 5
+	m.acquiredClues[alice] = []string{"c1", "c2"}
+	m.acquiredClues[bob] = []string{"c9"}
+	m.usedItems[alice] = []uuid.UUID{uuid.New()}
+	m.usedItems[bob] = []uuid.UUID{uuid.New(), uuid.New()}
+	m.currentClueLevel = 3
+	m.mu.Unlock()
+
+	data, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s clueInteractionState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.PlayerDrawCounts) != 1 || s.PlayerDrawCounts[alice] != 2 {
+		t.Fatalf("PlayerDrawCounts should be {alice:2}, got %v", s.PlayerDrawCounts)
+	}
+	if _, leaked := s.PlayerDrawCounts[bob]; leaked {
+		t.Fatalf("bob's drawCount leaked: %v", s.PlayerDrawCounts)
+	}
+	if len(s.AcquiredClues[alice]) != 2 {
+		t.Fatalf("alice should have 2 acquired clues, got %v", s.AcquiredClues)
+	}
+	if _, leaked := s.AcquiredClues[bob]; leaked {
+		t.Fatalf("bob's acquired clues leaked: %v", s.AcquiredClues)
+	}
+	if len(s.UsedItems[alice]) != 1 {
+		t.Fatalf("alice used items count wrong: %v", s.UsedItems)
+	}
+	if _, leaked := s.UsedItems[bob]; leaked {
+		t.Fatalf("bob's used items leaked: %v", s.UsedItems)
+	}
+	if s.CurrentClueLevel != 3 {
+		t.Errorf("CurrentClueLevel (public) lost: got %d", s.CurrentClueLevel)
+	}
+	_ = time.Now()
+}
+
+func TestClueInteractionModule_BuildStateFor_ActiveItemUseRestrictedToUser(t *testing.T) {
+	m := NewClueInteractionModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+
+	m.mu.Lock()
+	m.activeItemUse = &ItemUseState{
+		UserID:    alice,
+		ClueID:    uuid.New(),
+		Effect:    "reveal",
+		Target:    "bob",
+		StartedAt: time.Now(),
+	}
+	m.mu.Unlock()
+
+	// Alice (the user) sees the active item use.
+	aliceData, _ := m.BuildStateFor(alice)
+	var aliceState clueInteractionState
+	_ = json.Unmarshal(aliceData, &aliceState)
+	if aliceState.ActiveItemUse == nil || aliceState.ActiveItemUse.UserID != alice {
+		t.Fatalf("alice should see her own ActiveItemUse, got %+v", aliceState.ActiveItemUse)
+	}
+	// Bob (not the user) must NOT see it.
+	bobData, _ := m.BuildStateFor(bob)
+	var bobState clueInteractionState
+	_ = json.Unmarshal(bobData, &bobState)
+	if bobState.ActiveItemUse != nil {
+		t.Fatalf("bob should NOT see alice's ActiveItemUse, got %+v", bobState.ActiveItemUse)
+	}
+}
+
+func TestClueInteractionModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	alice := uuid.New()
+	bob := uuid.New()
+
+	m.mu.Lock()
+	m.acquiredClues[bob] = []string{"bob-clue"}
+	m.playerDrawCounts[bob] = 99
+	m.mu.Unlock()
+
+	aliceData, _ := m.BuildStateFor(alice)
+	if bytes.Contains(aliceData, []byte("bob-clue")) {
+		t.Fatalf("alice leaked bob's clue id: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice leaked bob's uuid: %s", aliceData)
 	}
 }
