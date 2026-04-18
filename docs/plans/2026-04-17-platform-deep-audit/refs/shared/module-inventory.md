@@ -1,7 +1,8 @@
-# Module Inventory & Compliance Matrix — Phase 19 W1
+# Module Inventory & Compliance Matrix — Phase 19 W1 (2026-04-18 교정)
 
-> 실측: `apps/server/internal/module/**` · `apps/server/internal/engine/**` (2026-04-17)
+> 실측: `apps/server/internal/module/**` · `apps/server/internal/engine/**` (2026-04-17 W1 draft → **2026-04-18 교정**)
 > 설계 문서 "29개 모듈" vs 실측 **33개** → **+4개 차이**. 상세는 §Drift.
+> **2026-04-18 교정 사항**: W1 draft "PlayerAwareModule 0/33" → 실측 **8/33 (24%)**. 05-security / 03-module-architect 공동 검증. ConfigSchema는 W1 실측 22/33 유지 (pr-2/current-state.md 실측 재검증 결과 22/33). 상세는 `refs/pr-2/current-state.md`.
 
 ## 규약 요약 (engine/types.go 기준)
 
@@ -57,7 +58,7 @@
 | 32 | skip_consensus | progression | O | O | O | - | - | 239 |
 | 33 | ending | progression | O | O | O | - | - | 198 |
 
-> Extra 약어: **GEH**=GameEventHandler · **SER**=SerializableModule · **WIN**=WinChecker. **PlayerAwareModule 실측 0건.**
+> Extra 약어: **GEH**=GameEventHandler · **SER**=SerializableModule · **WIN**=WinChecker. **PlayerAwareModule 실측 8/33 (24%)**: whisper · hidden_mission · voting · trade_clue · starting_clue · round_clue · timed_clue · conditional_clue. 잔여 25건이 fallback — F-sec-2 대상. 상세 분류는 `refs/pr-2/current-state.md`.
 
 ## 총계
 
@@ -71,7 +72,7 @@
 | GameEventHandler (선택) | 17 | 33 | 52% |
 | SerializableModule (선택) | 11 | 33 | 33% |
 | WinChecker (선택) | 4 | 33 | 12% |
-| PlayerAwareModule (선택) | 0 | 33 | **0%** |
+| PlayerAwareModule (의무화 예정, PR-2a) | 8 | 33 | **24%** |
 | LOC 합계 (non-test) | 10,057 | - | - |
 | 500줄 초과 파일 | 6 | 33 | 18% |
 
@@ -81,7 +82,7 @@
 
 실측상 **필수 규약 (Module + Factory + init) 33/33 전원 충족**. 비준수는 "선택적이어야 할 자리에 미구현으로 기능 공백이 생긴 케이스"로 재정의.
 
-1. **PlayerAwareModule 0/33** — Phase 18.1 B-2 redaction boundary 인터페이스인데 아무도 구현하지 않음. `hidden_mission.go`(role-private), `whisper.go`(1:1 메시지), `starting_clue.go`(플레이어별 시작 단서)는 명백한 private state 보유. `module_types.go:94-97` 인터페이스만 존재, 호출처는 `BuildModuleStateFor`에서 fallback만 타는 중. → **W2 `05-security` cross-ref 대상**.
+1. **PlayerAwareModule 8/33 (25 fallback)** — Phase 18.1 B-2 redaction boundary 인터페이스. 2026-04-18 실측 교정 결과 8개 모듈(whisper · hidden_mission · voting · trade_clue · starting_clue · round_clue · timed_clue · conditional_clue)은 이미 구현, **잔여 25개가 fallback**. 명백한 public state 모듈(예: room · ready · connection · text_chat · progression 계열)은 의도적 opt-out이 맞지만, **crime_scene 3(evidence/location/combination) + decision/accusation + cluedist 일부는 민감 state를 fallback 중**. → **F-sec-2 P0 대상, PR-2a(gate + PublicStateMarker) + PR-2b(백필) + PR-2c(craftedAsClueMap redaction)**로 3분할.
 2. **communication/voice_chat.go:182 · spatial_voice.go:201 · core/room.go:140** — ConfigSchema 미구현. 에디터에서 설정 불가능 → 하드코딩 의존. voice_chat은 `maxChannels`·`codec`·LiveKit opts, spatial_voice는 `radius`·`attenuation` 등 명백한 튜닝 노브가 있는데 노출 경로 없음.
 3. **progression/gm_control.go:15 주석 "Does not implement ConfigSchema or PhaseReactor"** — 자체 주석으로 선언적 스키마 부재를 공식화함. GM 제어는 호스트가 타임라인에서 직접 조작하는 축이라 Phase action 매핑이 자연스러운 후보(`ActionLockModule`·`ActionUnlockModule`이 types.go:30-31에 이미 정의). 현재 gm_control은 이 action들의 reactor가 아님.
 
