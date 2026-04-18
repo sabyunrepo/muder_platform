@@ -10,7 +10,6 @@ import { useWsClient } from "@/hooks/useWsClient";
 import { useGameSync } from "@/hooks/useGameSync";
 import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
 import { selectPhase, selectIsGameActive } from "@/stores/gameSelectors";
-import { clearModuleStores } from "@/stores/moduleStoreFactory";
 
 import {
   VotingPanel,
@@ -84,10 +83,11 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
   const [isMissionOpen, setIsMissionOpen] = useState(false);
 
   // unmount 시 게임/모듈 스토어 정리
+  // PR-8 (F-react-6): resetGame이 내부에서 clearBySessionId를 호출하므로
+  // 모듈 스토어는 자동 정리된다. 별도 clearModuleStores 호출 불필요.
   useEffect(() => {
     return () => {
       useGameStore.getState().resetGame();
-      clearModuleStores();
     };
   }, [sessionId]);
 

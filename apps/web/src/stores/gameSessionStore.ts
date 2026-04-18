@@ -2,6 +2,8 @@ import { create } from "zustand";
 import type { GamePhase, GameState, ModuleConfig, Player, PlayerRole } from "@mmp/shared";
 import { syncServerTime } from "@mmp/game-logic";
 
+import { clearBySessionId } from "./moduleStoreFactory";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -85,6 +87,10 @@ export const useGameSessionStore = create<GameSessionState & GameSessionActions>
     },
 
     resetGame: () => {
+      // 세션 종료 시 해당 sessionId에 속한 모듈 스토어만 정리한다.
+      // 다른 세션 (동시 관전 등) 스토어는 보존된다.
+      const { sessionId } = get();
+      clearBySessionId(sessionId);
       set({ ...INITIAL_STATE });
     },
 
