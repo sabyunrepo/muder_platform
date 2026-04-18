@@ -523,6 +523,15 @@ func (m *CombinationModule) RestoreState(_ context.Context, _ uuid.UUID, state e
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will restrict completed/derived/collected entries to the requesting
+// player's own progress, since revealing other players' combinations leaks
+// strategic information.
+func (m *CombinationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface assertions.
 var (
 	_ engine.Module             = (*CombinationModule)(nil)
@@ -530,4 +539,5 @@ var (
 	_ engine.WinChecker         = (*CombinationModule)(nil)
 	_ engine.RuleProvider       = (*CombinationModule)(nil)
 	_ engine.SerializableModule = (*CombinationModule)(nil)
+	_ engine.PlayerAwareModule  = (*CombinationModule)(nil)
 )

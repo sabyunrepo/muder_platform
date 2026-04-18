@@ -15,7 +15,12 @@ func init() {
 }
 
 // ReadyModule tracks player ready states before game start.
+//
+// PR-2a: declares public state — every player sees the full ready map
+// (this is the lobby UI's primary signal).
 type ReadyModule struct {
+	engine.PublicStateMarker
+
 	mu           sync.RWMutex
 	deps         engine.ModuleDeps
 	readyPlayers map[uuid.UUID]bool
@@ -173,7 +178,8 @@ func (m *ReadyModule) Apply(_ context.Context, event engine.GameEvent, state *en
 
 // Compile-time interface checks.
 var (
-	_ engine.Module           = (*ReadyModule)(nil)
-	_ engine.PhaseHookModule  = (*ReadyModule)(nil)
-	_ engine.GameEventHandler = (*ReadyModule)(nil)
+	_ engine.Module            = (*ReadyModule)(nil)
+	_ engine.PublicStateModule = (*ReadyModule)(nil)
+	_ engine.PhaseHookModule   = (*ReadyModule)(nil)
+	_ engine.GameEventHandler  = (*ReadyModule)(nil)
 )

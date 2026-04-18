@@ -21,6 +21,10 @@ func (l *testLogger) Printf(format string, v ...any) {
 }
 
 type stubCoreModule struct {
+	// PR-2a: declare public state so tests satisfy the F-sec-2 boot gate
+	// without having to implement BuildStateFor on every stub.
+	PublicStateMarker
+
 	name     string
 	initErr  error
 	cleaned  bool

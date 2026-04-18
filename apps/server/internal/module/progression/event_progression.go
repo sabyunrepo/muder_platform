@@ -11,7 +11,12 @@ import (
 )
 
 // EventProgressionModule manages non-linear phase progression driven by triggers.
+//
+// PR-2a: declares public state — current phase, visited phase list, and
+// backtrack flag are shared by all players.
 type EventProgressionModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -175,9 +180,10 @@ func (m *EventProgressionModule) OnPhaseExit(_ context.Context, _ engine.Phase) 
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*EventProgressionModule)(nil)
-	_ engine.ConfigSchema    = (*EventProgressionModule)(nil)
-	_ engine.PhaseHookModule = (*EventProgressionModule)(nil)
+	_ engine.Module            = (*EventProgressionModule)(nil)
+	_ engine.ConfigSchema      = (*EventProgressionModule)(nil)
+	_ engine.PhaseHookModule   = (*EventProgressionModule)(nil)
+	_ engine.PublicStateModule = (*EventProgressionModule)(nil)
 )
 
 func init() {

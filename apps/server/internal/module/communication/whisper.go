@@ -229,8 +229,9 @@ func (m *WhisperModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
 
 // Compile-time interface checks.
 var (
-	_ engine.Module           = (*WhisperModule)(nil)
-	_ engine.PhaseReactor     = (*WhisperModule)(nil)
-	_ engine.GameEventHandler = (*WhisperModule)(nil)
-	_ engine.PhaseHookModule  = (*WhisperModule)(nil)
+	_ engine.Module            = (*WhisperModule)(nil)
+	_ engine.PhaseReactor      = (*WhisperModule)(nil)
+	_ engine.GameEventHandler  = (*WhisperModule)(nil)
+	_ engine.PhaseHookModule   = (*WhisperModule)(nil)
+	_ engine.PlayerAwareModule = (*WhisperModule)(nil)
 )

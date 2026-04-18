@@ -25,7 +25,12 @@ func init() {
 }
 
 // AudioModule reacts to audio PhaseActions and bridges reading events to audio events.
+//
+// PR-2a: declares public state — BGM/SFX cues are synchronised across all
+// players so every client hears the same soundscape.
 type AudioModule struct {
+	engine.PublicStateMarker
+
 	mu           sync.RWMutex
 	deps         engine.ModuleDeps
 	currentBGMId string
@@ -193,8 +198,9 @@ func (m *AudioModule) Apply(_ context.Context, _ engine.GameEvent, state *engine
 
 // Compile-time interface checks.
 var (
-	_ engine.Module           = (*AudioModule)(nil)
-	_ engine.PhaseReactor     = (*AudioModule)(nil)
-	_ engine.PhaseHookModule  = (*AudioModule)(nil)
-	_ engine.GameEventHandler = (*AudioModule)(nil)
+	_ engine.Module            = (*AudioModule)(nil)
+	_ engine.PublicStateModule = (*AudioModule)(nil)
+	_ engine.PhaseReactor      = (*AudioModule)(nil)
+	_ engine.PhaseHookModule   = (*AudioModule)(nil)
+	_ engine.GameEventHandler  = (*AudioModule)(nil)
 )

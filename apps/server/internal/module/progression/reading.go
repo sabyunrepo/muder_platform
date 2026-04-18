@@ -630,11 +630,21 @@ func (m *ReadingModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will tailor the line window to the viewer — for role-gated advance
+// the current line's prompts should be restricted to the owning role, and
+// future lines should be redacted until revealed.
+func (m *ReadingModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*ReadingModule)(nil)
-	_ engine.ConfigSchema    = (*ReadingModule)(nil)
-	_ engine.PhaseHookModule = (*ReadingModule)(nil)
+	_ engine.Module            = (*ReadingModule)(nil)
+	_ engine.ConfigSchema      = (*ReadingModule)(nil)
+	_ engine.PhaseHookModule   = (*ReadingModule)(nil)
+	_ engine.PlayerAwareModule = (*ReadingModule)(nil)
 )
 
 func init() {

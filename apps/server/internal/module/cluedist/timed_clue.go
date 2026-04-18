@@ -322,4 +322,5 @@ var (
 	_ engine.Module             = (*TimedClueModule)(nil)
 	_ engine.ConfigSchema       = (*TimedClueModule)(nil)
 	_ engine.SerializableModule = (*TimedClueModule)(nil)
+	_ engine.PlayerAwareModule  = (*TimedClueModule)(nil)
 )

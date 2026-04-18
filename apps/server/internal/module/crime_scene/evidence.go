@@ -390,10 +390,20 @@ func (m *EvidenceModule) RestoreState(_ context.Context, _ uuid.UUID, state engi
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will filter discovered/collected to the requesting player only
+// (currently those maps include every player's inventory which leaks
+// discovery progress).
+func (m *EvidenceModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface assertions.
 var (
 	_ engine.Module             = (*EvidenceModule)(nil)
 	_ engine.GameEventHandler   = (*EvidenceModule)(nil)
 	_ engine.PhaseHookModule    = (*EvidenceModule)(nil)
 	_ engine.SerializableModule = (*EvidenceModule)(nil)
+	_ engine.PlayerAwareModule  = (*EvidenceModule)(nil)
 )

@@ -11,7 +11,12 @@ import (
 )
 
 // ScriptProgressionModule manages linear phase progression through a predefined script.
+//
+// PR-2a: declares public state — phase index, total count, skip/progress flags
+// are identical for every player (no per-role redaction).
 type ScriptProgressionModule struct {
+	engine.PublicStateMarker
+
 	mu   sync.RWMutex
 	deps engine.ModuleDeps
 
@@ -138,9 +143,10 @@ func (m *ScriptProgressionModule) OnPhaseExit(_ context.Context, _ engine.Phase)
 
 // Compile-time interface checks.
 var (
-	_ engine.Module          = (*ScriptProgressionModule)(nil)
-	_ engine.ConfigSchema    = (*ScriptProgressionModule)(nil)
-	_ engine.PhaseHookModule = (*ScriptProgressionModule)(nil)
+	_ engine.Module            = (*ScriptProgressionModule)(nil)
+	_ engine.ConfigSchema      = (*ScriptProgressionModule)(nil)
+	_ engine.PhaseHookModule   = (*ScriptProgressionModule)(nil)
+	_ engine.PublicStateModule = (*ScriptProgressionModule)(nil)
 )
 
 func init() {

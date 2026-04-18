@@ -416,6 +416,14 @@ func (m *GroupChatModule) RestoreState(_ context.Context, _ uuid.UUID, state eng
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will add per-player redaction (players outside a given room should
+// not see that room's message history or full member list).
+func (m *GroupChatModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface checks.
 var (
 	_ engine.Module             = (*GroupChatModule)(nil)
@@ -423,4 +431,5 @@ var (
 	_ engine.ConfigSchema       = (*GroupChatModule)(nil)
 	_ engine.GameEventHandler   = (*GroupChatModule)(nil)
 	_ engine.SerializableModule = (*GroupChatModule)(nil)
+	_ engine.PlayerAwareModule  = (*GroupChatModule)(nil)
 )

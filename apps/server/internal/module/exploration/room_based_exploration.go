@@ -209,9 +209,18 @@ func (m *RoomBasedExplorationModule) Apply(_ context.Context, _ engine.GameEvent
 	return nil
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will honour config.ShowPlayerLocations=false by redacting other
+// players' locations / room occupancy for the viewer.
+func (m *RoomBasedExplorationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface assertions.
 var (
-	_ engine.Module           = (*RoomBasedExplorationModule)(nil)
-	_ engine.ConfigSchema     = (*RoomBasedExplorationModule)(nil)
-	_ engine.GameEventHandler = (*RoomBasedExplorationModule)(nil)
+	_ engine.Module            = (*RoomBasedExplorationModule)(nil)
+	_ engine.ConfigSchema      = (*RoomBasedExplorationModule)(nil)
+	_ engine.GameEventHandler  = (*RoomBasedExplorationModule)(nil)
+	_ engine.PlayerAwareModule = (*RoomBasedExplorationModule)(nil)
 )

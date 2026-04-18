@@ -307,10 +307,19 @@ func (m *LocationModule) GetRules() []engine.Rule {
 	}
 }
 
+// BuildStateFor returns the same state as BuildState for now.
+// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
+// PR-2b will redact per-player history — each player should only see their
+// own movement history, not everyone else's positions trail.
+func (m *LocationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
+	return m.BuildState()
+}
+
 // Compile-time interface assertions.
 var (
 	_ engine.Module             = (*LocationModule)(nil)
 	_ engine.GameEventHandler   = (*LocationModule)(nil)
 	_ engine.SerializableModule = (*LocationModule)(nil)
 	_ engine.RuleProvider       = (*LocationModule)(nil)
+	_ engine.PlayerAwareModule  = (*LocationModule)(nil)
 )
