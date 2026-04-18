@@ -466,12 +466,29 @@ func (m *ClueInteractionModule) Apply(_ context.Context, event engine.GameEvent,
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will add player-specific redaction (each player should only see their
-// own playerDrawCounts / acquiredClues / usedItems / activeItemUse entries).
-func (m *ClueInteractionModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns clue-interaction state redacted to the caller.
+//
+// Per-player maps (PlayerDrawCounts / AcquiredClues / UsedItems) are filtered
+// to the caller's own entry. ActiveItemUse is revealed only when the caller
+// is the item user — watching another player's in-flight item use leaks
+// strategy. CurrentClueLevel and Config are session-wide and remain public.
+func (m *ClueInteractionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	var activeItemUse *ItemUseState
+	if m.activeItemUse != nil && m.activeItemUse.UserID == playerID {
+		cp := *m.activeItemUse
+		activeItemUse = &cp
+	}
+	return json.Marshal(clueInteractionState{
+		PlayerDrawCounts: engine.FilterByPlayer(m.playerDrawCounts, playerID),
+		CurrentClueLevel: m.currentClueLevel,
+		AcquiredClues:    engine.FilterByPlayer(m.acquiredClues, playerID),
+		Config:           m.config,
+		UsedItems:        engine.FilterByPlayer(m.usedItems, playerID),
+		ActiveItemUse:    activeItemUse,
+	})
 }
 
 // Compile-time interface checks.

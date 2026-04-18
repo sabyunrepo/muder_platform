@@ -1,6 +1,7 @@
 package crime_scene
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -255,6 +256,86 @@ func TestLocationModule_Validate(t *testing.T) {
 	badEvent := engine.GameEvent{Type: "location.move", Payload: bad}
 	if err := m.Validate(context.Background(), badEvent, engine.GameState{}); err == nil {
 		t.Fatal("expected error for unknown location in Validate")
+	}
+}
+
+func TestLocationModule_BuildStateFor_CallerOnly(t *testing.T) {
+	m := NewLocationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, locationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	_ = m.HandleMessage(context.Background(), alice,
+		"move", json.RawMessage(`{"location_id":"library"}`))
+	_ = m.HandleMessage(context.Background(), alice,
+		"move", json.RawMessage(`{"location_id":"hall"}`))
+	_ = m.HandleMessage(context.Background(), bob,
+		"move", json.RawMessage(`{"location_id":"library"}`))
+
+	data, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor(alice): %v", err)
+	}
+	var s locationState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.Positions[alice.String()] != "hall" {
+		t.Fatalf("alice position should be hall, got %q", s.Positions[alice.String()])
+	}
+	if _, leaked := s.Positions[bob.String()]; leaked {
+		t.Fatalf("bob's position leaked: %v", s.Positions)
+	}
+	if len(s.History[alice.String()]) != 2 {
+		t.Fatalf("alice history should be 2 entries, got %v", s.History)
+	}
+}
+
+func TestLocationModule_BuildStateFor_NoEntry(t *testing.T) {
+	m := NewLocationModule()
+	if err := m.Init(context.Background(), newTestDeps(), locationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	stranger := uuid.New()
+	data, err := m.BuildStateFor(stranger)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s locationState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.Positions == nil || len(s.Positions) != 0 {
+		t.Fatalf("expected empty non-nil Positions, got %v", s.Positions)
+	}
+	if s.History == nil || len(s.History) != 0 {
+		t.Fatalf("expected empty non-nil History, got %v", s.History)
+	}
+}
+
+func TestLocationModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewLocationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, locationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	_ = m.HandleMessage(context.Background(), alice,
+		"move", json.RawMessage(`{"location_id":"library"}`))
+	_ = m.HandleMessage(context.Background(), bob,
+		"move", json.RawMessage(`{"location_id":"hall"}`))
+
+	aliceData, _ := m.BuildStateFor(alice)
+	bobData, _ := m.BuildStateFor(bob)
+
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice's view leaked bob's uuid: %s", aliceData)
+	}
+	if bytes.Contains(bobData, []byte(alice.String())) {
+		t.Fatalf("bob's view leaked alice's uuid: %s", bobData)
 	}
 }
 

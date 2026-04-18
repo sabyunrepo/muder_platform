@@ -1,6 +1,7 @@
 package communication
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -302,5 +303,144 @@ func TestGroupChatModule_Cleanup(t *testing.T) {
 	}
 	if m.rooms != nil {
 		t.Error("expected rooms to be nil after cleanup")
+	}
+}
+
+// --- PR-2b: per-caller room isolation ---
+
+func openGroupChatAndJoin(t *testing.T, m *GroupChatModule, deps engine.ModuleDeps) {
+	t.Helper()
+	if err := m.ReactTo(context.Background(),
+		engine.PhaseActionPayload{Action: engine.ActionOpenGroupChat}); err != nil {
+		t.Fatalf("open: %v", err)
+	}
+}
+
+func TestGroupChatModule_BuildStateFor_CallerRoomMessagesAndMembers(t *testing.T) {
+	m, deps := initGroupChat(t)
+	openGroupChatAndJoin(t, m, deps)
+
+	alice := uuid.New()
+	bob := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:join",
+		json.RawMessage(`{"roomId":"room-a"}`)); err != nil {
+		t.Fatalf("alice join: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), bob, "groupchat:join",
+		json.RawMessage(`{"roomId":"room-b"}`)); err != nil {
+		t.Fatalf("bob join: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:send",
+		json.RawMessage(`{"roomId":"room-a","message":"hey A","characterCode":"A"}`)); err != nil {
+		t.Fatalf("alice send: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), bob, "groupchat:send",
+		json.RawMessage(`{"roomId":"room-b","message":"hey B secret","characterCode":"B"}`)); err != nil {
+		t.Fatalf("bob send: %v", err)
+	}
+
+	data, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	var roomA, roomB *groupChatRoomInfo
+	for i := range s.Rooms {
+		switch s.Rooms[i].ID {
+		case "room-a":
+			roomA = &s.Rooms[i]
+		case "room-b":
+			roomB = &s.Rooms[i]
+		}
+	}
+	if roomA == nil || roomB == nil {
+		t.Fatalf("expected both rooms in metadata, got %+v", s.Rooms)
+	}
+
+	if len(roomA.Messages) != 1 || roomA.Messages[0].Message != "hey A" {
+		t.Fatalf("room-a should expose alice's message to alice, got %+v", roomA.Messages)
+	}
+	if len(roomA.Members) != 1 || roomA.Members[0] != alice.String() {
+		t.Fatalf("room-a members should be [alice], got %+v", roomA.Members)
+	}
+
+	if len(roomB.Messages) != 0 {
+		t.Fatalf("room-b messages must be empty in alice's view, got %+v", roomB.Messages)
+	}
+	if len(roomB.Members) != 0 {
+		t.Fatalf("room-b members must be empty in alice's view, got %+v", roomB.Members)
+	}
+	// MemberCount is public metadata and is retained.
+	if roomB.MemberCount != 1 {
+		t.Fatalf("room-b memberCount should be 1 (bob), got %d", roomB.MemberCount)
+	}
+}
+
+func TestGroupChatModule_BuildStateFor_NonMemberSeesMetaOnly(t *testing.T) {
+	m, deps := initGroupChat(t)
+	openGroupChatAndJoin(t, m, deps)
+
+	alice := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:join",
+		json.RawMessage(`{"roomId":"room-a"}`)); err != nil {
+		t.Fatalf("alice join: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:send",
+		json.RawMessage(`{"roomId":"room-a","message":"private","characterCode":"A"}`)); err != nil {
+		t.Fatalf("alice send: %v", err)
+	}
+
+	stranger := uuid.New()
+	data, err := m.BuildStateFor(stranger)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s groupChatState
+	_ = json.Unmarshal(data, &s)
+	for _, r := range s.Rooms {
+		if len(r.Messages) != 0 {
+			t.Fatalf("stranger should not see any messages, got %+v", r)
+		}
+		if len(r.Members) != 0 {
+			t.Fatalf("stranger should not see member list, got %+v", r)
+		}
+	}
+	if bytes.Contains(data, []byte("private")) {
+		t.Fatalf("stranger's snapshot leaked private message: %s", data)
+	}
+}
+
+func TestGroupChatModule_BuildStateFor_NoCrossRoomLeak(t *testing.T) {
+	m, deps := initGroupChat(t)
+	openGroupChatAndJoin(t, m, deps)
+
+	alice := uuid.New()
+	bob := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:join",
+		json.RawMessage(`{"roomId":"room-a"}`)); err != nil {
+		t.Fatalf("alice join: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), bob, "groupchat:join",
+		json.RawMessage(`{"roomId":"room-b"}`)); err != nil {
+		t.Fatalf("bob join: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), bob, "groupchat:send",
+		json.RawMessage(`{"roomId":"room-b","message":"bob-only","characterCode":"B"}`)); err != nil {
+		t.Fatalf("bob send: %v", err)
+	}
+
+	aliceData, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor alice: %v", err)
+	}
+	if bytes.Contains(aliceData, []byte("bob-only")) {
+		t.Fatalf("alice's snapshot leaked bob's room-b message: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice's snapshot leaked bob's uuid (cross-room member list): %s", aliceData)
 	}
 }

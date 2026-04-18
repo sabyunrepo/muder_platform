@@ -209,12 +209,35 @@ func (m *RoomBasedExplorationModule) Apply(_ context.Context, _ engine.GameEvent
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will honour config.ShowPlayerLocations=false by redacting other
-// players' locations / room occupancy for the viewer.
-func (m *RoomBasedExplorationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns room-exploration state redacted to the caller.
+// PlayerLocations shows the caller's current room only. RoomOccupancy is
+// pruned so that only the caller's room lists occupant uuids — every other
+// room's occupant list is withheld (the caller may derive its count from
+// future broadcast events but never the per-uuid membership).
+//
+// When config.ShowPlayerLocations is false the scenario explicitly asked
+// for "no peer visibility" — in that case both maps are empty except for
+// the caller's own location.
+func (m *RoomBasedExplorationModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	callerLocations := engine.FilterByPlayer(m.playerLocations, playerID)
+
+	occupancy := map[string][]uuid.UUID{}
+	if m.config.ShowPlayerLocations {
+		if loc, ok := m.playerLocations[playerID]; ok {
+			if peers, ok := m.roomOccupancy[loc]; ok {
+				cp := make([]uuid.UUID, len(peers))
+				copy(cp, peers)
+				occupancy[loc] = cp
+			}
+		}
+	}
+	return json.Marshal(roomBasedExplorationState{
+		PlayerLocations: callerLocations,
+		RoomOccupancy:   occupancy,
+	})
 }
 
 // Compile-time interface assertions.

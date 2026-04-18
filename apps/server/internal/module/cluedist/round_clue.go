@@ -170,12 +170,25 @@ func (m *RoundClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
-// BuildStateFor implements engine.PlayerAwareModule. Round-clue state tracks
-// only which rounds have already triggered their distribution — distribution
-// itself is broadcast via `clue.round_distributed` events, so this aggregate
-// view carries no role-private data and is safe to share with every player.
+// BuildStateFor implements engine.PlayerAwareModule.
+//
+// Round-clue state is effectively broadcast: it tracks only which rounds
+// have already triggered their distribution. The aggregate view carries no
+// role-private data. BuildStateFor therefore produces a shape-identical
+// snapshot to BuildState but through an independent path so a future
+// policy (e.g. "narrator sees pending rounds, players don't") can layer
+// here without touching the public broadcast contract.
+//
+// Reclassifying this module to PublicStateMarker is a reasonable future
+// cleanup; tracked as PR-2b follow-up.
 func (m *RoundClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return json.Marshal(roundClueState{
+		CurrentRound:      m.currentRound,
+		DistributedRounds: m.distributedRounds,
+	})
 }
 
 func (m *RoundClueModule) Cleanup(_ context.Context) error {

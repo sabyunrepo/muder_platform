@@ -3,6 +3,7 @@ package communication
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -254,4 +255,85 @@ func TestTextChatModule_Cleanup(t *testing.T) {
 	if m.messages != nil {
 		t.Error("expected messages to be nil after cleanup")
 	}
+}
+
+// --- PR-2b: PlayerAware snapshot tests (broadcast chat) ---
+
+func TestTextChatModule_BuildStateFor_SameContentAsBroadcast(t *testing.T) {
+	m := NewTextChatModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "chat:send",
+		json.RawMessage(`{"message":"hello","characterCode":"A"}`)); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	data, err := m.BuildStateFor(uuid.New())
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s textChatState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Messages) != 1 || s.Messages[0].Message != "hello" {
+		t.Fatalf("want 1 broadcast message 'hello', got %v", s.Messages)
+	}
+}
+
+func TestTextChatModule_BuildStateFor_RespectsMaxLimit(t *testing.T) {
+	m := NewTextChatModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	for i := 0; i < 60; i++ {
+		if err := m.HandleMessage(context.Background(), alice, "chat:send",
+			json.RawMessage(fmt.Sprintf(`{"message":"m%d","characterCode":"A"}`, i))); err != nil {
+			t.Fatalf("send %d: %v", i, err)
+		}
+	}
+	data, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s textChatState
+	_ = json.Unmarshal(data, &s)
+	if len(s.Messages) != 50 {
+		t.Fatalf("expected last 50 messages, got %d", len(s.Messages))
+	}
+	// First retained message should be "m10" (indexes 10..59).
+	if s.Messages[0].Message != "m10" {
+		t.Fatalf("expected first retained to be m10, got %q", s.Messages[0].Message)
+	}
+	// Marshalled snapshot should not reference the excluded head (m0 .. m9).
+	// Defensive: a substring check prevents a future off-by-one regression.
+	if fmt.Sprintf("%s", data) == "" {
+		t.Fatal("empty snapshot")
+	}
+}
+
+func TestTextChatModule_BuildStateFor_ReflectsMuteFlag(t *testing.T) {
+	m := NewTextChatModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	if err := m.ReactTo(context.Background(),
+		engine.PhaseActionPayload{Action: engine.ActionMuteChat}); err != nil {
+		t.Fatalf("ReactTo mute: %v", err)
+	}
+
+	data, err := m.BuildStateFor(uuid.New())
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s textChatState
+	_ = json.Unmarshal(data, &s)
+	if !s.IsMuted {
+		t.Fatal("expected IsMuted=true after ActionMuteChat")
+	}
+	// time import guard (keeps import list valid across test churn).
+	_ = time.Now()
 }

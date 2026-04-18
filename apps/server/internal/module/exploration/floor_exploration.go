@@ -195,12 +195,23 @@ func (m *FloorExplorationModule) Apply(_ context.Context, _ engine.GameEvent, st
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will redact playerFloors so each viewer only sees their own floor
-// assignment (currently the map leaks every player's floor selection).
-func (m *FloorExplorationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns floor-exploration state redacted to the caller.
+// PlayerFloors is filtered to the caller's own assignment only.
+// FloorOccupancy (aggregate counts) is retained — it is public by design
+// when config.ShowOccupancy is true (the editor opts in to the reveal).
+func (m *FloorExplorationModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	occupancy := m.floorOccupancy
+	if !m.config.ShowOccupancy {
+		occupancy = map[string]int{}
+	}
+	return json.Marshal(floorExplorationState{
+		PlayerFloors:   engine.FilterByPlayer(m.playerFloors, playerID),
+		FloorOccupancy: occupancy,
+		Config:         m.config,
+	})
 }
 
 // Compile-time interface assertions.

@@ -234,12 +234,28 @@ func (m *TimedClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
-// BuildStateFor implements engine.PlayerAwareModule. Timed-clue state is
-// purely aggregate (counters and config), with per-player counts kept in a
-// private field and never surfaced via BuildState. Safe to share identically
-// with every player.
+// BuildStateFor implements engine.PlayerAwareModule.
+//
+// Timed-clue state is purely aggregate (counters and config). The per-player
+// clue count lives in a private field (playerClueCount) that is never
+// surfaced via BuildState, so the snapshot is identical for every player.
+// BuildStateFor duplicates the aggregate-assembly path so a future
+// per-player visibility policy (e.g. "you only see your own remaining
+// allowance") has a hook site without disturbing BuildState.
+//
+// Reclassifying this module to PublicStateMarker is a reasonable future
+// cleanup; tracked as PR-2b follow-up.
 func (m *TimedClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return json.Marshal(timedClueState{
+		DistributedCount: m.distributedCount,
+		MaxAutoClues:     m.config.MaxAutoClues,
+		IsActive:         m.isActive,
+		Interval:         m.config.Interval,
+		TargetMode:       m.config.TargetMode,
+	})
 }
 
 func (m *TimedClueModule) Cleanup(_ context.Context) error {

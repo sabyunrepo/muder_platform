@@ -1,6 +1,7 @@
 package crime_scene
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -286,6 +287,92 @@ func TestEvidenceModule_BuildState(t *testing.T) {
 	var s evidenceState
 	if err := json.Unmarshal(data, &s); err != nil {
 		t.Fatalf("unmarshal: %v", err)
+	}
+}
+
+func TestEvidenceModule_BuildStateFor_CallerOnly(t *testing.T) {
+	m := NewEvidenceModule()
+	if err := m.Init(context.Background(), newTestDeps(), evidenceCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	_ = m.HandleMessage(context.Background(), alice,
+		"discover", json.RawMessage(`{"evidence_id":"knife","location_id":"hall"}`))
+	_ = m.HandleMessage(context.Background(), alice,
+		"collect", json.RawMessage(`{"evidence_id":"knife"}`))
+	_ = m.HandleMessage(context.Background(), bob,
+		"discover", json.RawMessage(`{"evidence_id":"knife","location_id":"hall"}`))
+
+	data, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor(alice): %v", err)
+	}
+	var s evidenceState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Discovered) != 1 || len(s.Discovered[alice.String()]) != 1 {
+		t.Fatalf("alice discovered should be only her own knife, got %v", s.Discovered)
+	}
+	if _, leaked := s.Discovered[bob.String()]; leaked {
+		t.Fatalf("bob's discovered leaked into alice's view: %v", s.Discovered)
+	}
+	if len(s.Collected) != 1 || s.Collected[alice.String()][0] != "knife" {
+		t.Fatalf("alice collected should be [knife], got %v", s.Collected)
+	}
+}
+
+func TestEvidenceModule_BuildStateFor_NoEntry(t *testing.T) {
+	m := NewEvidenceModule()
+	if err := m.Init(context.Background(), newTestDeps(), evidenceCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	stranger := uuid.New()
+	data, err := m.BuildStateFor(stranger)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s evidenceState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.Discovered == nil || len(s.Discovered) != 0 {
+		t.Fatalf("expected empty non-nil Discovered, got %v", s.Discovered)
+	}
+	if s.Collected == nil || len(s.Collected) != 0 {
+		t.Fatalf("expected empty non-nil Collected, got %v", s.Collected)
+	}
+	// JSON shape must be {} not null.
+	if bytes.Contains(data, []byte("null")) {
+		t.Fatalf("expected {} JSON shape, got %s", data)
+	}
+}
+
+func TestEvidenceModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewEvidenceModule()
+	if err := m.Init(context.Background(), newTestDeps(), evidenceCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	_ = m.HandleMessage(context.Background(), alice,
+		"discover", json.RawMessage(`{"evidence_id":"knife","location_id":"hall"}`))
+	_ = m.HandleMessage(context.Background(), bob,
+		"discover", json.RawMessage(`{"evidence_id":"knife","location_id":"hall"}`))
+	_ = m.HandleMessage(context.Background(), bob,
+		"collect", json.RawMessage(`{"evidence_id":"knife"}`))
+
+	aliceData, _ := m.BuildStateFor(alice)
+	bobData, _ := m.BuildStateFor(bob)
+
+	// Alice's serialised state must not reference Bob's uuid.
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice's view leaked bob's uuid: %s", aliceData)
+	}
+	// Bob's serialised state must not reference Alice's uuid.
+	if bytes.Contains(bobData, []byte(alice.String())) {
+		t.Fatalf("bob's view leaked alice's uuid: %s", bobData)
 	}
 }
 

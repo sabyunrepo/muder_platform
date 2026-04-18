@@ -179,12 +179,19 @@ func (m *LocationClueModule) Apply(_ context.Context, _ engine.GameEvent, state 
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will restrict searchedLocations and foundClues to the requesting
-// player's own progress (other players' search trails leak strategy).
-func (m *LocationClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns location-clue state redacted to the caller.
+// SearchedLocations and FoundClues are filtered to the caller's own progress;
+// other players' search trails and clue inventories are withheld so strategy
+// (who looked where) is not leaked through the snapshot path.
+func (m *LocationClueModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return json.Marshal(locationClueState{
+		SearchedLocations: engine.FilterByPlayer(m.searchedLocations, playerID),
+		FoundClues:        engine.FilterByPlayer(m.foundClues, playerID),
+		Config:            m.config,
+	})
 }
 
 // Compile-time interface assertions.

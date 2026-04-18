@@ -1,6 +1,7 @@
 package exploration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -343,5 +344,71 @@ func TestTimedExplorationModule_Schema(t *testing.T) {
 	var parsed map[string]any
 	if err := json.Unmarshal(schema, &parsed); err != nil {
 		t.Fatalf("schema is not valid JSON: %v", err)
+	}
+}
+
+// --- PR-2b: PlayerAware redaction ---
+
+func startTimedExploration(t *testing.T, m *TimedExplorationModule, pid uuid.UUID) {
+	t.Helper()
+	if err := m.HandleMessage(context.Background(), pid, "explore:start", nil); err != nil {
+		t.Fatalf("explore:start: %v", err)
+	}
+}
+
+func TestTimedExplorationModule_BuildStateFor_CallerOnly(t *testing.T) {
+	m := NewTimedExplorationModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	startTimedExploration(t, m, alice)
+	_ = m.HandleMessage(context.Background(), alice, "explore:move",
+		json.RawMessage(`{"locationId":"lobby"}`))
+	_ = m.HandleMessage(context.Background(), bob, "explore:move",
+		json.RawMessage(`{"locationId":"study"}`))
+
+	data, _ := m.BuildStateFor(alice)
+	var s timedExplorationState
+	_ = json.Unmarshal(data, &s)
+	if s.PlayerLocations[alice] != "lobby" {
+		t.Fatalf("alice should see her own location, got %v", s.PlayerLocations)
+	}
+	if _, leaked := s.PlayerLocations[bob]; leaked {
+		t.Fatalf("bob's location leaked to alice: %v", s.PlayerLocations)
+	}
+	if !s.IsActive {
+		t.Error("IsActive should be true")
+	}
+	_ = time.Now()
+}
+
+func TestTimedExplorationModule_BuildStateFor_NoEntry(t *testing.T) {
+	m := NewTimedExplorationModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	data, _ := m.BuildStateFor(uuid.New())
+	var s timedExplorationState
+	_ = json.Unmarshal(data, &s)
+	if s.PlayerLocations == nil || len(s.PlayerLocations) != 0 {
+		t.Fatalf("expected empty non-nil PlayerLocations, got %v", s.PlayerLocations)
+	}
+}
+
+func TestTimedExplorationModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewTimedExplorationModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	alice := uuid.New()
+	bob := uuid.New()
+	startTimedExploration(t, m, alice)
+	_ = m.HandleMessage(context.Background(), bob, "explore:move",
+		json.RawMessage(`{"locationId":"study"}`))
+
+	aliceData, _ := m.BuildStateFor(alice)
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice leaked bob's uuid: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte(`"study"`)) {
+		t.Fatalf("alice leaked bob's location string: %s", aliceData)
 	}
 }

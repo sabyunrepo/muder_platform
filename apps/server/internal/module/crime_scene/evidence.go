@@ -390,13 +390,30 @@ func (m *EvidenceModule) RestoreState(_ context.Context, _ uuid.UUID, state engi
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will filter discovered/collected to the requesting player only
-// (currently those maps include every player's inventory which leaks
-// discovery progress).
-func (m *EvidenceModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns evidence state redacted to the requesting player.
+// Only the caller's own discovered and collected evidence is included; every
+// other player's inventory is withheld. The unlocked-at-phase set is global
+// and carried by OnPhaseEnter events — it does not belong in state.
+//
+// Shape parity with BuildState: same evidenceState struct, same JSON keys;
+// only the map population differs.
+func (m *EvidenceModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	disc := make(map[string][]string, 1)
+	if ids, ok := m.discovered[playerID]; ok {
+		cp := make([]string, len(ids))
+		copy(cp, ids)
+		disc[playerID.String()] = cp
+	}
+	coll := make(map[string][]string, 1)
+	if ids, ok := m.collected[playerID]; ok {
+		cp := make([]string, len(ids))
+		copy(cp, ids)
+		coll[playerID.String()] = cp
+	}
+	return json.Marshal(evidenceState{Discovered: disc, Collected: coll})
 }
 
 // Compile-time interface assertions.

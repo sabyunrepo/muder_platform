@@ -1,6 +1,7 @@
 package exploration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -294,5 +295,72 @@ func TestFloorExplorationModule_Schema(t *testing.T) {
 	var parsed map[string]any
 	if err := json.Unmarshal(schema, &parsed); err != nil {
 		t.Fatalf("schema is not valid JSON: %v", err)
+	}
+}
+
+// --- PR-2b: PlayerAware redaction ---
+
+func seedFloorSelection(t *testing.T, m *FloorExplorationModule, pid uuid.UUID, mapID string) {
+	t.Helper()
+	if err := m.HandleMessage(context.Background(), pid, "floor:select",
+		json.RawMessage(`{"mapId":"`+mapID+`"}`)); err != nil {
+		t.Fatalf("seed floor:select: %v", err)
+	}
+}
+
+func TestFloorExplorationModule_BuildStateFor_CallerOnly(t *testing.T) {
+	m := NewFloorExplorationModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	seedFloorSelection(t, m, alice, "1F")
+	seedFloorSelection(t, m, bob, "2F")
+
+	data, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s floorExplorationState
+	_ = json.Unmarshal(data, &s)
+	if len(s.PlayerFloors) != 1 || s.PlayerFloors[alice] != "1F" {
+		t.Fatalf("PlayerFloors should be {alice:1F}, got %v", s.PlayerFloors)
+	}
+	if _, leaked := s.PlayerFloors[bob]; leaked {
+		t.Fatalf("bob's floor leaked: %v", s.PlayerFloors)
+	}
+	if s.FloorOccupancy["1F"] != 1 || s.FloorOccupancy["2F"] != 1 {
+		t.Fatalf("FloorOccupancy should remain public, got %v", s.FloorOccupancy)
+	}
+}
+
+func TestFloorExplorationModule_BuildStateFor_NoEntry(t *testing.T) {
+	m := NewFloorExplorationModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	stranger := uuid.New()
+	data, _ := m.BuildStateFor(stranger)
+	var s floorExplorationState
+	_ = json.Unmarshal(data, &s)
+	if s.PlayerFloors == nil || len(s.PlayerFloors) != 0 {
+		t.Fatalf("expected empty non-nil PlayerFloors, got %v", s.PlayerFloors)
+	}
+}
+
+func TestFloorExplorationModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewFloorExplorationModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	seedFloorSelection(t, m, alice, "1F")
+	seedFloorSelection(t, m, bob, "2F")
+
+	aliceData, _ := m.BuildStateFor(alice)
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice's view leaked bob's uuid: %s", aliceData)
 	}
 }
