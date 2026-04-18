@@ -1,4 +1,4 @@
-package decision
+package voting
 
 import (
 	"context"
