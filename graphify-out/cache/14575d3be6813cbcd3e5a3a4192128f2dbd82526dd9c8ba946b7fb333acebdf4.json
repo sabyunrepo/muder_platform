@@ -1,0 +1,1 @@
+{"nodes": [{"id": "routes_admin_registeradminroutes", "label": "registerAdminRoutes", "file_type": "code", "source_file": "apps/server/cmd/server/routes_admin.go", "source_location": "routes_admin.go:12", "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}
