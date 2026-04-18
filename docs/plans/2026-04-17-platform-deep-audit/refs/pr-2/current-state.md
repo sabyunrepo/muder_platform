@@ -23,7 +23,7 @@
 | 14 | spatial_voice | communication | - | - | - | 위치 기반 필터는 클라이언트 |
 | 15 | **evidence** | crime_scene | O | - | **O** | `discovered[pid]` `collected[pid]` 전체맵 노출 — **F-03 핵심** |
 | 16 | **location** | crime_scene | O | - | **O** | `positions[pid]` `history[pid]` 전체맵 노출 — **F-03 핵심** |
-| 17 | **combination** | crime_scene | O | - | **O** | `completed[pid]` `derived[pid]` `collected[pid]` — **F-03 핵심 + D-MO-1** |
+| 17 | **combination** | crime_scene | O | **O** | - | `completed[pid]` `derived[pid]` `collected[pid]` — **F-03 + D-MO-1, PR-2c 완료 (2026-04-18)** |
 | 18 | accusation | decision | O | - | **O** | `activeAccusation.Votes[pid]` 투표 분포 누설 |
 | 19 | voting | decision | O | **O** | - | 구현됨 (secret mode redaction) |
 | 20 | hidden_mission | decision | O | **O** | - | 구현됨 (타인 미션 redact) |
@@ -68,13 +68,13 @@ lastMove  map[uuid.UUID]time.Time
 ```
 → BuildStateFor: `positions[caller]` 만 + `history[caller]` 만. 룸 전체 위치 공유는 별도 public state 분리 설계가 이상적이나 PR-2b 범위에서는 단순 redact.
 
-### combination (crime_scene) — PR-2c 분리
+### combination (crime_scene) — PR-2c 완료 (2026-04-18)
 ```go
 completed map[uuid.UUID][]string
 derived   map[uuid.UUID][]string
 collected map[uuid.UUID]map[string]bool
 ```
-→ PR-2b 에서는 BuildStateFor 를 추가하되, redaction 은 PR-2c 로 분리. 즉 PR-2b 커밋에서는 `BuildStateFor` 가 현재 `BuildState` 와 동일 결과를 반환하는 **stub** 으로 두고, PR-2c 에서 실제 per-player filter 적용.
+→ PR-2b 단계에서는 stub(`BuildStateFor = BuildState`)으로 두고, **PR-2c** 에서 `snapshotFor(playerID)` helper + `BuildStateFor` 를 real per-player filter 로 승격. caller 의 `completed`/`derived`/`collected` 엔트리만 노출, 타 플레이어 키는 엘라이드. `craftedAsClueMap` 경로(CRAFT 트리거 graph.Resolve) 는 내부 heuristic 으로만 사용되며 스냅샷에 반영되지 않음. 검증: `TestCombinationModule_BuildStateFor_{OnlyCallerVisible,EmptyForNewPlayer,CollectedMirror}` + coverage lint ALLOW_STUB 비움.
 
 ### accusation (decision)
 ```go
