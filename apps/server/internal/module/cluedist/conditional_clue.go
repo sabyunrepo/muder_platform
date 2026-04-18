@@ -202,12 +202,30 @@ func (m *ConditionalClueModule) BuildState() (json.RawMessage, error) {
 	})
 }
 
-// BuildStateFor implements engine.PlayerAwareModule. Conditional-clue unlocks
-// are broadcast via `clue.conditional_unlocked` events and the visible
-// dependency list is already filtered to satisfied prerequisites, so the
-// aggregate view carries no role-private data.
+// BuildStateFor implements engine.PlayerAwareModule.
+//
+// Conditional-clue unlocks are broadcast via `clue.conditional_unlocked`
+// events; the visible dependency list is already pre-filtered to satisfied
+// prerequisites. BuildStateFor returns the same aggregate view through an
+// independent snapshot path so future per-player filtering (e.g. role-gated
+// dependency preview) can layer here without perturbing BuildState.
+//
+// Reclassifying this module to PublicStateMarker is a reasonable future
+// cleanup; tracked as PR-2b follow-up.
 func (m *ConditionalClueModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	visibleDeps := make([]ClueDependency, 0, len(m.dependencies))
+	for _, dep := range m.dependencies {
+		if m.unlockedClues[dep.ClueID] || m.isDependencySatisfied(dep) {
+			visibleDeps = append(visibleDeps, dep)
+		}
+	}
+	return json.Marshal(conditionalClueState{
+		UnlockedClues: m.unlockedClues,
+		Dependencies:  visibleDeps,
+	})
 }
 
 func (m *ConditionalClueModule) Cleanup(_ context.Context) error {

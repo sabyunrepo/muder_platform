@@ -79,6 +79,17 @@ jobs:
           go run ./cmd/wsgen
           git diff --exit-code ../../packages/shared/src/ws/types.generated.ts
 
+      # Phase 19 PR-2b: PlayerAwareModule coverage gate.
+      #
+      # Fails if any engine.Module's BuildStateFor() delegates back to
+      # BuildState() (the stub pattern that pre-PR-2b modules used). Real
+      # per-player redaction or explicit PublicStateMarker opt-out only.
+      # Exceptions are declared in the script itself (currently:
+      # crime_scene/combination → tracked by PR-2c).
+      - name: PlayerAware coverage lint
+        working-directory: ${{ github.workspace }}
+        run: bash scripts/check-playeraware-coverage.sh
+
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
 
