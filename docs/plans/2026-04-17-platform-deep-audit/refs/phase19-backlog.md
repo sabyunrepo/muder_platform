@@ -34,12 +34,38 @@
   - **D2 = D (AUTH catalog stub)**: `auth.*` 이벤트는 Catalog에 stub entry만 등록. 서버 핸들러·프론트 sendAuth는 미구현(쿼리 토큰 정책 유지). 정식 protocol은 **PR-9**로 분리.
   - **D3 = v1.5 opt α (tygo)**: `// wsgen:payload` 주석이 있는 Go struct만 `packages/shared/src/ws/types.generated.ts`에 TS interface로 전환. 런타임 zod 검증은 **PR-10**으로 분리. dynamic payload(`json.RawMessage`)는 `unknown` 유지.
 
-### PR-2: PlayerAwareModule Mandatory — 엔진 레벨 강제 + crime_scene 3 구현 + 테스트 백필
-- **Scope**: `apps/server/internal/module/crime_scene/{evidence,location,combination}/**`, `apps/server/internal/module/decision/{accusation,hidden_mission,voting}/**`, `apps/server/internal/engine/types.go`, `apps/server/internal/engine/snapshot_redaction_test.go`
-- **Depends on**: 없음 (병렬 가능)
-- **Rationale**: C-2 / F-module-1 P0 + F-sec-2 P0. Phase 18.1 B-2 redaction 반쪽 상태 해소. 25 모듈 fallback → 필수 구현 + 컴파일 타임 assertion + boot-fail gate.
-- **Size**: L (>2d)
-- **Risk**: Med (서버만, 테스트 확장)
+### PR-2 3분할 (2026-04-18 재설계) — design: `refs/pr-2-split-design.md`
+
+> **분할 근거**: W1 draft "PlayerAware 0/33" → 실측 **8/33 (24%)**. 잔여 25 fallback 중 공개 state 모듈 12개는 `PublicStateMarker` sentinel로 opt-out, 민감 state 13개만 실구현 필요. 3분할 실행 순서: **PR-2a → PR-2b → PR-2c** (순차).
+
+#### PR-2a: Engine Gate + PublicStateMarker — design: `refs/pr-2/pr-2a-engine-gate.md`
+- **Scope**: `apps/server/internal/engine/types.go`, `engine/factory.go`, `engine/registry.go`, 33 모듈 `module.go` (marker/stub 부착)
+- **Depends on**: 없음 (W2 잔여, 단독)
+- **Rationale**: F-sec-2 gate 설치. `PlayerAwareModule OR PublicStateMarker` 중 하나 필수 → compile-time assertion + boot-fail gate + `MMP_PLAYERAWARE_STRICT` env flag (default true).
+- **Size**: S (~170 LOC)
+- **Risk**: Low (gate만, 실구현 아님)
+
+#### PR-2b: 13 모듈 BuildStateFor 백필 — design: `refs/pr-2/pr-2b-module-backfill.md`
+- **Scope**: 13 민감 모듈 `BuildStateFor` 실구현 + `snapshot_redaction_test.go` 확장 (`combination` 제외, PR-2c 담당)
+- **Depends on**: **PR-2a** (gate 통과)
+- **Rationale**: F-03 + F-sec-2 실구현. crime_scene/{evidence,location} · decision/accusation · cluedist 일부 · 기타 단서 개인화 대상.
+- **Size**: L (~520 LOC)
+- **Risk**: Med (13 모듈 동시 변경, 카테고리별 커밋 granularity 확보)
+
+#### PR-2c: craftedAsClueMap redaction (D-MO-1) — design: `refs/pr-2/pr-2c-crafted-redaction.md`
+- **Scope**: `apps/server/internal/module/crime_scene/combination/**` (`snapshotFor` + `BuildStateFor` + 테스트 4건)
+- **Depends on**: **PR-2a** (gate) + **PR-2b** (combination stub → real 전환 전제)
+- **Rationale**: D-MO-1 delta finding 단독 해소. `craftedAsClueMap`이 `BuildState`에 반영 안 되는 문제.
+- **Size**: S-M (~180 LOC)
+- **Risk**: Low (combination 파일 단일 집중)
+
+**의존성 그래프**:
+```
+PR-2a ──┬──→ PR-2b
+        └──→ PR-2c  (PR-2b 선 머지 권장 — combination.go 충돌 회피)
+```
+
+**Feature flag**: `MMP_PLAYERAWARE_STRICT` env (default `true`). 프로덕션 이슈 시 `false`로 즉시 fallback 롤백. PR-2b/2c 머지 + 30일 안정 관측 후 제거.
 
 ### PR-3: HTTP Error Standardization — http.Error → apperror + linter
 - **Scope**: `apps/server/internal/seo/**`, `apps/server/internal/infra/storage/local/**`, `apps/server/internal/ws/upgrade*`, `apps/server/internal/apperror/**`, `.golangci.yml` (depguard 룰)
