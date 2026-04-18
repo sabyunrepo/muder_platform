@@ -208,3 +208,47 @@ gh pr checks <N>  # 대기
 - **Wave 머지 전 user 확인 1회**
 - **Feature flag default off** 로 in-flight wiring 보호
 
+## 🔴 graphify 필수 사용 규칙
+
+> `graphify-out/graph.json` 존재 시 **아키텍처·의존성·구조 질문은 반드시 graphify 먼저**.
+> 원시 파일 Grep/Glob 탐색은 graphify로 대상을 특정한 후에만 허용.
+
+### graphify 도구 (CLI)
+| 도구 | 속도 | 용도 |
+|------|------|------|
+| `/graphify query "질문"` | ~즉시 | BFS traversal — "X는 어디서 쓰이나", "A→B 어떻게 연결되나" |
+| `/graphify explain "노드"` | ~즉시 | 단일 노드 주변 설명 (god node, community, degree) |
+| `/graphify path "A" "B"` | ~즉시 | 두 개념 사이 최단 경로 + 홉마다 relation/confidence |
+| `Read graphify-out/GRAPH_REPORT.md` | ~즉시 | god nodes, surprising connections, community 531개 요약 |
+| `/graphify --update` | ~빠름 | 변경 파일만 증분 재추출 (AST-only는 LLM 무비용) |
+| `/graphify --mcp` | ~상주 | MCP 서버로 agent가 live 질의 |
+
+### 현재 인덱스 상태 (2026-04-18)
+- 1098 files · ~537K words → **6700 nodes / 15398 edges / 78 hyperedges / 531 communities**
+- Token reduction: **17.1x** (질문당 ~42K 토큰)
+- AST 5169 + semantic 1659 (Sonnet 42 subagents 병렬 추출)
+- 상위 30 커뮤니티 라벨링됨 (나머지 501개는 `Community N` 기본값)
+
+### 🔴 강제 규칙
+1. **"X는 어디서 쓰이나 / 무엇과 연결되나 / 의존성은"** → `Read graphify-out/GRAPH_REPORT.md` 또는 `/graphify query/explain` 먼저
+2. **god node / bridge / community / 아키텍처 질문** → `GRAPH_REPORT.md`의 해당 섹션 먼저
+3. **"A에서 B까지 흐름"** → `/graphify path "A" "B"` — 홉별 relation + confidence 제공
+4. **코드 수정 후** → `graphify update .` 필수 (AST-only, LLM 비용 0, ~수초)
+5. **Grep/Glob 허용 케이스**: 파일명·정확한 함수명 탐색, graphify로 대상 특정 후 line-level 확인
+6. **전체 재인덱싱 (`graphify .`)은 비용 과다** — 증분 `--update`만 사용. 전체는 대규모 구조 변화 시만.
+
+### 자동 최적화 Hooks
+- **graphify Enforcer** (PreToolUse Glob|Grep): `graph.json` 존재 시 "GRAPH_REPORT.md 먼저" 안내 주입
+- **증분 업데이트 리마인더**: PostToolUse Edit/Write 후 `.needs_update` flag 권장 (수동 `--update` 트리거)
+
+### 엣지 신뢰도 해석
+- `EXTRACTED` (confidence 1.0) — import/call/citation 명시, 코드에 직접 존재
+- `INFERRED` (0.6–0.9) — LLM 추론, 검증 필요. god node 대부분 edges는 여기 해당
+- `AMBIGUOUS` (0.1–0.3) — 불확실. 질문에 인용 시 주의
+
+### 산출물 위치 (`graphify-out/`)
+- `GRAPH_REPORT.md` (156KB) — 감사 보고서 (god nodes, surprises, 커뮤니티, 제안 질문)
+- `graph.json` (8.9MB) — 원시 그래프 (nodes/edges/hyperedges 전체)
+- `manifest.json` — 증분 업데이트용
+- `cache/` — AST/semantic 캐시 (재인덱싱 시 재사용)
+- `cost.json` — 토큰 누적
