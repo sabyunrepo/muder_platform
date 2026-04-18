@@ -40,7 +40,41 @@ func (m *CombinationModule) snapshot() combinationState {
 	return combinationState{Completed: completed, Derived: derived, Collected: collected}
 }
 
-// BuildState returns the module's current state for client sync.
+// snapshotFor returns a combinationState disclosing only the calling player's
+// completed combinations, derived ("crafted") clues, and collected evidence.
+// Other players' entries are elided to uphold the D-MO-1 redaction boundary:
+// revealing that peer X has already crafted a clue leaks strategic intel.
+func (m *CombinationModule) snapshotFor(playerID uuid.UUID) combinationState {
+	s := combinationState{
+		Completed: map[string][]string{},
+		Derived:   map[string][]string{},
+		Collected: map[string][]string{},
+	}
+	key := playerID.String()
+	if ids := m.completed[playerID]; len(ids) > 0 {
+		cp := make([]string, len(ids))
+		copy(cp, ids)
+		s.Completed[key] = cp
+	}
+	if ids := m.derived[playerID]; len(ids) > 0 {
+		cp := make([]string, len(ids))
+		copy(cp, ids)
+		s.Derived[key] = cp
+	}
+	if evMap := m.collected[playerID]; len(evMap) > 0 {
+		ids := make([]string, 0, len(evMap))
+		for id := range evMap {
+			ids = append(ids, id)
+		}
+		s.Collected[key] = ids
+	}
+	return s
+}
+
+// BuildState returns the combination module state combining every player's
+// progress. Reserved for persistence (SaveState) and admin/test fixtures —
+// the runtime broadcast path goes through BuildStateFor via the PR-2a engine
+// gate, so this payload never reaches clients.
 func (m *CombinationModule) BuildState() (json.RawMessage, error) {
 	m.mu.RLock()
 	s := m.snapshot()
@@ -48,13 +82,15 @@ func (m *CombinationModule) BuildState() (json.RawMessage, error) {
 	return json.Marshal(s)
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will restrict completed/derived/collected entries to the requesting
-// player's own progress, since revealing other players' combinations leaks
-// strategic information.
-func (m *CombinationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor implements engine.PlayerAwareModule with per-player redaction
+// (D-MO-1): only the caller's completed, derived, and collected sets are
+// disclosed. Solves Phase 18.1 B-2 where the combination snapshot leaked
+// every player's crafted clue map to every client.
+func (m *CombinationModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	s := m.snapshotFor(playerID)
+	m.mu.RUnlock()
+	return json.Marshal(s)
 }
 
 // --- SerializableModule ---

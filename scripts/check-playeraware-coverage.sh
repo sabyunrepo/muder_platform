@@ -34,10 +34,11 @@ fi
 
 # Allowed exceptions (tracked as their own PR). Each path must be removed
 # from this list when the corresponding real-redaction PR lands.
-#   - crime_scene/combination : PR-2c (D-MO-1 craftedAsClueMap redaction)
-ALLOW_STUB=(
-    "apps/server/internal/module/crime_scene/combination/"
-)
+#
+# Empty as of PR-2c (2026-04-18): crime_scene/combination now implements real
+# per-player redaction (D-MO-1). Add a new entry here only when introducing a
+# deliberate, time-boxed stub that is tracked by a follow-up PR.
+ALLOW_STUB=()
 
 allow_filter=""
 for p in "${ALLOW_STUB[@]}"; do

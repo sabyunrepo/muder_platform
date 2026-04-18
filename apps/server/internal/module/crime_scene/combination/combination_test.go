@@ -3,6 +3,7 @@ package combination
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -306,6 +307,159 @@ func TestCombinationModule_BuildState(t *testing.T) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
+}
+
+// Phase 19 PR-2c (D-MO-1): BuildStateFor must expose only the caller's own
+// completed/derived sets, never peer progress.
+func TestCombinationModule_BuildStateFor_OnlyCallerVisible(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+
+	m.mu.Lock()
+	m.completed[alice] = []string{"combo1"}
+	m.derived[alice] = []string{"weapon_set"}
+	m.completed[bob] = []string{"combo2"}
+	m.derived[bob] = []string{"motive"}
+	m.mu.Unlock()
+
+	raw, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor(alice): %v", err)
+	}
+	var s combinationState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	aliceKey := alice.String()
+	bobKey := bob.String()
+
+	if got := s.Completed[aliceKey]; len(got) != 1 || got[0] != "combo1" {
+		t.Errorf("alice completed: got %v, want [combo1]", got)
+	}
+	if got := s.Derived[aliceKey]; len(got) != 1 || got[0] != "weapon_set" {
+		t.Errorf("alice derived: got %v, want [weapon_set]", got)
+	}
+	if _, ok := s.Completed[bobKey]; ok {
+		t.Errorf("alice snapshot leaked bob completed: %v", s.Completed)
+	}
+	if _, ok := s.Derived[bobKey]; ok {
+		t.Errorf("alice snapshot leaked bob derived: %v", s.Derived)
+	}
+}
+
+// Phase 19 PR-2c: a player with no combination progress must get empty (non-nil)
+// maps so the JSON shape stays `{}` — never `null` — and never mirrors peers.
+func TestCombinationModule_BuildStateFor_EmptyForNewPlayer(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	newbie := uuid.New()
+
+	m.mu.Lock()
+	m.completed[alice] = []string{"combo1"}
+	m.derived[alice] = []string{"weapon_set"}
+	m.collected[alice] = map[string]bool{"knife": true, "glove": true}
+	m.mu.Unlock()
+
+	raw, err := m.BuildStateFor(newbie)
+	if err != nil {
+		t.Fatalf("BuildStateFor(newbie): %v", err)
+	}
+
+	// Root keys must exist and decode to empty objects, not null.
+	var probe struct {
+		Completed map[string][]string `json:"completed"`
+		Derived   map[string][]string `json:"derived"`
+		Collected map[string][]string `json:"collected"`
+	}
+	if err := json.Unmarshal(raw, &probe); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if probe.Completed == nil || probe.Derived == nil || probe.Collected == nil {
+		t.Fatalf("expected non-nil maps, got %q", raw)
+	}
+	if len(probe.Completed) != 0 || len(probe.Derived) != 0 || len(probe.Collected) != 0 {
+		t.Fatalf("newbie snapshot not empty: %q", raw)
+	}
+
+	// And no trace of alice may appear in the newbie's view.
+	if got := string(raw); got != "{}" && !jsonIsEmptyShape(got) {
+		// Smoke-check: alice's uuid must never show up.
+		if strings.Contains(got, alice.String()) {
+			t.Errorf("newbie snapshot leaked alice id: %s", got)
+		}
+	}
+}
+
+// Phase 19 PR-2c: collected evidence mirrored from the event bus must be
+// per-player-scoped in the snapshot, so bob's collected inventory stays
+// invisible to alice even when both players are active.
+func TestCombinationModule_BuildStateFor_CollectedMirror(t *testing.T) {
+	m := NewCombinationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+
+	// Drive the event bus exactly like the evidence module would.
+	deps.EventBus.Publish(engine.Event{
+		Type: "evidence.collected",
+		Payload: map[string]any{
+			"playerID":   alice,
+			"evidenceID": "knife",
+		},
+	})
+	deps.EventBus.Publish(engine.Event{
+		Type: "evidence.collected",
+		Payload: map[string]any{
+			"playerID":   bob,
+			"evidenceID": "note",
+		},
+	})
+
+	raw, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor(alice): %v", err)
+	}
+	var s combinationState
+	if err := json.Unmarshal(raw, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	aliceKey := alice.String()
+	bobKey := bob.String()
+
+	if got := s.Collected[aliceKey]; len(got) != 1 || got[0] != "knife" {
+		t.Errorf("alice collected: got %v, want [knife]", got)
+	}
+	if _, ok := s.Collected[bobKey]; ok {
+		t.Errorf("alice snapshot leaked bob collected: %v", s.Collected)
+	}
+	if strings.Contains(string(raw), "note") {
+		t.Errorf("alice snapshot leaked bob evidence id 'note': %s", raw)
+	}
+}
+
+// jsonIsEmptyShape allows for any of `{"completed":{},"derived":{},"collected":{}}` orderings.
+func jsonIsEmptyShape(s string) bool {
+	var probe struct {
+		Completed map[string][]string `json:"completed"`
+		Derived   map[string][]string `json:"derived"`
+		Collected map[string][]string `json:"collected"`
+	}
+	if err := json.Unmarshal([]byte(s), &probe); err != nil {
+		return false
+	}
+	return len(probe.Completed) == 0 && len(probe.Derived) == 0 && len(probe.Collected) == 0
 }
 
 // Phase 20 PR-5: GroupID shortcut — clients can pass `group_id` to match
