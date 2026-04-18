@@ -68,6 +68,23 @@ type: project
   - 코드리뷰: **APPROVE-WITH-NITS** — circular import (moduleStoreFactory ↔ gameSessionStore) follow-up로 cleanup 함수 추출 권장
   - **F-react-6 P1 해소**
 
+### W2 잔여 (신규 완료 2026-04-18)
+- **PR-2a Engine Gate + PublicStateMarker** ✅ #97 (bacd802, 2026-04-18, squash-merged)
+  - `engine/types.go` — `PublicStateModule` sentinel + `PublicStateMarker` helper (외부 위조 방지)
+  - `engine/registry.go` — `assertModuleContract` + `Register()` panic gate + `MMP_PLAYERAWARE_STRICT` env
+  - `engine/factory.go` — `BuildModules()` runtime gate
+  - `engine/gate_test.go` NEW — 10 tests
+  - 33 모듈 분류: PlayerAware 8 / PublicStateMarker 13 / Stub 12 (PR-2b 실구현)
+  - gm_control → PublicStateMarker (BuildState 공개 필드만, snapshot_send 필터 없음)
+  - 39 files, +653 / -77, 전 패키지 go test ok, vet clean
+  - 설계: `refs/pr-2/pr-2a-engine-gate.md`
+  - **F-sec-2 gate 해소** (실구현은 PR-2b)
+
+### Follow-up 완료 (2026-04-18)
+- **PR-11 Store Cleanup Decoupling** ✅ #95 (bf3c3d9) — moduleStoreFactory ↔ gameSessionStore 순환 import 해소
+- **F-a11y-4 residual cleanup** ✅ #94 (46057ea) — bare outline-none 9건 + 체크박스 focus:ring 7건 정리
+- **PR-2 설계 문서 정리** ✅ #96 (0ed03a7) — pr-2-split-design + 5 refs + inventory 교정 + backlog 3엔트리 재기입
+
 ### 독립 hotfix (신규 완료 2026-04-18)
 - **F-a11y-3 focus-visible WCAG 2.4.7** ✅ #92 (049277f, 2026-04-18, squash-merged)
   - `outline-none` 60 occurrence / 38 파일 → 34 파일 수정 (4파일 기존 정합)
@@ -80,8 +97,11 @@ type: project
 ## 남은 PR
 
 ### W2 잔여
-- **PR-2 PlayerAware Mandatory** (XL, Med) — F-03 P0 + F-sec-2 P0 + **D-MO-1 craftedAsClueMap (신규 P0)** 통합. PR-2a/PR-2b/PR-2c 분할 권장 ⏳
 - **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장 ⏳
+
+### W3 진행 중 (PR-2a 완료로 PR-2b/c 의존성 해제)
+- **PR-2b PlayerAware 백필** (L, Med) — 12 stub 모듈 실구현 (clue_interaction / text_chat / group_chat / evidence / location / combination / accusation / 4 exploration / reading). 설계: `refs/pr-2/pr-2b-module-backfill.md`. PR-4 선행 권장 (combination/accusation/reading 500+ 파일 분할 필요).
+- **PR-2c craftedAsClueMap redaction** (S-M, Low) — D-MO-1. combination 전용. PR-2b 선 머지 권장.
 
 ### W3 잔여
 - **PR-4 File Size Refactor** (L+, Med) — Go 12 + TS 4 (delta 추가: combination.go 533, editor/service.go 505, editor/api.ts 428)
@@ -96,15 +116,15 @@ type: project
 
 | # | Finding | 상태 | PR |
 |---|---------|------|-----|
-| F-03 | crime_scene PlayerAware | **미해소** | PR-2 예정 |
+| F-03 | crime_scene PlayerAware | 🟡 gate (PR-2a) / 실구현 PR-2b 예정 | PR-2a (#97) → PR-2b |
 | F-sec-1 | RFC 9457 우회 12건 | ✅ 해소 | PR-3 (#85) |
-| F-sec-2 | PlayerAware 25/33 | **미해소** | PR-2 예정 |
+| F-sec-2 | PlayerAware 25/33 fallback | ✅ gate 차단 (PR-2a) / 실구현 PR-2b | PR-2a (#97) → PR-2b |
 | F-sec-3 | voice token 평문 로그 | ✅ 해소 | hotfix (#83) |
 | F-sec-4 | auditlog 부재 | ✅ 해소 | PR-6 (#87) |
-| D-MO-1 | craftedAsClueMap (delta) | **미해소** | PR-2 scope 확장 |
+| D-MO-1 | craftedAsClueMap (delta) | **미해소** | PR-2c 예정 |
 | F-a11y-3 | outline-none 60 | ✅ 해소 | hotfix (#92) |
 
-**4/7 해소 (~57%)** — F-a11y-3 + PR-8(F-react-6) 추가로 이틀차 성과 가속.
+**5/7 해소 (~71%)** — PR-2a gate로 F-sec-2 재발 차단. F-03/D-MO-1 실구현만 남음 (PR-2b/c).
 
 ## 다음 세션 재개 방법
 
