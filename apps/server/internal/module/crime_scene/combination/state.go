@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
@@ -35,6 +36,7 @@ func (m *CombinationModule) snapshot() combinationState {
 		for id := range evMap {
 			ids = append(ids, id)
 		}
+		sort.Strings(ids) // deterministic JSON for snapshot diffing
 		collected[pid.String()] = ids
 	}
 	return combinationState{Completed: completed, Derived: derived, Collected: collected}
@@ -44,11 +46,20 @@ func (m *CombinationModule) snapshot() combinationState {
 // completed combinations, derived ("crafted") clues, and collected evidence.
 // Other players' entries are elided to uphold the D-MO-1 redaction boundary:
 // revealing that peer X has already crafted a clue leaks strategic intel.
+//
+// When playerID is uuid.Nil the function returns an empty (non-nil) shape.
+// uuid.Nil is an ambiguous identity that could accidentally alias a stray
+// map entry if a peer module ever publishes evidence.collected with a
+// zero-value playerID — returning empty here closes that vector at the
+// redaction layer, independently of upstream input validation.
 func (m *CombinationModule) snapshotFor(playerID uuid.UUID) combinationState {
 	s := combinationState{
 		Completed: map[string][]string{},
 		Derived:   map[string][]string{},
 		Collected: map[string][]string{},
+	}
+	if playerID == uuid.Nil {
+		return s
 	}
 	key := playerID.String()
 	if ids := m.completed[playerID]; len(ids) > 0 {
@@ -66,6 +77,7 @@ func (m *CombinationModule) snapshotFor(playerID uuid.UUID) combinationState {
 		for id := range evMap {
 			ids = append(ids, id)
 		}
+		sort.Strings(ids) // deterministic JSON regardless of map iteration
 		s.Collected[key] = ids
 	}
 	return s

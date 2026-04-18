@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
@@ -460,6 +462,170 @@ func jsonIsEmptyShape(s string) bool {
 		return false
 	}
 	return len(probe.Completed) == 0 && len(probe.Derived) == 0 && len(probe.Collected) == 0
+}
+
+// Phase 19 PR-2c hotfix: uuid.Nil must return an empty shape even when peers
+// have state. Protects against stray zero-value playerIDs ever aliasing a
+// real entry at the redaction layer.
+func TestCombinationModule_BuildStateFor_NilUUIDEmpty(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	m.mu.Lock()
+	m.completed[alice] = []string{"combo1"}
+	m.derived[alice] = []string{"weapon_set"}
+	m.collected[alice] = map[string]bool{"knife": true}
+	m.mu.Unlock()
+
+	raw, err := m.BuildStateFor(uuid.Nil)
+	if err != nil {
+		t.Fatalf("BuildStateFor(uuid.Nil): %v", err)
+	}
+	if !jsonIsEmptyShape(string(raw)) {
+		t.Errorf("uuid.Nil snapshot must be empty shape, got %s", raw)
+	}
+	if strings.Contains(string(raw), alice.String()) {
+		t.Errorf("uuid.Nil snapshot leaked alice id: %s", raw)
+	}
+}
+
+// Phase 19 PR-2c hotfix: Collected slice must be sorted for deterministic
+// JSON — map iteration order is non-deterministic in Go, causing spurious
+// diffs between otherwise identical snapshots on reconnect / diff paths.
+func TestCombinationModule_BuildStateFor_CollectedSortedStable(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	m.mu.Lock()
+	m.collected[alice] = map[string]bool{"zeta": true, "alpha": true, "mike": true, "bravo": true}
+	m.mu.Unlock()
+
+	// Marshal twice and ensure byte identity — the fix must survive map
+	// iteration randomisation across calls.
+	r1, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor first call: %v", err)
+	}
+	r2, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor second call: %v", err)
+	}
+	if string(r1) != string(r2) {
+		t.Errorf("BuildStateFor not deterministic between calls:\n  %s\n  %s", r1, r2)
+	}
+
+	// And the collected slice must be in ascending ASCII order.
+	var s combinationState
+	if err := json.Unmarshal(r1, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	got := s.Collected[alice.String()]
+	want := []string{"alpha", "bravo", "mike", "zeta"}
+	if len(got) != len(want) {
+		t.Fatalf("collected length: got %d, want %d (%v)", len(got), len(want), got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("collected[%d]: got %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// Phase 19 PR-2c hotfix (HIGH): handleCombine must not publish events while
+// holding m.mu.Lock. Any subscriber calling a method that takes m.mu
+// (legitimate now that BuildStateFor is a live broadcast path) would
+// deadlock. This test plants such a subscriber and asserts that the combine
+// call + the callback both complete promptly.
+func TestCombinationModule_HandleCombine_NoDeadlockDuringPublish(t *testing.T) {
+	m := NewCombinationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	playerID := uuid.New()
+	m.mu.Lock()
+	m.collected[playerID] = map[string]bool{"knife": true, "glove": true}
+	m.mu.Unlock()
+
+	callbackDone := make(chan error, 1)
+	deps.EventBus.Subscribe("combination.completed", func(_ engine.Event) {
+		// Re-enter the module through a BuildStateFor call. This takes
+		// m.mu.RLock internally; if handleCombine still held m.mu.Lock it
+		// would block forever.
+		_, err := m.BuildStateFor(playerID)
+		callbackDone <- err
+	})
+
+	combineDone := make(chan error, 1)
+	go func() {
+		combineDone <- m.HandleMessage(context.Background(), playerID,
+			"combine", json.RawMessage(`{"evidence_ids":["knife","glove"]}`))
+	}()
+
+	select {
+	case err := <-combineDone:
+		if err != nil {
+			t.Fatalf("HandleMessage combine: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("HandleMessage deadlocked — likely holding m.mu across Publish")
+	}
+
+	select {
+	case err := <-callbackDone:
+		if err != nil {
+			t.Fatalf("subscriber BuildStateFor: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("combination.completed subscriber never reached BuildStateFor — deadlock or missed publish")
+	}
+}
+
+// Phase 19 PR-2c hotfix: concurrent BuildStateFor fan-out (broadcast to N
+// players in parallel) must not race with handleCombine writes. go test
+// -race will flag any missed lock or unsynchronised map access.
+func TestCombinationModule_BuildStateFor_ConcurrentBroadcast(t *testing.T) {
+	m := NewCombinationModule()
+	deps := newTestDeps()
+	if err := m.Init(context.Background(), deps, combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	const n = 16
+	players := make([]uuid.UUID, n)
+	m.mu.Lock()
+	for i := range players {
+		players[i] = uuid.New()
+		m.collected[players[i]] = map[string]bool{"knife": true, "glove": true}
+	}
+	m.mu.Unlock()
+
+	var wg sync.WaitGroup
+	// Fan out BuildStateFor across all players while one player actively
+	// triggers a combine. The combine writes to m.completed / m.derived
+	// under Lock; the readers take RLock in snapshotFor.
+	wg.Add(n + 1)
+	go func() {
+		defer wg.Done()
+		_ = m.HandleMessage(context.Background(), players[0],
+			"combine", json.RawMessage(`{"evidence_ids":["knife","glove"]}`))
+	}()
+	for i := 0; i < n; i++ {
+		go func(pid uuid.UUID) {
+			defer wg.Done()
+			for j := 0; j < 32; j++ {
+				if _, err := m.BuildStateFor(pid); err != nil {
+					t.Errorf("BuildStateFor: %v", err)
+					return
+				}
+			}
+		}(players[i])
+	}
+	wg.Wait()
 }
 
 // Phase 20 PR-5: GroupID shortcut — clients can pass `group_id` to match
