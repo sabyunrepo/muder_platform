@@ -37,7 +37,7 @@ type: project
   - CI WS contract drift gate
   - PR-9 (WS Auth) + PR-10 (Runtime validation) 신설
 
-- **PR-6 Auditlog Expansion** ✅ (진행 중, `feat/phase-19-pr-6-auditlog`)
+- **PR-6 Auditlog Expansion** ✅ #87 (2026-04-18, squash-merged)
   - 00026_auditlog_expansion.sql — session_id/seq NULLABLE + user_id + CHECK identity_required
   - sqlc: AppendAuditEvent + AppendUserAuditEvent + ListByUser
   - auditlog.AuditEvent에 UserID + HasSession/HasUser + Validate 확장
@@ -50,21 +50,22 @@ type: project
   - 새 AuditAction 상수 14종 추가
   - **Phase 19 F-05 P0 F-sec-4 해소**
 
+- **PR-7 Zustand Action Unification** ✅ #88 (2026-04-18, squash-merged, ccc1c16)
+  - Dead code 삭제: `features/game/hooks/useGameSession.ts` + `stores/gameMessageHandlers.ts` (둘 다 호출처 0)
+  - `useGameSync.ts` 리팩터: `useGameStore.getState()` × 6 → Zustand selector로 action bind
+  - WS 경로 `.getState()` 8건 → 2건 (잔여 2건은 PR-8 Module Cache Isolation 대상)
+  - 3 files · +28 / −214 (-186 net)
+  - **F-react-5 P1 해소**
+
 ## 남은 PR
 
-### W1 잔여 (병렬 가능)
-- **PR-1 WS Contract SSOT** (L+, Med) — **진행 중** (2026-04-18 Phase C, 브랜치 `feat/phase-19-pr-1-ws-ssot`)
-  - **D1=A** 점 표기 canonical 선언 (migration은 Phase 20 follow-up)
-  - **D2=D** AUTH catalog stub만 등록, 정식 protocol은 **PR-9 신설**로 분리
-  - **D3=v1.5 α** tygo 기반 Go struct → TS interface 자동 생성 포함, zod 런타임 검증은 **PR-10 신설**로 분리
-  - PR-4/PR-7 선행 블로커 해소
-- **PR-6 Auditlog Expansion** (L+, Med) — schema migration + auth/admin/review handler + editor clue_edge(D-SEC-1) 편입
-  - **F-sec-4 P0 해소 예정**
+### W1 완료
+- PR-1 / PR-3 / PR-6 모두 머지 완료. W1 종료.
 
-### W2 (병렬 3)
-- **PR-2 PlayerAware Mandatory** (XL, Med) — F-03 P0 + F-sec-2 P0 + **D-MO-1 craftedAsClueMap (신규 P0)** 통합. PR-2a/PR-2b 분할 권장
-- **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장
-- **PR-7 Zustand Action Unification** (M, Med) — PR-1 이후
+### W2 진행 중
+- **PR-2 PlayerAware Mandatory** (XL, Med) — F-03 P0 + F-sec-2 P0 + **D-MO-1 craftedAsClueMap (신규 P0)** 통합. PR-2a/PR-2b 분할 권장 ⏳
+- **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장 ⏳
+- ~~PR-7 Zustand Action Unification~~ ✅ #88 머지
 
 ### W3 (병렬 2)
 - **PR-4 File Size Refactor** (L+, Med) — Go 12 + TS 4 (delta 추가: combination.go 533, editor/service.go 505, editor/api.ts 428)
