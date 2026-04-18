@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/httputil"
 	"github.com/mmp-platform/server/internal/middleware"
 )
@@ -47,5 +48,14 @@ func (h *Handler) ReplaceClueEdges(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	// D-SEC-1 audit: record which creator rewrote which theme's clue graph
+	// and how many edge groups were persisted (not the payload itself — the
+	// graph snapshot lives in theme versioning).
+	h.recordAudit(r.Context(), auditlog.ActionEditorClueEdgesReplace, creatorID,
+		map[string]any{
+			"theme_id":     themeID.String(),
+			"group_count":  len(reqs),
+			"result_count": len(edges),
+		})
 	httputil.WriteJSON(w, http.StatusOK, edges)
 }

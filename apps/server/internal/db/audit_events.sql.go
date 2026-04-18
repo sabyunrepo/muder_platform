@@ -9,30 +9,34 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const appendAuditEvent = `-- name: AppendAuditEvent :one
-INSERT INTO audit_events (session_id, seq, actor_id, action, module_id, payload)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, session_id, seq, actor_id, action, module_id, payload, created_at
+INSERT INTO audit_events (session_id, seq, actor_id, user_id, action, module_id, payload)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, session_id, seq, actor_id, action, module_id, payload, created_at, user_id
 `
 
 type AppendAuditEventParams struct {
-	SessionID uuid.UUID       `json:"session_id"`
-	Seq       int64           `json:"seq"`
+	SessionID pgtype.UUID     `json:"session_id"`
+	Seq       pgtype.Int8     `json:"seq"`
 	ActorID   pgtype.UUID     `json:"actor_id"`
+	UserID    pgtype.UUID     `json:"user_id"`
 	Action    string          `json:"action"`
 	ModuleID  pgtype.Text     `json:"module_id"`
 	Payload   json.RawMessage `json:"payload"`
 }
 
+// Game-bound audit row. session_id + seq are required; user_id is optional
+// but commonly set for player-triggered events so dashboards can correlate
+// by both axes.
 func (q *Queries) AppendAuditEvent(ctx context.Context, arg AppendAuditEventParams) (AuditEvent, error) {
 	row := q.db.QueryRow(ctx, appendAuditEvent,
 		arg.SessionID,
 		arg.Seq,
 		arg.ActorID,
+		arg.UserID,
 		arg.Action,
 		arg.ModuleID,
 		arg.Payload,
@@ -47,6 +51,47 @@ func (q *Queries) AppendAuditEvent(ctx context.Context, arg AppendAuditEventPara
 		&i.ModuleID,
 		&i.Payload,
 		&i.CreatedAt,
+		&i.UserID,
+	)
+	return i, err
+}
+
+const appendUserAuditEvent = `-- name: AppendUserAuditEvent :one
+INSERT INTO audit_events (session_id, seq, actor_id, user_id, action, module_id, payload)
+VALUES (NULL, NULL, $1, $2, $3, $4, $5)
+RETURNING id, session_id, seq, actor_id, action, module_id, payload, created_at, user_id
+`
+
+type AppendUserAuditEventParams struct {
+	ActorID  pgtype.UUID     `json:"actor_id"`
+	UserID   pgtype.UUID     `json:"user_id"`
+	Action   string          `json:"action"`
+	ModuleID pgtype.Text     `json:"module_id"`
+	Payload  json.RawMessage `json:"payload"`
+}
+
+// Identity-bound audit row (Phase 19 PR-6). Used for auth/admin/review/
+// editor actions that occur outside any game session; session_id and seq
+// stay NULL and the partial UNIQUE index is not engaged.
+func (q *Queries) AppendUserAuditEvent(ctx context.Context, arg AppendUserAuditEventParams) (AuditEvent, error) {
+	row := q.db.QueryRow(ctx, appendUserAuditEvent,
+		arg.ActorID,
+		arg.UserID,
+		arg.Action,
+		arg.ModuleID,
+		arg.Payload,
+	)
+	var i AuditEvent
+	err := row.Scan(
+		&i.ID,
+		&i.SessionID,
+		&i.Seq,
+		&i.ActorID,
+		&i.Action,
+		&i.ModuleID,
+		&i.Payload,
+		&i.CreatedAt,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -57,7 +102,7 @@ FROM audit_events
 WHERE session_id = $1
 `
 
-func (q *Queries) LatestSeq(ctx context.Context, sessionID uuid.UUID) (int64, error) {
+func (q *Queries) LatestSeq(ctx context.Context, sessionID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, latestSeq, sessionID)
 	var seq int64
 	err := row.Scan(&seq)
@@ -65,12 +110,12 @@ func (q *Queries) LatestSeq(ctx context.Context, sessionID uuid.UUID) (int64, er
 }
 
 const listBySession = `-- name: ListBySession :many
-SELECT id, session_id, seq, actor_id, action, module_id, payload, created_at FROM audit_events
+SELECT id, session_id, seq, actor_id, action, module_id, payload, created_at, user_id FROM audit_events
 WHERE session_id = $1
 ORDER BY seq
 `
 
-func (q *Queries) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]AuditEvent, error) {
+func (q *Queries) ListBySession(ctx context.Context, sessionID pgtype.UUID) ([]AuditEvent, error) {
 	rows, err := q.db.Query(ctx, listBySession, sessionID)
 	if err != nil {
 		return nil, err
@@ -88,6 +133,51 @@ func (q *Queries) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]Aud
 			&i.ModuleID,
 			&i.Payload,
 			&i.CreatedAt,
+			&i.UserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listByUser = `-- name: ListByUser :many
+SELECT id, session_id, seq, actor_id, action, module_id, payload, created_at, user_id FROM audit_events
+WHERE user_id = $1
+ORDER BY created_at DESC
+LIMIT $2
+`
+
+type ListByUserParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Limit  int32       `json:"limit"`
+}
+
+// Newest-first lookup for admin dashboards. user_id is the target user
+// (may equal actor_id for self-initiated events like login).
+func (q *Queries) ListByUser(ctx context.Context, arg ListByUserParams) ([]AuditEvent, error) {
+	rows, err := q.db.Query(ctx, listByUser, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditEvent{}
+	for rows.Next() {
+		var i AuditEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.SessionID,
+			&i.Seq,
+			&i.ActorID,
+			&i.Action,
+			&i.ModuleID,
+			&i.Payload,
+			&i.CreatedAt,
+			&i.UserID,
 		); err != nil {
 			return nil, err
 		}

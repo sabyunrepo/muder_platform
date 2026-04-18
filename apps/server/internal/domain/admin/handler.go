@@ -1,23 +1,80 @@
 package admin
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/httputil"
+	"github.com/mmp-platform/server/internal/middleware"
 )
 
 // Handler handles admin HTTP endpoints.
+//
+// Phase 19 PR-6: writes to auditlog.Logger on mutating endpoints
+// (role change, theme force-unpublish, room force-close) so that each
+// moderator action leaves an identity-bound audit trail attributable
+// to the admin's user_id (actor) and the affected user/theme/room.
 type Handler struct {
-	svc Service
+	svc    Service
+	audit  auditlog.Logger
+	logger zerolog.Logger
 }
 
-// NewHandler creates a new admin handler.
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+// NewHandler creates a new admin handler. If audit is nil the handler
+// silently substitutes auditlog.NoOpLogger{} so tests without a DB can
+// still exercise the HTTP path.
+func NewHandler(svc Service, audit auditlog.Logger, logger zerolog.Logger) *Handler {
+	if audit == nil {
+		audit = auditlog.NoOpLogger{}
+	}
+	return &Handler{
+		svc:    svc,
+		audit:  audit,
+		logger: logger.With().Str("handler", "admin").Logger(),
+	}
+}
+
+// recordAudit appends an admin audit entry. actor is the moderator; target
+// (optional) is the affected user UUID. payload is marshalled to JSON and
+// kept small — only the fields a reviewer genuinely needs later.
+func (h *Handler) recordAudit(ctx context.Context, action auditlog.AuditAction, actor, target *uuid.UUID, payload map[string]any) {
+	var raw json.RawMessage
+	if len(payload) > 0 {
+		if b, err := json.Marshal(payload); err == nil {
+			raw = b
+		} else {
+			h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog payload marshal failed")
+		}
+	}
+	evt := auditlog.AuditEvent{
+		ActorID: actor,
+		UserID:  target,
+		Action:  action,
+		Payload: raw,
+	}
+	if err := h.audit.Append(ctx, evt); err != nil {
+		h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog append failed")
+	}
+}
+
+// actor extracts the moderator's user id from the request context.
+// Returns nil when the context lacks an auth UUID — the audit entry then
+// records a system-level actor (admin routes are middleware-guarded, so
+// this should not occur in production, but the fallback avoids panics in
+// unit tests that skip the middleware).
+func actor(ctx context.Context) *uuid.UUID {
+	uid := middleware.UserIDFrom(ctx)
+	if uid == uuid.Nil {
+		return nil
+	}
+	return &uid
 }
 
 // ListUsers handles GET /admin/users.
@@ -69,6 +126,8 @@ func (h *Handler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	h.recordAudit(r.Context(), auditlog.ActionAdminRoleChange, actor(r.Context()), &userID,
+		map[string]any{"new_role": req.Role})
 	httputil.WriteJSON(w, http.StatusOK, user)
 }
 
@@ -98,6 +157,8 @@ func (h *Handler) ForceUnpublishTheme(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	h.recordAudit(r.Context(), auditlog.ActionAdminForceUnpublishTheme, actor(r.Context()), nil,
+		map[string]any{"theme_id": themeID.String()})
 	httputil.WriteJSON(w, http.StatusOK, theme)
 }
 
@@ -126,5 +187,7 @@ func (h *Handler) ForceCloseRoom(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
+	h.recordAudit(r.Context(), auditlog.ActionAdminForceCloseRoom, actor(r.Context()), nil,
+		map[string]any{"room_id": roomID.String()})
 	w.WriteHeader(http.StatusNoContent)
 }

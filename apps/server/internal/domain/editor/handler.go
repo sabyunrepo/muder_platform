@@ -1,26 +1,74 @@
 package editor
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/auditlog"
 	"github.com/mmp-platform/server/internal/httputil"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
 // Handler handles editor HTTP endpoints for theme creators.
+//
+// Phase 19 PR-6 (D-SEC-1): mutating clue-graph endpoints
+// (ReplaceClueEdges, …) record audit entries so edits to the canonical
+// clue graph — a frequent target for unauthorised modification — leave a
+// trail attributed to the acting creator.
 type Handler struct {
-	svc Service
+	svc    Service
+	audit  auditlog.Logger
+	logger zerolog.Logger
 }
 
-// NewHandler creates a new editor handler.
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+// NewHandler creates a new editor handler. A nil audit falls back to
+// auditlog.NoOpLogger{} so bootstrap and unit tests that do not wire the
+// audit pipeline still compile and run.
+func NewHandler(svc Service, audit auditlog.Logger, logger zerolog.Logger) *Handler {
+	if audit == nil {
+		audit = auditlog.NoOpLogger{}
+	}
+	return &Handler{
+		svc:    svc,
+		audit:  audit,
+		logger: logger.With().Str("handler", "editor").Logger(),
+	}
+}
+
+// recordAudit appends an editor audit entry. actor is the creator; target
+// is the theme owner (for clue-graph edits we pass actor as both — the
+// creator is editing their own theme per RBAC). payload carries the
+// minimum identifiers needed to reproduce the action.
+func (h *Handler) recordAudit(ctx context.Context, action auditlog.AuditAction, actor uuid.UUID, payload map[string]any) {
+	var raw json.RawMessage
+	if len(payload) > 0 {
+		if b, err := json.Marshal(payload); err == nil {
+			raw = b
+		} else {
+			h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog payload marshal failed")
+		}
+	}
+	if actor == uuid.Nil {
+		// No attributable actor — skip rather than persist an anonymous row.
+		return
+	}
+	uid := actor
+	evt := auditlog.AuditEvent{
+		ActorID: &uid,
+		UserID:  &uid,
+		Action:  action,
+		Payload: raw,
+	}
+	if err := h.audit.Append(ctx, evt); err != nil {
+		h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog append failed")
+	}
 }
 
 // ListMyThemes handles GET /editor/themes.

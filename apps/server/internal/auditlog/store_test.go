@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx stdlib driver for database/sql used by goose
 	"github.com/pressly/goose/v3"
@@ -130,18 +131,25 @@ func TestAuditEvent_Validate_Errors(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 type stubQuerier struct {
-	latestSeqFn        func(ctx context.Context, sessionID uuid.UUID) (int64, error)
-	appendAuditEventFn func(ctx context.Context, arg db.AppendAuditEventParams) (db.AuditEvent, error)
-	listBySessionFn    func(ctx context.Context, sessionID uuid.UUID) ([]db.AuditEvent, error)
+	latestSeqFn            func(ctx context.Context, sessionID pgtype.UUID) (int64, error)
+	appendAuditEventFn     func(ctx context.Context, arg db.AppendAuditEventParams) (db.AuditEvent, error)
+	appendUserAuditEventFn func(ctx context.Context, arg db.AppendUserAuditEventParams) (db.AuditEvent, error)
+	listBySessionFn        func(ctx context.Context, sessionID pgtype.UUID) ([]db.AuditEvent, error)
 }
 
-func (sq *stubQuerier) LatestSeq(ctx context.Context, sessionID uuid.UUID) (int64, error) {
+func (sq *stubQuerier) LatestSeq(ctx context.Context, sessionID pgtype.UUID) (int64, error) {
 	return sq.latestSeqFn(ctx, sessionID)
 }
 func (sq *stubQuerier) AppendAuditEvent(ctx context.Context, arg db.AppendAuditEventParams) (db.AuditEvent, error) {
 	return sq.appendAuditEventFn(ctx, arg)
 }
-func (sq *stubQuerier) ListBySession(ctx context.Context, sessionID uuid.UUID) ([]db.AuditEvent, error) {
+func (sq *stubQuerier) AppendUserAuditEvent(ctx context.Context, arg db.AppendUserAuditEventParams) (db.AuditEvent, error) {
+	if sq.appendUserAuditEventFn == nil {
+		return db.AuditEvent{}, nil
+	}
+	return sq.appendUserAuditEventFn(ctx, arg)
+}
+func (sq *stubQuerier) ListBySession(ctx context.Context, sessionID pgtype.UUID) ([]db.AuditEvent, error) {
 	return sq.listBySessionFn(ctx, sessionID)
 }
 
@@ -206,7 +214,7 @@ func TestStore_Append_ErrorClassification(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			sq := &stubQuerier{
-				latestSeqFn: func(_ context.Context, _ uuid.UUID) (int64, error) {
+				latestSeqFn: func(_ context.Context, _ pgtype.UUID) (int64, error) {
 					if tc.latestErr != nil {
 						return 0, tc.latestErr
 					}

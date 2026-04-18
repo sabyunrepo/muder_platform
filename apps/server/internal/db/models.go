@@ -14,13 +14,14 @@ import (
 
 type AuditEvent struct {
 	ID        int64           `json:"id"`
-	SessionID uuid.UUID       `json:"session_id"`
-	Seq       int64           `json:"seq"`
+	SessionID pgtype.UUID     `json:"session_id"`
+	Seq       pgtype.Int8     `json:"seq"`
 	ActorID   pgtype.UUID     `json:"actor_id"`
 	Action    string          `json:"action"`
 	ModuleID  pgtype.Text     `json:"module_id"`
 	Payload   json.RawMessage `json:"payload"`
 	CreatedAt time.Time       `json:"created_at"`
+	UserID    pgtype.UUID     `json:"user_id"`
 }
 
 type ChatMessage struct {

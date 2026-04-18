@@ -30,6 +30,26 @@ type: project
   - `ErrMethodNotAllowed` + `MethodNotAllowed(detail)` helper 추가
   - **Phase 19 F-05 P0 1건 해소 (F-sec-1)**
 
+- **PR-1 WS Contract SSOT** ✅ #86 (2026-04-18, `feat/phase-19-pr-1-ws-ssot` squash-merged)
+  - Go Catalog 130 events SSOT + wsgen codegen (v1.5 α tygo-like)
+  - packages/shared/src/ws/types.generated.ts 자동 생성
+  - ws-client AUTH 제거 (쿼리 토큰 정책), 프론트 enum 정합
+  - CI WS contract drift gate
+  - PR-9 (WS Auth) + PR-10 (Runtime validation) 신설
+
+- **PR-6 Auditlog Expansion** ✅ (진행 중, `feat/phase-19-pr-6-auditlog`)
+  - 00026_auditlog_expansion.sql — session_id/seq NULLABLE + user_id + CHECK identity_required
+  - sqlc: AppendAuditEvent + AppendUserAuditEvent + ListByUser
+  - auditlog.AuditEvent에 UserID + HasSession/HasUser + Validate 확장
+  - Store.Append 분기(session vs user), pgtype 변환 헬퍼
+  - auth service.go: Register/Login(succ+fail)/Logout/DeleteAccount/OAuthCallback 배선
+  - admin handler: UpdateUserRole/ForceUnpublishTheme/ForceCloseRoom
+  - admin review_handler: Approve/Reject/Suspend/SetTrustedCreator
+  - editor clue_edge_handler: ReplaceClueEdges (D-SEC-1)
+  - main.go: auditlog.DBLogger 정식 wiring (Start/Stop)
+  - 새 AuditAction 상수 14종 추가
+  - **Phase 19 F-05 P0 F-sec-4 해소**
+
 ## 남은 PR
 
 ### W1 잔여 (병렬 가능)
