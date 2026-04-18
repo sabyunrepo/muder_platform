@@ -74,12 +74,41 @@ PR-2a ──┬──→ PR-2b
 - **Size**: M (≤2d)
 - **Risk**: Low
 
-### PR-4: File Size Refactor Wave — Go 10 + TS 3 파일 분할
-- **Scope**: `apps/server/internal/domain/social/service.go` (759→분할), `apps/server/internal/editor/handler.go` (26 endpoint 분할), `apps/server/internal/ws/hub.go` (lifecycle/broadcast 분리), `apps/server/internal/module/{progression/reading,decision/voting,decision/hidden_mission,cluedist/trade_clue,decision/accusation,crime_scene/combination}/**`, `apps/web/src/features/game/components/GameChat.tsx`, `apps/web/src/features/editor/api.ts`, `apps/web/src/features/social/components/FriendsList.tsx`
-- **Depends on**: PR-1 (WS envelope 영향받는 파일)
-- **Rationale**: C-4 / F-go-3·4 + F-react-1·3·4. CLAUDE.md hard limit 누적 위반 10+ 건.
-- **Size**: L (>2d)
+### PR-4 분할 (2026-04-18 재설계) — design: `refs/pr-4-split-design.md`
+
+> **분할 근거**: Go 9 파일(6 모듈 + 3 인프라) + TS 3 파일은 파일셋 disjoint + 언어 경계 명확 → 병렬 실행 가능. Git conflict 0. 리뷰어 분리로 부담 감소.
+
+#### PR-4a: Go 파일 분할 — design: `refs/pr-4/pr-4a-go-split.md`
+- **Scope**:
+  - 6 모듈 디렉터리 승격: `progression/reading` (652) · `decision/voting` (639) · `decision/hidden_mission` (559) · `crime_scene/combination` (543) · `cluedist/trade_clue` (532) · `decision/accusation` (515) → `module/<cat>/<module>/` 내부 `module.go / config.go / state.go / handlers.go / reactor.go / events.go`
+  - 3 인프라 파일 분할 (package 유지): `domain/social/service.go` (759) · `ws/hub.go` (649) · `domain/editor/service.go` (505)
+  - F-go-4 `accusation.handleAccusationVote` 101줄 → `tally.go` 수학 로직 추출
+  - 카테고리 내 `register.go` 신설 (blank import 안전)
+- **Depends on**: 없음 (PR-2a 이후로 gate 안정)
+- **Rationale**: C-4 / F-go-3·4. CLAUDE.md hard limit (Go 500/함수 80) 위반 해소. Factory 서명 불변.
+- **Size**: L
 - **Risk**: Med (import 경로 대량 변경)
+- **Gate**: `go test ./... -race` + `TestRegistry_AllCoreModulesRegistered` 신규
+
+#### PR-4b: TS 파일 분할 — design: `refs/pr-4/pr-4b-ts-split.md`
+- **Scope**:
+  - `editor/api.ts` (428) → `api/` 배럴 + `types.ts/keys.ts/themes.ts/characters.ts/content.ts/validation.ts/moduleSchemas.ts`
+  - `GameChat.tsx` (423) → `GameChat/` 디렉터리 + 탭별 컴포넌트 (state 모델은 PR-7 범위, 본 PR은 파일 분할만)
+  - `FriendsList.tsx` (415) → `FriendsList/` 디렉터리 + 탭별 컴포넌트
+- **Depends on**: 없음 (PR-4a와 disjoint 병렬)
+- **Rationale**: C-4 / F-react-3·4. CLAUDE.md hard limit (TS 400) 해소. 배럴 type-only + 명시 re-export로 tree-shake 보장.
+- **Size**: M
+- **Risk**: Low
+- **Gate**: `pnpm build` bundle size baseline ≤ +3%
+
+**의존성 그래프**:
+```
+PR-4a ──(독립)──> main
+PR-4b ──(독립)──> main   (PR-4a와 병렬)
+
+PR-2b ── requires ──> PR-4a (combination/reading/accusation 500+ 해소 필요)
+PR-2c ── requires ──> PR-4a (combination 충돌 회피)
+```
 
 ### PR-5: Coverage Gate + mockgen 재도입 + 0% 패키지 전략
 - **Scope**: `.github/workflows/ci.yml`, `apps/web/vitest.config.ts`, `apps/server/internal/infra/otel/**` (테스트 추가), `apps/server/internal/infra/sentry/**`, `apps/server/internal/infra/storage/**`, `apps/server/cmd/server/**`, `apps/server/internal/db/**`, `codecov.yml`, 모든 Service 인터페이스 `//go:generate mockgen` 디렉티브 추가
