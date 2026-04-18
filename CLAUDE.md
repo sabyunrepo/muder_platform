@@ -13,6 +13,7 @@
 |------|----------|------|------|
 | 2026-04-15 | 초기 구성 | 전체 | harness 플러그인 기반 전프로젝트 범용 팀 구축 |
 | 2026-04-15 | mmp-pilot M0-M2 | `/plan-go`, mmp-pilot 스킬, run-*.sh, m3-cutover.sh, m4-plan.md | plan-autopilot↔하네스 통합 (M3 대기, M4 계획만 문서화). 상세: `.claude/designs/mmp-pilot/` |
+| 2026-04-18 | PR-2a PlayerAware 게이트 의무화 | `§ 모듈 시스템`, `.claude/skills/mmp-module-factory/SKILL.md` | F-sec-2 대응: 모든 `engine.Module` 은 `PlayerAwareModule.BuildStateFor` 구현 또는 `engine.PublicStateMarker` 임베드 opt-out 중 하나 필수. registry boot panic + `MMP_PLAYERAWARE_STRICT` 롤백 스위치. PR #97 (phase-19 PR-2a). |
 
 ## 프로젝트 개요
 다중 테마 실시간 멀티플레이어 머더미스터리 게임 플랫폼 v3 리빌드.
@@ -59,6 +60,7 @@
 - PhaseReactor(선택적): PhaseAction에 반응하는 모듈만 구현
 - Factory 패턴: 세션별 독립 인스턴스 (싱글턴 금지)
 - init() + blank import 등록
+- **🔴 PlayerAware (의무, PR-2a 이후)**: 모든 `engine.Module` 은 `PlayerAwareModule.BuildStateFor` 구현 **또는** `engine.PublicStateMarker` 임베드로 `PublicStateModule` 명시적 opt-out 중 하나를 충족해야 함. registry boot 시점 panic 으로 강제 (F-sec-2 게이트). 롤백용 env: `MMP_PLAYERAWARE_STRICT=false` (default true). 상세 템플릿: `.claude/skills/mmp-module-factory/SKILL.md`
 
 ### 🔴 파일/함수 크기 제한 (유형별 티어)
 
