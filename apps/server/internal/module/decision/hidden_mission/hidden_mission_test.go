@@ -1,4 +1,4 @@
-package decision
+package hidden_mission
 
 import (
 	"context"
@@ -8,6 +8,23 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
+
+// testLogger implements engine.Logger for tests.
+type testLogger struct{}
+
+func (l *testLogger) Printf(format string, v ...any) {}
+
+func newTestEventBus() *engine.EventBus {
+	return engine.NewEventBus(&testLogger{})
+}
+
+func newTestDeps() engine.ModuleDeps {
+	return engine.ModuleDeps{
+		SessionID: uuid.New(),
+		EventBus:  newTestEventBus(),
+		Logger:    &testLogger{},
+	}
+}
 
 func initHiddenMissionModule(t *testing.T, configJSON string) *HiddenMissionModule {
 	t.Helper()

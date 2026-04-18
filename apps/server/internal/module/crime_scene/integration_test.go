@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/module/crime_scene/combination"
 )
 
 // TestIntegration_FullFlow exercises all three modules together:
@@ -42,7 +43,7 @@ func TestIntegration_FullFlow(t *testing.T) {
 	}
 
 	// --- Init Combination ---
-	combo := NewCombinationModule()
+	combo := combination.NewCombinationModule()
 	comboCfg := json.RawMessage(`{
 		"combinations": [
 			{
@@ -118,9 +119,7 @@ func TestIntegration_FullFlow(t *testing.T) {
 	}
 
 	// Mirror collected into combination module (normally done via eventbus subscription in combo.Init).
-	combo.mu.Lock()
-	combo.collected[playerID] = map[string]bool{"poison": true, "diary": true}
-	combo.mu.Unlock()
+	combo.SeedCollectedForTest(playerID, "poison", "diary")
 
 	// Step 6: Combine evidence.
 	if err := combo.HandleMessage(ctx, playerID, "combine",
@@ -214,7 +213,7 @@ func TestIntegration_SaveRestore(t *testing.T) {
 		t.Fatalf("ev Init: %v", err)
 	}
 
-	combo := NewCombinationModule()
+	combo := combination.NewCombinationModule()
 	if err := combo.Init(ctx, deps, json.RawMessage(`{
 		"combinations": [{"id":"c1","inputIds":["clue1"],"outputClueId":"result1","description":""}],
 		"winCombination": ["clue1"]
@@ -228,9 +227,7 @@ func TestIntegration_SaveRestore(t *testing.T) {
 	_ = loc.HandleMessage(ctx, playerID, "move", json.RawMessage(`{"location_id":"room1"}`))
 	_ = ev.HandleMessage(ctx, playerID, "discover", json.RawMessage(`{"evidence_id":"clue1"}`))
 	_ = ev.HandleMessage(ctx, playerID, "collect", json.RawMessage(`{"evidence_id":"clue1"}`))
-	combo.mu.Lock()
-	combo.collected[playerID] = map[string]bool{"clue1": true}
-	combo.mu.Unlock()
+	combo.SeedCollectedForTest(playerID, "clue1")
 	_ = combo.HandleMessage(ctx, playerID, "combine", json.RawMessage(`{"evidence_ids":["clue1"]}`))
 
 	// Save all.
@@ -265,7 +262,7 @@ func TestIntegration_SaveRestore(t *testing.T) {
 		t.Fatalf("ev RestoreState: %v", err)
 	}
 
-	combo2 := NewCombinationModule()
+	combo2 := combination.NewCombinationModule()
 	_ = combo2.Init(ctx, newTestDeps(), json.RawMessage(`{
 		"combinations": [{"id":"c1","inputIds":["clue1"],"outputClueId":"result1","description":""}],
 		"winCombination": ["clue1"]

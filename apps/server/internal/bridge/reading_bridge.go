@@ -6,25 +6,25 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/mmp-platform/server/internal/module/progression"
+	"github.com/mmp-platform/server/internal/module/progression/reading"
 	"github.com/mmp-platform/server/internal/ws"
 )
 
-// ReadingModuleAdapter wraps a *progression.ReadingModule so it satisfies the
-// ws.ReadingModuleAPI interface. The progression module persists per-line
+// ReadingModuleAdapter wraps a *reading.ReadingModule so it satisfies the
+// ws.ReadingModuleAPI interface. The reading module persists per-line
 // configuration with PascalCase JSON tags (matching the JSONB storage
 // contract); the WS wire format is camelCase. This adapter sits between the
 // two and converts the lines slice on the read path so the FE always sees a
 // consistent camelCase payload.
 type ReadingModuleAdapter struct {
-	Module *progression.ReadingModule
+	Module *reading.ReadingModule
 }
 
 // Compile-time interface satisfaction check.
 var _ ws.ReadingModuleAPI = (*ReadingModuleAdapter)(nil)
 
 // readingLineWire is the camelCase JSON shape sent across the WS for each
-// reading line. Mirrors the storage struct in progression.readingLineConfig
+// reading line. Mirrors the storage struct in reading.readingLineConfig
 // but with the wire-friendly tags FE consumers expect. Index and text are
 // required so the FE can render dialogue correctly; the ReadingOverlay keys
 // off index and renders text via TypewriterEffect.
@@ -38,8 +38,8 @@ type readingLineWire struct {
 }
 
 // readingLineStorage is the PascalCase shape stored in JSONB and returned by
-// progression.GetReadingStateWire(). It's intentionally local to the adapter
-// so the ws and progression packages stay decoupled.
+// reading.GetReadingStateWire(). It's intentionally local to the adapter
+// so the ws and reading packages stay decoupled.
 type readingLineStorage struct {
 	Index        int    `json:"Index"`
 	Text         string `json:"Text,omitempty"`

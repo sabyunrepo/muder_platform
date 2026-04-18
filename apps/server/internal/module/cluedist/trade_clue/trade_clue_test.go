@@ -1,4 +1,4 @@
-package cluedist
+package trade_clue
 
 import (
 	"context"
@@ -9,6 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
+
+func newTestDeps() engine.ModuleDeps {
+	return engine.ModuleDeps{
+		SessionID: uuid.New(),
+		EventBus:  engine.NewEventBus(nil),
+		Logger:    nil,
+	}
+}
 
 func TestTradeClueModule_Name(t *testing.T) {
 	m := NewTradeClueModule()
