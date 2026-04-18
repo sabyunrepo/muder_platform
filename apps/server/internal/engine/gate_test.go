@@ -10,16 +10,18 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// PR-2a F-sec-2 boot gate tests.
+// PR-2a / Phase 19.1 PR-A — F-sec-2 boot gate tests.
 //
 // These tests verify that:
 //   1. assertModuleContract accepts PlayerAware modules.
 //   2. assertModuleContract accepts PublicStateMarker-bearing modules.
 //   3. assertModuleContract rejects modules that implement neither.
-//   4. Register() panics in strict mode on a violating module.
+//   4. Register() panics on a violating module — the gate is always on; the
+//      Phase 18/19 env-driven escape hatch (MMP_PLAYERAWARE_STRICT) was
+//      retired in Phase 19.1 PR-A.
 //   5. BuildModules returns an error when a manually injected factory violates
 //      the contract (tests that bypass Register via direct map mutation).
-//   6. MMP_PLAYERAWARE_STRICT=false disables the panic path (legacy mode).
+//   6. Every currently-registered module satisfies the gate (regression).
 // ---------------------------------------------------------------------------
 
 // gateBareModule implements Module only (no marker, no BuildStateFor).
@@ -180,52 +182,10 @@ func TestBuildModules_RejectsGateViolation(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// MMP_PLAYERAWARE_STRICT=false disables the panic path.
-// ---------------------------------------------------------------------------
-
-func TestRegister_StrictModeDisabled_DoesNotPanic(t *testing.T) {
-	t.Setenv(strictModeEnvVar, "false")
-
-	orig := globalRegistry.factories
-	globalRegistry.factories = map[string]ModuleFactory{}
-	defer func() { globalRegistry.factories = orig }()
-
-	// In non-strict mode Register must NOT panic even on a bare module.
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("Register panicked in non-strict mode: %v", r)
-		}
-	}()
-
-	Register("legacy_bare", func() Module { return &gateBareModule{name: "legacy_bare"} })
-
-	if !HasModule("legacy_bare") {
-		t.Fatal("legacy bare module not registered in non-strict mode")
-	}
-}
-
-func TestStrictGateEnabled_Defaults(t *testing.T) {
-	t.Setenv(strictModeEnvVar, "")
-	if !strictGateEnabled() {
-		t.Error("empty env: strict mode should be ON by default")
-	}
-	for _, v := range []string{"false", "False", "FALSE", "0", "no", "off"} {
-		t.Setenv(strictModeEnvVar, v)
-		if strictGateEnabled() {
-			t.Errorf("env=%q: strict mode should be OFF", v)
-		}
-	}
-	for _, v := range []string{"true", "1", "yes", "on", "anything_else"} {
-		t.Setenv(strictModeEnvVar, v)
-		if !strictGateEnabled() {
-			t.Errorf("env=%q: strict mode should be ON", v)
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// All registered modules (production 33) must satisfy the gate.
-// This is the regression test that replaces the fallback path.
+// All registered modules (production 33) must satisfy the gate — regression
+// test. With the env-driven escape hatch retired in Phase 19.1 PR-A, any new
+// non-compliant module would panic at init(). This test still runs so that
+// future refactors of the gate logic itself are caught.
 // ---------------------------------------------------------------------------
 
 func TestAllRegisteredModules_SatisfyGate(t *testing.T) {
