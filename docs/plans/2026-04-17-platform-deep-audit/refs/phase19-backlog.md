@@ -4,7 +4,7 @@
 > **기반**: 9 audit drafts + advisor-consultations.md 8 cross-cutting
 > **포맷**: `/plan-new` 입력 호환
 
-## PR 후보 (9건 — PR-0 추가)
+## PR 후보 (11건 — PR-9·PR-10 2026-04-18 신규 추가)
 
 ### PR-0: MEMORY Canonical Migration — user home → repo
 - **Scope**: `memory/` (repo), `/Users/sabyun/.claude/projects/-Users-sabyun-goinfre-muder-platform/memory/` (user home, source), `MEMORY.md` 인덱스 갱신, `CLAUDE.md` QMD 컬렉션 메모 업데이트
@@ -27,8 +27,12 @@
 - **SSOT 결정 (사용자 확정)**: **서버(envelope_catalog.go)가 source of truth**. 프론트·MSW는 서버에 맞춤. 프론트 `WsEventType` enum은 envelope_catalog에서 **codegen**으로 자동 생성.
 - **Depends on**: 없음 (먼저 실행)
 - **Rationale**: C-1 / F-ws-1·2·3·4·5·6·7·12. 3자 일치율 <4%, Phase 17.5~18.6 반복 회귀 근절.
-- **Size**: L (>2d)
+- **Size**: L+ (>2~3d, v1.5 tygo 포함으로 +1~2d)
 - **Risk**: Med (enum codegen이 수동 변경 리스크 제거)
+- **착수 결정 (2026-04-18)**:
+  - **D1 = A (점 표기 canonical)**: `<category>.<action>` 점 표기를 표준으로 선언. 기존 legacy 콜론 121개는 Catalog에 `Alias` 필드로 보존 + deprecated 표시. 실제 콜론→점 정규화 migration은 Phase 20 follow-up.
+  - **D2 = D (AUTH catalog stub)**: `auth.*` 이벤트는 Catalog에 stub entry만 등록. 서버 핸들러·프론트 sendAuth는 미구현(쿼리 토큰 정책 유지). 정식 protocol은 **PR-9**로 분리.
+  - **D3 = v1.5 opt α (tygo)**: `// wsgen:payload` 주석이 있는 Go struct만 `packages/shared/src/ws/types.generated.ts`에 TS interface로 전환. 런타임 zod 검증은 **PR-10**으로 분리. dynamic payload(`json.RawMessage`)는 `unknown` 유지.
 
 ### PR-2: PlayerAwareModule Mandatory — 엔진 레벨 강제 + crime_scene 3 구현 + 테스트 백필
 - **Scope**: `apps/server/internal/module/crime_scene/{evidence,location,combination}/**`, `apps/server/internal/module/decision/{accusation,hidden_mission,voting}/**`, `apps/server/internal/engine/types.go`, `apps/server/internal/engine/snapshot_redaction_test.go`
@@ -79,6 +83,26 @@
 - **Size**: S (≤4h)
 - **Risk**: Low
 
+### PR-9: WS Auth Protocol — IDENTIFY / RESUME / CHALLENGE / REVOKE
+- **Scope**: `apps/server/internal/ws/auth_protocol.go` (신규), `apps/server/internal/ws/upgrade.go`, `apps/server/internal/domain/auth/**`, `apps/server/internal/db/migrations/**` (revoke table), `packages/ws-client/src/client.ts`, 관련 테스트
+- **Depends on**: PR-1 (Catalog에 `auth.*` stub 존재 기반)
+- **Rationale**: 쿼리 토큰(업그레이드 시 1회 검증)만으로는 (a) 토큰 만료 대응, (b) 계정 revoke·ban 즉시 반영, (c) 권한 중간 변경 통지, (d) 토큰 refresh 불가. Discord gateway IDENTIFY/RESUME + Slack RTM hello 하이브리드.
+- **설계 기준**:
+  - S→C: `auth.challenge`, `auth.revoked`, `auth.refresh_required`
+  - C→S: `auth.identify`, `auth.resume`, `auth.refresh`
+  - Revoke table: (user_id, revoked_at, reason) — WS hub가 broadcast 전 조회
+- **Size**: L (>2d)
+- **Risk**: Med (인증 경로 확장 = 회귀 위험, 철저한 테스트 필요)
+- **신규 추가 (2026-04-18)**: PR-1 진행 중 "쿼리 토큰만으로 부족하다" 검토 결과 분리 신설.
+
+### PR-10: Runtime Payload Validation — zod schemas + server middleware
+- **Scope**: `apps/server/cmd/wsgen` (확장: Go struct → JSON Schema 출력), `packages/shared/src/ws/schemas.generated.ts` (zod), `packages/ws-client/src/client.ts` (수신 검증), `apps/server/internal/ws/validator.go` (송신 검증), 관련 테스트
+- **Depends on**: PR-1 (v1.5 tygo + Catalog 확립 후)
+- **Rationale**: PR-1 v1.5는 컴파일 타임 TS interface만 제공 — 서버 struct 변경 시 TS는 에러 나지만 런타임에서 잘못된 payload 밀어 넣을 가능성은 남음. zod/ajv 런타임 검증 + 서버 송신 전 validator로 drift 0% 보장.
+- **Size**: L (>2d)
+- **Risk**: Med (기존 payload 중 스키마 외 필드가 있으면 런타임 실패 — 서서히 strict 모드 전환 필요)
+- **신규 추가 (2026-04-18)**: PR-1 v1.5 옵션 α 결정 시 런타임 검증은 별도 PR로 분리 합의.
+
 ---
 
 ## Resolved Decisions (사용자 확정 2026-04-17)
@@ -87,6 +111,12 @@
 2. ✅ **@jittda/ui 감사 제외** — 이 프로젝트 의존성 아님(타 프로젝트 jittda-frontend-hub 전용). F-a11y-1은 감사 전제 오류로 제거. v3 실제 스택은 Tailwind 4 직접 사용.
 3. ✅ **mockgen 규약 유지 (재도입)** — CLAUDE.md 원칙대로 mockgen + testcontainers-go 사용. 현재 0건 → 재도입 CI gate 추가. PR-5 Coverage Gate에 "mockgen 도입" 서브태스크 포함.
 4. ✅ **MEMORY canonical = Repo (`memory/`)** — 사라진 user home 34 파일 중 필요한 것만 repo로 복원. Phase 19 implementation 첫 단계에서 migration 수행. 이후 MEMORY.md 인덱스 갱신 + user home `.claude/projects/...` 폐기.
+
+### Resolved (2026-04-18 — PR-1 착수 시)
+
+5. ✅ **WS 표기법 canonical = 점 표기** (`<category>.<action>`) — 서버 engine EventBus가 이미 점 표기 다수 사용. PR-1은 Catalog 선언만, 실제 콜론→점 정규화 migration은 Phase 20 follow-up.
+6. ✅ **WS AUTH protocol = PR-9로 분리** — 현재 쿼리 토큰 기반 업그레이드 인증만으로는 refresh/revoke/challenge 부재. PR-1은 `auth.*` Catalog stub만, 정식 protocol은 PR-9 신설.
+7. ✅ **Payload schema = v1.5 tygo (컴파일 타임) + PR-10 런타임 검증 분리** — PR-1에 tygo 기반 Go struct → TS interface 자동 생성 포함. `// wsgen:payload` 주석 opt-in. zod/ajv 런타임 검증은 PR-10 신설.
 
 ---
 

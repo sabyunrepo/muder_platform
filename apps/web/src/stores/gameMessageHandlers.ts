@@ -44,7 +44,7 @@ export function registerGameHandlers(client: WsClient): () => void {
   const store = useGameSessionStore.getState;
 
   const unsubPhaseChange = client.on<PhaseChangedPayload>(
-    WsEventType.GAME_PHASE_CHANGE,
+    WsEventType.PHASE_ADVANCED,
     (payload) => {
       store().setPhase(payload.phase, payload.deadline, payload.round);
     },
@@ -58,14 +58,14 @@ export function registerGameHandlers(client: WsClient): () => void {
   );
 
   const unsubPlayerJoined = client.on<PlayerJoinedPayload>(
-    WsEventType.SESSION_PLAYER_JOINED,
+    WsEventType.PLAYER_JOINED,
     (payload) => {
       store().addPlayer(payload.player);
     },
   );
 
   const unsubPlayerLeft = client.on<PlayerLeftPayload>(
-    WsEventType.SESSION_PLAYER_LEFT,
+    WsEventType.PLAYER_LEFT,
     (payload) => {
       store().removePlayer(payload.playerId);
     },

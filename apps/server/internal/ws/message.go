@@ -59,6 +59,8 @@ const (
 )
 
 // ErrorPayload is sent as the payload of "error" type messages.
+//
+// wsgen:payload
 type ErrorPayload struct {
 	Code    ErrorCode `json:"code"`
 	Message string    `json:"message"`
@@ -80,6 +82,8 @@ const (
 )
 
 // ConnectedPayload is sent on successful connection/reconnection.
+//
+// wsgen:payload
 type ConnectedPayload struct {
 	PlayerID  uuid.UUID `json:"playerId"`
 	SessionID uuid.UUID `json:"sessionId,omitempty"`

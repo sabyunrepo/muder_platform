@@ -68,9 +68,13 @@ func TestBootstrapRegistry_NoSystemTypeRegistered(t *testing.T) {
 	}
 }
 
-// TestBootstrapRegistry_TypesAreSorted verifies no obvious namespace typos by
-// confirming every registered type has exactly one ":" separator.
-func TestBootstrapRegistry_TypesAreSorted(t *testing.T) {
+// TestBootstrapRegistry_TypesHaveNamespace verifies no obvious typos by
+// confirming every registered type has exactly one namespace separator.
+//
+// Phase 19 PR-1 policy: both "ns:action" (colon, legacy) and "ns.action"
+// (dot, canonical for new events) are accepted. Colon→dot normalisation
+// is tracked as a Phase 20 follow-up.
+func TestBootstrapRegistry_TypesHaveNamespace(t *testing.T) {
 	r := ws.NewEnvelopeRegistry()
 	ws.BootstrapRegistry(r)
 
@@ -78,8 +82,12 @@ func TestBootstrapRegistry_TypesAreSorted(t *testing.T) {
 	sort.Strings(types)
 
 	for _, typ := range types {
-		if strings.Count(typ, ":") != 1 {
-			t.Errorf("type %q does not follow namespace:action format", typ)
+		colons := strings.Count(typ, ":")
+		dots := strings.Count(typ, ".")
+		sep := colons + dots
+		if sep != 1 {
+			t.Errorf("type %q must have exactly one namespace separator (: or .); got colons=%d dots=%d",
+				typ, colons, dots)
 		}
 	}
 }

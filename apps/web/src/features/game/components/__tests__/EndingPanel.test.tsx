@@ -128,7 +128,7 @@ describe("EndingPanel", () => {
       <EndingPanel send={mockSend} endPayload={detectiveWin} onLobby={mockOnLobby} />,
     );
     fireEvent.click(screen.getByText("다시하기"));
-    expect(mockSend).toHaveBeenCalledWith("game:action", {
+    expect(mockSend).toHaveBeenCalledWith("game.action", {
       type: "replay",
       sessionId: "sess-1",
     });

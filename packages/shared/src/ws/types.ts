@@ -1,3 +1,5 @@
+import type { WsEventType } from "./types.generated.js";
+
 /** WebSocket message envelope shared between Go server and TS clients. */
 export interface WsMessage<T = unknown> {
   type: WsEventType;
@@ -6,62 +8,14 @@ export interface WsMessage<T = unknown> {
   seq: number;
 }
 
-/** All WebSocket event types. Matches Go server's event registry. */
-export const WsEventType = {
-  // Connection
-  PING: "ping",
-  PONG: "pong",
-  AUTH: "auth",
-  AUTH_OK: "auth:ok",
-  AUTH_FAIL: "auth:fail",
-  ERROR: "error",
-
-  // Session
-  SESSION_JOIN: "session:join",
-  SESSION_LEAVE: "session:leave",
-  SESSION_STATE: "session:state",
-  SESSION_PLAYER_JOINED: "session:player:joined",
-  SESSION_PLAYER_LEFT: "session:player:left",
-
-  // Game
-  GAME_START: "game:start",
-  GAME_END: "game:end",
-  GAME_PHASE_CHANGE: "game:phase:change",
-  GAME_ACTION: "game:action",
-  GAME_ACTION_RESULT: "game:action:result",
-
-  // Chat
-  CHAT_MESSAGE: "chat:message",
-  CHAT_WHISPER: "chat:whisper",
-
-  // Voice
-  VOICE_TOKEN: "voice:token",
-  VOICE_STATE: "voice:state",
-
-  // Module
-  MODULE_EVENT: "module:event",
-  MODULE_STATE: "module:state",
-
-  // Sound
-  SOUND_PLAY: "sound:play",
-
-  // Audio (Phase 7.7) — server → client
-  AUDIO_SET_BGM: "audio:set_bgm",
-  AUDIO_PLAY_VOICE: "audio:play_voice",
-  AUDIO_PLAY_MEDIA: "audio:play_media",
-  AUDIO_STOP: "audio:stop",
-
-  // Reading (Phase 7.7) — server → client
-  READING_STARTED: "reading:started",
-  READING_LINE_CHANGED: "reading:line_changed",
-  READING_PAUSED: "reading:paused",
-  READING_RESUMED: "reading:resumed",
-  READING_COMPLETED: "reading:completed",
-  READING_STATE: "reading:state",
-
-  // Reading (Phase 7.7) — client → server
-  READING_VOICE_ENDED: "reading:voice_ended",
-  READING_ADVANCE: "reading:advance",
-} as const;
-
-export type WsEventType = (typeof WsEventType)[keyof typeof WsEventType];
+// The WS event catalog — the `WsEventType` enum plus `WsEventDirection`,
+// `WsEventCategory`, `WsEventStatus` metadata maps — is generated from
+// the Go SSOT in apps/server/internal/ws/envelope_catalog_*.go.
+//
+// Regenerate after editing the catalog:
+//   cd apps/server && go run ./cmd/wsgen
+//
+// Never hand-edit the generated file; CI (Phase 19 PR-1, gate added in
+// PR-G) fails on any diff between `go run ./cmd/wsgen` output and the
+// committed copy.
+export * from "./types.generated.js";

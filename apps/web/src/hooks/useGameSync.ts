@@ -70,7 +70,7 @@ export function useGameSync(): void {
   });
 
   // game:phase:change — 페이즈 전환
-  useWsEvent<PhaseChangePayload>("game", WsEventType.GAME_PHASE_CHANGE, (payload) => {
+  useWsEvent<PhaseChangePayload>("game", WsEventType.PHASE_ADVANCED, (payload) => {
     syncServerTime(payload.ts);
     useGameStore.getState().setPhase(payload.phase, payload.deadline, payload.round);
   });
@@ -92,13 +92,13 @@ export function useGameSync(): void {
   });
 
   // session:player:joined — 플레이어 입장
-  useWsEvent<PlayerJoinedPayload>("game", WsEventType.SESSION_PLAYER_JOINED, (payload) => {
+  useWsEvent<PlayerJoinedPayload>("game", WsEventType.PLAYER_JOINED, (payload) => {
     syncServerTime(payload.ts);
     useGameStore.getState().addPlayer(payload.player);
   });
 
   // session:player:left — 플레이어 퇴장
-  useWsEvent<PlayerLeftPayload>("game", WsEventType.SESSION_PLAYER_LEFT, (payload) => {
+  useWsEvent<PlayerLeftPayload>("game", WsEventType.PLAYER_LEFT, (payload) => {
     syncServerTime(payload.ts);
     useGameStore.getState().removePlayer(payload.playerId);
   });
