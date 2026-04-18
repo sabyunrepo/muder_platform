@@ -57,26 +57,40 @@ type: project
   - 3 files · +28 / −214 (-186 net)
   - **F-react-5 P1 해소**
 
+### W3 (신규 완료 2026-04-18)
+- **PR-8 Module Cache Isolation** ✅ #91 (34e952f, 2026-04-18, squash-merged)
+  - cache key `moduleId` → `${sessionId}:${moduleId}` namespace
+  - `clearBySessionId(sessionId)` + `resetGame` 훅업 (세션 종료 시 해당 세션 모듈 store teardown)
+  - `useModuleStore` 자동 sessionId 구독 + optional `sessionIdOverride`
+  - `useGameSync` MODULE_STATE/MODULE_EVENT 핸들러 sessionId 전달
+  - DEV-only `console.warn` (프로덕션 tree-shake)
+  - 5 files · 25 신규 tests / 1047 total pass
+  - 코드리뷰: **APPROVE-WITH-NITS** — circular import (moduleStoreFactory ↔ gameSessionStore) follow-up로 cleanup 함수 추출 권장
+  - **F-react-6 P1 해소**
+
+### 독립 hotfix (신규 완료 2026-04-18)
+- **F-a11y-3 focus-visible WCAG 2.4.7** ✅ #92 (049277f, 2026-04-18, squash-merged)
+  - `outline-none` 60 occurrence / 38 파일 → 34 파일 수정 (4파일 기존 정합)
+  - 패턴: `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900`
+  - 변형: 폼 인풋(이중 단서) / purple 테마(WhisperTargetPicker·GameChat) / ring-inset(StoryTab·AdvancedTab·ActionListEditor) / ring-offset-2(ModulesSubTab 토글)
+  - 34 files · +54 / -54 · 1039 tests pass · regression 0
+  - 코드리뷰: **APPROVE** — residual bare `outline-none` 7건 / 체크박스 `focus:ring` 미변환은 범위 외 follow-up
+  - **F-a11y-3 P0 해소**
+
 ## 남은 PR
 
-### W1 완료
-- PR-1 / PR-3 / PR-6 모두 머지 완료. W1 종료.
-
-### W2 진행 중
-- **PR-2 PlayerAware Mandatory** (XL, Med) — F-03 P0 + F-sec-2 P0 + **D-MO-1 craftedAsClueMap (신규 P0)** 통합. PR-2a/PR-2b 분할 권장 ⏳
+### W2 잔여
+- **PR-2 PlayerAware Mandatory** (XL, Med) — F-03 P0 + F-sec-2 P0 + **D-MO-1 craftedAsClueMap (신규 P0)** 통합. PR-2a/PR-2b/PR-2c 분할 권장 ⏳
 - **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장 ⏳
-- ~~PR-7 Zustand Action Unification~~ ✅ #88 머지
 
-### W3 (병렬 2)
+### W3 잔여
 - **PR-4 File Size Refactor** (L+, Med) — Go 12 + TS 4 (delta 추가: combination.go 533, editor/service.go 505, editor/api.ts 428)
-- **PR-8 Module Cache Isolation** (S, Low) — PR-7 이후
 
-### Follow-up 신설 (2026-04-18 PR-1 진행 중 추가)
+### Follow-up 신설 (2026-04-18)
 - **PR-9 WS Auth Protocol** (L, Med) — IDENTIFY/RESUME/CHALLENGE/REVOKE. 쿼리 토큰 한계 보완. PR-1 이후
 - **PR-10 Runtime Payload Validation** (L, Med) — Go struct → JSON Schema → zod, 서버 송신 validator. PR-1 이후
-
-### 독립
-- focus-visible 57건 hotfix (a11y P0 F-a11y-3)
+- **PR-11 Store Cleanup Decoupling** (XS, Low) — `moduleStoreFactory` ↔ `gameSessionStore` 순환 import 해소 (cleanup 함수 별도 파일 추출) — PR-8 리뷰 도출
+- **F-a11y-4** (XS, Low) — residual bare `outline-none` 7건 정리 + 체크박스 `focus:ring-amber-500` → `focus-visible:` — F-a11y-3 리뷰 도출
 
 ## P0 해소 진행률
 
@@ -86,20 +100,21 @@ type: project
 | F-sec-1 | RFC 9457 우회 12건 | ✅ 해소 | PR-3 (#85) |
 | F-sec-2 | PlayerAware 25/33 | **미해소** | PR-2 예정 |
 | F-sec-3 | voice token 평문 로그 | ✅ 해소 | hotfix (#83) |
-| F-sec-4 | auditlog 부재 | **미해소** | PR-6 예정 |
+| F-sec-4 | auditlog 부재 | ✅ 해소 | PR-6 (#87) |
 | D-MO-1 | craftedAsClueMap (delta) | **미해소** | PR-2 scope 확장 |
-| F-a11y-3 | outline-none 57 | **미해소** | 독립 hotfix 예정 |
+| F-a11y-3 | outline-none 60 | ✅ 해소 | hotfix (#92) |
 
-**2/6 해소 (~33%)** — 오늘 세션 1일 성과.
+**4/7 해소 (~57%)** — F-a11y-3 + PR-8(F-react-6) 추가로 이틀차 성과 가속.
 
 ## 다음 세션 재개 방법
 
 ```bash
 cd /Users/sabyun/goinfre/muder_platform
 claude
-# 또는 기존 세션에서:
 /plan-resume
-# 다음 목표: W1 PR-1 WS Contract SSOT 착수 (또는 PR-6 Auditlog 우선 선택)
+# 다음 목표: W2 PR-2 3분할 설계 착수 (P0 3건 동시 해소: F-03 + F-sec-2 + D-MO-1)
+#   또는 W3 PR-4 파일 분할 (CLAUDE.md 한도 위반 해소)
+#   또는 PR-11 순환 import cleanup (XS, 빠른 win)
 ```
 
 ## 참조
