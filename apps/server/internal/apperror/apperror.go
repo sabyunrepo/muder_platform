@@ -102,6 +102,11 @@ func Timeout(detail string) *AppError {
 	return New(ErrTimeout, http.StatusRequestTimeout, detail)
 }
 
+// MethodNotAllowed creates a 405 Method Not Allowed error.
+func MethodNotAllowed(detail string) *AppError {
+	return New(ErrMethodNotAllowed, http.StatusMethodNotAllowed, detail)
+}
+
 // Unwrap supports errors.Is/As chain traversal.
 func (e *AppError) Unwrap() error {
 	return e.Internal

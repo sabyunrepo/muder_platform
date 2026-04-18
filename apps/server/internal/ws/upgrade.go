@@ -7,6 +7,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/rs/zerolog"
 )
 
@@ -113,7 +114,7 @@ func UpgradeHandler(hub ClientHub, extractPlayerID PlayerIDExtractor, cfg Upgrad
 		playerID, err := extractPlayerID(r)
 		if err != nil {
 			log.Warn().Err(err).Msg("invalid player ID on upgrade")
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			apperror.WriteError(w, r, apperror.Unauthorized("unauthorized").Wrap(err))
 			return
 		}
 

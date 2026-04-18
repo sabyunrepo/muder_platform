@@ -13,6 +13,7 @@ const (
 	ErrValidation         = "VALIDATION_ERROR"
 	ErrTimeout            = "TIMEOUT"
 	ErrServiceUnavailable = "SERVICE_UNAVAILABLE"
+	ErrMethodNotAllowed   = "METHOD_NOT_ALLOWED"
 
 	// Auth errors
 	ErrAuthTokenExpired = "AUTH_TOKEN_EXPIRED"

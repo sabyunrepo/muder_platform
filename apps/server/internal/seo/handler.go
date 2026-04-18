@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/rs/zerolog"
 )
 
@@ -118,7 +119,7 @@ func (h *Handler) ThemePage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.theme.ExecuteTemplate(w, "layout", data); err != nil {
 		h.logger.Error().Err(err).Str("slug", slug).Msg("failed to render theme page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		apperror.WriteError(w, r, apperror.Internal("failed to render theme page").Wrap(err))
 	}
 }
 
@@ -133,7 +134,7 @@ func (h *Handler) PrivacyPage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.privacy.ExecuteTemplate(w, "layout", data); err != nil {
 		h.logger.Error().Err(err).Msg("failed to render privacy page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		apperror.WriteError(w, r, apperror.Internal("failed to render privacy page").Wrap(err))
 	}
 }
 
@@ -148,7 +149,7 @@ func (h *Handler) TermsPage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.terms.ExecuteTemplate(w, "layout", data); err != nil {
 		h.logger.Error().Err(err).Msg("failed to render terms page")
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		apperror.WriteError(w, r, apperror.Internal("failed to render terms page").Wrap(err))
 	}
 }
 

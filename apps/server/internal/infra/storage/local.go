@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/rs/zerolog"
 )
 
@@ -115,7 +116,7 @@ func (l *LocalProvider) DeleteObjects(ctx context.Context, keys []string) error 
 func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPut {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			apperror.WriteError(w, r, apperror.MethodNotAllowed("method not allowed"))
 			return
 		}
 
@@ -130,7 +131,7 @@ func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 			}
 		}
 		if key == "" {
-			http.Error(w, "missing key", http.StatusBadRequest)
+			apperror.WriteError(w, r, apperror.BadRequest("missing key"))
 			return
 		}
 
@@ -140,20 +141,20 @@ func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 		absBase, _ := filepath.Abs(l.baseDir)
 		absDest, _ := filepath.Abs(destPath)
 		if !strings.HasPrefix(absDest, absBase+string(os.PathSeparator)) {
-			http.Error(w, "invalid path", http.StatusBadRequest)
+			apperror.WriteError(w, r, apperror.BadRequest("invalid path"))
 			return
 		}
 
 		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 			l.log.Error().Err(err).Str("path", destPath).Msg("failed to create upload directory")
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			apperror.WriteError(w, r, apperror.Internal("failed to create upload directory").Wrap(err))
 			return
 		}
 
 		f, err := os.Create(destPath)
 		if err != nil {
 			l.log.Error().Err(err).Str("path", destPath).Msg("failed to create upload file")
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			apperror.WriteError(w, r, apperror.Internal("failed to create upload file").Wrap(err))
 			return
 		}
 		defer f.Close()
@@ -161,7 +162,7 @@ func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB hard cap
 		if _, err := io.Copy(f, r.Body); err != nil {
 			l.log.Error().Err(err).Str("path", destPath).Msg("failed to write upload file")
-			http.Error(w, "internal error", http.StatusInternalServerError)
+			apperror.WriteError(w, r, apperror.Internal("failed to write upload file").Wrap(err))
 			return
 		}
 
@@ -181,7 +182,7 @@ func (l *LocalProvider) ServeHandler() http.HandlerFunc {
 			}
 		}
 		if key == "" {
-			http.Error(w, "missing key", http.StatusBadRequest)
+			apperror.WriteError(w, r, apperror.BadRequest("missing key"))
 			return
 		}
 
@@ -191,7 +192,7 @@ func (l *LocalProvider) ServeHandler() http.HandlerFunc {
 		absBase, _ := filepath.Abs(l.baseDir)
 		absDest, _ := filepath.Abs(filePath)
 		if !strings.HasPrefix(absDest, absBase+string(os.PathSeparator)) {
-			http.Error(w, "invalid path", http.StatusBadRequest)
+			apperror.WriteError(w, r, apperror.BadRequest("invalid path"))
 			return
 		}
 

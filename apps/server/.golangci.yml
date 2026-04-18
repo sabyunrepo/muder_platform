@@ -4,10 +4,19 @@ linters:
   default: none
   enable:
     - errcheck
+    - forbidigo
     - govet
     - ineffassign
     - staticcheck
     - unused
+  settings:
+    forbidigo:
+      forbid:
+        # Phase 19 PR-3 — http.Error 직접 호출 금지. apperror.WriteError 사용.
+        # RFC 9457 Problem Details 일관성 + F-sec-1 재발 방지.
+        - pattern: '^http\.Error$'
+          msg: 'use apperror.WriteError instead of http.Error (Phase 19 F-sec-1 / RFC 9457)'
+      exclude-godoc-examples: true
   exclusions:
     generated: lax
     presets:
