@@ -127,7 +127,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+            className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
           />
         </label>
 
@@ -140,7 +140,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             value={tagsText}
             onChange={(e) => setTagsText(e.target.value)}
             placeholder="전투, 긴장감"
-            className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+            className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
           />
         </label>
 
@@ -153,7 +153,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
               type="number"
               value={sortOrder}
               onChange={(e) => setSortOrder(Number(e.target.value))}
-              className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+              className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -166,7 +166,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
               step="0.1"
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+              className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
             />
           </label>
         </div>

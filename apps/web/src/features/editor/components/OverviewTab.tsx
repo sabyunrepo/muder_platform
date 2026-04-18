@@ -36,7 +36,7 @@ function SpecField({ label, unit, value, onChange, min, max, error }: SpecFieldP
           min={min}
           max={max}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full bg-transparent text-2xl font-mono font-bold text-slate-200 focus:outline-none focus:text-amber-400 transition-colors"
+          className="w-full bg-transparent text-2xl font-mono font-bold text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 focus:text-amber-400 transition-colors"
         />
         <span className="text-xs text-slate-600">{unit}</span>
       </div>
@@ -72,7 +72,7 @@ function PriceField({ label, unit, value, onChange, min, max, error }: PriceFiel
           min={min}
           max={max}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-full bg-transparent text-xl font-mono font-bold text-slate-200 focus:outline-none focus:text-amber-400 transition-colors"
+          className="w-full bg-transparent text-xl font-mono font-bold text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 focus:text-amber-400 transition-colors"
         />
         <span className="text-xs text-slate-600">{unit}</span>
       </div>
@@ -180,7 +180,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="테마 제목"
               maxLength={100}
-              className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors"
+              className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 transition-colors"
             />
             {errors.title && <p className="mt-1 text-xs text-red-400">{errors.title}</p>}
           </div>
@@ -196,7 +196,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
               placeholder="테마에 대한 세부 설명을 입력하세요"
               maxLength={2000}
               rows={3}
-              className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/30 transition-colors resize-none"
+              className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 transition-colors resize-none"
             />
             {errors.description && <p className="mt-1 text-xs text-red-400">{errors.description}</p>}
           </div>

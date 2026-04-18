@@ -142,7 +142,7 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
                   onChange={(e) => {
                     if (e.target.value) handleAssign(clue.id, e.target.value);
                   }}
-                  className="w-full rounded-sm bg-slate-800 px-2 py-1 text-xs text-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                  className="w-full rounded-sm bg-slate-800 px-2 py-1 text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                 >
                   <option value="" disabled>
                     장소 선택…

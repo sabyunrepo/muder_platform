@@ -125,7 +125,7 @@ export function StoryTab({ themeId }: StoryTabProps) {
               onChange={(e) => setMarkdown(e.target.value)}
               placeholder="마크다운으로 스토리를 작성하세요..."
               spellCheck={false}
-              className="flex-1 resize-none bg-slate-950 px-5 py-4 font-mono text-sm leading-relaxed text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus:outline-none"
+              className="flex-1 resize-none bg-slate-950 px-5 py-4 font-mono text-sm leading-relaxed text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
             />
           </div>
         )}

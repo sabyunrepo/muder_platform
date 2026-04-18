@@ -82,7 +82,7 @@ export function ConfigJsonTab({ themeId, theme }: ConfigJsonTabProps) {
           if (parseError) setParseError(null);
         }}
         spellCheck={false}
-        className="min-h-[400px] w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 font-mono"
+        className="min-h-[400px] w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 font-mono"
       />
 
       {/* Validation error */}

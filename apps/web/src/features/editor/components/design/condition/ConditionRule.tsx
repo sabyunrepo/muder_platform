@@ -28,7 +28,7 @@ interface ConditionRuleProps {
 // ---------------------------------------------------------------------------
 
 const selectCls =
-  "rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300 focus:border-amber-500 focus:outline-none";
+  "rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950";
 
 // ---------------------------------------------------------------------------
 // ConditionRuleRow
