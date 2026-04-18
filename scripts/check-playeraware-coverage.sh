@@ -1,74 +1,27 @@
 #!/usr/bin/env bash
 #
-# PR-2b coverage lint: BuildStateFor must not be a stub.
+# Phase 19 F-sec-2 gate — BuildStateFor coverage lint.
 #
-# Rationale
-# ---------
-# Phase 19 F-sec-2 gate forces every engine.Module to either
-#   (a) implement PlayerAwareModule.BuildStateFor with real per-player
-#       redaction, or
-#   (b) embed engine.PublicStateMarker (and therefore not implement
-#       BuildStateFor at all).
+# Since Phase 19.1 PR-B this script is a thin wrapper around the Go-based AST
+# linter at apps/server/cmd/playeraware-lint. The AST walker catches four
+# regression patterns the original awk/grep implementation missed:
 #
-# A module that does implement BuildStateFor but delegates straight back to
-# m.BuildState() has opted neither in nor out — it reintroduces the pre-PR-2a
-# permissive fallback. This lint flags that single regression pattern.
+#   1. return m.BuildState()                                  (direct delegate)
+#   2. data, err := m.BuildState(); return data, err          (variable capture)
+#   3. return json.Marshal(m.snapshot())                      (whole-state marshal)
+#   4. m.BuildState() anywhere in a multi-line BuildStateFor body
 #
-# The regex is deliberately narrow:
-#   - grep -A2 after a BuildStateFor signature
-#   - require the literal `return m.BuildState()` on one of the next lines
-#   - one-line stubs (`{ return m.BuildState() }`) are also matched
-#
-# Legitimate patterns (independent snapshot, even if semantically identical
-# to BuildState) pass because the body references module fields instead of
-# re-calling BuildState.
+# Empty ALLOW list as of PR-2c (2026-04-18): crime_scene/combination now
+# implements real per-player redaction (D-MO-1). Add a new `--allow` entry
+# below only when introducing a deliberate, time-boxed stub tracked by a
+# follow-up PR.
 
 set -euo pipefail
 
-ROOT="${1:-apps/server/internal/module}"
+ROOT="${1:-./internal/module/...}"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
-if [ ! -d "$ROOT" ]; then
-    echo "scripts/check-playeraware-coverage.sh: directory not found: $ROOT" >&2
-    exit 2
-fi
+cd "$REPO_ROOT/apps/server"
 
-# Allowed exceptions (tracked as their own PR). Each path must be removed
-# from this list when the corresponding real-redaction PR lands.
-#
-# Empty as of PR-2c (2026-04-18): crime_scene/combination now implements real
-# per-player redaction (D-MO-1). Add a new entry here only when introducing a
-# deliberate, time-boxed stub that is tracked by a follow-up PR.
-ALLOW_STUB=()
-
-allow_filter=""
-for p in "${ALLOW_STUB[@]}"; do
-    if [ -z "$allow_filter" ]; then
-        allow_filter="$p"
-    else
-        allow_filter="$allow_filter|$p"
-    fi
-done
-
-# Collect BuildStateFor-signature lines with 2 lines of trailing context, then
-# surface only the blocks that contain `return m.BuildState()`.
-match_blocks=$(grep -rn --include='*.go' -A2 -E 'func \([a-zA-Z_]+ \*?[A-Z][a-zA-Z0-9_]*\) BuildStateFor\(' "$ROOT" 2>/dev/null | \
-    (if [ -n "$allow_filter" ]; then grep -vE "$allow_filter"; else cat; fi) || true)
-
-violations=$(echo "$match_blocks" | awk '
-    /BuildStateFor\(/ { sig=$0; armed=1; next }
-    armed==1 && /return[[:space:]]+m\.BuildState\(\)/ { print sig; print $0; armed=0; next }
-    /^--$/ { armed=0 }
-')
-
-if [ -n "$violations" ]; then
-    echo "❌ PR-2b coverage lint — BuildStateFor delegates to m.BuildState() (stub pattern banned):" >&2
-    echo "" >&2
-    echo "$violations" >&2
-    echo "" >&2
-    echo "Fix: either implement real per-player redaction, or switch the" >&2
-    echo "module to PublicStateMarker (remove BuildStateFor, embed" >&2
-    echo "engine.PublicStateMarker)." >&2
-    exit 1
-fi
-
-echo "✅ PR-2b coverage clean — no BuildStateFor → m.BuildState() stubs under $ROOT."
+# shellcheck disable=SC2086  # intentional word-splitting of $ROOT
+go run ./cmd/playeraware-lint $ROOT
