@@ -108,12 +108,23 @@ type: project
   - 코드리뷰: **APPROVE** — residual bare `outline-none` 7건 / 체크박스 `focus:ring` 미변환은 범위 외 follow-up
   - **F-a11y-3 P0 해소**
 
+### W3 (신규 완료 2026-04-18 밤 세션)
+- **PR-2b 12 모듈 BuildStateFor 실구현** ✅ #104 (a93cff2, 2026-04-18 admin squash-merge)
+  - 7 커밋 체인: helpers → evidence+location → accusation → text_chat+group_chat → exploration4+reading → clue_interaction → coverage lint + cluedist 독립 path
+  - 11 모듈 real per-player redaction (evidence, location, accusation, group_chat, clue_interaction, exploration 4, 단 text_chat/reading은 broadcast 독립 path)
+  - engine.FilterByPlayer / FilterByPlayerStringKey / FilterByKeySet 제네릭 helper 3종
+  - combination은 PR-2c 위임 (lint allowlist)
+  - cluedist 3 (round/conditional/timed) PR-2a "구현됨" 오판정 교정 — 실질 broadcast → 독립 snapshot path
+  - `scripts/check-playeraware-coverage.sh` 신규 + CI ci.yml go-check step 추가
+  - 33 신규 테스트 + helper 7 케이스 · 전 Go race test green · vet clean
+  - **F-03 실구현 (evidence/location) + F-sec-2 실구현 (11/12) 해소**. combination PR-2c 머지 후 F-03 7/7 완결.
+
 ## 남은 PR
 
-### W3 차기 착수 (PR-2a gate + PR-4a 디렉터리 승격 완료로 의존성 해제)
-- **PR-2b PlayerAware 백필** (L, Med) — 12 stub 모듈 실구현 (clue_interaction · text_chat · group_chat · evidence · location · combination · accusation · 4 exploration · reading). BuildStateFor에 per-player redaction 추가. 설계: `refs/pr-2/pr-2b-module-backfill.md`
-  - PR-4a로 combination/accusation/reading 디렉터리 승격 완료 → state.go 분리 파일에서 BuildStateFor 구현 용이
-- **PR-2c craftedAsClueMap redaction** (S-M, Low) — D-MO-1 단독. combination/state.go 집중. PR-2b 선 머지 권장 (stub → real 충돌 회피).
+### W3 차기 착수
+- **PR-2c craftedAsClueMap redaction** (S-M, Low) — D-MO-1 단독. `apps/server/internal/module/crime_scene/combination/state.go` BuildStateFor를 real per-player redaction으로 교체. 설계: `docs/plans/2026-04-17-platform-deep-audit/refs/pr-2/pr-2c-crafted-redaction.md`
+  - PR-2b 머지 완료 → stub 충돌 회피 가능
+  - combination은 현재 `scripts/check-playeraware-coverage.sh` ALLOW_STUB 예외 — PR-2c 머지 시 제거
 
 ### W2 잔여
 - **PR-5 Coverage Gate + mockgen 재도입** (XL, High) — editor -2.9%p 회귀 복구, 3분할 권장 ⏳
@@ -129,15 +140,15 @@ type: project
 
 | # | Finding | 상태 | PR |
 |---|---------|------|-----|
-| F-03 | crime_scene PlayerAware | 🟡 gate (PR-2a) / 실구현 PR-2b 예정 | PR-2a (#97) → PR-2b |
+| F-03 | crime_scene PlayerAware | 🟡 evidence/location 해소 · combination PR-2c | PR-2a (#97) + PR-2b (#104) → PR-2c |
 | F-sec-1 | RFC 9457 우회 12건 | ✅ 해소 | PR-3 (#85) |
-| F-sec-2 | PlayerAware 25/33 fallback | ✅ gate 차단 (PR-2a) / 실구현 PR-2b | PR-2a (#97) → PR-2b |
+| F-sec-2 | PlayerAware 25/33 fallback | ✅ gate + 11 모듈 실구현 · combination PR-2c | PR-2a (#97) + PR-2b (#104) → PR-2c |
 | F-sec-3 | voice token 평문 로그 | ✅ 해소 | hotfix (#83) |
 | F-sec-4 | auditlog 부재 | ✅ 해소 | PR-6 (#87) |
 | D-MO-1 | craftedAsClueMap (delta) | **미해소** | PR-2c 예정 |
 | F-a11y-3 | outline-none 60 | ✅ 해소 | hotfix (#92) |
 
-**5/7 해소 (~71%)** — PR-2a gate로 F-sec-2 재발 차단. F-03/D-MO-1 실구현만 남음 (PR-2b/c).
+**6/7 해소 (~86%)** — PR-2b (#104)로 F-03 evidence/location + F-sec-2 11모듈 실구현 완료. combination(PR-2c) 머지 후 7/7 완결.
 
 ## 2026-04-18 세션 총결 (12 PR 머지, #91~#102)
 
@@ -163,18 +174,36 @@ type: project
 - PR-2a gate로 F-sec-2 재발 원천 차단 (compile + boot-fail)
 - in-scope 9 Go 파일 모두 ≤500줄, TS 3 파일 모두 ≤191줄
 
+## 2026-04-18 밤 세션 총결
+
+| # | PR | 효과 |
+|---|---|---|
+| #104 | **PR-2b 12 모듈 BuildStateFor 실구현** | **F-03 evidence/location + F-sec-2 11/12 해소** (combination PR-2c 남음) |
+
+누적 P0: 6/7 (86%). 다음 PR-2c 머지 시 7/7.
+
 ## 다음 세션 재개 방법
 
 ```bash
 cd /Users/sabyun/goinfre/muder_platform
 claude
 /plan-resume
-# 최우선 목표: PR-2b 12 모듈 BuildStateFor 실구현 (F-03 + F-sec-2 실구현 완결)
-#   - 선행 완료: PR-2a gate (#97) + PR-4a 디렉터리 승격 (#102)
-#   - 설계: refs/pr-2/pr-2b-module-backfill.md
+# 최우선 목표: PR-2c craftedAsClueMap redaction (S-M Low risk) — F-03 + D-MO-1 완결
+#   - 대상: apps/server/internal/module/crime_scene/combination/state.go
+#   - 설계: docs/plans/2026-04-17-platform-deep-audit/refs/pr-2/pr-2c-crafted-redaction.md
+#   - 선행 완료: PR-2b (#104) — stub 충돌 회피 완료
 #
-# 이후 순서: PR-2c (D-MO-1) → PR-5 (Coverage+mockgen)
-# 또는 PR-9/10 follow-up → pre-existing tech debt (editor/handler 624, media_service 653)
+# 작업 순서:
+#   1. combination/state.go BuildStateFor stub → real per-player redaction
+#      - completed/derived/collected map을 caller 엔트리만 유지
+#      - craftedAsClueMap redaction (D-MO-1) — 핵심
+#   2. combination_test.go에 BuildStateFor 3 케이스 추가 (CallerOnly / NoEntry / NoCrossLeak)
+#   3. scripts/check-playeraware-coverage.sh의 ALLOW_STUB 배열에서 combination 경로 제거
+#   4. engine/build_state_for_test.go 회귀 확인
+#   5. 전 race test + coverage lint + PR 생성 + admin 머지
+#
+# PR-2c 이후: PR-5 Coverage+mockgen (XL High)
+# 또는 PR-9 WS Auth / PR-10 Runtime validation / editor/handler 624·media_service 653 분할
 ```
 
 ## 참조
