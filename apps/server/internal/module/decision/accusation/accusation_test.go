@@ -693,3 +693,112 @@ func TestAccusationModule_OnPhaseExit(t *testing.T) {
 		t.Error("expected isActive=false after phase exit")
 	}
 }
+
+// --- PR-2b: PlayerAware redaction tests ---
+
+func TestAccusationModule_BuildStateFor_VotesHiddenDuringDefense(t *testing.T) {
+	m := initAccusationModule(t, "")
+	accuser := uuid.New()
+	accused := uuid.New()
+	voter := uuid.New()
+
+	// Seed an in-progress accusation with recorded votes.
+	m.mu.Lock()
+	m.activeAccusation = &Accusation{
+		AccuserID:       accuser,
+		AccusedID:       accused,
+		AccusedCode:     "P1",
+		DefenseDeadline: time.Now().Add(60 * time.Second),
+		Votes:           map[uuid.UUID]bool{voter: true},
+		EligibleVoters:  4,
+	}
+	m.isActive = true
+	m.mu.Unlock()
+
+	viewer := uuid.New()
+	data, err := m.BuildStateFor(viewer)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s accusationState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.ActiveAccusation == nil {
+		t.Fatal("expected ActiveAccusation to be present (defense in progress)")
+	}
+	if len(s.ActiveAccusation.Votes) != 0 {
+		t.Fatalf("Votes must be empty during defense, got %d entries: %v",
+			len(s.ActiveAccusation.Votes), s.ActiveAccusation.Votes)
+	}
+	// Public fields must survive the redaction.
+	if s.ActiveAccusation.AccusedCode != "P1" {
+		t.Errorf("AccusedCode got %q, want P1", s.ActiveAccusation.AccusedCode)
+	}
+	if s.ActiveAccusation.EligibleVoters != 4 {
+		t.Errorf("EligibleVoters got %d, want 4", s.ActiveAccusation.EligibleVoters)
+	}
+}
+
+func TestAccusationModule_BuildStateFor_NoActiveAccusation(t *testing.T) {
+	m := initAccusationModule(t, "")
+	m.mu.Lock()
+	m.expelledCode = "X1"
+	m.expelledIsCulprit = true
+	m.accusationCount = 2
+	m.mu.Unlock()
+
+	data, err := m.BuildStateFor(uuid.New())
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var s accusationState
+	if err := json.Unmarshal(data, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.ActiveAccusation != nil {
+		t.Errorf("expected nil ActiveAccusation when none in progress, got %+v", s.ActiveAccusation)
+	}
+	// Resolved-state public fields must be present.
+	if s.ExpelledCode != "X1" {
+		t.Errorf("ExpelledCode got %q, want X1", s.ExpelledCode)
+	}
+	if !s.ExpelledIsCulprit {
+		t.Error("ExpelledIsCulprit should be true")
+	}
+	if s.AccusationCount != 2 {
+		t.Errorf("AccusationCount got %d, want 2", s.AccusationCount)
+	}
+}
+
+func TestAccusationModule_BuildStateFor_DoesNotMutateSource(t *testing.T) {
+	m := initAccusationModule(t, "")
+	accuser := uuid.New()
+	accused := uuid.New()
+	voter := uuid.New()
+
+	m.mu.Lock()
+	m.activeAccusation = &Accusation{
+		AccuserID:       accuser,
+		AccusedID:       accused,
+		AccusedCode:     "P2",
+		DefenseDeadline: time.Now().Add(30 * time.Second),
+		Votes:           map[uuid.UUID]bool{voter: true},
+		EligibleVoters:  3,
+	}
+	m.isActive = true
+	m.mu.Unlock()
+
+	// Run BuildStateFor twice; the internal Votes map must remain intact.
+	_, _ = m.BuildStateFor(uuid.New())
+	_, _ = m.BuildStateFor(uuid.New())
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if got := m.activeAccusation.Votes[voter]; !got {
+		t.Fatal("source Votes map was mutated by BuildStateFor")
+	}
+	if len(m.activeAccusation.Votes) != 1 {
+		t.Fatalf("source Votes len changed, want 1 got %d", len(m.activeAccusation.Votes))
+	}
+}
