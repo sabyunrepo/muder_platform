@@ -58,7 +58,7 @@ export function ClueCard({ clue, themeId, onEdit, onDelete, onImageUploaded }: C
         tabIndex={0}
         onClick={() => onEdit(clue)}
         onKeyDown={(e) => e.key === 'Enter' && onEdit(clue)}
-        className="flex cursor-pointer items-start justify-between gap-2 p-3 focus:outline-none"
+        className="flex cursor-pointer items-start justify-between gap-2 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
       >
         <div className="min-w-0 flex-1">
           {/* Compact placeholder when no image */}

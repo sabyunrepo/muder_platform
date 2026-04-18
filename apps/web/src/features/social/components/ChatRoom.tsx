@@ -257,7 +257,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
           <div className="relative flex-1">
             <textarea
               ref={textareaRef}
-              className="w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-amber-500"
+              className="w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
               rows={1}
               placeholder="메시지를 입력하세요..."
               value={text}

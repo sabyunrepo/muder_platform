@@ -100,7 +100,7 @@ export function LocationRow({ themeId, location, onDelete }: LocationRowProps) {
           onKeyDown={(e) => {
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           }}
-          className="w-14 rounded-sm border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-center text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+          className="w-14 rounded-sm border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-center text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
         />
         <span>~</span>
         <label
@@ -122,7 +122,7 @@ export function LocationRow({ themeId, location, onDelete }: LocationRowProps) {
           onKeyDown={(e) => {
             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           }}
-          className="w-14 rounded-sm border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-center text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+          className="w-14 rounded-sm border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-center text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
         />
       </div>
       <button

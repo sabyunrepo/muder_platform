@@ -128,7 +128,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           onChange={(e) => handleChange({ label: e.target.value })}
           onBlur={flush}
           placeholder="페이즈 이름"
-          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         />
       </div>
 
@@ -139,7 +139,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           value={data.phase_type ?? ""}
           onChange={(e) => handleChange({ phase_type: e.target.value })}
           onBlur={flush}
-          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         >
           <option value="">선택 안 함</option>
           {PHASE_TYPES.map((pt) => (
@@ -162,7 +162,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           }
           onBlur={flush}
           placeholder="0"
-          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         />
       </div>
 
@@ -178,7 +178,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           }
           onBlur={flush}
           placeholder="1"
-          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         />
       </div>
 
@@ -215,7 +215,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
             }
             onBlur={flush}
             placeholder="30"
-            className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus:outline-none"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
           />
         </div>
       )}

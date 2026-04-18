@@ -51,7 +51,7 @@ export function BranchNodePanel({
       <div className="flex flex-col gap-1">
         <label className="text-[11px] text-slate-400">라벨</label>
         <input
-          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus:outline-none"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
           value={nodeData.label ?? ""}
           onChange={(e) => onUpdate(node.id, { label: e.target.value })}
           placeholder="분기 이름"
@@ -65,7 +65,7 @@ export function BranchNodePanel({
             기본 경로 (조건 없이 통과)
           </label>
           <select
-            className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 focus:border-amber-500 focus:outline-none"
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
             value={nodeData.default_edge_id ?? ""}
             onChange={(e) =>
               onUpdate(node.id, { default_edge_id: e.target.value })

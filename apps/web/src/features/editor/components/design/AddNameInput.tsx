@@ -29,7 +29,7 @@ export function AddNameInput({ placeholder, onAdd, onCancel, isPending }: AddNam
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={isPending}
-        className="flex-1 min-w-0 rounded-sm bg-slate-800 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+        className="flex-1 min-w-0 rounded-sm bg-slate-800 px-2 py-1 text-xs text-slate-200 placeholder-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
       />
       <button
         type="button"

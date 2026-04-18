@@ -203,7 +203,7 @@ export function AdvancedTab({ themeId, theme }: AdvancedTabProps) {
               if (parseError) setParseError(null);
             }}
             spellCheck={false}
-            className="flex-1 bg-slate-950 py-3 pl-3 pr-4 font-mono text-sm leading-5 text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus:outline-none resize-none min-h-[400px]"
+            className="flex-1 bg-slate-950 py-3 pl-3 pr-4 font-mono text-sm leading-5 text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset resize-none min-h-[400px]"
           />
         </div>
 

@@ -75,7 +75,7 @@ export function ActionListEditor({
           <select
             value={action.type}
             onChange={(e) => handleTypeChange(idx, e.target.value)}
-            className="flex-1 bg-transparent text-xs text-slate-300 focus:outline-none"
+            className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
           >
             {ACTION_TYPES.map((at) => (
               <option key={at.value} value={at.value}>

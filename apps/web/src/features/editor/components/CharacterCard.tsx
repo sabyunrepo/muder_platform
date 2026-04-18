@@ -32,7 +32,7 @@ export function CharacterCard({ character, index, onEdit, onDelete }: CharacterC
       tabIndex={0}
       onClick={() => onEdit(character)}
       onKeyDown={(e) => e.key === 'Enter' && onEdit(character)}
-      className="group rounded-sm border border-slate-800 bg-slate-900 p-3 hover:border-slate-700 transition-all cursor-pointer focus:outline-none focus:border-amber-500/50"
+      className="group rounded-sm border border-slate-800 bg-slate-900 p-3 hover:border-slate-700 transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 focus:border-amber-500/50"
     >
       <div className="flex items-start gap-3">
         <div

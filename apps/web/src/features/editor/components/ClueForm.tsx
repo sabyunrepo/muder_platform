@@ -214,7 +214,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
             placeholder="단서에 대한 설명"
             maxLength={2000}
             rows={3}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
           />
           {errors.description && (
             <p className="text-sm text-red-400">{errors.description}</p>

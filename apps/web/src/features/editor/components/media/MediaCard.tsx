@@ -86,7 +86,7 @@ export function MediaCard({
         }
       }}
       aria-pressed={selected}
-      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-sm border text-left transition-colors focus:outline-none focus:ring-1 focus:ring-amber-500 ${
+      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-sm border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 ${
         selected
           ? "border-amber-500 bg-slate-900"
           : "border-slate-800 bg-slate-900/50 hover:border-slate-600"

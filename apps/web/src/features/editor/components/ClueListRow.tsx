@@ -21,7 +21,7 @@ export function ClueListRow({ clue, onEdit, onDelete }: ClueListRowProps) {
       tabIndex={0}
       onClick={() => onEdit(clue)}
       onKeyDown={(e) => e.key === 'Enter' && onEdit(clue)}
-      className="group flex cursor-pointer items-center gap-3 rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 transition-all hover:border-slate-700 focus:outline-none"
+      className="group flex cursor-pointer items-center gap-3 rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 transition-all hover:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
     >
       {/* Name */}
       <span className="flex-1 truncate text-sm font-medium text-slate-200">{clue.name}</span>

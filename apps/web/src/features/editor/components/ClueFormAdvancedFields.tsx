@@ -125,7 +125,7 @@ export function ClueFormAdvancedFields({
                   placeholder="1부터"
                   value={revealRound ?? ''}
                   onChange={(e) => onRevealRoundChange(parseRoundInput(e.target.value))}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                 />
               </div>
               <div className="flex flex-1 flex-col gap-1">
@@ -143,7 +143,7 @@ export function ClueFormAdvancedFields({
                   placeholder="끝까지"
                   value={hideRound ?? ''}
                   onChange={(e) => onHideRoundChange(parseRoundInput(e.target.value))}
-                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                 />
               </div>
             </div>
@@ -185,7 +185,7 @@ export function ClueFormAdvancedFields({
                     id="clue-use-effect"
                     value={useEffect_}
                     onChange={(e) => onUseEffectChange(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                   >
                     <option value="peek">엿보기 (Peek)</option>
                     <option value="steal">강탈 (Steal)</option>
@@ -206,7 +206,7 @@ export function ClueFormAdvancedFields({
                     id="clue-use-target"
                     value={useTarget}
                     onChange={(e) => onUseTargetChange(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                   >
                     <option value="player">플레이어</option>
                     <option value="clue">단서</option>

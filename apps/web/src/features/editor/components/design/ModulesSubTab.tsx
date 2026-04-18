@@ -166,7 +166,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                         aria-checked={isEnabled}
                         aria-label={`${mod.name} ${isEnabled ? '비활성화' : '활성화'}`}
                         onClick={() => handleToggle(mod.id)}
-                        className={`relative shrink-0 h-5 w-9 rounded-full transition-colors focus:outline-none ${
+                        className={`relative shrink-0 h-5 w-9 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
                           isEnabled ? 'bg-amber-500' : 'bg-slate-700'
                         }`}
                       >
