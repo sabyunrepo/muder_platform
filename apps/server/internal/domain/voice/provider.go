@@ -100,12 +100,15 @@ func NewMockProvider(logger zerolog.Logger) VoiceProvider {
 }
 
 // GenerateToken returns a deterministic mock token for testing.
+//
+// SECURITY: do not log the token value itself — even mock tokens mirror the
+// real LiveKit JWT shape, and leaking them here would normalize the pattern
+// for production providers. player_id + room uniquely identify the request.
 func (m *mockProvider) GenerateToken(_ context.Context, params TokenParams) (string, error) {
 	token := fmt.Sprintf("mock-token-%s", params.PlayerID.String())
 	m.logger.Debug().
 		Str("room", params.RoomName).
 		Str("player_id", params.PlayerID.String()).
-		Str("token", token).
 		Msg("mock: generated token")
 	return token, nil
 }
