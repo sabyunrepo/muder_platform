@@ -4,7 +4,7 @@ import { syncServerTime } from "@mmp/game-logic";
 
 import { useAuthStore } from "@/stores/authStore";
 import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
-import { getModuleStore, clearModuleStores } from "@/stores/moduleStoreFactory";
+import { getModuleStore } from "@/stores/moduleStoreFactory";
 import { useWsEvent } from "@/hooks/useWsEvent";
 
 // ---------------------------------------------------------------------------
@@ -68,6 +68,9 @@ interface PlayerLeftPayload {
  * 이전에 병행 존재하던 `gameMessageHandlers.ts`와
  * `features/game/hooks/useGameSession.ts`는 실제 호출처가 없는
  * dead code였기에 같은 PR에서 삭제되었다.
+ *
+ * Phase 19 PR-8 (F-react-6): 모듈 스토어 접근 시 sessionId namespace를
+ * 함께 전달해 세션 전환 시 이전 모듈 state가 유출되지 않도록 한다.
  */
 export function useGameSync(): void {
   const hydrateFromSnapshot = useGameStore((s) => s.hydrateFromSnapshot);
@@ -76,6 +79,7 @@ export function useGameSync(): void {
   const resetGame = useGameStore((s) => s.resetGame);
   const addPlayer = useGameStore((s) => s.addPlayer);
   const removePlayer = useGameStore((s) => s.removePlayer);
+  const sessionId = useGameStore((s) => s.sessionId);
   const myId = useAuthStore((s) => s.user?.id ?? null);
 
   // session:state — 재접속 시 서버 스냅샷으로 전체 상태 복원
@@ -99,10 +103,11 @@ export function useGameSync(): void {
   });
 
   // game:end — 게임 종료, 전체 상태 리셋
+  // resetGame이 내부에서 clearBySessionId를 호출하므로 중복 clearModuleStores는
+  // 제거. 로그아웃 등 전역 teardown은 별도 경로에서 clearModuleStores 사용.
   useWsEvent<GameEndPayload>("game", WsEventType.GAME_END, (payload) => {
     syncServerTime(payload.ts);
     resetGame();
-    clearModuleStores();
   });
 
   // player.joined — 플레이어 입장
@@ -118,16 +123,17 @@ export function useGameSync(): void {
   });
 
   // module:state — 모듈 전체 상태 교체
-  // Factory의 store.getState()는 PR-8 Module Cache Isolation에서 sessionId
-  // namespace 도입과 함께 최적화될 예정이므로 이번 PR에서는 유지한다.
+  // PR-8: sessionId namespace로 store를 조회해 세션별 격리를 보장한다.
+  // store.getState() 호출은 factory 내부 action invocation이므로 selector
+  // bind 대상이 아니다 (action은 id가 동적).
   useWsEvent<ModuleStatePayload>("game", WsEventType.MODULE_STATE, (payload) => {
     syncServerTime(payload.ts);
-    getModuleStore(payload.moduleId).getState().setData(payload.data);
+    getModuleStore(payload.moduleId, sessionId).getState().setData(payload.data);
   });
 
   // module:event — 모듈 부분 상태 병합
   useWsEvent<ModuleEventPayload>("game", WsEventType.MODULE_EVENT, (payload) => {
     syncServerTime(payload.ts);
-    getModuleStore(payload.moduleId).getState().mergeData(payload.data);
+    getModuleStore(payload.moduleId, sessionId).getState().mergeData(payload.data);
   });
 }
