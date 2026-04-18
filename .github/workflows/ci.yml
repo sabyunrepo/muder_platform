@@ -64,6 +64,21 @@ jobs:
           version: v2.11.4
           working-directory: apps/server
 
+      # Phase 19 PR-1: WS Contract SSOT drift gate.
+      #
+      # The frontend WsEventType enum + Direction/Category/Status maps are
+      # generated from apps/server/internal/ws/envelope_catalog_*.go.
+      # If a catalog edit lands without regenerating
+      # packages/shared/src/ws/types.generated.ts, this step fails with a
+      # non-empty diff so the PR cannot merge with a stale TS contract.
+      #
+      # Regenerate locally:
+      #   cd apps/server && go run ./cmd/wsgen
+      - name: WS contract drift gate
+        run: |
+          go run ./cmd/wsgen
+          git diff --exit-code ../../packages/shared/src/ws/types.generated.ts
+
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
 

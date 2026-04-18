@@ -77,11 +77,11 @@ export default function RoomPage() {
 
   // ------ WS 이벤트 구독 → 쿼리 갱신 ------
 
-  useWsEvent<PlayerJoinedPayload>("game", WsEventType.SESSION_PLAYER_JOINED, () => {
+  useWsEvent<PlayerJoinedPayload>("game", WsEventType.PLAYER_JOINED, () => {
     refetch();
   });
 
-  useWsEvent<PlayerLeftPayload>("game", WsEventType.SESSION_PLAYER_LEFT, () => {
+  useWsEvent<PlayerLeftPayload>("game", WsEventType.PLAYER_LEFT, () => {
     refetch();
   });
 

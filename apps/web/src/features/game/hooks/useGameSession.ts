@@ -69,7 +69,7 @@ export function useGameSession(): void {
   });
 
   // game:phase:change — phase transition
-  useWsEvent<PhaseChangedPayload>("game", WsEventType.GAME_PHASE_CHANGE, (payload) => {
+  useWsEvent<PhaseChangedPayload>("game", WsEventType.PHASE_ADVANCED, (payload) => {
     useGameSessionStore.getState().setPhase(payload.phase, payload.deadline, payload.round);
   });
 
@@ -79,12 +79,12 @@ export function useGameSession(): void {
   });
 
   // session:player:joined
-  useWsEvent<PlayerJoinedPayload>("game", WsEventType.SESSION_PLAYER_JOINED, (payload) => {
+  useWsEvent<PlayerJoinedPayload>("game", WsEventType.PLAYER_JOINED, (payload) => {
     useGameSessionStore.getState().addPlayer(payload.player);
   });
 
   // session:player:left
-  useWsEvent<PlayerLeftPayload>("game", WsEventType.SESSION_PLAYER_LEFT, (payload) => {
+  useWsEvent<PlayerLeftPayload>("game", WsEventType.PLAYER_LEFT, (payload) => {
     useGameSessionStore.getState().removePlayer(payload.playerId);
   });
 

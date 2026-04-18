@@ -3,7 +3,14 @@ import type { WsEventType } from "@mmp/shared";
 export interface WsClientOptions {
   /** WebSocket server URL (ws:// or wss://) */
   url: string;
-  /** Auth token — sent as AUTH message after connection (not in query string) */
+  /**
+   * Auth token.
+   *
+   * Appended to the URL as `?token=…` at connect time. MMP v3 authenticates
+   * at HTTP upgrade (server rejects with 4xx on bad token); no post-open
+   * AUTH handshake. See Phase 19 PR-1 / PR-9 WS Auth Protocol (follow-up)
+   * for the refresh + revoke roadmap.
+   */
   token?: string;
   /** Reconnect options */
   reconnect?: ReconnectOptions;
