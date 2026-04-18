@@ -288,12 +288,22 @@ func (m *TimedExplorationModule) Apply(_ context.Context, _ engine.GameEvent, st
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will redact playerLocations for viewers whose config disables
-// cross-player visibility.
-func (m *TimedExplorationModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns timed-exploration state redacted to the caller.
+// Timer fields (isActive/isLocked/elapsed/remaining/warning) are public;
+// playerLocations is filtered to the caller's own position.
+func (m *TimedExplorationModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	ts := m.checkTimeState()
+	state := timedExplorationState{
+		IsActive:        m.isActive,
+		IsLocked:        m.isLocked,
+		Elapsed:         ts.Elapsed,
+		Remaining:       ts.Remaining,
+		Warning:         ts.Warning,
+		PlayerLocations: engine.FilterByPlayer(m.playerLocations, playerID),
+	}
+	m.mu.RUnlock()
+	return json.Marshal(state)
 }
 
 // Compile-time interface assertions.

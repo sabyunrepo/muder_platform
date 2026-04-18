@@ -1,6 +1,7 @@
 package exploration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -259,5 +260,81 @@ func TestRoomBasedExplorationModule_Schema(t *testing.T) {
 	var parsed map[string]any
 	if err := json.Unmarshal(schema, &parsed); err != nil {
 		t.Fatalf("schema is not valid JSON: %v", err)
+	}
+}
+
+// --- PR-2b: PlayerAware redaction ---
+
+func TestRoomBasedExplorationModule_BuildStateFor_CallerOwnRoomOnly(t *testing.T) {
+	m := NewRoomBasedExplorationModule()
+	if err := m.Init(context.Background(), newTestDeps(),
+		json.RawMessage(`{"maxPlayersPerRoom":3,"moveCooldown":0,"showPlayerLocations":true}`)); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "room:move",
+		json.RawMessage(`{"locationId":"r1"}`)); err != nil {
+		t.Fatalf("alice: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), bob, "room:move",
+		json.RawMessage(`{"locationId":"r2"}`)); err != nil {
+		t.Fatalf("bob: %v", err)
+	}
+
+	data, _ := m.BuildStateFor(alice)
+	var s roomBasedExplorationState
+	_ = json.Unmarshal(data, &s)
+	if len(s.PlayerLocations) != 1 || s.PlayerLocations[alice] != "r1" {
+		t.Fatalf("PlayerLocations should be {alice:r1}, got %v", s.PlayerLocations)
+	}
+	if _, ok := s.RoomOccupancy["r1"]; !ok {
+		t.Fatalf("alice's room r1 should appear in occupancy, got %v", s.RoomOccupancy)
+	}
+	if _, ok := s.RoomOccupancy["r2"]; ok {
+		t.Fatalf("other room r2 must NOT appear in alice's occupancy, got %v", s.RoomOccupancy)
+	}
+	_ = time.Now()
+}
+
+func TestRoomBasedExplorationModule_BuildStateFor_ShowPlayerLocationsFalse(t *testing.T) {
+	m := NewRoomBasedExplorationModule()
+	if err := m.Init(context.Background(), newTestDeps(),
+		json.RawMessage(`{"maxPlayersPerRoom":3,"moveCooldown":0,"showPlayerLocations":false}`)); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	_ = m.HandleMessage(context.Background(), alice, "room:move",
+		json.RawMessage(`{"locationId":"r1"}`))
+	_ = m.HandleMessage(context.Background(), bob, "room:move",
+		json.RawMessage(`{"locationId":"r1"}`))
+
+	data, _ := m.BuildStateFor(alice)
+	var s roomBasedExplorationState
+	_ = json.Unmarshal(data, &s)
+	if len(s.RoomOccupancy) != 0 {
+		t.Fatalf("ShowPlayerLocations=false: occupancy should be empty, got %v", s.RoomOccupancy)
+	}
+	if s.PlayerLocations[alice] != "r1" {
+		t.Fatalf("alice should still know her own location, got %v", s.PlayerLocations)
+	}
+}
+
+func TestRoomBasedExplorationModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewRoomBasedExplorationModule()
+	_ = m.Init(context.Background(), newTestDeps(),
+		json.RawMessage(`{"maxPlayersPerRoom":3,"moveCooldown":0,"showPlayerLocations":true}`))
+	alice := uuid.New()
+	bob := uuid.New()
+	_ = m.HandleMessage(context.Background(), alice, "room:move", json.RawMessage(`{"locationId":"r1"}`))
+	_ = m.HandleMessage(context.Background(), bob, "room:move", json.RawMessage(`{"locationId":"r2"}`))
+
+	aliceData, _ := m.BuildStateFor(alice)
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice leaked bob's uuid: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte(`"r2"`)) {
+		t.Fatalf("alice leaked other room id r2: %s", aliceData)
 	}
 }

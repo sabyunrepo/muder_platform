@@ -1,6 +1,7 @@
 package exploration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"testing"
@@ -248,5 +249,82 @@ func TestLocationClueModule_Schema(t *testing.T) {
 	var parsed map[string]any
 	if err := json.Unmarshal(schema, &parsed); err != nil {
 		t.Fatalf("schema is not valid JSON: %v", err)
+	}
+}
+
+// --- PR-2b: PlayerAware redaction ---
+
+func seedLocationSearch(t *testing.T, m *LocationClueModule, pid uuid.UUID, locID string) {
+	t.Helper()
+	if err := m.HandleMessage(context.Background(), pid, "location:search",
+		json.RawMessage(`{"locationId":"`+locID+`"}`)); err != nil {
+		t.Fatalf("location:search: %v", err)
+	}
+}
+
+func TestLocationClueModule_BuildStateFor_CallerOnly(t *testing.T) {
+	m := NewLocationClueModule()
+	if err := m.Init(context.Background(), newTestDeps(), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	seedLocationSearch(t, m, alice, "hall")
+	seedLocationSearch(t, m, bob, "library")
+	m.AddFoundClue(alice, "note-1")
+	m.AddFoundClue(bob, "note-2")
+
+	data, _ := m.BuildStateFor(alice)
+	var s locationClueState
+	_ = json.Unmarshal(data, &s)
+	if len(s.SearchedLocations) != 1 {
+		t.Fatalf("expected 1 SearchedLocations entry (alice), got %v", s.SearchedLocations)
+	}
+	if _, ok := s.SearchedLocations[alice]; !ok {
+		t.Fatalf("alice's search missing: %v", s.SearchedLocations)
+	}
+	if _, leaked := s.SearchedLocations[bob]; leaked {
+		t.Fatalf("bob's search leaked: %v", s.SearchedLocations)
+	}
+	if len(s.FoundClues[alice]) != 1 || s.FoundClues[alice][0] != "note-1" {
+		t.Fatalf("alice should have note-1, got %v", s.FoundClues)
+	}
+	if _, leaked := s.FoundClues[bob]; leaked {
+		t.Fatalf("bob's clue leaked: %v", s.FoundClues)
+	}
+}
+
+func TestLocationClueModule_BuildStateFor_NoEntry(t *testing.T) {
+	m := NewLocationClueModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	data, _ := m.BuildStateFor(uuid.New())
+	var s locationClueState
+	_ = json.Unmarshal(data, &s)
+	if s.SearchedLocations == nil || len(s.SearchedLocations) != 0 {
+		t.Fatalf("expected empty non-nil, got %v", s.SearchedLocations)
+	}
+	if s.FoundClues == nil || len(s.FoundClues) != 0 {
+		t.Fatalf("expected empty non-nil FoundClues, got %v", s.FoundClues)
+	}
+}
+
+func TestLocationClueModule_BuildStateFor_NoCrossLeak(t *testing.T) {
+	m := NewLocationClueModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+	alice := uuid.New()
+	bob := uuid.New()
+	seedLocationSearch(t, m, alice, "hall")
+	seedLocationSearch(t, m, bob, "library-secret")
+	m.AddFoundClue(bob, "bobsclue")
+
+	aliceData, _ := m.BuildStateFor(alice)
+	if bytes.Contains(aliceData, []byte(bob.String())) {
+		t.Fatalf("alice leaked bob's uuid: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte("library-secret")) {
+		t.Fatalf("alice leaked bob's search location: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte("bobsclue")) {
+		t.Fatalf("alice leaked bob's clue id: %s", aliceData)
 	}
 }

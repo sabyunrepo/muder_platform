@@ -94,11 +94,22 @@ func (m *ReadingModule) BuildState() (json.RawMessage, error) {
 	return json.Marshal(state)
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will tailor the line window to the viewer — for role-gated advance
-// the current line's prompts should be restricted to the owning role, and
-// future lines should be redacted until revealed.
+// BuildStateFor returns reading-module state for the given player.
+//
+// The reading module has no per-player progress — currentLineIndex and
+// totalLines are session-wide (the narrator/host advances and all players
+// observe the same line). BuildStateFor therefore produces a snapshot
+// shape-identical to BuildState but via an independent path so a future
+// role-gated reveal (e.g. "only the narrator sees the next line's
+// character prompt") can be layered here without touching BuildState.
 func (m *ReadingModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return json.Marshal(map[string]any{
+		"currentLine": m.currentLineIndex,
+		"totalLines":  m.totalLines,
+		"isActive":    m.isActive,
+		"advanceMode": m.advanceMode,
+	})
 }

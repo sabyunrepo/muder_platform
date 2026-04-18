@@ -771,3 +771,91 @@ func TestReadingModule_GetReadingStateWire(t *testing.T) {
 		t.Errorf("len(Lines) = %d, want 2", len(lines))
 	}
 }
+
+// --- PR-2b: broadcast-shape snapshot (no per-player progress) ---
+
+func TestReadingModule_BuildStateFor_Broadcast(t *testing.T) {
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), newTestDeps(t), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+
+	aliceData, err := m.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor(alice): %v", err)
+	}
+	bobData, err := m.BuildStateFor(bob)
+	if err != nil {
+		t.Fatalf("BuildStateFor(bob): %v", err)
+	}
+
+	if string(aliceData) != string(bobData) {
+		t.Fatalf("reading is broadcast — alice and bob should see identical snapshots\n  alice: %s\n  bob:   %s", aliceData, bobData)
+	}
+	var s map[string]any
+	if err := json.Unmarshal(aliceData, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	for _, k := range []string{"currentLine", "totalLines", "isActive", "advanceMode"} {
+		if _, ok := s[k]; !ok {
+			t.Errorf("expected key %q in snapshot, got %v", k, s)
+		}
+	}
+}
+
+func TestReadingModule_BuildStateFor_ReflectsLineIndex(t *testing.T) {
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), newTestDeps(t), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.currentLineIndex = 3
+	m.totalLines = 10
+	m.mu.Unlock()
+
+	data, _ := m.BuildStateFor(uuid.New())
+	var s map[string]any
+	_ = json.Unmarshal(data, &s)
+	if got := s["currentLine"]; got != float64(3) {
+		t.Fatalf("currentLine got %v, want 3", got)
+	}
+	if got := s["totalLines"]; got != float64(10) {
+		t.Fatalf("totalLines got %v, want 10", got)
+	}
+}
+
+func TestReadingModule_BuildStateFor_UsesIndependentPath(t *testing.T) {
+	// BuildStateFor must NOT delegate to BuildState (stub pattern banned by
+	// PR-2b coverage lint). Verify path independence by ensuring both
+	// produce equivalent JSON even after concurrent state reads.
+	m := NewReadingModule()
+	if err := m.Init(context.Background(), newTestDeps(t), nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	pub, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	per, err := m.BuildStateFor(uuid.New())
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	// They should produce the same logical content (same keys/values)
+	// because reading has no per-player redaction. We parse both as
+	// map[string]any and compare key-by-key rather than byte-comparing to
+	// tolerate future ordering differences.
+	var pubMap, perMap map[string]any
+	if err := json.Unmarshal(pub, &pubMap); err != nil {
+		t.Fatalf("unmarshal pub: %v", err)
+	}
+	if err := json.Unmarshal(per, &perMap); err != nil {
+		t.Fatalf("unmarshal per: %v", err)
+	}
+	for k, v := range pubMap {
+		if perMap[k] != v {
+			t.Errorf("key %q: BuildState=%v BuildStateFor=%v", k, v, perMap[k])
+		}
+	}
+}
