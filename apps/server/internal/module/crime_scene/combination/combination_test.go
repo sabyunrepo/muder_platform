@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/engine/testutil"
 )
 
 func newTestDeps() engine.ModuleDeps {
@@ -716,4 +717,148 @@ func TestCombinationModule_Cleanup(t *testing.T) {
 		t.Fatal("expected nil comboByID after cleanup")
 	}
 	m.mu.RUnlock()
+}
+
+// Phase 19.1 PR-C: multi-player (3+) redaction matrix using the shared
+// PeerLeakAssert helper from engine/testutil. Each player in a 3-player
+// session has distinct completed/derived sets; iterating the caller guarantees
+// no peer UUID leaks into anyone's snapshot.
+func TestCombinationModule_BuildStateFor_ThreePlayersTable_NoPeerLeak(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	charlie := uuid.New()
+
+	m.mu.Lock()
+	m.completed[alice] = []string{"combo1"}
+	m.derived[alice] = []string{"weapon_set"}
+	m.collected[alice] = map[string]bool{"knife": true, "glove": true}
+	m.completed[bob] = []string{"combo2"}
+	m.derived[bob] = []string{"motive"}
+	m.collected[bob] = map[string]bool{"note": true}
+	// charlie: no progress — must receive an empty but well-formed shape.
+	m.mu.Unlock()
+
+	cases := []struct {
+		name       string
+		caller     uuid.UUID
+		peers      []uuid.UUID
+		wantCaller bool // expect caller.String() to appear in raw (false for zero-state)
+	}{
+		{"alice", alice, []uuid.UUID{bob, charlie}, true},
+		{"bob", bob, []uuid.UUID{alice, charlie}, true},
+		{"charlie_zero_state", charlie, []uuid.UUID{alice, bob}, false},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			raw, err := m.BuildStateFor(tc.caller)
+			if err != nil {
+				t.Fatalf("BuildStateFor(%s): %v", tc.name, err)
+			}
+			testutil.PeerLeakAssert(t, raw, tc.caller, tc.peers...)
+			if tc.wantCaller {
+				testutil.AssertContainsCaller(t, raw, tc.caller)
+			}
+		})
+	}
+}
+
+// Phase 19.1 PR-C: after SaveState / RestoreState round-trip, BuildStateFor
+// must continue to emit only the caller's entries. Regression against a drift
+// where Restore reconstitutes maps under different keys and the per-player
+// filter silently fails to match.
+func TestCombinationModule_BuildStateFor_AfterRestoreState_PreservesRedaction(t *testing.T) {
+	src := NewCombinationModule()
+	if err := src.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init src: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	src.mu.Lock()
+	src.completed[alice] = []string{"combo1"}
+	src.derived[alice] = []string{"weapon_set"}
+	src.completed[bob] = []string{"combo2"}
+	src.derived[bob] = []string{"motive"}
+	src.mu.Unlock()
+
+	gs, err := src.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	dst := NewCombinationModule()
+	if err := dst.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init dst: %v", err)
+	}
+	if err := dst.RestoreState(context.Background(), uuid.New(), gs); err != nil {
+		t.Fatalf("RestoreState: %v", err)
+	}
+
+	rawAlice, err := dst.BuildStateFor(alice)
+	if err != nil {
+		t.Fatalf("BuildStateFor(alice): %v", err)
+	}
+	testutil.AssertContainsCaller(t, rawAlice, alice)
+	testutil.PeerLeakAssert(t, rawAlice, alice, bob)
+
+	rawBob, err := dst.BuildStateFor(bob)
+	if err != nil {
+		t.Fatalf("BuildStateFor(bob): %v", err)
+	}
+	testutil.AssertContainsCaller(t, rawBob, bob)
+	testutil.PeerLeakAssert(t, rawBob, bob, alice)
+}
+
+// Phase 19.1 PR-C: verify that engine.BuildModuleStateFor correctly dispatches
+// to CombinationModule.BuildStateFor (PlayerAware path, not BuildState
+// fallback). This pins the engine-level wiring that PR-2a installed.
+func TestCombinationModule_BuildStateFor_ViaEngineDispatch(t *testing.T) {
+	m := NewCombinationModule()
+	if err := m.Init(context.Background(), newTestDeps(), combinationCfg()); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	alice := uuid.New()
+	bob := uuid.New()
+	m.mu.Lock()
+	m.completed[alice] = []string{"combo1"}
+	m.derived[alice] = []string{"weapon_set"}
+	m.completed[bob] = []string{"combo2"}
+	m.derived[bob] = []string{"motive"}
+	m.mu.Unlock()
+
+	// engine.BuildModuleStateFor dispatches to PlayerAwareModule.BuildStateFor
+	// when the module satisfies the interface. If this ever regresses to
+	// m.BuildState() fallback (e.g. through a refactor removing the
+	// PlayerAwareModule interface assertion), the assert below will catch it
+	// because bob's UUID would leak into alice's payload.
+	raw, err := engine.BuildModuleStateFor(m, alice)
+	if err != nil {
+		t.Fatalf("BuildModuleStateFor(alice): %v", err)
+	}
+	testutil.AssertContainsCaller(t, raw, alice)
+	testutil.PeerLeakAssert(t, raw, alice, bob)
+
+	// Second player — same assertion flipped.
+	raw2, err := engine.BuildModuleStateFor(m, bob)
+	if err != nil {
+		t.Fatalf("BuildModuleStateFor(bob): %v", err)
+	}
+	testutil.AssertContainsCaller(t, raw2, bob)
+	testutil.PeerLeakAssert(t, raw2, bob, alice)
+
+	// Sanity: BuildState() DOES contain both (reserved for persistence).
+	// This is not a security failure — it confirms the internal path exists
+	// and why the pub method needs the godoc boundary added in PR-A.
+	all, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	if !strings.Contains(string(all), alice.String()) || !strings.Contains(string(all), bob.String()) {
+		t.Errorf("BuildState should include both players (persistence view), got %s", all)
+	}
 }
