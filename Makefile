@@ -1,4 +1,6 @@
-.PHONY: up down build build-no-cache logs ps lint lint-go lint-web test migrate seed ci-local graphify-setup graphify-watch graphify-update
+.PHONY: up down build build-no-cache logs ps lint lint-go lint-web test migrate seed ci-local \
+        graphify-setup graphify-install-hooks graphify-uninstall-hooks \
+        graphify-watch graphify-update graphify-refresh
 
 # ---------------------------------------------------------------------------
 # Core commands
@@ -97,27 +99,57 @@ dev prod:
 	@true
 
 # ---------------------------------------------------------------------------
-# Graphify (knowledge graph tooling)
+# Graphify (knowledge graph tooling) — D 정책 (2026-04-18~)
+#   repo graphify-out/graph.json 은 Phase 종료 시점에만 수동 fresh rebuild + PR.
+#   일상 post-commit / watch / update 는 "개인 로컬 전용" — 결과물 커밋 금지.
+#   이유: AST-only 재빌드가 semantic 개념 노드 ~6% 영구 손실 (upstream 버그).
 # ---------------------------------------------------------------------------
 
-## graphify-setup — graphify CLI + git hooks 설치 (clone 직후 1회)
-##                  pipx install graphifyy → graphify hook install
-##                  post-commit / post-checkout hook으로 `graphify update` 자동 실행
+## graphify-setup — graphify CLI 설치 (clone 직후 1회, hook 자동 설치 아님)
+##                  개인용 자동 동기화 원하면 make graphify-install-hooks 별도 실행
 graphify-setup:
 	@command -v graphify >/dev/null 2>&1 || { \
 		command -v pipx >/dev/null 2>&1 || { echo "pipx 필요: brew install pipx" >&2; exit 1; }; \
 		pipx install graphifyy; \
 	}
-	graphify hook install
-	@echo "✓ graphify CLI + git hooks 설치 완료"
+	@echo "✓ graphify CLI 설치 완료"
+	@echo "ℹ  post-commit hook은 기본 설치 안 함 (개인 선택: make graphify-install-hooks)"
+	@echo "ℹ  repo graph.json은 Phase 종료 시에만 fresh rebuild — make graphify-refresh"
 
-## graphify-watch — 코드 변경 감지 + AST 자동 재빌드 (LLM 토큰 0)
-##                  tmux/screen 안에서 백그라운드 실행 권장
-##                  MD/PDF 변경은 알림만 — 문서 대량 변경 시 `/graphify . --update` 권장
+## graphify-install-hooks — (선택) post-commit/post-checkout hook 설치 — 개인 로컬 전용
+##                          ⚠ AST 증분이 semantic 개념 노드 덮어쓰므로 결과 repo 커밋 금지
+graphify-install-hooks:
+	graphify hook install
+	@echo "⚠  hook 설치됨 (개인 로컬용). graph.json/REPORT를 repo에 커밋하지 말 것."
+
+## graphify-uninstall-hooks — post-commit/post-checkout hook 제거
+graphify-uninstall-hooks:
+	graphify hook uninstall
+
+## graphify-watch — 코드 변경 감지 + AST 재빌드 (LLM 토큰 0, 로컬 전용)
+##                  tmux/screen 권장. ⚠ 결과물 repo 커밋 금지
 graphify-watch:
 	graphify watch .
 
-## graphify-update — 마지막 커밋 이후 변경된 코드만 증분 재추출 (AST, 토큰 0)
-##                   post-commit hook 미설치 환경에서 수동 동기화용
+## graphify-update — 변경 코드만 증분 재추출 (AST, 토큰 0, 로컬 전용)
+##                   ⚠ 결과물 repo 커밋 금지
 graphify-update:
 	graphify update .
+
+## graphify-refresh — Phase 종료 시점 fresh rebuild 안내 (실제 실행은 Claude Code에서)
+graphify-refresh:
+	@echo "========================================================================"
+	@echo " Phase 종료 시점 fresh rebuild 워크플로우"
+	@echo "========================================================================"
+	@echo ""
+	@echo "1. Claude Code 세션을 새로 열고 다음을 입력:"
+	@echo "     /graphify ."
+	@echo ""
+	@echo "2. detect 경고가 뜨면 '전체 진행'으로 응답"
+	@echo "3. 결과를 PR로 커밋:"
+	@echo "     graphify-out/graph.json"
+	@echo "     graphify-out/GRAPH_REPORT.md"
+	@echo "     graphify-out/manifest.json"
+	@echo "   (cache/는 gitignore로 커밋 제외됨)"
+	@echo ""
+	@echo "캐시 적중으로 변경된 MD만 재추출됩니다 (Phase당 ~\$$0.15–2)."

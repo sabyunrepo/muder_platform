@@ -253,10 +253,26 @@ gh pr checks <N>  # 대기
 - `cache/` — AST/semantic 캐시 (재인덱싱 시 재사용)
 - `cost.json` — 토큰 누적
 
+### 🔴 repo graph.json 갱신 정책 (D, 2026-04-18~)
+
+**핵심:**
+- **repo의 `graphify-out/graph.json`은 Phase 종료 시점에만 수동 fresh rebuild → PR**
+- 일상 자동 재빌드(`post-commit` / `graphify watch` / `graphify update`)는 **개인 로컬 전용**이며 **결과물 repo 커밋 금지**
+- **이유:** `graphify.watch._rebuild_code`가 기존 `file_type="code"` 노드를 전부 삭제하고 AST로 재생성 → semantic 추출로 만든 "확장자 없는 개념 경로"(예: `apps/server/internal/domain/editor`, `packages/shared`) 노드 **~6% 영구 손실** (upstream 버그, 2026-04-18 확인)
+
 ### 팀 공유 Makefile target
 | 커맨드 | 용도 |
 |--------|------|
-| `make graphify-setup` | clone 직후 1회 — `pipx install graphifyy` + `graphify hook install` (post-commit/post-checkout) |
-| `make graphify-watch` | 코드 변경 실시간 감지 + AST 재빌드 (LLM 토큰 0). tmux/screen 안에서 실행 권장 |
-| `make graphify-update` | 마지막 커밋 이후 변경 코드만 증분 재추출 (AST, 토큰 0). hook 미설치 환경용 |
-- `.git/hooks/`는 gitignore이므로 **각 개발자/worktree가 `make graphify-setup`을 1회 직접 실행**해야 post-commit 자동 동기화가 활성화된다.
+| `make graphify-setup` | clone 직후 1회 — pipx로 CLI만 설치 (**hook 자동 설치 안 함**) |
+| `make graphify-install-hooks` | (선택) post-commit/post-checkout hook 설치 — **개인 로컬 전용**, 결과물 커밋 금지 |
+| `make graphify-uninstall-hooks` | 기존 hook 제거 |
+| `make graphify-watch` | 코드 변경 실시간 감지 + AST 재빌드 (tmux 권장). **결과물 커밋 금지** |
+| `make graphify-update` | 변경 코드만 증분 재추출 (수동). **결과물 커밋 금지** |
+| `make graphify-refresh` | **Phase 종료 시** Claude Code에서 `/graphify .` 실행 안내 (실제 fresh rebuild는 Claude Code 세션 필요) |
+
+**Phase 종료 fresh rebuild 워크플로우:**
+1. `make graphify-refresh` (안내 출력)
+2. 새 Claude Code 세션에서 `/graphify .` 실행 — 캐시 적중으로 변경 MD만 재추출 (Phase당 ~$0.15–2)
+3. `graph.json` / `GRAPH_REPORT.md` / `manifest.json` 만 PR로 커밋 (`cache/`는 `.gitignore`)
+
+**일반 PR에서 graph.json 변경은 reviewer가 즉시 revert 요구 대상.** 예외는 graphify 툴링 자체 PR.
