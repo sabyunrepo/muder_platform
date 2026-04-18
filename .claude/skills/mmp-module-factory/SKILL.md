@@ -70,6 +70,25 @@ func (m *Module) OnPhase(ctx context.Context, a phase.Action) error { ... }
 ### 5. 이벤트 relay
 `EventBus.SubscribeAll` + prefix 기반. 임시 채널 생성 금지.
 
+### 6. 🔴 PlayerAware 게이트 (PR-2a 이후 의무, F-sec-2)
+모든 `engine.Module` 구현체는 **둘 중 하나**를 반드시 충족. registry 가 `init()` 시점 panic 으로 강제 (`MMP_PLAYERAWARE_STRICT=false` 로 일시 롤백 가능, default true).
+
+- **A. Per-player redaction 모듈** — `BuildStateFor(playerID)` 구현 + compile assertion
+  ```go
+  func (m *Module) BuildStateFor(pid uuid.UUID) (json.RawMessage, error) { /* redact */ }
+  var _ engine.PlayerAwareModule = (*Module)(nil)
+  ```
+- **B. 전원 공개 state 모듈** — `engine.PublicStateMarker` 임베드 + compile assertion
+  ```go
+  type Module struct {
+      engine.PublicStateMarker
+      // ...
+  }
+  var ( _ engine.Module; _ engine.PublicStateModule = (*Module)(nil) )
+  ```
+
+`isPublicState()` 는 unexported 라 외부 패키지에서 직접 구현 불가. 반드시 `engine.PublicStateMarker` 임베드로 opt-out 명시.
+
 ## 테스트 요구
 - Factory 독립성: 동일 sessionID 두 번 호출해도 서로 다른 인스턴스.
 - ConfigSchema 검증: 잘못된 cfg에 `ErrInvalidConfig` 반환.
@@ -87,4 +106,6 @@ func (m *Module) OnPhase(ctx context.Context, a phase.Action) error { ... }
 - [ ] ConfigSchema 단일 소스 + 검증 함수
 - [ ] `init() { Register(...) }` + blank import 추가
 - [ ] PhaseReactor는 필요할 때만 구현
+- [ ] **🔴 PlayerAware gate (PR-2a)**: `BuildStateFor` 구현 **OR** `engine.PublicStateMarker` 임베드 중 하나 + `var _ engine.PlayerAwareModule | PublicStateModule = (*X)(nil)` compile assertion
+- [ ] `go test ./internal/engine/... -run Gate` — registry boot gate 통과 확인 (strict mode default)
 - [ ] 모듈 추가 후 `docs/plans/2026-04-05-rebuild/module-spec.md` 갱신 알림
