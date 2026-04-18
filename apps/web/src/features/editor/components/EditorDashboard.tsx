@@ -90,7 +90,7 @@ function CreateThemeForm({ onSubmit, isLoading, onCancel }: CreateThemeFormProps
       <div className="flex flex-col gap-1.5">
         <label className="text-sm font-medium text-slate-300">설명</label>
         <textarea
-          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 outline-none transition-colors focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+          className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition-colors focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
           rows={3}
           placeholder="테마에 대한 간단한 설명"
           value={description}

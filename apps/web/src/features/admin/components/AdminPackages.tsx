@@ -363,7 +363,7 @@ export function AdminPackages() {
               type="checkbox"
               checked={form.is_active}
               onChange={(e) => updateField("is_active", e.target.checked)}
-              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500"
+              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
             />
             활성 상태
           </label>

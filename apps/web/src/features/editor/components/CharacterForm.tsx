@@ -190,7 +190,7 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
             type="checkbox"
             checked={isCulprit}
             onChange={(e) => setIsCulprit(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-900"
+            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
           />
           <label htmlFor="character-is-culprit" className="text-sm font-medium text-slate-300">
             범인 여부
