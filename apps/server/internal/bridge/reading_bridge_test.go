@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/mmp-platform/server/internal/engine"
-	"github.com/mmp-platform/server/internal/module/progression"
+	"github.com/mmp-platform/server/internal/module/progression/reading"
 	"github.com/mmp-platform/server/internal/ws"
 )
 
@@ -22,10 +22,10 @@ func (l *testLogger) Printf(format string, v ...any) {
 }
 
 // newAdapter constructs a fully-initialised ReadingModuleAdapter wrapping a
-// progression.ReadingModule with the given JSON config.
+// reading.ReadingModule with the given JSON config.
 func newAdapter(t *testing.T, cfg json.RawMessage) *ReadingModuleAdapter {
 	t.Helper()
-	mod := progression.NewReadingModule()
+	mod := reading.NewReadingModule()
 	logger := &testLogger{t}
 	deps := engine.ModuleDeps{
 		SessionID: uuid.New(),

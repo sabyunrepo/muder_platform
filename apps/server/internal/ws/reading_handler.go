@@ -26,9 +26,9 @@ const (
 	TypeReadingCompleted   = "reading:completed"
 )
 
-// ReadingModuleAPI is the subset of the progression.ReadingModule surface that
+// ReadingModuleAPI is the subset of the reading.ReadingModule surface that
 // the WS handler depends on. Defined as an interface here so the ws package
-// stays free of a hard dependency on the progression package and so handlers
+// stays free of a hard dependency on the reading package and so handlers
 // are trivially testable with a fake module.
 type ReadingModuleAPI interface {
 	HandleAdvance(ctx context.Context, playerID uuid.UUID, isHost bool, roleID string) error
@@ -38,8 +38,8 @@ type ReadingModuleAPI interface {
 	GetReadingStateSnapshot() ReadingStateSnapshot
 }
 
-// ReadingStateSnapshot mirrors progression.ReadingState in a ws-package-local
-// shape so the ws package does not import progression. The progression module's
+// ReadingStateSnapshot mirrors reading.ReadingState in a ws-package-local
+// shape so the ws package does not import reading. The reading module's
 // adapter (see ReadingModuleAdapter) maps between the two.
 type ReadingStateSnapshot struct {
 	SectionID    string          `json:"sectionId"`
@@ -272,7 +272,7 @@ var readingEventBridge = map[string]string{
 	"reading.completed":    TypeReadingCompleted,
 }
 
-// readingStartedLineStorage mirrors progression.readingLineConfig (PascalCase)
+// readingStartedLineStorage mirrors reading.readingLineConfig (PascalCase)
 // and is used only to decode the raw storage shape the reading module
 // publishes via reading.started. It stays local to the ws package so there is
 // no import cycle with the bridge package.

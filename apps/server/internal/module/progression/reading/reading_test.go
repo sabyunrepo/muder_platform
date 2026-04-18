@@ -1,4 +1,4 @@
-package progression
+package reading
 
 import (
 	"context"
@@ -10,6 +10,23 @@ import (
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 )
+
+// testLogger implements engine.Logger for testing.
+type testLogger struct{ t *testing.T }
+
+func (l *testLogger) Printf(format string, v ...any) {
+	l.t.Helper()
+	l.t.Logf(format, v...)
+}
+
+func newTestDeps(t *testing.T) engine.ModuleDeps {
+	t.Helper()
+	return engine.ModuleDeps{
+		SessionID: uuid.New(),
+		EventBus:  engine.NewEventBus(&testLogger{t}),
+		Logger:    &testLogger{t},
+	}
+}
 
 func TestReadingModule_Init(t *testing.T) {
 	tests := []struct {
