@@ -1,65 +1,80 @@
 ---
-name: Phase 19.1 Audit Review Follow-ups 진행 상황
-description: PR-2c 사후 4-agent 리뷰 review-driven 잔여분 3 PR(A/B/C). Phase 19 완결 후 승격 (2026-04-18)
+name: Phase 19.1 Audit Review Follow-ups 완료
+description: PR-2c 사후 4-agent 리뷰 review-driven 잔여 3 PR(A/B/C) 2026-04-18 머지 완료. MEDIUM 2 + LOW 1 해소
 type: project
 ---
 
-# Phase 19.1 — 진행 로그
+# Phase 19.1 — 진행 로그 (완료)
 
 > **시작:** 2026-04-18 (Phase 19 `/plan-finish` 후 승격)
+> **완료:** 2026-04-18 (W1 단일 wave, 동일 세션)
 > **기반:** PR-2c(#107) + hotfix(#108) 4-agent 사후 리뷰 — HIGH 1건(#108 해소) + MEDIUM 4건 + LOW 5+건
 > **정책:** CI admin-skip (2026-05-01까지) · graphify refresh D 정책 · `/plan-go` 통합 진입점
 
-## 완료 PR
+## 완료 PR (W1 병렬 3, 순차 admin squash-merge)
 
-(없음 — Phase 19.1 kickoff)
+### PR-A #111 (6e97ffb) — `MMP_PLAYERAWARE_STRICT` 제거 + BuildState godoc
+- `registry.go` — `strictModeEnvVar` / `strictGateEnabled()` + `os` / `strings` import 제거. `Register()` panic gate 항상 활성.
+- `factory.go` (`BuildModules`) — env 분기 제거, 런타임 gate 상시 동작.
+- `types.go` (`BuildModuleStateFor`) — godoc 에서 MMP_PLAYERAWARE_STRICT 언급 제거, "fallback 은 명시적 public 모듈에만 실행" 명확화.
+- `phase_engine.go` (`PhaseEngine.BuildState`) — `SECURITY — internal/persistence only` godoc 블록 추가. 합법 caller 2 종(SaveState / admin fixture) 명시.
+- `gate_test.go` — env-dependent 테스트 2 개 제거(`TestRegister_StrictModeDisabled_DoesNotPanic`, `TestStrictGateEnabled_Defaults`).
+- `CLAUDE.md` — 하네스 변경 이력에 2026-04-18 PR-A 행 추가 + §모듈 시스템 rollback env 문구 갱신.
+- `.claude/skills/mmp-module-factory/SKILL.md` §6 PlayerAware 게이트 문구 갱신.
+- **Diff: 7 files · +55 / -101 (net -46 LOC)**
+- **해소:** MEDIUM "strict env 제거 가능" + "BuildState godoc+승격 검토"
 
-## 예정 PR (W1 병렬 3)
+### PR-B #112 (e3cb866) — coverage lint AST 재작성
+- `apps/server/cmd/playeraware-lint/main.go` (신규, 221 LOC) — `go/parser` + `go/ast` walker. BuildStateFor 본문의 수신자 메서드 호출에서 `BuildState` / `snapshot` 탐지.
+- `apps/server/cmd/playeraware-lint/main_test.go` (신규, 198 LOC) — 인라인 fixture 6 case (ok 2 + bad 4) + `parseAllowList` + `receiverHelpers` 보조 테스트.
+- `scripts/check-playeraware-coverage.sh` — awk/grep 로직 제거, `go run ./cmd/playeraware-lint` 호출 shim 으로 교체.
+- **4 우회 패턴 차단:**
+  1. `return m.BuildState()` literal (기존)
+  2. `data, err := m.BuildState(); return data, err` (2-line capture)
+  3. `return json.Marshal(m.snapshot())` (whole-state marshal)
+  4. 3+ 줄 BuildStateFor body 내 `m.BuildState()` 위치 무관
+- `.github/workflows/ci.yml` — 호출 shell wrapper 경로 그대로, 수정 없음.
+- **Diff: 3 files · +436 / -64**
+- **해소:** MEDIUM "coverage lint regex 우회 가능"
 
-### PR-A — `MMP_PLAYERAWARE_STRICT` 제거 + `PhaseEngine.BuildState()` godoc
-- **Size**: S · **Risk**: Med · **Depends on**: 없음
-- **Scope**: `apps/server/internal/engine/registry.go` · `phase_engine.go` · `gate_test.go` · `CLAUDE.md`
-- **Rationale**: PR-2c 12/33 gate 충족 후 env escape hatch 는 negative-value only. `BuildState()` godoc 으로 client broadcast 금지 명시.
-- **설계**: `docs/plans/2026-04-18-phase-19-1-audit-followups/refs/pr-a.md`
+### PR-C #113 (4fe835f) — session 통합 테스트 + 3+ players table + PeerLeakAssert helper
+- `apps/server/internal/engine/testutil/redaction.go` (신규, 45 LOC) — `PeerLeakAssert` + `AssertContainsCaller` cross-package helper. engine/ 외부 서브패키지로 배치해 combination · session · module 테스트 모두 cycle 없이 import 가능.
+- `apps/server/internal/engine/testutil/redaction_test.go` (신규, 64 LOC) — `testing.T` spy 기반 self-test 4 케이스.
+- `apps/server/internal/module/crime_scene/combination/combination_test.go` — 3 통합 테스트 +145 LOC:
+  - `TestCombinationModule_BuildStateFor_ThreePlayersTable_NoPeerLeak` — alice/bob/charlie 3 player matrix + zero-state charlie subtest.
+  - `TestCombinationModule_BuildStateFor_AfterRestoreState_PreservesRedaction` — SaveState → Restore → BuildStateFor 각 플레이어 redaction 회귀 방지.
+  - `TestCombinationModule_BuildStateFor_ViaEngineDispatch` — `engine.BuildModuleStateFor` dispatch pin (PlayerAware vs BuildState fallback).
+- **설계 차이:** `session/snapshot_redaction_test.go` 대신 `engine.BuildModuleStateFor` 레벨에서 등가 회귀 테스트. 이유는 `SessionManager.Start` 가 nil module list 로 PhaseEngine 만들어 real CombinationModule 주입 불가. session layer 는 기존 `TestSnapshot_TwoReconnectsBothViaActor` 가 actor path 커버.
+- **Diff: 3 files · +262 / -0**
+- **해소:** LOW "session 통합 테스트 부재" + "3+ players matrix" + "helper export"
 
-### PR-B — coverage lint AST 재작성
-- **Size**: M · **Risk**: Low · **Depends on**: 없음
-- **Scope**: `scripts/cmd/playeraware-lint/main.go` (신규) · `scripts/check-playeraware-coverage.sh` (호출 교체) · `.github/workflows/ci.yml` · fixture 테스트
-- **Rationale**: 현 awk 기반 lint 는 4 가지 우회 패턴(간접 helper · 2줄 캡처 · `json.Marshal(m.snapshot())` · -A2 scope 벗어남) 모두 놓침. AST walker 로 재작성.
-- **설계**: `docs/plans/2026-04-18-phase-19-1-audit-followups/refs/pr-b.md`
+## 남은 follow-up (리뷰 잔여분 — 별도 Phase 또는 백로그)
 
-### PR-C — session 통합 테스트 + 3+ players table + helper export
-- **Size**: M · **Risk**: Med · **Depends on**: 없음
-- **Scope**: `apps/server/internal/engine/testutil/redaction.go` (신규) · `apps/server/internal/session/snapshot_redaction_test.go` (`TestSnapshot_Redaction_CombinationCrafted` 신규) · `combination/combination_test.go` (table-driven 리팩터)
-- **Rationale**: PR-2c 는 단위 테스트만 있어 session broadcast fan-out 이 검증 안 됨. 3+ player matrix + RestoreState→BuildStateFor + `PeerLeakAssert` helper 재사용.
-- **설계**: `docs/plans/2026-04-18-phase-19-1-audit-followups/refs/pr-c.md`
+- **LOW** `jsonIsEmptyShape` 중복 / `EmptyForNewPlayer` 중복 guard 정리 — cosmetic, Phase 20 정리 시점 가능.
+- **MEDIUM** PhaseEngine.BuildState 를 unexported + 서브패키지 이동 — PR-A godoc 으로 1차 방어, 구조 변경은 별도 refactor phase.
+- PR-5 Coverage+mockgen (XL, High) · PR-9 WS Auth · PR-10 Runtime validation · editor/handler 분할 — 각자 별 Phase 승격.
 
-## 남은 추적
+## 검증 총결
 
-- PR-A/B/C 3개 전부 머지 후 `/plan-finish` 로 Phase 19.1 archive
-- 이후 후보 (별도 phase 로 승격):
-  - PR-5 Coverage+mockgen (XL, High) — `mockgen` 도입 영향으로 unit 테스트 대부분 재작성 필요
-  - PR-9 WS Auth Protocol (L, Med) — IDENTIFY/RESUME/CHALLENGE/REVOKE
-  - PR-10 Runtime Payload Validation (L, Med) — Go struct → JSON Schema → zod
-  - editor/handler.go 624 · media_service.go 653 분할 follow-up
+- `go test -race -count=1 ./internal/engine/... ./internal/module/... ./internal/session/...` — 17 패키지 전건 green
+- `go vet ./...` + `go build ./...` — exit 0
+- `bash scripts/check-playeraware-coverage.sh` — clean (AST lint 경유)
+- W1 session 재시작 없이 A → B → C 순차 머지 + 모든 CI admin-squash 완료
 
 ## 참조
 
 - 설계: `docs/plans/2026-04-18-phase-19-1-audit-followups/design.md`
 - 체크리스트: `docs/plans/2026-04-18-phase-19-1-audit-followups/checklist.md`
+- PR 스펙: `refs/pr-a.md` / `refs/pr-b.md` / `refs/pr-c.md`
 - Phase 19 archive: `docs/plans/2026-04-17-platform-deep-audit/`
-- Phase 19 progress: `memory/project_phase19_implementation_progress.md`
-- 4-agent 리뷰 요약: 위 파일 §PR-2c 사후 4-agent 코드리뷰 요약
+- 선행 progress: `memory/project_phase19_implementation_progress.md` §PR-2c 사후 4-agent 코드리뷰 요약
 
 ## 다음 세션 재개
 
-```bash
-cd /Users/sabyun/goinfre/muder_platform
-claude
-/plan-resume
-# 최우선: W1 3 PR 병렬 처리 — A/B/C 선택 순서 자유. 권장:
-#   1. PR-A (S, Med) — 30분 작업. strict env 제거 + godoc. 나머지 PR 에 선행 필수 아님.
-#   2. PR-B (M, Low) — AST 도구 신규 작성. self-test fixture 중요.
-#   3. PR-C (M, Med) — session 레이어 확장 필요 시 minor scope creep.
-# 3 PR 전부 admin merge 후 /plan-finish Phase 19.1.
-```
+Phase 19.1 /plan-finish 완료 후 active plan 없음. 다음 phase 시작 시 `/plan-new <topic>` 로 신규 plan 작성.
+
+차기 후보 (독립 phase 로 승격):
+- PR-5 Coverage+mockgen (XL, High) — editor coverage -2.9pp 회귀 복구 + CI 75% hard-fail
+- PR-9 WS Auth Protocol (L, Med) — IDENTIFY/RESUME/CHALLENGE/REVOKE
+- PR-10 Runtime Payload Validation (L, Med) — Go struct → JSON Schema → zod
+- editor/handler.go 624 · media_service.go 653 분할 refactor
