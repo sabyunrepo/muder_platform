@@ -71,7 +71,7 @@ func (m *Module) OnPhase(ctx context.Context, a phase.Action) error { ... }
 `EventBus.SubscribeAll` + prefix 기반. 임시 채널 생성 금지.
 
 ### 6. 🔴 PlayerAware 게이트 (PR-2a 이후 의무, F-sec-2)
-모든 `engine.Module` 구현체는 **둘 중 하나**를 반드시 충족. registry 가 `init()` 시점 panic 으로 강제 (`MMP_PLAYERAWARE_STRICT=false` 로 일시 롤백 가능, default true).
+모든 `engine.Module` 구현체는 **둘 중 하나**를 반드시 충족. registry 가 `init()` 시점 panic 으로 강제. rollback env(`MMP_PLAYERAWARE_STRICT`) 는 Phase 19.1 PR-A 에서 제거되어 gate 는 항상 활성.
 
 - **A. Per-player redaction 모듈** — `BuildStateFor(playerID)` 구현 + compile assertion
   ```go

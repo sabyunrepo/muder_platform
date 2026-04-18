@@ -131,13 +131,17 @@ func (PublicStateMarker) isPublicState() {}
 
 // BuildModuleStateFor returns the player-aware state for a module.
 //
-// Gate hierarchy (PR-2a):
+// Gate hierarchy (PR-2a / Phase 19.1 PR-A):
 //  1. If the module implements PlayerAwareModule → BuildStateFor is called.
-//  2. Else if the module implements PublicStateModule → BuildState is called
-//     (module author has explicitly declared public state).
-//  3. Else (no marker and no BuildStateFor): registry should have panicked at
-//     init() time; this fallback preserves legacy behaviour when strict mode
-//     is disabled via MMP_PLAYERAWARE_STRICT=false.
+//  2. Else the module MUST implement PublicStateModule (engine.PublicStateMarker
+//     embed) — BuildState is called because the author has explicitly declared
+//     that the state is identical for every player.
+//
+// The env-driven escape hatch (MMP_PLAYERAWARE_STRICT) has been retired: any
+// module that satisfies neither interface would have been rejected by
+// Register() at init time. The BuildState() fallback below therefore runs
+// only against explicitly-public modules; it is NOT a safety net for
+// accidental leakage.
 func BuildModuleStateFor(m Module, playerID uuid.UUID) (json.RawMessage, error) {
 	if pam, ok := m.(PlayerAwareModule); ok {
 		return pam.BuildStateFor(playerID)

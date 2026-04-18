@@ -282,7 +282,23 @@ func (e *PhaseEngine) DispatchAction(ctx context.Context, action PhaseActionPayl
 	return nil
 }
 
-// BuildState returns the full engine state for client synchronization.
+// BuildState returns the full engine state with every module's all-player
+// output combined into a single envelope.
+//
+// SECURITY — internal/persistence only. This method invokes Module.BuildState
+// directly, bypassing the PR-2a PlayerAware gate. The resulting payload may
+// contain role-private data for EVERY player (e.g. hidden missions, per-player
+// clue draws, whispered messages) and MUST NEVER be broadcast to clients.
+//
+// Runtime broadcasts and reconnect envelopes MUST flow through BuildStateFor
+// below. The only legitimate callers are:
+//   - SaveState for session persistence (mirrored by RestoreState).
+//   - Admin / fixture / debug tooling that explicitly surfaces the
+//     all-player view.
+//
+// Adding a new caller that hands this payload to a WebSocket, HTTP handler,
+// or user-visible log is a per-player data leakage hazard and requires a
+// security review before merging.
 func (e *PhaseEngine) BuildState() (json.RawMessage, error) {
 	state := map[string]any{
 		"sessionId": e.sessionID,
