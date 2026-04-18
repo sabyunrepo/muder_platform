@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { GamePhase, GameState, ModuleConfig, Player, PlayerRole } from "@mmp/shared";
 import { syncServerTime } from "@mmp/game-logic";
 
-import { clearBySessionId } from "./moduleStoreFactory";
+import { clearBySessionId } from "./moduleStoreCleanup";
 
 // ---------------------------------------------------------------------------
 // Types
