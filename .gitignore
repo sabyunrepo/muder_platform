@@ -72,12 +72,16 @@ claude_skill_create.pdf
 .playwright-mcp/
 
 # ─── Graphify (knowledge graph artifacts) ────────────
-# graph.json / GRAPH_REPORT.md / manifest.json 은 선택적으로 커밋 가능
-# (주기 스냅샷 전용 — PR마다 갱신은 지양, repo 비대화 방지)
+# 정책 (D, 2026-04-18~): graph.json / GRAPH_REPORT.md / manifest.json 은
+#   Phase 종료 시점에만 fresh rebuild 결과를 PR로 커밋.
+#   일상 자동 재빌드(post-commit/watch/update) 결과는 개인 로컬 전용 — 커밋 금지.
 graphify-out/cache/
 graphify-out/.graphify_python
 graphify-out/.needs_update
+graphify-out/needs_update
 graphify-out/cost.json
+graphify-out/graph.html
+graphify-out/obsidian/
 .graphify-cache/
 
 # ─── Claude backup snapshots (local safety nets) ─────
