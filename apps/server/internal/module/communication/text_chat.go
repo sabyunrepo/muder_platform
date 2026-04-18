@@ -233,13 +233,28 @@ func (m *TextChatModule) Apply(_ context.Context, _ engine.GameEvent, state *eng
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will add per-player filtering (e.g. redact blocked-user messages per
-// viewer, and omit the full history for late-joiners whose join_time is after
-// a given message's timestamp).
+// BuildStateFor returns the text chat snapshot for the given player.
+//
+// text_chat is a broadcast channel: every player sees the same 50-message
+// window. BuildStateFor therefore produces a view that is shape-compatible
+// with BuildState, but it is built through an independent snapshot path
+// rather than delegating. This keeps the per-player trust boundary explicit
+// and gives future block-list / ignore-list integrations a single place to
+// layer redaction without touching the public BuildState contract.
 func (m *TextChatModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	msgs := m.messages
+	if len(msgs) > 50 {
+		msgs = msgs[len(msgs)-50:]
+	}
+	out := make([]ChatMessage, len(msgs))
+	copy(out, msgs)
+	return json.Marshal(textChatState{
+		Messages: out,
+		IsMuted:  m.isMuted,
+	})
 }
 
 // Compile-time interface checks.

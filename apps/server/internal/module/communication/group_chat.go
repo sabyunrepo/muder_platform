@@ -326,6 +326,10 @@ type groupChatRoomInfo struct {
 	Name        string `json:"name"`
 	MemberCount int    `json:"memberCount"`
 	MaxMembers  int    `json:"maxMembers"`
+	// Members and Messages are omitted from BuildState (public snapshot)
+	// and populated by BuildStateFor only for the caller's own room.
+	Members  []string      `json:"members,omitempty"`
+	Messages []ChatMessage `json:"messages,omitempty"`
 }
 
 type groupChatState struct {
@@ -416,12 +420,52 @@ func (m *GroupChatModule) RestoreState(_ context.Context, _ uuid.UUID, state eng
 	return nil
 }
 
-// BuildStateFor returns the same state as BuildState for now.
-// PR-2a (F-sec-2 gate): satisfies engine.PlayerAwareModule interface.
-// PR-2b will add per-player redaction (players outside a given room should
-// not see that room's message history or full member list).
-func (m *GroupChatModule) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
+// BuildStateFor returns the group-chat snapshot redacted to the caller.
+//
+// Every player sees every room's metadata (id, name, member count, max
+// capacity) — that is the room lobby view. The caller additionally receives
+// the member list and last 50 messages only for the room they currently
+// occupy. Non-members never see in-room message bodies or the full
+// member-uuid list: BuildState exposes only the counts.
+func (m *GroupChatModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	callerRoom := m.playerRoom[playerID] // "" if caller is in no room
+
+	rooms := make([]groupChatRoomInfo, 0, len(m.config.Rooms))
+	for _, r := range m.config.Rooms {
+		info := groupChatRoomInfo{
+			ID:         r.ID,
+			Name:       r.Name,
+			MaxMembers: m.config.MaxPerRoom,
+		}
+		if r.MaxMembers > 0 {
+			info.MaxMembers = r.MaxMembers
+		}
+		if state, ok := m.rooms[r.ID]; ok {
+			info.MemberCount = len(state.Members)
+			if r.ID == callerRoom {
+				members := make([]string, len(state.Members))
+				for i, pid := range state.Members {
+					members[i] = pid.String()
+				}
+				info.Members = members
+
+				msgs := state.Messages
+				if len(msgs) > 50 {
+					msgs = msgs[len(msgs)-50:]
+				}
+				info.Messages = append([]ChatMessage{}, msgs...)
+			}
+		}
+		rooms = append(rooms, info)
+	}
+	return json.Marshal(groupChatState{
+		Rooms:   rooms,
+		IsOpen:  m.isOpen,
+		IsMuted: m.isMuted,
+	})
 }
 
 // Compile-time interface checks.
