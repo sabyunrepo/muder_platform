@@ -31,7 +31,11 @@ STARTED=$(jq -r '.active.started_at // "?"' "$ACTIVE_PLAN_FILE")
 
 case "$MODE" in
     --compact)
-        # Single line for UserPromptSubmit — ~25 tokens
+        # Single line for UserPromptSubmit — ~25 tokens.
+        # Silent when plan fields are unset — emit only when real work is in progress.
+        if [ "$CURRENT_TASK" = "?" ] && [ "$STATUS" = "?" ]; then
+            exit 0
+        fi
         echo "[ACTIVE PLAN: $PLAN_ID | $CURRENT_WAVE $CURRENT_PR | task: $CURRENT_TASK | $STATUS]"
         ;;
 

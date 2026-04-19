@@ -37,12 +37,9 @@ PROGRESS=$(jq -r '.active.progress_memory // empty' "$ACTIVE_PLAN_FILE")
 CURRENT_PR=$(jq -r '.active.current_pr // "?"' "$ACTIVE_PLAN_FILE")
 
 {
-    echo ""
-    echo "📝 PLAN REMINDER: $FILE_PATH is in active plan scope ($CURRENT_PR)."
-    echo "   After this work segment, update:"
-    [ -n "$CHECKLIST" ] && echo "   - $CHECKLIST (mark task ✅)"
-    [ -n "$PROGRESS" ] && echo "   - $PROGRESS (STATUS marker)"
-    echo "   Also: ensure all modified .md files are <200 lines (split into refs/ if larger)."
-} >&2
+    REMIND_TARGET="$CHECKLIST"
+    [ -z "$REMIND_TARGET" ] && REMIND_TARGET="$PROGRESS"
+    echo "📝 PLAN REMINDER ($CURRENT_PR): update $REMIND_TARGET after this segment." >&2
+}
 
 exit 0
