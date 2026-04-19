@@ -1,102 +1,52 @@
 ---
-description: (mmp-pilot) 통합 진입점 — wave 자동 실행 + 단일 task + 재개. plan-autopilot 후계 (M1 dual-write 단계)
+description: (mmp-pilot) 통합 진입점 — wave 자동 실행 + 단일 task + 재개. plan-autopilot 후계 (M3 cutover 완료)
 argument-hint: [--wave W2] [--task "id"] [--until WN] [--only PR-N] [--dry-run] [--resume] [--force-unlock] [--ab exp-id]
 allowed-tools: Read Write Edit Bash Task
 ---
 
 ## 프리플라이트
 
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 프리플라이트 ❌/🛑 시 중단. `jq . .claude/settings.json`으로 검증 후 재시도.
 
-## 실행 단계
+## 실행
 
-1. **락 확인** — `.claude/scripts/run-lock.sh check` 로 `.claude/run-lock.json` 상태 조회.
-   - `owner != null` 이고 `last_heartbeat < 60min` → "다른 run 진행 중" 에러.
-   - stale(≥60min) → `--force-unlock` 있어야 강제 해제.
-2. **active-plan.json 로드** — schema_version 1/2 양쪽 지원. `current_run_id` 없으면 신규 `r-YYYYMMDD-HHMMSS-xxx` 생성.
-3. **manifest 생성** — `.claude/runs/{run-id}/manifest.json`.
-   - 기본: `current_wave`부터 순차. `--wave`/`--until`/`--only`로 범위 축소. `--task` 단일 실행.
-4. **락 획득** — `run-lock.sh acquire <run-id> <wave> <pr> <task>`.
-5. **모드 분기**:
-   - `--dry-run` → manifest만 출력 후 종료.
-   - `--ab <exp>` → `references/ab-runner.md` 참조 (M4 이후 활성, 현재는 스텁 메시지).
-   - 일반 실행 → wave 루프 (§실행 루프).
-6. **종료 시** — FINAL_SUMMARY 생성 + `run-lock.sh release`.
+**상세 Phase 로직·팀 편성 규칙·에러 핸들링은 `.claude/skills/mmp-pilot/SKILL.md`가 단일 소스.** 이 커맨드는 entry point + 락 관리 + 재개 옵션만 담당.
 
-## 실행 루프
+핵심 시퀀스:
 
-각 wave마다:
+1. **락 확인** — `.claude/scripts/run-lock.sh check`. owner≠null 이고 heartbeat<60min 이면 차단. stale(≥60min)은 `--force-unlock` 필요.
+2. **active-plan.json 로드** — schema_version 1/2 지원. `current_run_id` 없으면 신규 `r-YYYYMMDD-HHMMSS-xxx`.
+3. **manifest 생성** — `.claude/runs/{run-id}/manifest.json`. 기본 `current_wave`부터 순차. 플래그:
+   - `--wave W2` / `--until WN` / `--only PR-N` — 범위
+   - `--task "M-7"` — 단일 실행 (worktree 없음, in-place)
+   - `--dry-run` — manifest 출력 후 종료
+   - `--resume` — current_run_id 이어받기 → 미완료 task부터
+   - `--ab <exp>` — M4 이후 활성 (현재 스텁)
+4. **락 획득** → mmp-pilot Phase 2~5 루프 → FINAL_SUMMARY → 락 release
 
-```bash
-# 1. 의존성 / scope 오버랩 검증
-$HOME/.claude/skills/plan-autopilot/scripts/plan-wave.sh validate <wave-id>
+## 서브에이전트 모델 지정
 
-# 2. PR마다 worktree 생성 (parallel wave)
-.claude/scripts/run-wave.sh create-worktrees <run-id> <wave-id>
+mmp-pilot이 Layer 2 팀원 spawn 시 **일반 구현·리뷰는 `claude-sonnet-4-6`**, **security / architecture 판단은 `claude-opus-4-7`**. 4.5는 사용 금지(4.6 출시 이후).
 
-# 3. task 루프 — mmp-pilot 스킬이 팀 편성·실행
-#    각 task는 .claude/runs/{run-id}/{wave}/{pr}/{task}/ 하위에 산출
-#    - 01_docs_context.md ~ 04_security_report.md
-#    - SUMMARY.md (frontmatter 필수)
-#    - logs/{team,hooks}.jsonl
+## 에러·산출물 경로
 
-# 4. SUMMARY 파싱 → checklist + progress 갱신
-.claude/scripts/summary-parse.sh <run-id> <wave-id>
-
-# 5. worktree 머지 (fast-forward)
-.claude/scripts/run-wave.sh merge <run-id> <wave-id>
-
-# 6. heartbeat 갱신
-.claude/scripts/run-lock.sh heartbeat
-```
-
-## 팀 편성 규칙 (Layer 2)
-
-task 성격에 따라 동적으로 2~6명 선정.
-
-| task 키워드/패턴 | 편성 |
-|------------------|------|
-| security / redaction / token / auth | docs-navigator + go-backend + test + **security-reviewer** (4명) |
-| module / genre / phase-reactor | docs-navigator + **module-architect** + go-backend + test (4명) |
-| ws / session / engine 구현 | docs-navigator + go-backend + test (3명) |
-| frontend / editor / canvas | docs-navigator + react-frontend + test (3명) |
-| 풀스택 | docs-navigator + go-backend + react-frontend + test + security (5명) |
-| 단순 조회/설계 질문 | docs-navigator 단독 |
-
-팀 크기 상한은 `--team N` 플래그로 덮어쓰기. 기본: auto.
-
-## M1 단계의 현재 동작 (dual-write)
-
-- `/plan-go`는 신규 `.claude/runs/{run-id}/` 경로로 산출.
-- 내부적으로 **기존 plan-autopilot 엔진**($HOME/.claude/skills/plan-autopilot/scripts/)을 재사용하여 wave/worktree 실행.
-- 기존 `.claude/runs/{run-id}/` 경로는 더 이상 쓰지 않는다(하네스 통합분만 해당). autopilot 기존 산출물은 그대로 유지.
-- `/plan-autopilot`은 여전히 동작(M2 deprecation 경고만). Phase 18.3 무중단.
-
-## 에러 핸들링
-
-- 락 획득 실패 → "run-lock.json에 소유자 있음" 상세 출력 + `--force-unlock` 안내.
-- task 실패(SUMMARY.status=failed) → wave 내 후속 task 보류, 사용자에게 에스컬레이트.
-- SUMMARY 누락 → `summary-require` hook이 재실행 요청.
-- worktree 충돌 → `run-wave.sh abort <run-id>` 로 정리.
-
-## 출력
-
-- 진행 로그: `stdout` 요약 + `.claude/runs/{run-id}/stdout.log` 전문
-- 최종: `runs/{run-id}/FINAL_SUMMARY.md` (wave별 SUMMARY 집계)
+- 산출물: `.claude/runs/{run-id}/{wave}/{pr}/{task}/NN_agent_artifact.md` + `SUMMARY.md`
+- 로그: `stdout` 요약 + `.claude/runs/{run-id}/stdout.log` 전문
 - 메트릭: `memory/mmp-pilot-metrics.jsonl` append
+
+상세 에러 분류·scope enforcement·팀 크기 가이드는 mmp-pilot/SKILL.md §팀 크기 + §에러 핸들링 참조.
 
 ## 보조 커맨드
 
-- 상태: `/plan-status` (run_id + heartbeat 경과 분 포함)
-- 중단: `/plan-stop` → partial SUMMARY + 락 해제
-- 재개: `/plan-go --resume` (current_run_id 이어받기)
-- 단일 task: `/plan-go --task "M-7"` (in-place, worktree 없음)
+- 상태: `/plan-status` — run_id + heartbeat 경과 포함
+- 중단: `/plan-stop` — partial SUMMARY + 락 해제
+- 재개: `/plan-go --resume`
+- 단일 task: `/plan-go --task "M-7"`
 
 ## 참조
 
-- 오케스트레이터 상세: `.claude/skills/mmp-pilot/SKILL.md`
+- 오케스트레이터: `.claude/skills/mmp-pilot/SKILL.md`
 - wave 엔진: `.claude/skills/mmp-pilot/references/wave-engine.md`
-- A/B 러너(M4): `.claude/skills/mmp-pilot/references/ab-runner.md`
-- 마이그레이션 상태: `.claude/designs/mmp-pilot/` + `m3-cutover.sh`
+- A/B(M4): `.claude/skills/mmp-pilot/references/ab-runner.md`
