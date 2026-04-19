@@ -6,7 +6,7 @@ allowed-tools: Read Write Edit Bash Task
 
 ## 프리플라이트
 
-!`$HOME/.claude/skills/plan-autopilot/scripts/plan-preflight.sh`
+!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
 
 프리플라이트 ❌/🛑 시 중단. `jq . .claude/settings.json`으로 검증 후 재시도.
 
