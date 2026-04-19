@@ -19,9 +19,6 @@ allowed-tools: Bash(jq*) Bash(git*) Bash(cat*) Bash(sed*) Bash(*/plan-preflight.
 ## Uncommitted changes
 !`git status --short`
 
-## Autopilot state (if paused)
-!`[ -f .claude/autopilot-state.json ] && cat .claude/autopilot-state.json || echo "(no paused state)"`
-
 ---
 
 Based on the above, summarize:
