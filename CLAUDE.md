@@ -213,69 +213,29 @@ gh pr checks <N>  # 대기
 
 ## 🔴 graphify 필수 사용 규칙
 
-> `graphify-out/graph.json` 존재 시 **아키텍처·의존성·구조 질문은 반드시 graphify 먼저**.
-> 원시 파일 Grep/Glob 탐색은 graphify로 대상을 특정한 후에만 허용.
+> `graphify-out/graph.json` 존재 시 아키텍처·의존성·구조 질문은 **graphify 먼저**.
+> 상세 정책·인덱스 상태·Makefile target·repo 갱신 규약: [`.claude/refs/graphify.md`](.claude/refs/graphify.md)
 
-### graphify 도구 (CLI)
-| 도구 | 속도 | 용도 |
-|------|------|------|
-| `/graphify query "질문"` | ~즉시 | BFS traversal — "X는 어디서 쓰이나", "A→B 어떻게 연결되나" |
-| `/graphify explain "노드"` | ~즉시 | 단일 노드 주변 설명 (god node, community, degree) |
-| `/graphify path "A" "B"` | ~즉시 | 두 개념 사이 최단 경로 + 홉마다 relation/confidence |
-| `Read graphify-out/GRAPH_REPORT.md` | ~즉시 | god nodes, surprising connections, community 531개 요약 |
-| `/graphify --update` | ~빠름 | 변경 파일만 증분 재추출 (AST-only는 LLM 무비용) |
-| `/graphify --mcp` | ~상주 | MCP 서버로 agent가 live 질의 |
+### 🔴 강제 규칙 (요약)
+1. **"X는 어디서 쓰이나 / 의존성은"** → `Read graphify-out/GRAPH_REPORT.md` 또는 `/graphify query|explain` 먼저
+2. **"A에서 B까지 흐름"** → `/graphify path "A" "B"` (홉별 relation + confidence)
+3. **코드 수정 후** → `graphify update .` 필수 (AST-only, LLM 비용 0)
+4. **Grep/Glob 허용 케이스**: 파일명·정확한 심볼 탐색, graphify로 대상 특정 후 line-level 확인
+5. **전체 재인덱싱 (`graphify .`)은 Phase 종료 시점만** — 일상은 증분 `--update`. 결과물 repo 커밋 금지 (Phase 경계만 PR)
 
-### 현재 인덱스 상태 (2026-04-18)
-- 1098 files · ~537K words → **6700 nodes / 15398 edges / 78 hyperedges / 531 communities**
-- Token reduction: **17.1x** (질문당 ~42K 토큰)
-- AST 5169 + semantic 1659 (Sonnet 42 subagents 병렬 추출)
-- 상위 30 커뮤니티 라벨링됨 (나머지 501개는 `Community N` 기본값)
+## 🔴 Opus ↔ Sonnet 위임 규칙 (advisor 패턴)
 
-### 🔴 강제 규칙
-1. **"X는 어디서 쓰이나 / 무엇과 연결되나 / 의존성은"** → `Read graphify-out/GRAPH_REPORT.md` 또는 `/graphify query/explain` 먼저
-2. **god node / bridge / community / 아키텍처 질문** → `GRAPH_REPORT.md`의 해당 섹션 먼저
-3. **"A에서 B까지 흐름"** → `/graphify path "A" "B"` — 홉별 relation + confidence 제공
-4. **코드 수정 후** → `graphify update .` 필수 (AST-only, LLM 비용 0, ~수초)
-5. **Grep/Glob 허용 케이스**: 파일명·정확한 함수명 탐색, graphify로 대상 특정 후 line-level 확인
-6. **전체 재인덱싱 (`graphify .`)은 비용 과다** — 증분 `--update`만 사용. 전체는 대규모 구조 변화 시만.
+> Anthropic advisor tool 패턴의 Claude Code 응용 — Opus는 판단·지시·종합, Sonnet은 실제 실행.
 
-### 자동 최적화 Hooks
-- **graphify Enforcer** (PreToolUse Glob|Grep): `graph.json` 존재 시 "GRAPH_REPORT.md 먼저" 안내 주입
-- **증분 업데이트 리마인더**: PostToolUse Edit/Write 후 `.needs_update` flag 권장 (수동 `--update` 트리거)
-
-### 엣지 신뢰도 해석
-- `EXTRACTED` (confidence 1.0) — import/call/citation 명시, 코드에 직접 존재
-- `INFERRED` (0.6–0.9) — LLM 추론, 검증 필요. god node 대부분 edges는 여기 해당
-- `AMBIGUOUS` (0.1–0.3) — 불확실. 질문에 인용 시 주의
-
-### 산출물 위치 (`graphify-out/`)
-- `GRAPH_REPORT.md` (156KB) — 감사 보고서 (god nodes, surprises, 커뮤니티, 제안 질문)
-- `graph.json` (8.9MB) — 원시 그래프 (nodes/edges/hyperedges 전체)
-- `manifest.json` — 증분 업데이트용
-- `cache/` — AST/semantic 캐시 (재인덱싱 시 재사용)
-- `cost.json` — 토큰 누적
-
-### 🔴 repo graph.json 갱신 정책 (D, 2026-04-18~)
-
-**핵심:**
-- **repo의 `graphify-out/graph.json`은 Phase 종료 시점에만 수동 fresh rebuild → PR**
-- 일상 자동 재빌드(`post-commit` / `graphify watch` / `graphify update`)는 **개인 로컬 전용**이며 **결과물 repo 커밋 금지**
-- **이유:** `graphify.watch._rebuild_code`가 기존 `file_type="code"` 노드를 전부 삭제하고 AST로 재생성 → semantic 추출로 만든 "확장자 없는 개념 경로"(예: `apps/server/internal/domain/editor`, `packages/shared`) 노드 **~6% 영구 손실** (upstream 버그, 2026-04-18 확인)
-
-### 팀 공유 Makefile target
-| 커맨드 | 용도 |
-|--------|------|
-| `make graphify-setup` | clone 직후 1회 — pipx로 CLI만 설치 (**hook 자동 설치 안 함**) |
-| `make graphify-install-hooks` | (선택) post-commit/post-checkout hook 설치 — **개인 로컬 전용**, 결과물 커밋 금지 |
-| `make graphify-uninstall-hooks` | 기존 hook 제거 |
-| `make graphify-watch` | 코드 변경 실시간 감지 + AST 재빌드 (tmux 권장). **결과물 커밋 금지** |
-| `make graphify-update` | 변경 코드만 증분 재추출 (수동). **결과물 커밋 금지** |
-| `make graphify-refresh` | **Phase 종료 시** Claude Code에서 `/graphify .` 실행 안내 (실제 fresh rebuild는 Claude Code 세션 필요) |
-
-**Phase 종료 fresh rebuild 워크플로우:**
-1. `make graphify-refresh` (안내 출력)
-2. 새 Claude Code 세션에서 `/graphify .` 실행 — 캐시 적중으로 변경 MD만 재추출 (Phase당 ~$0.15–2)
-3. `graph.json` / `GRAPH_REPORT.md` / `manifest.json` 만 PR로 커밋 (`cache/`는 `.gitignore`)
-
-**일반 PR에서 graph.json 변경은 reviewer가 즉시 revert 요구 대상.** 예외는 graphify 툴링 자체 PR.
+- **Opus 메인의 책임**: 문제 정의, 플랜 수립, 에이전트 결과 종합, 중요한 판단 승인
+- **Sonnet 서브에이전트 위임 대상**:
+  - **탐색·검색**: `Explore`, `oh-my-claudecode:explore` — 대량 파일 grep/find
+  - **MD 작성**: `oh-my-claudecode:writer`, `oh-my-claudecode:executor` — README·refs·progress
+  - **테스트·빌드 실행**: `general-purpose`, `oh-my-claudecode:qa-tester` — verbose 출력은 서브에서 소화
+  - **단일 도메인 구현**: `go-backend-engineer`, `react-frontend-engineer` 등 프로젝트 전문 agent
+- **위임 시 필수**:
+  - 프롬프트에 **"결과만 ≤200 단어로 보고"** 명시 (raw 로그 메인 유입 차단)
+  - 병렬 가능한 독립 task는 `Task tool` 다중 호출 한 메시지에 묶기
+  - 파일 크기·함수 한도 프롬프트에 재명시 (서브는 CLAUDE.md 자동 로드 안 될 수 있음)
+- **Opus 직접 수행 유지**: 보안 판단, 아키텍처 결정, PR 생성 승인, user-facing 답변
+- **참고**: advisor tool(Anthropic API beta)은 Claude Code CLI에서 직접 사용 불가 — 위 패턴이 기능적 등가
