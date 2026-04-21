@@ -55,6 +55,24 @@ branch: `chore/phase-19-residual/pr-0-memory-canonical`
   - handler 테스트 총 10건 (seo 4 + ws/upgrade 6) — 기준 ≥4 의 2.5배
 - 비스코프: `seo/handler.go:108,114` `http.NotFound` 2건은 helper 차이로 별도 delta 분류
 
+### PR-6 Auditlog Expansion — 현황 스캔만, 다음 세션 착수 (2026-04-21)
+- **상태**: paused — 이번 세션 현황 스캔만 수행. 구현은 다음 세션.
+- 선제 완료 (2/7): T1 migration, T4 review handler
+  - `apps/server/db/migrations/00026_auditlog_expansion.sql:26-44` — schema_v2 완비
+  - `review_handler.go:113,148,183,212` — approve/reject/suspend/trusted 4건
+- 실질 잔여 (5/7):
+  - **T2** auth password_change — 엔드포인트 자체 미구현. `event.go:34` 상수만 존재. 결정 필요 (PR-6 스코프 확장 vs 별도 PR)
+  - **T3** admin ban/unban — `ActionAdminBan/Unban` 호출 0건. ban 엔드포인트 유무 먼저 확인
+  - **T5** editor clue_edge/relation — `ActionEditorClueEdgesReplace`만 주입됨 (`clue_edge_handler.go:54`). Create/Delete + Relation_Create/Relation_Delete 4건 호출 필요
+  - **T6** handler 단위 테스트 — `admin/handler_test.go` 9 + `auth/handler_test.go` 7 모두 NoOpLogger. CapturingLogger 주입 후 ≥6건 신규 작성 필요
+  - **T7** staging 검증 — 00026 Down 절이 `DELETE WHERE session_id IS NULL` → rollback 시 user-only 데이터 소실 리스크. 먼저 migration 테스트 플랜 필요
+- **규모 추정**: M (원래 L+ 추정 대비 축소). recordAudit 호출 5건 + 테스트 ≥6건 + staging 검증.
+- **다음 세션 재개 가이드**:
+  1. `/plan-resume` — active-plan.json 의 `current_pr=PR-6` 복원
+  2. `git checkout -b feat/phase-19-residual/pr-6-auditlog-expansion`
+  3. 착수 순서: editor clue_edge/relation 4건 → admin ban/unban 결정 → auth password_change 결정 → T6 테스트 → T7 staging
+  4. 상세 scan_summary: `.claude/active-plan.json` `prs.PR-6.scan_summary`
+
 ### PR-1 WS Contract SSOT — 대부분 선제 완료 (2026-04-21)
 - **상태**: 8 task 중 7개가 Phase 19 implementation (2026-04-18, `099a096`) 단계에 완비됨. 본 PR 은 Task 5 헤더 메타 동적화만 실질 구현.
 - 선제 완료 근거 (task별 파일:라인):
