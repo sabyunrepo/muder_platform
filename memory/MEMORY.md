@@ -22,6 +22,7 @@
 - [Phase 19.1 Audit Review Follow-ups](project_phase19_1_progress.md) — **완료** W1 3 PR 머지 (PR-A #111 strict env 제거+BuildState godoc / PR-B #112 coverage lint AST 재작성 · 4 우회 패턴 차단 / PR-C #113 PeerLeakAssert helper 패키지 + 3+players table + Restore/engine dispatch 통합 테스트). 리뷰 MEDIUM 2+LOW 1 해소. 2026-04-18
 - [Phase 20 플랜](project_phase20_plan.md) — 단서·장소 에디터 정식 승격 (6 PR, 4 Wave, 2026-04-17 시작)
 - [Phase 20 완료](project_phase20_progress.md) — **완료 + 스테이징 QA** 단서·장소 에디터 정식 승격 (6 PR #71~#77 + archive #78, 4 Wave, 2026-04-17). 통합 clue_edge_groups 스키마 + AUTO/CRAFT + CurrentRound + 라운드 필터 + 프론트 승격. 스테이징 DB 00020~00025 적용 + 라운드 왕복 QA 7/7 통과 (CHECK 제약 9건 활성 확인)
+- [Phase 19 Residual 활성화](project_phase19_residual_progress.md) — **진행 중** 감사 backlog 잔여 9 PR + 2 hotfix (W0 PR-0 ↔ W4 PR-10). Plan PR #119 머지(`19446a2`, 2026-04-21). active-plan.json 활성화 완료. W0 PR-0 MEMORY Canonical Migration부터 착수.
 - [에디터 개방 + 심사 + 이미지 업로드](project_editor_open_access.md) — 전유저 에디터, 게시 심사, 크롭 업로드 (2026-04-13)
 - [Phase 10.0 완료](project_phase100_progress.md) — QA Bugfix Sprint (5 PRs, 15 tasks, 커밋 dfbc340)
 - [Phase 9.0 완료](project_phase90_progress.md) — 전체 완료 (16 PRs, 7 Waves, 31 모듈, 4장르 e2e)
@@ -30,7 +31,7 @@
 - [Phase 7.7 후속 작업](project_phase77_followups.md) — Phase 8.0 종료 후 cleanup용 Medium 이슈 목록
 - [소셜 시스템](project_social_system.md) — SocialHub, Redis Presence, WS 핸들러, 차단 필터링
 - [에러 처리 체계](project_error_system.md) — AppError, ErrorBoundary 3계층, Sentry, OTel
-- [모듈 시스템](project_module_system.md) — 29개 모듈, BaseModule+ConfigSchema+PhaseReactor+Factory
+- [모듈 시스템](project_module_system.md) — 33개 모듈 (spec 29 + crime_scene 3 + media 1), BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
 - [코딩 규칙](project_coding_rules.md) — Go/React 계층구조, DI, 상태관리, 테스트
 - [mmp-pilot 통합 시스템](project_mmp_pilot.md) — plan-autopilot+mmp하네스 병합, /plan-go 단일 진입점, 3-Layer, M0-M3 cutover 완료 (2026-04-15 commit cdd498e)
 
@@ -50,6 +51,9 @@
 - [main 직접 push 금지 · feature branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check, bypass 금지 (2026-04-17 `d1262a7` 사건 이후)
 - [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — QMD와 대칭 규칙, `/graphify query|explain|path` 우선, `--update` 증분만 사용 (2026-04-18)
 - [4-agent 코드리뷰는 admin-merge 전에 수행](feedback_4agent_review_before_admin_merge.md) — Auto mode + CI admin-skip 에서도 security/perf/arch/test 4 병렬 리뷰 선행. PR-2c (#107) 리뷰 생략 후 HIGH deadlock 이슈가 hotfix #108 로 발견된 사례 (2026-04-18)
+- [서브에이전트 Sonnet 4.6 기본](feedback_sonnet_46_default.md) — 서브에이전트 spawn 시 `claude-sonnet-4-6` 명시, 4.5 금지. 보안·아키텍처는 opus-4-7, 간단 검색은 haiku-4-5 (2026-04-19)
+- [메모리 canonical = repo/memory/](feedback_memory_canonical_repo.md) — 신규 memory는 repo만 작성, user home은 archival. QMD `mmp-memory` 컬렉션 경로 repo 이전, `originSessionId` 프론트매터 금지 (2026-04-21 PR-0)
+- [2026-04-19 세션 — 토큰 최적화](project_session_2026-04-19_optimization.md) — 3 PR (#116 module-spec 33, #117 hook slim + advisor, #118 /plan-* QMD + Sonnet 4.6). 세션당 ~8~25K 절감
 
 ## 코드 리뷰 패턴 & 프로세스
 - [코드 리뷰 패턴 통합](feedback_code_review_patterns.md) — Go/React/DB/보안/PWA/오디오 전 Phase 통합 패턴
@@ -60,5 +64,5 @@
 - [plan-resume QMD 효율화](feedback_plan_resume_qmd.md) — Read 대신 QMD로 필요 섹션만 로드, 컨텍스트 토큰 절약
 - [plan-resume에서도 QMD 우선](feedback_qmd_plan_resume.md) — 스킬 지시와 무관하게 docs/plans, memory 경로는 QMD get 필수
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — WebSocket은 ?token= 쿼리로 인증 (Authorization 헤더 아님)
-- [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 200 (2026-04-15 변경)
+- [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 500(CLAUDE.md만 200, 2026-04-21 변경)
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화 + 장시간 세션 주기 재시작, vantict 등 타프로젝트 분리

@@ -2,24 +2,26 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W0 (착수 대기)
-**Task**: PR-0 착수 전 — `.claude/active-plan.json` 활성화 + 본 plan PR 머지
+**Wave**: W0 (PR-0 구현 완료, 머지 대기)
+**Task**: PR-0 Task 1–4, 6 완료 + Task 5 docs 완료 / commit + PR 생성 대기
 **State**: in_progress
-**Blockers**: 없음 (plan init PR 머지 대기)
+**Blockers**: user home chmod 정책 결정 대기 (Task 5 filesystem 파트) — docs-only 소프트 모드도 가능
 **Last updated**: 2026-04-21
 <!-- STATUS-END -->
 
 ## W0 — Foundation (PR-0 단독)
 
 ### PR-0: MEMORY Canonical Migration
-- [ ] user home `~/.claude/projects/.../memory/` ↔ repo `memory/` 파일 diff
-- [ ] Phase 17.5~18.8 누락 progress·feedback 최소 9건 repo 복원
-- [ ] `MEMORY.md` 인덱스 재작성 (현행 반영)
-- [ ] QMD `mmp-memory` 컬렉션 path 이전 + reindex
-- [ ] user home read-only 처리 + `CLAUDE.md` QMD 섹션 갱신
-- [ ] `memory/project_phase19_residual_progress.md` 초기 생성
+- [x] user home `~/.claude/projects/.../memory/` ↔ repo `memory/` 파일 diff (drift 4 + user-only 3 + repo-only 4 · 실제 복원 대상 7건)
+- [x] Phase 17.5~18.8 누락 progress·feedback 복원 (실제 7건: 4 copy + 1 MEMORY.md merge + 2 신규 `feedback_memory_canonical_repo.md`/`project_phase19_residual_progress.md`; `originSessionId` 전수 스트립)
+- [x] `MEMORY.md` 인덱스 재작성 (user home canonical 적용 67→68줄, `feedback_memory_canonical_repo` pointer 추가)
+- [x] QMD `mmp-memory` 컬렉션 path 이전 + reindex (store_collections.path: user-home → repo, 66 files indexed)
+- [~] user home read-only 처리 + `CLAUDE.md` QMD 섹션 갱신 (CLAUDE.md QMD 섹션 + `memory/feedback_memory_canonical_repo.md` ✓ / filesystem chmod 정책 결정 대기)
+- [x] `memory/project_phase19_residual_progress.md` 초기 생성 (`originSessionId` 없이 65줄, PR-0 수행 내역 포함)
 
-**Gate**: `qmd search -c mmp-memory` hit 유지 + user home write off
+**Gate**: `qmd search -c mmp-memory` hit 유지 + user home write off → docs-only 소프트 모드 적용 (hard chmod은 사용자 결정)
+
+**부수 PR**: #121 `chore(phase-19-residual): preflight 스킬 경로/인라인 훅 처리 수정` (commit `3d8ccec`, M3 cutover 이후 legacy plan-autopilot 경로 잔존 결함 + inline bash hook guard 추가, /plan-go 파이프라인 정상화)
 
 ---
 
