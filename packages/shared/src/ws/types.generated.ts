@@ -6,6 +6,8 @@
 // Source of truth: apps/server/internal/ws/envelope_catalog_*.go
 // Any hand edit will be overwritten by the next go generate run.
 // Phase 19 PR-1 (2026-04-18).
+//
+// Catalog: 130 events (active=115, stub=13, deprec=2) · 2 //wsgen:payload structs.
 
 /* eslint-disable */
 /* prettier-ignore */

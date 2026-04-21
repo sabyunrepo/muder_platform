@@ -15,7 +15,7 @@ type: project
 | Wave | 항목 | 상태 |
 |------|------|------|
 | W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
-| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | PR-3 선제 완료 검증 ✅ + H-1 ✅ #125 `367ca35` · PR-1/PR-6 대기 |
+| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | PR-3 ✅ #128 `03897f9` + H-1 ✅ #125 `367ca35` + PR-1 대부분 선제 완료 (헤더 메타만 본 PR · 진행 중) · PR-6 대기 |
 | W2 | PR-5a/b/c Coverage Gate + mockgen → PR-7 Zustand Action | pending |
 | W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
@@ -54,6 +54,19 @@ branch: `chore/phase-19-residual/pr-0-memory-canonical`
   - `apps/server/.golangci.yml:13-19` `forbidigo` `^http\.Error$` deny + `F-sec-1` 주석 완비
   - handler 테스트 총 10건 (seo 4 + ws/upgrade 6) — 기준 ≥4 의 2.5배
 - 비스코프: `seo/handler.go:108,114` `http.NotFound` 2건은 helper 차이로 별도 delta 분류
+
+### PR-1 WS Contract SSOT — 대부분 선제 완료 (2026-04-21)
+- **상태**: 8 task 중 7개가 Phase 19 implementation (2026-04-18, `099a096`) 단계에 완비됨. 본 PR 은 Task 5 헤더 메타 동적화만 실질 구현.
+- 선제 완료 근거 (task별 파일:라인):
+  - T1 콜론 보존: `envelope_catalog.go:55-58` 설계 주석 + `_c2s.go:16`~ 콜론 엔트리 다수
+  - T2 deprecated 마커: `envelope_catalog_s2c.go:46-47/79-80` `StatusDeprec`
+  - T3 auth.* stub: `envelope_catalog_system.go:27-45` 6개 (C2S 3 + S2C 3) `StatusStub`
+  - T4 wsgen:payload 어노테이션: `cmd/wsgen/payload.go:28` + `extractPayloads()` AST 파싱 219줄
+  - T6 MSW shared import: `apps/web/src/mocks/handlers/game-ws.ts:22` `WsEventType` enum
+  - T7 gameMessageHandlers.ts 통합: 파일 제거, `useGameSync.ts:68` 에 통합 명시
+  - T8 CI drift gate: `.github/workflows/ci.yml:79-80` `go run ./cmd/wsgen` + `git diff --exit-code`
+- **본 PR 실질 변경**: `cmd/wsgen/render.go` 의 `headerBlock` const → `renderHeader()` 동적 함수. 이벤트 총수 + active/stub/deprec breakdown + payload struct 수를 헤더에 기록. Status 만 바뀐 경우도 headerline 변경 → drift gate 가시화.
+- **검증**: `go run ./cmd/wsgen` → 130 events, 2 payload structs · `go test ./internal/ws/...` → 86 pass · 첫 시도에 pending.go 에 auth.* 중복 추가 → panic → 즉시 되돌림 (system.go 에 이미 있음을 재발견)
 
 ## 결정 사항
 
