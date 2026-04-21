@@ -17,6 +17,10 @@ ignore:
   - "apps/server/internal/**/mock_*.go"
   - "apps/server/internal/**/*_mock.go"
   - "apps/server/internal/**/mock_shim_test.go"
+  # sqlc-generated — intentionally excluded from coverage
+  - "apps/server/internal/db/*.sql.go"
+  - "apps/server/internal/db/models.go"
+  - "apps/server/internal/db/db.go"
 
 comment:
   layout: "reach,diff,flags,files"

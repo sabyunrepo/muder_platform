@@ -15,8 +15,8 @@ type: project
 | Wave | 항목 | 상태 |
 |------|------|------|
 | W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
-| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | ✅ 완료 — PR-3 #128 `03897f9` + H-1 #125 `367ca35` + PR-1 #129 `80b603e` + PR-6 머지 대기 (브랜치 `feat/phase-19-residual/pr-6-auditlog-expansion`, 7 신규 테스트 + F-sec-4 fallback + smoke doc) |
-| W2 | PR-5a/b/c Coverage Gate + mockgen → PR-7 Zustand Action | PR-5b ✅ 완료 (branch `feat/phase-19-residual/pr-5b-coverage-gate`) |
+| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | ✅ 완료 — PR-3 #128 `03897f9` + H-1 #125 `367ca35` + PR-1 #129 `80b603e` + PR-6 #131 `d8e6df0` (admin-squash) |
+| W2 | PR-5a mockgen / PR-5b Coverage Gate / PR-5c 0% 패키지 복구 / PR-7 Zustand Action | PR-5a #132 `d1ac387` ✅ + PR-5b #133 `f21a6cf` ✅ + PR-5c 진행 중 (branch `feat/phase-19-residual/pr-5c-zero-coverage-recovery`, 7 신규 테스트 파일 + sqlc exclude) / PR-7 대기 |
 | W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
 
