@@ -2,10 +2,10 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W0 완료 · W1 착수 대기
-**Task**: W0 Gate 통과 — 다음 W1 병렬 3 PR(PR-3/PR-1/PR-6) + H-1 hotfix 착수 신호 대기
+**Wave**: W1 (H-1 hotfix regression 완료 · PR-3/PR-1/PR-6 3건 대기)
+**Task**: H-1 머지 후 W1 본체 PR 3건 착수 신호 대기 (사이즈 순: PR-3 M → PR-1 L+ / PR-6 L+)
 **State**: in_progress
-**Blockers**: 없음 (Task 5는 soft mode 최종 결정, hard chmod 미적용)
+**Blockers**: 없음
 **Last updated**: 2026-04-21
 <!-- STATUS-END -->
 
@@ -56,10 +56,10 @@
 - [ ] handler별 auditlog 기록 단위 테스트 ≥6건
 - [ ] migration staging 적용 + rollback 검증
 
-### H-1: voice token 평문 로그 제거
-- [ ] `voice/provider.go:108` 토큰 redact (`token[:8]+"..."`)
-- [ ] 재발 방지 룰 (zerolog field `token` deny 검토)
-- [ ] 로그 grep `eyJ` (JWT prefix) 0건 테스트
+### H-1: voice token 평문 로그 제거 (regression-only)
+- [x] `voice/provider.go` 토큰 redact — PR #83 (`b9cc4ba`)에서 선제 머지. 현 코드는 token value 로그 0건, line 104-106에 `SECURITY` 주석 존재. 경로는 실제 `apps/server/internal/domain/voice/provider.go`
+- [x] 재발 방지 룰 검토 — 정적 audit 결과 `.Str("token"` / `"eyJ"` / `params.Token` 패턴 서버 전체 0건. 단위 테스트 기반 가드로 충분 (depguard는 import 타겟, forbidigo는 1 패턴에 과함)
+- [x] 로그 grep `eyJ` (JWT prefix) 0건 테스트 — `provider_test.go` 신규 (`TestMockProviderDoesNotLogTokenValue` + `TestLiveKitProviderHasNoLoggerField`) 2 pass
 
 **W1 Gate**: 3 PR 머지 + contract CI green + `http.Error` 0건 + auditlog 100%
 
