@@ -85,6 +85,9 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
   // unmount 시 게임/모듈 스토어 정리
   // PR-8 (F-react-6): resetGame이 내부에서 clearBySessionId를 호출하므로
   // 모듈 스토어는 자동 정리된다. 별도 clearModuleStores 호출 불필요.
+  // T4 판정 (Phase 19 PR-7): useEffect cleanup에서 .getState()를 사용하는 것은
+  // 의도적 패턴이다. unmount 시점에는 React 렌더 사이클 외부이므로 selector
+  // 바인딩이 불가하고, .getState()가 올바른 접근법이다. refactor 불필요.
   useEffect(() => {
     return () => {
       useGameStore.getState().resetGame();

@@ -16,7 +16,7 @@ type: project
 |------|------|------|
 | W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
 | W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | ✅ 완료 — PR-3 #128 `03897f9` + H-1 #125 `367ca35` + PR-1 #129 `80b603e` + PR-6 #131 `d8e6df0` (admin-squash) |
-| W2 | PR-5a mockgen / PR-5b Coverage Gate / PR-5c 0% 패키지 복구 / PR-7 Zustand Action | PR-5a #132 `d1ac387` ✅ + PR-5b #133 `f21a6cf` ✅ + PR-5c 진행 중 (branch `feat/phase-19-residual/pr-5c-zero-coverage-recovery`, 7 신규 테스트 파일 + sqlc exclude) / PR-7 대기 |
+| W2 | PR-5a mockgen / PR-5b Coverage Gate / PR-5c 0% 패키지 복구 / PR-7 Zustand Action | PR-5a #132 `d1ac387` ✅ + PR-5b #133 `f21a6cf` ✅ + PR-5c 진행 중 (branch `feat/phase-19-residual/pr-5c-zero-coverage-recovery`, 7 신규 테스트 파일 + sqlc exclude) / PR-7 ✅ scope audit + 회귀 테스트 10건 완료 (branch `refactor/phase-19-residual/pr-7-zustand-apply-ws-event`) |
 | W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
 
@@ -91,6 +91,34 @@ branch: `chore/phase-19-residual/pr-0-memory-canonical`
   - T8 CI drift gate: `.github/workflows/ci.yml:79-80` `go run ./cmd/wsgen` + `git diff --exit-code`
 - **본 PR 실질 변경**: `cmd/wsgen/render.go` 의 `headerBlock` const → `renderHeader()` 동적 함수. 이벤트 총수 + active/stub/deprec breakdown + payload struct 수를 헤더에 기록. Status 만 바뀐 경우도 headerline 변경 → drift gate 가시화.
 - **검증**: `go run ./cmd/wsgen` → 130 events, 2 payload structs · `go test ./internal/ws/...` → 86 pass · 첫 시도에 pending.go 에 auth.* 중복 추가 → panic → 즉시 되돌림 (system.go 에 이미 있음을 재발견)
+
+## W2 PR-7 Zustand Action Unification — scope audit + 회귀 테스트 (2026-04-21)
+
+### 실상 기록
+refactor task 1–3은 선행 커밋에서 이미 완료 — 이 PR은 회귀 테스트 보강 + scope audit 문서화.
+
+- **applyWsEvent 단일 reducer**: YAGNI 판정. 현재 Zustand selector action 바인딩 패턴으로 충분.
+  WS 이벤트 8종이 `useGameSync.ts` 한 파일(139줄)에 집중되어 있어 switch reducer 전환 이점 없음.
+- **selector 바인딩 완료**: `useGameSync.ts` 내 모든 game-session action이 `useGameStore((s) => s.action)` 패턴. `.getState()` 잔존 없음.
+- **의도적 `.getState()` 잔존 3곳**:
+  1. `useGameSync.ts:131,137` — `getModuleStore(id, sessionId).getState().setData/mergeData`. factory 동적 ID이므로 selector 바인딩 대상 아님. 주석 완비.
+  2. `moduleStoreCleanup.ts:34,46` — factory cleanup 루프 내 store.getState().reset(). React 렌더 사이클 외부 호출이므로 정상.
+  3. `GamePage.tsx:90` — unmount cleanup에서 `useGameStore.getState().resetGame()`. unmount는 렌더 외부이므로 `.getState()` 올바른 패턴. 주석 추가 완료.
+- **Connection ↔ Domain 분리**: 명확. `connectionStore` = WS 클라이언트 생명주기. `gameSessionStore` = 게임 도메인 상태. WS 수신은 `useGameSync` 단일 entry.
+
+### 회귀 테스트 (10건)
+파일: `apps/web/src/hooks/__tests__/useGameSync.test.ts` (신규, 248줄)
+- `useWsEvent` mock으로 핸들러 직접 캡처 → 이벤트 emit → store 상태 assertion 패턴
+- SESSION_STATE → hydrateFromSnapshot → 전체 상태 복원
+- PHASE_ADVANCED → setPhase → phase/deadline/round 갱신
+- GAME_START → initGame → isGameActive=true + myPlayerId 주입
+- GAME_END → resetGame → 상태 초기화
+- PLAYER_JOINED → addPlayer → players 배열 추가
+- PLAYER_LEFT → removePlayer → players 배열에서 제거
+- MODULE_STATE → getModuleStore().setData → 모듈 데이터 전체 교체
+- MODULE_EVENT → getModuleStore().mergeData → 모듈 데이터 병합
+- 연속 이벤트 시나리오 2건 (GAME_START→PHASE_ADVANCED→PLAYER_JOINED, 이중 hydrate)
+- **결과**: 10/10 pass
 
 ## W2 PR-5b Coverage Gate (2026-04-21)
 
