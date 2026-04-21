@@ -4,7 +4,7 @@ allowed-tools: Read Write Bash(jq*) Bash(git*) Bash(mv*) Bash(mkdir*) Bash(rm*) 
 ---
 
 ## Pre-flight check
-!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-preflight.sh`
+!`${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌**: settings.json is broken, but finishing the plan is still possible (just archives files). Proceed carefully and warn the user to fix settings.json before starting the next plan.
 
