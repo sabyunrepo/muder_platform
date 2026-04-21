@@ -6,12 +6,12 @@ allowed-tools: Bash(jq*) Bash(grep*) Bash(wc*) Bash(find*) Bash(*/plan-preflight
 # Plan Tasks
 
 ## Pre-flight
-!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
+!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌, stop and fix settings.json first.**
 
 ## Task tree
-!`$HOME/.claude/skills/plan-go/scripts/plan-tasks.sh`
+!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-tasks.sh`
 
 ---
 
