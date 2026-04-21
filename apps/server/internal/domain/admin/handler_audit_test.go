@@ -114,3 +114,39 @@ func TestChangeHandlerCapturesAudit_ForceUnpublish(t *testing.T) {
 		t.Fatal("expected non-empty payload on force_unpublish")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// TestChangeHandlerCapturesAudit_ForceCloseRoom
+// ---------------------------------------------------------------------------
+
+func TestChangeHandlerCapturesAudit_ForceCloseRoom(t *testing.T) {
+	capture := auditlog.NewCapturingLogger()
+	roomID := uuid.New()
+	adminID := uuid.New()
+
+	ms := &mockService{
+		forceCloseRoomFn: func(_ context.Context, id uuid.UUID) error {
+			return nil
+		},
+	}
+
+	h := NewHandler(ms, capture, zerolog.Nop())
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/rooms/"+roomID.String()+"/close", nil)
+	req = withChiParam(req, "id", roomID.String())
+	req = withAdminCtx(req, adminID)
+
+	rec := httptest.NewRecorder()
+	h.ForceCloseRoom(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", rec.Code, rec.Body.String())
+	}
+	assertAdminAudit(t, capture, auditlog.ActionAdminForceCloseRoom)
+
+	// Verify payload carries room_id.
+	entries := capture.Entries()
+	if len(entries[0].Payload) == 0 {
+		t.Fatal("expected non-empty payload on force_close_room")
+	}
+}
