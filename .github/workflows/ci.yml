@@ -64,6 +64,20 @@ jobs:
           version: v2.11.4
           working-directory: apps/server
 
+      # Phase 19 Residual PR-5a: mockgen drift gate.
+      #
+      # Fails if any mocks/mock_service.go is stale relative to its source
+      # interface. Regenerate locally:
+      #   cd apps/server && go generate ./...
+      - name: mockgen drift check
+        working-directory: apps/server
+        run: |
+          go generate ./...
+          if ! git diff --exit-code; then
+            echo "::error::mockgen 산출물 drift. 'cd apps/server && go generate ./...' 실행 후 커밋하세요."
+            exit 1
+          fi
+
       # Phase 19 PR-1: WS Contract SSOT drift gate.
       #
       # The frontend WsEventType enum + Direction/Category/Status maps are

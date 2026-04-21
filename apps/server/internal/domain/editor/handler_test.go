@@ -1,4 +1,4 @@
-package editor
+package editor_test
 
 import (
 	"bytes"
@@ -12,158 +12,40 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"go.uber.org/mock/gomock"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/auditlog"
+	"github.com/mmp-platform/server/internal/domain/editor"
+	"github.com/mmp-platform/server/internal/domain/editor/mocks"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
-// --- mock service ---
-
-type mockService struct {
-	createThemeFn      func(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error)
-	updateThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
-	deleteThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID) error
-	listMyThemesFn     func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
-	publishThemeFn     func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	unpublishThemeFn   func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
-	createCharFn       func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
-	updateCharFn       func(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error)
-	deleteCharFn       func(ctx context.Context, creatorID, charID uuid.UUID) error
-	updateConfigFn     func(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error)
-	getClueEdgesFn     func(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueEdgeGroupResponse, error)
-	replaceClueEdgesFn func(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueEdgeGroupRequest) ([]ClueEdgeGroupResponse, error)
-}
-
-func (m *mockService) CreateTheme(ctx context.Context, creatorID uuid.UUID, req CreateThemeRequest) (*ThemeResponse, error) {
-	return m.createThemeFn(ctx, creatorID, req)
-}
-func (m *mockService) UpdateTheme(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error) {
-	return m.updateThemeFn(ctx, creatorID, themeID, req)
-}
-func (m *mockService) DeleteTheme(ctx context.Context, creatorID, themeID uuid.UUID) error {
-	return m.deleteThemeFn(ctx, creatorID, themeID)
-}
-func (m *mockService) ListMyThemes(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error) {
-	return m.listMyThemesFn(ctx, creatorID)
-}
-func (m *mockService) PublishTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
-	return m.publishThemeFn(ctx, creatorID, themeID)
-}
-func (m *mockService) UnpublishTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
-	return m.unpublishThemeFn(ctx, creatorID, themeID)
-}
-func (m *mockService) CreateCharacter(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error) {
-	return m.createCharFn(ctx, creatorID, themeID, req)
-}
-func (m *mockService) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UUID, req UpdateCharacterRequest) (*CharacterResponse, error) {
-	return m.updateCharFn(ctx, creatorID, charID, req)
-}
-func (m *mockService) DeleteCharacter(ctx context.Context, creatorID, charID uuid.UUID) error {
-	return m.deleteCharFn(ctx, creatorID, charID)
-}
-func (m *mockService) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error) {
-	return m.updateConfigFn(ctx, creatorID, themeID, config)
-}
-func (m *mockService) ListCharacters(ctx context.Context, creatorID, themeID uuid.UUID) ([]CharacterResponse, error) {
-	return nil, nil
-}
-func (m *mockService) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
-	return nil, nil
-}
-
-// Maps
-func (m *mockService) CreateMap(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMapRequest) (*MapResponse, error) {
-	return nil, nil
-}
-func (m *mockService) UpdateMap(ctx context.Context, creatorID, mapID uuid.UUID, req UpdateMapRequest) (*MapResponse, error) {
-	return nil, nil
-}
-func (m *mockService) DeleteMap(ctx context.Context, creatorID, mapID uuid.UUID) error {
-	return nil
-}
-func (m *mockService) ListMaps(ctx context.Context, creatorID, themeID uuid.UUID) ([]MapResponse, error) {
-	return nil, nil
-}
-
-// Locations
-func (m *mockService) CreateLocation(ctx context.Context, creatorID, themeID, mapID uuid.UUID, req CreateLocationRequest) (*LocationResponse, error) {
-	return nil, nil
-}
-func (m *mockService) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID, req UpdateLocationRequest) (*LocationResponse, error) {
-	return nil, nil
-}
-func (m *mockService) DeleteLocation(ctx context.Context, creatorID, locID uuid.UUID) error {
-	return nil
-}
-func (m *mockService) ListLocations(ctx context.Context, creatorID, themeID uuid.UUID) ([]LocationResponse, error) {
-	return nil, nil
-}
-
-// Clues
-func (m *mockService) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, req CreateClueRequest) (*ClueResponse, error) {
-	return nil, nil
-}
-func (m *mockService) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, req UpdateClueRequest) (*ClueResponse, error) {
-	return nil, nil
-}
-func (m *mockService) DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error {
-	return nil
-}
-func (m *mockService) ListClues(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueResponse, error) {
-	return nil, nil
-}
-
-// SubmitForReview
-func (m *mockService) SubmitForReview(ctx context.Context, userID, themeID uuid.UUID) (*ThemeResponse, error) {
-	return nil, nil
-}
-
-// GetModuleSchemas
-func (m *mockService) GetModuleSchemas(ctx context.Context) (map[string]json.RawMessage, error) {
-	return nil, nil
-}
-
-// Clue edges
-func (m *mockService) GetClueEdges(ctx context.Context, creatorID, themeID uuid.UUID) ([]ClueEdgeGroupResponse, error) {
-	if m.getClueEdgesFn != nil {
-		return m.getClueEdgesFn(ctx, creatorID, themeID)
-	}
-	return []ClueEdgeGroupResponse{}, nil
-}
-func (m *mockService) ReplaceClueEdges(ctx context.Context, creatorID, themeID uuid.UUID, reqs []ClueEdgeGroupRequest) ([]ClueEdgeGroupResponse, error) {
-	if m.replaceClueEdgesFn != nil {
-		return m.replaceClueEdgesFn(ctx, creatorID, themeID, reqs)
-	}
-	return []ClueEdgeGroupResponse{}, nil
-}
-
-// Contents
-func (m *mockService) GetContent(ctx context.Context, creatorID, themeID uuid.UUID, key string) (*ContentResponse, error) {
-	return nil, nil
-}
-func (m *mockService) UpsertContent(ctx context.Context, creatorID, themeID uuid.UUID, key string, body string) (*ContentResponse, error) {
-	return nil, nil
-}
-
-// Validation
-func (m *mockService) ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ValidationResponse, error) {
-	return nil, nil
-}
-
-// --- test helpers ---
-
 var (
-	testCreatorID = uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
-	testThemeID   = uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
-	testCharID    = uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
-	testNow       = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	extCreatorID = uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+	extThemeID   = uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+	extCharID    = uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	extNow       = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 )
 
-func sampleThemeResponse() *ThemeResponse {
+func withExtAuth(r *http.Request) *http.Request {
+	ctx := context.WithValue(r.Context(), middleware.UserIDKey, extCreatorID)
+	ctx = context.WithValue(ctx, middleware.UserRoleKey, "CREATOR")
+	return r.WithContext(ctx)
+}
+
+func extChiContext(r *http.Request, params map[string]string) *http.Request {
+	rctx := chi.NewRouteContext()
+	for k, v := range params {
+		rctx.URLParams.Add(k, v)
+	}
+	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
+}
+
+func extSampleThemeResponse() *editor.ThemeResponse {
 	desc := "A test theme"
-	return &ThemeResponse{
-		ID:          testThemeID,
+	return &editor.ThemeResponse{
+		ID:          extThemeID,
 		Title:       "Test Theme",
 		Slug:        "test-theme-ab12",
 		Description: &desc,
@@ -173,15 +55,15 @@ func sampleThemeResponse() *ThemeResponse {
 		Price:       0,
 		Status:      "DRAFT",
 		Version:     1,
-		CreatedAt:   testNow,
+		CreatedAt:   extNow,
 	}
 }
 
-func sampleCharResponse() *CharacterResponse {
+func extSampleCharResponse() *editor.CharacterResponse {
 	desc := "A detective"
-	return &CharacterResponse{
-		ID:          testCharID,
-		ThemeID:     testThemeID,
+	return &editor.CharacterResponse{
+		ID:          extCharID,
+		ThemeID:     extThemeID,
 		Name:        "Detective",
 		Description: &desc,
 		IsCulprit:   false,
@@ -189,36 +71,20 @@ func sampleCharResponse() *CharacterResponse {
 	}
 }
 
-// withAuth injects user ID and role into context, matching middleware keys.
-func withAuth(r *http.Request) *http.Request {
-	ctx := context.WithValue(r.Context(), middleware.UserIDKey, testCreatorID)
-	ctx = context.WithValue(ctx, middleware.UserRoleKey, "CREATOR")
-	return r.WithContext(ctx)
-}
-
-// chiContext sets chi URL params on a request.
-func chiContext(r *http.Request, params map[string]string) *http.Request {
-	rctx := chi.NewRouteContext()
-	for k, v := range params {
-		rctx.URLParams.Add(k, v)
-	}
-	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
-}
-
-// --- tests ---
-
 func TestListMyThemes(t *testing.T) {
-	ms := &mockService{
-		listMyThemesFn: func(_ context.Context, _ uuid.UUID) ([]ThemeSummary, error) {
-			return []ThemeSummary{
-				{ID: testThemeID, Title: "T1", Status: "DRAFT", MinPlayers: 4, MaxPlayers: 8, Version: 1, CreatedAt: testNow},
-			}, nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		ListMyThemes(gomock.Any(), gomock.Eq(extCreatorID)).
+		Return([]editor.ThemeSummary{
+			{ID: extThemeID, Title: "T1", Status: "DRAFT", MinPlayers: 4, MaxPlayers: 8, Version: 1, CreatedAt: extNow},
+		}, nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	r := httptest.NewRequest(http.MethodGet, "/editor/themes", nil)
-	r = withAuth(r)
+	r = withExtAuth(r)
 	w := httptest.NewRecorder()
 
 	h.ListMyThemes(w, r)
@@ -229,17 +95,19 @@ func TestListMyThemes(t *testing.T) {
 }
 
 func TestCreateTheme_Success(t *testing.T) {
-	ms := &mockService{
-		createThemeFn: func(_ context.Context, _ uuid.UUID, _ CreateThemeRequest) (*ThemeResponse, error) {
-			return sampleThemeResponse(), nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		CreateTheme(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(extSampleThemeResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"title":"Test Theme","min_players":4,"max_players":8,"duration_min":60,"price":0}`
 	r := httptest.NewRequest(http.MethodPost, "/editor/themes", bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
-	r = withAuth(r)
+	r = withExtAuth(r)
 	w := httptest.NewRecorder()
 
 	h.CreateTheme(w, r)
@@ -250,14 +118,15 @@ func TestCreateTheme_Success(t *testing.T) {
 }
 
 func TestCreateTheme_InvalidBody(t *testing.T) {
-	ms := &mockService{}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	// missing required fields
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
 	body := `{"title":"X"}`
 	r := httptest.NewRequest(http.MethodPost, "/editor/themes", bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
-	r = withAuth(r)
+	r = withExtAuth(r)
 	w := httptest.NewRecorder()
 
 	h.CreateTheme(w, r)
@@ -268,18 +137,20 @@ func TestCreateTheme_InvalidBody(t *testing.T) {
 }
 
 func TestUpdateTheme_Success(t *testing.T) {
-	ms := &mockService{
-		updateThemeFn: func(_ context.Context, _, _ uuid.UUID, _ UpdateThemeRequest) (*ThemeResponse, error) {
-			return sampleThemeResponse(), nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		UpdateTheme(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(extSampleThemeResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"title":"Updated Theme","min_players":4,"max_players":8,"duration_min":60,"price":0}`
-	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+testThemeID.String(), bytes.NewBufferString(body))
+	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+extThemeID.String(), bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.UpdateTheme(w, r)
@@ -290,16 +161,18 @@ func TestUpdateTheme_Success(t *testing.T) {
 }
 
 func TestDeleteTheme_Success(t *testing.T) {
-	ms := &mockService{
-		deleteThemeFn: func(_ context.Context, _, _ uuid.UUID) error {
-			return nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	r := httptest.NewRequest(http.MethodDelete, "/editor/themes/"+testThemeID.String(), nil)
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	mock.EXPECT().
+		DeleteTheme(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodDelete, "/editor/themes/"+extThemeID.String(), nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.DeleteTheme(w, r)
@@ -310,16 +183,18 @@ func TestDeleteTheme_Success(t *testing.T) {
 }
 
 func TestDeleteTheme_Forbidden(t *testing.T) {
-	ms := &mockService{
-		deleteThemeFn: func(_ context.Context, _, _ uuid.UUID) error {
-			return apperror.Forbidden("you do not own this theme")
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	r := httptest.NewRequest(http.MethodDelete, "/editor/themes/"+testThemeID.String(), nil)
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	mock.EXPECT().
+		DeleteTheme(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(apperror.Forbidden("you do not own this theme")).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodDelete, "/editor/themes/"+extThemeID.String(), nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.DeleteTheme(w, r)
@@ -330,18 +205,20 @@ func TestDeleteTheme_Forbidden(t *testing.T) {
 }
 
 func TestPublishTheme_Success(t *testing.T) {
-	ms := &mockService{
-		publishThemeFn: func(_ context.Context, _, _ uuid.UUID) (*ThemeResponse, error) {
-			resp := sampleThemeResponse()
-			resp.Status = "PUBLISHED"
-			return resp, nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/publish", nil)
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	resp := extSampleThemeResponse()
+	resp.Status = "PUBLISHED"
+	mock.EXPECT().
+		PublishTheme(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(resp, nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+extThemeID.String()+"/publish", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.PublishTheme(w, r)
@@ -352,16 +229,18 @@ func TestPublishTheme_Success(t *testing.T) {
 }
 
 func TestUnpublishTheme_Success(t *testing.T) {
-	ms := &mockService{
-		unpublishThemeFn: func(_ context.Context, _, _ uuid.UUID) (*ThemeResponse, error) {
-			return sampleThemeResponse(), nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/unpublish", nil)
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	mock.EXPECT().
+		UnpublishTheme(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(extSampleThemeResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+extThemeID.String()+"/unpublish", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.UnpublishTheme(w, r)
@@ -372,18 +251,20 @@ func TestUnpublishTheme_Success(t *testing.T) {
 }
 
 func TestCreateCharacter_Success(t *testing.T) {
-	ms := &mockService{
-		createCharFn: func(_ context.Context, _, _ uuid.UUID, _ CreateCharacterRequest) (*CharacterResponse, error) {
-			return sampleCharResponse(), nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		CreateCharacter(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(extSampleCharResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"name":"Detective","description":"A detective","is_culprit":false,"sort_order":0}`
-	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/characters", bytes.NewBufferString(body))
+	r := httptest.NewRequest(http.MethodPost, "/editor/themes/"+extThemeID.String()+"/characters", bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.CreateCharacter(w, r)
@@ -394,18 +275,20 @@ func TestCreateCharacter_Success(t *testing.T) {
 }
 
 func TestUpdateCharacter_Success(t *testing.T) {
-	ms := &mockService{
-		updateCharFn: func(_ context.Context, _, _ uuid.UUID, _ UpdateCharacterRequest) (*CharacterResponse, error) {
-			return sampleCharResponse(), nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		UpdateCharacter(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(extSampleCharResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"name":"Detective Updated","is_culprit":false,"sort_order":1}`
-	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+testCharID.String(), bytes.NewBufferString(body))
+	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+extCharID.String(), bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testCharID.String()})
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
 	w := httptest.NewRecorder()
 
 	h.UpdateCharacter(w, r)
@@ -416,16 +299,18 @@ func TestUpdateCharacter_Success(t *testing.T) {
 }
 
 func TestDeleteCharacter_Success(t *testing.T) {
-	ms := &mockService{
-		deleteCharFn: func(_ context.Context, _, _ uuid.UUID) error {
-			return nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	r := httptest.NewRequest(http.MethodDelete, "/editor/characters/"+testCharID.String(), nil)
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testCharID.String()})
+	mock.EXPECT().
+		DeleteCharacter(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodDelete, "/editor/characters/"+extCharID.String(), nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
 	w := httptest.NewRecorder()
 
 	h.DeleteCharacter(w, r)
@@ -436,20 +321,22 @@ func TestDeleteCharacter_Success(t *testing.T) {
 }
 
 func TestUpdateConfigJson_Success(t *testing.T) {
-	ms := &mockService{
-		updateConfigFn: func(_ context.Context, _, _ uuid.UUID, _ json.RawMessage) (*ThemeResponse, error) {
-			resp := sampleThemeResponse()
-			resp.ConfigJson = json.RawMessage(`{"phases":["intro","discussion"]}`)
-			return resp, nil
-		},
-	}
-	h := NewHandler(ms, auditlog.NoOpLogger{}, zerolog.Nop())
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	resp := extSampleThemeResponse()
+	resp.ConfigJson = json.RawMessage(`{"phases":["intro","discussion"]}`)
+	mock.EXPECT().
+		UpdateConfigJson(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(resp, nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
 	body := `{"phases":["intro","discussion"]}`
-	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+testThemeID.String()+"/config", bytes.NewBufferString(body))
+	r := httptest.NewRequest(http.MethodPut, "/editor/themes/"+extThemeID.String()+"/config", bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
-	r = withAuth(r)
-	r = chiContext(r, map[string]string{"id": testThemeID.String()})
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
 	w := httptest.NewRecorder()
 
 	h.UpdateConfigJson(w, r)

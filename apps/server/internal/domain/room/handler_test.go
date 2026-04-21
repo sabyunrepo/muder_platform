@@ -1,4 +1,4 @@
-package room
+package room_test
 
 import (
 	"bytes"
@@ -10,52 +10,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/domain/room"
+	"github.com/mmp-platform/server/internal/domain/room/mocks"
 	"github.com/mmp-platform/server/internal/middleware"
 )
-
-// mockService implements Service for testing.
-type mockService struct {
-	createRoomFn    func(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
-	getRoomFn       func(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error)
-	getRoomByCodeFn func(ctx context.Context, code string) (*RoomDetailResponse, error)
-	listWaitingFn   func(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
-	joinRoomFn      func(ctx context.Context, roomID, userID uuid.UUID) error
-	leaveRoomFn     func(ctx context.Context, roomID, userID uuid.UUID) error
-	startRoomFn     func(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
-}
-
-func (m *mockService) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
-	return m.createRoomFn(ctx, hostID, req)
-}
-
-func (m *mockService) GetRoom(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error) {
-	return m.getRoomFn(ctx, roomID)
-}
-
-func (m *mockService) GetRoomByCode(ctx context.Context, code string) (*RoomDetailResponse, error) {
-	return m.getRoomByCodeFn(ctx, code)
-}
-
-func (m *mockService) ListWaitingRooms(ctx context.Context, limit, offset int32) ([]RoomResponse, error) {
-	return m.listWaitingFn(ctx, limit, offset)
-}
-
-func (m *mockService) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error {
-	return m.joinRoomFn(ctx, roomID, userID)
-}
-
-func (m *mockService) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error {
-	return m.leaveRoomFn(ctx, roomID, userID)
-}
-
-func (m *mockService) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error {
-	if m.startRoomFn != nil {
-		return m.startRoomFn(ctx, roomID, hostID, req)
-	}
-	return nil
-}
 
 // withAuth injects a user ID into the request context.
 func withAuth(r *http.Request, userID uuid.UUID) *http.Request {
@@ -71,20 +32,21 @@ func withChiParam(r *http.Request, key, value string) *http.Request {
 }
 
 func TestCreateRoom_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 	hostID := uuid.New()
 	themeID := uuid.New()
 
-	mock := &mockService{
-		createRoomFn: func(_ context.Context, hID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
-			if hID != hostID {
-				t.Fatalf("expected hostID %s, got %s", hostID, hID)
-			}
+	mock.EXPECT().
+		CreateRoom(gomock.Any(), gomock.Eq(hostID), gomock.Any()).
+		DoAndReturn(func(_ context.Context, hID uuid.UUID, req room.CreateRoomRequest) (*room.RoomResponse, error) {
 			effective := int32(0)
 			if req.MaxPlayers != nil {
 				effective = *req.MaxPlayers
 			}
-			return &RoomResponse{
+			return &room.RoomResponse{
 				ID:          roomID,
 				ThemeID:     themeID,
 				HostID:      hostID,
@@ -94,13 +56,12 @@ func TestCreateRoom_Success(t *testing.T) {
 				IsPrivate:   req.IsPrivate,
 				PlayerCount: 1,
 			}, nil
-		},
-	}
+		}).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
 	mp := int32(6)
-	body, _ := json.Marshal(CreateRoomRequest{
+	body, _ := json.Marshal(room.CreateRoomRequest{
 		ThemeID:    themeID,
 		MaxPlayers: &mp,
 		IsPrivate:  false,
@@ -117,7 +78,7 @@ func TestCreateRoom_Success(t *testing.T) {
 		t.Fatalf("expected status 201, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp RoomResponse
+	var resp room.RoomResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -129,23 +90,22 @@ func TestCreateRoom_Success(t *testing.T) {
 	}
 }
 
-// TestCreateRoom_OmitMaxPlayers_FallbackApplied verifies that a body without
-// max_players is accepted (201) and the service sees req.MaxPlayers == nil so
-// it can apply the theme default fallback.
 func TestCreateRoom_OmitMaxPlayers_FallbackApplied(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 	hostID := uuid.New()
 	themeID := uuid.New()
-
 	const themeDefault int32 = 8
 
-	mock := &mockService{
-		createRoomFn: func(_ context.Context, _ uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
+	mock.EXPECT().
+		CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ uuid.UUID, req room.CreateRoomRequest) (*room.RoomResponse, error) {
 			if req.MaxPlayers != nil {
 				t.Fatalf("expected MaxPlayers nil, got %d", *req.MaxPlayers)
 			}
-			// Simulate service-side theme fallback.
-			return &RoomResponse{
+			return &room.RoomResponse{
 				ID:          roomID,
 				ThemeID:     themeID,
 				HostID:      hostID,
@@ -155,12 +115,10 @@ func TestCreateRoom_OmitMaxPlayers_FallbackApplied(t *testing.T) {
 				IsPrivate:   req.IsPrivate,
 				PlayerCount: 1,
 			}, nil
-		},
-	}
+		}).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
-	// Body intentionally omits max_players entirely.
 	body := []byte(`{"theme_id":"` + themeID.String() + `"}`)
 	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -173,7 +131,7 @@ func TestCreateRoom_OmitMaxPlayers_FallbackApplied(t *testing.T) {
 		t.Fatalf("expected status 201, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp RoomResponse
+	var resp room.RoomResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -182,29 +140,25 @@ func TestCreateRoom_OmitMaxPlayers_FallbackApplied(t *testing.T) {
 	}
 }
 
-// TestCreateRoom_MaxPlayersOutOfRange_Returns400 verifies that when the
-// service returns a VALIDATION_ERROR AppError (e.g. max_players outside the
-// theme's [min,max] range), the handler responds 400.
 func TestCreateRoom_MaxPlayersOutOfRange_Returns400(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	hostID := uuid.New()
 	themeID := uuid.New()
 
-	mock := &mockService{
-		createRoomFn: func(_ context.Context, _ uuid.UUID, _ CreateRoomRequest) (*RoomResponse, error) {
-			return nil, apperror.New(
-				apperror.ErrValidation,
-				http.StatusBadRequest,
-				"max_players 20 is outside theme range [4, 8]",
-			)
-		},
-	}
+	mock.EXPECT().
+		CreateRoom(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil, apperror.New(
+			apperror.ErrValidation,
+			http.StatusBadRequest,
+			"max_players 20 is outside theme range [4, 8]",
+		)).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
-	// Body with max_players within the validator tag bounds (≤12) but that the
-	// service will reject as exceeding the theme's per-theme cap.
 	mp := int32(10)
-	body, _ := json.Marshal(CreateRoomRequest{
+	body, _ := json.Marshal(room.CreateRoomRequest{
 		ThemeID:    themeID,
 		MaxPlayers: &mp,
 	})
@@ -225,10 +179,11 @@ func TestCreateRoom_MaxPlayersOutOfRange_Returns400(t *testing.T) {
 }
 
 func TestCreateRoom_InvalidBody(t *testing.T) {
-	mock := &mockService{}
-	h := NewHandler(mock)
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	// Missing required theme_id.
+	h := room.NewHandler(mock)
+
 	body := []byte(`{"is_private": true}`)
 	req := httptest.NewRequest(http.MethodPost, "/rooms", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -243,16 +198,17 @@ func TestCreateRoom_InvalidBody(t *testing.T) {
 }
 
 func TestListWaitingRooms_Success(t *testing.T) {
-	mock := &mockService{
-		listWaitingFn: func(_ context.Context, limit, offset int32) ([]RoomResponse, error) {
-			return []RoomResponse{
-				{ID: uuid.New(), Code: "AAA111", Status: "WAITING", MaxPlayers: 6},
-				{ID: uuid.New(), Code: "BBB222", Status: "WAITING", MaxPlayers: 4},
-			}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	h := NewHandler(mock)
+	mock.EXPECT().
+		ListWaitingRooms(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]room.RoomResponse{
+			{ID: uuid.New(), Code: "AAA111", Status: "WAITING", MaxPlayers: 6},
+			{ID: uuid.New(), Code: "BBB222", Status: "WAITING", MaxPlayers: 4},
+		}, nil).Times(1)
+
+	h := room.NewHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms?limit=10&offset=0", nil)
 	rec := httptest.NewRecorder()
@@ -262,7 +218,7 @@ func TestListWaitingRooms_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var rooms []RoomResponse
+	var rooms []room.RoomResponse
 	if err := json.NewDecoder(rec.Body).Decode(&rooms); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -272,30 +228,28 @@ func TestListWaitingRooms_Success(t *testing.T) {
 }
 
 func TestGetRoom_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 
-	mock := &mockService{
-		getRoomFn: func(_ context.Context, rID uuid.UUID) (*RoomDetailResponse, error) {
-			if rID != roomID {
-				t.Fatalf("expected roomID %s, got %s", roomID, rID)
-			}
-			return &RoomDetailResponse{
-				RoomResponse: RoomResponse{
-					ID:          roomID,
-					Code:        "XYZ789",
-					Status:      "WAITING",
-					MaxPlayers:  6,
-					PlayerCount: 2,
-				},
-				Players: []PlayerInfo{
-					{UserID: uuid.New(), IsReady: false},
-					{UserID: uuid.New(), IsReady: true},
-				},
-			}, nil
-		},
-	}
+	mock.EXPECT().
+		GetRoom(gomock.Any(), gomock.Eq(roomID)).
+		Return(&room.RoomDetailResponse{
+			RoomResponse: room.RoomResponse{
+				ID:          roomID,
+				Code:        "XYZ789",
+				Status:      "WAITING",
+				MaxPlayers:  6,
+				PlayerCount: 2,
+			},
+			Players: []room.PlayerInfo{
+				{UserID: uuid.New(), IsReady: false},
+				{UserID: uuid.New(), IsReady: true},
+			},
+		}, nil).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms/"+roomID.String(), nil)
 	req = withChiParam(req, "id", roomID.String())
@@ -307,7 +261,7 @@ func TestGetRoom_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp RoomDetailResponse
+	var resp room.RoomDetailResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -317,15 +271,16 @@ func TestGetRoom_Success(t *testing.T) {
 }
 
 func TestGetRoom_NotFound(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 
-	mock := &mockService{
-		getRoomFn: func(_ context.Context, _ uuid.UUID) (*RoomDetailResponse, error) {
-			return nil, apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
-		},
-	}
+	mock.EXPECT().
+		GetRoom(gomock.Any(), gomock.Any()).
+		Return(nil, apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
 	req := httptest.NewRequest(http.MethodGet, "/rooms/"+roomID.String(), nil)
 	req = withChiParam(req, "id", roomID.String())
@@ -339,19 +294,17 @@ func TestGetRoom_NotFound(t *testing.T) {
 }
 
 func TestJoinRoom_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 	userID := uuid.New()
 
-	mock := &mockService{
-		joinRoomFn: func(_ context.Context, rID, uID uuid.UUID) error {
-			if rID != roomID || uID != userID {
-				t.Fatalf("unexpected IDs: room=%s user=%s", rID, uID)
-			}
-			return nil
-		},
-	}
+	mock.EXPECT().
+		JoinRoom(gomock.Any(), gomock.Eq(roomID), gomock.Eq(userID)).
+		Return(nil).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID.String()+"/join", nil)
 	req = withAuth(req, userID)
@@ -366,16 +319,17 @@ func TestJoinRoom_Success(t *testing.T) {
 }
 
 func TestJoinRoom_Full(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 	userID := uuid.New()
 
-	mock := &mockService{
-		joinRoomFn: func(_ context.Context, _, _ uuid.UUID) error {
-			return apperror.New(apperror.ErrRoomFull, http.StatusConflict, "room is full")
-		},
-	}
+	mock.EXPECT().
+		JoinRoom(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(apperror.New(apperror.ErrRoomFull, http.StatusConflict, "room is full")).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID.String()+"/join", nil)
 	req = withAuth(req, userID)
@@ -390,19 +344,17 @@ func TestJoinRoom_Full(t *testing.T) {
 }
 
 func TestLeaveRoom_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	roomID := uuid.New()
 	userID := uuid.New()
 
-	mock := &mockService{
-		leaveRoomFn: func(_ context.Context, rID, uID uuid.UUID) error {
-			if rID != roomID || uID != userID {
-				t.Fatalf("unexpected IDs: room=%s user=%s", rID, uID)
-			}
-			return nil
-		},
-	}
+	mock.EXPECT().
+		LeaveRoom(gomock.Any(), gomock.Eq(roomID), gomock.Eq(userID)).
+		Return(nil).Times(1)
 
-	h := NewHandler(mock)
+	h := room.NewHandler(mock)
 
 	req := httptest.NewRequest(http.MethodPost, "/rooms/"+roomID.String()+"/leave", nil)
 	req = withAuth(req, userID)
