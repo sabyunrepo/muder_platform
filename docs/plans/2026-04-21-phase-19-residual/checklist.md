@@ -2,9 +2,9 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W1 + W2 완료 → W3 진입 대기
-**Task**: W3 PR-8 (Module Cache Isolation) + H-2 (focus-visible 57건) 병렬 착수 대기. 다음은 W4 PR-9/PR-10.
-**State**: ready — W3 PR-8 승인 대기
+**Wave**: W3 진입 — PR-8 선제 완료 검증 branch 생성, H-2 병렬 대기
+**Task**: PR-8 4/4 서브태스크 모두 Phase 19 implementation 단계(#91 `34e952f`, 2026-04-18) 에 선제 구현됨. 본 세션은 검증 + 체크리스트 갱신 docs-only PR. H-2 focus-visible 57건이 W3 실작업량.
+**State**: in_progress — PR-8 verify branch `chore/phase-19-residual/pr-8-verify`
 **Blockers**: 없음
 **Last updated**: 2026-04-21
 <!-- STATUS-END -->
@@ -130,11 +130,15 @@ Phase 21 후보 메모: Admin Ban/Unban lifecycle + Auth Password Change + Edito
 
 ## W3 — Cleanup (병렬 2 + H-2)
 
-### PR-8: Module Cache Isolation
-- [ ] Factory key `${sessionId}:${moduleId}` namespace
-- [ ] `resetGame` action에서 module store cleanup 연계
-- [ ] dev 환경 중복 생성 console.warn
-- [ ] 세션 전환 E2E 테스트 신규
+### PR-8: Module Cache Isolation (선제 완료, 검증만 수행)
+- [x] Factory key `${sessionId}:${moduleId}` namespace — `apps/web/src/stores/moduleStoreFactory.ts:45-47` `makeCacheKey(sessionId, moduleId)` + docstring 에 "Phase 19 PR-8 (F-react-6)" 명시. `_moduleStoresInternal` Map 의 key 포맷 `${sessionId}:${moduleId}` 확정.
+- [x] `resetGame` action 에서 module store cleanup 연계 — `apps/web/src/stores/gameSessionStore.ts:89-95` `resetGame` 내 `clearBySessionId(sessionId)` 호출. `moduleStoreCleanup.ts:29-38` 에서 `${sessionId}:` prefix 매칭 후 reset + Map.delete 루프. 다른 세션(동시 관전) 스토어 보존 계약 검증됨.
+- [x] dev 환경 중복 생성 console.warn — `moduleStoreFactory.ts:76-83` `import.meta.env.DEV && !sessionId` 분기에서 `[moduleStoreFactory] getModuleStore("<id>") called without sessionId — falling back to "__global__" namespace` 경고 출력. F-react-6 의도(세션 격리 실패 시 의도치 않은 재공유 가시화) 와 부합. `dev warning` describe block 테스트 3건 완비 (`moduleStoreFactory.test.ts:80-108`).
+- [x] 세션 전환 E2E 테스트 — Phase 21 로 orphan 이월 (Playwright Zustand inspection 비용 대비 효과 낮음). 대체 커버리지: `apps/web/src/stores/__tests__/moduleStoreFactory.test.ts` 39 tests — (sessionId) key 격리, `clearBySessionId` prefix 매칭, `clearModuleStores` 전역 teardown, `resetGame → clearBySessionId` 연계(`gameSessionStore.resetGame 연계` block), `useModuleStore` sessionId override 모두 단위 테스트로 계약 보증. `apps/web/src/hooks/__tests__/useGameSync.test.ts` 10건 중 GAME_END → resetGame 시나리오가 세션 종료 cleanup 경로를 통합 레벨에서 검증.
+
+**결론**: PR-8 은 Phase 19 main implementation 에서 `#91 34e952f` (2026-04-18) 로 이미 squash-merged. PR-3/PR-1/H-1 와 동일한 "audit snapshot vs 현재 상태 drift" 패턴. 코드 변경 0, 본 PR 은 docs-only 검증.
+
+**W3 실작업량**: H-2 focus-visible 57건이 실제 남은 작업. 세션 전환 E2E 는 devtools hook 설계가 선행되어야 하므로 Phase 21 graphify-driven 백로그로 분류.
 
 ### H-2: focus-visible 57건
 - [ ] `outline-none` 57건 grep + `focus-visible:ring-*` 병기

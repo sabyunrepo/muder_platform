@@ -17,7 +17,7 @@ type: project
 | W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
 | W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | ✅ 완료 — PR-3 #128 `03897f9` + H-1 #125 `367ca35` + PR-1 #129 `80b603e` + PR-6 #131 `d8e6df0` (admin-squash) |
 | W2 | PR-5a mockgen / PR-5b Coverage Gate / PR-5c 0% 패키지 복구 / PR-7 Zustand Action | PR-5a #132 `d1ac387` ✅ + PR-5b #133 `f21a6cf` ✅ + PR-5c 진행 중 (branch `feat/phase-19-residual/pr-5c-zero-coverage-recovery`, 7 신규 테스트 파일 + sqlc exclude) / PR-7 ✅ scope audit + 회귀 테스트 10건 완료 (branch `refactor/phase-19-residual/pr-7-zustand-apply-ws-event`) |
-| W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
+| W3 | PR-8 Module Cache Isolation + H-2 focus-visible | PR-8 ✅ 선제 완료 검증 (branch `chore/phase-19-residual/pr-8-verify`, docs-only) / H-2 pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
 
 ## 부수 PR
