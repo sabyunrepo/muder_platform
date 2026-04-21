@@ -2,7 +2,6 @@
 name: Phase 18.5 완료
 description: 에디터 리팩터링 + 테스트 보강 (ValidateTheme 추출, flowApi MSW, request_id trace) — 2 커밋 main 머지
 type: project
-originSessionId: a17861e7-5524-41d6-b0e3-eebb414caa6c
 ---
 # Phase 18.5 — Editor Refactor + Test Hardening (완료)
 

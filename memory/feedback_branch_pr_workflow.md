@@ -2,7 +2,6 @@
 name: main 직접 push 금지 · feature branch + PR 필수
 description: MMP v3 레포는 branch protection이 걸려있어 모든 변경은 feature branch + PR을 거쳐야 한다. bypass 사용 금지. 문서·계획·설정 포함 예외 없음.
 type: feedback
-originSessionId: 64aa5888-7c28-4275-ba6c-d8a52b542164
 ---
 # main 직접 push 금지 · feature branch + PR 필수
 

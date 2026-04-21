@@ -2,7 +2,6 @@
 name: Phase 18.7 완료
 description: CI/Test automation hardening (Hotfix + 7 PR, 4 Wave) — migration drift gate, cache, SHA pin, coverage upload, security scans, SBOM, E2E shard+firefox, Renovate
 type: project
-originSessionId: a17861e7-5524-41d6-b0e3-eebb414caa6c
 ---
 # Phase 18.7 — CI/Test Automation Hardening (완료)
 

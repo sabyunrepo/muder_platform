@@ -2,7 +2,6 @@
 name: Phase 17.5 완료 — 단서 관계 그래프
 description: 단서 간 의존 관계 DAG 편집 + 시각화 완료 (4 PRs, 3 Waves, 12 Vitest + 4 Go tests, 2026-04-14)
 type: project
-originSessionId: 5ea385bb-f64c-468a-a30a-3e1db6e680ab
 ---
 # Phase 17.5 완료
 

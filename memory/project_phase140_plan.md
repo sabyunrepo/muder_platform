@@ -2,7 +2,6 @@
 name: Phase 14.0 완료 (에디터 UX 개선)
 description: 이미지fix + 반응형 + 히든미션 재설계 + 단서compact + 탭재편 — 5 PR, 3 Wave 완료 (2026-04-14)
 type: project
-originSessionId: ed931b94-5594-4647-ba7d-bf4d4a76ac6b
 ---
 Phase 14.0 **완료** (2026-04-14) — 에디터 UX 개선 + 버그 수정.
 

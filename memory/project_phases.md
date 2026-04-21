@@ -2,7 +2,6 @@
 name: MMP v3 Phase 체크리스트
 description: Phase 0~16.0 완료, Phase 17.0 진행 예정
 type: project
-originSessionId: e1b3327b-168f-4343-935a-994532712f00
 ---
 ## 현재: Phase 17.0 플랜 확정 (2026-04-14)
 

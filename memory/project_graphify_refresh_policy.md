@@ -2,7 +2,6 @@
 name: graphify refresh 정책 (D) — Phase 종료 시점 fresh rebuild만 허용
 description: repo graphify-out/graph.json은 Phase 종료 시 수동 fresh rebuild + PR. 일상 post-commit/watch/update는 개인 로컬 전용, 커밋 금지
 type: project
-originSessionId: 23f1b5bf-4a2e-43fc-80d3-00b276d49de1
 ---
 2026-04-18 결정. post-commit hook의 AST-only 재빌드가 semantic 개념 노드 53개(~6%, 852→799 source_file)를 영구 손실하는 upstream 버그 확인 후 수립.
 

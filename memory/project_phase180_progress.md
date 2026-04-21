@@ -2,7 +2,6 @@
 name: Phase 18.0 게임 런타임 통합 완료
 description: Phase 18.0 — 에디터 configJson 으로 실제 게임 세션 구동, 10 PR / 6 Wave / 50 tasks 완료 (2026-04-15)
 type: project
-originSessionId: cd68ad41-eafc-4fad-ba2f-64ea3cbb8f63
 ---
 ## 개요
 

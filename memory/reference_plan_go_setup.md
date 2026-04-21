@@ -2,7 +2,6 @@
 name: plan-go 커맨드 ↔ plan-autopilot 스킬 연결
 description: 프로젝트의 /plan-* 커맨드가 ~/.claude/skills/plan-go/ 경로를 참조하지만 실제 스킬은 plan-autopilot. symlink 필요
 type: reference
-originSessionId: db46cd3e-7369-4f7a-b06e-2697758a806c
 ---
 프로젝트 `.claude/commands/plan-*.md` 파일들이 `$HOME/.claude/skills/plan-go/scripts/...` 경로의 스크립트(`plan-preflight.sh`, `plan-status.sh`, `plan-tasks.sh`, `autopilot-loop.sh`)와 `templates/`, `refs/` 를 참조한다. 글로벌 스킬은 `~/.claude/skills/plan-autopilot/`만 존재 — `/plan-go`가 plan-autopilot의 후계라서 디렉터리 구조가 동일하므로 symlink로 해결.
 

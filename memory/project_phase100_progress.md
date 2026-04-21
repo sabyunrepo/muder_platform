@@ -2,7 +2,6 @@
 name: Phase 10.0 — QA Bugfix Sprint 완료
 description: Playwright QA에서 발견된 5개 이슈 수정 완료
 type: project
-originSessionId: 4127eec9-9797-46ce-8953-06d681f348b1
 ---
 # Phase 10.0 — QA Bugfix Sprint 완료
 

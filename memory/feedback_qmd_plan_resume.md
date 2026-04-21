@@ -2,7 +2,6 @@
 name: plan-resume에서도 QMD 우선
 description: /plan-resume 컨텍스트 복원 시에도 docs/plans, memory 경로는 Read 대신 QMD get 사용 필수
 type: feedback
-originSessionId: 6c3c79f2-2fec-425e-85a0-51decc6e6fa1
 ---
 plan-resume 스킬이 직접 Read를 지시하더라도, docs/plans/ 및 memory/ 경로의 .md 파일은 QMD get으로 로드해야 한다.
 

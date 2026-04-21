@@ -2,7 +2,6 @@
 name: MMP v3 이메일/비밀번호 인증
 description: 로컬 인증 (이메일/비밀번호), OAuth와 병행, E2E 테스트 계정 e2e@test.com
 type: project
-originSessionId: b2c1ae4d-dc4a-4f34-bd7e-4301f4fcbcd4
 ---
 이메일/비밀번호 로그인. OAuth(카카오/구글)와 병행.
 

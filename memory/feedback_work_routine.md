@@ -2,7 +2,6 @@
 name: 작업 루틴 강제
 description: 매 작업 시작 시 QMD 컨텍스트 로드, 완료 시 문서 업데이트+재인덱싱 필수
 type: feedback
-originSessionId: 323582ed-c085-474d-bc70-14bba54a7f6b
 ---
 매 작업에 시작/완료 루틴을 강제한다.
 

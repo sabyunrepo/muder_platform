@@ -2,7 +2,6 @@
 name: Phase 18.4 에디터 UX Bugfix 완료
 description: 에디터 저작 골든패스 복구 — 9 버그 + 3 hotfix + E2E, 2026-04-15 단일일 완료
 type: project
-originSessionId: eec4a7b6-fc14-40e7-b876-9bb1b4210c13
 ---
 # Phase 18.4 — 에디터 UX Bugfix 완료
 

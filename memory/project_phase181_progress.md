@@ -2,7 +2,6 @@
 name: Phase 18.1 게임 런타임 Hotfix 완료
 description: Phase 18.0 코드리뷰 ship-blocker 4건 + high 4건 해결 — main wiring, snapshot redaction, configJson 경계, 프론트 store 통합, 실백엔드 E2E (2026-04-15)
 type: project
-originSessionId: cd68ad41-eafc-4fad-ba2f-64ea3cbb8f63
 ---
 ## 개요
 

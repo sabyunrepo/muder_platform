@@ -2,7 +2,6 @@
 name: 에디터 개방 + 심사 플로우
 description: Phase 10.0 이후 — 에디터 전유저 개방, 게시 심사 워크플로우, 이미지 업로드/크롭 구현 완료
 type: project
-originSessionId: 9027290a-1112-4e04-8417-e6a1a5a9744a
 ---
 2026-04-13 작업 완료.
 

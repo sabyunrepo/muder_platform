@@ -2,7 +2,6 @@
 name: WS 연결 시 토큰 쿼리 파라미터 필수
 description: WebSocket 업그레이드에서 JWTPlayerIDExtractor가 ?token= 쿼리로 인증, Authorization 헤더 아님
 type: feedback
-originSessionId: c9b808da-0f23-4f0e-b844-702c62f52efc
 ---
 WS 연결 시 토큰을 URL 쿼리 파라미터로 전달해야 함.
 

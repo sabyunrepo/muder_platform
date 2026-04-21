@@ -2,7 +2,6 @@
 name: graphify 지식 그래프 인덱스
 description: MMP v3 전체 코드·문서 graphify 인덱스 상태, 도구 사용법, Hook 강제 구조, 산출물 위치
 type: reference
-originSessionId: 8288707a-145a-40ec-8b1e-5f6f11a2b6f7
 ---
 ## 인덱스 상태 (2026-04-18 구축)
 
