@@ -53,9 +53,16 @@ func (h *Handler) recordAudit(ctx context.Context, action auditlog.AuditAction, 
 			h.logger.Warn().Err(err).Str("action", string(action)).Msg("auditlog payload marshal failed")
 		}
 	}
+	// If no explicit target is provided, pin UserID to the actor so the row
+	// satisfies the identity CHECK (session_id IS NOT NULL OR user_id IS NOT
+	// NULL). Mirrors the same fallback in review_handler.go.
+	effectiveTarget := target
+	if effectiveTarget == nil && actor != nil {
+		effectiveTarget = actor
+	}
 	evt := auditlog.AuditEvent{
 		ActorID: actor,
-		UserID:  target,
+		UserID:  effectiveTarget,
 		Action:  action,
 		Payload: raw,
 	}
