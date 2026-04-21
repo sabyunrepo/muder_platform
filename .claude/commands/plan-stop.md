@@ -4,7 +4,7 @@ allowed-tools: Bash Read Write
 ---
 
 ## Pre-flight check
-!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-preflight.sh`
+!`${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/plan-preflight.sh`
 
 **Note**: pre-flight failures don't block stopping — pausing state saving works regardless of hooks.
 
