@@ -2,10 +2,10 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W0 (PR-0 구현 완료, 머지 대기)
-**Task**: PR-0 Task 1–4, 6 완료 + Task 5 docs 완료 / commit + PR 생성 대기
+**Wave**: W0 완료 · W1 착수 대기
+**Task**: W0 Gate 통과 — 다음 W1 병렬 3 PR(PR-3/PR-1/PR-6) + H-1 hotfix 착수 신호 대기
 **State**: in_progress
-**Blockers**: user home chmod 정책 결정 대기 (Task 5 filesystem 파트) — docs-only 소프트 모드도 가능
+**Blockers**: 없음 (Task 5는 soft mode 최종 결정, hard chmod 미적용)
 **Last updated**: 2026-04-21
 <!-- STATUS-END -->
 
@@ -16,12 +16,15 @@
 - [x] Phase 17.5~18.8 누락 progress·feedback 복원 (실제 7건: 4 copy + 1 MEMORY.md merge + 2 신규 `feedback_memory_canonical_repo.md`/`project_phase19_residual_progress.md`; `originSessionId` 전수 스트립)
 - [x] `MEMORY.md` 인덱스 재작성 (user home canonical 적용 67→68줄, `feedback_memory_canonical_repo` pointer 추가)
 - [x] QMD `mmp-memory` 컬렉션 path 이전 + reindex (store_collections.path: user-home → repo, 66 files indexed)
-- [~] user home read-only 처리 + `CLAUDE.md` QMD 섹션 갱신 (CLAUDE.md QMD 섹션 + `memory/feedback_memory_canonical_repo.md` ✓ / filesystem chmod 정책 결정 대기)
+- [x] user home read-only 처리 + `CLAUDE.md` QMD 섹션 갱신 (**soft mode 확정** — CLAUDE.md QMD 섹션 + `memory/feedback_memory_canonical_repo.md`로 문서화 엔포스먼트. filesystem chmod은 auto-memory 시스템 충돌 리스크로 적용 안 함, 2026-04-21 결정)
 - [x] `memory/project_phase19_residual_progress.md` 초기 생성 (`originSessionId` 없이 65줄, PR-0 수행 내역 포함)
 
-**Gate**: `qmd search -c mmp-memory` hit 유지 + user home write off → docs-only 소프트 모드 적용 (hard chmod은 사용자 결정)
+**Gate**: ✅ `qmd search -c mmp-memory` hit 유지 (66 files) · ✅ user home write off — **soft mode 확정**
 
-**부수 PR**: #121 `chore(phase-19-residual): preflight 스킬 경로/인라인 훅 처리 수정` (commit `3d8ccec`, M3 cutover 이후 legacy plan-autopilot 경로 잔존 결함 + inline bash hook guard 추가, /plan-go 파이프라인 정상화)
+**관련 PR (전부 머지 완료)**:
+- **#121** `chore: preflight 스킬 경로/인라인 훅 처리 수정` (commit `3d8ccec`) — M3 cutover 이후 legacy plan-autopilot 경로 잔존 결함 수정 + inline bash hook guard. `/plan-go` 파이프라인 정상화. PR-0 전제.
+- **#122** `chore: PR-0 MEMORY Canonical Migration (user home → repo)` (commit `c2f34a9`) — 9 files, +197 / -35. W0 본체.
+- **#123** `chore: memory frontmatter originSessionId 일괄 스트립 (42건)` (commit `22b1a5a`) — PR-0 직후 hygiene. 기존 repo 파일 42건 `-originSessionId` 정확히 -1줄씩 제거.
 
 ---
 
