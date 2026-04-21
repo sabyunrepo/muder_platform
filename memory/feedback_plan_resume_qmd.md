@@ -2,7 +2,6 @@
 name: plan-resume은 QMD로 컨텍스트 효율화
 description: /plan-resume 시 Read 대신 QMD get/search로 필요한 섹션만 로드하여 컨텍스트 토큰 절약
 type: feedback
-originSessionId: c0b2a2da-c721-4cd4-b311-bba72e59e407
 ---
 plan-resume에서 Read로 6개 파일 전문(~550줄)을 올리지 말고, QMD를 활용할 것.
 

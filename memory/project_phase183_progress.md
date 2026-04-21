@@ -2,7 +2,6 @@
 name: Phase 18.3 완료 — 보안 하드닝 + CI 정비
 description: Phase 18.3 전체 PR-0~PR-4 완료 요약. M-7/M-a/M-e + L-2~L-8 + CI-1/2/3 해결.
 type: progress
-originSessionId: 0a24815c-1878-4801-8c1c-2465d442d1b3
 ---
 ## 개요
 

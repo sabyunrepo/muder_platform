@@ -2,7 +2,6 @@
 name: QMD 로컬 문서 검색 설정
 description: QMD MCP 서버 설정, 컬렉션 구성, Hook 강제 구조 — 설계 문서 검색 시 참조
 type: reference
-originSessionId: 03af9547-3119-43e4-acf8-127b84e2e0e6
 ---
 QMD가 MCP 서버로 등록됨 (`~/.claude/settings.json` → mcpServers.qmd)
 

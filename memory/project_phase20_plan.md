@@ -2,7 +2,6 @@
 name: Phase 20 플랜 — 단서·장소 에디터 정식 승격
 description: PoC → 백엔드 연동 (clue_type 제거 + 통합 엣지 그래프 + 라운드 스케줄 + 프론트 승격). 6 PR · 4 Wave.
 type: project
-originSessionId: 40df8816-19e4-4b87-ae1f-dbc0f2c72cc1
 ---
 # Phase 20 — 단서·장소 에디터 정식 승격
 

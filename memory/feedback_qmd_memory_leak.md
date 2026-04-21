@@ -2,7 +2,6 @@
 name: QMD MCP 메모리 누수 운영 규칙
 description: bun MCP 프로세스가 임베딩 캐시를 무한 상주시켜 장시간 세션에서 OOM 위험. 컬렉션 최소화 + 주기적 재시작
 type: feedback
-originSessionId: db46cd3e-7369-4f7a-b06e-2697758a806c
 ---
 QMD MCP는 단일 bun 프로세스가 모든 컬렉션의 벡터/임베딩 모델(embeddinggemma)을 힙에 상주시키며, 런타임 캐시 flush API가 없다. 장시간 세션에서 RSS 10GB+ 까지 누적 가능 (2026-04-15: PID 41571이 685 docs로 11.8GB / 36분 측정).
 

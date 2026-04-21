@@ -2,7 +2,6 @@
 name: CI admin-skip 머지 정책 (2026-05-01까지)
 description: main branch protection required status checks를 admin 권한으로 skip 머지. 2026-05-01 이후 재검토
 type: project
-originSessionId: 23f1b5bf-4a2e-43fc-80d3-00b276d49de1
 ---
 2026-04-18 결정. 2026-05-01까지 **모든 PR은 admin 권한으로 required status checks를 스킵 머지**한다.
 

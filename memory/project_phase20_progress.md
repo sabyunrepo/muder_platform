@@ -2,7 +2,6 @@
 name: Phase 20 진행 상황 (완료)
 description: Phase 20 단서·장소 에디터 정식 승격. 6 PR + 1 chore, 4 Wave, 2026-04-17 완료
 type: project
-originSessionId: 4f653890-5e72-4b41-aeda-8c53f3d68b79
 ---
 # Phase 20 — 단서·장소 에디터 정식 승격 (완료)
 

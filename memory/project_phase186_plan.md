@@ -2,7 +2,6 @@
 name: Phase 18.6 E2E Recovery 진행중
 description: login timeout + theme seed — Phase 18.4/PR#48 후속, CI green 확보
 type: project
-originSessionId: eec4a7b6-fc14-40e7-b876-9bb1b4210c13
 ---
 # Phase 18.6 — E2E Recovery (진행중)
 

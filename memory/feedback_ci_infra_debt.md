@@ -2,7 +2,6 @@
 name: CI 인프라 부채 (Phase 18.3에서 해결 완료)
 description: 2026-04-08 기준 발견, 2026-04-15 Phase 18.3 PR-1에서 전부 해결.
 type: feedback
-originSessionId: 0a24815c-1878-4801-8c1c-2465d442d1b3
 ---
 ## ✅ 해결 완료 (Phase 18.3 PR-1, 커밋 33d2d72)
 

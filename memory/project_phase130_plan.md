@@ -2,7 +2,6 @@
 name: Phase 13.0 플랜 (게임 설계 에디터)
 description: 비개발자용 게임 설계 UI — 서브탭/ConfigSchema폼/맵장소/타임라인/배치/배정 (7 PR, 4 Wave)
 type: project
-originSessionId: c9b808da-0f23-4f0e-b844-702c62f52efc
 ---
 Phase 13.0 플랜 준비 완료 — 게임 설계 에디터.
 

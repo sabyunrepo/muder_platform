@@ -2,7 +2,6 @@
 name: Phase 11.0 메타포 테스트 게임
 description: 단서 아이템 시스템 + 메타포 6인 템플릿 + E2E 테스트 (2026-04-13 완료)
 type: project
-originSessionId: cabf1bd5-68d3-497d-bb1a-9aef975c8317
 ---
 Phase 11.0 — 메타포 테스트 게임 구현 **완료**.
 

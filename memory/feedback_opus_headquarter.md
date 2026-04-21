@@ -2,7 +2,6 @@
 name: Opus 헤드쿼터 모드
 description: Opus는 판단/지시/종합만, 실제 구현은 Sonnet/Haiku 서브에이전트에게 위임
 type: feedback
-originSessionId: 323582ed-c085-474d-bc70-14bba54a7f6b
 ---
 Opus는 직접 코드 작성/편집하지 않고, 두뇌(헤드쿼터) 역할만 수행한다.
 

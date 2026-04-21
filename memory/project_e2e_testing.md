@@ -2,7 +2,6 @@
 name: Playwright E2E 테스트 설정
 description: apps/web E2E 테스트 — Playwright + Chromium, 12개 프론트 페이지 테스트, pnpm test:e2e
 type: project
-originSessionId: b2c1ae4d-dc4a-4f34-bd7e-4301f4fcbcd4
 ---
 Playwright E2E 테스트가 `apps/web/e2e/`에 설정됨 (2026-04-12).
 

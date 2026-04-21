@@ -2,7 +2,6 @@
 name: Phase 16.0 완료
 description: 에디터 UX 버그픽스 + 개선 — 4 PR, 2 Wave, 이미지 캐시/모달 스크롤/모듈 토글/흐름 템플릿 + 핫픽스 3건
 type: project
-originSessionId: e1b3327b-168f-4343-935a-994532712f00
 ---
 Phase 16.0 — **완료** (2026-04-14)
 

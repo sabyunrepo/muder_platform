@@ -2,7 +2,6 @@
 name: Phase 17.0 완료
 description: 에디터 UX v2 이식 + 흐름 에디터 완성 — 7 PR, 4 Wave, 353 tests, 완료+archived
 type: project
-originSessionId: a2c03f54-3688-41cc-a720-6fc0298ca899
 ---
 Phase 17.0 — **완료** (2026-04-14)
 

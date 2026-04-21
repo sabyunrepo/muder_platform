@@ -2,7 +2,6 @@
 name: Phase 12.0 완료
 description: 메타포 풀 경험 게임 모듈 프론트엔드 4개 구현 (5 PR, 3 Wave, 42 tests, 2026-04-13)
 type: project
-originSessionId: c9b808da-0f23-4f0e-b844-702c62f52efc
 ---
 Phase 12.0 완료 — 메타포 6인 테마 풀 게임 경험.
 

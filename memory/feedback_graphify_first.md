@@ -2,7 +2,6 @@
 name: 아키텍처·의존성 질문은 graphify 먼저
 description: 코드베이스 구조·의존성·"어디서 쓰이나" 질문은 graphify 지식 그래프를 우선 사용. QMD와 대칭 규칙.
 type: feedback
-originSessionId: 8288707a-145a-40ec-8b1e-5f6f11a2b6f7
 ---
 **규칙:** `graphify-out/graph.json` 존재 시 아키텍처·의존성·구조 질문은 **반드시 graphify 먼저**. 원시 파일 Grep/Glob 탐색은 graphify로 대상을 특정한 후에만 허용.
 

@@ -2,7 +2,6 @@
 name: Phase 15.0 플랜 (React Flow 게임 흐름 에디터)
 description: React Flow 캔버스 + 분기/엔딩 노드 + 조건 규칙 빌더 + DB 확장 (8 PR, 4 Wave)
 type: project
-originSessionId: ed931b94-5594-4647-ba7d-bf4d4a76ac6b
 ---
 Phase 15.0 설계+계획 완료 — React Flow 게임 흐름 에디터.
 

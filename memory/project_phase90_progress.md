@@ -2,7 +2,6 @@
 name: Phase 9.0 진행 상황
 description: Composable Module Engine Redesign — 전체 완료 (W1~W7, 16 PRs)
 type: project
-originSessionId: cfce10f9-039a-4ad8-bee3-4752b5da9e80
 ---
 ## Phase 9.0 — Composable Module Engine Redesign ✅
 

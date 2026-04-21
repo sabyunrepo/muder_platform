@@ -2,7 +2,6 @@
 name: Phase 18.0 플랜 — 게임 런타임 통합
 description: PhaseEngine+모듈 WS 연결 + 게임 클라이언트 (10 PR, 6 Wave, W0는 Phase 17.5 cleanup 포함)
 type: project
-originSessionId: 5ea385bb-f64c-468a-a30a-3e1db6e680ab
 ---
 # Phase 18.0 — 게임 런타임 통합 (계획)
 

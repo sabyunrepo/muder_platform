@@ -2,7 +2,6 @@
 name: Phase 15.0 완료
 description: React Flow 게임 흐름 에디터 — 8 PR, 4 Wave, Go 23 + Frontend 303 tests
 type: project
-originSessionId: 5f2c99b5-2ba5-42e7-9101-06686feccfc9
 ---
 Phase 15.0 — React Flow 게임 흐름 에디터 **완료** (2026-04-14)
 

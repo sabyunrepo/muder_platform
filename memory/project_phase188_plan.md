@@ -2,7 +2,6 @@
 name: Phase 18.8 — E2E Skip Recovery 플랜
 description: 5 PR / 3 Wave로 E2E 11 skip 복구 + real-backend CI 점진 승격. H7 MaxPlayers + MSW + multi-context party + stubbed 복제. 2026-04-16 계획 승인 대기.
 type: project
-originSessionId: 7224d753-392e-4ac3-8d06-97bbcf225fe8
 ---
 **Phase 18.8 E2E Skip Recovery** — 2026-04-16 플랜 머지 (PR #66). 실행 시작 전.
 

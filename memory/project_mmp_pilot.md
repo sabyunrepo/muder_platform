@@ -2,7 +2,6 @@
 name: mmp-pilot 통합 시스템 (M0-M3 cutover 완료)
 description: plan-* 체계와 mmp 하네스를 병합한 단일 파일럿 시스템. /plan-go 단일 진입점, 3-Layer 구조, A/B 자기개선 루프(M4 계획). M3 cutover 2026-04-15 commit cdd498e 완료 — plan-autopilot 제거.
 type: project
-originSessionId: 4b31801f-3661-4beb-a250-8271acf17e79
 ---
 # mmp-pilot — plan-autopilot + mmp 하네스 통합 시스템
 
