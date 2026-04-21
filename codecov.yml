@@ -3,11 +3,11 @@ coverage:
     project:
       default:
         target: auto
-        threshold: 0%
+        threshold: 1%  # 기존 대비 1%p 회귀 허용 (noise margin)
     patch:
       default:
-        target: auto
-        threshold: 0%
+        target: 70%    # 신규 코드는 70% 커버 요구 (patch 집중)
+        threshold: 0%  # 신규 코드 회귀 0 허용
 
 # Phase 19 Residual PR-5a: 자동 생성 mockgen 산출물 + 전환기 shim 은
 # coverage 집계에서 제외. auto-generated 코드는 테스트 대상 아니며 집계에
