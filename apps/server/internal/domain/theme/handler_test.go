@@ -1,7 +1,6 @@
-package theme
+package theme_test
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -10,35 +9,14 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/domain/theme"
+	"github.com/mmp-platform/server/internal/domain/theme/mocks"
 )
 
-// mockService implements Service for testing.
-type mockService struct {
-	getThemeFn       func(ctx context.Context, themeID uuid.UUID) (*ThemeResponse, error)
-	getThemeBySlugFn func(ctx context.Context, slug string) (*ThemeResponse, error)
-	listPublishedFn  func(ctx context.Context, limit, offset int32) ([]ThemeSummary, error)
-	getCharactersFn  func(ctx context.Context, themeID uuid.UUID) ([]CharacterResponse, error)
-}
-
-func (m *mockService) GetTheme(ctx context.Context, themeID uuid.UUID) (*ThemeResponse, error) {
-	return m.getThemeFn(ctx, themeID)
-}
-
-func (m *mockService) GetThemeBySlug(ctx context.Context, slug string) (*ThemeResponse, error) {
-	return m.getThemeBySlugFn(ctx, slug)
-}
-
-func (m *mockService) ListPublished(ctx context.Context, limit, offset int32) ([]ThemeSummary, error) {
-	return m.listPublishedFn(ctx, limit, offset)
-}
-
-func (m *mockService) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]CharacterResponse, error) {
-	return m.getCharactersFn(ctx, themeID)
-}
-
-func newThemeRouter(h *Handler) *chi.Mux {
+func newThemeRouter(h *theme.Handler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/themes", h.ListPublished)
 	r.Get("/themes/{id}", h.GetTheme)
@@ -48,32 +26,27 @@ func newThemeRouter(h *Handler) *chi.Mux {
 }
 
 func TestListPublished_Success(t *testing.T) {
-	desc := "A murder mystery"
-	mock := &mockService{
-		listPublishedFn: func(_ context.Context, limit, offset int32) ([]ThemeSummary, error) {
-			if limit != 20 {
-				t.Errorf("expected default limit 20, got %d", limit)
-			}
-			if offset != 0 {
-				t.Errorf("expected default offset 0, got %d", offset)
-			}
-			return []ThemeSummary{
-				{
-					ID:          uuid.New(),
-					Title:       "Test Theme",
-					Slug:        "test-theme",
-					Description: &desc,
-					MinPlayers:  4,
-					MaxPlayers:  8,
-					DurationMin: 60,
-					Price:       1000,
-					CreatorID:   uuid.New(),
-				},
-			}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	h := NewHandler(mock)
+	desc := "A murder mystery"
+	mock.EXPECT().
+		ListPublished(gomock.Any(), gomock.Eq(int32(20)), gomock.Eq(int32(0))).
+		Return([]theme.ThemeSummary{
+			{
+				ID:          uuid.New(),
+				Title:       "Test Theme",
+				Slug:        "test-theme",
+				Description: &desc,
+				MinPlayers:  4,
+				MaxPlayers:  8,
+				DurationMin: 60,
+				Price:       1000,
+				CreatorID:   uuid.New(),
+			},
+		}, nil).Times(1)
+
+	h := theme.NewHandler(mock)
 	r := newThemeRouter(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/themes", nil)
@@ -84,7 +57,7 @@ func TestListPublished_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp []ThemeSummary
+	var resp []theme.ThemeSummary
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -97,34 +70,32 @@ func TestListPublished_Success(t *testing.T) {
 }
 
 func TestGetTheme_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	tid := uuid.New()
 	now := time.Now().UTC().Truncate(time.Second)
-	mock := &mockService{
-		getThemeFn: func(_ context.Context, id uuid.UUID) (*ThemeResponse, error) {
-			if id != tid {
-				t.Fatalf("expected theme ID %v, got %v", tid, id)
-			}
-			return &ThemeResponse{
-				ThemeSummary: ThemeSummary{
-					ID:          tid,
-					Title:       "Mystery Manor",
-					Slug:        "mystery-manor",
-					MinPlayers:  4,
-					MaxPlayers:  8,
-					DurationMin: 90,
-					Price:       2000,
-					CreatorID:   uuid.New(),
-				},
-				Status:      "PUBLISHED",
-				ConfigJson:  json.RawMessage(`{"key":"value"}`),
-				Version:     1,
-				PublishedAt: &now,
-				CreatedAt:   now,
-			}, nil
-		},
-	}
+	mock.EXPECT().
+		GetTheme(gomock.Any(), gomock.Eq(tid)).
+		Return(&theme.ThemeResponse{
+			ThemeSummary: theme.ThemeSummary{
+				ID:          tid,
+				Title:       "Mystery Manor",
+				Slug:        "mystery-manor",
+				MinPlayers:  4,
+				MaxPlayers:  8,
+				DurationMin: 90,
+				Price:       2000,
+				CreatorID:   uuid.New(),
+			},
+			Status:      "PUBLISHED",
+			ConfigJson:  json.RawMessage(`{"key":"value"}`),
+			Version:     1,
+			PublishedAt: &now,
+			CreatedAt:   now,
+		}, nil).Times(1)
 
-	h := NewHandler(mock)
+	h := theme.NewHandler(mock)
 	r := newThemeRouter(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/themes/"+tid.String(), nil)
@@ -135,7 +106,7 @@ func TestGetTheme_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp ThemeResponse
+	var resp theme.ThemeResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -148,13 +119,14 @@ func TestGetTheme_Success(t *testing.T) {
 }
 
 func TestGetTheme_NotFound(t *testing.T) {
-	mock := &mockService{
-		getThemeFn: func(_ context.Context, _ uuid.UUID) (*ThemeResponse, error) {
-			return nil, apperror.NotFound("theme not found")
-		},
-	}
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	h := NewHandler(mock)
+	mock.EXPECT().
+		GetTheme(gomock.Any(), gomock.Any()).
+		Return(nil, apperror.NotFound("theme not found")).Times(1)
+
+	h := theme.NewHandler(mock)
 	r := newThemeRouter(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/themes/"+uuid.New().String(), nil)
@@ -167,9 +139,10 @@ func TestGetTheme_NotFound(t *testing.T) {
 }
 
 func TestGetTheme_InvalidUUID(t *testing.T) {
-	mock := &mockService{}
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	h := NewHandler(mock)
+	h := theme.NewHandler(mock)
 	r := newThemeRouter(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/themes/not-a-uuid", nil)
@@ -182,30 +155,28 @@ func TestGetTheme_InvalidUUID(t *testing.T) {
 }
 
 func TestGetThemeBySlug_Success(t *testing.T) {
-	mock := &mockService{
-		getThemeBySlugFn: func(_ context.Context, slug string) (*ThemeResponse, error) {
-			if slug != "dark-mansion" {
-				t.Fatalf("expected slug 'dark-mansion', got %q", slug)
-			}
-			return &ThemeResponse{
-				ThemeSummary: ThemeSummary{
-					ID:          uuid.New(),
-					Title:       "Dark Mansion",
-					Slug:        "dark-mansion",
-					MinPlayers:  3,
-					MaxPlayers:  6,
-					DurationMin: 45,
-					Price:       500,
-					CreatorID:   uuid.New(),
-				},
-				Status:    "PUBLISHED",
-				Version:   2,
-				CreatedAt: time.Now().UTC(),
-			}, nil
-		},
-	}
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	h := NewHandler(mock)
+	mock.EXPECT().
+		GetThemeBySlug(gomock.Any(), gomock.Eq("dark-mansion")).
+		Return(&theme.ThemeResponse{
+			ThemeSummary: theme.ThemeSummary{
+				ID:          uuid.New(),
+				Title:       "Dark Mansion",
+				Slug:        "dark-mansion",
+				MinPlayers:  3,
+				MaxPlayers:  6,
+				DurationMin: 45,
+				Price:       500,
+				CreatorID:   uuid.New(),
+			},
+			Status:    "PUBLISHED",
+			Version:   2,
+			CreatedAt: time.Now().UTC(),
+		}, nil).Times(1)
+
+	h := theme.NewHandler(mock)
 	r := newThemeRouter(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/themes/slug/dark-mansion", nil)
@@ -216,7 +187,7 @@ func TestGetThemeBySlug_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp ThemeResponse
+	var resp theme.ThemeResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -226,32 +197,30 @@ func TestGetThemeBySlug_Success(t *testing.T) {
 }
 
 func TestGetCharacters_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	tid := uuid.New()
 	desc := "The butler"
 	imgURL := "https://example.com/butler.png"
-	mock := &mockService{
-		getCharactersFn: func(_ context.Context, id uuid.UUID) ([]CharacterResponse, error) {
-			if id != tid {
-				t.Fatalf("expected theme ID %v, got %v", tid, id)
-			}
-			return []CharacterResponse{
-				{
-					ID:          uuid.New(),
-					Name:        "Butler",
-					Description: &desc,
-					ImageURL:    &imgURL,
-					SortOrder:   1,
-				},
-				{
-					ID:        uuid.New(),
-					Name:      "Maid",
-					SortOrder: 2,
-				},
-			}, nil
-		},
-	}
+	mock.EXPECT().
+		GetCharacters(gomock.Any(), gomock.Eq(tid)).
+		Return([]theme.CharacterResponse{
+			{
+				ID:          uuid.New(),
+				Name:        "Butler",
+				Description: &desc,
+				ImageURL:    &imgURL,
+				SortOrder:   1,
+			},
+			{
+				ID:        uuid.New(),
+				Name:      "Maid",
+				SortOrder: 2,
+			},
+		}, nil).Times(1)
 
-	h := NewHandler(mock)
+	h := theme.NewHandler(mock)
 	r := newThemeRouter(h)
 
 	req := httptest.NewRequest(http.MethodGet, "/themes/"+tid.String()+"/characters", nil)
@@ -262,10 +231,9 @@ func TestGetCharacters_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 
-	// Capture raw bytes before consuming the body
 	raw := rec.Body.Bytes()
 
-	var resp []CharacterResponse
+	var resp []theme.CharacterResponse
 	if err := json.Unmarshal(raw, &resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}

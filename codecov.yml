@@ -1,0 +1,24 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0%
+    patch:
+      default:
+        target: auto
+        threshold: 0%
+
+# Phase 19 Residual PR-5a: 자동 생성 mockgen 산출물 + 전환기 shim 은
+# coverage 집계에서 제외. auto-generated 코드는 테스트 대상 아니며 집계에
+# 포함 시 baseline 왜곡(허수 상승 / 하락) 유발.
+ignore:
+  - "apps/server/internal/**/mocks/**"
+  - "apps/server/internal/**/mock_*.go"
+  - "apps/server/internal/**/*_mock.go"
+  - "apps/server/internal/**/mock_shim_test.go"
+
+comment:
+  layout: "reach,diff,flags,files"
+  behavior: default
+  require_changes: false

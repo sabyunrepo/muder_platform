@@ -1,4 +1,4 @@
-package profile
+package profile_test
 
 import (
 	"bytes"
@@ -11,65 +11,35 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.uber.org/mock/gomock"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/domain/profile"
+	"github.com/mmp-platform/server/internal/domain/profile/mocks"
 	"github.com/mmp-platform/server/internal/middleware"
 )
-
-// mockService implements Service for testing.
-type mockService struct {
-	getProfileFn    func(ctx context.Context, userID uuid.UUID) (*ProfileResponse, error)
-	getPublicFn     func(ctx context.Context, userID uuid.UUID) (*PublicProfileResponse, error)
-	updateProfileFn func(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*ProfileResponse, error)
-}
-
-func (m *mockService) GetProfile(ctx context.Context, userID uuid.UUID) (*ProfileResponse, error) {
-	return m.getProfileFn(ctx, userID)
-}
-
-func (m *mockService) GetPublicProfile(ctx context.Context, userID uuid.UUID) (*PublicProfileResponse, error) {
-	return m.getPublicFn(ctx, userID)
-}
-
-func (m *mockService) UpdateProfile(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*ProfileResponse, error) {
-	return m.updateProfileFn(ctx, userID, req)
-}
-
-func (m *mockService) UpdateAvatar(_ context.Context, _ uuid.UUID, _ multipart.File, _ *multipart.FileHeader) (*AvatarResponse, error) {
-	return nil, nil
-}
-
-func (m *mockService) GetNotificationPrefs(_ context.Context, _ uuid.UUID) (*NotificationPrefsResponse, error) {
-	return nil, nil
-}
-
-func (m *mockService) UpdateNotificationPrefs(_ context.Context, _ uuid.UUID, _ UpdateNotificationPrefsRequest) (*NotificationPrefsResponse, error) {
-	return nil, nil
-}
 
 func withUserID(ctx context.Context, userID uuid.UUID) context.Context {
 	return context.WithValue(ctx, middleware.UserIDKey, userID)
 }
 
 func TestGetProfile_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	uid := uuid.New()
 	email := "test@example.com"
-	mock := &mockService{
-		getProfileFn: func(_ context.Context, id uuid.UUID) (*ProfileResponse, error) {
-			if id != uid {
-				t.Fatalf("expected userID %v, got %v", uid, id)
-			}
-			return &ProfileResponse{
-				ID:          uid,
-				Nickname:    "tester",
-				Email:       &email,
-				Role:        "PLAYER",
-				CoinBalance: 100,
-			}, nil
-		},
-	}
+	mock.EXPECT().
+		GetProfile(gomock.Any(), gomock.Eq(uid)).
+		Return(&profile.ProfileResponse{
+			ID:          uid,
+			Nickname:    "tester",
+			Email:       &email,
+			Role:        "PLAYER",
+			CoinBalance: 100,
+		}, nil).Times(1)
 
-	h := NewHandler(mock)
+	h := profile.NewHandler(mock)
 	req := httptest.NewRequest(http.MethodGet, "/profile", nil)
 	req = req.WithContext(withUserID(req.Context(), uid))
 	rec := httptest.NewRecorder()
@@ -80,7 +50,7 @@ func TestGetProfile_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", rec.Code)
 	}
 
-	var resp ProfileResponse
+	var resp profile.ProfileResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -93,14 +63,15 @@ func TestGetProfile_Success(t *testing.T) {
 }
 
 func TestGetProfile_NotFound(t *testing.T) {
-	uid := uuid.New()
-	mock := &mockService{
-		getProfileFn: func(_ context.Context, _ uuid.UUID) (*ProfileResponse, error) {
-			return nil, apperror.NotFound("user not found")
-		},
-	}
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
 
-	h := NewHandler(mock)
+	uid := uuid.New()
+	mock.EXPECT().
+		GetProfile(gomock.Any(), gomock.Any()).
+		Return(nil, apperror.NotFound("user not found")).Times(1)
+
+	h := profile.NewHandler(mock)
 	req := httptest.NewRequest(http.MethodGet, "/profile", nil)
 	req = req.WithContext(withUserID(req.Context(), uid))
 	rec := httptest.NewRecorder()
@@ -113,29 +84,29 @@ func TestGetProfile_NotFound(t *testing.T) {
 }
 
 func TestUpdateProfile_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	uid := uuid.New()
 	avatar := "https://example.com/avatar.png"
-	mock := &mockService{
-		updateProfileFn: func(_ context.Context, id uuid.UUID, r UpdateProfileRequest) (*ProfileResponse, error) {
-			if id != uid {
-				t.Fatalf("expected userID %v, got %v", uid, id)
-			}
-			return &ProfileResponse{
-				ID:          uid,
+	mock.EXPECT().
+		UpdateProfile(gomock.Any(), gomock.Eq(uid), gomock.Any()).
+		DoAndReturn(func(_ context.Context, id uuid.UUID, r profile.UpdateProfileRequest) (*profile.ProfileResponse, error) {
+			return &profile.ProfileResponse{
+				ID:          id,
 				Nickname:    r.Nickname,
 				AvatarURL:   r.AvatarURL,
 				Role:        "PLAYER",
 				CoinBalance: 50,
 			}, nil
-		},
-	}
+		}).Times(1)
 
 	body, _ := json.Marshal(map[string]string{
 		"nickname":   "newname",
 		"avatar_url": avatar,
 	})
 
-	h := NewHandler(mock)
+	h := profile.NewHandler(mock)
 	req := httptest.NewRequest(http.MethodPut, "/profile", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(withUserID(req.Context(), uid))
@@ -147,7 +118,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rec.Code, rec.Body.String())
 	}
 
-	var resp ProfileResponse
+	var resp profile.ProfileResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -157,15 +128,17 @@ func TestUpdateProfile_Success(t *testing.T) {
 }
 
 func TestUpdateProfile_InvalidBody(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	uid := uuid.New()
-	mock := &mockService{}
 
 	// nickname too short (min=2)
 	body, _ := json.Marshal(map[string]string{
 		"nickname": "x",
 	})
 
-	h := NewHandler(mock)
+	h := profile.NewHandler(mock)
 	req := httptest.NewRequest(http.MethodPut, "/profile", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req = req.WithContext(withUserID(req.Context(), uid))
@@ -179,19 +152,19 @@ func TestUpdateProfile_InvalidBody(t *testing.T) {
 }
 
 func TestGetPublicProfile_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
 	uid := uuid.New()
-	mock := &mockService{
-		getPublicFn: func(_ context.Context, id uuid.UUID) (*PublicProfileResponse, error) {
-			return &PublicProfileResponse{
-				ID:       id,
-				Nickname: "publicuser",
-			}, nil
-		},
-	}
+	mock.EXPECT().
+		GetPublicProfile(gomock.Any(), gomock.Eq(uid)).
+		Return(&profile.PublicProfileResponse{
+			ID:       uid,
+			Nickname: "publicuser",
+		}, nil).Times(1)
 
-	h := NewHandler(mock)
+	h := profile.NewHandler(mock)
 
-	// Use chi router to inject URL param
 	r := chi.NewRouter()
 	r.Get("/users/{id}", h.GetPublicProfile)
 
@@ -203,7 +176,7 @@ func TestGetPublicProfile_Success(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", rec.Code)
 	}
 
-	var resp PublicProfileResponse
+	var resp profile.PublicProfileResponse
 	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -213,8 +186,10 @@ func TestGetPublicProfile_Success(t *testing.T) {
 }
 
 func TestGetPublicProfile_InvalidUUID(t *testing.T) {
-	mock := &mockService{}
-	h := NewHandler(mock)
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	h := profile.NewHandler(mock)
 
 	r := chi.NewRouter()
 	r.Get("/users/{id}", h.GetPublicProfile)
@@ -227,3 +202,14 @@ func TestGetPublicProfile_InvalidUUID(t *testing.T) {
 		t.Fatalf("expected status 400, got %d", rec.Code)
 	}
 }
+
+// Ensure mockService satisfies the full Service interface (compile-time check).
+var _ profile.Service = (*mocks.MockService)(nil)
+var _ profile.Service = (interface {
+	GetProfile(ctx context.Context, userID uuid.UUID) (*profile.ProfileResponse, error)
+	GetPublicProfile(ctx context.Context, userID uuid.UUID) (*profile.PublicProfileResponse, error)
+	UpdateProfile(ctx context.Context, userID uuid.UUID, req profile.UpdateProfileRequest) (*profile.ProfileResponse, error)
+	UpdateAvatar(ctx context.Context, userID uuid.UUID, file multipart.File, header *multipart.FileHeader) (*profile.AvatarResponse, error)
+	GetNotificationPrefs(ctx context.Context, userID uuid.UUID) (*profile.NotificationPrefsResponse, error)
+	UpdateNotificationPrefs(ctx context.Context, userID uuid.UUID, req profile.UpdateNotificationPrefsRequest) (*profile.NotificationPrefsResponse, error)
+})(nil)
