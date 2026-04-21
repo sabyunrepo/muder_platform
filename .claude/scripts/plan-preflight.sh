@@ -14,7 +14,9 @@ set -u  # -e would abort the script; we want to complete and print a summary
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 SETTINGS="$PROJECT_DIR/.claude/settings.json"
 SCRIPTS_DIR="$PROJECT_DIR/.claude/scripts"
-SKILL_DIR="$HOME/.claude/skills/plan-autopilot"
+# M3 cutover(2026-04-15) 이후 canonical 스킬 경로 = 프로젝트 로컬 mmp-pilot.
+# 레거시 ~/.claude/skills/plan-autopilot 은 M3 에서 제거됨.
+SKILL_DIR="$PROJECT_DIR/.claude/skills/mmp-pilot"
 
 print_recovery() {
     cat <<EOF
@@ -116,6 +118,13 @@ while IFS= read -r cmd; do
     if [[ "$expanded" == .claude/scripts/* ]] || [[ "$expanded" == ./.claude/scripts/* ]]; then
         expanded="$PROJECT_DIR/${expanded#./}"
     fi
+
+    # Skip inline shell constructs (e.g. `[ -f x ] && touch y`, subshells).
+    # 이 preflight 는 파일 기반 훅만 검증; 쉘 빌트인/복합 커맨드는 대상 아님.
+    case "$expanded" in
+        /*|./*|../*|*/*) : ;;
+        *) continue ;;
+    esac
 
     if [ ! -e "$expanded" ]; then
         echo "❌ PRE-FLIGHT: hook script not found"
