@@ -15,6 +15,7 @@
 | 2026-04-15 | mmp-pilot M0-M2 | `/plan-go`, mmp-pilot 스킬, run-*.sh, m3-cutover.sh, m4-plan.md | plan-autopilot↔하네스 통합 (M3 대기, M4 계획만 문서화). 상세: `.claude/designs/mmp-pilot/` |
 | 2026-04-18 | PR-2a PlayerAware 게이트 의무화 | `§ 모듈 시스템`, `.claude/skills/mmp-module-factory/SKILL.md` | F-sec-2 대응: 모든 `engine.Module` 은 `PlayerAwareModule.BuildStateFor` 구현 또는 `engine.PublicStateMarker` 임베드 opt-out 중 하나 필수. registry boot panic + `MMP_PLAYERAWARE_STRICT` 롤백 스위치. PR #97 (phase-19 PR-2a). |
 | 2026-04-18 | Phase 19.1 PR-A — PlayerAware 게이트 rollback env 제거 | `§ 모듈 시스템`, `.claude/skills/mmp-module-factory/SKILL.md`, `apps/server/internal/engine/registry.go`, `factory.go`, `types.go`, `phase_engine.go`, `gate_test.go` | 33/33 gate 충족 후 `MMP_PLAYERAWARE_STRICT` escape hatch 제거. `PhaseEngine.BuildState()` godoc 으로 internal/persistence-only 경계 강화. PR #(TBD) (phase-19.1 PR-A). |
+| 2026-04-21 | MD 파일 한도 200→500 완화 (CLAUDE.md만 200) | `§ 파일/함수 크기 제한`, `.claude/skills/mmp-200-line-rule/SKILL.md`, `memory/feedback_file_size_limit.md` | 200줄 일괄 강제가 plan/PR 스펙·design 문서를 과도하게 잘라 refs 분할 노이즈 누적. CLAUDE.md만 자동 로딩 토큰 비용 때문에 200 유지, 그 외 MD는 500 + 초과 시 `refs/<topic>.md` 분리 패턴 유지. PR #(TBD) (phase-19-residual md-rule-relax-500). |
 
 ## 프로젝트 개요
 다중 테마 실시간 멀티플레이어 머더미스터리 게임 플랫폼 v3 리빌드.
@@ -69,13 +70,14 @@
 |------|--------------|----------------|
 | `.go` | **500줄** | 80줄 (table-driven 데이터 제외) |
 | `.ts` / `.tsx` | **400줄** | 일반 60줄, JSX 컴포넌트 150줄 |
-| `.md` | **200줄 (분할 기준)** | - |
+| `.md` | **500줄** (단 `CLAUDE.md`만 **200줄**) | - |
 
 - **구현 전**: 한도 초과 예상 시 미리 분할 설계 (서브컴포넌트 추출 / 도메인별 API 파일 + 배럴 re-export / handler 분리 / service 인터페이스 쪼개기)
-- **MD 분할 원칙**: 200줄 넘는다고 강제로 요약하지 말 것. 대신 상위 파일은 **index + 링크**로 유지하고, 상세 내용은 `refs/<topic>.md`로 분리해 참조. 내용 보존 ≻ 줄 수 준수.
-  - 예: `design.md`(index, ~150줄) → `refs/architecture.md`, `refs/data-model.md`, `refs/security.md`
+- **MD 분할 원칙**: 한도 초과(CLAUDE.md 200, 그 외 .md 500) 시 강제 요약하지 말고 상위는 **index + 링크**로 유지, 상세 내용은 `refs/<topic>.md`로 분리해 참조. 내용 보존 ≻ 줄 수 준수.
+  - 예: `design.md`(index, ~300줄) → `refs/architecture.md`, `refs/data-model.md`, `refs/security.md`
   - 예: 긴 PR 스펙은 `refs/prs/pr-NN.md`로 분리 + 상위에서 링크
-- **예외 허용**: 자동 생성 코드(sqlc/gen)는 예외. 테스트 table-driven 데이터는 카운트에서 제외. MD는 index 역할일 경우 200줄 넘어도 OK(단 refs 분할 이미 검토 후).
+- **CLAUDE.md만 200줄 유지 이유**: 모든 세션에서 자동 로딩되므로 토큰 비용 직결. 그 외 MD는 LLM 로드가 선택적이라 분할 임계 완화 가능.
+- **예외 허용**: 자동 생성 코드(sqlc/gen)는 예외. 테스트 table-driven 데이터는 카운트에서 제외. MD는 index 역할일 경우 한도 초과 OK(단 refs 분할 선검토).
 - **서브에이전트**: 프롬프트에 파일/함수 한도 명시 필수
 - **검증**: PR 리뷰 시 변경 파일 `wc -l` + 큰 함수 스캔
 
