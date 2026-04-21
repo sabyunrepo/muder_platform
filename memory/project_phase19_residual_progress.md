@@ -16,7 +16,7 @@ type: project
 |------|------|------|
 | W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
 | W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | ✅ 완료 — PR-3 #128 `03897f9` + H-1 #125 `367ca35` + PR-1 #129 `80b603e` + PR-6 머지 대기 (브랜치 `feat/phase-19-residual/pr-6-auditlog-expansion`, 7 신규 테스트 + F-sec-4 fallback + smoke doc) |
-| W2 | PR-5a/b/c Coverage Gate + mockgen → PR-7 Zustand Action | pending |
+| W2 | PR-5a/b/c Coverage Gate + mockgen → PR-7 Zustand Action | PR-5b ✅ 완료 (branch `feat/phase-19-residual/pr-5b-coverage-gate`) |
 | W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
 
@@ -91,6 +91,34 @@ branch: `chore/phase-19-residual/pr-0-memory-canonical`
   - T8 CI drift gate: `.github/workflows/ci.yml:79-80` `go run ./cmd/wsgen` + `git diff --exit-code`
 - **본 PR 실질 변경**: `cmd/wsgen/render.go` 의 `headerBlock` const → `renderHeader()` 동적 함수. 이벤트 총수 + active/stub/deprec breakdown + payload struct 수를 헤더에 기록. Status 만 바뀐 경우도 headerline 변경 → drift gate 가시화.
 - **검증**: `go run ./cmd/wsgen` → 130 events, 2 payload structs · `go test ./internal/ws/...` → 86 pass · 첫 시도에 pending.go 에 auth.* 중복 추가 → panic → 즉시 되돌림 (system.go 에 이미 있음을 재발견)
+
+## W2 PR-5b Coverage Gate (2026-04-21)
+
+### 베이스라인 측정 결과
+- **Go**: 43.9% (60 packages, 1464 tests, mockgen 포함)
+- **FE Lines/Statements**: 51.75% (11652/22513)
+- **FE Branches**: 79.66% (2159/2710)
+- **FE Functions**: 55.66% (614/1103)
+
+### 적용 Threshold (baseline - 2% buffer)
+- **Go**: 41% (plan target 70%는 Phase 21 — 테스트 보강 PR 선행 필수)
+- **FE Lines/Statements**: 49%
+- **FE Branches**: 77%
+- **FE Functions**: 53%
+
+### 변경 파일
+- `.github/workflows/ci.yml` — go-check에 `upload-artifact: go-coverage`, ts-check에 `upload-artifact: web-coverage`, coverage-guard job 실제 gate로 교체 (warn-only placeholder 제거)
+- `apps/web/vitest.config.ts` — `thresholds` 블록 추가 (lines/statements 49, branches 77, functions 53)
+- `codecov.yml` — project threshold 1%, patch target 70%/threshold 0%
+
+### 로드맵
+| Phase | Go | FE Lines | FE Branches | FE Functions |
+|-------|----|----------|-------------|--------------|
+| 현재(19R) | 41% | 49% | 77% | 53% |
+| Phase 20 | 55% | 55% | 80% | 58% |
+| Phase 21 | 70% | 65% | 85% | 68% |
+
+하한 상향 전 반드시 추가 테스트 PR로 baseline 끌어올리기.
 
 ## 결정 사항
 

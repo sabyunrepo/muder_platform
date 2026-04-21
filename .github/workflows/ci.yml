@@ -118,6 +118,13 @@ jobs:
           flags: backend
           fail_ci_if_error: false
 
+      - name: Upload Go coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage
+          path: apps/server/coverage.out
+          retention-days: 1
+
       - name: Build server
         run: go build ./cmd/server
 
@@ -168,6 +175,13 @@ jobs:
           flags: frontend
           fail_ci_if_error: false
 
+      - name: Upload Web coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: apps/web/coverage/coverage-summary.json
+          retention-days: 1
+
       - name: Vitest coverage PR summary
         if: github.event_name == 'pull_request'
         uses: davelosert/vitest-coverage-report-action@c0c9b09c93750ee1d8335d14e94ce3d6fc61df50 # v2.11.0
@@ -179,7 +193,14 @@ jobs:
         run: pnpm turbo build
 
   coverage-guard:
-    name: Coverage Regression Guard (warn-only)
+    # Phase 19 Residual PR-5b — Coverage Gate.
+    # baseline: Go 43.9% / FE Lines 51.75% / FE Branches 79.66% / FE Functions 55.66% (2026-04-21)
+    # current threshold: Go 41% / FE Lines 49% / FE Branches 77% / FE Functions 53% (baseline-2% buffer)
+    # 로드맵:
+    #   Phase 20: Go 55% / FE Lines 55% / FE Branches 80% (+~5%p — 추가 테스트 PR 선행 필수)
+    #   Phase 21: Go 70% / FE Lines 65% / FE Branches 85% (+15%p — 하한 상향 전 반드시 테스트 보강)
+    #   하한 상향 전에 반드시 추가 테스트 PR 로 baseline 끌어올리기.
+    name: Coverage Regression Guard
     runs-on: self-hosted
     needs: [go-check, ts-check]
     steps:
@@ -188,11 +209,70 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Coverage delta placeholder
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Download Go coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: go-coverage
+          path: apps/server
+
+      - name: Setup Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version: "1.25"
+          cache-dependency-path: apps/server/go.sum
+
+      - name: Go coverage gate
+        working-directory: apps/server
         run: |
-          echo "::notice::Coverage regression guard is currently warn-only."
-          echo "::notice::Enforcement PR follow-up scheduled after 2026-05-28."
-          echo "::notice::Codecov dashboard provides delta visibility: https://codecov.io/gh/sabyunrepo/muder_platform"
+          TOTAL=$(go tool cover -func=coverage.out | tail -1 | awk '{print $3}' | tr -d '%')
+          THRESHOLD=41
+          if awk "BEGIN {exit !($TOTAL < $THRESHOLD)}"; then
+            echo "::error::Go coverage ${TOTAL}% is below threshold ${THRESHOLD}%"
+            echo "::error::Run 'cd apps/server && go test -coverprofile=coverage.out ./...' locally to investigate"
+            exit 1
+          fi
+          echo "::notice::Go coverage ${TOTAL}% >= ${THRESHOLD}% (threshold)"
+
+      - name: Download Web coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: web-coverage
+          path: apps/web/coverage
+
+      - name: Web coverage gate
+        run: |
+          LINES=$(jq '.total.lines.pct' apps/web/coverage/coverage-summary.json)
+          BRANCHES=$(jq '.total.branches.pct' apps/web/coverage/coverage-summary.json)
+          FUNCTIONS=$(jq '.total.functions.pct' apps/web/coverage/coverage-summary.json)
+          LINES_THR=49
+          BRANCHES_THR=77
+          FUNCTIONS_THR=53
+          FAIL=0
+          if awk "BEGIN {exit !($LINES < $LINES_THR)}"; then
+            echo "::error::FE Lines coverage ${LINES}% is below threshold ${LINES_THR}%"
+            FAIL=1
+          else
+            echo "::notice::FE Lines coverage ${LINES}% >= ${LINES_THR}% (threshold)"
+          fi
+          if awk "BEGIN {exit !($BRANCHES < $BRANCHES_THR)}"; then
+            echo "::error::FE Branches coverage ${BRANCHES}% is below threshold ${BRANCHES_THR}%"
+            FAIL=1
+          else
+            echo "::notice::FE Branches coverage ${BRANCHES}% >= ${BRANCHES_THR}% (threshold)"
+          fi
+          if awk "BEGIN {exit !($FUNCTIONS < $FUNCTIONS_THR)}"; then
+            echo "::error::FE Functions coverage ${FUNCTIONS}% is below threshold ${FUNCTIONS_THR}%"
+            FAIL=1
+          else
+            echo "::notice::FE Functions coverage ${FUNCTIONS}% >= ${FUNCTIONS_THR}% (threshold)"
+          fi
+          if [ "$FAIL" = "1" ]; then
+            echo "::error::Run 'cd apps/web && pnpm test:coverage' locally to investigate"
+            exit 1
+          fi
 
   docker-build:
     name: Docker Build Check
