@@ -14,8 +14,8 @@ type: project
 
 | Wave | 항목 | 상태 |
 |------|------|------|
-| W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` |
-| W1 | PR-3 HTTP Error / PR-1 WS Contract / PR-6 Auditlog + H-1 voice token | 착수 대기 |
+| W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
+| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | PR-3 선제 완료 검증 ✅ + H-1 ✅ #125 `367ca35` · PR-1/PR-6 대기 |
 | W2 | PR-5a/b/c Coverage Gate + mockgen → PR-7 Zustand Action | pending |
 | W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
@@ -25,6 +25,8 @@ type: project
 - **#121 preflight chore** (commit `3d8ccec`, 2026-04-21) — `.claude/scripts/plan-preflight.sh` M3 cutover(2026-04-15) 이후 legacy `~/.claude/skills/plan-autopilot` 경로 잔존 결함 수정. 추가로 inline bash hook(`[ -f x ] && touch y`) 오해석도 guard로 차단. `/plan-go` 파이프라인 정상화. PR-0 진행 전제 조건.
 - **#122 PR-0 본체** (commit `c2f34a9`, 2026-04-21) — 9 files · +197/-35. Task 1–6 + Gate 충족. user home → repo 단일 출처 전환.
 - **#123 hygiene** (commit `22b1a5a`, 2026-04-21) — 42 files × -1줄 (`originSessionId` strip). PR-0 이후 기존 repo 파일 일괄 정리. 로직 변경 0.
+- **#126 preflight skill-path fix** (commit `04654a5`, 2026-04-21) — `.claude/commands/plan-*.md` 8개가 여전히 legacy `$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh` (내부 `SKILL_DIR=plan-autopilot`) 호출 → `/plan-go` 진입 시 "plan-autopilot skill not found" 재발. project-local `$CLAUDE_PROJECT_DIR/.claude/scripts/...` 로 교체.
+- **#127 preflight path fallback** (commit `e306fa8`, 2026-04-21) — #126 후속. slash command `!` shell substitution 은 `$CLAUDE_PROJECT_DIR` 를 주입하지 않아 `/` 루트로 resolve 됨. `${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/...` parameter expansion fallback 적용. 로컬 검증: `✓ PRE-FLIGHT OK: 6/6 hooks verified`.
 
 ## W0 PR-0 진행
 
@@ -38,6 +40,20 @@ branch: `chore/phase-19-residual/pr-0-memory-canonical`
 | 4. QMD mmp-memory path 이전 | ✅ | store_collections.path: `~/.claude/projects/.../memory` → `<repo>/memory`. 64 files 재인덱싱 + context 갱신 |
 | 5. user home read-only + CLAUDE.md 갱신 | ✅ (soft mode 확정) | CLAUDE.md QMD 섹션 갱신 + feedback_memory_canonical_repo.md 신설로 문서 엔포스먼트. filesystem chmod은 auto-memory 충돌 리스크로 적용 안 함 (2026-04-21 결정) |
 | 6. 본 progress 메모리 생성 | ✅ | 이 파일 |
+
+## W1 진행
+
+### H-1 voice token regression-only (2026-04-21)
+- PR #125 `367ca35` — `voice/provider_test.go` 신규 2 테스트 (`TestMockProviderDoesNotLogTokenValue`, `TestLiveKitProviderHasNoLoggerField`). 실제 redact 는 PR #83 `b9cc4ba` 에서 이미 처리됨. 이번은 회귀 방지 테스트만 추가.
+
+### PR-3 HTTP Error Standardization — 선제 완료 검증 (2026-04-21)
+- **상태**: Phase 19 Residual plan 작성 이전에 이미 선제 해결된 상태. 코드 변경 0, 문서 체크리스트만 갱신.
+- 검증 근거:
+  - `.go` 파일 대상 `Grep http\.Error` → 0 hits (audit 시점 ≥12건 → 현재 0건)
+  - `seo/handler.go:122/137/152` + `ws/upgrade.go:117` 모두 `apperror.WriteError` 사용
+  - `apps/server/.golangci.yml:13-19` `forbidigo` `^http\.Error$` deny + `F-sec-1` 주석 완비
+  - handler 테스트 총 10건 (seo 4 + ws/upgrade 6) — 기준 ≥4 의 2.5배
+- 비스코프: `seo/handler.go:108,114` `http.NotFound` 2건은 helper 차이로 별도 delta 분류
 
 ## 결정 사항
 
