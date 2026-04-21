@@ -157,9 +157,12 @@ gh pr checks <N>  # 대기
 | `multi_get` | 즉시 | glob/리스트로 다중 문서 배치 조회 |
 
 ### 컬렉션
-- `mmp-plans` (97 docs) — 설계 문서, PR 스펙, 체크리스트, 아키텍처
-- `mmp-memory` (18 docs) — 프로젝트 메모리, 피드백, 코딩 규칙
+- `mmp-plans` (290 docs) — 설계 문서, PR 스펙, 체크리스트, 아키텍처
+- `mmp-memory` (64 docs, **canonical = repo `memory/`**) — 프로젝트 메모리, 피드백, 코딩 규칙. 2026-04-21 Phase 19 Residual PR-0에서 user home → repo 이전 (이전 user home 경로는 archival 스냅샷).
 - `mmp-specs` (9 docs) — 브레인스토밍 결과, 엔진 재설계 스펙
+- `mmp-v2-docs` (98 docs) — MMP v2 머더미스터리 호텔 UX 이식 원본 (base 브랜치)
+
+> **🔴 쓰기 규칙**: 신규 memory 파일은 `memory/<name>.md` (repo 상대)로만 작성. user home `~/.claude/projects/.../memory/`는 auto-memory 시스템 기본값이지만 이 프로젝트에서는 **읽지 않음, 쓰지 않음** — drift 누적 방지. 상세: `memory/feedback_memory_canonical_repo.md`.
 
 ### 🔴 강제 규칙
 1. **Grep on docs/plans/ 절대 금지** — Hook이 차단함. QMD search 사용
