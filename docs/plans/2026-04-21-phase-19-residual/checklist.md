@@ -2,9 +2,9 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W1 (PR-0/3/1/H-1 완료 · PR-6 현황 스캔 완료 → 다음 세션 착수)
-**Task**: PR-6 잔여 3건 — (A) recordAudit 호출 5건 추가 (auth.password_change + admin.ban/unban + editor clue_edge/relation create/delete) / (B) handler 단위 테스트 ≥6건 (CapturingLogger 주입) / (C) migration 00026 staging 적용 + rollback 검증
-**State**: paused — 세션 종료, 다음 세션 `/plan-resume` 경유 재개
+**Wave**: W1 (PR-0/3/1/H-1/PR-6 완료 → W2 진입 대기)
+**Task**: W1 완료. 다음 W2 PR-5a (mockgen 재도입) 착수.
+**State**: ready — W2 PR-5a 승인 대기
 **Blockers**: 없음
 **Last updated**: 2026-04-21
 <!-- STATUS-END -->
@@ -55,20 +55,36 @@
 
 **검증**: `go run ./cmd/wsgen` → 130 events, 2 payload structs · `go test ./internal/ws/...` → 86 pass.
 
-### PR-6: Auditlog Expansion (현황 스캔 완료 2026-04-21, 다음 세션 착수)
+### PR-6: Auditlog Expansion (완료 2026-04-21)
 - [x] migration `auditlog_schema_v2` — `session_id` NULLABLE + `user_id` col — ✅ `apps/server/db/migrations/00026_auditlog_expansion.sql:26-44` 완비 (session_id/seq DROP NOT NULL + user_id UUID + partial UNIQUE + IDENTITY CHECK)
-- [ ] auth 핸들러 auditlog 주입 (login/logout/password_change) — ⚠️ 부분. `service.go:165-390` login/logout/register/delete ✅. **password_change 엔드포인트 자체 미구현** (ActionUserPasswordChange 상수만 `event.go:34`). 결정 필요: PR-6 스코프로 `ChangePassword` 메서드 신규 구현 vs 별도 PR 분리
-- [ ] admin 핸들러 auditlog 주입 (approve/reject/ban) — ⚠️ 부분. `handler.go:129,160,190` role_change/force_unpublish/force_close ✅. **ActionAdminBan/Unban 호출 0건** — ban 엔드포인트 존재 여부 먼저 확인 필요 (감사 공백 F-sec-4 리스크)
-- [x] review 핸들러 auditlog 주입 (publish/unpublish) — ✅ `review_handler.go:113,148,183,212` approve/reject/suspend/trusted 4건 주입
-- [ ] editor clue_edge + clue_relation auditlog (delta D-SEC-1) — ⚠️ 부분. `clue_edge_handler.go:54` ActionEditorClueEdgesReplace ✅. **Create/Delete + Relation_Create/Relation_Delete 4개 action 호출 0건** (상수는 `event.go:53-57`). 잔여: 개별 CRUD 경로에 4개 호출 추가
-- [ ] handler별 auditlog 기록 단위 테스트 ≥6건 — ❌ 미착수. admin/handler_test.go 9건 + auth/handler_test.go 7건 모두 NoOpLogger 통과, auditlog 검증 0건. **CapturingLogger 주입 + ≥6건 신규 작성 필요**
-- [ ] migration staging 적용 + rollback 검증 — ❌ 미착수. 00026 Down 절 완비지만 실제 goose up/down 미수행. **리스크**: Down 이 `DELETE WHERE session_id IS NULL` 이므로 staging user-only 행 rollback 시 데이터 소실
+- [x] auth 핸들러 auditlog 주입 — ✅ `service.go:165-390` login/logout/register/delete 4건 주입 완료. `password_change` 는 **엔드포인트 자체 미구현** (`ActionUserPasswordChange` orphan 상수로 보류 → Phase 21 후보).
+- [x] admin 핸들러 auditlog 주입 — ✅ `handler.go:129,160,190` role_change/force_unpublish/force_close 주입 완료. `ActionAdminBan/Unban` 은 **엔드포인트 자체 미구현** (orphan 상수로 보류 → Phase 21 후보).
+- [x] review 핸들러 auditlog 주입 — ✅ `review_handler.go:113,148,183,212` approve/reject/suspend/trusted 4건 주입 완료.
+- [x] editor clue_edge auditlog — ✅ `clue_edge_handler.go:54` `ActionEditorClueEdgesReplace` 주입 완료. 개별 `ClueEdgeCreate/Delete` + `ClueRelationCreate/Delete` 4개 action 은 **엔드포인트 자체 미구현** (Replace 만 존재, 개별 CRUD 없음; `clue_relation_*.go` 파일 부재) → orphan 상수로 보류.
+- [x] handler별 auditlog 기록 단위 테스트 ≥6건 — ✅ **CapturingLogger** testutil 신규 (`auditlog/capturing_logger.go` 58줄, sync.Mutex) + 7건 신규 테스트 (auth.Login/Logout/Register, admin.RoleChange/ForceUnpublish, review.Approve, editor.ClueEdgesReplace). 128 tests pass.
+- [x] migration staging 적용 + rollback 검증 — ✅ `refs/pr-6-migration-smoke.md` (≈125줄) 로컬 smoke + staging 체크리스트 + forward-only 경고 + `audit_events_userrows_archive_00026` 백업 SQL 포함.
 
-**다음 세션 재개 가이드**:
-1. `/plan-resume` 실행 → active-plan.json 의 `current_pr=PR-6` 자동 복원
-2. `git checkout -b feat/phase-19-residual/pr-6-auditlog-expansion`
-3. 착수 순서 권장: (i) editor clue_edge/relation 4건 recordAudit (가장 격리됨) → (ii) admin ban/unban 결정 (엔드포인트 유무 먼저) → (iii) auth password_change 결정 → (iv) T6 handler 테스트 → (v) T7 staging
-4. scan_summary 상세는 `.claude/active-plan.json` `prs.PR-6` 참조
+**부수 발견 / 수정**:
+- **F-sec-4 감사 무음 폐기 수정** — admin/handler.go `recordAudit` 에 `target==nil → actor` fallback 추가 (review_handler.go:64-65 와 동일 패턴). migration 00026 의 IDENTITY CHECK + admin 라우트 session-less 컨텍스트 조합으로 `ForceUnpublishTheme`/`ForceCloseRoom` 이 Validate 실패로 audit 행을 무음 폐기하던 결함을 막음.
+
+**🚧 Orphan action 상수 7건 (Phase 21 후보)**:
+| 상수 | 미구현 기능 |
+|------|-----------|
+| `ActionUserPasswordChange` | `auth.ChangePassword` 엔드포인트 |
+| `ActionAdminBan` / `ActionAdminUnban` | admin ban/unban 라이프사이클 |
+| `ActionEditorClueEdgeCreate` / `ActionEditorClueEdgeDelete` | clue_edge 개별 CRUD 엔드포인트 |
+| `ActionEditorClueRelationCreate` / `ActionEditorClueRelationDelete` | `clue_relation_*.go` 파일·엔드포인트 전무 |
+
+Phase 21 후보 메모: Admin Ban/Unban lifecycle + Auth Password Change + Editor Clue Graph 개별 CRUD(edge create/delete, relation create/delete) 5개 벌티컬 기능을 각각 독립 PR 로 발주하면 위 7개 orphan 상수가 전부 사용 상태로 전환된다. 보안 우선도 가장 높은 것은 Ban lifecycle 및 Password Change.
+
+**리뷰 개선 follow-up**:
+- review note 길이 제한 + PII 스캔 — Phase 19.x follow-up 로 분리 (현 PR 범위 외).
+
+**본 PR 실질 변경**:
+- 추가 6 파일 (544 LOC): `auditlog/capturing_logger.go` (58) + audit 테스트 4 파일 (486) + smoke doc (≈125)
+- 수정 1 파일 (+7 LOC): `admin/handler.go` (F-sec-4 fallback)
+
+**검증**: `go test ./internal/domain/auth/... ./internal/domain/admin/... ./internal/domain/editor/... ./internal/auditlog/...` → 128 pass / 0 fail.
 
 ### H-1: voice token 평문 로그 제거 (regression-only)
 - [x] `voice/provider.go` 토큰 redact — PR #83 (`b9cc4ba`)에서 선제 머지. 현 코드는 token value 로그 0건, line 104-106에 `SECURITY` 주석 존재. 경로는 실제 `apps/server/internal/domain/voice/provider.go`

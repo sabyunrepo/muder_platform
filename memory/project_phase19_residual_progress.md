@@ -15,7 +15,7 @@ type: project
 | Wave | 항목 | 상태 |
 |------|------|------|
 | W0 | PR-0 MEMORY Canonical Migration | ✅ 완료 (#122 `c2f34a9`) + hygiene #123 `22b1a5a` + finalize #124 `6d24a29` |
-| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | PR-3 ✅ #128 `03897f9` + H-1 ✅ #125 `367ca35` + PR-1 대부분 선제 완료 (헤더 메타만 본 PR · 진행 중) · PR-6 대기 |
+| W1 | PR-3 HTTP Error / H-1 voice token / PR-1 WS Contract / PR-6 Auditlog | ✅ 완료 — PR-3 #128 `03897f9` + H-1 #125 `367ca35` + PR-1 #129 `80b603e` + PR-6 머지 대기 (브랜치 `feat/phase-19-residual/pr-6-auditlog-expansion`, 7 신규 테스트 + F-sec-4 fallback + smoke doc) |
 | W2 | PR-5a/b/c Coverage Gate + mockgen → PR-7 Zustand Action | pending |
 | W3 | PR-8 Module Cache Isolation + H-2 focus-visible | pending |
 | W4 | PR-9 WS Auth Protocol / PR-10 Runtime Payload Validation | pending |
@@ -55,23 +55,29 @@ branch: `chore/phase-19-residual/pr-0-memory-canonical`
   - handler 테스트 총 10건 (seo 4 + ws/upgrade 6) — 기준 ≥4 의 2.5배
 - 비스코프: `seo/handler.go:108,114` `http.NotFound` 2건은 helper 차이로 별도 delta 분류
 
-### PR-6 Auditlog Expansion — 현황 스캔만, 다음 세션 착수 (2026-04-21)
-- **상태**: paused — 이번 세션 현황 스캔만 수행. 구현은 다음 세션.
-- 선제 완료 (2/7): T1 migration, T4 review handler
-  - `apps/server/db/migrations/00026_auditlog_expansion.sql:26-44` — schema_v2 완비
-  - `review_handler.go:113,148,183,212` — approve/reject/suspend/trusted 4건
-- 실질 잔여 (5/7):
-  - **T2** auth password_change — 엔드포인트 자체 미구현. `event.go:34` 상수만 존재. 결정 필요 (PR-6 스코프 확장 vs 별도 PR)
-  - **T3** admin ban/unban — `ActionAdminBan/Unban` 호출 0건. ban 엔드포인트 유무 먼저 확인
-  - **T5** editor clue_edge/relation — `ActionEditorClueEdgesReplace`만 주입됨 (`clue_edge_handler.go:54`). Create/Delete + Relation_Create/Relation_Delete 4건 호출 필요
-  - **T6** handler 단위 테스트 — `admin/handler_test.go` 9 + `auth/handler_test.go` 7 모두 NoOpLogger. CapturingLogger 주입 후 ≥6건 신규 작성 필요
-  - **T7** staging 검증 — 00026 Down 절이 `DELETE WHERE session_id IS NULL` → rollback 시 user-only 데이터 소실 리스크. 먼저 migration 테스트 플랜 필요
-- **규모 추정**: M (원래 L+ 추정 대비 축소). recordAudit 호출 5건 + 테스트 ≥6건 + staging 검증.
-- **다음 세션 재개 가이드**:
-  1. `/plan-resume` — active-plan.json 의 `current_pr=PR-6` 복원
-  2. `git checkout -b feat/phase-19-residual/pr-6-auditlog-expansion`
-  3. 착수 순서: editor clue_edge/relation 4건 → admin ban/unban 결정 → auth password_change 결정 → T6 테스트 → T7 staging
-  4. 상세 scan_summary: `.claude/active-plan.json` `prs.PR-6.scan_summary`
+### PR-6 Auditlog Expansion — 완료 (2026-04-21)
+- **상태**: ✅ merged-ready (branch `feat/phase-19-residual/pr-6-auditlog-expansion`)
+- **사전 재발견**: 원 plan 이 가정했던 ban/unban/password_change 엔드포인트 + 개별 clue_edge CRUD + clue_relation CRUD 가 **프로젝트 전역에 아예 없음** → 5 action 상수가 wire-up 대상 미존재 → 스코프 자연 축소 (option A+)
+- **실제 완료 scope**:
+  - T1 ✅ migration 00026 (선제)
+  - T2~T5 ✅ 모든 기존 recordAudit 주입 지점 검증 — 작업 0건 필요 (이미 주입됨)
+  - **T6 ✅ CapturingLogger + 7건 신규 테스트**:
+    - `auditlog/capturing_logger.go` (58 LOC, sync.Mutex, `auditlog.Logger` 구현)
+    - auth: `TestChangeHandlerCapturesAudit_Login/Logout/Register` (3)
+    - admin: `TestChangeHandlerCapturesAudit_RoleChange/ForceUnpublish` (2)
+    - admin/review: `TestChangeHandlerCapturesAudit_Approve` (1)
+    - editor: `TestChangeHandlerCapturesAudit_ClueEdgesReplace` (1)
+    - `go test ./internal/domain/auth/... ./internal/domain/admin/... ./internal/domain/editor/... ./internal/auditlog/...` → 128 pass / 0 fail
+  - **T7 ✅ smoke doc** (`refs/pr-6-migration-smoke.md`, ≈125줄) — up/down/up 순환 + staging 체크리스트 + forward-only 경고 + `audit_events_userrows_archive_00026` 백업 SQL
+- **부수 수정 (F-sec-4)**: `admin/handler.go:59-62` `target==nil → actor` fallback 추가 — migration 00026 의 IDENTITY CHECK + admin 라우트 session-less 컨텍스트 조합으로 `ForceUnpublishTheme`/`ForceCloseRoom` 이 audit 무음 폐기하던 결함 수정 (review_handler.go:64-65 와 동일 패턴)
+- **Orphan action 상수 7건 → Phase 21 후보**:
+  - `ActionUserPasswordChange` (auth.ChangePassword 엔드포인트 부재)
+  - `ActionAdminBan` / `ActionAdminUnban` (ban/unban 라이프사이클 부재)
+  - `ActionEditorClueEdgeCreate` / `ActionEditorClueEdgeDelete` (개별 CRUD 부재, Replace 만 존재)
+  - `ActionEditorClueRelationCreate` / `ActionEditorClueRelationDelete` (`clue_relation_*.go` 파일 전무)
+  - Phase 21 권장: Ban/Unban lifecycle + Password Change + Clue Graph 개별 CRUD 5개 벌티컬 독립 PR
+- **security-reviewer verdict**: APPROVE-WITH-COMMENTS (BLOCKer 0). F-sec-4 fallback 승인, payload redaction PII 없음, CapturingLogger race-safe. 개선 제안 1+2 (smoke doc 하드닝) 반영. review note PII 스캔은 Phase 19.x follow-up 으로 분리.
+- **총 변경**: +7 파일 (capturing_logger + 4 audit test + smoke doc + admin handler +7), 0 파일 삭제.
 
 ### PR-1 WS Contract SSOT — 대부분 선제 완료 (2026-04-21)
 - **상태**: 8 task 중 7개가 Phase 19 implementation (2026-04-18, `099a096`) 단계에 완비됨. 본 PR 은 Task 5 헤더 메타 동적화만 실질 구현.

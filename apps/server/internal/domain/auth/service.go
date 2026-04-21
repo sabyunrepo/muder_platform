@@ -51,8 +51,20 @@ type Service interface {
 	DeleteAccount(ctx context.Context, userID uuid.UUID, req DeleteAccountRequest) error
 }
 
+// authQuerier is the narrow DB interface required by the auth service.
+// Using an interface instead of *db.Queries allows test code to inject a
+// fake implementation without a live database.
+type authQuerier interface {
+	GetUserByProvider(ctx context.Context, arg db.GetUserByProviderParams) (db.User, error)
+	CreateUser(ctx context.Context, arg db.CreateUserParams) (db.User, error)
+	GetUser(ctx context.Context, id uuid.UUID) (db.User, error)
+	GetUserByEmail(ctx context.Context, email pgtype.Text) (db.User, error)
+	CreateUserWithPassword(ctx context.Context, arg db.CreateUserWithPasswordParams) (db.User, error)
+	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
+}
+
 type service struct {
-	queries   *db.Queries
+	queries   authQuerier
 	redis     *redis.Client
 	jwtSecret []byte
 	logger    zerolog.Logger
@@ -67,7 +79,7 @@ type service struct {
 // is expected to inject a running auditlog.DBLogger so that login,
 // register, logout, and account-deletion events are captured.
 func NewService(
-	queries *db.Queries,
+	queries authQuerier,
 	redisClient *redis.Client,
 	jwtSecret []byte,
 	audit auditlog.Logger,
