@@ -5,7 +5,7 @@ allowed-tools: Read Write Edit Bash(mkdir*) Bash(git*) Bash(cp*) Bash(wc*) Bash(
 ---
 
 ## Pre-flight check
-!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
+!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌**: fix `.claude/settings.json` FIRST, then retry. A broken settings.json means hooks won't fire, so even a perfectly authored plan won't get PreToolUse protection during execution.
 

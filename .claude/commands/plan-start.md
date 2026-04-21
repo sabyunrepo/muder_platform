@@ -5,7 +5,7 @@ allowed-tools: Read Write Bash(git*) Bash(jq*) Bash(mv*) Bash(mkdir*) Bash(*/pla
 ---
 
 ## Pre-flight check
-!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
+!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌**: fix `.claude/settings.json` FIRST, then retry this command.
 The pre-flight failure usually means hooks won't fire, so activating a plan would be pointless.

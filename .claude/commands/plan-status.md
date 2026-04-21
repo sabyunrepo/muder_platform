@@ -6,12 +6,12 @@ allowed-tools: Bash(jq*) Bash(git*) Bash(cat*) Bash(sed*) Bash(*/plan-preflight.
 # Plan Status
 
 ## Pre-flight
-!`$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh`
+!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-preflight.sh`
 
 **If pre-flight shows ❌, stop and fix settings.json using the recovery steps above.**
 
 ## Active plan
-!`$HOME/.claude/skills/plan-go/scripts/plan-status.sh --verbose`
+!`$CLAUDE_PROJECT_DIR/.claude/scripts/plan-status.sh --verbose`
 
 ## Recent commits
 !`git log --oneline -5`
