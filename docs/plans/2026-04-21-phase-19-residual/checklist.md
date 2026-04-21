@@ -2,8 +2,8 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W1 (PR-3 선제 완료 검증 · H-1 완료 · PR-1/PR-6 2건 대기)
-**Task**: PR-1 (WS Contract SSOT, L+) 또는 PR-6 (Auditlog Expansion, L+) 착수 선택 대기
+**Wave**: W1 (PR-3 · H-1 · PR-1 완료 · PR-6 1건 대기)
+**Task**: PR-6 Auditlog Expansion (L+) 착수 대기
 **State**: in_progress
 **Blockers**: 없음
 **Last updated**: 2026-04-21
@@ -41,15 +41,19 @@
 
 **참고 (비스코프)**: `seo/handler.go:108,114` `http.NotFound` 2건 — `http.Error`와 구분되는 helper (Problem Details 직렬화 차이). 별도 delta 이슈로 분류, PR-3 스코프 밖.
 
-### PR-1: WS Contract SSOT
-- [ ] envelope_catalog.go에 121 legacy 콜론 이벤트 `Alias` 보존
-- [ ] 점 표기(`<category>.<action>`) canonical + deprecated 마커
-- [ ] `auth.*` stub entry 추가 (PR-9 예약)
-- [ ] `cmd/wsgen` 작성 — `// wsgen:payload` → TS interface
-- [ ] `packages/shared/src/ws/types.generated.ts` codegen 결과물
-- [ ] MSW 핸들러 전수 서버 envelope 기준 정규화
-- [ ] `gameMessageHandlers.ts` enum 재생성 + 타입 오류 해결
-- [ ] `.github/workflows/ci.yml` contract drift gate
+### PR-1: WS Contract SSOT (대부분 선제 완료, 헤더 메타만 본 PR 에서 구현)
+- [x] envelope_catalog.go 에 121 legacy 콜론 이벤트 보존 — `EventDef.Type` 에 콜론 표기 그대로 등록 (별도 Alias 필드 없음). `envelope_catalog.go:55-58` 설계 주석 + `envelope_catalog_c2s.go:16` 등 다수 콜론 엔트리. 130 events 중 콜론형 다수 활성
+- [x] 점 표기 canonical + deprecated 마커 — `EventDef.Status = StatusDeprec` 로 마킹. `envelope_catalog_s2c.go:46-47` (`phase:entered` → `StatusDeprec, Note: "colon form; prefer phase.advanced"`), `:79-80` (`vote:tallied`). `types.generated.ts` `WsEventStatus` 맵에 `"deprec"` 반영
+- [x] `auth.*` stub entry (PR-9 예약) — `envelope_catalog_system.go:27-45` 에 6개 완비: `auth.identify/resume/refresh` (C2S) + `auth.challenge/revoked/refresh_required` (S2C), 모두 `StatusStub`
+- [x] `cmd/wsgen` 작성 — `// wsgen:payload` → TS interface — `cmd/wsgen/payload.go:28` `payloadMarker = "wsgen:payload"` + `extractPayloads()` 219줄 AST 파싱 완비 (goTypeToTS/json 태그/pointer-nullable/omitempty-optional)
+- [x] `packages/shared/src/ws/types.generated.ts` codegen 결과물 — 존재 + 본 PR 에서 헤더에 `Catalog: 130 events (active=N, stub=M, deprec=K) · 2 //wsgen:payload structs` 라인 추가로 drift 가시화
+- [x] MSW 핸들러 전수 서버 envelope 기준 정규화 — `apps/web/src/mocks/handlers/game-ws.ts:22` `import { WsEventType } from "@mmp/shared"` + enum 기반 사용, string literal hardcode 없음
+- [x] `gameMessageHandlers.ts` enum 재생성 + 타입 오류 해결 — 파일 자체 제거됨. `useGameSync.ts:68` 주석에 "이전에 병행 존재하던 gameMessageHandlers.ts 와 통합" 명시. `GamePage.tsx:81` `useGameSync()` 단일 호출
+- [x] `.github/workflows/ci.yml` contract drift gate — `:79-80` `go run ./cmd/wsgen` 후 `git diff --exit-code ../../packages/shared/src/ws/types.generated.ts` (Phase 19 PR-1 주석)
+
+**본 PR 실질 변경**: `cmd/wsgen/render.go` `renderHeader()` 동적화 — 이벤트 총수 + active/stub/deprec breakdown + payload struct 수를 헤더 주석에 기록. 기존 정적 `headerBlock` const 대체. CI drift gate 에서 Status 만 바뀐 경우도 헤더 변경으로 노출.
+
+**검증**: `go run ./cmd/wsgen` → 130 events, 2 payload structs · `go test ./internal/ws/...` → 86 pass.
 
 ### PR-6: Auditlog Expansion
 - [ ] migration `auditlog_schema_v2` — `session_id` NULLABLE + `user_id` col
