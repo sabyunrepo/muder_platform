@@ -2,9 +2,9 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W3 실작업 — PR-8 머지(#137) 완료, H-2 branch 진입
-**Task**: H-2 Task 1-2 선제 완료 검증(67/67 병기 + amber-500/slate-900 링 오프셋), Task 3 Playwright axe-core spec 신규 1건 작성.
-**State**: in_progress — H-2 verify+spec branch `fix/phase-19-residual/h-2-focus-visible`
+**Wave**: W3 완료 (PR-8 #137 `d3e6934` + H-2 #138 `691b86a`) → W4 진입 대기
+**Task**: W4 PR-9 (WS Auth Protocol, L) + PR-10 (Runtime Payload Validation, L) 병렬 착수 대기. 양쪽 모두 PR-1 의존 해소됨 (envelope_catalog_system.go stub + wsgen payload AST 이미 완비).
+**State**: ready — W4 PR-9/PR-10 착수. 규모 크므로 `/clear` + `/plan-resume` 재개 권장.
 **Blockers**: 없음
 **Last updated**: 2026-04-22
 <!-- STATUS-END -->
