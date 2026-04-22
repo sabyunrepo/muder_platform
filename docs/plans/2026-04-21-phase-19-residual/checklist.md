@@ -2,11 +2,11 @@
 
 <!-- STATUS-START -->
 **Active**: Phase 19 Residual — 감사 backlog 잔여 PR 실행
-**Wave**: W3 진입 — PR-8 선제 완료 검증 branch 생성, H-2 병렬 대기
-**Task**: PR-8 4/4 서브태스크 모두 Phase 19 implementation 단계(#91 `34e952f`, 2026-04-18) 에 선제 구현됨. 본 세션은 검증 + 체크리스트 갱신 docs-only PR. H-2 focus-visible 57건이 W3 실작업량.
-**State**: in_progress — PR-8 verify branch `chore/phase-19-residual/pr-8-verify`
+**Wave**: W3 실작업 — PR-8 머지(#137) 완료, H-2 branch 진입
+**Task**: H-2 Task 1-2 선제 완료 검증(67/67 병기 + amber-500/slate-900 링 오프셋), Task 3 Playwright axe-core spec 신규 1건 작성.
+**State**: in_progress — H-2 verify+spec branch `fix/phase-19-residual/h-2-focus-visible`
 **Blockers**: 없음
-**Last updated**: 2026-04-21
+**Last updated**: 2026-04-22
 <!-- STATUS-END -->
 
 ## W0 — Foundation (PR-0 단독)
@@ -140,10 +140,12 @@ Phase 21 후보 메모: Admin Ban/Unban lifecycle + Auth Password Change + Edito
 
 **W3 실작업량**: H-2 focus-visible 57건이 실제 남은 작업. 세션 전환 E2E 는 devtools hook 설계가 선행되어야 하므로 Phase 21 graphify-driven 백로그로 분류.
 
-### H-2: focus-visible 57건
-- [ ] `outline-none` 57건 grep + `focus-visible:ring-*` 병기
-- [ ] 다크모드 focus ring 대비 확인
-- [ ] Playwright axe-core 키보드 네비 테스트
+### H-2: focus-visible 57→67건 (1·2 선제 완료, 3 신규)
+- [x] `outline-none` 57건 grep + `focus-visible:ring-*` 병기 — audit 시점 57건 → 현재 67건/41 파일 증가(신규 UI 추가분). 67/67 전수 `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500` 패턴 병기 이미 완료. Explore 서브에이전트 line-level audit 결과 "미병기 0건". 
+- [x] 다크모드 focus ring 대비 확인 — `focus-visible:ring-amber-500 + focus-visible:ring-offset-slate-900` 패턴 적용 (`NotificationSettings.tsx:52-53` 참조). slate-900 배경 위 amber-500 링 오프셋 WCAG AA 3:1 초과.
+- [x] Playwright axe-core 키보드 네비 테스트 — `apps/web/e2e/a11y-focus.spec.ts` 신규 (60 LOC). `@axe-core/playwright ^4.11.2` devDep 추가. 2 test: (1) `/login` AxeBuilder WCAG 2.1 A/AA scan 위반 critical/serious 0건, (2) email/password/submit Tab 순회 focus 지표 (outline 또는 box-shadow/ring) 실제 렌더 확인. outline-none 단독 도입 회귀 방지 가드.
+
+**H-2 실작업**: Playwright spec 신규 1건 (60 LOC) + `@axe-core/playwright` 추가. Task 1-2 는 PR-8 과 동일한 snapshot drift — 감사 이후 이미 전수 병기 완료 상태.
 
 **W3 Gate**: session 전환 E2E green + axe-core pass
 
