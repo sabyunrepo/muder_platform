@@ -210,3 +210,82 @@ W1+W2 완료 후 critic + code-reviewer 병렬 회고 리뷰에서 도출. Phase
 - 원 backlog: `docs/plans/2026-04-17-platform-deep-audit/refs/phase19-backlog.md`
 - delta priority: `docs/plans/2026-04-18-architecture-audit-delta/priority-update.md`
 - memory canonical rule: `memory/feedback_memory_canonical_repo.md`
+
+---
+
+## ⚠️ Workflow 폐기 후 수동 진행 가이드 (2026-04-27)
+
+### 결정
+- `mmp-pilot` 스킬 + `/plan-go` 단일 진입점 + `.claude/active-plan.json` workflow **전면 폐기**.
+- 인프라(`.claude/skills/mmp-*`, `.claude/commands/`, `.claude/scripts/plan-*`, `.claude/agents/`, settings.json hooks) 일괄 제거 예정 (별도 PR-A).
+- 새 워크플로우: `docs/plans/.../checklist.md` 직접 read + git branch + 수동 progress 갱신.
+
+### Phase 19 Residual 잔여 PR 인벤토리 (workflow 폐기 시점)
+
+| PR | 상태 | branch | 비고 |
+|----|------|--------|------|
+| PR-0 | ✅ #122/#123/#124 (`c2f34a9`) | `chore/phase-19-residual/pr-0-memory-canonical` | MEMORY canonical |
+| PR-1 | ✅ #129 (`80b603e`) | `feat/phase-19-residual/pr-1-ws-contract-ssot` | WS Contract SSOT |
+| PR-3 | ✅ #128 (`03897f9`) | `chore/phase-19-residual/pr-3-prevalidated` | HTTP Error Std |
+| PR-5a | ✅ #132 | `feat/phase-19-residual/pr-5a-mockgen` | mockgen |
+| PR-5b | ✅ #133 | `feat/phase-19-residual/pr-5b-coverage-gate` | Coverage Gate |
+| PR-5c | ✅ #134 | `feat/phase-19-residual/pr-5c-zero-coverage-recovery` | 0% 패키지 복구 |
+| PR-6 | ✅ #131 | `feat/phase-19-residual/pr-6-auditlog-expansion` | Auditlog Expansion |
+| PR-7 | ✅ #135 (`da88c78`) | `refactor/phase-19-residual/pr-7-zustand-apply-ws-event` | Zustand Action Unification |
+| PR-8 | ✅ #137 (`d3e6934`) | (verify-only) | Module Cache Isolation (선제 머지) |
+| H-1 | ✅ #125 (`367ca35`) | `fix/phase-19-residual/h-1-voice-token-log` | voice token redact |
+| H-2 | ✅ #138 (`691b86a`) | `fix/phase-19-residual/h-2-focus-visible` | focus-visible |
+| **PR-9** | **pending** | `feat/phase-19-residual/pr-9-ws-auth-protocol` | **WS Auth Protocol (L)** |
+| **PR-10** | **pending** | `feat/phase-19-residual/pr-10-runtime-payload-zod` | **Runtime Payload Validation (L)** |
+
+→ W4 잔여 = **PR-9 + PR-10 두 건만 pending**. 나머지 11건 완료.
+
+### PR-9 컨텍스트 (재개용)
+- **Title**: WS Auth Protocol (IDENTIFY/RESUME/CHALLENGE/REVOKE)
+- **Scope**:
+  - `apps/server/internal/ws/auth_protocol.go` (신설)
+  - `apps/server/internal/ws/upgrade.go`
+  - `apps/server/internal/domain/auth/**`
+  - `apps/server/internal/db/migrations/**` (revoke_log 테이블)
+  - `packages/ws-client/src/client.ts` (재접속 auth.resume)
+- **선결 컨텍스트**: PR-1 완료 — `envelope_catalog_system.go` 에 `auth.*` 6개 stub 이미 등록됨 (auth.identify/resume/refresh/challenge/revoked/refresh_required).
+- **6 task**:
+  1. revoke_log migration (sessionid, user_id, revoked_at, reason)
+  2. ws/auth_protocol.go — server-side IDENTIFY/RESUME/CHALLENGE/REVOKE 핸들러
+  3. WS hub broadcast middleware (REVOKED 도달 시 영향 connection close)
+  4. ws-client 재접속 auth.resume 흐름
+  5. E2E: revoke→연결 종료→재접속 거부 시나리오
+  6. checklist 갱신
+- **L size** — 별도 세션 권장. PR-10 과 W4 병렬.
+
+### PR-10 컨텍스트 (재개용)
+- **Title**: Runtime Payload Validation (zod + server validator)
+- **Scope**:
+  - `apps/server/cmd/wsgen/**` (zod schema + Go validator codegen)
+  - `packages/shared/src/ws/schemas.generated.ts`
+  - `packages/ws-client/src/client.ts` (incoming envelope zod parse)
+  - `apps/server/internal/ws/validator.go` (server-side validate before dispatch)
+- **선결 컨텍스트**: PR-1 완료 — `wsgen` payload AST 파싱 이미 완비.
+- **5 task**: wsgen 확장 → schemas.generated.ts 출력 → ws-client 수신 검증 → server validator dispatch → CI gate
+
+### 새 진행 절차 (workflow 폐기 후)
+
+```bash
+# PR-9 시작 시
+git checkout main && git pull
+git checkout -b feat/phase-19-residual/pr-9-ws-auth-protocol
+
+# 컨텍스트 로딩 (수동)
+# 1. 본 progress 파일 위 PR-9 컨텍스트 섹션 read
+# 2. envelope_catalog_system.go (auth.* stub 6개) read
+# 3. PR-1 머지 #129 (`80b603e`) 변경 확인 (필요시)
+
+# 작업 후
+# - 본 progress 파일 마지막에 "PR-9 완료" 섹션 append
+# - PR 제목: feat(phase-19-residual): PR-9 WS Auth Protocol
+```
+
+### 폐기 일정
+- 2026-04-27 결정.
+- handoff PR (이 변경) merge 후 → PR-A (인프라 일괄 삭제), PR-B (memory 정리), PR-C (CLAUDE.md 다이어트) 순.
+- PR-9/10 은 새 절차로 별도 세션에서 진행.
