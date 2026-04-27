@@ -1,0 +1,218 @@
+{
+  "_comment": "plan-autopilot pipeline — maps each stage to existing skills (superpowers, oh-my-claudecode) with appropriate model selection. Opus for critical/complex judgment, Sonnet for mechanical work.",
+  "version": 1,
+  "default_mode": "subagent",
+  "after_task": [
+    {
+      "name": "format",
+      "type": "shell",
+      "command": "cd apps/server && go fmt ./...",
+      "blocking": true
+    },
+    {
+      "name": "scope-test",
+      "type": "shell",
+      "command": "cd apps/server && go test -race ./internal/session/...",
+      "blocking": true,
+      "on_fail": "stop"
+    },
+    {
+      "name": "mark-done",
+      "type": "internal",
+      "action": "mark_task_complete"
+    }
+  ],
+  "after_pr": [
+    {
+      "name": "full-test",
+      "type": "shell",
+      "command": "cd apps/server && go test -race -count=1 ./...",
+      "blocking": true,
+      "on_fail": "fix_loop"
+    },
+    {
+      "name": "lint",
+      "type": "shell",
+      "command": "cd apps/server && golangci-lint run",
+      "blocking": true,
+      "on_fail": "fix_loop"
+    },
+    {
+      "name": "review-security",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:security-reviewer",
+      "model": "opus",
+      "prompt": "Review PR {pr_id} ({pr_title}) diff against {design}. Focus: auth/권한, injection, race conditions, secret exposure. Severity: CRITICAL/HIGH/MEDIUM/LOW.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "fix_loop"
+    },
+    {
+      "name": "review-perf",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:code-reviewer",
+      "model": "sonnet",
+      "prompt": "Review PR {pr_id} for performance: lock contention, allocation hot paths, goroutine leaks, channel blocking. Severity-classified.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "fix_loop"
+    },
+    {
+      "name": "review-arch",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:critic",
+      "model": "opus",
+      "prompt": "Review PR {pr_id} for architecture alignment with {design}. SOLID, layering, actor-pattern compliance, design decision drift. Challenge every design choice.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "fix_loop"
+    },
+    {
+      "name": "review-test",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:test-engineer",
+      "model": "sonnet",
+      "prompt": "Review PR {pr_id} test coverage: race conditions, edge cases, missing scenarios, test isolation. Classify by severity.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "fix_loop"
+    },
+    {
+      "name": "verify",
+      "type": "skill",
+      "skill": "superpowers:verification-before-completion",
+      "args": "PR {pr_id} tests + lint + reviewers all passing before claiming complete",
+      "blocking": true
+    },
+    {
+      "name": "commit",
+      "type": "shell",
+      "command": "git add -A && git commit -m \"feat({plan.id}): {pr_id} {pr_title}\""
+    },
+    {
+      "name": "push",
+      "type": "shell",
+      "command": "git push -u origin feat/{plan.id}/{pr_id}"
+    },
+    {
+      "name": "create-pr",
+      "type": "shell",
+      "command": "gh pr create --title \"{pr_id}: {pr_title}\" --body-file .pr-body.tmp 2>/dev/null || echo '(gh unavailable, skipping)'"
+    },
+    {
+      "name": "wait-ci",
+      "type": "shell",
+      "command": "gh pr checks --watch --interval 30 2>/dev/null || true",
+      "blocking": false,
+      "on_fail": "warn"
+    }
+  ],
+  "after_wave": [
+    {
+      "name": "wave-test",
+      "type": "shell",
+      "command": "cd apps/server && go test -race -count=1 ./...",
+      "blocking": true,
+      "on_fail": "stop"
+    },
+    {
+      "name": "wave-confirm",
+      "type": "internal",
+      "action": "user_confirm",
+      "prompt": "Wave {wave.name} complete. All PRs tested (race). Merge to main and continue?"
+    },
+    {
+      "name": "wave-merge",
+      "type": "shell",
+      "command": "~/.claude/skills/plan-autopilot/scripts/run-pipeline.sh --merge-wave {wave.id}"
+    }
+  ],
+  "after_plan": [
+    {
+      "name": "finish",
+      "type": "slash",
+      "slash": "/plan-finish"
+    },
+    {
+      "name": "notify",
+      "type": "shell",
+      "command": "echo '🎉 Phase {plan.name} complete' >&2"
+    }
+  ],
+  "fix_loop": {
+    "max_iterations": 3,
+    "agent": "oh-my-claudecode:executor",
+    "model": "sonnet",
+    "prompt": "Previous stage '{stage_name}' failed. Findings:\n{findings}\n\nFix the issues and rerun relevant tests. Commit when ready. If fix requires architectural change, escalate by returning 'ESCALATE_TO_OPUS' in the first line.",
+    "on_max_exceeded": "abort_and_notify",
+    "escalation": {
+      "trigger": "ESCALATE_TO_OPUS",
+      "agent": "oh-my-claudecode:executor",
+      "model": "opus",
+      "effort": "high"
+    }
+  },
+  "orchestration": {
+    "parallel_dispatch_skill": "superpowers:dispatching-parallel-agents",
+    "subagent_driven_skill": "superpowers:subagent-driven-development",
+    "worktree_skill": "superpowers:using-git-worktrees",
+    "review_request_skill": "superpowers:requesting-code-review",
+    "review_receive_skill": "superpowers:receiving-code-review"
+  },
+  "pr_model_overrides": {
+    "_comment": "PR-specific model override. Complex PRs (actor pattern, snapshot algo) get Opus; mechanical copies get Sonnet.",
+    "PR-1": {
+      "model": "opus",
+      "effort": "high",
+      "reason": "Actor pattern + lock removal requires careful concurrency analysis"
+    },
+    "PR-7": {
+      "model": "opus",
+      "effort": "high",
+      "reason": "Snapshot/restore algorithm + schema versioning"
+    },
+    "PR-2": {
+      "model": "sonnet"
+    },
+    "PR-3": {
+      "model": "sonnet"
+    },
+    "PR-4": {
+      "model": "opus",
+      "reason": "Pattern reference — must be correct"
+    },
+    "PR-5": {
+      "model": "sonnet"
+    },
+    "PR-6": {
+      "model": "sonnet"
+    },
+    "PR-8": {
+      "model": "sonnet"
+    },
+    "PR-9": {
+      "model": "sonnet"
+    }
+  },
+  "global": {
+    "default_implement_model": "sonnet",
+    "default_review_model": {
+      "security": "opus",
+      "architecture": "opus",
+      "performance": "sonnet",
+      "test-coverage": "sonnet"
+    },
+    "auto_continue": true,
+    "require_user_confirm_before_merge": true,
+    "clear_between_prs": false,
+    "max_parallel_prs_per_wave": 4,
+    "max_parallel_reviewers": 4,
+    "notify_on": [
+      "abort",
+      "blocker",
+      "completion",
+      "fix_loop_exceeded",
+      "opus_escalation"
+    ]
+  }
+}
