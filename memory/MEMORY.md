@@ -33,7 +33,6 @@
 - [에러 처리 체계](project_error_system.md) — AppError, ErrorBoundary 3계층, Sentry, OTel
 - [모듈 시스템](project_module_system.md) — 33개 모듈 (spec 29 + crime_scene 3 + media 1), BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
 - [코딩 규칙](project_coding_rules.md) — Go/React 계층구조, DI, 상태관리, 테스트
-- [mmp-pilot 통합 시스템](project_mmp_pilot.md) — plan-autopilot+mmp하네스 병합, /plan-go 단일 진입점, 3-Layer, M0-M3 cutover 완료 (2026-04-15 commit cdd498e)
 
 ## 도구 & 인프라
 - [Docker/Nginx 인프라](project_infra_docker.md) — Nginx 리버스 프록시, dev/prod Compose, Makefile
@@ -43,7 +42,6 @@
 - [QMD 로컬 문서 검색](reference_qmd_setup.md) — MCP 서버, 3 컬렉션(plans/memory/specs), Hook 강제 구조
 - [graphify 지식 그래프](reference_graphify_setup.md) — 6700n/15398e/531c, Token 17.1x 감소, god nodes, Hook 강제, `.needs_update` auto-touch (2026-04-18)
 - [graphify refresh 정책 (D)](project_graphify_refresh_policy.md) — Phase 종료 시점만 fresh rebuild + PR, 일상 post-commit/watch/update는 로컬 전용·커밋 금지 (2026-04-18)
-- [plan-go ↔ plan-autopilot 연결](reference_plan_go_setup.md) — symlink 필요, plan-tasks.sh grep 버그 패치 노트
 
 ## 작업 방식
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시/종합만, 실제 작업은 Sonnet/Haiku 위임
@@ -61,8 +59,6 @@
 - [plan-autopilot 운영 함정](feedback_plan_autopilot_gotchas.md) — status 필드 schema, 워크트리 cleanup 순서, dry-run 머지 등
 - [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25 + ESLint9 config 미흡 (main도 fail), Phase 8.5 cleanup 후보
 - [CI admin-skip 정책 (2026-05-01까지)](project_ci_admin_skip_until_2026-05-01.md) — 모든 PR `gh pr merge --admin` 머지, 체크 red 무시 (2026-04-18 결정)
-- [plan-resume QMD 효율화](feedback_plan_resume_qmd.md) — Read 대신 QMD로 필요 섹션만 로드, 컨텍스트 토큰 절약
-- [plan-resume에서도 QMD 우선](feedback_qmd_plan_resume.md) — 스킬 지시와 무관하게 docs/plans, memory 경로는 QMD get 필수
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — WebSocket은 ?token= 쿼리로 인증 (Authorization 헤더 아님)
 - [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 500(CLAUDE.md만 200, 2026-04-21 변경)
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화 + 장시간 세션 주기 재시작, vantict 등 타프로젝트 분리

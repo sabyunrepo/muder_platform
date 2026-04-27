@@ -33,4 +33,4 @@ type: project
 - `refs/modules/core.md`, `progression.md`, `communication.md`, `decision.md`, `exploration.md`, `clue-distribution.md`, `crime_scene.md` (신규), `media.md` (신규)
 
 **Why:** v2 싱글턴 버그 해결, 모듈=설정 단일 소스로 에디터 자동 UI. PlayerAware 게이트로 per-player state 누출 차단.
-**How to apply:** Phase 3(게임엔진 코어) + Phase 5(모듈 이식)에서 구현. 신규 모듈 추가 시 `.claude/skills/mmp-module-factory/SKILL.md` 체크리스트 준수.
+**How to apply:** Phase 3(게임엔진 코어) + Phase 5(모듈 이식)에서 구현. 신규 모듈 추가 시 BaseModule + ConfigSchema + AutoContent + (선택)PhaseReactor + Factory + init()/blank import 등록 + PlayerAware 게이트(BuildStateFor 또는 PublicStateMarker) 충족 패턴 준수.
