@@ -17,6 +17,7 @@
 ## 4. graphify post-commit 자동 fresh rebuild X
 - **근거**: `_rebuild_code`가 semantic 노드 ~6% 영구 손실 (정책 D, 2026-04-18)
 - **허용**: `--update` 증분만. fresh rebuild는 Phase 종료 시점만 수동 PR
+- **wrap 예외 (review #5 모순 해결)**: `/compound-wrap --phase` 모드는 Phase 종료 시점이므로 fresh rebuild 자동 실행 허용 (`refs/wrap-up-checklist.md` Step 7). `--session`/`--wave`는 skip 또는 `--update` 안내만.
 
 ## 5. 새 SQLite 벡터 인덱스 구축 X
 - **근거**: QMD MCP 4 컬렉션이 동일 기능 제공. 추가 인덱스는 메모리 누수 운영 부담
@@ -34,9 +35,10 @@
 - **근거**: OMC가 `<!-- OMC:START --> ... <!-- OMC:END -->` 마커 영역을 SessionStart마다 자동 갱신 → 충돌 시 손실
 - **대안**: repo `CLAUDE.md` 카논 매트릭스에 1줄만 추가
 
-## 9. Wrap-up MEMORY.md 카논 인덱스 자동 덮어쓰기 X
-- **근거**: 사용자 결정 "균형형" — entry append만 자동, 인덱스 변경은 승인
-- **강제**: `skills/wrap-up-mmp/SKILL.md` Step 5는 entry append, Step 6는 사용자 승인
+## 9. Wrap-up MEMORY.md 카논 구조 자동 변경 X
+- **근거**: 사용자 결정 "균형형" — entry append (기존 구조 유지)는 자동, 인덱스 카테고리·헤더·기존 줄 수정은 승인
+- **명확화 (code-reviewer review #9 dangling fix)**: MEMORY.md는 인덱스 파일이지만 "entry append"는 기존 카테고리 끝에 1줄 추가만 의미. 카테고리 신설·기존 줄 수정·재정렬은 인덱스 구조 변경 → 승인 필수
+- **강제**: `refs/wrap-up-checklist.md` Step 5 (entry append만 자동) + Step 6 (구조 변경은 사용자 승인). 실제 구현은 PR-3 (`skills/wrap-up-mmp/SKILL.md`)
 
 ## 10. OMC agent frontmatter override 시도 X
 - **근거**: OMC agent의 `model:` 필드는 read-only. plugin namespace 분리로 충돌 0

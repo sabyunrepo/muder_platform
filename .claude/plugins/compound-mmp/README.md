@@ -28,17 +28,20 @@ MMP v3 전용 Claude Code 플러그인. **Plan → Work → Review → Compound*
 
 ## 안전 정책
 
-| 정책 | 위치 |
-|------|------|
-| 파일 크기 한도 (Go 500/TS·TSX 400/MD 500/CLAUDE.md 200) | `hooks/pre-edit-size-check.sh` |
-| Sonnet 4.5 차단 | `hooks/pre-task-model-guard.sh` |
-| TDD soft ask | `skills/tdd-mmp-go/SKILL.md`, `skills/tdd-mmp-react/SKILL.md` |
-| OMC namespace 격리 | `oh-my-claudecode:*` 호출만, `compound-mmp:*` 신규 정의 |
-| `~/.claude/claude.md` OMC marker 영역 보호 | `refs/anti-patterns.md` |
-| plan-autopilot 자동 진행 부활 금지 (사용자 폐기 결정) | `refs/anti-patterns.md` |
+핵심 6개 enforcement 위치. 전체 12개 anti-pattern 목록은 `refs/anti-patterns.md` 참조.
+
+| 정책 | enforcement 위치 (PR-N) |
+|------|------------------------|
+| 파일 크기 한도 (Go 500/TS·TSX 400/MD 500/`CLAUDE.md` 200) | `hooks/pre-edit-size-check.sh` (PR-5) |
+| Sonnet 4.5 차단 | `hooks/pre-task-model-guard.sh` (PR-6) |
+| TDD soft ask | `hooks/pre-edit-size-check.sh` 통합 (PR-5) — 자세한 정책은 `refs/tdd-enforcement.md`, `skills/tdd-mmp-go\|react/SKILL.md` |
+| OMC namespace 격리 | refs/lifecycle-stages.md (호출 매핑) |
+| `~/.claude/claude.md` OMC marker 영역 보호 | `refs/anti-patterns.md` #8 |
+| plan-autopilot 자동 진행 부활 금지 | `refs/anti-patterns.md` #1, post-task-pipeline.json v2 |
 
 ## 레퍼런스
 
-- 7단계 wrap 시퀀스: `skills/wrap-up-mmp/SKILL.md`
-- 4-agent 호출 카논: `/Users/sabyun/goinfre/muder_platform/.claude/post-task-pipeline.json` (after_pr)
-- 외부 분석 결과: 플랜 `/Users/sabyun/.claude/plans/vivid-snuggling-pascal.md` Appendix A
+- 7단계 wrap 시퀀스: `refs/wrap-up-checklist.md` (skill은 PR-3)
+- 4-agent 호출 카논: `.claude/post-task-pipeline.json` (repo root, after_pr)
+- Sim Case A 카논: `refs/sim-case-a.md`
+- 외부 분석 결과: plan 문서 (로컬 전용 — `<!-- external: ~/.claude/plans/vivid-snuggling-pascal.md, 공유 불가 -->` Appendix A)

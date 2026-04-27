@@ -46,23 +46,27 @@ Phase (예: Phase 19 Residual)
 
 ## OMC 호출 매핑 (재정의 X, 호출만)
 
-| compound 단계 | OMC agent | 모델 |
+> 모델 alias 표기: post-task-pipeline.json과 동일하게 short alias 사용 (`opus`, `sonnet`, `haiku`). 실제 런타임 ID는 `claude-opus-4-7` / `claude-sonnet-4-6` / `claude-haiku-4-5`. **두 표기는 동일** — 일관성 유지를 위해 이 plugin 내부에서는 short alias만 사용.
+
+| compound 단계 | OMC agent | 모델 (alias) |
 |---------------|-----------|------|
-| Work 구현 | `oh-my-claudecode:executor` | sonnet-4-6 |
-| Review 보안 | `oh-my-claudecode:security-reviewer` | opus-4-7 |
-| Review 성능 | `oh-my-claudecode:code-reviewer` | sonnet-4-6 |
-| Review 아키텍처 | `oh-my-claudecode:critic` | opus-4-7 |
-| Review 테스트 | `oh-my-claudecode:test-engineer` | sonnet-4-6 |
+| Work 구현 | `oh-my-claudecode:executor` | sonnet |
+| Review 보안 | `oh-my-claudecode:security-reviewer` | opus |
+| Review 성능 | `oh-my-claudecode:code-reviewer` | sonnet |
+| Review 아키텍처 | `oh-my-claudecode:critic` | opus |
+| Review 테스트 | `oh-my-claudecode:test-engineer` | sonnet |
 | Plan brainstorm | `superpowers:brainstorming` 스킬 | (스킬, 모델 무관) |
 | Plan 작성 | `superpowers:writing-plans` 스킬 | (스킬) |
 | Work 워크트리 | `superpowers:using-git-worktrees` 스킬 | (스킬) |
 
 ## compound-mmp 신규 agent (모두 wrap 전용, Read/Glob/Grep만)
 
-| agent | 모델 | 역할 |
+| agent | 모델 (alias) | 역할 |
 |-------|------|------|
-| `compound-mmp:doc-curator` | sonnet-4-6 | MEMORY.md/CLAUDE.md/refs 갱신 후보 추출 |
-| `compound-mmp:automation-scout` | sonnet-4-6 | 신규 자동화 기회 탐지 |
-| `compound-mmp:learning-extractor` | sonnet-4-6 | TIL·실수·발견 추출 (MISTAKES 후보) |
-| `compound-mmp:followup-suggester` | sonnet-4-6 | P0–P3 + Effort/Impact 매트릭스 |
-| `compound-mmp:duplicate-checker` | haiku-4-5 | QMD vector_search 중복 검증 |
+| `compound-mmp:doc-curator` | sonnet | MEMORY.md/CLAUDE.md/refs 갱신 후보 추출 |
+| `compound-mmp:automation-scout` | sonnet | 신규 자동화 기회 탐지 |
+| `compound-mmp:learning-extractor` | sonnet | TIL·실수·발견 추출 (MISTAKES 후보) |
+| `compound-mmp:followup-suggester` | sonnet | P0–P3 + Effort/Impact 매트릭스 |
+| `compound-mmp:duplicate-checker` | haiku | QMD vector_search 중복 검증 |
+
+> **PR-2 진입 전 spike (1시간) 권장 (critic MAJOR #4)**: doc-curator/automation-scout/followup-suggester 3개를 OMC `analyst`/`writer`/`document-specialist`로 prompt만 바꿔 호출 가능한지 검토. 새 namespace 정의가 절반 축소될 수 있음.
