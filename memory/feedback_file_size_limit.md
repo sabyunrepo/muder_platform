@@ -27,4 +27,3 @@ type: feedback
    - MD: `design.md`/`plan.md`/`checklist.md` index + `refs/architecture.md`, `refs/execution-model.md`, `refs/prs/pr-N.md` 등 — 요약 금지, 상세 보존
    - 공통: 한 파일 내 anonymous closure 욱여넣기 금지
 6. **코드 리뷰 체크**: `wc -l` + 큰 함수 스캔 (`awk '/^func /{...}'`)
-7. **mmp-200-line-rule** 스킬은 하위 호환을 위해 디렉터리명만 유지, 내부 규칙은 티어 시스템 사용.
