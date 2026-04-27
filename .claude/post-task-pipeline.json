@@ -1,0 +1,137 @@
+{
+  "_comment": "compound-mmp 4-agent review canon. /compound-review가 after_pr.review-* 4개 entry를 한 메시지에서 병렬 spawn한다. plan-autopilot은 폐기됨 (2026-04-21) — 자동 fix-loop/wave-merge/pr-model-overrides 모두 제거. 토큰 치환은 git/gh CLI 인자로 직접 전달하여 shell injection 차단 (refs/post-task-pipeline-bridge.md 참조).",
+  "version": 2,
+  "default_mode": "subagent",
+  "after_task": [
+    {
+      "name": "format",
+      "type": "shell",
+      "command": "cd apps/server && go fmt ./...",
+      "blocking": true
+    },
+    {
+      "name": "scope-test",
+      "type": "shell",
+      "command": "cd apps/server && go test -race ./internal/session/...",
+      "blocking": true,
+      "on_fail": "stop"
+    },
+    {
+      "name": "mark-done",
+      "type": "internal",
+      "action": "mark_task_complete"
+    }
+  ],
+  "after_pr": [
+    {
+      "name": "full-test",
+      "type": "shell",
+      "command": "cd apps/server && go test -race -count=1 ./...",
+      "blocking": true,
+      "on_fail": "manual_review_required"
+    },
+    {
+      "name": "lint",
+      "type": "shell",
+      "command": "cd apps/server && golangci-lint run",
+      "blocking": true,
+      "on_fail": "manual_review_required"
+    },
+    {
+      "name": "review-security",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:security-reviewer",
+      "model": "opus",
+      "prompt": "Review PR {pr_id} ({pr_title}) diff against {design}. Focus: auth/권한, injection, race conditions, secret exposure. Severity: CRITICAL/HIGH/MEDIUM/LOW.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "manual_review_required"
+    },
+    {
+      "name": "review-perf",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:code-reviewer",
+      "model": "sonnet",
+      "prompt": "Review PR {pr_id} for performance: lock contention, allocation hot paths, goroutine leaks, channel blocking. Severity-classified.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "manual_review_required"
+    },
+    {
+      "name": "review-arch",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:critic",
+      "model": "opus",
+      "prompt": "Review PR {pr_id} for architecture alignment with {design}. SOLID, layering, actor-pattern compliance, design decision drift. Challenge every design choice.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "manual_review_required"
+    },
+    {
+      "name": "review-test",
+      "type": "subagent",
+      "agent": "oh-my-claudecode:test-engineer",
+      "model": "sonnet",
+      "prompt": "Review PR {pr_id} test coverage: race conditions, edge cases, missing scenarios, test isolation. Classify by severity.",
+      "parallel_group": "review",
+      "blocking": true,
+      "on_fail": "manual_review_required"
+    },
+    {
+      "name": "verify",
+      "type": "skill",
+      "skill": "superpowers:verification-before-completion",
+      "args": "PR {pr_id} tests + lint + reviewers all passing before claiming complete",
+      "blocking": true
+    }
+  ],
+  "after_wave": [
+    {
+      "name": "wave-test",
+      "type": "shell",
+      "command": "cd apps/server && go test -race -count=1 ./...",
+      "blocking": true,
+      "on_fail": "stop"
+    },
+    {
+      "name": "wave-confirm",
+      "type": "internal",
+      "action": "user_confirm",
+      "prompt": "Wave {wave.name} complete. All PRs tested (race). 사용자가 직접 gh pr merge로 머지하세요. (자동 wave-merge는 plan-autopilot 폐기 정책상 제거)"
+    }
+  ],
+  "after_plan": [
+    {
+      "name": "notify",
+      "type": "shell",
+      "command": "echo '🎉 Phase {plan.name} complete — /compound-wrap --phase 실행 권장' >&2"
+    }
+  ],
+  "manual_review_required": {
+    "_comment": "자동 fix-loop는 PR-2c #107 사고 이후 폐기. blocking 단계 실패 시 사용자 결정 대기. 수정이 필요하면 /compound-work [pr-id]로 별도 명시 호출.",
+    "policy": "halt_and_notify"
+  },
+  "orchestration": {
+    "parallel_dispatch_skill": "superpowers:dispatching-parallel-agents",
+    "subagent_driven_skill": "superpowers:subagent-driven-development",
+    "worktree_skill": "superpowers:using-git-worktrees",
+    "review_request_skill": "superpowers:requesting-code-review",
+    "review_receive_skill": "superpowers:receiving-code-review"
+  },
+  "global": {
+    "default_implement_model": "sonnet",
+    "default_review_model": {
+      "security": "opus",
+      "architecture": "opus",
+      "performance": "sonnet",
+      "test-coverage": "sonnet"
+    },
+    "require_user_confirm_before_merge": true,
+    "max_parallel_reviewers": 4,
+    "notify_on": [
+      "blocker",
+      "completion",
+      "manual_review_required"
+    ]
+  }
+}
