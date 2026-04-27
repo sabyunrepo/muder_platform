@@ -59,14 +59,16 @@ Phase (예: Phase 19 Residual)
 | Plan 작성 | `superpowers:writing-plans` 스킬 | (스킬) |
 | Work 워크트리 | `superpowers:using-git-worktrees` 스킬 | (스킬) |
 
-## compound-mmp 신규 agent (모두 wrap 전용, Read/Glob/Grep만)
+## Wrap 단계 agent 매핑 (PR-2 spike 반영, 5 → 4 신규 + 1 OMC 호출)
 
-| agent | 모델 (alias) | 역할 |
-|-------|------|------|
-| `compound-mmp:doc-curator` | sonnet | MEMORY.md/CLAUDE.md/refs 갱신 후보 추출 |
-| `compound-mmp:automation-scout` | sonnet | 신규 자동화 기회 탐지 |
-| `compound-mmp:learning-extractor` | sonnet | TIL·실수·발견 추출 (MISTAKES 후보) |
-| `compound-mmp:followup-suggester` | sonnet | P0–P3 + Effort/Impact 매트릭스 |
-| `compound-mmp:duplicate-checker` | haiku | QMD vector_search 중복 검증 |
+> spike 결과: `refs/spike-omc-overlap.md`. doc-curator는 OMC `document-specialist`로 대체.
 
-> **PR-2 진입 전 spike (1시간) 권장 (critic MAJOR #4)**: doc-curator/automation-scout/followup-suggester 3개를 OMC `analyst`/`writer`/`document-specialist`로 prompt만 바꿔 호출 가능한지 검토. 새 namespace 정의가 절반 축소될 수 있음.
+| 사용 agent | 출처 | 모델 (alias) | 역할 |
+|------------|------|------|------|
+| `oh-my-claudecode:document-specialist` | OMC | sonnet | MEMORY.md/CLAUDE.md/refs 갱신 후보 (prompt 주입으로 MMP 카논 경로 강제) |
+| `compound-mmp:automation-scout` | 신규 | sonnet | 신규 자동화 기회 탐지 |
+| `compound-mmp:learning-extractor` | 신규 | sonnet | TIL·실수·발견 (`refs/learning-quality-gate.md` 적용) |
+| `compound-mmp:followup-suggester` | 신규 | sonnet | P0–P3 + Effort/Impact 매트릭스 |
+| `compound-mmp:duplicate-checker` | 신규 | haiku | QMD vector_search 중복 검증 (Phase 2, 순차) |
+
+신규 4개 모두 `disallowedTools: Write, Edit, Bash, Task` 명시 (anti-patterns #12 강제).
