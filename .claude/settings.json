@@ -1,56 +1,12 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-status.sh --verbose"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-status.sh --compact"
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-guard.sh"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-remind.sh"
-          },
-          {
-            "type": "command",
             "command": "[ -f graphify-out/graph.json ] && touch graphify-out/.needs_update 2>/dev/null; true"
-          }
-        ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/scripts/plan-track-reads.sh"
           }
         ]
       }
