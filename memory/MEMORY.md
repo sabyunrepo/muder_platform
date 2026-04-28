@@ -34,6 +34,7 @@
 - [모듈 시스템](project_module_system.md) — 33개 모듈 (spec 29 + crime_scene 3 + media 1), BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
 - [코딩 규칙](project_coding_rules.md) — Go/React 계층구조, DI, 상태관리, 테스트
 - [compound-mmp Wave 3 PR-7 완료](sessions/2026-04-28-compound-mmp-wave3-pr7.md) — `/compound-review` + 4-agent parallel bridge + helper(jq --arg) + 27-case fixture (PR #158 `b5e4127`, 4-agent self-review HIGH 4건 in-PR fix, 2026-04-28)
+- [compound-mmp Wave 4 종료](sessions/2026-04-28-compound-mmp-wave4-complete.md) — **4단계 라이프사이클 완성** Plan/Work/Review/Compound + Cycle dashboard. PR-8 `/compound-plan`+qmd-recall (#161 `02f2864`), PR-9 `/compound-work`+mandatory_slots sister 카논 M-N1 (#162 `a4cb926`), PR-10 `/compound-cycle`+compound-lifecycle (#163 `d4a533b`, **4-round 검증** HIGH 7건 RESOLVED). fixture 7 suite 269/269 pass (bash 3.2 + 5.x). carry-over 17건 PR-11 또는 Phase 21 dogfooding (2026-04-28)
 
 ## 도구 & 인프라
 - [Docker/Nginx 인프라](project_infra_docker.md) — Nginx 리버스 프록시, dev/prod Compose, Makefile
