@@ -141,15 +141,15 @@ PR-164 4-agent 리뷰 LOW/MED 17건은 **별도 PR-11 hygiene**으로 분리 (Ph
 
 ## 진행 체크박스
 
-### Wave 1 (PR-1)
-- [ ] **W1-Task 1**: `infra/runners/` 디렉토리 + `.gitignore` 생성
-- [ ] **W1-Task 2**: `docker-compose.yml` 작성 (4 service + volume + network + mem_limit)
-- [ ] **W1-Task 3**: `.env.example` 작성
-- [ ] **W1-Task 4**: `README.md` 작성 (bootstrap/register/rotate/decommission)
-- [ ] **W1-Task 5**: `docker compose config` 검증 (host bindmount 0건 확인)
-- [ ] **W1-Task 6**: 사용자 PAT 발급 + `.env` 채우기 (사용자 작업, Claude 안내)
-- [ ] **W1-Task 7**: `docker compose up -d` + GH UI 4 row idle 확인 (사용자 + Claude)
-- [ ] **W1-Task 8**: PR-1 생성 + 4-agent 리뷰 + admin-merge
+### Wave 1 (PR-1) ✅ 완료 (2026-04-28, PR #165 `58caa33` admin-merge)
+- [x] **W1-Task 1**: `infra/runners/` 디렉토리 + `.gitignore` 생성 (`4f994c3`)
+- [x] **W1-Task 2**: `docker-compose.yml` 작성 (4 service + volume + network + mem_limit) (`4f994c3` + H-1 digest pinning `957b8ed`)
+- [x] **W1-Task 3**: `.env.example` 작성 (`4f994c3` + repo owner hotfix `40fa7f8`)
+- [x] **W1-Task 4**: `README.md` 작성 (bootstrap/register/rotate/decommission) (`4f994c3` + Linux stat -c + docker pull bootstrap `d19abf7`)
+- [x] **W1-Task 5**: `docker compose config` 검증 (host bindmount 0건 확인 — `957b8ed` Task 5 grep multi-line aware)
+- [x] **W1-Task 6**: 사용자 PAT 발급 + `.env` 채우기 — fine-grained PAT 90자, REPO_URL=sabyunrepo, DOCKER_GID=990 (Linux Ubuntu)
+- [x] **W1-Task 7**: `docker compose up -d` + GH UI 4 row idle 확인 — sabyun@100.90.38.7에서 4 컨테이너 정상 등록 (5 runner pool)
+- [x] **W1-Task 8**: PR-1 생성 + 4-agent 리뷰 (HIGH 6 cluster fold-in) + admin-merge (admin-skip 사용)
 
 ### Wave 2 (PR-2)
 - [ ] **W2-Task 1**: `.github/workflows/ci-containerized-smoke.yml` 작성 (4 job)

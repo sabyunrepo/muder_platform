@@ -63,3 +63,25 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 - **가설**: 호스트 환경 의존 항목(포트, 디스크 path, 권한)은 spec PR 전 `ss/df/id` 결과 참조 의무화. 그러나 일반 룰로 카논화하기엔 재발 빈도 데이터 부족.
 - **다음 액션**: 유사 사례 1~2건 누적 시 `feedback_plan_autopilot_gotchas.md`에 항목 추가 검토. 현재는 보류.
 - **블로커 risk**: LOW. 정보성.
+
+---
+
+## 2026-04-28 — Phase 22 W1 완료 wrap-up
+
+### Q-runner-w3-fallback: Phase 22 W3 atomic label switch 시 sabyun runner fallback 정책
+- **맥락**: Phase 22 W3에서 모든 workflow `runs-on`을 `[self-hosted, containerized]`로 atomic switch 예정. 기존 sabyun runner는 `self-hosted, Linux, X64` 라벨로 W4까지 유지 (회귀 fallback). switch 시점에 큐 대기 job과 신규 라벨 매칭 race condition 정의 부재.
+- **가설**: drain → relabel → verify 3단계 절차 필요. 또는 W3 PR 머지 시점에 기존 host runner를 일시 offline → switch → online 복귀.
+- **다음 액션**: Phase 22 W3 진입 전 brainstorm 단계에서 라벨 전환 순서 명시.
+- **블로커 risk**: MEDIUM. W3 진입 시 결정 필요.
+
+### Q-pat-rotation-automation: GitHub PAT 30일 수동 회전 자동화 방식
+- **맥락**: README가 30일 수동 회전 명시. PAT 만료 시 4 컨테이너 동시 401 → restart loop, 알림 부재 (DEBT-2 만료 전 detection 명령은 있음). 자동화 후보: 1Password CLI (`op run --env-file`) / GitHub Actions scheduled workflow (만료 7일 전 알림) / launchd cron.
+- **가설**: 1Password CLI는 .env plaintext 디스크 잔존 회피 가능. scheduled workflow는 알림만 + 사용자 수동 회전. 둘 다 도입 가치 있지만 우선순위 결정 필요.
+- **다음 액션**: Phase 22 W4 또는 별도 chore PR로 1Password CLI 기반 자동 회전 spike. scheduled 알림은 PR-11 hygiene 후보.
+- **블로커 risk**: HIGH (만료 시 runner 전체 registration loop 재발 + 4 컨테이너 동시 401).
+
+### Q-graphify-wrap-update: graphify wrap-session 시점 auto-update 호출 여부
+- **맥락**: `memory/project_graphify_refresh_policy.md`에 따르면 Phase 종료 시점만 fresh rebuild. wrap-wave는 `--update` 안내만, wrap-session은 skip. 그러나 wrap-session에서도 코드 변경이 누적되면 graphify drift 발생.
+- **가설**: wrap-session에서 변경 50줄 이상이면 `make graphify-update` 자동 안내 (실행 X) 또는 사용자 결정. 카논 명시 필요.
+- **다음 액션**: graphify refresh 정책 문서에 "wrap-session = skip 또는 임계 도달 시 안내" 한 줄 추가 (사용자 결정).
+- **블로커 risk**: LOW. compound 효율 영향, 블로커 아님.
