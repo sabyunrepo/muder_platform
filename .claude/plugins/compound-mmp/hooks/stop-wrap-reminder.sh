@@ -3,23 +3,30 @@
 # 비차단 hook. additionalContext만 반환.
 #
 # 트리거 조건:
-#   1. git diff --stat HEAD..HEAD~10 의 changed lines >= 50
+#   1. 최근 10 commit + 미커밋 working tree 변경의 changed lines >= 50
 #   2. 세션 내 /compound-wrap 실행 흔적 없음 (휴리스틱: memory/sessions/<today>-*.md 부재)
 #
 # 출력: stdout JSON (hookSpecificOutput.additionalContext) 또는 빈 응답
 
-set -eu
+set -euo pipefail
 
-# 변경량 측정 (안전 fallback)
-DIFF_LINES=$(git diff --shortstat 2>/dev/null | awk -F',' '{
-  ins=0; del=0
-  for (i=1; i<=NF; i++) {
-    if ($i ~ /insertion/) { gsub(/[^0-9]/,"",$i); ins=$i }
-    if ($i ~ /deletion/)  { gsub(/[^0-9]/,"",$i); del=$i }
-  }
-  print ins+del
-}')
-DIFF_LINES="${DIFF_LINES:-0}"
+# 변경량 측정 — 커밋 이력(HEAD~10..HEAD) + 미커밋 변경(HEAD vs working tree) 합산
+sum_shortstat() {
+  awk -F',' '{
+    ins=0; del=0
+    for (i=1; i<=NF; i++) {
+      if ($i ~ /insertion/) { gsub(/[^0-9]/,"",$i); ins=$i }
+      if ($i ~ /deletion/)  { gsub(/[^0-9]/,"",$i); del=$i }
+    }
+    print ins+del
+  }'
+}
+
+COMMIT_LINES=$(git diff --shortstat HEAD~10..HEAD 2>/dev/null | sum_shortstat || echo 0)
+UNCOMMITTED_LINES=$(git diff --shortstat HEAD 2>/dev/null | sum_shortstat || echo 0)
+COMMIT_LINES="${COMMIT_LINES:-0}"
+UNCOMMITTED_LINES="${UNCOMMITTED_LINES:-0}"
+DIFF_LINES=$((COMMIT_LINES + UNCOMMITTED_LINES))
 
 # 임계값 미만이면 silent
 if [ "$DIFF_LINES" -lt 50 ]; then
