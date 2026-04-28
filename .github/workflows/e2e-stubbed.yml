@@ -40,32 +40,6 @@ jobs:
         browser: [chromium, firefox]
         shard: [1, 2]
 
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: mmp_e2e
-          POSTGRES_USER: mmp
-          POSTGRES_PASSWORD: mmp_e2e
-        # ephemeral host port — avoids 5432 collision with langfuse on self-hosted runner
-        ports:
-          - "5432"
-        options: >-
-          --health-cmd "pg_isready -U mmp -d mmp_e2e"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - "6379"
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
     env:
       GAME_RUNTIME_V2: "true"
       PLAYWRIGHT_BACKEND: "1"
@@ -79,12 +53,62 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Export service connection env (job context는 step-level에서만 평가 가능 — PR-164 회귀 fix).
-      # ephemeral host port를 GITHUB_ENV로 export해 후속 step의 server/migration이 자동 읽음.
+      # ── Service containers (myoung34/github-runner ↔ GHA services 호환 우회) ─
+      # 정상 GHA services block 은 runner network 식별 실패로 fail.
+      # 같은 runners-net bridge 에 직접 docker run → hostname 접근.
+
+      - name: Start postgres + redis
+        run: |
+          # 같은 host 의 4 shard 가 동시 실행 가능 → unique container 이름.
+          PG_NAME="e2e-pg-${{ github.run_id }}-${{ matrix.browser }}-${{ matrix.shard }}"
+          REDIS_NAME="e2e-redis-${{ github.run_id }}-${{ matrix.browser }}-${{ matrix.shard }}"
+          echo "PG_NAME=$PG_NAME" >> "$GITHUB_ENV"
+          echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
+
+          # 이전 run cleanup (이름 충돌 방지)
+          docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
+
+          docker run -d --name "$PG_NAME" \
+            --network runners-net \
+            -e POSTGRES_DB=mmp_e2e \
+            -e POSTGRES_USER=mmp \
+            -e POSTGRES_PASSWORD=mmp_e2e \
+            --health-cmd "pg_isready -U mmp -d mmp_e2e" \
+            --health-interval 5s \
+            --health-timeout 3s \
+            --health-retries 10 \
+            postgres:17-alpine
+
+          docker run -d --name "$REDIS_NAME" \
+            --network runners-net \
+            --health-cmd "redis-cli ping" \
+            --health-interval 5s \
+            --health-timeout 3s \
+            --health-retries 10 \
+            redis:7-alpine
+
+          # health 대기
+          for i in $(seq 1 30); do
+            pg_health=$(docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
+            redis_health=$(docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
+            if [ "$pg_health" = "healthy" ] && [ "$redis_health" = "healthy" ]; then
+              echo "Both services healthy after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          if [ "$pg_health" != "healthy" ] || [ "$redis_health" != "healthy" ]; then
+            echo "::error::services failed to become healthy (postgres=$pg_health, redis=$redis_health)"
+            docker logs "$PG_NAME" 2>&1 | tail -30
+            docker logs "$REDIS_NAME" 2>&1 | tail -30
+            exit 1
+          fi
+
+      # Export connection env — runners-net 의 hostname 으로 접근.
       - name: Export service connection env
         run: |
-          echo "DATABASE_URL=postgres://mmp:mmp_e2e@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
-          echo "REDIS_URL=redis://localhost:${{ job.services.redis.ports['6379'] }}" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgres://mmp:mmp_e2e@${PG_NAME}:5432/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://${REDIS_NAME}:6379" >> "$GITHUB_ENV"
 
       # ── Go server ──────────────────────────────────────────────────────────
 
@@ -105,7 +129,7 @@ jobs:
         working-directory: apps/server
         run: |
           goose -dir db/migrations postgres \
-            "host=localhost port=${{ job.services.postgres.ports['5432'] }} user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            "host=${PG_NAME} port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
             up
 
       - name: Start server
@@ -179,7 +203,7 @@ jobs:
 
       - name: Seed E2E theme
         run: |
-          PGPASSWORD=mmp_e2e psql -h localhost -p ${{ job.services.postgres.ports['5432'] }} -U mmp -d mmp_e2e \
+          PGPASSWORD=mmp_e2e psql -h "$PG_NAME" -p 5432 -U mmp -d mmp_e2e \
             -v ON_ERROR_STOP=1 \
             -f apps/server/db/seed/e2e-themes.sql
 
@@ -240,6 +264,12 @@ jobs:
         run: |
           [ -n "$SERVER_PID" ] && kill "$SERVER_PID" || true
           [ -n "$WEB_PID" ] && kill "$WEB_PID" || true
+
+      - name: Stop service containers
+        if: always()
+        run: |
+          [ -n "$PG_NAME" ] && docker rm -f "$PG_NAME" 2>/dev/null || true
+          [ -n "$REDIS_NAME" ] && docker rm -f "$REDIS_NAME" 2>/dev/null || true
 
       - name: Upload blob report
         if: always()
