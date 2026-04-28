@@ -40,3 +40,34 @@ registry boot 시점 panic으로 강제 (F-sec-2 게이트). 상세 패턴: `mem
 - 입력 검증: 핸들러 진입 시점 (handler layer)
 - 비밀정보 redact: voice token, password, OAuth secret
 - 코드 리뷰 패턴: `memory/feedback_code_review_patterns.md`
+
+## 개발 환경 시작 (dev compose)
+
+```bash
+HOST_UID=$(id -u) HOST_GID=$(id -g) \
+  docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+**왜 `HOST_UID`/`HOST_GID` 필요?**
+`Dockerfile.dev`가 ARG로 호스트 UID/GID 받아 매칭되는 non-root user(`appuser`)
+생성. 미설정 시 fallback `1000:1000` 사용 → Mac dev (UID 501) 등에서 mismatch
+시 호스트 bindmount(`apps/server/tmp/`) 권한 충돌 발생.
+
+**1회만 `--build` 필요** — Dockerfile.dev 변경 반영. 이후엔 `--build` 생략 가능.
+
+**`direnv` 사용 시** — `.envrc`에 다음 추가:
+```bash
+export HOST_UID=$(id -u)
+export HOST_GID=$(id -g)
+```
+이후 `direnv allow` 1회로 자동 적용.
+
+**호스트 포트 (dev compose)** — langfuse 등 다른 컨테이너와 충돌 회피:
+- postgres: `localhost:25432` (default 5432 아님)
+- redis: `localhost:26379` (default 6379 아님)
+- server: `localhost:8080`, `localhost:9090`
+
+dev psql 접속: `PGPASSWORD=mmp_dev psql -h localhost -p 25432 -U mmp -d mmf`
+
+**근거:** `docs/superpowers/specs/2026-04-28-ci-infra-recovery-design.md`,
+`memory/feedback_explanation_style.md` 사용자 친화 설명 카논.
