@@ -48,6 +48,67 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
 6. `docker compose up -d`.
 7. GitHub Settings → Actions → Runners → 4 row idle 확인.
 
+## Cache Volumes (PR-4, 2026-04-28)
+
+4 runner 가 공유하는 cache named volume. 첫 CI run 후 Playwright browser / pnpm store / Go mod cache 가 누적되어 다음 runs 즉시 hit. EPHEMERAL=true 와 무관하게 유지.
+
+### 구성
+
+| volume | mount | 용도 |
+|---|---|---|
+| `playwright-cache` | `/opt/cache/playwright` | Playwright browser binary (chromium/firefox) |
+| `pnpm-cache` | `/opt/cache/pnpm` | pnpm store (workspace 의존성 link source) |
+| `go-cache` | `/opt/cache/go` | GOMODCACHE + GOCACHE (Go module + build cache) |
+| `hostedtool-cache` | `/opt/hostedtoolcache` | actions/setup-go, actions/setup-node 의 toolchain cache |
+
+### 환경변수
+
+`x-runner-base.environment` 에서 명시 (workflow step 이 직접 읽음):
+- `PLAYWRIGHT_BROWSERS_PATH=/opt/cache/playwright`
+- `PNPM_STORE_PATH=/opt/cache/pnpm`
+- `GOMODCACHE=/opt/cache/go/mod`
+- `GOCACHE=/opt/cache/go/build`
+
+### Phase 1 효과 (실측)
+
+- 1st run: ~10분 setup (full download → cache 빌드)
+- 2nd run+: ~30s setup (cache hit, 새 deps 만 추가 download)
+- pnpm-lock 변경 시: 새 패키지 만 download (~1분)
+- Playwright bump 시: 해당 browser 만 download (~1분)
+
+### 적용 (사용자 SSH 직접 작업)
+
+PR 머지 후 host (sabyun@100.90.38.7) 에서:
+
+```bash
+ssh sabyun@100.90.38.7
+cd ~/infra/runners
+
+# 새 docker-compose.yml 가져오기 (git pull 또는 SCP)
+git pull origin main   # 호스트가 git 저장소 clone 상태일 시
+# 또는 로컬에서: scp infra/runners/docker-compose.yml sabyun@100.90.38.7:~/infra/runners/
+
+# 재배포 (env 재로드 + named volume 자동 생성)
+docker compose up -d --force-recreate
+
+# 검증
+docker compose ps                                    # 4 service Up
+docker volume ls | grep -E "(playwright|pnpm|go|hostedtool)-cache"  # 4 cache volume 생성
+docker compose logs runner-1 --tail 10               # "Listening for Jobs" 확인
+```
+
+GH UI Settings → Actions → Runners 에서 4 runner idle 재확인.
+
+### 디스크 사용량
+
+cache 누적 후 예상치:
+- `playwright-cache`: 200~500MB (chromium 150MB + firefox 80MB + system deps)
+- `pnpm-cache`: 1~2GB (workspace dependencies)
+- `go-cache`: 500MB~1GB
+- `hostedtool-cache`: ~200MB (Go toolchain + Node)
+
+총 ~3~4GB. 정기 재 build 시 docker volume prune 권장.
+
 ## Troubleshooting (PAT 만료 detection)
 
 `restart: always` + entrypoint registration fail → 32초 간격 무한 restart (max-retry 없음). detection:

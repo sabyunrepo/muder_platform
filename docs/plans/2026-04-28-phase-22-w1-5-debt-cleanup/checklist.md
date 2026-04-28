@@ -22,6 +22,19 @@ prs_estimated: 3
 
 ## Wave/PR 분해
 
+### PR-4 — Runner Cache Volume (Playwright/pnpm/Go)
+- **Effort** S~M, **Impact** Very High (CI 시간 ~70% 단축)
+- **branch**: `chore/w1-5-runner-cache`
+- **변경**:
+  - `infra/runners/docker-compose.yml`: 4 named cache volume 추가 (playwright/pnpm/go/hostedtool) + 4 환경변수 명시 (PLAYWRIGHT_BROWSERS_PATH 등)
+  - `infra/runners/README.md`: Cache Volumes 섹션 추가 + 사용자 SSH 재배포 절차
+- **사용자 작업** (PR 머지 후): SSH 접속 → `git pull` → `docker compose up -d --force-recreate`
+- **검증**:
+  - 1st CI run: 기존과 동일 시간 (cache 빌드)
+  - 2nd CI run+: setup 단계 ~30s 이하 (cache hit)
+  - `docker volume ls` 에 playwright/pnpm/go/hostedtool-cache 4개 생성
+- **상세**: [`refs/pr-4-runner-cache.md`](refs/pr-4-runner-cache.md) (작성 예정 — 본 PR 머지 후)
+
 ### PR-1 — H-TEST-1: e2e-orphan-gate fixture job
 - **Effort** S, **Impact** Med (회귀 방어)
 - **branch**: `chore/w1-5-orphan-gate`
@@ -75,6 +88,7 @@ PR-167 4-agent 리뷰 잔여:
 ## 사용자 승인 게이트
 
 다음 진입은 **사용자 명시 승인 후**:
+- `/compound-work PR-4` — Runner Cache Volume (가장 시급)
 - `/compound-work PR-1` — orphan-gate fixture 구현
 - 초안 직접 수정 — Wave/PR 분해 또는 task 단위 조정
 - `/compound-cycle` — 본 mini-plan 진행 상태 확인

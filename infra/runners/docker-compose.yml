@@ -18,6 +18,11 @@ x-runner-base: &runner-base
     RUN_AS_ROOT: "false"
     # 컨테이너 OS = linux (호스트 macOS와 별개). Phase 23 ARM image 진입 시 arm64/amd64 라벨 추가.
     LABELS: "self-hosted,linux,containerized"
+    # PR-4: 4 runner 공유 cache volume 경로 명시 (workflow step이 직접 읽음)
+    PLAYWRIGHT_BROWSERS_PATH: /opt/cache/playwright
+    PNPM_STORE_PATH: /opt/cache/pnpm
+    GOMODCACHE: /opt/cache/go/mod
+    GOCACHE: /opt/cache/go/build
   group_add:
     - "${DOCKER_GID}"
   mem_limit: 3g
@@ -34,6 +39,10 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner1-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - pnpm-cache:/opt/cache/pnpm
+      - go-cache:/opt/cache/go
+      - hostedtool-cache:/opt/hostedtoolcache
 
   runner-2:
     <<: *runner-base
@@ -44,6 +53,10 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner2-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - pnpm-cache:/opt/cache/pnpm
+      - go-cache:/opt/cache/go
+      - hostedtool-cache:/opt/hostedtoolcache
 
   runner-3:
     <<: *runner-base
@@ -54,6 +67,10 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner3-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - pnpm-cache:/opt/cache/pnpm
+      - go-cache:/opt/cache/go
+      - hostedtool-cache:/opt/hostedtoolcache
 
   runner-4:
     <<: *runner-base
@@ -64,12 +81,21 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner4-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - pnpm-cache:/opt/cache/pnpm
+      - go-cache:/opt/cache/go
+      - hostedtool-cache:/opt/hostedtoolcache
 
 volumes:
   runner1-work:
   runner2-work:
   runner3-work:
   runner4-work:
+  # PR-4: 4 runner 공유 cache volume (race-safe — Playwright/pnpm/Go 모두 atomic file ops)
+  playwright-cache: {}
+  pnpm-cache: {}
+  go-cache: {}
+  hostedtool-cache: {}
 
 networks:
   runners-net:
