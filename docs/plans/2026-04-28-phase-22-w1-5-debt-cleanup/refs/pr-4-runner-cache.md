@@ -100,9 +100,75 @@ docker compose logs runner-1 --tail 10                     # "Listening for Jobs
 - ci.yml 4 job 의 [self-hosted, containerized] 전환 — W1.5 PR-5 별도
 - 자동 cron prune — W1.5 PR-6 별도
 - Custom Image (Option A) — Phase 23 entry
+- RUNNERS_NET dynamic detection cleanup — host explicit `name: runners-net` 안정화 후 W3 stable 1주 시점
+
+## In-flight Spec drift (PR-168 6 commit 누적)
+
+> Spec 갱신 — `chore/w1-5-runner-cache` branch 가 cache volume 단일 PR 의 의도를 넘어
+> service container init bug + RUNNERS_NET dynamic detection + Seed E2E theme migration
+> 까지 fold-in 함. Phase 22 W1 spec (myoung34 ↔ GHA `services:` 호환) 의 사후 패치 성격.
+> 다음 commit 들의 결정 근거를 본 spec 에 보존:
+
+### `542497b` services block 제거 + workflow step docker run 우회
+
+- **원인**: `myoung34/github-runner` image 가 GHA `services:` block 을
+  `Value cannot be null. (Parameter 'network')` 로 거부.
+- **결정**: `services:` block 제거 → `Start postgres + redis` step 에서 `docker run`
+  으로 직접 기동. 같은 `runners-net` bridge 에 join → hostname 직접 접근.
+- **trade-off**: GHA 자동 health/network setup 손실. 수동 health 폴링 (`docker inspect`) 으로 대체.
+- **carry-over**: 4-agent perf review 의 MEDIUM-PERF-3 (startup latency +7~20s/shard)
+  는 known cost. 사용자 host 의 `myoung34/github-runner` upstream fix 시점에 services block 복귀 검토.
+
+### `4b21eba` RUNNERS_NET 동적 검출
+
+- **원인**: `docker compose up -d` 가 default 로 `<project_dir>_<service>` 형태로
+  network 이름에 prefix 붙임. host 의 `~/infra-runners` 디렉토리는 → `infra-runners_runners-net`.
+- **결정**: workflow step 에서
+  `docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1`
+  로 양쪽 형태 매칭 → `RUNNERS_NET` 환경변수 export.
+- **fail-fast**: 검출 실패 시 `::error::` + `docker network ls` 덤프 + `exit 1`.
+- **dead-code 잠재성**: `6d5a71d` (compose explicit `name: runners-net`) 적용 후
+  prefix 케이스는 사라지지만, 사용자 host 가 본 PR 머지 후 재배포 전까지는 여전히
+  prefix 형태 유지. W3 stable 후 cleanup PR 후보.
+
+### `f300b5f` Seed E2E theme — psql CLI → docker exec
+
+- **원인**: containerized runner image 에 `psql` 미설치. 이전 Phase 22 W1 의
+  bare-host runner 는 psql 보유.
+- **결정**: postgres container 안의 psql 호출 +
+  `sudo docker exec -i -e PGPASSWORD=mmp_e2e $PG_NAME psql -U mmp -d mmp_e2e -v ON_ERROR_STOP=1 < seed.sql`
+  형태로 stdin redirect.
+- **보안**: `PGPASSWORD` 를 `-e` 환경변수 로 전달 (process table 미노출).
+
+### `b320681` shellcheck SC2034
+
+- **원인**: `test-compound-plan-dry-run.sh:9` 의 `TEMPLATE` 변수가 fixture 격리
+  (line 17 `TMP_TEMPLATE`) 도입 후 dead code.
+- **결정**: 1줄 삭제. 자가 테스트 41/41 통과.
+
+### `<this-commit>` 4-agent review fold-in
+
+- **Sec-MED-1 / Perf-LOW-1**: Diagnostic step (`6aa013c`) 제거 — public CI log 에
+  sudo NOPASSWD + runner env 노출 영구 잔존 차단. 사용자 host 진단은 SSH manual 로 완료.
+- **Test-HIGH-T2**: `Start postgres + redis` step 에 `set -euo pipefail` 명시 추가
+  (GHA 기본 shell 도 `-eo pipefail` 이지만 defensive coding + readability).
+
+## 4-agent review 결과 요약
+
+본 PR 6 commit + fold-in 1 commit 기준:
+
+| Agent | HIGH | MEDIUM | LOW | Verdict |
+|---|---|---|---|---|
+| Security | 0 | 3 (MED-1 fold-in) | 3 | merge-ready |
+| Performance | 0 | 3 (carry-over) | 4 (LOW-1 fold-in) | trade-off 수용 |
+| Architecture | 1 (spec drift fold-in) | 2 | 2 | admin-merge OK |
+| Test | 2 (T-2 fold-in / T-1 carry) | 3 | 3 | gap → W1.5 PR-5/PR-7 |
+
+상세는 `reviews/PR-168-{security,performance,arch,test}.md` 4 파일.
 
 ## 카논 ref
 
 - 부모 plan: `../checklist.md`
-- 4-agent review: `reviews/PR-168.md`
+- 4-agent review: `reviews/PR-168-{security,performance,arch,test}.md`
 - W1 plan: `../../2026-04-28-phase-22-runner-containerization/checklist.md`
+- 4-agent 강제 정책: `memory/feedback_4agent_review_before_admin_merge.md`

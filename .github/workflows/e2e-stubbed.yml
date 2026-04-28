@@ -50,31 +50,6 @@ jobs:
         with:
           egress-policy: audit
 
-      # ── Diagnostic — runner user/group/docker.sock permission ──────────────
-      # PR-168 542497b 이후 docker permission denied (exit 126) 원인 파악용.
-      # 사용자 진단 (manual docker exec -u runner) 으로는 정상 권한 확인됐으나
-      # workflow step 컨텍스트에서 fail. step 내부 환경 인쇄.
-      - name: Diagnostic — step user/group/docker
-        run: |
-          echo "=== id ==="
-          id
-          echo "=== whoami ==="
-          whoami
-          echo "=== docker.sock ==="
-          ls -la /var/run/docker.sock || echo "no docker.sock"
-          echo "=== docker version (without sudo) ==="
-          docker version --format '{{.Server.Version}}' 2>&1 | head -3 || echo "docker fail (no sudo)"
-          echo "=== docker ps (without sudo) ==="
-          docker ps 2>&1 | head -3 || echo "docker ps fail"
-          echo "=== sudo available? ==="
-          sudo -n true 2>&1 && echo "sudo NOPASSWD OK" || echo "sudo not available"
-          echo "=== docker via sudo ==="
-          sudo docker version --format '{{.Server.Version}}' 2>&1 | head -3 || echo "sudo docker fail"
-          echo "=== HOME / PATH ==="
-          echo "HOME=$HOME"
-          echo "PATH=$PATH"
-          echo "USER=$USER"
-
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
@@ -84,6 +59,7 @@ jobs:
 
       - name: Start postgres + redis
         run: |
+          set -euo pipefail
           # 같은 host 의 4 shard 가 동시 실행 가능 → unique container 이름.
           PG_NAME="e2e-pg-${{ github.run_id }}-${{ matrix.browser }}-${{ matrix.shard }}"
           REDIS_NAME="e2e-redis-${{ github.run_id }}-${{ matrix.browser }}-${{ matrix.shard }}"

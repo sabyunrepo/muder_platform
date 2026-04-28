@@ -27,4 +27,5 @@ ln -sfn "$PLUGIN_DIR" "$TARGET"
 
 echo "✓ symlinked $TARGET → $PLUGIN_DIR"
 echo "✓ commands available after Claude Code restart:"
+# shellcheck disable=SC2012  # ls + sed pipeline is sufficient for plugin command listing
 ls "$TARGET/commands/" 2>/dev/null | sed 's/\.md$//' | sed 's/^/    \//'
