@@ -4,6 +4,18 @@ MMP v3 전용 Claude Code 플러그인. **Plan → Work → Review → Compound*
 
 > 외부 분석 보고서(Compound Engineering / Superpowers / Session-Wrap)에서 검증된 패턴 3가지를 MMP v3 인프라(QMD MCP, graphify, OMC 4-agent, post-task-pipeline)에 맞춰 통합.
 
+## Install
+
+clone 직후 1회 실행:
+
+```bash
+bash .claude/plugins/compound-mmp/scripts/install.sh
+```
+
+이후 Claude Code 재시작 시 `/compound-resume`, `/compound-review`, `/compound-wrap` 등 슬래시 커맨드가 등록된다.
+
+> **왜 필요한가**: Claude Code 의 `directory` source marketplace 는 enable 시 `installed_plugins.json` 메타만 기록하고 cache 디렉토리 파일 sync 를 누락한다 (2026-04-28 확인). 스크립트는 `~/.claude/plugins/cache/ctm/compound-mmp/<version>/` symlink 를 생성해 우회한다. python3 만 의존.
+
 ## 철학
 
 - **Compound** — Plan-Work-Review-Compound 순환으로 매 phase마다 지식이 영구 자산화된다 (`memory/sessions/`, `MEMORY.md` append, `MISTAKES.md`/`QUESTIONS.md`)
