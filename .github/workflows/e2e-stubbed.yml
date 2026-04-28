@@ -50,6 +50,31 @@ jobs:
         with:
           egress-policy: audit
 
+      # ── Diagnostic — runner user/group/docker.sock permission ──────────────
+      # PR-168 542497b 이후 docker permission denied (exit 126) 원인 파악용.
+      # 사용자 진단 (manual docker exec -u runner) 으로는 정상 권한 확인됐으나
+      # workflow step 컨텍스트에서 fail. step 내부 환경 인쇄.
+      - name: Diagnostic — step user/group/docker
+        run: |
+          echo "=== id ==="
+          id
+          echo "=== whoami ==="
+          whoami
+          echo "=== docker.sock ==="
+          ls -la /var/run/docker.sock || echo "no docker.sock"
+          echo "=== docker version (without sudo) ==="
+          docker version --format '{{.Server.Version}}' 2>&1 | head -3 || echo "docker fail (no sudo)"
+          echo "=== docker ps (without sudo) ==="
+          docker ps 2>&1 | head -3 || echo "docker ps fail"
+          echo "=== sudo available? ==="
+          sudo -n true 2>&1 && echo "sudo NOPASSWD OK" || echo "sudo not available"
+          echo "=== docker via sudo ==="
+          sudo docker version --format '{{.Server.Version}}' 2>&1 | head -3 || echo "sudo docker fail"
+          echo "=== HOME / PATH ==="
+          echo "HOME=$HOME"
+          echo "PATH=$PATH"
+          echo "USER=$USER"
+
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
@@ -66,9 +91,9 @@ jobs:
           echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
 
           # 이전 run cleanup (이름 충돌 방지)
-          docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
+          sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
 
-          docker run -d --name "$PG_NAME" \
+          sudo docker run -d --name "$PG_NAME" \
             --network runners-net \
             -e POSTGRES_DB=mmp_e2e \
             -e POSTGRES_USER=mmp \
@@ -79,7 +104,7 @@ jobs:
             --health-retries 10 \
             postgres:17-alpine
 
-          docker run -d --name "$REDIS_NAME" \
+          sudo docker run -d --name "$REDIS_NAME" \
             --network runners-net \
             --health-cmd "redis-cli ping" \
             --health-interval 5s \
@@ -89,8 +114,8 @@ jobs:
 
           # health 대기
           for i in $(seq 1 30); do
-            pg_health=$(docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
-            redis_health=$(docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
+            pg_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
+            redis_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
             if [ "$pg_health" = "healthy" ] && [ "$redis_health" = "healthy" ]; then
               echo "Both services healthy after ${i}s"
               break
@@ -99,8 +124,8 @@ jobs:
           done
           if [ "$pg_health" != "healthy" ] || [ "$redis_health" != "healthy" ]; then
             echo "::error::services failed to become healthy (postgres=$pg_health, redis=$redis_health)"
-            docker logs "$PG_NAME" 2>&1 | tail -30
-            docker logs "$REDIS_NAME" 2>&1 | tail -30
+            sudo docker logs "$PG_NAME" 2>&1 | tail -30
+            sudo docker logs "$REDIS_NAME" 2>&1 | tail -30
             exit 1
           fi
 
@@ -268,8 +293,8 @@ jobs:
       - name: Stop service containers
         if: always()
         run: |
-          [ -n "$PG_NAME" ] && docker rm -f "$PG_NAME" 2>/dev/null || true
-          [ -n "$REDIS_NAME" ] && docker rm -f "$REDIS_NAME" 2>/dev/null || true
+          [ -n "$PG_NAME" ] && sudo docker rm -f "$PG_NAME" 2>/dev/null || true
+          [ -n "$REDIS_NAME" ] && sudo docker rm -f "$REDIS_NAME" 2>/dev/null || true
 
       - name: Upload blob report
         if: always()
