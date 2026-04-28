@@ -30,6 +30,10 @@ jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
     runs-on: [self-hosted, containerized]
+    # H-1: fork PR 의 untrusted code 가 shared named volume (playwright-cache/hostedtool-cache) 에
+    # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
+    # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     strategy:
       fail-fast: false
       matrix:
@@ -266,7 +270,8 @@ jobs:
 
   merge-reports:
     name: Merge Playwright reports
-    if: always()
+    # H-1 consistency: e2e 와 동일 fork PR 게이트 (cache mount runner 일관성).
+    if: (always()) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     needs: [e2e]
     runs-on: [self-hosted, containerized]
     steps:
