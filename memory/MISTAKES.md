@@ -49,3 +49,18 @@ learning-extractor의 3-question quality gate(`refs/learning-quality-gate.md` Q1
 **관련 카논**: `commands/compound-{cycle,work}.md` § Anti-pattern + `refs/post-task-pipeline-bridge.md` § "토큰 sanitize 의무"
 **발견**: PR #163 4-round self-review (round-2 security HIGH-S2, round-3 security HIGH-S3, 2026-04-28)
 **해소 commit**: `f9daca8` (양 layer 강화) + 4-round 검증 트레일 `docs/plans/2026-04-28-compound-mmp-wave3/refs/reviews/PR-10.md`
+
+---
+
+## 2026-04-28 — spec에 호스트 환경 의존 포트를 사전 조사 없이 표준 포트 기술
+
+**증상**: PR-164 spec(`docs/superpowers/specs/2026-04-28-ci-infra-recovery-design.md`)에 dev compose `5432:5432` 그대로 기술. 사용자가 직접 dev rebuild 시도 시 runner 호스트의 langfuse-postgres가 영구 5432 점유 중인 것 발견 → 사후 `25432:5432`로 시프트 + plan refs/task-1-2-dev-compose.md에 drift acknowledgment 추가.
+
+**근본 원인**: spec 작성 시 runner 호스트 환경 사전 조사(`ss -tlnp`, `docker ps`) 없이 일반 dev 환경 가정으로 표준 포트 사용. *dev-and-CI 동거 환경*에서만 발생하는 MMP 한정 함정 — 일반 컨벤션으로는 적발 불가.
+
+**재발 방지**:
+1. compound-plan brainstorming Q 단계에 "호스트 환경 사전 조사" 항목 추가 — 호스트 의존 spec(포트, 디스크 path, 권한, GPU 등) 전체 적용. 1회성이 아니라 카논 후보.
+2. Phase 22 Runner 컨테이너화에서 *runner = dev 동거* 함정 자체 제거 — 격리된 컨테이너 worker로 전환하면 향후 재발 가능성 영구 차단.
+3. 단기: 본 사례 1건만으로는 `feedback_plan_autopilot_gotchas.md` 정식 항목 등재 보류, 유사 사례 1~2건 누적 시 등재.
+
+**관련 카논**: `feedback_explanation_style.md` (원인/결과/권장 사용자 보고), `docs/plans/2026-04-28-ci-infra-recovery/refs/reviews/PR-164.md` Architecture I-1 finding (drift acknowledgment 누락 지적).

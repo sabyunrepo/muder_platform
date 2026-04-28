@@ -49,3 +49,17 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 - **가설**: fixture가 LOW-S-dash 검증 시도 중 실제 `git switch --create` 호출 또는 사용자가 환경에서 시도? 또는 helper의 brand 이름 출력이 어떤 도구에 입력되어 branch 생성?
 - **다음 액션**: PR-11 first task 또는 별도 hotfix에서 `dispatch-router.sh`, `compound-work-dry-run.sh`, fixture 코드 audit. 재현 불가 시 carry-over.
 - **블로커 risk**: LOW. 단발 사건이며 admin-merge로 해소.
+
+## 2026-04-28 ci-infra-recovery / phase-22 진입
+
+### Q-runner-secrets: runner 컨테이너화 시 release.yml secrets 처리 방법
+- **맥락**: Phase 22 Runner 컨테이너화 (myoung34/github-runner) 진행 중. release.yml은 secret 사용 (예: registry token, signing key) — 컨테이너화된 self-hosted runner에서 secret 노출 경로 미정의.
+- **옵션**: (a) GitHub Actions secrets 그대로 사용 (myoung34 runner가 자동 노출), (b) Vault/SOPS 매개, (c) 외부 클라우드 release만 분리.
+- **다음 액션**: Phase 22 brainstorm Q2~ 단계에서 결정. 상위 보안 카논(`feedback_4agent_review_before_admin_merge.md`)와 align.
+- **블로커 risk**: MEDIUM. Phase 22 PR 진입 전 결정 필수.
+
+### Q-spec-host-survey: spec 작성 시 호스트 환경 사전조사 의무화 카논화 여부
+- **맥락**: PR-164에서 spec이 `5432:5432`를 그대로 적었다가 langfuse 점유 발견 후 `25432:5432` 시프트. 호스트 환경 의존 spec 항목은 사전 조사가 카논화 가치 있는가.
+- **가설**: 호스트 환경 의존 항목(포트, 디스크 path, 권한)은 spec PR 전 `ss/df/id` 결과 참조 의무화. 그러나 일반 룰로 카논화하기엔 재발 빈도 데이터 부족.
+- **다음 액션**: 유사 사례 1~2건 누적 시 `feedback_plan_autopilot_gotchas.md`에 항목 추가 검토. 현재는 보류.
+- **블로커 risk**: LOW. 정보성.
