@@ -30,37 +30,15 @@ jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
     runs-on: [self-hosted, containerized]
+    # H-1: fork PR 의 untrusted code 가 shared named volume (playwright-cache/hostedtool-cache) 에
+    # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
+    # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
     strategy:
       fail-fast: false
       matrix:
         browser: [chromium, firefox]
         shard: [1, 2]
-
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: mmp_e2e
-          POSTGRES_USER: mmp
-          POSTGRES_PASSWORD: mmp_e2e
-        # ephemeral host port — avoids 5432 collision with langfuse on self-hosted runner
-        ports:
-          - "5432"
-        options: >-
-          --health-cmd "pg_isready -U mmp -d mmp_e2e"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
-      redis:
-        image: redis:7-alpine
-        ports:
-          - "6379"
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
 
     env:
       GAME_RUNTIME_V2: "true"
@@ -75,12 +53,76 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Export service connection env (job context는 step-level에서만 평가 가능 — PR-164 회귀 fix).
-      # ephemeral host port를 GITHUB_ENV로 export해 후속 step의 server/migration이 자동 읽음.
+      # ── Service containers (myoung34/github-runner ↔ GHA services 호환 우회) ─
+      # 정상 GHA services block 은 runner network 식별 실패로 fail.
+      # 같은 runners-net bridge 에 직접 docker run → hostname 접근.
+
+      - name: Start postgres + redis
+        run: |
+          set -euo pipefail
+          # 같은 host 의 4 shard 가 동시 실행 가능 → unique container 이름.
+          PG_NAME="e2e-pg-${{ github.run_id }}-${{ matrix.browser }}-${{ matrix.shard }}"
+          REDIS_NAME="e2e-redis-${{ github.run_id }}-${{ matrix.browser }}-${{ matrix.shard }}"
+          echo "PG_NAME=$PG_NAME" >> "$GITHUB_ENV"
+          echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
+
+          # runners-net network 동적 검출 (compose project prefix 무관).
+          # 후보: runners-net (PR-168 6d5a71d explicit name) 또는
+          # infra-runners_runners-net (compose project prefix — 현재 host).
+          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          if [ -z "$RUNNERS_NET" ]; then
+            echo "::error::runners-net network not found on host"
+            sudo docker network ls
+            exit 1
+          fi
+          echo "RUNNERS_NET=$RUNNERS_NET" >> "$GITHUB_ENV"
+          export RUNNERS_NET
+          echo "Detected runners-net: $RUNNERS_NET"
+
+          # 이전 run cleanup (이름 충돌 방지)
+          sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
+
+          sudo docker run -d --name "$PG_NAME" \
+            --network "$RUNNERS_NET" \
+            -e POSTGRES_DB=mmp_e2e \
+            -e POSTGRES_USER=mmp \
+            -e POSTGRES_PASSWORD=mmp_e2e \
+            --health-cmd "pg_isready -U mmp -d mmp_e2e" \
+            --health-interval 5s \
+            --health-timeout 3s \
+            --health-retries 10 \
+            postgres:17-alpine
+
+          sudo docker run -d --name "$REDIS_NAME" \
+            --network "$RUNNERS_NET" \
+            --health-cmd "redis-cli ping" \
+            --health-interval 5s \
+            --health-timeout 3s \
+            --health-retries 10 \
+            redis:7-alpine
+
+          # health 대기
+          for i in $(seq 1 30); do
+            pg_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
+            redis_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
+            if [ "$pg_health" = "healthy" ] && [ "$redis_health" = "healthy" ]; then
+              echo "Both services healthy after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          if [ "$pg_health" != "healthy" ] || [ "$redis_health" != "healthy" ]; then
+            echo "::error::services failed to become healthy (postgres=$pg_health, redis=$redis_health)"
+            sudo docker logs "$PG_NAME" 2>&1 | tail -30
+            sudo docker logs "$REDIS_NAME" 2>&1 | tail -30
+            exit 1
+          fi
+
+      # Export connection env — runners-net 의 hostname 으로 접근.
       - name: Export service connection env
         run: |
-          echo "DATABASE_URL=postgres://mmp:mmp_e2e@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
-          echo "REDIS_URL=redis://localhost:${{ job.services.redis.ports['6379'] }}" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgres://mmp:mmp_e2e@${PG_NAME}:5432/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://${REDIS_NAME}:6379" >> "$GITHUB_ENV"
 
       # ── Go server ──────────────────────────────────────────────────────────
 
@@ -101,7 +143,7 @@ jobs:
         working-directory: apps/server
         run: |
           goose -dir db/migrations postgres \
-            "host=localhost port=${{ job.services.postgres.ports['5432'] }} user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            "host=${PG_NAME} port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
             up
 
       - name: Start server
@@ -174,10 +216,14 @@ jobs:
       # the lobby via ErrorBoundary.
 
       - name: Seed E2E theme
+        # runner image 에 psql 미설치 + services block 제거 (PR-168) → postgres container
+        # 안의 psql 호출 + stdin SQL redirect.
         run: |
-          PGPASSWORD=mmp_e2e psql -h localhost -p ${{ job.services.postgres.ports['5432'] }} -U mmp -d mmp_e2e \
-            -v ON_ERROR_STOP=1 \
-            -f apps/server/db/seed/e2e-themes.sql
+          sudo docker exec -i \
+            -e PGPASSWORD=mmp_e2e \
+            "$PG_NAME" \
+            psql -U mmp -d mmp_e2e -v ON_ERROR_STOP=1 \
+            < apps/server/db/seed/e2e-themes.sql
 
       # ── Node / pnpm ────────────────────────────────────────────────────────
 
@@ -191,6 +237,16 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # ── Cache volume permissions (PR-168 EACCES fix) ────────────────────────
+      # Docker named volume (playwright-cache, hostedtool-cache) 가 default root:root
+      # 소유로 생성되어 runner user 의 mkdir 거부 (Failed to install browsers /
+      # EACCES: permission denied, mkdir '/opt/cache/playwright/__dirlock').
+      # 4 runner 가 같은 named volume 공유 — chown idempotent, race 없음.
+      - name: Prepare cache volume permissions
+        run: |
+          sudo mkdir -p /opt/cache/playwright /opt/hostedtoolcache
+          sudo chown -R "$(id -u):$(id -g)" /opt/cache/playwright /opt/hostedtoolcache
 
       - name: Install Playwright browsers for matrix
         working-directory: apps/web
@@ -237,6 +293,12 @@ jobs:
           [ -n "$SERVER_PID" ] && kill "$SERVER_PID" || true
           [ -n "$WEB_PID" ] && kill "$WEB_PID" || true
 
+      - name: Stop service containers
+        if: always()
+        run: |
+          [ -n "$PG_NAME" ] && sudo docker rm -f "$PG_NAME" 2>/dev/null || true
+          [ -n "$REDIS_NAME" ] && sudo docker rm -f "$REDIS_NAME" 2>/dev/null || true
+
       - name: Upload blob report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -266,7 +328,8 @@ jobs:
 
   merge-reports:
     name: Merge Playwright reports
-    if: always()
+    # H-1 consistency: e2e 와 동일 fork PR 게이트 (cache mount runner 일관성).
+    if: (always()) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     needs: [e2e]
     runs-on: [self-hosted, containerized]
     steps:
@@ -300,7 +363,12 @@ jobs:
 
       - name: Merge into HTML report
         working-directory: apps/web
-        run: pnpm exec playwright merge-reports --reporter html ../../all-blob-reports
+        # 4 self-hosted containerized runner 의 working dir
+        # (`/_work/containerized-runner-{1,2,3,4}/.../apps/web/e2e`) 가 서로 달라
+        # blob report 의 record 된 testDir 가 4 path → "Blob reports were recorded
+        # with different test directories" merge fail. -c 옵션으로 playwright.config.ts
+        # 의 testDir 를 명시 강제 (resolve 시점 정규화).
+        run: pnpm exec playwright merge-reports --reporter html -c playwright.config.ts ../../all-blob-reports
 
       - name: Upload merged HTML report
         if: always()

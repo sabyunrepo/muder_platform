@@ -6,7 +6,6 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DRY_RUN="${SCRIPT_DIR}/scripts/compound-review-dry-run.sh"
-PIPELINE="${SCRIPT_DIR}/../../post-task-pipeline.json"
 
 PASS=0
 FAIL=0

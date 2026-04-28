@@ -6,7 +6,6 @@ set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DRY_RUN="${SCRIPT_DIR}/scripts/compound-plan-dry-run.sh"
-TEMPLATE="${SCRIPT_DIR}/templates/plan-draft-template.md"
 
 PASS=0
 FAIL=0

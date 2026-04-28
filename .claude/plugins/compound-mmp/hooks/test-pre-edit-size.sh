@@ -14,6 +14,7 @@ FIXTURE_DIR=""
 # hook은 file_path가 "$CLAUDE_PROJECT_DIR/CLAUDE.md"인 경우만 200 적용.
 export CLAUDE_PROJECT_DIR="/repo"
 
+# shellcheck disable=SC2329  # invoked indirectly via trap EXIT
 cleanup() {
   if [ -n "$FIXTURE_DIR" ] && [ -d "$FIXTURE_DIR" ]; then
     rm -rf "$FIXTURE_DIR"

@@ -18,6 +18,11 @@ x-runner-base: &runner-base
     RUN_AS_ROOT: "false"
     # 컨테이너 OS = linux (호스트 macOS와 별개). Phase 23 ARM image 진입 시 arm64/amd64 라벨 추가.
     LABELS: "self-hosted,linux,containerized"
+    # PR-4 fold-in (H-2): Playwright만 volume cache (GHA cache 미적용).
+    # GOMODCACHE/PNPM_STORE_PATH/GOCACHE 제거 — setup-go/setup-node 자체 GHA cache와 충돌.
+    PLAYWRIGHT_BROWSERS_PATH: /opt/cache/playwright
+    # L-ARCH-1: actions/setup-* 의 hostedtoolcache 위치 명시 (dead config 방지).
+    RUNNER_TOOL_CACHE: /opt/hostedtoolcache
   group_add:
     - "${DOCKER_GID}"
   mem_limit: 3g
@@ -34,6 +39,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner1-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - hostedtool-cache:/opt/hostedtoolcache
 
   runner-2:
     <<: *runner-base
@@ -44,6 +51,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner2-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - hostedtool-cache:/opt/hostedtoolcache
 
   runner-3:
     <<: *runner-base
@@ -54,6 +63,8 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner3-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - hostedtool-cache:/opt/hostedtoolcache
 
   runner-4:
     <<: *runner-base
@@ -64,13 +75,23 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - runner4-work:/runner/_work
+      - playwright-cache:/opt/cache/playwright
+      - hostedtool-cache:/opt/hostedtoolcache
 
 volumes:
   runner1-work:
   runner2-work:
   runner3-work:
   runner4-work:
+  # PR-4 fold-in (H-2): pnpm-cache/go-cache 제거 — setup-go/setup-node GHA cache 사용.
+  # 4 runner 공유 cache: playwright (GHA cache 미적용) + hostedtool (setup-* toolchain).
+  playwright-cache: {}
+  hostedtool-cache: {}
 
 networks:
   runners-net:
+    # explicit name — docker compose project prefix 회피.
+    # workflow step 의 `--network runners-net` 가 정확한 이름 매칭 가능.
+    # 변경 후 사용자 host 에서 재배포 필요: docker compose down && docker compose up -d.
+    name: runners-net
     driver: bridge

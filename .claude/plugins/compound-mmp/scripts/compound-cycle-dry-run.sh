@@ -76,6 +76,7 @@ fi
 WORK_EXISTS=false
 WORK_STATUS="pending"
 if [ -d "${ACTIVE_PHASE}/refs" ]; then
+  # shellcheck disable=SC2012  # ls + glob patterns are sufficient for filename whitelist
   if ls "${ACTIVE_PHASE}/refs"/sim-*.md 2>/dev/null | head -1 | grep -q .; then
     WORK_EXISTS=true
     WORK_STATUS="in_progress"
@@ -87,6 +88,7 @@ REVIEWS_DIR="${ACTIVE_PHASE}/refs/reviews"
 REVIEWS_COUNT=0
 REVIEW_STATUS="pending"
 if [ -d "$REVIEWS_DIR" ]; then
+  # shellcheck disable=SC2012  # ls + glob counts named-pattern files; no special chars expected
   REVIEWS_COUNT=$(ls "$REVIEWS_DIR"/PR-*.md 2>/dev/null | wc -l | tr -d ' ')
   if [ "$REVIEWS_COUNT" -gt 0 ]; then
     REVIEW_STATUS="in_progress"
