@@ -131,9 +131,25 @@ run_test "PR_TITLE shell injection 시도 — literal 보존, 명령 실행 안�
   "DESIGN_PATH='$TMP_DESIGN' PR_TITLE='\$(whoami)' bash '$DRY_RUN' PR-7" \
   "0" "jq -e 'any(.[]; .prompt | contains(\"\$(whoami)\"))' >/dev/null"
 
-run_test "PR_TITLE injection — whoami output 누설 없음" \
-  "DESIGN_PATH='$TMP_DESIGN' PR_TITLE='\$(whoami)' bash '$DRY_RUN' PR-7" \
-  "0" "jq -e 'all(.[]; .prompt | contains(\"sabyun\") | not)' >/dev/null"
+# HIGH-T1: 이전 case 21 ("whoami output 누설 없음")은 \$LOGNAME 하드코딩으로 CI runner에서 false PASS.
+# 위 case 20이 이미 literal preservation 검증 — injection 실행 시 `\$(whoami)` literal이 사라지고 username만 남으므로 case 20 자체가 충분 강한 검증.
+
+# MED-T1: {pr_title}/{design} 토큰 치환도 명시 검증 (이전엔 {pr_id}만 검증 — gsub 라인 삭제 silent)
+run_test "{pr_title} 토큰 치환됨" \
+  "DESIGN_PATH='$TMP_DESIGN' PR_TITLE='unique-title-xyz' bash '$DRY_RUN' PR-7" \
+  "0" "jq -e 'any(.[]; .prompt | contains(\"unique-title-xyz\"))' >/dev/null"
+
+run_test "치환된 prompt에 raw {pr_title} placeholder 없음" \
+  "DESIGN_PATH='$TMP_DESIGN' PR_TITLE='unique-title-xyz' bash '$DRY_RUN' PR-7" \
+  "0" "jq -e 'all(.[]; .prompt | test(\"\\\\{pr_title\\\\}\") | not)' >/dev/null"
+
+run_test "{design} 토큰 치환됨 (TMP_DESIGN 경로 포함)" \
+  "DESIGN_PATH='$TMP_DESIGN' PR_TITLE='test' bash '$DRY_RUN' PR-7" \
+  "0" "jq -e 'any(.[]; .prompt | contains(\"$TMP_DESIGN\"))' >/dev/null"
+
+run_test "치환된 prompt에 raw {design} placeholder 없음" \
+  "DESIGN_PATH='$TMP_DESIGN' PR_TITLE='test' bash '$DRY_RUN' PR-7" \
+  "0" "jq -e 'all(.[]; .prompt | test(\"\\\\{design\\\\}\") | not)' >/dev/null"
 
 # === 환경 변수 검증 ===
 run_test "DESIGN_PATH 미설정 시 거부 (환경 누락)" \

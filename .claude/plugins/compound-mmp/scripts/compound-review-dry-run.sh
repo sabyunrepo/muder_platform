@@ -22,8 +22,8 @@ set -eu
 
 PR_ID="${1:-}"
 
-# 1. pr-id 화이트리스트 (정규식)
-if ! printf '%s' "$PR_ID" | grep -qE '^PR-[0-9]+[a-z]?$'; then
+# 1. pr-id 화이트리스트 (정규식, MED-P2: bash builtin =~로 grep fork 제거)
+if [[ ! "$PR_ID" =~ ^PR-[0-9]+[a-z]?$ ]]; then
   printf 'ERROR: pr-id must match ^PR-[0-9]+[a-z]?$, got %q\n' "$PR_ID" >&2
   exit 2
 fi
@@ -35,8 +35,10 @@ if [ -z "$DESIGN_PATH" ] || [ ! -f "$DESIGN_PATH" ]; then
   exit 3
 fi
 
-# 3. post-task-pipeline.json 위치
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# 3. post-task-pipeline.json 위치 (MED-P1: BASH_SOURCE로 dirname+cd+pwd 2 fork 제거)
+# 디렉토리 prefix 없는 호출(예: cwd 안에서 `bash script.sh`) 대비 fallback
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[ "$SCRIPT_DIR" = "${BASH_SOURCE[0]}" ] && SCRIPT_DIR="."
 DEFAULT_PIPELINE="${SCRIPT_DIR}/../../../post-task-pipeline.json"
 PIPELINE_PATH="${PIPELINE_PATH:-$DEFAULT_PIPELINE}"
 if [ ! -f "$PIPELINE_PATH" ]; then

@@ -42,22 +42,49 @@ DESIGN_PATH="$DESIGN_PATH" PR_TITLE="$PR_TITLE" \
   bash .claude/plugins/compound-mmp/scripts/compound-review-dry-run.sh "$PR_ID"
 ```
 
-stdout: `[{"subagent_type":"...","model":"...","prompt":"..."}, ...]` (jq parsable, length == 4).
+stdout: `[{"subagent_type":"...","model":"...","prompt":"..."}, ...]` (jq parsable, **dynamic length** = `pipeline.json`의 `parallel_group="review"` entry 수).
 
 `--dry-run` 모드에서는 여기서 종료. 정상 모드는 다음 단계.
 
-### 4. 한 메시지에서 4 Task tool 동시 spawn
+### 4. 한 메시지에서 N Task tool 동시 spawn (단일 source: helper.payload)
 
-`superpowers:dispatching-parallel-agents` 스킬 패턴 준수. 단일 assistant message-block에 4개 Task 호출:
+`superpowers:dispatching-parallel-agents` 스킬 패턴 준수. **helper payload를 그대로 iterate** — 본문에 agent 이름/개수 하드코딩 금지(HIGH-A1 카논). 단일 assistant message-block에 helper payload[]의 각 entry당 1개 Task 호출:
 
 ```
-Task(subagent_type="oh-my-claudecode:security-reviewer", model="opus", prompt="<helper.payload[0].prompt>")
-Task(subagent_type="oh-my-claudecode:code-reviewer",     model="sonnet", prompt="<helper.payload[1].prompt>")
-Task(subagent_type="oh-my-claudecode:critic",            model="opus", prompt="<helper.payload[2].prompt>")
-Task(subagent_type="oh-my-claudecode:test-engineer",     model="sonnet", prompt="<helper.payload[3].prompt>")
+# 의사코드 — 메인 컨텍스트가 helper payload를 받아 그대로 매핑
+for entry in helper.payload[]:
+    Task(subagent_type=$(map_subagent entry.subagent_type),
+         model=entry.model,
+         prompt=$(contextualize entry.prompt))
 ```
 
-> agent name 카논: `critic` (NOT `architect`). 모델 카논: opus = `claude-opus-4-7`, sonnet = `claude-sonnet-4-6` (sonnet-4-5 절대 금지 — `pre-task-model-guard.sh`가 차단).
+5번째 reviewer가 `pipeline.json`에 추가되어도 본문 수정 불필요 (helper의 length 변화에 자동 적응).
+
+#### 4.1 OMC fallback 매핑 (HIGH-A2 카논)
+
+`oh-my-claudecode:*` agent는 user-home `~/.claude/plugins/`에 위치해 본 repo가 알 수 없다. 메인 컨텍스트는 spawn 시 OMC 가용성을 확인하고 미설치 시 다음 fallback 적용:
+
+| OMC subagent_type (helper 출력) | Fallback subagent_type | model 유지 | 근거 |
+|--------------------------------|------------------------|------------|------|
+| `oh-my-claudecode:security-reviewer` | `general-purpose` | opus | 단일 메시지 4 spawn 호환 |
+| `oh-my-claudecode:code-reviewer` | `general-purpose` | sonnet | perf 분석 일반 |
+| `oh-my-claudecode:critic` | `superpowers:code-reviewer` | opus | adversarial 카논 가장 가까움 |
+| `oh-my-claudecode:test-engineer` | `general-purpose` | sonnet | 테스트 갭 분석 |
+
+OMC 가용성 확인 (메인 컨텍스트 책임):
+```bash
+ls ~/.claude/plugins/oh-my-claudecode 2>/dev/null && OMC_AVAILABLE=1 || OMC_AVAILABLE=0
+```
+
+OMC 가용 시 helper 출력을 그대로 사용. 미가용 시 위 fallback 매핑 적용. **prompt 내용은 동일** (helper가 generic하게 작성).
+
+#### 4.2 프롬프트 컨텍스트화 (필수)
+
+helper의 prompt template은 generic하므로 메인이 PR 컨텍스트(diff 위치, 변경 파일 목록, design ref 경로)를 추가 보강해 spawn. raw template 그대로 spawn 금지 (subagent가 PR diff를 못 봄).
+
+#### 4.3 모델 카논
+
+opus = `claude-opus-4-7`, sonnet = `claude-sonnet-4-6` (sonnet-4-5 절대 금지 — `pre-task-model-guard.sh`가 차단). agent name 카논: `critic` (NOT `architect`, refs/post-task-pipeline-bridge.md § 정정).
 
 ### 5. 결과 종합 → reviews/<pr-id>.md
 
@@ -92,18 +119,22 @@ HIGH N건 발견. 다음 중 선택: (a) 즉시 수정 — `/compound-work {pr-i
 
 ## 디스패처 트리거
 
-`hooks/dispatch-router.sh`가 다음 사용자 발화에서 `/compound-review` 추천 (stage=review):
+`hooks/dispatch-router.sh`가 다음 사용자 발화에서 `/compound-review` 추천 (stage=review). **이 목록은 `test-dispatch.sh` fixture로 검증** — doc-vs-behavior 100% align (HIGH-A3 카논):
 
 - "리뷰 해줘" / "코드 리뷰" / "머지 전 확인" / "병합 전 체크"
-- "review this PR" / "pre-merge review" / "audit this"
+- "review this PR" / "pre-merge review"
+
+> "audit this" 등 일반 영문 단어는 false positive 위험("audit log 추가" → review 오라우팅) 때문에 의도적으로 제외.
 
 ## 안티 패턴 (절대 금지)
 
 - ❌ slash command 본문에서 `bash -c "$template"` 형태로 prompt 합성 — RCE 위험. **반드시 `compound-review-dry-run.sh` helper 경유** (jq `--arg` 강제).
 - ❌ PR_TITLE을 직접 prompt 문자열에 보간 (`prompt="...${PR_TITLE}..."`) — helper만 사용.
-- ❌ HIGH 발견 시 자동 `/compound-work` 호출 — manual gate 강제 (PR-2c 교훈).
-- ❌ Task tool을 4개보다 적게 spawn (예: critic 생략) — 4-agent 카논 위반 (`feedback_4agent_review_before_admin_merge.md`).
-- ❌ 4 Task를 별도 assistant message로 분산 spawn — 한 메시지 동시 spawn이 카논 (parallel_group="review", `superpowers:dispatching-parallel-agents`).
+- ❌ HIGH 발견 시 자동 `/compound-work` 호출 — manual gate 강제 (PR-2c 교훈, refs/anti-patterns.md #7).
+- ❌ helper payload 길이보다 적게/많게 Task spawn — 단일 source 위반. helper의 length가 카논 (HIGH-A1).
+- ❌ 슬래시 본문에 4개 (또는 N개) agent 이름 하드코딩 — pipeline.json mutation 시 silent break (HIGH-A1). **iterate over helper.payload[]만 사용**.
+- ❌ Task를 별도 assistant message로 분산 spawn — 한 메시지 동시 spawn이 카논 (parallel_group="review", `superpowers:dispatching-parallel-agents`).
+- ❌ OMC 가용성 미확인 spawn — `oh-my-claudecode:*`은 user-home 의존. 미설치 시 § 4.1 fallback 매핑 필수 (HIGH-A2).
 
 ## 카논 ref
 
