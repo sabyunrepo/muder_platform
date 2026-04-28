@@ -363,7 +363,12 @@ jobs:
 
       - name: Merge into HTML report
         working-directory: apps/web
-        run: pnpm exec playwright merge-reports --reporter html ../../all-blob-reports
+        # 4 self-hosted containerized runner 의 working dir
+        # (`/_work/containerized-runner-{1,2,3,4}/.../apps/web/e2e`) 가 서로 달라
+        # blob report 의 record 된 testDir 가 4 path → "Blob reports were recorded
+        # with different test directories" merge fail. -c 옵션으로 playwright.config.ts
+        # 의 testDir 를 명시 강제 (resolve 시점 정규화).
+        run: pnpm exec playwright merge-reports --reporter html -c playwright.config.ts ../../all-blob-reports
 
       - name: Upload merged HTML report
         if: always()

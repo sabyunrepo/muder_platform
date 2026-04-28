@@ -140,6 +140,13 @@ docker compose logs runner-1 --tail 10                     # "Listening for Jobs
   형태로 stdin redirect.
 - **보안**: `PGPASSWORD` 를 `-e` 환경변수 로 전달 (process table 미노출).
 
+### `<merge-reports-fix>` Playwright merge-reports testDir 정규화
+
+- **원인**: 4 self-hosted containerized runner 의 working dir 가 서로 다름 (`/_work/containerized-runner-{1,2,3,4}/.../apps/web/e2e`). 4 shard 의 blob report 가 각자 record 한 `testDir` 가 4 다른 path 가 됨 → `playwright merge-reports` 의 "Blob reports were recorded with different test directories" merge fail.
+- **검증 fail 신호**: e333c3e CI 의 `Merge Playwright reports` job 만 fail (E2E 4 shard 모두 SUCCESS).
+- **결정**: `merge-reports` step 에 `-c playwright.config.ts` 추가. config 의 `testDir` resolve 시점 정규화.
+- **trade-off**: blob report metadata 가 변경되지 않음 — 다음 phase 의 multi-runner Playwright migration 시 testDir 정규화 패턴 재고 필요.
+
 ### `<EACCES-fix>` Cache volume permissions (PR-168 회귀 fix)
 
 - **원인**: Docker named volume (`playwright-cache`, `hostedtool-cache`) 가 default `root:root` 소유로 생성. `RUN_AS_ROOT: false` runner user 가 `pnpm exec playwright install` 실행 시 `mkdir '/opt/cache/playwright/__dirlock'` EACCES.
