@@ -174,10 +174,14 @@ jobs:
       # the lobby via ErrorBoundary.
 
       - name: Seed E2E theme
+        # runner image 에 psql 미설치 + services block 제거 (PR-168) → postgres container
+        # 안의 psql 호출 + stdin SQL redirect.
         run: |
-          PGPASSWORD=mmp_e2e psql -h localhost -p ${{ job.services.postgres.ports['5432'] }} -U mmp -d mmp_e2e \
-            -v ON_ERROR_STOP=1 \
-            -f apps/server/db/seed/e2e-themes.sql
+          sudo docker exec -i \
+            -e PGPASSWORD=mmp_e2e \
+            "$PG_NAME" \
+            psql -U mmp -d mmp_e2e -v ON_ERROR_STOP=1 \
+            < apps/server/db/seed/e2e-themes.sql
 
       # ── Node / pnpm ────────────────────────────────────────────────────────
 
