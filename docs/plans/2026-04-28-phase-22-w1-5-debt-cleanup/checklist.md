@@ -61,6 +61,23 @@ prs_estimated: 3
 - **검증**: `gitleaks detect --no-banner --redact` 0 LEAK
 - **상세**: [`refs/pr-2-gitleaks.md`](refs/pr-2-gitleaks.md) (작성 예정)
 
+### PR-8 — Runner third-party action 호환 fix (containerization spillover)
+
+- **Effort** M, **Impact** High (CI green 회복 + main DEBT 해소)
+- **branch**: `chore/w1-5-runner-action-compat`
+- **trigger 발견**: PR-168 a31af3f CI 결과 — 3 check FAILURE 모두 동일 root cause:
+  1. **gitleaks (Secret scan)**: `gitleaks-action@v2.3.9` 의 `rootDirectory: /home/runner` 하드코딩 ↔ containerized runner working dir `/_work/containerized-runner-N/...` 불일치 → SARIF artifact upload Error. scan 자체는 SUCCESS (`no leaks found`).
+  2. **CodeQL (javascript-typescript)**: containerized runner image 의 default Node.js v10.19.0 가 `??` (nullish coalescing, v14+) syntax 처리 못함. `actions/setup-node@v4` 가 install 한 v20 가 PATH resolve 안 됨.
+  3. **Trivy (container CVE)**: Docker Buildx 가 `/var/run/docker.sock` permission denied — runner user 의 sup group 990 (docker) lost in workflow step 컨텍스트.
+- **공통 원인**: 사용자 host 에 bare-host runner 부재 (4 containerized-runner 만 active) → `runs-on: self-hosted` workflow 가 모두 containerized runner 로 routing 되며 third-party action 호환성 issue 노출.
+- **변경 후보**:
+  - `security-fast.yml` gitleaks: `GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false` 또는 ubuntu-latest 임시 전환 (action upgrade 검토)
+  - `security-deep.yml` CodeQL: containerized runner image 에 Node.js v20 사전 install (Phase 23 Custom Image 대안) 또는 ubuntu-latest 임시 전환
+  - `security-deep.yml` Trivy: workflow step 의 `sudo docker` 또는 docker.sock 권한 보강 (PR-168 의 sudo 패턴 재사용)
+- **검증**: 3 check 모두 green. main DEBT 해소.
+- **단일 PR vs 3 PR split**: third-party action 호환 부재라는 single concern 이므로 1 PR 정당화. PR-167 H-ARCH-2 lesson 과 차이.
+- **상세**: `refs/pr-8-action-compat.md` (작성 예정)
+
 ### PR-3 — DEBT-5: govulncheck CRITICAL/HIGH CVE 검토
 - **Effort** M, **Impact** High (supply chain)
 - **branch**: `chore/w1-5-govulncheck`
