@@ -168,6 +168,17 @@ session_date: 2026-MM-DD
 
 `--phase`는 fresh rebuild이므로 graph.json 업데이트 PR이 별도 필요 (anti-patterns #4 carve-out).
 
+### 실패 처리 (PR-5 카논화)
+
+`--phase` 모드에서 `make graphify-refresh` 실패 시:
+1. **stderr 그대로 사용자에게 표시** — 메인 컨텍스트가 가공·요약 X.
+2. **자동 retry 금지** — anti-patterns #1 (자동 fix-loop 폐기 정책) 강제.
+3. **수동 retry 안내**: `cd $(git rev-parse --show-toplevel) && make graphify-refresh` 다시 실행 또는 `make graphify-update` 증분 시도.
+4. **graph.json 부분 손상 의심 시**: `git restore graphify-out/graph.json && make graphify-refresh` (이전 fresh 결과로 롤백 후 재시도).
+5. **wrap 자체는 정상 완료로 간주** — Step 1~6은 이미 성공했으므로 graphify 실패가 wrap 결과를 무효화하지 않음. 사용자가 후속 작업 결정.
+
+이 정책은 graphify가 외부 인덱싱이며 wrap의 critical path가 아니라는 카논(`.claude/refs/graphify.md`)을 따른다.
+
 ## 종료 후
 
 다음 SessionStart hook이 `memory/sessions/`에서 가장 최근 1개 파일을 자동 inject (PR-6에서 구현).

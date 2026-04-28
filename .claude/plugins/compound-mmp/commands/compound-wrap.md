@@ -6,26 +6,21 @@ argument-hint: "[--session|--wave|--phase] (기본 --session)"
 
 # /compound-wrap
 
+> **Single source of truth**: `skills/wrap-up-mmp/SKILL.md`. 이 command는 thin pointer — 7단계 본문은 skill을 따른다 (PR-5 카논화).
+
 세션·Wave·Phase 종료 시 자동 분석 + 학습 영구화 + 다음 세션 핸드오프.
 
 ## 인자
 
-- `--session` (기본) — 가장 가벼운 모드. graphify decision = skip
-- `--wave` — Wave 종료. graphify `--update` 안내만 (자동 실행 X)
-- `--phase` — Phase 종료. graphify fresh rebuild 자동 실행 (`make graphify-refresh`)
+- `--session` (기본) — graphify skip, 가장 가벼움
+- `--wave` — Wave 머지 직후. graphify `--update` 안내만
+- `--phase` — Phase 종료. graphify fresh rebuild 자동 실행
 
-## 실행 절차
+## 실행
 
-`skills/wrap-up-mmp/SKILL.md`의 7단계 시퀀스를 따른다. 카논 위치: `refs/wrap-up-checklist.md`.
+`skills/wrap-up-mmp/SKILL.md`의 7단계 시퀀스(Pre-scan → 4 agent 병렬 → duplicate-checker → 통합 → 자동 실행 → 승인 실행 → graphify decision)를 그대로 실행. 세부 prompt 구성·정책·예외는 모두 SKILL이 master.
 
-핵심:
-1. Pre-scan (git status + diff stat + log)
-2. Phase 1 — 4 agent 병렬 (한 메시지에서 4 Task tool 동시 spawn)
-3. Phase 2 — duplicate-checker 순차 (QMD 검증)
-4. 결과 통합 + 사용자 표시
-5. **자동 실행** — QUESTIONS append + sessions/handoff 생성 + MEMORY entry append
-6. **승인 실행** — MISTAKES append + checklist STATUS 갱신
-7. graphify decision (`--phase`만 자동 rebuild)
+카논 ref: `refs/wrap-up-checklist.md` (단계별 자동/승인 매트릭스).
 
 ## 사용 예
 

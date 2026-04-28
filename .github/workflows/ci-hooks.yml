@@ -1,0 +1,59 @@
+name: ci-hooks (compound-mmp plugin self-tests)
+
+on:
+  pull_request:
+    paths:
+      - '.claude/plugins/compound-mmp/**'
+      - '.github/workflows/ci-hooks.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.claude/plugins/compound-mmp/**'
+      - '.github/workflows/ci-hooks.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: shellcheck (compound-mmp hooks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
+      - name: shellcheck hooks
+        run: |
+          set -e
+          for f in .claude/plugins/compound-mmp/hooks/*.sh; do
+            echo "shellcheck $f"
+            shellcheck -e SC2155,SC2086 "$f"
+          done
+
+  hook-tests-ubuntu:
+    name: hook self-tests (ubuntu, bash 5.x)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update -qq && sudo apt-get install -y jq
+      - name: bash version
+        run: bash --version | head -1
+      - name: dispatch-router self-tests
+        run: bash .claude/plugins/compound-mmp/hooks/test-dispatch.sh
+      - name: pre-edit-size self-tests
+        run: bash .claude/plugins/compound-mmp/hooks/test-pre-edit-size.sh
+
+  hook-tests-macos:
+    name: hook self-tests (macOS, bash 3.2)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify default bash is 3.2 (system bash)
+        run: /bin/bash --version | head -1
+      - name: Verify jq present
+        run: jq --version
+      - name: dispatch-router self-tests (system bash 3.2)
+        run: /bin/bash .claude/plugins/compound-mmp/hooks/test-dispatch.sh
+      - name: pre-edit-size self-tests (system bash 3.2)
+        run: /bin/bash .claude/plugins/compound-mmp/hooks/test-pre-edit-size.sh

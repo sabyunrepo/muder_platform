@@ -3,12 +3,26 @@
 # 비차단 hook. additionalContext만 반환.
 #
 # 트리거 조건:
-#   1. 최근 10 commit + 미커밋 working tree 변경의 changed lines >= 50
+#   1. 최근 10 commit + 미커밋 working tree 변경의 changed lines >= COMPOUND_WRAP_MIN_LINES (기본 50)
 #   2. 세션 내 /compound-wrap 실행 흔적 없음 (휴리스틱: memory/sessions/<today>-*.md 부재)
+#
+# 환경 변수 (PR-5 카논화):
+#   COMPOUND_WRAP_MIN_LINES   임계 줄수 (기본 50, PR-10 dogfooding 후 calibration)
+#   COMPOUND_WRAP_REMINDER_DISABLE=1   리마인드 전체 비활성
 #
 # 출력: stdout JSON (hookSpecificOutput.additionalContext) 또는 빈 응답
 
 set -euo pipefail
+
+# 긴급 비활성 토글
+if [ "${COMPOUND_WRAP_REMINDER_DISABLE:-}" = "1" ]; then
+  exit 0
+fi
+
+THRESHOLD="${COMPOUND_WRAP_MIN_LINES:-50}"
+case "$THRESHOLD" in
+  ''|*[!0-9]*) THRESHOLD=50 ;;  # 비숫자 입력 fallback
+esac
 
 # 변경량 측정 — 커밋 이력(HEAD~10..HEAD) + 미커밋 변경(HEAD vs working tree) 합산
 sum_shortstat() {
@@ -29,7 +43,7 @@ UNCOMMITTED_LINES="${UNCOMMITTED_LINES:-0}"
 DIFF_LINES=$((COMMIT_LINES + UNCOMMITTED_LINES))
 
 # 임계값 미만이면 silent
-if [ "$DIFF_LINES" -lt 50 ]; then
+if [ "$DIFF_LINES" -lt "$THRESHOLD" ]; then
   exit 0
 fi
 

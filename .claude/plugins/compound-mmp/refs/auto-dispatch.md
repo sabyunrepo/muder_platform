@@ -87,3 +87,27 @@ PR-4 진입 전 최근 30 prompt 샘플로 hit rate 측정. 50% 미만이면 hoo
 - Hook 스크립트: `hooks/dispatch-router.sh`
 - 디스패처 디스패치 (단일 진입점): `hooks/run-hook.sh dispatch`
 - 매니페스트 등록: 플러그인 install 시 `.claude/settings.json` `hooks.UserPromptSubmit` 자동 머지
+
+## skill-injector 직렬 실행 (UserPromptSubmit slot 공존 카논)
+
+> 핸드오프 Risk 카논화 (Wave 1 후속, PR-5).
+
+같은 `UserPromptSubmit` matcher에 다중 hook이 등록될 수 있다. 대표 케이스:
+
+| 출처 | 위치 | 역할 | 출력 |
+|------|------|------|------|
+| compound-mmp dispatch | repo `.claude/plugins/compound-mmp/hooks/hooks.json` | 4단계 stage 분류 | `additionalContext` ("[compound-mmp dispatch] stage=...") |
+| skill-injector | user home `~/.claude/settings.json` | 관련 skill 목록 + 폴더 구조 룰 주입 | `additionalContext` ("📋 관련 스킬 감지...") |
+
+### 실행 순서 카논
+- Claude Code runtime은 매칭되는 모든 hook을 **직렬 실행**한다 (병렬 X). 출력은 모두 메인 컨텍스트의 system reminder 큐에 append.
+- 각 hook이 **`permissionDecision: "deny"`를 사용하지 않는 한** 다른 hook의 실행을 차단하지 않는다 (anti-patterns #11 강제).
+- compound-mmp dispatch는 의도적으로 `additionalContext`만 반환 → skill-injector와 충돌 없음.
+
+### 충돌 회피 룰
+1. **dispatch는 stage 라벨만 echo, raw prompt 금지** (이미 강제, security MEDIUM-1).
+2. **skill-injector hint와 dispatch hint가 상충하면 사용자 의도 우선** (Override 우선순위 #2).
+3. **새 UserPromptSubmit hook 추가 시** — `permissionDecision` 사용 여부를 명시. 이 카논 표를 갱신.
+
+### 검증
+- PR-4 dispatch fixture 41/41 PASS는 skill-injector 비활성 환경에서 측정. 둘 다 활성인 실 사용자 환경 hit rate는 PR-10 dogfooding에서 측정.

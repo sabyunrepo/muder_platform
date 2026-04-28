@@ -40,12 +40,13 @@ OMC team mode (`/oh-my-claudecode:team`, `skills/team/SKILL.md`) 는 `team-plan 
 | **followup-suggester** (P0–P3 + Effort/Impact 매트릭스) | `oh-my-claudecode:critic` (Pre-Mortem, Devil's Advocate) 또는 `analyst` | **KEEP_NEW** | critic은 "이 plan이 실패할 시나리오", analyst는 "현재 plan의 gap". P0–P3 우선순위 + Effort(S/M/L) × Impact(low/med/high) 매트릭스 출력은 둘 다 출력 형식이 다름. critic 호출 + post-processing prompt 가능하나 매번 prompt 인라인이 길어짐 → 전용 agent .md 1개 유지가 cleaner. |
 | **duplicate-checker** (QMD vector_search 중복 검증) | (없음) | **KEEP_NEW** | OMC 어떤 agent도 `mcp__plugin_qmd_qmd__vector_search`를 사용 안 함. document-specialist는 chub/Context7 백엔드 전용. haiku-4-5 + Read만 필요 → 가벼운 신규 정의가 정당. wiki skill에 `wiki_query`가 있지만 `.omc/wiki/` 저장소 한정. |
 
-**최종 결정**: 신규 agent 5개 → **3개**로 축소.
-- doc-curator → OMC `document-specialist` 호출 (compound-mmp wrap-up skill에서 prompt 주입)
-- learning-extractor, followup-suggester, duplicate-checker → 신규 `compound-mmp:*` agent 정의 유지
-- automation-scout → 신규 정의 유지 (직접 매핑 OMC 없음)
+**최종 결정**: 신규 agent 5개 후보 → **신규 4개 정의 + OMC 호출 1개** (wrap Phase 1 총 5 agent 호출 유지).
+- doc-curator → OMC `document-specialist` 호출 (compound-mmp wrap-up skill에서 prompt 주입, 신규 정의 0)
+- automation-scout / learning-extractor / followup-suggester / duplicate-checker → 신규 `compound-mmp:*` agent 정의 4개 (`agents/`)
 
-(critic MAJOR #4 부분 수용 — 5개 중 1개 OMC 대체)
+(critic MAJOR #4 부분 수용 — 5개 후보 중 1개를 OMC 대체. wrap-up 단계의 호출 수 5는 유지하되 자체 정의 파일은 4로 감소.)
+
+> **표기 정정 (PR-5)**: 이전 표기 "5개 → 3개"는 부정확. 실제는 "신규 정의 5 → 4 + OMC 호출 1"이며 wrap에서의 총 agent 호출은 그대로 5. 핸드오프 노트 (memory/sessions/2026-04-28-compound-mmp-wave1-complete.md) "4 신규 + OMC document-specialist 호출 = wrap Phase 1 5 agent"가 정확한 표현.
 
 ## C) OMC 기존 wrap 기능
 
