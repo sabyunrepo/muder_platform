@@ -45,18 +45,42 @@ P0–P3 매트릭스 + Effort/Impact 표 형태로 메인 컨텍스트가 정리
 | `memory/sessions/<YYYY-MM-DD>-<topic>.md` 생성 | repo | 항상 자동 (Haiku 요약 ≤300단어) |
 | MEMORY.md entry append (인덱스 변경 X) | repo | 자동 (균형형 결정) |
 
-핸드오프 노트 프론트매터:
-```yaml
+핸드오프 노트는 **markdown bullet 포맷** (OMC team handoff `.omc/handoffs/<stage>.md`와 cross-mode 호환). YAML frontmatter는 metadata만, 5섹션은 markdown:
+
+```markdown
 ---
-topic: <phase-or-wave-or-session-topic>
-phase: <Phase N.M>
-prs_touched: [PR-N, PR-M, ...]
-key_decisions: |
-  ...
-next_session_priorities: |
-  ...
+topic: "한 줄 요약"
+phase: "Phase N.M"
+prs_touched: [PR-N, PR-M]
+session_date: 2026-MM-DD
 ---
+
+# Session Handoff: <topic>
+
+## Decided
+- 결정 사항
+
+## Rejected
+- 거부된 옵션 (이유) (없으면 "- 없음")
+
+## Risks
+- 잠재 위험
+
+## Files
+- 수정 파일
+
+## Remaining
+- 미완료 항목 (Done: <조건>)
+
+## Next Session Priorities
+- P0/P1 항목
+
+---
+
+(메인 모델 요약 ≤300단어)
 ```
+
+OMC team 5섹션 (`Decided/Rejected/Risks/Files/Remaining`)과 정확히 동일 섹션 헤더 → markdown 파서 cross-mode 호환. 전체 템플릿: `templates/handoff-note-template.md`.
 
 ### Step 6 — 승인 실행 (사용자 승인)
 
