@@ -132,6 +132,8 @@ services:
       - disabled
 ```
 
+> **Drift log (2026-04-28, commit `8d4135d`):** runner 호스트의 langfuse 충돌(localhost:5432, localhost:6379 영구 점유) 회피를 위해 dev 호스트 포트가 `25432:5432` / `26379:6379`로 시프트됨. canonical은 `apps/server/CLAUDE.md` 참조. 본 Step 2.1의 코드 블록은 spec 시점 초안이며, 머지된 실제 파일에는 25432/26379 + 인라인 주석이 적용되어 있음.
+
 - [ ] **Step 2.2: dev 컨테이너 띄우기 검증**
 
 Run:

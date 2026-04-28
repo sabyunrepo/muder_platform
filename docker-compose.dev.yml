@@ -9,6 +9,7 @@ services:
     build:
       context: ./apps/server
       dockerfile: Dockerfile.dev
+      # NOTE: 1000 default는 Dockerfile.dev `ARG USER_UID/USER_GID=1000`과 매칭 필수 — 변경 시 양쪽 동시 수정.
       args:
         USER_UID: "${HOST_UID:-1000}"
         USER_GID: "${HOST_GID:-1000}"

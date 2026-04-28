@@ -53,14 +53,14 @@
 
 ## 진행 체크박스
 
-- [ ] **Task 1**: Dockerfile.dev 수정 + 로컬 build/run 권한 검증 + commit
-- [ ] **Task 2**: docker-compose.dev.yml 수정 + dev 띄우기 검증 + commit
-- [ ] **Task 3**: ci.yml ports + env 템플릿
-- [ ] **Task 4**: e2e-stubbed.yml ports + env + goose + psql 템플릿 + commit (3+4 묶음)
-- [ ] **Task 5**: apps/server/CLAUDE.md dev 명령 카논 + commit
-- [ ] **Task 6**: 로컬 dev compose 회귀 검증 (air hot-reload + 호스트 user owner)
-- [ ] **Task 7**: push + PR 생성 + 12 job CI green 폴링
-- [ ] **Task 8**: 4-agent 병렬 리뷰 (`/compound-review fix/ci-infra-recovery`)
+- [x] **Task 1**: Dockerfile.dev 수정 + 로컬 build/run 권한 검증 + commit (`0cfbbf8`)
+- [x] **Task 2**: docker-compose.dev.yml 수정 + dev 띄우기 검증 + commit (`0cfbbf8`)
+- [x] **Task 3**: ci.yml ports + env 템플릿 (`c29c6df`)
+- [x] **Task 4**: e2e-stubbed.yml ports + env + goose + psql 템플릿 + commit (3+4 묶음, `c29c6df` + `1ac6d20` 인라인 코멘트)
+- [x] **Task 5**: apps/server/CLAUDE.md dev 명령 카논 + commit (`8d4135d`, dev port shift 25432/26379 포함)
+- [x] **Task 6**: 로컬 dev compose 회귀 검증 (runner에서 직접 검증 — image build OK + 호스트 user owner sabyun:sabyun + 25432/26379 healthy + langfuse no collision, 2026-04-28)
+- [x] **Task 7**: push + PR 생성 (PR #164) + 12 job CI green 폴링 (CI 진행 중)
+- [x] **Task 8**: 4-agent 병렬 리뷰 (`refs/reviews/PR-164.md`, HIGH 0 실질 / IMPORTANT 3 fold-in 완료)
 - [ ] **Task 9**: admin-merge + main pull + dev rebuild 안내
 - [ ] TaskList #1 (P1) `completed` 마킹 → P2 자동 unblock
 

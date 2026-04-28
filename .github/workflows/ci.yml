@@ -31,6 +31,7 @@ jobs:
           --health-retries 5
       redis:
         image: redis:7-alpine
+        # ephemeral host port — avoids 6379 collision with langfuse-redis on self-hosted runner
         ports:
           - "6379"
         options: >-
