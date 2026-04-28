@@ -13,7 +13,7 @@
 > **사용자 명시 작업** — Claude는 안내만.
 
 - [ ] **Step 1**: 사용자가 GitHub UI 진입
-  - https://github.com/sanghoon-pyun/muder_platform/settings/actions/runners
+  - https://github.com/sabyunrepo/muder_platform/settings/actions/runners
 
 - [ ] **Step 2**: 기존 host runner 식별 (예: `sabyun-mbp` 등 호스트 이름)
   - 라벨이 `self-hosted` 단독 (containerized 라벨 없음)인 row.

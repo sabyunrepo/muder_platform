@@ -136,7 +136,7 @@ Expected: `runner-1`~`runner-4` 4 service 출력, `volumes:` 섹션에 4 named v
 
 # GitHub fine-grained PAT
 # 발급: https://github.com/settings/personal-access-tokens/new
-# Resource owner: sanghoon-pyun
+# Resource owner: sabyunrepo
 # Repository access: Only select repositories → muder_platform
 # Repository permissions:
 #   - Actions: Read and write
@@ -145,7 +145,7 @@ Expected: `runner-1`~`runner-4` 4 service 출력, `volumes:` 섹션에 4 named v
 ACCESS_TOKEN=
 
 # 대상 repository URL (등록 endpoint)
-REPO_URL=https://github.com/sanghoon-pyun/muder_platform
+REPO_URL=https://github.com/sabyunrepo/muder_platform
 
 # 호스트 docker group GID
 # macOS: stat -f '%g' /var/run/docker.sock
@@ -287,7 +287,7 @@ Expected: 4 service `Up`, log에 "Listening for Jobs" match.
 
 - [ ] **Step 3**: GH UI 검증
 
-사용자가 https://github.com/sanghoon-pyun/muder_platform/settings/actions/runners 에서 4 row 확인:
+사용자가 https://github.com/sabyunrepo/muder_platform/settings/actions/runners 에서 4 row 확인:
 - 이름: `containerized-runner-1`~`4`
 - 상태: `Idle` (녹색)
 - 라벨: `self-hosted, linux, containerized`

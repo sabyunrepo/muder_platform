@@ -99,7 +99,7 @@ PR-164 4-agent 리뷰 LOW/MED 17건은 **별도 PR-11 hygiene**으로 분리 (Ph
 ## 검증 시뮬레이션
 
 ### Case A: W1 4 runner 부팅 → GH 등록 확인
-1. 사용자가 `infra/runners/.env`에 fine-grained PAT 입력 (`ACCESS_TOKEN=ghp_...` + `REPO_URL=https://github.com/sanghoon-pyun/muder_platform` + `DOCKER_GID=$(stat -f '%g' /var/run/docker.sock)`).
+1. 사용자가 `infra/runners/.env`에 fine-grained PAT 입력 (`ACCESS_TOKEN=ghp_...` + `REPO_URL=https://github.com/sabyunrepo/muder_platform` + `DOCKER_GID=$(stat -f '%g' /var/run/docker.sock)`).
 2. `cd infra/runners && docker compose up -d`.
 3. `docker compose ps` → 4 service `Up` (status healthy).
 4. `docker compose logs runner-1 --tail 20 | grep "Listening for Jobs"` → match.
