@@ -82,6 +82,19 @@ run_test "--from 잘못된 형식 거부 (대문자)" \
   "$ENV_OK bash '$DRY_RUN' 'phase-21' '--from' 'Phase-20'" \
   "2" ""
 
+# HIGH-T1: --from 다음에 옵션 토큰이 오면 거부 (false PASS 차단)
+run_test "--from --from 거부 (옵션 토큰을 값으로 받지 않음)" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-21' '--from' '--from'" \
+  "2" ""
+
+run_test "--from -x 거부 (다른 옵션을 값으로 받지 않음)" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-21' '--from' '-x'" \
+  "2" ""
+
+run_test "--from --bogus 거부 (긴 옵션 토큰)" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-21' '--from' '--bogus'" \
+  "2" ""
+
 # === 정상 입력 ===
 run_test "유효 topic phase-20-clue-editor → exit 0" \
   "$ENV_OK bash '$DRY_RUN' 'phase-20-clue-editor'" \
@@ -133,6 +146,11 @@ run_test "step 1 args.k == 5 (Plan § 사양 \"유사 phase 5건\")" \
   "$ENV_OK bash '$DRY_RUN' 'phase-20'" \
   "0" "jq -e '.steps[0].args.k == 5' >/dev/null"
 
+# MED-T1 (test agent piggyback): args.query == topic 검증 누락 보강
+run_test "step 1 args.query == topic (qmd-recall A.7 invariant)" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-21-runtime'" \
+  "0" "jq -e '.steps[0].args.query == \"phase-21-runtime\"' >/dev/null"
+
 run_test "step 2 = superpowers:brainstorming" \
   "$ENV_OK bash '$DRY_RUN' 'phase-20'" \
   "0" "jq -e '.steps[1].skill == \"superpowers:brainstorming\"' >/dev/null"
@@ -183,6 +201,19 @@ run_test "--from 지정 시 .from_previous_phase 보존" \
 run_test "출력에 git/PR 관련 step 없음 (자동 진행 X)" \
   "$ENV_OK bash '$DRY_RUN' 'phase-20'" \
   "0" "jq -e '[.steps[] | (.action // .skill // \"\") | test(\"git|gh|pr-create|merge\"; \"i\")] | any | not' >/dev/null"
+
+# HIGH-A2: mandatory_slots 메타 — qmd-recall inject 의무 anchor (template marker와 짝)
+run_test "출력에 mandatory_slots 필드 존재 (qmd-recall inject anchor)" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-20'" \
+  "0" "jq -e '.mandatory_slots | type == \"array\"' >/dev/null"
+
+run_test "mandatory_slots 에 qmd-recall-table 포함" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-20'" \
+  "0" "jq -e '.mandatory_slots | contains([\"qmd-recall-table\"])' >/dev/null"
+
+run_test "step 4 (write_file) 도 mandatory_slots 보유 — template inject anchor" \
+  "$ENV_OK bash '$DRY_RUN' 'phase-20'" \
+  "0" "jq -e '.steps[3].mandatory_slots | contains([\"qmd-recall-table\"])' >/dev/null"
 
 # === 환경 변수 검증 ===
 run_test "TEMPLATE_PATH 미설정 시 거부" \

@@ -45,6 +45,12 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --from)
       FROM_PHASE="${2:-}"
+      # HIGH-T1 가드: --from 다음 토큰이 또 다른 옵션(`-`로 시작)이면 거부.
+      # 정규식 ^[a-z0-9-]{1,64}$가 `--from`/`-x` 같은 옵션 토큰을 통과시키는 false PASS 차단.
+      if [[ "$FROM_PHASE" == -* ]]; then
+        printf 'ERROR: --from value cannot start with - (option-like token), got %q\n' "$FROM_PHASE" >&2
+        exit 2
+      fi
       if [[ ! "$FROM_PHASE" =~ ^[a-z0-9-]{1,64}$ ]]; then
         printf 'ERROR: --from value must match ^[a-z0-9-]{1,64}$, got %q\n' "$FROM_PHASE" >&2
         exit 2
@@ -94,15 +100,17 @@ jq -nc \
   '{
     topic: $topic,
     from_previous_phase: (if $from == "" then null else $from end),
+    mandatory_slots: ["qmd-recall-table"],
     steps: [
       {step: 1, skill: "compound-mmp:qmd-recall", args: {collection: "mmp-plans", query: $topic, k: 5}},
-      {step: 2, skill: "superpowers:brainstorming"},
-      {step: 3, skill: "superpowers:writing-plans"},
+      {step: 2, skill: "superpowers:brainstorming", inject: ["steps[0].output"]},
+      {step: 3, skill: "superpowers:writing-plans", inject: ["steps[1].output"]},
       {step: 4, action: "write_file",
         path: ($path_pattern
           | gsub("\\{base\\}"; $base)
           | gsub("\\{date\\}"; $date)
           | gsub("\\{topic\\}"; $topic)),
-        template: $template}
+        template: $template,
+        mandatory_slots: ["qmd-recall-table"]}
     ]
   }'

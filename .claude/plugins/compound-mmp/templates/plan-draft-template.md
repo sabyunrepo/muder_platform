@@ -23,7 +23,8 @@ prs_estimated: 5
 
 ## QMD 회상 (mmp-plans 5건)
 
-> `qmd-recall` Step 1 결과. 유사 phase의 패턴·실수·검증 시뮬레이션을 본 plan 작성에 인용.
+<!-- INJECT-RECALL-MANDATORY-START -->
+> `qmd-recall` Step 1 결과. 유사 phase의 패턴·실수·검증 시뮬레이션을 본 plan 작성에 인용. **이 표가 비어 있으면 inject 누락 (anti-pattern, A.7 핵심 위반)** — `/compound-wrap` Step 1 검증이 마커 사이 `docid` 토큰 ≥3 검사로 drift 감지.
 
 | # | phase | 핵심 인용 | docid |
 |---|-------|----------|-------|
@@ -32,8 +33,9 @@ prs_estimated: 5
 | 3 | <prev-phase-C> | <한 줄 요약> | #ghi789 |
 | 4 | <prev-phase-D> | <한 줄 요약> | #jkl012 |
 | 5 | <prev-phase-E> | <한 줄 요약> | #mno345 |
+<!-- INJECT-RECALL-MANDATORY-END -->
 
-> 메인 컨텍스트는 `mcp__plugin_qmd_qmd__vector_search` 결과를 본 표에 직접 채우고, 핵심 인용을 brainstorm 단계에 inject한다.
+> 메인 컨텍스트는 `mcp__plugin_qmd_qmd__vector_search` 결과를 본 표에 직접 채우고, 핵심 인용을 brainstorm 단계에 inject한다. helper output `mandatory_slots: ["qmd-recall-table"]` 메타가 inject 의무를 명시 (drift 검증 anchor).
 
 ## Brainstorm 결과
 
