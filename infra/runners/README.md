@@ -48,6 +48,85 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
 6. `docker compose up -d`.
 7. GitHub Settings → Actions → Runners → 4 row idle 확인.
 
+## Cache Volumes (PR-4 + fold-in, 2026-04-28)
+
+4 runner 가 공유하는 cache named volume. EPHEMERAL=true 와 무관하게 유지.
+
+**PR-168 fold-in (H-2)**: `pnpm-cache`/`go-cache` 제거 — `actions/setup-go`/`actions/setup-node` 의 GHA cache 와 충돌. `setup-*` 자체 cache 보존, Playwright (GHA cache 미적용) + hostedtool 만 volume cache 사용.
+
+### 구성
+
+| volume | mount | 용도 |
+|---|---|---|
+| `playwright-cache` | `/opt/cache/playwright` | Playwright browser binary (chromium/firefox) |
+| `hostedtool-cache` | `/opt/hostedtoolcache` | actions/setup-go, actions/setup-node 의 toolchain cache |
+
+### 환경변수
+
+`x-runner-base.environment` 에서 명시 (workflow step 이 직접 읽음):
+- `PLAYWRIGHT_BROWSERS_PATH=/opt/cache/playwright`
+- `RUNNER_TOOL_CACHE=/opt/hostedtoolcache` (L-ARCH-1: actions/setup-* hostedtoolcache 위치 명시)
+
+### Phase 1 효과 (재산정 — PR-168 fold-in 후)
+
+cache mount 범위가 `playwright-cache` + `hostedtool-cache` 2개로 축소 (pnpm-store/Go mod cache 는 GH-managed cache 사용 — H-2 fold-in).
+
+- 1st run: ~10분 setup (full download → cache 빌드)
+- 2nd run+: setup ~2~3분 (Playwright + Go/Node toolchain hit, pnpm install 은 GHA cache 의존)
+- pnpm-lock 변경 시: GHA cache miss → 새 install ~2~3분
+- Playwright bump 시: 해당 browser ~1분 download
+
+→ "최대 70% 단축" 은 GHA cache 가 정상 작동할 때의 추가 효과 (Playwright 만 단독).
+
+### 보안 — Public repo + Fork PR 가드
+
+본 repo 는 public + `pull_request` 이벤트 trigger. 4 runner 가 같은 named volume 을 공유하므로 fork PR 의 untrusted code 가 `playwright-cache`/`hostedtool-cache` 에 악성 binary 를 심으면 다음 main job 에 횡전파 가능 (PR-168 4-agent review H-1).
+
+**가드**:
+- `e2e-stubbed.yml` 의 `e2e` 와 `merge-reports` job 에 `if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false` 추가 — fork PR 은 cache mount runner 우회.
+- GitHub Settings → Actions → "Require approval for first-time contributors" 활성 권고 (사용자 작업).
+- cache 오염 의심 시 즉시 `docker volume rm playwright-cache hostedtool-cache && docker compose up -d` 로 정화.
+
+### 보안 — Secret leak 가드
+
+`pnpm install` 또는 Go build 가 `.npmrc` 등에 `NPM_TOKEN` 같은 secret 를 쓰면 cache 디렉토리에 잔존 가능. **현재 mount 범위는 Playwright browser binary + hostedtool toolchain 으로 한정** (PR-168 fold-in) — pnpm-store/Go mod cache 는 제거 후 GH-managed cache 사용. secret leak 경로 minimal.
+
+운영 점검: `docker exec runner-1 ls -la /opt/cache/playwright /opt/hostedtoolcache` 로 예상 외 파일 부재 정기 확인.
+
+### 적용 (사용자 SSH 직접 작업)
+
+PR 머지 후 host (sabyun@100.90.38.7) 에서:
+
+```bash
+ssh sabyun@100.90.38.7
+cd ~/infra/runners
+
+# 새 docker-compose.yml 가져오기
+git pull origin main
+
+# 기존 named volume 삭제 (volume 정의 변경 — pnpm-cache/go-cache 제거됨)
+docker compose down
+docker volume rm runner-cache_pnpm-cache runner-cache_go-cache 2>/dev/null || true
+
+# 재배포
+docker compose up -d
+
+# 검증
+docker compose ps                                          # 4 service Up
+docker volume ls | grep -E "(playwright|hostedtool)-cache"  # 2 cache volume 생성
+docker compose logs runner-1 --tail 10                     # "Listening for Jobs"
+```
+
+GH UI Settings → Actions → Runners 에서 4 runner idle 재확인.
+
+### 디스크 사용량
+
+cache 누적 후 예상치:
+- `playwright-cache`: 200~500MB (chromium 150MB + firefox 80MB + system deps)
+- `hostedtool-cache`: ~200MB (Go toolchain + Node)
+
+총 ~400~700MB (pnpm/Go cache 제거로 이전 대비 ~3~4GB → ~0.7GB 감소). 정기 재 build 시 docker volume prune 권장.
+
 ## Troubleshooting (PAT 만료 detection)
 
 `restart: always` + entrypoint registration fail → 32초 간격 무한 restart (max-retry 없음). detection:

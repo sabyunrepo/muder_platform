@@ -22,6 +22,26 @@ prs_estimated: 3
 
 ## Wave/PR 분해
 
+### PR-5 — ci.yml runs-on `[self-hosted, containerized]` 전환
+- **Effort** S, **Impact** Med (CI Lint/Test 도 cache 효과)
+- **branch**: `chore/w1-5-ci-runs-on`
+- **변경**: `.github/workflows/ci.yml` 의 4 job `runs-on` → `[self-hosted, containerized]`
+- **의존**: PR-4 머지 + 사용자 SSH 재배포 완료
+- **권고**: PR-4 의 효과 측정 후 진행 (1st/2nd run 비교)
+
+### PR-4 — Runner Cache Volume (Playwright/pnpm/Go)
+- **Effort** S~M, **Impact** Very High (CI 시간 ~70% 단축)
+- **branch**: `chore/w1-5-runner-cache`
+- **변경**:
+  - `infra/runners/docker-compose.yml`: 2 named cache volume (playwright + hostedtool) + 2 환경변수 (PLAYWRIGHT_BROWSERS_PATH + RUNNER_TOOL_CACHE)
+  - `.github/workflows/e2e-stubbed.yml`: fork PR 게이트 추가 (security)
+  - 상세: [`refs/pr-4-runner-cache.md`](refs/pr-4-runner-cache.md) — 의존성, H-2 결정 근거, 검증 시뮬
+- **사용자 작업** (PR 머지 후): SSH 접속 → `git pull` → 구 volume 제거 → `docker compose up -d`
+- **검증**:
+  - 1st CI run: 기존과 동일 시간 (cache 빌드)
+  - 2nd CI run+: Playwright hit (~30s), pnpm/Go 는 GHA cache 의존
+  - `docker volume ls` 에 playwright/hostedtool-cache 2개 생성
+
 ### PR-1 — H-TEST-1: e2e-orphan-gate fixture job
 - **Effort** S, **Impact** Med (회귀 방어)
 - **branch**: `chore/w1-5-orphan-gate`
@@ -75,6 +95,7 @@ PR-167 4-agent 리뷰 잔여:
 ## 사용자 승인 게이트
 
 다음 진입은 **사용자 명시 승인 후**:
+- `/compound-work PR-4` — Runner Cache Volume (가장 시급)
 - `/compound-work PR-1` — orphan-gate fixture 구현
 - 초안 직접 수정 — Wave/PR 분해 또는 task 단위 조정
 - `/compound-cycle` — 본 mini-plan 진행 상태 확인
