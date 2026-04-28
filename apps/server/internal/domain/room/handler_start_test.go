@@ -98,4 +98,3 @@ func TestStartRoom_BodyTooLarge(t *testing.T) {
 		t.Fatalf("expected 400 or 413, got %d: %s", rec.Code, rec.Body.String())
 	}
 }
-

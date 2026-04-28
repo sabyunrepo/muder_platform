@@ -310,7 +310,7 @@ func TestTextChatModule_BuildStateFor_RespectsMaxLimit(t *testing.T) {
 	}
 	// Marshalled snapshot should not reference the excluded head (m0 .. m9).
 	// Defensive: a substring check prevents a future off-by-one regression.
-	if fmt.Sprintf("%s", data) == "" {
+	if string(data) == "" {
 		t.Fatal("empty snapshot")
 	}
 }

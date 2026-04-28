@@ -29,7 +29,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     strategy:
       fail-fast: false
       matrix:
@@ -105,16 +105,47 @@ jobs:
             up
 
       - name: Start server
+        # DEBT-3: self-hosted runner는 job 사이에 user 프로세스가 leak 되면 다음 run 의
+        # mmp-server bind 가 "address already in use" 로 즉사하고, 죽은 DB connection 을
+        # 든 orphan listener 가 health check + 후속 request 에 stale 응답을 돌려준다.
+        # 증상: seed register → 500 "failed to check existing user".
+        # 따라서 (1) 시작 전 우리 user 의 mmp-server 잔재 정리, (2) 포트 점유 사전 검출,
+        # (3) health check 루프 매 iteration 마다 우리 PID 생존 확인이 필요.
+        # H-ARCH-1: 본 가드는 self-hosted bare-host runner 의 leaked mmp-server 차단용.
+        # Phase 22 W3 atomic switch (모든 runs-on 을 [self-hosted, containerized] 로 전환) 머지 후
+        # containerized runner 의 own network namespace 에서 :8080 공유가 사라지면 본 step 의
+        # pkill + ss precheck 는 dead code. → W3 stable 1주 후 제거 검토.
+        # H-SEC-1: pkill 을 우리 user 만으로 좁힘 (cross-kill 방지).
         run: |
+          pkill -u "$(id -u)" -f /tmp/mmp-server || true
+          sleep 1
+          if (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep -qE ':8080[[:space:]]'; then
+            echo "::error::port 8080 occupied before mmp-server start (orphan or parallel shard)"
+            (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep ':8080' || true
+            exit 1
+          fi
           /tmp/mmp-server > /tmp/server.log 2>&1 &
-          echo "SERVER_PID=$!" >> "$GITHUB_ENV"
+          SERVER_PID=$!
+          echo "SERVER_PID=$SERVER_PID" >> "$GITHUB_ENV"
+          ready=0
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:8080/health; then
-              echo "Server ready after ${i}s"
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "::error::mmp-server (PID $SERVER_PID) died during startup"
+              cat /tmp/server.log
+              exit 1
+            fi
+            if curl -sf http://localhost:8080/health >/dev/null; then
+              echo "Server ready after ${i}s (PID=$SERVER_PID)"
+              ready=1
               break
             fi
             sleep 1
           done
+          if [ "$ready" != "1" ]; then
+            echo "::error::mmp-server health check did not pass within 30s"
+            cat /tmp/server.log
+            exit 1
+          fi
 
       # ── Seed E2E user (Issue #46) ──────────────────────────────────────────
       # game-session/reconnect/redaction specs log in as e2e@test.com.
@@ -237,7 +268,7 @@ jobs:
     name: Merge Playwright reports
     if: always()
     needs: [e2e]
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
