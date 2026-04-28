@@ -29,7 +29,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     strategy:
       fail-fast: false
       matrix:
@@ -268,7 +268,7 @@ jobs:
     name: Merge Playwright reports
     if: always()
     needs: [e2e]
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
