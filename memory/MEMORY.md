@@ -33,6 +33,7 @@
 - [에러 처리 체계](project_error_system.md) — AppError, ErrorBoundary 3계층, Sentry, OTel
 - [모듈 시스템](project_module_system.md) — 33개 모듈 (spec 29 + crime_scene 3 + media 1), BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
 - [코딩 규칙](project_coding_rules.md) — Go/React 계층구조, DI, 상태관리, 테스트
+- [compound-mmp Wave 3 PR-7 완료](sessions/2026-04-28-compound-mmp-wave3-pr7.md) — `/compound-review` + 4-agent parallel bridge + helper(jq --arg) + 27-case fixture (PR #158 `b5e4127`, 4-agent self-review HIGH 4건 in-PR fix, 2026-04-28)
 
 ## 도구 & 인프라
 - [Docker/Nginx 인프라](project_infra_docker.md) — Nginx 리버스 프록시, dev/prod Compose, Makefile
