@@ -1,0 +1,69 @@
+# infra/runners/docker-compose.yml
+# Phase 22 — Runner Containerization
+# Spec: docs/superpowers/specs/2026-04-28-phase-22-runner-containerization-design.md
+
+x-runner-base: &runner-base
+  image: myoung34/github-runner:latest
+  restart: always
+  env_file: .env
+  environment: &runner-env
+    EPHEMERAL: "true"
+    DISABLE_AUTO_UPDATE: "true"
+    RUN_AS_ROOT: "false"
+    LABELS: "self-hosted,linux,containerized"
+  group_add:
+    - "${DOCKER_GID}"
+  mem_limit: 3g
+  networks:
+    - runners-net
+
+services:
+  runner-1:
+    <<: *runner-base
+    container_name: containerized-runner-1
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: containerized-runner-1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner1-work:/runner/_work
+
+  runner-2:
+    <<: *runner-base
+    container_name: containerized-runner-2
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: containerized-runner-2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner2-work:/runner/_work
+
+  runner-3:
+    <<: *runner-base
+    container_name: containerized-runner-3
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: containerized-runner-3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner3-work:/runner/_work
+
+  runner-4:
+    <<: *runner-base
+    container_name: containerized-runner-4
+    environment:
+      <<: *runner-env
+      RUNNER_NAME: containerized-runner-4
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner4-work:/runner/_work
+
+volumes:
+  runner1-work:
+  runner2-work:
+  runner3-work:
+  runner4-work:
+
+networks:
+  runners-net:
+    driver: bridge
