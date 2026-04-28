@@ -42,7 +42,10 @@ case "$EVENT" in
     ;;
   stop-wrap-reminder)
     # 이번 PR-3에서 구현. Stop hook → 변경 50줄+ 이고 wrap 미실행이면 한 줄 리마인드
-    exec "$PLUGIN_ROOT/hooks/stop-wrap-reminder.sh"
+    if [ -x "$PLUGIN_ROOT/hooks/stop-wrap-reminder.sh" ]; then
+      exec "$PLUGIN_ROOT/hooks/stop-wrap-reminder.sh"
+    fi
+    exit 0
     ;;
   "")
     echo "Usage: run-hook.sh <event>" >&2
