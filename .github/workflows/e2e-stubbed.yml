@@ -111,8 +111,13 @@ jobs:
         # 증상: seed register → 500 "failed to check existing user".
         # 따라서 (1) 시작 전 우리 user 의 mmp-server 잔재 정리, (2) 포트 점유 사전 검출,
         # (3) health check 루프 매 iteration 마다 우리 PID 생존 확인이 필요.
+        # H-ARCH-1: 본 가드는 self-hosted bare-host runner 의 leaked mmp-server 차단용.
+        # Phase 22 W3 atomic switch (모든 runs-on 을 [self-hosted, containerized] 로 전환) 머지 후
+        # containerized runner 의 own network namespace 에서 :8080 공유가 사라지면 본 step 의
+        # pkill + ss precheck 는 dead code. → W3 stable 1주 후 제거 검토.
+        # H-SEC-1: pkill 을 우리 user 만으로 좁힘 (cross-kill 방지).
         run: |
-          pkill -f /tmp/mmp-server || true
+          pkill -u "$(id -u)" -f /tmp/mmp-server || true
           sleep 1
           if (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep -qE ':8080[[:space:]]'; then
             echo "::error::port 8080 occupied before mmp-server start (orphan or parallel shard)"
