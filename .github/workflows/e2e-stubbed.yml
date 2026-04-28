@@ -238,6 +238,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ── Cache volume permissions (PR-168 EACCES fix) ────────────────────────
+      # Docker named volume (playwright-cache, hostedtool-cache) 가 default root:root
+      # 소유로 생성되어 runner user 의 mkdir 거부 (Failed to install browsers /
+      # EACCES: permission denied, mkdir '/opt/cache/playwright/__dirlock').
+      # 4 runner 가 같은 named volume 공유 — chown idempotent, race 없음.
+      - name: Prepare cache volume permissions
+        run: |
+          sudo mkdir -p /opt/cache/playwright /opt/hostedtoolcache
+          sudo chown -R "$(id -u):$(id -g)" /opt/cache/playwright /opt/hostedtoolcache
+
       - name: Install Playwright browsers for matrix
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps ${{ matrix.browser }}

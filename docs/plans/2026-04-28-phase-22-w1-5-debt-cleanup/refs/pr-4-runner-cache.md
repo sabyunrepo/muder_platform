@@ -140,6 +140,16 @@ docker compose logs runner-1 --tail 10                     # "Listening for Jobs
   형태로 stdin redirect.
 - **보안**: `PGPASSWORD` 를 `-e` 환경변수 로 전달 (process table 미노출).
 
+### `<EACCES-fix>` Cache volume permissions (PR-168 회귀 fix)
+
+- **원인**: Docker named volume (`playwright-cache`, `hostedtool-cache`) 가 default `root:root` 소유로 생성. `RUN_AS_ROOT: false` runner user 가 `pnpm exec playwright install` 실행 시 `mkdir '/opt/cache/playwright/__dirlock'` EACCES.
+- **검증 fail 신호**: a31af3f CI 의 4 E2E shard 모두 `Failed to install browsers / Error: EACCES: permission denied, mkdir '/opt/cache/playwright/__dirlock'` 동일 fail.
+- **결정**: workflow step `Install dependencies` 다음에 `Prepare cache volume permissions` step 추가 — `sudo mkdir -p` + `sudo chown -R "$(id -u):$(id -g)"` 로 named volume 의 ownership 정착. 4 runner 가 같은 named volume 공유 — chown idempotent + race 없음.
+- **trade-off**: 매 run 마다 chown 실행 (idempotent, ~50ms 비용). 사용자 host 재배포 불필요.
+- **대안 (rejected)**:
+  - docker-compose.yml entrypoint chown — 사용자 host 재배포 필요
+  - mount path 변경 (`~/.cache/ms-playwright`) — named volume 4 runner 공유 효과 손실
+
 ### `b320681` shellcheck SC2034
 
 - **원인**: `test-compound-plan-dry-run.sh:9` 의 `TEMPLATE` 변수가 fixture 격리
