@@ -90,11 +90,24 @@ jobs:
           echo "PG_NAME=$PG_NAME" >> "$GITHUB_ENV"
           echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
 
+          # runners-net network 동적 검출 (compose project prefix 무관).
+          # 후보: runners-net (PR-168 6d5a71d explicit name) 또는
+          # infra-runners_runners-net (compose project prefix — 현재 host).
+          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          if [ -z "$RUNNERS_NET" ]; then
+            echo "::error::runners-net network not found on host"
+            sudo docker network ls
+            exit 1
+          fi
+          echo "RUNNERS_NET=$RUNNERS_NET" >> "$GITHUB_ENV"
+          export RUNNERS_NET
+          echo "Detected runners-net: $RUNNERS_NET"
+
           # 이전 run cleanup (이름 충돌 방지)
           sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
 
           sudo docker run -d --name "$PG_NAME" \
-            --network runners-net \
+            --network "$RUNNERS_NET" \
             -e POSTGRES_DB=mmp_e2e \
             -e POSTGRES_USER=mmp \
             -e POSTGRES_PASSWORD=mmp_e2e \
@@ -105,7 +118,7 @@ jobs:
             postgres:17-alpine
 
           sudo docker run -d --name "$REDIS_NAME" \
-            --network runners-net \
+            --network "$RUNNERS_NET" \
             --health-cmd "redis-cli ping" \
             --health-interval 5s \
             --health-timeout 3s \
