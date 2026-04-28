@@ -72,9 +72,17 @@ else
   POST_TEST="pnpm --filter web test"
 fi
 
-# 7. branch 자동 생성 패턴 (feat/<phase-slug>/<pr-id>-<scope>)
-PHASE_SLUG="$(basename "$ACTIVE_PHASE")"
-BRANCH="feat/${PHASE_SLUG}/${PR_ID}-${SCOPE}"
+# 7. branch 자동 생성 패턴 (feat/<project-slug>/<pr-id>-<scope>)
+# HIGH-A1 round-1: branch 명명 sister 카논 align (memory/sessions 7건 모두 feat/compound-mmp/...).
+# PROJECT_SLUG env 우선 (plugin work 시 명시), 없으면 ACTIVE_PHASE basename fallback (phase work).
+# MED-P1 round-1: parameter expansion `${VAR##*/}`로 basename fork 제거 (sister 1 fork 패리티).
+# MED-S1 round-1: PROJECT_SLUG에 화이트리스트 적용 (sister 카논 대칭, downstream branch 안전).
+PROJECT_SLUG="${PROJECT_SLUG:-${ACTIVE_PHASE##*/}}"
+if [[ ! "$PROJECT_SLUG" =~ ^[a-z0-9_.-]+$ ]]; then
+  printf 'ERROR: PROJECT_SLUG must match ^[a-z0-9_.-]+$, got %q\n' "$PROJECT_SLUG" >&2
+  exit 2
+fi
+BRANCH="feat/${PROJECT_SLUG}/${PR_ID}-${SCOPE}"
 
 # 8. JSON 출력 (jq --arg 안전 토큰 치환)
 jq -nc \

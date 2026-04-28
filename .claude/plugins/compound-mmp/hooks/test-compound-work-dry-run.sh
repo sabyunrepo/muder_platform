@@ -49,7 +49,7 @@ run_test() {
   return 0
 }
 
-ENV_OK="ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main'"
+ENV_OK="ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp'"
 
 # === 입력 검증 (pr-id 화이트리스트 ^PR-[0-9]+[a-z]?$) ===
 run_test "pr-id 누락 시 거부" \
@@ -116,20 +116,38 @@ run_test "worktree.skill = superpowers:using-git-worktrees" \
   "0" "jq -e '.worktree.skill == \"superpowers:using-git-worktrees\"' >/dev/null"
 
 run_test "worktree.base = BASE_BRANCH (env)" \
-  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='develop' bash '$DRY_RUN' 'PR-1'" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='develop' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-1'" \
   "0" "jq -e '.worktree.base == \"develop\"' >/dev/null"
 
 run_test "worktree.branch에 pr-id 포함" \
   "$ENV_OK bash '$DRY_RUN' 'PR-7'" \
   "0" "jq -e '.worktree.branch | contains(\"PR-7\")' >/dev/null"
 
+# HIGH-A1 round-1: branch 명명 sister 카논 정확 매칭 (memory/sessions 7건 패턴)
+run_test "PROJECT_SLUG override → branch = feat/<slug>/<pr-id>-<scope>" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-9'" \
+  "0" "jq -e '.worktree.branch == \"feat/compound-mmp/PR-9-go\"' >/dev/null"
+
+# MED-S1 round-1: PROJECT_SLUG 화이트리스트 (security agent)
+run_test "PROJECT_SLUG 화이트리스트 우회 거부 (shell metachar)" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' PROJECT_SLUG='evil; rm -rf /' bash '$DRY_RUN' 'PR-1'" \
+  "2" ""
+
+run_test "PROJECT_SLUG 화이트리스트 우회 거부 (command sub)" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' PROJECT_SLUG='\$(whoami)' bash '$DRY_RUN' 'PR-1'" \
+  "2" ""
+
+run_test "PROJECT_SLUG 정상 'compound-mmp' + react → 정확 매칭" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='react' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-2c'" \
+  "0" "jq -e '.worktree.branch == \"feat/compound-mmp/PR-2c-react\"' >/dev/null"
+
 # === TDD skill 매핑 (file-type 감지) ===
 run_test "SCOPE=go → tdd-mmp-go" \
-  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' bash '$DRY_RUN' 'PR-1'" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-1'" \
   "0" "jq -e '.tdd_skill == \"compound-mmp:tdd-mmp-go\"' >/dev/null"
 
 run_test "SCOPE=react → tdd-mmp-react" \
-  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='react' BASE_BRANCH='main' bash '$DRY_RUN' 'PR-1'" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='react' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-1'" \
   "0" "jq -e '.tdd_skill == \"compound-mmp:tdd-mmp-react\"' >/dev/null"
 
 run_test "SCOPE 잘못된 값 거부 (화이트리스트 외)" \
@@ -151,11 +169,11 @@ run_test "executor.model에 sonnet-4-5 포함 X (PreToolUse hook과 정합)" \
 
 # === post_test (자동 테스트 명령) ===
 run_test "SCOPE=go → post_test 'go test -race'" \
-  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' bash '$DRY_RUN' 'PR-1'" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-1'" \
   "0" "jq -e '.post_test | contains(\"go test -race\")' >/dev/null"
 
 run_test "SCOPE=react → post_test 'pnpm --filter web test'" \
-  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='react' BASE_BRANCH='main' bash '$DRY_RUN' 'PR-1'" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='react' BASE_BRANCH='main' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-1'" \
   "0" "jq -e '.post_test | contains(\"pnpm --filter web test\")' >/dev/null"
 
 # === 자동 머지 금지 카논 ===
@@ -182,7 +200,7 @@ run_test "ACTIVE_PHASE 디렉토리 부재 시 거부" \
   "3" ""
 
 run_test "BASE_BRANCH 미설정 시 default 'main'" \
-  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' bash '$DRY_RUN' 'PR-1'" \
+  "ACTIVE_PHASE='$TMP_PHASE' SCOPE='go' PROJECT_SLUG='compound-mmp' bash '$DRY_RUN' 'PR-1'" \
   "0" "jq -e '.worktree.base == \"main\"' >/dev/null"
 
 echo

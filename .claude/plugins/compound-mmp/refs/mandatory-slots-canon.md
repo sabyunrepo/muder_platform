@@ -72,5 +72,5 @@ fi
 ## 검증 트레일
 
 - PR-8 round-2 critic (M-N1): "helper mandatory_slots + template marker는 observability tier만, 강제 tier는 PR-9 wrap-up canon 추가에 의존"
-- PR-9 (본 카논 도입): observability + 강제 tier 모두 도입 → A2 PARTIAL → RESOLVED 승격 trail
+- PR-9 (본 카논 도입): **observability tier + advisory tier** 도입 (wrap-up Step 1.5 grep이 경고 echo만 — 강제 차단 hook은 PR-10 carry-over). A2 PARTIAL은 advisory 수준에서 mitigation, full 강제 tier 승격은 PR-10 hook 도입 시
 - PR-10 dogfooding: `/compound-plan phase-21-...` → `/compound-work` → `/compound-review` → `/compound-wrap --wave` 풀 사이클에서 `qmd-recall-table` 슬롯 inject 검증

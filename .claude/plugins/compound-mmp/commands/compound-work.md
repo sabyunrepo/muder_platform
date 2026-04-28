@@ -18,6 +18,7 @@ PR 구현 시 진입. **worktree + TDD soft ask + OMC executor 위임 + 자동 p
 ## 환경 변수
 
 - `ACTIVE_PHASE` (필수) — 활성 phase 디렉토리. 메인 컨텍스트가 `ls -td docs/plans/*/ | head -1`로 자동 검출 또는 사용자 명시 override.
+- `PROJECT_SLUG` (선택, default `${ACTIVE_PHASE##*/}`) — branch prefix 카논. plugin work 시 `compound-mmp` 명시 (sister 카논 align — memory/sessions 7건). phase work 시 default(phase basename)로 충분. 화이트리스트 `^[a-z0-9_.-]+$`.
 - `SCOPE` (기본 `go`) — `go` 또는 `react`. file-type 감지 결과를 helper에 전달.
 - `BASE_BRANCH` (기본 `main`) — worktree 분기 base.
 
