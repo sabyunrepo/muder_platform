@@ -11,7 +11,7 @@ allowed-tools: Bash, Read, Glob, Grep, Task
 
 `/compound-review` 슬래시 커맨드의 패턴 SKILL. `wrap-up-mmp` SKILL 패턴 대칭 — 슬래시 커맨드는 실행 시퀀스, SKILL은 호출 정책·anti-pattern·fallback 매핑을 담당.
 
-> **카논 single source**: `refs/post-task-pipeline-bridge.md` (4-agent 매핑) + `commands/compound-review.md` (실행 시퀀스) + `.claude/post-task-pipeline.json` (prompt template).
+> **카논 single source**: `refs/post-task-pipeline-bridge.md` (4-agent 매핑) + `commands/compound-review.md` (실행 시퀀스) + `.claude/post-task-pipeline.json` (prompt template) + `refs/mandatory-slots-canon.md` (review 단계는 슬롯 없음 명시 — drift 방지).
 
 ## 4-agent 매핑 (post-task-pipeline.json `after_pr.review-*`)
 

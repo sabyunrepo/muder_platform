@@ -14,6 +14,23 @@ git log --oneline HEAD~10..HEAD
 ```
 출력: 변경 파일 목록, 커밋 추세, 미커밋 변경.
 
+#### Step 1.5 — `mandatory_slots` 검증 (M-N1 sister 카논, `refs/mandatory-slots-canon.md`)
+
+활성 phase의 checklist.md에서 sister 카논 슬롯이 inject되었는지 grep 검증. **경고만 출력** (강제 차단 X — P3 수준, 사용자 의도적 빈 슬롯 허용).
+
+```bash
+ACTIVE_PHASE=$(ls -td docs/plans/*/ 2>/dev/null | head -1 | sed 's:/$::')
+CHECKLIST="${ACTIVE_PHASE}/checklist.md"
+if [ -f "$CHECKLIST" ] && grep -q "INJECT-RECALL-MANDATORY-START" "$CHECKLIST"; then
+  DOCID_COUNT=$(awk '/INJECT-RECALL-MANDATORY-START/,/INJECT-RECALL-MANDATORY-END/' "$CHECKLIST" | grep -oE '#[a-f0-9]{6}' | wc -l)
+  if [ "$DOCID_COUNT" -lt 3 ]; then
+    echo "WARN: qmd-recall-table 슬롯 inject 누락 (docid ${DOCID_COUNT}/≥3) — A.7 회상 inject 의무 확인 필요"
+  fi
+fi
+```
+
+검증 카논 single source: `refs/mandatory-slots-canon.md`. 슬롯 추가 시 본 Step과 카논 양쪽 갱신 필수 (drift 방지).
+
 ### Step 2 — Phase 1 병렬 4 agent (자동 분석)
 
 > spike 결과 (`refs/spike-omc-overlap.md`) 반영: doc-curator는 OMC `document-specialist` 호출로 대체. 신규 정의는 4개.

@@ -4,7 +4,7 @@ description: |
   사용자가 작업 세션을 마무리하려는 의도를 표현할 때 자동 활성화. compound-mmp 4단계 라이프사이클의 Compound 단계 (Plan→Work→Review→Compound).
   트리거: "wrap up", "마무리", "세션 끝", "정리", "내일 이어서", "오늘 끝", "handoff", "wrap-up" 등 한글/영문 키워드 또는 /compound-wrap 명시 호출.
   Phase·Wave·session 종료 시점에 7단계 wrap 시퀀스를 실행해 MEMORY 갱신·MISTAKES/QUESTIONS append·다음 세션 핸드오프 노트 생성을 자동화한다.
-  카논 위치: refs/wrap-up-checklist.md, refs/learning-quality-gate.md.
+  카논 위치: refs/wrap-up-checklist.md, refs/learning-quality-gate.md, refs/mandatory-slots-canon.md (Step 1.5 sister 슬롯 grep 카논).
 allowed-tools: Bash, Read, Glob, Grep, Write, Edit, Task, mcp__plugin_qmd_qmd__vector_search
 ---
 
