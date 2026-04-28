@@ -90,4 +90,8 @@ volumes:
 
 networks:
   runners-net:
+    # explicit name — docker compose project prefix 회피.
+    # workflow step 의 `--network runners-net` 가 정확한 이름 매칭 가능.
+    # 변경 후 사용자 host 에서 재배포 필요: docker compose down && docker compose up -d.
+    name: runners-net
     driver: bridge
