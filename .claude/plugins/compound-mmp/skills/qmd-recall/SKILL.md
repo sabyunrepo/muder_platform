@@ -3,7 +3,7 @@ name: qmd-recall
 description: |
   QMD `mcp__plugin_qmd_qmd__vector_search`를 wrapper로 표준화. compound-mmp 4단계 라이프사이클 진입 시 컬렉션별 자동 회상 — Plan stage `mmp-plans` 5건 (유사 phase 패턴), Work stage `mmp-memory` N건 (코딩 규칙·feedback), Wrap stage `mmp-memory` (이전 세션 핸드오프).
   자동 활성화 트리거: `/compound-plan` 진입, `/compound-work` 진입, `/compound-wrap` 진입, "계획 세워", "이전에 비슷한 phase", "기억해 둔 ...", "memory 검색", "QMD 회상" 등 한글/영문 키워드.
-  Compound `ce-compound`의 Phase 0.5 패턴(MEMORY.md 스캔→subagent inject)을 QMD vector_search로 변형 (plan Appendix A.7).
+  Compound `ce-compound`의 Phase 0.5 패턴(MEMORY.md 스캔→subagent inject)을 QMD vector_search로 변형 (plan Appendix A.7). `qmd-recall-table` 슬롯 출처 — `refs/mandatory-slots-canon.md` sister 카논 인용.
 allowed-tools: mcp__plugin_qmd_qmd__vector_search, mcp__plugin_qmd_qmd__search, mcp__plugin_qmd_qmd__get, mcp__plugin_qmd_qmd__multi_get
 ---
 
