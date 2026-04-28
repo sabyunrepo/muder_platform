@@ -181,11 +181,11 @@ session_date: 2026-MM-DD
 
 ## 종료 후
 
-다음 SessionStart hook이 `memory/sessions/`에서 가장 최근 1개 파일을 자동 inject (PR-6에서 구현).
+다음 세션에서 사용자가 `/compound-resume` 명시 호출 시 `memory/sessions/`에서 가장 최근 1개 파일 read. 자동 SessionStart inject 폐기 — 사용자 결정 2026-04-28 (매 세션 토큰 낭비 회피, 필요할 때만 명시 호출). 카논: `commands/compound-resume.md`, `templates/session-recall-template.md`.
 
 ## 검증 (PR-10 dogfooding)
 
-- Step 5-2 handoff 노트가 다음 세션 SessionStart에 정상 inject 되는지
+- Step 5-2 handoff 노트가 다음 세션 `/compound-resume` 호출 시 정상 read 되는지
 - Step 5-3 MEMORY.md drift 측정 (1주 누적)
 - Step 6-1 MISTAKES.md 사용자 승인율 (≥80% 권장 — 너무 낮으면 learning-extractor Q-gate 강화)
 

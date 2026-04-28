@@ -42,7 +42,7 @@ Phase (예: Phase 19 Residual)
 | Plan | 사용자 명시 의도 | checklist.md 머지 | 자동 진행 X (plan-autopilot 폐기) |
 | Work | branch + worktree 존재 | 로컬 테스트 green | 4-agent에서 잡힐 수 있음 |
 | Review | post-task-pipeline.json 존재 (repo root) | HIGH 0건 또는 사용자 승인 | hotfix PR 1회 허용 |
-| Compound | wrap 트리거 (수동 또는 dispatch) | QMD reindex 완료 | 다음 SessionStart에서 핸드오프 inject |
+| Compound | wrap 트리거 (수동 또는 dispatch) | QMD reindex 완료 | 다음 세션에서 `/compound-resume` 명시 호출 시 핸드오프 read |
 
 ## OMC 호출 매핑 (재정의 X, 호출만)
 

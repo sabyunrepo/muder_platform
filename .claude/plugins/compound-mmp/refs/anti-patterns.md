@@ -52,3 +52,9 @@
 ## 12. wrap-up agent에 Bash/Edit/Write 권한 부여 X
 - **근거**: Session-Wrap 검증 — 분석 전용. 실제 변경은 메인 컨텍스트가 사용자 승인 후 수행
 - **강제**: `agents/*.md` frontmatter `tools: [Read, Glob, Grep]` 명시
+
+## 13. SessionStart hook 자동 핸드오프 inject 부활 X
+- **근거**: 사용자 결정 2026-04-28 — 매 세션 토큰 ~1-2K 추가 비용이 단순 PR/한가한 세션에서 낭비. 명시 호출 패턴이 더 효율적
+- **대안**: `/compound-resume` 슬래시 커맨드 (`commands/compound-resume.md`) — 사용자가 필요할 때만 명시 호출. 핸드오프 + plan + 카논 cheat-sheet 일괄 read
+- **강제**: `hooks/run-hook.sh`에 `session-start)` case 부재. `hooks/session-start-context.sh` 파일 신설 금지
+- **carve-out 없음**: 어떤 모드에서도 자동 inject 부활 X. 5개 컨텍스트 카테고리(33모듈/Phase19 사례/4-agent 위치/CI admin-skip/WS 토큰) 가 필요하면 `/compound-resume` 출력에 포함 또는 사용자 발화로 read 지시

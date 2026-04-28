@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # compound-mmp 단일 hook 디스패처. Superpowers 패턴 차용.
 # 사용법: run-hook.sh <event>
-#   event ∈ {dispatch, pre-edit-size, pre-task-model, session-start, stop-wrap-reminder}
+#   event ∈ {dispatch, pre-edit-size, pre-task-model, stop-wrap-reminder}
+# (session-start case는 사용자 결정 2026-04-28에 의해 폐기 — `/compound-resume` 슬래시 커맨드로 대체)
 #
 # Claude Code hook system이 stdin으로 JSON event payload를 전달하고, stdout은 hookSpecificOutput JSON 또는 빈 응답.
 # CLAUDE_PLUGIN_ROOT는 marketplace runtime이 자동 설정.
@@ -30,13 +31,6 @@ case "$EVENT" in
     # PR-6에서 구현. PreToolUse(Task) hook
     if [ -x "$PLUGIN_ROOT/hooks/pre-task-model-guard.sh" ]; then
       exec "$PLUGIN_ROOT/hooks/pre-task-model-guard.sh"
-    fi
-    exit 0
-    ;;
-  session-start)
-    # PR-6에서 구현. SessionStart hook
-    if [ -x "$PLUGIN_ROOT/hooks/session-start-context.sh" ]; then
-      exec "$PLUGIN_ROOT/hooks/session-start-context.sh"
     fi
     exit 0
     ;;
