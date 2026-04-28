@@ -14,11 +14,10 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 - **다음 액션**: PR-10 dogfooding sim 작성 시 bash 3.2 `=~` 에서 `\b` 동작 spike (~30분). 결과에 따라 `(claude-)?sonnet-4[-.]5([^0-9-]|$)` 또는 `\b` 변형 채택.
 - **블로커 risk**: LOW. 4-agent 리뷰 architecture MED-1.
 
-### Q-shopt: dispatch-router.sh `shopt -u nocasematch` 복원 carry-over phantom 검증
-- **위치**: `.claude/plugins/compound-mmp/hooks/dispatch-router.sh` `classify()` 함수
-- **가설**: 이전 세션 carry-over에 명시되었으나, learning-extractor 코드 확인 시 모든 분기에 unset 존재. carry-over 자체가 phantom 가능성.
-- **다음 액션**: Wave 3 진입 전 `test-dispatch.sh` 실행으로 nocasematch 누수 여부 1회 확인. phantom이면 carry-over 폐기, 실재면 `trap 'shopt -u nocasematch' RETURN` 보강.
-- **블로커 risk**: LOW.
+### ~~Q-shopt: dispatch-router.sh `shopt -u nocasematch` 복원 carry-over phantom 검증~~ — **PHANTOM 확정 / 폐기 (2026-04-28)**
+- **검증**: `bash .claude/plugins/compound-mmp/hooks/test-dispatch.sh` → 41/41 pass. 추가로 격리 subshell `shopt -s/-u nocasematch` 함수 외 누수 없음 확인 (case-sensitive 복원).
+- **결론**: dispatch-router.sh L42→L47, L51→L61, L67→L81 각 블록 모두 명시적 `-s`/`-u` 짝. exit 경로(L45)도 `-u` 통과. `trap RETURN` 보강 불필요.
+- **carry-over 폐기**: Wave 3 진입 spec에서 제거.
 
 ### Q-sim-c: PR-10 sim-case-c.md 작성 scope — live deny 시나리오 포함 여부
 - **맥락**: Plan ~/.claude/plans/vivid-snuggling-pascal.md § "검증 절차 3개 시뮬레이션 케이스" Case C — Sonnet 4.5 fallback 차단 검증

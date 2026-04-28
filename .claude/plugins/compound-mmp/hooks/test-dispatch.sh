@@ -60,6 +60,16 @@ run_test "review 영문 부탁" "PR review 부탁해" "review"
 run_test "review 영문 한국식 동사" "이 코드 review해줘" "review"
 run_test "review 한글 검토" "이거 검토 좀" "review"
 
+# === HIGH-A3 카논: /compound-review 슬래시 본문 명시 phrase doc-vs-behavior align ===
+# 본문 (commands/compound-review.md "디스패처 트리거" 섹션) 명시 6 phrase 모두 매칭 검증.
+# 본문 변경 시 이 fixture 동기화 필수.
+run_test "review 본문 phrase 1 — 리뷰 해줘"     "리뷰 해줘" "review"
+run_test "review 본문 phrase 2 — 코드 리뷰"     "코드 리뷰" "review"
+run_test "review 본문 phrase 3 — 머지 전 확인"  "머지 전 확인" "review"
+run_test "review 본문 phrase 4 — 병합 전 체크"  "병합 전 체크" "review"
+run_test "review 본문 phrase 5 — review this PR"  "review this PR" "review"
+run_test "review 본문 phrase 6 — pre-merge review" "pre-merge review" "review"
+
 # === Plan (동사 변형) ===
 run_test "plan 한글" "다음 phase 계획 세워" "plan"
 run_test "plan brainstorm" "이거 어떻게 만들지 brainstorm" "plan"
