@@ -42,6 +42,7 @@
 - [QMD 로컬 문서 검색](reference_qmd_setup.md) — MCP 서버, 3 컬렉션(plans/memory/specs), Hook 강제 구조
 - [graphify 지식 그래프](reference_graphify_setup.md) — 6700n/15398e/531c, Token 17.1x 감소, god nodes, Hook 강제, `.needs_update` auto-touch (2026-04-18)
 - [graphify refresh 정책 (D)](project_graphify_refresh_policy.md) — Phase 종료 시점만 fresh rebuild + PR, 일상 post-commit/watch/update는 로컬 전용·커밋 금지 (2026-04-18)
+- [compound-mmp 플러그인 (4단계 라이프사이클)](reference_compound_mmp_plugin.md) — Wave 2 완료 (PR-3~6), ctm marketplace 활성, Wave 3 (PR-7 /compound-review + PR-8 /compound-plan) 대기 (2026-04-28)
 
 ## 작업 방식
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시/종합만, 실제 작업은 Sonnet/Haiku 위임
