@@ -41,13 +41,15 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 5
 fi
 
-# 3. phase basename + 화이트리스트 (HIGH-S2 round-2 fix: regex injection 차단)
+# 3. phase basename + 화이트리스트 (HIGH-S2 round-2 + HIGH-S3 round-3 fix: regex/option injection 차단)
 # round-2 security HIGH-S2: phase-scoped grep이 BRE 정규식 해석 → metachar 잠입 시 다른 phase 매칭.
-# 해소 (defense-in-depth): (a) PHASE_NAME 화이트리스트 + (b) grep -lF (fixed-string, L94).
-# sister 카논 align (PR-9 PROJECT_SLUG 화이트리스트 패턴).
+# round-3 security HIGH-S3: leading `-` 허용 → `grep -lF -eVAL` 옵션 흡수, fixed-string 우회.
+# 해소 (defense-in-depth, 양 layer 강화):
+#   (a) PHASE_NAME 화이트리스트 — `^[a-z0-9][a-z0-9_.-]*$` (첫 글자 alpha/num 강제, leading -/. 차단)
+#   (b) `grep -lF -- "$PHASE_NAME"` (L102, `--` separator로 옵션 해석 차단)
 PHASE_NAME="${ACTIVE_PHASE##*/}"
-if [[ ! "$PHASE_NAME" =~ ^[a-z0-9_.-]+$ ]]; then
-  printf 'ERROR: PHASE_NAME (ACTIVE_PHASE basename) must match ^[a-z0-9_.-]+$, got %q\n' "$PHASE_NAME" >&2
+if [[ ! "$PHASE_NAME" =~ ^[a-z0-9][a-z0-9_.-]*$ ]]; then
+  printf 'ERROR: PHASE_NAME must match ^[a-z0-9][a-z0-9_.-]*$ (no leading -/.), got %q\n' "$PHASE_NAME" >&2
   exit 3
 fi
 
@@ -97,8 +99,8 @@ fi
 HANDOFF_PATH=""
 COMPOUND_STATUS="pending"
 if [ -d memory/sessions ]; then
-  # HIGH-S2 round-2 fix: -F 플래그로 fixed-string 매칭 (regex injection 차단).
-  LATEST_HANDOFF=$(grep -lF "$PHASE_NAME" memory/sessions/*.md 2>/dev/null | head -1 || true)
+  # HIGH-S2 round-2 + HIGH-S3 round-3 fix: -F (fixed-string) + -- separator (옵션 흡수 차단).
+  LATEST_HANDOFF=$(grep -lF -- "$PHASE_NAME" memory/sessions/*.md 2>/dev/null | head -1 || true)
   if [ -n "$LATEST_HANDOFF" ] && [ -f "$LATEST_HANDOFF" ]; then
     HANDOFF_PATH="$LATEST_HANDOFF"
     COMPOUND_STATUS="in_progress"

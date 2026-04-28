@@ -80,6 +80,15 @@ run_test "PHASE_NAME 공백 포함 거부" \
   "ACTIVE_PHASE='/tmp/foo bar' bash '$DRY_RUN'" \
   "3" ""
 
+# HIGH-S3 round-3 fix: leading-hyphen grep option injection 차단
+run_test "PHASE_NAME leading-hyphen 거부 (grep option injection PoC)" \
+  "ACTIVE_PHASE='/tmp/-eversion' bash '$DRY_RUN'" \
+  "3" ""
+
+run_test "PHASE_NAME leading-dot 거부 (hidden file pattern)" \
+  "ACTIVE_PHASE='/tmp/.hidden' bash '$DRY_RUN'" \
+  "3" ""
+
 # === JSON contract ===
 run_test "출력은 JSON object — jq parsable" \
   "$ENV_OK bash '$DRY_RUN'" \
