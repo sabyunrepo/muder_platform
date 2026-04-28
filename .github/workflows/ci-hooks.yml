@@ -43,6 +43,8 @@ jobs:
         run: bash .claude/plugins/compound-mmp/hooks/test-dispatch.sh
       - name: pre-edit-size self-tests
         run: bash .claude/plugins/compound-mmp/hooks/test-pre-edit-size.sh
+      - name: pre-task-model self-tests
+        run: bash .claude/plugins/compound-mmp/hooks/test-pre-task-model.sh
 
   hook-tests-macos:
     name: hook self-tests (macOS, bash 3.2)
@@ -57,3 +59,5 @@ jobs:
         run: /bin/bash .claude/plugins/compound-mmp/hooks/test-dispatch.sh
       - name: pre-edit-size self-tests (system bash 3.2)
         run: /bin/bash .claude/plugins/compound-mmp/hooks/test-pre-edit-size.sh
+      - name: pre-task-model self-tests (system bash 3.2)
+        run: /bin/bash .claude/plugins/compound-mmp/hooks/test-pre-task-model.sh
