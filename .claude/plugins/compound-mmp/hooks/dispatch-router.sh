@@ -26,17 +26,25 @@ if [ -z "$prompt" ]; then
 fi
 
 # 슬래시 명령 시작 = dispatch 스킵 (대소문자 무관, 사용자 명시 호출 우선)
-prompt_lower="${prompt,,}"
+# bash 3.2 호환: ${var,,} 대신 tr 사용 (macOS /bin/bash 3.2.57)
+prompt_lower=$(printf '%s' "$prompt" | tr '[:upper:]' '[:lower:]')
 case "$prompt_lower" in
   /compound-*) exit 0 ;;
   /sc:*) exit 0 ;;
 esac
 
-# OMC magic keyword 시작 또는 포함 = dispatch 스킵 (OMC keyword-detector 우선)
+# OMC magic keyword 시작 = dispatch 스킵 (OMC keyword-detector 우선)
+# substring 매칭 (*ralph*) 은 false positive 위험 (예: "ralphael") → 시작 패턴 + word-boundary 정규식만
 case "$prompt_lower" in
-  autopilot*|ralph*|ulw*|ralplan*|deep-interview*|ai-slop-cleaner*) exit 0 ;;
-  *autopilot*|*ralph*|*ulw\ *|*ralplan*) exit 0 ;;
+  autopilot*|ralph[[:space:]]*|ralph$|ulw[[:space:]]*|ulw$|ralplan*|deep-interview*|ai-slop-cleaner*) exit 0 ;;
 esac
+# prompt 내부에 magic keyword가 word-boundary로 등장하면 skip (substring 회피)
+shopt -s nocasematch
+if [[ "$prompt" =~ (^|[[:space:]])(autopilot|ralph|ulw|ralplan|deep-interview|ai-slop-cleaner)([[:space:]]|$) ]]; then
+  shopt -u nocasematch
+  exit 0
+fi
+shopt -u nocasematch
 
 # 부정문 stage 추출 — 부정된 stage만 mask, 양성 시그널은 살림
 NEGATED=""
@@ -47,7 +55,7 @@ fi
 if [[ "$prompt" =~ (wrap|마무리|정리)[[:space:]]*(말고|빼고|제외|안|건너뛰고|나중에|skip) ]]; then
   NEGATED="${NEGATED}wrap "
 fi
-if [[ "$prompt" =~ (plan|계획|설계)[[:space:]]*(말고|빼고|제외|아직|skip) ]]; then
+if [[ "$prompt" =~ (plan|계획|설계)[[:space:]]*(말고|빼고|제외|안|아직|건너뛰고|skip) ]]; then
   NEGATED="${NEGATED}plan "
 fi
 shopt -u nocasematch
@@ -66,7 +74,7 @@ classify() {
     result="plan"
   elif [[ "$p" =~ (지금[[:space:]]*어디|다음[[:space:]]*단계|진행[[:space:]]*상황|현황|status[[:space:]]+(이|of|now)|where[[:space:]]+am[[:space:]]+i|what.s[[:space:]]+next) ]]; then
     result="cycle"
-  elif [[ "$p" =~ (구현[[:space:]]*해|만들어[[:space:]]*줘|작성[[:space:]]*해|코딩[[:space:]]*하자|이[[:space:]]*PR[[:space:]]*진입|TDD[[:space:]]*시작|implement[[:space:]]+(this|the|it)|build[[:space:]]+(this|the|it)|write[[:space:]].*[[:space:]]code|write[[:space:]]code|start[[:space:]]+(PR|pr-)|짜[[:space:]]*줘) ]]; then
+  elif [[ "$p" =~ (구현[[:space:]]*해|만들어[[:space:]]*줘|작성[[:space:]]*해|코딩[[:space:]]*하자|이[[:space:]]*PR[[:space:]]*진입|TDD[[:space:]]*시작|implement[[:space:]]+(this|the|it|해|좀)|build[[:space:]]+(this|the|it)|write[[:space:]].*[[:space:]]code|write[[:space:]]code|start[[:space:]]+(PR|pr-)|짜[[:space:]]*줘) ]]; then
     result="work"
   fi
 

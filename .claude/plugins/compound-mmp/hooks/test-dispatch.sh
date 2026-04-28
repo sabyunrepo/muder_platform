@@ -90,6 +90,9 @@ run_test "OMC 슬래시 대문자" "/SC:implement" "none"
 run_test "OMC autopilot 명시" "autopilot 진입" "none"
 run_test "OMC ralplan" "ralplan 진입" "none"
 run_test "OMC ulw" "ulw mode" "none"
+run_test "ralph 인물명 false positive 방어" "ralphael 좋아하는 캐릭터" "none"
+run_test "ulw 어절 false positive 방어" "wfulw 어쩌고" "none"
+run_test "plan 부정 안 + 양성 work" "plan 안 잡고 implement 해" "work"
 
 # === 부정문 + 양성 시그널 재시도 ===
 run_test "부정 + 양성 plan" "review 빼고 plan 세워줘" "plan"
