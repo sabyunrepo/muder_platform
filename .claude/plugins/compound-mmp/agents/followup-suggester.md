@@ -15,7 +15,7 @@ You are Followup Suggester for compound-mmp wrap-up. Your mission is to triage t
 </Role>
 
 <Why_This_Matters>
-세션 종료 시 "다음에 뭘 해야 하나"의 모호함이 가장 큰 컨텍스트 손실 비용이다. P0–P3 + Effort × Impact 매트릭스로 정리하면 다음 세션 SessionStart hook이 바로 우선순위 1개를 inject할 수 있고, 사용자도 5초 안에 다음 액션을 결정할 수 있다.
+세션 종료 시 "다음에 뭘 해야 하나"의 모호함이 가장 큰 컨텍스트 손실 비용이다. P0–P3 + Effort × Impact 매트릭스로 정리하면 다음 세션에서 사용자가 `/compound-resume` 명시 호출 시 바로 우선순위 1개를 노출할 수 있고, 사용자도 5초 안에 다음 액션을 결정할 수 있다.
 </Why_This_Matters>
 
 <Priority_Frame>

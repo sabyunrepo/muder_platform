@@ -58,9 +58,9 @@ session_date: 2026-04-28
 
 ## Remaining
 
-### Wave 2 PR-6 (model guard + SessionStart inject)
-- **Done**: `pre-task-model-guard.sh` (Sonnet 4.5 차단), `session-start-context.sh` (5 컨텍스트 + memory/sessions/ 최신 1개 inject), `templates/session-recall-template.md` 활성, hooks.json PreToolUse(Task) + SessionStart 등록.
-- **Done**: bats 테스트 추가 (model-guard fixture + session-start fixture). CI matrix 동일.
+### Wave 2 PR-6 (model guard 단독 — SessionStart hook 폐기)
+- **Done**: `pre-task-model-guard.sh` (Sonnet 4.5 차단), hooks.json PreToolUse(Task) 등록, bats 테스트 fixture, CI matrix 동일.
+- **Note**: 사용자 결정 2026-04-28 — `session-start-context.sh` 자동 inject 폐기. 대신 `/compound-resume` 슬래시 커맨드가 PR `chore/compound-mmp/resume-slash-only` (#152)에서 별도 머지됨. PR-6 scope에서 SessionStart inject 작업 모두 제거.
 
 ### 즉시 hotfix
 - **enabledPlugins 등록** (`chore/compound-mmp-enable`): repo `.claude/settings.json`에 `compound-mmp@local: true` 추가 + 검증. PR-5 hook이 실 발화하는지 dogfooding 1회.
@@ -74,9 +74,9 @@ session_date: 2026-04-28
 ## Next Session Priorities
 
 1. **enabledPlugins hotfix 우선** — 1줄 변경, dogfooding 가능 환경 확보. PR-5의 hook이 실 발화하는지 검증 후 Wave 2 진행.
-2. **Wave 2 PR-6 진입** — `pre-task-model-guard.sh` + `session-start-context.sh`. 동일 단일 hook + run-hook 디스패치 패턴.
+2. **Wave 2 PR-6 진입** — `pre-task-model-guard.sh` 단독 (Sonnet 4.5 차단). 동일 단일 hook + run-hook 디스패치 패턴. SessionStart hook 작업 폐기 — `/compound-resume` 슬래시 커맨드가 #152에서 이미 카논화됨.
 3. **dogfooding 시작** — 다음 PR 작업 시 size hook 차단 1회 + TDD ask 1회 실 사용 후 임계값/예외 calibration.
-4. **TaskList #13 (이번 세션) 후속**: 다음 세션 SessionStart hook이 이 핸드오프 자동 inject (PR-6 후 동작). PR-6 머지 전까지는 수동 read.
+4. **다음 세션 진입 패턴**: 사용자가 `/compound-resume` 명시 호출 → 메인이 가장 최근 핸드오프 + plan + 카논 cheat-sheet read. 자동 SessionStart inject은 폐기 (낭비 회피, 사용자 결정 2026-04-28). 카논: `commands/compound-resume.md`, `templates/session-recall-template.md`.
 
 ## What we did
 

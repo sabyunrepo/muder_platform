@@ -2,7 +2,7 @@
 
 `/compound-wrap [--session|--wave|--phase]` 실행 시 진행하는 7단계 시퀀스. 사용자 결정 "균형형" 자동화 정책 적용.
 
-> 검증된 코어: Session-Wrap (team-attention) 5단계 + MMP 확장 2단계 (graphify decision + 핸드오프 자동 inject).
+> 검증된 코어: Session-Wrap (team-attention) 5단계 + MMP 확장 2단계 (graphify decision + 핸드오프 명시 호출 read via `/compound-resume`).
 
 ## 단계별 시퀀스
 
@@ -97,7 +97,7 @@ OMC team 5섹션 (`Decided/Rejected/Risks/Files/Remaining`)과 정확히 동일 
 | `--wave` | `make graphify-update` 안내만 (자동 실행 X) |
 | `--phase` | `make graphify-refresh` 자동 실행 → fresh rebuild PR 생성 안내 |
 
-이후 다음 SessionStart hook이 `memory/sessions/`에서 가장 최근 1개 파일을 자동 inject.
+이후 다음 세션에서 사용자가 `/compound-resume` 명시 호출 시 `memory/sessions/`에서 가장 최근 1개 파일 read (자동 SessionStart inject 폐기 — 사용자 결정 2026-04-28, 매 세션 토큰 낭비 회피).
 
 ## 자동 vs 승인 정리
 
