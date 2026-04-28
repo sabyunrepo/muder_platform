@@ -1,10 +1,19 @@
 # Development override — use with: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 # Dev mode: DB/Redis/Server만 실행, 프론트는 Vite dev server 사용
+#
+# IMPORTANT: HOST_UID/HOST_GID env vars must be set BEFORE running compose,
+# otherwise files created in apps/server/tmp/ will be root-owned and break
+# CI checkout cleanup. See apps/server/CLAUDE.md for the canonical command.
 services:
   server:
     build:
       context: ./apps/server
       dockerfile: Dockerfile.dev
+      # NOTE: 1000 default는 Dockerfile.dev `ARG USER_UID/USER_GID=1000`과 매칭 필수 — 변경 시 양쪽 동시 수정.
+      args:
+        USER_UID: "${HOST_UID:-1000}"
+        USER_GID: "${HOST_GID:-1000}"
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     ports:
       - "8080:8080"
       - "9090:9090"
@@ -14,12 +23,14 @@ services:
       APP_ENV: development
 
   postgres:
+    # 25432: langfuse(5432)와 충돌 방지. dev psql 접속 → host:25432
     ports:
-      - "5432:5432"
+      - "25432:5432"
 
   redis:
+    # 26379: langfuse-redis(6379)와 충돌 방지. dev redis-cli → host:26379
     ports:
-      - "6379:6379"
+      - "26379:6379"
 
   # 개발 시 프론트는 Vite dev server 사용하므로 web 서비스 비활성화
   web:

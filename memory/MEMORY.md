@@ -48,6 +48,7 @@
 
 ## 작업 방식
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시/종합만, 실제 작업은 Sonnet/Haiku 위임
+- [사용자 설명 형식 (원인/결과/권장)](feedback_explanation_style.md) — 진단·결정·design 보고 시 3섹션 + 비개발자 친화 어휘 (2026-04-28)
 - [작업 루틴 강제](feedback_work_routine.md) — 시작 시 QMD 컨텍스트 로드, 완료 시 문서 업데이트+재인덱싱 필수
 - [main 직접 push 금지 · feature branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check, bypass 금지 (2026-04-17 `d1262a7` 사건 이후)
 - [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — QMD와 대칭 규칙, `/graphify query|explain|path` 우선, `--update` 증분만 사용 (2026-04-18)

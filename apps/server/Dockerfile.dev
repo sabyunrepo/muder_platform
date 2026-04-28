@@ -1,9 +1,24 @@
 # Development Dockerfile with air hot-reload
 FROM golang:1.25-alpine
+
+# Host UID/GID alignment — prevents root-owned files in bindmounted apps/server/.
+# Defaults match common Linux dev environments; override via build args.
+ARG USER_UID=1000
+ARG USER_GID=1000
+
+RUN addgroup -g ${USER_GID} -S appuser \
+ && adduser -u ${USER_UID} -G appuser -S -h /home/appuser -s /bin/sh appuser
+
 RUN go install github.com/air-verse/air@latest
 WORKDIR /build
+
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+
+# air는 /build 안 tmp/ 에 binary + log 작성 — 디렉토리도 appuser 소유 필요
+RUN mkdir -p /build/tmp && chown -R ${USER_UID}:${USER_GID} /build /go /home/appuser
+
+USER appuser
 EXPOSE 8080 9090
 CMD ["air", "-c", ".air.toml"]

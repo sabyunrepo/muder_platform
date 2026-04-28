@@ -21,8 +21,9 @@ jobs:
           POSTGRES_DB: mmp_test
           POSTGRES_USER: mmp
           POSTGRES_PASSWORD: mmp_test
+        # ephemeral host port — avoids 5432 collision with langfuse on self-hosted runner
         ports:
-          - "5432:5432"
+          - "5432"
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -30,8 +31,9 @@ jobs:
           --health-retries 5
       redis:
         image: redis:7-alpine
+        # ephemeral host port — avoids 6379 collision with langfuse-redis on self-hosted runner
         ports:
-          - "6379:6379"
+          - "6379"
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -41,8 +43,8 @@ jobs:
       run:
         working-directory: apps/server
     env:
-      DATABASE_URL: postgres://mmp:mmp_test@localhost:5432/mmp_test?sslmode=disable
-      REDIS_URL: redis://localhost:6379
+      DATABASE_URL: postgres://mmp:mmp_test@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_test?sslmode=disable
+      REDIS_URL: redis://localhost:${{ job.services.redis.ports['6379'] }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
