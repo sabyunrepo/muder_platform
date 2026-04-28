@@ -41,8 +41,15 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 5
 fi
 
-# 3. phase basename
+# 3. phase basename + 화이트리스트 (HIGH-S2 round-2 fix: regex injection 차단)
+# round-2 security HIGH-S2: phase-scoped grep이 BRE 정규식 해석 → metachar 잠입 시 다른 phase 매칭.
+# 해소 (defense-in-depth): (a) PHASE_NAME 화이트리스트 + (b) grep -lF (fixed-string, L94).
+# sister 카논 align (PR-9 PROJECT_SLUG 화이트리스트 패턴).
 PHASE_NAME="${ACTIVE_PHASE##*/}"
+if [[ ! "$PHASE_NAME" =~ ^[a-z0-9_.-]+$ ]]; then
+  printf 'ERROR: PHASE_NAME (ACTIVE_PHASE basename) must match ^[a-z0-9_.-]+$, got %q\n' "$PHASE_NAME" >&2
+  exit 3
+fi
 
 # 4. plan stage: checklist.md 존재 여부
 CHECKLIST="${ACTIVE_PHASE}/checklist.md"
@@ -90,7 +97,8 @@ fi
 HANDOFF_PATH=""
 COMPOUND_STATUS="pending"
 if [ -d memory/sessions ]; then
-  LATEST_HANDOFF=$(grep -l "$PHASE_NAME" memory/sessions/*.md 2>/dev/null | head -1 || true)
+  # HIGH-S2 round-2 fix: -F 플래그로 fixed-string 매칭 (regex injection 차단).
+  LATEST_HANDOFF=$(grep -lF "$PHASE_NAME" memory/sessions/*.md 2>/dev/null | head -1 || true)
   if [ -n "$LATEST_HANDOFF" ] && [ -f "$LATEST_HANDOFF" ]; then
     HANDOFF_PATH="$LATEST_HANDOFF"
     COMPOUND_STATUS="in_progress"

@@ -15,10 +15,12 @@ FAIL=0
 VERBOSE="${1:-}"
 
 # 임시 phase (plan/checklist 포함)
-TMP_PHASE=$(mktemp -d)
+# HIGH-S2 round-2 fix: PHASE_NAME 화이트리스트 ^[a-z0-9_.-]+$ 통과 위해 lowercase basename 명시.
+TMP_PARENT=$(mktemp -d)
+TMP_PHASE="${TMP_PARENT}/phase-fixture"
 mkdir -p "$TMP_PHASE/refs/reviews"
 echo "# fixture phase checklist" > "$TMP_PHASE/checklist.md"
-trap 'rm -rf "$TMP_PHASE"' EXIT
+trap 'rm -rf "$TMP_PARENT"' EXIT
 
 run_test() {
   local description="$1"
@@ -63,6 +65,20 @@ run_test "ACTIVE_PHASE 디렉토리 부재 시 거부" \
 run_test "ACTIVE_PHASE 정상 → exit 0" \
   "$ENV_OK bash '$DRY_RUN'" \
   "0" ""
+
+# HIGH-S2 round-2 fix: PHASE_NAME 화이트리스트 (regex injection 차단)
+run_test "PHASE_NAME 대문자 거부 (mktemp 기본 형식)" \
+  "ACTIVE_PHASE='$TMP_PARENT' bash '$DRY_RUN'" \
+  "3" ""
+
+# 정규식 metachar 잠입 거부 (regex injection PoC)
+run_test "PHASE_NAME 정규식 metachar 거부 (.*)" \
+  "ACTIVE_PHASE='/tmp/foo.*' bash '$DRY_RUN'" \
+  "3" ""
+
+run_test "PHASE_NAME 공백 포함 거부" \
+  "ACTIVE_PHASE='/tmp/foo bar' bash '$DRY_RUN'" \
+  "3" ""
 
 # === JSON contract ===
 run_test "출력은 JSON object — jq parsable" \
@@ -121,7 +137,7 @@ run_test ".stages.review 에 reviews_count 필드" \
 
 # === checklist.md 부재 → plan stage incomplete ===
 run_test "checklist.md 부재 시 .stages.plan.exists = false" \
-  "ACTIVE_PHASE='$(mktemp -d)' bash '$DRY_RUN'" \
+  "EMPTY_PARENT=\$(mktemp -d) && mkdir -p \"\$EMPTY_PARENT/empty-phase\" && ACTIVE_PHASE=\"\$EMPTY_PARENT/empty-phase\" bash '$DRY_RUN'" \
   "0" "jq -e '.stages.plan.exists == false' >/dev/null"
 
 # === reviews 디렉토리 상태 매핑 ===
