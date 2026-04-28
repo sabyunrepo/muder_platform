@@ -44,7 +44,7 @@ jobs:
           POSTGRES_USER: mmp
           POSTGRES_PASSWORD: mmp_e2e
         ports:
-          - "5432:5432"
+          - "5432"
         options: >-
           --health-cmd "pg_isready -U mmp -d mmp_e2e"
           --health-interval 5s
@@ -54,7 +54,7 @@ jobs:
       redis:
         image: redis:7-alpine
         ports:
-          - "6379:6379"
+          - "6379"
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -62,8 +62,8 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgres://mmp:mmp_e2e@localhost:5432/mmp_e2e?sslmode=disable
-      REDIS_URL: redis://localhost:6379
+      DATABASE_URL: postgres://mmp:mmp_e2e@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_e2e?sslmode=disable
+      REDIS_URL: redis://localhost:${{ job.services.redis.ports['6379'] }}
       GAME_RUNTIME_V2: "true"
       PLAYWRIGHT_BACKEND: "1"
 
@@ -95,7 +95,7 @@ jobs:
         working-directory: apps/server
         run: |
           goose -dir db/migrations postgres \
-            "host=localhost port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            "host=localhost port=${{ job.services.postgres.ports['5432'] }} user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
             up
 
       - name: Start server
@@ -138,7 +138,7 @@ jobs:
 
       - name: Seed E2E theme
         run: |
-          PGPASSWORD=mmp_e2e psql -h localhost -U mmp -d mmp_e2e \
+          PGPASSWORD=mmp_e2e psql -h localhost -p ${{ job.services.postgres.ports['5432'] }} -U mmp -d mmp_e2e \
             -v ON_ERROR_STOP=1 \
             -f apps/server/db/seed/e2e-themes.sql
 
