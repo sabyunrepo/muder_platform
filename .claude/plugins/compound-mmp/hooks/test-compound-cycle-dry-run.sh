@@ -144,14 +144,38 @@ run_test "출력에 .mandatory_slots 배열" \
   "$ENV_OK bash '$DRY_RUN'" \
   "0" "jq -e '.mandatory_slots | type == \"array\"' >/dev/null"
 
-run_test "compound stage = wrap (sister 카논)" \
+# HIGH-A1 round-1 fix: phase-scoped 매칭으로 handoff_path가 null 또는 string. mktemp 격리는 null.
+run_test "compound.handoff_path null 또는 string (phase-scoped 매칭)" \
   "$ENV_OK bash '$DRY_RUN'" \
-  "0" "jq -e '.stages.compound.handoff_path | type == \"string\"' >/dev/null"
+  "0" "jq -e '.stages.compound.handoff_path == null or (.stages.compound.handoff_path | type == \"string\")' >/dev/null"
 
-# === jq 의존성 ===
-run_test "jq 없으면 exit 5 (sister 카논)" \
-  "PATH=/usr/bin:/bin $ENV_OK command -v jq >/dev/null && echo 'skip — jq exists' || ($ENV_OK PATH=/nonexistent bash '$DRY_RUN')" \
-  "0" ""
+# HIGH-A1 round-1 fix: mktemp 격리 phase는 다른 phase 핸드오프와 매칭 0건 → null
+run_test "phase-scoped 매칭 시 mktemp 격리 phase는 handoff_path = null" \
+  "$ENV_OK bash '$DRY_RUN'" \
+  "0" "jq -e '.stages.compound.handoff_path == null' >/dev/null"
+
+# HIGH-S1/T1 round-1 fix: helper output JSON parsable (handoff escape 검증 carry-over PR-11)
+run_test "출력 JSON 항상 parsable (handoff_path --arg 안전)" \
+  "$ENV_OK bash '$DRY_RUN'" \
+  "0" "jq -e 'type == \"object\"' >/dev/null"
+
+# HIGH-A3 round-1 fix: 빈 blocked_reasons → length 0 (이전엔 [\"\"])
+run_test "next_gate 정상 시 blocked_reasons length 0 가능 (빈 배열 contract)" \
+  "$ENV_OK bash '$DRY_RUN'" \
+  "0" "jq -e '.blocked_reasons | length >= 0' >/dev/null"
+
+# HIGH-A3 fix 정확 검증: blocked_reasons에 빈 string 포함 X
+run_test "blocked_reasons에 빈 string 없음 (HIGH-A3 contract)" \
+  "$ENV_OK bash '$DRY_RUN'" \
+  "0" "jq -e '[.blocked_reasons[] | select(. == \"\")] | length == 0' >/dev/null"
+
+# === jq 의존성 (HIGH-T2 round-1 fix: 실측 분리) ===
+# round-1 test agent HIGH-T2: 이전엔 jq 존재 시 항상 echo skip → exit 0 (false PASS).
+# 해소: bash 절대경로 + PATH 단독 mock으로 helper 직접 실행 → exit 5 검증.
+# (PATH=/nonexistent로 PATH 안 의 bash도 못 찾으니 /bin/bash 절대경로 필수)
+run_test "jq missing 시 helper exit 5 (HIGH-T2 fix, mock PATH)" \
+  "PATH=/nonexistent ACTIVE_PHASE='$TMP_PHASE' /bin/bash '$DRY_RUN'" \
+  "5" ""
 
 # === phase 명 검증 (path traversal 방어) ===
 run_test "ACTIVE_PHASE 경로의 basename이 phase 필드에 그대로" \

@@ -84,16 +84,21 @@ if [ -d "$REVIEWS_DIR" ]; then
   fi
 fi
 
-# 7. compound stage: memory/sessions 핸드오프 검색 (가장 최근, phase 키워드 매칭은 메인 책임)
-HANDOFF_PATH="null"
+# 7. compound stage: memory/sessions 핸드오프 검색 (phase-scoped — HIGH-A1 fix)
+# round-1 critic HIGH-A1: ls -t memory/sessions/*.md가 다른 phase 핸드오프 매칭 → false done.
+# 해소: PHASE_NAME 키워드 grep으로 phase-scoped 매칭 (가장 최근 mtime).
+HANDOFF_PATH=""
 COMPOUND_STATUS="pending"
-LATEST_HANDOFF=$(ls -t memory/sessions/*.md 2>/dev/null | head -1)
-if [ -n "$LATEST_HANDOFF" ] && [ -f "$LATEST_HANDOFF" ]; then
-  HANDOFF_PATH="\"$LATEST_HANDOFF\""
-  COMPOUND_STATUS="in_progress"
+if [ -d memory/sessions ]; then
+  LATEST_HANDOFF=$(grep -l "$PHASE_NAME" memory/sessions/*.md 2>/dev/null | head -1 || true)
+  if [ -n "$LATEST_HANDOFF" ] && [ -f "$LATEST_HANDOFF" ]; then
+    HANDOFF_PATH="$LATEST_HANDOFF"
+    COMPOUND_STATUS="in_progress"
+  fi
 fi
 
-# 8. next_gate 결정 (4단계 순차)
+# 8. next_gate 결정 (4단계 순차) — HIGH-A2 carry-over PR-11 (review/compound unreachable)
+# 본 PR scope에선 work.exists 무시 알고리즘 유지. PR-11에서 work.exists를 next_gate에 포함.
 NEXT_GATE="plan"
 BLOCKED_REASONS=()
 if [ "$PLAN_EXISTS" = "false" ]; then
@@ -105,17 +110,25 @@ elif [ "$PLAN_STATUS" = "in_progress" ]; then
 elif [ "$REVIEWS_COUNT" -eq 0 ]; then
   NEXT_GATE="work"
   BLOCKED_REASONS+=("review 미진입 — /compound-work 후 /compound-review 호출 필요")
-elif [ "$HANDOFF_PATH" = "null" ]; then
+elif [ -z "$HANDOFF_PATH" ]; then
   NEXT_GATE="compound"
-  BLOCKED_REASONS+=("핸드오프 노트 부재 — /compound-wrap 호출 필요")
+  BLOCKED_REASONS+=("핸드오프 노트 부재 (phase=$PHASE_NAME) — /compound-wrap 호출 필요")
 else
   NEXT_GATE="done"
 fi
 
-# 9. blocked_reasons → JSON array
-BLOCKED_JSON=$(printf '%s\n' "${BLOCKED_REASONS[@]:-}" | jq -R . | jq -sc .)
+# 9. blocked_reasons → JSON array (HIGH-A3 fix: 빈 배열 처리)
+# round-1 critic HIGH-A3: printf 빈 배열 → [""] 출력 → contract 위반.
+# 해소: 명시 분기 — 빈 배열 시 '[]' 직접 사용.
+if [ ${#BLOCKED_REASONS[@]} -eq 0 ]; then
+  BLOCKED_JSON='[]'
+else
+  BLOCKED_JSON=$(printf '%s\n' "${BLOCKED_REASONS[@]}" | jq -R . | jq -sc .)
+fi
 
-# 10. JSON 출력
+# 10. JSON 출력 (HIGH-S1/T1 fix: handoff_path --arg + jq 안 null 분기)
+# round-1 security/test HIGH: --argjson "\"$path\"" raw expansion → 파일명 escape 깨짐.
+# 해소: --arg handoff_path "$path" + jq 안에서 if empty then null 패턴 (sister 카논 align).
 jq -nc \
   --arg phase "$PHASE_NAME" \
   --argjson plan_exists "$PLAN_EXISTS" \
@@ -124,7 +137,7 @@ jq -nc \
   --arg work_status "$WORK_STATUS" \
   --argjson reviews_count "$REVIEWS_COUNT" \
   --arg review_status "$REVIEW_STATUS" \
-  --argjson handoff_path "$HANDOFF_PATH" \
+  --arg handoff_path "$HANDOFF_PATH" \
   --arg compound_status "$COMPOUND_STATUS" \
   --arg next_gate "$NEXT_GATE" \
   --argjson blocked "$BLOCKED_JSON" \
@@ -134,7 +147,10 @@ jq -nc \
       plan: {exists: $plan_exists, status: $plan_status},
       work: {exists: $work_exists, status: $work_status},
       review: {reviews_count: $reviews_count, status: $review_status},
-      compound: {handoff_path: $handoff_path, status: $compound_status}
+      compound: {
+        handoff_path: (if $handoff_path == "" then null else $handoff_path end),
+        status: $compound_status
+      }
     },
     next_gate: $next_gate,
     blocked_reasons: $blocked,
