@@ -15,14 +15,17 @@ git log --oneline HEAD~10..HEAD
 출력: 변경 파일 목록, 커밋 추세, 미커밋 변경.
 
 ### Step 2 — Phase 1 병렬 4 agent (자동 분석)
+
+> spike 결과 (`refs/spike-omc-overlap.md`) 반영: doc-curator는 OMC `document-specialist` 호출로 대체. 신규 정의는 4개.
+
 한 메시지에서 4개 Task tool 동시 spawn:
-- `compound-mmp:doc-curator` (sonnet-4-6) — MEMORY.md/CLAUDE.md/refs 갱신 후보
-- `compound-mmp:automation-scout` (sonnet-4-6) — 신규 자동화 기회
-- `compound-mmp:learning-extractor` (sonnet-4-6) — TIL·실수·발견
-- `compound-mmp:followup-suggester` (sonnet-4-6) — P0–P3 + Effort/Impact
+- `oh-my-claudecode:document-specialist` (sonnet) — MEMORY.md/CLAUDE.md/refs 갱신 후보. **prompt 주입 필수**: (a) Step 1 git scan, (b) `memory/` canonical 경로, (c) MMP CLAUDE.md/refs 카논 매트릭스, (d) "Write 권한 없음. 후보만 출력" 명시
+- `compound-mmp:automation-scout` (sonnet) — 신규 자동화 기회
+- `compound-mmp:learning-extractor` (sonnet) — TIL·실수·발견 (Quality Gate `refs/learning-quality-gate.md` 적용)
+- `compound-mmp:followup-suggester` (sonnet) — P0–P3 + Effort/Impact
 
 각 agent 입력: Step 1의 git scan 결과 + 활성 phase 메타.
-각 agent 권한: Read/Glob/Grep만.
+각 agent 권한: Read/Glob/Grep만 (compound-mmp:* 3개는 frontmatter `disallowedTools` 명시, document-specialist는 OMC 카논 그대로 read-only).
 
 ### Step 3 — Phase 2 duplicate-checker (자동 분석)
 `compound-mmp:duplicate-checker` (haiku-4-5)가 Phase 1의 4개 결과를 받아 QMD `mmp-memory` 컬렉션에서 중복 검증:

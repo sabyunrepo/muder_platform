@@ -5,6 +5,7 @@
 ## 1. plan-autopilot 자동 진행 부활 X
 - **근거**: 사용자가 2026-04-21 폐기 결정. preflight 경로 버그 #121/#126/#127 누적
 - **대안**: `docs/plans/<phase>/checklist.md` 직접 read + 수동 STATUS 갱신
+- **carve-out (PR-2 spike 후 강화)**: `/compound-work`가 OMC `team-exec`/`executor`를 wrap 호출할 때 **`team-fix` stage 진입 차단** 강제 (`max_fix_loops=0` 또는 ralplan 우회 금지). post-task-pipeline.json v2의 `manual_review_required.policy = halt_and_notify`와 정렬. spike 결과 (`refs/spike-omc-overlap.md` A 항목)에서 OMC team-fix 자동 루프가 이 anti-pattern과 정면 충돌함을 확인 → wrapper에서 명시 차단
 
 ## 2. user-home memory 작성 X
 - **근거**: 2026-04-21 PR-0 이후 `memory/`(repo) canonical만 인정. user home은 archival
