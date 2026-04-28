@@ -56,6 +56,7 @@ if ls "$REPO_ROOT/memory/sessions/${TODAY}-"*.md >/dev/null 2>&1; then
 fi
 
 # 리마인드 출력 (raw prompt echo X — anti-pattern security MEDIUM-1 준수)
+# Stop event 스키마: hookSpecificOutput 미지원 — systemMessage 사용.
 cat <<EOF
-{"hookSpecificOutput":{"hookEventName":"Stop","additionalContext":"[compound-mmp] 세션 변경 ${DIFF_LINES}줄. \`/compound-wrap\` 으로 7단계 wrap-up 시퀀스 실행 권장 (handoff 노트 + MEMORY.md 갱신)."}}
+{"systemMessage":"[compound-mmp] 세션 변경 ${DIFF_LINES}줄. \`/compound-wrap\` 으로 7단계 wrap-up 시퀀스 실행 권장 (handoff 노트 + MEMORY.md 갱신)."}
 EOF
