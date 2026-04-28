@@ -36,17 +36,17 @@ command -v jq >/dev/null 2>&1 || exit 0
 input=$(cat)
 [ -z "$input" ] && exit 0
 
-# tool_name 게이트 (Task 만 검사)
-tool_name=$(printf '%s' "$input" | jq -r '.tool_name // ""' 2>/dev/null || echo "")
-[ "$tool_name" != "Task" ] && exit 0
-
-# prompt + model 동시 추출 (jq 1회, @tsv)
-meta=$(printf '%s' "$input" | jq -r '[.tool_input.prompt // "", .tool_input.model // ""] | @tsv' 2>/dev/null || printf '\t')
+# 메타 추출 (jq 1회, @tsv) — tool_name + prompt + model 동시 (자매 pre-edit-size 패턴 대칭)
+meta=$(printf '%s' "$input" | jq -r '[.tool_name // "", .tool_input.prompt // "", .tool_input.model // ""] | @tsv' 2>/dev/null || printf '\t\t')
+tool_name=""
 prompt=""
 model=""
-IFS=$'\t' read -r prompt model <<EOF
+IFS=$'\t' read -r tool_name prompt model <<EOF
 $meta
 EOF
+
+# tool_name 게이트 (Task 만 검사)
+[ "$tool_name" != "Task" ] && exit 0
 
 # Sonnet 4.5 정규식 (bash 3.2 호환: 변수 unquoted RHS)
 # (claude-)?sonnet-4[-.]5 — sonnet-4-5 / sonnet-4.5 / claude-sonnet-4-5 / *-20250929 모두 catch
