@@ -63,8 +63,6 @@ jobs:
           --health-retries 10
 
     env:
-      DATABASE_URL: postgres://mmp:mmp_e2e@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_e2e?sslmode=disable
-      REDIS_URL: redis://localhost:${{ job.services.redis.ports['6379'] }}
       GAME_RUNTIME_V2: "true"
       PLAYWRIGHT_BACKEND: "1"
 
@@ -76,6 +74,13 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      # Export service connection env (job context는 step-level에서만 평가 가능 — PR-164 회귀 fix).
+      # ephemeral host port를 GITHUB_ENV로 export해 후속 step의 server/migration이 자동 읽음.
+      - name: Export service connection env
+        run: |
+          echo "DATABASE_URL=postgres://mmp:mmp_e2e@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://localhost:${{ job.services.redis.ports['6379'] }}" >> "$GITHUB_ENV"
 
       # ── Go server ──────────────────────────────────────────────────────────
 
