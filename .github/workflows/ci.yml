@@ -21,6 +21,7 @@ jobs:
           POSTGRES_DB: mmp_test
           POSTGRES_USER: mmp
           POSTGRES_PASSWORD: mmp_test
+        # ephemeral host port — avoids 5432 collision with langfuse on self-hosted runner
         ports:
           - "5432"
         options: >-

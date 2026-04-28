@@ -43,6 +43,7 @@ jobs:
           POSTGRES_DB: mmp_e2e
           POSTGRES_USER: mmp
           POSTGRES_PASSWORD: mmp_e2e
+        # ephemeral host port — avoids 5432 collision with langfuse on self-hosted runner
         ports:
           - "5432"
         options: >-
