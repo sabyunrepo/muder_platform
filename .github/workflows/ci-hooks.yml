@@ -47,6 +47,8 @@ jobs:
         run: bash .claude/plugins/compound-mmp/hooks/test-pre-task-model.sh
       - name: compound-review-dry-run self-tests
         run: bash .claude/plugins/compound-mmp/hooks/test-compound-review-dry-run.sh
+      - name: compound-plan-dry-run self-tests
+        run: bash .claude/plugins/compound-mmp/hooks/test-compound-plan-dry-run.sh
 
   hook-tests-macos:
     name: hook self-tests (macOS, bash 3.2)
@@ -65,3 +67,5 @@ jobs:
         run: /bin/bash .claude/plugins/compound-mmp/hooks/test-pre-task-model.sh
       - name: compound-review-dry-run self-tests (system bash 3.2)
         run: /bin/bash .claude/plugins/compound-mmp/hooks/test-compound-review-dry-run.sh
+      - name: compound-plan-dry-run self-tests (system bash 3.2)
+        run: /bin/bash .claude/plugins/compound-mmp/hooks/test-compound-plan-dry-run.sh
