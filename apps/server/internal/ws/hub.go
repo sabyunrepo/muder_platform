@@ -4,7 +4,7 @@
 //
 //   - hub.go             struct, constructor, event loop, Stop, constants
 //   - hub_lifecycle.go   Register/Unregister/Join/Leave + reconnect tracking
-//                        + lifecycle listener fan-out
+//   - lifecycle listener fan-out
 //   - hub_broadcast.go   Broadcast/Send/Route + session accessors
 //
 // Kept together they implement the single `Hub` type and its private `mu`

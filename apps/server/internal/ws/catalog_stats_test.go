@@ -16,11 +16,11 @@ import (
 // below observed so minor re-categorisation doesn't trip the gate, while
 // an accidental drop of a whole namespace still fails loudly.
 //
-//	 >= 120 total
-//	 >= 70  C2S   (legacy module actions, one colon namespace each)
-//	 >= 40  S2C   (handler-direct colon + engine-origin dot)
-//	 >= 5   Bidi  (voice:*, sound:play, ping, pong)
-//	 >= 6   Stub  (auth.* reserved for PR-9)
+//	>= 120 total
+//	>= 70  C2S   (legacy module actions, one colon namespace each)
+//	>= 40  S2C   (handler-direct colon + engine-origin dot)
+//	>= 5   Bidi  (voice:*, sound:play, ping, pong)
+//	>= 6   Stub  (auth.* reserved for PR-9)
 func TestCatalog_Coverage(t *testing.T) {
 	var c2s, s2c, bidi, stubs int
 	for _, d := range ws.Catalog {
