@@ -29,16 +29,24 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
 1. fine-grained PAT 발급 (`.env.example` 주석 참조).
 2. `cp .env.example .env`.
 3. `.env`에 `ACCESS_TOKEN`, `REPO_URL`, `DOCKER_GID` 채우기.
-   - macOS: `DOCKER_GID=$(stat -f '%g' /var/run/docker.sock)` 결과를 직접 입력 (env 파일은 shell expansion 안 됨)
-   - **검증**: `cat .env | grep DOCKER_GID` 결과가 숫자(보통 `0` 또는 `1`)인지 확인. 빈 문자열이면 group_add silent fail → docker.sock permission denied.
+   - **macOS** (Apple Silicon dev): `DOCKER_GID=$(stat -f '%g' /var/run/docker.sock)` 결과를 직접 입력
+   - **Linux** (Ubuntu runner host): `DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)` 결과를 직접 입력 (보통 `990` 또는 `999`)
+   - 둘 다 env 파일은 shell expansion 안 됨 → 명령 결과를 직접 vim으로 붙여넣기
+   - **검증**: `cat .env | grep DOCKER_GID` 결과가 숫자인지 확인. 빈 문자열이면 group_add silent fail → docker.sock permission denied.
 4. **PAT scope 검증** (boot 전 안전 확인):
    ```bash
    curl -sH "Authorization: Bearer $(grep ACCESS_TOKEN .env | cut -d= -f2)" \
      https://api.github.com/repos/sabyunrepo/muder_platform/actions/runners | jq '.total_count'
    ```
    숫자(0 이상) 반환 시 정상. `401`/`404`이면 PAT 또는 Resource owner 잘못.
-5. `docker compose up -d`.
-6. GitHub Settings → Actions → Runners → 4 row idle 확인.
+5. **Image pull (최초 1회 필수)** — `pull_policy: never` + digest pinning(H-1)이라 호스트에 image 부재 시 compose up이 `No such image` error로 실패. 첫 부팅 또는 digest 변경(rotation) 시 manual pull:
+   ```bash
+   # docker-compose.yml의 image: ... 라인에서 digest 추출
+   IMAGE=$(grep -E 'image:' docker-compose.yml | head -1 | awk '{print $2}')
+   docker pull "$IMAGE"
+   ```
+6. `docker compose up -d`.
+7. GitHub Settings → Actions → Runners → 4 row idle 확인.
 
 ## Troubleshooting (PAT 만료 detection)
 
