@@ -102,3 +102,40 @@ spawn_pattern: "single message, 4 Agent tool calls, run_in_background=true"
 2. HIGH-A1+T1은 1 commit (~10분) 소요. MED-P1/P2 piggyback 시 ~15분.
 3. 4-agent 재검증은 background 4 spawn (~3분 wait).
 4. CI admin-skip 만료(2026-05-01, D-3) 전에 정식 green 도달 가능.
+
+---
+
+## Round-2 재검증 결과 (commit `8717dce`, 2026-04-28)
+
+**선택**: (a) 본 PR에서 HIGH 4건 + MED-P1/P2 fix 후 4-agent 재검증.
+
+### 변경 요약
+- HIGH-A1: 슬래시 § 4를 `iterate over helper.payload[]` imperative pseudocode로 교체, 4 agent enum 제거
+- HIGH-A2: § 4.1 OMC fallback 매핑 표 추가 (4 agent 모두 커버, 모델 보존), `ls ~/.claude/plugins/oh-my-claudecode` 가용성 체크 카논화
+- HIGH-A3: test-dispatch.sh +6 phrase fixture (47/47 pass), "audit this" false positive 위험으로 본문 제거
+- HIGH-T1: case 21 (`sabyun` 하드코딩) 제거 + comment, MED-T1로 `{pr_title}`/`{design}` 4 case 추가 (27/27 pass)
+- MED-P1: `${BASH_SOURCE[0]%/*}` 교체 → 2 fork 절감
+- MED-P2: `[[ =~ ]]` 교체 → 1 fork 절감 (helper 5→3 fork, sister `pre-task-model-guard.sh` 1 fork에 가까워짐)
+
+### Round-2 verdict (arch + test 2 agent)
+
+| Agent | Verdict | HIGH RESOLVED | 신규 HIGH/MED | admin-merge ready? |
+|-------|---------|--------------|--------------|-------------------|
+| Architecture (round-2, superpowers:code-reviewer opus) | PASS WITH CAVEATS | A1/A2/A3 모두 RESOLVED (file:line evidence) | 0건 | **YES** |
+| Test (round-2, general-purpose sonnet) | PASS WITH CAVEATS | T1 RESOLVED | 0건 | **YES** |
+
+### 잔여 carry-over (다음 PR piggyback)
+
+- LOW-T3: 슬래시 본문 "사용 예" L114 `length == 4` 하드코딩 — 인라인 주석 또는 parameterize (PR-8)
+- MED-A1: `agents/automation-scout.md:54` "architect" lingering token (PR-8 또는 PR-10)
+- MED-A2: `skills/review-mmp/SKILL.md` 도입 (compound-wrap 패턴 대칭, PR-9)
+- MED-A3: helper hard-coded `../../../` 3-deep coupling (PR-10 hygiene)
+- MED-A4: helper length self-validate (PR-10)
+- MED 미커버 edge cases: jq missing (exit 5), pipeline.json malformed JSON (PR-10 dogfooding scope)
+
+### admin-merge 게이트 충족
+
+- ✅ HIGH 0건 (round-2 신규 발생 0)
+- ✅ 137/137 hook self-test 회귀 0건 (bash 3.2 + 5.x)
+- ✅ 4-agent 자가 리뷰 round-1 + round-2 완료 (`feedback_4agent_review_before_admin_merge.md` 카논 준수)
+- ⚠️ CI admin-skip 정책 활성 (2026-05-01까지, D-3) — 정식 CI green은 main 머지 후 ci-hooks workflow 실행으로 확인
