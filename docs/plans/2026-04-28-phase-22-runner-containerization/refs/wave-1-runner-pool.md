@@ -233,14 +233,21 @@ EOF
 
 ## Task 5 — `docker compose config` 검증
 
-- [ ] **Step 1**: host bindmount 0건 검증
+- [ ] **Step 1**: host bindmount 0건 검증 (workspace만, docker.sock은 의도된 bind라 허용 리스트)
 
 ```bash
 cd infra/runners
-docker compose config | grep -E '(type: bind|bind:)' || echo "OK: no bindmount"
+# docker.sock은 Q1 결정 의도 bind. compose가 multi-line YAML 출력하므로 grep -A1 사용
+docker compose config 2>/dev/null | grep -A1 'type: bind' | grep 'source:' | grep -v docker.sock || echo "OK: workspace bindmount 0건"
+# 추가: per-runner workspace volume 4건 모두 named volume 검증
+docker compose config 2>/dev/null | grep -E "source: runner[1-4]-work" | wc -l
 ```
 
-Expected: `OK: no bindmount` 출력 (named volume만 사용).
+Expected:
+- 첫 명령: `OK: workspace bindmount 0건` 출력 (docker.sock 4건만 bind, 나머지 0)
+- 두 번째 명령: `4` 출력 (named volume per-runner)
+
+> **사전 조건**: 검증 시 `.env` 파일이 존재해야 docker compose config가 fail 안 함. dummy 값으로도 충분 — 실제 검증은 schema/topology만. 임시 dummy 후 삭제 권장.
 
 - [ ] **Step 2**: 4 service + 4 volume + 1 network 확인
 
@@ -262,6 +269,15 @@ Expected: 9 (service 4 + volume 4 + network 1).
 - [ ] **Step 2**: 사용자가 GitHub UI에서 fine-grained PAT 발급 (repo: muder_platform, perms: Actions r/w + Administration w + Metadata r).
 - [ ] **Step 3**: 사용자가 `cd infra/runners && cp .env.example .env` + 값 입력.
 - [ ] **Step 4**: 사용자가 `cat .env` 결과 (PAT 마스킹) Claude에게 확인.
+  - `DOCKER_GID` 값이 숫자(보통 `0` 또는 `1`)인지 검증. 빈 문자열이면 group_add silent fail.
+  - `REPO_URL`이 `https://github.com/sabyunrepo/muder_platform`인지 (PR 머지 후 sabyunrepo).
+- [ ] **Step 5**: PAT scope 검증 (boot 전 안전 확인):
+
+  ```bash
+  curl -sH "Authorization: Bearer $(grep ACCESS_TOKEN .env | cut -d= -f2)" \
+    https://api.github.com/repos/sabyunrepo/muder_platform/actions/runners | jq '.total_count'
+  ```
+  Expected: 숫자(0 이상). `401`/`404`이면 PAT scope 또는 Resource owner 잘못 → 재발급.
 
 ---
 
@@ -276,14 +292,19 @@ docker compose up -d
 
 Expected: 4 service `Created` → `Started`.
 
-- [ ] **Step 2**: 헬스 + 등록 로그 확인
+- [ ] **Step 2**: 헬스 + 등록 로그 확인 + 음성 확인
 
 ```bash
 docker compose ps
 docker compose logs runner-1 --tail 30 | grep -E "Listening for Jobs|Connected to GitHub"
+# 음성 확인 (H-6 fix): docker.sock permission denied 또는 Token request failed 검사
+docker compose logs runner-1 --tail 50 | grep -iE 'permission denied|token request failed' && echo "FAIL: DOCKER_GID 또는 PAT 문제" || echo "OK: 권한/토큰 정상"
 ```
 
-Expected: 4 service `Up`, log에 "Listening for Jobs" match.
+Expected:
+- 4 service `Up`
+- "Listening for Jobs" match
+- 음성 확인 결과: `OK: 권한/토큰 정상`
 
 - [ ] **Step 3**: GH UI 검증
 

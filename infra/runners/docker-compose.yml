@@ -1,15 +1,22 @@
 # infra/runners/docker-compose.yml
 # Phase 22 — Runner Containerization
 # Spec: docs/superpowers/specs/2026-04-28-phase-22-runner-containerization-design.md
+#
+# Env precedence (compose 카논): env_file < environment 블록.
+# .env에 LABELS/EPHEMERAL 등 override 시 environment: 블록이 silent override 함 — 주의.
+# 라벨/EPHEMERAL/RUN_AS_ROOT 변경은 본 파일에서 수정.
 
 x-runner-base: &runner-base
-  image: myoung34/github-runner:latest
+  # Image: latest digest pinning (PR-1 H-1 fix). Renovate가 digest 추적 (Phase 18.7 카논).
+  image: myoung34/github-runner@sha256:85a7a6a73abd0c0e679ea315b0e773c4a118315e21f47c864041ae6d73d21ea3
+  pull_policy: never
   restart: always
   env_file: .env
   environment: &runner-env
     EPHEMERAL: "true"
     DISABLE_AUTO_UPDATE: "true"
     RUN_AS_ROOT: "false"
+    # 컨테이너 OS = linux (호스트 macOS와 별개). Phase 23 ARM image 진입 시 arm64/amd64 라벨 추가.
     LABELS: "self-hosted,linux,containerized"
   group_add:
     - "${DOCKER_GID}"
