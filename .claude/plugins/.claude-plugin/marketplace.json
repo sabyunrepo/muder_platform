@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "ctm",
+  "owner": {
+    "name": "MMP v3"
+  },
+  "plugins": [
+    {
+      "name": "compound-mmp",
+      "source": "./compound-mmp",
+      "description": "MMP v3 Plan-Work-Review-Compound 4단계 라이프사이클 (Compound Engineering + Session-Wrap + Superpowers 통합)",
+      "version": "0.1.0-alpha"
+    }
+  ]
+}

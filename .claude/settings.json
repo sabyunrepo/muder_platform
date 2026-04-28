@@ -13,6 +13,15 @@
     ]
   },
   "enabledPlugins": {
-    "harness@harness-marketplace": true
+    "harness@harness-marketplace": true,
+    "compound-mmp@ctm": true
+  },
+  "extraKnownMarketplaces": {
+    "ctm": {
+      "source": {
+        "source": "directory",
+        "path": ".claude/plugins"
+      }
+    }
   }
 }
