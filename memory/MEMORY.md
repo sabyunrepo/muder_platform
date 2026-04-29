@@ -56,6 +56,7 @@
 - [4-agent 코드리뷰는 admin-merge 전에 수행](feedback_4agent_review_before_admin_merge.md) — Auto mode + CI admin-skip 에서도 security/perf/arch/test 4 병렬 리뷰 선행. PR-2c (#107) 리뷰 생략 후 HIGH deadlock 이슈가 hotfix #108 로 발견된 사례 (2026-04-18)
 - [서브에이전트 Sonnet 4.6 기본](feedback_sonnet_46_default.md) — 서브에이전트 spawn 시 `claude-sonnet-4-6` 명시, 4.5 금지. 보안·아키텍처는 opus-4-7, 간단 검색은 haiku-4-5 (2026-04-19)
 - [메모리 canonical = repo/memory/](feedback_memory_canonical_repo.md) — 신규 memory는 repo만 작성, user home은 archival. QMD `mmp-memory` 컬렉션 경로 repo 이전, `originSessionId` 프론트매터 금지 (2026-04-21 PR-0)
+- [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙. 인접 코드 침범·과잉 설계·orphan 과다 정리 차단
 - [2026-04-19 세션 — 토큰 최적화](project_session_2026-04-19_optimization.md) — 3 PR (#116 module-spec 33, #117 hook slim + advisor, #118 /plan-* QMD + Sonnet 4.6). 세션당 ~8~25K 절감
 
 ## 코드 리뷰 패턴 & 프로세스
