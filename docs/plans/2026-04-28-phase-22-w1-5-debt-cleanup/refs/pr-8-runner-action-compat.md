@@ -342,6 +342,24 @@ PR-8 push 후 4 check 모두 SUCCESS 확인:
 3. `Trivy (container CVE)` — sudo docker build 성공, SARIF upload SUCCESS
 4. `Go Lint + Test` — manual postgres+redis healthy → migration → test SUCCESS
 
+## 1st CI run 결과 (commit `99ba252` 기준)
+
+| DEBT | check 결과 | workflow level fix 자체 | 검증 |
+|------|----------|--------------------|------|
+| DEBT-1 gitleaks | ✅ SUCCESS | ✅ 작동 | upload artifact skip, scan SUCCESS |
+| DEBT-2 CodeQL JS-TS | ❌ FAILURE | ✅ 작동 (extractor 통과) | Node v20 symlink 효과 → `??` syntax 통과. query 실행 단계 exit code 99 (별개 root cause: query OOM 또는 timeout, `--ram=2048` 한계) |
+| DEBT-3 Trivy | ✅ SUCCESS | ✅ 작동 (2차 시도) | 1차 (sudo docker build + image-ref) fail → 2차 (docker save tarball + input mode) success |
+| DEBT-4 Go Lint+Test | ❌ FAILURE | ✅ 작동 (services healthy) | manual postgres+redis healthy + migration + 첫 패키지 test 성공. 후속 `internal/auditlog`/`internal/editor` 등 testcontainers-go 의존 test 가 host docker.sock permission denied 로 fail (pre-existing 부채, Test review T-2 에서 식별) |
+
+**결론**: 4 workflow level fix 자체는 모두 작동. fail 2건은 PR-170 변경이 표면화한 pre-existing 부채:
+- DEBT-2 fail: CodeQL query 실행 OOM/timeout (별개 root cause, Node v20 fix 와 무관)
+- DEBT-4 fail: testcontainers-go 의 host docker.sock 의존 (Phase 23 docker group 정착 필요)
+
+## 별도 PR 후보 (PR-170 후)
+
+- **PR-9** testcontainers-go docker group fix — workflow step 에서 `sudo usermod -aG <docker.sock GID>` + `sg <group> -c "go test ..."` 또는 `sudo -E go test ...`. 정공은 Phase 23 Custom Image base 에서 docker group GID 990 정착.
+- **PR-10** CodeQL JS-TS query OOM 조정 — `--ram=2048` → `4096` 상향, 또는 `--threads=4` → `2` 감소, 또는 query subset 조정 (`security-extended` → `security-and-quality` 만).
+
 ## 4-agent review fold-in (1차 push 후)
 
 - **Perf-MED-1 + Test-HIGH-1** (health-wait 30s ceiling): ci.yml + e2e-stubbed.yml 둘 다 60s 로 상향. Docker healthcheck max (interval 5s × retries 10 = 50s) 이상 ceiling 확보 — cold start (image pull + initdb) 시 false-fail 방지.

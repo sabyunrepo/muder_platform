@@ -130,6 +130,34 @@ PR-170 4-agent 리뷰 (security/performance/architecture/test) 잔여 — 모두
 - **[W3] RUNNERS_NET regex 강화** (Sec-MED-1) — `grep -E '(^|_)runners-net$'` 가 `bad_runners-net` 등 악성 네트워크 매칭 가능. PR-168 LOW-1 패턴이 ci.yml 로 확산. compose project prefix 안정화 후 정확 매칭 (`name: runners-net` explicit 만 검증).
 - **[W3] e2e-stubbed.yml 의 동일 패턴** — PR-170 fold-in 으로 health-wait 30→60s 동시 상향 했으나 RUNNERS_NET regex 는 둘 다 동일 약점.
 
+### W1.5 별도 PR 후보 (PR-170 노출 부채)
+
+PR-170 1st CI run 에서 노출된 pre-existing 부채 — workflow level fix 4건은 모두 자체 작동:
+
+#### PR-9 — testcontainers-go docker group fix (DEBT-4 후속)
+- **Effort** S~M, **Impact** High (Go test 회복)
+- **branch**: `chore/w1-5-testcontainers-docker-group`
+- **변경**:
+  - `.github/workflows/ci.yml#go-check` 의 `Run tests` step 직전에 docker group 정착:
+    - `DOCKER_GID=$(stat -c '%g' /var/run/docker.sock)`
+    - `sudo groupadd -g "$DOCKER_GID" docker-host || true`
+    - `sudo usermod -aG docker-host "$(id -un)"`
+  - `Run tests` step 을 `sg docker-host -c "go test ..."` 으로 wrapping
+  - 또는 fallback: `sudo -E go test ...` (coverage.out chown 후속 step)
+- **근거**: PR-170 의 services block 대체 정상 작동 → `go test ./...` 가 testcontainers-go 호출 → host docker.sock permission denied. PR-170 의 4-agent Test review T-2 에서 risk 로 식별됨.
+- **정공은 Phase 23 Custom Image** (docker group GID 990 base 정착) — 본 PR 은 workflow level forward port.
+
+#### PR-10 — CodeQL JS-TS query OOM 조정 (DEBT-2 후속)
+- **Effort** XS, **Impact** Med (CodeQL 회복)
+- **branch**: `chore/w1-5-codeql-ram-bump`
+- **변경**:
+  - `.github/workflows/security-deep.yml#codeql` 에 query 실행 ram/threads 조정:
+    - 옵션 A: `--ram=2048` → `4096` 상향
+    - 옵션 B: `--threads=4` → `2` 감소
+    - 옵션 C: query suite 조정 (`security-extended,security-and-quality` → `security-and-quality` 만)
+- **근거**: PR-170 의 Node v20 symlink 가 extractor 통과 (DEBT-2 fix 자체 성공). query 실행 단계 exit code 99 (`MalformedIdAttribute.ql`) 는 별개 OOM/timeout — Node v20 fix 와 무관.
+- **검증**: PR run 의 CodeQL JS-TS job SUCCESS.
+
 ### Test review 잔여
 
 - **Test-T-2** testcontainers-go 패키지 (`editor`/`auditlog`) 의 docker.sock 접근 — DEBT-3 Phase 23 carry-over 와 동일 root cause. 1st CI run 결과에서 해당 패키지 SUCCESS 확인 필요.
