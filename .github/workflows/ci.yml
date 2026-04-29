@@ -1,10 +1,29 @@
 name: CI
 
+# paths filter (Phase 23 follow-up — CI pruning P0):
+# docs(wrap)/메모리/plan 변경 commit 시 fire 0. apps/server, packages, tooling, lockfile,
+# 본 workflow 자체 변경에만 fire.
 on:
   push:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tooling/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tooling/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
+      - '.github/workflows/ci.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

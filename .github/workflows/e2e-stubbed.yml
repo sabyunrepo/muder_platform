@@ -14,10 +14,31 @@ name: E2E — Stubbed Backend
 # this PR merges.
 
 on:
+  # paths filter (Phase 23 follow-up — CI pruning P0): docs/메모리 commit 시 fire 0.
   push:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tooling/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
+      - 'playwright.config.ts'
+      - 'e2e/**'
+      - '.github/workflows/e2e-stubbed.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'tooling/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'turbo.json'
+      - 'playwright.config.ts'
+      - 'e2e/**'
+      - '.github/workflows/e2e-stubbed.yml'
   # Phase 18.8 PR-5: 수동 트리거 추가. PR에서 stubbed CI를 재실행하거나
   # 베타 단계에서 임시 시나리오 재현이 필요할 때 사용.
   workflow_dispatch:
@@ -34,10 +55,13 @@ jobs:
     # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
     # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    # Phase 23 follow-up — CI pruning P2: PR fire 시 chromium 만 (2 job).
+    # push main / workflow_dispatch 시 chromium + firefox (4 job).
+    # firefox-only 회귀는 main 머지 후 push fire 또는 dispatch 로 검증.
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox]
+        browser: ${{ fromJSON(github.event_name == 'pull_request' && '["chromium"]' || '["chromium","firefox"]') }}
         shard: [1, 2]
 
     env:
