@@ -1,0 +1,35 @@
+githubConfigUrl: "https://github.com/sabyunrepo/muder_platform"
+githubConfigSecret: github-pat-secret
+
+runnerScaleSetName: arc-runner-set
+
+minRunners: 0
+maxRunners: 5
+
+containerMode:
+  type: dind
+
+template:
+  spec:
+    imagePullSecrets:
+      - name: kt-registry-secret
+    containers:
+      - name: runner
+        image: registry.cloud.kt.com/dldxu5p5/mmp-runner:latest
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: ACTIONS_RUNNER_CONTAINER_HOOKS
+            value: /home/runner/k8s/index.js
+          - name: ACTIONS_RUNNER_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
+            value: "false"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
