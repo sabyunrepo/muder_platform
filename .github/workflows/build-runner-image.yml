@@ -1,0 +1,60 @@
+name: Build Runner Image
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/runners/Dockerfile'
+      - 'infra/runners/hooks/**'
+      - '.github/workflows/build-runner-image.yml'
+  pull_request:
+    paths:
+      - 'infra/runners/Dockerfile'
+      - 'infra/runners/hooks/**'
+      - '.github/workflows/build-runner-image.yml'
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: [self-hosted, containerized]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/runners/Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/sabyunrepo/mmp-runner:latest
+            ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: ${{ github.event_name == 'pull_request' }}
+      - name: Verify cleanup hook fires
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm --entrypoint /bin/bash \
+            ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }} \
+            -c '
+              set -euo pipefail
+              jq --version
+              govulncheck -version
+              ls /opt/hostedtoolcache/go/1.25.0/x64/bin/go
+              ls /opt/hostedtoolcache/node/20.18.0/x64/bin/node
+              mkdir -p ~/go/pkg/mod/dummy
+              touch ~/go/pkg/mod/dummy/file
+              bash /opt/runner-hooks/job-started.sh
+              [ -z "$(ls -A ~/go/pkg/mod 2>/dev/null)" ] || (echo "FAIL: go pkg mod not cleaned" && exit 1)
+              echo "PASS: cleanup hook works"
+            '
