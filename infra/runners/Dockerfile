@@ -1,4 +1,10 @@
 # syntax=docker/dockerfile:1.7
+
+# ARC dind containerMode requirement:
+# /home/runner/externals/ 가 필요 (chart 0.14.1 init container 가 cp -r 함).
+# myoung34 base 에는 이 디렉토리가 없으므로 공식 actions-runner 에서 가져옴.
+FROM ghcr.io/actions/actions-runner:latest AS arc-base
+
 FROM ubuntu:22.04 AS builder
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG GO_VERSION=1.25.0
@@ -31,4 +37,10 @@ RUN groupadd -g 990 docker-host 2>/dev/null || true \
     && usermod -aG docker-host runner
 COPY --chmod=0755 infra/runners/hooks/job-started.sh /opt/runner-hooks/job-started.sh
 ENV ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/runner-hooks/job-started.sh
+
+# ARC dind init container 가 /home/runner/externals 를 shared volume 으로 cp 함.
+# 공식 actions-runner 이미지에서 가져와 디렉토리 자체를 확보.
+COPY --from=arc-base --chown=runner:runner \
+     /home/runner/externals /home/runner/externals
+
 USER runner
