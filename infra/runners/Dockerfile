@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
 FROM ubuntu:22.04 AS builder
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG GO_VERSION=1.25.0
 ARG NODE_VERSION=20.18.0
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -28,7 +29,6 @@ COPY --from=builder /opt/hostedtoolcache /opt/hostedtoolcache
 COPY --from=builder /usr/local/bin/govulncheck /usr/local/bin/govulncheck
 RUN groupadd -g 990 docker-host 2>/dev/null || true \
     && usermod -aG docker-host runner
-COPY infra/runners/hooks/job-started.sh /opt/runner-hooks/job-started.sh
-RUN chmod +x /opt/runner-hooks/job-started.sh
+COPY --chmod=0755 infra/runners/hooks/job-started.sh /opt/runner-hooks/job-started.sh
 ENV ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/runner-hooks/job-started.sh
 USER runner
