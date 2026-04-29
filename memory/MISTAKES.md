@@ -133,3 +133,21 @@ e2e-stubbed.yml:67:40 context "job" is not allowed here
 3. **사례 누적 후 카논화** — 본 사례 + 향후 동일 패턴 누적 시 `feedback_phase_vs_patchwork.md` 신규 등재.
 
 **관련 카논**: `memory/sessions/2026-04-29-phase-23-custom-image-pivot.md` (PR-12 retract 진단 데이터), `docs/plans/2026-04-28-phase-22-w1-5-debt-cleanup/checklist.md` § "Phase 23 carry-over (확정 escalate)" (점진 fix 시점에 carry-over 다수가 phase 신호였음).
+
+---
+
+## 2026-04-29 — chicken-egg self-bootstrap (Custom Runner Image CI가 self-hosted runner에 의존)
+
+**증상**: Phase 23 PR #174 머지 (`build-runner-image.yml` 신규, `runs-on: [self-hosted, containerized]`) 직후 사용자가 docker compose down 후 docker compose up 시도 → `ghcr.io/sabyunrepo/mmp-runner:latest: not found`. main의 build-runner-image.yml workflow가 4 runner 다운으로 picking up 불능 → image build 진행 X → GHCR push X → 사용자 host pull 불능. 옛 myoung34 image 잔존이 자동 fallback이 되어 4 runner 가동 (3 online + 1 offline)으로 mitigation됐으나, image 삭제 시 영구 lock-out 가능.
+
+**근본 원인**: `build-runner-image.yml`이 자기 자신이 빌드하는 image의 runner pool을 사용. design level의 self-bootstrap chicken-egg. spec § 9 Risks에 "사용자 host 재배포 시점 active CI 충돌"만 명시되었고 self-bootstrap risk는 미명시. superpowers:code-review에서도 "Self-bootstrap (chicken-egg) is benign by design"으로 판정 — 옛 image fallback 가정 (실 운영에서 검증 안 된 가정).
+
+**재발 방지 강제점**:
+1. **`build-runner-image.yml`의 `runs-on`은 항상 `ubuntu-latest`** (또는 GitHub-hosted runner). self-hosted runner는 user CI workflow (ci.yml/security/E2E)에만 사용.
+2. **신규 image build CI 작성 시 ubuntu-latest 강제** — Dockerfile + workflow 작성 시 PR review가 `runs-on: self-hosted` 검출 시 CRITICAL flag.
+3. **`memory/feedback_runner_bootstrap.md` 카논 ref** — Phase 23 wrap-up에서 신규 등재, build-runner-image.yml 패턴 master.
+4. **`anti-patterns.md` 항목 추가 후보** — "image build CI는 self-hosted runner 사용 금지" 카논화.
+
+**Mitigation (현 운영)**: 옛 myoung34 image가 host에 잔존 → 사용자가 image 삭제 안 하는 한 fallback 가능. P0-1 follow-up Hotfix PR로 영구 fix 권장.
+
+**관련 카논**: `memory/sessions/2026-04-29-phase-23-custom-runner-image-merge.md`, `docs/superpowers/specs/2026-04-29-phase-23-custom-runner-image-design.md` § 9 Risks, `memory/feedback_runner_bootstrap.md` (Phase 23 wrap-up 신규 카논), P0-1 follow-up.

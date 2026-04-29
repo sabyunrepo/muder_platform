@@ -2,10 +2,19 @@
 phase_id: "phase-23-custom-runner-image"
 phase_title: "Phase 23 — Custom Runner Image (Option A multi-stage)"
 created: 2026-04-29
-status: "draft (worktree 분기 + first commit 대기)"
+status: "merged (Wave 5 verify 진행 중) — PR #174 squash 025ed78 + hotfix #175 squash c32d123 (yaml syntax)"
 parent_phase: "phase-22-w1-5-debt-cleanup"
 spec: "docs/superpowers/specs/2026-04-29-phase-23-custom-runner-image-design.md"
 prs_estimated: 1
+prs_actual: 2
+follow_ups:
+  - P0-1 chicken-egg fix runs-on:ubuntu-latest (Hotfix PR)
+  - P0-2 GHCR repo connection (Manage Actions access)
+  - P0-3 PR-5 #172 main rebase + 머지
+  - P1-4 Composite action 추출
+  - P1-5 govulncheck version pin
+  - P1-6 ubuntu builder SHA pin
+  - P1-7 ARG DOCKER_GID
 ---
 
 # Phase 23 — Custom Runner Image Implementation Plan
@@ -133,7 +142,7 @@ prs_estimated: 1
 - 부모 plan: [Phase 22 W1.5](../2026-04-28-phase-22-w1-5-debt-cleanup/checklist.md)
 - 직전 핸드오프: [`memory/sessions/2026-04-29-phase-23-custom-image-pivot.md`](../../../memory/sessions/2026-04-29-phase-23-custom-image-pivot.md)
 - single-concern PR 카논: [`memory/feedback_branch_pr_workflow.md`](../../../memory/feedback_branch_pr_workflow.md)
-- admin-skip 정책: [`memory/project_ci_admin_skip_until_2026-05-01.md`](../../../memory/project_ci_admin_skip_until_2026-05-01.md)
+- admin-skip 정책: [`memory/project_ci_admin_skip_expired_2026-04-29.md`](../../../memory/project_ci_admin_skip_expired_2026-04-29.md) (만료됨 2026-04-29, Phase 23은 explicit 사용자 결정 카논으로 admin-skip 사용)
 - 4-agent 카논 (사용자 override): [`memory/feedback_4agent_review_before_admin_merge.md`](../../../memory/feedback_4agent_review_before_admin_merge.md)
 - file size 카논: [`memory/feedback_file_size_limit.md`](../../../memory/feedback_file_size_limit.md)
 - Sonnet 4.6 sub-agent: [`memory/feedback_sonnet_46_default.md`](../../../memory/feedback_sonnet_46_default.md)

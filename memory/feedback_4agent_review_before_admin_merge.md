@@ -25,3 +25,16 @@ synchronous 호출하는 HIGH deadlock 잠재 이슈가 발견되어 hotfix PR #
   PR 에 묶거나 follow-up PR 로 명시 분리.
 - 리뷰 건너뛰면 반드시 사용자 메시지로 "리뷰 없이 admin-merge 합니다"
   선언.
+
+**Carve-out: 사용자 명시 4-agent 우회 + superpowers:code-review 대체**
+- 사용자가 명시적으로 "4-agent 우회"를 결정한 경우 (`memory/feedback_mode_decision_gate.md` 카논상 mode 결정), `superpowers:requesting-code-review` 1회 호출이 단일 안전망으로 대체 가능.
+- 우회 조건:
+  1. 사용자 명시 발화 ("4-agent 우회", "superpowers code-review만" 등)
+  2. PR scope에 보안 critical 변경 없음 (PR-2c 패턴 아님)
+  3. `superpowers:requesting-code-review` 결과가 Critical 0 + 사용자 명시 acceptable
+- 우회 사례 (Phase 23 PR #174, 2026-04-29):
+  - mega PR scope (single-concern 카논 explicit override)
+  - infrastructure 변경 (Dockerfile + workflow + compose, 보안 critical 아님)
+  - superpowers:code-review APPROVED YES_WITH_FIXES (Critical 0, Important 1 fold-in)
+  - admin-skip 머지 후 main에서 yaml syntax bug 발견 → hotfix #175 → 1 추가 PR cycle 비용. 4-agent였다면 검출됐을지는 미확정 (yaml syntax는 4-agent의 axes 외).
+- **default는 4-agent 강제 유지** — 사용자 명시 없으면 우회 X.

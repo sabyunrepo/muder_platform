@@ -38,6 +38,7 @@
 - [PR-164 ci-infra-recovery 머지 + Phase 22 진입](sessions/2026-04-28-ci-infra-recovery-phase-22-entry.md) — **P1 완료** (PR #164 `dbe6a65`) self-hosted 12 job EACCES + postgres 5432 collision 영구 fix. **P5 진행 중** (Phase 22 Runner 컨테이너화 brainstorm Q1 — socket mount 결정). dev port 25432/26379 시프트 (langfuse 회피). carry-over 17건 P2 PR-11 hygiene (2026-04-28)
 - [PR-170 runner action compat + admin-skip 만료](sessions/2026-04-29-pr-170-runner-action-compat-admin-skip-expiry.md) — **머지 완료** PR #170 (Phase 22 W1.5, 4 main DEBT 일괄 + 5 fold-in, 14 commit). admin-skip 정책 만료 (`expired_2026-04-29.md`) 후 첫 정상 머지. 4-agent review 4건 conditional pass. W1.5 PR-11 (Go module + pnpm cache named volume) 신규 후보. Phase 23 Custom Image escalate 5건 carry-over (2026-04-29)
 - [Phase 23 Custom Image pivot](sessions/2026-04-29-phase-23-custom-image-pivot.md) — **PR-12 retract** (PR #173 close, branch+worktree 삭제). PR-5 (#172) open 보류. EPHEMERAL=true 가 file system reset 안 함 진단 → Phase 23 Custom Image Option A 즉시 진입 결정 (Dockerfile + GHCR build CI + docker-compose 교체). 9 workflow fold-in dead code 정리는 별도 follow-up. cache 폭증 369MB→2.4GB+ + tar 충돌 부채 영구 해소 진로 (2026-04-29)
+- [Phase 23 Custom Runner Image 머지](sessions/2026-04-29-phase-23-custom-runner-image-merge.md) — **머지 완료, Wave 5 verify 진행 중** mega PR #174 (squash 025ed78) + hotfix #175 yaml syntax (squash c32d123). multi-stage Dockerfile + cleanup hook + GHCR build CI + 9 workflow 정리. chicken-egg self-bootstrap 발견 (P0-1 follow-up `runs-on: ubuntu-latest`). admin-skip 머지 + 4-agent 우회 사용자 명시 카논. 13 commit, 1389 line spec/plan, 2026-04-29
 
 ## 도구 & 인프라
 - [Docker/Nginx 인프라](project_infra_docker.md) — Nginx 리버스 프록시, dev/prod Compose, Makefile
@@ -70,3 +71,7 @@
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — WebSocket은 ?token= 쿼리로 인증 (Authorization 헤더 아님)
 - [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 500(CLAUDE.md만 200, 2026-04-21 변경)
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화 + 장시간 세션 주기 재시작, vantict 등 타프로젝트 분리
+- [Custom Runner Image chicken-egg 회피](feedback_runner_bootstrap.md) — `build-runner-image.yml` `runs-on: ubuntu-latest` 카논. Phase 23 정착 (2026-04-29)
+- [self-hosted runner용 multi-stage Dockerfile](feedback_multi_stage_dockerfile_runner.md) — builder=ubuntu:22.04 + final=base@sha256, 보안 표면 분리 + GHA cache 효율 + RUNNER_TOOL_CACHE 호환
+- [Custom Runner Image GHCR 첫 push 절차](feedback_ghcr_self_hosted_bootstrap.md) — GITHUB_TOKEN + Public visibility + scope=runner-image. 사용자 host 재배포 + Rollback 절차
+- [사용자 mode 결정 후 매 task 재확인 X](feedback_mode_decision_gate.md) — admin-skip / 4-agent 우회 / 추천 mode 결정 후 매 task 게이트 X. 사용자 정정 ("왜 또 물어보는거지", 2026-04-29)
