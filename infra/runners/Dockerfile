@@ -19,6 +19,8 @@ RUN /opt/hostedtoolcache/go/${GO_VERSION}/x64/bin/go install \
     && cp /root/go/bin/govulncheck /usr/local/bin/
 
 FROM myoung34/github-runner@sha256:85a7a6a73abd0c0e679ea315b0e773c4a118315e21f47c864041ae6d73d21ea3
+ARG GO_VERSION=1.25.0
+ARG NODE_VERSION=20.18.0
 USER root
 RUN apt-get update && apt-get install -y --no-install-recommends \
       jq libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
@@ -31,4 +33,21 @@ RUN groupadd -g 990 docker-host 2>/dev/null || true \
     && usermod -aG docker-host runner
 COPY --chmod=0755 infra/runners/hooks/job-started.sh /opt/runner-hooks/job-started.sh
 ENV ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/runner-hooks/job-started.sh
+# Image-resident toolchain — setup-go/setup-node 의 GHA cache 다운로드 차단.
+# named volume mount (compose) 와 결합해 매 run 의 GOMODCACHE/GOCACHE/PNPM_STORE 다운로드 0.
+ENV PATH=/opt/hostedtoolcache/go/${GO_VERSION}/x64/bin:/opt/hostedtoolcache/node/${NODE_VERSION}/x64/bin:${PATH}
+ENV GOTOOLCHAIN=local
+ENV GOPATH=/home/runner/go
+ENV GOMODCACHE=/home/runner/go/pkg/mod
+ENV GOCACHE=/home/runner/.cache/go-build
+ENV PNPM_STORE_PATH=/home/runner/.pnpm-store
+RUN mkdir -p /home/runner/go/pkg/mod /home/runner/.cache/go-build /home/runner/.pnpm-store \
+    && chown -R runner:runner /home/runner/go /home/runner/.cache /home/runner/.pnpm-store
+# Pre-bake apps/server Go module deps — go.sum 변경 시 image rebuild (paths filter trigger).
+# Node monorepo deps 는 named volume only (image 비대 회피).
+USER runner
+COPY --chown=runner:runner apps/server/go.mod apps/server/go.sum /tmp/prebake/
+RUN cd /tmp/prebake && go mod download
+USER root
+RUN rm -rf /tmp/prebake
 USER runner

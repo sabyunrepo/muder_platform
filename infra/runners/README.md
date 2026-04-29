@@ -29,9 +29,10 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
 이 pool은 **`ghcr.io/sabyunrepo/mmp-runner` Custom Image**로 가동합니다 (myoung34 base 직접 사용 X). 정공:
 
 - 사전 install: jq, govulncheck, Go 1.25, Node 20, Playwright deps
+- **Image-resident toolchain (Phase 23 follow-up)** — `PATH`에 Go/Node bin 추가, `GOMODCACHE`/`GOCACHE`/`PNPM_STORE_PATH` ENV pre-set, `apps/server/go.mod` deps `go mod download` pre-bake
 - docker GID 990 정착 (testcontainers-go + Trivy 자연 권한)
   - **GID 990 의미**: Dockerfile이 `groupadd -g 990 docker-host`로 group 생성 후 runner user에 가입. 사용자 host의 docker.sock GID와 매칭되어야 효력. `.env`의 `DOCKER_GID`가 dual-control 추가 안전망 (compose `group_add: ${DOCKER_GID}`)
-- `ACTIONS_RUNNER_HOOK_JOB_STARTED` cleanup script — `~/go/pkg/mod` + `~/.cache/go-build`을 매 job 직전 비움 (EPHEMERAL=true가 file system reset 안 하는 myoung34 동작 정공)
+- `ACTIONS_RUNNER_HOOK_JOB_STARTED` script — image-resident cache 보존, idempotent `mkdir`만 수행 (옛 카논의 `rm -rf ~/go/pkg/mod`은 image pre-bake와 충돌해서 제거)
 
 이미지 빌드는 `.github/workflows/build-runner-image.yml`이 main 머지 시 자동 push. visibility = Public (사용자 host pull 인증 0건).
 
@@ -102,35 +103,67 @@ docker compose up -d
 6. `docker compose up -d`.
 7. GitHub Settings → Actions → Runners → 4 row idle 확인.
 
-## Cache Volumes (PR-4 + fold-in, 2026-04-28)
+## Cache Volumes (Phase 23 follow-up — image-resident toolchain)
 
 4 runner 가 공유하는 cache named volume. EPHEMERAL=true 와 무관하게 유지.
 
-**PR-168 fold-in (H-2)**: `pnpm-cache`/`go-cache` 제거 — `actions/setup-go`/`actions/setup-node` 의 GHA cache 와 충돌. `setup-*` 자체 cache 보존, Playwright (GHA cache 미적용) + hostedtool 만 volume cache 사용.
+**카논 reverse (PR-168 H-2 → Phase 23 follow-up)**: 옛 카논은 `pnpm-cache`/`go-cache` 를 제거하고 `setup-*` 의 GHA cache 사용. 그러나 매 run 913MB GOMODCACHE 다운로드 + image의 toolcache pre-bake 무효화 부작용 발견 → image-resident toolchain 카논으로 전환.
 
 ### 구성
 
 | volume | mount | 용도 |
 |---|---|---|
 | `playwright-cache` | `/opt/cache/playwright` | Playwright browser binary (chromium/firefox) |
-| `hostedtool-cache` | `/opt/hostedtoolcache` | actions/setup-go, actions/setup-node 의 toolchain cache |
+| `hostedtool-cache` | `/opt/hostedtoolcache` | Go/Node binary toolchain (image pre-bake 대상) |
+| `go-mod-cache` | `/home/runner/go/pkg/mod` | `apps/server` Go module deps (image pre-bake + persist) |
+| `go-build-cache` | `/home/runner/.cache/go-build` | Go build artifact cache |
+| `pnpm-store` | `/home/runner/.pnpm-store` | pnpm content-addressable store (workspace deps) |
 
-### 환경변수
+### 환경변수 (image ENV로 정의 — Dockerfile)
 
-`x-runner-base.environment` 에서 명시 (workflow step 이 직접 읽음):
+`setup-go`/`setup-node` 가 PATH 자동 hit:
+- `PATH=/opt/hostedtoolcache/go/${GO_VERSION}/x64/bin:/opt/hostedtoolcache/node/${NODE_VERSION}/x64/bin:${PATH}`
+- `GOPATH=/home/runner/go`
+- `GOMODCACHE=/home/runner/go/pkg/mod`
+- `GOCACHE=/home/runner/.cache/go-build`
+- `PNPM_STORE_PATH=/home/runner/.pnpm-store`
+- `GOTOOLCHAIN=local` (project go.mod 의 toolchain directive 무시 — image pre-bake 강제)
+
+compose `x-runner-base.environment` 는 Playwright 만 (image ENV 와 별개):
 - `PLAYWRIGHT_BROWSERS_PATH=/opt/cache/playwright`
-- `RUNNER_TOOL_CACHE=/opt/hostedtoolcache` (L-ARCH-1: actions/setup-* hostedtoolcache 위치 명시)
+- `RUNNER_TOOL_CACHE=/opt/hostedtoolcache`
 
-### Phase 1 효과 (재산정 — PR-168 fold-in 후)
+### Workflow 카논 (self-hosted only)
 
-cache mount 범위가 `playwright-cache` + `hostedtool-cache` 2개로 축소 (pnpm-store/Go mod cache 는 GH-managed cache 사용 — H-2 fold-in).
+`actions/setup-go` / `actions/setup-node` 의 `cache:` 옵션을 **`false`** 로 명시:
+```yaml
+- uses: actions/setup-go@...
+  with:
+    go-version-file: apps/server/go.mod
+    cache: false  # image-resident: GOMODCACHE/GOCACHE는 named volume mount.
+```
 
-- 1st run: ~10분 setup (full download → cache 빌드)
-- 2nd run+: setup ~2~3분 (Playwright + Go/Node toolchain hit, pnpm install 은 GHA cache 의존)
-- pnpm-lock 변경 시: GHA cache miss → 새 install ~2~3분
-- Playwright bump 시: 해당 browser ~1분 download
+GHA cache restore 가 일어나지 않음 → 매 run 의 ~913MB 다운로드 0. cloud (`runs-on: ubuntu-latest`) workflow 는 그대로 GHA cache 사용 (image-resident 무관).
 
-→ "최대 70% 단축" 은 GHA cache 가 정상 작동할 때의 추가 효과 (Playwright 만 단독).
+### 효과 (Phase 23 follow-up)
+
+| 항목 | 옛 (PR-168 H-2) | 새 (image-resident) |
+|---|---|---|
+| 매 run GOMODCACHE 다운로드 | ~913MB (~13초) | **0 (image pre-bake)** |
+| Go toolchain mismatch fallback | 매 fire 마다 다운로드 후 named volume 비대 | image PATH 즉시 hit |
+| pnpm install 첫 run | GHA cache restore 의존 | named volume 영구 persist (4 runner 공유) |
+
+### 운영 카논 — image rebuild 후 cleanup
+
+`apps/server/go.sum` 변경 → build CI 가 새 image push. host 재배포 시 `go-mod-cache` 옛 데이터를 명시 cleanup 해야 image의 새 pre-bake 가 적용:
+```bash
+docker compose down
+docker volume rm $(docker volume ls -q | grep -E "go-mod-cache|go-build-cache") 2>/dev/null || true
+docker compose pull
+docker compose up -d
+```
+
+`hostedtool-cache` 도 GO_VERSION/NODE_VERSION bump 시 동일 cleanup 필요.
 
 ### 보안 — Public repo + Fork PR 가드
 
@@ -155,31 +188,36 @@ PR 머지 후 host (sabyun@100.90.38.7) 에서:
 ssh sabyun@100.90.38.7
 cd ~/infra/runners
 
-# 새 docker-compose.yml 가져오기
+# 새 docker-compose.yml 가져오기 (또는 SCP — host의 ~/infra/runners 가 git clone 아닐 시)
 git pull origin main
 
-# 기존 named volume 삭제 (volume 정의 변경 — pnpm-cache/go-cache 제거됨)
+# 기존 named volume 삭제 (Phase 23 follow-up: image pre-bake 적용 위해 옛 cache 제거)
 docker compose down
-docker volume rm runner-cache_pnpm-cache runner-cache_go-cache 2>/dev/null || true
+docker volume rm $(docker volume ls -q | grep -E "go-mod-cache|go-build-cache|hostedtool-cache|pnpm-store") 2>/dev/null || true
 
 # 재배포
+docker compose pull
 docker compose up -d
 
 # 검증
 docker compose ps                                          # 4 service Up
-docker volume ls | grep -E "(playwright|hostedtool)-cache"  # 2 cache volume 생성
+docker volume ls | grep -E "(playwright|hostedtool|go-mod|go-build|pnpm)"  # 5 cache volume 생성
 docker compose logs runner-1 --tail 10                     # "Listening for Jobs"
+docker exec containerized-runner-1 ls /home/runner/go/pkg/mod/cache  # image pre-bake 데이터 확인
 ```
 
 GH UI Settings → Actions → Runners 에서 4 runner idle 재확인.
 
-### 디스크 사용량
+### 디스크 사용량 (image-resident toolchain 후)
 
 cache 누적 후 예상치:
 - `playwright-cache`: 200~500MB (chromium 150MB + firefox 80MB + system deps)
-- `hostedtool-cache`: ~200MB (Go toolchain + Node)
+- `hostedtool-cache`: ~200MB (Go toolchain + Node — image pre-bake 동기화)
+- `go-mod-cache`: ~500MB ~ 1.5GB (apps/server deps + 누적 dependency)
+- `go-build-cache`: ~300MB ~ 1GB (build artifact cache)
+- `pnpm-store`: ~500MB ~ 1.5GB (monorepo content-addressable store)
 
-총 ~400~700MB (pnpm/Go cache 제거로 이전 대비 ~3~4GB → ~0.7GB 감소). 정기 재 build 시 docker volume prune 권장.
+총 ~1.7GB ~ 4.5GB. 옛 PR-168 카논 (~700MB) 대비 증가하지만 매 run 다운로드 0 + 13초 절감 trade-off. `apps/server/go.sum` bump 시 image rebuild + `docker volume rm` cleanup 필요 (위 카논 참조).
 
 ## Troubleshooting (PAT 만료 detection)
 

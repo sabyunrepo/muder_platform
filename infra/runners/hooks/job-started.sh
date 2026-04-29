@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # ACTIONS_RUNNER_HOOK_JOB_STARTED — 매 job 시작 직전 fire.
-# myoung34 EPHEMERAL=true가 file system reset 안 함에 대한 정공.
+#
+# Phase 23 follow-up (image-resident toolchain):
+# - GOMODCACHE/GOCACHE는 image pre-bake + named volume mount로 persist.
+# - setup-go의 `cache: false`와 결합해 GHA cache restore 자체가 일어나지 않음
+#   → 옛 카논의 tar 충돌 우려는 미발생. rm -rf 제거.
+#
+# myoung34 base image의 runner user home은 /home/runner 고정.
+# set -u로 인한 unbound variable abort 방지.
 set -euo pipefail
-# myoung34 base image의 runner user home은 /home/runner 고정. set -u로 인한 unbound variable abort 방지.
 HOME="${HOME:-/home/runner}"
-rm -rf "${HOME}/go/pkg/mod" "${HOME}/.cache/go-build" 2>/dev/null || true
-# setup-go가 cache restore 시 parent dir 존재 가정 — rm -rf 후 재생성 필수.
+# setup-go가 cache restore disabled여도 parent dir 존재 가정 — 안전망 idempotent mkdir.
 mkdir -p "${HOME}/go/pkg/mod" "${HOME}/.cache/go-build"
