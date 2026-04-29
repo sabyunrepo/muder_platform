@@ -156,28 +156,41 @@ trivy:
 
 **변경 후 — Build server image 패턴 변경**:
 
-옵션 A — `sudo docker` step 으로 manual build (action 우회, PR-168 e2e-stubbed.yml 패턴):
+**1차 시도 (실패)** — `sudo docker build` 만 + trivy-action `image-ref:` 유지:
+- 1st CI run (commit `fd227f9`) FAILURE: `aquasecurity/trivy-action` 자체가 trivy CLI 로 image inspect → docker.sock 접근 → permission denied.
+- 교훈: `sudo docker build` 는 image 생성만 해결. trivy-action 안의 trivy CLI 가 host docker.sock 필요.
+
+**2차 정공 — tarball mode (`input:` 파라미터)**:
 ```yaml
 trivy:
   ...
   steps:
     ...
-    # Containerized runner sup group 990 (host docker.sock) lost in workflow.
-    # docker/build-push-action 이 socket access denied → sudo prefix 로 우회.
-    # Image level fix (runner user 의 docker group 정착) 은 Phase 23 carry-over.
-    - name: Build server image (manual via sudo docker)
+    # Containerized runner sup group 990 lost. docker/build-push-action +
+    # trivy-action 모두 socket access denied.
+    # 정공: sudo docker build → sudo docker save tarball → trivy-action input
+    # mode (tarball scan 은 docker.sock 불필요).
+    # Image level fix 는 Phase 23 carry-over.
+    - name: Build server image + save tarball (manual via sudo docker)
       run: |
         set -euo pipefail
         sudo docker build \
           -f apps/server/Dockerfile \
           -t mmp-server:security-scan \
           apps/server
+        sudo docker save mmp-server:security-scan -o /tmp/mmp-server.tar
+        sudo chown "$(id -u):$(id -g)" /tmp/mmp-server.tar
 
     - name: Run Trivy vulnerability scanner
-      ...
+      uses: aquasecurity/trivy-action@... # 0.35.0
+      with:
+        input: /tmp/mmp-server.tar  # docker.sock 불필요
+        format: sarif
+        output: trivy-results.sarif
+        severity: CRITICAL,HIGH
 ```
 
-옵션 A 채택 — buildx + cache-from gha 효과 포기되지만 Trivy scan 만의 1회용 이미지라 cache 무가치.
+채택 근거 — tarball scan 은 trivy CLI 가 tar 파일을 직접 read → docker.sock 의존 0. buildx + cache-from gha 효과 포기 (Trivy scan 만의 1회용 이미지라 cache 무가치).
 
 ### DEBT-4: Go Lint+Test services block
 
