@@ -24,6 +24,62 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
 2. **30일 회전** — admin-skip 정책 종료(2026-05-01) 전까지. 6개월 표준은 정책 만료 후 적용.
 3. **PAT 노출 금지** — 스크린샷, PR description, log, Slack 모두. 노출 발견 시 즉시 revoke + repo audit log 검토.
 
+## Custom Image (Phase 23+)
+
+이 pool은 **`ghcr.io/sabyunrepo/mmp-runner` Custom Image**로 가동합니다 (myoung34 base 직접 사용 X). 정공:
+
+- 사전 install: jq, govulncheck, Go 1.25, Node 20, Playwright deps
+- docker GID 990 정착 (testcontainers-go + Trivy 자연 권한)
+  - **GID 990 의미**: Dockerfile이 `groupadd -g 990 docker-host`로 group 생성 후 runner user에 가입. 사용자 host의 docker.sock GID와 매칭되어야 효력. `.env`의 `DOCKER_GID`가 dual-control 추가 안전망 (compose `group_add: ${DOCKER_GID}`)
+- `ACTIONS_RUNNER_HOOK_JOB_STARTED` cleanup script — `~/go/pkg/mod` + `~/.cache/go-build`을 매 job 직전 비움 (EPHEMERAL=true가 file system reset 안 하는 myoung34 동작 정공)
+
+이미지 빌드는 `.github/workflows/build-runner-image.yml`이 main 머지 시 자동 push. visibility = Public (사용자 host pull 인증 0건).
+
+> Spec: `docs/superpowers/specs/2026-04-29-phase-23-custom-runner-image-design.md`
+
+### GHCR 첫 push 후 1회 운영 절차
+
+1. https://github.com/sabyunrepo/packages/container/mmp-runner/settings → "Manage Actions access" → `muder_platform` add (이렇게 해야 향후 본 repo의 GITHUB_TOKEN이 push 가능)
+2. visibility → Public (image에 secret 없음 — Dockerfile은 git 공개)
+
+### 사용자 host 재배포 (main 머지 후)
+
+```bash
+ssh sabyun@100.90.38.7
+cd ~/muder_platform/infra/runners
+git pull
+docker compose pull
+docker compose up -d
+docker compose ps  # 4 service Started
+```
+
+### Verification (재배포 후)
+
+```bash
+# 컨테이너 부팅
+docker logs containerized-runner-1 2>&1 | head -50 | grep -i "Listening for Jobs"
+
+# 사전 install + hook env 검증
+docker exec containerized-runner-1 bash -c '
+  jq --version
+  govulncheck -version
+  /opt/hostedtoolcache/go/1.25.0/x64/bin/go version
+  /opt/hostedtoolcache/node/20.18.0/x64/bin/node --version
+  echo "ACTIONS_RUNNER_HOOK_JOB_STARTED=$ACTIONS_RUNNER_HOOK_JOB_STARTED"
+'
+
+# GitHub Settings → Actions → Runners → 4 idle 확인
+```
+
+### Rollback (재배포 후 광범위 fail 시)
+
+```bash
+git revert <Phase 23 commit>  # compose.yml만 되돌림
+docker compose pull
+docker compose up -d
+# ~5분 내 myoung34 base 또는 직전 GHCR sha tag로 복귀
+```
+
 ## Bootstrap (최초 1회)
 
 1. fine-grained PAT 발급 (`.env.example` 주석 참조).
@@ -39,11 +95,9 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
      https://api.github.com/repos/sabyunrepo/muder_platform/actions/runners | jq '.total_count'
    ```
    숫자(0 이상) 반환 시 정상. `401`/`404`이면 PAT 또는 Resource owner 잘못.
-5. **Image pull (최초 1회 필수)** — `pull_policy: never` + digest pinning(H-1)이라 호스트에 image 부재 시 compose up이 `No such image` error로 실패. 첫 부팅 또는 digest 변경(rotation) 시 manual pull:
+5. **Image pull (Phase 23+ Custom Image)** — `pull_policy: always`로 compose up 시 자동 pull. 첫 부팅 또는 GHCR 권한 검증을 위해 manual pull 권장:
    ```bash
-   # docker-compose.yml의 image: ... 라인에서 digest 추출
-   IMAGE=$(grep -E 'image:' docker-compose.yml | head -1 | awk '{print $2}')
-   docker pull "$IMAGE"
+   docker compose pull
    ```
 6. `docker compose up -d`.
 7. GitHub Settings → Actions → Runners → 4 row idle 확인.

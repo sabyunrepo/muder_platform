@@ -7,9 +7,10 @@
 # 라벨/EPHEMERAL/RUN_AS_ROOT 변경은 본 파일에서 수정.
 
 x-runner-base: &runner-base
-  # Image: latest digest pinning (PR-1 H-1 fix). Renovate가 digest 추적 (Phase 18.7 카논).
-  image: myoung34/github-runner@sha256:85a7a6a73abd0c0e679ea315b0e773c4a118315e21f47c864041ae6d73d21ea3
-  pull_policy: never
+  # Phase 23 Custom Runner Image (`build-runner-image.yml` GHCR push, Public visibility).
+  # Renovate가 GHCR digest 추적 (Phase 18.7 카논 + Phase 23 spec § 4.4).
+  image: ghcr.io/sabyunrepo/mmp-runner:latest
+  pull_policy: always
   restart: always
   env_file: .env
   environment: &runner-env

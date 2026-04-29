@@ -30,26 +30,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Phase 22 W1.5 PR-8 DEBT-3: containerized runner sup group 990
-      # (host docker.sock GID) lost in workflow step. docker/build-push-action
-      # + trivy-action 모두 socket access denied.
-      # 정공 fix: sudo docker build → sudo docker save tarball → trivy-action
-      # 의 input: 파라미터 (tarball mode) 로 docker.sock 우회.
-      # 1st CI run (commit fd227f9) 에서 sudo docker build 까지만 했으나
-      # trivy-action 자체가 docker.sock 접근 → fail. tarball mode 가 정공.
-      # Image level fix (runner user 의 docker group 정착) 은 Phase 23 Custom
-      # Image carry-over.
-      - name: Build server image + save tarball (manual via sudo docker)
+      # Phase 23 Custom Image: docker GID 990 정착 (group docker-host + runner user 가입).
+      # docker.sock 직접 접근 가능 — sudo + tarball 우회 dead code.
+      - name: Build server image + save tarball
         run: |
           set -euo pipefail
-          sudo docker build \
+          docker build \
             -f apps/server/Dockerfile \
             -t mmp-server:security-scan \
             apps/server
           # tarball 으로 export — trivy-action input mode 가 docker.sock 불필요
-          sudo docker save mmp-server:security-scan -o /tmp/mmp-server.tar
-          # runner user 가 trivy-action 안에서 read 가능하게 ownership 변경
-          sudo chown "$(id -u):$(id -g)" /tmp/mmp-server.tar
+          docker save mmp-server:security-scan -o /tmp/mmp-server.tar
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
@@ -65,6 +56,11 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy-container
+
+      # Phase 23 #2 fold-in (Sec-MED-3): host disk 누적 cleanup.
+      - name: Cleanup security-scan image
+        if: always()
+        run: docker rmi mmp-server:security-scan 2>/dev/null || true
 
   osv-scanner:
     # Warn-only policy (Phase 18.7 Wave 2 onboarding, 6 weeks).
@@ -138,30 +134,8 @@ jobs:
           go-version-file: apps/server/go.mod
           cache-dependency-path: apps/server/go.sum
 
-      # Phase 22 W1.5 PR-8 DEBT-2: myoung34/github-runner image default Node
-      # v10.19.0 가 ?? syntax 미지원. CodeQL action 의 spawn child process 가
-      # system Node 사용 → setup-node@v4 가 PATH 만 update 해도 subprocess
-      # resolve 실패. setup-node 의 SHA-pinned v20 binary 를 /usr/local/bin
-      # 에 symlink → /usr/bin/node 보다 PATH 우선이라 spawn child 도 v20 사용.
-      # Image level fix (base image 에 Node v20 사전 install) 은 Phase 23
-      # Custom Image carry-over.
-      - name: Setup Node.js v20 (action — SHA-pinned binary)
-        if: matrix.language == 'javascript-typescript'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "20"
-
-      - name: Override system node with setup-node v20 binary
-        if: matrix.language == 'javascript-typescript'
-        run: |
-          set -euo pipefail
-          NODE_BIN=$(which node)
-          NPM_BIN=$(which npm)
-          echo "setup-node node: $NODE_BIN ($(node --version))"
-          sudo ln -sf "$NODE_BIN" /usr/local/bin/node
-          sudo ln -sf "$NPM_BIN" /usr/local/bin/npm
-          /usr/local/bin/node --version
-
+      # Phase 23 Custom Image: base에 Node v20 사전 install (system PATH 노출).
+      # CodeQL action의 spawn child process가 자연 v20 사용 — setup-node + symlink 우회 dead code.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@7fc6561ed893d15cec696e062df840b21db27eb0 # v4.35.2
         with:

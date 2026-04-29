@@ -41,19 +41,19 @@ jobs:
           echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
 
           # runners-net network 동적 검출 (compose project prefix 무관).
-          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          RUNNERS_NET=$(docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
           if [ -z "$RUNNERS_NET" ]; then
             echo "::error::runners-net network not found on host"
-            sudo docker network ls
+            docker network ls
             exit 1
           fi
           echo "RUNNERS_NET=$RUNNERS_NET" >> "$GITHUB_ENV"
           echo "Detected runners-net: $RUNNERS_NET"
 
           # 이전 run cleanup (이름 충돌 방지)
-          sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
+          docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
 
-          sudo docker run -d --name "$PG_NAME" \
+          docker run -d --name "$PG_NAME" \
             --network "$RUNNERS_NET" \
             -e POSTGRES_DB=mmp_test \
             -e POSTGRES_USER=mmp \
@@ -64,7 +64,7 @@ jobs:
             --health-retries 10 \
             postgres:17-alpine
 
-          sudo docker run -d --name "$REDIS_NAME" \
+          docker run -d --name "$REDIS_NAME" \
             --network "$RUNNERS_NET" \
             --health-cmd "redis-cli ping" \
             --health-interval 5s \
@@ -76,8 +76,8 @@ jobs:
           # PR-170 4-agent review (Perf-1 + Test-1) fold-in: 60s ceiling 으로 상향.
           # 30s 이전 ceiling 은 cold start (image pull + initdb) 시 false-fail 가능.
           for i in $(seq 1 60); do
-            pg_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
-            redis_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
+            pg_health=$(docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
+            redis_health=$(docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
             if [ "$pg_health" = "healthy" ] && [ "$redis_health" = "healthy" ]; then
               echo "Both services healthy after ${i}s"
               break
@@ -86,8 +86,8 @@ jobs:
           done
           if [ "$pg_health" != "healthy" ] || [ "$redis_health" != "healthy" ]; then
             echo "::error::services failed to become healthy (postgres=$pg_health, redis=$redis_health)"
-            sudo docker logs "$PG_NAME" 2>&1 | tail -30
-            sudo docker logs "$REDIS_NAME" 2>&1 | tail -30
+            docker logs "$PG_NAME" 2>&1 | tail -30
+            docker logs "$REDIS_NAME" 2>&1 | tail -30
             exit 1
           fi
 
@@ -150,23 +150,8 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: bash scripts/check-playeraware-coverage.sh
 
-      # Phase 22 W1.5 PR-8 testcontainers-go fold-in (PR-170 1st CI run 이후
-      # 노출된 pre-existing 부채):
-      # internal/auditlog, internal/editor 등 패키지가 testcontainers-go 로
-      # host docker.sock 직접 접근 → containerized runner 의 sup group 990
-      # lost 환경에서 permission denied.
-      # 정공: sudo -E env "PATH=$PATH" go test 로 root 권한 docker.sock
-      # 접근 + 환경변수 (HOME, GOPATH, GOCACHE, DATABASE_URL, REDIS_URL,
-      # PG_NAME, REDIS_NAME) 보존.
-      # Image level fix (runner user 의 docker group GID 990 정착) 은
-      # Phase 23 Custom Image carry-over.
       - name: Run tests
-        run: sudo -E env "PATH=$PATH" go test -race -coverprofile=coverage.out ./...
-
-      # sudo go test 로 root:root 생성 → 후속 step (Codecov upload + artifact
-      # upload) 가 read 가능하게 ownership 정정.
-      - name: Fix coverage.out ownership
-        run: sudo chown "$(id -u):$(id -g)" coverage.out
+        run: go test -race -coverprofile=coverage.out ./...
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -20
@@ -195,7 +180,7 @@ jobs:
         if: always()
         working-directory: ${{ github.workspace }}
         run: |
-          sudo docker rm -f "${PG_NAME:-}" "${REDIS_NAME:-}" 2>/dev/null || true
+          docker rm -f "${PG_NAME:-}" "${REDIS_NAME:-}" 2>/dev/null || true
 
   ts-check:
     name: TypeScript Lint + Test + Build
@@ -311,19 +296,6 @@ jobs:
           name: web-coverage
           path: apps/web/coverage
 
-      # Phase 22 W1.5 PR-8 fold-in (PR-170 ce1fa62 1st CI run 노출):
-      # containerized runner image / bare-host runner 모두 jq 미사전 install.
-      # Web coverage gate step 이 jq 의존 → "jq: command not found" exit 127.
-      # apt-get 으로 사전 install (idempotent, 이미 있으면 skip).
-      # Image level fix (Custom Image 에 jq 포함) 은 Phase 23 carry-over.
-      - name: Ensure jq installed
-        run: |
-          if ! command -v jq >/dev/null 2>&1; then
-            sudo apt-get update -qq
-            sudo apt-get install -y -qq jq
-          fi
-          jq --version
-
       - name: Web coverage gate
         run: |
           LINES=$(jq '.total.lines.pct' apps/web/coverage/coverage-summary.json)
@@ -373,31 +345,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Phase 22 W1.5 PR-8 Docker Build Check fold-in (PR-170 ce1fa62 1st CI
-       # run 노출): docker/setup-buildx-action + docker/build-push-action 모두
-      # docker.sock 직접 접근 → containerized runner sup group 990 lost 환경
-      # 에서 permission denied. Trivy 와 동일 root cause.
-      # 정공: setup-buildx 제거 + manual sudo docker build (GHA cache 효과
-      # 포기, push branch 가 아닌 PR Build Check 라 cache 무가치).
-      # SBOM: anchore/sbom-action 도 docker.sock 사용 → manual syft 으로 교체
-      # 검토 필요. 현 단계는 sudo docker save 로 tarball 생성 후 syft input.
-      # Image level fix (docker group GID 990 정착) 은 Phase 23 Custom Image.
-      - name: Build Docker image (manual via sudo docker)
+      - name: Build Docker image
         id: docker-build
         run: |
           set -euo pipefail
           IMAGE_REF="ghcr.io/sabyunrepo/mmp-server:ci-${{ github.sha }}"
-          sudo docker build \
+          docker build \
             -f apps/server/Dockerfile \
             -t "$IMAGE_REF" \
             apps/server
           # digest 추출 (attest-build-provenance 는 push branch 만 사용 — PR
           # 단계는 skip 이지만 step output 일관성 위해 emit)
-          DIGEST=$(sudo docker inspect "$IMAGE_REF" --format='{{.Id}}')
+          DIGEST=$(docker inspect "$IMAGE_REF" --format='{{.Id}}')
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
           # SBOM 용 tarball export
-          sudo docker save "$IMAGE_REF" -o /tmp/mmp-server-ci.tar
-          sudo chown "$(id -u):$(id -g)" /tmp/mmp-server-ci.tar
+          docker save "$IMAGE_REF" -o /tmp/mmp-server-ci.tar
 
       # PR-170 4c7e8ca run 에서 anchore/sbom-action 의 syft install 실패
       # ("gzip: stdin: not in gzip format") — containerized runner 환경

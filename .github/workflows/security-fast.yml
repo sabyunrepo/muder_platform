@@ -68,10 +68,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
           GITLEAKS_ENABLE_COMMENTS: false
-          # Phase 22 W1.5 PR-8: containerized runner working dir mismatch.
-          # gitleaks-action v2.3.9 의 artifact upload step 이 rootDirectory:
-          # /home/runner 를 하드코딩 → containerized runner 환경에서 fail.
-          # scan 자체는 SUCCESS, summary 는 GHA job summary 로 표시.
-          # Artifact 복원은 Phase 23 Custom Image migration 후 검토.
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+          # Phase 23 Custom Image: docker GID 990 + working dir 정합성. artifact upload 복원 (Sec-MED-2).
+          # Verify는 본 PR 머지 + 사용자 host 재배포 후 첫 CI run에서 자연 발생 — fail 시 hotfix + #3 follow-up PR.
           GITLEAKS_ENABLE_SUMMARY: true
