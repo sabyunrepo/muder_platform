@@ -6,11 +6,17 @@ on:
       - 'infra/runners/Dockerfile'
       - 'infra/runners/hooks/**'
       - '.github/workflows/build-runner-image.yml'
+      # Image-resident Go module pre-bake: go.mod/go.sum 변경 시 image rebuild.
+      - 'apps/server/go.mod'
+      - 'apps/server/go.sum'
   pull_request:
     paths:
       - 'infra/runners/Dockerfile'
       - 'infra/runners/hooks/**'
       - '.github/workflows/build-runner-image.yml'
+      - 'apps/server/go.mod'
+      - 'apps/server/go.sum'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -48,21 +54,26 @@ jobs:
             echo "FAIL: image not loaded — check buildx load behavior"
             exit 1
           }
-      - name: Verify cleanup hook fires
+      - name: Verify image-resident toolchain
         if: github.event_name == 'pull_request'
         run: |
           docker run --rm --entrypoint /bin/bash \
             ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }} \
             -c '
               set -euo pipefail
+              # Toolchain pre-bake
               jq --version
               govulncheck -version
               ls /opt/hostedtoolcache/go/1.25.0/x64/bin/go
               ls /opt/hostedtoolcache/node/20.18.0/x64/bin/node
-              mkdir -p ~/go/pkg/mod/dummy ~/.cache/go-build/dummy
-              touch ~/go/pkg/mod/dummy/file ~/.cache/go-build/dummy/file
+              # PATH가 image ENV로 설정 — go/node가 PATH로 직접 호출 가능해야
+              go version | grep -q "go1.25"
+              node --version | grep -q "v20"
+              # Image-resident GOMODCACHE pre-bake (apps/server/go.mod deps)
+              [ -d /home/runner/go/pkg/mod/cache ] || (echo "FAIL: GOMODCACHE pre-bake missing" && exit 1)
+              # Hook 실행 후에도 pre-bake 데이터 보존 (image-resident 카논)
+              touch /home/runner/go/pkg/mod/cache/sentinel
               bash /opt/runner-hooks/job-started.sh
-              [ -z "$(ls -A ~/go/pkg/mod 2>/dev/null)" ] || (echo "FAIL: go pkg mod not cleaned" && exit 1)
-              [ -z "$(ls -A ~/.cache/go-build 2>/dev/null)" ] || (echo "FAIL: go-build cache not cleaned" && exit 1)
-              echo "PASS: cleanup hook works"
+              [ -f /home/runner/go/pkg/mod/cache/sentinel ] || (echo "FAIL: hook이 GOMODCACHE 삭제 (image-resident 위배)" && exit 1)
+              echo "PASS: image-resident toolchain verified"
             '

@@ -1,12 +1,14 @@
 name: Security — Deep Scan (SARIF)
 
 on:
-  pull_request:
-    branches: [main]
+  # Phase 23 follow-up — CI pruning P1: PR fire 제거 (Trivy + CodeQL = 매 PR 5~10분 부담).
+  # main 머지 후 push fire + daily 04:00 cron 으로 검증. 즉시 차단은 govulncheck (security-fast.yml) 매 PR 유지.
+  # dispatch 추가: 머지 전 직접 검증 필요 시 수동 fire.
   push:
     branches: [main]
   schedule:
     - cron: "0 4 * * *"    # 04:00 UTC daily
+  workflow_dispatch:
 
 concurrency:
   group: security-deep-${{ github.ref }}

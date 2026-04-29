@@ -19,8 +19,9 @@ x-runner-base: &runner-base
     RUN_AS_ROOT: "false"
     # 컨테이너 OS = linux (호스트 macOS와 별개). Phase 23 ARM image 진입 시 arm64/amd64 라벨 추가.
     LABELS: "self-hosted,linux,containerized"
-    # PR-4 fold-in (H-2): Playwright만 volume cache (GHA cache 미적용).
-    # GOMODCACHE/PNPM_STORE_PATH/GOCACHE 제거 — setup-go/setup-node 자체 GHA cache와 충돌.
+    # Image-resident toolchain (Phase 23 follow-up):
+    # GOMODCACHE/GOCACHE/PNPM_STORE_PATH는 image ENV에서 정의. compose는 named volume mount만.
+    # Playwright는 별 cache (GHA cache 미적용 — image 비대 회피).
     PLAYWRIGHT_BROWSERS_PATH: /opt/cache/playwright
     # L-ARCH-1: actions/setup-* 의 hostedtoolcache 위치 명시 (dead config 방지).
     RUNNER_TOOL_CACHE: /opt/hostedtoolcache
@@ -42,6 +43,9 @@ services:
       - runner1-work:/runner/_work
       - playwright-cache:/opt/cache/playwright
       - hostedtool-cache:/opt/hostedtoolcache
+      - go-mod-cache:/home/runner/go/pkg/mod
+      - go-build-cache:/home/runner/.cache/go-build
+      - pnpm-store:/home/runner/.pnpm-store
 
   runner-2:
     <<: *runner-base
@@ -54,6 +58,9 @@ services:
       - runner2-work:/runner/_work
       - playwright-cache:/opt/cache/playwright
       - hostedtool-cache:/opt/hostedtoolcache
+      - go-mod-cache:/home/runner/go/pkg/mod
+      - go-build-cache:/home/runner/.cache/go-build
+      - pnpm-store:/home/runner/.pnpm-store
 
   runner-3:
     <<: *runner-base
@@ -66,6 +73,9 @@ services:
       - runner3-work:/runner/_work
       - playwright-cache:/opt/cache/playwright
       - hostedtool-cache:/opt/hostedtoolcache
+      - go-mod-cache:/home/runner/go/pkg/mod
+      - go-build-cache:/home/runner/.cache/go-build
+      - pnpm-store:/home/runner/.pnpm-store
 
   runner-4:
     <<: *runner-base
@@ -78,16 +88,24 @@ services:
       - runner4-work:/runner/_work
       - playwright-cache:/opt/cache/playwright
       - hostedtool-cache:/opt/hostedtoolcache
+      - go-mod-cache:/home/runner/go/pkg/mod
+      - go-build-cache:/home/runner/.cache/go-build
+      - pnpm-store:/home/runner/.pnpm-store
 
 volumes:
   runner1-work:
   runner2-work:
   runner3-work:
   runner4-work:
-  # PR-4 fold-in (H-2): pnpm-cache/go-cache 제거 — setup-go/setup-node GHA cache 사용.
-  # 4 runner 공유 cache: playwright (GHA cache 미적용) + hostedtool (setup-* toolchain).
+  # 4 runner 공유 cache: image-resident toolchain backing storage.
+  # 첫 가동 시 image의 GOMODCACHE pre-bake 데이터가 named volume으로 자동 복사 (Docker 카논).
+  # image update (go.sum 변경 → image rebuild) 적용 시 사용자 host에서 명시 cleanup 필요:
+  #   docker compose down && docker volume rm <project>_go-mod-cache && docker compose up -d
   playwright-cache: {}
   hostedtool-cache: {}
+  go-mod-cache: {}
+  go-build-cache: {}
+  pnpm-store: {}
 
 networks:
   runners-net:
