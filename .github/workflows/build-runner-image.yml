@@ -43,7 +43,11 @@ jobs:
           load: ${{ github.event_name == 'pull_request' }}
       - name: Verify image loaded
         if: github.event_name == 'pull_request'
-        run: docker images "ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}" --format '{{.Repository}}:{{.Tag}}' | grep -q "${{ github.sha }}" || (echo "FAIL: image not loaded — check buildx load behavior" && exit 1)
+        run: |
+          docker images "ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}" --format '{{.Repository}}:{{.Tag}}' | grep -q "${{ github.sha }}" || {
+            echo "FAIL: image not loaded — check buildx load behavior"
+            exit 1
+          }
       - name: Verify cleanup hook fires
         if: github.event_name == 'pull_request'
         run: |
