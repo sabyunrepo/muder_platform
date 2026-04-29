@@ -94,7 +94,7 @@ jobs:
           # 후보: runners-net (PR-168 6d5a71d explicit name) 또는
           # infra-runners_runners-net (compose project prefix — 현재 host).
           # ARC ephemeral pod (DinD sidecar) 에서는 fresh docker daemon — 없으면 생성.
-          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1 || true)
           if [ -z "$RUNNERS_NET" ]; then
             RUNNERS_NET=runners-net
             sudo docker network create "$RUNNERS_NET" >/dev/null

@@ -62,7 +62,7 @@ jobs:
           # runners-net network 동적 검출 (compose project prefix 무관).
           # ARC ephemeral pod (DinD sidecar) 환경에서는 매번 fresh docker daemon 이라
           # 네트워크 없으면 생성. host runner 의 docker-compose 'runners-net' 도 호환.
-          RUNNERS_NET=$(docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          RUNNERS_NET=$(docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1 || true)
           if [ -z "$RUNNERS_NET" ]; then
             RUNNERS_NET=runners-net
             docker network create "$RUNNERS_NET" >/dev/null
