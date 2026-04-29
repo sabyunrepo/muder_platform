@@ -68,7 +68,7 @@ Phase 22 W1 containerization (`runs-on: self-hosted` → 4 containerized-runner-
 
 **Trade-off**: artifact 다운로드 불가 → forensic 시 GHA log 검색 필요. real LEAK 발견 시점에 별도 PR 으로 artifact 복원 검토 (Phase 23 Custom Image 후).
 
-### DEBT-2: CodeQL JS-TS Node v20 사전 install
+### DEBT-2: CodeQL JS-TS Node v20 (setup-node + symlink override)
 
 **파일**: `.github/workflows/security-deep.yml`
 
@@ -88,7 +88,7 @@ codeql:
       ...
 ```
 
-**변경 후 — 추가 step**:
+**변경 후 — 추가 step (setup-node action + /usr/local/bin symlink)**:
 ```yaml
 codeql:
   ...
@@ -103,24 +103,38 @@ codeql:
 
     # myoung34/github-runner image default Node v10.19.0 가 ?? syntax 미지원.
     # CodeQL action 의 spawn child process 가 system Node 사용 → setup-node@v4
-    # 가 install 한 v20 PATH resolve 실패. NodeSource apt repo 로 system Node
-    # 자체를 v20 으로 교체 (image level fix 는 Phase 23 carry-over).
-    - name: Install Node.js v20 (system level)
+    # 가 PATH 만 update 해도 subprocess resolve 실패.
+    # setup-node 의 SHA-pinned v20 binary 를 /usr/local/bin 에 symlink →
+    # /usr/bin/node 보다 PATH 우선이라 spawn child 도 v20 사용.
+    # Image level fix 는 Phase 23 carry-over.
+    - name: Setup Node.js v20 (action — SHA-pinned binary)
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: "20"
+
+    - name: Override system node with setup-node v20 binary
       if: matrix.language == 'javascript-typescript'
       run: |
         set -euo pipefail
-        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-        sudo apt-get install -y nodejs
-        node --version  # 검증
-        which node       # /usr/bin/node 또는 /usr/local/bin/node 확인
+        NODE_BIN=$(which node)
+        NPM_BIN=$(which npm)
+        echo "setup-node node: $NODE_BIN ($(node --version))"
+        sudo ln -sf "$NODE_BIN" /usr/local/bin/node
+        sudo ln -sf "$NPM_BIN" /usr/local/bin/npm
+        /usr/local/bin/node --version
 
     - name: Initialize CodeQL
       ...
 ```
 
-**효과**: javascript-typescript matrix 에서 system Node v20 사용. `??` syntax 통과.
+**효과**: setup-node@v4 의 SHA-pinned v20 binary 를 `/usr/local/bin` 에 symlink. CodeQL action subprocess 가 PATH 검색 시 `/usr/local/bin/node` (v20) → `/usr/bin/node` (v10) 순으로 resolve → v20 사용. `??` syntax 통과.
 
-**Trade-off**: 1st run 마다 NodeSource install 시간 ~30~60s. cache volume 활용 X (apt cache 는 named volume mapping 부재). Phase 23 Custom Image 에서 사전 install 로 0s.
+**Rejected: NodeSource apt repo 직접 install (`curl | sudo bash`)**
+- 매 run 마다 NodeSource setup script 가 원격 코드 실행 → CI infra 에 RCE 패턴 도입.
+- setup-node@v4 는 GitHub-pinned + SHA-checksummed binary 사용 → 동일 효과 + 더 안전.
+
+**Trade-off**: setup-node 의 1st run cache 빌드 (~5-10s, hostedtool-cache 활용 시 2nd run+ 0s). NodeSource 비교 시 supply chain 표면 ↓.
 
 ### DEBT-3: Trivy docker.sock permission
 

@@ -29,7 +29,7 @@ prs_estimated: 3
 - **single-concern 카논 예외**: 4건 모두 단일 root cause (`runs-on: self-hosted` → containerized routing) — 1 PR 묶음 정당화.
 - **변경 (정공)**:
   1. **DEBT-1 gitleaks**: `.github/workflows/security-fast.yml` 의 `Run gitleaks` step 에 `GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false` env 변경 (artifact upload step rootDirectory 우회). scan 자체 SUCCESS, upload 만 fail 이라 이게 가장 깨끗한 정공.
-  2. **DEBT-2 CodeQL JS-TS**: `.github/workflows/security-deep.yml` 의 `codeql` job javascript-typescript matrix 에 NodeSource v20 사전 install step 추가 — `apt-get` 으로 system Node 를 v10 → v20 교체 (CodeQL action 의 spawn child 가 system Node 사용).
+  2. **DEBT-2 CodeQL JS-TS**: `.github/workflows/security-deep.yml` 의 `codeql` job javascript-typescript matrix 에 setup-node@v4 + `/usr/local/bin` symlink override step 추가 — SHA-pinned v20 binary 를 system PATH 우선 위치에 symlink (CodeQL action 의 spawn child 가 system Node 사용). NodeSource curl|bash 패턴은 RCE 우려로 reject.
   3. **DEBT-3 Trivy**: `.github/workflows/security-deep.yml` 의 `trivy` job 에 docker socket group permission fix step 추가 — runner user 에 `usermod -aG docker` 또는 step-level 에서 `sudo docker buildx` 우회 (PR-168 e2e-stubbed.yml 동일 패턴).
   4. **DEBT-4 Go Lint+Test**: `.github/workflows/ci.yml` 의 `go-check` job services block 제거 → PR-168 `e2e-stubbed.yml` 패턴 재사용 (manual `docker run` + healthcheck wait + cleanup, runners-net network bridge).
 - **Phase 23 carry-over**: image base 에 Node v20 + docker group GID 990 사전 install (Custom Image Option A). 본 PR 은 workflow level fix 만.
