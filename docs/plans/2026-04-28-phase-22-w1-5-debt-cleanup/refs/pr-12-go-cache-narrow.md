@@ -128,10 +128,37 @@ PR-168 H-2 결정: "GHA cache 가 actions/setup-go cache 를 처리하므로 nam
 - **schedule-only workflow 검증** (Test HIGH carry-over) — `flaky-report.yml`, `phase-18.1-real-backend.yml` 은 PR run 미실행. main 머지 후 첫 nightly/push 결과 관측 후 회귀 발견 시 hotfix.
 - **`timeout-minutes` 명시** (Test MED carry-over) — `ci.yml#go-check` + 8 workflow 의 `Run tests`/`Build server` step 에 `timeout-minutes: 15` 등 명시. silent hang 방지.
 
+## 1차 push 후 발견 (hotfix)
+
+**PR-173 첫 CI run (`25095791678` 등) 에서 govulncheck + osv-scanner timeout fail**:
+
+```
+/usr/bin/tar: ../../../../home/runner/go/pkg/mod/dario.cat/mergo@v1.0.2/...: Cannot open: File exists
+##[warning]Failed to restore: tar exit code 2
+Cache not found for input keys: go-mod-Linux-...
+##[error]The operation was canceled.
+```
+
+**진짜 root cause**: containerized runner 의 EPHEMERAL=true 가 runner process 만 재등록 — 컨테이너 file system 의 `~/go/pkg/mod` 잔존. `actions/cache` restore 가 tar 추출 시 "File exists" 충돌 → restore fail → cache miss fallback → fresh download → job timeout.
+
+PR-170 진단 시 본 동일 메커니즘 — bare-host 가설 부정확. **containerized runner 도 file system reset 안 됨** (runner deregister + register 만, container file system 보존).
+
+**Hotfix fold-in (이번 PR 에 추가, 9 곳)**:
+
+```yaml
+- name: Cleanup stale Go module directory  # PR-12 hotfix: tar 충돌 방지
+  run: sudo rm -rf ~/go/pkg/mod ~/.cache/go-build
+```
+
+setup-go 직후 + actions/cache 직전. setup-go 의 hostedtoolcache (`/opt/hostedtoolcache`) 는 named volume 이라 영향 X. `~/go/pkg/mod` + `~/.cache/go-build` 만 cleanup.
+
+**Phase 23 carry-over 정공**: Custom Image entrypoint 또는 myoung34 image 의 EPHEMERAL 동작 fix → workflow level cleanup step dead code.
+
 ## 4-agent review fold-in 항목
 
 본 PR 에 fold-in (코드 변경):
 - **Security MED-1**: 9 workflow 의 actions/cache step 다음에 `go mod verify` step 추가 — `restore-keys` fallback 시 stale/오염 cache 차단. checksum 불일치 시 step fail.
+- **Hotfix (1차 push 후 발견)**: 9 workflow 의 setup-go 직후에 `sudo rm -rf ~/go/pkg/mod ~/.cache/go-build` cleanup step 추가 — tar 충돌 차단.
 
 본 PR 에 fold-in (문서 변경):
 - **Architecture HIGH-A1**: composite action 추출 Phase 23 carry-over 명시 (위 "Carry-over" 섹션)

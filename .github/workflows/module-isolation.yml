@@ -29,6 +29,8 @@ jobs:
         with:
           go-version: "1.24"
           cache: false  # PR-12: ~/.cache/go-build 누적 폭증 회피
+      - name: Cleanup stale Go module directory  # PR-12 hotfix: tar 충돌 방지
+        run: sudo rm -rf ~/go/pkg/mod ~/.cache/go-build
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
         with:
           path: ~/go/pkg/mod
