@@ -386,7 +386,13 @@ jobs:
           sudo docker save "$IMAGE_REF" -o /tmp/mmp-server-ci.tar
           sudo chown "$(id -u):$(id -g)" /tmp/mmp-server-ci.tar
 
+      # PR-170 4c7e8ca run 에서 anchore/sbom-action 의 syft install 실패
+      # ("gzip: stdin: not in gzip format") — containerized runner 환경
+      # 별개 이슈. SBOM 은 attest-build-provenance 와 동일 조건 (main push) 만
+      # 실행 → PR run 에서 skip 으로 우회. PR Build Check 의 검증 목표 (image
+      # build 성공) 는 그대로 충족.
       - name: Generate SBOM (CycloneDX)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
           # tarball 입력 — docker.sock 의존 회피
