@@ -6,6 +6,7 @@
 
 ## 카논 위치 (1룰 1 master)
 
+- 코딩 작업 수행 규율 (구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증) → `memory/feedback_coding_discipline.md`
 - 파일/함수 크기 한도 → `memory/feedback_file_size_limit.md`
 - Git 워크플로우 (main 보호 + PR 필수) → `memory/feedback_branch_pr_workflow.md`
 - QMD 사용 (docs/plans, memory 경로) → `.claude/refs/qmd-rules.md`
