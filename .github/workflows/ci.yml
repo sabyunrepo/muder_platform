@@ -41,11 +41,13 @@ jobs:
           echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
 
           # runners-net network 동적 검출 (compose project prefix 무관).
+          # ARC ephemeral pod (DinD sidecar) 환경에서는 매번 fresh docker daemon 이라
+          # 네트워크 없으면 생성. host runner 의 docker-compose 'runners-net' 도 호환.
           RUNNERS_NET=$(docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
           if [ -z "$RUNNERS_NET" ]; then
-            echo "::error::runners-net network not found on host"
-            docker network ls
-            exit 1
+            RUNNERS_NET=runners-net
+            docker network create "$RUNNERS_NET" >/dev/null
+            echo "Created runners-net (ARC ephemeral pod)"
           fi
           echo "RUNNERS_NET=$RUNNERS_NET" >> "$GITHUB_ENV"
           echo "Detected runners-net: $RUNNERS_NET"
