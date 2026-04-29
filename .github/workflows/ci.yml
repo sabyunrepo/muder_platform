@@ -13,7 +13,7 @@ concurrency:
 jobs:
   go-check:
     name: Go Lint + Test
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     defaults:
       run:
         working-directory: apps/server
@@ -199,7 +199,7 @@ jobs:
 
   ts-check:
     name: TypeScript Lint + Test + Build
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
@@ -270,7 +270,7 @@ jobs:
     #   Phase 21: Go 70% / FE Lines 65% / FE Branches 85% (+15%p — 하한 상향 전 반드시 테스트 보강)
     #   하한 상향 전에 반드시 추가 테스트 PR 로 baseline 끌어올리기.
     name: Coverage Regression Guard
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     needs: [go-check, ts-check]
     steps:
       - name: Harden Runner
@@ -358,7 +358,7 @@ jobs:
 
   docker-build:
     name: Docker Build Check
-    runs-on: self-hosted
+    runs-on: [self-hosted, containerized]
     needs: [go-check, ts-check]
     permissions:
       contents: read

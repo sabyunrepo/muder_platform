@@ -41,11 +41,11 @@ prs_estimated: 3
 - **상세**: `refs/pr-8-runner-action-compat.md` (본 PR 진입 시 작성)
 
 ### PR-5 — ci.yml runs-on `[self-hosted, containerized]` 전환
-- **Effort** S, **Impact** Med (CI Lint/Test 도 cache 효과)
+- **Effort** S, **Impact** Med (bare-host tar 충돌 해소 + cache 통일)
 - **branch**: `chore/w1-5-ci-runs-on`
 - **변경**: `.github/workflows/ci.yml` 의 4 job `runs-on` → `[self-hosted, containerized]`
-- **의존**: PR-4 머지 + 사용자 SSH 재배포 완료
-- **권고**: PR-4 의 효과 측정 후 진행 (1st/2nd run 비교)
+- **의존**: PR-4 머지 ✅ + PR-170 fold-in 머지 ✅ + 사용자 SSH 재배포 ✅
+- **상세**: [`refs/pr-5-ci-runs-on.md`](refs/pr-5-ci-runs-on.md) — 진단 데이터, single-concern 카논, carry-over 명시
 
 ### PR-4 — Runner Cache Volume (Playwright/pnpm/Go)
 - **Effort** S~M, **Impact** Very High (CI 시간 ~70% 단축)
@@ -129,6 +129,8 @@ PR-170 4-agent 리뷰 (security/performance/architecture/test) 잔여 — 모두
 
 - **[W3] RUNNERS_NET regex 강화** (Sec-MED-1) — `grep -E '(^|_)runners-net$'` 가 `bad_runners-net` 등 악성 네트워크 매칭 가능. PR-168 LOW-1 패턴이 ci.yml 로 확산. compose project prefix 안정화 후 정확 매칭 (`name: runners-net` explicit 만 검증).
 - **[W3] e2e-stubbed.yml 의 동일 패턴** — PR-170 fold-in 으로 health-wait 30→60s 동시 상향 했으나 RUNNERS_NET regex 는 둘 다 동일 약점.
+- **[W3] ci.yml `go-check` fork PR 게이트 추가** (PR-5 spec carry-over) — `if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false`. fork PR 의 `sudo go test` testcontainers + `sudo docker build` 가 host docker.sock 임의 조작 가능. PR-5 single-concern scope 밖.
+- **[W3] bare-host self-hosted runner 등록 해제** (PR-5 spec carry-over) — `/home/sabyun/actions-runner/` bare-host runner 가 GitHub 에 등록된 채 잔존 가능성. PR-5 후 ci.yml 4 job 은 0 routing, 그러나 다른 workflow 가 의도치 않게 routing 될 위험. 사용자 SSH 직접 작업.
 
 ### W1.5 PR-170 노출 부채 처리 결과
 
