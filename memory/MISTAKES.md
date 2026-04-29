@@ -118,3 +118,18 @@ e2e-stubbed.yml:67:40 context "job" is not allowed here
 3. **사례 누적 후 카논화** — Phase 22 + PR-164 두 사례 모두 단일 branch 패턴. 다음 1~2 phase 진입 시 동일 패턴이면 SKILL.md carve-out PR 진행.
 
 **관련 카논**: `.claude/plugins/compound-mmp/skills/compound-work/SKILL.md` (carve-out 추가 후보), `docs/plans/2026-04-28-ci-infra-recovery/checklist.md` (sister 카논 evidence), `docs/plans/2026-04-28-phase-22-runner-containerization/checklist.md` § "Branch:" 필드.
+
+---
+
+## 2026-04-29 — 점진 fix PR vs 정공 phase 진입 결정 없이 착수 → retract 낭비 (phase-vs-patchwork)
+
+**증상**: Phase 22 W1.5 PR-12 (`chore/w1-5-go-cache-narrow`) 작성 — 9 workflow의 setup-go cache 좁힘 + 9 actions/cache + 9 go mod verify + 9 cleanup hotfix step 추가. spec ref 작성 + 4-agent 병렬 review (sec/perf/arch/test) + 1차 push + 2차 hotfix push (commit `e7cd387`). 그 직후 사용자 통찰 "Custom Image로 진행하면 다음 phase도 다 필요없을 것 같은데" → PR-12 retract (PR #173 close, branch 삭제, worktree 제거). 9 workflow × 4 step (cache:false + actions/cache + go mod verify + cleanup) = ~36 step 작업이 dead code.
+
+**근본 원인**: compound-plan brainstorm 단계에서 "이 부채를 점진(patchwork) fix로 처리할 것인가 vs 정공 phase 진입으로 근본 제거할 것인가" ROI 비교 강제 질문 부재. PR-12 시작 시 점진 fix를 default로 선택했으나, 4-agent review 진행 중 (Performance HIGH-1: build cache 제외로 +90~120s/run trade-off, Architecture HIGH-A1: composite action 추출 carry-over) 점진 fix의 비용이 누적되며 정공 fix (Custom Image) 의 ROI가 명백해짐. 사용자가 phase 진입 결정 후에야 PR-12의 dead code 가능성 인식.
+
+**재발 방지**:
+1. **compound-plan brainstorm Q에 "점진 vs 정공" 강제 질문 추가** — `superpowers:brainstorming` 진입 시 6번째 질문으로 "이 부채는 점진(patchwork) fix로 충분한가, 정공 phase 진입이 필요한가? phase 전환으로 dead code 될 확률 > 50%면 phase 진입 우선" 명시.
+2. **부채 진단 시 "phase 신호" 사전 검토** — 9+ 곳 동일 패턴 fold-in / 4-agent review 모두 carry-over 다수 / Custom Image / Composite action 같은 Phase N entry가 carry-over에 명시 → phase 진입 신호. 점진 fix 작성 전 사전 ROI 비교 필수.
+3. **사례 누적 후 카논화** — 본 사례 + 향후 동일 패턴 누적 시 `feedback_phase_vs_patchwork.md` 신규 등재.
+
+**관련 카논**: `memory/sessions/2026-04-29-phase-23-custom-image-pivot.md` (PR-12 retract 진단 데이터), `docs/plans/2026-04-28-phase-22-w1-5-debt-cleanup/checklist.md` § "Phase 23 carry-over (확정 escalate)" (점진 fix 시점에 carry-over 다수가 phase 신호였음).

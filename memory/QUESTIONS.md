@@ -85,3 +85,14 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 - **가설**: wrap-session에서 변경 50줄 이상이면 `make graphify-update` 자동 안내 (실행 X) 또는 사용자 결정. 카논 명시 필요.
 - **다음 액션**: graphify refresh 정책 문서에 "wrap-session = skip 또는 임계 도달 시 안내" 한 줄 추가 (사용자 결정).
 - **블로커 risk**: LOW. compound 효율 영향, 블로커 아님.
+
+---
+
+## 2026-04-29 — Phase 23 Custom Image pivot wrap-up
+
+### Q-myoung34-ephemeral-fs: EPHEMERAL=true 재시작 후 ~/go/pkg/mod overlay layer 잔존 범위
+- **가설**: myoung34/github-runner의 `EPHEMERAL=true`가 runner process deregister/register만 수행, Docker overlay layer (`/home/runner/go/pkg/mod`, `/home/runner/.cache/go-build`)는 reset하지 않음. PR-173 1차 CI에서 `/usr/bin/tar: ~/go/pkg/mod/...: Cannot open: File exists` 패턴으로 관찰.
+- **공식 docs**: myoung34 README는 "registers a new runner after each workflow" 수준이고 file system 동작 명시 X. GitHub Actions self-hosted runner 공식 docs도 EPHEMERAL과 file system 격리는 별개 주제.
+- **다음 액션**: Phase 23 Custom Image 진입 전 `docker exec containerized-runner-1 ls -la ~/go/pkg/mod` 직접 측정. layerID 비교 spike (`docker inspect containerized-runner-X` 전후 diff).
+- **블로커 risk**: MEDIUM. Custom Image entrypoint hook (`ACTIONS_RUNNER_HOOK_JOB_STARTED`)으로 cleanup 강제 시 재발 차단 가능. 검증 미완 시 Phase 23 Custom Image의 효과가 baseline의 일부만 해소할 가능성.
+- **연관**: `memory/sessions/2026-04-29-phase-23-custom-image-pivot.md` (PR-12 retract 진단 데이터)
