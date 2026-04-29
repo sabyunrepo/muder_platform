@@ -14,31 +14,6 @@ jobs:
   go-check:
     name: Go Lint + Test
     runs-on: self-hosted
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: mmp_test
-          POSTGRES_USER: mmp
-          POSTGRES_PASSWORD: mmp_test
-        # ephemeral host port — avoids 5432 collision with langfuse on self-hosted runner
-        ports:
-          - "5432"
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        # ephemeral host port — avoids 6379 collision with langfuse-redis on self-hosted runner
-        ports:
-          - "6379"
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     defaults:
       run:
         working-directory: apps/server
@@ -51,13 +26,77 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      # Export service connection env (job context는 step-level에서만 평가 가능 — PR-164 회귀 fix).
-      # ephemeral host port를 GITHUB_ENV로 export해 후속 step의 Go test가 자동 읽음.
+      # Phase 22 W1.5 PR-8 DEBT-4: Service containers (myoung34/github-runner ↔
+      # GHA services 호환 우회). 정상 GHA services block 은 containerized runner
+      # 의 network namespace 와 충돌. 같은 runners-net bridge 에 직접 docker run
+      # → hostname 접근 (PR-168 e2e-stubbed.yml 동일 패턴).
+      # 추후 .github/actions/start-services/action.yml 으로 추출 검토 (Phase 23).
+      - name: Start postgres + redis
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          PG_NAME="ci-go-pg-${{ github.run_id }}-${{ github.run_attempt }}"
+          REDIS_NAME="ci-go-redis-${{ github.run_id }}-${{ github.run_attempt }}"
+          echo "PG_NAME=$PG_NAME" >> "$GITHUB_ENV"
+          echo "REDIS_NAME=$REDIS_NAME" >> "$GITHUB_ENV"
+
+          # runners-net network 동적 검출 (compose project prefix 무관).
+          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          if [ -z "$RUNNERS_NET" ]; then
+            echo "::error::runners-net network not found on host"
+            sudo docker network ls
+            exit 1
+          fi
+          echo "RUNNERS_NET=$RUNNERS_NET" >> "$GITHUB_ENV"
+          echo "Detected runners-net: $RUNNERS_NET"
+
+          # 이전 run cleanup (이름 충돌 방지)
+          sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
+
+          sudo docker run -d --name "$PG_NAME" \
+            --network "$RUNNERS_NET" \
+            -e POSTGRES_DB=mmp_test \
+            -e POSTGRES_USER=mmp \
+            -e POSTGRES_PASSWORD=mmp_test \
+            --health-cmd "pg_isready -U mmp -d mmp_test" \
+            --health-interval 5s \
+            --health-timeout 3s \
+            --health-retries 10 \
+            postgres:17-alpine
+
+          sudo docker run -d --name "$REDIS_NAME" \
+            --network "$RUNNERS_NET" \
+            --health-cmd "redis-cli ping" \
+            --health-interval 5s \
+            --health-timeout 3s \
+            --health-retries 10 \
+            redis:7-alpine
+
+          # health 대기 — Docker healthcheck max = interval 5s × retries 10 = 50s.
+          # PR-170 4-agent review (Perf-1 + Test-1) fold-in: 60s ceiling 으로 상향.
+          # 30s 이전 ceiling 은 cold start (image pull + initdb) 시 false-fail 가능.
+          for i in $(seq 1 60); do
+            pg_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
+            redis_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
+            if [ "$pg_health" = "healthy" ] && [ "$redis_health" = "healthy" ]; then
+              echo "Both services healthy after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          if [ "$pg_health" != "healthy" ] || [ "$redis_health" != "healthy" ]; then
+            echo "::error::services failed to become healthy (postgres=$pg_health, redis=$redis_health)"
+            sudo docker logs "$PG_NAME" 2>&1 | tail -30
+            sudo docker logs "$REDIS_NAME" 2>&1 | tail -30
+            exit 1
+          fi
+
+      # runners-net 의 hostname 으로 접근 (ephemeral host port 패턴 대체).
       - name: Export service connection env
         working-directory: ${{ github.workspace }}
         run: |
-          echo "DATABASE_URL=postgres://mmp:mmp_test@localhost:${{ job.services.postgres.ports['5432'] }}/mmp_test?sslmode=disable" >> "$GITHUB_ENV"
-          echo "REDIS_URL=redis://localhost:${{ job.services.redis.ports['6379'] }}" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgres://mmp:mmp_test@${PG_NAME}:5432/mmp_test?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://${REDIS_NAME}:6379" >> "$GITHUB_ENV"
 
       - name: Setup Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
@@ -111,8 +150,23 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: bash scripts/check-playeraware-coverage.sh
 
+      # Phase 22 W1.5 PR-8 testcontainers-go fold-in (PR-170 1st CI run 이후
+      # 노출된 pre-existing 부채):
+      # internal/auditlog, internal/editor 등 패키지가 testcontainers-go 로
+      # host docker.sock 직접 접근 → containerized runner 의 sup group 990
+      # lost 환경에서 permission denied.
+      # 정공: sudo -E env "PATH=$PATH" go test 로 root 권한 docker.sock
+      # 접근 + 환경변수 (HOME, GOPATH, GOCACHE, DATABASE_URL, REDIS_URL,
+      # PG_NAME, REDIS_NAME) 보존.
+      # Image level fix (runner user 의 docker group GID 990 정착) 은
+      # Phase 23 Custom Image carry-over.
       - name: Run tests
-        run: go test -race -coverprofile=coverage.out ./...
+        run: sudo -E env "PATH=$PATH" go test -race -coverprofile=coverage.out ./...
+
+      # sudo go test 로 root:root 생성 → 후속 step (Codecov upload + artifact
+      # upload) 가 read 가능하게 ownership 정정.
+      - name: Fix coverage.out ownership
+        run: sudo chown "$(id -u):$(id -g)" coverage.out
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -20
@@ -134,6 +188,14 @@ jobs:
 
       - name: Build server
         run: go build ./cmd/server
+
+      # Phase 22 W1.5 PR-8 DEBT-4: postgres + redis container cleanup
+      # 다음 run 이름 충돌 방지 + container leak 방지
+      - name: Cleanup postgres + redis
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          sudo docker rm -f "${PG_NAME:-}" "${REDIS_NAME:-}" 2>/dev/null || true
 
   ts-check:
     name: TypeScript Lint + Test + Build
@@ -249,6 +311,19 @@ jobs:
           name: web-coverage
           path: apps/web/coverage
 
+      # Phase 22 W1.5 PR-8 fold-in (PR-170 ce1fa62 1st CI run 노출):
+      # containerized runner image / bare-host runner 모두 jq 미사전 install.
+      # Web coverage gate step 이 jq 의존 → "jq: command not found" exit 127.
+      # apt-get 으로 사전 install (idempotent, 이미 있으면 skip).
+      # Image level fix (Custom Image 에 jq 포함) 은 Phase 23 carry-over.
+      - name: Ensure jq installed
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq jq
+          fi
+          jq --version
+
       - name: Web coverage gate
         run: |
           LINES=$(jq '.total.lines.pct' apps/web/coverage/coverage-summary.json)
@@ -298,25 +373,43 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
-
-      - name: Build Docker image
+      # Phase 22 W1.5 PR-8 Docker Build Check fold-in (PR-170 ce1fa62 1st CI
+       # run 노출): docker/setup-buildx-action + docker/build-push-action 모두
+      # docker.sock 직접 접근 → containerized runner sup group 990 lost 환경
+      # 에서 permission denied. Trivy 와 동일 root cause.
+      # 정공: setup-buildx 제거 + manual sudo docker build (GHA cache 효과
+      # 포기, push branch 가 아닌 PR Build Check 라 cache 무가치).
+      # SBOM: anchore/sbom-action 도 docker.sock 사용 → manual syft 으로 교체
+      # 검토 필요. 현 단계는 sudo docker save 로 tarball 생성 후 syft input.
+      # Image level fix (docker group GID 990 정착) 은 Phase 23 Custom Image.
+      - name: Build Docker image (manual via sudo docker)
         id: docker-build
-        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
-        with:
-          context: apps/server
-          file: apps/server/Dockerfile
-          push: false
-          load: true
-          tags: ghcr.io/sabyunrepo/mmp-server:ci-${{ github.sha }}
-          cache-from: type=gha,scope=server
-          cache-to: type=gha,scope=server,mode=max
+        run: |
+          set -euo pipefail
+          IMAGE_REF="ghcr.io/sabyunrepo/mmp-server:ci-${{ github.sha }}"
+          sudo docker build \
+            -f apps/server/Dockerfile \
+            -t "$IMAGE_REF" \
+            apps/server
+          # digest 추출 (attest-build-provenance 는 push branch 만 사용 — PR
+          # 단계는 skip 이지만 step output 일관성 위해 emit)
+          DIGEST=$(sudo docker inspect "$IMAGE_REF" --format='{{.Id}}')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          # SBOM 용 tarball export
+          sudo docker save "$IMAGE_REF" -o /tmp/mmp-server-ci.tar
+          sudo chown "$(id -u):$(id -g)" /tmp/mmp-server-ci.tar
 
+      # PR-170 4c7e8ca run 에서 anchore/sbom-action 의 syft install 실패
+      # ("gzip: stdin: not in gzip format") — containerized runner 환경
+      # 별개 이슈. SBOM 은 attest-build-provenance 와 동일 조건 (main push) 만
+      # 실행 → PR run 에서 skip 으로 우회. PR Build Check 의 검증 목표 (image
+      # build 성공) 는 그대로 충족.
       - name: Generate SBOM (CycloneDX)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          image: ghcr.io/sabyunrepo/mmp-server:ci-${{ github.sha }}
+          # tarball 입력 — docker.sock 의존 회피
+          file: /tmp/mmp-server-ci.tar
           format: cyclonedx-json
           output-file: sbom.cdx.json
           upload-artifact: true

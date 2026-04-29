@@ -22,6 +22,24 @@ prs_estimated: 3
 
 ## Wave/PR 분해
 
+### PR-8 — runner third-party action 호환 (4 main DEBT 일괄)
+- **Effort** S~M, **Impact** Very High (main CI 부채 일괄 해소)
+- **branch**: `chore/w1-5-runner-action-compat`
+- **근거**: PR-168 (a31af3f) CI 노출 — 3 third-party action 이 containerized runner 의 working dir / Node version / docker.sock permission 와 호환 X. 본 PR fault 아님 (Phase 22 W1 containerization spillover 부채).
+- **single-concern 카논 예외**: 4건 모두 단일 root cause (`runs-on: self-hosted` → containerized routing) — 1 PR 묶음 정당화.
+- **변경 (정공)**:
+  1. **DEBT-1 gitleaks**: `.github/workflows/security-fast.yml` 의 `Run gitleaks` step 에 `GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false` env 변경 (artifact upload step rootDirectory 우회). scan 자체 SUCCESS, upload 만 fail 이라 이게 가장 깨끗한 정공.
+  2. **DEBT-2 CodeQL JS-TS**: `.github/workflows/security-deep.yml` 의 `codeql` job javascript-typescript matrix 에 setup-node@v4 + `/usr/local/bin` symlink override step 추가 — SHA-pinned v20 binary 를 system PATH 우선 위치에 symlink (CodeQL action 의 spawn child 가 system Node 사용). NodeSource curl|bash 패턴은 RCE 우려로 reject.
+  3. **DEBT-3 Trivy**: `.github/workflows/security-deep.yml` 의 `trivy` job 에 docker socket group permission fix step 추가 — runner user 에 `usermod -aG docker` 또는 step-level 에서 `sudo docker buildx` 우회 (PR-168 e2e-stubbed.yml 동일 패턴).
+  4. **DEBT-4 Go Lint+Test**: `.github/workflows/ci.yml` 의 `go-check` job services block 제거 → PR-168 `e2e-stubbed.yml` 패턴 재사용 (manual `docker run` + healthcheck wait + cleanup, runners-net network bridge).
+- **Phase 23 carry-over**: image base 에 Node v20 + docker group GID 990 사전 install (Custom Image Option A). 본 PR 은 workflow level fix 만.
+- **검증**:
+  - gitleaks job: SUCCESS (artifact upload skip)
+  - CodeQL JS-TS job: SUCCESS (Node v20 으로 `??` syntax 통과)
+  - Trivy job: SUCCESS (docker.sock permission 해소)
+  - Go Lint+Test job: SUCCESS (manual postgres+redis healthy → migration → test)
+- **상세**: `refs/pr-8-runner-action-compat.md` (본 PR 진입 시 작성)
+
 ### PR-5 — ci.yml runs-on `[self-hosted, containerized]` 전환
 - **Effort** S, **Impact** Med (CI Lint/Test 도 cache 효과)
 - **branch**: `chore/w1-5-ci-runs-on`
@@ -89,6 +107,48 @@ PR-167 4-agent 리뷰 잔여:
 - **LOW** 8건
 
 각 항목은 발견 시점 기록만 — 자동 fix 금지. 특정 항목이 회귀 trigger 시 별도 fix PR.
+
+---
+
+## Carry-over (PR-170 review) → Phase 23 escalate
+
+PR-170 4-agent 리뷰 (security/performance/architecture/test) 잔여 — 모두 Phase 23 entry 로 escalate:
+
+### Phase 23 확정 entry (HIGH/MED escalate)
+
+- **[Phase 23] Composite action 추출** (Arch-HIGH-1) — `.github/actions/start-services/action.yml` 작성. ci.yml + e2e-stubbed.yml 의 `Start postgres + redis` step (95% 동일) 보일러플레이트 제거. PR-5 (`runs-on: [self-hosted, containerized]`) 머지 시 사용처 +N 확대 가능 → 그 전에 추출.
+- **[Phase 23] Custom Image Option A** (Sec-MED-2 / Test-T-2 / DEBT-2 / DEBT-3 의존) — base image 에 다음 사전 install:
+  - Node v20 (DEBT-2 의 setup-node + symlink 자연 해소)
+  - docker group GID 990 정착 (DEBT-3 sudo prefix + Test-T-2 testcontainers-go 자연 해소)
+  - Playwright + chromium/firefox (E2E 1st run 의존성 0)
+  - 결과: PR-170 의 workflow level fix 4건 중 3건 dead code 가능
+- **[Phase 23] Trivy scan 이미지 cleanup** (Sec-MED-3) — `mmp-server:security-scan` tag 가 매 run 마다 build → host disk 누적. Trivy job 마지막 step `if: always()` 으로 `sudo docker rmi mmp-server:security-scan` 추가.
+- **[Phase 23] gitleaks artifact 복원** (Sec-MED-2) — Custom Image migration 후 검토. real LEAK 발견 시 forensic 위해 별도 SARIF/upload-artifact 메커니즘 검토.
+
+### Phase 22 W3 carry-over (PR-5 의존)
+
+- **[W3] RUNNERS_NET regex 강화** (Sec-MED-1) — `grep -E '(^|_)runners-net$'` 가 `bad_runners-net` 등 악성 네트워크 매칭 가능. PR-168 LOW-1 패턴이 ci.yml 로 확산. compose project prefix 안정화 후 정확 매칭 (`name: runners-net` explicit 만 검증).
+- **[W3] e2e-stubbed.yml 의 동일 패턴** — PR-170 fold-in 으로 health-wait 30→60s 동시 상향 했으나 RUNNERS_NET regex 는 둘 다 동일 약점.
+
+### W1.5 PR-170 노출 부채 처리 결과
+
+PR-170 1st CI run 에서 노출된 pre-existing 부채 처리 (사용자 결정 2026-04-29 admin-skip 만료):
+
+- **testcontainers-go (DEBT-4 후속)** — **PR-170 fold-in 완료**.
+  - `ci.yml#go-check` 의 `Run tests` step 을 `sudo -E env "PATH=$PATH" go test` 으로 변경 + `Fix coverage.out ownership` step 추가.
+  - 정공은 Phase 23 Custom Image base 에 docker group GID 990 정착 — 본 fold-in 은 workflow level forward port.
+
+- **CodeQL JS-TS query OOM (DEBT-2 후속)** — **자동 해소 (관찰만)**.
+  - 2nd CI run (`8a772b5` re-run) 에서 SUCCESS. 1st run fail 은 transient (cache miss 또는 일시적 OOM).
+  - 재발 시 `--ram=2048` → `4096` 상향 검토 — 별도 PR 후보로 보관.
+
+### Test review 잔여
+
+- **Test-T-2** testcontainers-go 패키지 (`editor`/`auditlog`) 의 docker.sock 접근 — DEBT-3 Phase 23 carry-over 와 동일 root cause. 1st CI run 결과에서 해당 패키지 SUCCESS 확인 필요.
+
+### Performance review 잔여
+
+- **Perf-MED-1** health-wait 30s ceiling — **fold-in 완료** (60s 상향, ci.yml + e2e-stubbed.yml 동시).
 
 ---
 
