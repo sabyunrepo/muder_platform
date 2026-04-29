@@ -38,9 +38,12 @@ jobs:
           tags: |
             ghcr.io/sabyunrepo/mmp-runner:latest
             ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=runner-image
+          cache-to: type=gha,mode=max,scope=runner-image
           load: ${{ github.event_name == 'pull_request' }}
+      - name: Verify image loaded
+        if: github.event_name == 'pull_request'
+        run: docker images "ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}" --format '{{.Repository}}:{{.Tag}}' | grep -q "${{ github.sha }}" || (echo "FAIL: image not loaded — check buildx load behavior" && exit 1)
       - name: Verify cleanup hook fires
         if: github.event_name == 'pull_request'
         run: |
