@@ -167,6 +167,11 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-extended,security-and-quality
+          # Phase 22 W1.5 PR-8 fold-in (PR-170 1st CI run OOM):
+          # 2048 MB 기본은 javascript-typescript 의 security-extended +
+          # security-and-quality query suite 실행 시 Java heap OOM 발생.
+          # 4096 으로 상향 — containerized runner 호스트 메모리 충분.
+          ram: 4096
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@7fc6561ed893d15cec696e062df840b21db27eb0 # v4.35.2
@@ -175,3 +180,5 @@ jobs:
         uses: github/codeql-action/analyze@7fc6561ed893d15cec696e062df840b21db27eb0 # v4.35.2
         with:
           category: "/language:${{ matrix.language }}"
+          # init 의 ram 과 일관 — analyze step 도 동일 한도 적용.
+          ram: 4096
