@@ -101,8 +101,10 @@ jobs:
             --health-retries 10 \
             redis:7-alpine
 
-          # health 대기
-          for i in $(seq 1 30); do
+          # health 대기 — Docker healthcheck max = interval 5s × retries 10 = 50s.
+          # PR-170 4-agent review (Perf-1 + Test-1) fold-in: 60s ceiling 으로 일관성 상향.
+          # 30s 이전 ceiling 은 cold start (image pull + initdb) 시 false-fail 가능.
+          for i in $(seq 1 60); do
             pg_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$PG_NAME" 2>/dev/null || echo "starting")
             redis_health=$(sudo docker inspect --format='{{.State.Health.Status}}' "$REDIS_NAME" 2>/dev/null || echo "starting")
             if [ "$pg_health" = "healthy" ] && [ "$redis_health" = "healthy" ]; then

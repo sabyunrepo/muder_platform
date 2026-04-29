@@ -110,6 +110,36 @@ PR-167 4-agent 리뷰 잔여:
 
 ---
 
+## Carry-over (PR-170 review) → Phase 23 escalate
+
+PR-170 4-agent 리뷰 (security/performance/architecture/test) 잔여 — 모두 Phase 23 entry 로 escalate:
+
+### Phase 23 확정 entry (HIGH/MED escalate)
+
+- **[Phase 23] Composite action 추출** (Arch-HIGH-1) — `.github/actions/start-services/action.yml` 작성. ci.yml + e2e-stubbed.yml 의 `Start postgres + redis` step (95% 동일) 보일러플레이트 제거. PR-5 (`runs-on: [self-hosted, containerized]`) 머지 시 사용처 +N 확대 가능 → 그 전에 추출.
+- **[Phase 23] Custom Image Option A** (Sec-MED-2 / Test-T-2 / DEBT-2 / DEBT-3 의존) — base image 에 다음 사전 install:
+  - Node v20 (DEBT-2 의 setup-node + symlink 자연 해소)
+  - docker group GID 990 정착 (DEBT-3 sudo prefix + Test-T-2 testcontainers-go 자연 해소)
+  - Playwright + chromium/firefox (E2E 1st run 의존성 0)
+  - 결과: PR-170 의 workflow level fix 4건 중 3건 dead code 가능
+- **[Phase 23] Trivy scan 이미지 cleanup** (Sec-MED-3) — `mmp-server:security-scan` tag 가 매 run 마다 build → host disk 누적. Trivy job 마지막 step `if: always()` 으로 `sudo docker rmi mmp-server:security-scan` 추가.
+- **[Phase 23] gitleaks artifact 복원** (Sec-MED-2) — Custom Image migration 후 검토. real LEAK 발견 시 forensic 위해 별도 SARIF/upload-artifact 메커니즘 검토.
+
+### Phase 22 W3 carry-over (PR-5 의존)
+
+- **[W3] RUNNERS_NET regex 강화** (Sec-MED-1) — `grep -E '(^|_)runners-net$'` 가 `bad_runners-net` 등 악성 네트워크 매칭 가능. PR-168 LOW-1 패턴이 ci.yml 로 확산. compose project prefix 안정화 후 정확 매칭 (`name: runners-net` explicit 만 검증).
+- **[W3] e2e-stubbed.yml 의 동일 패턴** — PR-170 fold-in 으로 health-wait 30→60s 동시 상향 했으나 RUNNERS_NET regex 는 둘 다 동일 약점.
+
+### Test review 잔여
+
+- **Test-T-2** testcontainers-go 패키지 (`editor`/`auditlog`) 의 docker.sock 접근 — DEBT-3 Phase 23 carry-over 와 동일 root cause. 1st CI run 결과에서 해당 패키지 SUCCESS 확인 필요.
+
+### Performance review 잔여
+
+- **Perf-MED-1** health-wait 30s ceiling — **fold-in 완료** (60s 상향, ci.yml + e2e-stubbed.yml 동시).
+
+---
+
 ## 사용자 승인 게이트
 
 다음 진입은 **사용자 명시 승인 후**:

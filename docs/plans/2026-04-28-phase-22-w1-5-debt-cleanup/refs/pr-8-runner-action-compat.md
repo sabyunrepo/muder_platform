@@ -329,11 +329,23 @@ PR-8 push 후 4 check 모두 SUCCESS 확인:
 3. `Trivy (container CVE)` — sudo docker build 성공, SARIF upload SUCCESS
 4. `Go Lint + Test` — manual postgres+redis healthy → migration → test SUCCESS
 
-## Phase 23 carry-over
+## 4-agent review fold-in (1차 push 후)
 
-- **Custom Image (Option A)**: base image 에 Node v20 + Playwright + docker group GID 990 사전 install. CodeQL JS-TS Node install step + Trivy sudo docker 우회 모두 자연 해소.
-- **Reusable composite action**: `.github/actions/start-services/action.yml` — postgres/redis 시작 + healthcheck wait 패턴 추출. ci.yml + e2e-stubbed.yml 보일러플레이트 제거.
-- **gitleaks artifact 복원**: real LEAK 발견 시 forensic 위해 별도 메커니즘 (e.g. SARIF upload 패턴 재사용).
+- **Perf-MED-1 + Test-HIGH-1** (health-wait 30s ceiling): ci.yml + e2e-stubbed.yml 둘 다 60s 로 상향. Docker healthcheck max (interval 5s × retries 10 = 50s) 이상 ceiling 확보 — cold start (image pull + initdb) 시 false-fail 방지.
+
+## Phase 23 carry-over (확정 escalate)
+
+- **Composite action 추출** (Arch-HIGH-1): `.github/actions/start-services/action.yml` — postgres/redis 시작 + healthcheck wait + cleanup 패턴 추출. ci.yml + e2e-stubbed.yml 95% 보일러플레이트 제거. PR-5 (`runs-on: [self-hosted, containerized]`) 머지 시 사용처 확대 전에 진입.
+- **Custom Image (Option A)**: base image 에 Node v20 + Playwright + docker group GID 990 사전 install.
+  - DEBT-2 setup-node + symlink 자연 해소
+  - DEBT-3 sudo docker 우회 + Test-T-2 testcontainers-go 자연 해소
+  - 결과: 본 PR 의 workflow level fix 4건 중 3건 dead code 가능
+- **Trivy scan 이미지 cleanup** (Sec-MED-3): `mmp-server:security-scan` tag 가 매 run 마다 build → host disk 누적 위험. `if: always()` cleanup step 추가.
+- **gitleaks artifact 복원** (Sec-MED-2): Custom Image migration 후 별도 메커니즘 검토.
+
+## Phase 22 W3 carry-over (PR-5 의존)
+
+- **RUNNERS_NET regex 강화** (Sec-MED-1): `grep -E '(^|_)runners-net$'` 가 `bad_runners-net` 등 악성 네트워크 매칭 가능. compose project prefix 안정화 후 `name: runners-net` explicit 만 검증.
 
 ## 참고
 
