@@ -138,30 +138,8 @@ jobs:
           go-version-file: apps/server/go.mod
           cache-dependency-path: apps/server/go.sum
 
-      # Phase 22 W1.5 PR-8 DEBT-2: myoung34/github-runner image default Node
-      # v10.19.0 가 ?? syntax 미지원. CodeQL action 의 spawn child process 가
-      # system Node 사용 → setup-node@v4 가 PATH 만 update 해도 subprocess
-      # resolve 실패. setup-node 의 SHA-pinned v20 binary 를 /usr/local/bin
-      # 에 symlink → /usr/bin/node 보다 PATH 우선이라 spawn child 도 v20 사용.
-      # Image level fix (base image 에 Node v20 사전 install) 은 Phase 23
-      # Custom Image carry-over.
-      - name: Setup Node.js v20 (action — SHA-pinned binary)
-        if: matrix.language == 'javascript-typescript'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: "20"
-
-      - name: Override system node with setup-node v20 binary
-        if: matrix.language == 'javascript-typescript'
-        run: |
-          set -euo pipefail
-          NODE_BIN=$(which node)
-          NPM_BIN=$(which npm)
-          echo "setup-node node: $NODE_BIN ($(node --version))"
-          sudo ln -sf "$NODE_BIN" /usr/local/bin/node
-          sudo ln -sf "$NPM_BIN" /usr/local/bin/npm
-          /usr/local/bin/node --version
-
+      # Phase 23 Custom Image: base에 Node v20 사전 install (system PATH 노출).
+      # CodeQL action의 spawn child process가 자연 v20 사용 — setup-node + symlink 우회 dead code.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@7fc6561ed893d15cec696e062df840b21db27eb0 # v4.35.2
         with:
