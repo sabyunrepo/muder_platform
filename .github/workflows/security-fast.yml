@@ -17,7 +17,10 @@ jobs:
   govulncheck:
     name: govulncheck (Go SCA)
     runs-on: self-hosted
-    timeout-minutes: 5
+    # Phase 22 W1.5 PR-8 fold-in (PR-170 8ce9c0b run cancelled at 5:13):
+    # containerized runner 의 setup-go cache miss + go install govulncheck +
+    # scan 이 5분 timeout 초과. 10분 으로 상향 (cache warm-up 후 정상 ~3분).
+    timeout-minutes: 10
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
