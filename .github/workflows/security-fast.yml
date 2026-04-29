@@ -65,5 +65,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_CONFIG: .gitleaks.toml
           GITLEAKS_ENABLE_COMMENTS: false
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+          # Phase 22 W1.5 PR-8: containerized runner working dir mismatch.
+          # gitleaks-action v2.3.9 의 artifact upload step 이 rootDirectory:
+          # /home/runner 를 하드코딩 → containerized runner 환경에서 fail.
+          # scan 자체는 SUCCESS, summary 는 GHA job summary 로 표시.
+          # Artifact 복원은 Phase 23 Custom Image migration 후 검토.
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
           GITLEAKS_ENABLE_SUMMARY: true
