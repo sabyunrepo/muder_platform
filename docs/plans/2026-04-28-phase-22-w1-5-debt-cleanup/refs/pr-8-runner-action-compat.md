@@ -355,10 +355,18 @@ PR-8 push 후 4 check 모두 SUCCESS 확인:
 - DEBT-2 fail: CodeQL query 실행 OOM/timeout (별개 root cause, Node v20 fix 와 무관)
 - DEBT-4 fail: testcontainers-go 의 host docker.sock 의존 (Phase 23 docker group 정착 필요)
 
-## 별도 PR 후보 (PR-170 후)
+## 추가 fold-in (1st CI run 이후 — admin-skip 만료 결정 시)
 
-- **PR-9** testcontainers-go docker group fix — workflow step 에서 `sudo usermod -aG <docker.sock GID>` + `sg <group> -c "go test ..."` 또는 `sudo -E go test ...`. 정공은 Phase 23 Custom Image base 에서 docker group GID 990 정착.
-- **PR-10** CodeQL JS-TS query OOM 조정 — `--ram=2048` → `4096` 상향, 또는 `--threads=4` → `2` 감소, 또는 query subset 조정 (`security-extended` → `security-and-quality` 만).
+- **testcontainers-go fold-in** (DEBT-4 후속, 사용자 결정 2026-04-29):
+  - `ci.yml#go-check` 의 `Run tests` step 을 `sudo -E env "PATH=$PATH" go test ...` 으로 변경
+  - `Fix coverage.out ownership` step 추가 (sudo go test 로 root:root 생성된 파일을 runner user 로 chown — 후속 Codecov upload + artifact upload 가 read 가능)
+  - 근거: PR-170 1st CI run 에서 testcontainers-go pre-existing 부채 노출. admin-skip 만료 결정 시 PR-170 자체가 ALL pass 필요 → 별도 PR-9 분리 대신 본 PR fold-in.
+  - 정공은 Phase 23 Custom Image base 에 docker group GID 990 정착 — 본 fold-in 은 workflow level forward port.
+
+- **CodeQL JS-TS query OOM** (DEBT-2 후속):
+  - 2nd CI run 에서 자동 해소 (`8a772b5` re-run 에서 SUCCESS)
+  - 1st run fail 은 transient (cache miss 또는 일시적 OOM). 별도 fix 불필요 — 관찰만.
+  - 재발 시 `--ram=2048` → `4096` 상향 검토.
 
 ## 4-agent review fold-in (1차 push 후)
 

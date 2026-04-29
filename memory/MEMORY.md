@@ -63,7 +63,7 @@
 - [마이그레이션 워크플로우](feedback_migration_workflow.md) — 6전문가 토론 → 승인 → 구현 → 리뷰 → QA
 - [plan-autopilot 운영 함정](feedback_plan_autopilot_gotchas.md) — status 필드 schema, 워크트리 cleanup 순서, dry-run 머지 등
 - [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25 + ESLint9 config 미흡 (main도 fail), Phase 8.5 cleanup 후보
-- [CI admin-skip 정책 (2026-05-01까지)](project_ci_admin_skip_until_2026-05-01.md) — 모든 PR `gh pr merge --admin` 머지, 체크 red 무시 (2026-04-18 결정)
+- [CI admin-skip 정책 (만료됨 — 2026-04-29)](project_ci_admin_skip_expired_2026-04-29.md) — 2026-04-18 도입, 2026-04-29 만료. PR-170 머지로 main DEBT 5건 모두 해소 → 정상 `gh pr merge --squash` 모드 복귀
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — WebSocket은 ?token= 쿼리로 인증 (Authorization 헤더 아님)
 - [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 500(CLAUDE.md만 200, 2026-04-21 변경)
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화 + 장시간 세션 주기 재시작, vantict 등 타프로젝트 분리

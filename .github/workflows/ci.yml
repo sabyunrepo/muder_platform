@@ -150,8 +150,23 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: bash scripts/check-playeraware-coverage.sh
 
+      # Phase 22 W1.5 PR-8 testcontainers-go fold-in (PR-170 1st CI run 이후
+      # 노출된 pre-existing 부채):
+      # internal/auditlog, internal/editor 등 패키지가 testcontainers-go 로
+      # host docker.sock 직접 접근 → containerized runner 의 sup group 990
+      # lost 환경에서 permission denied.
+      # 정공: sudo -E env "PATH=$PATH" go test 로 root 권한 docker.sock
+      # 접근 + 환경변수 (HOME, GOPATH, GOCACHE, DATABASE_URL, REDIS_URL,
+      # PG_NAME, REDIS_NAME) 보존.
+      # Image level fix (runner user 의 docker group GID 990 정착) 은
+      # Phase 23 Custom Image carry-over.
       - name: Run tests
-        run: go test -race -coverprofile=coverage.out ./...
+        run: sudo -E env "PATH=$PATH" go test -race -coverprofile=coverage.out ./...
+
+      # sudo go test 로 root:root 생성 → 후속 step (Codecov upload + artifact
+      # upload) 가 read 가능하게 ownership 정정.
+      - name: Fix coverage.out ownership
+        run: sudo chown "$(id -u):$(id -g)" coverage.out
 
       - name: Coverage summary
         run: go tool cover -func=coverage.out | tail -20
