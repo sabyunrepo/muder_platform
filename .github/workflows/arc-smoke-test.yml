@@ -1,0 +1,29 @@
+name: ARC smoke test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: arc-runner-set
+    steps:
+      - name: Identity
+        run: |
+          echo "hostname: $(hostname)"
+          echo "whoami: $(whoami)"
+          echo "uname: $(uname -a)"
+          echo "RUNNER_NAME: ${RUNNER_NAME}"
+          echo "RUNNER_OS: ${RUNNER_OS}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Docker (DinD sidecar) reachable
+        run: |
+          docker version
+          docker info --format '{{.ServerVersion}}'
+
+      - name: Container hooks present
+        run: |
+          ls -la /home/runner/k8s/ 2>/dev/null || echo "no k8s hooks dir (expected for dind mode)"
+          echo "ACTIONS_RUNNER_CONTAINER_HOOKS=${ACTIONS_RUNNER_CONTAINER_HOOKS}"
