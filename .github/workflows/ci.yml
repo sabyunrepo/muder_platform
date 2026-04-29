@@ -311,6 +311,19 @@ jobs:
           name: web-coverage
           path: apps/web/coverage
 
+      # Phase 22 W1.5 PR-8 fold-in (PR-170 ce1fa62 1st CI run 노출):
+      # containerized runner image / bare-host runner 모두 jq 미사전 install.
+      # Web coverage gate step 이 jq 의존 → "jq: command not found" exit 127.
+      # apt-get 으로 사전 install (idempotent, 이미 있으면 skip).
+      # Image level fix (Custom Image 에 jq 포함) 은 Phase 23 carry-over.
+      - name: Ensure jq installed
+        run: |
+          if ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq jq
+          fi
+          jq --version
+
       - name: Web coverage gate
         run: |
           LINES=$(jq '.total.lines.pct' apps/web/coverage/coverage-summary.json)
