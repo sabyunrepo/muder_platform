@@ -90,6 +90,14 @@ prs_estimated: 3
 - **검증**: `govulncheck ./...` 0 CRITICAL + 0 HIGH (또는 모두 allowlist 등록)
 - **상세**: [`refs/pr-3-govulncheck.md`](refs/pr-3-govulncheck.md) (작성 예정)
 
+### PR-12 — actions/setup-go cache narrowing (build cache 제외)
+- **Effort** S, **Impact** Very High (cache 폭증 369MB→2.4GB+ 정공 fix, Setup Go stuck 해소)
+- **branch**: `chore/w1-5-go-cache-narrow`
+- **변경**: 9 setup-go 호출 (`ci.yml` 2 + `e2e-stubbed.yml` 1 + `security-deep.yml` 2 + `security-fast.yml` 1 + `module-isolation.yml` 1 + `flaky-report.yml` 1 + `phase-18.1-real-backend.yml` 1) 에 `cache: false` + 명시적 `actions/cache` step 추가 (`~/go/pkg/mod` 만 cache, `~/.cache/go-build` 제외)
+- **의존**: PR-5 (#172) 와 parallel mergeable
+- **trigger**: PR-172 E2E shard 4개 모두 Setup Go stuck (1GB cache 0.0 MB/s, 5분+) → `gh cache list` 진단으로 cache 폭증 확인
+- **상세**: [`refs/pr-12-go-cache-narrow.md`](refs/pr-12-go-cache-narrow.md)
+
 ---
 
 ## Out of Scope
