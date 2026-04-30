@@ -74,8 +74,12 @@ jobs:
           # 이전 run cleanup (이름 충돌 방지)
           docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
 
+          # ARC dind: runner 컨테이너와 dind 사이드카는 같은 pod network namespace 공유.
+          # postgres/redis 컨테이너 port 를 dind 호스트로 publish (-p) 하면 runner 에서
+          # localhost 로 접근 가능 (host runner 의 'hostname' DNS 패턴 대체).
           docker run -d --name "$PG_NAME" \
             --network "$RUNNERS_NET" \
+            -p 5432:5432 \
             -e POSTGRES_DB=mmp_test \
             -e POSTGRES_USER=mmp \
             -e POSTGRES_PASSWORD=mmp_test \
@@ -87,6 +91,7 @@ jobs:
 
           docker run -d --name "$REDIS_NAME" \
             --network "$RUNNERS_NET" \
+            -p 6379:6379 \
             --health-cmd "redis-cli ping" \
             --health-interval 5s \
             --health-timeout 3s \
@@ -116,8 +121,9 @@ jobs:
       - name: Export service connection env
         working-directory: ${{ github.workspace }}
         run: |
-          echo "DATABASE_URL=postgres://mmp:mmp_test@${PG_NAME}:5432/mmp_test?sslmode=disable" >> "$GITHUB_ENV"
-          echo "REDIS_URL=redis://${REDIS_NAME}:6379" >> "$GITHUB_ENV"
+          # ARC dind: runner ↔ dind 가 pod network 공유. localhost 로 접근.
+          echo "DATABASE_URL=postgres://mmp:mmp_test@localhost:5432/mmp_test?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://localhost:6379" >> "$GITHUB_ENV"
 
       - name: Setup Go
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0

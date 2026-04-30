@@ -107,8 +107,11 @@ jobs:
           # 이전 run cleanup (이름 충돌 방지)
           sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
 
+          # ARC dind: runner ↔ dind 가 pod network namespace 공유. -p publish 후 localhost 접근.
+          # 각 matrix shard 는 독립 ARC pod 라 port 충돌 없음 (5432/6379 pod-local).
           sudo docker run -d --name "$PG_NAME" \
             --network "$RUNNERS_NET" \
+            -p 5432:5432 \
             -e POSTGRES_DB=mmp_e2e \
             -e POSTGRES_USER=mmp \
             -e POSTGRES_PASSWORD=mmp_e2e \
@@ -120,6 +123,7 @@ jobs:
 
           sudo docker run -d --name "$REDIS_NAME" \
             --network "$RUNNERS_NET" \
+            -p 6379:6379 \
             --health-cmd "redis-cli ping" \
             --health-interval 5s \
             --health-timeout 3s \
@@ -148,8 +152,9 @@ jobs:
       # Export connection env — runners-net 의 hostname 으로 접근.
       - name: Export service connection env
         run: |
-          echo "DATABASE_URL=postgres://mmp:mmp_e2e@${PG_NAME}:5432/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
-          echo "REDIS_URL=redis://${REDIS_NAME}:6379" >> "$GITHUB_ENV"
+          # ARC dind: runner ↔ dind 가 pod network 공유. localhost 로 접근.
+          echo "DATABASE_URL=postgres://mmp:mmp_e2e@localhost:5432/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://localhost:6379" >> "$GITHUB_ENV"
 
       # ── Go server ──────────────────────────────────────────────────────────
 
@@ -170,7 +175,7 @@ jobs:
         working-directory: apps/server
         run: |
           goose -dir db/migrations postgres \
-            "host=${PG_NAME} port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            "host=localhost port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
             up
 
       - name: Start server
