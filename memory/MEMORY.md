@@ -1,77 +1,71 @@
 ## 프로젝트 정보
 - [MMP v3 프로젝트 개요](project_overview.md) — Go+React 머더미스터리 v3, 기술 스택과 아키텍처
-- [Phase 체크리스트](project_phases.md) — Phase 0~17.0 완료
-- [Phase 11.0 메타포 테스트](project_phase110_plan.md) — **완료** 단서 아이템 + 메타포 템플릿 + E2E (5 PR, 4 Wave, 2026-04-13)
-- [Phase 12.0 완료](project_phase120_progress.md) — 메타포 풀 경험 게임 모듈 4개 (5 PR, 42 tests, 2026-04-13)
-- [Phase 13.0 플랜](project_phase130_plan.md) — 게임 설계 에디터 (7 PR, 4 Wave, 서브탭+ConfigSchema+맵+타임라인+배치)
-- [Phase 14.0 완료](project_phase140_plan.md) — **완료** 에디터 UX 개선 (5 PR, 3 Wave, 224 tests, 2026-04-14)
-- [Phase 15.0 완료](project_phase150_progress.md) — **완료** React Flow 캔버스 + 분기/엔딩 + 조건빌더 (8 PR, 4 Wave, 303 tests, 2026-04-14)
-- [Phase 16.0 완료](project_phase160_progress.md) — **완료** 에디터 UX 버그픽스 (4 PR + 핫픽스 3건, 이미지캐시/모달/모듈토글/흐름템플릿, 2026-04-14)
-- [Phase 17.0 완료](project_phase170_plan.md) — **완료** v2 이식 + 흐름 완성 (7 PR, 4 Wave, 353 tests, 2026-04-14)
-- [Phase 17.5 완료](project_phase175_progress.md) — **완료** 단서 관계 그래프 DAG (4 PR, 3 Wave, 16 tests + 8 리뷰 fix, 2026-04-15)
-- [Phase 18.0 완료](project_phase180_progress.md) — **완료** 게임 런타임 통합 (10 PR, 6 Wave, 50 tasks, feature flag `game_runtime_v2`, 2026-04-15)
-- [Phase 18.1 완료](project_phase181_progress.md) — **완료** 게임 런타임 Hotfix (5 PR, 3 Wave, 41 tasks, B-1~B-4+H-1~H-4 해결, 2026-04-15)
-- [Phase 18.3 완료](project_phase183_progress.md) — **완료** 보안 하드닝 + CI 정비 (4 PR, 2 Wave, M-7/M-a/M-e+L-2~L-8+CI-1/2/3 해결, 2026-04-15)
-- [Phase 18.4 완료](project_phase184_progress.md) — **완료** 에디터 UX Bugfix 9건 (7 PR + 3 hotfix, 4 Wave, 423 tests + 9 E2E, 2026-04-15)
-- [Phase 18.5 완료](project_phase185_progress.md) — **완료** 에디터 리팩터 + 테스트 보강 (ValidateTheme 추출, routes_editor.go 분할, flowApi MSW, 2 커밋 `1bc1f23`+`627df05`, 2026-04-16)
-- [Phase 18.6 완료](project_phase186_progress.md) — **완료** E2E Recovery (ws-client build + ThemeCard schema drift, 3 PR #49/#50/#51, E2E 4 pass/11 skip/0 fail, H7 Phase 18.7 이관, 2026-04-16)
-- [Phase 18.7 완료](project_phase187_progress.md) — **완료** CI/Test Automation Hardening (Hotfix #53 + 7 PR #54-62, 4 Wave, migration drift gate/cache/SHA pin/Codecov/govulncheck/gitleaks/trivy/osv/CodeQL/SBOM/provenance/E2E shard+firefox/Renovate, 2026-04-16)
-- [Phase 18.8 플랜](project_phase188_plan.md) — **관측 stash** E2E Skip Recovery (5/5 PR merged, W3 PR-5 3일 green 관측 중, active-plan `.claude/active-plan.phase-18.8.json.bak`로 stash, 2026-04-17)
-- [Phase 19 Platform Deep Audit](project_phase19_audit_progress.md) — **완료** 9영역 심층 감사 + 8 cross-cutting + 9 PR backlog + 4 decisions resolved (Finding 89, PR #69, QMD v2 hotel 추가, 2026-04-17)
-- [Phase 19 Implementation](project_phase19_implementation_progress.md) — **완료** P0 7/7 (100%). PR-2c #107(0b31271) + hotfix #108(59a39c4, 2026-04-18). combination real per-player redaction(D-MO-1) + handleCombine deadlock fix + uuid.Nil guard + Collected sort.Strings. 4-agent 사후 리뷰 HIGH/MEDIUM 해소. Follow-up은 Phase 19.1로 승격
-- [Phase 19.1 Audit Review Follow-ups](project_phase19_1_progress.md) — **완료** W1 3 PR 머지 (PR-A #111 strict env 제거+BuildState godoc / PR-B #112 coverage lint AST 재작성 · 4 우회 패턴 차단 / PR-C #113 PeerLeakAssert helper 패키지 + 3+players table + Restore/engine dispatch 통합 테스트). 리뷰 MEDIUM 2+LOW 1 해소. 2026-04-18
-- [Phase 20 플랜](project_phase20_plan.md) — 단서·장소 에디터 정식 승격 (6 PR, 4 Wave, 2026-04-17 시작)
-- [Phase 20 완료](project_phase20_progress.md) — **완료 + 스테이징 QA** 단서·장소 에디터 정식 승격 (6 PR #71~#77 + archive #78, 4 Wave, 2026-04-17). 통합 clue_edge_groups 스키마 + AUTO/CRAFT + CurrentRound + 라운드 필터 + 프론트 승격. 스테이징 DB 00020~00025 적용 + 라운드 왕복 QA 7/7 통과 (CHECK 제약 9건 활성 확인)
-- [Phase 19 Residual 활성화](project_phase19_residual_progress.md) — **진행 중** 감사 backlog 잔여 9 PR + 2 hotfix (W0 PR-0 ↔ W4 PR-10). Plan PR #119 머지(`19446a2`, 2026-04-21). active-plan.json 활성화 완료. W0 PR-0 MEMORY Canonical Migration부터 착수.
-- [에디터 개방 + 심사 + 이미지 업로드](project_editor_open_access.md) — 전유저 에디터, 게시 심사, 크롭 업로드 (2026-04-13)
-- [Phase 10.0 완료](project_phase100_progress.md) — QA Bugfix Sprint (5 PRs, 15 tasks, 커밋 dfbc340)
-- [Phase 9.0 완료](project_phase90_progress.md) — 전체 완료 (16 PRs, 7 Waves, 31 모듈, 4장르 e2e)
-- [Phase 8.0 계획 (archived)](project_phase80_plan.md) — Engine Integration Layer (Phase 9.0으로 대체됨)
-- [Phase 8.0 진행 상황 (archived)](project_phase80_progress.md) — W1까지 완료 후 Phase 9.0으로 전환
-- [Phase 7.7 후속 작업](project_phase77_followups.md) — Phase 8.0 종료 후 cleanup용 Medium 이슈 목록
+- [Phase 체크리스트 (전체 일람)](project_phases.md) — Phase 0~17.0 완료 인덱스
+- [완료 Phase Archive](#완료-phase-archive) — Phase 7.7~20 progress·plan 파일 일람 (본 파일 하단)
+
+## 활성 Phase
+- [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** 감사 backlog 잔여 9 PR + 2 hotfix (W0~W4). active-plan.json 활성 (2026-04-21 PR #119 머지)
+- [Phase 22 W1.5 부채 정리](sessions/2026-04-28-debt-cleanup-runner-network.md) — runner containerization 부채 (DEBT 5건 + W1.5 PR-1/PR-5/PR-7 carry-over). PAT 회전 권고
+- [Phase 23 Custom Runner Image](sessions/2026-04-29-phase-23-custom-runner-image-merge.md) — **머지 완료, Wave 5 verify** mega PR #174 + hotfix #175. multi-stage Dockerfile + GHCR build CI + 9 workflow 정리. chicken-egg P0-1 follow-up
+
+## 도메인 카논
 - [소셜 시스템](project_social_system.md) — SocialHub, Redis Presence, WS 핸들러, 차단 필터링
 - [에러 처리 체계](project_error_system.md) — AppError, ErrorBoundary 3계층, Sentry, OTel
-- [모듈 시스템](project_module_system.md) — 33개 모듈 (spec 29 + crime_scene 3 + media 1), BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
+- [모듈 시스템](project_module_system.md) — 33개 모듈, BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
 - [코딩 규칙](project_coding_rules.md) — Go/React 계층구조, DI, 상태관리, 테스트
-- [compound-mmp Wave 3 PR-7 완료](sessions/2026-04-28-compound-mmp-wave3-pr7.md) — `/compound-review` + 4-agent parallel bridge + helper(jq --arg) + 27-case fixture (PR #158 `b5e4127`, 4-agent self-review HIGH 4건 in-PR fix, 2026-04-28)
-- [compound-mmp Wave 4 종료](sessions/2026-04-28-compound-mmp-wave4-complete.md) — **4단계 라이프사이클 완성** Plan/Work/Review/Compound + Cycle dashboard. PR-8 `/compound-plan`+qmd-recall (#161 `02f2864`), PR-9 `/compound-work`+mandatory_slots sister 카논 M-N1 (#162 `a4cb926`), PR-10 `/compound-cycle`+compound-lifecycle (#163 `d4a533b`, **4-round 검증** HIGH 7건 RESOLVED). fixture 7 suite 269/269 pass (bash 3.2 + 5.x). carry-over 17건 PR-11 또는 Phase 21 dogfooding (2026-04-28)
-- [PR-164 ci-infra-recovery 머지 + Phase 22 진입](sessions/2026-04-28-ci-infra-recovery-phase-22-entry.md) — **P1 완료** (PR #164 `dbe6a65`) self-hosted 12 job EACCES + postgres 5432 collision 영구 fix. **P5 진행 중** (Phase 22 Runner 컨테이너화 brainstorm Q1 — socket mount 결정). dev port 25432/26379 시프트 (langfuse 회피). carry-over 17건 P2 PR-11 hygiene (2026-04-28)
-- [PR-170 runner action compat + admin-skip 만료](sessions/2026-04-29-pr-170-runner-action-compat-admin-skip-expiry.md) — **머지 완료** PR #170 (Phase 22 W1.5, 4 main DEBT 일괄 + 5 fold-in, 14 commit). admin-skip 정책 만료 (`expired_2026-04-29.md`) 후 첫 정상 머지. 4-agent review 4건 conditional pass. W1.5 PR-11 (Go module + pnpm cache named volume) 신규 후보. Phase 23 Custom Image escalate 5건 carry-over (2026-04-29)
-- [Phase 23 Custom Image pivot](sessions/2026-04-29-phase-23-custom-image-pivot.md) — **PR-12 retract** (PR #173 close, branch+worktree 삭제). PR-5 (#172) open 보류. EPHEMERAL=true 가 file system reset 안 함 진단 → Phase 23 Custom Image Option A 즉시 진입 결정 (Dockerfile + GHCR build CI + docker-compose 교체). 9 workflow fold-in dead code 정리는 별도 follow-up. cache 폭증 369MB→2.4GB+ + tar 충돌 부채 영구 해소 진로 (2026-04-29)
-- [Phase 23 Custom Runner Image 머지](sessions/2026-04-29-phase-23-custom-runner-image-merge.md) — **머지 완료, Wave 5 verify 진행 중** mega PR #174 (squash 025ed78) + hotfix #175 yaml syntax (squash c32d123). multi-stage Dockerfile + cleanup hook + GHCR build CI + 9 workflow 정리. chicken-egg self-bootstrap 발견 (P0-1 follow-up `runs-on: ubuntu-latest`). admin-skip 머지 + 4-agent 우회 사용자 명시 카논. 13 commit, 1389 line spec/plan, 2026-04-29
+- [에디터 개방 + 심사 + 이미지 업로드](project_editor_open_access.md) — 전유저 에디터, 게시 심사, 크롭 업로드
+- [mmp-pilot 통합 시스템](project_mmp_pilot.md) — plan-* + mmp 하네스 통합, /plan-go 단일 진입점, M3 cutover 완료
 
 ## 도구 & 인프라
 - [Docker/Nginx 인프라](project_infra_docker.md) — Nginx 리버스 프록시, dev/prod Compose, Makefile
 - [로컬 인증](project_local_auth.md) — E2E 계정 e2e@test.com/e2etest1234, OAuth 병행
-- [E2E 테스트](project_e2e_testing.md) — Playwright 12건, pnpm test:e2e, 백엔드 없으면 로비 플로우 자동 스킵
+- [E2E 테스트](project_e2e_testing.md) — Playwright 12건, pnpm test:e2e
 - [설계 문서 위치](reference_design_docs.md) — docs/plans/2026-04-05-rebuild/ 설계 문서 맵
-- [QMD 로컬 문서 검색](reference_qmd_setup.md) — MCP 서버, 3 컬렉션(plans/memory/specs), Hook 강제 구조
-- [graphify 지식 그래프](reference_graphify_setup.md) — 6700n/15398e/531c, Token 17.1x 감소, god nodes, Hook 강제, `.needs_update` auto-touch (2026-04-18)
-- [graphify refresh 정책 (D)](project_graphify_refresh_policy.md) — Phase 종료 시점만 fresh rebuild + PR, 일상 post-commit/watch/update는 로컬 전용·커밋 금지 (2026-04-18)
-- [compound-mmp 플러그인 (4단계 라이프사이클)](reference_compound_mmp_plugin.md) — Wave 2 완료 (PR-3~6), ctm marketplace 활성, Wave 3 (PR-7 /compound-review + PR-8 /compound-plan) 대기 (2026-04-28)
+- [QMD 로컬 문서 검색](reference_qmd_setup.md) — MCP 서버, 컬렉션, Hook 강제
+- [graphify 지식 그래프](reference_graphify_setup.md) — 6700n/15398e/531c, Token 17.1x 감소
+- [graphify refresh 정책](project_graphify_refresh_policy.md) — Phase 종료 시점만 fresh rebuild + PR
+- [compound-mmp 플러그인](reference_compound_mmp_plugin.md) — 4단계 라이프사이클 (Plan/Work/Review/Compound)
+- [plan-go ↔ plan-autopilot 연결](reference_plan_go_setup.md) — symlink + plan-tasks.sh 패치 노트
 
 ## 작업 방식
-- [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시/종합만, 실제 작업은 Sonnet/Haiku 위임
-- [사용자 설명 형식 (원인/결과/권장)](feedback_explanation_style.md) — 진단·결정·design 보고 시 3섹션 + 비개발자 친화 어휘 (2026-04-28)
-- [작업 루틴 강제](feedback_work_routine.md) — 시작 시 QMD 컨텍스트 로드, 완료 시 문서 업데이트+재인덱싱 필수
-- [main 직접 push 금지 · feature branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check, bypass 금지 (2026-04-17 `d1262a7` 사건 이후)
-- [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — QMD와 대칭 규칙, `/graphify query|explain|path` 우선, `--update` 증분만 사용 (2026-04-18)
-- [4-agent 코드리뷰는 admin-merge 전에 수행](feedback_4agent_review_before_admin_merge.md) — Auto mode + CI admin-skip 에서도 security/perf/arch/test 4 병렬 리뷰 선행. PR-2c (#107) 리뷰 생략 후 HIGH deadlock 이슈가 hotfix #108 로 발견된 사례 (2026-04-18)
-- [서브에이전트 Sonnet 4.6 기본](feedback_sonnet_46_default.md) — 서브에이전트 spawn 시 `claude-sonnet-4-6` 명시, 4.5 금지. 보안·아키텍처는 opus-4-7, 간단 검색은 haiku-4-5 (2026-04-19)
-- [메모리 canonical = repo/memory/](feedback_memory_canonical_repo.md) — 신규 memory는 repo만 작성, user home은 archival. QMD `mmp-memory` 컬렉션 경로 repo 이전, `originSessionId` 프론트매터 금지 (2026-04-21 PR-0)
-- [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙. 인접 코드 침범·과잉 설계·orphan 과다 정리 차단
-- [2026-04-19 세션 — 토큰 최적화](project_session_2026-04-19_optimization.md) — 3 PR (#116 module-spec 33, #117 hook slim + advisor, #118 /plan-* QMD + Sonnet 4.6). 세션당 ~8~25K 절감
+- [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시, 실제 작업은 Sonnet/Haiku 위임
+- [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙
+- [사용자 설명 형식](feedback_explanation_style.md) — 원인/결과/권장 3섹션, 비개발자 친화 어휘
+- [작업 루틴 강제](feedback_work_routine.md) — 시작 시 QMD 컨텍스트 로드, 완료 시 재인덱싱
+- [main 직접 push 금지 · branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check
+- [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — `--update` 증분만 사용
+- [4-agent 리뷰는 admin-merge 전](feedback_4agent_review_before_admin_merge.md) — security/perf/arch/test 4 병렬
+- [서브에이전트 Sonnet 4.6 기본](feedback_sonnet_46_default.md) — 보안·아키텍처는 opus-4-7
+- [메모리 canonical = repo/memory/](feedback_memory_canonical_repo.md) — user home은 archival
+- [사용자 mode 결정 후 매 task 재확인 X](feedback_mode_decision_gate.md) — admin-skip / 4-agent 우회 mode 결정 후 게이트 X
+- [plan-resume도 QMD 우선](feedback_qmd_plan_resume.md) — 스킬 지시보다 프로젝트 규칙 우선
+- [plan-resume QMD 효율화](feedback_plan_resume_qmd.md) — 컨텍스트 토큰 절약 how-to
 
 ## 코드 리뷰 패턴 & 프로세스
-- [코드 리뷰 패턴 통합](feedback_code_review_patterns.md) — Go/React/DB/보안/PWA/오디오 전 Phase 통합 패턴
+- [코드 리뷰 패턴 통합](feedback_code_review_patterns.md) — Go/React/DB/보안/PWA/오디오 전 Phase 통합
 - [마이그레이션 워크플로우](feedback_migration_workflow.md) — 6전문가 토론 → 승인 → 구현 → 리뷰 → QA
-- [plan-autopilot 운영 함정](feedback_plan_autopilot_gotchas.md) — status 필드 schema, 워크트리 cleanup 순서, dry-run 머지 등
-- [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25 + ESLint9 config 미흡 (main도 fail), Phase 8.5 cleanup 후보
-- [CI admin-skip 정책 (만료됨 — 2026-04-29)](project_ci_admin_skip_expired_2026-04-29.md) — 2026-04-18 도입, 2026-04-29 만료. PR-170 머지로 main DEBT 5건 모두 해소 → 정상 `gh pr merge --squash` 모드 복귀
-- [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — WebSocket은 ?token= 쿼리로 인증 (Authorization 헤더 아님)
-- [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/함수 80, TS·TSX 400/함수 60·컴포넌트 150, MD 500(CLAUDE.md만 200, 2026-04-21 변경)
-- [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화 + 장시간 세션 주기 재시작, vantict 등 타프로젝트 분리
-- [Custom Runner Image chicken-egg 회피](feedback_runner_bootstrap.md) — `build-runner-image.yml` `runs-on: ubuntu-latest` 카논. Phase 23 정착 (2026-04-29)
-- [self-hosted runner용 multi-stage Dockerfile](feedback_multi_stage_dockerfile_runner.md) — builder=ubuntu:22.04 + final=base@sha256, 보안 표면 분리 + GHA cache 효율 + RUNNER_TOOL_CACHE 호환
-- [Custom Runner Image GHCR 첫 push 절차](feedback_ghcr_self_hosted_bootstrap.md) — GITHUB_TOKEN + Public visibility + scope=runner-image. 사용자 host 재배포 + Rollback 절차
-- [사용자 mode 결정 후 매 task 재확인 X](feedback_mode_decision_gate.md) — admin-skip / 4-agent 우회 / 추천 mode 결정 후 매 task 게이트 X. 사용자 정정 ("왜 또 물어보는거지", 2026-04-29)
+- [plan-autopilot 운영 함정](feedback_plan_autopilot_gotchas.md) — status 필드 schema, 워크트리 cleanup
+- [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25, ESLint9 config 미흡
+- [CI admin-skip 정책 (만료 — 2026-04-29)](project_ci_admin_skip_expired_2026-04-29.md) — 정상 squash 모드 복귀
+- [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — `?token=` 쿼리 인증
+- [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/80, TS·TSX 400/60·150, MD 500(CLAUDE.md만 200)
+- [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화, 장시간 세션 주기 재시작
+
+## Phase 23 인프라 카논 (Custom Runner Image)
+- [Custom Runner Image chicken-egg 회피](feedback_runner_bootstrap.md) — `build-runner-image.yml` `runs-on: ubuntu-latest`
+- [self-hosted runner용 multi-stage Dockerfile](feedback_multi_stage_dockerfile_runner.md) — builder + final 분리
+- [Custom Runner Image GHCR 첫 push 절차](feedback_ghcr_self_hosted_bootstrap.md) — GITHUB_TOKEN + Public visibility
+
+## 최근 세션 회고
+- [2026-04-19 토큰 최적화](project_session_2026-04-19_optimization.md) — 3 PR (#116/#117/#118), 세션당 ~8~25K 절감
+
+## 완료 Phase Archive
+종합 인덱스: [project_phases.md](project_phases.md). 개별 progress·plan 파일은 그대로 보존 (QMD `mmp-memory` 검색 또는 직접 read).
+
+- **Phase 7.7~10**: [followups](project_phase77_followups.md) · [8.0 plan](project_phase80_plan.md) [progress](project_phase80_progress.md) · [9.0](project_phase90_progress.md) · [10.0](project_phase100_progress.md)
+- **Phase 11~17**: [11.0](project_phase110_plan.md) · [12.0](project_phase120_progress.md) · [13.0](project_phase130_plan.md) · [14.0](project_phase140_plan.md) · [15.0 plan](project_phase150_plan.md) [progress](project_phase150_progress.md) · [16.0](project_phase160_progress.md) · [17.0](project_phase170_plan.md) · [17.5](project_phase175_progress.md)
+- **Phase 18.x**: [18.0 plan](project_phase180_plan.md) [progress](project_phase180_progress.md) · [18.1](project_phase181_progress.md) · [18.3](project_phase183_progress.md) · [18.4](project_phase184_progress.md) · [18.5](project_phase185_progress.md) · [18.6 plan](project_phase186_plan.md) [progress](project_phase186_progress.md) · [18.7](project_phase187_progress.md) · [18.8 plan](project_phase188_plan.md) [progress](project_phase188_progress.md)
+- **Phase 19~20**: [19 audit](project_phase19_audit_progress.md) [implementation](project_phase19_implementation_progress.md) · [19.1](project_phase19_1_progress.md) · [20 plan](project_phase20_plan.md) [progress](project_phase20_progress.md)
+
+## 옛 세션 핸드오프
+`sessions/archive/` (12 파일) — compound-mmp Wave 1~4, ci-infra-recovery, phase-22 W1, PR fold-in (#168/#170), phase-23 pivot. 필요 시 직접 read.
