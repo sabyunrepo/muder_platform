@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import {
   useEditorClues,
   useUpdateConfigJson,
 } from '@/features/editor/api';
+import { useDebouncedMutation } from '@/hooks/useDebouncedMutation';
 import type { Mission } from './MissionEditor';
 import { CharacterDetailPanel } from './CharacterDetailPanel';
 
@@ -28,6 +29,8 @@ interface CharacterAssignPanelProps {
   theme: EditorThemeResponse;
 }
 
+type ConfigPatch = Record<string, unknown>;
+
 // ---------------------------------------------------------------------------
 // CharacterAssignPanel
 // ---------------------------------------------------------------------------
@@ -38,9 +41,6 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRef = useRef<Record<string, unknown> | null>(null);
-  const rollbackRef = useRef<EditorThemeResponse | undefined>(undefined);
 
   const characterClues = useMemo((): Record<string, string[]> => {
     const cc = (theme.config_json ?? {}).character_clues;
@@ -54,78 +54,43 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       ? (cm as Record<string, Mission[]>) : {};
   }, [theme.config_json]);
 
-  /**
-   * Fire the pending save immediately (cancels debounce). Used by:
-   *   - `useEffect` cleanup on unmount
-   *   - `selectedCharId` change (switching characters should persist edits)
-   *   - explicit blur handler from {@link CharacterDetailPanel}
-   */
-  const flush = useCallback(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
-    if (!pendingRef.current) return;
-    const payload = pendingRef.current;
-    pendingRef.current = null;
-    updateConfig.mutate(payload, {
-      onSuccess: () => toast.success('저장되었습니다'),
-      onError: () => {
-        // Rollback optimistic update on failure.
-        if (rollbackRef.current) {
-          queryClient.setQueryData(editorKeys.theme(themeId), rollbackRef.current);
-        }
-        toast.error('저장에 실패했습니다');
-      },
-    });
-  }, [queryClient, themeId, updateConfig]);
-
-  useEffect(() => {
-    return () => {
-      // Flush any pending edit so navigation away from the tab persists data.
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-        debounceRef.current = null;
-      }
-      if (pendingRef.current) {
-        updateConfig.mutate(pendingRef.current);
-        pendingRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const saveConfig = useCallback(
-    (updates: Record<string, unknown>) => {
-      // --- Optimistic update: apply to query cache immediately so the UI
-      // reflects the change within the same tick. Rollback on error.
+  const debouncer = useDebouncedMutation<ConfigPatch>({
+    debounceMs: SAVE_DEBOUNCE_MS,
+    mutate: (body, opts) =>
+      updateConfig.mutate(body, {
+        onSuccess: () => toast.success('저장되었습니다'),
+        onError: opts.onError,
+      }),
+    applyOptimistic: (body) => {
+      // Capture the previous theme snapshot inside the closure so concurrent
+      // flushes each rollback to their own pre-state instead of sharing a ref.
       const cacheKey = editorKeys.theme(themeId);
       const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
-      if (previous) {
-        rollbackRef.current = previous;
-        queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
-          ...previous,
-          config_json: { ...(previous.config_json ?? {}), ...updates },
-        });
-      }
-
-      // --- Debounced network write (1500ms, flush-on-blur).
-      // Merge basis priority (H-W2-1): accumulated pending > optimistic cache >
-      // theme.config_json fallback. Prevents loss of earlier edits made within
-      // the same debounce window on different keys.
-      const basis =
-        pendingRef.current ??
-        queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json ??
-        theme.config_json ??
-        {};
-      pendingRef.current = { ...basis, ...updates };
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        debounceRef.current = null;
-        flush();
-      }, SAVE_DEBOUNCE_MS);
+      if (!previous) return null;
+      queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
+        ...previous,
+        config_json: { ...(previous.config_json ?? {}), ...body },
+      });
+      return () => queryClient.setQueryData(cacheKey, previous);
     },
-    [flush, queryClient, theme.config_json, themeId],
+    onError: () => toast.error('저장에 실패했습니다'),
+  });
+  const flush = debouncer.flush;
+
+  const saveConfig = useCallback(
+    (updates: ConfigPatch) => {
+      // Merge basis priority (H-W2-1): pending body > optimistic cache >
+      // theme.config_json. Prevents loss of earlier edits made within the
+      // same debounce window on different keys.
+      debouncer.schedule(updates, (prev) => {
+        const cached = queryClient.getQueryData<EditorThemeResponse>(
+          editorKeys.theme(themeId),
+        )?.config_json;
+        const basis = prev ?? cached ?? theme.config_json ?? {};
+        return { ...basis, ...updates };
+      });
+    },
+    [debouncer, queryClient, theme.config_json, themeId],
   );
 
   const handleSelectChar = useCallback(
