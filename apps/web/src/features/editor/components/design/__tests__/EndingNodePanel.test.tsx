@@ -138,7 +138,10 @@ describe("EndingNodePanel debounce + onBlur flush", () => {
     expect(mutateMock).toHaveBeenCalledTimes(1);
   });
 
-  it("optimistic update: graph cache가 즉시 갱신된다", () => {
+  it("optimistic update: flush 시점에 graph cache가 갱신된다", async () => {
+    // Phase 21 round-2 (perf-H2): applyOptimistic은 schedule이 아닌 flush
+    // 시점에만 호출되어 빠른 타이핑 시 canvas re-render 폭증을 회피한다.
+    // schedule 직후에는 cache 그대로, debounce window가 지나면 갱신.
     const { qc } = renderWithClient(
       <EndingNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,
     );
@@ -147,10 +150,20 @@ describe("EndingNodePanel debounce + onBlur flush", () => {
     const labelInput = screen.getByPlaceholderText("엔딩 이름");
     fireEvent.change(labelInput, { target: { value: "엔딩 B" } });
 
-    const cached = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
-    const node = cached?.nodes.find((n) => n.id === "ending-1");
-    expect((node?.data as { label?: string }).label).toBe("엔딩 B");
+    // Schedule 직후 — cache 변경 없음 (perf-H2 fix).
+    const beforeFlush = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
+    const beforeNode = beforeFlush?.nodes.find((n) => n.id === "ending-1");
+    expect((beforeNode?.data as { label?: string }).label).toBe("엔딩 A");
     expect(mutateMock).not.toHaveBeenCalled();
+
+    // Debounce window 종료 → flush → applyOptimistic + mutate.
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+    });
+    const afterFlush = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
+    const afterNode = afterFlush?.nodes.find((n) => n.id === "ending-1");
+    expect((afterNode?.data as { label?: string }).label).toBe("엔딩 B");
+    expect(mutateMock).toHaveBeenCalledTimes(1);
   });
 
   it("mutate 실패 시 graph cache가 rollback되고 toast.error가 발화한다", async () => {

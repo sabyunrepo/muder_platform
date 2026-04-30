@@ -2,18 +2,28 @@
  * useDebouncedMutation — Phase 21 E-1
  *
  * Editor 패널에서 debounced auto-save 패턴(`useRef + setTimeout`) 보일러플레이트가
- * 3개 컴포넌트에 복제되어 있던 것을 단일 훅으로 통합. 테스트는 다음을 검증:
+ * 3개 컴포넌트에 복제되어 있던 것을 단일 훅으로 통합. round-2 (Phase 21)에서
+ * applyOptimistic을 schedule 시점이 아닌 flush 시점에 호출하도록 변경 (perf-H2).
  *
- *  1. schedule → debounce 후 mutate 호출 (timer)
- *  2. 다중 schedule → 마지막만 발화 (timer reset)
- *  3. flush() → 즉시 발화, timer 취소, pending 비움
- *  4. cancel() → 발화 X, pending 비움
- *  5. merge(prev) → 누적 동작 (key merge — 동일 debounce 윈도우 내 다른 키 보존)
- *  6. applyOptimistic returning rollback → 성공 시 rollback 호출 X
- *  7. applyOptimistic + mutate onError → rollback 호출 + options.onError 호출
- *  8. unmount → pending body flush (PhaseNodePanel cleanup 패턴)
- *  9. unmount with no pending → mutate 호출 X (no-op)
+ * 검증 대상:
+ *   1. schedule → debounce 후 mutate 호출
+ *   2. 다중 schedule → 마지막만 발화 (timer reset)
+ *   3. flush() → 즉시 발화, timer 취소, pending 비움
+ *   4. flush() with no pending → no-op
+ *   5. cancel() → 발화 X, pending 비움, applyOptimistic도 호출 X (의도된 설계)
+ *   6. merge(prev) → 누적 동작 (key merge — 같은 debounce 윈도우 내 다른 키 보존)
+ *   7. applyOptimistic은 flush 시점에 호출 (schedule 시점 X) — 빠른 타이핑 시
+ *      cache subscriber re-render 폭증 회피
+ *   8. applyOptimistic + mutate onError → rollback + options.onError
+ *   9. unmount → pending body 자동 flush (PhaseNodePanel cleanup 패턴)
+ *  10. unmount with no pending → mutate 호출 X
+ *  11. StrictMode 더블 mount/unmount → flush idempotent (pending null guard)
+ *  12. cancel() after schedule with applyOptimistic → rollback 호출 X
+ *      (cancel은 "버린다" — 외부 책임, JSDoc 계약 잠금)
+ *  13. applyOptimistic이 throw → schedule 정상 / flush에서 throw 전파, hook 상태
+ *      consistent (timer cleared, pending null)
  */
+import { StrictMode } from "react";
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
@@ -97,7 +107,6 @@ describe("useDebouncedMutation", () => {
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(mutate).toHaveBeenCalledWith({ label: "now" }, expect.any(Object));
 
-    // No further fire from the canceled timer.
     act(() => {
       vi.advanceTimersByTime(2000);
     });
@@ -133,7 +142,6 @@ describe("useDebouncedMutation", () => {
     });
     expect(mutate).not.toHaveBeenCalled();
 
-    // flush() after cancel is also a no-op (pending was cleared).
     act(() => {
       result.current.flush();
     });
@@ -146,14 +154,12 @@ describe("useDebouncedMutation", () => {
       useDebouncedMutation<TestBody>({ mutate, debounceMs: 1000 }),
     );
 
-    // First schedule → no prev (null).
     act(() => {
       result.current.schedule({ label: "a" }, (prev) => ({
         ...(prev ?? {}),
         label: "a",
       }));
     });
-    // Second schedule within window → prev = { label: "a" }.
     act(() => {
       result.current.schedule({ count: 5 }, (prev) => ({
         ...(prev ?? {}),
@@ -171,7 +177,7 @@ describe("useDebouncedMutation", () => {
     );
   });
 
-  it("calls applyOptimistic at schedule time (not at flush)", () => {
+  it("calls applyOptimistic at flush time (not at schedule)", () => {
     const rollback = vi.fn();
     const applyOptimistic = vi.fn(() => rollback);
     const mutate = vi.fn();
@@ -179,58 +185,54 @@ describe("useDebouncedMutation", () => {
       useDebouncedMutation<TestBody>({ mutate, debounceMs: 500, applyOptimistic }),
     );
 
+    // Schedule should NOT trigger optimistic side-effect — that's the perf-H2
+    // fix point. Fast keystroke bursts must not write the cache N times.
     act(() => {
       result.current.schedule({ label: "x" });
     });
-    // Optimistic side-effect fires synchronously so the UI reflects the change.
-    expect(applyOptimistic).toHaveBeenCalledTimes(1);
-    expect(applyOptimistic).toHaveBeenCalledWith({ label: "x" });
-    // Mutation is still pending — only the timer is queued.
+    expect(applyOptimistic).not.toHaveBeenCalled();
     expect(mutate).not.toHaveBeenCalled();
 
-    // Success path: no onError invocation → rollback not called.
+    // Timer fires → flushMutation → applyOptimistic invoked once with the
+    // queued body, then mutate.
     act(() => {
       vi.advanceTimersByTime(500);
     });
+    expect(applyOptimistic).toHaveBeenCalledTimes(1);
+    expect(applyOptimistic).toHaveBeenCalledWith({ label: "x" });
     expect(mutate).toHaveBeenCalledTimes(1);
     expect(rollback).not.toHaveBeenCalled();
   });
 
-  it("re-captures rollback on each schedule (last-write-wins)", () => {
-    const rollback1 = vi.fn();
-    const rollback2 = vi.fn();
-    const applyOptimistic = vi
-      .fn<(body: TestBody) => () => void>()
-      .mockImplementationOnce(() => rollback1)
-      .mockImplementationOnce(() => rollback2);
-    const mutate = vi.fn((_body: TestBody, opts: { onError: (e?: unknown) => void }) => {
-      opts.onError(new Error("boom"));
-    });
+  it("multiple schedule + flush only invokes applyOptimistic once (debounce)", () => {
+    const applyOptimistic = vi.fn(() => vi.fn());
+    const mutate = vi.fn();
     const { result } = renderHook(() =>
       useDebouncedMutation<TestBody>({ mutate, debounceMs: 500, applyOptimistic }),
     );
 
-    // First schedule captures rollback1.
+    // 5 rapid schedules within the window simulate fast typing.
     act(() => {
-      result.current.schedule({ label: "a" });
+      for (let i = 0; i < 5; i++) {
+        result.current.schedule({ label: `step-${i}` });
+      }
     });
-    // Second schedule captures rollback2, replacing rollback1 (last-write-wins).
-    act(() => {
-      result.current.schedule({ label: "b" });
-    });
+    // No optimistic side-effect yet — schedule is pure queueing.
+    expect(applyOptimistic).not.toHaveBeenCalled();
+
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    // Only the most recent rollback is invoked when the mutation fails.
-    expect(rollback1).not.toHaveBeenCalled();
-    expect(rollback2).toHaveBeenCalledTimes(1);
+    // Exactly one optimistic apply with the latest body.
+    expect(applyOptimistic).toHaveBeenCalledTimes(1);
+    expect(applyOptimistic).toHaveBeenCalledWith({ label: "step-4" });
+    expect(mutate).toHaveBeenCalledTimes(1);
   });
 
   it("invokes rollback and onError when mutate fires onError", () => {
     const rollback = vi.fn();
     const applyOptimistic = vi.fn(() => rollback);
     const onError = vi.fn();
-    // Simulated mutation: fire onError synchronously.
     const mutate = vi.fn((_body: TestBody, opts: { onError: (err?: unknown) => void }) => {
       opts.onError(new Error("boom"));
     });
@@ -284,24 +286,78 @@ describe("useDebouncedMutation", () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
-  it("isPending reflects the queued state", () => {
+  it("StrictMode double-mount cleanup is idempotent", () => {
+    // React StrictMode (dev) intentionally mounts → unmounts → re-mounts so
+    // effects must be safe to run twice. The hook's unmount cleanup calls
+    // flushRef.current(); the pending-null guard inside flushMutation makes
+    // a second cleanup a no-op.
     const mutate = vi.fn();
-    const { result, rerender } = renderHook(() =>
-      useDebouncedMutation<TestBody>({ mutate, debounceMs: 1000 }),
+    const { result, unmount } = renderHook(
+      () => useDebouncedMutation<TestBody>({ mutate, debounceMs: 1000 }),
+      { wrapper: StrictMode },
     );
 
-    expect(result.current.isPending).toBe(false);
+    act(() => {
+      result.current.schedule({ label: "strict" });
+    });
+    unmount();
+    // First cleanup flushed; second cleanup (StrictMode synthetic) is a no-op
+    // because pendingRef is already null.
+    expect(mutate).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancel() after schedule does NOT invoke applyOptimistic or rollback", () => {
+    // Contract: `cancel` discards without firing or rollback. Since the
+    // optimistic side-effect now happens at flush time, cancel never reaches
+    // applyOptimistic. The caller is responsible for any UI cleanup.
+    const rollback = vi.fn();
+    const applyOptimistic = vi.fn(() => rollback);
+    const mutate = vi.fn();
+    const { result } = renderHook(() =>
+      useDebouncedMutation<TestBody>({ mutate, debounceMs: 500, applyOptimistic }),
+    );
+
+    act(() => {
+      result.current.schedule({ label: "cancel-me" });
+    });
+    act(() => {
+      result.current.cancel();
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(applyOptimistic).not.toHaveBeenCalled();
+    expect(rollback).not.toHaveBeenCalled();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("applyOptimistic that throws leaves the hook in a consistent state", () => {
+    // Defensive: if a host's setQueryData impl throws (e.g. malformed key),
+    // flush must clear the timer + pending body before propagating so the
+    // hook is not stuck in a half-fired state.
+    const applyOptimistic = vi.fn(() => {
+      throw new Error("optimistic-fail");
+    });
+    const mutate = vi.fn();
+    const { result } = renderHook(() =>
+      useDebouncedMutation<TestBody>({ mutate, debounceMs: 500, applyOptimistic }),
+    );
 
     act(() => {
       result.current.schedule({ label: "x" });
     });
-    rerender();
-    expect(result.current.isPending).toBe(true);
+    expect(() => {
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+    }).toThrow("optimistic-fail");
 
+    // pendingRef was cleared *before* applyOptimistic call (flushMutation
+    // clears it first), so a follow-up flush is a no-op.
+    expect(mutate).not.toHaveBeenCalled();
     act(() => {
-      vi.advanceTimersByTime(1000);
+      result.current.flush();
     });
-    rerender();
-    expect(result.current.isPending).toBe(false);
+    expect(mutate).not.toHaveBeenCalled();
   });
 });

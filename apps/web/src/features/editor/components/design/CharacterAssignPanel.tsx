@@ -79,13 +79,26 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
   const saveConfig = useCallback(
     (updates: ConfigPatch) => {
+      // Schedule-time UI mirror — character assignments need to flip
+      // synchronously (toggle/checkbox UX). The hook's `applyOptimistic`
+      // runs at flush time only (perf-H2 — avoids N cache writes per
+      // keystroke burst), so we mirror here for *immediate* visual feedback.
+      // The flush-time apply still captures rollback for the network failure
+      // path; both layers are intentional.
+      const cacheKey = editorKeys.theme(themeId);
+      const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+      if (previous) {
+        queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
+          ...previous,
+          config_json: { ...(previous.config_json ?? {}), ...updates },
+        });
+      }
+
       // Merge basis priority (H-W2-1): pending body > optimistic cache >
       // theme.config_json. Prevents loss of earlier edits made within the
       // same debounce window on different keys.
       debouncer.schedule(updates, (prev) => {
-        const cached = queryClient.getQueryData<EditorThemeResponse>(
-          editorKeys.theme(themeId),
-        )?.config_json;
+        const cached = queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json;
         const basis = prev ?? cached ?? theme.config_json ?? {};
         return { ...basis, ...updates };
       });
