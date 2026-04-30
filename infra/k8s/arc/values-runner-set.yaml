@@ -1,0 +1,30 @@
+githubConfigUrl: "https://github.com/sabyunrepo/muder_platform"
+githubConfigSecret: github-pat-secret
+
+runnerScaleSetName: arc-runner-set
+
+minRunners: 0
+maxRunners: 5
+
+# containerMode: dind — chart 가 자동으로 docker:dind sidecar + DOCKER_HOST=unix:///var/run/docker.sock
+# + init-dind-externals init container 를 주입한다.
+# kubernetes mode 의 ACTIONS_RUNNER_CONTAINER_HOOKS / POD_NAME / REQUIRE_JOB_CONTAINER 는
+# dind 에서 불필요하며 step 실행 흐름과 충돌할 수 있어 제거.
+containerMode:
+  type: dind
+
+template:
+  spec:
+    imagePullSecrets:
+      - name: kt-registry-secret
+    containers:
+      - name: runner
+        image: registry.cloud.kt.com/dldxu5p5/mmp-runner:latest
+        command: ["/home/runner/run.sh"]
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"

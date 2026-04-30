@@ -50,7 +50,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
-    runs-on: [self-hosted, containerized]
+    runs-on: arc-runner-set
     # H-1: fork PR 의 untrusted code 가 shared named volume (playwright-cache/hostedtool-cache) 에
     # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
     # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
@@ -93,11 +93,12 @@ jobs:
           # runners-net network 동적 검출 (compose project prefix 무관).
           # 후보: runners-net (PR-168 6d5a71d explicit name) 또는
           # infra-runners_runners-net (compose project prefix — 현재 host).
-          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1)
+          # ARC ephemeral pod (DinD sidecar) 에서는 fresh docker daemon — 없으면 생성.
+          RUNNERS_NET=$(sudo docker network ls --format '{{.Name}}' | grep -E '(^|_)runners-net$' | head -1 || true)
           if [ -z "$RUNNERS_NET" ]; then
-            echo "::error::runners-net network not found on host"
-            sudo docker network ls
-            exit 1
+            RUNNERS_NET=runners-net
+            sudo docker network create "$RUNNERS_NET" >/dev/null
+            echo "Created runners-net (ARC ephemeral pod)"
           fi
           echo "RUNNERS_NET=$RUNNERS_NET" >> "$GITHUB_ENV"
           export RUNNERS_NET
@@ -106,8 +107,11 @@ jobs:
           # 이전 run cleanup (이름 충돌 방지)
           sudo docker rm -f "$PG_NAME" "$REDIS_NAME" 2>/dev/null || true
 
+          # ARC dind: runner ↔ dind 가 pod network namespace 공유. -p publish 후 localhost 접근.
+          # 각 matrix shard 는 독립 ARC pod 라 port 충돌 없음 (5432/6379 pod-local).
           sudo docker run -d --name "$PG_NAME" \
             --network "$RUNNERS_NET" \
+            -p 5432:5432 \
             -e POSTGRES_DB=mmp_e2e \
             -e POSTGRES_USER=mmp \
             -e POSTGRES_PASSWORD=mmp_e2e \
@@ -119,6 +123,7 @@ jobs:
 
           sudo docker run -d --name "$REDIS_NAME" \
             --network "$RUNNERS_NET" \
+            -p 6379:6379 \
             --health-cmd "redis-cli ping" \
             --health-interval 5s \
             --health-timeout 3s \
@@ -147,8 +152,9 @@ jobs:
       # Export connection env — runners-net 의 hostname 으로 접근.
       - name: Export service connection env
         run: |
-          echo "DATABASE_URL=postgres://mmp:mmp_e2e@${PG_NAME}:5432/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
-          echo "REDIS_URL=redis://${REDIS_NAME}:6379" >> "$GITHUB_ENV"
+          # ARC dind: runner ↔ dind 가 pod network 공유. localhost 로 접근.
+          echo "DATABASE_URL=postgres://mmp:mmp_e2e@localhost:5432/mmp_e2e?sslmode=disable" >> "$GITHUB_ENV"
+          echo "REDIS_URL=redis://localhost:6379" >> "$GITHUB_ENV"
 
       # ── Go server ──────────────────────────────────────────────────────────
 
@@ -169,7 +175,7 @@ jobs:
         working-directory: apps/server
         run: |
           goose -dir db/migrations postgres \
-            "host=${PG_NAME} port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
+            "host=localhost port=5432 user=mmp password=mmp_e2e dbname=mmp_e2e sslmode=disable" \
             up
 
       - name: Start server
@@ -357,7 +363,7 @@ jobs:
     # H-1 consistency: e2e 와 동일 fork PR 게이트 (cache mount runner 일관성).
     if: (always()) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
     needs: [e2e]
-    runs-on: [self-hosted, containerized]
+    runs-on: arc-runner-set
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
