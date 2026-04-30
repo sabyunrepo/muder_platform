@@ -4,9 +4,10 @@
 - [완료 Phase Archive](#완료-phase-archive) — Phase 7.7~20 progress·plan 파일 일람 (본 파일 하단)
 
 ## 활성 Phase
-- [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** 감사 backlog 잔여 9 PR + 2 hotfix (W0~W4). active-plan.json 활성 (2026-04-21 PR #119 머지)
-- [Phase 22 W1.5 부채 정리](sessions/2026-04-28-debt-cleanup-runner-network.md) — runner containerization 부채 (DEBT 5건 + W1.5 PR-1/PR-5/PR-7 carry-over). PAT 회전 권고
-- [Phase 23 Custom Runner Image](sessions/2026-04-29-phase-23-custom-runner-image-merge.md) — **머지 완료, Wave 5 verify** mega PR #174 + hotfix #175. multi-stage Dockerfile + GHCR build CI + 9 workflow 정리. chicken-egg P0-1 follow-up
+- [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol + PR-10 Runtime Payload Validation, L+L 규모). 다음 작업
+
+## Backlog
+- [Phase 21 backlog](project_phase21_backlog.md) — Phase 23 follow-ups (P0-1 chicken-egg / P1-4 Composite action / P1-5 govulncheck pin / P1-6 ubuntu SHA pin / P1-7 ARG DOCKER_GID), Phase 19 audit log orphan action 7건. 에디터 리팩터(useDebouncedMutation·@jittda/ui 마이그레이션·Config 409 3-way merge)는 Phase 24 후보로 별도 brainstorm
 
 ## 도메인 카논
 - [소셜 시스템](project_social_system.md) — SocialHub, Redis Presence, WS 핸들러, 차단 필터링
@@ -66,6 +67,7 @@
 - **Phase 11~17**: [11.0](project_phase110_plan.md) · [12.0](project_phase120_progress.md) · [13.0](project_phase130_plan.md) · [14.0](project_phase140_plan.md) · [15.0 plan](project_phase150_plan.md) [progress](project_phase150_progress.md) · [16.0](project_phase160_progress.md) · [17.0](project_phase170_plan.md) · [17.5](project_phase175_progress.md)
 - **Phase 18.x**: [18.0 plan](project_phase180_plan.md) [progress](project_phase180_progress.md) · [18.1](project_phase181_progress.md) · [18.3](project_phase183_progress.md) · [18.4](project_phase184_progress.md) · [18.5](project_phase185_progress.md) · [18.6 plan](project_phase186_plan.md) [progress](project_phase186_progress.md) · [18.7](project_phase187_progress.md) · [18.8 plan](project_phase188_plan.md) [progress](project_phase188_progress.md)
 - **Phase 19~20**: [19 audit](project_phase19_audit_progress.md) [implementation](project_phase19_implementation_progress.md) · [19.1](project_phase19_1_progress.md) · [20 plan](project_phase20_plan.md) [progress](project_phase20_progress.md)
+- **Phase 22~23 (인프라)**: [Phase 22 W1.5 debt-cleanup](sessions/archive/2026-04-28-debt-cleanup-runner-network.md) (PR #167/168/169/170 머지, PR #172 outdated close 2026-04-30) · [Phase 23 Custom Runner Image](sessions/archive/2026-04-29-phase-23-custom-runner-image-merge.md) (mega PR #174 + hotfix #175 머지, follow-ups → Phase 21 backlog 이월). main이 PR #179/#180으로 KT Cloud KS arc-runner-set 으로 진화 (Phase 23 자체는 superseded 아님 — 별도 ARC 라인)
 
 ## 옛 세션 핸드오프
-`sessions/archive/` (12 파일) — compound-mmp Wave 1~4, ci-infra-recovery, phase-22 W1, PR fold-in (#168/#170), phase-23 pivot. 필요 시 직접 read.
+`sessions/archive/` (14 파일) — compound-mmp Wave 1~4, ci-infra-recovery, phase-22 W1·W1.5, PR fold-in (#168/#170), phase-23 pivot·머지. 필요 시 직접 read.

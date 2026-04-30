@@ -2,7 +2,7 @@
 phase_id: "phase-22-w1-5-debt-cleanup"
 phase_title: "Phase 22 W1.5 — DEBT cleanup + orphan-gate fixture"
 created: 2026-04-28
-status: "draft (PR-167 머지 후 진입)"
+status: "completed (2026-04-30) — PR #167/168/169/170 머지, PR #172 (PR-5 runs-on) outdated close (main이 arc-runner-set 으로 진화)"
 parent_phase: "phase-22-runner-containerization"
 prerequisite: "PR-167 머지"
 prs_estimated: 3

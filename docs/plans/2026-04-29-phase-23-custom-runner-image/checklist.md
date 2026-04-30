@@ -2,19 +2,15 @@
 phase_id: "phase-23-custom-runner-image"
 phase_title: "Phase 23 — Custom Runner Image (Option A multi-stage)"
 created: 2026-04-29
-status: "merged (Wave 5 verify 진행 중) — PR #174 squash 025ed78 + hotfix #175 squash c32d123 (yaml syntax)"
+status: "completed (2026-04-30) — PR #174 squash 025ed78 + hotfix #175 squash c32d123. follow-ups → memory/project_phase21_backlog.md 이월"
 parent_phase: "phase-22-w1-5-debt-cleanup"
 spec: "docs/superpowers/specs/2026-04-29-phase-23-custom-runner-image-design.md"
 prs_estimated: 1
 prs_actual: 2
-follow_ups:
-  - P0-1 chicken-egg fix runs-on:ubuntu-latest (Hotfix PR)
-  - P0-2 GHCR repo connection (Manage Actions access)
-  - P0-3 PR-5 #172 main rebase + 머지
-  - P1-4 Composite action 추출
-  - P1-5 govulncheck version pin
-  - P1-6 ubuntu builder SHA pin
-  - P1-7 ARG DOCKER_GID
+follow_ups_resolution:
+  - P0-2 GHCR repo connection — 사용자 manual 1회 작업 완료
+  - P0-3 PR-5 #172 — outdated close (main이 arc-runner-set 으로 진화)
+  - P0-1 / P1-4 / P1-5 / P1-6 / P1-7 — Phase 21 backlog 이월
 ---
 
 # Phase 23 — Custom Runner Image Implementation Plan
