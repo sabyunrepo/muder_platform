@@ -1,44 +1,45 @@
-# Graph Report - .  (2026-04-18)
+# Graph Report - /Users/sabyun/goinfre/muder_platform  (2026-04-22)
 
 ## Corpus Check
-- Large corpus: 1098 files · ~536,898 words. Semantic extraction will be expensive (many Claude tokens). Consider running on a subfolder, or use --no-semantic to run AST-only.
+- 910 files · ~648,716 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 6700 nodes · 15398 edges · 531 communities detected
-- Extraction: 50% EXTRACTED · 50% INFERRED · 0% AMBIGUOUS · INFERRED: 7676 edges (avg confidence: 0.8)
+- 5635 nodes · 14450 edges · 515 communities detected
+- Extraction: 44% EXTRACTED · 56% INFERRED · 0% AMBIGUOUS · INFERRED: 8085 edges (avg confidence: 0.8)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Accusation Module & Tests|Accusation Module & Tests]]
-- [[_COMMUNITY_WebSocket Hub & Messaging|WebSocket Hub & Messaging]]
-- [[_COMMUNITY_Admin Service Layer|Admin Service Layer]]
-- [[_COMMUNITY_Admin Handler API|Admin Handler API]]
-- [[_COMMUNITY_Accusation Handler & Crime Scene Tests|Accusation Handler & Crime Scene Tests]]
-- [[_COMMUNITY_Admin Mock Services|Admin Mock Services]]
-- [[_COMMUNITY_Server Bootstrap & Adapters|Server Bootstrap & Adapters]]
-- [[_COMMUNITY_Clue Modules (ConditionalRoundTrade)|Clue Modules (Conditional/Round/Trade)]]
-- [[_COMMUNITY_Editor State Handlers|Editor State Handlers]]
-- [[_COMMUNITY_Room Feature Hooks|Room Feature Hooks]]
-- [[_COMMUNITY_Clue Graph & Validation|Clue Graph & Validation]]
-- [[_COMMUNITY_Event Bus & Validators|Event Bus & Validators]]
-- [[_COMMUNITY_Auth & Social UI|Auth & Social UI]]
-- [[_COMMUNITY_Audio Media Tests|Audio Media Tests]]
-- [[_COMMUNITY_Editor Module Tabs|Editor Module Tabs]]
-- [[_COMMUNITY_API Client & Admin Review|API Client & Admin Review]]
-- [[_COMMUNITY_Reading Bridge & Presence|Reading Bridge & Presence]]
-- [[_COMMUNITY_Audio Core (GraphManager)|Audio Core (Graph/Manager)]]
-- [[_COMMUNITY_UI Screenshot Metadata|UI Screenshot Metadata]]
-- [[_COMMUNITY_Rule Evaluator & E2E Specs|Rule Evaluator & E2E Specs]]
-- [[_COMMUNITY_Platform Architecture Concepts|Platform Architecture Concepts]]
-- [[_COMMUNITY_Characters Tab (Editor)|Characters Tab (Editor)]]
-- [[_COMMUNITY_Editor Config & Flow Design|Editor Config & Flow Design]]
-- [[_COMMUNITY_Audio Graph Architecture|Audio Graph Architecture]]
-- [[_COMMUNITY_Phase 9.0 Module Engine Redesign|Phase 9.0 Module Engine Redesign]]
-- [[_COMMUNITY_Platform Infrastructure Decisions|Platform Infrastructure Decisions]]
-- [[_COMMUNITY_Clue Interaction & Editor API|Clue Interaction & Editor API]]
-- [[_COMMUNITY_Module Factory & Registry|Module Factory & Registry]]
-- [[_COMMUNITY_Zustand Stores & Domain|Zustand Stores & Domain]]
-- [[_COMMUNITY_Event Store & Panic Guards|Event Store & Panic Guards]]
+- [[_COMMUNITY_Community 0|Community 0]]
+- [[_COMMUNITY_Community 1|Community 1]]
+- [[_COMMUNITY_Community 2|Community 2]]
+- [[_COMMUNITY_Community 3|Community 3]]
+- [[_COMMUNITY_Community 4|Community 4]]
+- [[_COMMUNITY_Community 5|Community 5]]
+- [[_COMMUNITY_Community 6|Community 6]]
+- [[_COMMUNITY_Community 7|Community 7]]
+- [[_COMMUNITY_Community 8|Community 8]]
+- [[_COMMUNITY_Community 9|Community 9]]
+- [[_COMMUNITY_Community 10|Community 10]]
+- [[_COMMUNITY_Community 11|Community 11]]
+- [[_COMMUNITY_Community 12|Community 12]]
+- [[_COMMUNITY_Community 13|Community 13]]
+- [[_COMMUNITY_Community 14|Community 14]]
+- [[_COMMUNITY_Community 15|Community 15]]
+- [[_COMMUNITY_Community 16|Community 16]]
+- [[_COMMUNITY_Community 17|Community 17]]
+- [[_COMMUNITY_Community 18|Community 18]]
+- [[_COMMUNITY_Community 19|Community 19]]
+- [[_COMMUNITY_Community 20|Community 20]]
+- [[_COMMUNITY_Community 21|Community 21]]
+- [[_COMMUNITY_Community 22|Community 22]]
+- [[_COMMUNITY_Community 23|Community 23]]
+- [[_COMMUNITY_Community 24|Community 24]]
+- [[_COMMUNITY_Community 25|Community 25]]
+- [[_COMMUNITY_Community 26|Community 26]]
+- [[_COMMUNITY_Community 27|Community 27]]
+- [[_COMMUNITY_Community 28|Community 28]]
+- [[_COMMUNITY_Community 29|Community 29]]
 - [[_COMMUNITY_Community 30|Community 30]]
 - [[_COMMUNITY_Community 31|Community 31]]
 - [[_COMMUNITY_Community 32|Community 32]]
@@ -524,46 +525,30 @@
 - [[_COMMUNITY_Community 512|Community 512]]
 - [[_COMMUNITY_Community 513|Community 513]]
 - [[_COMMUNITY_Community 514|Community 514]]
-- [[_COMMUNITY_Community 515|Community 515]]
-- [[_COMMUNITY_Community 516|Community 516]]
-- [[_COMMUNITY_Community 517|Community 517]]
-- [[_COMMUNITY_Community 518|Community 518]]
-- [[_COMMUNITY_Community 519|Community 519]]
-- [[_COMMUNITY_Community 520|Community 520]]
-- [[_COMMUNITY_Community 521|Community 521]]
-- [[_COMMUNITY_Community 522|Community 522]]
-- [[_COMMUNITY_Community 523|Community 523]]
-- [[_COMMUNITY_Community 524|Community 524]]
-- [[_COMMUNITY_Community 525|Community 525]]
-- [[_COMMUNITY_Community 526|Community 526]]
-- [[_COMMUNITY_Community 527|Community 527]]
-- [[_COMMUNITY_Community 528|Community 528]]
-- [[_COMMUNITY_Community 529|Community 529]]
-- [[_COMMUNITY_Community 530|Community 530]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `New()` - 562 edges
-2. `unlock()` - 301 edges
-3. `Lock` - 300 edges
-4. `newTestDeps()` - 275 edges
-5. `Queries` - 242 edges
-6. `WriteError()` - 153 edges
-7. `Internal()` - 146 edges
-8. `writeJSON()` - 119 edges
-9. `NewHandler()` - 118 edges
-10. `UserIDFrom()` - 97 edges
+1. `New()` - 583 edges
+2. `init()` - 383 edges
+3. `unlock()` - 321 edges
+4. `Lock` - 320 edges
+5. `newTestDeps()` - 290 edges
+6. `NewHandler()` - 115 edges
+7. `Internal()` - 96 edges
+8. `writeJSON()` - 85 edges
+9. `UserIDFrom()` - 74 edges
+10. `BadRequest()` - 71 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Go Backend Coding Rules` --rationale_for--> `AppError`  [INFERRED]
-  CLAUDE.md → apps/server/internal/apperror/apperror.go
-- `AudioOrchestrator (createAudioOrchestrator)` --conceptually_related_to--> `AudioModule PhaseReactor`  [INFERRED]
-  apps/web/src/features/audio/AudioOrchestrator.ts → docs/plans/2026-04-06-phase-7.7-audio/design.md
-- `VideoOrchestrator (CutsceneModal, EvidenceVideoCard)` --shares_data_with--> `AudioOrchestrator (createAudioOrchestrator)`  [INFERRED]
-  docs/plans/2026-04-07-phase-7.7-fe-design.md → apps/web/src/features/audio/AudioOrchestrator.ts
-- `PR C-6: Auto-Save + Validation Integration` --calls--> `SchemaDrivenForm`  [INFERRED]
-  docs/plans/2026-04-10-editor-engine-redesign/refs/phase-c-prs/c6-autosave-validation.md → apps/web/src/features/editor/components/SchemaDrivenForm.tsx
-- `getNextPhase()` --calls--> `indexOf()`  [INFERRED]
-  packages/game-logic/src/phase.ts → apps/server/internal/ws/reading_handler_test.go
+- `AppError` --rationale_for--> `Go Backend Coding Rules`  [INFERRED]
+  /Users/sabyun/goinfre/muder_platform/apps/server/internal/apperror/apperror.go → CLAUDE.md
+- `handleClick()` --calls--> `contains()`  [INFERRED]
+  apps/web/src/features/audio/InGameSoundControl.tsx → /Users/sabyun/goinfre/muder_platform/apps/server/internal/infra/otel/log_hook_test.go
+- `handleClick()` --calls--> `contains()`  [INFERRED]
+  apps/web/src/features/audio/components/SoundControl.tsx → /Users/sabyun/goinfre/muder_platform/apps/server/internal/infra/otel/log_hook_test.go
+- `handleClick()` --calls--> `contains()`  [INFERRED]
+  apps/web/src/features/editor/components/design/FlowToolbar.tsx → /Users/sabyun/goinfre/muder_platform/apps/server/internal/infra/otel/log_hook_test.go
+- `main()` --calls--> `NewPresenceProvider()`  [INFERRED]
+  /Users/sabyun/goinfre/muder_platform/apps/server/cmd/wsgen/main.go → apps/server/internal/domain/social/presence.go
 
 ## Hyperedges (group relationships)
 - **Clue Discovery Pipeline: Graph.Resolve → FilterByRound → ComputeVisible** — clue_graph_resolve, clue_round_filter_filterbyround, clue_visibility_computevisible [INFERRED 0.85]
@@ -647,581 +632,581 @@
 
 ## Communities
 
-### Community 0 - "Accusation Module & Tests"
+### Community 0 - "Community 0"
 Cohesion: 0.01
-Nodes (533): init(), NewAccusationModule(), initAccusationModule(), TestAccusationModule_Accuse(), TestAccusationModule_AccuseCreatesAccusation(), TestAccusationModule_AccusedCannotVote(), TestAccusationModule_AccuserCannotVote(), TestAccusationModule_Apply_Accuse() (+525 more)
+Nodes (139): AccusationModule, tallyOutcome, initAccusationModule(), newTestDeps(), newTestEventBus(), TestAccusationModule_Accuse(), TestAccusationModule_AccuseCreatesAccusation(), TestAccusationModule_AccusedCannotVote() (+131 more)
 
-### Community 1 - "WebSocket Hub & Messaging"
-Cohesion: 0.01
-Nodes (136): unlock(), mockEditorApis(), ConditionalClueModule, StartingClueModule, TimedClueModule, TradeClueModule, inputIDsMatch(), ChatMessage (+128 more)
-
-### Community 2 - "Admin Service Layer"
-Cohesion: 0.01
-Nodes (157): RoomSummary, Service, ThemeSummary, UpdateRoleRequest, UserSummary, handleRunSettlement(), AppError, Error Code Constants Registry (+149 more)
-
-### Community 3 - "Admin Handler API"
+### Community 1 - "Community 1"
 Cohesion: 0.02
-Nodes (123): Handler, Admin Handler Tests, Admin Review Handler, ReviewActionRequest, ReviewHandler, Admin Service Interface, SetTrustedCreatorRequest, BadRequest() (+115 more)
+Nodes (527): TestAccusationModule_CheckWin(), NewAudioModule(), newTestDeps(), TestAudioModule_ReactTo_SetBGM(), TestAudioModule_ReactTo_UnsupportedAction(), TestAudioModule_ReadingLineChanged_PublishesPlayVoice(), TestAudioModule_SupportedActions(), NewClueInteractionModule() (+519 more)
 
-### Community 4 - "Accusation Handler & Crime Scene Tests"
+### Community 2 - "Community 2"
+Cohesion: 0.01
+Nodes (248): handleAccuse(), ApiClient, ctxKey, mockAppender, TestBuildModuleStateFor_FallsBackWhenNotAware(), TestPhaseEngine_BuildStateFor_TwoPlayersDiffer(), NewChatService(), ChatRoomRow() (+240 more)
+
+### Community 3 - "Community 3"
+Cohesion: 0.01
+Nodes (158): handleRunSettlement(), AppError, Conflict(), FieldError (validation field error), Forbidden(), problemResponse (RFC 9457 JSON structure), WriteError (RFC 9457 Problem Details HTTP response), Internal() (+150 more)
+
+### Community 4 - "Community 4"
 Cohesion: 0.02
-Nodes (183): handleAccuse(), ctxKey, DBLogger, DBLoggerOption, mockAppender, NoOpLogger, queuedEvent, TestBuildModuleStateFor_FallsBackWhenNotAware() (+175 more)
+Nodes (212): mockService, useJoinRoom(), useRoomByCode(), useRooms(), useThemes(), fakeQuerierNoEmail, stubRedisHook, callHandler() (+204 more)
 
-### Community 5 - "Admin Mock Services"
+### Community 5 - "Community 5"
+Cohesion: 0.02
+Nodes (77): Handler, ReviewActionRequest, ReviewHandler, SetTrustedCreatorRequest, BadRequest(), Unauthorized(), Auth(), RequireRole() (+69 more)
+
+### Community 6 - "Community 6"
+Cohesion: 0.01
+Nodes (140): init(), init(), ClueDependency, ConditionalClueConfig, conditionalClueState, RoundClueConfig, roundClueState, RoundDistribution (+132 more)
+
+### Community 7 - "Community 7"
+Cohesion: 0.02
+Nodes (89): readingLineStorage, readingLineWire, ReadingModuleAdapter, testLogger, isSystemType(), NewEnvelope(), NewErrorEnvelope(), getNextPhase() (+81 more)
+
+### Community 8 - "Community 8"
 Cohesion: 0.03
-Nodes (146): mockService, callbackRequest, loginRequest, refreshRequest, registerRequest, TestGetClueEdges_Empty(), TestGetClueEdges_OK(), TestReplaceClueEdges_CycleDetected() (+138 more)
+Nodes (67): MockAudio, MockAudioContext, MockGainNode, MockGainParam, MockMediaElementSource, NewReconnectBuffer(), envWithSeq(), TestBuffer_ConcurrentAccess() (+59 more)
 
-### Community 6 - "Server Bootstrap & Adapters"
-Cohesion: 0.01
-Nodes (126): hubBroadcaster (session→ws adapter), managerSessionSender (ws→session adapter), NewAdminHandler(), Logger, VoiceBridge (engine events→ws hub bridge), VoiceBridge, RedisCache, NewClient() (+118 more)
-
-### Community 7 - "Clue Modules (Conditional/Round/Trade)"
-Cohesion: 0.01
-Nodes (148): init(), init(), ClueDependency, ConditionalClueConfig, conditionalClueState, RoundClueConfig, RoundClueModule, roundClueState (+140 more)
-
-### Community 8 - "Editor State Handlers"
-Cohesion: 0.01
-Nodes (89): useCreateCharacter(), useEditorCharacters(), useEditorTheme(), useUpdateCharacter(), BranchNodePanel, renderPanel(), CharacterForm(), useClueEdges() (+81 more)
-
-### Community 9 - "Room Feature Hooks"
-Cohesion: 0.02
-Nodes (112): useJoinRoom(), useRoomByCode(), useRooms(), useThemes(), cleanEnv(), TestIsDevelopment(), TestLoad_CustomValues(), TestLoad_Defaults() (+104 more)
-
-### Community 10 - "Clue Graph & Validation"
+### Community 9 - "Community 9"
 Cohesion: 0.03
-Nodes (127): Auth(), RequireRole(), makeToken(), TestAuth_DefaultRole(), TestAuth_ExpiredToken(), TestAuth_InvalidFormat(), TestAuth_InvalidSigningMethod(), TestAuth_MissingHeader() (+119 more)
+Nodes (71): update(), cleanEnv(), TestIsDevelopment(), TestLoad_CustomValues(), TestLoad_Defaults(), TestLoad_InvalidPort(), TestLoad_MissingDatabaseURL(), TestLoad_MissingRedisURL() (+63 more)
 
-### Community 11 - "Event Bus & Validators"
-Cohesion: 0.02
-Nodes (106): cluedist.ClueDependency, cluedist.ConditionalClueConfig, cluedist.ConditionalClueModule, cluedist.RoundClueModule, cluedist.ShowSession, cluedist.StartingClueModule, cluedist.TimedClueModule, cluedist.TradeClueModule (+98 more)
-
-### Community 12 - "Auth & Social UI"
-Cohesion: 0.02
-Nodes (126): useAuthStore, authStore.test, Button.test, ChatList, ChatRoom, CoinBalance, CoinBalance.test, CoinPackageList (+118 more)
-
-### Community 13 - "Audio Media Tests"
-Cohesion: 0.03
-Nodes (51): MockAudio, MockAudioContext, MockGainNode, MockGainParam, MockMediaElementSource, NewReconnectBuffer(), envWithSeq(), TestBuffer_ConcurrentAccess() (+43 more)
-
-### Community 14 - "Editor Module Tabs"
-Cohesion: 0.02
-Nodes (81): ActionListEditor, AddNameInput, advanceByDefaults / computeSmartAdvanceBy, BranchNode, BranchNode.test, BranchWiring.test, CharacterAssignPanel, CharacterAssignPanel.test (+73 more)
-
-### Community 15 - "API Client & Admin Review"
-Cohesion: 0.03
-Nodes (46): AdminReviewPage, ApiClient, ApiHttpError / lib/api-error.ts, ApiHttpError, isApiError(), isApiHttpError(), api (singleton ApiClient), ApiHttpError (+38 more)
-
-### Community 16 - "Reading Bridge & Presence"
+### Community 10 - "Community 10"
 Cohesion: 0.04
-Nodes (43): readingLineStorage, readingLineWire, ReadingModuleAdapter, testLogger, isSystemType(), NewEnvelope(), NewErrorEnvelope(), NewPresenceProvider() (+35 more)
+Nodes (58): RedisCache, Event, EventHandler, funcSubscriber, handlerEntry, panicError, Publisher, Subscriber (+50 more)
 
-### Community 17 - "Audio Core (Graph/Manager)"
+### Community 11 - "Community 11"
 Cohesion: 0.03
-Nodes (33): getAudioContext(), unlockAudioContext(), createAudioGraph(), MockAudioContext, MockGainNode, createAudioManager(), createAudioOrchestrator(), useAudioOrchestrator() (+25 more)
+Nodes (49): ApiHttpError, isApiError(), isApiHttpError(), renderPanel(), ClueForm(), handleImageUploaded(), invalidateQueries(), setQueryData() (+41 more)
 
-### Community 18 - "UI Screenshot Metadata"
+### Community 12 - "Community 12"
 Cohesion: 0.03
-Nodes (86): Add Friend Button (친구 추가), Admin Content Area (Empty), AdminPage, Bonus Badge Component (보너스 +N), 취소 Button, Chat Tab (채팅), Coin Balance Display (header + page: 0 coins), Coin Balance Widget (0 coins) (+78 more)
+Nodes (55): getAudioContext(), unlockAudioContext(), createAudioGraph(), MockAudioContext, MockGainNode, createAudioManager(), createAudioOrchestrator(), makeBgmManager() (+47 more)
 
-### Community 19 - "Rule Evaluator & E2E Specs"
-Cohesion: 0.04
-Nodes (54): url(), openRelationsTab(), createPartyOfN(), createRoom(), login(), waitForPlayerCount(), loginAsE2EUser(), mockCommonApis() (+46 more)
+### Community 13 - "Community 13"
+Cohesion: 0.03
+Nodes (75): Add Friend Button (친구 추가), Admin Content Area (Empty), Bonus Badge Component (보너스 +N), 취소 Button, Chat Tab (채팅), Coin Balance Display (header + page: 0 coins), Coin Balance Widget (0 coins), Coin Display (0 coins) (+67 more)
 
-### Community 20 - "Platform Architecture Concepts"
-Cohesion: 0.04
-Nodes (72): Audit Log (PG append-only + Redis hot state), BaseModuleHandler (WithSession helper), ClueGraph — dependency/combination graph, Clue System (ClueGraph + Validator + VisibilitySpec), EditorUIStore (layer/sidebar/rightPanel state), EventMapping Table (engine→WS), EventProcessor Chain (Auth/Session/Phase/Genre validators), flowStore (Zustand + immer, undo/redo) (+64 more)
-
-### Community 21 - "Characters Tab (Editor)"
+### Community 14 - "Community 14"
 Cohesion: 0.05
-Nodes (65): AdvancedTab, CharacterCard, CharacterForm, CharacterListTab, CharactersTab, CharactersTab.test, ClueCard, clueEdgeApi (+57 more)
+Nodes (52): AuditAction, AuditEvent, pgxTxRunner, Querier, Store, stubQuerier, stubTxRunner, TxRunner (+44 more)
 
-### Community 22 - "Editor Config & Flow Design"
+### Community 15 - "Community 15"
+Cohesion: 0.05
+Nodes (70): Audit Log (PG append-only + Redis hot state), BaseModuleHandler (WithSession helper), ClueGraph — dependency/combination graph, Clue System (ClueGraph + Validator + VisibilitySpec), EditorUIStore (layer/sidebar/rightPanel state), EventMapping Table (engine→WS), EventProcessor Chain (Auth/Session/Phase/Genre validators), flowStore (Zustand + immer, undo/redo) (+62 more)
+
+### Community 16 - "Community 16"
 Cohesion: 0.04
 Nodes (65): ActionListEditor — onEnter/onExit 액션 편집 UI, 조건 규칙 JSONB 구조 (AND/OR 중첩), Config 409 Rebase — current_version 동봉 + 1회 재시도, 동적 탭 — 활성 모듈 기반 EDITOR_TABS 필터링, ERROR_TAB_MAP — 검증 에러 카테고리 → 탭 매핑, Flow REST API 엔드포인트 (/themes/{id}/flow/*), FlowCanvas 컴포넌트 트리 (FlowSubTab/FlowCanvas/Nodes/Toolbar), flow_edges DB 테이블 (+57 more)
 
-### Community 23 - "Audio Graph Architecture"
-Cohesion: 0.05
-Nodes (59): AudioChannel type, audioContext (getAudioContext / unlockAudioContext), AudioGraph (createAudioGraph), AudioGraph interface, AudioGraph Tests, Audio feature barrel (index.ts), AudioManager (createAudioManager), AudioManager interface (+51 more)
+### Community 17 - "Community 17"
+Cohesion: 0.03
+Nodes (3): MockGameStarter, MockGameStarterMockRecorder, MockService
 
-### Community 24 - "Phase 9.0 Module Engine Redesign"
+### Community 18 - "Community 18"
+Cohesion: 0.03
+Nodes (44): CharacterForm(), useCreateCharacter(), useEditorCharacters(), useUpdateCharacter(), useClueEdges(), useSaveClueEdges(), AuditEvent, ChatMessage (+36 more)
+
+### Community 19 - "Community 19"
+Cohesion: 0.05
+Nodes (43): Active Plan Workflow (mmp-pilot / plan-go), Git Workflow Rules (branch protection, PR mandatory), Go Backend Coding Rules, MMP v3 Project Rules (CLAUDE.md), Module System Rules, QMD Mandatory Usage Rules, React Frontend Coding Rules, MMP v3 Tech Stack (+35 more)
+
+### Community 20 - "Community 20"
 Cohesion: 0.06
 Nodes (57): Phase 9.0 Architecture — two-layer module structure, Phase 9.0 Composable Module Engine Redesign — Checklist, Phase 9.0 Data Flow — session/event/phase/snapshot flows, Phase 9.0 Composable Module Engine Redesign — Design, Phase 9.0 Execution Model — Wave DAG 7 waves 16 PRs, Phase 9.0 Observability & Testing — logging/audit/panic isolation, Phase 9.0 Persistence — audit_events table + go:embed templates, Phase 9.0 Composable Module Engine Redesign — Plan (Wave DAG) (+49 more)
 
-### Community 25 - "Platform Infrastructure Decisions"
+### Community 21 - "Community 21"
 Cohesion: 0.05
 Nodes (56): Auditlog Auth/Admin Path Coverage, CI Coverage Gate Enforcement, Unified Clue Edge Groups Schema, Feature Flag: game_runtime_v2, MSW v2 Foundation for E2E Testing, PlayerAwareModule Interface, RFC 9457 / AppError Standardization, Security Scan Stack (govulncheck/trivy/osv/CodeQL/gitleaks) (+48 more)
 
-### Community 26 - "Clue Interaction & Editor API"
-Cohesion: 0.04
-Nodes (48): 단서 아이템 시스템 설계, CluePanel, editor api.ts, editor constants.ts, Phase 14.0 에디터 UX 개선 체크리스트, Phase 14.0 — 에디터 UX 개선 + 버그 수정, Phase 16.0 에디터 UX 버그픽스 체크리스트, Phase 16.0 — 에디터 UX 버그픽스 + 개선 설계 (+40 more)
-
-### Community 27 - "Module Factory & Registry"
-Cohesion: 0.05
-Nodes (37): blockedModule, GameConfig, HostSubmittable, ModuleFactory, ModuleConfig, optMinModule, Registry, BuildModules() (+29 more)
-
-### Community 28 - "Zustand Stores & Domain"
-Cohesion: 0.05
-Nodes (40): domain/admin, domain/auth, domain/editor, domain/room, domain/theme, GameProgressionEngine, @mmp/game-logic, middleware/auth.go (JWT) (+32 more)
-
-### Community 29 - "Event Store & Panic Guards"
-Cohesion: 0.07
-Nodes (32): AuditAction, AuditEvent, pgxTxRunner, Querier, Store, stubQuerier, stubTxRunner, TxRunner (+24 more)
-
-### Community 30 - "Community 30"
+### Community 22 - "Community 22"
 Cohesion: 0.06
-Nodes (44): ApiError — RFC 9457 Problem Details interface, 05 Security Audit — Phase 19 W2, 06 Perf-Observability Audit — Phase 19 W2, 07 Design & A11y Audit — Phase 19 W2, 08 Docs-Navigator Audit — Phase 19 W2, 09 WS Contract Audit — Phase 19 W2, Phase 19 Platform Deep Audit — Executive Summary, F-a11y-3: outline-none 57건 focus-visible 없음 [P0/WCAG 2.4.7] (+36 more)
+Nodes (40): Admin Service, Admin Service Interface, Coin Handler, Coin Service, CoinService Interface, Coin Service Tests, Coin Types, Creator Admin Handler (+32 more)
 
-### Community 31 - "Community 31"
+### Community 23 - "Community 23"
+Cohesion: 0.06
+Nodes (43): AccusationModule, AccusationModuleTest, AudioModule, AudioModuleTest, ConsensusControlModule, ConsensusControlModuleTest, CrimeSceneIntegrationTest, EndingModule (+35 more)
+
+### Community 24 - "Community 24"
 Cohesion: 0.07
-Nodes (40): AccusationModule, AccusationModuleTest, AudioModule, AudioModuleTest, ConsensusControlModule, ConsensusControlModuleTest, CrimeSceneIntegrationTest, EndingModule (+32 more)
+Nodes (25): Chain, countingValidator, EventValidator, failingValidator, ModuleValidator, passingValidator, PhaseValidator, PlayerValidator (+17 more)
 
-### Community 32 - "Community 32"
-Cohesion: 0.05
-Nodes (36): AcceptFriendRequestParams, AddChatRoomMemberParams, CountUnreadMessagesParams, CreateBlockParams, CreateChatMessageParams, CreateChatRoomParams, CreateFriendRequestParams, DeleteBlockParams (+28 more)
-
-### Community 33 - "Community 33"
+### Community 25 - "Community 25"
 Cohesion: 0.08
 Nodes (33): Nav Item: 로비 (Lobby), Nav Item: 내 테마 (My Themes), Nav Item: 상점 (Shop), Nav Item: 소셜 (Social), screenshots/03-home.png, Public Profile Page (Screenshot 17), Stat Card: 가입일 (Join Date), Stat Card: 플레이 시간 (Play Time) (+25 more)
 
-### Community 34 - "Community 34"
+### Community 26 - "Community 26"
 Cohesion: 0.13
-Nodes (15): mockCoinSvc, TestBonusFirstDepletion(), TestHandlePaymentConfirmed(), TestPurchaseTheme_BonusFirst(), TestPurchaseTheme_FreeTheme(), TestPurchaseTheme_InsufficientBalance(), TestPurchaseTheme_MixedDepletion(), TestPurchaseTheme_SelfPurchase() (+7 more)
+Nodes (12): fakeMediaQueries, assertMediaAppCode(), newFakeMediaQueries(), newMediaTestService(), seedMedia(), TestMediaService_CreateYouTubeMedia_VideoType_Success(), TestMediaService_Delete_BlockedByBgmReference(), TestMediaService_Delete_BlockedByVoiceReference() (+4 more)
 
-### Community 35 - "Community 35"
-Cohesion: 0.26
+### Community 27 - "Community 27"
+Cohesion: 0.11
+Nodes (24): 05 Security Audit — Phase 19 W2, 06 Perf-Observability Audit — Phase 19 W2, 07 Design & A11y Audit — Phase 19 W2, 08 Docs-Navigator Audit — Phase 19 W2, 09 WS Contract Audit — Phase 19 W2, Phase 19 Platform Deep Audit — Executive Summary, F-a11y-3: outline-none 57건 focus-visible 없음 [P0/WCAG 2.4.7], F-docs-1: BaseModule 임베드 패턴 코드 부재 drift [P1] (+16 more)
+
+### Community 28 - "Community 28"
+Cohesion: 0.11
+Nodes (20): GameProgressionEngine, phase-7.7-audio/checklist.md, PhaseReactor, ReadingModule (server), rebuild/checklist.md, rebuild/context.md, rebuild/design.md, rebuild/module-spec.md (+12 more)
+
+### Community 29 - "Community 29"
+Cohesion: 0.11
+Nodes (19): 단서 아이템 시스템 설계, Phase 12.0 메타포 풀 경험 체크리스트, Phase 12.0: 메타포 풀 경험 — 게임 모듈 프론트엔드, PR-1: ReadingPanel — reading 모듈 UI, PR-2: HiddenMissionCard — hidden_mission UI, PR-3: TradeCluePanel — trade_clue 교환 UI, PR-4: GroupChatTab — group_chat 확장, PR-5: 통합 + supported 플래그 최종 (+11 more)
+
+### Community 30 - "Community 30"
+Cohesion: 0.11
+Nodes (2): AddFriendModal(), useSendFriendRequest()
+
+### Community 31 - "Community 31"
+Cohesion: 0.29
 Nodes (15): edge(), node(), TestValidateDAG_DisconnectedNode(), TestValidateDAG_EndingWithOutput(), TestValidateDAG_LargeGraph(), TestValidateDAG_MultipleStartNodes(), TestValidateDAG_NoCycle(), TestValidateDAG_NoStartNode() (+7 more)
 
-### Community 36 - "Community 36"
-Cohesion: 0.12
-Nodes (0): 
-
-### Community 37 - "Community 37"
+### Community 32 - "Community 32"
 Cohesion: 0.17
 Nodes (8): handleChange(), handleClear(), addGroup(), addRule(), createEmptyGroup(), createEmptyRule(), groupToRecord(), recordToGroup()
 
-### Community 38 - "Community 38"
-Cohesion: 0.12
-Nodes (15): CreateClueParams, CreateLocationParams, CreateMapParams, DeleteClueWithOwnerParams, DeleteContentParams, DeleteLocationWithOwnerParams, DeleteMapWithOwnerParams, GetClueWithOwnerParams (+7 more)
-
-### Community 39 - "Community 39"
+### Community 33 - "Community 33"
 Cohesion: 0.12
 Nodes (15): ClueEdgeGroupRequest, ClueEdgeGroupResponse, ClueResponse, ContentResponse, CreateClueRequest, CreateLocationRequest, CreateMapRequest, LocationResponse (+7 more)
 
-### Community 40 - "Community 40"
+### Community 34 - "Community 34"
 Cohesion: 0.13
 Nodes (4): AdminCoinGrant(), AdminRevenue(), useAdminRevenue(), useGrantCoins()
 
-### Community 41 - "Community 41"
+### Community 35 - "Community 35"
 Cohesion: 0.13
 Nodes (0): 
 
-### Community 42 - "Community 42"
+### Community 36 - "Community 36"
+Cohesion: 0.24
+Nodes (13): buildVisibilityGraph(), TestComputeVisible_EmptyGraph(), TestComputeVisible_HiddenOverridesGrantAtSameLevel(), TestComputeVisible_MultipleCluesMultipleRules(), TestComputeVisible_NoRules_AllVisible(), TestComputeVisible_PlayerOverridesRole(), TestComputeVisible_ScopeAll(), TestComputeVisible_ScopeAll_Hidden() (+5 more)
+
+### Community 37 - "Community 37"
 Cohesion: 0.13
-Nodes (14): ApproveSettlementParams, CollectUnsettledEarningsRow, CreateEarningParams, CreateSettlementParams, GetCreatorDashboardRow, GetPlatformRevenueRow, GetThemeDailyStatsParams, GetThemeDailyStatsRow (+6 more)
+Nodes (8): Bus, Event, GameStarted, Handler, New(), PaymentConfirmed, ThemePurchased, ThemeRefunded
 
-### Community 43 - "Community 43"
-Cohesion: 0.19
-Nodes (10): Auth API (useMe / useLogout / useRefreshToken), AuthCallbackPage, LoginPage, handleGoogleLogin(), handleKakaoLogin(), handleSubmit(), OAuth URL utilities (getOAuthUrl), buildRedirectUri() (+2 more)
-
-### Community 44 - "Community 44"
+### Community 38 - "Community 38"
 Cohesion: 0.2
 Nodes (9): useCreateLocation(), useCreateMap(), useDeleteLocation(), useDeleteMap(), useEditorLocations(), useEditorMaps(), useUpdateLocation(), LocationRow() (+1 more)
 
-### Community 45 - "Community 45"
-Cohesion: 0.14
-Nodes (13): AddCoinBalanceParams, CountCoinTransactionsByTypeParams, CreateCoinTransactionParams, CreateThemePurchaseParams, GetCoinBalanceRow, GetThemePurchaseByUserThemeParams, GetThemePurchaseForRefundParams, GetUserForCoinUpdateRow (+5 more)
-
-### Community 46 - "Community 46"
+### Community 39 - "Community 39"
 Cohesion: 0.14
 Nodes (13): BlockResponse, BlockUserReq, ChatMemberResponse, ChatMessageResponse, ChatRoomResponse, ChatRoomSummary, CreateDMReq, CreateGroupReq (+5 more)
 
-### Community 47 - "Community 47"
+### Community 40 - "Community 40"
 Cohesion: 0.15
 Nodes (1): FileVideoPlayer
 
-### Community 48 - "Community 48"
-Cohesion: 0.18
-Nodes (13): clue-edges-live.spec, clue-edges-stubbed.spec, editor-golden-path.spec, game-reconnect.spec, game-redaction.spec, game-redaction-stubbed.spec, game-session.spec, game-session-live.spec (+5 more)
-
-### Community 49 - "Community 49"
-Cohesion: 0.15
-Nodes (5): livekit-client, @tailwindcss/vite, useVoiceStore, mapsEqual(), vite-plugin-pwa
-
-### Community 50 - "Community 50"
+### Community 41 - "Community 41"
 Cohesion: 0.17
 Nodes (6): RevealSequence(), useCountUp(), usePrefersReducedMotion(), VoteBar(), handleVote(), VoteBar()
 
-### Community 51 - "Community 51"
+### Community 42 - "Community 42"
 Cohesion: 0.17
 Nodes (4): useProfile(), useUpdateProfile(), ProfileForm(), ProfilePage()
 
-### Community 52 - "Community 52"
-Cohesion: 0.17
-Nodes (12): AuditEvent domain model, DBLogger (buffered async audit log), Logger interface (append-only audit log), NoOpLogger (test/no-DB audit log), pgxTxRunner (production advisory lock TxRunner), Querier interface (auditlog DB subset), Store (pgx audit event persistence), TxRunner interface (advisory lock tx seam) (+4 more)
+### Community 43 - "Community 43"
+Cohesion: 0.26
+Nodes (10): inspectAST(), inspectFile(), parseAllowList(), receiverIdentName(), receiverTypeName(), TestParseAllowList_TrimsAndClean(), TestReceiverHelpers(), usage() (+2 more)
 
-### Community 53 - "Community 53"
-Cohesion: 0.17
-Nodes (11): CreateThemeCharacterParams, CreateThemeParams, ListAllRoomsParams, ListAllThemesParams, ListPublishedThemesParams, ListThemesByCreatorRow, UpdateThemeCharacterParams, UpdateThemeConfigJsonParams (+3 more)
+### Community 44 - "Community 44"
+Cohesion: 0.29
+Nodes (11): buildPayload(), cleanDoc(), convertFields(), extractPayloads(), goTypeToTS(), hasMarker(), mapPrimitive(), mapQualified() (+3 more)
 
-### Community 54 - "Community 54"
+### Community 45 - "Community 45"
+Cohesion: 0.17
+Nodes (10): ConfigSchema, Module, ModuleDeps, ModuleFactory, PhaseActionPayload, PhaseInfo, PhaseReactor, PlayerAwareModule (+2 more)
+
+### Community 46 - "Community 46"
 Cohesion: 0.17
 Nodes (11): CreateEdgeRequest, CreateNodeRequest, FlowEdge, FlowEdgeInput, FlowGraph, FlowNode, FlowNodeInput, MigrateFlowRequest (+3 more)
 
-### Community 55 - "Community 55"
-Cohesion: 0.27
-Nodes (12): mocks/handlers/auth.ts (MSW auth), mocks/handlers/auth.test.ts, mocks/handlers/clue.ts (MSW clue/edge), mocks/handlers/clue.test.ts, mocks/handlers/game-ws.ts (Playwright WS factory), mocks/handlers/index.ts (handler barrel), mocks/handlers/room.ts (MSW room), mocks/handlers/room.test.ts (+4 more)
-
-### Community 56 - "Community 56"
+### Community 47 - "Community 47"
 Cohesion: 0.18
 Nodes (12): Editor Open Access + Review Flow Design, Theme Status Model — DRAFT/PENDING_REVIEW/PUBLISHED/REJECTED/UNPUBLISHED/SUSPENDED, trusted_creator — trust-based auto-approval flag, Phase 10.0 QA Bugfix Sprint — Design, Phase 10.0 Execution Model — Wave DAG, Phase 10.0 QA Bugfix Sprint — Plan, Phase 10.0 Scope & Decisions, PR-F1: shop/history CoinTransactions crash fix (+4 more)
 
-### Community 57 - "Community 57"
-Cohesion: 0.2
-Nodes (10): livekitProvider, mockProvider, VoiceProvider, Service, voice.serviceImpl, TokenParams, TokenRequest, TokenResponse (+2 more)
+### Community 48 - "Community 48"
+Cohesion: 0.18
+Nodes (11): Phase 14.0 에디터 UX 개선 체크리스트, Phase 14.0 — 에디터 UX 개선 + 버그 수정, Phase 16.0 에디터 UX 버그픽스 체크리스트, Phase 16.0 — 에디터 UX 버그픽스 + 개선 설계, Phase 16.0 — Execution Model (Wave DAG), Phase 16.0 — 에디터 UX 버그픽스 + 개선 실행 계획, PR-1: 단서 이미지 캐시 무효화, PR-2: Modal 스크롤 + 버튼 고정 (+3 more)
 
-### Community 58 - "Community 58"
+### Community 49 - "Community 49"
 Cohesion: 0.27
 Nodes (11): Amber/Orange Accent Color, Dark Mode Theme (slate/navy background), Email Input Field (이메일), Google OAuth Button (Google로 시작하기), Kakao OAuth Button (카카오로 시작하기), Login Button (로그인 버튼), Login Icon (arrow-right-to-bracket), Login Screen (로그인) (+3 more)
 
-### Community 59 - "Community 59"
+### Community 50 - "Community 50"
 Cohesion: 0.24
 Nodes (11): Authentication Flow, Murder Mystery Platform Brand, Email Input Field (이메일), Registration Form UI, Google OAuth Button (Google로 시작하기), Kakao OAuth Button (카카오로 시작하기), Login Link (이미 계정이 있으신가요? 로그인), Nickname Input Field (닉네임) (+3 more)
 
-### Community 60 - "Community 60"
+### Community 51 - "Community 51"
 Cohesion: 0.22
 Nodes (2): clamp01(), loadPersistedState()
 
-### Community 61 - "Community 61"
-Cohesion: 0.33
-Nodes (7): RoundRange, FilterByRound(), pInt32(), TestFilterByRound_EmptyMap_KeepsEverything(), TestFilterByRound_MixedVisibility(), TestFilterByRound_NilMap_KeepsEverything(), TestRoundRange_InWindow()
+### Community 52 - "Community 52"
+Cohesion: 0.24
+Nodes (10): AudioModule PhaseReactor, Phase 7.7 Audio/Media Context, Phase 7.7 Audio/Media Design, Phase 7.7 Frontend Media/Audio/Reading Design, Phase 7.7 Frontend Implementation Plan, ReadingOverlay UI Component, readingStore (Zustand), Storage Provider Interface (R2) (+2 more)
 
-### Community 62 - "Community 62"
-Cohesion: 0.2
-Nodes (9): AddRoomPlayerParams, CreateRoomParams, GetRoomPlayersWithUserRow, ListWaitingRoomsParams, ListWaitingRoomsWithCountParams, ListWaitingRoomsWithCountRow, RemoveRoomPlayerParams, SetPlayerReadyParams (+1 more)
+### Community 53 - "Community 53"
+Cohesion: 0.39
+Nodes (8): buildConstMap(), dirToString(), extractCatalog(), isRegisterCatalogCall(), literalOrConst(), parseEventDefLit(), statusToString(), EventEntry
 
-### Community 63 - "Community 63"
-Cohesion: 0.2
-Nodes (9): AdminSettlementResponse, CreatePackageReq, DailyStatResponse, DashboardResponse, EarningResponse, GrantCoinsReq, RevenueResponse, SettlementResponse (+1 more)
-
-### Community 64 - "Community 64"
-Cohesion: 0.36
-Nodes (10): createVideoPlayer factory, createVideoPlayer.test, EvidenceVideoCard, EvidenceVideoCard.test, FileVideoPlayer, VideoOrchestrator, VideoOrchestrator.test, VideoPlayer interface (+2 more)
-
-### Community 65 - "Community 65"
-Cohesion: 0.28
-Nodes (5): getNextPhase(), getPhaseCount(), getPhaseIndex(), isPhaseBefore(), PhaseBar()
-
-### Community 66 - "Community 66"
+### Community 54 - "Community 54"
 Cohesion: 0.22
 Nodes (7): ConfirmPaymentReq, CreatePaymentReq, CreatePaymentRequest, PackageResponse, PaymentResponse, PaymentResult, WebhookEvent
 
-### Community 67 - "Community 67"
+### Community 55 - "Community 55"
 Cohesion: 0.22
-Nodes (8): BalanceResponse, PurchasedThemeListResponse, PurchasedThemeResponse, PurchaseResponse, PurchaseThemeReq, RefundThemeReq, TransactionListResponse, TransactionResponse
+Nodes (9): Phase 17.5 단서 관계 그래프 체크리스트, Phase 17.5 — 단서 관계 그래프 설계, Phase 17.5 — Execution Model (Wave DAG), Phase 17.5 — 단서 관계 그래프 실행 계획, PR-1: 단서 관계 API, PR-2: ClueRelationGraph 컴포넌트, PR-3: 검증 연동, PR-4: 통합 + E2E (+1 more)
 
-### Community 68 - "Community 68"
+### Community 56 - "Community 56"
 Cohesion: 0.31
 Nodes (9): Amber/Orange Accent Color (#f59e0b range), Dark Navy Background Theme (slate/zinc), Frontend 404 Error Handling / Not Found Route, 404 Not Found Page Screenshot (16-404.png), 404 Error Heading (orange text), Korean error message: 페이지를 찾을 수 없습니다., 404 Not Found Page UI, 홈으로 돌아가기 (Return to Home) Button (+1 more)
 
-### Community 69 - "Community 69"
-Cohesion: 0.25
-Nodes (2): useBalance(), CoinBalance()
+### Community 57 - "Community 57"
+Cohesion: 0.36
+Nodes (6): handleGoogleLogin(), handleKakaoLogin(), handleSubmit(), buildRedirectUri(), generateOAuthState(), getOAuthUrl()
 
-### Community 70 - "Community 70"
+### Community 58 - "Community 58"
 Cohesion: 0.32
 Nodes (4): PhaseTimer(), formatRemainingTime(), getRemainingTime(), getServerTime()
 
-### Community 71 - "Community 71"
-Cohesion: 0.29
-Nodes (5): ClueListRow(), formatRoundRange, roundFormat, formatRoundRange(), roundFormat.test
+### Community 59 - "Community 59"
+Cohesion: 0.25
+Nodes (2): useBalance(), CoinBalance()
 
-### Community 72 - "Community 72"
+### Community 60 - "Community 60"
 Cohesion: 0.29
 Nodes (3): computeSmartAdvanceBy(), handleSpeakerChange(), handleVoiceClear()
 
-### Community 73 - "Community 73"
+### Community 61 - "Community 61"
 Cohesion: 0.25
 Nodes (0): 
 
-### Community 74 - "Community 74"
+### Community 62 - "Community 62"
 Cohesion: 0.25
 Nodes (0): 
 
-### Community 75 - "Community 75"
+### Community 63 - "Community 63"
 Cohesion: 0.25
 Nodes (0): 
 
-### Community 76 - "Community 76"
+### Community 64 - "Community 64"
 Cohesion: 0.25
 Nodes (0): 
 
-### Community 77 - "Community 77"
+### Community 65 - "Community 65"
 Cohesion: 0.25
-Nodes (7): AddSessionEventParams, AddSessionPlayerParams, CreateSessionParams, SetPlayerAliveParams, UpdatePlayerScoreParams, UpdateSessionPhaseParams, UpdateSessionStateParams
+Nodes (4): redisLock, RedisLocker, NewRedisLocker(), TestNewRedisLocker_NilClient()
 
-### Community 78 - "Community 78"
+### Community 66 - "Community 66"
 Cohesion: 0.25
-Nodes (7): CreateUserParams, CreateUserWithPasswordParams, GetUserByProviderParams, ListUsersParams, UpdateCoinBalanceParams, UpdateUserParams, UpdateUserRoleParams
+Nodes (7): CharacterResponse, CreateCharacterRequest, CreateThemeRequest, ThemeResponse, ThemeSummary, UpdateCharacterRequest, UpdateThemeRequest
 
-### Community 79 - "Community 79"
+### Community 67 - "Community 67"
 Cohesion: 0.36
 Nodes (5): migrateMock, migrationService, TestMigratePhases_Empty(), TestMigratePhases_Multiple(), TestMigratePhases_Single()
 
-### Community 80 - "Community 80"
-Cohesion: 0.32
-Nodes (8): apperror.WriteError, middleware.Auth, middleware_auth_test, middleware.JWTConfig, middleware.Recovery, middleware.RequireRole, middleware.UserIDFrom, middleware.UserRoleFrom
-
-### Community 81 - "Community 81"
-Cohesion: 0.5
-Nodes (8): MuteIndicator, ParticipantRow, VoiceBar, VoiceBottomSheet, VoiceConnectionState, voice/index, VoiceOverlay, VolumeSlider
-
-### Community 82 - "Community 82"
+### Community 68 - "Community 68"
 Cohesion: 0.43
 Nodes (8): MMP (Murder Mystery Platform) — 다크 테마 웹 플랫폼, 채팅방 상세 패널 — '채팅방을 선택하세요' 플레이스홀더 (우측), 채팅 탭 — 채팅방 목록 패널 (빈 상태: '채팅방이 없습니다'), 친구 탭 — 소셜 페이지 친구 목록 탭, 새 채팅 버튼 — 채팅방 생성 CTA (헤더·빈 상태 두 곳), 04-social.png — Social Hub UI (채팅/친구 탭, 빈 채팅방 상태), 사이드바 네비게이션 — 로비·소셜(활성)·상점·내 테마, 상단 바 — MMP 로고 + 코인(0) + 테스트유저 계정 메뉴
 
-### Community 83 - "Community 83"
+### Community 69 - "Community 69"
 Cohesion: 0.29
 Nodes (8): Offline Detection / Network Status Feature, screenshots/18-offline.png, Dark Slate Background Theme, 연결이 끊어졌습니다 (Connection Lost Heading), 네트워크 연결을 확인해주세요 (Check Network Connection Subtitle), No Wi-Fi / Disconnected Icon, Offline Error State UI, 재시도 (Retry Button)
 
-### Community 84 - "Community 84"
+### Community 70 - "Community 70"
 Cohesion: 0.29
 Nodes (2): useDashboard(), CreatorDashboard()
 
-### Community 85 - "Community 85"
+### Community 71 - "Community 71"
 Cohesion: 0.33
 Nodes (3): useConfirmPayment(), useCreatePayment(), PaymentModal()
 
-### Community 86 - "Community 86"
+### Community 72 - "Community 72"
 Cohesion: 0.33
 Nodes (3): handleSave(), openEdit(), toForm()
 
-### Community 87 - "Community 87"
-Cohesion: 0.29
-Nodes (6): Accusation, AccusationConfig, accusationState, accusationVotePayload, accuseEventPayload, accusePayload
+### Community 73 - "Community 73"
+Cohesion: 0.33
+Nodes (4): getDevMessage(), getUserMessage(), captureApiError(), showErrorToast()
 
-### Community 88 - "Community 88"
-Cohesion: 0.29
-Nodes (6): CreateReadingSectionParams, DeleteReadingSectionWithOwnerParams, FindMediaReferencesInReadingSectionsParams, FindMediaReferencesInReadingSectionsRow, GetReadingSectionWithOwnerParams, UpdateReadingSectionParams
-
-### Community 89 - "Community 89"
+### Community 74 - "Community 74"
 Cohesion: 0.29
 Nodes (1): mockProvider
 
-### Community 90 - "Community 90"
+### Community 75 - "Community 75"
 Cohesion: 0.29
 Nodes (6): ConfirmUploadRequest, CreateMediaYouTubeRequest, MediaResponse, RequestMediaUploadRequest, UpdateMediaRequest, UploadURLResponse
 
-### Community 91 - "Community 91"
-Cohesion: 0.33
-Nodes (6): ComponentErrorBoundary, error/index, GameErrorBoundary, GlobalErrorBoundary, PageErrorBoundary, App
-
-### Community 92 - "Community 92"
-Cohesion: 0.43
-Nodes (7): PendingTheme, Admin Review API (reviewApi.ts), useApproveTheme, usePendingReviews, useRejectTheme, useSetTrustedCreator, useSuspendTheme
-
-### Community 93 - "Community 93"
-Cohesion: 0.38
-Nodes (7): Coin API (useBalance / usePurchaseTheme / useRefundTheme), Coin Feature Constants, PurchaseThemeModal, PurchaseThemeModal Tests, PurchasedThemes, RefundModal, RefundModal Tests
-
-### Community 94 - "Community 94"
-Cohesion: 0.38
-Nodes (7): GamePage, social/components/index.ts, social/constants.ts, useGameSync, useSocialSync, useWsClient, useWsEvent
-
-### Community 95 - "Community 95"
+### Community 76 - "Community 76"
 Cohesion: 0.33
 Nodes (7): .claude/active-plan.json, plan-autopilot-guide/commands.md, plan-autopilot-guide/file-structure.md, plan-autopilot-guide/hooks.md, plan-autopilot-guide/installation.md, plan-autopilot-guide/troubleshooting.md, plan-autopilot workflow
 
-### Community 96 - "Community 96"
-Cohesion: 0.29
-Nodes (5): infra/cache, db/migrations, infra/lock, infra/postgres, db/queries (sqlc)
-
-### Community 97 - "Community 97"
+### Community 77 - "Community 77"
 Cohesion: 0.52
 Nodes (7): Coin Balance Widget (0 coins), MMP Top Navigation Bar, 내 테마 Page (Empty State — 구매한 테마가 없습니다), Profile Dropdown Screenshot (08-profile-dropdown.png), Profile Dropdown Menu (프로필/로그아웃), Left Sidebar Navigation (로비/소셜/상점/내 테마), Authenticated User Session (테스트유저)
 
-### Community 98 - "Community 98"
+### Community 78 - "Community 78"
 Cohesion: 0.33
 Nodes (0): 
 
-### Community 99 - "Community 99"
+### Community 79 - "Community 79"
+Cohesion: 0.33
+Nodes (0): 
+
+### Community 80 - "Community 80"
+Cohesion: 0.33
+Nodes (0): 
+
+### Community 81 - "Community 81"
 Cohesion: 0.47
-Nodes (4): buildUpdateBody, isValidAdvanceBy, readingApi, readingApi.test
+Nodes (5): pInt32(), TestFilterByRound_EmptyMap_KeepsEverything(), TestFilterByRound_MixedVisibility(), TestFilterByRound_NilMap_KeepsEverything(), TestRoundRange_InWindow()
 
-### Community 100 - "Community 100"
+### Community 82 - "Community 82"
 Cohesion: 0.33
-Nodes (0): 
+Nodes (5): GameEvent, GameState, PhaseDefinition, Rule, WinResult
 
-### Community 101 - "Community 101"
-Cohesion: 0.33
-Nodes (5): CreateMediaParams, DeleteMediaWithOwnerParams, GetMediaWithOwnerParams, ListMediaByThemeAndTypeParams, UpdateMediaParams
-
-### Community 102 - "Community 102"
-Cohesion: 0.33
-Nodes (5): ConfirmPaymentParams, CreatePackageParams, CreatePaymentParams, ListPaymentsByUserParams, UpdatePackageParams
-
-### Community 103 - "Community 103"
-Cohesion: 0.33
-Nodes (5): ApproveThemeParams, ListPendingReviewThemesRow, RejectThemeParams, SetUserTrustedCreatorParams, SuspendThemeParams
-
-### Community 104 - "Community 104"
+### Community 83 - "Community 83"
 Cohesion: 0.33
 Nodes (5): GameEventHandler, PhaseHookModule, RuleProvider, SerializableModule, WinChecker
 
-### Community 105 - "Community 105"
-Cohesion: 0.33
-Nodes (4): Provider, RedisCache, Locker, RedisLocker
-
-### Community 106 - "Community 106"
-Cohesion: 0.47
-Nodes (5): storage.LocalProvider, ObjectMeta, Provider, storage.R2Config, storage.r2Provider
-
-### Community 107 - "Community 107"
-Cohesion: 0.6
-Nodes (6): gameSelectors, gameSelectors.test, gameSessionStore.hydrate.test, useGameSessionStore, gameSessionStore.test, syncServerTime
-
-### Community 108 - "Community 108"
+### Community 84 - "Community 84"
 Cohesion: 0.4
 Nodes (6): Dark Theme UI — dark navy/slate background, Error Boundary Component — 오류 발생 (Error Occurred), Shop History Error Screen (UI Screenshot), Shop History Page (route context: 13-shop-history), Retry Button — 다시 시도 (Try Again), Runtime Error: Cannot read properties of undefined (reading 'length')
 
-### Community 109 - "Community 109"
+### Community 85 - "Community 85"
 Cohesion: 0.4
+Nodes (0): 
+
+### Community 86 - "Community 86"
+Cohesion: 0.7
+Nodes (4): goToNext(), goToPrevious(), makeCurrent(), toggleClass()
+
+### Community 87 - "Community 87"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 88 - "Community 88"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 89 - "Community 89"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 90 - "Community 90"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 91 - "Community 91"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 92 - "Community 92"
+Cohesion: 0.6
+Nodes (3): handleAssign(), handleUnassign(), savePlacement()
+
+### Community 93 - "Community 93"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 94 - "Community 94"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 95 - "Community 95"
+Cohesion: 0.4
+Nodes (0): 
+
+### Community 96 - "Community 96"
+Cohesion: 0.4
+Nodes (4): showRequestPayload, showResponsePayload, tradeProposalPayload, tradeResponsePayload
+
+### Community 97 - "Community 97"
+Cohesion: 0.4
+Nodes (4): CreateReadingSectionRequest, ReadingLineDTO, ReadingSectionResponse, UpdateReadingSectionRequest
+
+### Community 98 - "Community 98"
+Cohesion: 0.67
+Nodes (2): App(), useAppInitialize()
+
+### Community 99 - "Community 99"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 100 - "Community 100"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 101 - "Community 101"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 102 - "Community 102"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 103 - "Community 103"
+Cohesion: 0.5
+Nodes (2): ClueListRow(), formatRoundRange()
+
+### Community 104 - "Community 104"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 105 - "Community 105"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 106 - "Community 106"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 107 - "Community 107"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 108 - "Community 108"
+Cohesion: 0.5
+Nodes (0): 
+
+### Community 109 - "Community 109"
+Cohesion: 0.5
 Nodes (0): 
 
 ### Community 110 - "Community 110"
 Cohesion: 0.5
-Nodes (2): handleKeyDown(), handleSend()
+Nodes (0): 
 
 ### Community 111 - "Community 111"
-Cohesion: 0.4
+Cohesion: 0.5
 Nodes (0): 
 
 ### Community 112 - "Community 112"
-Cohesion: 0.4
+Cohesion: 0.5
 Nodes (0): 
 
 ### Community 113 - "Community 113"
-Cohesion: 0.4
-Nodes (0): 
-
-### Community 114 - "Community 114"
-Cohesion: 0.4
-Nodes (0): 
-
-### Community 115 - "Community 115"
-Cohesion: 0.6
-Nodes (3): handleAssign(), handleUnassign(), savePlacement()
-
-### Community 116 - "Community 116"
-Cohesion: 0.4
-Nodes (0): 
-
-### Community 117 - "Community 117"
-Cohesion: 0.4
-Nodes (0): 
-
-### Community 118 - "Community 118"
-Cohesion: 0.4
-Nodes (4): CreateFlowEdgeParams, CreateFlowNodeParams, UpdateFlowEdgeParams, UpdateFlowNodeParams
-
-### Community 119 - "Community 119"
-Cohesion: 0.4
-Nodes (4): CreateReadingSectionRequest, ReadingLineDTO, ReadingSectionResponse, UpdateReadingSectionRequest
-
-### Community 120 - "Community 120"
-Cohesion: 0.5
-Nodes (5): JWTPlayerIDExtractor, PlayerIDExtractor, UpgradeConfig, UpgradeHandler, upgrade_test
-
-### Community 121 - "Community 121"
-Cohesion: 0.4
-Nodes (5): admin/api, AdminCoinGrant, AdminPackages, AdminRevenue, AdminSettlements
-
-### Community 122 - "Community 122"
-Cohesion: 0.4
-Nodes (5): Creator API (useDashboard / useEarnings / useSettlements), CreatorDashboard, EarningsList, SettlementList, ThemeStats
-
-### Community 123 - "Community 123"
-Cohesion: 0.4
-Nodes (5): ChatInput, ChatMessage, ChatMessageList, GameChat, GameChatPanel
-
-### Community 124 - "Community 124"
-Cohesion: 0.4
-Nodes (4): clearModuleStores, getModuleStore, Module System (29 modules), useModuleStore
-
-### Community 125 - "Community 125"
-Cohesion: 0.67
-Nodes (2): App(), useAppInitialize()
-
-### Community 126 - "Community 126"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 127 - "Community 127"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 128 - "Community 128"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 129 - "Community 129"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 130 - "Community 130"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 131 - "Community 131"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 132 - "Community 132"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 133 - "Community 133"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 134 - "Community 134"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 135 - "Community 135"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 136 - "Community 136"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 137 - "Community 137"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 138 - "Community 138"
-Cohesion: 0.5
-Nodes (0): 
-
-### Community 139 - "Community 139"
 Cohesion: 0.83
 Nodes (3): makeModule(), makePlayer(), makeState()
 
-### Community 140 - "Community 140"
+### Community 114 - "Community 114"
 Cohesion: 0.83
 Nodes (3): makeGameState(), makeModule(), makePlayer()
 
-### Community 141 - "Community 141"
+### Community 115 - "Community 115"
 Cohesion: 0.5
 Nodes (2): NetworkBanner(), useNetworkStatus()
 
-### Community 142 - "Community 142"
+### Community 116 - "Community 116"
 Cohesion: 0.5
-Nodes (4): middleware.GetRequestID, middleware.Logger, middleware.RequestID, sentry.Middleware
+Nodes (3): ShowSession, TradeClueConfig, TradeProposal
+
+### Community 117 - "Community 117"
+Cohesion: 0.5
+Nodes (3): AppendAuditEventParams, AppendUserAuditEventParams, ListByUserParams
+
+### Community 118 - "Community 118"
+Cohesion: 0.5
+Nodes (3): Service, TokenRequest, TokenResponse
+
+### Community 119 - "Community 119"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 120 - "Community 120"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 121 - "Community 121"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 122 - "Community 122"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 123 - "Community 123"
+Cohesion: 0.67
+Nodes (1): handleClick()
+
+### Community 124 - "Community 124"
+Cohesion: 0.67
+Nodes (1): handleClick()
+
+### Community 125 - "Community 125"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 126 - "Community 126"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 127 - "Community 127"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 128 - "Community 128"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 129 - "Community 129"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 130 - "Community 130"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 131 - "Community 131"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 132 - "Community 132"
+Cohesion: 1.0
+Nodes (2): handleSubmit(), validate()
+
+### Community 133 - "Community 133"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 134 - "Community 134"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 135 - "Community 135"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 136 - "Community 136"
+Cohesion: 0.67
+Nodes (1): handleClick()
+
+### Community 137 - "Community 137"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 138 - "Community 138"
+Cohesion: 1.0
+Nodes (2): defaultMutation(), setupDefaultMocks()
+
+### Community 139 - "Community 139"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 140 - "Community 140"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 141 - "Community 141"
+Cohesion: 0.67
+Nodes (0): 
+
+### Community 142 - "Community 142"
+Cohesion: 0.67
+Nodes (0): 
 
 ### Community 143 - "Community 143"
-Cohesion: 0.5
-Nodes (4): FlowSubTab, PhaseCard, PhaseTimeline, PR-4: 페이즈 타임라인 UI
+Cohesion: 1.0
+Nodes (2): getNicknameColor(), hashNickname()
 
 ### Community 144 - "Community 144"
 Cohesion: 0.67
@@ -1232,8 +1217,8 @@ Cohesion: 0.67
 Nodes (0): 
 
 ### Community 146 - "Community 146"
-Cohesion: 0.67
-Nodes (0): 
+Cohesion: 1.0
+Nodes (2): createImage(), getCroppedImg()
 
 ### Community 147 - "Community 147"
 Cohesion: 0.67
@@ -1245,127 +1230,127 @@ Nodes (0):
 
 ### Community 149 - "Community 149"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): ObjectMeta, Provider
 
 ### Community 150 - "Community 150"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): Accusation, AccusationConfig
 
 ### Community 151 - "Community 151"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): accusationVotePayload, accusePayload
 
 ### Community 152 - "Community 152"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): openVotingParams, VoteResult
 
 ### Community 153 - "Community 153"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): votingSavedState, votingState
 
 ### Community 154 - "Community 154"
-Cohesion: 1.0
-Nodes (2): handleSubmit(), validate()
+Cohesion: 0.67
+Nodes (2): HiddenMissionConfig, Mission
 
 ### Community 155 - "Community 155"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): missionReportPayload, missionVerifyPayload
 
 ### Community 156 - "Community 156"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): hiddenMissionSavedState, hiddenMissionState
 
 ### Community 157 - "Community 157"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): readingConfig, readingLineConfig
 
 ### Community 158 - "Community 158"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): ReadingState, ReadingStateWire
 
 ### Community 159 - "Community 159"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): SessionMessage, SessionSender
 
 ### Community 160 - "Community 160"
-Cohesion: 1.0
-Nodes (2): defaultMutation(), setupDefaultMocks()
+Cohesion: 0.67
+Nodes (3): DBLogger (buffered async audit log), Logger interface (append-only audit log), NoOpLogger (test/no-DB audit log)
 
 ### Community 161 - "Community 161"
 Cohesion: 0.67
-Nodes (0): 
+Nodes (2): ClientSender, snapshotFields
 
 ### Community 162 - "Community 162"
 Cohesion: 1.0
-Nodes (2): getNicknameColor(), hashNickname()
+Nodes (3): Editor Loading Screen (12-editor.png), Dark Navy Background Theme, Loading Spinner (amber/orange circular indicator)
 
 ### Community 163 - "Community 163"
-Cohesion: 0.67
+Cohesion: 1.0
 Nodes (0): 
 
 ### Community 164 - "Community 164"
-Cohesion: 0.67
+Cohesion: 1.0
 Nodes (0): 
 
 ### Community 165 - "Community 165"
 Cohesion: 1.0
-Nodes (2): createImage(), getCroppedImg()
+Nodes (0): 
 
 ### Community 166 - "Community 166"
-Cohesion: 0.67
+Cohesion: 1.0
 Nodes (0): 
 
 ### Community 167 - "Community 167"
-Cohesion: 0.67
+Cohesion: 1.0
 Nodes (0): 
 
 ### Community 168 - "Community 168"
-Cohesion: 0.67
-Nodes (2): BulkInsertClueEdgeMembersParams, InsertClueEdgeGroupParams
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 169 - "Community 169"
-Cohesion: 0.67
-Nodes (2): SessionMessage, SessionSender
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 170 - "Community 170"
-Cohesion: 0.67
-Nodes (2): ClientSender, snapshotFields
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 171 - "Community 171"
-Cohesion: 0.67
-Nodes (3): ConvertReadingLinesToCamelCase (PascalCase→camelCase wire conversion), ReadingModuleAdapter (progression→ws bridge), db.ReadingSection (sqlc model)
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 172 - "Community 172"
-Cohesion: 0.67
-Nodes (3): AvatarCropModal, AvatarPresetGrid, AvatarSection
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 173 - "Community 173"
-Cohesion: 0.67
-Nodes (3): ClueCard.test, ClueListRow.test, ClueResponse
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 174 - "Community 174"
-Cohesion: 0.67
-Nodes (3): EditorTabNav.test, useEditorUI, ValidationPanel.test
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 175 - "Community 175"
-Cohesion: 0.67
-Nodes (3): ClueCard, ClueShareButton, ClueViewPanel
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 176 - "Community 176"
-Cohesion: 0.67
-Nodes (3): useCountUp, VoteBar (VoteResultChart), VoteBar (VotingPanel)
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 177 - "Community 177"
 Cohesion: 1.0
-Nodes (3): useConnectionStore, connectionStore.test, WsClient
+Nodes (0): 
 
 ### Community 178 - "Community 178"
-Cohesion: 0.67
-Nodes (3): AssignmentSubTab, CluePlacementPanel, PR-5: 단서→장소 배치 UI
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 179 - "Community 179"
-Cohesion: 0.67
-Nodes (3): CharacterAssignPanel, MissionEditor, PR-6: 캐릭터→단서/미션 배정 UI
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 180 - "Community 180"
 Cohesion: 1.0
@@ -1729,139 +1714,139 @@ Nodes (0):
 
 ### Community 270 - "Community 270"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (2): hubBroadcaster (session→ws adapter), managerSessionSender (ws→session adapter)
 
 ### Community 271 - "Community 271"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Provider
 
 ### Community 272 - "Community 272"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): combinationState
 
 ### Community 273 - "Community 273"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): tradeClueState
 
 ### Community 274 - "Community 274"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): accuseEventPayload
 
 ### Community 275 - "Community 275"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): accusationState
 
 ### Community 276 - "Community 276"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): VotingConfig
 
 ### Community 277 - "Community 277"
 Cohesion: 1.0
-Nodes (1): AppendAuditEventParams
+Nodes (1): voteCastPayload
 
 ### Community 278 - "Community 278"
 Cohesion: 1.0
-Nodes (1): UpsertNotificationPrefsParams
+Nodes (1): voteEventPayload
 
 ### Community 279 - "Community 279"
 Cohesion: 1.0
-Nodes (1): SessionLifecycleListener
+Nodes (2): Auth Handler, Auth Handler Tests
 
 ### Community 280 - "Community 280"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): SessionLifecycleListener
 
 ### Community 281 - "Community 281"
 Cohesion: 1.0
-Nodes (2): db.BulkInsertClueEdgeMembers (sqlc query), db.ClueEdgeMember (clue edge group source fan-out)
+Nodes (0): 
 
 ### Community 282 - "Community 282"
 Cohesion: 1.0
-Nodes (2): db.AddCoinBalance (sqlc query), db.User (sqlc model)
+Nodes (0): 
 
 ### Community 283 - "Community 283"
 Cohesion: 1.0
-Nodes (2): db.ApproveSettlement (sqlc query), db.Settlement (sqlc model)
+Nodes (0): 
 
 ### Community 284 - "Community 284"
 Cohesion: 1.0
-Nodes (2): httputil.HandlerFunc, WrapHandler
+Nodes (0): 
 
 ### Community 285 - "Community 285"
 Cohesion: 1.0
-Nodes (2): lock.Lock, redisLock
+Nodes (0): 
 
 ### Community 286 - "Community 286"
 Cohesion: 1.0
-Nodes (2): Admin Feature Constants, ADMIN_PAGE_SIZE
+Nodes (0): 
 
 ### Community 287 - "Community 287"
 Cohesion: 1.0
-Nodes (1): cropUtils
+Nodes (0): 
 
 ### Community 288 - "Community 288"
 Cohesion: 1.0
-Nodes (1): useFlowConditionData
+Nodes (0): 
 
 ### Community 289 - "Community 289"
 Cohesion: 1.0
-Nodes (2): AccusationPanel, HiddenMissionCard
+Nodes (0): 
 
 ### Community 290 - "Community 290"
 Cohesion: 1.0
-Nodes (2): ClueDetail, CluePanel
+Nodes (0): 
 
 ### Community 291 - "Community 291"
 Cohesion: 1.0
-Nodes (2): EndingPanel, EndingPlayerCard
+Nodes (0): 
 
 ### Community 292 - "Community 292"
 Cohesion: 1.0
-Nodes (2): GameHUD, GameLayout
+Nodes (0): 
 
 ### Community 293 - "Community 293"
 Cohesion: 1.0
-Nodes (2): ClueBar (ScoreChart), ScoreChart
+Nodes (0): 
 
 ### Community 294 - "Community 294"
 Cohesion: 1.0
-Nodes (2): CutsceneModal, CutsceneModal.test
+Nodes (0): 
 
 ### Community 295 - "Community 295"
 Cohesion: 1.0
-Nodes (2): useVoiceConnection, useVolumeAnalyser
+Nodes (0): 
 
 ### Community 296 - "Community 296"
 Cohesion: 1.0
-Nodes (2): useAudioStore, audioStore.test
+Nodes (0): 
 
 ### Community 297 - "Community 297"
 Cohesion: 1.0
-Nodes (2): moduleStoreFactory, moduleStoreFactory.test
+Nodes (0): 
 
 ### Community 298 - "Community 298"
 Cohesion: 1.0
-Nodes (2): useReadingStore, readingStore.test
+Nodes (0): 
 
 ### Community 299 - "Community 299"
 Cohesion: 1.0
-Nodes (1): useGameChatStore
+Nodes (0): 
 
 ### Community 300 - "Community 300"
 Cohesion: 1.0
-Nodes (1): useThemeStore
+Nodes (0): 
 
 ### Community 301 - "Community 301"
 Cohesion: 1.0
-Nodes (1): colorForIdentity
+Nodes (0): 
 
 ### Community 302 - "Community 302"
 Cohesion: 1.0
-Nodes (1): apperror package
+Nodes (0): 
 
 ### Community 303 - "Community 303"
 Cohesion: 1.0
-Nodes (2): ESLint Config Base, ESLint Config React
+Nodes (0): 
 
 ### Community 304 - "Community 304"
 Cohesion: 1.0
@@ -2469,15 +2454,15 @@ Nodes (0):
 
 ### Community 455 - "Community 455"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): authedDeps struct
 
 ### Community 456 - "Community 456"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): publicDeps struct
 
 ### Community 457 - "Community 457"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): graph.go (clue graph primitive)
 
 ### Community 458 - "Community 458"
 Cohesion: 1.0
@@ -2485,7 +2470,7 @@ Nodes (0):
 
 ### Community 459 - "Community 459"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): VoiceBridge (engine events→ws hub bridge)
 
 ### Community 460 - "Community 460"
 Cohesion: 1.0
@@ -2505,992 +2490,930 @@ Nodes (0):
 
 ### Community 464 - "Community 464"
 Cohesion: 1.0
-Nodes (1): authedDeps struct
+Nodes (0): 
 
 ### Community 465 - "Community 465"
 Cohesion: 1.0
-Nodes (1): publicDeps struct
+Nodes (0): 
 
 ### Community 466 - "Community 466"
 Cohesion: 1.0
-Nodes (1): AuditAction constants (player.action, phase.enter, win.decision, etc.)
+Nodes (0): 
 
 ### Community 467 - "Community 467"
 Cohesion: 1.0
-Nodes (1): db.GameSession (sqlc model)
+Nodes (0): 
 
 ### Community 468 - "Community 468"
 Cohesion: 1.0
-Nodes (1): db.Room (sqlc model)
+Nodes (0): 
 
 ### Community 469 - "Community 469"
 Cohesion: 1.0
-Nodes (1): db.Payment (sqlc model)
+Nodes (0): 
 
 ### Community 470 - "Community 470"
 Cohesion: 1.0
-Nodes (1): db.DeleteClueEdgeGroupsByTheme (sqlc query)
+Nodes (0): 
 
 ### Community 471 - "Community 471"
 Cohesion: 1.0
-Nodes (1): NotificationPreferences DB Queries
+Nodes (0): 
 
 ### Community 472 - "Community 472"
 Cohesion: 1.0
-Nodes (1): social types.go
+Nodes (1): db.InsertClueEdgeGroup (sqlc query)
 
 ### Community 473 - "Community 473"
 Cohesion: 1.0
-Nodes (1): WinResult
+Nodes (1): db.DeleteClueEdgeGroupsByTheme (sqlc query)
 
 ### Community 474 - "Community 474"
 Cohesion: 1.0
-Nodes (1): PhaseAction
+Nodes (1): db.BulkInsertClueEdgeMembers (sqlc query)
 
 ### Community 475 - "Community 475"
 Cohesion: 1.0
-Nodes (1): PhaseActionPayload
+Nodes (1): db.AddCoinBalance (sqlc query)
 
 ### Community 476 - "Community 476"
 Cohesion: 1.0
-Nodes (1): ActionRequiresModule
+Nodes (1): db.ApproveSettlement (sqlc query)
 
 ### Community 477 - "Community 477"
 Cohesion: 1.0
-Nodes (1): HostSubmittable
+Nodes (1): db.CreateClue (sqlc query, with round fields)
 
 ### Community 478 - "Community 478"
 Cohesion: 1.0
-Nodes (1): WriteJSON
+Nodes (1): NotificationPreferences DB Queries
 
 ### Community 479 - "Community 479"
 Cohesion: 1.0
-Nodes (1): ReadJSON
+Nodes (0): 
 
 ### Community 480 - "Community 480"
 Cohesion: 1.0
-Nodes (1): ParsePagination
+Nodes (0): 
 
 ### Community 481 - "Community 481"
 Cohesion: 1.0
-Nodes (1): middleware.CORS
+Nodes (0): 
 
 ### Community 482 - "Community 482"
 Cohesion: 1.0
-Nodes (1): cluedist.RoundClueConfig
+Nodes (0): 
 
 ### Community 483 - "Community 483"
 Cohesion: 1.0
-Nodes (1): cluedist.RoundDistribution
+Nodes (0): 
 
 ### Community 484 - "Community 484"
 Cohesion: 1.0
-Nodes (1): cluedist.StartingClueConfig
+Nodes (0): 
 
 ### Community 485 - "Community 485"
 Cohesion: 1.0
-Nodes (1): cluedist.TimedClueConfig
+Nodes (0): 
 
 ### Community 486 - "Community 486"
 Cohesion: 1.0
-Nodes (1): cluedist.TradeClueConfig
+Nodes (0): 
 
 ### Community 487 - "Community 487"
 Cohesion: 1.0
-Nodes (1): communication.GroupRoom
+Nodes (0): 
 
 ### Community 488 - "Community 488"
 Cohesion: 1.0
-Nodes (1): core.ClueInteractionConfig
+Nodes (0): 
 
 ### Community 489 - "Community 489"
 Cohesion: 1.0
-Nodes (1): DecoderFunc
+Nodes (0): 
 
 ### Community 490 - "Community 490"
 Cohesion: 1.0
-Nodes (1): ErrorPayload
+Nodes (0): 
 
 ### Community 491 - "Community 491"
 Cohesion: 1.0
-Nodes (1): ConnectedPayload
+Nodes (0): 
 
 ### Community 492 - "Community 492"
 Cohesion: 1.0
-Nodes (1): clue-edges.spec
+Nodes (0): 
 
 ### Community 493 - "Community 493"
 Cohesion: 1.0
-Nodes (1): editor-flow.spec
+Nodes (0): 
 
 ### Community 494 - "Community 494"
 Cohesion: 1.0
-Nodes (1): front-pages.spec
+Nodes (0): 
 
 ### Community 495 - "Community 495"
 Cohesion: 1.0
-Nodes (1): game-visual.spec
+Nodes (0): 
 
 ### Community 496 - "Community 496"
 Cohesion: 1.0
-Nodes (1): SettlementStatus
+Nodes (1): SeoHandlerTest
 
 ### Community 497 - "Community 497"
 Cohesion: 1.0
-Nodes (1): TaxType
+Nodes (0): 
 
 ### Community 498 - "Community 498"
 Cohesion: 1.0
-Nodes (1): ThemeStatus
+Nodes (0): 
 
 ### Community 499 - "Community 499"
 Cohesion: 1.0
-Nodes (1): FlowNodeType
+Nodes (0): 
 
 ### Community 500 - "Community 500"
 Cohesion: 1.0
-Nodes (1): useEditorEdges
+Nodes (1): Module System (29 modules)
 
 ### Community 501 - "Community 501"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): Phase 10.0 QA Bugfix Sprint — Checklist
 
 ### Community 502 - "Community 502"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): PR-3: 맵/장소 관리 UI
 
 ### Community 503 - "Community 503"
 Cohesion: 1.0
-Nodes (0): 
+Nodes (1): PR-4: 페이즈 타임라인 UI
 
 ### Community 504 - "Community 504"
 Cohesion: 1.0
-Nodes (1): editor/components/index.ts
+Nodes (1): PR-5: 단서→장소 배치 UI
 
 ### Community 505 - "Community 505"
 Cohesion: 1.0
-Nodes (1): ExplorationPanel
+Nodes (1): PR-6: 캐릭터→단서/미션 배정 UI
 
 ### Community 506 - "Community 506"
 Cohesion: 1.0
-Nodes (1): TradeStatusBadge
+Nodes (1): PR-7: 통합 + 유효성 검증
 
 ### Community 507 - "Community 507"
 Cohesion: 1.0
-Nodes (1): ClueViewPanel.test
+Nodes (1): 이미지 업로드 + 크롭 설계
 
 ### Community 508 - "Community 508"
 Cohesion: 1.0
-Nodes (1): EndingPanel.test
+Nodes (1): Dashboard Load Error: 대시보드를 불러오지 못했습니다 (Failed to load dashboard)
 
 ### Community 509 - "Community 509"
 Cohesion: 1.0
-Nodes (1): GameChatPanel.test
+Nodes (1): 테마 검색 Input
 
 ### Community 510 - "Community 510"
 Cohesion: 1.0
-Nodes (1): GameLayout.test
+Nodes (1): 전체 인원 Filter Dropdown
 
 ### Community 511 - "Community 511"
 Cohesion: 1.0
-Nodes (1): GroupChat.test
+Nodes (1): 최신순 Sort Dropdown
 
 ### Community 512 - "Community 512"
 Cohesion: 1.0
-Nodes (1): useConnectGame
+Nodes (1): 유저 헤더 (테스트유저 + 코인 0)
 
 ### Community 513 - "Community 513"
 Cohesion: 1.0
-Nodes (1): usePrefersReducedMotion
+Nodes (1): 공개 방 없음 Empty State
 
 ### Community 514 - "Community 514"
 Cohesion: 1.0
-Nodes (1): AdminCoinGrantPage
-
-### Community 515 - "Community 515"
-Cohesion: 1.0
-Nodes (1): AdminPackagesPage
-
-### Community 516 - "Community 516"
-Cohesion: 1.0
-Nodes (1): AdminRevenuePage
-
-### Community 517 - "Community 517"
-Cohesion: 1.0
-Nodes (1): AdminSettlementsPage
-
-### Community 518 - "Community 518"
-Cohesion: 1.0
-Nodes (1): CreatorEarningsPage
-
-### Community 519 - "Community 519"
-Cohesion: 1.0
-Nodes (1): CreatorSettlementsPage
-
-### Community 520 - "Community 520"
-Cohesion: 1.0
-Nodes (1): CreatorThemeStatsPage
-
-### Community 521 - "Community 521"
-Cohesion: 1.0
-Nodes (1): HomePage
-
-### Community 522 - "Community 522"
-Cohesion: 1.0
-Nodes (1): NotFoundPage
-
-### Community 523 - "Community 523"
-Cohesion: 1.0
-Nodes (1): Layout
-
-### Community 524 - "Community 524"
-Cohesion: 1.0
-Nodes (1): nickname utils
-
-### Community 525 - "Community 525"
-Cohesion: 1.0
-Nodes (0): 
-
-### Community 526 - "Community 526"
-Cohesion: 1.0
-Nodes (1): Phase 10.0 QA Bugfix Sprint — Checklist
-
-### Community 527 - "Community 527"
-Cohesion: 1.0
-Nodes (1): game-logic tsup build config
-
-### Community 528 - "Community 528"
-Cohesion: 1.0
-Nodes (1): @mmp/shared tsup build config
-
-### Community 529 - "Community 529"
-Cohesion: 1.0
-Nodes (1): @mmp/ws-client tsup build config
-
-### Community 530 - "Community 530"
-Cohesion: 1.0
-Nodes (1): PlayerRole enum — MURDERER/DETECTIVE/CIVILIAN/SPECTATOR
+Nodes (1): 내 테마 (My Themes) Page Screenshot
 
 ## Knowledge Gaps
-- **1059 isolated node(s):** `MockGainParam`, `MockGainNode`, `MockMediaElementSource`, `MockAudioContext`, `MockGainParam` (+1054 more)
+- **617 isolated node(s):** `MockGainParam`, `MockGainNode`, `MockMediaElementSource`, `MockAudioContext`, `MockGainParam` (+612 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **Thin community `Community 180`** (2 nodes): `clue.ts`, `url()`
+- **Thin community `Community 163`** (2 nodes): `types.generated.ts`, `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 181`** (2 nodes): `room.test.ts`, `findHandler()`
+- **Thin community `Community 164`** (2 nodes): `clue.ts`, `url()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 182`** (2 nodes): `theme.ts`, `url()`
+- **Thin community `Community 165`** (2 nodes): `theme.ts`, `url()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 183`** (2 nodes): `clue.test.ts`, `findHandler()`
+- **Thin community `Community 166`** (2 nodes): `ReadingOverlay.tsx`, `ReadingOverlay()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 184`** (2 nodes): `theme.test.ts`, `findHandler()`
+- **Thin community `Community 167`** (2 nodes): `TypewriterEffect.tsx`, `TypewriterEffect()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 185`** (2 nodes): `ReadingOverlay.tsx`, `ReadingOverlay()`
+- **Thin community `Community 168`** (2 nodes): `ReadingLine.tsx`, `ReadingLine()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 186`** (2 nodes): `TypewriterEffect.tsx`, `TypewriterEffect()`
+- **Thin community `Community 169`** (2 nodes): `ReadingPausedBanner.tsx`, `ReadingPausedBanner()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 187`** (2 nodes): `ReadingLine.tsx`, `ReadingLine()`
+- **Thin community `Community 170`** (2 nodes): `ReadingControls.tsx`, `ReadingControls()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 188`** (2 nodes): `ReadingPausedBanner.tsx`, `ReadingPausedBanner()`
+- **Thin community `Community 171`** (2 nodes): `ThemeStats.tsx`, `defaultDateRange()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 189`** (2 nodes): `ReadingControls.tsx`, `ReadingControls()`
+- **Thin community `Community 172`** (2 nodes): `RoomHeader.tsx`, `handleCopyCode()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 190`** (2 nodes): `ThemeStats.tsx`, `defaultDateRange()`
+- **Thin community `Community 173`** (2 nodes): `AuthCallbackPage.tsx`, `AuthCallbackPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 191`** (2 nodes): `RoomHeader.tsx`, `handleCopyCode()`
+- **Thin community `Community 174`** (2 nodes): `PaymentHistory.tsx`, `PaymentRow()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 192`** (2 nodes): `PaymentHistory.tsx`, `PaymentRow()`
+- **Thin community `Community 175`** (2 nodes): `RoomList.tsx`, `handleJoin()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 193`** (2 nodes): `RoomList.tsx`, `handleJoin()`
+- **Thin community `Community 176`** (2 nodes): `CreateRoomModal.tsx`, `handleSubmit()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 194`** (2 nodes): `CreateRoomModal.tsx`, `handleSubmit()`
+- **Thin community `Community 177`** (2 nodes): `WhisperTargetPicker.tsx`, `WhisperTargetPicker()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 195`** (2 nodes): `WhisperTargetPicker.tsx`, `WhisperTargetPicker()`
+- **Thin community `Community 178`** (2 nodes): `ScoreChart.tsx`, `ClueBar()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 196`** (2 nodes): `ScoreChart.tsx`, `ClueBar()`
+- **Thin community `Community 179`** (2 nodes): `ClueShareButton.tsx`, `ClueShareButton()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 197`** (2 nodes): `ClueShareButton.tsx`, `ClueShareButton()`
+- **Thin community `Community 180`** (2 nodes): `ClueDetail.tsx`, `ClueDetail()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 198`** (2 nodes): `ClueDetail.tsx`, `ClueDetail()`
+- **Thin community `Community 181`** (2 nodes): `PhaseTransition.tsx`, `PhaseTransition()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 199`** (2 nodes): `PhaseTransition.tsx`, `PhaseTransition()`
+- **Thin community `Community 182`** (2 nodes): `MissionResultOverlay.tsx`, `MissionResultItem()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 200`** (2 nodes): `MissionResultOverlay.tsx`, `MissionResultItem()`
+- **Thin community `Community 183`** (2 nodes): `ChatInput()`, `ChatInput.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 201`** (2 nodes): `ChatMessage.tsx`, `formatTime()`
+- **Thin community `Community 184`** (2 nodes): `GroupCreateView()`, `GroupCreateView.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 202`** (2 nodes): `ChatInput.tsx`, `ChatInput()`
+- **Thin community `Community 185`** (2 nodes): `WhisperTargetSelect.tsx`, `WhisperTargetSelect()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 203`** (2 nodes): `soundRegistry.ts`, `resolveSoundUrl()`
+- **Thin community `Community 186`** (2 nodes): `TabHeader()`, `TabHeader.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 204`** (2 nodes): `SoundControl.test.tsx`, `openPopover()`
+- **Thin community `Community 187`** (2 nodes): `MessageComposer()`, `MessageComposer.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 205`** (2 nodes): `useReadingAdvance.ts`, `useReadingAdvance()`
+- **Thin community `Community 188`** (2 nodes): `PendingRow()`, `PendingRow.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 206`** (2 nodes): `PurchasedThemes.tsx`, `canRefund()`
+- **Thin community `Community 189`** (2 nodes): `soundRegistry.ts`, `resolveSoundUrl()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 207`** (2 nodes): `readingApi.test.ts`, `makeWrapper()`
+- **Thin community `Community 190`** (2 nodes): `SoundControl.test.tsx`, `openPopover()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 208`** (2 nodes): `mediaApi.test.ts`, `makeWrapper()`
+- **Thin community `Community 191`** (2 nodes): `useReadingAdvance.ts`, `useReadingAdvance()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 209`** (2 nodes): `TabContent.tsx`, `TabContent()`
+- **Thin community `Community 192`** (2 nodes): `PurchaseThemeModal.tsx`, `handlePurchase()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 210`** (2 nodes): `SectionDivider.tsx`, `SectionDivider()`
+- **Thin community `Community 193`** (2 nodes): `PurchasedThemes.tsx`, `canRefund()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 211`** (2 nodes): `ValidationPanel.tsx`, `handleClick()`
+- **Thin community `Community 194`** (2 nodes): `readingApi.test.ts`, `makeWrapper()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 212`** (2 nodes): `ReadingSectionList.tsx`, `handleAdd()`
+- **Thin community `Community 195`** (2 nodes): `mediaApi.test.ts`, `makeWrapper()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 213`** (2 nodes): `StartNode.tsx`, `StartNode()`
+- **Thin community `Community 196`** (2 nodes): `TabContent.tsx`, `TabContent()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 214`** (2 nodes): `MissionTypeFields.tsx`, `MissionTypeFields()`
+- **Thin community `Community 197`** (2 nodes): `SectionDivider.tsx`, `SectionDivider()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 215`** (2 nodes): `AddNameInput()`, `AddNameInput.tsx`
+- **Thin community `Community 198`** (2 nodes): `ImageUpload.tsx`, `isAcceptedType()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 216`** (2 nodes): `EndingNodePanel.tsx`, `handleChange()`
+- **Thin community `Community 199`** (2 nodes): `EditorTabNav.tsx`, `EditorTabNav()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 217`** (2 nodes): `FlowSubTab.tsx`, `FlowSubTab()`
+- **Thin community `Community 200`** (2 nodes): `ViewToggleBtn()`, `StoryTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 218`** (2 nodes): `PhaseNodePanel.tsx`, `handleChange()`
+- **Thin community `Community 201`** (2 nodes): `SaveIndicator.tsx`, `formatTime()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 219`** (2 nodes): `NodeDetailPanel.tsx`, `handleEdgeConditionChange()`
+- **Thin community `Community 202`** (2 nodes): `ValidationPanel.tsx`, `handleClick()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 220`** (2 nodes): `ConditionRule.tsx`, `update()`
+- **Thin community `Community 203`** (2 nodes): `ReadingSectionList.tsx`, `handleAdd()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 221`** (2 nodes): `ConditionBuilder.test.tsx`, `makeGroup()`
+- **Thin community `Community 204`** (2 nodes): `StartNode.tsx`, `StartNode()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 222`** (2 nodes): `ConditionRule.test.tsx`, `makeRule()`
+- **Thin community `Community 205`** (2 nodes): `MissionTypeFields.tsx`, `MissionTypeFields()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 223`** (2 nodes): `NodeDetailPanel.test.tsx`, `makeNode()`
+- **Thin community `Community 206`** (2 nodes): `AddNameInput()`, `AddNameInput.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 224`** (2 nodes): `EndingNode.test.tsx`, `makeProps()`
+- **Thin community `Community 207`** (2 nodes): `handleChange()`, `EndingNodePanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 225`** (2 nodes): `PhaseNode.test.tsx`, `makeProps()`
+- **Thin community `Community 208`** (2 nodes): `FlowSubTab.tsx`, `FlowSubTab()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 226`** (2 nodes): `BranchNode.test.tsx`, `makeProps()`
+- **Thin community `Community 209`** (2 nodes): `handleChange()`, `PhaseNodePanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 227`** (2 nodes): `MissionEditor.test.tsx`, `baseMission()`
+- **Thin community `Community 210`** (2 nodes): `NodeDetailPanel.tsx`, `handleEdgeConditionChange()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 228`** (2 nodes): `ClueNode.tsx`, `ClueNode()`
+- **Thin community `Community 211`** (2 nodes): `ConditionBuilder.test.tsx`, `makeGroup()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 229`** (2 nodes): `ClueCard.test.tsx`, `baseClue()`
+- **Thin community `Community 212`** (2 nodes): `ConditionRule.test.tsx`, `makeRule()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 230`** (2 nodes): `ClueListRow.test.tsx`, `baseClue()`
+- **Thin community `Community 213`** (2 nodes): `NodeDetailPanel.test.tsx`, `makeNode()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 231`** (2 nodes): `ValidationPanel.test.tsx`, `makeWarning()`
+- **Thin community `Community 214`** (2 nodes): `EndingNode.test.tsx`, `makeProps()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 232`** (2 nodes): `Editor.test.tsx`, `defaultMutationReturn()`
+- **Thin community `Community 215`** (2 nodes): `PhaseNode.test.tsx`, `makeProps()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 233`** (2 nodes): `usePreviewPlayer.ts`, `usePreviewPlayer()`
+- **Thin community `Community 216`** (2 nodes): `BranchNode.test.tsx`, `makeProps()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 234`** (2 nodes): `YouTubeAddModal.test.tsx`, `renderModal()`
+- **Thin community `Community 217`** (2 nodes): `MissionEditor.test.tsx`, `baseMission()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 235`** (2 nodes): `imageApi.test.ts`, `wrapper()`
+- **Thin community `Community 218`** (2 nodes): `ClueNode.tsx`, `ClueNode()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 236`** (2 nodes): `useFlowConnections.ts`, `useFlowConnections()`
+- **Thin community `Community 219`** (2 nodes): `ClueCard.test.tsx`, `baseClue()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 237`** (2 nodes): `useClueEdgeData.revert.test.ts`, `simulateRevert()`
+- **Thin community `Community 220`** (2 nodes): `ClueListRow.test.tsx`, `baseClue()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 238`** (2 nodes): `VideoOrchestrator.ts`, `createVideoOrchestrator()`
+- **Thin community `Community 221`** (2 nodes): `ValidationPanel.test.tsx`, `makeWarning()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 239`** (2 nodes): `CutsceneModal.tsx`, `CutsceneModal()`
+- **Thin community `Community 222`** (2 nodes): `Editor.test.tsx`, `defaultMutationReturn()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 240`** (2 nodes): `createVideoPlayer.ts`, `createVideoPlayer()`
+- **Thin community `Community 223`** (2 nodes): `YouTubeAddModal.tsx`, `handleCreate()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 241`** (2 nodes): `EvidenceVideoCard.tsx`, `EvidenceVideoCard()`
+- **Thin community `Community 224`** (2 nodes): `usePreviewPlayer.ts`, `usePreviewPlayer()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 242`** (2 nodes): `YouTubeVideoPlayer.test.ts`, `makeContainer()`
+- **Thin community `Community 225`** (2 nodes): `MediaToolbar.tsx`, `MediaToolbar()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 243`** (2 nodes): `gameSessionStore.ts`, `extractMyRole()`
+- **Thin community `Community 226`** (2 nodes): `imageApi.test.ts`, `wrapper()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 244`** (2 nodes): `gameChatStore.ts`, `appendCapped()`
+- **Thin community `Community 227`** (2 nodes): `useFlowConnections.ts`, `useFlowConnections()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 245`** (2 nodes): `audioStore.test.ts`, `freshStore()`
+- **Thin community `Community 228`** (2 nodes): `useAutoSave.ts`, `useAutoSave()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 246`** (2 nodes): `voiceColors.ts`, `colorForIdentity()`
+- **Thin community `Community 229`** (2 nodes): `useClueEdgeData.revert.test.ts`, `simulateRevert()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 247`** (2 nodes): `ProtectedRoute.tsx`, `ProtectedRoute()`
+- **Thin community `Community 230`** (2 nodes): `useModuleSchemas()`, `moduleSchemas.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 248`** (2 nodes): `Layout.tsx`, `Layout()`
+- **Thin community `Community 231`** (2 nodes): `VideoOrchestrator.ts`, `createVideoOrchestrator()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 249`** (2 nodes): `RoleRoute.tsx`, `RoleRoute()`
+- **Thin community `Community 232`** (2 nodes): `CutsceneModal.tsx`, `CutsceneModal()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 250`** (2 nodes): `Sidebar.tsx`, `navLinkClass()`
+- **Thin community `Community 233`** (2 nodes): `createVideoPlayer.ts`, `createVideoPlayer()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 251`** (2 nodes): `RoleRoute.test.tsx`, `renderWithRouter()`
+- **Thin community `Community 234`** (2 nodes): `EvidenceVideoCard.tsx`, `EvidenceVideoCard()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 252`** (2 nodes): `Pagination.tsx`, `getPageNumbers()`
+- **Thin community `Community 235`** (2 nodes): `YouTubeVideoPlayer.test.ts`, `makeContainer()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 253`** (2 nodes): `Badge.tsx`, `Badge()`
+- **Thin community `Community 236`** (2 nodes): `extractMyRole()`, `gameSessionStore.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 254`** (2 nodes): `Button.tsx`, `Button()`
+- **Thin community `Community 237`** (2 nodes): `gameChatStore.ts`, `appendCapped()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 255`** (2 nodes): `Spinner.tsx`, `Spinner()`
+- **Thin community `Community 238`** (2 nodes): `audioStore.test.ts`, `freshStore()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 256`** (2 nodes): `ProtectedRoute.test.tsx`, `renderWithRouter()`
+- **Thin community `Community 239`** (2 nodes): `voiceColors.ts`, `colorForIdentity()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 257`** (2 nodes): `AvatarSection.tsx`, `validateImage()`
+- **Thin community `Community 240`** (2 nodes): `ProtectedRoute.tsx`, `ProtectedRoute()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 258`** (2 nodes): `MuteIndicator.tsx`, `MuteIndicator()`
+- **Thin community `Community 241`** (2 nodes): `Layout.tsx`, `Layout()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 259`** (2 nodes): `VolumeSlider.tsx`, `VolumeSlider()`
+- **Thin community `Community 242`** (2 nodes): `RoleRoute.tsx`, `RoleRoute()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 260`** (2 nodes): `CreatorSettlementsPage.tsx`, `CreatorSettlementsPage()`
+- **Thin community `Community 243`** (2 nodes): `Sidebar.tsx`, `navLinkClass()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 261`** (2 nodes): `AdminRevenuePage()`, `AdminRevenuePage.tsx`
+- **Thin community `Community 244`** (2 nodes): `Pagination.tsx`, `getPageNumbers()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 262`** (2 nodes): `EditorPage.tsx`, `EditorPage()`
+- **Thin community `Community 245`** (2 nodes): `Badge.tsx`, `Badge()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 263`** (2 nodes): `ShopPage.tsx`, `ShopPage()`
+- **Thin community `Community 246`** (2 nodes): `Button.tsx`, `Button()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 264`** (2 nodes): `AdminPage()`, `AdminPage.tsx`
+- **Thin community `Community 247`** (2 nodes): `Spinner.tsx`, `Spinner()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 265`** (2 nodes): `CreatorThemeStatsPage.tsx`, `CreatorThemeStatsPage()`
+- **Thin community `Community 248`** (2 nodes): `AvatarSection.tsx`, `validateImage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 266`** (2 nodes): `AdminCoinGrantPage()`, `AdminCoinGrantPage.tsx`
+- **Thin community `Community 249`** (2 nodes): `MuteIndicator.tsx`, `MuteIndicator()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 267`** (2 nodes): `PublicProfilePage.tsx`, `formatDate()`
+- **Thin community `Community 250`** (2 nodes): `VolumeSlider.tsx`, `VolumeSlider()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 268`** (2 nodes): `MyThemesPage.tsx`, `MyThemesPage()`
+- **Thin community `Community 251`** (2 nodes): `useAuth.ts`, `useAuth()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 269`** (2 nodes): `AdminPackagesPage()`, `AdminPackagesPage.tsx`
+- **Thin community `Community 252`** (2 nodes): `useVoiceConnection.ts`, `useVoiceConnection()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 270`** (2 nodes): `CreatorEarningsPage.tsx`, `CreatorEarningsPage()`
+- **Thin community `Community 253`** (2 nodes): `CreatorSettlementsPage.tsx`, `CreatorSettlementsPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 271`** (2 nodes): `CreatorDashboardPage.tsx`, `CreatorDashboardPage()`
+- **Thin community `Community 254`** (2 nodes): `AdminRevenuePage()`, `AdminRevenuePage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 272`** (2 nodes): `OfflinePage.tsx`, `OfflinePage()`
+- **Thin community `Community 255`** (2 nodes): `EditorPage.tsx`, `EditorPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 273`** (2 nodes): `ShopHistoryPage.tsx`, `ShopHistoryPage()`
+- **Thin community `Community 256`** (2 nodes): `ShopPage.tsx`, `ShopPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 274`** (2 nodes): `AdminSettlementsPage()`, `AdminSettlementsPage.tsx`
+- **Thin community `Community 257`** (2 nodes): `AdminPage()`, `AdminPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 275`** (2 nodes): `NotFoundPage.tsx`, `NotFoundPage()`
+- **Thin community `Community 258`** (2 nodes): `CreatorThemeStatsPage.tsx`, `CreatorThemeStatsPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 276`** (2 nodes): `HomePage.tsx`, `HomePage()`
+- **Thin community `Community 259`** (2 nodes): `AdminCoinGrantPage()`, `AdminCoinGrantPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 277`** (2 nodes): `audit_events.sql.go`, `AppendAuditEventParams`
+- **Thin community `Community 260`** (2 nodes): `PublicProfilePage.tsx`, `formatDate()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 278`** (2 nodes): `notification_preferences.sql.go`, `UpsertNotificationPrefsParams`
+- **Thin community `Community 261`** (2 nodes): `MyThemesPage.tsx`, `MyThemesPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 279`** (2 nodes): `lifecycle.go`, `SessionLifecycleListener`
+- **Thin community `Community 262`** (2 nodes): `AdminPackagesPage()`, `AdminPackagesPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 280`** (2 nodes): `main_test.go`, `TestMain()`
+- **Thin community `Community 263`** (2 nodes): `CreatorEarningsPage.tsx`, `CreatorEarningsPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 281`** (2 nodes): `db.BulkInsertClueEdgeMembers (sqlc query)`, `db.ClueEdgeMember (clue edge group source fan-out)`
+- **Thin community `Community 264`** (2 nodes): `CreatorDashboardPage.tsx`, `CreatorDashboardPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 282`** (2 nodes): `db.AddCoinBalance (sqlc query)`, `db.User (sqlc model)`
+- **Thin community `Community 265`** (2 nodes): `OfflinePage.tsx`, `OfflinePage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 283`** (2 nodes): `db.ApproveSettlement (sqlc query)`, `db.Settlement (sqlc model)`
+- **Thin community `Community 266`** (2 nodes): `ShopHistoryPage.tsx`, `ShopHistoryPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 284`** (2 nodes): `httputil.HandlerFunc`, `WrapHandler`
+- **Thin community `Community 267`** (2 nodes): `AdminSettlementsPage()`, `AdminSettlementsPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 285`** (2 nodes): `lock.Lock`, `redisLock`
+- **Thin community `Community 268`** (2 nodes): `NotFoundPage.tsx`, `NotFoundPage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 286`** (2 nodes): `Admin Feature Constants`, `ADMIN_PAGE_SIZE`
+- **Thin community `Community 269`** (2 nodes): `HomePage.tsx`, `HomePage()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 287`** (2 nodes): `cropUtils`, `react-image-crop`
+- **Thin community `Community 270`** (2 nodes): `hubBroadcaster (session→ws adapter)`, `managerSessionSender (ws→session adapter)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 288`** (2 nodes): `BranchNodePanel.tsx`, `useFlowConditionData`
+- **Thin community `Community 271`** (2 nodes): `provider.go`, `Provider`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 289`** (2 nodes): `AccusationPanel`, `HiddenMissionCard`
+- **Thin community `Community 272`** (2 nodes): `combinationState`, `state.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 290`** (2 nodes): `ClueDetail`, `CluePanel`
+- **Thin community `Community 273`** (2 nodes): `tradeClueState`, `state.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 291`** (2 nodes): `EndingPanel`, `EndingPlayerCard`
+- **Thin community `Community 274`** (2 nodes): `accuseEventPayload`, `events.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 292`** (2 nodes): `GameHUD`, `GameLayout`
+- **Thin community `Community 275`** (2 nodes): `accusationState`, `state.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 293`** (2 nodes): `ClueBar (ScoreChart)`, `ScoreChart`
+- **Thin community `Community 276`** (2 nodes): `config.go`, `VotingConfig`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 294`** (2 nodes): `CutsceneModal`, `CutsceneModal.test`
+- **Thin community `Community 277`** (2 nodes): `handlers.go`, `voteCastPayload`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 295`** (2 nodes): `useVoiceConnection`, `useVolumeAnalyser`
+- **Thin community `Community 278`** (2 nodes): `events.go`, `voteEventPayload`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 296`** (2 nodes): `useAudioStore`, `audioStore.test`
+- **Thin community `Community 279`** (2 nodes): `Auth Handler`, `Auth Handler Tests`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 297`** (2 nodes): `moduleStoreFactory`, `moduleStoreFactory.test`
+- **Thin community `Community 280`** (2 nodes): `lifecycle.go`, `SessionLifecycleListener`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 298`** (2 nodes): `useReadingStore`, `readingStore.test`
+- **Thin community `Community 281`** (2 nodes): `main_test.go`, `TestMain()`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 299`** (2 nodes): `gameChatStore.ts`, `useGameChatStore`
+- **Thin community `Community 282`** (2 nodes): `2026-04-05-phase2-data-layer-design.md`, `2026-04-05-phase2-data-layer.md`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 300`** (2 nodes): `themeStore.ts`, `useThemeStore`
+- **Thin community `Community 283`** (1 nodes): `tsup.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 301`** (2 nodes): `colorForIdentity`, `voiceColors.ts`
+- **Thin community `Community 284`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 302`** (2 nodes): `apperror package`, `2026-04-05-error-system.md`
+- **Thin community `Community 285`** (1 nodes): `tsup.config.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 303`** (2 nodes): `ESLint Config Base`, `ESLint Config React`
+- **Thin community `Community 286`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 304`** (1 nodes): `tsup.config.ts`
+- **Thin community `Community 287`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 305`** (1 nodes): `index.ts`
+- **Thin community `Community 288`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 306`** (1 nodes): `tsup.config.ts`
+- **Thin community `Community 289`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 307`** (1 nodes): `index.ts`
+- **Thin community `Community 290`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 308`** (1 nodes): `types.ts`
+- **Thin community `Community 291`** (1 nodes): `index.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 292`** (1 nodes): `react.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 293`** (1 nodes): `base.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 294`** (1 nodes): `tsup.config.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 295`** (1 nodes): `index.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 296`** (1 nodes): `playwright.config.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 297`** (1 nodes): `eslint.config.js`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 298`** (1 nodes): `vite.config.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 299`** (1 nodes): `vitest.config.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 300`** (1 nodes): `editor-flow.spec.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 301`** (1 nodes): `front-pages.spec.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 302`** (1 nodes): `clue-edges-live.spec.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 303`** (1 nodes): `a11y-focus.spec.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 304`** (1 nodes): `fixtures.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 305`** (1 nodes): `main.tsx`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 306`** (1 nodes): `vite-env.d.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 307`** (1 nodes): `browser.ts`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 308`** (1 nodes): `server.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 309`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 310`** (1 nodes): `types.ts`
+- **Thin community `Community 310`** (1 nodes): `TypewriterEffect.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 311`** (1 nodes): `index.ts`
+- **Thin community `Community 311`** (1 nodes): `ReadingOverlay.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 312`** (1 nodes): `types.ts`
+- **Thin community `Community 312`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 313`** (1 nodes): `index.ts`
+- **Thin community `Community 313`** (1 nodes): `EarningsList.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 314`** (1 nodes): `react.js`
+- **Thin community `Community 314`** (1 nodes): `SettlementList.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 315`** (1 nodes): `base.js`
+- **Thin community `Community 315`** (1 nodes): `CreatorDashboard.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 316`** (1 nodes): `tsup.config.ts`
+- **Thin community `Community 316`** (1 nodes): `HostControls.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 317`** (1 nodes): `index.ts`
+- **Thin community `Community 317`** (1 nodes): `PlayerList.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 318`** (1 nodes): `playwright.config.ts`
+- **Thin community `Community 318`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 319`** (1 nodes): `eslint.config.js`
+- **Thin community `Community 319`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 320`** (1 nodes): `vitest.config.ts`
+- **Thin community `Community 320`** (1 nodes): `CoinPackageList.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 321`** (1 nodes): `editor-flow.spec.ts`
+- **Thin community `Community 321`** (1 nodes): `CoinBalance.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 322`** (1 nodes): `front-pages.spec.ts`
+- **Thin community `Community 322`** (1 nodes): `CoinTransactions.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 323`** (1 nodes): `clue-edges-live.spec.ts`
+- **Thin community `Community 323`** (1 nodes): `CoinPackageList.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 324`** (1 nodes): `fixtures.ts`
+- **Thin community `Community 324`** (1 nodes): `PaymentModal.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 325`** (1 nodes): `vite-env.d.ts`
+- **Thin community `Community 325`** (1 nodes): `ThemeCard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 326`** (1 nodes): `browser.ts`
+- **Thin community `Community 326`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 327`** (1 nodes): `server.ts`
+- **Thin community `Community 327`** (1 nodes): `ThemeFilter.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 328`** (1 nodes): `index.ts`
+- **Thin community `Community 328`** (1 nodes): `ThemeFilter.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 329`** (1 nodes): `TypewriterEffect.test.tsx`
+- **Thin community `Community 329`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 330`** (1 nodes): `ReadingOverlay.test.tsx`
+- **Thin community `Community 330`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 331`** (1 nodes): `constants.ts`
+- **Thin community `Community 331`** (1 nodes): `ReadingPanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 332`** (1 nodes): `EarningsList.tsx`
+- **Thin community `Community 332`** (1 nodes): `NetworkOverlay.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 333`** (1 nodes): `SettlementList.test.tsx`
+- **Thin community `Community 333`** (1 nodes): `ItemUseModal.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 334`** (1 nodes): `CreatorDashboard.test.tsx`
+- **Thin community `Community 334`** (1 nodes): `ClueCard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 335`** (1 nodes): `HostControls.tsx`
+- **Thin community `Community 335`** (1 nodes): `ChatMessageList.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 336`** (1 nodes): `PlayerList.tsx`
+- **Thin community `Community 336`** (1 nodes): `GameLayout.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 337`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 338`** (1 nodes): `constants.ts`
+- **Thin community `Community 338`** (1 nodes): `VoteOptionList.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 339`** (1 nodes): `CoinPackageList.tsx`
+- **Thin community `Community 339`** (1 nodes): `GameHUD.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 340`** (1 nodes): `CoinBalance.test.tsx`
+- **Thin community `Community 340`** (1 nodes): `ExplorationPanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 341`** (1 nodes): `CoinTransactions.test.tsx`
+- **Thin community `Community 341`** (1 nodes): `GroupListView.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 342`** (1 nodes): `CoinPackageList.test.tsx`
+- **Thin community `Community 342`** (1 nodes): `MessageList.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 343`** (1 nodes): `PaymentModal.test.tsx`
+- **Thin community `Community 343`** (1 nodes): `GroupSidebar.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 344`** (1 nodes): `ThemeCard.tsx`
+- **Thin community `Community 344`** (1 nodes): `EndingPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 345`** (1 nodes): `index.ts`
+- **Thin community `Community 345`** (1 nodes): `ClueViewPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 346`** (1 nodes): `ThemeFilter.tsx`
+- **Thin community `Community 346`** (1 nodes): `PhaseBar.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 347`** (1 nodes): `ThemeFilter.test.tsx`
+- **Thin community `Community 347`** (1 nodes): `VotePanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 348`** (1 nodes): `constants.ts`
+- **Thin community `Community 348`** (1 nodes): `GameLayout.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 349`** (1 nodes): `constants.ts`
+- **Thin community `Community 349`** (1 nodes): `HiddenMissionCard.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 350`** (1 nodes): `ReadingPanel.tsx`
+- **Thin community `Community 350`** (1 nodes): `ReadingPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 351`** (1 nodes): `NetworkOverlay.tsx`
+- **Thin community `Community 351`** (1 nodes): `GameChatPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 352`** (1 nodes): `ItemUseModal.tsx`
+- **Thin community `Community 352`** (1 nodes): `PhaseTimer.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 353`** (1 nodes): `ClueCard.tsx`
+- **Thin community `Community 353`** (1 nodes): `WhisperPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 354`** (1 nodes): `ChatMessageList.tsx`
+- **Thin community `Community 354`** (1 nodes): `TradeCluePanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 355`** (1 nodes): `GameLayout.tsx`
+- **Thin community `Community 355`** (1 nodes): `GroupChat.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 356`** (1 nodes): `index.ts`
+- **Thin community `Community 356`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 357`** (1 nodes): `VoteOptionList.tsx`
+- **Thin community `Community 357`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 358`** (1 nodes): `GameHUD.tsx`
+- **Thin community `Community 358`** (1 nodes): `FriendsTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 359`** (1 nodes): `ExplorationPanel.tsx`
+- **Thin community `Community 359`** (1 nodes): `PendingTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 360`** (1 nodes): `EndingPanel.test.tsx`
+- **Thin community `Community 360`** (1 nodes): `FriendRow.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 361`** (1 nodes): `ClueViewPanel.test.tsx`
+- **Thin community `Community 361`** (1 nodes): `TabSwitcher.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 362`** (1 nodes): `PhaseBar.test.tsx`
+- **Thin community `Community 362`** (1 nodes): `AudioProvider.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 363`** (1 nodes): `VotePanel.test.tsx`
+- **Thin community `Community 363`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 364`** (1 nodes): `GameLayout.test.tsx`
+- **Thin community `Community 364`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 365`** (1 nodes): `HiddenMissionCard.test.tsx`
+- **Thin community `Community 365`** (1 nodes): `useReadingAdvance.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 366`** (1 nodes): `ReadingPanel.test.tsx`
+- **Thin community `Community 366`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 367`** (1 nodes): `GameChatPanel.test.tsx`
+- **Thin community `Community 367`** (1 nodes): `PurchaseThemeModal.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 368`** (1 nodes): `PhaseTimer.test.tsx`
+- **Thin community `Community 368`** (1 nodes): `NotificationSettings.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 369`** (1 nodes): `WhisperPanel.test.tsx`
+- **Thin community `Community 369`** (1 nodes): `DangerZone.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 370`** (1 nodes): `TradeCluePanel.test.tsx`
+- **Thin community `Community 370`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 371`** (1 nodes): `GroupChat.test.tsx`
+- **Thin community `Community 371`** (1 nodes): `ProfileForm.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 372`** (1 nodes): `constants.ts`
+- **Thin community `Community 372`** (1 nodes): `flowTypes.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 373`** (1 nodes): `index.ts`
+- **Thin community `Community 373`** (1 nodes): `constants.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 374`** (1 nodes): `AudioProvider.test.tsx`
+- **Thin community `Community 374`** (1 nodes): `editorUIStore.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 375`** (1 nodes): `types.ts`
+- **Thin community `Community 375`** (1 nodes): `roundFormat.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 376`** (1 nodes): `index.ts`
+- **Thin community `Community 376`** (1 nodes): `CharactersTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 377`** (1 nodes): `useReadingAdvance.test.ts`
+- **Thin community `Community 377`** (1 nodes): `DesignTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 378`** (1 nodes): `constants.ts`
+- **Thin community `Community 378`** (1 nodes): `PresetSelect.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 379`** (1 nodes): `PurchaseThemeModal.test.tsx`
+- **Thin community `Community 379`** (1 nodes): `ClueCard.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 380`** (1 nodes): `NotificationSettings.tsx`
+- **Thin community `Community 380`** (1 nodes): `CluesTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 381`** (1 nodes): `DangerZone.tsx`
+- **Thin community `Community 381`** (1 nodes): `TemplateConfigTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 382`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 383`** (1 nodes): `ProfileForm.test.tsx`
+- **Thin community `Community 383`** (1 nodes): `SchemaDrivenForm.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 384`** (1 nodes): `flowTypes.ts`
+- **Thin community `Community 384`** (1 nodes): `BranchNodePanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 385`** (1 nodes): `constants.ts`
+- **Thin community `Community 385`** (1 nodes): `ConditionEdge.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 386`** (1 nodes): `editorUIStore.ts`
+- **Thin community `Community 386`** (1 nodes): `FlowCanvas.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 387`** (1 nodes): `roundFormat.test.ts`
+- **Thin community `Community 387`** (1 nodes): `MissionEditor.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 388`** (1 nodes): `CharactersTab.tsx`
+- **Thin community `Community 388`** (1 nodes): `ModulesSubTab.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 389`** (1 nodes): `DesignTab.tsx`
+- **Thin community `Community 389`** (1 nodes): `LocationDetailPanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 390`** (1 nodes): `CluesTab.tsx`
+- **Thin community `Community 390`** (1 nodes): `CharacterAssignPanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 391`** (1 nodes): `index.ts`
+- **Thin community `Community 391`** (1 nodes): `CharacterDetailPanel.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 392`** (1 nodes): `ConditionEdge.tsx`
+- **Thin community `Community 392`** (1 nodes): `flowNodeRegistry.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 393`** (1 nodes): `FlowCanvas.tsx`
+- **Thin community `Community 393`** (1 nodes): `PhaseNode.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 394`** (1 nodes): `MissionEditor.tsx`
+- **Thin community `Community 394`** (1 nodes): `PhaseNodePanelDebounce.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 395`** (1 nodes): `LocationDetailPanel.tsx`
+- **Thin community `Community 395`** (1 nodes): `CluePlacementPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 396`** (1 nodes): `CharacterAssignPanel.tsx`
+- **Thin community `Community 396`** (1 nodes): `PhaseNodePanelExtended.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 397`** (1 nodes): `CharacterDetailPanel.tsx`
+- **Thin community `Community 397`** (1 nodes): `FlowCanvasEdgeDelete.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 398`** (1 nodes): `flowNodeRegistry.ts`
+- **Thin community `Community 398`** (1 nodes): `LocationClueAssignPanel.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 399`** (1 nodes): `PhaseNode.tsx`
+- **Thin community `Community 399`** (1 nodes): `BranchWiring.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 400`** (1 nodes): `PhaseNodePanelDebounce.test.tsx`
+- **Thin community `Community 400`** (1 nodes): `ModulesSubTab.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 401`** (1 nodes): `CluePlacementPanel.test.tsx`
+- **Thin community `Community 401`** (1 nodes): `DesignTab.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 402`** (1 nodes): `PhaseNodePanelExtended.test.tsx`
+- **Thin community `Community 402`** (1 nodes): `FlowSubTab.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 403`** (1 nodes): `FlowCanvasEdgeDelete.test.tsx`
+- **Thin community `Community 403`** (1 nodes): `FlowCanvas.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 404`** (1 nodes): `LocationClueAssignPanel.test.tsx`
+- **Thin community `Community 404`** (1 nodes): `RelationEdge.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 405`** (1 nodes): `BranchWiring.test.tsx`
+- **Thin community `Community 405`** (1 nodes): `ClueEdgeGraph.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 406`** (1 nodes): `ModulesSubTab.test.tsx`
+- **Thin community `Community 406`** (1 nodes): `SchemaDrivenForm.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 407`** (1 nodes): `DesignTab.test.tsx`
+- **Thin community `Community 407`** (1 nodes): `ClueForm.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 408`** (1 nodes): `FlowSubTab.test.tsx`
+- **Thin community `Community 408`** (1 nodes): `EditorTabNav.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 409`** (1 nodes): `FlowCanvas.test.tsx`
+- **Thin community `Community 409`** (1 nodes): `CharactersTab.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 410`** (1 nodes): `RelationEdge.tsx`
+- **Thin community `Community 410`** (1 nodes): `MediaPicker.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 411`** (1 nodes): `ClueEdgeGraph.tsx`
+- **Thin community `Community 411`** (1 nodes): `clueGraphValidation.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 412`** (1 nodes): `ClueForm.test.tsx`
+- **Thin community `Community 412`** (1 nodes): `flowApi.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 413`** (1 nodes): `EditorTabNav.test.tsx`
+- **Thin community `Community 413`** (1 nodes): `validation.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 414`** (1 nodes): `CharactersTab.test.tsx`
+- **Thin community `Community 414`** (1 nodes): `flowConverters.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 415`** (1 nodes): `clueGraphValidation.test.ts`
+- **Thin community `Community 415`** (1 nodes): `flowPresets.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 416`** (1 nodes): `flowApi.test.ts`
+- **Thin community `Community 416`** (1 nodes): `flowDefaults.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 417`** (1 nodes): `validation.test.ts`
+- **Thin community `Community 417`** (1 nodes): `types.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 418`** (1 nodes): `flowConverters.test.ts`
+- **Thin community `Community 418`** (1 nodes): `keys.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 419`** (1 nodes): `flowPresets.test.ts`
+- **Thin community `Community 419`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 420`** (1 nodes): `flowDefaults.test.ts`
+- **Thin community `Community 420`** (1 nodes): `CutsceneModal.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 421`** (1 nodes): `CutsceneModal.test.tsx`
+- **Thin community `Community 421`** (1 nodes): `createVideoPlayer.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 422`** (1 nodes): `createVideoPlayer.test.ts`
+- **Thin community `Community 422`** (1 nodes): `VideoPlayer.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 423`** (1 nodes): `VideoPlayer.ts`
+- **Thin community `Community 423`** (1 nodes): `themeStore.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 424`** (1 nodes): `themeStore.ts`
+- **Thin community `Community 424`** (1 nodes): `readingStore.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 425`** (1 nodes): `readingStore.test.ts`
+- **Thin community `Community 425`** (1 nodes): `gameSelectors.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 426`** (1 nodes): `gameSelectors.test.ts`
+- **Thin community `Community 426`** (1 nodes): `connectionStore.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 427`** (1 nodes): `connectionStore.test.ts`
+- **Thin community `Community 427`** (1 nodes): `moduleStoreFactory.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 428`** (1 nodes): `moduleStoreFactory.test.ts`
+- **Thin community `Community 428`** (1 nodes): `authStore.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 429`** (1 nodes): `authStore.test.ts`
+- **Thin community `Community 429`** (1 nodes): `uiStore.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 430`** (1 nodes): `uiStore.test.ts`
+- **Thin community `Community 430`** (1 nodes): `Nav.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 431`** (1 nodes): `Nav.tsx`
+- **Thin community `Community 431`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 432`** (1 nodes): `index.ts`
+- **Thin community `Community 432`** (1 nodes): `EmptyState.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 433`** (1 nodes): `EmptyState.tsx`
+- **Thin community `Community 433`** (1 nodes): `Select.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 434`** (1 nodes): `Select.tsx`
+- **Thin community `Community 434`** (1 nodes): `Input.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 435`** (1 nodes): `Input.tsx`
+- **Thin community `Community 435`** (1 nodes): `Button.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 436`** (1 nodes): `Button.test.tsx`
+- **Thin community `Community 436`** (1 nodes): `Modal.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 437`** (1 nodes): `Modal.test.tsx`
+- **Thin community `Community 437`** (1 nodes): `Pagination.test.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 438`** (1 nodes): `Pagination.test.tsx`
+- **Thin community `Community 438`** (1 nodes): `AvatarPresetGrid.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 439`** (1 nodes): `AvatarPresetGrid.tsx`
+- **Thin community `Community 439`** (1 nodes): `VoiceBar.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 440`** (1 nodes): `VoiceBar.tsx`
+- **Thin community `Community 440`** (1 nodes): `VoiceOverlay.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 441`** (1 nodes): `VoiceOverlay.tsx`
+- **Thin community `Community 441`** (1 nodes): `VoiceBottomSheet.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 442`** (1 nodes): `VoiceBottomSheet.tsx`
+- **Thin community `Community 442`** (1 nodes): `VoiceConnectionState.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 443`** (1 nodes): `VoiceConnectionState.tsx`
+- **Thin community `Community 443`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 444`** (1 nodes): `index.ts`
+- **Thin community `Community 444`** (1 nodes): `PageErrorBoundary.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 445`** (1 nodes): `PageErrorBoundary.tsx`
+- **Thin community `Community 445`** (1 nodes): `index.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 446`** (1 nodes): `index.ts`
+- **Thin community `Community 446`** (1 nodes): `GameErrorBoundary.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 447`** (1 nodes): `GameErrorBoundary.tsx`
+- **Thin community `Community 447`** (1 nodes): `GlobalErrorBoundary.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 448`** (1 nodes): `GlobalErrorBoundary.tsx`
+- **Thin community `Community 448`** (1 nodes): `useAuth.test.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 449`** (1 nodes): `useAuth.test.ts`
+- **Thin community `Community 449`** (1 nodes): `SocialPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 450`** (1 nodes): `SocialPage.tsx`
+- **Thin community `Community 450`** (1 nodes): `LobbyPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 451`** (1 nodes): `LobbyPage.tsx`
+- **Thin community `Community 451`** (1 nodes): `RoomPage.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 452`** (1 nodes): `RoomPage.tsx`
+- **Thin community `Community 452`** (1 nodes): `profileApi.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 453`** (1 nodes): `profileApi.ts`
+- **Thin community `Community 453`** (1 nodes): `queryClient.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 454`** (1 nodes): `voiceApi.ts`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 455`** (1 nodes): `codes.go`
+- **Thin community `Community 455`** (1 nodes): `authedDeps struct`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 456`** (1 nodes): `register.go`
+- **Thin community `Community 456`** (1 nodes): `publicDeps struct`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 457`** (1 nodes): `service_validation.go`
+- **Thin community `Community 457`** (1 nodes): `graph.go (clue graph primitive)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 458`** (1 nodes): `clue_edge_handler.go`
+- **Thin community `Community 458`** (1 nodes): `codes.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 459`** (1 nodes): `service_config.go`
+- **Thin community `Community 459`** (1 nodes): `VoiceBridge (engine events→ws hub bridge)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 460`** (1 nodes): `migration.go`
+- **Thin community `Community 460`** (1 nodes): `register.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 461`** (1 nodes): `errors.go`
+- **Thin community `Community 461`** (1 nodes): `register.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 462`** (1 nodes): `snapshot_pr0_helpers_test.go`
+- **Thin community `Community 462`** (1 nodes): `testsupport.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 463`** (1 nodes): `snapshot_send.go`
+- **Thin community `Community 463`** (1 nodes): `events.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 464`** (1 nodes): `authedDeps struct`
+- **Thin community `Community 464`** (1 nodes): `register.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 465`** (1 nodes): `publicDeps struct`
+- **Thin community `Community 465`** (1 nodes): `reactor.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 466`** (1 nodes): `AuditAction constants (player.action, phase.enter, win.decision, etc.)`
+- **Thin community `Community 466`** (1 nodes): `register.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 467`** (1 nodes): `db.GameSession (sqlc model)`
+- **Thin community `Community 467`** (1 nodes): `rules.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 468`** (1 nodes): `db.Room (sqlc model)`
+- **Thin community `Community 468`** (1 nodes): `events.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 469`** (1 nodes): `db.Payment (sqlc model)`
+- **Thin community `Community 469`** (1 nodes): `register.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 470`** (1 nodes): `db.DeleteClueEdgeGroupsByTheme (sqlc query)`
+- **Thin community `Community 470`** (1 nodes): `phase.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 471`** (1 nodes): `NotificationPreferences DB Queries`
+- **Thin community `Community 471`** (1 nodes): `handlers.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 472`** (1 nodes): `social types.go`
+- **Thin community `Community 472`** (1 nodes): `db.InsertClueEdgeGroup (sqlc query)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 473`** (1 nodes): `WinResult`
+- **Thin community `Community 473`** (1 nodes): `db.DeleteClueEdgeGroupsByTheme (sqlc query)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 474`** (1 nodes): `PhaseAction`
+- **Thin community `Community 474`** (1 nodes): `db.BulkInsertClueEdgeMembers (sqlc query)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 475`** (1 nodes): `PhaseActionPayload`
+- **Thin community `Community 475`** (1 nodes): `db.AddCoinBalance (sqlc query)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 476`** (1 nodes): `ActionRequiresModule`
+- **Thin community `Community 476`** (1 nodes): `db.ApproveSettlement (sqlc query)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 477`** (1 nodes): `HostSubmittable`
+- **Thin community `Community 477`** (1 nodes): `db.CreateClue (sqlc query, with round fields)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 478`** (1 nodes): `WriteJSON`
+- **Thin community `Community 478`** (1 nodes): `NotificationPreferences DB Queries`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 479`** (1 nodes): `ReadJSON`
+- **Thin community `Community 479`** (1 nodes): `gen.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 480`** (1 nodes): `ParsePagination`
+- **Thin community `Community 480`** (1 nodes): `chat_messages.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 481`** (1 nodes): `middleware.CORS`
+- **Thin community `Community 481`** (1 nodes): `blocks.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 482`** (1 nodes): `cluedist.RoundClueConfig`
+- **Thin community `Community 482`** (1 nodes): `gen.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 483`** (1 nodes): `cluedist.RoundDistribution`
+- **Thin community `Community 483`** (1 nodes): `gen.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 484`** (1 nodes): `cluedist.StartingClueConfig`
+- **Thin community `Community 484`** (1 nodes): `gen.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 485`** (1 nodes): `cluedist.TimedClueConfig`
+- **Thin community `Community 485`** (1 nodes): `themes.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 486`** (1 nodes): `cluedist.TradeClueConfig`
+- **Thin community `Community 486`** (1 nodes): `service_validation.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 487`** (1 nodes): `communication.GroupRoom`
+- **Thin community `Community 487`** (1 nodes): `clue_edge_handler.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 488`** (1 nodes): `core.ClueInteractionConfig`
+- **Thin community `Community 488`** (1 nodes): `publication.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 489`** (1 nodes): `DecoderFunc`
+- **Thin community `Community 489`** (1 nodes): `service_config.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 490`** (1 nodes): `ErrorPayload`
+- **Thin community `Community 490`** (1 nodes): `gen.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 491`** (1 nodes): `ConnectedPayload`
+- **Thin community `Community 491`** (1 nodes): `migration.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 492`** (1 nodes): `clue-edges.spec`
+- **Thin community `Community 492`** (1 nodes): `hub_lifecycle.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 493`** (1 nodes): `editor-flow.spec`
+- **Thin community `Community 493`** (1 nodes): `errors.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 494`** (1 nodes): `front-pages.spec`
+- **Thin community `Community 494`** (1 nodes): `snapshot_pr0_helpers_test.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 495`** (1 nodes): `game-visual.spec`
+- **Thin community `Community 495`** (1 nodes): `snapshot_send.go`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 496`** (1 nodes): `SettlementStatus`
+- **Thin community `Community 496`** (1 nodes): `SeoHandlerTest`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 497`** (1 nodes): `TaxType`
+- **Thin community `Community 497`** (1 nodes): `2026-04-05-error-system.md`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 498`** (1 nodes): `ThemeStatus`
+- **Thin community `Community 498`** (1 nodes): `2026-04-05-phase6-rest-api.md`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 499`** (1 nodes): `FlowNodeType`
+- **Thin community `Community 499`** (1 nodes): `2026-04-05-phase7a-frontend-foundation.md`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 500`** (1 nodes): `useEditorEdges`
+- **Thin community `Community 500`** (1 nodes): `Module System (29 modules)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 501`** (1 nodes): `FlowSimulationPanel.test.tsx`
+- **Thin community `Community 501`** (1 nodes): `Phase 10.0 QA Bugfix Sprint — Checklist`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 502`** (1 nodes): `MissionEditor.test.tsx`
+- **Thin community `Community 502`** (1 nodes): `PR-3: 맵/장소 관리 UI`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 503`** (1 nodes): `PhaseNode.test.tsx`
+- **Thin community `Community 503`** (1 nodes): `PR-4: 페이즈 타임라인 UI`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 504`** (1 nodes): `editor/components/index.ts`
+- **Thin community `Community 504`** (1 nodes): `PR-5: 단서→장소 배치 UI`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 505`** (1 nodes): `ExplorationPanel`
+- **Thin community `Community 505`** (1 nodes): `PR-6: 캐릭터→단서/미션 배정 UI`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 506`** (1 nodes): `TradeStatusBadge`
+- **Thin community `Community 506`** (1 nodes): `PR-7: 통합 + 유효성 검증`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 507`** (1 nodes): `ClueViewPanel.test`
+- **Thin community `Community 507`** (1 nodes): `이미지 업로드 + 크롭 설계`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 508`** (1 nodes): `EndingPanel.test`
+- **Thin community `Community 508`** (1 nodes): `Dashboard Load Error: 대시보드를 불러오지 못했습니다 (Failed to load dashboard)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 509`** (1 nodes): `GameChatPanel.test`
+- **Thin community `Community 509`** (1 nodes): `테마 검색 Input`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 510`** (1 nodes): `GameLayout.test`
+- **Thin community `Community 510`** (1 nodes): `전체 인원 Filter Dropdown`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 511`** (1 nodes): `GroupChat.test`
+- **Thin community `Community 511`** (1 nodes): `최신순 Sort Dropdown`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 512`** (1 nodes): `useConnectGame`
+- **Thin community `Community 512`** (1 nodes): `유저 헤더 (테스트유저 + 코인 0)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 513`** (1 nodes): `usePrefersReducedMotion`
+- **Thin community `Community 513`** (1 nodes): `공개 방 없음 Empty State`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 514`** (1 nodes): `AdminCoinGrantPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 515`** (1 nodes): `AdminPackagesPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 516`** (1 nodes): `AdminRevenuePage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 517`** (1 nodes): `AdminSettlementsPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 518`** (1 nodes): `CreatorEarningsPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 519`** (1 nodes): `CreatorSettlementsPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 520`** (1 nodes): `CreatorThemeStatsPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 521`** (1 nodes): `HomePage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 522`** (1 nodes): `NotFoundPage`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 523`** (1 nodes): `Layout`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 524`** (1 nodes): `nickname utils`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 525`** (1 nodes): `vite-env.d.ts`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 526`** (1 nodes): `Phase 10.0 QA Bugfix Sprint — Checklist`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 527`** (1 nodes): `game-logic tsup build config`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 528`** (1 nodes): `@mmp/shared tsup build config`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 529`** (1 nodes): `@mmp/ws-client tsup build config`
-  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 530`** (1 nodes): `PlayerRole enum — MURDERER/DETECTIVE/CIVILIAN/SPECTATOR`
+- **Thin community `Community 514`** (1 nodes): `내 테마 (My Themes) Page Screenshot`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `New()` connect `Accusation Module & Tests` to `WebSocket Hub & Messaging`, `Admin Service Layer`, `Admin Handler API`, `Accusation Handler & Crime Scene Tests`, `Admin Mock Services`, `Server Bootstrap & Adapters`, `Community 34`, `Community 35`, `Room Feature Hooks`, `Clue Graph & Validation`, `Event Bus & Validators`, `Audio Media Tests`, `Community 79`, `Reading Bridge & Presence`, `Rule Evaluator & E2E Specs`, `Community 89`, `Module Factory & Registry`, `Event Store & Panic Guards`?**
-  _High betweenness centrality (0.102) - this node is a cross-community bridge._
-- **Why does `unlock()` connect `WebSocket Hub & Messaging` to `Accusation Module & Tests`, `Accusation Handler & Crime Scene Tests`, `Admin Mock Services`, `Clue Modules (Conditional/Round/Trade)`, `Room Feature Hooks`, `Clue Graph & Validation`, `Audio Media Tests`, `Reading Bridge & Presence`, `Audio Core (Graph/Manager)`, `Rule Evaluator & E2E Specs`?**
-  _High betweenness centrality (0.058) - this node is a cross-community bridge._
-- **Why does `Lock` connect `WebSocket Hub & Messaging` to `Accusation Module & Tests`, `Accusation Handler & Crime Scene Tests`, `Admin Mock Services`, `Clue Modules (Conditional/Round/Trade)`, `Community 105`, `Clue Graph & Validation`, `Room Feature Hooks`, `Audio Media Tests`, `Reading Bridge & Presence`, `Rule Evaluator & E2E Specs`?**
-  _High betweenness centrality (0.052) - this node is a cross-community bridge._
-- **Are the 561 inferred relationships involving `New()` (e.g. with `main()` and `TestAuth_ValidToken()`) actually correct?**
-  _`New()` has 561 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 299 inferred relationships involving `unlock()` (e.g. with `.Subscribe()` and `TestClueInteractionModule_ItemUse_PeekFlow()`) actually correct?**
-  _`unlock()` has 299 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 299 inferred relationships involving `Lock` (e.g. with `.Subscribe()` and `TestClueInteractionModule_ItemUse_PeekFlow()`) actually correct?**
-  _`Lock` has 299 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 271 inferred relationships involving `newTestDeps()` (e.g. with `TestClueInteractionModule_Init()` and `TestClueInteractionModule_InitInvalidConfig()`) actually correct?**
-  _`newTestDeps()` has 271 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `New()` connect `Community 1` to `Community 0`, `Community 2`, `Community 3`, `Community 4`, `Community 5`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 10`, `Community 11`, `Community 12`, `Community 14`, `Community 24`, `Community 26`, `Community 31`, `Community 65`, `Community 67`, `Community 74`?**
+  _High betweenness centrality (0.104) - this node is a cross-community bridge._
+- **Why does `unlock()` connect `Community 0` to `Community 1`, `Community 2`, `Community 4`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 11`, `Community 12`?**
+  _High betweenness centrality (0.045) - this node is a cross-community bridge._
+- **Why does `Lock` connect `Community 0` to `Community 1`, `Community 2`, `Community 4`, `Community 6`, `Community 7`, `Community 8`, `Community 9`, `Community 11`, `Community 12`?**
+  _High betweenness centrality (0.043) - this node is a cross-community bridge._
+- **Are the 582 inferred relationships involving `New()` (e.g. with `main()` and `TestAuth_ValidToken()`) actually correct?**
+  _`New()` has 582 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 382 inferred relationships involving `init()` (e.g. with `initSentry()` and `main()`) actually correct?**
+  _`init()` has 382 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 319 inferred relationships involving `unlock()` (e.g. with `.Subscribe()` and `TestClueInteractionModule_ItemUse_PeekFlow()`) actually correct?**
+  _`unlock()` has 319 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 319 inferred relationships involving `Lock` (e.g. with `.Subscribe()` and `TestClueInteractionModule_ItemUse_PeekFlow()`) actually correct?**
+  _`Lock` has 319 INFERRED edges - model-reasoned connections that need verification._

@@ -60,6 +60,7 @@ Thumbs.db
 .claude/autopilot-state.json
 .claude/run-lock.json
 .claude/runs/
+.claude/scheduled_tasks.lock
 .pr-body.tmp
 
 # ─── Go build artifacts ───────────────────────────────

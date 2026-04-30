@@ -35,14 +35,8 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 - **다음 액션**: 다음 세션 시작 시 사용자 결정. 지금 추세는 (A) — sister PR-9 PROJECT_SLUG hotfix는 명확한 보안 부채.
 - **블로커 risk**: MED. dogfooding 시 false `next_gate=done` 신호로 wrap 누락 risk.
 
-### Q-ci-d3: CI admin-skip 만료 D-3 (2026-05-01) 결정
-- **맥락**: CI admin-skip 정책이 2026-05-01 만료 (오늘 4-28). 본 세션 모든 PR (#161/#162/#163) admin-merge로 진행, CI 13개 fail 무시.
-- **가설**:
-  - (a) golangci-lint↔Go1.25 + ESLint9 fix 우선 — 정식 CI 활성화
-  - (b) admin-skip 연장 — 추가 시간 확보
-  - (c) PR-11 이전 hotfix PR로 CI 인프라만 정비
-- **다음 액션**: 다음 세션 첫 결정 게이트. `feedback_ci_infra_debt.md` 참조.
-- **블로커 risk**: HIGH (5/1부터 모든 PR이 BLOCKED).
+### ~~Q-ci-d3: CI admin-skip 만료 D-3 (2026-05-01) 결정~~ — **해소 (2026-04-29)**
+- **결과**: PR #170 머지로 main DEBT 5건 모두 해소 → admin-skip 정책 2026-04-29 만료 확정 (`project_ci_admin_skip_expired_2026-04-29.md`). 정상 `gh pr merge --squash` 모드 복귀. 옵션 (a) 채택.
 
 ### Q-rogue-branch: PR-9 round-2 직전 `feat/-evil/PR-1-go` rogue branch 생성 미스터리
 - **맥락**: PR-9 round-2 commit 시점에 git이 갑자기 `feat/-evil/PR-1-go` branch로 이동 (commit 출력에 명시). 머지된 commit이라 안전 삭제했으나 원인 미해결. dispatch-router/hook 영향 가능성.
@@ -90,9 +84,6 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 
 ## 2026-04-29 — Phase 23 Custom Image pivot wrap-up
 
-### Q-myoung34-ephemeral-fs: EPHEMERAL=true 재시작 후 ~/go/pkg/mod overlay layer 잔존 범위
-- **가설**: myoung34/github-runner의 `EPHEMERAL=true`가 runner process deregister/register만 수행, Docker overlay layer (`/home/runner/go/pkg/mod`, `/home/runner/.cache/go-build`)는 reset하지 않음. PR-173 1차 CI에서 `/usr/bin/tar: ~/go/pkg/mod/...: Cannot open: File exists` 패턴으로 관찰.
-- **공식 docs**: myoung34 README는 "registers a new runner after each workflow" 수준이고 file system 동작 명시 X. GitHub Actions self-hosted runner 공식 docs도 EPHEMERAL과 file system 격리는 별개 주제.
-- **다음 액션**: Phase 23 Custom Image 진입 전 `docker exec containerized-runner-1 ls -la ~/go/pkg/mod` 직접 측정. layerID 비교 spike (`docker inspect containerized-runner-X` 전후 diff).
-- **블로커 risk**: MEDIUM. Custom Image entrypoint hook (`ACTIONS_RUNNER_HOOK_JOB_STARTED`)으로 cleanup 강제 시 재발 차단 가능. 검증 미완 시 Phase 23 Custom Image의 효과가 baseline의 일부만 해소할 가능성.
-- **연관**: `memory/sessions/2026-04-29-phase-23-custom-image-pivot.md` (PR-12 retract 진단 데이터)
+### ~~Q-myoung34-ephemeral-fs: EPHEMERAL=true 재시작 후 ~/go/pkg/mod overlay layer 잔존 범위~~ — **해소 (2026-04-29)**
+- **결과**: Phase 23 Custom Runner Image 머지 (PR #174 + hotfix #175)로 cleanup hook (`ACTIONS_RUNNER_HOOK_JOB_STARTED`) 도입. multi-stage Dockerfile + GHCR build CI 정착 → file system reset 보장. baseline 한정이 아닌 영구 해소.
+- **연관**: `memory/sessions/2026-04-29-phase-23-custom-runner-image-merge.md`, `feedback_runner_bootstrap.md`, `feedback_multi_stage_dockerfile_runner.md`
