@@ -52,7 +52,7 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 
 | ID | 항목 | 영역 | 규모 | 상태 |
 |----|------|------|------|------|
-| E-1 | `useDebouncedMutation` 공용 훅 + 5 consumer 통합 | 프론트 리팩터 | M | 미해결 |
+| E-1 | `useDebouncedMutation` 공용 훅 + 3 consumer 통합 | 프론트 리팩터 | M | 미해결 |
 | ~~E-2~~ | ~~`PhaseNodePanel` / `ModulesSubTab` → `@jittda/ui` 마이그레이션~~ | — | — | **무효 (2026-04-30)** |
 | E-3 | Config 409 **3-way merge** 의미론 | 백엔드+프론트 | L+ (별도 brainstorm 필수) | 미해결 |
 | ~~E-4~~ | ~~`LocationClueAssignPanel` optimistic + rollback~~ | — | — | **해소 (2026-04-30)** |
@@ -67,14 +67,14 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 
 `apps/web/src/features/editor/components/design/LocationClueAssignPanel.tsx:62-82` — `queryClient.setQueryData` optimistic write + `previous` 캡처 + `onError` 롤백 + Sonner toast 완비. 커밋 시점 미상이나 현재 main 기준 완전 구현. backlog 종료.
 
-### E-1 consumer 정정 (6+ → 5)
+### E-1 consumer 정정 (6+ → 3)
 
-실제 `useRef + setTimeout` 보일러플레이트 보유 컴포넌트는 5개:
-- `PhaseNodePanel.tsx:42`
-- `CharacterAssignPanel.tsx:41`
-- `EndingNodePanel.tsx:26`
-- `CluePlacementPanel.tsx`
-- `ModulesSubTab.tsx`
+실제 `useRef + setTimeout` debounce 패턴 보유 컴포넌트는 3개:
+- `PhaseNodePanel.tsx:42` — 1500ms + optimistic + rollback + flush + onBlur + unmount cleanup (성숙형)
+- `CharacterAssignPanel.tsx:41` — 1500ms + optimistic + rollback + flush + onBlur + char 전환 flush + unmount (성숙형)
+- `EndingNodePanel.tsx:26` — 500ms + optimistic·rollback·flush 미구현, unmount cleanup만 (미완성 → 훅 도입 시 자동 동등화)
+
+`CluePlacementPanel.tsx` / `ModulesSubTab.tsx`는 즉시 mutate (debounce 미사용) — 마이그레이션 대상 아님.
 
 근거: `memory/project_phase184_progress.md` "후속 과제 (Phase 18.5 후보)" + Phase 18.5 종료 시점 미해소 항목 + 2026-04-30 검증.
 
