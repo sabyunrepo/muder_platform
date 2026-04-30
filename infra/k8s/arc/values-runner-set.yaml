@@ -6,6 +6,10 @@ runnerScaleSetName: arc-runner-set
 minRunners: 0
 maxRunners: 5
 
+# containerMode: dind — chart 가 자동으로 docker:dind sidecar + DOCKER_HOST=unix:///var/run/docker.sock
+# + init-dind-externals init container 를 주입한다.
+# kubernetes mode 의 ACTIONS_RUNNER_CONTAINER_HOOKS / POD_NAME / REQUIRE_JOB_CONTAINER 는
+# dind 에서 불필요하며 step 실행 흐름과 충돌할 수 있어 제거.
 containerMode:
   type: dind
 
@@ -17,15 +21,6 @@ template:
       - name: runner
         image: registry.cloud.kt.com/dldxu5p5/mmp-runner:latest
         command: ["/home/runner/run.sh"]
-        env:
-          - name: ACTIONS_RUNNER_CONTAINER_HOOKS
-            value: /home/runner/k8s/index.js
-          - name: ACTIONS_RUNNER_POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: ACTIONS_RUNNER_REQUIRE_JOB_CONTAINER
-            value: "false"
         resources:
           requests:
             memory: "1Gi"
