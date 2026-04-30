@@ -15,11 +15,13 @@ containerMode:
 
 template:
   spec:
+    # Phase 24 follow-up: ghcr.io 로 이전. KT registry 는 fallback 으로 secret 유지.
     imagePullSecrets:
+      - name: ghcr-secret
       - name: kt-registry-secret
     containers:
       - name: runner
-        image: registry.cloud.kt.com/dldxu5p5/mmp-runner:latest
+        image: ghcr.io/sabyunrepo/mmp-runner:latest
         command: ["/home/runner/run.sh"]
         resources:
           requests:
