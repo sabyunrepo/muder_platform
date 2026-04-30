@@ -9,7 +9,7 @@ GitHub Actions Self-hosted Runner를 KT Cloud Managed KS(`github-actions-runner`
 
 - 클러스터: `github-actions-runner` (1.33.7, containerd 2.2.2, Calico, Private 티어)
 - ARC chart: `gha-runner-scale-set-controller@0.14.1` + `gha-runner-scale-set@0.14.1`
-- Runner 이미지: `registry.cloud.kt.com/dldxu5p5/mmp-runner:latest` (Phase 23 GHCR 미러)
+- Runner 이미지: `ghcr.io/sabyunrepo/mmp-runner:latest` (build-runner-image.yml 자동 build/push, Phase 24 actions-runner 베이스). KT registry mirror (`registry.cloud.kt.com/dldxu5p5/mmp-runner:latest`) 는 fallback 으로 imagePullSecrets 에 함께 유지.
 - Container mode: **DinD sidecar** (`containerMode.type: dind`) — 노드가 containerd 전용이라 `/var/run/docker.sock` 없음
 - Runner pool: `arc-runner-set` namespace=`arc-runners`, min 0 / max 5
 - GitHub config: `https://github.com/sabyunrepo/muder_platform`
@@ -35,9 +35,10 @@ helm upgrade --install arc-runner-set \
 ## 사전 조건
 
 - `arc-systems` ns에 controller 설치 (`helm install arc oci://.../gha-runner-scale-set-controller`)
-- `arc-runners` ns에 두 secret:
-  - `github-pat-secret` — `github_token=<PAT>` (scope: `repo`, `workflow`)
-  - `kt-registry-secret` — KT Cloud Container Registry docker creds
+- `arc-runners` ns에 secret:
+  - `github-pat-secret` — `github_token=<PAT>` (scope: `repo`, `workflow`) — ARC controller registration
+  - `ghcr-secret` — `docker-registry` 타입, GitHub PAT(`read:packages` scope) — runner image pull
+  - `kt-registry-secret` — KT Cloud Container Registry docker creds (fallback 미러)
 - 노드 outbound: `0.0.0.0/0:443` 허용 (ghcr.io, api.github.com, broker.actions.githubusercontent.com)
 
 ## 사용
