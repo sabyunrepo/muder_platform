@@ -37,5 +37,9 @@ func init() {
 			Note: "server notifies client its session was invalidated (ban, logout-elsewhere); payload AuthRevokedPayload"},
 		EventDef{Type: "auth.refresh_required", Direction: DirS2C, Category: "auth",
 			Note: "server signals token approaching expiry; payload AuthRefreshRequiredPayload"},
+		EventDef{Type: "auth.token_issued", Direction: DirS2C, Category: "auth",
+			Note: "server's response to auth.refresh — new access token + expiry; payload AuthTokenIssuedPayload"},
+		EventDef{Type: "auth.invalid_session", Direction: DirS2C, Category: "auth",
+			Note: "resume target stale; resumable bool guides retry policy (Discord INVALID_SESSION); payload AuthInvalidSessionPayload"},
 	)
 }
