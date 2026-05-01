@@ -270,6 +270,95 @@ func TestUpdateConfigJson_RejectsLegacyShape(t *testing.T) {
 	}
 }
 
+// TestUpdateConfigJson_RejectsNullModules verifies that {"modules": null} produces
+// a distinct error from the legacy-array case (H3 — round-2 review gap).
+func TestUpdateConfigJson_RejectsNullModules(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, json.RawMessage(`{"modules": null}`))
+	if err == nil {
+		t.Fatal("expected error for null modules, got nil")
+	}
+	// Distinct error message — NOT the "legacy modules shape" message
+	if !strings.Contains(err.Error(), "modules cannot be null") {
+		t.Errorf("expected error to contain %q, got: %v", "modules cannot be null", err)
+	}
+	if strings.Contains(err.Error(), "legacy modules shape") {
+		t.Errorf("null modules should produce a distinct error from legacy-array case, got: %v", err)
+	}
+}
+
+// TestUpdateConfigJson_RejectsLocationsDeadKey verifies that locations[].clueIds
+// (top-level, not nested under locationClueConfig) is rejected on write (H2 — D-20 gate).
+func TestUpdateConfigJson_RejectsLocationsDeadKey(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name: "first location has dead key",
+			input: json.RawMessage(`{
+				"modules": {},
+				"locations": [{"id": "library", "clueIds": ["c1"]}]
+			}`),
+			want: "locations[0].clueIds",
+		},
+		{
+			name: "second location has dead key",
+			input: json.RawMessage(`{
+				"modules": {},
+				"locations": [
+					{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}},
+					{"id": "study", "clueIds": ["c2"]}
+				]
+			}`),
+			want: "locations[1].clueIds",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
+			}
+			if !strings.Contains(err.Error(), "D-20") {
+				t.Errorf("expected error to contain %q, got: %v", "D-20", err)
+			}
+		})
+	}
+}
+
+// TestUpdateConfigJson_AcceptsNewLocationsShape verifies that the correct new shape
+// (locationClueConfig.clueIds) is NOT rejected by the dead-key gate (H2 regression).
+func TestUpdateConfigJson_AcceptsNewLocationsShape(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	input := json.RawMessage(`{
+		"modules": {},
+		"locations": [{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}}]
+	}`)
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, input)
+	if err != nil {
+		t.Fatalf("new-shape locationClueConfig.clueIds must NOT be rejected, got: %v", err)
+	}
+}
+
 // TestUpdateConfigJson_AcceptsNewShape verifies that UpdateConfigJson accepts
 // a valid new-shape config and bumps the version (D-19/D-20 forward-only gate).
 func TestUpdateConfigJson_AcceptsNewShape(t *testing.T) {
