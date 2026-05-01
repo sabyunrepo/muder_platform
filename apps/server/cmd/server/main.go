@@ -301,7 +301,12 @@ func main() {
 	authHandler := auth.NewHandler(authSvc)
 	wsAuthHandler := ws.NewAuthHandler([]byte(cfg.JWTSecret), revokeRepo, authSvc,
 		cfg.WSAuthProtocol, logger)
-	wsRouter.Handle("auth", wsAuthHandler.Handle)
+	// Dot-form auth.* events: register each C→S sub-action explicitly
+	// since Router.Route only splits on the colon. See PR-9 retro note
+	// in auth_protocol.go for the form choice rationale.
+	for _, t := range []string{ws.TypeAuthIdentify, ws.TypeAuthResume, ws.TypeAuthRefresh} {
+		wsRouter.Handle(t, wsAuthHandler.Handle)
+	}
 	logger.Info().Bool("enabled", cfg.WSAuthProtocol).
 		Msg("WS auth protocol handler registered")
 

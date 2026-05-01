@@ -12,22 +12,24 @@ import (
 	"github.com/mmp-platform/server/internal/domain/auth"
 )
 
-// Auth protocol message types — sub-actions under the "auth" namespace.
-// The catalog (envelope_catalog_system.go) is the source of truth for
-// wire compatibility; these constants are the Go-side reference used by
-// the dispatcher and tests.
+// Auth protocol message types — wire format per the catalog
+// (envelope_catalog_system.go) and the generated TS WsEventType. PR-9
+// uses the dot-form convention so frontend constants line up with the
+// wire bytes verbatim. The colon vs dot drift across the codebase is
+// catalogued as a Phase 20 normalisation follow-up; new wire types
+// landed by PR-9 use the dot form to avoid widening the gap.
 const (
 	// C→S
-	TypeAuthIdentify = "auth:identify"
-	TypeAuthResume   = "auth:resume"
-	TypeAuthRefresh  = "auth:refresh"
+	TypeAuthIdentify = "auth.identify"
+	TypeAuthResume   = "auth.resume"
+	TypeAuthRefresh  = "auth.refresh"
 
 	// S→C
-	TypeAuthChallenge       = "auth:challenge"
-	TypeAuthRevoked         = "auth:revoked"
-	TypeAuthRefreshRequired = "auth:refresh_required"
-	TypeAuthTokenIssued     = "auth:token_issued"
-	TypeAuthInvalidSession  = "auth:invalid_session"
+	TypeAuthChallenge       = "auth.challenge"
+	TypeAuthRevoked         = "auth.revoked"
+	TypeAuthRefreshRequired = "auth.refresh_required"
+	TypeAuthTokenIssued     = "auth.token_issued"
+	TypeAuthInvalidSession  = "auth.invalid_session"
 )
 
 // AuthRevokeChecker is the narrow domain surface AuthHandler needs to
