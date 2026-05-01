@@ -36,6 +36,8 @@ func (m *Module) Name() string { return "ending_branch" }
 // player message.
 func (m *Module) Init(_ context.Context, _ engine.ModuleDeps, config json.RawMessage) error {
 	if len(config) > 0 {
+		m.mu.Lock()
+		defer m.mu.Unlock()
 		return m.applyConfigLocked(config)
 	}
 	return nil
@@ -75,9 +77,9 @@ func (m *Module) BuildState() (json.RawMessage, error) {
 	})
 }
 
-// BuildStateFor returns the per-player module state. Question definitions are
-// public; respondent-specific answer data (added in PR-5) will be redacted
-// here per player role.
+// BuildStateFor delegates to BuildState in the skeleton (PR-1). PR-5 will diverge
+// them to implement per-player answer redaction; the TestModule_BuildStateFor_DelegatesTo_BuildState
+// assertion will then break — that's the TDD signal to update both impl and test atomically.
 func (m *Module) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
 	return m.BuildState()
 }
@@ -101,6 +103,8 @@ func (m *Module) Cleanup(_ context.Context) error {
 // `questions[]` 배열은 분기(impact: "branch")와 점수(impact: "score") 두 종류 통합.
 // `scoreMap`은 impact:"score" 케이스에 보기→점수 매핑 (D-24 embed).
 // `multiVoteThreshold`는 D-26 per-choice threshold (default 0.5).
+//
+// TODO(refactor): consider sync.Once cache pattern uniformly across all module Schema() impls (sibling: voting/accusation/hidden_mission).
 func (m *Module) Schema() json.RawMessage {
 	schema := map[string]any{
 		"type": "object",
@@ -114,8 +118,10 @@ func (m *Module) Schema() json.RawMessage {
 						"text":    map[string]any{"type": "string"},
 						"type":    map[string]any{"type": "string", "enum": []string{"single", "multi"}},
 						"choices": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						// TODO(PR-5): oneOf [array<string>, enum["all","some"]]
 						"respondents": map[string]any{}, // []string | "all" | "some" — runtime validate
-						"impact":  map[string]any{"type": "string", "enum": []string{"branch", "score"}},
+						"impact": map[string]any{"type": "string", "enum": []string{"branch", "score"}},
+						// TODO(PR-5): JSON Schema if/then to enforce scoreMap required when impact=="score" and forbidden when impact=="branch" (D-24 §9 example)
 						"scoreMap": map[string]any{
 							"type":                 "object",
 							"additionalProperties": map[string]any{"type": "integer"},
@@ -148,12 +154,23 @@ func (m *Module) Schema() json.RawMessage {
 		},
 		"additionalProperties": false,
 	}
-	data, _ := json.Marshal(schema)
-	return data
+	return mustMarshal(schema)
 }
 
 func init() {
 	engine.Register("ending_branch", func() engine.Module { return NewModule() })
+}
+
+// mustMarshal marshals v to JSON and panics on error.
+// Schema() uses a literal map[string]any which cannot actually fail to marshal;
+// this ensures a future contributor adding an unmarshalable value gets an
+// immediate panic (caught by tests) rather than a silent empty schema.
+func mustMarshal(v any) json.RawMessage {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic("ending_branch: Schema() marshal failed: " + err.Error())
+	}
+	return data
 }
 
 // Compile-time interface assertions.

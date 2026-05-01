@@ -1,17 +1,44 @@
 package editor
 
+// NOTE(PR-future): consider relocating to internal/domain/editor/migration/ when legacy support is removed (D-20 +1 PR drop).
+
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 
 	"github.com/rs/zerolog/log"
 )
 
+// hasLegacyKeys sniffs raw JSON bytes for known legacy keys without a full
+// unmarshal. Returns true if any legacy transformation is needed.
+//
+// Trade-off: `"modules":[` / `"modules": [` sniff has a theoretical
+// false-positive if a string value contains that exact byte sequence. Worst
+// case = unnecessary normalize round-trip (no corruption). Acceptable given
+// the ~500-2000 alloc savings on the hot GetTheme read path.
+//
+// Both compact (`"modules":[`) and pretty-printed (`"modules": [`) forms are
+// matched to handle raw blobs from any serializer.
+func hasLegacyKeys(raw json.RawMessage) bool {
+	return bytes.Contains(raw, []byte(`"clue_placement"`)) ||
+		bytes.Contains(raw, []byte(`"module_configs"`)) ||
+		bytes.Contains(raw, []byte(`"character_clues"`)) ||
+		bytes.Contains(raw, []byte(`"modules":[`)) || // legacy array form (compact)
+		bytes.Contains(raw, []byte(`"modules": [`)) // legacy array form (spaced)
+}
+
 // NormalizeConfigJSON converts legacy theme.config_json shapes (D-19/D-20/D-21)
 // into the canonical Phase 24 shape (single-map modules + entity-attached configs).
 // New-shape input is returned unchanged (lazy-on-read, idempotent).
 func NormalizeConfigJSON(raw json.RawMessage) (json.RawMessage, error) {
 	if len(raw) == 0 {
+		return raw, nil
+	}
+	// M4: early-bypass for already-normalized blobs — zero allocs on hot read path.
+	// json.Valid guards against returning invalid JSON silently (e.g. DB corruption);
+	// if invalid, fall through to the unmarshal path which returns a proper error.
+	if !hasLegacyKeys(raw) && json.Valid(raw) {
 		return raw, nil
 	}
 	var cfg map[string]any
@@ -67,6 +94,7 @@ func normalizeModules(cfg map[string]any) {
 	for _, item := range arr {
 		obj, ok := item.(map[string]any)
 		if !ok {
+			log.Warn().Interface("item", item).Str("field", "modules[]").Msg("normalizer: skipping malformed legacy item — DB may have corruption")
 			continue
 		}
 		id, _ := obj["id"].(string)
@@ -94,9 +122,13 @@ func normalizeClueLocations(cfg map[string]any) {
 	placementByLoc := make(map[string]map[string]struct{})
 	// clueId → locationId (reverse, for conflict detection)
 	placementOf := make(map[string]string)
+	// Track which locationIds are actually iterated so we can detect orphans (M1).
+	iteratedLocs := make(map[string]struct{})
+
 	for clueID, locVal := range cluePlacement {
 		locID, ok := locVal.(string)
 		if !ok {
+			log.Warn().Str("clueId", clueID).Interface("value", locVal).Str("field", "clue_placement").Msg("normalizer: skipping malformed legacy item — DB may have corruption")
 			continue
 		}
 		if placementByLoc[locID] == nil {
@@ -109,9 +141,11 @@ func normalizeClueLocations(cfg map[string]any) {
 	for _, locRaw := range locsRaw {
 		loc, ok := locRaw.(map[string]any)
 		if !ok {
+			log.Warn().Interface("item", locRaw).Str("field", "locations[]").Msg("normalizer: skipping malformed legacy item — DB may have corruption")
 			continue
 		}
 		locID, _ := loc["id"].(string)
+		iteratedLocs[locID] = struct{}{}
 
 		// Start with placement set (authoritative)
 		ids := map[string]struct{}{}
@@ -156,6 +190,19 @@ func normalizeClueLocations(cfg map[string]any) {
 		}
 		clueCfg["clueIds"] = out
 		loc["locationClueConfig"] = clueCfg
+	}
+
+	// M1: emit a Debug log for each orphan clue whose target locationId was not
+	// iterated — it will be silently dropped when clue_placement is deleted.
+	for locID, clueSet := range placementByLoc {
+		if _, consumed := iteratedLocs[locID]; !consumed {
+			for clueID := range clueSet {
+				log.Debug().
+					Str("clueId", clueID).
+					Str("orphanLocation", locID).
+					Msg("clue_placement references unknown locationId — clue dropped (D-20)")
+			}
+		}
 	}
 
 	delete(cfg, "clue_placement")

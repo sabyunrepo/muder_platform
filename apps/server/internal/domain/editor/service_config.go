@@ -28,7 +28,10 @@ func validateConfigShape(raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return fmt.Errorf("config_json: invalid JSON: %w", err)
 	}
-	if mods, ok := cfg["modules"]; ok {
+	if mods, exists := cfg["modules"]; exists {
+		if mods == nil {
+			return fmt.Errorf("config_json: modules cannot be null — use empty object {} to disable all modules")
+		}
 		if _, isMap := mods.(map[string]any); !isMap {
 			return fmt.Errorf("config_json: legacy modules shape rejected (D-19) — must be {[id]: {enabled, config?}} object map")
 		}
@@ -41,6 +44,19 @@ func validateConfigShape(raw json.RawMessage) error {
 	}
 	if _, hasOld := cfg["character_clues"]; hasOld {
 		return fmt.Errorf("config_json: legacy character_clues key rejected (D-20) — use modules.starting_clue.config.startingClues")
+	}
+	// H2: reject dead key locations[].clueIds on write (D-20 forward-only gate).
+	// The read/normalizer path unions this key; writes must use locationClueConfig.clueIds.
+	if locsRaw, ok := cfg["locations"].([]any); ok {
+		for i, locAny := range locsRaw {
+			loc, ok := locAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			if _, hasDeadKey := loc["clueIds"]; hasDeadKey {
+				return fmt.Errorf("config_json: locations[%d].clueIds dead key rejected (D-20) — use locationClueConfig.clueIds", i)
+			}
+		}
 	}
 	return nil
 }
