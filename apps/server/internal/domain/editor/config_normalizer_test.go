@@ -91,6 +91,38 @@ func TestNormalize_CluePlacementToLocations(t *testing.T) {
 	assert.False(t, hasOldKey, "clue_placement key must be removed after normalize")
 }
 
+func TestNormalize_DeadKeyUnion_PriorityCluePlacement(t *testing.T) {
+	// c1: clue_placement says library, dead key says study_room → CONFLICT (placement wins)
+	// c5: only in dead key → study_room (보충)
+	// c9: only in clue_placement → library
+	input := json.RawMessage(`{
+		"clue_placement": {"c1": "library", "c9": "library"},
+		"locations": [
+			{"id": "library"},
+			{"id": "study_room", "clueIds": ["c1", "c5"]}
+		]
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	locs := cfg["locations"].([]any)
+
+	library := locs[0].(map[string]any)
+	libraryIDs := library["locationClueConfig"].(map[string]any)["clueIds"].([]any)
+	assert.ElementsMatch(t, []any{"c1", "c9"}, libraryIDs, "placement wins for c1; c9 placement-only included")
+
+	study := locs[1].(map[string]any)
+	studyIDs := study["locationClueConfig"].(map[string]any)["clueIds"].([]any)
+	assert.ElementsMatch(t, []any{"c5"}, studyIDs, "c5 dead-key-only preserved; c1 NOT here (conflict resolved to library)")
+
+	_, hasDeadKey := study["clueIds"]
+	assert.False(t, hasDeadKey, "locations[].clueIds dead key must be removed after normalize")
+}
+
 func TestNormalize_NoOpOnNewShape(t *testing.T) {
 	input := json.RawMessage(`{
 		"modules": {

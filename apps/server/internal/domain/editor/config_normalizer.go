@@ -3,6 +3,8 @@ package editor
 import (
 	"encoding/json"
 	"sort"
+
+	"github.com/rs/zerolog/log"
 )
 
 // NormalizeConfigJSON converts legacy theme.config_json shapes (D-19/D-20/D-21)
@@ -87,11 +89,20 @@ func normalizeClueLocations(cfg map[string]any) {
 		return
 	}
 
-	placementByLoc := make(map[string][]string)
+	// locationId → set of clueIds (placement, authoritative)
+	placementByLoc := make(map[string]map[string]struct{})
+	// clueId → locationId (reverse, for conflict detection)
+	placementOf := make(map[string]string)
 	for clueID, locVal := range cluePlacement {
-		if locID, ok := locVal.(string); ok {
-			placementByLoc[locID] = append(placementByLoc[locID], clueID)
+		locID, ok := locVal.(string)
+		if !ok {
+			continue
 		}
+		if placementByLoc[locID] == nil {
+			placementByLoc[locID] = map[string]struct{}{}
+		}
+		placementByLoc[locID][clueID] = struct{}{}
+		placementOf[clueID] = locID
 	}
 
 	for _, locRaw := range locsRaw {
@@ -101,16 +112,46 @@ func normalizeClueLocations(cfg map[string]any) {
 		}
 		locID, _ := loc["id"].(string)
 
-		ids := placementByLoc[locID]
-		sort.Strings(ids)
+		// Start with placement set (authoritative)
+		ids := map[string]struct{}{}
+		for cid := range placementByLoc[locID] {
+			ids[cid] = struct{}{}
+		}
+
+		// Union with dead key, but skip if placement says elsewhere (D-21)
+		if deadKeyIDs, ok := loc["clueIds"].([]any); ok {
+			for _, idAny := range deadKeyIDs {
+				cid, ok := idAny.(string)
+				if !ok {
+					continue
+				}
+				if placementLoc, hasPlacement := placementOf[cid]; hasPlacement && placementLoc != locID {
+					log.Debug().
+						Str("clueId", cid).
+						Str("placement", placementLoc).
+						Str("deadKeyLocation", locID).
+						Msg("clue_placement conflict with dead key locations[].clueIds — placement wins (D-21)")
+					continue
+				}
+				ids[cid] = struct{}{}
+			}
+			delete(loc, "clueIds")
+		}
+
+		// Sort for deterministic output
+		sorted := make([]string, 0, len(ids))
+		for cid := range ids {
+			sorted = append(sorted, cid)
+		}
+		sort.Strings(sorted)
+		out := make([]any, 0, len(sorted))
+		for _, cid := range sorted {
+			out = append(out, cid)
+		}
 
 		clueCfg, _ := loc["locationClueConfig"].(map[string]any)
 		if clueCfg == nil {
 			clueCfg = map[string]any{}
-		}
-		out := make([]any, 0, len(ids))
-		for _, id := range ids {
-			out = append(out, id)
 		}
 		clueCfg["clueIds"] = out
 		loc["locationClueConfig"] = clueCfg
