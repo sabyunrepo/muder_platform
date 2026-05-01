@@ -37,6 +37,7 @@
 - [main 직접 push 금지 · branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check
 - [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — `--update` 증분만 사용
 - [4-agent 리뷰는 admin-merge 전](feedback_4agent_review_before_admin_merge.md) — security/perf/arch/test 4 병렬
+- [PR 리뷰 사전 체크리스트 4 axis](feedback_pre_pr_review_checklist.md) — 신규 wire catalog 일치 / spec comment 와 구현 일치 / cross-component manual E2E / fixture serial mode
 - [서브에이전트 Sonnet 4.6 기본](feedback_sonnet_46_default.md) — 보안·아키텍처는 opus-4-7
 - [메모리 canonical = repo/memory/](feedback_memory_canonical_repo.md) — user home은 archival
 - [사용자 mode 결정 후 매 task 재확인 X](feedback_mode_decision_gate.md) — admin-skip / 4-agent 우회 mode 결정 후 게이트 X
