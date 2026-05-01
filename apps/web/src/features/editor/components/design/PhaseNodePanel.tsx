@@ -1,4 +1,3 @@
-import { useRef, useEffect, useCallback } from "react";
 import type { Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,6 +8,7 @@ import type {
   PhaseAction,
 } from "../../flowTypes";
 import { flowKeys } from "../../flowTypes";
+import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
 import { ActionListEditor } from "./ActionListEditor";
 
 // ---------------------------------------------------------------------------
@@ -39,78 +39,34 @@ const SAVE_DEBOUNCE_MS = 1500;
 export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingRef = useRef<FlowNodeData | null>(null);
   const data = node.data as FlowNodeData;
 
-  /** Send the pending network write immediately and cancel the debounce timer. */
-  const flush = useCallback(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
-    if (!pendingRef.current) return;
-    const body = pendingRef.current;
-    pendingRef.current = null;
-
-    // Optimistic update: patch the node inside the flow-graph cache so other
-    // subscribers (canvas) see the latest data without waiting for the PATCH
-    // response. Capture the previous graph snapshot in closure for rollback on
-    // error — mutation-scoped so concurrent flushes don't overwrite each
-    // other's rollback targets.
-    const cacheKey = flowKeys.graph(themeId);
-    const previous = queryClient.getQueryData<FlowGraphResponse>(cacheKey);
-    if (previous) {
+  const debouncer = useDebouncedMutation<FlowNodeData>({
+    debounceMs: SAVE_DEBOUNCE_MS,
+    mutate: (body, opts) =>
+      updateNode.mutate({ nodeId: node.id, body: { data: body } }, opts),
+    applyOptimistic: (body) => {
+      const cacheKey = flowKeys.graph(themeId);
+      const previous = queryClient.getQueryData<FlowGraphResponse>(cacheKey);
+      if (!previous) return null;
       queryClient.setQueryData<FlowGraphResponse>(cacheKey, {
         ...previous,
         nodes: previous.nodes.map((n) =>
           n.id === node.id ? { ...n, data: { ...n.data, ...body } } : n,
         ),
       });
-    }
-
-    updateNode.mutate(
-      { nodeId: node.id, body: { data: body } },
-      {
-        onError: () => {
-          if (previous) {
-            queryClient.setQueryData(cacheKey, previous);
-          }
-          // On unmount, the toast surface may be torn down; sonner tolerates
-          // a post-unmount call (silent no-op if host is gone).
-          toast.error("저장에 실패했습니다");
-        },
-      },
-    );
-  }, [node.id, queryClient, themeId, updateNode]);
-
-  // Keep the latest flush reference so the unmount cleanup routes through the
-  // same optimistic + rollback path instead of a raw mutate call (M1).
-  const flushRef = useRef(flush);
-  useEffect(() => {
-    flushRef.current = flush;
-  }, [flush]);
-
-  useEffect(() => {
-    return () => {
-      // Fire any pending save on unmount so the user doesn't lose edits when
-      // they switch nodes or close the panel within the debounce window.
-      // Delegates to flush() so optimistic cache write + rollback closure stay
-      // consistent with the blur/debounce paths.
-      flushRef.current();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      return () => queryClient.setQueryData(cacheKey, previous);
+    },
+    onError: () => toast.error("저장에 실패했습니다"),
+  });
+  const flush = debouncer.flush;
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
     onUpdate(node.id, patch);
-    const merged = { ...data, ...(pendingRef.current ?? {}), ...patch };
-    pendingRef.current = merged;
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      debounceRef.current = null;
-      flush();
-    }, SAVE_DEBOUNCE_MS);
+    debouncer.schedule(
+      { ...data, ...patch },
+      (prev) => ({ ...data, ...(prev ?? {}), ...patch }),
+    );
   };
 
   return (

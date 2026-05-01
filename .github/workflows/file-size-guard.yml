@@ -1,0 +1,108 @@
+name: File Size Guard
+
+# Phase 21 E-6 — 파일 크기 누적 가드.
+#
+# 카논: memory/feedback_file_size_limit.md 의 유형별 티어 한도를 PR diff에서 검사.
+# warn-only — 실제 차단은 하지 않고 GitHub Actions ::warning:: 메시지로 PR check에
+# 표시한다. 누적 +수줄 패턴(예: ClueForm 474→481→490 ...)을 사람이 보고 판단할 수
+# 있도록 가시화하는 게 목적.
+#
+# 한도:
+#   .go            500
+#   .ts / .tsx     400
+#   .md            500
+#   CLAUDE.md      200 (자동 로딩 토큰 비용)
+#
+# 예외: sqlc/mockgen 자동 생성물, packages/*/dist/**, 테스트 fixture.
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: file-size-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: File size warn (warn-only)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout PR head
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Inspect changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # --diff-filter=AMR: include Added, Modified, AND Renamed-and-modified
+          # (CR-1) so a large rename does not bypass the size guard.
+          changed=$(git diff --name-only --diff-filter=AMR "$BASE_SHA" "$HEAD_SHA" || true)
+          if [ -z "$changed" ]; then
+            echo "No changed files in diff."
+            exit 0
+          fi
+
+          over=0
+          summary="| 파일 | LOC | 한도 | 유형 |"$'\n'"|------|-----|------|------|"
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            [ -f "$f" ] || continue
+            # Skip auto-generated and vendored.
+            case "$f" in
+              *.sql.go|*_mock.go|*/mocks/*) continue ;;
+              packages/*/dist/*|**/dist/**) continue ;;
+              **/__fixtures__/**|**/fixtures/**) continue ;;
+            esac
+            limit=0
+            kind=""
+            case "$f" in
+              CLAUDE.md|*/CLAUDE.md)
+                limit=200; kind="CLAUDE.md" ;;
+              *.md)
+                limit=500; kind="md" ;;
+              *.go)
+                limit=500; kind="go" ;;
+              *.ts|*.tsx)
+                limit=400; kind="ts/tsx" ;;
+              *)
+                continue ;;
+            esac
+            lines=$(wc -l < "$f" | tr -d ' ')
+            if [ "$lines" -gt "$limit" ]; then
+              echo "::warning file=$f::file-size $lines > $limit ($kind, canon: memory/feedback_file_size_limit.md)"
+              summary="$summary"$'\n'"| \`$f\` | $lines | $limit | $kind |"
+              over=$((over + 1))
+            fi
+          done <<EOF
+          $changed
+          EOF
+
+          {
+            echo "## File Size Guard"
+            echo ""
+            if [ "$over" -eq 0 ]; then
+              echo "All changed files within tier limits ✓"
+            else
+              echo "**$over file(s) over the tier limit** — warn-only, no merge block."
+              echo ""
+              echo "$summary"
+              echo ""
+              echo "Canon: \`memory/feedback_file_size_limit.md\`. Split pattern: \`index + refs/<topic>.md\`."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # warn-only — never fail.
+          exit 0
