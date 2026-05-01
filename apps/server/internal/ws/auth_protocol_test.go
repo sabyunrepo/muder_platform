@@ -45,6 +45,25 @@ func (f *fakeRevokeChecker) IsTokenRevoked(_ context.Context, _ string) (bool, e
 	return f.tokenRevoke, f.err
 }
 
+// ctxObservingRevokeChecker captures the context passed to
+// IsUserRevokedSince so a regression test can assert it tracks the
+// Client lifecycle (PR-9 H-2).
+type ctxObservingRevokeChecker struct {
+	captured chan context.Context
+}
+
+func (c *ctxObservingRevokeChecker) IsUserRevokedSince(ctx context.Context, _ uuid.UUID, _ time.Time) (bool, error) {
+	select {
+	case c.captured <- ctx:
+	default:
+	}
+	return false, nil
+}
+
+func (c *ctxObservingRevokeChecker) IsTokenRevoked(context.Context, string) (bool, error) {
+	return false, nil
+}
+
 // semanticRevokeChecker simulates the production migration-00027 SQL:
 // "WHERE user_id=$1 AND revoked_at > $2". It stores a single revocation
 // timestamp and returns true only when the caller's `since` predates it.
@@ -494,6 +513,43 @@ func TestAuthHandler_Identify_LoggedOutUser_CanRelogIn(t *testing.T) {
 
 	assertSilent(t, c)
 	assertChannelOpen(t, c)
+}
+
+// Regression for H-2: AuthHandler must pass the Client's lifecycle
+// context to revoke lookups so a peer disconnect cancels in-flight
+// Redis/DB calls instead of leaking a zombie goroutine on a slow
+// backing store.
+func TestAuthHandler_Identify_UsesClientContextCancelledOnClose(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	checker := &ctxObservingRevokeChecker{captured: make(chan context.Context, 1)}
+	h := newAuthHandler(t, checker, nil, true)
+	c := newTestAuthClient(userID)
+
+	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
+		Token: mintAccessToken(t, userID, testJWTSecret),
+	}))
+
+	var ctx context.Context
+	select {
+	case ctx = <-checker.captured:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("revoke checker not invoked")
+	}
+	if ctx.Err() != nil {
+		t.Fatalf("captured ctx prematurely cancelled: %v", ctx.Err())
+	}
+	if ctx == context.Background() {
+		t.Fatal("BLOCKER regression: handler passed context.Background() — closing client cannot abort the lookup")
+	}
+
+	c.Close()
+	select {
+	case <-ctx.Done():
+		// expected
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("Client.Close() did not cancel the captured revoke ctx")
+	}
 }
 
 // Defensive: a token without iat must be rejected outright rather than

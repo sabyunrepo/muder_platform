@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"sync"
 	"sync/atomic"
@@ -47,17 +48,35 @@ type Client struct {
 	closed     atomic.Bool
 	logger     zerolog.Logger
 	closedOnce sync.Once
+
+	// ctx is cancelled when Close runs; handlers performing Redis or DB
+	// I/O on behalf of this connection (auth.identify revoke lookup,
+	// auth.refresh JTI rotation, etc.) pass ctx so a peer disconnect
+	// aborts the in-flight call instead of leaving a zombie goroutine
+	// blocked on a slow backing store. See PR-9 H-2.
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewClient creates a Client bound to the given connection and hub.
 func NewClient(id uuid.UUID, conn *websocket.Conn, hub ClientHub, logger zerolog.Logger) *Client {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Client{
 		ID:     id,
 		conn:   conn,
 		hub:    hub,
 		send:   make(chan []byte, sendBufSize),
 		logger: logger.With().Stringer("playerId", id).Logger(),
+		ctx:    ctx,
+		cancel: cancel,
 	}
+}
+
+// Context returns a context that is cancelled when the Client is closed.
+// Handlers performing per-connection I/O should pass it through so the
+// call aborts on disconnect.
+func (c *Client) Context() context.Context {
+	return c.ctx
 }
 
 // ReadPump reads messages from the WebSocket connection and routes them to the hub.
@@ -217,6 +236,9 @@ func (c *Client) Close() {
 	c.closedOnce.Do(func() {
 		c.logger.Debug().Msg("closing client connection")
 		c.closed.Store(true)
+		if c.cancel != nil {
+			c.cancel()
+		}
 		close(c.send)
 		if c.conn != nil {
 			_ = c.conn.Close()

@@ -209,7 +209,7 @@ func (h *AuthHandler) handleRefresh(c *Client, env *Envelope) {
 		return
 	}
 
-	pair, err := h.refresher.RefreshToken(context.Background(), payload.Token)
+	pair, err := h.refresher.RefreshToken(c.Context(), payload.Token)
 	if err != nil {
 		h.logger.Warn().Err(err).Stringer("playerID", c.ID).
 			Msg("auth.refresh: refresher rejected token")
@@ -287,7 +287,7 @@ func (h *AuthHandler) verifyToken(c *Client, tokenStr string) (uuid.UUID, time.T
 // Returns true if the caller must stop because a response (auth.revoked
 // + close or internal error) has already been sent.
 func (h *AuthHandler) userRevokedAndStop(c *Client, userID uuid.UUID, since time.Time) bool {
-	revoked, err := h.revoke.IsUserRevokedSince(context.Background(), userID, since)
+	revoked, err := h.revoke.IsUserRevokedSince(c.Context(), userID, since)
 	if err != nil {
 		h.logger.Error().Err(err).Stringer("userID", userID).
 			Msg("revoke lookup failed")
