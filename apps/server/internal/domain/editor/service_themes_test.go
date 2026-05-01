@@ -2,7 +2,11 @@ package editor
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestService_CreateTheme_HappyPath verifies a theme can be created and
@@ -174,4 +178,51 @@ func TestService_DeleteTheme_ForbiddenForNonOwner(t *testing.T) {
 	if err := f.svc.DeleteTheme(ctx, otherID, themeID); err == nil {
 		t.Fatal("expected forbidden error for non-owner")
 	}
+}
+
+// TestGetTheme_AppliesNormalizer verifies that GetTheme normalizes a legacy
+// config_json on the read path (D-20 lazy-on-read): clue_placement is promoted
+// to locationClueConfig.clueIds, modules array is converted to object map.
+func TestGetTheme_AppliesNormalizer(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+
+	// Insert legacy shape directly (bypasses UpdateConfigJson write validation).
+	legacy := json.RawMessage(`{
+		"modules": [{"id": "voting"}],
+		"clue_placement": {"c1": "library"},
+		"locations": [{"id": "library"}]
+	}`)
+	themeID := f.insertThemeWithRawConfig(t, creatorID, legacy)
+
+	got, err := f.svc.GetTheme(ctx, creatorID, themeID)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got.ConfigJson, &cfg))
+
+	// modules must be an object map, not an array.
+	mods, ok := cfg["modules"].(map[string]any)
+	require.True(t, ok, "modules must be an object map after normalization")
+	require.Contains(t, mods, "voting")
+
+	// clue_placement must be absent (promoted to locationClueConfig.clueIds).
+	_, hasOldKey := cfg["clue_placement"]
+	assert.False(t, hasOldKey, "lazy-on-read: clue_placement absent in response")
+
+	// locations[0].locationClueConfig.clueIds must contain "c1".
+	locs, ok := cfg["locations"].([]any)
+	require.True(t, ok, "locations must be a list")
+	require.Len(t, locs, 1)
+	locMap, ok := locs[0].(map[string]any)
+	require.True(t, ok)
+	locClueCfg, ok := locMap["locationClueConfig"].(map[string]any)
+	require.True(t, ok, "locationClueConfig must be present")
+	clueIDs, ok := locClueCfg["clueIds"].([]any)
+	require.True(t, ok, "clueIds must be a list")
+	assert.Equal(t, []any{"c1"}, clueIDs)
 }
