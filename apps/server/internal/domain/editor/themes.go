@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -136,7 +135,8 @@ func (s *service) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*
 	}
 	normalized, err := NormalizeConfigJSON(theme.ConfigJson)
 	if err != nil {
-		return nil, fmt.Errorf("normalize config_json for theme %s: %w", themeID, err)
+		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to normalize config_json")
+		return nil, apperror.Internal("failed to normalize config_json")
 	}
 	theme.ConfigJson = normalized
 	return toThemeResponse(theme), nil

@@ -67,6 +67,48 @@ func TestNormalize_ModulesStringListPlusConfigsMap(t *testing.T) {
 	assert.False(t, hasOldKey, "module_configs key must be removed after normalize")
 }
 
+// TestNormalize_ModulesAlreadyMap_WithLegacyModuleConfigs covers Thread-2
+// (CodeRabbit): when modules is already a map but module_configs is still
+// present (partial-migration state), module_configs must be absorbed and deleted.
+func TestNormalize_ModulesAlreadyMap_WithLegacyModuleConfigs(t *testing.T) {
+	input := json.RawMessage(`{
+		"modules": {
+			"voting": {"enabled": true}
+		},
+		"module_configs": {
+			"voting": {"mode": "open"},
+			"audio":  {"volume": 0.8}
+		}
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	mods := cfg["modules"].(map[string]any)
+
+	// voting already had an entry; module_configs.voting should be merged only if
+	// no "config" key exists.
+	voting := mods["voting"].(map[string]any)
+	assert.Equal(t, true, voting["enabled"])
+	votingCfg, _ := voting["config"].(map[string]any)
+	require.NotNil(t, votingCfg, "module_configs.voting must be merged into modules.voting.config")
+	assert.Equal(t, "open", votingCfg["mode"])
+
+	// audio was absent in modules; it must be created from module_configs.
+	audio, ok := mods["audio"].(map[string]any)
+	require.True(t, ok, "audio entry must be created from module_configs")
+	assert.Equal(t, true, audio["enabled"])
+	audioCfg, _ := audio["config"].(map[string]any)
+	require.NotNil(t, audioCfg)
+	assert.Equal(t, float64(0.8), audioCfg["volume"])
+
+	_, hasOldKey := cfg["module_configs"]
+	assert.False(t, hasOldKey, "module_configs key must be deleted after absorption")
+}
+
 func TestNormalize_CluePlacementToLocations(t *testing.T) {
 	input := json.RawMessage(`{
 		"clue_placement": {"c1": "library", "c2": "study_room"},
@@ -125,6 +167,44 @@ func TestNormalize_DeadKeyUnion_PriorityCluePlacement(t *testing.T) {
 
 	_, hasDeadKey := study["clueIds"]
 	assert.False(t, hasDeadKey, "locations[].clueIds dead key must be removed after normalize")
+}
+
+// TestNormalize_DeadKeyOnly_NoPlacement covers the Thread-1 (CodeRabbit) fix:
+// locations[].clueIds present but no clue_placement key at all.
+// Before the fix, hasLegacyKeys() did not sniff "clueIds" so the normalizer
+// returned the blob unchanged and the dead key was never removed.
+func TestNormalize_DeadKeyOnly_NoPlacement(t *testing.T) {
+	input := json.RawMessage(`{
+		"locations": [
+			{"id": "library", "clueIds": ["c1", "c2"]},
+			{"id": "study_room", "clueIds": ["c3"]}
+		]
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	locs := cfg["locations"].([]any)
+
+	library := locs[0].(map[string]any)
+	_, hasDeadKey := library["clueIds"]
+	assert.False(t, hasDeadKey, "dead-key clueIds must be removed from locations[]")
+	libraryClueCfg, _ := library["locationClueConfig"].(map[string]any)
+	require.NotNil(t, libraryClueCfg, "locationClueConfig must be created")
+	assert.ElementsMatch(t, []any{"c1", "c2"}, libraryClueCfg["clueIds"])
+
+	study := locs[1].(map[string]any)
+	_, hasDeadKey2 := study["clueIds"]
+	assert.False(t, hasDeadKey2, "dead-key clueIds must be removed from locations[]")
+	studyClueCfg, _ := study["locationClueConfig"].(map[string]any)
+	require.NotNil(t, studyClueCfg, "locationClueConfig must be created")
+	assert.ElementsMatch(t, []any{"c3"}, studyClueCfg["clueIds"])
+
+	_, hasPlacement := cfg["clue_placement"]
+	assert.False(t, hasPlacement, "clue_placement must not appear in output")
 }
 
 func TestNormalize_CharacterCluesToStartingClueModule(t *testing.T) {

@@ -21,11 +21,21 @@ import (
 // Both compact (`"modules":[`) and pretty-printed (`"modules": [`) forms are
 // matched to handle raw blobs from any serializer.
 func hasLegacyKeys(raw json.RawMessage) bool {
-	return bytes.Contains(raw, []byte(`"clue_placement"`)) ||
+	if bytes.Contains(raw, []byte(`"clue_placement"`)) ||
 		bytes.Contains(raw, []byte(`"module_configs"`)) ||
 		bytes.Contains(raw, []byte(`"character_clues"`)) ||
 		bytes.Contains(raw, []byte(`"modules":[`)) || // legacy array form (compact)
-		bytes.Contains(raw, []byte(`"modules": [`)) // legacy array form (spaced)
+		bytes.Contains(raw, []byte(`"modules": [`)) { // legacy array form (spaced)
+		return true
+	}
+	// Dead-key-only legacy: locations[].clueIds present but locationClueConfig is
+	// absent. A blob that already has locationClueConfig is post-normalization and
+	// must not re-trigger the normalizer (idempotence / zeroing guard).
+	if bytes.Contains(raw, []byte(`"clueIds"`)) &&
+		!bytes.Contains(raw, []byte(`"locationClueConfig"`)) {
+		return true
+	}
+	return false
 }
 
 // NormalizeConfigJSON converts legacy theme.config_json shapes (D-19/D-20/D-21)
@@ -57,8 +67,24 @@ func normalizeModules(cfg map[string]any) {
 		return
 	}
 
-	// Already new shape
-	if _, ok := rawMods.(map[string]any); ok {
+	// Already new shape — but may still carry a stale module_configs key from a
+	// partial migration (D-19 partial write). Absorb any extra config entries
+	// into the existing map entries, then delete the legacy key so the namespace
+	// is fully consolidated (D-19 single-namespace invariant).
+	if modsMap, ok := rawMods.(map[string]any); ok {
+		if legacyCfgs, ok := cfg["module_configs"].(map[string]any); ok {
+			for id, c := range legacyCfgs {
+				entry, _ := modsMap[id].(map[string]any)
+				if entry == nil {
+					entry = map[string]any{"enabled": true}
+				}
+				if _, exists := entry["config"]; !exists {
+					entry["config"] = c
+				}
+				modsMap[id] = entry
+			}
+			delete(cfg, "module_configs")
+		}
 		return
 	}
 
@@ -110,21 +136,30 @@ func normalizeModules(cfg map[string]any) {
 	cfg["modules"] = out
 }
 
+// normalizeClueLocations is the coordinator that runs the four sub-steps in
+// order: index, merge, orphan-log, cleanup.
 func normalizeClueLocations(cfg map[string]any) {
-	cluePlacement, hasPlacement := cfg["clue_placement"].(map[string]any)
 	locsRaw, hasLocs := cfg["locations"].([]any)
-	// Nothing to do if no legacy clue_placement key
-	if !hasPlacement || !hasLocs {
+	// Nothing to do if no legacy location data at all.
+	if !hasLocs {
 		return
 	}
+	placementByLoc, placementOf := buildPlacementIndex(cfg)
+	iteratedLocs := mergeLocations(locsRaw, placementByLoc, placementOf)
+	logOrphans(placementByLoc, iteratedLocs)
+	delete(cfg, "clue_placement")
+}
 
-	// locationId → set of clueIds (placement, authoritative)
-	placementByLoc := make(map[string]map[string]struct{})
-	// clueId → locationId (reverse, for conflict detection)
-	placementOf := make(map[string]string)
-	// Track which locationIds are actually iterated so we can detect orphans (M1).
-	iteratedLocs := make(map[string]struct{})
-
+// buildPlacementIndex parses clue_placement into two lookup maps.
+// placementByLoc: locationId → set of clueIds (authoritative assignment).
+// placementOf: clueId → locationId (reverse index for conflict detection, D-21).
+func buildPlacementIndex(cfg map[string]any) (placementByLoc map[string]map[string]struct{}, placementOf map[string]string) {
+	placementByLoc = make(map[string]map[string]struct{})
+	placementOf = make(map[string]string)
+	cluePlacement, ok := cfg["clue_placement"].(map[string]any)
+	if !ok {
+		return
+	}
 	for clueID, locVal := range cluePlacement {
 		locID, ok := locVal.(string)
 		if !ok {
@@ -137,7 +172,14 @@ func normalizeClueLocations(cfg map[string]any) {
 		placementByLoc[locID][clueID] = struct{}{}
 		placementOf[clueID] = locID
 	}
+	return
+}
 
+// mergeLocations iterates locations[], unions placement + dead-key clueIds
+// (placement wins on conflict per D-21), writes locationClueConfig.clueIds,
+// removes dead clueIds key, and returns the set of iterated locationIds.
+func mergeLocations(locsRaw []any, placementByLoc map[string]map[string]struct{}, placementOf map[string]string) map[string]struct{} {
+	iteratedLocs := make(map[string]struct{})
 	for _, locRaw := range locsRaw {
 		loc, ok := locRaw.(map[string]any)
 		if !ok {
@@ -191,9 +233,13 @@ func normalizeClueLocations(cfg map[string]any) {
 		clueCfg["clueIds"] = out
 		loc["locationClueConfig"] = clueCfg
 	}
+	return iteratedLocs
+}
 
-	// M1: emit a Debug log for each orphan clue whose target locationId was not
-	// iterated — it will be silently dropped when clue_placement is deleted.
+// logOrphans emits Debug logs for clue_placement entries whose target
+// locationId was never encountered in locations[] — these clues are silently
+// dropped when clue_placement is deleted (M1 / D-20).
+func logOrphans(placementByLoc map[string]map[string]struct{}, iteratedLocs map[string]struct{}) {
 	for locID, clueSet := range placementByLoc {
 		if _, consumed := iteratedLocs[locID]; !consumed {
 			for clueID := range clueSet {
@@ -204,8 +250,6 @@ func normalizeClueLocations(cfg map[string]any) {
 			}
 		}
 	}
-
-	delete(cfg, "clue_placement")
 }
 
 func normalizeCharacterClues(cfg map[string]any) {
