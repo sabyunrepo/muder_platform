@@ -6,6 +6,22 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 
 ---
 
+## 2026-05-01 — Phase 21 E-1/E-6 wrap-up (PR #184)
+
+### Q-auditlog-testcontainer-flaky — `internal/auditlog` testcontainer postgres timeout 재발 빈도 미측정
+- **위치**: `apps/server/internal/auditlog/store_test.go:346` `TestStore_LatestSeq_Empty`
+- **가설**: arc-runner-set cold start (image pull + initdb) 경계 조건. PR #184 1회 발생, `gh run rerun --failed`로 통과. 재발 빈도 미측정.
+- **다음 액션**: 다음 2~3 PR의 Go CI 결과 관찰. 재발 시 `feedback_ci_infra_debt.md`에 신규 섹션 (Phase 18.3 해소 항목과 별도 신규 entry로 구분) + `testcontainers-go` start timeout 상향 또는 retry 로직 검토. 단발이면 종결.
+- **블로커 risk**: MED. flaky CI가 4-agent verdict 정상이어도 admin-merge 강행 노이즈 유발.
+
+### Q-backlog-rule-collision — backlog 등록 시 글로벌/프로젝트 CLAUDE.md 충돌 미검증
+- **위치**: Phase 18.4/18.5 종료 시 등록된 E-2 (`@jittda/ui` 마이그레이션) → 2026-04-30 검증에서 `apps/web/CLAUDE.md` L3 "Tailwind 4 직접 사용, 디자인 시스템 라이브러리 의존 없음" 룰과 충돌하여 무효 판정.
+- **가설**: backlog 항목 등록 시 글로벌 → 프로젝트 → 패키지 3계층 CLAUDE.md override 검증 단계 부재. brainstorm checklist에 추가 가능성.
+- **다음 액션**: 동일 패턴 1건 추가 발생 시 카논화 (예: `feedback_backlog_canon_check.md`). 현재는 단발 — 사용자 결정 보류.
+- **블로커 risk**: LOW. 이미 무효 처리됨. 향후 동일 패턴 발견 시 불필요 구현 비용.
+
+---
+
 ## 2026-04-28 — compound-mmp Wave 2 PR-6 wrap-up
 
 ### Q-regex: PATTERN 정규식 단어 경계 미설정 — bash 3.2 `\b` 지원 spike 필요
