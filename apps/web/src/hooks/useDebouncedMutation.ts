@@ -27,6 +27,12 @@
  * 이미 사용된 상태다. 재진입이 필요하면 `queueMicrotask` 또는
  * `setTimeout(..., 0)`으로 비동기 dispatch.
  *
+ * 동기 재진입이 실수로 발생한 경우 hook은 손상되지 않는다 — `pendingRef`는
+ * 비워진 상태에서 새 schedule이 들어오므로 다음 debounce window에 1회 더
+ * 발화한다 (회귀 테스트 "re-entrant schedule from inside mutate" 검증).
+ * 그러나 의도된 사용 패턴은 아니며, `applyOptimistic`이 두 번째 발화에서도
+ * latest body 기준으로 다시 호출되는 점에 유의.
+ *
  * ## Optimistic 시점에 대한 결정 (perf-H2)
  *
  * 빠른 타이핑 시 schedule이 N번 → 매 호출마다 setQueryData 발화 시 cache
