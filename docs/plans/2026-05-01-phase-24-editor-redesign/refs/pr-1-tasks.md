@@ -108,7 +108,7 @@ Expected: 0 issue.
 
 - [ ] **Step 63**: `compound-mmp:compound-review` 실행 (security/perf/arch/test 4 axis 병렬)
 
-```
+```bash
 /compound-review
 ```
 

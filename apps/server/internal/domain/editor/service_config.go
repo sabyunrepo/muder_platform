@@ -28,6 +28,9 @@ func validateConfigShape(raw json.RawMessage) error {
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return fmt.Errorf("config_json: invalid JSON: %w", err)
 	}
+	if cfg == nil {
+		return errors.New("config_json: payload must be a JSON object, null/non-object rejected")
+	}
 	if mods, exists := cfg["modules"]; exists {
 		if mods == nil {
 			return fmt.Errorf("config_json: modules cannot be null — use empty object {} to disable all modules")

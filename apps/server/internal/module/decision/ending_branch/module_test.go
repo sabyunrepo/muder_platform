@@ -172,6 +172,7 @@ func TestModule_ApplyConfig_InvalidJSON_ReturnsError(t *testing.T) {
 
 // TestModule_ApplyConfig_EmptyObject covers the empty-JSON-object case (4 bytes).
 // M9: review round-1 finding — nil-bytes and full config were tested but {} was not.
+// Note: {} triggers the D-26 default: MultiVoteThreshold pointer is non-nil and 0.5.
 func TestModule_ApplyConfig_EmptyObject(t *testing.T) {
 	m := NewModule()
 
@@ -179,11 +180,12 @@ func TestModule_ApplyConfig_EmptyObject(t *testing.T) {
 	err := m.ApplyConfig(context.Background(), json.RawMessage("{}"))
 	require.NoError(t, err)
 
-	// Config must be zero-valued: no questions, no matrix, no defaultEnding, threshold 0.
+	// Config must be zero-valued except threshold (D-26 default 0.5).
 	assert.Empty(t, m.cfg.Questions, "no questions after applying {}")
 	assert.Empty(t, m.cfg.Matrix, "no matrix after applying {}")
 	assert.Equal(t, "", m.cfg.DefaultEnding, "defaultEnding must be empty string after applying {}")
-	assert.Equal(t, float64(0), m.cfg.MultiVoteThreshold, "multiVoteThreshold must be 0 after applying {}")
+	require.NotNil(t, m.cfg.MultiVoteThreshold, "D-26: threshold pointer must be non-nil after applying {}")
+	assert.Equal(t, 0.5, *m.cfg.MultiVoteThreshold, "D-26: default threshold must be 0.5 after applying {}")
 
 	// BuildState must return valid JSON with zero-state shape.
 	raw, err := m.BuildState()
@@ -194,4 +196,74 @@ func TestModule_ApplyConfig_EmptyObject(t *testing.T) {
 	require.NoError(t, json.Unmarshal(raw, &state))
 	assert.Equal(t, float64(0), state["questionCount"], "zero-state: questionCount must be 0")
 	assert.Equal(t, "", state["defaultEnding"], "zero-state: defaultEnding must be empty string")
+}
+
+// TestModule_ApplyConfig_MultiVoteThresholdDefault verifies D-26 runtime behaviour:
+// absent → 0.5 default, explicit value kept, out-of-range → error.
+func TestModule_ApplyConfig_MultiVoteThresholdDefault(t *testing.T) {
+	cases := []struct {
+		name      string
+		input     string
+		wantErr   bool
+		wantErrContains string
+		wantValue float64
+	}{
+		{
+			name:      "absent → default 0.5",
+			input:     `{"questions":[],"matrix":[]}`,
+			wantErr:   false,
+			wantValue: 0.5,
+		},
+		{
+			name:      "explicit 0.7 → kept",
+			input:     `{"multiVoteThreshold":0.7}`,
+			wantErr:   false,
+			wantValue: 0.7,
+		},
+		{
+			name:      "out of range 1.5 → error",
+			input:     `{"multiVoteThreshold":1.5}`,
+			wantErr:   true,
+			wantErrContains: "multiVoteThreshold must be in [0, 1]",
+		},
+		{
+			name:      "out of range -0.1 → error",
+			input:     `{"multiVoteThreshold":-0.1}`,
+			wantErr:   true,
+			wantErrContains: "multiVoteThreshold must be in [0, 1]",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			m := NewModule()
+			err := m.ApplyConfig(context.Background(), json.RawMessage(tc.input))
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.wantErrContains)
+				return
+			}
+			require.NoError(t, err)
+			require.NotNil(t, m.cfg.MultiVoteThreshold, "threshold pointer must be non-nil after apply")
+			assert.Equal(t, tc.wantValue, *m.cfg.MultiVoteThreshold)
+		})
+	}
+}
+
+// TestModule_ApplyConfig_RejectsUnknownFields verifies the strict json.Decoder
+// rejects payloads with unknown fields (round-2 CR finding).
+func TestModule_ApplyConfig_RejectsUnknownFields(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[],"extraField":"x"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ending_branch: invalid config")
+}
+
+// TestModule_ApplyConfig_RejectsTrailingData verifies the strict json.Decoder
+// rejects payloads with trailing data after the JSON value (round-2 CR finding).
+func TestModule_ApplyConfig_RejectsTrailingData(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[]}{"trailing":"data"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "trailing data")
 }

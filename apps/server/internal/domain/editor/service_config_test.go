@@ -247,6 +247,24 @@ func TestUpdateConfigJson_RejectsLegacyShape(t *testing.T) {
 	}
 }
 
+// TestUpdateConfigJson_RejectsTopLevelNull verifies that a literal JSON null body
+// (not {"modules":null}) is rejected before any key-access — the cfg map would be
+// nil after Unmarshal and subsequent key lookups would silently no-op (round-2 CR).
+func TestUpdateConfigJson_RejectsTopLevelNull(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, json.RawMessage(`null`))
+	if err == nil {
+		t.Fatal("expected error for top-level JSON null, got nil")
+	}
+	if !strings.Contains(err.Error(), "null/non-object rejected") {
+		t.Errorf("expected error to contain %q, got: %v", "null/non-object rejected", err)
+	}
+}
+
 // TestUpdateConfigJson_RejectsNullModules verifies that {"modules": null} produces
 // a distinct error from the legacy-array case (H3 — round-2 review gap).
 func TestUpdateConfigJson_RejectsNullModules(t *testing.T) {

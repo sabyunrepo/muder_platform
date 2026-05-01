@@ -5,6 +5,7 @@
 package ending_branch
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -59,17 +60,32 @@ func (m *Module) ApplyConfig(_ context.Context, raw json.RawMessage) error {
 	return m.applyConfigLocked(raw)
 }
 
-// applyConfigLocked unmarshals raw into m.cfg. Caller must hold m.mu.Lock.
+// applyConfigLocked decodes raw into m.cfg using a strict decoder that rejects
+// unknown fields and trailing data. Caller must hold m.mu.Lock.
 // An empty or nil payload explicitly resets the config to the zero value so
 // that deletion/clear requests do not leave stale configuration in m.cfg.
+// D-26: if MultiVoteThreshold is absent (nil), defaults to 0.5. If present,
+// must be in [0, 1] or an error is returned.
 func (m *Module) applyConfigLocked(raw json.RawMessage) error {
 	if len(raw) == 0 {
 		m.cfg = Config{}
 		return nil
 	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
 	var cfg Config
-	if err := json.Unmarshal(raw, &cfg); err != nil {
+	if err := dec.Decode(&cfg); err != nil {
 		return fmt.Errorf("ending_branch: invalid config: %w", err)
+	}
+	if dec.More() {
+		return fmt.Errorf("ending_branch: invalid config: unexpected trailing data")
+	}
+	// D-26: apply default 0.5 when threshold is absent; validate range.
+	if cfg.MultiVoteThreshold == nil {
+		t := 0.5
+		cfg.MultiVoteThreshold = &t
+	} else if *cfg.MultiVoteThreshold < 0 || *cfg.MultiVoteThreshold > 1 {
+		return fmt.Errorf("ending_branch: invalid config: multiVoteThreshold must be in [0, 1], got %v", *cfg.MultiVoteThreshold)
 	}
 	m.cfg = cfg
 	return nil

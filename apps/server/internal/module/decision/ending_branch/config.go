@@ -25,5 +25,5 @@ type Config struct {
 	Questions          []Question  `json:"questions"`
 	Matrix             []MatrixRow `json:"matrix"`
 	DefaultEnding      string      `json:"defaultEnding,omitempty"`
-	MultiVoteThreshold float64     `json:"multiVoteThreshold,omitempty"` // D-26 default 0.5
+	MultiVoteThreshold *float64    `json:"multiVoteThreshold,omitempty"` // D-26 default 0.5; nil → apply default at runtime
 }
