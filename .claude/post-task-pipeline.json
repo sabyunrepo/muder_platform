@@ -1,5 +1,5 @@
 {
-  "_comment": "compound-mmp 4-agent review canon. /compound-review가 after_pr.review-* 4개 entry를 한 메시지에서 병렬 spawn한다. plan-autopilot은 폐기됨 (2026-04-21) — 자동 fix-loop/wave-merge/pr-model-overrides 모두 제거. 토큰 치환은 git/gh CLI 인자로 직접 전달하여 shell injection 차단 (refs/post-task-pipeline-bridge.md 참조).",
+  "_comment": "compound-mmp 4-agent review canon. /compound-review가 before_pr.review-* 4개 entry를 한 메시지에서 병렬 spawn한다. before_pr 블록은 PR 생성 *직전*(gh pr create 이전) 로컬 diff(git diff <base>...HEAD) 기준으로 실행 — CI 1회만 돌도록 fix-loop를 PR 외부로 모은다. plan-autopilot은 폐기됨 (2026-04-21) — 자동 fix-loop/wave-merge/pr-model-overrides 모두 제거. 토큰 치환은 git/gh CLI 인자로 직접 전달하여 shell injection 차단 (refs/post-task-pipeline-bridge.md 참조). 2026-05-01: after_pr → before_pr rename (CI 비효율 해소, feedback_4agent_review_before_admin_merge.md 카논 갱신).",
   "version": 2,
   "default_mode": "subagent",
   "after_task": [
@@ -22,7 +22,7 @@
       "action": "mark_task_complete"
     }
   ],
-  "after_pr": [
+  "before_pr": [
     {
       "name": "full-test",
       "type": "shell",
@@ -81,7 +81,7 @@
       "name": "verify",
       "type": "skill",
       "skill": "superpowers:verification-before-completion",
-      "args": "PR {pr_id} tests + lint + reviewers all passing before claiming complete",
+      "args": "PR {pr_id} tests + lint + 4-agent review all passing locally before gh pr create",
       "blocking": true
     }
   ],

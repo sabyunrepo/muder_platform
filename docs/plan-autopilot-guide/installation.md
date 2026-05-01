@@ -68,7 +68,7 @@ cp ~/.claude/skills/plan-autopilot/templates/post-task-pipeline.template.json .c
 
 그 다음 프로젝트에 맞게 커스터마이즈:
 - `after_task[].command` → 프로젝트 테스트 러너로 변경 (`go test`, `pnpm test`, `cargo test` 등)
-- `after_pr[].command` → lint, build 커맨드
+- `before_pr[].command` → lint, build 커맨드 (2026-05-01: `after_pr` → `before_pr` rename. PR 생성 *직전* 로컬에서 lint/test/4-agent review 일괄 수행 → push → CI 1회. 자세한 근거는 `memory/feedback_4agent_review_before_admin_merge.md`)
 - `pr_model_overrides` → 특정 PR에 Opus 강제 지정
 - `global.max_parallel_prs_per_wave` → CI 용량에 맞게 조정
 

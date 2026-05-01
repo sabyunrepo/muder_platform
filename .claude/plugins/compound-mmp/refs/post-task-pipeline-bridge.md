@@ -1,11 +1,22 @@
 # Post-Task-Pipeline Bridge
 
-`/compound-review`가 `.claude/post-task-pipeline.json` (repo root, 218줄)의 `after_pr` 항목을 읽어 4-agent 병렬 호출하는 카논 위치.
+`/compound-review`가 `.claude/post-task-pipeline.json` (repo root)의 `before_pr` 항목을 읽어 4-agent 병렬 호출하는 카논 위치.
+
+> **2026-05-01 rename**: `after_pr` → `before_pr`. 호출 타이밍을 `gh pr create` *직후* → *직전* 로 옮겨 CI 재실행 비효율을 제거.
+> 안전망 효과(PR-2c 사고 차단)는 동일 — push 전에 같은 4-agent 가 돌므로.
 
 ## 카논 위치
 `/Users/sabyun/goinfre/muder_platform/.claude/post-task-pipeline.json`
 
-## 4-agent 카논 매핑 (after_pr 안)
+## 호출 타이밍 (workflow timing canon)
+
+```
+git commit → /compound-review PR-N → (HIGH? fix → 다시 review) → git push -u → gh pr create → CI 1회 → admin-merge
+```
+
+**Anti-pattern (구 카논)**: `git push -u → gh pr create → /compound-review → fix → git push → CI 2회 → admin-merge` — 폐기됨.
+
+## 4-agent 카논 매핑 (before_pr 안)
 
 | name | type | agent (OMC) | model | parallel_group | 역할 |
 |------|------|-------------|-------|----------------|------|
@@ -40,12 +51,14 @@ Task(subagent_type="oh-my-claudecode:test-engineer", model="sonnet", prompt="...
 
 ## 자동 fix-loop 금지
 
-post-task-pipeline.json v2부터 `on_fail: "manual_review_required"` 정책. **PR-2c (#107) hotfix #108 사고** 이후 자동 fix-loop는 모두 제거. HIGH 발견 시:
+post-task-pipeline.json v2부터 `on_fail: "manual_review_required"` 정책. **PR-2c (#107) hotfix #108 사고** 이후 자동 fix-loop는 모두 제거. HIGH 발견 시 (PR 생성 *전* 단계):
 
 1. 결과를 `docs/plans/<phase>/refs/reviews/<pr-id>.md`에 저장
 2. 사용자에게 4 reviewer 결과 종합 표시
-3. **사용자 결정 대기** (수정/이월/무시 중 선택)
-4. 사용자가 "수정" 선택 시 `/compound-work [pr-id]`로 재진입 (별도 명시 호출)
+3. **사용자 결정 대기** (즉시 수정/PR 생성 후 별도 PR 이월/무시 중 선택)
+4. 사용자가 "수정" 선택 시 `/compound-work [pr-id]`로 재진입 (별도 명시 호출). 수정 후 같은 로컬 브랜치에 추가 commit → `/compound-review PR-N` 재실행 (영향 영역 agent 만 round-2 재spawn) → HIGH 0 도달 시 `git push -u` + `gh pr create`.
+
+> 핵심: HIGH fix 가 push *전*에 일어나므로 GitHub Actions CI 는 "최종 형태"에 대해 1회만 돈다.
 
 ## 토큰 sanitize 의무 (security HIGH-1 대응)
 

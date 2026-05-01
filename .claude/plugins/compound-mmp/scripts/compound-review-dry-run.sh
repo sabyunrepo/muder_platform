@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # /compound-review --dry-run 헬퍼.
-# post-task-pipeline.json `after_pr.review-*` 4개 entry를 읽어 토큰 치환 후 JSON array 출력.
+# post-task-pipeline.json `before_pr.review-*` 4개 entry를 읽어 토큰 치환 후 JSON array 출력.
+# (2026-05-01: after_pr → before_pr rename — PR 생성 직전 로컬 diff 기준 4-agent 호출 카논화)
 #
 # 출력 형식 (sim-case-a.md C-2 계약):
 #   [{"subagent_type": "...", "model": "...", "prompt": "..."}, ...]  # length == 4
@@ -60,7 +61,7 @@ jq -c \
   --arg pr_id "$PR_ID" \
   --arg pr_title "$PR_TITLE" \
   --arg design "$DESIGN_PATH" \
-  '[.after_pr[]
+  '[.before_pr[]
     | select(.type == "subagent" and .parallel_group == "review")
     | {
         subagent_type: .agent,

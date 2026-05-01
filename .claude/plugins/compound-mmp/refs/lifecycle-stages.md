@@ -19,8 +19,8 @@ Phase (예: Phase 19 Residual)
  │   종료 게이트: go test -race 또는 vitest 통과
  │
  ├─ Review ─ /compound-review [pr-id]
- │   진입: PR open 직전
- │   액션: .claude/post-task-pipeline.json after_pr 4 entry 병렬 spawn:
+ │   진입: gh pr create 직전 (로컬 commit 완료, push 전 또는 push 후·PR 생성 전)
+ │   액션: .claude/post-task-pipeline.json before_pr 4 entry 병렬 spawn:
  │         - review-security: oh-my-claudecode:security-reviewer (opus)
  │         - review-perf: oh-my-claudecode:code-reviewer (sonnet)
  │         - review-arch: oh-my-claudecode:critic (opus)
