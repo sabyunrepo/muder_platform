@@ -483,10 +483,12 @@ func TestAuthHandler_Identify_PassesIatAsRevokeSince(t *testing.T) {
 	if revoke.lastSince.IsZero() {
 		t.Fatal("BLOCKER regression: since=time.Time{} → mass user-lockout pattern (PR-9 C-1)")
 	}
-	// The iat is jwt.NewNumericDate(time.Now()) which is truncated to
-	// whole seconds — allow a 2s slack on either side.
-	earliest := before.Add(-2 * time.Second)
-	latest := after.Add(2 * time.Second)
+	// jwt.NewNumericDate truncates to whole seconds. Tighten the
+	// tolerance so a regression that swaps `iat` for time.Now() at
+	// call site surfaces — the in-process mint runs in microseconds
+	// so a full-second tolerance is plenty.
+	earliest := before.Truncate(time.Second).Add(-1 * time.Second)
+	latest := after.Add(1 * time.Second)
 	if revoke.lastSince.Before(earliest) || revoke.lastSince.After(latest) {
 		t.Errorf("lastSince=%v, want within [%v, %v] (token iat)",
 			revoke.lastSince, earliest, latest)
