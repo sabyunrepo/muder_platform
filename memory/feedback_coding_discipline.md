@@ -15,6 +15,7 @@ type: feedback
 - 해석이 둘 이상이면 사용자에게 제시 — 조용히 하나 고르지 않는다.
 - 더 단순한 접근이 있으면 말한다. 정당하면 푸시백.
 - 모호하면 멈추고 무엇이 모호한지 이름 붙여서 묻는다.
+- **게이트 대상 코드 존재 확인 grep 필수** — backlog 항목이 "v2", "feature flag", "gate", "wire-up" 같은 *기존 구현체에 의존하는* 변경이면 PR 분기 전에 `grep -rn <식별자>` 또는 의미 검색으로 게이트 대상 코드의 존재를 검증한다. 0 hit이면 placeholder 시도 = partial impl 카논 위반 risk → 사용자에게 brainstorm 분기 옵션 제시 (PR #190 E-5 사례, MISTAKES 등재).
 
 ### 2. Simplicity First (단순함 우선)
 - 요청한 것 외 기능 추가 금지.
