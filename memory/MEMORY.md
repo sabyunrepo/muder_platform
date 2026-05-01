@@ -7,7 +7,7 @@
 - [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol + PR-10 Runtime Payload Validation, L+L 규모). 다음 작업
 
 ## Backlog
-- [Phase 21 backlog](project_phase21_backlog.md) — Phase 23 follow-ups (P0-1 chicken-egg / P1-4 Composite action / P1-5 govulncheck pin / P1-6 ubuntu SHA pin / P1-7 ARG DOCKER_GID), Phase 19 audit log orphan action 7건. 에디터 리팩터(useDebouncedMutation·@jittda/ui 마이그레이션·Config 409 3-way merge)는 Phase 24 후보로 별도 brainstorm
+- [Phase 21 backlog](project_phase21_backlog.md) — Phase 19 audit log orphan action 7건, 에디터 리팩터 7건(E-3/E-5/E-7/E-8/E-10/E-11/E-12). Phase 23 인프라 follow-ups 5건은 Closed 2026-05-01 (KT Cloud KS arc-runner-set 진화로 superseded)
 
 ## 도메인 카논
 - [소셜 시스템](project_social_system.md) — SocialHub, Redis Presence, WS 핸들러, 차단 필터링
