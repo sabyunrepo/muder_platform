@@ -1,6 +1,9 @@
 package editor
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"sort"
+)
 
 // NormalizeConfigJSON converts legacy theme.config_json shapes (D-19/D-20/D-21)
 // into the canonical Phase 24 shape (single-map modules + entity-attached configs).
@@ -14,6 +17,7 @@ func NormalizeConfigJSON(raw json.RawMessage) (json.RawMessage, error) {
 		return nil, err
 	}
 	normalizeModules(cfg)
+	normalizeClueLocations(cfg)
 	return json.Marshal(cfg)
 }
 
@@ -73,4 +77,44 @@ func normalizeModules(cfg map[string]any) {
 		out[id] = entry
 	}
 	cfg["modules"] = out
+}
+
+func normalizeClueLocations(cfg map[string]any) {
+	cluePlacement, hasPlacement := cfg["clue_placement"].(map[string]any)
+	locsRaw, hasLocs := cfg["locations"].([]any)
+	// Nothing to do if no legacy clue_placement key
+	if !hasPlacement || !hasLocs {
+		return
+	}
+
+	placementByLoc := make(map[string][]string)
+	for clueID, locVal := range cluePlacement {
+		if locID, ok := locVal.(string); ok {
+			placementByLoc[locID] = append(placementByLoc[locID], clueID)
+		}
+	}
+
+	for _, locRaw := range locsRaw {
+		loc, ok := locRaw.(map[string]any)
+		if !ok {
+			continue
+		}
+		locID, _ := loc["id"].(string)
+
+		ids := placementByLoc[locID]
+		sort.Strings(ids)
+
+		clueCfg, _ := loc["locationClueConfig"].(map[string]any)
+		if clueCfg == nil {
+			clueCfg = map[string]any{}
+		}
+		out := make([]any, 0, len(ids))
+		for _, id := range ids {
+			out = append(out, id)
+		}
+		clueCfg["clueIds"] = out
+		loc["locationClueConfig"] = clueCfg
+	}
+
+	delete(cfg, "clue_placement")
 }

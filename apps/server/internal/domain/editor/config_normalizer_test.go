@@ -63,6 +63,34 @@ func TestNormalize_ModulesStringListPlusConfigsMap(t *testing.T) {
 	assert.False(t, hasOldKey, "module_configs key must be removed after normalize")
 }
 
+func TestNormalize_CluePlacementToLocations(t *testing.T) {
+	input := json.RawMessage(`{
+		"clue_placement": {"c1": "library", "c2": "study_room"},
+		"locations": [
+			{"id": "library"},
+			{"id": "study_room"}
+		]
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	locs := cfg["locations"].([]any)
+	library := locs[0].(map[string]any)
+	libraryClueCfg := library["locationClueConfig"].(map[string]any)
+	assert.Equal(t, []any{"c1"}, libraryClueCfg["clueIds"])
+
+	study := locs[1].(map[string]any)
+	studyClueCfg := study["locationClueConfig"].(map[string]any)
+	assert.Equal(t, []any{"c2"}, studyClueCfg["clueIds"])
+
+	_, hasOldKey := cfg["clue_placement"]
+	assert.False(t, hasOldKey, "clue_placement key must be removed after normalize")
+}
+
 func TestNormalize_NoOpOnNewShape(t *testing.T) {
 	input := json.RawMessage(`{
 		"modules": {
