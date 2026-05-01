@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -13,12 +14,46 @@ import (
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
+// validateConfigShape rejects config_json payloads that use any of the known
+// legacy shapes (D-19/D-20 forward-only gate). New writes must use:
+//   - modules: {[id]: {enabled, config?}} object map (not array)
+//   - locationClueConfig.clueIds for clue placement (not top-level clue_placement)
+//   - modules[id].config for module config (not top-level module_configs)
+//   - modules.starting_clue for character clues (not top-level character_clues)
+func validateConfigShape(raw json.RawMessage) error {
+	if len(raw) == 0 {
+		return nil
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("config_json: invalid JSON: %w", err)
+	}
+	if mods, ok := cfg["modules"]; ok {
+		if _, isMap := mods.(map[string]any); !isMap {
+			return fmt.Errorf("config_json: legacy modules shape rejected (D-19) — must be {[id]: {enabled, config?}} object map")
+		}
+	}
+	if _, hasOld := cfg["clue_placement"]; hasOld {
+		return fmt.Errorf("config_json: legacy clue_placement key rejected (D-20) — use locations[].locationClueConfig.clueIds")
+	}
+	if _, hasOld := cfg["module_configs"]; hasOld {
+		return fmt.Errorf("config_json: legacy module_configs key rejected (D-19) — embed config inside modules[id].config")
+	}
+	if _, hasOld := cfg["character_clues"]; hasOld {
+		return fmt.Errorf("config_json: legacy character_clues key rejected (D-20) — use modules.starting_clue.config.startingClues")
+	}
+	return nil
+}
+
 // UpdateConfigJson updates the theme's config_json using an optimistic lock
 // keyed by version. On version mismatch (pgx.ErrNoRows from the conditional
 // UPDATE), the current version is re-read and returned in the RFC 9457
 // Problem Details "extensions.current_version" field so the client can perform
 // a silent rebase without a second round-trip.
 func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.UUID, config json.RawMessage) (*ThemeResponse, error) {
+	if err := validateConfigShape(config); err != nil {
+		return nil, apperror.BadRequest(err.Error())
+	}
 	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
 	if err != nil {
 		return nil, err

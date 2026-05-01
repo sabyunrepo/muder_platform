@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -212,6 +213,85 @@ func TestUpdateConfigJson_NotFound(t *testing.T) {
 	}
 	if appErr.Code != apperror.ErrNotFound {
 		t.Errorf("expected NOT_FOUND, got %s", appErr.Code)
+	}
+}
+
+// TestUpdateConfigJson_RejectsLegacyShape verifies that UpdateConfigJson rejects
+// all four known legacy config shapes (D-19/D-20 forward-only gate).
+func TestUpdateConfigJson_RejectsLegacyShape(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name:  "modules array",
+			input: json.RawMessage(`{"modules": [{"id": "voting"}]}`),
+			want:  "legacy modules shape rejected (D-19)",
+		},
+		{
+			name:  "clue_placement key",
+			input: json.RawMessage(`{"modules": {}, "clue_placement": {"c1": "library"}}`),
+			want:  "legacy clue_placement key rejected (D-20)",
+		},
+		{
+			name:  "module_configs key",
+			input: json.RawMessage(`{"modules": {"voting": {"enabled": true}}, "module_configs": {}}`),
+			want:  "legacy module_configs key rejected (D-19)",
+		},
+		{
+			name:  "character_clues key",
+			input: json.RawMessage(`{"modules": {}, "character_clues": {}}`),
+			want:  "legacy character_clues key rejected (D-20)",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !errors.As(err, new(*apperror.AppError)) {
+				t.Fatalf("expected *apperror.AppError for %s, got %T: %v", tc.name, err, err)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+// TestUpdateConfigJson_AcceptsNewShape verifies that UpdateConfigJson accepts
+// a valid new-shape config and bumps the version (D-19/D-20 forward-only gate).
+func TestUpdateConfigJson_AcceptsNewShape(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	newShape := json.RawMessage(`{
+		"modules": {"voting": {"enabled": true, "config": {"mode": "open"}}},
+		"locations": [{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}}]
+	}`)
+
+	updated, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, newShape)
+	if err != nil {
+		t.Fatalf("UpdateConfigJson with new shape: %v", err)
+	}
+	if updated.Version <= 1 {
+		t.Errorf("expected version > 1 after update, got %d", updated.Version)
 	}
 }
 
