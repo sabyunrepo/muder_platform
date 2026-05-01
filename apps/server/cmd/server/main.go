@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -296,16 +297,25 @@ func main() {
 	// dispatcher (AuthHandler.enabled). Server → client push (Hub.RevokeUser)
 	// stays wired regardless so that flag-on staging exercises both
 	// directions and a flag-off rollback still cleans up logout sockets.
+	// Both wsHub and socialHub satisfy auth.RevokePublisher; combine them
+	// so a single auth.Service push fans out to every live socket the
+	// user owns. compositeRevokePublisher (defined in main.go below this
+	// block) is a tiny inline aggregator — short-circuits to the single
+	// hub when no follow-up adapters are wired.
+	revokePublisher := compositeRevokePublisher{publishers: []auth.RevokePublisher{wsHub, socialHub}}
 	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret),
-		auditLog, revokeRepo, wsHub, logger)
+		auditLog, revokeRepo, revokePublisher, logger)
 	authHandler := auth.NewHandler(authSvc)
 	wsAuthHandler := ws.NewAuthHandler([]byte(cfg.JWTSecret), revokeRepo, authSvc,
 		cfg.WSAuthProtocol, logger)
 	// Dot-form auth.* events: register each C→S sub-action explicitly
 	// since Router.Route only splits on the colon. See PR-9 retro note
-	// in auth_protocol.go for the form choice rationale.
+	// in auth_protocol.go for the form choice rationale. Both routers
+	// receive the same handler so identify/resume/refresh work on game
+	// and social endpoints alike.
 	for _, t := range []string{ws.TypeAuthIdentify, ws.TypeAuthResume, ws.TypeAuthRefresh} {
 		wsRouter.Handle(t, wsAuthHandler.Handle)
+		socialRouter.Handle(t, wsAuthHandler.Handle)
 	}
 	logger.Info().Bool("enabled", cfg.WSAuthProtocol).
 		Msg("WS auth protocol handler registered")
@@ -402,4 +412,43 @@ func main() {
 	if err := srv.Start(); err != nil {
 		logger.Fatal().Err(err).Msg("server exited with error")
 	}
+}
+
+// compositeRevokePublisher fans a single auth.Service revoke call out to
+// every wired auth.RevokePublisher (today: game Hub + SocialHub). The
+// first error wins so the caller still sees a failure surface, but later
+// publishers are still invoked — a slow or down hub does not silently
+// skip the others.
+type compositeRevokePublisher struct {
+	publishers []auth.RevokePublisher
+}
+
+func (c compositeRevokePublisher) RevokeUser(ctx context.Context, userID uuid.UUID, code, reason string) error {
+	var firstErr error
+	for _, p := range c.publishers {
+		if err := p.RevokeUser(ctx, userID, code, reason); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+func (c compositeRevokePublisher) RevokeSession(ctx context.Context, sessionID uuid.UUID, code, reason string) error {
+	var firstErr error
+	for _, p := range c.publishers {
+		if err := p.RevokeSession(ctx, sessionID, code, reason); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+func (c compositeRevokePublisher) RevokeToken(ctx context.Context, tokenJTI, code, reason string) error {
+	var firstErr error
+	for _, p := range c.publishers {
+		if err := p.RevokeToken(ctx, tokenJTI, code, reason); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
 }

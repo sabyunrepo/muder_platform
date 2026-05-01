@@ -38,6 +38,12 @@ interface ProbeResult {
   closeCode?: number;
 }
 
+// Serial mode because both tests log in as the same e2e seed user. With
+// workers=2 the second test's WS register would silently steal the first
+// test's slot via SocialHub's single-session enforcement, masking the
+// real PR-9 push.
+test.describe.configure({ mode: "serial" });
+
 test.describe("PR-9 WS Auth Protocol — revoke pushes close within 30s", () => {
   test.beforeEach(async ({ request }) => {
     const health = await request
@@ -70,7 +76,11 @@ test.describe("PR-9 WS Auth Protocol — revoke pushes close within 30s", () => 
     // exercises the same code path the production WsClient takes.
     // The promise resolves either when onclose fires (success) or after
     // a hard timeout (failure measured against the 30s budget).
-    await page.goto("about:blank");
+    // The Go server CheckOrigin enforces CORS_ORIGINS even in dev mode
+    // when the list is non-empty. Loading the page from the same origin
+    // as `pnpm dev` (http://localhost:3000) so the WebSocket handshake
+    // carries an allowed Origin header.
+    await page.goto("http://localhost:3000/");
     const probe = page.evaluate<ProbeResult, { token: string; deadlineMs: number; wsBase: string }>(
       ({ token, deadlineMs, wsBase }) =>
         new Promise<ProbeResult>((resolve) => {
@@ -162,6 +172,7 @@ test.describe("PR-9 WS Auth Protocol — revoke pushes close within 30s", () => 
   });
 
   test("post-revoke reconnect with the same token is rejected within 30s", async ({
+    page,
     request,
   }) => {
     const loginRes = await request.post(`${BACKEND_HTTP}/api/v1/auth/login`, {
@@ -177,66 +188,66 @@ test.describe("PR-9 WS Auth Protocol — revoke pushes close within 30s", () => 
     );
     expect(logoutRes.ok()).toBe(true);
 
-    // The access token is still cryptographically valid (15-min TTL),
-    // so the upgrade itself should succeed. The PR-9 pull fallback in
+    // The access token is still cryptographically valid (15-min TTL), so
+    // the upgrade itself succeeds. The PR-9 pull fallback in
     // AuthHandler.handleIdentify rejects the post-open identify because
     // IsUserRevokedSince returns true. Verify by issuing the WS upgrade
+    // from the page context (which carries an allowed Origin header)
     // and watching for an auth.revoked frame followed by close.
-    //
-    // This part of the spec runs purely from node — no page evaluate
-    // needed because the Playwright request fixture cannot upgrade to
-    // WebSocket. Fall back to skipping cleanly when the runtime lacks
-    // a WebSocket constructor.
-    test.skip(
-      typeof globalThis.WebSocket !== "function",
-      "node runtime lacks global WebSocket; rerun with --ui or a newer node",
+    await page.goto("http://localhost:3000/");
+    const result = await page.evaluate<ProbeResult, { token: string; deadlineMs: number; wsBase: string }>(
+      ({ token, deadlineMs, wsBase }) =>
+        new Promise<ProbeResult>((resolve) => {
+          const t0 = Date.now();
+          const ws = new WebSocket(
+            `${wsBase}/ws/social?token=${encodeURIComponent(token)}`,
+          );
+          let opened = false;
+          let receivedRevoked = false;
+          ws.onopen = () => {
+            opened = true;
+            ws.send(
+              JSON.stringify({
+                type: "auth.identify",
+                payload: { token },
+                ts: Date.now(),
+                seq: 0,
+              }),
+            );
+          };
+          ws.onmessage = (ev) => {
+            try {
+              const msg = JSON.parse(String(ev.data)) as { type?: string };
+              if (msg.type === "auth.revoked") {
+                receivedRevoked = true;
+              }
+            } catch {
+              /* ignore */
+            }
+          };
+          ws.onclose = (ev) => {
+            resolve({
+              closed: opened,
+              lapsedMs: Date.now() - t0,
+              receivedRevoked,
+              closeCode: ev.code,
+            });
+          };
+          setTimeout(() => {
+            try {
+              ws.close();
+            } catch {
+              /* already closed */
+            }
+            resolve({
+              closed: false,
+              lapsedMs: Date.now() - t0,
+              receivedRevoked,
+            });
+          }, deadlineMs);
+        }),
+      { token: tokens.access_token, deadlineMs: REVOKE_DEADLINE_MS, wsBase: BACKEND_WS },
     );
-
-    const result = await new Promise<ProbeResult>((resolve) => {
-      const t0 = Date.now();
-      const ws = new globalThis.WebSocket(
-        `${BACKEND_WS}/ws/social?token=${encodeURIComponent(tokens.access_token)}`,
-      );
-      let opened = false;
-      let receivedRevoked = false;
-      ws.onopen = () => {
-        opened = true;
-        ws.send(
-          JSON.stringify({
-            type: "auth.identify",
-            payload: { token: tokens.access_token },
-            ts: Date.now(),
-            seq: 0,
-          }),
-        );
-      };
-      ws.onmessage = (ev: MessageEvent) => {
-        try {
-          const msg = JSON.parse(String(ev.data)) as { type?: string };
-          if (msg.type === "auth.revoked") {
-            receivedRevoked = true;
-          }
-        } catch {
-          /* ignore */
-        }
-      };
-      ws.onclose = (ev: CloseEvent) => {
-        resolve({
-          closed: opened,
-          lapsedMs: Date.now() - t0,
-          receivedRevoked,
-          closeCode: ev.code,
-        });
-      };
-      setTimeout(() => {
-        try {
-          ws.close();
-        } catch {
-          /* already closed */
-        }
-        resolve({ closed: false, lapsedMs: Date.now() - t0, receivedRevoked });
-      }, REVOKE_DEADLINE_MS);
-    });
 
     expect(result.closed).toBe(true);
     expect(result.lapsedMs).toBeLessThan(REVOKE_DEADLINE_MS);
