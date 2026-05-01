@@ -24,3 +24,14 @@ func TestRegistry_EndingBranchRegistered(t *testing.T) {
 	assert.Contains(t, names, "ending_branch",
 		"ending_branch must be registered after decision blank-import")
 }
+
+// TestRegistry_AllDecisionModulesRegistered asserts that all four decision
+// sub-modules are registered after the decision package is blank-imported.
+// M8: review round-1 finding — only ending_branch was asserted; accusation,
+// voting, and hidden_mission registration breaks would pass silently.
+func TestRegistry_AllDecisionModulesRegistered(t *testing.T) {
+	registered := engine.RegisteredModules()
+	required := []string{"accusation", "voting", "hidden_mission", "ending_branch"}
+	assert.Subset(t, registered, required,
+		"all four decision sub-modules must be registered after decision blank-import")
+}
