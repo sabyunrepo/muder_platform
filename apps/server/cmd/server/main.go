@@ -151,11 +151,12 @@ func main() {
 	logger.Info().Msg("auditlog started")
 
 	// 9. Domain Services
-	// PR-9 Task 3.6 will inject the real *auth.RevokeRepo (sqlc-backed)
-	// and the *ws.Hub publisher here once the WS layer is built. nil
-	// resolves to NoopRevokeRepo / NoopRevokePublisher so the staged
-	// MMP_WS_AUTH_PROTOCOL rollout stays buildable.
-	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), auditLog, nil, nil, logger)
+	// PR-9 wiring note: authSvc is constructed below (§11.6) once the
+	// game Hub exists, because auth.NewService needs the Hub as its
+	// RevokePublisher. revokeRepo is created here — its sqlc-backed
+	// surface depends only on `queries` and gets injected into both
+	// authSvc and the WS auth handler.
+	revokeRepo := auth.NewRevokeRepo(queries)
 	profileSvc := profile.NewService(queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
@@ -228,7 +229,8 @@ func main() {
 	bus.Subscribe(eventbus.TypeGameStarted, coinSvc.HandleGameStarted)
 
 	// 10. Domain Handlers
-	authHandler := auth.NewHandler(authSvc)
+	// authHandler moved to §11.6 because it depends on authSvc which
+	// itself depends on the game Hub publisher.
 	profileHandler := profile.NewHandler(profileSvc)
 	themeHandler := theme.NewHandler(themeSvc)
 	editorHandler := editor.NewHandler(editorSvc, auditLog, logger)
@@ -280,6 +282,28 @@ func main() {
 	socialRouter.Handle("chat", socialWSHandler.HandleChat)
 	socialRouter.Handle("friend", socialWSHandler.HandleFriend)
 	socialRouter.Handle("presence", socialWSHandler.HandlePresence)
+
+	// 11.6. PR-9 WS Auth Protocol wiring.
+	//
+	// auth.Service depends on the game Hub as its RevokePublisher so
+	// that Logout / RefreshToken family-attack paths can push close to
+	// live sockets. SocialHub revoke push is left for a follow-up — the
+	// game Hub covers the in-game ban path, which is the W4 acceptance
+	// scenario; social-only sockets close on their next mutation when
+	// the user reconnects and fails the auth.identify pull check.
+	//
+	// MMP_WS_AUTH_PROTOCOL gates only the *inbound* auth.* frame
+	// dispatcher (AuthHandler.enabled). Server → client push (Hub.RevokeUser)
+	// stays wired regardless so that flag-on staging exercises both
+	// directions and a flag-off rollback still cleans up logout sockets.
+	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret),
+		auditLog, revokeRepo, wsHub, logger)
+	authHandler := auth.NewHandler(authSvc)
+	wsAuthHandler := ws.NewAuthHandler([]byte(cfg.JWTSecret), revokeRepo, authSvc,
+		cfg.WSAuthProtocol, logger)
+	wsRouter.Handle("auth", wsAuthHandler.Handle)
+	logger.Info().Bool("enabled", cfg.WSAuthProtocol).
+		Msg("WS auth protocol handler registered")
 
 	// 12. HTTP Router
 	r := chi.NewRouter()
