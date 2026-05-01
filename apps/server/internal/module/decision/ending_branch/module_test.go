@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -82,4 +83,113 @@ func TestModule_ApplyConfig_ParsesQuestions(t *testing.T) {
 	require.Len(t, m.cfg.Questions, 1)
 	assert.Equal(t, "q1", m.cfg.Questions[0].ID)
 	assert.Equal(t, "branch", m.cfg.Questions[0].Impact)
+}
+
+// TestModule_BuildState_EmptyModule verifies BuildState returns valid JSON with
+// zero-state metadata when the module has no config applied.
+func TestModule_BuildState_EmptyModule(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	require.NotEmpty(t, raw)
+
+	// Must be valid JSON.
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	assert.Equal(t, float64(0), state["questionCount"], "no questions loaded → count 0")
+}
+
+// TestModule_BuildState_WithConfig verifies BuildState reflects configured metadata.
+func TestModule_BuildState_WithConfig(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "선택?", "type": "single", "choices": ["A","B"], "impact": "branch"},
+			{"id": "q2", "text": "점수?", "type": "single", "choices": ["X","Y"], "impact": "score"}
+		],
+		"matrix": [],
+		"defaultEnding": "좋은결말"
+	}`)
+	require.NoError(t, m.ApplyConfig(context.Background(), cfg))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	assert.Equal(t, float64(2), state["questionCount"])
+	assert.Equal(t, "좋은결말", state["defaultEnding"])
+}
+
+// TestModule_BuildStateFor_DelegatesTo_BuildState verifies BuildStateFor returns
+// the same valid JSON as BuildState (per-player redaction deferred to PR-5).
+func TestModule_BuildStateFor_DelegatesTo_BuildState(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	playerID := uuid.New()
+
+	forPlayer, err := m.BuildStateFor(playerID)
+	require.NoError(t, err)
+	require.NotEmpty(t, forPlayer)
+
+	global, err := m.BuildState()
+	require.NoError(t, err)
+
+	// Skeleton: per-player state equals global state.
+	assert.JSONEq(t, string(global), string(forPlayer))
+}
+
+// TestModule_HandleMessage_NotImplemented verifies the stub returns the expected
+// "not yet implemented (PR-5)" error and does not panic.
+func TestModule_HandleMessage_NotImplemented(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	err := m.HandleMessage(context.Background(), uuid.New(), "submit_answer", json.RawMessage(`{}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "PR-5", "stub must reference PR-5 deferral")
+}
+
+// TestModule_Cleanup_ReturnsNil verifies Cleanup resets state and returns nil.
+func TestModule_Cleanup_ReturnsNil(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "?", "type": "single", "choices": ["A"], "impact": "branch"}
+		],
+		"matrix": [], "defaultEnding": "end"
+	}`)
+	require.NoError(t, m.ApplyConfig(context.Background(), cfg))
+
+	err := m.Cleanup(context.Background())
+	require.NoError(t, err)
+
+	// State must be zeroed after cleanup.
+	raw, buildErr := m.BuildState()
+	require.NoError(t, buildErr)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	assert.Equal(t, float64(0), state["questionCount"], "cleanup must zero question count")
+}
+
+// TestModule_Init_InvalidJSON_ReturnsError exercises the error path in Init
+// (and the json.Unmarshal error branch in applyConfigLocked).
+func TestModule_Init_InvalidJSON_ReturnsError(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	err := m.Init(context.Background(), engine.ModuleDeps{}, json.RawMessage(`not valid json`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ending_branch: invalid config")
+}
+
+// TestModule_ApplyConfig_InvalidJSON_ReturnsError exercises the error path in
+// ApplyConfig → applyConfigLocked with invalid JSON.
+func TestModule_ApplyConfig_InvalidJSON_ReturnsError(t *testing.T) {
+	t.Helper()
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{bad json`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "ending_branch: invalid config")
 }
