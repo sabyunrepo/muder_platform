@@ -2,6 +2,7 @@ name: Security — Fast Feedback
 
 # paths filter (CI 슬림화 — Phase 23 follow-up "CI pruning P0" 후속):
 # docs/memory/plan 변경 PR 시 fire 0. Go/Node 의존성 또는 본 workflow 자체 변경에만 fire.
+# gitleaks는 별도 .github/workflows/gitleaks.yml 로 분리됨 (모든 경로 secret scan 보장).
 on:
   pull_request:
     branches: [main]
@@ -64,28 +65,3 @@ jobs:
         working-directory: apps/server
         continue-on-error: true
         run: govulncheck ./...
-
-  gitleaks:
-    name: gitleaks (Secret scan)
-    runs-on: arc-runner-set
-    timeout-minutes: 5
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-        with:
-          fetch-depth: 0
-
-      - name: Run gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_CONFIG: .gitleaks.toml
-          GITLEAKS_ENABLE_COMMENTS: false
-          # Phase 23 Custom Image: docker GID 990 + working dir 정합성. artifact upload 복원 (Sec-MED-2).
-          # Verify는 본 PR 머지 + 사용자 host 재배포 후 첫 CI run에서 자연 발생 — fail 시 hotfix + #3 follow-up PR.
-          GITLEAKS_ENABLE_SUMMARY: true

@@ -1,0 +1,42 @@
+name: Gitleaks Secret Scan
+
+# Secret scan은 모든 PR/push에 fire (paths-filter 없음).
+# 이유: secret leak은 코드 외 경로(infra/, scripts/, docs/, root config)에서도 발생 가능.
+# security-fast.yml의 paths-filter trap (코드 PR에만 fire) 회귀 hotfix.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: gitleaks (Secret scan)
+    runs-on: arc-runner-set
+    timeout-minutes: 5
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: false
+          # Phase 23 Custom Image: docker GID 990 + working dir 정합성. artifact upload (Sec-MED-2).
+          GITLEAKS_ENABLE_SUMMARY: true
