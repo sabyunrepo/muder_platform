@@ -181,8 +181,14 @@ export function useDebouncedMutation<TBody>(
   // ref is up to date even if an immediate schedule fires before the next
   // commit — also avoids re-running the effect on every parent re-render
   // when callers pass inline lambdas.
+  // Latest options snapshot, synced via useEffect so we only mutate the ref
+  // post-commit. (Round-2 N-2: writing a ref in the render body is unsafe
+  // under React 19 concurrent rendering — speculative renders can be replayed
+  // and the ref would briefly hold stale-or-future values during that window.)
   const optsRef = useRef<OptsRef<TBody>>({ mutate, applyOptimistic, onError });
-  optsRef.current = { mutate, applyOptimistic, onError };
+  useEffect(() => {
+    optsRef.current = { mutate, applyOptimistic, onError };
+  }, [mutate, applyOptimistic, onError]);
 
   // useRef return values have stable identity, so memoizing the bag with
   // empty deps gives us a once-and-done refs object — callbacks below can

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import { User } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -54,23 +54,36 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       ? (cm as Record<string, Mission[]>) : {};
   }, [theme.config_json]);
 
+  // Pre-edit snapshot captured at the FIRST schedule of a debounce window —
+  // distinct from the schedule-time UI mirror that follows. This is the
+  // correct rollback target on mutation failure (round-2 N-1 / CodeRabbit).
+  // Cleared after the mutation settles (success or rollback) so the next
+  // edit window starts fresh.
+  const pendingSnapshotRef = useRef<EditorThemeResponse | undefined>(undefined);
+
   const debouncer = useDebouncedMutation<ConfigPatch>({
     debounceMs: SAVE_DEBOUNCE_MS,
     mutate: (body, opts) =>
       updateConfig.mutate(body, {
-        onSuccess: () => toast.success('저장되었습니다'),
-        onError: opts.onError,
+        onSuccess: () => {
+          toast.success('저장되었습니다');
+          pendingSnapshotRef.current = undefined;
+        },
+        onError: (err) => {
+          // The hook's onError chain runs first (rollback → toast.error),
+          // then we clear so a follow-up edit captures a fresh snapshot.
+          opts.onError(err);
+          pendingSnapshotRef.current = undefined;
+        },
       }),
-    applyOptimistic: (body) => {
-      // Capture the previous theme snapshot inside the closure so concurrent
-      // flushes each rollback to their own pre-state instead of sharing a ref.
-      const cacheKey = editorKeys.theme(themeId);
-      const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+    applyOptimistic: () => {
+      // Build the rollback closure from the pre-edit snapshot captured in
+      // saveConfig — NOT from the current cache (which already has the
+      // schedule-time mirror applied). On failure, restore truly to the
+      // pre-edit state.
+      const previous = pendingSnapshotRef.current;
       if (!previous) return null;
-      queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
-        ...previous,
-        config_json: { ...(previous.config_json ?? {}), ...body },
-      });
+      const cacheKey = editorKeys.theme(themeId);
       return () => queryClient.setQueryData(cacheKey, previous);
     },
     onError: () => toast.error('저장에 실패했습니다'),
@@ -79,18 +92,24 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
   const saveConfig = useCallback(
     (updates: ConfigPatch) => {
-      // Schedule-time UI mirror — character assignments need to flip
-      // synchronously (toggle/checkbox UX). The hook's `applyOptimistic`
-      // runs at flush time only (perf-H2 — avoids N cache writes per
-      // keystroke burst), so we mirror here for *immediate* visual feedback.
-      // The flush-time apply still captures rollback for the network failure
-      // path; both layers are intentional.
       const cacheKey = editorKeys.theme(themeId);
-      const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
-      if (previous) {
+
+      // Capture the *true* pre-edit snapshot once per debounce window. This
+      // is the rollback target on mutation failure — distinct from the
+      // schedule-time UI mirror below.
+      if (!pendingSnapshotRef.current) {
+        pendingSnapshotRef.current = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+      }
+
+      // Schedule-time UI mirror — character toggles need sync feedback so
+      // users see the flip immediately, not after the debounce window. The
+      // hook's `applyOptimistic` runs at flush time and captures the rollback
+      // closure pointing at `pendingSnapshotRef.current`.
+      const cacheNow = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+      if (cacheNow) {
         queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
-          ...previous,
-          config_json: { ...(previous.config_json ?? {}), ...updates },
+          ...cacheNow,
+          config_json: { ...(cacheNow.config_json ?? {}), ...updates },
         });
       }
 

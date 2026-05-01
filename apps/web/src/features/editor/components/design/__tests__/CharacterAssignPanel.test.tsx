@@ -182,6 +182,40 @@ describe('CharacterAssignPanel', () => {
     expect(() => opts.onError?.(new Error('boom'))).not.toThrow();
   });
 
+  it('rollback이 진짜 pre-edit snapshot으로 복원한다 (round-2 N-1 / CR)', async () => {
+    // round-2: schedule-time mirror로 즉시 cache가 변경된 후, mutation 실패
+    // 시 rollback이 그 mirror된 상태가 아니라 *진짜 pre-edit* snapshot으로
+    // 되돌아가야 한다. pendingSnapshotRef가 첫 schedule 시점에 캡처한
+    // baseTheme로 cache가 복원되는지 검증.
+    const { qc } = renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+
+    // schedule-time mirror 즉시 적용된 상태 확인.
+    const mirrored = qc.getQueryData<typeof baseTheme>(['editor', 'themes', 'theme-1']);
+    expect(
+      (mirrored?.config_json?.character_clues as Record<string, string[]>)?.['char-1'],
+    ).toContain('clue-1');
+
+    await act(async () => { vi.advanceTimersByTime(1500); });
+    const [, opts] = mutateMock.mock.calls[0] as [
+      unknown,
+      { onError?: (e: Error) => void },
+    ];
+
+    // Trigger the failure path.
+    act(() => {
+      opts.onError?.(new Error('boom'));
+    });
+
+    // Cache is restored to the original baseTheme snapshot — character_clues
+    // was undefined originally, so the toggled key is gone.
+    const restored = qc.getQueryData<typeof baseTheme>(['editor', 'themes', 'theme-1']);
+    expect(restored?.config_json?.character_clues).toBeUndefined();
+  });
+
   it('미션 추가 버튼이 동작한다 (1500ms debounce)', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
