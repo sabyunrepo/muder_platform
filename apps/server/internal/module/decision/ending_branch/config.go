@@ -5,10 +5,10 @@ package ending_branch
 type Question struct {
 	ID          string         `json:"id"`
 	Text        string         `json:"text"`
-	Type        string         `json:"type"`              // "single" | "multi"
+	Type        string         `json:"type"` // "single" | "multi"
 	Choices     []string       `json:"choices"`
 	Respondents any            `json:"respondents,omitempty"` // []string | "all" | "some" — runtime validate
-	Impact      string         `json:"impact"`            // "branch" | "score"
+	Impact      string         `json:"impact"`                // "branch" | "score"
 	ScoreMap    map[string]int `json:"scoreMap,omitempty"`
 }
 

@@ -120,7 +120,7 @@ func (m *Module) Schema() json.RawMessage {
 						"choices": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 						// TODO(PR-5): oneOf [array<string>, enum["all","some"]]
 						"respondents": map[string]any{}, // []string | "all" | "some" — runtime validate
-						"impact": map[string]any{"type": "string", "enum": []string{"branch", "score"}},
+						"impact":      map[string]any{"type": "string", "enum": []string{"branch", "score"}},
 						// TODO(PR-5): JSON Schema if/then to enforce scoreMap required when impact=="score" and forbidden when impact=="branch" (D-24 §9 example)
 						"scoreMap": map[string]any{
 							"type":                 "object",
