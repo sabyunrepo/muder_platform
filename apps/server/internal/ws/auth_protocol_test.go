@@ -34,14 +34,40 @@ func (f *fakeRevokeChecker) IsTokenRevoked(_ context.Context, _ string) (bool, e
 	return f.tokenRevoke, f.err
 }
 
+type fakeRefresher struct {
+	pair *auth.TokenPair
+	err  error
+}
+
+func (f *fakeRefresher) RefreshToken(_ context.Context, _ string) (*auth.TokenPair, error) {
+	return f.pair, f.err
+}
+
 type noopAuthHub struct{}
 
-func (noopAuthHub) Register(*Client)              {}
-func (noopAuthHub) Unregister(*Client)            {}
-func (noopAuthHub) Route(*Client, *Envelope)      {}
+func (noopAuthHub) Register(*Client)         {}
+func (noopAuthHub) Unregister(*Client)       {}
+func (noopAuthHub) Route(*Client, *Envelope) {}
 
 func newTestAuthClient(id uuid.UUID) *Client {
 	return NewClient(id, nil, noopAuthHub{}, zerolog.Nop())
+}
+
+func newTestAuthClientWithSession(id, sessionID uuid.UUID) *Client {
+	c := NewClient(id, nil, noopAuthHub{}, zerolog.Nop())
+	c.SessionID = sessionID
+	return c
+}
+
+func newAuthHandler(t *testing.T, revoke AuthRevokeChecker, refresher AuthRefresher, enabled bool) *AuthHandler {
+	t.Helper()
+	if revoke == nil {
+		revoke = &fakeRevokeChecker{}
+	}
+	if refresher == nil {
+		refresher = &fakeRefresher{}
+	}
+	return NewAuthHandler(testJWTSecret, revoke, refresher, enabled, zerolog.Nop())
 }
 
 func mintAccessToken(t *testing.T, sub uuid.UUID, secret []byte) string {
@@ -60,6 +86,23 @@ func mintAccessToken(t *testing.T, sub uuid.UUID, secret []byte) string {
 	return signed
 }
 
+// signTokenWithSub mints a token with an arbitrary string subject (escape
+// hatch for the "subject is not a uuid" case).
+func signTokenWithSub(t *testing.T, sub string, secret []byte) string {
+	t.Helper()
+	claims := jwt.MapClaims{
+		"sub": sub,
+		"exp": jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+		"iat": jwt.NewNumericDate(time.Now()),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(secret)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	return signed
+}
+
 func identifyEnv(t *testing.T, payload AuthIdentifyPayload) *Envelope {
 	t.Helper()
 	raw, err := json.Marshal(payload)
@@ -67,6 +110,24 @@ func identifyEnv(t *testing.T, payload AuthIdentifyPayload) *Envelope {
 		t.Fatalf("marshal payload: %v", err)
 	}
 	return &Envelope{Type: TypeAuthIdentify, Payload: raw}
+}
+
+func resumeEnv(t *testing.T, payload AuthResumePayload) *Envelope {
+	t.Helper()
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	return &Envelope{Type: TypeAuthResume, Payload: raw}
+}
+
+func refreshEnv(t *testing.T, payload AuthRefreshPayload) *Envelope {
+	t.Helper()
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+	return &Envelope{Type: TypeAuthRefresh, Payload: raw}
 }
 
 func envWithRawPayload(envType string, raw []byte) *Envelope {
@@ -155,7 +216,7 @@ func TestNewAuthHandler_NilSecretPanics(t *testing.T) {
 			t.Fatal("expected panic for nil/empty secret")
 		}
 	}()
-	NewAuthHandler(nil, &fakeRevokeChecker{}, true, zerolog.Nop())
+	NewAuthHandler(nil, &fakeRevokeChecker{}, &fakeRefresher{}, true, zerolog.Nop())
 }
 
 func TestNewAuthHandler_NilRevokePanics(t *testing.T) {
@@ -164,7 +225,16 @@ func TestNewAuthHandler_NilRevokePanics(t *testing.T) {
 			t.Fatal("expected panic for nil revoke checker")
 		}
 	}()
-	NewAuthHandler(testJWTSecret, nil, true, zerolog.Nop())
+	NewAuthHandler(testJWTSecret, nil, &fakeRefresher{}, true, zerolog.Nop())
+}
+
+func TestNewAuthHandler_NilRefresherPanics(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatal("expected panic for nil refresher")
+		}
+	}()
+	NewAuthHandler(testJWTSecret, &fakeRevokeChecker{}, nil, true, zerolog.Nop())
 }
 
 // ---------------------------------------------------------------------------
@@ -173,13 +243,14 @@ func TestNewAuthHandler_NilRevokePanics(t *testing.T) {
 
 func TestAuthHandler_FlagOff_SilentDropForAllAuthFrames(t *testing.T) {
 	t.Parallel()
-	h := NewAuthHandler(testJWTSecret, &fakeRevokeChecker{}, false, zerolog.Nop())
+	h := newAuthHandler(t, nil, nil, false)
 	userID := uuid.New()
 
 	frames := []*Envelope{
 		identifyEnv(t, AuthIdentifyPayload{Token: mintAccessToken(t, userID, testJWTSecret)}),
 		envWithRawPayload(TypeAuthIdentify, json.RawMessage("not json at all")),
-		envWithRawPayload(TypeAuthResume, json.RawMessage(`{}`)),
+		resumeEnv(t, AuthResumePayload{Token: "x", SessionID: uuid.New(), LastSeq: 1}),
+		refreshEnv(t, AuthRefreshPayload{Token: "any-refresh-token"}),
 		envWithRawPayload("auth:totally-unknown", json.RawMessage(`{}`)),
 	}
 	for _, env := range frames {
@@ -191,13 +262,13 @@ func TestAuthHandler_FlagOff_SilentDropForAllAuthFrames(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Happy path
+// auth.identify
 // ---------------------------------------------------------------------------
 
 func TestAuthHandler_Identify_HappyPath_Silent(t *testing.T) {
 	t.Parallel()
 	userID := uuid.New()
-	h := NewAuthHandler(testJWTSecret, &fakeRevokeChecker{}, true, zerolog.Nop())
+	h := newAuthHandler(t, nil, nil, true)
 	c := newTestAuthClient(userID)
 
 	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
@@ -207,10 +278,6 @@ func TestAuthHandler_Identify_HappyPath_Silent(t *testing.T) {
 	assertSilent(t, c)
 	assertChannelOpen(t, c)
 }
-
-// ---------------------------------------------------------------------------
-// Reject bad input — 4000 BadMessage, do NOT close
-// ---------------------------------------------------------------------------
 
 func TestAuthHandler_Identify_RejectsBadInput_NoClose(t *testing.T) {
 	t.Parallel()
@@ -226,7 +293,7 @@ func TestAuthHandler_Identify_RejectsBadInput_NoClose(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := NewAuthHandler(testJWTSecret, &fakeRevokeChecker{}, true, zerolog.Nop())
+			h := newAuthHandler(t, nil, nil, true)
 			c := newTestAuthClient(userID)
 			h.Handle(c, tc.env)
 
@@ -239,10 +306,6 @@ func TestAuthHandler_Identify_RejectsBadInput_NoClose(t *testing.T) {
 		})
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Unauthorize + close — 4001 Unauthorized
-// ---------------------------------------------------------------------------
 
 func TestAuthHandler_Identify_UnauthorizesAndCloses(t *testing.T) {
 	t.Parallel()
@@ -268,7 +331,7 @@ func TestAuthHandler_Identify_UnauthorizesAndCloses(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := NewAuthHandler(testJWTSecret, &fakeRevokeChecker{}, true, zerolog.Nop())
+			h := newAuthHandler(t, nil, nil, true)
 			c := newTestAuthClient(userID)
 			h.Handle(c, identifyEnv(t, AuthIdentifyPayload{Token: tc.token}))
 
@@ -282,32 +345,10 @@ func TestAuthHandler_Identify_UnauthorizesAndCloses(t *testing.T) {
 	}
 }
 
-// signTokenWithSub mints a token with an arbitrary string subject (escape
-// hatch for the "subject is not a uuid" case where mintAccessToken would
-// reject early).
-func signTokenWithSub(t *testing.T, sub string, secret []byte) string {
-	t.Helper()
-	claims := jwt.MapClaims{
-		"sub": sub,
-		"exp": jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
-		"iat": jwt.NewNumericDate(time.Now()),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(secret)
-	if err != nil {
-		t.Fatalf("sign: %v", err)
-	}
-	return signed
-}
-
-// ---------------------------------------------------------------------------
-// User revoked — auth.revoked envelope + close
-// ---------------------------------------------------------------------------
-
 func TestAuthHandler_Identify_UserRevoked_SendsAuthRevokedAndCloses(t *testing.T) {
 	t.Parallel()
 	userID := uuid.New()
-	h := NewAuthHandler(testJWTSecret, &fakeRevokeChecker{userRevoked: true}, true, zerolog.Nop())
+	h := newAuthHandler(t, &fakeRevokeChecker{userRevoked: true}, nil, true)
 	c := newTestAuthClient(userID)
 
 	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
@@ -331,19 +372,10 @@ func TestAuthHandler_Identify_UserRevoked_SendsAuthRevokedAndCloses(t *testing.T
 	assertChannelClosed(t, c)
 }
 
-// ---------------------------------------------------------------------------
-// Revoke check error — 4010 Internal, do NOT close
-// ---------------------------------------------------------------------------
-
 func TestAuthHandler_Identify_RevokeLookupError_InternalError_NoClose(t *testing.T) {
 	t.Parallel()
 	userID := uuid.New()
-	h := NewAuthHandler(
-		testJWTSecret,
-		&fakeRevokeChecker{err: errors.New("db down")},
-		true,
-		zerolog.Nop(),
-	)
+	h := newAuthHandler(t, &fakeRevokeChecker{err: errors.New("db down")}, nil, true)
 	c := newTestAuthClient(userID)
 
 	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
@@ -359,40 +391,244 @@ func TestAuthHandler_Identify_RevokeLookupError_InternalError_NoClose(t *testing
 }
 
 // ---------------------------------------------------------------------------
-// Sub-action dispatch
+// auth.resume
 // ---------------------------------------------------------------------------
 
-func TestAuthHandler_Handle_SubActions(t *testing.T) {
+func TestAuthHandler_Resume_HappyPath_Silent(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	sessionID := uuid.New()
+	h := newAuthHandler(t, nil, nil, true)
+	c := newTestAuthClientWithSession(userID, sessionID)
+
+	h.Handle(c, resumeEnv(t, AuthResumePayload{
+		Token:     mintAccessToken(t, userID, testJWTSecret),
+		SessionID: sessionID,
+		LastSeq:   42,
+	}))
+
+	assertSilent(t, c)
+	assertChannelOpen(t, c)
+}
+
+func TestAuthHandler_Resume_RejectsBadInput_NoClose(t *testing.T) {
 	t.Parallel()
 	userID := uuid.New()
 
 	cases := []struct {
-		name     string
-		envType  string
-		wantSub  string
-		wantCode ErrorCode
+		name string
+		env  *Envelope
 	}{
-		{"resume not implemented yet", TypeAuthResume, "not yet implemented", ErrCodeBadMessage},
-		{"refresh not implemented yet", TypeAuthRefresh, "not yet implemented", ErrCodeBadMessage},
-		{"unknown sub-action", "auth:totally-bogus", "unknown auth sub-action", ErrCodeBadMessage},
+		{"malformed payload JSON", envWithRawPayload(TypeAuthResume, []byte("not-json"))},
+		{"empty token", resumeEnv(t, AuthResumePayload{Token: "", SessionID: uuid.New(), LastSeq: 0})},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			h := NewAuthHandler(testJWTSecret, &fakeRevokeChecker{}, true, zerolog.Nop())
+			h := newAuthHandler(t, nil, nil, true)
 			c := newTestAuthClient(userID)
-			h.Handle(c, envWithRawPayload(tc.envType, json.RawMessage(`{}`)))
+			h.Handle(c, tc.env)
 
 			env := recvOne(t, c)
 			ep := errorPayload(t, env)
-			if ep.Code != tc.wantCode {
-				t.Errorf("Code=%d, want %d", ep.Code, tc.wantCode)
-			}
-			if !contains(ep.Message, tc.wantSub) {
-				t.Errorf("Message=%q does not contain %q", ep.Message, tc.wantSub)
+			if ep.Code != ErrCodeBadMessage {
+				t.Errorf("Code=%d, want %d (BadMessage)", ep.Code, ErrCodeBadMessage)
 			}
 			assertChannelOpen(t, c)
 		})
 	}
+}
+
+func TestAuthHandler_Resume_UnauthorizesOnInvalidToken(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	otherID := uuid.New()
+	sessionID := uuid.New()
+
+	cases := []struct {
+		name  string
+		token string
+	}{
+		{"invalid signature", mintAccessToken(t, userID, []byte("different-secret-padding-bytes--"))},
+		{"subject mismatches connection player", mintAccessToken(t, otherID, testJWTSecret)},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newAuthHandler(t, nil, nil, true)
+			c := newTestAuthClientWithSession(userID, sessionID)
+			h.Handle(c, resumeEnv(t, AuthResumePayload{
+				Token:     tc.token,
+				SessionID: sessionID,
+				LastSeq:   1,
+			}))
+
+			env := recvOne(t, c)
+			ep := errorPayload(t, env)
+			if ep.Code != ErrCodeUnauthorized {
+				t.Errorf("Code=%d, want %d (Unauthorized)", ep.Code, ErrCodeUnauthorized)
+			}
+			assertChannelClosed(t, c)
+		})
+	}
+}
+
+func TestAuthHandler_Resume_UserRevoked_AuthRevokedAndClose(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	sessionID := uuid.New()
+	h := newAuthHandler(t, &fakeRevokeChecker{userRevoked: true}, nil, true)
+	c := newTestAuthClientWithSession(userID, sessionID)
+
+	h.Handle(c, resumeEnv(t, AuthResumePayload{
+		Token:     mintAccessToken(t, userID, testJWTSecret),
+		SessionID: sessionID,
+		LastSeq:   1,
+	}))
+
+	env := recvOne(t, c)
+	if env.Type != TypeAuthRevoked {
+		t.Fatalf("Type=%q, want %q", env.Type, TypeAuthRevoked)
+	}
+	assertChannelClosed(t, c)
+}
+
+func TestAuthHandler_Resume_SessionIDMismatch_InvalidSessionResumableTrue(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	connSessionID := uuid.New()
+	clientSessionID := uuid.New()
+	h := newAuthHandler(t, nil, nil, true)
+	c := newTestAuthClientWithSession(userID, connSessionID)
+
+	h.Handle(c, resumeEnv(t, AuthResumePayload{
+		Token:     mintAccessToken(t, userID, testJWTSecret),
+		SessionID: clientSessionID, // != connSessionID
+		LastSeq:   1,
+	}))
+
+	env := recvOne(t, c)
+	if env.Type != TypeAuthInvalidSession {
+		t.Fatalf("Type=%q, want %q", env.Type, TypeAuthInvalidSession)
+	}
+	var ip AuthInvalidSessionPayload
+	if err := json.Unmarshal(env.Payload, &ip); err != nil {
+		t.Fatalf("unmarshal AuthInvalidSessionPayload: %v", err)
+	}
+	if !ip.Resumable {
+		t.Error("expected Resumable=true (re-identify allowed)")
+	}
+	if ip.Reason == "" {
+		t.Error("expected Reason populated")
+	}
+	assertChannelClosed(t, c)
+}
+
+// ---------------------------------------------------------------------------
+// auth.refresh
+// ---------------------------------------------------------------------------
+
+func TestAuthHandler_Refresh_HappyPath_TokenIssued(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	pair := &auth.TokenPair{
+		AccessToken:  "new-access-token-abc",
+		RefreshToken: "new-refresh-token-xyz",
+		ExpiresIn:    900,
+	}
+	h := newAuthHandler(t, nil, &fakeRefresher{pair: pair}, true)
+	c := newTestAuthClient(userID)
+
+	before := time.Now()
+	h.Handle(c, refreshEnv(t, AuthRefreshPayload{Token: "any-refresh-token"}))
+	after := time.Now()
+
+	env := recvOne(t, c)
+	if env.Type != TypeAuthTokenIssued {
+		t.Fatalf("Type=%q, want %q", env.Type, TypeAuthTokenIssued)
+	}
+	var tp AuthTokenIssuedPayload
+	if err := json.Unmarshal(env.Payload, &tp); err != nil {
+		t.Fatalf("unmarshal AuthTokenIssuedPayload: %v", err)
+	}
+	if tp.Token != pair.AccessToken {
+		t.Errorf("Token=%q, want %q", tp.Token, pair.AccessToken)
+	}
+	// ExpiresAt should be roughly before+ExpiresIn .. after+ExpiresIn.
+	earliest := before.Add(time.Duration(pair.ExpiresIn) * time.Second)
+	latest := after.Add(time.Duration(pair.ExpiresIn) * time.Second)
+	if tp.ExpiresAt.Before(earliest) || tp.ExpiresAt.After(latest) {
+		t.Errorf("ExpiresAt=%v, want within [%v, %v]", tp.ExpiresAt, earliest, latest)
+	}
+	assertChannelOpen(t, c)
+}
+
+func TestAuthHandler_Refresh_RejectsBadInput_NoClose(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+
+	cases := []struct {
+		name string
+		env  *Envelope
+	}{
+		{"malformed payload JSON", envWithRawPayload(TypeAuthRefresh, []byte("not-json"))},
+		{"empty token", refreshEnv(t, AuthRefreshPayload{Token: ""})},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newAuthHandler(t, nil, nil, true)
+			c := newTestAuthClient(userID)
+			h.Handle(c, tc.env)
+
+			env := recvOne(t, c)
+			ep := errorPayload(t, env)
+			if ep.Code != ErrCodeBadMessage {
+				t.Errorf("Code=%d, want %d (BadMessage)", ep.Code, ErrCodeBadMessage)
+			}
+			assertChannelOpen(t, c)
+		})
+	}
+}
+
+func TestAuthHandler_Refresh_RefresherError_UnauthorizedAndClose(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	h := newAuthHandler(t, nil, &fakeRefresher{err: errors.New("invalid or expired refresh token")}, true)
+	c := newTestAuthClient(userID)
+
+	h.Handle(c, refreshEnv(t, AuthRefreshPayload{Token: "any-refresh-token"}))
+
+	env := recvOne(t, c)
+	ep := errorPayload(t, env)
+	if ep.Code != ErrCodeUnauthorized {
+		t.Errorf("Code=%d, want %d (Unauthorized)", ep.Code, ErrCodeUnauthorized)
+	}
+	// The underlying error message should not leak verbatim.
+	if contains(ep.Message, "expired refresh") {
+		t.Errorf("Message leaked underlying error: %q", ep.Message)
+	}
+	assertChannelClosed(t, c)
+}
+
+// ---------------------------------------------------------------------------
+// Sub-action dispatch — only "unknown" remains, resume/refresh now real
+// ---------------------------------------------------------------------------
+
+func TestAuthHandler_Handle_UnknownSubAction(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	h := newAuthHandler(t, nil, nil, true)
+	c := newTestAuthClient(userID)
+
+	h.Handle(c, envWithRawPayload("auth:totally-bogus", json.RawMessage(`{}`)))
+
+	env := recvOne(t, c)
+	ep := errorPayload(t, env)
+	if ep.Code != ErrCodeBadMessage {
+		t.Errorf("Code=%d, want %d", ep.Code, ErrCodeBadMessage)
+	}
+	if !contains(ep.Message, "unknown auth sub-action") {
+		t.Errorf("Message=%q does not contain marker", ep.Message)
+	}
+	assertChannelOpen(t, c)
 }
 
 // contains is a substring check helper to keep assertions readable.
