@@ -121,23 +121,6 @@ func TestModule_BuildState_WithConfig(t *testing.T) {
 	assert.Equal(t, "좋은결말", state["defaultEnding"])
 }
 
-// TestModule_BuildStateFor_DelegatesTo_BuildState verifies BuildStateFor returns
-// the same valid JSON as BuildState (per-player redaction deferred to PR-5).
-func TestModule_BuildStateFor_DelegatesTo_BuildState(t *testing.T) {
-	m := NewModule()
-	playerID := uuid.New()
-
-	forPlayer, err := m.BuildStateFor(playerID)
-	require.NoError(t, err)
-	require.NotEmpty(t, forPlayer)
-
-	global, err := m.BuildState()
-	require.NoError(t, err)
-
-	// Skeleton: per-player state equals global state.
-	assert.JSONEq(t, string(global), string(forPlayer))
-}
-
 // TestModule_HandleMessage_NotImplemented verifies the stub returns the expected
 // "not yet implemented (PR-5)" error and does not panic.
 func TestModule_HandleMessage_NotImplemented(t *testing.T) {

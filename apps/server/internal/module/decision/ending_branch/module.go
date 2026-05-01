@@ -18,7 +18,14 @@ import (
 // Module implements the ending_branch session module.
 // It is a skeleton for Phase 24 PR-1: Name + Schema + Init + ApplyConfig are
 // fully implemented; HandleMessage and matrix evaluation are deferred to PR-5.
+//
+// Skeleton declares PublicStateModule (engine.PublicStateMarker embed) because
+// the only state currently exposed is config-derived metadata (question count,
+// default ending) — identical for every player. PR-5 will (a) drop the marker,
+// (b) add BuildStateFor with real per-player answer redaction. The F-sec-2
+// playeraware-lint canon enforces that switch atomically.
 type Module struct {
+	engine.PublicStateMarker
 	mu  sync.RWMutex
 	cfg Config
 }
@@ -75,13 +82,6 @@ func (m *Module) BuildState() (json.RawMessage, error) {
 		"questionCount": len(m.cfg.Questions),
 		"defaultEnding": m.cfg.DefaultEnding,
 	})
-}
-
-// BuildStateFor delegates to BuildState in the skeleton (PR-1). PR-5 will diverge
-// them to implement per-player answer redaction; the TestModule_BuildStateFor_DelegatesTo_BuildState
-// assertion will then break — that's the TDD signal to update both impl and test atomically.
-func (m *Module) BuildStateFor(_ uuid.UUID) (json.RawMessage, error) {
-	return m.BuildState()
 }
 
 // HandleMessage processes a player action routed to this module.
@@ -177,5 +177,5 @@ func mustMarshal(v any) json.RawMessage {
 var (
 	_ engine.Module            = (*Module)(nil)
 	_ engine.ConfigSchema      = (*Module)(nil)
-	_ engine.PlayerAwareModule = (*Module)(nil)
+	_ engine.PublicStateModule = (*Module)(nil)
 )
