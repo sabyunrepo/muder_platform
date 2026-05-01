@@ -215,6 +215,9 @@ importers:
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@25.5.2)(jsdom@29.0.1)(lightningcss@1.32.0)(msw@2.13.3(@types/node@25.5.2)(typescript@5.9.3))(terser@5.46.1)
 
   tooling/typescript: {}
 
