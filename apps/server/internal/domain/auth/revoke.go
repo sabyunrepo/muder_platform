@@ -59,6 +59,33 @@ type RevokeRepo interface {
 	ListRecent(ctx context.Context, userID uuid.UUID, limit int32) ([]RevokeRecord, error)
 }
 
+// NoopRevokeRepo is the default RevokeRepo when MMP_WS_AUTH_PROTOCOL is
+// off or before main.go wires the real sqlc-backed repo (Task 3.6). All
+// methods return zero values without touching the database, so
+// service.Logout etc. stay wirable in test fixtures and during the
+// staged rollout without requiring a live revoke_log table.
+type NoopRevokeRepo struct{}
+
+func (NoopRevokeRepo) Insert(context.Context, RevokeEntry) (RevokeRecord, error) {
+	return RevokeRecord{}, nil
+}
+
+func (NoopRevokeRepo) IsUserRevokedSince(context.Context, uuid.UUID, time.Time) (bool, error) {
+	return false, nil
+}
+
+func (NoopRevokeRepo) IsTokenRevoked(context.Context, string) (bool, error) {
+	return false, nil
+}
+
+func (NoopRevokeRepo) IsSessionRevoked(context.Context, uuid.UUID) (bool, error) {
+	return false, nil
+}
+
+func (NoopRevokeRepo) ListRecent(context.Context, uuid.UUID, int32) ([]RevokeRecord, error) {
+	return nil, nil
+}
+
 // revokeQuerier is the narrow sqlc surface required by revokeRepo. Tests
 // can inject a fake to assert pgtype mapping without a live database;
 // production wires *db.Queries.

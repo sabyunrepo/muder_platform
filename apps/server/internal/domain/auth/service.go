@@ -64,11 +64,13 @@ type authQuerier interface {
 }
 
 type service struct {
-	queries   authQuerier
-	redis     *redis.Client
-	jwtSecret []byte
-	logger    zerolog.Logger
-	audit     auditlog.Logger
+	queries    authQuerier
+	redis      *redis.Client
+	jwtSecret  []byte
+	logger     zerolog.Logger
+	audit      auditlog.Logger
+	revokeRepo RevokeRepo
+	publisher  RevokePublisher
 }
 
 // NewService creates a new auth service.
@@ -78,22 +80,65 @@ type service struct {
 // context that does not wire the audit pipeline. In production the caller
 // is expected to inject a running auditlog.DBLogger so that login,
 // register, logout, and account-deletion events are captured.
+//
+// Phase 19 PR-9: `revokeRepo` and `publisher` are likewise optional. nil
+// resolves to NoopRevokeRepo / NoopRevokePublisher so existing fixtures
+// and the pre-Task-3.6 main.go wiring stay buildable while the staged
+// MMP_WS_AUTH_PROTOCOL rollout is in progress. Production must inject
+// the real sqlc-backed repo and the *ws.Hub publisher.
 func NewService(
 	queries authQuerier,
 	redisClient *redis.Client,
 	jwtSecret []byte,
 	audit auditlog.Logger,
+	revokeRepo RevokeRepo,
+	publisher RevokePublisher,
 	logger zerolog.Logger,
 ) Service {
 	if audit == nil {
 		audit = auditlog.NoOpLogger{}
 	}
+	if revokeRepo == nil {
+		revokeRepo = NoopRevokeRepo{}
+	}
+	if publisher == nil {
+		publisher = NoopRevokePublisher{}
+	}
 	return &service{
-		queries:   queries,
-		redis:     redisClient,
-		jwtSecret: jwtSecret,
-		logger:    logger.With().Str("domain", "auth").Logger(),
-		audit:     audit,
+		queries:    queries,
+		redis:      redisClient,
+		jwtSecret:  jwtSecret,
+		logger:     logger.With().Str("domain", "auth").Logger(),
+		audit:      audit,
+		revokeRepo: revokeRepo,
+		publisher:  publisher,
+	}
+}
+
+// recordRevoke writes a persistent revoke_log row and pushes auth.revoked
+// to live WS sessions. Both side effects are best-effort: a failure is
+// logged but does not block the calling auth flow, mirroring the audit
+// pipeline (additive, never blocks primary auth behaviour). When the
+// MMP_WS_AUTH_PROTOCOL flag is off the publisher is a no-op so live
+// sockets stay attached and the legacy upgrade-time JWT check remains
+// the only auth gate; the revoke_log row is still written so the next
+// reconnect after the flag flip is rejected via the pull fallback.
+func (s *service) recordRevoke(ctx context.Context, userID uuid.UUID, code, reason string) {
+	if _, err := s.revokeRepo.Insert(ctx, RevokeEntry{
+		UserID: userID,
+		Reason: reason,
+		Code:   code,
+	}); err != nil {
+		s.logger.Warn().Err(err).
+			Str("user_id", userID.String()).
+			Str("code", code).
+			Msg("revoke_log insert failed")
+	}
+	if err := s.publisher.RevokeUser(ctx, userID, code, reason); err != nil {
+		s.logger.Warn().Err(err).
+			Str("user_id", userID.String()).
+			Str("code", code).
+			Msg("revoke push failed")
 	}
 }
 
@@ -237,6 +282,12 @@ func (s *service) RefreshToken(ctx context.Context, refreshTokenStr string) (*To
 		// Token reuse detected — revoke all tokens for this user (family attack).
 		s.logger.Warn().Str("user_id", sub).Str("jti", jti).Msg("refresh token reuse detected, revoking all tokens")
 		s.revokeAllTokens(ctx, sub)
+		// PR-9: persist revoke + push close to live WS sessions. Use
+		// admin_revoked code because this is a server-side security
+		// response, not a user-initiated logout. userID was parsed
+		// above so the call is safe.
+		s.recordRevoke(ctx, userID, RevokeCodeAdminRevoked,
+			"refresh token reuse detected")
 		return nil, apperror.Unauthorized("refresh token has been revoked")
 	}
 
@@ -266,6 +317,10 @@ func (s *service) Logout(ctx context.Context, userID uuid.UUID) error {
 	s.revokeAllTokens(ctx, userID.String())
 	s.logger.Info().Str("user_id", userID.String()).Msg("user logged out, all refresh tokens revoked")
 	s.recordAudit(ctx, auditlog.ActionUserLogout, userID, nil)
+	// PR-9: persist revoke + push close. Best-effort: a failed insert
+	// or push is logged but does not turn a successful logout into an
+	// error response.
+	s.recordRevoke(ctx, userID, RevokeCodeLoggedOutElsewhere, "user logout")
 	return nil
 }
 

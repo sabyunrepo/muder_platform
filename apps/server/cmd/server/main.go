@@ -151,7 +151,11 @@ func main() {
 	logger.Info().Msg("auditlog started")
 
 	// 9. Domain Services
-	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), auditLog, logger)
+	// PR-9 Task 3.6 will inject the real *auth.RevokeRepo (sqlc-backed)
+	// and the *ws.Hub publisher here once the WS layer is built. nil
+	// resolves to NoopRevokeRepo / NoopRevokePublisher so the staged
+	// MMP_WS_AUTH_PROTOCOL rollout stays buildable.
+	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), auditLog, nil, nil, logger)
 	profileSvc := profile.NewService(queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
