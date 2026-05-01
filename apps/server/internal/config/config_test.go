@@ -67,6 +67,24 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.BaseURL != "http://localhost:5173" {
 		t.Errorf("expected BaseURL default, got %q", cfg.BaseURL)
 	}
+	if cfg.WSAuthProtocol {
+		t.Error("expected WSAuthProtocol default false")
+	}
+}
+
+func TestLoad_WSAuthProtocolEnabled(t *testing.T) {
+	cleanEnv(t)
+	t.Setenv("DATABASE_URL", "postgres://localhost/test")
+	t.Setenv("REDIS_URL", "redis://localhost:6379")
+	t.Setenv("MMP_WS_AUTH_PROTOCOL", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !cfg.WSAuthProtocol {
+		t.Error("expected WSAuthProtocol true when MMP_WS_AUTH_PROTOCOL=true")
+	}
 }
 
 func TestLoad_CustomValues(t *testing.T) {

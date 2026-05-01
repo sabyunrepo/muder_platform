@@ -36,6 +36,11 @@ type Config struct {
 	// Feature flags
 	// GameRuntimeV2 enables the Phase 18.x modular game runtime (default off).
 	GameRuntimeV2 bool `env:"GAME_RUNTIME_V2" default:"false"`
+	// WSAuthProtocol enables the PR-9 auth.* WS protocol handlers (default
+	// off). When false the legacy upgrade-time JWT check is the only auth
+	// gate and inbound auth.* frames are silently dropped — a client that
+	// ships the new protocol stays compatible with a back-rollout.
+	WSAuthProtocol bool `env:"MMP_WS_AUTH_PROTOCOL" default:"false"`
 }
 
 // IsDevelopment returns true if the application is running in development mode.
