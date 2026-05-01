@@ -7,7 +7,7 @@
 // Any hand edit will be overwritten by the next go generate run.
 // Phase 19 PR-1 (2026-04-18).
 //
-// Catalog: 130 events (active=115, stub=13, deprec=2) · 2 //wsgen:payload structs.
+// Catalog: 130 events (active=121, stub=7, deprec=2) · 8 //wsgen:payload structs.
 
 /* eslint-disable */
 /* prettier-ignore */
@@ -54,38 +54,32 @@ export const WsEventType = {
   AUDIO_STOP_LEGACY: "audio:stop",
   /**
    * S2C · auth
-   * status=stub
-   * PR-9 reserved — server asks for re-auth before sensitive action
+   * server asks for re-auth before a sensitive action; payload AuthChallengePayload
    */
   AUTH_CHALLENGE: "auth.challenge",
   /**
    * C2S · auth
-   * status=stub
-   * PR-9 reserved — client presents refreshed credentials post-upgrade
+   * client presents refreshed credentials post-upgrade; payload AuthIdentifyPayload
    */
   AUTH_IDENTIFY: "auth.identify",
   /**
    * C2S · auth
-   * status=stub
-   * PR-9 reserved — client requests new token before expiry
+   * client requests a rotated token before expiry; payload AuthRefreshPayload
    */
   AUTH_REFRESH: "auth.refresh",
   /**
    * S2C · auth
-   * status=stub
-   * PR-9 reserved — server signals token approaching expiry
+   * server signals token approaching expiry; payload AuthRefreshRequiredPayload
    */
   AUTH_REFRESH_REQUIRED: "auth.refresh_required",
   /**
    * C2S · auth
-   * status=stub
-   * PR-9 reserved — client resumes session after reconnect, like Discord gateway RESUME
+   * client resumes session after reconnect (Discord gateway RESUME); payload AuthResumePayload
    */
   AUTH_RESUME: "auth.resume",
   /**
    * S2C · auth
-   * status=stub
-   * PR-9 reserved — server notifies client its session was invalidated (ban, logout elsewhere)
+   * server notifies client its session was invalidated (ban, logout-elsewhere); payload AuthRevokedPayload
    */
   AUTH_REVOKED: "auth.revoked",
   /** S2C · chat */
@@ -649,12 +643,12 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
   "audio:play": "active",
   "audio:resume": "active",
   "audio:stop": "active",
-  "auth.challenge": "stub",
-  "auth.identify": "stub",
-  "auth.refresh": "stub",
-  "auth.refresh_required": "stub",
-  "auth.resume": "stub",
-  "auth.revoked": "stub",
+  "auth.challenge": "active",
+  "auth.identify": "active",
+  "auth.refresh": "active",
+  "auth.refresh_required": "active",
+  "auth.resume": "active",
+  "auth.revoked": "active",
   "chat:message": "active",
   "chat:read_receipt": "active",
   "chat:send": "active",
@@ -787,5 +781,58 @@ export interface ConnectedPayload {
   playerId: string;
   sessionId?: string;
   seq: number;
+}
+
+/**
+ * AuthIdentifyPayload — C2S, sent post-upgrade with a refreshed credential.
+ */
+export interface AuthIdentifyPayload {
+  token: string;
+  sessionId?: string;
+  clientLastSeq?: number;
+}
+
+/**
+ * AuthResumePayload — C2S, sent on reconnect to replay missed events.
+ */
+export interface AuthResumePayload {
+  token: string;
+  sessionId: string;
+  lastSeq: number;
+}
+
+/**
+ * AuthRefreshPayload — C2S, request a rotated short-lived token.
+ */
+export interface AuthRefreshPayload {
+  token: string;
+}
+
+/**
+ * AuthChallengePayload — S2C, server demands re-authentication before a
+ * sensitive action proceeds.
+ */
+export interface AuthChallengePayload {
+  reason: string;
+  action?: string;
+}
+
+/**
+ * AuthRevokedPayload — S2C, the session has been invalidated and the
+ * connection is closing. Code is one of: "banned",
+ * "logged_out_elsewhere", "password_changed", "admin_revoked".
+ */
+export interface AuthRevokedPayload {
+  reason: string;
+  code: string;
+}
+
+/**
+ * AuthRefreshRequiredPayload — S2C, the token is approaching expiry.
+ * The client should reply with auth.refresh before ExpiresAt.
+ */
+export interface AuthRefreshRequiredPayload {
+  expiresAt: number;
+  reason?: string;
 }
 
