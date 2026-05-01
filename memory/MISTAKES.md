@@ -200,3 +200,33 @@ e2e-stubbed.yml:67:40 context "job" is not allowed here
 **Mitigation (현 운영)**: 옛 myoung34 image가 host에 잔존 → 사용자가 image 삭제 안 하는 한 fallback 가능. P0-1 follow-up Hotfix PR로 영구 fix 권장.
 
 **관련 카논**: `memory/sessions/2026-04-29-phase-23-custom-runner-image-merge.md`, `docs/superpowers/specs/2026-04-29-phase-23-custom-runner-image-design.md` § 9 Risks, `memory/feedback_runner_bootstrap.md` (Phase 23 wrap-up 신규 카논), P0-1 follow-up.
+
+---
+
+## 2026-05-01 — paths-filter 횡적 의존 누락 → required check fire 0 (paths-filter-lateral-dep)
+
+**증상**: PR #194에서 main branch protection을 15→4 required check로 축소하며 `security-fast.yml`에 paths-filter 추가. 본 PR이 `.github/workflows/*.yml`만 변경 → ci.yml + e2e-stubbed.yml의 paths가 본인 workflow 파일만 포함 (`.github/workflows/ci.yml`, `.github/workflows/e2e-stubbed.yml`)이라 다른 workflow 변경 PR에선 fire 0. 결과: 4 required check 중 어느 것도 등록 안 됨 → branch protection 영구 차단. `enforce_admins=false` + admin 권한으로만 우회 가능. PR #195 hotfix로 양 workflow paths에 `.github/workflows/**` (전체) 추가하여 해소.
+
+**근본 원인**: paths-filter 설계 시 "내 변경 파일 → 내 fire" 종적 패턴만 고려하고, "다른 workflow 파일 변경 시 본 workflow도 fire 해야 한다"는 횡적 의존 패턴 누락. workflow 간 cross-trigger 사전 시뮬레이션 부재. 코드 PR 기준의 paths-filter 검증 절차가 workflow-only PR 시나리오를 cover 하지 못함.
+
+**재발 방지**:
+1. **paths-filter 추가 전 체크리스트** — (a) 이 job이 branch protection required check에 등록돼 있는가? (b) `.github/workflows/**` 를 paths에 포함하지 않으면 다른 workflow-only PR에서 required check 누락이 발생하는가? 두 질문 모두 YES면 `.github/workflows/**` 강제.
+2. **`feedback_ci_infra_debt.md` 보강** — "paths-filter 추가 시 required-check 교차 검증" 항목 추가 (별도 PR).
+3. **자동화 후보 (다음 세션)**: PostToolUse Edit/Write hook — `.github/workflows/*.yml` 편집 시 `paths:` 블록이 있는 workflow 가 `.github/workflows/**` 항목 포함 여부 grep 검사 (warn-only).
+
+**관련 카논**: `memory/sessions/2026-05-01-ci-slim-paths-filter-trap.md` (본 세션 핸드오프), `feedback_ci_infra_debt.md` (보강 후보 위치).
+
+---
+
+## 2026-05-01 — gitleaks paths-filter scope: 보안 잡을 paths-filter workflow에 묶지 말 것 (gitleaks-workflow-scope)
+
+**증상**: PR #194에서 `security-fast.yml`에 paths-filter 추가 시 gitleaks도 같은 workflow에 묶여 있어 함께 게이트됨. paths-filter가 `apps/**`, `packages/**`, `go.mod/sum`, `pnpm-lock.yaml`, `.gitleaks.toml`, 본 workflow만 → `infra/`, `scripts/`, `docs/`, root config (`*.env*`, `terraform/*.tfvars` 등) 변경 시 secret scan fire 0. `security-deep.yml` nightly 에도 gitleaks 없어 secret scan 사실상 코드 PR 한정. PR #195 hotfix로 gitleaks를 별도 `.github/workflows/gitleaks.yml`로 분리, paths-filter 없음 (모든 PR/push fire).
+
+**근본 원인**: GitHub Actions paths-filter는 workflow trigger 레벨 — 같은 workflow에 묶인 모든 job이 동시에 skip 됨. "성능 최적화용 filter (govulncheck cost ↓)"와 "항상 실행해야 하는 보안 잡 (gitleaks 모든 경로 검출)"을 같은 workflow에 두면 filter 의 skip이 보안 잡도 적용. Job 단위 paths-filter는 GitHub Actions 가 직접 지원 안 함 (`if:` 조건 우회 가능하나 직관성 ↓).
+
+**재발 방지**:
+1. **secret-scan / SAST / 보안 sentinel 종류 잡은 독립 workflow 파일로 분리** — paths-filter 없이 운영. 성능 최적화 잡 (govulncheck / 의존성 SCA / vuln scan) 만 paths-filter workflow에 묶음.
+2. **`feedback_ci_infra_debt.md` 보강 또는 신규 `feedback_security_workflow_isolation.md`** — "paths-filter 도입 workflow 에 보안 sentinel 잡 두지 말 것" 카논화.
+3. **사례 누적 후 카논 master 결정** — 본 사례 + 향후 동일 패턴 누적 시 별도 카논 vs `feedback_ci_infra_debt.md` 흡수.
+
+**관련 카논**: `memory/sessions/2026-05-01-ci-slim-paths-filter-trap.md` (본 세션 핸드오프), `.github/workflows/gitleaks.yml` (분리 결과 master 패턴), `feedback_ci_infra_debt.md` (보강 후보 위치).

@@ -126,3 +126,15 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 ### ~~Q-myoung34-ephemeral-fs: EPHEMERAL=true 재시작 후 ~/go/pkg/mod overlay layer 잔존 범위~~ — **해소 (2026-04-29)**
 - **결과**: Phase 23 Custom Runner Image 머지 (PR #174 + hotfix #175)로 cleanup hook (`ACTIONS_RUNNER_HOOK_JOB_STARTED`) 도입. multi-stage Dockerfile + GHCR build CI 정착 → file system reset 보장. baseline 한정이 아닌 영구 해소.
 - **연관**: `memory/sessions/2026-04-29-phase-23-custom-runner-image-merge.md`, `feedback_runner_bootstrap.md`, `feedback_multi_stage_dockerfile_runner.md`
+
+## 2026-05-01 — CI 슬림화 wrap-up
+
+### Q-paths-filter-lint-spike: paths-filter 횡적 의존을 PR 전 자동 검출하는 도구 (actionlint / zizmor 등)?
+- **맥락**: PR #194 의 paths-filter trap (workflow-only PR 시 required check fire 0) 은 수동 시뮬레이션으로만 검출 가능. actionlint 등 workflow linter 가 "required check + paths-filter 공백" 조합을 탐지하는지 미확인.
+- **다음 액션**: 다음 CI 개선 시 `actionlint` + `zizmor` 1시간 spike → 탐지 가능하면 pre-commit 또는 security-fast.yml 에 추가.
+- **블로커 risk**: LOW (수동 체크리스트로 우선 방어 가능).
+
+### Q-infra-pr-size-classification: CI infra PR 의 Size 분류를 코드 PR 과 동일 기준으로 쓸 것인가?
+- **맥락**: `feedback_4agent_review_before_admin_merge.md` 의 Size 기준은 line count 기반 암묵 정의. yaml infra 는 line 수 작아도 시스템 영향 반경 큼 (paths-filter / branch protection / gitleaks). 코드 PR 기준으로 "Low" 분류하면 4-agent carve-out 잘못 적용.
+- **다음 액션**: 다음 인프라 PR 전 사용자 결정 — "CI / branch-protection / paths-filter 변경은 Size 불문 M 으로 간주" 규칙 채택 여부.
+- **블로커 risk**: MEDIUM (다음 CI 슬림화 시 동일 패턴 재발 가능).
