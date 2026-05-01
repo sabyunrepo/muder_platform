@@ -166,6 +166,27 @@ describe("EndingNodePanel debounce + onBlur flush", () => {
     expect(mutateMock).toHaveBeenCalledTimes(1);
   });
 
+  it("pending body가 있는 상태에서 unmount 시 자동 flush된다", async () => {
+    // E-12 회귀: schedule 직후 (debounce window 만료 전) 컴포넌트가 unmount되면
+    // useDebouncedMutation의 useUnmountFlush가 pending body를 즉시 발화해야 한다.
+    // 다른 panel로 이동하거나 탭을 떠나도 마지막 입력이 사라지지 않도록 보장.
+    const { unmount } = renderWithClient(
+      <EndingNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,
+    );
+
+    const labelInput = screen.getByPlaceholderText("엔딩 이름");
+    fireEvent.change(labelInput, { target: { value: "마지막 입력" } });
+    expect(mutateMock).not.toHaveBeenCalled();
+
+    // Unmount — debounce timer 만료 전이라도 pending body는 자동 flush.
+    unmount();
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    const [arg] = mutateMock.mock.calls[0] as [
+      { nodeId: string; body: { data: { label: string } } },
+    ];
+    expect(arg.body.data.label).toBe("마지막 입력");
+  });
+
   it("mutate 실패 시 graph cache가 rollback되고 toast.error가 발화한다", async () => {
     const { qc } = renderWithClient(
       <EndingNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,

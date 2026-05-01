@@ -331,6 +331,71 @@ describe("useDebouncedMutation", () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
+  it("schedule across two debounce windows fires twice with independent bodies", () => {
+    // E-12 회귀: 한 debounce cycle이 완료된 뒤 새 schedule을 시작하면 별도
+    // window로 동작해야 한다. timer 재사용/누수 또는 pendingRef 비움 누락 시
+    // 첫 body가 두 번째 발화에 누설되는 회귀를 잡는다.
+    const mutate = vi.fn();
+    const { result } = renderHook(() =>
+      useDebouncedMutation<TestBody>({ mutate, debounceMs: 1000 }),
+    );
+
+    act(() => {
+      result.current.schedule({ label: "first" });
+    });
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate).toHaveBeenLastCalledWith({ label: "first" }, expect.any(Object));
+
+    // Second window — body 격리 + timer 재시작 검증.
+    act(() => {
+      result.current.schedule({ label: "second" });
+    });
+    act(() => {
+      vi.advanceTimersByTime(999);
+    });
+    expect(mutate).toHaveBeenCalledTimes(1);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(mutate).toHaveBeenCalledTimes(2);
+    expect(mutate).toHaveBeenLastCalledWith({ label: "second" }, expect.any(Object));
+  });
+
+  it("re-entrant schedule from inside mutate is queued for the next window", () => {
+    // E-12 회귀: JSDoc은 mutate 콜백 안에서 schedule 동기 호출을 금지하지만
+    // 실수로 호출되어도 hook이 손상되지 않아야 한다 (timer/pending invariant 유지).
+    // 기대 동작: 동기 schedule은 새 timer를 arm하고 다음 window에서 1번 더 발화.
+    let scheduledFollowUp = false;
+    const mutate = vi.fn((_body: TestBody) => {
+      if (!scheduledFollowUp) {
+        scheduledFollowUp = true;
+        result.current.schedule({ label: "follow-up" });
+      }
+    });
+    const { result } = renderHook(() =>
+      useDebouncedMutation<TestBody>({ mutate, debounceMs: 500 }),
+    );
+
+    act(() => {
+      result.current.schedule({ label: "initial" });
+    });
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(mutate).toHaveBeenCalledTimes(1);
+    expect(mutate).toHaveBeenNthCalledWith(1, { label: "initial" }, expect.any(Object));
+
+    // re-entrant schedule이 새 timer를 arm했는지 — 다음 window에서 1번 더 발화.
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(mutate).toHaveBeenCalledTimes(2);
+    expect(mutate).toHaveBeenNthCalledWith(2, { label: "follow-up" }, expect.any(Object));
+  });
+
   it("applyOptimistic that throws leaves the hook in a consistent state", () => {
     // Defensive: if a host's setQueryData impl throws (e.g. malformed key),
     // flush must clear the timer + pending body before propagating so the
