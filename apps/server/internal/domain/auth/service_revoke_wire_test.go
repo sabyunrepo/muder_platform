@@ -3,12 +3,15 @@ package auth
 import (
 	"context"
 	"errors"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+
+	"github.com/mmp-platform/server/internal/apperror"
 )
 
 // ---------------------------------------------------------------------------
@@ -132,7 +135,9 @@ func TestRecordRevoke_WiresRepoAndPublisher(t *testing.T) {
 	svc := newWireTestService(repo, pub)
 
 	userID := uuid.New()
-	svc.recordRevoke(context.Background(), userID, RevokeCodeLoggedOutElsewhere, "user logout")
+	if err := svc.recordRevoke(context.Background(), userID, RevokeCodeLoggedOutElsewhere, "user logout"); err != nil {
+		t.Fatalf("recordRevoke happy path: unexpected error %v", err)
+	}
 
 	if len(repo.entries) != 1 {
 		t.Fatalf("revokeRepo.Insert calls = %d, want 1", len(repo.entries))
@@ -150,23 +155,37 @@ func TestRecordRevoke_WiresRepoAndPublisher(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Best-effort: a repo failure does not stop the publisher push, and
-// neither failure surfaces back to the caller. The auth flow continues.
+// Failure semantics — split criticality (PR-9 H-4 (a)):
+//   * revoke_log insert failure → returned error (Internal 500). The
+//     publisher push is also skipped: without the row a "you're banned"
+//     close is silently bypassed on the next reconnect.
+//   * publisher push failure → caller sees nil. The pull-fallback on
+//     reconnect catches the missed push.
 // ---------------------------------------------------------------------------
 
-func TestRecordRevoke_RepoFailure_StillPushesAndDoesNotError(t *testing.T) {
+func TestRecordRevoke_RepoFailure_ReturnsInternalErrorAndSkipsPush(t *testing.T) {
 	t.Parallel()
 	repo := &capturingRevokeRepo{insertErr: errors.New("db down")}
 	pub := &capturingPublisher{}
 	svc := newWireTestService(repo, pub)
 
 	userID := uuid.New()
-	// Must not panic and must return immediately — repo synchronous,
-	// publisher push runs on a goroutine (PR-9 H-1).
-	svc.recordRevoke(context.Background(), userID, RevokeCodeAdminRevoked, "family attack")
+	err := svc.recordRevoke(context.Background(), userID, RevokeCodeAdminRevoked, "family attack")
+	if err == nil {
+		t.Fatal("expected error on revoke_log insert failure (H-4 (a) escalates from log-and-shrug)")
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("err = %v (%T), want *apperror.AppError", err, err)
+	}
+	if appErr.Status != http.StatusInternalServerError {
+		t.Errorf("err Status = %d, want %d (Internal)", appErr.Status, http.StatusInternalServerError)
+	}
 
-	if got := pub.waitForUserCalls(t, 1); len(got) < 1 {
-		t.Fatalf("publisher.RevokeUser must still fire on repo failure, calls = %d", len(got))
+	// Give a hypothetical async goroutine a chance to fire — it must not.
+	time.Sleep(50 * time.Millisecond)
+	if got := pub.snapshotUserCalls(); len(got) != 0 {
+		t.Errorf("publisher.RevokeUser fired %d times despite insert failure; the close would be silently bypassed on the next reconnect (no row, no pull-fallback enforcement)", len(got))
 	}
 }
 
@@ -177,7 +196,9 @@ func TestRecordRevoke_PublisherFailure_DoesNotError(t *testing.T) {
 	svc := newWireTestService(repo, pub)
 
 	userID := uuid.New()
-	svc.recordRevoke(context.Background(), userID, RevokeCodeLoggedOutElsewhere, "logout")
+	if err := svc.recordRevoke(context.Background(), userID, RevokeCodeLoggedOutElsewhere, "logout"); err != nil {
+		t.Errorf("publisher push failure must not surface as recordRevoke error: %v", err)
+	}
 
 	if len(repo.entries) != 1 {
 		t.Errorf("revokeRepo.Insert must still fire on publisher failure, calls = %d", len(repo.entries))

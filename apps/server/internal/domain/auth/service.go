@@ -263,8 +263,16 @@ func (s *service) RefreshToken(ctx context.Context, refreshTokenStr string) (*To
 		// admin_revoked code because this is a server-side security
 		// response, not a user-initiated logout. userID was parsed
 		// above so the call is safe.
-		s.recordRevoke(ctx, userID, RevokeCodeAdminRevoked,
-			"refresh token reuse detected")
+		//
+		// H-4 (a): if the revoke_log insert fails the security
+		// enforcement did not actually persist, so surface a 500
+		// instead of an Unauthorized. The latter would let a client
+		// that retries simply use a fresh refresh token and bypass
+		// the family-attack response.
+		if err := s.recordRevoke(ctx, userID, RevokeCodeAdminRevoked,
+			"refresh token reuse detected"); err != nil {
+			return nil, err
+		}
 		return nil, apperror.Unauthorized("refresh token has been revoked")
 	}
 
@@ -294,11 +302,12 @@ func (s *service) Logout(ctx context.Context, userID uuid.UUID) error {
 	s.revokeAllTokens(ctx, userID.String())
 	s.logger.Info().Str("user_id", userID.String()).Msg("user logged out, all refresh tokens revoked")
 	s.recordAudit(ctx, auditlog.ActionUserLogout, userID, nil)
-	// PR-9: persist revoke + push close. Best-effort: a failed insert
-	// or push is logged but does not turn a successful logout into an
-	// error response.
-	s.recordRevoke(ctx, userID, RevokeCodeLoggedOutElsewhere, "user logout")
-	return nil
+	// PR-9 H-4 (a): the revoke_log insert is the load-bearing half of
+	// recordRevoke — without it, the next reconnect's pull-fallback
+	// silently bypasses this logout. Surface the failure as a 500 so
+	// a retry actually persists the revoke. The publisher push stays
+	// fire-and-forget inside recordRevoke.
+	return s.recordRevoke(ctx, userID, RevokeCodeLoggedOutElsewhere, "user logout")
 }
 
 // GetCurrentUser returns the public user information.
