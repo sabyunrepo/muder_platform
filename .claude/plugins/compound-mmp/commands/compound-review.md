@@ -1,14 +1,16 @@
 ---
-description: PR diff에 대해 4-agent 병렬 리뷰 (security/perf/arch/test) 실행. post-task-pipeline.json `after_pr.review-*` 카논을 읽어 한 메시지에서 Task tool 동시 spawn. HIGH 발견 시 사용자 결정 대기 (자동 fix-loop 금지). PR-2c #107 사고 이후 4-agent 강제 정책의 슬래시 진입점.
+description: 로컬 diff (push 전)에 대해 4-agent 병렬 리뷰 (security/perf/arch/test) 실행. post-task-pipeline.json `before_pr.review-*` 카논을 읽어 한 메시지에서 Task tool 동시 spawn. HIGH 발견 시 사용자 결정 대기 (자동 fix-loop 금지). PR-2c #107 사고 이후 4-agent 강제 정책의 슬래시 진입점.
 allowed-tools: Bash, Read, Write, Task, Glob
 argument-hint: "<pr-id> [--dry-run]   예: /compound-review PR-7"
 ---
 
 # /compound-review
 
-PR 머지 직전(또는 admin-merge 직후) 4-agent 병렬 리뷰를 한 메시지에서 spawn해 종합 결과를 `docs/plans/<phase>/refs/reviews/<pr-id>.md`로 영구화.
+`gh pr create` *직전* (push 전 또는 push 후·PR 생성 전) 4-agent 병렬 리뷰를 한 메시지에서 spawn해 종합 결과를 `docs/plans/<phase>/refs/reviews/<pr-id>.md`로 영구화. HIGH fix 가 push 전에 끝나므로 GitHub Actions CI 는 PR 당 1회만 돈다.
 
-> **카논 single source**: `refs/post-task-pipeline-bridge.md` (4-agent 매핑 + P0–P3 라우팅) + `.claude/post-task-pipeline.json` `after_pr.review-*` (prompt template).
+> **카논 single source**: `refs/post-task-pipeline-bridge.md` (4-agent 매핑 + P0–P3 라우팅 + 호출 타이밍) + `.claude/post-task-pipeline.json` `before_pr.review-*` (prompt template).
+>
+> **2026-05-01 타이밍 rename**: `after_pr` → `before_pr`. 이전 워크플로 (PR 생성 후 review → fix → push) 의 CI 2회 비효율을 단일 CI 호출로 압축.
 
 ## 인자
 
@@ -27,13 +29,17 @@ DESIGN_PATH="${ACTIVE_PHASE}/design.md"
 
 design.md 부재 시 `apps/server/CLAUDE.md`(아키텍처 카논) fallback. 사용자가 명시 인자로 override 가능 (PR-9 추후).
 
-### 2. PR 메타 추출 (선택)
+### 2. PR 메타 추출 (선택, 로컬 우선)
+
+PR 생성 전이므로 GitHub PR 은 아직 없다. 로컬 commit subject 우선:
 
 ```bash
-PR_TITLE=$(gh pr view "$ARG_PR_NUM" --json title -q .title 2>/dev/null || echo "")
+PR_TITLE=$(git log -1 --pretty=%s 2>/dev/null || echo "")
+# 이미 PR 이 만들어진 reactive 검증 시 fallback:
+# PR_TITLE=$(gh pr view "$ARG_PR_NUM" --json title -q .title 2>/dev/null || echo "$PR_TITLE")
 ```
 
-`gh` CLI 부재 또는 인증 미설정 시 빈 문자열 fallback. 토큰 치환은 **jq `--arg`**가 보장하므로 PR_TITLE 내용이 어떤 문자라도 안전 (helper 카논).
+빈 문자열도 정상 동작 (helper 가 토큰을 빈 문자열로 치환). 토큰 치환은 **jq `--arg`**가 보장하므로 PR_TITLE 내용이 어떤 문자라도 안전 (helper 카논).
 
 ### 3. dry-run helper 호출 → 4-agent payload
 
@@ -101,8 +107,13 @@ opus = `claude-opus-4-7`, sonnet = `claude-sonnet-4-6` (sonnet-4-5 절대 금지
 자동 fix-loop **금지** (PR-2c #107 사고 후 정책, `refs/post-task-pipeline-bridge.md` § "자동 fix-loop 금지"). 메인은 다음 한 줄을 사용자에게 표시:
 
 ```
-HIGH N건 발견. 다음 중 선택: (a) 즉시 수정 — `/compound-work {pr-id}`, (b) 다음 PR 이월, (c) 무시 (이유 명시)
+HIGH N건 발견 (push 전). 다음 중 선택:
+  (a) 즉시 수정 후 round-2 — `/compound-work {pr-id}` (수정 → /compound-review 재실행)
+  (b) 그대로 push + PR 생성, 별도 follow-up PR 이월
+  (c) 무시 (이유 명시)
 ```
+
+(a) 가 카논 default — push 전 fix → 단일 CI run 의 핵심.
 
 ## 사용 예
 
@@ -121,8 +132,8 @@ HIGH N건 발견. 다음 중 선택: (a) 즉시 수정 — `/compound-work {pr-i
 
 `hooks/dispatch-router.sh`가 다음 사용자 발화에서 `/compound-review` 추천 (stage=review). **이 목록은 `test-dispatch.sh` fixture로 검증** — doc-vs-behavior 100% align (HIGH-A3 카논):
 
-- "리뷰 해줘" / "코드 리뷰" / "머지 전 확인" / "병합 전 체크"
-- "review this PR" / "pre-merge review"
+- "리뷰 해줘" / "코드 리뷰" / "PR 전 확인" / "머지 전 확인" / "병합 전 체크"
+- "review this PR" / "pre-pr review" / "pre-merge review"
 
 > "audit this" 등 일반 영문 단어는 false positive 위험("audit log 추가" → review 오라우팅) 때문에 의도적으로 제외.
 
@@ -142,5 +153,5 @@ HIGH N건 발견. 다음 중 선택: (a) 즉시 수정 — `/compound-work {pr-i
 - `refs/sim-case-a.md` (PR-2c deadlock 재현 검증, dry-run C-2 계약)
 - `templates/review-result-template.md` (결과 종합 형식)
 - `scripts/compound-review-dry-run.sh` (helper, 24/24 self-test)
-- `.claude/post-task-pipeline.json` `after_pr` (prompt template canonical)
+- `.claude/post-task-pipeline.json` `before_pr` (prompt template canonical)
 - `memory/feedback_4agent_review_before_admin_merge.md` (강제 정책 근거 — PR-2c #107 hotfix #108)

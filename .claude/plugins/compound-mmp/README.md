@@ -54,6 +54,6 @@ bash .claude/plugins/compound-mmp/scripts/install.sh
 ## 레퍼런스
 
 - 7단계 wrap 시퀀스: `refs/wrap-up-checklist.md` (skill은 PR-3)
-- 4-agent 호출 카논: `.claude/post-task-pipeline.json` (repo root, after_pr)
+- 4-agent 호출 카논: `.claude/post-task-pipeline.json` (repo root, `before_pr` — 2026-05-01 PR 생성 직전 timing 으로 rename)
 - Sim Case A 카논: `refs/sim-case-a.md`
 - 외부 분석 결과: plan 문서 (로컬 전용 — `<!-- external: ~/.claude/plans/vivid-snuggling-pascal.md, 공유 불가 -->` Appendix A)
