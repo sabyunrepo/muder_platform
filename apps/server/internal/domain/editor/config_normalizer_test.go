@@ -1,9 +1,13 @@
 package editor
 
 import (
+	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
+	"github.com/rs/zerolog"
+	zerologlog "github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -166,7 +170,6 @@ func TestNormalize_NoOpOnNewShape(t *testing.T) {
 
 // TestNormalize_EmptyRaw exercises the len(raw)==0 early return in NormalizeConfigJSON.
 func TestNormalize_EmptyRaw(t *testing.T) {
-	t.Helper()
 	got, err := NormalizeConfigJSON(json.RawMessage{})
 	require.NoError(t, err)
 	assert.Empty(t, got, "empty input must be returned as-is")
@@ -174,7 +177,6 @@ func TestNormalize_EmptyRaw(t *testing.T) {
 
 // TestNormalize_InvalidJSON exercises the json.Unmarshal error path in NormalizeConfigJSON.
 func TestNormalize_InvalidJSON(t *testing.T) {
-	t.Helper()
 	got, err := NormalizeConfigJSON(json.RawMessage(`not json`))
 	require.Error(t, err)
 	assert.Nil(t, got)
@@ -184,7 +186,6 @@ func TestNormalize_InvalidJSON(t *testing.T) {
 // continue inside the backend-preset loop when an array item is neither string
 // nor map[string]any (e.g. a raw number).
 func TestNormalize_ModulesArrayWithNonStringNonMapItem(t *testing.T) {
-	t.Helper()
 	// The first element is a map (triggers the "backend preset" branch),
 	// the second is a number — the `item.(map[string]any)` assertion fails → continue.
 	input := json.RawMessage(`{
@@ -210,7 +211,6 @@ func TestNormalize_ModulesArrayWithNonStringNonMapItem(t *testing.T) {
 // TestNormalize_ClueLocations_NonMapItem exercises the `locRaw.(map[string]any)
 // ok==false` continue inside normalizeClueLocations.
 func TestNormalize_ClueLocations_NonMapItem(t *testing.T) {
-	t.Helper()
 	// locations contains a non-object item (string); the ok==false branch fires
 	// and the item is skipped without panic.
 	input := json.RawMessage(`{
@@ -235,7 +235,6 @@ func TestNormalize_ClueLocations_NonMapItem(t *testing.T) {
 // TestNormalize_CharacterClues_NoModulesKey exercises the `cfg["modules"]` not
 // present (or not a map) early return in normalizeCharacterClues.
 func TestNormalize_CharacterClues_NoModulesKey(t *testing.T) {
-	t.Helper()
 	// character_clues is present but modules is absent → function returns early,
 	// character_clues is NOT migrated and NOT deleted (nothing to merge into).
 	input := json.RawMessage(`{
@@ -255,7 +254,6 @@ func TestNormalize_CharacterClues_NoModulesKey(t *testing.T) {
 // TestNormalize_Modules_NotArrayNotMap exercises the normalizeModules early return
 // when cfg["modules"] is neither an array nor a map (e.g. a JSON number).
 func TestNormalize_Modules_NotArrayNotMap(t *testing.T) {
-	t.Helper()
 	// modules is a number — the arr, ok type assertion fails → return early.
 	input := json.RawMessage(`{"modules": 42}`)
 
@@ -272,7 +270,6 @@ func TestNormalize_Modules_NotArrayNotMap(t *testing.T) {
 // TestNormalize_ModulesStringList_EmptyStringItem exercises the `if id == ""`
 // continue in the string-list branch of normalizeModules.
 func TestNormalize_ModulesStringList_EmptyStringItem(t *testing.T) {
-	t.Helper()
 	// Empty string in the string list is silently dropped.
 	input := json.RawMessage(`{
 		"modules": ["voting", "", "audio"]
@@ -293,7 +290,6 @@ func TestNormalize_ModulesStringList_EmptyStringItem(t *testing.T) {
 // TestNormalize_ModulesBackendPreset_EmptyIDItem exercises the `if id == ""`
 // continue in the backend-preset (object array) branch of normalizeModules.
 func TestNormalize_ModulesBackendPreset_EmptyIDItem(t *testing.T) {
-	t.Helper()
 	// Object with empty "id" field is silently dropped in the backend-preset branch.
 	input := json.RawMessage(`{
 		"modules": [
@@ -316,7 +312,6 @@ func TestNormalize_ModulesBackendPreset_EmptyIDItem(t *testing.T) {
 // TestNormalize_CluePlacement_NonStringValue exercises the `if !ok { continue }`
 // in the clue_placement range loop when locVal is not a string.
 func TestNormalize_CluePlacement_NonStringValue(t *testing.T) {
-	t.Helper()
 	// clue_placement has a non-string value for one entry → that entry is skipped.
 	input := json.RawMessage(`{
 		"clue_placement": {"c1": "library", "c2": 99},
@@ -341,7 +336,6 @@ func TestNormalize_CluePlacement_NonStringValue(t *testing.T) {
 // TestNormalize_ClueLocations_DeadKeyNonStringItem exercises the inner `!ok continue`
 // when an item inside locations[].clueIds is not a string.
 func TestNormalize_ClueLocations_DeadKeyNonStringItem(t *testing.T) {
-	t.Helper()
 	// clueIds contains a non-string item (number); that item must be silently dropped.
 	input := json.RawMessage(`{
 		"clue_placement": {"c1": "library"},
@@ -367,7 +361,6 @@ func TestNormalize_ClueLocations_DeadKeyNonStringItem(t *testing.T) {
 // TestNormalize_CharacterClues_StartingClueNotMap exercises the `startingClueEntry == nil`
 // path in normalizeCharacterClues when mods["starting_clue"] is not a map[string]any.
 func TestNormalize_CharacterClues_StartingClueNotMap(t *testing.T) {
-	t.Helper()
 	// modules is already a map, but starting_clue key is absent → entry created fresh.
 	input := json.RawMessage(`{
 		"character_clues": {"alice": ["c1"]},
@@ -388,4 +381,107 @@ func TestNormalize_CharacterClues_StartingClueNotMap(t *testing.T) {
 
 	_, hasOldKey := cfg["character_clues"]
 	assert.False(t, hasOldKey)
+}
+
+// TestNormalize_DeadKeyUnion_EmitsDebugLog asserts that the D-21 conflict
+// resolution path emits a structured debug log containing the expected fields.
+// H4: review round-1 finding — conflict path was exercised but log never asserted.
+func TestNormalize_DeadKeyUnion_EmitsDebugLog(t *testing.T) {
+	// Replace global zerolog logger with one writing to buf, restore on cleanup.
+	var buf bytes.Buffer
+	orig := zerologlog.Logger
+	zerologlog.Logger = zerolog.New(&buf).Level(zerolog.DebugLevel)
+	origLevel := zerolog.GlobalLevel()
+	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	t.Cleanup(func() {
+		zerologlog.Logger = orig
+		zerolog.SetGlobalLevel(origLevel)
+	})
+
+	// c1 is in clue_placement → library, but study_room dead key also claims c1.
+	// This is the conflict: placement wins (D-21) → debug log must fire.
+	input := json.RawMessage(`{
+		"clue_placement": {"c1": "library"},
+		"locations": [
+			{"id": "library"},
+			{"id": "study_room", "clueIds": ["c1", "c5"]}
+		]
+	}`)
+
+	_, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	out := buf.String()
+
+	// Assert message substring.
+	assert.True(t, strings.Contains(out, "clue_placement conflict"),
+		"log must contain 'clue_placement conflict', got: %s", out)
+
+	// Assert structured fields.
+	assert.True(t, strings.Contains(out, `"clueId"`),
+		"log must contain clueId field, got: %s", out)
+	assert.True(t, strings.Contains(out, `"placement"`),
+		"log must contain placement field, got: %s", out)
+	assert.True(t, strings.Contains(out, `"deadKeyLocation"`),
+		"log must contain deadKeyLocation field, got: %s", out)
+}
+
+// TestNormalize_Idempotent_DoublePass asserts that applying NormalizeConfigJSON
+// twice yields the same result as applying it once (true idempotence).
+// M6: review round-1 finding — double-normalize case was not covered.
+func TestNormalize_Idempotent_DoublePass(t *testing.T) {
+	// Realistic legacy fixture covering all three migration axes simultaneously:
+	//   - modules as array (D-20)
+	//   - clue_placement present (D-21)
+	//   - character_clues present (D-19)
+	legacy := json.RawMessage(`{
+		"modules": [
+			{"id": "voting", "config": {"mode": "open"}},
+			{"id": "starting_clue"}
+		],
+		"clue_placement": {"c1": "library", "c2": "study_room"},
+		"locations": [
+			{"id": "library"},
+			{"id": "study_room"}
+		],
+		"character_clues": {"alice": ["c1"], "bob": ["c2"]}
+	}`)
+
+	firstPass, err := NormalizeConfigJSON(legacy)
+	require.NoError(t, err, "first pass must not error")
+
+	secondPass, err := NormalizeConfigJSON(firstPass)
+	require.NoError(t, err, "second pass must not error")
+
+	// Both passes must produce identical JSON structures.
+	assert.JSONEq(t, string(firstPass), string(secondPass),
+		"NormalizeConfigJSON must be idempotent: double-pass must equal single-pass")
+}
+
+// TestNormalize_BackendPreset_EnabledFalseIsIgnored asserts that a legacy
+// backend-preset array with enabled:false normalizes to enabled:true.
+// M7: review round-1 finding — this intentional policy was undocumented in tests.
+//
+// Policy: legacy array = "all enrolled". Any "enabled":false in old shape is
+// silently dropped — this is intentional per D-20 migration semantics.
+func TestNormalize_BackendPreset_EnabledFalseIsIgnored(t *testing.T) {
+	input := json.RawMessage(`{
+		"modules": [{"id": "voting", "enabled": false}]
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	mods, ok := cfg["modules"].(map[string]any)
+	require.True(t, ok, "modules must be object map after normalize")
+
+	voting, ok := mods["voting"].(map[string]any)
+	require.True(t, ok, "voting must be present in normalized modules")
+
+	// Policy: legacy array = "all enrolled". enabled:false in legacy is intentionally ignored.
+	assert.Equal(t, true, voting["enabled"],
+		"legacy enabled:false must be dropped — D-20 migration semantics: legacy array = all enrolled")
 }

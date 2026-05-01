@@ -88,7 +88,6 @@ func TestModule_ApplyConfig_ParsesQuestions(t *testing.T) {
 // TestModule_BuildState_EmptyModule verifies BuildState returns valid JSON with
 // zero-state metadata when the module has no config applied.
 func TestModule_BuildState_EmptyModule(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	raw, err := m.BuildState()
 	require.NoError(t, err)
@@ -102,7 +101,6 @@ func TestModule_BuildState_EmptyModule(t *testing.T) {
 
 // TestModule_BuildState_WithConfig verifies BuildState reflects configured metadata.
 func TestModule_BuildState_WithConfig(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	cfg := json.RawMessage(`{
 		"questions": [
@@ -126,7 +124,6 @@ func TestModule_BuildState_WithConfig(t *testing.T) {
 // TestModule_BuildStateFor_DelegatesTo_BuildState verifies BuildStateFor returns
 // the same valid JSON as BuildState (per-player redaction deferred to PR-5).
 func TestModule_BuildStateFor_DelegatesTo_BuildState(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	playerID := uuid.New()
 
@@ -144,7 +141,6 @@ func TestModule_BuildStateFor_DelegatesTo_BuildState(t *testing.T) {
 // TestModule_HandleMessage_NotImplemented verifies the stub returns the expected
 // "not yet implemented (PR-5)" error and does not panic.
 func TestModule_HandleMessage_NotImplemented(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	err := m.HandleMessage(context.Background(), uuid.New(), "submit_answer", json.RawMessage(`{}`))
 	require.Error(t, err)
@@ -153,7 +149,6 @@ func TestModule_HandleMessage_NotImplemented(t *testing.T) {
 
 // TestModule_Cleanup_ReturnsNil verifies Cleanup resets state and returns nil.
 func TestModule_Cleanup_ReturnsNil(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	cfg := json.RawMessage(`{
 		"questions": [
@@ -177,7 +172,6 @@ func TestModule_Cleanup_ReturnsNil(t *testing.T) {
 // TestModule_Init_InvalidJSON_ReturnsError exercises the error path in Init
 // (and the json.Unmarshal error branch in applyConfigLocked).
 func TestModule_Init_InvalidJSON_ReturnsError(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	err := m.Init(context.Background(), engine.ModuleDeps{}, json.RawMessage(`not valid json`))
 	require.Error(t, err)
@@ -187,9 +181,34 @@ func TestModule_Init_InvalidJSON_ReturnsError(t *testing.T) {
 // TestModule_ApplyConfig_InvalidJSON_ReturnsError exercises the error path in
 // ApplyConfig → applyConfigLocked with invalid JSON.
 func TestModule_ApplyConfig_InvalidJSON_ReturnsError(t *testing.T) {
-	t.Helper()
 	m := NewModule()
 	err := m.ApplyConfig(context.Background(), json.RawMessage(`{bad json`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "ending_branch: invalid config")
+}
+
+// TestModule_ApplyConfig_EmptyObject covers the empty-JSON-object case (4 bytes).
+// M9: review round-1 finding — nil-bytes and full config were tested but {} was not.
+func TestModule_ApplyConfig_EmptyObject(t *testing.T) {
+	m := NewModule()
+
+	// Applying {} must succeed with no error.
+	err := m.ApplyConfig(context.Background(), json.RawMessage("{}"))
+	require.NoError(t, err)
+
+	// Config must be zero-valued: no questions, no matrix, no defaultEnding, threshold 0.
+	assert.Empty(t, m.cfg.Questions, "no questions after applying {}")
+	assert.Empty(t, m.cfg.Matrix, "no matrix after applying {}")
+	assert.Equal(t, "", m.cfg.DefaultEnding, "defaultEnding must be empty string after applying {}")
+	assert.Equal(t, float64(0), m.cfg.MultiVoteThreshold, "multiVoteThreshold must be 0 after applying {}")
+
+	// BuildState must return valid JSON with zero-state shape.
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	require.NotEmpty(t, raw)
+
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	assert.Equal(t, float64(0), state["questionCount"], "zero-state: questionCount must be 0")
+	assert.Equal(t, "", state["defaultEnding"], "zero-state: defaultEnding must be empty string")
 }
