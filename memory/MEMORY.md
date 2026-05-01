@@ -44,6 +44,9 @@
 
 ## 코드 리뷰 패턴 & 프로세스
 - [코드 리뷰 패턴 통합](feedback_code_review_patterns.md) — Go/React/DB/보안/PWA/오디오 전 Phase 통합
+- [applyOptimistic 호출 시점 (flush, not schedule)](feedback_optimistic_apply_timing.md) — debounce+optimistic 합성 훅의 시점 카논 (Phase 21 E-1)
+- [optimistic rollback snapshot identity](feedback_optimistic_rollback_snapshot.md) — 두 layer 패턴 사용 시 pendingSnapshotRef로 진짜 pre-edit 캡처
+- [git diff --diff-filter는 AMR](feedback_pr_diff_filter_rename.md) — PR diff 검사 CI에서 rename(R) 우회 차단
 - [마이그레이션 워크플로우](feedback_migration_workflow.md) — 6전문가 토론 → 승인 → 구현 → 리뷰 → QA
 - [plan-autopilot 운영 함정](feedback_plan_autopilot_gotchas.md) — status 필드 schema, 워크트리 cleanup
 - [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25, ESLint9 config 미흡
@@ -58,6 +61,7 @@
 - [Custom Runner Image GHCR 첫 push 절차](feedback_ghcr_self_hosted_bootstrap.md) — GITHUB_TOKEN + Public visibility
 
 ## 최근 세션 회고
+- [2026-05-01 Phase 21 E-1/E-6 — useDebouncedMutation 훅 + file-size CI guard](sessions/2026-05-01-phase-21-e1-e6-debounce-hook.md) — 4 PR 머지 (#178/#183/#184/#185), 4-agent 3 round + CodeRabbit 2 round, E-7~E-12 follow-up 등록
 - [2026-04-19 토큰 최적화](project_session_2026-04-19_optimization.md) — 3 PR (#116/#117/#118), 세션당 ~8~25K 절감
 
 ## 완료 Phase Archive

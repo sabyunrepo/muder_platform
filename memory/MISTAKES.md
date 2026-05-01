@@ -6,6 +6,21 @@ learning-extractor의 3-question quality gate(`refs/learning-quality-gate.md` Q1
 
 ---
 
+## 2026-05-01 — useDebouncedMutation: schedule-time cache write + flush-time applyOptimistic 이중 layer → pendingSnapshot 이중 오염
+
+**패턴**: debounce + optimistic update 합성 훅 설계 시, schedule 시점에 직접 cache mirror write를 하고 flush 시점에도 `applyOptimistic` 안에서 `getQueryData(cacheKey)`로 previous를 다시 캡처하면, flush 시점의 `previous`는 이미 schedule-time이 쓴 상태를 읽는다. mutation 실패 시 rollback closure가 schedule-time-applied 상태로만 복원하고 진짜 pre-edit snapshot은 유실 — silent data divergence.
+
+**근본 원인**: 두 layer가 서로의 cache 변경을 인지하지 못한 채 각자 `getQueryData`를 호출. flush-time previous는 "schedule 후" 시점이라 정의상 pre-edit이 아님. PR #184 round-2까지 미발견 → round-2 4-agent + CodeRabbit 동시 지적.
+
+**재발 방지 강제점**:
+1. `useDebouncedMutation` 또는 유사한 "debounce + optimistic" 합성 훅 설계 시 — **schedule 시점에는 어떤 cache write도 하지 말 것**. timer callback body (`schedulePending`) 안에서 `setQueryData`/`applyOptimistic` 호출 금지. flush 진입 직전 단 한 번 snapshot 캡처.
+2. **schedule 시점 즉시 UI 반영이 필요한 경우** (예: 토글 UX) — 호출자가 saveConfig에서 직접 `setQueryData` mirror + 별도 `pendingSnapshotRef`로 진짜 pre-edit snapshot 캡처 (debounce 윈도우 내 1회). hook의 `applyOptimistic`은 그 ref의 snapshot으로 rollback closure 작성. mutation settle (success/error) 후 ref clear → 다음 윈도우 fresh.
+3. PR review 체크리스트에 "React Query optimistic + debounce 합성: rollback 캡처 시점은 진짜 pre-edit snapshot이어야 한다 — flush 시점 `getQueryData`는 NG" 항목 추가 (`feedback_code_review_patterns.md`).
+
+**해소 PR**: PR #184 round-3 (commit 7aacc3e). `apps/web/src/hooks/useDebouncedMutation.ts:37-48` JSDoc + `apps/web/src/features/editor/components/design/CharacterAssignPanel.tsx:46-55` `pendingSnapshotRef` 패턴.
+
+---
+
 ## 2026-04-28 — dispatch-router "audit this" 본문 제거 vs router 보강
 
 **패턴**: 슬래시 본문에 trigger keyword를 적었는데 `dispatch-router.sh` 정규식이 매칭 안 할 때, **본문에서 keyword를 제거하는 것이 router를 보강하는 것보다 안전**.

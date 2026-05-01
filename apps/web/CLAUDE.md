@@ -27,6 +27,11 @@
 - 컴포넌트: `<Domain><Feature>.tsx` (예: `EditorClueGraph.tsx`)
 - 스토어: 도메인별 (`gameSessionStore`, `moduleStoreFactory`, ...)
 
+### Debounced auto-save (에디터 패널)
+
+- 에디터 패널의 debounce + optimistic + rollback + onBlur flush + unmount cleanup 합성은 `apps/web/src/hooks/useDebouncedMutation.ts` 단일 훅 사용. `useRef + setTimeout` 보일러플레이트 직접 작성 금지 (Phase 21 E-1).
+- `applyOptimistic`은 flush 시점에만 호출 — schedule 시점 cache write 금지 (perf 회귀). 즉시 UI 반영이 필요한 panel은 호출자 saveConfig에서 직접 `setQueryData` mirror + `pendingSnapshotRef`로 진짜 pre-edit snapshot 캡처. 자세한 카논: `memory/feedback_optimistic_apply_timing.md`, `memory/feedback_optimistic_rollback_snapshot.md`.
+
 ### WS 클라이언트
 
 - `packages/ws-client` 사용 (직접 `WebSocket` 인스턴스화 ❌)
