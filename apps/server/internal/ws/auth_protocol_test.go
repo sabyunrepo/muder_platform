@@ -24,14 +24,46 @@ type fakeRevokeChecker struct {
 	userRevoked bool
 	tokenRevoke bool
 	err         error
+
+	// captured by IsUserRevokedSince — regression tests assert that
+	// callers pass a non-zero `since` (the token's iat claim) rather
+	// than time.Time{}, which would re-match every prior revocation
+	// the user has ever had logged (mass user-lockout pattern).
+	lastSince  time.Time
+	lastUserID uuid.UUID
+	lastCalls  int
 }
 
-func (f *fakeRevokeChecker) IsUserRevokedSince(_ context.Context, _ uuid.UUID, _ time.Time) (bool, error) {
+func (f *fakeRevokeChecker) IsUserRevokedSince(_ context.Context, userID uuid.UUID, since time.Time) (bool, error) {
+	f.lastSince = since
+	f.lastUserID = userID
+	f.lastCalls++
 	return f.userRevoked, f.err
 }
 
 func (f *fakeRevokeChecker) IsTokenRevoked(_ context.Context, _ string) (bool, error) {
 	return f.tokenRevoke, f.err
+}
+
+// semanticRevokeChecker simulates the production migration-00027 SQL:
+// "WHERE user_id=$1 AND revoked_at > $2". It stores a single revocation
+// timestamp and returns true only when the caller's `since` predates it.
+// Used by regression tests that exercise the BLOCKER's actual semantic
+// (logout → re-login flow), not just the parameter capture.
+type semanticRevokeChecker struct {
+	revokedAt time.Time
+	err       error
+}
+
+func (s *semanticRevokeChecker) IsUserRevokedSince(_ context.Context, _ uuid.UUID, since time.Time) (bool, error) {
+	if s.err != nil {
+		return false, s.err
+	}
+	return s.revokedAt.After(since), nil
+}
+
+func (s *semanticRevokeChecker) IsTokenRevoked(_ context.Context, _ string) (bool, error) {
+	return false, nil
 }
 
 type fakeRefresher struct {
@@ -94,6 +126,24 @@ func signTokenWithSub(t *testing.T, sub string, secret []byte) string {
 		"sub": sub,
 		"exp": jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 		"iat": jwt.NewNumericDate(time.Now()),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(secret)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	return signed
+}
+
+// mintAccessTokenWithoutIat mints an otherwise-valid HS256 token that
+// omits the iat claim — used to assert verifyToken treats a missing iat
+// as fail-closed (prevents silent fallback to time.Time{}).
+func mintAccessTokenWithoutIat(t *testing.T, sub uuid.UUID, secret []byte) string {
+	t.Helper()
+	claims := jwt.MapClaims{
+		"sub":  sub.String(),
+		"role": "user",
+		"exp":  jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString(secret)
@@ -388,6 +438,88 @@ func TestAuthHandler_Identify_RevokeLookupError_InternalError_NoClose(t *testing
 		t.Errorf("Code=%d, want %d (InternalError)", ep.Code, ErrCodeInternalError)
 	}
 	assertChannelOpen(t, c)
+}
+
+// Regression for the C-1 BLOCKER (PR-9 4-agent review): IsUserRevokedSince
+// must be called with the token's iat as `since`, never time.Time{}.
+// The zero-value scope re-matches every revoke_log row a user has ever
+// generated (their own logout included), causing a mass user-lockout the
+// instant the WS auth flag flips on in production.
+func TestAuthHandler_Identify_PassesIatAsRevokeSince(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	revoke := &fakeRevokeChecker{}
+	h := newAuthHandler(t, revoke, nil, true)
+	c := newTestAuthClient(userID)
+
+	before := time.Now()
+	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
+		Token: mintAccessToken(t, userID, testJWTSecret),
+	}))
+	after := time.Now()
+
+	if revoke.lastCalls != 1 {
+		t.Fatalf("IsUserRevokedSince calls=%d, want 1", revoke.lastCalls)
+	}
+	if revoke.lastSince.IsZero() {
+		t.Fatal("BLOCKER regression: since=time.Time{} → mass user-lockout pattern (PR-9 C-1)")
+	}
+	// The iat is jwt.NewNumericDate(time.Now()) which is truncated to
+	// whole seconds — allow a 2s slack on either side.
+	earliest := before.Add(-2 * time.Second)
+	latest := after.Add(2 * time.Second)
+	if revoke.lastSince.Before(earliest) || revoke.lastSince.After(latest) {
+		t.Errorf("lastSince=%v, want within [%v, %v] (token iat)",
+			revoke.lastSince, earliest, latest)
+	}
+}
+
+// Spec-semantic regression: a user logged out at T1 must still be able
+// to re-login and identify with a fresh token issued at T2 > T1, because
+// the new token's iat scopes the revoke check to revocations *after* T2.
+// This is the migration-00027 spec ("newer than the connection's auth
+// timestamp") that the BLOCKER violated.
+func TestAuthHandler_Identify_LoggedOutUser_CanRelogIn(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	pastRevoke := time.Now().Add(-1 * time.Hour) // T1
+	checker := &semanticRevokeChecker{revokedAt: pastRevoke}
+	h := newAuthHandler(t, checker, nil, true)
+	c := newTestAuthClient(userID)
+
+	// mintAccessToken issues iat=now (T2), so since=T2 > T1 → no match.
+	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
+		Token: mintAccessToken(t, userID, testJWTSecret),
+	}))
+
+	assertSilent(t, c)
+	assertChannelOpen(t, c)
+}
+
+// Defensive: a token without iat must be rejected outright rather than
+// falling back to time.Time{} (which would re-introduce the BLOCKER).
+// Production tokens always carry iat (see auth.GenerateAccessToken), so
+// this path is fail-closed for malformed/forged tokens.
+func TestAuthHandler_Identify_TokenMissingIat_UnauthorizesAndCloses(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	revoke := &fakeRevokeChecker{}
+	h := newAuthHandler(t, revoke, nil, true)
+	c := newTestAuthClient(userID)
+
+	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
+		Token: mintAccessTokenWithoutIat(t, userID, testJWTSecret),
+	}))
+
+	env := recvOne(t, c)
+	ep := errorPayload(t, env)
+	if ep.Code != ErrCodeUnauthorized {
+		t.Errorf("Code=%d, want %d (Unauthorized)", ep.Code, ErrCodeUnauthorized)
+	}
+	if revoke.lastCalls != 0 {
+		t.Errorf("IsUserRevokedSince calls=%d, want 0 (token rejected before revoke check)", revoke.lastCalls)
+	}
+	assertChannelClosed(t, c)
 }
 
 // ---------------------------------------------------------------------------

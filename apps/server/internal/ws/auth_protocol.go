@@ -132,11 +132,11 @@ func (h *AuthHandler) handleIdentify(c *Client, env *Envelope) {
 		return
 	}
 
-	userID, ok := h.verifyToken(c, payload.Token)
+	userID, issuedAt, ok := h.verifyToken(c, payload.Token)
 	if !ok {
 		return
 	}
-	if h.userRevokedAndStop(c, userID) {
+	if h.userRevokedAndStop(c, userID, issuedAt) {
 		return
 	}
 	// Success path is silent.
@@ -164,11 +164,11 @@ func (h *AuthHandler) handleResume(c *Client, env *Envelope) {
 		return
 	}
 
-	userID, ok := h.verifyToken(c, payload.Token)
+	userID, issuedAt, ok := h.verifyToken(c, payload.Token)
 	if !ok {
 		return
 	}
-	if h.userRevokedAndStop(c, userID) {
+	if h.userRevokedAndStop(c, userID, issuedAt) {
 		return
 	}
 
@@ -230,10 +230,17 @@ func (h *AuthHandler) handleRefresh(c *Client, env *Envelope) {
 // ---------------------------------------------------------------------------
 
 // verifyToken parses tokenStr as an HS256 JWT signed with h.jwtSecret,
-// extracts the subject as a uuid, and confirms it matches c.ID. On any
-// failure it sends ErrCodeUnauthorized + closes the connection and
-// returns ok=false.
-func (h *AuthHandler) verifyToken(c *Client, tokenStr string) (uuid.UUID, bool) {
+// extracts the subject as a uuid, and confirms it matches c.ID. It also
+// returns the token's `iat` (issued-at) so the caller can scope the
+// pull-fallback revoke lookup to revocations that happened *after* the
+// token was minted — see migration 00027's spec comment on revoke_log.
+// Without this scope, IsUserRevokedSince(zero) matches every prior
+// revocation a user has ever logged (e.g. their own previous logout)
+// and produces a mass user-lockout the moment the WS auth flag flips on.
+//
+// On any failure verifyToken sends ErrCodeUnauthorized + closes the
+// connection and returns ok=false.
+func (h *AuthHandler) verifyToken(c *Client, tokenStr string) (uuid.UUID, time.Time, bool) {
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrQueryAuthNotAllowed
@@ -244,18 +251,18 @@ func (h *AuthHandler) verifyToken(c *Client, tokenStr string) (uuid.UUID, bool) 
 		h.logger.Warn().Err(err).Stringer("playerID", c.ID).
 			Msg("token verification failed")
 		h.unauthorize(c, "invalid or expired token")
-		return uuid.Nil, false
+		return uuid.Nil, time.Time{}, false
 	}
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
 		h.unauthorize(c, "token claims malformed")
-		return uuid.Nil, false
+		return uuid.Nil, time.Time{}, false
 	}
 	sub, _ := claims.GetSubject()
 	userID, err := uuid.Parse(sub)
 	if err != nil {
 		h.unauthorize(c, "token subject not a uuid")
-		return uuid.Nil, false
+		return uuid.Nil, time.Time{}, false
 	}
 	if userID != c.ID {
 		h.logger.Warn().
@@ -263,16 +270,24 @@ func (h *AuthHandler) verifyToken(c *Client, tokenStr string) (uuid.UUID, bool) 
 			Stringer("tokenSub", userID).
 			Msg("token subject does not match connection player")
 		h.unauthorize(c, "token subject does not match connection")
-		return uuid.Nil, false
+		return uuid.Nil, time.Time{}, false
 	}
-	return userID, true
+	iatClaim, err := claims.GetIssuedAt()
+	if err != nil || iatClaim == nil {
+		h.logger.Warn().Err(err).Stringer("playerID", c.ID).
+			Msg("token missing iat claim")
+		h.unauthorize(c, "token missing iat claim")
+		return uuid.Nil, time.Time{}, false
+	}
+	return userID, iatClaim.Time, true
 }
 
-// userRevokedAndStop performs the pull-fallback revoke check. Returns
-// true if the caller must stop because a response (auth.revoked + close
-// or internal error) has already been sent.
-func (h *AuthHandler) userRevokedAndStop(c *Client, userID uuid.UUID) bool {
-	revoked, err := h.revoke.IsUserRevokedSince(context.Background(), userID, time.Time{})
+// userRevokedAndStop performs the pull-fallback revoke check scoped to
+// revocations newer than `since` (the token's iat — see verifyToken).
+// Returns true if the caller must stop because a response (auth.revoked
+// + close or internal error) has already been sent.
+func (h *AuthHandler) userRevokedAndStop(c *Client, userID uuid.UUID, since time.Time) bool {
+	revoked, err := h.revoke.IsUserRevokedSince(context.Background(), userID, since)
 	if err != nil {
 		h.logger.Error().Err(err).Stringer("userID", userID).
 			Msg("revoke lookup failed")
