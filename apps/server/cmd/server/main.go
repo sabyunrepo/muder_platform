@@ -413,4 +413,3 @@ func main() {
 		logger.Fatal().Err(err).Msg("server exited with error")
 	}
 }
-

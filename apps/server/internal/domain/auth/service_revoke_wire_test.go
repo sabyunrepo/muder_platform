@@ -20,8 +20,8 @@ import (
 // ---------------------------------------------------------------------------
 
 type capturingRevokeRepo struct {
-	mu      sync.Mutex
-	entries []RevokeEntry
+	mu        sync.Mutex
+	entries   []RevokeEntry
 	insertErr error
 }
 
