@@ -55,12 +55,12 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 | ~~E-4~~ | ~~`LocationClueAssignPanel` optimistic + rollback~~ | — | — | **해소 (2026-04-30)** |
 | E-5 | `location_clue_assignment_v2` feature flag (런타임 엔진 소비 게이트) | 프론트+런타임 | S+ (brainstorm 필수) | 미해결 — Phase 24 후보 |
 | ~~E-6~~ | ~~파일 크기 누적 가드 (PR마다 +수줄 누적 정책)~~ | — | — | **해소 (2026-05-01, PR #184 file-size-guard.yml warn-only)** |
-| E-7 | `PhaseNodePanel` 서브컴포넌트 분리 (PhaseBasicInfo / PhaseTimerSettings / PhaseAdvanceToggle) — JSX 컴포넌트 150줄 룰 충족 | 프론트 리팩터 | M | 미해결 (CR-3) |
-| E-8 | `CharacterAssignPanel` 분리 (CharacterList + `useCharacterConfigDebounce` hook) — JSX 150줄 룰 + 책임 분리 | 프론트 리팩터 | M | 미해결 (CR-4) |
+| ~~E-7~~ | ~~`PhaseNodePanel` 서브컴포넌트 분리~~ | — | — | **해소 (2026-05-01, PR #191)** |
+| ~~E-8~~ | ~~`CharacterAssignPanel` 분리 + `useCharacterConfigDebounce` hook~~ | — | — | **해소 (2026-05-01, PR #191)** |
 | E-9 | `file-size-guard.yml` glob 패턴 정정 (`**/dist/**` → `*/dist/*`, `*/internal/*/mocks/*` 한정, `*.pb.go` / `*.gen.go` 추가) | 인프라 | S | 미해결 (round-2 arch M-1/M-2) |
-| E-10 | `useDebouncedMutation` `FlushRefs` bag 단순화 — 2 caller만 있으면 inline closure가 더 readable (YAGNI) | 프론트 리팩터 | XS | 미해결 (round-2 arch LOW) |
-| E-11 | `useDebouncedMutation` `useUnmountFlush` inline — 단일 호출 helper, inline 가능 | 프론트 리팩터 | XS | 미해결 (round-2 arch LOW) |
-| E-12 | `useDebouncedMutation` 추가 회귀 테스트 — schedule×2 windows / 재진입 contract / EndingNodePanel unmount-during-pending | 테스트 보강 | S | 미해결 (round-2 test LOW) |
+| ~~E-10~~ | ~~`useDebouncedMutation` `FlushRefs` bag 단순화~~ | — | — | **해소 (2026-05-01, PR #189)** |
+| ~~E-11~~ | ~~`useDebouncedMutation` `useUnmountFlush` inline~~ | — | — | **해소 (2026-05-01, PR #189)** |
+| ~~E-12~~ | ~~`useDebouncedMutation` 추가 회귀 테스트 3건~~ | — | — | **해소 (2026-05-01, PR #189)** |
 
 ### E-2 무효 사유
 
@@ -83,6 +83,37 @@ E-3 (Config 409 3-way merge)와 함께 **Phase 24 후보**로 묶음.
 
 `apps/web/src/features/editor/components/design/LocationClueAssignPanel.tsx:62-82` — `queryClient.setQueryData` optimistic write + `previous` 캡처 + `onError` 롤백 + Sonner toast 완비. 커밋 시점 미상이나 현재 main 기준 완전 구현. backlog 종료.
 
+### E-7 해소 근거 (2026-05-01, PR #191)
+
+`apps/web/src/features/editor/components/design/PhaseNodePanel.tsx` 195 → 98 LoC. 3 sub-component 분리:
+- `PhasePanelBasicInfo.tsx` (56 LoC) — label + phase type select
+- `PhasePanelTimerSettings.tsx` (52 LoC) — duration + rounds
+- `PhasePanelAdvanceToggle.tsx` (55 LoC) — auto-advance toggle + conditional warning timer (autoAdvance에 종속이라 같이 묶음)
+
+컴포넌트 함수 본문 73줄 (150 룰 충족, 마진 77). 4-agent review에서 round-1에 "warning timer가 toggle 아래"라는 제어 순서 회귀 HIGH 1건 검출 → in-PR fix (warning timer를 PhasePanelAdvanceToggle 안으로 흡수해 원본 순서 복원).
+
+기존 테스트 (PhaseNodePanelDebounce 9 + Extended 5) 14건 모두 보존.
+
+### E-8 해소 근거 (2026-05-01, PR #191)
+
+`apps/web/src/features/editor/components/design/CharacterAssignPanel.tsx` 248 → 151 LoC. 신규 hook + 1 sub-component:
+- `apps/web/src/features/editor/hooks/useCharacterConfigDebounce.ts` (103 LoC) — debouncer + saveConfig + pendingSnapshotRef + flush 캡슐화. 두 layer 패턴 (schedule-time UI mirror + flush-time `applyOptimistic`) 보존
+- `CharacterList.tsx` (44 LoC) — left aside character buttons (selection 강조 + culprit badge)
+
+컴포넌트 함수 본문 137줄 (150 룰 충족, 마진 13). 4-agent review에서 MEDIUM 1건 (themeConfigJson deps 의도 명시) in-PR 코멘트 fix.
+
+기존 테스트 11건 보존. `pendingSnapshotRef` lifecycle (capture-once-per-window, clear-on-settle) 동일 보존.
+
+### E-10 / E-11 / E-12 해소 근거 (2026-05-01, PR #189)
+
+`apps/web/src/hooks/useDebouncedMutation.ts` 213 → 188 LoC. 함수 본문 49줄 (60 룰 충족).
+
+- E-10: `FlushRefs` bag interface 제거. `flushPending` 헬퍼는 individual ref 인자를 받음 (timerRef / pendingRef / optsRef). `useMemo` bag 1회 생성 + 매 콜백 deref 비용 제거.
+- E-11: `useUnmountFlush` 헬퍼 제거. hook 본문에 `flushRef` + 2 useEffect 인라인.
+- E-12: 회귀 테스트 3건 추가 — schedule×2 windows (timer/pendingRef 누설 회귀), mutate 안 schedule 재진입 (next-window 큐잉 contract), `EndingNodePanel` unmount-during-pending (panel 통합 자동 flush).
+
+4-agent carve-out review (superpowers): Critical 0 / High 0 / 3 LOW (1건 in-PR JSDoc 재진입 contract 명확화).
+
 ### E-1 해소 근거 (2026-05-01, PR #184)
 
 `apps/web/src/hooks/useDebouncedMutation.ts` (213 LOC) — debounce timer + pending body + optimistic apply + rollback closure + onBlur flush + unmount cleanup 캡슐화. 함수 분리 (`flushMutation` / `schedulePending` / `clearTimer` / `useUnmountFlush`) 로 60줄 룰 충족. 14 테스트 케이스 (TDD). 3 consumer 마이그레이션 + EndingNodePanel은 PhaseNodePanel 수준으로 동등화 (optimistic + rollback + onBlur flush 추가).
@@ -103,8 +134,9 @@ round-2/3에서 4-agent + CodeRabbit 발견 9건 in-PR 해소 (perf-H1/H2, arch-
 - **인프라 P0-1**: KT Cloud KS arc-runner-set 진화로 자연 해소되면 close — 별도 verify 필요
 - **에디터 E-3**: 단독 phase로 분기 (3-way merge는 git-style 충돌 해소 알고리즘 도입이라 별도 brainstorm 필수)
 - **에디터 E-5**: Phase 24 후보로 보류 (2026-05-01 결정). 게이트 대상 v2 구현이 부재한 상태라 placeholder flag 추가 = partial impl 카논 위반 risk. brainstorm에서 v2 동작 spec 확정 후 진입.
-- **에디터 E-7/E-8**: 병합 가능. CharacterAssignPanel + PhaseNodePanel 분리는 하나의 "에디터 컴포넌트 분리" PR로 묶을 수 있음. JSX 150줄 룰 충족 + `useCharacterConfigDebounce` 훅 추출 동시 진행.
-- **에디터 E-10/E-11**: 같은 파일 (`useDebouncedMutation.ts`) 내부 정리. 한 PR로 묶음 권장 (XS+XS).
+- ~~**에디터 E-7/E-8**~~: 해소 (PR #191, 2026-05-01).
+- ~~**에디터 E-10/E-11/E-12**~~: 해소 (PR #189, 2026-05-01).
+- **에디터 E-9**: 잔존. `file-size-guard.yml` glob 패턴 정정 (round-2 arch M-1/M-2). 단독 인프라 PR로 처리 가능 (S 규모).
 
 ---
 
