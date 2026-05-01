@@ -13,8 +13,9 @@
 - [ ] **Step 34**: 기존 read 경로 위치 파악 + 신설 fixture helper 1개 (raw INSERT 우회)
 
 ```bash
-grep -n "func.*GetTheme\|func.*ListThemes\|func.*GetThemeBy\|theme\.ConfigJson" apps/server/internal/domain/editor/themes.go
-grep -n "createThemeForUser\b" apps/server/internal/domain/editor/test_fixture_test.go
+# Use QMD to search docs/plans and memory (grep is not preferred per .claude/refs/qmd-rules.md)
+# mcp__plugin_qmd_qmd__search collection=mmp-plans query="func GetTheme ListThemes GetThemeBy theme.ConfigJson"
+# mcp__plugin_qmd_qmd__search collection=mmp-plans query="createThemeForUser test_fixture_test.go"
 ```
 
 기존 `f.createThemeForUser(t, creatorID)`는 빈 config_json으로 생성. **레거시 shape 직접 삽입 helper** 가 필요 → `test_fixture_test.go`에 1개 추가:
@@ -96,11 +97,11 @@ func (s *service) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*
 }
 ```
 
-- [ ] **Step 38**: 다른 read 경로 동일 적용 — `grep` 으로 확인
+- [ ] **Step 38**: 다른 read 경로 동일 적용 — QMD 로 확인
 
 ```bash
-grep -rn "ConfigJson\b" apps/server/internal/domain/editor/ apps/server/internal/server/ \
-  | grep -v "_test\.go\|UpdateConfigJson\|setConfigJson"
+# Use QMD to search docs/plans and memory (grep is not preferred per .claude/refs/qmd-rules.md)
+# mcp__plugin_qmd_qmd__search collection=mmp-plans query="ConfigJson read path ListThemes GetThemeBySlug"
 ```
 
 발견된 read 경로 (예: `ListThemes`, `GetThemeBySlug`, `handler.GetTheme` 직접 read 등)에 normalizer 호출 추가. 각 경로마다 동일 테스트 1개씩.
@@ -135,6 +136,11 @@ func TestUpdateConfigJson_RejectsLegacyShape(t *testing.T) {
 			name:  "modules array",
 			input: json.RawMessage(`{"modules": [{"id": "voting"}]}`),
 			want:  "legacy modules shape rejected (D-19)",
+		},
+		{
+			name:  "modules null",
+			input: json.RawMessage(`{"modules": null}`),
+			want:  "modules cannot be null",
 		},
 		{
 			name:  "clue_placement key",

@@ -96,8 +96,8 @@ Expected: 모두 PASS, 기존 기능 회귀 0.
 - [ ] **Step 62**: lint/vet
 
 ```bash
-go vet ./...
-golangci-lint run ./...
+cd apps/server && go vet ./...
+cd apps/server && golangci-lint run ./...
 ```
 
 Expected: 0 issue.
@@ -162,7 +162,7 @@ EOF
 - [ ] **Step 67**: PR 머지 후 worktree 정리 + `compound-mmp:compound-wrap` 7단계 실행 + PR-2 진입 준비 (`refs/pr-2-tasks.md` expand)
 
 ```bash
-cd /Users/sabyun/goinfre/muder_platform
+cd .
 git worktree remove ../mmp-pr-1-backend-foundation
 git pull origin main
 ```

@@ -7,7 +7,7 @@ head_commit: c249a7b
 reviewers: 4
 verdicts: [security=PASS-WITH-CAVEATS, perf=PASS-WITH-CAVEATS, critic=PASS-WITH-CAVEATS, test=PASS-WITH-CAVEATS]
 high_count: 4
-critical_count: 0
+critical_count: 1
 ---
 
 # PR-1 4-Agent Review Synthesis
