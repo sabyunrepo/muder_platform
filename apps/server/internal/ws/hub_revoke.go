@@ -72,7 +72,7 @@ func (h *Hub) RevokeSession(_ context.Context, sessionID uuid.UUID, code, reason
 // token jti tracking.
 func (h *Hub) RevokeToken(_ context.Context, tokenJTI, code, _ string) error {
 	h.logger.Debug().
-		Str("jti", tokenJTI).
+		Str("jti_hash", redactJTI(tokenJTI)).
 		Str("code", code).
 		Msg("Hub.RevokeToken: no-op (access token jti tracking not implemented; use RevokeUser)")
 	return nil

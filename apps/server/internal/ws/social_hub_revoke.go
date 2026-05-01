@@ -47,7 +47,7 @@ func (h *SocialHub) RevokeSession(_ context.Context, _ uuid.UUID, code, _ string
 // connection authenticated with a given token. Use RevokeUser.
 func (h *SocialHub) RevokeToken(_ context.Context, tokenJTI, code, _ string) error {
 	h.logger.Debug().
-		Str("jti", tokenJTI).
+		Str("jti_hash", redactJTI(tokenJTI)).
 		Str("code", code).
 		Msg("SocialHub.RevokeToken: no-op (access token jti tracking not implemented; use RevokeUser)")
 	return nil

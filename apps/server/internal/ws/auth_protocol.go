@@ -258,6 +258,20 @@ func (h *AuthHandler) verifyToken(c *Client, tokenStr string) (uuid.UUID, time.T
 		h.unauthorize(c, "token claims malformed")
 		return uuid.Nil, time.Time{}, false
 	}
+	// Reject refresh tokens here — they carry the longer 30-day TTL
+	// and were never meant to authenticate live WS frames. Without
+	// this check a stolen refresh token could be replayed against
+	// auth.identify / auth.resume to bypass the 15-min access-token
+	// rotation. auth.refresh is the only path that legitimately sees
+	// a refresh token (and AuthRefresher.RefreshToken validates type
+	// itself). PR-9 CR-1.
+	if tokenType, _ := claims["type"].(string); tokenType == "refresh" {
+		h.logger.Warn().
+			Stringer("playerID", c.ID).
+			Msg("verifyToken rejected refresh token used for identify/resume")
+		h.unauthorize(c, "refresh token cannot be used for WS auth")
+		return uuid.Nil, time.Time{}, false
+	}
 	sub, _ := claims.GetSubject()
 	userID, err := uuid.Parse(sub)
 	if err != nil {

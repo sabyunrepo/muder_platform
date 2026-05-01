@@ -137,6 +137,26 @@ func mintAccessToken(t *testing.T, sub uuid.UUID, secret []byte) string {
 	return signed
 }
 
+// mintRefreshToken mints a token whose `type` claim is "refresh", mirroring
+// auth.GenerateRefreshToken's wire shape. PR-9 CR-1 regression test asserts
+// verifyToken rejects this.
+func mintRefreshToken(t *testing.T, sub uuid.UUID, secret []byte) string {
+	t.Helper()
+	claims := jwt.MapClaims{
+		"sub":  sub.String(),
+		"type": "refresh",
+		"jti":  "test-jti-1",
+		"exp":  jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
+		"iat":  jwt.NewNumericDate(time.Now()),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := token.SignedString(secret)
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+	}
+	return signed
+}
+
 // signTokenWithSub mints a token with an arbitrary string subject (escape
 // hatch for the "subject is not a uuid" case).
 func signTokenWithSub(t *testing.T, sub string, secret []byte) string {
@@ -552,6 +572,34 @@ func TestAuthHandler_Identify_UsesClientContextCancelledOnClose(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Client.Close() did not cancel the captured revoke ctx")
 	}
+}
+
+// Regression for CR-1: a refresh token (type="refresh") replayed against
+// auth.identify / auth.resume must be rejected outright. Without this
+// check a stolen refresh token could ride its 30-day TTL into a live WS
+// session, defeating the 15-min access-token rotation. The legitimate
+// refresh path is auth.refresh, where AuthRefresher.RefreshToken
+// validates the type claim itself.
+func TestAuthHandler_Identify_RejectsRefreshToken(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	revoke := &fakeRevokeChecker{}
+	h := newAuthHandler(t, revoke, nil, true)
+	c := newTestAuthClient(userID)
+
+	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
+		Token: mintRefreshToken(t, userID, testJWTSecret),
+	}))
+
+	env := recvOne(t, c)
+	ep := errorPayload(t, env)
+	if ep.Code != ErrCodeUnauthorized {
+		t.Errorf("Code=%d, want %d (Unauthorized)", ep.Code, ErrCodeUnauthorized)
+	}
+	if revoke.lastCalls != 0 {
+		t.Errorf("IsUserRevokedSince calls=%d, want 0 (refresh rejected before revoke check)", revoke.lastCalls)
+	}
+	assertChannelClosed(t, c)
 }
 
 // Defensive: a token without iat must be rejected outright rather than
