@@ -32,6 +32,7 @@
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시, 실제 작업은 Sonnet/Haiku 위임
 - [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙
 - [사용자 설명 형식](feedback_explanation_style.md) — 원인/결과/권장 3섹션, 비개발자 친화 어휘
+- [코딩 작업 완료 보고 6섹션](feedback_task_completion_report.md) — 큰 그림 / Task 위치 / 파일별 비유 / 사용자 변화 / 다음 미리보기 / 커밋 위치
 - [작업 루틴 강제](feedback_work_routine.md) — 시작 시 QMD 컨텍스트 로드, 완료 시 재인덱싱
 - [main 직접 push 금지 · branch + PR 필수](feedback_branch_pr_workflow.md) — branch protection + 15 status check
 - [아키텍처·의존성 질문은 graphify 먼저](feedback_graphify_first.md) — `--update` 증분만 사용
