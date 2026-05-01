@@ -1,10 +1,28 @@
 name: Security — Fast Feedback
 
+# paths filter (CI 슬림화 — Phase 23 follow-up "CI pruning P0" 후속):
+# docs/memory/plan 변경 PR 시 fire 0. Go/Node 의존성 또는 본 workflow 자체 변경에만 fire.
 on:
   pull_request:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'pnpm-lock.yaml'
+      - '.gitleaks.toml'
+      - '.github/workflows/security-fast.yml'
   push:
     branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'pnpm-lock.yaml'
+      - '.gitleaks.toml'
+      - '.github/workflows/security-fast.yml'
 
 concurrency:
   group: security-fast-${{ github.ref }}

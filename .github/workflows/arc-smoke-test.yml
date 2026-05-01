@@ -3,6 +3,10 @@ name: ARC smoke test
 on:
   workflow_dispatch:
 
+concurrency:
+  group: arc-smoke-test
+  cancel-in-progress: false
+
 jobs:
   smoke:
     runs-on: arc-runner-set
