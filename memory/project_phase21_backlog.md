@@ -51,9 +51,9 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 |----|------|------|------|------|
 | ~~E-1~~ | ~~`useDebouncedMutation` 공용 훅 + 3 consumer 통합~~ | — | — | **해소 (2026-05-01, PR #184)** |
 | ~~E-2~~ | ~~`PhaseNodePanel` / `ModulesSubTab` → `@jittda/ui` 마이그레이션~~ | — | — | **무효 (2026-04-30)** |
-| E-3 | Config 409 **3-way merge** 의미론 | 백엔드+프론트 | L+ (별도 brainstorm 필수) | 미해결 |
+| E-3 | Config 409 **3-way merge** 의미론 | 백엔드+프론트 | L+ (별도 brainstorm 필수) | 미해결 — Phase 24 후보 |
 | ~~E-4~~ | ~~`LocationClueAssignPanel` optimistic + rollback~~ | — | — | **해소 (2026-04-30)** |
-| E-5 | `location_clue_assignment_v2` feature flag (런타임 엔진 소비 게이트) | 프론트+런타임 | S | 미해결 |
+| E-5 | `location_clue_assignment_v2` feature flag (런타임 엔진 소비 게이트) | 프론트+런타임 | S+ (brainstorm 필수) | 미해결 — Phase 24 후보 |
 | ~~E-6~~ | ~~파일 크기 누적 가드 (PR마다 +수줄 누적 정책)~~ | — | — | **해소 (2026-05-01, PR #184 file-size-guard.yml warn-only)** |
 | E-7 | `PhaseNodePanel` 서브컴포넌트 분리 (PhaseBasicInfo / PhaseTimerSettings / PhaseAdvanceToggle) — JSX 컴포넌트 150줄 룰 충족 | 프론트 리팩터 | M | 미해결 (CR-3) |
 | E-8 | `CharacterAssignPanel` 분리 (CharacterList + `useCharacterConfigDebounce` hook) — JSX 150줄 룰 + 책임 분리 | 프론트 리팩터 | M | 미해결 (CR-4) |
@@ -65,6 +65,19 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 ### E-2 무효 사유
 
 `apps/web/CLAUDE.md` L3 명시: **"Tailwind 4 직접 사용, 디자인 시스템 라이브러리 의존 없음. 글로벌 ~/.claude/CLAUDE.md 의 Seed Design 3단계 규칙은 이 프로젝트에 적용되지 않는다."** Phase 18.4 후속 과제로 등록될 당시 글로벌 룰을 잘못 적용한 항목. backlog에서 영구 제거.
+
+### E-5 brainstorm 필수 사유 (2026-05-01)
+
+코드/문서 grep 결과 `location_clue_assignment_v2` 식별자 **0 hit** (server + web 전체). 기대된 v2 동작(런타임에서 `theme.config_json.locations[].clueIds`를 `location:search` 이벤트 시 자동 distribute)은 **아직 구현 부재**. `apps/server/internal/module/exploration/location_clue.go` v1 모듈은 search 기록 + `location.searched` 이벤트 발행만 하고 `clueIds` 자체는 소비하지 않는다.
+
+기존 flag convention: `apps/server/internal/config/config.go:36-38` `GameRuntimeV2 bool \`env:"GAME_RUNTIME_V2"\`` 패턴 (env var + struct tag + default false). 이 컨벤션 자체는 명확하지만, **게이트할 코드가 없는 상태에서 placeholder flag만 추가**하면 글로벌 카논 "🔴 구현 완전성: partial / TODO / mock 금지" 위반 risk.
+
+따라서 E-5는 별도 brainstorm 후 phase 진입:
+1. v2 동작 spec (clueIds delivery 시점 + 어느 모듈에 wire-up 할지)
+2. 게이트 시점 (런타임 boot vs. per-search)
+3. v1 → v2 마이그레이션 경로 (기존 테마 config 호환)
+
+E-3 (Config 409 3-way merge)와 함께 **Phase 24 후보**로 묶음.
 
 ### E-4 해소 근거
 
@@ -89,6 +102,7 @@ round-2/3에서 4-agent + CodeRabbit 발견 9건 in-PR 해소 (perf-H1/H2, arch-
 - **Phase 19 W4 완료 직후**: 본 backlog 전수 재평가
 - **인프라 P0-1**: KT Cloud KS arc-runner-set 진화로 자연 해소되면 close — 별도 verify 필요
 - **에디터 E-3**: 단독 phase로 분기 (3-way merge는 git-style 충돌 해소 알고리즘 도입이라 별도 brainstorm 필수)
+- **에디터 E-5**: Phase 24 후보로 보류 (2026-05-01 결정). 게이트 대상 v2 구현이 부재한 상태라 placeholder flag 추가 = partial impl 카논 위반 risk. brainstorm에서 v2 동작 spec 확정 후 진입.
 - **에디터 E-7/E-8**: 병합 가능. CharacterAssignPanel + PhaseNodePanel 분리는 하나의 "에디터 컴포넌트 분리" PR로 묶을 수 있음. JSX 150줄 룰 충족 + `useCharacterConfigDebounce` 훅 추출 동시 진행.
 - **에디터 E-10/E-11**: 같은 파일 (`useDebouncedMutation.ts`) 내부 정리. 한 PR로 묶음 권장 (XS+XS).
 
