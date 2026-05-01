@@ -783,23 +783,6 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
 // --- payload interfaces (generated from Go structs marked //wsgen:payload) ---
 
 /**
- * ErrorPayload is sent as the payload of "error" type messages.
- */
-export interface ErrorPayload {
-  code: number;
-  message: string;
-}
-
-/**
- * ConnectedPayload is sent on successful connection/reconnection.
- */
-export interface ConnectedPayload {
-  playerId: string;
-  sessionId?: string;
-  seq: number;
-}
-
-/**
  * AuthIdentifyPayload — C2S, sent post-upgrade with a refreshed credential.
  */
 export interface AuthIdentifyPayload {
@@ -877,5 +860,22 @@ export interface AuthTokenIssuedPayload {
 export interface AuthInvalidSessionPayload {
   resumable: boolean;
   reason: string;
+}
+
+/**
+ * ErrorPayload is sent as the payload of "error" type messages.
+ */
+export interface ErrorPayload {
+  code: number;
+  message: string;
+}
+
+/**
+ * ConnectedPayload is sent on successful connection/reconnection.
+ */
+export interface ConnectedPayload {
+  playerId: string;
+  sessionId?: string;
+  seq: number;
 }
 
