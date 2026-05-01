@@ -115,32 +115,9 @@ func NewService(
 	}
 }
 
-// recordRevoke writes a persistent revoke_log row and pushes auth.revoked
-// to live WS sessions. Both side effects are best-effort: a failure is
-// logged but does not block the calling auth flow, mirroring the audit
-// pipeline (additive, never blocks primary auth behaviour). When the
-// MMP_WS_AUTH_PROTOCOL flag is off the publisher is a no-op so live
-// sockets stay attached and the legacy upgrade-time JWT check remains
-// the only auth gate; the revoke_log row is still written so the next
-// reconnect after the flag flip is rejected via the pull fallback.
-func (s *service) recordRevoke(ctx context.Context, userID uuid.UUID, code, reason string) {
-	if _, err := s.revokeRepo.Insert(ctx, RevokeEntry{
-		UserID: userID,
-		Reason: reason,
-		Code:   code,
-	}); err != nil {
-		s.logger.Warn().Err(err).
-			Str("user_id", userID.String()).
-			Str("code", code).
-			Msg("revoke_log insert failed")
-	}
-	if err := s.publisher.RevokeUser(ctx, userID, code, reason); err != nil {
-		s.logger.Warn().Err(err).
-			Str("user_id", userID.String()).
-			Str("code", code).
-			Msg("revoke push failed")
-	}
-}
+// recordRevoke is defined in service_revoke.go (PR-9 H-1: split out so
+// the publisher push can run in a goroutine without growing service.go
+// past the 500 LoC tier limit).
 
 // refreshKeyPrefix returns the Redis key prefix for a user's refresh tokens.
 func refreshKeyPrefix(userID string) string {

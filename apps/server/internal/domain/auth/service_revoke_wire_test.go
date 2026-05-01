@@ -70,6 +70,36 @@ func (c *capturingPublisher) RevokeToken(context.Context, string, string, string
 	return nil
 }
 
+// snapshotUserCalls returns a deep copy of userCalls under the mutex so
+// the caller can inspect them race-free even while the async push
+// goroutine may still be running for unrelated test iterations.
+func (c *capturingPublisher) snapshotUserCalls() []revokeUserCall {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make([]revokeUserCall, len(c.userCalls))
+	copy(out, c.userCalls)
+	return out
+}
+
+// waitForUserCalls polls until at least n RevokeUser invocations are
+// observed or the deadline elapses. PR-9 H-1 made recordRevoke push
+// asynchronously so direct len() checks immediately after recordRevoke
+// race the pushRevokeAsync goroutine.
+func (c *capturingPublisher) waitForUserCalls(t *testing.T, n int) []revokeUserCall {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		got := c.snapshotUserCalls()
+		if len(got) >= n {
+			return got
+		}
+		time.Sleep(2 * time.Millisecond)
+	}
+	got := c.snapshotUserCalls()
+	t.Fatalf("publisher.RevokeUser calls = %d, want >= %d within 2s", len(got), n)
+	return got
+}
+
 // newWireTestService builds a *service with the bare minimum needed to
 // exercise recordRevoke directly. queries / redis stay nil because
 // recordRevoke does not touch them; tests that need those deps go
@@ -112,10 +142,8 @@ func TestRecordRevoke_WiresRepoAndPublisher(t *testing.T) {
 			got, userID, RevokeCodeLoggedOutElsewhere, "user logout")
 	}
 
-	if len(pub.userCalls) != 1 {
-		t.Fatalf("publisher.RevokeUser calls = %d, want 1", len(pub.userCalls))
-	}
-	if got := pub.userCalls[0]; got.UserID != userID || got.Code != RevokeCodeLoggedOutElsewhere || got.Reason != "user logout" {
+	calls := pub.waitForUserCalls(t, 1)
+	if got := calls[0]; got.UserID != userID || got.Code != RevokeCodeLoggedOutElsewhere || got.Reason != "user logout" {
 		t.Errorf("RevokeUser call = %+v, want UserID=%v Code=%q Reason=%q",
 			got, userID, RevokeCodeLoggedOutElsewhere, "user logout")
 	}
@@ -133,11 +161,12 @@ func TestRecordRevoke_RepoFailure_StillPushesAndDoesNotError(t *testing.T) {
 	svc := newWireTestService(repo, pub)
 
 	userID := uuid.New()
-	// Must not panic and must not block — completes synchronously.
+	// Must not panic and must return immediately — repo synchronous,
+	// publisher push runs on a goroutine (PR-9 H-1).
 	svc.recordRevoke(context.Background(), userID, RevokeCodeAdminRevoked, "family attack")
 
-	if len(pub.userCalls) != 1 {
-		t.Fatalf("publisher.RevokeUser must still fire on repo failure, calls = %d", len(pub.userCalls))
+	if got := pub.waitForUserCalls(t, 1); len(got) < 1 {
+		t.Fatalf("publisher.RevokeUser must still fire on repo failure, calls = %d", len(got))
 	}
 }
 
@@ -153,6 +182,9 @@ func TestRecordRevoke_PublisherFailure_DoesNotError(t *testing.T) {
 	if len(repo.entries) != 1 {
 		t.Errorf("revokeRepo.Insert must still fire on publisher failure, calls = %d", len(repo.entries))
 	}
+	// Drain the async push goroutine so it doesn't leak into the next
+	// test under -race.
+	pub.waitForUserCalls(t, 1)
 }
 
 // ---------------------------------------------------------------------------
