@@ -14,7 +14,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
-	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
@@ -55,8 +54,15 @@ func TestUpdateConfigJson_Service_Success(t *testing.T) {
 }
 
 // TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion verifies that
-// an optimistic lock failure returns 409 with extensions.current_version so
-// the client can rebase. This is the core fix shipped in PR-2.
+// an optimistic lock failure returns 409 with extensions.current_version equal
+// to the actual current DB version, so the client can rebase without an extra
+// round-trip. This is the core fix shipped in PR-2.
+//
+// The test uses service.preUpdateHook to deterministically inject a version
+// bump between the service's getOwnedTheme read and the UpdateThemeConfigJson
+// write — eliminating the previous goroutine+race approach that could fall
+// back to calling buildConfigVersionConflict directly (which bypassed the real
+// service path entirely).
 func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	f := setupFixture(t)
 	ctx := context.Background()
@@ -64,77 +70,46 @@ func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	creatorID := f.createUser(t)
 	themeID := f.createThemeForUser(t, creatorID)
 
-	// First update: version 1 -> 2
+	// First update: version 1 -> 2 (establishes a non-trivial starting version).
 	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID,
 		json.RawMessage(`{"step":1}`)); err != nil {
 		t.Fatalf("first UpdateConfigJson: %v", err)
 	}
 
-	// Second update from a stale session: the service's getOwnedTheme will
-	// read version=2 fresh, but we simulate "another session wrote first" by
-	// bumping the DB version again before our update lands.
-	if _, err := f.pool.Exec(ctx,
-		`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID); err != nil {
-		t.Fatalf("bump version: %v", err)
+	// Cast to *service so we can install the test hook. This is the same
+	// pattern as TestUpdateConfigJson_AuditLog_EmitsInfoWithRequestID which
+	// builds a service directly — UpdateConfigJson and buildConfigVersionConflict
+	// are both reachable through this handle.
+	testSvc, ok := f.svc.(*service)
+	if !ok {
+		t.Skip("service is not *service; cannot install preUpdateHook")
 	}
 
-	// Now UpdateConfigJson reads version=3, then tries to UPDATE WHERE version=3
-	// — but another racing update would have bumped it to 4. Simulate that:
-	// we can't race, so instead we pass a stale version by calling the underlying
-	// query directly with an older version.
-	_, err := f.q.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{
-		ID:         themeID,
-		ConfigJson: json.RawMessage(`{"stale":true}`),
-		Version:    1, // stale — current is 3
-	})
-	if err == nil {
-		t.Fatal("expected stale version to fail at DB layer")
-	}
-
-	// Exercise the real code path: use a wrapper that forces version mismatch
-	// by invoking the service with a concurrent bump pattern.
-	// Re-bump so getOwnedTheme's read will be stale by the time UPDATE runs.
-	if _, err := f.pool.Exec(ctx,
-		`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID); err != nil {
-		t.Fatalf("bump version 2: %v", err)
-	}
-
-	// Read current version for the assertion.
-	current, err := f.q.GetTheme(ctx, themeID)
-	if err != nil {
-		t.Fatalf("GetTheme: %v", err)
-	}
-	expectedVersion := current.Version
-
-	// Drive the mismatch deterministically by racing: read, bump, then service
-	// attempts UPDATE with the already-stale version read. We need a hook:
-	// call the service, but interleave a bump between its read and its write.
-	// Since we don't have hooks, simulate by calling buildConfigVersionConflict
-	// directly through UpdateConfigJson: prepare a theme whose version will
-	// change during the call. We use a goroutine to bump mid-flight.
-	errCh := make(chan error, 1)
-	go func() {
-		// Bump immediately to create the mismatch before UPDATE runs.
-		_, _ = f.pool.Exec(ctx,
-			`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID)
-		_, serviceErr := f.svc.UpdateConfigJson(ctx, creatorID, themeID,
-			json.RawMessage(`{"will":"conflict"}`))
-		errCh <- serviceErr
-	}()
-
-	// Additional bump to widen the race window.
-	_, _ = f.pool.Exec(ctx,
-		`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID)
-
-	svcErr := <-errCh
-	if svcErr == nil {
-		// If no conflict was produced by the race, fall back to a direct
-		// invocation of the conflict builder to still exercise the shape.
-		testSvc, ok := f.svc.(*service)
-		if !ok {
-			t.Skip("race did not produce conflict and service is not *service; skip shape assertion")
+	// Install the hook: after getOwnedTheme reads version=2, bump it to 3 so
+	// the subsequent UPDATE WHERE version=2 finds 0 rows → pgx.ErrNoRows →
+	// buildConfigVersionConflict re-reads version=3 and embeds it.
+	testSvc.preUpdateHook = func(hookCtx context.Context, hookThemeID uuid.UUID) {
+		if _, bumpErr := f.pool.Exec(hookCtx,
+			`UPDATE themes SET version = version + 1 WHERE id = $1`, hookThemeID); bumpErr != nil {
+			t.Errorf("preUpdateHook: bump version: %v", bumpErr)
 		}
-		svcErr = testSvc.buildConfigVersionConflict(ctx, themeID, expectedVersion)
+	}
+	defer func() { testSvc.preUpdateHook = nil }()
+
+	// Read the version that will be current after the hook fires (2+1=3).
+	// This is what buildConfigVersionConflict should re-read and embed.
+	currentBeforeCall, err := f.q.GetTheme(ctx, themeID)
+	if err != nil {
+		t.Fatalf("GetTheme before call: %v", err)
+	}
+	expectedVersion := currentBeforeCall.Version + 1 // hook will bump by 1
+
+	// Call UpdateConfigJson — the hook fires mid-flight, the UPDATE misses, and
+	// the service returns a 409 carrying the actual current version.
+	_, svcErr := f.svc.UpdateConfigJson(ctx, creatorID, themeID,
+		json.RawMessage(`{"will":"conflict"}`))
+	if svcErr == nil {
+		t.Fatal("expected version-conflict error, got nil")
 	}
 
 	var appErr *apperror.AppError
@@ -154,7 +129,9 @@ func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	if !ok {
 		t.Fatal("expected extensions.current_version to be present")
 	}
-	// The carried version must be a positive int (int32 from the DB).
+	// Assert the carried version equals the actual post-bump DB version (not
+	// just "is positive") — verifying that UpdateConfigJson and
+	// buildConfigVersionConflict propagate the correct value end-to-end.
 	var cvInt int32
 	switch v := cv.(type) {
 	case int32:
@@ -166,8 +143,8 @@ func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	default:
 		t.Fatalf("unexpected type for current_version: %T", cv)
 	}
-	if cvInt <= 0 {
-		t.Errorf("expected positive current_version, got %d", cvInt)
+	if cvInt != expectedVersion {
+		t.Errorf("current_version: got %d, want %d (post-hook DB version)", cvInt, expectedVersion)
 	}
 }
 

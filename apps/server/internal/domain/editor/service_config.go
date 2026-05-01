@@ -21,8 +21,8 @@ import (
 //   - modules[id].config for module config (not top-level module_configs)
 //   - modules.starting_clue for character clues (not top-level character_clues)
 func validateConfigShape(raw json.RawMessage) error {
-	if len(raw) == 0 {
-		return nil
+	if raw == nil || len(raw) == 0 {
+		return fmt.Errorf("config_json: empty payload")
 	}
 	var cfg map[string]any
 	if err := json.Unmarshal(raw, &cfg); err != nil {
@@ -73,6 +73,12 @@ func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.
 	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
 	if err != nil {
 		return nil, err
+	}
+
+	// preUpdateHook is nil in production. Tests set it to bump the DB version
+	// between our read and write, forcing a deterministic optimistic-lock failure.
+	if s.preUpdateHook != nil {
+		s.preUpdateHook(ctx, themeID)
 	}
 
 	updated, err := s.q.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{

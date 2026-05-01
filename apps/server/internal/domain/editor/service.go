@@ -173,6 +173,12 @@ type service struct {
 	q      *db.Queries
 	pool   *pgxpool.Pool
 	logger zerolog.Logger
+
+	// preUpdateHook is called inside UpdateConfigJson between the getOwnedTheme
+	// read and the UpdateThemeConfigJson write. It is nil in production; tests
+	// can set it to inject a controlled version bump and make the optimistic-lock
+	// conflict path deterministic (replaces the previous goroutine+race approach).
+	preUpdateHook func(ctx context.Context, themeID uuid.UUID)
 }
 
 // NewService creates a new editor service backed by sqlc queries.

@@ -60,8 +60,11 @@ func (m *Module) ApplyConfig(_ context.Context, raw json.RawMessage) error {
 }
 
 // applyConfigLocked unmarshals raw into m.cfg. Caller must hold m.mu.Lock.
+// An empty or nil payload explicitly resets the config to the zero value so
+// that deletion/clear requests do not leave stale configuration in m.cfg.
 func (m *Module) applyConfigLocked(raw json.RawMessage) error {
 	if len(raw) == 0 {
+		m.cfg = Config{}
 		return nil
 	}
 	var cfg Config
