@@ -1,0 +1,150 @@
+<h2>Q7. 📍 장소 (Location) entity — 추가 / 편집</h2>
+<p class="subtitle">캐릭터와 같은 패턴 (좌 리스트 CRUD + 우 편집 폼). 장소만의 까다로움 = <strong>부모-자식 트리 구조</strong> + <strong>접근 제한 캐릭터</strong>.</p>
+
+<div class="mockup">
+  <div class="mockup-header">📄 페이지 B (장소): 추가 / 편집</div>
+  <div class="mockup-body" style="padding:8px">
+    <div style="display:flex;gap:6px;height:540px">
+
+      <!-- LEFT: Location tree with CRUD -->
+      <div class="mock-sidebar" style="width:28%;font-size:11px;padding:8px">
+        <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px">
+          <span>📍 장소 (8)</span>
+          <button class="mock-button" style="font-size:10px;padding:2px 6px">+ 추가</button>
+        </div>
+
+        <!-- Tree structure -->
+        <div style="font-family:monospace;font-size:11px">
+          <div style="padding:3px;background:#2a3a3a;border-radius:3px;margin-bottom:2px">🏠 별장</div>
+          <div style="padding:3px;padding-left:16px;background:#2a2a3a;border-radius:3px;margin-bottom:2px">└ 🏢 1층</div>
+          <div style="padding:3px;padding-left:32px;background:#3a4a5a;border-radius:3px;margin-bottom:2px;border-left:3px solid #5af">└ 📖 서재 ◀ 편집중</div>
+          <div style="padding:3px;padding-left:32px;background:#2a2a3a;border-radius:3px;margin-bottom:2px">└ 🛋️ 거실</div>
+          <div style="padding:3px;padding-left:32px;background:#2a2a3a;border-radius:3px;margin-bottom:2px">└ 🍳 부엌</div>
+          <div style="padding:3px;padding-left:16px;background:#2a2a3a;border-radius:3px;margin-bottom:2px">└ 🏢 2층</div>
+          <div style="padding:3px;padding-left:32px;background:#2a2a3a;border-radius:3px;margin-bottom:2px">└ 🛏️ 침실</div>
+          <div style="padding:3px;padding-left:32px;background:#2a2a3a;border-radius:3px;margin-bottom:2px">└ 🛁 욕실</div>
+          <div style="padding:3px;background:#2a2a3a;border-radius:3px">🌳 정원</div>
+        </div>
+
+        <div style="margin-top:14px;padding-top:8px;border-top:1px dashed #555;font-size:10px;color:#888">
+          <div>드래그 → 부모 변경</div>
+          <div>우클릭 → 복제 / 삭제</div>
+          <div>클릭 → 펼침 / 접힘</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Location edit form -->
+      <div class="mock-content" style="flex:1;font-size:11px;padding:10px;overflow-y:auto">
+        <div style="font-weight:600;margin-bottom:10px;font-size:13px">⚙️ 서재 편집</div>
+
+        <!-- BASE FIELDS section -->
+        <div style="background:#2a2a3a;padding:10px;border-radius:4px;margin-bottom:8px">
+          <div class="label" style="font-size:10px;color:#888;margin-bottom:6px">📋 베이스 필드 (항상 있음)</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">이름 (표시)</div>
+              <input class="mock-input" style="width:100%;font-size:11px" value="서재" readonly>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">로케이션 코드</div>
+              <input class="mock-input" style="width:100%;font-size:11px" value="study_room" readonly>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:80px 1fr;gap:6px;margin-bottom:6px">
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">이미지</div>
+              <div style="width:80px;height:60px;background:#3a3a4a;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#888">🖼️</div>
+              <div style="font-size:9px;color:#666;margin-top:2px">+ 업로드</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">공개 설명 (모든 플레이어에게)</div>
+              <textarea class="mock-input" style="width:100%;height:50px;font-size:11px" readonly>책장이 벽 한 면을 가득 채운 서재. 책상 위에 잉크 자국.</textarea>
+            </div>
+          </div>
+
+          <!-- Parent location dropdown -->
+          <div style="margin-bottom:6px">
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">📂 부모 장소 (Tree 위치)</div>
+            <select class="mock-input" style="width:100%;font-size:11px">
+              <option>1층 ▼</option>
+            </select>
+            <div style="font-size:9px;color:#666;margin-top:2px">→ 별장 ⊃ 1층 ⊃ 서재 (계층 자동 표시)</div>
+          </div>
+
+          <!-- Restricted characters -->
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:4px">🔒 접근 제한 캐릭터 (선택)</div>
+            <div style="background:#1a2a2a;padding:6px;border-radius:3px;font-size:10px">
+              <label style="display:block;margin-bottom:3px"><input type="checkbox" style="margin-right:4px"> 김철수 (탐정)</label>
+              <label style="display:block;margin-bottom:3px"><input type="checkbox" checked style="margin-right:4px"> 이영희 (용의자A) — 차단</label>
+              <label style="display:block;margin-bottom:3px"><input type="checkbox" style="margin-right:4px"> 박민수 (용의자B)</label>
+              <label style="display:block;margin-bottom:3px"><input type="checkbox" style="margin-right:4px"> 최지영 (목격자)</label>
+              <label style="display:block"><input type="checkbox" style="margin-right:4px"> 정대호 (희생자)</label>
+            </div>
+            <div style="font-size:9px;color:#666;margin-top:2px">→ 체크된 캐릭터는 이 장소에 못 들어옴 (런타임 권한 검증)</div>
+          </div>
+        </div>
+
+        <!-- DYNAMIC MODULE SECTIONS placeholder -->
+        <div style="background:#3a2a3a;padding:10px;border-radius:4px;margin-bottom:8px;border:2px dashed #a5f">
+          <div class="label" style="font-size:10px;color:#a5f;margin-bottom:6px">🧩 동적 모듈 섹션 (켜진 모듈에 따라 추가됨)</div>
+          <ul style="font-size:10px;color:#aaa;margin-top:2px;padding-left:20px">
+            <li>🟢 evidence ON 시 → "이 장소에 배치된 증거" 섹션 (단서 다중 선택)</li>
+            <li>🟢 location_clue ON 시 → "이 장소에서 검색되는 단서" 섹션 (단서 ID 배열)</li>
+            <li>🟢 room_exploration ON 시 → "최대 동시 인원 / 이동 쿨다운" 섹션</li>
+            <li>🟢 audio ON 시 → "이 장소 진입 시 BGM" 섹션</li>
+          </ul>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="mock-button" style="font-size:11px">저장</button>
+          <button class="mock-button" style="font-size:11px;background:#4a3a3a">삭제</button>
+          <button class="mock-button" style="font-size:11px;background:#3a3a4a">복제</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">⚠️ 결정 포인트 4건</h3>
+<div style="background:#2a3a3a;padding:12px;border-radius:6px;margin-top:8px;font-size:12px">
+  <div style="margin-bottom:8px"><strong>1. Tree 깊이 제한?</strong> — 무한 중첩 (별장 ⊃ 1층 ⊃ 동쪽 복도 ⊃ 서재) vs 2단계 제한 (Building ⊃ Room) vs 평면 (parent 없음)</div>
+  <div style="margin-bottom:8px"><strong>2. 접근 제한 = 베이스?</strong> — 베이스 필드로 (지금 mockup) vs 모듈 capability 로 (특정 모듈 ON 시만 노출)</div>
+  <div style="margin-bottom:8px"><strong>3. 이미지 = 단순 사진?</strong> — 단순 첨부 (지금 mockup) vs 평면도 좌표 (x,y) 까지 / vs 인터랙티브 맵 (Phase 24 범위 밖)</div>
+  <div><strong>4. 추가 베이스 필드?</strong> — "진입 메시지 (들어왔을 때)" / "분위기 태그" / "기본 검색 가능 여부" 등 머더미스터리 도메인 추가 필드</div>
+</div>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이대로 OK</h3>
+      <p>트리 무한 중첩, 접근 제한 = 베이스, 이미지 = 단순 사진. 다음 entity (단서) 로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tree-2" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Tree = 2단계 제한</h3>
+      <p>"건물 → 방" 만 허용. 운영 단순. 너무 깊은 중첩 방지.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="map" onclick="toggleSelect(this)">
+    <div class="letter">M</div>
+    <div class="content">
+      <h3>맵 좌표 / 평면도</h3>
+      <p>이미지에 (x,y) 좌표 추가 — Phase 24 범위에 포함시킬지</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견 / 추가 필드</h3>
+      <p>터미널에 적어줘 (진입 메시지 / 분위기 등)</p>
+    </div>
+  </div>
+</div>

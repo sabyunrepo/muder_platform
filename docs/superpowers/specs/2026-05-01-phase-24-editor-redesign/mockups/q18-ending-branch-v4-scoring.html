@@ -1,0 +1,224 @@
+<h2>Q18. 결말 분기 v4 — 점수 가감 질문 추가 (두 차원)</h2>
+<p class="subtitle">질문 = 결말 분기 OR 점수 가감 (택1). 결말 = 어떤 엔딩 / 점수 = 캐릭터별 랭킹.</p>
+
+<div class="mockup">
+  <div class="mockup-header">📄 탭 2: 결말 분기 v4 — 영향 종류 추가</div>
+  <div class="mockup-body" style="padding:8px;font-size:11px">
+
+    <!-- Question definitions with new "영향 종류" field -->
+    <div style="background:#2a3a3a;padding:10px;border-radius:4px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px;font-size:12px">
+        <span>❓ 게임 끝 질문 (5)</span>
+        <button class="mock-button" style="font-size:10px">+ 새 질문</button>
+      </div>
+
+      <!-- BRANCH question -->
+      <div style="background:#1a2a2a;padding:10px;border-radius:3px;margin-bottom:6px;border-left:3px solid #5af">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q1.</strong> 당신은 범인을 용서하겠습니까?</span>
+          <span style="background:#2a3a4a;padding:2px 8px;border-radius:3px;font-size:10px;color:#5af">🎭 결말 분기</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:10px">
+          <div>종류: 단일 선택</div>
+          <div>응답: 김철수, 박민수</div>
+          <div>보기: [예] [아니오]</div>
+        </div>
+      </div>
+
+      <!-- BRANCH question -->
+      <div style="background:#1a2a2a;padding:10px;border-radius:3px;margin-bottom:6px;border-left:3px solid #5af">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q2.</strong> 돈이 될 만한 물건을 찾았다면?</span>
+          <span style="background:#2a3a4a;padding:2px 8px;border-radius:3px;font-size:10px;color:#5af">🎭 결말 분기</span>
+        </div>
+        <div style="font-size:10px;color:#aaa">다중 선택 · 모두 응답 · 보기: [지갑/반지/현금다발/열쇠]</div>
+      </div>
+
+      <!-- SCORING question (NEW) -->
+      <div style="background:#3a3a2a;padding:10px;border-radius:3px;margin-bottom:6px;border-left:3px solid #aa4">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q3.</strong> 정대호의 정확한 살해 동기는?</span>
+          <span style="background:#3a3a2a;padding:2px 8px;border-radius:3px;font-size:10px;color:#aa4">💯 점수 가감</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:10px;margin-bottom:6px">
+          <div>종류: 단일 선택</div>
+          <div>응답: 모두 5명</div>
+        </div>
+        <div style="background:#1a2a2a;padding:6px;border-radius:3px">
+          <div style="font-size:10px;color:#aa4;margin-bottom:4px">보기마다 점수 입력</div>
+          <div style="display:flex;flex-direction:column;gap:2px;font-size:10px">
+            <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px">
+              <span>협박 (3년 전 의뢰 건)</span><span style="color:#4a8;font-weight:600">+5</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px">
+              <span>치정</span><span style="color:#a55;font-weight:600">-2</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px">
+              <span>금전</span><span style="color:#a55;font-weight:600">-2</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px">
+              <span>모르겠다</span><span style="color:#888">0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCORING question -->
+      <div style="background:#3a3a2a;padding:10px;border-radius:3px;margin-bottom:6px;border-left:3px solid #aa4">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q4.</strong> 범인 신원을 미리 알아챈 라운드는?</span>
+          <span style="background:#3a3a2a;padding:2px 8px;border-radius:3px;font-size:10px;color:#aa4">💯 점수 가감</span>
+        </div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:6px">단일 선택 · 모두 응답</div>
+        <div style="background:#1a2a2a;padding:6px;border-radius:3px;font-size:10px">
+          <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px;margin-bottom:2px"><span>R1 (조기 발견)</span><span style="color:#4a8;font-weight:600">+5</span></div>
+          <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px;margin-bottom:2px"><span>R2</span><span style="color:#4a8;font-weight:600">+3</span></div>
+          <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px;margin-bottom:2px"><span>R3</span><span style="color:#4a8;font-weight:600">+1</span></div>
+          <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px"><span>몰랐다</span><span style="color:#888">0</span></div>
+        </div>
+      </div>
+
+      <!-- BRANCH question -->
+      <div style="background:#1a2a2a;padding:10px;border-radius:3px;border-left:3px solid #5af">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q5.</strong> 정대호의 일기를 끝까지 읽었는가?</span>
+          <span style="background:#2a3a4a;padding:2px 8px;border-radius:3px;font-size:10px;color:#5af">🎭 결말 분기</span>
+        </div>
+        <div style="font-size:10px;color:#aaa">단일 선택 · 김철수만 · 보기: [읽었다/읽지 않았다]</div>
+      </div>
+    </div>
+
+    <!-- 영향 종류 explanation -->
+    <div style="background:#2a2a3a;padding:10px;border-radius:4px;margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:5px;font-size:12px">📊 영향 종류 — 질문 1개당 1개 선택</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+        <div style="background:#2a3a4a;padding:8px;border-radius:3px;border-left:3px solid #5af">
+          <strong style="color:#5af">🎭 결말 분기</strong>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">
+            답이 매트릭스에 입력 → 어떤 결말로 갈지 결정.<br>
+            <strong>다수결 종합</strong> (모든 응답자 답 합쳐 1개 결과)
+          </div>
+        </div>
+        <div style="background:#3a3a2a;padding:8px;border-radius:3px;border-left:3px solid #aa4">
+          <strong style="color:#aa4">💯 점수 가감</strong>
+          <div style="font-size:10px;color:#aaa;margin-top:4px">
+            보기마다 점수 (+/-/0). 응답자 각자 점수 누적.<br>
+            <strong>개인별 점수</strong> (랭킹 산정)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Matrix unchanged (only branch questions) -->
+    <div style="background:#2a3a4a;padding:10px;border-radius:4px;border:1px solid #5af">
+      <div style="font-weight:600;margin-bottom:6px;font-size:12px">🎯 매트릭스 (결말 분기 질문만 컬럼)</div>
+      <div style="font-size:10px;color:#888;margin-bottom:8px">점수 가감 질문 (Q3·Q4) 은 매트릭스에 안 들어감 — 점수에만 영향.</div>
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+        <thead>
+          <tr style="background:#1a2a2a">
+            <td style="padding:5px">🗳️ voting</td>
+            <td style="padding:5px">Q1 용서?</td>
+            <td style="padding:5px">Q2 물건</td>
+            <td style="padding:5px">Q5 일기</td>
+            <td style="padding:5px">→ 결말</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#4a8">이영희</td><td style="padding:5px">*</td><td style="padding:5px">*</td><td style="padding:5px;color:#4a8">읽었다</td><td style="padding:5px">🟢 TRUTH</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#4a8">이영희</td><td style="padding:5px;color:#4a8">예</td><td style="padding:5px">*</td><td style="padding:5px">*</td><td style="padding:5px">💚 자비</td></tr>
+          <tr><td style="padding:5px">*</td><td style="padding:5px">*</td><td style="padding:5px;color:#aa4">현금+반지</td><td style="padding:5px">*</td><td style="padding:5px">🤑 탐욕</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Game end result screen -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">🎮 게임 끝 결과 화면 — 결말 + 점수 + 랭킹</div>
+  <div class="mockup-body" style="padding:14px;font-size:11px">
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px">
+
+      <!-- Result for current player -->
+      <div style="background:#2a3a3a;padding:14px;border-radius:6px">
+        <div style="font-size:18px;font-weight:600;margin-bottom:6px">🎭 김철수님의 결말</div>
+        <div style="font-size:24px;color:#4a8;margin-bottom:10px">💚 자비</div>
+        <div style="background:#1a2a2a;padding:10px;border-radius:4px;font-size:11px;color:#ccc;font-family:monospace;white-space:pre-line">## 자비의 결말
+
+당신은 이영희를 용서했다.
+협박의 굴레는 끝났지만,
+정대호의 죽음은 영원히 비밀로...</div>
+
+        <div style="background:#3a3a2a;padding:10px;border-radius:4px;margin-top:10px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#aa4">💯 당신의 점수: +8</div>
+          <div style="font-size:10px;color:#aaa">
+            <div>Q3 동기 (협박 정답) → <span style="color:#4a8">+5</span></div>
+            <div>Q4 R2 발견 → <span style="color:#4a8">+3</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ranking -->
+      <div style="background:#2a3a3a;padding:14px;border-radius:6px">
+        <div style="font-size:14px;font-weight:600;margin-bottom:8px">🏆 랭킹</div>
+        <div style="background:#3a3a2a;padding:6px 8px;border-radius:3px;margin-bottom:4px;display:flex;justify-content:space-between;border-left:3px solid #aa4">
+          <span><strong>1위</strong> 김철수 ◀</span><span style="color:#aa4;font-weight:600">+8</span>
+        </div>
+        <div style="background:#1a2a2a;padding:6px 8px;border-radius:3px;margin-bottom:4px;display:flex;justify-content:space-between">
+          <span><strong>2위</strong> 박민수</span><span style="color:#888">+5</span>
+        </div>
+        <div style="background:#1a2a2a;padding:6px 8px;border-radius:3px;margin-bottom:4px;display:flex;justify-content:space-between">
+          <span><strong>3위</strong> 이영희</span><span style="color:#888">+3</span>
+        </div>
+        <div style="background:#1a2a2a;padding:6px 8px;border-radius:3px;margin-bottom:4px;display:flex;justify-content:space-between">
+          <span><strong>4위</strong> 최지영</span><span style="color:#888">+0</span>
+        </div>
+        <div style="background:#1a2a2a;padding:6px 8px;border-radius:3px;display:flex;justify-content:space-between">
+          <span><strong>5위</strong> 정대호</span><span style="color:#a55">-2</span>
+        </div>
+
+        <div style="font-size:9px;color:#666;margin-top:10px">결말은 같지만 (자비) 점수에 따라 1등/2등 가르기</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">💡 두 차원 분리 — 핵심</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left"></th>
+      <th style="padding:6px;text-align:left">🎭 결말</th>
+      <th style="padding:6px;text-align:left">💯 점수</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px"><strong>단위</strong></td><td style="padding:6px;color:#aaa">팀 (모두 같은 결말, 다수결 종합)</td><td style="padding:6px;color:#aaa">개인 (캐릭터별 누적, 랭킹)</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px"><strong>입력원</strong></td><td style="padding:6px;color:#aaa">결말 분기 질문 + voting 결과 자동</td><td style="padding:6px;color:#aaa">점수 가감 질문 (보기별 +/-)</td></tr>
+    <tr><td style="padding:6px"><strong>표시</strong></td><td style="padding:6px;color:#aaa">결말 컨텐츠 (Markdown)</td><td style="padding:6px;color:#aaa">랭킹 + 점수 항목 breakdown</td></tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>v4 OK</h3>
+      <p>두 차원 (결말 + 점수) 분리, 질문에 영향 종류 1개 선택. 결말 entity 마무리 → 다음 단계.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="combine" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>한 질문이 결말+점수 둘 다 영향</h3>
+      <p>예: Q1 "용서?" → 결말 분기 + "예" 답하면 +2 보너스 — 사용자 응답 1번에 둘 다 처리</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>"점수도 매트릭스 결과에 영향" / "팀 점수도 추가" 등 — 터미널에</p>
+    </div>
+  </div>
+</div>

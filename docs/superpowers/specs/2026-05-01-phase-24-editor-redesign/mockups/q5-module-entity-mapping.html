@@ -1,0 +1,223 @@
+<h2>Q5. 모듈 ↔ Entity 매핑 (21 모듈을 어느 entity 에 붙일까)</h2>
+<p class="subtitle">각 카드 = entity 또는 글로벌. 안의 회색 표시 (◐) 가 애매한 모듈 — 사용자 결정 필요.</p>
+
+<div class="cards" data-multiselect>
+
+  <!-- Character -->
+  <div class="card" data-choice="character" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">👤 캐릭터 (Character)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>starting_clue</strong>
+            <div style="font-size:10px;color:#aaa">캐릭터별 시작 단서</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>hidden_mission</strong>
+            <div style="font-size:10px;color:#aaa">캐릭터별 숨겨진 임무</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">2 모듈</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>👤 캐릭터</h3>
+      <p>"이 캐릭터에게 시작 단서 / 숨겨진 미션을 어떻게 줄까"</p>
+    </div>
+  </div>
+
+  <!-- Location -->
+  <div class="card" data-choice="location" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">📍 장소 (Location)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>evidence</strong>
+            <div style="font-size:10px;color:#aaa">장소에 증거 배치</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>location_clue</strong>
+            <div style="font-size:10px;color:#aaa">장소에서 단서 검색</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;border-left:3px solid #4a8">
+            <strong>location</strong>
+            <div style="font-size:10px;color:#aaa">장소 메타데이터</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">3 모듈</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>📍 장소</h3>
+      <p>"이 장소에 어떤 단서·증거가 있고 어떻게 발견되는가"</p>
+    </div>
+  </div>
+
+  <!-- Clue -->
+  <div class="card" data-choice="clue" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">🔍 단서 (Clue)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>conditional_clue</strong>
+            <div style="font-size:10px;color:#aaa">조합으로 해제</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>combination</strong>
+            <div style="font-size:10px;color:#aaa">단서 조합 룰</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;border-left:3px solid #4a8">
+            <strong>clue_interaction</strong>
+            <div style="font-size:10px;color:#aaa">단서 사용·이전·중복</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">3 모듈</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>🔍 단서</h3>
+      <p>"이 단서가 어떻게 해제되고, 어떻게 다뤄지는가"</p>
+    </div>
+  </div>
+
+  <!-- Phase -->
+  <div class="card" data-choice="phase" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">🎬 페이즈 (Phase)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>round_clue</strong>
+            <div style="font-size:10px;color:#aaa">라운드별 단서 분배</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>timed_clue</strong>
+            <div style="font-size:10px;color:#aaa">시간 주기 분배</div>
+          </div>
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <strong>script/event/hybrid_progression</strong>
+            <div style="font-size:10px;color:#aaa">진행 방식 (택1)</div>
+          </div>
+          <div style="background:#3a3a2a;padding:6px;border-radius:3px;border-left:3px solid #aa4">
+            <strong>◐ gm/consensus/skip_consensus_control</strong>
+            <div style="font-size:10px;color:#aaa">진행 제어 — 글로벌? 페이즈?</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">7 모듈 (3 회색지대)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>🎬 페이즈</h3>
+      <p>"라운드 / 시간 / 진행 룰을 어떻게 짤까"</p>
+    </div>
+  </div>
+
+  <!-- Ending -->
+  <div class="card" data-choice="ending" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">🎭 결말 (Ending)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;border-left:3px solid #4a8">
+            <strong>ending</strong>
+            <div style="font-size:10px;color:#aaa">결말 핸들러</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">1 모듈 — 베이스 필드만으로 충분할지?</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>🎭 결말</h3>
+      <p>모듈 1개만. entity 자체가 capability 인 듯 — 사이드바 별도 항목으로 둘지 토론.</p>
+    </div>
+  </div>
+
+  <!-- Global: Decision -->
+  <div class="card" data-choice="global-decision" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">⚖️ 결정 룰 (글로벌)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#3a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #a5f">
+            <strong>voting</strong>
+          </div>
+          <div style="background:#3a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #a5f">
+            <strong>accusation</strong>
+          </div>
+          <div style="background:#3a3a2a;padding:6px;border-radius:3px;border-left:3px solid #aa4">
+            <strong>◐ trade_clue</strong>
+            <div style="font-size:10px;color:#aaa">단서? 글로벌?</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">3 모듈 (1 회색지대)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>⚖️ 결정 룰</h3>
+      <p>"투표·고소·거래 같은 게임 메카닉" — 테마 전체에 1번 설정</p>
+    </div>
+  </div>
+
+  <!-- Global: Communication -->
+  <div class="card" data-choice="global-comm" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">💬 커뮤니케이션 (글로벌)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#3a2a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #a5f">text_chat</div>
+          <div style="background:#3a2a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #a5f">group_chat</div>
+          <div style="background:#3a2a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #a5f">whisper</div>
+          <div style="background:#3a2a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #a5f">voice_chat</div>
+          <div style="background:#3a2a3a;padding:5px;border-radius:3px;border-left:3px solid #a5f">spatial_voice</div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">5 모듈</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>💬 커뮤니케이션</h3>
+      <p>"채팅·음성 시스템" — 게임 시작 시 1번 결정</p>
+    </div>
+  </div>
+
+  <!-- Global: Exploration & Media -->
+  <div class="card" data-choice="global-misc" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">🚶+🎵 탐색 &amp; 미디어 (글로벌)</div>
+        <div class="mockup-body" style="padding:8px;font-size:11px">
+          <div style="background:#3a3a2a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #aa4">
+            <strong>◐ room/floor/timed_exploration</strong>
+            <div style="font-size:10px;color:#aaa">탐색 시스템 (택1) — 글로벌? 페이즈?</div>
+          </div>
+          <div style="background:#3a2a3a;padding:6px;border-radius:3px;border-left:3px solid #a5f">
+            <strong>audio</strong>
+            <div style="font-size:10px;color:#aaa">배경음·효과음</div>
+          </div>
+          <div style="font-size:10px;color:#888;padding:4px;text-align:center;margin-top:4px">4 모듈 (3 회색지대)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>🚶 탐색 &amp; 🎵 미디어</h3>
+      <p>탐색 3 모듈 = "게임 1개에 1방식만" 택1 패턴 — 글로벌이 자연스럽지만 페이즈마다 바꾸고 싶을 수도</p>
+    </div>
+  </div>
+
+</div>
+
+<h3 style="margin-top:32px">⚠️ 회색지대 (◐) 5건 — 사용자 결정 필요</h3>
+<div style="background:#3a3a2a;padding:12px;border-radius:6px;margin-top:8px;font-size:12px">
+  <div style="margin-bottom:8px"><strong>1. <code>room/floor/timed_exploration</code> (3 모듈)</strong> — 게임 전체에 탐색 방식 1개 (글로벌)? 아니면 페이즈마다 다른 탐색 방식 가능?</div>
+  <div style="margin-bottom:8px"><strong>2. <code>gm/consensus/skip_consensus_control</code> (3 모듈)</strong> — 진행 제어 = 페이즈별로 다를 수 있음? 아니면 게임 전체 1방식?</div>
+  <div><strong>3. <code>trade_clue</code> (1 모듈)</strong> — 단서 entity capability? 아니면 글로벌 메카닉?</div>
+</div>
+
+<h3 style="margin-top:24px">🔧 별도 처리 (사용자 비편집 — 핵심 모듈)</h3>
+<div style="background:#2a2a2a;padding:8px;border-radius:6px;margin-top:8px;font-size:11px;color:#888">
+  <code>connection / room / ready / reading</code> — 시스템 내부 모듈, 에디터에 노출 X
+</div>
+
+<p class="subtitle" style="margin-top:24px">9 카드 클릭 = 그 분류 OK 표시. 회색지대 (◐) 결정 + 빠진 entity 의견은 터미널에 적어줘.</p>

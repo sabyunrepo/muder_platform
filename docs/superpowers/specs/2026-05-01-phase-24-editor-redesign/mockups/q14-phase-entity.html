@@ -1,0 +1,199 @@
+<h2>Q14. 🎬 페이즈 entity — Flow 다이어그램 + 노드 편집</h2>
+<p class="subtitle">페이즈는 단순 리스트로 안 됨 — "어느 페이즈가 어디로 이어지는지" 시각 흐름이 본질. 기존 PhaseNodePanel + Flow 패턴 차용.</p>
+
+<div class="mockup">
+  <div class="mockup-header">📄 페이즈 페이지 — Flow 다이어그램 (메인 뷰)</div>
+  <div class="mockup-body" style="padding:8px;font-size:11px">
+
+    <!-- Module toggles at top (B option) -->
+    <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:10px;border:1px solid #5af">
+      <div style="font-size:10px;font-weight:600;margin-bottom:5px">🧩 페이즈 관련 모듈 (전체 페이즈에 적용)</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:10px">
+        <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;border-left:2px solid #4a8">
+          <input type="checkbox" checked style="margin-right:3px"> round_clue
+        </label>
+        <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;border-left:2px solid #4a8">
+          <input type="checkbox" checked style="margin-right:3px"> timed_clue
+        </label>
+        <span style="background:#3a3a4a;padding:4px 8px;border-radius:3px;font-size:10px">
+          <strong>진행 방식 (택1):</strong>
+          <label style="margin-left:4px"><input type="radio" name="prog" checked style="margin-right:2px"> hybrid</label>
+          <label style="margin-left:4px"><input type="radio" name="prog" style="margin-right:2px"> script</label>
+          <label style="margin-left:4px"><input type="radio" name="prog" style="margin-right:2px"> event</label>
+        </span>
+        <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;border-left:2px solid #4a8">
+          <input type="checkbox" checked style="margin-right:3px"> gm_control
+        </label>
+      </div>
+      <div style="font-size:9px;color:#888;margin-top:4px">→ 진행 방식만 택1 (라디오), 나머지는 자유 조합</div>
+    </div>
+
+    <!-- View toggle -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;font-size:10px">
+      <button class="mock-button" style="font-size:10px;background:#3a4a5a;border-left:3px solid #5af">📊 다이어그램 뷰</button>
+      <button class="mock-button" style="font-size:10px;background:#2a2a3a">📋 리스트 뷰</button>
+      <button class="mock-button" style="font-size:10px;background:#2a2a3a;margin-left:auto">+ 새 페이즈</button>
+    </div>
+
+    <!-- Flow diagram -->
+    <div style="background:#1a1a2a;padding:14px;border-radius:4px;height:340px;position:relative">
+
+      <!-- Phase nodes -->
+      <div style="position:absolute;top:30px;left:30px;width:140px;background:#2a3a3a;padding:8px;border-radius:6px;border:2px solid #4a8;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">P1 인트로</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">reading · 5분</div>
+        <div style="font-size:9px;color:#666;margin-top:3px;background:#1a2a2a;padding:3px;border-radius:2px">⊘ 모듈 비활성</div>
+      </div>
+
+      <div style="position:absolute;top:30px;left:200px;width:140px;background:#2a3a3a;padding:8px;border-radius:6px;border:2px solid #4a8;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">P2 1차 조사</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">investigation · 15분 · R1-2</div>
+        <div style="font-size:9px;color:#4a8;margin-top:3px;background:#1a2a2a;padding:3px;border-radius:2px">round_clue · gm_control</div>
+      </div>
+
+      <div style="position:absolute;top:30px;left:370px;width:140px;background:#3a4a5a;padding:8px;border-radius:6px;border:2px solid #5af;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">P3 2차 조사 ◀</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">investigation · 15분 · R3-4</div>
+        <div style="font-size:9px;color:#4a8;margin-top:3px;background:#1a2a2a;padding:3px;border-radius:2px">round_clue · timed_clue · gm</div>
+      </div>
+
+      <div style="position:absolute;top:30px;left:540px;width:140px;background:#2a3a3a;padding:8px;border-radius:6px;border:2px solid #4a8;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">P4 토론</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">discussion · 10분</div>
+        <div style="font-size:9px;color:#4a8;margin-top:3px;background:#1a2a2a;padding:3px;border-radius:2px">gm_control</div>
+      </div>
+
+      <!-- Branch node -->
+      <div style="position:absolute;top:170px;left:540px;width:140px;background:#3a3a2a;padding:8px;border-radius:6px;border:2px solid #aa4;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">⚖️ 분기 (투표 결과)</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">if voting.winner == 정답</div>
+      </div>
+
+      <!-- Ending nodes -->
+      <div style="position:absolute;top:170px;left:710px;width:130px;background:#2a3a3a;padding:8px;border-radius:6px;border:2px solid #aa4;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">🎭 TRUTH</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">x1.5 점수</div>
+      </div>
+
+      <div style="position:absolute;top:240px;left:710px;width:130px;background:#2a3a3a;padding:8px;border-radius:6px;border:2px solid #aa4;font-size:10px;cursor:pointer">
+        <div style="font-weight:600">🎭 FALSE</div>
+        <div style="color:#aaa;font-size:9px;margin-top:2px">x1.0 점수</div>
+      </div>
+
+      <!-- Arrows (simplified with text) -->
+      <div style="position:absolute;top:65px;left:175px;color:#5af;font-size:14px">→</div>
+      <div style="position:absolute;top:65px;left:345px;color:#5af;font-size:14px">→</div>
+      <div style="position:absolute;top:65px;left:515px;color:#5af;font-size:14px">→</div>
+      <div style="position:absolute;top:90px;left:610px;color:#5af;font-size:14px">↓</div>
+      <div style="position:absolute;top:200px;left:685px;color:#5af;font-size:14px">→ 정답</div>
+      <div style="position:absolute;top:255px;left:685px;color:#aa4;font-size:14px">→ 오답</div>
+
+      <div style="position:absolute;bottom:8px;left:8px;font-size:9px;color:#666">드래그 → 위치 이동 · 노드 사이 연결 → 화살표 추가 · 더블클릭 → 편집</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Phase node edit modal/panel -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">📄 페이즈 1개 편집 (P3 2차 조사 노드 더블클릭)</div>
+  <div class="mockup-body" style="padding:10px;font-size:11px">
+
+    <!-- Base -->
+    <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+      <div class="label" style="font-size:10px;color:#888;margin-bottom:5px">📋 베이스 (Flow 노드)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+        <div><div style="font-size:10px;color:#aaa">이름</div><input class="mock-input" style="width:100%;font-size:11px" value="2차 조사"></div>
+        <div><div style="font-size:10px;color:#aaa">타입</div><select class="mock-input" style="width:100%;font-size:11px"><option>investigation ▼</option></select></div>
+        <div><div style="font-size:10px;color:#aaa">자동 진행</div><label><input type="checkbox" checked> ☑</label></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div><div style="font-size:10px;color:#aaa">시간 (분)</div><input class="mock-input" style="width:100%;font-size:11px" value="15"></div>
+        <div><div style="font-size:10px;color:#aaa">라운드 범위</div><input class="mock-input" style="width:100%;font-size:11px" value="3-4"></div>
+      </div>
+    </div>
+
+    <!-- Dynamic: round_clue -->
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8;font-size:10px">
+      <strong>🟢 round_clue 옵션</strong> <span style="color:#888;font-size:9px">— 라운드별 분배</span>
+      <div style="background:#1a2a2a;padding:6px;border-radius:3px;margin-top:4px">
+        <div>R3 시작 시: [c2 편지] → 김철수</div>
+        <div>R4 시작 시: [c4 알리바이] → 전원</div>
+        <button class="mock-button" style="font-size:9px;margin-top:3px">+ 라운드 분배 추가</button>
+      </div>
+    </div>
+
+    <!-- Dynamic: timed_clue -->
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8;font-size:10px">
+      <strong>🟢 timed_clue 옵션</strong> <span style="color:#888;font-size:9px">— 주기 분배</span>
+      <div style="background:#1a2a2a;padding:6px;border-radius:3px;margin-top:4px">
+        간격: 5분 · 풀: [c10] [c11] [c12] · 대상: 단서 적은 사람 · 최대 3회
+      </div>
+    </div>
+
+    <!-- Dynamic: hybrid_progression (택1) -->
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8;font-size:10px">
+      <strong>🟢 hybrid_progression 옵션</strong> <span style="color:#888;font-size:9px">— 다음 페이즈 조건</span>
+      <div style="background:#1a2a2a;padding:6px;border-radius:3px;margin-top:4px">
+        <label><input type="checkbox" checked> 시간 종료</label> /
+        <label><input type="checkbox" checked> 모두 준비 완료</label> /
+        <label><input type="checkbox" checked> GM 강제 진행</label>
+      </div>
+    </div>
+
+    <!-- Dynamic: gm_control -->
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;border-left:3px solid #4a8;font-size:10px">
+      <strong>🟢 gm_control 옵션</strong> <span style="color:#888;font-size:9px">— GM 수동 제어</span>
+      <div style="background:#1a2a2a;padding:6px;border-radius:3px;margin-top:4px">
+        ☑ 일시정지 가능 · ☑ 강제 진행 · ☑ 시간 추가/삭감
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<h3 style="margin-top:24px">페이즈만의 특수 — 다른 entity 와 차이</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">측면</th>
+      <th style="padding:6px;text-align:left">다른 entity (캐릭터·장소·단서)</th>
+      <th style="padding:6px;text-align:left">🎬 페이즈</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">메인 뷰</td><td style="padding:6px;color:#aaa">좌측 리스트</td><td style="padding:6px;color:#aaa"><strong>Flow 다이어그램</strong> (리스트 뷰 토글 가능)</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">관계 표현</td><td style="padding:6px;color:#aaa">참조 (clueId 등)</td><td style="padding:6px;color:#aaa"><strong>화살표 (Flow edge)</strong> — 페이즈 → 페이즈</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">분기·조건</td><td style="padding:6px;color:#aaa">없음</td><td style="padding:6px;color:#aaa"><strong>분기 노드</strong> — voting 결과 등으로 갈래</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">결말 노드</td><td style="padding:6px;color:#aaa">결말 entity 별도</td><td style="padding:6px;color:#aaa">Flow 안에 결말 노드 포함 (TRUTH/FALSE)</td></tr>
+    <tr><td style="padding:6px">진행 방식</td><td style="padding:6px;color:#aaa">자유 조합</td><td style="padding:6px;color:#aaa"><strong>택1 라디오</strong> (script vs event vs hybrid)</td></tr>
+  </tbody>
+</table>
+
+<div style="background:#1a2a2a;padding:10px;border-radius:4px;margin-top:14px;font-size:11px;color:#aaa">
+  <strong style="color:#fff">기존 코드 차용:</strong> 현재 <code>PhaseNodePanel.tsx</code> (Phase 21 PR #191 에서 3 sub-component 분리됨) + <code>EndingNodePanel.tsx</code> + <code>BranchNodePanel.tsx</code> 가 이미 이 구조의 기반. 베이스 폼 구조는 그대로 살리고, 모듈 동적 섹션만 추가하면 됨.
+</div>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>페이즈 entity OK</h3>
+      <p>Flow 다이어그램 메인 뷰 + 리스트 뷰 토글, 노드 더블클릭 = 편집, 모듈 토글 상단 (진행 방식만 택1 라디오), 동적 섹션. 다음 = 결말 entity.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="list-only" onclick="toggleSelect(this)">
+    <div class="letter">L</div>
+    <div class="content">
+      <h3>리스트 뷰만</h3>
+      <p>Flow 다이어그램 폐기, 다른 entity 와 일관 (좌측 리스트). 페이즈 흐름은 텍스트로 (P1 → P2 → P3 ...)</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>"분기 노드 폐기" / "결말 노드는 결말 entity 로 분리" 등 — 터미널에</p>
+    </div>
+  </div>
+</div>

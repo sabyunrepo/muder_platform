@@ -1,0 +1,203 @@
+<h2>Q12. 다시 분리 — 일관성 회복</h2>
+<p class="subtitle">모듈 페이지 = 글로벌만 (모두 모달). entity 페이지 = 그 entity 와 연결된 모듈 직접 토글.</p>
+
+<div class="split">
+
+  <!-- LEFT: New sidebar + global-only module page -->
+  <div class="mockup">
+    <div class="mockup-header">📐 새 사이드바 + 모듈 페이지 (글로벌만)</div>
+    <div class="mockup-body" style="padding:8px">
+      <div style="display:flex;gap:6px;height:480px">
+
+        <div class="mock-sidebar" style="width:38%;font-size:11px;padding:8px">
+          <div style="font-weight:600;margin-bottom:6px">"별장 살인사건"</div>
+
+          <div class="label" style="margin-top:8px;font-size:9px;color:#888">1️⃣ 세계 정의</div>
+          <div style="padding:4px"><span>👤 캐릭터</span><span style="float:right;color:#888">5</span></div>
+          <div style="padding:4px"><span>📍 장소</span><span style="float:right;color:#888">8</span></div>
+          <div style="padding:4px"><span>🔍 단서</span><span style="float:right;color:#888">12</span></div>
+
+          <div class="label" style="margin-top:10px;font-size:9px;color:#888">2️⃣ 흐름 &amp; 결말</div>
+          <div style="padding:4px"><span>🎬 페이즈</span><span style="float:right;color:#888">4</span></div>
+          <div style="padding:4px"><span>🎭 결말</span><span style="float:right;color:#888">3</span></div>
+
+          <div style="margin-top:14px;padding-top:8px;border-top:1px dashed #555">
+            <div style="padding:5px;background:#3a4a5a;border-radius:3px;border-left:3px solid #5af">
+              <span>🌐 글로벌 시스템</span><span style="float:right;color:#888">6/12</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="mock-content" style="flex:1;font-size:11px;padding:8px;overflow-y:auto">
+          <div style="font-weight:600;margin-bottom:6px">🌐 글로벌 시스템</div>
+          <div style="font-size:10px;color:#888;margin-bottom:8px">게임 1번 설정. 카드 누르면 모달.</div>
+
+          <div style="font-weight:600;font-size:10px;color:#aaa;margin-top:6px;margin-bottom:3px">⚖️ 결정 룰</div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">
+            voting <span style="float:right">● ON ⚙️</span>
+          </div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">
+            accusation <span style="float:right">● ON ⚙️</span>
+          </div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:2px;font-size:10px;opacity:0.5">
+            trade_clue <span style="float:right">○ OFF</span>
+          </div>
+
+          <div style="font-weight:600;font-size:10px;color:#aaa;margin-top:8px;margin-bottom:3px">💬 통신</div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">text_chat ⚙️</div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">group_chat ⚙️</div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">whisper ⚙️</div>
+
+          <div style="font-weight:600;font-size:10px;color:#aaa;margin-top:8px;margin-bottom:3px">🚶 탐색 (택1)</div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">room_exploration ⚙️</div>
+
+          <div style="font-weight:600;font-size:10px;color:#aaa;margin-top:8px;margin-bottom:3px">🎵 미디어</div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;font-size:10px;opacity:0.5">audio ○ OFF</div>
+
+          <div style="background:#1a2a2a;padding:8px;border-radius:4px;margin-top:14px;font-size:10px;color:#888">
+            <strong style="color:#aaa">동작 일관:</strong> 모든 카드 클릭 → 모달.<br>
+            entity 연결 모듈 (starting_clue 등) 은 여기 없음 — 캐릭터/장소/단서/페이즈 페이지에서 직접 토글.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Entity page with inline module toggles -->
+  <div class="mockup">
+    <div class="mockup-header">📄 캐릭터 페이지 — 모듈 토글 인라인</div>
+    <div class="mockup-body" style="padding:8px">
+      <div style="display:flex;gap:6px;height:480px">
+
+        <div class="mock-sidebar" style="width:25%;font-size:11px;padding:6px">
+          <div style="font-weight:600;font-size:10px;margin-bottom:6px">👤 캐릭터 (5)</div>
+          <div style="padding:4px;background:#3a4a5a;border-radius:3px;font-size:10px;border-left:3px solid #5af">김철수 ◀</div>
+          <div style="padding:4px;background:#2a2a3a;border-radius:3px;font-size:10px;margin-top:2px">이영희</div>
+          <div style="padding:4px;background:#2a2a3a;border-radius:3px;font-size:10px;margin-top:2px">박민수</div>
+          <button class="mock-button" style="width:100%;font-size:9px;margin-top:6px">+ 추가</button>
+        </div>
+
+        <div class="mock-content" style="flex:1;font-size:11px;padding:8px;overflow-y:auto">
+          <div style="font-weight:600;margin-bottom:8px;font-size:12px">⚙️ 김철수 편집</div>
+
+          <!-- Base + Role sheet (compact) -->
+          <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:4px;border-left:3px solid #888;font-size:10px">
+            📋 베이스 (이름·코드·사진·공개 소개)
+          </div>
+          <div style="background:#3a3a2a;padding:6px;border-radius:3px;margin-bottom:8px;border-left:3px solid #aa4;font-size:10px">
+            📜 역할지 Markdown
+          </div>
+
+          <!-- Module toggles inline at top -->
+          <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:8px;border:1px solid #5af">
+            <div style="font-size:10px;font-weight:600;margin-bottom:5px">🧩 이 캐릭터에 적용할 모듈</div>
+            <div style="display:flex;gap:6px;font-size:10px">
+              <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;cursor:pointer;border-left:2px solid #4a8">
+                <input type="checkbox" checked style="margin-right:3px"> starting_clue
+              </label>
+              <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;cursor:pointer;border-left:2px solid #4a8">
+                <input type="checkbox" checked style="margin-right:3px"> hidden_mission
+              </label>
+            </div>
+            <div style="font-size:9px;color:#888;margin-top:4px">→ 켜면 아래에 설정 섹션 자동 추가 (테마 전체 캐릭터에 동일 적용)</div>
+          </div>
+
+          <!-- Dynamic sections from enabled modules -->
+          <div style="background:#2a3a3a;padding:8px;border-radius:3px;margin-bottom:4px;border-left:3px solid #4a8;font-size:10px">
+            <strong>🟢 starting_clue 옵션</strong>
+            <div style="color:#aaa;margin-top:3px">분배: <code>game_start</code> | 단서: [c1] [c3]</div>
+          </div>
+          <div style="background:#2a3a3a;padding:8px;border-radius:3px;border-left:3px solid #4a8;font-size:10px">
+            <strong>🟢 hidden_mission 옵션</strong>
+            <div style="color:#aaa;margin-top:3px">"# 임무\n정대호의 협박 증거를 폐기하라"</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">💡 동작 일관성 — 한눈에</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">페이지</th>
+      <th style="padding:6px;text-align:left">카드/토글 클릭 동작</th>
+      <th style="padding:6px;text-align:left">예외</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px">🌐 글로벌 시스템 (모듈)</td>
+      <td style="padding:6px;color:#aaa"><strong>모달</strong> 열림 (모든 카드 동일)</td>
+      <td style="padding:6px;color:#888">없음 — 일관</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px">👤 캐릭터 페이지</td>
+      <td style="padding:6px;color:#aaa">모듈 토글 = ON/OFF, 그 자리 동적 섹션</td>
+      <td style="padding:6px;color:#888">없음 — 페이지 안에서 다 처리</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px">📍 장소 페이지</td>
+      <td style="padding:6px;color:#aaa">동일 (모듈 토글 + 동적 섹션)</td>
+      <td style="padding:6px;color:#888">없음</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px">🔍 단서 페이지</td>
+      <td style="padding:6px;color:#aaa">동일</td>
+      <td style="padding:6px;color:#888">없음</td>
+    </tr>
+    <tr><td style="padding:6px">🎬🎭 페이즈 / 결말</td><td style="padding:6px;color:#aaa">동일</td><td style="padding:6px;color:#888">없음</td></tr>
+  </tbody>
+</table>
+
+<h3 style="margin-top:24px">🤔 한 가지 디테일 — entity 페이지의 "모듈 토글" 위치</h3>
+<p style="font-size:11px;color:#aaa">캐릭터 1명 페이지에서 모듈 토글하면 그 효과는 <strong>모든 캐릭터</strong>에 적용됨 (테마 단위, 캐릭터 단위 X). 그래서:</p>
+
+<div class="options" style="margin-top:8px">
+  <div class="option" data-choice="top-of-entity-page" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>각 entity 페이지 상단에 모듈 토글</h3>
+      <p>지금 mockup 처럼. 직관 ✅ 단점: 김철수 페이지에서 starting_clue 끄면 다른 모든 캐릭터에서도 꺼짐 — 사용자가 헷갈릴 수 있음</p>
+    </div>
+  </div>
+  <div class="option" data-choice="entity-list-header" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>entity 리스트 화면 (좌측 사이드바 클릭) 상단에 모듈 토글</h3>
+      <p>"👤 캐릭터" 클릭 → 캐릭터 리스트 화면 위에 모듈 토글. 1명 편집 화면에선 동적 섹션만 노출. 영향 범위 (전체 캐릭터) 와 일치 ✅</p>
+    </div>
+  </div>
+</div>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok-b" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>분리 모델 + 위 B 옵션 OK</h3>
+      <p>모듈 페이지 = 글로벌 모달 / entity 리스트 화면 = 모듈 토글 / entity 1개 편집 = 동적 섹션. 다음 단계로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="ok-a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>분리 모델 + 위 A 옵션</h3>
+      <p>각 entity 1개 편집 페이지 상단에 모듈 토글</p>
+    </div>
+  </div>
+  <div class="option" data-choice="back-to-c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>오히려 통일 모달이 나음</h3>
+      <p>entity 연결 모듈도 모달 → 안내 + 페이지 링크 + 빠른 미리보기</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>터미널에 적어줘</p>
+    </div>
+  </div>
+</div>

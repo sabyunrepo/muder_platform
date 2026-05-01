@@ -1,0 +1,204 @@
+<h2>Q6. Entity CRUD + 베이스 필드 — 캐릭터부터</h2>
+<p class="subtitle">캐릭터 추가/편집 페이지의 모습. 좌측 = 캐릭터 리스트 (CRUD), 우측 = 그 캐릭터의 베이스 필드 + 역할지(role sheet). 모듈 동적 섹션 자리는 표시만.</p>
+
+<div class="mockup">
+  <div class="mockup-header">📄 페이지 B (캐릭터): 추가 / 편집 / 역할지</div>
+  <div class="mockup-body" style="padding:8px">
+    <div style="display:flex;gap:6px;height:520px">
+
+      <!-- LEFT: Character list with CRUD -->
+      <div class="mock-sidebar" style="width:25%;font-size:11px;padding:8px">
+        <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px">
+          <span>👤 캐릭터 (5)</span>
+          <button class="mock-button" style="font-size:10px;padding:2px 6px">+ 추가</button>
+        </div>
+        <div style="padding:5px;background:#3a4a5a;border-radius:3px;margin-bottom:3px;border-left:3px solid #5af">
+          <div style="display:flex;justify-content:space-between">
+            <span>김철수</span>
+            <span style="color:#888;font-size:9px">탐정</span>
+          </div>
+          <div style="font-size:9px;color:#aaa">code: 탐정</div>
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:3px">
+          <div style="display:flex;justify-content:space-between">
+            <span>이영희</span>
+            <span style="color:#888;font-size:9px">용의자A</span>
+          </div>
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:3px">
+          <div style="display:flex;justify-content:space-between">
+            <span>박민수</span>
+            <span style="color:#888;font-size:9px">용의자B</span>
+          </div>
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:3px">
+          <div style="display:flex;justify-content:space-between">
+            <span>최지영</span>
+            <span style="color:#888;font-size:9px">목격자</span>
+          </div>
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px">
+          <div style="display:flex;justify-content:space-between">
+            <span>정대호</span>
+            <span style="color:#888;font-size:9px">희생자</span>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;padding-top:8px;border-top:1px dashed #555;font-size:10px;color:#888">
+          <div>우클릭 → 복제 / 삭제</div>
+          <div>드래그 → 순서 변경</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Character edit form -->
+      <div class="mock-content" style="flex:1;font-size:11px;padding:10px;overflow-y:auto">
+        <div style="font-weight:600;margin-bottom:10px;font-size:13px">⚙️ 김철수 편집</div>
+
+        <!-- BASE FIELDS section -->
+        <div style="background:#2a2a3a;padding:10px;border-radius:4px;margin-bottom:8px">
+          <div class="label" style="font-size:10px;color:#888;margin-bottom:6px">📋 베이스 필드 (항상 있음)</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">이름 (표시)</div>
+              <input class="mock-input" style="width:100%;font-size:11px" value="김철수" readonly>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">캐릭터 코드</div>
+              <input class="mock-input" style="width:100%;font-size:11px" value="탐정" readonly>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:60px 1fr;gap:6px;margin-bottom:6px">
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">사진</div>
+              <div style="width:60px;height:60px;background:#3a3a4a;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#888">📷</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#aaa;margin-bottom:2px">공개 소개 (모든 플레이어에게)</div>
+              <textarea class="mock-input" style="width:100%;height:50px;font-size:11px" readonly>40대 사립탐정. 의뢰를 받고 별장에 도착한 직후 살인사건을 마주한다.</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROLE SHEET (KEY FEATURE) -->
+        <div style="background:#2a3a3a;padding:10px;border-radius:4px;margin-bottom:8px;border:2px solid #4a8">
+          <div class="label" style="font-size:10px;color:#4a8;margin-bottom:6px">📜 역할지 (Role Sheet) — 이 플레이어만 봄, Markdown</div>
+          <div style="background:#1a2a2a;padding:8px;border-radius:3px;font-family:monospace;font-size:10px;color:#ccc;white-space:pre-line">## 당신의 정체
+
+당신은 김철수, 사립탐정입니다.
+
+## 비밀
+
+3년 전 정대호가 의뢰한 사건을
+**일부러 묻어준 적**이 있다.
+정대호는 그것을 빌미로 당신을 협박해 왔다.
+
+## 동기
+
+정대호의 죽음은 당신에게 유리하다.
+하지만 당신이 죽인 것은 아니다.
+
+## 알리바이
+
+10:30~11:00 화장실</div>
+          <div style="font-size:10px;color:#888;margin-top:4px">→ v2 <code>contentService.getRoleSheet()</code> 의 markdown content 와 동일 모델</div>
+        </div>
+
+        <!-- DYNAMIC MODULE SECTIONS placeholder -->
+        <div style="background:#3a2a3a;padding:10px;border-radius:4px;margin-bottom:8px;border:2px dashed #a5f">
+          <div class="label" style="font-size:10px;color:#a5f;margin-bottom:6px">🧩 동적 모듈 섹션 (켜진 모듈에 따라 추가됨)</div>
+          <div style="font-size:10px;color:#888">아래 위치에 모듈 ON 결과로 섹션이 동적 추가됨:</div>
+          <ul style="font-size:10px;color:#aaa;margin-top:6px;padding-left:20px">
+            <li>🟢 starting_clue ON 시 → "이 캐릭터에게 시작 시 줄 단서들" 섹션</li>
+            <li>🟢 hidden_mission ON 시 → "이 캐릭터의 숨겨진 임무" 섹션 (Markdown)</li>
+          </ul>
+          <div style="font-size:10px;color:#888;margin-top:6px;font-style:italic">→ 이 부분은 다음 단계에서 구체화. 지금은 자리만 표시.</div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display:flex;gap:6px;margin-top:10px">
+          <button class="mock-button" style="font-size:11px">저장</button>
+          <button class="mock-button" style="font-size:11px;background:#4a3a3a">삭제</button>
+          <button class="mock-button" style="font-size:11px;background:#3a3a4a">복제</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">📝 다른 entity 의 베이스 필드 (간단 표)</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">Entity</th>
+      <th style="padding:6px;text-align:left">베이스 필드 (항상)</th>
+      <th style="padding:6px;text-align:left">특별 컨텐츠</th>
+      <th style="padding:6px;text-align:left">관계</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>👤 캐릭터</strong></td>
+      <td style="padding:6px">이름·코드·사진·공개 소개</td>
+      <td style="padding:6px;color:#4a8">📜 역할지 (Markdown)</td>
+      <td style="padding:6px;color:#888">없음</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>📍 장소</strong></td>
+      <td style="padding:6px">이름·코드·이미지·공개 설명</td>
+      <td style="padding:6px;color:#4a8">— (단순)</td>
+      <td style="padding:6px;color:#888">부모 장소 (1층 → 서재)<br>접근 제한 캐릭터 (선택)</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>🔍 단서</strong></td>
+      <td style="padding:6px">이름·코드·이미지</td>
+      <td style="padding:6px;color:#4a8">📄 발견 시 표시 컨텐츠 (Markdown)</td>
+      <td style="padding:6px;color:#888">없음 (모듈이 분배 결정)</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>🎬 페이즈</strong></td>
+      <td style="padding:6px">이름·타입·duration·rounds·autoAdvance</td>
+      <td style="padding:6px;color:#888">— (Flow 노드)</td>
+      <td style="padding:6px;color:#888">이전/다음 페이즈 (Flow edge)</td>
+    </tr>
+    <tr>
+      <td style="padding:6px"><strong>🎭 결말</strong></td>
+      <td style="padding:6px">라벨·설명·scoreMultiplier</td>
+      <td style="padding:6px;color:#4a8">📄 결말 컨텐츠 (Markdown, "사건의 전말")</td>
+      <td style="padding:6px;color:#888">없음</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이 베이스 필드 + CRUD UX OK</h3>
+      <p>좌측 리스트 + "+추가" / 우클릭 / 드래그 패턴, 캐릭터 역할지 Markdown, 다른 entity 표 OK.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="more-fields" onclick="toggleSelect(this)">
+    <div class="letter">+</div>
+    <div class="content">
+      <h3>베이스 필드 추가/변경</h3>
+      <p>예: "캐릭터에 승리 조건 필드 필요" / "장소에 검색 가능 토글" / "단서에 카테고리 태그" 등 — 터미널에 적어줘</p>
+    </div>
+  </div>
+  <div class="option" data-choice="role-sheet-style" onclick="toggleSelect(this)">
+    <div class="letter">📜</div>
+    <div class="content">
+      <h3>역할지를 Markdown 말고 다른 형식</h3>
+      <p>예: 구조화된 폼 (비밀/동기/알리바이 별도 필드) / 또는 쪽 (page) 단위 / 또는 자유 입력 + 템플릿</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견 / 우려</h3>
+      <p>터미널에 적어주면 그대로 반영</p>
+    </div>
+  </div>
+</div>

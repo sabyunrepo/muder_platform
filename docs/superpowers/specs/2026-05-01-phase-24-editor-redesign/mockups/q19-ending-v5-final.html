@@ -1,0 +1,184 @@
+<h2>Q19. 결말 분기 v5 — 점수 비가시 + 공통 결말 + 응답 breakdown</h2>
+<p class="subtitle">3 화면: 제작자 설정 / 플레이어 답 / 게임 끝.</p>
+
+<!-- Screen 1: Creator setup (점수 보임) -->
+<div class="mockup">
+  <div class="mockup-header">📐 화면 1: 제작자 설정 (에디터) — 점수 보임</div>
+  <div class="mockup-body" style="padding:8px;font-size:11px">
+    <div style="background:#3a3a2a;padding:8px;border-radius:3px;border-left:3px solid #aa4">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span><strong>Q3.</strong> 정대호의 정확한 살해 동기는?</span>
+        <span style="color:#aa4;font-size:10px">💯 점수 가감</span>
+      </div>
+      <div style="background:#1a2a2a;padding:6px;border-radius:3px;font-size:10px">
+        <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px;margin-bottom:2px"><span>협박</span><span style="color:#4a8;font-weight:600">+5</span></div>
+        <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px;margin-bottom:2px"><span>치정</span><span style="color:#a55;font-weight:600">-2</span></div>
+        <div style="display:flex;justify-content:space-between;background:#2a3a3a;padding:3px 8px;border-radius:2px"><span>금전</span><span style="color:#a55;font-weight:600">-2</span></div>
+      </div>
+      <div style="font-size:9px;color:#888;margin-top:4px">제작자만 점수 확인 — 플레이어 화면엔 숨김</div>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 2: Player answering (점수 숨김) -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">🎮 화면 2: 플레이어 답할 때 (게임 중) — 점수 숨김 ❌</div>
+  <div class="mockup-body" style="padding:14px">
+    <div style="background:#2a2a3a;padding:18px;border-radius:8px;max-width:500px;margin:0 auto">
+      <div style="font-size:14px;font-weight:600;margin-bottom:8px">정대호의 정확한 살해 동기는?</div>
+      <div style="font-size:11px;color:#888;margin-bottom:14px">하나만 선택 · 김철수님이 응답 중</div>
+
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="mock-button" style="text-align:left;font-size:12px;padding:10px 14px">협박</button>
+        <button class="mock-button" style="text-align:left;font-size:12px;padding:10px 14px;background:#3a4a5a;border-left:3px solid #5af">치정 ✓ (선택)</button>
+        <button class="mock-button" style="text-align:left;font-size:12px;padding:10px 14px">금전</button>
+        <button class="mock-button" style="text-align:left;font-size:12px;padding:10px 14px">모르겠다</button>
+      </div>
+
+      <div style="margin-top:14px;padding-top:10px;border-top:1px dashed #444;font-size:10px;color:#888;text-align:center">
+        ⚠️ 점수·정답 표시 없음 — 답 완료 후 게임 끝에서만 공개
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Screen 3: Game end (공통 결말 + breakdown) -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">🎭 화면 3: 게임 끝 — 공통 결말 + 플레이어별 응답·점수 breakdown</div>
+  <div class="mockup-body" style="padding:14px;font-size:11px">
+
+    <!-- Common ending -->
+    <div style="background:#2a3a3a;padding:14px;border-radius:6px;margin-bottom:14px;border:2px solid #4a8">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div>
+          <div style="font-size:11px;color:#888">공통 결말</div>
+          <div style="font-size:24px;font-weight:600;color:#4a8">💚 자비</div>
+        </div>
+        <div style="font-size:10px;color:#aaa;text-align:right">
+          🗳️ 검거: 이영희 (다수결)<br>
+          ❓ Q1 용서? = 예 (다수결)
+        </div>
+      </div>
+
+      <div style="background:#1a2a2a;padding:12px;border-radius:4px;font-family:monospace;font-size:11px;color:#ccc;white-space:pre-line">## 자비의 결말
+
+당신들은 이영희를 용서했다.
+3년 전 정대호의 협박이 만들어낸 비극의 굴레 —
+이제 그 사슬은 끊어졌다.
+
+진실은 묻혔지만, 마음은 가벼워졌다.</div>
+    </div>
+
+    <!-- Player breakdown -->
+    <div style="background:#2a3a3a;padding:12px;border-radius:6px">
+      <div style="font-weight:600;margin-bottom:10px;font-size:13px">📊 플레이어별 응답 &amp; 점수</div>
+
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+        <thead>
+          <tr style="background:#1a2a2a">
+            <td style="padding:6px">캐릭터</td>
+            <td style="padding:6px">Q1 용서?</td>
+            <td style="padding:6px">Q2 물건</td>
+            <td style="padding:6px">Q3 동기</td>
+            <td style="padding:6px">Q4 발견</td>
+            <td style="padding:6px">Q5 일기</td>
+            <td style="padding:6px;color:#aa4">💯 점수</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:6px;font-weight:600">김철수</td>
+            <td style="padding:6px;color:#aaa">예</td>
+            <td style="padding:6px;color:#aaa">지갑+반지</td>
+            <td style="padding:6px;color:#4a8">협박 (+5)</td>
+            <td style="padding:6px;color:#4a8">R2 (+3)</td>
+            <td style="padding:6px;color:#aaa">읽었다</td>
+            <td style="padding:6px;color:#aa4;font-weight:600">+8</td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:6px;font-weight:600">박민수</td>
+            <td style="padding:6px;color:#aaa">예</td>
+            <td style="padding:6px;color:#aaa">현금다발</td>
+            <td style="padding:6px;color:#4a8">협박 (+5)</td>
+            <td style="padding:6px;color:#aaa">몰랐다 (0)</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#aa4;font-weight:600">+5</td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:6px;font-weight:600">이영희</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#aaa">지갑</td>
+            <td style="padding:6px;color:#a55">치정 (-2)</td>
+            <td style="padding:6px;color:#4a8">R1 (+5)</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#aa4;font-weight:600">+3</td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:6px;font-weight:600">최지영</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#aaa">반지</td>
+            <td style="padding:6px;color:#aaa">모르겠다 (0)</td>
+            <td style="padding:6px;color:#aaa">R3 (+1)</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#aa4;font-weight:600">+1</td>
+          </tr>
+          <tr>
+            <td style="padding:6px;font-weight:600">정대호</td>
+            <td style="padding:6px;color:#888">— (희생자)</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#888">—</td>
+            <td style="padding:6px;color:#888">0</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:10px;padding:8px;background:#1a2a2a;border-radius:3px;font-size:10px;color:#aaa">
+        <strong>표 구조:</strong> 점수 가감 질문 (Q3·Q4) 은 점수와 함께 표시 / 결말 분기 질문 (Q1·Q2·Q5) 은 답만 표시 / "—" = 응답 안 한 캐릭터 (응답 셀렉트 제외 또는 희생자)
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<h3 style="margin-top:24px">🆎 v4 → v5 변화</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">항목</th>
+      <th style="padding:6px;text-align:left">v4</th>
+      <th style="padding:6px;text-align:left">v5 (지금)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">결말 단위</td><td style="padding:6px;color:#888">개인별 (각자 다른 결말)</td><td style="padding:6px;color:#4a8"><strong>공통 (모두 같은 결말)</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">랭킹</td><td style="padding:6px;color:#888">1위/2위/3위...</td><td style="padding:6px;color:#4a8"><strong>제거 (단순 표)</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">점수 가시성 (플레이어)</td><td style="padding:6px;color:#888">답할 때 보임</td><td style="padding:6px;color:#4a8"><strong>숨김 (스포일러 방지)</strong></td></tr>
+    <tr><td style="padding:6px">게임 끝 화면</td><td style="padding:6px;color:#888">개인 결말 + 본인 점수 + 랭킹</td><td style="padding:6px;color:#4a8"><strong>공통 결말 + 플레이어 응답 표</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>v5 OK — 결말 entity 마무리</h3>
+      <p>점수 숨김·공통 결말·응답 breakdown. 결말 entity 종료 → 다음 단계 (데이터 모델 / 마이그레이션 / 동시편집).</p>
+    </div>
+  </div>
+  <div class="option" data-choice="show-answers-during" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>다른 사람 답도 게임 중에 보여주기</h3>
+      <p>실시간 다수결 표시 — 머더미스터리 토론에 활기 (or 스포일러)</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>"점수 breakdown 도 숨김" / "결말 컨텐츠를 캐릭터별로 다르게" 등 — 터미널에</p>
+    </div>
+  </div>
+</div>

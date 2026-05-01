@@ -1,0 +1,246 @@
+<h2>Q16. 결말 분기 v2 — 답 자체 매칭 + 정답 없는 질문 지원</h2>
+<p class="subtitle">변경: 점수 배수 제거 / 정답 강제 X / 6 질문 종류 / 답 자체 매칭. 사용자 예시 ("용서?" / "물건 수?") 포함.</p>
+
+<!-- TAB 1: Endings list (UPDATED — no score multiplier) -->
+<div class="mockup">
+  <div class="mockup-header">📄 탭 1: 결말 목록 (점수 배수 제거)</div>
+  <div class="mockup-body" style="padding:8px;font-size:11px">
+    <div style="display:flex;gap:6px;height:300px">
+
+      <div class="mock-sidebar" style="width:25%;font-size:11px;padding:6px">
+        <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px">
+          <span>🎭 결말 (6)</span>
+          <button class="mock-button" style="font-size:9px">+ 추가</button>
+        </div>
+        <div style="padding:5px;background:#3a4a5a;border-radius:3px;margin-bottom:2px;border-left:3px solid #5af;font-size:10px">🟢 TRUTH ◀</div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:2px;font-size:10px">💚 자비 (용서)</div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:2px;font-size:10px">⚖️ 정의 (응징)</div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:2px;font-size:10px">🤑 탐욕</div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:2px;font-size:10px">🔴 오판</div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;font-size:10px">⚪ 미해결</div>
+      </div>
+
+      <div class="mock-content" style="flex:1;font-size:11px;padding:8px">
+        <div style="font-weight:600;margin-bottom:6px;font-size:12px">⚙️ TRUTH 편집</div>
+
+        <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+          <div class="label" style="font-size:10px;color:#888;margin-bottom:5px">📋 베이스 <span style="color:#a55">(점수 배수 제거됨)</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <div><div style="font-size:10px;color:#aaa">라벨</div><input class="mock-input" style="width:100%" value="TRUTH"></div>
+            <div><div style="font-size:10px;color:#aaa">색상/아이콘</div><input class="mock-input" style="width:100%" value="🟢"></div>
+          </div>
+          <div style="margin-top:6px;padding:6px;background:#1a2a2a;border-radius:3px;font-size:10px;color:#888">
+            ⚪ 점수 = 1.0 고정 (모든 결말 동일). 결말 차이 = 라벨·색상·컨텐츠만.
+          </div>
+        </div>
+
+        <div style="background:#3a3a2a;padding:8px;border-radius:4px;border-left:3px solid #aa4">
+          <div class="label" style="font-size:10px;color:#aa4">📜 결말 컨텐츠 (Markdown)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: Branch system v2 -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">📄 탭 2: 결말 분기 v2 — 정답 없는 질문 지원, 답 자체 매칭</div>
+  <div class="mockup-body" style="padding:8px;font-size:11px">
+
+    <!-- Question definitions -->
+    <div style="background:#2a3a3a;padding:10px;border-radius:4px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px;font-size:12px">
+        <span>❓ 게임 끝 질문 (5)</span>
+        <button class="mock-button" style="font-size:10px">+ 새 질문</button>
+      </div>
+
+      <!-- Q1: single choice (auto-fill) -->
+      <div style="background:#1a2a2a;padding:8px;border-radius:3px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span><strong>Q1.</strong> 범인은 누구인가?</span>
+          <span style="font-size:10px;color:#888">🗳️ 단일 선택 · 자동 채움 (캐릭터)</span>
+        </div>
+        <div style="font-size:10px;color:#aaa;display:flex;gap:4px;flex-wrap:wrap">
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">김철수</span>
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">박민수</span>
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">이영희</span>
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">최지영</span>
+          <span style="background:#3a4a3a;padding:2px 6px;border-radius:2px;color:#4a8">+ "아무도 없음" (수동 추가)</span>
+        </div>
+        <div style="font-size:9px;color:#888;margin-top:3px">⭐ 정답 표시 없음 (선택) — 답 자체로 분기</div>
+      </div>
+
+      <!-- Q2: yes/no (사용자 예시) -->
+      <div style="background:#1a2a2a;padding:8px;border-radius:3px;margin-bottom:6px;border:1px dashed #5af">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span><strong>Q2.</strong> 당신은 범인을 용서하겠습니까?</span>
+          <span style="font-size:10px;color:#5af">⚪ 예/아니오 · <strong>정답 없음</strong></span>
+        </div>
+        <div style="font-size:10px;color:#aaa;display:flex;gap:4px">
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">예 (용서)</span>
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">아니오 (응징)</span>
+        </div>
+        <div style="font-size:9px;color:#888;margin-top:3px">→ 도덕적 선택. 정답 없이 분기만 만듦</div>
+      </div>
+
+      <!-- Q3: count (사용자 예시) -->
+      <div style="background:#1a2a2a;padding:8px;border-radius:3px;margin-bottom:6px;border:1px dashed #5af">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span><strong>Q3.</strong> 돈이 될만한 물건을 몇 개 찾았는가?</span>
+          <span style="font-size:10px;color:#5af">🔢 숫자 카운트 · <strong>정답 없음</strong></span>
+        </div>
+        <div style="font-size:10px;color:#aaa;display:flex;gap:4px">
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">0개</span>
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">1개</span>
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">2개</span>
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">3개</span>
+          <span style="background:#2a3a3a;padding:2px 8px;border-radius:2px">4개+</span>
+        </div>
+      </div>
+
+      <!-- Q4: free text -->
+      <div style="background:#1a2a2a;padding:8px;border-radius:3px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span><strong>Q4.</strong> 범행 동기는?</span>
+          <span style="font-size:10px;color:#888">📝 자유 입력 · 키워드 매칭</span>
+        </div>
+        <div style="font-size:10px;color:#aaa">매칭 키워드: <code>협박</code>, <code>치정</code>, <code>금전</code>, <code>(기타)</code></div>
+      </div>
+
+      <!-- Q5: multi choice -->
+      <div style="background:#1a2a2a;padding:8px;border-radius:3px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+          <span><strong>Q5.</strong> 범행에 사용된 단서는? (여러 개 선택 가능)</span>
+          <span style="font-size:10px;color:#888">☑ 다중 선택 · 자동 채움 (단서)</span>
+        </div>
+        <div style="font-size:10px;color:#aaa;display:flex;gap:4px;flex-wrap:wrap">
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">c1 일기장</span>
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">c3 칼</span>
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">c5 시체</span>
+          <span style="background:#2a3a3a;padding:2px 6px;border-radius:2px">c6 흉기</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Evaluation unit -->
+    <div style="background:#3a2a4a;padding:10px;border-radius:4px;margin-bottom:10px;border-left:3px solid #a5f">
+      <div style="font-weight:600;margin-bottom:6px;font-size:12px">⚙️ 답 평가 단위</div>
+      <label style="margin-right:14px;font-size:11px"><input type="radio" name="eval" style="margin-right:4px"> 팀 합의 (다수결, 모두 같은 결말)</label>
+      <label style="margin-right:14px;font-size:11px"><input type="radio" name="eval" checked style="margin-right:4px"> <strong>개인별 (각자 답 → 각자 결말)</strong> ⭐</label>
+      <label style="font-size:11px"><input type="radio" name="eval" style="margin-right:4px"> 혼합 (질문마다 설정)</label>
+      <div style="font-size:10px;color:#aaa;margin-top:4px">개인별 = 김철수는 자기 답으로 자비 엔딩 보고, 박민수는 자기 답으로 정의 엔딩 봄</div>
+    </div>
+
+    <!-- Answer matrix v2: actual answer matching -->
+    <div style="background:#2a3a4a;padding:10px;border-radius:4px;border:1px solid #5af">
+      <div style="font-weight:600;margin-bottom:8px;font-size:12px">🎯 답 조합 → 결말 매핑 (답 자체 매칭, 정답 개념 ❌)</div>
+
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+        <thead>
+          <tr style="background:#1a2a2a">
+            <td style="padding:5px">Q1 범인</td>
+            <td style="padding:5px">Q2 용서?</td>
+            <td style="padding:5px">Q3 물건</td>
+            <td style="padding:5px">Q4 동기</td>
+            <td style="padding:5px">→ 결말</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px">이영희</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">협박</td>
+            <td style="padding:5px"><span style="background:#2a4a3a;padding:2px 6px;border-radius:2px;color:#4a8">🟢 TRUTH</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px">이영희</td>
+            <td style="padding:5px;color:#4a8">예 (용서)</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#2a4a3a;padding:2px 6px;border-radius:2px;color:#4a8">💚 자비</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px">이영희</td>
+            <td style="padding:5px;color:#a55">아니오 (응징)</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#3a3a2a;padding:2px 6px;border-radius:2px;color:#aa4">⚖️ 정의</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px;color:#aa4">4개+</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#3a3a2a;padding:2px 6px;border-radius:2px;color:#aa4">🤑 탐욕</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px;color:#a55">박민수 / 김철수 / 최지영</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#4a2a2a;padding:2px 6px;border-radius:2px;color:#a55">🔴 오판</span></td>
+          </tr>
+          <tr>
+            <td colspan="4" style="padding:5px;color:#888;font-style:italic">기본 (위 어디에도 안 매칭)</td>
+            <td style="padding:5px"><span style="background:#2a2a3a;padding:2px 6px;border-radius:2px">⚪ 미해결</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button class="mock-button" style="font-size:10px;margin-top:8px">+ 새 매핑 행</button>
+
+      <div style="margin-top:10px;padding:8px;background:#1a2a2a;border-radius:3px;font-size:10px;color:#aaa">
+        <strong>매트릭스 핵심 변화 (v1 → v2):</strong>
+        <ul style="margin-top:3px;padding-left:14px">
+          <li>"정답/오답" 표시 ❌ → 답 그 자체 표시 ("이영희" / "예" / "4개+")</li>
+          <li>정답 없는 질문 (Q2 용서? · Q3 물건 수?) 도 자유롭게 매트릭스 사용 가능</li>
+          <li>여러 답을 OR 조합: "박민수 / 김철수 / 최지영" → 같은 결말</li>
+          <li>위에서 아래 우선순위 매칭 (이영희+협박이 더 위에 있어 먼저 매칭)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">🆎 v1 → v2 변화 요약</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">항목</th>
+      <th style="padding:6px;text-align:left">v1 (이전)</th>
+      <th style="padding:6px;text-align:left">v2 (지금)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">결말 점수 배수</td><td style="padding:6px;color:#888">x1.5 / x1.0 / x0.5 등 차등</td><td style="padding:6px;color:#4a8"><strong>1.0 고정 (제거)</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">정답 컨셉</td><td style="padding:6px;color:#888">강제 (질문마다 정답)</td><td style="padding:6px;color:#4a8"><strong>선택 (없어도 OK)</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">매트릭스 표시</td><td style="padding:6px;color:#888">정답/오답 이분법</td><td style="padding:6px;color:#4a8"><strong>답 자체 표시</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">질문 종류</td><td style="padding:6px;color:#888">3-4 종</td><td style="padding:6px;color:#4a8"><strong>6+ (예/아니오, 숫자 추가)</strong></td></tr>
+    <tr><td style="padding:6px">기본 답 평가</td><td style="padding:6px;color:#888">팀 합의</td><td style="padding:6px;color:#4a8"><strong>개인별</strong> (사용자 의도 추정)</td></tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>v2 OK</h3>
+      <p>점수 1.0 고정 / 정답 선택 / 답 자체 매칭 / 6+ 질문 종류 / 개인별 평가. 결말 entity 마무리.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="team-default" onclick="toggleSelect(this)">
+    <div class="letter">T</div>
+    <div class="content">
+      <h3>평가 기본 = 팀 합의</h3>
+      <p>개인별 대신 팀 합의 (다수결) 기본값으로</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견 / 변경</h3>
+      <p>터미널에 적어줘</p>
+    </div>
+  </div>
+</div>
