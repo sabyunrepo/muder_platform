@@ -173,7 +173,7 @@ func newTestService(t *testing.T, q authQuerier, capture *auditlog.CapturingLogg
 	t.Cleanup(func() { _ = rc.Close() })
 	// Use a fixed JWT secret for tests.
 	secret := []byte("test-secret-32-bytes-long-enough!")
-	return NewService(q, rc, secret, capture, zerolog.Nop())
+	return NewService(q, rc, secret, capture, nil, nil, zerolog.Nop())
 }
 
 // ---------------------------------------------------------------------------

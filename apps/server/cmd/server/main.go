@@ -151,7 +151,12 @@ func main() {
 	logger.Info().Msg("auditlog started")
 
 	// 9. Domain Services
-	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret), auditLog, logger)
+	// PR-9 wiring note: authSvc is constructed below (§11.6) once the
+	// game Hub exists, because auth.NewService needs the Hub as its
+	// RevokePublisher. revokeRepo is created here — its sqlc-backed
+	// surface depends only on `queries` and gets injected into both
+	// authSvc and the WS auth handler.
+	revokeRepo := auth.NewRevokeRepo(queries)
 	profileSvc := profile.NewService(queries, logger)
 	themeSvc := theme.NewService(queries, logger)
 	editorSvc := editor.NewService(queries, pool, logger)
@@ -224,7 +229,8 @@ func main() {
 	bus.Subscribe(eventbus.TypeGameStarted, coinSvc.HandleGameStarted)
 
 	// 10. Domain Handlers
-	authHandler := auth.NewHandler(authSvc)
+	// authHandler moved to §11.6 because it depends on authSvc which
+	// itself depends on the game Hub publisher.
 	profileHandler := profile.NewHandler(profileSvc)
 	themeHandler := theme.NewHandler(themeSvc)
 	editorHandler := editor.NewHandler(editorSvc, auditLog, logger)
@@ -276,6 +282,43 @@ func main() {
 	socialRouter.Handle("chat", socialWSHandler.HandleChat)
 	socialRouter.Handle("friend", socialWSHandler.HandleFriend)
 	socialRouter.Handle("presence", socialWSHandler.HandlePresence)
+
+	// 11.6. PR-9 WS Auth Protocol wiring.
+	//
+	// auth.Service depends on the game Hub as its RevokePublisher so
+	// that Logout / RefreshToken family-attack paths can push close to
+	// live sockets. SocialHub revoke push is left for a follow-up — the
+	// game Hub covers the in-game ban path, which is the W4 acceptance
+	// scenario; social-only sockets close on their next mutation when
+	// the user reconnects and fails the auth.identify pull check.
+	//
+	// MMP_WS_AUTH_PROTOCOL gates only the *inbound* auth.* frame
+	// dispatcher (AuthHandler.enabled). Server → client push (Hub.RevokeUser)
+	// stays wired regardless so that flag-on staging exercises both
+	// directions and a flag-off rollback still cleans up logout sockets.
+	// Both wsHub and socialHub satisfy auth.RevokePublisher; combine them
+	// so a single auth.Service push fans out to every live socket the
+	// user owns. auth.NewCompositeRevokePublisher returns errors.Join of
+	// every inner failure (rather than the first one) so a partial outage
+	// in one hub is observable rather than silently masked. Adding a
+	// Redis pub/sub adapter for multi-server fanout drops in here.
+	revokePublisher := auth.NewCompositeRevokePublisher(wsHub, socialHub)
+	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret),
+		auditLog, revokeRepo, revokePublisher, logger)
+	authHandler := auth.NewHandler(authSvc)
+	wsAuthHandler := ws.NewAuthHandler([]byte(cfg.JWTSecret), revokeRepo, authSvc,
+		cfg.WSAuthProtocol, logger)
+	// Dot-form auth.* events: register each C→S sub-action explicitly
+	// since Router.Route only splits on the colon. See PR-9 retro note
+	// in auth_protocol.go for the form choice rationale. Both routers
+	// receive the same handler so identify/resume/refresh work on game
+	// and social endpoints alike.
+	for _, t := range []string{ws.TypeAuthIdentify, ws.TypeAuthResume, ws.TypeAuthRefresh} {
+		wsRouter.Handle(t, wsAuthHandler.Handle)
+		socialRouter.Handle(t, wsAuthHandler.Handle)
+	}
+	logger.Info().Bool("enabled", cfg.WSAuthProtocol).
+		Msg("WS auth protocol handler registered")
 
 	// 12. HTTP Router
 	r := chi.NewRouter()

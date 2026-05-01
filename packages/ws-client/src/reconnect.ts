@@ -21,7 +21,18 @@ export class ReconnectManager {
   }
 
   get canRetry(): boolean {
-    return this.attempt < this.options.maxAttempts;
+    return this.options.enabled && this.attempt < this.options.maxAttempts;
+  }
+
+  /**
+   * Permanently disable further reconnects. Used when the server
+   * signals a terminal auth failure (`auth.revoked`,
+   * `auth.invalid_session{resumable=false}`) — retrying would just earn
+   * another close.
+   */
+  disable(): void {
+    this.cancel();
+    this.options.enabled = false;
   }
 
   get currentAttempt(): number {

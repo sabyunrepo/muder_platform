@@ -64,11 +64,13 @@ type authQuerier interface {
 }
 
 type service struct {
-	queries   authQuerier
-	redis     *redis.Client
-	jwtSecret []byte
-	logger    zerolog.Logger
-	audit     auditlog.Logger
+	queries    authQuerier
+	redis      *redis.Client
+	jwtSecret  []byte
+	logger     zerolog.Logger
+	audit      auditlog.Logger
+	revokeRepo RevokeRepo
+	publisher  RevokePublisher
 }
 
 // NewService creates a new auth service.
@@ -78,24 +80,44 @@ type service struct {
 // context that does not wire the audit pipeline. In production the caller
 // is expected to inject a running auditlog.DBLogger so that login,
 // register, logout, and account-deletion events are captured.
+//
+// Phase 19 PR-9: `revokeRepo` and `publisher` are likewise optional. nil
+// resolves to NoopRevokeRepo / NoopRevokePublisher so existing fixtures
+// and the pre-Task-3.6 main.go wiring stay buildable while the staged
+// MMP_WS_AUTH_PROTOCOL rollout is in progress. Production must inject
+// the real sqlc-backed repo and the *ws.Hub publisher.
 func NewService(
 	queries authQuerier,
 	redisClient *redis.Client,
 	jwtSecret []byte,
 	audit auditlog.Logger,
+	revokeRepo RevokeRepo,
+	publisher RevokePublisher,
 	logger zerolog.Logger,
 ) Service {
 	if audit == nil {
 		audit = auditlog.NoOpLogger{}
 	}
+	if revokeRepo == nil {
+		revokeRepo = NoopRevokeRepo{}
+	}
+	if publisher == nil {
+		publisher = NoopRevokePublisher{}
+	}
 	return &service{
-		queries:   queries,
-		redis:     redisClient,
-		jwtSecret: jwtSecret,
-		logger:    logger.With().Str("domain", "auth").Logger(),
-		audit:     audit,
+		queries:    queries,
+		redis:      redisClient,
+		jwtSecret:  jwtSecret,
+		logger:     logger.With().Str("domain", "auth").Logger(),
+		audit:      audit,
+		revokeRepo: revokeRepo,
+		publisher:  publisher,
 	}
 }
+
+// recordRevoke is defined in service_revoke.go (PR-9 H-1: split out so
+// the publisher push can run in a goroutine without growing service.go
+// past the 500 LoC tier limit).
 
 // refreshKeyPrefix returns the Redis key prefix for a user's refresh tokens.
 func refreshKeyPrefix(userID string) string {
@@ -237,6 +259,20 @@ func (s *service) RefreshToken(ctx context.Context, refreshTokenStr string) (*To
 		// Token reuse detected — revoke all tokens for this user (family attack).
 		s.logger.Warn().Str("user_id", sub).Str("jti", jti).Msg("refresh token reuse detected, revoking all tokens")
 		s.revokeAllTokens(ctx, sub)
+		// PR-9: persist revoke + push close to live WS sessions. Use
+		// admin_revoked code because this is a server-side security
+		// response, not a user-initiated logout. userID was parsed
+		// above so the call is safe.
+		//
+		// H-4 (a): if the revoke_log insert fails the security
+		// enforcement did not actually persist, so surface a 500
+		// instead of an Unauthorized. The latter would let a client
+		// that retries simply use a fresh refresh token and bypass
+		// the family-attack response.
+		if err := s.recordRevoke(ctx, userID, RevokeCodeAdminRevoked,
+			"refresh token reuse detected"); err != nil {
+			return nil, err
+		}
 		return nil, apperror.Unauthorized("refresh token has been revoked")
 	}
 
@@ -266,7 +302,12 @@ func (s *service) Logout(ctx context.Context, userID uuid.UUID) error {
 	s.revokeAllTokens(ctx, userID.String())
 	s.logger.Info().Str("user_id", userID.String()).Msg("user logged out, all refresh tokens revoked")
 	s.recordAudit(ctx, auditlog.ActionUserLogout, userID, nil)
-	return nil
+	// PR-9 H-4 (a): the revoke_log insert is the load-bearing half of
+	// recordRevoke — without it, the next reconnect's pull-fallback
+	// silently bypasses this logout. Surface the failure as a 500 so
+	// a retry actually persists the revoke. The publisher push stays
+	// fire-and-forget inside recordRevoke.
+	return s.recordRevoke(ctx, userID, RevokeCodeLoggedOutElsewhere, "user logout")
 }
 
 // GetCurrentUser returns the public user information.

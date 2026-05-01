@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"sort"
 	"sync"
@@ -14,12 +15,20 @@ import (
 // newTestClient creates a Client with a buffered send channel and no real websocket connection.
 // This is sufficient for testing Hub message routing (BroadcastToSession, SendToPlayer, Whisper)
 // because those code paths only call Client.SendMessage which writes to the send channel.
+//
+// PR-9 H-2 footgun fix: the literal-construction shortcut left ctx/cancel as
+// nil, so any test that exercises a handler reading c.Context() would
+// nil-deref. Mirror NewClient by initialising the lifecycle ctx so test-only
+// clients behave the same way production sockets do on Close().
 func newTestClient(hub *Hub, playerID uuid.UUID) *Client {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Client{
 		ID:     playerID,
 		hub:    hub,
 		send:   make(chan []byte, sendBufSize),
 		logger: zerolog.Nop(),
+		ctx:    ctx,
+		cancel: cancel,
 	}
 }
 

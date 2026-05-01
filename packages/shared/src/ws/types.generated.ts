@@ -7,7 +7,7 @@
 // Any hand edit will be overwritten by the next go generate run.
 // Phase 19 PR-1 (2026-04-18).
 //
-// Catalog: 130 events (active=115, stub=13, deprec=2) · 2 //wsgen:payload structs.
+// Catalog: 132 events (active=123, stub=7, deprec=2) · 10 //wsgen:payload structs.
 
 /* eslint-disable */
 /* prettier-ignore */
@@ -54,40 +54,44 @@ export const WsEventType = {
   AUDIO_STOP_LEGACY: "audio:stop",
   /**
    * S2C · auth
-   * status=stub
-   * PR-9 reserved — server asks for re-auth before sensitive action
+   * server asks for re-auth before a sensitive action; payload AuthChallengePayload
    */
   AUTH_CHALLENGE: "auth.challenge",
   /**
    * C2S · auth
-   * status=stub
-   * PR-9 reserved — client presents refreshed credentials post-upgrade
+   * client presents refreshed credentials post-upgrade; payload AuthIdentifyPayload
    */
   AUTH_IDENTIFY: "auth.identify",
   /**
+   * S2C · auth
+   * resume target stale; resumable bool guides retry policy (Discord INVALID_SESSION); payload AuthInvalidSessionPayload
+   */
+  AUTH_INVALID_SESSION: "auth.invalid_session",
+  /**
    * C2S · auth
-   * status=stub
-   * PR-9 reserved — client requests new token before expiry
+   * client requests a rotated token before expiry; payload AuthRefreshPayload
    */
   AUTH_REFRESH: "auth.refresh",
   /**
    * S2C · auth
-   * status=stub
-   * PR-9 reserved — server signals token approaching expiry
+   * server signals token approaching expiry; payload AuthRefreshRequiredPayload
    */
   AUTH_REFRESH_REQUIRED: "auth.refresh_required",
   /**
    * C2S · auth
-   * status=stub
-   * PR-9 reserved — client resumes session after reconnect, like Discord gateway RESUME
+   * client resumes session after reconnect (Discord gateway RESUME); payload AuthResumePayload
    */
   AUTH_RESUME: "auth.resume",
   /**
    * S2C · auth
-   * status=stub
-   * PR-9 reserved — server notifies client its session was invalidated (ban, logout elsewhere)
+   * server notifies client its session was invalidated (ban, logout-elsewhere); payload AuthRevokedPayload
    */
   AUTH_REVOKED: "auth.revoked",
+  /**
+   * S2C · auth
+   * server's response to auth.refresh — new access token + expiry; payload AuthTokenIssuedPayload
+   */
+  AUTH_TOKEN_ISSUED: "auth.token_issued",
   /** S2C · chat */
   CHAT_MESSAGE: "chat:message",
   /** S2C · chat */
@@ -383,10 +387,12 @@ export const WsEventDirection: Readonly<Record<WsEventType, "c2s" | "s2c" | "bid
   "audio:stop": "c2s",
   "auth.challenge": "s2c",
   "auth.identify": "c2s",
+  "auth.invalid_session": "s2c",
   "auth.refresh": "c2s",
   "auth.refresh_required": "s2c",
   "auth.resume": "c2s",
   "auth.revoked": "s2c",
+  "auth.token_issued": "s2c",
   "chat:message": "s2c",
   "chat:read_receipt": "s2c",
   "chat:send": "c2s",
@@ -517,10 +523,12 @@ export const WsEventCategory: Readonly<Record<WsEventType, string>> = {
   "audio:stop": "audio",
   "auth.challenge": "auth",
   "auth.identify": "auth",
+  "auth.invalid_session": "auth",
   "auth.refresh": "auth",
   "auth.refresh_required": "auth",
   "auth.resume": "auth",
   "auth.revoked": "auth",
+  "auth.token_issued": "auth",
   "chat:message": "chat",
   "chat:read_receipt": "chat",
   "chat:send": "chat",
@@ -649,12 +657,14 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
   "audio:play": "active",
   "audio:resume": "active",
   "audio:stop": "active",
-  "auth.challenge": "stub",
-  "auth.identify": "stub",
-  "auth.refresh": "stub",
-  "auth.refresh_required": "stub",
-  "auth.resume": "stub",
-  "auth.revoked": "stub",
+  "auth.challenge": "active",
+  "auth.identify": "active",
+  "auth.invalid_session": "active",
+  "auth.refresh": "active",
+  "auth.refresh_required": "active",
+  "auth.resume": "active",
+  "auth.revoked": "active",
+  "auth.token_issued": "active",
   "chat:message": "active",
   "chat:read_receipt": "active",
   "chat:send": "active",
@@ -771,6 +781,86 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
 } as const;
 
 // --- payload interfaces (generated from Go structs marked //wsgen:payload) ---
+
+/**
+ * AuthIdentifyPayload — C2S, sent post-upgrade with a refreshed credential.
+ */
+export interface AuthIdentifyPayload {
+  token: string;
+  sessionId?: string;
+  clientLastSeq?: number;
+}
+
+/**
+ * AuthResumePayload — C2S, sent on reconnect to replay missed events.
+ */
+export interface AuthResumePayload {
+  token: string;
+  sessionId: string;
+  lastSeq: number;
+}
+
+/**
+ * AuthRefreshPayload — C2S, request a rotated short-lived token.
+ */
+export interface AuthRefreshPayload {
+  token: string;
+}
+
+/**
+ * AuthChallengePayload — S2C, server demands re-authentication before a
+ * sensitive action proceeds.
+ */
+export interface AuthChallengePayload {
+  reason: string;
+  action?: string;
+}
+
+/**
+ * AuthRevokedPayload — S2C, the session has been invalidated and the
+ * connection is closing. Code is one of: "banned",
+ * "logged_out_elsewhere", "password_changed", "admin_revoked".
+ */
+export interface AuthRevokedPayload {
+  reason: string;
+  code: string;
+}
+
+/**
+ * AuthRefreshRequiredPayload — S2C, the token is approaching expiry.
+ * The client should reply with auth.refresh before ExpiresAt.
+ */
+export interface AuthRefreshRequiredPayload {
+  expiresAt: number;
+  reason?: string;
+}
+
+/**
+ * AuthTokenIssuedPayload — S2C, server's response to a successful
+ * auth.refresh. Carries the rotated short-lived access token plus its
+ * expiry so the client can schedule the next refresh deterministically.
+ * Sent as a dedicated frame (not piggybacked on another event) per
+ * videosdk 2025 / websockets.readthedocs guidance.
+ */
+export interface AuthTokenIssuedPayload {
+  token: string;
+  expiresAt: number;
+}
+
+/**
+ * AuthInvalidSessionPayload — S2C, the resume target the client sent
+ * (session_id + last_seq) cannot be honoured. The Resumable flag tells
+ * the client whether reconnecting with a full auth.identify is allowed
+ * (true; e.g. buffer expired but the user is still valid) or whether
+ * the session is fully unauthorized (false; e.g. user was banned —
+ * auth.revoked semantics overlap, but invalid_session signals
+ * "your *resume target* is gone" rather than "your *user* is gone").
+ * Discord INVALID_SESSION pattern.
+ */
+export interface AuthInvalidSessionPayload {
+  resumable: boolean;
+  reason: string;
+}
 
 /**
  * ErrorPayload is sent as the payload of "error" type messages.
