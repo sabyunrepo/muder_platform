@@ -6,6 +6,40 @@ learning-extractor의 3-question quality gate(`refs/learning-quality-gate.md` Q1
 
 ---
 
+## 2026-05-01 — backlog 항목 PR 분기 전 게이트 대상 코드 존재 확인 grep 누락
+
+**패턴**: backlog에 등록된 "v2 / feature flag / gate / wire-up" 항목을 immediate PR로 잡으려 분기했으나, **게이트 대상 코드가 실제로 존재하는지** 사전에 grep 검증하지 않았다. 분기 후 코드 grep 0 hit 발견 → defer로 종료 → PR scope 결정 ~ 브랜치 청소까지 왕복 비용 발생.
+
+**근본 원인**: backlog 항목이 등록될 때 "v2 코드가 있다"는 암묵 가정이 있었으나, 항목 등록 시점과 PR 진입 시점 사이에 (a) v2 구현이 합쳐졌는지, (b) 다른 phase에 흡수되었는지, (c) 그저 미구현 상태인지 검증 단계가 없음. PR 분기 = 작업 시작 신호인데 "작업할 대상이 코드에 존재하는가"는 가장 기본 사전 체크.
+
+**재발 방지 강제점**:
+1. **`feedback_coding_discipline.md` § "Think Before Coding"에 grep 게이트 추가** — backlog 항목이 "v2", "feature flag", "gate", "wire-up", "쓰임처" 같은 *기존 구현체 의존* 키워드를 포함하면 PR 분기 *직전* `grep -rn <식별자>` 또는 의미 검색으로 게이트 대상 존재 확인 의무화.
+2. **0 hit 발견 시 즉시 사용자에게 옵션 제시** — (a) brainstorm 분기, (b) placeholder flag (카논 위반 risk 명시), (c) backlog defer. 메인 모델이 default 결정 X.
+3. **backlog 항목 등록 시점에 "검증 필요" 마킹** — 향후 backlog 등록 시 "v2 게이트가 *현재 코드에 존재한다*고 가정함"을 명시하거나, 가정이 검증 안 됐다면 "spec/grep 사전 검증 필요" 태그.
+
+**관련 카논**: `memory/feedback_coding_discipline.md` § 1, `memory/project_phase21_backlog.md` E-5 brainstorm 필수 사유 섹션.
+**발견**: PR #190 wrap (2026-05-01). E-5 location_clue_assignment_v2 immediate PR 시도 → grep 0 hit 발견 → 사용자 결정 (c) defer.
+**해소 commit**: `feedback_coding_discipline.md` 본 wrap PR.
+
+---
+
+## 2026-05-01 — 컴포넌트 분리 시 원본 JSX render 순서를 검증 안 한 채 논리 종속만으로 sub-component 묶기
+
+**패턴**: 큰 React 컴포넌트를 여러 sub-component로 분리할 때, 추출 단위를 *논리적 관련성*(예: "warning timer는 autoAdvance에 종속") 기준으로만 정하면 *원본 DOM render 순서*가 깨질 수 있다. 분리 후 컨트롤이 시각적으로 다른 위치에 렌더되어 인과 관계가 역전되거나 visual jitter 발생.
+
+**근본 원인**: 분리 단계에서 메인 모델이 부모 컴포넌트의 JSX를 line range로 잘라 sub-component prop으로 변환하면서, 원본 render 순서(Label → Type → Duration → Rounds → Auto-advance toggle → Warning timer)와 분리 후 순서(... → Warning timer는 TimerSettings 안에 흡수 → toggle은 외부에서 마지막)가 다르다는 사실을 검증하지 않았다. 4-agent arch reviewer가 round-1에서 HIGH로 검출.
+
+**재발 방지 강제점**:
+1. **분리 PR의 self-check** — sub-component 작성 후, 부모 JSX에서 sub-component 호출이 원본 element들과 같은 순서로 자리잡는지 line-by-line 비교. 부모 JSX 본문 diff에서 element 추가/삭제/순서 변화를 손으로 확인.
+2. **`feedback_code_review_patterns.md` React 섹션에 "DOM 순서 보존 검증" 항목 추가** — arch reviewer 프롬프트에 "원본 vs 분리 후 JSX render 순서 1:1 비교 명시" 강제. 논리적 종속 기준만으로는 부족.
+3. **테스트가 ordering을 검증하지 않으므로 4-agent 의존** — vitest는 query-by-text/role 기준이라 element 순서를 잡지 못함. arch reviewer가 사실상 유일한 게이트. 분리 PR은 4-agent carve-out 우회 금지 (사용자 명시 필요).
+
+**관련 카논**: `memory/feedback_code_review_patterns.md` React 섹션, `memory/project_phase21_backlog.md` E-7 해소 근거.
+**발견**: PR #191 4-agent carve-out review (2026-05-01). PhaseNodePanel → PhasePanelAdvanceToggle 추출 시 warning timer가 toggle 아래에서 위로 회귀 → in-PR fix (warning timer를 PhasePanelAdvanceToggle 안으로 흡수해 원본 순서 복원).
+**해소 commit**: PR #191 commit `cc16aae` + `feedback_code_review_patterns.md` 본 wrap PR.
+
+---
+
 ## 2026-05-01 — useDebouncedMutation: schedule-time cache write + flush-time applyOptimistic 이중 layer → pendingSnapshot 이중 오염
 
 **패턴**: debounce + optimistic update 합성 훅 설계 시, schedule 시점에 직접 cache mirror write를 하고 flush 시점에도 `applyOptimistic` 안에서 `getQueryData(cacheKey)`로 previous를 다시 캡처하면, flush 시점의 `previous`는 이미 schedule-time이 쓴 상태를 읽는다. mutation 실패 시 rollback closure가 schedule-time-applied 상태로만 복원하고 진짜 pre-edit snapshot은 유실 — silent data divergence.

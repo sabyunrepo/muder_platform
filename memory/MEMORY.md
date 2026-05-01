@@ -61,6 +61,7 @@
 - [Custom Runner Image GHCR 첫 push 절차](feedback_ghcr_self_hosted_bootstrap.md) — GITHUB_TOKEN + Public visibility
 
 ## 최근 세션 회고
+- [2026-05-01 Phase 21 backlog wave — 5 PR sequential merge](sessions/2026-05-01-phase-21-backlog-wave.md) — PR #188/#189/#190/#191/#192. E-7/E-8/E-10/E-11/E-12 해소 + Phase 23 인프라 close + E-5 Phase 24 defer
 - [2026-05-01 Phase 21 E-1/E-6 — useDebouncedMutation 훅 + file-size CI guard](sessions/2026-05-01-phase-21-e1-e6-debounce-hook.md) — 4 PR 머지 (#178/#183/#184/#185), 4-agent 3 round + CodeRabbit 2 round, E-7~E-12 follow-up 등록
 - [2026-04-19 토큰 최적화](project_session_2026-04-19_optimization.md) — 3 PR (#116/#117/#118), 세션당 ~8~25K 절감
 

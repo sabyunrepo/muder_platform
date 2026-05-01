@@ -6,6 +6,29 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 
 ---
 
+## 2026-05-01 — Phase 21 backlog wave wrap-up (PR #188/#189/#190/#191/#192)
+
+### Q-phase24-entry: E-3/E-5 Phase 24 brainstorm 진입 시점 + 묶음 vs 단독
+- **위치**: `memory/project_phase21_backlog.md` E-3 (Config 409 3-way merge, L+) + E-5 (location_clue_assignment_v2 flag, brainstorm 필수)
+- **가설**: Phase 19 W4 (PR-9 WS Auth + PR-10 Runtime Payload Validation, L+L) 머지 후 Phase 24 brainstorm 진입. E-3와 E-5는 영역이 달라(409 충돌 해소 vs 런타임 v2 게이트) 단독 분기 권장 가능. 묶을 경우 phase scope 비대.
+- **다음 액션**: W4 머지 직후 사용자가 묶음/단독 결정 + 단독 시 우선순위. E-3는 UX 영향(409 충돌 빈도)이 더 높을 수 있음.
+- **블로커 risk**: MED. E-5는 게이트 대상 v2 부재로 placeholder flag 카논 위반 risk 잠재.
+
+### Q-docs-only-paths-filter: docs-only PR admin-merge 영구화 vs ci.yml paths-filter 추가
+- **위치**: 본 세션 PR #188/#190/#192 모두 admin --squash 머지 (paths-filter로 ci.yml fire 안 함). 핸드오프 노트 Risks 섹션에 명시.
+- **관련**: `memory/feedback_4agent_review_before_admin_merge.md` (admin-merge 정책 영역, 0.64 score) — paths-filter 정책 행 추가 권장.
+- **옵션**: (a) 현행 admin-merge 영구화 — main 보호 정책이 점진 무력화 risk. (b) `ci.yml`에 `paths-ignore: ['docs/**', 'memory/**']` 또는 별도 light-CI job — docs-only PR도 정상 squash 가능. (c) docs-only fast-path Command 자동화 (automation-scout HIGH 후보 #2).
+- **다음 액션**: 다음 세션 시작 시 사용자 결정. P1 우선순위.
+- **블로커 risk**: LOW (현재 운영 가능) — drift 위험 MED.
+
+### Q-omc-availability: oh-my-claudecode:* 에이전트 환경적 부재가 영구인지
+- **맥락**: 본 세션 PR #189/#191 4-agent 리뷰 시도 시 `oh-my-claudecode:security-reviewer/code-reviewer/critic/test-engineer` 가용 목록에 없음 — `superpowers:code-reviewer` 1회 carve-out으로 자연 fallback. 카논상 carve-out은 사용자 명시 결정 필요하지만 환경적 부재로 default 발생.
+- **PARTIAL**: 환경 감지 정책이 별 차원 (자동화 후보 #3) — 단순 QUESTION 분류 + automation-scout 분류 동시.
+- **다음 액션**: 다음 세션 시작 시 `oh-my-claudecode:*` 가용성 재확인. 영구 부재라면 `feedback_4agent_review_before_admin_merge.md` carve-out에 `superpowers:code-reviewer` 공식 등재 + fallback 절차 자동화 Command 후보 검토.
+- **블로커 risk**: LOW. 기능 커버 가능.
+
+---
+
 ## 2026-05-01 — Phase 21 E-1/E-6 wrap-up (PR #184)
 
 ### Q-auditlog-testcontainer-flaky — `internal/auditlog` testcontainer postgres timeout 재발 빈도 미측정
