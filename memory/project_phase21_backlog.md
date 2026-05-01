@@ -11,19 +11,14 @@ type: project
 
 ---
 
-## 인프라 follow-ups (Phase 23 이월)
+## 인프라 follow-ups (Phase 23 — Closed 2026-05-01)
 
-| ID | 항목 | 우선순위 | 위치 | 비고 |
-|----|------|----------|------|------|
-| P0-1 | chicken-egg fix `runs-on: ubuntu-latest` | High | `.github/workflows/build-runner-image.yml` | 사용자 host fallback 작동 중. main이 KT Cloud KS arc-runner-set로 진화하면서 자연 해소 가능성 — 재평가 필요 |
-| P1-4 | Composite action 추출 | Med | `.github/actions/start-services/action.yml` (신규) | 9 workflow 중복 제거 |
-| P1-5 | govulncheck version pin | Med | `.github/workflows/build-runner-image.yml` | `@latest` → SHA pin |
-| P1-6 | ubuntu builder SHA pin | Med | `infra/runners/Dockerfile` | builder stage `ubuntu:22.04` SHA pin |
-| P1-7 | ARG DOCKER_GID | Low | `infra/runners/Dockerfile` | hardcoded 990 → ARG |
+**Closed (2026-05-01) — superseded by KT Cloud KS arc-runner-set 진화 (PR #179/#180).**
+사용자 결정: Phase 23 Custom Runner Image 라인 자체를 종료. main이 KT Cloud KS ARC로 진화하면서 `build-runner-image.yml` / `infra/runners/Dockerfile` 자체가 obsolete 경로로 진입. P0-1 chicken-egg / P1-4 Composite action / P1-5 govulncheck pin / P1-6 ubuntu builder SHA pin / P1-7 ARG DOCKER_GID 5건 모두 backlog에서 영구 제거.
 
-P0-2 (GHCR repo connection)은 사용자 manual 1회 작업으로 이미 해소 — backlog 제외.
+P0-2 (GHCR repo connection)은 사용자 manual 1회 작업으로 이미 해소.
 
-근거: `docs/plans/2026-04-29-phase-23-custom-runner-image/checklist.md` follow_ups 섹션.
+근거: `docs/plans/2026-04-29-phase-23-custom-runner-image/checklist.md` follow_ups 섹션 + 사용자 결정 2026-05-01 (option a).
 
 ---
 
