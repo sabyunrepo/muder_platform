@@ -1,5 +1,15 @@
-import type { WsMessage, WsEventType } from "@mmp/shared";
-import { WsEventType as Events } from "@mmp/shared";
+import {
+  WsEventType as Events,
+  type WsMessage,
+  type WsEventType,
+  type AuthIdentifyPayload,
+  type AuthResumePayload,
+  type AuthRefreshPayload,
+  type AuthRevokedPayload,
+  type AuthTokenIssuedPayload,
+  type AuthInvalidSessionPayload,
+  type ConnectedPayload,
+} from "@mmp/shared";
 import { ReconnectManager } from "./reconnect.js";
 import {
   WsClientState,
@@ -11,11 +21,22 @@ import {
 /**
  * WebSocket client with heartbeat + reconnect + typed event dispatch.
  *
- * Auth model (Phase 19 PR-1 / D2 decision): the server validates the
- * `?token=…` query parameter at HTTP upgrade. Upgrade success implies the
- * connection is authenticated; there is no post-open AUTH handshake.
- * A refresh / revoke / challenge protocol is reserved for PR-9
- * (see envelope_catalog_system.go `auth.*` stub entries).
+ * Auth model:
+ *
+ *   1. Initial connect — `?token=…` query parameter validated by the
+ *      server at HTTP upgrade. Upgrade success implies the connection
+ *      is authenticated.
+ *   2. (PR-9, opt-in via `authProtocol: true`) Post-open the client
+ *      confirms identity with `auth.identify`, or reconnects with
+ *      `auth.resume` if it knows the previous sessionId / lastSeq.
+ *      The client also dispatches the four S→C `auth.*` envelopes
+ *      (`auth.revoked`, `auth.invalid_session`, `auth.token_issued`,
+ *      `auth.refresh_required`) to the dedicated callbacks so the
+ *      consuming app does not have to subscribe to them as ordinary
+ *      events.
+ *
+ * `authProtocol` defaults to false so a flag-off rollout retains the
+ * legacy upgrade-only behaviour.
  */
 export class WsClient {
   private ws: WebSocket | null = null;
@@ -30,9 +51,19 @@ export class WsClient {
   private readonly stateListeners = new Set<WsStateChangeHandler>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
+  // PR-9 resume bookkeeping. sessionId is captured from the first
+  // `connected` envelope; lastSeq tracks the most recent envelope seq
+  // observed so a reconnect can request replay from there. currentToken
+  // wins over options.token for reconnect URLs once a refresh has
+  // rotated it.
+  private sessionId: string | undefined;
+  private lastSeq: number | undefined;
+  private currentToken: string | undefined;
+
   constructor(options: WsClientOptions) {
     this.options = { heartbeatInterval: 30_000, ...options };
     this.reconnect = new ReconnectManager(options.reconnect);
+    this.currentToken = options.token;
   }
 
   /** Current connection state. */
@@ -49,7 +80,7 @@ export class WsClient {
       return;
     }
     this.setState(WsClientState.CONNECTING);
-    this.ws = new WebSocket(buildUrl(this.options.url, this.options.token));
+    this.ws = new WebSocket(buildUrl(this.options.url, this.currentToken));
     this.ws.onopen = this.handleOpen;
     this.ws.onclose = this.handleClose;
     this.ws.onmessage = this.handleMessage;
@@ -80,6 +111,21 @@ export class WsClient {
       seq: this.seq++,
     };
     this.ws.send(JSON.stringify(message));
+  }
+
+  /**
+   * Request a token rotation via `auth.refresh`. Caller supplies the
+   * refresh token (typically read from secure storage); the response
+   * arrives as `auth.token_issued` and is funneled through
+   * onTokenRefreshed. Throws if the socket is not CONNECTED or
+   * authProtocol is false.
+   */
+  refreshToken(refreshToken: string): void {
+    if (!this.options.authProtocol) {
+      throw new Error("refreshToken requires authProtocol: true");
+    }
+    const payload: AuthRefreshPayload = { token: refreshToken };
+    this.send(Events.AUTH_REFRESH, payload);
   }
 
   /** Subscribe to a specific event type. */
@@ -145,10 +191,34 @@ export class WsClient {
     this.reconnect.reset();
     this.setState(WsClientState.CONNECTED);
     this.startHeartbeat();
-    // Query-token auth happens at upgrade — nothing to send here.
-    // The first server frame is a `connected` envelope carrying
-    // { playerId, sessionId, seq } and is surfaced via on(Events.CONNECTED).
+    this.maybeSendAuthGreeting();
+    // A `connected` envelope arrives next carrying { playerId, sessionId,
+    // seq } and is captured in handleMessage so the next reconnect can
+    // resume from the right offset.
   };
+
+  /**
+   * PR-9 — automatically send the post-open auth greeting when
+   * authProtocol is enabled. First connect (no sessionId yet) sends
+   * auth.identify; subsequent reconnects with a known sessionId send
+   * auth.resume. When authProtocol is false this is a no-op and the
+   * legacy upgrade-only auth path remains in effect.
+   */
+  private maybeSendAuthGreeting(): void {
+    if (!this.options.authProtocol) return;
+    const token = this.currentToken ?? "";
+    if (this.sessionId !== undefined && this.lastSeq !== undefined) {
+      const payload: AuthResumePayload = {
+        token,
+        sessionId: this.sessionId,
+        lastSeq: this.lastSeq,
+      };
+      this.send(Events.AUTH_RESUME, payload);
+    } else {
+      const payload: AuthIdentifyPayload = { token };
+      this.send(Events.AUTH_IDENTIFY, payload);
+    }
+  }
 
   private readonly handleClose = (_event: CloseEvent): void => {
     this.stopHeartbeat();
@@ -177,10 +247,72 @@ export class WsClient {
       }
       return;
     }
+
+    // Track lastSeq for the next resume attempt — every server-stamped
+    // envelope carries a monotonically increasing seq.
+    if (typeof message.seq === "number") {
+      this.lastSeq = message.seq;
+    }
+
+    // Capture sessionId from the initial `connected` envelope so a
+    // reconnect can ask the server to replay buffered events.
+    if (message.type === Events.CONNECTED) {
+      const payload = message.payload as Partial<ConnectedPayload> | undefined;
+      if (payload?.sessionId) {
+        this.sessionId = payload.sessionId;
+      }
+    }
+
+    // PR-9 auth.* dispatch — these never reach the regular emit path
+    // because consumers register dedicated callbacks instead.
+    if (this.handleAuthFrame(message)) {
+      return;
+    }
+
     // Silently swallow pong heartbeat replies.
     if (message.type === Events.PONG) return;
     this.emit(message.type, message.payload, message.seq);
   };
+
+  /**
+   * Inspect a message for an S→C auth.* envelope and route it to the
+   * corresponding callback. Returns true when the frame was handled
+   * (caller must skip the regular emit path) and false otherwise.
+   */
+  private handleAuthFrame(message: WsMessage): boolean {
+    switch (message.type) {
+      case Events.AUTH_TOKEN_ISSUED: {
+        const payload = message.payload as AuthTokenIssuedPayload;
+        this.currentToken = payload.token;
+        this.options.onTokenRefreshed?.(payload.token, payload.expiresAt);
+        return true;
+      }
+      case Events.AUTH_REVOKED: {
+        const payload = message.payload as AuthRevokedPayload;
+        this.options.onRevoked?.(payload.code, payload.reason);
+        // Server is closing this socket; suppress reconnect so the user
+        // does not bounce back into the revoked state.
+        this.reconnect.disable();
+        return true;
+      }
+      case Events.AUTH_INVALID_SESSION: {
+        const payload = message.payload as AuthInvalidSessionPayload;
+        if (payload.resumable) {
+          // The user is still valid but the resume target is gone (buffer
+          // expired, sessionId stale). Drop bookkeeping so the next
+          // handleOpen falls back to auth.identify on a fresh connection.
+          this.sessionId = undefined;
+          this.lastSeq = undefined;
+        } else {
+          this.options.onUnauthorized?.(payload.reason);
+          this.reconnect.disable();
+        }
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
 
   private readonly handleError = (_event: Event): void => {
     // onerror always precedes onclose; handleClose drives state transitions.
