@@ -27,6 +27,12 @@
  * 이미 사용된 상태다. 재진입이 필요하면 `queueMicrotask` 또는
  * `setTimeout(..., 0)`으로 비동기 dispatch.
  *
+ * 동기 재진입이 실수로 발생한 경우 hook은 손상되지 않는다 — `pendingRef`는
+ * 비워진 상태에서 새 schedule이 들어오므로 다음 debounce window에 1회 더
+ * 발화한다 (회귀 테스트 "re-entrant schedule from inside mutate" 검증).
+ * 그러나 의도된 사용 패턴은 아니며, `applyOptimistic`이 두 번째 발화에서도
+ * latest body 기준으로 다시 호출되는 점에 유의.
+ *
  * ## Optimistic 시점에 대한 결정 (perf-H2)
  *
  * 빠른 타이핑 시 schedule이 N번 → 매 호출마다 setQueryData 발화 시 cache
@@ -56,7 +62,7 @@
  *
  * // input change → debouncer.schedule(merged); blur → debouncer.flush();
  */
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 export interface UseDebouncedMutationOptions<TBody> {
   /**
@@ -104,17 +110,13 @@ interface OptsRef<TBody> {
   onError: UseDebouncedMutationOptions<TBody>["onError"];
 }
 
-interface FlushRefs<TBody> {
-  timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
-  pendingRef: React.MutableRefObject<TBody | null>;
-  optsRef: React.MutableRefObject<OptsRef<TBody>>;
-}
+type TimerRef = React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
 
 /** Cancel any active timer; idempotent. */
-function clearTimer<TBody>(refs: FlushRefs<TBody>): void {
-  if (refs.timerRef.current) {
-    clearTimeout(refs.timerRef.current);
-    refs.timerRef.current = null;
+function clearTimer(timerRef: TimerRef): void {
+  if (timerRef.current) {
+    clearTimeout(timerRef.current);
+    timerRef.current = null;
   }
 }
 
@@ -123,50 +125,22 @@ function clearTimer<TBody>(refs: FlushRefs<TBody>): void {
  * rollback closure is created lazily here (not at schedule time) so a fast
  * keystroke burst does not write to the query cache N times.
  */
-function flushMutation<TBody>(refs: FlushRefs<TBody>): void {
-  clearTimer(refs);
-  const body = refs.pendingRef.current;
+function flushPending<TBody>(
+  timerRef: TimerRef,
+  pendingRef: React.MutableRefObject<TBody | null>,
+  optsRef: React.MutableRefObject<OptsRef<TBody>>,
+): void {
+  clearTimer(timerRef);
+  const body = pendingRef.current;
   if (body === null) return;
-  refs.pendingRef.current = null;
-
-  const rollback = refs.optsRef.current.applyOptimistic?.(body) ?? null;
-  refs.optsRef.current.mutate(body, {
+  pendingRef.current = null;
+  const rollback = optsRef.current.applyOptimistic?.(body) ?? null;
+  optsRef.current.mutate(body, {
     onError: (error) => {
       rollback?.();
-      refs.optsRef.current.onError?.(error);
+      optsRef.current.onError?.(error);
     },
   });
-}
-
-/** Update pending body (with optional merge accumulator) and (re)arm the timer. */
-function schedulePending<TBody>(
-  refs: FlushRefs<TBody>,
-  debounceMs: number,
-  body: TBody,
-  merge: ((prev: TBody | null) => TBody) | undefined,
-): void {
-  refs.pendingRef.current = merge ? merge(refs.pendingRef.current) : body;
-  clearTimer(refs);
-  refs.timerRef.current = setTimeout(() => {
-    refs.timerRef.current = null;
-    flushMutation(refs);
-  }, debounceMs);
-}
-
-/**
- * Effect-only helper that flushes pending body on unmount via a `flushRef`
- * (latest closure) so the cleanup never captures a stale `flush` identity.
- */
-function useUnmountFlush(flush: () => void): void {
-  const flushRef = useRef(flush);
-  useEffect(() => {
-    flushRef.current = flush;
-  }, [flush]);
-  useEffect(() => {
-    return () => {
-      flushRef.current();
-    };
-  }, []);
 }
 
 export function useDebouncedMutation<TBody>(
@@ -177,43 +151,44 @@ export function useDebouncedMutation<TBody>(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<TBody | null>(null);
 
-  // Latest options snapshot. Synced in render body (not in an effect) so the
-  // ref is up to date even if an immediate schedule fires before the next
-  // commit — also avoids re-running the effect on every parent re-render
-  // when callers pass inline lambdas.
   // Latest options snapshot, synced via useEffect so we only mutate the ref
-  // post-commit. (Round-2 N-2: writing a ref in the render body is unsafe
-  // under React 19 concurrent rendering — speculative renders can be replayed
-  // and the ref would briefly hold stale-or-future values during that window.)
+  // post-commit (Round-2 N-2: render-body ref writes are unsafe under React 19
+  // concurrent rendering — speculative renders can replay).
   const optsRef = useRef<OptsRef<TBody>>({ mutate, applyOptimistic, onError });
   useEffect(() => {
     optsRef.current = { mutate, applyOptimistic, onError };
   }, [mutate, applyOptimistic, onError]);
 
-  // useRef return values have stable identity, so memoizing the bag with
-  // empty deps gives us a once-and-done refs object — callbacks below can
-  // depend on `refs` without re-creating their identity per render.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const refs: FlushRefs<TBody> = useMemo(
-    () => ({ timerRef, pendingRef, optsRef }),
+  const flush = useCallback(
+    () => flushPending(timerRef, pendingRef, optsRef),
     [],
   );
 
-  const flush = useCallback(() => flushMutation(refs), [refs]);
-
   const schedule = useCallback(
     (body: TBody, merge?: (prev: TBody | null) => TBody) => {
-      schedulePending(refs, debounceMs, body, merge);
+      pendingRef.current = merge ? merge(pendingRef.current) : body;
+      clearTimer(timerRef);
+      timerRef.current = setTimeout(() => {
+        timerRef.current = null;
+        flushPending(timerRef, pendingRef, optsRef);
+      }, debounceMs);
     },
-    [refs, debounceMs],
+    [debounceMs],
   );
 
   const cancel = useCallback(() => {
-    clearTimer(refs);
-    refs.pendingRef.current = null;
-  }, [refs]);
+    clearTimer(timerRef);
+    pendingRef.current = null;
+  }, []);
 
-  useUnmountFlush(flush);
+  // Unmount cleanup: flush via a latest-closure ref so the cleanup never
+  // captures a stale `flush` identity. StrictMode double-mount is safe — the
+  // pending-null guard inside flushPending makes a second cleanup a no-op.
+  const flushRef = useRef(flush);
+  useEffect(() => {
+    flushRef.current = flush;
+  }, [flush]);
+  useEffect(() => () => flushRef.current(), []);
 
   return { schedule, flush, cancel };
 }
