@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -185,6 +186,107 @@ func TestHub_RevokeToken_NoOp(t *testing.T) {
 	if err := h.RevokeToken(context.Background(), "some-jti",
 		auth.RevokeCodeLoggedOutElsewhere, "logout"); err != nil {
 		t.Fatalf("RevokeToken must be silent no-op, got %v", err)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Race / lifecycle edge cases (PR-9 H-5). The 4-agent review flagged
+// these as untested gaps where the implicit Hub invariants (single
+// playerID → Client mapping, no use after Stop, mutex-protected races)
+// could regress without anyone noticing.
+// ---------------------------------------------------------------------------
+
+// Documents and locks in the current Hub semantics: registering a second
+// Client with a userID that already has one in the players map silently
+// overwrites the earlier entry, so RevokeUser then targets only the
+// survivor. A future multi-device migration (slice-valued players map)
+// must explicitly invalidate this assumption.
+func TestHub_RevokeUser_DuplicateRegisterReplacesPrevious(t *testing.T) {
+	t.Parallel()
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	userID := uuid.New()
+	first := newTestClient(h, userID)
+	registerAndWait(h, first)
+
+	second := newTestClient(h, userID)
+	registerAndWait(h, second)
+
+	h.mu.RLock()
+	survivor := h.players[userID]
+	h.mu.RUnlock()
+	if survivor != second {
+		t.Fatalf("players[userID] = %p, want second register %p (first=%p)",
+			survivor, second, first)
+	}
+
+	if err := h.RevokeUser(context.Background(), userID,
+		auth.RevokeCodeBanned, "ban"); err != nil {
+		t.Fatalf("RevokeUser: %v", err)
+	}
+
+	env := readEnvelope(second, 100*time.Millisecond)
+	if env == nil || env.Type != TypeAuthRevoked {
+		t.Errorf("second client expected auth.revoked, got %+v", env)
+	}
+	if !waitForChannelClosed(second, 200*time.Millisecond) {
+		t.Error("expected second client send channel closed")
+	}
+}
+
+// Stop wipes the players map; a RevokeUser call that races afterwards
+// must observe an empty map and return silently rather than panicking
+// on a nil entry, a closed send channel, or a deferenced ClientHub.
+func TestHub_RevokeUser_AfterStop_NoPanic(t *testing.T) {
+	t.Parallel()
+	h := newTestHub(nil)
+
+	userID := uuid.New()
+	c := newTestClient(h, userID)
+	registerAndWait(h, c)
+
+	h.Stop()
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("RevokeUser after Stop panicked: %v", r)
+		}
+	}()
+	if err := h.RevokeUser(context.Background(), userID,
+		auth.RevokeCodeBanned, "ban"); err != nil {
+		t.Fatalf("RevokeUser after Stop must be silent success, got %v", err)
+	}
+}
+
+// Concurrent Register and RevokeUser on the same userID must not data-race
+// (verified under -race) regardless of which side wins. The exact outcome
+// (revoke caught the new socket vs missed it) is timing-dependent; the
+// pull-fallback in auth_protocol.userRevokedAndStop covers the missed
+// case so the worst observable result is a brief unauthorized window
+// for the new connection — not a crash or a torn map.
+func TestHub_RevokeUser_ConcurrentRegister(t *testing.T) {
+	t.Parallel()
+	h := newTestHub(nil)
+	defer h.Stop()
+
+	const iterations = 50
+	for i := 0; i < iterations; i++ {
+		userID := uuid.New()
+		c := newTestClient(h, userID)
+
+		var wg sync.WaitGroup
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			h.Register(c)
+		}()
+		go func() {
+			defer wg.Done()
+			_ = h.RevokeUser(context.Background(), userID,
+				auth.RevokeCodeBanned, "ban")
+		}()
+		wg.Wait()
 	}
 }
 
