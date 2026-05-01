@@ -29,6 +29,7 @@
 - [plan-go ↔ plan-autopilot 연결](reference_plan_go_setup.md) — symlink + plan-tasks.sh 패치 노트
 
 ## 작업 방식
+- [개발(feature) 우선 메타 후순위](feedback_dev_work_priority.md) — 활성 Phase feature 개발이 핸드오프 P1 메타 작업보다 우선
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시, 실제 작업은 Sonnet/Haiku 위임
 - [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙
 - [사용자 설명 형식](feedback_explanation_style.md) — 원인/결과/권장 3섹션, 비개발자 친화 어휘
