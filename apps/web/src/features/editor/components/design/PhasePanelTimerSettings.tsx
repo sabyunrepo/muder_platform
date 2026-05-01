@@ -3,8 +3,6 @@ import type { FlowNodeData } from "../../flowTypes";
 interface PhasePanelTimerSettingsProps {
   duration: number | undefined;
   rounds: number | undefined;
-  autoAdvance: boolean | undefined;
-  warningAt: number | undefined;
   onChange: (patch: Partial<FlowNodeData>) => void;
   onFlush: () => void;
 }
@@ -15,8 +13,6 @@ const NUMBER_INPUT_CLASS =
 export function PhasePanelTimerSettings({
   duration,
   rounds,
-  autoAdvance,
-  warningAt,
   onChange,
   onFlush,
 }: PhasePanelTimerSettingsProps) {
@@ -51,23 +47,6 @@ export function PhasePanelTimerSettings({
           className={NUMBER_INPUT_CLASS}
         />
       </div>
-
-      {autoAdvance && (
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-slate-400">경고 타이머 (초)</label>
-          <input
-            type="number"
-            min={0}
-            value={warningAt ?? ""}
-            onChange={(e) =>
-              onChange({ warningAt: e.target.value ? Number(e.target.value) : undefined })
-            }
-            onBlur={onFlush}
-            placeholder="30"
-            className={NUMBER_INPUT_CLASS}
-          />
-        </div>
-      )}
     </>
   );
 }

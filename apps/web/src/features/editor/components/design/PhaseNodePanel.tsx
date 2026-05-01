@@ -71,14 +71,14 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
       <PhasePanelTimerSettings
         duration={data.duration}
         rounds={data.rounds}
-        autoAdvance={data.autoAdvance}
-        warningAt={data.warningAt}
         onChange={handleChange}
         onFlush={flush}
       />
       <PhasePanelAdvanceToggle
         autoAdvance={data.autoAdvance}
+        warningAt={data.warningAt}
         onChange={handleChange}
+        onFlush={flush}
       />
 
       <div className="border-t border-slate-800" />

@@ -93,6 +93,9 @@ export function useCharacterConfigDebounce(
         return { ...basis, ...updates };
       });
     },
+    // `themeConfigJson` is deliberately in deps as the *last-resort* merge
+    // basis — even though pending/cached fallbacks usually win, capturing the
+    // latest prop identity keeps the rare cold-start path correct.
     [debouncer, queryClient, themeConfigJson, themeId],
   );
 
