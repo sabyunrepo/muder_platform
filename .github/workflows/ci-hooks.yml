@@ -11,6 +11,10 @@ on:
       - '.claude/plugins/compound-mmp/**'
       - '.github/workflows/ci-hooks.yml'
 
+concurrency:
+  group: ci-hooks-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
