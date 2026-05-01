@@ -20,6 +20,7 @@ func NormalizeConfigJSON(raw json.RawMessage) (json.RawMessage, error) {
 	}
 	normalizeModules(cfg)
 	normalizeClueLocations(cfg)
+	normalizeCharacterClues(cfg)
 	return json.Marshal(cfg)
 }
 
@@ -158,4 +159,29 @@ func normalizeClueLocations(cfg map[string]any) {
 	}
 
 	delete(cfg, "clue_placement")
+}
+
+func normalizeCharacterClues(cfg map[string]any) {
+	charClues, hasOld := cfg["character_clues"].(map[string]any)
+	if !hasOld {
+		return
+	}
+	mods, ok := cfg["modules"].(map[string]any)
+	if !ok {
+		return
+	}
+
+	startingClueEntry, _ := mods["starting_clue"].(map[string]any)
+	if startingClueEntry == nil {
+		startingClueEntry = map[string]any{"enabled": true}
+	}
+	conf, _ := startingClueEntry["config"].(map[string]any)
+	if conf == nil {
+		conf = map[string]any{}
+	}
+	conf["startingClues"] = charClues
+	startingClueEntry["config"] = conf
+	mods["starting_clue"] = startingClueEntry
+
+	delete(cfg, "character_clues")
 }

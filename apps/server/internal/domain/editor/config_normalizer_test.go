@@ -123,6 +123,29 @@ func TestNormalize_DeadKeyUnion_PriorityCluePlacement(t *testing.T) {
 	assert.False(t, hasDeadKey, "locations[].clueIds dead key must be removed after normalize")
 }
 
+func TestNormalize_CharacterCluesToStartingClueModule(t *testing.T) {
+	input := json.RawMessage(`{
+		"character_clues": {"김철수": ["c1", "c2"], "박민수": ["c3"]},
+		"modules": ["starting_clue"]
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	mods := cfg["modules"].(map[string]any)
+	startingClue := mods["starting_clue"].(map[string]any)
+	startingMap := startingClue["config"].(map[string]any)["startingClues"].(map[string]any)
+
+	assert.Equal(t, []any{"c1", "c2"}, startingMap["김철수"])
+	assert.Equal(t, []any{"c3"}, startingMap["박민수"])
+
+	_, hasOldKey := cfg["character_clues"]
+	assert.False(t, hasOldKey)
+}
+
 func TestNormalize_NoOpOnNewShape(t *testing.T) {
 	input := json.RawMessage(`{
 		"modules": {
