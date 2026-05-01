@@ -35,6 +35,34 @@ func TestNormalize_ModulesArrayToMap(t *testing.T) {
 	assert.False(t, hasConfig, "missing inline config must NOT inject empty config key")
 }
 
+func TestNormalize_ModulesStringListPlusConfigsMap(t *testing.T) {
+	input := json.RawMessage(`{
+		"modules": ["voting", "audio"],
+		"module_configs": {
+			"voting": {"mode": "open", "minParticipation": 75}
+		}
+	}`)
+
+	got, err := NormalizeConfigJSON(input)
+	require.NoError(t, err)
+
+	var cfg map[string]any
+	require.NoError(t, json.Unmarshal(got, &cfg))
+
+	mods := cfg["modules"].(map[string]any)
+	voting := mods["voting"].(map[string]any)
+	assert.Equal(t, true, voting["enabled"])
+	assert.Equal(t, float64(75), voting["config"].(map[string]any)["minParticipation"])
+
+	audio := mods["audio"].(map[string]any)
+	assert.Equal(t, true, audio["enabled"])
+	_, hasConfig := audio["config"]
+	assert.False(t, hasConfig)
+
+	_, hasOldKey := cfg["module_configs"]
+	assert.False(t, hasOldKey, "module_configs key must be removed after normalize")
+}
+
 func TestNormalize_NoOpOnNewShape(t *testing.T) {
 	input := json.RawMessage(`{
 		"modules": {

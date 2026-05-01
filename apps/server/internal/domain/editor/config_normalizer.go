@@ -33,13 +33,29 @@ func normalizeModules(cfg map[string]any) {
 		return
 	}
 
-	// String list (frontend legacy) handled in Task 4
+	// Frontend legacy: ["voting", "audio"] + cfg["module_configs"]
 	if len(arr) > 0 {
 		if _, isStr := arr[0].(string); isStr {
+			configs, _ := cfg["module_configs"].(map[string]any)
+			out := make(map[string]any, len(arr))
+			for _, item := range arr {
+				id, _ := item.(string)
+				if id == "" {
+					continue
+				}
+				entry := map[string]any{"enabled": true}
+				if c, hasCfg := configs[id]; hasCfg {
+					entry["config"] = c
+				}
+				out[id] = entry
+			}
+			cfg["modules"] = out
+			delete(cfg, "module_configs")
 			return
 		}
 	}
 
+	// Backend preset legacy: [{id, config?}, ...]
 	out := make(map[string]any, len(arr))
 	for _, item := range arr {
 		obj, ok := item.(map[string]any)
