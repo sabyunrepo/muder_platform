@@ -202,11 +202,11 @@ func TestModule_ApplyConfig_EmptyObject(t *testing.T) {
 // absent → 0.5 default, explicit value kept, out-of-range → error.
 func TestModule_ApplyConfig_MultiVoteThresholdDefault(t *testing.T) {
 	cases := []struct {
-		name      string
-		input     string
-		wantErr   bool
+		name            string
+		input           string
+		wantErr         bool
 		wantErrContains string
-		wantValue float64
+		wantValue       float64
 	}{
 		{
 			name:      "absent → default 0.5",
@@ -221,15 +221,15 @@ func TestModule_ApplyConfig_MultiVoteThresholdDefault(t *testing.T) {
 			wantValue: 0.7,
 		},
 		{
-			name:      "out of range 1.5 → error",
-			input:     `{"multiVoteThreshold":1.5}`,
-			wantErr:   true,
+			name:            "out of range 1.5 → error",
+			input:           `{"multiVoteThreshold":1.5}`,
+			wantErr:         true,
 			wantErrContains: "multiVoteThreshold must be in [0, 1]",
 		},
 		{
-			name:      "out of range -0.1 → error",
-			input:     `{"multiVoteThreshold":-0.1}`,
-			wantErr:   true,
+			name:            "out of range -0.1 → error",
+			input:           `{"multiVoteThreshold":-0.1}`,
+			wantErr:         true,
 			wantErrContains: "multiVoteThreshold must be in [0, 1]",
 		},
 	}
