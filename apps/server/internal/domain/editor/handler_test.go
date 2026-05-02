@@ -416,4 +416,11 @@ func TestUpsertCharacterRoleSheet_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
+	var got editor.RoleSheetResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.Format != editor.RoleSheetFormatMarkdown || got.Markdown == nil || got.Markdown.Body != "## 새 역할지" {
+		t.Fatalf("unexpected role sheet response: %+v", got)
+	}
 }

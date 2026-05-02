@@ -83,17 +83,7 @@ export function CharacterRoleSheetSection({
   }
 
   if (isUnsupportedFormat) {
-    return (
-      <section
-        className="space-y-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-4"
-        aria-label={`${characterName} 역할지 미지원 형식`}
-      >
-        <p className="text-sm font-semibold text-amber-100">아직 지원하지 않는 역할지 형식입니다.</p>
-        <p className="text-xs leading-5 text-amber-100/70">
-          현재 에디터는 Markdown 역할지만 편집할 수 있습니다. PDF/이미지 역할지는 다음 단계에서 전용 뷰어로 연결됩니다.
-        </p>
-      </section>
-    );
+    return <UnsupportedRoleSheetFormatNotice characterName={characterName} />;
   }
 
   return (
@@ -161,6 +151,19 @@ export function CharacterRoleSheetSection({
           역할지 저장
         </Button>
       </div>
+    </section>
+  );
+}
+function UnsupportedRoleSheetFormatNotice({ characterName }: { characterName: string }) {
+  return (
+    <section
+      className="space-y-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-4"
+      aria-label={`${characterName} 역할지 미지원 형식`}
+    >
+      <p className="text-sm font-semibold text-amber-100">아직 지원하지 않는 역할지 형식입니다.</p>
+      <p className="text-xs leading-5 text-amber-100/70">
+        현재 에디터는 Markdown 역할지만 편집할 수 있습니다. PDF/이미지 역할지는 다음 단계에서 전용 뷰어로 연결됩니다.
+      </p>
     </section>
   );
 }

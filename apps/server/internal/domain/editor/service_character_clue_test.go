@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"strings"
 	"testing"
 )
 
@@ -318,6 +319,32 @@ func TestService_GetContent_InvalidKey(t *testing.T) {
 	}
 }
 
+func TestService_ContentAPIRejectsRoleSheetKey(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	_, err := f.svc.GetContent(ctx, creatorID, themeID, "role_sheet:character-1")
+	if err == nil {
+		t.Fatal("expected role_sheet key to be rejected by general content API")
+	}
+	if !strings.Contains(err.Error(), "invalid content key format") {
+		t.Fatalf("expected invalid content key error, got %v", err)
+	}
+
+	_, err = f.svc.UpsertContent(ctx, creatorID, themeID, "role_sheet:character-1", "body")
+	if err == nil {
+		t.Fatal("expected role_sheet key upsert to be rejected by general content API")
+	}
+	if !strings.Contains(err.Error(), "invalid content key format") {
+		t.Fatalf("expected invalid content key error, got %v", err)
+	}
+}
+
 func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -378,5 +405,8 @@ func TestService_UpsertCharacterRoleSheet_RejectsUnsupportedFormat(t *testing.T)
 	})
 	if err == nil {
 		t.Fatal("expected error for unsupported role sheet format")
+	}
+	if !strings.Contains(err.Error(), "unsupported role sheet format") {
+		t.Fatalf("expected unsupported format error, got %v", err)
 	}
 }

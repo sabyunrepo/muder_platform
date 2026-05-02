@@ -193,8 +193,8 @@ export interface RoleSheetResponse {
 }
 
 export interface UpsertRoleSheetRequest {
-  format: RoleSheetFormat;
-  markdown?: RoleSheetMarkdown;
+  format: "markdown";
+  markdown: RoleSheetMarkdown;
 }
 
 export interface ValidationResponse {

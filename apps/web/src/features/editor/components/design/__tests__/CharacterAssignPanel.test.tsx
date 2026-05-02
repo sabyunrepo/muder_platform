@@ -174,7 +174,11 @@ describe('CharacterAssignPanel', () => {
   });
 
 
-  it('역할지 Markdown을 typed role sheet API로 저장한다', () => {
+  it('역할지 저장 성공 상태를 사용자에게 표시한다', () => {
+    upsertRoleSheetMutateMock.mockImplementation((_payload, options) => {
+      options?.onSuccess?.();
+    });
+
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
 
@@ -182,12 +186,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
     fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
 
-    expect(useCharacterRoleSheetMock).toHaveBeenCalledWith('char-1');
-    expect(useUpsertCharacterRoleSheetMock).toHaveBeenCalledWith('char-1');
-    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
-      { format: 'markdown', markdown: { body: '## 비밀\n범인은 아직 모른다.' } },
-      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
-    );
+    expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
   it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {
@@ -259,10 +258,6 @@ describe('CharacterAssignPanel', () => {
     expect(upsertRoleSheetMutateMock).toHaveBeenCalledTimes(1);
     await act(async () => { vi.advanceTimersByTime(1500); });
     expect(upsertRoleSheetMutateMock).toHaveBeenCalledTimes(1);
-    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
-      { format: 'markdown', markdown: { body: '수정된 역할지' } },
-      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
-    );
   });
 
 

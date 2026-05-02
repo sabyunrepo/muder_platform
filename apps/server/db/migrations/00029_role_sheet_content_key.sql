@@ -10,8 +10,16 @@ ALTER TABLE theme_contents
 ALTER TABLE theme_contents
   DROP CONSTRAINT IF EXISTS valid_content_key;
 
-DELETE FROM theme_contents
-WHERE key ~ '^role_sheet:';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM theme_contents
+    WHERE key ~ '^role_sheet:'
+  ) THEN
+    RAISE EXCEPTION 'Cannot downgrade: role_sheet data exists in theme_contents';
+  END IF;
+END $$;
 
 ALTER TABLE theme_contents
   ADD CONSTRAINT valid_content_key
