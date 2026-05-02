@@ -32,6 +32,8 @@
 ## 작업 방식
 - [개발(feature) 우선 메타 후순위](feedback_dev_work_priority.md) — 활성 Phase feature 개발이 핸드오프 P1 메타 작업보다 우선
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시, 실제 작업은 Sonnet/Haiku 위임
+- [Codex와 Opus는 동등한 기술 파트너](feedback_codex_opus_peers.md) — 의사결정 컨텍스트에서 codex ↔ Opus = peer, Opus는 판정관 아닌 integrator
+- [Codex 하이브리드 4-agent (V1)](feedback_codex_axes_hybrid.md) — perf+test = Codex outside-view, arch+security = Claude canon, V2 sensitive PR override placeholder
 - [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙
 - [사용자 설명 형식](feedback_explanation_style.md) — 원인/결과/권장 3섹션, 비개발자 친화 어휘
 - [코딩 작업 완료 보고 6섹션](feedback_task_completion_report.md) — 큰 그림 / Task 위치 / 파일별 비유 / 사용자 변화 / 다음 미리보기 / 커밋 위치
