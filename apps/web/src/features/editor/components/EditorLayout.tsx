@@ -10,6 +10,7 @@ import { TabContent } from "./TabContent";
 import { ValidationPanel } from "./ValidationPanel";
 import type { DesignWarning } from "@/features/editor/validation";
 import type { SaveStatus } from "@/features/editor/hooks/useAutoSave";
+import { readEnabledModuleIds } from "@/features/editor/utils/configShape";
 
 // ---------------------------------------------------------------------------
 // EditorLayout
@@ -43,11 +44,10 @@ export function EditorLayout({
   const [validationResult, setValidationResult] = useState<DesignWarning[] | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
-  const activeModules = useMemo(() => {
-    const cfg = theme.config_json as Record<string, unknown> | undefined;
-    const mods = cfg?.modules;
-    return Array.isArray(mods) ? (mods as string[]) : [];
-  }, [theme.config_json]);
+  const activeModules = useMemo(
+    () => readEnabledModuleIds(theme.config_json),
+    [theme.config_json],
+  );
 
   const handleValidate = () => {
     if (onValidate) {

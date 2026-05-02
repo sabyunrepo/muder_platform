@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { EditorThemeResponse } from "@/features/editor/api";
 import { editorKeys, useUpdateConfigJson } from "@/features/editor/api";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
+import { normalizeConfigForSave } from "@/features/editor/utils/configShape";
 
 /** Debounce window for config saves (W2 PR-5: 500→1500ms). */
 const SAVE_DEBOUNCE_MS = 1500;
@@ -79,7 +80,7 @@ export function useCharacterConfigDebounce(
       if (cacheNow) {
         queryClient.setQueryData<EditorThemeResponse>(cacheKey, {
           ...cacheNow,
-          config_json: { ...(cacheNow.config_json ?? {}), ...updates },
+          config_json: normalizeConfigForSave({ ...(cacheNow.config_json ?? {}), ...updates }),
         });
       }
 
@@ -90,7 +91,7 @@ export function useCharacterConfigDebounce(
         const cached =
           queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json;
         const basis = prev ?? cached ?? themeConfigJson ?? {};
-        return { ...basis, ...updates };
+        return normalizeConfigForSave({ ...basis, ...updates });
       });
     },
     // `themeConfigJson` is deliberately in deps as the *last-resort* merge

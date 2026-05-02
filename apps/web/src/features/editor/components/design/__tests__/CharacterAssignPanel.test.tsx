@@ -52,8 +52,8 @@ const mockCharacters = [
 ];
 
 const mockClues = [
-  { id: 'clue-1', name: '피 묻은 칼' },
-  { id: 'clue-2', name: '비밀 편지' },
+  { id: 'clue-1', name: '피 묻은 칼', location: '서재', round: 1, tag: '물증' },
+  { id: 'clue-2', name: '비밀 편지', location: '부엌', round: 1, tag: '문서' },
 ];
 
 const baseTheme = {
@@ -100,6 +100,15 @@ function renderPanel(themeArg: typeof baseTheme = baseTheme) {
   return { ...view, qc };
 }
 
+function readStartingClues(config: Record<string, unknown>) {
+  const modules = config.modules as Record<string, { config?: { startingClues?: Record<string, string[]> } }>;
+  return modules?.starting_clue?.config?.startingClues ?? {};
+}
+
+function clickFirstClue() {
+  fireEvent.click(screen.getByRole('button', { name: /피 묻은 칼/ }));
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -123,19 +132,38 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('범인')).toBeDefined();
   });
 
-  it('캐릭터 선택 시 단서 체크박스가 표시된다', () => {
+  it('캐릭터 선택 시 좌측 전체 단서와 우측 배정 영역이 표시된다', () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
+    expect(screen.getByText('전체 단서 목록')).toBeDefined();
+    expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
     expect(screen.getByText('피 묻은 칼')).toBeDefined();
+    expect(screen.getByText('비밀 편지')).toBeDefined();
+  });
+
+  it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    fireEvent.change(screen.getByPlaceholderText('단서명, 장소, 태그 검색'), {
+      target: { value: '부엌' },
+    });
+
+    expect(screen.queryByText('피 묻은 칼')).toBeNull();
+    expect(screen.getByText('비밀 편지')).toBeDefined();
+
+    fireEvent.change(screen.getByPlaceholderText('단서명, 장소, 태그 검색'), {
+      target: { value: '문서' },
+    });
+
+    expect(screen.queryByText('피 묻은 칼')).toBeNull();
     expect(screen.getByText('비밀 편지')).toBeDefined();
   });
 
   it('debounce 1500ms 후에 mutate가 호출된다', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
-
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
+    clickFirstClue();
 
     // Regression guard: 500ms (old window) must NOT fire.
     await act(async () => { vi.advanceTimersByTime(500); });
@@ -145,21 +173,19 @@ describe('CharacterAssignPanel', () => {
     await act(async () => { vi.advanceTimersByTime(1000); });
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const cc = config.character_clues as Record<string, string[]>;
-    expect(cc['char-1']).toContain('clue-1');
+    expect(config).not.toHaveProperty('character_clues');
+    expect(readStartingClues(config)['char-1']).toContain('clue-1');
   });
 
-  it('optimistic update: 단서 체크 즉시 query cache가 갱신된다', () => {
+  it('optimistic update: 단서 추가 즉시 query cache가 갱신된다', () => {
     const { qc } = renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
-
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
+    clickFirstClue();
 
     // Cache reflects the toggle synchronously — no debounce wait.
     const cached = qc.getQueryData<typeof baseTheme>(['editor', 'themes', 'theme-1']);
-    const cc = cached?.config_json?.character_clues as Record<string, string[]>;
-    expect(cc['char-1']).toContain('clue-1');
+    expect(cached?.config_json).not.toHaveProperty('character_clues');
+    expect(readStartingClues(cached?.config_json ?? {})['char-1']).toContain('clue-1');
     // Network call is still pending.
     expect(mutateMock).not.toHaveBeenCalled();
   });
@@ -167,9 +193,7 @@ describe('CharacterAssignPanel', () => {
   it('mutate 실패 시 optimistic update가 rollback된다', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
-
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
+    clickFirstClue();
 
     await act(async () => { vi.advanceTimersByTime(1500); });
     expect(mutateMock).toHaveBeenCalledTimes(1);
@@ -189,15 +213,12 @@ describe('CharacterAssignPanel', () => {
     // baseTheme로 cache가 복원되는지 검증.
     const { qc } = renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
-
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
+    clickFirstClue();
 
     // schedule-time mirror 즉시 적용된 상태 확인.
     const mirrored = qc.getQueryData<typeof baseTheme>(['editor', 'themes', 'theme-1']);
-    expect(
-      (mirrored?.config_json?.character_clues as Record<string, string[]>)?.['char-1'],
-    ).toContain('clue-1');
+    expect(mirrored?.config_json).not.toHaveProperty('character_clues');
+    expect(readStartingClues(mirrored?.config_json ?? {})['char-1']).toContain('clue-1');
 
     await act(async () => { vi.advanceTimersByTime(1500); });
     const [, opts] = mutateMock.mock.calls[0] as [
@@ -210,10 +231,9 @@ describe('CharacterAssignPanel', () => {
       opts.onError?.(new Error('boom'));
     });
 
-    // Cache is restored to the original baseTheme snapshot — character_clues
-    // was undefined originally, so the toggled key is gone.
+    // Cache is restored to the original baseTheme snapshot.
     const restored = qc.getQueryData<typeof baseTheme>(['editor', 'themes', 'theme-1']);
-    expect(restored?.config_json?.character_clues).toBeUndefined();
+    expect(readStartingClues(restored?.config_json ?? {})['char-1']).toBeUndefined();
   });
 
   it('미션 추가 버튼이 동작한다 (1500ms debounce)', async () => {
@@ -231,9 +251,7 @@ describe('CharacterAssignPanel', () => {
   it('다른 캐릭터 선택 시 pending save가 flush된다', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
-
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
+    clickFirstClue();
     expect(mutateMock).not.toHaveBeenCalled();
 
     // Switching characters should flush without waiting for the debounce.
@@ -245,16 +263,15 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
 
-    // 1) Toggle a clue at t=0 → character_clues enters pendingRef.
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[0]);
+    // 1) Add a clue at t=0 → starting_clue config enters pendingRef.
+    clickFirstClue();
 
     // 2) Partial debounce elapses — no mutation yet.
     await act(async () => { vi.advanceTimersByTime(150); });
     expect(mutateMock).not.toHaveBeenCalled();
 
     // 3) Add a mission → character_missions must merge with existing pending
-    //    character_clues rather than overwrite it.
+    //    starting_clue config rather than overwrite it.
     fireEvent.click(screen.getByText('추가'));
 
     // 4) Full debounce window from the latest edit → single mutation.
@@ -262,9 +279,9 @@ describe('CharacterAssignPanel', () => {
     expect(mutateMock).toHaveBeenCalledTimes(1);
 
     const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const cc = payload.character_clues as Record<string, string[]> | undefined;
     const cm = payload.character_missions as Record<string, unknown[]> | undefined;
-    expect(cc?.['char-1']).toContain('clue-1');
+    expect(payload).not.toHaveProperty('character_clues');
+    expect(readStartingClues(payload)['char-1']).toContain('clue-1');
     expect(cm?.['char-1']).toHaveLength(1);
   });
 

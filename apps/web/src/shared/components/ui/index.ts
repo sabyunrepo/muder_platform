@@ -24,3 +24,6 @@ export type { PaginationProps } from './Pagination';
 
 export { Spinner } from './Spinner';
 export type { SpinnerProps } from './Spinner';
+
+export { Accordion } from './Accordion';
+export type { AccordionItem, AccordionProps } from './Accordion';

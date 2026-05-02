@@ -357,8 +357,14 @@ describe("LocationsSubTab", () => {
       const [config] = updateConfigMutateMock.mock.calls[0] as [
         Record<string, unknown>,
       ];
-      const locs = config.locations as Array<{ id: string; clueIds: string[] }>;
-      expect(locs[0]).toEqual({ id: "loc-1", clueIds: ["clue-1"] });
+      const locs = config.locations as Array<{
+        id: string;
+        locationClueConfig: { clueIds: string[] };
+      }>;
+      expect(locs[0]).toEqual({
+        id: "loc-1",
+        locationClueConfig: { clueIds: ["clue-1"] },
+      });
     });
 
     it("맵 미선택 상태에서는 단서 배정 picker 가 표시되지 않는다", () => {

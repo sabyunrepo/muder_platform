@@ -65,7 +65,7 @@ func revokeMigrationsDir() string {
 	return abs
 }
 
-// setupRevokeRepo spins a postgres:16-alpine container, runs every goose
+// setupRevokeRepo spins a PostgreSQL container, runs every goose
 // migration (including 00027_ws_auth_revoke_log), and returns a
 // RevokeRepo backed by a pgxpool. The container is terminated at test
 // cleanup.
@@ -74,7 +74,7 @@ func setupRevokeRepo(t *testing.T) (RevokeRepo, *pgxpool.Pool) {
 	ctx := context.Background()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		"public.ecr.aws/docker/library/postgres:16-alpine",
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2),

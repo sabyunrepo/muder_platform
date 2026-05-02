@@ -40,7 +40,7 @@ func setupFixture(t *testing.T) *testFixture {
 	ctx := context.Background()
 
 	pgC, err := postgres.Run(ctx,
-		"postgres:16-alpine",
+		"public.ecr.aws/docker/library/postgres:16-alpine",
 		testcontainers.WithWaitStrategy(
 			wait.ForLog("database system is ready to accept connections").
 				WithOccurrence(2),

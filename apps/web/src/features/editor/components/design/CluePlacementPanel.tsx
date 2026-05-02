@@ -8,6 +8,7 @@ import {
   useEditorLocations,
   useUpdateConfigJson,
 } from '@/features/editor/api';
+import { readCluePlacement, writeCluePlacement } from '@/features/editor/utils/configShape';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -19,19 +20,6 @@ interface CluePlacementPanelProps {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getPlacement(theme: EditorThemeResponse): Record<string, string> {
-  const cfg = theme.config_json ?? {};
-  const raw = cfg.clue_placement;
-  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-    return raw as Record<string, string>;
-  }
-  return {};
-}
-
-// ---------------------------------------------------------------------------
 // CluePlacementPanel
 // ---------------------------------------------------------------------------
 
@@ -40,16 +28,11 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
   const { data: locations, isLoading: locsLoading } = useEditorLocations(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
 
-  const placement = useMemo(() => getPlacement(theme), [theme]);
+  const placement = useMemo(() => readCluePlacement(theme.config_json), [theme.config_json]);
 
   const unplacedClues = useMemo(
     () => (clues ?? []).filter((c) => !placement[c.id]),
     [clues, placement],
-  );
-
-  const locationMap = useMemo(
-    () => new Map((locations ?? []).map((l) => [l.id, l])),
-    [locations],
   );
 
   const placedByLocation = useMemo(() => {
@@ -64,13 +47,10 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
   }, [clues, placement]);
 
   function savePlacement(next: Record<string, string>) {
-    updateConfig.mutate(
-      { ...(theme.config_json ?? {}), clue_placement: next },
-      {
-        onSuccess: () => toast.success('배치가 저장되었습니다'),
-        onError: () => toast.error('배치 저장에 실패했습니다'),
-      },
-    );
+    updateConfig.mutate(writeCluePlacement(theme.config_json, next), {
+      onSuccess: () => toast.success('배치가 저장되었습니다'),
+      onError: () => toast.error('배치 저장에 실패했습니다'),
+    });
   }
 
   function handleAssign(clueId: string, locationId: string) {

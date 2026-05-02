@@ -140,8 +140,7 @@ describe('ModulesSubTab', () => {
 
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    expect(Array.isArray(config.modules)).toBe(true);
-    expect((config.modules as string[]).includes(optionalMod.id)).toBe(true);
+    expect(config.modules).toMatchObject({ [optionalMod.id]: { enabled: true } });
   });
 
   it('활성화된 모듈 토글 클릭 시 목록에서 제거된다', () => {
@@ -158,7 +157,7 @@ describe('ModulesSubTab', () => {
 
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    expect((config.modules as string[]).includes(optionalMod.id)).toBe(false);
+    expect(config.modules).toMatchObject({ [optionalMod.id]: { enabled: false } });
   });
 
   it('활성화 + 스키마 있으면 SchemaDrivenForm이 바로 렌더링된다', () => {

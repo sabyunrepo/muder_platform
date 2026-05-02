@@ -30,7 +30,7 @@ interface LocationClueAssignPanelProps {
 //
 // Renders every clue in the theme as a toggleable chip. Selected chips are
 // the ones currently assigned to `location.id` inside
-// `theme.config_json.locations[].clueIds`. Toggling a chip rewrites the
+// `theme.config_json.locations[].locationClueConfig.clueIds`. Toggling a chip rewrites the
 // config blob via `useUpdateConfigJson`.
 // ---------------------------------------------------------------------------
 

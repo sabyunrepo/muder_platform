@@ -2,6 +2,12 @@
 // Game Design Validation Utility
 // ---------------------------------------------------------------------------
 
+import {
+  readCharacterStartingClueMap,
+  readCluePlacement,
+  readEnabledModuleIds,
+} from '@/features/editor/utils/configShape';
+
 export interface DesignWarning {
   type: 'warning' | 'error';
   category: 'phases' | 'clues' | 'characters' | 'modules' | 'clue_graph';
@@ -33,8 +39,8 @@ export function validateGameDesign(
   }
 
   // ── Modules ─────────────────────────────────────────────────────────────
-  const modules = configJson['modules'];
-  if (!Array.isArray(modules) || modules.length === 0) {
+  const modules = readEnabledModuleIds(configJson);
+  if (modules.length === 0) {
     warnings.push({
       type: 'error',
       category: 'modules',
@@ -43,12 +49,9 @@ export function validateGameDesign(
   }
 
   // ── Clue placement ───────────────────────────────────────────────────────
-  const cluePlacement = configJson['clue_placement'];
+  const cluePlacement = readCluePlacement(configJson);
   if (clueCount > 0) {
-    const placedCount =
-      cluePlacement != null && typeof cluePlacement === 'object'
-        ? Object.keys(cluePlacement as Record<string, unknown>).length
-        : 0;
+    const placedCount = Object.keys(cluePlacement).length;
     const unplaced = clueCount - placedCount;
     if (unplaced > 0) {
       warnings.push({
@@ -60,12 +63,9 @@ export function validateGameDesign(
   }
 
   // ── Character clue assignment ────────────────────────────────────────────
-  const characterClues = configJson['character_clues'];
+  const characterClues = readCharacterStartingClueMap(configJson);
   if (characterCount > 0) {
-    const assignedCount =
-      characterClues != null && typeof characterClues === 'object'
-        ? Object.keys(characterClues as Record<string, unknown>).length
-        : 0;
+    const assignedCount = Object.keys(characterClues).length;
     const unassigned = characterCount - assignedCount;
     if (unassigned > 0) {
       warnings.push({

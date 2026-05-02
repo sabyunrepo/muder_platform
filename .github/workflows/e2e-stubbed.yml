@@ -109,6 +109,8 @@ jobs:
 
           # ARC dind: runner ↔ dind 가 pod network namespace 공유. -p publish 후 localhost 접근.
           # 각 matrix shard 는 독립 ARC pod 라 port 충돌 없음 (5432/6379 pod-local).
+          # Docker Hub anonymous pull limit can fail ARC fresh-daemon jobs.
+          # Use the public ECR mirror of Docker official images for CI services.
           sudo docker run -d --name "$PG_NAME" \
             --network "$RUNNERS_NET" \
             -p 5432:5432 \
@@ -119,7 +121,7 @@ jobs:
             --health-interval 5s \
             --health-timeout 3s \
             --health-retries 10 \
-            postgres:17-alpine
+            public.ecr.aws/docker/library/postgres:17-alpine
 
           sudo docker run -d --name "$REDIS_NAME" \
             --network "$RUNNERS_NET" \
@@ -128,7 +130,7 @@ jobs:
             --health-interval 5s \
             --health-timeout 3s \
             --health-retries 10 \
-            redis:7-alpine
+            public.ecr.aws/docker/library/redis:7-alpine
 
           # health 대기 — Docker healthcheck max = interval 5s × retries 10 = 50s.
           # PR-170 4-agent review (Perf-1 + Test-1) fold-in: 60s ceiling 으로 일관성 상향.

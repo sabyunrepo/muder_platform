@@ -6,6 +6,10 @@ import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacter
 import type { Mission } from "./MissionEditor";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
 import { CharacterList } from "./CharacterList";
+import {
+  readCharacterStartingClueMap,
+  writeCharacterStartingClueMap,
+} from "@/features/editor/utils/configShape";
 
 interface CharacterAssignPanelProps {
   themeId: string;
@@ -17,12 +21,10 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const { data: clues } = useEditorClues(themeId);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
 
-  const characterClues = useMemo((): Record<string, string[]> => {
-    const cc = (theme.config_json ?? {}).character_clues;
-    return cc && typeof cc === "object" && !Array.isArray(cc)
-      ? (cc as Record<string, string[]>)
-      : {};
-  }, [theme.config_json]);
+  const characterClues = useMemo(
+    () => readCharacterStartingClueMap(theme.config_json),
+    [theme.config_json],
+  );
 
   const characterMissions = useMemo((): Record<string, Mission[]> => {
     const cm = (theme.config_json ?? {}).character_missions;
@@ -46,9 +48,12 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       if (!selectedCharId) return;
       const current = characterClues[selectedCharId] ?? [];
       const next = checked ? [...current, clueId] : current.filter((id) => id !== clueId);
-      saveConfig({ character_clues: { ...characterClues, [selectedCharId]: next } });
+      saveConfig(writeCharacterStartingClueMap(theme.config_json, {
+        ...characterClues,
+        [selectedCharId]: next,
+      }));
     },
-    [characterClues, saveConfig, selectedCharId],
+    [characterClues, saveConfig, selectedCharId, theme.config_json],
   );
 
   const handleAddMission = useCallback(() => {
