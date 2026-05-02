@@ -16,6 +16,7 @@ on:
       - '.github/workflows/**'
   pull_request:
     branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
     paths:
       - 'apps/**'
       - 'packages/**'
@@ -24,6 +25,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'turbo.json'
       - '.github/workflows/**'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -32,11 +34,19 @@ concurrency:
 jobs:
   go-check:
     name: Go Lint + Test
-    runs-on: arc-runner-set
+    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
     defaults:
       run:
         working-directory: apps/server
     steps:
+      - name: Full CI ready gate
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "::error::Full CI는 CodeRabbit/Codecov 정리 후 'ready-for-ci' 라벨을 붙였을 때 실행합니다."
+          echo "::error::리뷰 대응 중에는 light checks만 사용하고, merge 전 라벨을 붙여 full CI를 다시 실행하세요."
+          exit 1
+
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:
@@ -213,8 +223,16 @@ jobs:
 
   ts-check:
     name: TypeScript Lint + Test + Build
-    runs-on: arc-runner-set
+    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
     steps:
+      - name: Full CI ready gate
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
+        working-directory: ${{ github.workspace }}
+        run: |
+          echo "::error::Full CI는 CodeRabbit/Codecov 정리 후 'ready-for-ci' 라벨을 붙였을 때 실행합니다."
+          echo "::error::리뷰 대응 중에는 light checks만 사용하고, merge 전 라벨을 붙여 full CI를 다시 실행하세요."
+          exit 1
+
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:
