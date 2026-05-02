@@ -18,12 +18,8 @@ contains_ready_for_ci() {
   return 1
 }
 
-prev=""
-for arg in "$@"; do
-  case "$prev" in
-    --label|-l|--add-label)
-      if contains_ready_for_ci "$arg"; then
-        cat >&2 <<'MSG'
+fail_ready_for_ci() {
+  cat >&2 <<'MSG'
 🚫 PR 생성 중단: `ready-for-ci` 라벨은 PR 생성 단계에서 붙일 수 없습니다.
 
 순서:
@@ -32,26 +28,24 @@ for arg in "$@"; do
 3. 수정 커밋 push + review thread resolve
 4. 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
 MSG
-        exit 2
+  exit 2
+}
+
+prev=""
+for arg in "$@"; do
+  case "$prev" in
+    --label|-l|--add-label)
+      if contains_ready_for_ci "$arg"; then
+        fail_ready_for_ci
       fi
       ;;
   esac
 
   case "$arg" in
     --label=*|--add-label=*|-l=*)
-      # Extract the value after the equals sign
-      value="${arg#*=}"
-      if contains_ready_for_ci "$value"; then
-        cat >&2 <<'MSG'
-🚫 PR 생성 중단: `ready-for-ci` 라벨은 PR 생성 단계에서 붙일 수 없습니다.
-
-순서:
-1. PR 생성
-2. CodeRabbit / Codecov Report / 코드 리뷰 이슈 확인
-3. 수정 커밋 push + review thread resolve
-4. 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
-MSG
-        exit 2
+      label_value="${arg#*=}"
+      if contains_ready_for_ci "$label_value"; then
+        fail_ready_for_ci
       fi
       ;;
   esac

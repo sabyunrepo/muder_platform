@@ -1,14 +1,27 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
-import { useCharacterRoleSheet, useUpsertCharacterRoleSheet } from '@/features/editor/api';
+import {
+  useCharacterRoleSheet,
+  useUpsertCharacterRoleSheet,
+  type RoleSheetResponse,
+} from '@/features/editor/api';
 import {
   uploadMediaFile,
   useConfirmUpload,
   useRequestUploadUrl,
+  type ConfirmUploadRequest,
+  type MediaResponse,
+  type RequestUploadUrlRequest,
+  type UploadUrlResponse,
 } from '@/features/editor/mediaApi';
 import { isApiHttpError } from '@/lib/api-error';
 
 type EditableRoleSheetFormat = 'markdown' | 'pdf';
+type SaveStatus = 'idle' | 'saved' | 'failed';
+
+type UpsertRoleSheetMutation = ReturnType<typeof useUpsertCharacterRoleSheet>;
+type RequestUploadUrlMutation = ReturnType<typeof useRequestUploadUrl>;
+type ConfirmUploadMutation = ReturnType<typeof useConfirmUpload>;
 
 interface UseRoleSheetEditorStateParams {
   themeId: string;
@@ -26,30 +39,102 @@ export function useRoleSheetEditorState({
   const requestUploadUrl = useRequestUploadUrl(themeId);
   const confirmUpload = useConfirmUpload(themeId);
   const [selectedFormat, setSelectedFormat] = useState<EditableRoleSheetFormat>('markdown');
-  const [draft, setDraft] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'failed'>('idle');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [page, setPage] = useState(1);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const manualSaveRef = useRef(false);
-  const { data, error, isError } = roleSheetQuery;
-  const isMissingDocument = isApiHttpError(error) && error.status === 404;
-  const isUnsupportedFormat = !isMissingDocument && data?.format !== undefined && data.format === 'images';
-  const originalBody = isMissingDocument ? '' : (data?.markdown?.body ?? '');
-  const pdfMediaId = data?.format === 'pdf' ? data.pdf?.media_id : undefined;
+
+  const sync = useRoleSheetSync({ roleSheet: roleSheetQuery.data, roleSheetError: roleSheetQuery.error });
+  const [draft, setDraft] = useState('');
 
   useEffect(() => {
-    if (!isError || isMissingDocument) setDraft(originalBody);
+    setDraft(sync.originalBody);
     setSaveStatus('idle');
-  }, [characterId, isError, isMissingDocument, originalBody]);
+  }, [sync.originalBody, characterId]);
 
   useEffect(() => {
-    setSelectedFormat(data?.format === 'pdf' ? 'pdf' : 'markdown');
+    setSelectedFormat(roleSheetQuery.data?.format === 'pdf' ? 'pdf' : 'markdown');
     setPage(1);
-  }, [data?.format, characterId]);
+  }, [roleSheetQuery.data?.format, characterId]);
 
-  function saveMarkdown(nextBody = draft) {
+  const saveMarkdown = useRoleSheetMarkdownSaver({
+    data: roleSheetQuery.data,
+    draft,
+    originalBody: sync.originalBody,
+    upsertContent,
+    setSelectedFormat,
+    setSaveStatus,
+  });
+  const handlePDFFile = useRoleSheetPdfUploader({
+    themeId,
+    characterName,
+    requestUploadUrl,
+    confirmUpload,
+    upsertContent,
+    setSelectedFormat,
+    setPage,
+    setUploading,
+    setUploadProgress,
+  });
+
+  return {
+    roleSheetQuery,
+    selectedFormat,
+    setSelectedFormat,
+    draft,
+    saveStatus,
+    setSaveStatus,
+    uploading,
+    uploadProgress,
+    page,
+    setPage,
+    fileInputRef,
+    manualSaveRef,
+    isMissingDocument: sync.isMissingDocument,
+    isUnsupportedFormat: sync.isUnsupportedFormat,
+    pdfMediaId: sync.pdfMediaId,
+    upsertContent,
+    requestUploadUrl,
+    confirmUpload,
+    setDraft,
+    saveMarkdown,
+    handlePDFFile,
+  };
+}
+
+function useRoleSheetSync({
+  roleSheet,
+  roleSheetError,
+}: {
+  roleSheet?: RoleSheetResponse;
+  roleSheetError: unknown;
+}) {
+  const isMissingDocument = isApiHttpError(roleSheetError) && roleSheetError.status === 404;
+  const isUnsupportedFormat = !isMissingDocument && roleSheet?.format !== undefined && roleSheet.format === 'images';
+  const originalBody = isMissingDocument ? '' : (roleSheet?.markdown?.body ?? '');
+  const pdfMediaId = roleSheet?.format === 'pdf' ? roleSheet.pdf?.media_id : undefined;
+
+  return { isMissingDocument, isUnsupportedFormat, originalBody, pdfMediaId };
+}
+
+function useRoleSheetMarkdownSaver({
+  data,
+  draft,
+  originalBody,
+  upsertContent,
+  setSelectedFormat,
+  setSaveStatus,
+}: {
+  data?: RoleSheetResponse;
+  draft: string;
+  originalBody: string;
+  upsertContent: UpsertRoleSheetMutation;
+  setSelectedFormat: (format: EditableRoleSheetFormat) => void;
+  setSaveStatus: (status: SaveStatus) => void;
+}) {
+  return (nextBody = draft) => {
     if (upsertContent.isPending) return;
     if (originalBody === nextBody && data?.format === 'markdown') {
       setSaveStatus('saved');
@@ -70,9 +155,31 @@ export function useRoleSheetEditorState({
         },
       },
     );
-  }
+  };
+}
 
-  async function handlePDFFile(event: ChangeEvent<HTMLInputElement>) {
+function useRoleSheetPdfUploader({
+  themeId,
+  characterName,
+  requestUploadUrl,
+  confirmUpload,
+  upsertContent,
+  setSelectedFormat,
+  setPage,
+  setUploading,
+  setUploadProgress,
+}: {
+  themeId: string;
+  characterName: string;
+  requestUploadUrl: RequestUploadUrlMutation;
+  confirmUpload: ConfirmUploadMutation;
+  upsertContent: UpsertRoleSheetMutation;
+  setSelectedFormat: (format: EditableRoleSheetFormat) => void;
+  setPage: (page: number) => void;
+  setUploading: (uploading: boolean) => void;
+  setUploadProgress: (progress: number) => void;
+}) {
+  return async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -85,12 +192,10 @@ export function useRoleSheetEditorState({
     setUploading(true);
     setUploadProgress(0);
     try {
-      const media = await uploadMediaFile({
+      const media = await uploadRoleSheetPDF({
         themeId,
         file,
-        type: 'DOCUMENT',
         name: file.name.replace(/\.pdf$/i, '') || `${characterName} 역할지`,
-        mimeType: 'application/pdf',
         requestUploadUrl: (req) => requestUploadUrl.mutateAsync(req),
         confirmUpload: (req) => confirmUpload.mutateAsync(req),
         onProgress: setUploadProgress,
@@ -113,29 +218,32 @@ export function useRoleSheetEditorState({
     } finally {
       setUploading(false);
     }
-  }
+  };
+}
 
-  return {
-    roleSheetQuery,
-    selectedFormat,
-    setSelectedFormat,
-    draft,
-    saveStatus,
-    setSaveStatus,
-    uploading,
-    uploadProgress,
-    page,
-    setPage,
-    fileInputRef,
-    manualSaveRef,
-    isMissingDocument,
-    isUnsupportedFormat,
-    pdfMediaId,
-    upsertContent,
+function uploadRoleSheetPDF({
+  themeId,
+  file,
+  name,
+  requestUploadUrl,
+  confirmUpload,
+  onProgress,
+}: {
+  themeId: string;
+  file: File;
+  name: string;
+  requestUploadUrl: (req: RequestUploadUrlRequest) => Promise<UploadUrlResponse>;
+  confirmUpload: (req: ConfirmUploadRequest) => Promise<MediaResponse>;
+  onProgress: (progress: number) => void;
+}) {
+  return uploadMediaFile({
+    themeId,
+    file,
+    type: 'DOCUMENT',
+    name,
+    mimeType: 'application/pdf',
     requestUploadUrl,
     confirmUpload,
-    setDraft,
-    saveMarkdown,
-    handlePDFFile,
-  };
+    onProgress,
+  });
 }

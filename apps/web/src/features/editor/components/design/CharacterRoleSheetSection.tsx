@@ -86,13 +86,12 @@ export function CharacterRoleSheetSection({
             state.setDraft(next);
             state.setSaveStatus('idle');
           }}
-          onBlur={(event) => {
-            if (state.manualSaveRef.current) return;
-            // Skip auto-save if focus is moving to the save button
-            const relatedTarget = event.relatedTarget as HTMLElement | null;
-            if (relatedTarget?.closest('button[type="button"]')) {
+          onBlur={(relatedTarget) => {
+            if (isSaveButtonTarget(relatedTarget)) {
+              state.manualSaveRef.current = true;
               return;
             }
+            if (state.manualSaveRef.current) return;
             state.saveMarkdown(state.draft);
           }}
           onSaveMouseDown={() => {
@@ -102,12 +101,10 @@ export function CharacterRoleSheetSection({
             state.manualSaveRef.current = true;
           }}
           onSave={() => {
-            if (state.manualSaveRef.current) {
-              state.saveMarkdown(state.draft);
-              window.setTimeout(() => {
-                state.manualSaveRef.current = false;
-              }, 0);
-            }
+            state.saveMarkdown(state.draft);
+            window.setTimeout(() => {
+              state.manualSaveRef.current = false;
+            }, 0);
           }}
           onSaveBlur={() => {
             state.manualSaveRef.current = false;
@@ -125,6 +122,10 @@ export function CharacterRoleSheetSection({
       />
     </section>
   );
+}
+
+function isSaveButtonTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && target.closest('[data-role-sheet-save="true"]') !== null;
 }
 
 function RoleSheetFormatSelector({
@@ -207,7 +208,7 @@ function MarkdownRoleSheetEditor({
   isMissingDocument: boolean;
   isPending: boolean;
   onDraftChange: (body: string) => void;
-  onBlur: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
+  onBlur: (relatedTarget: EventTarget | null) => void;
   onSaveMouseDown: () => void;
   onSaveKeyDown: () => void;
   onSave: () => void;
@@ -219,7 +220,7 @@ function MarkdownRoleSheetEditor({
         aria-label="역할지 Markdown"
         value={draft}
         onChange={(event) => onDraftChange(event.target.value)}
-        onBlur={onBlur}
+        onBlur={(event) => onBlur(event.relatedTarget)}
         placeholder={`## ${characterName}의 정체\n\n## 비밀\n\n## 동기\n\n## 알리바이`}
         className="min-h-64 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs leading-5 text-slate-200 placeholder:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
       />
@@ -244,6 +245,7 @@ function MarkdownRoleSheetEditor({
         </p>
         <Button
           size="sm"
+          data-role-sheet-save="true"
           onMouseDown={onSaveMouseDown}
           onKeyDown={onSaveKeyDown}
           onClick={onSave}

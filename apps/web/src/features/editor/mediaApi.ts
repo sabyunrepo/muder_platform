@@ -183,10 +183,9 @@ export function useDeleteMedia(themeId: string) {
 export interface PutFileParams {
   url: string;
   file: File;
+  contentType?: string;
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
-  /** Override MIME type (e.g., when file.type is empty for PDFs on some platforms). */
-  mimeType?: string;
 }
 
 /** Default putFile implementation using XHR for progress events. */
@@ -194,7 +193,7 @@ export function defaultPutFile(params: PutFileParams): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", params.url, true);
-    const contentType = params.mimeType ?? params.file.type;
+    const contentType = params.contentType ?? params.file.type;
     if (contentType) {
       xhr.setRequestHeader("Content-Type", contentType);
     }
@@ -275,11 +274,14 @@ export async function uploadMediaFile(
     retryBaseDelayMs = 200,
   } = params;
 
+  const effectiveMimeType =
+    (mimeType ?? file.type) || "application/octet-stream";
+
   // Step 1: request presigned URL
   const uploadUrl = await requestUploadUrl({
     name,
     type,
-    mime_type: (mimeType ?? file.type) || "application/octet-stream",
+    mime_type: effectiveMimeType,
     file_size: file.size,
   });
 
@@ -293,9 +295,9 @@ export async function uploadMediaFile(
       await putFile({
         url: uploadUrl.upload_url,
         file,
+        contentType: effectiveMimeType,
         onProgress,
         signal,
-        mimeType,
       });
       lastError = undefined;
       break;

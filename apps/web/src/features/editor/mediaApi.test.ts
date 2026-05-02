@@ -327,10 +327,46 @@ describe("uploadMediaFile", () => {
       expect.objectContaining({
         url: mockUploadUrl.upload_url,
         file,
+        contentType: "audio/mpeg",
       }),
     );
     expect(confirmUpload).toHaveBeenCalledWith({ upload_id: "upload-1" });
     expect(result).toEqual(mockMedia);
+  });
+
+  it("uses the same MIME override for presign and PUT when file.type is empty", async () => {
+    const pdf = new File(["%PDF-1.4"], "role.pdf", { type: "" });
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue({
+      ...mockMedia,
+      type: "DOCUMENT",
+      mime_type: "application/pdf",
+    });
+    const putFile = vi.fn().mockResolvedValue(undefined);
+
+    await uploadMediaFile({
+      themeId: THEME_ID,
+      file: pdf,
+      type: "DOCUMENT",
+      name: "role",
+      mimeType: "application/pdf",
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+    });
+
+    expect(requestUploadUrl).toHaveBeenCalledWith({
+      name: "role",
+      type: "DOCUMENT",
+      mime_type: "application/pdf",
+      file_size: pdf.size,
+    });
+    expect(putFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: pdf,
+        contentType: "application/pdf",
+      }),
+    );
   });
 
   it("retries the PUT step up to maxAttempts on failure (3x)", async () => {

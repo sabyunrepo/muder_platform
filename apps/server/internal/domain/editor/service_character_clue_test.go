@@ -394,6 +394,7 @@ func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
 func TestRoleSheetResponseFromContent_LegacyRawMarkdownJSONLookalike(t *testing.T) {
 	charID := uuid.New()
 	themeID := uuid.New()
+	raw := `{"format":"pdf","pdf":{"media_id":"00000000-0000-0000-0000-000000000000"}}`
 	resp := roleSheetResponseFromContent(
 		db.ThemeCharacter{ID: charID, ThemeID: themeID},
 		db.ThemeContent{
@@ -404,6 +405,9 @@ func TestRoleSheetResponseFromContent_LegacyRawMarkdownJSONLookalike(t *testing.
 	)
 	if resp.Format != RoleSheetFormatMarkdown || resp.Markdown == nil {
 		t.Fatalf("legacy invalid PDF-looking markdown must remain markdown: %+v", resp)
+	}
+	if resp.Markdown.Body != raw {
+		t.Fatalf("legacy markdown body must be preserved as-is: got %q", resp.Markdown.Body)
 	}
 }
 
