@@ -1,5 +1,5 @@
 {
-  "_comment": "compound-mmp 4-agent review canon. /compound-review가 before_pr.review-* 4개 entry를 한 메시지에서 병렬 spawn한다. before_pr 블록은 PR 생성 *직전*(gh pr create 이전) 로컬 diff(git diff <base>...HEAD) 기준으로 실행 — CI 1회만 돌도록 fix-loop를 PR 외부로 모은다. plan-autopilot은 폐기됨 (2026-04-21) — 자동 fix-loop/wave-merge/pr-model-overrides 모두 제거. 토큰 치환은 git/gh CLI 인자로 직접 전달하여 shell injection 차단 (refs/post-task-pipeline-bridge.md 참조). 2026-05-01: after_pr → before_pr rename (CI 비효율 해소, feedback_4agent_review_before_admin_merge.md 카논 갱신).",
+  "_comment": "compound-mmp 4-agent review canon. /compound-review가 before_pr.review-* 4개 entry를 한 메시지에서 병렬 spawn한다. before_pr 블록은 PR 생성 *직전*(gh pr create 이전) 로컬 diff(git diff <base>...HEAD) 기준으로 실행 — CI 1회만 돌도록 fix-loop를 PR 외부로 모은다. plan-autopilot은 폐기됨 (2026-04-21) — 자동 fix-loop/wave-merge/pr-model-overrides 모두 제거. 토큰 치환은 git/gh CLI 인자로 직접 전달하여 shell injection 차단 (refs/post-task-pipeline-bridge.md 참조). 2026-05-01: after_pr → before_pr rename (CI 비효율 해소, feedback_4agent_review_before_admin_merge.md 카논 갱신). 2026-05-02: Codex 하이브리드 V1 활성 — review-perf/test = codex 래퍼(`feedback_codex_axes_hybrid.md`), review-security/arch = Claude canon. V2 sensitive PR override는 placeholder.",
   "version": 2,
   "default_mode": "subagent",
   "after_task": [
@@ -42,7 +42,7 @@
       "type": "subagent",
       "agent": "oh-my-claudecode:security-reviewer",
       "model": "opus",
-      "prompt": "Review PR {pr_id} ({pr_title}) diff against {design}. Focus: auth/권한, injection, race conditions, secret exposure. Severity: CRITICAL/HIGH/MEDIUM/LOW.",
+      "prompt": "Review PR {pr_id} ({pr_title}) diff against {design}. Focus: auth/권한, injection, race conditions, secret exposure. Severity: CRITICAL/HIGH/MEDIUM/LOW. **canon-security focus**: WS `?token=` query param·PlayerAware redaction·AppError/RFC 9457·OAuth/local-auth flow. (V2: sensitive PR override 시 codex-adversarial-security-reviewer로 swap 예정.)",
       "parallel_group": "review",
       "blocking": true,
       "on_fail": "manual_review_required"
@@ -50,9 +50,9 @@
     {
       "name": "review-perf",
       "type": "subagent",
-      "agent": "oh-my-claudecode:code-reviewer",
+      "agent": "codex-perf-reviewer",
       "model": "sonnet",
-      "prompt": "Review PR {pr_id} for performance: lock contention, allocation hot paths, goroutine leaks, channel blocking. Severity-classified.",
+      "prompt": "Review PR {pr_id} ({pr_title}) for perf+concurrency axis. Diff: pre-PR local (git diff origin/main...HEAD). Design ref: {design}. **codex-perf-reviewer wrapper auto-injects canon checklist** (Go lock·goroutine leak·lock-during-publish/PR-2c #107 deadlock class·channel blocking·N+1·cache stampede). PR-specific perf hot path 보강 시 본 prompt에 추가.",
       "parallel_group": "review",
       "blocking": true,
       "on_fail": "manual_review_required"
@@ -62,7 +62,7 @@
       "type": "subagent",
       "agent": "oh-my-claudecode:critic",
       "model": "opus",
-      "prompt": "Review PR {pr_id} for architecture alignment with {design}. SOLID, layering, actor-pattern compliance, design decision drift. Challenge every design choice.",
+      "prompt": "Review PR {pr_id} for architecture alignment with {design}. SOLID, layering, actor-pattern compliance, design decision drift. Challenge every design choice. **canon prompt-pack**: 33-module + ConfigSchema + PhaseReactor + PlayerAware/PublicStateMarker gate + Factory 패턴 (codex peer feedback: 카논 없이 outside-view 검출 불가능). 모듈이 PhaseReactor/gate 우회 시 즉시 HIGH.",
       "parallel_group": "review",
       "blocking": true,
       "on_fail": "manual_review_required"
@@ -70,9 +70,9 @@
     {
       "name": "review-test",
       "type": "subagent",
-      "agent": "oh-my-claudecode:test-engineer",
+      "agent": "codex-test-reviewer",
       "model": "sonnet",
-      "prompt": "Review PR {pr_id} test coverage: race conditions, edge cases, missing scenarios, test isolation. Classify by severity.",
+      "prompt": "Review PR {pr_id} ({pr_title}) test coverage axis. Diff: pre-PR local. Design ref: {design}. **CRITICAL — codex-test-reviewer wrapper warns if invariants missing** (codex peer feedback). PR design.md 불변식·과거 사고·negative case·반드시 깨야 하는 경계를 본 prompt에 명시 주입. Focus: race·edge·negative·isolation·mocking boundary.",
       "parallel_group": "review",
       "blocking": true,
       "on_fail": "manual_review_required"

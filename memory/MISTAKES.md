@@ -230,3 +230,33 @@ e2e-stubbed.yml:67:40 context "job" is not allowed here
 3. **사례 누적 후 카논 master 결정** — 본 사례 + 향후 동일 패턴 누적 시 별도 카논 vs `feedback_ci_infra_debt.md` 흡수.
 
 **관련 카논**: `memory/sessions/2026-05-01-ci-slim-paths-filter-trap.md` (본 세션 핸드오프), `.github/workflows/gitleaks.yml` (분리 결과 master 패턴), `feedback_ci_infra_debt.md` (보강 후보 위치).
+
+---
+
+## 2026-05-02 — wsgen Go map iteration 비결정성 → main drift 잠재 + sort 미추가 first-fix 재발 (wsgen-nondeterminism)
+
+**증상**: PR #212 `feat/phase-24-pr-1-backend-foundation` CI에서 `mockgen 산출물 drift` 에러 — `cd apps/server && go generate ./...` 실행 후 `git diff` 비공백. 첫 fix `a468206`은 `go generate` 결과를 그대로 commit (정렬 안 된 새 출력 = 우연히 main의 stable 출력과 다른 순서). 두 번째 CI run에서 같은 비결정성으로 다시 drift. 진짜 fix `6568719`에서 `apps/server/cmd/wsgen/payload.go extractPayloads`에 `sort.Slice(out, func(i,j int) bool { return out[i].Name < out[j].Name })` 추가하여 deterministic 출력 보장 + `types.generated.ts` 정렬 결과 commit.
+
+**근본 원인**: `parser.ParseDir`가 반환하는 `pkgs map[string]*ast.Package`와 `pkg.Files map[string]*ast.File` 모두 Go map → iteration order randomized. PR-9 (#203, commit `bcdb7df`)이 `ErrorPayload`/`ConnectedPayload` struct 추가 시 `go generate` 결과가 우연히 stable 한 순서로 commit됨. 이후 누가 generate하면 매번 다른 순서 출력 → drift. PR-1이 첫 인지자.
+
+**재발 방지**:
+1. **codegen tool에 deterministic ordering canon** — Go map iteration 사용 시 collect → `sort.Slice/SortFunc` 강제. wsgen `payload.go` + `catalog.go` 모두 적용 필요 (catalog는 `render.go:25` 정렬됨, payload는 PR-1에서 추가).
+2. **codegen drift detection 강화** — `go generate ./...` 실행 후 같은 입력으로 다시 실행 시 `git diff --exit-code` 통과해야 함. CI에 `for i in 1 2 3; do go generate ./...; done && git diff --exit-code` 추가 후보.
+3. **첫 fix가 우연 통과 시 root cause 의심** — codegen output drift는 sort 추가가 정답. "wsgen 결과를 commit하면 되겠지" 패턴 거부.
+
+**관련 카논**: `memory/feedback_wsgen_deterministic.md` (신규 카논 파일), `apps/server/cmd/wsgen/payload.go` (sort fix 적용 commit `6568719`).
+
+---
+
+## 2026-05-02 — round-1 critic이 지적한 premature PlayerAwareModule을 같은 fix-loop에서 처리 안 함 → CI playeraware-lint 강제 fail (premature-playeraware-skeleton)
+
+**증상**: PR-1 4-agent round-1 review에서 critic이 `engine.PlayerAwareModule = (*Module)(nil)` interface assertion에 대해 "skeleton 단계에서 premature — 진짜 per-player redaction 없음" 지적. round-1 fix는 다른 항목 우선 처리하고 이 finding은 "TDD 신호 (PR-5에서 BuildStateFor 진짜 redaction 추가될 때 break)"로 분류. 이후 CI `scripts/check-playeraware-coverage.sh` lint가 `BuildStateFor` delegate 패턴 즉시 차단 → fix `f6624e2`에서 `engine.PublicStateMarker` embed로 전환 + `BuildStateFor` 메서드 제거.
+
+**근본 원인**: F-sec-2 카논 (`scripts/check-playeraware-coverage.sh`)은 "BuildStateFor가 BuildState/snapshot에 delegate" 패턴을 즉시 lint fail로 차단. 이는 per-player trust boundary 차단 — TDD 신호 X, 강제 카논. Skeleton이 PlayerAwareModule 인터페이스를 implement하면 BuildStateFor가 진짜 redaction을 해야 함. PR-1 시점에는 per-player data 없으므로 PublicStateMarker가 정답.
+
+**재발 방지**:
+1. **Skeleton = PublicStateMarker로 시작 카논** (`memory/project_module_skeleton_publicstate.md`): PR-N skeleton 단계 (Schema only, 게임 로직 미구현)는 `PlayerAwareModule` 대신 `engine.PublicStateMarker` embed. 진짜 per-player data 추가될 PR에서 marker drop + `BuildStateFor` 추가.
+2. **4-agent critic의 "premature interface" 지적은 즉시 fix** — TDD 신호 분류 X, CI canon이 결국 강제할 것이므로 round-1에서 처리.
+3. **모듈 신설 PR 진입 시 sibling 비교** (voting/accusation/hidden_mission) — 어느 패턴 사용하는지 확인 후 일관 적용.
+
+**관련 카논**: `memory/project_module_skeleton_publicstate.md` (신규 카논 파일), `apps/server/scripts/check-playeraware-coverage.sh` (lint canon master), `apps/server/internal/engine/types.go` `PublicStateMarker` definition.

@@ -138,3 +138,22 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 - **맥락**: `feedback_4agent_review_before_admin_merge.md` 의 Size 기준은 line count 기반 암묵 정의. yaml infra 는 line 수 작아도 시스템 영향 반경 큼 (paths-filter / branch protection / gitleaks). 코드 PR 기준으로 "Low" 분류하면 4-agent carve-out 잘못 적용.
 - **다음 액션**: 다음 인프라 PR 전 사용자 결정 — "CI / branch-protection / paths-filter 변경은 Size 불문 M 으로 간주" 규칙 채택 여부.
 - **블로커 risk**: MEDIUM (다음 CI 슬림화 시 동일 패턴 재발 가능).
+
+---
+
+## 2026-05-02 — Phase 24 PR-1 wrap-up (config_normalizer + ending_branch skeleton)
+
+### Q-wsgen-main-drift-scope: wsgen 비결정성이 PR-9 이전 main commits에 얼마나 영향?
+- **맥락**: PR-1이 wsgen 비결정성 최초 인지자 (commit `6568719` sort fix). PR-9 이전 wsgen 사용 commits 영향 범위 미확인. `git log --oneline -- packages/shared/src/ws/types.generated.ts`로 추정 가능하나 미실행.
+- **다음 액션**: 다음 wsgen PR 진입 전 5분 spike — affected commits + diff stat 변동 패턴. 다른 generated file 동일 패턴 여부 판단.
+- **블로커 risk**: LOW (이미 fix됨, 향후 codegen tool 일관성 검증용 정보).
+
+### Q-coderabbit-dismiss-stale-thread-unblock: CodeRabbit stale review dismiss 후 thread resolved 요구 절차?
+- **맥락**: PR #212 `required_conversation_resolution: true` + `CHANGES_REQUESTED` review 동시 → thread resolve만으로 unblock 불가. `gh api .../reviews/{id}/dismissals` 추가 필요. CodeRabbit `dismiss_stale_reviews` 자동 dismiss 정책 미정의.
+- **다음 액션**: 다음 CodeRabbit review thread 남길 때 `dismiss_stale_reviews` 동작 관찰. 카논 정의 → `feedback_coderabbit_resolution_workflow.md` 신규 또는 `feedback_4agent_review_before_admin_merge.md` 보강.
+- **블로커 risk**: MEDIUM (follow-up issue로 thread 미resolve 시 다음 PR에서 동일 issue 재등장 가능).
+
+### Q-4agent-deferred-finding-thread-lifecycle: round-1 deferred finding이 round-2 thread로 재등장하는 패턴
+- **맥락**: PR-1 round-1 critic이 "Heavy lift / PR-5 defer"로 분류한 `respondents type` finding을 같은 thread로 처리하지 않고 follow-up issue로 분리 → round-2 review에 같은 finding 재등장.
+- **다음 액션**: `compound-review` SKILL 또는 `feedback_4agent_review_before_admin_merge.md`에 "PR-N deferred 분류 시 thread resolve 절차" 명시. follow-up issue 등록 = thread close 동치 채택 여부 사용자 결정 필요.
+- **블로커 risk**: MEDIUM (round-2 중복 비용 재발 가능).

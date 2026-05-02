@@ -4,7 +4,8 @@
 - [완료 Phase Archive](#완료-phase-archive) — Phase 7.7~20 progress·plan 파일 일람 (본 파일 하단)
 
 ## 활성 Phase
-- [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol + PR-10 Runtime Payload Validation, L+L 규모). 다음 작업
+- [Phase 24 — 에디터 ECS 재설계](sessions/2026-05-02-phase-24-pr-1-merge.md) — **진행 중** PR-1 머지 완료 (commit `01e55d0`, config_normalizer + ending_branch skeleton), PR-2~6 미진입. spec D-19~D-26 적용 완료
+- [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol 머지 #203, PR-10 Runtime Payload Validation L 미착수). #200/#201/#202/#204~#210 follow-ups carry-over
 
 ## Backlog
 - [Phase 21 backlog](project_phase21_backlog.md) — Phase 19 audit log orphan action 7건. 에디터 리팩터 잔존 3건: E-3/E-5(Phase 24 후보, brainstorm 필수) + E-9(인프라 file-size-guard glob 정정, S). E-7/E-8/E-10/E-11/E-12는 Resolved 2026-05-01 (PR #189/#191). Phase 23 인프라 follow-ups 5건은 Closed 2026-05-01 (KT Cloud KS arc-runner-set 진화로 superseded)
@@ -31,6 +32,8 @@
 ## 작업 방식
 - [개발(feature) 우선 메타 후순위](feedback_dev_work_priority.md) — 활성 Phase feature 개발이 핸드오프 P1 메타 작업보다 우선
 - [Opus 헤드쿼터 모드](feedback_opus_headquarter.md) — Opus는 판단/지시, 실제 작업은 Sonnet/Haiku 위임
+- [Codex와 Opus는 동등한 기술 파트너](feedback_codex_opus_peers.md) — 의사결정 컨텍스트에서 codex ↔ Opus = peer, Opus는 판정관 아닌 integrator
+- [Codex 하이브리드 4-agent (V1)](feedback_codex_axes_hybrid.md) — perf+test = Codex outside-view, arch+security = Claude canon, V2 sensitive PR override placeholder
 - [코딩 작업 수행 규율](feedback_coding_discipline.md) — 구현 전 사고 → 단순함 → 외과적 변경 → 목표 검증 4원칙
 - [사용자 설명 형식](feedback_explanation_style.md) — 원인/결과/권장 3섹션, 비개발자 친화 어휘
 - [코딩 작업 완료 보고 6섹션](feedback_task_completion_report.md) — 큰 그림 / Task 위치 / 파일별 비유 / 사용자 변화 / 다음 미리보기 / 커밋 위치
@@ -57,13 +60,17 @@
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — `?token=` 쿼리 인증
 - [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/80, TS·TSX 400/60·150, MD 500(CLAUDE.md만 200)
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화, 장시간 세션 주기 재시작
+- [wsgen / codegen 결정성 카논](feedback_wsgen_deterministic.md) — Go map iteration randomized → sort.Slice 강제 (PR-1 #212)
+- [모듈 Skeleton = PublicStateMarker로 시작](project_module_skeleton_publicstate.md) — F-sec-2 playeraware-lint canon이 강제 (PR-1 #212)
 
 ## Phase 23 인프라 카논 (Custom Runner Image)
 - [Custom Runner Image chicken-egg 회피](feedback_runner_bootstrap.md) — `build-runner-image.yml` `runs-on: ubuntu-latest`
 - [self-hosted runner용 multi-stage Dockerfile](feedback_multi_stage_dockerfile_runner.md) — builder + final 분리
 - [Custom Runner Image GHCR 첫 push 절차](feedback_ghcr_self_hosted_bootstrap.md) — GITHUB_TOKEN + Public visibility
+- [Playwright `--with-deps` 분리 패턴](feedback_playwright_with_deps_split.md) — ARC runner OS deprecated 패키지 차단 회피 (PR-1 #212)
 
 ## 최근 세션 회고
+- [2026-05-02 Phase 24 PR-1 머지 — config_normalizer + ending_branch skeleton](sessions/2026-05-02-phase-24-pr-1-merge.md) — PR #212. TDD 67-step + 4-agent round-1+2 + CodeRabbit 32+ findings + CI 5 root-cause fix (gofmt/wsgen sort/playeraware-lint/Playwright deps)
 - [2026-05-01 CI 슬림화 — required check 15→4 + paths-filter trap hotfix](sessions/2026-05-01-ci-slim-paths-filter-trap.md) — PR #194/#195. main branch protection 4개 축소 + workflow-only PR fire 보장 + gitleaks 분리
 - [2026-05-01 Phase 21 backlog wave — 5 PR sequential merge](sessions/2026-05-01-phase-21-backlog-wave.md) — PR #188/#189/#190/#191/#192. E-7/E-8/E-10/E-11/E-12 해소 + Phase 23 인프라 close + E-5 Phase 24 defer
 - [2026-05-01 Phase 21 E-1/E-6 — useDebouncedMutation 훅 + file-size CI guard](sessions/2026-05-01-phase-21-e1-e6-debounce-hook.md) — 4 PR 머지 (#178/#183/#184/#185), 4-agent 3 round + CodeRabbit 2 round, E-7~E-12 follow-up 등록
