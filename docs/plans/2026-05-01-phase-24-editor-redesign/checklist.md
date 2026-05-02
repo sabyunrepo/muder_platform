@@ -61,11 +61,15 @@ parent_phase: "phase-21-editor-ux"
 ### PR-3 — Entity Pages (캐릭터 + 장소 + 단서)
 - **Effort** L (~7일), **Impact** High (3 entity 첫 출시)
 - **branch**: `feat/phase-24-pr-3-entity-character-location-clue`
+- **2026-05-02 scope update**: 캐릭터 역할 enum, 탐정 투표 후보 정책, PDF/이미지 역할지 지원은 PR-3 계열 후속 PR로 분리. 상세는 `refs/pr-3-expansion-role-pdf-voting.md`.
 - **포함**:
   1. 캐릭터 entity 페이지 (D-06) — 베이스 + 역할지 Markdown + starting_clue/hidden_mission 모듈 섹션
   2. 장소 entity 페이지 (D-07) — Tree 무한 중첩 + 접근 제한 + 단순 사진 + evidence/location_clue 모듈 섹션
   3. 단서 entity 페이지 (D-08) — 단일 진실 위치 + 자동 backlink + 미사용 표시 + conditional_clue/combination/clue_interaction 모듈 섹션
   4. 자동 backlink 백엔드 신설 — derived 쿼리 vs DB 별도 테이블 (writing-plans 단계 결정, refs/10 참조)
+  5. PR-3A~E 확장 — `mystery_role`, voting `candidatePolicy`, typed role sheet
+     - DOCUMENT/PDF, image role sheet viewer는 후속 PR로 분리 (위 scope update 기준)
+     - PR-3A 테스트 책임: 역할 enum 저장/검증, Markdown 역할지 저장, entity preview 반응형/E2E
 - **상세 task**: `refs/pr-3-tasks.md` (PR-2 머지 후 expand)
 
 ### PR-4 — Entity Pages (페이즈 + 결말)

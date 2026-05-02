@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -15,8 +16,39 @@ import (
 
 // --- Characters ---
 
+const (
+	MysteryRoleSuspect    = "suspect"
+	MysteryRoleCulprit    = "culprit"
+	MysteryRoleAccomplice = "accomplice"
+	MysteryRoleDetective  = "detective"
+)
+
+func normalizeMysteryRole(role string, isCulprit bool) (string, error) {
+	if role == "" {
+		if isCulprit {
+			return MysteryRoleCulprit, nil
+		}
+		return MysteryRoleSuspect, nil
+	}
+
+	switch role {
+	case MysteryRoleSuspect, MysteryRoleCulprit, MysteryRoleAccomplice, MysteryRoleDetective:
+		if isCulprit && role != MysteryRoleCulprit {
+			return "", apperror.BadRequest("mystery_role conflicts with is_culprit")
+		}
+		return role, nil
+	default:
+		return "", apperror.BadRequest(fmt.Sprintf("invalid mystery_role: %s", role))
+	}
+}
+
 func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error) {
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
+		return nil, err
+	}
+
+	mysteryRole, err := normalizeMysteryRole(req.MysteryRole, req.IsCulprit)
+	if err != nil {
 		return nil, err
 	}
 
@@ -25,7 +57,8 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		Name:        req.Name,
 		Description: ptrToText(req.Description),
 		ImageUrl:    ptrToText(req.ImageURL),
-		IsCulprit:   req.IsCulprit,
+		IsCulprit:   mysteryRole == MysteryRoleCulprit,
+		MysteryRole: mysteryRole,
 		SortOrder:   req.SortOrder,
 	})
 	if err != nil {
@@ -48,12 +81,18 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		return nil, err
 	}
 
+	mysteryRole, err := normalizeMysteryRole(req.MysteryRole, req.IsCulprit)
+	if err != nil {
+		return nil, err
+	}
+
 	updated, err := s.q.UpdateThemeCharacter(ctx, db.UpdateThemeCharacterParams{
 		ID:          charID,
 		Name:        req.Name,
 		Description: ptrToText(req.Description),
 		ImageUrl:    ptrToText(req.ImageURL),
-		IsCulprit:   req.IsCulprit,
+		IsCulprit:   mysteryRole == MysteryRoleCulprit,
+		MysteryRole: mysteryRole,
 		SortOrder:   req.SortOrder,
 	})
 	if err != nil {
@@ -108,6 +147,7 @@ func toCharacterResponse(c db.ThemeCharacter) *CharacterResponse {
 		Description: textToPtr(c.Description),
 		ImageURL:    textToPtr(c.ImageUrl),
 		IsCulprit:   c.IsCulprit,
+		MysteryRole: c.MysteryRole,
 		SortOrder:   c.SortOrder,
 	}
 }

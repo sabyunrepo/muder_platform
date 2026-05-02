@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import { User } from "lucide-react";
-import type { EditorThemeResponse } from "@/features/editor/api";
-import { useEditorCharacters, useEditorClues } from "@/features/editor/api";
+import type { EditorThemeResponse, MysteryRole } from "@/features/editor/api";
+import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
 import type { Mission } from "./MissionEditor";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
@@ -19,6 +19,7 @@ interface CharacterAssignPanelProps {
 export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelProps) {
   const { data: characters, isLoading: charsLoading } = useEditorCharacters(themeId);
   const { data: clues } = useEditorClues(themeId);
+  const updateCharacter = useUpdateCharacter(themeId);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
 
   const characterClues = useMemo(
@@ -100,6 +101,27 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
     [characterMissions, saveConfig, selectedCharId],
   );
 
+  const handleMysteryRoleChange = useCallback(
+    (role: MysteryRole) => {
+      if (!selectedCharId) return;
+      const selected = characters?.find((char) => char.id === selectedCharId);
+      if (!selected) return;
+
+      updateCharacter.mutate({
+        characterId: selected.id,
+        body: {
+          name: selected.name,
+          description: selected.description ?? undefined,
+          image_url: selected.image_url ?? undefined,
+          is_culprit: role === "culprit",
+          mystery_role: role,
+          sort_order: selected.sort_order,
+        },
+      });
+    },
+    [characters, selectedCharId, updateCharacter],
+  );
+
   if (charsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -140,6 +162,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <CharacterDetailPanel
+          themeId={themeId}
           selectedChar={selectedChar}
           characters={characters ?? []}
           clues={clues}
@@ -149,6 +172,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
           onAddMission={handleAddMission}
           onChangeMission={handleMissionChange}
           onDeleteMission={handleDeleteMission}
+          onMysteryRoleChange={handleMysteryRoleChange}
         />
       </div>
     </div>

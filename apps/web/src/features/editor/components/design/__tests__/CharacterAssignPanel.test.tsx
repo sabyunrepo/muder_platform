@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ApiHttpError } from '@/lib/api-error';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -11,11 +12,19 @@ const {
   useEditorCharactersMock,
   useEditorCluesMock,
   useUpdateConfigJsonMock,
+  useEditorContentMock,
+  useUpsertContentMock,
+  upsertContentMutateMock,
+  updateCharacterMutateMock,
 } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
   useEditorCluesMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
+  useEditorContentMock: vi.fn(),
+  useUpsertContentMock: vi.fn(),
+  upsertContentMutateMock: vi.fn(),
+  updateCharacterMutateMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -34,6 +43,9 @@ vi.mock('@/features/editor/api', () => ({
   useEditorCharacters: () => useEditorCharactersMock(),
   useEditorClues: () => useEditorCluesMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
+  useEditorContent: (themeId: string, key: string) => useEditorContentMock(themeId, key),
+  useUpsertContent: (themeId: string, key: string) => useUpsertContentMock(themeId, key),
+  useUpdateCharacter: () => ({ mutate: updateCharacterMutateMock, isPending: false }),
 }));
 
 // ---------------------------------------------------------------------------
@@ -47,8 +59,8 @@ import { CharacterAssignPanel } from '../../design/CharacterAssignPanel';
 // ---------------------------------------------------------------------------
 
 const mockCharacters = [
-  { id: 'char-1', name: '홍길동', is_culprit: true },
-  { id: 'char-2', name: '김철수', is_culprit: false },
+  { id: 'char-1', name: '홍길동', description: null, image_url: null, is_culprit: true, mystery_role: 'culprit' as const, sort_order: 0 },
+  { id: 'char-2', name: '김철수', description: null, image_url: null, is_culprit: false, mystery_role: 'suspect' as const, sort_order: 1 },
 ];
 
 const mockClues = [
@@ -119,6 +131,8 @@ describe('CharacterAssignPanel', () => {
     useEditorCharactersMock.mockReturnValue({ data: mockCharacters, isLoading: false });
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: false });
+    useEditorContentMock.mockReturnValue({ data: { body: '' }, isLoading: false });
+    useUpsertContentMock.mockReturnValue({ mutate: upsertContentMutateMock, isPending: false });
   });
 
   it('캐릭터 목록을 렌더링한다', () => {
@@ -132,6 +146,24 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('범인')).toBeDefined();
   });
 
+  it('캐릭터 역할을 공범으로 변경한다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: /공범/ }));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: {
+        name: '홍길동',
+        description: undefined,
+        image_url: undefined,
+        is_culprit: false,
+        mystery_role: 'accomplice',
+        sort_order: 0,
+      },
+    });
+  });
+
   it('캐릭터 선택 시 좌측 전체 단서와 우측 배정 영역이 표시된다', () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
@@ -139,6 +171,99 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
     expect(screen.getByText('피 묻은 칼')).toBeDefined();
     expect(screen.getByText('비밀 편지')).toBeDefined();
+  });
+
+
+  it('역할지 Markdown을 content API key로 저장한다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
+    fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
+    fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
+
+    expect(useEditorContentMock).toHaveBeenCalledWith('theme-1', 'role_sheet:char-1');
+    expect(useUpsertContentMock).toHaveBeenCalledWith('theme-1', 'role_sheet:char-1');
+    expect(upsertContentMutateMock).toHaveBeenCalledWith(
+      { body: '## 비밀\n범인은 아직 모른다.' },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+
+  it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {
+    useEditorContentMock.mockReturnValue({
+      data: undefined,
+      error: new ApiHttpError({
+        type: 'about:blank',
+        title: 'Not Found',
+        status: 404,
+        detail: 'role sheet not found',
+      }),
+      isError: true,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    expect(screen.getByText('아직 저장된 역할지가 없습니다.')).toBeDefined();
+    expect((screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement).value).toBe('');
+  });
+
+  it('역할지 로드 실패 시 재시도 버튼을 표시한다', () => {
+    const refetch = vi.fn();
+    useEditorContentMock.mockReturnValue({
+      data: undefined,
+      error: new ApiHttpError({
+        type: 'about:blank',
+        title: 'Server Error',
+        status: 500,
+        detail: 'server error',
+      }),
+      isError: true,
+      isLoading: false,
+      refetch,
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(screen.getByText('역할지를 불러오지 못했습니다.')).toBeDefined();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('역할지 본문이 바뀌지 않았으면 저장 요청을 보내지 않는다', () => {
+    useEditorContentMock.mockReturnValue({ data: { body: '기존 역할지' }, isLoading: false });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
+
+    expect(upsertContentMutateMock).not.toHaveBeenCalled();
+    expect(screen.getByText('저장되었습니다.')).toBeDefined();
+  });
+
+  it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
+    const saveButton = screen.getByRole('button', { name: '역할지 저장' });
+    fireEvent.change(roleSheet, { target: { value: '수정된 역할지' } });
+    fireEvent.mouseDown(saveButton);
+    fireEvent.blur(roleSheet);
+    fireEvent.click(saveButton);
+
+    expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(1500); });
+    expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
+    expect(upsertContentMutateMock).toHaveBeenCalledWith(
+      { body: '수정된 역할지' },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
   });
 
   it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {

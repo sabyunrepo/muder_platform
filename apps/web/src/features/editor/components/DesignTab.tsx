@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Puzzle, GitBranch, MapPin } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { ModulesSubTab } from './design/ModulesSubTab';
@@ -14,6 +14,7 @@ type SubTab = 'modules' | 'flow' | 'locations';
 interface DesignTabProps {
   themeId: string;
   theme: EditorThemeResponse;
+  routeSegment?: string;
 }
 
 const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
@@ -26,8 +27,18 @@ const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
 // DesignTab
 // ---------------------------------------------------------------------------
 
-export function DesignTab({ themeId, theme }: DesignTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('modules');
+function readInitialSubTab(routeSegment?: string): SubTab {
+  if (routeSegment === 'flow') return 'flow';
+  if (routeSegment === 'locations') return 'locations';
+  return 'modules';
+}
+
+export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => readInitialSubTab(routeSegment));
+
+  useEffect(() => {
+    setActiveSubTab(readInitialSubTab(routeSegment));
+  }, [routeSegment]);
 
   return (
     <div className="flex h-full flex-col">

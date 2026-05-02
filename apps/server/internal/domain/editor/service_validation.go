@@ -58,7 +58,7 @@ func (s *service) ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUI
 	}
 	hasCulprit := false
 	for _, c := range chars {
-		if c.IsCulprit {
+		if c.MysteryRole == MysteryRoleCulprit || c.IsCulprit {
 			hasCulprit = true
 			break
 		}

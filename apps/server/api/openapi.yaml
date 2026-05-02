@@ -1274,6 +1274,10 @@ components:
         is_culprit:
           type: boolean
           default: false
+        mystery_role:
+          type: string
+          enum: [suspect, culprit, accomplice, detective]
+          default: suspect
         sort_order:
           type: integer
           minimum: 0
@@ -1293,6 +1297,9 @@ components:
           format: uri
         is_culprit:
           type: boolean
+        mystery_role:
+          type: string
+          enum: [suspect, culprit, accomplice, detective]
         sort_order:
           type: integer
           minimum: 0
@@ -1354,7 +1361,7 @@ components:
 
     EditorCharacterResponse:
       type: object
-      required: [id, theme_id, name, is_culprit, sort_order]
+      required: [id, theme_id, name, is_culprit, mystery_role, sort_order]
       properties:
         id:
           type: string
@@ -1371,6 +1378,9 @@ components:
           format: uri
         is_culprit:
           type: boolean
+        mystery_role:
+          type: string
+          enum: [suspect, culprit, accomplice, detective]
         sort_order:
           type: integer
 

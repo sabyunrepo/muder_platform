@@ -86,9 +86,9 @@ func (q *Queries) CreateTheme(ctx context.Context, arg CreateThemeParams) (Theme
 }
 
 const createThemeCharacter = `-- name: CreateThemeCharacter :one
-INSERT INTO theme_characters (theme_id, name, description, image_url, is_culprit, sort_order)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order
+INSERT INTO theme_characters (theme_id, name, description, image_url, is_culprit, mystery_role, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role
 `
 
 type CreateThemeCharacterParams struct {
@@ -97,6 +97,7 @@ type CreateThemeCharacterParams struct {
 	Description pgtype.Text `json:"description"`
 	ImageUrl    pgtype.Text `json:"image_url"`
 	IsCulprit   bool        `json:"is_culprit"`
+	MysteryRole string      `json:"mystery_role"`
 	SortOrder   int32       `json:"sort_order"`
 }
 
@@ -107,6 +108,7 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 		arg.Description,
 		arg.ImageUrl,
 		arg.IsCulprit,
+		arg.MysteryRole,
 		arg.SortOrder,
 	)
 	var i ThemeCharacter
@@ -118,6 +120,7 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 		&i.ImageUrl,
 		&i.IsCulprit,
 		&i.SortOrder,
+		&i.MysteryRole,
 	)
 	return i, err
 }
@@ -205,7 +208,7 @@ func (q *Queries) GetThemeBySlug(ctx context.Context, slug string) (Theme, error
 }
 
 const getThemeCharacter = `-- name: GetThemeCharacter :one
-SELECT id, theme_id, name, description, image_url, is_culprit, sort_order FROM theme_characters WHERE id = $1
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role FROM theme_characters WHERE id = $1
 `
 
 func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCharacter, error) {
@@ -219,12 +222,13 @@ func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCha
 		&i.ImageUrl,
 		&i.IsCulprit,
 		&i.SortOrder,
+		&i.MysteryRole,
 	)
 	return i, err
 }
 
 const getThemeCharacters = `-- name: GetThemeCharacters :many
-SELECT id, theme_id, name, description, image_url, is_culprit, sort_order FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]ThemeCharacter, error) {
@@ -244,6 +248,7 @@ func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]
 			&i.ImageUrl,
 			&i.IsCulprit,
 			&i.SortOrder,
+			&i.MysteryRole,
 		); err != nil {
 			return nil, err
 		}
@@ -502,9 +507,9 @@ func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme
 }
 
 const updateThemeCharacter = `-- name: UpdateThemeCharacter :one
-UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, sort_order = $6
+UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, mystery_role = $6, sort_order = $7
 WHERE id = $1
-RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role
 `
 
 type UpdateThemeCharacterParams struct {
@@ -513,6 +518,7 @@ type UpdateThemeCharacterParams struct {
 	Description pgtype.Text `json:"description"`
 	ImageUrl    pgtype.Text `json:"image_url"`
 	IsCulprit   bool        `json:"is_culprit"`
+	MysteryRole string      `json:"mystery_role"`
 	SortOrder   int32       `json:"sort_order"`
 }
 
@@ -523,6 +529,7 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 		arg.Description,
 		arg.ImageUrl,
 		arg.IsCulprit,
+		arg.MysteryRole,
 		arg.SortOrder,
 	)
 	var i ThemeCharacter
@@ -534,6 +541,7 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 		&i.ImageUrl,
 		&i.IsCulprit,
 		&i.SortOrder,
+		&i.MysteryRole,
 	)
 	return i, err
 }

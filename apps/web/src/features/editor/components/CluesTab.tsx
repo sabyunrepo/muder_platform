@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LayoutList, GitBranch } from 'lucide-react';
 import { ClueListView } from './clues/ClueListView';
 import { ClueEdgeGraph } from './clues/ClueEdgeGraph';
@@ -9,6 +9,7 @@ import { ClueEdgeGraph } from './clues/ClueEdgeGraph';
 
 interface CluesTabProps {
   themeId: string;
+  routeSegment?: string;
 }
 
 type SubTab = 'list' | 'relations';
@@ -22,8 +23,16 @@ const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
 // CluesTab
 // ---------------------------------------------------------------------------
 
-export function CluesTab({ themeId }: CluesTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>('list');
+function readInitialSubTab(routeSegment?: string): SubTab {
+  return routeSegment === 'relations' ? 'relations' : 'list';
+}
+
+export function CluesTab({ themeId, routeSegment }: CluesTabProps) {
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => readInitialSubTab(routeSegment));
+
+  useEffect(() => {
+    setActiveSubTab(readInitialSubTab(routeSegment));
+  }, [routeSegment]);
 
   return (
     <div className="flex h-full flex-col">

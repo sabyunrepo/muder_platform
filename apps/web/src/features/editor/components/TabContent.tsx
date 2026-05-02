@@ -39,9 +39,10 @@ interface TabContentProps {
   tab: EditorTab;
   theme: EditorThemeResponse;
   themeId: string;
+  routeSegment?: string;
 }
 
-export function TabContent({ tab, theme, themeId }: TabContentProps) {
+export function TabContent({ tab, theme, themeId, routeSegment }: TabContentProps) {
   switch (tab) {
     case "overview":
       return <OverviewTab theme={theme} themeId={themeId} />;
@@ -50,9 +51,9 @@ export function TabContent({ tab, theme, themeId }: TabContentProps) {
     case "characters":
       return <CharactersTab theme={theme} themeId={themeId} />;
     case "clues":
-      return <CluesTab themeId={themeId} />;
+      return <CluesTab themeId={themeId} routeSegment={routeSegment} />;
     case "design":
-      return <DesignTab theme={theme} themeId={themeId} />;
+      return <DesignTab theme={theme} themeId={themeId} routeSegment={routeSegment} />;
     case "media":
       return <MediaTab themeId={themeId} />;
     case "advanced":
