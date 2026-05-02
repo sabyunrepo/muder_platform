@@ -42,8 +42,9 @@
 - `main`을 보호한다. 병합 가능한 변경은 feature branch와 PR을 사용한다.
 - PR 또는 merge 전에는 관련 focused check를 실행하고 `memory/feedback_pre_pr_review_checklist.md` 기준으로 검토한다.
 - PR 제목과 본문은 기본적으로 한글로 작성한다. 코드 식별자, 명령어, 에러 메시지, 공식 API명은 원문을 유지한다.
-- PR 생성 후에는 GitHub Actions CI뿐 아니라 Codecov Report를 확인한다. 커버리지 리포트가 실패하거나 기준 미달 코멘트를 남기면 원인을 확인하고 필요한 테스트 보강 또는 코드 수정을 진행한 뒤 다시 검증한다.
+- Full CI 실행 후에는 GitHub Actions CI뿐 아니라 Codecov Report를 확인한다. 커버리지 리포트가 실패하거나 기준 미달 코멘트를 남기면 원인을 확인하고 필요한 테스트 보강 또는 코드 수정을 진행한 뒤 다시 검증한다.
 - PR 생성 후 CodeRabbit 리뷰를 확인한다. 문제 제기 코멘트는 수정 커밋으로 해결하고, GitHub review thread가 unresolved 상태로 남지 않도록 resolve 상태까지 확인한 뒤 merge한다.
+- Full CI는 리뷰 대응이 끝난 뒤 `ready-for-ci` 라벨을 붙여 실행한다. 리뷰/Codecov/CodeRabbit 수정 중에는 라벨을 제거해 heavy CI 반복 실행을 피하고, merge 전에는 반드시 라벨을 다시 붙여 Go/TypeScript/Coverage/E2E/Docker/Security checks를 통과시킨다.
 - PR/CI/리뷰 상태 확인을 반복할 때는 GitHub/API 호출을 과도하게 하지 않는다. 기본 폴링 간격은 30초~1분으로 두고, 긴 작업은 `--watch --interval 30` 이상 또는 단발 조회를 사용한다.
 - 4-agent review 정책의 canonical 문서는 `memory/feedback_4agent_review_before_admin_merge.md`다. Codex에서 사용 가능한 도구와 사용자 승인 범위에 맞춰 적용한다.
 
