@@ -48,6 +48,13 @@ WHERE m.id = $1 AND t.creator_id = $2;
 DELETE FROM theme_media m USING themes t
 WHERE m.id = $1 AND m.theme_id = t.id AND t.creator_id = $2;
 
+-- name: FindRoleSheetReferencesForMedia :many
+SELECT id, key
+FROM theme_contents
+WHERE theme_id = $1
+  AND key ~ '^role_sheet:'
+  AND body LIKE $2;
+
 -- ============================================================
 -- Media (Batch)
 -- ============================================================

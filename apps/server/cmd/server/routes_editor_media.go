@@ -12,6 +12,7 @@ func registerEditorMediaRoutes(r chi.Router, deps authedDeps) {
 	r.Post("/themes/{id}/media/confirm", deps.media.ConfirmUpload)
 	r.Post("/themes/{id}/media/youtube", deps.media.CreateYouTube)
 	r.Patch("/media/{id}", deps.media.UpdateMedia)
+	r.Get("/media/{id}/download-url", deps.media.GetDownloadURL)
 	r.Delete("/media/{id}", deps.media.DeleteMedia)
 
 	// Images (character avatars + clue images)

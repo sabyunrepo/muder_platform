@@ -16,6 +16,8 @@ const {
   useUpsertCharacterRoleSheetMock,
   upsertRoleSheetMutateMock,
   updateCharacterMutateMock,
+  uploadMediaFileMock,
+  useMediaDownloadUrlMock,
 } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
@@ -25,6 +27,8 @@ const {
   useUpsertCharacterRoleSheetMock: vi.fn(),
   upsertRoleSheetMutateMock: vi.fn(),
   updateCharacterMutateMock: vi.fn(),
+  uploadMediaFileMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -46,6 +50,13 @@ vi.mock('@/features/editor/api', () => ({
   useCharacterRoleSheet: (characterId: string) => useCharacterRoleSheetMock(characterId),
   useUpsertCharacterRoleSheet: (characterId: string) => useUpsertCharacterRoleSheetMock(characterId),
   useUpdateCharacter: () => ({ mutate: updateCharacterMutateMock, isPending: false }),
+}));
+
+vi.mock('@/features/editor/mediaApi', () => ({
+  uploadMediaFile: uploadMediaFileMock,
+  useRequestUploadUrl: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useConfirmUpload: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useMediaDownloadUrl: (mediaId?: string) => useMediaDownloadUrlMock(mediaId),
 }));
 
 // ---------------------------------------------------------------------------
@@ -133,6 +144,7 @@ describe('CharacterAssignPanel', () => {
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: false });
     useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '' } }, isLoading: false });
     useUpsertCharacterRoleSheetMock.mockReturnValue({ mutate: upsertRoleSheetMutateMock, isPending: false });
+    useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() });
   });
 
   it('캐릭터 목록을 렌더링한다', () => {
@@ -261,9 +273,32 @@ describe('CharacterAssignPanel', () => {
   });
 
 
-  it('지원하지 않는 역할지 형식이면 Markdown 편집기 대신 안내를 표시한다', () => {
+  it('PDF 역할지는 업로드 버튼과 페이지 viewer를 표시한다', () => {
     useCharacterRoleSheetMock.mockReturnValue({
-      data: { format: 'pdf', markdown: undefined },
+      data: { format: 'pdf', pdf: { media_id: 'media-pdf-1' }, markdown: undefined },
+      isLoading: false,
+    });
+    useMediaDownloadUrlMock.mockReturnValue({
+      data: { url: 'https://cdn.example/role.pdf', expires_at: '2026-05-02T00:10:00Z' },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    expect(screen.getByText('PDF 역할지')).toBeDefined();
+    expect(screen.getByText('1페이지')).toBeDefined();
+    expect(screen.getByTitle('홍길동 PDF 역할지 1페이지').getAttribute('src')).toBe(
+      'https://cdn.example/role.pdf#page=1&toolbar=0&navpanes=0&view=FitH',
+    );
+    expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
+  });
+
+  it('지원하지 않는 이미지 역할지 형식이면 안내를 표시한다', () => {
+    useCharacterRoleSheetMock.mockReturnValue({
+      data: { format: 'images', markdown: undefined },
       isLoading: false,
     });
 

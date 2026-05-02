@@ -30,6 +30,7 @@ type MediaService interface {
 	CreateYouTube(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMediaYouTubeRequest) (*MediaResponse, error)
 	UpdateMedia(ctx context.Context, creatorID, mediaID uuid.UUID, req UpdateMediaRequest) (*MediaResponse, error)
 	DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) error
+	GetEditorMediaDownloadURL(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDownloadURLResponse, error)
 	GetMediaPlayURL(ctx context.Context, sessionID, mediaID uuid.UUID) (string, error)
 }
 
@@ -50,6 +51,7 @@ type mediaQueries interface {
 	DeleteMedia(ctx context.Context, id uuid.UUID) error
 	DeleteMediaWithOwner(ctx context.Context, arg db.DeleteMediaWithOwnerParams) (int64, error)
 	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
+	FindRoleSheetReferencesForMedia(ctx context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error)
 }
 
 type mediaService struct {
@@ -145,7 +147,7 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 		return nil, err
 	}
 
-	ext, ok := AllowedAudioMIMEs[req.MimeType]
+	ext, ok := uploadExtensionFor(req.Type, req.MimeType)
 	if !ok {
 		return nil, apperror.New(apperror.ErrMediaInvalidType, 422, "unsupported mime type")
 	}
@@ -293,7 +295,7 @@ func (s *mediaService) ConfirmUpload(ctx context.Context, creatorID, themeID uui
 		return nil, apperror.Internal("failed to verify upload")
 	}
 
-	if err := validateAudioMagicBytes(header, declaredMime); err != nil {
+	if err := validateMediaMagicBytes(header, media.Type, declaredMime); err != nil {
 		s.logger.Warn().Str("storage_key", storageKey).Str("mime", declaredMime).Msg("magic bytes mismatch")
 		cleanupCtx := context.WithoutCancel(ctx)
 		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
@@ -443,6 +445,27 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 			WithParams(map[string]any{"references": refList})
 	}
 
+	roleSheetRefs, err := s.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
+		ThemeID: media.ThemeID,
+		Body:    `%"media_id":"` + mediaID.String() + `"%`,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check role sheet references")
+		return apperror.Internal("failed to check media references")
+	}
+	if len(roleSheetRefs) > 0 {
+		refList := make([]map[string]string, len(roleSheetRefs))
+		for i, r := range roleSheetRefs {
+			refList[i] = map[string]string{
+				"type": "role_sheet",
+				"id":   r.Key,
+				"name": r.Key,
+			}
+		}
+		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by role sheets").
+			WithParams(map[string]any{"references": refList})
+	}
+
 	if media.SourceType == SourceTypeFile && media.StorageKey.Valid && s.storage != nil {
 		if delErr := s.storage.DeleteObject(ctx, media.StorageKey.String); delErr != nil {
 			s.logger.Warn().Err(delErr).Str("storage_key", media.StorageKey.String).Msg("failed to delete storage object")
@@ -461,6 +484,35 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		return apperror.NotFound("media not found")
 	}
 	return nil
+}
+
+// --- GetEditorMediaDownloadURL ---
+
+func (s *mediaService) GetEditorMediaDownloadURL(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDownloadURLResponse, error) {
+	media, err := s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
+		ID:        mediaID,
+		CreatorID: creatorID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NotFound("media not found")
+		}
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
+		return nil, apperror.Internal("failed to get media")
+	}
+	if media.SourceType != SourceTypeFile || !media.StorageKey.Valid {
+		return nil, apperror.New(apperror.ErrMediaInvalidType, 422, "media is not a file upload")
+	}
+	if err := s.requireStorage(); err != nil {
+		return nil, err
+	}
+	expiry := 15 * time.Minute
+	url, err := s.storage.GenerateDownloadURL(ctx, media.StorageKey.String, expiry)
+	if err != nil {
+		s.logger.Error().Err(err).Str("storage_key", media.StorageKey.String).Msg("failed to generate download URL")
+		return nil, apperror.Internal("failed to generate download URL")
+	}
+	return &MediaDownloadURLResponse{URL: url, ExpiresAt: time.Now().Add(expiry)}, nil
 }
 
 // --- GetMediaPlayURL ---
@@ -597,6 +649,22 @@ func fetchYouTubeOEmbed(ctx context.Context, videoID string) (*youtubeOEmbed, er
 	return &out, nil
 }
 
+func uploadExtensionFor(mediaType, mimeType string) (string, bool) {
+	if mediaType == MediaTypeDocument {
+		ext, ok := AllowedDocumentMIMEs[mimeType]
+		return ext, ok
+	}
+	ext, ok := AllowedAudioMIMEs[mimeType]
+	return ext, ok
+}
+
+func validateMediaMagicBytes(header []byte, mediaType, declaredMime string) error {
+	if mediaType == MediaTypeDocument {
+		return validateDocumentMagicBytes(header, declaredMime)
+	}
+	return validateAudioMagicBytes(header, declaredMime)
+}
+
 func validateAudioMagicBytes(header []byte, declaredMime string) error {
 	switch declaredMime {
 	case "audio/mpeg":
@@ -615,6 +683,13 @@ func validateAudioMagicBytes(header []byte, declaredMime string) error {
 		if len(header) >= 12 && string(header[:4]) == "RIFF" && string(header[8:12]) == "WAVE" {
 			return nil
 		}
+	}
+	return apperror.New(apperror.ErrMediaInvalidType, 422, "file content does not match declared type")
+}
+
+func validateDocumentMagicBytes(header []byte, declaredMime string) error {
+	if declaredMime == "application/pdf" && len(header) >= 5 && string(header[:5]) == "%PDF-" {
+		return nil
 	}
 	return apperror.New(apperror.ErrMediaInvalidType, 422, "file content does not match declared type")
 }

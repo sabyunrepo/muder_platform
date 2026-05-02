@@ -184,18 +184,28 @@ export interface RoleSheetMarkdown {
   body: string;
 }
 
+export interface RoleSheetPDF {
+  media_id: string;
+}
+
 export interface RoleSheetResponse {
   character_id: string;
   theme_id: string;
   format: RoleSheetFormat;
   markdown?: RoleSheetMarkdown;
+  pdf?: RoleSheetPDF;
   updated_at?: string | null;
 }
 
-export interface UpsertRoleSheetRequest {
-  format: "markdown";
-  markdown: RoleSheetMarkdown;
-}
+export type UpsertRoleSheetRequest =
+  | {
+      format: "markdown";
+      markdown: RoleSheetMarkdown;
+    }
+  | {
+      format: "pdf";
+      pdf: RoleSheetPDF;
+    };
 
 export interface ValidationResponse {
   valid: boolean;

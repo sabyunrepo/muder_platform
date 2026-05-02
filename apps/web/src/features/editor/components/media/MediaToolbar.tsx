@@ -20,6 +20,7 @@ const PILLS: Array<{ value: MediaFilter; label: string }> = [
   { value: "SFX", label: "효과음" },
   { value: "VOICE", label: "음성" },
   { value: "VIDEO", label: "비디오" },
+  { value: "DOCUMENT", label: "문서" },
 ];
 
 // ---------------------------------------------------------------------------

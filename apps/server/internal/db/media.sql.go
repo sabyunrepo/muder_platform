@@ -104,6 +104,44 @@ func (q *Queries) DeleteMediaWithOwner(ctx context.Context, arg DeleteMediaWithO
 	return result.RowsAffected(), nil
 }
 
+const findRoleSheetReferencesForMedia = `-- name: FindRoleSheetReferencesForMedia :many
+SELECT id, key
+FROM theme_contents
+WHERE theme_id = $1
+  AND key ~ '^role_sheet:'
+  AND body LIKE $2
+`
+
+type FindRoleSheetReferencesForMediaParams struct {
+	ThemeID uuid.UUID `json:"theme_id"`
+	Body    string    `json:"body"`
+}
+
+type FindRoleSheetReferencesForMediaRow struct {
+	ID  uuid.UUID `json:"id"`
+	Key string    `json:"key"`
+}
+
+func (q *Queries) FindRoleSheetReferencesForMedia(ctx context.Context, arg FindRoleSheetReferencesForMediaParams) ([]FindRoleSheetReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findRoleSheetReferencesForMedia, arg.ThemeID, arg.Body)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindRoleSheetReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindRoleSheetReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Key); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getMedia = `-- name: GetMedia :one
 SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at FROM theme_media WHERE id = $1
 `

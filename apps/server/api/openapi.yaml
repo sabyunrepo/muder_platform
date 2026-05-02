@@ -1444,16 +1444,26 @@ components:
           type: string
           maxLength: 50000
 
+    RoleSheetPDF:
+      type: object
+      required: [media_id]
+      properties:
+        media_id:
+          type: string
+          format: uuid
+
     UpsertRoleSheetRequest:
       type: object
-      required: [format, markdown]
+      required: [format]
       properties:
         format:
           type: string
-          enum: [markdown]
-          description: PR-3C supports markdown only. PDF and image formats are reserved for later PRs.
+          enum: [markdown, pdf]
+          description: Markdown stores inline text; pdf references DOCUMENT media with application/pdf MIME.
         markdown:
           $ref: "#/components/schemas/RoleSheetMarkdown"
+        pdf:
+          $ref: "#/components/schemas/RoleSheetPDF"
 
     RoleSheetResponse:
       type: object
@@ -1467,9 +1477,11 @@ components:
           format: uuid
         format:
           type: string
-          enum: [markdown]
+          enum: [markdown, pdf]
         markdown:
           $ref: "#/components/schemas/RoleSheetMarkdown"
+        pdf:
+          $ref: "#/components/schemas/RoleSheetPDF"
         updated_at:
           type: string
           format: date-time

@@ -92,4 +92,30 @@ describe("editor role sheet API hooks", () => {
       queryKey: editorKeys.characterRoleSheet("char-1"),
     });
   });
+
+  it("upserts a pdf role sheet and invalidates its query", async () => {
+    const roleSheet: RoleSheetResponse = {
+      character_id: "char-1",
+      theme_id: "theme-1",
+      format: "pdf",
+      pdf: { media_id: "media-pdf-1" },
+    };
+    mockPut.mockResolvedValue(roleSheet);
+    const invalidateSpy = vi.spyOn(testQueryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpsertCharacterRoleSheet("char-1"), { wrapper });
+
+    await result.current.mutateAsync({
+      format: "pdf",
+      pdf: { media_id: "media-pdf-1" },
+    });
+
+    expect(mockPut).toHaveBeenCalledWith(
+      "/v1/editor/characters/char-1/role-sheet",
+      { format: "pdf", pdf: { media_id: "media-pdf-1" } },
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: editorKeys.characterRoleSheet("char-1"),
+    });
+  });
 });

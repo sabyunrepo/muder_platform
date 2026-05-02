@@ -31,6 +31,7 @@ import {
   useConfirmUpload,
   useCreateYouTubeMedia,
   useDeleteMedia,
+  useMediaDownloadUrl,
   useMediaList,
   useRequestUploadUrl,
   useUpdateMedia,
@@ -129,6 +130,31 @@ describe("useMediaList", () => {
         `/v1/editor/themes/${THEME_ID}/media?type=BGM`,
       ),
     );
+  });
+});
+
+describe("useMediaDownloadUrl", () => {
+  it("fetches editor media download URL when media id is present", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce({
+      url: "https://download.example/role.pdf",
+      expires_at: "2026-05-02T00:10:00Z",
+    });
+
+    const { result } = renderHook(() => useMediaDownloadUrl("media-pdf-1"), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith("/v1/editor/media/media-pdf-1/download-url");
+    expect(result.current.data?.url).toBe("https://download.example/role.pdf");
+  });
+
+  it("does not fetch download URL without media id", () => {
+    renderHook(() => useMediaDownloadUrl(undefined), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(api.get).not.toHaveBeenCalled();
   });
 });
 

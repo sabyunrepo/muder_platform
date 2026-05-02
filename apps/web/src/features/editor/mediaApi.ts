@@ -7,7 +7,7 @@ import { queryClient } from "@/services/queryClient";
 // Types — match backend snake_case JSON exactly
 // ---------------------------------------------------------------------------
 
-export type MediaType = "BGM" | "SFX" | "VOICE" | "VIDEO";
+export type MediaType = "BGM" | "SFX" | "VOICE" | "VIDEO" | "DOCUMENT";
 export type MediaSourceType = "FILE" | "YOUTUBE";
 
 export interface MediaResponse {
@@ -35,6 +35,11 @@ export interface RequestUploadUrlRequest {
 export interface UploadUrlResponse {
   upload_id: string;
   upload_url: string;
+  expires_at: string;
+}
+
+export interface MediaDownloadUrlResponse {
+  url: string;
   expires_at: string;
 }
 
@@ -77,6 +82,7 @@ export const mediaKeys = {
   list: (themeId: string, type?: MediaType) =>
     ["media", themeId, type ?? "all"] as const,
   byTheme: (themeId: string) => ["media", themeId] as const,
+  downloadUrl: (mediaId: string) => ["media", mediaId, "download-url"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -93,6 +99,17 @@ export function useMediaList(themeId: string, type?: MediaType) {
       );
     },
     enabled: !!themeId,
+  });
+}
+
+export function useMediaDownloadUrl(mediaId?: string) {
+  return useQuery<MediaDownloadUrlResponse>({
+    queryKey: mediaKeys.downloadUrl(mediaId ?? ""),
+    queryFn: () =>
+      api.get<MediaDownloadUrlResponse>(
+        `/v1/editor/media/${mediaId}/download-url`,
+      ),
+    enabled: !!mediaId,
   });
 }
 

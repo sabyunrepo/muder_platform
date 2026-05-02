@@ -27,6 +27,7 @@ interface CharacterItem {
 }
 
 interface CharacterDetailPanelProps {
+  themeId: string;
   selectedChar: CharacterItem | null;
   characters: CharacterItem[];
   clues: ClueItem[] | undefined;
@@ -55,6 +56,7 @@ function getMysteryRoleLabel(role: MysteryRole) {
 // ---------------------------------------------------------------------------
 
 export function CharacterDetailPanel({
+  themeId,
   selectedChar,
   characters,
   clues,
@@ -140,10 +142,11 @@ export function CharacterDetailPanel({
           {
             id: 'role-sheet',
             title: '역할지',
-            subtitle: '플레이어 비공개 Markdown',
+            subtitle: 'Markdown 또는 PDF',
             defaultOpen: true,
             children: (
               <CharacterRoleSheetSection
+                themeId={themeId}
                 characterId={selectedChar.id}
                 characterName={selectedChar.name}
               />

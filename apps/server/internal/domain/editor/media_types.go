@@ -13,10 +13,11 @@ const (
 	MaxStoragePerTheme = 500 << 20 // 500MB
 	MaxStoragePerUser  = 2 << 30   // 2GB
 
-	MediaTypeBGM   = "BGM"
-	MediaTypeSFX   = "SFX"
-	MediaTypeVoice = "VOICE"
-	MediaTypeVideo = "VIDEO"
+	MediaTypeBGM      = "BGM"
+	MediaTypeSFX      = "SFX"
+	MediaTypeVoice    = "VOICE"
+	MediaTypeVideo    = "VIDEO"
+	MediaTypeDocument = "DOCUMENT"
 
 	SourceTypeFile    = "FILE"
 	SourceTypeYouTube = "YOUTUBE"
@@ -29,11 +30,21 @@ var AllowedAudioMIMEs = map[string]string{
 	"audio/wav":  ".wav",
 }
 
+// AllowedDocumentMIMEs defines allowed MIME types for document role sheets.
+var AllowedDocumentMIMEs = map[string]string{
+	"application/pdf": ".pdf",
+}
+
 type RequestMediaUploadRequest struct {
 	Name     string `json:"name" validate:"required,min=1,max=200"`
-	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
+	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT"`
 	MimeType string `json:"mime_type" validate:"required"`
 	FileSize int64  `json:"file_size" validate:"required,min=1"`
+}
+
+type MediaDownloadURLResponse struct {
+	URL       string    `json:"url"`
+	ExpiresAt time.Time `json:"expires_at"`
 }
 
 type UploadURLResponse struct {
@@ -54,7 +65,7 @@ type CreateMediaYouTubeRequest struct {
 
 type UpdateMediaRequest struct {
 	Name      string   `json:"name" validate:"required,min=1,max=200"`
-	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
+	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT"`
 	Duration  *int32   `json:"duration,omitempty"`
 	Tags      []string `json:"tags" validate:"max=10,dive,max=50"`
 	SortOrder int32    `json:"sort_order" validate:"min=0"`
