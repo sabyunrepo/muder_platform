@@ -246,7 +246,7 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
-  it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', () => {
+  it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', async () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
 
@@ -257,6 +257,8 @@ describe('CharacterAssignPanel', () => {
     fireEvent.blur(roleSheet);
     fireEvent.click(saveButton);
 
+    expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
+    await act(async () => { vi.advanceTimersByTime(1500); });
     expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
     expect(upsertContentMutateMock).toHaveBeenCalledWith(
       { body: '수정된 역할지' },

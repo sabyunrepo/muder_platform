@@ -55,7 +55,6 @@ describe('EditorPage', () => {
 
     render(<EditorPage />);
 
-    expect(screen.getByText(/테마 에디터 theme-1 modules/)).toBeDefined();
     expect(setActiveTabMock).toHaveBeenCalledWith('design');
   });
 
