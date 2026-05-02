@@ -4,9 +4,18 @@ import { validateGameDesign } from '../validation';
 describe('validateGameDesign', () => {
   const fullConfig = {
     phases: [{ id: 'p1', name: '페이즈 1' }],
-    modules: ['clue_board', 'voting'],
-    clue_placement: { clue1: 'loc1', clue2: 'loc2' },
-    character_clues: { char1: ['clue1'], char2: ['clue2'] },
+    modules: {
+      clue_board: { enabled: true },
+      voting: { enabled: true },
+      starting_clue: {
+        enabled: true,
+        config: { startingClues: { char1: ['clue1'], char2: ['clue2'] } },
+      },
+    },
+    locations: [
+      { id: 'loc1', locationClueConfig: { clueIds: ['clue1'] } },
+      { id: 'loc2', locationClueConfig: { clueIds: ['clue2'] } },
+    ],
     character_missions: {},
   };
 
@@ -32,7 +41,7 @@ describe('validateGameDesign', () => {
   });
 
   it('modules가 없으면 error 반환', () => {
-    const config = { ...fullConfig, modules: [] };
+    const config = { ...fullConfig, modules: {} };
     const result = validateGameDesign(config, 0, 0);
     const err = result.find((w) => w.category === 'modules');
     expect(err).toBeDefined();
@@ -41,7 +50,7 @@ describe('validateGameDesign', () => {
   });
 
   it('미배치 단서가 있으면 warning 반환', () => {
-    const config = { ...fullConfig, clue_placement: { clue1: 'loc1' } };
+    const config = { ...fullConfig, locations: [{ id: 'loc1', locationClueConfig: { clueIds: ['clue1'] } }] };
     // 3 clues total, 1 placed → 2 unplaced
     const result = validateGameDesign(config, 3, 2);
     const warn = result.find((w) => w.category === 'clues');
@@ -50,15 +59,18 @@ describe('validateGameDesign', () => {
     expect(warn?.message).toBe('2개 단서가 장소에 배치되지 않았습니다');
   });
 
-  it('clue_placement가 없으면 전체 미배치로 warning 반환', () => {
-    const { clue_placement: _cp, ...config } = fullConfig;
+  it('locations 배치가 없으면 전체 미배치로 warning 반환', () => {
+    const config = { ...fullConfig, locations: [] };
     const result = validateGameDesign(config, 2, 0);
     const warn = result.find((w) => w.category === 'clues');
     expect(warn?.message).toBe('2개 단서가 장소에 배치되지 않았습니다');
   });
 
   it('미배정 캐릭터가 있으면 warning 반환', () => {
-    const config = { ...fullConfig, character_clues: { char1: ['clue1'] } };
+    const config = {
+      ...fullConfig,
+      modules: { starting_clue: { enabled: true, config: { startingClues: { char1: ['clue1'] } } } },
+    };
     // 3 characters total, 1 assigned → 2 unassigned
     const result = validateGameDesign(config, 2, 3);
     const warn = result.find((w) => w.category === 'characters');
@@ -67,21 +79,21 @@ describe('validateGameDesign', () => {
     expect(warn?.message).toBe('2명의 캐릭터에 시작 단서가 배정되지 않았습니다');
   });
 
-  it('character_clues가 없으면 전체 미배정으로 warning 반환', () => {
-    const { character_clues: _cc, ...config } = fullConfig;
+  it('starting_clue 설정이 없으면 전체 미배정으로 warning 반환', () => {
+    const config = { ...fullConfig, modules: { clue_board: { enabled: true } } };
     const result = validateGameDesign(config, 0, 2);
     const warn = result.find((w) => w.category === 'characters');
     expect(warn?.message).toBe('2명의 캐릭터에 시작 단서가 배정되지 않았습니다');
   });
 
   it('clueCount=0이면 clue warning 없음', () => {
-    const config = { ...fullConfig, clue_placement: {} };
+    const config = { ...fullConfig, locations: [] };
     const result = validateGameDesign(config, 0, 2);
     expect(result.find((w) => w.category === 'clues')).toBeUndefined();
   });
 
   it('characterCount=0이면 character warning 없음', () => {
-    const config = { ...fullConfig, character_clues: {} };
+    const config = { ...fullConfig, modules: { clue_board: { enabled: true } } };
     const result = validateGameDesign(config, 2, 0);
     expect(result.find((w) => w.category === 'characters')).toBeUndefined();
   });

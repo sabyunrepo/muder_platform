@@ -34,6 +34,9 @@ const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const PublicProfilePage = lazy(() => import("@/pages/PublicProfilePage"));
 const GamePage = lazy(() => import("@/pages/GamePage"));
 const SocialPage = lazy(() => import("@/pages/SocialPage"));
+const Phase24EditorPreviewPage = import.meta.env.DEV
+  ? lazy(() => import("@/pages/Phase24EditorPreviewPage"))
+  : null;
 
 // Shop
 const ShopPage = lazy(() => import("@/pages/ShopPage"));
@@ -216,6 +219,12 @@ export function App() {
                 </Route>
               </Route>
 
+              {Phase24EditorPreviewPage && (
+                <Route
+                  path="/__dev/phase24-editor-preview"
+                  element={<Phase24EditorPreviewPage />}
+                />
+              )}
               <Route path="/offline" element={<OfflinePage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

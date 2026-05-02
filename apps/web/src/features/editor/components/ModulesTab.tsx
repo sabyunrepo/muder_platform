@@ -7,6 +7,7 @@ import type { EditorThemeResponse } from "@/features/editor/api";
 import { useUpdateConfigJson } from "@/features/editor/api";
 import { MODULE_CATEGORIES, REQUIRED_MODULE_IDS } from "@/features/editor/constants";
 import type { ModuleCategory } from "@/features/editor/constants";
+import { readEnabledModuleIds, writeModuleEnabled } from "@/features/editor/utils/configShape";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -143,15 +144,10 @@ function CategorySection({
 // ---------------------------------------------------------------------------
 
 export function ModulesTab({ themeId, theme }: ModulesTabProps) {
-  const configJson = theme.config_json ?? {};
+  const configJson = useMemo(() => theme.config_json ?? {}, [theme.config_json]);
   const serverModules = useMemo(
-    () => {
-      const mods = Array.isArray(configJson.modules) ? (configJson.modules as string[]) : [];
-      // 코어 모듈 항상 포함
-      return Array.from(new Set([...REQUIRED_MODULE_IDS, ...mods]));
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(configJson.modules)],
+    () => Array.from(new Set([...REQUIRED_MODULE_IDS, ...readEnabledModuleIds(configJson)])),
+    [configJson],
   );
 
   const [selectedModules, setSelectedModules] = useState<string[]>(serverModules);
@@ -197,13 +193,15 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   );
 
   function handleSave() {
-    updateConfig.mutate(
-      { ...configJson, modules: selectedModules },
-      {
-        onSuccess: () => toast.success("모듈 설정이 저장되었습니다"),
-        onError: () => toast.error("모듈 설정 저장에 실패했습니다"),
-      },
+    const allModuleIds = MODULE_CATEGORIES.flatMap((cat) => cat.modules.map((mod) => mod.id));
+    const nextConfig = allModuleIds.reduce(
+      (acc, moduleId) => writeModuleEnabled(acc, moduleId, selectedModules.includes(moduleId)),
+      configJson,
     );
+    updateConfig.mutate(nextConfig, {
+      onSuccess: () => toast.success("모듈 설정이 저장되었습니다"),
+      onError: () => toast.error("모듈 설정 저장에 실패했습니다"),
+    });
   }
 
   function handleReset() {

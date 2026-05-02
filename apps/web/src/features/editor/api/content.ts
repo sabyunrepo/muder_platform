@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { api } from "@/services/api";
+import { ApiHttpError, isApiHttpError } from "@/lib/api-error";
+import { api, type ApiError } from "@/services/api";
 import { queryClient } from "@/services/queryClient";
 import { editorKeys } from "./keys";
 import type {
@@ -37,13 +38,63 @@ export function useValidateTheme(themeId: string) {
   });
 }
 
-export function useUpdateConfigJson(themeId: string) {
-  return useMutation<EditorThemeResponse, Error, Record<string, unknown>>({
-    mutationFn: (config) =>
-      api.put<EditorThemeResponse>(
-        `/v1/editor/themes/${themeId}/config`,
-        config,
-      ),
+interface ConflictExtensions {
+  current_version?: number;
+}
+
+export type ConfigPayload = Record<string, unknown> & { version?: number };
+
+export interface UpdateConfigOptions {
+  onConflictAfterRetry?: (error: ApiError) => void;
+}
+
+export function readCurrentVersion(error: ApiError | undefined): number | null {
+  if (!error) return null;
+  const ext = (error as ApiError & { extensions?: ConflictExtensions }).extensions;
+  const v = ext?.current_version;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+function isConflict(error: unknown): error is ApiHttpError {
+  return isApiHttpError(error) && error.status === 409;
+}
+
+export function useUpdateConfigJson(
+  themeId: string,
+  options: UpdateConfigOptions = {},
+) {
+  const { onConflictAfterRetry } = options;
+
+  return useMutation<EditorThemeResponse, Error, ConfigPayload>({
+    mutationFn: async (config) => {
+      try {
+        return await api.put<EditorThemeResponse>(
+          `/v1/editor/themes/${themeId}/config`,
+          config,
+        );
+      } catch (err) {
+        if (!isConflict(err)) throw err;
+
+        const currentVersion = readCurrentVersion(err.apiError);
+        if (currentVersion === null) {
+          onConflictAfterRetry?.(err.apiError);
+          throw err;
+        }
+
+        const rebased: ConfigPayload = { ...config, version: currentVersion };
+        try {
+          return await api.put<EditorThemeResponse>(
+            `/v1/editor/themes/${themeId}/config`,
+            rebased,
+          );
+        } catch (retryErr) {
+          if (isConflict(retryErr)) {
+            onConflictAfterRetry?.(retryErr.apiError);
+          }
+          throw retryErr;
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
     },

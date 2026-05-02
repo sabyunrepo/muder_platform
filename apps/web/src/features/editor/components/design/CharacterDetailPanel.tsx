@@ -1,5 +1,7 @@
+import { Accordion } from '@/shared/components/ui';
 import type { Mission } from './MissionEditor';
 import { MissionEditor } from './MissionEditor';
+import { StartingClueAssigner } from './StartingClueAssigner';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -8,6 +10,9 @@ import { MissionEditor } from './MissionEditor';
 interface ClueItem {
   id: string;
   name: string;
+  location?: string;
+  round?: number;
+  tag?: string;
 }
 
 interface CharacterItem {
@@ -51,42 +56,43 @@ export function CharacterDetailPanel({
   }
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="max-w-5xl space-y-4">
       <h3 className="text-sm font-semibold text-slate-200">{selectedChar.name}</h3>
 
-      {/* 시작 단서 배정 */}
-      <div>
-        <h4 className="mb-2 text-xs font-medium text-slate-400">시작 단서</h4>
-        {clues?.length ? (
-          <div className="space-y-1">
-            {clues.map((clue) => (
-              <label
-                key={clue.id}
-                className="flex items-center gap-2 rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-800"
-              >
-                <input
-                  type="checkbox"
-                  checked={charClueIds.includes(clue.id)}
-                  onChange={(e) => onClueToggle(clue.id, e.target.checked)}
-                  className="accent-amber-500"
-                />
-                {clue.name}
-              </label>
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-600">단서가 없습니다</p>
-        )}
-      </div>
-
-      {/* 히든 미션 */}
-      <MissionEditor
-        missions={charMissions}
-        characters={characters}
-        clues={clues ?? []}
-        onAdd={onAddMission}
-        onChange={onChangeMission}
-        onDelete={onDeleteMission}
+      <Accordion
+        storageKey={`editor:character:${selectedChar.id}:sections`}
+        items={[
+          {
+            id: 'starting-clue',
+            title: '시작 단서',
+            subtitle: `${charClueIds.length}/${clues?.length ?? 0}개 배정`,
+            defaultOpen: true,
+            children: (
+              <StartingClueAssigner
+                characterName={selectedChar.name}
+                clues={clues ?? []}
+                selectedIds={charClueIds}
+                onClueToggle={onClueToggle}
+              />
+            ),
+          },
+          {
+            id: 'hidden-mission',
+            title: '히든 미션',
+            subtitle: `${charMissions.length}개`,
+            defaultOpen: true,
+            children: (
+              <MissionEditor
+                missions={charMissions}
+                characters={characters}
+                clues={clues ?? []}
+                onAdd={onAddMission}
+                onChange={onChangeMission}
+                onDelete={onDeleteMission}
+              />
+            ),
+          },
+        ]}
       />
     </div>
   );

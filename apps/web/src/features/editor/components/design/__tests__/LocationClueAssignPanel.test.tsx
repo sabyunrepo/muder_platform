@@ -155,7 +155,7 @@ describe('LocationClueAssignPanel', () => {
   it('헤더에 현재 배정 개수/전체 개수가 표시된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
-      config_json: { locations: [{ id: 'loc-1', clueIds: ['clue-1'] }] },
+      config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
@@ -166,7 +166,7 @@ describe('LocationClueAssignPanel', () => {
   it('배정된 clue는 aria-checked=true 로 표시된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
-      config_json: { locations: [{ id: 'loc-1', clueIds: ['clue-1'] }] },
+      config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
@@ -188,15 +188,15 @@ describe('LocationClueAssignPanel', () => {
     fireEvent.click(screen.getByLabelText('단검 배정 토글'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const locs = config.locations as Array<{ id: string; clueIds: string[] }>;
+    const locs = config.locations as Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
     expect(locs).toHaveLength(1);
-    expect(locs[0]).toEqual({ id: 'loc-1', clueIds: ['clue-1'] });
+    expect(locs[0]).toEqual({ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } });
   });
 
   it('이미 배정된 clue 클릭 시 clueIds에서 제거된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
-      config_json: { locations: [{ id: 'loc-1', clueIds: ['clue-1', 'clue-2'] }] },
+      config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1', 'clue-2'] } }] },
     };
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
@@ -204,8 +204,8 @@ describe('LocationClueAssignPanel', () => {
     fireEvent.click(screen.getByLabelText('단검 배정 토글'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const locs = config.locations as Array<{ id: string; clueIds: string[] }>;
-    expect(locs[0].clueIds).toEqual(['clue-2']);
+    const locs = config.locations as Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
+    expect(locs[0].locationClueConfig.clueIds).toEqual(['clue-2']);
   });
 
   it('onChange prop은 mutate 성공 시 호출된다', () => {
@@ -283,9 +283,13 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     fireEvent.click(screen.getByLabelText('단검 배정 토글'));
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
-    const locs = (cached?.config_json as { locations?: Array<{ id: string; clueIds: string[] }> })
-      ?.locations;
-    expect(locs?.[0]).toEqual({ id: 'loc-1', clueIds: ['clue-1'] });
+    const locs = (cached?.config_json as {
+      locations?: Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
+    })?.locations;
+    expect(locs?.[0]).toEqual({
+      id: 'loc-1',
+      locationClueConfig: { clueIds: ['clue-1'] },
+    });
     expect(mutateMock).toHaveBeenCalledOnce();
   });
 

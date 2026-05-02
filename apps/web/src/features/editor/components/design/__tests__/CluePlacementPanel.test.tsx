@@ -150,13 +150,16 @@ describe('CluePlacementPanel', () => {
 
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    expect((config.clue_placement as Record<string, string>)['clue-1']).toBe('loc-1');
+    expect(config).not.toHaveProperty('clue_placement');
+    expect(config.locations).toEqual([
+      { id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } },
+    ]);
   });
 
   it('배치 해제 시 mutate가 호출된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
-      config_json: { clue_placement: { 'clue-1': 'loc-1' } },
+      config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
     render(<CluePlacementPanel themeId="theme-1" theme={theme} />);
 
@@ -165,8 +168,10 @@ describe('CluePlacementPanel', () => {
 
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const placement = config.clue_placement as Record<string, string>;
-    expect(placement['clue-1']).toBeUndefined();
+    expect(config).not.toHaveProperty('clue_placement');
+    expect(config.locations).toEqual([
+      { id: 'loc-1', locationClueConfig: { clueIds: [] } },
+    ]);
   });
 
   it('단서가 없으면 안내 메시지가 표시된다', () => {

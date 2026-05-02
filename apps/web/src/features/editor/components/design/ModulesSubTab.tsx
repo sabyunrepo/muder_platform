@@ -7,6 +7,12 @@ import { queryClient } from '@/services/queryClient';
 import { OPTIONAL_MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { TemplateSchema } from '@/features/editor/templateApi';
 import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm';
+import {
+  readEnabledModuleIds,
+  readModuleConfig,
+  writeModuleConfig,
+  writeModuleEnabled,
+} from '@/features/editor/utils/configShape';
 
 const CONFLICT_SNACKBAR_MSG = '동시 편집 충돌 — 최신 상태 다시 불러오기';
 
@@ -55,18 +61,19 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     [theme.version, updateConfig],
   );
 
-  const serverModules = useMemo(() => {
-    const cfg = theme.config_json ?? {};
-    return Array.isArray(cfg.modules) ? (cfg.modules as string[]) : [];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(theme.config_json?.modules)]);
+  const serverModules = useMemo(
+    () => readEnabledModuleIds(theme.config_json),
+    [theme.config_json],
+  );
 
   const moduleConfigs = useMemo((): Record<string, Record<string, unknown>> => {
-    const cfg = theme.config_json ?? {};
-    const mc = cfg.module_configs;
-    return mc && typeof mc === 'object' && !Array.isArray(mc)
-      ? (mc as Record<string, Record<string, unknown>>)
-      : {};
+    const result: Record<string, Record<string, unknown>> = {};
+    for (const cat of OPTIONAL_MODULE_CATEGORIES) {
+      for (const mod of cat.modules) {
+        result[mod.id] = readModuleConfig(theme.config_json, mod.id);
+      }
+    }
+    return result;
   }, [theme.config_json]);
 
   const [selectedModules, setSelectedModules] = useState<string[]>(serverModules);
@@ -78,12 +85,13 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   const handleToggle = useCallback(
     (moduleId: string) => {
       setSelectedModules((prev) => {
-        const next = prev.includes(moduleId)
-          ? prev.filter((id) => id !== moduleId)
-          : [...prev, moduleId];
+        const enabled = !prev.includes(moduleId);
+        const next = enabled
+          ? [...prev, moduleId]
+          : prev.filter((id) => id !== moduleId);
 
         mutateConfig(
-          { ...(theme.config_json ?? {}), modules: next },
+          writeModuleEnabled(theme.config_json, moduleId, enabled),
           '모듈 설정이 저장되었습니다',
           '모듈 설정 저장에 실패했습니다',
         );
@@ -98,10 +106,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     (moduleId: string, path: string, value: unknown) => {
       const current = moduleConfigs[moduleId] ?? {};
       const updated = { ...current, [path]: value };
-      const nextConfig = {
-        ...(theme.config_json ?? {}),
-        module_configs: { ...moduleConfigs, [moduleId]: updated },
-      };
+      const nextConfig = writeModuleConfig(theme.config_json, moduleId, updated);
       mutateConfig(nextConfig, '설정이 저장되었습니다', '설정 저장에 실패했습니다');
     },
     [moduleConfigs, theme.config_json, mutateConfig],
