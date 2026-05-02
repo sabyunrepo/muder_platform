@@ -46,14 +46,19 @@ export default function Phase24ImageRoleSheetPreviewPage() {
             onAddImagePage={() => {
               const nextUrl = imageDraft.trim();
               if (!nextUrl) return;
-              setImageUrls((current) => [...current, nextUrl]);
+              setImageUrls((current) => {
+                setPage(current.length + 1);
+                return [...current, nextUrl];
+              });
               setImageDraft('');
-              setPage(imageUrls.length + 1);
               setSaveStatus('idle');
             }}
             onRemoveImagePage={(index) => {
-              setImageUrls((current) => current.filter((_, currentIndex) => currentIndex !== index));
-              setPage((current) => Math.max(1, Math.min(current, imageUrls.length - 1)));
+              setImageUrls((current) => {
+                const next = current.filter((_, currentIndex) => currentIndex !== index);
+                setPage((currentPage) => Math.max(1, Math.min(currentPage, next.length || 1)));
+                return next;
+              });
               setSaveStatus('idle');
             }}
             onMoveImagePage={(index, direction) => {
@@ -62,6 +67,12 @@ export default function Phase24ImageRoleSheetPreviewPage() {
                 if (nextIndex < 0 || nextIndex >= current.length) return current;
                 const next = [...current];
                 [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+                setPage((currentPage) => {
+                  const currentIndex = currentPage - 1;
+                  if (currentIndex === index) return nextIndex + 1;
+                  if (currentIndex === nextIndex) return index + 1;
+                  return currentPage;
+                });
                 return next;
               });
               setSaveStatus('idle');

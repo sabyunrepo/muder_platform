@@ -209,7 +209,8 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
   });
 
   await page.route("**/v1/editor/characters/char-1/role-sheet", async (r) => {
-    if (r.request().method() === "PUT") {
+    const method = r.request().method();
+    if (method === "PUT") {
       const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
       state.roleSheet = {
         character_id: "char-1",
@@ -223,10 +224,17 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
         body: JSON.stringify(state.roleSheet),
       });
     }
+    if (method === "GET") {
+      return r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(state.roleSheet),
+      });
+    }
     return r.fulfill({
-      status: 200,
+      status: 405,
       contentType: "application/json",
-      body: JSON.stringify(state.roleSheet),
+      body: JSON.stringify({ error: { message: "method not allowed" } }),
     });
   });
 

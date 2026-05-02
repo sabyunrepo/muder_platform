@@ -17,6 +17,7 @@ import {
 import { isApiHttpError } from '@/lib/api-error';
 
 type EditableRoleSheetFormat = 'markdown' | 'pdf' | 'images';
+type ResolvedRoleSheetFormat = EditableRoleSheetFormat | null;
 type SaveStatus = 'idle' | 'saved' | 'failed';
 
 type UpsertRoleSheetMutation = ReturnType<typeof useUpsertCharacterRoleSheet>;
@@ -62,7 +63,10 @@ export function useRoleSheetEditorState({
   }, [sync.imageUrls, characterId]);
 
   useEffect(() => {
-    setSelectedFormat(resolveEditableFormat(roleSheetQuery.data?.format));
+    const nextFormat = resolveEditableFormat(roleSheetQuery.data?.format);
+    if (nextFormat) {
+      setSelectedFormat(nextFormat);
+    }
     setPage(1);
   }, [roleSheetQuery.data?.format, characterId]);
 
@@ -124,14 +128,23 @@ export function useRoleSheetEditorState({
         toast.error('http 또는 https 이미지 URL을 입력해 주세요');
         return;
       }
-      setImageUrls((current) => [...current, nextURL]);
+      setImageUrls((current) => {
+        setPage(current.length + 1);
+        return [...current, nextURL];
+      });
       setImageDraft('');
-      setPage(imageUrls.length + 1);
       setSaveStatus('idle');
     },
     removeImagePage: (index: number) => {
-      setImageUrls((current) => current.filter((_, currentIndex) => currentIndex !== index));
-      setPage((current) => Math.max(1, Math.min(current, imageUrls.length - 1)));
+      setImageUrls((current) => {
+        const next = current.filter((_, currentIndex) => currentIndex !== index);
+        setPage((currentPage) => {
+          if (currentPage > index + 1) return currentPage - 1;
+          if (currentPage === index + 1) return Math.max(1, Math.min(currentPage, next.length));
+          return Math.max(1, Math.min(currentPage, next.length || 1));
+        });
+        return next;
+      });
       setSaveStatus('idle');
     },
     moveImagePage: (index: number, direction: -1 | 1) => {
@@ -140,6 +153,12 @@ export function useRoleSheetEditorState({
         if (nextIndex < 0 || nextIndex >= current.length) return current;
         const next = [...current];
         [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+        setPage((currentPage) => {
+          const currentIndex = currentPage - 1;
+          if (currentIndex === index) return nextIndex + 1;
+          if (currentIndex === nextIndex) return index + 1;
+          return currentPage;
+        });
         return next;
       });
       setSaveStatus('idle');
@@ -148,9 +167,10 @@ export function useRoleSheetEditorState({
   };
 }
 
-function resolveEditableFormat(format?: RoleSheetResponse['format']): EditableRoleSheetFormat {
+function resolveEditableFormat(format?: string): ResolvedRoleSheetFormat {
+  if (!format || format === 'markdown') return 'markdown';
   if (format === 'pdf' || format === 'images') return format;
-  return 'markdown';
+  return null;
 }
 
 function useRoleSheetSync({
@@ -161,7 +181,7 @@ function useRoleSheetSync({
   roleSheetError: unknown;
 }) {
   const isMissingDocument = isApiHttpError(roleSheetError) && roleSheetError.status === 404;
-  const isUnsupportedFormat = false;
+  const isUnsupportedFormat = Boolean(roleSheet?.format && !resolveEditableFormat(roleSheet.format));
   const originalBody = isMissingDocument ? '' : (roleSheet?.markdown?.body ?? '');
   const pdfMediaId = roleSheet?.format === 'pdf' ? roleSheet.pdf?.media_id : undefined;
   const imageUrls = useMemo(

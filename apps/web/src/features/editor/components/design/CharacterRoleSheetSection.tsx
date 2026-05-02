@@ -141,6 +141,21 @@ export function CharacterRoleSheetSection({
   );
 }
 
+
+function UnsupportedRoleSheetFormatNotice({ characterName }: { characterName: string }) {
+  return (
+    <section
+      className="space-y-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-4"
+      aria-label={`${characterName} 지원하지 않는 역할지 형식`}
+    >
+      <p className="text-sm font-semibold text-amber-100">지원하지 않는 역할지 형식입니다.</p>
+      <p className="text-xs leading-5 text-amber-100/70">
+        현재 에디터에서 안전하게 편집할 수 없는 형식이라 덮어쓰기를 막았습니다. Markdown, PDF, 이미지 롤지 중 하나로 변환한 뒤 다시 편집해 주세요.
+      </p>
+    </section>
+  );
+}
+
 function isSaveButtonTarget(target: EventTarget | null) {
   return target instanceof HTMLElement && target.closest('[data-role-sheet-save="true"]') !== null;
 }

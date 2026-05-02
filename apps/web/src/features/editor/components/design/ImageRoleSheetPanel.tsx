@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Image, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 
@@ -35,6 +36,11 @@ export function ImageRoleSheetPanel({
   const totalPages = imageUrls.length;
   const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
   const currentImageUrl = totalPages > 0 ? imageUrls[safePage - 1] : undefined;
+  const [imageLoadFailed, setImageLoadFailed] = useState(false);
+
+  useEffect(() => {
+    setImageLoadFailed(false);
+  }, [currentImageUrl]);
 
   return (
     <div className="min-w-0 space-y-3 rounded-lg border border-slate-800 bg-slate-950/70 p-3">
@@ -104,11 +110,21 @@ export function ImageRoleSheetPanel({
 
           {currentImageUrl && (
             <div className="overflow-hidden rounded-lg border border-slate-800 bg-slate-950">
-              <img
-                src={currentImageUrl}
-                alt={`${characterName} 이미지 롤지 ${safePage}페이지`}
-                className="max-h-[70vh] min-h-72 w-full object-contain"
-              />
+              {imageLoadFailed ? (
+                <div className="flex min-h-72 flex-col items-center justify-center gap-2 px-4 text-center" role="alert">
+                  <p className="text-sm font-semibold text-rose-200">이미지를 불러오지 못했습니다.</p>
+                  <p className="max-w-sm break-all text-xs leading-5 text-rose-200/70">
+                    URL이 올바른지, 이미지 파일이 외부에서 열리는지 확인해 주세요: {currentImageUrl}
+                  </p>
+                </div>
+              ) : (
+                <img
+                  src={currentImageUrl}
+                  alt={`${characterName} 이미지 롤지 ${safePage}페이지`}
+                  className="max-h-[70vh] min-h-72 w-full object-contain"
+                  onError={() => setImageLoadFailed(true)}
+                />
+              )}
             </div>
           )}
         </>

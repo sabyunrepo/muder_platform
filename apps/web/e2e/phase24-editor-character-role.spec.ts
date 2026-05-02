@@ -82,5 +82,11 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
       images: { image_urls: ["https://cdn.example/role-1.svg"] },
     });
     await expect(page.getByText("저장되었습니다.")).toBeVisible();
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
   });
 });
