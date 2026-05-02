@@ -296,17 +296,55 @@ describe('CharacterAssignPanel', () => {
     expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
   });
 
-  it('지원하지 않는 이미지 역할지 형식이면 안내를 표시한다', () => {
+  it('이미지 롤지는 한 페이지씩 넘겨 볼 수 있다', () => {
     useCharacterRoleSheetMock.mockReturnValue({
-      data: { format: 'images', markdown: undefined },
+      data: {
+        format: 'images',
+        images: {
+          image_urls: [
+            'https://cdn.example/role-1.webp',
+            'https://cdn.example/role-2.webp',
+          ],
+        },
+        markdown: undefined,
+      },
       isLoading: false,
     });
 
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
 
-    expect(screen.getByText('아직 지원하지 않는 역할지 형식입니다.')).toBeDefined();
+    expect(screen.getByText('이미지 롤지')).toBeDefined();
+    expect(screen.getByText('1 / 2페이지')).toBeDefined();
+    expect(screen.getByAltText('홍길동 이미지 롤지 1페이지').getAttribute('src')).toBe('https://cdn.example/role-1.webp');
+    fireEvent.click(screen.getByRole('button', { name: '다음 이미지 페이지' }));
+    expect(screen.getByText('2 / 2페이지')).toBeDefined();
+    expect(screen.getByAltText('홍길동 이미지 롤지 2페이지').getAttribute('src')).toBe('https://cdn.example/role-2.webp');
     expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
+  });
+
+  it('이미지 URL을 추가하고 이미지 롤지를 저장한다', () => {
+    upsertRoleSheetMutateMock.mockImplementation((_payload, options) => {
+      options?.onSuccess?.();
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: /이미지/ }));
+    fireEvent.change(screen.getByRole('textbox', { name: '이미지 페이지 URL' }), {
+      target: { value: 'https://cdn.example/role-1.webp' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '이미지 페이지 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '이미지 롤지 저장' }));
+
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
+      {
+        format: 'images',
+        images: { image_urls: ['https://cdn.example/role-1.webp'] },
+      },
+      expect.any(Object),
+    );
+    expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
   it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {

@@ -1452,6 +1452,18 @@ components:
           type: string
           format: uuid
 
+    RoleSheetImages:
+      type: object
+      required: [image_urls]
+      properties:
+        image_urls:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            format: uri
+
     UpsertRoleSheetRequest:
       oneOf:
         - type: object
@@ -1470,9 +1482,17 @@ components:
               enum: [pdf]
             pdf:
               $ref: "#/components/schemas/RoleSheetPDF"
+        - type: object
+          required: [format, images]
+          properties:
+            format:
+              type: string
+              enum: [images]
+            images:
+              $ref: "#/components/schemas/RoleSheetImages"
       discriminator:
         propertyName: format
-      description: Markdown stores inline text; pdf references DOCUMENT media with application/pdf MIME.
+      description: Markdown stores inline text; pdf references DOCUMENT media with application/pdf MIME; images stores ordered web image URLs.
 
     RoleSheetResponse:
       type: object
@@ -1486,11 +1506,13 @@ components:
           format: uuid
         format:
           type: string
-          enum: [markdown, pdf]
+          enum: [markdown, pdf, images]
         markdown:
           $ref: "#/components/schemas/RoleSheetMarkdown"
         pdf:
           $ref: "#/components/schemas/RoleSheetPDF"
+        images:
+          $ref: "#/components/schemas/RoleSheetImages"
         updated_at:
           type: string
           format: date-time
