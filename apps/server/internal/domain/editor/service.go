@@ -160,6 +160,10 @@ type Service interface {
 	GetContent(ctx context.Context, creatorID, themeID uuid.UUID, key string) (*ContentResponse, error)
 	UpsertContent(ctx context.Context, creatorID, themeID uuid.UUID, key string, body string) (*ContentResponse, error)
 
+	// Role sheets
+	GetCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID) (*RoleSheetResponse, error)
+	UpsertCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID, req UpsertRoleSheetRequest) (*RoleSheetResponse, error)
+
 	// Theme detail
 	GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
 

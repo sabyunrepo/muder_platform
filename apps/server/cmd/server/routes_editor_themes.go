@@ -22,6 +22,8 @@ func registerEditorThemeRoutes(r chi.Router, deps authedDeps) {
 	r.Post("/themes/{id}/characters", deps.editor.CreateCharacter)
 	r.Put("/characters/{id}", deps.editor.UpdateCharacter)
 	r.Delete("/characters/{id}", deps.editor.DeleteCharacter)
+	r.Get("/characters/{id}/role-sheet", deps.editor.GetCharacterRoleSheet)
+	r.Put("/characters/{id}/role-sheet", deps.editor.UpsertCharacterRoleSheet)
 
 	// Maps
 	r.Get("/themes/{id}/maps", deps.editor.ListMaps)

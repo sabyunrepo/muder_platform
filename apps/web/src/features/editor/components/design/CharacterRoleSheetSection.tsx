@@ -3,38 +3,32 @@ import { FileText, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/Button';
 import { Spinner } from '@/shared/components/ui/Spinner';
-import { useEditorContent, useUpsertContent } from '@/features/editor/api';
+import { useCharacterRoleSheet, useUpsertCharacterRoleSheet } from '@/features/editor/api';
 import { isApiHttpError } from '@/lib/api-error';
 
 interface CharacterRoleSheetSectionProps {
-  themeId: string;
   characterId: string;
   characterName: string;
 }
 
-export function roleSheetContentKey(characterId: string) {
-  return `role_sheet:${characterId}`;
-}
-
 export function CharacterRoleSheetSection({
-  themeId,
   characterId,
   characterName,
 }: CharacterRoleSheetSectionProps) {
-  const contentKey = roleSheetContentKey(characterId);
   const {
     data,
     error,
     isError,
     isLoading,
     refetch,
-  } = useEditorContent(themeId, contentKey);
-  const upsertContent = useUpsertContent(themeId, contentKey);
+  } = useCharacterRoleSheet(characterId);
+  const upsertContent = useUpsertCharacterRoleSheet(characterId);
   const [draft, setDraft] = useState('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'failed'>('idle');
   const manualSaveRef = useRef(false);
   const isMissingDocument = isApiHttpError(error) && error.status === 404;
-  const originalBody = isMissingDocument ? '' : (data?.body ?? '');
+  const isUnsupportedFormat = !isMissingDocument && data?.format !== undefined && data.format !== 'markdown';
+  const originalBody = isMissingDocument ? '' : (data?.markdown?.body ?? '');
 
   useEffect(() => {
     if (!isError || isMissingDocument) setDraft(originalBody);
@@ -49,7 +43,7 @@ export function CharacterRoleSheetSection({
     }
 
     upsertContent.mutate(
-      { body: nextBody },
+      { format: 'markdown', markdown: { body: nextBody } },
       {
         onSuccess: () => {
           setSaveStatus('saved');
@@ -84,6 +78,20 @@ export function CharacterRoleSheetSection({
         <Button size="sm" variant="secondary" onClick={() => void refetch()}>
           다시 시도
         </Button>
+      </section>
+    );
+  }
+
+  if (isUnsupportedFormat) {
+    return (
+      <section
+        className="space-y-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-4"
+        aria-label={`${characterName} 역할지 미지원 형식`}
+      >
+        <p className="text-sm font-semibold text-amber-100">아직 지원하지 않는 역할지 형식입니다.</p>
+        <p className="text-xs leading-5 text-amber-100/70">
+          현재 에디터는 Markdown 역할지만 편집할 수 있습니다. PDF/이미지 역할지는 다음 단계에서 전용 뷰어로 연결됩니다.
+        </p>
       </section>
     );
   }

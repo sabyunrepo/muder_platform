@@ -170,6 +170,12 @@ func (m *mockService) UpsertContent(ctx context.Context, creatorID, themeID uuid
 func (m *mockService) ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ValidationResponse, error) {
 	return nil, nil
 }
+func (m *mockService) GetCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID) (*RoleSheetResponse, error) {
+	return nil, nil
+}
+func (m *mockService) UpsertCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID, req UpsertRoleSheetRequest) (*RoleSheetResponse, error) {
+	return nil, nil
+}
 
 // withAuth injects user ID and role into context, matching middleware keys.
 func withAuth(r *http.Request) *http.Request {

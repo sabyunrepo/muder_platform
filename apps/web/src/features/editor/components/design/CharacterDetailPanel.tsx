@@ -27,7 +27,6 @@ interface CharacterItem {
 }
 
 interface CharacterDetailPanelProps {
-  themeId: string;
   selectedChar: CharacterItem | null;
   characters: CharacterItem[];
   clues: ClueItem[] | undefined;
@@ -56,7 +55,6 @@ function getMysteryRoleLabel(role: MysteryRole) {
 // ---------------------------------------------------------------------------
 
 export function CharacterDetailPanel({
-  themeId,
   selectedChar,
   characters,
   clues,
@@ -146,7 +144,6 @@ export function CharacterDetailPanel({
             defaultOpen: true,
             children: (
               <CharacterRoleSheetSection
-                themeId={themeId}
                 characterId={selectedChar.id}
                 characterName={selectedChar.name}
               />

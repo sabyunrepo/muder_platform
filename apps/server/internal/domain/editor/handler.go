@@ -586,6 +586,44 @@ func (h *Handler) UpsertContent(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
+// GetCharacterRoleSheet handles GET /editor/characters/{id}/role-sheet.
+func (h *Handler) GetCharacterRoleSheet(w http.ResponseWriter, r *http.Request) {
+	creatorID := middleware.UserIDFrom(r.Context())
+	charID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	resp, err := h.svc.GetCharacterRoleSheet(r.Context(), creatorID, charID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
+// UpsertCharacterRoleSheet handles PUT /editor/characters/{id}/role-sheet.
+func (h *Handler) UpsertCharacterRoleSheet(w http.ResponseWriter, r *http.Request) {
+	creatorID := middleware.UserIDFrom(r.Context())
+	charID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<17) // 128KB limit
+	var req UpsertRoleSheetRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	resp, err := h.svc.UpsertCharacterRoleSheet(r.Context(), creatorID, charID, req)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
 // ValidateTheme handles POST /editor/themes/{id}/validate.
 func (h *Handler) ValidateTheme(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())

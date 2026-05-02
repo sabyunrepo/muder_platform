@@ -178,6 +178,25 @@ export interface ContentResponse {
   updated_at: string;
 }
 
+export type RoleSheetFormat = "markdown" | "pdf" | "images";
+
+export interface RoleSheetMarkdown {
+  body: string;
+}
+
+export interface RoleSheetResponse {
+  character_id: string;
+  theme_id: string;
+  format: RoleSheetFormat;
+  markdown?: RoleSheetMarkdown;
+  updated_at?: string | null;
+}
+
+export interface UpsertRoleSheetRequest {
+  format: RoleSheetFormat;
+  markdown?: RoleSheetMarkdown;
+}
+
 export interface ValidationResponse {
   valid: boolean;
   errors: string[];

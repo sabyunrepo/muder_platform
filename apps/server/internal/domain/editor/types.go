@@ -149,6 +149,29 @@ type UpsertContentRequest struct {
 	Body string `json:"body" validate:"max=50000"`
 }
 
+// --- Role sheet types ---
+
+const (
+	RoleSheetFormatMarkdown = "markdown"
+)
+
+type RoleSheetMarkdown struct {
+	Body string `json:"body"`
+}
+
+type RoleSheetResponse struct {
+	CharacterID uuid.UUID          `json:"character_id"`
+	ThemeID     uuid.UUID          `json:"theme_id"`
+	Format      string             `json:"format"`
+	Markdown    *RoleSheetMarkdown `json:"markdown,omitempty"`
+	UpdatedAt   *time.Time         `json:"updated_at,omitempty"`
+}
+
+type UpsertRoleSheetRequest struct {
+	Format   string             `json:"format"`
+	Markdown *RoleSheetMarkdown `json:"markdown,omitempty"`
+}
+
 // --- Validation types ---
 
 type ValidationStats struct {

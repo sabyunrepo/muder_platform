@@ -14,7 +14,7 @@ import (
 	"github.com/mmp-platform/server/internal/db"
 )
 
-var validContentKeyRe = regexp.MustCompile(`^(story|rules|epilogue|role:[a-z0-9_-]{1,50})$`)
+var validContentKeyRe = regexp.MustCompile(`^(story|rules|epilogue|role:[a-z0-9_-]{1,50}|role_sheet:[a-zA-Z0-9_-]{1,64})$`)
 
 // --- Clues ---
 

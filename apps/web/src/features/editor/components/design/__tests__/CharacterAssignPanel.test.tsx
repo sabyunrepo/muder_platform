@@ -12,18 +12,18 @@ const {
   useEditorCharactersMock,
   useEditorCluesMock,
   useUpdateConfigJsonMock,
-  useEditorContentMock,
-  useUpsertContentMock,
-  upsertContentMutateMock,
+  useCharacterRoleSheetMock,
+  useUpsertCharacterRoleSheetMock,
+  upsertRoleSheetMutateMock,
   updateCharacterMutateMock,
 } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
   useEditorCluesMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
-  useEditorContentMock: vi.fn(),
-  useUpsertContentMock: vi.fn(),
-  upsertContentMutateMock: vi.fn(),
+  useCharacterRoleSheetMock: vi.fn(),
+  useUpsertCharacterRoleSheetMock: vi.fn(),
+  upsertRoleSheetMutateMock: vi.fn(),
   updateCharacterMutateMock: vi.fn(),
 }));
 
@@ -43,8 +43,8 @@ vi.mock('@/features/editor/api', () => ({
   useEditorCharacters: () => useEditorCharactersMock(),
   useEditorClues: () => useEditorCluesMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
-  useEditorContent: (themeId: string, key: string) => useEditorContentMock(themeId, key),
-  useUpsertContent: (themeId: string, key: string) => useUpsertContentMock(themeId, key),
+  useCharacterRoleSheet: (characterId: string) => useCharacterRoleSheetMock(characterId),
+  useUpsertCharacterRoleSheet: (characterId: string) => useUpsertCharacterRoleSheetMock(characterId),
   useUpdateCharacter: () => ({ mutate: updateCharacterMutateMock, isPending: false }),
 }));
 
@@ -131,8 +131,8 @@ describe('CharacterAssignPanel', () => {
     useEditorCharactersMock.mockReturnValue({ data: mockCharacters, isLoading: false });
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: false });
-    useEditorContentMock.mockReturnValue({ data: { body: '' }, isLoading: false });
-    useUpsertContentMock.mockReturnValue({ mutate: upsertContentMutateMock, isPending: false });
+    useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '' } }, isLoading: false });
+    useUpsertCharacterRoleSheetMock.mockReturnValue({ mutate: upsertRoleSheetMutateMock, isPending: false });
   });
 
   it('캐릭터 목록을 렌더링한다', () => {
@@ -174,7 +174,7 @@ describe('CharacterAssignPanel', () => {
   });
 
 
-  it('역할지 Markdown을 content API key로 저장한다', () => {
+  it('역할지 Markdown을 typed role sheet API로 저장한다', () => {
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
 
@@ -182,17 +182,16 @@ describe('CharacterAssignPanel', () => {
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
     fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
 
-    expect(useEditorContentMock).toHaveBeenCalledWith('theme-1', 'role_sheet:char-1');
-    expect(useUpsertContentMock).toHaveBeenCalledWith('theme-1', 'role_sheet:char-1');
-    expect(upsertContentMutateMock).toHaveBeenCalledWith(
-      { body: '## 비밀\n범인은 아직 모른다.' },
+    expect(useCharacterRoleSheetMock).toHaveBeenCalledWith('char-1');
+    expect(useUpsertCharacterRoleSheetMock).toHaveBeenCalledWith('char-1');
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
+      { format: 'markdown', markdown: { body: '## 비밀\n범인은 아직 모른다.' } },
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });
 
-
   it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {
-    useEditorContentMock.mockReturnValue({
+    useCharacterRoleSheetMock.mockReturnValue({
       data: undefined,
       error: new ApiHttpError({
         type: 'about:blank',
@@ -214,7 +213,7 @@ describe('CharacterAssignPanel', () => {
 
   it('역할지 로드 실패 시 재시도 버튼을 표시한다', () => {
     const refetch = vi.fn();
-    useEditorContentMock.mockReturnValue({
+    useCharacterRoleSheetMock.mockReturnValue({
       data: undefined,
       error: new ApiHttpError({
         type: 'about:blank',
@@ -236,13 +235,13 @@ describe('CharacterAssignPanel', () => {
   });
 
   it('역할지 본문이 바뀌지 않았으면 저장 요청을 보내지 않는다', () => {
-    useEditorContentMock.mockReturnValue({ data: { body: '기존 역할지' }, isLoading: false });
+    useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '기존 역할지' } }, isLoading: false });
 
     renderPanel();
     fireEvent.click(screen.getByText('홍길동'));
     fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
 
-    expect(upsertContentMutateMock).not.toHaveBeenCalled();
+    expect(upsertRoleSheetMutateMock).not.toHaveBeenCalled();
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
@@ -257,13 +256,27 @@ describe('CharacterAssignPanel', () => {
     fireEvent.blur(roleSheet);
     fireEvent.click(saveButton);
 
-    expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledTimes(1);
     await act(async () => { vi.advanceTimersByTime(1500); });
-    expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
-    expect(upsertContentMutateMock).toHaveBeenCalledWith(
-      { body: '수정된 역할지' },
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledTimes(1);
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
+      { format: 'markdown', markdown: { body: '수정된 역할지' } },
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
+  });
+
+
+  it('지원하지 않는 역할지 형식이면 Markdown 편집기 대신 안내를 표시한다', () => {
+    useCharacterRoleSheetMock.mockReturnValue({
+      data: { format: 'pdf', markdown: undefined },
+      isLoading: false,
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    expect(screen.getByText('아직 지원하지 않는 역할지 형식입니다.')).toBeDefined();
+    expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
   });
 
   it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {

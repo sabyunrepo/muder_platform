@@ -345,3 +345,75 @@ func TestUpdateConfigJson_Success(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+func TestGetCharacterRoleSheet_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	resp := &editor.RoleSheetResponse{
+		CharacterID: extCharID,
+		ThemeID:     extThemeID,
+		Format:      editor.RoleSheetFormatMarkdown,
+		Markdown:    &editor.RoleSheetMarkdown{Body: "## 비밀"},
+		UpdatedAt:   &extNow,
+	}
+	mock.EXPECT().
+		GetCharacterRoleSheet(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq(extCharID)).
+		Return(resp, nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/characters/"+extCharID.String()+"/role-sheet", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
+	w := httptest.NewRecorder()
+
+	h.GetCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+	var got editor.RoleSheetResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if got.Format != editor.RoleSheetFormatMarkdown || got.Markdown == nil || got.Markdown.Body != "## 비밀" {
+		t.Fatalf("unexpected role sheet response: %+v", got)
+	}
+}
+
+func TestUpsertCharacterRoleSheet_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	resp := &editor.RoleSheetResponse{
+		CharacterID: extCharID,
+		ThemeID:     extThemeID,
+		Format:      editor.RoleSheetFormatMarkdown,
+		Markdown:    &editor.RoleSheetMarkdown{Body: "## 새 역할지"},
+		UpdatedAt:   &extNow,
+	}
+	mock.EXPECT().
+		UpsertCharacterRoleSheet(
+			gomock.Any(),
+			gomock.Eq(extCreatorID),
+			gomock.Eq(extCharID),
+			gomock.Eq(editor.UpsertRoleSheetRequest{Format: editor.RoleSheetFormatMarkdown, Markdown: &editor.RoleSheetMarkdown{Body: "## 새 역할지"}}),
+		).
+		Return(resp, nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	body := `{"format":"markdown","markdown":{"body":"## 새 역할지"}}`
+	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+extCharID.String()+"/role-sheet", bytes.NewBufferString(body))
+	r.Header.Set("Content-Type", "application/json")
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
+	w := httptest.NewRecorder()
+
+	h.UpsertCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}

@@ -317,3 +317,66 @@ func TestService_GetContent_InvalidKey(t *testing.T) {
 		t.Fatal("expected validation error for invalid content key")
 	}
 }
+
+func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "탐정"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	missing, err := f.svc.GetCharacterRoleSheet(ctx, creatorID, char.ID)
+	if err != nil {
+		t.Fatalf("GetCharacterRoleSheet missing: %v", err)
+	}
+	if missing.Format != RoleSheetFormatMarkdown || missing.Markdown == nil || missing.Markdown.Body != "" {
+		t.Fatalf("unexpected missing role sheet: %+v", missing)
+	}
+
+	upserted, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format:   RoleSheetFormatMarkdown,
+		Markdown: &RoleSheetMarkdown{Body: "## 비밀\n알리바이"},
+	})
+	if err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet: %v", err)
+	}
+	if upserted.Markdown == nil || upserted.Markdown.Body != "## 비밀\n알리바이" {
+		t.Fatalf("upserted body mismatch: %+v", upserted)
+	}
+
+	got, err := f.svc.GetCharacterRoleSheet(ctx, creatorID, char.ID)
+	if err != nil {
+		t.Fatalf("GetCharacterRoleSheet after upsert: %v", err)
+	}
+	if got.Markdown == nil || got.Markdown.Body != "## 비밀\n알리바이" {
+		t.Fatalf("body mismatch after upsert: %+v", got)
+	}
+}
+
+func TestService_UpsertCharacterRoleSheet_RejectsUnsupportedFormat(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "용의자"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	_, err = f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format:   "pdf",
+		Markdown: &RoleSheetMarkdown{Body: "later"},
+	})
+	if err == nil {
+		t.Fatal("expected error for unsupported role sheet format")
+	}
+}
