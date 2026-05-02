@@ -323,6 +323,7 @@ type ThemeLocation struct {
 	CreatedAt            time.Time   `json:"created_at"`
 	FromRound            pgtype.Int4 `json:"from_round"`
 	UntilRound           pgtype.Int4 `json:"until_round"`
+	ImageUrl             pgtype.Text `json:"image_url"`
 }
 
 type ThemeMap struct {

@@ -34,6 +34,7 @@ type MapResponse struct {
 type CreateLocationRequest struct {
 	Name                 string  `json:"name" validate:"required,min=1,max=100"`
 	RestrictedCharacters *string `json:"restricted_characters"`
+	ImageURL             *string `json:"image_url" validate:"omitempty,url"`
 	SortOrder            int32   `json:"sort_order" validate:"min=0"`
 	FromRound            *int32  `json:"from_round" validate:"omitempty,min=1"`
 	UntilRound           *int32  `json:"until_round" validate:"omitempty,min=1"`
@@ -42,6 +43,7 @@ type CreateLocationRequest struct {
 type UpdateLocationRequest struct {
 	Name                 string  `json:"name" validate:"required,min=1,max=100"`
 	RestrictedCharacters *string `json:"restricted_characters"`
+	ImageURL             *string `json:"image_url" validate:"omitempty,url"`
 	SortOrder            int32   `json:"sort_order" validate:"min=0"`
 	FromRound            *int32  `json:"from_round" validate:"omitempty,min=1"`
 	UntilRound           *int32  `json:"until_round" validate:"omitempty,min=1"`
@@ -53,6 +55,7 @@ type LocationResponse struct {
 	MapID                uuid.UUID `json:"map_id"`
 	Name                 string    `json:"name"`
 	RestrictedCharacters *string   `json:"restricted_characters,omitempty"`
+	ImageURL             *string   `json:"image_url,omitempty"`
 	SortOrder            int32     `json:"sort_order"`
 	CreatedAt            time.Time `json:"created_at"`
 	FromRound            *int32    `json:"from_round,omitempty"`

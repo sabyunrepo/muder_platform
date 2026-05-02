@@ -15,7 +15,7 @@ import { getCroppedBlob, makeInitialCrop } from './cropUtils';
 export interface ImageCropUploadProps {
   themeId: string;
   targetId: string;
-  target: 'character' | 'clue';
+  target: 'character' | 'clue' | 'location';
   currentImageUrl?: string | null;
   onUploaded: (url: string) => void;
   size?: 'sm' | 'md' | 'lg';

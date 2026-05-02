@@ -24,6 +24,7 @@ const (
 
 	ImageTargetCharacter = "character"
 	ImageTargetClue      = "clue"
+	ImageTargetLocation  = "location"
 	ImageTargetCover     = "cover"
 )
 
@@ -50,8 +51,8 @@ type ImageConfirmResponse struct {
 
 // RequestImageUploadRequest is the body for POST .../images/upload-url.
 type RequestImageUploadRequest struct {
-	Target      string     `json:"target"`       // "character" | "clue" | "cover"
-	TargetID    *uuid.UUID `json:"target_id"`    // character or clue UUID; omitted for "cover"
+	Target      string     `json:"target"`       // "character" | "clue" | "location" | "cover"
+	TargetID    *uuid.UUID `json:"target_id"`    // character, clue, or location UUID; omitted for "cover"
 	ContentType string     `json:"content_type"` // image/jpeg | image/png | image/webp
 	FileSize    int64      `json:"file_size"`    // bytes
 }
@@ -68,10 +69,12 @@ type imageQueries interface {
 	UpdateThemeCharacter(ctx context.Context, arg db.UpdateThemeCharacterParams) (db.ThemeCharacter, error)
 	GetClue(ctx context.Context, id uuid.UUID) (db.ThemeClue, error)
 	UpdateClue(ctx context.Context, arg db.UpdateClueParams) (db.ThemeClue, error)
+	GetLocation(ctx context.Context, id uuid.UUID) (db.ThemeLocation, error)
+	UpdateLocation(ctx context.Context, arg db.UpdateLocationParams) (db.ThemeLocation, error)
 	UpdateThemeCoverImage(ctx context.Context, arg db.UpdateThemeCoverImageParams) error
 }
 
-// ImageService handles image upload flow for character avatars and clue images.
+// ImageService handles image upload flow for character, clue, location, and cover images.
 type ImageService struct {
 	q       imageQueries
 	storage storage.Provider
@@ -120,9 +123,9 @@ func (s *ImageService) RequestImageUpload(
 		return nil, err
 	}
 
-	if req.Target != ImageTargetCharacter && req.Target != ImageTargetClue && req.Target != ImageTargetCover {
+	if req.Target != ImageTargetCharacter && req.Target != ImageTargetClue && req.Target != ImageTargetLocation && req.Target != ImageTargetCover {
 		return nil, apperror.New(apperror.ErrImageInvalidTarget, 400,
-			fmt.Sprintf("target must be %q, %q, or %q", ImageTargetCharacter, ImageTargetClue, ImageTargetCover))
+			fmt.Sprintf("target must be %q, %q, %q, or %q", ImageTargetCharacter, ImageTargetClue, ImageTargetLocation, ImageTargetCover))
 	}
 
 	ext, ok := AllowedImageMIMEs[req.ContentType]
@@ -165,7 +168,7 @@ func (s *ImageService) RequestImageUpload(
 }
 
 // ConfirmImageUpload verifies the upload exists in storage and updates the
-// image_url on the character or clue record.
+// image_url on the target record.
 func (s *ImageService) ConfirmImageUpload(
 	ctx context.Context,
 	userID, themeID uuid.UUID,
@@ -199,6 +202,7 @@ func (s *ImageService) ConfirmImageUpload(
 	// Key format:
 	//   themes/{themeId}/characters/{charId}/avatar.{ext}
 	//   themes/{themeId}/clues/{clueId}/image.{ext}
+	//   themes/{themeId}/locations/{locationId}/image.{ext}
 	target, targetID, err := parseUploadKey(uploadKey)
 	if err != nil {
 		return nil, apperror.BadRequest("invalid upload_key format")
@@ -228,6 +232,7 @@ func (s *ImageService) ConfirmImageUpload(
 			Description: char.Description,
 			ImageUrl:    pgtype.Text{String: downloadURL, Valid: true},
 			IsCulprit:   char.IsCulprit,
+			MysteryRole: char.MysteryRole,
 			SortOrder:   char.SortOrder,
 		})
 		if err != nil {
@@ -256,10 +261,42 @@ func (s *ImageService) ConfirmImageUpload(
 			IsCommon:    clue.IsCommon,
 			Level:       clue.Level,
 			SortOrder:   clue.SortOrder,
+			IsUsable:    clue.IsUsable,
+			UseEffect:   clue.UseEffect,
+			UseTarget:   clue.UseTarget,
+			UseConsumed: clue.UseConsumed,
+			RevealRound: clue.RevealRound,
+			HideRound:   clue.HideRound,
 		})
 		if err != nil {
 			s.logger.Error().Err(err).Str("clue_id", targetID.String()).Msg("failed to update clue image_url")
 			return nil, apperror.Internal("failed to update clue image")
+		}
+
+	case ImageTargetLocation:
+		loc, err := s.q.GetLocation(ctx, targetID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, apperror.NotFound("location not found")
+			}
+			s.logger.Error().Err(err).Str("location_id", targetID.String()).Msg("failed to get location")
+			return nil, apperror.Internal("failed to get location")
+		}
+		if loc.ThemeID != themeID {
+			return nil, apperror.NotFound("location not found")
+		}
+		_, err = s.q.UpdateLocation(ctx, db.UpdateLocationParams{
+			ID:                   loc.ID,
+			Name:                 loc.Name,
+			RestrictedCharacters: loc.RestrictedCharacters,
+			SortOrder:            loc.SortOrder,
+			FromRound:            loc.FromRound,
+			UntilRound:           loc.UntilRound,
+			ImageUrl:             pgtype.Text{String: downloadURL, Valid: true},
+		})
+		if err != nil {
+			s.logger.Error().Err(err).Str("location_id", targetID.String()).Msg("failed to update location image_url")
+			return nil, apperror.Internal("failed to update location image")
 		}
 
 	case ImageTargetCover:
@@ -321,6 +358,20 @@ func (s *ImageService) buildStorageKey(
 		}
 		return fmt.Sprintf("themes/%s/clues/%s/image%s", themeID, targetID, ext), nil
 
+	case ImageTargetLocation:
+		loc, err := s.q.GetLocation(ctx, targetID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return "", apperror.NotFound("location not found")
+			}
+			s.logger.Error().Err(err).Str("location_id", targetID.String()).Msg("failed to get location")
+			return "", apperror.Internal("failed to get location")
+		}
+		if loc.ThemeID != themeID {
+			return "", apperror.NotFound("location not found")
+		}
+		return fmt.Sprintf("themes/%s/locations/%s/image%s", themeID, targetID, ext), nil
+
 	case ImageTargetCover:
 		return fmt.Sprintf("themes/%s/cover%s", themeID, ext), nil
 
@@ -334,6 +385,7 @@ func (s *ImageService) buildStorageKey(
 //
 //	themes/{themeId}/characters/{charId}/avatar.{ext}  → "character", charId
 //	themes/{themeId}/clues/{clueId}/image.{ext}        → "clue", clueId
+//	themes/{themeId}/locations/{locationId}/image.{ext} → "location", locationId
 //	themes/{themeId}/cover.{ext}                       → "cover", themeId
 func parseUploadKey(key string) (target string, id uuid.UUID, err error) {
 	parts := strings.Split(key, "/")
@@ -350,7 +402,7 @@ func parseUploadKey(key string) (target string, id uuid.UUID, err error) {
 		return ImageTargetCover, themeID, nil
 	}
 
-	// characters/clues: themes / {themeId} / characters|clues / {id} / filename
+	// characters/clues/locations: themes / {themeId} / characters|clues|locations / {id} / filename
 	if len(parts) != 5 {
 		return "", uuid.Nil, fmt.Errorf("unexpected key format")
 	}
@@ -359,6 +411,8 @@ func parseUploadKey(key string) (target string, id uuid.UUID, err error) {
 		target = ImageTargetCharacter
 	case "clues":
 		target = ImageTargetClue
+	case "locations":
+		target = ImageTargetLocation
 	default:
 		return "", uuid.Nil, fmt.Errorf("unknown target segment: %s", parts[2])
 	}

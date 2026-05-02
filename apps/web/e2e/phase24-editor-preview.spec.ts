@@ -79,4 +79,36 @@ test.describe("Phase 24 에디터 entity preview", () => {
       .analyze();
     expect(a11y.violations).toEqual([]);
   });
+
+  test("장소 entity preview를 모바일과 데스크톱에서 확인한다", async ({ page }) => {
+    await page.goto("/__dev/phase24-location-entity-preview");
+
+    await expect(page.getByRole("heading", { name: "장소 엔티티 설계 목업" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /장소\s*8곳 entity/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "서재" })).toBeVisible();
+    await expect(page.getByText("접근 제한", { exact: true })).toBeVisible();
+    await expect(page.getByText("장소 단서 추가", { exact: true })).toBeVisible();
+
+    const desktopA11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(desktopA11y.violations).toEqual([]);
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.reload();
+    await expect(page.getByText("모바일 흐름")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus")).toBeVisible();
+
+    const mobileA11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(mobileA11y.violations).toEqual([]);
+  });
 });

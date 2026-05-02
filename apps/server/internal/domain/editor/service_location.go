@@ -141,6 +141,7 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		SortOrder:            req.SortOrder,
 		FromRound:            int32PtrToPgtype(req.FromRound),
 		UntilRound:           int32PtrToPgtype(req.UntilRound),
+		ImageUrl:             ptrToText(req.ImageURL),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create location")
@@ -162,6 +163,10 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		s.logger.Error().Err(err).Msg("failed to get location")
 		return nil, apperror.Internal("failed to get location")
 	}
+	imageURL := l.ImageUrl
+	if req.ImageURL != nil {
+		imageURL = ptrToText(req.ImageURL)
+	}
 	updated, err := s.q.UpdateLocation(ctx, db.UpdateLocationParams{
 		ID:                   l.ID,
 		Name:                 req.Name,
@@ -169,6 +174,7 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		SortOrder:            req.SortOrder,
 		FromRound:            int32PtrToPgtype(req.FromRound),
 		UntilRound:           int32PtrToPgtype(req.UntilRound),
+		ImageUrl:             imageURL,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update location")
@@ -218,6 +224,7 @@ func toLocationResponse(l db.ThemeLocation) LocationResponse {
 		MapID:                l.MapID,
 		Name:                 l.Name,
 		RestrictedCharacters: textToPtr(l.RestrictedCharacters),
+		ImageURL:             textToPtr(l.ImageUrl),
 		SortOrder:            l.SortOrder,
 		CreatedAt:            l.CreatedAt,
 		FromRound:            pgtypeInt4ToPtr(l.FromRound),

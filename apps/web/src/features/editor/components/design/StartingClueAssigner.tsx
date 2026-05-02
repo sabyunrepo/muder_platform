@@ -14,6 +14,7 @@ interface StartingClueAssignerProps {
   clues: ClueItem[];
   selectedIds: string[];
   onClueToggle: (clueId: string, checked: boolean) => void;
+  selectedTitle?: string;
 }
 
 function getClueMeta(clue: ClueItem) {
@@ -29,6 +30,7 @@ export function StartingClueAssigner({
   clues,
   selectedIds,
   onClueToggle,
+  selectedTitle,
 }: StartingClueAssignerProps) {
   const [query, setQuery] = useState('');
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
@@ -36,12 +38,7 @@ export function StartingClueAssigner({
   const selectedClues = clues.filter((clue) => selectedSet.has(clue.id));
   const visibleClues = clues.filter((clue) => {
     if (!normalizedQuery) return true;
-    const haystack = [
-      clue.name,
-      clue.location,
-      clue.tag,
-      clue.round?.toString(),
-    ]
+    const haystack = [clue.name, clue.location, clue.tag, clue.round?.toString()]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
@@ -117,7 +114,7 @@ export function StartingClueAssigner({
       <section className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2.5">
         <div className="mb-2 flex items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
-            {characterName}의 시작 단서
+            {selectedTitle ?? `${characterName}의 시작 단서`}
           </p>
           <span className="text-[10px] text-slate-600">클릭 추가</span>
         </div>

@@ -40,6 +40,9 @@ const Phase24EditorPreviewPage = import.meta.env.DEV
 const Phase24ImageRoleSheetPreviewPage = import.meta.env.DEV
   ? lazy(() => import("@/pages/Phase24ImageRoleSheetPreviewPage"))
   : null;
+const Phase24LocationEntityPreviewPage = import.meta.env.DEV
+  ? lazy(() => import("@/pages/Phase24LocationEntityPreviewPage"))
+  : null;
 
 // Shop
 const ShopPage = lazy(() => import("@/pages/ShopPage"));
@@ -233,6 +236,12 @@ export function App() {
                 <Route
                   path="/__dev/phase24-image-role-sheet-preview"
                   element={<Phase24ImageRoleSheetPreviewPage />}
+                />
+              )}
+              {Phase24LocationEntityPreviewPage && (
+                <Route
+                  path="/__dev/phase24-location-entity-preview"
+                  element={<Phase24LocationEntityPreviewPage />}
                 />
               )}
               <Route path="/offline" element={<OfflinePage />} />
