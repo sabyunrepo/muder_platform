@@ -171,11 +171,30 @@ type Logger interface {
 	Printf(format string, v ...any)
 }
 
+// PlayerRuntimeInfo is the minimal, session-owned player metadata that modules
+// may need to validate player-targeted actions without owning the full session
+// roster.
+type PlayerRuntimeInfo struct {
+	PlayerID   uuid.UUID
+	TargetCode string
+	Role       string
+	IsAlive    bool
+}
+
+// PlayerInfoProvider resolves runtime player metadata for modules that must
+// validate action targets against the current session roster. Modules must
+// tolerate a nil provider for legacy sessions that do not expose roster data.
+type PlayerInfoProvider interface {
+	ResolvePlayerID(ctx context.Context, targetCode string) (uuid.UUID, bool)
+	PlayerRuntimeInfo(ctx context.Context, playerID uuid.UUID) (PlayerRuntimeInfo, bool)
+}
+
 // ModuleDeps provides session-scoped dependencies to modules.
 type ModuleDeps struct {
-	SessionID uuid.UUID
-	EventBus  *EventBus
-	Logger    Logger
+	SessionID          uuid.UUID
+	EventBus           *EventBus
+	Logger             Logger
+	PlayerInfoProvider PlayerInfoProvider
 }
 
 // ModuleFactory creates a new module instance per session (no singletons).

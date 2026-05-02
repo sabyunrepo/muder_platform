@@ -143,22 +143,22 @@ PDF viewer는 모바일에서 한 번에 전체 페이지를 렌더링하지 않
 
 #### Backend / Config
 
-- [ ] voting module config schema에 `candidatePolicy` 추가
-- [ ] config normalizer 기본값 보강
-- [ ] publish/validate 시 candidatePolicy shape 검증
-- [ ] 게임 런타임 후보 계산 지점 확인 및 정책 적용
+- [x] voting module config schema에 `candidatePolicy` 추가
+- [x] config/schema/runtime 기본값 보강
+- [x] schema 기반 candidatePolicy shape 검증 경계 추가
+- [x] 게임 런타임 후보 계산 지점 확인 및 정책 적용 — 프론트 후보 계산에서 즉시 필터링하고, 서버 voting 수신 경로도 `PlayerInfoProvider`가 제공하는 roster 정보로 자기 자신/탐정/탈락자 우회 투표를 거절하며, provider가 있는 세션에서는 UUID가 아닌 `targetCode`도 roster alias로 해석하거나 해석 실패 시 fail-close로 거절
 
 #### Frontend
 
-- [ ] voting 설정 UI에 “탐정을 투표 후보에 포함” 토글 추가
-- [ ] `VotingPanel` 후보 필터에서 정책 반영
-- [ ] 탐정 제외 시 빈 후보/적은 후보 상태 문구 추가
+- [x] voting 설정 UI에 “탐정을 투표 후보에 포함” 토글 추가 — module schema object + nested config 보존
+- [x] `VotingPanel`/`VotePanel` 후보 필터에서 정책 반영
+- [x] 탐정 제외 시 빈 후보/적은 후보 상태 문구 추가
 
 #### 완료 기준
 
-- [ ] `includeDetective=false`면 detective 캐릭터는 투표 후보에 보이지 않는다.
-- [ ] `includeDetective=true`면 detective도 후보에 포함된다.
-- [ ] 자기 자신 제외 정책은 유지된다.
+- [x] `includeDetective=false`면 detective 캐릭터는 투표 후보에 보이지 않는다.
+- [x] `includeDetective=true`면 detective도 후보에 포함된다.
+- [x] 자기 자신 제외 정책은 유지된다.
 
 ### PR-3C — Typed Role Sheet API + Markdown Compatibility
 

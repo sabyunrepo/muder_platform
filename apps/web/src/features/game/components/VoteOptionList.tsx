@@ -11,16 +11,22 @@ interface VoteOptionListProps {
   candidates: Player[];
   votedTargetId: string | null;
   onVote: (targetId: string) => void;
+  emptyMessage?: string;
 }
 
 // ---------------------------------------------------------------------------
 // 컴포넌트
 // ---------------------------------------------------------------------------
 
-export function VoteOptionList({ candidates, votedTargetId, onVote }: VoteOptionListProps) {
+export function VoteOptionList({
+  candidates,
+  votedTargetId,
+  onVote,
+  emptyMessage = "투표 가능한 플레이어가 없습니다",
+}: VoteOptionListProps) {
   if (candidates.length === 0) {
     return (
-      <p className="text-sm text-slate-400">투표 가능한 플레이어가 없습니다</p>
+      <p className="text-sm text-slate-400">{emptyMessage}</p>
     );
   }
 

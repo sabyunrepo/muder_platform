@@ -74,9 +74,10 @@ func startModularGame(
 	bus := engine.NewEventBus(adapter)
 
 	deps := engine.ModuleDeps{
-		SessionID: cfg.SessionID,
-		EventBus:  bus,
-		Logger:    adapter,
+		SessionID:          cfg.SessionID,
+		EventBus:           bus,
+		Logger:             adapter,
+		PlayerInfoProvider: newStaticPlayerInfoProvider(cfg.Players),
 	}
 
 	modules, moduleConfigs, err := engine.BuildModules(ctx, gameCfg, deps)
@@ -179,4 +180,49 @@ func startModularGame(
 		Msg("startModularGame: session started")
 
 	return s, nil
+}
+
+type staticPlayerInfoProvider struct {
+	players       map[uuid.UUID]engine.PlayerRuntimeInfo
+	targetCodeIDs map[string]uuid.UUID
+}
+
+func newStaticPlayerInfoProvider(players []PlayerState) engine.PlayerInfoProvider {
+	if len(players) == 0 {
+		return nil
+	}
+	infos := make(map[uuid.UUID]engine.PlayerRuntimeInfo, len(players))
+	targetCodeIDs := make(map[string]uuid.UUID, len(players))
+	for _, player := range players {
+		isAlive := true
+		if player.IsAlive != nil {
+			isAlive = *player.IsAlive
+		}
+		infos[player.PlayerID] = engine.PlayerRuntimeInfo{
+			PlayerID:   player.PlayerID,
+			TargetCode: player.TargetCode,
+			Role:       player.Role,
+			IsAlive:    isAlive,
+		}
+		if player.TargetCode != "" {
+			targetCodeIDs[player.TargetCode] = player.PlayerID
+		}
+	}
+	return staticPlayerInfoProvider{players: infos, targetCodeIDs: targetCodeIDs}
+}
+
+func (p staticPlayerInfoProvider) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
+	if playerID, err := uuid.Parse(targetCode); err == nil {
+		if _, ok := p.players[playerID]; ok {
+			return playerID, true
+		}
+		return uuid.Nil, false
+	}
+	playerID, ok := p.targetCodeIDs[targetCode]
+	return playerID, ok
+}
+
+func (p staticPlayerInfoProvider) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (engine.PlayerRuntimeInfo, bool) {
+	info, ok := p.players[playerID]
+	return info, ok
 }

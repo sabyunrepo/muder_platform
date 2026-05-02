@@ -53,6 +53,11 @@ func (m *VotingModule) Init(_ context.Context, deps engine.ModuleDeps, config js
 		AllowAbstain:     false,
 		MaxRounds:        3,
 		DeadCanVote:      false,
+		CandidatePolicy: VotingCandidatePolicy{
+			IncludeDetective:   false,
+			IncludeSelf:        false,
+			IncludeDeadPlayers: false,
+		},
 	}
 
 	if config != nil && len(config) > 0 {
@@ -73,6 +78,7 @@ func (m *VotingModule) Init(_ context.Context, deps engine.ModuleDeps, config js
 		m.config.RevealVoters = cfg.RevealVoters
 		m.config.AllowAbstain = cfg.AllowAbstain
 		m.config.DeadCanVote = cfg.DeadCanVote
+		m.config.CandidatePolicy = cfg.CandidatePolicy
 		if cfg.MaxRounds > 0 {
 			m.config.MaxRounds = cfg.MaxRounds
 		}

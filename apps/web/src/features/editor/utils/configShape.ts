@@ -141,6 +141,29 @@ export function writeModuleConfig(
   return { ...next, modules };
 }
 
+function writePath(base: EditorConfig, path: string, value: unknown): EditorConfig {
+  const keys = path.split('.').filter(Boolean);
+  if (keys.length === 0) return base;
+
+  const [head, ...tail] = keys;
+  if (tail.length === 0) {
+    return { ...base, [head]: value };
+  }
+
+  const child = isRecord(base[head]) ? (base[head] as EditorConfig) : {};
+  return { ...base, [head]: writePath(child, tail.join('.'), value) };
+}
+
+export function writeModuleConfigPath(
+  configJson: EditorConfig | null | undefined,
+  moduleId: string,
+  path: string,
+  value: unknown,
+): EditorConfig {
+  const current = readModuleConfig(configJson, moduleId);
+  return writeModuleConfig(configJson, moduleId, writePath(current, path, value));
+}
+
 export function readLocationsConfig(
   configJson: EditorConfig | null | undefined,
 ): LocationConfig[] {
