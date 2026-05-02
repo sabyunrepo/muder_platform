@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,21 +16,24 @@ import (
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/infra/storage"
 )
 
 // --- fakeMediaQueries: in-memory mediaQueries implementation for unit tests ---
 
 type fakeMediaQueries struct {
-	themes   map[uuid.UUID]db.Theme
-	media    map[uuid.UUID]db.ThemeMedium
-	sections map[uuid.UUID]db.ReadingSection
+	themes        map[uuid.UUID]db.Theme
+	media         map[uuid.UUID]db.ThemeMedium
+	sections      map[uuid.UUID]db.ReadingSection
+	roleSheetRefs map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow
 }
 
 func newFakeMediaQueries() *fakeMediaQueries {
 	return &fakeMediaQueries{
-		themes:   make(map[uuid.UUID]db.Theme),
-		media:    make(map[uuid.UUID]db.ThemeMedium),
-		sections: make(map[uuid.UUID]db.ReadingSection),
+		themes:        make(map[uuid.UUID]db.Theme),
+		media:         make(map[uuid.UUID]db.ThemeMedium),
+		sections:      make(map[uuid.UUID]db.ReadingSection),
+		roleSheetRefs: make(map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow),
 	}
 }
 
@@ -196,6 +201,61 @@ func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Contex
 	return out, nil
 }
 
+func (f *fakeMediaQueries) FindRoleSheetReferencesForMedia(_ context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error) {
+	mediaIDText := strings.TrimPrefix(strings.TrimSuffix(arg.Body, `"`), `"media_id"\s*:\s*"`)
+	mediaID, err := uuid.Parse(mediaIDText)
+	if err != nil {
+		return []db.FindRoleSheetReferencesForMediaRow{}, nil
+	}
+	return f.roleSheetRefs[mediaID], nil
+}
+
+type fakeStorageProvider struct {
+	objects map[string][]byte
+}
+
+func newFakeStorageProvider() *fakeStorageProvider {
+	return &fakeStorageProvider{objects: make(map[string][]byte)}
+}
+
+func (f *fakeStorageProvider) GenerateUploadURL(_ context.Context, key string, _ string, _ int64, _ time.Duration) (string, error) {
+	return "https://upload.example/" + key, nil
+}
+
+func (f *fakeStorageProvider) GenerateDownloadURL(_ context.Context, key string, _ time.Duration) (string, error) {
+	return "https://download.example/" + key, nil
+}
+
+func (f *fakeStorageProvider) HeadObject(_ context.Context, key string) (*storage.ObjectMeta, error) {
+	body, ok := f.objects[key]
+	if !ok {
+		return nil, storage.ErrObjectNotFound
+	}
+	return &storage.ObjectMeta{Key: key, Size: int64(len(body)), ContentType: "application/pdf"}, nil
+}
+
+func (f *fakeStorageProvider) GetObjectRange(_ context.Context, key string, offset int64, length int64) (io.ReadCloser, error) {
+	body, ok := f.objects[key]
+	if !ok {
+		return nil, storage.ErrObjectNotFound
+	}
+	start := min(int(offset), len(body))
+	end := min(start+int(length), len(body))
+	return io.NopCloser(strings.NewReader(string(body[start:end]))), nil
+}
+
+func (f *fakeStorageProvider) DeleteObject(_ context.Context, key string) error {
+	delete(f.objects, key)
+	return nil
+}
+
+func (f *fakeStorageProvider) DeleteObjects(ctx context.Context, keys []string) error {
+	for _, key := range keys {
+		_ = f.DeleteObject(ctx, key)
+	}
+	return nil
+}
+
 // --- helpers ---
 
 func newMediaTestService(t *testing.T) (*mediaService, *fakeMediaQueries, uuid.UUID, uuid.UUID) {
@@ -311,6 +371,27 @@ func TestMediaService_Delete_Success_NoReferences(t *testing.T) {
 	}
 }
 
+func TestMediaService_Delete_BlockedByRoleSheetReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeDocument)
+	q.roleSheetRefs[mediaID] = []db.FindRoleSheetReferencesForMediaRow{
+		{ID: uuid.New(), Key: "role_sheet:char-1"},
+	}
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["type"] != "role_sheet" || refs[0]["id"] != "role_sheet:char-1" {
+		t.Fatalf("unexpected role sheet references: %#v", refs)
+	}
+	if _, ok := q.media[mediaID]; !ok {
+		t.Fatalf("media should not have been deleted")
+	}
+}
+
 func TestMediaService_RequestUploadURL_VideoTypeRejected(t *testing.T) {
 	svc, _, creatorID, themeID := newMediaTestService(t)
 
@@ -327,6 +408,75 @@ func TestMediaService_RequestUploadURL_VideoTypeRejected(t *testing.T) {
 	_ = errors.As(err, &appErr)
 	if appErr.Status != 400 {
 		t.Fatalf("expected status 400, got %d", appErr.Status)
+	}
+}
+
+func TestMediaService_RequestUploadURL_DocumentPDFSuccess(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+
+	resp, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "role-sheet.pdf",
+		Type:     MediaTypeDocument,
+		MimeType: "application/pdf",
+		FileSize: 1024,
+	})
+	if err != nil {
+		t.Fatalf("RequestUpload DOCUMENT/pdf: %v", err)
+	}
+	created := q.media[resp.UploadID]
+	if created.Type != MediaTypeDocument || !created.StorageKey.Valid || !strings.HasSuffix(created.StorageKey.String, ".pdf") {
+		t.Fatalf("unexpected document media row: %#v", created)
+	}
+}
+
+func TestMediaService_ConfirmUpload_DocumentPDFMagicBytes(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := uuid.New()
+	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".pdf"
+	q.media[mediaID] = db.ThemeMedium{
+		ID:         mediaID,
+		ThemeID:    themeID,
+		Name:       "role-sheet.pdf",
+		Type:       MediaTypeDocument,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: storageKey, Valid: true},
+		FileSize:   pgtype.Int8{Int64: int64(len([]byte("%PDF-1.7\nbody bytes"))), Valid: true},
+		MimeType:   pgtype.Text{String: "application/pdf", Valid: true},
+		Tags:       []string{},
+	}
+	st.objects[storageKey] = []byte("%PDF-1.7\nbody bytes")
+
+	resp, err := svc.ConfirmUpload(context.Background(), creatorID, themeID, ConfirmUploadRequest{UploadID: mediaID})
+	if err != nil {
+		t.Fatalf("ConfirmUpload DOCUMENT/pdf: %v", err)
+	}
+	if resp.Type != MediaTypeDocument || resp.MimeType == nil || *resp.MimeType != "application/pdf" {
+		t.Fatalf("unexpected response: %#v", resp)
+	}
+}
+
+func TestMediaService_GetEditorMediaDownloadURL(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	svc.storage = newFakeStorageProvider()
+	mediaID := uuid.New()
+	q.media[mediaID] = db.ThemeMedium{
+		ID:         mediaID,
+		ThemeID:    themeID,
+		Type:       MediaTypeDocument,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: "themes/test/media/role.pdf", Valid: true},
+	}
+
+	resp, err := svc.GetEditorMediaDownloadURL(context.Background(), creatorID, mediaID)
+	if err != nil {
+		t.Fatalf("GetEditorMediaDownloadURL: %v", err)
+	}
+	if resp.URL != "https://download.example/themes/test/media/role.pdf" {
+		t.Fatalf("unexpected download URL: %s", resp.URL)
 	}
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   FileAudio,
+  FileText,
   Film,
   Mic,
   Music,
@@ -54,6 +55,8 @@ function MediaTypeIcon({ type }: { type: MediaType }) {
       return <Mic className="h-5 w-5 text-emerald-400" />;
     case "VIDEO":
       return <Film className="h-5 w-5 text-rose-400" />;
+    case "DOCUMENT":
+      return <FileText className="h-5 w-5 text-violet-400" />;
     default:
       return <FileAudio className="h-5 w-5 text-slate-400" />;
   }
@@ -64,6 +67,7 @@ const TYPE_LABEL: Record<MediaType, string> = {
   SFX: "효과음",
   VOICE: "음성",
   VIDEO: "비디오",
+  DOCUMENT: "문서",
 };
 
 // ---------------------------------------------------------------------------

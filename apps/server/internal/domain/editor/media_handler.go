@@ -144,3 +144,20 @@ func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// GetDownloadURL handles GET /editor/media/{id}/download-url.
+func (h *MediaHandler) GetDownloadURL(w http.ResponseWriter, r *http.Request) {
+	creatorID := middleware.UserIDFrom(r.Context())
+	mediaID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	resp, err := h.svc.GetEditorMediaDownloadURL(r.Context(), creatorID, mediaID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}

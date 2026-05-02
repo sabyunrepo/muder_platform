@@ -153,10 +153,15 @@ type UpsertContentRequest struct {
 
 const (
 	RoleSheetFormatMarkdown = "markdown"
+	RoleSheetFormatPDF      = "pdf"
 )
 
 type RoleSheetMarkdown struct {
 	Body string `json:"body"`
+}
+
+type RoleSheetPDF struct {
+	MediaID uuid.UUID `json:"media_id"`
 }
 
 type RoleSheetResponse struct {
@@ -164,12 +169,14 @@ type RoleSheetResponse struct {
 	ThemeID     uuid.UUID          `json:"theme_id"`
 	Format      string             `json:"format"`
 	Markdown    *RoleSheetMarkdown `json:"markdown,omitempty"`
+	PDF         *RoleSheetPDF      `json:"pdf,omitempty"`
 	UpdatedAt   *time.Time         `json:"updated_at,omitempty"`
 }
 
 type UpsertRoleSheetRequest struct {
 	Format   string             `json:"format"`
 	Markdown *RoleSheetMarkdown `json:"markdown,omitempty"`
+	PDF      *RoleSheetPDF      `json:"pdf,omitempty"`
 }
 
 // --- Validation types ---

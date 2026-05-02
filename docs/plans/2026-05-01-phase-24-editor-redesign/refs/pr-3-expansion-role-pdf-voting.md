@@ -190,25 +190,25 @@ PDF viewer는 모바일에서 한 번에 전체 페이지를 렌더링하지 않
 
 #### Backend
 
-- [ ] migration: `theme_media` valid type에 `DOCUMENT` 추가
-- [ ] upload request에서 `DOCUMENT` 허용
-- [ ] `application/pdf` MIME 검증
-- [ ] role sheet `pdf.mediaId`가 DOCUMENT media인지 검증
-- [ ] media delete 시 role sheet 참조 충돌 처리
+- [x] migration: `theme_media` valid type에 `DOCUMENT` 추가
+- [x] upload request에서 `DOCUMENT` 허용
+- [x] `application/pdf` MIME 검증
+- [x] role sheet `pdf.mediaId`가 DOCUMENT media인지 검증
+- [x] media delete 시 role sheet 참조 충돌 처리
 
 #### Frontend
 
-- [ ] PDF 업로드 UI 추가
-- [ ] role sheet format selector: Markdown / PDF / Images
-- [ ] PDF page viewer 추가
-- [ ] 모바일에서 1페이지 단위 읽기 UX 구현
-- [ ] PDF viewer dependency는 lazy load
+- [x] PDF 업로드 UI 추가
+- [x] role sheet format selector: Markdown / PDF / Images
+- [x] PDF page viewer 추가
+- [x] 모바일에서 1페이지 단위 읽기 UX 구현
+- [x] PDF viewer dependency는 lazy load
 
 #### 완료 기준
 
-- [ ] 제작자는 PDF 역할지를 업로드하고 캐릭터에 연결할 수 있다.
-- [ ] 플레이어/preview는 PDF를 한 페이지씩 읽을 수 있다.
-- [ ] 모바일에서 가로 스크롤 없이 조작 가능하다.
+- [x] 제작자는 PDF 역할지를 업로드하고 캐릭터에 연결할 수 있다.
+- [x] 플레이어/preview는 PDF를 한 페이지씩 읽을 수 있다.
+- [x] 모바일에서 가로 스크롤 없이 조작 가능하다.
 
 ### PR-3E — Image Role Sheet Viewer
 

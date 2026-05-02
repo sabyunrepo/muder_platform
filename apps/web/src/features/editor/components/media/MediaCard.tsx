@@ -1,4 +1,4 @@
-import { Music, Mic, Volume2, Video, Pause, Play, Youtube } from "lucide-react";
+import { FileText, Music, Mic, Volume2, Video, Pause, Play, Youtube } from "lucide-react";
 import type { MediaResponse, MediaType } from "@/features/editor/mediaApi";
 import { extractYouTubeVideoId } from "@/features/audio/YouTubePlayer";
 
@@ -31,6 +31,7 @@ const TYPE_BADGE: Record<string, string> = {
   SFX: "bg-cyan-500/20 text-cyan-300",
   VOICE: "bg-emerald-500/20 text-emerald-300",
   VIDEO: "bg-rose-500/20 text-rose-300",
+  DOCUMENT: "bg-violet-500/20 text-violet-300",
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -38,6 +39,7 @@ const TYPE_LABEL: Record<string, string> = {
   SFX: "SFX",
   VOICE: "VOICE",
   VIDEO: "VIDEO",
+  DOCUMENT: "DOCUMENT",
 };
 
 function TypeIcon({ type }: { type: MediaType | "VIDEO" }) {
@@ -50,6 +52,8 @@ function TypeIcon({ type }: { type: MediaType | "VIDEO" }) {
       return <Mic className="h-6 w-6 text-emerald-400" />;
     case "VIDEO":
       return <Video className="h-6 w-6 text-rose-400" />;
+    case "DOCUMENT":
+      return <FileText className="h-6 w-6 text-violet-400" />;
   }
 }
 
@@ -72,7 +76,7 @@ export function MediaCard({
   const duration = formatDuration(media.duration);
   const badgeClass = TYPE_BADGE[media.type] ?? "bg-slate-700 text-slate-300";
   const badgeLabel = TYPE_LABEL[media.type] ?? media.type;
-  const canPreview = !isYouTube && !!media.url;
+  const canPreview = !isYouTube && media.type !== "DOCUMENT" && !!media.url;
 
   return (
     <div

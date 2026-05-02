@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/mmp-platform/server/internal/db"
 )
 
 // --- Characters ---
@@ -388,6 +391,26 @@ func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
 	}
 }
 
+func TestRoleSheetResponseFromContent_LegacyRawMarkdownJSONLookalike(t *testing.T) {
+	charID := uuid.New()
+	themeID := uuid.New()
+	raw := `{"format":"pdf","pdf":{"media_id":"00000000-0000-0000-0000-000000000000"}}`
+	resp := roleSheetResponseFromContent(
+		db.ThemeCharacter{ID: charID, ThemeID: themeID},
+		db.ThemeContent{
+			ThemeID: themeID,
+			Key:     roleSheetContentKey(charID),
+			Body:    `{"format":"pdf","pdf":{"media_id":"00000000-0000-0000-0000-000000000000"}}`,
+		},
+	)
+	if resp.Format != RoleSheetFormatMarkdown || resp.Markdown == nil {
+		t.Fatalf("legacy invalid PDF-looking markdown must remain markdown: %+v", resp)
+	}
+	if resp.Markdown.Body != raw {
+		t.Fatalf("legacy markdown body must be preserved as-is: got %q", resp.Markdown.Body)
+	}
+}
+
 func TestService_GetCharacterRoleSheet_NotFound(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -419,14 +442,94 @@ func TestService_UpsertCharacterRoleSheet_RejectsUnsupportedFormat(t *testing.T)
 	}
 
 	_, err = f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
-		Format:   "pdf",
-		Markdown: &RoleSheetMarkdown{Body: "later"},
+		Format: "images",
 	})
 	if err == nil {
 		t.Fatal("expected error for unsupported role sheet format")
 	}
 	if !strings.Contains(err.Error(), "unsupported role sheet format") {
 		t.Fatalf("expected unsupported format error, got %v", err)
+	}
+}
+
+func TestService_UpsertAndGetCharacterRoleSheetPDF(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "PDF 캐릭터"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+	media, err := f.q.CreateMedia(ctx, db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       "role-sheet.pdf",
+		Type:       MediaTypeDocument,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: "themes/test/role-sheet.pdf", Valid: true},
+		FileSize:   pgtype.Int8{Int64: 1024, Valid: true},
+		MimeType:   pgtype.Text{String: "application/pdf", Valid: true},
+		Tags:       []string{},
+	})
+	if err != nil {
+		t.Fatalf("CreateMedia: %v", err)
+	}
+
+	upserted, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format: RoleSheetFormatPDF,
+		PDF:    &RoleSheetPDF{MediaID: media.ID},
+	})
+	if err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet pdf: %v", err)
+	}
+	if upserted.Format != RoleSheetFormatPDF || upserted.PDF == nil || upserted.PDF.MediaID != media.ID || upserted.Markdown != nil {
+		t.Fatalf("unexpected pdf role sheet response: %+v", upserted)
+	}
+
+	got, err := f.svc.GetCharacterRoleSheet(ctx, creatorID, char.ID)
+	if err != nil {
+		t.Fatalf("GetCharacterRoleSheet pdf: %v", err)
+	}
+	if got.Format != RoleSheetFormatPDF || got.PDF == nil || got.PDF.MediaID != media.ID || got.Markdown != nil {
+		t.Fatalf("unexpected stored pdf role sheet: %+v", got)
+	}
+}
+
+func TestService_UpsertCharacterRoleSheet_RejectsNonPDFMedia(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "용의자"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+	media, err := f.q.CreateMedia(ctx, db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       "voice.mp3",
+		Type:       MediaTypeVoice,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: "themes/test/voice.mp3", Valid: true},
+		FileSize:   pgtype.Int8{Int64: 1024, Valid: true},
+		MimeType:   pgtype.Text{String: "audio/mpeg", Valid: true},
+		Tags:       []string{},
+	})
+	if err != nil {
+		t.Fatalf("CreateMedia: %v", err)
+	}
+
+	_, err = f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format: RoleSheetFormatPDF,
+		PDF:    &RoleSheetPDF{MediaID: media.ID},
+	})
+	if err == nil || !strings.Contains(err.Error(), "PDF document") {
+		t.Fatalf("expected PDF document validation error, got %v", err)
 	}
 }
 

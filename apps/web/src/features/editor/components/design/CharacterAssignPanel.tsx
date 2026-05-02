@@ -162,6 +162,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <CharacterDetailPanel
+          themeId={themeId}
           selectedChar={selectedChar}
           characters={characters ?? []}
           clues={clues}

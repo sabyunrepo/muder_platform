@@ -7,7 +7,7 @@ import { queryClient } from "@/services/queryClient";
 // Types — match backend snake_case JSON exactly
 // ---------------------------------------------------------------------------
 
-export type MediaType = "BGM" | "SFX" | "VOICE" | "VIDEO";
+export type MediaType = "BGM" | "SFX" | "VOICE" | "VIDEO" | "DOCUMENT";
 export type MediaSourceType = "FILE" | "YOUTUBE";
 
 export interface MediaResponse {
@@ -35,6 +35,11 @@ export interface RequestUploadUrlRequest {
 export interface UploadUrlResponse {
   upload_id: string;
   upload_url: string;
+  expires_at: string;
+}
+
+export interface MediaDownloadUrlResponse {
+  url: string;
   expires_at: string;
 }
 
@@ -77,6 +82,7 @@ export const mediaKeys = {
   list: (themeId: string, type?: MediaType) =>
     ["media", themeId, type ?? "all"] as const,
   byTheme: (themeId: string) => ["media", themeId] as const,
+  downloadUrl: (mediaId: string) => ["media", mediaId, "download-url"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -93,6 +99,17 @@ export function useMediaList(themeId: string, type?: MediaType) {
       );
     },
     enabled: !!themeId,
+  });
+}
+
+export function useMediaDownloadUrl(mediaId?: string) {
+  return useQuery<MediaDownloadUrlResponse>({
+    queryKey: mediaKeys.downloadUrl(mediaId ?? ""),
+    queryFn: () =>
+      api.get<MediaDownloadUrlResponse>(
+        `/v1/editor/media/${mediaId}/download-url`,
+      ),
+    enabled: !!mediaId,
   });
 }
 
@@ -166,6 +183,7 @@ export function useDeleteMedia(themeId: string) {
 export interface PutFileParams {
   url: string;
   file: File;
+  contentType?: string;
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
 }
@@ -175,8 +193,9 @@ export function defaultPutFile(params: PutFileParams): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", params.url, true);
-    if (params.file.type) {
-      xhr.setRequestHeader("Content-Type", params.file.type);
+    const contentType = params.contentType ?? params.file.type;
+    if (contentType) {
+      xhr.setRequestHeader("Content-Type", contentType);
     }
 
     xhr.upload.onprogress = (e) => {
@@ -222,6 +241,8 @@ export interface UploadMediaFileParams {
   signal?: AbortSignal;
   /** Injected for testability; defaults to XHR PUT. */
   putFile?: (params: PutFileParams) => Promise<void>;
+  /** Override request MIME when browsers omit File.type (common for PDFs on some platforms). */
+  mimeType?: string;
   /** Number of attempts (1 = no retry). Default 3. */
   maxAttempts?: number;
   /** Base delay for exponential backoff in ms. Default 200ms. */
@@ -248,15 +269,19 @@ export async function uploadMediaFile(
     onProgress,
     signal,
     putFile = defaultPutFile,
+    mimeType,
     maxAttempts = 3,
     retryBaseDelayMs = 200,
   } = params;
+
+  const effectiveMimeType =
+    (mimeType ?? file.type) || "application/octet-stream";
 
   // Step 1: request presigned URL
   const uploadUrl = await requestUploadUrl({
     name,
     type,
-    mime_type: file.type || "application/octet-stream",
+    mime_type: effectiveMimeType,
     file_size: file.size,
   });
 
@@ -270,6 +295,7 @@ export async function uploadMediaFile(
       await putFile({
         url: uploadUrl.upload_url,
         file,
+        contentType: effectiveMimeType,
         onProgress,
         signal,
       });

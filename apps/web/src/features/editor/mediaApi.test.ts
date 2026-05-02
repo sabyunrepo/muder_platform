@@ -31,6 +31,7 @@ import {
   useConfirmUpload,
   useCreateYouTubeMedia,
   useDeleteMedia,
+  useMediaDownloadUrl,
   useMediaList,
   useRequestUploadUrl,
   useUpdateMedia,
@@ -129,6 +130,31 @@ describe("useMediaList", () => {
         `/v1/editor/themes/${THEME_ID}/media?type=BGM`,
       ),
     );
+  });
+});
+
+describe("useMediaDownloadUrl", () => {
+  it("fetches editor media download URL when media id is present", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce({
+      url: "https://download.example/role.pdf",
+      expires_at: "2026-05-02T00:10:00Z",
+    });
+
+    const { result } = renderHook(() => useMediaDownloadUrl("media-pdf-1"), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith("/v1/editor/media/media-pdf-1/download-url");
+    expect(result.current.data?.url).toBe("https://download.example/role.pdf");
+  });
+
+  it("does not fetch download URL without media id", () => {
+    renderHook(() => useMediaDownloadUrl(undefined), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(api.get).not.toHaveBeenCalled();
   });
 });
 
@@ -301,10 +327,46 @@ describe("uploadMediaFile", () => {
       expect.objectContaining({
         url: mockUploadUrl.upload_url,
         file,
+        contentType: "audio/mpeg",
       }),
     );
     expect(confirmUpload).toHaveBeenCalledWith({ upload_id: "upload-1" });
     expect(result).toEqual(mockMedia);
+  });
+
+  it("uses the same MIME override for presign and PUT when file.type is empty", async () => {
+    const pdf = new File(["%PDF-1.4"], "role.pdf", { type: "" });
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue({
+      ...mockMedia,
+      type: "DOCUMENT",
+      mime_type: "application/pdf",
+    });
+    const putFile = vi.fn().mockResolvedValue(undefined);
+
+    await uploadMediaFile({
+      themeId: THEME_ID,
+      file: pdf,
+      type: "DOCUMENT",
+      name: "role",
+      mimeType: "application/pdf",
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+    });
+
+    expect(requestUploadUrl).toHaveBeenCalledWith({
+      name: "role",
+      type: "DOCUMENT",
+      mime_type: "application/pdf",
+      file_size: pdf.size,
+    });
+    expect(putFile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        file: pdf,
+        contentType: "application/pdf",
+      }),
+    );
   });
 
   it("retries the PUT step up to maxAttempts on failure (3x)", async () => {
