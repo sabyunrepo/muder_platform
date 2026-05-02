@@ -10,6 +10,7 @@ import {
   writeCluePlacement,
   writeLocationClueIds,
   writeModuleConfig,
+  writeModuleConfigPath,
   writeModuleEnabled,
 } from '../configShape';
 
@@ -39,6 +40,28 @@ describe('configShape', () => {
     });
 
     expect(next).toEqual({ modules: { timer: { enabled: true, config: { seconds: 30 } } } });
+  });
+
+  it('updates dotted module config paths as nested objects', () => {
+    const next = writeModuleConfigPath(
+      {
+        modules: {
+          voting: {
+            enabled: true,
+            config: { candidatePolicy: { includeSelf: false }, maxRounds: 3 },
+          },
+        },
+      },
+      'voting',
+      'candidatePolicy.includeDetective',
+      true,
+    );
+
+    expect(readModuleConfig(next, 'voting')).toEqual({
+      candidatePolicy: { includeSelf: false, includeDetective: true },
+      maxRounds: 3,
+    });
+    expect(next).not.toHaveProperty('module_configs');
   });
 
   it('normalizes location clueIds into locationClueConfig', () => {

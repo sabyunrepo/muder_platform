@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/engine"
 	"github.com/rs/zerolog"
 )
 
@@ -252,6 +253,7 @@ func TestStartModularGame_PhaseAdvance(t *testing.T) {
 			entered = true
 		}
 	}
+
 	if !exiting {
 		t.Error("expected phase:exiting broadcast")
 	}
@@ -260,4 +262,69 @@ func TestStartModularGame_PhaseAdvance(t *testing.T) {
 	}
 
 	m.Stop(sessionID)
+}
+
+func TestStaticPlayerInfoProvider_ResolvesTargetCodeAndRuntimeInfo(t *testing.T) {
+	alive := true
+	dead := false
+	withTargetID := uuid.New()
+	withoutTargetID := uuid.New()
+	deadID := uuid.New()
+
+	provider := newStaticPlayerInfoProvider([]PlayerState{
+		{
+			PlayerID:   withTargetID,
+			TargetCode: "char_target",
+			Role:       "detective",
+			IsAlive:    &alive,
+		},
+		{
+			PlayerID:  withoutTargetID,
+			Role:      "civilian",
+			Connected: true,
+		},
+		{
+			PlayerID: deadID,
+			Role:     "civilian",
+			IsAlive:  &dead,
+		},
+	})
+	if provider == nil {
+		t.Fatal("expected provider")
+	}
+
+	playerID, ok := provider.ResolvePlayerID(context.Background(), "char_target")
+	if !ok || playerID != withTargetID {
+		t.Fatalf("ResolvePlayerID(targetCode) = (%s, %v), want (%s, true)", playerID, ok, withTargetID)
+	}
+	playerID, ok = provider.ResolvePlayerID(context.Background(), withoutTargetID.String())
+	if !ok || playerID != withoutTargetID {
+		t.Fatalf("ResolvePlayerID(uuid) = (%s, %v), want (%s, true)", playerID, ok, withoutTargetID)
+	}
+	if _, ok := provider.ResolvePlayerID(context.Background(), "missing_target"); ok {
+		t.Fatal("ResolvePlayerID(missing) ok = true, want false")
+	}
+
+	info, ok := provider.PlayerRuntimeInfo(context.Background(), withTargetID)
+	if !ok {
+		t.Fatal("PlayerRuntimeInfo(withTargetID) ok = false, want true")
+	}
+	if info != (engine.PlayerRuntimeInfo{
+		PlayerID:   withTargetID,
+		TargetCode: "char_target",
+		Role:       "detective",
+		IsAlive:    true,
+	}) {
+		t.Fatalf("PlayerRuntimeInfo(withTargetID) = %+v", info)
+	}
+	info, ok = provider.PlayerRuntimeInfo(context.Background(), deadID)
+	if !ok || info.IsAlive {
+		t.Fatalf("PlayerRuntimeInfo(deadID) = (%+v, %v), want IsAlive=false", info, ok)
+	}
+}
+
+func TestStaticPlayerInfoProvider_EmptyPlayersReturnsNil(t *testing.T) {
+	if got := newStaticPlayerInfoProvider(nil); got != nil {
+		t.Fatalf("newStaticPlayerInfoProvider(nil) = %T, want nil", got)
+	}
 }

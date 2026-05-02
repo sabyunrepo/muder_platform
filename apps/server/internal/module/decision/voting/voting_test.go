@@ -3,10 +3,12 @@ package voting
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 )
 
@@ -27,14 +29,43 @@ func newTestDeps() engine.ModuleDeps {
 	}
 }
 
+type fakePlayerInfoProvider struct {
+	players map[uuid.UUID]engine.PlayerRuntimeInfo
+}
+
+func (f fakePlayerInfoProvider) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (engine.PlayerRuntimeInfo, bool) {
+	info, ok := f.players[playerID]
+	return info, ok
+}
+
+func (f fakePlayerInfoProvider) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
+	if playerID, err := uuid.Parse(targetCode); err == nil {
+		if _, ok := f.players[playerID]; ok {
+			return playerID, true
+		}
+		return uuid.Nil, false
+	}
+	for playerID, info := range f.players {
+		if info.TargetCode == targetCode {
+			return playerID, true
+		}
+	}
+	return uuid.Nil, false
+}
+
 func initVotingModule(t *testing.T, configJSON string) *VotingModule {
+	t.Helper()
+	return initVotingModuleWithDeps(t, configJSON, newTestDeps())
+}
+
+func initVotingModuleWithDeps(t *testing.T, configJSON string, deps engine.ModuleDeps) *VotingModule {
 	t.Helper()
 	m := NewVotingModule()
 	var cfg json.RawMessage
 	if configJSON != "" {
 		cfg = json.RawMessage(configJSON)
 	}
-	if err := m.Init(context.Background(), newTestDeps(), cfg); err != nil {
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
 	return m
@@ -61,10 +92,19 @@ func TestVotingModule_InitDefaults(t *testing.T) {
 	if m.config.MaxRounds != 3 {
 		t.Errorf("default MaxRounds = %d, want 3", m.config.MaxRounds)
 	}
+	if m.config.CandidatePolicy.IncludeDetective {
+		t.Error("default CandidatePolicy.IncludeDetective = true, want false")
+	}
+	if m.config.CandidatePolicy.IncludeSelf {
+		t.Error("default CandidatePolicy.IncludeSelf = true, want false")
+	}
+	if m.config.CandidatePolicy.IncludeDeadPlayers {
+		t.Error("default CandidatePolicy.IncludeDeadPlayers = true, want false")
+	}
 }
 
 func TestVotingModule_InitCustomConfig(t *testing.T) {
-	m := initVotingModule(t, `{"mode":"secret","minParticipation":50,"tieBreaker":"random","maxRounds":5}`)
+	m := initVotingModule(t, `{"mode":"secret","minParticipation":50,"tieBreaker":"random","maxRounds":5,"candidatePolicy":{"includeDetective":true,"includeSelf":true,"includeDeadPlayers":true}}`)
 	if m.config.Mode != "secret" {
 		t.Errorf("Mode = %q, want %q", m.config.Mode, "secret")
 	}
@@ -76,6 +116,50 @@ func TestVotingModule_InitCustomConfig(t *testing.T) {
 	}
 	if m.config.MaxRounds != 5 {
 		t.Errorf("MaxRounds = %d, want 5", m.config.MaxRounds)
+	}
+	if !m.config.CandidatePolicy.IncludeDetective {
+		t.Error("CandidatePolicy.IncludeDetective = false, want true")
+	}
+	if !m.config.CandidatePolicy.IncludeSelf {
+		t.Error("CandidatePolicy.IncludeSelf = false, want true")
+	}
+	if !m.config.CandidatePolicy.IncludeDeadPlayers {
+		t.Error("CandidatePolicy.IncludeDeadPlayers = false, want true")
+	}
+}
+
+func TestVotingModule_SchemaIncludesCandidatePolicy(t *testing.T) {
+	m := NewVotingModule()
+	var schema struct {
+		Properties map[string]struct {
+			Type                 string                    `json:"type"`
+			Default              any                       `json:"default"`
+			AdditionalProperties bool                      `json:"additionalProperties"`
+			Properties           map[string]map[string]any `json:"properties"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(m.Schema(), &schema); err != nil {
+		t.Fatalf("Schema unmarshal: %v", err)
+	}
+
+	policy, ok := schema.Properties["candidatePolicy"]
+	if !ok {
+		t.Fatal("candidatePolicy schema property missing")
+	}
+	if policy.Type != "object" {
+		t.Fatalf("candidatePolicy type = %q, want object", policy.Type)
+	}
+	for _, key := range []string{"includeDetective", "includeSelf", "includeDeadPlayers"} {
+		prop, ok := policy.Properties[key]
+		if !ok {
+			t.Fatalf("candidatePolicy.%s schema property missing", key)
+		}
+		if prop["type"] != "boolean" {
+			t.Fatalf("candidatePolicy.%s type = %v, want boolean", key, prop["type"])
+		}
+		if prop["default"] != false {
+			t.Fatalf("candidatePolicy.%s default = %v, want false", key, prop["default"])
+		}
 	}
 }
 
@@ -191,6 +275,184 @@ func TestVotingModule_DuplicateVote(t *testing.T) {
 	err := m.HandleMessage(context.Background(), pid, "vote:cast", json.RawMessage(`{"targetCode":"char_B"}`))
 	if err == nil {
 		t.Error("expected error on duplicate vote:cast")
+	}
+}
+
+func TestVotingModule_CandidatePolicyRejectsSelfVote(t *testing.T) {
+	m := initVotingModule(t, "")
+	pid := uuid.New()
+	m.mu.Lock()
+	m.isOpen = true
+	m.mu.Unlock()
+
+	err := m.HandleMessage(
+		context.Background(),
+		pid,
+		"vote:cast",
+		json.RawMessage(`{"targetCode":"`+pid.String()+`"}`),
+	)
+
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T: %v", err, err)
+	}
+	if appErr.Code != apperror.ErrForbidden {
+		t.Fatalf("error code = %q, want %q", appErr.Code, apperror.ErrForbidden)
+	}
+}
+
+func TestVotingModule_CandidatePolicyRejectsUnresolvedTargetWhenProviderExists(t *testing.T) {
+	voterID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = fakePlayerInfoProvider{players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+		voterID: {PlayerID: voterID, TargetCode: "char_voter", Role: "civilian", IsAlive: true},
+	}}
+	m := initVotingModuleWithDeps(t, "", deps)
+	m.mu.Lock()
+	m.isOpen = true
+	m.mu.Unlock()
+
+	err := m.HandleMessage(
+		context.Background(),
+		voterID,
+		"vote:cast",
+		json.RawMessage(`{"targetCode":"char_unknown"}`),
+	)
+	assertForbiddenAppError(t, err)
+}
+
+func TestVotingModule_CandidatePolicyRejectsDetectiveAndDeadTargets(t *testing.T) {
+	voterID := uuid.New()
+	detectiveID := uuid.New()
+	deadID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = fakePlayerInfoProvider{players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+		detectiveID: {PlayerID: detectiveID, Role: playerRoleDetective, IsAlive: true},
+		deadID:      {PlayerID: deadID, Role: "civilian", IsAlive: false},
+	}}
+	m := initVotingModuleWithDeps(t, "", deps)
+	m.mu.Lock()
+	m.isOpen = true
+	m.mu.Unlock()
+
+	for _, targetID := range []uuid.UUID{detectiveID, deadID} {
+		err := m.HandleMessage(
+			context.Background(),
+			voterID,
+			"vote:cast",
+			json.RawMessage(`{"targetCode":"`+targetID.String()+`"}`),
+		)
+		assertForbiddenAppError(t, err)
+	}
+}
+
+func TestVotingModule_CandidatePolicyRejectsVoteChangeTargets(t *testing.T) {
+	voterID := uuid.New()
+	initialID := uuid.New()
+	selfAliasID := voterID
+	detectiveID := uuid.New()
+	deadID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = fakePlayerInfoProvider{players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+		voterID:     {PlayerID: voterID, TargetCode: "char_voter", Role: "civilian", IsAlive: true},
+		initialID:   {PlayerID: initialID, TargetCode: "char_initial", Role: "civilian", IsAlive: true},
+		selfAliasID: {PlayerID: selfAliasID, TargetCode: "char_self", Role: "civilian", IsAlive: true},
+		detectiveID: {PlayerID: detectiveID, TargetCode: "char_detective", Role: playerRoleDetective, IsAlive: true},
+		deadID:      {PlayerID: deadID, TargetCode: "char_dead", Role: "civilian", IsAlive: false},
+	}}
+
+	for _, targetCode := range []string{"char_self", "char_detective", "char_dead"} {
+		m := initVotingModuleWithDeps(t, "", deps)
+		m.mu.Lock()
+		m.isOpen = true
+		m.mu.Unlock()
+
+		if err := m.HandleMessage(
+			context.Background(),
+			voterID,
+			"vote:cast",
+			json.RawMessage(`{"targetCode":"char_initial"}`),
+		); err != nil {
+			t.Fatalf("initial vote for %s: %v", targetCode, err)
+		}
+		err := m.HandleMessage(
+			context.Background(),
+			voterID,
+			"vote:change",
+			json.RawMessage(`{"targetCode":"`+targetCode+`"}`),
+		)
+		assertForbiddenAppError(t, err)
+	}
+}
+
+func TestVotingModule_CandidatePolicyAllowsConfiguredTargets(t *testing.T) {
+	voterID := uuid.New()
+	targetID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = fakePlayerInfoProvider{players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+		targetID: {PlayerID: targetID, Role: playerRoleDetective, IsAlive: false},
+	}}
+	m := initVotingModuleWithDeps(
+		t,
+		`{"candidatePolicy":{"includeDetective":true,"includeSelf":true,"includeDeadPlayers":true}}`,
+		deps,
+	)
+	m.mu.Lock()
+	m.isOpen = true
+	m.mu.Unlock()
+
+	if err := m.HandleMessage(
+		context.Background(),
+		voterID,
+		"vote:cast",
+		json.RawMessage(`{"targetCode":"`+targetID.String()+`"}`),
+	); err != nil {
+		t.Fatalf("HandleMessage() error = %v", err)
+	}
+	if err := m.HandleMessage(
+		context.Background(),
+		voterID,
+		"vote:change",
+		json.RawMessage(`{"targetCode":"`+targetID.String()+`"}`),
+	); err != nil {
+		t.Fatalf("HandleMessage(vote:change) error = %v", err)
+	}
+}
+
+func TestVotingModule_CandidatePolicyNormalizesTargetCode(t *testing.T) {
+	voterID := uuid.New()
+	targetID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = fakePlayerInfoProvider{players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+		voterID:  {PlayerID: voterID, TargetCode: "char_voter", Role: "civilian", IsAlive: true},
+		targetID: {PlayerID: targetID, TargetCode: "char_target", Role: "civilian", IsAlive: true},
+	}}
+	m := initVotingModuleWithDeps(t, "", deps)
+	m.mu.Lock()
+	m.isOpen = true
+	m.mu.Unlock()
+
+	if err := m.HandleMessage(
+		context.Background(),
+		voterID,
+		"vote:cast",
+		json.RawMessage(`{"targetCode":"`+targetID.String()+`"}`),
+	); err != nil {
+		t.Fatalf("HandleMessage() error = %v", err)
+	}
+	if got := m.votes[voterID]; got != "char_target" {
+		t.Fatalf("stored vote target = %q, want %q", got, "char_target")
+	}
+}
+
+func assertForbiddenAppError(t *testing.T, err error) {
+	t.Helper()
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected AppError, got %T: %v", err, err)
+	}
+	if appErr.Code != apperror.ErrForbidden {
+		t.Fatalf("error code = %q, want %q", appErr.Code, apperror.ErrForbidden)
 	}
 }
 

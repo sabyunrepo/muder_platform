@@ -69,8 +69,11 @@ const (
 
 // PlayerState holds per-player runtime state visible to the session actor.
 type PlayerState struct {
-	PlayerID  uuid.UUID
-	Connected bool
+	PlayerID   uuid.UUID
+	TargetCode string
+	Connected  bool
+	Role       string
+	IsAlive    *bool
 }
 
 // EngineCommandPayload is the structured payload for KindEngineCommand messages.

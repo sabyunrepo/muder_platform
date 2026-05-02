@@ -1,15 +1,19 @@
 import { useState } from "react";
 import { Vote, Lock, Users } from "lucide-react";
 import { WsEventType } from "@mmp/shared";
-import type { Player } from "@mmp/shared";
 
 import { Badge, Card } from "@/shared/components/ui";
 import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
-import { selectAlivePlayers, selectMyPlayerId } from "@/stores/gameSelectors";
+import { selectMyPlayerId, selectPlayers } from "@/stores/gameSelectors";
 import { useModuleStore } from "@/stores/moduleStoreFactory";
 import { VoteOptionList } from "./VoteOptionList";
 import { VoteResultChart } from "./VoteResultChart";
 import type { VoteResult } from "./VoteResultChart";
+import {
+  countExcludedDetectives,
+  filterVotingCandidates,
+  readVotingCandidatePolicy,
+} from "../utils/votingCandidates";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,7 +29,7 @@ interface VotePanelProps {
 // ---------------------------------------------------------------------------
 
 export function VotePanel({ send, moduleId }: VotePanelProps) {
-  const alivePlayers = useGameStore(selectAlivePlayers);
+  const players = useGameStore(selectPlayers);
   const myPlayerId = useGameStore(selectMyPlayerId);
   const moduleData = useModuleStore(moduleId, (s) => s.data);
 
@@ -36,7 +40,12 @@ export function VotePanel({ send, moduleId }: VotePanelProps) {
   const isSecret = results === null;
   const hasResults = Array.isArray(results) && results.length > 0;
 
-  const candidates = alivePlayers.filter((p: Player) => p.id !== myPlayerId);
+  const candidatePolicy = readVotingCandidatePolicy(moduleData);
+  const candidates = filterVotingCandidates(players, myPlayerId, candidatePolicy);
+  const excludedDetectiveCount = countExcludedDetectives(players, myPlayerId, candidatePolicy);
+  const emptyMessage = excludedDetectiveCount > 0
+    ? "탐정 제외 정책 때문에 투표 가능한 플레이어가 없습니다"
+    : "투표 가능한 플레이어가 없습니다";
 
   const handleVote = (targetId: string) => {
     if (votedTargetId) return;
@@ -70,11 +79,19 @@ export function VotePanel({ send, moduleId }: VotePanelProps) {
 
       {/* 투표 대상 목록 (결과 미수신 & 비밀 투표 아닐 때) */}
       {!hasResults && !isSecret && (
-        <VoteOptionList
-          candidates={candidates}
-          votedTargetId={votedTargetId}
-          onVote={handleVote}
-        />
+        <div className="space-y-2">
+          {excludedDetectiveCount > 0 && (
+            <p className="rounded-lg border border-slate-700 bg-slate-800/50 px-3 py-2 text-xs text-slate-400">
+              탐정 {excludedDetectiveCount}명은 이번 투표 후보에서 제외됩니다.
+            </p>
+          )}
+          <VoteOptionList
+            candidates={candidates}
+            votedTargetId={votedTargetId}
+            onVote={handleVote}
+            emptyMessage={emptyMessage}
+          />
+        </div>
       )}
     </Card>
   );

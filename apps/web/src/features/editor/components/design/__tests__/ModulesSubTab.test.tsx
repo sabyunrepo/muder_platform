@@ -40,8 +40,22 @@ vi.mock('@/services/queryClient', () => ({
 vi.mock('@/features/editor/templateApi', () => ({}));
 
 vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
-  SchemaDrivenForm: ({ schema }: { schema: { title?: string } }) => (
-    <div data-testid="schema-driven-form">{schema?.title ?? 'form'}</div>
+  SchemaDrivenForm: ({
+    schema,
+    onChange,
+  }: {
+    schema: { title?: string };
+    onChange: (path: string, value: unknown) => void;
+  }) => (
+    <div data-testid="schema-driven-form">
+      <span>{schema?.title ?? 'form'}</span>
+      <button
+        type="button"
+        onClick={() => onChange('candidatePolicy.includeDetective', true)}
+      >
+        탐정 포함 저장
+      </button>
+    </div>
   ),
 }));
 
@@ -196,6 +210,42 @@ describe('ModulesSubTab', () => {
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
     expect(screen.queryByTestId('schema-driven-form')).toBeNull();
+  });
+
+  it('스키마 폼의 dotted path 변경을 nested module config로 저장한다', () => {
+    const themeWithVoting: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          voting: {
+            enabled: true,
+            config: { candidatePolicy: { includeSelf: false }, maxRounds: 3 },
+          },
+        },
+      },
+    };
+    useModuleSchemasMock.mockReturnValue({
+      data: {
+        schemas: {
+          voting: { type: 'object', title: '투표 설정', properties: {} },
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithVoting} />);
+    fireEvent.click(screen.getByRole('button', { name: '탐정 포함 저장' }));
+
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(config.modules).toMatchObject({
+      voting: {
+        enabled: true,
+        config: {
+          maxRounds: 3,
+          candidatePolicy: { includeSelf: false, includeDetective: true },
+        },
+      },
+    });
   });
 
   it('mutate payload에 theme.version이 포함된다', () => {

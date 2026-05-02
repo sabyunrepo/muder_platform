@@ -10,7 +10,7 @@ import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm'
 import {
   readEnabledModuleIds,
   readModuleConfig,
-  writeModuleConfig,
+  writeModuleConfigPath,
   writeModuleEnabled,
 } from '@/features/editor/utils/configShape';
 
@@ -104,12 +104,10 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
 
   const handleConfigChange = useCallback(
     (moduleId: string, path: string, value: unknown) => {
-      const current = moduleConfigs[moduleId] ?? {};
-      const updated = { ...current, [path]: value };
-      const nextConfig = writeModuleConfig(theme.config_json, moduleId, updated);
+      const nextConfig = writeModuleConfigPath(theme.config_json, moduleId, path, value);
       mutateConfig(nextConfig, '설정이 저장되었습니다', '설정 저장에 실패했습니다');
     },
-    [moduleConfigs, theme.config_json, mutateConfig],
+    [theme.config_json, mutateConfig],
   );
 
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
