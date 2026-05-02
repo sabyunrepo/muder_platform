@@ -24,7 +24,7 @@ function stringifyRestrictedCharacters(ids: Set<string>) {
 }
 
 export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessPolicyPanelProps) {
-  const { data: characters, isLoading } = useEditorCharacters(themeId);
+  const { data: characters, isLoading, isError, error, refetch } = useEditorCharacters(themeId);
   const updateLocation = useUpdateLocation(themeId);
   const restrictedSet = parseRestrictedCharacters(location.restricted_characters);
 
@@ -63,6 +63,17 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
       {isLoading ? (
         <div className="flex justify-center py-4">
           <Spinner size="sm" />
+        </div>
+      ) : isError ? (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-4 text-center text-xs text-red-100">
+          <p>{error instanceof Error ? error.message : '캐릭터 목록을 불러오지 못했습니다.'}</p>
+          <button
+            type="button"
+            onClick={() => refetch?.()}
+            className="mt-2 rounded-md border border-red-300/30 px-2 py-1 text-red-50 hover:bg-red-500/20"
+          >
+            다시 불러오기
+          </button>
         </div>
       ) : !characters || characters.length === 0 ? (
         <p className="rounded-md border border-dashed border-slate-800 px-3 py-4 text-center text-xs text-slate-600">

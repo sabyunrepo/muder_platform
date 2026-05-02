@@ -170,7 +170,9 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleDeleteMap(map.id);
+                    if (window.confirm(`${map.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`)) {
+                      handleDeleteMap(map.id);
+                    }
                   }}
                   aria-label={`${map.name} 삭제`}
                   className="p-0.5 text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"

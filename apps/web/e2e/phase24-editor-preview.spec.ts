@@ -101,5 +101,14 @@ test.describe("Phase 24 에디터 entity preview", () => {
     await expect
       .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
       .toBe(true);
+
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus")).toBeVisible();
+
+    const mobileA11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(mobileA11y.violations).toEqual([]);
   });
 });

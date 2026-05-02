@@ -25,12 +25,16 @@ interface LocationDetailPanelProps {
   onDeleteLocation: (locationId: string) => void;
 }
 
-function parseRound(raw: string): number | null {
+function parseRound(raw: string): number | null | undefined {
   const trimmed = raw.trim();
   if (trimmed === '') return null;
   const n = Number(trimmed);
-  if (!Number.isFinite(n) || n < 1) return null;
+  if (!Number.isFinite(n) || n < 1) return undefined;
   return Math.floor(n);
+}
+
+function roundToInput(value: number | null | undefined) {
+  return value == null ? '' : String(value);
 }
 
 function getPathLabel(map: MapResponse, location: LocationResponse) {
@@ -83,7 +87,7 @@ export function LocationDetailPanel({
         {mapLocations.length === 0 ? (
           <LocationEmptyState message="장소 없음" compact />
         ) : (
-          <ul className="space-y-1" role="listbox" aria-label={`${selectedMap.name} 장소 목록`}>
+          <ul className="space-y-1" aria-label={`${selectedMap.name} 장소 목록`}>
             {mapLocations.map((loc) => (
               <LocationListItem
                 key={loc.id}
@@ -125,8 +129,7 @@ function LocationListItem({
     <li className="group flex items-center gap-1">
       <button
         type="button"
-        role="option"
-        aria-selected={selected}
+        aria-pressed={selected}
         onClick={() => onSelect(location.id)}
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-md border px-3 py-2 text-left transition ${selected ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
       >
@@ -135,7 +138,9 @@ function LocationListItem({
       </button>
       <button
         type="button"
-        onClick={() => onDelete(location.id)}
+        onClick={() => {
+          if (window.confirm(`${location.name} 장소를 삭제할까요?`)) onDelete(location.id);
+        }}
         aria-label={`${location.name} 삭제`}
         className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
       >
@@ -157,25 +162,37 @@ function SelectedLocationDetail({
   location: LocationResponse;
 }) {
   const updateLocation = useUpdateLocation(themeId);
-  const [fromRound, setFromRound] = useState<number | null>(location.from_round ?? null);
-  const [untilRound, setUntilRound] = useState<number | null>(location.until_round ?? null);
+  const [fromRoundInput, setFromRoundInput] = useState(roundToInput(location.from_round));
+  const [untilRoundInput, setUntilRoundInput] = useState(roundToInput(location.until_round));
   const assignedCount = useMemo(
     () => readLocationClueIds(theme.config_json, location.id).length,
     [theme.config_json, location.id]
   );
 
   useEffect(() => {
-    setFromRound(location.from_round ?? null);
-    setUntilRound(location.until_round ?? null);
+    setFromRoundInput(roundToInput(location.from_round));
+    setUntilRoundInput(roundToInput(location.until_round));
   }, [location.id, location.from_round, location.until_round]);
 
   function saveLocation(patch: Partial<LocationResponse>) {
-    const nextFrom = patch.from_round !== undefined ? patch.from_round : fromRound;
-    const nextUntil = patch.until_round !== undefined ? patch.until_round : untilRound;
+    const currentFrom = parseRound(fromRoundInput);
+    const currentUntil = parseRound(untilRoundInput);
+    const nextFrom =
+      patch.from_round !== undefined
+        ? patch.from_round
+        : currentFrom === undefined
+          ? (location.from_round ?? null)
+          : currentFrom;
+    const nextUntil =
+      patch.until_round !== undefined
+        ? patch.until_round
+        : currentUntil === undefined
+          ? (location.until_round ?? null)
+          : currentUntil;
     if (nextFrom != null && nextUntil != null && nextFrom > nextUntil) {
       toast.error('등장 라운드는 퇴장 라운드보다 클 수 없습니다');
-      setFromRound(location.from_round ?? null);
-      setUntilRound(location.until_round ?? null);
+      setFromRoundInput(roundToInput(location.from_round));
+      setUntilRoundInput(roundToInput(location.until_round));
       return;
     }
     const nextImageUrl = Object.prototype.hasOwnProperty.call(patch, 'image_url')
@@ -230,10 +247,10 @@ function SelectedLocationDetail({
           <div className="space-y-3">
             <RoundFields
               location={location}
-              fromRound={fromRound}
-              untilRound={untilRound}
-              setFromRound={setFromRound}
-              setUntilRound={setUntilRound}
+              fromRoundInput={fromRoundInput}
+              untilRoundInput={untilRoundInput}
+              setFromRoundInput={setFromRoundInput}
+              setUntilRoundInput={setUntilRoundInput}
               onCommit={saveLocation}
             />
             <InfoBox />
@@ -248,19 +265,30 @@ function SelectedLocationDetail({
 
 function RoundFields({
   location,
-  fromRound,
-  untilRound,
-  setFromRound,
-  setUntilRound,
+  fromRoundInput,
+  untilRoundInput,
+  setFromRoundInput,
+  setUntilRoundInput,
   onCommit,
 }: {
   location: LocationResponse;
-  fromRound: number | null;
-  untilRound: number | null;
-  setFromRound: (value: number | null) => void;
-  setUntilRound: (value: number | null) => void;
+  fromRoundInput: string;
+  untilRoundInput: string;
+  setFromRoundInput: (value: string) => void;
+  setUntilRoundInput: (value: string) => void;
   onCommit: (patch: Partial<LocationResponse>) => void;
 }) {
+  function commitRound(kind: 'from_round' | 'until_round', raw: string) {
+    const parsed = parseRound(raw);
+    if (parsed === undefined) {
+      toast.error('라운드는 1 이상의 숫자로 입력해 주세요');
+      if (kind === 'from_round') setFromRoundInput(roundToInput(location.from_round));
+      else setUntilRoundInput(roundToInput(location.until_round));
+      return;
+    }
+    onCommit({ [kind]: parsed });
+  }
+
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
       <p className="mb-2 text-xs font-semibold text-slate-300">라운드 노출</p>
@@ -271,9 +299,9 @@ function RoundFields({
             type="number"
             min={1}
             aria-label={`${location.name} 등장 라운드`}
-            value={fromRound ?? ''}
-            onChange={(e) => setFromRound(parseRound(e.target.value))}
-            onBlur={() => onCommit({ from_round: fromRound, until_round: untilRound })}
+            value={fromRoundInput}
+            onChange={(e) => setFromRoundInput(e.target.value)}
+            onBlur={() => commitRound('from_round', fromRoundInput)}
             className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
           />
         </label>
@@ -283,9 +311,9 @@ function RoundFields({
             type="number"
             min={1}
             aria-label={`${location.name} 퇴장 라운드`}
-            value={untilRound ?? ''}
-            onChange={(e) => setUntilRound(parseRound(e.target.value))}
-            onBlur={() => onCommit({ from_round: fromRound, until_round: untilRound })}
+            value={untilRoundInput}
+            onChange={(e) => setUntilRoundInput(e.target.value)}
+            onBlur={() => commitRound('until_round', untilRoundInput)}
             className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
           />
         </label>

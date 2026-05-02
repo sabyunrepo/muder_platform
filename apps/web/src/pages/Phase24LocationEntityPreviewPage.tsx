@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, MapPin, Plus, Search, Sparkles } from 'lucide-react';
 import { Badge } from '@/shared/components/ui';
 import { locationRows } from './Phase24LocationEntityPreviewData';
@@ -61,6 +61,14 @@ function LocationEntityWorkspace() {
   const [locationImageName, setLocationImageName] = useState('study.webp');
   const [locationImagePreview, setLocationImagePreview] = useState<string | null>(null);
   const [selectedClueIds, setSelectedClueIds] = useState(['knife', 'receipt', 'safe-code']);
+
+  useEffect(() => {
+    return () => {
+      if (locationImagePreview && typeof URL.revokeObjectURL === 'function') {
+        URL.revokeObjectURL(locationImagePreview);
+      }
+    };
+  }, [locationImagePreview]);
 
   function handleCreateDraftLocation() {
     const next = draftLocationName.trim();

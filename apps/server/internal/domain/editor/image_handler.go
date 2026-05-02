@@ -19,7 +19,8 @@ func NewImageHandler(svc *ImageService) *ImageHandler {
 }
 
 // RequestUpload handles POST /editor/themes/{id}/images/upload-url.
-// Body: { "target": "character"|"clue"|"location", "target_id": "uuid", "content_type": "image/png", "file_size": 12345 }
+// Body: { "target": "character"|"clue"|"location"|"cover", "target_id": "uuid", "content_type": "image/png", "file_size": 12345 }
+// target_id is optional for cover uploads.
 func (h *ImageHandler) RequestUpload(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
 	themeID, err := parseUUID(r, "id")

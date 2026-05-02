@@ -103,25 +103,6 @@ function defaultMutation() {
   return { mutate: mutateMock, isPending: false };
 }
 
-const mockClues = [
-  {
-    id: 'clue-1',
-    theme_id: 'theme-1',
-    location_id: null,
-    name: '단검',
-    description: null,
-    image_url: null,
-    is_common: false,
-    level: 1,
-    sort_order: 0,
-    created_at: '2026-04-13T00:00:00Z',
-    is_usable: false,
-    use_effect: null,
-    use_target: null,
-    use_consumed: false,
-  },
-];
-
 function setupDefaultMocks() {
   useEditorCharactersMock.mockReturnValue({ data: mockCharacters, isLoading: false });
   useEditorMapsMock.mockReturnValue({ data: mockMaps, isLoading: false });
@@ -239,6 +220,7 @@ describe('LocationsSubTab', () => {
     });
 
     it('맵 삭제 버튼 클릭 시 mutate가 호출된다', () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByLabelText('저택 1층 삭제'));
       expect(mutateMock).toHaveBeenCalledWith('map-1', expect.any(Object));
@@ -313,7 +295,7 @@ describe('LocationsSubTab', () => {
     it('location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByText('저택 1층'));
-      fireEvent.click(screen.getByRole('option', { name: '주방' }));
+      fireEvent.click(screen.getByRole('button', { name: '주방' }));
       expect(screen.getByLabelText('주방 단서 배정')).toBeDefined();
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
     });

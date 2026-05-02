@@ -32,7 +32,7 @@ export function LocationClueAssignPanel({
   allClues,
   onChange,
 }: LocationClueAssignPanelProps) {
-  const { data: fetchedClues, isLoading } = useEditorClues(themeId);
+  const { data: fetchedClues, isLoading, isError, error, refetch } = useEditorClues(themeId);
   const clues = useMemo(() => allClues ?? fetchedClues ?? [], [allClues, fetchedClues]);
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
@@ -91,6 +91,24 @@ export function LocationClueAssignPanel({
       <div className="flex items-center justify-center py-6">
         <Spinner size="sm" />
       </div>
+    );
+  }
+
+  if (!allClues && isError) {
+    return (
+      <section
+        aria-label={`${location.name} 단서 배정`}
+        className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-100"
+      >
+        <p>{error instanceof Error ? error.message : '단서 목록을 불러오지 못했습니다.'}</p>
+        <button
+          type="button"
+          onClick={() => refetch?.()}
+          className="mt-2 rounded-md border border-red-300/30 px-2 py-1 text-red-50 hover:bg-red-500/20"
+        >
+          다시 불러오기
+        </button>
+      </section>
     );
   }
 
@@ -153,7 +171,7 @@ export function LocationClueAssignPanel({
               <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
                 이 장소의 단서
               </p>
-              <span className="text-[10px] text-slate-600">클릭 추가</span>
+              <span className="text-[10px] text-slate-600">클릭 제거</span>
             </div>
             {selectedClues.length === 0 ? (
               <p className="rounded-md border border-dashed border-slate-800 px-2.5 py-5 text-center text-xs text-slate-600">
