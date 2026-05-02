@@ -126,10 +126,18 @@ func (s *service) ListMyThemes(ctx context.Context, creatorID uuid.UUID) ([]Them
 }
 
 // GetTheme fetches a single theme by id, enforcing creator ownership.
+// The config_json is lazily normalized on read (D-20) so legacy-shaped configs
+// stored in the database are transparently upgraded for API consumers.
 func (s *service) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
 	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
 	if err != nil {
 		return nil, err
 	}
+	normalized, err := NormalizeConfigJSON(theme.ConfigJson)
+	if err != nil {
+		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to normalize config_json")
+		return nil, apperror.Internal("failed to normalize config_json")
+	}
+	theme.ConfigJson = normalized
 	return toThemeResponse(theme), nil
 }

@@ -132,9 +132,18 @@ jobs:
       - name: Build workspace packages
         run: pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" --filter "@mmp/ws-client" build
 
+      # `--with-deps` split into best-effort deps step (fonts-freefont-ttf
+      # deprecated on ARC runner image) + always-required browser install.
+      - name: Install Playwright system deps (best-effort)
+        working-directory: apps/web
+        run: |
+          sudo apt-get update -y || true
+          pnpm exec playwright install-deps chromium || \
+            echo "::warning::Playwright install-deps failed (likely fonts-freefont-ttf missing on ARC image); continuing without"
+
       - name: Install Playwright browsers
         working-directory: apps/web
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install chromium
 
       - name: Start frontend
         working-directory: apps/web

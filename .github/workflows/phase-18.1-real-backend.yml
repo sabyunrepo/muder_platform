@@ -161,11 +161,20 @@ jobs:
         # Same fix as e2e-stubbed.yml PR #50.
         run: pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" --filter "@mmp/ws-client" build
 
+            # `--with-deps` split into best-effort deps step (fonts-freefont-ttf
+      # deprecated on ARC runner image) + always-required browser install.
+      - name: Install Playwright system deps (best-effort)
+        working-directory: apps/web
+        run: |
+          sudo apt-get update -y || true
+          pnpm exec playwright install-deps chromium webkit || \
+            echo "::warning::Playwright install-deps failed (likely fonts-freefont-ttf missing on ARC image); continuing without"
+
       - name: Install Playwright browsers
         # webkit added in Phase 18.7 Wave 3 PR-6 — nightly is the only matrix
         # where we exercise webkit coverage. PR CI keeps chromium + firefox.
         working-directory: apps/web
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install chromium webkit
 
       - name: Start frontend dev server
         working-directory: apps/web

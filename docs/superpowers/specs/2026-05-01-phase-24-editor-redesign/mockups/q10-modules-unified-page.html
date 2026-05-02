@@ -1,0 +1,202 @@
+<!doctype html>
+<h2>Q10. 모듈 페이지 1개로 통합 — 새 사이드바 + 모듈 페이지 모습</h2>
+<p class="subtitle">사용자 제안: "게임 시스템 모듈로 빼버리기" — 글로벌도 그냥 모듈로. 사이드바 단순화 + 모듈 페이지 풀 모습.</p>
+
+<div class="split">
+
+  <!-- LEFT: New simplified sidebar -->
+  <div class="mockup">
+    <div class="mockup-header">📐 새 사이드바 (그룹 3개 → 2개로 단순화)</div>
+    <div class="mockup-body" style="padding:8px">
+      <div class="mock-sidebar" style="font-size:12px;padding:14px">
+        <div style="font-weight:600;margin-bottom:6px">테마: "별장 살인사건"</div>
+
+        <div class="label" style="margin-top:14px;font-size:9px;color:#888">1️⃣ 세계 정의</div>
+        <div style="padding:5px;margin-bottom:2px"><span>👤 캐릭터</span><span style="float:right;color:#888">5</span></div>
+        <div style="padding:5px;margin-bottom:2px"><span>📍 장소</span><span style="float:right;color:#888">8</span></div>
+        <div style="padding:5px;margin-bottom:2px"><span>🔍 단서</span><span style="float:right;color:#888">12</span></div>
+
+        <div class="label" style="margin-top:14px;font-size:9px;color:#888">2️⃣ 흐름 &amp; 결말</div>
+        <div style="padding:5px;margin-bottom:2px"><span>🎬 페이즈</span><span style="float:right;color:#888">4</span></div>
+        <div style="padding:5px;margin-bottom:2px"><span>🎭 결말</span><span style="float:right;color:#888">3</span></div>
+
+        <div style="margin-top:18px;padding-top:10px;border-top:1px dashed #555">
+          <div style="padding:5px;background:#3a4a5a;border-radius:3px;border-left:3px solid #5af">
+            <span>🧩 모듈 ON/OFF</span><span style="float:right;color:#888">9/21</span>
+          </div>
+        </div>
+
+        <div style="margin-top:24px;background:#1a2a2a;padding:10px;border-radius:4px;font-size:10px;color:#888">
+          <strong style="color:#aaa">변화:</strong>
+          <ul style="margin-top:4px;padding-left:14px">
+            <li>"⚖️ 결정 룰" / "💬 통신" / "🚶 탐색" / "🎵 미디어" 4 글로벌 항목 → 🧩 모듈로 흡수</li>
+            <li>모듈 클릭 = 모든 21 모듈 ON/OFF + 설정 1곳</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Modules page -->
+  <div class="mockup">
+    <div class="mockup-header">📄 모듈 페이지 — 21 모듈 ON/OFF + 설정</div>
+    <div class="mockup-body" style="padding:8px;font-size:11px;overflow-y:auto;max-height:540px">
+
+      <div style="font-weight:600;margin-bottom:8px">🧩 모듈 9/21 ON</div>
+      <div style="font-size:10px;color:#888;margin-bottom:12px">카테고리별 헤더 → 펼침/접힘. ◧ 마크 = entity 페이지 연결, ◉ 마크 = 글로벌 (여기서 설정 다)</div>
+
+      <!-- Category: 단서 분배 -->
+      <div style="margin-bottom:14px">
+        <div style="font-weight:600;font-size:10px;color:#aaa;margin-bottom:4px">🔍 단서 분배 ▾ (3/5 ON)</div>
+
+        <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8;font-size:10px">
+          <div style="display:flex;justify-content:space-between">
+            <span><strong>starting_clue</strong> ◧ <span style="color:#888">캐릭터에서 설정</span></span>
+            <span style="color:#4a8">● ON</span>
+          </div>
+          <div style="font-size:9px;color:#666;margin-top:2px">→ 김철수·이영희 페이지에서 시작 단서 지정</div>
+        </div>
+
+        <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8;font-size:10px">
+          <div style="display:flex;justify-content:space-between">
+            <span><strong>round_clue</strong> ◧ <span style="color:#888">페이즈에서 설정</span></span>
+            <span style="color:#4a8">● ON</span>
+          </div>
+        </div>
+
+        <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8;font-size:10px">
+          <div style="display:flex;justify-content:space-between">
+            <span><strong>conditional_clue</strong> ◧ <span style="color:#888">단서에서 설정</span></span>
+            <span style="color:#4a8">● ON</span>
+          </div>
+        </div>
+
+        <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;font-size:10px;opacity:0.5">
+          <div style="display:flex;justify-content:space-between">
+            <span><strong>timed_clue</strong> ◧</span>
+            <span style="color:#666">○ OFF</span>
+          </div>
+        </div>
+
+        <div style="background:#2a2a3a;padding:6px;border-radius:3px;font-size:10px;opacity:0.5">
+          <div style="display:flex;justify-content:space-between">
+            <span><strong>trade_clue</strong> ◉ <span style="color:#666">글로벌</span></span>
+            <span style="color:#666">○ OFF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category: 결정 룰 -->
+      <div style="margin-bottom:14px">
+        <div style="font-weight:600;font-size:10px;color:#aaa;margin-bottom:4px">⚖️ 결정 룰 ▾ (2/2 ON)</div>
+
+        <!-- Inline expanded global module -->
+        <div style="background:#2a3a3a;padding:8px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8;font-size:10px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+            <span><strong>voting</strong> ◉ <span style="color:#888">글로벌</span></span>
+            <span style="color:#4a8">● ON</span>
+          </div>
+          <div style="background:#1a2a2a;padding:5px;border-radius:2px;margin-top:3px">
+            <div>방식: <span style="background:#3a3a4a;padding:1px 3px;border-radius:2px">비공개</span> | 무승부: <span style="background:#3a3a4a;padding:1px 3px;border-radius:2px">재투표</span></div>
+            <div>최소 참여: <span style="background:#3a3a4a;padding:1px 3px;border-radius:2px">50%</span> | 죽은 사람 투표 ☐</div>
+          </div>
+        </div>
+
+        <div style="background:#2a3a3a;padding:6px;border-radius:3px;border-left:3px solid #4a8;font-size:10px">
+          <div style="display:flex;justify-content:space-between">
+            <span><strong>accusation</strong> ◉ <span style="color:#888">글로벌</span></span>
+            <span style="color:#4a8">● ON</span>
+          </div>
+          <div style="background:#1a2a2a;padding:4px;border-radius:2px;margin-top:3px;font-size:9px">횟수: 1회/게임 · 틀리면 탈락</div>
+        </div>
+      </div>
+
+      <!-- Category: 통신 -->
+      <div style="margin-bottom:14px">
+        <div style="font-weight:600;font-size:10px;color:#aaa;margin-bottom:4px">💬 통신 ▾ (3/5 ON)</div>
+        <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">
+          <strong>text_chat</strong> ◉ <span style="float:right;color:#4a8">● ON</span>
+        </div>
+        <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">
+          <strong>group_chat</strong> ◉ <span style="float:right;color:#4a8">● ON</span>
+        </div>
+        <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:2px;border-left:3px solid #4a8;font-size:10px">
+          <strong>whisper</strong> ◉ <span style="float:right;color:#4a8">● ON</span>
+        </div>
+        <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:2px;font-size:10px;opacity:0.5">
+          <strong>voice_chat</strong> ◉ <span style="float:right;color:#666">○ OFF</span>
+        </div>
+        <div style="background:#2a2a3a;padding:5px;border-radius:3px;font-size:10px;opacity:0.5">
+          <strong>spatial_voice</strong> ◉ <span style="float:right;color:#666">○ OFF</span>
+        </div>
+      </div>
+
+      <!-- Other categories - collapsed -->
+      <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;font-size:10px">
+        <div>🚶 탐색 시스템 ▸ (1/3 ON, 택1)</div>
+      </div>
+      <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;font-size:10px">
+        <div>📍 장소 (entity-bound) ▸ (2/3 ON)</div>
+      </div>
+      <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;font-size:10px">
+        <div>🎬 진행 ▸ (1/3 ON, 택1)</div>
+      </div>
+      <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:3px;font-size:10px;opacity:0.5">
+        <div>🎵 미디어 ▸ (0/1 ON)</div>
+      </div>
+      <div style="background:#1a1a1a;padding:6px;border-radius:3px;font-size:10px;color:#666">
+        <div>🔧 핵심 (사용자 비편집) ▸</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">🆎 모듈 카드 두 종류</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">표시</th>
+      <th style="padding:6px;text-align:left">종류</th>
+      <th style="padding:6px;text-align:left">모듈 페이지에서 보이는 것</th>
+      <th style="padding:6px;text-align:left">설정 어디서</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px;text-align:center">◧</td>
+      <td style="padding:6px">entity 연결</td>
+      <td style="padding:6px;color:#aaa">ON/OFF 토글 + "→ [어느 entity] 에서 설정" 링크</td>
+      <td style="padding:6px;color:#aaa">해당 entity 페이지의 동적 섹션</td>
+    </tr>
+    <tr>
+      <td style="padding:6px;text-align:center">◉</td>
+      <td style="padding:6px">글로벌</td>
+      <td style="padding:6px;color:#aaa">ON/OFF 토글 + 인라인 설정 폼 (펼침)</td>
+      <td style="padding:6px;color:#aaa">모듈 페이지 안에서 직접</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이 통합 모델 OK</h3>
+      <p>사이드바 단순화 + 모듈 페이지 1개 + 카드 두 종류 (◧ entity 연결 / ◉ 글로벌). 다음 단계로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="not-categorize" onclick="toggleSelect(this)">
+    <div class="letter">−</div>
+    <div class="content">
+      <h3>카테고리 헤더 빼기</h3>
+      <p>21 모듈을 그냥 평면 리스트로 — 카테고리 굳이 필요 없을지도</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>터미널에 적어줘</p>
+    </div>
+  </div>
+</div>

@@ -280,9 +280,20 @@ jobs:
           sudo mkdir -p /opt/cache/playwright /opt/hostedtoolcache
           sudo chown -R "$(id -u):$(id -g)" /opt/cache/playwright /opt/hostedtoolcache
 
+      # Playwright `--with-deps` requires `fonts-freefont-ttf` which is
+      # deprecated on the ARC runner's OS image — split into best-effort deps
+      # install + always-required browser install. Browsers themselves do not
+      # need that font (chromium ships its own fallbacks for headless QA).
+      - name: Install Playwright system deps (best-effort)
+        working-directory: apps/web
+        run: |
+          sudo apt-get update -y || true
+          pnpm exec playwright install-deps ${{ matrix.browser }} || \
+            echo "::warning::Playwright install-deps failed (likely fonts-freefont-ttf missing on ARC image); continuing without"
+
       - name: Install Playwright browsers for matrix
         working-directory: apps/web
-        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+        run: pnpm exec playwright install ${{ matrix.browser }}
 
       - name: Build workspace packages
         # @mmp/ws-client is imported by apps/web and needs dist/ at vite dev time.

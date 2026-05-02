@@ -1,0 +1,128 @@
+<h2>Q9. 글로벌 시스템 페이지 — entity 가 아닌 게임 전체 룰</h2>
+<p class="subtitle">사이드바 하단 "🌐 글로벌 시스템" 클릭하면 보이는 페이지. 게임 1번 설정 = 모든 entity 에 적용.</p>
+
+<div class="mockup">
+  <div class="mockup-header">📄 글로벌 시스템 페이지 — "별장 살인사건"</div>
+  <div class="mockup-body" style="padding:8px">
+    <div style="display:flex;gap:6px;height:480px">
+
+      <!-- LEFT: Global category list -->
+      <div class="mock-sidebar" style="width:25%;font-size:11px;padding:8px">
+        <div style="font-weight:600;margin-bottom:8px">🌐 글로벌 시스템</div>
+        <div style="padding:5px;background:#3a4a5a;border-radius:3px;margin-bottom:3px;border-left:3px solid #5af">
+          ⚖️ 결정 룰
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:3px">
+          💬 커뮤니케이션
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px;margin-bottom:3px">
+          🚶 탐색 시스템
+        </div>
+        <div style="padding:5px;background:#2a2a3a;border-radius:3px">
+          🎵 미디어
+        </div>
+
+        <div style="margin-top:14px;padding:8px;background:#3a3a4a;border-radius:3px;font-size:10px;color:#aaa">
+          💡 entity (캐릭터/장소/단서) 와 달리 <strong>"+추가" 버튼 없음</strong>. 게임마다 1번씩만 결정.
+        </div>
+      </div>
+
+      <!-- RIGHT: Selected category content -->
+      <div class="mock-content" style="flex:1;font-size:11px;padding:10px;overflow-y:auto">
+        <div style="font-weight:600;margin-bottom:10px;font-size:13px">⚖️ 결정 룰</div>
+        <div style="font-size:10px;color:#888;margin-bottom:10px">"이 게임에서 누가 범인인지 정하는 방식" — 1번 결정, 모든 페이즈에 적용</div>
+
+        <!-- Module 1: voting -->
+        <div style="background:#2a3a3a;padding:10px;border-radius:4px;margin-bottom:8px;border-left:3px solid #4a8">
+          <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px">
+            <span>🟢 voting (투표)</span>
+            <span style="font-size:10px;color:#4a8">● ON</span>
+          </div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:6px">캐릭터들이 범인을 투표로 결정</div>
+          <div style="background:#1a2a2a;padding:6px;border-radius:3px;font-size:10px">
+            <div>방식: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">비공개 투표</span></div>
+            <div>최소 참여율: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">50%</span></div>
+            <div>무승부 시: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">재투표</span></div>
+            <div>실시간 결과 표시: ☐</div>
+            <div>죽은 사람도 투표 가능: ☐</div>
+          </div>
+        </div>
+
+        <!-- Module 2: accusation -->
+        <div style="background:#2a3a3a;padding:10px;border-radius:4px;margin-bottom:8px;border-left:3px solid #4a8">
+          <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px">
+            <span>🟢 accusation (고소)</span>
+            <span style="font-size:10px;color:#4a8">● ON</span>
+          </div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:6px">한 명이 다른 한 명을 직접 고소 가능</div>
+          <div style="background:#1a2a2a;padding:6px;border-radius:3px;font-size:10px">
+            <div>고소 횟수 제한: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">게임당 1회</span></div>
+            <div>틀린 고소 페널티: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">탈락</span></div>
+          </div>
+        </div>
+
+        <!-- Module 3: trade_clue -->
+        <div style="background:#2a2a3a;padding:10px;border-radius:4px;margin-bottom:8px;opacity:0.5;border-left:3px solid #555">
+          <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px">
+            <span>○ trade_clue (거래)</span>
+            <span style="font-size:10px;color:#666">○ OFF</span>
+          </div>
+          <div style="font-size:10px;color:#aaa">캐릭터끼리 단서 교환 가능</div>
+          <div style="font-size:10px;color:#666;margin-top:4px">→ 끄면 설정 폼 안 보임 (entity 동적 섹션과 같은 패턴)</div>
+        </div>
+
+        <!-- Other categories preview -->
+        <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-top:14px;font-size:10px;color:#888">
+          <strong>다른 글로벌 카테고리는 같은 형식:</strong>
+          <ul style="margin-top:4px;padding-left:18px">
+            <li>💬 커뮤니케이션: text_chat / group_chat / whisper / voice_chat / spatial_voice 5 모듈</li>
+            <li>🚶 탐색 시스템: room_exploration / floor_exploration / timed_exploration <strong>중 1개만 ON</strong> (택1)</li>
+            <li>🎵 미디어: audio (1 모듈) — 게임 전체 BGM 기본값</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">🆚 entity 페이지 vs 글로벌 페이지 — 어떻게 다른가</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">측면</th>
+      <th style="padding:6px;text-align:left">👤📍🔍🎬🎭 entity 페이지</th>
+      <th style="padding:6px;text-align:left">🌐 글로벌 페이지</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">개수</td><td style="padding:6px;color:#aaa">여러 개 (캐릭터 5명, 장소 8개, 단서 12개...)</td><td style="padding:6px;color:#aaa"><strong>각 카테고리 1개</strong> (결정 룰 1번, 통신 1번, 탐색 1번)</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">+추가 버튼</td><td style="padding:6px;color:#aaa">있음 (CRUD)</td><td style="padding:6px;color:#aaa"><strong>없음</strong> (고정)</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">베이스 필드</td><td style="padding:6px;color:#aaa">이름·코드·이미지·설명 등</td><td style="padding:6px;color:#aaa"><strong>없음</strong> — 모듈 ON/OFF + 모듈 설정만</td></tr>
+    <tr><td style="padding:6px">모듈 동적 섹션</td><td style="padding:6px;color:#aaa">모듈 ON 시 entity 폼에 추가</td><td style="padding:6px;color:#aaa">모듈 ON 시 같은 페이지에 모듈별 카드 추가 (지금 mockup)</td></tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이해됐고 OK</h3>
+      <p>글로벌 페이지 형식 OK. 다음 단계로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="merge-with-modules-page" onclick="toggleSelect(this)">
+    <div class="letter">M</div>
+    <div class="content">
+      <h3>q4 의 "🧩 모듈 ON/OFF" 페이지와 합치기</h3>
+      <p>글로벌도 결국 "모듈 ON/OFF + 모듈 설정" 이라 q4 사이드바 하단의 모듈 페이지와 사실상 동일 — 합쳐도 됨</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>아직 헷갈림 / 다른 질문</h3>
+      <p>터미널에 적어줘</p>
+    </div>
+  </div>
+</div>

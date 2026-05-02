@@ -1,0 +1,201 @@
+<!doctype html>
+<h2>Q13. 🔍 단서 entity — 리스트 + 1개 편집</h2>
+<p class="subtitle">B 옵션 적용: 모듈 토글은 리스트 화면 상단, 1개 편집 화면은 동적 섹션만. 단서 특수 = 자동 역참조.</p>
+
+<div class="split">
+
+  <!-- LEFT: Clue list view -->
+  <div class="mockup">
+    <div class="mockup-header">📄 단서 리스트 화면 — "🔍 단서" 사이드바 클릭 시</div>
+    <div class="mockup-body" style="padding:8px;font-size:11px">
+
+      <!-- Module toggles at top -->
+      <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:10px;border:1px solid #5af">
+        <div style="font-size:10px;font-weight:600;margin-bottom:5px">🧩 단서 관련 모듈 (전체 단서에 적용)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:10px">
+          <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;cursor:pointer;border-left:2px solid #4a8">
+            <input type="checkbox" checked style="margin-right:3px"> conditional_clue
+          </label>
+          <label style="background:#2a3a3a;padding:4px 8px;border-radius:3px;cursor:pointer;border-left:2px solid #4a8">
+            <input type="checkbox" checked style="margin-right:3px"> combination
+          </label>
+          <label style="background:#2a2a3a;padding:4px 8px;border-radius:3px;cursor:pointer;opacity:0.5">
+            <input type="checkbox" style="margin-right:3px"> clue_interaction
+          </label>
+        </div>
+        <div style="font-size:9px;color:#888;margin-top:4px">→ 켜면 모든 단서 편집 폼에 해당 섹션 자동 추가</div>
+      </div>
+
+      <!-- Clue list -->
+      <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:6px">
+        <span>🔍 단서 (12)</span>
+        <button class="mock-button" style="font-size:10px;padding:2px 8px">+ 새 단서</button>
+      </div>
+
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+        <thead>
+          <tr style="background:#2a2a3a">
+            <td style="padding:4px">코드</td>
+            <td style="padding:4px">이름</td>
+            <td style="padding:4px">사용된 곳 (자동)</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #333;background:#3a4a5a"><td style="padding:5px;color:#5af">c1</td><td style="padding:5px">일기장 ◀</td><td style="padding:5px;color:#aaa">📍서재 · 👤김철수</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#888">c2</td><td style="padding:5px">편지</td><td style="padding:5px;color:#aaa">🎬R2(round_clue) · 🔍c1(prereq)</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#888">c3</td><td style="padding:5px">칼</td><td style="padding:5px;color:#aaa">👤김철수</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#888">c4</td><td style="padding:5px">알리바이</td><td style="padding:5px;color:#aaa">🎬R3</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#888">c5</td><td style="padding:5px">시체</td><td style="padding:5px;color:#aaa">📍서재(evidence)</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#888">c6</td><td style="padding:5px">흉기</td><td style="padding:5px;color:#aaa">📍서재(evidence)</td></tr>
+          <tr style="border-bottom:1px solid #333"><td style="padding:5px;color:#888">c7</td><td style="padding:5px">담배꽁초</td><td style="padding:5px;color:#aaa;font-style:italic">— 미사용</td></tr>
+          <tr><td style="padding:5px;color:#888">c8</td><td style="padding:5px">진실의 증거 <span style="font-size:9px;color:#aa4">(조합)</span></td><td style="padding:5px;color:#aaa">c1+c3 결합 결과</td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:14px;padding:8px;background:#1a2a2a;border-radius:4px;font-size:10px;color:#888">
+        <strong>리스트 화면 특징:</strong>
+        <ul style="margin-top:3px;padding-left:14px">
+          <li>모듈 토글 = 전체 단서 영향 범위와 일치</li>
+          <li>"사용된 곳" 컬럼 = 자동 backlink (Notion 식)</li>
+          <li>미사용 단서 (c7) 표시 → 정리 도움</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT: Clue edit page -->
+  <div class="mockup">
+    <div class="mockup-header">📄 단서 c1 일기장 편집 — 1개 클릭 시</div>
+    <div class="mockup-body" style="padding:8px;font-size:11px;overflow-y:auto;max-height:540px">
+
+      <div style="font-weight:600;margin-bottom:8px;font-size:13px">⚙️ c1 일기장 편집</div>
+
+      <!-- Base fields -->
+      <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+        <div class="label" style="font-size:10px;color:#888;margin-bottom:5px">📋 베이스</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">이름</div>
+            <input class="mock-input" style="width:100%;font-size:11px" value="일기장">
+          </div>
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">단서 코드</div>
+            <input class="mock-input" style="width:100%;font-size:11px" value="c1" readonly>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">이미지</div>
+          <div style="width:80px;height:60px;background:#3a3a4a;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#888">🖼️</div>
+        </div>
+      </div>
+
+      <!-- Discovery content (Markdown) -->
+      <div style="background:#3a3a2a;padding:8px;border-radius:4px;margin-bottom:6px;border:2px solid #aa4">
+        <div class="label" style="font-size:10px;color:#aa4;margin-bottom:5px">📄 발견 시 표시 컨텐츠 (Markdown)</div>
+        <div style="background:#1a2a2a;padding:8px;border-radius:3px;font-family:monospace;font-size:10px;color:#ccc;white-space:pre-line">## 일기장
+
+표지에 검은 잉크.
+마지막 페이지에 *그를 죽일 수밖에 없었다*...</div>
+        <div style="font-size:9px;color:#888;margin-top:3px">→ 단서를 발견한 플레이어에게 노출되는 내용</div>
+      </div>
+
+      <!-- Dynamic module sections -->
+      <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8;font-size:10px">
+        <strong>🟢 conditional_clue 옵션</strong> <span style="color:#888;font-size:9px">— 모듈 ON</span>
+        <div style="background:#1a2a2a;padding:5px;border-radius:2px;margin-top:4px">
+          <div>선행 단서: [c2 편지] AND [c5 시체]</div>
+          <div>해제 모드: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">자동</span></div>
+          <div>알림: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">전원 공지</span></div>
+        </div>
+      </div>
+
+      <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8;font-size:10px">
+        <strong>🟢 combination 옵션</strong> <span style="color:#888;font-size:9px">— 모듈 ON</span>
+        <div style="background:#1a2a2a;padding:5px;border-radius:2px;margin-top:4px">
+          <div>이 단서 + [c3 칼] = <span style="color:#4a8">새 단서 [c8 진실의 증거] 생성</span></div>
+        </div>
+      </div>
+
+      <!-- Auto backlink (special for clue) -->
+      <div style="background:#3a2a4a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #a5f;font-size:10px">
+        <div class="label" style="font-size:10px;color:#a5f;margin-bottom:5px">🔗 자동 역참조 (이 단서가 사용된 곳)</div>
+        <div style="background:#1a2a2a;padding:6px;border-radius:3px;font-size:10px">
+          <div style="margin-bottom:3px">📍 <strong>서재</strong> (location_clue 검색 단서)</div>
+          <div style="margin-bottom:3px">👤 <strong>김철수</strong> (starting_clue 시작 단서)</div>
+          <div style="margin-bottom:3px">🔍 <strong>c8 진실의 증거</strong> (조합 재료)</div>
+          <div style="font-size:9px;color:#888;margin-top:5px">→ 클릭 시 해당 페이지로 이동. <strong>자동 갱신</strong> (수동 입력 X)</div>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="mock-button" style="font-size:11px">저장</button>
+        <button class="mock-button" style="font-size:11px;background:#4a3a3a">삭제</button>
+        <button class="mock-button" style="font-size:11px;background:#3a3a4a">복제</button>
+      </div>
+
+      <div style="margin-top:12px;padding:6px;background:#1a2a2a;border-radius:3px;font-size:10px;color:#888">
+        <strong>⚠️ 삭제 시 경고:</strong> 이 단서가 사용된 3 곳 (서재·김철수·c8) 에서 자동 제거됨. 확인 다이얼로그 필수.
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">단서만의 특수 디테일</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">특징</th>
+      <th style="padding:6px;text-align:left">동작</th>
+      <th style="padding:6px;text-align:left">근거</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>🔗 자동 역참조</strong></td>
+      <td style="padding:6px;color:#aaa">이 단서가 어떤 장소·캐릭터·다른 단서·페이즈에서 쓰이는지 자동 표시</td>
+      <td style="padding:6px;color:#aaa">단서 = "한 곳 만들고 여러 곳에서 참조" 패턴 (Notion·Articy)</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>📋 미사용 표시</strong></td>
+      <td style="padding:6px;color:#aaa">리스트에서 어디서도 안 쓰이는 단서 (c7 담배꽁초) 표시</td>
+      <td style="padding:6px;color:#aaa">정리 도움. 만들었다 잊은 dead clue 발견</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>🧬 조합 결과 단서</strong></td>
+      <td style="padding:6px;color:#aaa">c8 진실의 증거 = c1+c3 결합 — 자동 생성 단서 표시</td>
+      <td style="padding:6px;color:#aaa">combination 모듈 결과물도 단서 entity 로 등록</td>
+    </tr>
+    <tr>
+      <td style="padding:6px"><strong>⚠️ 삭제 경고</strong></td>
+      <td style="padding:6px;color:#aaa">사용처 N 곳에서 자동 제거됨 안내</td>
+      <td style="padding:6px;color:#aaa">참조 무결성. 사용자가 후폭풍 모르고 삭제 방지</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>단서 entity OK</h3>
+      <p>리스트 + 모듈 토글 + 1개 편집 + 자동 역참조 + 삭제 경고. 다음 entity (페이즈) 로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="more-fields" onclick="toggleSelect(this)">
+    <div class="letter">+</div>
+    <div class="content">
+      <h3>베이스/컨텐츠 추가/변경</h3>
+      <p>"단서에 카테고리 태그 / 단서 등급 / 발견자 표시" 같은 필드 추가 — 터미널에</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>터미널에 적어줘</p>
+    </div>
+  </div>
+</div>

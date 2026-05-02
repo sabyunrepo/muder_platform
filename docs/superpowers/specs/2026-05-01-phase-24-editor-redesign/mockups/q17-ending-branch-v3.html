@@ -1,0 +1,254 @@
+<!doctype html>
+<h2>Q17. 결말 분기 v3 — 응답 캐릭터 셀렉트 + voting 결과 자동 컬럼</h2>
+<p class="subtitle">자동 채움 ❌ / 단일·다중 선택만 / 응답 캐릭터 선택 / voting 결과 자동 / 답 종합 (다수결)</p>
+
+<div class="mockup">
+  <div class="mockup-header">📄 탭 2: 결말 분기 v3</div>
+  <div class="mockup-body" style="padding:8px;font-size:11px">
+
+    <!-- Question definitions -->
+    <div style="background:#2a3a3a;padding:10px;border-radius:4px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px;font-size:12px">
+        <span>❓ 게임 끝 질문 (3)</span>
+        <button class="mock-button" style="font-size:10px">+ 새 질문</button>
+      </div>
+      <div style="font-size:10px;color:#888;margin-bottom:8px">분기용 질문. 정답 없음. 보기는 모두 수동 입력 (문자열).</div>
+
+      <!-- Q1: 단일 선택 + 응답 캐릭터 일부 -->
+      <div style="background:#1a2a2a;padding:10px;border-radius:3px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q1.</strong> 당신은 범인을 용서하겠습니까?</span>
+          <span style="color:#888;font-size:10px;cursor:pointer">✕ 삭제</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">종류</div>
+            <select class="mock-input" style="width:100%;font-size:10px">
+              <option>🗳️ 단일 선택 ▼</option>
+              <option>☑ 다중 선택</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">응답 캐릭터</div>
+            <div style="background:#2a3a3a;padding:4px 6px;border-radius:3px;font-size:10px;cursor:pointer">
+              <strong>2명</strong> ▾ <span style="color:#888;margin-left:4px">김철수, 박민수</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">보기 (수동 입력, 문자열)</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">예 ✕</span>
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">아니오 ✕</span>
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">+ 보기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2: 다중 선택 + 응답 모두 -->
+      <div style="background:#1a2a2a;padding:10px;border-radius:3px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q2.</strong> 돈이 될 만한 물건을 찾았다면 무엇인가? (여러 개 선택)</span>
+          <span style="color:#888;font-size:10px;cursor:pointer">✕</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">종류</div>
+            <select class="mock-input" style="width:100%;font-size:10px">
+              <option>☑ 다중 선택 ▼</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">응답 캐릭터</div>
+            <div style="background:#2a3a3a;padding:4px 6px;border-radius:3px;font-size:10px">
+              <strong>모두 (5명)</strong> ▾
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">보기 (수동 입력)</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">지갑 ✕</span>
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">반지 ✕</span>
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">현금다발 ✕</span>
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">열쇠 ✕</span>
+            <button class="mock-button" style="font-size:10px;padding:2px 6px">+ 보기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q3: side mission -->
+      <div style="background:#1a2a2a;padding:10px;border-radius:3px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+          <span><strong>Q3.</strong> 정대호의 일기장을 끝까지 읽었는가?</span>
+          <span style="color:#888;font-size:10px;cursor:pointer">✕</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">종류</div>
+            <select class="mock-input" style="width:100%;font-size:10px">
+              <option>🗳️ 단일 선택 ▼</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">응답 캐릭터</div>
+            <div style="background:#2a3a3a;padding:4px 6px;border-radius:3px;font-size:10px">
+              <strong>1명</strong> ▾ <span style="color:#888;margin-left:4px">김철수</span>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:10px;color:#aaa;margin-bottom:2px">보기</div>
+          <div style="display:flex;gap:4px">
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">읽었다 ✕</span>
+            <span style="background:#3a3a4a;padding:3px 8px;border-radius:3px">읽지 않았다 ✕</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 응답 종합 방식 -->
+    <div style="background:#3a2a4a;padding:10px;border-radius:4px;margin-bottom:10px;border-left:3px solid #a5f">
+      <div style="font-weight:600;margin-bottom:5px;font-size:12px">⚙️ 응답 종합 방식</div>
+      <div style="font-size:10px;color:#aaa">모든 응답 캐릭터의 답을 종합 (다수결) → 1개 결과 → 매트릭스 입력</div>
+      <div style="margin-top:6px;font-size:10px;color:#aaa">
+        <strong>예:</strong> Q1 응답 — 김철수=예, 박민수=예 → 종합 답 = "예"<br>
+        <strong>다중 선택 다수결:</strong> 각 보기별 과반 여부 → "지갑+반지" 처럼 보기 조합 결과
+      </div>
+    </div>
+
+    <!-- voting 모듈 결과 자동 -->
+    <div style="background:#2a4a3a;padding:10px;border-radius:4px;margin-bottom:10px;border-left:3px solid #4a8">
+      <div style="font-weight:600;margin-bottom:5px;font-size:12px">🗳️ voting 모듈 결과 = 매트릭스 자동 컬럼</div>
+      <div style="font-size:10px;color:#aaa">voting 모듈 ON 이면 "범인 투표 결과" 가 매트릭스에 자동으로 추가됨. 별도 질문 만들 필요 X.</div>
+      <div style="margin-top:6px;font-size:10px;color:#aaa">accusation / trade_clue 등 다른 모듈도 결과 자동 노출 가능 (확장).</div>
+    </div>
+
+    <!-- Answer matrix v3 -->
+    <div style="background:#2a3a4a;padding:10px;border-radius:4px;border:1px solid #5af">
+      <div style="font-weight:600;margin-bottom:8px;font-size:12px">🎯 답 조합 → 결말 매핑 (답 자체 매칭)</div>
+
+      <table style="width:100%;font-size:10px;border-collapse:collapse">
+        <thead>
+          <tr style="background:#1a2a2a">
+            <td style="padding:5px;background:#2a3a3a"><strong>🗳️ voting 결과<br><span style="color:#4a8;font-weight:normal">(자동)</span></strong></td>
+            <td style="padding:5px">Q1 용서?</td>
+            <td style="padding:5px">Q2 물건</td>
+            <td style="padding:5px">Q3 일기 정독</td>
+            <td style="padding:5px">→ 결말</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px;color:#4a8">이영희 검거</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px;color:#4a8">읽었다</td>
+            <td style="padding:5px"><span style="background:#2a4a3a;padding:2px 6px;border-radius:2px;color:#4a8">🟢 TRUTH</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px;color:#4a8">이영희 검거</td>
+            <td style="padding:5px;color:#4a8">예</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#2a4a3a;padding:2px 6px;border-radius:2px;color:#4a8">💚 자비</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px;color:#4a8">이영희 검거</td>
+            <td style="padding:5px;color:#a55">아니오</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#3a3a2a;padding:2px 6px;border-radius:2px;color:#aa4">⚖️ 정의</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px;color:#aa4">현금다발+반지</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#3a3a2a;padding:2px 6px;border-radius:2px;color:#aa4">🤑 탐욕</span></td>
+          </tr>
+          <tr style="border-bottom:1px solid #333">
+            <td style="padding:5px;color:#a55">박민수/김철수/최지영 검거</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px">*</td>
+            <td style="padding:5px"><span style="background:#4a2a2a;padding:2px 6px;border-radius:2px;color:#a55">🔴 오판</span></td>
+          </tr>
+          <tr>
+            <td colspan="4" style="padding:5px;color:#888;font-style:italic">기본</td>
+            <td style="padding:5px"><span style="background:#2a2a3a;padding:2px 6px;border-radius:2px">⚪ 미해결</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <button class="mock-button" style="font-size:10px;margin-top:8px">+ 새 매핑 행</button>
+
+      <div style="margin-top:10px;padding:8px;background:#1a2a2a;border-radius:3px;font-size:10px;color:#aaa">
+        <strong>매트릭스 컬럼 종류 (3 가지):</strong>
+        <ul style="margin-top:3px;padding-left:14px">
+          <li><strong>🗳️ 모듈 결과 컬럼 (자동)</strong>: voting / accusation 등 모듈 ON 시 자동 추가. 게임 모듈 결과 직접 사용.</li>
+          <li><strong>❓ 질문 컬럼 (제작자 정의)</strong>: 위 Q1·Q2·Q3 — 분기용 질문</li>
+          <li><strong>* (와일드카드)</strong>: 어떤 답이든 OK</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px">v3 변화 요약</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">항목</th>
+      <th style="padding:6px;text-align:left">v2</th>
+      <th style="padding:6px;text-align:left">v3 (지금)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">자동 채움 (캐릭터/단서)</td><td style="padding:6px;color:#888">있음</td><td style="padding:6px;color:#4a8"><strong>제거</strong> — 모든 보기 수동</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">질문 종류</td><td style="padding:6px;color:#888">6+ (예/아니오·숫자·자유입력·순서)</td><td style="padding:6px;color:#4a8"><strong>2 (단일/다중 선택만)</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">응답 평가</td><td style="padding:6px;color:#888">개인별 / 팀 합의 / 혼합</td><td style="padding:6px;color:#4a8"><strong>다수결 종합 1개</strong></td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">응답 캐릭터</td><td style="padding:6px;color:#888">전원 자동</td><td style="padding:6px;color:#4a8"><strong>질문마다 선택</strong> (전원/일부/1명)</td></tr>
+    <tr><td style="padding:6px">voting 결과</td><td style="padding:6px;color:#888">별도 질문 필요</td><td style="padding:6px;color:#4a8"><strong>자동 컬럼</strong> — 매트릭스에 직접 표시</td></tr>
+  </tbody>
+</table>
+
+<h3 style="margin-top:24px">📌 결말 분기 시스템 = 다양한 용도</h3>
+<div style="background:#2a3a3a;padding:10px;border-radius:4px;font-size:11px">
+  <ul style="padding-left:18px;margin:0;color:#aaa">
+    <li><strong>🔍 범인 검거 분기</strong>: voting 모듈 결과 자동 컬럼 → "이영희 검거 / 박민수 검거 / 김철수 검거 / ..." 별 결말</li>
+    <li><strong>🎯 도덕 선택 분기</strong>: Q1 "용서?" 같은 가치관 질문 → 자비 vs 정의</li>
+    <li><strong>🎒 사이드 미션 분기</strong>: Q3 "일기 정독?" 같은 미션 완료 여부 → TRUTH 도달 조건</li>
+    <li><strong>🤑 탐욕 / 일탈 분기</strong>: Q2 "물건 찾기?" 다중 선택 → 결말 변형</li>
+  </ul>
+</div>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>v3 OK</h3>
+      <p>이대로 결말 entity 마무리. 다음 = 데이터 모델 / 마이그레이션 / 동시편집 같은 큰 결정 단계.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="multi-detail" onclick="toggleSelect(this)">
+    <div class="letter">M</div>
+    <div class="content">
+      <h3>다중 선택 다수결 룰 정밀화</h3>
+      <p>"지갑+반지" 같은 결과 산출 룰을 더 명확히 (각 보기별 과반? 가장 많이 받은 N개?)</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>터미널에 적어줘</p>
+    </div>
+  </div>
+</div>

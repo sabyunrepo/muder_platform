@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -128,4 +129,39 @@ func (f *testFixture) createClue(t *testing.T, themeID uuid.UUID, name string) u
 		t.Fatalf("createClue(%s): %v", name, err)
 	}
 	return c.ID
+}
+
+// insertThemeWithRawConfig bypasses the service-level UpdateConfigJson (and its
+// write validation) to insert a theme with a raw (potentially legacy-shaped)
+// config_json directly. Used by integration tests that verify the normalizer on
+// the read path. The theme is created with an empty config first (the SQL
+// schema auto-generates the id), then the raw config is written via the
+// lower-level DB query which has no shape validation.
+func (f *testFixture) insertThemeWithRawConfig(t *testing.T, creatorID uuid.UUID, raw json.RawMessage) uuid.UUID {
+	t.Helper()
+	ctx := context.Background()
+	slug := fmt.Sprintf("legacy-%s", uuid.New().String()[:8])
+	theme, err := f.q.CreateTheme(ctx, db.CreateThemeParams{
+		CreatorID:   creatorID,
+		Title:       "legacy-shape-test",
+		Slug:        slug,
+		MinPlayers:  2,
+		MaxPlayers:  6,
+		DurationMin: 60,
+		ConfigJson:  json.RawMessage("{}"),
+	})
+	if err != nil {
+		t.Fatalf("insertThemeWithRawConfig create: %v", err)
+	}
+	// Write the raw legacy config directly, bypassing service-level validation.
+	updated, err := f.q.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{
+		ID:         theme.ID,
+		ConfigJson: raw,
+		Version:    theme.Version,
+	})
+	if err != nil {
+		t.Fatalf("insertThemeWithRawConfig update config: %v", err)
+	}
+	_ = updated
+	return theme.ID
 }

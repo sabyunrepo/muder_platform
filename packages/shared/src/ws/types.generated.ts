@@ -783,31 +783,6 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
 // --- payload interfaces (generated from Go structs marked //wsgen:payload) ---
 
 /**
- * AuthIdentifyPayload — C2S, sent post-upgrade with a refreshed credential.
- */
-export interface AuthIdentifyPayload {
-  token: string;
-  sessionId?: string;
-  clientLastSeq?: number;
-}
-
-/**
- * AuthResumePayload — C2S, sent on reconnect to replay missed events.
- */
-export interface AuthResumePayload {
-  token: string;
-  sessionId: string;
-  lastSeq: number;
-}
-
-/**
- * AuthRefreshPayload — C2S, request a rotated short-lived token.
- */
-export interface AuthRefreshPayload {
-  token: string;
-}
-
-/**
  * AuthChallengePayload — S2C, server demands re-authentication before a
  * sensitive action proceeds.
  */
@@ -817,34 +792,12 @@ export interface AuthChallengePayload {
 }
 
 /**
- * AuthRevokedPayload — S2C, the session has been invalidated and the
- * connection is closing. Code is one of: "banned",
- * "logged_out_elsewhere", "password_changed", "admin_revoked".
+ * AuthIdentifyPayload — C2S, sent post-upgrade with a refreshed credential.
  */
-export interface AuthRevokedPayload {
-  reason: string;
-  code: string;
-}
-
-/**
- * AuthRefreshRequiredPayload — S2C, the token is approaching expiry.
- * The client should reply with auth.refresh before ExpiresAt.
- */
-export interface AuthRefreshRequiredPayload {
-  expiresAt: number;
-  reason?: string;
-}
-
-/**
- * AuthTokenIssuedPayload — S2C, server's response to a successful
- * auth.refresh. Carries the rotated short-lived access token plus its
- * expiry so the client can schedule the next refresh deterministically.
- * Sent as a dedicated frame (not piggybacked on another event) per
- * videosdk 2025 / websockets.readthedocs guidance.
- */
-export interface AuthTokenIssuedPayload {
+export interface AuthIdentifyPayload {
   token: string;
-  expiresAt: number;
+  sessionId?: string;
+  clientLastSeq?: number;
 }
 
 /**
@@ -863,11 +816,50 @@ export interface AuthInvalidSessionPayload {
 }
 
 /**
- * ErrorPayload is sent as the payload of "error" type messages.
+ * AuthRefreshPayload — C2S, request a rotated short-lived token.
  */
-export interface ErrorPayload {
-  code: number;
-  message: string;
+export interface AuthRefreshPayload {
+  token: string;
+}
+
+/**
+ * AuthRefreshRequiredPayload — S2C, the token is approaching expiry.
+ * The client should reply with auth.refresh before ExpiresAt.
+ */
+export interface AuthRefreshRequiredPayload {
+  expiresAt: number;
+  reason?: string;
+}
+
+/**
+ * AuthResumePayload — C2S, sent on reconnect to replay missed events.
+ */
+export interface AuthResumePayload {
+  token: string;
+  sessionId: string;
+  lastSeq: number;
+}
+
+/**
+ * AuthRevokedPayload — S2C, the session has been invalidated and the
+ * connection is closing. Code is one of: "banned",
+ * "logged_out_elsewhere", "password_changed", "admin_revoked".
+ */
+export interface AuthRevokedPayload {
+  reason: string;
+  code: string;
+}
+
+/**
+ * AuthTokenIssuedPayload — S2C, server's response to a successful
+ * auth.refresh. Carries the rotated short-lived access token plus its
+ * expiry so the client can schedule the next refresh deterministically.
+ * Sent as a dedicated frame (not piggybacked on another event) per
+ * videosdk 2025 / websockets.readthedocs guidance.
+ */
+export interface AuthTokenIssuedPayload {
+  token: string;
+  expiresAt: number;
 }
 
 /**
@@ -877,5 +869,13 @@ export interface ConnectedPayload {
   playerId: string;
   sessionId?: string;
   seq: number;
+}
+
+/**
+ * ErrorPayload is sent as the payload of "error" type messages.
+ */
+export interface ErrorPayload {
+  code: number;
+  message: string;
 }
 

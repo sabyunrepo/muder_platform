@@ -7,13 +7,13 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
-	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
@@ -54,8 +54,15 @@ func TestUpdateConfigJson_Service_Success(t *testing.T) {
 }
 
 // TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion verifies that
-// an optimistic lock failure returns 409 with extensions.current_version so
-// the client can rebase. This is the core fix shipped in PR-2.
+// an optimistic lock failure returns 409 with extensions.current_version equal
+// to the actual current DB version, so the client can rebase without an extra
+// round-trip. This is the core fix shipped in PR-2.
+//
+// The test uses service.preUpdateHook to deterministically inject a version
+// bump between the service's getOwnedTheme read and the UpdateThemeConfigJson
+// write — eliminating the previous goroutine+race approach that could fall
+// back to calling buildConfigVersionConflict directly (which bypassed the real
+// service path entirely).
 func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	f := setupFixture(t)
 	ctx := context.Background()
@@ -63,77 +70,46 @@ func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	creatorID := f.createUser(t)
 	themeID := f.createThemeForUser(t, creatorID)
 
-	// First update: version 1 -> 2
+	// First update: version 1 -> 2 (establishes a non-trivial starting version).
 	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID,
 		json.RawMessage(`{"step":1}`)); err != nil {
 		t.Fatalf("first UpdateConfigJson: %v", err)
 	}
 
-	// Second update from a stale session: the service's getOwnedTheme will
-	// read version=2 fresh, but we simulate "another session wrote first" by
-	// bumping the DB version again before our update lands.
-	if _, err := f.pool.Exec(ctx,
-		`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID); err != nil {
-		t.Fatalf("bump version: %v", err)
+	// Cast to *service so we can install the test hook. This is the same
+	// pattern as TestUpdateConfigJson_AuditLog_EmitsInfoWithRequestID which
+	// builds a service directly — UpdateConfigJson and buildConfigVersionConflict
+	// are both reachable through this handle.
+	testSvc, ok := f.svc.(*service)
+	if !ok {
+		t.Skip("service is not *service; cannot install preUpdateHook")
 	}
 
-	// Now UpdateConfigJson reads version=3, then tries to UPDATE WHERE version=3
-	// — but another racing update would have bumped it to 4. Simulate that:
-	// we can't race, so instead we pass a stale version by calling the underlying
-	// query directly with an older version.
-	_, err := f.q.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{
-		ID:         themeID,
-		ConfigJson: json.RawMessage(`{"stale":true}`),
-		Version:    1, // stale — current is 3
-	})
-	if err == nil {
-		t.Fatal("expected stale version to fail at DB layer")
-	}
-
-	// Exercise the real code path: use a wrapper that forces version mismatch
-	// by invoking the service with a concurrent bump pattern.
-	// Re-bump so getOwnedTheme's read will be stale by the time UPDATE runs.
-	if _, err := f.pool.Exec(ctx,
-		`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID); err != nil {
-		t.Fatalf("bump version 2: %v", err)
-	}
-
-	// Read current version for the assertion.
-	current, err := f.q.GetTheme(ctx, themeID)
-	if err != nil {
-		t.Fatalf("GetTheme: %v", err)
-	}
-	expectedVersion := current.Version
-
-	// Drive the mismatch deterministically by racing: read, bump, then service
-	// attempts UPDATE with the already-stale version read. We need a hook:
-	// call the service, but interleave a bump between its read and its write.
-	// Since we don't have hooks, simulate by calling buildConfigVersionConflict
-	// directly through UpdateConfigJson: prepare a theme whose version will
-	// change during the call. We use a goroutine to bump mid-flight.
-	errCh := make(chan error, 1)
-	go func() {
-		// Bump immediately to create the mismatch before UPDATE runs.
-		_, _ = f.pool.Exec(ctx,
-			`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID)
-		_, serviceErr := f.svc.UpdateConfigJson(ctx, creatorID, themeID,
-			json.RawMessage(`{"will":"conflict"}`))
-		errCh <- serviceErr
-	}()
-
-	// Additional bump to widen the race window.
-	_, _ = f.pool.Exec(ctx,
-		`UPDATE themes SET version = version + 1 WHERE id = $1`, themeID)
-
-	svcErr := <-errCh
-	if svcErr == nil {
-		// If no conflict was produced by the race, fall back to a direct
-		// invocation of the conflict builder to still exercise the shape.
-		testSvc, ok := f.svc.(*service)
-		if !ok {
-			t.Skip("race did not produce conflict and service is not *service; skip shape assertion")
+	// Install the hook: after getOwnedTheme reads version=2, bump it to 3 so
+	// the subsequent UPDATE WHERE version=2 finds 0 rows → pgx.ErrNoRows →
+	// buildConfigVersionConflict re-reads version=3 and embeds it.
+	testSvc.preUpdateHook = func(hookCtx context.Context, hookThemeID uuid.UUID) {
+		if _, bumpErr := f.pool.Exec(hookCtx,
+			`UPDATE themes SET version = version + 1 WHERE id = $1`, hookThemeID); bumpErr != nil {
+			t.Errorf("preUpdateHook: bump version: %v", bumpErr)
 		}
-		svcErr = testSvc.buildConfigVersionConflict(ctx, themeID, expectedVersion)
+	}
+	defer func() { testSvc.preUpdateHook = nil }()
+
+	// Read the version that will be current after the hook fires (2+1=3).
+	// This is what buildConfigVersionConflict should re-read and embed.
+	currentBeforeCall, err := f.q.GetTheme(ctx, themeID)
+	if err != nil {
+		t.Fatalf("GetTheme before call: %v", err)
+	}
+	expectedVersion := currentBeforeCall.Version + 1 // hook will bump by 1
+
+	// Call UpdateConfigJson — the hook fires mid-flight, the UPDATE misses, and
+	// the service returns a 409 carrying the actual current version.
+	_, svcErr := f.svc.UpdateConfigJson(ctx, creatorID, themeID,
+		json.RawMessage(`{"will":"conflict"}`))
+	if svcErr == nil {
+		t.Fatal("expected version-conflict error, got nil")
 	}
 
 	var appErr *apperror.AppError
@@ -153,7 +129,9 @@ func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	if !ok {
 		t.Fatal("expected extensions.current_version to be present")
 	}
-	// The carried version must be a positive int (int32 from the DB).
+	// Assert the carried version equals the actual post-bump DB version (not
+	// just "is positive") — verifying that UpdateConfigJson and
+	// buildConfigVersionConflict propagate the correct value end-to-end.
 	var cvInt int32
 	switch v := cv.(type) {
 	case int32:
@@ -165,8 +143,8 @@ func TestUpdateConfigJson_VersionMismatch_CarriesCurrentVersion(t *testing.T) {
 	default:
 		t.Fatalf("unexpected type for current_version: %T", cv)
 	}
-	if cvInt <= 0 {
-		t.Errorf("expected positive current_version, got %d", cvInt)
+	if cvInt != expectedVersion {
+		t.Errorf("current_version: got %d, want %d (post-hook DB version)", cvInt, expectedVersion)
 	}
 }
 
@@ -212,6 +190,192 @@ func TestUpdateConfigJson_NotFound(t *testing.T) {
 	}
 	if appErr.Code != apperror.ErrNotFound {
 		t.Errorf("expected NOT_FOUND, got %s", appErr.Code)
+	}
+}
+
+// TestUpdateConfigJson_RejectsLegacyShape verifies that UpdateConfigJson rejects
+// all four known legacy config shapes (D-19/D-20 forward-only gate).
+func TestUpdateConfigJson_RejectsLegacyShape(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name:  "modules array",
+			input: json.RawMessage(`{"modules": [{"id": "voting"}]}`),
+			want:  "legacy modules shape rejected (D-19)",
+		},
+		{
+			name:  "clue_placement key",
+			input: json.RawMessage(`{"modules": {}, "clue_placement": {"c1": "library"}}`),
+			want:  "legacy clue_placement key rejected (D-20)",
+		},
+		{
+			name:  "module_configs key",
+			input: json.RawMessage(`{"modules": {"voting": {"enabled": true}}, "module_configs": {}}`),
+			want:  "legacy module_configs key rejected (D-19)",
+		},
+		{
+			name:  "character_clues key",
+			input: json.RawMessage(`{"modules": {}, "character_clues": {}}`),
+			want:  "legacy character_clues key rejected (D-20)",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !errors.As(err, new(*apperror.AppError)) {
+				t.Fatalf("expected *apperror.AppError for %s, got %T: %v", tc.name, err, err)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+// TestUpdateConfigJson_RejectsTopLevelNull verifies that a literal JSON null body
+// (not {"modules":null}) is rejected before any key-access — the cfg map would be
+// nil after Unmarshal and subsequent key lookups would silently no-op (round-2 CR).
+func TestUpdateConfigJson_RejectsTopLevelNull(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, json.RawMessage(`null`))
+	if err == nil {
+		t.Fatal("expected error for top-level JSON null, got nil")
+	}
+	if !strings.Contains(err.Error(), "null/non-object rejected") {
+		t.Errorf("expected error to contain %q, got: %v", "null/non-object rejected", err)
+	}
+}
+
+// TestUpdateConfigJson_RejectsNullModules verifies that {"modules": null} produces
+// a distinct error from the legacy-array case (H3 — round-2 review gap).
+func TestUpdateConfigJson_RejectsNullModules(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, json.RawMessage(`{"modules": null}`))
+	if err == nil {
+		t.Fatal("expected error for null modules, got nil")
+	}
+	// Distinct error message — NOT the "legacy modules shape" message
+	if !strings.Contains(err.Error(), "modules cannot be null") {
+		t.Errorf("expected error to contain %q, got: %v", "modules cannot be null", err)
+	}
+	if strings.Contains(err.Error(), "legacy modules shape") {
+		t.Errorf("null modules should produce a distinct error from legacy-array case, got: %v", err)
+	}
+}
+
+// TestUpdateConfigJson_RejectsLocationsDeadKey verifies that locations[].clueIds
+// (top-level, not nested under locationClueConfig) is rejected on write (H2 — D-20 gate).
+func TestUpdateConfigJson_RejectsLocationsDeadKey(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name: "first location has dead key",
+			input: json.RawMessage(`{
+				"modules": {},
+				"locations": [{"id": "library", "clueIds": ["c1"]}]
+			}`),
+			want: "locations[0].clueIds",
+		},
+		{
+			name: "second location has dead key",
+			input: json.RawMessage(`{
+				"modules": {},
+				"locations": [
+					{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}},
+					{"id": "study", "clueIds": ["c2"]}
+				]
+			}`),
+			want: "locations[1].clueIds",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
+			}
+			if !strings.Contains(err.Error(), "D-20") {
+				t.Errorf("expected error to contain %q, got: %v", "D-20", err)
+			}
+		})
+	}
+}
+
+// TestUpdateConfigJson_AcceptsNewLocationsShape verifies that the correct new shape
+// (locationClueConfig.clueIds) is NOT rejected by the dead-key gate (H2 regression).
+func TestUpdateConfigJson_AcceptsNewLocationsShape(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	input := json.RawMessage(`{
+		"modules": {},
+		"locations": [{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}}]
+	}`)
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, input)
+	if err != nil {
+		t.Fatalf("new-shape locationClueConfig.clueIds must NOT be rejected, got: %v", err)
+	}
+}
+
+// TestUpdateConfigJson_AcceptsNewShape verifies that UpdateConfigJson accepts
+// a valid new-shape config and bumps the version (D-19/D-20 forward-only gate).
+func TestUpdateConfigJson_AcceptsNewShape(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	newShape := json.RawMessage(`{
+		"modules": {"voting": {"enabled": true, "config": {"mode": "open"}}},
+		"locations": [{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}}]
+	}`)
+
+	updated, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, newShape)
+	if err != nil {
+		t.Fatalf("UpdateConfigJson with new shape: %v", err)
+	}
+	if updated.Version <= 1 {
+		t.Errorf("expected version > 1 after update, got %d", updated.Version)
 	}
 }
 

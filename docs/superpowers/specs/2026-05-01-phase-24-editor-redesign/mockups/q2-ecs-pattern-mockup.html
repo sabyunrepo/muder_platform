@@ -1,0 +1,133 @@
+<!doctype html>
+<h2>Q2. ECS 패턴 적용 — 두 페이지가 어떻게 연동될까?</h2>
+<p class="subtitle">왼쪽 = 모듈 ON/OFF 페이지, 오른쪽 = 단서 편집 페이지. 모듈을 켜면 단서 편집 폼에 섹션이 나타나는 모습.</p>
+
+<div class="split">
+
+  <!-- LEFT: Module ON/OFF page -->
+  <div class="mockup">
+    <div class="mockup-header">📄 페이지 A: 모듈 켜기/끄기 (테마 전체 설정)</div>
+    <div class="mockup-body" style="padding:8px">
+      <div style="display:flex;gap:6px;height:340px">
+        <div class="mock-sidebar" style="width:38%;font-size:11px;padding:8px">
+          <div style="font-weight:600;margin-bottom:6px">🎯 컨셉</div>
+          <div style="padding:4px;background:#3a4a5a;border-radius:3px;margin-bottom:2px;border-left:3px solid #5af">🔍 단서 ▾</div>
+          <div style="padding:4px;margin-bottom:2px">📍 장소</div>
+          <div style="padding:4px;margin-bottom:2px">👤 캐릭터</div>
+          <div style="padding:4px;margin-bottom:2px">⏱️ 진행</div>
+          <div style="padding:4px;margin-bottom:2px">🎭 결말</div>
+          <div style="padding:4px;margin-bottom:2px">💬 채팅</div>
+        </div>
+        <div class="mock-content" style="flex:1;font-size:11px;padding:10px">
+          <div style="font-weight:600;margin-bottom:8px">🔍 단서 분배 모듈 (4개)</div>
+
+          <div style="background:#2a4a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+            <div style="display:flex;justify-content:space-between;font-weight:600">
+              <span>starting_clue</span><span style="color:#4a8">● ON</span>
+            </div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px">즉시 분배 (게임 시작 시)</div>
+          </div>
+
+          <div style="background:#2a4a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+            <div style="display:flex;justify-content:space-between;font-weight:600">
+              <span>round_clue</span><span style="color:#4a8">● ON</span>
+            </div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px">라운드별 분배</div>
+          </div>
+
+          <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;opacity:0.55">
+            <div style="display:flex;justify-content:space-between">
+              <span>conditional_clue</span><span style="color:#666">○ OFF</span>
+            </div>
+            <div style="font-size:10px;color:#666;margin-top:2px">조합 해제</div>
+          </div>
+
+          <div style="background:#2a2a3a;padding:8px;border-radius:4px;opacity:0.55">
+            <div style="display:flex;justify-content:space-between">
+              <span>timed_clue</span><span style="color:#666">○ OFF</span>
+            </div>
+            <div style="font-size:10px;color:#666;margin-top:2px">시간 주기</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Entity edit page -->
+  <div class="mockup">
+    <div class="mockup-header">📄 페이지 B: 단서 편집 (각 단서 1개씩)</div>
+    <div class="mockup-body" style="padding:8px">
+      <div style="display:flex;gap:6px;height:340px">
+        <div class="mock-sidebar" style="width:30%;font-size:11px;padding:8px">
+          <div style="font-weight:600;margin-bottom:6px">🔍 단서 목록</div>
+          <div style="padding:4px;background:#3a4a5a;border-radius:3px;margin-bottom:2px;border-left:3px solid #5af">c1 일기장</div>
+          <div style="padding:4px;margin-bottom:2px">c2 편지</div>
+          <div style="padding:4px;margin-bottom:2px">c3 칼</div>
+          <div style="padding:4px;margin-bottom:2px">c4 알리바이</div>
+          <button class="mock-button" style="width:100%;font-size:10px;margin-top:8px">+ 새 단서</button>
+        </div>
+        <div class="mock-content" style="flex:1;font-size:11px;padding:8px;overflow-y:auto">
+          <div style="font-weight:600;margin-bottom:6px">⚙️ c1 일기장 편집</div>
+
+          <!-- Always-on base fields -->
+          <div style="background:#2a2a3a;padding:6px;border-radius:3px;margin-bottom:4px">
+            <div style="font-size:10px;color:#aaa;margin-bottom:2px">기본 정보 (항상)</div>
+            <div>이름: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">일기장</span></div>
+            <div style="margin-top:2px">설명: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px;font-size:10px">피해자 책상 서랍</span></div>
+          </div>
+
+          <!-- Dynamic section: starting_clue -->
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:4px;border-left:3px solid #4a8">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+              <span style="color:#4a8;font-weight:600">🟢 starting_clue 옵션</span>
+              <span style="color:#666">동적</span>
+            </div>
+            <div>분배 시점: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">game_start</span></div>
+            <div style="margin-top:2px">받는 캐릭터: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">탐정</span></div>
+          </div>
+
+          <!-- Dynamic section: round_clue -->
+          <div style="background:#2a3a3a;padding:6px;border-radius:3px;margin-bottom:4px;border-left:3px solid #4a8">
+            <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">
+              <span style="color:#4a8;font-weight:600">🟢 round_clue 옵션</span>
+              <span style="color:#666">동적</span>
+            </div>
+            <div>라운드: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">2</span></div>
+            <div style="margin-top:2px">대상: <span style="background:#3a3a4a;padding:1px 4px;border-radius:2px">전원</span></div>
+          </div>
+
+          <!-- Hidden module (not visible because OFF) -->
+          <div style="background:#1a1a2a;padding:6px;border-radius:3px;margin-bottom:4px;font-size:10px;color:#555;text-align:center">
+            ⊘ conditional_clue / timed_clue 는 페이지 A 에서 OFF — 폼에 안 보임
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">↔ 화살표 흐름: 페이지 A 에서 모듈을 켜면(예: <code>starting_clue</code> ON), 페이지 B 의 모든 단서 편집 폼에 "🟢 starting_clue 옵션" 섹션이 자동 나타남. 끄면 사라짐.</p>
+
+<div class="options" style="margin-top:32px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이 방향 OK</h3>
+      <p>페이지 A (모듈 ON/OFF) ↔ 페이지 B (entity 편집 + 동적 섹션) 분리. 다음 결정으로 진행.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="merge" onclick="toggleSelect(this)">
+    <div class="letter">①</div>
+    <div class="content">
+      <h3>한 페이지로 합치기</h3>
+      <p>좌측에 entity 목록, 우측에 그 entity 편집 + 모듈 토글 다 함께 (Unity 식 단일 인스펙터).</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견 / 우려 사항</h3>
+      <p>터미널에 적어주면 그대로 반영해서 mockup 다시 그릴게.</p>
+    </div>
+  </div>
+</div>

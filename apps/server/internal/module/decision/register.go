@@ -6,6 +6,7 @@ package decision
 
 import (
 	_ "github.com/mmp-platform/server/internal/module/decision/accusation"
+	_ "github.com/mmp-platform/server/internal/module/decision/ending_branch"
 	_ "github.com/mmp-platform/server/internal/module/decision/hidden_mission"
 	_ "github.com/mmp-platform/server/internal/module/decision/voting"
 )

@@ -1,6 +1,9 @@
 # ─── Dependencies ──────────────────────────────────────
 node_modules/
 
+# ─── Superpowers brainstorm session ───────────────────
+.superpowers/
+
 # ─── Build outputs ─────────────────────────────────────
 dist/
 build/

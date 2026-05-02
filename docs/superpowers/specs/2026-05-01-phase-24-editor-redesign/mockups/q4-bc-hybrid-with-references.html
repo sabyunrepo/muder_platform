@@ -1,0 +1,166 @@
+<h2>Q4. B+C 하이브리드 + 실제 게임 디자인 도구 사례</h2>
+<p class="subtitle">Entity 우선(B) + 작업 단계 그룹 헤더(C) 합친 모습. 옆에 Articy:draft / RPG Maker / World Anvil 이 같은 문제를 어떻게 풀었는지.</p>
+
+<div class="split">
+
+  <!-- LEFT: B+C hybrid mockup -->
+  <div class="mockup">
+    <div class="mockup-header">🎯 우리 에디터 (B+C 하이브리드)</div>
+    <div class="mockup-body" style="padding:8px">
+      <div style="display:flex;gap:6px;height:420px">
+        <div class="mock-sidebar" style="width:42%;font-size:11px;padding:8px">
+          <div style="font-weight:600;margin-bottom:4px">테마: "별장 살인사건"</div>
+
+          <!-- Group 1: 세계 정의 -->
+          <div class="label" style="margin-top:8px;font-size:9px;color:#888">1️⃣ 세계 정의</div>
+          <div style="padding:4px;background:#3a4a5a;border-radius:3px;margin-bottom:2px;border-left:3px solid #5af">
+            <span>👤 캐릭터</span><span style="float:right;color:#888">5</span>
+          </div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>📍 장소</span><span style="float:right;color:#888">8</span>
+          </div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>🔍 단서</span><span style="float:right;color:#888">12</span>
+          </div>
+
+          <!-- Group 2: 흐름 -->
+          <div class="label" style="margin-top:10px;font-size:9px;color:#888">2️⃣ 흐름 &amp; 결말</div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>🎬 페이즈</span><span style="float:right;color:#888">4</span>
+          </div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>🎭 결말</span><span style="float:right;color:#888">3</span>
+          </div>
+
+          <!-- Group 3: Global -->
+          <div class="label" style="margin-top:10px;font-size:9px;color:#888">3️⃣ 글로벌 시스템</div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>⚖️ 결정 룰</span>
+          </div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>💬 커뮤니케이션</span>
+          </div>
+          <div style="padding:4px;margin-bottom:2px">
+            <span>🎵 미디어</span>
+          </div>
+
+          <!-- Always-accessible: Modules -->
+          <div style="margin-top:14px;border-top:1px dashed #555;padding-top:8px">
+            <div style="padding:4px;background:#3a2a3a;border-radius:3px;border-left:3px solid #a5f">
+              <span>🧩 모듈 ON/OFF</span><span style="float:right;color:#888">7/21</span>
+            </div>
+            <div style="font-size:9px;color:#888;padding-left:6px;margin-top:2px">언제든 접근 가능</div>
+          </div>
+        </div>
+
+        <div class="mock-content" style="flex:1;font-size:11px;padding:10px;overflow-y:auto">
+          <div style="font-weight:600;margin-bottom:6px">🔍 단서 12개</div>
+          <div style="font-size:10px;color:#888;margin-bottom:8px">현재 켜진 모듈에 따라 컬럼이 동적으로 변함</div>
+
+          <table style="width:100%;font-size:10px;border-collapse:collapse">
+            <thead>
+              <tr style="background:#2a2a3a">
+                <td style="padding:4px">이름</td>
+                <td style="padding:4px;color:#4a8">시작</td>
+                <td style="padding:4px;color:#4a8">라운드</td>
+                <td style="padding:4px;color:#888">조합</td>
+                <td style="padding:4px;color:#888">시간</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom:1px solid #333"><td style="padding:4px">일기장</td><td style="color:#4a8">탐정</td><td>—</td><td style="color:#666">⊘</td><td style="color:#666">⊘</td></tr>
+              <tr style="border-bottom:1px solid #333"><td style="padding:4px">편지</td><td>—</td><td style="color:#4a8">R2</td><td style="color:#666">⊘</td><td style="color:#666">⊘</td></tr>
+              <tr style="border-bottom:1px solid #333"><td style="padding:4px">칼</td><td>—</td><td>—</td><td style="color:#666">⊘</td><td style="color:#666">⊘</td></tr>
+              <tr><td style="padding:4px">알리바이</td><td>—</td><td style="color:#4a8">R3</td><td style="color:#666">⊘</td><td style="color:#666">⊘</td></tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top:14px;padding:8px;background:#2a2a3a;border-radius:3px;font-size:10px">
+            <div style="color:#888">⊘ = 모듈 OFF — 컬럼 자체가 회색</div>
+            <div style="color:#888">🟢 = 모듈 ON — 클릭하면 단서 1개 편집 폼으로 진입 (페이지 B)</div>
+          </div>
+
+          <button class="mock-button" style="margin-top:12px;width:100%;font-size:10px">+ 새 단서</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Real-world references -->
+  <div class="mockup">
+    <div class="mockup-header">🌍 실제 도구는 어떻게?</div>
+    <div class="mockup-body" style="padding:8px;font-size:11px;overflow-y:auto;max-height:420px">
+
+      <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #5af">
+        <div style="font-weight:600;margin-bottom:3px">📚 Articy:draft (게임 시나리오)</div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:4px">"Entity Database + Template" — entity 종류(Character/Item/Location)와 그 위에 붙이는 Feature 를 분리. <strong>Template editor 좌측에 features 리스트, 우측에 entity 폼.</strong></div>
+        <div style="font-size:10px;background:#1a2a3a;padding:4px;border-radius:2px;font-family:monospace">
+          📁 Entities ▾<br>
+          &nbsp;&nbsp;👤 Characters (12)<br>
+          &nbsp;&nbsp;📍 Locations (8)<br>
+          &nbsp;&nbsp;🎒 Items (24)<br>
+          📁 Flow ▾<br>
+          📁 Templates (어떤 feature 를 attach)
+        </div>
+        <div style="font-size:10px;color:#5af;margin-top:4px">≈ 우리 B+C 와 거의 동일</div>
+      </div>
+
+      <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #5af">
+        <div style="font-weight:600;margin-bottom:3px">🏰 RPG Maker MV/MZ</div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:4px">좌측 트리에 entity 종류 16개 (Map / Actor / Class / Skills / Items / Weapons / Armors / Enemies / Troops / States / Animations ...). <strong>완전 entity-first 극단</strong>. 그룹 헤더 X, 평면 리스트.</div>
+        <div style="font-size:10px;color:#888">≈ B 옵션 극단 — 우리는 21 모듈이라 평면 리스트면 너무 김</div>
+      </div>
+
+      <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #5af">
+        <div style="font-weight:600;margin-bottom:3px">🌐 World Anvil (TTRPG 세계 빌더)</div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:4px">좌측 트리 = Articles, <strong>사용자가 직접 카테고리 만들어 drag &amp; drop 그룹화</strong>. "Settlements / Characters / Magic Systems" 등을 사용자가 정의. 그 위에 "Article Templates" 가 feature 처럼 붙음.</div>
+        <div style="font-size:10px;color:#888">≈ C 의 그룹 헤더 + 사용자 커스터마이즈 가능 (우리는 fixed 3 그룹이라 더 가벼움)</div>
+      </div>
+
+      <div style="background:#2a3a4a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #5af">
+        <div style="font-weight:600;margin-bottom:3px">📝 Notion / Linear</div>
+        <div style="font-size:10px;color:#aaa;margin-bottom:4px">사이드바에 <strong>uppercase 그룹 헤더</strong> (WORKSPACE / PRIVATE / SHARED) — 클릭 가능 항목 아니고 시각적 라벨. 우리 1️⃣ 2️⃣ 3️⃣ 헤더와 같은 패턴.</div>
+        <div style="font-size:10px;color:#888">≈ C 의 라벨 패턴 차용 근거</div>
+      </div>
+
+      <div style="background:#2a3a4a;padding:8px;border-radius:4px;border-left:3px solid #a5f">
+        <div style="font-weight:600;margin-bottom:3px">🎮 Unity / Godot Inspector</div>
+        <div style="font-size:10px;color:#aaa">좌측 = Hierarchy(=entity 트리), 우측 = Inspector(=entity 폼 + 동적 component 섹션). 우리 페이지 B 모델의 원형.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">왼쪽 mockup 의 사이드바 구조 + 컬럼 동적 변화 + 페이지 B(단서 1개 편집) 흐름이 우리 안. 오른쪽은 같은 문제를 푼 실제 도구들의 패턴.</p>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이 사이드바 구조 OK</h3>
+      <p>3 그룹 헤더 + entity 5 + 글로벌 3 + 모듈 ON/OFF 항상 접근. 다음 결정으로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="more-entities" onclick="toggleSelect(this)">
+    <div class="letter">+</div>
+    <div class="content">
+      <h3>entity 더 추가하고 싶다</h3>
+      <p>"미션 / 단서 조합 / 시간표" 같은 entity 가 빠진 것 같음 — 터미널에 적어줘</p>
+    </div>
+  </div>
+  <div class="option" data-choice="merge" onclick="toggleSelect(this)">
+    <div class="letter">M</div>
+    <div class="content">
+      <h3>모듈 ON/OFF 를 사이드바에서 빼기</h3>
+      <p>각 entity 페이지 안에 "이 entity 와 관련된 모듈 토글" 인라인 (Articy 식)</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>터미널에 적어주면 그대로 반영</p>
+    </div>
+  </div>
+</div>

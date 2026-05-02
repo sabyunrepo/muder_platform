@@ -1,0 +1,116 @@
+<h2>Q3. 컨셉 분류 — 사이드바를 어떻게 나눌까?</h2>
+<p class="subtitle">백엔드에 21+ ConfigSchema 모듈이 있어. 사용자(게임 디자이너) 머릿속에 어떻게 묶이느냐가 사이드바 자체를 정의함.</p>
+
+<div class="cards" data-multiselect>
+
+  <!-- A: Backend folder taxonomy -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. 모듈 카테고리 식 (백엔드 폴더 그대로)</div>
+        <div class="mockup-body" style="padding:6px;font-size:11px">
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">🔍 단서 분배 (5)<div style="font-size:9px;color:#888;padding-left:14px">starting / round / conditional / timed / trade</div></div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">🚶 탐색 (4)<div style="font-size:9px;color:#888;padding-left:14px">room / floor / timed / location_clue</div></div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">🎴 단서 상호작용 (1)<div style="font-size:9px;color:#888;padding-left:14px">clue_interaction</div></div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">🏠 범죄현장 (3)<div style="font-size:9px;color:#888;padding-left:14px">evidence / location / combination</div></div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">⚖️ 결정 (3)<div style="font-size:9px;color:#888;padding-left:14px">voting / accusation / hidden_mission</div></div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">📜 진행 (7)<div style="font-size:9px;color:#888;padding-left:14px">script / event / hybrid / gm / consensus / skip / ending</div></div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">💬 커뮤니케이션 (5)</div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;margin-bottom:3px">🎵 미디어 (1)</div>
+          <div style="background:#2a2a3a;padding:5px;border-radius:3px;color:#666">🔧 핵심 (4)</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. 모듈 카테고리 식 (9 카테고리)</h3>
+      <p>백엔드 폴더 구조 그대로. 각 카테고리 안에서 모듈 ON/OFF.</p>
+      <div class="pros-cons" style="font-size:10px;margin-top:6px">
+        <div class="pros"><h4>장점</h4><ul><li>백엔드와 1:1, 변환 비용 0</li><li>새 모듈 추가 시 분류 결정 명확</li></ul></div>
+        <div class="cons"><h4>약점</h4><ul><li>"단서를 어디서 편집"이 4 카테고리에 흩어짐 (분배·상호작용·탐색·범죄현장)</li><li>entity-first 의도와 어긋남</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B: Entity-first taxonomy -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Entity 우선 (사용자 발화에 가까움)</div>
+        <div class="mockup-body" style="padding:6px;font-size:11px">
+          <div style="background:#2a3a4a;padding:5px;border-radius:3px;margin-bottom:3px;border-left:3px solid #5af">
+            <div style="font-weight:600">📦 Entity</div>
+            <div style="padding-left:8px;margin-top:3px">
+              <div style="padding:3px">🔍 단서 (Clue)</div>
+              <div style="padding:3px">📍 장소 (Location)</div>
+              <div style="padding:3px">👤 캐릭터 (Character)</div>
+              <div style="padding:3px">🎬 페이즈 (Phase)</div>
+              <div style="padding:3px">🎭 결말 (Ending)</div>
+            </div>
+          </div>
+          <div style="background:#3a2a4a;padding:5px;border-radius:3px;margin-top:6px;border-left:3px solid #a5f">
+            <div style="font-weight:600">🌐 글로벌 시스템</div>
+            <div style="padding-left:8px;margin-top:3px">
+              <div style="padding:3px">⚖️ 결정 (투표/고소)</div>
+              <div style="padding:3px">💬 커뮤니케이션</div>
+              <div style="padding:3px">🎵 미디어</div>
+            </div>
+          </div>
+          <div style="font-size:9px;color:#888;margin-top:6px;padding:4px">21 모듈 → entity 폼에 capability 로 붙거나, 글로벌에서 직접 ON/OFF</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Entity 우선 (5 entity + 3 글로벌)</h3>
+      <p>"내가 만들 게임의 등장 인물·장소·단서가 뭐냐"부터 시작. 모듈은 entity 에 능력으로 붙거나 글로벌 설정.</p>
+      <div class="pros-cons" style="font-size:10px;margin-top:6px">
+        <div class="pros"><h4>장점</h4><ul><li>사용자 작업 흐름과 일치 (단서·장소·캐릭터부터)</li><li>entity 편집 페이지 = 사이드바 항목 1:1</li></ul></div>
+        <div class="cons"><h4>약점</h4><ul><li>모듈을 어느 entity 에 매핑할지 추가 결정 (예: <code>round_clue</code> = 단서? 페이즈?)</li><li>글로벌과 entity-bound 구분 시 회색지대 존재</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C: Hybrid -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. 게임 디자인 흐름 (작업 단계)</div>
+        <div class="mockup-body" style="padding:6px;font-size:11px">
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <div style="font-weight:600">1️⃣ 세계 정의</div>
+            <div style="padding-left:8px;font-size:10px;color:#aaa">캐릭터 / 장소 / 단서 (entity)</div>
+          </div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <div style="font-weight:600">2️⃣ 게임 흐름</div>
+            <div style="padding-left:8px;font-size:10px;color:#aaa">페이즈 / 라운드 / 진행 룰 (script/event/...)</div>
+          </div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <div style="font-weight:600">3️⃣ 탐색·발견 룰</div>
+            <div style="padding-left:8px;font-size:10px;color:#aaa">room/floor/timed exploration / location_clue</div>
+          </div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <div style="font-weight:600">4️⃣ 단서 분배 룰</div>
+            <div style="padding-left:8px;font-size:10px;color:#aaa">starting/round/conditional/timed clue</div>
+          </div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;margin-bottom:3px;border-left:3px solid #4a8">
+            <div style="font-weight:600">5️⃣ 결정·결말</div>
+            <div style="padding-left:8px;font-size:10px;color:#aaa">voting/accusation/ending</div>
+          </div>
+          <div style="background:#2a3a3a;padding:5px;border-radius:3px;border-left:3px solid #4a8">
+            <div style="font-weight:600">6️⃣ 커뮤니케이션·연출</div>
+            <div style="padding-left:8px;font-size:10px;color:#aaa">chat/voice/audio</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. 게임 디자인 흐름 (6 단계)</h3>
+      <p>"세계를 만들고 → 흐름을 짜고 → 탐색·분배 룰 → 결말" 같은 <strong>작업 순서</strong>를 사이드바로. 위에서 아래로 따라가면 게임 1개 완성.</p>
+      <div class="pros-cons" style="font-size:10px;margin-top:6px">
+        <div class="pros"><h4>장점</h4><ul><li>초보자가 길 잃지 않음 (튜토리얼 효과)</li><li>1️⃣→6️⃣ 순서 = 자연스러운 작업 흐름</li></ul></div>
+        <div class="cons"><h4>약점</h4><ul><li>고수는 자유 점프 원할 수 있음 (작업 순서 강요 비호감)</li><li>1️⃣ "세계 정의" 안에 entity 3종 (단서/장소/캐릭터) 또 분기 필요</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">하나 골라도 되고, 끌리는 거 여러 개 + 터미널에 "B 인데 C 의 작업 흐름 힌트도 살리고 싶다" 같은 변형 의견 적어도 돼.</p>

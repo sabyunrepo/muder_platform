@@ -7,6 +7,7 @@ import (
 	"go/token"
 	"io/fs"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -62,6 +63,10 @@ func extractPayloads(dir string) ([]PayloadStruct, error) {
 			}
 		}
 	}
+	// Sort by struct name for deterministic output across Go versions and
+	// runs (parser.ParseDir returns map[string]*ast.Package whose iteration
+	// order is randomized).
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil
 }
 

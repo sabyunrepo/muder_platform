@@ -1,0 +1,235 @@
+<h2>Q8. 모든 모듈 켜진 상태 — 5개 entity 페이지 풀 모습</h2>
+<p class="subtitle">현실적 최대 (탐색·진행은 택1) 약 15개 모듈 동시 ON 한 가정. 베이스 (회색) + 동적 섹션 (보라/녹색) 색 구분.</p>
+
+<!-- LEGEND -->
+<div style="background:#1a1a2a;padding:8px;border-radius:4px;margin-bottom:16px;font-size:11px">
+  <span style="background:#2a2a3a;padding:3px 8px;border-radius:3px;border-left:3px solid #888;margin-right:8px">📋 베이스</span>
+  <span style="background:#2a3a3a;padding:3px 8px;border-radius:3px;border-left:3px solid #4a8;margin-right:8px">🟢 모듈 동적 섹션</span>
+  <span style="background:#3a3a2a;padding:3px 8px;border-radius:3px;border-left:3px solid #aa4">📜 markdown 컨텐츠</span>
+</div>
+
+<!-- ============= 1. 캐릭터 ============= -->
+<div class="mockup">
+  <div class="mockup-header">👤 캐릭터 — 김철수 (탐정)</div>
+  <div class="mockup-body" style="padding:10px;font-size:11px">
+
+    <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+      <strong>📋 베이스</strong>
+      <div style="color:#aaa;margin-top:4px">이름 · 캐릭터 코드 · 사진 · 공개 소개</div>
+    </div>
+
+    <div style="background:#3a3a2a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #aa4">
+      <strong>📜 역할지 (Role Sheet)</strong> <span style="color:#888;font-size:10px">— Markdown</span>
+      <div style="color:#aaa;margin-top:4px">비밀 · 동기 · 알리바이 등 자유 작성</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 starting_clue</strong> <span style="color:#888;font-size:10px">— 시작 단서</span>
+      <div style="color:#aaa;margin-top:4px">▾ 분배 시점: <code>game_start</code> | 받을 단서: [c1 일기장 ✕] [c3 칼 ✕] <em>(단서 목록에서 선택)</em></div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;border-left:3px solid #4a8">
+      <strong>🟢 hidden_mission</strong> <span style="color:#888;font-size:10px">— 숨겨진 임무 (Markdown)</span>
+      <div style="color:#aaa;margin-top:4px">"# 임무\n정대호의 협박 증거를 찾아 폐기하라."</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= 2. 장소 ============= -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">📍 장소 — 서재 (study_room)</div>
+  <div class="mockup-body" style="padding:10px;font-size:11px">
+
+    <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+      <strong>📋 베이스</strong>
+      <div style="color:#aaa;margin-top:4px">이름 · 코드 · 이미지 · 공개 설명 · 부모 장소(1층) · 접근 제한 캐릭터(이영희 차단)</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 evidence</strong> <span style="color:#888;font-size:10px">— 자동 발견 증거</span>
+      <div style="color:#aaa;margin-top:4px">▾ 배치 단서: [c5 시체 ✕] [c6 흉기 ✕] | 자동발견 켜기 ☑ | 등장 페이즈: <code>phase 1부터</code></div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 location_clue</strong> <span style="color:#888;font-size:10px">— 검색 시 발견</span>
+      <div style="color:#aaa;margin-top:4px">▾ 숨겨진 단서: [c1 일기장 ✕] [c2 편지 ✕] | 단서 개수 표시 ☑ | 반복 검색 ☐</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 room_exploration</strong> <span style="color:#888;font-size:10px">— 입장 룰</span>
+      <div style="color:#aaa;margin-top:4px">▾ 최대 동시 인원: <code>3</code> | 이동 쿨다운: <code>30초</code> | 다른 사람 위치 표시 ☑</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;border-left:3px solid #4a8">
+      <strong>🟢 audio</strong> <span style="color:#888;font-size:10px">— 진입 BGM</span>
+      <div style="color:#aaa;margin-top:4px">▾ 배경음: <code>study_ambient.mp3</code> | 페이드 인: <code>2초</code></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= 3. 단서 ============= -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">🔍 단서 — c1 일기장</div>
+  <div class="mockup-body" style="padding:10px;font-size:11px">
+
+    <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+      <strong>📋 베이스</strong>
+      <div style="color:#aaa;margin-top:4px">이름 · 단서 코드 · 이미지</div>
+    </div>
+
+    <div style="background:#3a3a2a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #aa4">
+      <strong>📄 발견 시 표시 컨텐츠</strong> <span style="color:#888;font-size:10px">— Markdown</span>
+      <div style="color:#aaa;margin-top:4px">"표지에 검은 잉크. 마지막 페이지에 *그를 죽일 수밖에 없었다*..."</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 conditional_clue</strong> <span style="color:#888;font-size:10px">— 조합 해제 룰</span>
+      <div style="color:#aaa;margin-top:4px">▾ 선행 단서: [c2 편지] AND [c5 시체] → 자동 해제 | 알림 모드: <code>전원 공지</code></div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 combination</strong> <span style="color:#888;font-size:10px">— 조합 룰</span>
+      <div style="color:#aaa;margin-top:4px">▾ 이 단서 + [c3 칼] = 새 단서 [c8 진실의 증거] 생성</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;border-left:3px solid #4a8">
+      <strong>🟢 clue_interaction</strong> <span style="color:#888;font-size:10px">— 사용·이전·중복 정책</span>
+      <div style="color:#aaa;margin-top:4px">▾ 다른 사람에게 양도 가능 ☑ | 중복 획득 시: <code>덮어쓰기</code> | 단서 레벨: <code>중급</code></div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-top:6px;border-left:3px dashed #4a8;opacity:0.7">
+      <strong>🔗 자동 표시 — 이 단서가 사용된 곳</strong>
+      <div style="color:#aaa;margin-top:4px">📍 서재 (location_clue) · 👤 김철수 (starting_clue) <em>— 클릭 시 해당 페이지로 이동</em></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= 4. 페이즈 ============= -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">🎬 페이즈 — 라운드 2 (조사)</div>
+  <div class="mockup-body" style="padding:10px;font-size:11px">
+
+    <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+      <strong>📋 베이스 (Flow 노드)</strong>
+      <div style="color:#aaa;margin-top:4px">이름 · 타입(<code>investigation</code>) · 시간(<code>15분</code>) · 라운드(<code>2/4</code>) · 자동 진행 ☑</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 round_clue</strong> <span style="color:#888;font-size:10px">— 이 라운드 분배</span>
+      <div style="color:#aaa;margin-top:4px">▾ 라운드 시작 시 [c2 편지] → 김철수 / [c4 알리바이] → 전원</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 timed_clue</strong> <span style="color:#888;font-size:10px">— 주기 분배</span>
+      <div style="color:#aaa;margin-top:4px">▾ 5분마다 1개 / 풀: [c10] [c11] [c12] / 대상: <code>단서 적은 사람</code> / 최대 3회</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #4a8">
+      <strong>🟢 hybrid_progression</strong> <span style="color:#888;font-size:10px">— 진행 방식 (택1)</span>
+      <div style="color:#aaa;margin-top:4px">▾ 다음 페이즈 조건: 시간 종료 OR 모두 준비 완료 OR GM 진행</div>
+    </div>
+
+    <div style="background:#2a3a3a;padding:8px;border-radius:4px;border-left:3px solid #4a8">
+      <strong>🟢 gm_control</strong> <span style="color:#888;font-size:10px">— GM 수동 제어</span>
+      <div style="color:#aaa;margin-top:4px">▾ 일시정지 가능 ☑ / 강제 진행 ☑ / 시간 추가 ☑</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============= 5. 결말 ============= -->
+<div class="mockup" style="margin-top:14px">
+  <div class="mockup-header">🎭 결말 — TRUTH (사건의 전말)</div>
+  <div class="mockup-body" style="padding:10px;font-size:11px">
+
+    <div style="background:#2a2a3a;padding:8px;border-radius:4px;margin-bottom:6px;border-left:3px solid #888">
+      <strong>📋 베이스</strong>
+      <div style="color:#aaa;margin-top:4px">라벨(<code>TRUTH</code>) · 설명 · 점수 배수(<code>x1.5</code>)</div>
+    </div>
+
+    <div style="background:#3a3a2a;padding:8px;border-radius:4px;border-left:3px solid #aa4">
+      <strong>📜 결말 컨텐츠</strong> <span style="color:#888;font-size:10px">— Markdown, 게임 끝나고 모두에게 공개</span>
+      <div style="color:#aaa;margin-top:4px">"# 진범은 이영희\n정대호와 김철수의 과거 의뢰 건에 휘말려..."</div>
+    </div>
+  </div>
+</div>
+
+<!-- Global modules summary -->
+<h3 style="margin-top:24px">🌐 글로벌 시스템 (entity 가 아니라 별도 페이지에서 1번 설정)</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">카테고리</th>
+      <th style="padding:6px;text-align:left">모듈</th>
+      <th style="padding:6px;text-align:left">설정 예</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>⚖️ 결정 룰</strong></td>
+      <td style="padding:6px"><code>voting / accusation / trade_clue</code></td>
+      <td style="padding:6px;color:#aaa">투표 방식: 비공개, 무승부 시: 재투표, 거래 가능 ☑</td>
+    </tr>
+    <tr style="border-bottom:1px solid #333">
+      <td style="padding:6px"><strong>💬 커뮤니케이션</strong></td>
+      <td style="padding:6px"><code>text_chat / group_chat / whisper / voice_chat / spatial_voice</code></td>
+      <td style="padding:6px;color:#aaa">전체 채팅 ☑, 귓속말 ☑, 음성 ☑ (장소별 공간 음성)</td>
+    </tr>
+    <tr>
+      <td style="padding:6px"><strong>🚶 탐색 시스템</strong></td>
+      <td style="padding:6px"><code>room_exploration</code> (택1)</td>
+      <td style="padding:6px;color:#aaa">방 단위 이동 (다른 옵션: 층 단위 / 시간 제한)</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 style="margin-top:24px">⚡ 한눈에 — 모듈 ON 결과 요약</h3>
+<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px">
+  <thead>
+    <tr style="background:#2a2a3a">
+      <th style="padding:6px;text-align:left">Entity</th>
+      <th style="padding:6px;text-align:right">베이스 섹션</th>
+      <th style="padding:6px;text-align:right">동적 섹션 (모듈)</th>
+      <th style="padding:6px;text-align:right">총 섹션</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">👤 캐릭터</td><td style="padding:6px;text-align:right">2 (베이스 + 역할지)</td><td style="padding:6px;text-align:right">2</td><td style="padding:6px;text-align:right">4</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">📍 장소</td><td style="padding:6px;text-align:right">1</td><td style="padding:6px;text-align:right">4</td><td style="padding:6px;text-align:right">5</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">🔍 단서</td><td style="padding:6px;text-align:right">2 (베이스 + 컨텐츠)</td><td style="padding:6px;text-align:right">3 + 자동 역참조</td><td style="padding:6px;text-align:right">6</td></tr>
+    <tr style="border-bottom:1px solid #333"><td style="padding:6px">🎬 페이즈</td><td style="padding:6px;text-align:right">1</td><td style="padding:6px;text-align:right">4</td><td style="padding:6px;text-align:right">5</td></tr>
+    <tr><td style="padding:6px">🎭 결말</td><td style="padding:6px;text-align:right">2 (베이스 + 컨텐츠)</td><td style="padding:6px;text-align:right">0</td><td style="padding:6px;text-align:right">2</td></tr>
+  </tbody>
+</table>
+
+<p class="subtitle" style="margin-top:24px">위에서 아래로 스크롤하면 5 entity 의 풀 모습. 모듈 OFF 면 그 섹션이 사라짐 (회색 빈 자리 남기지 않음).</p>
+
+<div class="options" style="margin-top:24px">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>이 풀 UI 그림 OK</h3>
+      <p>모듈 ON 시 추가되는 섹션 종류·구성 OK. 다음 단계로.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="cluttered" onclick="toggleSelect(this)">
+    <div class="letter">!</div>
+    <div class="content">
+      <h3>너무 빽빽함</h3>
+      <p>접기/펼치기(아코디언) 또는 탭으로 분리해야 — 한 번에 다 펴면 길이 부담</p>
+    </div>
+  </div>
+  <div class="option" data-choice="missing" onclick="toggleSelect(this)">
+    <div class="letter">+</div>
+    <div class="content">
+      <h3>빠진 섹션</h3>
+      <p>"이 모듈은 이렇게 안 보일 것 같음" / "이 섹션은 더 풍부해야" 등 터미널에 적어줘</p>
+    </div>
+  </div>
+  <div class="option" data-choice="other" onclick="toggleSelect(this)">
+    <div class="letter">?</div>
+    <div class="content">
+      <h3>다른 의견</h3>
+      <p>터미널에 자유롭게</p>
+    </div>
+  </div>
+</div>
