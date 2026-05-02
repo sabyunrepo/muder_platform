@@ -213,9 +213,9 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     if (method === "PUT") {
       const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
       state.roleSheet = {
+        ...body,
         character_id: "char-1",
         theme_id: THEME_ID,
-        ...body,
         updated_at: new Date().toISOString(),
       };
       return r.fulfill({
@@ -233,8 +233,13 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     }
     return r.fulfill({
       status: 405,
-      contentType: "application/json",
-      body: JSON.stringify({ error: { message: "method not allowed" } }),
+      contentType: "application/problem+json",
+      body: JSON.stringify({
+        type: "about:blank",
+        title: "Method Not Allowed",
+        status: 405,
+        detail: "method not allowed",
+      }),
     });
   });
 
