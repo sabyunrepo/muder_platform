@@ -24,6 +24,10 @@ export type {
   LocationResponse,
   ClueResponse,
   ContentResponse,
+  RoleSheetFormat,
+  RoleSheetMarkdown,
+  RoleSheetResponse,
+  UpsertRoleSheetRequest,
   ValidationResponse,
   JSONSchema,
   ModuleSchemasResponse,
@@ -59,6 +63,12 @@ export {
   useValidateTheme,
   useUpdateConfigJson,
 } from "./content";
+
+// Role sheets ------------------------------------------------------------
+export {
+  useCharacterRoleSheet,
+  useUpsertCharacterRoleSheet,
+} from "./roleSheets";
 
 // Module schemas -------------------------------------------------------
 export { useModuleSchemas } from "./moduleSchemas";

@@ -89,6 +89,7 @@ React 19 + Vite SPA + Zustand + Tailwind CSS 4 직접 사용 + `lucide-react`.
   - 백엔드 의존 흐름은 `localhost:8080/health` 같은 사전 확인으로 실행 불가 환경에서 자동 skip되게 작성한다.
   - 순수 컴포넌트 내부 동작만 바뀌고 실제 라우트/사용자 여정이 변하지 않으면 focused Vitest로 대체할 수 있으나, PR/보고에 “E2E 미작성 사유”를 남긴다.
   - dev-only preview를 만든 경우 최소 1개 E2E 또는 브라우저 확인으로 모바일 폭과 데스크톱 폭의 핵심 표시를 검증한다.
+- 코드 작성/수정 PR은 Codecov patch coverage 70% 이상을 달성해야 한다. 사용자 흐름이 바뀐 경우에는 Playwright E2E로 핵심 여정을 보강하고, E2E로 커버하기 어려운 분기/에러 처리는 Vitest 단위 테스트로 보강해 70% 기준을 맞춘다.
 - 백엔드가 없으면 lobby flow E2E는 자동 skip되어야 한다.
 - 접근성 smoke: `@axe-core/playwright`, focus-visible, WCAG 2.1 AA 기본 항목.
 - UI 변경 후 가능하면 focused Vitest + typecheck를 실행한다.

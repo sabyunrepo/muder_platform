@@ -188,6 +188,21 @@ func (mr *MockServiceMockRecorder) DeleteTheme(ctx, creatorID, themeID any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTheme", reflect.TypeOf((*MockService)(nil).DeleteTheme), ctx, creatorID, themeID)
 }
 
+// GetCharacterRoleSheet mocks base method.
+func (m *MockService) GetCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID) (*editor.RoleSheetResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCharacterRoleSheet", ctx, creatorID, charID)
+	ret0, _ := ret[0].(*editor.RoleSheetResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCharacterRoleSheet indicates an expected call of GetCharacterRoleSheet.
+func (mr *MockServiceMockRecorder) GetCharacterRoleSheet(ctx, creatorID, charID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCharacterRoleSheet", reflect.TypeOf((*MockService)(nil).GetCharacterRoleSheet), ctx, creatorID, charID)
+}
+
 // GetClueEdges mocks base method.
 func (m *MockService) GetClueEdges(ctx context.Context, creatorID, themeID uuid.UUID) ([]editor.ClueEdgeGroupResponse, error) {
 	m.ctrl.T.Helper()
@@ -471,6 +486,21 @@ func (m *MockService) UpdateTheme(ctx context.Context, creatorID, themeID uuid.U
 func (mr *MockServiceMockRecorder) UpdateTheme(ctx, creatorID, themeID, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTheme", reflect.TypeOf((*MockService)(nil).UpdateTheme), ctx, creatorID, themeID, req)
+}
+
+// UpsertCharacterRoleSheet mocks base method.
+func (m *MockService) UpsertCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID, req editor.UpsertRoleSheetRequest) (*editor.RoleSheetResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpsertCharacterRoleSheet", ctx, creatorID, charID, req)
+	ret0, _ := ret[0].(*editor.RoleSheetResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpsertCharacterRoleSheet indicates an expected call of UpsertCharacterRoleSheet.
+func (mr *MockServiceMockRecorder) UpsertCharacterRoleSheet(ctx, creatorID, charID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertCharacterRoleSheet", reflect.TypeOf((*MockService)(nil).UpsertCharacterRoleSheet), ctx, creatorID, charID, req)
 }
 
 // UpsertContent mocks base method.

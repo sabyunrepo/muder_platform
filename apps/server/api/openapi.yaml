@@ -589,6 +589,58 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /editor/characters/{id}/role-sheet:
+    get:
+      operationId: getEditorCharacterRoleSheet
+      tags: [Editor]
+      summary: Get a character role sheet
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CharacterIdPath"
+      responses:
+        "200":
+          description: Character role sheet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleSheetResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      operationId: upsertEditorCharacterRoleSheet
+      tags: [Editor]
+      summary: Upsert a character role sheet
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CharacterIdPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertRoleSheetRequest"
+      responses:
+        "200":
+          description: Updated character role sheet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleSheetResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /editor/themes/{id}/config:
     put:
       operationId: updateEditorThemeConfig
@@ -1383,6 +1435,44 @@ components:
           enum: [suspect, culprit, accomplice, detective]
         sort_order:
           type: integer
+
+    RoleSheetMarkdown:
+      type: object
+      required: [body]
+      properties:
+        body:
+          type: string
+          maxLength: 50000
+
+    UpsertRoleSheetRequest:
+      type: object
+      required: [format, markdown]
+      properties:
+        format:
+          type: string
+          enum: [markdown]
+          description: PR-3C supports markdown only. PDF and image formats are reserved for later PRs.
+        markdown:
+          $ref: "#/components/schemas/RoleSheetMarkdown"
+
+    RoleSheetResponse:
+      type: object
+      required: [character_id, theme_id, format]
+      properties:
+        character_id:
+          type: string
+          format: uuid
+        theme_id:
+          type: string
+          format: uuid
+        format:
+          type: string
+          enum: [markdown]
+        markdown:
+          $ref: "#/components/schemas/RoleSheetMarkdown"
+        updated_at:
+          type: string
+          format: date-time
 
     # ── Admin ──────────────────────────────────────────────
     UpdateRoleRequest:

@@ -16,5 +16,7 @@ export const editorKeys = {
     [...editorKeys.all, "themes", themeId, "clues"] as const,
   content: (themeId: string, key: string) =>
     [...editorKeys.all, "themes", themeId, "content", key] as const,
+  characterRoleSheet: (characterId: string) =>
+    [...editorKeys.all, "characters", characterId, "role-sheet"] as const,
   moduleSchemas: () => [...editorKeys.all, "module-schemas"] as const,
 };

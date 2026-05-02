@@ -13,6 +13,7 @@ package editor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -169,6 +170,12 @@ func (m *mockService) UpsertContent(ctx context.Context, creatorID, themeID uuid
 }
 func (m *mockService) ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ValidationResponse, error) {
 	return nil, nil
+}
+func (m *mockService) GetCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID) (*RoleSheetResponse, error) {
+	return nil, errors.New("mockService.GetCharacterRoleSheet not configured")
+}
+func (m *mockService) UpsertCharacterRoleSheet(ctx context.Context, creatorID, charID uuid.UUID, req UpsertRoleSheetRequest) (*RoleSheetResponse, error) {
+	return nil, errors.New("mockService.UpsertCharacterRoleSheet not configured")
 }
 
 // withAuth injects user ID and role into context, matching middleware keys.

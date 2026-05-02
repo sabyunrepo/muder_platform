@@ -166,23 +166,23 @@ PDF viewer는 모바일에서 한 번에 전체 페이지를 렌더링하지 않
 
 #### Backend
 
-- [ ] role sheet DTO 추가
-- [ ] `GET /editor/characters/{id}/role-sheet` 추가
-- [ ] `PUT /editor/characters/{id}/role-sheet` 추가
-- [ ] 내부 저장은 우선 `theme_contents` 재사용 가능
-- [ ] format별 validation 추가
+- [x] role sheet DTO 추가
+- [x] `GET /editor/characters/{id}/role-sheet` 추가
+- [x] `PUT /editor/characters/{id}/role-sheet` 추가
+- [x] 내부 저장은 우선 `theme_contents` 재사용 가능
+- [x] format별 validation 추가
 
 #### Frontend
 
-- [ ] `RoleSheet` 타입 추가
-- [ ] `useCharacterRoleSheet` / `useUpsertCharacterRoleSheet` hook 추가
-- [ ] 기존 Markdown 역할지 섹션을 typed API로 전환
-- [ ] 기존 `role_sheet:<id>` content는 호환 읽기 처리
+- [x] `RoleSheet` 타입 추가
+- [x] `useCharacterRoleSheet` / `useUpsertCharacterRoleSheet` hook 추가
+- [x] 기존 Markdown 역할지 섹션을 typed API로 전환
+- [x] 기존 `role_sheet:<id>` content는 호환 읽기 처리
 
 #### 완료 기준
 
-- [ ] 기존 Markdown 역할지가 깨지지 않는다.
-- [ ] 프론트는 format에 따라 renderer를 분기할 수 있다.
+- [x] 기존 Markdown 역할지가 깨지지 않는다.
+- [x] 프론트는 format에 따라 renderer를 분기할 수 있다.
 
 ### PR-3D — DOCUMENT/PDF Upload + Page Viewer
 
