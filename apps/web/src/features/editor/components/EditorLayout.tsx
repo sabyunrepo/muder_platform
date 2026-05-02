@@ -26,6 +26,7 @@ interface EditorLayoutProps {
   onPublish?: () => void;
   onValidate?: () => DesignWarning[];
   validationWarnings?: DesignWarning[];
+  routeSegment?: string;
 }
 
 export function EditorLayout({
@@ -38,6 +39,7 @@ export function EditorLayout({
   onPublish,
   onValidate,
   validationWarnings: externalWarnings,
+  routeSegment,
 }: EditorLayoutProps) {
   const navigate = useNavigate();
   const { activeTab } = useEditorUI();
@@ -147,7 +149,12 @@ export function EditorLayout({
             </div>
           }
         >
-          <TabContent tab={activeTab} theme={theme} themeId={themeId} />
+          <TabContent
+            tab={activeTab}
+            theme={theme}
+            themeId={themeId}
+            routeSegment={routeSegment}
+          />
         </Suspense>
       </div>
     </div>

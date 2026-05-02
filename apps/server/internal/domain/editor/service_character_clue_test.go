@@ -7,6 +7,41 @@ import (
 
 // --- Characters ---
 
+func TestNormalizeMysteryRole(t *testing.T) {
+	tests := []struct {
+		name      string
+		role      string
+		isCulprit bool
+		want      string
+		wantErr   bool
+	}{
+		{name: "empty role keeps legacy culprit flag", role: "", isCulprit: true, want: MysteryRoleCulprit},
+		{name: "empty role defaults to suspect", role: "", isCulprit: false, want: MysteryRoleSuspect},
+		{name: "explicit culprit can omit legacy flag", role: MysteryRoleCulprit, isCulprit: false, want: MysteryRoleCulprit},
+		{name: "explicit detective is accepted", role: MysteryRoleDetective, isCulprit: false, want: MysteryRoleDetective},
+		{name: "legacy culprit flag cannot conflict with explicit non-culprit role", role: MysteryRoleAccomplice, isCulprit: true, wantErr: true},
+		{name: "unknown role is rejected", role: "host", isCulprit: false, wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := normalizeMysteryRole(tc.role, tc.isCulprit)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("normalizeMysteryRole: %v", err)
+			}
+			if got != tc.want {
+				t.Fatalf("role mismatch: got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestService_CreateCharacter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")

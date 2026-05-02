@@ -32,9 +32,10 @@ function FullPageError({ message }: { message: string }) {
 
 interface ThemeEditorProps {
   themeId: string;
+  routeSegment?: string;
 }
 
-export function ThemeEditor({ themeId }: ThemeEditorProps) {
+export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
   const { data: theme, isLoading, isError } = useEditorTheme(themeId);
   const { data: clues } = useEditorClues(themeId);
   const { data: clueEdgeGroups } = useClueEdges(themeId);
@@ -66,5 +67,12 @@ export function ThemeEditor({ themeId }: ThemeEditorProps) {
   if (isLoading) return <FullPageSpinner />;
   if (isError || !theme) return <FullPageError message="테마를 찾을 수 없습니다" />;
 
-  return <EditorLayout theme={theme} themeId={themeId} onValidate={handleValidate} />;
+  return (
+    <EditorLayout
+      theme={theme}
+      themeId={themeId}
+      routeSegment={routeSegment}
+      onValidate={handleValidate}
+    />
+  );
 }

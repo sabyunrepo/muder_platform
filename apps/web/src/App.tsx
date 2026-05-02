@@ -159,6 +159,7 @@ export function App() {
               <Route element={<ProtectedRoute />}>
                 <Route path="/game/:id" element={<GamePage />} />
                 <Route path="/editor/:id" element={<EditorPage />} />
+                <Route path="/editor/:id/:tab" element={<EditorPage />} />
                 <Route element={<MainLayout />}>
                   <Route path="/" element={<LobbyPage />} />
                   <Route path="/lobby" element={<LobbyPage />} />

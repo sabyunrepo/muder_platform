@@ -1,28 +1,34 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Phase24EditorPreviewPage from './Phase24EditorPreviewPage';
+
+function renderPreview() {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <Phase24EditorPreviewPage />
+    </QueryClientProvider>,
+  );
+}
 
 afterEach(() => {
   cleanup();
 });
 
 describe('Phase24EditorPreviewPage', () => {
-  it('Phase 24 에디터 preview를 렌더링하고 split assigner 변경을 JSON에 반영한다', () => {
-    render(<Phase24EditorPreviewPage />);
+  it('Phase 24 entity page mockup만 렌더링한다', () => {
+    renderPreview();
 
-    expect(screen.getByRole('heading', { name: /에디터 작업 미리보기/ })).toBeDefined();
+    expect(screen.getByRole('heading', { name: /에디터 Entity Page Preview/ })).toBeDefined();
     expect(screen.getByText('DEV ONLY')).toBeDefined();
-    expect(screen.getAllByText('전체 단서 목록').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('홍길동의 시작 단서').length).toBeGreaterThan(0);
-
-    const splitSection = screen.getByText('추천 구조 — split clue assigner').closest('section');
-    expect(splitSection).not.toBeNull();
-
-    fireEvent.change(within(splitSection as HTMLElement).getByRole('textbox', { name: '단서 검색' }), {
-      target: { value: '녹음' },
-    });
-    fireEvent.click(within(splitSection as HTMLElement).getByRole('button', { name: /녹음 파일/ }));
-
-    expect(screen.getByText(/"clue-5"/)).toBeDefined();
+    expect(screen.getByText('Phase 24 PR-3 entity workspace')).toBeDefined();
+    expect(screen.getByRole('button', { name: /캐릭터5/ })).toBeDefined();
+    expect(screen.getByRole('button', { name: /김철수 상속자 범인 후보/ })).toBeDefined();
+    expect(screen.getByText('참조 상태')).toBeDefined();
+    expect(screen.getByText('단서 backlink')).toBeDefined();
+    expect(screen.queryByText('PR-2 추천 구조 — split clue assigner')).toBeNull();
   });
 });

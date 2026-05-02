@@ -94,6 +94,7 @@ type CreateCharacterRequest struct {
 	Description *string `json:"description" validate:"omitempty,max=2000"`
 	ImageURL    *string `json:"image_url" validate:"omitempty,url"`
 	IsCulprit   bool    `json:"is_culprit"`
+	MysteryRole string  `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
 	SortOrder   int32   `json:"sort_order" validate:"min=0"`
 }
 
@@ -102,6 +103,7 @@ type UpdateCharacterRequest struct {
 	Description *string `json:"description" validate:"omitempty,max=2000"`
 	ImageURL    *string `json:"image_url" validate:"omitempty,url"`
 	IsCulprit   bool    `json:"is_culprit"`
+	MysteryRole string  `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
 	SortOrder   int32   `json:"sort_order" validate:"min=0"`
 }
 
@@ -112,6 +114,7 @@ type CharacterResponse struct {
 	Description *string   `json:"description,omitempty"`
 	ImageURL    *string   `json:"image_url,omitempty"`
 	IsCulprit   bool      `json:"is_culprit"`
+	MysteryRole string    `json:"mystery_role"`
 	SortOrder   int32     `json:"sort_order"`
 }
 

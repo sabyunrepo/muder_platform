@@ -283,6 +283,7 @@ type ThemeCharacter struct {
 	ImageUrl    pgtype.Text `json:"image_url"`
 	IsCulprit   bool        `json:"is_culprit"`
 	SortOrder   int32       `json:"sort_order"`
+	MysteryRole string      `json:"mystery_role"`
 }
 
 type ThemeClue struct {

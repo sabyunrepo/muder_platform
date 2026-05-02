@@ -25,8 +25,8 @@ RETURNING *;
 SELECT * FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order;
 
 -- name: CreateThemeCharacter :one
-INSERT INTO theme_characters (theme_id, name, description, image_url, is_culprit, sort_order)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO theme_characters (theme_id, name, description, image_url, is_culprit, mystery_role, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpdateTheme :one
@@ -48,7 +48,7 @@ RETURNING *;
 SELECT * FROM theme_characters WHERE id = $1;
 
 -- name: UpdateThemeCharacter :one
-UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, sort_order = $6
+UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, mystery_role = $6, sort_order = $7
 WHERE id = $1
 RETURNING *;
 

@@ -42,8 +42,11 @@ export interface EditorCharacterResponse {
   description: string | null;
   image_url: string | null;
   is_culprit: boolean;
+  mystery_role: MysteryRole;
   sort_order: number;
 }
+
+export type MysteryRole = "suspect" | "culprit" | "accomplice" | "detective";
 
 export interface CreateThemeRequest {
   title: string;
@@ -72,6 +75,7 @@ export interface CreateCharacterRequest {
   description?: string;
   image_url?: string;
   is_culprit?: boolean;
+  mystery_role?: MysteryRole;
   sort_order?: number;
 }
 
@@ -80,6 +84,7 @@ export interface UpdateCharacterRequest {
   description?: string;
   image_url?: string;
   is_culprit?: boolean;
+  mystery_role?: MysteryRole;
   sort_order?: number;
 }
 

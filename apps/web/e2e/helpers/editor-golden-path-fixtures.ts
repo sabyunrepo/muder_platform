@@ -33,6 +33,9 @@ export interface MockState {
   conflictCountdown: number;
   flowPatchCalls: number;
   flowPutCalls: number;
+  characterUpdateCalls: number;
+  lastCharacterUpdateBody: Record<string, unknown> | null;
+  characterMysteryRole: "suspect" | "culprit" | "accomplice" | "detective";
   configPutCalls: number;
   imageUploadUrlCalls: number;
   templatesCalls: number;
@@ -51,6 +54,9 @@ export function freshState(): MockState {
     conflictCountdown: 1,
     flowPatchCalls: 0,
     flowPutCalls: 0,
+    characterUpdateCalls: 0,
+    lastCharacterUpdateBody: null,
+    characterMysteryRole: "detective",
     configPutCalls: 0,
     imageUploadUrlCalls: 0,
     templatesCalls: 0,
@@ -75,7 +81,26 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     r.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ id: "user-1", nickname: "테스터", email: "e2e@test.com", role: "user" }),
+      body: JSON.stringify({
+        id: "user-1",
+        nickname: "테스터",
+        email: "e2e@test.com",
+        avatar_url: null,
+        role: "user",
+        provider: "local",
+      }),
+    }),
+  );
+
+  await page.route("**/v1/auth/refresh", (r) =>
+    r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        access_token: "e2e-access-token",
+        refresh_token: "e2e-refresh-token",
+        expires_in: 3600,
+      }),
     }),
   );
 
@@ -148,16 +173,56 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     return r.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify([
-        {
-          id: "char-1",
+      body: JSON.stringify([characterPayload(state)]),
+    });
+  });
+
+  await page.route("**/v1/editor/characters/char-1", async (r) => {
+    if (r.request().method() !== "PUT") return r.continue();
+    const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
+    state.characterUpdateCalls += 1;
+    state.lastCharacterUpdateBody = body;
+    if (
+      body.mystery_role === "suspect" ||
+      body.mystery_role === "culprit" ||
+      body.mystery_role === "accomplice" ||
+      body.mystery_role === "detective"
+    ) {
+      state.characterMysteryRole = body.mystery_role;
+    }
+    return r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(characterPayload(state)),
+    });
+  });
+
+  await page.route(`**/v1/editor/themes/${THEME_ID}/content/**`, (r) => {
+    if (r.request().method() === "PUT") {
+      return r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          id: "content-role-sheet-char-1",
           theme_id: THEME_ID,
-          name: "탐정 A",
-          starting_clue_ids: state.startingClueIds,
-          sort_order: 0,
-          created_at: new Date().toISOString(),
-        },
-      ]),
+          key: "role_sheet:char-1",
+          body: JSON.parse(r.request().postData() ?? "{}").body ?? "",
+          version: 2,
+          updated_at: new Date().toISOString(),
+        }),
+      });
+    }
+    return r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "content-role-sheet-char-1",
+        theme_id: THEME_ID,
+        key: "role_sheet:char-1",
+        body: "",
+        version: 1,
+        updated_at: new Date().toISOString(),
+      }),
     });
   });
 
@@ -264,10 +329,25 @@ function cluePayload(state: MockState) {
   };
 }
 
+function characterPayload(state: MockState) {
+  return {
+    id: "char-1",
+    theme_id: THEME_ID,
+    name: "탐정 A",
+    description: "사건을 추적하는 탐정입니다.",
+    image_url: null,
+    is_culprit: state.characterMysteryRole === "culprit",
+    mystery_role: state.characterMysteryRole,
+    starting_clue_ids: state.startingClueIds,
+    sort_order: 0,
+    created_at: new Date().toISOString(),
+  };
+}
+
 export async function loginAsE2EUser(page: Page): Promise<void> {
   await page.addInitScript(() => {
     try {
-      window.localStorage.setItem("auth_token", "e2e-test-token");
+      window.localStorage.setItem("mmp_refresh_token", "e2e-refresh-token");
       window.localStorage.setItem(
         "auth_user",
         JSON.stringify({ id: "user-1", email: "e2e@test.com" }),

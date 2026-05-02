@@ -12,6 +12,7 @@ export type {
   EditorThemeSummary,
   EditorThemeResponse,
   EditorCharacterResponse,
+  MysteryRole,
   CreateThemeRequest,
   UpdateThemeRequest,
   CreateCharacterRequest,

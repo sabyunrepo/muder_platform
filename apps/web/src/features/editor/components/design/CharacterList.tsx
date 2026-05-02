@@ -1,9 +1,18 @@
 import { User } from "lucide-react";
+import type { MysteryRole } from "@/features/editor/api";
+
+const mysteryRoleLabels: Record<MysteryRole, string> = {
+  suspect: "용의자",
+  culprit: "범인",
+  accomplice: "공범",
+  detective: "탐정",
+};
 
 interface CharacterListItem {
   id: string;
   name: string;
   is_culprit?: boolean;
+  mystery_role?: MysteryRole;
 }
 
 interface CharacterListProps {
@@ -32,9 +41,9 @@ export function CharacterList({
         >
           <User className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{char.name}</span>
-          {char.is_culprit && (
-            <span className="ml-auto shrink-0 text-[10px] text-red-400">
-              범인
+          {(char.mystery_role || char.is_culprit) && (
+            <span className="ml-auto shrink-0 text-[10px] text-amber-400">
+              {char.mystery_role ? mysteryRoleLabels[char.mystery_role] : "범인"}
             </span>
           )}
         </button>
