@@ -382,6 +382,44 @@ func TestGetCharacterRoleSheet_Success(t *testing.T) {
 	}
 }
 
+func TestGetCharacterRoleSheet_InvalidCharacterID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/characters/not-a-uuid/role-sheet", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": "not-a-uuid"})
+	w := httptest.NewRecorder()
+
+	h.GetCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetCharacterRoleSheet_ServiceError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+	mock.EXPECT().
+		GetCharacterRoleSheet(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq(extCharID)).
+		Return(nil, apperror.Internal("boom")).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/characters/"+extCharID.String()+"/role-sheet", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
+	w := httptest.NewRecorder()
+
+	h.GetCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestUpsertCharacterRoleSheet_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockService(ctrl)
@@ -422,5 +460,68 @@ func TestUpsertCharacterRoleSheet_Success(t *testing.T) {
 	}
 	if got.Format != editor.RoleSheetFormatMarkdown || got.Markdown == nil || got.Markdown.Body != "## 새 역할지" {
 		t.Fatalf("unexpected role sheet response: %+v", got)
+	}
+}
+
+func TestUpsertCharacterRoleSheet_InvalidCharacterID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodPut, "/editor/characters/not-a-uuid/role-sheet", bytes.NewBufferString(`{"format":"markdown"}`))
+	r.Header.Set("Content-Type", "application/json")
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": "not-a-uuid"})
+	w := httptest.NewRecorder()
+
+	h.UpsertCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUpsertCharacterRoleSheet_InvalidJSON(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+extCharID.String()+"/role-sheet", bytes.NewBufferString(`{`))
+	r.Header.Set("Content-Type", "application/json")
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
+	w := httptest.NewRecorder()
+
+	h.UpsertCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUpsertCharacterRoleSheet_ServiceError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+	mock.EXPECT().
+		UpsertCharacterRoleSheet(
+			gomock.Any(),
+			gomock.Eq(extCreatorID),
+			gomock.Eq(extCharID),
+			gomock.Eq(editor.UpsertRoleSheetRequest{Format: editor.RoleSheetFormatMarkdown, Markdown: &editor.RoleSheetMarkdown{Body: "boom"}}),
+		).
+		Return(nil, apperror.Internal("boom")).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+extCharID.String()+"/role-sheet", bytes.NewBufferString(`{"format":"markdown","markdown":{"body":"boom"}}`))
+	r.Header.Set("Content-Type", "application/json")
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
+	w := httptest.NewRecorder()
+
+	h.UpsertCharacterRoleSheet(w, r)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
 	}
 }

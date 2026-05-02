@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 // --- Characters ---
@@ -386,6 +388,23 @@ func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
 	}
 }
 
+func TestService_GetCharacterRoleSheet_NotFound(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+
+	_, err := f.svc.GetCharacterRoleSheet(ctx, creatorID, uuid.New())
+	if err == nil {
+		t.Fatal("expected missing character error")
+	}
+	if !strings.Contains(err.Error(), "character not found") {
+		t.Fatalf("expected character not found error, got %v", err)
+	}
+}
+
 func TestService_UpsertCharacterRoleSheet_RejectsUnsupportedFormat(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -408,5 +427,34 @@ func TestService_UpsertCharacterRoleSheet_RejectsUnsupportedFormat(t *testing.T)
 	}
 	if !strings.Contains(err.Error(), "unsupported role sheet format") {
 		t.Fatalf("expected unsupported format error, got %v", err)
+	}
+}
+
+func TestService_UpsertCharacterRoleSheet_RejectsMissingMarkdown(t *testing.T) {
+	svc := &service{}
+
+	_, err := svc.UpsertCharacterRoleSheet(context.Background(), uuid.New(), uuid.New(), UpsertRoleSheetRequest{
+		Format: RoleSheetFormatMarkdown,
+	})
+	if err == nil {
+		t.Fatal("expected error for missing markdown role sheet body")
+	}
+	if !strings.Contains(err.Error(), "markdown role sheet body is required") {
+		t.Fatalf("expected missing markdown error, got %v", err)
+	}
+}
+
+func TestService_UpsertCharacterRoleSheet_RejectsTooLongBody(t *testing.T) {
+	svc := &service{}
+
+	_, err := svc.UpsertCharacterRoleSheet(context.Background(), uuid.New(), uuid.New(), UpsertRoleSheetRequest{
+		Format:   RoleSheetFormatMarkdown,
+		Markdown: &RoleSheetMarkdown{Body: strings.Repeat("a", maxRoleSheetBodyBytes+1)},
+	})
+	if err == nil {
+		t.Fatal("expected error for too long role sheet body")
+	}
+	if !strings.Contains(err.Error(), "role sheet body is too long") {
+		t.Fatalf("expected too long body error, got %v", err)
 	}
 }
