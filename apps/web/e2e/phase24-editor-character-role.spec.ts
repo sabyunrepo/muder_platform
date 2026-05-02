@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import {
   BASE,
   THEME_ID,
@@ -40,5 +41,11 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
       mystery_role: "accomplice",
       sort_order: 0,
     });
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
   });
 });

@@ -189,6 +189,10 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
       body.mystery_role === "detective"
     ) {
       state.characterMysteryRole = body.mystery_role;
+    } else if (body.is_culprit === true) {
+      state.characterMysteryRole = "culprit";
+    } else if (body.is_culprit === false) {
+      state.characterMysteryRole = "suspect";
     }
     return r.fulfill({
       status: 200,
@@ -198,14 +202,18 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
   });
 
   await page.route(`**/v1/editor/themes/${THEME_ID}/content/**`, (r) => {
+    const url = new URL(r.request().url());
+    const key = decodeURIComponent(url.pathname.split("/content/")[1] ?? "");
+    const id = `content-${key.replace(/[^a-zA-Z0-9_-]/g, "-") || "unknown"}`;
+
     if (r.request().method() === "PUT") {
       return r.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          id: "content-role-sheet-char-1",
+          id,
           theme_id: THEME_ID,
-          key: "role_sheet:char-1",
+          key,
           body: JSON.parse(r.request().postData() ?? "{}").body ?? "",
           version: 2,
           updated_at: new Date().toISOString(),
@@ -216,9 +224,9 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        id: "content-role-sheet-char-1",
+        id,
         theme_id: THEME_ID,
-        key: "role_sheet:char-1",
+        key,
         body: "",
         version: 1,
         updated_at: new Date().toISOString(),

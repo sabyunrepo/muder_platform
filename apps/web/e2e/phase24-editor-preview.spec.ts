@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 
 test.describe("Phase 24 에디터 entity preview", () => {
   test("데스크톱에서 entity 탐색, 상세, 검수 패널을 표시한다", async ({ page }) => {
@@ -15,6 +16,12 @@ test.describe("Phase 24 에디터 entity preview", () => {
     await expect(page.getByRole("button", { name: "켜짐 · starting_clue" })).toBeVisible();
     await expect(page.getByText("참조 상태")).toBeVisible();
     await expect(page.getByText("단서 backlink")).toBeVisible();
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
   });
 
   test("모바일 폭에서도 핵심 흐름을 세로로 읽을 수 있다", async ({ page }) => {
@@ -27,5 +34,11 @@ test.describe("Phase 24 에디터 entity preview", () => {
 
     await expect(page.getByText("역할지 Markdown")).toBeVisible();
     await expect(page.getByText("참조 상태")).toBeVisible();
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
   });
 });

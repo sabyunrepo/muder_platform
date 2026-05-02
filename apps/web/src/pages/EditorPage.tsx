@@ -21,9 +21,8 @@ export default function EditorPage() {
   const setActiveTab = useEditorUI((state) => state.setActiveTab);
 
   useEffect(() => {
-    if (!tab) return;
-    const nextTab = TAB_SEGMENT_MAP[tab];
-    if (nextTab) setActiveTab(nextTab);
+    const nextTab = tab ? TAB_SEGMENT_MAP[tab] : undefined;
+    setActiveTab(nextTab ?? "overview");
   }, [setActiveTab, tab]);
 
   if (id) {

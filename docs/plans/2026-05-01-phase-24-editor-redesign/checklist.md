@@ -67,7 +67,9 @@ parent_phase: "phase-21-editor-ux"
   2. 장소 entity 페이지 (D-07) — Tree 무한 중첩 + 접근 제한 + 단순 사진 + evidence/location_clue 모듈 섹션
   3. 단서 entity 페이지 (D-08) — 단일 진실 위치 + 자동 backlink + 미사용 표시 + conditional_clue/combination/clue_interaction 모듈 섹션
   4. 자동 backlink 백엔드 신설 — derived 쿼리 vs DB 별도 테이블 (writing-plans 단계 결정, refs/10 참조)
-  5. PR-3A~E 확장 — `mystery_role`, voting `candidatePolicy`, typed role sheet, DOCUMENT/PDF, image role sheet viewer
+  5. PR-3A~E 확장 — `mystery_role`, voting `candidatePolicy`, typed role sheet
+     - DOCUMENT/PDF, image role sheet viewer는 후속 PR로 분리 (위 scope update 기준)
+     - PR-3A 테스트 책임: 역할 enum 저장/검증, Markdown 역할지 저장, entity preview 반응형/E2E
 - **상세 task**: `refs/pr-3-tasks.md` (PR-2 머지 후 expand)
 
 ### PR-4 — Entity Pages (페이즈 + 결말)
