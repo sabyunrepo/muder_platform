@@ -163,7 +163,7 @@ describe('LocationClueAssignPanel', () => {
     expect(screen.getByText('(1/2)')).toBeDefined();
   });
 
-  it('배정된 clue는 aria-checked=true 로 표시된다', () => {
+  it('배정된 clue는 전체 목록에서 비활성화되고 우측 목록에 표시된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
@@ -171,10 +171,9 @@ describe('LocationClueAssignPanel', () => {
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
     );
-    const chip1 = screen.getByLabelText('단검 배정 토글');
-    const chip2 = screen.getByLabelText('편지 배정 토글');
-    expect(chip1.getAttribute('aria-checked')).toBe('true');
-    expect(chip2.getAttribute('aria-checked')).toBe('false');
+    expect((screen.getByLabelText('단검 추가') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText('편지 추가') as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByLabelText('단검 제거')).toBeDefined();
   });
 
   it('배정되지 않은 clue 클릭 시 clueIds에 추가되어 mutate가 호출된다', () => {
@@ -185,7 +184,7 @@ describe('LocationClueAssignPanel', () => {
         location={mockLocation}
       />,
     );
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 추가'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const locs = config.locations as Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
@@ -201,7 +200,7 @@ describe('LocationClueAssignPanel', () => {
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
     );
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 제거'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const locs = config.locations as Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
@@ -220,7 +219,7 @@ describe('LocationClueAssignPanel', () => {
         onChange={onChange}
       />,
     );
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 추가'));
     expect(onChange).toHaveBeenCalledWith(['clue-1']);
   });
 
@@ -258,7 +257,7 @@ describe('LocationClueAssignPanel', () => {
         location={mockLocation}
       />,
     );
-    const chip = screen.getByLabelText('단검 배정 토글') as HTMLButtonElement;
+    const chip = screen.getByLabelText('단검 추가') as HTMLButtonElement;
     expect(chip.disabled).toBe(true);
   });
 });
@@ -280,7 +279,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     );
     qc.setQueryData(cacheKey, baseTheme);
 
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 추가'));
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
     const locs = (cached?.config_json as {
@@ -305,7 +304,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     );
     qc.setQueryData(cacheKey, baseTheme);
 
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 추가'));
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
     expect(cached?.config_json).toEqual({}); // rolled back to baseTheme.config_json
@@ -339,12 +338,12 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     qc.setQueryData(cacheKey, baseTheme);
 
     // 1st toggle: clue-1 추가 → 캐시 optimistic = {locations:[{loc-1,[clue-1]}]}
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 추가'));
 
     // 2nd toggle: 같은 컴포넌트의 `theme` prop 은 불변이므로 여전히 baseTheme 기준이지만,
     // queryClient 캐시는 1차 optimistic 결과를 반영 중. 두 번째 commit 이 이 시점 캐시를
     // previous 로 캡처하도록 fire.
-    fireEvent.click(screen.getByLabelText('편지 배정 토글'));
+    fireEvent.click(screen.getByLabelText('편지 추가'));
 
     expect(deferred).toHaveLength(2);
 
@@ -369,7 +368,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     );
     // no setQueryData
 
-    fireEvent.click(screen.getByLabelText('단검 배정 토글'));
+    fireEvent.click(screen.getByLabelText('단검 추가'));
 
     expect(mutateMock).toHaveBeenCalledOnce();
     expect(qc.getQueryData(cacheKey)).toBeUndefined();

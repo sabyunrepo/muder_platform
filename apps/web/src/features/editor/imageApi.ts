@@ -1,14 +1,14 @@
-import { useMutation } from "@tanstack/react-query";
-import { api } from "@/services/api";
-import { queryClient } from "@/services/queryClient";
-import { editorKeys } from "@/features/editor/api";
+import { useMutation } from '@tanstack/react-query';
+import { api } from '@/services/api';
+import { queryClient } from '@/services/queryClient';
+import { editorKeys } from '@/features/editor/api';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export interface UploadUrlRequest {
-  target: "character" | "clue" | "cover";
+  target: 'character' | 'clue' | 'location' | 'cover';
   target_id?: string;
   content_type: string;
   file_size: number;
@@ -30,24 +30,19 @@ interface ConfirmResponse {
 export function useRequestImageUpload(themeId: string) {
   return useMutation<UploadUrlResponse, Error, UploadUrlRequest>({
     mutationFn: (body) =>
-      api.post<UploadUrlResponse>(
-        `/v1/editor/themes/${themeId}/images/upload-url`,
-        body,
-      ),
+      api.post<UploadUrlResponse>(`/v1/editor/themes/${themeId}/images/upload-url`, body),
   });
 }
 
 export function useConfirmImageUpload(themeId: string) {
   return useMutation<ConfirmResponse, Error, { upload_key: string }>({
     mutationFn: (body) =>
-      api.post<ConfirmResponse>(
-        `/v1/editor/themes/${themeId}/images/confirm`,
-        body,
-      ),
+      api.post<ConfirmResponse>(`/v1/editor/themes/${themeId}/images/confirm`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.characters(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
       queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
+      queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
     },
   });
 }
@@ -58,15 +53,15 @@ export function useConfirmImageUpload(themeId: string) {
 
 export async function uploadImage(
   themeId: string,
-  target: "character" | "clue" | "cover",
+  target: 'character' | 'clue' | 'location' | 'cover',
   targetId: string,
   file: Blob,
-  contentType: string,
+  contentType: string
 ): Promise<string> {
   // Guard: caller must pass a concrete themeId. Without this, path becomes
   // `/v1/editor/themes/undefined/images/upload-url` → 404.
   if (!themeId) {
-    throw new Error("themeId is required for image upload");
+    throw new Error('themeId is required for image upload');
   }
 
   // 1. Get presigned URL
@@ -79,22 +74,22 @@ export async function uploadImage(
       target,
       content_type: contentType,
       file_size: file.size,
-      ...(target !== "cover" && targetId ? { target_id: targetId } : {}),
-    },
+      ...(target !== 'cover' && targetId ? { target_id: targetId } : {}),
+    }
   );
 
   // 2. PUT to presigned URL (bypass api client — no auth header needed for S3)
   const putRes = await fetch(upload_url, {
-    method: "PUT",
-    headers: { "Content-Type": contentType },
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
     body: file,
   });
-  if (!putRes.ok) throw new Error("Failed to upload image to storage");
+  if (!putRes.ok) throw new Error('Failed to upload image to storage');
 
   // 3. Confirm upload and get final URL
   const { image_url } = await api.post<ConfirmResponse>(
     `/v1/editor/themes/${themeId}/images/confirm`,
-    { upload_key },
+    { upload_key }
   );
 
   return image_url;

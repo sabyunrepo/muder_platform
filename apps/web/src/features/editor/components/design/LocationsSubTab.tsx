@@ -13,7 +13,6 @@ import {
 } from '@/features/editor/api';
 import { AddNameInput } from './AddNameInput';
 import { LocationDetailPanel } from './LocationDetailPanel';
-import { LocationClueAssignPanel } from './LocationClueAssignPanel';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -44,7 +43,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const selectedMap = maps?.find((m) => m.id === selectedMapId) ?? null;
   const mapLocations = locations?.filter((l) => l.map_id === selectedMapId) ?? [];
   const selectedLocation =
-    mapLocations.find((l) => l.id === selectedLocationId) ?? null;
+    mapLocations.find((l) => l.id === selectedLocationId) ?? mapLocations[0] ?? null;
 
   function handleAddMap(name: string) {
     createMap.mutate(
@@ -54,9 +53,10 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           toast.success('맵이 추가되었습니다');
           setAddingMap(false);
           setSelectedMapId(newMap.id);
+          setSelectedLocationId(null);
         },
         onError: () => toast.error('맵 추가에 실패했습니다'),
-      },
+      }
     );
   }
 
@@ -78,18 +78,22 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
     createLocation.mutate(
       { mapId: selectedMapId, body: { name } },
       {
-        onSuccess: () => {
+        onSuccess: (newLocation) => {
           toast.success('장소가 추가되었습니다');
           setAddingLocation(false);
+          setSelectedLocationId(newLocation.id);
         },
         onError: () => toast.error('장소 추가에 실패했습니다'),
-      },
+      }
     );
   }
 
   function handleDeleteLocation(locationId: string) {
     deleteLocation.mutate(locationId, {
-      onSuccess: () => toast.success('장소가 삭제되었습니다'),
+      onSuccess: () => {
+        toast.success('장소가 삭제되었습니다');
+        if (selectedLocationId === locationId) setSelectedLocationId(null);
+      },
       onError: () => toast.error('장소 삭제에 실패했습니다'),
     });
   }
@@ -164,7 +168,10 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
                 <span className="flex-1 truncate text-xs font-medium">{map.name}</span>
                 <button
                   type="button"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteMap(map.id); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteMap(map.id);
+                  }}
                   aria-label={`${map.name} 삭제`}
                   className="p-0.5 text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                 >
@@ -180,54 +187,18 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
       <div className="flex-1 overflow-y-auto px-5 py-5">
         <LocationDetailPanel
           themeId={themeId}
+          theme={theme}
           selectedMap={selectedMap}
+          selectedLocation={selectedLocation}
           mapLocations={mapLocations}
           addingLocation={addingLocation}
           isCreatingLocation={createLocation.isPending}
           onStartAdd={() => setAddingLocation(true)}
           onCancelAdd={() => setAddingLocation(false)}
           onAddLocation={handleAddLocation}
+          onSelectLocation={setSelectedLocationId}
           onDeleteLocation={handleDeleteLocation}
         />
-
-        {/* ── Location → Clue assignment ── */}
-        {selectedMap && mapLocations.length > 0 && (
-          <div className="mt-5 max-w-lg">
-            <div className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-              <span>단서 배정 — 장소 선택</span>
-            </div>
-            <div className="mb-3 flex flex-wrap gap-1.5" role="listbox" aria-label="단서 배정할 장소 선택">
-              {mapLocations.map((loc) => {
-                const selected = selectedLocationId === loc.id;
-                return (
-                  <button
-                    type="button"
-                    key={loc.id}
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() =>
-                      setSelectedLocationId(selected ? null : loc.id)
-                    }
-                    className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                      selected
-                        ? 'border-amber-500/50 bg-amber-500/10 text-amber-300'
-                        : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                    }`}
-                  >
-                    {loc.name}
-                  </button>
-                );
-              })}
-            </div>
-            {selectedLocation && (
-              <LocationClueAssignPanel
-                themeId={themeId}
-                theme={theme}
-                location={selectedLocation}
-              />
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -2,7 +2,13 @@
 // Editor API — shared types
 // ---------------------------------------------------------------------------
 
-export type ThemeStatus = "DRAFT" | "PENDING_REVIEW" | "PUBLISHED" | "REJECTED" | "UNPUBLISHED" | "SUSPENDED";
+export type ThemeStatus =
+  | 'DRAFT'
+  | 'PENDING_REVIEW'
+  | 'PUBLISHED'
+  | 'REJECTED'
+  | 'UNPUBLISHED'
+  | 'SUSPENDED';
 
 export interface EditorThemeSummary {
   id: string;
@@ -46,7 +52,7 @@ export interface EditorCharacterResponse {
   sort_order: number;
 }
 
-export type MysteryRole = "suspect" | "culprit" | "accomplice" | "detective";
+export type MysteryRole = 'suspect' | 'culprit' | 'accomplice' | 'detective';
 
 export interface CreateThemeRequest {
   title: string;
@@ -145,6 +151,7 @@ export interface LocationResponse {
   map_id: string;
   name: string;
   restricted_characters: string | null;
+  image_url: string | null;
   sort_order: number;
   created_at: string;
   from_round?: number | null;
@@ -178,7 +185,7 @@ export interface ContentResponse {
   updated_at: string;
 }
 
-export type RoleSheetFormat = "markdown" | "pdf" | "images";
+export type RoleSheetFormat = 'markdown' | 'pdf' | 'images';
 
 export interface RoleSheetMarkdown {
   body: string;
@@ -204,15 +211,15 @@ export interface RoleSheetResponse {
 
 export type UpsertRoleSheetRequest =
   | {
-      format: "markdown";
+      format: 'markdown';
       markdown: RoleSheetMarkdown;
     }
   | {
-      format: "pdf";
+      format: 'pdf';
       pdf: RoleSheetPDF;
     }
   | {
-      format: "images";
+      format: 'images';
       images: RoleSheetImages;
     };
 
@@ -227,7 +234,7 @@ export interface ValidationResponse {
   };
 }
 
-export type JSONSchema = import("@/features/editor/templateApi").JSONSchemaProperty;
+export type JSONSchema = import('@/features/editor/templateApi').JSONSchemaProperty;
 
 export interface ModuleSchemasResponse {
   schemas: Record<string, JSONSchema>;

@@ -8,8 +8,7 @@ import (
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
-// ImageHandler handles image upload HTTP endpoints for character avatars and
-// clue images.
+// ImageHandler handles image upload HTTP endpoints for character, clue, location, and cover images.
 type ImageHandler struct {
 	svc *ImageService
 }
@@ -20,7 +19,7 @@ func NewImageHandler(svc *ImageService) *ImageHandler {
 }
 
 // RequestUpload handles POST /editor/themes/{id}/images/upload-url.
-// Body: { "target": "character"|"clue", "target_id": "uuid", "content_type": "image/png", "file_size": 12345 }
+// Body: { "target": "character"|"clue"|"location", "target_id": "uuid", "content_type": "image/png", "file_size": 12345 }
 func (h *ImageHandler) RequestUpload(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
 	themeID, err := parseUUID(r, "id")

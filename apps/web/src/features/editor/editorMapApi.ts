@@ -1,8 +1,8 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { api } from "@/services/api";
-import { queryClient } from "@/services/queryClient";
-import { editorKeys } from "./api";
-import type { MapResponse, LocationResponse } from "./api";
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { api } from '@/services/api';
+import { queryClient } from '@/services/queryClient';
+import { editorKeys } from './api';
+import type { MapResponse, LocationResponse } from './api';
 
 // ---------------------------------------------------------------------------
 // Map Types
@@ -16,7 +16,8 @@ export interface UpdateMapRequest {
 export interface CreateLocationRequest {
   name: string;
   description?: string;
-  restricted_characters?: string[];
+  restricted_characters?: string | null;
+  image_url?: string | null;
   from_round?: number | null;
   until_round?: number | null;
 }
@@ -24,7 +25,8 @@ export interface CreateLocationRequest {
 export interface UpdateLocationRequest {
   name?: string;
   description?: string;
-  restricted_characters?: string[];
+  restricted_characters?: string | null;
+  image_url?: string | null;
   sort_order?: number;
   from_round?: number | null;
   until_round?: number | null;
@@ -48,8 +50,7 @@ export function useEditorMaps(themeId: string) {
 
 export function useCreateMap(themeId: string) {
   return useMutation<MapResponse, Error, { name: string; image_url?: string }>({
-    mutationFn: (body) =>
-      api.post<MapResponse>(`/v1/editor/themes/${themeId}/maps`, body),
+    mutationFn: (body) => api.post<MapResponse>(`/v1/editor/themes/${themeId}/maps`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.maps(themeId) });
     },
@@ -58,8 +59,7 @@ export function useCreateMap(themeId: string) {
 
 export function useUpdateMap(themeId: string) {
   return useMutation<MapResponse, Error, { mapId: string; body: UpdateMapRequest }>({
-    mutationFn: ({ mapId, body }) =>
-      api.put<MapResponse>(`/v1/editor/maps/${mapId}`, body),
+    mutationFn: ({ mapId, body }) => api.put<MapResponse>(`/v1/editor/maps/${mapId}`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.maps(themeId) });
     },
@@ -83,8 +83,7 @@ export function useDeleteMap(themeId: string) {
 export function useEditorLocations(themeId: string) {
   return useQuery<LocationResponse[]>({
     queryKey: editorKeys.locations(themeId),
-    queryFn: () =>
-      api.get<LocationResponse[]>(`/v1/editor/themes/${themeId}/locations`),
+    queryFn: () => api.get<LocationResponse[]>(`/v1/editor/themes/${themeId}/locations`),
     enabled: !!themeId,
   });
 }
@@ -96,10 +95,7 @@ export function useEditorLocations(themeId: string) {
 export function useCreateLocation(themeId: string) {
   return useMutation<LocationResponse, Error, { mapId: string; body: CreateLocationRequest }>({
     mutationFn: ({ mapId, body }) =>
-      api.post<LocationResponse>(
-        `/v1/editor/themes/${themeId}/maps/${mapId}/locations`,
-        body,
-      ),
+      api.post<LocationResponse>(`/v1/editor/themes/${themeId}/maps/${mapId}/locations`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
     },
@@ -118,8 +114,7 @@ export function useUpdateLocation(themeId: string) {
 
 export function useDeleteLocation(themeId: string) {
   return useMutation<void, Error, string>({
-    mutationFn: (locationId) =>
-      api.deleteVoid(`/v1/editor/locations/${locationId}`),
+    mutationFn: (locationId) => api.deleteVoid(`/v1/editor/locations/${locationId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.locations(themeId) });
     },
