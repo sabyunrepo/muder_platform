@@ -126,10 +126,8 @@ PR #173 close, branch 삭제, worktree cleanup. PR-5 (#172)는 routing 변경이
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-29-phase-23-custom-image-pivot.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
-  1. Phase 23 plan 진입 — `/compound-plan` 또는 `superpowers:brainstorming` 직접 호출
   2. Custom Image Dockerfile 작성 (사용자가 본 PR이라면 immediate worktree 분기 가능)
   3. EPHEMERAL fs 잔존 spike (Q-myoung34-ephemeral-fs 검증) — `docker exec containerized-runner-1 ls ~/go/pkg/mod` 사용자 SSH
 - **참고할 카논**:

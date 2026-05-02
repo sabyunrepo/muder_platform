@@ -11,7 +11,6 @@ PR 의 worktree commit chain 을 마무리하고 4-agent 리뷰 또는 manual E2
 ## 발동 트리거
 
 - 코딩 task chain (Task 3.1~3.6, Task 4~6 같은 sub-task 분해 작업) 의 *마지막 commit* 직후
-- `/compound-review` 또는 manual E2E 진입 *직전*
 - PR cover letter 작성 직전
 
 ## Axis 1 — Wire format / catalog ↔ 구현 일치

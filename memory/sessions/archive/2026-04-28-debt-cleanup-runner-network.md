@@ -39,7 +39,6 @@ session_date: 2026-04-28
 - `.github/workflows/e2e-stubbed.yml` (+35/-3) — Start server + W3 partial
 - `docs/plans/2026-04-28-phase-22-runner-containerization/refs/reviews/PR-167.md` (+116)
 - `docs/plans/2026-04-28-phase-22-w1-5-debt-cleanup/checklist.md` (+102) — W1.5 mini-plan 신설
-- `.claude/plugins/compound-mmp/hooks/stop-wrap-reminder.sh` (+2/-1) — PR-169
 
 ### PR-168 진행 중 (`chore/w1-5-runner-cache`, 8 commits, +380/-75)
 - `c3f68c5` 초기 PR-4 (4 cache volume + 4 환경변수)
@@ -78,7 +77,6 @@ session_date: 2026-04-28
 
 1. **P0** PR-168 CI 결과 polling — `gh run list --branch=chore/w1-5-runner-cache --limit=5` + 4 shard E2E green 확정 시 admin-merge
 2. **P0** PAT 회전 확인 — 사용자 GH UI revoke + 재발급 했는지
-3. **P1** W1.5 PR-1 (orphan-gate fixture) 진입 — `/compound-work PR-1` (단 PR-168 머지 후)
 4. **P1** W1.5 PR-5 (ci.yml runs-on) 진입 — DEBT-1/2 효과 영구 회복
 5. **P2** W1.5 PR-7 (host git clone) — manual SCP 부담 제거
 6. **P2** DEBT-4 (gitleaks) + DEBT-5 (govulncheck) 분석
@@ -109,7 +107,6 @@ session_date: 2026-04-28
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-28-debt-cleanup-runner-network.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
   1. PR-168 CI 결과 polling + admin-merge 결정 (가장 시급)

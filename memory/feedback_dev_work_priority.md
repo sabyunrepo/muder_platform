@@ -29,7 +29,6 @@ type: feedback
   메타로 채워져 있어도, 활성 Phase 의 다음 Wave/PR 이 우선이다.
 
 **How to apply:**
-- 세션 시작 시(`/compound-resume` 등) 활성 Phase 의 다음 Wave/PR 이 무엇인지
   먼저 확인하고, 핸드오프의 P1 메타 항목보다 위에 둔다.
 - 메타 작업 끌어올리기 조건 (예외 4가지):
   1. 카논 위반이 직전 PR 에서 발생 — fallback 룰 부재로 다음 PR 도 위반 임박

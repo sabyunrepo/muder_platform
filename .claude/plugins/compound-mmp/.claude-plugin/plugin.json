@@ -1,9 +1,0 @@
-{
-  "name": "compound-mmp",
-  "version": "0.1.0-alpha",
-  "description": "MMP v3 전용 Plan-Work-Review-Compound 4단계 라이프사이클. Compound Engineering + Session-Wrap + Superpowers 철학 통합. 기존 OMC 4-agent + QMD + graphify를 호출만 한다 (재정의 X).",
-  "author": {
-    "name": "MMP v3"
-  },
-  "license": "Internal"
-}

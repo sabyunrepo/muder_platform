@@ -90,8 +90,6 @@ session_date: 2026-04-28
 
 ## What we did
 
-### `/compound-resume` 진행
-세션 시작 시 사용자가 `/compound-resume` 명시 호출. 가장 최근 mtime `memory/sessions/2026-04-28-compound-mmp-wave4-complete.md` + plan vivid-snuggling-pascal.md + 카논 cheat-sheet 일괄 read. 권장 흐름 결정 (CI infra fix → PR-11 hygiene → admin-skip 해제 → Phase 21 dogfooding).
 
 ### PR-164 (CI infra recovery) 풀 사이클
 qmd-recall (Phase 18.3 ci-infra) → brainstorming (사용자 결정 사항: B2 dev compose UID + workflow ephemeral port 양쪽 근본 수정) → writing-plans (5 ref 파일 분할) → Task 1+2 (Dockerfile.dev appuser + docker-compose.dev.yml HOST_UID/GID) → Task 3+4 subagent-driven (workflow ephemeral port + env templating + goose/psql 템플릿) → Task 5 (apps/server/CLAUDE.md dev startup) → 4-agent 병렬 리뷰 (HIGH 0 실질 / IMPORTANT 3 fold-in 완료) → admin merge `dbe6a65`.
@@ -109,7 +107,6 @@ runner 호스트 직접 SSH 작업: dev compose down (volume 보존) → SCP 새
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-28-ci-infra-recovery-phase-22-entry.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
   1. Phase 22 brainstorm Q2 진입 (Runner 등록 token 방식부터)
@@ -118,4 +115,3 @@ runner 호스트 직접 SSH 작업: dev compose down (volume 보존) → SCP 새
 - **참고할 카논**:
   - `docs/plans/2026-04-28-ci-infra-recovery/refs/reviews/PR-164.md` (PR-164 4-agent 리뷰 보고서, carry-over)
   - `memory/feedback_explanation_style.md` (사용자 설명 형식 카논)
-  - `.claude/plugins/compound-mmp/refs/lifecycle-stages.md` (compound 4단계)

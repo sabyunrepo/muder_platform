@@ -41,7 +41,6 @@ type: project
 
 ## 활성화 상태
 - `.claude/active-plan.json` Phase 18.8로 세팅 완료
-- 다음 단계: `/plan-go` → Wave 1 병렬 실행
 
 ## 알려진 위험 + 완화
 - MSW ↔ 기존 page.route() 충돌 → 어댑터 `msw-route.ts`로 경계 명확화

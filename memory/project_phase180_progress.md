@@ -5,7 +5,6 @@ type: project
 ---
 ## 개요
 
-- **기간**: 2026-04-15 단일 세션 (plan-autopilot 전구간 실행)
 - **PR 수**: 10 (PR-0 cleanup + PR-1~9 런타임 통합)
 - **Wave**: W0~W5 (sequential + 3-way parallel 포함)
 - **최종 커밋**: c4d4620
@@ -35,7 +34,6 @@ type: project
 
 - **Plan-autopilot 운영 함정**: 서브에이전트 워크트리에서 일부 PR 이 다른 PR merge 까지 포함한 브랜치에 기반하여 만들어져 머지 시 main 이 뒤쳐지는 현상 → 최종 통합 머지로 해결. feedback_plan_autopilot_gotchas.md 에 추가 권장.
 - **PR-6 truncation**: 첫 시도에서 agent 가 3/3 tasks 전에 cutoff — SendMessage 로 재개해도 실패 → `feat/...-PR-6-v2` 로 새 실행이 안정적. 앞으로 long-running executor 는 per-task 즉시 commit 지시 필수.
-- **checklist 체크박스**: 서브에이전트 워크트리에서만 갱신되어 main 에 미반영 — plan-autopilot 종료 시 일괄 체크로 보정. 개선 방향은 각 wave merge 후 checklist 반영 step 추가.
 
 ## Feature flag
 

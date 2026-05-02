@@ -22,10 +22,8 @@ type: project
 
 ## 부수 PR
 
-- **#121 preflight chore** (commit `3d8ccec`, 2026-04-21) — `.claude/scripts/plan-preflight.sh` M3 cutover(2026-04-15) 이후 legacy `~/.claude/skills/plan-autopilot` 경로 잔존 결함 수정. 추가로 inline bash hook(`[ -f x ] && touch y`) 오해석도 guard로 차단. `/plan-go` 파이프라인 정상화. PR-0 진행 전제 조건.
 - **#122 PR-0 본체** (commit `c2f34a9`, 2026-04-21) — 9 files · +197/-35. Task 1–6 + Gate 충족. user home → repo 단일 출처 전환.
 - **#123 hygiene** (commit `22b1a5a`, 2026-04-21) — 42 files × -1줄 (`originSessionId` strip). PR-0 이후 기존 repo 파일 일괄 정리. 로직 변경 0.
-- **#126 preflight skill-path fix** (commit `04654a5`, 2026-04-21) — `.claude/commands/plan-*.md` 8개가 여전히 legacy `$HOME/.claude/skills/plan-go/scripts/plan-preflight.sh` (내부 `SKILL_DIR=plan-autopilot`) 호출 → `/plan-go` 진입 시 "plan-autopilot skill not found" 재발. project-local `$CLAUDE_PROJECT_DIR/.claude/scripts/...` 로 교체.
 - **#127 preflight path fallback** (commit `e306fa8`, 2026-04-21) — #126 후속. slash command `!` shell substitution 은 `$CLAUDE_PROJECT_DIR` 를 주입하지 않아 `/` 루트로 resolve 됨. `${CLAUDE_PROJECT_DIR:-.}/.claude/scripts/...` parameter expansion fallback 적용. 로컬 검증: `✓ PRE-FLIGHT OK: 6/6 hooks verified`.
 
 ## W0 PR-0 진행
@@ -196,8 +194,6 @@ W1+W2 완료 후 critic + code-reviewer 병렬 회고 리뷰에서 도출. Phase
 - **B-2 Coverage exclude 통일 스크립트** — 현 상태: `codecov.yml` 은 mocks/sqlc 제외, CI `coverage-guard` gate 는 `go test -coverprofile` 전체 집계 → **두 숫자가 설계상 다름**. `scripts/coverage-filter.sh` 작성 (`go tool cover -func=coverage.out | grep -v 'mocks\|\.sql\.go\|mock_shim'`) → CI gate 숫자 = dashboard 숫자 일치. 현재 drift 는 `memory/project_phase19_residual_progress.md` PR-5c section 에 명시.
 - **B-3 Shim 성장 가드** — `apps/server/internal/domain/{editor,flow,room}/mock_shim_test.go` 합 420 LOC. editor 217 LOC 가장 큼. CI step 에서 `wc -l mock_shim_test.go` ≥ 300 LOC 도달 시 warn + PR 설명에 경고. 임계 초과 시 Service interface sub-package 분리 PR (`internal/domain/<pkg>/api`) 발주.
 - **B-4 Admin Ban/Unban + Auth PasswordChange 엔드포인트 + recordAudit target 규약** — PR-6 에서 orphan 상수 7건 확인. Phase 20+ 에서 실제 엔드포인트 추가 시 `recordAudit(ctx, action, actor, &targetUserID, payload)` 로 `target=&targetUserID` **명시 주입 의무**. fallback (`target==nil → actor`) 은 보호장치이지 기본 호출 패턴 아님. Ban/Unban 의 경우 target=피해자 user_id 필수.
-- **B-5 Plan prior-art 체크박스** — PR-7 은 refactor 1-3 이 선행 커밋에서 완료된 상태였음. plan 작성 시 "각 task: prior-art grep → 이미 구현된 부분 명시" 체크박스 템플릿 추가. `.claude/skills/mmp-pilot/SKILL.md` 또는 writing-plans 템플릿 업데이트.
-- **B-6 mmp-pilot 세션 이상감지** — 이번 세션은 사용자 "admin-skip 진행" 허가 후 5 PR 연속 머지. 세션-레벨 이상감지 체크포인트 (PR 당 diff > N LOC, critical path 변경, DB schema 변경) 에서 human confirmation trigger 도입. `.claude/skills/mmp-pilot/SKILL.md` 의 Phase 2 편성 규칙에 추가.
 
 **우선순위 추천**: B-1 (coverage 재측정) → B-4 (Ban/Unban 엔드포인트 구현, orphan 상수 해소) → B-2 (coverage 스크립트 통일) → B-3/B-5/B-6 (프로세스 개선).
 
@@ -216,7 +212,6 @@ W1+W2 완료 후 critic + code-reviewer 병렬 회고 리뷰에서 도출. Phase
 ## ⚠️ Workflow 폐기 후 수동 진행 가이드 (2026-04-27)
 
 ### 결정
-- `mmp-pilot` 스킬 + `/plan-go` 단일 진입점 + `.claude/active-plan.json` workflow **전면 폐기**.
 - 인프라(`.claude/skills/mmp-*`, `.claude/commands/`, `.claude/scripts/plan-*`, `.claude/agents/`, settings.json hooks) 일괄 제거 예정 (별도 PR-A).
 - 새 워크플로우: `docs/plans/.../checklist.md` 직접 read + git branch + 수동 progress 갱신.
 

@@ -128,7 +128,6 @@ session_date: 2026-05-02
 9. **Docker Hub auth secret 도입** — `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`.
 
 ### 사용자 결정 위임
-- **PR-2 진입 시 `/compound-plan` 호출 여부** — PR-2 expand 위해 brainstorm 다시 필요한지
 - **신규 카논 5건 작성 승인** (Step 6에서 결정): wsgen / publicstate skeleton / playwright / coderabbit / gofmt-pre-push
 
 ## What we did
@@ -142,5 +141,3 @@ CI iteration이 카논화되지 않은 영역에서 root cause 4건 발견:
 - **CodeRabbit `required_conversation_resolution` + `CHANGES_REQUESTED` 동시** → review dismiss API + thread resolve 모두 필요
 
 CodeRabbit 32+ findings는 sub-agent 위임으로 처리. round-1 23건은 Major 2 (VersionMismatch deterministic + empty config reject) + Minor 21 (HTML doctype, count, 절대 경로, MD040 등). round-2 4건은 strict json.Decoder + null payload + threshold *float64 default. unresolved thread 5건은 4 fix + 1 reasoning (mockup accessibility는 read-only artifact).
-
-다음 세션 = `/compound-resume` → P1 시작 (#207/#208 또는 #200) 또는 PR-2 brainstorm.

@@ -53,5 +53,4 @@ sensitive PR detection 구현 후 `pipeline.json`에서 조건 분기 활성화.
 
 - [`feedback_codex_opus_peers.md`](feedback_codex_opus_peers.md) — peer 권한 (Codex ↔ Opus 동등, Opus는 판정관 아닌 integrator)
 - [`feedback_4agent_review_before_admin_merge.md`](feedback_4agent_review_before_admin_merge.md) — 강제 정책 master (admin-merge 전 4-agent 필수)
-- `commands/compound-review.md` — slash entry (`/compound-review`)
 - `feedback_codex_escape_hatch.md` — TBD rescue 카논 (V2 sensitive PR 감지 실패 시 수동 override)

@@ -90,3 +90,11 @@ graphify-out/obsidian/
 
 # ─── Claude backup snapshots (local safety nets) ─────
 .claude/backups/
+
+# ─── Generated reports (local only) ───────────────────
+# graphify-out and Playwright HTML reports are generated artifacts.
+graphify-out/
+apps/web/playwright-report/
+
+# ─── Local Codex runtime config ───────────────────────
+.codex/config.toml

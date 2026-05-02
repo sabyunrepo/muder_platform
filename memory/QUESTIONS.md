@@ -1,6 +1,5 @@
 # MMP v3 Open Questions
 
-미해결 의문·결정 보류 사항을 적층. compound-mmp `/compound-wrap` Step 5-1 결과로 자동 append. 해소 시 entry 삭제 또는 `~~strikethrough~~` + 해소 PR/commit 링크.
 
 Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checker` agent로 사전 필터). `learning-quality-gate.md` Q1·Q2·Q3 통과 항목.
 
@@ -45,16 +44,13 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 
 ---
 
-## 2026-04-28 — compound-mmp Wave 2 PR-6 wrap-up
 
 ### Q-regex: PATTERN 정규식 단어 경계 미설정 — bash 3.2 `\b` 지원 spike 필요
-- **위치**: `.claude/plugins/compound-mmp/hooks/pre-task-model-guard.sh:54` `PATTERN='(claude-)?sonnet-4[-.]5'`
 - **가설**: 가상 미래 모델 ID `sonnet-4-50` 등이 false positive로 deny될 가능성 (낮음 — 명명 규칙 미존재)
 - **다음 액션**: PR-10 dogfooding sim 작성 시 bash 3.2 `=~` 에서 `\b` 동작 spike (~30분). 결과에 따라 `(claude-)?sonnet-4[-.]5([^0-9-]|$)` 또는 `\b` 변형 채택.
 - **블로커 risk**: LOW. 4-agent 리뷰 architecture MED-1.
 
 ### ~~Q-shopt: dispatch-router.sh `shopt -u nocasematch` 복원 carry-over phantom 검증~~ — **PHANTOM 확정 / 폐기 (2026-04-28)**
-- **검증**: `bash .claude/plugins/compound-mmp/hooks/test-dispatch.sh` → 41/41 pass. 추가로 격리 subshell `shopt -s/-u nocasematch` 함수 외 누수 없음 확인 (case-sensitive 복원).
 - **결론**: dispatch-router.sh L42→L47, L51→L61, L67→L81 각 블록 모두 명시적 `-s`/`-u` 짝. exit 경로(L45)도 `-u` 통과. `trap RETURN` 보강 불필요.
 - **carry-over 폐기**: Wave 3 진입 spec에서 제거.
 
@@ -67,7 +63,6 @@ Q-gate 적용 후 NEW로 분류된 항목만 등재 (중복은 `duplicate-checke
 ---
 
 ### Q-pr11-vs-phase21: Wave 4 종료 후 PR-11 hygiene 우선 vs Phase 21 dogfooding 우선
-- **맥락**: Wave 4 PR-10 admin-merge 완료. carry-over 17건 (HIGH 2 + sister hotfix 1 + MED 6 + LOW 11)이 PR-11 후보. 동시에 compound-mmp 4단계 라이프사이클 첫 실 사용 (Phase 21 dogfooding) 대기.
 - **가설**:
   - (A) PR-11 우선: HIGH-A2 (next_gate review/compound unreachable)/A4 (SKILL dual source)/sister hotfix가 production false 신호. dogfooding 전 정리.
   - (B) Phase 21 우선: 실 사용에서 추가 carry-over 발견 가능. PR-11과 합쳐 단일 hygiene PR로 정리.

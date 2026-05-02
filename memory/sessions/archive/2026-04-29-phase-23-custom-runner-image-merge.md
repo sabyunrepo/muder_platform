@@ -132,7 +132,6 @@ superpowers:code-reviewer (opus-4-7) APPROVED YES_WITH_FIXES — Critical 0, Imp
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-29-phase-23-custom-runner-image-merge.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
   1. GHCR push 완료 확인 (`gh run list --workflow=build-runner-image.yml --limit 1`) + Wave 5 Task 14 GHCR connection 안내

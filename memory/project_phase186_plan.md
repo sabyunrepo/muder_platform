@@ -26,7 +26,6 @@ type: project
 ## 이어가기 (재개)
 1. `git checkout phase/18.6-e2e-recovery` → `git pull`
 2. `.claude/active-plan.json` 로드 → W0 PR-1 확인
-3. `/plan-go` 로 PR-1 (trace 조사) 착수
 
 ## 현재 알려진 사실
 - seed user (e2e@test.com) → 201 OK (PR #48)

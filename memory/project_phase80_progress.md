@@ -59,7 +59,6 @@ type: project
 2. 이 파일(progress) 읽기 → 현재 wave + 다음 작업
 3. **"현재 단계" 의 "다음 작업"** 부터 진행
 4. git status + 최신 commit 확인
-5. `.claude/active-plan.json` 확인 (plan-autopilot 스킬 활성 상태)
 
 **각 wave 머지 후 갱신할 것:**
 - 이 파일 "Wave 진행 추적" 표 업데이트 (상태 + 머지 커밋 hash)

@@ -11,9 +11,5 @@
         ]
       }
     ]
-  },
-  "enabledPlugins": {
-    "harness@harness-marketplace": true
-  },
-  "extraKnownMarketplaces": {}
+  }
 }
