@@ -391,6 +391,22 @@ func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
 	}
 }
 
+func TestRoleSheetResponseFromContent_LegacyRawMarkdownJSONLookalike(t *testing.T) {
+	charID := uuid.New()
+	themeID := uuid.New()
+	resp := roleSheetResponseFromContent(
+		db.ThemeCharacter{ID: charID, ThemeID: themeID},
+		db.ThemeContent{
+			ThemeID: themeID,
+			Key:     roleSheetContentKey(charID),
+			Body:    `{"format":"pdf","pdf":{"media_id":"00000000-0000-0000-0000-000000000000"}}`,
+		},
+	)
+	if resp.Format != RoleSheetFormatMarkdown || resp.Markdown == nil {
+		t.Fatalf("legacy invalid PDF-looking markdown must remain markdown: %+v", resp)
+	}
+}
+
 func TestService_GetCharacterRoleSheet_NotFound(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")

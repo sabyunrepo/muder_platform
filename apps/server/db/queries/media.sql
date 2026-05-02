@@ -53,7 +53,7 @@ SELECT id, key
 FROM theme_contents
 WHERE theme_id = $1
   AND key ~ '^role_sheet:'
-  AND body LIKE $2;
+  AND body ~ $2;
 
 -- ============================================================
 -- Media (Batch)

@@ -1453,17 +1453,26 @@ components:
           format: uuid
 
     UpsertRoleSheetRequest:
-      type: object
-      required: [format]
-      properties:
-        format:
-          type: string
-          enum: [markdown, pdf]
-          description: Markdown stores inline text; pdf references DOCUMENT media with application/pdf MIME.
-        markdown:
-          $ref: "#/components/schemas/RoleSheetMarkdown"
-        pdf:
-          $ref: "#/components/schemas/RoleSheetPDF"
+      oneOf:
+        - type: object
+          required: [format, markdown]
+          properties:
+            format:
+              type: string
+              enum: [markdown]
+            markdown:
+              $ref: "#/components/schemas/RoleSheetMarkdown"
+        - type: object
+          required: [format, pdf]
+          properties:
+            format:
+              type: string
+              enum: [pdf]
+            pdf:
+              $ref: "#/components/schemas/RoleSheetPDF"
+      discriminator:
+        propertyName: format
+      description: Markdown stores inline text; pdf references DOCUMENT media with application/pdf MIME.
 
     RoleSheetResponse:
       type: object

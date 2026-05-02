@@ -16,6 +16,7 @@ import (
 const maxRoleSheetBodyBytes = 50000
 
 type storedRoleSheet struct {
+	Version  int                `json:"version"`
 	Format   string             `json:"format"`
 	Markdown *RoleSheetMarkdown `json:"markdown,omitempty"`
 	PDF      *RoleSheetPDF      `json:"pdf,omitempty"`
@@ -95,12 +96,17 @@ func validateRoleSheetRequestShape(req UpsertRoleSheetRequest) error {
 func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID, char db.ThemeCharacter, req UpsertRoleSheetRequest) (string, error) {
 	switch req.Format {
 	case RoleSheetFormatMarkdown:
-		return req.Markdown.Body, nil
+		body, err := json.Marshal(storedRoleSheet{Version: 1, Format: RoleSheetFormatMarkdown, Markdown: req.Markdown})
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to marshal markdown role sheet")
+			return "", apperror.Internal("failed to store role sheet")
+		}
+		return string(body), nil
 	case RoleSheetFormatPDF:
 		if err := s.assertRoleSheetPDFMedia(ctx, creatorID, char.ThemeID, req.PDF.MediaID); err != nil {
 			return "", err
 		}
-		body, err := json.Marshal(storedRoleSheet{Format: RoleSheetFormatPDF, PDF: req.PDF})
+		body, err := json.Marshal(storedRoleSheet{Version: 1, Format: RoleSheetFormatPDF, PDF: req.PDF})
 		if err != nil {
 			s.logger.Error().Err(err).Msg("failed to marshal pdf role sheet")
 			return "", apperror.Internal("failed to store role sheet")
@@ -182,7 +188,12 @@ func parseStoredRoleSheet(body string) (storedRoleSheet, bool) {
 	if err := json.Unmarshal([]byte(body), &stored); err != nil {
 		return storedRoleSheet{}, false
 	}
+	if stored.Version != 1 {
+		return storedRoleSheet{}, false
+	}
 	switch stored.Format {
+	case RoleSheetFormatMarkdown:
+		return stored, stored.Markdown != nil
 	case RoleSheetFormatPDF:
 		return stored, stored.PDF != nil && stored.PDF.MediaID != uuid.Nil
 	default:

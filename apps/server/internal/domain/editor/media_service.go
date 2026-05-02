@@ -447,7 +447,7 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 
 	roleSheetRefs, err := s.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
 		ThemeID: media.ThemeID,
-		Body:    `%"media_id":"` + mediaID.String() + `"%`,
+		Body:    `"media_id"\s*:\s*"` + mediaID.String() + `"`,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check role sheet references")

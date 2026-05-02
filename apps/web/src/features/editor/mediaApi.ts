@@ -239,6 +239,8 @@ export interface UploadMediaFileParams {
   signal?: AbortSignal;
   /** Injected for testability; defaults to XHR PUT. */
   putFile?: (params: PutFileParams) => Promise<void>;
+  /** Override request MIME when browsers omit File.type (common for PDFs on some platforms). */
+  mimeType?: string;
   /** Number of attempts (1 = no retry). Default 3. */
   maxAttempts?: number;
   /** Base delay for exponential backoff in ms. Default 200ms. */
@@ -265,6 +267,7 @@ export async function uploadMediaFile(
     onProgress,
     signal,
     putFile = defaultPutFile,
+    mimeType,
     maxAttempts = 3,
     retryBaseDelayMs = 200,
   } = params;
@@ -273,7 +276,7 @@ export async function uploadMediaFile(
   const uploadUrl = await requestUploadUrl({
     name,
     type,
-    mime_type: file.type || "application/octet-stream",
+    mime_type: (mimeType ?? file.type) || "application/octet-stream",
     file_size: file.size,
   });
 

@@ -76,7 +76,7 @@ export function MediaCard({
   const duration = formatDuration(media.duration);
   const badgeClass = TYPE_BADGE[media.type] ?? "bg-slate-700 text-slate-300";
   const badgeLabel = TYPE_LABEL[media.type] ?? media.type;
-  const canPreview = !isYouTube && !!media.url;
+  const canPreview = !isYouTube && media.type !== "DOCUMENT" && !!media.url;
 
   return (
     <div

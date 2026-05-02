@@ -1,16 +1,8 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { ChevronLeft, ChevronRight, FileText, FileUp, Save } from 'lucide-react';
-import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/Button';
 import { Spinner } from '@/shared/components/ui/Spinner';
-import { useCharacterRoleSheet, useUpsertCharacterRoleSheet } from '@/features/editor/api';
-import {
-  uploadMediaFile,
-  useConfirmUpload,
-  useMediaDownloadUrl,
-  useRequestUploadUrl,
-} from '@/features/editor/mediaApi';
-import { isApiHttpError } from '@/lib/api-error';
+import { useMediaDownloadUrl } from '@/features/editor/mediaApi';
+import { useRoleSheetEditorState } from './useRoleSheetEditorState';
 
 interface CharacterRoleSheetSectionProps {
   themeId: string;
@@ -18,110 +10,13 @@ interface CharacterRoleSheetSectionProps {
   characterName: string;
 }
 
-type EditableRoleSheetFormat = 'markdown' | 'pdf';
-
 export function CharacterRoleSheetSection({
   themeId,
   characterId,
   characterName,
 }: CharacterRoleSheetSectionProps) {
-  const {
-    data,
-    error,
-    isError,
-    isLoading,
-    refetch,
-  } = useCharacterRoleSheet(characterId);
-  const upsertContent = useUpsertCharacterRoleSheet(characterId);
-  const requestUploadUrl = useRequestUploadUrl(themeId);
-  const confirmUpload = useConfirmUpload(themeId);
-  const [selectedFormat, setSelectedFormat] = useState<EditableRoleSheetFormat>('markdown');
-  const [draft, setDraft] = useState('');
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'failed'>('idle');
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [page, setPage] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const manualSaveRef = useRef(false);
-  const isMissingDocument = isApiHttpError(error) && error.status === 404;
-  const isUnsupportedFormat = !isMissingDocument && data?.format !== undefined && data.format === 'images';
-  const originalBody = isMissingDocument ? '' : (data?.markdown?.body ?? '');
-  const pdfMediaId = data?.format === 'pdf' ? data.pdf?.media_id : undefined;
-
-  useEffect(() => {
-    if (!isError || isMissingDocument) setDraft(originalBody);
-    setSaveStatus('idle');
-  }, [characterId, isError, isMissingDocument, originalBody]);
-
-  useEffect(() => {
-    if (data?.format === 'pdf') setSelectedFormat('pdf');
-    else setSelectedFormat('markdown');
-    setPage(1);
-  }, [data?.format, characterId]);
-
-  function saveMarkdown(nextBody = draft) {
-    if (upsertContent.isPending) return;
-    if (originalBody === nextBody && data?.format === 'markdown') {
-      setSaveStatus('saved');
-      return;
-    }
-
-    upsertContent.mutate(
-      { format: 'markdown', markdown: { body: nextBody } },
-      {
-        onSuccess: () => {
-          setSelectedFormat('markdown');
-          setSaveStatus('saved');
-          toast.success('역할지가 저장되었습니다');
-        },
-        onError: () => {
-          setSaveStatus('failed');
-          toast.error('역할지 저장에 실패했습니다');
-        },
-      },
-    );
-  }
-
-  async function handlePDFFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    if (file.type !== 'application/pdf') {
-      toast.error('PDF 파일만 업로드할 수 있습니다');
-      return;
-    }
-
-    setUploading(true);
-    setUploadProgress(0);
-    try {
-      const media = await uploadMediaFile({
-        themeId,
-        file,
-        type: 'DOCUMENT',
-        name: file.name.replace(/\.pdf$/i, '') || `${characterName} 역할지`,
-        requestUploadUrl: (req) => requestUploadUrl.mutateAsync(req),
-        confirmUpload: (req) => confirmUpload.mutateAsync(req),
-        onProgress: setUploadProgress,
-      });
-      upsertContent.mutate(
-        { format: 'pdf', pdf: { media_id: media.id } },
-        {
-          onSuccess: () => {
-            setSelectedFormat('pdf');
-            setPage(1);
-            toast.success('PDF 역할지가 연결되었습니다');
-          },
-          onError: () => {
-            toast.error('PDF 역할지 연결에 실패했습니다');
-          },
-        },
-      );
-    } catch {
-      toast.error('PDF 업로드에 실패했습니다');
-    } finally {
-      setUploading(false);
-    }
-  }
+  const state = useRoleSheetEditorState({ themeId, characterId, characterName });
+  const { isError, isLoading, refetch } = state.roleSheetQuery;
 
   if (isLoading) {
     return (
@@ -131,7 +26,7 @@ export function CharacterRoleSheetSection({
     );
   }
 
-  if (isError && !isMissingDocument) {
+  if (isError && !state.isMissingDocument) {
     return (
       <section
         className="space-y-3 rounded-lg border border-rose-900/60 bg-rose-950/20 p-4"
@@ -148,7 +43,7 @@ export function CharacterRoleSheetSection({
     );
   }
 
-  if (isUnsupportedFormat) {
+  if (state.isUnsupportedFormat) {
     return <UnsupportedRoleSheetFormatNotice characterName={characterName} />;
   }
 
@@ -164,79 +59,94 @@ export function CharacterRoleSheetSection({
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-3" role="group" aria-label="역할지 형식 선택">
-        <FormatButton
-          label="Markdown"
-          description="텍스트로 빠르게 작성"
-          active={selectedFormat === 'markdown'}
-          onClick={() => setSelectedFormat('markdown')}
-        />
-        <FormatButton
-          label="PDF"
-          description="업로드 후 페이지 단위 보기"
-          active={selectedFormat === 'pdf'}
-          onClick={() => setSelectedFormat('pdf')}
-        />
-        <button
-          type="button"
-          disabled
-          className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-left opacity-60"
-        >
-          <span className="block text-xs font-semibold text-slate-400">이미지</span>
-          <span className="mt-1 block text-[11px] leading-4 text-slate-600">다음 PR에서 여러 장 순서 보기 지원</span>
-        </button>
-      </div>
+      <RoleSheetFormatSelector
+        selectedFormat={state.selectedFormat}
+        onFormatChange={state.setSelectedFormat}
+      />
 
-      {selectedFormat === 'pdf' ? (
+      {state.selectedFormat === 'pdf' ? (
         <PDFRoleSheetPanel
           characterName={characterName}
-          mediaId={pdfMediaId}
-          page={page}
-          uploading={uploading || requestUploadUrl.isPending || confirmUpload.isPending || upsertContent.isPending}
-          uploadProgress={uploadProgress}
-          onPrevious={() => setPage((current) => Math.max(1, current - 1))}
-          onNext={() => setPage((current) => current + 1)}
-          onUploadClick={() => fileInputRef.current?.click()}
+          mediaId={state.pdfMediaId}
+          page={state.page}
+          uploading={state.uploading || state.requestUploadUrl.isPending || state.confirmUpload.isPending || state.upsertContent.isPending}
+          uploadProgress={state.uploadProgress}
+          onPrevious={() => state.setPage((current) => Math.max(1, current - 1))}
+          onNext={() => state.setPage((current) => current + 1)}
+          onUploadClick={() => state.fileInputRef.current?.click()}
         />
       ) : (
         <MarkdownRoleSheetEditor
           characterName={characterName}
-          draft={draft}
-          saveStatus={saveStatus}
-          isMissingDocument={isMissingDocument}
-          isPending={upsertContent.isPending}
+          draft={state.draft}
+          saveStatus={state.saveStatus}
+          isMissingDocument={state.isMissingDocument}
+          isPending={state.upsertContent.isPending}
           onDraftChange={(next) => {
-            setDraft(next);
-            setSaveStatus('idle');
+            state.setDraft(next);
+            state.setSaveStatus('idle');
           }}
           onBlur={() => {
-            if (manualSaveRef.current) return;
-            saveMarkdown(draft);
+            if (state.manualSaveRef.current) return;
+            state.saveMarkdown(state.draft);
           }}
           onSaveMouseDown={() => {
-            manualSaveRef.current = true;
+            state.manualSaveRef.current = true;
           }}
           onSave={() => {
-            saveMarkdown(draft);
+            state.saveMarkdown(state.draft);
             window.setTimeout(() => {
-              manualSaveRef.current = false;
+              state.manualSaveRef.current = false;
             }, 0);
           }}
           onSaveBlur={() => {
-            manualSaveRef.current = false;
+            state.manualSaveRef.current = false;
           }}
         />
       )}
 
       <input
-        ref={fileInputRef}
+        ref={state.fileInputRef}
         type="file"
-        accept="application/pdf"
+        accept="application/pdf,.pdf"
         className="sr-only"
-        onChange={(event) => void handlePDFFile(event)}
+        onChange={(event) => void state.handlePDFFile(event)}
         aria-label="PDF 역할지 파일 선택"
       />
     </section>
+  );
+}
+
+function RoleSheetFormatSelector({
+  selectedFormat,
+  onFormatChange,
+}: {
+  selectedFormat: 'markdown' | 'pdf';
+  onFormatChange: (format: 'markdown' | 'pdf') => void;
+}) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-3" role="group" aria-label="역할지 형식 선택">
+      <FormatButton
+        label="Markdown"
+        description="텍스트로 빠르게 작성"
+        active={selectedFormat === 'markdown'}
+        onClick={() => onFormatChange('markdown')}
+      />
+      <FormatButton
+        label="PDF"
+        description="업로드 후 페이지 단위 보기"
+        active={selectedFormat === 'pdf'}
+        onClick={() => onFormatChange('pdf')}
+      />
+      <button
+        type="button"
+        disabled
+        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-left opacity-60"
+      >
+        <span className="block text-xs font-semibold text-slate-400">이미지</span>
+        <span className="mt-1 block text-[11px] leading-4 text-slate-600">다음 PR에서 여러 장 순서 보기 지원</span>
+      </button>
+    </div>
   );
 }
 

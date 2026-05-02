@@ -202,7 +202,7 @@ func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Contex
 }
 
 func (f *fakeMediaQueries) FindRoleSheetReferencesForMedia(_ context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error) {
-	mediaIDText := strings.TrimPrefix(strings.TrimSuffix(arg.Body, `"%`), `%"media_id":"`)
+	mediaIDText := strings.TrimPrefix(strings.TrimSuffix(arg.Body, `"`), `"media_id"\s*:\s*"`)
 	mediaID, err := uuid.Parse(mediaIDText)
 	if err != nil {
 		return []db.FindRoleSheetReferencesForMediaRow{}, nil
