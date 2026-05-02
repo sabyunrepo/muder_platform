@@ -21,7 +21,6 @@ session_date: 2026-05-01
 - **E-5 placeholder flag 추가 (option b)**: 사용처 0인 채 flag 추가 = partial 위반 risk. (사용자 명시 (c) 결정)
 - **E-7/E-8 sub-component 단위 테스트 추가**: 부모 panel 통합 테스트 25건이 cover하므로 over-engineering 회피.
 - **PhasePanelTimerSettings 안에 warning timer 보존 (round-1)**: control 순서 회귀 (warning timer가 toggle 아래로) — round-2에서 PhasePanelAdvanceToggle로 흡수해 원본 순서 복원.
-- **PR poll + admin-merge one-liner Command 신설**: duplicate-checker가 기존 `feedback_plan-autopilot-gotchas.md` 0.67 유사 → skip.
 
 ## Risks
 

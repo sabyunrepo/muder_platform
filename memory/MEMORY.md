@@ -16,7 +16,6 @@
 - [모듈 시스템](project_module_system.md) — 33개 모듈, BaseModule+ConfigSchema+PhaseReactor+Factory+PlayerAware 게이트
 - [코딩 규칙](project_coding_rules.md) — Go/React 계층구조, DI, 상태관리, 테스트
 - [에디터 개방 + 심사 + 이미지 업로드](project_editor_open_access.md) — 전유저 에디터, 게시 심사, 크롭 업로드
-- [mmp-pilot 통합 시스템](project_mmp_pilot.md) — plan-* + mmp 하네스 통합, /plan-go 단일 진입점, M3 cutover 완료
 
 ## 도구 & 인프라
 - [Docker/Nginx 인프라](project_infra_docker.md) — Nginx 리버스 프록시, dev/prod Compose, Makefile
@@ -26,8 +25,6 @@
 - [QMD 로컬 문서 검색](reference_qmd_setup.md) — MCP 서버, 컬렉션, Hook 강제
 - [graphify 지식 그래프](reference_graphify_setup.md) — 6700n/15398e/531c, Token 17.1x 감소
 - [graphify refresh 정책](project_graphify_refresh_policy.md) — Phase 종료 시점만 fresh rebuild + PR
-- [compound-mmp 플러그인](reference_compound_mmp_plugin.md) — 4단계 라이프사이클 (Plan/Work/Review/Compound)
-- [plan-go ↔ plan-autopilot 연결](reference_plan_go_setup.md) — symlink + plan-tasks.sh 패치 노트
 
 ## 작업 방식
 - [개발(feature) 우선 메타 후순위](feedback_dev_work_priority.md) — 활성 Phase feature 개발이 핸드오프 P1 메타 작업보다 우선
@@ -54,7 +51,6 @@
 - [optimistic rollback snapshot identity](feedback_optimistic_rollback_snapshot.md) — 두 layer 패턴 사용 시 pendingSnapshotRef로 진짜 pre-edit 캡처
 - [git diff --diff-filter는 AMR](feedback_pr_diff_filter_rename.md) — PR diff 검사 CI에서 rename(R) 우회 차단
 - [마이그레이션 워크플로우](feedback_migration_workflow.md) — 6전문가 토론 → 승인 → 구현 → 리뷰 → QA
-- [plan-autopilot 운영 함정](feedback_plan_autopilot_gotchas.md) — status 필드 schema, 워크트리 cleanup
 - [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25, ESLint9 config 미흡
 - [CI admin-skip 정책 (만료 — 2026-04-29)](project_ci_admin_skip_expired_2026-04-29.md) — 정상 squash 모드 복귀
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — `?token=` 쿼리 인증
@@ -86,4 +82,3 @@
 - **Phase 22~23 (인프라)**: [Phase 22 W1.5 debt-cleanup](sessions/archive/2026-04-28-debt-cleanup-runner-network.md) (PR #167/168/169/170 머지, PR #172 outdated close 2026-04-30) · [Phase 23 Custom Runner Image](sessions/archive/2026-04-29-phase-23-custom-runner-image-merge.md) (mega PR #174 + hotfix #175 머지, follow-ups → Phase 21 backlog 이월). main이 PR #179/#180으로 KT Cloud KS arc-runner-set 으로 진화 (Phase 23 자체는 superseded 아님 — 별도 ARC 라인)
 
 ## 옛 세션 핸드오프
-`sessions/archive/` (14 파일) — compound-mmp Wave 1~4, ci-infra-recovery, phase-22 W1·W1.5, PR fold-in (#168/#170), phase-23 pivot·머지. 필요 시 직접 read.

@@ -77,10 +77,7 @@ session_date: 2026-04-28
 
 ## What we did
 
-### `/compound-resume` → `/compound-plan` → `/compound-work` → `/compound-review` 풀 사이클
-사용자가 `/compound-resume` 호출. 직전 세션 핸드오프 read 후 권장순(Phase 22 brainstorm Q2~) 진행. `/compound-plan phase-22-runner-containerization` 4 step (qmd-recall mmp-plans 5건 score 0.61 회상 약함 — 신규 토픽 / brainstorming Q2~Q6+잔여 6건 권장 일괄 채택 / writing-plans 4 wave 분해 / write checklist + 4 ref) → spec 234줄 + plan 1,197줄.
 
-`/compound-work PR-1` Sonnet 4.6 위임 4 파일 작성 (133줄) → docker compose config PASS + Go test baseline. `/compound-review PR-1` 4-agent 병렬 (security/perf/arch/test) → HIGH 6 cluster (image latest digest / restart loop / LABELS precedence / PAT scope blast radius / Task 5 grep / DOCKER_GID silent fail) → hotfix 957b8ed.
 
 ### CI workflow file issue 진단 + hotfix
 사용자 발화 "워커가 잡 픽업 안 하는 것 같다" → CI 폴링 + actionlint detect: `${{ job.services.X.ports['Y'] }}` job-level env 사용 불가 (PR-164 회귀, main 1주 broken). fix branch `fix/ci-job-env-context` (PR #166) 첫 step `Export service connection env`로 GITHUB_ENV export 이동. CI 정상 trigger 확인 (이전 0s fail → 9m53s 실행).
@@ -100,7 +97,6 @@ PR-166 admin-merge 후 main 정상화. PR-165 CI 결과로 DEBT 5건 노출 (Go 
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-28-phase-22-w1-complete.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
   1. DEBT-3 E2E register 500 진단 (Go server log + handler 추적)

@@ -72,7 +72,6 @@ session_date: 2026-05-01
 - **Task 4**: `packages/ws-client/src/` reconnect.ts + client.ts — auth.resume 자동 송신 + auth.invalid_session 분기 (resumable bool 처리) + auth.token_issued 토큰 swap
 - **Task 5**: 단위 테스트 (Go + TS RTL/MSW)
 - **Task 6**: E2E `apps/web/tests/e2e/ws-auth-revoke.spec.ts` — revoke→30s WS close + 재접속 거부 (W4 Gate 검증)
-- **Task 7**: `/compound-review` 4-agent + PR 생성 (cover letter에 외부 리서치 references + 8 envelope 보강 명시)
 
 ### follow-up (PR-9 외)
 - Makefile target + go.mod tool directive로 sqlc 버전 pin (chore PR S 규모)

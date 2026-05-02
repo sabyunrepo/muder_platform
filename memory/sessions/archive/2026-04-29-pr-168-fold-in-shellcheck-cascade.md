@@ -65,14 +65,9 @@ session_date: 2026-04-29
 ### `chore/w1-5-runner-cache` 누적 commit (8 commit → `bddb68b` squash on main)
 
 **`b320681`** — SC2034 fix (1 file):
-- `.claude/plugins/compound-mmp/hooks/test-compound-plan-dry-run.sh` (-1)
 
 **`e2567c4`** — 4-agent fold-in + shellcheck cascade (10 files):
 - `.github/workflows/e2e-stubbed.yml` (-26 +1) — Diagnostic step 제거 + set -euo pipefail
-- `.claude/plugins/compound-mmp/hooks/test-compound-review-dry-run.sh` (-1)
-- `.claude/plugins/compound-mmp/hooks/test-pre-edit-size.sh` (+1)
-- `.claude/plugins/compound-mmp/scripts/compound-cycle-dry-run.sh` (+2)
-- `.claude/plugins/compound-mmp/scripts/install.sh` (+1)
 - `docs/plans/2026-04-28-phase-22-w1-5-debt-cleanup/refs/pr-4-runner-cache.md` (+62) — spec drift 갱신
 - `docs/plans/2026-04-28-phase-22-w1-5-debt-cleanup/refs/reviews/PR-168-{security,performance,arch,test}.md` (+621) — 4-agent 작성
 
@@ -156,12 +151,10 @@ merge-blocking finding 모두 fold-in 1 commit (`e2567c4`) 으로 처리. 비-bl
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-29-pr-168-fold-in-shellcheck-cascade.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
   1. 사용자 host 재배포 확인: `ssh sabyun@100.90.38.7 'docker volume ls | grep -E "(playwright|hostedtool)-cache"'` — 2 named volume 생성 확인
   2. PAT 회전 검증 — 이전 핸드오프 (2026-04-28) carry-over
-  3. W1.5 PR-8 진입 — `/compound-work PR-8` 또는 `chore/w1-5-runner-action-compat` 직접 분기
   4. W1.5 PR-1 (orphan-gate fixture) — PR-8 후
 - **참고할 카논**:
   - `docs/plans/2026-04-28-phase-22-w1-5-debt-cleanup/checklist.md` (mini-plan)

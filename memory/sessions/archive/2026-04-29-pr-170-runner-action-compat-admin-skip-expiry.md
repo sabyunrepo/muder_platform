@@ -173,7 +173,6 @@ CI 통과 확인 후 정상 머지 (`gh pr merge --squash --delete-branch`, admi
 
 ## Next session 첫 5초
 
-- **첫 메시지**: `/compound-resume`
 - **메인의 첫 read**: 이 파일 (`memory/sessions/2026-04-29-pr-170-runner-action-compat-admin-skip-expiry.md` — 가장 최근 mtime)
 - **첫 액션 후보**:
   1. PR-170 머지 검증 — `git log main --oneline -5` 으로 squash commit 확인

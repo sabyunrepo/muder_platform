@@ -9,7 +9,6 @@ type: project
 > **시작:** 2026-04-18 (Phase 19 `/plan-finish` 후 승격)
 > **완료:** 2026-04-18 (W1 단일 wave, 동일 세션)
 > **기반:** PR-2c(#107) + hotfix(#108) 4-agent 사후 리뷰 — HIGH 1건(#108 해소) + MEDIUM 4건 + LOW 5+건
-> **정책:** CI admin-skip (2026-05-01까지) · graphify refresh D 정책 · `/plan-go` 통합 진입점
 
 ## 완료 PR (W1 병렬 3, 순차 admin squash-merge)
 

@@ -28,7 +28,6 @@ test-engineer) 4 병렬 리뷰를 **`gh pr create` 직전 로컬 diff
   명시 후 기본 동의 받은 뒤 진행.
 - Size M+ 또는 보안/동시성/인터페이스 변경 포함 PR 은 예외 없이 4-agent
   리뷰 선행 (parallel_group=review).
-- **타이밍 카논**: `git push -u origin <branch>` *전*에 `/compound-review
   PR-N` 호출. branch 가 origin 에 이미 있어도 무방하지만 `gh pr create`
   *전*에 4-agent 가 도는 게 핵심 — push→PR→review→fix→push 의 2회 CI 를
   push→review→fix→push→PR 의 1회 CI 로 압축.
@@ -51,7 +50,4 @@ test-engineer) 4 병렬 리뷰를 **`gh pr create` 직전 로컬 diff
 - **default는 4-agent 강제 유지** — 사용자 명시 없으면 우회 X.
 
 **Reference**: `.claude/post-task-pipeline.json` `before_pr` 블록,
-`.claude/plugins/compound-mmp/refs/post-task-pipeline-bridge.md` (호출
-타이밍 + 토큰 치환), `.claude/plugins/compound-mmp/skills/review-mmp/SKILL.md`
-(SKILL 진입 게이트), `.claude/plugins/compound-mmp/commands/compound-review.md`
 (슬래시 커맨드 실행 시퀀스).

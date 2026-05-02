@@ -1,6 +1,5 @@
 # MMP v3 Recurring Mistakes Registry
 
-재발 가능성이 있는 실수·낭비 패턴 적층. compound-mmp `/compound-wrap` Step 6-1 결과로 **사용자 승인 후** append (자동 append 금지, anti-patterns.md #9).
 
 learning-extractor의 3-question quality gate(`refs/learning-quality-gate.md` Q1·Q2·Q3) 모두 PASS + duplicate-checker가 NEW로 분류한 항목만 등재. 해소 시 entry 삭제 또는 `~~strikethrough~~` + 해소 PR/commit 링크.
 
@@ -76,7 +75,6 @@ learning-extractor의 3-question quality gate(`refs/learning-quality-gate.md` Q1
 
 **증상**: 보안 fix가 새 vuln을 도입하는 패턴은 round-N→N+1 사이클로 무한 반복 risk. 단일 layer fix는 우회 표면을 좁힐 뿐 종결 X.
 
-**사례** (PR-10 #163 `/compound-cycle` 4-round 검증, 2026-04-28):
 - **Round-1** HIGH-A1: cross-phase handoff pollution (`ls -t memory/sessions/*.md`가 다른 phase 매칭 → false `next_gate=done`)
 - **Round-1 fix**: phase-scoped grep — `grep -l "$PHASE_NAME" memory/sessions/*.md`
 - **Round-2 신규 HIGH-S2**: regex injection — `PHASE_NAME='2026-04-28-.*'` 잠입 시 BRE metachar 해석으로 다른 phase 매칭 (PoC 실증)
@@ -95,9 +93,7 @@ learning-extractor의 3-question quality gate(`refs/learning-quality-gate.md` Q1
 - round-N fix가 신규 vuln 도입 시 **같은 PR 마감** 카논 (carry-over 부적합 — round 무한 반복 차단)
 - helper 외 sister command (예: PR-9 PROJECT_SLUG)도 동일 패턴 sweep 필수
 
-**관련 카논**: `commands/compound-{cycle,work}.md` § Anti-pattern + `refs/post-task-pipeline-bridge.md` § "토큰 sanitize 의무"
 **발견**: PR #163 4-round self-review (round-2 security HIGH-S2, round-3 security HIGH-S3, 2026-04-28)
-**해소 commit**: `f9daca8` (양 layer 강화) + 4-round 검증 트레일 `docs/plans/2026-04-28-compound-mmp-wave3/refs/reviews/PR-10.md`
 
 ---
 
@@ -166,7 +162,6 @@ e2e-stubbed.yml:67:40 context "job" is not allowed here
 2. **결정 흐름 명시화** — helper output `worktree.skill` 호출 시 메인 컨텍스트가 active phase의 카논(checklist에 명시된 `Branch:` 필드)을 우선 검토하도록 sequence 보강.
 3. **사례 누적 후 카논화** — Phase 22 + PR-164 두 사례 모두 단일 branch 패턴. 다음 1~2 phase 진입 시 동일 패턴이면 SKILL.md carve-out PR 진행.
 
-**관련 카논**: `.claude/plugins/compound-mmp/skills/compound-work/SKILL.md` (carve-out 추가 후보), `docs/plans/2026-04-28-ci-infra-recovery/checklist.md` (sister 카논 evidence), `docs/plans/2026-04-28-phase-22-runner-containerization/checklist.md` § "Branch:" 필드.
 
 ---
 
