@@ -41,4 +41,42 @@ test.describe("Phase 24 에디터 entity preview", () => {
       .analyze();
     expect(a11y.violations).toEqual([]);
   });
+
+  test("이미지 롤지 viewer preview를 실제 페이지로 표시한다", async ({ page }) => {
+    await page.goto("/__dev/phase24-image-role-sheet-preview");
+
+    await expect(page.getByRole("heading", { name: "이미지 롤지 Viewer Preview" })).toBeVisible();
+    await expect(page.getByText("이미지 롤지", { exact: true })).toBeVisible();
+    await expect(page.getByText("1 / 3페이지")).toBeVisible();
+    await expect(page.getByAltText("홍길동 이미지 롤지 1페이지")).toBeVisible();
+
+    await page.getByRole("button", { name: "다음 이미지 페이지" }).click();
+    await expect(page.getByText("2 / 3페이지")).toBeVisible();
+    await expect(page.getByAltText("홍길동 이미지 롤지 2페이지")).toBeVisible();
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
+  });
+
+  test("모바일 폭에서 이미지 롤지 viewer preview를 세로 흐름으로 읽을 수 있다", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/__dev/phase24-image-role-sheet-preview");
+
+    await expect(page.getByRole("heading", { name: "이미지 롤지 Viewer Preview" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "이미지 페이지 URL" })).toBeVisible();
+    await expect(page.getByText("1 / 3페이지")).toBeVisible();
+    await expect(page.getByText("확인 포인트")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth))
+      .toBe(true);
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
+  });
 });

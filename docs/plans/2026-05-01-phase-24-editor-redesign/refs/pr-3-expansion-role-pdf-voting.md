@@ -216,18 +216,18 @@ PDF viewer는 모바일에서 한 번에 전체 페이지를 렌더링하지 않
 
 #### Backend
 
-- [ ] image URL 배열 validation
-- [ ] 필요 시 image asset 참조 검증
+- [x] image URL 배열 validation
+- [x] 필요 시 image asset 참조 검증 — 현재 역할지 이미지는 media asset 타입이 없어 absolute http/https URL validation으로 한정
 
 #### Frontend
 
-- [ ] 이미지 페이지 추가/삭제/순서 변경 UI
-- [ ] image page viewer 추가
-- [ ] 모바일 1페이지 단위 viewer 공유
+- [x] 이미지 페이지 추가/삭제/순서 변경 UI
+- [x] image page viewer 추가
+- [x] 모바일 1페이지 단위 viewer 공유
 
 #### 완료 기준
 
-- [ ] 이미지 여러 장을 역할지처럼 순서대로 볼 수 있다.
+- [x] 이미지 여러 장을 역할지처럼 순서대로 볼 수 있다.
 
 ## 기존 PR-3와의 관계
 

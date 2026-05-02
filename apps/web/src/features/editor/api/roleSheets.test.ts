@@ -118,4 +118,30 @@ describe("editor role sheet API hooks", () => {
       queryKey: editorKeys.characterRoleSheet("char-1"),
     });
   });
+
+  it("upserts an image role sheet and invalidates its query", async () => {
+    const roleSheet: RoleSheetResponse = {
+      character_id: "char-1",
+      theme_id: "theme-1",
+      format: "images",
+      images: { image_urls: ["https://cdn.example/role-1.webp"] },
+    };
+    mockPut.mockResolvedValue(roleSheet);
+    const invalidateSpy = vi.spyOn(testQueryClient, "invalidateQueries");
+
+    const { result } = renderHook(() => useUpsertCharacterRoleSheet("char-1"), { wrapper });
+
+    await result.current.mutateAsync({
+      format: "images",
+      images: { image_urls: ["https://cdn.example/role-1.webp"] },
+    });
+
+    expect(mockPut).toHaveBeenCalledWith(
+      "/v1/editor/characters/char-1/role-sheet",
+      { format: "images", images: { image_urls: ["https://cdn.example/role-1.webp"] } },
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: editorKeys.characterRoleSheet("char-1"),
+    });
+  });
 });

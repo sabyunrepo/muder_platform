@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -14,12 +16,14 @@ import (
 )
 
 const maxRoleSheetBodyBytes = 50000
+const maxRoleSheetImagePages = 50
 
 type storedRoleSheet struct {
 	Version  int                `json:"version"`
 	Format   string             `json:"format"`
 	Markdown *RoleSheetMarkdown `json:"markdown,omitempty"`
 	PDF      *RoleSheetPDF      `json:"pdf,omitempty"`
+	Images   *RoleSheetImages   `json:"images,omitempty"`
 }
 
 func roleSheetContentKey(characterID uuid.UUID) string {
@@ -87,10 +91,41 @@ func validateRoleSheetRequestShape(req UpsertRoleSheetRequest) error {
 		if req.PDF == nil || req.PDF.MediaID == uuid.Nil {
 			return apperror.BadRequest("pdf role sheet media_id is required")
 		}
+	case RoleSheetFormatImages:
+		if err := validateRoleSheetImages(req.Images); err != nil {
+			return err
+		}
 	default:
 		return apperror.BadRequest("unsupported role sheet format")
 	}
 	return nil
+}
+
+func validateRoleSheetImages(images *RoleSheetImages) error {
+	_, err := normalizeRoleSheetImages(images)
+	return err
+}
+
+func normalizeRoleSheetImages(images *RoleSheetImages) (*RoleSheetImages, error) {
+	if images == nil || len(images.ImageURLs) == 0 {
+		return nil, apperror.BadRequest("image role sheet pages are required")
+	}
+	if len(images.ImageURLs) > maxRoleSheetImagePages {
+		return nil, apperror.BadRequest("image role sheet has too many pages")
+	}
+	normalizedURLs := make([]string, 0, len(images.ImageURLs))
+	for _, rawURL := range images.ImageURLs {
+		trimmed := strings.TrimSpace(rawURL)
+		if trimmed == "" {
+			return nil, apperror.BadRequest("image role sheet page URL is required")
+		}
+		parsed, err := url.Parse(trimmed)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return nil, apperror.BadRequest("image role sheet page URL must be a valid URL")
+		}
+		normalizedURLs = append(normalizedURLs, trimmed)
+	}
+	return &RoleSheetImages{ImageURLs: normalizedURLs}, nil
 }
 
 func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID, char db.ThemeCharacter, req UpsertRoleSheetRequest) (string, error) {
@@ -109,6 +144,17 @@ func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID,
 		body, err := json.Marshal(storedRoleSheet{Version: 1, Format: RoleSheetFormatPDF, PDF: req.PDF})
 		if err != nil {
 			s.logger.Error().Err(err).Msg("failed to marshal pdf role sheet")
+			return "", apperror.Internal("failed to store role sheet")
+		}
+		return string(body), nil
+	case RoleSheetFormatImages:
+		images, err := normalizeRoleSheetImages(req.Images)
+		if err != nil {
+			return "", err
+		}
+		body, err := json.Marshal(storedRoleSheet{Version: 1, Format: RoleSheetFormatImages, Images: images})
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to marshal image role sheet")
 			return "", apperror.Internal("failed to store role sheet")
 		}
 		return string(body), nil
@@ -171,6 +217,7 @@ func roleSheetResponseFromContent(char db.ThemeCharacter, content db.ThemeConten
 			Format:      stored.Format,
 			Markdown:    stored.Markdown,
 			PDF:         stored.PDF,
+			Images:      stored.Images,
 			UpdatedAt:   &updatedAt,
 		}
 	}
@@ -196,6 +243,13 @@ func parseStoredRoleSheet(body string) (storedRoleSheet, bool) {
 		return stored, stored.Markdown != nil
 	case RoleSheetFormatPDF:
 		return stored, stored.PDF != nil && stored.PDF.MediaID != uuid.Nil
+	case RoleSheetFormatImages:
+		images, err := normalizeRoleSheetImages(stored.Images)
+		if err != nil {
+			return storedRoleSheet{}, false
+		}
+		stored.Images = images
+		return stored, true
 	default:
 		return storedRoleSheet{}, false
 	}

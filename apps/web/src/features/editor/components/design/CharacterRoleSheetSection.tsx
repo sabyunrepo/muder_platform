@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, FileText, FileUp, Save } from 'lucide-react'
 import { Button } from '@/shared/components/ui/Button';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import { useMediaDownloadUrl } from '@/features/editor/mediaApi';
+import { ImageRoleSheetPanel } from './ImageRoleSheetPanel';
 import { useRoleSheetEditorState } from './useRoleSheetEditorState';
 
 interface CharacterRoleSheetSectionProps {
@@ -54,7 +55,7 @@ export function CharacterRoleSheetSection({
         <div className="min-w-0 flex-1">
           <p className="text-xs font-semibold text-slate-300">역할지 형식</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            플레이어에게만 보이는 비밀·동기·알리바이를 Markdown 또는 PDF 한 페이지씩 읽는 방식으로 제공합니다.
+            플레이어에게만 보이는 비밀·동기·알리바이를 Markdown, PDF, 이미지 페이지 중 하나로 제공합니다.
           </p>
         </div>
       </div>
@@ -74,6 +75,22 @@ export function CharacterRoleSheetSection({
           onPrevious={() => state.setPage((current) => Math.max(1, current - 1))}
           onNext={() => state.setPage((current) => current + 1)}
           onUploadClick={() => state.fileInputRef.current?.click()}
+        />
+      ) : state.selectedFormat === 'images' ? (
+        <ImageRoleSheetPanel
+          characterName={characterName}
+          imageUrls={state.imageUrls}
+          imageDraft={state.imageDraft}
+          page={state.page}
+          saveStatus={state.saveStatus}
+          isPending={state.upsertContent.isPending}
+          onImageDraftChange={state.setImageDraft}
+          onAddImagePage={state.addImagePage}
+          onRemoveImagePage={state.removeImagePage}
+          onMoveImagePage={state.moveImagePage}
+          onPrevious={() => state.setPage((current) => Math.max(1, current - 1))}
+          onNext={() => state.setPage((current) => Math.min(state.imageUrls.length, current + 1))}
+          onSave={state.saveImages}
         />
       ) : (
         <MarkdownRoleSheetEditor
@@ -124,6 +141,21 @@ export function CharacterRoleSheetSection({
   );
 }
 
+
+function UnsupportedRoleSheetFormatNotice({ characterName }: { characterName: string }) {
+  return (
+    <section
+      className="space-y-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-4"
+      aria-label={`${characterName} 지원하지 않는 역할지 형식`}
+    >
+      <p className="text-sm font-semibold text-amber-100">지원하지 않는 역할지 형식입니다.</p>
+      <p className="text-xs leading-5 text-amber-100/70">
+        현재 에디터에서 안전하게 편집할 수 없는 형식이라 덮어쓰기를 막았습니다. Markdown, PDF, 이미지 롤지 중 하나로 변환한 뒤 다시 편집해 주세요.
+      </p>
+    </section>
+  );
+}
+
 function isSaveButtonTarget(target: EventTarget | null) {
   return target instanceof HTMLElement && target.closest('[data-role-sheet-save="true"]') !== null;
 }
@@ -132,8 +164,8 @@ function RoleSheetFormatSelector({
   selectedFormat,
   onFormatChange,
 }: {
-  selectedFormat: 'markdown' | 'pdf';
-  onFormatChange: (format: 'markdown' | 'pdf') => void;
+  selectedFormat: 'markdown' | 'pdf' | 'images';
+  onFormatChange: (format: 'markdown' | 'pdf' | 'images') => void;
 }) {
   return (
     <div className="grid gap-2 sm:grid-cols-3" role="group" aria-label="역할지 형식 선택">
@@ -149,14 +181,12 @@ function RoleSheetFormatSelector({
         active={selectedFormat === 'pdf'}
         onClick={() => onFormatChange('pdf')}
       />
-      <button
-        type="button"
-        disabled
-        className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-left opacity-60"
-      >
-        <span className="block text-xs font-semibold text-slate-400">이미지</span>
-        <span className="mt-1 block text-[11px] leading-4 text-slate-600">다음 PR에서 여러 장 순서 보기 지원</span>
-      </button>
+      <FormatButton
+        label="이미지"
+        description="여러 장을 순서대로 보기"
+        active={selectedFormat === 'images'}
+        onClick={() => onFormatChange('images')}
+      />
     </div>
   );
 }
@@ -339,19 +369,5 @@ function PDFRoleSheetPanel({
         </>
       )}
     </div>
-  );
-}
-
-function UnsupportedRoleSheetFormatNotice({ characterName }: { characterName: string }) {
-  return (
-    <section
-      className="space-y-3 rounded-lg border border-amber-900/60 bg-amber-950/20 p-4"
-      aria-label={`${characterName} 역할지 미지원 형식`}
-    >
-      <p className="text-sm font-semibold text-amber-100">아직 지원하지 않는 역할지 형식입니다.</p>
-      <p className="text-xs leading-5 text-amber-100/70">
-        이미지 역할지는 다음 PR에서 여러 장을 순서대로 보는 전용 뷰어로 연결됩니다.
-      </p>
-    </section>
   );
 }

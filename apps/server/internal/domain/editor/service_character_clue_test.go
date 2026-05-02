@@ -442,13 +442,90 @@ func TestService_UpsertCharacterRoleSheet_RejectsUnsupportedFormat(t *testing.T)
 	}
 
 	_, err = f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
-		Format: "images",
+		Format: "audio",
 	})
 	if err == nil {
 		t.Fatal("expected error for unsupported role sheet format")
 	}
 	if !strings.Contains(err.Error(), "unsupported role sheet format") {
 		t.Fatalf("expected unsupported format error, got %v", err)
+	}
+}
+
+func TestService_UpsertAndGetCharacterRoleSheetImages(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "이미지 캐릭터"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+	imageURLs := []string{
+		" https://cdn.example.com/roles/char-1-page-1.webp ",
+		"https://cdn.example.com/roles/char-1-page-2.png",
+	}
+	wantImageURLs := []string{
+		"https://cdn.example.com/roles/char-1-page-1.webp",
+		"https://cdn.example.com/roles/char-1-page-2.png",
+	}
+
+	upserted, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format: RoleSheetFormatImages,
+		Images: &RoleSheetImages{ImageURLs: imageURLs},
+	})
+	if err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet images: %v", err)
+	}
+	if upserted.Format != RoleSheetFormatImages || upserted.Images == nil || upserted.Markdown != nil || upserted.PDF != nil {
+		t.Fatalf("unexpected images role sheet response: %+v", upserted)
+	}
+	if strings.Join(upserted.Images.ImageURLs, ",") != strings.Join(wantImageURLs, ",") {
+		t.Fatalf("image URLs order mismatch: got %+v, want %+v", upserted.Images.ImageURLs, wantImageURLs)
+	}
+
+	got, err := f.svc.GetCharacterRoleSheet(ctx, creatorID, char.ID)
+	if err != nil {
+		t.Fatalf("GetCharacterRoleSheet images: %v", err)
+	}
+	if got.Format != RoleSheetFormatImages || got.Images == nil || got.Markdown != nil || got.PDF != nil {
+		t.Fatalf("unexpected stored images role sheet: %+v", got)
+	}
+	if strings.Join(got.Images.ImageURLs, ",") != strings.Join(wantImageURLs, ",") {
+		t.Fatalf("stored image URLs order mismatch: got %+v, want %+v", got.Images.ImageURLs, wantImageURLs)
+	}
+}
+
+func TestService_UpsertCharacterRoleSheet_RejectsInvalidImages(t *testing.T) {
+	tests := []struct {
+		name    string
+		images  *RoleSheetImages
+		wantErr string
+	}{
+		{name: "missing images", images: nil, wantErr: "image role sheet pages are required"},
+		{name: "empty images", images: &RoleSheetImages{}, wantErr: "image role sheet pages are required"},
+		{name: "blank URL", images: &RoleSheetImages{ImageURLs: []string{" "}}, wantErr: "image role sheet page URL is required"},
+		{name: "relative URL", images: &RoleSheetImages{ImageURLs: []string{"/uploads/page-1.png"}}, wantErr: "image role sheet page URL must be a valid URL"},
+		{name: "non web URL", images: &RoleSheetImages{ImageURLs: []string{"ftp://example.com/page-1.png"}}, wantErr: "image role sheet page URL must be a valid URL"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &service{}
+			_, err := svc.UpsertCharacterRoleSheet(context.Background(), uuid.New(), uuid.New(), UpsertRoleSheetRequest{
+				Format: RoleSheetFormatImages,
+				Images: tc.images,
+			})
+			if err == nil {
+				t.Fatal("expected error for invalid image role sheet")
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("expected %q error, got %v", tc.wantErr, err)
+			}
+		})
 	}
 }
 

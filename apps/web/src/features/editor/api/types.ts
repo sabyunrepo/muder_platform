@@ -188,12 +188,17 @@ export interface RoleSheetPDF {
   media_id: string;
 }
 
+export interface RoleSheetImages {
+  image_urls: string[];
+}
+
 export interface RoleSheetResponse {
   character_id: string;
   theme_id: string;
   format: RoleSheetFormat;
   markdown?: RoleSheetMarkdown;
   pdf?: RoleSheetPDF;
+  images?: RoleSheetImages;
   updated_at?: string | null;
 }
 
@@ -205,6 +210,10 @@ export type UpsertRoleSheetRequest =
   | {
       format: "pdf";
       pdf: RoleSheetPDF;
+    }
+  | {
+      format: "images";
+      images: RoleSheetImages;
     };
 
 export interface ValidationResponse {

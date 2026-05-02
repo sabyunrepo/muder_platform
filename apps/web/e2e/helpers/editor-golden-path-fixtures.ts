@@ -36,6 +36,7 @@ export interface MockState {
   characterUpdateCalls: number;
   lastCharacterUpdateBody: Record<string, unknown> | null;
   characterMysteryRole: "suspect" | "culprit" | "accomplice" | "detective";
+  roleSheet: Record<string, unknown>;
   configPutCalls: number;
   imageUploadUrlCalls: number;
   templatesCalls: number;
@@ -57,6 +58,12 @@ export function freshState(): MockState {
     characterUpdateCalls: 0,
     lastCharacterUpdateBody: null,
     characterMysteryRole: "detective",
+    roleSheet: {
+      character_id: "char-1",
+      theme_id: THEME_ID,
+      format: "markdown",
+      markdown: { body: "" },
+    },
     configPutCalls: 0,
     imageUploadUrlCalls: 0,
     templatesCalls: 0,
@@ -198,6 +205,41 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(characterPayload(state)),
+    });
+  });
+
+  await page.route("**/v1/editor/characters/char-1/role-sheet", async (r) => {
+    const method = r.request().method();
+    if (method === "PUT") {
+      const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
+      state.roleSheet = {
+        ...body,
+        character_id: "char-1",
+        theme_id: THEME_ID,
+        updated_at: new Date().toISOString(),
+      };
+      return r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(state.roleSheet),
+      });
+    }
+    if (method === "GET") {
+      return r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(state.roleSheet),
+      });
+    }
+    return r.fulfill({
+      status: 405,
+      contentType: "application/problem+json",
+      body: JSON.stringify({
+        type: "about:blank",
+        title: "Method Not Allowed",
+        status: 405,
+        detail: "method not allowed",
+      }),
     });
   });
 

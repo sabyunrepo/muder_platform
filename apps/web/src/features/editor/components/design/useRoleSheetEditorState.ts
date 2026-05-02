@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import {
   useCharacterRoleSheet,
@@ -16,7 +16,8 @@ import {
 } from '@/features/editor/mediaApi';
 import { isApiHttpError } from '@/lib/api-error';
 
-type EditableRoleSheetFormat = 'markdown' | 'pdf';
+type EditableRoleSheetFormat = 'markdown' | 'pdf' | 'images';
+type ResolvedRoleSheetFormat = EditableRoleSheetFormat | null;
 type SaveStatus = 'idle' | 'saved' | 'failed';
 
 type UpsertRoleSheetMutation = ReturnType<typeof useUpsertCharacterRoleSheet>;
@@ -48,6 +49,8 @@ export function useRoleSheetEditorState({
 
   const sync = useRoleSheetSync({ roleSheet: roleSheetQuery.data, roleSheetError: roleSheetQuery.error });
   const [draft, setDraft] = useState('');
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageDraft, setImageDraft] = useState('');
 
   useEffect(() => {
     setDraft(sync.originalBody);
@@ -55,7 +58,15 @@ export function useRoleSheetEditorState({
   }, [sync.originalBody, characterId]);
 
   useEffect(() => {
-    setSelectedFormat(roleSheetQuery.data?.format === 'pdf' ? 'pdf' : 'markdown');
+    setImageUrls(sync.imageUrls);
+    setImageDraft('');
+  }, [sync.imageUrls, characterId]);
+
+  useEffect(() => {
+    const nextFormat = resolveEditableFormat(roleSheetQuery.data?.format);
+    if (nextFormat) {
+      setSelectedFormat(nextFormat);
+    }
     setPage(1);
   }, [roleSheetQuery.data?.format, characterId]);
 
@@ -78,6 +89,13 @@ export function useRoleSheetEditorState({
     setUploading,
     setUploadProgress,
   });
+  const saveImages = useRoleSheetImagesSaver({
+    imageUrls,
+    upsertContent,
+    setSelectedFormat,
+    setSaveStatus,
+    setPage,
+  });
 
   return {
     roleSheetQuery,
@@ -90,6 +108,9 @@ export function useRoleSheetEditorState({
     uploadProgress,
     page,
     setPage,
+    imageUrls,
+    imageDraft,
+    setImageDraft,
     fileInputRef,
     manualSaveRef,
     isMissingDocument: sync.isMissingDocument,
@@ -101,7 +122,55 @@ export function useRoleSheetEditorState({
     setDraft,
     saveMarkdown,
     handlePDFFile,
+    addImagePage: () => {
+      const nextURL = imageDraft.trim();
+      if (!isValidWebURL(nextURL)) {
+        toast.error('http 또는 https 이미지 URL을 입력해 주세요');
+        return;
+      }
+      setImageUrls((current) => {
+        setPage(current.length + 1);
+        return [...current, nextURL];
+      });
+      setImageDraft('');
+      setSaveStatus('idle');
+    },
+    removeImagePage: (index: number) => {
+      setImageUrls((current) => {
+        const next = current.filter((_, currentIndex) => currentIndex !== index);
+        setPage((currentPage) => {
+          if (currentPage > index + 1) return currentPage - 1;
+          if (currentPage === index + 1) return Math.max(1, Math.min(currentPage, next.length));
+          return Math.max(1, Math.min(currentPage, next.length || 1));
+        });
+        return next;
+      });
+      setSaveStatus('idle');
+    },
+    moveImagePage: (index: number, direction: -1 | 1) => {
+      setImageUrls((current) => {
+        const nextIndex = index + direction;
+        if (nextIndex < 0 || nextIndex >= current.length) return current;
+        const next = [...current];
+        [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+        setPage((currentPage) => {
+          const currentIndex = currentPage - 1;
+          if (currentIndex === index) return nextIndex + 1;
+          if (currentIndex === nextIndex) return index + 1;
+          return currentPage;
+        });
+        return next;
+      });
+      setSaveStatus('idle');
+    },
+    saveImages,
   };
+}
+
+function resolveEditableFormat(format?: string): ResolvedRoleSheetFormat {
+  if (!format || format === 'markdown') return 'markdown';
+  if (format === 'pdf' || format === 'images') return format;
+  return null;
 }
 
 function useRoleSheetSync({
@@ -112,11 +181,15 @@ function useRoleSheetSync({
   roleSheetError: unknown;
 }) {
   const isMissingDocument = isApiHttpError(roleSheetError) && roleSheetError.status === 404;
-  const isUnsupportedFormat = !isMissingDocument && roleSheet?.format !== undefined && roleSheet.format === 'images';
+  const isUnsupportedFormat = Boolean(roleSheet?.format && !resolveEditableFormat(roleSheet.format));
   const originalBody = isMissingDocument ? '' : (roleSheet?.markdown?.body ?? '');
   const pdfMediaId = roleSheet?.format === 'pdf' ? roleSheet.pdf?.media_id : undefined;
+  const imageUrls = useMemo(
+    () => (roleSheet?.format === 'images' ? (roleSheet.images?.image_urls ?? []) : []),
+    [roleSheet?.format, roleSheet?.images?.image_urls],
+  );
 
-  return { isMissingDocument, isUnsupportedFormat, originalBody, pdfMediaId };
+  return { isMissingDocument, isUnsupportedFormat, originalBody, pdfMediaId, imageUrls };
 }
 
 function useRoleSheetMarkdownSaver({
@@ -156,6 +229,54 @@ function useRoleSheetMarkdownSaver({
       },
     );
   };
+}
+
+function useRoleSheetImagesSaver({
+  imageUrls,
+  upsertContent,
+  setSelectedFormat,
+  setSaveStatus,
+  setPage,
+}: {
+  imageUrls: string[];
+  upsertContent: UpsertRoleSheetMutation;
+  setSelectedFormat: (format: EditableRoleSheetFormat) => void;
+  setSaveStatus: (status: SaveStatus) => void;
+  setPage: (page: number) => void;
+}) {
+  return () => {
+    if (upsertContent.isPending) return;
+    if (imageUrls.length === 0) {
+      setSaveStatus('failed');
+      toast.error('이미지 페이지를 1개 이상 추가해 주세요');
+      return;
+    }
+
+    upsertContent.mutate(
+      { format: 'images', images: { image_urls: imageUrls } },
+      {
+        onSuccess: () => {
+          setSelectedFormat('images');
+          setPage(1);
+          setSaveStatus('saved');
+          toast.success('이미지 롤지가 저장되었습니다');
+        },
+        onError: () => {
+          setSaveStatus('failed');
+          toast.error('이미지 롤지 저장에 실패했습니다');
+        },
+      },
+    );
+  };
+}
+
+function isValidWebURL(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function useRoleSheetPdfUploader({
