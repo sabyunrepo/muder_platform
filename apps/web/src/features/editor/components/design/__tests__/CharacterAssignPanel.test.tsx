@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ApiHttpError } from '@/lib/api-error';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -185,6 +186,80 @@ describe('CharacterAssignPanel', () => {
     expect(useUpsertContentMock).toHaveBeenCalledWith('theme-1', 'role_sheet:char-1');
     expect(upsertContentMutateMock).toHaveBeenCalledWith(
       { body: '## 비밀\n범인은 아직 모른다.' },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+
+  it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {
+    useEditorContentMock.mockReturnValue({
+      data: undefined,
+      error: new ApiHttpError({
+        type: 'about:blank',
+        title: 'Not Found',
+        status: 404,
+        detail: 'role sheet not found',
+      }),
+      isError: true,
+      isLoading: false,
+      refetch: vi.fn(),
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    expect(screen.getByText('아직 저장된 역할지가 없습니다.')).toBeDefined();
+    expect((screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement).value).toBe('');
+  });
+
+  it('역할지 로드 실패 시 재시도 버튼을 표시한다', () => {
+    const refetch = vi.fn();
+    useEditorContentMock.mockReturnValue({
+      data: undefined,
+      error: new ApiHttpError({
+        type: 'about:blank',
+        title: 'Server Error',
+        status: 500,
+        detail: 'server error',
+      }),
+      isError: true,
+      isLoading: false,
+      refetch,
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    expect(screen.getByText('역할지를 불러오지 못했습니다.')).toBeDefined();
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('역할지 본문이 바뀌지 않았으면 저장 요청을 보내지 않는다', () => {
+    useEditorContentMock.mockReturnValue({ data: { body: '기존 역할지' }, isLoading: false });
+
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
+
+    expect(upsertContentMutateMock).not.toHaveBeenCalled();
+    expect(screen.getByText('저장되었습니다.')).toBeDefined();
+  });
+
+  it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByText('홍길동'));
+
+    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
+    const saveButton = screen.getByRole('button', { name: '역할지 저장' });
+    fireEvent.change(roleSheet, { target: { value: '수정된 역할지' } });
+    fireEvent.mouseDown(saveButton);
+    fireEvent.blur(roleSheet);
+    fireEvent.click(saveButton);
+
+    expect(upsertContentMutateMock).toHaveBeenCalledTimes(1);
+    expect(upsertContentMutateMock).toHaveBeenCalledWith(
+      { body: '수정된 역할지' },
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });
