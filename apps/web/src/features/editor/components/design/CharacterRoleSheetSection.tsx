@@ -86,18 +86,28 @@ export function CharacterRoleSheetSection({
             state.setDraft(next);
             state.setSaveStatus('idle');
           }}
-          onBlur={() => {
+          onBlur={(event) => {
             if (state.manualSaveRef.current) return;
+            // Skip auto-save if focus is moving to the save button
+            const relatedTarget = event.relatedTarget as HTMLElement | null;
+            if (relatedTarget?.closest('button[type="button"]')) {
+              return;
+            }
             state.saveMarkdown(state.draft);
           }}
           onSaveMouseDown={() => {
             state.manualSaveRef.current = true;
           }}
+          onSaveKeyDown={() => {
+            state.manualSaveRef.current = true;
+          }}
           onSave={() => {
-            state.saveMarkdown(state.draft);
-            window.setTimeout(() => {
-              state.manualSaveRef.current = false;
-            }, 0);
+            if (state.manualSaveRef.current) {
+              state.saveMarkdown(state.draft);
+              window.setTimeout(() => {
+                state.manualSaveRef.current = false;
+              }, 0);
+            }
           }}
           onSaveBlur={() => {
             state.manualSaveRef.current = false;
@@ -187,6 +197,7 @@ function MarkdownRoleSheetEditor({
   onDraftChange,
   onBlur,
   onSaveMouseDown,
+  onSaveKeyDown,
   onSave,
   onSaveBlur,
 }: {
@@ -196,8 +207,9 @@ function MarkdownRoleSheetEditor({
   isMissingDocument: boolean;
   isPending: boolean;
   onDraftChange: (body: string) => void;
-  onBlur: () => void;
+  onBlur: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
   onSaveMouseDown: () => void;
+  onSaveKeyDown: () => void;
   onSave: () => void;
   onSaveBlur: () => void;
 }) {
@@ -233,6 +245,7 @@ function MarkdownRoleSheetEditor({
         <Button
           size="sm"
           onMouseDown={onSaveMouseDown}
+          onKeyDown={onSaveKeyDown}
           onClick={onSave}
           onBlur={onSaveBlur}
           disabled={isPending}

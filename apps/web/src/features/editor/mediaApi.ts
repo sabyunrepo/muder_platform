@@ -185,6 +185,8 @@ export interface PutFileParams {
   file: File;
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
+  /** Override MIME type (e.g., when file.type is empty for PDFs on some platforms). */
+  mimeType?: string;
 }
 
 /** Default putFile implementation using XHR for progress events. */
@@ -192,8 +194,9 @@ export function defaultPutFile(params: PutFileParams): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", params.url, true);
-    if (params.file.type) {
-      xhr.setRequestHeader("Content-Type", params.file.type);
+    const contentType = params.mimeType ?? params.file.type;
+    if (contentType) {
+      xhr.setRequestHeader("Content-Type", contentType);
     }
 
     xhr.upload.onprogress = (e) => {
@@ -292,6 +295,7 @@ export async function uploadMediaFile(
         file,
         onProgress,
         signal,
+        mimeType,
       });
       lastError = undefined;
       break;

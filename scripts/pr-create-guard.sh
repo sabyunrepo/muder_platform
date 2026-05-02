@@ -38,12 +38,21 @@ MSG
   esac
 
   case "$arg" in
-    --label=ready-for-ci|--label=*,ready-for-ci|--label=ready-for-ci,*|--label=*,ready-for-ci,*|\
-    --add-label=ready-for-ci|--add-label=*,ready-for-ci|--add-label=ready-for-ci,*|--add-label=*,ready-for-ci,*)
-      cat >&2 <<'MSG'
+    --label=*|--add-label=*|-l=*)
+      # Extract the value after the equals sign
+      value="${arg#*=}"
+      if contains_ready_for_ci "$value"; then
+        cat >&2 <<'MSG'
 🚫 PR 생성 중단: `ready-for-ci` 라벨은 PR 생성 단계에서 붙일 수 없습니다.
+
+순서:
+1. PR 생성
+2. CodeRabbit / Codecov Report / 코드 리뷰 이슈 확인
+3. 수정 커밋 push + review thread resolve
+4. 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
 MSG
-      exit 2
+        exit 2
+      fi
       ;;
   esac
 
