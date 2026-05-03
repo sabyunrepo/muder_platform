@@ -12,6 +12,7 @@ const PHASE_TYPE_LABELS: Record<string, string> = {
   voting: "투표",
   free: "자유",
   intermission: "인터미션",
+  story_progression: "스토리 진행",
 };
 
 // ---------------------------------------------------------------------------

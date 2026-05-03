@@ -2,7 +2,7 @@
 phase_id: "phase-24-editor-redesign"
 phase_title: "Phase 24 — 에디터 ECS 재설계 (단서 단일 진실 위치 + 동적 모듈 + 결말 분기 매트릭스)"
 created: 2026-05-01
-status: "issue-based Phase 24 continuation — PR-5A active"
+status: "issue-based Phase 24 continuation — PR-5B active"
 spec: "docs/superpowers/specs/2026-05-01-phase-24-editor-redesign/design.md"
 prs_estimated: "issue-based: PR-5A~PR-9 active after PR-4"
 parent_phase: "phase-21-editor-ux"
@@ -35,8 +35,8 @@ parent_phase: "phase-21-editor-ux"
 
 | Issue | PR | 범위 | 상태 |
 | --- | --- | --- | --- |
-| [#230](https://github.com/sabyunrepo/muder_platform/issues/230) | PR-5A | Adapter/Engine 공통 계약 및 Issue 기반 전환 | active |
-| [#231](https://github.com/sabyunrepo/muder_platform/issues/231) | PR-5B | 페이즈 정보 전달 Frontend Adapter | next |
+| [#230](https://github.com/sabyunrepo/muder_platform/issues/230) | PR-5A | Adapter/Engine 공통 계약 및 Issue 기반 전환 | done |
+| [#231](https://github.com/sabyunrepo/muder_platform/issues/231) | PR-5B | 페이즈 정보 전달 Frontend Adapter | active |
 | [#232](https://github.com/sabyunrepo/muder_platform/issues/232) | PR-5C | 정보 전달 Backend Engine 및 런타임 공개 상태 | queued |
 | [#233](https://github.com/sabyunrepo/muder_platform/issues/233) | PR-6 | 캐릭터 Adapter/Engine 이관 | brainstorming gate |
 | [#234](https://github.com/sabyunrepo/muder_platform/issues/234) | PR-7 | 단서 Adapter/Engine 이관 | brainstorming gate |

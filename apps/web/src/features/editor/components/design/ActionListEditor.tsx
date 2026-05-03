@@ -23,6 +23,7 @@ interface ActionListEditorProps {
   label: string;
   actions: PhaseAction[];
   onChange: (actions: PhaseAction[]) => void;
+  hiddenTypes?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +34,12 @@ export function ActionListEditor({
   label,
   actions,
   onChange,
+  hiddenTypes = [],
 }: ActionListEditorProps) {
+  const visibleActions = actions
+    .map((action, index) => ({ action, index }))
+    .filter(({ action }) => !hiddenTypes.includes(action.type));
+  const visibleActionTypes = ACTION_TYPES.filter((type) => !hiddenTypes.includes(type.value));
   const handleAdd = () => {
     onChange([...actions, { id: crypto.randomUUID(), type: "broadcast" }]);
   };
@@ -63,11 +69,11 @@ export function ActionListEditor({
         </button>
       </div>
 
-      {actions.length === 0 && (
+      {visibleActions.length === 0 && (
         <p className="text-[10px] text-slate-600">액션 없음</p>
       )}
 
-      {actions.map((action, idx) => (
+      {visibleActions.map(({ action, index: idx }) => (
         <div
           key={action.id ?? idx}
           className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-1.5"
@@ -75,9 +81,10 @@ export function ActionListEditor({
           <select
             value={action.type}
             onChange={(e) => handleTypeChange(idx, e.target.value)}
+            aria-label={`${label} ${idx + 1} 액션 타입`}
             className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
           >
-            {ACTION_TYPES.map((at) => (
+            {visibleActionTypes.map((at) => (
               <option key={at.value} value={at.value}>
                 {at.label}
               </option>
@@ -86,6 +93,7 @@ export function ActionListEditor({
           <button
             type="button"
             onClick={() => handleRemove(idx)}
+            aria-label={`${label} ${idx + 1} 삭제`}
             className="text-slate-500 transition-colors hover:text-red-400"
           >
             <Trash2 className="h-3 w-3" />

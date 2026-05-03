@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 
 // ---------------------------------------------------------------------------
@@ -63,6 +63,11 @@ describe("PhaseNode", () => {
   it("data.phase_type이 있으면 한국어 타입명을 표시한다", () => {
     render(<PhaseNode {...makeProps({ phase_type: "investigation" })} />);
     expect(screen.getByText("수사")).toBeDefined();
+  });
+
+  it("스토리 진행 phase type을 제작자용 라벨로 표시한다", () => {
+    render(<PhaseNode {...makeProps({ phase_type: "story_progression" })} />);
+    expect(screen.getByText("스토리 진행")).toBeDefined();
   });
 
   it("data.duration이 있으면 분 단위로 표시한다", () => {
