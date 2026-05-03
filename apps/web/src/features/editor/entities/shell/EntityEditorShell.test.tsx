@@ -55,6 +55,25 @@ describe('EntityEditorShell', () => {
     expect(within(list).queryByText('첫 단서')).toBeNull();
   });
 
+
+  it('검색 결과가 있으면 상세 패널도 필터된 첫 항목과 일치한다', () => {
+    renderShell({ selectedId: 'a' });
+
+    fireEvent.change(screen.getByLabelText('단서 검색'), { target: { value: '편지' } });
+
+    expect(screen.getByLabelText('상세 슬롯').textContent).toContain('비밀 편지 상세');
+    expect(screen.getByLabelText('검수 슬롯').textContent).toContain('비밀 편지 검수');
+  });
+
+  it('검색 결과가 없으면 이전 선택 상세를 숨긴다', () => {
+    renderShell({ selectedId: 'a' });
+
+    fireEvent.change(screen.getByLabelText('단서 검색'), { target: { value: '없는 단서' } });
+
+    expect(screen.getByText('검색 결과가 없습니다.')).toBeDefined();
+    expect(screen.queryByLabelText('상세 슬롯')).toBeNull();
+  });
+
   it('항목 선택과 추가 액션을 parent callback으로 전달한다', () => {
     const onSelect = vi.fn();
     const onCreate = vi.fn();

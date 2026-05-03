@@ -20,7 +20,9 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const { data: clues } = useEditorClues(themeId);
   const updateCharacter = useUpdateCharacter(themeId);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
-  const activeCharId = selectedCharId ?? characters?.[0]?.id ?? null;
+  const activeCharId = characters?.some((char) => char.id === selectedCharId)
+    ? selectedCharId
+    : characters?.[0]?.id ?? null;
 
   const characterClues = useMemo(
     () => readCharacterStartingClueMap(theme.config_json),

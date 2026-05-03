@@ -26,11 +26,15 @@ func removeClueReferencesFromConfigJSON(raw json.RawMessage, clueID uuid.UUID) (
 	return encoded, true, nil
 }
 
+var deletedConfigNode = &struct{}{}
+
 func removeClueIDFromConfigValue(value any, clueID string) (any, bool) {
 	switch v := value.(type) {
+	case nil:
+		return nil, false
 	case string:
 		if v == clueID {
-			return nil, true
+			return deletedConfigNode, true
 		}
 		return v, false
 	case []any:
@@ -39,7 +43,7 @@ func removeClueIDFromConfigValue(value any, clueID string) (any, bool) {
 		for _, item := range v {
 			cleaned, itemChanged := removeClueIDFromConfigValue(item, clueID)
 			changed = changed || itemChanged
-			if cleaned != nil {
+			if cleaned != deletedConfigNode {
 				items = append(items, cleaned)
 			}
 		}
@@ -50,7 +54,7 @@ func removeClueIDFromConfigValue(value any, clueID string) (any, bool) {
 		for key, child := range v {
 			cleaned, childChanged := removeClueIDFromConfigValue(child, clueID)
 			changed = changed || childChanged
-			if cleaned != nil {
+			if cleaned != deletedConfigNode {
 				out[key] = cleaned
 			}
 		}

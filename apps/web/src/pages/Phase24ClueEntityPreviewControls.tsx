@@ -62,9 +62,23 @@ export function SegmentedChoice<T extends string>({ label, value, onChange, opti
     <div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</p>
       <div className="grid gap-2">
-        {options.map((option) => (
-          <button key={option.value} type="button" onClick={() => onChange(option.value)} className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${value === option.value ? 'border-amber-400/60 bg-amber-500/15 text-amber-100' : 'border-slate-800 bg-slate-950/70 text-slate-400 hover:border-slate-700'}`}>{option.label}</button>
-        ))}
+        {options.map((option) => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange(option.value)}
+              className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${selected ? 'border-amber-400/60 bg-amber-500/15 text-amber-100' : 'border-slate-800 bg-slate-950/70 text-slate-400 hover:border-slate-700'}`}
+            >
+              <span className="flex items-center justify-between gap-2">
+                <span>{option.label}</span>
+                {selected && <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] text-amber-100">선택됨</span>}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

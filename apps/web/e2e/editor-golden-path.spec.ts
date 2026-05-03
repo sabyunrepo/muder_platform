@@ -90,7 +90,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
 
     await expect(page.getByLabel("단서 목록")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByLabel("단서 상세")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel("단서 상세 영역")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("첫 단서").first()).toBeVisible();
     await expect(page.getByText("이 단서가 쓰이는 곳")).toBeVisible();
   });

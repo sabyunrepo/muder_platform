@@ -254,6 +254,7 @@ describe('ClueForm', () => {
 
     expect(screen.getByText('다른 플레이어 단서 보기')).toBeDefined();
     expect(screen.getByText('다른 플레이어에게서 단서 가져오기')).toBeDefined();
+    expect(screen.getByText('플레이어가 사용할 때 고르는 대상')).toBeDefined();
     expect(screen.getByText('사용하면 내 단서함에서 사라짐')).toBeDefined();
   });
 

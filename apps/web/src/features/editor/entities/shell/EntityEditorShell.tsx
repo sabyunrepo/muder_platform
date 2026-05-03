@@ -39,15 +39,16 @@ export function EntityEditorShell<TItem>({
   renderInspector,
 }: EntityEditorShellProps<TItem>) {
   const [query, setQuery] = useState('');
-  const selected = items.find((item) => getItemId(item) === selectedId) ?? items[0];
   const visibleItems = useMemo(
     () => filterItems(items, query, getItemTitle, getItemDescription, getItemBadges),
     [items, query, getItemTitle, getItemDescription, getItemBadges],
   );
 
+  const selected = visibleItems.find((item) => getItemId(item) === selectedId) ?? visibleItems[0];
+  const selectedItemId = selected ? getItemId(selected) : undefined;
   const actionLabel = createLabel ?? `${title} 추가`;
 
-  if (!selected) {
+  if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950/60 p-8 text-center">
         <p className="text-sm font-semibold text-slate-300">{emptyMessage ?? `아직 ${title}가 없습니다`}</p>
@@ -108,7 +109,7 @@ export function EntityEditorShell<TItem>({
               return (
                 <EntityListItem
                   key={id}
-                  active={id === getItemId(selected)}
+                  active={id === selectedItemId}
                   title={getItemTitle(item)}
                   description={getItemDescription?.(item)}
                   badges={getItemBadges?.(item) ?? []}
@@ -121,10 +122,12 @@ export function EntityEditorShell<TItem>({
         </div>
       </section>
 
-      <section className="space-y-4" aria-label={`${title} 상세 영역`}>
-        {renderDetail(selected)}
-        {renderInspector?.(selected)}
-      </section>
+      {selected && (
+        <section className="space-y-4" aria-label={`${title} 상세 영역`}>
+          {renderDetail(selected)}
+          {renderInspector?.(selected)}
+        </section>
+      )}
     </div>
   );
 }

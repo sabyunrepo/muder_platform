@@ -178,6 +178,32 @@ describe('CharacterAssignPanel', () => {
     });
   });
 
+
+  it('선택한 캐릭터가 목록에서 사라지면 현재 상세 캐릭터 ID로 저장한다', async () => {
+    let currentCharacters = mockCharacters;
+    useEditorCharactersMock.mockImplementation(() => ({ data: currentCharacters, isLoading: false }));
+
+    const { rerender, qc } = renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '김철수 선택' }));
+
+    currentCharacters = [mockCharacters[0]];
+    rerender(
+      <QueryClientProvider client={qc}>
+        <CharacterAssignPanel themeId="theme-1" theme={baseTheme} />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByRole('button', { name: '김철수 선택' })).toBeNull();
+    expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
+
+    clickFirstClue();
+    await act(async () => { vi.advanceTimersByTime(1500); });
+
+    const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(readStartingClues(payload)['char-1']).toContain('clue-1');
+    expect(readStartingClues(payload)['char-2']).toBeUndefined();
+  });
+
   it('캐릭터 선택 시 좌측 전체 단서와 우측 배정 영역이 표시된다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));

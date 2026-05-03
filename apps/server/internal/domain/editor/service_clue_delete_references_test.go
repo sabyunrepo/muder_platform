@@ -2,8 +2,8 @@ package editor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -57,10 +57,14 @@ func TestService_DeleteClue_CleansEditorReferences(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetTheme after delete: %v", err)
 	}
-	if strings.Contains(string(updated.ConfigJson), deletedID.String()) {
+	var decodedConfig any
+	if err := json.Unmarshal(updated.ConfigJson, &decodedConfig); err != nil {
+		t.Fatalf("unmarshal updated config_json: %v", err)
+	}
+	if jsonValueContainsString(decodedConfig, deletedID.String()) {
 		t.Fatalf("deleted clue id still present in config_json: %s", string(updated.ConfigJson))
 	}
-	if !strings.Contains(string(updated.ConfigJson), keptID.String()) {
+	if !jsonValueContainsString(decodedConfig, keptID.String()) {
 		t.Fatalf("kept clue id was unexpectedly removed: %s", string(updated.ConfigJson))
 	}
 	groups, err := f.q.ListClueEdgeGroupsByTheme(ctx, themeID)
@@ -70,4 +74,24 @@ func TestService_DeleteClue_CleansEditorReferences(t *testing.T) {
 	if len(groups) != 0 {
 		t.Fatalf("expected referencing clue edge group removed, got %d", len(groups))
 	}
+}
+
+func jsonValueContainsString(value any, target string) bool {
+	switch v := value.(type) {
+	case string:
+		return v == target
+	case []any:
+		for _, item := range v {
+			if jsonValueContainsString(item, target) {
+				return true
+			}
+		}
+	case map[string]any:
+		for _, child := range v {
+			if jsonValueContainsString(child, target) {
+				return true
+			}
+		}
+	}
+	return false
 }

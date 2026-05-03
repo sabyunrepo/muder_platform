@@ -65,7 +65,7 @@ export const clueRows: CluePreviewRow[] = [
     name: '진실의 증거',
     status: 'combo',
     usage: '일기장 + 칼 + 편지 조합 결과',
-    usageCount: 2,
+    usageCount: 3,
     tags: ['조합 결과'],
   },
 ];

@@ -148,7 +148,7 @@ function ClueActionSettings() {
           </div>
         </div>
 
-        <ActionEffectFields effectType={effectType} />
+        <ActionEffectFields key={effectType} effectType={effectType} />
 
         <SegmentedChoice<AfterUse>
           label="사용 후 처리"
