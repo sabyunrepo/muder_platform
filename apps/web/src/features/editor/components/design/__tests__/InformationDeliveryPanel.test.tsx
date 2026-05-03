@@ -204,6 +204,21 @@ describe("InformationDeliveryPanel", () => {
     expect(screen.getByText("용의자 B · 1개 정보")).toBeDefined();
   });
 
+
+  it("캐릭터가 없으면 캐릭터별 추가를 비활성화하고 안내한다", () => {
+    useEditorCharactersMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
+
+    expect((screen.getByRole("button", { name: "캐릭터별 추가" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText("받을 캐릭터가 없습니다. 먼저 캐릭터를 만든 뒤 캐릭터별 정보 전달을 설정해 주세요.")).toBeDefined();
+  });
+
   it("스토리 진행 페이즈에서는 모든 플레이어 공통 전달을 추가할 수 있다", () => {
     const onChange = vi.fn();
     render(
