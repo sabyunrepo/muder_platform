@@ -53,8 +53,11 @@ func TestRemoveCharacterReferencesFromConfigJSON(t *testing.T) {
 		t.Fatalf("kept character id was removed: %s", string(cleaned))
 	}
 
-	root := decoded.(map[string]any)
-	if _, ok := root["nullable"]; !ok || root["nullable"] != nil {
+	root, ok := decoded.(map[string]any)
+	if !ok {
+		t.Fatalf("expected root config to be map[string]any, got %T", decoded)
+	}
+	if _, exists := root["nullable"]; !exists || root["nullable"] != nil {
 		t.Fatalf("json null must be preserved, got %#v", root["nullable"])
 	}
 }
@@ -98,8 +101,11 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 		t.Fatalf("kept location id was removed: %s", string(cleaned))
 	}
 
-	root := decoded.(map[string]any)
-	if _, ok := root["nullable"]; !ok || root["nullable"] != nil {
+	root, ok := decoded.(map[string]any)
+	if !ok {
+		t.Fatalf("expected root config to be map[string]any, got %T", decoded)
+	}
+	if _, exists := root["nullable"]; !exists || root["nullable"] != nil {
 		t.Fatalf("json null must be preserved, got %#v", root["nullable"])
 	}
 }
