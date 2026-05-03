@@ -42,6 +42,10 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 	if err := validateClueRoundOrder(req.RevealRound, req.HideRound); err != nil {
 		return nil, err
 	}
+	usePolicy, err := BuildClueUsePolicy(req.IsUsable, req.UseEffect, req.UseTarget, req.UseConsumed)
+	if err != nil {
+		return nil, err
+	}
 	count, err := s.q.CountCluesByTheme(ctx, themeID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to count clues")
@@ -59,10 +63,10 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 		IsCommon:    req.IsCommon,
 		Level:       req.Level,
 		SortOrder:   req.SortOrder,
-		IsUsable:    req.IsUsable,
-		UseEffect:   ptrToText(req.UseEffect),
-		UseTarget:   ptrToText(req.UseTarget),
-		UseConsumed: req.UseConsumed,
+		IsUsable:    usePolicy.IsUsable,
+		UseEffect:   ptrToText(usePolicy.UseEffect),
+		UseTarget:   ptrToText(usePolicy.UseTarget),
+		UseConsumed: usePolicy.UseConsumed,
 		RevealRound: int32PtrToPgtype(req.RevealRound),
 		HideRound:   int32PtrToPgtype(req.HideRound),
 	})
@@ -76,6 +80,10 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 
 func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, req UpdateClueRequest) (*ClueResponse, error) {
 	if err := validateClueRoundOrder(req.RevealRound, req.HideRound); err != nil {
+		return nil, err
+	}
+	usePolicy, err := BuildClueUsePolicy(req.IsUsable, req.UseEffect, req.UseTarget, req.UseConsumed)
+	if err != nil {
 		return nil, err
 	}
 	c, err := s.q.GetClueWithOwner(ctx, db.GetClueWithOwnerParams{ID: clueID, CreatorID: creatorID})
@@ -95,10 +103,10 @@ func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, r
 		IsCommon:    req.IsCommon,
 		Level:       req.Level,
 		SortOrder:   req.SortOrder,
-		IsUsable:    req.IsUsable,
-		UseEffect:   ptrToText(req.UseEffect),
-		UseTarget:   ptrToText(req.UseTarget),
-		UseConsumed: req.UseConsumed,
+		IsUsable:    usePolicy.IsUsable,
+		UseEffect:   ptrToText(usePolicy.UseEffect),
+		UseTarget:   ptrToText(usePolicy.UseTarget),
+		UseConsumed: usePolicy.UseConsumed,
 		RevealRound: int32PtrToPgtype(req.RevealRound),
 		HideRound:   int32PtrToPgtype(req.HideRound),
 	})

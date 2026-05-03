@@ -258,6 +258,28 @@ describe('ClueForm', () => {
     expect(screen.getByText('사용하면 내 단서함에서 사라짐')).toBeDefined();
   });
 
+
+  it('사용 효과를 정보 공개로 바꾸면 backend policy에 맞게 대상 없음으로 저장한다', () => {
+    const onClose = vi.fn();
+    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
+
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '정보 단서' },
+    });
+    fireEvent.click(screen.getByText('고급 설정'));
+    fireEvent.click(screen.getByLabelText('사용 가능한 단서'));
+    fireEvent.change(screen.getByLabelText('사용하면 일어나는 일'), {
+      target: { value: 'reveal' },
+    });
+
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(createMutate).toHaveBeenCalledTimes(1);
+    const [body] = createMutate.mock.calls[0];
+    expect(body.use_effect).toBe('reveal');
+    expect(body.use_target).toBe('self');
+  });
+
   it('고급 설정의 공개/사라짐 라운드 입력이 payload에 포함된다', () => {
     const onClose = vi.fn();
     render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);

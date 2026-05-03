@@ -92,6 +92,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.getByLabel("단서 목록")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByLabel("단서 상세 영역")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("첫 단서").first()).toBeVisible();
+    await expect(page.getByText("정보 공개하기")).toBeVisible();
+    await expect(page.getByText("사용하면 내 단서함에서 사라짐")).toBeVisible();
     await expect(page.getByText("이 단서가 쓰이는 곳")).toBeVisible();
   });
 
