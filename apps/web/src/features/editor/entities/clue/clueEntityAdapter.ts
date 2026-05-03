@@ -115,7 +115,16 @@ export function buildClueUsePayload<T extends CreateClueRequest | UpdateClueRequ
     return payload;
   }
 
+  const hasEffect = Boolean(payload.use_effect && payload.use_effect.trim());
   const option = getClueUseEffectOption(payload.use_effect);
+
+  if (hasEffect && !option) {
+    return {
+      ...payload,
+      use_consumed: Boolean(payload.use_consumed),
+    };
+  }
+
   return {
     ...payload,
     use_effect: option?.value ?? 'peek',

@@ -83,6 +83,15 @@ describe('clueEntityAdapter', () => {
     });
   });
 
+  it('지원하지 않는 legacy 효과는 조용히 다른 효과로 바꾸지 않고 backend 검증에 맡긴다', () => {
+    expect(buildClueUsePayload({ name: '단서', is_usable: true, use_effect: 'grant_clue', use_target: 'clue', use_consumed: true })).toMatchObject({
+      is_usable: true,
+      use_effect: 'grant_clue',
+      use_target: 'clue',
+      use_consumed: true,
+    });
+  });
+
   it('목록 배지는 공개/사용/연결 상태만 제작자 언어로 표시한다', () => {
     expect(buildClueBadges(clue({ is_common: true }), 0)).toEqual(['모두에게 공개', '사용 가능', '미배치']);
   });
