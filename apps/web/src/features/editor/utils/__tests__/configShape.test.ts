@@ -190,6 +190,7 @@ describe('configShape', () => {
             cooldownSec: 5,
             itemEffects: {
               'future-clue': { effect: 'future_effect', custom: true },
+              'clue-1': { effect: 'reveal', legacyNote: 'preserve me', grantClueIds: ['old'] },
             },
           },
         },
@@ -208,6 +209,7 @@ describe('configShape', () => {
       target: 'self',
       grantClueIds: ['clue-2', 'clue-3'],
       consume: true,
+      legacyNote: 'preserve me',
     });
     expect(readModuleConfig(withEffect, 'clue_interaction')).toMatchObject({
       cooldownSec: 5,
@@ -222,5 +224,16 @@ describe('configShape', () => {
       cooldownSec: 5,
       itemEffects: {},
     });
+  });
+
+  it('does not create clue interaction config when deleting a missing runtime effect', () => {
+    const base = { modules: { timer: { enabled: true, config: { seconds: 30 } } } };
+
+    const next = writeClueItemEffect(base, 'missing-clue', null);
+
+    expect(next).toBe(base);
+    expect(readClueItemEffect(next, 'missing-clue')).toBeNull();
+    expect(readModuleConfig(next, 'clue_interaction')).toEqual({});
+    expect(readModuleConfig(next, 'timer')).toEqual({ seconds: 30 });
   });
 });

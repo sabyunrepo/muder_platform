@@ -74,6 +74,17 @@ function readRawClueItemEffects(
   return isRecord(rawEffects) ? { ...rawEffects } : {};
 }
 
+function stripKnownClueEffectFields(value: unknown): EditorConfig {
+  if (!isRecord(value)) return {};
+  const next = { ...value };
+  delete next.effect;
+  delete next.target;
+  delete next.consume;
+  delete next.revealText;
+  delete next.grantClueIds;
+  return next;
+}
+
 function readLegacyModuleConfigs(configJson: EditorConfig | null | undefined) {
   const raw = configJson?.module_configs;
   return isRecord(raw) ? (raw as Record<string, EditorConfig>) : {};
@@ -235,8 +246,14 @@ export function writeClueItemEffect(
   const itemEffects = readRawClueItemEffects(configJson);
 
   if (effectConfig) {
-    itemEffects[clueId] = effectConfig;
+    itemEffects[clueId] = {
+      ...stripKnownClueEffectFields(itemEffects[clueId]),
+      ...effectConfig,
+    };
   } else {
+    if (!hasOwnKey(current, CLUE_ITEM_EFFECTS_KEY) || !hasOwnKey(itemEffects, clueId)) {
+      return configJson ?? {};
+    }
     delete itemEffects[clueId];
   }
 
