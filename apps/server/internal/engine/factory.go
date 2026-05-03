@@ -96,8 +96,11 @@ func parseModuleConfigs(raw json.RawMessage) ([]ModuleConfig, error) {
 	sort.Strings(names)
 	modules := make([]ModuleConfig, 0, len(normalized))
 	for _, name := range names {
+		if name == "" {
+			return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: empty module name")
+		}
 		entry := normalized[name]
-		if name == "" || !entry.Enabled {
+		if !entry.Enabled {
 			continue
 		}
 		modules = append(modules, ModuleConfig{Name: name, Config: entry.Config})

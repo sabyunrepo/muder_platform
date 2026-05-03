@@ -130,6 +130,14 @@ func TestParseGameConfig_NormalizedModulesMap(t *testing.T) {
 	}
 }
 
+func TestParseGameConfig_NormalizedModulesRejectsEmptyModuleName(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":{"":{"enabled":true}}}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected empty normalized module name error")
+	}
+}
+
 func TestParseGameConfig_NormalizedModulesRejectsUnknownEnvelopeField(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":{"information_delivery":{"enabled":true,"confg":{}}}}`)
 	_, err := ParseGameConfig(data)
