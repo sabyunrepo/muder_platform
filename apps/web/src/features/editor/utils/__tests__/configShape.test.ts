@@ -152,7 +152,18 @@ describe('configShape', () => {
 
   it('reads valid clue runtime effects from the clue interaction module only', () => {
     const config = {
+      itemEffects: {
+        'root-decoy': { effect: 'reveal', revealText: '잘못된 위치' },
+      },
       modules: {
+        timer: {
+          enabled: true,
+          config: {
+            itemEffects: {
+              'timer-decoy': { effect: 'reveal', revealText: '다른 모듈' },
+            },
+          },
+        },
         clue_interaction: {
           enabled: true,
           config: {
@@ -170,7 +181,8 @@ describe('configShape', () => {
       },
     };
 
-    expect(readClueItemEffects(config)).toEqual({
+    const effects = readClueItemEffects(config);
+    expect(effects).toEqual({
       'clue-1': {
         effect: 'reveal',
         target: 'self',
@@ -178,6 +190,10 @@ describe('configShape', () => {
         consume: true,
       },
     });
+    expect(effects).not.toHaveProperty('root-decoy');
+    expect(effects).not.toHaveProperty('timer-decoy');
+    expect(readClueItemEffect(config, 'root-decoy')).toBeNull();
+    expect(readClueItemEffect(config, 'timer-decoy')).toBeNull();
     expect(readClueItemEffect(config, 'clue-2')).toBeNull();
   });
 
