@@ -372,8 +372,10 @@ function cluePayload(state: MockState) {
     level: 1,
     sort_order: 0,
     is_common: false,
-    is_usable: false,
-    use_consumed: false,
+    is_usable: true,
+    use_effect: "reveal",
+    use_target: "self",
+    use_consumed: true,
     image_url: state.clueImageURL,
     created_at: new Date().toISOString(),
   };

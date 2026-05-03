@@ -4,7 +4,7 @@ import type { ClueResponse, EditorCharacterResponse, LocationResponse } from '@/
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { buildClueUsageMap, getClueBacklinks, type EntityReference } from '@/features/editor/utils/entityReferences';
-import { formatRoundRange } from '@/features/editor/utils/roundFormat';
+import { buildClueBadges, toClueEditorViewModel } from '@/features/editor/entities/clue/clueEntityAdapter';
 
 interface ClueEntityWorkspaceProps {
   clues: ClueResponse[];
@@ -41,21 +41,12 @@ export function ClueEntityWorkspace({
       getItemId={(clue) => clue.id}
       getItemTitle={(clue) => clue.name}
       getItemDescription={(clue) => clue.description || '설명 없음'}
-      getItemBadges={(clue) => clueBadges(clue, usageMap[clue.id]?.references.length ?? 0)}
+      getItemBadges={(clue) => buildClueBadges(clue, usageMap[clue.id]?.references.length ?? 0)}
       renderDetail={(clue) => <ClueDetailCard clue={clue} onEdit={onEdit} onDelete={onDelete} />}
       renderInspector={(clue) => <ClueUsageCard references={getClueBacklinks(usageMap, clue.id)} />}
     />
   );
 }
-
-function clueBadges(clue: ClueResponse, referenceCount: number) {
-  return [
-    clue.is_common ? '모두에게 공개' : null,
-    clue.is_usable ? '사용 가능' : null,
-    referenceCount > 0 ? `연결 ${referenceCount}` : '미배치',
-  ].filter((badge): badge is string => !!badge);
-}
-
 function ClueDetailCard({
   clue,
   onEdit,
@@ -65,6 +56,8 @@ function ClueDetailCard({
   onEdit: (clue: ClueResponse) => void;
   onDelete: (clue: ClueResponse) => void;
 }) {
+  const view = toClueEditorViewModel(clue);
+
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -72,7 +65,7 @@ function ClueDetailCard({
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/70">단서 상세</p>
           <h3 className="mt-1 text-xl font-bold text-slate-100">{clue.name}</h3>
           <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">
-            {clue.description || '플레이어에게 보일 단서 설명을 입력하세요.'}
+            {view.description}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -95,10 +88,10 @@ function ClueDetailCard({
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <InfoBlock title="공개 범위" value={clue.is_common ? '모든 플레이어가 공유' : '지정된 캐릭터나 장소에서만 획득'} />
-        <InfoBlock title="등장 라운드" value={formatRoundRange(clue.reveal_round, clue.hide_round) || '처음부터 끝까지'} />
-        <InfoBlock title="사용 효과" value={clue.is_usable ? formatEffectLabel(clue.use_effect) : '사용 효과 없음'} />
-        <InfoBlock title="사용 후 처리" value={formatConsumeLabel(clue)} />
+        <InfoBlock title="공개 범위" value={view.publicScopeLabel} />
+        <InfoBlock title="등장 라운드" value={view.roundLabel} />
+        <InfoBlock title="사용 효과" value={view.useEffectLabel} />
+        <InfoBlock title="사용 후 처리" value={view.consumeLabel} />
       </div>
     </article>
   );
@@ -133,20 +126,6 @@ function InfoBlock({ title, value }: { title: string; value: string }) {
       <p className="mt-1 text-sm text-slate-200">{value}</p>
     </div>
   );
-}
-
-function formatEffectLabel(effect?: string | null) {
-  if (effect === 'peek') return '다른 플레이어 단서 보기';
-  if (effect === 'steal') return '다른 플레이어에게서 단서 가져오기';
-  if (effect === 'reveal') return '정보 공개하기';
-  if (effect === 'block') return '상대의 사용 막기';
-  if (effect === 'swap') return '단서 교환하기';
-  return '사용 효과 없음';
-}
-
-function formatConsumeLabel(clue: ClueResponse) {
-  if (!clue.is_usable) return '해당 없음';
-  return clue.use_consumed ? '사용하면 내 단서함에서 사라짐' : '사용 후에도 단서함에 남음';
 }
 
 function formatReference(ref: EntityReference) {

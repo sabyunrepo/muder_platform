@@ -5,6 +5,7 @@ import { Input } from '@/shared/components/ui/Input';
 import { type ClueResponse } from '@/features/editor/api';
 import { useClueFormSubmit } from '@/features/editor/hooks/useClueFormSubmit';
 import { ClueFormImageSection } from './ClueFormImageSection';
+import { buildClueUsePayload, getClueUseEffectOption } from '@/features/editor/entities/clue/clueEntityAdapter';
 import { ClueFormAdvancedFields } from './ClueFormAdvancedFields';
 
 // ---------------------------------------------------------------------------
@@ -135,6 +136,12 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     setPendingPreview(null);
   }
 
+  function handleUseEffectChange(effect: string) {
+    setUseEffect(effect);
+    const option = getClueUseEffectOption(effect);
+    if (option) setUseTarget(option.target);
+  }
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const validationErrors = validate();
@@ -142,7 +149,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     if (Object.keys(validationErrors).length > 0) return;
 
     submit(
-      {
+      buildClueUsePayload({
         name: name.trim(),
         description: description || undefined,
         image_url: imageUrl || undefined,
@@ -155,7 +162,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         use_consumed: isUsable ? useConsumed : undefined,
         reveal_round: revealRound,
         hide_round: hideRound,
-      },
+      }),
       pendingImage,
     );
   }
@@ -229,7 +236,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
           isUsable={isUsable}
           onIsUsableChange={setIsUsable}
           useEffect_={useEffect_}
-          onUseEffectChange={setUseEffect}
+          onUseEffectChange={handleUseEffectChange}
           useTarget={useTarget}
           onUseTargetChange={setUseTarget}
           useConsumed={useConsumed}
