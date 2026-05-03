@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -193,13 +194,61 @@ func validateLocationRoundOrder(from, until *int32) error {
 }
 
 func (s *service) DeleteLocation(ctx context.Context, creatorID, locID uuid.UUID) error {
-	n, err := s.q.DeleteLocationWithOwner(ctx, db.DeleteLocationWithOwnerParams{ID: locID, CreatorID: creatorID})
+	err := pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		var themeID uuid.UUID
+		if err := tx.QueryRow(ctx, `
+			SELECT l.theme_id
+			FROM theme_locations l
+			JOIN themes t ON l.theme_id = t.id
+			WHERE l.id = $1 AND t.creator_id = $2
+		`, locID, creatorID).Scan(&themeID); err != nil {
+			return err
+		}
+
+		var configJSON json.RawMessage
+		if err := tx.QueryRow(ctx, `
+			SELECT config_json
+			FROM themes
+			WHERE id = $1
+			FOR UPDATE
+		`, themeID).Scan(&configJSON); err != nil {
+			return err
+		}
+
+		cleanedConfig, changed, err := removeLocationReferencesFromConfigJSON(configJSON, locID)
+		if err != nil {
+			return err
+		}
+		if changed {
+			if _, err := tx.Exec(ctx, `
+				UPDATE themes
+				SET config_json = $2, version = version + 1, updated_at = NOW()
+				WHERE id = $1
+			`, themeID, cleanedConfig); err != nil {
+				return err
+			}
+		}
+
+		qtx := s.q.WithTx(tx)
+		n, err := qtx.DeleteLocationWithOwner(ctx, db.DeleteLocationWithOwnerParams{ID: locID, CreatorID: creatorID})
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return apperror.NotFound("location not found")
+		}
+		return nil
+	})
 	if err != nil {
+		var appErr *apperror.AppError
+		if errors.As(err, &appErr) {
+			return appErr
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("location not found")
+		}
 		s.logger.Error().Err(err).Msg("failed to delete location")
 		return apperror.Internal("failed to delete location")
-	}
-	if n == 0 {
-		return apperror.NotFound("location not found")
 	}
 	return nil
 }

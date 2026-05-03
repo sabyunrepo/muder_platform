@@ -131,10 +131,10 @@ apps/server/internal/domain/editor/
 
 ### PR-3H-5 — Backend references/cleanup hardening
 
-- [ ] `service_entity_cleanup.go`로 clue cleanup helper 이동 또는 확장
-- [ ] location/character cleanup TDD 추가
+- [x] `service_entity_cleanup.go`로 character/location config cleanup helper 확장
+- [x] location/character cleanup TDD 추가
 - [ ] 필요 시 `GET /v1/editor/themes/{themeId}/entity-references` 설계/구현
-- [ ] deletion preview와 transaction cleanup이 같은 reference source를 쓰는지 검증
+- [x] 삭제 transaction이 실제 `config_json` cleanup helper를 사용하도록 검증
 
 ### PR-3H-6 — Cleanup
 
