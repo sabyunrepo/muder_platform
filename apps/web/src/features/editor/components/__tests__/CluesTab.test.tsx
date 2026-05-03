@@ -11,12 +11,14 @@ const {
   useEditorThemeMock,
   useEditorLocationsMock,
   useEditorCharactersMock,
+  useUpdateConfigJsonMock,
 } = vi.hoisted(() => ({
   useEditorCluesMock: vi.fn(),
   useDeleteClueMock: vi.fn(),
   useEditorThemeMock: vi.fn(),
   useEditorLocationsMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
+  useUpdateConfigJsonMock: vi.fn(),
 }));
 
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
@@ -45,6 +47,7 @@ vi.mock('@/features/editor/api', () => ({
   useEditorTheme: () => useEditorThemeMock(),
   useEditorLocations: () => useEditorLocationsMock(),
   useEditorCharacters: () => useEditorCharactersMock(),
+  useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   editorKeys: { clues: (id: string) => ['clues', id] },
 }));
 vi.mock('../ClueForm', () => ({
@@ -76,6 +79,7 @@ describe('CluesTab', () => {
     useEditorThemeMock.mockReturnValue({ data: { config_json: {} } });
     useEditorLocationsMock.mockReturnValue({ data: [] });
     useEditorCharactersMock.mockReturnValue({ data: [] });
+    useUpdateConfigJsonMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
   });
 
   it('로딩 중이면 스피너를 렌더링한다', () => {
