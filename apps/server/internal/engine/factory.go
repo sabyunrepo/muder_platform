@@ -188,14 +188,23 @@ func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 	if cfg == nil {
 		return nil
 	}
-	usesAction, err := phasesUseAction(cfg.Phases, ActionDeliverInformation)
-	if err != nil {
-		return err
+	implicitActions := []PhaseAction{
+		ActionDeliverInformation,
+		ActionEvaluateEnding,
 	}
-	if !usesAction || hasModuleConfig(cfg.Modules, "information_delivery") {
-		return nil
+	for _, action := range implicitActions {
+		moduleName, ok := ActionRequiresModule[action]
+		if !ok || moduleName == "" {
+			continue
+		}
+		usesAction, err := phasesUseAction(cfg.Phases, action)
+		if err != nil {
+			return err
+		}
+		if usesAction && !hasModuleConfig(cfg.Modules, moduleName) {
+			cfg.Modules = append(cfg.Modules, ModuleConfig{Name: moduleName})
+		}
 	}
-	cfg.Modules = append(cfg.Modules, ModuleConfig{Name: "information_delivery"})
 	return nil
 }
 

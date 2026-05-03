@@ -7,13 +7,13 @@ type Question struct {
 	Text        string         `json:"text"`
 	Type        string         `json:"type"` // "single" | "multi"
 	Choices     []string       `json:"choices"`
-	Respondents any            `json:"respondents,omitempty"` // []string | "all" | "some" — runtime validate
+	Respondents any            `json:"respondents,omitempty"` // []string | "all" — validated at config apply
 	Impact      string         `json:"impact"`                // "branch" | "score"
 	ScoreMap    map[string]int `json:"scoreMap,omitempty"`
 }
 
-// MatrixRow is one priority-ordered branching rule. JSONLogic evaluator (PR-5)
-// converts conditions to a JSONLogic AST.
+// MatrixRow is one priority-ordered branching rule. Runtime evaluation passes
+// Conditions to the shared JSONLogic evaluator.
 type MatrixRow struct {
 	Priority   int            `json:"priority"`
 	Conditions map[string]any `json:"conditions"`

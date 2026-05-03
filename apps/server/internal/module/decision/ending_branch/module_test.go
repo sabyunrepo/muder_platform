@@ -105,7 +105,7 @@ func TestModule_BuildState_WithConfig(t *testing.T) {
 	cfg := json.RawMessage(`{
 		"questions": [
 			{"id": "q1", "text": "선택?", "type": "single", "choices": ["A","B"], "impact": "branch"},
-			{"id": "q2", "text": "점수?", "type": "single", "choices": ["X","Y"], "impact": "score"}
+			{"id": "q2", "text": "점수?", "type": "single", "choices": ["X","Y"], "impact": "score", "scoreMap": {"X": 1, "Y": 0}}
 		],
 		"matrix": [],
 		"defaultEnding": "좋은결말"
@@ -121,13 +121,112 @@ func TestModule_BuildState_WithConfig(t *testing.T) {
 	assert.Equal(t, "좋은결말", state["defaultEnding"])
 }
 
-// TestModule_HandleMessage_NotImplemented verifies the stub returns the expected
-// "not yet implemented (PR-5)" error and does not panic.
-func TestModule_HandleMessage_NotImplemented(t *testing.T) {
+func TestModule_HandleMessage_SubmitAnswerAndPlayerAwareState(t *testing.T) {
 	m := NewModule()
-	err := m.HandleMessage(context.Background(), uuid.New(), "submit_answer", json.RawMessage(`{}`))
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{}, cfg))
+
+	playerA := uuid.New()
+	playerB := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerB, "ending_branch:submit_answer", json.RawMessage(`{"question_id":"q1","choice":"B"}`)))
+
+	rawA, err := m.BuildStateFor(playerA)
+	require.NoError(t, err)
+	var stateA map[string]any
+	require.NoError(t, json.Unmarshal(rawA, &stateA))
+	answersA := stateA["myAnswers"].(map[string]any)
+	assert.Equal(t, []any{"A"}, answersA["q1"])
+
+	rawB, err := m.BuildStateFor(playerB)
+	require.NoError(t, err)
+	var stateB map[string]any
+	require.NoError(t, json.Unmarshal(rawB, &stateB))
+	answersB := stateB["myAnswers"].(map[string]any)
+	assert.Equal(t, []any{"B"}, answersB["q1"])
+	assert.NotEqual(t, answersA["q1"], answersB["q1"], "players must not receive sibling answers")
+}
+
+func TestModule_ReactTo_EvaluatesPriorityMatrixAndPublishesEvent(t *testing.T) {
+	bus := engine.NewEventBus(nil)
+	var events []engine.Event
+	bus.Subscribe("ending.evaluated", func(event engine.Event) { events = append(events, event) })
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"},
+			{"id": "q2", "text": "공헌도", "type": "single", "choices": ["높음","낮음"], "impact": "score", "scoreMap": {"높음": 3, "낮음": 1}}
+		],
+		"matrix": [
+			{"priority": 2, "conditions": {"==": [{"var":"answers.q1.winning"}, "B"]}, "ending": "오판"},
+			{"priority": 1, "conditions": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{EventBus: bus}, cfg))
+	player := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), player, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), player, "submit_answer", json.RawMessage(`{"question_id":"q2","choice":"높음"}`)))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildStateFor(player)
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	assert.Equal(t, true, state["evaluated"])
+	assert.Equal(t, "진실", state["selectedEnding"])
+	require.Len(t, events, 1)
+	payload := events[0].Payload.(map[string]any)
+	assert.Equal(t, "진실", payload["selectedEnding"])
+}
+
+func TestModule_ReactTo_EvaluateEndingIsIdempotent(t *testing.T) {
+	bus := engine.NewEventBus(nil)
+	var events []engine.Event
+	bus.Subscribe("ending.evaluated", func(event engine.Event) { events = append(events, event) })
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [
+			{"priority": 1, "conditions": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{EventBus: bus}, cfg))
+	player := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), player, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+
+	action := engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}
+	require.NoError(t, m.ReactTo(context.Background(), action))
+	require.NoError(t, m.ReactTo(context.Background(), action))
+
+	require.Len(t, events, 1, "re-entering the same ending evaluation must not publish duplicate events")
+	payload := events[0].Payload.(map[string]any)
+	assert.Equal(t, "진실", payload["selectedEnding"])
+	assert.Equal(t, 1, *m.result.MatchedPriority)
+}
+
+func TestModule_HandleMessage_RejectsInvalidChoice(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "선택", "type": "single", "choices": ["A"], "impact": "branch"}
+		],
+		"matrix": []
+	}`)
+	require.NoError(t, m.ApplyConfig(context.Background(), cfg))
+	err := m.HandleMessage(context.Background(), uuid.New(), "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"B"}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "PR-5", "stub must reference PR-5 deferral")
+	assert.Contains(t, err.Error(), "invalid choice")
 }
 
 // TestModule_Cleanup_ReturnsNil verifies Cleanup resets state and returns nil.
@@ -266,4 +365,58 @@ func TestModule_ApplyConfig_RejectsTrailingData(t *testing.T) {
 	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[]}{"trailing":"data"}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "trailing data")
+}
+
+func TestModule_ApplyConfig_RejectsTrailingJSON(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[]} {"matrix":[]}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unexpected trailing data")
+}
+
+func TestModule_ApplyConfig_RejectsInvalidSemanticConfig(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[{"id":"q1","text":"?","type":"unknown","choices":["A"],"impact":"branch"}]}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid type")
+}
+
+func TestModule_ApplyConfig_RejectsUnsupportedRespondentsSome(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch","respondents":"some"}],
+		"matrix":[]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `respondents value "some" is not supported`)
+}
+
+func TestModule_ApplyConfig_RejectsInvalidRespondentList(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch","respondents":[""]}],
+		"matrix":[]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "respondents must contain non-empty strings")
+}
+
+func TestModule_ApplyConfig_RejectsEmptyRespondentList(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch","respondents":[]}],
+		"matrix":[]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "respondents must contain at least one code")
+}
+
+func TestModule_ApplyConfig_RejectsInvalidMatrixCondition(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch"}],
+		"matrix":[{"priority":1,"conditions":{"bad op":[1]},"ending":"end"}]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "valid JSONLogic")
 }

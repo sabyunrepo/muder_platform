@@ -48,6 +48,7 @@ beforeEach(() => {
       makeNode("phase-1", { label: "1막" }, "phase"),
       makeNode("ending-2", { label: "오판", description: "잘못된 선택" }),
     ],
+    edges: [{ id: "edge-1", source: "phase-1", target: "ending-1" }],
     isLoading: false,
     isError: false,
     error: null,
@@ -69,12 +70,15 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getByText("결말 목록")).toBeDefined();
     expect(screen.getAllByText("진실").length).toBeGreaterThan(0);
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("결말 판정 준비")).toBeDefined();
+    expect(screen.getByText("본문 작성")).toBeDefined();
     expect(screen.queryByText("1막")).toBeNull();
   });
 
   it("결말이 없으면 제작자가 이해할 수 있는 빈 상태를 보여준다", () => {
     useFlowDataMock.mockReturnValue({
       nodes: [],
+      edges: [],
       isLoading: false,
       isError: false,
       error: null,
@@ -93,6 +97,7 @@ describe("EndingEntitySubTab", () => {
   it("결말 목록을 불러오지 못하면 에러 안내와 재시도 버튼을 보여준다", () => {
     useFlowDataMock.mockReturnValue({
       nodes: [],
+      edges: [],
       isLoading: false,
       isError: true,
       error: new Error("권한이 없습니다"),
@@ -128,7 +133,7 @@ describe("EndingEntitySubTab", () => {
 
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: /오판/ }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.queryByText("진실")).toBeNull();
+    expect(screen.queryByRole("button", { name: /진실/ })).toBeNull();
   });
 
   it("상세 입력을 변경하면 선택한 결말 노드 데이터만 갱신한다", () => {
