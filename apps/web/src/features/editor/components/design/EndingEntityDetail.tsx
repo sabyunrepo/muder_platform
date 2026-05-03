@@ -1,16 +1,50 @@
 import type { Node } from "@xyflow/react";
-import type { FlowNodeData } from "../../flowTypes";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
+import { useUpdateFlowNode } from "../../flowApi";
+import { flowKeys, type FlowGraphResponse, type FlowNodeData } from "../../flowTypes";
 
 interface EndingEntityDetailProps {
   node: Node;
+  themeId: string;
   onChange: (nodeId: string, patch: Partial<FlowNodeData>) => void;
 }
 
-export function EndingEntityDetail({ node, onChange }: EndingEntityDetailProps) {
+const SAVE_DEBOUNCE_MS = 1000;
+
+export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDetailProps) {
   const data = node.data as FlowNodeData;
+  const updateNode = useUpdateFlowNode(themeId);
+  const queryClient = useQueryClient();
+
+  const debouncer = useDebouncedMutation<FlowNodeData>({
+    debounceMs: SAVE_DEBOUNCE_MS,
+    mutate: (body, opts) =>
+      updateNode.mutate({ nodeId: node.id, body: { data: body } }, opts),
+    applyOptimistic: (body) => {
+      const cacheKey = flowKeys.graph(themeId);
+      const previous = queryClient.getQueryData<FlowGraphResponse>(cacheKey);
+      if (!previous) return null;
+      queryClient.setQueryData<FlowGraphResponse>(cacheKey, {
+        ...previous,
+        nodes: previous.nodes.map((flowNode) =>
+          flowNode.id === node.id
+            ? { ...flowNode, data: { ...flowNode.data, ...body } }
+            : flowNode,
+        ),
+      });
+      return () => queryClient.setQueryData(cacheKey, previous);
+    },
+    onError: () => toast.error("결말 저장에 실패했습니다"),
+  });
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
     onChange(node.id, patch);
+    debouncer.schedule(
+      { ...data, ...patch },
+      (prev) => ({ ...data, ...(prev ?? {}), ...patch }),
+    );
   };
 
   return (
@@ -37,6 +71,7 @@ export function EndingEntityDetail({ node, onChange }: EndingEntityDetailProps) 
           type="text"
           value={data.icon ?? ""}
           onChange={(event) => handleChange({ icon: event.target.value })}
+          onBlur={debouncer.flush}
           placeholder="예: 🎭"
           className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         />
@@ -51,6 +86,7 @@ export function EndingEntityDetail({ node, onChange }: EndingEntityDetailProps) 
           type="text"
           value={data.label ?? ""}
           onChange={(event) => handleChange({ label: event.target.value })}
+          onBlur={debouncer.flush}
           placeholder="예: 진실, 자비, 오판"
           className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         />
@@ -65,6 +101,7 @@ export function EndingEntityDetail({ node, onChange }: EndingEntityDetailProps) 
           type="text"
           value={data.color ?? ""}
           onChange={(event) => handleChange({ color: event.target.value })}
+          onBlur={debouncer.flush}
           placeholder="예: amber, emerald, rose"
           className="min-h-11 rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         />
@@ -78,6 +115,7 @@ export function EndingEntityDetail({ node, onChange }: EndingEntityDetailProps) 
           id={`ending-description-${node.id}`}
           value={data.description ?? ""}
           onChange={(event) => handleChange({ description: event.target.value })}
+          onBlur={debouncer.flush}
           placeholder="결말 목록에서 제작자가 구분하기 쉬운 짧은 설명"
           rows={3}
           className="resize-y rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
@@ -92,6 +130,7 @@ export function EndingEntityDetail({ node, onChange }: EndingEntityDetailProps) 
           id={`ending-content-${node.id}`}
           value={data.endingContent ?? ""}
           onChange={(event) => handleChange({ endingContent: event.target.value })}
+          onBlur={debouncer.flush}
           placeholder="사건의 전말을 Markdown으로 작성하세요. 플레이어에게 공개되는 내용입니다."
           rows={8}
           className="min-h-44 w-full resize-y rounded-xl border border-slate-700 bg-slate-900 px-3 py-3 text-sm leading-6 text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"

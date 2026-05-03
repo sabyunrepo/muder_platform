@@ -41,7 +41,7 @@ export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
   }, [endingNodes, query]);
 
   const selectedNode =
-    endingNodes.find((node) => node.id === selectedId) ?? filteredNodes[0] ?? null;
+    filteredNodes.find((node) => node.id === selectedId) ?? filteredNodes[0] ?? null;
 
   const handleAddEnding = () => {
     addNode("ending", { x: 360 + endingNodes.length * 40, y: 220 });
@@ -137,7 +137,7 @@ export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
           </aside>
 
           {selectedNode && (
-            <EndingEntityDetail node={selectedNode} onChange={updateNodeData} />
+            <EndingEntityDetail node={selectedNode} themeId={themeId} onChange={updateNodeData} />
           )}
         </div>
       )}
