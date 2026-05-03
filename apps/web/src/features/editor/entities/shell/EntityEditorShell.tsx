@@ -149,7 +149,14 @@ function EntityListItem({
 }) {
   const content = (
     <>
-      <span className="block truncate text-sm font-semibold text-slate-200">{title}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="block truncate text-sm font-semibold text-slate-200">{title}</span>
+        {active && (
+          <span className="shrink-0 rounded-full border border-amber-400/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
+            선택됨
+          </span>
+        )}
+      </span>
       {description && <span className="mt-1 block truncate text-xs text-slate-500">{description}</span>}
       {badges.length > 0 && (
         <span className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-medium">
@@ -172,7 +179,13 @@ function EntityListItem({
             : 'border-slate-800 bg-slate-900/70 hover:border-slate-700 hover:bg-slate-900'
         }`}
       >
-        <button type="button" aria-label={`${title} 선택`} onClick={onSelect} className="min-w-0 flex-1 p-1 text-left">
+        <button
+          type="button"
+          aria-label={`${title} 선택`}
+          aria-pressed={active}
+          onClick={onSelect}
+          className="min-w-0 flex-1 p-1 text-left"
+        >
           {content}
         </button>
         <div className="flex shrink-0 items-start" onClick={(event) => event.stopPropagation()}>
@@ -186,6 +199,7 @@ function EntityListItem({
     <button
       type="button"
       aria-label={`${title} 선택`}
+      aria-pressed={active}
       onClick={onSelect}
       className={`w-full rounded-lg border p-3 text-left transition ${
         active

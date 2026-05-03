@@ -46,22 +46,20 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
     [flush],
   );
 
-  const handleClueToggle = useCallback(
-    (clueId: string, checked: boolean) => {
-      if (!activeCharId) return;
-      const current = characterClues[activeCharId] ?? [];
+  const handleClueToggleForChar = useCallback(
+    (characterId: string, clueId: string, checked: boolean) => {
+      const current = characterClues[characterId] ?? [];
       const next = checked ? [...current, clueId] : current.filter((id) => id !== clueId);
       saveConfig(writeCharacterStartingClueMap(theme.config_json, {
         ...characterClues,
-        [activeCharId]: next,
+        [characterId]: next,
       }));
     },
-    [activeCharId, characterClues, saveConfig, theme.config_json],
+    [characterClues, saveConfig, theme.config_json],
   );
 
-  const handleAddMission = useCallback(() => {
-    if (!activeCharId) return;
-    const current = characterMissions[activeCharId] ?? [];
+  const handleAddMissionForChar = useCallback((characterId: string) => {
+    const current = characterMissions[characterId] ?? [];
     const mission: Mission = {
       id: crypto.randomUUID(),
       type: "kill",
@@ -69,44 +67,41 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       points: 10,
     };
     saveConfig({
-      character_missions: { ...characterMissions, [activeCharId]: [...current, mission] },
+      character_missions: { ...characterMissions, [characterId]: [...current, mission] },
     });
-  }, [activeCharId, characterMissions, saveConfig]);
+  }, [characterMissions, saveConfig]);
 
-  const handleDeleteMission = useCallback(
-    (missionId: string) => {
-      if (!activeCharId) return;
-      const current = characterMissions[activeCharId] ?? [];
+  const handleDeleteMissionForChar = useCallback(
+    (characterId: string, missionId: string) => {
+      const current = characterMissions[characterId] ?? [];
       saveConfig({
         character_missions: {
           ...characterMissions,
-          [activeCharId]: current.filter((m) => m.id !== missionId),
+          [characterId]: current.filter((m) => m.id !== missionId),
         },
       });
     },
-    [activeCharId, characterMissions, saveConfig],
+    [characterMissions, saveConfig],
   );
 
-  const handleMissionChange = useCallback(
-    (missionId: string, field: keyof Mission, value: string | number) => {
-      if (!activeCharId) return;
-      const current = characterMissions[activeCharId] ?? [];
+  const handleMissionChangeForChar = useCallback(
+    (characterId: string, missionId: string, field: keyof Mission, value: string | number) => {
+      const current = characterMissions[characterId] ?? [];
       saveConfig({
         character_missions: {
           ...characterMissions,
-          [activeCharId]: current.map((m) =>
+          [characterId]: current.map((m) =>
             m.id === missionId ? { ...m, [field]: value } : m,
           ),
         },
       });
     },
-    [activeCharId, characterMissions, saveConfig],
+    [characterMissions, saveConfig],
   );
 
-  const handleMysteryRoleChange = useCallback(
-    (role: MysteryRole) => {
-      if (!activeCharId) return;
-      const selected = characters?.find((char) => char.id === activeCharId);
+  const handleMysteryRoleChangeForChar = useCallback(
+    (characterId: string, role: MysteryRole) => {
+      const selected = characters?.find((char) => char.id === characterId);
       if (!selected) return;
 
       updateCharacter.mutate({
@@ -121,7 +116,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
         },
       });
     },
-    [activeCharId, characters, updateCharacter],
+    [characters, updateCharacter],
   );
 
   if (charsLoading) {
@@ -148,10 +143,6 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
     );
   }
 
-  const selectedChar = characters.find((c) => c.id === activeCharId) ?? characters[0] ?? null;
-  const charClueIds = activeCharId ? (characterClues[activeCharId] ?? []) : [];
-  const charMissions = activeCharId ? (characterMissions[activeCharId] ?? []) : [];
-
   return (
     <div
       className="flex h-full flex-col md:flex-row"
@@ -164,25 +155,25 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       <EntityEditorShell
         title="캐릭터"
         items={characters}
-        selectedId={selectedChar?.id}
+        selectedId={activeCharId ?? undefined}
         onSelect={handleSelectChar}
         getItemId={(char) => char.id}
         getItemTitle={(char) => char.name}
         getItemDescription={(char) => char.description ?? ''}
         getItemBadges={(char) => [formatMysteryRoleBadge(char.mystery_role, char.is_culprit)]}
-        renderDetail={() => (
+        renderDetail={(char) => (
           <CharacterDetailPanel
             themeId={themeId}
-            selectedChar={selectedChar}
+            selectedChar={char}
             characters={characters ?? []}
             clues={clues}
-            charClueIds={charClueIds}
-            charMissions={charMissions}
-            onClueToggle={handleClueToggle}
-            onAddMission={handleAddMission}
-            onChangeMission={handleMissionChange}
-            onDeleteMission={handleDeleteMission}
-            onMysteryRoleChange={handleMysteryRoleChange}
+            charClueIds={characterClues[char.id] ?? []}
+            charMissions={characterMissions[char.id] ?? []}
+            onClueToggle={(clueId, checked) => handleClueToggleForChar(char.id, clueId, checked)}
+            onAddMission={() => handleAddMissionForChar(char.id)}
+            onChangeMission={(missionId, field, value) => handleMissionChangeForChar(char.id, missionId, field, value)}
+            onDeleteMission={(missionId) => handleDeleteMissionForChar(char.id, missionId)}
+            onMysteryRoleChange={(role) => handleMysteryRoleChangeForChar(char.id, role)}
           />
         )}
       />

@@ -204,6 +204,23 @@ describe('CharacterAssignPanel', () => {
     expect(readStartingClues(payload)['char-2']).toBeUndefined();
   });
 
+  it('검색으로 상세 캐릭터가 바뀌면 보이는 캐릭터 ID로 시작 단서를 저장한다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '김철수 선택' }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: '캐릭터 검색' }), {
+      target: { value: '홍길동' },
+    });
+
+    expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
+    clickFirstClue();
+    await act(async () => { vi.advanceTimersByTime(1500); });
+
+    const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(readStartingClues(payload)['char-1']).toContain('clue-1');
+    expect(readStartingClues(payload)['char-2']).toBeUndefined();
+  });
+
   it('캐릭터 선택 시 좌측 전체 단서와 우측 배정 영역이 표시된다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));

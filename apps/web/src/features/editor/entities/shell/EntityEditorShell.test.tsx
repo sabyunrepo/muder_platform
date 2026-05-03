@@ -65,6 +65,14 @@ describe('EntityEditorShell', () => {
     expect(screen.getByLabelText('검수 슬롯').textContent).toContain('비밀 편지 검수');
   });
 
+  it('선택된 항목을 색상 외 텍스트와 ARIA 상태로도 표시한다', () => {
+    renderShell({ selectedId: 'a' });
+
+    expect(screen.getByRole('button', { name: '첫 단서 선택' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '비밀 편지 선택' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByText('선택됨')).toBeDefined();
+  });
+
   it('검색 결과가 없으면 이전 선택 상세를 숨긴다', () => {
     renderShell({ selectedId: 'a' });
 
