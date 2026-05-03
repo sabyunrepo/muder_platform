@@ -121,13 +121,11 @@ func TestModule_BuildState_WithConfig(t *testing.T) {
 	assert.Equal(t, "좋은결말", state["defaultEnding"])
 }
 
-// TestModule_HandleMessage_NotImplemented verifies the stub returns the expected
-// "not yet implemented (PR-5)" error and does not panic.
-func TestModule_HandleMessage_NotImplemented(t *testing.T) {
+func TestModule_HandleMessage_InvalidPayloadReturnsError(t *testing.T) {
 	m := NewModule()
 	err := m.HandleMessage(context.Background(), uuid.New(), "submit_answer", json.RawMessage(`{}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "PR-5", "stub must reference PR-5 deferral")
+	assert.Contains(t, err.Error(), "questionId is required")
 }
 
 // TestModule_Cleanup_ReturnsNil verifies Cleanup resets state and returns nil.
@@ -266,4 +264,65 @@ func TestModule_ApplyConfig_RejectsTrailingData(t *testing.T) {
 	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[]}{"trailing":"data"}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "trailing data")
+}
+
+func TestModule_PR5_HandleMessageStoresOwnAnswerAndBuildStateForRedactsPeers(t *testing.T) {
+	m := NewModule()
+	threshold := 0.5
+	cfg := Config{
+		Questions:          []Question{{ID: "q1", Text: "누구를 믿나요?", Type: "single", Choices: []string{"탐정", "용의자"}, Impact: "branch"}},
+		Matrix:             []MatrixRow{{Priority: 1, Conditions: map[string]any{"q1": "탐정"}, Ending: "ending-truth"}},
+		DefaultEnding:      "ending-fallback",
+		MultiVoteThreshold: &threshold,
+	}
+	data, err := json.Marshal(cfg)
+	require.NoError(t, err)
+	require.NoError(t, m.ApplyConfig(context.Background(), data))
+
+	alice := uuid.New()
+	bob := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), alice, "ending_branch:submit_answer", json.RawMessage(`{"questionId":"q1","choices":["탐정"]}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), bob, "ending_branch:submit_answer", json.RawMessage(`{"questionId":"q1","choices":["용의자"]}`)))
+
+	raw, err := m.BuildStateFor(alice)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), alice.String())
+	assert.NotContains(t, string(raw), bob.String())
+	assert.Contains(t, string(raw), "ending-truth")
+}
+
+func TestModule_PR5_HandleMessageRejectsUnknownQuestionAndChoice(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch"}],
+		"matrix":[],
+		"defaultEnding":"fallback"
+	}`)
+	require.NoError(t, m.ApplyConfig(context.Background(), cfg))
+
+	playerID := uuid.New()
+	err := m.HandleMessage(context.Background(), playerID, "ending_branch:submit_answer", json.RawMessage(`{"questionId":"missing","choices":["A"]}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown question")
+
+	err = m.HandleMessage(context.Background(), playerID, "ending_branch:submit_answer", json.RawMessage(`{"questionId":"q1","choices":["B"]}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown choice")
+}
+
+func TestModule_PR5_CleanupClearsAnswersAndEvaluation(t *testing.T) {
+	m := NewModule()
+	require.NoError(t, m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch"}],
+		"matrix":[{"priority":1,"conditions":{"q1":"A"},"ending":"ending-a"}],
+		"defaultEnding":"fallback"
+	}`)))
+	playerID := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), playerID, "ending_branch:submit_answer", json.RawMessage(`{"questionId":"q1","choices":["A"]}`)))
+
+	require.NoError(t, m.Cleanup(context.Background()))
+	raw, err := m.BuildStateFor(playerID)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), playerID.String())
+	assert.NotContains(t, string(raw), "ending-a")
 }

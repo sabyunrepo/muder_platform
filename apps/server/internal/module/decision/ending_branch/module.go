@@ -26,9 +26,16 @@ import (
 // (b) add BuildStateFor with real per-player answer redaction. The F-sec-2
 // playeraware-lint canon enforces that switch atomically.
 type Module struct {
-	engine.PublicStateMarker
-	mu  sync.RWMutex
-	cfg Config
+	mu         sync.RWMutex
+	cfg        Config
+	answers    AnswerSet
+	evaluation EvaluationResult
+	evaluated  bool
+}
+
+type answerPayload struct {
+	QuestionID string   `json:"questionId"`
+	Choices    []string `json:"choices"`
 }
 
 // NewModule creates a new Module instance.
@@ -97,16 +104,115 @@ func (m *Module) BuildState() (json.RawMessage, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return json.Marshal(map[string]any{
-		"questionCount": len(m.cfg.Questions),
-		"defaultEnding": m.cfg.DefaultEnding,
-	})
+	return json.Marshal(m.publicStateLocked(nil))
 }
 
-// HandleMessage processes a player action routed to this module.
-// Full answer-submission logic is deferred to PR-5.
-func (m *Module) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _ json.RawMessage) error {
-	return fmt.Errorf("ending_branch: message handling not yet implemented (PR-5)")
+// BuildStateFor implements engine.PlayerAwareModule. It returns public question
+// metadata and the caller's own answers only; peer answers are never exposed.
+func (m *Module) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return json.Marshal(m.publicStateLocked(&playerID))
+}
+
+func (m *Module) publicStateLocked(playerID *uuid.UUID) map[string]any {
+	state := map[string]any{
+		"questions":     m.cfg.Questions,
+		"questionCount": len(m.cfg.Questions),
+		"defaultEnding": m.cfg.DefaultEnding,
+	}
+	if m.evaluated {
+		state["evaluation"] = m.redactedEvaluationLocked(playerID)
+	}
+	if playerID != nil {
+		key := playerID.String()
+		if own, ok := m.answers[key]; ok {
+			state["ownAnswers"] = AnswerSet{key: clonePlayerAnswers(own)}
+		} else {
+			state["ownAnswers"] = AnswerSet{}
+		}
+	}
+	return state
+}
+
+// HandleMessage processes a player answer submission.
+func (m *Module) HandleMessage(_ context.Context, playerID uuid.UUID, msgType string, payload json.RawMessage) error {
+	if msgType != "ending_branch:submit_answer" && msgType != "submit_answer" {
+		return fmt.Errorf("ending_branch: unknown message type %q", msgType)
+	}
+	var answer answerPayload
+	if err := json.Unmarshal(payload, &answer); err != nil {
+		return fmt.Errorf("ending_branch: invalid answer payload: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := m.validateAnswerLocked(answer); err != nil {
+		return err
+	}
+	if m.answers == nil {
+		m.answers = AnswerSet{}
+	}
+	playerKey := playerID.String()
+	if m.answers[playerKey] == nil {
+		m.answers[playerKey] = map[string][]string{}
+	}
+	m.answers[playerKey][answer.QuestionID] = append([]string(nil), answer.Choices...)
+	evaluation, err := Evaluate(m.cfg, m.answers)
+	if err != nil {
+		return err
+	}
+	m.evaluation = evaluation
+	m.evaluated = true
+	return nil
+}
+
+func (m *Module) validateAnswerLocked(answer answerPayload) error {
+	if answer.QuestionID == "" {
+		return fmt.Errorf("ending_branch: questionId is required")
+	}
+	var question *Question
+	for i := range m.cfg.Questions {
+		if m.cfg.Questions[i].ID == answer.QuestionID {
+			question = &m.cfg.Questions[i]
+			break
+		}
+	}
+	if question == nil {
+		return fmt.Errorf("ending_branch: unknown question %q", answer.QuestionID)
+	}
+	if question.Type == "single" && len(answer.Choices) > 1 {
+		return fmt.Errorf("ending_branch: single question %q accepts one choice", answer.QuestionID)
+	}
+	allowed := map[string]bool{}
+	for _, choice := range question.Choices {
+		allowed[choice] = true
+	}
+	for _, choice := range answer.Choices {
+		if !allowed[choice] {
+			return fmt.Errorf("ending_branch: unknown choice %q for question %q", choice, answer.QuestionID)
+		}
+	}
+	return nil
+}
+
+func (m *Module) redactedEvaluationLocked(playerID *uuid.UUID) EvaluationResult {
+	evaluation := m.evaluation
+	evaluation.PlayerScores = map[string]int{}
+	if playerID != nil {
+		key := playerID.String()
+		if score, ok := m.evaluation.PlayerScores[key]; ok {
+			evaluation.PlayerScores[key] = score
+		}
+	}
+	return evaluation
+}
+
+func clonePlayerAnswers(src map[string][]string) map[string][]string {
+	out := make(map[string][]string, len(src))
+	for questionID, choices := range src {
+		out[questionID] = append([]string(nil), choices...)
+	}
+	return out
 }
 
 // Cleanup releases resources when the session ends.
@@ -114,6 +220,9 @@ func (m *Module) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.cfg = Config{}
+	m.answers = nil
+	m.evaluation = EvaluationResult{}
+	m.evaluated = false
 	return nil
 }
 
@@ -196,5 +305,5 @@ func mustMarshal(v any) json.RawMessage {
 var (
 	_ engine.Module            = (*Module)(nil)
 	_ engine.ConfigSchema      = (*Module)(nil)
-	_ engine.PublicStateModule = (*Module)(nil)
+	_ engine.PlayerAwareModule = (*Module)(nil)
 )
