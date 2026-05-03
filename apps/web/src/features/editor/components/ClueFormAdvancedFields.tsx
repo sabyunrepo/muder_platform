@@ -168,7 +168,7 @@ export function ClueFormAdvancedFields({
                 htmlFor="clue-is-usable"
                 className="text-sm font-medium text-slate-300"
               >
-                사용 가능 (아이템)
+                사용 가능한 단서
               </label>
             </div>
 
@@ -179,7 +179,7 @@ export function ClueFormAdvancedFields({
                     htmlFor="clue-use-effect"
                     className="text-sm font-medium text-slate-300"
                   >
-                    효과
+                    사용하면 일어나는 일
                   </label>
                   <select
                     id="clue-use-effect"
@@ -187,11 +187,11 @@ export function ClueFormAdvancedFields({
                     onChange={(e) => onUseEffectChange(e.target.value)}
                     className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                   >
-                    <option value="peek">엿보기 (Peek)</option>
-                    <option value="steal">강탈 (Steal)</option>
-                    <option value="reveal">공개 (Reveal)</option>
-                    <option value="block">차단 (Block)</option>
-                    <option value="swap">교환 (Swap)</option>
+                    <option value="peek">다른 플레이어 단서 보기</option>
+                    <option value="steal">다른 플레이어에게서 단서 가져오기</option>
+                    <option value="reveal">정보 공개하기</option>
+                    <option value="block">상대의 사용 막기</option>
+                    <option value="swap">단서 교환하기</option>
                   </select>
                 </div>
 
@@ -200,7 +200,7 @@ export function ClueFormAdvancedFields({
                     htmlFor="clue-use-target"
                     className="text-sm font-medium text-slate-300"
                   >
-                    대상
+                    플레이어가 사용할 때 고르는 대상
                   </label>
                   <select
                     id="clue-use-target"
@@ -208,9 +208,9 @@ export function ClueFormAdvancedFields({
                     onChange={(e) => onUseTargetChange(e.target.value)}
                     className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
                   >
-                    <option value="player">플레이어</option>
-                    <option value="clue">단서</option>
-                    <option value="self">자신</option>
+                    <option value="player">다른 플레이어 선택</option>
+                    <option value="clue">단서 선택</option>
+                    <option value="self">대상 선택 없음</option>
                   </select>
                 </div>
 
@@ -226,7 +226,7 @@ export function ClueFormAdvancedFields({
                     htmlFor="clue-use-consumed"
                     className="text-sm font-medium text-slate-300"
                   >
-                    사용 후 소멸
+                    사용하면 내 단서함에서 사라짐
                   </label>
                 </div>
               </div>

@@ -125,18 +125,18 @@ function CharacterDetail() {
     <section className="rounded-2xl border border-slate-800 bg-[radial-gradient(circle_at_top_right,rgba(245,158,11,0.12),transparent_30%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(2,6,23,0.96))] p-4 sm:p-5">
       <div className="mb-4 space-y-3 sm:flex sm:items-start sm:justify-between sm:gap-3 sm:space-y-0">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-400/80">Character entity</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-400/80">캐릭터 상세</p>
           <h2 className="mt-1 text-xl font-bold text-slate-100">김철수</h2>
-          <p className="mt-1 text-sm text-slate-500">모바일에서는 위에서 아래로: 선택 → 베이스 → 모듈 → 참조 순서로 읽습니다.</p>
+          <p className="mt-1 text-sm text-slate-500">모바일에서는 위에서 아래로: 선택 → 기본 정보 → 설정 순서로 읽습니다.</p>
         </div>
-        <div className="inline-flex rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-400">시스템 ID · char-1</div>
+        <div className="inline-flex rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">범인 후보</div>
       </div>
 
       <div className="space-y-3">
         <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-200">
             <Fingerprint className="h-4 w-4 text-amber-400" />
-            베이스
+            기본 정보
           </div>
           <div className="grid gap-3 sm:grid-cols-[8rem_1fr]">
             <div className="flex h-28 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950 text-xs text-slate-600">사진</div>

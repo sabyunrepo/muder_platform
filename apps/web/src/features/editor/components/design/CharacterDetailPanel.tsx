@@ -83,7 +83,7 @@ export function CharacterDetailPanel({
     <div className="max-w-5xl space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-slate-200">{selectedChar.name}</h3>
-        <p className="mt-1 text-xs text-slate-500">시스템 ID: <span className="font-mono text-slate-400">{selectedChar.id}</span></p>
+        <p className="mt-1 text-xs text-slate-500">역할지, 시작 단서, 히든 미션을 한 곳에서 관리합니다.</p>
       </div>
 
       <Accordion
@@ -91,7 +91,7 @@ export function CharacterDetailPanel({
         items={[
           {
             id: 'base',
-            title: '베이스',
+            title: '기본 정보',
             subtitle: `${getMysteryRoleLabel(selectedRole)} · 공개 소개`,
             defaultOpen: true,
             forceOpen: true,
