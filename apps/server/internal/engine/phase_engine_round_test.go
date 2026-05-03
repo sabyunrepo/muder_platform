@@ -42,7 +42,9 @@ func TestPhaseEngine_CurrentRound_IncrementsWithAdvance(t *testing.T) {
 	}
 
 	// Advance past the last phase — engine completes, round sticks.
-	if hasNext, _ := pe.AdvancePhase(ctx); hasNext {
+	if hasNext, err := pe.AdvancePhase(ctx); err != nil {
+		t.Fatalf("advance 3: %v", err)
+	} else if hasNext {
 		t.Fatal("expected engine complete on 3rd advance")
 	}
 	if got := pe.CurrentRound(); got != 3 {

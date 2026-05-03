@@ -42,7 +42,7 @@ type HostSubmittable interface {
 // Rejects unknown fields and enforces maxModulesPerGame.
 func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	if len(raw) == 0 {
-		return nil, fmt.Errorf("engine: configJson is empty")
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "engine: configJson is empty")
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
@@ -64,7 +64,7 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 		return nil, apperror.BadRequest("invalid phase action config").Wrap(err)
 	}
 	if len(cfg.Phases) == 0 {
-		return nil, fmt.Errorf("engine: configJson has no phases")
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "engine: configJson has no phases")
 	}
 	if len(cfg.Modules) > maxModulesPerGame {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "too many modules")
@@ -78,6 +78,11 @@ func parseModuleConfigs(raw json.RawMessage) ([]ModuleConfig, error) {
 	}
 	var legacy []ModuleConfig
 	if err := decodeStrict(raw, &legacy); err == nil {
+		for _, mc := range legacy {
+			if mc.Name == "" {
+				return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: empty module name")
+			}
+		}
 		return legacy, nil
 	}
 

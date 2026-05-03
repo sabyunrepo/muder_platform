@@ -50,12 +50,18 @@ func TestPhaseEngine_PhaseHooksAndOnEnterActions(t *testing.T) {
 	if len(reactor.received) != 1 || reactor.received[0].Action != ActionDeliverInformation {
 		t.Fatalf("received actions = %#v", reactor.received)
 	}
+	if ids := phaseActionDeliveryIDs(t, reactor.received[0]); len(ids) != 1 || ids[0] != "d1" {
+		t.Fatalf("OnEnter delivery IDs = %#v", ids)
+	}
 
 	if _, err := pe.AdvancePhase(ctx); err != nil {
 		t.Fatalf("AdvancePhase: %v", err)
 	}
-	if len(reactor.received) != 2 || reactor.received[1].Action != ActionDeliverInformation {
+	if len(reactor.received) != 2 || reactor.received[0].Action != ActionDeliverInformation || reactor.received[1].Action != ActionDeliverInformation {
 		t.Fatalf("expected OnEnter + OnExit actions, got %#v", reactor.received)
+	}
+	if ids := phaseActionDeliveryIDs(t, reactor.received[1]); len(ids) != 1 || ids[0] != "d2" {
+		t.Fatalf("OnExit delivery IDs = %#v", ids)
 	}
 	if len(hook.exited) != 1 || hook.exited[0] != "intro" {
 		t.Fatalf("exited hooks = %#v", hook.exited)
@@ -63,6 +69,23 @@ func TestPhaseEngine_PhaseHooksAndOnEnterActions(t *testing.T) {
 	if len(hook.entered) != 2 || hook.entered[1] != "next" {
 		t.Fatalf("entered hooks after advance = %#v", hook.entered)
 	}
+}
+
+func phaseActionDeliveryIDs(t *testing.T, action PhaseActionPayload) []string {
+	t.Helper()
+	var params struct {
+		Deliveries []struct {
+			ID string `json:"id"`
+		} `json:"deliveries"`
+	}
+	if err := json.Unmarshal(action.Params, &params); err != nil {
+		t.Fatalf("unmarshal action params: %v", err)
+	}
+	ids := make([]string, 0, len(params.Deliveries))
+	for _, delivery := range params.Deliveries {
+		ids = append(ids, delivery.ID)
+	}
+	return ids
 }
 
 func TestPhaseEngine_LegacyJSONLogicOnEnterIsNoop(t *testing.T) {
