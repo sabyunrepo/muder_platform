@@ -43,7 +43,7 @@ function makeNode(type: string, data: Record<string, unknown> = {}): Node {
 // ---------------------------------------------------------------------------
 
 describe("NodeDetailPanel", () => {
-  it("node가 null이면 '노드를 선택하세요' 를 표시한다", () => {
+  it("node가 null이면 '편집할 페이즈나 결말 노드를 선택하세요' 를 표시한다", () => {
     render(
       <NodeDetailPanel
         node={null}
@@ -52,7 +52,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("노드를 선택하세요")).toBeDefined();
+    expect(screen.getByText("편집할 페이즈나 결말 노드를 선택하세요")).toBeDefined();
   });
 
   it("start 노드이면 편집 불가 메시지를 표시한다", () => {
@@ -64,7 +64,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("시작 노드는 편집할 수 없습니다")).toBeDefined();
+    expect(screen.getByText("시작 지점은 고정되어 있어 편집할 수 없습니다")).toBeDefined();
   });
 
   it("start 노드에는 삭제 버튼이 없다", () => {
@@ -76,7 +76,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.queryByText("노드 삭제")).toBeNull();
+    expect(screen.queryByText("선택 항목 삭제")).toBeNull();
   });
 
   it("phase 노드이면 PhaseNodePanel을 렌더링한다", () => {
@@ -100,7 +100,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("노드 삭제")).toBeDefined();
+    expect(screen.getByText("선택 항목 삭제")).toBeDefined();
   });
 
   it("삭제 버튼 클릭 시 onDelete가 노드 id와 함께 호출된다", () => {
@@ -113,7 +113,7 @@ describe("NodeDetailPanel", () => {
         onDelete={onDelete}
       />,
     );
-    fireEvent.click(screen.getByText("노드 삭제"));
+    fireEvent.click(screen.getByText("선택 항목 삭제"));
     expect(onDelete).toHaveBeenCalledWith("node-1");
   });
 });

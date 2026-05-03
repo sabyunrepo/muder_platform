@@ -33,7 +33,7 @@ export function NodeDetailPanel({
   if (!node) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <span className="text-xs text-slate-500">노드를 선택하세요</span>
+        <span className="text-xs text-slate-500">편집할 페이즈나 결말 노드를 선택하세요</span>
       </div>
     );
   }
@@ -54,7 +54,7 @@ export function NodeDetailPanel({
         {isStart ? (
           <div className="flex h-full items-center justify-center p-4">
             <span className="text-xs text-slate-500">
-              시작 노드는 편집할 수 없습니다
+              시작 지점은 고정되어 있어 편집할 수 없습니다
             </span>
           </div>
         ) : node.type === "phase" ? (
@@ -87,7 +87,7 @@ export function NodeDetailPanel({
             className="flex w-full items-center justify-center gap-1.5 rounded border border-red-800 bg-red-950/30 px-3 py-1.5 text-xs text-red-400 transition-colors hover:border-red-600 hover:bg-red-900/30"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            노드 삭제
+            선택 항목 삭제
           </button>
         </div>
       )}

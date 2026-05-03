@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Puzzle, GitBranch, MapPin } from 'lucide-react';
+import { Puzzle, GitBranch, MapPin, Drama } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { ModulesSubTab } from './design/ModulesSubTab';
 import { FlowSubTab } from './design/FlowSubTab';
 import { LocationsSubTab } from './design/LocationsSubTab';
+import { EndingEntitySubTab } from './design/EndingEntitySubTab';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type SubTab = 'modules' | 'flow' | 'locations';
+type SubTab = 'modules' | 'flow' | 'locations' | 'endings';
 
 interface DesignTabProps {
   themeId: string;
@@ -20,6 +21,7 @@ interface DesignTabProps {
 const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
   { key: 'modules', label: '모듈', icon: Puzzle },
   { key: 'flow', label: '흐름', icon: GitBranch },
+  { key: 'endings', label: '결말', icon: Drama },
   { key: 'locations', label: '장소', icon: MapPin },
 ];
 
@@ -30,6 +32,7 @@ const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
 function readInitialSubTab(routeSegment?: string): SubTab {
   if (routeSegment === 'flow') return 'flow';
   if (routeSegment === 'locations') return 'locations';
+  if (routeSegment === 'endings') return 'endings';
   return 'modules';
 }
 
@@ -68,6 +71,9 @@ export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
         )}
         {activeSubTab === 'flow' && (
           <FlowSubTab themeId={themeId} />
+        )}
+        {activeSubTab === 'endings' && (
+          <EndingEntitySubTab themeId={themeId} />
         )}
         {activeSubTab === 'locations' && (
           <LocationsSubTab themeId={themeId} theme={theme} />

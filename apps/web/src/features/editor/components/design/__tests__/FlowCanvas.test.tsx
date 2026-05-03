@@ -85,6 +85,13 @@ describe('FlowCanvas', () => {
     expect(screen.getByTestId('react-flow')).toBeDefined();
   });
 
+  it('모바일 우선 세로 레이아웃을 사용하고 데스크톱에서만 2열로 바뀐다', () => {
+    render(<FlowCanvas themeId="theme-1" />);
+    const workspace = screen.getByTestId('flow-workspace');
+    expect(workspace.className).toContain('flex-col');
+    expect(workspace.className).toContain('lg:flex-row');
+  });
+
   it('ReactFlow 보조 컴포넌트들이 렌더링된다', () => {
     render(<FlowCanvas themeId="theme-1" />);
     expect(screen.getByTestId('rf-background')).toBeDefined();

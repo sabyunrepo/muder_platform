@@ -49,6 +49,9 @@ vi.mock('../../design/FlowSubTab', () => ({
 vi.mock('../../design/LocationsSubTab', () => ({
   LocationsSubTab: () => <div>LocationsSubTab 콘텐츠</div>,
 }));
+vi.mock('../../design/EndingEntitySubTab', () => ({
+  EndingEntitySubTab: () => <div>EndingEntitySubTab 콘텐츠</div>,
+}));
 
 vi.mock('@/features/editor/constants', () => ({
   MODULE_CATEGORIES: [
@@ -124,12 +127,13 @@ describe('DesignTab', () => {
     useModuleSchemasMock.mockReturnValue({ data: null, isLoading: false });
   });
 
-  it('서브탭 3개를 모두 렌더링한다', () => {
+  it('서브탭 4개를 모두 렌더링한다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
     expect(screen.getByText('모듈')).toBeDefined();
     expect(screen.getByText('흐름')).toBeDefined();
     expect(screen.getByText('장소')).toBeDefined();
+    expect(screen.getByText('결말')).toBeDefined();
   });
 
   it('배치, 설정 탭이 없다', () => {
@@ -158,6 +162,13 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('장소'));
     expect(screen.getByText('LocationsSubTab 콘텐츠')).toBeDefined();
+  });
+
+  it('결말 탭 클릭 시 결말 entity 콘텐츠로 전환된다', () => {
+    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
+
+    fireEvent.click(screen.getByText('결말'));
+    expect(screen.getByText('EndingEntitySubTab 콘텐츠')).toBeDefined();
   });
 
   it('모듈 탭이 기본 선택되어 모듈 사이드바가 표시된다', () => {
