@@ -3,12 +3,13 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-const { useFlowDataMock, addNodeMock, updateNodeDataMock, mutateMock, useUpdateFlowNodeMock } = vi.hoisted(() => ({
+const { useFlowDataMock, addNodeMock, updateNodeDataMock, mutateMock, useUpdateFlowNodeMock, refetchMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
   addNodeMock: vi.fn(),
   updateNodeDataMock: vi.fn(),
   mutateMock: vi.fn(),
   useUpdateFlowNodeMock: vi.fn(),
+  refetchMock: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useFlowData", () => ({
@@ -48,6 +49,9 @@ beforeEach(() => {
       makeNode("ending-2", { label: "오판", description: "잘못된 선택" }),
     ],
     isLoading: false,
+    isError: false,
+    error: null,
+    refetch: refetchMock,
     addNode: addNodeMock,
     updateNodeData: updateNodeDataMock,
   });
@@ -72,6 +76,9 @@ describe("EndingEntitySubTab", () => {
     useFlowDataMock.mockReturnValue({
       nodes: [],
       isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchMock,
       addNode: addNodeMock,
       updateNodeData: updateNodeDataMock,
     });
@@ -80,6 +87,27 @@ describe("EndingEntitySubTab", () => {
 
     expect(screen.getByText("아직 결말이 없습니다")).toBeDefined();
     expect(screen.getByText(/Flow에서 결말 노드를 추가하면/)).toBeDefined();
+  });
+
+
+  it("결말 목록을 불러오지 못하면 에러 안내와 재시도 버튼을 보여준다", () => {
+    useFlowDataMock.mockReturnValue({
+      nodes: [],
+      isLoading: false,
+      isError: true,
+      error: new Error("권한이 없습니다"),
+      refetch: refetchMock,
+      addNode: addNodeMock,
+      updateNodeData: updateNodeDataMock,
+    });
+
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+
+    expect(screen.getByText("결말 목록을 불러오지 못했습니다")).toBeDefined();
+    expect(screen.getByText("권한이 없습니다")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+    expect(refetchMock).toHaveBeenCalled();
   });
 
   it("결말 추가 버튼은 ending 노드 생성을 요청한다", () => {
@@ -96,6 +124,7 @@ describe("EndingEntitySubTab", () => {
     fireEvent.change(screen.getByPlaceholderText("결말 검색"), { target: { value: "오판" } });
 
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /오판/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByText("진실")).toBeNull();
   });
 

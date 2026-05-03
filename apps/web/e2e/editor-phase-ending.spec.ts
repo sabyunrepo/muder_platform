@@ -63,8 +63,8 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
     await expect(page.getByLabel("결말 본문")).toHaveValue("범인은 밝혀졌다.");
 
     const a11y = await new AxeBuilder({ page })
+      .include('[data-testid="ending-entity-panel"]')
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .disableRules(["color-contrast"])
       .analyze();
     expect(a11y.violations).toEqual([]);
   });

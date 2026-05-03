@@ -22,7 +22,7 @@ function getEndingDescription(node: Node) {
 export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { nodes, isLoading, addNode, updateNodeData } = useFlowData(themeId);
+  const { nodes, isLoading, isError, error, refetch, addNode, updateNodeData } = useFlowData(themeId);
 
   const endingNodes = useMemo(
     () => nodes.filter((node) => node.type === "ending"),
@@ -55,8 +55,33 @@ export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-950 p-6 text-center">
+        <div className="max-w-md rounded-2xl border border-rose-500/30 bg-rose-950/20 p-6">
+          <h3 className="text-lg font-semibold text-rose-100">결말 목록을 불러오지 못했습니다</h3>
+          <p className="mt-2 text-sm leading-6 text-rose-200/80">
+            네트워크나 권한 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
+          </p>
+          {error instanceof Error && error.message && (
+            <p className="mt-3 rounded-xl bg-slate-950/60 p-3 text-left text-xs leading-5 text-rose-100/80">
+              {error.message}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-300/40 bg-rose-300/10 px-4 text-sm font-medium text-rose-100 transition hover:bg-rose-300/20 focus:outline-none focus:ring-2 focus:ring-rose-300/60"
+          >
+            다시 불러오기
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6">
+    <div data-testid="ending-entity-panel" className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6">
       <header className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="space-y-1">
           <p className="text-xs font-semibold uppercase tracking-wider text-amber-400">
@@ -117,6 +142,7 @@ export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
                       key={node.id}
                       type="button"
                       onClick={() => setSelectedId(node.id)}
+                      aria-pressed={selected}
                       className={`rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 ${
                         selected
                           ? "border-amber-500/70 bg-amber-500/10"
