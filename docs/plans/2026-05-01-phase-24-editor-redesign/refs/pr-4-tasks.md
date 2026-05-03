@@ -80,7 +80,7 @@
 git worktree add .worktrees/phase-24-pr-4-phase-ending -b feat/phase-24-pr-4-phase-ending main
 ```
 
-- [ ] **Step 2:** focused baseline 테스트 실행
+- [x] **Step 2:** focused baseline 테스트 실행
 
 ```bash
 pnpm --dir apps/web exec vitest run \
@@ -94,11 +94,11 @@ Expected: PASS. 실패하면 구현 전에 원인을 기록하고 기존 실패/
 
 ### Task 2 — 결말 entity 상세 테스트 RED
 
-- [ ] **Step 1:** `EndingEntitySubTab.test.tsx`에 빈 상태와 목록 선택 테스트를 작성한다.
-- [ ] **Step 2:** 테스트를 실행해 `EndingEntitySubTab` 미정의 실패를 확인한다.
-- [ ] **Step 3:** `EndingEntitySubTab.tsx`와 `EndingEntityDetail.tsx` 최소 구현으로 테스트를 통과시킨다.
-- [ ] **Step 4:** 결말 노드가 없을 때 “Flow에서 결말 노드를 추가하면 이곳에서 결말 내용을 작성할 수 있어요.” 문구가 보이게 한다.
-- [ ] **Step 5:** Commit
+- [x] **Step 1:** `EndingEntitySubTab.test.tsx`에 빈 상태와 목록 선택 테스트를 작성한다.
+- [x] **Step 2:** 테스트를 실행해 `EndingEntitySubTab` 미정의 실패를 확인한다.
+- [x] **Step 3:** `EndingEntitySubTab.tsx`와 `EndingEntityDetail.tsx` 최소 구현으로 테스트를 통과시킨다.
+- [x] **Step 4:** 결말 노드가 없을 때 “Flow에서 결말 노드를 추가하면 이곳에서 결말 내용을 작성할 수 있어요.” 문구가 보이게 한다.
+- [x] **Step 5:** Commit
 
 ```bash
 git add apps/web/src/features/editor/components/design/EndingEntitySubTab.tsx \
@@ -109,11 +109,11 @@ git commit -m "feat(editor): add ending entity list tab"
 
 ### Task 3 — EndingNodePanel Phase 24 정합성
 
-- [ ] **Step 1:** `EndingNodePanel.test.tsx`에 “점수 배율 입력이 보이지 않는다” 테스트를 추가한다.
-- [ ] **Step 2:** 테스트 실패를 확인한다.
-- [ ] **Step 3:** `EndingNodePanel.tsx`에서 점수 배율 입력을 제거하고 아이콘/색상/설명 필드를 유지한다.
-- [ ] **Step 4:** `FlowNodeData` 타입에 `icon?: string`, `color?: string`, `endingContent?: string`를 추가한다.
-- [ ] **Step 5:** focused 테스트 통과 확인 후 commit.
+- [x] **Step 1:** `EndingNodePanel.test.tsx`에 “점수 배율 입력이 보이지 않는다” 테스트를 추가한다.
+- [x] **Step 2:** 테스트 실패를 확인한다.
+- [x] **Step 3:** `EndingNodePanel.tsx`에서 점수 배율 입력을 제거하고 아이콘/색상/설명 필드를 유지한다.
+- [x] **Step 4:** `FlowNodeData` 타입에 `icon?: string`, `color?: string`, `endingContent?: string`를 추가한다.
+- [x] **Step 5:** focused 테스트 통과 확인 후 commit.
 
 ```bash
 pnpm --dir apps/web exec vitest run src/features/editor/components/design/__tests__/EndingNodePanel.test.tsx
@@ -123,11 +123,11 @@ git commit -m "fix(editor): align ending node fields with phase 24"
 
 ### Task 4 — 페이즈 Flow 반응형/문구 정리
 
-- [ ] **Step 1:** `FlowCanvas.test.tsx` 또는 `FlowSubTab.test.tsx`에 모바일 세로 레이아웃 기준 class/문구 테스트를 추가한다.
-- [ ] **Step 2:** `FlowCanvas.tsx`의 본문을 `flex-col lg:flex-row`로 조정하고 상세 패널 폭을 모바일 `w-full`, 데스크톱 `lg:w-72`로 조정한다.
-- [ ] **Step 3:** `FlowSubTab.tsx` 상단에 제작자용 안내를 추가한다: “페이즈는 게임 진행 순서를 화살표로 연결합니다.”
-- [ ] **Step 4:** `NodeDetailPanel.tsx` 빈 상태/삭제 문구를 제작자 친화적으로 바꾼다.
-- [ ] **Step 5:** focused 테스트 통과 후 commit.
+- [x] **Step 1:** `FlowCanvas.test.tsx` 또는 `FlowSubTab.test.tsx`에 모바일 세로 레이아웃 기준 class/문구 테스트를 추가한다.
+- [x] **Step 2:** `FlowCanvas.tsx`의 본문을 `flex-col lg:flex-row`로 조정하고 상세 패널 폭을 모바일 `w-full`, 데스크톱 `lg:w-72`로 조정한다.
+- [x] **Step 3:** `FlowSubTab.tsx` 상단에 제작자용 안내를 추가한다: “페이즈는 게임 진행 순서를 화살표로 연결합니다.”
+- [x] **Step 4:** `NodeDetailPanel.tsx` 빈 상태/삭제 문구를 제작자 친화적으로 바꾼다.
+- [x] **Step 5:** focused 테스트 통과 후 commit.
 
 ```bash
 pnpm --dir apps/web exec vitest run \
@@ -145,10 +145,10 @@ git commit -m "refactor(editor): polish phase flow entity layout"
 
 ### Task 5 — DesignTab 연결
 
-- [ ] **Step 1:** 현재 `DesignTab`의 하위 탭 구조를 확인한다.
-- [ ] **Step 2:** 페이즈/결말 접근이 같은 디자인 영역에서 가능하도록 결말 탭을 추가한다. 기존 탭 이름은 비개발자 기준으로 유지한다.
-- [ ] **Step 3:** `DesignTab.test.tsx`에 결말 탭 진입 테스트를 추가한다.
-- [ ] **Step 4:** focused 테스트 통과 후 commit.
+- [x] **Step 1:** 현재 `DesignTab`의 하위 탭 구조를 확인한다.
+- [x] **Step 2:** 페이즈/결말 접근이 같은 디자인 영역에서 가능하도록 결말 탭을 추가한다. 기존 탭 이름은 비개발자 기준으로 유지한다.
+- [x] **Step 3:** `DesignTab.test.tsx`에 결말 탭 진입 테스트를 추가한다.
+- [x] **Step 4:** focused 테스트 통과 후 commit.
 
 ```bash
 pnpm --dir apps/web exec vitest run src/features/editor/components/design/__tests__/DesignTab.test.tsx src/features/editor/components/design/__tests__/EndingEntitySubTab.test.tsx
@@ -158,15 +158,15 @@ git commit -m "feat(editor): wire ending entity tab into design editor"
 
 ### Task 6 — E2E smoke
 
-- [ ] **Step 1:** `apps/web/e2e/editor-phase-ending.spec.ts` 작성.
-- [ ] **Step 2:** mock/stub 기반으로 에디터 디자인 탭 진입 → 페이즈 Flow 안내 표시 → 결말 탭 빈 상태 또는 결말 목록 표시를 검증한다.
-- [ ] **Step 3:** chromium focused E2E 실행.
+- [x] **Step 1:** `apps/web/e2e/editor-phase-ending.spec.ts` 작성.
+- [x] **Step 2:** mock/stub 기반으로 에디터 디자인 탭 진입 → 페이즈 Flow 안내 표시 → 결말 탭 빈 상태 또는 결말 목록 표시를 검증한다.
+- [x] **Step 3:** chromium focused E2E 실행.
 
 ```bash
 pnpm --dir apps/web exec playwright test e2e/editor-phase-ending.spec.ts --project=chromium
 ```
 
-- [ ] **Step 4:** Commit.
+- [x] **Step 4:** Commit.
 
 ```bash
 git add apps/web/e2e/editor-phase-ending.spec.ts
