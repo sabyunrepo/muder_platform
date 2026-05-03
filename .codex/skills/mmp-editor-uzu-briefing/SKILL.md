@@ -16,7 +16,7 @@ description: Use when designing, reviewing, or implementing MMP Phase 24 editor 
    - `apps/server/AGENTS.md` for backend work
    - active `docs/plans/**/checklist.md` when present
 2. Inspect Uzu references only enough for the current entity/workflow:
-   - `/Users/sabyun/goinfre/muder_platform/docs/uzu-studio-docs`
+   - `docs/uzu-studio-docs`
 3. Extract patterns, not a copy:
    - creator mental model
    - entity relation workflow

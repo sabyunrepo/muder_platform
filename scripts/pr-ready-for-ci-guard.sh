@@ -38,7 +38,17 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
+    -*)
+      echo "알 수 없는 옵션: $1" >&2
+      usage >&2
+      exit 64
+      ;;
     *)
+      if [[ -n "$pr_number" ]]; then
+        echo "PR_NUMBER는 하나만 지정할 수 있습니다." >&2
+        usage >&2
+        exit 64
+      fi
       pr_number="$1"
       shift
       ;;
@@ -56,20 +66,40 @@ owner="$(gh repo view --json owner --jq '.owner.login')"
 repo="$(gh repo view --json name --jq '.name')"
 
 # shellcheck disable=SC2016
-graphql_query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { isResolved } } } } }'
-threads_json="$(gh api graphql \
-  -F owner="$owner" \
-  -F repo="$repo" \
-  -F number="$pr_number" \
-  -f query="$graphql_query")"
-unresolved_threads="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
+graphql_query='query($owner:String!, $repo:String!, $number:Int!, $after:String) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { isResolved } pageInfo { hasNextPage endCursor } } } } }'
+unresolved_threads=0
+after_cursor=""
+while :; do
+  if [[ -z "$after_cursor" ]]; then
+    threads_json="$(gh api graphql \
+      -F owner="$owner" \
+      -F repo="$repo" \
+      -F number="$pr_number" \
+      -f query="$graphql_query")"
+  else
+    threads_json="$(gh api graphql \
+      -F owner="$owner" \
+      -F repo="$repo" \
+      -F number="$pr_number" \
+      -F after="$after_cursor" \
+      -f query="$graphql_query")"
+  fi
+
+  page_unresolved="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
+  unresolved_threads=$((unresolved_threads + page_unresolved))
+
+  has_next="$(printf '%s' "$threads_json" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage')"
+  [[ "$has_next" == "true" ]] || break
+  after_cursor="$(printf '%s' "$threads_json" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')"
+done
 
 if [[ "$unresolved_threads" != "0" ]]; then
-  echo "🚫 ready-for-ci 차단: unresolved review thread가 $unresolved_threads개 남아 있습니다." >&2
+  echo "🚫 ready-for-ci 차단: unresolved review thread가 ${unresolved_threads}개 남아 있습니다." >&2
   exit 2
 fi
 
-latest_state="$(gh pr view "$pr_number" --json reviews --jq '[.reviews[] | select(.author.login == "coderabbitai[bot]")] | last | if . then .state else "NONE" end')"
+# shellcheck disable=SC2016
+latest_state="$(gh pr view "$pr_number" --json reviews --jq '[.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last | if . then .state else "NONE" end')"
 if [[ "$latest_state" == "NONE" && "${ALLOW_NO_CODERABBIT:-}" != "1" ]]; then
   echo "🚫 ready-for-ci 차단: CodeRabbit 리뷰가 아직 없습니다." >&2
   echo "   필요 시 ALLOW_NO_CODERABBIT=1 로 예외 처리할 수 있지만, 기본 정책은 리뷰 후 CI입니다." >&2

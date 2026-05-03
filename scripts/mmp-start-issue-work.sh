@@ -67,6 +67,10 @@ if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then
   echo "🚫 이미 존재하는 branch입니다: $branch_name" >&2
   exit 3
 fi
+if git ls-remote --exit-code --heads origin "$branch_name" >/dev/null 2>&1; then
+  echo "🚫 origin에 이미 존재하는 branch입니다: $branch_name" >&2
+  exit 3
+fi
 if [[ -e "$worktree_path" ]]; then
   echo "🚫 이미 존재하는 worktree path입니다: $worktree_path" >&2
   exit 4

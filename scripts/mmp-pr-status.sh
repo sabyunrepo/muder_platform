@@ -52,16 +52,38 @@ review_decision="$(printf '%s' "$pr_json" | jq -r '.reviewDecision // "UNKNOWN"'
 labels="$(printf '%s' "$pr_json" | jq -r '[.labels[].name] | if length == 0 then "없음" else join(", ") end')"
 
 # shellcheck disable=SC2016
-graphql_query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { isResolved } } } } }'
-threads_json="$(gh api graphql \
-  -F owner="$owner" \
-  -F repo="$repo" \
-  -F number="$pr_number" \
-  -f query="$graphql_query")"
-unresolved_threads="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
-total_threads="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[]] | length')"
+graphql_query='query($owner:String!, $repo:String!, $number:Int!, $after:String) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { isResolved } pageInfo { hasNextPage endCursor } } } } }'
+unresolved_threads=0
+total_threads=0
+after_cursor=""
+while :; do
+  if [[ -z "$after_cursor" ]]; then
+    threads_json="$(gh api graphql \
+      -F owner="$owner" \
+      -F repo="$repo" \
+      -F number="$pr_number" \
+      -f query="$graphql_query")"
+  else
+    threads_json="$(gh api graphql \
+      -F owner="$owner" \
+      -F repo="$repo" \
+      -F number="$pr_number" \
+      -F after="$after_cursor" \
+      -f query="$graphql_query")"
+  fi
 
-latest_coderabbit="$(gh pr view "$pr_number" --json reviews --jq '[.reviews[] | select(.author.login == "coderabbitai[bot]")] | last | if . then (.state + " @ " + .submittedAt) else "없음" end')"
+  page_unresolved="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
+  page_total="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[]] | length')"
+  unresolved_threads=$((unresolved_threads + page_unresolved))
+  total_threads=$((total_threads + page_total))
+
+  has_next="$(printf '%s' "$threads_json" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage')"
+  [[ "$has_next" == "true" ]] || break
+  after_cursor="$(printf '%s' "$threads_json" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')"
+done
+
+# shellcheck disable=SC2016
+latest_coderabbit="$(gh pr view "$pr_number" --json reviews,comments --jq '([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login == "coderabbitai") or (.author.login == "coderabbitai[bot]") or (.body | contains("coderabbit.ai")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
 codecov_summary="$(gh pr view "$pr_number" --json comments --jq '[.comments[] | select((.author.login == "codecov-commenter") or (.body | contains("Codecov Report")))] | last | if . then (.body | split("\n") | .[0:6] | join("\n")) else "없음" end')"
 
 cat <<MSG
