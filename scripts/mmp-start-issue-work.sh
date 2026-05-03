@@ -28,7 +28,7 @@ require_cmd() {
 slugify() {
   printf '%s' "$1" \
     | tr '[:upper:]' '[:lower:]' \
-    | sed -E 's/[^a-z0-9가-힣]+/-/g; s/^-+//; s/-+$//' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
     | cut -c 1-64
 }
 

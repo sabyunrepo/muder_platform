@@ -55,11 +55,13 @@ fi
 owner="$(gh repo view --json owner --jq '.owner.login')"
 repo="$(gh repo view --json name --jq '.name')"
 
+# shellcheck disable=SC2016
+graphql_query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { isResolved } } } } }'
 threads_json="$(gh api graphql \
   -F owner="$owner" \
   -F repo="$repo" \
   -F number="$pr_number" \
-  -f query='query($owner:String!, $repo:String!, $number:Int!) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100) { nodes { isResolved } } } } }')"
+  -f query="$graphql_query")"
 unresolved_threads="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
 
 if [[ "$unresolved_threads" != "0" ]]; then
