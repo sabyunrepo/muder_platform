@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Plus, Search } from 'lucide-react';
 
 export interface EntityEditorShellProps<TItem> {
@@ -47,6 +47,14 @@ export function EntityEditorShell<TItem>({
   const selected = visibleItems.find((item) => getItemId(item) === selectedId) ?? visibleItems[0];
   const selectedItemId = selected ? getItemId(selected) : undefined;
   const actionLabel = createLabel ?? `${title} 추가`;
+
+  useEffect(() => {
+    if (!selectedId || items.length === 0) return;
+    const selectedExists = items.some((item) => getItemId(item) === selectedId);
+    if (!selectedExists) {
+      onSelect(getItemId(items[0]));
+    }
+  }, [getItemId, items, onSelect, selectedId]);
 
   if (items.length === 0) {
     return (

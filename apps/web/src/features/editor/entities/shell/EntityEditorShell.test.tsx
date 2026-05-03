@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { EntityEditorShell } from './EntityEditorShell';
 
 interface DemoEntity {
@@ -71,6 +71,27 @@ describe('EntityEditorShell', () => {
     expect(screen.getByRole('button', { name: '첫 단서 선택' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '비밀 편지 선택' }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByText('선택됨')).toBeDefined();
+  });
+
+  it('부모의 선택 ID가 목록에서 사라지면 첫 항목으로 선택을 보정한다', async () => {
+    const onSelect = vi.fn();
+    const { rerender } = renderShell({ onSelect });
+
+    rerender(
+      <EntityEditorShell
+        title="단서"
+        items={[entities[1]]}
+        selectedId="a"
+        onSelect={onSelect}
+        getItemId={(item) => item.id}
+        getItemTitle={(item) => item.name}
+        getItemDescription={(item) => item.description ?? ''}
+        getItemBadges={(item) => item.badges ?? []}
+        renderDetail={(item) => <section aria-label="상세 슬롯">{item.name} 상세</section>}
+      />,
+    );
+
+    await waitFor(() => expect(onSelect).toHaveBeenCalledWith('b'));
   });
 
   it('검색 결과가 없으면 이전 선택 상세를 숨긴다', () => {
