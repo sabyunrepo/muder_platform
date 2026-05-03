@@ -158,6 +158,11 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
 
         {/* Side panels */}
         <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
+          {!showSim && !selectedNode && (
+            <div className="p-4 text-sm leading-6 text-slate-400">
+              페이즈나 결말 노드를 선택하면 세부 설정을 편집할 수 있습니다.
+            </div>
+          )}
           {showSim && (
             <div className="border-b border-slate-800 p-3">
               <FlowSimulationPanel

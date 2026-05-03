@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "@playwright/test";
 import {
   BASE,
@@ -60,5 +61,11 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
     await expect(page.getByText("진실").first()).toBeVisible();
     await expect(page.getByLabel("결말 이름")).toHaveValue("진실");
     await expect(page.getByLabel("결말 본문")).toHaveValue("범인은 밝혀졌다.");
+
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
   });
 });

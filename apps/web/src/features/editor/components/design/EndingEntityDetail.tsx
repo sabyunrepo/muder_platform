@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ interface EndingEntityDetailProps {
 const SAVE_DEBOUNCE_MS = 1000;
 
 export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDetailProps) {
+  const fieldIdPrefix = useId();
   const data = node.data as FlowNodeData;
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
@@ -63,11 +65,11 @@ export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDeta
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[96px_1fr]">
-        <label className="text-sm font-medium text-slate-300" htmlFor={`ending-icon-${node.id}`}>
+        <label className="text-sm font-medium text-slate-300" htmlFor={`${fieldIdPrefix}-icon`}>
           아이콘
         </label>
         <input
-          id={`ending-icon-${node.id}`}
+          id={`${fieldIdPrefix}-icon`}
           type="text"
           value={data.icon ?? ""}
           onChange={(event) => handleChange({ icon: event.target.value })}
@@ -78,11 +80,11 @@ export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDeta
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[96px_1fr]">
-        <label className="text-sm font-medium text-slate-300" htmlFor={`ending-label-${node.id}`}>
+        <label className="text-sm font-medium text-slate-300" htmlFor={`${fieldIdPrefix}-label`}>
           결말 이름
         </label>
         <input
-          id={`ending-label-${node.id}`}
+          id={`${fieldIdPrefix}-label`}
           type="text"
           value={data.label ?? ""}
           onChange={(event) => handleChange({ label: event.target.value })}
@@ -93,11 +95,11 @@ export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDeta
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[96px_1fr]">
-        <label className="text-sm font-medium text-slate-300" htmlFor={`ending-color-${node.id}`}>
+        <label className="text-sm font-medium text-slate-300" htmlFor={`${fieldIdPrefix}-color`}>
           표시 색상
         </label>
         <input
-          id={`ending-color-${node.id}`}
+          id={`${fieldIdPrefix}-color`}
           type="text"
           value={data.color ?? ""}
           onChange={(event) => handleChange({ color: event.target.value })}
@@ -108,11 +110,11 @@ export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDeta
       </div>
 
       <div className="grid gap-3 sm:grid-cols-[96px_1fr]">
-        <label className="text-sm font-medium text-slate-300" htmlFor={`ending-description-${node.id}`}>
+        <label className="text-sm font-medium text-slate-300" htmlFor={`${fieldIdPrefix}-description`}>
           공개 설명
         </label>
         <textarea
-          id={`ending-description-${node.id}`}
+          id={`${fieldIdPrefix}-description`}
           value={data.description ?? ""}
           onChange={(event) => handleChange({ description: event.target.value })}
           onBlur={debouncer.flush}
@@ -123,11 +125,11 @@ export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDeta
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium text-slate-300" htmlFor={`ending-content-${node.id}`}>
+        <label className="text-sm font-medium text-slate-300" htmlFor={`${fieldIdPrefix}-content`}>
           결말 본문
         </label>
         <textarea
-          id={`ending-content-${node.id}`}
+          id={`${fieldIdPrefix}-content`}
           value={data.endingContent ?? ""}
           onChange={(event) => handleChange({ endingContent: event.target.value })}
           onBlur={debouncer.flush}
