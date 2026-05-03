@@ -208,6 +208,9 @@ func (e *PhaseEngine) SkipToPhase(ctx context.Context, phaseID string) error {
 	for i, p := range e.phases {
 		if string(p.ID) == phaseID {
 			oldID := e.phases[e.current].ID
+			if err := e.exitCurrentPhase(ctx); err != nil {
+				return err
+			}
 			e.current = i
 
 			e.auditEvent(ctx, "phase.skipped", map[string]any{
@@ -263,7 +266,7 @@ func (e *PhaseEngine) DispatchAction(ctx context.Context, action PhaseActionPayl
 		if !ok {
 			return fmt.Errorf("engine: module %q does not implement PhaseReactor", requiredModule)
 		}
-		return reactor.ReactTo(ctx, action)
+		return e.safeCallReactor(ctx, mod.Name(), reactor, action)
 	}
 
 	// Broadcast to all supporting reactors.

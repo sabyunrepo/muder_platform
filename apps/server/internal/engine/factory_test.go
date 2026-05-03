@@ -140,3 +140,11 @@ func TestParseGameConfig_AddsInformationDeliveryModuleForPhaseAction(t *testing.
 		t.Fatalf("implicit modules = %#v", cfg.Modules)
 	}
 }
+
+func TestParseGameConfig_InvalidPhaseActionConfigFailsEarly(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1","onEnter":"not-actions"}],"modules":[]}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected invalid phase action config error")
+	}
+}

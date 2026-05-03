@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 )
 
 func (e *PhaseEngine) enterCurrentPhase(ctx context.Context) error {
@@ -42,8 +43,8 @@ func (e *PhaseEngine) callPhaseEnterHooks(ctx context.Context, phase Phase) erro
 		if !ok {
 			continue
 		}
-		if err := hook.OnPhaseEnter(ctx, phase); err != nil {
-			return fmt.Errorf("engine: module %q phase enter hook failed: %w", mod.Name(), err)
+		if err := e.safeCallPhaseHook(ctx, mod, hook, phase, true); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -55,9 +56,39 @@ func (e *PhaseEngine) callPhaseExitHooks(ctx context.Context, phase Phase) error
 		if !ok {
 			continue
 		}
-		if err := hook.OnPhaseExit(ctx, phase); err != nil {
-			return fmt.Errorf("engine: module %q phase exit hook failed: %w", mod.Name(), err)
+		if err := e.safeCallPhaseHook(ctx, mod, hook, phase, false); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func (e *PhaseEngine) safeCallPhaseHook(ctx context.Context, mod Module, hook PhaseHookModule, phase Phase, enter bool) (err error) {
+	hookName := "phase exit"
+	if enter {
+		hookName = "phase enter"
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			stack := debug.Stack()
+			e.logger.Printf("engine: module %q panicked in %s hook: %v\n%s", mod.Name(), hookName, r, stack)
+			e.auditEvent(ctx, "module.panic", map[string]any{
+				"module": mod.Name(),
+				"hook":   hookName,
+				"phase":  phase,
+				"panic":  fmt.Sprintf("%v", r),
+			})
+			err = fmt.Errorf("engine: module %q panicked in %s hook: %v", mod.Name(), hookName, r)
+		}
+	}()
+	if enter {
+		if err := hook.OnPhaseEnter(ctx, phase); err != nil {
+			return fmt.Errorf("engine: module %q phase enter hook failed: %w", mod.Name(), err)
+		}
+		return nil
+	}
+	if err := hook.OnPhaseExit(ctx, phase); err != nil {
+		return fmt.Errorf("engine: module %q phase exit hook failed: %w", mod.Name(), err)
 	}
 	return nil
 }

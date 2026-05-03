@@ -129,6 +129,13 @@ func (m *Module) BuildState() (json.RawMessage, error) {
 }
 
 func (m *Module) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
+	targetCode := ""
+	if m.deps.PlayerInfoProvider != nil {
+		if info, ok := m.deps.PlayerInfoProvider.PlayerRuntimeInfo(context.Background(), playerID); ok {
+			targetCode = info.TargetCode
+		}
+	}
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -138,12 +145,9 @@ func (m *Module) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
 	mergeItems(items, m.allPlayerItems)
 	mergeSections(sections, m.playerSections[playerID])
 	mergeItems(items, m.playerItems[playerID])
-
-	if m.deps.PlayerInfoProvider != nil {
-		if info, ok := m.deps.PlayerInfoProvider.PlayerRuntimeInfo(context.Background(), playerID); ok {
-			mergeSections(sections, m.targetCodeSections[info.TargetCode])
-			mergeItems(items, m.targetCodeItems[info.TargetCode])
-		}
+	if targetCode != "" {
+		mergeSections(sections, m.targetCodeSections[targetCode])
+		mergeItems(items, m.targetCodeItems[targetCode])
 	}
 
 	return json.Marshal(moduleState{
@@ -180,8 +184,7 @@ func (m *Module) ReactTo(ctx context.Context, action engine.PhaseActionPayload) 
 	if err := json.Unmarshal(action.Params, &params); err != nil {
 		return fmt.Errorf("information_delivery: invalid params: %w", err)
 	}
-	m.applyDeliveries(ctx, params.Deliveries)
-	return nil
+	return m.applyDeliveries(ctx, params.Deliveries)
 }
 
 func (m *Module) SupportedActions() []engine.PhaseAction {
@@ -192,50 +195,76 @@ func (m *Module) Schema() json.RawMessage {
 	return json.RawMessage(`{"type":"object","properties":{},"additionalProperties":false}`)
 }
 
-func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfig) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for _, delivery := range deliveries {
-		delivery.ID = normalizeDeliveryID(delivery)
-		if _, applied := m.appliedDeliveryIDs[delivery.ID]; applied {
-			continue
-		}
-		sections := uniqueStrings(delivery.ReadingSectionIDs)
-		if len(sections) == 0 {
-			continue
-		}
-		item := deliveredItem{DeliveryID: delivery.ID, ReadingSectionIDs: sections}
-		switch delivery.Target.Type {
-		case targetAllPlayers:
-			mergeStringIDs(m.allPlayerSections, sections)
-			m.allPlayerItems[item.DeliveryID] = item
-		case targetCharacter:
-			if delivery.Target.CharacterID == "" {
-				continue
-			}
-			m.applyCharacterDelivery(ctx, delivery.Target.CharacterID, item)
-		default:
-			continue
-		}
-		m.appliedDeliveryIDs[delivery.ID] = struct{}{}
-	}
+type preparedDelivery struct {
+	delivery  deliveryConfig
+	item      deliveredItem
+	playerID  uuid.UUID
+	hasPlayer bool
 }
 
-func (m *Module) applyCharacterDelivery(ctx context.Context, characterID string, item deliveredItem) {
-	if m.deps.PlayerInfoProvider != nil {
-		if playerID, ok := m.deps.PlayerInfoProvider.ResolvePlayerID(ctx, characterID); ok {
-			if m.playerSections[playerID] == nil {
-				m.playerSections[playerID] = map[string]struct{}{}
-			}
-			if m.playerItems[playerID] == nil {
-				m.playerItems[playerID] = map[string]deliveredItem{}
-			}
-			mergeStringIDs(m.playerSections[playerID], item.ReadingSectionIDs)
-			m.playerItems[playerID][item.DeliveryID] = item
-			return
+func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfig) error {
+	prepared := make([]preparedDelivery, 0, len(deliveries))
+	for _, delivery := range deliveries {
+		delivery.ID = normalizeDeliveryID(delivery)
+		sections := uniqueStrings(delivery.ReadingSectionIDs)
+		if len(sections) == 0 {
+			return fmt.Errorf("information_delivery: delivery %q has empty reading_section_ids", delivery.ID)
 		}
+		item := deliveredItem{DeliveryID: delivery.ID, ReadingSectionIDs: sections}
+		next := preparedDelivery{delivery: delivery, item: item}
+		switch delivery.Target.Type {
+		case targetAllPlayers:
+			// valid
+		case targetCharacter:
+			if delivery.Target.CharacterID == "" {
+				return fmt.Errorf("information_delivery: delivery %q missing character_id", delivery.ID)
+			}
+			if m.deps.PlayerInfoProvider != nil {
+				if playerID, ok := m.deps.PlayerInfoProvider.ResolvePlayerID(ctx, delivery.Target.CharacterID); ok {
+					next.playerID = playerID
+					next.hasPlayer = true
+				}
+			}
+		default:
+			return fmt.Errorf("information_delivery: delivery %q has unsupported target type %q", delivery.ID, delivery.Target.Type)
+		}
+		prepared = append(prepared, next)
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, next := range prepared {
+		if _, applied := m.appliedDeliveryIDs[next.delivery.ID]; applied {
+			continue
+		}
+		switch next.delivery.Target.Type {
+		case targetAllPlayers:
+			mergeStringIDs(m.allPlayerSections, next.item.ReadingSectionIDs)
+			m.allPlayerItems[next.item.DeliveryID] = next.item
+		case targetCharacter:
+			if next.hasPlayer {
+				m.applyPlayerDelivery(next.playerID, next.item)
+			} else {
+				m.applyTargetCodeDelivery(next.delivery.Target.CharacterID, next.item)
+			}
+		}
+		m.appliedDeliveryIDs[next.delivery.ID] = struct{}{}
+	}
+	return nil
+}
+
+func (m *Module) applyPlayerDelivery(playerID uuid.UUID, item deliveredItem) {
+	if m.playerSections[playerID] == nil {
+		m.playerSections[playerID] = map[string]struct{}{}
+	}
+	if m.playerItems[playerID] == nil {
+		m.playerItems[playerID] = map[string]deliveredItem{}
+	}
+	mergeStringIDs(m.playerSections[playerID], item.ReadingSectionIDs)
+	m.playerItems[playerID][item.DeliveryID] = item
+}
+
+func (m *Module) applyTargetCodeDelivery(characterID string, item deliveredItem) {
 	if m.targetCodeSections[characterID] == nil {
 		m.targetCodeSections[characterID] = map[string]struct{}{}
 	}

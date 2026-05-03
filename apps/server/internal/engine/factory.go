@@ -60,7 +60,9 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 		return nil, err
 	}
 	cfg.Modules = modules
-	ensureImplicitPhaseActionModules(&cfg)
+	if err := ensureImplicitPhaseActionModules(&cfg); err != nil {
+		return nil, err
+	}
 	if len(cfg.Phases) == 0 {
 		return nil, fmt.Errorf("engine: configJson has no phases")
 	}
@@ -144,36 +146,52 @@ func BuildModules(
 	return modules, configs, nil
 }
 
-func ensureImplicitPhaseActionModules(cfg *GameConfig) {
+func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 	if cfg == nil {
-		return
+		return nil
 	}
-	if !phasesUseAction(cfg.Phases, ActionDeliverInformation) || hasModuleConfig(cfg.Modules, "information_delivery") {
-		return
+	usesAction, err := phasesUseAction(cfg.Phases, ActionDeliverInformation)
+	if err != nil {
+		return err
+	}
+	if !usesAction || hasModuleConfig(cfg.Modules, "information_delivery") {
+		return nil
 	}
 	cfg.Modules = append(cfg.Modules, ModuleConfig{Name: "information_delivery"})
+	return nil
 }
 
-func phasesUseAction(phases []PhaseDefinition, action PhaseAction) bool {
+func phasesUseAction(phases []PhaseDefinition, action PhaseAction) (bool, error) {
 	for _, phase := range phases {
-		if rawUsesAction(phase.OnEnter, action) || rawUsesAction(phase.OnExit, action) {
-			return true
+		onEnter, err := rawUsesAction(phase.OnEnter, action)
+		if err != nil {
+			return false, err
+		}
+		onExit, err := rawUsesAction(phase.OnExit, action)
+		if err != nil {
+			return false, err
+		}
+		if onEnter || onExit {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
-func rawUsesAction(raw json.RawMessage, action PhaseAction) bool {
+func rawUsesAction(raw json.RawMessage, action PhaseAction) (bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false, nil
+	}
 	actions, err := parseConfiguredPhaseActions(raw)
 	if err != nil {
-		return false
+		return false, err
 	}
 	for _, candidate := range actions {
 		if candidate.Action == action {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
 func hasModuleConfig(modules []ModuleConfig, name string) bool {

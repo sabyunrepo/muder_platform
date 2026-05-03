@@ -643,3 +643,73 @@ func TestPhaseEngine_LegacyJSONLogicOnEnterIsNoop(t *testing.T) {
 	}
 	defer pe.Stop(context.Background())
 }
+
+type panicHookModule struct {
+	stubCoreModule
+	panicOnEnter bool
+	panicOnExit  bool
+}
+
+func (p *panicHookModule) OnPhaseEnter(_ context.Context, _ Phase) error {
+	if p.panicOnEnter {
+		panic("enter hook boom")
+	}
+	return nil
+}
+
+func (p *panicHookModule) OnPhaseExit(_ context.Context, _ Phase) error {
+	if p.panicOnExit {
+		panic("exit hook boom")
+	}
+	return nil
+}
+
+func TestPhaseEngine_RequiredModuleDispatchUsesPanicIsolation(t *testing.T) {
+	pm := &panicModule{stubCoreModule: stubCoreModule{name: "information_delivery"}}
+	pe, audit := newTestPhaseEngine(t, []Module{pm}, testPhaseDefinitions)
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	defer pe.Stop(ctx)
+
+	err := pe.DispatchAction(ctx, PhaseActionPayload{Action: ActionDeliverInformation})
+	if err == nil {
+		t.Fatal("expected panic-isolated error")
+	}
+	if got := len(audit.eventsOfType("module.panic")); got != 1 {
+		t.Fatalf("module.panic audits = %d", got)
+	}
+}
+
+func TestPhaseEngine_PhaseHookPanicIsolation(t *testing.T) {
+	pm := &panicHookModule{stubCoreModule: stubCoreModule{name: "hook_panic"}, panicOnEnter: true}
+	pe, audit := newTestPhaseEngine(t, []Module{pm}, testPhaseDefinitions)
+	err := pe.Start(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected hook panic to become error")
+	}
+	if got := len(audit.eventsOfType("module.panic")); got != 1 {
+		t.Fatalf("module.panic audits = %d", got)
+	}
+}
+
+func TestPhaseEngine_SkipToPhaseRunsExitHooks(t *testing.T) {
+	hook := &hookRecordingModule{stubCoreModule: stubCoreModule{name: "hook"}}
+	pe, _ := newTestPhaseEngine(t, []Module{hook}, testPhaseDefinitions)
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	defer pe.Stop(ctx)
+
+	if err := pe.SkipToPhase(ctx, "vote"); err != nil {
+		t.Fatal(err)
+	}
+	if len(hook.exited) != 1 || hook.exited[0] != "intro" {
+		t.Fatalf("skip should exit old phase, exited=%#v", hook.exited)
+	}
+	if len(hook.entered) != 2 || hook.entered[1] != "vote" {
+		t.Fatalf("skip should enter target phase, entered=%#v", hook.entered)
+	}
+}

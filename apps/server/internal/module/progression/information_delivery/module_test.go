@@ -225,3 +225,32 @@ func mustBuildState(t *testing.T, m *Module) json.RawMessage {
 	}
 	return state
 }
+
+func TestModule_InvalidDeliverySemanticsReturnError(t *testing.T) {
+	m := newTestModule(t, nil)
+	tests := []struct {
+		name   string
+		params json.RawMessage
+	}{
+		{
+			name:   "empty sections",
+			params: json.RawMessage(`{"deliveries":[{"id":"bad","target":{"type":"all_players"},"reading_section_ids":[]}]}`),
+		},
+		{
+			name:   "missing character",
+			params: json.RawMessage(`{"deliveries":[{"id":"bad","target":{"type":"character"},"reading_section_ids":["rs-1"]}]}`),
+		},
+		{
+			name:   "unsupported target",
+			params: json.RawMessage(`{"deliveries":[{"id":"bad","target":{"type":"room"},"reading_section_ids":["rs-1"]}]}`),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionDeliverInformation, Params: tt.params})
+			if err == nil {
+				t.Fatal("expected semantic validation error")
+			}
+		})
+	}
+}
