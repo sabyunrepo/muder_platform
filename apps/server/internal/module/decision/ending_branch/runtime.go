@@ -162,6 +162,9 @@ func respondentAllowed(ctx context.Context, deps engine.ModuleDeps, question Que
 	case nil:
 		return true
 	case string:
+		if respondents == "some" && deps.Logger != nil {
+			deps.Logger.Printf("ending_branch: unsupported respondents value %q", respondents)
+		}
 		return respondents == "" || respondents == "all"
 	case []any:
 		return respondentListAllows(ctx, deps, respondents, playerID)

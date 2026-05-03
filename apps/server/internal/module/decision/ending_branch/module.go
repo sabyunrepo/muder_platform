@@ -138,6 +138,10 @@ func (m *Module) ReactTo(_ context.Context, action engine.PhaseActionPayload) er
 		m.mu.Unlock()
 		return err
 	}
+	if evaluationResultsEqual(m.result, result) {
+		m.mu.Unlock()
+		return nil
+	}
 	m.result = result
 	m.mu.Unlock()
 
@@ -151,6 +155,31 @@ func (m *Module) ReactTo(_ context.Context, action engine.PhaseActionPayload) er
 		})
 	}
 	return nil
+}
+
+func evaluationResultsEqual(a, b *evaluationResult) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	if a.SelectedEnding != b.SelectedEnding || !matchedPriorityEqual(a.MatchedPriority, b.MatchedPriority) {
+		return false
+	}
+	if len(a.Scores) != len(b.Scores) {
+		return false
+	}
+	for key, aScore := range a.Scores {
+		if b.Scores[key] != aScore {
+			return false
+		}
+	}
+	return true
+}
+
+func matchedPriorityEqual(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 // SupportedActions lists the phase actions this module handles.

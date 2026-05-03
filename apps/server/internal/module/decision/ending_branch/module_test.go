@@ -187,6 +187,34 @@ func TestModule_ReactTo_EvaluatesPriorityMatrixAndPublishesEvent(t *testing.T) {
 	assert.Equal(t, "진실", payload["selectedEnding"])
 }
 
+func TestModule_ReactTo_EvaluateEndingIsIdempotent(t *testing.T) {
+	bus := engine.NewEventBus(nil)
+	var events []engine.Event
+	bus.Subscribe("ending.evaluated", func(event engine.Event) { events = append(events, event) })
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [
+			{"priority": 1, "conditions": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{EventBus: bus}, cfg))
+	player := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), player, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+
+	action := engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}
+	require.NoError(t, m.ReactTo(context.Background(), action))
+	require.NoError(t, m.ReactTo(context.Background(), action))
+
+	require.Len(t, events, 1, "re-entering the same ending evaluation must not publish duplicate events")
+	payload := events[0].Payload.(map[string]any)
+	assert.Equal(t, "진실", payload["selectedEnding"])
+	assert.Equal(t, 1, *m.result.MatchedPriority)
+}
+
 func TestModule_HandleMessage_RejectsInvalidChoice(t *testing.T) {
 	m := NewModule()
 	cfg := json.RawMessage(`{
@@ -351,6 +379,26 @@ func TestModule_ApplyConfig_RejectsInvalidSemanticConfig(t *testing.T) {
 	err := m.ApplyConfig(context.Background(), json.RawMessage(`{"questions":[{"id":"q1","text":"?","type":"unknown","choices":["A"],"impact":"branch"}]}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid type")
+}
+
+func TestModule_ApplyConfig_RejectsUnsupportedRespondentsSome(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch","respondents":"some"}],
+		"matrix":[]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `respondents value "some" is not supported`)
+}
+
+func TestModule_ApplyConfig_RejectsInvalidRespondentList(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch","respondents":[""]}],
+		"matrix":[]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "respondents must contain non-empty strings")
 }
 
 func TestModule_ApplyConfig_RejectsInvalidMatrixCondition(t *testing.T) {

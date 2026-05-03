@@ -26,6 +26,9 @@ func validateConfig(cfg Config) error {
 		if len(question.Choices) == 0 {
 			return fmt.Errorf("question %q requires at least one choice", question.ID)
 		}
+		if err := validateRespondents(question.ID, question.Respondents); err != nil {
+			return err
+		}
 		if question.Impact == "score" {
 			for _, choice := range question.Choices {
 				if _, ok := question.ScoreMap[choice]; !ok {
@@ -55,4 +58,37 @@ func validateConfig(cfg Config) error {
 		}
 	}
 	return nil
+}
+
+func validateRespondents(questionID string, respondents any) error {
+	switch value := respondents.(type) {
+	case nil:
+		return nil
+	case string:
+		switch value {
+		case "", "all":
+			return nil
+		case "some":
+			return fmt.Errorf("question %q respondents value %q is not supported; use explicit player or target codes", questionID, value)
+		default:
+			return fmt.Errorf("question %q has invalid respondents value %q", questionID, value)
+		}
+	case []any:
+		for _, item := range value {
+			candidate, ok := item.(string)
+			if !ok || candidate == "" {
+				return fmt.Errorf("question %q respondents must contain non-empty strings", questionID)
+			}
+		}
+		return nil
+	case []string:
+		for _, candidate := range value {
+			if candidate == "" {
+				return fmt.Errorf("question %q respondents must contain non-empty strings", questionID)
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("question %q has unsupported respondents type %T", questionID, respondents)
+	}
 }

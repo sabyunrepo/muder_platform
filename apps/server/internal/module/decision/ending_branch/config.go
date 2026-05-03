@@ -7,7 +7,7 @@ type Question struct {
 	Text        string         `json:"text"`
 	Type        string         `json:"type"` // "single" | "multi"
 	Choices     []string       `json:"choices"`
-	Respondents any            `json:"respondents,omitempty"` // []string | "all" | "some" — runtime validate
+	Respondents any            `json:"respondents,omitempty"` // []string | "all" — validated at config apply
 	Impact      string         `json:"impact"`                // "branch" | "score"
 	ScoreMap    map[string]int `json:"scoreMap,omitempty"`
 }
