@@ -9,6 +9,10 @@ import {
   readCharacterStartingClueMap,
   writeCharacterStartingClueMap,
 } from "@/features/editor/utils/configShape";
+import {
+  buildCharacterRoleUpdatePayload,
+  getCharacterRoleBadge,
+} from "@/features/editor/entities/character/characterEditorAdapter";
 
 interface CharacterAssignPanelProps {
   themeId: string;
@@ -106,14 +110,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
       updateCharacter.mutate({
         characterId: selected.id,
-        body: {
-          name: selected.name,
-          description: selected.description ?? undefined,
-          image_url: selected.image_url ?? undefined,
-          is_culprit: role === "culprit",
-          mystery_role: role,
-          sort_order: selected.sort_order,
-        },
+        body: buildCharacterRoleUpdatePayload(selected, role),
       });
     },
     [characters, updateCharacter],
@@ -160,7 +157,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
         getItemId={(char) => char.id}
         getItemTitle={(char) => char.name}
         getItemDescription={(char) => char.description ?? ''}
-        getItemBadges={(char) => [formatMysteryRoleBadge(char.mystery_role, char.is_culprit)]}
+        getItemBadges={(char) => [getCharacterRoleBadge(char)]}
         renderDetail={(char) => (
           <CharacterDetailPanel
             themeId={themeId}
@@ -179,12 +176,4 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       />
     </div>
   );
-}
-
-
-function formatMysteryRoleBadge(role: MysteryRole | undefined, isCulprit: boolean | undefined) {
-  if (role === "culprit" || (!role && isCulprit)) return "범인";
-  if (role === "accomplice") return "공범";
-  if (role === "detective") return "탐정";
-  return "용의자";
 }

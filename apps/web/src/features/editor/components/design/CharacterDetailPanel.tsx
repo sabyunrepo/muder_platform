@@ -4,6 +4,11 @@ import type { Mission } from './MissionEditor';
 import { MissionEditor } from './MissionEditor';
 import { StartingClueAssigner } from './StartingClueAssigner';
 import { CharacterRoleSheetSection } from './CharacterRoleSheetSection';
+import {
+  characterRoleOptions,
+  getCharacterRoleOption,
+  normalizeCharacterEditorRole,
+} from '@/features/editor/entities/character/characterEditorAdapter';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,17 +45,6 @@ interface CharacterDetailPanelProps {
   onMysteryRoleChange?: (role: MysteryRole) => void;
 }
 
-const mysteryRoleOptions: Array<{ value: MysteryRole; label: string; description: string }> = [
-  { value: 'suspect', label: '용의자', description: '일반 투표 후보' },
-  { value: 'culprit', label: '범인', description: '정답 캐릭터' },
-  { value: 'accomplice', label: '공범', description: '범인을 돕는 캐릭터' },
-  { value: 'detective', label: '탐정', description: '투표 후보 포함 여부를 별도 설정' },
-];
-
-function getMysteryRoleLabel(role: MysteryRole) {
-  return mysteryRoleOptions.find((option) => option.value === role)?.label ?? '용의자';
-}
-
 // ---------------------------------------------------------------------------
 // CharacterDetailPanel
 // ---------------------------------------------------------------------------
@@ -76,8 +70,7 @@ export function CharacterDetailPanel({
     );
   }
 
-  const selectedRole: MysteryRole = selectedChar.mystery_role
-    ?? (selectedChar.is_culprit ? 'culprit' : 'suspect');
+  const selectedRole: MysteryRole = normalizeCharacterEditorRole(selectedChar);
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -92,7 +85,7 @@ export function CharacterDetailPanel({
           {
             id: 'base',
             title: '기본 정보',
-            subtitle: `${getMysteryRoleLabel(selectedRole)} · 공개 소개`,
+            subtitle: `${getCharacterRoleOption(selectedRole).label} · 공개 소개`,
             defaultOpen: true,
             forceOpen: true,
             children: (
@@ -108,7 +101,7 @@ export function CharacterDetailPanel({
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">역할</p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      {mysteryRoleOptions.map((option) => {
+                      {characterRoleOptions.map((option) => {
                         const active = selectedRole === option.value;
                         return (
                           <button
