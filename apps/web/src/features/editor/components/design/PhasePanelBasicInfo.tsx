@@ -11,6 +11,7 @@ const PHASE_TYPES = [
   { value: "investigation", label: "수사" },
   { value: "discussion", label: "토론" },
   { value: "voting", label: "투표" },
+  { value: "story_progression", label: "스토리 진행" },
   { value: "free", label: "자유" },
   { value: "intermission", label: "인터미션" },
 ];

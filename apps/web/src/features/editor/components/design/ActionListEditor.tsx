@@ -23,6 +23,7 @@ interface ActionListEditorProps {
   label: string;
   actions: PhaseAction[];
   onChange: (actions: PhaseAction[]) => void;
+  hiddenTypes?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +34,11 @@ export function ActionListEditor({
   label,
   actions,
   onChange,
+  hiddenTypes = [],
 }: ActionListEditorProps) {
+  const visibleActions = actions
+    .map((action, index) => ({ action, index }))
+    .filter(({ action }) => !hiddenTypes.includes(action.type));
   const handleAdd = () => {
     onChange([...actions, { id: crypto.randomUUID(), type: "broadcast" }]);
   };
@@ -63,11 +68,11 @@ export function ActionListEditor({
         </button>
       </div>
 
-      {actions.length === 0 && (
+      {visibleActions.length === 0 && (
         <p className="text-[10px] text-slate-600">액션 없음</p>
       )}
 
-      {actions.map((action, idx) => (
+      {visibleActions.map(({ action, index: idx }) => (
         <div
           key={action.id ?? idx}
           className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-1.5"

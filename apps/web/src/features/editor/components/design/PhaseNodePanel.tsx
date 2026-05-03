@@ -10,6 +10,8 @@ import type {
 import { flowKeys } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
 import { ActionListEditor } from "./ActionListEditor";
+import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
+import { DELIVER_INFORMATION_ACTION } from "./phaseEditorAdapter";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { PhasePanelTimerSettings } from "./PhasePanelTimerSettings";
 import { PhasePanelAdvanceToggle } from "./PhasePanelAdvanceToggle";
@@ -83,10 +85,20 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
 
       <div className="border-t border-slate-800" />
 
+      <InformationDeliveryPanel
+        key={node.id}
+        themeId={themeId}
+        phaseData={data}
+        onChange={handleChange}
+      />
+
+      <div className="border-t border-slate-800" />
+
       <ActionListEditor
         label="진입 액션 (onEnter)"
         actions={(data.onEnter as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onEnter: actions })}
+        hiddenTypes={[DELIVER_INFORMATION_ACTION, "deliver_information"]}
       />
       <ActionListEditor
         label="퇴장 액션 (onExit)"
