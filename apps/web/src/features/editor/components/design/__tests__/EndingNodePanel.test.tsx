@@ -79,6 +79,29 @@ afterEach(() => {
 });
 
 describe("EndingNodePanel debounce + onBlur flush", () => {
+
+  it("Phase 24 정책에 따라 점수 배율 입력을 표시하지 않는다", () => {
+    renderWithClient(
+      <EndingNodePanel node={makeNode({ score_multiplier: 2 })} themeId="t1" onUpdate={vi.fn()} />,
+    );
+
+    expect(screen.queryByText("점수 배율")).toBeNull();
+  });
+
+  it("아이콘과 표시 색상을 저장할 수 있다", () => {
+    renderWithClient(
+      <EndingNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("예: 🎭"), { target: { value: "💚" } });
+    fireEvent.blur(screen.getByPlaceholderText("예: 🎭"));
+
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    const [arg] = mutateMock.mock.calls[0] as [
+      { nodeId: string; body: { data: { icon: string } } },
+    ];
+    expect(arg.body.data.icon).toBe("💚");
+  });
   it("debounce 500ms 후에 mutate가 1회 호출된다", async () => {
     renderWithClient(
       <EndingNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,

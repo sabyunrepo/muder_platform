@@ -91,23 +91,28 @@ export function EndingNodePanel({
         />
       </div>
 
-      {/* Score multiplier */}
+      {/* Icon */}
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-slate-400">점수 배율</label>
+        <label className="text-[11px] text-slate-400">아이콘</label>
         <input
-          type="number"
-          min={0}
-          step={0.1}
-          value={data.score_multiplier ?? ""}
-          onChange={(e) =>
-            handleChange({
-              score_multiplier: e.target.value
-                ? Number(e.target.value)
-                : undefined,
-            })
-          }
+          type="text"
+          value={data.icon ?? ""}
+          onChange={(e) => handleChange({ icon: e.target.value })}
           onBlur={flush}
-          placeholder="1.0"
+          placeholder="예: 🎭"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+        />
+      </div>
+
+      {/* Color */}
+      <div className="flex flex-col gap-1">
+        <label className="text-[11px] text-slate-400">표시 색상</label>
+        <input
+          type="text"
+          value={data.color ?? ""}
+          onChange={(e) => handleChange({ color: e.target.value })}
+          onBlur={flush}
+          placeholder="예: amber, emerald, rose"
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         />
       </div>

@@ -16,6 +16,9 @@ export interface FlowNodeData {
   duration?: number;
   rounds?: number;
   description?: string;
+  icon?: string;
+  color?: string;
+  endingContent?: string;
   score_multiplier?: number;
   default_edge_id?: string;
   autoAdvance?: boolean;
