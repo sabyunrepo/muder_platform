@@ -78,7 +78,7 @@ describe('ClueEntityWorkspace', () => {
 
     expect(screen.getByText('단서 상세')).toBeDefined();
     expect(screen.getByText('다른 플레이어에게서 단서 가져오기')).toBeDefined();
-    expect(screen.getByText('사용하면 내 단서함에서 사라짐')).toBeDefined();
+    expect(screen.getAllByText('사용하면 내 단서함에서 사라짐').length).toBeGreaterThan(0);
     expect(screen.getByText('서재의 발견 단서')).toBeDefined();
     expect(screen.getByText('탐정의 시작 단서')).toBeDefined();
   });

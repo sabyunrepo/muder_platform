@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   normalizeConfigForSave,
+  readClueItemEffect,
+  readClueItemEffects,
   readCharacterStartingClueMap,
   readCluePlacement,
   readEnabledModuleIds,
   readLocationClueIds,
   readModuleConfig,
   writeCharacterStartingClueMap,
+  writeClueItemEffect,
   writeCluePlacement,
   writeLocationClueIds,
   writeModuleConfig,
@@ -145,5 +148,110 @@ describe('configShape', () => {
     };
 
     expect(readCharacterStartingClueMap(config)).toEqual({});
+  });
+
+  it('reads valid clue runtime effects from the clue interaction module only', () => {
+    const config = {
+      itemEffects: {
+        'root-decoy': { effect: 'reveal', revealText: '잘못된 위치' },
+      },
+      modules: {
+        timer: {
+          enabled: true,
+          config: {
+            itemEffects: {
+              'timer-decoy': { effect: 'reveal', revealText: '다른 모듈' },
+            },
+          },
+        },
+        clue_interaction: {
+          enabled: true,
+          config: {
+            itemEffects: {
+              'clue-1': {
+                effect: 'reveal',
+                target: 'self',
+                revealText: '숫자 0427이 보입니다.',
+                consume: true,
+              },
+              'clue-2': { effect: 'unknown', revealText: '무시' },
+            },
+          },
+        },
+      },
+    };
+
+    const effects = readClueItemEffects(config);
+    expect(effects).toEqual({
+      'clue-1': {
+        effect: 'reveal',
+        target: 'self',
+        revealText: '숫자 0427이 보입니다.',
+        consume: true,
+      },
+    });
+    expect(effects).not.toHaveProperty('root-decoy');
+    expect(effects).not.toHaveProperty('timer-decoy');
+    expect(readClueItemEffect(config, 'root-decoy')).toBeNull();
+    expect(readClueItemEffect(config, 'timer-decoy')).toBeNull();
+    expect(readClueItemEffect(config, 'clue-2')).toBeNull();
+  });
+
+  it('writes and removes clue runtime effects while preserving module settings', () => {
+    const base = {
+      modules: {
+        clue_interaction: {
+          enabled: true,
+          config: {
+            cooldownSec: 5,
+            itemEffects: {
+              'future-clue': { effect: 'future_effect', custom: true },
+              'clue-1': { effect: 'reveal', legacyNote: 'preserve me', grantClueIds: ['old'] },
+            },
+          },
+        },
+      },
+    };
+
+    const withEffect = writeClueItemEffect(base, 'clue-1', {
+      effect: 'grant_clue',
+      target: 'self',
+      grantClueIds: ['clue-2', 'clue-3'],
+      consume: true,
+    });
+
+    expect(readClueItemEffect(withEffect, 'clue-1')).toEqual({
+      effect: 'grant_clue',
+      target: 'self',
+      grantClueIds: ['clue-2', 'clue-3'],
+      consume: true,
+      legacyNote: 'preserve me',
+    });
+    expect(readModuleConfig(withEffect, 'clue_interaction')).toMatchObject({
+      cooldownSec: 5,
+      itemEffects: {
+        'future-clue': { effect: 'future_effect', custom: true },
+      },
+    });
+
+    const removed = writeClueItemEffect(withEffect, 'clue-1', null);
+    expect(readClueItemEffect(removed, 'clue-1')).toBeNull();
+    expect(readModuleConfig(removed, 'clue_interaction')).toEqual({
+      cooldownSec: 5,
+      itemEffects: {
+        'future-clue': { effect: 'future_effect', custom: true },
+      },
+    });
+  });
+
+  it('does not create clue interaction config when deleting a missing runtime effect', () => {
+    const base = { modules: { timer: { enabled: true, config: { seconds: 30 } } } };
+
+    const next = writeClueItemEffect(base, 'missing-clue', null);
+
+    expect(next).toBe(base);
+    expect(readClueItemEffect(next, 'missing-clue')).toBeNull();
+    expect(readModuleConfig(next, 'clue_interaction')).toEqual({});
+    expect(readModuleConfig(next, 'timer')).toEqual({ seconds: 30 });
   });
 });

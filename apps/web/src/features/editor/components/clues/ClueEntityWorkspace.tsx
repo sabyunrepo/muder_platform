@@ -5,6 +5,7 @@ import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { buildClueUsageMap, getClueBacklinks, type EntityReference } from '@/features/editor/utils/entityReferences';
 import { buildClueBadges, toClueEditorViewModel } from '@/features/editor/entities/clue/clueEntityAdapter';
+import { ClueRuntimeEffectCard } from './ClueRuntimeEffectCard';
 
 interface ClueEntityWorkspaceProps {
   clues: ClueResponse[];
@@ -14,6 +15,8 @@ interface ClueEntityWorkspaceProps {
   onCreate: () => void;
   onEdit: (clue: ClueResponse) => void;
   onDelete: (clue: ClueResponse) => void;
+  onConfigChange?: (configJson: EditorConfig) => void;
+  isConfigSaving?: boolean;
 }
 
 export function ClueEntityWorkspace({
@@ -24,6 +27,8 @@ export function ClueEntityWorkspace({
   onCreate,
   onEdit,
   onDelete,
+  onConfigChange,
+  isConfigSaving,
 }: ClueEntityWorkspaceProps) {
   const [selectedId, setSelectedId] = useState(clues[0]?.id ?? '');
   const usageMap = useMemo(
@@ -42,7 +47,18 @@ export function ClueEntityWorkspace({
       getItemTitle={(clue) => clue.name}
       getItemDescription={(clue) => clue.description || '설명 없음'}
       getItemBadges={(clue) => buildClueBadges(clue, usageMap[clue.id]?.references.length ?? 0)}
-      renderDetail={(clue) => <ClueDetailCard clue={clue} onEdit={onEdit} onDelete={onDelete} />}
+      renderDetail={(clue) => (
+        <div className="space-y-4">
+          <ClueDetailCard clue={clue} onEdit={onEdit} onDelete={onDelete} />
+          <ClueRuntimeEffectCard
+            clue={clue}
+            clues={clues}
+            configJson={configJson}
+            onConfigChange={onConfigChange}
+            isSaving={isConfigSaving}
+          />
+        </div>
+      )}
       renderInspector={(clue) => <ClueUsageCard references={getClueBacklinks(usageMap, clue.id)} />}
     />
   );

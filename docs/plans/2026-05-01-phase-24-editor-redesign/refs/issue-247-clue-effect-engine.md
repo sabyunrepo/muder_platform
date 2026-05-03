@@ -72,6 +72,29 @@ Uzu를 그대로 복제하지 않고, MMP는 실시간 멀티플레이와 player
 - 복합 조건 UI 전체: Phase/condition 엔진과 결합해야 하므로 후속 이슈로 둔다.
 - 프론트 제작자 UI 전면 개편: 이번 PR은 Engine 계약과 테스트가 우선이며, UI는 Adapter가 이 계약을 바라보도록 후속 연결한다.
 
+## 후속 UI 연결 PR
+
+Branch: `feat/issue-247-clue-effect-ui`
+
+백엔드 Engine 계약을 제작자가 안전하게 편집할 수 있도록 프론트 Adapter/UI를 연결한다.
+
+### 범위
+
+- `clue_interaction.itemEffects`를 직접 JSON으로 보여주지 않고, 단서 상세의 “게임 중 사용 효과” 카드에서 편집한다.
+- MVP 효과는 Engine 구현이 완료된 `정보 공개`와 `새 단서 지급`만 제작자 UI에 노출한다.
+- “새 단서 지급”은 단서가 많아도 고를 수 있도록 검색 + 다중 선택 UI를 제공한다.
+- “사용하면 내 단서함에서 사라짐”은 효과별 공통 옵션으로 둔다.
+- 저장은 기존 theme `config_json` 저장 API를 사용하되, 화면 컴포넌트는 `writeClueItemEffect` Adapter helper를 통해서만 계약을 변경한다.
+
+### E2E 대체 사유
+
+- 이번 slice는 신규 라우트나 플레이어 런타임 흐름이 아니라, 기존 단서 상세 내부의 설정 카드와 config adapter 변경이다.
+- Playwright E2E는 editor auth/seed 환경 의존도가 높아 이 PR에서는 component integration test로 대체한다.
+- 대체 검증:
+  - `configShape` unit test로 config read/write/삭제를 검증한다.
+  - `ClueRuntimeEffectCard` component test로 정보 공개 저장, 단서 지급 검색/다중 선택, raw key 미노출을 검증한다.
+  - typecheck로 실제 API 타입 연결을 검증한다.
+
 ## 테스트 계획
 
 - Go unit/integration
