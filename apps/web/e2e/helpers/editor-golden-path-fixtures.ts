@@ -51,7 +51,7 @@ export function freshState(): MockState {
     configJson: { characters: [], locations: [], modules: {}, module_configs: {} },
     clueImageURL: null,
     startingClueIds: [],
-    locationClueIds: [],
+    locationClueIds: [CLUE_ID],
     moduleToggles: {},
     conflictCountdown: 1,
     flowPatchCalls: 0,

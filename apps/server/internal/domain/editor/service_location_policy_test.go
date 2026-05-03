@@ -1,6 +1,12 @@
 package editor
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/mmp-platform/server/internal/apperror"
+)
 
 func int32Value(value int32) *int32 { return &value }
 
@@ -89,4 +95,61 @@ func stringSlicesEqual(a, b []string) bool {
 		}
 	}
 	return true
+}
+
+func TestService_LocationRestrictedCharactersMustBelongToTheme(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	mapResp, err := f.svc.CreateMap(ctx, creatorID, themeID, CreateMapRequest{Name: "지도"})
+	if err != nil {
+		t.Fatalf("CreateMap: %v", err)
+	}
+	allowedChar, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "탐정"})
+	if err != nil {
+		t.Fatalf("CreateCharacter allowed: %v", err)
+	}
+	otherChar, err := f.svc.CreateCharacter(ctx, creatorID, otherThemeID, CreateCharacterRequest{Name: "다른 테마 캐릭터"})
+	if err != nil {
+		t.Fatalf("CreateCharacter other: %v", err)
+	}
+
+	allowedCSV := allowedChar.ID.String() + "," + allowedChar.ID.String()
+	created, err := f.svc.CreateLocation(ctx, creatorID, themeID, mapResp.ID, CreateLocationRequest{
+		Name:                 "서재",
+		RestrictedCharacters: &allowedCSV,
+	})
+	if err != nil {
+		t.Fatalf("CreateLocation with theme character: %v", err)
+	}
+	if created.RestrictedCharacters == nil || *created.RestrictedCharacters != allowedChar.ID.String() {
+		t.Fatalf("RestrictedCharacters = %v, want normalized allowed id", created.RestrictedCharacters)
+	}
+
+	invalidCSV := otherChar.ID.String()
+	if _, err := f.svc.CreateLocation(ctx, creatorID, themeID, mapResp.ID, CreateLocationRequest{
+		Name:                 "금지 장소",
+		RestrictedCharacters: &invalidCSV,
+	}); !isBadRequest(err) {
+		t.Fatalf("CreateLocation with other theme character error = %T %v, want bad request", err, err)
+	}
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, created.ID, UpdateLocationRequest{
+		Name:                 created.Name,
+		RestrictedCharacters: &invalidCSV,
+		SortOrder:            created.SortOrder,
+		FromRound:            created.FromRound,
+		UntilRound:           created.UntilRound,
+	}); !isBadRequest(err) {
+		t.Fatalf("UpdateLocation with other theme character error = %T %v, want bad request", err, err)
+	}
+}
+
+func isBadRequest(err error) bool {
+	var appErr *apperror.AppError
+	return errors.As(err, &appErr) && appErr.Code == apperror.ErrBadRequest
 }

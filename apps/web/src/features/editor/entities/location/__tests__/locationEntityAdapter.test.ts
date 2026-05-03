@@ -66,6 +66,7 @@ describe('locationEntityAdapter', () => {
       roundLabel: 'R2~4',
       accessLabel: '탐정 한나 접근 제한',
       clueCountLabel: '조사 시 발견 단서 3개',
+      clueShortLabel: '단서 3개',
       badges: ['저택 1층', 'R2~4', '접근 제한 있음', '단서 3', '이미지 있음'],
     });
   });
@@ -75,7 +76,7 @@ describe('locationEntityAdapter', () => {
       'char-1',
       'char-2',
     ]);
-    expect(stringifyLocationRestrictedCharacterIds([' char-1 ', '', 'char-2'])).toBe(
+    expect(stringifyLocationRestrictedCharacterIds([' char-1 ', '', 'char-2', 'char-1'])).toBe(
       'char-1,char-2'
     );
   });

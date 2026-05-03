@@ -199,7 +199,7 @@ function SelectedLocationDetail({
             <p className="mt-1 text-xs text-slate-400">{viewModel.roundLabel}</p>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">
-            {viewModel.clueCountLabel.replace('조사 시 발견 단서 ', '단서 ')}
+            {viewModel.clueShortLabel}
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">

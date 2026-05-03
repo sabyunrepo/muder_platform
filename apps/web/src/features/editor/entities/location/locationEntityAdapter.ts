@@ -8,6 +8,7 @@ export interface LocationEditorViewModel {
   roundLabel: string;
   accessLabel: string;
   clueCountLabel: string;
+  clueShortLabel: string;
   badges: string[];
 }
 
@@ -26,6 +27,7 @@ export function toLocationEditorViewModel(
       options.characters ?? []
     ),
     clueCountLabel: `조사 시 발견 단서 ${clueCount}개`,
+    clueShortLabel: `단서 ${clueCount}개`,
     badges: buildLocationBadges(location, clueCount, options.mapName),
   };
 }
@@ -44,9 +46,7 @@ export function parseLocationRestrictedCharacterIds(value: string | null | undef
 }
 
 export function stringifyLocationRestrictedCharacterIds(ids: Iterable<string>): string | null {
-  const normalized = Array.from(ids)
-    .map((id) => id.trim())
-    .filter(Boolean);
+  const normalized = parseLocationRestrictedCharacterIds(Array.from(ids).join(','));
   return normalized.length > 0 ? normalized.join(',') : null;
 }
 
