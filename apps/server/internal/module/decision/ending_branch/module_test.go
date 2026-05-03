@@ -401,6 +401,16 @@ func TestModule_ApplyConfig_RejectsInvalidRespondentList(t *testing.T) {
 	assert.Contains(t, err.Error(), "respondents must contain non-empty strings")
 }
 
+func TestModule_ApplyConfig_RejectsEmptyRespondentList(t *testing.T) {
+	m := NewModule()
+	err := m.ApplyConfig(context.Background(), json.RawMessage(`{
+		"questions":[{"id":"q1","text":"?","type":"single","choices":["A"],"impact":"branch","respondents":[]}],
+		"matrix":[]
+	}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "respondents must contain at least one code")
+}
+
 func TestModule_ApplyConfig_RejectsInvalidMatrixCondition(t *testing.T) {
 	m := NewModule()
 	err := m.ApplyConfig(context.Background(), json.RawMessage(`{

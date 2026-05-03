@@ -74,6 +74,9 @@ func validateRespondents(questionID string, respondents any) error {
 			return fmt.Errorf("question %q has invalid respondents value %q", questionID, value)
 		}
 	case []any:
+		if len(value) == 0 {
+			return fmt.Errorf("question %q respondents must contain at least one code", questionID)
+		}
 		for _, item := range value {
 			candidate, ok := item.(string)
 			if !ok || candidate == "" {
@@ -82,6 +85,9 @@ func validateRespondents(questionID string, respondents any) error {
 		}
 		return nil
 	case []string:
+		if len(value) == 0 {
+			return fmt.Errorf("question %q respondents must contain at least one code", questionID)
+		}
 		for _, candidate := range value {
 			if candidate == "" {
 				return fmt.Errorf("question %q respondents must contain non-empty strings", questionID)
