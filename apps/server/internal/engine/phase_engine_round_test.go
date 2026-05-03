@@ -26,16 +26,20 @@ func TestPhaseEngine_CurrentRound_IncrementsWithAdvance(t *testing.T) {
 	}
 
 	// Advance 1 → round 2
-	if _, err := pe.AdvancePhase(ctx); err != nil {
+	if hasNext, err := pe.AdvancePhase(ctx); err != nil {
 		t.Fatalf("advance 1: %v", err)
+	} else if !hasNext {
+		t.Fatal("expected hasNext=true on advance 1")
 	}
 	if got := pe.CurrentRound(); got != 2 {
 		t.Fatalf("after advance 1, round = %d, want 2", got)
 	}
 
 	// Advance 2 → round 3
-	if _, err := pe.AdvancePhase(ctx); err != nil {
+	if hasNext, err := pe.AdvancePhase(ctx); err != nil {
 		t.Fatalf("advance 2: %v", err)
+	} else if !hasNext {
+		t.Fatal("expected hasNext=true on advance 2")
 	}
 	if got := pe.CurrentRound(); got != 3 {
 		t.Fatalf("after advance 2, round = %d, want 3", got)
