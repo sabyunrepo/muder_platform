@@ -60,7 +60,7 @@ export function EndingEntityDetail({ node, themeId, onChange }: EndingEntityDeta
         </h3>
         <p className="text-sm leading-6 text-slate-400">
           게임이 끝났을 때 모두에게 공개할 결말 이름과 본문을 작성합니다.
-          점수 배율은 사용하지 않고 모든 결말은 같은 기준으로 계산됩니다.
+          투표·질문·조건 결과는 서버가 판정하므로, 여기에는 플레이어에게 보여줄 내용만 적으면 됩니다.
         </p>
       </div>
 

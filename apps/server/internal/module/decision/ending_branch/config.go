@@ -12,8 +12,8 @@ type Question struct {
 	ScoreMap    map[string]int `json:"scoreMap,omitempty"`
 }
 
-// MatrixRow is one priority-ordered branching rule. JSONLogic evaluator (PR-5)
-// converts conditions to a JSONLogic AST.
+// MatrixRow is one priority-ordered branching rule. Runtime evaluation passes
+// Conditions to the shared JSONLogic evaluator.
 type MatrixRow struct {
 	Priority   int            `json:"priority"`
 	Conditions map[string]any `json:"conditions"`

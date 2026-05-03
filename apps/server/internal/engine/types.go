@@ -20,6 +20,7 @@ const (
 	ActionAllowExchange       PhaseAction = "ALLOW_EXCHANGE"
 	ActionBroadcastMessage    PhaseAction = "BROADCAST_MESSAGE"
 	ActionDeliverInformation  PhaseAction = "DELIVER_INFORMATION"
+	ActionEvaluateEnding      PhaseAction = "EVALUATE_ENDING"
 	ActionPlaySound           PhaseAction = "PLAY_SOUND"
 	ActionPlayMedia           PhaseAction = "PLAY_MEDIA"
 	ActionSetBGM              PhaseAction = "SET_BGM"
@@ -64,6 +65,7 @@ var ActionRequiresModule = map[PhaseAction]string{
 	ActionOpenGroupChat:       "group_chat",
 	ActionCloseGroupChat:      "group_chat",
 	ActionDeliverInformation:  "information_delivery",
+	ActionEvaluateEnding:      "ending_branch",
 }
 
 // --- Module Interfaces ---

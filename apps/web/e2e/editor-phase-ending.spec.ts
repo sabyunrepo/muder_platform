@@ -40,7 +40,18 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
                 updated_at: "2026-05-03T00:00:00Z",
               },
             ],
-            edges: [],
+            edges: [
+              {
+                id: "edge-ending-1",
+                theme_id: THEME_ID,
+                source_id: "phase-final",
+                target_id: FLOW_NODE_ID,
+                condition: null,
+                label: "기본",
+                sort_order: 0,
+                created_at: "2026-05-03T00:00:00Z",
+              },
+            ],
           }),
         });
       }
@@ -58,6 +69,8 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
     await page.getByRole("button", { name: /결말/ }).click();
 
     await expect(page.getByRole("heading", { name: "결말 목록" })).toBeVisible();
+    await expect(page.getByLabel("결말 판정 준비")).toBeVisible();
+    await expect(page.getByLabel("결말 판정 준비").getByText("본문 작성", { exact: true })).toBeVisible();
     await expect(page.getByText("진실").first()).toBeVisible();
     await expect(page.getByLabel("결말 이름")).toHaveValue("진실");
     await expect(page.getByLabel("결말 본문")).toHaveValue("범인은 밝혀졌다.");

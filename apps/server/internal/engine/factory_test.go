@@ -189,6 +189,28 @@ func TestParseGameConfig_AddsInformationDeliveryModuleForPhaseAction(t *testing.
 	}
 }
 
+func TestParseGameConfig_AddsEndingBranchModuleForEvaluateEndingAction(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"final","name":"Final","onEnter":[{"type":"EVALUATE_ENDING"}]}],"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "ending_branch" {
+		t.Fatalf("implicit modules = %#v", cfg.Modules)
+	}
+}
+
+func TestParseGameConfig_DoesNotDuplicateImplicitEndingBranchModule(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"final","name":"Final","onEnter":[{"type":"EVALUATE_ENDING"}]}],"modules":[{"name":"ending_branch","config":{"defaultEnding":"미해결"}}]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "ending_branch" {
+		t.Fatalf("modules = %#v", cfg.Modules)
+	}
+}
+
 func TestParseGameConfig_InvalidPhaseActionConfigFailsEarly(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1","onEnter":"not-actions"}],"modules":[]}`)
 	_, err := ParseGameConfig(data)
