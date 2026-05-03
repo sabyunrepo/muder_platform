@@ -98,3 +98,7 @@ apps/web/playwright-report/
 
 # ─── Local Codex runtime config ───────────────────────
 .codex/config.toml
+
+# ─── Local external reference docs ────────────────────
+# Uzu Studio manuals are copied locally for Phase 24 research and should not be committed.
+docs/uzu-studio-docs/
