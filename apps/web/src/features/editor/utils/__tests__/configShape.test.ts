@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   normalizeConfigForSave,
+  readClueItemEffect,
+  readClueItemEffects,
   readCharacterStartingClueMap,
   readCluePlacement,
   readEnabledModuleIds,
   readLocationClueIds,
   readModuleConfig,
   writeCharacterStartingClueMap,
+  writeClueItemEffect,
   writeCluePlacement,
   writeLocationClueIds,
   writeModuleConfig,
@@ -145,5 +148,79 @@ describe('configShape', () => {
     };
 
     expect(readCharacterStartingClueMap(config)).toEqual({});
+  });
+
+  it('reads valid clue runtime effects from the clue interaction module only', () => {
+    const config = {
+      modules: {
+        clue_interaction: {
+          enabled: true,
+          config: {
+            itemEffects: {
+              'clue-1': {
+                effect: 'reveal',
+                target: 'self',
+                revealText: '숫자 0427이 보입니다.',
+                consume: true,
+              },
+              'clue-2': { effect: 'unknown', revealText: '무시' },
+            },
+          },
+        },
+      },
+    };
+
+    expect(readClueItemEffects(config)).toEqual({
+      'clue-1': {
+        effect: 'reveal',
+        target: 'self',
+        revealText: '숫자 0427이 보입니다.',
+        consume: true,
+      },
+    });
+    expect(readClueItemEffect(config, 'clue-2')).toBeNull();
+  });
+
+  it('writes and removes clue runtime effects while preserving module settings', () => {
+    const base = {
+      modules: {
+        clue_interaction: {
+          enabled: true,
+          config: {
+            cooldownSec: 5,
+            itemEffects: {
+              'future-clue': { effect: 'future_effect', custom: true },
+            },
+          },
+        },
+      },
+    };
+
+    const withEffect = writeClueItemEffect(base, 'clue-1', {
+      effect: 'grant_clue',
+      target: 'self',
+      grantClueIds: ['clue-2', 'clue-3'],
+      consume: true,
+    });
+
+    expect(readClueItemEffect(withEffect, 'clue-1')).toEqual({
+      effect: 'grant_clue',
+      target: 'self',
+      grantClueIds: ['clue-2', 'clue-3'],
+      consume: true,
+    });
+    expect(readModuleConfig(withEffect, 'clue_interaction')).toMatchObject({
+      cooldownSec: 5,
+      itemEffects: {
+        'future-clue': { effect: 'future_effect', custom: true },
+      },
+    });
+
+    const removed = writeClueItemEffect(withEffect, 'clue-1', null);
+    expect(readClueItemEffect(removed, 'clue-1')).toBeNull();
+    expect(readModuleConfig(removed, 'clue_interaction')).toMatchObject({
+      cooldownSec: 5,
+      itemEffects: {},
+    });
   });
 });

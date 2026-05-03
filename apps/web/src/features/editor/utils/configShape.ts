@@ -16,7 +16,19 @@ export interface LocationConfig extends Record<string, unknown> {
   clueIds?: string[];
 }
 
+export type ClueItemEffectKind = 'peek' | 'reveal' | 'grant_clue';
+
+export interface ClueItemEffectConfig extends EditorConfig {
+  effect: ClueItemEffectKind;
+  target?: 'player' | 'self';
+  consume?: boolean;
+  revealText?: string;
+  grantClueIds?: string[];
+}
+
 const LEGACY_KEYS = ['module_configs', 'clue_placement', 'character_clues'] as const;
+const CLUE_INTERACTION_MODULE_ID = 'clue_interaction';
+const CLUE_ITEM_EFFECTS_KEY = 'itemEffects';
 
 function isRecord(value: unknown): value is EditorConfig {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -31,6 +43,35 @@ function hasOwnKey<T extends string>(
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
+  if (!isRecord(value)) return null;
+
+  const effect = value.effect;
+  if (effect !== 'peek' && effect !== 'reveal' && effect !== 'grant_clue') return null;
+
+  const target = value.target === 'player' || value.target === 'self' ? value.target : undefined;
+  const consume = typeof value.consume === 'boolean' ? value.consume : undefined;
+  const revealText = typeof value.revealText === 'string' ? value.revealText : undefined;
+  const grantClueIds = stringList(value.grantClueIds);
+
+  return {
+    ...value,
+    effect,
+    ...(target ? { target } : {}),
+    ...(consume !== undefined ? { consume } : {}),
+    ...(revealText !== undefined ? { revealText } : {}),
+    ...(grantClueIds.length > 0 ? { grantClueIds } : {}),
+  };
+}
+
+function readRawClueItemEffects(
+  configJson: EditorConfig | null | undefined,
+): Record<string, unknown> {
+  const moduleConfig = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
+  const rawEffects = moduleConfig[CLUE_ITEM_EFFECTS_KEY];
+  return isRecord(rawEffects) ? { ...rawEffects } : {};
 }
 
 function readLegacyModuleConfigs(configJson: EditorConfig | null | undefined) {
@@ -162,6 +203,47 @@ export function writeModuleConfigPath(
 ): EditorConfig {
   const current = readModuleConfig(configJson, moduleId);
   return writeModuleConfig(configJson, moduleId, writePath(current, path, value));
+}
+
+export function readClueItemEffects(
+  configJson: EditorConfig | null | undefined,
+): Record<string, ClueItemEffectConfig> {
+  const moduleConfig = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
+  const rawEffects = moduleConfig[CLUE_ITEM_EFFECTS_KEY];
+  if (!isRecord(rawEffects)) return {};
+
+  return Object.fromEntries(
+    Object.entries(rawEffects)
+      .map(([clueId, rawConfig]) => [clueId, readClueItemEffectConfig(rawConfig)] as const)
+      .filter((entry): entry is [string, ClueItemEffectConfig] => !!entry[1]),
+  );
+}
+
+export function readClueItemEffect(
+  configJson: EditorConfig | null | undefined,
+  clueId: string,
+): ClueItemEffectConfig | null {
+  return readClueItemEffects(configJson)[clueId] ?? null;
+}
+
+export function writeClueItemEffect(
+  configJson: EditorConfig | null | undefined,
+  clueId: string,
+  effectConfig: ClueItemEffectConfig | null,
+): EditorConfig {
+  const current = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
+  const itemEffects = readRawClueItemEffects(configJson);
+
+  if (effectConfig) {
+    itemEffects[clueId] = effectConfig;
+  } else {
+    delete itemEffects[clueId];
+  }
+
+  return writeModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID, {
+    ...current,
+    [CLUE_ITEM_EFFECTS_KEY]: itemEffects,
+  });
 }
 
 export function readLocationsConfig(

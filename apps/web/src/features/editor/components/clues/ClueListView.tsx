@@ -10,8 +10,10 @@ import {
   useEditorLocations,
   useEditorClues,
   useDeleteClue,
+  useUpdateConfigJson,
   type ClueResponse,
 } from '@/features/editor/api';
+import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { buildClueUsageMap, type EntityReference } from '@/features/editor/utils/entityReferences';
 import { ClueForm } from '../ClueForm';
 import { ClueEntityWorkspace } from './ClueEntityWorkspace';
@@ -34,6 +36,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
   const { data: locations = [] } = useEditorLocations(themeId);
   const { data: characters = [] } = useEditorCharacters(themeId);
   const deleteClue = useDeleteClue(themeId);
+  const updateConfig = useUpdateConfigJson(themeId);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClue, setEditingClue] = useState<ClueResponse | undefined>(undefined);
   const [deletingClue, setDeletingClue] = useState<ClueResponse | undefined>(undefined);
@@ -58,6 +61,13 @@ export function ClueListView({ themeId }: ClueListViewProps) {
     deleteClue.mutate(deletingClue.id, {
       onSuccess: () => { toast.success('단서가 삭제되었습니다'); setDeletingClue(undefined); },
       onError: (err) => { toast.error(err.message || '단서 삭제에 실패했습니다'); setDeletingClue(undefined); },
+    });
+  }
+
+  function handleConfigChange(nextConfig: EditorConfig) {
+    updateConfig.mutate(nextConfig, {
+      onSuccess: () => toast.success('단서 사용 효과가 저장되었습니다'),
+      onError: () => toast.error('단서 사용 효과 저장에 실패했습니다'),
     });
   }
 
@@ -94,6 +104,8 @@ export function ClueListView({ themeId }: ClueListViewProps) {
             onCreate={handleCreate}
             onEdit={handleEdit}
             onDelete={setDeletingClue}
+            onConfigChange={handleConfigChange}
+            isConfigSaving={updateConfig.isPending}
           />
         </>
       )}
