@@ -2,9 +2,9 @@
 phase_id: "phase-24-editor-redesign"
 phase_title: "Phase 24 — 에디터 ECS 재설계 (단서 단일 진실 위치 + 동적 모듈 + 결말 분기 매트릭스)"
 created: 2026-05-01
-status: "issue-based Phase 24 continuation — PR-9 active"
+status: "PR-5A~PR-9 merged — wrap-up tracking active"
 spec: "docs/superpowers/specs/2026-05-01-phase-24-editor-redesign/design.md"
-prs_estimated: "issue-based: PR-5A~PR-9 active after PR-4"
+prs_estimated: "issue-based: PR-5A~PR-9 merged; wrap-up active"
 parent_phase: "phase-21-editor-ux"
 ---
 
@@ -31,7 +31,7 @@ parent_phase: "phase-21-editor-ux"
 
 ## Wave/PR 분해 (Issue 기반 continuation)
 
-> 2026-05-03 업데이트: PR-1~PR-4는 기반/엔티티 작업으로 진행되었고, 후속 작업은 GitHub Issue 기준 PR-5A~PR-9로 추적한다. Adapter/Engine 공통 계약과 이슈 링크는 `refs/pr-5-adapter-engine-issue-plan.md`를 기준으로 한다.
+> 2026-05-03 업데이트: PR-1~PR-4는 기반/엔티티 작업으로 진행되었고, GitHub Issue 기준 PR-5A~PR-9까지 머지 완료했다. Adapter/Engine 공통 계약과 이슈 링크는 `refs/pr-5-adapter-engine-issue-plan.md`를 기준으로 하며, wrap-up 및 후속 범위 정리는 [#246](https://github.com/sabyunrepo/muder_platform/issues/246)에서 추적한다.
 
 | Issue | PR | 범위 | 상태 |
 | --- | --- | --- | --- |
@@ -41,7 +41,8 @@ parent_phase: "phase-21-editor-ux"
 | [#233](https://github.com/sabyunrepo/muder_platform/issues/233) | PR-6 | 캐릭터 Adapter/Engine 이관 | done |
 | [#234](https://github.com/sabyunrepo/muder_platform/issues/234) | PR-7 | 단서 Adapter/Engine 이관 | done |
 | [#235](https://github.com/sabyunrepo/muder_platform/issues/235) | PR-8 | 장소 Adapter/Engine 이관 | done |
-| [#236](https://github.com/sabyunrepo/muder_platform/issues/236) | PR-9 | 결말/통합 Adapter-Engine 검증 및 E2E | active — `refs/pr-9-ending-integration-plan.md` |
+| [#236](https://github.com/sabyunrepo/muder_platform/issues/236) | PR-9 | 결말/통합 Adapter-Engine 검증 및 E2E | done — PR #245 merged |
+| [#246](https://github.com/sabyunrepo/muder_platform/issues/246) | Wrap-up | 마이그레이션 sweep 및 후속 런타임 확장 정리 | active |
 
 ## Legacy Wave/PR 분해 (6 PR — historical baseline)
 
