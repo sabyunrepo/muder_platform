@@ -63,6 +63,7 @@ func TestBuildLocationAccessPolicy(t *testing.T) {
 			{name: "allowed character in range", characterID: "char-1", round: 2, want: true},
 			{name: "missing character context on restricted location", characterID: " ", round: 2, want: false},
 			{name: "restricted character in range", characterID: "char-2", round: 3, want: false},
+			{name: "restricted character with whitespace in range", characterID: " char-2 ", round: 3, want: false},
 			{name: "after visible round", characterID: "char-1", round: 5, want: false},
 		}
 
