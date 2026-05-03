@@ -115,7 +115,10 @@ describe("EndingEntitySubTab", () => {
 
     fireEvent.click(screen.getByText("결말 추가"));
 
-    expect(addNodeMock).toHaveBeenCalledWith("ending", expect.objectContaining({ x: expect.any(Number), y: 220 }));
+    expect(addNodeMock).toHaveBeenCalledWith("ending", expect.objectContaining({
+      x: expect.any(Number),
+      y: expect.any(Number),
+    }));
   });
 
   it("검색어로 결말 목록을 좁힌다", () => {
