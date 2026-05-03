@@ -77,6 +77,26 @@ Avoid:
 - 여러 단계가 필요한 작업은 간결한 계획을 유지하고 진행 상태가 바뀔 때 갱신한다.
 - Codex sub-agent는 사용자가 명시적으로 위임이나 병렬 agent 작업을 요청한 경우에만 사용한다. Claude 시대의 자동 위임 규칙은 Codex에서는 로컬 계획으로 해석한다.
 
+### Sub-agent 사용 규칙
+
+When:
+- 사용자가 위임, 병렬 agent 작업, sub-agent 사용을 명시적으로 승인했을 때
+- 또는 이번 Phase 24처럼 사용자가 MMP subagent 생성/활용 규칙을 명시적으로 요청한 범위 안에서 작업할 때
+
+Do:
+1. 메인 Codex는 의도 파악, scope 결정, 위험 판단, 최종 통합, PR/label/merge 결정을 맡는다.
+2. Sub-agent는 독립적으로 처리 가능한 탐색, 리뷰, 테스트 커버리지 점검, 반복 컴포넌트/테스트 작성, 긴 로그 분석에만 맡긴다.
+3. 코드 수정 sub-agent에는 소유 파일/모듈을 명확히 지정하고, 다른 작업자가 있을 수 있으니 기존 변경을 되돌리지 말라고 지시한다.
+4. 리뷰 sub-agent 결과는 사용자에게 raw output으로 붙이지 말고 `발견 / 수행 / 판단 / 미해결` 4섹션으로 압축한다.
+5. MMP 전용 리뷰에는 가능한 경우 `.codex/agents/mmp-frontend-editor-reviewer.toml`, `.codex/agents/mmp-backend-engine-reviewer.toml`, `.codex/agents/mmp-test-coverage-reviewer.toml` 역할을 사용한다.
+
+Done when:
+- 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
+
+Avoid:
+- secret 조회, destructive command, PR 생성, label 부착, merge, 배포 트리거를 sub-agent에 맡기지 않는다.
+- 다음 로컬 작업이 바로 막히는 critical path를 불필요하게 위임하지 않는다.
+
 ## Git 및 PR 규율
 
 - `main`을 보호한다. 병합 가능한 변경은 feature branch와 PR을 사용한다.
