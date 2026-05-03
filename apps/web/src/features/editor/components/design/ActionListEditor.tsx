@@ -39,6 +39,7 @@ export function ActionListEditor({
   const visibleActions = actions
     .map((action, index) => ({ action, index }))
     .filter(({ action }) => !hiddenTypes.includes(action.type));
+  const visibleActionTypes = ACTION_TYPES.filter((type) => !hiddenTypes.includes(type.value));
   const handleAdd = () => {
     onChange([...actions, { id: crypto.randomUUID(), type: "broadcast" }]);
   };
@@ -80,9 +81,10 @@ export function ActionListEditor({
           <select
             value={action.type}
             onChange={(e) => handleTypeChange(idx, e.target.value)}
+            aria-label={`${label} ${idx + 1} 액션 타입`}
             className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
           >
-            {ACTION_TYPES.map((at) => (
+            {visibleActionTypes.map((at) => (
               <option key={at.value} value={at.value}>
                 {at.label}
               </option>
