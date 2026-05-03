@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Info, MapPin, Plus, Trash2 } from 'lucide-react';
+import { Image, Info, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/shared/components/ui/Button';
 import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
 import { useUpdateLocation } from '@/features/editor/api';
 import { ImageUpload } from '@/features/editor/components/ImageUpload';
 import { readLocationClueIds } from '@/features/editor/editorTypes';
 import { AddNameInput } from './AddNameInput';
+import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
 import { LocationClueAssignPanel } from './LocationClueAssignPanel';
 
@@ -58,23 +58,17 @@ export function LocationDetailPanel({
   if (!selectedMap) return <LocationEmptyState message="좌측에서 맵을 선택하세요" />;
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(16rem,0.42fr)_minmax(0,1fr)]">
-      <section className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600">
-              장소 트리
-            </p>
-            <h3 className="mt-1 truncate text-sm font-semibold text-slate-200">
-              {selectedMap.name}
-            </h3>
-          </div>
-          <Button size="sm" onClick={onStartAdd}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            장소 추가
-          </Button>
-        </div>
-        {addingLocation && (
+    <EntityEditorShell
+      title="장소"
+      items={mapLocations}
+      selectedId={selectedLocation?.id}
+      onSelect={onSelectLocation}
+      onCreate={onStartAdd}
+      createLabel="장소 추가"
+      emptyMessage="장소 없음"
+      emptyDescription="이 맵에 배치할 장소를 추가하세요."
+      listAccessory={
+        addingLocation ? (
           <div className="mb-3 rounded-md border border-amber-500/30 bg-slate-900 p-2">
             <AddNameInput
               placeholder="장소 이름"
@@ -83,71 +77,39 @@ export function LocationDetailPanel({
               isPending={isCreatingLocation}
             />
           </div>
-        )}
-        {mapLocations.length === 0 ? (
-          <LocationEmptyState message="장소 없음" compact />
-        ) : (
-          <ul className="space-y-1" aria-label={`${selectedMap.name} 장소 목록`}>
-            {mapLocations.map((loc) => (
-              <LocationListItem
-                key={loc.id}
-                location={loc}
-                selected={selectedLocation?.id === loc.id}
-                onSelect={onSelectLocation}
-                onDelete={onDeleteLocation}
-              />
-            ))}
-          </ul>
-        )}
-      </section>
-      {selectedLocation ? (
+        ) : null
+      }
+      getItemId={(location) => location.id}
+      getItemTitle={(location) => location.name}
+      getItemDescription={(location) => formatLocationRounds(location)}
+      getItemBadges={() => [selectedMap.name]}
+      renderItemActions={(location) => (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`${location.name} 장소를 삭제할까요?`)) onDeleteLocation(location.id);
+          }}
+          aria-label={`${location.name} 삭제`}
+          className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
+      renderDetail={(location) => (
         <SelectedLocationDetail
           themeId={themeId}
           theme={theme}
           map={selectedMap}
-          location={selectedLocation}
+          location={location}
         />
-      ) : (
-        <LocationEmptyState message="장소를 추가하거나 선택하세요" />
       )}
-    </div>
+    />
   );
 }
-
-function LocationListItem({
-  location,
-  selected,
-  onSelect,
-  onDelete,
-}: {
-  location: LocationResponse;
-  selected: boolean;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  return (
-    <li className="group flex items-center gap-1">
-      <button
-        type="button"
-        aria-pressed={selected}
-        onClick={() => onSelect(location.id)}
-        className={`flex min-w-0 flex-1 items-center gap-2 rounded-md border px-3 py-2 text-left transition ${selected ? 'border-amber-500/50 bg-amber-500/10 text-amber-200' : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700 hover:text-slate-200'}`}
-      >
-        <MapPin className="h-3.5 w-3.5 shrink-0" />
-        <span className="truncate text-sm font-medium">{location.name}</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          if (window.confirm(`${location.name} 장소를 삭제할까요?`)) onDelete(location.id);
-        }}
-        aria-label={`${location.name} 삭제`}
-        className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </li>
-  );
+function formatLocationRounds(location: LocationResponse) {
+  const from = location.from_round ? `${location.from_round}라운드부터` : '처음부터';
+  const until = location.until_round ? `${location.until_round}라운드까지` : '끝까지';
+  return `${from} · ${until}`;
 }
 
 function SelectedLocationDetail({
@@ -220,7 +182,7 @@ function SelectedLocationDetail({
         <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-300/80">
-              Selected location
+              장소 상세
             </p>
             <h3 className="mt-1 text-xl font-semibold text-slate-100">{location.name}</h3>
             <p className="mt-1 text-xs text-slate-500">트리 경로: {getPathLabel(map, location)}</p>

@@ -5,6 +5,7 @@
 PR-2에서 정리한 canonical config helper와 Accordion UI를 기반으로, 에디터의 제작 흐름을 **캐릭터·장소·단서 entity 중심**으로 재배치한다. 사용자는 단서를 한 곳에서 정의하고, 캐릭터/장소에서는 단서 ID만 참조한다.
 
 > 2026-05-02 확장 결정: 캐릭터 역할 enum, 탐정 투표 후보 정책, PDF/이미지 역할지를 PR-3 계열 작업에 포함한다. 상세 분할은 `refs/pr-3-expansion-role-pdf-voting.md`가 canonical이다. 본 문서는 현재 브랜치의 기존 PR-3 진행 상태와 장소/단서 entity 작업 추적을 유지한다.
+> 2026-05-03 재설계 결정: 캐릭터/장소/단서를 개별 화면으로 완성하지 않고 공통 `EntityEditorShell` + 엔티티별 adapter로 마이그레이션한다. 상세 계획은 `refs/pr-3-entity-shell-migration.md`가 canonical이다.
 
 ## Branch
 

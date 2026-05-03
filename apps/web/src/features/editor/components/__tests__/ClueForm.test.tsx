@@ -244,6 +244,20 @@ describe('ClueForm', () => {
     expect(createMutate).not.toHaveBeenCalled();
   });
 
+
+  it('사용 효과 설정은 제작자가 이해하는 문장으로 표시된다', () => {
+    const onClose = vi.fn();
+    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
+
+    fireEvent.click(screen.getByText('고급 설정'));
+    fireEvent.click(screen.getByLabelText('사용 가능한 단서'));
+
+    expect(screen.getByText('다른 플레이어 단서 보기')).toBeDefined();
+    expect(screen.getByText('다른 플레이어에게서 단서 가져오기')).toBeDefined();
+    expect(screen.getByText('플레이어가 사용할 때 고르는 대상')).toBeDefined();
+    expect(screen.getByText('사용하면 내 단서함에서 사라짐')).toBeDefined();
+  });
+
   it('고급 설정의 공개/사라짐 라운드 입력이 payload에 포함된다', () => {
     const onClose = vi.fn();
     render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);

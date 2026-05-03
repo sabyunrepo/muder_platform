@@ -235,9 +235,10 @@ describe('LocationsSubTab', () => {
       expect(screen.getByText('좌측에서 맵을 선택하세요')).toBeDefined();
     });
 
-    it('맵 선택 시 해당 맵의 장소만 표시한다', () => {
+    it('맵 선택 시 공통 엔티티 Shell로 해당 맵의 장소만 표시한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByText('저택 1층'));
+      expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
       // LocationDetailPanel row + clue-assignment picker option 두 곳에서 렌더됨
       expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
       expect(screen.getAllByText('주방').length).toBeGreaterThan(0);
@@ -295,7 +296,7 @@ describe('LocationsSubTab', () => {
     it('location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByText('저택 1층'));
-      fireEvent.click(screen.getByRole('button', { name: '주방' }));
+      fireEvent.click(screen.getByRole('button', { name: '주방 선택' }));
       expect(screen.getByLabelText('주방 단서 배정')).toBeDefined();
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
     });

@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, LayoutList, LayoutGrid } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import { Modal } from '@/shared/components/ui/Modal';
 import { Button } from '@/shared/components/ui/Button';
 import {
+  useEditorTheme,
+  useEditorCharacters,
+  useEditorLocations,
   useEditorClues,
   useDeleteClue,
-  editorKeys,
   type ClueResponse,
 } from '@/features/editor/api';
+import { buildClueUsageMap, type EntityReference } from '@/features/editor/utils/entityReferences';
 import { ClueForm } from '../ClueForm';
-import { ClueCard } from '../ClueCard';
-import { ClueListRow } from '../ClueListRow';
+import { ClueEntityWorkspace } from './ClueEntityWorkspace';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,21 +24,19 @@ interface ClueListViewProps {
   themeId: string;
 }
 
-type ViewMode = 'list' | 'grid';
-
 // ---------------------------------------------------------------------------
 // ClueListView
 // ---------------------------------------------------------------------------
 
 export function ClueListView({ themeId }: ClueListViewProps) {
   const { data: clues, isLoading } = useEditorClues(themeId);
+  const { data: theme } = useEditorTheme(themeId);
+  const { data: locations = [] } = useEditorLocations(themeId);
+  const { data: characters = [] } = useEditorCharacters(themeId);
   const deleteClue = useDeleteClue(themeId);
-  const queryClient = useQueryClient();
-
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingClue, setEditingClue] = useState<ClueResponse | undefined>(undefined);
   const [deletingClue, setDeletingClue] = useState<ClueResponse | undefined>(undefined);
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   function handleCreate() {
     setEditingClue(undefined);
@@ -62,15 +61,19 @@ export function ClueListView({ themeId }: ClueListViewProps) {
     });
   }
 
-  function handleImageUploaded(_clueId: string, _url: string) {
-    void queryClient.invalidateQueries({ queryKey: editorKeys.clues(themeId) });
-  }
-
   if (isLoading) {
     return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
   }
 
   const isEmpty = !clues || clues.length === 0;
+  const deletingReferences = deletingClue && clues
+    ? buildClueUsageMap({
+      configJson: theme?.config_json,
+      clues,
+      locations,
+      characters,
+    })[deletingClue.id]?.references ?? []
+    : [];
 
   return (
     <div className="px-4 py-6">
@@ -83,66 +86,15 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         </div>
       ) : (
         <>
-          {/* Toolbar */}
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-xs text-slate-500">{clues.length}개의 단서</span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                aria-label="리스트 뷰"
-                className={`rounded p-1.5 transition-colors ${viewMode === 'list' ? 'bg-slate-700 text-slate-200' : 'text-slate-600 hover:text-slate-400'}`}
-              >
-                <LayoutList className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                aria-label="그리드 뷰"
-                className={`rounded p-1.5 transition-colors ${viewMode === 'grid' ? 'bg-slate-700 text-slate-200' : 'text-slate-600 hover:text-slate-400'}`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleCreate}
-                className="ml-2 flex items-center gap-1 rounded bg-amber-500/10 px-2 py-1 text-xs text-amber-400 hover:bg-amber-500/20"
-              >
-                <Plus className="h-3.5 w-3.5" />추가
-              </button>
-            </div>
-          </div>
-
-          {/* List view */}
-          {viewMode === 'list' ? (
-            <div className="space-y-1.5">
-              {clues.map((clue) => (
-                <ClueListRow key={clue.id} clue={clue} onEdit={handleEdit} onDelete={setDeletingClue} />
-              ))}
-            </div>
-          ) : (
-            /* Grid view */
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {clues.map((clue) => (
-                <ClueCard
-                  key={clue.id}
-                  clue={clue}
-                  themeId={themeId}
-                  onEdit={handleEdit}
-                  onDelete={setDeletingClue}
-                  onImageUploaded={handleImageUploaded}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={handleCreate}
-                className="flex min-h-[100px] flex-col items-center justify-center gap-2 rounded-sm border border-dashed border-slate-800 p-6 text-slate-700 transition-colors hover:border-slate-600 hover:text-slate-500"
-              >
-                <Plus className="h-5 w-5" />
-                <span className="text-xs">단서 추가</span>
-              </button>
-            </div>
-          )}
+          <ClueEntityWorkspace
+            clues={clues}
+            configJson={theme?.config_json}
+            locations={locations}
+            characters={characters}
+            onCreate={handleCreate}
+            onEdit={handleEdit}
+            onDelete={setDeletingClue}
+          />
         </>
       )}
 
@@ -161,9 +113,37 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         }
       >
         <p className="text-sm text-slate-300">
-          <span className="font-semibold text-slate-100">{deletingClue?.name}</span> 단서를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+          <span className="font-semibold text-slate-100">{deletingClue?.name}</span> 단서를 삭제하시겠습니까?
+          연결된 설정은 함께 정리되어, 없는 단서를 가리키는 문제가 남지 않습니다.
         </p>
+        {deletingReferences.length > 0 ? (
+          <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+            <p className="text-xs font-semibold text-amber-200">
+              함께 정리될 연결 {deletingReferences.length}곳
+            </p>
+            <ul className="mt-2 space-y-1.5 text-xs text-amber-100/80">
+              {deletingReferences.map((ref) => (
+                <li key={`${ref.sourceType}-${ref.sourceId}-${ref.relation}`}>
+                  {formatDeleteReference(ref)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-xs text-slate-400">
+            현재 연결된 장소나 캐릭터 설정은 없습니다.
+          </p>
+        )}
       </Modal>
     </div>
   );
+}
+
+function formatDeleteReference(ref: EntityReference) {
+  if (ref.relation === 'location_clue') return `${ref.sourceName}의 발견 단서에서 제거됩니다.`;
+  if (ref.relation === 'evidence') return `${ref.sourceName}의 증거 설정에서 제거됩니다.`;
+  if (ref.relation === 'starting_clue') return `${ref.sourceName}의 시작 단서에서 제거됩니다.`;
+  if (ref.relation === 'combination_input') return `${ref.sourceName}의 조합 조건에서 제거됩니다.`;
+  if (ref.relation === 'combination_output') return `${ref.sourceName}의 조합 보상에서 제거됩니다.`;
+  return `${ref.sourceName}의 연결 설정에서 제거됩니다.`;
 }

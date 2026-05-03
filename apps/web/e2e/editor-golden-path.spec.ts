@@ -86,6 +86,15 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.locator("body")).toContainText("E2E 골든패스");
   });
 
+  test("[2A] 단서 탭은 목록과 상세를 함께 보여준다", async ({ page }) => {
+    await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
+
+    await expect(page.getByLabel("단서 목록")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel("단서 상세 영역")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("첫 단서").first()).toBeVisible();
+    await expect(page.getByText("이 단서가 쓰이는 곳")).toBeVisible();
+  });
+
   test("[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)", async ({ page }) => {
     test.info().annotations.push({
       type: "soft-skip",

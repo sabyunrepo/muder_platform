@@ -267,3 +267,27 @@ export function writeCharacterStartingClueMap(
   const current = readModuleConfig(configJson, 'starting_clue');
   return writeModuleConfig(configJson, 'starting_clue', { ...current, startingClues });
 }
+
+function removeClueIdFromValue(value: unknown, clueId: string): unknown {
+  if (typeof value === 'string') return value === clueId ? undefined : value;
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => removeClueIdFromValue(item, clueId))
+      .filter((item) => item !== undefined);
+  }
+  if (!isRecord(value)) return value;
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([key, child]) => [key, removeClueIdFromValue(child, clueId)] as const)
+      .filter(([, child]) => child !== undefined),
+  );
+}
+
+export function removeClueReferencesFromConfig(
+  configJson: EditorConfig | null | undefined,
+  clueId: string,
+): EditorConfig {
+  const normalized = normalizeConfigForSave(configJson);
+  return removeClueIdFromValue(normalized, clueId) as EditorConfig;
+}

@@ -147,20 +147,22 @@ describe('CharacterAssignPanel', () => {
     useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() });
   });
 
-  it('캐릭터 목록을 렌더링한다', () => {
+  it('공통 엔티티 Shell로 캐릭터 목록과 상세를 렌더링한다', () => {
     renderPanel();
-    expect(screen.getByText('홍길동')).toBeDefined();
-    expect(screen.getByText('김철수')).toBeDefined();
+    expect(screen.getByRole('region', { name: '캐릭터 목록' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '홍길동 선택' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '김철수 선택' })).toBeDefined();
+    expect(screen.queryByText(/시스템 ID/)).toBeNull();
   });
 
   it('범인 캐릭터에 "범인" 라벨이 표시된다', () => {
     renderPanel();
-    expect(screen.getByText('범인')).toBeDefined();
+    expect(screen.getAllByText('범인').length).toBeGreaterThan(0);
   });
 
   it('캐릭터 역할을 공범으로 변경한다', () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     fireEvent.click(screen.getByRole('button', { name: /공범/ }));
 
     expect(updateCharacterMutateMock).toHaveBeenCalledWith({
@@ -176,9 +178,52 @@ describe('CharacterAssignPanel', () => {
     });
   });
 
+
+  it('선택한 캐릭터가 목록에서 사라지면 현재 상세 캐릭터 ID로 저장한다', async () => {
+    let currentCharacters = mockCharacters;
+    useEditorCharactersMock.mockImplementation(() => ({ data: currentCharacters, isLoading: false }));
+
+    const { rerender, qc } = renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '김철수 선택' }));
+
+    currentCharacters = [mockCharacters[0]];
+    rerender(
+      <QueryClientProvider client={qc}>
+        <CharacterAssignPanel themeId="theme-1" theme={baseTheme} />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.queryByRole('button', { name: '김철수 선택' })).toBeNull();
+    expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
+
+    clickFirstClue();
+    await act(async () => { vi.advanceTimersByTime(1500); });
+
+    const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(readStartingClues(payload)['char-1']).toContain('clue-1');
+    expect(readStartingClues(payload)['char-2']).toBeUndefined();
+  });
+
+  it('검색으로 상세 캐릭터가 바뀌면 보이는 캐릭터 ID로 시작 단서를 저장한다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '김철수 선택' }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: '캐릭터 검색' }), {
+      target: { value: '홍길동' },
+    });
+
+    expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
+    clickFirstClue();
+    await act(async () => { vi.advanceTimersByTime(1500); });
+
+    const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(readStartingClues(payload)['char-1']).toContain('clue-1');
+    expect(readStartingClues(payload)['char-2']).toBeUndefined();
+  });
+
   it('캐릭터 선택 시 좌측 전체 단서와 우측 배정 영역이 표시된다', () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     expect(screen.getByText('전체 단서 목록')).toBeDefined();
     expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
     expect(screen.getByText('피 묻은 칼')).toBeDefined();
@@ -192,7 +237,7 @@ describe('CharacterAssignPanel', () => {
     });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
@@ -216,7 +261,7 @@ describe('CharacterAssignPanel', () => {
     });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     expect(screen.getByText('아직 저장된 역할지가 없습니다.')).toBeDefined();
     expect((screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement).value).toBe('');
@@ -238,7 +283,7 @@ describe('CharacterAssignPanel', () => {
     });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
 
     expect(screen.getByText('역할지를 불러오지 못했습니다.')).toBeDefined();
@@ -249,7 +294,7 @@ describe('CharacterAssignPanel', () => {
     useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '기존 역할지' } }, isLoading: false });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
 
     expect(upsertRoleSheetMutateMock).not.toHaveBeenCalled();
@@ -258,7 +303,7 @@ describe('CharacterAssignPanel', () => {
 
   it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', async () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
     const saveButton = screen.getByRole('button', { name: '역할지 저장' });
@@ -286,7 +331,7 @@ describe('CharacterAssignPanel', () => {
     });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     expect(screen.getByText('PDF 역할지')).toBeDefined();
     expect(screen.getByText('1페이지')).toBeDefined();
@@ -312,7 +357,7 @@ describe('CharacterAssignPanel', () => {
     });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     expect(screen.getByText('이미지 롤지')).toBeDefined();
     expect(screen.getByText('1 / 2페이지')).toBeDefined();
@@ -329,7 +374,7 @@ describe('CharacterAssignPanel', () => {
     });
 
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     fireEvent.click(screen.getByRole('button', { name: /이미지/ }));
     fireEvent.change(screen.getByRole('textbox', { name: '이미지 페이지 URL' }), {
       target: { value: 'https://cdn.example/role-1.webp' },
@@ -349,7 +394,7 @@ describe('CharacterAssignPanel', () => {
 
   it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     fireEvent.change(screen.getByPlaceholderText('단서명, 장소, 태그 검색'), {
       target: { value: '부엌' },
@@ -368,7 +413,7 @@ describe('CharacterAssignPanel', () => {
 
   it('debounce 1500ms 후에 mutate가 호출된다', async () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     clickFirstClue();
 
     // Regression guard: 500ms (old window) must NOT fire.
@@ -385,7 +430,7 @@ describe('CharacterAssignPanel', () => {
 
   it('optimistic update: 단서 추가 즉시 query cache가 갱신된다', () => {
     const { qc } = renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     clickFirstClue();
 
     // Cache reflects the toggle synchronously — no debounce wait.
@@ -398,7 +443,7 @@ describe('CharacterAssignPanel', () => {
 
   it('mutate 실패 시 optimistic update가 rollback된다', async () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     clickFirstClue();
 
     await act(async () => { vi.advanceTimersByTime(1500); });
@@ -418,7 +463,7 @@ describe('CharacterAssignPanel', () => {
     // 되돌아가야 한다. pendingSnapshotRef가 첫 schedule 시점에 캡처한
     // baseTheme로 cache가 복원되는지 검증.
     const { qc } = renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     clickFirstClue();
 
     // schedule-time mirror 즉시 적용된 상태 확인.
@@ -444,7 +489,7 @@ describe('CharacterAssignPanel', () => {
 
   it('미션 추가 버튼이 동작한다 (1500ms debounce)', async () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     fireEvent.click(screen.getByText('추가'));
 
     await act(async () => { vi.advanceTimersByTime(1500); });
@@ -456,18 +501,18 @@ describe('CharacterAssignPanel', () => {
 
   it('다른 캐릭터 선택 시 pending save가 flush된다', async () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     clickFirstClue();
     expect(mutateMock).not.toHaveBeenCalled();
 
     // Switching characters should flush without waiting for the debounce.
-    fireEvent.click(screen.getByText('김철수'));
+    fireEvent.click(screen.getByRole('button', { name: '김철수 선택' }));
     expect(mutateMock).toHaveBeenCalledTimes(1);
   });
 
   it('디바운스 창 안 여러 키 연속 편집 시 모든 변경이 병합되어 저장된다', async () => {
     renderPanel();
-    fireEvent.click(screen.getByText('홍길동'));
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
 
     // 1) Add a clue at t=0 → starting_clue config enters pendingRef.
     clickFirstClue();

@@ -1,11 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
-import { User } from "lucide-react";
 import type { EditorThemeResponse, MysteryRole } from "@/features/editor/api";
 import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
 import type { Mission } from "./MissionEditor";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
-import { CharacterList } from "./CharacterList";
+import { EntityEditorShell } from "@/features/editor/entities/shell/EntityEditorShell";
 import {
   readCharacterStartingClueMap,
   writeCharacterStartingClueMap,
@@ -21,6 +20,9 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const { data: clues } = useEditorClues(themeId);
   const updateCharacter = useUpdateCharacter(themeId);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
+  const activeCharId = characters?.some((char) => char.id === selectedCharId)
+    ? selectedCharId
+    : characters?.[0]?.id ?? null;
 
   const characterClues = useMemo(
     () => readCharacterStartingClueMap(theme.config_json),
@@ -44,22 +46,20 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
     [flush],
   );
 
-  const handleClueToggle = useCallback(
-    (clueId: string, checked: boolean) => {
-      if (!selectedCharId) return;
-      const current = characterClues[selectedCharId] ?? [];
+  const handleClueToggleForChar = useCallback(
+    (characterId: string, clueId: string, checked: boolean) => {
+      const current = characterClues[characterId] ?? [];
       const next = checked ? [...current, clueId] : current.filter((id) => id !== clueId);
       saveConfig(writeCharacterStartingClueMap(theme.config_json, {
         ...characterClues,
-        [selectedCharId]: next,
+        [characterId]: next,
       }));
     },
-    [characterClues, saveConfig, selectedCharId, theme.config_json],
+    [characterClues, saveConfig, theme.config_json],
   );
 
-  const handleAddMission = useCallback(() => {
-    if (!selectedCharId) return;
-    const current = characterMissions[selectedCharId] ?? [];
+  const handleAddMissionForChar = useCallback((characterId: string) => {
+    const current = characterMissions[characterId] ?? [];
     const mission: Mission = {
       id: crypto.randomUUID(),
       type: "kill",
@@ -67,44 +67,41 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
       points: 10,
     };
     saveConfig({
-      character_missions: { ...characterMissions, [selectedCharId]: [...current, mission] },
+      character_missions: { ...characterMissions, [characterId]: [...current, mission] },
     });
-  }, [characterMissions, saveConfig, selectedCharId]);
+  }, [characterMissions, saveConfig]);
 
-  const handleDeleteMission = useCallback(
-    (missionId: string) => {
-      if (!selectedCharId) return;
-      const current = characterMissions[selectedCharId] ?? [];
+  const handleDeleteMissionForChar = useCallback(
+    (characterId: string, missionId: string) => {
+      const current = characterMissions[characterId] ?? [];
       saveConfig({
         character_missions: {
           ...characterMissions,
-          [selectedCharId]: current.filter((m) => m.id !== missionId),
+          [characterId]: current.filter((m) => m.id !== missionId),
         },
       });
     },
-    [characterMissions, saveConfig, selectedCharId],
+    [characterMissions, saveConfig],
   );
 
-  const handleMissionChange = useCallback(
-    (missionId: string, field: keyof Mission, value: string | number) => {
-      if (!selectedCharId) return;
-      const current = characterMissions[selectedCharId] ?? [];
+  const handleMissionChangeForChar = useCallback(
+    (characterId: string, missionId: string, field: keyof Mission, value: string | number) => {
+      const current = characterMissions[characterId] ?? [];
       saveConfig({
         character_missions: {
           ...characterMissions,
-          [selectedCharId]: current.map((m) =>
+          [characterId]: current.map((m) =>
             m.id === missionId ? { ...m, [field]: value } : m,
           ),
         },
       });
     },
-    [characterMissions, saveConfig, selectedCharId],
+    [characterMissions, saveConfig],
   );
 
-  const handleMysteryRoleChange = useCallback(
-    (role: MysteryRole) => {
-      if (!selectedCharId) return;
-      const selected = characters?.find((char) => char.id === selectedCharId);
+  const handleMysteryRoleChangeForChar = useCallback(
+    (characterId: string, role: MysteryRole) => {
+      const selected = characters?.find((char) => char.id === characterId);
       if (!selected) return;
 
       updateCharacter.mutate({
@@ -119,7 +116,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
         },
       });
     },
-    [characters, selectedCharId, updateCharacter],
+    [characters, updateCharacter],
   );
 
   if (charsLoading) {
@@ -132,18 +129,19 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
   if (!characters?.length) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <User className="mx-auto mb-3 h-8 w-8 text-slate-700" />
-          <p className="text-xs text-slate-500">캐릭터를 먼저 추가하세요</p>
-        </div>
-      </div>
+      <EntityEditorShell
+        title="캐릭터"
+        items={[]}
+        selectedId={undefined}
+        onSelect={() => undefined}
+        emptyMessage="캐릭터를 먼저 추가하세요"
+        emptyDescription="기본 탭에서 캐릭터를 만든 뒤 역할지와 시작 단서를 배정할 수 있습니다."
+        getItemId={(char) => char.id}
+        getItemTitle={(char) => char.name}
+        renderDetail={() => null}
+      />
     );
   }
-
-  const selectedChar = characters.find((c) => c.id === selectedCharId) ?? null;
-  const charClueIds = selectedCharId ? (characterClues[selectedCharId] ?? []) : [];
-  const charMissions = selectedCharId ? (characterMissions[selectedCharId] ?? []) : [];
 
   return (
     <div
@@ -154,27 +152,39 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flush();
       }}
     >
-      <CharacterList
-        characters={characters}
-        selectedCharId={selectedCharId}
+      <EntityEditorShell
+        title="캐릭터"
+        items={characters}
+        selectedId={activeCharId ?? undefined}
         onSelect={handleSelectChar}
+        getItemId={(char) => char.id}
+        getItemTitle={(char) => char.name}
+        getItemDescription={(char) => char.description ?? ''}
+        getItemBadges={(char) => [formatMysteryRoleBadge(char.mystery_role, char.is_culprit)]}
+        renderDetail={(char) => (
+          <CharacterDetailPanel
+            themeId={themeId}
+            selectedChar={char}
+            characters={characters ?? []}
+            clues={clues}
+            charClueIds={characterClues[char.id] ?? []}
+            charMissions={characterMissions[char.id] ?? []}
+            onClueToggle={(clueId, checked) => handleClueToggleForChar(char.id, clueId, checked)}
+            onAddMission={() => handleAddMissionForChar(char.id)}
+            onChangeMission={(missionId, field, value) => handleMissionChangeForChar(char.id, missionId, field, value)}
+            onDeleteMission={(missionId) => handleDeleteMissionForChar(char.id, missionId)}
+            onMysteryRoleChange={(role) => handleMysteryRoleChangeForChar(char.id, role)}
+          />
+        )}
       />
-
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        <CharacterDetailPanel
-          themeId={themeId}
-          selectedChar={selectedChar}
-          characters={characters ?? []}
-          clues={clues}
-          charClueIds={charClueIds}
-          charMissions={charMissions}
-          onClueToggle={handleClueToggle}
-          onAddMission={handleAddMission}
-          onChangeMission={handleMissionChange}
-          onDeleteMission={handleDeleteMission}
-          onMysteryRoleChange={handleMysteryRoleChange}
-        />
-      </div>
     </div>
   );
+}
+
+
+function formatMysteryRoleBadge(role: MysteryRole | undefined, isCulprit: boolean | undefined) {
+  if (role === "culprit" || (!role && isCulprit)) return "범인";
+  if (role === "accomplice") return "공범";
+  if (role === "detective") return "탐정";
+  return "용의자";
 }

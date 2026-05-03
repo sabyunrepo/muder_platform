@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -120,13 +121,72 @@ func validateClueRoundOrder(reveal, hide *int32) error {
 }
 
 func (s *service) DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error {
-	n, err := s.q.DeleteClueWithOwner(ctx, db.DeleteClueWithOwnerParams{ID: clueID, CreatorID: creatorID})
+	clue, err := s.q.GetClueWithOwner(ctx, db.GetClueWithOwnerParams{ID: clueID, CreatorID: creatorID})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("clue not found")
+		}
+		s.logger.Error().Err(err).Msg("failed to get clue")
+		return apperror.Internal("failed to get clue")
+	}
+
+	err = pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		var themeCreatorID uuid.UUID
+		var configJSON json.RawMessage
+		if err := tx.QueryRow(ctx, `
+			SELECT creator_id, config_json
+			FROM themes
+			WHERE id = $1
+			FOR UPDATE
+		`, clue.ThemeID).Scan(&themeCreatorID, &configJSON); err != nil {
+			return err
+		}
+		if themeCreatorID != creatorID {
+			return apperror.Forbidden("you do not own this theme")
+		}
+
+		cleanedConfig, changed, err := removeClueReferencesFromConfigJSON(configJSON, clueID)
+		if err != nil {
+			return err
+		}
+		if changed {
+			if _, err := tx.Exec(ctx, `
+				UPDATE themes
+				SET config_json = $2, version = version + 1, updated_at = NOW()
+				WHERE id = $1
+			`, clue.ThemeID, cleanedConfig); err != nil {
+				return err
+			}
+		}
+
+		if _, err := tx.Exec(ctx, `
+			DELETE FROM clue_edge_groups
+			WHERE target_id = $1
+			   OR id IN (SELECT group_id FROM clue_edge_members WHERE source_id = $1)
+		`, clueID); err != nil {
+			return err
+		}
+
+		qtx := s.q.WithTx(tx)
+		n, err := qtx.DeleteClueWithOwner(ctx, db.DeleteClueWithOwnerParams{ID: clueID, CreatorID: creatorID})
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return apperror.NotFound("clue not found")
+		}
+		return nil
+	})
+	if err != nil {
+		var appErr *apperror.AppError
+		if errors.As(err, &appErr) {
+			return appErr
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("theme not found")
+		}
 		s.logger.Error().Err(err).Msg("failed to delete clue")
 		return apperror.Internal("failed to delete clue")
-	}
-	if n == 0 {
-		return apperror.NotFound("clue not found")
 	}
 	return nil
 }
