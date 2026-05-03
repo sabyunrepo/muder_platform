@@ -75,8 +75,8 @@ func TestModule_DeliversOnlyToTargetCharacter(t *testing.T) {
 		t.Fatalf("ReactTo: %v", err)
 	}
 
-	aliceState, _ := m.BuildStateFor(alice)
-	bobState, _ := m.BuildStateFor(bob)
+	aliceState := mustStateFor(t, m, alice)
+	bobState := mustStateFor(t, m, bob)
 
 	if got := decodeState(t, aliceState).VisibleReadingSectionIDs; len(got) != 2 || got[0] != "rs-1" || got[1] != "rs-2" {
 		t.Fatalf("alice visible sections = %#v", got)

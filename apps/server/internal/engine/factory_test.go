@@ -130,6 +130,22 @@ func TestParseGameConfig_NormalizedModulesMap(t *testing.T) {
 	}
 }
 
+func TestParseGameConfig_NormalizedModulesRejectsUnknownEnvelopeField(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":{"information_delivery":{"enabled":true,"confg":{}}}}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected unknown normalized module field error")
+	}
+}
+
+func TestParseGameConfig_LegacyModulesRejectsUnknownEnvelopeField(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[{"name":"information_delivery","enabled":true}]}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected unknown legacy module field error")
+	}
+}
+
 func TestParseGameConfig_AddsInformationDeliveryModuleForPhaseAction(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1","onEnter":[{"type":"DELIVER_INFORMATION","params":{"deliveries":[]}}]}],"modules":[]}`)
 	cfg, err := ParseGameConfig(data)

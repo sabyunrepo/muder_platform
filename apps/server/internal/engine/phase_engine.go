@@ -110,19 +110,29 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 		}
 	}
 
+	previousStarted := e.started
+	previousCurrent := e.current
+	previousRound := e.currentRound
 	e.started = true
 	e.current = 0
 	e.currentRound = 1
+
+	if err := e.enterCurrentPhase(ctx); err != nil {
+		e.started = previousStarted
+		e.current = previousCurrent
+		e.currentRound = previousRound
+		e.auditEvent(ctx, "phase.enter_failed", map[string]any{
+			"phase": e.phases[0].ID,
+			"error": err.Error(),
+		})
+		return err
+	}
 
 	e.auditEvent(ctx, "engine.started", map[string]any{
 		"sessionId":  e.sessionID.String(),
 		"modules":    e.moduleNames(),
 		"phaseCount": len(e.phases),
 	})
-
-	if err := e.enterCurrentPhase(ctx); err != nil {
-		return err
-	}
 
 	return nil
 }
@@ -168,14 +178,18 @@ func (e *PhaseEngine) AdvancePhase(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("engine: not running")
 	}
 
-	oldPhase := e.phases[e.current]
+	oldIndex := e.current
+	oldRound := e.currentRound
+	oldPhase := e.phases[oldIndex]
 
 	if err := e.exitCurrentPhase(ctx); err != nil {
 		return false, err
 	}
 
-	e.current++
-	if e.current >= len(e.phases) {
+	targetIndex := oldIndex + 1
+	if targetIndex >= len(e.phases) {
+		e.current = targetIndex
+		e.currentRound = oldRound
 		e.auditEvent(ctx, "engine.completed", map[string]any{
 			"sessionId": e.sessionID.String(),
 			"lastPhase": oldPhase.ID,
@@ -183,7 +197,18 @@ func (e *PhaseEngine) AdvancePhase(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	e.currentRound++
+	e.current = targetIndex
+	e.currentRound = oldRound + 1
+	if err := e.enterCurrentPhase(ctx); err != nil {
+		e.current = oldIndex
+		e.currentRound = oldRound
+		e.auditEvent(ctx, "phase.enter_failed", map[string]any{
+			"from":  oldPhase.ID,
+			"to":    e.phases[targetIndex].ID,
+			"error": err.Error(),
+		})
+		return false, err
+	}
 
 	newPhase := e.phases[e.current]
 	e.auditEvent(ctx, "phase.advanced", map[string]any{
@@ -191,10 +216,6 @@ func (e *PhaseEngine) AdvancePhase(ctx context.Context) (bool, error) {
 		"to":    newPhase.ID,
 		"round": e.currentRound,
 	})
-
-	if err := e.enterCurrentPhase(ctx); err != nil {
-		return false, err
-	}
 
 	return true, nil
 }
@@ -207,18 +228,28 @@ func (e *PhaseEngine) SkipToPhase(ctx context.Context, phaseID string) error {
 
 	for i, p := range e.phases {
 		if string(p.ID) == phaseID {
-			oldID := e.phases[e.current].ID
+			oldIndex := e.current
+			oldID := e.phases[oldIndex].ID
 			if err := e.exitCurrentPhase(ctx); err != nil {
 				return err
 			}
 			e.current = i
+			if err := e.enterCurrentPhase(ctx); err != nil {
+				e.current = oldIndex
+				e.auditEvent(ctx, "phase.enter_failed", map[string]any{
+					"from":  oldID,
+					"to":    phaseID,
+					"error": err.Error(),
+				})
+				return err
+			}
 
 			e.auditEvent(ctx, "phase.skipped", map[string]any{
 				"from": oldID,
 				"to":   phaseID,
 			})
 
-			return e.enterCurrentPhase(ctx)
+			return nil
 		}
 	}
 	return fmt.Errorf("engine: phase %q not found", phaseID)

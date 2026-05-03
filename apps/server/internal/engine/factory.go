@@ -61,7 +61,7 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	}
 	cfg.Modules = modules
 	if err := ensureImplicitPhaseActionModules(&cfg); err != nil {
-		return nil, err
+		return nil, apperror.BadRequest("invalid phase action config").Wrap(err)
 	}
 	if len(cfg.Phases) == 0 {
 		return nil, fmt.Errorf("engine: configJson has no phases")
@@ -77,15 +77,16 @@ func parseModuleConfigs(raw json.RawMessage) ([]ModuleConfig, error) {
 		return nil, nil
 	}
 	var legacy []ModuleConfig
-	if err := json.Unmarshal(raw, &legacy); err == nil {
+	if err := decodeStrict(raw, &legacy); err == nil {
 		return legacy, nil
 	}
 
-	var normalized map[string]struct {
+	type normalizedModuleConfig struct {
 		Enabled bool            `json:"enabled"`
 		Config  json.RawMessage `json:"config,omitempty"`
 	}
-	if err := json.Unmarshal(raw, &normalized); err != nil {
+	var normalized map[string]normalizedModuleConfig
+	if err := decodeStrict(raw, &normalized); err != nil {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: "+err.Error())
 	}
 	names := make([]string, 0, len(normalized))
@@ -144,6 +145,12 @@ func BuildModules(
 		configs[mc.Name] = mc.Config
 	}
 	return modules, configs, nil
+}
+
+func decodeStrict(raw json.RawMessage, target any) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	return dec.Decode(target)
 }
 
 func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
