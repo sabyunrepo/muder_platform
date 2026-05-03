@@ -48,6 +48,54 @@ func TestNormalizeMysteryRole(t *testing.T) {
 	}
 }
 
+func TestCharacterRolePolicy(t *testing.T) {
+	tests := []struct {
+		name                string
+		role                string
+		legacyIsCulprit     bool
+		wantRole            string
+		wantCulprit         bool
+		wantSpoiler         bool
+		wantVotingCandidate bool
+		wantErr             bool
+	}{
+		{name: "empty role defaults to suspect", wantRole: MysteryRoleSuspect, wantVotingCandidate: true},
+		{name: "legacy culprit flag maps to culprit", legacyIsCulprit: true, wantRole: MysteryRoleCulprit, wantCulprit: true, wantSpoiler: true, wantVotingCandidate: true},
+		{name: "explicit culprit is spoiler and candidate", role: MysteryRoleCulprit, wantRole: MysteryRoleCulprit, wantCulprit: true, wantSpoiler: true, wantVotingCandidate: true},
+		{name: "accomplice is spoiler but not culprit", role: MysteryRoleAccomplice, wantRole: MysteryRoleAccomplice, wantSpoiler: true, wantVotingCandidate: true},
+		{name: "detective is spoiler and excluded by default voting policy", role: MysteryRoleDetective, wantRole: MysteryRoleDetective, wantSpoiler: true, wantVotingCandidate: false},
+		{name: "legacy culprit cannot conflict with detective", role: MysteryRoleDetective, legacyIsCulprit: true, wantErr: true},
+		{name: "unknown role is rejected", role: "gm", wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := BuildCharacterRolePolicy(tc.role, tc.legacyIsCulprit)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("BuildCharacterRolePolicy: %v", err)
+			}
+			if got.MysteryRole != tc.wantRole {
+				t.Fatalf("MysteryRole = %q, want %q", got.MysteryRole, tc.wantRole)
+			}
+			if got.IsCulprit != tc.wantCulprit {
+				t.Fatalf("IsCulprit = %v, want %v", got.IsCulprit, tc.wantCulprit)
+			}
+			if got.IsSpoiler != tc.wantSpoiler {
+				t.Fatalf("IsSpoiler = %v, want %v", got.IsSpoiler, tc.wantSpoiler)
+			}
+			if got.DefaultVotingCandidate != tc.wantVotingCandidate {
+				t.Fatalf("DefaultVotingCandidate = %v, want %v", got.DefaultVotingCandidate, tc.wantVotingCandidate)
+			}
+		})
+	}
+}
+
 func TestService_CreateCharacter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
