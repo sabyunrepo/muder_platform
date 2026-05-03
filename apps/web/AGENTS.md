@@ -53,9 +53,46 @@ React 19 + Vite SPA + Zustand + Tailwind CSS 4 직접 사용 + `lucide-react`.
 - 터치 조작 기준으로 버튼/클릭 영역은 충분한 높이와 간격을 둔다.
 - 브라우저 확인 시 최소 1개 모바일 폭(예: 390px)과 데스크톱 폭을 같이 본다.
 
+## 에디터 기능 설계 전 Uzu 참고
+
+When:
+- 캐릭터, 단서, 장소, 페이즈, 결말 등 에디터 기능을 새로 만들거나 개선할 때
+
+Do:
+1. `docs/uzu-studio-docs`에서 관련 문서를 먼저 확인한다.
+2. Uzu가 어떤 제작 문제를 어떤 UI/흐름으로 해결하는지 요약한다.
+3. MMP의 실시간 멀티플레이, 권한, R2 미디어, backend engine 구조에 맞게 반영할 점과 제외할 점을 나눈다.
+4. 구현 전 브리핑에 `Uzu 참고점`, `MMP 적용 방식`, `제외/후순위`를 포함한다.
+
+Done when:
+- 에디터 기능 제안 또는 구현 계획에 Uzu 참고 결과와 MMP식 재해석이 포함되어 있다.
+
+Avoid:
+- Uzu 구조를 그대로 복제하지 않는다.
+- Uzu에 있다는 이유만으로 MMP에 필요 없는 정보나 설정을 노출하지 않는다.
+
 ## 에디터 UI 원칙
 
 - 제작자 에디터와 플레이어 런타임 UI를 분리한다.
+
+### 제작자에게 필요한 정보만 표시
+
+When:
+- 에디터 화면, 검수 패널, 상세 패널, dev preview를 만들거나 수정할 때
+
+Do:
+1. 제작자가 지금 결정을 내리는 데 필요한 정보만 우선 표시한다.
+2. internal ID, DB 필드명, config key, engine module key, 저장 JSON shape, legacy code는 기본 화면에서 숨긴다.
+3. 필요한 검수 정보는 제작자 언어로 요약한다. 예: “이 단서는 아직 어디에도 연결되지 않았어요.”
+4. 개발자용 원문 데이터는 필요할 때만 dev-only/debug 접힘 영역에 격리한다.
+
+Done when:
+- 화면을 보는 제작자가 다음 행동을 이해할 수 있고, 내부 구현 정보를 몰라도 작업을 완료할 수 있다.
+
+Avoid:
+- “혹시 필요할 수 있다”는 이유로 시스템 정보를 기본 화면에 늘어놓지 않는다.
+- 검수 패널을 개발자 로그나 JSON viewer처럼 만들지 않는다.
+
 - 에디터에는 제작자가 실제로 판단해야 하는 검수용 정보만 보일 수 있다. 예: 참조상태, 미사용 단서, backlink, 장소 tree-ready, validation warning. 내부 ID나 저장 구조처럼 제작자가 몰라도 되는 정보는 기본 검수 패널에서도 제외한다.
 - 플레이어 화면에는 스포일러성 제작 정보가 노출되면 안 된다. 예: 범인 여부, 공범 여부, 단서 backlink, 다른 캐릭터 역할지.
 - 캐릭터/장소/단서 entity 화면은 세로 흐름을 기본으로 한다.
@@ -73,6 +110,26 @@ React 19 + Vite SPA + Zustand + Tailwind CSS 4 직접 사용 + `lucide-react`.
 
 ## React 구조 원칙
 
+### Frontend Adapter와 재사용 컴포넌트
+
+When:
+- 에디터 entity, phase, ending, role sheet, clue/location/character UI를 만들거나 개선할 때
+
+Do:
+1. API DTO와 저장 config를 화면 컴포넌트에 직접 흘리지 않고 제작자용 ViewModel로 변환한다.
+2. 변환 책임은 `*Adapter`, mapper, feature-local helper에 둔다.
+3. 반복되는 검색, 선택, 다중 선택, 업로드, 삭제 확인, 검수 패널은 재사용 가능한 컴포넌트로 분리한다.
+4. 컴포넌트는 view, interaction, data adapter, persistence 책임을 섞지 않는다.
+5. props가 과하게 늘어나면 compound component, hook, adapter 분리를 검토한다.
+
+Done when:
+- 같은 UI 패턴을 다른 entity에 옮길 때 복사/붙여넣기보다 재사용 또는 작은 adapter 교체로 대응 가능하다.
+
+Avoid:
+- 1회성 UI를 성급하게 범용 컴포넌트로 만들지 않는다.
+- 컴포넌트가 backend engine config key나 JSON shape를 직접 표시/편집하게 하지 않는다.
+
+
 - 컴포넌트는 변경 이유별로 분리한다. 긴 단일 TSX에 검색/list/detail/inspector/save 로직을 모두 넣지 않는다.
 - 데이터 로직과 view를 분리한다. 서버 상태는 query hook, 화면 상태는 가까운 컴포넌트에 둔다.
 - 단순 파생값은 `useEffect + setState`로 동기화하지 말고 render 중 계산한다.
@@ -86,12 +143,12 @@ React 19 + Vite SPA + Zustand + Tailwind CSS 4 직접 사용 + `lucide-react`.
 - 현재 커버리지 gate: Lines 49%, Branches 77%, Functions 53%.
 - 목표: Phase 21에서 75%+ coverage.
 - E2E: `apps/web/e2e/` 아래 Playwright.
-- 코드 작성/수정 시 사용자 흐름이 바뀌면 E2E 테스트 작성 여부를 반드시 검토한다.
-  - 새 페이지, 라우트, 핵심 버튼/폼, 저장/업로드/권한/리다이렉트 흐름은 Playwright E2E를 추가하거나 기존 E2E를 갱신한다.
+- 모든 코드 작성/수정 PR은 사용자 관점의 E2E 테스트를 필수로 작성하거나 기존 E2E를 갱신한다.
+  - 새 페이지, 라우트, 핵심 버튼/폼, 저장/업로드/권한/리다이렉트 흐름은 Playwright E2E로 검증한다.
   - 백엔드 의존 흐름은 `localhost:8080/health` 같은 사전 확인으로 실행 불가 환경에서 자동 skip되게 작성한다.
-  - 순수 컴포넌트 내부 동작만 바뀌고 실제 라우트/사용자 여정이 변하지 않으면 focused Vitest로 대체할 수 있으나, PR/보고에 “E2E 미작성 사유”를 남긴다.
+  - 순수 내부 로직처럼 Playwright E2E가 부적합한 경우에도 integration/unit test로 대체하고, PR/보고에 “E2E 미작성 사유”와 대체 테스트를 명시한다.
   - dev-only preview를 만든 경우 최소 1개 E2E 또는 브라우저 확인으로 모바일 폭과 데스크톱 폭의 핵심 표시를 검증한다.
-- 코드 작성/수정 PR은 Codecov patch coverage 70% 이상을 달성해야 한다. 사용자 흐름이 바뀐 경우에는 Playwright E2E로 핵심 여정을 보강하고, E2E로 커버하기 어려운 분기/에러 처리는 Vitest 단위 테스트로 보강해 70% 기준을 맞춘다.
+- 코드 작성/수정 PR은 Codecov patch coverage 70% 이상을 merge 기준으로 달성해야 한다. E2E로 커버하기 어려운 분기/에러 처리는 Vitest 단위 테스트로 보강한다.
 - 백엔드가 없으면 lobby flow E2E는 자동 skip되어야 한다.
 - 접근성 smoke: `@axe-core/playwright`, focus-visible, WCAG 2.1 AA 기본 항목.
 - UI 변경 후 가능하면 focused Vitest + typecheck를 실행한다.
