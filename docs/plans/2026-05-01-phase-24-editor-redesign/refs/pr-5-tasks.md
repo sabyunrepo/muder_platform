@@ -55,7 +55,7 @@
 - Create: `apps/server/internal/module/decision/ending_branch/evaluator.go`
 - Create: `apps/server/internal/module/decision/ending_branch/evaluator_test.go`
 
-- [ ] **Step 1: Write failing evaluator tests**
+- [x] **Step 1: Write failing evaluator tests**
 
 ```go
 func TestEvaluate_PriorityMatrixSelectsFirstMatchingEnding(t *testing.T) {
@@ -99,7 +99,7 @@ func TestEvaluate_MultiChoiceThresholdAndScoreBreakdown(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 go test ./internal/module/decision/ending_branch -run 'TestEvaluate' -count=1
@@ -107,7 +107,7 @@ go test ./internal/module/decision/ending_branch -run 'TestEvaluate' -count=1
 
 Expected: FAIL because `Evaluate`/`AnswerSet` are undefined.
 
-- [ ] **Step 3: Implement minimal evaluator**
+- [x] **Step 3: Implement minimal evaluator**
 
 Implement:
 - `type AnswerSet map[string]map[string][]string`
@@ -121,7 +121,7 @@ Implement:
 - matrix sorted by ascending `Priority`; first match wins; no match → `DefaultEnding`.
 - score questions: sum `ScoreMap[choice]` per player.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 go test ./internal/module/decision/ending_branch -run 'TestEvaluate' -count=1
@@ -129,7 +129,7 @@ go test ./internal/module/decision/ending_branch -run 'TestEvaluate' -count=1
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/server/internal/module/decision/ending_branch/evaluator.go apps/server/internal/module/decision/ending_branch/evaluator_test.go
@@ -144,7 +144,7 @@ git commit -m "feat(ending_branch): add matrix evaluator"
 - Modify: `apps/server/internal/module/decision/ending_branch/module.go`
 - Modify: `apps/server/internal/module/decision/ending_branch/module_test.go`
 
-- [ ] **Step 1: Write failing module tests**
+- [x] **Step 1: Write failing module tests**
 
 Add tests for:
 - `HandleMessage(ctx, playerID, "ending_branch:submit_answer", payload)` stores answers.
@@ -161,7 +161,7 @@ Payload shape:
 }
 ```
 
-- [ ] **Step 2: Run failing tests**
+- [x] **Step 2: Run failing tests**
 
 ```bash
 go test ./internal/module/decision/ending_branch -run 'TestModule_.*PR5|TestModule_HandleMessage' -count=1
@@ -169,7 +169,7 @@ go test ./internal/module/decision/ending_branch -run 'TestModule_.*PR5|TestModu
 
 Expected: FAIL because stub still returns PR-5 error.
 
-- [ ] **Step 3: Implement runtime**
+- [x] **Step 3: Implement runtime**
 
 Implementation boundary:
 - Add `answers AnswerSet` and `evaluation EvaluationResult` under `mu`.
@@ -177,7 +177,7 @@ Implementation boundary:
 - Validate question id and choices against config before storing.
 - Call `Evaluate` after each answer and keep latest result.
 
-- [ ] **Step 4: Verify backend package**
+- [x] **Step 4: Verify backend package**
 
 ```bash
 go test ./internal/module/decision/ending_branch -count=1
@@ -185,7 +185,7 @@ go test ./internal/module/decision/ending_branch -count=1
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/server/internal/module/decision/ending_branch
