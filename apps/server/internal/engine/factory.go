@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"sort"
 
 	"github.com/mmp-platform/server/internal/apperror"
 )
@@ -41,22 +43,83 @@ type HostSubmittable interface {
 // Rejects unknown fields and enforces maxModulesPerGame.
 func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	if len(raw) == 0 {
-		return nil, fmt.Errorf("engine: configJson is empty")
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "engine: configJson is empty")
 	}
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 
-	var cfg GameConfig
-	if err := dec.Decode(&cfg); err != nil {
+	var wire struct {
+		Phases  []PhaseDefinition `json:"phases"`
+		Modules json.RawMessage   `json:"modules"`
+	}
+	if err := dec.Decode(&wire); err != nil {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
 	}
+	if err := rejectTrailingJSON(dec); err != nil {
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
+	}
+	cfg := GameConfig{Phases: wire.Phases}
+	modules, err := parseModuleConfigs(wire.Modules)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Modules = modules
+	if err := ensureImplicitPhaseActionModules(&cfg); err != nil {
+		return nil, apperror.BadRequest("invalid phase action config").Wrap(err)
+	}
 	if len(cfg.Phases) == 0 {
-		return nil, fmt.Errorf("engine: configJson has no phases")
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "engine: configJson has no phases")
 	}
 	if len(cfg.Modules) > maxModulesPerGame {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "too many modules")
 	}
 	return &cfg, nil
+}
+
+func parseModuleConfigs(raw json.RawMessage) ([]ModuleConfig, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var legacy []ModuleConfig
+	if err := decodeStrict(raw, &legacy); err == nil {
+		seen := make(map[string]struct{}, len(legacy))
+		for _, mc := range legacy {
+			if mc.Name == "" {
+				return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: empty module name")
+			}
+			if _, dup := seen[mc.Name]; dup {
+				return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: duplicate module name: "+mc.Name)
+			}
+			seen[mc.Name] = struct{}{}
+		}
+		return legacy, nil
+	}
+
+	type normalizedModuleConfig struct {
+		Enabled bool            `json:"enabled"`
+		Config  json.RawMessage `json:"config,omitempty"`
+	}
+	var normalized map[string]normalizedModuleConfig
+	if err := decodeStrict(raw, &normalized); err != nil {
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: "+err.Error())
+	}
+	names := make([]string, 0, len(normalized))
+	for name := range normalized {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	modules := make([]ModuleConfig, 0, len(normalized))
+	for _, name := range names {
+		if name == "" {
+			return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: empty module name")
+		}
+		entry := normalized[name]
+		if !entry.Enabled {
+			continue
+		}
+		modules = append(modules, ModuleConfig{Name: name, Config: entry.Config})
+	}
+	return modules, nil
 }
 
 // BuildModules instantiates and initialises modules declared in cfg.
@@ -99,4 +162,81 @@ func BuildModules(
 		configs[mc.Name] = mc.Config
 	}
 	return modules, configs, nil
+}
+
+func decodeStrict(raw json.RawMessage, target any) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(target); err != nil {
+		return err
+	}
+	return rejectTrailingJSON(dec)
+}
+
+func rejectTrailingJSON(dec *json.Decoder) error {
+	var trailing any
+	if err := dec.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("multiple JSON values")
+		}
+		return err
+	}
+	return nil
+}
+
+func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
+	if cfg == nil {
+		return nil
+	}
+	usesAction, err := phasesUseAction(cfg.Phases, ActionDeliverInformation)
+	if err != nil {
+		return err
+	}
+	if !usesAction || hasModuleConfig(cfg.Modules, "information_delivery") {
+		return nil
+	}
+	cfg.Modules = append(cfg.Modules, ModuleConfig{Name: "information_delivery"})
+	return nil
+}
+
+func phasesUseAction(phases []PhaseDefinition, action PhaseAction) (bool, error) {
+	for _, phase := range phases {
+		onEnter, err := rawUsesAction(phase.OnEnter, action)
+		if err != nil {
+			return false, err
+		}
+		onExit, err := rawUsesAction(phase.OnExit, action)
+		if err != nil {
+			return false, err
+		}
+		if onEnter || onExit {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func rawUsesAction(raw json.RawMessage, action PhaseAction) (bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false, nil
+	}
+	actions, err := parseConfiguredPhaseActions(raw)
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range actions {
+		if candidate.Action == action {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func hasModuleConfig(modules []ModuleConfig, name string) bool {
+	for _, module := range modules {
+		if module.Name == name {
+			return true
+		}
+	}
+	return false
 }

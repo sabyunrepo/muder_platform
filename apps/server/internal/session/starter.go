@@ -101,6 +101,7 @@ func startModularGame(
 		adapter,
 		gameCfg.Phases,
 	)
+	eng.SetPlayerInfoProvider(deps.PlayerInfoProvider)
 
 	s := newSession(cfg.SessionID, eng, cfg.Players, logger)
 	s.onAbort = m.removeSession

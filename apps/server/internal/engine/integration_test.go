@@ -252,12 +252,12 @@ func TestIntegration_FullSessionLifecycle(t *testing.T) {
 	// --- Phase 9: Verify EventBus received phase events ---
 
 	// Expected: entered:intro (from Start), exiting+entered:investigation,
-	// exiting+entered:voting, entered:ending (from skip)
+	// exiting+entered:voting, exiting+entered:ending (from skip)
 	expectedEvents := []string{
 		"entered:intro",
 		"exiting", "entered:investigation",
 		"exiting", "entered:voting",
-		"entered:ending",
+		"exiting", "entered:ending",
 	}
 	if len(phaseEvents) != len(expectedEvents) {
 		t.Fatalf("expected %d phase events, got %d: %v", len(expectedEvents), len(phaseEvents), phaseEvents)

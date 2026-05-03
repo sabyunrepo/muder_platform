@@ -31,17 +31,18 @@ func (noopAuditLogger) Log(context.Context, uuid.UUID, string, json.RawMessage) 
 // or subscribe to `phase:entered` (payload includes `round`) to gate clue /
 // location visibility against reveal_round/hide_round ranges.
 type PhaseEngine struct {
-	sessionID    uuid.UUID
-	modules      []Module          // ordered module list
-	moduleMap    map[string]Module // name → module for lookups
-	eventBus     *EventBus
-	audit        AuditLogger
-	logger       Logger
-	phases       []PhaseDefinition
-	current      int // index into phases, -1 = not started
-	currentRound int32
-	started      bool
-	stopped      bool
+	sessionID          uuid.UUID
+	modules            []Module          // ordered module list
+	moduleMap          map[string]Module // name → module for lookups
+	eventBus           *EventBus
+	audit              AuditLogger
+	logger             Logger
+	playerInfoProvider PlayerInfoProvider
+	phases             []PhaseDefinition
+	current            int // index into phases, -1 = not started
+	currentRound       int32
+	started            bool
+	stopped            bool
 }
 
 // CurrentRound returns the active round index (1-based). Returns 0 before
@@ -79,6 +80,13 @@ func NewPhaseEngine(
 	}
 }
 
+// SetPlayerInfoProvider wires session-owned player metadata into module deps.
+// It is optional for legacy sessions; player-aware runtime modules use it to
+// resolve character-targeted effects without trusting frontend state.
+func (e *PhaseEngine) SetPlayerInfoProvider(provider PlayerInfoProvider) {
+	e.playerInfoProvider = provider
+}
+
 // Start initialises all modules and enters the first phase.
 func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.RawMessage) error {
 	if e.started {
@@ -89,9 +97,10 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 	}
 
 	deps := ModuleDeps{
-		SessionID: e.sessionID,
-		EventBus:  e.eventBus,
-		Logger:    e.logger,
+		SessionID:          e.sessionID,
+		EventBus:           e.eventBus,
+		Logger:             e.logger,
+		PlayerInfoProvider: e.playerInfoProvider,
 	}
 
 	for _, mod := range e.modules {
@@ -101,19 +110,28 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 		}
 	}
 
+	previousStarted := e.started
+	previousCurrent := e.current
+	previousRound := e.currentRound
 	e.started = true
 	e.current = 0
 	e.currentRound = 1
+
+	if err := e.enterCurrentPhase(ctx); err != nil {
+		e.started = previousStarted
+		e.current = previousCurrent
+		e.currentRound = previousRound
+		e.auditEvent(ctx, "phase.enter_failed", map[string]any{
+			"phase": e.phases[0].ID,
+			"error": err.Error(),
+		})
+		return err
+	}
 
 	e.auditEvent(ctx, "engine.started", map[string]any{
 		"sessionId":  e.sessionID.String(),
 		"modules":    e.moduleNames(),
 		"phaseCount": len(e.phases),
-	})
-
-	e.eventBus.Publish(Event{
-		Type:    "phase:entered",
-		Payload: e.CurrentPhase(),
 	})
 
 	return nil
@@ -160,15 +178,18 @@ func (e *PhaseEngine) AdvancePhase(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("engine: not running")
 	}
 
-	oldPhase := e.phases[e.current]
+	oldIndex := e.current
+	oldRound := e.currentRound
+	oldPhase := e.phases[oldIndex]
 
-	e.eventBus.Publish(Event{
-		Type:    "phase:exiting",
-		Payload: e.phaseInfo(e.current),
-	})
+	if err := e.exitCurrentPhase(ctx); err != nil {
+		return false, err
+	}
 
-	e.current++
-	if e.current >= len(e.phases) {
+	targetIndex := oldIndex + 1
+	if targetIndex >= len(e.phases) {
+		e.current = targetIndex
+		e.currentRound = oldRound
 		e.auditEvent(ctx, "engine.completed", map[string]any{
 			"sessionId": e.sessionID.String(),
 			"lastPhase": oldPhase.ID,
@@ -176,18 +197,24 @@ func (e *PhaseEngine) AdvancePhase(ctx context.Context) (bool, error) {
 		return false, nil
 	}
 
-	e.currentRound++
+	e.current = targetIndex
+	e.currentRound = oldRound + 1
+	if err := e.enterCurrentPhase(ctx); err != nil {
+		e.current = oldIndex
+		e.currentRound = oldRound
+		e.auditEvent(ctx, "phase.enter_failed", map[string]any{
+			"from":  oldPhase.ID,
+			"to":    e.phases[targetIndex].ID,
+			"error": err.Error(),
+		})
+		return false, err
+	}
 
 	newPhase := e.phases[e.current]
 	e.auditEvent(ctx, "phase.advanced", map[string]any{
 		"from":  oldPhase.ID,
 		"to":    newPhase.ID,
 		"round": e.currentRound,
-	})
-
-	e.eventBus.Publish(Event{
-		Type:    "phase:entered",
-		Payload: e.CurrentPhase(),
 	})
 
 	return true, nil
@@ -201,18 +228,27 @@ func (e *PhaseEngine) SkipToPhase(ctx context.Context, phaseID string) error {
 
 	for i, p := range e.phases {
 		if string(p.ID) == phaseID {
-			oldID := e.phases[e.current].ID
+			oldIndex := e.current
+			oldID := e.phases[oldIndex].ID
+			if err := e.exitCurrentPhase(ctx); err != nil {
+				return err
+			}
 			e.current = i
+			if err := e.enterCurrentPhase(ctx); err != nil {
+				e.current = oldIndex
+				e.auditEvent(ctx, "phase.enter_failed", map[string]any{
+					"from":  oldID,
+					"to":    phaseID,
+					"error": err.Error(),
+				})
+				return err
+			}
 
 			e.auditEvent(ctx, "phase.skipped", map[string]any{
 				"from": oldID,
 				"to":   phaseID,
 			})
 
-			e.eventBus.Publish(Event{
-				Type:    "phase:entered",
-				Payload: e.CurrentPhase(),
-			})
 			return nil
 		}
 	}
@@ -261,7 +297,7 @@ func (e *PhaseEngine) DispatchAction(ctx context.Context, action PhaseActionPayl
 		if !ok {
 			return fmt.Errorf("engine: module %q does not implement PhaseReactor", requiredModule)
 		}
-		return reactor.ReactTo(ctx, action)
+		return e.safeCallReactor(ctx, mod.Name(), reactor, action)
 	}
 
 	// Broadcast to all supporting reactors.
