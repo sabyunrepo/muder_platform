@@ -17,21 +17,24 @@ func init() {
 
 // ClueInteractionConfig defines the settings for the clue interaction module.
 type ClueInteractionConfig struct {
-	DrawLimit            int    `json:"drawLimit"`
-	InitialClueLevel     int    `json:"initialClueLevel"`
-	CumulativeLevel      bool   `json:"cumulativeLevel"`
-	DuplicatePolicy      string `json:"duplicatePolicy"`
-	CommonClueVisibility string `json:"commonClueVisibility"`
-	AutoRevealClues      bool   `json:"autoRevealClues"`
+	DrawLimit            int                             `json:"drawLimit"`
+	InitialClueLevel     int                             `json:"initialClueLevel"`
+	CumulativeLevel      bool                            `json:"cumulativeLevel"`
+	DuplicatePolicy      string                          `json:"duplicatePolicy"`
+	CommonClueVisibility string                          `json:"commonClueVisibility"`
+	AutoRevealClues      bool                            `json:"autoRevealClues"`
+	ItemEffects          map[string]ClueItemEffectConfig `json:"itemEffects,omitempty"`
 }
 
 // ItemUseState tracks an in-progress item use action.
 type ItemUseState struct {
-	UserID    uuid.UUID `json:"userId"`
-	ClueID    uuid.UUID `json:"clueId"`
-	Effect    string    `json:"effect"`
-	Target    string    `json:"target"`
-	StartedAt time.Time `json:"startedAt"`
+	UserID     uuid.UUID `json:"userId"`
+	ClueID     uuid.UUID `json:"clueId"`
+	Effect     string    `json:"effect"`
+	Target     string    `json:"target"`
+	Consume    bool      `json:"consume"`
+	Configured bool      `json:"configured"`
+	StartedAt  time.Time `json:"startedAt"`
 }
 
 // ClueInteractionModule handles clue drawing and transfer mechanics.
@@ -44,6 +47,7 @@ type ClueInteractionModule struct {
 	acquiredClues    map[uuid.UUID][]string
 	activeItemUse    *ItemUseState
 	usedItems        map[uuid.UUID][]uuid.UUID // playerID -> used clue IDs
+	revealedInfo     map[uuid.UUID]map[string]string
 	itemTimeout      *time.Timer
 }
 
@@ -62,6 +66,7 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	m.playerDrawCounts = make(map[uuid.UUID]int)
 	m.acquiredClues = make(map[uuid.UUID][]string)
 	m.usedItems = make(map[uuid.UUID][]uuid.UUID)
+	m.revealedInfo = make(map[uuid.UUID]map[string]string)
 
 	// Apply defaults first.
 	m.config = ClueInteractionConfig{
@@ -71,6 +76,7 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 		DuplicatePolicy:      "exclusive",
 		CommonClueVisibility: "all",
 		AutoRevealClues:      false,
+		ItemEffects:          map[string]ClueItemEffectConfig{},
 	}
 
 	// Unmarshal directly into m.config — only provided JSON fields overwrite defaults.
@@ -78,6 +84,12 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 		if err := json.Unmarshal(config, &m.config); err != nil {
 			return fmt.Errorf("clue_interaction: invalid config: %w", err)
 		}
+	}
+	if m.config.ItemEffects == nil {
+		m.config.ItemEffects = map[string]ClueItemEffectConfig{}
+	}
+	if err := validateClueItemEffectConfig(m.config.ItemEffects); err != nil {
+		return err
 	}
 
 	m.currentClueLevel = m.config.InitialClueLevel
@@ -192,161 +204,6 @@ func (m *ClueInteractionModule) handleTransferClue(_ context.Context, playerID u
 	return nil
 }
 
-type itemUsePayload struct {
-	ClueID string `json:"clueId"`
-	Effect string `json:"effect"`
-	Target string `json:"target"`
-}
-
-type itemUseTargetPayload struct {
-	TargetPlayerID string `json:"targetPlayerId"`
-}
-
-func (m *ClueInteractionModule) handleItemUse(_ context.Context, playerID uuid.UUID, payload json.RawMessage) error {
-	var p itemUsePayload
-	if err := json.Unmarshal(payload, &p); err != nil {
-		return fmt.Errorf("clue_interaction: invalid clue:use payload: %w", err)
-	}
-	clueID, err := uuid.Parse(p.ClueID)
-	if err != nil {
-		return fmt.Errorf("clue_interaction: invalid clueId: %w", err)
-	}
-
-	m.mu.Lock()
-	if m.activeItemUse != nil {
-		m.mu.Unlock()
-		return fmt.Errorf("clue_interaction: item use already in progress")
-	}
-
-	m.activeItemUse = &ItemUseState{
-		UserID:    playerID,
-		ClueID:    clueID,
-		Effect:    p.Effect,
-		Target:    p.Target,
-		StartedAt: time.Now(),
-	}
-
-	timer := time.AfterFunc(30*time.Second, func() {
-		m.mu.Lock()
-		if m.activeItemUse != nil && m.activeItemUse.ClueID == clueID {
-			m.activeItemUse = nil
-		}
-		m.mu.Unlock()
-		m.deps.EventBus.Publish(engine.Event{
-			Type: "clue.item_timeout",
-			Payload: map[string]any{
-				"playerId": playerID.String(),
-				"clueId":   clueID.String(),
-			},
-		})
-	})
-	m.itemTimeout = timer
-	m.mu.Unlock()
-
-	m.deps.EventBus.Publish(engine.Event{
-		Type: "clue.item_declared",
-		Payload: map[string]any{
-			"playerId": playerID.String(),
-			"clueId":   clueID.String(),
-		},
-	})
-	return nil
-}
-
-func (m *ClueInteractionModule) handleItemUseTarget(ctx context.Context, playerID uuid.UUID, payload json.RawMessage) error {
-	var p itemUseTargetPayload
-	if err := json.Unmarshal(payload, &p); err != nil {
-		return fmt.Errorf("clue_interaction: invalid clue:use_target payload: %w", err)
-	}
-
-	m.mu.Lock()
-	if m.activeItemUse == nil {
-		m.mu.Unlock()
-		return fmt.Errorf("clue_interaction: no active item use")
-	}
-	if m.activeItemUse.UserID != playerID {
-		m.mu.Unlock()
-		return fmt.Errorf("clue_interaction: not the active item user")
-	}
-	state := *m.activeItemUse
-	m.mu.Unlock()
-
-	var resolveErr error
-	switch state.Effect {
-	case "peek":
-		resolveErr = m.handlePeekEffect(ctx, playerID, state.ClueID, p.TargetPlayerID)
-	case "":
-		// Effect not set in declaration — treat as unimplemented.
-		resolveErr = fmt.Errorf("clue_interaction: effect not specified")
-	default:
-		resolveErr = fmt.Errorf("clue_interaction: effect %q not implemented", state.Effect)
-	}
-
-	if resolveErr != nil {
-		return resolveErr
-	}
-
-	m.mu.Lock()
-	if m.itemTimeout != nil {
-		m.itemTimeout.Stop()
-		m.itemTimeout = nil
-	}
-	if m.activeItemUse != nil && m.activeItemUse.ClueID == state.ClueID {
-		m.usedItems[playerID] = append(m.usedItems[playerID], state.ClueID)
-		m.activeItemUse = nil
-	}
-	m.mu.Unlock()
-
-	m.deps.EventBus.Publish(engine.Event{
-		Type: "clue.item_resolved",
-		Payload: map[string]any{
-			"playerId": playerID.String(),
-			"clueId":   state.ClueID.String(),
-			"effect":   state.Effect,
-		},
-	})
-	return nil
-}
-
-func (m *ClueInteractionModule) handlePeekEffect(_ context.Context, _ uuid.UUID, _ uuid.UUID, targetPlayerIDStr string) error {
-	targetPlayerID, err := uuid.Parse(targetPlayerIDStr)
-	if err != nil {
-		return fmt.Errorf("clue_interaction: invalid targetPlayerId: %w", err)
-	}
-
-	m.mu.RLock()
-	clues := make([]string, len(m.acquiredClues[targetPlayerID]))
-	copy(clues, m.acquiredClues[targetPlayerID])
-	m.mu.RUnlock()
-
-	m.deps.EventBus.Publish(engine.Event{
-		Type: "clue.peek_result",
-		Payload: map[string]any{
-			"targetPlayerId": targetPlayerID.String(),
-			"clues":          clues,
-		},
-	})
-	return nil
-}
-
-func (m *ClueInteractionModule) handleItemUseCancel(_ context.Context, playerID uuid.UUID) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.activeItemUse == nil {
-		return fmt.Errorf("clue_interaction: no active item use")
-	}
-	if m.activeItemUse.UserID != playerID {
-		return fmt.Errorf("clue_interaction: not the active item user")
-	}
-	if m.itemTimeout != nil {
-		m.itemTimeout.Stop()
-		m.itemTimeout = nil
-	}
-	m.activeItemUse = nil
-	return nil
-}
-
 // --- PhaseReactor ---
 
 func (m *ClueInteractionModule) ReactTo(_ context.Context, action engine.PhaseActionPayload) error {
@@ -398,6 +255,22 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 			"duplicatePolicy":      map[string]any{"type": "string", "enum": []string{"exclusive", "shared", "copy"}, "default": "exclusive", "description": "How duplicate clue draws are handled"},
 			"commonClueVisibility": map[string]any{"type": "string", "enum": []string{"all", "finder_only", "same_location"}, "default": "all", "description": "Who can see common clues"},
 			"autoRevealClues":      map[string]any{"type": "boolean", "default": false, "description": "Automatically reveal clues when drawn"},
+			"itemEffects": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"effect":       map[string]any{"type": "string", "enum": []string{"peek", "reveal", "grant_clue"}},
+						"target":       map[string]any{"type": "string", "enum": []string{"player", "self"}},
+						"consume":      map[string]any{"type": "boolean", "default": false},
+						"revealText":   map[string]any{"type": "string"},
+						"grantClueIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+					},
+					"required":             []string{"effect"},
+					"additionalProperties": false,
+				},
+				"description": "Runtime clue use effects keyed by clue ID",
+			},
 		},
 		"additionalProperties": false,
 	}
@@ -406,12 +279,13 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 }
 
 type clueInteractionState struct {
-	PlayerDrawCounts map[uuid.UUID]int         `json:"playerDrawCounts"`
-	CurrentClueLevel int                       `json:"currentClueLevel"`
-	AcquiredClues    map[uuid.UUID][]string    `json:"acquiredClues"`
-	Config           ClueInteractionConfig     `json:"config"`
-	UsedItems        map[uuid.UUID][]uuid.UUID `json:"usedItems"`
-	ActiveItemUse    *ItemUseState             `json:"activeItemUse,omitempty"`
+	PlayerDrawCounts map[uuid.UUID]int               `json:"playerDrawCounts"`
+	CurrentClueLevel int                             `json:"currentClueLevel"`
+	AcquiredClues    map[uuid.UUID][]string          `json:"acquiredClues"`
+	Config           ClueInteractionConfig           `json:"config"`
+	UsedItems        map[uuid.UUID][]uuid.UUID       `json:"usedItems"`
+	RevealedInfo     map[uuid.UUID]map[string]string `json:"revealedInfo"`
+	ActiveItemUse    *ItemUseState                   `json:"activeItemUse,omitempty"`
 }
 
 func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {
@@ -424,6 +298,7 @@ func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {
 		AcquiredClues:    m.acquiredClues,
 		Config:           m.config,
 		UsedItems:        m.usedItems,
+		RevealedInfo:     m.revealedInfo,
 		ActiveItemUse:    m.activeItemUse,
 	})
 }
@@ -435,6 +310,7 @@ func (m *ClueInteractionModule) Cleanup(_ context.Context) error {
 	m.playerDrawCounts = nil
 	m.acquiredClues = nil
 	m.usedItems = nil
+	m.revealedInfo = nil
 	m.activeItemUse = nil
 	if m.itemTimeout != nil {
 		m.itemTimeout.Stop()
@@ -471,7 +347,9 @@ func (m *ClueInteractionModule) Apply(_ context.Context, event engine.GameEvent,
 // Per-player maps (PlayerDrawCounts / AcquiredClues / UsedItems) are filtered
 // to the caller's own entry. ActiveItemUse is revealed only when the caller
 // is the item user — watching another player's in-flight item use leaks
-// strategy. CurrentClueLevel and Config are session-wide and remain public.
+// strategy. CurrentClueLevel and non-secret Config are session-wide and remain
+// public; configured clue effects are removed because they may contain hidden
+// reveal text and future rewards.
 func (m *ClueInteractionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -485,10 +363,17 @@ func (m *ClueInteractionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessa
 		PlayerDrawCounts: engine.FilterByPlayer(m.playerDrawCounts, playerID),
 		CurrentClueLevel: m.currentClueLevel,
 		AcquiredClues:    engine.FilterByPlayer(m.acquiredClues, playerID),
-		Config:           m.config,
+		Config:           m.configForPlayerState(),
 		UsedItems:        engine.FilterByPlayer(m.usedItems, playerID),
+		RevealedInfo:     engine.FilterByPlayer(m.revealedInfo, playerID),
 		ActiveItemUse:    activeItemUse,
 	})
+}
+
+func (m *ClueInteractionModule) configForPlayerState() ClueInteractionConfig {
+	config := m.config
+	config.ItemEffects = nil
+	return config
 }
 
 // Compile-time interface checks.
