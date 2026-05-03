@@ -21,7 +21,7 @@ import { useEdgeCondition } from "./useEdgeCondition";
 import { useApplyPreset } from "./useApplyPreset";
 
 export function useFlowData(themeId: string) {
-  const { data, isLoading } = useFlowGraph(themeId);
+  const { data, isLoading, isError, error, refetch } = useFlowGraph(themeId);
   const saveFlow = useSaveFlow(themeId);
   const createNode = useCreateFlowNode(themeId);
   const deleteNodeMutation = useDeleteFlowNode(themeId);
@@ -188,7 +188,7 @@ export function useFlowData(themeId: string) {
   return {
     nodes, edges,
     onNodesChange: handleNodesChange, onEdgesChange: handleEdgesChange,
-    onConnect, isLoading, isSaving: saveFlow.isPending, save,
+    onConnect, isLoading, isError, error, refetch, isSaving: saveFlow.isPending, save,
     selectedNode, addNode, updateNodeData, deleteNode,
     onSelectionChange, updateEdgeCondition, applyPreset,
   };

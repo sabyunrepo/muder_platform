@@ -126,11 +126,11 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         onToggleSimulation={() => setShowSim((v) => !v)}
         isSimulating={showSim}
       />
-      <div className="flex flex-1 overflow-hidden">
+      <div data-testid="flow-workspace" className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         {/* Canvas */}
         <div
           ref={reactFlowWrapper}
-          className="flex-1"
+          className="min-h-[420px] flex-1 lg:min-h-0"
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
@@ -157,7 +157,12 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         </div>
 
         {/* Side panels */}
-        <div className="flex w-56 shrink-0 flex-col border-l border-slate-800 bg-slate-900 overflow-y-auto">
+        <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
+          {!showSim && !selectedNode && (
+            <div className="p-4 text-sm leading-6 text-slate-400">
+              페이즈나 결말 노드를 선택하면 세부 설정을 편집할 수 있습니다.
+            </div>
+          )}
           {showSim && (
             <div className="border-b border-slate-800 p-3">
               <FlowSimulationPanel

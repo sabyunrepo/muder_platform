@@ -33,6 +33,8 @@ afterEach(() => {
 describe('FlowSubTab', () => {
   it('FlowCanvas를 렌더링한다', () => {
     render(<FlowSubTab themeId="theme-1" />);
+    expect(screen.getByText('페이즈 흐름')).toBeDefined();
+    expect(screen.getByText(/페이즈는 게임 진행 순서를 화살표로 연결합니다/)).toBeDefined();
     expect(screen.getByTestId('flow-canvas')).toBeDefined();
   });
 

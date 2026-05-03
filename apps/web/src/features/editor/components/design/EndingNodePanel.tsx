@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -27,6 +28,10 @@ export function EndingNodePanel({
   themeId,
   onUpdate,
 }: EndingNodePanelProps) {
+  const labelInputId = useId();
+  const descriptionInputId = useId();
+  const iconInputId = useId();
+  const colorInputId = useId();
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
   const data = node.data as FlowNodeData;
@@ -67,8 +72,9 @@ export function EndingNodePanel({
 
       {/* Label */}
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-slate-400">라벨</label>
+        <label htmlFor={labelInputId} className="text-[11px] text-slate-400">라벨</label>
         <input
+          id={labelInputId}
           type="text"
           value={data.label ?? ""}
           onChange={(e) => handleChange({ label: e.target.value })}
@@ -80,8 +86,9 @@ export function EndingNodePanel({
 
       {/* Description */}
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-slate-400">설명</label>
+        <label htmlFor={descriptionInputId} className="text-[11px] text-slate-400">설명</label>
         <textarea
+          id={descriptionInputId}
           value={data.description ?? ""}
           onChange={(e) => handleChange({ description: e.target.value })}
           onBlur={flush}
@@ -91,23 +98,30 @@ export function EndingNodePanel({
         />
       </div>
 
-      {/* Score multiplier */}
+      {/* Icon */}
       <div className="flex flex-col gap-1">
-        <label className="text-[11px] text-slate-400">점수 배율</label>
+        <label htmlFor={iconInputId} className="text-[11px] text-slate-400">아이콘</label>
         <input
-          type="number"
-          min={0}
-          step={0.1}
-          value={data.score_multiplier ?? ""}
-          onChange={(e) =>
-            handleChange({
-              score_multiplier: e.target.value
-                ? Number(e.target.value)
-                : undefined,
-            })
-          }
+          id={iconInputId}
+          type="text"
+          value={data.icon ?? ""}
+          onChange={(e) => handleChange({ icon: e.target.value })}
           onBlur={flush}
-          placeholder="1.0"
+          placeholder="예: 🎭"
+          className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+        />
+      </div>
+
+      {/* Color */}
+      <div className="flex flex-col gap-1">
+        <label htmlFor={colorInputId} className="text-[11px] text-slate-400">표시 색상</label>
+        <input
+          id={colorInputId}
+          type="text"
+          value={data.color ?? ""}
+          onChange={(e) => handleChange({ color: e.target.value })}
+          onBlur={flush}
+          placeholder="예: amber, emerald, rose"
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         />
       </div>
