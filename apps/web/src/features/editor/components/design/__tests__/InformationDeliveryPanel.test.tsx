@@ -30,8 +30,18 @@ const sections = [
 ];
 
 beforeEach(() => {
-  useEditorCharactersMock.mockReturnValue({ data: characters, isLoading: false });
-  useReadingSectionsMock.mockReturnValue({ data: sections, isLoading: false });
+  useEditorCharactersMock.mockReturnValue({
+    data: characters,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
+  useReadingSectionsMock.mockReturnValue({
+    data: sections,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
 });
 
 afterEach(() => {
@@ -122,12 +132,83 @@ describe("InformationDeliveryPanel", () => {
     expect(onChange).toHaveBeenLastCalledWith({ onEnter: [] });
   });
 
+
+  it("캐릭터 또는 스토리 정보 조회 실패를 빈 상태와 구분하고 재시도할 수 있다", () => {
+    const refetchCharacters = vi.fn();
+    const refetchSections = vi.fn();
+    useEditorCharactersMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchCharacters,
+    });
+    useReadingSectionsMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: refetchSections,
+    });
+
+    render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
+
+    expect(screen.getByText("정보 전달에 필요한 캐릭터와 스토리 정보를 불러오지 못했습니다.")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
+
+    expect(refetchCharacters).toHaveBeenCalledTimes(1);
+    expect(refetchSections).toHaveBeenCalledTimes(1);
+  });
+
+  it("phaseData onEnter 변경이 들어오면 저장된 전달 설정을 다시 반영한다", () => {
+    const firstPhaseData: FlowNodeData = {
+      onEnter: [
+        {
+          id: "info",
+          type: DELIVER_INFORMATION_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "d1",
+                target: { type: "character", character_id: "char-1" },
+                reading_section_ids: ["rs-1"],
+              },
+            ],
+          },
+        },
+      ],
+    };
+    const nextPhaseData: FlowNodeData = {
+      onEnter: [
+        {
+          id: "info",
+          type: DELIVER_INFORMATION_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "d2",
+                target: { type: "character", character_id: "char-2" },
+                reading_section_ids: ["rs-2"],
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    const { rerender } = render(
+      <InformationDeliveryPanel themeId="theme-1" phaseData={firstPhaseData} onChange={vi.fn()} />,
+    );
+    expect(screen.getByText("탐정 A · 1개 정보")).toBeDefined();
+
+    rerender(<InformationDeliveryPanel themeId="theme-1" phaseData={nextPhaseData} onChange={vi.fn()} />);
+
+    expect(screen.getByText("용의자 B · 1개 정보")).toBeDefined();
+  });
+
   it("스토리 진행 페이즈에서는 모든 플레이어 공통 전달을 추가할 수 있다", () => {
     const onChange = vi.fn();
     render(
       <InformationDeliveryPanel
         themeId="theme-1"
-
         phaseData={{ phase_type: "story_progression" }}
         onChange={onChange}
       />,

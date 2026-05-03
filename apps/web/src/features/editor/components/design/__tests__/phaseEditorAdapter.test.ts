@@ -114,4 +114,47 @@ describe("phaseEditorAdapter", () => {
     ).toEqual({ onEnter: [{ id: "chat", type: "enable_chat" }] });
   });
 
+
+  it("스토리 진행 페이즈가 아니면 all_players 전달 설정을 저장하지 않는다", () => {
+    expect(
+      informationDeliveriesToFlowNodePatch(
+        { phase_type: "investigation" },
+        [
+          {
+            id: "all",
+            recipientType: "all_players",
+            readingSectionIds: ["rs-common"],
+          },
+        ],
+      ),
+    ).toEqual({ onEnter: [] });
+
+    expect(
+      informationDeliveriesToFlowNodePatch(
+        { phase_type: "story_progression" },
+        [
+          {
+            id: "all",
+            recipientType: "all_players",
+            readingSectionIds: ["rs-common"],
+          },
+        ],
+      ).onEnter,
+    ).toEqual([
+      {
+        id: "generated-id",
+        type: DELIVER_INFORMATION_ACTION,
+        params: {
+          deliveries: [
+            {
+              id: "all",
+              target: { type: "all_players" },
+              reading_section_ids: ["rs-common"],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
 });

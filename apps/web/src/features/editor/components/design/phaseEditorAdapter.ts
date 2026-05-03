@@ -48,7 +48,11 @@ export function informationDeliveriesToFlowNodePatch(
   deliveries: InformationDeliveryViewModel[],
 ): Pick<FlowNodeData, "onEnter"> {
   const nextActions = withoutDeliverInformationActions(data.onEnter ?? []);
-  const normalized = deliveries.map(normalizeViewModel).filter(isCompleteDelivery);
+  const allowAllPlayers = data.phase_type === "story_progression";
+  const normalized = deliveries
+    .map(normalizeViewModel)
+    .filter((delivery) => allowAllPlayers || delivery.recipientType !== "all_players")
+    .filter(isCompleteInformationDelivery);
 
   if (normalized.length === 0) {
     return { onEnter: nextActions };
@@ -141,7 +145,7 @@ function normalizeViewModel(
   };
 }
 
-function isCompleteDelivery(delivery: InformationDeliveryViewModel): boolean {
+export function isCompleteInformationDelivery(delivery: InformationDeliveryViewModel): boolean {
   if (delivery.readingSectionIds.length === 0) return false;
   return delivery.recipientType === "all_players" || Boolean(delivery.characterId);
 }

@@ -1,11 +1,12 @@
 import { Plus, Search, Trash2, Users, UserRound } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useEditorCharacters } from "../../api";
 import { useReadingSections } from "../../readingApi";
 import type { FlowNodeData } from "../../flowTypes";
 import {
   flowNodeToInformationDeliveries,
   informationDeliveriesToFlowNodePatch,
+  isCompleteInformationDelivery,
   makeEmptyInformationDelivery,
   type InformationDeliveryViewModel,
 } from "./phaseEditorAdapter";
@@ -21,13 +22,35 @@ export function InformationDeliveryPanel({
   phaseData,
   onChange,
 }: InformationDeliveryPanelProps) {
-  const { data: characters = [], isLoading: charactersLoading } = useEditorCharacters(themeId);
-  const { data: sections = [], isLoading: sectionsLoading } = useReadingSections(themeId);
+  const {
+    data: characters = [],
+    isLoading: charactersLoading,
+    isError: charactersError,
+    refetch: refetchCharacters,
+  } = useEditorCharacters(themeId);
+  const {
+    data: sections = [],
+    isLoading: sectionsLoading,
+    isError: sectionsError,
+    refetch: refetchSections,
+  } = useReadingSections(themeId);
   const [characterQuery, setCharacterQuery] = useState("");
   const [sectionQuery, setSectionQuery] = useState("");
-  const [draftDeliveries, setDraftDeliveries] = useState(() =>
-    flowNodeToInformationDeliveries(phaseData),
+  const savedDeliveries = useMemo(
+    () => flowNodeToInformationDeliveries(phaseData),
+    [phaseData.onEnter],
   );
+  const [draftDeliveries, setDraftDeliveries] = useState(() => savedDeliveries);
+
+  useEffect(() => {
+    setDraftDeliveries((current) => {
+      const savedIds = new Set(savedDeliveries.map((delivery) => delivery.id));
+      const incompleteDrafts = current.filter(
+        (delivery) => !savedIds.has(delivery.id) && !isCompleteInformationDelivery(delivery),
+      );
+      return [...savedDeliveries, ...incompleteDrafts];
+    });
+  }, [savedDeliveries]);
 
   const filteredCharacters = useMemo(() => {
     const query = characterQuery.trim().toLowerCase();
@@ -77,6 +100,12 @@ export function InformationDeliveryPanel({
 
   const isStoryProgression = phaseData.phase_type === "story_progression";
   const loading = charactersLoading || sectionsLoading;
+  const hasLoadError = charactersError || sectionsError;
+
+  const retryLoad = () => {
+    if (charactersError) void refetchCharacters();
+    if (sectionsError) void refetchSections();
+  };
 
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
@@ -113,6 +142,17 @@ export function InformationDeliveryPanel({
         <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs text-slate-500">
           캐릭터와 스토리 정보를 불러오는 중입니다.
         </p>
+      ) : hasLoadError ? (
+        <div className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-100">
+          <p>정보 전달에 필요한 캐릭터와 스토리 정보를 불러오지 못했습니다.</p>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="mt-2 rounded border border-red-300/30 px-2 py-1 text-red-50 hover:bg-red-500/20"
+          >
+            다시 불러오기
+          </button>
+        </div>
       ) : sections.length === 0 ? (
         <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-500">
           전달할 정보가 없습니다. 먼저 스토리 탭의 리딩 섹션에서 플레이어에게 보여줄 정보를 만들어 주세요.
