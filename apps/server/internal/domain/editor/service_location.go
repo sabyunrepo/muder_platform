@@ -114,11 +114,12 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
-	if err := validateLocationRoundOrder(req.FromRound, req.UntilRound); err != nil {
+	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, themeID, req.RestrictedCharacters, req.FromRound, req.UntilRound)
+	if err != nil {
 		return nil, err
 	}
 	// verify map belongs to the theme via ownership check
-	_, err := s.q.GetMapWithOwner(ctx, db.GetMapWithOwnerParams{ID: mapID, CreatorID: creatorID})
+	_, err = s.q.GetMapWithOwner(ctx, db.GetMapWithOwnerParams{ID: mapID, CreatorID: creatorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.NotFound("map not found")
@@ -138,10 +139,10 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		ThemeID:              themeID,
 		MapID:                mapID,
 		Name:                 req.Name,
-		RestrictedCharacters: ptrToText(req.RestrictedCharacters),
+		RestrictedCharacters: ptrToText(accessPolicy.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
-		FromRound:            int32PtrToPgtype(req.FromRound),
-		UntilRound:           int32PtrToPgtype(req.UntilRound),
+		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
+		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             ptrToText(req.ImageURL),
 	})
 	if err != nil {
@@ -153,9 +154,6 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 }
 
 func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID, req UpdateLocationRequest) (*LocationResponse, error) {
-	if err := validateLocationRoundOrder(req.FromRound, req.UntilRound); err != nil {
-		return nil, err
-	}
 	l, err := s.q.GetLocationWithOwner(ctx, db.GetLocationWithOwnerParams{ID: locID, CreatorID: creatorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -164,6 +162,10 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		s.logger.Error().Err(err).Msg("failed to get location")
 		return nil, apperror.Internal("failed to get location")
 	}
+	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, l.ThemeID, req.RestrictedCharacters, req.FromRound, req.UntilRound)
+	if err != nil {
+		return nil, err
+	}
 	imageURL := l.ImageUrl
 	if req.ImageURL != nil {
 		imageURL = ptrToText(req.ImageURL)
@@ -171,10 +173,10 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	updated, err := s.q.UpdateLocation(ctx, db.UpdateLocationParams{
 		ID:                   l.ID,
 		Name:                 req.Name,
-		RestrictedCharacters: ptrToText(req.RestrictedCharacters),
+		RestrictedCharacters: ptrToText(accessPolicy.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
-		FromRound:            int32PtrToPgtype(req.FromRound),
-		UntilRound:           int32PtrToPgtype(req.UntilRound),
+		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
+		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             imageURL,
 	})
 	if err != nil {
@@ -183,6 +185,36 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	}
 	resp := toLocationResponse(updated)
 	return &resp, nil
+}
+
+func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID uuid.UUID, restrictedCharacters *string, fromRound, untilRound *int32) (LocationAccessPolicy, error) {
+	accessPolicy, err := BuildLocationAccessPolicy(restrictedCharacters, fromRound, untilRound)
+	if err != nil {
+		return LocationAccessPolicy{}, err
+	}
+	if len(accessPolicy.RestrictedCharacterIDs) == 0 {
+		return accessPolicy, nil
+	}
+
+	chars, err := s.q.GetThemeCharacters(ctx, themeID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to validate location restricted characters")
+		return LocationAccessPolicy{}, apperror.Internal("failed to validate location access policy")
+	}
+	allowed := make(map[string]struct{}, len(chars))
+	for _, char := range chars {
+		allowed[char.ID.String()] = struct{}{}
+	}
+	for _, rawID := range accessPolicy.RestrictedCharacterIDs {
+		parsedID, err := uuid.Parse(rawID)
+		if err != nil {
+			return LocationAccessPolicy{}, apperror.BadRequest("restricted character must be a valid theme character")
+		}
+		if _, ok := allowed[parsedID.String()]; !ok {
+			return LocationAccessPolicy{}, apperror.BadRequest("restricted character must belong to this theme")
+		}
+	}
+	return accessPolicy, nil
 }
 
 // validateLocationRoundOrder enforces from_round <= until_round when both set.

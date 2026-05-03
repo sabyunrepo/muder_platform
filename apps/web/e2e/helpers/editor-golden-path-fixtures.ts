@@ -14,6 +14,7 @@ import type { Page } from "@playwright/test";
 export const BASE = "http://localhost:3000";
 export const THEME_ID = "00000000-0000-0000-0000-000000000184";
 export const CLUE_ID = "cccccccc-0000-0000-0000-000000000001";
+export const MAP_ID = "bbbbbbbb-0000-0000-0000-000000000001";
 export const LOCATION_ID = "dddddddd-0000-0000-0000-000000000001";
 export const FLOW_NODE_ID = "eeeeeeee-0000-0000-0000-000000000001";
 
@@ -50,7 +51,7 @@ export function freshState(): MockState {
     configJson: { characters: [], locations: [], modules: {}, module_configs: {} },
     clueImageURL: null,
     startingClueIds: [],
-    locationClueIds: [],
+    locationClueIds: [CLUE_ID],
     moduleToggles: {},
     conflictCountdown: 1,
     flowPatchCalls: 0,
@@ -164,13 +165,43 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     });
   });
 
+  await page.route(`**/v1/editor/themes/${THEME_ID}/maps`, (r) => {
+    if (r.request().method() !== "GET") return r.continue();
+    return r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: MAP_ID,
+          theme_id: THEME_ID,
+          name: "저택 1층",
+          image_url: null,
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+        },
+      ]),
+    });
+  });
+
   await page.route(`**/v1/editor/themes/${THEME_ID}/locations`, (r) => {
     if (r.request().method() !== "GET") return r.continue();
     return r.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify([
-        { id: LOCATION_ID, theme_id: THEME_ID, name: "거실", sort_order: 0, clueIds: state.locationClueIds },
+        {
+          id: LOCATION_ID,
+          theme_id: THEME_ID,
+          map_id: MAP_ID,
+          name: "거실",
+          restricted_characters: "char-1",
+          image_url: "https://mock-storage.example/themes/location.png",
+          from_round: 2,
+          until_round: 4,
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+          clueIds: state.locationClueIds,
+        },
       ]),
     });
   });

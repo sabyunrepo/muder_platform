@@ -37,11 +37,7 @@ vi.mock('@/features/editor/api', () => ({
 // ---------------------------------------------------------------------------
 
 import { LocationClueAssignPanel } from '../LocationClueAssignPanel';
-import type {
-  EditorThemeResponse,
-  ClueResponse,
-  LocationResponse,
-} from '@/features/editor/api';
+import type { EditorThemeResponse, ClueResponse, LocationResponse } from '@/features/editor/api';
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -142,11 +138,7 @@ function renderQC(ui: ReactElement): { qc: QueryClient } {
 describe('LocationClueAssignPanel', () => {
   it('모든 clue가 chip으로 렌더링된다', () => {
     renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     expect(screen.getByText('단검')).toBeDefined();
     expect(screen.getByText('편지')).toBeDefined();
@@ -157,9 +149,7 @@ describe('LocationClueAssignPanel', () => {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
-    renderQC(
-      <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
-    );
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
     expect(screen.getByText('(1/2)')).toBeDefined();
   });
 
@@ -168,9 +158,7 @@ describe('LocationClueAssignPanel', () => {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
-    renderQC(
-      <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
-    );
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
     expect((screen.getByLabelText('단검 추가') as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText('편지 추가') as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getByLabelText('단검 제거')).toBeDefined();
@@ -178,16 +166,15 @@ describe('LocationClueAssignPanel', () => {
 
   it('배정되지 않은 clue 클릭 시 clueIds에 추가되어 mutate가 호출된다', () => {
     renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     fireEvent.click(screen.getByLabelText('단검 추가'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const locs = config.locations as Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
+    const locs = config.locations as Array<{
+      id: string;
+      locationClueConfig: { clueIds: string[] };
+    }>;
     expect(locs).toHaveLength(1);
     expect(locs[0]).toEqual({ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } });
   });
@@ -195,15 +182,18 @@ describe('LocationClueAssignPanel', () => {
   it('이미 배정된 clue 클릭 시 clueIds에서 제거된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
-      config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1', 'clue-2'] } }] },
+      config_json: {
+        locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1', 'clue-2'] } }],
+      },
     };
-    renderQC(
-      <LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />,
-    );
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
     fireEvent.click(screen.getByLabelText('단검 제거'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
-    const locs = config.locations as Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
+    const locs = config.locations as Array<{
+      id: string;
+      locationClueConfig: { clueIds: string[] };
+    }>;
     expect(locs[0].locationClueConfig.clueIds).toEqual(['clue-2']);
   });
 
@@ -217,7 +207,7 @@ describe('LocationClueAssignPanel', () => {
         theme={baseTheme}
         location={mockLocation}
         onChange={onChange}
-      />,
+      />
     );
     fireEvent.click(screen.getByLabelText('단검 추가'));
     expect(onChange).toHaveBeenCalledWith(['clue-1']);
@@ -226,11 +216,7 @@ describe('LocationClueAssignPanel', () => {
   it('clue가 없으면 안내 메시지가 표시된다', () => {
     useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
     renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     expect(screen.getByText('단서가 없습니다')).toBeDefined();
   });
@@ -243,7 +229,7 @@ describe('LocationClueAssignPanel', () => {
         theme={baseTheme}
         location={mockLocation}
         allClues={mockClues}
-      />,
+      />
     );
     expect(screen.getByText('단검')).toBeDefined();
   });
@@ -251,11 +237,7 @@ describe('LocationClueAssignPanel', () => {
   it('isPending 중에는 chip 이 disabled 된다', () => {
     useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: true });
     renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     const chip = screen.getByLabelText('단검 추가') as HTMLButtonElement;
     expect(chip.disabled).toBe(true);
@@ -271,20 +253,18 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
 
   it('commit 시 theme 캐시의 config_json 이 낙관 반영된다', () => {
     const { qc } = renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     qc.setQueryData(cacheKey, baseTheme);
 
     fireEvent.click(screen.getByLabelText('단검 추가'));
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
-    const locs = (cached?.config_json as {
-      locations?: Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
-    })?.locations;
+    const locs = (
+      cached?.config_json as {
+        locations?: Array<{ id: string; locationClueConfig: { clueIds: string[] } }>;
+      }
+    )?.locations;
     expect(locs?.[0]).toEqual({
       id: 'loc-1',
       locationClueConfig: { clueIds: ['clue-1'] },
@@ -296,11 +276,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     mutateMock.mockImplementation((_cfg, opts) => opts?.onError?.(new Error('fail')));
 
     const { qc } = renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     qc.setQueryData(cacheKey, baseTheme);
 
@@ -332,7 +308,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
         theme={baseTheme}
         location={mockLocation}
         onChange={onChange}
-      />,
+      />
     );
     // 초기 캐시: 배정 없음
     qc.setQueryData(cacheKey, baseTheme);
@@ -360,11 +336,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
   it('theme 캐시가 없으면 mutate 만 호출되고 rollback 대상도 없다', () => {
     mutateMock.mockImplementation((_cfg, opts) => opts?.onError?.(new Error('fail')));
     const { qc } = renderQC(
-      <LocationClueAssignPanel
-        themeId="theme-1"
-        theme={baseTheme}
-        location={mockLocation}
-      />,
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
     // no setQueryData
 

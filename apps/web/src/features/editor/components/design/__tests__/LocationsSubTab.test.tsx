@@ -297,7 +297,7 @@ describe('LocationsSubTab', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByText('저택 1층'));
       fireEvent.click(screen.getByRole('button', { name: '주방 선택' }));
-      expect(screen.getByLabelText('주방 단서 배정')).toBeDefined();
+      expect(screen.getByLabelText('주방 조사 시 발견 단서')).toBeDefined();
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
     });
 

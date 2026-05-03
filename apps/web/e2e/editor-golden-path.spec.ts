@@ -295,6 +295,15 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     const got = await locReq;
     expect(got).not.toBeNull();
 
+    const mapButton = page.getByRole("button", { name: /^저택 1층$/ }).first();
+    if (await mapButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await mapButton.click();
+      await expect(page.getByText("거실").first()).toBeVisible({ timeout: 3_000 });
+      await expect(page.getByText("R2~4").first()).toBeVisible({ timeout: 3_000 });
+      await expect(page.getByText(/조사 시 발견 단서/).first()).toBeVisible({ timeout: 3_000 });
+      await expect(page.getByText(/접근 제한/).first()).toBeVisible({ timeout: 3_000 });
+    }
+
     // UI: 단서 chip/체크박스가 있으면 토글 + 즉시 반영
     const chip = page.getByRole("checkbox").first();
     if (await chip.isVisible({ timeout: 2_000 }).catch(() => false)) {

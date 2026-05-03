@@ -2,6 +2,12 @@ import { LockKeyhole } from 'lucide-react';
 import { toast } from 'sonner';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { LocationResponse } from '@/features/editor/api';
+import { getCharacterRoleOption } from '@/features/editor/entities/character/characterEditorAdapter';
+import {
+  formatLocationAccessLabel,
+  parseLocationRestrictedCharacterIds,
+  stringifyLocationRestrictedCharacterIds,
+} from '@/features/editor/entities/location/locationEntityAdapter';
 import { useEditorCharacters, useUpdateLocation } from '@/features/editor/api';
 
 interface LocationAccessPolicyPanelProps {
@@ -9,24 +15,13 @@ interface LocationAccessPolicyPanelProps {
   location: LocationResponse;
 }
 
-function parseRestrictedCharacters(value: string | null) {
-  if (!value) return new Set<string>();
-  return new Set(
-    value
-      .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-  );
-}
-
-function stringifyRestrictedCharacters(ids: Set<string>) {
-  return ids.size > 0 ? Array.from(ids).join(',') : null;
-}
-
 export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessPolicyPanelProps) {
   const { data: characters, isLoading, isError, error, refetch } = useEditorCharacters(themeId);
   const updateLocation = useUpdateLocation(themeId);
-  const restrictedSet = parseRestrictedCharacters(location.restricted_characters);
+  const restrictedSet = new Set(
+    parseLocationRestrictedCharacterIds(location.restricted_characters)
+  );
+  const accessLabel = formatLocationAccessLabel(location.restricted_characters, characters ?? []);
 
   function toggleCharacter(characterId: string, restricted: boolean) {
     const next = new Set(restrictedSet);
@@ -38,7 +33,7 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
         locationId: location.id,
         body: {
           name: location.name,
-          restricted_characters: stringifyRestrictedCharacters(next),
+          restricted_characters: stringifyLocationRestrictedCharacterIds(next),
           image_url: location.image_url,
           sort_order: location.sort_order,
           from_round: location.from_round ?? null,
@@ -56,7 +51,7 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
         <div>
           <p className="text-xs font-semibold text-slate-200">접근 제한</p>
           <p className="mt-1 text-xs leading-5 text-slate-500">
-            체크한 캐릭터는 이 장소에 들어오지 못합니다.
+            체크한 캐릭터는 이 장소에 들어오지 못합니다. 현재: {accessLabel}
           </p>
         </div>
       </div>
@@ -95,7 +90,9 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
               />
               <span className="min-w-0">
                 <span className="block truncate font-medium text-slate-200">{character.name}</span>
-                <span className="block text-xs text-slate-500">{character.mystery_role}</span>
+                <span className="block text-xs text-slate-500">
+                  {getCharacterRoleOption(character.mystery_role).label}
+                </span>
               </span>
             </label>
           ))}
