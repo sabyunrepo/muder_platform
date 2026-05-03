@@ -119,7 +119,7 @@ export function LocationClueAssignPanel({
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <MapPin className="h-3.5 w-3.5 text-amber-500/70" />
-        <h4 className="text-sm font-semibold text-slate-200">{location.name} 단서 추가</h4>
+        <h4 className="text-sm font-semibold text-slate-200">{location.name} 조사 시 발견 단서</h4>
         <span className="text-xs text-slate-600">
           ({assignedIds.length}/{clues.length})
         </span>
@@ -175,7 +175,7 @@ export function LocationClueAssignPanel({
             </div>
             {selectedClues.length === 0 ? (
               <p className="rounded-md border border-dashed border-slate-800 px-2.5 py-5 text-center text-xs text-slate-600">
-                아직 배정된 단서가 없습니다. 좌측 목록에서 단서를 클릭하세요.
+                아직 배정된 단서가 없습니다. 좌측 목록에서 조사 시 발견할 단서를 클릭하세요.
               </p>
             ) : (
               <div className="space-y-2">

@@ -114,11 +114,12 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
-	if err := validateLocationRoundOrder(req.FromRound, req.UntilRound); err != nil {
+	accessPolicy, err := BuildLocationAccessPolicy(req.RestrictedCharacters, req.FromRound, req.UntilRound)
+	if err != nil {
 		return nil, err
 	}
 	// verify map belongs to the theme via ownership check
-	_, err := s.q.GetMapWithOwner(ctx, db.GetMapWithOwnerParams{ID: mapID, CreatorID: creatorID})
+	_, err = s.q.GetMapWithOwner(ctx, db.GetMapWithOwnerParams{ID: mapID, CreatorID: creatorID})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.NotFound("map not found")
@@ -138,10 +139,10 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		ThemeID:              themeID,
 		MapID:                mapID,
 		Name:                 req.Name,
-		RestrictedCharacters: ptrToText(req.RestrictedCharacters),
+		RestrictedCharacters: ptrToText(accessPolicy.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
-		FromRound:            int32PtrToPgtype(req.FromRound),
-		UntilRound:           int32PtrToPgtype(req.UntilRound),
+		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
+		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             ptrToText(req.ImageURL),
 	})
 	if err != nil {
@@ -153,7 +154,8 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 }
 
 func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID, req UpdateLocationRequest) (*LocationResponse, error) {
-	if err := validateLocationRoundOrder(req.FromRound, req.UntilRound); err != nil {
+	accessPolicy, err := BuildLocationAccessPolicy(req.RestrictedCharacters, req.FromRound, req.UntilRound)
+	if err != nil {
 		return nil, err
 	}
 	l, err := s.q.GetLocationWithOwner(ctx, db.GetLocationWithOwnerParams{ID: locID, CreatorID: creatorID})
@@ -171,10 +173,10 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	updated, err := s.q.UpdateLocation(ctx, db.UpdateLocationParams{
 		ID:                   l.ID,
 		Name:                 req.Name,
-		RestrictedCharacters: ptrToText(req.RestrictedCharacters),
+		RestrictedCharacters: ptrToText(accessPolicy.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
-		FromRound:            int32PtrToPgtype(req.FromRound),
-		UntilRound:           int32PtrToPgtype(req.UntilRound),
+		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
+		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             imageURL,
 	})
 	if err != nil {

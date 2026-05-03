@@ -5,6 +5,7 @@ import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/featu
 import { useUpdateLocation } from '@/features/editor/api';
 import { ImageUpload } from '@/features/editor/components/ImageUpload';
 import { readLocationClueIds } from '@/features/editor/editorTypes';
+import { toLocationEditorViewModel } from '@/features/editor/entities/location/locationEntityAdapter';
 import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
@@ -81,13 +82,24 @@ export function LocationDetailPanel({
       }
       getItemId={(location) => location.id}
       getItemTitle={(location) => location.name}
-      getItemDescription={(location) => formatLocationRounds(location)}
-      getItemBadges={() => [selectedMap.name]}
+      getItemDescription={(location) =>
+        toLocationEditorViewModel(location, {
+          clueCount: readLocationClueIds(theme.config_json, location.id).length,
+          mapName: selectedMap.name,
+        }).roundLabel
+      }
+      getItemBadges={(location) =>
+        toLocationEditorViewModel(location, {
+          clueCount: readLocationClueIds(theme.config_json, location.id).length,
+          mapName: selectedMap.name,
+        }).badges
+      }
       renderItemActions={(location) => (
         <button
           type="button"
           onClick={() => {
-            if (window.confirm(`${location.name} 장소를 삭제할까요?`)) onDeleteLocation(location.id);
+            if (window.confirm(`${location.name} 장소를 삭제할까요?`))
+              onDeleteLocation(location.id);
           }}
           aria-label={`${location.name} 삭제`}
           className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
@@ -106,12 +118,6 @@ export function LocationDetailPanel({
     />
   );
 }
-function formatLocationRounds(location: LocationResponse) {
-  const from = location.from_round ? `${location.from_round}라운드부터` : '처음부터';
-  const until = location.until_round ? `${location.until_round}라운드까지` : '끝까지';
-  return `${from} · ${until}`;
-}
-
 function SelectedLocationDetail({
   themeId,
   theme,
@@ -130,6 +136,10 @@ function SelectedLocationDetail({
     () => readLocationClueIds(theme.config_json, location.id).length,
     [theme.config_json, location.id]
   );
+  const viewModel = toLocationEditorViewModel(location, {
+    clueCount: assignedCount,
+    mapName: map.name,
+  });
 
   useEffect(() => {
     setFromRoundInput(roundToInput(location.from_round));
@@ -184,11 +194,12 @@ function SelectedLocationDetail({
             <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-300/80">
               장소 상세
             </p>
-            <h3 className="mt-1 text-xl font-semibold text-slate-100">{location.name}</h3>
+            <h3 className="mt-1 text-xl font-semibold text-slate-100">{viewModel.name}</h3>
             <p className="mt-1 text-xs text-slate-500">트리 경로: {getPathLabel(map, location)}</p>
+            <p className="mt-1 text-xs text-slate-400">{viewModel.roundLabel}</p>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">
-            단서 연결 <span className="font-semibold text-amber-300">{assignedCount}개</span>
+            {viewModel.clueCountLabel.replace('조사 시 발견 단서 ', '단서 ')}
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">
@@ -201,7 +212,7 @@ function SelectedLocationDetail({
               themeId={themeId}
               target="location"
               targetId={location.id}
-              currentImageUrl={location.image_url}
+              currentImageUrl={viewModel.imageUrl}
               aspectRatio="16 / 10"
               onUploaded={(url) => saveLocation({ image_url: url || null })}
             />
@@ -254,7 +265,7 @@ function RoundFields({
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
       <p className="mb-2 text-xs font-semibold text-slate-300">라운드 노출</p>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid gap-2 sm:grid-cols-2">
         <label className="text-xs text-slate-500">
           등장 라운드
           <input
