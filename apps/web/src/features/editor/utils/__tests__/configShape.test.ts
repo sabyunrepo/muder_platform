@@ -220,9 +220,11 @@ describe('configShape', () => {
 
     const removed = writeClueItemEffect(withEffect, 'clue-1', null);
     expect(readClueItemEffect(removed, 'clue-1')).toBeNull();
-    expect(readModuleConfig(removed, 'clue_interaction')).toMatchObject({
+    expect(readModuleConfig(removed, 'clue_interaction')).toEqual({
       cooldownSec: 5,
-      itemEffects: {},
+      itemEffects: {
+        'future-clue': { effect: 'future_effect', custom: true },
+      },
     });
   });
 
