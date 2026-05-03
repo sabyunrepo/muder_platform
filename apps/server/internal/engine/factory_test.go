@@ -39,6 +39,14 @@ func TestParseGameConfig_UnknownField(t *testing.T) {
 	}
 }
 
+func TestParseGameConfig_RejectsTrailingJSON(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[]}{"extra":1}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected trailing JSON error")
+	}
+}
+
 func TestParseGameConfig_TooManyModules(t *testing.T) {
 	// Build a config with 51 modules.
 	entries := make([]string, 51)
@@ -151,6 +159,14 @@ func TestParseGameConfig_LegacyModulesRejectsEmptyModuleName(t *testing.T) {
 	_, err := ParseGameConfig(data)
 	if err == nil {
 		t.Fatal("expected empty legacy module name error")
+	}
+}
+
+func TestParseGameConfig_LegacyModulesRejectsDuplicateModuleName(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[{"name":"information_delivery"},{"name":"information_delivery"}]}`)
+	_, err := ParseGameConfig(data)
+	if err == nil {
+		t.Fatal("expected duplicate legacy module name error")
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 
@@ -54,6 +55,9 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	if err := dec.Decode(&wire); err != nil {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
 	}
+	if err := rejectTrailingJSON(dec); err != nil {
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
+	}
 	cfg := GameConfig{Phases: wire.Phases}
 	modules, err := parseModuleConfigs(wire.Modules)
 	if err != nil {
@@ -78,10 +82,15 @@ func parseModuleConfigs(raw json.RawMessage) ([]ModuleConfig, error) {
 	}
 	var legacy []ModuleConfig
 	if err := decodeStrict(raw, &legacy); err == nil {
+		seen := make(map[string]struct{}, len(legacy))
 		for _, mc := range legacy {
 			if mc.Name == "" {
 				return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: empty module name")
 			}
+			if _, dup := seen[mc.Name]; dup {
+				return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: duplicate module name: "+mc.Name)
+			}
+			seen[mc.Name] = struct{}{}
 		}
 		return legacy, nil
 	}
@@ -158,7 +167,21 @@ func BuildModules(
 func decodeStrict(raw json.RawMessage, target any) error {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
-	return dec.Decode(target)
+	if err := dec.Decode(target); err != nil {
+		return err
+	}
+	return rejectTrailingJSON(dec)
+}
+
+func rejectTrailingJSON(dec *json.Decoder) error {
+	var trailing any
+	if err := dec.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("multiple JSON values")
+		}
+		return err
+	}
+	return nil
 }
 
 func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
