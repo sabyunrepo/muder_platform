@@ -97,7 +97,7 @@ export function LocationClueAssignPanel({
   if (!allClues && isError) {
     return (
       <section
-        aria-label={`${location.name} 단서 배정`}
+        aria-label={`${location.name} 조사 시 발견 단서`}
         className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-100"
       >
         <p>{error instanceof Error ? error.message : '단서 목록을 불러오지 못했습니다.'}</p>
@@ -114,7 +114,7 @@ export function LocationClueAssignPanel({
 
   return (
     <section
-      aria-label={`${location.name} 단서 배정`}
+      aria-label={`${location.name} 조사 시 발견 단서`}
       className="rounded-lg border border-slate-800 bg-slate-950/70 p-3"
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">

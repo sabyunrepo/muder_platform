@@ -48,6 +48,9 @@ func (p LocationAccessPolicy) CanCharacterAccess(characterID string, round int32
 	if !p.IsVisibleInRound(round) {
 		return false
 	}
+	if len(p.RestrictedCharacterIDs) > 0 && strings.TrimSpace(characterID) == "" {
+		return false
+	}
 	for _, restrictedID := range p.RestrictedCharacterIDs {
 		if restrictedID == characterID {
 			return false
