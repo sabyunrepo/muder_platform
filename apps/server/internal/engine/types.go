@@ -19,6 +19,7 @@ const (
 	ActionCloseVoting         PhaseAction = "CLOSE_VOTING"
 	ActionAllowExchange       PhaseAction = "ALLOW_EXCHANGE"
 	ActionBroadcastMessage    PhaseAction = "BROADCAST_MESSAGE"
+	ActionDeliverInformation  PhaseAction = "DELIVER_INFORMATION"
 	ActionPlaySound           PhaseAction = "PLAY_SOUND"
 	ActionPlayMedia           PhaseAction = "PLAY_MEDIA"
 	ActionSetBGM              PhaseAction = "SET_BGM"
@@ -62,6 +63,7 @@ var ActionRequiresModule = map[PhaseAction]string{
 	ActionUnmuteChat:          "text_chat",
 	ActionOpenGroupChat:       "group_chat",
 	ActionCloseGroupChat:      "group_chat",
+	ActionDeliverInformation:  "information_delivery",
 }
 
 // --- Module Interfaces ---

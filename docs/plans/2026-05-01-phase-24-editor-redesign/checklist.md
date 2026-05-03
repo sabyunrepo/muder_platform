@@ -36,8 +36,8 @@ parent_phase: "phase-21-editor-ux"
 | Issue | PR | 범위 | 상태 |
 | --- | --- | --- | --- |
 | [#230](https://github.com/sabyunrepo/muder_platform/issues/230) | PR-5A | Adapter/Engine 공통 계약 및 Issue 기반 전환 | done |
-| [#231](https://github.com/sabyunrepo/muder_platform/issues/231) | PR-5B | 페이즈 정보 전달 Frontend Adapter | active |
-| [#232](https://github.com/sabyunrepo/muder_platform/issues/232) | PR-5C | 정보 전달 Backend Engine 및 런타임 공개 상태 | queued |
+| [#231](https://github.com/sabyunrepo/muder_platform/issues/231) | PR-5B | 페이즈 정보 전달 Frontend Adapter | done |
+| [#232](https://github.com/sabyunrepo/muder_platform/issues/232) | PR-5C | 정보 전달 Backend Engine 및 런타임 공개 상태 | active |
 | [#233](https://github.com/sabyunrepo/muder_platform/issues/233) | PR-6 | 캐릭터 Adapter/Engine 이관 | brainstorming gate |
 | [#234](https://github.com/sabyunrepo/muder_platform/issues/234) | PR-7 | 단서 Adapter/Engine 이관 | brainstorming gate |
 | [#235](https://github.com/sabyunrepo/muder_platform/issues/235) | PR-8 | 장소 Adapter/Engine 이관 | brainstorming gate |

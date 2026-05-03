@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/mmp-platform/server/internal/apperror"
 )
@@ -46,10 +47,20 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 
-	var cfg GameConfig
-	if err := dec.Decode(&cfg); err != nil {
+	var wire struct {
+		Phases  []PhaseDefinition `json:"phases"`
+		Modules json.RawMessage   `json:"modules"`
+	}
+	if err := dec.Decode(&wire); err != nil {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
 	}
+	cfg := GameConfig{Phases: wire.Phases}
+	modules, err := parseModuleConfigs(wire.Modules)
+	if err != nil {
+		return nil, err
+	}
+	cfg.Modules = modules
+	ensureImplicitPhaseActionModules(&cfg)
 	if len(cfg.Phases) == 0 {
 		return nil, fmt.Errorf("engine: configJson has no phases")
 	}
@@ -57,6 +68,38 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "too many modules")
 	}
 	return &cfg, nil
+}
+
+func parseModuleConfigs(raw json.RawMessage) ([]ModuleConfig, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	var legacy []ModuleConfig
+	if err := json.Unmarshal(raw, &legacy); err == nil {
+		return legacy, nil
+	}
+
+	var normalized map[string]struct {
+		Enabled bool            `json:"enabled"`
+		Config  json.RawMessage `json:"config,omitempty"`
+	}
+	if err := json.Unmarshal(raw, &normalized); err != nil {
+		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game modules config: "+err.Error())
+	}
+	names := make([]string, 0, len(normalized))
+	for name := range normalized {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	modules := make([]ModuleConfig, 0, len(normalized))
+	for _, name := range names {
+		entry := normalized[name]
+		if name == "" || !entry.Enabled {
+			continue
+		}
+		modules = append(modules, ModuleConfig{Name: name, Config: entry.Config})
+	}
+	return modules, nil
 }
 
 // BuildModules instantiates and initialises modules declared in cfg.
@@ -99,4 +142,45 @@ func BuildModules(
 		configs[mc.Name] = mc.Config
 	}
 	return modules, configs, nil
+}
+
+func ensureImplicitPhaseActionModules(cfg *GameConfig) {
+	if cfg == nil {
+		return
+	}
+	if !phasesUseAction(cfg.Phases, ActionDeliverInformation) || hasModuleConfig(cfg.Modules, "information_delivery") {
+		return
+	}
+	cfg.Modules = append(cfg.Modules, ModuleConfig{Name: "information_delivery"})
+}
+
+func phasesUseAction(phases []PhaseDefinition, action PhaseAction) bool {
+	for _, phase := range phases {
+		if rawUsesAction(phase.OnEnter, action) || rawUsesAction(phase.OnExit, action) {
+			return true
+		}
+	}
+	return false
+}
+
+func rawUsesAction(raw json.RawMessage, action PhaseAction) bool {
+	actions, err := parseConfiguredPhaseActions(raw)
+	if err != nil {
+		return false
+	}
+	for _, candidate := range actions {
+		if candidate.Action == action {
+			return true
+		}
+	}
+	return false
+}
+
+func hasModuleConfig(modules []ModuleConfig, name string) bool {
+	for _, module := range modules {
+		if module.Name == name {
+			return true
+		}
+	}
+	return false
 }

@@ -578,3 +578,68 @@ func TestPhaseEngine_CurrentRound_IncrementsWithAdvance(t *testing.T) {
 		t.Fatalf("post-completion round = %d, want 3 (sticks)", got)
 	}
 }
+
+type hookRecordingModule struct {
+	stubCoreModule
+	entered []Phase
+	exited  []Phase
+}
+
+func (h *hookRecordingModule) OnPhaseEnter(_ context.Context, phase Phase) error {
+	h.entered = append(h.entered, phase)
+	return nil
+}
+
+func (h *hookRecordingModule) OnPhaseExit(_ context.Context, phase Phase) error {
+	h.exited = append(h.exited, phase)
+	return nil
+}
+
+func TestPhaseEngine_PhaseHooksAndOnEnterActions(t *testing.T) {
+	reactor := &stubFullModule{
+		stubCoreModule: stubCoreModule{name: "information_delivery"},
+		actions:        []PhaseAction{ActionDeliverInformation},
+	}
+	hook := &hookRecordingModule{stubCoreModule: stubCoreModule{name: "hook"}}
+	phases := []PhaseDefinition{
+		{
+			ID:      "intro",
+			Name:    "Intro",
+			OnEnter: json.RawMessage(`[{"type":"DELIVER_INFORMATION","params":{"deliveries":[{"id":"d1"}]}}]`),
+		},
+		{ID: "next", Name: "Next"},
+	}
+	pe, _ := newTestPhaseEngine(t, []Module{hook, reactor}, phases)
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	if len(hook.entered) != 1 || hook.entered[0] != "intro" {
+		t.Fatalf("entered hooks = %#v", hook.entered)
+	}
+	if len(reactor.received) != 1 || reactor.received[0].Action != ActionDeliverInformation {
+		t.Fatalf("received actions = %#v", reactor.received)
+	}
+
+	if _, err := pe.AdvancePhase(ctx); err != nil {
+		t.Fatalf("AdvancePhase: %v", err)
+	}
+	if len(hook.exited) != 1 || hook.exited[0] != "intro" {
+		t.Fatalf("exited hooks = %#v", hook.exited)
+	}
+	if len(hook.entered) != 2 || hook.entered[1] != "next" {
+		t.Fatalf("entered hooks after advance = %#v", hook.entered)
+	}
+}
+
+func TestPhaseEngine_LegacyJSONLogicOnEnterIsNoop(t *testing.T) {
+	pe, _ := newTestPhaseEngine(t, nil, []PhaseDefinition{
+		{ID: "intro", Name: "Intro", OnEnter: json.RawMessage(`{"==":[1,1]}`)},
+	})
+	if err := pe.Start(context.Background(), nil); err != nil {
+		t.Fatalf("legacy JSONLogic-ish onEnter should remain no-op, got: %v", err)
+	}
+	defer pe.Stop(context.Background())
+}

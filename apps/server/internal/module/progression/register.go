@@ -8,5 +8,6 @@
 package progression
 
 import (
+	_ "github.com/mmp-platform/server/internal/module/progression/information_delivery"
 	_ "github.com/mmp-platform/server/internal/module/progression/reading"
 )

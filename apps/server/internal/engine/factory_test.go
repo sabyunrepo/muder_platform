@@ -112,3 +112,31 @@ func TestBuildModules_BlockedModule(t *testing.T) {
 		t.Fatal("expected error for blocked module, got nil")
 	}
 }
+
+func TestParseGameConfig_NormalizedModulesMap(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":{"information_delivery":{"enabled":true,"config":{"note":"ok"}},"disabled_mod":{"enabled":false}}}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 {
+		t.Fatalf("expected 1 enabled module, got %d", len(cfg.Modules))
+	}
+	if cfg.Modules[0].Name != "information_delivery" {
+		t.Fatalf("module name = %q", cfg.Modules[0].Name)
+	}
+	if string(cfg.Modules[0].Config) != `{"note":"ok"}` {
+		t.Fatalf("module config = %s", cfg.Modules[0].Config)
+	}
+}
+
+func TestParseGameConfig_AddsInformationDeliveryModuleForPhaseAction(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1","onEnter":[{"type":"DELIVER_INFORMATION","params":{"deliveries":[]}}]}],"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "information_delivery" {
+		t.Fatalf("implicit modules = %#v", cfg.Modules)
+	}
+}
