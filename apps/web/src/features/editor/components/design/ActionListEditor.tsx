@@ -91,6 +91,7 @@ export function ActionListEditor({
           <button
             type="button"
             onClick={() => handleRemove(idx)}
+            aria-label={`${label} ${idx + 1} 삭제`}
             className="text-slate-500 transition-colors hover:text-red-400"
           >
             <Trash2 className="h-3 w-3" />
