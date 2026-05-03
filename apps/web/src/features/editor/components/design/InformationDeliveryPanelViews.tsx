@@ -150,7 +150,7 @@ export function InformationDeliveryContent({
 
       {deliveries.length === 0 ? (
         <p className="mt-4 rounded border border-dashed border-slate-700 px-3 py-4 text-center text-xs leading-5 text-slate-500">
-          아직 전달 설정이 없습니다. 캐릭터별 추가를 눌러 누구에게 어떤 정보를 줄지 정해 주세요.
+          {getEmptyDeliveryMessage(isStoryProgression, hasCharacters)}
         </p>
       ) : (
         <div className="mt-4 space-y-3">
@@ -172,6 +172,17 @@ export function InformationDeliveryContent({
       )}
     </>
   );
+}
+
+
+function getEmptyDeliveryMessage(isStoryProgression: boolean, hasCharacters: boolean): string {
+  if (!isStoryProgression) {
+    return "아직 전달 설정이 없습니다. 캐릭터별 추가를 눌러 누구에게 어떤 정보를 줄지 정해 주세요.";
+  }
+  if (!hasCharacters) {
+    return "아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 정보를 설정해 주세요.";
+  }
+  return "아직 전달 설정이 없습니다. 전체 전달 또는 캐릭터별 추가를 눌러 전달 대상을 정해 주세요.";
 }
 
 interface SearchFieldProps {
