@@ -16,7 +16,6 @@ import RoleRoute from "@/shared/components/RoleRoute";
 // ---------------------------------------------------------------------------
 
 // 퍼블릭
-const HomePage = lazy(() => import("@/pages/HomePage"));
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
 // OfflinePage는 오프라인에서도 렌더링해야 하므로 eager import
 import OfflinePage from "@/pages/OfflinePage";
@@ -34,18 +33,6 @@ const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const PublicProfilePage = lazy(() => import("@/pages/PublicProfilePage"));
 const GamePage = lazy(() => import("@/pages/GamePage"));
 const SocialPage = lazy(() => import("@/pages/SocialPage"));
-const Phase24EditorPreviewPage = import.meta.env.DEV
-  ? lazy(() => import("@/pages/Phase24EditorPreviewPage"))
-  : null;
-const Phase24ImageRoleSheetPreviewPage = import.meta.env.DEV
-  ? lazy(() => import("@/pages/Phase24ImageRoleSheetPreviewPage"))
-  : null;
-const Phase24LocationEntityPreviewPage = import.meta.env.DEV
-  ? lazy(() => import("@/pages/Phase24LocationEntityPreviewPage"))
-  : null;
-const Phase24ClueEntityPreviewPage = import.meta.env.DEV
-  ? lazy(() => import("@/pages/Phase24ClueEntityPreviewPage"))
-  : null;
 
 // Shop
 const ShopPage = lazy(() => import("@/pages/ShopPage"));
@@ -229,30 +216,6 @@ export function App() {
                 </Route>
               </Route>
 
-              {Phase24EditorPreviewPage && (
-                <Route
-                  path="/__dev/phase24-editor-preview"
-                  element={<Phase24EditorPreviewPage />}
-                />
-              )}
-              {Phase24ImageRoleSheetPreviewPage && (
-                <Route
-                  path="/__dev/phase24-image-role-sheet-preview"
-                  element={<Phase24ImageRoleSheetPreviewPage />}
-                />
-              )}
-              {Phase24LocationEntityPreviewPage && (
-                <Route
-                  path="/__dev/phase24-location-entity-preview"
-                  element={<Phase24LocationEntityPreviewPage />}
-                />
-              )}
-              {Phase24ClueEntityPreviewPage && (
-                <Route
-                  path="/__dev/phase24-clue-entity-preview"
-                  element={<Phase24ClueEntityPreviewPage />}
-                />
-              )}
               <Route path="/offline" element={<OfflinePage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

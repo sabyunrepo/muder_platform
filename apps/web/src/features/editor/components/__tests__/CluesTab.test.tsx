@@ -53,15 +53,6 @@ vi.mock('../ClueForm', () => ({
 vi.mock('../ImageUpload', () => ({
   ImageUpload: () => null,
 }));
-vi.mock('../ClueCard', () => ({
-  ClueCard: ({ clue, onDelete: _onDelete }: { clue: { id: string; name: string; is_common: boolean }; onDelete: (c: unknown) => void }) => (
-    <div data-testid={`clue-card-${clue.id}`}>
-      <span>{clue.name}</span>
-      {clue.is_common && <span>공통</span>}
-    </div>
-  ),
-}));
-
 // ---------------------------------------------------------------------------
 // Import after mocks
 // ---------------------------------------------------------------------------

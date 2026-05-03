@@ -138,9 +138,15 @@ apps/server/internal/domain/editor/
 
 ### PR-3H-6 — Cleanup
 
-- [ ] 실제 route에서 더 이상 쓰지 않는 `ClueCard`, `ClueListRow` 제거 여부 판단
-- [ ] DEV preview는 유지/삭제 결정 후 문서화
-- [ ] PR description에 “목업과 실제 구현 경계” 명시
+- [x] 실제 route에서 더 이상 쓰지 않는 editor 전용 `ClueCard`, `ClueListRow` 제거
+- [x] DEV preview는 실제 entity Shell 구현과 혼동을 줄이기 위해 제거
+- [x] PR description에 “목업과 실제 구현 경계” 명시
+
+#### PR-3H-6 cleanup 결정
+
+- `/__dev/phase24-*preview` 라우트와 관련 preview/test/E2E 파일은 PR-3H 이전 UI 검토용 목업이었다. 캐릭터·장소·단서가 실제 Shell 기반 라우트로 이전된 뒤에는 같은 화면처럼 보이는 preview가 제작/검수 기준을 흐릴 수 있어 제거한다.
+- editor 전용 `ClueCard`, `ClueListRow`는 실제 단서 탭에서 더 이상 import되지 않고 테스트만 남아 있었다. 실제 단서 목록은 `ClueEntityWorkspace`와 공통 `EntityEditorShell` 흐름을 기준으로 유지한다.
+- 플레이어 런타임의 `features/game/components/ClueCard`는 별도 컴포넌트이며 이번 cleanup 대상이 아니다.
 
 ## 완료 조건
 
