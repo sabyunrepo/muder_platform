@@ -18,6 +18,46 @@
 - 충돌 시 우선순위: 이 파일 및 하위 `apps/*/AGENTS.md` > repo `CLAUDE.md` > 글로벌 Claude 설정.
 - Claude 전용 `@import`, hooks, status line, permission allowlist, plugin command는 Codex 네이티브 기능이 아니다. 필요한 경우 명시적 지시문이나 Codex MCP/plugin 설정으로 변환한다.
 
+## 작업 실행 카드
+
+AGENTS.md 규칙은 모델이 바로 행동으로 옮길 수 있도록 `When / Do / Done when / Avoid` 구조로 해석한다. 새 규칙을 추가할 때도 추상 선언보다 실행 단계와 완료 조건을 우선한다.
+
+### 새 작업 시작
+
+When:
+- 새 기능, 기존 구현 개선, 버그 수정, 에디터 프론트/백엔드 작업, 문서화 이상의 코드 작업을 시작할 때
+
+Do:
+1. `main` 최신 상태를 확인한다.
+2. 현재 브랜치에 미정리 변경이 있으면 새 작업을 섞지 말고 commit/stash/worktree 중 하나로 분리한다.
+3. 작업마다 새 feature branch 또는 별도 worktree를 만든다.
+4. 관련 GitHub Issue와 `docs/plans/<phase>/checklist.md`를 확인한다.
+5. Issue가 없고 작업이 추적 가능한 단위라면 먼저 Issue를 생성하거나 사용자에게 Issue 생성 계획을 보고한다.
+
+Done when:
+- 현재 branch/worktree, 관련 Issue, 구현 범위, 검증 범위가 보고되어 있다.
+
+Avoid:
+- 기존 feature branch에 무관한 새 작업을 섞지 않는다.
+- `main`에 직접 커밋하거나 push하지 않는다.
+
+### Issue 기반 진행
+
+When:
+- Phase 단위 작업, PR 분할 작업, 여러 세션에 걸치는 작업을 진행할 때
+
+Do:
+1. 작업 계획 문서와 GitHub Issue를 상호 링크한다.
+2. PR 본문에 `Closes #번호` 또는 `Refs #번호`를 명시한다.
+3. 작업 중 scope가 바뀌면 Issue checklist 또는 plan 문서를 먼저 갱신한다.
+4. 완료 보고에는 닫힌 Issue, 남은 Issue, 다음 권장 Issue를 포함한다.
+
+Done when:
+- PR/commit/보고에서 어떤 Issue를 해결했는지 추적 가능하다.
+
+Avoid:
+- 계획 없는 대형 PR로 여러 Issue를 한 번에 섞지 않는다. 단, 사용자가 명시적으로 묶기를 승인한 경우는 예외다.
+
 ## 작업 루틴
 
 - 비단순 작업을 시작할 때는 관련 `memory/MEMORY.md` 포인터와 활성 plan checklist를 먼저 확인한다.
@@ -37,6 +77,26 @@
 - 여러 단계가 필요한 작업은 간결한 계획을 유지하고 진행 상태가 바뀔 때 갱신한다.
 - Codex sub-agent는 사용자가 명시적으로 위임이나 병렬 agent 작업을 요청한 경우에만 사용한다. Claude 시대의 자동 위임 규칙은 Codex에서는 로컬 계획으로 해석한다.
 
+### Sub-agent 사용 규칙
+
+When:
+- 사용자가 위임, 병렬 agent 작업, sub-agent 사용을 명시적으로 승인했을 때
+- 또는 이번 Phase 24처럼 사용자가 MMP subagent 생성/활용 규칙을 명시적으로 요청한 범위 안에서 작업할 때
+
+Do:
+1. 메인 Codex는 의도 파악, scope 결정, 위험 판단, 최종 통합, PR/label/merge 결정을 맡는다.
+2. Sub-agent는 독립적으로 처리 가능한 탐색, 리뷰, 테스트 커버리지 점검, 반복 컴포넌트/테스트 작성, 긴 로그 분석에만 맡긴다.
+3. 코드 수정 sub-agent에는 소유 파일/모듈을 명확히 지정하고, 다른 작업자가 있을 수 있으니 기존 변경을 되돌리지 말라고 지시한다.
+4. 리뷰 sub-agent 결과는 사용자에게 raw output으로 붙이지 말고 `발견 / 수행 / 판단 / 미해결` 4섹션으로 압축한다.
+5. MMP 전용 리뷰에는 가능한 경우 `.codex/agents/mmp-frontend-editor-reviewer.toml`, `.codex/agents/mmp-backend-engine-reviewer.toml`, `.codex/agents/mmp-test-coverage-reviewer.toml` 역할을 사용한다.
+
+Done when:
+- 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
+
+Avoid:
+- secret 조회, destructive command, PR 생성, label 부착, merge, 배포 트리거를 sub-agent에 맡기지 않는다.
+- 다음 로컬 작업이 바로 막히는 critical path를 불필요하게 위임하지 않는다.
+
 ## Git 및 PR 규율
 
 - `main`을 보호한다. 병합 가능한 변경은 feature branch와 PR을 사용한다.
@@ -50,7 +110,74 @@
 - PR/CI/리뷰 상태 확인을 반복할 때는 GitHub/API 호출을 과도하게 하지 않는다. 기본 폴링 간격은 30초~1분으로 두고, 긴 작업은 `--watch --interval 30` 이상 또는 단발 조회를 사용한다.
 - 4-agent review 정책의 canonical 문서는 `memory/feedback_4agent_review_before_admin_merge.md`다. Codex에서 사용 가능한 도구와 사용자 승인 범위에 맞춰 적용한다.
 
+### PR 리뷰와 CI 상태 전이
+
+When:
+- 코드 변경 PR을 생성하거나 merge할 때
+
+Do:
+1. 로컬 구현 후 focused test와 가능한 로컬 리뷰를 먼저 수행한다.
+2. PR은 라벨 없이 생성한다. 특히 생성 시 `ready-for-ci`를 붙이지 않는다.
+3. CodeRabbit 1차 리뷰를 확인한다.
+4. 타당한 리뷰만 수정하고 push한다. 타당하지 않은 리뷰는 근거를 남기고 resolve한다.
+5. CodeRabbit 재리뷰를 기다린다.
+6. 추가 타당 리뷰가 있으면 다시 수정하고 push한다.
+7. 마지막 리뷰 대응 push 이후 unresolved review thread가 0인지 확인한다.
+8. 그 후 `ready-for-ci` 라벨을 붙여 full CI를 실행한다.
+9. CI 실패나 Codecov Report 문제가 있으면 원인을 수정하고 다시 검증한다.
+10. required checks와 Codecov 기준을 통과한 뒤 merge한다.
+
+Done when:
+- CodeRabbit unresolved thread 0
+- Codecov patch coverage 70% 이상
+- required CI green
+- PR merged 또는 명확한 blocker 보고
+
+Avoid:
+- CodeRabbit 재검토 전 `ready-for-ci` 라벨을 붙이지 않는다.
+- 새 커밋 push 직후 CodeRabbit 재검토 가능성을 무시하고 CI를 먼저 돌리지 않는다.
+- GitHub/API 상태 조회를 30초보다 촘촘히 반복하지 않는다.
+
+### 코드 작업 테스트 기준
+
+When:
+- 기능 구현, 버그 수정, 리팩터링, 에디터 UI/백엔드 engine 동작 변경이 있을 때
+
+Do:
+1. 사용자 관점의 E2E 테스트를 추가하거나 기존 E2E를 갱신한다.
+2. E2E로 직접 검증하기 어려운 내부 분기와 에러 처리는 unit/integration test로 보강한다.
+3. Codecov patch coverage 70% 이상을 merge 기준으로 맞춘다.
+4. E2E가 부적합한 순수 내부 변경이면 PR/보고에 E2E 미작성 사유와 대체 테스트를 명시한다.
+
+Done when:
+- 변경된 사용자 흐름 또는 런타임 동작을 E2E/integration/unit 조합으로 검증했다.
+- patch coverage가 70% 이상이다.
+
+Avoid:
+- 테스트 스킵, mock-only 우회, coverage 기준 미달 상태로 merge하지 않는다.
+
 ## 코드 및 아키텍처 규칙
+
+### 설계 품질과 Adapter/Engine 경계
+
+When:
+- 새 기능을 만들거나 기존 구현을 개선할 때
+
+Do:
+1. 변경 이유가 다른 책임은 분리한다.
+2. 같은 패턴이 2곳 이상 반복되거나 곧 다른 entity에 적용될 가능성이 높으면 helper/component/adapter로 추출한다.
+3. 현재는 한 구현에 두더라도 추후 분리 비용이 낮도록 함수, 타입, interface 경계를 명확히 둔다.
+4. 에디터 frontend는 API/저장 DTO를 제작자용 ViewModel로 바꾸는 Adapter 경계를 둔다.
+5. backend는 저장된 설정을 실제 게임 진행 중 해석하는 Engine 경계를 둔다.
+
+Done when:
+- UI, adapter, backend engine, persistence 책임이 어디에 있는지 코드와 문서에서 추적 가능하다.
+
+Avoid:
+- 미래 가능성만으로 큰 framework나 범용 abstraction을 만들지 않는다.
+- 1회성 UI를 무리하게 공용 컴포넌트로 만들지 않는다.
+- 프론트가 backend runtime 판단, 권한, 공개 상태를 흉내 내지 않는다.
+
 
 | 규칙 | Master |
 | ---- | ------ |

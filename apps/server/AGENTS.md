@@ -19,6 +19,44 @@ Go 1.25 + gorilla/websocket + sqlc + pgx + asynq + go-redis. PostgreSQL + Redis.
 - 커버리지 목표: 75%+. 현재 enforcement gate가 더 낮아도 gate를 낮추지 않는다.
 - 테스트 위치: `apps/server/internal/<pkg>/*_test.go`.
 
+## Runtime Engine 원칙
+
+When:
+- 에디터 설정을 실제 게임 진행, 권한, 공개 상태, 조건 판정, 결말 판정에 연결할 때
+
+Do:
+1. 저장된 editor config를 backend engine/service가 해석한다.
+2. player-aware state, redaction, permission, condition evaluation은 backend에서 결정한다.
+3. phase enter/reconnect/retry 상황에서 같은 이벤트가 중복 적용되지 않도록 idempotency를 보장한다.
+4. frontend가 보낸 값은 신뢰하지 않고 backend validation과 authorization을 거친다.
+5. config validation, player-aware redaction, reconnect/idempotency를 Go unit/integration test로 검증한다.
+
+Done when:
+- 같은 저장 설정이 모든 플레이어에게 동일하게 노출되지 않고, 캐릭터/권한/진행 상태별로 올바르게 분리된다.
+- 재접속 또는 phase 재진입에도 중복 지급/중복 공개가 발생하지 않는다.
+
+Avoid:
+- 프론트 UI의 표시 상태를 runtime truth로 취급하지 않는다.
+- 권한 없는 플레이어에게 스포일러 필드, 범인/공범/탐정 정보, 비공개 단서/역할지를 노출하지 않는다.
+
+## Entity 삭제 정합성
+
+When:
+- 캐릭터, 장소, 단서, 페이즈, 결말 등 editor entity 삭제 로직을 만들거나 수정할 때
+
+Do:
+1. 삭제 대상이 참조되는 config/module/edge/content/media 관계를 먼저 확인한다.
+2. DB row와 config JSON 참조 정리는 가능하면 하나의 transaction 안에서 처리한다.
+3. 삭제 후 고아 참조가 남지 않는지 테스트한다.
+4. cascade가 위험한 경우 사용자에게 삭제 영향 요약을 제공할 수 있는 API/서비스 경계를 둔다.
+
+Done when:
+- 삭제 후 재조회, 런타임 state build, editor load가 실패하지 않는다.
+- 관련 참조 정리 테스트가 있다.
+
+Avoid:
+- 화면에서만 사라지고 backend config에는 남는 soft orphan을 만들지 않는다.
+
 ## Dev Compose
 
 ```bash

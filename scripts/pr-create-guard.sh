@@ -9,8 +9,8 @@ contains_ready_for_ci() {
   local value="$1"
   IFS=',' read -ra labels <<< "$value"
   for label in "${labels[@]}"; do
-    label="${label#${label%%[![:space:]]*}}"
-    label="${label%${label##*[![:space:]]}}"
+    label="${label#"${label%%[![:space:]]*}"}"
+    label="${label%"${label##*[![:space:]]}"}"
     if [[ "$label" == "ready-for-ci" ]]; then
       return 0
     fi
