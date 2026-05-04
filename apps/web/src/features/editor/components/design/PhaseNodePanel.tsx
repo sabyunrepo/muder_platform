@@ -106,13 +106,13 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
       <div className="border-t border-slate-800" />
 
       <ActionListEditor
-        label="장면 시작 때 적용"
+        label="장면 시작 트리거"
         actions={(data.onEnter as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onEnter: actions })}
         hiddenTypes={[DELIVER_INFORMATION_ACTION, "deliver_information"]}
       />
       <ActionListEditor
-        label="장면 종료 때 적용"
+        label="장면 종료 트리거"
         actions={(data.onExit as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onExit: actions })}
       />
@@ -148,8 +148,8 @@ function PhaseSummaryCard({ viewModel }: { viewModel: PhaseEditorViewModel }) {
           value={`${viewModel.defaultTransitionLabel} · 조건 이동 ${viewModel.conditionalTransitionCount}개`}
         />
         <SummaryRow label="정보 전달" value={`${viewModel.informationDeliveryCount}개 설정`} />
-        <SummaryRow label="시작 시 실행" value={enterActions} />
-        <SummaryRow label="종료 시 실행" value={exitActions} />
+        <SummaryRow label="시작 트리거" value={enterActions} />
+        <SummaryRow label="종료 트리거" value={exitActions} />
       </dl>
     </section>
   );

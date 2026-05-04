@@ -1,6 +1,9 @@
 import { Plus, Trash2 } from "lucide-react";
 import type { PhaseAction } from "../../flowTypes";
-import { getVisibleCreatorActionOptions } from "../../entities/shared/actionAdapter";
+import {
+  getCreatorActionLabel,
+  getVisibleCreatorActionOptions,
+} from "../../entities/shared/actionAdapter";
 
 interface ActionListEditorProps {
   label: string;
@@ -49,35 +52,71 @@ export function ActionListEditor({
         </button>
       </div>
 
-      {visibleActions.length === 0 && <p className="text-[10px] text-slate-600">액션 없음</p>}
+      {visibleActions.length === 0 && (
+        <p className="text-[10px] text-slate-600">트리거 실행 결과 없음</p>
+      )}
 
       {visibleActions.map(({ action, index: idx }) => (
-        <div
+        <ActionRow
           key={action.id ?? idx}
-          className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-1.5"
-        >
-          <select
-            value={action.type}
-            onChange={(e) => handleTypeChange(idx, e.target.value)}
-            aria-label={`${label} ${idx + 1} 액션 타입`}
-            className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
-          >
-            {visibleActionTypes.map((actionType) => (
-              <option key={actionType.value} value={actionType.value}>
-                {actionType.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => handleRemove(idx)}
-            aria-label={`${label} ${idx + 1} 삭제`}
-            className="text-slate-500 transition-colors hover:text-red-400"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        </div>
+          action={action}
+          index={idx}
+          label={label}
+          visibleActionTypes={visibleActionTypes}
+          onTypeChange={handleTypeChange}
+          onRemove={handleRemove}
+        />
       ))}
+    </div>
+  );
+}
+
+interface ActionRowProps {
+  action: PhaseAction;
+  index: number;
+  label: string;
+  visibleActionTypes: ReturnType<typeof getVisibleCreatorActionOptions>;
+  onTypeChange: (index: number, type: string) => void;
+  onRemove: (index: number) => void;
+}
+
+function ActionRow({
+  action,
+  index,
+  label,
+  visibleActionTypes,
+  onTypeChange,
+  onRemove,
+}: ActionRowProps) {
+  const hasCurrentOption = visibleActionTypes.some((actionType) => actionType.value === action.type);
+  const fallbackLabel = getCreatorActionLabel(action.type);
+  const options = hasCurrentOption
+    ? visibleActionTypes
+    : visibleActionTypes.filter((actionType) => actionType.label !== fallbackLabel);
+
+  return (
+    <div className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-1.5">
+      <select
+        value={action.type}
+        onChange={(e) => onTypeChange(index, e.target.value)}
+        aria-label={`${label} ${index + 1} 실행 결과`}
+        className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
+      >
+        {!hasCurrentOption && <option value={action.type}>{fallbackLabel}</option>}
+        {options.map((actionType) => (
+          <option key={actionType.value} value={actionType.value}>
+            {actionType.label}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={() => onRemove(index)}
+        aria-label={`${label} ${index + 1} 삭제`}
+        className="text-slate-500 transition-colors hover:text-red-400"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
     </div>
   );
 }

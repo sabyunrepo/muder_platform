@@ -120,6 +120,24 @@ type configuredPhaseAction struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
+var legacyPhaseActionAliases = map[string]PhaseAction{
+	"deliver_information": ActionDeliverInformation,
+	"enable_voting":       ActionOpenVoting,
+	"disable_voting":      ActionCloseVoting,
+	"enable_chat":         ActionUnmuteChat,
+	"disable_chat":        ActionMuteChat,
+	"play_bgm":            ActionSetBGM,
+	"stop_bgm":            ActionStopAudio,
+	"broadcast":           ActionBroadcastMessage,
+}
+
+func normalizeConfiguredPhaseAction(actionType string) PhaseAction {
+	if action, ok := legacyPhaseActionAliases[actionType]; ok {
+		return action
+	}
+	return PhaseAction(actionType)
+}
+
 func parseConfiguredPhaseActions(raw json.RawMessage) ([]PhaseActionPayload, error) {
 	var wrapped struct {
 		Actions []configuredPhaseAction `json:"actions"`
@@ -144,7 +162,7 @@ func parseConfiguredPhaseActions(raw json.RawMessage) ([]PhaseActionPayload, err
 			actionType = action.Type
 		}
 		out = append(out, PhaseActionPayload{
-			Action: PhaseAction(actionType),
+			Action: normalizeConfiguredPhaseAction(actionType),
 			Target: action.Target,
 			Params: action.Params,
 		})
