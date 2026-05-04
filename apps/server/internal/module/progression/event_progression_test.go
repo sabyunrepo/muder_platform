@@ -391,6 +391,16 @@ func TestEventProgressionModule_RuntimeTriggerUsesPhaseEngineAsController(t *tes
 	if len(reactor.actions) != 1 || reactor.actions[0].Action != "TEST_ACTION" {
 		t.Fatalf("reactor actions = %#v, want TEST_ACTION", reactor.actions)
 	}
+
+	if err := pe.HandleMessage(context.Background(), uuid.New(), "event_progression", "event:trigger", payload); err != nil {
+		t.Fatalf("replayed HandleMessage() error = %v", err)
+	}
+	if pe.CurrentPhase().ID != "middle" {
+		t.Fatalf("current phase after replay = %q, want middle", pe.CurrentPhase().ID)
+	}
+	if len(reactor.actions) != 1 {
+		t.Fatalf("reactor actions after replay = %#v, want one TEST_ACTION", reactor.actions)
+	}
 }
 
 func TestEventProgressionModule_BuildState(t *testing.T) {

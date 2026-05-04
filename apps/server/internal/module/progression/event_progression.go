@@ -121,6 +121,10 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 			m.mu.Unlock()
 			return fmt.Errorf("event_progression: invalid payload: %w", err)
 		}
+		if m.isConfiguredTriggerAppliedLocked(p.TriggerID) {
+			m.mu.Unlock()
+			return nil
+		}
 		trigger, hasTriggerConfig := m.resolveConfiguredTriggerRouteLocked(p.TriggerID)
 		oldPhase, validTarget, actions, err := m.resolveTriggerLocked(p.TriggerID, p.Password, trigger, hasTriggerConfig)
 		if err != nil {
@@ -132,6 +136,7 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 		if err := m.validateTriggerRuntimeDeps(actions); err != nil {
 			return err
 		}
+		m.recordTriggerExecution(p.TriggerID)
 		if err := m.dispatchTriggerActions(ctx, actions); err != nil {
 			return err
 		}
@@ -140,7 +145,6 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 				return err
 			}
 		}
-		m.recordTriggerSuccess(p.TriggerID)
 		if validTarget != "" {
 			m.publishSceneTransition(oldPhase, validTarget, p.TriggerID)
 		}
@@ -150,6 +154,13 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 		m.mu.Unlock()
 		return fmt.Errorf("event_progression: unknown message type %q", msgType)
 	}
+}
+
+func (m *EventProgressionModule) isConfiguredTriggerAppliedLocked(triggerID string) bool {
+	if _, ok := m.triggers[triggerID]; !ok {
+		return false
+	}
+	return m.triggerCounts[triggerID] > 0
 }
 
 func (m *EventProgressionModule) resolveConfiguredTriggerRouteLocked(triggerID string) (eventProgressionTrigger, bool) {
@@ -280,7 +291,7 @@ func (m *EventProgressionModule) publishSceneTransition(from string, to string, 
 	})
 }
 
-func (m *EventProgressionModule) recordTriggerSuccess(triggerID string) {
+func (m *EventProgressionModule) recordTriggerExecution(triggerID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.triggerCounts[triggerID]++
