@@ -164,6 +164,8 @@ jobs:
             # `--with-deps` split into best-effort deps step (fonts-freefont-ttf
       # deprecated on ARC runner image) + always-required browser install.
       - name: Install Playwright system deps (best-effort)
+        timeout-minutes: 8
+        continue-on-error: true
         working-directory: apps/web
         run: |
           sudo apt-get update -y || true
