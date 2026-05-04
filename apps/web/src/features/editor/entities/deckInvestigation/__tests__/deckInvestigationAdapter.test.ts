@@ -99,6 +99,7 @@ describe('deckInvestigationAdapter', () => {
               id: ' deck-1 ',
               title: ' 공백 정리 ',
               tokenId: ' coin ',
+              emptyMessage: ' 비어 있음 ',
               access: { locationIds: [' loc-1 ', 'loc-1', '', 'loc-2'] },
               cards: [{ clueId: ' clue-1 ', delivery: 'view_only' }],
             }],
@@ -108,7 +109,12 @@ describe('deckInvestigationAdapter', () => {
     });
 
     expect(config.tokens[0]).toMatchObject({ id: 'coin', name: '동전', iconLabel: '🪙' });
-    expect(config.decks[0]).toMatchObject({ id: 'deck-1', title: '공백 정리', tokenId: 'coin' });
+    expect(config.decks[0]).toMatchObject({
+      id: 'deck-1',
+      title: '공백 정리',
+      tokenId: 'coin',
+      emptyMessage: '비어 있음',
+    });
     expect(config.decks[0].access.locationIds).toEqual(['loc-1', 'loc-2']);
     expect(config.decks[0].cards[0]).toMatchObject({ clueId: 'clue-1', delivery: 'view_only' });
   });
@@ -190,6 +196,26 @@ describe('deckInvestigationAdapter', () => {
     });
 
     expect(vm.decks[0].placementLabel).toBe('응접실 외 1곳');
+  });
+
+
+
+  it('runtime draft는 원본 editor draft의 배열과 카드 객체를 공유하지 않는다', () => {
+    const draft = {
+      tokens: [{ id: 'coin', name: '동전', iconLabel: '🪙', defaultAmount: 2 }],
+      decks: [{
+        ...createInvestigationDeckDraft(0, 'coin'),
+        access: { phaseIds: ['phase-1'], locationIds: ['loc-1'], blockedCharacterIds: ['char-2'], requiredClueIds: ['clue-key'] },
+        cards: [{ clueId: 'clue-1', delivery: 'private_ownership' as const }],
+      }],
+    };
+
+    const runtime = toDeckInvestigationRuntimeDraft(draft);
+    runtime.decks[0].phaseIds.push('phase-mutated');
+    runtime.decks[0].cards[0].clueId = 'clue-mutated';
+
+    expect(draft.decks[0].access.phaseIds).toEqual(['phase-1']);
+    expect(draft.decks[0].cards[0]).toEqual({ clueId: 'clue-1', delivery: 'private_ownership' });
   });
 
   it('runtime draft에는 UI label 대신 엔진 판단에 필요한 값만 남긴다', () => {

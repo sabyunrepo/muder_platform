@@ -157,9 +157,8 @@ function normalizeDeck(value: unknown, index: number, fallbackTokenId: string): 
   const tokenCost = typeof value.tokenCost === 'number' && Number.isFinite(value.tokenCost)
     ? Math.max(0, Math.floor(value.tokenCost))
     : 1;
-  const emptyMessage = typeof value.emptyMessage === 'string' && value.emptyMessage.trim()
-    ? value.emptyMessage
-    : '더 이상 얻을 단서가 없습니다.';
+  const rawEmptyMessage = typeof value.emptyMessage === 'string' ? value.emptyMessage.trim() : '';
+  const emptyMessage = rawEmptyMessage || '더 이상 얻을 단서가 없습니다.';
   const cards = Array.isArray(value.cards)
     ? value.cards.map(normalizeCard).filter((card): card is InvestigationDeckCardDraft => !!card)
     : [];
@@ -234,11 +233,11 @@ export function toDeckInvestigationRuntimeDraft(
       tokenId: deck.tokenId,
       tokenCost: deck.tokenCost,
       drawOrder: deck.drawOrder,
-      phaseIds: deck.access.phaseIds,
-      locationIds: deck.access.locationIds,
-      blockedCharacterIds: deck.access.blockedCharacterIds,
-      requiredClueIds: deck.access.requiredClueIds,
-      cards: deck.cards,
+      phaseIds: [...deck.access.phaseIds],
+      locationIds: [...deck.access.locationIds],
+      blockedCharacterIds: [...deck.access.blockedCharacterIds],
+      requiredClueIds: [...deck.access.requiredClueIds],
+      cards: deck.cards.map((card) => ({ ...card })),
       emptyMessage: deck.emptyMessage,
     })),
   };
