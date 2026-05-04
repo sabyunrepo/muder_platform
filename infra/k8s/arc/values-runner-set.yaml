@@ -3,8 +3,8 @@ githubConfigSecret: github-pat-secret
 
 runnerScaleSetName: arc-runner-set
 
-minRunners: 0
-maxRunners: 5
+minRunners: 2
+maxRunners: 15
 
 # containerMode: dind — chart 가 자동으로 docker:dind sidecar + DOCKER_HOST=unix:///var/run/docker.sock
 # + init-dind-externals init container 를 주입한다.
@@ -15,18 +15,25 @@ containerMode:
 
 template:
   spec:
-    # Phase 24 follow-up: ghcr.io 로 이전. KT registry 는 fallback 으로 secret 유지.
+    # 2026-05-04: KT Cloud Container Registry 로 이전 (인바운드 트래픽 절감 목적).
+    # 같은 KT Cloud 리전 내 풀이라 외부 인터넷 인바운드 미과금.
+    # ghcr.io 는 fallback secret 으로만 유지 (이미지 출처 변경 시 빠른 롤백용).
+    # kt-registry-secret 자격증명 회전 시 이 파일은 그대로, secret 만 재생성하면 됨.
     imagePullSecrets:
-      - name: ghcr-secret
       - name: kt-registry-secret
+      - name: ghcr-secret
+    nodeSelector:
+      cluster-autoscaler-group-id: 36464bb1-6f67-4a79-b5cc-d720fb48e492
     containers:
       - name: runner
-        image: ghcr.io/sabyunrepo/mmp-runner:latest
+        # versioned tag 사용 (latest 금지) — imagePullPolicy: IfNotPresent 와 결합해 노드 캐시 재사용.
+        image: registry.cloud.kt.com/dldxu5p5/mmp-runner:v2026-05-04
+        imagePullPolicy: IfNotPresent
         command: ["/home/runner/run.sh"]
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "3Gi"
+            cpu: "1500m"
           limits:
             memory: "4Gi"
-            cpu: "2000m"
+            cpu: "3000m"
