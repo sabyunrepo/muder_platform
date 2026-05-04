@@ -29,6 +29,7 @@ describe("ActionListEditor", () => {
 
     const select = screen.getByRole("combobox", { name: "장면 종료 트리거 1 실행 결과" });
     expect(select).toHaveProperty("value", "disable_chat");
-    expect(screen.getAllByRole("option", { name: "채팅 닫기" })).toHaveLength(1);
+    expect(screen.getByRole("option", { name: "채팅 닫기 (기존값)" })).toBeDefined();
+    expect(screen.getByRole("option", { name: "채팅 닫기" })).toBeDefined();
   });
 });

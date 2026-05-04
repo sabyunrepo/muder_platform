@@ -122,6 +122,8 @@ func TestParseConfiguredPhaseActions_NormalizesLegacyAliases(t *testing.T) {
 		{name: "stop audio", raw: `[{"type":"stop_bgm"}]`, want: ActionStopAudio},
 		{name: "broadcast", raw: `[{"type":"broadcast"}]`, want: ActionBroadcastMessage},
 		{name: "wrapped action", raw: `{"actions":[{"type":"disable_chat"}]}`, want: ActionMuteChat},
+		{name: "lowercase canonical", raw: `[{"type":"evaluate_ending"}]`, want: ActionEvaluateEnding},
+		{name: "trimmed uppercase canonical", raw: `[{"type":" SET_BGM "}]`, want: ActionSetBGM},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

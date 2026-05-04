@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime/debug"
+	"strings"
 )
 
 func (e *PhaseEngine) enterCurrentPhase(ctx context.Context) error {
@@ -132,10 +133,11 @@ var legacyPhaseActionAliases = map[string]PhaseAction{
 }
 
 func normalizeConfiguredPhaseAction(actionType string) PhaseAction {
-	if action, ok := legacyPhaseActionAliases[actionType]; ok {
+	normalized := strings.ToLower(strings.TrimSpace(actionType))
+	if action, ok := legacyPhaseActionAliases[normalized]; ok {
 		return action
 	}
-	return PhaseAction(actionType)
+	return PhaseAction(strings.ToUpper(normalized))
 }
 
 func parseConfiguredPhaseActions(raw json.RawMessage) ([]PhaseActionPayload, error) {

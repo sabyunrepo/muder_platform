@@ -90,9 +90,6 @@ function ActionRow({
 }: ActionRowProps) {
   const hasCurrentOption = visibleActionTypes.some((actionType) => actionType.value === action.type);
   const fallbackLabel = getCreatorActionLabel(action.type);
-  const options = hasCurrentOption
-    ? visibleActionTypes
-    : visibleActionTypes.filter((actionType) => actionType.label !== fallbackLabel);
 
   return (
     <div className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-900 px-2 py-1.5">
@@ -102,8 +99,8 @@ function ActionRow({
         aria-label={`${label} ${index + 1} 실행 결과`}
         className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
       >
-        {!hasCurrentOption && <option value={action.type}>{fallbackLabel}</option>}
-        {options.map((actionType) => (
+        {!hasCurrentOption && <option value={action.type}>{fallbackLabel} (기존값)</option>}
+        {visibleActionTypes.map((actionType) => (
           <option key={actionType.value} value={actionType.value}>
             {actionType.label}
           </option>
