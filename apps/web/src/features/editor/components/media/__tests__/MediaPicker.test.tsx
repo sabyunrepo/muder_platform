@@ -193,7 +193,7 @@ describe("MediaPicker", () => {
     expect(screen.getByText("검색 결과가 없습니다")).toBeDefined();
   });
 
-  it("YOUTUBE source_type 항목에 YouTube 아이콘을 표시한다", () => {
+  it("YOUTUBE source_type 항목에 YouTube 아이콘을 표시하되 raw URL은 노출하지 않는다", () => {
     render(
       <MediaPicker
         open={true}
@@ -203,6 +203,8 @@ describe("MediaPicker", () => {
       />,
     );
     expect(screen.getByLabelText("YouTube")).toBeDefined();
+    expect(screen.queryByText("https://www.youtube.com/watch?v=xyz")).toBeNull();
+    expect(screen.queryByText("https://example.com/bgm.mp3")).toBeNull();
   });
 
   it("selectedId와 일치하는 항목을 강조한다", () => {
@@ -224,6 +226,27 @@ describe("MediaPicker", () => {
       .getByText("오프닝 BGM")
       .closest("button") as HTMLElement;
     expect(otherBtn.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("useCase가 맞지 않는 항목은 선택하지 못하게 한다", () => {
+    const onSelect = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <MediaPicker
+        open={true}
+        onClose={onClose}
+        onSelect={onSelect}
+        themeId="theme-1"
+        useCase="role_sheet_document"
+      />,
+    );
+
+    const bgmItem = screen.getByText("오프닝 BGM").closest("button") as HTMLElement;
+    fireEvent.click(bgmItem);
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getAllByText(/문서 리소스만 선택/).length).toBeGreaterThan(0);
   });
 
   it("로딩 상태를 표시한다", () => {
