@@ -3,11 +3,14 @@ package progression
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
+
+var errTriggerTest = errors.New("trigger test error")
 
 type recordingSceneController struct {
 	targets []string
@@ -24,6 +27,33 @@ type recordingActionDispatcher struct {
 
 func (r *recordingActionDispatcher) DispatchAction(_ context.Context, action engine.PhaseActionPayload) error {
 	r.actions = append(r.actions, action)
+	return nil
+}
+
+type failOnceActionDispatcher struct {
+	actions []engine.PhaseActionPayload
+	fail    bool
+}
+
+func (f *failOnceActionDispatcher) DispatchAction(_ context.Context, action engine.PhaseActionPayload) error {
+	if f.fail {
+		f.fail = false
+		return errTriggerTest
+	}
+	f.actions = append(f.actions, action)
+	return nil
+}
+
+type blockingActionDispatcher struct {
+	entered chan struct{}
+	release chan struct{}
+	actions []engine.PhaseActionPayload
+}
+
+func (b *blockingActionDispatcher) DispatchAction(_ context.Context, action engine.PhaseActionPayload) error {
+	b.actions = append(b.actions, action)
+	close(b.entered)
+	<-b.release
 	return nil
 }
 
@@ -339,6 +369,95 @@ func TestEventProgressionModule_ConfiguredTriggerRequiresSceneControllerForTarge
 	}
 	if len(dispatcher.actions) != 0 {
 		t.Fatalf("actions dispatched without scene controller: %#v", dispatcher.actions)
+	}
+}
+
+func TestEventProgressionModule_ConfiguredTriggerRollsBackAfterActionFailure(t *testing.T) {
+	deps := newTestDeps(t)
+	sceneController := &recordingSceneController{}
+	dispatcher := &failOnceActionDispatcher{fail: true}
+	deps.SceneController = sceneController
+	deps.ActionDispatcher = dispatcher
+	m := NewEventProgressionModule()
+
+	cfg := json.RawMessage(`{
+		"InitialPhase":"start",
+		"Triggers":[{
+			"id":"unlock-safe",
+			"from":"start",
+			"to":"middle",
+			"password":"0427",
+			"actions":[{"type":"OPEN_VOTING"}]
+		}]
+	}`)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
+	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err == nil {
+		t.Fatal("expected first action dispatch to fail, got nil")
+	}
+	if len(sceneController.targets) != 0 {
+		t.Fatalf("scene moved after failed action: %#v", sceneController.targets)
+	}
+
+	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
+		t.Fatalf("retry HandleMessage() error = %v", err)
+	}
+	if len(dispatcher.actions) != 1 {
+		t.Fatalf("successful dispatches after retry = %#v, want one action", dispatcher.actions)
+	}
+	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
+		t.Fatalf("scene targets after retry = %#v, want [middle]", sceneController.targets)
+	}
+}
+
+func TestEventProgressionModule_ConfiguredTriggerSkipsConcurrentReplay(t *testing.T) {
+	deps := newTestDeps(t)
+	sceneController := &recordingSceneController{}
+	dispatcher := &blockingActionDispatcher{
+		entered: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	deps.SceneController = sceneController
+	deps.ActionDispatcher = dispatcher
+	m := NewEventProgressionModule()
+
+	cfg := json.RawMessage(`{
+		"InitialPhase":"start",
+		"Triggers":[{
+			"id":"unlock-safe",
+			"from":"start",
+			"to":"middle",
+			"password":"0427",
+			"actions":[{"type":"OPEN_VOTING"}]
+		}]
+	}`)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
+	done := make(chan error, 1)
+	go func() {
+		done <- m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload)
+	}()
+	<-dispatcher.entered
+
+	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
+		t.Fatalf("concurrent replay HandleMessage() error = %v", err)
+	}
+	close(dispatcher.release)
+	if err := <-done; err != nil {
+		t.Fatalf("first HandleMessage() error = %v", err)
+	}
+
+	if len(dispatcher.actions) != 1 {
+		t.Fatalf("actions after concurrent replay = %#v, want one action", dispatcher.actions)
+	}
+	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
+		t.Fatalf("scene targets after concurrent replay = %#v, want [middle]", sceneController.targets)
 	}
 }
 
