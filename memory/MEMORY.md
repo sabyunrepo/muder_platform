@@ -4,7 +4,7 @@
 - [완료 Phase Archive](#완료-phase-archive) — Phase 7.7~20 progress·plan 파일 일람 (본 파일 하단)
 
 ## 활성 Phase
-- [Phase 24 — 에디터 ECS 재설계](sessions/2026-05-02-phase-24-pr-1-merge.md) — **진행 중** PR-1 머지 완료 (commit `01e55d0`, config_normalizer + ending_branch skeleton), PR-2~6 미진입. spec D-19~D-26 적용 완료
+- [Phase 24 — 에디터 ECS 재설계](sessions/2026-05-04-phase-24-wrapup.md) — **wrap-up** Adapter/Engine 전환 1차 완료. #260 Epic은 ready to close. #247 단서 효과 Engine, #248 장소 조사 Runtime, #249 결말/투표 breakdown, #271 에러 계약이 Phase 25 후보
 - [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol 머지 #203, PR-10 Runtime Payload Validation L 미착수). #200/#201/#202/#204~#210 follow-ups carry-over
 
 ## Backlog
@@ -66,6 +66,7 @@
 - [Playwright `--with-deps` 분리 패턴](feedback_playwright_with_deps_split.md) — ARC runner OS deprecated 패키지 차단 회피 (PR-1 #212)
 
 ## 최근 세션 회고
+- [2026-05-04 Phase 24 wrap-up — Adapter/Engine 기준선 + Phase 25 후보 큐](sessions/2026-05-04-phase-24-wrapup.md) — #230~#236, #250, #255~#259, #261 완료 기준, #260 ready to close. 다음 순서 #247 → #248 → #249 → #271
 - [2026-05-02 Phase 24 PR-1 머지 — config_normalizer + ending_branch skeleton](sessions/2026-05-02-phase-24-pr-1-merge.md) — PR #212. TDD 67-step + 4-agent round-1+2 + CodeRabbit 32+ findings + CI 5 root-cause fix (gofmt/wsgen sort/playeraware-lint/Playwright deps)
 - [2026-05-01 CI 슬림화 — required check 15→4 + paths-filter trap hotfix](sessions/2026-05-01-ci-slim-paths-filter-trap.md) — PR #194/#195. main branch protection 4개 축소 + workflow-only PR fire 보장 + gitleaks 분리
 - [2026-05-01 Phase 21 backlog wave — 5 PR sequential merge](sessions/2026-05-01-phase-21-backlog-wave.md) — PR #188/#189/#190/#191/#192. E-7/E-8/E-10/E-11/E-12 해소 + Phase 23 인프라 close + E-5 Phase 24 defer
