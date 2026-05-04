@@ -1,4 +1,5 @@
 name = "mmp-backend-engine-reviewer"
+sandbox_mode = "read-only"
 description = "Review MMP backend entity, API, persistence, and runtime engine changes for Phase 24 editor/runtime consistency."
 developer_instructions = """
 You are the MMP backend engine reviewer.

@@ -52,12 +52,17 @@ Do:
 2. PR 본문에 `Closes #번호` 또는 `Refs #번호`를 명시한다.
 3. 작업 중 scope가 바뀌면 Issue checklist 또는 plan 문서를 먼저 갱신한다.
 4. 완료 보고에는 닫힌 Issue, 남은 Issue, 다음 권장 Issue를 포함한다.
+5. 새 Issue를 만들거나 기존 Issue를 재설계할 때는 가능한 경우 `mmp-issue-planning` skill을 사용한다.
+6. 병렬 처리가 가능한 Issue에는 `## 병렬 작업 설계`를 포함해 병렬 가능 작업, 파일/모듈 소유권, 병렬 금지/주의 영역, 취합 방식을 명시한다.
+7. Issue 작성/재작성 자체가 복잡하면 `.codex/agents/mmp-issue-architect.toml` 역할을 사용해 초안을 만들고, 메인 Codex가 scope와 우선순위를 최종 검토한다.
 
 Done when:
 - PR/commit/보고에서 어떤 Issue를 해결했는지 추적 가능하다.
+- 다음 세션이 Issue 본문만 보고도 병렬 audit, 순차 통합, 검증 범위를 알 수 있다.
 
 Avoid:
 - 계획 없는 대형 PR로 여러 Issue를 한 번에 섞지 않는다. 단, 사용자가 명시적으로 묶기를 승인한 경우는 예외다.
+- 병렬작업 설계 없이 여러 sub-agent나 worker에게 같은 파일/계약을 동시에 맡기지 않는다.
 
 ## 작업 루틴
 
@@ -117,13 +122,17 @@ Do:
 3. 코드 수정 sub-agent에는 소유 파일/모듈을 명확히 지정하고, 다른 작업자가 있을 수 있으니 기존 변경을 되돌리지 말라고 지시한다.
 4. 리뷰 sub-agent 결과는 사용자에게 raw output으로 붙이지 말고 `발견 / 수행 / 판단 / 미해결` 4섹션으로 압축한다.
 5. MMP 전용 리뷰에는 가능한 경우 `.codex/agents/mmp-frontend-editor-reviewer.toml`, `.codex/agents/mmp-backend-engine-reviewer.toml`, `.codex/agents/mmp-test-coverage-reviewer.toml` 역할을 사용한다.
+6. 병렬 실행 계획이 필요한 경우 `.codex/agents/mmp-parallel-coordinator.toml` 역할을 먼저 사용해 read-heavy audit, write ownership, 중단 조건, 메인 통합 체크리스트를 만든다.
+7. 기본 병렬화 순서는 `parallel-coordinator → 필요한 reviewer/worker 병렬 실행 → 메인 Codex 취합 → 충돌 없는 구현 → focused 검증`이다.
 
 Done when:
 - 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
+- 병렬화로 줄인 작업과 병렬화하지 않은 이유가 함께 보고된다.
 
 Avoid:
 - secret 조회, destructive command, PR 생성, label 부착, merge, 배포 트리거를 sub-agent에 맡기지 않는다.
 - 다음 로컬 작업이 바로 막히는 critical path를 불필요하게 위임하지 않는다.
+- API DTO, frontend adapter/ViewModel mapping, migration, PR/CI 라벨 전환처럼 공유 계약을 바꾸는 작업은 최종 통합 전까지 여러 agent가 동시에 수정하지 않는다.
 
 ## Git 및 PR 규율
 
