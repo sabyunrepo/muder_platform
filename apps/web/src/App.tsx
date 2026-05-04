@@ -156,6 +156,7 @@ export function App() {
                 <Route path="/game/:id" element={<GamePage />} />
                 <Route path="/editor/:id" element={<EditorPage />} />
                 <Route path="/editor/:id/:tab" element={<EditorPage />} />
+                <Route path="/editor/:id/design/:designTab" element={<EditorPage />} />
                 <Route element={<MainLayout />}>
                   <Route path="/" element={<LobbyPage />} />
                   <Route path="/lobby" element={<LobbyPage />} />

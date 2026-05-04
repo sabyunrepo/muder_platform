@@ -7,7 +7,7 @@ import type { Node } from "@xyflow/react";
 // ---------------------------------------------------------------------------
 
 vi.mock("../PhaseNodePanel", () => ({
-  PhaseNodePanel: () => <div>페이즈 설정</div>,
+  PhaseNodePanel: () => <div>장면 설정</div>,
 }));
 
 // ---------------------------------------------------------------------------
@@ -43,7 +43,7 @@ function makeNode(type: string, data: Record<string, unknown> = {}): Node {
 // ---------------------------------------------------------------------------
 
 describe("NodeDetailPanel", () => {
-  it("node가 null이면 '편집할 페이즈나 결말 노드를 선택하세요' 를 표시한다", () => {
+  it("node가 null이면 '편집할 장면이나 결말을 선택하세요' 를 표시한다", () => {
     render(
       <NodeDetailPanel
         node={null}
@@ -52,7 +52,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("편집할 페이즈나 결말 노드를 선택하세요")).toBeDefined();
+    expect(screen.getByText("편집할 장면이나 결말을 선택하세요")).toBeDefined();
   });
 
   it("start 노드이면 편집 불가 메시지를 표시한다", () => {
@@ -88,7 +88,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("페이즈 설정")).toBeDefined();
+    expect(screen.getByText("장면 설정")).toBeDefined();
   });
 
   it("phase 노드에는 삭제 버튼이 있다", () => {

@@ -85,6 +85,31 @@ describe('FlowCanvas', () => {
     expect(screen.getByTestId('react-flow')).toBeDefined();
   });
 
+  it('장면 노드가 있으면 스토리 장면 요약을 렌더링한다', () => {
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        {
+          id: 'scene-1',
+          type: 'phase',
+          position: { x: 0, y: 0 },
+          data: { label: '오프닝', phase_type: 'story_progression' },
+        },
+      ],
+      edges: [],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+    expect(screen.getByText('스토리 장면 구성')).toBeDefined();
+    expect(screen.getByText('1개 장면')).toBeDefined();
+    expect(screen.getByText('오프닝')).toBeDefined();
+  });
+
   it('모바일 우선 세로 레이아웃을 사용하고 데스크톱에서만 2열로 바뀐다', () => {
     render(<FlowCanvas themeId="theme-1" />);
     const workspace = screen.getByTestId('flow-workspace');
@@ -127,12 +152,12 @@ describe('FlowToolbar', () => {
     expect(screen.getByText('저장 중...')).toBeDefined();
   });
 
-  it('노드 추가 버튼 클릭 시 드롭다운이 열린다', () => {
+  it('항목 추가 버튼 클릭 시 드롭다운이 열린다', () => {
     render(
       <FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />,
     );
-    fireEvent.click(screen.getByText('노드 추가'));
-    expect(screen.getByText('페이즈')).toBeDefined();
+    fireEvent.click(screen.getByText('항목 추가'));
+    expect(screen.getByText('장면')).toBeDefined();
     expect(screen.getByText('분기')).toBeDefined();
     expect(screen.getByText('엔딩')).toBeDefined();
   });
@@ -142,8 +167,8 @@ describe('FlowToolbar', () => {
     render(
       <FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />,
     );
-    fireEvent.click(screen.getByText('노드 추가'));
-    fireEvent.click(screen.getByText('페이즈'));
+    fireEvent.click(screen.getByText('항목 추가'));
+    fireEvent.click(screen.getByText('장면'));
     expect(onAddNode).toHaveBeenCalledWith('phase');
   });
 });

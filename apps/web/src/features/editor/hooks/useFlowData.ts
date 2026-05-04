@@ -113,7 +113,7 @@ export function useFlowData(themeId: string) {
       createNode.mutate(
         {
           type,
-          data: { label: type === "phase" ? "새 페이즈" : undefined },
+          data: { label: type === "phase" ? "새 장면" : undefined },
           position_x: position.x,
           position_y: position.y,
         },

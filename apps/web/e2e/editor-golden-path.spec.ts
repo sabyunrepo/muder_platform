@@ -175,6 +175,13 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     });
     await expect(page.getByTestId("ending-entity-panel")).toBeVisible({ timeout: 10_000 });
 
+    await page.goto(`${BASE}/editor/${THEME_ID}/design/flow`);
+    await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText("장면 흐름")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("스토리 장면 구성")).toBeVisible({ timeout: 10_000 });
+
     await page.goto(`${BASE}/editor/${THEME_ID}/media`);
     await expect(page.getByRole("tab", { name: "미디어", selected: true })).toBeVisible({
       timeout: 10_000,

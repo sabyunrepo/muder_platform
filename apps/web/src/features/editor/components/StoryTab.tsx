@@ -3,7 +3,10 @@ import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { Columns2, AlignLeft, Eye } from 'lucide-react';
 import { useEditorContent, useUpsertContent } from '@/features/editor/api';
+import { useFlowGraph } from '@/features/editor/flowApi';
 import { useAutoSave } from '@/features/editor/hooks/useAutoSave';
+import { toStorySceneFlowSummaryFromGraph } from '@/features/editor/entities/story/storySceneAdapter';
+import { StorySceneSummary } from './design/StorySceneSummary';
 import { ReadingSectionList } from './reading/ReadingSectionList';
 
 // ---------------------------------------------------------------------------
@@ -54,6 +57,7 @@ function ViewToggleBtn({ mode, current, icon, label, onClick }: ViewToggleProps)
 
 export function StoryTab({ themeId }: StoryTabProps) {
   const { data: contentData } = useEditorContent(themeId, 'story');
+  const { data: flowGraph } = useFlowGraph(themeId);
   const upsertContent = useUpsertContent(themeId, 'story');
 
   const [markdown, setMarkdown] = useState('');
@@ -72,6 +76,10 @@ export function StoryTab({ themeId }: StoryTabProps) {
   });
 
   const charCount = markdown.length;
+  const storySceneSummary = useMemo(
+    () => toStorySceneFlowSummaryFromGraph(flowGraph),
+    [flowGraph],
+  );
 
   const previewHtml = useMemo(() => {
     if (!markdown) return '';
@@ -116,36 +124,38 @@ export function StoryTab({ themeId }: StoryTabProps) {
 
       {/* Editor / Preview panes */}
       <div className="flex flex-1 flex-col overflow-y-auto">
-       <div className="flex min-h-[40vh]">
-        {/* Editor pane */}
-        {showEditor && (
-          <div className={`flex flex-col ${viewMode === 'split' ? 'w-1/2 border-r border-slate-800' : 'w-full'}`}>
-            <textarea
-              value={markdown}
-              onChange={(e) => setMarkdown(e.target.value)}
-              placeholder="마크다운으로 스토리를 작성하세요..."
-              spellCheck={false}
-              className="flex-1 resize-none bg-slate-950 px-5 py-4 font-mono text-sm leading-relaxed text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
-            />
-          </div>
-        )}
+        <StorySceneSummary summary={storySceneSummary} />
 
-        {/* Preview pane */}
-        {showPreview && (
-          <div className={`overflow-y-auto ${viewMode === 'split' ? 'w-1/2' : 'w-full'}`}>
-            {previewHtml ? (
-              <div
-                className="prose prose-invert prose-sm prose-headings:font-mono prose-strong:text-amber-400 max-w-none px-5 py-4"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
+        <div className="flex min-h-[40vh] flex-col lg:flex-row">
+          {/* Editor pane */}
+          {showEditor && (
+            <div className={`flex min-h-[32vh] flex-col ${viewMode === 'split' ? 'lg:w-1/2 lg:border-r lg:border-slate-800' : 'w-full'}`}>
+              <textarea
+                value={markdown}
+                onChange={(e) => setMarkdown(e.target.value)}
+                placeholder="마크다운으로 스토리를 작성하세요..."
+                spellCheck={false}
+                className="flex-1 resize-none bg-slate-950 px-5 py-4 font-mono text-sm leading-relaxed text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
               />
-            ) : (
-              <div className="flex items-center justify-center py-20 text-xs font-mono uppercase tracking-widest text-slate-700">
-                미리보기 없음
-              </div>
-            )}
-          </div>
-        )}
-       </div>
+            </div>
+          )}
+
+          {/* Preview pane */}
+          {showPreview && (
+            <div className={`min-h-[32vh] overflow-y-auto ${viewMode === 'split' ? 'border-t border-slate-800 lg:w-1/2 lg:border-t-0' : 'w-full'}`}>
+              {previewHtml ? (
+                <div
+                  className="prose prose-invert prose-sm prose-headings:font-mono prose-strong:text-amber-400 max-w-none px-5 py-4"
+                  dangerouslySetInnerHTML={{ __html: previewHtml }}
+                />
+              ) : (
+                <div className="flex items-center justify-center py-20 text-xs font-mono uppercase tracking-widest text-slate-700">
+                  미리보기 없음
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Reading sections — Phase 7.7 */}
         <div className="border-t border-slate-800 px-5 py-6">

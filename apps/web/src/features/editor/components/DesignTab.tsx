@@ -41,7 +41,7 @@ export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
 
   const handleSubTabClick = (key: DesignSubTab) => {
     setActiveSubTab(key);
-    navigate(`/editor/${themeId}/${key}`);
+    navigate(`/editor/${themeId}/design/${key}`);
   };
 
   return (

@@ -81,7 +81,7 @@ function buildEndingWarnings(
     warnings.push(`${missingContent}개 결말은 이름 또는 본문이 비어 있습니다.`);
   }
   if (connectedCount === 0) {
-    warnings.push("페이즈 흐름에서 결말로 이어지는 경로가 아직 없습니다.");
+    warnings.push("장면 흐름에서 결말로 이어지는 경로가 아직 없습니다.");
   }
   return warnings;
 }

@@ -4,6 +4,7 @@ export type DesignSubTab = "modules" | "flow" | "locations" | "endings";
 
 const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
   overview: "overview",
+  design: "design",
   story: "story",
   characters: "characters",
   clues: "clues",
@@ -19,6 +20,7 @@ const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
 };
 
 const DESIGN_ROUTE_SUBTAB_MAP: Record<string, DesignSubTab> = {
+  design: "modules",
   modules: "modules",
   flow: "flow",
   locations: "locations",

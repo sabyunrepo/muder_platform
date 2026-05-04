@@ -89,7 +89,7 @@ describe("PhaseNodePanel extended fields", () => {
     expect(screen.queryByPlaceholderText("30")).toBeNull();
   });
 
-  it("onEnter 액션 섹션이 렌더링된다", () => {
+  it("장면 시작/종료 적용 섹션이 렌더링된다", () => {
     renderWithQC(
       <PhaseNodePanel
         node={makeNode()}
@@ -97,7 +97,7 @@ describe("PhaseNodePanel extended fields", () => {
         onUpdate={vi.fn()}
       />,
     );
-    expect(screen.getByText("진입 액션 (onEnter)")).toBeDefined();
-    expect(screen.getByText("퇴장 액션 (onExit)")).toBeDefined();
+    expect(screen.getByText("장면 시작 때 적용")).toBeDefined();
+    expect(screen.getByText("장면 종료 때 적용")).toBeDefined();
   });
 });

@@ -33,7 +33,7 @@ export function NodeDetailPanel({
   if (!node) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <span className="text-xs text-slate-500">편집할 페이즈나 결말 노드를 선택하세요</span>
+        <span className="text-xs text-slate-500">편집할 장면이나 결말을 선택하세요</span>
       </div>
     );
   }

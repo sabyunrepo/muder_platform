@@ -160,7 +160,7 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('흐름'));
     expect(screen.getByText('FlowSubTab 콘텐츠')).toBeDefined();
-    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/flow');
+    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/design/flow');
   });
 
   it('장소 탭 클릭 시 장소 콘텐츠로 전환된다', () => {
@@ -168,7 +168,7 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('장소'));
     expect(screen.getByText('LocationsSubTab 콘텐츠')).toBeDefined();
-    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/locations');
+    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/design/locations');
   });
 
   it('결말 탭 클릭 시 결말 entity 콘텐츠로 전환된다', () => {
@@ -176,7 +176,7 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('결말'));
     expect(screen.getByText('EndingEntitySubTab 콘텐츠')).toBeDefined();
-    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/endings');
+    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/design/endings');
   });
 
   it.each([

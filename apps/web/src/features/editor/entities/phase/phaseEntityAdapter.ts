@@ -58,7 +58,7 @@ export function toPhaseEditorViewModel(
   const conditionalEdges = outgoingEdges.filter(hasEdgeCondition);
 
   return {
-    title: data.label?.trim() || "새 페이즈",
+    title: data.label?.trim() || "새 장면",
     phaseType,
     phaseTypeLabel: PHASE_TYPE_LABELS[phaseType] ?? "직접 설정한 페이즈",
     durationLabel: formatMinutes(data.duration),
