@@ -14,6 +14,7 @@ Options:
                            Default: CI,E2E — Stubbed Backend,Security — Fast Feedback
   --trigger-missing-workflows
                            Trigger missing required workflows once CodeRabbit is clear
+  --code-rabbit-only       Stop once CodeRabbit is clear and review threads are resolved
   --no-notify              Do not send macOS notification / terminal bell
   -h, --help               Show help
 
@@ -82,6 +83,7 @@ timeout=3600
 workflow_csv="CI,E2E — Stubbed Backend,Security — Fast Feedback"
 notify_enabled=1
 trigger_missing_workflows=0
+code_rabbit_only=0
 pr_number=""
 
 while [[ $# -gt 0 ]]; do
@@ -100,6 +102,11 @@ while [[ $# -gt 0 ]]; do
       ;;
     --trigger-missing-workflows)
       trigger_missing_workflows=1
+      shift
+      ;;
+    --code-rabbit-only)
+      code_rabbit_only=1
+      workflow_csv=""
       shift
       ;;
     --no-notify)
@@ -172,12 +179,25 @@ while :; do
     coderabbit_clear=1
   fi
 
+  timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+  if [[ "$code_rabbit_only" == "1" ]]; then
+    echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음}"
+    if [[ "$coderabbit_clear" == "1" ]]; then
+      notify "MMP PR CodeRabbit clear" "PR #$pr_number CodeRabbit clear and review threads resolved"
+      scripts/mmp-pr-status.sh "$pr_number" || true
+      exit 0
+    fi
+    sleep "$interval"
+    continue
+  fi
+
   all_workflows_done=1
   workflow_failure=0
   workflow_summary=()
   run_rows="$(latest_workflow_rows "$branch" "$head_sha")"
   IFS=',' read -ra workflow_names <<< "$workflow_csv"
   for workflow_name in "${workflow_names[@]}"; do
+    [[ -n "$workflow_name" ]] || continue
     workflow_name="${workflow_name#"${workflow_name%%[![:space:]]*}"}"
     workflow_name="${workflow_name%"${workflow_name##*[![:space:]]}"}"
     latest_row="$(printf '%s\n' "$run_rows" | awk -F '\t' -v wf="$workflow_name" '$1 == wf { print; exit }')"

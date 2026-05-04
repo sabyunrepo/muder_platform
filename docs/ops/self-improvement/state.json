@@ -49,10 +49,18 @@
         "AGENTS.md"
       ],
       "resolution": "Clarified that external document paths are not MMP canonical instructions unless matching files exist in the repository."
+    },
+    {
+      "id": "operational-only-pr-ci-exception",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that operational-only PRs do not require forced full CI when workflow path filters intentionally skip them; CodeRabbit, light checks, and focused local checks are the merge gate."
     }
   ],
   "last_review": {
     "date": "2026-05-04",
-    "summary": "Added PR watcher automation and excluded external document instruction leakage from MMP project guidance."
+    "summary": "Added operational-only PR CI exception so path-filtered Codex/docs/scripts changes can merge after CodeRabbit and focused checks."
   }
 }

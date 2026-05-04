@@ -28,6 +28,10 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - merge only when checks and required reviews are satisfied
 4. API polling cadence: 30-60 seconds unless user explicitly asks for faster status. Prefer `scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows` for repeated CodeRabbit/CI polling instead of manual loop calls.
 5. For Codecov: treat patch coverage under 70% as a blocker unless the user approves an exception and the PR documents why.
+6. Operational-only PR exception:
+   - If changed files do **not** touch app/runtime/test/build trigger paths (`apps/**`, `packages/**`, `tooling/**`, `.github/workflows/**`, `package.json`, lockfiles, `turbo.json`, `playwright.config.ts`, `e2e/**`, `go.mod`, `go.sum`), do not force full CI or manual workflow dispatch.
+   - For these PRs, merge after CodeRabbit is clear, unresolved review threads are 0, light checks pass, and focused local checks for changed scripts/config pass. Use `scripts/mmp-pr-watch.sh <PR> --code-rabbit-only` for this path.
+   - Examples: `AGENTS.md`, `.codex/**`, `docs/ops/**`, PR helper scripts that were locally shell-checked.
 
 ## Done
 - PR has Korean title/body.
