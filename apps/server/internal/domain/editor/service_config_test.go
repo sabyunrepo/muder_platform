@@ -487,6 +487,13 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			if err == nil {
 				t.Fatalf("expected error for %s, got nil", tc.name)
 			}
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) {
+				t.Fatalf("expected *apperror.AppError for %s, got %T: %v", tc.name, err, err)
+			}
+			if appErr.Status != http.StatusBadRequest {
+				t.Fatalf("expected status 400 for %s, got %d", tc.name, appErr.Status)
+			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
 			}
