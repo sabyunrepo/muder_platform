@@ -186,13 +186,10 @@ func (m *LocationModule) handleExamine(_ context.Context, playerID uuid.UUID, pa
 		return fmt.Errorf("location: invalid examine payload: %w", err)
 	}
 
-	m.mu.Lock()
-	if _, ok := m.locationSet[p.LocationID]; !ok {
-		m.mu.Unlock()
-		return fmt.Errorf("location: invalid examine: location %q not found", p.LocationID)
+	discovered, err := m.discoverCluesForExamine(playerID, p.LocationID)
+	if err != nil {
+		return err
 	}
-	discovered := m.discoverCluesLocked(playerID, p.LocationID)
-	m.mu.Unlock()
 
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "location.examined",
@@ -222,6 +219,16 @@ func (m *LocationModule) handleExamine(_ context.Context, playerID uuid.UUID, pa
 		})
 	}
 	return nil
+}
+
+func (m *LocationModule) discoverCluesForExamine(playerID uuid.UUID, locationID string) ([]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if _, ok := m.locationSet[locationID]; !ok {
+		return nil, fmt.Errorf("location: invalid examine: location %q not found", locationID)
+	}
+	return m.discoverCluesLocked(playerID, locationID), nil
 }
 
 func (m *LocationModule) discoverCluesLocked(playerID uuid.UUID, locationID string) []string {
