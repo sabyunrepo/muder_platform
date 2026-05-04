@@ -110,7 +110,7 @@ function ActionRow({
         type="button"
         onClick={() => onRemove(index)}
         aria-label={`${label} ${index + 1} 삭제`}
-        className="text-slate-500 transition-colors hover:text-red-400"
+        className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-500 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
       >
         <Trash2 className="h-3 w-3" />
       </button>
