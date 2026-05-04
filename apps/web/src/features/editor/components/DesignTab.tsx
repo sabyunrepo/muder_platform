@@ -73,7 +73,7 @@ export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
           <FlowSubTab themeId={themeId} />
         )}
         {activeSubTab === 'endings' && (
-          <EndingEntitySubTab themeId={themeId} />
+          <EndingEntitySubTab themeId={themeId} theme={theme} />
         )}
         {activeSubTab === 'locations' && (
           <LocationsSubTab themeId={themeId} theme={theme} />

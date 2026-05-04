@@ -3,11 +3,12 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-const { useFlowDataMock, addNodeMock, updateNodeDataMock, mutateMock, useUpdateFlowNodeMock, refetchMock } = vi.hoisted(() => ({
+const { useFlowDataMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
   addNodeMock: vi.fn(),
   updateNodeDataMock: vi.fn(),
   mutateMock: vi.fn(),
+  configMutateMock: vi.fn(),
   useUpdateFlowNodeMock: vi.fn(),
   refetchMock: vi.fn(),
 }));
@@ -18,6 +19,10 @@ vi.mock("../../../hooks/useFlowData", () => ({
 
 vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => useUpdateFlowNodeMock(),
+}));
+
+vi.mock("../../../editorConfigApi", () => ({
+  useUpdateConfigJson: () => ({ mutate: configMutateMock, isPending: false }),
 }));
 
 vi.mock("sonner", () => ({
@@ -32,6 +37,38 @@ function renderWithClient(ui: ReactNode) {
   });
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
+
+
+const theme = {
+  id: "theme-1",
+  title: "테마",
+  slug: "theme",
+  description: null,
+  cover_image: null,
+  min_players: 4,
+  max_players: 6,
+  duration_min: 120,
+  price: 0,
+  coin_price: 0,
+  status: "DRAFT" as const,
+  config_json: {
+    modules: {
+      ending_branch: {
+        enabled: true,
+        config: {
+          questions: [{ id: "q1", text: "범인은 누구인가?", type: "single", choices: ["하윤", "민재"], impact: "branch", respondents: "all" }],
+          matrix: [{ priority: 1, ending: "ending-1", condition: { in: ["하윤", { var: "answers.q1.choices" }] } }],
+          defaultEnding: "ending-2",
+        },
+      },
+    },
+  },
+  version: 7,
+  created_at: "2026-05-04T00:00:00Z",
+  review_note: null,
+  reviewed_at: null,
+  reviewed_by: null,
+};
 
 const makeNode = (id: string, data: Record<string, unknown> = {}, type = "ending") => ({
   id,
@@ -65,7 +102,7 @@ afterEach(() => {
 
 describe("EndingEntitySubTab", () => {
   it("Flow의 ending 노드만 결말 목록에 표시한다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     expect(screen.getByText("결말 목록")).toBeDefined();
     expect(screen.getAllByText("진실").length).toBeGreaterThan(0);
@@ -87,7 +124,7 @@ describe("EndingEntitySubTab", () => {
       updateNodeData: updateNodeDataMock,
     });
 
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     expect(screen.getByText("아직 결말이 없습니다")).toBeDefined();
     expect(screen.getByText(/Flow에서 결말 노드를 추가하면/)).toBeDefined();
@@ -106,7 +143,7 @@ describe("EndingEntitySubTab", () => {
       updateNodeData: updateNodeDataMock,
     });
 
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     expect(screen.getByText("결말 목록을 불러오지 못했습니다")).toBeDefined();
     expect(screen.getByText("권한이 없습니다")).toBeDefined();
@@ -116,7 +153,7 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("결말 추가 버튼은 ending 노드 생성을 요청한다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     fireEvent.click(screen.getByText("결말 추가"));
 
@@ -127,7 +164,7 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("검색어로 결말 목록을 좁힌다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     fireEvent.change(screen.getByPlaceholderText("결말 검색"), { target: { value: "오판" } });
 
@@ -137,7 +174,7 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("상세 입력을 변경하면 선택한 결말 노드 데이터만 갱신한다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" />);
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     fireEvent.change(screen.getByLabelText("결말 이름"), { target: { value: "자비" } });
 
@@ -147,6 +184,29 @@ describe("EndingEntitySubTab", () => {
     expect(mutateMock).toHaveBeenCalledWith(
       { nodeId: "ending-1", body: { data: expect.objectContaining({ label: "자비" }) } },
       expect.objectContaining({ onError: expect.any(Function) }),
+    );
+  });
+
+  it("결말 판정 질문과 규칙을 제작자용 UI로 저장한다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    expect(screen.getByText("결말 판정 설정")).toBeDefined();
+    fireEvent.change(screen.getByLabelText("질문 1 내용"), { target: { value: "진범은 누구인가?" } });
+    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: 7,
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              questions: [expect.objectContaining({ text: "진범은 누구인가?" })],
+              defaultEnding: "ending-2",
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });
 });
