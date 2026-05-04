@@ -14,6 +14,7 @@ import type { Page } from "@playwright/test";
 export const BASE = "http://localhost:3000";
 export const THEME_ID = "00000000-0000-0000-0000-000000000184";
 export const CLUE_ID = "cccccccc-0000-0000-0000-000000000001";
+export const REWARD_CLUE_ID = "cccccccc-0000-0000-0000-000000000002";
 export const MAP_ID = "bbbbbbbb-0000-0000-0000-000000000001";
 export const LOCATION_ID = "dddddddd-0000-0000-0000-000000000001";
 export const FLOW_NODE_ID = "eeeeeeee-0000-0000-0000-000000000001";
@@ -39,6 +40,7 @@ export interface MockState {
   characterMysteryRole: "suspect" | "culprit" | "accomplice" | "detective";
   roleSheet: Record<string, unknown>;
   configPutCalls: number;
+  lastConfigRequestBody: Record<string, unknown> | null;
   imageUploadUrlCalls: number;
   templatesCalls: number;
   clueRelationsCalls: number;
@@ -66,6 +68,7 @@ export function freshState(): MockState {
       markdown: { body: "" },
     },
     configPutCalls: 0,
+    lastConfigRequestBody: null,
     imageUploadUrlCalls: 0,
     templatesCalls: 0,
     clueRelationsCalls: 0,
@@ -150,7 +153,7 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     return r.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify([cluePayload(state)]),
+      body: JSON.stringify([cluePayload(state), rewardCluePayload()]),
     });
   });
 
@@ -387,6 +390,7 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     if (r.request().method() !== "PUT") return r.continue();
     state.configPutCalls += 1;
     const body = JSON.parse(r.request().postData() ?? "{}");
+    state.lastConfigRequestBody = body;
     if (state.conflictCountdown > 0 && body.version === state.configVersion) {
       state.conflictCountdown -= 1;
       return r.fulfill({
@@ -403,7 +407,8 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
       });
     }
     state.configVersion = (body.version ?? state.configVersion) + 1;
-    state.configJson = { ...state.configJson, ...(body.config_json ?? {}) };
+    const { version: _version, ...nextConfig } = body as Record<string, unknown>;
+    state.configJson = nextConfig;
     return r.fulfill({
       status: 200,
       contentType: "application/json",
@@ -469,6 +474,24 @@ function cluePayload(state: MockState) {
     use_target: "self",
     use_consumed: true,
     image_url: state.clueImageURL,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function rewardCluePayload() {
+  return {
+    id: REWARD_CLUE_ID,
+    theme_id: THEME_ID,
+    name: "금고 비밀번호",
+    description: "금고를 열 수 있는 숫자 단서입니다.",
+    level: 1,
+    sort_order: 1,
+    is_common: false,
+    is_usable: false,
+    use_effect: null,
+    use_target: null,
+    use_consumed: false,
+    image_url: null,
     created_at: new Date().toISOString(),
   };
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -331,6 +332,115 @@ func TestUpdateConfigJson_RejectsLocationsDeadKey(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), "D-20") {
 				t.Errorf("expected error to contain %q, got: %v", "D-20", err)
+			}
+		})
+	}
+}
+
+func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	clueID := uuid.NewString()
+	rewardClueID := uuid.NewString()
+
+	valid := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"clue_interaction": {
+				"enabled": true,
+				"config": {
+					"itemEffects": {
+						"%s": {
+							"effect": "grant_clue",
+							"target": "self",
+							"consume": true,
+							"grantClueIds": ["%s"]
+						}
+					}
+				}
+			}
+		}
+	}`, clueID, rewardClueID))
+	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
+		t.Fatalf("valid clue_interaction itemEffects must save: %v", err)
+	}
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name: "invalid item effect clue id",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"clue-1": {"effect": "reveal", "revealText": "비밀"}}}
+					}
+				}
+			}`),
+			want: "invalid clue id",
+		},
+		{
+			name: "reveal requires text",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "reveal"}}}
+					}
+				}
+			}`, clueID)),
+			want: "revealText is required",
+		},
+		{
+			name: "grant requires ids",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "grant_clue", "grantClueIds": []}}}
+					}
+				}
+			}`, clueID)),
+			want: "grantClueIds is required",
+		},
+		{
+			name: "unsupported effect",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "steal"}}}
+					}
+				}
+			}`, clueID)),
+			want: "is not supported",
+		},
+		{
+			name: "unknown effect field",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "debugOnly": true}}}
+					}
+				}
+			}`, clueID)),
+			want: "debugOnly is not supported",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
 			}
 		})
 	}
