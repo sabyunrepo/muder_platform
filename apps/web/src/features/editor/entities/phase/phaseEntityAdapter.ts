@@ -1,0 +1,261 @@
+import type { Edge } from "@xyflow/react";
+import type { FlowNodeData, PhaseAction } from "../../flowTypes";
+
+export const DELIVER_INFORMATION_ACTION = "DELIVER_INFORMATION";
+const LEGACY_DELIVER_INFORMATION_ACTION = "deliver_information";
+
+const PHASE_TYPE_LABELS: Record<string, string> = {
+  investigation: "수사",
+  discussion: "토론",
+  voting: "투표",
+  free: "자유",
+  intermission: "인터미션",
+  story_progression: "스토리 진행",
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  broadcast: "공지 전달",
+  enable_voting: "투표 시작",
+  disable_voting: "투표 종료",
+  enable_chat: "채팅 열기",
+  disable_chat: "채팅 닫기",
+  play_bgm: "BGM 재생",
+  stop_bgm: "BGM 정지",
+  [DELIVER_INFORMATION_ACTION]: "정보 전달",
+  [LEGACY_DELIVER_INFORMATION_ACTION]: "정보 전달",
+};
+
+export type InformationRecipientType = "character" | "all_players";
+
+export interface InformationDeliveryViewModel {
+  id: string;
+  recipientType: InformationRecipientType;
+  characterId?: string;
+  readingSectionIds: string[];
+}
+
+export interface PhaseEditorViewModel {
+  title: string;
+  phaseType: string;
+  phaseTypeLabel: string;
+  durationLabel: string;
+  roundLabel: string;
+  autoAdvanceLabel: string;
+  warningLabel: string;
+  informationDeliveryCount: number;
+  enterActionLabels: string[];
+  exitActionLabels: string[];
+  defaultTransitionLabel: string;
+  conditionalTransitionCount: number;
+}
+
+interface StoredInformationDelivery {
+  id?: string;
+  target?: {
+    type?: unknown;
+    character_id?: unknown;
+  };
+  recipient_type?: unknown;
+  character_id?: unknown;
+  reading_section_ids?: unknown;
+  readingSectionIds?: unknown;
+}
+
+interface DeliverInformationParams {
+  deliveries?: unknown;
+}
+
+export function toPhaseEditorViewModel(
+  data: FlowNodeData,
+  outgoingEdges: Edge[] = [],
+): PhaseEditorViewModel {
+  const phaseType = data.phase_type || "investigation";
+  const defaultEdges = outgoingEdges.filter((edge) => !hasEdgeCondition(edge));
+  const conditionalEdges = outgoingEdges.filter(hasEdgeCondition);
+
+  return {
+    title: data.label?.trim() || "새 페이즈",
+    phaseType,
+    phaseTypeLabel: PHASE_TYPE_LABELS[phaseType] ?? "직접 설정한 페이즈",
+    durationLabel: formatMinutes(data.duration),
+    roundLabel: formatRounds(data.rounds),
+    autoAdvanceLabel: data.autoAdvance === false ? "수동 진행" : "자동 진행",
+    warningLabel: data.warningAt ? `${data.warningAt}초 전에 경고` : "경고 없음",
+    informationDeliveryCount: flowNodeToInformationDeliveries(data).length,
+    enterActionLabels: toActionLabels(data.onEnter ?? []),
+    exitActionLabels: toActionLabels(data.onExit ?? []),
+    defaultTransitionLabel: formatDefaultTransition(defaultEdges.length),
+    conditionalTransitionCount: conditionalEdges.length,
+  };
+}
+
+export function getPhaseTypeLabel(phaseType?: string): string {
+  if (!phaseType) return PHASE_TYPE_LABELS.investigation;
+  return PHASE_TYPE_LABELS[phaseType] ?? "직접 설정한 페이즈";
+}
+
+export function isDeliverInformationAction(action: PhaseAction): boolean {
+  return (
+    action.type === DELIVER_INFORMATION_ACTION ||
+    action.type === LEGACY_DELIVER_INFORMATION_ACTION
+  );
+}
+
+export function flowNodeToInformationDeliveries(
+  data: FlowNodeData,
+): InformationDeliveryViewModel[] {
+  const action = findDeliverInformationAction(data.onEnter ?? []);
+  const deliveries = readDeliveries(action?.params);
+  return deliveries.map(normalizeDelivery);
+}
+
+export function informationDeliveriesToFlowNodePatch(
+  data: FlowNodeData,
+  deliveries: InformationDeliveryViewModel[],
+): Pick<FlowNodeData, "onEnter"> {
+  const nextActions = withoutDeliverInformationActions(data.onEnter ?? []);
+  const allowAllPlayers = data.phase_type === "story_progression";
+  const normalized = deliveries
+    .map(normalizeViewModel)
+    .filter((delivery) => allowAllPlayers || delivery.recipientType !== "all_players")
+    .filter(isCompleteInformationDelivery);
+
+  if (normalized.length === 0) {
+    return { onEnter: nextActions };
+  }
+
+  return {
+    onEnter: [
+      ...nextActions,
+      {
+        id: findDeliverInformationAction(data.onEnter ?? [])?.id ?? makeId(),
+        type: DELIVER_INFORMATION_ACTION,
+        params: {
+          deliveries: normalized.map(toStoredDelivery),
+        },
+      },
+    ],
+  };
+}
+
+export function makeEmptyInformationDelivery(
+  recipientType: InformationRecipientType = "character",
+): InformationDeliveryViewModel {
+  return {
+    id: makeId(),
+    recipientType,
+    readingSectionIds: [],
+  };
+}
+
+export function isCompleteInformationDelivery(delivery: InformationDeliveryViewModel): boolean {
+  if (delivery.readingSectionIds.length === 0) return false;
+  return delivery.recipientType === "all_players" || Boolean(delivery.characterId);
+}
+
+function toActionLabels(actions: PhaseAction[]): string[] {
+  const visibleActions = actions.filter((action) => !isDeliverInformationAction(action));
+  return visibleActions.map((action) => ACTION_LABELS[action.type] ?? "직접 설정한 실행");
+}
+
+function formatMinutes(value?: number): string {
+  if (value == null || value <= 0) return "시간 미설정";
+  return `${value}분`;
+}
+
+function formatRounds(value?: number): string {
+  if (value == null || value <= 0) return "라운드 미설정";
+  return `${value}라운드`;
+}
+
+function formatDefaultTransition(count: number): string {
+  if (count === 0) return "기본 이동 없음";
+  if (count === 1) return "기본 이동 1개";
+  return `기본 이동 ${count}개`;
+}
+
+function hasEdgeCondition(edge: Edge): boolean {
+  const condition = (edge.data as { condition?: unknown } | undefined)?.condition;
+  if (!condition || typeof condition !== "object") return false;
+  return Object.keys(condition).length > 0;
+}
+
+function findDeliverInformationAction(actions: PhaseAction[]): PhaseAction | undefined {
+  return actions.find(isDeliverInformationAction);
+}
+
+function withoutDeliverInformationActions(actions: PhaseAction[]): PhaseAction[] {
+  return actions.filter((action) => !isDeliverInformationAction(action));
+}
+
+function readDeliveries(params: PhaseAction["params"]): StoredInformationDelivery[] {
+  if (!params || typeof params !== "object") return [];
+  const maybeDeliveries = (params as DeliverInformationParams).deliveries;
+  return Array.isArray(maybeDeliveries)
+    ? (maybeDeliveries as StoredInformationDelivery[])
+    : [];
+}
+
+function normalizeDelivery(
+  delivery: StoredInformationDelivery,
+): InformationDeliveryViewModel {
+  const targetType =
+    delivery.target?.type === "all_players" || delivery.recipient_type === "all_players"
+      ? "all_players"
+      : "character";
+  const rawSectionIds = Array.isArray(delivery.reading_section_ids)
+    ? delivery.reading_section_ids
+    : Array.isArray(delivery.readingSectionIds)
+      ? delivery.readingSectionIds
+      : [];
+
+  return normalizeViewModel({
+    id: typeof delivery.id === "string" && delivery.id ? delivery.id : makeId(),
+    recipientType: targetType,
+    characterId:
+      typeof delivery.target?.character_id === "string"
+        ? delivery.target.character_id
+        : typeof delivery.character_id === "string"
+          ? delivery.character_id
+          : undefined,
+    readingSectionIds: rawSectionIds.filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    ),
+  });
+}
+
+function normalizeViewModel(
+  delivery: InformationDeliveryViewModel,
+): InformationDeliveryViewModel {
+  const uniqueSectionIds = Array.from(new Set(delivery.readingSectionIds)).filter(Boolean);
+  if (delivery.recipientType === "all_players") {
+    return {
+      id: delivery.id || makeId(),
+      recipientType: "all_players",
+      readingSectionIds: uniqueSectionIds,
+    };
+  }
+  return {
+    id: delivery.id || makeId(),
+    recipientType: "character",
+    characterId: delivery.characterId,
+    readingSectionIds: uniqueSectionIds,
+  };
+}
+
+function toStoredDelivery(delivery: InformationDeliveryViewModel) {
+  return {
+    id: delivery.id,
+    target:
+      delivery.recipientType === "all_players"
+        ? { type: "all_players" }
+        : { type: "character", character_id: delivery.characterId },
+    reading_section_ids: delivery.readingSectionIds,
+  };
+}
+
+function makeId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `delivery-${Math.random().toString(36).slice(2)}`;
+}

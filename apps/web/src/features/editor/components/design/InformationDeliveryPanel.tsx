@@ -9,7 +9,7 @@ import {
   isCompleteInformationDelivery,
   makeEmptyInformationDelivery,
   type InformationDeliveryViewModel,
-} from "./phaseEditorAdapter";
+} from "../../entities/phase/phaseEntityAdapter";
 
 interface InformationDeliveryPanelProps {
   themeId: string;
@@ -38,7 +38,7 @@ export function InformationDeliveryPanel({
   const [sectionQuery, setSectionQuery] = useState("");
   const savedDeliveries = useMemo(
     () => flowNodeToInformationDeliveries(phaseData),
-    [phaseData.onEnter],
+    [phaseData],
   );
   const [draftDeliveries, setDraftDeliveries] = useState(() => savedDeliveries);
 

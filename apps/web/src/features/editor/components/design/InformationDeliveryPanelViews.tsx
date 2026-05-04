@@ -1,5 +1,5 @@
 import { Plus, Search, Trash2, Users, UserRound } from "lucide-react";
-import type { InformationDeliveryViewModel } from "./phaseEditorAdapter";
+import type { InformationDeliveryViewModel } from "../../entities/phase/phaseEntityAdapter";
 
 interface InformationDeliveryHeaderProps {
   isStoryProgression: boolean;

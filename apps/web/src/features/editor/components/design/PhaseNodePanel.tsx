@@ -1,4 +1,4 @@
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useUpdateFlowNode } from "../../flowApi";
@@ -11,7 +11,11 @@ import { flowKeys } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
 import { ActionListEditor } from "./ActionListEditor";
 import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
-import { DELIVER_INFORMATION_ACTION } from "./phaseEditorAdapter";
+import {
+  DELIVER_INFORMATION_ACTION,
+  toPhaseEditorViewModel,
+  type PhaseEditorViewModel,
+} from "../../entities/phase/phaseEntityAdapter";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { PhasePanelTimerSettings } from "./PhasePanelTimerSettings";
 import { PhasePanelAdvanceToggle } from "./PhasePanelAdvanceToggle";
@@ -20,15 +24,20 @@ interface PhaseNodePanelProps {
   node: Node;
   themeId: string;
   onUpdate: (id: string, data: Partial<FlowNodeData>) => void;
+  edges?: Edge[];
 }
 
 /** Debounce window for flow-node saves (W2 PR-5: 500→1500ms). */
 const SAVE_DEBOUNCE_MS = 1500;
 
-export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps) {
+export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
   const data = node.data as FlowNodeData;
+  const viewModel = toPhaseEditorViewModel(
+    data,
+    edges.filter((edge) => edge.source === node.id),
+  );
 
   const debouncer = useDebouncedMutation<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
@@ -63,6 +72,8 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
       <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         페이즈 설정
       </h3>
+
+      <PhaseSummaryCard viewModel={viewModel} />
 
       <PhasePanelBasicInfo
         label={data.label}
@@ -105,6 +116,50 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
         actions={(data.onExit as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onExit: actions })}
       />
+    </div>
+  );
+}
+
+
+function PhaseSummaryCard({ viewModel }: { viewModel: PhaseEditorViewModel }) {
+  const enterActions = viewModel.enterActionLabels.length > 0
+    ? viewModel.enterActionLabels.join(", ")
+    : "추가 실행 없음";
+  const exitActions = viewModel.exitActionLabels.length > 0
+    ? viewModel.exitActionLabels.join(", ")
+    : "종료 실행 없음";
+
+  return (
+    <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+      <div className="flex flex-col gap-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300/80">
+          페이즈 요약
+        </p>
+        <h4 className="text-sm font-semibold text-slate-100">{viewModel.title}</h4>
+        <p className="text-xs leading-5 text-slate-500">
+          {viewModel.phaseTypeLabel} · {viewModel.durationLabel} · {viewModel.roundLabel}
+        </p>
+      </div>
+
+      <dl className="mt-3 grid gap-2 text-xs text-slate-400">
+        <SummaryRow label="진행 방식" value={`${viewModel.autoAdvanceLabel} · ${viewModel.warningLabel}`} />
+        <SummaryRow
+          label="다음 이동"
+          value={`${viewModel.defaultTransitionLabel} · 조건 이동 ${viewModel.conditionalTransitionCount}개`}
+        />
+        <SummaryRow label="정보 전달" value={`${viewModel.informationDeliveryCount}개 설정`} />
+        <SummaryRow label="시작 시 실행" value={enterActions} />
+        <SummaryRow label="종료 시 실행" value={exitActions} />
+      </dl>
+    </section>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-1 rounded border border-slate-800/80 bg-slate-900/50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <dt className="text-[11px] text-slate-500">{label}</dt>
+      <dd className="text-slate-200">{value}</dd>
     </div>
   );
 }
