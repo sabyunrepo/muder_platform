@@ -2,7 +2,7 @@
 
 ## 목표
 
-GitHub Issue [#277](https://github.com/sabyunrepo/muder_platform/issues/277)의 audit 결과를 main 기준으로 고정한다.
+GitHub Issue [#277](https://github.com/sabyunrepo/muder_platform/issues/277)의 audit 결과를 main 기준으로 고정한다. 기준선은 2026-05-04 08:19 UTC에 확인한 `origin/main` HEAD `f66f89e`(`chore: 병렬 이슈 설계 워크플로 추가`)이다.
 
 검수 질문은 네 가지다.
 
@@ -75,19 +75,19 @@ GitHub Issue [#277](https://github.com/sabyunrepo/muder_platform/issues/277)의 
 
 | 영역 | 현재 근거 | gap | 권장 후속 |
 | --- | --- | --- | --- |
-| 실제 route smoke | `apps/web/e2e/editor-golden-path.spec.ts` | `/editor/:id/endings` 직접 진입 누락 | #280 또는 작은 route fix PR |
-| 캐릭터 | `phase24-editor-character-role.spec.ts`, adapter tests | 모바일 390px 실제 검증 부족 | #277 후속 responsive issue |
-| 단서 | `ClueRuntimeEffectCard.test.tsx`, `editor-golden-path.spec.ts` | raw `itemEffects`/module key 비노출 E2E 부족 | #278 |
-| 장소 | 장소 route smoke | 발견 단서 추가/삭제, 조건/중복 지급 실제 저장 flow 부족 | #279 |
-| 결말 | `editor-phase-ending.spec.ts` | 캐릭터별 결말/GM 보정/직접 URL 없음 | #280 |
-| 에러 복구 | backend handler/AppError 일부 | ProblemDetail 기반 editor/media/session/WS recovery E2E 부족 | #281~#283 |
-| 모바일 | `EntityEditorShell.test.tsx` 정도 | 실제 Playwright viewport 검증 없음 | #278~#280에 분산 |
+| 실제 route smoke | `apps/web/e2e/editor-golden-path.spec.ts` | `/editor/:id/endings` 직접 진입 누락 | [#280](https://github.com/sabyunrepo/muder_platform/issues/280) 또는 별도 작은 route fix PR |
+| 캐릭터 | `phase24-editor-character-role.spec.ts`, adapter tests | 모바일 390px 실제 검증 부족 | [#278](https://github.com/sabyunrepo/muder_platform/issues/278)~[#280](https://github.com/sabyunrepo/muder_platform/issues/280) 구현 PR에 responsive smoke 분산 |
+| 단서 | `ClueRuntimeEffectCard.test.tsx`, `editor-golden-path.spec.ts` | raw `itemEffects`/module key 비노출 E2E 부족 | [#278](https://github.com/sabyunrepo/muder_platform/issues/278) |
+| 장소 | 장소 route smoke | 발견 단서 추가/삭제, 조건/중복 지급 실제 저장 flow 부족 | [#279](https://github.com/sabyunrepo/muder_platform/issues/279) |
+| 결말 | `editor-phase-ending.spec.ts` | 캐릭터별 결말/GM 보정/직접 URL 없음 | [#280](https://github.com/sabyunrepo/muder_platform/issues/280) |
+| 에러 복구 | backend handler/AppError 일부 | ProblemDetail 기반 editor/media/session/WS recovery E2E 부족 | [#281](https://github.com/sabyunrepo/muder_platform/issues/281)~[#283](https://github.com/sabyunrepo/muder_platform/issues/283) |
+| 모바일 | `EntityEditorShell.test.tsx` 정도 | 실제 Playwright viewport 검증 없음 | [#278](https://github.com/sabyunrepo/muder_platform/issues/278)~[#280](https://github.com/sabyunrepo/muder_platform/issues/280)에 분산 |
 
 ## 수동/E2E 검수 기준
 
 이번 PR은 audit 문서 전용 PR이므로 새 Playwright E2E나 스크린샷 산출물을 추가하지 않는다. 대신 기존 실제 라우트/E2E/Vitest/Go test의 coverage 상태를 읽기 중심으로 확인했고, 실제 화면 조작이 필요한 항목은 #278~#280 구현 PR에서 각 기능 변경과 함께 추가한다.
 
-이유는 단순하다. 지금 E2E를 억지로 추가하면 실제 UI/API 보강 없이 “현재 부족한 동작”을 테스트가 고정할 수 있다. 제작자가 실제로 쓰게 될 조작 흐름은 #278 단서 효과, #279 장소 조사, #280 결말 UX에서 구현 범위가 확정된 뒤 테스트하는 편이 더 안전하다.
+이유는 단순하다. 지금 E2E를 억지로 추가하면 실제 UI/API 보강 없이 “현재 부족한 동작”을 테스트가 고정할 수 있다. 제작자가 실제로 쓰게 될 조작 흐름은 #278 단서 효과, #279 장소 조사, #280 결말 UX에서 구현 범위가 확정된 뒤 테스트하는 편이 더 안전하다. 이번 PR에서 실제 실행한 검증 근거는 `checklist.md`의 “Focused validation evidence” 섹션을 기준으로 본다.
 
 ## 후속 이슈 매핑
 

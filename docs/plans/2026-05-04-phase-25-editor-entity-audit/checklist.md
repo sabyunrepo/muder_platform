@@ -20,7 +20,7 @@
 - [x] focused validation 실행
 - [x] PR 전 자체 리뷰 수행
 - [x] PR 라벨 없이 생성 — [#287](https://github.com/sabyunrepo/muder_platform/pull/287), labels: none
-- [ ] CodeRabbit 확인
+- [x] CodeRabbit 확인 — 2026-05-04 CodeRabbit `CHANGES_REQUESTED` 3건 확인 후 문서 보강 반영
 
 ## Stop condition
 
@@ -34,9 +34,26 @@
 
 ## Focused validation evidence
 
+환경/재현 기준:
+
+- Git ref: `audit/editor-entity-pages-277` commit `87b16a6`에서 최초 실행, 이후 문서 보강 commit `2e3820e`와 동일한 docs-only 범위 유지
+- `origin/main` 기준선: `f66f89e`
+- 실행 위치: repo root `/Users/sabyun/goinfre/muder_platform`
+- Node.js: `v25.8.0`; pnpm: `9.15.4`; Go: `go1.26.0 darwin/arm64`
+- Go focused command는 repo root에서 `cd apps/server` 후 실행
+
 - `pnpm --filter @mmp/web exec tsc --noEmit` — pass
 - `pnpm --filter @mmp/web exec vitest run src/pages/__tests__/EditorPage.test.tsx src/features/editor/entities/shell/EntityEditorShell.test.tsx src/features/editor/entities/character/__tests__/characterEditorAdapter.test.ts src/features/editor/entities/clue/__tests__/clueEntityAdapter.test.ts src/features/editor/entities/location/__tests__/locationEntityAdapter.test.ts src/features/editor/entities/ending/__tests__/endingEntityAdapter.test.ts src/features/editor/entities/phase/__tests__/phaseEntityAdapter.test.ts` — 7 files / 36 tests pass
 - `cd apps/server && go test ./internal/domain/editor ./internal/engine ./internal/module/decision/ending_branch ./internal/module/exploration/... ./internal/module/progression/...` — pass
+
+## CodeRabbit follow-up evidence
+
+- 2026-05-04 PR [#287](https://github.com/sabyunrepo/muder_platform/pull/287) CodeRabbit review 확인
+- 반영 사항:
+  - `audit.md` 목표에 main 기준선 commit/time 추가
+  - `audit.md` 테스트 gap 표의 후속 이슈를 clickable issue link로 정리
+  - `audit.md` 수동/E2E 검수 기준에서 checklist evidence 섹션 상호참조 추가
+  - `checklist.md` focused validation 재현 환경과 CodeRabbit 확인 상태 추가
 
 ## Pre-PR review evidence
 
