@@ -128,6 +128,7 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			deps := newTestDeps(t)
+			deps.SceneController = &recordingSceneController{}
 			m := NewEventProgressionModule()
 
 			cfg, _ := json.Marshal(map[string]any{
@@ -160,6 +161,7 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 
 func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
 	deps := newTestDeps(t)
+	deps.SceneController = &recordingSceneController{}
 	m := NewEventProgressionModule()
 
 	cfg, _ := json.Marshal(map[string]any{
@@ -190,6 +192,7 @@ func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
 
 func TestEventProgressionModule_TriggerRequestsDoNotMutateCurrentPhase(t *testing.T) {
 	deps := newTestDeps(t)
+	deps.SceneController = &recordingSceneController{}
 	m := NewEventProgressionModule()
 
 	cfg := json.RawMessage(`{"InitialPhase":"start","AllowBacktrack":false,"Graph":{"start":["middle"]}}`)
@@ -307,6 +310,35 @@ func TestEventProgressionModule_ConfiguredPasswordTriggerRejectsWrongPassword(t 
 	}
 	if len(sceneController.targets) != 0 {
 		t.Fatalf("scene moved on password mismatch: %#v", sceneController.targets)
+	}
+}
+
+func TestEventProgressionModule_ConfiguredTriggerRequiresSceneControllerForTarget(t *testing.T) {
+	deps := newTestDeps(t)
+	dispatcher := &recordingActionDispatcher{}
+	deps.ActionDispatcher = dispatcher
+	m := NewEventProgressionModule()
+
+	cfg := json.RawMessage(`{
+		"InitialPhase":"start",
+		"Triggers":[{
+			"id":"unlock-safe",
+			"from":"start",
+			"to":"middle",
+			"password":"0427",
+			"actions":[{"type":"OPEN_VOTING"}]
+		}]
+	}`)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
+	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err == nil {
+		t.Fatal("expected missing scene controller error, got nil")
+	}
+	if len(dispatcher.actions) != 0 {
+		t.Fatalf("actions dispatched without scene controller: %#v", dispatcher.actions)
 	}
 }
 

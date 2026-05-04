@@ -32,6 +32,7 @@ type EventProgressionModule struct {
 	graph          map[string][]string // phaseID -> list of reachable phase IDs via triggers
 	triggers       map[string]eventProgressionTrigger
 	triggerCounts  map[string]int
+	triggerRuns    map[string]bool
 }
 
 type eventProgressionConfig struct {
@@ -104,6 +105,7 @@ func (m *EventProgressionModule) Init(ctx context.Context, deps engine.ModuleDep
 		m.triggers[trigger.ID] = trigger
 	}
 	m.triggerCounts = make(map[string]int, len(cfg.Triggers))
+	m.triggerRuns = make(map[string]bool, len(cfg.Triggers))
 
 	return nil
 }
@@ -125,25 +127,45 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 			m.mu.Unlock()
 			return nil
 		}
+		if m.isConfiguredTriggerInProgressLocked(p.TriggerID) {
+			m.mu.Unlock()
+			return nil
+		}
 		trigger, hasTriggerConfig := m.resolveConfiguredTriggerRouteLocked(p.TriggerID)
 		oldPhase, validTarget, actions, err := m.resolveTriggerLocked(p.TriggerID, p.Password, trigger, hasTriggerConfig)
 		if err != nil {
 			m.mu.Unlock()
 			return err
 		}
+		reserved := false
+		if hasTriggerConfig {
+			m.reserveConfiguredTriggerLocked(p.TriggerID)
+			reserved = true
+		}
 		m.mu.Unlock()
 
-		if err := m.validateTriggerRuntimeDeps(actions); err != nil {
+		if err := m.validateTriggerRuntimeDeps(actions, validTarget); err != nil {
+			if reserved {
+				m.rollbackTriggerExecution(p.TriggerID)
+			}
 			return err
 		}
-		m.recordTriggerExecution(p.TriggerID)
 		if err := m.dispatchTriggerActions(ctx, actions); err != nil {
+			if reserved {
+				m.rollbackTriggerExecution(p.TriggerID)
+			}
 			return err
 		}
 		if validTarget != "" {
 			if err := m.moveToPhase(ctx, validTarget); err != nil {
+				if reserved {
+					m.rollbackTriggerExecution(p.TriggerID)
+				}
 				return err
 			}
+		}
+		if reserved {
+			m.commitTriggerExecution(p.TriggerID)
 		}
 		if validTarget != "" {
 			m.publishSceneTransition(oldPhase, validTarget, p.TriggerID)
@@ -161,6 +183,17 @@ func (m *EventProgressionModule) isConfiguredTriggerAppliedLocked(triggerID stri
 		return false
 	}
 	return m.triggerCounts[triggerID] > 0
+}
+
+func (m *EventProgressionModule) isConfiguredTriggerInProgressLocked(triggerID string) bool {
+	if _, ok := m.triggers[triggerID]; !ok {
+		return false
+	}
+	return m.triggerRuns[triggerID]
+}
+
+func (m *EventProgressionModule) reserveConfiguredTriggerLocked(triggerID string) {
+	m.triggerRuns[triggerID] = true
 }
 
 func (m *EventProgressionModule) resolveConfiguredTriggerRouteLocked(triggerID string) (eventProgressionTrigger, bool) {
@@ -245,12 +278,12 @@ func (m *EventProgressionModule) validateBacktrackLocked(target string) error {
 	return nil
 }
 
-func (m *EventProgressionModule) validateTriggerRuntimeDeps(actions []engine.PhaseActionPayload) error {
-	if len(actions) == 0 {
-		return nil
-	}
-	if m.deps.ActionDispatcher == nil {
+func (m *EventProgressionModule) validateTriggerRuntimeDeps(actions []engine.PhaseActionPayload, target string) error {
+	if len(actions) > 0 && m.deps.ActionDispatcher == nil {
 		return fmt.Errorf("event_progression: action dispatcher is not configured")
+	}
+	if target != "" && m.deps.SceneController == nil {
+		return fmt.Errorf("event_progression: scene controller is not configured")
 	}
 	return nil
 }
@@ -271,9 +304,6 @@ func (m *EventProgressionModule) dispatchTriggerActions(ctx context.Context, act
 }
 
 func (m *EventProgressionModule) moveToPhase(ctx context.Context, target string) error {
-	if m.deps.SceneController == nil {
-		return nil
-	}
 	return m.deps.SceneController.SkipToPhase(ctx, target)
 }
 
@@ -291,10 +321,17 @@ func (m *EventProgressionModule) publishSceneTransition(from string, to string, 
 	})
 }
 
-func (m *EventProgressionModule) recordTriggerExecution(triggerID string) {
+func (m *EventProgressionModule) commitTriggerExecution(triggerID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.triggerCounts[triggerID]++
+	delete(m.triggerRuns, triggerID)
+}
+
+func (m *EventProgressionModule) rollbackTriggerExecution(triggerID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.triggerRuns, triggerID)
 }
 
 func (m *EventProgressionModule) BuildState() (json.RawMessage, error) {
@@ -317,6 +354,7 @@ func (m *EventProgressionModule) Cleanup(ctx context.Context) error {
 	m.graph = nil
 	m.triggers = nil
 	m.triggerCounts = nil
+	m.triggerRuns = nil
 	return nil
 }
 
