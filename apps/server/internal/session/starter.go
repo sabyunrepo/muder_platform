@@ -102,6 +102,12 @@ func startModularGame(
 		gameCfg.Phases,
 	)
 	eng.SetPlayerInfoProvider(deps.PlayerInfoProvider)
+	if err := eng.SetSceneTransitions(gameCfg.SceneTransitions); err != nil {
+		logger.Error().Err(err).
+			Str("session_id", cfg.SessionID.String()).
+			Msg("startModularGame: invalid scene transitions")
+		return nil, errInvalidConfig
+	}
 
 	s := newSession(cfg.SessionID, eng, cfg.Players, logger)
 	s.onAbort = m.removeSession

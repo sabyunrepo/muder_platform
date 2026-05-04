@@ -20,6 +20,21 @@ func TestParseGameConfig_Valid(t *testing.T) {
 	}
 }
 
+func TestParseGameConfig_PreservesSceneTransitions(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"intro","name":"Intro"},{"id":"invest","name":"Invest"}],"sceneTransitions":[{"id":"edge-1","from":"intro","to":"invest","label":"조사 시작","sortOrder":2}],"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.SceneTransitions) != 1 {
+		t.Fatalf("expected 1 scene transition, got %d", len(cfg.SceneTransitions))
+	}
+	transition := cfg.SceneTransitions[0]
+	if transition.ID != "edge-1" || transition.From != "intro" || transition.To != "invest" || transition.SortOrder != 2 {
+		t.Fatalf("scene transition = %#v", transition)
+	}
+}
+
 func TestParseGameConfig_Empty(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1"}],"modules":[]}`)
 	cfg, err := ParseGameConfig(data)

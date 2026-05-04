@@ -39,6 +39,7 @@ type PhaseEngine struct {
 	logger             Logger
 	playerInfoProvider PlayerInfoProvider
 	phases             []PhaseDefinition
+	sceneTransitions   []SceneTransition
 	current            int // index into phases, -1 = not started
 	currentRound       int32
 	started            bool

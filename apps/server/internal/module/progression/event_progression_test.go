@@ -56,7 +56,7 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 			graph:     map[string][]string{"start": {"middle"}},
 			initial:   "start",
 			triggerID: "middle",
-			wantEvent: "event.phase_transition",
+			wantEvent: "event.scene_transition_requested",
 		},
 		{
 			name:      "invalid trigger",
@@ -120,16 +120,60 @@ func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
 		t.Fatalf("Init() error = %v", err)
 	}
 
-	// A -> B should succeed
+	// A -> B should succeed as a transition request. The module state is not
+	// final until PhaseEngine enters B and calls the hook.
 	payload, _ := json.Marshal(map[string]string{"TriggerID": "B"})
 	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
 		t.Fatalf("A->B transition error = %v", err)
+	}
+	if err := m.OnPhaseEnter(context.Background(), "B"); err != nil {
+		t.Fatalf("OnPhaseEnter(B) error = %v", err)
 	}
 
 	// B -> A should fail (backtrack)
 	payload, _ = json.Marshal(map[string]string{"TriggerID": "A"})
 	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err == nil {
 		t.Error("expected error for backtrack B->A, got nil")
+	}
+}
+
+func TestEventProgressionModule_TriggerRequestsDoNotMutateCurrentPhase(t *testing.T) {
+	deps := newTestDeps(t)
+	m := NewEventProgressionModule()
+
+	cfg := json.RawMessage(`{"InitialPhase":"start","AllowBacktrack":false,"Graph":{"start":["middle"]}}`)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	payload, _ := json.Marshal(map[string]string{"TriggerID": "middle"})
+	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
+		t.Fatalf("HandleMessage() error = %v", err)
+	}
+	raw, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState() error = %v", err)
+	}
+	var state map[string]any
+	if err := json.Unmarshal(raw, &state); err != nil {
+		t.Fatalf("unmarshal error = %v", err)
+	}
+	if state["currentPhase"] != "start" {
+		t.Fatalf("currentPhase after request = %v, want start", state["currentPhase"])
+	}
+
+	if err := m.OnPhaseEnter(context.Background(), "middle"); err != nil {
+		t.Fatalf("OnPhaseEnter() error = %v", err)
+	}
+	raw, err = m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState() after enter error = %v", err)
+	}
+	if err := json.Unmarshal(raw, &state); err != nil {
+		t.Fatalf("unmarshal after enter error = %v", err)
+	}
+	if state["currentPhase"] != "middle" {
+		t.Fatalf("currentPhase after engine enter = %v, want middle", state["currentPhase"])
 	}
 }
 

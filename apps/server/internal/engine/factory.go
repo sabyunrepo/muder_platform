@@ -28,8 +28,9 @@ type ModuleConfig struct {
 // Only the fields needed for runtime wiring are declared here;
 // additional editor-only fields are ignored.
 type GameConfig struct {
-	Phases  []PhaseDefinition `json:"phases"`
-	Modules []ModuleConfig    `json:"modules"`
+	Phases           []PhaseDefinition `json:"phases"`
+	SceneTransitions []SceneTransition `json:"sceneTransitions,omitempty"`
+	Modules          []ModuleConfig    `json:"modules"`
 }
 
 // HostSubmittable is an optional interface for modules that can be submitted
@@ -49,8 +50,9 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	dec.DisallowUnknownFields()
 
 	var wire struct {
-		Phases  []PhaseDefinition `json:"phases"`
-		Modules json.RawMessage   `json:"modules"`
+		Phases           []PhaseDefinition `json:"phases"`
+		SceneTransitions []SceneTransition `json:"sceneTransitions,omitempty"`
+		Modules          json.RawMessage   `json:"modules"`
 	}
 	if err := dec.Decode(&wire); err != nil {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
@@ -58,7 +60,10 @@ func ParseGameConfig(raw json.RawMessage) (*GameConfig, error) {
 	if err := rejectTrailingJSON(dec); err != nil {
 		return nil, apperror.New(apperror.ErrBadRequest, http.StatusBadRequest, "invalid game config: "+err.Error())
 	}
-	cfg := GameConfig{Phases: wire.Phases}
+	cfg := GameConfig{
+		Phases:           wire.Phases,
+		SceneTransitions: wire.SceneTransitions,
+	}
 	modules, err := parseModuleConfigs(wire.Modules)
 	if err != nil {
 		return nil, err
