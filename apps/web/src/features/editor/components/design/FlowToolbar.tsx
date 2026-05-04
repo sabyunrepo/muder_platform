@@ -13,8 +13,8 @@ interface FlowToolbarProps {
   isSaving: boolean;
   onApplyPreset?: (nodes: Node[], edges: Edge[]) => void;
   hasNodes?: boolean;
-  onToggleSimulation?: () => void;
-  isSimulating?: boolean;
+  onToggleOrderReview?: () => void;
+  isOrderReviewing?: boolean;
 }
 
 interface NodeOption {
@@ -39,8 +39,8 @@ export function FlowToolbar({
   isSaving,
   onApplyPreset,
   hasNodes,
-  onToggleSimulation,
-  isSimulating,
+  onToggleOrderReview,
+  isOrderReviewing,
 }: FlowToolbarProps) {
   const [open, setOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
@@ -141,19 +141,19 @@ export function FlowToolbar({
         </div>
       )}
 
-      {/* Simulation toggle */}
-      {onToggleSimulation && (
+      {/* Order review toggle */}
+      {onToggleOrderReview && (
         <button
           type="button"
-          onClick={onToggleSimulation}
+          onClick={onToggleOrderReview}
           className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
-            isSimulating
+            isOrderReviewing
               ? "border-amber-600 bg-amber-950/30 text-amber-400"
               : "border-slate-700 bg-slate-800 text-slate-300 hover:border-amber-500 hover:text-amber-400"
           }`}
         >
           <Play className="h-3.5 w-3.5" />
-          시뮬레이션
+          순서 점검
         </button>
       )}
 

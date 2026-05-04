@@ -7,7 +7,7 @@ import type { FlowNodeData } from "../../flowTypes";
 // Types
 // ---------------------------------------------------------------------------
 
-interface FlowSimulationPanelProps {
+interface FlowOrderReviewPanelProps {
   nodes: Node[];
   edges: Edge[];
   onHighlight: (nodeId: string | null) => void;
@@ -15,10 +15,10 @@ interface FlowSimulationPanelProps {
 }
 
 // ---------------------------------------------------------------------------
-// Topological sort (Start → ... → Ending)
+// Topological order review (Start -> ... -> Ending)
 // ---------------------------------------------------------------------------
 
-function topoSort(nodes: Node[], edges: Edge[]): Node[] {
+function topoSort(nodes: Node[], edges: Edge[]): { sorted: Node[]; hasCycle: boolean } {
   const adj = new Map<string, string[]>();
   const inDeg = new Map<string, number>();
   for (const n of nodes) {
@@ -47,15 +47,15 @@ function topoSort(nodes: Node[], edges: Edge[]): Node[] {
 }
 
 // ---------------------------------------------------------------------------
-// FlowSimulationPanel
+// FlowOrderReviewPanel
 // ---------------------------------------------------------------------------
 
-export function FlowSimulationPanel({
+export function FlowOrderReviewPanel({
   nodes,
   edges,
   onHighlight,
   onClose,
-}: FlowSimulationPanelProps) {
+}: FlowOrderReviewPanelProps) {
   const { sorted, hasCycle } = useMemo(() => topoSort(nodes, edges), [nodes, edges]);
   const phases = useMemo(
     () => sorted.filter((n) => n.type === "phase"),
@@ -102,12 +102,16 @@ export function FlowSimulationPanel({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Play className="h-3.5 w-3.5 text-amber-400" />
-          <span className="text-xs font-medium text-slate-300">흐름 시뮬레이션</span>
+          <span className="text-xs font-medium text-slate-300">흐름 순서 점검</span>
         </div>
         <button type="button" onClick={handleClose} aria-label="닫기" className="text-slate-500 hover:text-slate-300">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      <p className="text-[10px] leading-4 text-slate-500">
+        저장된 노드 연결 순서만 훑어봅니다. 조건과 트리거의 실제 통과 여부는 게임 중 서버가 판정합니다.
+      </p>
 
       {/* Cycle warning */}
       {hasCycle && (
