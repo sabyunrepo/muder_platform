@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-05-04",
+  "policy": {
+    "read_first": "Read this state file before archive logs.",
+    "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
+    "feature_work_priority": "Keep self-improvement in dedicated chore branches and do not mix with feature PRs."
+  },
+  "triggers": {
+    "merged_prs_since_review": 0,
+    "review_after_pr_count": 3,
+    "repeat_signal_threshold": 2,
+    "repeat_manual_command_threshold": 3
+  },
+  "active_candidates": [],
+  "resolved_candidates": [
+    {
+      "id": "ci-coderabbit-state-interpretation",
+      "resolved_at": "2026-05-04",
+      "applied_to": ["scripts/mmp-pr-status.sh"],
+      "resolution": "Added CodeRabbit actionable state derived from check bucket plus unresolved review threads."
+    },
+    {
+      "id": "self-improvement-routine",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-self-improvement-loop/SKILL.md",
+        "scripts/mmp-self-improvement-scan.sh",
+        "AGENTS.md",
+        "docs/ops/self-improvement/state.json"
+      ],
+      "resolution": "Created trigger-based self-improvement loop with lightweight state-first reading and archive avoidance."
+    }
+  ],
+  "last_review": {
+    "date": "2026-05-04",
+    "summary": "Initial self-improvement loop bootstrap completed; resolved candidates should not be reused as fresh evidence."
+  }
+}

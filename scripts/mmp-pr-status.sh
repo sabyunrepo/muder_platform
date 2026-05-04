@@ -85,6 +85,22 @@ done
 # shellcheck disable=SC2016
 latest_coderabbit="$(gh pr view "$pr_number" --json reviews,comments --jq '([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login == "coderabbitai") or (.author.login == "coderabbitai[bot]") or (.body | contains("coderabbit.ai")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
 codecov_summary="$(gh pr view "$pr_number" --json comments --jq '[.comments[] | select((.author.login == "codecov-commenter") or (.body | contains("Codecov Report")))] | last | if . then (.body | split("\n") | .[0:6] | join("\n")) else "없음" end')"
+checks_json="$(gh pr checks "$pr_number" --json name,bucket,state 2>/dev/null || printf '[]')"
+coderabbit_check_bucket="$(printf '%s' "$checks_json" | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
+
+if [[ "$unresolved_threads" -gt 0 ]]; then
+  coderabbit_action_state="blocker: unresolved review thread가 남아 있습니다"
+elif [[ "$latest_coderabbit" == CHANGES_REQUESTED* ]]; then
+  coderabbit_action_state="blocker: latest review가 CHANGES_REQUESTED입니다"
+elif [[ "$coderabbit_check_bucket" == "pending" ]]; then
+  coderabbit_action_state="waiting: CodeRabbit check가 아직 진행 중입니다"
+elif [[ "$coderabbit_check_bucket" == "fail" ]]; then
+  coderabbit_action_state="blocker: CodeRabbit check가 실패했습니다"
+elif [[ "$coderabbit_check_bucket" == "pass" && "$unresolved_threads" -eq 0 ]]; then
+  coderabbit_action_state="clear: CodeRabbit check pass + unresolved 0"
+else
+  coderabbit_action_state="unknown: CodeRabbit 상태를 수동 확인하세요"
+fi
 
 cat <<MSG
 # PR 상태 요약
@@ -96,6 +112,7 @@ cat <<MSG
 - Merge state: $merge_state
 - Review decision: $review_decision
 - CodeRabbit latest review: $latest_coderabbit
+- CodeRabbit actionable state: $coderabbit_action_state
 - Review threads: unresolved $unresolved_threads / total $total_threads
 
 # Codecov 최신 코멘트 요약
