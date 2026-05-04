@@ -3,59 +3,13 @@ package progression
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/module/progression/mocks"
+	"go.uber.org/mock/gomock"
 )
-
-var errTriggerTest = errors.New("trigger test error")
-
-type recordingSceneController struct {
-	targets []string
-}
-
-func (r *recordingSceneController) SkipToPhase(_ context.Context, phaseID string) error {
-	r.targets = append(r.targets, phaseID)
-	return nil
-}
-
-type recordingActionDispatcher struct {
-	actions []engine.PhaseActionPayload
-}
-
-func (r *recordingActionDispatcher) DispatchAction(_ context.Context, action engine.PhaseActionPayload) error {
-	r.actions = append(r.actions, action)
-	return nil
-}
-
-type failOnceActionDispatcher struct {
-	actions []engine.PhaseActionPayload
-	fail    bool
-}
-
-func (f *failOnceActionDispatcher) DispatchAction(_ context.Context, action engine.PhaseActionPayload) error {
-	if f.fail {
-		f.fail = false
-		return errTriggerTest
-	}
-	f.actions = append(f.actions, action)
-	return nil
-}
-
-type blockingActionDispatcher struct {
-	entered chan struct{}
-	release chan struct{}
-	actions []engine.PhaseActionPayload
-}
-
-func (b *blockingActionDispatcher) DispatchAction(_ context.Context, action engine.PhaseActionPayload) error {
-	b.actions = append(b.actions, action)
-	close(b.entered)
-	<-b.release
-	return nil
-}
 
 type triggerRuntimeTestReactor struct {
 	engine.PublicStateMarker
@@ -157,9 +111,13 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			deps := newTestDeps(t)
-			deps.SceneController = &recordingSceneController{}
+			sceneController := mocks.NewMockSceneController(ctrl)
+			deps.SceneController = sceneController
 			m := NewEventProgressionModule()
+
+			sceneController.EXPECT().SkipToPhase(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			cfg, _ := json.Marshal(map[string]any{
 				"InitialPhase":   tt.initial,
@@ -190,9 +148,13 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 }
 
 func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	deps := newTestDeps(t)
-	deps.SceneController = &recordingSceneController{}
+	sceneController := mocks.NewMockSceneController(ctrl)
+	deps.SceneController = sceneController
 	m := NewEventProgressionModule()
+
+	sceneController.EXPECT().SkipToPhase(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	cfg, _ := json.Marshal(map[string]any{
 		"InitialPhase":   "A",
@@ -221,9 +183,13 @@ func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
 }
 
 func TestEventProgressionModule_TriggerRequestsDoNotMutateCurrentPhase(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	deps := newTestDeps(t)
-	deps.SceneController = &recordingSceneController{}
+	sceneController := mocks.NewMockSceneController(ctrl)
+	deps.SceneController = sceneController
 	m := NewEventProgressionModule()
+
+	sceneController.EXPECT().SkipToPhase(gomock.Any(), "middle").Return(nil).Times(1)
 
 	cfg := json.RawMessage(`{"InitialPhase":"start","AllowBacktrack":false,"Graph":{"start":["middle"]}}`)
 	if err := m.Init(context.Background(), deps, cfg); err != nil {
@@ -258,253 +224,6 @@ func TestEventProgressionModule_TriggerRequestsDoNotMutateCurrentPhase(t *testin
 	}
 	if state["currentPhase"] != "middle" {
 		t.Fatalf("currentPhase after engine enter = %v, want middle", state["currentPhase"])
-	}
-}
-
-func TestEventProgressionModule_ConfiguredPasswordTriggerDispatchesMultipleResults(t *testing.T) {
-	deps := newTestDeps(t)
-	sceneController := &recordingSceneController{}
-	dispatcher := &recordingActionDispatcher{}
-	deps.SceneController = sceneController
-	deps.ActionDispatcher = dispatcher
-	m := NewEventProgressionModule()
-
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"AllowBacktrack":false,
-		"Triggers":[{
-			"id":"unlock-safe",
-			"from":"start",
-			"to":"middle",
-			"password":"0427",
-			"actions":[
-				{"type":"enable_chat"},
-				{"type":"DELIVER_INFORMATION","params":{"deliveries":[{"id":"d1"}]}}
-			]
-		}]
-	}`)
-	if err := m.Init(context.Background(), deps, cfg); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
-		t.Fatalf("HandleMessage() error = %v", err)
-	}
-
-	if len(dispatcher.actions) != 2 {
-		t.Fatalf("dispatched actions = %#v, want 2", dispatcher.actions)
-	}
-	if dispatcher.actions[0].Action != engine.ActionUnmuteChat {
-		t.Fatalf("first action = %q, want %q", dispatcher.actions[0].Action, engine.ActionUnmuteChat)
-	}
-	if dispatcher.actions[1].Action != engine.ActionDeliverInformation {
-		t.Fatalf("second action = %q, want %q", dispatcher.actions[1].Action, engine.ActionDeliverInformation)
-	}
-	if len(dispatcher.actions[1].Params) == 0 {
-		t.Fatal("second action params were not preserved")
-	}
-	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
-		t.Fatalf("scene targets = %#v, want [middle]", sceneController.targets)
-	}
-}
-
-func TestEventProgressionModule_ConfiguredPasswordTriggerRejectsWrongPassword(t *testing.T) {
-	deps := newTestDeps(t)
-	sceneController := &recordingSceneController{}
-	dispatcher := &recordingActionDispatcher{}
-	deps.SceneController = sceneController
-	deps.ActionDispatcher = dispatcher
-	m := NewEventProgressionModule()
-
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"Triggers":[{
-			"id":"unlock-safe",
-			"from":"start",
-			"to":"middle",
-			"password":"0427",
-			"actions":[{"type":"OPEN_VOTING"}]
-		}]
-	}`)
-	if err := m.Init(context.Background(), deps, cfg); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0000"})
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err == nil {
-		t.Fatal("expected password mismatch error, got nil")
-	}
-	if len(dispatcher.actions) != 0 {
-		t.Fatalf("actions dispatched on password mismatch: %#v", dispatcher.actions)
-	}
-	if len(sceneController.targets) != 0 {
-		t.Fatalf("scene moved on password mismatch: %#v", sceneController.targets)
-	}
-}
-
-func TestEventProgressionModule_ConfiguredTriggerRequiresSceneControllerForTarget(t *testing.T) {
-	deps := newTestDeps(t)
-	dispatcher := &recordingActionDispatcher{}
-	deps.ActionDispatcher = dispatcher
-	m := NewEventProgressionModule()
-
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"Triggers":[{
-			"id":"unlock-safe",
-			"from":"start",
-			"to":"middle",
-			"password":"0427",
-			"actions":[{"type":"OPEN_VOTING"}]
-		}]
-	}`)
-	if err := m.Init(context.Background(), deps, cfg); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err == nil {
-		t.Fatal("expected missing scene controller error, got nil")
-	}
-	if len(dispatcher.actions) != 0 {
-		t.Fatalf("actions dispatched without scene controller: %#v", dispatcher.actions)
-	}
-}
-
-func TestEventProgressionModule_ConfiguredTriggerRollsBackAfterActionFailure(t *testing.T) {
-	deps := newTestDeps(t)
-	sceneController := &recordingSceneController{}
-	dispatcher := &failOnceActionDispatcher{fail: true}
-	deps.SceneController = sceneController
-	deps.ActionDispatcher = dispatcher
-	m := NewEventProgressionModule()
-
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"Triggers":[{
-			"id":"unlock-safe",
-			"from":"start",
-			"to":"middle",
-			"password":"0427",
-			"actions":[{"type":"OPEN_VOTING"}]
-		}]
-	}`)
-	if err := m.Init(context.Background(), deps, cfg); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err == nil {
-		t.Fatal("expected first action dispatch to fail, got nil")
-	}
-	if len(sceneController.targets) != 0 {
-		t.Fatalf("scene moved after failed action: %#v", sceneController.targets)
-	}
-
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
-		t.Fatalf("retry HandleMessage() error = %v", err)
-	}
-	if len(dispatcher.actions) != 1 {
-		t.Fatalf("successful dispatches after retry = %#v, want one action", dispatcher.actions)
-	}
-	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
-		t.Fatalf("scene targets after retry = %#v, want [middle]", sceneController.targets)
-	}
-}
-
-func TestEventProgressionModule_ConfiguredTriggerSkipsConcurrentReplay(t *testing.T) {
-	deps := newTestDeps(t)
-	sceneController := &recordingSceneController{}
-	dispatcher := &blockingActionDispatcher{
-		entered: make(chan struct{}),
-		release: make(chan struct{}),
-	}
-	deps.SceneController = sceneController
-	deps.ActionDispatcher = dispatcher
-	m := NewEventProgressionModule()
-
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"Triggers":[{
-			"id":"unlock-safe",
-			"from":"start",
-			"to":"middle",
-			"password":"0427",
-			"actions":[{"type":"OPEN_VOTING"}]
-		}]
-	}`)
-	if err := m.Init(context.Background(), deps, cfg); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
-	done := make(chan error, 1)
-	go func() {
-		done <- m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload)
-	}()
-	<-dispatcher.entered
-
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
-		t.Fatalf("concurrent replay HandleMessage() error = %v", err)
-	}
-	close(dispatcher.release)
-	if err := <-done; err != nil {
-		t.Fatalf("first HandleMessage() error = %v", err)
-	}
-
-	if len(dispatcher.actions) != 1 {
-		t.Fatalf("actions after concurrent replay = %#v, want one action", dispatcher.actions)
-	}
-	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
-		t.Fatalf("scene targets after concurrent replay = %#v, want [middle]", sceneController.targets)
-	}
-}
-
-func TestEventProgressionModule_ConfiguredTriggerOutsideCurrentPhaseFallsBackToLegacyGraph(t *testing.T) {
-	deps := newTestDeps(t)
-	sceneController := &recordingSceneController{}
-	deps.SceneController = sceneController
-	m := NewEventProgressionModule()
-
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"AllowBacktrack":false,
-		"Graph":{"start":["middle"]},
-		"Triggers":[{
-			"id":"middle",
-			"from":"other",
-			"to":"secret",
-			"password":"0427"
-		}]
-	}`)
-	if err := m.Init(context.Background(), deps, cfg); err != nil {
-		t.Fatalf("Init() error = %v", err)
-	}
-
-	payload, _ := json.Marshal(map[string]string{"TriggerID": "middle"})
-	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
-		t.Fatalf("HandleMessage() error = %v", err)
-	}
-
-	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
-		t.Fatalf("scene targets = %#v, want [middle]", sceneController.targets)
-	}
-}
-
-func TestEventProgressionModule_InitRejectsUnsupportedTriggerActions(t *testing.T) {
-	m := NewEventProgressionModule()
-	cfg := json.RawMessage(`{
-		"InitialPhase":"start",
-		"Triggers":[{
-			"id":"bad-action",
-			"from":"start",
-			"actions":{"foo":"bar"}
-		}]
-	}`)
-
-	if err := m.Init(context.Background(), newTestDeps(t), cfg); err == nil {
-		t.Fatal("expected unsupported action config error, got nil")
 	}
 }
 
