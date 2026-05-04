@@ -15,6 +15,11 @@ export interface ApiError {
   code?: string;
   errors?: FieldError[];
   params?: Record<string, unknown>;
+  extensions?: Record<string, unknown>;
+  request_id?: string;
+  severity?: 'critical' | 'high' | 'medium' | 'low';
+  retryable?: boolean;
+  user_action?: string;
   trace_id?: string;
   debug?: {
     internal?: string;

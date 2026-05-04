@@ -906,31 +906,31 @@ components:
     BadRequest:
       description: Invalid request
       content:
-        application/json:
+        application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     Unauthorized:
       description: Authentication required
       content:
-        application/json:
+        application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     Forbidden:
       description: Insufficient permissions
       content:
-        application/json:
+        application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     NotFound:
       description: Resource not found
       content:
-        application/json:
+        application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
     Conflict:
       description: Conflict with current state
       content:
-        application/json:
+        application/problem+json:
           schema:
             $ref: "#/components/schemas/ProblemDetail"
 
@@ -960,6 +960,43 @@ components:
         instance:
           type: string
           description: URI reference identifying the specific occurrence
+        params:
+          type: object
+          additionalProperties: true
+          description: Structured parameters for localized messages
+        errors:
+          type: array
+          description: Field-level validation errors
+          items:
+            type: object
+            required: [field, message, code]
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+              code:
+                type: string
+        extensions:
+          type: object
+          additionalProperties: true
+          description: MMP-specific extension metadata
+        trace_id:
+          type: string
+          description: OpenTelemetry trace identifier when tracing is active
+        request_id:
+          type: string
+          description: Request identifier mirrored from X-Request-ID
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+          description: Operational impact level for UI routing
+        retryable:
+          type: boolean
+          description: Whether retry is generally safe for this error type
+        user_action:
+          type: string
+          description: Machine-readable recovery action hint for clients
 
     # ── Generic ────────────────────────────────────────────
     MessageResponse:

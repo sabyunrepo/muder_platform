@@ -26,6 +26,10 @@ export class ApiHttpError extends Error {
   get traceId(): string | undefined {
     return this.apiError.trace_id;
   }
+
+  get requestId(): string | undefined {
+    return this.apiError.request_id;
+  }
 }
 
 /** Type guard for ApiError shape. */

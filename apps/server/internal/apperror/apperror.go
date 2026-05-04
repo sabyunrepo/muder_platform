@@ -143,11 +143,11 @@ func (e *AppError) WithErrors(errs []FieldError) *AppError {
 	return &copied
 }
 
-// WithExtensions returns a copy of the error with RFC 9457 extension members
-// attached. Extensions surface as top-level fields in the Problem Details
-// response body (not nested under "params"), enabling caller-specific metadata
-// such as {"current_version": 42} on optimistic-lock conflicts. The map is
-// deep-copied to prevent shared mutation across goroutines.
+// WithExtensions returns a copy of the error with MMP extension metadata
+// attached. Extensions surface under the "extensions" field in the Problem
+// Details response body, enabling caller-specific metadata such as
+// {"current_version": 42} on optimistic-lock conflicts. The map is deep-copied
+// to prevent shared mutation across goroutines.
 func (e *AppError) WithExtensions(ext map[string]any) *AppError {
 	copied := *e
 	if len(ext) > 0 {

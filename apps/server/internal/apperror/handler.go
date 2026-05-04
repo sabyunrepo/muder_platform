@@ -23,6 +23,10 @@ type problemResponse struct {
 	Errors     []FieldError   `json:"errors,omitempty"`
 	Extensions map[string]any `json:"extensions,omitempty"`
 	TraceID    string         `json:"trace_id,omitempty"`
+	RequestID  string         `json:"request_id,omitempty"`
+	Severity   Severity       `json:"severity,omitempty"`
+	Retryable  bool           `json:"retryable"`
+	UserAction string         `json:"user_action,omitempty"`
 	Debug      *debugInfo     `json:"debug,omitempty"`
 }
 
@@ -83,6 +87,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		typeURI = "about:blank"
 	}
 
+	defn := definitionForResponse(appErr)
 	resp := problemResponse{
 		Type:       typeURI,
 		Title:      appErr.Title,
@@ -93,6 +98,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		Params:     appErr.Params,
 		Errors:     appErr.Errors,
 		Extensions: appErr.Extensions,
+		RequestID:  requestIDFrom(w, r),
+		Severity:   defn.Severity,
+		Retryable:  defn.Retryable,
+		UserAction: defn.UserAction,
 	}
 
 	// Include trace_id in error response if OTel is active.
@@ -120,4 +129,11 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
 		logger.Error().Err(encErr).Msg("failed to encode error response")
 	}
+}
+
+func requestIDFrom(w http.ResponseWriter, r *http.Request) string {
+	if id := w.Header().Get("X-Request-ID"); id != "" {
+		return id
+	}
+	return r.Header.Get("X-Request-ID")
 }
