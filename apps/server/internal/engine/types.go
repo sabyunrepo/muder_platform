@@ -163,6 +163,18 @@ type PhaseReactor interface {
 	SupportedActions() []PhaseAction
 }
 
+// PhaseActionDispatcher lets runtime modules request backend-owned trigger
+// results without duplicating PhaseEngine dispatch logic.
+type PhaseActionDispatcher interface {
+	DispatchAction(ctx context.Context, action PhaseActionPayload) error
+}
+
+// SceneController lets runtime modules request a validated scene jump while
+// keeping the final phase mutation inside PhaseEngine.
+type SceneController interface {
+	SkipToPhase(ctx context.Context, phaseID string) error
+}
+
 // ConfigSchema is an optional interface for modules that expose their settings schema.
 // Used by the editor to auto-generate UI.
 type ConfigSchema interface {
@@ -199,6 +211,8 @@ type ModuleDeps struct {
 	EventBus           *EventBus
 	Logger             Logger
 	PlayerInfoProvider PlayerInfoProvider
+	ActionDispatcher   PhaseActionDispatcher
+	SceneController    SceneController
 }
 
 // ModuleFactory creates a new module instance per session (no singletons).

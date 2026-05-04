@@ -132,12 +132,25 @@ var legacyPhaseActionAliases = map[string]PhaseAction{
 	"broadcast":           ActionBroadcastMessage,
 }
 
-func normalizeConfiguredPhaseAction(actionType string) PhaseAction {
+// NormalizePhaseActionType maps editor/legacy action names to the backend
+// PhaseAction contract used by runtime reactors.
+func NormalizePhaseActionType(actionType string) PhaseAction {
 	normalized := strings.ToLower(strings.TrimSpace(actionType))
 	if action, ok := legacyPhaseActionAliases[normalized]; ok {
 		return action
 	}
 	return PhaseAction(strings.ToUpper(normalized))
+}
+
+// ParsePhaseActionConfig parses the editor's phase-action array/wrapper shape
+// into backend dispatch payloads. Runtime trigger modules reuse this so button
+// and password triggers share the same result contract as phase enter/exit.
+func ParsePhaseActionConfig(raw json.RawMessage) ([]PhaseActionPayload, error) {
+	return parseConfiguredPhaseActions(raw)
+}
+
+func normalizeConfiguredPhaseAction(actionType string) PhaseAction {
+	return NormalizePhaseActionType(actionType)
 }
 
 func parseConfiguredPhaseActions(raw json.RawMessage) ([]PhaseActionPayload, error) {

@@ -7,7 +7,42 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/module/progression/mocks"
+	"go.uber.org/mock/gomock"
 )
+
+type triggerRuntimeTestReactor struct {
+	engine.PublicStateMarker
+
+	actions []engine.PhaseActionPayload
+}
+
+func (r *triggerRuntimeTestReactor) Name() string { return "trigger_runtime_test" }
+
+func (r *triggerRuntimeTestReactor) Init(context.Context, engine.ModuleDeps, json.RawMessage) error {
+	return nil
+}
+
+func (r *triggerRuntimeTestReactor) BuildState() (json.RawMessage, error) {
+	return json.RawMessage(`{}`), nil
+}
+
+func (r *triggerRuntimeTestReactor) HandleMessage(context.Context, uuid.UUID, string, json.RawMessage) error {
+	return nil
+}
+
+func (r *triggerRuntimeTestReactor) Cleanup(context.Context) error {
+	return nil
+}
+
+func (r *triggerRuntimeTestReactor) ReactTo(_ context.Context, action engine.PhaseActionPayload) error {
+	r.actions = append(r.actions, action)
+	return nil
+}
+
+func (r *triggerRuntimeTestReactor) SupportedActions() []engine.PhaseAction {
+	return []engine.PhaseAction{"TEST_ACTION"}
+}
 
 func TestEventProgressionModule_Init(t *testing.T) {
 	tests := []struct {
@@ -76,8 +111,13 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 			deps := newTestDeps(t)
+			sceneController := mocks.NewMockSceneController(ctrl)
+			deps.SceneController = sceneController
 			m := NewEventProgressionModule()
+
+			sceneController.EXPECT().SkipToPhase(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 			cfg, _ := json.Marshal(map[string]any{
 				"InitialPhase":   tt.initial,
@@ -108,8 +148,13 @@ func TestEventProgressionModule_HandleMessage(t *testing.T) {
 }
 
 func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	deps := newTestDeps(t)
+	sceneController := mocks.NewMockSceneController(ctrl)
+	deps.SceneController = sceneController
 	m := NewEventProgressionModule()
+
+	sceneController.EXPECT().SkipToPhase(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
 	cfg, _ := json.Marshal(map[string]any{
 		"InitialPhase":   "A",
@@ -138,8 +183,13 @@ func TestEventProgressionModule_BacktrackPrevention(t *testing.T) {
 }
 
 func TestEventProgressionModule_TriggerRequestsDoNotMutateCurrentPhase(t *testing.T) {
+	ctrl := gomock.NewController(t)
 	deps := newTestDeps(t)
+	sceneController := mocks.NewMockSceneController(ctrl)
+	deps.SceneController = sceneController
 	m := NewEventProgressionModule()
+
+	sceneController.EXPECT().SkipToPhase(gomock.Any(), "middle").Return(nil).Times(1)
 
 	cfg := json.RawMessage(`{"InitialPhase":"start","AllowBacktrack":false,"Graph":{"start":["middle"]}}`)
 	if err := m.Init(context.Background(), deps, cfg); err != nil {
@@ -174,6 +224,52 @@ func TestEventProgressionModule_TriggerRequestsDoNotMutateCurrentPhase(t *testin
 	}
 	if state["currentPhase"] != "middle" {
 		t.Fatalf("currentPhase after engine enter = %v, want middle", state["currentPhase"])
+	}
+}
+
+func TestEventProgressionModule_RuntimeTriggerUsesPhaseEngineAsController(t *testing.T) {
+	progress := NewEventProgressionModule()
+	reactor := &triggerRuntimeTestReactor{}
+	bus := engine.NewEventBus(&testLogger{t})
+	pe := engine.NewPhaseEngine(uuid.New(), []engine.Module{progress, reactor}, bus, nil, &testLogger{t}, []engine.PhaseDefinition{
+		{ID: "start", Name: "Start"},
+		{ID: "middle", Name: "Middle"},
+	})
+	cfg := json.RawMessage(`{
+		"InitialPhase":"start",
+		"Triggers":[{
+			"id":"unlock-safe",
+			"from":"start",
+			"to":"middle",
+			"password":"0427",
+			"actions":[{"type":"TEST_ACTION"}]
+		}]
+	}`)
+	if err := pe.Start(context.Background(), map[string]json.RawMessage{"event_progression": cfg}); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+	t.Cleanup(func() { _ = pe.Stop(context.Background()) })
+
+	payload, _ := json.Marshal(map[string]string{"TriggerID": "unlock-safe", "Password": "0427"})
+	if err := pe.HandleMessage(context.Background(), uuid.New(), "event_progression", "event:trigger", payload); err != nil {
+		t.Fatalf("HandleMessage() error = %v", err)
+	}
+
+	if pe.CurrentPhase().ID != "middle" {
+		t.Fatalf("current phase = %q, want middle", pe.CurrentPhase().ID)
+	}
+	if len(reactor.actions) != 1 || reactor.actions[0].Action != "TEST_ACTION" {
+		t.Fatalf("reactor actions = %#v, want TEST_ACTION", reactor.actions)
+	}
+
+	if err := pe.HandleMessage(context.Background(), uuid.New(), "event_progression", "event:trigger", payload); err != nil {
+		t.Fatalf("replayed HandleMessage() error = %v", err)
+	}
+	if pe.CurrentPhase().ID != "middle" {
+		t.Fatalf("current phase after replay = %q, want middle", pe.CurrentPhase().ID)
+	}
+	if len(reactor.actions) != 1 {
+		t.Fatalf("reactor actions after replay = %#v, want one TEST_ACTION", reactor.actions)
 	}
 }
 
