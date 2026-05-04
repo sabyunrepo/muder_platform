@@ -27,12 +27,22 @@ func (a *managerSessionSender) SendToSession(msg ws.SessionMessage) error {
 		raw = json.RawMessage(msg.Payload)
 	}
 	return s.Send(session.SessionMessage{
-		Kind:     session.KindEngineCommand,
-		PlayerID: msg.PlayerID,
-		MsgType:  msg.MsgType,
-		Payload:  session.EngineCommandPayload{RawPayload: raw},
-		Ctx:      msg.Ctx,
+		Kind:       session.KindEngineCommand,
+		PlayerID:   msg.PlayerID,
+		ModuleName: moduleNameForMessageType(msg.MsgType),
+		MsgType:    msg.MsgType,
+		Payload:    session.EngineCommandPayload{RawPayload: raw},
+		Ctx:        msg.Ctx,
 	})
+}
+
+func moduleNameForMessageType(msgType string) string {
+	switch msgType {
+	case "event:trigger":
+		return "event_progression"
+	default:
+		return ""
+	}
 }
 
 // --- Broadcaster adapter (session → ws) ---

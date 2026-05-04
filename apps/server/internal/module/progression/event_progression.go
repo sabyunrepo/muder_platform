@@ -2,6 +2,7 @@ package progression
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -29,12 +30,23 @@ type EventProgressionModule struct {
 	currentPhaseID string
 	visitedPhases  []string
 	graph          map[string][]string // phaseID -> list of reachable phase IDs via triggers
+	triggers       map[string]eventProgressionTrigger
+	triggerCounts  map[string]int
 }
 
 type eventProgressionConfig struct {
-	InitialPhase   string              `json:"InitialPhase"`
-	AllowBacktrack bool                `json:"AllowBacktrack"`
-	Graph          map[string][]string `json:"Graph"`
+	InitialPhase   string                    `json:"InitialPhase"`
+	AllowBacktrack bool                      `json:"AllowBacktrack"`
+	Graph          map[string][]string       `json:"Graph"`
+	Triggers       []eventProgressionTrigger `json:"Triggers,omitempty"`
+}
+
+type eventProgressionTrigger struct {
+	ID       string          `json:"id"`
+	From     string          `json:"from,omitempty"`
+	To       string          `json:"to,omitempty"`
+	Password string          `json:"password,omitempty"`
+	Actions  json.RawMessage `json:"actions,omitempty"`
 }
 
 // NewEventProgressionModule creates a new EventProgressionModule instance.
@@ -69,6 +81,25 @@ func (m *EventProgressionModule) Init(ctx context.Context, deps engine.ModuleDep
 	if m.graph == nil {
 		m.graph = make(map[string][]string)
 	}
+	m.triggers = make(map[string]eventProgressionTrigger, len(cfg.Triggers))
+	for _, trigger := range cfg.Triggers {
+		if trigger.ID == "" {
+			return fmt.Errorf("event_progression: trigger id is required")
+		}
+		if trigger.From == "" && trigger.To == "" && len(trigger.Actions) == 0 {
+			return fmt.Errorf("event_progression: trigger %q has no runtime result", trigger.ID)
+		}
+		if _, exists := m.triggers[trigger.ID]; exists {
+			return fmt.Errorf("event_progression: duplicate trigger %q", trigger.ID)
+		}
+		if len(trigger.Actions) > 0 {
+			if _, err := engine.ParsePhaseActionConfig(trigger.Actions); err != nil {
+				return fmt.Errorf("event_progression: trigger %q actions invalid: %w", trigger.ID, err)
+			}
+		}
+		m.triggers[trigger.ID] = trigger
+	}
+	m.triggerCounts = make(map[string]int, len(cfg.Triggers))
 
 	return nil
 }
@@ -80,58 +111,152 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 	case "event:trigger":
 		var p struct {
 			TriggerID string `json:"TriggerID"`
+			Password  string `json:"Password,omitempty"`
 		}
 		if err := json.Unmarshal(payload, &p); err != nil {
 			m.mu.Unlock()
 			return fmt.Errorf("event_progression: invalid payload: %w", err)
 		}
-
-		// Check if trigger leads to a valid edge from current phase
-		targets, ok := m.graph[m.currentPhaseID]
-		if !ok {
+		trigger, hasTriggerConfig := m.triggers[p.TriggerID]
+		oldPhase, validTarget, actions, err := m.resolveTriggerLocked(p.TriggerID, p.Password, trigger, hasTriggerConfig)
+		if err != nil {
 			m.mu.Unlock()
-			return fmt.Errorf("event_progression: no edges from phase %q", m.currentPhaseID)
+			return err
 		}
-
-		validTarget := ""
-		for _, t := range targets {
-			if t == p.TriggerID {
-				validTarget = t
-				break
-			}
-		}
-		if validTarget == "" {
-			m.mu.Unlock()
-			return fmt.Errorf("event_progression: invalid trigger %q from phase %q", p.TriggerID, m.currentPhaseID)
-		}
-
-		// Check backtrack
-		if !m.allowBacktrack {
-			for _, v := range m.visitedPhases {
-				if v == validTarget {
-					m.mu.Unlock()
-					return fmt.Errorf("event_progression: backtracking to %q not allowed", validTarget)
-				}
-			}
-		}
-
-		oldPhase := m.currentPhaseID
 		m.mu.Unlock()
 
-		m.deps.EventBus.Publish(engine.Event{
-			Type: "event.scene_transition_requested",
-			Payload: map[string]any{
-				"fromPhase": oldPhase,
-				"toPhase":   validTarget,
-				"triggerID": p.TriggerID,
-			},
-		})
+		if err := m.dispatchTriggerActions(ctx, actions); err != nil {
+			return err
+		}
+		if validTarget != "" {
+			if err := m.moveToPhase(ctx, validTarget); err != nil {
+				return err
+			}
+			m.publishSceneTransition(oldPhase, validTarget, p.TriggerID)
+		}
+		m.recordTriggerSuccess(p.TriggerID)
 		return nil
 
 	default:
 		m.mu.Unlock()
 		return fmt.Errorf("event_progression: unknown message type %q", msgType)
 	}
+}
+
+func (m *EventProgressionModule) resolveTriggerLocked(
+	triggerID string,
+	password string,
+	trigger eventProgressionTrigger,
+	hasTriggerConfig bool,
+) (string, string, []engine.PhaseActionPayload, error) {
+	if triggerID == "" {
+		return "", "", nil, fmt.Errorf("event_progression: trigger id is required")
+	}
+	if hasTriggerConfig {
+		return m.resolveConfiguredTriggerLocked(triggerID, password, trigger)
+	}
+	return m.resolveLegacyGraphTriggerLocked(triggerID)
+}
+
+func (m *EventProgressionModule) resolveConfiguredTriggerLocked(
+	triggerID string,
+	password string,
+	trigger eventProgressionTrigger,
+) (string, string, []engine.PhaseActionPayload, error) {
+	if trigger.From != "" && trigger.From != m.currentPhaseID {
+		return "", "", nil, fmt.Errorf("event_progression: trigger %q is not available from phase %q", triggerID, m.currentPhaseID)
+	}
+	if trigger.Password != "" && subtle.ConstantTimeCompare([]byte(password), []byte(trigger.Password)) != 1 {
+		return "", "", nil, fmt.Errorf("event_progression: trigger %q password mismatch", triggerID)
+	}
+	if trigger.To != "" {
+		if err := m.validateBacktrackLocked(trigger.To); err != nil {
+			return "", "", nil, err
+		}
+	}
+	actions, err := engine.ParsePhaseActionConfig(trigger.Actions)
+	if err != nil {
+		return "", "", nil, fmt.Errorf("event_progression: trigger %q actions invalid: %w", triggerID, err)
+	}
+	return m.currentPhaseID, trigger.To, actions, nil
+}
+
+func (m *EventProgressionModule) resolveLegacyGraphTriggerLocked(triggerID string) (string, string, []engine.PhaseActionPayload, error) {
+	targets, ok := m.graph[m.currentPhaseID]
+	if !ok {
+		return "", "", nil, fmt.Errorf("event_progression: no edges from phase %q", m.currentPhaseID)
+	}
+	validTarget := ""
+	for _, target := range targets {
+		if target == triggerID {
+			validTarget = target
+			break
+		}
+	}
+	if validTarget == "" {
+		return "", "", nil, fmt.Errorf("event_progression: invalid trigger %q from phase %q", triggerID, m.currentPhaseID)
+	}
+	if err := m.validateBacktrackLocked(validTarget); err != nil {
+		return "", "", nil, err
+	}
+	return m.currentPhaseID, validTarget, nil, nil
+}
+
+func (m *EventProgressionModule) validateBacktrackLocked(target string) error {
+	if m.allowBacktrack {
+		return nil
+	}
+	for _, visited := range m.visitedPhases {
+		if visited == target {
+			return fmt.Errorf("event_progression: backtracking to %q not allowed", target)
+		}
+	}
+	return nil
+}
+
+func (m *EventProgressionModule) dispatchTriggerActions(ctx context.Context, actions []engine.PhaseActionPayload) error {
+	if len(actions) == 0 {
+		return nil
+	}
+	if m.deps.ActionDispatcher == nil {
+		return fmt.Errorf("event_progression: action dispatcher is not configured")
+	}
+	for _, action := range actions {
+		if action.Action == "" {
+			continue
+		}
+		if err := m.deps.ActionDispatcher.DispatchAction(ctx, action); err != nil {
+			return fmt.Errorf("event_progression: trigger action %q failed: %w", action.Action, err)
+		}
+	}
+	return nil
+}
+
+func (m *EventProgressionModule) moveToPhase(ctx context.Context, target string) error {
+	if m.deps.SceneController == nil {
+		return nil
+	}
+	return m.deps.SceneController.SkipToPhase(ctx, target)
+}
+
+func (m *EventProgressionModule) publishSceneTransition(from string, to string, triggerID string) {
+	if m.deps.EventBus == nil {
+		return
+	}
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "event.scene_transition_requested",
+		Payload: map[string]any{
+			"fromPhase": from,
+			"toPhase":   to,
+			"triggerID": triggerID,
+		},
+	})
+}
+
+func (m *EventProgressionModule) recordTriggerSuccess(triggerID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.triggerCounts[triggerID]++
 }
 
 func (m *EventProgressionModule) BuildState() (json.RawMessage, error) {
@@ -152,6 +277,8 @@ func (m *EventProgressionModule) Cleanup(ctx context.Context) error {
 
 	m.visitedPhases = nil
 	m.graph = nil
+	m.triggers = nil
+	m.triggerCounts = nil
 	return nil
 }
 
@@ -162,7 +289,21 @@ func (m *EventProgressionModule) Schema() json.RawMessage {
 		"properties": {
 			"InitialPhase": {"type": "string"},
 			"AllowBacktrack": {"type": "boolean", "default": false},
-			"Graph": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}}
+			"Graph": {"type": "object", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
+			"Triggers": {
+				"type": "array",
+				"items": {
+					"type": "object",
+					"required": ["id"],
+					"properties": {
+						"id": {"type": "string"},
+						"from": {"type": "string"},
+						"to": {"type": "string"},
+						"password": {"type": "string"},
+						"actions": {"type": "array"}
+					}
+				}
+			}
 		}
 	}`)
 }

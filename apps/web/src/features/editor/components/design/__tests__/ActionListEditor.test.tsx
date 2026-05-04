@@ -32,4 +32,27 @@ describe("ActionListEditor", () => {
     expect(screen.getByRole("option", { name: "채팅 닫기 (기존값)" })).toBeDefined();
     expect(screen.getByRole("option", { name: "채팅 닫기" })).toBeDefined();
   });
+
+  it("여러 실행 결과를 순서대로 저장 계약에 남긴다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="비밀번호 트리거"
+        actions={[
+          { id: "a1", type: "OPEN_VOTING" },
+          { id: "a2", type: "MUTE_CHAT" },
+        ]}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "비밀번호 트리거 2 실행 결과" }), {
+      target: { value: "STOP_AUDIO" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "a1", type: "OPEN_VOTING" },
+      { id: "a2", type: "STOP_AUDIO" },
+    ]);
+  });
 });

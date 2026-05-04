@@ -102,6 +102,8 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 		EventBus:           e.eventBus,
 		Logger:             e.logger,
 		PlayerInfoProvider: e.playerInfoProvider,
+		ActionDispatcher:   e,
+		SceneController:    e,
 	}
 
 	for _, mod := range e.modules {
