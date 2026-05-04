@@ -72,15 +72,17 @@ describe("ConditionRuleRow", () => {
     expect(screen.getByRole("combobox", { name: "단서" })).toBeDefined();
   });
 
-  it("vote_target일 때 추가 select가 표시되지 않는다", () => {
+  it("vote_target일 때 투표 대상 캐릭터를 제작자용 선택지로 표시한다", () => {
     render(
       <ConditionRuleRow
         rule={makeRule({ variable: "vote_target" })}
         onChange={vi.fn()}
         onDelete={vi.fn()}
+        characters={[{ id: "c1", name: "탐정" }]}
       />,
     );
-    expect(screen.queryByRole("combobox", { name: "캐릭터" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "캐릭터" })).toBeDefined();
+    expect(screen.getByRole("option", { name: "탐정" })).toBeDefined();
     expect(screen.queryByRole("combobox", { name: "미션" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "단서" })).toBeNull();
   });
@@ -107,11 +109,56 @@ describe("ConditionRuleRow", () => {
         onDelete={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByRole("textbox", { name: "값" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "상태" }), {
       target: { value: "success" },
     });
     expect(onChange).toHaveBeenCalledOnce();
     const [updated] = onChange.mock.calls[0] as [ConditionRule];
     expect(updated.value).toBe("success");
+  });
+
+  it("조사권 조건은 제작자용 선택지로 조사권과 수량을 편집한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionRuleRow
+        rule={makeRule({ variable: "investigation_token", comparator: ">=", value: "1" })}
+        onChange={onChange}
+        onDelete={vi.fn()}
+        tokens={[{ id: "basic-token", name: "기본 조사권" }]}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "조사권" }), {
+      target: { value: "basic-token" },
+    });
+    expect(onChange).toHaveBeenCalledOnce();
+    const [updated] = onChange.mock.calls[0] as [ConditionRule];
+    expect(updated.target_token_id).toBe("basic-token");
+  });
+
+  it("변수를 바꾸면 이전 target 값을 제거한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ConditionRuleRow
+        rule={makeRule({
+          variable: "clue_held",
+          target_character_id: "character-1",
+          target_clue_id: "clue-1",
+          value: "true",
+        })}
+        onChange={onChange}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "변수" }), {
+      target: { value: "scene_visit_count" },
+    });
+    expect(onChange).toHaveBeenCalledOnce();
+    const [updated] = onChange.mock.calls[0] as [ConditionRule];
+    expect(updated.variable).toBe("scene_visit_count");
+    expect(updated.target_character_id).toBeUndefined();
+    expect(updated.target_clue_id).toBeUndefined();
+    expect(updated.value).toBe("");
   });
 });

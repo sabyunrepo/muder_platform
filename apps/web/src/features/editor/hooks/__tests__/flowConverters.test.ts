@@ -24,6 +24,20 @@ const baseEdge: FlowEdgeResponse = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+const completeCondition = {
+  id: "group-1",
+  operator: "AND",
+  rules: [
+    {
+      id: "rule-1",
+      variable: "custom_flag",
+      target_flag_key: "manual_override",
+      comparator: "=",
+      value: "true",
+    },
+  ],
+};
+
 describe("toReactFlowNode", () => {
   it("maps server node to ReactFlow node", () => {
     const result = toReactFlowNode(baseNode);
@@ -64,5 +78,40 @@ describe("toSaveRequest", () => {
     expect(req.edges[0].source_id).toBe("node-1");
     expect(req.edges[0].target_id).toBe("node-2");
     expect(req.edges[0].sort_order).toBe(0);
+  });
+
+  it("완성된 조건만 저장 요청에 포함한다", () => {
+    const rfNode = toReactFlowNode(baseNode);
+    const rfEdge = {
+      ...toReactFlowEdge(baseEdge),
+      data: { condition: completeCondition },
+    };
+    const req = toSaveRequest([rfNode], [rfEdge]);
+
+    expect(req.edges[0].condition).toEqual(completeCondition);
+  });
+
+  it("미완성 조건 draft는 저장 요청에서 제외한다", () => {
+    const rfNode = toReactFlowNode(baseNode);
+    const rfEdge = {
+      ...toReactFlowEdge(baseEdge),
+      data: {
+        condition: {
+          id: "group-1",
+          operator: "AND",
+          rules: [
+            {
+              id: "rule-1",
+              variable: "scene_visit_count",
+              comparator: ">=",
+              value: "1",
+            },
+          ],
+        },
+      },
+    };
+    const req = toSaveRequest([rfNode], [rfEdge]);
+
+    expect(req.edges[0].condition).toBeNull();
   });
 });

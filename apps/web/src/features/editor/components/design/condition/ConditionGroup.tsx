@@ -1,6 +1,11 @@
 import { Plus, PlusSquare, Trash2 } from "lucide-react";
 import type { ConditionRule, ConditionGroup } from "./conditionTypes";
-import { isGroup, createEmptyRule, createEmptyGroup } from "./conditionTypes";
+import {
+  isGroup,
+  createEmptyRule,
+  createEmptyGroup,
+  MAX_CONDITION_DEPTH,
+} from "./conditionTypes";
 import { ConditionRuleRow } from "./ConditionRule";
 import type { SelectOption } from "./ConditionRule";
 
@@ -16,13 +21,16 @@ interface ConditionGroupProps {
   characters?: SelectOption[];
   missions?: SelectOption[];
   clues?: SelectOption[];
+  triggers?: SelectOption[];
+  tokens?: SelectOption[];
+  scenes?: SelectOption[];
+  rooms?: SelectOption[];
+  locations?: SelectOption[];
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const MAX_DEPTH = 3;
 
 function operatorCls(active: boolean) {
   return active
@@ -42,6 +50,11 @@ export function ConditionGroupBlock({
   characters = [],
   missions = [],
   clues = [],
+  triggers = [],
+  tokens = [],
+  scenes = [],
+  rooms = [],
+  locations = [],
 }: ConditionGroupProps) {
   const updateItem = (
     index: number,
@@ -118,6 +131,11 @@ export function ConditionGroupBlock({
               characters={characters}
               missions={missions}
               clues={clues}
+              triggers={triggers}
+              tokens={tokens}
+              scenes={scenes}
+              rooms={rooms}
+              locations={locations}
             />
           ) : (
             <ConditionRuleRow
@@ -128,6 +146,11 @@ export function ConditionGroupBlock({
               characters={characters}
               missions={missions}
               clues={clues}
+              triggers={triggers}
+              tokens={tokens}
+              scenes={scenes}
+              rooms={rooms}
+              locations={locations}
             />
           ),
         )}
@@ -143,7 +166,7 @@ export function ConditionGroupBlock({
           <Plus className="h-3 w-3" />
           규칙 추가
         </button>
-        {depth < MAX_DEPTH && (
+        {depth < MAX_CONDITION_DEPTH && (
           <button
             type="button"
             onClick={addGroup}

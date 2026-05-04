@@ -1,8 +1,11 @@
 package flow
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/engine"
 )
 
 // ValidateDAG validates the flow graph: exactly one start node and no cycles.
@@ -72,4 +75,14 @@ func ValidateNodeType(t string) error {
 	default:
 		return apperror.BadRequest("invalid node type: " + t)
 	}
+}
+
+func ValidateEdgeCondition(condition json.RawMessage) error {
+	if len(condition) == 0 || string(condition) == "null" {
+		return nil
+	}
+	if _, err := engine.ParseConditionGroup(condition); err != nil {
+		return apperror.BadRequest("invalid edge condition: " + err.Error())
+	}
+	return nil
 }

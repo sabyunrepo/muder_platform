@@ -4,6 +4,7 @@ import type {
   FlowEdgeResponse,
   SaveFlowRequest,
 } from "../flowTypes";
+import { isCompleteConditionGroupRecord } from "../components/design/condition/conditionTypes";
 
 // ---------------------------------------------------------------------------
 // Converters: server ↔ ReactFlow
@@ -41,11 +42,16 @@ export function toSaveRequest(nodes: Node[], edges: Edge[]): SaveFlowRequest {
       id: e.id,
       source_id: e.source,
       target_id: e.target,
-      condition:
-        (e.data as { condition?: Record<string, unknown> } | undefined)
-          ?.condition ?? null,
+      condition: toPersistedCondition(e.data),
       label: typeof e.label === "string" ? e.label : null,
       sort_order: i,
     })),
   };
+}
+
+function toPersistedCondition(data: Edge["data"]): Record<string, unknown> | null {
+  const condition =
+    (data as { condition?: Record<string, unknown> } | undefined)?.condition ??
+    null;
+  return isCompleteConditionGroupRecord(condition) ? condition : null;
 }
