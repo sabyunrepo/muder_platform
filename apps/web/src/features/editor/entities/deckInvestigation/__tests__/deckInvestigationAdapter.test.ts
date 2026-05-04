@@ -89,24 +89,28 @@ describe('deckInvestigationAdapter', () => {
 
 
 
-  it('legacy 배열 값은 공백과 중복을 정리해 저장 경계 밖으로 새지 않게 한다', () => {
+  it('legacy 배열 값과 ID 문자열은 공백과 중복을 정리해 저장 경계 밖으로 새지 않게 한다', () => {
     const config = readDeckInvestigationConfig({
       modules: {
         deck_investigation: {
           config: {
-            tokens: [{ id: 'coin', name: '동전', iconLabel: '🪙' }],
+            tokens: [{ id: ' coin ', name: ' 동전 ', iconLabel: ' 🪙 ' }],
             decks: [{
-              title: '공백 정리',
-              tokenId: 'coin',
+              id: ' deck-1 ',
+              title: ' 공백 정리 ',
+              tokenId: ' coin ',
               access: { locationIds: [' loc-1 ', 'loc-1', '', 'loc-2'] },
-              cards: [],
+              cards: [{ clueId: ' clue-1 ', delivery: 'view_only' }],
             }],
           },
         },
       },
     });
 
+    expect(config.tokens[0]).toMatchObject({ id: 'coin', name: '동전', iconLabel: '🪙' });
+    expect(config.decks[0]).toMatchObject({ id: 'deck-1', title: '공백 정리', tokenId: 'coin' });
     expect(config.decks[0].access.locationIds).toEqual(['loc-1', 'loc-2']);
+    expect(config.decks[0].cards[0]).toMatchObject({ clueId: 'clue-1', delivery: 'view_only' });
   });
 
   it('저장할 때 기존 config와 module의 다른 필드를 보존한다', () => {
@@ -170,6 +174,22 @@ describe('deckInvestigationAdapter', () => {
       deliverySummary: '개별 지급 1 · 전체 공개 1 · 보기만 1',
       warningLabels: ['없는 단서 1개가 연결되어 있습니다.'],
     });
+  });
+
+
+
+  it('위치 일부만 이름을 찾을 수 있어도 숨은 위치 수를 정확히 표시한다', () => {
+    const vm = toDeckInvestigationViewModel({
+      tokens: [{ id: 'coin', name: '동전', iconLabel: '🪙', defaultAmount: 2 }],
+      decks: [{
+        ...createInvestigationDeckDraft(0, 'coin'),
+        access: { phaseIds: [], locationIds: ['loc-1', 'missing'], blockedCharacterIds: [], requiredClueIds: [] },
+      }],
+    }, {
+      locations: [location('loc-1', '응접실')],
+    });
+
+    expect(vm.decks[0].placementLabel).toBe('응접실 외 1곳');
   });
 
   it('runtime draft에는 UI label 대신 엔진 판단에 필요한 값만 남긴다', () => {

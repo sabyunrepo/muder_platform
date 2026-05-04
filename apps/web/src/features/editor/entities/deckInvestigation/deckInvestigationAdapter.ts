@@ -114,18 +114,25 @@ function readDrawOrder(value: unknown): DeckDrawOrder {
 
 function normalizeToken(value: unknown, index: number): InvestigationTokenDraft | null {
   if (!isRecord(value)) return null;
-  const id = typeof value.id === 'string' && value.id.trim() ? value.id : `token-${index + 1}`;
-  const name = typeof value.name === 'string' && value.name.trim() ? value.name : '조사 토큰';
-  const iconLabel = typeof value.iconLabel === 'string' && value.iconLabel.trim() ? value.iconLabel : '🔎';
+  const rawId = typeof value.id === 'string' ? value.id.trim() : '';
+  const rawName = typeof value.name === 'string' ? value.name.trim() : '';
+  const rawIconLabel = typeof value.iconLabel === 'string' ? value.iconLabel.trim() : '';
   const defaultAmount = typeof value.defaultAmount === 'number' && Number.isFinite(value.defaultAmount)
     ? Math.max(0, Math.floor(value.defaultAmount))
     : 0;
-  return { id, name, iconLabel, defaultAmount };
+  return {
+    id: rawId || `token-${index + 1}`,
+    name: rawName || '조사 토큰',
+    iconLabel: rawIconLabel || '🔎',
+    defaultAmount,
+  };
 }
 
 function normalizeCard(value: unknown): InvestigationDeckCardDraft | null {
-  if (!isRecord(value) || typeof value.clueId !== 'string' || !value.clueId.trim()) return null;
-  return { clueId: value.clueId, delivery: readDelivery(value.delivery) };
+  if (!isRecord(value) || typeof value.clueId !== 'string') return null;
+  const clueId = value.clueId.trim();
+  if (!clueId) return null;
+  return { clueId, delivery: readDelivery(value.delivery) };
 }
 
 function normalizeAccess(value: unknown): InvestigationDeckAccessDraft {
@@ -140,10 +147,13 @@ function normalizeAccess(value: unknown): InvestigationDeckAccessDraft {
 
 function normalizeDeck(value: unknown, index: number, fallbackTokenId: string): InvestigationDeckDraft | null {
   if (!isRecord(value)) return null;
-  const id = typeof value.id === 'string' && value.id.trim() ? value.id : `deck-${index + 1}`;
-  const title = typeof value.title === 'string' && value.title.trim() ? value.title : '새 조사 덱';
-  const description = typeof value.description === 'string' ? value.description : '';
-  const tokenId = typeof value.tokenId === 'string' && value.tokenId.trim() ? value.tokenId : fallbackTokenId;
+  const rawId = typeof value.id === 'string' ? value.id.trim() : '';
+  const rawTitle = typeof value.title === 'string' ? value.title.trim() : '';
+  const description = typeof value.description === 'string' ? value.description.trim() : '';
+  const rawTokenId = typeof value.tokenId === 'string' ? value.tokenId.trim() : '';
+  const id = rawId || `deck-${index + 1}`;
+  const title = rawTitle || '새 조사 덱';
+  const tokenId = rawTokenId || fallbackTokenId;
   const tokenCost = typeof value.tokenCost === 'number' && Number.isFinite(value.tokenCost)
     ? Math.max(0, Math.floor(value.tokenCost))
     : 1;
@@ -289,9 +299,11 @@ function formatPlacementLabel(
 ): string {
   if (locationIds.length === 0) return '모든 배치 위치에서 실행 가능';
   const names = locationIds.map((id) => locationById.get(id)?.name).filter((name): name is string => !!name);
-  if (names.length === 0) return `${locationIds.length}개 위치에 배치`;
-  if (names.length <= 2 && names.length === locationIds.length) return names.join(', ');
-  return `${names.slice(0, 2).join(', ')} 외 ${locationIds.length - 2}곳`;
+  const shownCount = names.length;
+  if (shownCount === 0) return `${locationIds.length}개 위치에 배치`;
+  if (shownCount <= 2 && shownCount === locationIds.length) return names.join(', ');
+  const displayedCount = Math.min(2, shownCount);
+  return `${names.slice(0, displayedCount).join(', ')} 외 ${locationIds.length - displayedCount}곳`;
 }
 
 function formatDeliverySummary(cards: InvestigationDeckCardDraft[]): string {
