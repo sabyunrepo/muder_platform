@@ -3,6 +3,7 @@ import type { ConditionGroup } from "./conditionTypes";
 import { recordToGroup, groupToRecord, createEmptyGroup } from "./conditionTypes";
 import { ConditionGroupBlock } from "./ConditionGroup";
 import type { SelectOption } from "./ConditionRule";
+import { CONDITION_HELP_TEXT, DEFAULT_CONDITION_LABEL } from "../../../entities/shared/conditionAdapter";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,9 +47,10 @@ export function ConditionBuilder({
         <div className="flex items-center gap-1.5">
           <GitBranch className="h-3.5 w-3.5 text-violet-400" />
           <span className="text-xs font-medium text-slate-300">
-            {label ?? "분기 조건"}
+            {label ?? DEFAULT_CONDITION_LABEL}
           </span>
         </div>
+        <p className="sr-only">{CONDITION_HELP_TEXT}</p>
         <button
           type="button"
           onClick={handleClear}

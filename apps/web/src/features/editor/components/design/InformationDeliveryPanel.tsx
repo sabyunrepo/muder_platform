@@ -9,7 +9,7 @@ import {
   isCompleteInformationDelivery,
   makeEmptyInformationDelivery,
   type InformationDeliveryViewModel,
-} from "../../entities/phase/phaseEntityAdapter";
+} from "../../entities/shared/informationDeliveryAdapter";
 
 interface InformationDeliveryPanelProps {
   themeId: string;
