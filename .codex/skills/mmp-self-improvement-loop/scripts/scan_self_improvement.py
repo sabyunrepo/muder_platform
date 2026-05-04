@@ -18,8 +18,10 @@ def load_json(path: Path) -> dict[str, Any]:
         return json.load(handle)
 
 
-def load_candidates(path: Path) -> list[dict[str, Any]]:
+def load_candidates(path: Path, *, required: bool = False) -> list[dict[str, Any]]:
     if not path.exists():
+        if required:
+            raise SystemExit(f"missing required candidates.jsonl: {path}")
         return []
     rows: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
@@ -42,9 +44,16 @@ def validate_state(state: dict[str, Any]) -> list[str]:
     if not isinstance(triggers, dict):
         errors.append("triggers must be an object")
     else:
-        for key in ["review_after_pr_count", "repeat_signal_threshold", "repeat_manual_command_threshold"]:
-            if not isinstance(triggers.get(key), int) or triggers[key] < 1:
+        positive_int_keys = ["review_after_pr_count", "repeat_signal_threshold", "repeat_manual_command_threshold"]
+        non_negative_int_keys = ["merged_prs_since_review"]
+        for key in positive_int_keys:
+            value = triggers.get(key)
+            if type(value) is not int or value < 1:
                 errors.append(f"triggers.{key} must be a positive integer")
+        for key in non_negative_int_keys:
+            value = triggers.get(key)
+            if type(value) is not int or value < 0:
+                errors.append(f"triggers.{key} must be a non-negative integer")
     for key in ["active_candidates", "resolved_candidates"]:
         if not isinstance(state.get(key), list):
             errors.append(f"{key} must be an array")
@@ -80,7 +89,7 @@ def main() -> int:
     args = parser.parse_args()
 
     state = load_json(STATE_PATH)
-    candidates = load_candidates(CANDIDATES_PATH)
+    candidates = load_candidates(CANDIDATES_PATH, required=args.validate)
 
     errors = validate_state(state)
     candidate_ids = {item.get("id") for item in candidates if item.get("id")}
