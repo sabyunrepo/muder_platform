@@ -487,13 +487,19 @@ func TestVotingModule_ReactToOpenClose(t *testing.T) {
 
 func TestVotingModule_TallyResults(t *testing.T) {
 	tests := []struct {
-		name       string
-		config     string
-		votes      map[uuid.UUID]string
-		alive      int
-		total      int
-		wantWinner string
-		wantTie    bool
+		name              string
+		config            string
+		votes             map[uuid.UUID]string
+		alive             int
+		total             int
+		wantWinner        string
+		wantTie           bool
+		wantOutcome       VoteOutcome
+		wantTotalVotes    int
+		wantAbstainCount  int
+		wantEligible      int
+		wantParticipation int
+		wantTieCandidates []string
 	}{
 		{
 			name:   "clear winner",
@@ -503,10 +509,14 @@ func TestVotingModule_TallyResults(t *testing.T) {
 				uuid.New(): "char_A",
 				uuid.New(): "char_B",
 			},
-			alive:      3,
-			total:      3,
-			wantWinner: "char_A",
-			wantTie:    false,
+			alive:             3,
+			total:             3,
+			wantWinner:        "char_A",
+			wantTie:           false,
+			wantOutcome:       VoteOutcomeWinner,
+			wantTotalVotes:    3,
+			wantEligible:      3,
+			wantParticipation: 100,
 		},
 		{
 			name:   "tie with revote",
@@ -515,10 +525,15 @@ func TestVotingModule_TallyResults(t *testing.T) {
 				uuid.New(): "char_A",
 				uuid.New(): "char_B",
 			},
-			alive:      2,
-			total:      2,
-			wantWinner: "",
-			wantTie:    true,
+			alive:             2,
+			total:             2,
+			wantWinner:        "",
+			wantTie:           true,
+			wantOutcome:       VoteOutcomeTie,
+			wantTotalVotes:    2,
+			wantEligible:      2,
+			wantParticipation: 100,
+			wantTieCandidates: []string{"char_A", "char_B"},
 		},
 		{
 			name:   "tie with no_result",
@@ -527,10 +542,15 @@ func TestVotingModule_TallyResults(t *testing.T) {
 				uuid.New(): "char_A",
 				uuid.New(): "char_B",
 			},
-			alive:      2,
-			total:      2,
-			wantWinner: "",
-			wantTie:    true,
+			alive:             2,
+			total:             2,
+			wantWinner:        "",
+			wantTie:           false,
+			wantOutcome:       VoteOutcomeNoResult,
+			wantTotalVotes:    2,
+			wantEligible:      2,
+			wantParticipation: 100,
+			wantTieCandidates: []string{"char_A", "char_B"},
 		},
 		{
 			name:   "insufficient participation",
@@ -538,10 +558,14 @@ func TestVotingModule_TallyResults(t *testing.T) {
 			votes: map[uuid.UUID]string{
 				uuid.New(): "char_A",
 			},
-			alive:      4,
-			total:      4,
-			wantWinner: "",
-			wantTie:    true,
+			alive:             4,
+			total:             4,
+			wantWinner:        "",
+			wantTie:           false,
+			wantOutcome:       VoteOutcomeInsufficientParticipation,
+			wantTotalVotes:    1,
+			wantEligible:      4,
+			wantParticipation: 25,
 		},
 	}
 
@@ -559,8 +583,56 @@ func TestVotingModule_TallyResults(t *testing.T) {
 			if result.IsTie != tt.wantTie {
 				t.Errorf("IsTie = %v, want %v", result.IsTie, tt.wantTie)
 			}
+			if result.Outcome != tt.wantOutcome {
+				t.Errorf("Outcome = %q, want %q", result.Outcome, tt.wantOutcome)
+			}
+			if result.TotalVotes != tt.wantTotalVotes {
+				t.Errorf("TotalVotes = %d, want %d", result.TotalVotes, tt.wantTotalVotes)
+			}
+			if result.AbstainCount != tt.wantAbstainCount {
+				t.Errorf("AbstainCount = %d, want %d", result.AbstainCount, tt.wantAbstainCount)
+			}
+			if result.EligibleVoters != tt.wantEligible {
+				t.Errorf("EligibleVoters = %d, want %d", result.EligibleVoters, tt.wantEligible)
+			}
+			if result.ParticipationPct != tt.wantParticipation {
+				t.Errorf("ParticipationPct = %d, want %d", result.ParticipationPct, tt.wantParticipation)
+			}
+			if len(tt.wantTieCandidates) > 0 && !assertStringSlicesEqual(result.TieCandidates, tt.wantTieCandidates) {
+				t.Errorf("TieCandidates = %#v, want %#v", result.TieCandidates, tt.wantTieCandidates)
+			}
 		})
 	}
+}
+
+func TestVotingModule_TallyResultsCountsAbstainAndDeadVoters(t *testing.T) {
+	m := initVotingModule(t, `{"allowAbstain":true,"deadCanVote":true,"minParticipation":1}`)
+	m.votes = map[uuid.UUID]string{
+		uuid.New(): "char_A",
+		uuid.New(): "",
+	}
+	m.alivePlayers = 1
+	m.totalPlayers = 4
+
+	result := m.tallyResults()
+	if result.Winner != "char_A" {
+		t.Fatalf("Winner = %q, want char_A", result.Winner)
+	}
+	if result.TotalVotes != 2 || result.AbstainCount != 1 || result.EligibleVoters != 4 || result.ParticipationPct != 50 {
+		t.Fatalf("unexpected breakdown: %#v", result)
+	}
+}
+
+func assertStringSlicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func TestVotingModule_TallyRandomTieBreaker(t *testing.T) {
@@ -628,6 +700,47 @@ func TestVotingModule_BuildState_SecretMode(t *testing.T) {
 	}
 	if state.VotedCount != 1 {
 		t.Errorf("VotedCount = %d, want 1", state.VotedCount)
+	}
+}
+
+func TestVotingModule_BuildStateForSecretModeIncludesAggregateLastResultOnly(t *testing.T) {
+	m := initVotingModule(t, `{"mode":"secret","minParticipation":0}`)
+	voterA := uuid.New()
+	voterB := uuid.New()
+	m.mu.Lock()
+	m.currentRound = 1
+	m.votes[voterA] = "char_A"
+	m.votes[voterB] = "char_B"
+	m.lastResult = &VoteResult{
+		Results:          map[string]int{"char_A": 1, "char_B": 1},
+		Winner:           "",
+		IsTie:            true,
+		Round:            1,
+		Outcome:          VoteOutcomeTie,
+		TotalVotes:       2,
+		EligibleVoters:   2,
+		ParticipationPct: 100,
+		TieCandidates:    []string{"char_A", "char_B"},
+	}
+	m.mu.Unlock()
+
+	data, err := m.BuildStateFor(voterA)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+
+	var state votingState
+	if err := json.Unmarshal(data, &state); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	if got := state.Votes[voterA.String()]; got != "char_A" {
+		t.Fatalf("own vote = %q, want char_A", got)
+	}
+	if _, leaked := state.Votes[voterB.String()]; leaked {
+		t.Fatal("secret player-aware state leaked another player's vote")
+	}
+	if state.LastResult == nil || state.LastResult.TotalVotes != 2 || state.LastResult.Outcome != VoteOutcomeTie {
+		t.Fatalf("lastResult missing aggregate breakdown: %#v", state.LastResult)
 	}
 }
 
@@ -928,6 +1041,35 @@ func TestVotingModule_SaveRestoreState(t *testing.T) {
 	}
 	if m2.config.MinParticipation != 50 {
 		t.Errorf("config.MinParticipation = %d, want 50", m2.config.MinParticipation)
+	}
+}
+
+func TestVotingModule_SaveRestoreStatePreservesLastResult(t *testing.T) {
+	m := initVotingModule(t, `{"mode":"secret","minParticipation":0}`)
+	m.mu.Lock()
+	m.currentRound = 2
+	m.lastResult = &VoteResult{
+		Results:          map[string]int{"char_A": 2},
+		Winner:           "char_A",
+		Round:            2,
+		Outcome:          VoteOutcomeWinner,
+		TotalVotes:       2,
+		EligibleVoters:   3,
+		ParticipationPct: 66,
+	}
+	m.mu.Unlock()
+
+	savedState, err := m.SaveState(context.Background())
+	if err != nil {
+		t.Fatalf("SaveState: %v", err)
+	}
+
+	m2 := initVotingModule(t, "")
+	if err := m2.RestoreState(context.Background(), uuid.Nil, savedState); err != nil {
+		t.Fatalf("RestoreState: %v", err)
+	}
+	if m2.lastResult == nil || m2.lastResult.Winner != "char_A" || m2.lastResult.TotalVotes != 2 {
+		t.Fatalf("lastResult not restored: %#v", m2.lastResult)
 	}
 }
 
