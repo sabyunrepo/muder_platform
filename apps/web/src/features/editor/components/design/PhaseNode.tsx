@@ -26,7 +26,7 @@ export function PhaseNode({
       <div className="flex items-center gap-2">
         <Layers className="h-4 w-4 shrink-0 text-amber-400" />
         <span className="text-xs font-medium text-slate-200">
-          {data.label ?? "새 페이즈"}
+          {data.label ?? "새 장면"}
         </span>
       </div>
 

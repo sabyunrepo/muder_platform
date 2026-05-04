@@ -24,7 +24,7 @@ interface NodeOption {
 }
 
 const NODE_OPTIONS: NodeOption[] = [
-  { type: "phase", label: "페이즈", description: "게임 단계" },
+  { type: "phase", label: "장면", description: "스토리 진행" },
   { type: "branch", label: "분기", description: "조건 분기" },
   { type: "ending", label: "엔딩", description: "게임 종료" },
 ];
@@ -76,7 +76,7 @@ export function FlowToolbar({
           className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400"
         >
           <Plus className="h-3.5 w-3.5" />
-          노드 추가
+          항목 추가
           <ChevronDown className="h-3 w-3" />
         </button>
 

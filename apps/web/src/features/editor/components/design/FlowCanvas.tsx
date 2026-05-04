@@ -15,6 +15,7 @@ import { PhaseNode } from "./PhaseNode";
 import { EndingNode } from "./EndingNode";
 import { NodeDetailPanel } from "./NodeDetailPanel";
 import { FlowSimulationPanel } from "./FlowSimulationPanel";
+import { StorySceneSummary } from "./StorySceneSummary";
 import { branchNodeTypes, conditionEdgeTypes } from "./flowNodeRegistry";
 import type { FlowNodeType } from "../../flowTypes";
 
@@ -126,6 +127,7 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         onToggleSimulation={() => setShowSim((v) => !v)}
         isSimulating={showSim}
       />
+      <StorySceneSummary nodes={nodes} edges={edges} />
       <div data-testid="flow-workspace" className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         {/* Canvas */}
         <div
@@ -160,7 +162,7 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
           {!showSim && !selectedNode && (
             <div className="p-4 text-sm leading-6 text-slate-400">
-              페이즈나 결말 노드를 선택하면 세부 설정을 편집할 수 있습니다.
+              장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.
             </div>
           )}
           {showSim && (

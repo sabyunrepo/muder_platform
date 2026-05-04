@@ -50,9 +50,9 @@ function makeProps(data: Record<string, unknown> = {}, selected = false) {
 // ---------------------------------------------------------------------------
 
 describe("PhaseNode", () => {
-  it("기본 라벨 '새 페이즈'를 렌더링한다", () => {
+  it("기본 라벨 '새 장면'을 렌더링한다", () => {
     render(<PhaseNode {...makeProps()} />);
-    expect(screen.getByText("새 페이즈")).toBeDefined();
+    expect(screen.getByText("새 장면")).toBeDefined();
   });
 
   it("data.label이 있으면 해당 라벨을 렌더링한다", () => {

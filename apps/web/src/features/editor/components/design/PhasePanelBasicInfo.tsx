@@ -31,7 +31,7 @@ export function PhasePanelBasicInfo({
           value={label ?? ""}
           onChange={(e) => onChange({ label: e.target.value })}
           onBlur={onFlush}
-          placeholder="페이즈 이름"
+          placeholder="장면 이름"
           className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
         />
       </div>

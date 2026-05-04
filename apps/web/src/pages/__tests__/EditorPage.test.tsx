@@ -51,6 +51,7 @@ describe('EditorPage', () => {
   });
 
   it.each([
+    ['design', 'design'],
     ['story', 'story'],
     ['characters', 'characters'],
     ['clues', 'clues'],
@@ -65,6 +66,15 @@ describe('EditorPage', () => {
 
     expect(screen.getByText(new RegExp(`테마 에디터 theme-1 ${segment}`))).toBeDefined();
     expect(setActiveTabMock).toHaveBeenCalledWith(expectedTab);
+  });
+
+  it('design 하위 route segment를 실제 DesignTab subtab segment로 전달한다', () => {
+    paramsMock.mockReturnValue({ id: 'theme-1', tab: 'design', designTab: 'flow' });
+
+    render(<EditorPage />);
+
+    expect(screen.getByText(/테마 에디터 theme-1 flow/)).toBeDefined();
+    expect(setActiveTabMock).toHaveBeenCalledWith('design');
   });
 
   it('modules 라우트 segment를 design 탭으로 매핑한다', () => {

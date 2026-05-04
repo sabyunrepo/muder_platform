@@ -95,7 +95,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
       />,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "수사 페이즈" } });
 
     // 500ms old threshold — must NOT fire (regression guard).
@@ -120,7 +120,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
       />,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "A" } });
     await act(async () => { vi.advanceTimersByTime(1000); });
     fireEvent.change(labelInput, { target: { value: "AB" } });
@@ -139,7 +139,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
       />,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "즉시" } });
     expect(mutateMock).not.toHaveBeenCalled();
 
@@ -180,7 +180,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
       />,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.blur(labelInput);
     expect(mutateMock).not.toHaveBeenCalled();
   });
@@ -203,7 +203,7 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
       </QueryClientProvider>,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "낙관" } });
     fireEvent.blur(labelInput); // flush
 
@@ -228,7 +228,7 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
       </QueryClientProvider>,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "실패할 라벨" } });
     fireEvent.blur(labelInput); // flush → mutate → onError → rollback
 
@@ -253,7 +253,7 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
       </QueryClientProvider>,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "unmount-flush" } });
     // Do NOT advance timers or blur — leave a pending write.
     expect(mutateMock).not.toHaveBeenCalled();
@@ -279,7 +279,7 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
       </QueryClientProvider>,
     );
 
-    const labelInput = screen.getByPlaceholderText("페이즈 이름");
+    const labelInput = screen.getByPlaceholderText("장면 이름");
     fireEvent.change(labelInput, { target: { value: "cache-less" } });
     fireEvent.blur(labelInput);
 

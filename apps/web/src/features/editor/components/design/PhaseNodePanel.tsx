@@ -70,7 +70,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
   return (
     <div className="flex flex-col gap-3 p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-        페이즈 설정
+        장면 설정
       </h3>
 
       <PhaseSummaryCard viewModel={viewModel} />
@@ -106,13 +106,13 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
       <div className="border-t border-slate-800" />
 
       <ActionListEditor
-        label="진입 액션 (onEnter)"
+        label="장면 시작 때 적용"
         actions={(data.onEnter as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onEnter: actions })}
         hiddenTypes={[DELIVER_INFORMATION_ACTION, "deliver_information"]}
       />
       <ActionListEditor
-        label="퇴장 액션 (onExit)"
+        label="장면 종료 때 적용"
         actions={(data.onExit as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onExit: actions })}
       />
@@ -124,16 +124,16 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
 function PhaseSummaryCard({ viewModel }: { viewModel: PhaseEditorViewModel }) {
   const enterActions = viewModel.enterActionLabels.length > 0
     ? viewModel.enterActionLabels.join(", ")
-    : "추가 실행 없음";
+    : "시작 변화 없음";
   const exitActions = viewModel.exitActionLabels.length > 0
     ? viewModel.exitActionLabels.join(", ")
-    : "종료 실행 없음";
+    : "마무리 변화 없음";
 
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
       <div className="flex flex-col gap-1">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300/80">
-          페이즈 요약
+          장면 요약
         </p>
         <h4 className="text-sm font-semibold text-slate-100">{viewModel.title}</h4>
         <p className="text-xs leading-5 text-slate-500">

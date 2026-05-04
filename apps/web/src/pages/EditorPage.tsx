@@ -6,15 +6,20 @@ import { readEditorTabFromRouteSegment } from "@/features/editor/routeSegments";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 
 export default function EditorPage() {
-  const { id, tab } = useParams<{ id: string; tab?: string }>();
+  const { id, tab, designTab } = useParams<{
+    id: string;
+    tab?: string;
+    designTab?: string;
+  }>();
   const setActiveTab = useEditorUI((state) => state.setActiveTab);
+  const routeSegment = designTab ?? tab;
 
   useEffect(() => {
-    setActiveTab(readEditorTabFromRouteSegment(tab));
-  }, [setActiveTab, tab]);
+    setActiveTab(readEditorTabFromRouteSegment(routeSegment));
+  }, [setActiveTab, routeSegment]);
 
   if (id) {
-    return <ThemeEditor themeId={id} routeSegment={tab} />;
+    return <ThemeEditor themeId={id} routeSegment={routeSegment} />;
   }
 
   return <EditorDashboard />;
