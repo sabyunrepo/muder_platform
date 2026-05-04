@@ -296,6 +296,8 @@ jobs:
       # install + always-required browser install. Browsers themselves do not
       # need that font (chromium ships its own fallbacks for headless QA).
       - name: Install Playwright system deps (best-effort)
+        timeout-minutes: 8
+        continue-on-error: true
         working-directory: apps/web
         run: |
           sudo apt-get update -y || true
