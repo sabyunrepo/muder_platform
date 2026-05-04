@@ -86,7 +86,8 @@ export function formatMediaFileSize(bytes?: number): string | null {
   if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return null;
   if (bytes < 1024) return `${Math.round(bytes)}B`;
   const kib = bytes / 1024;
-  if (kib < 1024) return `${formatCompactNumber(kib)}KB`;
+  const kbLabel = formatCompactNumber(kib);
+  if (Number(kbLabel) < 1024) return `${kbLabel}KB`;
   return `${formatCompactNumber(kib / 1024)}MB`;
 }
 

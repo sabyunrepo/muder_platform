@@ -94,6 +94,7 @@ describe("mediaResourceAdapter", () => {
     expect(formatMediaFileSize(512)).toBe("512B");
     expect(formatMediaFileSize(20_480)).toBe("20KB");
     expect(formatMediaFileSize(1_572_864)).toBe("1.5MB");
+    expect(formatMediaFileSize(1_048_064)).toBe("1MB");
     expect(formatMediaFileSize(undefined)).toBeNull();
   });
 });
