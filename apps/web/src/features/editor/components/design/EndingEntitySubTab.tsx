@@ -1,18 +1,21 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import type { EditorThemeResponse } from "@/features/editor/api";
 import { useFlowData } from "../../hooks/useFlowData";
 import type { FlowNodeData } from "../../flowTypes";
 import { EndingEntityDetail } from "./EndingEntityDetail";
 import { EndingDecisionSummaryPanel } from "./EndingDecisionSummaryPanel";
 import { EndingEmptyState } from "./EndingEmptyState";
 import { EndingEntityHeader } from "./EndingEntityHeader";
+import { EndingBranchRulesPanel } from "./EndingBranchRulesPanel";
 import { buildEndingDecisionSummary, toEndingEditorViewModel } from "../../entities/ending/endingEntityAdapter";
 
 interface EndingEntitySubTabProps {
   themeId: string;
+  theme: EditorThemeResponse;
 }
 
-export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
+export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { nodes, edges = [], isLoading, isError, error, refetch, addNode, updateNodeData } = useFlowData(themeId);
@@ -83,6 +86,8 @@ export function EndingEntitySubTab({ themeId }: EndingEntitySubTabProps) {
       <EndingEntityHeader onAddEnding={handleAddEnding} />
 
       <EndingDecisionSummaryPanel summary={decisionSummary} />
+
+      <EndingBranchRulesPanel themeId={themeId} theme={theme} endingNodes={endingNodes} />
 
       {endingNodes.length === 0 ? (
         <EndingEmptyState />

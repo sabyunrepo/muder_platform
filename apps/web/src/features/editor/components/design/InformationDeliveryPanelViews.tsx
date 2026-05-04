@@ -1,15 +1,14 @@
 import { Plus, Search, Trash2, Users, UserRound } from "lucide-react";
-import type { InformationDeliveryViewModel } from "./phaseEditorAdapter";
+import type { InformationDeliveryViewModel } from "../../entities/shared/informationDeliveryAdapter";
+import type { ReadingSectionPickerOption } from "../../entities/story/readingSectionAdapter";
 
 interface InformationDeliveryHeaderProps {
-  isStoryProgression: boolean;
   canAddCharacterDelivery: boolean;
   onAddAllPlayers: () => void;
   onAddCharacter: () => void;
 }
 
 export function InformationDeliveryHeader({
-  isStoryProgression,
   canAddCharacterDelivery,
   onAddAllPlayers,
   onAddCharacter,
@@ -18,21 +17,19 @@ export function InformationDeliveryHeader({
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h4 className="text-sm font-semibold text-slate-100">정보 전달</h4>
-        <p className="mt-1 text-xs leading-5 text-slate-500">
+        <p className="mt-1 text-xs leading-5 text-slate-400">
           이 페이즈가 시작될 때 캐릭터별로 보여줄 스토리 정보를 선택합니다.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {isStoryProgression && (
-          <button
-            type="button"
-            onClick={onAddAllPlayers}
-            className="inline-flex items-center justify-center gap-1 rounded border border-amber-500/40 px-2.5 py-1.5 text-xs text-amber-200 hover:bg-amber-500/10"
-          >
-            <Users className="h-3.5 w-3.5" />
-            전체 전달
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onAddAllPlayers}
+          className="inline-flex items-center justify-center gap-1 rounded border border-amber-500/40 px-2.5 py-1.5 text-xs text-amber-200 hover:bg-amber-500/10"
+        >
+          <Users className="h-3.5 w-3.5" />
+          전체 전달
+        </button>
         <button
           type="button"
           onClick={onAddCharacter}
@@ -40,7 +37,7 @@ export function InformationDeliveryHeader({
           className={`inline-flex items-center justify-center gap-1 rounded px-2.5 py-1.5 text-xs font-medium ${
             canAddCharacterDelivery
               ? "bg-amber-500 text-slate-950 hover:bg-amber-400"
-              : "cursor-not-allowed border border-slate-700 text-slate-500"
+              : "cursor-not-allowed border border-slate-700 text-slate-400"
           }`}
         >
           <Plus className="h-3.5 w-3.5" />
@@ -54,7 +51,6 @@ export function InformationDeliveryHeader({
 interface InformationDeliveryContentProps {
   loading: boolean;
   hasLoadError: boolean;
-  isStoryProgression: boolean;
   hasCharacters: boolean;
   hasSections: boolean;
   characterQuery: string;
@@ -62,8 +58,8 @@ interface InformationDeliveryContentProps {
   deliveries: InformationDeliveryViewModel[];
   characters: { id: string; name: string }[];
   allCharacters: { id: string; name: string }[];
-  sections: { id: string; name: string; lines: unknown[] }[];
-  allSections: { id: string; name: string; lines: unknown[] }[];
+  sections: ReadingSectionPickerOption[];
+  allSections: ReadingSectionPickerOption[];
   onRetryLoad: () => void;
   onCharacterQueryChange: (value: string) => void;
   onSectionQueryChange: (value: string) => void;
@@ -75,7 +71,6 @@ interface InformationDeliveryContentProps {
 export function InformationDeliveryContent({
   loading,
   hasLoadError,
-  isStoryProgression,
   hasCharacters,
   hasSections,
   characterQuery,
@@ -94,7 +89,7 @@ export function InformationDeliveryContent({
 }: InformationDeliveryContentProps) {
   if (loading) {
     return (
-      <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs text-slate-500">
+      <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs text-slate-400">
         캐릭터와 스토리 정보를 불러오는 중입니다.
       </p>
     );
@@ -117,16 +112,8 @@ export function InformationDeliveryContent({
 
   if (!hasSections) {
     return (
-      <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-500">
-        전달할 정보가 없습니다. 먼저 스토리 탭의 리딩 섹션에서 플레이어에게 보여줄 정보를 만들어 주세요.
-      </p>
-    );
-  }
-
-  if (!hasCharacters && !isStoryProgression) {
-    return (
-      <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-500">
-        받을 캐릭터가 없습니다. 먼저 캐릭터를 만든 뒤 캐릭터별 정보 전달을 설정해 주세요.
+      <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-400">
+        전달할 정보가 없습니다. 먼저 스토리 탭의 스토리 정보에서 플레이어에게 보여줄 정보를 만들어 주세요.
       </p>
     );
   }
@@ -149,8 +136,8 @@ export function InformationDeliveryContent({
       </div>
 
       {deliveries.length === 0 ? (
-        <p className="mt-4 rounded border border-dashed border-slate-700 px-3 py-4 text-center text-xs leading-5 text-slate-500">
-          {getEmptyDeliveryMessage(isStoryProgression, hasCharacters)}
+        <p className="mt-4 rounded border border-dashed border-slate-700 px-3 py-4 text-center text-xs leading-5 text-slate-400">
+          {getEmptyDeliveryMessage(hasCharacters)}
         </p>
       ) : (
         <div className="mt-4 space-y-3">
@@ -175,10 +162,7 @@ export function InformationDeliveryContent({
 }
 
 
-function getEmptyDeliveryMessage(isStoryProgression: boolean, hasCharacters: boolean): string {
-  if (!isStoryProgression) {
-    return "아직 전달 설정이 없습니다. 캐릭터별 추가를 눌러 누구에게 어떤 정보를 줄지 정해 주세요.";
-  }
+function getEmptyDeliveryMessage(hasCharacters: boolean): string {
   if (!hasCharacters) {
     return "아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 정보를 설정해 주세요.";
   }
@@ -197,7 +181,7 @@ function SearchField({ label, value, placeholder, onChange }: SearchFieldProps) 
     <label className="flex flex-col gap-1 text-[11px] text-slate-400">
       {label}
       <span className="flex items-center gap-2 rounded border border-slate-700 bg-slate-900 px-2 py-1.5 focus-within:border-amber-500 focus-within:ring-2 focus-within:ring-amber-500/40">
-        <Search className="h-3.5 w-3.5 text-slate-500" />
+        <Search className="h-3.5 w-3.5 text-slate-400" />
         <input
           type="search"
           value={value}
@@ -215,8 +199,8 @@ interface DeliveryCardProps {
   delivery: InformationDeliveryViewModel;
   characters: { id: string; name: string }[];
   allCharacters: { id: string; name: string }[];
-  sections: { id: string; name: string; lines: unknown[] }[];
-  allSections: { id: string; name: string; lines: unknown[] }[];
+  sections: ReadingSectionPickerOption[];
+  allSections: ReadingSectionPickerOption[];
   onSelectCharacter: (characterId: string) => void;
   onToggleSection: (sectionId: string) => void;
   onRemove: () => void;
@@ -243,7 +227,7 @@ function DeliveryCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold text-slate-200">전달 설정 {index + 1}</p>
-          <p className="mt-1 text-[11px] text-slate-500">
+          <p className="mt-1 text-[11px] text-slate-400">
             {selectedCharacterName ?? "받을 캐릭터를 선택하세요"} · {delivery.readingSectionIds.length}개 정보
           </p>
         </div>
@@ -251,7 +235,7 @@ function DeliveryCard({
           type="button"
           onClick={onRemove}
           aria-label={`전달 설정 ${index + 1} 삭제`}
-          className="rounded p-1 text-slate-500 hover:bg-red-500/10 hover:text-red-300"
+          className="rounded p-1 text-slate-400 hover:bg-red-500/10 hover:text-red-300"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -261,7 +245,7 @@ function DeliveryCard({
         {delivery.recipientType === "all_players" ? (
           <div className="flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             <Users className="h-4 w-4" />
-            스토리 진행용 공통 정보로 모든 플레이어에게 전달됩니다.
+            이 페이즈의 공통 정보로 모든 플레이어에게 전달됩니다.
           </div>
         ) : (
           <OptionList
@@ -280,7 +264,7 @@ function DeliveryCard({
           emptyText="검색 결과가 없습니다."
           items={sections}
           selectedIds={delivery.readingSectionIds}
-          getMeta={(section) => `${section.lines.length}줄`}
+          getMeta={(section) => section.metaLabel}
           onToggle={onToggleSection}
           allItems={allSections}
         />
@@ -292,6 +276,8 @@ function DeliveryCard({
 interface OptionItem {
   id: string;
   name: string;
+  summary?: string;
+  groupLabel?: string;
 }
 
 interface OptionListProps<T extends OptionItem> {
@@ -339,7 +325,7 @@ function OptionList<T extends OptionItem>({
         </div>
       )}
       {items.length === 0 ? (
-        <p className="px-2 py-3 text-center text-xs text-slate-600">{emptyText}</p>
+        <p className="px-2 py-3 text-center text-xs text-slate-400">{emptyText}</p>
       ) : (
         <div className="grid max-h-44 gap-1 overflow-y-auto pr-1">
           {items.map((item) => {
@@ -357,8 +343,11 @@ function OptionList<T extends OptionItem>({
                     : "bg-slate-900 text-slate-300 hover:bg-slate-800"
                 }`}
               >
-                <span className="min-w-0 flex-1 truncate">{item.name}</span>
-                {meta && <span className="shrink-0 text-[10px] text-slate-500">{meta}</span>}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{item.name}</span>
+                  {item.summary && <span className="mt-0.5 block truncate text-[10px] text-slate-400">{item.summary}</span>}
+                </span>
+                {meta && <span className="shrink-0 text-[10px] text-slate-400">{meta}</span>}
               </button>
             );
           })}

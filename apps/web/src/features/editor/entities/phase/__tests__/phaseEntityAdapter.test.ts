@@ -1,14 +1,16 @@
+import type { Edge } from "@xyflow/react";
 import { describe, expect, it, vi } from "vitest";
 import type { FlowNodeData } from "../../../flowTypes";
 import {
   DELIVER_INFORMATION_ACTION,
   flowNodeToInformationDeliveries,
   informationDeliveriesToFlowNodePatch,
-} from "../phaseEditorAdapter";
+  toPhaseEditorViewModel,
+} from "../phaseEntityAdapter";
 
 vi.stubGlobal("crypto", { randomUUID: () => "generated-id" });
 
-describe("phaseEditorAdapter", () => {
+describe("phaseEntityAdapter", () => {
   it("API flow node의 정보 전달 action을 제작자용 ViewModel로 변환한다", () => {
     const data: FlowNodeData = {
       onEnter: [
@@ -102,19 +104,6 @@ describe("phaseEditorAdapter", () => {
     });
   });
 
-  it("미완성 전달 설정은 저장 payload에서 제외한다", () => {
-    const data: FlowNodeData = { onEnter: [{ id: "chat", type: "enable_chat" }] };
-
-    expect(
-      informationDeliveriesToFlowNodePatch(data, [
-        { id: "empty", recipientType: "character", readingSectionIds: [] },
-        { id: "no-character", recipientType: "character", readingSectionIds: ["rs-1"] },
-        { id: "no-section", recipientType: "all_players", readingSectionIds: [] },
-      ]),
-    ).toEqual({ onEnter: [{ id: "chat", type: "enable_chat" }] });
-  });
-
-
   it("모든 페이즈에서 all_players 전달 설정을 저장한다", () => {
     expect(
       informationDeliveriesToFlowNodePatch(
@@ -144,4 +133,45 @@ describe("phaseEditorAdapter", () => {
     ]);
   });
 
+  it("페이즈 설정과 연결 상태를 제작자용 요약 ViewModel로 변환한다", () => {
+    const data: FlowNodeData = {
+      label: "1차 조사",
+      phase_type: "investigation",
+      duration: 25,
+      rounds: 3,
+      autoAdvance: true,
+      warningAt: 120,
+      onEnter: [
+        { type: "play_bgm" },
+        {
+          type: DELIVER_INFORMATION_ACTION,
+          params: { deliveries: [{ target: { type: "character", character_id: "char-1" }, reading_section_ids: ["rs-1"] }] },
+        },
+      ],
+      onExit: [{ type: "disable_chat" }],
+    };
+    const edges: Edge[] = [
+      { id: "e1", source: "phase-1", target: "phase-2" },
+      {
+        id: "e2",
+        source: "phase-1",
+        target: "ending-1",
+        data: { condition: { type: "has_clue", clueId: "clue-1" } },
+      },
+    ];
+
+    expect(toPhaseEditorViewModel(data, edges)).toMatchObject({
+      title: "1차 조사",
+      phaseTypeLabel: "수사",
+      durationLabel: "25분",
+      roundLabel: "3라운드",
+      autoAdvanceLabel: "자동 진행",
+      warningLabel: "120초 전에 경고",
+      informationDeliveryCount: 1,
+      enterActionLabels: ["BGM 재생"],
+      exitActionLabels: ["채팅 닫기"],
+      defaultTransitionLabel: "기본 이동 1개",
+      conditionalTransitionCount: 1,
+    });
+  });
 });

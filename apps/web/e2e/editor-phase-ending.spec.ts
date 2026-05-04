@@ -15,6 +15,24 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
 
   test.beforeEach(async ({ page }) => {
     state = freshState();
+    state.conflictCountdown = 0;
+    state.configJson = {
+      ...state.configJson,
+      modules: {
+        ending_branch: {
+          enabled: true,
+          config: {
+            questions: [
+              { id: "q1", text: "범인은 누구인가?", type: "single", choices: ["하윤", "민재"], respondents: "all", impact: "branch" },
+            ],
+            matrix: [
+              { priority: 1, ending: FLOW_NODE_ID, condition: { in: ["하윤", { var: "answers.q1.choices" }] } },
+            ],
+            defaultEnding: FLOW_NODE_ID,
+          },
+        },
+      },
+    };
     await mockCommonApis(page, state);
     await page.route(`**/v1/editor/themes/${THEME_ID}/flow`, async (route) => {
       if (route.request().method() === "GET") {
@@ -74,6 +92,28 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
     await expect(page.getByText("진실").first()).toBeVisible();
     await expect(page.getByLabel("결말 이름")).toHaveValue("진실");
     await expect(page.getByLabel("결말 본문")).toHaveValue("범인은 밝혀졌다.");
+
+    await expect(page.getByRole("heading", { name: "결말 판정 설정" })).toBeVisible();
+    await expect(page.getByLabel("질문 1 내용")).toHaveValue("범인은 누구인가?");
+    await page.getByLabel("질문 1 내용").fill("진범은 누구인가?");
+
+    const configRequest = page.waitForRequest((request) =>
+      request.method() === "PUT" && request.url().includes(`/v1/editor/themes/${THEME_ID}/config`),
+    );
+    await page.getByRole("button", { name: "판정 설정 저장" }).click();
+    const request = await configRequest;
+    expect(request.postDataJSON()).toMatchObject({
+      version: 1,
+      modules: {
+        ending_branch: {
+          enabled: true,
+          config: {
+            questions: [expect.objectContaining({ text: "진범은 누구인가?" })],
+            defaultEnding: FLOW_NODE_ID,
+          },
+        },
+      },
+    });
 
     const a11y = await new AxeBuilder({ page })
       .include('[data-testid="ending-entity-panel"]')

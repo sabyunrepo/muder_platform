@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useEditorCharacters } from "../../api";
 import { useReadingSections } from "../../readingApi";
+import {
+  filterReadingSectionOptions,
+  toReadingSectionPickerOptions,
+} from "../../entities/story/readingSectionAdapter";
 import { InformationDeliveryContent, InformationDeliveryHeader } from "./InformationDeliveryPanelViews";
 import type { FlowNodeData } from "../../flowTypes";
 import {
@@ -9,7 +13,7 @@ import {
   isCompleteInformationDelivery,
   makeEmptyInformationDelivery,
   type InformationDeliveryViewModel,
-} from "./phaseEditorAdapter";
+} from "../../entities/shared/informationDeliveryAdapter";
 
 interface InformationDeliveryPanelProps {
   themeId: string;
@@ -38,7 +42,7 @@ export function InformationDeliveryPanel({
   const [sectionQuery, setSectionQuery] = useState("");
   const savedDeliveries = useMemo(
     () => flowNodeToInformationDeliveries(phaseData),
-    [phaseData.onEnter],
+    [phaseData],
   );
   const [draftDeliveries, setDraftDeliveries] = useState(() => savedDeliveries);
 
@@ -58,11 +62,12 @@ export function InformationDeliveryPanel({
     return characters.filter((character) => character.name.toLowerCase().includes(query));
   }, [characters, characterQuery]);
 
-  const filteredSections = useMemo(() => {
-    const query = sectionQuery.trim().toLowerCase();
-    if (!query) return sections;
-    return sections.filter((section) => section.name.toLowerCase().includes(query));
-  }, [sections, sectionQuery]);
+  const sectionOptions = useMemo(() => toReadingSectionPickerOptions(sections), [sections]);
+
+  const filteredSections = useMemo(
+    () => filterReadingSectionOptions(sectionOptions, sectionQuery),
+    [sectionOptions, sectionQuery],
+  );
 
   const updateDeliveries = (next: InformationDeliveryViewModel[]) => {
     setDraftDeliveries(next);
@@ -98,7 +103,6 @@ export function InformationDeliveryPanel({
     });
   };
 
-  const isStoryProgression = phaseData.phase_type === "story_progression";
   const loading = charactersLoading || sectionsLoading;
   const hasLoadError = charactersError || sectionsError;
   const canAddCharacterDelivery = characters.length > 0;
@@ -111,7 +115,6 @@ export function InformationDeliveryPanel({
   return (
     <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
       <InformationDeliveryHeader
-        isStoryProgression={isStoryProgression}
         canAddCharacterDelivery={canAddCharacterDelivery}
         onAddAllPlayers={addAllPlayersDelivery}
         onAddCharacter={addCharacterDelivery}
@@ -120,7 +123,6 @@ export function InformationDeliveryPanel({
       <InformationDeliveryContent
         loading={loading}
         hasLoadError={hasLoadError}
-        isStoryProgression={isStoryProgression}
         hasCharacters={characters.length > 0}
         hasSections={sections.length > 0}
         characterQuery={characterQuery}
@@ -129,7 +131,7 @@ export function InformationDeliveryPanel({
         characters={filteredCharacters}
         allCharacters={characters}
         sections={filteredSections}
-        allSections={sections}
+        allSections={sectionOptions}
         onRetryLoad={retryLoad}
         onCharacterQueryChange={setCharacterQuery}
         onSectionQueryChange={setSectionQuery}

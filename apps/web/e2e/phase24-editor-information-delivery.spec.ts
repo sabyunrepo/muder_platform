@@ -123,6 +123,9 @@ test.describe("Phase 24 페이즈 정보 전달 Frontend Adapter", () => {
 
     await expect(page.getByText("페이즈 흐름")).toBeVisible({ timeout: 10_000 });
     await page.getByText("1차 조사").click();
+    await expect(page.getByText("페이즈 요약")).toBeVisible();
+    await expect(page.getByText("수사 · 25분 · 3라운드")).toBeVisible();
+    await expect(page.getByText("기본 이동 없음 · 조건 이동 0개")).toBeVisible();
     await expect(page.getByRole("heading", { name: "정보 전달" })).toBeVisible();
 
     await page.getByRole("button", { name: "캐릭터별 추가" }).click();

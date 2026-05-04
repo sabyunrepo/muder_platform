@@ -1,23 +1,6 @@
 import { Plus, Trash2 } from "lucide-react";
 import type { PhaseAction } from "../../flowTypes";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const ACTION_TYPES = [
-  { value: "broadcast", label: "브로드캐스트" },
-  { value: "enable_voting", label: "투표 활성화" },
-  { value: "disable_voting", label: "투표 비활성화" },
-  { value: "enable_chat", label: "채팅 활성화" },
-  { value: "disable_chat", label: "채팅 비활성화" },
-  { value: "play_bgm", label: "BGM 재생" },
-  { value: "stop_bgm", label: "BGM 정지" },
-];
-
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
+import { getVisibleCreatorActionOptions } from "../../entities/shared/actionAdapter";
 
 interface ActionListEditorProps {
   label: string;
@@ -25,10 +8,6 @@ interface ActionListEditorProps {
   onChange: (actions: PhaseAction[]) => void;
   hiddenTypes?: string[];
 }
-
-// ---------------------------------------------------------------------------
-// ActionListEditor — onEnter / onExit 액션 편집 UI
-// ---------------------------------------------------------------------------
 
 export function ActionListEditor({
   label,
@@ -39,9 +18,11 @@ export function ActionListEditor({
   const visibleActions = actions
     .map((action, index) => ({ action, index }))
     .filter(({ action }) => !hiddenTypes.includes(action.type));
-  const visibleActionTypes = ACTION_TYPES.filter((type) => !hiddenTypes.includes(type.value));
+  const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes);
+  const defaultActionType = visibleActionTypes[0]?.value;
   const handleAdd = () => {
-    onChange([...actions, { id: crypto.randomUUID(), type: "broadcast" }]);
+    if (!defaultActionType) return;
+    onChange([...actions, { id: crypto.randomUUID(), type: defaultActionType }]);
   };
 
   const handleRemove = (index: number) => {
@@ -49,9 +30,7 @@ export function ActionListEditor({
   };
 
   const handleTypeChange = (index: number, type: string) => {
-    const next = actions.map((a, i) =>
-      i === index ? { ...a, type } : a,
-    );
+    const next = actions.map((action, i) => (i === index ? { ...action, type } : action));
     onChange(next);
   };
 
@@ -62,16 +41,15 @@ export function ActionListEditor({
         <button
           type="button"
           onClick={handleAdd}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-slate-800 hover:text-amber-400"
+          disabled={!defaultActionType}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-slate-800 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
         >
           <Plus className="h-3 w-3" />
           추가
         </button>
       </div>
 
-      {visibleActions.length === 0 && (
-        <p className="text-[10px] text-slate-600">액션 없음</p>
-      )}
+      {visibleActions.length === 0 && <p className="text-[10px] text-slate-600">액션 없음</p>}
 
       {visibleActions.map(({ action, index: idx }) => (
         <div
@@ -84,9 +62,9 @@ export function ActionListEditor({
             aria-label={`${label} ${idx + 1} 액션 타입`}
             className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
           >
-            {visibleActionTypes.map((at) => (
-              <option key={at.value} value={at.value}>
-                {at.label}
+            {visibleActionTypes.map((actionType) => (
+              <option key={actionType.value} value={actionType.value}>
+                {actionType.label}
               </option>
             ))}
           </select>

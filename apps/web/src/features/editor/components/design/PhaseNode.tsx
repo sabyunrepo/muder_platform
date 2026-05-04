@@ -1,19 +1,7 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { Layers } from "lucide-react";
 import type { FlowNodeData } from "../../flowTypes";
-
-// ---------------------------------------------------------------------------
-// Phase type label map
-// ---------------------------------------------------------------------------
-
-const PHASE_TYPE_LABELS: Record<string, string> = {
-  investigation: "수사",
-  discussion: "토론",
-  voting: "투표",
-  free: "자유",
-  intermission: "인터미션",
-  story_progression: "스토리 진행",
-};
+import { getPhaseTypeLabel } from "../../entities/phase/phaseEntityAdapter";
 
 // ---------------------------------------------------------------------------
 // PhaseNode — Phase 커스텀 노드 (입력/출력 핸들, 선택 하이라이트)
@@ -23,9 +11,7 @@ export function PhaseNode({
   data,
   selected,
 }: NodeProps & { data: FlowNodeData }) {
-  const phaseLabel = data.phase_type
-    ? (PHASE_TYPE_LABELS[data.phase_type] ?? data.phase_type)
-    : null;
+  const phaseLabel = data.phase_type ? getPhaseTypeLabel(data.phase_type) : null;
 
   return (
     <div

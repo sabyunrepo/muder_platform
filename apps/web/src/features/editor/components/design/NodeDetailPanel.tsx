@@ -58,7 +58,7 @@ export function NodeDetailPanel({
             </span>
           </div>
         ) : node.type === "phase" ? (
-          <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} />
+          <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} edges={edges} />
         ) : node.type === "ending" ? (
           <EndingNodePanel node={node} themeId={themeId} onUpdate={onUpdate} />
         ) : node.type === "branch" ? (
