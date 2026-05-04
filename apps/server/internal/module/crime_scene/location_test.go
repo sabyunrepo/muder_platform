@@ -187,6 +187,9 @@ func TestLocationModule_SaveRestoreState(t *testing.T) {
 		"move", json.RawMessage(`{"location_id":"library"}`)); err != nil {
 		t.Fatalf("move: %v", err)
 	}
+	m.mu.Lock()
+	m.discoveredClues[playerID] = []string{"clue-library"}
+	m.mu.Unlock()
 
 	gs, err := m.SaveState(context.Background())
 	if err != nil {
@@ -207,6 +210,9 @@ func TestLocationModule_SaveRestoreState(t *testing.T) {
 	m2.mu.RLock()
 	if m2.positions[playerID] != "library" {
 		t.Fatalf("expected library after restore, got %q", m2.positions[playerID])
+	}
+	if got := m2.discoveredClues[playerID]; len(got) != 1 || got[0] != "clue-library" {
+		t.Fatalf("expected restored discovered clue, got %v", got)
 	}
 	m2.mu.RUnlock()
 }

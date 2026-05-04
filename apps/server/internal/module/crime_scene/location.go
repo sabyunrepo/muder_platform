@@ -25,22 +25,36 @@ type LocationDef struct {
 	AccessRules []string `json:"accessRules"`
 }
 
+// LocationClueDiscovery defines a runtime-owned clue discovery candidate for a
+// location. The editor adapter may expose this as "이 장소를 조사하면 발견할 단서"
+// but the backend engine owns idempotency and player-aware state.
+type LocationClueDiscovery struct {
+	ID              string   `json:"id,omitempty"`
+	LocationID      string   `json:"locationId"`
+	ClueID          string   `json:"clueId"`
+	RequiredClueIDs []string `json:"requiredClueIds,omitempty"`
+	OncePerPlayer   bool     `json:"oncePerPlayer"`
+}
+
 // LocationConfig defines settings for the location module.
 type LocationConfig struct {
-	Locations    []LocationDef `json:"locations"`
-	StartingLoc  string        `json:"startingLocation"`
-	MoveCooldown int           `json:"moveCooldownSec"` // 0 = no cooldown
+	Locations    []LocationDef           `json:"locations"`
+	StartingLoc  string                  `json:"startingLocation"`
+	MoveCooldown int                     `json:"moveCooldownSec"` // 0 = no cooldown
+	Discoveries  []LocationClueDiscovery `json:"discoveries,omitempty"`
 }
 
 // LocationModule tracks player positions and movement within the crime scene.
 type LocationModule struct {
-	mu          sync.RWMutex
-	deps        engine.ModuleDeps
-	config      LocationConfig
-	locationSet map[string]LocationDef
-	positions   map[uuid.UUID]string
-	history     map[uuid.UUID][]string
-	lastMove    map[uuid.UUID]time.Time
+	mu                    sync.RWMutex
+	deps                  engine.ModuleDeps
+	config                LocationConfig
+	locationSet           map[string]LocationDef
+	discoveriesByLocation map[string][]LocationClueDiscovery
+	positions             map[uuid.UUID]string
+	history               map[uuid.UUID][]string
+	discoveredClues       map[uuid.UUID][]string
+	lastMove              map[uuid.UUID]time.Time
 }
 
 // NewLocationModule creates a new LocationModule instance.
@@ -61,6 +75,8 @@ func (m *LocationModule) Init(_ context.Context, deps engine.ModuleDeps, config 
 	m.history = make(map[uuid.UUID][]string)
 	m.lastMove = make(map[uuid.UUID]time.Time)
 	m.locationSet = make(map[string]LocationDef)
+	m.discoveriesByLocation = make(map[string][]LocationClueDiscovery)
+	m.discoveredClues = make(map[uuid.UUID][]string)
 
 	if len(config) > 0 {
 		if err := json.Unmarshal(config, &m.config); err != nil {
@@ -80,7 +96,34 @@ func (m *LocationModule) Init(_ context.Context, deps engine.ModuleDeps, config 
 			return fmt.Errorf("location: startingLocation %q not found", m.config.StartingLoc)
 		}
 	}
+	if err := m.initDiscoveriesLocked(); err != nil {
+		return err
+	}
 
+	return nil
+}
+
+func (m *LocationModule) initDiscoveriesLocked() error {
+	for _, discovery := range m.config.Discoveries {
+		if discovery.LocationID == "" {
+			return fmt.Errorf("location: discovery missing locationId")
+		}
+		if _, ok := m.locationSet[discovery.LocationID]; !ok {
+			return fmt.Errorf("location: discovery location %q not found", discovery.LocationID)
+		}
+		if discovery.ClueID == "" {
+			return fmt.Errorf("location: discovery at %q missing clueId", discovery.LocationID)
+		}
+		// Default to one discovery per player. Re-discoverable clues require a
+		// future explicit repeat policy rather than relying on the bool zero value.
+		if !discovery.OncePerPlayer {
+			discovery.OncePerPlayer = true
+		}
+		m.discoveriesByLocation[discovery.LocationID] = append(
+			m.discoveriesByLocation[discovery.LocationID],
+			discovery,
+		)
+	}
 	return nil
 }
 
@@ -143,28 +186,88 @@ func (m *LocationModule) handleExamine(_ context.Context, playerID uuid.UUID, pa
 		return fmt.Errorf("location: invalid examine payload: %w", err)
 	}
 
-	m.mu.RLock()
-	_, ok := m.locationSet[p.LocationID]
-	m.mu.RUnlock()
-
-	if !ok {
+	m.mu.Lock()
+	if _, ok := m.locationSet[p.LocationID]; !ok {
+		m.mu.Unlock()
 		return fmt.Errorf("location: invalid examine: location %q not found", p.LocationID)
 	}
+	discovered := m.discoverCluesLocked(playerID, p.LocationID)
+	m.mu.Unlock()
 
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "location.examined",
 		Payload: map[string]any{
-			"playerID":   playerID,
-			"locationID": p.LocationID,
+			"playerID":          playerID,
+			"locationID":        p.LocationID,
+			"discoveredClueIDs": discovered,
 		},
 	})
+	for _, clueID := range discovered {
+		m.deps.EventBus.Publish(engine.Event{
+			Type: "location.clue_discovered",
+			Payload: map[string]any{
+				"playerID":   playerID,
+				"locationID": p.LocationID,
+				"clueID":     clueID,
+			},
+		})
+		m.deps.EventBus.Publish(engine.Event{
+			Type: "clue.acquired",
+			Payload: map[string]any{
+				"playerId":   playerID.String(),
+				"clueId":     clueID,
+				"locationId": p.LocationID,
+				"source":     "location_discovery",
+			},
+		})
+	}
 	return nil
+}
+
+func (m *LocationModule) discoverCluesLocked(playerID uuid.UUID, locationID string) []string {
+	candidates := m.discoveriesByLocation[locationID]
+	if len(candidates) == 0 {
+		return nil
+	}
+	discovered := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		if !m.discoveryRequirementsMetLocked(playerID, candidate.RequiredClueIDs) {
+			continue
+		}
+		if candidate.OncePerPlayer && playerHasDiscoveredClue(m.discoveredClues[playerID], candidate.ClueID) {
+			continue
+		}
+		if !playerHasDiscoveredClue(m.discoveredClues[playerID], candidate.ClueID) {
+			m.discoveredClues[playerID] = append(m.discoveredClues[playerID], candidate.ClueID)
+		}
+		discovered = append(discovered, candidate.ClueID)
+	}
+	return discovered
+}
+
+func (m *LocationModule) discoveryRequirementsMetLocked(playerID uuid.UUID, requiredClueIDs []string) bool {
+	for _, clueID := range requiredClueIDs {
+		if !playerHasDiscoveredClue(m.discoveredClues[playerID], clueID) {
+			return false
+		}
+	}
+	return true
+}
+
+func playerHasDiscoveredClue(clues []string, clueID string) bool {
+	for _, ownedID := range clues {
+		if ownedID == clueID {
+			return true
+		}
+	}
+	return false
 }
 
 // locationState is the serialisable snapshot of location positions and history.
 type locationState struct {
-	Positions map[string]string   `json:"positions"`
-	History   map[string][]string `json:"history"`
+	Positions       map[string]string   `json:"positions"`
+	History         map[string][]string `json:"history"`
+	DiscoveredClues map[string][]string `json:"discoveredClues"`
 }
 
 func (m *LocationModule) snapshot() locationState {
@@ -178,7 +281,13 @@ func (m *LocationModule) snapshot() locationState {
 		copy(cp, locs)
 		history[pid.String()] = cp
 	}
-	return locationState{Positions: positions, History: history}
+	discoveredClues := make(map[string][]string, len(m.discoveredClues))
+	for pid, clueIDs := range m.discoveredClues {
+		cp := make([]string, len(clueIDs))
+		copy(cp, clueIDs)
+		discoveredClues[pid.String()] = cp
+	}
+	return locationState{Positions: positions, History: history, DiscoveredClues: discoveredClues}
 }
 
 // BuildState returns the module's current state for client sync.
@@ -196,8 +305,10 @@ func (m *LocationModule) Cleanup(_ context.Context) error {
 
 	m.positions = nil
 	m.history = nil
+	m.discoveredClues = nil
 	m.lastMove = nil
 	m.locationSet = nil
+	m.discoveriesByLocation = nil
 	return nil
 }
 
@@ -285,6 +396,16 @@ func (m *LocationModule) RestoreState(_ context.Context, _ uuid.UUID, state engi
 		copy(cp, locs)
 		m.history[pid] = cp
 	}
+	m.discoveredClues = make(map[uuid.UUID][]string, len(s.DiscoveredClues))
+	for pidStr, clueIDs := range s.DiscoveredClues {
+		pid, err := uuid.Parse(pidStr)
+		if err != nil {
+			return fmt.Errorf("location: restore state: invalid discovered playerID %q: %w", pidStr, err)
+		}
+		cp := make([]string, len(clueIDs))
+		copy(cp, clueIDs)
+		m.discoveredClues[pid] = cp
+	}
 	return nil
 }
 
@@ -329,7 +450,17 @@ func (m *LocationModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, err
 		copy(cp, locs)
 		history[playerID.String()] = cp
 	}
-	return json.Marshal(locationState{Positions: positions, History: history})
+	discoveredClues := make(map[string][]string, 1)
+	if clueIDs, ok := m.discoveredClues[playerID]; ok {
+		cp := make([]string, len(clueIDs))
+		copy(cp, clueIDs)
+		discoveredClues[playerID.String()] = cp
+	}
+	return json.Marshal(locationState{
+		Positions:       positions,
+		History:         history,
+		DiscoveredClues: discoveredClues,
+	})
 }
 
 // Compile-time interface assertions.
