@@ -37,3 +37,48 @@ func TestDefinitionForResponse_PreservesOccurrenceStatus(t *testing.T) {
 		t.Errorf("Code = %q, want %q", defn.Code, ErrBadRequest)
 	}
 }
+
+func TestSeverityForStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		want   Severity
+	}{
+		{name: "server", status: http.StatusBadGateway, want: SeverityHigh},
+		{name: "unauthorized", status: http.StatusUnauthorized, want: SeverityHigh},
+		{name: "forbidden", status: http.StatusForbidden, want: SeverityHigh},
+		{name: "client", status: http.StatusBadRequest, want: SeverityMedium},
+		{name: "success fallback", status: http.StatusOK, want: SeverityLow},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := severityForStatus(tt.status); got != tt.want {
+				t.Errorf("severityForStatus(%d) = %q, want %q", tt.status, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDefaultActionForStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		want   string
+	}{
+		{name: "login", status: http.StatusUnauthorized, want: "login"},
+		{name: "access", status: http.StatusForbidden, want: "request_access"},
+		{name: "timeout", status: http.StatusRequestTimeout, want: "retry_later"},
+		{name: "server", status: http.StatusInternalServerError, want: "retry_later"},
+		{name: "client", status: http.StatusBadRequest, want: "fix_input"},
+		{name: "success fallback", status: http.StatusOK, want: "none"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := defaultActionForStatus(tt.status); got != tt.want {
+				t.Errorf("defaultActionForStatus(%d) = %q, want %q", tt.status, got, tt.want)
+			}
+		})
+	}
+}
