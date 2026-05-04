@@ -32,6 +32,12 @@ describe('getErrorReference', () => {
     expect(ref).toBe('trace-98');
   });
 
+  it('request_id가 비어 있으면 trace_id로 대체한다', () => {
+    const ref = getErrorReference(apiError({ request_id: '   ', trace_id: 'trace-987654321' }));
+
+    expect(ref).toBe('trace-98');
+  });
+
   it('표시 가능한 추적 ID가 없으면 undefined를 반환한다', () => {
     expect(getErrorReference(apiError({}))).toBeUndefined();
   });

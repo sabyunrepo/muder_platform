@@ -155,8 +155,8 @@ func TestWriteError_WithRequestIDAndRegistryMetadata(t *testing.T) {
 	appErr := New(ErrEditorConfigVersionMismatch, http.StatusConflict, "stale editor config")
 
 	rec := httptest.NewRecorder()
-	rec.Header().Set("X-Request-ID", "req-123")
 	req := httptest.NewRequest(http.MethodPatch, "/api/v1/editor/config", nil)
+	req.Header.Set("X-Request-ID", "req-123")
 
 	WriteError(rec, req, appErr)
 
@@ -179,6 +179,29 @@ func TestWriteError_WithRequestIDAndRegistryMetadata(t *testing.T) {
 	}
 	if body["user_action"] != "reload_or_merge" {
 		t.Errorf("user_action = %v, want reload_or_merge", body["user_action"])
+	}
+}
+
+func TestWriteError_UsesResponseRequestIDFromMiddleware(t *testing.T) {
+	appErr := BadRequest("invalid input")
+
+	rec := httptest.NewRecorder()
+	rec.Header().Set("X-Request-ID", "middleware-generated")
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
+	req.Header.Set("X-Request-ID", "client-provided")
+
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body["request_id"] != "middleware-generated" {
+		t.Errorf("request_id = %v, want middleware-generated", body["request_id"])
 	}
 }
 

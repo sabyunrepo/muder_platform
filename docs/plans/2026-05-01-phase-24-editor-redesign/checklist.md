@@ -50,7 +50,7 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
 3. [#249](https://github.com/sabyunrepo/muder_platform/issues/249) — 결말/투표 결과 breakdown 및 종료 화면 연결
    - 게임 종료 시 공통 결말, 캐릭터별 결과, 투표/미션 점수 요약을 연결한다.
 4. [#271](https://github.com/sabyunrepo/muder_platform/issues/271) — RFC 9457 + Google AIP-193 에러 계약
-   - PR-1 감사 문서화부터 착수했다. API/런타임 에러 응답 표준화는 PR-2 이후 코드 변경으로 나눈다.
+   - PR-1에서 감사 문서화와 v1 핵심 계약 일부(`apperror` registry, ProblemDetail metadata, frontend ApiError)를 함께 반영한다. PR-2 이후에는 남은 표준화와 도메인별 적용을 분리한다.
 
 ## 유지할 원칙
 

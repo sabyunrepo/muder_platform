@@ -37,6 +37,8 @@ export function showErrorToast(error: ApiError): void {
 }
 
 export function getErrorReference(error: ApiError): string | undefined {
-  const id = error.request_id ?? error.trace_id;
+  const requestId = error.request_id?.trim();
+  const traceId = error.trace_id?.trim();
+  const id = requestId || traceId;
   return id ? id.slice(0, 8) : undefined;
 }
