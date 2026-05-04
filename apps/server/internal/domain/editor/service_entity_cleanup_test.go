@@ -70,6 +70,21 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 			{"id": "%s", "name": "삭제 장소", "locationClueConfig": {"clueIds": ["clue-1"]}},
 			{"id": "%s", "name": "남길 장소", "locationClueConfig": {"clueIds": ["clue-2"]}}
 		],
+		"modules": {
+			"location": {
+				"enabled": true,
+				"config": {
+					"locations": [
+						{"id": "%s", "name": "삭제 장소"},
+						{"id": "%s", "name": "남길 장소"}
+					],
+					"discoveries": [
+						{"locationId": "%s", "clueId": "clue-1"},
+						{"locationId": "%s", "clueId": "clue-2"}
+					]
+				}
+			}
+		},
 		"locationMeta": {
 			"%s": {"entryMessage": "삭제"},
 			"child": {"parentLocationId": "%s", "entryMessage": "자식"},
@@ -80,7 +95,7 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 			"kept-clue": "%s"
 		},
 		"nullable": null
-	}`, locationID, keptLocationID, locationID, locationID, keptLocationID, locationID, keptLocationID))
+	}`, locationID, keptLocationID, locationID, keptLocationID, locationID, keptLocationID, locationID, locationID, keptLocationID, locationID, keptLocationID))
 
 	cleaned, changed, err := removeLocationReferencesFromConfigJSON(raw, locationID)
 	if err != nil {
@@ -105,8 +120,55 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected root config to be map[string]any, got %T", decoded)
 	}
+	modules := root["modules"].(map[string]any)
+	locationModule := modules["location"].(map[string]any)
+	locationConfig := locationModule["config"].(map[string]any)
+	discoveries := locationConfig["discoveries"].([]any)
+	if len(discoveries) != 1 {
+		t.Fatalf("expected only discovery with deleted locationId to be removed, got %#v", discoveries)
+	}
+	keptDiscovery := discoveries[0].(map[string]any)
+	if keptDiscovery["locationId"] != keptLocationID.String() {
+		t.Fatalf("unexpected kept discovery: %#v", keptDiscovery)
+	}
 	if _, exists := root["nullable"]; !exists || root["nullable"] != nil {
 		t.Fatalf("json null must be preserved, got %#v", root["nullable"])
+	}
+}
+
+func TestRemoveLocationReferencesFromConfigJSON_IgnoresMalformedDiscoveryWithoutPanic(t *testing.T) {
+	locationID := uuid.MustParse("33333333-3333-3333-3333-333333333333")
+	raw := json.RawMessage(`{
+		"modules": {
+			"location": {
+				"enabled": true,
+				"config": {
+					"discoveries": [
+						{"locationId":["33333333-3333-3333-3333-333333333333"],"clueId":"clue-1"},
+						{"locationId":"44444444-4444-4444-4444-444444444444","clueId":"clue-2"}
+					]
+				}
+			}
+		}
+	}`)
+
+	cleaned, changed, err := removeLocationReferencesFromConfigJSON(raw, locationID)
+	if err != nil {
+		t.Fatalf("removeLocationReferencesFromConfigJSON: %v", err)
+	}
+	if !changed {
+		t.Fatal("expected nested location id string to be removed without deleting malformed discovery")
+	}
+	var decoded map[string]any
+	if err := json.Unmarshal(cleaned, &decoded); err != nil {
+		t.Fatalf("unmarshal cleaned config: %v", err)
+	}
+	modules := decoded["modules"].(map[string]any)
+	locationModule := modules["location"].(map[string]any)
+	locationConfig := locationModule["config"].(map[string]any)
+	discoveries := locationConfig["discoveries"].([]any)
+	if len(discoveries) != 2 {
+		t.Fatalf("malformed discovery should be preserved, got %#v", discoveries)
 	}
 }
 

@@ -175,8 +175,23 @@ describe('LocationClueAssignPanel', () => {
       id: string;
       locationClueConfig: { clueIds: string[] };
     }>;
+    const modules = config.modules as {
+      location: {
+        config: {
+          discoveries: Array<{
+            locationId: string;
+            clueId: string;
+            requiredClueIds: string[];
+            oncePerPlayer: boolean;
+          }>;
+        };
+      };
+    };
     expect(locs).toHaveLength(1);
     expect(locs[0]).toEqual({ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } });
+    expect(modules.location.config.discoveries).toEqual([
+      { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: [], oncePerPlayer: true },
+    ]);
   });
 
   it('이미 배정된 clue 클릭 시 clueIds에서 제거된다', () => {
@@ -194,7 +209,131 @@ describe('LocationClueAssignPanel', () => {
       id: string;
       locationClueConfig: { clueIds: string[] };
     }>;
+    const modules = config.modules as {
+      location: {
+        config: {
+          discoveries: Array<{
+            locationId: string;
+            clueId: string;
+            requiredClueIds: string[];
+            oncePerPlayer: boolean;
+          }>;
+        };
+      };
+    };
     expect(locs[0].locationClueConfig.clueIds).toEqual(['clue-2']);
+    expect(modules.location.config.discoveries).toEqual([
+      { locationId: 'loc-1', clueId: 'clue-2', requiredClueIds: [], oncePerPlayer: true },
+    ]);
+  });
+
+  it('필요 단서를 선택하면 requiredClueIds 런타임 조건으로 저장된다', () => {
+    const theme: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }],
+        modules: {
+          location: {
+            enabled: true,
+            config: {
+              discoveries: [
+                {
+                  locationId: 'loc-1',
+                  clueId: 'clue-1',
+                  requiredClueIds: [],
+                  oncePerPlayer: true,
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
+
+    expect(screen.getByText('1회 발견')).toBeDefined();
+    fireEvent.click(screen.getByLabelText('단검 발견 조건 편지 필요'));
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    const modules = config.modules as {
+      location: {
+        config: {
+          discoveries: Array<{
+            locationId: string;
+            clueId: string;
+            requiredClueIds: string[];
+            oncePerPlayer: boolean;
+          }>;
+        };
+      };
+    };
+    expect(modules.location.config.discoveries).toEqual([
+      { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: ['clue-2'], oncePerPlayer: true },
+    ]);
+  });
+
+  it('이미 선택된 필요 단서를 다시 클릭하면 requiredClueIds에서 해제된다', () => {
+    const theme: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }],
+        modules: {
+          location: {
+            enabled: true,
+            config: {
+              discoveries: [
+                {
+                  locationId: 'loc-1',
+                  clueId: 'clue-1',
+                  requiredClueIds: ['clue-2'],
+                  oncePerPlayer: true,
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
+
+    expect(screen.getByText('편지 보유 시 발견')).toBeDefined();
+    fireEvent.click(screen.getByLabelText('단검 발견 조건 편지 해제'));
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    const modules = config.modules as {
+      location: {
+        config: {
+          discoveries: Array<{
+            locationId: string;
+            clueId: string;
+            requiredClueIds: string[];
+            oncePerPlayer: boolean;
+          }>;
+        };
+      };
+    };
+    expect(modules.location.config.discoveries).toEqual([
+      { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: [], oncePerPlayer: true },
+    ]);
+  });
+
+  it('단서 로드 실패 시 내부 에러 문자열을 노출하지 않는다', () => {
+    useEditorCluesMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('database connection refused'),
+      refetch: vi.fn(),
+    });
+
+    renderQC(
+      <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
+    );
+
+    expect(screen.getByText('단서 목록을 불러오지 못했습니다.')).toBeDefined();
+    expect(screen.queryByText('database connection refused')).toBeNull();
   });
 
   it('onChange prop은 mutate 성공 시 호출된다', () => {
@@ -284,7 +423,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
     expect(cached?.config_json).toEqual({}); // rolled back to baseTheme.config_json
-    expect(toastError).toHaveBeenCalledWith('단서 배정 저장에 실패했습니다');
+    expect(toastError).toHaveBeenCalledWith('장소 조사 단서 저장에 실패했습니다');
   });
 
   it('연속 토글에서 첫 mutation 실패 시 첫 토글 직전 상태로 rollback 된다 (M5 closure)', () => {
@@ -330,7 +469,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     // 핵심 검증: 첫 토글 직전 상태로 롤백 (빈 config_json).
     // 단일 rollbackRef 구현이었다면 두 번째 토글 직전 스냅샷(clue-1 포함)으로 잘못 복원됨.
     expect(cached?.config_json).toEqual({});
-    expect(toastError).toHaveBeenCalledWith('단서 배정 저장에 실패했습니다');
+    expect(toastError).toHaveBeenCalledWith('장소 조사 단서 저장에 실패했습니다');
   });
 
   it('theme 캐시가 없으면 mutate 만 호출되고 rollback 대상도 없다', () => {

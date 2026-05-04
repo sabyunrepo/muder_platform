@@ -5,7 +5,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { EditorThemeResponse, LocationResponse, ClueResponse } from '@/features/editor/api';
 import { editorKeys, useEditorClues, useUpdateConfigJson } from '@/features/editor/api';
-import { readLocationClueIds, writeLocationClueIds } from '@/features/editor/editorTypes';
+import {
+  readLocationDiscoveries,
+  writeLocationDiscoveries,
+  type LocationDiscoveryConfig,
+} from '@/features/editor/editorTypes';
 
 interface LocationClueAssignPanelProps {
   themeId: string;
@@ -32,17 +36,22 @@ export function LocationClueAssignPanel({
   allClues,
   onChange,
 }: LocationClueAssignPanelProps) {
-  const { data: fetchedClues, isLoading, isError, error, refetch } = useEditorClues(themeId);
+  const { data: fetchedClues, isLoading, isError, refetch } = useEditorClues(themeId);
   const clues = useMemo(() => allClues ?? fetchedClues ?? [], [allClues, fetchedClues]);
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
 
-  const assignedIds = useMemo(
-    () => readLocationClueIds(theme.config_json, location.id),
+  const discoveries = useMemo(
+    () => readLocationDiscoveries(theme.config_json, location.id),
     [theme.config_json, location.id]
   );
+  const assignedIds = useMemo(
+    () => discoveries.map((discovery) => discovery.clueId),
+    [discoveries]
+  );
   const assignedSet = useMemo(() => new Set(assignedIds), [assignedIds]);
+  const clueById = useMemo(() => new Map(clues.map((clue) => [clue.id, clue])), [clues]);
   const selectedClues = clues.filter((clue) => assignedSet.has(clue.id));
   const visibleClues = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -56,8 +65,9 @@ export function LocationClueAssignPanel({
     );
   }, [clues, query]);
 
-  function commit(next: string[]) {
-    const nextConfig = writeLocationClueIds(theme.config_json, location.id, next);
+  function commit(next: LocationDiscoveryConfig[]) {
+    const nextConfig = writeLocationDiscoveries(theme.config_json, location.id, next);
+    const nextIds = next.map((discovery) => discovery.clueId);
     const cacheKey = editorKeys.theme(themeId);
     const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
     if (previous)
@@ -67,23 +77,42 @@ export function LocationClueAssignPanel({
       });
     updateConfig.mutate(nextConfig, {
       onSuccess: () => {
-        toast.success('단서 배정이 저장되었습니다');
-        onChange?.(next);
+        toast.success('장소 조사 단서가 저장되었습니다');
+        onChange?.(nextIds);
       },
       onError: () => {
         if (previous) queryClient.setQueryData(cacheKey, previous);
-        toast.error('단서 배정 저장에 실패했습니다');
+        toast.error('장소 조사 단서 저장에 실패했습니다');
       },
     });
   }
 
   function addClue(clueId: string) {
     if (assignedSet.has(clueId)) return;
-    commit([...assignedIds, clueId]);
+    commit([
+      ...discoveries,
+      { locationId: location.id, clueId, requiredClueIds: [], oncePerPlayer: true },
+    ]);
   }
 
   function removeClue(clueId: string) {
-    commit(assignedIds.filter((id) => id !== clueId));
+    commit(discoveries.filter((discovery) => discovery.clueId !== clueId));
+  }
+
+  function toggleRequiredClue(clueId: string, requiredClueId: string) {
+    commit(
+      discoveries.map((discovery) => {
+        if (discovery.clueId !== clueId) return discovery;
+        const requiredSet = new Set(discovery.requiredClueIds);
+        if (requiredSet.has(requiredClueId)) requiredSet.delete(requiredClueId);
+        else requiredSet.add(requiredClueId);
+        return {
+          ...discovery,
+          requiredClueIds: Array.from(requiredSet).filter((id) => id !== clueId),
+          oncePerPlayer: true,
+        };
+      })
+    );
   }
 
   if (!allClues && isLoading) {
@@ -100,7 +129,7 @@ export function LocationClueAssignPanel({
         aria-label={`${location.name} 조사 시 발견 단서`}
         className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-100"
       >
-        <p>{error instanceof Error ? error.message : '단서 목록을 불러오지 못했습니다.'}</p>
+        <p>단서 목록을 불러오지 못했습니다.</p>
         <button
           type="button"
           onClick={() => refetch?.()}
@@ -169,9 +198,9 @@ export function LocationClueAssignPanel({
           <section className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
-                이 장소의 단서
+                조사 보상
               </p>
-              <span className="text-[10px] text-slate-600">클릭 제거</span>
+              <span className="text-[10px] text-slate-600">플레이어당 1회</span>
             </div>
             {selectedClues.length === 0 ? (
               <p className="rounded-md border border-dashed border-slate-800 px-2.5 py-5 text-center text-xs text-slate-600">
@@ -183,8 +212,12 @@ export function LocationClueAssignPanel({
                   <SelectedClue
                     key={clue.id}
                     clue={clue}
+                    discovery={discoveries.find((item) => item.clueId === clue.id)}
+                    availableClues={clues.filter((candidate) => candidate.id !== clue.id)}
+                    clueById={clueById}
                     disabled={updateConfig.isPending}
                     onRemove={removeClue}
+                    onToggleRequired={toggleRequiredClue}
                   />
                 ))}
               </div>
@@ -231,31 +264,85 @@ function ClueOption({
 
 function SelectedClue({
   clue,
+  discovery,
+  availableClues,
+  clueById,
   disabled,
   onRemove,
+  onToggleRequired,
 }: {
   clue: ClueResponse;
+  discovery?: LocationDiscoveryConfig;
+  availableClues: ClueResponse[];
+  clueById: Map<string, ClueResponse>;
   disabled: boolean;
   onRemove: (id: string) => void;
+  onToggleRequired: (clueId: string, requiredClueId: string) => void;
 }) {
+  const requiredIds = discovery?.requiredClueIds ?? [];
+  const requiredSet = new Set(requiredIds);
+  const selectedRequiredNames = requiredIds
+    .map((id) => clueById.get(id)?.name)
+    .filter(Boolean)
+    .join(', ');
+
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-slate-950/80 px-2.5 py-1.5">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-[9px] font-semibold text-amber-300">
-        {roundLabel(clue)}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-xs font-medium text-slate-200">{clue.name}</span>
-        <span className="block truncate text-[10px] text-slate-600">{clueMeta(clue)}</span>
-      </span>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => onRemove(clue.id)}
-        aria-label={`${clue.name} 제거`}
-        className="rounded-full p-1 text-slate-600 hover:bg-red-950/40 hover:text-red-300 disabled:opacity-50"
-      >
-        <X className="h-3 w-3" />
-      </button>
+    <div className="rounded-lg border border-amber-500/20 bg-slate-950/80 px-2.5 py-2">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-[9px] font-semibold text-amber-300">
+          {roundLabel(clue)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-xs font-medium text-slate-200">{clue.name}</span>
+          <span className="block truncate text-[10px] text-slate-600">{clueMeta(clue)}</span>
+        </span>
+        <span className="shrink-0 rounded-full border border-slate-800 px-2 py-0.5 text-[10px] text-slate-500">
+          1회 발견
+        </span>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => onRemove(clue.id)}
+          aria-label={`${clue.name} 제거`}
+          className="rounded-full p-1 text-slate-600 hover:bg-red-950/40 hover:text-red-300 disabled:opacity-50"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </div>
+      <div className="mt-2 rounded-md border border-slate-800 bg-slate-950/80 p-2">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          필요 단서
+        </p>
+        {availableClues.length === 0 ? (
+          <p className="text-[10px] text-slate-600">조건으로 사용할 다른 단서가 없습니다.</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {availableClues.map((candidate) => {
+              const selected = requiredSet.has(candidate.id);
+              return (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => onToggleRequired(clue.id, candidate.id)}
+                  aria-pressed={selected}
+                  aria-label={`${clue.name} 발견 조건 ${candidate.name} ${selected ? '해제' : '필요'}`}
+                  className={`rounded-full border px-2 py-1 text-[10px] transition disabled:opacity-50 ${
+                    selected
+                      ? 'border-amber-400/50 bg-amber-500/10 text-amber-200'
+                      : 'border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
+                  }`}
+                >
+                  {candidate.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <p className="mt-1.5 text-[10px] text-slate-600">
+          {selectedRequiredNames ? `${selectedRequiredNames} 보유 시 발견` : '조건 없음'}
+        </p>
+      </div>
     </div>
   );
 }

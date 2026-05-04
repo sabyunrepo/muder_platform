@@ -49,6 +49,12 @@ func removeClueIDFromConfigValue(value any, clueID string) (any, bool) {
 		}
 		return items, changed
 	case map[string]any:
+		if currentClueID, ok := v["clueId"].(string); ok && currentClueID == clueID {
+			if _, hasLocation := v["locationId"].(string); hasLocation {
+				return deletedConfigNode, true
+			}
+		}
+
 		changed := false
 		out := make(map[string]any, len(v))
 		for key, child := range v {
