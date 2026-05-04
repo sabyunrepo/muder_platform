@@ -450,6 +450,7 @@ describe("CharactersTab", () => {
     });
 
     const { container } = render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
+    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
     const spinner = container.querySelector('[role="status"]');
     expect(spinner).not.toBeNull();
   });
@@ -461,6 +462,7 @@ describe("CharactersTab", () => {
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
+    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
     expect(screen.getByText("등장인물 없음")).toBeDefined();
   });
 
@@ -471,6 +473,7 @@ describe("CharactersTab", () => {
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
+    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
     expect(screen.getByText("탐정")).toBeDefined();
     expect(screen.getByText("범인 캐릭터")).toBeDefined();
   });
@@ -482,6 +485,7 @@ describe("CharactersTab", () => {
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
+    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
     expect(screen.getByText("범인")).toBeDefined();
   });
 
@@ -492,6 +496,7 @@ describe("CharactersTab", () => {
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
+    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
     expect(screen.getByText("캐릭터 추가")).toBeDefined();
   });
 });

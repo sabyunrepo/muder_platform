@@ -30,7 +30,7 @@ interface ClueListViewProps {
 // ---------------------------------------------------------------------------
 
 export function ClueListView({ themeId }: ClueListViewProps) {
-  const { data: clues, isLoading } = useEditorClues(themeId);
+  const { data: clues, isLoading, isError, refetch } = useEditorClues(themeId);
   const { data: theme } = useEditorTheme(themeId);
   const { data: locations = [] } = useEditorLocations(themeId);
   const { data: characters = [] } = useEditorCharacters(themeId);
@@ -74,6 +74,26 @@ export function ClueListView({ themeId }: ClueListViewProps) {
     return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
   }
 
+  if (isError) {
+    return (
+      <div className="px-4 py-6">
+        <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-5">
+          <p className="text-sm font-semibold text-red-100">단서를 불러오지 못했습니다</p>
+          <p className="mt-2 text-sm leading-6 text-red-200/80">
+            네트워크나 권한 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
+          </p>
+          <Button onClick={() => void refetch()}>
+            다시 시도
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clues) {
+    return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
+  }
+
   const deletingReferences = deletingClue && clues
     ? buildClueUsageMap({
       configJson: theme?.config_json,
@@ -86,7 +106,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
   return (
     <div className="px-4 py-6">
       <ClueEntityWorkspace
-        clues={clues ?? []}
+        clues={clues}
         configJson={theme?.config_json}
         locations={locations}
         characters={characters}
