@@ -73,7 +73,7 @@ describe("resultBreakdownAdapter", () => {
     expect(vm.voteMeta).toContain("기권 1표");
   });
 
-  it("marks tie candidates and falls back to target code when player is unknown", () => {
+  it("marks tie candidates and uses safe fallback label when player is unknown", () => {
     const vote = readVoteBreakdown({
       results: { p1: 2, char_unknown: 2 },
       outcome: "tie",
@@ -84,8 +84,8 @@ describe("resultBreakdownAdapter", () => {
 
     expect(vm.voteSummary).toContain("동률");
     expect(vm.voteItems).toEqual([
+      expect.objectContaining({ id: "char_unknown", label: "알 수 없는 대상", isTieCandidate: true }),
       expect.objectContaining({ id: "p1", label: "한서윤", isTieCandidate: true }),
-      expect.objectContaining({ id: "char_unknown", label: "char_unknown", isTieCandidate: true }),
     ]);
   });
 

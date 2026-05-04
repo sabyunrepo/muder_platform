@@ -26,7 +26,7 @@ export function ResultBreakdownPanel() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-2">
             <Award className="h-5 w-5 text-amber-400" />
-            <h2 className="text-xl font-bold text-slate-100">{viewModel.endingTitle}</h2>
+            <h1 className="text-xl font-bold text-slate-100">{viewModel.endingTitle}</h1>
           </div>
           {viewModel.myScoreLabel && <Badge variant="success">{viewModel.myScoreLabel}</Badge>}
         </div>
@@ -36,7 +36,7 @@ export function ResultBreakdownPanel() {
       <Card className="space-y-4">
         <div className="flex items-center gap-2">
           <Vote className="h-5 w-5 text-amber-400" />
-          <h3 className="text-lg font-semibold text-slate-100">{viewModel.voteTitle}</h3>
+          <h2 className="text-lg font-semibold text-slate-100">{viewModel.voteTitle}</h2>
         </div>
         <p className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm text-slate-300">
           {viewModel.voteSummary}

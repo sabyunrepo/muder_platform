@@ -44,6 +44,7 @@ export interface ResultBreakdownViewModel {
 }
 
 const UNKNOWN_ENDING = "결말 판정 대기 중";
+const UNKNOWN_VOTE_TARGET = "알 수 없는 대상";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -116,7 +117,7 @@ export function buildResultBreakdownViewModel(params: {
   const voteItems = Object.entries(vote?.results ?? {})
     .map(([id, votes]) => ({
       id,
-      label: playerNameById.get(id) ?? id,
+      label: playerNameById.get(id) ?? UNKNOWN_VOTE_TARGET,
       votes,
       isWinner: !!winner && id === winner,
       isTieCandidate: tieCandidates.has(id),
@@ -157,7 +158,7 @@ function buildVoteSummary(
     return "동률이어서 재투표 또는 진행자 판단이 필요해요.";
   }
   if (vote.winner) {
-    return `${playerNameById.get(vote.winner) ?? vote.winner}에게 가장 많은 표가 모였어요.`;
+    return `${playerNameById.get(vote.winner) ?? UNKNOWN_VOTE_TARGET}에게 가장 많은 표가 모였어요.`;
   }
   return "투표 결과를 집계했지만 최종 대상은 정해지지 않았어요.";
 }

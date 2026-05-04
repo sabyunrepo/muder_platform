@@ -1,4 +1,5 @@
 import { test, expect, type Page, type WebSocketRoute } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import { WsEventType } from "@mmp/shared";
 import type { GameState, Player } from "@mmp/shared";
 import { E2E_USER, handlers } from "../src/mocks/handlers";
@@ -95,5 +96,8 @@ test.describe("Game result breakdown", () => {
     await expect(page.getByText(`${E2E_USER.nickname}에게 가장 많은 표가 모였어요.`)).toBeVisible();
     await expect(page.getByText("총 4표")).toBeVisible();
     await expect(page.getByText("참여율 100%")).toBeVisible();
+
+    const axe = await new AxeBuilder({ page }).include("main").analyze();
+    expect(axe.violations).toEqual([]);
   });
 });

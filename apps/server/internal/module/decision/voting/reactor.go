@@ -147,7 +147,7 @@ func (m *VotingModule) tallyResults() VoteResult {
 
 	// Check minimum participation.
 	if eligible > 0 && participationPct < m.config.MinParticipation {
-		result.IsTie = true
+		result.IsTie = false
 		result.Winner = ""
 		result.Outcome = VoteOutcomeInsufficientParticipation
 		return result
@@ -166,7 +166,7 @@ func (m *VotingModule) tallyResults() VoteResult {
 	}
 
 	if len(winners) == 0 {
-		result.IsTie = true
+		result.IsTie = false
 		result.Winner = ""
 		result.Outcome = VoteOutcomeNoResult
 		return result
@@ -191,6 +191,7 @@ func (m *VotingModule) tallyResults() VoteResult {
 		result.Outcome = VoteOutcomeWinner
 	case "no_result":
 		result.Winner = ""
+		result.IsTie = false
 		result.Outcome = VoteOutcomeNoResult
 	case "revote":
 		// Remains a tie; the engine should call OPEN_VOTING again if under maxRounds.
