@@ -168,9 +168,8 @@ jobs:
         continue-on-error: true
         working-directory: apps/web
         run: |
-          sudo apt-get update -y || true
-          pnpm exec playwright install-deps chromium webkit || \
-            echo "::warning::Playwright install-deps failed (likely fonts-freefont-ttf missing on ARC image); continuing without"
+          timeout 480s bash -lc 'sudo apt-get update -y || true; pnpm exec playwright install-deps chromium webkit' || \
+            echo "::warning::Playwright install-deps failed or timed out (likely ARC apt/deps flake); continuing without"
 
       - name: Install Playwright browsers
         # webkit added in Phase 18.7 Wave 3 PR-6 — nightly is the only matrix

@@ -34,7 +34,7 @@ concurrency:
 jobs:
   go-check:
     name: Go Lint + Test
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'self-hosted' }}
     defaults:
       run:
         working-directory: apps/server
@@ -223,7 +223,7 @@ jobs:
 
   ts-check:
     name: TypeScript Lint + Test + Build
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'self-hosted' }}
     steps:
       - name: Full CI ready gate
         if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
@@ -302,7 +302,7 @@ jobs:
     #   Phase 21: Go 70% / FE Lines 65% / FE Branches 85% (+15%p — 하한 상향 전 반드시 테스트 보강)
     #   하한 상향 전에 반드시 추가 테스트 PR 로 baseline 끌어올리기.
     name: Coverage Regression Guard
-    runs-on: arc-runner-set
+    runs-on: self-hosted
     needs: [go-check, ts-check]
     steps:
       - name: Harden Runner
@@ -377,7 +377,7 @@ jobs:
 
   docker-build:
     name: Docker Build Check
-    runs-on: arc-runner-set
+    runs-on: self-hosted
     needs: [go-check, ts-check]
     permissions:
       contents: read
