@@ -2,6 +2,7 @@ package engine
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -115,6 +116,15 @@ func TestConditionGroupToJSONLogic_UsesCanonicalContextPaths(t *testing.T) {
 	}
 	if !IsValid(logic) {
 		t.Fatalf("generated JSONLogic must be valid: %s", logic)
+	}
+	for _, path := range []string{
+		"triggers.trigger-1.count",
+		"rooms.room-1.state",
+		"locations.location-1.state",
+	} {
+		if !strings.Contains(string(logic), path) {
+			t.Fatalf("generated JSONLogic missing canonical path %q: %s", path, logic)
+		}
 	}
 
 	evaluator := NewRuleEvaluator()

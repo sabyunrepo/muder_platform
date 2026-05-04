@@ -1,6 +1,11 @@
 import { Plus, PlusSquare, Trash2 } from "lucide-react";
 import type { ConditionRule, ConditionGroup } from "./conditionTypes";
-import { isGroup, createEmptyRule, createEmptyGroup } from "./conditionTypes";
+import {
+  isGroup,
+  createEmptyRule,
+  createEmptyGroup,
+  MAX_CONDITION_DEPTH,
+} from "./conditionTypes";
 import { ConditionRuleRow } from "./ConditionRule";
 import type { SelectOption } from "./ConditionRule";
 
@@ -26,8 +31,6 @@ interface ConditionGroupProps {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-const MAX_DEPTH = 3;
 
 function operatorCls(active: boolean) {
   return active
@@ -163,7 +166,7 @@ export function ConditionGroupBlock({
           <Plus className="h-3 w-3" />
           규칙 추가
         </button>
-        {depth < MAX_DEPTH && (
+        {depth < MAX_CONDITION_DEPTH && (
           <button
             type="button"
             onClick={addGroup}
