@@ -102,10 +102,10 @@ export function StoryTab({ themeId }: StoryTabProps) {
   });
 
   const charCount = markdown.length;
-  const storySceneSummary = useMemo(() => {
-    if (isFlowLoading || isFlowError) return null;
-    return toStorySceneFlowSummaryFromGraph(flowGraph);
-  }, [flowGraph, isFlowError, isFlowLoading]);
+  const storySceneSummary = useMemo(
+    () => toStorySceneFlowSummaryFromGraph(flowGraph),
+    [flowGraph],
+  );
 
   const previewHtml = useMemo(() => {
     if (!markdown) return '';
@@ -160,9 +160,9 @@ export function StoryTab({ themeId }: StoryTabProps) {
             message="스토리 장면 구성을 불러오지 못했습니다."
             status="error"
           />
-        ) : storySceneSummary ? (
+        ) : (
           <StorySceneSummary summary={storySceneSummary} />
-        ) : null}
+        )}
 
         <div className="flex min-h-[40vh] flex-col lg:flex-row">
           {/* Editor pane */}

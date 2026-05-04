@@ -95,4 +95,17 @@ describe("StoryTab", () => {
     expect(screen.getByRole("alert").getAttribute("aria-atomic")).toBe("true");
     expect(screen.queryByText("0개 장면")).toBeNull();
   });
+
+  it("장면이 없으면 빈 장면 요약을 명시적으로 보여준다", async () => {
+    useFlowGraphMock.mockReturnValue({
+      data: { nodes: [], edges: [] },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<StoryTab themeId="theme-1" />);
+
+    expect(await screen.findByText("0개 장면")).toBeDefined();
+    expect(screen.getByText("장면을 추가하면 스토리 진행 구성이 여기에 표시됩니다.")).toBeDefined();
+  });
 });
