@@ -49,6 +49,14 @@ describe("EditorTabNav dynamic tabs", () => {
     expect(screen.queryByText("미디어")).toBeNull();
   });
 
+  it("직접 URL로 열린 탭은 모듈이 비활성이어도 숨기지 않는다", () => {
+    mockActiveTab.current = "media";
+    render(<EditorTabNav activeModules={[]} forcedVisibleTab="media" />);
+
+    expect(screen.getByText("미디어")).toBeDefined();
+    expect(mockSetActiveTab).not.toHaveBeenCalledWith("overview");
+  });
+
   it("현재 탭이 숨겨지면 overview로 전환된다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} />);

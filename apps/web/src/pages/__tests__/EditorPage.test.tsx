@@ -50,6 +50,23 @@ describe('EditorPage', () => {
     expect(setActiveTabMock).toHaveBeenCalledWith('characters');
   });
 
+  it.each([
+    ['story', 'story'],
+    ['characters', 'characters'],
+    ['clues', 'clues'],
+    ['relations', 'clues'],
+    ['locations', 'design'],
+    ['endings', 'design'],
+    ['media', 'media'],
+  ] as const)('%s 라우트 segment를 %s 탭으로 매핑한다', (segment, expectedTab) => {
+    paramsMock.mockReturnValue({ id: 'theme-1', tab: segment });
+
+    render(<EditorPage />);
+
+    expect(screen.getByText(new RegExp(`테마 에디터 theme-1 ${segment}`))).toBeDefined();
+    expect(setActiveTabMock).toHaveBeenCalledWith(expectedTab);
+  });
+
   it('modules 라우트 segment를 design 탭으로 매핑한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'modules' });
 

@@ -97,6 +97,55 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.getByText("이 단서가 쓰이는 곳")).toBeVisible();
   });
 
+  test("[2B] 직접 URL은 올바른 제작 탭과 서브탭을 연다", async ({ page }) => {
+    await page.goto(`${BASE}/editor/${THEME_ID}`);
+    await expect(page.getByRole("tab", { name: "기본정보", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/story`);
+    await expect(page.getByRole("tab", { name: "스토리", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByPlaceholder("마크다운으로 스토리를 작성하세요...")).toBeVisible();
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
+    await expect(page.getByRole("tab", { name: "등장인물", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText("탐정 A").first()).toBeVisible();
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
+    await expect(page.getByRole("tab", { name: "단서", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByLabel("단서 목록")).toBeVisible();
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/relations`);
+    await expect(page.getByRole("tab", { name: "단서", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText(/노드를 드래그하여 연결/).first()).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/locations`);
+    await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText("저택 1층").first()).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/endings`);
+    await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByTestId("ending-entity-panel")).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/media`);
+    await expect(page.getByRole("tab", { name: "미디어", selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByLabel("미디어 목록")).toBeVisible({ timeout: 10_000 });
+  });
+
   test("[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)", async ({ page }) => {
     test.info().annotations.push({
       type: "soft-skip",

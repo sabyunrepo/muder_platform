@@ -171,6 +171,16 @@ describe('DesignTab', () => {
     expect(screen.getByText('EndingEntitySubTab 콘텐츠')).toBeDefined();
   });
 
+  it.each([
+    ['locations', 'LocationsSubTab 콘텐츠'],
+    ['endings', 'EndingEntitySubTab 콘텐츠'],
+    ['flow', 'FlowSubTab 콘텐츠'],
+  ] as const)('routeSegment=%s이면 해당 제작 서브탭을 바로 연다', (routeSegment, expectedText) => {
+    render(<DesignTab themeId="theme-1" theme={mockTheme} routeSegment={routeSegment} />);
+
+    expect(screen.getByText(expectedText)).toBeDefined();
+  });
+
   it('모듈 탭이 기본 선택되어 모듈 사이드바가 표시된다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
