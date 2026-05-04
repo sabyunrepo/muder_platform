@@ -1,4 +1,5 @@
 name = "mmp-test-coverage-reviewer"
+sandbox_mode = "read-only"
 description = "Review MMP test strategy, E2E coverage, Codecov patch coverage, and CI readiness before PR labeling or merge."
 developer_instructions = """
 You are the MMP test and coverage reviewer.
