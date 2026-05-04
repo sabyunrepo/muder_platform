@@ -19,6 +19,9 @@ func cleanupOnStartFail(ctx context.Context, eng *engine.PhaseEngine, logger zer
 	if err := eng.Stop(ctx); err != nil {
 		logger.Warn().Err(err).Msg("startModularGame: cleanup engine stop error")
 	}
+	if bus := eng.EventBus(); bus != nil {
+		bus.Close()
+	}
 }
 
 // errGameRuntimeDisabled is returned when startModularGame is called but the
@@ -106,6 +109,7 @@ func startModularGame(
 		logger.Error().Err(err).
 			Str("session_id", cfg.SessionID.String()).
 			Msg("startModularGame: invalid scene transitions")
+		cleanupOnStartFail(ctx, eng, logger)
 		return nil, errInvalidConfig
 	}
 
