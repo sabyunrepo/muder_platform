@@ -45,10 +45,8 @@ export function informationDeliveriesToFlowNodePatch(
   deliveries: InformationDeliveryViewModel[],
 ): Pick<FlowNodeData, "onEnter"> {
   const nextActions = withoutDeliverInformationActions(data.onEnter ?? []);
-  const allowAllPlayers = data.phase_type === "story_progression";
   const normalized = deliveries
     .map(normalizeViewModel)
-    .filter((delivery) => allowAllPlayers || delivery.recipientType !== "all_players")
     .filter(isCompleteInformationDelivery);
 
   if (normalized.length === 0) {

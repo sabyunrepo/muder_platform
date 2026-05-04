@@ -216,15 +216,15 @@ describe("InformationDeliveryPanel", () => {
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
     expect((screen.getByRole("button", { name: "캐릭터별 추가" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("받을 캐릭터가 없습니다. 먼저 캐릭터를 만든 뒤 캐릭터별 정보 전달을 설정해 주세요.")).toBeDefined();
+    expect(screen.getByText("아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 정보를 설정해 주세요.")).toBeDefined();
   });
 
-  it("스토리 진행 페이즈에서는 모든 플레이어 공통 전달을 추가할 수 있다", () => {
+  it("모든 페이즈에서 모든 플레이어 공통 전달을 추가할 수 있다", () => {
     const onChange = vi.fn();
     render(
       <InformationDeliveryPanel
         themeId="theme-1"
-        phaseData={{ phase_type: "story_progression" }}
+        phaseData={{ phase_type: "investigation" }}
         onChange={onChange}
       />,
     );

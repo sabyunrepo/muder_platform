@@ -37,10 +37,10 @@ describe("informationDeliveryAdapter", () => {
     ]);
   });
 
-  it("완성된 전달 설정만 current payload로 저장한다", () => {
+  it("완성된 전달 설정을 모든 페이즈에서 current payload로 저장한다", () => {
     expect(
       informationDeliveriesToFlowNodePatch(
-        { phase_type: "story_progression" },
+        { phase_type: "investigation" },
         [
           { id: "empty", recipientType: "character", readingSectionIds: [] },
           { id: "all", recipientType: "all_players", readingSectionIds: ["rs-1"] },
