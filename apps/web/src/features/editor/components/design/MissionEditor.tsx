@@ -2,6 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { MissionTypeFields } from './MissionTypeFields';
 import {
   MISSION_TYPES,
+  getMissionVerificationOptions,
   toMissionViewModel,
   type Mission,
   type MissionEditorCharacter,
@@ -82,6 +83,7 @@ function MissionCard({
   onDelete: (missionId: string) => void;
 }) {
   const viewModel = toMissionViewModel(mission);
+  const verificationOptions = getMissionVerificationOptions(viewModel.runtimeType);
   const descriptionId = `mission-description-${mission.id}`;
   return (
     <div className="rounded border border-slate-800 bg-slate-900 p-3">
@@ -116,7 +118,7 @@ function MissionCard({
         placeholder="미션 설명"
         className="mb-2 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
       />
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+      <div className="mb-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
         <label className="flex items-center gap-2">
           <span>포인트:</span>
           <input
@@ -126,9 +128,26 @@ function MissionCard({
             className="w-16 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
           />
         </label>
-        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-400">
-          {viewModel.resultVisibilityLabel}
-        </span>
+        <label className="flex items-center gap-2">
+          <span>판정:</span>
+          <select
+            value={viewModel.verification}
+            onChange={(e) => onChange(mission.id, 'verification', e.target.value)}
+            className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
+            aria-label="미션 판정 방식"
+          >
+            {verificationOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
+        <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.resultVisibilityLabel}</span>
+        <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.verificationLabel}</span>
+        <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.engineOwnerLabel}</span>
       </div>
       <MissionTypeFields
         mission={mission}

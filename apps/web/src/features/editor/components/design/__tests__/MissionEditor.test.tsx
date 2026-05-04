@@ -113,6 +113,43 @@ describe('MissionEditor', () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
+  it('결과 공개 시점과 백엔드 판정 경계를 제작자용 문구로 표시한다', () => {
+    const onChange = vi.fn();
+    render(
+      <MissionEditor
+        missions={[baseMission({ type: 'secret' })]}
+        onAdd={noop}
+        onChange={onChange}
+        onDelete={noop}
+      />,
+    );
+
+    expect(screen.getByText('결과 화면에서만 공개')).toBeDefined();
+    expect(screen.getAllByText('플레이어 신고').length).toBeGreaterThan(0);
+    expect(screen.getByText('게임 판정은 백엔드가 담당')).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText('미션 판정 방식'), { target: { value: 'gm_verify' } });
+    expect(onChange).toHaveBeenCalledWith('mission-1', 'verification', 'gm_verify');
+  });
+
+  it('수동 판정 미션에서는 자동 판정을 선택지에서 숨긴다', () => {
+    render(
+      <MissionEditor
+        missions={[baseMission({ type: 'secret', verification: 'auto' })]}
+        onAdd={noop}
+        onChange={noop}
+        onDelete={noop}
+      />,
+    );
+
+    const select = screen.getByLabelText('미션 판정 방식') as HTMLSelectElement;
+    expect(select.value).toBe('self_report');
+    expect(Array.from(select.options).map((option) => option.value)).toEqual([
+      'self_report',
+      'gm_verify',
+    ]);
+  });
+
   it('MISSION_TYPES에 kill/possess/secret/protect가 포함된다', () => {
     render(
       <MissionEditor
