@@ -201,7 +201,37 @@ describe("EndingEntitySubTab", () => {
           ending_branch: expect.objectContaining({
             config: expect.objectContaining({
               questions: [expect.objectContaining({ text: "진범은 누구인가?" })],
+              matrix: [
+                expect.objectContaining({
+                  ending: "ending-1",
+                  condition: { in: ["하윤", { var: "answers.q1.choices" }] },
+                }),
+              ],
               defaultEnding: "ending-2",
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it("결말 선택지는 같은 질문 안에서 중복 저장되지 않는다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.change(screen.getByLabelText("질문 1 선택지 2"), { target: { value: "하윤" } });
+    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              questions: [
+                expect.objectContaining({
+                  choices: ["하윤", "민재"],
+                }),
+              ],
             }),
           }),
         }),

@@ -282,7 +282,8 @@ function buildEndingBranchWarnings(config: EndingBranchConfig, endingNodes: Node
   }
   for (const row of config.matrix) {
     if (!endingIds.has(row.ending)) warnings.push("결말 규칙 중 도착 결말이 비어 있습니다.");
-    if (!readChoiceCondition(row.condition)) warnings.push("결말 규칙 중 질문/선택지 조건이 비어 있습니다.");
+    const parsed = readChoiceCondition(row.condition);
+    if (!parsed || !parsed.choice.trim()) warnings.push("결말 규칙 중 질문/선택지 조건이 비어 있습니다.");
   }
   return Array.from(new Set(warnings));
 }

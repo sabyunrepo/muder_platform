@@ -23,7 +23,7 @@ export function getConditionOperatorLabel(operator: string): string {
 }
 
 export function describeConditionRecord(condition: Record<string, unknown> | null): string {
-  if (!condition || typeof condition !== "object") return "조건 없음";
+  if (!condition || typeof condition !== "object" || Array.isArray(condition)) return "조건 없음";
   const operator = typeof condition.operator === "string" ? condition.operator : "AND";
   const rules = Array.isArray(condition.rules) ? condition.rules : [];
   return `${getConditionOperatorLabel(operator)} · ${rules.length}개 규칙`;

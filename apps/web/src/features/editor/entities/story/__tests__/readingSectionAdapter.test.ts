@@ -42,6 +42,16 @@ describe("readingSectionAdapter", () => {
     expect(options[0].groupLabel).toBe("빈 정보");
   });
 
+  it("잘못된 lines 응답도 빈 정보로 안전하게 변환한다", () => {
+    expect(toReadingSectionPickerOption({ ...section, lines: null })).toEqual(
+      expect.objectContaining({
+        summary: "아직 작성된 내용이 없습니다.",
+        metaLabel: "0줄 · BGM 있음",
+        groupLabel: "빈 정보",
+      }),
+    );
+  });
+
   it("제목, 요약, 그룹명으로 검색한다", () => {
     const options = toReadingSectionPickerOptions([section]);
 

@@ -17,5 +17,6 @@ describe("conditionAdapter", () => {
     expect(describeConditionRecord({ operator: "AND", rules: [{ id: "r1" }, { id: "r2" }] })).toBe(
       "모든 조건 · 2개 규칙",
     );
+    expect(describeConditionRecord([] as unknown as Record<string, unknown>)).toBe("조건 없음");
   });
 });

@@ -19,8 +19,10 @@ export function ActionListEditor({
     .map((action, index) => ({ action, index }))
     .filter(({ action }) => !hiddenTypes.includes(action.type));
   const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes);
+  const defaultActionType = visibleActionTypes[0]?.value;
   const handleAdd = () => {
-    onChange([...actions, { id: crypto.randomUUID(), type: "broadcast" }]);
+    if (!defaultActionType) return;
+    onChange([...actions, { id: crypto.randomUUID(), type: defaultActionType }]);
   };
 
   const handleRemove = (index: number) => {
@@ -39,7 +41,8 @@ export function ActionListEditor({
         <button
           type="button"
           onClick={handleAdd}
-          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-slate-800 hover:text-amber-400"
+          disabled={!defaultActionType}
+          className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-slate-800 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-400"
         >
           <Plus className="h-3 w-3" />
           추가

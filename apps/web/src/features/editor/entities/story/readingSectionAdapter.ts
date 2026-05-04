@@ -9,6 +9,7 @@ export interface ReadingSectionPickerOption {
 }
 
 const EMPTY_SUMMARY = "아직 작성된 내용이 없습니다.";
+type ReadingLineView = Pick<ReadingSectionResponse["lines"][number], "Text" | "Speaker">;
 
 /**
  * Frontend Adapter for creator-facing story information.
@@ -19,15 +20,16 @@ const EMPTY_SUMMARY = "아직 작성된 내용이 없습니다.";
  * same creator-friendly ViewModel instead of backend wire fields.
  */
 export function toReadingSectionPickerOption(
-  section: Pick<ReadingSectionResponse, "id" | "name" | "lines" | "bgmMediaId">,
+  section: Pick<ReadingSectionResponse, "id" | "name" | "bgmMediaId"> & { lines?: unknown },
 ): ReadingSectionPickerOption {
-  const lineCount = Array.isArray(section.lines) ? section.lines.length : 0;
+  const lines = normalizeReadingLines(section.lines);
+  const lineCount = lines.length;
   return {
     id: section.id,
     name: section.name.trim() || "이름 없는 스토리 정보",
-    summary: buildSummary(section.lines),
+    summary: buildSummary(lines),
     metaLabel: section.bgmMediaId ? `${lineCount}줄 · BGM 있음` : `${lineCount}줄`,
-    groupLabel: inferGroupLabel(section.lines),
+    groupLabel: inferGroupLabel(lines),
   };
 }
 
@@ -52,7 +54,17 @@ export function filterReadingSectionOptions(
   );
 }
 
-function buildSummary(lines: Pick<ReadingSectionResponse["lines"][number], "Text">[]): string {
+function normalizeReadingLines(lines: unknown): ReadingLineView[] {
+  if (!Array.isArray(lines)) return [];
+  return lines
+    .filter((line): line is Record<string, unknown> => !!line && typeof line === "object")
+    .map((line) => ({
+      Text: typeof line.Text === "string" ? line.Text : "",
+      Speaker: typeof line.Speaker === "string" ? line.Speaker : "",
+    }));
+}
+
+function buildSummary(lines: Pick<ReadingLineView, "Text">[]): string {
   const text = lines
     .map((line) => line.Text?.trim())
     .filter(Boolean)
@@ -61,7 +73,7 @@ function buildSummary(lines: Pick<ReadingSectionResponse["lines"][number], "Text
   return text.length > 70 ? `${text.slice(0, 70)}…` : text;
 }
 
-function inferGroupLabel(lines: ReadingSectionResponse["lines"]): string {
+function inferGroupLabel(lines: ReadingLineView[]): string {
   const speakers = new Set(lines.map((line) => line.Speaker?.trim()).filter(Boolean));
   if (lines.length === 0) return "빈 정보";
   if (speakers.size === 0) return "공통 서술";

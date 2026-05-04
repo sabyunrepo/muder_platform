@@ -72,6 +72,24 @@ describe("endingBranchAdapter", () => {
     expect(viewModel.warnings).toEqual([]);
   });
 
+  it("선택지가 비어 있는 결말 규칙은 저장 전 경고로 표시한다", () => {
+    const viewModel = toEndingBranchEditorViewModel({
+      modules: {
+        ending_branch: {
+          enabled: true,
+          config: {
+            questions: [{ id: "q1", text: "누가 진범인가?", type: "single", choices: ["하윤", "민재"], impact: "branch" }],
+            matrix: [{ priority: 1, ending: "end-truth", condition: buildChoiceCondition("q1", "") }],
+            defaultEnding: "end-fail",
+          },
+        },
+      },
+    }, [endingNode("end-truth", "진실"), endingNode("end-fail", "미해결")]);
+
+    expect(viewModel.matrix[0]).toMatchObject({ questionId: "q1", choice: null });
+    expect(viewModel.warnings).toContain("결말 규칙 중 질문/선택지 조건이 비어 있습니다.");
+  });
+
   it("선택지 조건을 JSONLogic으로 숨겨 저장하고 다시 읽는다", () => {
     const condition = buildChoiceCondition("q1", "비밀 편지 획득");
     expect(condition).toEqual({ in: ["비밀 편지 획득", { var: "answers.q1.choices" }] });

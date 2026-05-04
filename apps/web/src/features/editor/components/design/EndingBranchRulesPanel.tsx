@@ -40,6 +40,36 @@ function updateQuestionAt(
   };
 }
 
+function hasDuplicateChoice(
+  question: EndingBranchQuestion,
+  choiceIndex: number,
+  value: string,
+): boolean {
+  const normalized = value.trim();
+  if (!normalized) return false;
+  return question.choices.some((choice, index) => index !== choiceIndex && choice.trim() === normalized);
+}
+
+function createUniqueChoiceLabel(question: EndingBranchQuestion): string {
+  const existing = new Set(question.choices.map((choice) => choice.trim()));
+  let index = question.choices.length + 1;
+  let label = `선택지 ${index}`;
+  while (existing.has(label)) {
+    index += 1;
+    label = `선택지 ${index}`;
+  }
+  return label;
+}
+
+function updateChoiceValues(
+  question: EndingBranchQuestion,
+  choiceIndex: number,
+  value: string,
+): string[] {
+  if (hasDuplicateChoice(question, choiceIndex, value)) return question.choices;
+  return question.choices.map((choice, index) => (index === choiceIndex ? value : choice));
+}
+
 export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBranchRulesPanelProps) {
   const updateConfig = useUpdateConfigJson(themeId);
   const serverConfig = useMemo(() => readEndingBranchConfig(theme.config_json), [theme.config_json]);
@@ -47,9 +77,10 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
   const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
+    if (dirty) return;
     setDraft(serverConfig);
     setDirty(false);
-  }, [serverConfig]);
+  }, [dirty, serverConfig]);
 
   const viewModel = useMemo(
     () => toEndingBranchEditorViewModel(writeEndingBranchConfig(theme.config_json, draft), endingNodes),
@@ -85,13 +116,16 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
   };
 
   const handleChoiceChange = (questionId: string, choiceIndex: number, value: string) => {
-    applyDraft(updateQuestionAt(draft, questionId, (question) => ({
-      ...question,
-      choices: question.choices.map((choice, index) => (index === choiceIndex ? value : choice)),
-      scoreMap: question.scoreMap
-        ? Object.fromEntries(question.choices.map((choice, index) => [index === choiceIndex ? value : choice, question.scoreMap?.[choice] ?? 0]))
-        : undefined,
-    })));
+    applyDraft(updateQuestionAt(draft, questionId, (question) => {
+      const choices = updateChoiceValues(question, choiceIndex, value);
+      return {
+        ...question,
+        choices,
+        scoreMap: question.scoreMap
+          ? Object.fromEntries(choices.map((choice, index) => [choice, question.scoreMap?.[question.choices[index]] ?? 0]))
+          : undefined,
+      };
+    }));
   };
 
   const handleRemoveChoice = (questionId: string, choice: string) => {
@@ -121,7 +155,7 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
           onRemoveQuestion={handleRemoveQuestion}
           onChangeQuestion={(questionId, updater) => applyDraft(updateQuestionAt(draft, questionId, updater))}
           onChangeChoice={handleChoiceChange}
-          onAddChoice={(questionId) => applyDraft(updateQuestionAt(draft, questionId, (question) => ({ ...question, choices: [...question.choices, `선택지 ${question.choices.length + 1}`] })))}
+          onAddChoice={(questionId) => applyDraft(updateQuestionAt(draft, questionId, (question) => ({ ...question, choices: [...question.choices, createUniqueChoiceLabel(question)] })))}
           onRemoveChoice={handleRemoveChoice}
         />
         <EndingBranchOutcomeRules

@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { GitBranch } from "lucide-react";
 import type { ConditionGroup } from "./conditionTypes";
 import { recordToGroup, groupToRecord, createEmptyGroup } from "./conditionTypes";
@@ -31,6 +32,7 @@ export function ConditionBuilder({
   label,
 }: ConditionBuilderProps) {
   const group: ConditionGroup = recordToGroup(condition);
+  const helpId = useId();
 
   const handleChange = (updated: ConditionGroup) => {
     onChange(groupToRecord(updated));
@@ -50,10 +52,11 @@ export function ConditionBuilder({
             {label ?? DEFAULT_CONDITION_LABEL}
           </span>
         </div>
-        <p className="sr-only">{CONDITION_HELP_TEXT}</p>
+        <p id={helpId} className="sr-only">{CONDITION_HELP_TEXT}</p>
         <button
           type="button"
           onClick={handleClear}
+          aria-describedby={helpId}
           className="text-[10px] text-slate-500 hover:text-slate-300"
         >
           초기화

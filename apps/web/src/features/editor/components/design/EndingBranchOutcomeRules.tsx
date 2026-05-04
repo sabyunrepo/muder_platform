@@ -117,7 +117,9 @@ interface MatrixRuleRowProps {
 function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange }: MatrixRuleRowProps) {
   const row = draft.matrix[rowIndex];
   const parsed = readChoiceCondition(row.condition);
-  const selectedQuestion = branchQuestions.find((question) => question.id === parsed?.questionId) ?? branchQuestions[0];
+  const selectedQuestion = parsed
+    ? branchQuestions.find((question) => question.id === parsed.questionId)
+    : undefined;
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
       <div className="flex items-center justify-between gap-3">
@@ -127,7 +129,7 @@ function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange
         </button>
       </div>
       <div className="mt-3 grid gap-3">
-        <QuestionSelect draft={draft} rowIndex={rowIndex} selectedQuestion={selectedQuestion} branchQuestions={branchQuestions} onChange={onChange} />
+        <QuestionSelect draft={draft} rowIndex={rowIndex} selectedQuestionId={parsed?.questionId ?? ""} branchQuestions={branchQuestions} onChange={onChange} />
         <ChoiceSelect draft={draft} rowIndex={rowIndex} selectedQuestion={selectedQuestion} selectedChoice={parsed?.choice ?? ""} onChange={onChange} />
         <EndingSelect draft={draft} rowIndex={rowIndex} endingNodes={endingNodes} onChange={onChange} />
       </div>
@@ -135,19 +137,26 @@ function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange
   );
 }
 
-function QuestionSelect({ draft, rowIndex, selectedQuestion, branchQuestions, onChange }: {
+function QuestionSelect({ draft, rowIndex, selectedQuestionId, branchQuestions, onChange }: {
   draft: EndingBranchConfig;
   rowIndex: number;
-  selectedQuestion?: EndingBranchQuestion;
+  selectedQuestionId: string;
   branchQuestions: EndingBranchQuestion[];
   onChange: (next: EndingBranchConfig) => void;
 }) {
   return (
     <label className="block">
       <span className="text-xs font-medium text-slate-400">어떤 질문에서</span>
-      <select value={selectedQuestion?.id ?? ""} onChange={(event) => {
+      <select value={selectedQuestionId} onChange={(event) => {
         const question = branchQuestions.find((item) => item.id === event.target.value);
-        onChange({ ...draft, matrix: draft.matrix.map((item, index) => index === rowIndex && question ? updateMatrixCondition(item, question.id, question.choices[0] ?? "") : item) });
+        onChange({
+          ...draft,
+          matrix: draft.matrix.map((item, index) =>
+            index === rowIndex
+              ? (question ? updateMatrixCondition(item, question.id, "") : { ...item, condition: {} })
+              : item,
+          ),
+        });
       }} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100">
         <option value="">질문 선택</option>
         {branchQuestions.map((question) => <option key={question.id} value={question.id}>{question.text || "질문 내용 필요"}</option>)}
@@ -166,7 +175,7 @@ function ChoiceSelect({ draft, rowIndex, selectedQuestion, selectedChoice, onCha
   return (
     <label className="block">
       <span className="text-xs font-medium text-slate-400">어떤 선택이면</span>
-      <select value={selectedChoice || selectedQuestion?.choices[0] || ""} onChange={(event) => selectedQuestion && onChange({ ...draft, matrix: draft.matrix.map((item, index) => index === rowIndex ? updateMatrixCondition(item, selectedQuestion.id, event.target.value) : item) })} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100">
+      <select value={selectedChoice} onChange={(event) => selectedQuestion && event.target.value && onChange({ ...draft, matrix: draft.matrix.map((item, index) => index === rowIndex ? updateMatrixCondition(item, selectedQuestion.id, event.target.value) : item) })} disabled={!selectedQuestion} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">
         <option value="">선택지 선택</option>
         {selectedQuestion?.choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
       </select>
