@@ -37,7 +37,7 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
 | [#259](https://github.com/sabyunrepo/muder_platform/issues/259) | 미션·덱 조사·미디어 효과 후속 엔티티 정리 | done |
 | [#261](https://github.com/sabyunrepo/muder_platform/issues/261) | Mission Adapter/Engine 경계 정리 | done — PR #272 merged |
 | [#260](https://github.com/sabyunrepo/muder_platform/issues/260) | 미전환 에디터 엔티티 Adapter Epic | ready to close |
-| [#246](https://github.com/sabyunrepo/muder_platform/issues/246) | Phase 24 wrap-up 및 후속 범위 정리 | active in this PR |
+| [#246](https://github.com/sabyunrepo/muder_platform/issues/246) | Phase 24 wrap-up 및 후속 범위 정리 | done |
 
 ## Phase 25 후보 큐
 
@@ -50,7 +50,7 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
 3. [#249](https://github.com/sabyunrepo/muder_platform/issues/249) — 결말/투표 결과 breakdown 및 종료 화면 연결
    - 게임 종료 시 공통 결말, 캐릭터별 결과, 투표/미션 점수 요약을 연결한다.
 4. [#271](https://github.com/sabyunrepo/muder_platform/issues/271) — RFC 9457 + Google AIP-193 에러 계약
-   - 기능 개발을 막지 않는 별도 기반 작업으로 둔다. API/런타임 에러 응답 표준화가 필요할 때 착수한다.
+   - PR-1 감사 문서화부터 착수했다. API/런타임 에러 응답 표준화는 PR-2 이후 코드 변경으로 나눈다.
 
 ## 유지할 원칙
 
@@ -69,7 +69,7 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
 | dev preview/mock route 혼동 | #250에서 정리 | 새 mock은 실제 구현 컴포넌트와 분리하지 않는다 |
 | 단서/장소 runtime 효과 미완성 | Phase 25 후보 | #247, #248에서 백엔드 Engine 우선 설계 |
 | 결말/투표 breakdown 미완성 | Phase 25 후보 | #249에서 종료 화면과 함께 처리 |
-| 에러 계약 표준화 | 별도 후보 | #271에서 RFC 9457/Google AIP-193 기반으로 진행 |
+| 에러 계약 표준화 | 진행 중 | #271 PR-1에서 현재 HTTP/FE/WS 에러 계약 감사를 먼저 문서화하고, PR-2 이후 backend registry/front recovery로 분리한다 |
 
 ## 검증 게이트
 
