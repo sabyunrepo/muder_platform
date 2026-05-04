@@ -181,8 +181,16 @@ export function useFlowData(themeId: string) {
 
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
+  const edgesRef = useRef(edges);
+  edgesRef.current = edges;
   const getNodes = useCallback(() => nodesRef.current, []);
-  const { updateEdgeCondition } = useEdgeCondition(setEdges, getNodes, autoSave);
+  const getEdges = useCallback(() => edgesRef.current, []);
+  const { updateEdgeCondition } = useEdgeCondition(
+    setEdges,
+    getNodes,
+    getEdges,
+    autoSave,
+  );
   const { applyPreset } = useApplyPreset(setNodes, setEdges, autoSave);
 
   return {

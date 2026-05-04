@@ -112,10 +112,15 @@ describe("useEdgeCondition", () => {
     );
     const setEdges = vi.fn();
     const getNodes = vi.fn(() => []);
+    const input = [
+      { id: "edge-1", source: "node-1", target: "node-2", data: {} },
+      { id: "edge-2", source: "node-2", target: "node-3", data: {} },
+    ];
+    const getEdges = vi.fn(() => input);
     const autoSave = vi.fn();
 
     const { result } = renderHook(() =>
-      useEdgeCondition(setEdges, getNodes, autoSave),
+      useEdgeCondition(setEdges, getNodes, getEdges, autoSave),
     );
 
     act(() => {
@@ -123,13 +128,7 @@ describe("useEdgeCondition", () => {
     });
 
     expect(setEdges).toHaveBeenCalledOnce();
-
-    // Simulate the setEdges updater to verify edge transformation
-    const updater = setEdges.mock.calls[0][0] as (
-      eds: { id: string; data: Record<string, unknown> }[],
-    ) => unknown[];
-    const input = [{ id: "edge-1", data: {} }, { id: "edge-2", data: {} }];
-    const result2 = updater(input);
+    const result2 = setEdges.mock.calls[0][0] as typeof input;
     expect(result2[0]).toMatchObject({
       id: "edge-1",
       type: "condition",
@@ -146,10 +145,14 @@ describe("useEdgeCondition", () => {
     );
     const setEdges = vi.fn();
     const getNodes = vi.fn(() => []);
+    const input = [
+      { id: "edge-1", source: "node-1", target: "node-2", data: {} },
+    ];
+    const getEdges = vi.fn(() => input);
     const autoSave = vi.fn();
 
     const { result } = renderHook(() =>
-      useEdgeCondition(setEdges, getNodes, autoSave),
+      useEdgeCondition(setEdges, getNodes, getEdges, autoSave),
     );
 
     const incompleteCondition = {
@@ -170,18 +173,36 @@ describe("useEdgeCondition", () => {
     });
 
     expect(setEdges).toHaveBeenCalledOnce();
-
-    const updater = setEdges.mock.calls[0][0] as (
-      eds: { id: string; data: Record<string, unknown> }[],
-    ) => unknown[];
-    const input = [{ id: "edge-1", data: {} }];
-    const result2 = updater(input);
+    const result2 = setEdges.mock.calls[0][0] as typeof input;
 
     expect(result2[0]).toMatchObject({
       id: "edge-1",
       type: "condition",
       data: { condition: incompleteCondition },
     });
+    expect(autoSave).not.toHaveBeenCalled();
+  });
+
+  it("대상 엣지가 없으면 상태와 저장을 변경하지 않는다", async () => {
+    const { useEdgeCondition } = await import(
+      "../../../hooks/useEdgeCondition"
+    );
+    const setEdges = vi.fn();
+    const getNodes = vi.fn(() => []);
+    const getEdges = vi.fn(() => [
+      { id: "edge-2", source: "node-2", target: "node-3", data: {} },
+    ]);
+    const autoSave = vi.fn();
+
+    const { result } = renderHook(() =>
+      useEdgeCondition(setEdges, getNodes, getEdges, autoSave),
+    );
+
+    act(() => {
+      result.current.updateEdgeCondition("edge-1", validCondition);
+    });
+
+    expect(setEdges).not.toHaveBeenCalled();
     expect(autoSave).not.toHaveBeenCalled();
   });
 });
