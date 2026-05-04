@@ -76,6 +76,8 @@ describe("StoryTab", () => {
     render(<StoryTab themeId="theme-1" />);
 
     expect(await screen.findByText("스토리 장면 구성을 불러오는 중입니다.")).toBeDefined();
+    expect(screen.getByRole("status").getAttribute("aria-live")).toBe("polite");
+    expect(screen.getByRole("status").getAttribute("aria-atomic")).toBe("true");
     expect(screen.queryByText("0개 장면")).toBeNull();
   });
 
@@ -89,6 +91,8 @@ describe("StoryTab", () => {
     render(<StoryTab themeId="theme-1" />);
 
     expect(await screen.findByText("스토리 장면 구성을 불러오지 못했습니다.")).toBeDefined();
+    expect(screen.getByRole("alert").getAttribute("aria-live")).toBe("assertive");
+    expect(screen.getByRole("alert").getAttribute("aria-atomic")).toBe("true");
     expect(screen.queryByText("0개 장면")).toBeNull();
   });
 });

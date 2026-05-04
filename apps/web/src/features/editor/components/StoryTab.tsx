@@ -51,9 +51,21 @@ function ViewToggleBtn({ mode, current, icon, label, onClick }: ViewToggleProps)
   );
 }
 
-function StorySceneSummaryStatus({ message }: { message: string }) {
+function StorySceneSummaryStatus({
+  message,
+  status,
+}: {
+  message: string;
+  status: 'loading' | 'error';
+}) {
+  const isError = status === 'error';
   return (
-    <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
+    <div
+      className="border-b border-slate-800 bg-slate-950 px-5 py-4"
+      role={isError ? 'alert' : 'status'}
+      aria-live={isError ? 'assertive' : 'polite'}
+      aria-atomic="true"
+    >
       <div className="rounded-sm border border-slate-800 bg-slate-900/45 px-4 py-3 text-xs text-slate-400">
         {message}
       </div>
@@ -139,9 +151,15 @@ export function StoryTab({ themeId }: StoryTabProps) {
       {/* Editor / Preview panes */}
       <div className="flex flex-1 flex-col overflow-y-auto">
         {isFlowLoading ? (
-          <StorySceneSummaryStatus message="스토리 장면 구성을 불러오는 중입니다." />
+          <StorySceneSummaryStatus
+            message="스토리 장면 구성을 불러오는 중입니다."
+            status="loading"
+          />
         ) : isFlowError ? (
-          <StorySceneSummaryStatus message="스토리 장면 구성을 불러오지 못했습니다." />
+          <StorySceneSummaryStatus
+            message="스토리 장면 구성을 불러오지 못했습니다."
+            status="error"
+          />
         ) : storySceneSummary ? (
           <StorySceneSummary summary={storySceneSummary} />
         ) : null}
