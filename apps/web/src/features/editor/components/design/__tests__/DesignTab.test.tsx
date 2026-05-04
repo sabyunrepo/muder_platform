@@ -5,8 +5,9 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
+const { mutateMock, navigateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
+  navigateMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
   useModuleSchemasMock: vi.fn(),
 }));
@@ -17,6 +18,10 @@ const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+vi.mock('react-router', () => ({
+  useNavigate: () => navigateMock,
 }));
 
 vi.mock('@/features/editor/api', () => ({
@@ -155,6 +160,7 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('흐름'));
     expect(screen.getByText('FlowSubTab 콘텐츠')).toBeDefined();
+    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/flow');
   });
 
   it('장소 탭 클릭 시 장소 콘텐츠로 전환된다', () => {
@@ -162,6 +168,7 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('장소'));
     expect(screen.getByText('LocationsSubTab 콘텐츠')).toBeDefined();
+    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/locations');
   });
 
   it('결말 탭 클릭 시 결말 entity 콘텐츠로 전환된다', () => {
@@ -169,6 +176,7 @@ describe('DesignTab', () => {
 
     fireEvent.click(screen.getByText('결말'));
     expect(screen.getByText('EndingEntitySubTab 콘텐츠')).toBeDefined();
+    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/endings');
   });
 
   it.each([

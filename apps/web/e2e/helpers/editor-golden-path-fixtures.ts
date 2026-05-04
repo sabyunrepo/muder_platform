@@ -48,7 +48,7 @@ export interface MockState {
 export function freshState(): MockState {
   return {
     configVersion: 1,
-    configJson: { characters: [], locations: [], modules: { voice_chat: true }, module_configs: {} },
+    configJson: { characters: [], locations: [], modules: {}, module_configs: {} },
     clueImageURL: null,
     startingClueIds: [],
     locationClueIds: [CLUE_ID],
@@ -206,7 +206,7 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     });
   });
 
-  await page.route(`**/v1/editor/themes/${THEME_ID}/media**`, (r) => {
+  await page.route(new RegExp(`/v1/editor/themes/${THEME_ID}/media(?:\\?.*)?$`), (r) => {
     if (r.request().method() !== "GET") return r.continue();
     return r.fulfill({
       status: 200,

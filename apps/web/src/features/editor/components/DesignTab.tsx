@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Puzzle, GitBranch, MapPin, Drama } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import {
@@ -29,6 +30,7 @@ const SUB_TABS: { key: DesignSubTab; label: string; icon: React.ElementType }[] 
 
 // ---------------------------------------------------------------------------
 export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
+  const navigate = useNavigate();
   const [activeSubTab, setActiveSubTab] = useState<DesignSubTab>(() =>
     readDesignSubTabFromRouteSegment(routeSegment),
   );
@@ -36,6 +38,11 @@ export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
   useEffect(() => {
     setActiveSubTab(readDesignSubTabFromRouteSegment(routeSegment));
   }, [routeSegment]);
+
+  const handleSubTabClick = (key: DesignSubTab) => {
+    setActiveSubTab(key);
+    navigate(`/editor/${themeId}/${key}`);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -45,7 +52,7 @@ export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
           <button
             key={key}
             type="button"
-            onClick={() => setActiveSubTab(key)}
+            onClick={() => handleSubTabClick(key)}
             className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
               activeSubTab === key
                 ? 'border-amber-500 text-amber-400'
