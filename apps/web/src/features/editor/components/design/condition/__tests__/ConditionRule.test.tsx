@@ -154,6 +154,7 @@ describe("ConditionRuleRow", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "변수" }), {
       target: { value: "scene_visit_count" },
     });
+    expect(onChange).toHaveBeenCalledOnce();
     const [updated] = onChange.mock.calls[0] as [ConditionRule];
     expect(updated.variable).toBe("scene_visit_count");
     expect(updated.target_character_id).toBeUndefined();

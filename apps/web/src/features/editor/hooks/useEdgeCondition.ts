@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { Edge } from "@xyflow/react";
+import { isCompleteConditionGroupRecord } from "../components/design/condition/conditionTypes";
 
 type SetEdges = React.Dispatch<React.SetStateAction<Edge[]>>;
 type AutoSave = (nodes: unknown[], edges: Edge[]) => void;
@@ -15,13 +16,16 @@ export function useEdgeCondition(
 ) {
   const updateEdgeCondition = useCallback(
     (edgeId: string, condition: Record<string, unknown>) => {
+      const shouldAutoSave = isCompleteConditionGroupRecord(condition);
       setEdges((eds) => {
         const next = eds.map((e) =>
           e.id === edgeId
             ? { ...e, data: { ...e.data, condition }, type: "condition" }
             : e,
         );
-        autoSave(getNodes(), next);
+        if (shouldAutoSave) {
+          autoSave(getNodes(), next);
+        }
         return next;
       });
     },

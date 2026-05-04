@@ -2,6 +2,7 @@ package flow
 
 import (
 	"encoding/json"
+	"net/http"
 	"testing"
 
 	"github.com/google/uuid"
@@ -29,16 +30,7 @@ func TestValidateEdgeCondition_RejectsInvalidCondition(t *testing.T) {
 			{"id":"rule-1","variable":"raw_engine_key","comparator":"=","value":"x"}
 		]
 	}`))
-	if err == nil {
-		t.Fatal("expected validation error")
-	}
-	appErr, ok := err.(*apperror.AppError)
-	if !ok {
-		t.Fatalf("expected AppError, got %T", err)
-	}
-	if appErr.Status != 400 {
-		t.Fatalf("expected 400, got %d", appErr.Status)
-	}
+	assertBadRequest(t, err)
 }
 
 func TestValidateSaveRequest_ValidatesEdgeCondition(t *testing.T) {
@@ -55,7 +47,19 @@ func TestValidateSaveRequest_ValidatesEdgeCondition(t *testing.T) {
 			Condition: json.RawMessage(`{"id":"group-1","operator":"OR","rules":[]}`),
 		}},
 	}
-	if err := validateSaveRequest(req); err == nil {
-		t.Fatal("expected invalid condition error")
+	assertBadRequest(t, validateSaveRequest(req))
+}
+
+func assertBadRequest(t *testing.T, err error) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected validation error")
+	}
+	appErr, ok := err.(*apperror.AppError)
+	if !ok {
+		t.Fatalf("expected AppError, got %T", err)
+	}
+	if appErr.Status != http.StatusBadRequest {
+		t.Fatalf("expected %d, got %d", http.StatusBadRequest, appErr.Status)
 	}
 }
