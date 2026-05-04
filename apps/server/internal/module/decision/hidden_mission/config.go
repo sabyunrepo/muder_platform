@@ -12,13 +12,16 @@ type HiddenMissionConfig struct {
 
 // Mission represents a single hidden mission assigned to a player.
 type Mission struct {
-	ID           string `json:"id"`
-	Type         string `json:"type"` // "hold_clue"|"vote_target"|"transfer_clue"|"survive"|"custom"
-	Description  string `json:"description"`
-	Points       int    `json:"points"`
-	Verification string `json:"verification"` // "auto"|"self_report"|"gm_verify"
-	TargetClueID string `json:"targetClueId,omitempty"`
-	Completed    bool   `json:"completed"`
+	ID                string `json:"id"`
+	Type              string `json:"type"` // "hold_clue"|"vote_target"|"transfer_clue"|"survive"|"custom"
+	Description       string `json:"description"`
+	Points            int    `json:"points"`
+	Verification      string `json:"verification"` // "auto"|"self_report"|"gm_verify"
+	TargetClueID      string `json:"targetClueId,omitempty"`
+	TargetCharacterID string `json:"targetCharacterId,omitempty"`
+	TargetEndingID    string `json:"targetEndingId,omitempty"`
+	Condition         string `json:"condition,omitempty"`
+	Completed         bool   `json:"completed"`
 }
 
 // Schema returns the JSON Schema describing the module's init config.

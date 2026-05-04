@@ -26,8 +26,13 @@ func (m *HiddenMissionModule) onClueAcquired(event engine.Event) {
 	m.mu.RUnlock()
 
 	for _, mission := range missionsCopy {
-		if mission.Type == "hold_clue" && mission.TargetClueID == clueID && !mission.Completed {
-			m.completeMission(pid, mission.ID)
+		if mission.Type == "hold_clue" &&
+			mission.Verification == "auto" &&
+			clueID != "" &&
+			mission.TargetClueID != "" &&
+			mission.TargetClueID == clueID &&
+			!mission.Completed {
+			m.completeMission(pid, mission.ID, "clue.acquired")
 		}
 	}
 }
@@ -51,8 +56,17 @@ func (m *HiddenMissionModule) onVoteCast(event engine.Event) {
 	m.mu.RUnlock()
 
 	for _, mission := range missionsCopy {
-		if mission.Type == "vote_target" && mission.TargetClueID == targetCode && !mission.Completed {
-			m.completeMission(pid, mission.ID)
+		targetID := mission.TargetCharacterID
+		if targetID == "" {
+			targetID = mission.TargetClueID
+		}
+		if mission.Type == "vote_target" &&
+			mission.Verification == "auto" &&
+			targetID != "" &&
+			targetCode != "" &&
+			targetID == targetCode &&
+			!mission.Completed {
+			m.completeMission(pid, mission.ID, "vote.cast")
 		}
 	}
 }
@@ -75,8 +89,8 @@ func (m *HiddenMissionModule) onClueTransferred(event engine.Event) {
 	m.mu.RUnlock()
 
 	for _, mission := range missionsCopy {
-		if mission.Type == "transfer_clue" && !mission.Completed {
-			m.completeMission(pid, mission.ID)
+		if mission.Type == "transfer_clue" && mission.Verification == "auto" && !mission.Completed {
+			m.completeMission(pid, mission.ID, "clue.transferred")
 		}
 	}
 }
