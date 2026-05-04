@@ -238,6 +238,22 @@ func (m *Module) stateLocked(playerID *uuid.UUID) (json.RawMessage, error) {
 	}
 	if m.result != nil {
 		state["selectedEnding"] = m.result.SelectedEnding
+		if m.result.MatchedPriority != nil {
+			state["matchedPriority"] = *m.result.MatchedPriority
+		}
+		result := map[string]any{
+			"selectedEnding": m.result.SelectedEnding,
+		}
+		if m.result.MatchedPriority != nil {
+			result["matchedPriority"] = *m.result.MatchedPriority
+		}
+		if playerID == nil {
+			result["scores"] = copyScores(m.result.Scores)
+		} else if score, ok := m.result.Scores[playerID.String()]; ok {
+			result["myScore"] = score
+			state["myScore"] = score
+		}
+		state["result"] = result
 	}
 	if playerID != nil {
 		myAnswers := make(map[string][]string)
@@ -249,4 +265,15 @@ func (m *Module) stateLocked(playerID *uuid.UUID) (json.RawMessage, error) {
 		state["myAnswers"] = myAnswers
 	}
 	return json.Marshal(state)
+}
+
+func copyScores(scores map[string]int) map[string]int {
+	if len(scores) == 0 {
+		return nil
+	}
+	out := make(map[string]int, len(scores))
+	for playerID, score := range scores {
+		out[playerID] = score
+	}
+	return out
 }

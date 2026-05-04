@@ -39,3 +39,4 @@ export type { WhisperPanelProps } from "./WhisperPanel";
 export { ChatMessageList } from "./ChatMessageList";
 export { ChatInput } from "./ChatInput";
 export { WhisperTargetPicker } from "./WhisperTargetPicker";
+export { ResultBreakdownPanel } from "./ResultBreakdownPanel";

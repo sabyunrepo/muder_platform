@@ -22,6 +22,7 @@ import {
   MissionResultOverlay,
   TradeCluePanel,
   TradeRequestNotification,
+  ResultBreakdownPanel,
 } from "@/features/game/components";
 import { AudioProvider } from "@/features/audio/AudioProvider";
 import { GameErrorBoundary } from "@/components/error";
@@ -295,16 +296,7 @@ function PhaseContent({ phase, isGameActive, send }: PhaseContentProps) {
       );
 
     case GamePhase.RESULT:
-      return (
-        <div className="flex h-full items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg font-semibold text-slate-200">게임 종료</p>
-            <p className="mt-2 text-sm text-slate-400">
-              최종 결과를 확인하세요
-            </p>
-          </div>
-        </div>
-      );
+      return <ResultBreakdownPanel />;
 
     default:
       return null;

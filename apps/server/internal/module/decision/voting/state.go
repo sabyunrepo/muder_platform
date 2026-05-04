@@ -17,6 +17,7 @@ type votingState struct {
 	VotedCount   int               `json:"votedCount,omitempty"` // only in secret mode
 	Winner       string            `json:"winner,omitempty"`
 	Round        int               `json:"round,omitempty"`
+	LastResult   *VoteResult       `json:"lastResult,omitempty"`
 }
 
 // BuildState returns the public module state for client sync.
@@ -43,6 +44,8 @@ func (m *VotingModule) BuildState() (json.RawMessage, error) {
 	if m.lastResult != nil {
 		state.Winner = m.lastResult.Winner
 		state.Round = m.lastResult.Round
+		result := *m.lastResult
+		state.LastResult = &result
 	}
 
 	return json.Marshal(state)
@@ -77,6 +80,8 @@ func (m *VotingModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error
 	if m.lastResult != nil {
 		state.Winner = m.lastResult.Winner
 		state.Round = m.lastResult.Round
+		result := *m.lastResult
+		state.LastResult = &result
 	}
 
 	return json.Marshal(state)
@@ -91,6 +96,7 @@ type votingSavedState struct {
 	Votes        map[string]string `json:"votes"`
 	TotalPlayers int               `json:"totalPlayers"`
 	AlivePlayers int               `json:"alivePlayers"`
+	LastResult   *VoteResult       `json:"lastResult,omitempty"`
 }
 
 // SaveState snapshots the module's persistable state for restart-safe storage.
@@ -103,6 +109,12 @@ func (m *VotingModule) SaveState(_ context.Context) (engine.GameState, error) {
 		votes[pid.String()] = target
 	}
 
+	var lastResult *VoteResult
+	if m.lastResult != nil {
+		result := *m.lastResult
+		lastResult = &result
+	}
+
 	data, err := json.Marshal(votingSavedState{
 		IsOpen:       m.isOpen,
 		CurrentRound: m.currentRound,
@@ -110,6 +122,7 @@ func (m *VotingModule) SaveState(_ context.Context) (engine.GameState, error) {
 		Votes:        votes,
 		TotalPlayers: m.totalPlayers,
 		AlivePlayers: m.alivePlayers,
+		LastResult:   lastResult,
 	})
 	if err != nil {
 		return engine.GameState{}, fmt.Errorf("voting: save state: %w", err)
@@ -145,5 +158,11 @@ func (m *VotingModule) RestoreState(_ context.Context, _ uuid.UUID, state engine
 	m.votes = votes
 	m.totalPlayers = s.TotalPlayers
 	m.alivePlayers = s.AlivePlayers
+	if s.LastResult != nil {
+		result := *s.LastResult
+		m.lastResult = &result
+	} else {
+		m.lastResult = nil
+	}
 	return nil
 }

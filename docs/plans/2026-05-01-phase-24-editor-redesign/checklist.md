@@ -47,8 +47,9 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
    - 사용 시 단서 지급/소모/정보 공개/조건 검사 같은 실제 게임 효과를 백엔드 Engine으로 옮긴다.
 2. [#248](https://github.com/sabyunrepo/muder_platform/issues/248) — 장소 조사 Runtime 및 장소 단서 발견 흐름
    - 장소를 조사했을 때 어떤 단서가 언제 누구에게 공개되는지 runtime 흐름을 만든다.
-3. [#249](https://github.com/sabyunrepo/muder_platform/issues/249) — 결말/투표 결과 breakdown 및 종료 화면 연결
-   - 게임 종료 시 공통 결말, 캐릭터별 결과, 투표/미션 점수 요약을 연결한다.
+3. [#249](https://github.com/sabyunrepo/muder_platform/issues/249) — 결말/투표 결과 breakdown 및 종료 화면 연결 — **in progress**
+   - 게임 종료 시 공통 결말과 투표 집계 요약을 우선 연결한다. 캐릭터별 별도 엔딩 본문/감상 공유 탭 편집은 후순위로 둔다.
+   - 작업 기준: `refs/issue-249-ending-vote-breakdown.md`
 4. [#271](https://github.com/sabyunrepo/muder_platform/issues/271) — RFC 9457 + Google AIP-193 에러 계약
    - PR-1에서 감사 문서화와 v1 핵심 계약 일부(`apperror` registry, ProblemDetail metadata, frontend ApiError)를 함께 반영한다. PR-2 이후에는 남은 표준화와 도메인별 적용을 분리한다.
 
@@ -68,7 +69,7 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
 | legacy normalizer 제거 | 유지 | 운영 DB/seed/preset이 canonical shape임을 검증하고, legacy read telemetry를 일정 기간 관찰해 0건임을 확인한 뒤, rollback 경로와 data backup을 포함한 별도 migration PR을 만든다 |
 | dev preview/mock route 혼동 | #250에서 정리 | 새 mock은 실제 구현 컴포넌트와 분리하지 않는다 |
 | 단서/장소 runtime 효과 미완성 | Phase 25 후보 | #247, #248에서 백엔드 Engine 우선 설계 |
-| 결말/투표 breakdown 미완성 | Phase 25 후보 | #249에서 종료 화면과 함께 처리 |
+| 결말/투표 breakdown 미완성 | 진행 중 | #249에서 backend 집계 계약과 RESULT 화면 우선 연결 |
 | 에러 계약 표준화 | 진행 중 | #271 PR-1에서 현재 HTTP/FE/WS 에러 계약 감사를 먼저 문서화하고, PR-2 이후 backend registry/front recovery로 분리한다 |
 
 ## 검증 게이트

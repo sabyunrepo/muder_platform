@@ -5,17 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
 
+// VoteOutcome explains how a voting round finished for result screens.
+type VoteOutcome string
+
+const (
+	VoteOutcomeWinner                    VoteOutcome = "winner"
+	VoteOutcomeTie                       VoteOutcome = "tie"
+	VoteOutcomeNoResult                  VoteOutcome = "no_result"
+	VoteOutcomeInsufficientParticipation VoteOutcome = "insufficient_participation"
+)
+
 // VoteResult holds the outcome of a voting round.
 type VoteResult struct {
-	Results map[string]int `json:"results"`
-	Winner  string         `json:"winner"`
-	IsTie   bool           `json:"isTie"`
-	Round   int            `json:"round"`
+	Results          map[string]int `json:"results"`
+	Winner           string         `json:"winner"`
+	IsTie            bool           `json:"isTie"`
+	Round            int            `json:"round"`
+	Outcome          VoteOutcome    `json:"outcome"`
+	TotalVotes       int            `json:"totalVotes"`
+	AbstainCount     int            `json:"abstainCount"`
+	EligibleVoters   int            `json:"eligibleVoters"`
+	ParticipationPct int            `json:"participationPct"`
+	TieCandidates    []string       `json:"tieCandidates,omitempty"`
 }
 
 // --- PhaseReactor ---
@@ -100,29 +117,40 @@ func (m *VotingModule) closeVoting() error {
 // Must be called under write lock.
 func (m *VotingModule) tallyResults() VoteResult {
 	counts := make(map[string]int)
+	abstainCount := 0
 	for _, target := range m.votes {
-		if target != "" { // skip abstentions in count
-			counts[target]++
+		if target == "" {
+			abstainCount++
+			continue
 		}
+		counts[target]++
 	}
 
-	result := VoteResult{
-		Results: counts,
-		Round:   m.currentRound,
-	}
-
-	// Check minimum participation.
 	eligible := m.alivePlayers
 	if m.config.DeadCanVote {
 		eligible = m.totalPlayers
 	}
+	participationPct := 0
 	if eligible > 0 {
-		participation := (len(m.votes) * 100) / eligible
-		if participation < m.config.MinParticipation {
-			result.IsTie = true
-			result.Winner = ""
-			return result
-		}
+		participationPct = (len(m.votes) * 100) / eligible
+	}
+
+	result := VoteResult{
+		Results:          counts,
+		Round:            m.currentRound,
+		Outcome:          VoteOutcomeNoResult,
+		TotalVotes:       len(m.votes),
+		AbstainCount:     abstainCount,
+		EligibleVoters:   eligible,
+		ParticipationPct: participationPct,
+	}
+
+	// Check minimum participation.
+	if eligible > 0 && participationPct < m.config.MinParticipation {
+		result.IsTie = true
+		result.Winner = ""
+		result.Outcome = VoteOutcomeInsufficientParticipation
+		return result
 	}
 
 	// Find the winner(s).
@@ -140,23 +168,30 @@ func (m *VotingModule) tallyResults() VoteResult {
 	if len(winners) == 0 {
 		result.IsTie = true
 		result.Winner = ""
+		result.Outcome = VoteOutcomeNoResult
 		return result
 	}
+	sort.Strings(winners)
 
 	if len(winners) == 1 {
 		result.Winner = winners[0]
 		result.IsTie = false
+		result.Outcome = VoteOutcomeWinner
 		return result
 	}
 
 	// Tie handling.
 	result.IsTie = true
+	result.Outcome = VoteOutcomeTie
+	result.TieCandidates = append([]string(nil), winners...)
 	switch m.config.TieBreaker {
 	case "random":
 		result.Winner = winners[rand.IntN(len(winners))]
 		result.IsTie = false
+		result.Outcome = VoteOutcomeWinner
 	case "no_result":
 		result.Winner = ""
+		result.Outcome = VoteOutcomeNoResult
 	case "revote":
 		// Remains a tie; the engine should call OPEN_VOTING again if under maxRounds.
 		result.Winner = ""

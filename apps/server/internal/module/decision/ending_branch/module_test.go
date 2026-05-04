@@ -187,6 +187,49 @@ func TestModule_ReactTo_EvaluatesPriorityMatrixAndPublishesEvent(t *testing.T) {
 	assert.Equal(t, "진실", payload["selectedEnding"])
 }
 
+func TestModule_BuildStateAfterEvaluationSeparatesAdminScoresFromPlayerState(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"},
+			{"id": "q2", "text": "공헌도", "type": "single", "choices": ["높음","낮음"], "impact": "score", "scoreMap": {"높음": 3, "낮음": 1}}
+		],
+		"matrix": [
+			{"priority": 1, "conditions": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{EventBus: engine.NewEventBus(nil)}, cfg))
+	playerA := uuid.New()
+	playerB := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q2","choice":"높음"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerB, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"B"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerB, "submit_answer", json.RawMessage(`{"question_id":"q2","choice":"낮음"}`)))
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	adminRaw, err := m.BuildState()
+	require.NoError(t, err)
+	var adminState map[string]any
+	require.NoError(t, json.Unmarshal(adminRaw, &adminState))
+	adminResult := adminState["result"].(map[string]any)
+	assert.Equal(t, "진실", adminResult["selectedEnding"])
+	assert.Equal(t, float64(1), adminResult["matchedPriority"])
+	scores := adminResult["scores"].(map[string]any)
+	assert.Equal(t, float64(3), scores[playerA.String()])
+	assert.Equal(t, float64(1), scores[playerB.String()])
+
+	playerRaw, err := m.BuildStateFor(playerA)
+	require.NoError(t, err)
+	var playerState map[string]any
+	require.NoError(t, json.Unmarshal(playerRaw, &playerState))
+	playerResult := playerState["result"].(map[string]any)
+	assert.Equal(t, "진실", playerResult["selectedEnding"])
+	assert.Equal(t, float64(1), playerResult["matchedPriority"])
+	assert.Equal(t, float64(3), playerResult["myScore"])
+	assert.NotContains(t, playerResult, "scores", "player-aware state must not leak other player scores")
+}
+
 func TestModule_ReactTo_EvaluateEndingIsIdempotent(t *testing.T) {
 	bus := engine.NewEventBus(nil)
 	var events []engine.Event
