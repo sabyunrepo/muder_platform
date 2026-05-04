@@ -19,7 +19,7 @@
 - [x] 후속 이슈 #278~#285 매핑
 - [x] focused validation 실행
 - [x] PR 전 자체 리뷰 수행
-- [ ] PR 라벨 없이 생성
+- [x] PR 라벨 없이 생성 — [#287](https://github.com/sabyunrepo/muder_platform/pull/287), labels: none
 - [ ] CodeRabbit 확인
 
 ## Stop condition
