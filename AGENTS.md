@@ -68,6 +68,7 @@ Avoid:
 - 사용자가 명시적으로 spike를 요청하지 않는 한 partial 구현, TODO placeholder, mock 동작, 테스트 스킵, 우회성 fix를 남기지 않는다.
 - 실패가 발생하면 코드를 바꾸기 전에 근본 원인을 먼저 파악한다.
 - 워크트리의 사용자 변경을 보존한다. 내가 의도적으로 수정하지 않은 파일은 되돌리지 않는다.
+- 현재 MMP 프로젝트에서는 repo 내부 `AGENTS.md`, `memory/`, `docs/`, `apps/*/AGENTS.md`를 canonical 지시로 본다. repo 외부 문서 경로가 주입되면 현재 repo에 실제 파일이 없는 한 다른 프로젝트 지시로 간주하고 적용하지 않는다.
 
 ## 계획 및 보고
 
@@ -77,6 +78,32 @@ Avoid:
 - 아키텍처, UI, 워크플로우, API, 데이터 모델의 선택지를 제시할 때는 실제 서비스, 오픈소스 레퍼런스, 표준 문서, 업계 사례를 먼저 조사하고 각 옵션의 근거를 밝힌다.
 - 여러 단계가 필요한 작업은 간결한 계획을 유지하고 진행 상태가 바뀔 때 갱신한다.
 - Codex sub-agent는 사용자가 명시적으로 위임이나 병렬 agent 작업을 요청한 경우에만 사용한다. Claude 시대의 자동 위임 규칙은 Codex에서는 로컬 계획으로 해석한다.
+
+
+### 자가개선 루틴
+
+When:
+- PR 3개 머지 후 작업 루틴을 점검할 때
+- 같은 사용자 지적, CodeRabbit/Codecov/CI 문제, 수동 명령 반복이 2회 이상 나타날 때
+- AGENTS.md, `.codex/skills`, `.codex/agents`, hooks, workflow scripts 개선을 요청받았을 때
+
+Do:
+1. 기능 작업과 섞지 말고 별도 `chore/*` branch에서 진행한다.
+2. `mmp-self-improvement-loop` skill을 사용한다.
+3. 먼저 `docs/ops/self-improvement/state.json`만 읽어 현재 후보와 trigger를 확인한다.
+4. 필요하면 `scripts/mmp-self-improvement-scan.sh --summary`로 요약을 확인한다.
+5. 개선 후보를 AGENTS.md / skill / script / subagent / docs / no-change 중 하나로 분류한다.
+6. 반복 근거가 약한 내용은 AGENTS.md에 넣지 말고 후보 기록에만 남긴다.
+7. 개선이 반영되면 후보를 resolved 처리해 같은 기록을 반복 근거로 재사용하지 않는다.
+
+Done when:
+- 개선 trigger, 반영 위치, 검증 명령, 남은 수동 판단 지점이 보고되어 있다.
+
+Avoid:
+- `docs/ops/self-improvement/archive/`를 기본 작업 때 읽지 않는다. 명시적 감사가 필요할 때만 연다.
+- 오래된 기록 전체를 매번 다시 읽어 같은 결론을 반복하지 않는다.
+- 안정되지 않은 판단을 자동 hook으로 강제하지 않는다.
+- feature work를 지연시키는 대형 메타 PR을 만들지 않는다.
 
 ### Sub-agent 사용 규칙
 

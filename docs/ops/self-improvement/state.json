@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-05-04",
+  "policy": {
+    "read_first": "Read this state file before archive logs.",
+    "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
+    "feature_work_priority": "Keep self-improvement in dedicated chore branches and do not mix with feature PRs."
+  },
+  "triggers": {
+    "merged_prs_since_review": 0,
+    "review_after_pr_count": 3,
+    "repeat_signal_threshold": 2,
+    "repeat_manual_command_threshold": 3
+  },
+  "active_candidates": [],
+  "resolved_candidates": [
+    {
+      "id": "ci-coderabbit-state-interpretation",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-status.sh"
+      ],
+      "resolution": "Added CodeRabbit actionable state derived from check bucket plus unresolved review threads."
+    },
+    {
+      "id": "self-improvement-routine",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-self-improvement-loop/SKILL.md",
+        "scripts/mmp-self-improvement-scan.sh",
+        "AGENTS.md",
+        "docs/ops/self-improvement/state.json"
+      ],
+      "resolution": "Created trigger-based self-improvement loop with lightweight state-first reading and archive avoidance."
+    },
+    {
+      "id": "pr-status-watch-loop",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Added a PR watcher script so CodeRabbit and CI polling can run in one long-lived command with notification instead of manual loop calls."
+    },
+    {
+      "id": "external-document-instruction-leak",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "AGENTS.md"
+      ],
+      "resolution": "Clarified that external document paths are not MMP canonical instructions unless matching files exist in the repository."
+    },
+    {
+      "id": "operational-only-pr-ci-exception",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that operational-only PRs do not require forced full CI when workflow path filters intentionally skip them; CodeRabbit, light checks, and focused local checks are the merge gate."
+    },
+    {
+      "id": "watcher-exit-action-continuation",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that watcher exit codes must trigger the next Codex action instead of only stopping and reporting."
+    },
+    {
+      "id": "self-improvement-resolved-candidate-validation",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-self-improvement-loop/scripts/scan_self_improvement.py"
+      ],
+      "resolution": "Added validation that resolved_candidates ids exist in candidates.jsonl."
+    },
+    {
+      "id": "watcher-transient-gh-retry",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh"
+      ],
+      "resolution": "Added gh retry handling and transient failure continuation for long-running PR watcher polling."
+    },
+    {
+      "id": "watcher-single-dispatch-per-workflow",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh"
+      ],
+      "resolution": "Tracked workflow names already dispatched by the watcher so missing workflow dispatch happens at most once per session."
+    }
+  ],
+  "last_review": {
+    "date": "2026-05-04",
+    "summary": "Recorded watcher exit continuation and CodeRabbit hardening fixes for the self-improvement routine."
+  }
+}
