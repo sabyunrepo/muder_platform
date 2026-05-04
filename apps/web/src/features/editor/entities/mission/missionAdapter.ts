@@ -92,6 +92,9 @@ const VERIFICATION_LABELS: Record<MissionVerification, string> = {
   gm_verify: "진행자 확인",
 };
 
+const MANUAL_VERIFICATIONS: MissionVerification[] = ["self_report", "gm_verify"];
+const AUTO_VERIFICATIONS: MissionVerification[] = ["auto", ...MANUAL_VERIFICATIONS];
+
 function isRecord(value: unknown): value is EditorConfig {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -157,6 +160,13 @@ export function getMissionTypeLabel(type: string): string {
   return MISSION_TYPE_LABELS[type] ?? "직접 설정";
 }
 
+export function getMissionVerificationOptions(
+  runtimeType: MissionRuntimeType,
+): Array<{ value: MissionVerification; label: string }> {
+  const values = runtimeType === "custom" ? MANUAL_VERIFICATIONS : AUTO_VERIFICATIONS;
+  return values.map((value) => ({ value, label: VERIFICATION_LABELS[value] }));
+}
+
 export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
   const runtimeType = toRuntimeType(mission);
   return {
@@ -164,9 +174,7 @@ export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
     type: runtimeType,
     description: mission.description.trim(),
     points: Math.max(0, Math.trunc(mission.points || 0)),
-    verification: isMissionVerification(mission.verification)
-      ? mission.verification
-      : defaultVerification(runtimeType),
+    verification: normalizeVerificationForRuntime(runtimeType, mission.verification),
     resultVisibility: "result_only",
     engineOwner: "backend_engine",
     ...(mission.targetCharacterId ? { targetCharacterId: mission.targetCharacterId } : {}),
@@ -225,6 +233,21 @@ function toRuntimeType(mission: Mission): MissionRuntimeType {
 
 function defaultVerification(runtimeType: MissionRuntimeType): MissionVerification {
   return runtimeType === "custom" ? "self_report" : "auto";
+}
+
+function normalizeVerificationForRuntime(
+  runtimeType: MissionRuntimeType,
+  verification: unknown,
+): MissionVerification {
+  const normalized = isMissionVerification(verification)
+    ? verification
+    : defaultVerification(runtimeType);
+
+  if (runtimeType === "custom" && normalized === "auto") {
+    return "self_report";
+  }
+
+  return normalized;
 }
 
 function buildMissionWarnings(mission: Mission, runtimeDraft: MissionRuntimeDraft): string[] {

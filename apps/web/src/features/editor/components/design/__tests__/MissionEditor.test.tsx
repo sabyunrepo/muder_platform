@@ -132,6 +132,24 @@ describe('MissionEditor', () => {
     expect(onChange).toHaveBeenCalledWith('mission-1', 'verification', 'gm_verify');
   });
 
+  it('수동 판정 미션에서는 자동 판정을 선택지에서 숨긴다', () => {
+    render(
+      <MissionEditor
+        missions={[baseMission({ type: 'secret', verification: 'auto' })]}
+        onAdd={noop}
+        onChange={noop}
+        onDelete={noop}
+      />,
+    );
+
+    const select = screen.getByLabelText('미션 판정 방식') as HTMLSelectElement;
+    expect(select.value).toBe('self_report');
+    expect(Array.from(select.options).map((option) => option.value)).toEqual([
+      'self_report',
+      'gm_verify',
+    ]);
+  });
+
   it('MISSION_TYPES에 kill/possess/secret/protect가 포함된다', () => {
     render(
       <MissionEditor

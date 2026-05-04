@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createMissionDraft,
+  getMissionVerificationOptions,
   readCharacterMissionMap,
   toMissionEngineContractDraft,
   toMissionRuntimeDraft,
@@ -67,6 +68,47 @@ describe("missionAdapter", () => {
       engineOwner: "backend_engine",
     }));
     vi.restoreAllMocks();
+  });
+
+  it("custom 런타임은 저장값이 auto여도 수동 판정으로 정규화한다", () => {
+    const runtime = toMissionRuntimeDraft({
+      id: "m-custom",
+      type: "secret",
+      description: "비밀을 지킨다",
+      points: 3,
+      verification: "auto",
+    });
+
+    expect(runtime).toEqual(expect.objectContaining({
+      type: "custom",
+      verification: "self_report",
+    }));
+    expect(toMissionEngineContractDraft({
+      "char-1": [
+        {
+          id: "m-custom",
+          type: "secret",
+          description: "비밀을 지킨다",
+          points: 3,
+          verification: "auto",
+        },
+      ],
+    }).assignments[0]).toEqual(expect.objectContaining({
+      autoVerifiableCount: 0,
+      manualReviewCount: 1,
+    }));
+  });
+
+  it("판정 방식 선택지는 runtime 타입에 맞게 제한한다", () => {
+    expect(getMissionVerificationOptions("custom").map((option) => option.value)).toEqual([
+      "self_report",
+      "gm_verify",
+    ]);
+    expect(getMissionVerificationOptions("hold_clue").map((option) => option.value)).toEqual([
+      "auto",
+      "self_report",
+      "gm_verify",
+    ]);
   });
 
   it("제작자가 이해할 요약과 자동 판정 경고를 만든다", () => {

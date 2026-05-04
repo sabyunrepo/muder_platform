@@ -2,6 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { MissionTypeFields } from './MissionTypeFields';
 import {
   MISSION_TYPES,
+  getMissionVerificationOptions,
   toMissionViewModel,
   type Mission,
   type MissionEditorCharacter,
@@ -82,6 +83,7 @@ function MissionCard({
   onDelete: (missionId: string) => void;
 }) {
   const viewModel = toMissionViewModel(mission);
+  const verificationOptions = getMissionVerificationOptions(viewModel.runtimeType);
   const descriptionId = `mission-description-${mission.id}`;
   return (
     <div className="rounded border border-slate-800 bg-slate-900 p-3">
@@ -134,9 +136,11 @@ function MissionCard({
             className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
             aria-label="미션 판정 방식"
           >
-            <option value="auto">자동 판정</option>
-            <option value="self_report">플레이어 신고</option>
-            <option value="gm_verify">진행자 확인</option>
+            {verificationOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
       </div>
