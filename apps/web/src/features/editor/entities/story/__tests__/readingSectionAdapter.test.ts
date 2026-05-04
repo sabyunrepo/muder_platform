@@ -52,6 +52,18 @@ describe("readingSectionAdapter", () => {
     );
   });
 
+  it("공백만 있는 줄은 빈 정보로 분류한다", () => {
+    expect(toReadingSectionPickerOption({
+      ...section,
+      lines: [{ Index: 0, Text: "   ", Speaker: "하윤" }],
+    })).toEqual(
+      expect.objectContaining({
+        summary: "아직 작성된 내용이 없습니다.",
+        groupLabel: "빈 정보",
+      }),
+    );
+  });
+
   it("제목, 요약, 그룹명으로 검색한다", () => {
     const options = toReadingSectionPickerOptions([section]);
 

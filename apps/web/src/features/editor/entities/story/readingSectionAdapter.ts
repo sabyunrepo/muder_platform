@@ -74,8 +74,9 @@ function buildSummary(lines: Pick<ReadingLineView, "Text">[]): string {
 }
 
 function inferGroupLabel(lines: ReadingLineView[]): string {
-  const speakers = new Set(lines.map((line) => line.Speaker?.trim()).filter(Boolean));
-  if (lines.length === 0) return "빈 정보";
+  const contentLines = lines.filter((line) => line.Text.trim().length > 0);
+  const speakers = new Set(contentLines.map((line) => line.Speaker?.trim()).filter(Boolean));
+  if (contentLines.length === 0) return "빈 정보";
   if (speakers.size === 0) return "공통 서술";
   if (speakers.size === 1) return "캐릭터 대사";
   return "합독 정보";

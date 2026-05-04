@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 import type { Node } from "@xyflow/react";
@@ -75,12 +75,17 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
   const serverConfig = useMemo(() => readEndingBranchConfig(theme.config_json), [theme.config_json]);
   const [draft, setDraft] = useState<EndingBranchConfig>(serverConfig);
   const [dirty, setDirty] = useState(false);
+  const draftRef = useRef(draft);
 
   useEffect(() => {
     if (dirty) return;
     setDraft(serverConfig);
     setDirty(false);
   }, [dirty, serverConfig]);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   const viewModel = useMemo(
     () => toEndingBranchEditorViewModel(writeEndingBranchConfig(theme.config_json, draft), endingNodes),
@@ -95,11 +100,14 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
   };
 
   const handleSave = () => {
+    const submittedDraft = draft;
     updateConfig.mutate(
       { ...writeEndingBranchConfig(theme.config_json, draft), version: theme.version },
       {
         onSuccess: () => {
-          setDirty(false);
+          if (draftRef.current === submittedDraft) {
+            setDirty(false);
+          }
           toast.success("결말 판정 설정이 저장되었습니다");
         },
         onError: () => toast.error("결말 판정 설정 저장에 실패했습니다"),
