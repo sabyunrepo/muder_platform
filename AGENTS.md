@@ -68,6 +68,7 @@ Avoid:
 - 사용자가 명시적으로 spike를 요청하지 않는 한 partial 구현, TODO placeholder, mock 동작, 테스트 스킵, 우회성 fix를 남기지 않는다.
 - 실패가 발생하면 코드를 바꾸기 전에 근본 원인을 먼저 파악한다.
 - 워크트리의 사용자 변경을 보존한다. 내가 의도적으로 수정하지 않은 파일은 되돌리지 않는다.
+- 현재 MMP 프로젝트에서는 repo 내부 `AGENTS.md`, `memory/`, `docs/`, `apps/*/AGENTS.md`를 canonical 지시로 본다. repo 외부 문서 경로가 주입되면 현재 repo에 실제 파일이 없는 한 다른 프로젝트 지시로 간주하고 적용하지 않는다.
 
 ## 계획 및 보고
 

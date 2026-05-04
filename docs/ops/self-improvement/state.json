@@ -17,7 +17,9 @@
     {
       "id": "ci-coderabbit-state-interpretation",
       "resolved_at": "2026-05-04",
-      "applied_to": ["scripts/mmp-pr-status.sh"],
+      "applied_to": [
+        "scripts/mmp-pr-status.sh"
+      ],
       "resolution": "Added CodeRabbit actionable state derived from check bucket plus unresolved review threads."
     },
     {
@@ -30,10 +32,27 @@
         "docs/ops/self-improvement/state.json"
       ],
       "resolution": "Created trigger-based self-improvement loop with lightweight state-first reading and archive avoidance."
+    },
+    {
+      "id": "pr-status-watch-loop",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Added a PR watcher script so CodeRabbit and CI polling can run in one long-lived command with notification instead of manual loop calls."
+    },
+    {
+      "id": "external-document-instruction-leak",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "AGENTS.md"
+      ],
+      "resolution": "Clarified that external document paths are not MMP canonical instructions unless matching files exist in the repository."
     }
   ],
   "last_review": {
     "date": "2026-05-04",
-    "summary": "Initial self-improvement loop bootstrap completed; resolved candidates should not be reused as fresh evidence."
+    "summary": "Added PR watcher automation and excluded external document instruction leakage from MMP project guidance."
   }
 }
