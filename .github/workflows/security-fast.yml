@@ -63,7 +63,7 @@ jobs:
         uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
         with:
           go-version-file: apps/server/go.mod
-          cache-dependency-path: apps/server/go.sum
+          cache: false  # image-resident toolchain: avoid setup-go cache hangs on self-hosted runners.
 
       - name: Install govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest

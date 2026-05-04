@@ -71,6 +71,73 @@ func TestPhaseEngine_PhaseHooksAndOnEnterActions(t *testing.T) {
 	}
 }
 
+func TestPhaseEngine_NormalizesLegacyPhaseActionTypes(t *testing.T) {
+	voting := &stubFullModule{
+		stubCoreModule: stubCoreModule{name: "voting"},
+		actions:        []PhaseAction{ActionOpenVoting},
+	}
+	textChat := &stubFullModule{
+		stubCoreModule: stubCoreModule{name: "text_chat"},
+		actions:        []PhaseAction{ActionMuteChat},
+	}
+	phases := []PhaseDefinition{
+		{
+			ID:      "intro",
+			Name:    "Intro",
+			OnEnter: json.RawMessage(`[{"type":"enable_voting"}]`),
+			OnExit:  json.RawMessage(`{"actions":[{"type":"disable_chat"}]}`),
+		},
+		{ID: "next", Name: "Next"},
+	}
+	pe, _ := newTestPhaseEngine(t, []Module{voting, textChat}, phases)
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	if len(voting.received) != 1 || voting.received[0].Action != ActionOpenVoting {
+		t.Fatalf("OnEnter legacy action = %#v", voting.received)
+	}
+	if _, err := pe.AdvancePhase(ctx); err != nil {
+		t.Fatalf("AdvancePhase: %v", err)
+	}
+	if len(textChat.received) != 1 || textChat.received[0].Action != ActionMuteChat {
+		t.Fatalf("OnExit legacy action = %#v", textChat.received)
+	}
+}
+
+func TestParseConfiguredPhaseActions_NormalizesLegacyAliases(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want PhaseAction
+	}{
+		{name: "deliver information", raw: `[{"type":"deliver_information"}]`, want: ActionDeliverInformation},
+		{name: "open voting", raw: `[{"type":"enable_voting"}]`, want: ActionOpenVoting},
+		{name: "close voting", raw: `[{"type":"disable_voting"}]`, want: ActionCloseVoting},
+		{name: "unmute chat", raw: `[{"type":"enable_chat"}]`, want: ActionUnmuteChat},
+		{name: "mute chat", raw: `[{"type":"disable_chat"}]`, want: ActionMuteChat},
+		{name: "set bgm", raw: `[{"type":"play_bgm"}]`, want: ActionSetBGM},
+		{name: "stop audio", raw: `[{"type":"stop_bgm"}]`, want: ActionStopAudio},
+		{name: "broadcast", raw: `[{"type":"broadcast"}]`, want: ActionBroadcastMessage},
+		{name: "wrapped action", raw: `{"actions":[{"type":"disable_chat"}]}`, want: ActionMuteChat},
+		{name: "lowercase canonical", raw: `[{"type":"evaluate_ending"}]`, want: ActionEvaluateEnding},
+		{name: "trimmed uppercase canonical", raw: `[{"type":" SET_BGM "}]`, want: ActionSetBGM},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actions, err := parseConfiguredPhaseActions(json.RawMessage(tt.raw))
+			if err != nil {
+				t.Fatalf("parseConfiguredPhaseActions: %v", err)
+			}
+			if len(actions) != 1 || actions[0].Action != tt.want {
+				t.Fatalf("actions = %#v, want action %q", actions, tt.want)
+			}
+		})
+	}
+}
+
 func phaseActionDeliveryIDs(t *testing.T, action PhaseActionPayload) []string {
 	t.Helper()
 	var params struct {

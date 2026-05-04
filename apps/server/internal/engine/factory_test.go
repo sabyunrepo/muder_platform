@@ -204,6 +204,17 @@ func TestParseGameConfig_AddsInformationDeliveryModuleForPhaseAction(t *testing.
 	}
 }
 
+func TestParseGameConfig_AddsInformationDeliveryModuleForLegacyPhaseAction(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1","onEnter":[{"type":"deliver_information","params":{"deliveries":[]}}]}],"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "information_delivery" {
+		t.Fatalf("implicit modules = %#v", cfg.Modules)
+	}
+}
+
 func TestParseGameConfig_AddsEndingBranchModuleForEvaluateEndingAction(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"final","name":"Final","onEnter":[{"type":"EVALUATE_ENDING"}]}],"modules":[]}`)
 	cfg, err := ParseGameConfig(data)
