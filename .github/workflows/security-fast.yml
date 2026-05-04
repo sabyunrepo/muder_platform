@@ -37,7 +37,7 @@ permissions:
 jobs:
   govulncheck:
     name: govulncheck (Go SCA)
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'self-hosted' }}
     # Phase 22 W1.5 PR-8 fold-in (PR-170 8ce9c0b run cancelled at 5:13):
     # containerized runner 의 setup-go cache miss + go install govulncheck +
     # scan 이 5분 timeout 초과. 10분 으로 상향 (cache warm-up 후 정상 ~3분).
