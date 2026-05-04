@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createMissionDraft,
   readCharacterMissionMap,
+  toMissionEngineContractDraft,
   toMissionRuntimeDraft,
   toMissionViewModel,
   writeCharacterMissionMap,
@@ -48,6 +49,8 @@ describe("missionAdapter", () => {
       description: "단서를 가진다",
       points: 7,
       verification: "auto",
+      resultVisibility: "result_only",
+      engineOwner: "backend_engine",
       targetClueId: "clue-1",
     });
   });
@@ -60,6 +63,8 @@ describe("missionAdapter", () => {
     expect(runtime).toEqual(expect.objectContaining({
       type: "hold_clue",
       verification: "auto",
+      resultVisibility: "result_only",
+      engineOwner: "backend_engine",
     }));
     vi.restoreAllMocks();
   });
@@ -70,11 +75,40 @@ describe("missionAdapter", () => {
       title: "미션 내용을 입력해 주세요",
       typeLabel: "살해",
       pointsLabel: "점수 없음",
-      resultVisibilityLabel: "결과 화면에서 공개",
+      resultVisibilityLabel: "결과 화면에서만 공개",
       runtimeType: "vote_target",
+      verification: "auto",
+      verificationLabel: "자동 판정",
+      engineOwnerLabel: "게임 판정은 백엔드가 담당",
       warnings: [
         "플레이어가 이해할 미션 내용을 입력해 주세요.",
         "투표형 미션은 대상 캐릭터를 선택해야 자동 판정할 수 있습니다.",
+      ],
+    });
+  });
+
+  it("캐릭터별 미션을 백엔드 엔진 후보 계약으로 요약한다", () => {
+    expect(toMissionEngineContractDraft({
+      "char-1": [
+        { id: "m1", type: "possess", description: "편지를 가진다", points: 5, targetClueId: "clue-1" },
+        { id: "m2", type: "secret", description: "비밀을 지킨다", points: 0 },
+      ],
+      "char-empty": [],
+    })).toEqual({
+      moduleId: "hidden_mission",
+      resultVisibility: "result_only",
+      engineOwner: "backend_engine",
+      assignments: [
+        {
+          characterId: "char-1",
+          totalPoints: 5,
+          autoVerifiableCount: 1,
+          manualReviewCount: 1,
+          missions: [
+            expect.objectContaining({ id: "m1", type: "hold_clue", verification: "auto" }),
+            expect.objectContaining({ id: "m2", type: "custom", verification: "self_report" }),
+          ],
+        },
       ],
     });
   });
