@@ -39,6 +39,16 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # KT Cloud Container Registry — primary pull target for arc-runner-set
+      # (intra-region pull, KT 인바운드 트래픽 미과금). GHCR 는 fallback / 외부 협업용.
+      # 자격증명 회전 시 KT_REGISTRY_USERNAME / KT_REGISTRY_PASSWORD secret 도 갱신 필수.
+      - name: Login to KT Container Registry
+        if: github.event_name == 'push'
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        with:
+          registry: registry.cloud.kt.com
+          username: ${{ secrets.KT_REGISTRY_USERNAME }}
+          password: ${{ secrets.KT_REGISTRY_PASSWORD }}
       - name: Build image
         uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
@@ -48,6 +58,8 @@ jobs:
           tags: |
             ghcr.io/sabyunrepo/mmp-runner:latest
             ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}
+            registry.cloud.kt.com/dldxu5p5/mmp-runner:latest
+            registry.cloud.kt.com/dldxu5p5/mmp-runner:${{ github.sha }}
           cache-from: type=gha,scope=runner-image
           cache-to: type=gha,mode=max,scope=runner-image
           load: ${{ github.event_name == 'pull_request' }}
