@@ -420,6 +420,30 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			want: "revealText is required",
 		},
 		{
+			name: "target cannot be null",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "reveal", "target": null, "revealText": "비밀"}}}
+					}
+				}
+			}`, clueID)),
+			want: "target cannot be null",
+		},
+		{
+			name: "consume cannot be null",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "reveal", "consume": null, "revealText": "비밀"}}}
+					}
+				}
+			}`, clueID)),
+			want: "consume cannot be null",
+		},
+		{
 			name: "grant requires ids",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {

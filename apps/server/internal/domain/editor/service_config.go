@@ -131,12 +131,18 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 	if kind != "peek" && kind != "reveal" && kind != "grant_clue" {
 		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].effect %q is not supported", clueID, kind)
 	}
-	if target, exists := effect["target"]; exists && target != nil {
+	if target, exists := effect["target"]; exists {
+		if target == nil {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].target cannot be null", clueID)
+		}
 		if target != "self" && target != "player" {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].target must be self or player", clueID)
 		}
 	}
-	if consume, exists := effect["consume"]; exists && consume != nil {
+	if consume, exists := effect["consume"]; exists {
+		if consume == nil {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].consume cannot be null", clueID)
+		}
 		if _, ok := consume.(bool); !ok {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].consume must be boolean", clueID)
 		}
