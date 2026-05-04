@@ -384,6 +384,18 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			want: "invalid clue id",
 		},
 		{
+			name: "null item effects",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": null}
+					}
+				}
+			}`),
+			want: "itemEffects cannot be null",
+		},
+		{
 			name: "reveal requires text",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {

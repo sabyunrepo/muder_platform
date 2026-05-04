@@ -90,8 +90,11 @@ func validateClueInteractionConfigShape(cfg map[string]any) error {
 		return fmt.Errorf("config_json: modules.clue_interaction.config must be an object")
 	}
 	rawEffects, exists := moduleConfig["itemEffects"]
-	if !exists || rawEffects == nil {
+	if !exists {
 		return nil
+	}
+	if rawEffects == nil {
+		return fmt.Errorf("config_json: modules.clue_interaction.config.itemEffects cannot be null")
 	}
 	itemEffects, ok := rawEffects.(map[string]any)
 	if !ok {
