@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from "react";
 import type { EditorThemeResponse, MysteryRole } from "@/features/editor/api";
 import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
-import type { Mission } from "./MissionEditor";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
 import { EntityEditorShell } from "@/features/editor/entities/shell/EntityEditorShell";
 import {
@@ -13,6 +12,12 @@ import {
   buildCharacterRoleUpdatePayload,
   getCharacterRoleBadge,
 } from "@/features/editor/entities/character/characterEditorAdapter";
+import {
+  createMissionDraft,
+  readCharacterMissionMap,
+  writeCharacterMissionMap,
+  type Mission,
+} from "@/features/editor/entities/mission/missionAdapter";
 
 interface CharacterAssignPanelProps {
   themeId: string;
@@ -34,10 +39,7 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   );
 
   const characterMissions = useMemo((): Record<string, Mission[]> => {
-    const cm = (theme.config_json ?? {}).character_missions;
-    return cm && typeof cm === "object" && !Array.isArray(cm)
-      ? (cm as Record<string, Mission[]>)
-      : {};
+    return readCharacterMissionMap(theme.config_json);
   }, [theme.config_json]);
 
   const { saveConfig, flush } = useCharacterConfigDebounce(themeId, theme.config_json);
@@ -64,26 +66,19 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
 
   const handleAddMissionForChar = useCallback((characterId: string) => {
     const current = characterMissions[characterId] ?? [];
-    const mission: Mission = {
-      id: crypto.randomUUID(),
-      type: "kill",
-      description: "",
-      points: 10,
-    };
-    saveConfig({
-      character_missions: { ...characterMissions, [characterId]: [...current, mission] },
-    });
+    saveConfig(writeCharacterMissionMap(undefined, {
+      ...characterMissions,
+      [characterId]: [...current, createMissionDraft()],
+    }));
   }, [characterMissions, saveConfig]);
 
   const handleDeleteMissionForChar = useCallback(
     (characterId: string, missionId: string) => {
       const current = characterMissions[characterId] ?? [];
-      saveConfig({
-        character_missions: {
-          ...characterMissions,
-          [characterId]: current.filter((m) => m.id !== missionId),
-        },
-      });
+      saveConfig(writeCharacterMissionMap(undefined, {
+        ...characterMissions,
+        [characterId]: current.filter((m) => m.id !== missionId),
+      }));
     },
     [characterMissions, saveConfig],
   );
@@ -91,14 +86,12 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
   const handleMissionChangeForChar = useCallback(
     (characterId: string, missionId: string, field: keyof Mission, value: string | number) => {
       const current = characterMissions[characterId] ?? [];
-      saveConfig({
-        character_missions: {
-          ...characterMissions,
-          [characterId]: current.map((m) =>
-            m.id === missionId ? { ...m, [field]: value } : m,
-          ),
-        },
-      });
+      saveConfig(writeCharacterMissionMap(undefined, {
+        ...characterMissions,
+        [characterId]: current.map((m) =>
+          m.id === missionId ? { ...m, [field]: value } : m,
+        ),
+      }));
     },
     [characterMissions, saveConfig],
   );

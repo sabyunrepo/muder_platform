@@ -81,7 +81,7 @@ func (m *HiddenMissionModule) handleVerify(payload json.RawMessage) error {
 	}
 
 	if p.Completed {
-		m.completeMission(p.PlayerID, p.MissionID)
+		m.completeMission(p.PlayerID, p.MissionID, "gm.verify")
 	}
 
 	m.deps.EventBus.Publish(engine.Event{
@@ -114,13 +114,14 @@ func (m *HiddenMissionModule) handleCheck(playerID uuid.UUID) error {
 }
 
 // completeMission marks a mission complete and updates the score.
-func (m *HiddenMissionModule) completeMission(playerID uuid.UUID, missionID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *HiddenMissionModule) completeMission(playerID uuid.UUID, missionID string, reason string) {
+	var audit *MissionAuditEvent
 
+	m.mu.Lock()
 	// Check if already completed.
 	for _, mid := range m.completedMissions[playerID] {
 		if mid == missionID {
+			m.mu.Unlock()
 			return
 		}
 	}
@@ -133,7 +134,22 @@ func (m *HiddenMissionModule) completeMission(playerID uuid.UUID, missionID stri
 			if m.config.AffectsScore {
 				m.scores[playerID] += mission.Points
 			}
-			return
+			audit = &MissionAuditEvent{
+				PlayerID:  playerID,
+				MissionID: missionID,
+				Completed: true,
+				Points:    mission.Points,
+				Reason:    reason,
+			}
+			break
 		}
+	}
+	m.mu.Unlock()
+
+	if audit != nil && m.deps.EventBus != nil {
+		m.deps.EventBus.Publish(engine.Event{
+			Type:    "mission.completed",
+			Payload: *audit,
+		})
 	}
 }
