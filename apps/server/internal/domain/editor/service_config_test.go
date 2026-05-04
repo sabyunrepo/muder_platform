@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -331,6 +332,305 @@ func TestUpdateConfigJson_RejectsLocationsDeadKey(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), "D-20") {
 				t.Errorf("expected error to contain %q, got: %v", "D-20", err)
+			}
+		})
+	}
+}
+
+func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	clueID := uuid.NewString()
+	rewardClueID := uuid.NewString()
+
+	valid := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"clue_interaction": {
+				"enabled": true,
+				"config": {
+					"itemEffects": {
+						"%s": {
+							"effect": "grant_clue",
+							"target": "self",
+							"consume": true,
+							"grantClueIds": ["%s"]
+						}
+					}
+				}
+			}
+		}
+	}`, clueID, rewardClueID))
+	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
+		t.Fatalf("valid clue_interaction itemEffects must save: %v", err)
+	}
+
+	validCases := []struct {
+		name  string
+		input json.RawMessage
+	}{
+		{
+			name:  "no clue interaction module",
+			input: json.RawMessage(`{"modules":{"voting":{"enabled":false}}}`),
+		},
+		{
+			name:  "clue interaction without config",
+			input: json.RawMessage(`{"modules":{"clue_interaction":{"enabled":true}}}`),
+		},
+		{
+			name:  "clue interaction empty config",
+			input: json.RawMessage(`{"modules":{"clue_interaction":{"enabled":true,"config":{}}}}`),
+		},
+		{
+			name:  "clue interaction empty item effects",
+			input: json.RawMessage(`{"modules":{"clue_interaction":{"enabled":true,"config":{"itemEffects":{}}}}}`),
+		},
+	}
+	for _, tc := range validCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input); err != nil {
+				t.Fatalf("expected valid config for %s, got: %v", tc.name, err)
+			}
+		})
+	}
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name: "clue interaction module must be object",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": true
+				}
+			}`),
+			want: "modules.clue_interaction must be an object",
+		},
+		{
+			name: "null clue interaction config",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": null
+					}
+				}
+			}`),
+			want: "config cannot be null",
+		},
+		{
+			name: "clue interaction config must be object",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": []
+					}
+				}
+			}`),
+			want: "config must be an object",
+		},
+		{
+			name: "item effects must be object",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": []}
+					}
+				}
+			}`),
+			want: "itemEffects must be an object",
+		},
+		{
+			name: "invalid item effect clue id",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"clue-1": {"effect": "reveal", "revealText": "비밀"}}}
+					}
+				}
+			}`),
+			want: "invalid clue id",
+		},
+		{
+			name: "null item effects",
+			input: json.RawMessage(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": null}
+					}
+				}
+			}`),
+			want: "itemEffects cannot be null",
+		},
+		{
+			name: "item effect must be object",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": null}}
+					}
+				}
+			}`, clueID)),
+			want: "must be an object",
+		},
+		{
+			name: "effect is required",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"target": "self"}}}
+					}
+				}
+			}`, clueID)),
+			want: "effect is required",
+		},
+		{
+			name: "reveal requires text",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "reveal"}}}
+					}
+				}
+			}`, clueID)),
+			want: "revealText is required",
+		},
+		{
+			name: "target cannot be null",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "reveal", "target": null, "revealText": "비밀"}}}
+					}
+				}
+			}`, clueID)),
+			want: "target cannot be null",
+		},
+		{
+			name: "target must be supported",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "room"}}}
+					}
+				}
+			}`, clueID)),
+			want: "target must be self or player",
+		},
+		{
+			name: "consume cannot be null",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "reveal", "consume": null, "revealText": "비밀"}}}
+					}
+				}
+			}`, clueID)),
+			want: "consume cannot be null",
+		},
+		{
+			name: "consume must be boolean",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "consume": "yes"}}}
+					}
+				}
+			}`, clueID)),
+			want: "consume must be boolean",
+		},
+		{
+			name: "grant requires ids",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "grant_clue", "grantClueIds": []}}}
+					}
+				}
+			}`, clueID)),
+			want: "grantClueIds is required",
+		},
+		{
+			name: "grant ids must contain strings",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "grant_clue", "grantClueIds": [123]}}}
+					}
+				}
+			}`, clueID)),
+			want: "grantClueIds must contain strings",
+		},
+		{
+			name: "grant ids must be valid uuids",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "grant_clue", "grantClueIds": ["clue-2"]}}}
+					}
+				}
+			}`, clueID)),
+			want: "has invalid clue id",
+		},
+		{
+			name: "unsupported effect",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "steal"}}}
+					}
+				}
+			}`, clueID)),
+			want: "is not supported",
+		},
+		{
+			name: "unknown effect field",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "debugOnly": true}}}
+					}
+				}
+			}`, clueID)),
+			want: "debugOnly is not supported",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) {
+				t.Fatalf("expected *apperror.AppError for %s, got %T: %v", tc.name, err, err)
+			}
+			if appErr.Status != http.StatusBadRequest {
+				t.Fatalf("expected status 400 for %s, got %d", tc.name, appErr.Status)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
 			}
 		})
 	}

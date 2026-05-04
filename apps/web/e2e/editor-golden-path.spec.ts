@@ -24,6 +24,8 @@ import { test, expect, type Page, type Request } from "@playwright/test";
 import {
   BASE,
   THEME_ID,
+  CLUE_ID,
+  REWARD_CLUE_ID,
   freshState,
   mockCommonApis,
   loginAsE2EUser,
@@ -95,6 +97,36 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.getByText("정보 공개하기")).toBeVisible();
     await expect(page.getByText("사용하면 내 단서함에서 사라짐")).toBeVisible();
     await expect(page.getByText("이 단서가 쓰이는 곳")).toBeVisible();
+  });
+
+  test("[2C] 단서 효과 제작 UI는 grant_clue 계약으로 config 를 저장한다", async ({ page }) => {
+    state.conflictCountdown = 0;
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
+    await expect(page.getByLabel("단서 상세 영역")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("게임 중 사용 효과")).toBeVisible();
+    await expect(page.getByText("itemEffects")).toHaveCount(0);
+    await expect(page.getByText("grant_clue")).toHaveCount(0);
+
+    await page.getByRole("button", { name: "새 단서 지급" }).click();
+    await page.getByLabel("지급할 단서 검색").fill("금고");
+    await page.getByRole("button", { name: "금고 비밀번호", exact: true }).click();
+    await page.getByLabel(/사용하면 내 단서함에서 사라짐/).check();
+    await page.getByRole("button", { name: "효과 저장" }).click();
+
+    await expect.poll(() => state.configPutCalls).toBeGreaterThanOrEqual(1);
+    const modules = state.configJson.modules as Record<string, { config?: Record<string, unknown> }>;
+    const clueInteraction = modules.clue_interaction?.config as
+      | { itemEffects?: Record<string, Record<string, unknown>> }
+      | undefined;
+
+    expect(clueInteraction?.itemEffects?.[CLUE_ID]).toMatchObject({
+      effect: "grant_clue",
+      target: "self",
+      consume: true,
+      grantClueIds: [REWARD_CLUE_ID],
+    });
+    expect(JSON.stringify(state.lastConfigRequestBody)).not.toContain("module_configs");
   });
 
   test("[2B] 직접 URL은 올바른 제작 탭과 서브탭을 연다", async ({ page }) => {
