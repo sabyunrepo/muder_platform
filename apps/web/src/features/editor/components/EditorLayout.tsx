@@ -8,9 +8,11 @@ import { SaveIndicator } from "./SaveIndicator";
 import { EditorTabNav } from "./EditorTabNav";
 import { TabContent } from "./TabContent";
 import { ValidationPanel } from "./ValidationPanel";
+import { STATUS_LABEL } from "@/features/editor/constants";
 import type { DesignWarning } from "@/features/editor/validation";
 import type { SaveStatus } from "@/features/editor/hooks/useAutoSave";
 import { readEnabledModuleIds } from "@/features/editor/utils/configShape";
+import { readEditorTabFromRouteSegment } from "@/features/editor/routeSegments";
 
 // ---------------------------------------------------------------------------
 // EditorLayout
@@ -49,6 +51,10 @@ export function EditorLayout({
   const activeModules = useMemo(
     () => readEnabledModuleIds(theme.config_json),
     [theme.config_json],
+  );
+  const routeTab = useMemo(
+    () => (routeSegment ? readEditorTabFromRouteSegment(routeSegment) : undefined),
+    [routeSegment],
   );
 
   const handleValidate = () => {
@@ -93,7 +99,7 @@ export function EditorLayout({
             {theme.title}
           </span>
           <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-500">
-            {theme.status}
+            {STATUS_LABEL[theme.status] ?? theme.status}
           </span>
         </div>
 
@@ -123,7 +129,7 @@ export function EditorLayout({
       </header>
 
       {/* ── Tab nav ── */}
-      <EditorTabNav activeModules={activeModules} />
+      <EditorTabNav activeModules={activeModules} forcedVisibleTab={routeTab} />
 
       {/* ── Validation panel ── */}
       {!dismissed && (validationResult ?? externalWarnings) && (

@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Puzzle, GitBranch, MapPin, Drama } from 'lucide-react';
 import type { EditorThemeResponse } from '@/features/editor/api';
+import {
+  readDesignSubTabFromRouteSegment,
+  type DesignSubTab,
+} from '@/features/editor/routeSegments';
 import { ModulesSubTab } from './design/ModulesSubTab';
 import { FlowSubTab } from './design/FlowSubTab';
 import { LocationsSubTab } from './design/LocationsSubTab';
@@ -10,15 +15,13 @@ import { EndingEntitySubTab } from './design/EndingEntitySubTab';
 // Types
 // ---------------------------------------------------------------------------
 
-type SubTab = 'modules' | 'flow' | 'locations' | 'endings';
-
 interface DesignTabProps {
   themeId: string;
   theme: EditorThemeResponse;
   routeSegment?: string;
 }
 
-const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
+const SUB_TABS: { key: DesignSubTab; label: string; icon: React.ElementType }[] = [
   { key: 'modules', label: '모듈', icon: Puzzle },
   { key: 'flow', label: '흐름', icon: GitBranch },
   { key: 'endings', label: '결말', icon: Drama },
@@ -26,22 +29,20 @@ const SUB_TABS: { key: SubTab; label: string; icon: React.ElementType }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// DesignTab
-// ---------------------------------------------------------------------------
-
-function readInitialSubTab(routeSegment?: string): SubTab {
-  if (routeSegment === 'flow') return 'flow';
-  if (routeSegment === 'locations') return 'locations';
-  if (routeSegment === 'endings') return 'endings';
-  return 'modules';
-}
-
 export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<SubTab>(() => readInitialSubTab(routeSegment));
+  const navigate = useNavigate();
+  const [activeSubTab, setActiveSubTab] = useState<DesignSubTab>(() =>
+    readDesignSubTabFromRouteSegment(routeSegment),
+  );
 
   useEffect(() => {
-    setActiveSubTab(readInitialSubTab(routeSegment));
+    setActiveSubTab(readDesignSubTabFromRouteSegment(routeSegment));
   }, [routeSegment]);
+
+  const handleSubTabClick = (key: DesignSubTab) => {
+    setActiveSubTab(key);
+    navigate(`/editor/${themeId}/${key}`);
+  };
 
   return (
     <div className="flex h-full flex-col">
@@ -51,7 +52,7 @@ export function DesignTab({ themeId, theme, routeSegment }: DesignTabProps) {
           <button
             key={key}
             type="button"
-            onClick={() => setActiveSubTab(key)}
+            onClick={() => handleSubTabClick(key)}
             className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-xs font-medium transition-colors ${
               activeSubTab === key
                 ? 'border-amber-500 text-amber-400'

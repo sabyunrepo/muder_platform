@@ -1,5 +1,5 @@
 import { useRef, useCallback, useMemo, useEffect } from "react";
-import { EDITOR_TABS } from "@/features/editor/constants";
+import { EDITOR_TABS, type EditorTab } from "@/features/editor/constants";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 
 // ---------------------------------------------------------------------------
@@ -10,22 +10,29 @@ const EMPTY_MODULES: string[] = [];
 
 interface EditorTabNavProps {
   activeModules?: string[];
+  forcedVisibleTab?: EditorTab;
 }
 
 // ---------------------------------------------------------------------------
 // EditorTabNav — scrollable tab navigation bar with dynamic filtering
 // ---------------------------------------------------------------------------
 
-export function EditorTabNav({ activeModules = EMPTY_MODULES }: EditorTabNavProps) {
+export function EditorTabNav({
+  activeModules = EMPTY_MODULES,
+  forcedVisibleTab,
+}: EditorTabNavProps) {
   const { activeTab, setActiveTab } = useEditorUI();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const visibleTabs = useMemo(
     () =>
       EDITOR_TABS.filter(
-        (tab) => tab.always || activeModules.includes(tab.requiredModule ?? ""),
+        (tab) =>
+          tab.always ||
+          tab.key === forcedVisibleTab ||
+          activeModules.includes(tab.requiredModule ?? ""),
       ),
-    [activeModules],
+    [activeModules, forcedVisibleTab],
   );
 
   // If active tab is now hidden, fallback to overview

@@ -206,12 +206,73 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     });
   });
 
+  await page.route(new RegExp(`/v1/editor/themes/${THEME_ID}/media(?:\\?.*)?$`), (r) => {
+    if (r.request().method() !== "GET") return r.continue();
+    return r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "media-1",
+          theme_id: THEME_ID,
+          name: "긴장감 배경음",
+          type: "BGM",
+          source_type: "FILE",
+          url: "https://mock-storage.example/themes/media/bgm.mp3",
+          duration: 92,
+          file_size: 123456,
+          mime_type: "audio/mpeg",
+          tags: ["조사"],
+          sort_order: 0,
+          created_at: new Date().toISOString(),
+        },
+      ]),
+    });
+  });
+
+  await page.route(`**/v1/editor/themes/${THEME_ID}/reading-sections`, (r) => {
+    if (r.request().method() !== "GET") return r.continue();
+    return r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          id: "reading-1",
+          themeId: THEME_ID,
+          name: "오프닝 리딩",
+          bgmMediaId: null,
+          lines: [{ Index: 0, Speaker: "GM", Text: "사건의 밤이 시작됩니다.", AdvanceBy: "gm" }],
+          sortOrder: 0,
+          version: 1,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ]),
+    });
+  });
+
   await page.route(`**/v1/editor/themes/${THEME_ID}/characters`, (r) => {
     if (r.request().method() !== "GET") return r.continue();
     return r.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify([characterPayload(state)]),
+    });
+  });
+
+  await page.route(`**/v1/editor/themes/${THEME_ID}/flow`, (r) => {
+    if (r.request().method() === "PUT") {
+      return r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(flowPayload()),
+      });
+    }
+    if (r.request().method() !== "GET") return r.continue();
+    return r.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(flowPayload()),
     });
   });
 
@@ -409,6 +470,50 @@ function cluePayload(state: MockState) {
     use_consumed: true,
     image_url: state.clueImageURL,
     created_at: new Date().toISOString(),
+  };
+}
+
+function flowPayload() {
+  const now = new Date().toISOString();
+  return {
+    nodes: [
+      {
+        id: "phase-1",
+        theme_id: THEME_ID,
+        type: "phase",
+        data: { label: "조사 단계", phase_type: "investigation", duration: 20 },
+        position_x: 120,
+        position_y: 120,
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        id: "ending-1",
+        theme_id: THEME_ID,
+        type: "ending",
+        data: {
+          label: "진실",
+          description: "범인이 밝혀지는 결말",
+          endingContent: "모든 단서가 하나의 진실을 가리킵니다.",
+        },
+        position_x: 420,
+        position_y: 180,
+        created_at: now,
+        updated_at: now,
+      },
+    ],
+    edges: [
+      {
+        id: "edge-1",
+        theme_id: THEME_ID,
+        source_id: "phase-1",
+        target_id: "ending-1",
+        condition: null,
+        label: null,
+        sort_order: 0,
+        created_at: now,
+      },
+    ],
   };
 }
 

@@ -56,6 +56,9 @@ vi.mock('../ClueForm', () => ({
 vi.mock('../ImageUpload', () => ({
   ImageUpload: () => null,
 }));
+vi.mock('../clues/ClueEdgeGraph', () => ({
+  ClueEdgeGraph: () => <div>단서 관계 그래프</div>,
+}));
 // ---------------------------------------------------------------------------
 // Import after mocks
 // ---------------------------------------------------------------------------
@@ -118,5 +121,13 @@ describe('CluesTab', () => {
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     render(<CluesTab themeId="theme-1" />);
     expect(screen.getByText('2개의 단서')).toBeDefined();
+  });
+
+  it('relations routeSegment로 직접 진입하면 관계 서브탭을 연다', () => {
+    useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
+
+    render(<CluesTab themeId="theme-1" routeSegment="relations" />);
+
+    expect(screen.getByText('단서 관계 그래프')).toBeDefined();
   });
 });
