@@ -35,15 +35,27 @@ type GameState struct {
 type Phase string
 
 // PhaseDefinition describes a phase: its identifier, display name, and optional
-// transition rules expressed as JSON Logic payloads.
+// backend action payloads to dispatch when entering or leaving the phase.
 type PhaseDefinition struct {
 	ID          Phase  `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
-	// OnEnter is an optional JSON Logic rule evaluated when entering this phase.
+	// OnEnter is an optional configured action payload dispatched by the engine.
 	OnEnter json.RawMessage `json:"onEnter,omitempty"`
-	// OnExit is an optional JSON Logic rule evaluated when leaving this phase.
+	// OnExit is an optional configured action payload dispatched by the engine.
 	OnExit json.RawMessage `json:"onExit,omitempty"`
+}
+
+// SceneTransition is the backend runtime contract for graph-based story
+// movement. Frontend Flow data may author these edges, but PhaseEngine is the
+// source of truth for condition evaluation and the final phase mutation.
+type SceneTransition struct {
+	ID        string          `json:"id,omitempty"`
+	From      Phase           `json:"from"`
+	To        Phase           `json:"to"`
+	Label     string          `json:"label,omitempty"`
+	SortOrder int32           `json:"sortOrder,omitempty"`
+	Condition json.RawMessage `json:"condition,omitempty"`
 }
 
 // WinResult carries the outcome of a win-condition check.

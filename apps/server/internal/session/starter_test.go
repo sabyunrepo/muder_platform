@@ -55,6 +55,25 @@ func minimalConfigJSON(t *testing.T) json.RawMessage {
 	return raw
 }
 
+func sceneTransitionConfigJSON(t *testing.T) json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(map[string]any{
+		"phases": []map[string]any{
+			{"id": "intro", "name": "Introduction"},
+			{"id": "discussion", "name": "Discussion"},
+			{"id": "voting", "name": "Voting"},
+		},
+		"sceneTransitions": []map[string]any{
+			{"id": "intro-to-voting", "from": "intro", "to": "voting", "sortOrder": 0},
+		},
+		"modules": []any{},
+	})
+	if err != nil {
+		t.Fatalf("marshal scene transition config: %v", err)
+	}
+	return raw
+}
+
 func newTestManager(t *testing.T) *SessionManager {
 	t.Helper()
 	logger := zerolog.Nop()
@@ -262,6 +281,86 @@ func TestStartModularGame_PhaseAdvance(t *testing.T) {
 	}
 
 	m.Stop(sessionID)
+}
+
+func TestStartModularGame_PhaseAdvanceUsesSceneTransitions(t *testing.T) {
+	m := newTestManager(t)
+	bc := &mockBroadcaster{}
+	sessionID := uuid.New()
+
+	cfg := StartConfig{
+		SessionID:   sessionID,
+		ThemeID:     uuid.New(),
+		FeatureFlag: true,
+		ConfigJSON:  sceneTransitionConfigJSON(t),
+		Broadcaster: bc,
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	s, err := startModularGame(ctx, m, cfg, zerolog.Nop())
+	if err != nil {
+		t.Fatalf("startModularGame failed: %v", err)
+	}
+	defer m.Stop(sessionID)
+
+	time.Sleep(50 * time.Millisecond)
+
+	if err := s.Send(SessionMessage{
+		Kind: KindAdvance,
+		Ctx:  ctx,
+	}); err != nil {
+		t.Fatalf("Send KindAdvance failed: %v", err)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+
+	var enteredVoting bool
+	for _, call := range bc.snapshot() {
+		if call.sessionID != sessionID || call.env.Type != "phase:entered" {
+			continue
+		}
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal(call.env.Payload, &payload); err != nil {
+			t.Fatalf("unmarshal phase:entered payload: %v", err)
+		}
+		if payload.ID == "voting" {
+			enteredVoting = true
+		}
+	}
+	if !enteredVoting {
+		t.Fatal("expected scene transition to enter voting phase")
+	}
+}
+
+func TestStartModularGame_InvalidSceneTransitionConfig(t *testing.T) {
+	m := newTestManager(t)
+	raw, _ := json.Marshal(map[string]any{
+		"phases": []map[string]any{
+			{"id": "intro", "name": "Introduction"},
+		},
+		"sceneTransitions": []map[string]any{
+			{"id": "bad-edge", "from": "intro", "to": "missing"},
+		},
+		"modules": []any{},
+	})
+	cfg := StartConfig{
+		SessionID:   uuid.New(),
+		ThemeID:     uuid.New(),
+		FeatureFlag: true,
+		ConfigJSON:  raw,
+	}
+
+	_, err := startModularGame(context.Background(), m, cfg, zerolog.Nop())
+	if err == nil {
+		t.Fatal("expected invalid scene transition config error")
+	}
+	if m.Get(cfg.SessionID) != nil {
+		t.Fatal("session must not be registered on invalid scene transitions")
+	}
 }
 
 func TestStaticPlayerInfoProvider_ResolvesTargetCodeAndRuntimeInfo(t *testing.T) {

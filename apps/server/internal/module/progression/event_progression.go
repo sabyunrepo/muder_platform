@@ -10,7 +10,8 @@ import (
 	"github.com/mmp-platform/server/internal/engine"
 )
 
-// EventProgressionModule manages non-linear phase progression driven by triggers.
+// EventProgressionModule validates non-linear progression requests driven by
+// triggers. PhaseEngine remains the source of truth for the final phase.
 //
 // PR-2a: declares public state — current phase, visited phase list, and
 // backtrack flag are shared by all players.
@@ -115,12 +116,10 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 		}
 
 		oldPhase := m.currentPhaseID
-		m.currentPhaseID = validTarget
-		m.visitedPhases = append(m.visitedPhases, validTarget)
 		m.mu.Unlock()
 
 		m.deps.EventBus.Publish(engine.Event{
-			Type: "event.phase_transition",
+			Type: "event.scene_transition_requested",
 			Payload: map[string]any{
 				"fromPhase": oldPhase,
 				"toPhase":   validTarget,
@@ -170,7 +169,18 @@ func (m *EventProgressionModule) Schema() json.RawMessage {
 
 // --- PhaseHookModule ---
 
-func (m *EventProgressionModule) OnPhaseEnter(_ context.Context, _ engine.Phase) error {
+func (m *EventProgressionModule) OnPhaseEnter(_ context.Context, phase engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	phaseID := string(phase)
+	if phaseID == "" {
+		return nil
+	}
+	m.currentPhaseID = phaseID
+	if len(m.visitedPhases) == 0 || m.visitedPhases[len(m.visitedPhases)-1] != phaseID {
+		m.visitedPhases = append(m.visitedPhases, phaseID)
+	}
 	return nil
 }
 

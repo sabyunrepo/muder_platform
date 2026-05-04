@@ -235,7 +235,7 @@ func (s *Session) handleMessage(msg SessionMessage) {
 
 	case KindAdvance:
 		var advanced bool
-		advanced, err = s.engine.AdvancePhase(msg.Ctx)
+		advanced, err = s.engine.AdvanceScene(msg.Ctx, nil)
 		if err == nil && advanced {
 			// Phase transition is a critical event — flush snapshot immediately.
 			s.flushSnapshot()
