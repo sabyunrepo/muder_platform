@@ -26,7 +26,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - check CI and Codecov
    - fix failures without skipping tests
    - merge only when checks and required reviews are satisfied
-4. API polling cadence: 30-60 seconds unless user explicitly asks for faster status. Prefer `scripts/mmp-pr-watch.sh <PR>` for repeated CodeRabbit/CI polling instead of manual loop calls.
+4. API polling cadence: 30-60 seconds unless user explicitly asks for faster status. Prefer `scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows` for repeated CodeRabbit/CI polling instead of manual loop calls.
 5. For Codecov: treat patch coverage under 70% as a blocker unless the user approves an exception and the PR documents why.
 
 ## Done

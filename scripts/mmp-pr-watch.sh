@@ -12,6 +12,8 @@ Options:
   --timeout SECONDS        Stop after timeout. Default: 3600
   --workflows LIST         Comma-separated workflow names to require.
                            Default: CI,E2E — Stubbed Backend,Security — Fast Feedback
+  --trigger-missing-workflows
+                           Trigger missing required workflows once CodeRabbit is clear
   --no-notify              Do not send macOS notification / terminal bell
   -h, --help               Show help
 
@@ -79,6 +81,7 @@ interval=60
 timeout=3600
 workflow_csv="CI,E2E — Stubbed Backend,Security — Fast Feedback"
 notify_enabled=1
+trigger_missing_workflows=0
 pr_number=""
 
 while [[ $# -gt 0 ]]; do
@@ -94,6 +97,10 @@ while [[ $# -gt 0 ]]; do
     --workflows)
       workflow_csv="$2"
       shift 2
+      ;;
+    --trigger-missing-workflows)
+      trigger_missing_workflows=1
+      shift
       ;;
     --no-notify)
       notify_enabled=0
@@ -142,6 +149,7 @@ while :; do
   head_sha="$(printf '%s' "$pr_json" | jq -r '.headRefOid')"
   labels_csv="$(printf '%s' "$pr_json" | jq -r '.labels | join(",")')"
   latest_coderabbit="$(printf '%s' "$pr_json" | jq -r '.latestCodeRabbit')"
+  coderabbit_bucket="$(gh pr checks "$pr_number" --json name,bucket 2>/dev/null | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
   read -r unresolved_threads total_threads < <(review_thread_counts "$pr_number")
 
   if [[ "$unresolved_threads" -gt 0 ]]; then
@@ -153,6 +161,15 @@ while :; do
     notify "MMP PR CodeRabbit blocker" "PR #$pr_number has CHANGES_REQUESTED"
     scripts/mmp-pr-status.sh "$pr_number" || true
     exit 3
+  fi
+  if [[ "$coderabbit_bucket" == "fail" ]]; then
+    notify "MMP PR CodeRabbit failed" "PR #$pr_number CodeRabbit check failed"
+    scripts/mmp-pr-status.sh "$pr_number" || true
+    exit 3
+  fi
+  coderabbit_clear=0
+  if [[ "$coderabbit_bucket" == "pass" && "$unresolved_threads" -eq 0 ]]; then
+    coderabbit_clear=1
   fi
 
   all_workflows_done=1
@@ -167,6 +184,10 @@ while :; do
     if [[ -z "$latest_row" ]]; then
       all_workflows_done=0
       workflow_summary+=("$workflow_name=missing")
+      if [[ "$trigger_missing_workflows" == "1" && "$coderabbit_clear" == "1" ]]; then
+        echo "  → trigger workflow: $workflow_name on $branch ($head_sha)"
+        gh workflow run "$workflow_name" --ref "$branch" || true
+      fi
       continue
     fi
     IFS=$'\t' read -r _wf status conclusion run_id url _created_at <<< "$latest_row"
@@ -185,7 +206,7 @@ while :; do
   done
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} CodeRabbit=$latest_coderabbit threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
+  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
 
   if [[ "$workflow_failure" == "1" ]]; then
     notify "MMP CI failed" "PR #$pr_number has failed CI"
