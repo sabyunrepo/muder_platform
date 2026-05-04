@@ -91,10 +91,10 @@ describe('CluesTab', () => {
     expect(screen.getByTestId('spinner')).toBeDefined();
   });
 
-  it('단서가 없으면 빈 상태를 표시한다', () => {
+  it('단서가 없으면 Entity workspace 빈 상태를 표시한다', () => {
     useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
     render(<CluesTab themeId="theme-1" />);
-    expect(screen.getByText('단서 없음')).toBeDefined();
+    expect(screen.getByText('아직 단서가 없습니다')).toBeDefined();
   });
 
   it('단서 목록과 선택된 단서 상세를 함께 렌더링한다', () => {

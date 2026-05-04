@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
-import type { EditorThemeResponse, MysteryRole } from "@/features/editor/api";
+import { Edit3, Trash2 } from "lucide-react";
+import type { EditorCharacterResponse, EditorThemeResponse, MysteryRole } from "@/features/editor/api";
 import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
@@ -22,9 +23,18 @@ import {
 interface CharacterAssignPanelProps {
   themeId: string;
   theme: EditorThemeResponse;
+  onCreate?: () => void;
+  onEdit?: (character: EditorCharacterResponse) => void;
+  onDelete?: (character: EditorCharacterResponse) => void;
 }
 
-export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelProps) {
+export function CharacterAssignPanel({
+  themeId,
+  theme,
+  onCreate,
+  onEdit,
+  onDelete,
+}: CharacterAssignPanelProps) {
   const { data: characters, isLoading: charsLoading } = useEditorCharacters(themeId);
   const { data: clues } = useEditorClues(themeId);
   const updateCharacter = useUpdateCharacter(themeId);
@@ -124,8 +134,9 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
         items={[]}
         selectedId={undefined}
         onSelect={() => undefined}
+        onCreate={onCreate}
         emptyMessage="캐릭터를 먼저 추가하세요"
-        emptyDescription="기본 탭에서 캐릭터를 만든 뒤 역할지와 시작 단서를 배정할 수 있습니다."
+        emptyDescription="캐릭터를 만든 뒤 역할지, 시작 단서, 히든 미션을 한 곳에서 관리합니다."
         getItemId={(char) => char.id}
         getItemTitle={(char) => char.name}
         renderDetail={() => null}
@@ -147,10 +158,35 @@ export function CharacterAssignPanel({ themeId, theme }: CharacterAssignPanelPro
         items={characters}
         selectedId={activeCharId ?? undefined}
         onSelect={handleSelectChar}
+        onCreate={onCreate}
         getItemId={(char) => char.id}
         getItemTitle={(char) => char.name}
         getItemDescription={(char) => char.description ?? ''}
         getItemBadges={(char) => [getCharacterRoleBadge(char)]}
+        renderItemActions={(char) => (
+          <div className="flex gap-1">
+            {onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(char)}
+                aria-label={`${char.name} 수정`}
+                className="rounded-md p-2 text-slate-600 transition hover:bg-slate-800 hover:text-amber-300"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(char)}
+                aria-label={`${char.name} 삭제`}
+                className="rounded-md p-2 text-slate-600 transition hover:bg-red-950/40 hover:text-red-300"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        )}
         renderDetail={(char) => (
           <CharacterDetailPanel
             themeId={themeId}

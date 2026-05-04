@@ -22,10 +22,9 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
     await page.goto(`${BASE}/editor/${THEME_ID}`);
 
     await page.getByRole("tab", { name: "등장인물" }).click();
-    await expect(page.getByRole("button", { name: "배정" })).toBeVisible();
-    await page.getByRole("button", { name: "배정" }).click();
+    await expect(page.getByRole("button", { name: "제작" })).toBeVisible();
 
-    await page.getByRole("button", { name: /탐정 A/ }).click();
+    await page.getByRole("button", { name: "탐정 A 선택" }).click();
 
     const updateRequestPromise = page.waitForRequest(
       (request) =>
@@ -60,9 +59,8 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
     await page.goto(`${BASE}/editor/${THEME_ID}`);
 
     await page.getByRole("tab", { name: "등장인물" }).click();
-    await expect(page.getByRole("button", { name: "배정" })).toBeVisible();
-    await page.getByRole("button", { name: "배정" }).click();
-    await page.getByRole("button", { name: /탐정 A/ }).click();
+    await expect(page.getByRole("button", { name: "제작" })).toBeVisible();
+    await page.getByRole("button", { name: "탐정 A 선택" }).click();
 
     await page.getByRole("button", { name: /이미지/ }).click();
     await page.getByRole("textbox", { name: "이미지 페이지 URL" }).fill("https://cdn.example/role-1.svg");
