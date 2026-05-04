@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
-import { FlowSimulationPanel } from "../FlowSimulationPanel";
+import { FlowOrderReviewPanel } from "../FlowOrderReviewPanel";
 import type { Node, Edge } from "@xyflow/react";
 
 afterEach(cleanup);
@@ -18,10 +18,10 @@ const makeEdges = (): Edge[] => [
   { id: "e-p2-e1", source: "p2", target: "e1" },
 ];
 
-describe("FlowSimulationPanel", () => {
+describe("FlowOrderReviewPanel", () => {
   it("페이즈 노드가 없으면 빈 상태 메시지를 표시한다", () => {
     render(
-      <FlowSimulationPanel
+      <FlowOrderReviewPanel
         nodes={[]}
         edges={[]}
         onHighlight={vi.fn()}
@@ -33,7 +33,7 @@ describe("FlowSimulationPanel", () => {
 
   it("첫 페이즈 이름과 진행도를 표시한다", () => {
     render(
-      <FlowSimulationPanel
+      <FlowOrderReviewPanel
         nodes={makeNodes()}
         edges={makeEdges()}
         onHighlight={vi.fn()}
@@ -47,7 +47,7 @@ describe("FlowSimulationPanel", () => {
   it("다음 버튼 클릭 시 다음 페이즈로 이동한다", () => {
     const onHighlight = vi.fn();
     render(
-      <FlowSimulationPanel
+      <FlowOrderReviewPanel
         nodes={makeNodes()}
         edges={makeEdges()}
         onHighlight={onHighlight}
@@ -61,7 +61,7 @@ describe("FlowSimulationPanel", () => {
 
   it("총 소요시간을 표시한다", () => {
     render(
-      <FlowSimulationPanel
+      <FlowOrderReviewPanel
         nodes={makeNodes()}
         edges={makeEdges()}
         onHighlight={vi.fn()}
@@ -71,11 +71,27 @@ describe("FlowSimulationPanel", () => {
     expect(screen.getByText(/총 15분/)).toBeDefined();
   });
 
+  it("조건과 트리거 결과를 확정하지 않는 순서 점검 문구를 표시한다", () => {
+    render(
+      <FlowOrderReviewPanel
+        nodes={makeNodes()}
+        edges={[
+          ...makeEdges(),
+          { id: "conditional", source: "p1", target: "p2", data: { condition: { id: "c1" } } },
+        ]}
+        onHighlight={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("흐름 순서 점검")).toBeDefined();
+    expect(screen.getByText(/조건과 트리거의 실제 통과 여부는 게임 중 서버가 판정합니다/)).toBeDefined();
+  });
+
   it("닫기 시 하이라이트를 해제한다", () => {
     const onHighlight = vi.fn();
     const onClose = vi.fn();
     render(
-      <FlowSimulationPanel
+      <FlowOrderReviewPanel
         nodes={makeNodes()}
         edges={makeEdges()}
         onHighlight={onHighlight}

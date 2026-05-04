@@ -15,8 +15,25 @@ const { saveMock, useFlowDataMock } = vi.hoisted(() => ({
 // ---------------------------------------------------------------------------
 
 vi.mock('@xyflow/react', () => ({
-  ReactFlow: ({ children }: { children?: React.ReactNode }) => (
-    <div data-testid="react-flow">{children}</div>
+  ReactFlow: ({
+    children,
+    nodes = [],
+    nodeClassName,
+  }: {
+    children?: React.ReactNode;
+    nodes?: Array<{ id: string }>;
+    nodeClassName?: (node: { id: string }) => string;
+  }) => (
+    <div data-testid="react-flow">
+      {nodes.map((node) => (
+        <div
+          key={node.id}
+          data-testid={`rf-node-${node.id}`}
+          className={nodeClassName?.(node) ?? ""}
+        />
+      ))}
+      {children}
+    </div>
   ),
   Background: () => <div data-testid="rf-background" />,
   MiniMap: () => <div data-testid="rf-minimap" />,
@@ -122,6 +139,41 @@ describe('FlowCanvas', () => {
     expect(screen.getByTestId('rf-background')).toBeDefined();
     expect(screen.getByTestId('rf-minimap')).toBeDefined();
     expect(screen.getByTestId('rf-controls')).toBeDefined();
+  });
+
+  it('순서 점검 패널을 툴바로 닫으면 노드 하이라이트를 해제한다', () => {
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        {
+          id: 'p1',
+          type: 'phase',
+          position: { x: 0, y: 0 },
+          data: { label: '오프닝', duration: 5 },
+        },
+        {
+          id: 'p2',
+          type: 'phase',
+          position: { x: 100, y: 0 },
+          data: { label: '조사', duration: 10 },
+        },
+      ],
+      edges: [{ id: 'e-p1-p2', source: 'p1', target: 'p2' }],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '순서 점검' }));
+    fireEvent.click(screen.getByTitle('다음'));
+    expect(screen.getByTestId('rf-node-p2').className).toContain('!ring-2');
+
+    fireEvent.click(screen.getByRole('button', { name: '순서 점검' }));
+    expect(screen.getByTestId('rf-node-p2').className).not.toContain('!ring-2');
   });
 });
 

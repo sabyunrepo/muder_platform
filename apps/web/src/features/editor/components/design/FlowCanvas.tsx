@@ -14,7 +14,7 @@ import { StartNode } from "./StartNode";
 import { PhaseNode } from "./PhaseNode";
 import { EndingNode } from "./EndingNode";
 import { NodeDetailPanel } from "./NodeDetailPanel";
-import { FlowSimulationPanel } from "./FlowSimulationPanel";
+import { FlowOrderReviewPanel } from "./FlowOrderReviewPanel";
 import { StorySceneSummary } from "./StorySceneSummary";
 import { branchNodeTypes, conditionEdgeTypes } from "./flowNodeRegistry";
 import type { FlowNodeType } from "../../flowTypes";
@@ -46,7 +46,7 @@ interface FlowCanvasProps {
 
 export function FlowCanvas({ themeId }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [showSim, setShowSim] = useState(false);
+  const [showOrderReview, setShowOrderReview] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const {
@@ -124,8 +124,11 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
         isSaving={isSaving}
         onApplyPreset={applyPreset}
         hasNodes={nodes.length > 0}
-        onToggleSimulation={() => setShowSim((v) => !v)}
-        isSimulating={showSim}
+        onToggleOrderReview={() => {
+          if (showOrderReview) setHighlightId(null);
+          setShowOrderReview((v) => !v);
+        }}
+        isOrderReviewing={showOrderReview}
       />
       <StorySceneSummary nodes={nodes} edges={edges} />
       <div data-testid="flow-workspace" className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
@@ -160,18 +163,18 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
 
         {/* Side panels */}
         <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
-          {!showSim && !selectedNode && (
+          {!showOrderReview && !selectedNode && (
             <div className="p-4 text-sm leading-6 text-slate-400">
               장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.
             </div>
           )}
-          {showSim && (
+          {showOrderReview && (
             <div className="border-b border-slate-800 p-3">
-              <FlowSimulationPanel
+              <FlowOrderReviewPanel
                 nodes={nodes}
                 edges={edges}
                 onHighlight={setHighlightId}
-                onClose={() => { setShowSim(false); setHighlightId(null); }}
+                onClose={() => { setShowOrderReview(false); setHighlightId(null); }}
               />
             </div>
           )}
