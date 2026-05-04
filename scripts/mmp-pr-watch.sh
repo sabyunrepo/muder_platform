@@ -70,8 +70,9 @@ review_thread_counts() {
 
 latest_workflow_rows() {
   local branch="$1"
-  gh run list --branch "$branch" --limit 50 --json databaseId,workflowName,status,conclusion,createdAt,url \
-    | jq -r '.[] | [.workflowName, .status, (if (.conclusion == null or .conclusion == "") then "none" else .conclusion end), (.databaseId|tostring), .url, .createdAt] | @tsv'
+  local head_sha="$2"
+  gh run list --branch "$branch" --limit 80 --json databaseId,workflowName,status,conclusion,createdAt,url,headSha \
+    | jq -r --arg head_sha "$head_sha" '.[] | select(.headSha == $head_sha) | [.workflowName, .status, (if (.conclusion == null or .conclusion == "") then "none" else .conclusion end), (.databaseId|tostring), .url, .createdAt, .headSha] | @tsv'
 }
 
 interval=60
@@ -136,8 +137,9 @@ while :; do
     exit 4
   fi
 
-  pr_json="$(gh pr view "$pr_number" --json headRefName,labels,reviews --jq '{headRefName, labels:[.labels[].name], latestCodeRabbit:([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last | if . then .state else "NONE" end)}')"
+  pr_json="$(gh pr view "$pr_number" --json headRefName,headRefOid,labels,reviews --jq '{headRefName, headRefOid, labels:[.labels[].name], latestCodeRabbit:([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last | if . then .state else "NONE" end)}')"
   branch="$(printf '%s' "$pr_json" | jq -r '.headRefName')"
+  head_sha="$(printf '%s' "$pr_json" | jq -r '.headRefOid')"
   labels_csv="$(printf '%s' "$pr_json" | jq -r '.labels | join(",")')"
   latest_coderabbit="$(printf '%s' "$pr_json" | jq -r '.latestCodeRabbit')"
   read -r unresolved_threads total_threads < <(review_thread_counts "$pr_number")
@@ -156,7 +158,7 @@ while :; do
   all_workflows_done=1
   workflow_failure=0
   workflow_summary=()
-  run_rows="$(latest_workflow_rows "$branch")"
+  run_rows="$(latest_workflow_rows "$branch" "$head_sha")"
   IFS=',' read -ra workflow_names <<< "$workflow_csv"
   for workflow_name in "${workflow_names[@]}"; do
     workflow_name="${workflow_name#"${workflow_name%%[![:space:]]*}"}"
@@ -183,7 +185,7 @@ while :; do
   done
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-  echo "[$timestamp] PR #$pr_number CodeRabbit=$latest_coderabbit threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
+  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} CodeRabbit=$latest_coderabbit threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
 
   if [[ "$workflow_failure" == "1" ]]; then
     notify "MMP CI failed" "PR #$pr_number has failed CI"
