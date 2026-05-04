@@ -65,7 +65,7 @@ Phase 24의 목표는 제작자용 에디터를 **프론트 Adapter / 백엔드 
 
 | 리스크 | 지금 상태 | 처리 기준 |
 | --- | --- | --- |
-| legacy normalizer 제거 | 유지 | 운영 데이터/seed/preset이 canonical shape임을 확인한 뒤 별도 migration PR |
+| legacy normalizer 제거 | 유지 | 운영 DB/seed/preset이 canonical shape임을 검증하고, legacy read telemetry를 일정 기간 관찰해 0건임을 확인한 뒤, rollback 경로와 data backup을 포함한 별도 migration PR을 만든다 |
 | dev preview/mock route 혼동 | #250에서 정리 | 새 mock은 실제 구현 컴포넌트와 분리하지 않는다 |
 | 단서/장소 runtime 효과 미완성 | Phase 25 후보 | #247, #248에서 백엔드 Engine 우선 설계 |
 | 결말/투표 breakdown 미완성 | Phase 25 후보 | #249에서 종료 화면과 함께 처리 |
