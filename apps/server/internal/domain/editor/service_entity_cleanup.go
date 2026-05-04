@@ -55,6 +55,11 @@ func removeEntityIDFromConfigValue(value any, entityID string) (any, bool) {
 		}
 		return items, changed
 	case map[string]any:
+		if placement, ok := v["placement"].(map[string]any); ok {
+			if placementEntityID, ok := placement["entityId"].(string); ok && placementEntityID == entityID {
+				return deletedConfigNode, true
+			}
+		}
 		if id, ok := v["id"].(string); ok && id == entityID {
 			return deletedConfigNode, true
 		}

@@ -15,6 +15,10 @@ func TestRemoveClueReferencesFromConfigJSON(t *testing.T) {
 		"modules": {
 			"starting_clue": {"enabled": true, "config": {"startingClues": {"char-1": ["11111111-1111-1111-1111-111111111111", "33333333-3333-3333-3333-333333333333"]}}},
 			"clue_action": {"enabled": true, "config": {"targetClueId": "11111111-1111-1111-1111-111111111111", "rewards": ["11111111-1111-1111-1111-111111111111", "44444444-4444-4444-4444-444444444444"]}},
+			"event_progression": {"enabled": true, "config": {"Triggers": [
+				{"id":"deleted-clue-trigger","placement":{"kind":"clue","entityId":"11111111-1111-1111-1111-111111111111"},"actions":[{"type":"OPEN_VOTING"}]},
+				{"id":"kept-clue-trigger","placement":{"kind":"clue","entityId":"55555555-5555-5555-5555-555555555555"},"actions":[{"type":"MUTE_CHAT"}]}
+			]}},
 			"location": {"enabled": true, "config": {"discoveries": [
 				{"locationId":"loc-1","clueId":"11111111-1111-1111-1111-111111111111","requiredClueIds":["22222222-2222-2222-2222-222222222222"]},
 				{"locationId":"loc-1","clueId":"55555555-5555-5555-5555-555555555555","requiredClueIds":["11111111-1111-1111-1111-111111111111","22222222-2222-2222-2222-222222222222"]}
@@ -43,6 +47,16 @@ func TestRemoveClueReferencesFromConfigJSON(t *testing.T) {
 	discoveries := locationConfig["discoveries"].([]any)
 	if len(discoveries) != 1 {
 		t.Fatalf("expected only discovery with deleted clueId to be removed, got %#v", discoveries)
+	}
+	eventModule := modules["event_progression"].(map[string]any)
+	eventConfig := eventModule["config"].(map[string]any)
+	triggers := eventConfig["Triggers"].([]any)
+	if len(triggers) != 1 {
+		t.Fatalf("expected trigger placed on deleted clue to be removed, got %#v", triggers)
+	}
+	keptTrigger := triggers[0].(map[string]any)
+	if keptTrigger["id"] != "kept-clue-trigger" {
+		t.Fatalf("unexpected kept trigger: %#v", keptTrigger)
 	}
 	keptDiscovery := discoveries[0].(map[string]any)
 	if keptDiscovery["clueId"] != "55555555-5555-5555-5555-555555555555" {

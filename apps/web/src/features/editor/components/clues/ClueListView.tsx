@@ -58,20 +58,30 @@ export function ClueListView({ themeId }: ClueListViewProps) {
   function handleDeleteConfirm() {
     if (!deletingClue) return;
     deleteClue.mutate(deletingClue.id, {
-      onSuccess: () => { toast.success('단서가 삭제되었습니다'); setDeletingClue(undefined); },
-      onError: (err) => { toast.error(err.message || '단서 삭제에 실패했습니다'); setDeletingClue(undefined); },
+      onSuccess: () => {
+        toast.success('단서가 삭제되었습니다');
+        setDeletingClue(undefined);
+      },
+      onError: (err) => {
+        toast.error(err.message || '단서 삭제에 실패했습니다');
+        setDeletingClue(undefined);
+      },
     });
   }
 
   function handleConfigChange(nextConfig: EditorConfig) {
     updateConfig.mutate(nextConfig, {
-      onSuccess: () => toast.success('단서 사용 효과가 저장되었습니다'),
-      onError: () => toast.error('단서 사용 효과 저장에 실패했습니다'),
+      onSuccess: () => toast.success('단서 설정이 저장되었습니다'),
+      onError: () => toast.error('단서 설정 저장에 실패했습니다'),
     });
   }
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   if (isError) {
@@ -82,26 +92,29 @@ export function ClueListView({ themeId }: ClueListViewProps) {
           <p className="mt-2 text-sm leading-6 text-red-200/80">
             네트워크나 권한 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
           </p>
-          <Button onClick={() => void refetch()}>
-            다시 시도
-          </Button>
+          <Button onClick={() => void refetch()}>다시 시도</Button>
         </div>
       </div>
     );
   }
 
   if (!clues) {
-    return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
-  const deletingReferences = deletingClue && clues
-    ? buildClueUsageMap({
-      configJson: theme?.config_json,
-      clues,
-      locations,
-      characters,
-    })[deletingClue.id]?.references ?? []
-    : [];
+  const deletingReferences =
+    deletingClue && clues
+      ? (buildClueUsageMap({
+          configJson: theme?.config_json,
+          clues,
+          locations,
+          characters,
+        })[deletingClue.id]?.references ?? [])
+      : [];
 
   return (
     <div className="px-4 py-6">
@@ -117,7 +130,12 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         isConfigSaving={updateConfig.isPending}
       />
 
-      <ClueForm themeId={themeId} clue={editingClue} isOpen={isFormOpen} onClose={handleFormClose} />
+      <ClueForm
+        themeId={themeId}
+        clue={editingClue}
+        isOpen={isFormOpen}
+        onClose={handleFormClose}
+      />
 
       <Modal
         isOpen={!!deletingClue}
@@ -126,14 +144,22 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         size="sm"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setDeletingClue(undefined)} disabled={deleteClue.isPending}>취소</Button>
-            <Button variant="danger" isLoading={deleteClue.isPending} onClick={handleDeleteConfirm}>삭제</Button>
+            <Button
+              variant="ghost"
+              onClick={() => setDeletingClue(undefined)}
+              disabled={deleteClue.isPending}
+            >
+              취소
+            </Button>
+            <Button variant="danger" isLoading={deleteClue.isPending} onClick={handleDeleteConfirm}>
+              삭제
+            </Button>
           </>
         }
       >
         <p className="text-sm text-slate-300">
-          <span className="font-semibold text-slate-100">{deletingClue?.name}</span> 단서를 삭제하시겠습니까?
-          연결된 설정은 함께 정리되어, 없는 단서를 가리키는 문제가 남지 않습니다.
+          <span className="font-semibold text-slate-100">{deletingClue?.name}</span> 단서를
+          삭제하시겠습니까? 연결된 설정은 함께 정리되어, 없는 단서를 가리키는 문제가 남지 않습니다.
         </p>
         {deletingReferences.length > 0 ? (
           <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
@@ -164,5 +190,6 @@ function formatDeleteReference(ref: EntityReference) {
   if (ref.relation === 'starting_clue') return `${ref.sourceName}의 시작 단서에서 제거됩니다.`;
   if (ref.relation === 'combination_input') return `${ref.sourceName}의 조합 조건에서 제거됩니다.`;
   if (ref.relation === 'combination_output') return `${ref.sourceName}의 조합 보상에서 제거됩니다.`;
+  if (ref.relation === 'trigger') return `${ref.sourceName}의 트리거에서 제거됩니다.`;
   return `${ref.sourceName}의 연결 설정에서 제거됩니다.`;
 }
