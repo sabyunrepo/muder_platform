@@ -93,8 +93,12 @@ func (m *EventProgressionModule) Init(ctx context.Context, deps engine.ModuleDep
 			return fmt.Errorf("event_progression: duplicate trigger %q", trigger.ID)
 		}
 		if len(trigger.Actions) > 0 {
-			if _, err := engine.ParsePhaseActionConfig(trigger.Actions); err != nil {
+			actions, err := engine.ParsePhaseActionConfig(trigger.Actions)
+			if err != nil {
 				return fmt.Errorf("event_progression: trigger %q actions invalid: %w", trigger.ID, err)
+			}
+			if len(actions) == 0 {
+				return fmt.Errorf("event_progression: trigger %q actions invalid: empty/unsupported action config", trigger.ID)
 			}
 		}
 		m.triggers[trigger.ID] = trigger
@@ -117,7 +121,7 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 			m.mu.Unlock()
 			return fmt.Errorf("event_progression: invalid payload: %w", err)
 		}
-		trigger, hasTriggerConfig := m.triggers[p.TriggerID]
+		trigger, hasTriggerConfig := m.resolveConfiguredTriggerRouteLocked(p.TriggerID)
 		oldPhase, validTarget, actions, err := m.resolveTriggerLocked(p.TriggerID, p.Password, trigger, hasTriggerConfig)
 		if err != nil {
 			m.mu.Unlock()
@@ -125,6 +129,9 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 		}
 		m.mu.Unlock()
 
+		if err := m.validateTriggerRuntimeDeps(actions); err != nil {
+			return err
+		}
 		if err := m.dispatchTriggerActions(ctx, actions); err != nil {
 			return err
 		}
@@ -132,15 +139,28 @@ func (m *EventProgressionModule) HandleMessage(ctx context.Context, playerID uui
 			if err := m.moveToPhase(ctx, validTarget); err != nil {
 				return err
 			}
-			m.publishSceneTransition(oldPhase, validTarget, p.TriggerID)
 		}
 		m.recordTriggerSuccess(p.TriggerID)
+		if validTarget != "" {
+			m.publishSceneTransition(oldPhase, validTarget, p.TriggerID)
+		}
 		return nil
 
 	default:
 		m.mu.Unlock()
 		return fmt.Errorf("event_progression: unknown message type %q", msgType)
 	}
+}
+
+func (m *EventProgressionModule) resolveConfiguredTriggerRouteLocked(triggerID string) (eventProgressionTrigger, bool) {
+	trigger, ok := m.triggers[triggerID]
+	if !ok {
+		return eventProgressionTrigger{}, false
+	}
+	if trigger.From != "" && trigger.From != m.currentPhaseID {
+		return eventProgressionTrigger{}, false
+	}
+	return trigger, true
 }
 
 func (m *EventProgressionModule) resolveTriggerLocked(
@@ -214,12 +234,19 @@ func (m *EventProgressionModule) validateBacktrackLocked(target string) error {
 	return nil
 }
 
-func (m *EventProgressionModule) dispatchTriggerActions(ctx context.Context, actions []engine.PhaseActionPayload) error {
+func (m *EventProgressionModule) validateTriggerRuntimeDeps(actions []engine.PhaseActionPayload) error {
 	if len(actions) == 0 {
 		return nil
 	}
 	if m.deps.ActionDispatcher == nil {
 		return fmt.Errorf("event_progression: action dispatcher is not configured")
+	}
+	return nil
+}
+
+func (m *EventProgressionModule) dispatchTriggerActions(ctx context.Context, actions []engine.PhaseActionPayload) error {
+	if len(actions) == 0 {
+		return nil
 	}
 	for _, action := range actions {
 		if action.Action == "" {

@@ -310,6 +310,53 @@ func TestEventProgressionModule_ConfiguredPasswordTriggerRejectsWrongPassword(t 
 	}
 }
 
+func TestEventProgressionModule_ConfiguredTriggerOutsideCurrentPhaseFallsBackToLegacyGraph(t *testing.T) {
+	deps := newTestDeps(t)
+	sceneController := &recordingSceneController{}
+	deps.SceneController = sceneController
+	m := NewEventProgressionModule()
+
+	cfg := json.RawMessage(`{
+		"InitialPhase":"start",
+		"AllowBacktrack":false,
+		"Graph":{"start":["middle"]},
+		"Triggers":[{
+			"id":"middle",
+			"from":"other",
+			"to":"secret",
+			"password":"0427"
+		}]
+	}`)
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+
+	payload, _ := json.Marshal(map[string]string{"TriggerID": "middle"})
+	if err := m.HandleMessage(context.Background(), uuid.New(), "event:trigger", payload); err != nil {
+		t.Fatalf("HandleMessage() error = %v", err)
+	}
+
+	if len(sceneController.targets) != 1 || sceneController.targets[0] != "middle" {
+		t.Fatalf("scene targets = %#v, want [middle]", sceneController.targets)
+	}
+}
+
+func TestEventProgressionModule_InitRejectsUnsupportedTriggerActions(t *testing.T) {
+	m := NewEventProgressionModule()
+	cfg := json.RawMessage(`{
+		"InitialPhase":"start",
+		"Triggers":[{
+			"id":"bad-action",
+			"from":"start",
+			"actions":{"foo":"bar"}
+		}]
+	}`)
+
+	if err := m.Init(context.Background(), newTestDeps(t), cfg); err == nil {
+		t.Fatal("expected unsupported action config error, got nil")
+	}
+}
+
 func TestEventProgressionModule_RuntimeTriggerUsesPhaseEngineAsController(t *testing.T) {
 	progress := NewEventProgressionModule()
 	reactor := &triggerRuntimeTestReactor{}
