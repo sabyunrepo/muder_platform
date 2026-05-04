@@ -45,20 +45,47 @@ notify() {
 }
 
 
+gh_retry() {
+  local attempt=1
+  local max_attempts=3
+  local delay=2
+  local output status
+  while (( attempt <= max_attempts )); do
+    if output="$(gh "$@" 2>&1)"; then
+      printf '%s' "$output"
+      return 0
+    fi
+    status=$?
+    echo "⚠️ gh $* failed (attempt ${attempt}/${max_attempts}, status ${status})" >&2
+    echo "$output" >&2
+    if (( attempt < max_attempts )); then
+      sleep "$delay"
+      delay=$((delay * 2))
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
+
 review_thread_counts() {
-  local pr_number="$1"
-  local owner repo graphql_query after_cursor threads_json page_unresolved page_total has_next
-  owner="$(gh repo view --json owner --jq '.owner.login')"
-  repo="$(gh repo view --json name --jq '.name')"
+  local owner="$1"
+  local repo="$2"
+  local pr_number="$3"
+  local graphql_query after_cursor threads_json page_unresolved page_total has_next
   graphql_query='query($owner:String!, $repo:String!, $number:Int!, $after:String) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { isResolved } pageInfo { hasNextPage endCursor } } } } }'
   after_cursor=""
   local unresolved=0
   local total=0
   while :; do
     if [[ -z "$after_cursor" ]]; then
-      threads_json="$(gh api graphql -F owner="$owner" -F repo="$repo" -F number="$pr_number" -f query="$graphql_query")"
+      if ! threads_json="$(gh_retry api graphql -F owner="$owner" -F repo="$repo" -F number="$pr_number" -f query="$graphql_query")"; then
+        return 1
+      fi
     else
-      threads_json="$(gh api graphql -F owner="$owner" -F repo="$repo" -F number="$pr_number" -F after="$after_cursor" -f query="$graphql_query")"
+      if ! threads_json="$(gh_retry api graphql -F owner="$owner" -F repo="$repo" -F number="$pr_number" -F after="$after_cursor" -f query="$graphql_query")"; then
+        return 1
+      fi
     fi
     page_unresolved="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
     page_total="$(printf '%s' "$threads_json" | jq '[.data.repository.pullRequest.reviewThreads.nodes[]] | length')"
@@ -74,7 +101,7 @@ review_thread_counts() {
 latest_workflow_rows() {
   local branch="$1"
   local head_sha="$2"
-  gh run list --branch "$branch" --limit 80 --json databaseId,workflowName,status,conclusion,createdAt,url,headSha \
+  gh_retry run list --branch "$branch" --limit 80 --json databaseId,workflowName,status,conclusion,createdAt,url,headSha \
     | jq -r --arg head_sha "$head_sha" '.[] | select(.headSha == $head_sha) | [.workflowName, .status, (if (.conclusion == null or .conclusion == "") then "none" else .conclusion end), (.databaseId|tostring), .url, .createdAt, .headSha] | @tsv'
 }
 
@@ -137,8 +164,12 @@ require_cmd gh
 require_cmd jq
 
 if [[ -z "$pr_number" ]]; then
-  pr_number="$(gh pr view --json number --jq '.number')"
+  pr_number="$(gh_retry pr view --json number --jq '.number')"
 fi
+
+owner="$(gh_retry repo view --json owner --jq '.owner.login')"
+repo="$(gh_retry repo view --json name --jq '.name')"
+triggered_workflows="|"
 
 start_epoch="$(date +%s)"
 
@@ -151,13 +182,27 @@ while :; do
     exit 4
   fi
 
-  pr_json="$(gh pr view "$pr_number" --json headRefName,headRefOid,labels,reviews --jq '{headRefName, headRefOid, labels:[.labels[].name], latestCodeRabbit:([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last | if . then .state else "NONE" end)}')"
+  if ! pr_json="$(gh_retry pr view "$pr_number" --json headRefName,headRefOid,labels,reviews --jq '{headRefName, headRefOid, labels:[.labels[].name], latestCodeRabbit:([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last | if . then .state else "NONE" end)}')"; then
+    echo "⚠️ PR 상태 조회 실패; 다음 주기에 재시도합니다." >&2
+    sleep "$interval"
+    continue
+  fi
   branch="$(printf '%s' "$pr_json" | jq -r '.headRefName')"
   head_sha="$(printf '%s' "$pr_json" | jq -r '.headRefOid')"
   labels_csv="$(printf '%s' "$pr_json" | jq -r '.labels | join(",")')"
   latest_coderabbit="$(printf '%s' "$pr_json" | jq -r '.latestCodeRabbit')"
-  coderabbit_bucket="$(gh pr checks "$pr_number" --json name,bucket 2>/dev/null | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
-  read -r unresolved_threads total_threads < <(review_thread_counts "$pr_number")
+  checks_json="$(gh_retry pr checks "$pr_number" --json name,bucket || true)"
+  if [[ -z "$checks_json" ]]; then
+    echo "⚠️ PR checks 조회 실패; 다음 주기에 재시도합니다." >&2
+    sleep "$interval"
+    continue
+  fi
+  coderabbit_bucket="$(printf '%s' "$checks_json" | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
+  if ! read -r unresolved_threads total_threads < <(review_thread_counts "$owner" "$repo" "$pr_number"); then
+    echo "⚠️ review thread 조회 실패; 다음 주기에 재시도합니다." >&2
+    sleep "$interval"
+    continue
+  fi
 
   if [[ "$unresolved_threads" -gt 0 ]]; then
     notify "MMP PR needs review" "PR #$pr_number has ${unresolved_threads} unresolved thread(s)"
@@ -194,7 +239,11 @@ while :; do
   all_workflows_done=1
   workflow_failure=0
   workflow_summary=()
-  run_rows="$(latest_workflow_rows "$branch" "$head_sha")"
+  if ! run_rows="$(latest_workflow_rows "$branch" "$head_sha")"; then
+    echo "⚠️ workflow run 조회 실패; 다음 주기에 재시도합니다." >&2
+    sleep "$interval"
+    continue
+  fi
   IFS=',' read -ra workflow_names <<< "$workflow_csv"
   for workflow_name in "${workflow_names[@]}"; do
     [[ -n "$workflow_name" ]] || continue
@@ -205,8 +254,14 @@ while :; do
       all_workflows_done=0
       workflow_summary+=("$workflow_name=missing")
       if [[ "$trigger_missing_workflows" == "1" && "$coderabbit_clear" == "1" ]]; then
-        echo "  → trigger workflow: $workflow_name on $branch ($head_sha)"
-        gh workflow run "$workflow_name" --ref "$branch" || true
+        if [[ "$triggered_workflows" != *"|$workflow_name|"* ]]; then
+          echo "  → trigger workflow: $workflow_name on $branch ($head_sha)"
+          if gh_retry workflow run "$workflow_name" --ref "$branch" >/dev/null; then
+            triggered_workflows+="$workflow_name|"
+          else
+            echo "⚠️ workflow dispatch 실패: $workflow_name; 다음 주기에 재시도합니다." >&2
+          fi
+        fi
       fi
       continue
     fi

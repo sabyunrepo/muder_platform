@@ -26,7 +26,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - check CI and Codecov
    - fix failures without skipping tests
    - merge only when checks and required reviews are satisfied
-4. API polling cadence: 30-60 seconds unless user explicitly asks for faster status. Prefer `scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows` for repeated CodeRabbit/CI polling instead of manual loop calls.
+4. API polling cadence: 30-60 seconds unless user explicitly asks for faster status. Prefer `scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows` for repeated CodeRabbit/CI polling instead of manual loop calls. When the watcher exits, immediately continue based on its exit code: `0` ready/merge path, `2` CI failure logs/fix, `3` CodeRabbit thread handling, `4` timeout state refresh. Do not stop at reporting that the watcher ended.
 5. For Codecov: treat patch coverage under 70% as a blocker unless the user approves an exception and the PR documents why.
 6. Operational-only PR exception:
    - If changed files do **not** touch app/runtime/test/build trigger paths (`apps/**`, `packages/**`, `tooling/**`, `.github/workflows/**`, `package.json`, lockfiles, `turbo.json`, `playwright.config.ts`, `e2e/**`, `go.mod`, `go.sum`), do not force full CI or manual workflow dispatch.

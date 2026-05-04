@@ -96,6 +96,9 @@ def main() -> int:
     for item in state.get("active_candidates", []):
         if item.get("id") not in candidate_ids:
             errors.append(f"active candidate {item.get('id')} is missing from candidates.jsonl")
+    for item in state.get("resolved_candidates", []):
+        if item.get("id") not in candidate_ids:
+            errors.append(f"resolved candidate {item.get('id')} is missing from candidates.jsonl")
 
     if args.validate:
         if errors:

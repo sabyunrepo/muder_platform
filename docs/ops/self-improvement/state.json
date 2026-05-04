@@ -57,10 +57,42 @@
         ".codex/skills/mmp-pr-lifecycle/SKILL.md"
       ],
       "resolution": "Documented that operational-only PRs do not require forced full CI when workflow path filters intentionally skip them; CodeRabbit, light checks, and focused local checks are the merge gate."
+    },
+    {
+      "id": "watcher-exit-action-continuation",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that watcher exit codes must trigger the next Codex action instead of only stopping and reporting."
+    },
+    {
+      "id": "self-improvement-resolved-candidate-validation",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        ".codex/skills/mmp-self-improvement-loop/scripts/scan_self_improvement.py"
+      ],
+      "resolution": "Added validation that resolved_candidates ids exist in candidates.jsonl."
+    },
+    {
+      "id": "watcher-transient-gh-retry",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh"
+      ],
+      "resolution": "Added gh retry handling and transient failure continuation for long-running PR watcher polling."
+    },
+    {
+      "id": "watcher-single-dispatch-per-workflow",
+      "resolved_at": "2026-05-04",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh"
+      ],
+      "resolution": "Tracked workflow names already dispatched by the watcher so missing workflow dispatch happens at most once per session."
     }
   ],
   "last_review": {
     "date": "2026-05-04",
-    "summary": "Added operational-only PR CI exception so path-filtered Codex/docs/scripts changes can merge after CodeRabbit and focused checks."
+    "summary": "Recorded watcher exit continuation and CodeRabbit hardening fixes for the self-improvement routine."
   }
 }
