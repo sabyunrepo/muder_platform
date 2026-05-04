@@ -51,13 +51,27 @@ function ViewToggleBtn({ mode, current, icon, label, onClick }: ViewToggleProps)
   );
 }
 
+function StorySceneSummaryStatus({ message }: { message: string }) {
+  return (
+    <div className="border-b border-slate-800 bg-slate-950 px-5 py-4">
+      <div className="rounded-sm border border-slate-800 bg-slate-900/45 px-4 py-3 text-xs text-slate-400">
+        {message}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // StoryTab
 // ---------------------------------------------------------------------------
 
 export function StoryTab({ themeId }: StoryTabProps) {
   const { data: contentData } = useEditorContent(themeId, 'story');
-  const { data: flowGraph } = useFlowGraph(themeId);
+  const {
+    data: flowGraph,
+    isLoading: isFlowLoading,
+    isError: isFlowError,
+  } = useFlowGraph(themeId);
   const upsertContent = useUpsertContent(themeId, 'story');
 
   const [markdown, setMarkdown] = useState('');
@@ -76,10 +90,10 @@ export function StoryTab({ themeId }: StoryTabProps) {
   });
 
   const charCount = markdown.length;
-  const storySceneSummary = useMemo(
-    () => toStorySceneFlowSummaryFromGraph(flowGraph),
-    [flowGraph],
-  );
+  const storySceneSummary = useMemo(() => {
+    if (isFlowLoading || isFlowError) return null;
+    return toStorySceneFlowSummaryFromGraph(flowGraph);
+  }, [flowGraph, isFlowError, isFlowLoading]);
 
   const previewHtml = useMemo(() => {
     if (!markdown) return '';
@@ -124,7 +138,13 @@ export function StoryTab({ themeId }: StoryTabProps) {
 
       {/* Editor / Preview panes */}
       <div className="flex flex-1 flex-col overflow-y-auto">
-        <StorySceneSummary summary={storySceneSummary} />
+        {isFlowLoading ? (
+          <StorySceneSummaryStatus message="스토리 장면 구성을 불러오는 중입니다." />
+        ) : isFlowError ? (
+          <StorySceneSummaryStatus message="스토리 장면 구성을 불러오지 못했습니다." />
+        ) : storySceneSummary ? (
+          <StorySceneSummary summary={storySceneSummary} />
+        ) : null}
 
         <div className="flex min-h-[40vh] flex-col lg:flex-row">
           {/* Editor pane */}
