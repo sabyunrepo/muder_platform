@@ -21,6 +21,11 @@ interface ConditionRuleProps {
   characters?: SelectOption[];
   missions?: SelectOption[];
   clues?: SelectOption[];
+  triggers?: SelectOption[];
+  tokens?: SelectOption[];
+  scenes?: SelectOption[];
+  rooms?: SelectOption[];
+  locations?: SelectOption[];
 }
 
 // ---------------------------------------------------------------------------
@@ -29,6 +34,39 @@ interface ConditionRuleProps {
 
 const selectCls =
   "rounded border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950";
+
+const targetFieldByVariable: Partial<Record<ConditionRule["variable"], keyof ConditionRule>> = {
+  trigger_count: "target_trigger_id",
+  investigation_token: "target_token_id",
+  scene_visit_count: "target_scene_id",
+  room_state: "target_room_id",
+  location_state: "target_location_id",
+  custom_flag: "target_flag_key",
+};
+
+const targetOptionsByKind = {
+  trigger: "triggers",
+  token: "tokens",
+  scene: "scenes",
+  room: "rooms",
+  location: "locations",
+} as const;
+
+function resetTargets(variable: ConditionRule["variable"]): Partial<ConditionRule> {
+  return {
+    variable,
+    target_character_id: undefined,
+    target_mission_id: undefined,
+    target_clue_id: undefined,
+    target_trigger_id: undefined,
+    target_token_id: undefined,
+    target_scene_id: undefined,
+    target_room_id: undefined,
+    target_location_id: undefined,
+    target_flag_key: undefined,
+    value: "",
+  };
+}
 
 // ---------------------------------------------------------------------------
 // ConditionRuleRow
@@ -41,8 +79,14 @@ export function ConditionRuleRow({
   characters = [],
   missions = [],
   clues = [],
+  triggers = [],
+  tokens = [],
+  scenes = [],
+  rooms = [],
+  locations = [],
 }: ConditionRuleProps) {
   const meta = CONDITION_VARIABLES.find((v) => v.value === rule.variable);
+  const optionSets = { triggers, tokens, scenes, rooms, locations };
 
   const update = (patch: Partial<ConditionRule>) =>
     onChange({ ...rule, ...patch });
@@ -54,13 +98,7 @@ export function ConditionRuleRow({
         className={selectCls}
         value={rule.variable}
         onChange={(e) =>
-          update({
-            variable: e.target.value as ConditionRule["variable"],
-            target_character_id: undefined,
-            target_mission_id: undefined,
-            target_clue_id: undefined,
-            value: "",
-          })
+          update(resetTargets(e.target.value as ConditionRule["variable"]))
         }
         aria-label="변수"
       >
@@ -122,6 +160,32 @@ export function ConditionRuleRow({
         </select>
       )}
 
+      {meta?.targetLabel && meta.targetKind === "flag" && targetFieldByVariable[rule.variable] && (
+        <input
+          className={`${selectCls} w-32`}
+          value={String(rule[targetFieldByVariable[rule.variable]!] ?? "")}
+          onChange={(e) => update({ [targetFieldByVariable[rule.variable]!]: e.target.value })}
+          placeholder={meta.targetLabel}
+          aria-label={meta.targetLabel}
+        />
+      )}
+
+      {meta?.targetLabel && meta.targetKind && meta.targetKind !== "flag" && targetFieldByVariable[rule.variable] && (
+        <select
+          className={selectCls}
+          value={String(rule[targetFieldByVariable[rule.variable]!] ?? "")}
+          onChange={(e) => update({ [targetFieldByVariable[rule.variable]!]: e.target.value })}
+          aria-label={meta.targetLabel}
+        >
+          <option value="">{meta.targetLabel} 선택</option>
+          {optionSets[targetOptionsByKind[meta.targetKind]].map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      )}
+
       {/* Comparator */}
       <select
         className={selectCls}
@@ -139,13 +203,40 @@ export function ConditionRuleRow({
       </select>
 
       {/* Value */}
-      <input
-        className={`${selectCls} w-24`}
-        value={rule.value}
-        onChange={(e) => update({ value: e.target.value })}
-        placeholder="값"
-        aria-label="값"
-      />
+      {meta?.valueSelect === "boolean" ? (
+        <select
+          className={selectCls}
+          value={rule.value}
+          onChange={(e) => update({ value: e.target.value })}
+          aria-label={meta.valueLabel}
+        >
+          <option value="">값 선택</option>
+          <option value="true">예</option>
+          <option value="false">아니오</option>
+        </select>
+      ) : meta?.valueSelect === "character" ? (
+        <select
+          className={selectCls}
+          value={rule.value}
+          onChange={(e) => update({ value: e.target.value })}
+          aria-label={meta.valueLabel}
+        >
+          <option value="">캐릭터 선택</option>
+          {characters.map((character) => (
+            <option key={character.id} value={character.id}>
+              {character.name}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          className={`${selectCls} w-24`}
+          value={rule.value}
+          onChange={(e) => update({ value: e.target.value })}
+          placeholder={meta?.valueLabel ?? "값"}
+          aria-label={meta?.valueLabel ?? "값"}
+        />
+      )}
 
       {/* Delete */}
       <button

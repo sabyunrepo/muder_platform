@@ -8,6 +8,8 @@ import {
 describe("conditionAdapter", () => {
   it("조건 변수와 그룹을 제작자용 문구로 변환한다", () => {
     expect(getConditionVariableLabel("clue_held")).toBe("단서 보유");
+    expect(getConditionVariableLabel("investigation_token")).toBe("조사권 수");
+    expect(getConditionVariableLabel("trigger_count")).toBe("트리거 실행 횟수");
     expect(getConditionVariableLabel("raw_engine_key")).toBe("직접 설정한 조건");
     expect(getConditionOperatorLabel("OR")).toBe("하나 이상");
   });

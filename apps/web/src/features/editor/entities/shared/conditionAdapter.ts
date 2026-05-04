@@ -6,6 +6,11 @@ const CONDITION_VARIABLE_LABELS: Record<string, string> = {
   character_alive: "캐릭터 생존",
   vote_target: "투표 대상",
   clue_held: "단서 보유",
+  trigger_count: "트리거 실행 횟수",
+  investigation_token: "조사권 수",
+  scene_visit_count: "장면 반복 횟수",
+  room_state: "토론방 상태",
+  location_state: "장소 상태",
   custom_flag: "직접 설정한 조건",
 };
 

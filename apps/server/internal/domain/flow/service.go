@@ -136,10 +136,16 @@ func (s *serviceImpl) DeleteNode(ctx context.Context, _, nodeID uuid.UUID) error
 }
 
 func (s *serviceImpl) CreateEdge(ctx context.Context, _, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error) {
+	if err := ValidateEdgeCondition(req.Condition); err != nil {
+		return nil, err
+	}
 	return insertEdge(ctx, s.pool, themeID, req.SourceID, req.TargetID, req.Condition, req.Label, req.SortOrder)
 }
 
 func (s *serviceImpl) UpdateEdge(ctx context.Context, _, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
+	if err := ValidateEdgeCondition(req.Condition); err != nil {
+		return nil, err
+	}
 	row := s.pool.QueryRow(ctx,
 		`UPDATE flow_edges SET source_id=$2, target_id=$3, condition=$4, label=$5, sort_order=$6 WHERE id=$1 RETURNING *`,
 		edgeID, req.SourceID, req.TargetID, req.Condition, req.Label, req.SortOrder,
@@ -167,6 +173,9 @@ func validateSaveRequest(req SaveFlowRequest) error {
 	}
 	edges := make([]FlowEdge, len(req.Edges))
 	for i, e := range req.Edges {
+		if err := ValidateEdgeCondition(e.Condition); err != nil {
+			return err
+		}
 		edges[i] = FlowEdge{SourceID: e.SourceID, TargetID: e.TargetID}
 	}
 	return ValidateDAG(nodes, edges)

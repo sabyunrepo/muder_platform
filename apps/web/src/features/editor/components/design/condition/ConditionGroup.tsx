@@ -16,6 +16,11 @@ interface ConditionGroupProps {
   characters?: SelectOption[];
   missions?: SelectOption[];
   clues?: SelectOption[];
+  triggers?: SelectOption[];
+  tokens?: SelectOption[];
+  scenes?: SelectOption[];
+  rooms?: SelectOption[];
+  locations?: SelectOption[];
 }
 
 // ---------------------------------------------------------------------------
@@ -42,6 +47,11 @@ export function ConditionGroupBlock({
   characters = [],
   missions = [],
   clues = [],
+  triggers = [],
+  tokens = [],
+  scenes = [],
+  rooms = [],
+  locations = [],
 }: ConditionGroupProps) {
   const updateItem = (
     index: number,
@@ -118,6 +128,11 @@ export function ConditionGroupBlock({
               characters={characters}
               missions={missions}
               clues={clues}
+              triggers={triggers}
+              tokens={tokens}
+              scenes={scenes}
+              rooms={rooms}
+              locations={locations}
             />
           ) : (
             <ConditionRuleRow
@@ -128,6 +143,11 @@ export function ConditionGroupBlock({
               characters={characters}
               missions={missions}
               clues={clues}
+              triggers={triggers}
+              tokens={tokens}
+              scenes={scenes}
+              rooms={rooms}
+              locations={locations}
             />
           ),
         )}

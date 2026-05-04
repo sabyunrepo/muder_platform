@@ -16,6 +16,11 @@ interface ConditionBuilderProps {
   characters?: SelectOption[];
   missions?: SelectOption[];
   clues?: SelectOption[];
+  triggers?: SelectOption[];
+  tokens?: SelectOption[];
+  scenes?: SelectOption[];
+  rooms?: SelectOption[];
+  locations?: SelectOption[];
   label?: string;
 }
 
@@ -29,6 +34,11 @@ export function ConditionBuilder({
   characters = [],
   missions = [],
   clues = [],
+  triggers = [],
+  tokens = [],
+  scenes = [],
+  rooms = [],
+  locations = [],
   label,
 }: ConditionBuilderProps) {
   const group: ConditionGroup = recordToGroup(condition);
@@ -71,6 +81,11 @@ export function ConditionBuilder({
         characters={characters}
         missions={missions}
         clues={clues}
+        triggers={triggers}
+        tokens={tokens}
+        scenes={scenes}
+        rooms={rooms}
+        locations={locations}
       />
     </div>
   );
