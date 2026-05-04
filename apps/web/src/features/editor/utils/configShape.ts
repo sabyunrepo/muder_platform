@@ -16,6 +16,14 @@ export interface LocationConfig extends Record<string, unknown> {
   clueIds?: string[];
 }
 
+export interface LocationDiscoveryConfig extends EditorConfig {
+  id?: string;
+  locationId: string;
+  clueId: string;
+  requiredClueIds: string[];
+  oncePerPlayer: boolean;
+}
+
 export type ClueItemEffectKind = 'peek' | 'reveal' | 'grant_clue';
 
 export interface ClueItemEffectConfig extends EditorConfig {
@@ -29,6 +37,8 @@ export interface ClueItemEffectConfig extends EditorConfig {
 const LEGACY_KEYS = ['module_configs', 'clue_placement', 'character_clues'] as const;
 const CLUE_INTERACTION_MODULE_ID = 'clue_interaction';
 const CLUE_ITEM_EFFECTS_KEY = 'itemEffects';
+const LOCATION_MODULE_ID = 'location';
+const LOCATION_DISCOVERIES_KEY = 'discoveries';
 
 function isRecord(value: unknown): value is EditorConfig {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -36,13 +46,17 @@ function isRecord(value: unknown): value is EditorConfig {
 
 function hasOwnKey<T extends string>(
   value: EditorConfig | null | undefined,
-  key: T,
+  key: T
 ): value is EditorConfig & Record<T, unknown> {
   return !!value && Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+}
+
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
 }
 
 function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
@@ -67,7 +81,7 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
 }
 
 function readRawClueItemEffects(
-  configJson: EditorConfig | null | undefined,
+  configJson: EditorConfig | null | undefined
 ): Record<string, unknown> {
   const moduleConfig = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
   const rawEffects = moduleConfig[CLUE_ITEM_EFFECTS_KEY];
@@ -91,7 +105,7 @@ function readLegacyModuleConfigs(configJson: EditorConfig | null | undefined) {
 }
 
 export function readModulesMap(
-  configJson: EditorConfig | null | undefined,
+  configJson: EditorConfig | null | undefined
 ): Record<string, ModuleEntry> {
   const rawModules = configJson?.modules;
   const legacyConfigs = readLegacyModuleConfigs(configJson);
@@ -123,9 +137,7 @@ export function readModulesMap(
   return entries;
 }
 
-export function readEnabledModuleIds(
-  configJson: EditorConfig | null | undefined,
-): string[] {
+export function readEnabledModuleIds(configJson: EditorConfig | null | undefined): string[] {
   return Object.entries(readModulesMap(configJson))
     .filter(([, entry]) => entry.enabled !== false)
     .map(([id]) => id);
@@ -133,7 +145,7 @@ export function readEnabledModuleIds(
 
 export function readModuleConfig(
   configJson: EditorConfig | null | undefined,
-  moduleId: string,
+  moduleId: string
 ): EditorConfig {
   const cfg = readModulesMap(configJson)[moduleId]?.config;
   return isRecord(cfg) ? cfg : {};
@@ -160,9 +172,7 @@ function stripLegacyConfigKeys(configJson: EditorConfig): EditorConfig {
   return next;
 }
 
-export function normalizeConfigForSave(
-  configJson: EditorConfig | null | undefined,
-): EditorConfig {
+export function normalizeConfigForSave(configJson: EditorConfig | null | undefined): EditorConfig {
   const base = configJson ?? {};
   return stripLegacyConfigKeys({ ...base, modules: readModulesMap(base) });
 }
@@ -170,7 +180,7 @@ export function normalizeConfigForSave(
 export function writeModuleEnabled(
   configJson: EditorConfig | null | undefined,
   moduleId: string,
-  enabled: boolean,
+  enabled: boolean
 ): EditorConfig {
   const next = normalizeConfigForSave(configJson);
   const modules = readModulesMap(next);
@@ -181,7 +191,7 @@ export function writeModuleEnabled(
 export function writeModuleConfig(
   configJson: EditorConfig | null | undefined,
   moduleId: string,
-  moduleConfig: EditorConfig,
+  moduleConfig: EditorConfig
 ): EditorConfig {
   const next = normalizeConfigForSave(configJson);
   const modules = readModulesMap(next);
@@ -210,14 +220,14 @@ export function writeModuleConfigPath(
   configJson: EditorConfig | null | undefined,
   moduleId: string,
   path: string,
-  value: unknown,
+  value: unknown
 ): EditorConfig {
   const current = readModuleConfig(configJson, moduleId);
   return writeModuleConfig(configJson, moduleId, writePath(current, path, value));
 }
 
 export function readClueItemEffects(
-  configJson: EditorConfig | null | undefined,
+  configJson: EditorConfig | null | undefined
 ): Record<string, ClueItemEffectConfig> {
   const moduleConfig = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
   const rawEffects = moduleConfig[CLUE_ITEM_EFFECTS_KEY];
@@ -226,13 +236,13 @@ export function readClueItemEffects(
   return Object.fromEntries(
     Object.entries(rawEffects)
       .map(([clueId, rawConfig]) => [clueId, readClueItemEffectConfig(rawConfig)] as const)
-      .filter((entry): entry is [string, ClueItemEffectConfig] => !!entry[1]),
+      .filter((entry): entry is [string, ClueItemEffectConfig] => !!entry[1])
   );
 }
 
 export function readClueItemEffect(
   configJson: EditorConfig | null | undefined,
-  clueId: string,
+  clueId: string
 ): ClueItemEffectConfig | null {
   return readClueItemEffects(configJson)[clueId] ?? null;
 }
@@ -240,7 +250,7 @@ export function readClueItemEffect(
 export function writeClueItemEffect(
   configJson: EditorConfig | null | undefined,
   clueId: string,
-  effectConfig: ClueItemEffectConfig | null,
+  effectConfig: ClueItemEffectConfig | null
 ): EditorConfig {
   const current = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
   const itemEffects = readRawClueItemEffects(configJson);
@@ -263,19 +273,94 @@ export function writeClueItemEffect(
   });
 }
 
-export function readLocationsConfig(
-  configJson: EditorConfig | null | undefined,
-): LocationConfig[] {
+export function readLocationsConfig(configJson: EditorConfig | null | undefined): LocationConfig[] {
   const raw = configJson?.locations;
   if (!Array.isArray(raw)) return [];
   return raw.filter(
-    (item): item is LocationConfig => isRecord(item) && typeof item.id === 'string',
+    (item): item is LocationConfig => isRecord(item) && typeof item.id === 'string'
   );
 }
 
-export function readLocationClueIds(
+function readRawLocationDiscoveries(
+  configJson: EditorConfig | null | undefined
+): LocationDiscoveryConfig[] {
+  const moduleConfig = readModuleConfig(configJson, LOCATION_MODULE_ID);
+  const rawDiscoveries = moduleConfig[LOCATION_DISCOVERIES_KEY];
+  if (!Array.isArray(rawDiscoveries)) return [];
+
+  return rawDiscoveries
+    .map((raw): LocationDiscoveryConfig | null => {
+      if (!isRecord(raw)) return null;
+      const locationId = typeof raw.locationId === 'string' ? raw.locationId : '';
+      const clueId = typeof raw.clueId === 'string' ? raw.clueId : '';
+      if (!locationId || !clueId) return null;
+
+      return {
+        ...raw,
+        ...(typeof raw.id === 'string' ? { id: raw.id } : {}),
+        locationId,
+        clueId,
+        requiredClueIds: uniqueStrings(
+          stringList(raw.requiredClueIds).filter((id) => id !== clueId)
+        ),
+        oncePerPlayer: typeof raw.oncePerPlayer === 'boolean' ? raw.oncePerPlayer : true,
+      };
+    })
+    .filter((entry): entry is LocationDiscoveryConfig => !!entry);
+}
+
+function rawLocationDiscoveries(value: unknown): unknown[] {
+  return Array.isArray(value) ? [...value] : [];
+}
+
+function validRawLocationDiscovery(value: unknown): LocationDiscoveryConfig | null {
+  if (!isRecord(value)) return null;
+  const locationId = typeof value.locationId === 'string' ? value.locationId : '';
+  const clueId = typeof value.clueId === 'string' ? value.clueId : '';
+  if (!locationId || !clueId) return null;
+  return {
+    ...value,
+    ...(typeof value.id === 'string' ? { id: value.id } : {}),
+    locationId,
+    clueId,
+    requiredClueIds: uniqueStrings(stringList(value.requiredClueIds).filter((id) => id !== clueId)),
+    oncePerPlayer: typeof value.oncePerPlayer === 'boolean' ? value.oncePerPlayer : true,
+  };
+}
+
+export function readLocationDiscoveries(
   configJson: EditorConfig | null | undefined,
-  locationId: string,
+  locationId: string
+): LocationDiscoveryConfig[] {
+  const discoveries = readRawLocationDiscoveries(configJson).filter(
+    (discovery) => discovery.locationId === locationId
+  );
+  const seenClueIds = new Set(discoveries.map((discovery) => discovery.clueId));
+  const legacyDiscoveries = readLegacyLocationClueIds(configJson, locationId)
+    .filter((clueId) => !seenClueIds.has(clueId))
+    .map((clueId) => ({
+      locationId,
+      clueId,
+      requiredClueIds: [],
+      oncePerPlayer: true,
+    }));
+
+  const locationModuleConfig = readModuleConfig(configJson, LOCATION_MODULE_ID);
+  if (hasOwnKey(locationModuleConfig, LOCATION_DISCOVERIES_KEY)) {
+    return [...discoveries, ...legacyDiscoveries];
+  }
+
+  return readLegacyLocationClueIds(configJson, locationId).map((clueId) => ({
+    locationId,
+    clueId,
+    requiredClueIds: [],
+    oncePerPlayer: true,
+  }));
+}
+
+function readLegacyLocationClueIds(
+  configJson: EditorConfig | null | undefined,
+  locationId: string
 ): string[] {
   const entry = readLocationsConfig(configJson).find((loc) => loc.id === locationId);
   const canonical = entry?.locationClueConfig?.clueIds;
@@ -283,10 +368,17 @@ export function readLocationClueIds(
   return stringList(entry?.clueIds);
 }
 
+export function readLocationClueIds(
+  configJson: EditorConfig | null | undefined,
+  locationId: string
+): string[] {
+  return readLocationDiscoveries(configJson, locationId).map((discovery) => discovery.clueId);
+}
+
 export function writeLocationClueIds(
   configJson: EditorConfig | null | undefined,
   locationId: string,
-  clueIds: string[],
+  clueIds: string[]
 ): EditorConfig {
   const next = normalizeConfigForSave(configJson);
   const locations = readLocationsConfig(next);
@@ -296,14 +388,102 @@ export function writeLocationClueIds(
     ...loc,
     locationClueConfig: { ...(loc.locationClueConfig ?? {}), clueIds: cleanIds },
   });
-  const nextLocations = idx >= 0
-    ? locations.map((loc, i) => (i === idx ? upsert(loc) : loc))
-    : [...locations, { id: locationId, locationClueConfig: { clueIds: cleanIds } }];
+  const nextLocations =
+    idx >= 0
+      ? locations.map((loc, i) => (i === idx ? upsert(loc) : loc))
+      : [...locations, { id: locationId, locationClueConfig: { clueIds: cleanIds } }];
   return { ...next, locations: nextLocations };
 }
 
-export function readCluePlacement(
+function runtimeLocationDefs(existing: unknown, locations: LocationConfig[]): EditorConfig[] {
+  const existingById = new Map<string, EditorConfig>();
+  if (Array.isArray(existing)) {
+    for (const item of existing) {
+      if (isRecord(item) && typeof item.id === 'string') existingById.set(item.id, item);
+    }
+  }
+
+  return locations.map((loc) => {
+    const existingLoc = existingById.get(loc.id) ?? {};
+    return {
+      ...existingLoc,
+      id: loc.id,
+      name: typeof loc.name === 'string' && loc.name.trim() ? loc.name : loc.id,
+    };
+  });
+}
+
+function normalizeLocationDiscoveries(
+  locationId: string,
+  discoveries: LocationDiscoveryConfig[]
+): LocationDiscoveryConfig[] {
+  const seen = new Set<string>();
+  const clean: LocationDiscoveryConfig[] = [];
+  for (const discovery of discoveries) {
+    if (!discovery.clueId || seen.has(discovery.clueId)) continue;
+    seen.add(discovery.clueId);
+    clean.push({
+      ...discovery,
+      locationId,
+      clueId: discovery.clueId,
+      requiredClueIds: uniqueStrings(
+        stringList(discovery.requiredClueIds).filter((id) => id !== discovery.clueId)
+      ),
+      oncePerPlayer: true,
+    });
+  }
+  return clean;
+}
+
+export function writeLocationDiscoveries(
   configJson: EditorConfig | null | undefined,
+  locationId: string,
+  discoveries: LocationDiscoveryConfig[]
+): EditorConfig {
+  const cleanDiscoveries = normalizeLocationDiscoveries(locationId, discoveries);
+  const next = writeLocationClueIds(
+    configJson,
+    locationId,
+    cleanDiscoveries.map((discovery) => discovery.clueId)
+  );
+  const current = readModuleConfig(next, LOCATION_MODULE_ID);
+  const preservedRawDiscoveries = rawLocationDiscoveries(current[LOCATION_DISCOVERIES_KEY]).filter(
+    (raw) => !isRecord(raw) || raw.locationId !== locationId
+  );
+  const preservedValidDiscoveries = preservedRawDiscoveries
+    .map(validRawLocationDiscovery)
+    .filter((entry): entry is LocationDiscoveryConfig => !!entry);
+  const promotedLegacyDiscoveries = readLocationsConfig(next)
+    .filter((loc) => loc.id !== locationId)
+    .flatMap((loc) => {
+      const existingClueIds = new Set(
+        preservedValidDiscoveries
+          .filter((discovery) => discovery.locationId === loc.id)
+          .map((discovery) => discovery.clueId)
+      );
+      return readLegacyLocationClueIds(next, loc.id)
+        .filter((clueId) => !existingClueIds.has(clueId))
+        .map((clueId) => ({
+          locationId: loc.id,
+          clueId,
+          requiredClueIds: [],
+          oncePerPlayer: true,
+        }));
+    });
+
+  return writeModuleConfig(next, LOCATION_MODULE_ID, {
+    ...current,
+    locations: runtimeLocationDefs(current.locations, readLocationsConfig(next)),
+    [LOCATION_DISCOVERIES_KEY]: [
+      ...preservedRawDiscoveries,
+      ...promotedLegacyDiscoveries,
+      ...cleanDiscoveries,
+    ],
+  });
+}
+
+export function readCluePlacement(
+  configJson: EditorConfig | null | undefined
 ): Record<string, string> {
   const placement: Record<string, string> = {};
   const locations = readLocationsConfig(configJson);
@@ -315,13 +495,13 @@ export function readCluePlacement(
   const legacy = configJson?.clue_placement;
   if (!isRecord(legacy)) return {};
   return Object.fromEntries(
-    Object.entries(legacy).filter((e): e is [string, string] => typeof e[1] === 'string'),
+    Object.entries(legacy).filter((e): e is [string, string] => typeof e[1] === 'string')
   );
 }
 
 export function writeCluePlacement(
   configJson: EditorConfig | null | undefined,
-  placement: Record<string, string>,
+  placement: Record<string, string>
 ): EditorConfig {
   let next = normalizeConfigForSave(configJson);
   const locationIds = new Set([
@@ -332,36 +512,51 @@ export function writeCluePlacement(
     const ids = Object.entries(placement)
       .filter(([, locId]) => locId === locationId)
       .map(([clueId]) => clueId);
-    next = writeLocationClueIds(next, locationId, ids);
+    const existingByClueId = new Map(
+      readLocationDiscoveries(next, locationId).map((discovery) => [discovery.clueId, discovery])
+    );
+    next = writeLocationDiscoveries(
+      next,
+      locationId,
+      ids.map(
+        (clueId) =>
+          existingByClueId.get(clueId) ?? {
+            locationId,
+            clueId,
+            requiredClueIds: [],
+            oncePerPlayer: true,
+          }
+      )
+    );
   }
   return next;
 }
 
 export function readCharacterStartingClueMap(
-  configJson: EditorConfig | null | undefined,
+  configJson: EditorConfig | null | undefined
 ): Record<string, string[]> {
   const startingConfig = readModuleConfig(configJson, 'starting_clue');
   if (hasOwnKey(startingConfig, 'startingClues')) {
     return isRecord(startingConfig.startingClues)
       ? Object.fromEntries(
-        Object.entries(startingConfig.startingClues).map(([charId, ids]) => [
-          charId,
-          stringList(ids),
-        ]),
-      )
+          Object.entries(startingConfig.startingClues).map(([charId, ids]) => [
+            charId,
+            stringList(ids),
+          ])
+        )
       : {};
   }
 
   const source = configJson?.character_clues;
   if (!isRecord(source)) return {};
   return Object.fromEntries(
-    Object.entries(source).map(([charId, ids]) => [charId, stringList(ids)]),
+    Object.entries(source).map(([charId, ids]) => [charId, stringList(ids)])
   );
 }
 
 export function writeCharacterStartingClueMap(
   configJson: EditorConfig | null | undefined,
-  startingClues: Record<string, string[]>,
+  startingClues: Record<string, string[]>
 ): EditorConfig {
   const current = readModuleConfig(configJson, 'starting_clue');
   return writeModuleConfig(configJson, 'starting_clue', { ...current, startingClues });
@@ -376,16 +571,18 @@ function removeClueIdFromValue(value: unknown, clueId: string): unknown {
   }
   if (!isRecord(value)) return value;
 
+  if (value.clueId === clueId && typeof value.locationId === 'string') return undefined;
+
   return Object.fromEntries(
     Object.entries(value)
       .map(([key, child]) => [key, removeClueIdFromValue(child, clueId)] as const)
-      .filter(([, child]) => child !== undefined),
+      .filter(([, child]) => child !== undefined)
   );
 }
 
 export function removeClueReferencesFromConfig(
   configJson: EditorConfig | null | undefined,
-  clueId: string,
+  clueId: string
 ): EditorConfig {
   const normalized = normalizeConfigForSave(configJson);
   return removeClueIdFromValue(normalized, clueId) as EditorConfig;

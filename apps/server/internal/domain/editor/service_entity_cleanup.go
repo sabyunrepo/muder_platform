@@ -58,6 +58,11 @@ func removeEntityIDFromConfigValue(value any, entityID string) (any, bool) {
 		if id, ok := v["id"].(string); ok && id == entityID {
 			return deletedConfigNode, true
 		}
+		if locationID, ok := v["locationId"].(string); ok && locationID == entityID {
+			if _, hasClue := v["clueId"].(string); hasClue {
+				return deletedConfigNode, true
+			}
+		}
 
 		changed := false
 		out := make(map[string]any, len(v))

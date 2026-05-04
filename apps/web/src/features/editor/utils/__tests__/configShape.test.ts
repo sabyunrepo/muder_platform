@@ -4,12 +4,14 @@ import {
   readClueItemEffect,
   readClueItemEffects,
   readCharacterStartingClueMap,
+  readLocationDiscoveries,
   readCluePlacement,
   readEnabledModuleIds,
   readLocationClueIds,
   readModuleConfig,
   writeCharacterStartingClueMap,
   writeClueItemEffect,
+  writeLocationDiscoveries,
   writeCluePlacement,
   writeLocationClueIds,
   writeModuleConfig,
@@ -57,7 +59,7 @@ describe('configShape', () => {
       },
       'voting',
       'candidatePolicy.includeDetective',
-      true,
+      true
     );
 
     expect(readModuleConfig(next, 'voting')).toEqual({
@@ -90,15 +92,13 @@ describe('configShape', () => {
 
     const next = normalizeConfigForSave(config);
     expect(next).not.toHaveProperty('clue_placement');
-    expect(next.locations).toEqual([
-      { id: 'loc-1', locationClueConfig: { clueIds: [] } },
-    ]);
+    expect(next.locations).toEqual([{ id: 'loc-1', locationClueConfig: { clueIds: [] } }]);
   });
 
   it('writes clue placement through locations[].locationClueConfig', () => {
     const next = writeCluePlacement(
       { clue_placement: { old: 'legacy' }, locations: [{ id: 'loc-1' }] },
-      { 'clue-1': 'loc-1', 'clue-2': 'loc-1' },
+      { 'clue-1': 'loc-1', 'clue-2': 'loc-1' }
     );
 
     expect(readCluePlacement(next)).toEqual({ 'clue-1': 'loc-1', 'clue-2': 'loc-1' });
@@ -106,19 +106,144 @@ describe('configShape', () => {
     expect(next.locations).toEqual([
       { id: 'loc-1', locationClueConfig: { clueIds: ['clue-1', 'clue-2'] } },
     ]);
+    expect(readModuleConfig(next, 'location')).toMatchObject({
+      locations: [{ id: 'loc-1', name: 'loc-1' }],
+      discoveries: [
+        { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: [], oncePerPlayer: true },
+        { locationId: 'loc-1', clueId: 'clue-2', requiredClueIds: [], oncePerPlayer: true },
+      ],
+    });
   });
 
   it('writes one location assignment without locations[].clueIds', () => {
-    const next = writeLocationClueIds(
-      { locations: [{ id: 'loc-1', clueIds: ['old'] }] },
+    const next = writeLocationClueIds({ locations: [{ id: 'loc-1', clueIds: ['old'] }] }, 'loc-1', [
+      'clue-1',
+    ]);
+
+    expect(readLocationClueIds(next, 'loc-1')).toEqual(['clue-1']);
+    expect(next.locations).toEqual([{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }]);
+  });
+
+  it('writes location discoveries into the runtime location module while keeping clueIds bridge', () => {
+    const next = writeLocationDiscoveries(
+      {
+        locations: [
+          { id: 'loc-1', name: '서재' },
+          { id: 'loc-2', name: '복도' },
+        ],
+        modules: {
+          location: {
+            enabled: true,
+            config: {
+              startingLocation: 'loc-1',
+              locations: [{ id: 'loc-1', name: 'Old', accessRules: ['gm'] }],
+              discoveries: [{ locationId: 'loc-2', clueId: 'clue-9', oncePerPlayer: true }],
+            },
+          },
+        },
+      },
       'loc-1',
-      ['clue-1'],
+      [
+        {
+          locationId: 'loc-1',
+          clueId: 'clue-1',
+          requiredClueIds: ['clue-2', 'clue-1', 'clue-2'],
+          oncePerPlayer: false,
+        },
+      ]
     );
 
     expect(readLocationClueIds(next, 'loc-1')).toEqual(['clue-1']);
-    expect(next.locations).toEqual([
-      { id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } },
+    expect(readLocationDiscoveries(next, 'loc-1')).toEqual([
+      {
+        locationId: 'loc-1',
+        clueId: 'clue-1',
+        requiredClueIds: ['clue-2'],
+        oncePerPlayer: true,
+      },
     ]);
+    expect(next.locations).toEqual([
+      { id: 'loc-1', name: '서재', locationClueConfig: { clueIds: ['clue-1'] } },
+      { id: 'loc-2', name: '복도' },
+    ]);
+    expect(readModuleConfig(next, 'location')).toMatchObject({
+      startingLocation: 'loc-1',
+      locations: [
+        { id: 'loc-1', name: '서재', accessRules: ['gm'] },
+        { id: 'loc-2', name: '복도' },
+      ],
+      discoveries: [
+        { locationId: 'loc-2', clueId: 'clue-9', oncePerPlayer: true },
+        { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: ['clue-2'], oncePerPlayer: true },
+      ],
+    });
+  });
+
+  it('promotes legacy-only discoveries from other locations when writing one location', () => {
+    const next = writeLocationDiscoveries(
+      {
+        locations: [
+          { id: 'loc-1', name: '서재', locationClueConfig: { clueIds: ['clue-1'] } },
+          { id: 'loc-2', name: '복도', locationClueConfig: { clueIds: ['clue-2'] } },
+        ],
+        modules: {
+          location: {
+            enabled: true,
+            config: { discoveries: [] },
+          },
+        },
+      },
+      'loc-1',
+      [{ locationId: 'loc-1', clueId: 'clue-3', requiredClueIds: [], oncePerPlayer: true }]
+    );
+
+    expect(readLocationClueIds(next, 'loc-2')).toEqual(['clue-2']);
+    expect(readModuleConfig(next, 'location')).toMatchObject({
+      discoveries: [
+        { locationId: 'loc-2', clueId: 'clue-2', requiredClueIds: [], oncePerPlayer: true },
+        { locationId: 'loc-1', clueId: 'clue-3', requiredClueIds: [], oncePerPlayer: true },
+      ],
+    });
+  });
+
+  it('preserves malformed and unknown raw discoveries when writing one location', () => {
+    const malformedDiscovery = { locationId: 'loc-2', clueId: ['bad-shape'] };
+    const unknownLocationDiscovery = {
+      locationId: 'archived-location',
+      clueId: 'archived-clue',
+      requiredClueIds: ['legacy-required'],
+    };
+    const next = writeLocationDiscoveries(
+      {
+        locations: [
+          { id: 'loc-1', name: '서재', locationClueConfig: { clueIds: ['clue-1'] } },
+          { id: 'loc-2', name: '복도', locationClueConfig: { clueIds: ['clue-2'] } },
+        ],
+        modules: {
+          location: {
+            enabled: true,
+            config: {
+              discoveries: [
+                { locationId: 'loc-1', clueId: 'old-clue', oncePerPlayer: true },
+                malformedDiscovery,
+                unknownLocationDiscovery,
+              ],
+            },
+          },
+        },
+      },
+      'loc-1',
+      [{ locationId: 'loc-1', clueId: 'clue-3', requiredClueIds: [], oncePerPlayer: true }]
+    );
+
+    expect(readModuleConfig(next, 'location')).toMatchObject({
+      discoveries: [
+        malformedDiscovery,
+        unknownLocationDiscovery,
+        { locationId: 'loc-2', clueId: 'clue-2', requiredClueIds: [], oncePerPlayer: true },
+        { locationId: 'loc-1', clueId: 'clue-3', requiredClueIds: [], oncePerPlayer: true },
+      ],
+    });
   });
 
   it('reads legacy character clues and writes starting_clue module config', () => {
