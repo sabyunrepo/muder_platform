@@ -91,10 +91,29 @@ describe('CluesTab', () => {
     expect(screen.getByTestId('spinner')).toBeDefined();
   });
 
-  it('단서가 없으면 빈 상태를 표시한다', () => {
+  it('단서가 없으면 Entity workspace 빈 상태를 표시한다', () => {
     useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
     render(<CluesTab themeId="theme-1" />);
-    expect(screen.getByText('단서 없음')).toBeDefined();
+    expect(screen.getByText('아직 단서가 없습니다')).toBeDefined();
+    expect(screen.getByRole('button', { name: '단서 추가' })).toBeDefined();
+  });
+
+  it('단서 조회 실패 시 빈 상태 대신 오류와 재시도 액션을 표시한다', () => {
+    const refetch = vi.fn();
+    useEditorCluesMock.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('network failed'),
+      refetch,
+    });
+
+    render(<CluesTab themeId="theme-1" />);
+
+    expect(screen.getByText('단서를 불러오지 못했습니다')).toBeDefined();
+    expect(screen.queryByText('network failed')).toBeNull();
+    screen.getByText('다시 시도').click();
+    expect(refetch).toHaveBeenCalledOnce();
   });
 
   it('단서 목록과 선택된 단서 상세를 함께 렌더링한다', () => {

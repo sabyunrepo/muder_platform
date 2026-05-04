@@ -145,6 +145,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.getByRole("tab", { name: "등장인물", selected: true })).toBeVisible({
       timeout: 10_000,
     });
+    await expect(page.getByRole("button", { name: "제작" })).toBeVisible();
+    await expect(page.getByLabel("캐릭터 목록")).toBeVisible();
     await expect(page.getByText("탐정 A").first()).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
@@ -163,6 +165,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
       timeout: 10_000,
     });
+    await expect(page.getByLabel("장소 목록")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel("거실 조사 시 발견 단서")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("저택 1층").first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/endings`);
@@ -376,14 +380,11 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     const got = await locReq;
     expect(got).not.toBeNull();
 
-    const mapButton = page.getByRole("button", { name: /^저택 1층$/ }).first();
-    if (await mapButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await mapButton.click();
-      await expect(page.getByText("거실").first()).toBeVisible({ timeout: 3_000 });
-      await expect(page.getByText("R2~4").first()).toBeVisible({ timeout: 3_000 });
-      await expect(page.getByText(/조사 시 발견 단서/).first()).toBeVisible({ timeout: 3_000 });
-      await expect(page.getByText(/접근 제한/).first()).toBeVisible({ timeout: 3_000 });
-    }
+    await expect(page.getByLabel("장소 목록")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("거실").first()).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText("R2~4").first()).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByLabel("거실 조사 시 발견 단서")).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText(/접근 제한/).first()).toBeVisible({ timeout: 3_000 });
 
     // UI: 단서 chip/체크박스가 있으면 토글 + 즉시 반영
     const chip = page.getByRole("checkbox").first();

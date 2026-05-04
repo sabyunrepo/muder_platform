@@ -40,8 +40,9 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const [addingMap, setAddingMap] = useState(false);
   const [addingLocation, setAddingLocation] = useState(false);
 
-  const selectedMap = maps?.find((m) => m.id === selectedMapId) ?? null;
-  const mapLocations = locations?.filter((l) => l.map_id === selectedMapId) ?? [];
+  const effectiveSelectedMapId = selectedMapId ?? maps?.[0]?.id ?? null;
+  const selectedMap = maps?.find((m) => m.id === effectiveSelectedMapId) ?? null;
+  const mapLocations = locations?.filter((l) => l.map_id === effectiveSelectedMapId) ?? [];
   const selectedLocation =
     mapLocations.find((l) => l.id === selectedLocationId) ?? mapLocations[0] ?? null;
 
@@ -74,9 +75,9 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   }
 
   function handleAddLocation(name: string) {
-    if (!selectedMapId) return;
+    if (!effectiveSelectedMapId) return;
     createLocation.mutate(
-      { mapId: selectedMapId, body: { name } },
+      { mapId: effectiveSelectedMapId, body: { name } },
       {
         onSuccess: (newLocation) => {
           toast.success('장소가 추가되었습니다');
@@ -142,40 +143,37 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           </div>
         ) : (
           maps.map((map) => {
-            const isSelected = selectedMapId === map.id;
+            const isSelected = effectiveSelectedMapId === map.id;
             return (
               <div
                 key={map.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => {
-                  setSelectedMapId(isSelected ? null : map.id);
-                  setSelectedLocationId(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setSelectedMapId(isSelected ? null : map.id);
-                    setSelectedLocationId(null);
-                  }
-                }}
-                className={`group flex w-full cursor-pointer items-center gap-2 border-l-2 px-3 py-1.5 text-left transition-colors ${
+                className={`group flex w-full items-center gap-1 border-l-2 px-2 py-1.5 transition-colors ${
                   isSelected
                     ? 'border-amber-500 bg-slate-900 text-slate-200'
                     : 'border-transparent text-slate-500 hover:bg-slate-900/50 hover:text-slate-300'
                 }`}
               >
-                <Map className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1 truncate text-xs font-medium">{map.name}</span>
+                <button
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    setSelectedMapId(map.id);
+                    setSelectedLocationId(null);
+                  }}
+                  className="flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+                >
+                  <Map className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1 truncate text-xs font-medium">{map.name}</span>
+                </button>
                 <button
                   type="button"
                   onClick={(e) => {
-                    e.stopPropagation();
                     if (window.confirm(`${map.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`)) {
                       handleDeleteMap(map.id);
                     }
                   }}
                   aria-label={`${map.name} 삭제`}
-                  className="p-0.5 text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                  className="shrink-0 rounded-md p-2 text-slate-600 transition hover:bg-red-950/40 hover:text-red-300 md:text-slate-700 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>

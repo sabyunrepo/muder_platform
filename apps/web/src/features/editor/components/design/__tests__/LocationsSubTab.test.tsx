@@ -166,7 +166,7 @@ describe('LocationsSubTab', () => {
 
     it('맵 이름들을 렌더링한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      expect(screen.getByText('저택 1층')).toBeDefined();
+      expect(screen.getAllByText('저택 1층').length).toBeGreaterThan(0);
       expect(screen.getByText('저택 2층')).toBeDefined();
     });
 
@@ -230,14 +230,14 @@ describe('LocationsSubTab', () => {
   describe('장소 목록 렌더링', () => {
     beforeEach(setupDefaultMocks);
 
-    it('맵 미선택 시 empty state를 표시한다', () => {
+    it('직접 진입 시 첫 맵의 공통 엔티티 Shell을 바로 표시한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      expect(screen.getByText('좌측에서 맵을 선택하세요')).toBeDefined();
+      expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
+      expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
     });
 
     it('맵 선택 시 공통 엔티티 Shell로 해당 맵의 장소만 표시한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
       // LocationDetailPanel row + clue-assignment picker option 두 곳에서 렌더됨
       expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
@@ -246,10 +246,20 @@ describe('LocationsSubTab', () => {
       expect(screen.queryByText('침실')).toBeNull();
     });
 
+    it('다른 맵을 선택하면 해당 맵의 장소 workspace로 전환한다', () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+
+      fireEvent.click(screen.getByRole('button', { name: '저택 2층' }));
+
+      expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
+      expect(screen.getAllByText('침실').length).toBeGreaterThan(0);
+      expect(screen.queryByText('거실')).toBeNull();
+      expect(screen.queryByText('주방')).toBeNull();
+    });
+
     it('선택한 맵에 장소가 없을 때 빈 상태를 표시한다', () => {
       useEditorLocationsMock.mockReturnValue({ data: [], isLoading: false });
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       expect(screen.getByText('장소 없음')).toBeDefined();
     });
   });
@@ -259,20 +269,17 @@ describe('LocationsSubTab', () => {
 
     it('맵 선택 후 장소 추가 버튼이 나타난다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       expect(screen.getByText('장소 추가')).toBeDefined();
     });
 
     it('장소 추가 버튼 클릭 시 인라인 입력이 나타난다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       fireEvent.click(screen.getByText('장소 추가'));
       expect(screen.getByPlaceholderText('장소 이름')).toBeDefined();
     });
 
     it('Enter 키로 장소를 추가하면 mutate가 호출된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       fireEvent.click(screen.getByText('장소 추가'));
       const input = screen.getByPlaceholderText('장소 이름');
       fireEvent.change(input, { target: { value: '서재' } });
@@ -289,13 +296,11 @@ describe('LocationsSubTab', () => {
 
     it('맵 선택 시 장소 선택 picker 가 표시된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       expect(screen.getByText('전체 단서 목록')).toBeDefined();
     });
 
     it('location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       fireEvent.click(screen.getByRole('button', { name: '주방 선택' }));
       expect(screen.getByLabelText('주방 조사 시 발견 단서')).toBeDefined();
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
@@ -303,7 +308,6 @@ describe('LocationsSubTab', () => {
 
     it('chip 토글 시 useUpdateConfigJson.mutate 가 호출된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       fireEvent.click(screen.getByLabelText('단검 추가'));
       expect(updateConfigMutateMock).toHaveBeenCalledOnce();
       const [config] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
@@ -317,7 +321,8 @@ describe('LocationsSubTab', () => {
       });
     });
 
-    it('맵 미선택 상태에서는 단서 배정 picker 가 표시되지 않는다', () => {
+    it('맵이 없으면 단서 배정 picker 가 표시되지 않는다', () => {
+      useEditorMapsMock.mockReturnValue({ data: [], isLoading: false });
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       expect(screen.queryByText('전체 단서 목록')).toBeNull();
     });
@@ -328,14 +333,12 @@ describe('LocationsSubTab', () => {
 
     it('등장/퇴장 라운드 입력이 각 장소 행마다 존재한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       expect(screen.getByLabelText('거실 등장 라운드')).toBeDefined();
       expect(screen.getByLabelText('거실 퇴장 라운드')).toBeDefined();
     });
 
     it('라운드 값 입력 후 blur 하면 useUpdateLocation.mutate 가 호출된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       const fromInput = screen.getByLabelText('거실 등장 라운드') as HTMLInputElement;
       fireEvent.change(fromInput, { target: { value: '2' } });
       fireEvent.blur(fromInput);
@@ -350,7 +353,6 @@ describe('LocationsSubTab', () => {
 
     it('등장 > 퇴장 조합은 에러 토스트 후 저장되지 않는다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       const fromInput = screen.getByLabelText('거실 등장 라운드') as HTMLInputElement;
       const untilInput = screen.getByLabelText('거실 퇴장 라운드') as HTMLInputElement;
       fireEvent.change(untilInput, { target: { value: '2' } });
@@ -368,7 +370,6 @@ describe('LocationsSubTab', () => {
         isLoading: false,
       });
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('저택 1층'));
       const fromInput = screen.getByLabelText('거실 등장 라운드') as HTMLInputElement;
       fireEvent.change(fromInput, { target: { value: '' } });
       fireEvent.blur(fromInput);

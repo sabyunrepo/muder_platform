@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Plus } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import { Modal } from '@/shared/components/ui/Modal';
 import { Button } from '@/shared/components/ui/Button';
@@ -31,7 +30,7 @@ interface ClueListViewProps {
 // ---------------------------------------------------------------------------
 
 export function ClueListView({ themeId }: ClueListViewProps) {
-  const { data: clues, isLoading } = useEditorClues(themeId);
+  const { data: clues, isLoading, isError, refetch } = useEditorClues(themeId);
   const { data: theme } = useEditorTheme(themeId);
   const { data: locations = [] } = useEditorLocations(themeId);
   const { data: characters = [] } = useEditorCharacters(themeId);
@@ -75,7 +74,26 @@ export function ClueListView({ themeId }: ClueListViewProps) {
     return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
   }
 
-  const isEmpty = !clues || clues.length === 0;
+  if (isError) {
+    return (
+      <div className="px-4 py-6">
+        <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-5">
+          <p className="text-sm font-semibold text-red-100">단서를 불러오지 못했습니다</p>
+          <p className="mt-2 text-sm leading-6 text-red-200/80">
+            네트워크나 권한 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
+          </p>
+          <Button onClick={() => void refetch()}>
+            다시 시도
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!clues) {
+    return <div className="flex items-center justify-center py-12"><Spinner size="lg" /></div>;
+  }
+
   const deletingReferences = deletingClue && clues
     ? buildClueUsageMap({
       configJson: theme?.config_json,
@@ -87,28 +105,17 @@ export function ClueListView({ themeId }: ClueListViewProps) {
 
   return (
     <div className="px-4 py-6">
-      {isEmpty ? (
-        <div className="py-16 text-center">
-          <div className="text-4xl font-mono font-bold text-slate-800 mb-2">0</div>
-          <div className="text-xs font-mono uppercase tracking-widest text-slate-700 mb-4">단서 없음</div>
-          <div className="text-xs text-slate-600 mb-6">단서를 추가하여 게임에 활용하세요</div>
-          <Button onClick={handleCreate}><Plus className="h-4 w-4 mr-1.5" />단서 추가</Button>
-        </div>
-      ) : (
-        <>
-          <ClueEntityWorkspace
-            clues={clues}
-            configJson={theme?.config_json}
-            locations={locations}
-            characters={characters}
-            onCreate={handleCreate}
-            onEdit={handleEdit}
-            onDelete={setDeletingClue}
-            onConfigChange={handleConfigChange}
-            isConfigSaving={updateConfig.isPending}
-          />
-        </>
-      )}
+      <ClueEntityWorkspace
+        clues={clues}
+        configJson={theme?.config_json}
+        locations={locations}
+        characters={characters}
+        onCreate={handleCreate}
+        onEdit={handleEdit}
+        onDelete={setDeletingClue}
+        onConfigChange={handleConfigChange}
+        isConfigSaving={updateConfig.isPending}
+      />
 
       <ClueForm themeId={themeId} clue={editingClue} isOpen={isFormOpen} onClose={handleFormClose} />
 
