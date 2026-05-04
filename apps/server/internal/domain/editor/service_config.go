@@ -65,6 +65,159 @@ func validateConfigShape(raw json.RawMessage) error {
 	if err := validateClueInteractionConfigShape(cfg); err != nil {
 		return err
 	}
+	if _, err := extractLocationDiscoveryRefs(cfg); err != nil {
+		return err
+	}
+	return nil
+}
+
+type locationDiscoveryRef struct {
+	index           int
+	locationID      string
+	clueID          string
+	requiredClueIDs []string
+}
+
+func extractLocationDiscoveryRefs(cfg map[string]any) ([]locationDiscoveryRef, error) {
+	modules, ok := cfg["modules"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	rawModule, exists := modules["location"]
+	if !exists {
+		return nil, nil
+	}
+	module, ok := rawModule.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.location must be an object")
+	}
+	moduleConfigRaw, exists := module["config"]
+	if !exists {
+		return nil, nil
+	}
+	if moduleConfigRaw == nil {
+		return nil, fmt.Errorf("config_json: modules.location.config cannot be null")
+	}
+	moduleConfig, ok := moduleConfigRaw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.location.config must be an object")
+	}
+	rawDiscoveries, exists := moduleConfig["discoveries"]
+	if !exists {
+		return nil, nil
+	}
+	if rawDiscoveries == nil {
+		return nil, fmt.Errorf("config_json: modules.location.config.discoveries cannot be null")
+	}
+	discoveries, ok := rawDiscoveries.([]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.location.config.discoveries must be an array")
+	}
+	refs := make([]locationDiscoveryRef, 0, len(discoveries))
+	for i, rawDiscovery := range discoveries {
+		discovery, ok := rawDiscovery.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d] must be an object", i)
+		}
+		locationID, ok := discovery["locationId"].(string)
+		if !ok || locationID == "" {
+			return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].locationId is required", i)
+		}
+		clueID, ok := discovery["clueId"].(string)
+		if !ok || clueID == "" {
+			return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].clueId is required", i)
+		}
+		ref := locationDiscoveryRef{index: i, locationID: locationID, clueID: clueID}
+		if requiredRaw, exists := discovery["requiredClueIds"]; exists {
+			if requiredRaw == nil {
+				return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].requiredClueIds cannot be null", i)
+			}
+			required, ok := requiredRaw.([]any)
+			if !ok {
+				return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].requiredClueIds must be an array", i)
+			}
+			ref.requiredClueIDs = make([]string, 0, len(required))
+			for j, rawRequired := range required {
+				requiredID, ok := rawRequired.(string)
+				if !ok || requiredID == "" {
+					return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].requiredClueIds[%d] must be a string", i, j)
+				}
+				ref.requiredClueIDs = append(ref.requiredClueIDs, requiredID)
+			}
+		}
+		if oncePerPlayer, exists := discovery["oncePerPlayer"]; exists {
+			if oncePerPlayer == nil {
+				return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].oncePerPlayer cannot be null", i)
+			}
+			if _, ok := oncePerPlayer.(bool); !ok {
+				return nil, fmt.Errorf("config_json: modules.location.config.discoveries[%d].oncePerPlayer must be boolean", i)
+			}
+		}
+		refs = append(refs, ref)
+	}
+	return refs, nil
+}
+
+var errConfigVersionConflict = errors.New("editor config version conflict")
+
+func (s *service) validateLocationDiscoveryReferences(ctx context.Context, q *db.Queries, themeID uuid.UUID, raw json.RawMessage) error {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("config_json: invalid JSON: %w", err)
+	}
+	refs, err := extractLocationDiscoveryRefs(cfg)
+	if err != nil {
+		return err
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+
+	locations, err := q.ListLocationsByTheme(ctx, themeID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to validate location discoveries locations")
+		return apperror.Internal("failed to validate location discoveries")
+	}
+	locationIDs := make(map[string]struct{}, len(locations))
+	for _, loc := range locations {
+		locationIDs[loc.ID.String()] = struct{}{}
+	}
+
+	clues, err := q.ListCluesByTheme(ctx, themeID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to validate location discoveries clues")
+		return apperror.Internal("failed to validate location discoveries")
+	}
+	clueIDs := make(map[string]struct{}, len(clues))
+	for _, clue := range clues {
+		clueIDs[clue.ID.String()] = struct{}{}
+	}
+
+	for _, ref := range refs {
+		parsedLocationID, err := uuid.Parse(ref.locationID)
+		if err != nil {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].locationId must be a valid location id", ref.index))
+		}
+		if _, ok := locationIDs[parsedLocationID.String()]; !ok {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].locationId must belong to this theme", ref.index))
+		}
+		parsedClueID, err := uuid.Parse(ref.clueID)
+		if err != nil {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].clueId must be a valid clue id", ref.index))
+		}
+		if _, ok := clueIDs[parsedClueID.String()]; !ok {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].clueId must belong to this theme", ref.index))
+		}
+		for j, requiredClueID := range ref.requiredClueIDs {
+			parsedRequiredClueID, err := uuid.Parse(requiredClueID)
+			if err != nil {
+				return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].requiredClueIds[%d] must be a valid clue id", ref.index, j))
+			}
+			if _, ok := clueIDs[parsedRequiredClueID.String()]; !ok {
+				return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].requiredClueIds[%d] must belong to this theme", ref.index, j))
+			}
+		}
+	}
 	return nil
 }
 
@@ -191,14 +344,38 @@ func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.
 		s.preUpdateHook(ctx, themeID)
 	}
 
-	updated, err := s.q.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{
-		ID:         themeID,
-		ConfigJson: config,
-		Version:    theme.Version,
+	var updated db.Theme
+	err = pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		if err := tx.QueryRow(ctx, `SELECT 1 FROM themes WHERE id = $1 FOR UPDATE`, themeID).Scan(new(int)); err != nil {
+			return err
+		}
+
+		qtx := s.q.WithTx(tx)
+		if err := s.validateLocationDiscoveryReferences(ctx, qtx, themeID, config); err != nil {
+			return err
+		}
+
+		var updateErr error
+		updated, updateErr = qtx.UpdateThemeConfigJson(ctx, db.UpdateThemeConfigJsonParams{
+			ID:         themeID,
+			ConfigJson: config,
+			Version:    theme.Version,
+		})
+		if errors.Is(updateErr, pgx.ErrNoRows) {
+			return errConfigVersionConflict
+		}
+		return updateErr
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, errConfigVersionConflict) {
 			return nil, s.buildConfigVersionConflict(ctx, themeID, theme.Version)
+		}
+		var appErr *apperror.AppError
+		if errors.As(err, &appErr) {
+			return nil, appErr
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NotFound("theme not found")
 		}
 		s.logger.Error().Err(err).Msg("failed to update config")
 		return nil, apperror.Internal("failed to update config")
