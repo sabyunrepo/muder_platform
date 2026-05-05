@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Accordion } from '@/shared/components/ui';
 import type { MysteryRole } from '@/features/editor/api';
 import type { Mission } from './MissionEditor';
@@ -37,6 +38,9 @@ interface CharacterItem {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  endcard_title?: string | null;
+  endcard_body?: string | null;
+  endcard_image_url?: string | null;
 }
 
 interface CharacterDetailPanelProps {
@@ -52,6 +56,7 @@ interface CharacterDetailPanelProps {
   onDeleteMission: (missionId: string) => void;
   onMysteryRoleChange?: (role: MysteryRole) => void;
   onVisibilityChange?: (field: CharacterVisibilityField, value: boolean) => void;
+  onEndcardChange?: (values: { title: string; body: string; imageUrl: string }) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +76,18 @@ export function CharacterDetailPanel({
   onDeleteMission,
   onMysteryRoleChange,
   onVisibilityChange,
+  onEndcardChange,
 }: CharacterDetailPanelProps) {
+  const [endcardTitle, setEndcardTitle] = useState('');
+  const [endcardBody, setEndcardBody] = useState('');
+  const [endcardImageUrl, setEndcardImageUrl] = useState('');
+
+  useEffect(() => {
+    setEndcardTitle(selectedChar?.endcard_title ?? '');
+    setEndcardBody(selectedChar?.endcard_body ?? '');
+    setEndcardImageUrl(selectedChar?.endcard_image_url ?? '');
+  }, [selectedChar?.id, selectedChar?.endcard_title, selectedChar?.endcard_body, selectedChar?.endcard_image_url]);
+
   if (!selectedChar) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -95,7 +111,14 @@ export function CharacterDetailPanel({
     can_speak_in_reading: selectedChar.can_speak_in_reading ?? true,
     is_voting_candidate:
       selectedChar.is_voting_candidate ?? getCharacterRoleOption(selectedRole).defaultVotingCandidate,
+    endcard_title: selectedChar.endcard_title ?? null,
+    endcard_body: selectedChar.endcard_body ?? null,
+    endcard_image_url: selectedChar.endcard_image_url ?? null,
   });
+  const endcardDirty =
+    endcardTitle !== (selectedChar.endcard_title ?? '') ||
+    endcardBody !== (selectedChar.endcard_body ?? '') ||
+    endcardImageUrl !== (selectedChar.endcard_image_url ?? '');
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -186,6 +209,67 @@ export function CharacterDetailPanel({
                       {selectedChar.description || '공개 소개가 없습니다.'}
                     </p>
                   </div>
+                </div>
+              </div>
+            ),
+          },
+          {
+            id: 'endcard',
+            title: '결과 카드',
+            subtitle: selectedView.hasEndcard ? '작성됨' : '비어 있음',
+            defaultOpen: true,
+            children: (
+              <div className="space-y-3">
+                <div className="grid gap-3 md:grid-cols-2">
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">제목</span>
+                    <input
+                      type="text"
+                      value={endcardTitle}
+                      maxLength={80}
+                      disabled={!onEndcardChange}
+                      onChange={(event) => setEndcardTitle(event.currentTarget.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-500/60 disabled:opacity-70"
+                      placeholder={`${selectedChar.name}의 후일담`}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">이미지 URL</span>
+                    <input
+                      type="url"
+                      value={endcardImageUrl}
+                      disabled={!onEndcardChange}
+                      onChange={(event) => setEndcardImageUrl(event.currentTarget.value)}
+                      className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-500/60 disabled:opacity-70"
+                      placeholder="https://..."
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">본문</span>
+                  <textarea
+                    value={endcardBody}
+                    maxLength={3000}
+                    rows={5}
+                    disabled={!onEndcardChange}
+                    onChange={(event) => setEndcardBody(event.currentTarget.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm leading-5 text-slate-200 outline-none transition focus:border-amber-500/60 disabled:opacity-70"
+                    placeholder="게임 종료 후 이 인물에게 보여줄 내용을 작성하세요."
+                  />
+                </label>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    disabled={!onEndcardChange || !endcardDirty}
+                    onClick={() => onEndcardChange?.({
+                      title: endcardTitle,
+                      body: endcardBody,
+                      imageUrl: endcardImageUrl,
+                    })}
+                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
+                  >
+                    결과 카드 저장
+                  </button>
                 </div>
               </div>
             ),

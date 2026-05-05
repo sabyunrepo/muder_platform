@@ -54,6 +54,9 @@ export interface EditorCharacterResponse {
   show_in_intro: boolean;
   can_speak_in_reading: boolean;
   is_voting_candidate: boolean;
+  endcard_title?: string | null;
+  endcard_body?: string | null;
+  endcard_image_url?: string | null;
 }
 
 export type MysteryRole = 'suspect' | 'culprit' | 'accomplice' | 'detective';
@@ -91,6 +94,9 @@ export interface CreateCharacterRequest {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  endcard_title?: string;
+  endcard_body?: string;
+  endcard_image_url?: string;
 }
 
 export interface UpdateCharacterRequest {
@@ -104,6 +110,9 @@ export interface UpdateCharacterRequest {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  endcard_title?: string;
+  endcard_body?: string;
+  endcard_image_url?: string;
 }
 
 export interface CreateClueRequest {

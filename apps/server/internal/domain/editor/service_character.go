@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
@@ -50,6 +51,9 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		ShowInIntro:       visibilityPolicy.ShowInIntro,
 		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
 		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
+		EndcardTitle:      ptrToText(req.EndcardTitle),
+		EndcardBody:       ptrToText(req.EndcardBody),
+		EndcardImageUrl:   ptrToText(req.EndcardImageURL),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create character")
@@ -99,6 +103,9 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		ShowInIntro:       visibilityPolicy.ShowInIntro,
 		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
 		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
+		EndcardTitle:      characterEndcardText(req.EndcardTitle, char.EndcardTitle),
+		EndcardBody:       characterEndcardText(req.EndcardBody, char.EndcardBody),
+		EndcardImageUrl:   characterEndcardText(req.EndcardImageURL, char.EndcardImageUrl),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update character")
@@ -196,7 +203,20 @@ func toCharacterResponse(c db.ThemeCharacter) *CharacterResponse {
 		ShowInIntro:       c.ShowInIntro,
 		CanSpeakInReading: c.CanSpeakInReading,
 		IsVotingCandidate: c.IsVotingCandidate,
+		EndcardTitle:      textToPtr(c.EndcardTitle),
+		EndcardBody:       textToPtr(c.EndcardBody),
+		EndcardImageURL:   textToPtr(c.EndcardImageUrl),
 	}
+}
+
+func characterEndcardText(next *string, current pgtype.Text) pgtype.Text {
+	if next == nil {
+		return current
+	}
+	if *next == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *next, Valid: true}
 }
 
 // --- Module schemas ---
