@@ -303,11 +303,11 @@ func extractEndingBranchRefs(cfg map[string]any) ([]endingBranchRef, error) {
 func (s *service) validateEndingBranchReferences(ctx context.Context, tx pgx.Tx, themeID uuid.UUID, raw json.RawMessage) error {
 	var cfg map[string]any
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return fmt.Errorf("config_json: invalid JSON: %w", err)
+		return apperror.BadRequest(fmt.Sprintf("config_json: invalid JSON: %v", err))
 	}
 	refs, err := extractEndingBranchRefs(cfg)
 	if err != nil {
-		return err
+		return apperror.BadRequest(err.Error())
 	}
 	if len(refs) == 0 {
 		return nil

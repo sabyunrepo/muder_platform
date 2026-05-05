@@ -257,6 +257,37 @@ func TestUpdateConfigJson_RejectsEndingBranchReferenceOutsideTheme(t *testing.T)
 	}
 }
 
+func TestUpdateConfigJson_RejectsEndingBranchReferenceMalformedShapeAsBadRequest(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, json.RawMessage(`{
+		"modules": {
+			"ending_branch": {
+				"enabled": true,
+				"config": {
+					"matrix": [{"ending": 123}]
+				}
+			}
+		}
+	}`))
+	if err == nil {
+		t.Fatal("expected ending_branch shape validation error, got nil")
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.AppError, got %T", err)
+	}
+	if appErr.Code != apperror.ErrBadRequest {
+		t.Fatalf("expected BAD_REQUEST, got %s", appErr.Code)
+	}
+	if !strings.Contains(appErr.Detail, "matrix[0].ending must be a string") {
+		t.Fatalf("unexpected error detail: %s", appErr.Detail)
+	}
+}
+
 func insertEditorFlowNode(t *testing.T, pool interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, themeID uuid.UUID, nodeType string) uuid.UUID {
