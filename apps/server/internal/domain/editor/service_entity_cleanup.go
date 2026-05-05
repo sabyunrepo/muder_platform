@@ -8,14 +8,14 @@ import (
 )
 
 func removeCharacterReferencesFromConfigJSON(raw json.RawMessage, characterID uuid.UUID) (json.RawMessage, bool, error) {
-	return removeEntityReferencesFromConfigJSON(raw, characterID.String())
+	return removeEntityReferencesFromConfigJSON(raw, characterID.String(), "character")
 }
 
 func removeLocationReferencesFromConfigJSON(raw json.RawMessage, locationID uuid.UUID) (json.RawMessage, bool, error) {
-	return removeEntityReferencesFromConfigJSON(raw, locationID.String())
+	return removeEntityReferencesFromConfigJSON(raw, locationID.String(), "location")
 }
 
-func removeEntityReferencesFromConfigJSON(raw json.RawMessage, entityID string) (json.RawMessage, bool, error) {
+func removeEntityReferencesFromConfigJSON(raw json.RawMessage, entityID string, placementKind string) (json.RawMessage, bool, error) {
 	if len(bytes.TrimSpace(raw)) == 0 {
 		return raw, false, nil
 	}
@@ -23,7 +23,7 @@ func removeEntityReferencesFromConfigJSON(raw json.RawMessage, entityID string) 
 	if err := json.Unmarshal(raw, &value); err != nil {
 		return nil, false, err
 	}
-	cleaned, changed := removeEntityIDFromConfigValue(value, entityID)
+	cleaned, changed := removeEntityIDFromConfigValue(value, entityID, placementKind)
 	if !changed {
 		return raw, false, nil
 	}
@@ -34,7 +34,7 @@ func removeEntityReferencesFromConfigJSON(raw json.RawMessage, entityID string) 
 	return encoded, true, nil
 }
 
-func removeEntityIDFromConfigValue(value any, entityID string) (any, bool) {
+func removeEntityIDFromConfigValue(value any, entityID string, placementKind string) (any, bool) {
 	switch v := value.(type) {
 	case nil:
 		return nil, false
@@ -47,7 +47,7 @@ func removeEntityIDFromConfigValue(value any, entityID string) (any, bool) {
 		changed := false
 		items := make([]any, 0, len(v))
 		for _, item := range v {
-			cleaned, itemChanged := removeEntityIDFromConfigValue(item, entityID)
+			cleaned, itemChanged := removeEntityIDFromConfigValue(item, entityID, placementKind)
 			changed = changed || itemChanged
 			if cleaned != deletedConfigNode {
 				items = append(items, cleaned)
@@ -55,6 +55,13 @@ func removeEntityIDFromConfigValue(value any, entityID string) (any, bool) {
 		}
 		return items, changed
 	case map[string]any:
+		if placement, ok := v["placement"].(map[string]any); ok {
+			placementEntityID, hasEntityID := placement["entityId"].(string)
+			currentPlacementKind, hasKind := placement["kind"].(string)
+			if hasKind && currentPlacementKind == placementKind && hasEntityID && placementEntityID == entityID {
+				return deletedConfigNode, true
+			}
+		}
 		if id, ok := v["id"].(string); ok && id == entityID {
 			return deletedConfigNode, true
 		}
@@ -71,7 +78,7 @@ func removeEntityIDFromConfigValue(value any, entityID string) (any, bool) {
 				changed = true
 				continue
 			}
-			cleaned, childChanged := removeEntityIDFromConfigValue(child, entityID)
+			cleaned, childChanged := removeEntityIDFromConfigValue(child, entityID, placementKind)
 			changed = changed || childChanged
 			if cleaned != deletedConfigNode {
 				out[key] = cleaned

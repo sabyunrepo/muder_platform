@@ -9,6 +9,7 @@ import {
   readLocationClueIds,
   type EditorConfig,
 } from './configShape';
+import { readEventProgressionTriggers } from './eventProgressionConfig';
 
 export type EntityReferenceSource = 'location' | 'character' | 'clue' | 'question';
 export type EntityReferenceRelation =
@@ -17,6 +18,7 @@ export type EntityReferenceRelation =
   | 'starting_clue'
   | 'combination_input'
   | 'combination_output'
+  | 'trigger'
   | 'question_choice';
 
 export interface EntityReference {
@@ -37,7 +39,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
 }
 
 function pushUnique(target: EntityReference[], ref: EntityReference) {
@@ -62,8 +66,14 @@ export function buildClueUsageMap(params: {
   const clueIds = new Set(clues.map((clue) => clue.id));
   const locationNames = new Map(locations.map((location) => [location.id, location.name]));
   const characterNames = new Map(characters.map((character) => [character.id, character.name]));
+  const triggerClueIds = new Set(
+    readEventProgressionTriggers(configJson)
+      .filter((trigger) => trigger.placement?.kind === 'clue')
+      .map((trigger) => trigger.placement?.entityId)
+      .filter((id): id is string => typeof id === 'string' && clueIds.has(id))
+  );
   const usage = Object.fromEntries(
-    clues.map((clue) => [clue.id, { clueId: clue.id, references: [], isUnused: true }]),
+    clues.map((clue) => [clue.id, { clueId: clue.id, references: [], isUnused: true }])
   ) as Record<string, ClueUsageSummary>;
 
   for (const location of readLocationsConfig(configJson)) {
@@ -88,7 +98,9 @@ export function buildClueUsageMap(params: {
     }
   }
 
-  for (const [characterId, assignedClueIds] of Object.entries(readCharacterStartingClueMap(configJson))) {
+  for (const [characterId, assignedClueIds] of Object.entries(
+    readCharacterStartingClueMap(configJson)
+  )) {
     const sourceName = characterNames.get(characterId) ?? characterId;
     for (const clueId of assignedClueIds) {
       if (!clueIds.has(clueId)) continue;
@@ -101,6 +113,16 @@ export function buildClueUsageMap(params: {
     }
   }
 
+  for (const clue of clues) {
+    if (!triggerClueIds.has(clue.id)) continue;
+    pushUnique(usage[clue.id].references, {
+      sourceType: 'clue',
+      sourceId: clue.id,
+      sourceName: clue.name,
+      relation: 'trigger',
+    });
+  }
+
   for (const summary of Object.values(usage)) {
     summary.isUnused = summary.references.length === 0;
   }
@@ -110,7 +132,7 @@ export function buildClueUsageMap(params: {
 
 export function getClueBacklinks(
   usageMap: Record<string, ClueUsageSummary>,
-  clueId: string,
+  clueId: string
 ): EntityReference[] {
   return usageMap[clueId]?.references ?? [];
 }

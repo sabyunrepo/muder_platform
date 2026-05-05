@@ -83,6 +83,15 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 						{"locationId": "%s", "clueId": "clue-2"}
 					]
 				}
+			},
+			"event_progression": {
+				"enabled": true,
+				"config": {
+					"Triggers": [
+						{"id":"deleted-location-trigger","placement":{"kind":"location","entityId":"%s"},"actions":[{"type":"OPEN_VOTING"}]},
+						{"id":"kept-location-trigger","placement":{"kind":"location","entityId":"%s"},"actions":[{"type":"MUTE_CHAT"}]}
+					]
+				}
 			}
 		},
 		"locationMeta": {
@@ -95,7 +104,7 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 			"kept-clue": "%s"
 		},
 		"nullable": null
-	}`, locationID, keptLocationID, locationID, keptLocationID, locationID, keptLocationID, locationID, locationID, keptLocationID, locationID, keptLocationID))
+	}`, locationID, keptLocationID, locationID, keptLocationID, locationID, keptLocationID, locationID, keptLocationID, locationID, locationID, keptLocationID, locationID, keptLocationID))
 
 	cleaned, changed, err := removeLocationReferencesFromConfigJSON(raw, locationID)
 	if err != nil {
@@ -126,6 +135,16 @@ func TestRemoveLocationReferencesFromConfigJSON(t *testing.T) {
 	discoveries := locationConfig["discoveries"].([]any)
 	if len(discoveries) != 1 {
 		t.Fatalf("expected only discovery with deleted locationId to be removed, got %#v", discoveries)
+	}
+	eventModule := modules["event_progression"].(map[string]any)
+	eventConfig := eventModule["config"].(map[string]any)
+	triggers := eventConfig["Triggers"].([]any)
+	if len(triggers) != 1 {
+		t.Fatalf("expected trigger placed on deleted location to be removed, got %#v", triggers)
+	}
+	keptTrigger := triggers[0].(map[string]any)
+	if keptTrigger["id"] != "kept-location-trigger" {
+		t.Fatalf("unexpected kept trigger: %#v", keptTrigger)
 	}
 	keptDiscovery := discoveries[0].(map[string]any)
 	if keptDiscovery["locationId"] != keptLocationID.String() {

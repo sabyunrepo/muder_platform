@@ -43,11 +43,17 @@ type eventProgressionConfig struct {
 }
 
 type eventProgressionTrigger struct {
-	ID       string          `json:"id"`
-	From     string          `json:"from,omitempty"`
-	To       string          `json:"to,omitempty"`
-	Password string          `json:"password,omitempty"`
-	Actions  json.RawMessage `json:"actions,omitempty"`
+	ID        string                            `json:"id"`
+	From      string                            `json:"from,omitempty"`
+	To        string                            `json:"to,omitempty"`
+	Password  string                            `json:"password,omitempty"`
+	Actions   json.RawMessage                   `json:"actions,omitempty"`
+	Placement *eventProgressionTriggerPlacement `json:"placement,omitempty"`
+}
+
+type eventProgressionTriggerPlacement struct {
+	Kind     string `json:"kind"`
+	EntityID string `json:"entityId"`
 }
 
 // NewEventProgressionModule creates a new EventProgressionModule instance.
@@ -376,7 +382,14 @@ func (m *EventProgressionModule) Schema() json.RawMessage {
 						"from": {"type": "string"},
 						"to": {"type": "string"},
 						"password": {"type": "string"},
-						"actions": {"type": "array"}
+						"actions": {"type": "array"},
+						"placement": {
+							"type": "object",
+							"properties": {
+								"kind": {"type": "string", "enum": ["clue", "location"]},
+								"entityId": {"type": "string"}
+							}
+						}
 					}
 				}
 			}

@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Image, Info, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
-import { useUpdateLocation } from '@/features/editor/api';
+import { useUpdateConfigJson, useUpdateLocation } from '@/features/editor/api';
 import { ImageUpload } from '@/features/editor/components/ImageUpload';
+import { EntityTriggerPlacementCard } from '@/features/editor/components/triggers/EntityTriggerPlacementCard';
 import { readLocationClueIds } from '@/features/editor/editorTypes';
+import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { toLocationEditorViewModel } from '@/features/editor/entities/location/locationEntityAdapter';
 import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
@@ -130,6 +132,7 @@ function SelectedLocationDetail({
   location: LocationResponse;
 }) {
   const updateLocation = useUpdateLocation(themeId);
+  const updateConfig = useUpdateConfigJson(themeId);
   const [fromRoundInput, setFromRoundInput] = useState(roundToInput(location.from_round));
   const [untilRoundInput, setUntilRoundInput] = useState(roundToInput(location.until_round));
   const assignedCount = useMemo(
@@ -186,6 +189,13 @@ function SelectedLocationDetail({
     );
   }
 
+  function saveTriggerConfig(nextConfig: EditorConfig) {
+    updateConfig.mutate(nextConfig, {
+      onSuccess: () => toast.success('장소 트리거가 저장되었습니다'),
+      onError: () => toast.error('장소 트리거 저장에 실패했습니다'),
+    });
+  }
+
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
@@ -230,6 +240,14 @@ function SelectedLocationDetail({
           </div>
         </div>
       </section>
+      <EntityTriggerPlacementCard
+        entityKind="location"
+        entityId={location.id}
+        entityName={location.name}
+        configJson={theme.config_json}
+        onConfigChange={saveTriggerConfig}
+        isSaving={updateConfig.isPending}
+      />
       <LocationAccessPolicyPanel themeId={themeId} location={location} />
       <LocationClueAssignPanel themeId={themeId} theme={theme} location={location} />
     </div>

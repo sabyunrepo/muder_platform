@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { ClueResponse, EditorCharacterResponse, LocationResponse } from '@/features/editor/api';
+import type {
+  ClueResponse,
+  EditorCharacterResponse,
+  LocationResponse,
+} from '@/features/editor/api';
 import { buildClueUsageMap, getClueBacklinks } from '../entityReferences';
 
 const clues = [
@@ -13,9 +17,7 @@ const locations = [
   { id: 'loc-2', name: '부엌' },
 ] as LocationResponse[];
 
-const characters = [
-  { id: 'char-1', name: '김철수' },
-] as EditorCharacterResponse[];
+const characters = [{ id: 'char-1', name: '김철수' }] as EditorCharacterResponse[];
 
 describe('entityReferences', () => {
   it('builds clue backlinks from location clue, evidence, and starting clue references', () => {
@@ -36,16 +38,34 @@ describe('entityReferences', () => {
             enabled: true,
             config: { startingClues: { 'char-1': ['clue-1'] } },
           },
+          event_progression: {
+            enabled: true,
+            config: {
+              Triggers: [
+                {
+                  id: 'trigger-clue-2',
+                  placement: { kind: 'clue', entityId: 'clue-2' },
+                  actions: [{ type: 'OPEN_VOTING' }],
+                },
+              ],
+            },
+          },
         },
       },
     });
 
     expect(getClueBacklinks(usage, 'clue-1')).toEqual([
       { sourceType: 'location', sourceId: 'loc-1', sourceName: '서재', relation: 'location_clue' },
-      { sourceType: 'character', sourceId: 'char-1', sourceName: '김철수', relation: 'starting_clue' },
+      {
+        sourceType: 'character',
+        sourceId: 'char-1',
+        sourceName: '김철수',
+        relation: 'starting_clue',
+      },
     ]);
     expect(getClueBacklinks(usage, 'clue-2')).toEqual([
       { sourceType: 'location', sourceId: 'loc-1', sourceName: '서재', relation: 'evidence' },
+      { sourceType: 'clue', sourceId: 'clue-2', sourceName: '피 묻은 칼', relation: 'trigger' },
     ]);
     expect(usage['clue-3'].isUnused).toBe(true);
   });
