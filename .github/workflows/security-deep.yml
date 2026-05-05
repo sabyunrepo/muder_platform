@@ -86,18 +86,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Setup Go for osv-scanner
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
-        with:
-          # osv-scanner v2.3.5 requires Go >= 1.26.1.
-          # Keep the project Go version in apps/server/go.mod; this job only
-          # uses Go to install the scanner CLI.
-          go-version: '1.26.2'
-          cache: false
-
-      - name: Install osv-scanner
-        run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@v2.3.5
-
       - name: Run osv-scanner (warn-only, SARIF output)
         continue-on-error: true
         run: |

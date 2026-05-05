@@ -10,6 +10,10 @@ FROM ubuntu:22.04 AS builder
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG GO_VERSION=1.25.0
 ARG NODE_VERSION=20.18.0
+ARG GOVULNCHECK_VERSION=1.3.0
+ARG GOOSE_VERSION=3.27.0
+ARG OSV_SCANNER_VERSION=2.3.5
+ARG OSV_SCANNER_LINUX_AMD64_SHA256=bb30c580afe5e757d3e959f4afd08a4795ea505ef84c46962b9a738aa573b41b
 RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates xz-utils \
     && rm -rf /var/lib/apt/lists/*
@@ -22,8 +26,16 @@ RUN mkdir -p /opt/hostedtoolcache/node/${NODE_VERSION}/x64 \
        | tar -xJf - -C /opt/hostedtoolcache/node/${NODE_VERSION}/x64 --strip-components=1 \
     && touch /opt/hostedtoolcache/node/${NODE_VERSION}/x64.complete
 RUN /opt/hostedtoolcache/go/${GO_VERSION}/x64/bin/go install \
-      golang.org/x/vuln/cmd/govulncheck@latest \
+      golang.org/x/vuln/cmd/govulncheck@v${GOVULNCHECK_VERSION} \
     && cp /root/go/bin/govulncheck /usr/local/bin/
+RUN /opt/hostedtoolcache/go/${GO_VERSION}/x64/bin/go install \
+      github.com/pressly/goose/v3/cmd/goose@v${GOOSE_VERSION} \
+    && cp /root/go/bin/goose /usr/local/bin/
+RUN curl -fsSL \
+      "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
+      -o /usr/local/bin/osv-scanner \
+    && echo "${OSV_SCANNER_LINUX_AMD64_SHA256}  /usr/local/bin/osv-scanner" | sha256sum -c - \
+    && chmod 0755 /usr/local/bin/osv-scanner
 
 FROM ghcr.io/actions/actions-runner:latest
 ARG GO_VERSION=1.25.0
@@ -52,9 +64,11 @@ RUN rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa*.list /etc/apt/sources.lis
     && printf '%s\n' "chromium-webkit-system-deps" > /opt/mmp-runner/playwright-deps-ready \
     && rm -rf /var/lib/apt/lists/*
 
-# Phase 23 hostedtoolcache (Go 1.25 + Node 20.18) + govulncheck
+# Phase 23 hostedtoolcache (Go 1.25 + Node 20.18) + image-resident CLIs.
 COPY --from=builder /opt/hostedtoolcache /opt/hostedtoolcache
 COPY --from=builder /usr/local/bin/govulncheck /usr/local/bin/govulncheck
+COPY --from=builder /usr/local/bin/goose /usr/local/bin/goose
+COPY --from=builder /usr/local/bin/osv-scanner /usr/local/bin/osv-scanner
 
 # Phase 23 cleanup hook (EPHEMERAL fs 잔존 정리 — myoung34 잔재이지만 ARC도 호환)
 COPY --chmod=0755 infra/runners/hooks/job-started.sh /opt/runner-hooks/job-started.sh

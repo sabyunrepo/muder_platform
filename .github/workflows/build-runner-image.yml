@@ -80,6 +80,8 @@ jobs:
               # Toolchain pre-bake
               jq --version
               govulncheck -version
+              goose -version
+              osv-scanner --version
               ls /opt/hostedtoolcache/go/1.25.0/x64/bin/go
               ls /opt/hostedtoolcache/node/20.18.0/x64/bin/node
               # PATH가 image ENV로 설정 — go/node가 PATH로 직접 호출 가능해야
