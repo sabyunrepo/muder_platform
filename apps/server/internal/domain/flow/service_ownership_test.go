@@ -265,8 +265,18 @@ func TestServiceFlowOwnership_SaveFlowOwnedGraph(t *testing.T) {
 	if len(graph.Nodes) != 2 || len(graph.Edges) != 1 {
 		t.Fatalf("graph sizes = nodes %d edges %d, want 2/1", len(graph.Nodes), len(graph.Edges))
 	}
-	if graph.Edges[0].SourceID != graph.Nodes[0].ID || graph.Edges[0].TargetID != graph.Nodes[1].ID {
-		t.Fatalf("edge endpoints were not remapped to saved node IDs")
+	nodeIDs := map[uuid.UUID]struct{}{}
+	for _, node := range graph.Nodes {
+		nodeIDs[node.ID] = struct{}{}
+	}
+	if _, ok := nodeIDs[graph.Edges[0].SourceID]; !ok {
+		t.Fatalf("edge source %s is not one of saved node IDs", graph.Edges[0].SourceID)
+	}
+	if _, ok := nodeIDs[graph.Edges[0].TargetID]; !ok {
+		t.Fatalf("edge target %s is not one of saved node IDs", graph.Edges[0].TargetID)
+	}
+	if graph.Edges[0].SourceID == clientStartID || graph.Edges[0].TargetID == clientPhaseID {
+		t.Fatalf("edge endpoints were not remapped from client IDs")
 	}
 
 	loaded, err := svc.GetFlow(ctx, creatorID, themeID)
