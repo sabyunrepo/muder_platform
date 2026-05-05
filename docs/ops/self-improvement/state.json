@@ -118,10 +118,38 @@
         ".codex/skills/mmp-pr-lifecycle/SKILL.md"
       ],
       "resolution": "Documented that when main Codex adds a commit to a steward-managed PR, repeated CodeRabbit/check waiting must be re-handed to the steward while main keeps only one-shot status checks and final merge judgment."
+    },
+    {
+      "id": "operational-ci-scope-gate",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "scripts/mmp-pr-ci-scope.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        "scripts/mmp-pr-watch.sh",
+        "scripts/pr-ready-for-ci-guard.sh",
+        "scripts/mmp-pr-status.sh",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        ".codex/agents/mmp-ci-steward.toml",
+        "AGENTS.md"
+      ],
+      "resolution": "Added deterministic CI scope classification so code-rabbit-only PRs do not receive ready-for-ci labels, workflow dispatches, or heavy-CI wait loops, while full-ci PRs still require Codecov and required checks."
+    },
+    {
+      "id": "main-thread-watcher-replaced-by-steward",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "scripts/mmp-pr-watch.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        "scripts/pr-create-guard.sh",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        ".codex/agents/mmp-ci-steward.toml",
+        "AGENTS.md"
+      ],
+      "resolution": "Made long-running mmp-pr-watch use CI-steward-only by default and updated PR lifecycle guidance so main Codex uses one-shot status checks plus steward handoff instead of direct background watcher loops."
     }
   ],
   "last_review": {
     "date": "2026-05-05",
-    "summary": "Recorded CI steward handoff workflow, completed-agent slot release, and re-handoff after main push rules for non-blocking PR hardening while main issue work continues."
+    "summary": "Recorded deterministic CI scope gate and CI-steward-only watcher replacement after PR #332/#334/#336 exposed main-thread waiting mistakes."
   }
 }

@@ -13,15 +13,17 @@ Allowed:
 2. Edit only the target PR branch/worktree to fix valid CodeRabbit, CI, or Codecov findings.
 3. Run focused local checks and push fix commits to the target PR branch.
 4. Add `ready-for-ci` only through `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>` after CodeRabbit cleanup.
-5. Use `scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` only as an intermediate wait for CodeRabbit cleanup. A `--code-rabbit-only` success is never a final success state.
-6. After CodeRabbit is clear, immediately run `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>` unless the main Codex explicitly handed off a code-rabbit-only exception.
-7. After the guard applies `ready-for-ci`, run `scripts/mmp-pr-watch.sh <PR_NUMBER> --trigger-missing-workflows` and continue until required workflows finish, fail, or time out.
+5. First classify the PR with `scripts/mmp-pr-ci-scope.sh <PR_NUMBER>`.
+6. For `full-ci`, use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` only as an intermediate wait for CodeRabbit cleanup. A `--code-rabbit-only` success is not a final success state for `full-ci`.
+7. For `full-ci`, after CodeRabbit is clear, immediately run `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>`.
+8. For `full-ci`, after the guard applies `ready-for-ci`, run `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --trigger-missing-workflows` and continue until required workflows finish, fail, or time out.
    - In this repo, `ready-for-ci` is an authorization label, not proof that full CI has started.
    - The required full-CI workflow set is `CI`, `E2E — Stubbed Backend`, and `Security — Fast Feedback`.
    - `scripts/mmp-pr-watch.sh --trigger-missing-workflows` must verify latest runs for the current head SHA and dispatch missing required workflows with `workflow_dispatch`.
    - Do not wait indefinitely for label-created pull_request runs; if the required workflows are missing, dispatch them through the watcher.
-8. If CI or Codecov fails, inspect logs/comments, fix valid failures on the target branch, push, then restart from CodeRabbit/head SHA verification.
-9. If main Codex pushes a new commit after your previous report, restart from the latest PR head SHA and re-check CodeRabbit/check state before reporting again.
+9. For `code-rabbit-only`, do not add `ready-for-ci`, do not dispatch workflows, and do not wait for missing heavy-CI contexts. Use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` plus focused local validation for changed scripts/config/docs.
+10. If CI or Codecov fails on a `full-ci` PR, inspect logs/comments, fix valid failures on the target branch, push, then restart from CodeRabbit/head SHA verification.
+11. If main Codex pushes a new commit after your previous report, restart from the latest PR head SHA and re-check CodeRabbit/check state before reporting again.
 
 Forbidden:
 - Do not merge PRs.
@@ -35,9 +37,11 @@ When blocked:
 - Report the blocker with exact PR number, failing check/thread, relevant log excerpt summary, and the next concrete action needed from main Codex or the user.
 
 Completion rules:
-- Do not report `MERGE_READY` unless all of these are true: current head SHA checked, unresolved review threads are 0, CodeRabbit is clear, `ready-for-ci` label is present, required workflows are green, and Codecov policy is satisfied or not applicable with evidence.
-- If CodeRabbit is clear but `ready-for-ci` has not been applied yet, continue by applying the guard; do not stop.
-- If `ready-for-ci` is applied but required workflows are missing or in progress, continue watching with `--trigger-missing-workflows`; do not stop. Treat missing required workflows as something to dispatch, not something to passively wait for.
+- For `full-ci`, do not report `MERGE_READY` unless all of these are true: current head SHA checked, unresolved review threads are 0, CodeRabbit is clear, `ready-for-ci` label is present, required workflows are green, and Codecov policy is satisfied or not applicable with evidence.
+- For `full-ci`, if CodeRabbit is clear but `ready-for-ci` has not been applied yet, continue by applying the guard; do not stop.
+- For `full-ci`, if `ready-for-ci` is applied but required workflows are missing or in progress, continue watching with `--trigger-missing-workflows`; do not stop. Treat missing required workflows as something to dispatch, not something to passively wait for.
+- For `code-rabbit-only`, report `MERGE_READY` only when current head SHA checked, unresolved review threads are 0, CodeRabbit is clear, light checks are green, focused local validation is recorded, and `scripts/mmp-pr-ci-scope.sh` says `code-rabbit-only`.
+- For `code-rabbit-only`, missing heavy-CI required contexts are expected path-filter behavior. Do not call that a CI failure and do not wait on those contexts.
 - If you cannot continue because of permission, timeout, external outage, ambiguous product decision, or repeated CI failure requiring main/user judgment, report `BLOCKED`.
 - If you pushed a fix and are waiting for CodeRabbit/CI to re-run, report `NEEDS_FIX` only when the next concrete wait/re-handoff is required; include the latest pushed SHA.
 

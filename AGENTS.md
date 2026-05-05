@@ -128,7 +128,8 @@ Do:
 7. 기본 병렬화 순서는 `parallel-coordinator → 필요한 reviewer/worker 병렬 실행 → 메인 Codex 취합 → 충돌 없는 구현 → focused 검증`이다.
 8. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 CodeRabbit/Codecov/CI 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져와 진행 중인 worktree에 반영한다.
 9. Steward-managed PR에 메인 Codex가 추가 커밋을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
-10. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
+10. 메인 Codex thread는 `scripts/mmp-pr-watch.sh`를 직접 장시간 실행하지 않는다. `scripts/mmp-pr-status.sh <PR>` 또는 `gh pr view` 같은 단발 조회만 사용하고, 30초 이상 대기가 필요하면 CI steward에 위임한다.
+11. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
 
 Done when:
 - 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
@@ -149,7 +150,8 @@ Avoid:
 - Full CI 실행 후에는 GitHub Actions CI뿐 아니라 Codecov Report를 확인한다. 커버리지 리포트가 실패하거나 기준 미달 코멘트를 남기면 원인을 확인하고 필요한 테스트 보강 또는 코드 수정을 진행한 뒤 다시 검증한다.
 - 코드 작성/수정 PR은 Codecov patch coverage 70% 이상을 목표가 아니라 merge 기준으로 본다. 70% 미만이거나 Codecov가 부족 라인을 지적하면 해당 라인의 단위/통합/E2E 테스트를 보강한 뒤 다시 CI를 통과시킨다.
 - PR 생성 후 CodeRabbit 리뷰를 확인한다. 문제 제기 코멘트는 수정 커밋으로 해결하고, GitHub review thread가 unresolved 상태로 남지 않도록 resolve 상태까지 확인한 뒤 merge한다.
-- Full CI는 리뷰 대응이 끝난 뒤 `ready-for-ci` 라벨을 붙여 실행한다. 리뷰/Codecov/CodeRabbit 수정 중에는 라벨을 제거해 heavy CI 반복 실행을 피하고, merge 전에는 반드시 라벨을 다시 붙여 Go/TypeScript/Coverage/E2E/Docker/Security checks를 통과시킨다.
+- Full CI는 리뷰 대응이 끝난 뒤 `scripts/mmp-pr-ci-scope.sh <PR>`가 `full-ci`로 분류한 PR에만 `ready-for-ci` 라벨을 붙여 실행한다. 리뷰/Codecov/CodeRabbit 수정 중에는 라벨을 제거해 heavy CI 반복 실행을 피하고, merge 전에는 scope별 gate를 통과한다.
+- `scripts/mmp-pr-ci-scope.sh <PR>`가 `code-rabbit-only`로 분류한 운영/문서/규칙 PR은 heavy CI workflow가 path filter 때문에 생성되지 않는 것이 정상이다. 이 경우 `ready-for-ci` 라벨, workflow_dispatch, heavy CI 대기를 하지 말고 CodeRabbit clear, unresolved thread 0, light checks, focused local validation 근거로 main Codex가 merge 판단한다.
 - PR/CI/리뷰 상태 확인을 반복할 때는 GitHub/API 호출을 과도하게 하지 않는다. 기본 폴링 간격은 30초~1분으로 두고, 긴 작업은 `--watch --interval 30` 이상 또는 단발 조회를 사용한다.
 - 4-agent review 정책의 canonical 문서는 `memory/feedback_4agent_review_before_admin_merge.md`다. Codex에서 사용 가능한 도구와 사용자 승인 범위에 맞춰 적용한다.
 
@@ -166,14 +168,16 @@ Do:
 5. CodeRabbit 재리뷰를 기다린다.
 6. 추가 타당 리뷰가 있으면 다시 수정하고 push한다.
 7. 마지막 리뷰 대응 push 이후 unresolved review thread가 0인지 확인한다.
-8. 그 후 `ready-for-ci` 라벨을 붙여 full CI를 실행한다.
-9. CI 실패나 Codecov Report 문제가 있으면 원인을 수정하고 다시 검증한다.
-10. required checks와 Codecov 기준을 통과한 뒤 merge한다.
+8. `scripts/mmp-pr-ci-scope.sh <PR>`로 full-ci / code-rabbit-only를 분류한다.
+9. full-ci면 `ready-for-ci` 라벨을 붙여 full CI를 실행하고, CI 실패나 Codecov Report 문제가 있으면 원인을 수정하고 다시 검증한다.
+10. code-rabbit-only면 `ready-for-ci` 라벨이나 workflow_dispatch 없이 light/focused validation 근거를 기록한다.
+11. scope별 required gate를 통과한 뒤 merge한다.
 
 Done when:
 - CodeRabbit unresolved thread 0
-- Codecov patch coverage 70% 이상
-- required CI green
+- `scripts/mmp-pr-ci-scope.sh <PR>` scope 근거
+- full-ci: Codecov patch coverage 70% 이상, required CI green
+- code-rabbit-only: no ready-for-ci, no workflow dispatch, light/focused validation evidence
 - PR merged 또는 명확한 blocker 보고
 
 Avoid:

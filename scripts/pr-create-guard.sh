@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Safe wrapper around `gh pr create` for MMP.
-# It prevents attaching `ready-for-ci` during PR creation so heavy CI starts only
-# after CodeRabbit/Codecov/code-review issues are resolved.
+# It prevents attaching `ready-for-ci` during PR creation so full-ci PRs start
+# heavy CI only after CodeRabbit/Codecov/code-review issues are resolved.
 
 set -euo pipefail
 
@@ -26,7 +26,9 @@ fail_ready_for_ci() {
 1. PR 생성
 2. CodeRabbit / Codecov Report / 코드 리뷰 이슈 확인
 3. 수정 커밋 push + review thread resolve
-4. 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
+4. `scripts/mmp-pr-ci-scope.sh <PR>`로 full-ci / code-rabbit-only 분류
+5. full-ci PR만 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
+6. code-rabbit-only PR은 라벨 없이 light/focused validation 후 merge 판단
 MSG
   exit 2
 }
@@ -59,7 +61,7 @@ done
 
 cat <<'MSG'
 ✅ PR 생성 가드 통과: `ready-for-ci` 라벨 없이 PR을 생성합니다.
-   CodeRabbit/Codecov/리뷰 이슈 해결 후에만 `ready-for-ci` 라벨을 붙이세요.
+   CodeRabbit/Codecov/리뷰 이슈 해결 후 full-ci PR에만 `ready-for-ci` 라벨을 붙이세요.
 MSG
 
 if [[ "${PR_CREATE_GUARD_DRY_RUN:-}" == "1" ]]; then
