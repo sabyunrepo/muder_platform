@@ -26,8 +26,14 @@ describe("SceneInspector", () => {
       data: {
         label: "오프닝",
         description: "도입 장면",
-        discussionRoomPolicy: { enabled: true },
-        onEnter: [{ type: "give_clue", payload: {} }],
+        discussionRoomPolicy: {
+          enabled: true,
+          mainRoomName: "전체 토론",
+          privateRoomsEnabled: false,
+          privateRoomName: "비밀 대화",
+          availability: "phase_active",
+        },
+        onEnter: [{ type: "give_clue", params: {} }],
       },
     };
 
