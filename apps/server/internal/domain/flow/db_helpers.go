@@ -3,7 +3,6 @@ package flow
 import (
 	"context"
 	"encoding/json"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -45,9 +44,6 @@ func scanNode(row rowScanner) (*FlowNode, error) {
 		&n.PositionX, &n.PositionY, &n.CreatedAt, &n.UpdatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.NotFound("flow node not found")
-		}
 		return nil, apperror.Internal("failed to scan flow node")
 	}
 	return &n, nil
@@ -60,9 +56,6 @@ func scanEdge(row rowScanner) (*FlowEdge, error) {
 		&e.Condition, &e.Label, &e.SortOrder, &e.CreatedAt,
 	)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.NotFound("flow edge not found")
-		}
 		return nil, apperror.Internal("failed to scan flow edge")
 	}
 	return &e, nil

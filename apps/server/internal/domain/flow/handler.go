@@ -23,13 +23,12 @@ func NewHandler(svc Service) *Handler {
 
 // GetFlow handles GET /editor/themes/{id}/flow.
 func (h *Handler) GetFlow(w http.ResponseWriter, r *http.Request) {
-	creatorID := middleware.UserIDFrom(r.Context())
 	themeID, err := parseUUID(r, "id")
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	graph, err := h.svc.GetFlow(r.Context(), creatorID, themeID)
+	graph, err := h.svc.GetFlow(r.Context(), themeID)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
@@ -82,11 +81,6 @@ func (h *Handler) CreateNode(w http.ResponseWriter, r *http.Request) {
 // UpdateNode handles PATCH /editor/themes/{id}/flow/nodes/{nodeId}.
 func (h *Handler) UpdateNode(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
-	themeID, err := parseUUID(r, "id")
-	if err != nil {
-		apperror.WriteError(w, r, err)
-		return
-	}
 	nodeID, err := parseUUID(r, "nodeId")
 	if err != nil {
 		apperror.WriteError(w, r, err)
@@ -97,7 +91,7 @@ func (h *Handler) UpdateNode(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	node, err := h.svc.UpdateNode(r.Context(), creatorID, themeID, nodeID, req)
+	node, err := h.svc.UpdateNode(r.Context(), creatorID, nodeID, req)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
@@ -149,11 +143,6 @@ func (h *Handler) CreateEdge(w http.ResponseWriter, r *http.Request) {
 // UpdateEdge handles PATCH /editor/themes/{id}/flow/edges/{edgeId}.
 func (h *Handler) UpdateEdge(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
-	themeID, err := parseUUID(r, "id")
-	if err != nil {
-		apperror.WriteError(w, r, err)
-		return
-	}
 	edgeID, err := parseUUID(r, "edgeId")
 	if err != nil {
 		apperror.WriteError(w, r, err)
@@ -164,7 +153,7 @@ func (h *Handler) UpdateEdge(w http.ResponseWriter, r *http.Request) {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	edge, err := h.svc.UpdateEdge(r.Context(), creatorID, themeID, edgeID, req)
+	edge, err := h.svc.UpdateEdge(r.Context(), creatorID, edgeID, req)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
@@ -175,17 +164,12 @@ func (h *Handler) UpdateEdge(w http.ResponseWriter, r *http.Request) {
 // DeleteEdge handles DELETE /editor/themes/{id}/flow/edges/{edgeId}.
 func (h *Handler) DeleteEdge(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
-	themeID, err := parseUUID(r, "id")
-	if err != nil {
-		apperror.WriteError(w, r, err)
-		return
-	}
 	edgeID, err := parseUUID(r, "edgeId")
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	if err := h.svc.DeleteEdge(r.Context(), creatorID, themeID, edgeID); err != nil {
+	if err := h.svc.DeleteEdge(r.Context(), creatorID, edgeID); err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}

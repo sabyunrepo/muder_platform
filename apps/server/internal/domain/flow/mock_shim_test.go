@@ -21,20 +21,20 @@ import (
 
 // mockService is a hand-rolled stub for the flow.Service interface.
 type mockService struct {
-	getFlowFn       func(ctx context.Context, creatorID, themeID uuid.UUID) (*FlowGraph, error)
+	getFlowFn       func(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error)
 	saveFlowFn      func(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error)
 	createNodeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error)
-	updateNodeFn    func(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
+	updateNodeFn    func(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
 	deleteNodeFn    func(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error
 	createEdgeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
-	updateEdgeFn    func(ctx context.Context, creatorID, themeID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
-	deleteEdgeFn    func(ctx context.Context, creatorID, themeID, edgeID uuid.UUID) error
+	updateEdgeFn    func(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
+	deleteEdgeFn    func(ctx context.Context, creatorID, edgeID uuid.UUID) error
 	migratePhasesFn func(ctx context.Context, themeID uuid.UUID, phases []map[string]any) error
 }
 
-func (m *mockService) GetFlow(ctx context.Context, creatorID, themeID uuid.UUID) (*FlowGraph, error) {
+func (m *mockService) GetFlow(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error) {
 	if m.getFlowFn != nil {
-		return m.getFlowFn(ctx, creatorID, themeID)
+		return m.getFlowFn(ctx, themeID)
 	}
 	return nil, nil
 }
@@ -50,9 +50,9 @@ func (m *mockService) CreateNode(ctx context.Context, creatorID, themeID uuid.UU
 	}
 	return nil, nil
 }
-func (m *mockService) UpdateNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
+func (m *mockService) UpdateNode(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
 	if m.updateNodeFn != nil {
-		return m.updateNodeFn(ctx, creatorID, themeID, nodeID, req)
+		return m.updateNodeFn(ctx, creatorID, nodeID, req)
 	}
 	return nil, nil
 }
@@ -68,15 +68,15 @@ func (m *mockService) CreateEdge(ctx context.Context, creatorID, themeID uuid.UU
 	}
 	return nil, nil
 }
-func (m *mockService) UpdateEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
+func (m *mockService) UpdateEdge(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
 	if m.updateEdgeFn != nil {
-		return m.updateEdgeFn(ctx, creatorID, themeID, edgeID, req)
+		return m.updateEdgeFn(ctx, creatorID, edgeID, req)
 	}
 	return nil, nil
 }
-func (m *mockService) DeleteEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID) error {
+func (m *mockService) DeleteEdge(ctx context.Context, creatorID, edgeID uuid.UUID) error {
 	if m.deleteEdgeFn != nil {
-		return m.deleteEdgeFn(ctx, creatorID, themeID, edgeID)
+		return m.deleteEdgeFn(ctx, creatorID, edgeID)
 	}
 	return nil
 }

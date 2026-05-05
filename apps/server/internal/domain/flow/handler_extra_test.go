@@ -47,8 +47,8 @@ func TestUpdateNode_Success(t *testing.T) {
 	themeID := uuid.New()
 	nodeID := uuid.New()
 	svc := &mockService{
-		updateNodeFn: func(_ context.Context, _, routeThemeID, id uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
-			return &FlowNode{ID: id, ThemeID: routeThemeID, Type: req.Type, CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
+		updateNodeFn: func(_ context.Context, _, id uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
+			return &FlowNode{ID: id, Type: req.Type, CreatedAt: time.Now(), UpdatedAt: time.Now()}, nil
 		},
 	}
 	r := newRouter(NewHandler(svc))

@@ -44,7 +44,7 @@ func TestGetFlow_OK(t *testing.T) {
 
 	themeID := uuid.New()
 	mock.EXPECT().
-		GetFlow(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq(themeID)).
+		GetFlow(gomock.Any(), gomock.Eq(themeID)).
 		Return(&flow.FlowGraph{
 			Nodes: []flow.FlowNode{{ID: uuid.New(), ThemeID: themeID, Type: flow.NodeTypeStart, CreatedAt: time.Now(), UpdatedAt: time.Now()}},
 			Edges: []flow.FlowEdge{},

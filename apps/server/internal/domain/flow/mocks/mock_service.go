@@ -73,17 +73,17 @@ func (mr *MockServiceMockRecorder) CreateNode(ctx, creatorID, themeID, req any) 
 }
 
 // DeleteEdge mocks base method.
-func (m *MockService) DeleteEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID) error {
+func (m *MockService) DeleteEdge(ctx context.Context, creatorID, edgeID uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteEdge", ctx, creatorID, themeID, edgeID)
+	ret := m.ctrl.Call(m, "DeleteEdge", ctx, creatorID, edgeID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteEdge indicates an expected call of DeleteEdge.
-func (mr *MockServiceMockRecorder) DeleteEdge(ctx, creatorID, themeID, edgeID any) *gomock.Call {
+func (mr *MockServiceMockRecorder) DeleteEdge(ctx, creatorID, edgeID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEdge", reflect.TypeOf((*MockService)(nil).DeleteEdge), ctx, creatorID, themeID, edgeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEdge", reflect.TypeOf((*MockService)(nil).DeleteEdge), ctx, creatorID, edgeID)
 }
 
 // DeleteNode mocks base method.
@@ -101,18 +101,18 @@ func (mr *MockServiceMockRecorder) DeleteNode(ctx, creatorID, themeID, nodeID an
 }
 
 // GetFlow mocks base method.
-func (m *MockService) GetFlow(ctx context.Context, creatorID, themeID uuid.UUID) (*flow.FlowGraph, error) {
+func (m *MockService) GetFlow(ctx context.Context, themeID uuid.UUID) (*flow.FlowGraph, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFlow", ctx, creatorID, themeID)
+	ret := m.ctrl.Call(m, "GetFlow", ctx, themeID)
 	ret0, _ := ret[0].(*flow.FlowGraph)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetFlow indicates an expected call of GetFlow.
-func (mr *MockServiceMockRecorder) GetFlow(ctx, creatorID, themeID any) *gomock.Call {
+func (mr *MockServiceMockRecorder) GetFlow(ctx, themeID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFlow", reflect.TypeOf((*MockService)(nil).GetFlow), ctx, creatorID, themeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFlow", reflect.TypeOf((*MockService)(nil).GetFlow), ctx, themeID)
 }
 
 // MigratePhases mocks base method.
@@ -145,31 +145,31 @@ func (mr *MockServiceMockRecorder) SaveFlow(ctx, creatorID, themeID, req any) *g
 }
 
 // UpdateEdge mocks base method.
-func (m *MockService) UpdateEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID, req flow.UpdateEdgeRequest) (*flow.FlowEdge, error) {
+func (m *MockService) UpdateEdge(ctx context.Context, creatorID, edgeID uuid.UUID, req flow.UpdateEdgeRequest) (*flow.FlowEdge, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateEdge", ctx, creatorID, themeID, edgeID, req)
+	ret := m.ctrl.Call(m, "UpdateEdge", ctx, creatorID, edgeID, req)
 	ret0, _ := ret[0].(*flow.FlowEdge)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateEdge indicates an expected call of UpdateEdge.
-func (mr *MockServiceMockRecorder) UpdateEdge(ctx, creatorID, themeID, edgeID, req any) *gomock.Call {
+func (mr *MockServiceMockRecorder) UpdateEdge(ctx, creatorID, edgeID, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEdge", reflect.TypeOf((*MockService)(nil).UpdateEdge), ctx, creatorID, themeID, edgeID, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateEdge", reflect.TypeOf((*MockService)(nil).UpdateEdge), ctx, creatorID, edgeID, req)
 }
 
 // UpdateNode mocks base method.
-func (m *MockService) UpdateNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req flow.UpdateNodeRequest) (*flow.FlowNode, error) {
+func (m *MockService) UpdateNode(ctx context.Context, creatorID, nodeID uuid.UUID, req flow.UpdateNodeRequest) (*flow.FlowNode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateNode", ctx, creatorID, themeID, nodeID, req)
+	ret := m.ctrl.Call(m, "UpdateNode", ctx, creatorID, nodeID, req)
 	ret0, _ := ret[0].(*flow.FlowNode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // UpdateNode indicates an expected call of UpdateNode.
-func (mr *MockServiceMockRecorder) UpdateNode(ctx, creatorID, themeID, nodeID, req any) *gomock.Call {
+func (mr *MockServiceMockRecorder) UpdateNode(ctx, creatorID, nodeID, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNode", reflect.TypeOf((*MockService)(nil).UpdateNode), ctx, creatorID, themeID, nodeID, req)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateNode", reflect.TypeOf((*MockService)(nil).UpdateNode), ctx, creatorID, nodeID, req)
 }
