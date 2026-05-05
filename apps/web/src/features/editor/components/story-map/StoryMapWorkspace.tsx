@@ -1,26 +1,17 @@
 import {
-  BookOpen,
-  Clapperboard,
   KeyRound,
-  Library,
   MapPin,
-  MessageSquare,
-  Search,
-  Users,
 } from "lucide-react";
+import { useState } from "react";
 import { FlowCanvas } from "../design/FlowCanvas";
+import {
+  EditorEntityLibrary,
+  type StoryLibraryEntity,
+} from "./EditorEntityLibrary";
 
 interface StoryMapWorkspaceProps {
   themeId: string;
 }
-
-const LIBRARY_GROUPS = [
-  { label: "스토리", icon: BookOpen, items: ["장면", "분기", "엔딩"] },
-  { label: "인물", icon: Users, items: ["PC 캐릭터", "NPC 캐릭터", "역할지"] },
-  { label: "조사", icon: Search, items: ["단서", "장소", "조사권"] },
-  { label: "진행", icon: MessageSquare, items: ["토론방", "조건", "트리거"] },
-  { label: "연출", icon: Clapperboard, items: ["미디어", "공개 타이밍", "화면 전환"] },
-] as const;
 
 const INSPECTOR_GROUPS = [
   { label: "장면 내용", value: "스토리 본문과 공개 정보를 확인합니다." },
@@ -29,6 +20,8 @@ const INSPECTOR_GROUPS = [
 ] as const;
 
 export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
+  const [selectedEntity, setSelectedEntity] = useState<StoryLibraryEntity | null>(null);
+
   return (
     <section
       aria-label="스토리 진행 제작"
@@ -60,35 +53,11 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
       </div>
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[17rem_minmax(0,1fr)_20rem]">
-        <aside className="border-b border-slate-800 bg-slate-950 lg:border-b-0 lg:border-r">
-          <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
-            <Library className="h-4 w-4 text-amber-400" />
-            <h3 className="text-sm font-semibold text-slate-100">제작 라이브러리</h3>
-          </div>
-          <div className="space-y-3 p-4">
-            {LIBRARY_GROUPS.map((group) => (
-              <div
-                key={group.label}
-                className="rounded-md border border-slate-800 bg-slate-900/70 p-3"
-              >
-                <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
-                  <group.icon className="h-4 w-4 text-amber-400" />
-                  {group.label}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {group.items.map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-sm border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-300"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
+        <EditorEntityLibrary
+          themeId={themeId}
+          selectedEntity={selectedEntity}
+          onSelectEntity={setSelectedEntity}
+        />
 
         <main className="min-h-[620px] min-w-0 border-b border-slate-800 lg:border-b-0">
           <FlowCanvas themeId={themeId} />
@@ -103,11 +72,20 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
             <div className="rounded-md border border-slate-800 bg-slate-900/70 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
                 <KeyRound className="h-4 w-4 text-amber-400" />
-                선택한 장면
+                선택한 연결 대상
               </div>
-              <p className="mt-3 text-sm leading-6 text-slate-400">
-                장면을 선택하면 이곳에서 공개 정보, 연결된 단서, 진행 조건을 한 번에 확인합니다.
-              </p>
+              {selectedEntity ? (
+                <div className="mt-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-3">
+                  <p className="text-sm font-medium text-amber-100">{selectedEntity.title}</p>
+                  <p className="mt-1 text-xs text-amber-200/80">
+                    {selectedEntity.section} · {selectedEntity.detail}
+                  </p>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다.
+                </p>
+              )}
             </div>
             {INSPECTOR_GROUPS.map((group) => (
               <div
