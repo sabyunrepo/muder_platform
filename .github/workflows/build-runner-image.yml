@@ -87,6 +87,8 @@ jobs:
               node --version | grep -q "v20"
               # Image-resident GOMODCACHE pre-bake (apps/server/go.mod deps)
               [ -d /home/runner/go/pkg/mod/cache ] || (echo "FAIL: GOMODCACHE pre-bake missing" && exit 1)
+              # E2E workflows skip per-job apt install when this marker exists.
+              [ -f /opt/mmp-runner/playwright-deps-ready ] || (echo "FAIL: Playwright deps marker missing" && exit 1)
               # Hook 실행 후에도 pre-bake 데이터 보존 (image-resident 카논)
               touch /home/runner/go/pkg/mod/cache/sentinel
               bash /opt/runner-hooks/job-started.sh
