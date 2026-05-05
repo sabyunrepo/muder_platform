@@ -75,6 +75,16 @@ export function InvestigationTokenSettingsPanel({
     });
   }
 
+  function confirmAndRemoveToken(token: InvestigationTokenDraft) {
+    const affectedDeckCount = draft.decks.filter((deck) => deck.tokenId === token.id).length;
+    const confirmed = window.confirm(
+      `조사권 "${token.name}"을(를) 삭제할까요?\n` +
+        `연결된 단서 조사 덱 ${affectedDeckCount}개는 다른 조사권으로 자동 변경됩니다.`,
+    );
+    if (!confirmed) return;
+    removeToken(token.id);
+  }
+
   return (
     <div className="border-t border-slate-700 px-3 py-3">
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -149,7 +159,7 @@ export function InvestigationTokenSettingsPanel({
 
             <button
               type="button"
-              onClick={() => removeToken(token.id)}
+              onClick={() => confirmAndRemoveToken(token)}
               disabled={isSaving || tokens.length <= 1}
               aria-label={`${token.name} 조사권 삭제`}
               className="self-end rounded p-2 text-slate-500 transition hover:bg-red-950/40 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 disabled:cursor-not-allowed disabled:opacity-40"

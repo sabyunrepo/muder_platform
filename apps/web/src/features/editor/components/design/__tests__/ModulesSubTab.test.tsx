@@ -346,6 +346,7 @@ describe('ModulesSubTab', () => {
   });
 
   it('사용 중인 조사권 삭제 시 단서 조사 덱을 남은 조사권으로 이동한다', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const themeWithDeckInvestigation: EditorThemeResponse = {
       ...baseTheme,
       config_json: {
@@ -395,6 +396,10 @@ describe('ModulesSubTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '추가 조사권 조사권 삭제' }));
 
+    expect(confirmSpy).toHaveBeenCalledWith(
+      '조사권 "추가 조사권"을(를) 삭제할까요?\n' +
+        '연결된 단서 조사 덱 1개는 다른 조사권으로 자동 변경됩니다.',
+    );
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     expect(config.modules).toMatchObject({
       [DECK_INVESTIGATION_MODULE_ID]: {
@@ -404,6 +409,49 @@ describe('ModulesSubTab', () => {
         },
       },
     });
+    confirmSpy.mockRestore();
+  });
+
+  it('조사권 삭제 확인을 취소하면 저장하지 않는다', () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const themeWithDeckInvestigation: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          [DECK_INVESTIGATION_MODULE_ID]: {
+            enabled: true,
+            config: {
+              tokens: [
+                {
+                  id: 'basic-token',
+                  name: '기본 조사권',
+                  iconLabel: '권',
+                  defaultAmount: 1,
+                },
+                {
+                  id: 'bonus-token',
+                  name: '추가 조사권',
+                  iconLabel: '추',
+                  defaultAmount: 0,
+                },
+              ],
+              decks: [],
+            },
+          },
+        },
+      },
+    };
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithDeckInvestigation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '추가 조사권 조사권 삭제' }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      '조사권 "추가 조사권"을(를) 삭제할까요?\n' +
+        '연결된 단서 조사 덱 0개는 다른 조사권으로 자동 변경됩니다.',
+    );
+    expect(mutateMock).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
   it('mutate payload에 theme.version이 포함된다', () => {
