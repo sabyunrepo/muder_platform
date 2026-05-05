@@ -51,10 +51,12 @@ describe("PresentationLayer", () => {
       </PresentationLayer>,
     );
 
-    handlers.get(WsEventType.PRESENTATION_SET_BACKGROUND)!(
-      { mediaId: "image-1", url: "https://cdn.example/bg.png" },
-      1,
-    );
+    act(() => {
+      handlers.get(WsEventType.PRESENTATION_SET_BACKGROUND)!(
+        { mediaId: "image-1", url: "https://cdn.example/bg.png" },
+        1,
+      );
+    });
     fireEvent.click(screen.getByRole("button", { name: "주요 행동" }));
 
     expect(onClick).toHaveBeenCalledTimes(1);

@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { PhaseAction } from "../../flowTypes";
 import {
@@ -292,20 +292,31 @@ function PresentationCueFields({
         <span className="text-[11px] text-slate-500">화면 분위기를 선택하세요</span>
         <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
           {THEME_COLOR_PRESETS.map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => onParamsChange({ ...params, themeToken: preset.value })}
-              aria-pressed={themeToken === preset.value}
-              className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors ${
-                themeToken === preset.value
-                  ? "border-amber-400 bg-amber-500/10 text-amber-200"
-                  : "border-slate-700 text-slate-300 hover:border-slate-500"
-              }`}
-            >
-              <span className={`h-3 w-3 shrink-0 rounded-full ${preset.swatchClass}`} />
-              {preset.label}
-            </button>
+            (() => {
+              const isSelected = themeToken === preset.value;
+              return (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => onParamsChange({ ...params, themeToken: preset.value })}
+                  aria-pressed={isSelected}
+                  className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors ${
+                    isSelected
+                      ? "border-amber-400 bg-amber-500/10 text-amber-200"
+                      : "border-slate-700 text-slate-300 hover:border-slate-500"
+                  }`}
+                >
+                  <span className={`h-3 w-3 shrink-0 rounded-full ${preset.swatchClass}`} />
+                  <span>{preset.label}</span>
+                  {isSelected ? (
+                    <>
+                      <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
+                      <span className="sr-only">선택됨</span>
+                    </>
+                  ) : null}
+                </button>
+              );
+            })()
           ))}
         </div>
       </div>

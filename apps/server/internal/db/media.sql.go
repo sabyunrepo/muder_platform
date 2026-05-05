@@ -168,6 +168,41 @@ func (q *Queries) GetMedia(ctx context.Context, id uuid.UUID) (ThemeMedium, erro
 	return i, err
 }
 
+const getMediaForSession = `-- name: GetMediaForSession :one
+SELECT m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at
+FROM theme_media m
+JOIN game_sessions s ON s.theme_id = m.theme_id
+WHERE s.id = $1
+  AND m.id = $2
+`
+
+type GetMediaForSessionParams struct {
+	SessionID uuid.UUID `json:"session_id"`
+	MediaID   uuid.UUID `json:"media_id"`
+}
+
+func (q *Queries) GetMediaForSession(ctx context.Context, arg GetMediaForSessionParams) (ThemeMedium, error) {
+	row := q.db.QueryRow(ctx, getMediaForSession, arg.SessionID, arg.MediaID)
+	var i ThemeMedium
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.Type,
+		&i.SourceType,
+		&i.Url,
+		&i.StorageKey,
+		&i.Duration,
+		&i.FileSize,
+		&i.MimeType,
+		&i.Tags,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getMediaWithOwner = `-- name: GetMediaWithOwner :one
 
 SELECT m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at FROM theme_media m

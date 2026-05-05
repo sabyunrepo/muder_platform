@@ -45,10 +45,19 @@ func (m *PresentationModule) BuildState() (json.RawMessage, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return json.Marshal(map[string]any{
+	state := map[string]any{
 		"backgroundMediaId": m.backgroundMediaID,
 		"themeToken":        m.themeToken,
-	})
+	}
+	if m.backgroundMediaID != "" {
+		url, sourceType, err := m.resolveBackgroundLocked(context.Background(), m.backgroundMediaID)
+		if err != nil {
+			return nil, err
+		}
+		state["backgroundMediaUrl"] = url
+		state["backgroundSourceType"] = sourceType
+	}
+	return json.Marshal(state)
 }
 
 func (m *PresentationModule) HandleMessage(_ context.Context, _ uuid.UUID, _ string, _ json.RawMessage) error {
@@ -89,11 +98,11 @@ func (m *PresentationModule) ReactTo(ctx context.Context, action engine.PhaseAct
 		if m.deps.MediaResolver == nil {
 			return fmt.Errorf("presentation: media resolver is not configured")
 		}
-		m.backgroundMediaID = p.MediaID
 		url, sourceType, err := m.deps.MediaResolver.ResolveMediaURL(ctx, m.deps.SessionID, mediaID, "IMAGE")
 		if err != nil {
 			return fmt.Errorf("presentation: resolve background media: %w", err)
 		}
+		m.backgroundMediaID = p.MediaID
 		params, _ := json.Marshal(map[string]any{
 			"mediaId":    p.MediaID,
 			"sourceType": sourceType,
@@ -123,6 +132,21 @@ func (m *PresentationModule) ReactTo(ctx context.Context, action engine.PhaseAct
 		Payload: json.RawMessage(action.Params),
 	})
 	return nil
+}
+
+func (m *PresentationModule) resolveBackgroundLocked(ctx context.Context, mediaIDText string) (string, string, error) {
+	mediaID, err := uuid.Parse(mediaIDText)
+	if err != nil {
+		return "", "", fmt.Errorf("presentation: invalid background mediaId")
+	}
+	if m.deps.MediaResolver == nil {
+		return "", "", fmt.Errorf("presentation: media resolver is not configured")
+	}
+	url, sourceType, err := m.deps.MediaResolver.ResolveMediaURL(ctx, m.deps.SessionID, mediaID, "IMAGE")
+	if err != nil {
+		return "", "", fmt.Errorf("presentation: resolve background media: %w", err)
+	}
+	return url, sourceType, nil
 }
 
 var (

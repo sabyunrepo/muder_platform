@@ -24,6 +24,7 @@ import (
 type fakeMediaQueries struct {
 	themes        map[uuid.UUID]db.Theme
 	media         map[uuid.UUID]db.ThemeMedium
+	sessions      map[uuid.UUID]db.GameSession
 	sections      map[uuid.UUID]db.ReadingSection
 	roleSheetRefs map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow
 }
@@ -32,6 +33,7 @@ func newFakeMediaQueries() *fakeMediaQueries {
 	return &fakeMediaQueries{
 		themes:        make(map[uuid.UUID]db.Theme),
 		media:         make(map[uuid.UUID]db.ThemeMedium),
+		sessions:      make(map[uuid.UUID]db.GameSession),
 		sections:      make(map[uuid.UUID]db.ReadingSection),
 		roleSheetRefs: make(map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow),
 	}
@@ -51,6 +53,18 @@ func (f *fakeMediaQueries) GetMedia(_ context.Context, id uuid.UUID) (db.ThemeMe
 		return db.ThemeMedium{}, pgx.ErrNoRows
 	}
 	return m, nil
+}
+
+func (f *fakeMediaQueries) GetMediaForSession(_ context.Context, arg db.GetMediaForSessionParams) (db.ThemeMedium, error) {
+	session, ok := f.sessions[arg.SessionID]
+	if !ok {
+		return db.ThemeMedium{}, pgx.ErrNoRows
+	}
+	media, ok := f.media[arg.MediaID]
+	if !ok || media.ThemeID != session.ThemeID {
+		return db.ThemeMedium{}, pgx.ErrNoRows
+	}
+	return media, nil
 }
 
 func (f *fakeMediaQueries) GetMediaWithOwner(_ context.Context, arg db.GetMediaWithOwnerParams) (db.ThemeMedium, error) {
@@ -281,6 +295,21 @@ func seedMedia(q *fakeMediaQueries, themeID uuid.UUID, mediaType string) uuid.UU
 	return id
 }
 
+func seedFileMedia(q *fakeMediaQueries, themeID uuid.UUID, mediaType string) uuid.UUID {
+	id := uuid.New()
+	q.media[id] = db.ThemeMedium{
+		ID:         id,
+		ThemeID:    themeID,
+		Name:       "media",
+		Type:       mediaType,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: "themes/" + themeID.String() + "/media/" + id.String() + ".png", Valid: true},
+		FileSize:   pgtype.Int8{Int64: 1024, Valid: true},
+		MimeType:   pgtype.Text{String: "image/png", Valid: true},
+	}
+	return id
+}
+
 func assertMediaAppCode(t *testing.T, err error, want string) {
 	t.Helper()
 	if err == nil {
@@ -293,6 +322,44 @@ func assertMediaAppCode(t *testing.T, err error, want string) {
 	if appErr.Code != want {
 		t.Fatalf("expected error code %q, got %q (detail=%s)", want, appErr.Code, appErr.Detail)
 	}
+}
+
+func TestMediaService_UpdateMedia_RejectsTypeChange(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeBGM)
+
+	_, err := svc.UpdateMedia(context.Background(), creatorID, mediaID, UpdateMediaRequest{
+		Name:      "relabel",
+		Type:      MediaTypeImage,
+		Tags:      []string{},
+		SortOrder: 0,
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidType)
+	if got := q.media[mediaID].Type; got != MediaTypeBGM {
+		t.Fatalf("media type changed to %q", got)
+	}
+}
+
+func TestMediaService_ResolveMediaURL_BindsMediaToSessionTheme(t *testing.T) {
+	svc, q, _, themeID := newMediaTestService(t)
+	otherThemeID := uuid.New()
+	q.themes[otherThemeID] = db.Theme{ID: otherThemeID, CreatorID: uuid.New()}
+	sessionID := uuid.New()
+	q.sessions[sessionID] = db.GameSession{ID: sessionID, ThemeID: themeID}
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	otherMediaID := seedFileMedia(q, otherThemeID, MediaTypeImage)
+	svc.storage = newFakeStorageProvider()
+
+	url, sourceType, err := svc.ResolveMediaURL(context.Background(), sessionID, mediaID, MediaTypeImage)
+	if err != nil {
+		t.Fatalf("ResolveMediaURL same-theme media: %v", err)
+	}
+	if url == "" || sourceType != SourceTypeFile {
+		t.Fatalf("unexpected resolve result: url=%q sourceType=%q", url, sourceType)
+	}
+
+	_, _, err = svc.ResolveMediaURL(context.Background(), sessionID, otherMediaID, MediaTypeImage)
+	assertMediaAppCode(t, err, apperror.ErrNotFound)
 }
 
 // --- DeleteMedia reference-check tests ---

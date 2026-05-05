@@ -3,6 +3,7 @@ package media
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -73,12 +74,17 @@ func TestPresentationModule_ReactTo_SetBackground(t *testing.T) {
 	}
 	var parsed struct {
 		BackgroundMediaID string `json:"backgroundMediaId"`
+		BackgroundURL     string `json:"backgroundMediaUrl"`
+		BackgroundSource  string `json:"backgroundSourceType"`
 	}
 	if err := json.Unmarshal(state, &parsed); err != nil {
 		t.Fatalf("Unmarshal state: %v", err)
 	}
 	if parsed.BackgroundMediaID != mediaID.String() {
 		t.Fatalf("backgroundMediaId = %q, want %s", parsed.BackgroundMediaID, mediaID.String())
+	}
+	if parsed.BackgroundURL != "https://cdn.example/background.png" || parsed.BackgroundSource != "FILE" {
+		t.Fatalf("background snapshot = %#v", parsed)
 	}
 }
 
@@ -111,6 +117,37 @@ func TestPresentationModule_ReactTo_SetBackgroundRequiresResolverAndMediaID(t *t
 	}
 }
 
+func TestPresentationModule_ReactTo_SetBackgroundDoesNotCommitOnResolveFailure(t *testing.T) {
+	deps, _ := newTestDeps(t)
+	deps.MediaResolver = &fakeMediaResolver{err: errors.New("missing media")}
+	m := NewPresentationModule()
+	if err := m.Init(context.Background(), deps, nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+
+	params, _ := json.Marshal(map[string]any{"mediaId": uuid.NewString()})
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionSetBackground,
+		Params: params,
+	}); err == nil {
+		t.Fatal("expected resolve error")
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var parsed struct {
+		BackgroundMediaID string `json:"backgroundMediaId"`
+	}
+	if err := json.Unmarshal(state, &parsed); err != nil {
+		t.Fatalf("Unmarshal state: %v", err)
+	}
+	if parsed.BackgroundMediaID != "" {
+		t.Fatalf("backgroundMediaId = %q, want empty after failed resolve", parsed.BackgroundMediaID)
+	}
+}
+
 func TestPresentationModule_ReactTo_SetThemeColor(t *testing.T) {
 	deps, bus := newTestDeps(t)
 	m := NewPresentationModule()
@@ -132,8 +169,17 @@ func TestPresentationModule_ReactTo_SetThemeColor(t *testing.T) {
 	}
 
 	select {
-	case <-received:
-		// ok
+	case e := <-received:
+		payload, _ := e.Payload.(json.RawMessage)
+		var parsedPayload struct {
+			ThemeToken string `json:"themeToken"`
+		}
+		if err := json.Unmarshal(payload, &parsedPayload); err != nil {
+			t.Fatalf("Unmarshal payload: %v", err)
+		}
+		if parsedPayload.ThemeToken != "tension" {
+			t.Fatalf("payload themeToken = %q, want tension", parsedPayload.ThemeToken)
+		}
 	default:
 		t.Fatal("expected presentation.set_theme_color event")
 	}

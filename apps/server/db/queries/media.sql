@@ -11,6 +11,13 @@ SELECT * FROM theme_media WHERE theme_id = $1 AND type = $2 ORDER BY sort_order,
 -- name: GetMedia :one
 SELECT * FROM theme_media WHERE id = $1;
 
+-- name: GetMediaForSession :one
+SELECT m.*
+FROM theme_media m
+JOIN game_sessions s ON s.theme_id = m.theme_id
+WHERE s.id = sqlc.arg('session_id')
+  AND m.id = sqlc.arg('media_id');
+
 -- name: CreateMedia :one
 INSERT INTO theme_media (theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)

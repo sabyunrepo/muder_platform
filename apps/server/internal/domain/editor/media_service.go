@@ -41,6 +41,7 @@ type MediaService interface {
 type mediaQueries interface {
 	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
 	GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error)
+	GetMediaForSession(ctx context.Context, arg db.GetMediaForSessionParams) (db.ThemeMedium, error)
 	GetMediaWithOwner(ctx context.Context, arg db.GetMediaWithOwnerParams) (db.ThemeMedium, error)
 	ListMediaByTheme(ctx context.Context, themeID uuid.UUID) ([]db.ThemeMedium, error)
 	ListMediaByThemeAndType(ctx context.Context, arg db.ListMediaByThemeAndTypeParams) ([]db.ThemeMedium, error)
@@ -379,6 +380,10 @@ func (s *mediaService) UpdateMedia(ctx context.Context, creatorID, mediaID uuid.
 		return nil, apperror.Internal("failed to get media")
 	}
 
+	if req.Type != media.Type {
+		return nil, apperror.New(apperror.ErrMediaInvalidType, 422, "media type cannot be changed")
+	}
+
 	tags := req.Tags
 	if tags == nil {
 		tags = []string{}
@@ -524,13 +529,19 @@ func (s *mediaService) GetMediaPlayURL(ctx context.Context, sessionID, mediaID u
 }
 
 func (s *mediaService) ResolveMediaURL(ctx context.Context, sessionID, mediaID uuid.UUID, allowedTypes ...string) (string, string, error) {
-	_ = sessionID // sessionID reserved for future authorization (e.g. session→theme binding)
-	media, err := s.q.GetMedia(ctx, mediaID)
+	media, err := s.q.GetMediaForSession(ctx, db.GetMediaForSessionParams{
+		SessionID: sessionID,
+		MediaID:   mediaID,
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", "", apperror.NotFound("media not found")
 		}
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
+		s.logger.Error().
+			Err(err).
+			Str("session_id", sessionID.String()).
+			Str("media_id", mediaID.String()).
+			Msg("failed to get media for session")
 		return "", "", apperror.Internal("failed to get media")
 	}
 
