@@ -21,21 +21,32 @@ import (
 // Both compact (`"modules":[`) and pretty-printed (`"modules": [`) forms are
 // matched to handle raw blobs from any serializer.
 func hasLegacyKeys(raw json.RawMessage) bool {
-	if bytes.Contains(raw, []byte(`"clue_placement"`)) ||
-		bytes.Contains(raw, []byte(`"module_configs"`)) ||
-		bytes.Contains(raw, []byte(`"character_clues"`)) ||
-		bytes.Contains(raw, []byte(`"modules":[`)) || // legacy array form (compact)
-		bytes.Contains(raw, []byte(`"modules": [`)) { // legacy array form (spaced)
-		return true
+	return len(legacyConfigAxes(raw)) > 0
+}
+
+func legacyConfigAxes(raw json.RawMessage) []string {
+	axes := make([]string, 0, 5)
+	if bytes.Contains(raw, []byte(`"clue_placement"`)) {
+		axes = append(axes, "clue_placement")
+	}
+	if bytes.Contains(raw, []byte(`"module_configs"`)) {
+		axes = append(axes, "module_configs")
+	}
+	if bytes.Contains(raw, []byte(`"character_clues"`)) {
+		axes = append(axes, "character_clues")
+	}
+	if bytes.Contains(raw, []byte(`"modules":[`)) ||
+		bytes.Contains(raw, []byte(`"modules": [`)) {
+		axes = append(axes, "modules_array")
 	}
 	// Dead-key-only legacy: locations[].clueIds present but locationClueConfig is
 	// absent. A blob that already has locationClueConfig is post-normalization and
 	// must not re-trigger the normalizer (idempotence / zeroing guard).
 	if bytes.Contains(raw, []byte(`"clueIds"`)) &&
 		!bytes.Contains(raw, []byte(`"locationClueConfig"`)) {
-		return true
+		axes = append(axes, "locations_clueIds")
 	}
-	return false
+	return axes
 }
 
 // NormalizeConfigJSON converts legacy theme.config_json shapes (D-19/D-20/D-21)
