@@ -1,0 +1,4 @@
+interface:
+  display_name: "MMP Runner Image Rollout"
+  short_description: "Roll out MMP ARC runner images."
+  default_prompt: "Use this skill when updating the MMP ARC runner image through KT registry and Kubernetes. Verify the build-runner-image workflow, KT registry tag, Helm values, and Running pod digest before closing the linked issue."
