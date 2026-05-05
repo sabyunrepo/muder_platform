@@ -27,8 +27,8 @@ vi.mock('@/features/editor/components', () => ({
 import EditorPage from '../EditorPage';
 
 const routeMatrixCases = [
-  ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'overview'],
-  ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'story'],
+  ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
+  ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'storyMap'],
   [
     '직접 URL /editor/:id/characters',
     { id: 'theme-1', tab: 'characters' },
@@ -63,7 +63,7 @@ const routeMatrixCases = [
     'design',
   ],
   ['alias URL /editor/:id/modules', { id: 'theme-1', tab: 'modules' }, 'modules', 'design'],
-  ['alias URL /editor/:id/flow', { id: 'theme-1', tab: 'flow' }, 'flow', 'design'],
+  ['alias URL /editor/:id/flow', { id: 'theme-1', tab: 'flow' }, 'flow', 'storyMap'],
   ['alias URL /editor/:id/locations', { id: 'theme-1', tab: 'locations' }, 'locations', 'design'],
   ['alias URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'design'],
 ] as const;
@@ -74,13 +74,13 @@ afterEach(() => {
 });
 
 describe('EditorPage', () => {
-  it('id가 없으면 에디터 대시보드를 보여주고 overview 탭을 활성화한다', () => {
+  it('id가 없으면 에디터 대시보드를 보여주고 기본 제작 흐름 탭을 활성화한다', () => {
     paramsMock.mockReturnValue({});
 
     render(<EditorPage />);
 
     expect(screen.getByText('에디터 대시보드')).toBeDefined();
-    expect(setActiveTabMock).toHaveBeenCalledWith('overview');
+    expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
   });
 
   it('characters 라우트 segment를 characters 탭으로 매핑한다', () => {
@@ -121,12 +121,12 @@ describe('EditorPage', () => {
     expect(setActiveTabMock).toHaveBeenCalledWith('design');
   });
 
-  it('알 수 없는 segment는 overview 탭으로 되돌린다', () => {
+  it('알 수 없는 segment는 기본 제작 흐름 탭으로 되돌린다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'unknown' });
 
     render(<EditorPage />);
 
     expect(screen.getByText(/테마 에디터 theme-1 unknown/)).toBeDefined();
-    expect(setActiveTabMock).toHaveBeenCalledWith('overview');
+    expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
   });
 });

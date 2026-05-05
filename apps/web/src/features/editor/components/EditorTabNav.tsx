@@ -35,10 +35,10 @@ export function EditorTabNav({
     [activeModules, forcedVisibleTab],
   );
 
-  // If active tab is now hidden, fallback to overview
+  // If active tab is now hidden, fallback to the creator's main story workspace.
   useEffect(() => {
     if (!visibleTabs.some((t) => t.key === activeTab)) {
-      setActiveTab("overview");
+      setActiveTab("storyMap");
     }
   }, [visibleTabs, activeTab, setActiveTab]);
 

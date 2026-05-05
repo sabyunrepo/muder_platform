@@ -18,18 +18,16 @@ vi.mock('@xyflow/react', () => ({
   ReactFlow: ({
     children,
     nodes = [],
-    nodeClassName,
   }: {
     children?: React.ReactNode;
-    nodes?: Array<{ id: string }>;
-    nodeClassName?: (node: { id: string }) => string;
+    nodes?: Array<{ id: string; className?: string }>;
   }) => (
     <div data-testid="react-flow">
       {nodes.map((node) => (
         <div
           key={node.id}
           data-testid={`rf-node-${node.id}`}
-          className={nodeClassName?.(node) ?? ""}
+          className={node.className ?? ""}
         />
       ))}
       {children}

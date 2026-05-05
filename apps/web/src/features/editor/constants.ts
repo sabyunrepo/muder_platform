@@ -1,4 +1,14 @@
-import { FileText, BookOpen, Users, Settings, Music, Code, LayoutTemplate, Search } from "lucide-react";
+import {
+  FileText,
+  BookOpen,
+  Users,
+  Settings,
+  Music,
+  Code,
+  LayoutTemplate,
+  Search,
+  GitBranch,
+} from "lucide-react";
 import type { ThemeStatus } from "./api";
 
 // ---------------------------------------------------------------------------
@@ -6,6 +16,7 @@ import type { ThemeStatus } from "./api";
 // ---------------------------------------------------------------------------
 
 export const EDITOR_TABS = [
+  { key: "storyMap" as const, label: "스토리 진행", icon: GitBranch, always: true },
   { key: "overview" as const, label: "기본정보", icon: FileText, always: true },
   { key: "story" as const, label: "스토리", icon: BookOpen, always: true },
   { key: "characters" as const, label: "등장인물", icon: Users, always: true },
