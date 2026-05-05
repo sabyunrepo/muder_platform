@@ -31,7 +31,7 @@ export function DiscussionRoomPolicyPanel({ policy, onChange }: DiscussionRoomPo
           />
           <span>
             <span className="block text-sm font-semibold text-slate-100">토론방</span>
-            <span className="block text-xs leading-5 text-slate-500">
+            <span className="block text-xs leading-5 text-slate-400">
               이 장면에서 플레이어가 모여 대화할 공간을 정합니다.
             </span>
           </span>
@@ -55,7 +55,7 @@ export function DiscussionRoomPolicyPanel({ policy, onChange }: DiscussionRoomPo
               />
               <span>
                 <span className="block text-xs font-semibold text-slate-200">밀담방 허용</span>
-                <span className="block text-xs leading-5 text-slate-500">
+                <span className="block text-xs leading-5 text-slate-400">
                   소수 인원이 따로 이야기할 수 있는 방을 함께 엽니다.
                 </span>
               </span>

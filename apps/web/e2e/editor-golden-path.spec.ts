@@ -391,7 +391,6 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     const a11y = await new AxeBuilder({ page })
       .include('[data-testid="discussion-room-policy-panel"]')
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-      .disableRules(["color-contrast"])
       .analyze();
     expect(a11y.violations).toEqual([]);
 
