@@ -14,8 +14,32 @@ const {
 }));
 
 vi.mock("../../design/FlowCanvas", () => ({
-  FlowCanvas: ({ themeId }: { themeId: string }) => (
-    <div data-testid="flow-canvas">flow canvas {themeId}</div>
+  FlowCanvas: ({
+    themeId,
+    onSelectedNodeChange,
+  }: {
+    themeId: string;
+    onSelectedNodeChange?: (node: unknown) => void;
+  }) => (
+    <div data-testid="flow-canvas">
+      flow canvas {themeId}
+      <button
+        type="button"
+        onClick={() =>
+          onSelectedNodeChange?.({
+            id: "scene-1",
+            type: "phase",
+            data: {
+              label: "오프닝",
+              description: "도입 장면",
+              discussionRoomPolicy: { enabled: true },
+            },
+          })
+        }
+      >
+        장면 선택
+      </button>
+    </div>
   ),
 }));
 
@@ -77,9 +101,9 @@ describe("StoryMapWorkspace", () => {
     expect(screen.getByText("응접실")).toBeDefined();
     expect(screen.getByText("오프닝 음악")).toBeDefined();
     expect(screen.getByText("단서")).toBeDefined();
-    expect(screen.getByText("장소")).toBeDefined();
-    expect(screen.getByText("토론방")).toBeDefined();
-    expect(screen.getByText("조사권")).toBeDefined();
+    expect(screen.getAllByText("장소").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("토론방").length).toBeGreaterThan(1);
+    expect(screen.getAllByText("조사권").length).toBeGreaterThan(1);
   });
 
   it("라이브러리 항목을 선택하면 우측 패널에 연결 대상으로 표시한다", () => {
@@ -89,5 +113,16 @@ describe("StoryMapWorkspace", () => {
 
     expect(screen.getByText("선택한 연결 대상")).toBeDefined();
     expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(1);
+  });
+
+  it("중앙 흐름에서 장면이 선택되면 우측 패널에 장면 요약을 표시한다", () => {
+    render(<StoryMapWorkspace themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "장면 선택" }));
+
+    expect(screen.getByText("오프닝")).toBeDefined();
+    expect(screen.getByText("스토리 장면")).toBeDefined();
+    expect(screen.getByText("장면 설명 있음")).toBeDefined();
+    expect(screen.getByText("사용")).toBeDefined();
   });
 });
