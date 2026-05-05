@@ -13,7 +13,9 @@ func removeEndingReferencesFromConfigJSON(raw json.RawMessage, endingID uuid.UUI
 	}
 
 	var root map[string]any
-	if err := json.Unmarshal(raw, &root); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	if err := decoder.Decode(&root); err != nil {
 		return nil, false, err
 	}
 

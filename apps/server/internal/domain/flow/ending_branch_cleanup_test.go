@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -28,7 +29,7 @@ func TestRemoveEndingReferencesFromConfigJSON_CleansEndingBranchConfig(t *testin
 			},
 			"event_progression": {
 				"enabled": true,
-				"config": {"endingId": "%s"}
+				"config": {"endingId": "%s", "largeOrder": 9007199254740993}
 			}
 		}
 	}`, deletedEndingID, deletedEndingID, keptEndingID, deletedEndingID))
@@ -63,6 +64,9 @@ func TestRemoveEndingReferencesFromConfigJSON_CleansEndingBranchConfig(t *testin
 	eventProgression := modules["event_progression"].(map[string]any)
 	if !jsonValueContainsStringOrKey(eventProgression, deletedEndingID.String()) {
 		t.Fatalf("unrelated module references should be preserved: %s", string(cleaned))
+	}
+	if !bytes.Contains(cleaned, []byte(`"largeOrder":9007199254740993`)) {
+		t.Fatalf("unrelated numeric config should preserve precision: %s", string(cleaned))
 	}
 }
 

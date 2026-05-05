@@ -143,7 +143,7 @@ func (s *serviceImpl) DeleteNode(ctx context.Context, creatorID, themeID, nodeID
 		FROM flow_nodes n
 		JOIN themes t ON t.id = n.theme_id
 		WHERE n.id = $1 AND n.theme_id = $2 AND t.creator_id = $3
-		FOR UPDATE OF t
+		FOR UPDATE OF n, t
 	`, nodeID, themeID, creatorID).Scan(&nodeType, &configJSON); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return apperror.NotFound("flow node not found")
@@ -167,8 +167,12 @@ func (s *serviceImpl) DeleteNode(ctx context.Context, creatorID, themeID, nodeID
 		}
 	}
 
-	if _, err := tx.Exec(ctx, `DELETE FROM flow_nodes WHERE id=$1`, nodeID); err != nil {
+	cmdTag, err := tx.Exec(ctx, `DELETE FROM flow_nodes WHERE id=$1`, nodeID)
+	if err != nil {
 		return apperror.Internal("failed to delete node")
+	}
+	if cmdTag.RowsAffected() != 1 {
+		return apperror.NotFound("flow node not found")
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return apperror.Internal("failed to commit transaction")
