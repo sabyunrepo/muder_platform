@@ -41,6 +41,7 @@ owner="$(gh repo view --json owner --jq '.owner.login')"
 repo="$(gh repo view --json name --jq '.name')"
 
 pr_json="$(gh pr view "$pr_number" --json number,title,url,headRefName,baseRefName,mergeStateStatus,reviewDecision,labels)"
+pull_json="$(gh api "repos/$owner/$repo/pulls/$pr_number")"
 
 number="$(printf '%s' "$pr_json" | jq -r '.number')"
 title="$(printf '%s' "$pr_json" | jq -r '.title')"
@@ -48,6 +49,9 @@ url="$(printf '%s' "$pr_json" | jq -r '.url')"
 head="$(printf '%s' "$pr_json" | jq -r '.headRefName')"
 base="$(printf '%s' "$pr_json" | jq -r '.baseRefName')"
 merge_state="$(printf '%s' "$pr_json" | jq -r '.mergeStateStatus // "UNKNOWN"')"
+mergeable_state="$(printf '%s' "$pull_json" | jq -r '.mergeable_state // "unknown"')"
+protection_json="$(gh api "repos/$owner/$repo/branches/$base/protection" 2>/dev/null || printf '{}')"
+strict_status_checks="$(printf '%s' "$protection_json" | jq -r '.required_status_checks.strict // false')"
 review_decision="$(printf '%s' "$pr_json" | jq -r '.reviewDecision // "UNKNOWN"')"
 labels="$(printf '%s' "$pr_json" | jq -r '[.labels[].name] | if length == 0 then "없음" else join(", ") end')"
 
@@ -112,6 +116,8 @@ cat <<MSG
 - Branch: $head -> $base
 - Labels: $labels
 - Merge state: $merge_state
+- REST mergeable_state: $mergeable_state
+- Base requires up-to-date checks: $strict_status_checks
 - Review decision: $review_decision
 - CI scope: $CI_SCOPE
 - Heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
