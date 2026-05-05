@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -10,6 +11,15 @@ type hookRecordingModule struct {
 	stubCoreModule
 	entered []Phase
 	exited  []Phase
+}
+
+type failingReactorModule struct {
+	stubFullModule
+}
+
+func (f *failingReactorModule) ReactTo(_ context.Context, action PhaseActionPayload) error {
+	f.received = append(f.received, action)
+	return fmt.Errorf("forced reactor failure")
 }
 
 func (h *hookRecordingModule) OnPhaseEnter(_ context.Context, phase Phase) error {
@@ -104,6 +114,84 @@ func TestPhaseEngine_NormalizesLegacyPhaseActionTypes(t *testing.T) {
 	}
 	if len(textChat.received) != 1 || textChat.received[0].Action != ActionMuteChat {
 		t.Fatalf("OnExit legacy action = %#v", textChat.received)
+	}
+}
+
+func TestPhaseEngine_DispatchesDiscussionRoomPolicyAfterOnEnterActions(t *testing.T) {
+	groupChat := &stubFullModule{
+		stubCoreModule: stubCoreModule{name: "group_chat"},
+		actions:        []PhaseAction{ActionApplyDiscussionRoom},
+	}
+	textChat := &stubFullModule{
+		stubCoreModule: stubCoreModule{name: "text_chat"},
+		actions:        []PhaseAction{ActionUnmuteChat},
+	}
+	phases := []PhaseDefinition{
+		{
+			ID:   "discussion",
+			Name: "Discussion",
+			DiscussionRoomPolicy: &DiscussionRoomPolicy{
+				Enabled:             true,
+				MainRoomName:        "추리 회의",
+				PrivateRoomsEnabled: true,
+				PrivateRoomName:     "밀담방",
+				Availability:        "phase_active",
+			},
+			OnEnter: json.RawMessage(`[{"type":"enable_chat"}]`),
+		},
+	}
+	pe, _ := newTestPhaseEngine(t, []Module{groupChat, textChat}, phases)
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	if len(groupChat.received) != 1 || groupChat.received[0].Action != ActionApplyDiscussionRoom {
+		t.Fatalf("discussion policy action = %#v", groupChat.received)
+	}
+	var params DiscussionRoomPolicy
+	if err := json.Unmarshal(groupChat.received[0].Params, &params); err != nil {
+		t.Fatalf("unmarshal discussion policy params: %v", err)
+	}
+	if !params.Enabled || params.MainRoomName != "추리 회의" || params.PrivateRoomName != "밀담방" {
+		t.Fatalf("policy params = %#v", params)
+	}
+	if len(textChat.received) != 1 || textChat.received[0].Action != ActionUnmuteChat {
+		t.Fatalf("onEnter action = %#v", textChat.received)
+	}
+}
+
+func TestPhaseEngine_SkipsDiscussionRoomPolicyWhenOnEnterFails(t *testing.T) {
+	groupChat := &stubFullModule{
+		stubCoreModule: stubCoreModule{name: "group_chat"},
+		actions:        []PhaseAction{ActionApplyDiscussionRoom},
+	}
+	failing := &failingReactorModule{
+		stubFullModule: stubFullModule{
+			stubCoreModule: stubCoreModule{name: "text_chat"},
+			actions:        []PhaseAction{ActionUnmuteChat},
+		},
+	}
+	phases := []PhaseDefinition{
+		{
+			ID:   "discussion",
+			Name: "Discussion",
+			DiscussionRoomPolicy: &DiscussionRoomPolicy{
+				Enabled:      true,
+				MainRoomName: "추리 회의",
+				Availability: "phase_active",
+			},
+			OnEnter: json.RawMessage(`[{"type":"enable_chat"}]`),
+		},
+	}
+	pe, _ := newTestPhaseEngine(t, []Module{groupChat, failing}, phases)
+	err := pe.Start(context.Background(), nil)
+	if err == nil {
+		t.Fatal("expected OnEnter failure")
+	}
+	if len(groupChat.received) != 0 {
+		t.Fatalf("discussion policy should not apply after OnEnter failure: %#v", groupChat.received)
 	}
 }
 

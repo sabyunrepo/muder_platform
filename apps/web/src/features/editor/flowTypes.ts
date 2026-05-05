@@ -10,6 +10,17 @@ export interface PhaseAction {
   params?: Record<string, unknown>;
 }
 
+export type DiscussionRoomAvailability = "phase_active" | "condition";
+
+export interface DiscussionRoomPolicy {
+  enabled: boolean;
+  mainRoomName: string;
+  privateRoomsEnabled: boolean;
+  privateRoomName: string;
+  availability: DiscussionRoomAvailability;
+  conditionalRoomName?: string;
+}
+
 export interface FlowNodeData {
   label?: string;
   phase_type?: string;
@@ -25,6 +36,7 @@ export interface FlowNodeData {
   warningAt?: number;
   onEnter?: PhaseAction[];
   onExit?: PhaseAction[];
+  discussionRoomPolicy?: DiscussionRoomPolicy;
 }
 
 export interface FlowNodeResponse {

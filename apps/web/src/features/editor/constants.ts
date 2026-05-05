@@ -111,6 +111,7 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
       { id: "room_exploration", name: "방 탐색", description: "방별 탐색", supported: false, required: false },
       { id: "timed_exploration", name: "시간 제한 탐색", description: "제한 시간 내 탐색", supported: false, required: false },
       { id: "location_clue", name: "장소 단서", description: "위치 기반 단서 발견", supported: false, required: false },
+      { id: "deck_investigation", name: "단서 조사", description: "조사권을 소비해 장소/장면 단서를 획득", supported: true, required: false },
     ],
   },
   {
