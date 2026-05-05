@@ -13,6 +13,7 @@ import (
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/engine"
 )
 
 // ThemeSummary is the compact representation used in list endpoints.
@@ -121,11 +122,16 @@ func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]Chara
 
 	result := make([]CharacterResponse, len(chars))
 	for i, c := range chars {
+		display := engine.ResolveCharacterDisplay(engine.CharacterDisplayBase{
+			Name:       c.Name,
+			ImageURL:   textToPtr(c.ImageUrl),
+			AliasRules: engine.ParseCharacterAliasRules(c.AliasRules),
+		}, json.RawMessage(`{}`))
 		result[i] = CharacterResponse{
 			ID:          c.ID,
-			Name:        c.Name,
+			Name:        display.Name,
 			Description: textToPtr(c.Description),
-			ImageURL:    textToPtr(c.ImageUrl),
+			ImageURL:    display.ImageURL,
 			SortOrder:   c.SortOrder,
 		}
 	}

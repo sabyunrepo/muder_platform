@@ -253,5 +253,11 @@ func TestGetCharacters_Success(t *testing.T) {
 		if _, ok := entry["is_culprit"]; ok {
 			t.Errorf("character %d: is_culprit should not be present in public API response", i)
 		}
+		if _, ok := entry["mystery_role"]; ok {
+			t.Errorf("character %d: mystery_role should not be present in public API response", i)
+		}
+		if _, ok := entry["alias_rules"]; ok {
+			t.Errorf("character %d: alias_rules should not be present in public API response", i)
+		}
 	}
 }

@@ -241,6 +241,7 @@ func (s *ImageService) ConfirmImageUpload(
 			EndcardTitle:      char.EndcardTitle,
 			EndcardBody:       char.EndcardBody,
 			EndcardImageUrl:   char.EndcardImageUrl,
+			AliasRules:        char.AliasRules,
 		})
 		if err != nil {
 			s.logger.Error().Err(err).Str("character_id", targetID.String()).Msg("failed to update character image_url")
