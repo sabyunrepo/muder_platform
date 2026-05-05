@@ -56,7 +56,8 @@ describe('CharacterAliasRulesEditor', () => {
   it('빈 상태에서 규칙을 추가하면 바로 완성 가능한 기본 조건을 만든다', () => {
     const { onChange } = renderEditor();
 
-    fireEvent.click(screen.getByRole('button', { name: '규칙 추가' }));
+    const [topLevelAddButton] = screen.getAllByRole('button', { name: '규칙 추가' });
+    fireEvent.click(topLevelAddButton);
 
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({
@@ -74,6 +75,34 @@ describe('CharacterAliasRulesEditor', () => {
           })],
         }),
       }),
+    ]);
+  });
+
+  it('새 규칙 우선순위는 기존 최대값 다음 번호로 만든다', () => {
+    const { onChange } = renderEditor({
+      rules: [
+        {
+          id: 'alias-1',
+          display_name: '목격자',
+          priority: 7,
+          condition: { id: 'group-1', operator: 'AND', rules: [{ id: 'rule-1', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }] },
+        },
+        {
+          id: 'alias-2',
+          display_name: '잠입자',
+          priority: 2,
+          condition: { id: 'group-2', operator: 'AND', rules: [{ id: 'rule-2', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }] },
+        },
+      ],
+    });
+
+    const [topLevelAddButton] = screen.getAllByRole('button', { name: '규칙 추가' });
+    fireEvent.click(topLevelAddButton);
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'alias-1', priority: 7 }),
+      expect.objectContaining({ id: 'alias-2', priority: 2 }),
+      expect.objectContaining({ priority: 8 }),
     ]);
   });
 
@@ -110,6 +139,28 @@ describe('CharacterAliasRulesEditor', () => {
       display_icon_url: 'https://cdn.example/night.webp',
       priority: 3,
     })]);
+  });
+
+  it('우선순위 입력은 음수와 소수를 즉시 0 이상의 정수로 정리한다', () => {
+    const onSave = vi.fn();
+    const rules: CharacterAliasRule[] = [{
+      id: 'alias-1',
+      display_name: '목격자',
+      priority: 1,
+      condition: {
+        id: 'group-1',
+        operator: 'AND',
+        rules: [{ id: 'rule-1', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }],
+      },
+    }];
+
+    renderStatefulEditor(rules, onSave);
+
+    fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: '-3.8' } });
+    expect((screen.getByLabelText('우선순위') as HTMLInputElement).value).toBe('0');
+
+    fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: '4.9' } });
+    expect((screen.getByLabelText('우선순위') as HTMLInputElement).value).toBe('4');
   });
 
   it('규칙 삭제와 disabled 상태를 처리한다', () => {

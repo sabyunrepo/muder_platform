@@ -44,6 +44,7 @@ export function CharacterAliasRulesEditor({
   const addRule = () => {
     if (disabled) return;
     setValidationError(null);
+    const nextPriority = rules.reduce((max, rule) => Math.max(max, rule.priority), -1) + 1;
     onChange([
       ...rules,
       {
@@ -51,7 +52,7 @@ export function CharacterAliasRulesEditor({
         label: '',
         display_name: '',
         display_icon_url: '',
-        priority: rules.length,
+        priority: nextPriority,
         condition: groupToRecord(createDefaultAliasCondition()),
       },
     ]);
@@ -172,7 +173,7 @@ function CharacterAliasRuleItem({
             min={0}
             value={rule.priority}
             disabled={disabled}
-            onChange={(event) => onUpdate(index, { priority: Number(event.currentTarget.value) || 0 })}
+            onChange={(event) => onUpdate(index, { priority: normalizePriorityInput(event.currentTarget.value) })}
             className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
           />
         </label>
@@ -210,6 +211,14 @@ function CharacterAliasRuleItem({
 }
 
 let aliasRuleIdSeq = 0;
+
+function normalizePriorityInput(value: string): number {
+  const priority = Math.floor(Number(value));
+  if (Number.isNaN(priority)) {
+    return 0;
+  }
+  return Math.max(0, priority);
+}
 
 function createAliasRuleID(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
