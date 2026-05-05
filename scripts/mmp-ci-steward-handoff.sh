@@ -165,6 +165,9 @@ $ci_instruction
 - gitleaks, File Size Guard, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
 - local rebase, local merge commit, force-push는 금지입니다. Strict up-to-date gate 해소에는 gh pr update-branch $number 만 사용합니다.
+- pending 상태는 완료가 아닙니다. CodeRabbit/CI/Codecov가 아직 도는 중이고 watcher가 계속 가능하면 최종 보고하지 말고 계속 진행하세요.
+- 메인 Codex가 상태를 물으면 최신 Head SHA, 현재 phase(CODE_RABBIT/READY_FOR_CI/FULL_CI/FIXING/BRANCH_UPDATE/BLOCKED), 실행 중이거나 방금 끝난 명령, pending check/thread, 다음 자율 행동을 짧게 보고하세요.
+- watcher timeout 또는 한 timeout window 동안 상태 변화가 없으면 BLOCKED로 보고하고, 마지막 Head SHA, elapsed time, pending 항목, main Codex가 재실행할 명령을 포함하세요.
 
 ## Steward 금지 범위
 - PR merge, PR 생성, Issue 생성, force-push, destructive git, secret 조회, unrelated branch/worktree 수정, 임의 branch 최신화는 금지입니다. 단, 위 strict up-to-date 조건을 만족한 대상 PR의 gh pr update-branch 실행은 허용합니다.
@@ -189,5 +192,6 @@ $ci_instruction
 - $full_ci_wait_rule
 - 변경했다면 focused validation을 실행하고 push하세요.
 - 최종 보고 직전 scripts/mmp-pr-status.sh $number --fail-on-blocker 를 실행하고 통과하지 못하면 MERGE_READY라고 말하지 마세요.
+- pending은 최종 상태가 아닙니다. 계속 watch할 수 있으면 계속 진행하고, timeout/no-progress일 때만 BLOCKED로 보고하세요.
 - 최종 보고는 한국어로 발견 / 수행 / 판단 / 미해결 4섹션으로 작성하고, 확인한 Head SHA와 판단의 MERGE_READY, NEEDS_FIX, BLOCKED 중 하나를 명시하세요.
 MSG
