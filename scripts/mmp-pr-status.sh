@@ -16,7 +16,7 @@ Usage: scripts/mmp-pr-status.sh [options] [PR_NUMBER]
 반복 조회가 필요하면 30초 이상 간격으로 실행하세요.
 
 Options:
-  --fail-on-blocker  CodeRabbit/review blocker가 있으면 non-zero로 종료합니다.
+  --fail-on-blocker  CodeRabbit/review/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
   -h, --help         Show help
 MSG
 }
@@ -145,6 +145,12 @@ else
   coderabbit_action_state="unknown: CodeRabbit 상태를 수동 확인하세요"
 fi
 
+if [[ "$strict_status_checks" == "true" && "$mergeable_state" == "behind" ]]; then
+  merge_gate_state="blocker: strict up-to-date check가 켜져 있고 PR branch가 base보다 뒤처졌습니다"
+else
+  merge_gate_state="clear"
+fi
+
 cat <<MSG
 # PR 상태 요약
 
@@ -155,6 +161,7 @@ cat <<MSG
 - Merge state: $merge_state
 - REST mergeable_state: $mergeable_state
 - Base requires up-to-date checks: $strict_status_checks
+- Merge gate state: $merge_gate_state
 - Review decision: $review_decision
 - CI scope: $CI_SCOPE
 - Heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
@@ -174,7 +181,7 @@ MSG
 gh pr checks "$pr_number" || true
 
 if [[ "$fail_on_blocker" == "1" ]]; then
-  if [[ "$coderabbit_action_state" == blocker:* ]]; then
+  if [[ "$coderabbit_action_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
     exit 3
   fi
 fi

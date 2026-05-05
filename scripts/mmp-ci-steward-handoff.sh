@@ -106,7 +106,7 @@ if [[ "$CI_SCOPE" == "code-rabbit-only" ]]; then
   full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 path-filter 기대 동작입니다."
 else
   steward_mode="full-ci"
-  ci_instruction="이 PR은 heavy CI trigger path를 변경했습니다. CodeRabbit 정리 후 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙이고, scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하세요."
+  ci_instruction="이 PR은 heavy CI trigger path를 변경했습니다. CodeRabbit 정리 후 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙이고, scripts/mmp-pr-watch.sh $number --trigger-missing-workflows --update-branch-if-needed 로 현재 head SHA의 required workflow와 strict up-to-date gate를 확인하세요."
   merge_ready_rule="MERGE_READY: unresolved thread 0, CodeRabbit clear, ready-for-ci label present, required checks green, Codecov 기준 충족 또는 비대상 근거 확인."
   copy_ready_rule="CodeRabbit 통과 후 scripts/pr-ready-for-ci-guard.sh --apply $number 와 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows --update-branch-if-needed 를 이어서 실행하세요."
   full_ci_wait_rule="라벨 이벤트만 기다리지 마세요. required workflow(CI, E2E — Stubbed Backend, Security — Fast Feedback)가 현재 head SHA에 없으면 watcher가 workflow_dispatch로 생성해야 합니다."
@@ -160,7 +160,7 @@ $ci_instruction
 - watcher는 CI steward 전용입니다. 메인 Codex thread에서 직접 실행하지 않습니다.
 - full-ci PR에서 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --code-rabbit-only 는 CodeRabbit 정리 확인용 중간 대기입니다. 성공해도 완료 보고하지 말고 즉시 ready-for-ci guard를 적용하세요.
 - full-ci PR에서 ready-for-ci 라벨은 full CI 실행 허가일 뿐이며, 라벨만으로 모든 workflow가 생성됐다고 가정하지 않습니다.
-- full-ci PR에서 ready-for-ci 라벨 적용 후에는 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하고, 누락된 workflow를 workflow_dispatch로 생성합니다.
+- full-ci PR에서 ready-for-ci 라벨 적용 후에는 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows --update-branch-if-needed 로 현재 head SHA의 required workflow와 strict up-to-date gate를 확인하고, 누락된 workflow를 workflow_dispatch로 생성합니다.
 - Required workflow set: CI, E2E — Stubbed Backend, Security — Fast Feedback.
 - gitleaks, File Size Guard, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.

@@ -18,7 +18,7 @@ Allowed:
 7. If a GitHub review thread is still unresolved but you have verified that the current code and tests address the exact finding, you may resolve only that target PR review thread. Do not resolve uncertain, unrelated, or user-authored threads.
 8. For `full-ci`, use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` only as an intermediate wait for CodeRabbit cleanup. A `--code-rabbit-only` success is not a final success state for `full-ci`.
 9. For `full-ci`, after CodeRabbit is clear, immediately run `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>`.
-10. For `full-ci`, after the guard applies `ready-for-ci`, run `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --trigger-missing-workflows` and continue until required workflows finish, fail, or time out.
+10. For `full-ci`, after the guard applies `ready-for-ci`, run `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --trigger-missing-workflows --update-branch-if-needed` and continue until required workflows finish, fail, or time out.
    - In this repo, `ready-for-ci` is an authorization label, not proof that full CI has started.
    - The required full-CI workflow set is `CI`, `E2E — Stubbed Backend`, and `Security — Fast Feedback`.
    - `scripts/mmp-pr-watch.sh --trigger-missing-workflows` must verify latest runs for the current head SHA and dispatch missing required workflows with `workflow_dispatch`.
