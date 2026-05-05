@@ -73,6 +73,7 @@ review_thread_counts() {
   local repo="$2"
   local pr_number="$3"
   local graphql_query after_cursor threads_json page_unresolved page_total has_next
+  # shellcheck disable=SC2016
   graphql_query='query($owner:String!, $repo:String!, $number:Int!, $after:String) { repository(owner:$owner, name:$repo) { pullRequest(number:$number) { reviewThreads(first:100, after:$after) { nodes { isResolved } pageInfo { hasNextPage endCursor } } } } }'
   after_cursor=""
   local unresolved=0
@@ -265,7 +266,7 @@ while :; do
       fi
       continue
     fi
-    IFS=$'\t' read -r _wf status conclusion run_id url _created_at <<< "$latest_row"
+    IFS=$'\t' read -r _wf status conclusion run_id _url _created_at <<< "$latest_row"
     workflow_summary+=("$workflow_name=$status/$conclusion#$run_id")
     case "$status/$conclusion" in
       completed/success)
