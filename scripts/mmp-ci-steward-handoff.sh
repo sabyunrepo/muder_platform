@@ -124,7 +124,10 @@ $checks_summary
 - 타당한 리뷰/실패만 고치고 focused validation을 실행한 뒤 fix commit을 push할 수 있습니다.
 - CodeRabbit 정리 후 full CI가 필요하면 반드시 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙입니다.
 - scripts/mmp-pr-watch.sh $number --code-rabbit-only 는 CodeRabbit 정리 확인용 중간 대기입니다. 성공해도 완료 보고하지 말고 즉시 ready-for-ci guard를 적용하세요.
-- ready-for-ci 라벨 적용 후에는 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 required workflow가 끝날 때까지 확인합니다.
+- ready-for-ci 라벨은 full CI 실행 허가일 뿐이며, 라벨만으로 모든 workflow가 생성됐다고 가정하지 않습니다.
+- ready-for-ci 라벨 적용 후에는 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하고, 누락된 workflow를 workflow_dispatch로 생성합니다.
+- Required workflow set: CI, E2E — Stubbed Backend, Security — Fast Feedback.
+- gitleaks, File Size Guard, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
 
 ## Steward 금지 범위
@@ -148,6 +151,7 @@ $checks_summary
 - ready-for-ci 라벨은 scripts/pr-ready-for-ci-guard.sh --apply $number 를 통과할 때만 붙이세요.
 - CodeRabbit 통과만으로 완료 보고하지 마세요. CodeRabbit 통과 후 ready-for-ci 라벨을 붙이고 required workflow와 Codecov까지 확인해야 합니다.
 - scripts/mmp-pr-watch.sh $number --code-rabbit-only 성공은 중간 단계입니다. 그 다음 scripts/pr-ready-for-ci-guard.sh --apply $number 와 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 를 이어서 실행하세요.
+- 라벨 이벤트만 기다리지 마세요. required workflow(CI, E2E — Stubbed Backend, Security — Fast Feedback)가 현재 head SHA에 없으면 watcher가 workflow_dispatch로 생성해야 합니다.
 - 변경했다면 focused validation을 실행하고 push하세요.
 - 최종 보고는 한국어로 발견 / 수행 / 판단 / 미해결 4섹션으로 작성하고, 확인한 Head SHA와 판단의 MERGE_READY, NEEDS_FIX, BLOCKED 중 하나를 명시하세요.
 MSG
