@@ -31,6 +31,10 @@ const characters: EditorCharacterResponse[] = [
     is_culprit: false,
     mystery_role: 'suspect',
     sort_order: 0,
+    is_playable: true,
+    show_in_intro: true,
+    can_speak_in_reading: true,
+    is_voting_candidate: true,
   },
   {
     id: 'char-2',
@@ -41,6 +45,10 @@ const characters: EditorCharacterResponse[] = [
     is_culprit: false,
     mystery_role: 'detective',
     sort_order: 1,
+    is_playable: true,
+    show_in_intro: true,
+    can_speak_in_reading: true,
+    is_voting_candidate: false,
   },
 ];
 

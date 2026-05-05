@@ -70,8 +70,34 @@ import { CharacterAssignPanel } from '../../design/CharacterAssignPanel';
 // ---------------------------------------------------------------------------
 
 const mockCharacters = [
-  { id: 'char-1', name: '홍길동', description: null, image_url: null, is_culprit: true, mystery_role: 'culprit' as const, sort_order: 0 },
-  { id: 'char-2', name: '김철수', description: null, image_url: null, is_culprit: false, mystery_role: 'suspect' as const, sort_order: 1 },
+  {
+    id: 'char-1',
+    theme_id: 'theme-1',
+    name: '홍길동',
+    description: null,
+    image_url: null,
+    is_culprit: true,
+    mystery_role: 'culprit' as const,
+    sort_order: 0,
+    is_playable: true,
+    show_in_intro: true,
+    can_speak_in_reading: true,
+    is_voting_candidate: true,
+  },
+  {
+    id: 'char-2',
+    theme_id: 'theme-1',
+    name: '김철수',
+    description: null,
+    image_url: null,
+    is_culprit: false,
+    mystery_role: 'suspect' as const,
+    sort_order: 1,
+    is_playable: false,
+    show_in_intro: true,
+    can_speak_in_reading: true,
+    is_voting_candidate: false,
+  },
 ];
 
 const mockClues = [
@@ -174,6 +200,32 @@ describe('CharacterAssignPanel', () => {
         is_culprit: false,
         mystery_role: 'accomplice',
         sort_order: 0,
+        is_playable: true,
+        show_in_intro: true,
+        can_speak_in_reading: true,
+        is_voting_candidate: true,
+      },
+    });
+  });
+
+  it('등장인물 유형을 NPC로 변경하면 투표 후보를 함께 끈다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    fireEvent.click(screen.getByLabelText(/플레이어 캐릭터/));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: {
+        name: '홍길동',
+        description: undefined,
+        image_url: undefined,
+        is_culprit: true,
+        mystery_role: 'culprit',
+        sort_order: 0,
+        is_playable: false,
+        show_in_intro: true,
+        can_speak_in_reading: true,
+        is_voting_candidate: false,
       },
     });
   });

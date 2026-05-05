@@ -3,10 +3,16 @@ import { PlayerRole, type Player } from "@mmp/shared";
 import {
   countExcludedDetectives,
   filterVotingCandidates,
+  isEligibleCharacterCandidate,
   readVotingCandidatePolicy,
 } from "../votingCandidates";
 
-function player(overrides: Partial<Player>): Player {
+type CandidatePlayer = Player & {
+  isPlayable?: boolean;
+  isVotingCandidate?: boolean;
+};
+
+function player(overrides: Partial<CandidatePlayer>): CandidatePlayer {
   return {
     id: "p-1",
     nickname: "플레이어",
@@ -73,6 +79,23 @@ describe("votingCandidates", () => {
         includeDeadPlayers: true,
       }).map((p) => p.id),
     ).toEqual(["me", "detective", "dead"]);
+  });
+
+  it("excludes backend-marked NPC or non-candidate characters before phase policy", () => {
+    const players = [
+      player({ id: "npc", nickname: "피해자", isPlayable: false }),
+      player({ id: "hidden", nickname: "진행자", isVotingCandidate: false }),
+      player({ id: "suspect", nickname: "용의자", role: PlayerRole.CIVILIAN }),
+    ];
+
+    expect(isEligibleCharacterCandidate(players[0])).toBe(false);
+    expect(
+      filterVotingCandidates(players, null, {
+        includeDetective: true,
+        includeSelf: true,
+        includeDeadPlayers: true,
+      }).map((p) => p.id),
+    ).toEqual(["suspect"]);
   });
 
   it("counts detectives hidden by the current policy", () => {

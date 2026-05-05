@@ -50,6 +50,10 @@ export interface EditorCharacterResponse {
   is_culprit: boolean;
   mystery_role: MysteryRole;
   sort_order: number;
+  is_playable: boolean;
+  show_in_intro: boolean;
+  can_speak_in_reading: boolean;
+  is_voting_candidate: boolean;
 }
 
 export type MysteryRole = 'suspect' | 'culprit' | 'accomplice' | 'detective';
@@ -83,6 +87,10 @@ export interface CreateCharacterRequest {
   is_culprit?: boolean;
   mystery_role?: MysteryRole;
   sort_order?: number;
+  is_playable?: boolean;
+  show_in_intro?: boolean;
+  can_speak_in_reading?: boolean;
+  is_voting_candidate?: boolean;
 }
 
 export interface UpdateCharacterRequest {
@@ -92,6 +100,10 @@ export interface UpdateCharacterRequest {
   is_culprit?: boolean;
   mystery_role?: MysteryRole;
   sort_order?: number;
+  is_playable?: boolean;
+  show_in_intro?: boolean;
+  can_speak_in_reading?: boolean;
+  is_voting_candidate?: boolean;
 }
 
 export interface CreateClueRequest {
