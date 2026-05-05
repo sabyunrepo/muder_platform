@@ -940,7 +940,7 @@ components:
     ProblemDetail:
       type: object
       description: RFC 9457 Problem Details
-      required: [type, title, status, detail, code]
+      required: [type, title, status, detail, code, timestamp]
       properties:
         type:
           type: string
@@ -989,7 +989,7 @@ components:
           description: Request identifier mirrored from X-Request-ID
         correlation_id:
           type: string
-          description: Correlation identifier for client support flows; mirrors request_id
+          description: Optional correlation identifier for client support flows; mirrors request_id when present
         timestamp:
           type: string
           format: date-time
