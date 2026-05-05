@@ -101,4 +101,72 @@ describe("PhaseNodePanel extended fields", () => {
     expect(screen.getByText("장면 종료 트리거")).toBeDefined();
     expect(screen.getAllByText("트리거 실행 결과 없음")).toHaveLength(2);
   });
+
+  it("토론방 정책을 장면 데이터로 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          discussionRoomPolicy: {
+            enabled: true,
+            mainRoomName: "전체 토론",
+            privateRoomsEnabled: false,
+            privateRoomName: "밀담방",
+            availability: "phase_active",
+          },
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("메인 토론방"), {
+      target: { value: "추리 회의" },
+    });
+
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: {
+        enabled: true,
+        mainRoomName: "추리 회의",
+        privateRoomsEnabled: false,
+        privateRoomName: "밀담방",
+        availability: "phase_active",
+        conditionalRoomName: "",
+      },
+    });
+  });
+
+  it("조건부 토론방 이름을 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          discussionRoomPolicy: {
+            enabled: true,
+            mainRoomName: "전체 토론",
+            privateRoomsEnabled: false,
+            privateRoomName: "밀담방",
+            availability: "condition",
+          },
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("조건부 방명"), {
+      target: { value: "비밀 토론" },
+    });
+
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: {
+        enabled: true,
+        mainRoomName: "전체 토론",
+        privateRoomsEnabled: false,
+        privateRoomName: "밀담방",
+        availability: "condition",
+        conditionalRoomName: "비밀 토론",
+      },
+    });
+  });
 });

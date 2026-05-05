@@ -273,8 +273,138 @@ func TestGroupChatModule_BuildState(t *testing.T) {
 func TestGroupChatModule_SupportedActions(t *testing.T) {
 	m := NewGroupChatModule()
 	actions := m.SupportedActions()
-	if len(actions) != 4 {
-		t.Fatalf("expected 4 supported actions, got %d", len(actions))
+	if len(actions) != 5 {
+		t.Fatalf("expected 5 supported actions, got %d", len(actions))
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyOpensPhaseRooms(t *testing.T) {
+	m, deps := initGroupChat(t)
+	var applied bool
+	deps.EventBus.Subscribe("groupchat.policy_applied", func(_ engine.Event) {
+		applied = true
+	})
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "추리 회의",
+		"privateRoomsEnabled": true,
+		"privateRoomName": "2인 밀담",
+		"availability": "phase_active"
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	if !applied {
+		t.Fatal("expected groupchat.policy_applied event")
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if !s.IsOpen {
+		t.Fatal("expected room policy to open phase-active discussion rooms")
+	}
+	if len(s.Rooms) != 2 {
+		t.Fatalf("rooms = %d, want 2: %+v", len(s.Rooms), s.Rooms)
+	}
+	if s.Rooms[0].ID != "main" || s.Rooms[0].Name != "추리 회의" {
+		t.Fatalf("main room not normalized: %+v", s.Rooms[0])
+	}
+	if s.Rooms[1].ID != "private" || s.Rooms[1].Name != "2인 밀담" {
+		t.Fatalf("private room not normalized: %+v", s.Rooms[1])
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyConditionKeepsRoomsClosed(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "전체 토론",
+		"availability": "condition",
+		"conditionalRoomName": "비밀 토론"
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.IsOpen {
+		t.Fatal("condition-gated discussion rooms must remain closed until runtime trigger opens them")
+	}
+	if len(s.Rooms) != 2 {
+		t.Fatalf("rooms = %d, want main + conditional: %+v", len(s.Rooms), s.Rooms)
+	}
+	if s.Rooms[1].ID != "conditional" || s.Rooms[1].Name != "비밀 토론" {
+		t.Fatalf("conditional room not exposed as metadata: %+v", s.Rooms[1])
+	}
+
+	err = m.HandleMessage(context.Background(), uuid.New(), "groupchat:join", json.RawMessage(`{"roomId":"main"}`))
+	if err == nil {
+		t.Fatal("expected backend to reject room join while condition-gated room is closed")
+	}
+}
+
+func TestGroupChatModule_BuildStateFor_PolicyGeneratedPrivateRoomRedactsMessages(t *testing.T) {
+	m, _ := initGroupChat(t)
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "추리 회의",
+		"privateRoomsEnabled": true,
+		"privateRoomName": "밀담",
+		"availability": "phase_active"
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	alice := uuid.New()
+	bob := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:join",
+		json.RawMessage(`{"roomId":"private"}`)); err != nil {
+		t.Fatalf("alice join private: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), bob, "groupchat:join",
+		json.RawMessage(`{"roomId":"main"}`)); err != nil {
+		t.Fatalf("bob join main: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:send",
+		json.RawMessage(`{"roomId":"private","message":"밀담 내용","characterCode":"A"}`)); err != nil {
+		t.Fatalf("alice send private: %v", err)
+	}
+
+	bobData, err := m.BuildStateFor(bob)
+	if err != nil {
+		t.Fatalf("BuildStateFor bob: %v", err)
+	}
+	if bytes.Contains(bobData, []byte("밀담 내용")) {
+		t.Fatalf("policy-generated private room leaked message: %s", bobData)
+	}
+	if bytes.Contains(bobData, []byte(alice.String())) {
+		t.Fatalf("policy-generated private room leaked member uuid: %s", bobData)
 	}
 }
 
