@@ -26,7 +26,7 @@ export function toLocationEditorViewModel(
       location.restricted_characters,
       options.characters ?? []
     ),
-    clueCountLabel: `조사 시 발견 단서 ${clueCount}개`,
+    clueCountLabel: `단서 조사 ${clueCount}개`,
     clueShortLabel: `단서 ${clueCount}개`,
     badges: buildLocationBadges(location, clueCount, options.mapName),
   };

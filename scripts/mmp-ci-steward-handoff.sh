@@ -152,9 +152,10 @@ $ci_instruction
 - Required workflow set: CI, E2E — Stubbed Backend, Security — Fast Feedback.
 - gitleaks, File Size Guard, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
+- base/main 최신화, rebase, merge commit, force-push는 steward의 기본 책임이 아닙니다. 메인 Codex가 명시적으로 최신 head를 다시 위임한 경우에만 그 head를 기준으로 대기/검증합니다.
 
 ## Steward 금지 범위
-- PR merge, PR 생성, Issue 생성, force-push, destructive git, secret 조회, unrelated branch/worktree 수정은 금지입니다.
+- PR merge, PR 생성, Issue 생성, force-push, destructive git, secret 조회, unrelated branch/worktree 수정, 임의 branch 최신화는 금지입니다.
 - 테스트 스킵, coverage 약화, 유효한 리뷰 무시도 금지입니다.
 
 ## 메인 Codex 복귀 조건
