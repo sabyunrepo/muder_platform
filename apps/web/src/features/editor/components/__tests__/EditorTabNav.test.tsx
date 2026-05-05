@@ -35,26 +35,29 @@ describe("EditorTabNav dynamic tabs", () => {
   it("모듈 미지정 시 always=true 탭만 표시된다", () => {
     render(<EditorTabNav />);
     expect(screen.getByText("스토리 진행")).toBeDefined();
-    expect(screen.getByText("기본정보")).toBeDefined();
-    expect(screen.getByText("게임설계")).toBeDefined();
-    expect(screen.queryByText("미디어")).toBeNull();
+    expect(screen.getByText("등장인물 관리")).toBeDefined();
+    expect(screen.getByText("단서 관리")).toBeDefined();
+    expect(screen.getByText("게임 설계")).toBeDefined();
+    expect(screen.getByText("기본 설정")).toBeDefined();
+    expect(screen.getByText("고급 설정")).toBeDefined();
+    expect(screen.queryByText("미디어 관리")).toBeNull();
   });
 
   it("voice_chat 모듈 활성 시 미디어 탭이 표시된다", () => {
     render(<EditorTabNav activeModules={["voice_chat"]} />);
-    expect(screen.getByText("미디어")).toBeDefined();
+    expect(screen.getByText("미디어 관리")).toBeDefined();
   });
 
   it("모듈 비활성 시 미디어 탭이 숨겨진다", () => {
     render(<EditorTabNav activeModules={["text_chat"]} />);
-    expect(screen.queryByText("미디어")).toBeNull();
+    expect(screen.queryByText("미디어 관리")).toBeNull();
   });
 
   it("직접 URL로 열린 탭은 모듈이 비활성이어도 숨기지 않는다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} forcedVisibleTab="media" />);
 
-    expect(screen.getByText("미디어")).toBeDefined();
+    expect(screen.getByText("미디어 관리")).toBeDefined();
     expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
   });
 
@@ -62,5 +65,22 @@ describe("EditorTabNav dynamic tabs", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} />);
     expect(mockSetActiveTab).toHaveBeenCalledWith("storyMap");
+  });
+
+  it("스토리 진행, 보조 관리, 설정 순서로 탭 우선순위를 유지한다", () => {
+    render(<EditorTabNav activeModules={["voice_chat"]} />);
+
+    const tabLabels = screen.getAllByRole("tab").map((tab) => tab.textContent);
+    expect(tabLabels).toEqual([
+      "스토리 진행",
+      "스토리",
+      "등장인물 관리",
+      "단서 관리",
+      "게임 설계",
+      "미디어 관리",
+      "기본 설정",
+      "템플릿",
+      "고급 설정",
+    ]);
   });
 });
