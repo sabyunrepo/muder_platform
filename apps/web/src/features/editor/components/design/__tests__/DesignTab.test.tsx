@@ -5,12 +5,14 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, navigateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
-  mutateMock: vi.fn(),
-  navigateMock: vi.fn(),
-  useUpdateConfigJsonMock: vi.fn(),
-  useModuleSchemasMock: vi.fn(),
-}));
+const { mutateMock, navigateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(
+  () => ({
+    mutateMock: vi.fn(),
+    navigateMock: vi.fn(),
+    useUpdateConfigJsonMock: vi.fn(),
+    useModuleSchemasMock: vi.fn(),
+  })
+);
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -64,15 +66,18 @@ vi.mock('@/features/editor/constants', () => ({
       key: 'core',
       label: '코어',
       modules: [
-        { id: 'connection', name: '접속 관리', description: '플레이어 접속/재접속 처리', required: true },
+        {
+          id: 'connection',
+          name: '접속 관리',
+          description: '플레이어 접속/재접속 처리',
+          required: true,
+        },
       ],
     },
     {
       key: 'progression',
       label: '진행',
-      modules: [
-        { id: 'reading', name: '리딩', description: '대사 낭독 시스템', required: false },
-      ],
+      modules: [{ id: 'reading', name: '리딩', description: '대사 낭독 시스템', required: false }],
     },
   ],
   REQUIRED_MODULE_IDS: ['connection'],
@@ -80,9 +85,7 @@ vi.mock('@/features/editor/constants', () => ({
     {
       key: 'progression',
       label: '진행',
-      modules: [
-        { id: 'reading', name: '리딩', description: '대사 낭독 시스템', required: false },
-      ],
+      modules: [{ id: 'reading', name: '리딩', description: '대사 낭독 시스템', required: false }],
     },
   ],
 }));
@@ -180,6 +183,7 @@ describe('DesignTab', () => {
   });
 
   it.each([
+    ['modules', '진행'],
     ['locations', 'LocationsSubTab 콘텐츠'],
     ['endings', 'EndingEntitySubTab 콘텐츠'],
     ['flow', 'FlowSubTab 콘텐츠'],
