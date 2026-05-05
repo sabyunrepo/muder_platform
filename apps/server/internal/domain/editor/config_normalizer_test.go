@@ -66,6 +66,17 @@ func TestLegacyConfigAxes_NewShapeIsEmpty(t *testing.T) {
 	assert.Empty(t, legacyConfigAxes(input))
 }
 
+func TestLegacyConfigAxes_MixedLocationShapesDetectsDeadKey(t *testing.T) {
+	input := json.RawMessage(`{
+		"locations": [
+			{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}},
+			{"id": "study_room", "clueIds": ["c2"]}
+		]
+	}`)
+
+	assert.ElementsMatch(t, []string{"locations_clueIds"}, legacyConfigAxes(input))
+}
+
 func TestNormalize_ModulesStringListPlusConfigsMap(t *testing.T) {
 	input := json.RawMessage(`{
 		"modules": ["voting", "audio"],

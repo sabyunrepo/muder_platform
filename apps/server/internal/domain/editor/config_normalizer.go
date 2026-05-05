@@ -40,13 +40,38 @@ func legacyConfigAxes(raw json.RawMessage) []string {
 		axes = append(axes, "modules_array")
 	}
 	// Dead-key-only legacy: locations[].clueIds present but locationClueConfig is
-	// absent. A blob that already has locationClueConfig is post-normalization and
-	// must not re-trigger the normalizer (idempotence / zeroing guard).
-	if bytes.Contains(raw, []byte(`"clueIds"`)) &&
-		!bytes.Contains(raw, []byte(`"locationClueConfig"`)) {
+	// absent on the same location. A blob may mix already-normalized locations
+	// with legacy ones, so this check must be location-scoped.
+	if hasLegacyLocationClueIDs(raw) {
 		axes = append(axes, "locations_clueIds")
 	}
 	return axes
+}
+
+func hasLegacyLocationClueIDs(raw json.RawMessage) bool {
+	if !bytes.Contains(raw, []byte(`"clueIds"`)) {
+		return false
+	}
+
+	var cfg struct {
+		Locations []json.RawMessage `json:"locations"`
+	}
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return false
+	}
+	for _, locRaw := range cfg.Locations {
+		var loc map[string]json.RawMessage
+		if err := json.Unmarshal(locRaw, &loc); err != nil {
+			continue
+		}
+		if _, hasDeadKey := loc["clueIds"]; !hasDeadKey {
+			continue
+		}
+		if _, hasCanonicalKey := loc["locationClueConfig"]; !hasCanonicalKey {
+			return true
+		}
+	}
+	return false
 }
 
 // NormalizeConfigJSON converts legacy theme.config_json shapes (D-19/D-20/D-21)
