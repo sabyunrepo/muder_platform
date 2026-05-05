@@ -1,14 +1,18 @@
-import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
-import type { EditorThemeResponse } from "@/features/editor/api";
-import { useFlowData } from "../../hooks/useFlowData";
-import type { FlowNodeData } from "../../flowTypes";
-import { EndingEntityDetail } from "./EndingEntityDetail";
-import { EndingDecisionSummaryPanel } from "./EndingDecisionSummaryPanel";
-import { EndingEmptyState } from "./EndingEmptyState";
-import { EndingEntityHeader } from "./EndingEntityHeader";
-import { EndingBranchRulesPanel } from "./EndingBranchRulesPanel";
-import { buildEndingDecisionSummary, toEndingEditorViewModel } from "../../entities/ending/endingEntityAdapter";
+import { useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+import type { EditorThemeResponse } from '@/features/editor/api';
+import { useFlowData } from '../../hooks/useFlowData';
+import type { FlowNodeData } from '../../flowTypes';
+import { EndingEntityDetail } from './EndingEntityDetail';
+import { EndingDecisionSummaryPanel } from './EndingDecisionSummaryPanel';
+import { EndingEmptyState } from './EndingEmptyState';
+import { EndingEntityHeader } from './EndingEntityHeader';
+import { EndingBranchRulesPanel } from './EndingBranchRulesPanel';
+import {
+  buildEndingDecisionSummary,
+  toEndingEditorViewModel,
+} from '../../entities/ending/endingEntityAdapter';
+import { getDisplayErrorMessage } from '@/lib/display-error';
 
 interface EndingEntitySubTabProps {
   themeId: string;
@@ -16,14 +20,20 @@ interface EndingEntitySubTabProps {
 }
 
 export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { nodes, edges = [], isLoading, isError, error, refetch, addNode, updateNodeData } = useFlowData(themeId);
+  const {
+    nodes,
+    edges = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+    addNode,
+    updateNodeData,
+  } = useFlowData(themeId);
 
-  const endingNodes = useMemo(
-    () => nodes.filter((node) => node.type === "ending"),
-    [nodes],
-  );
+  const endingNodes = useMemo(() => nodes.filter((node) => node.type === 'ending'), [nodes]);
 
   const filteredNodes = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -39,13 +49,10 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
   const selectedNode =
     filteredNodes.find((node) => node.id === selectedId) ?? filteredNodes[0] ?? null;
 
-  const decisionSummary = useMemo(
-    () => buildEndingDecisionSummary(nodes, edges),
-    [nodes, edges],
-  );
+  const decisionSummary = useMemo(() => buildEndingDecisionSummary(nodes, edges), [nodes, edges]);
 
   const handleAddEnding = () => {
-    addNode("ending", { x: 360 + endingNodes.length * 40, y: 220 });
+    addNode('ending', { x: 360 + endingNodes.length * 40, y: 220 });
   };
 
   if (isLoading) {
@@ -64,11 +71,9 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
           <p className="mt-2 text-sm leading-6 text-rose-200/80">
             네트워크나 권한 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
           </p>
-          {error instanceof Error && error.message && (
-            <p className="mt-3 rounded-xl bg-slate-950/60 p-3 text-left text-xs leading-5 text-rose-100/80">
-              {error.message}
-            </p>
-          )}
+          <p className="mt-3 rounded-xl bg-slate-950/60 p-3 text-left text-xs leading-5 text-rose-100/80">
+            {getDisplayErrorMessage(error, '결말 목록을 불러오지 못했습니다.')}
+          </p>
           <button
             type="button"
             onClick={() => void refetch()}
@@ -82,7 +87,10 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
   }
 
   return (
-    <div data-testid="ending-entity-panel" className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6">
+    <div
+      data-testid="ending-entity-panel"
+      className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6"
+    >
       <EndingEntityHeader onAddEnding={handleAddEnding} />
 
       <EndingDecisionSummaryPanel summary={decisionSummary} />
@@ -124,8 +132,8 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
                       aria-pressed={selected}
                       className={`rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 ${
                         selected
-                          ? "border-amber-500/70 bg-amber-500/10"
-                          : "border-slate-800 bg-slate-950 hover:border-slate-600"
+                          ? 'border-amber-500/70 bg-amber-500/10'
+                          : 'border-slate-800 bg-slate-950 hover:border-slate-600'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -137,7 +145,10 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
                       </p>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {viewModel.badges.map((badge) => (
-                          <span key={badge} className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                          <span
+                            key={badge}
+                            className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
+                          >
                             {badge}
                           </span>
                         ))}

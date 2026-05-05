@@ -54,6 +54,12 @@ describe('getErrorReference', () => {
     expect(ref).toBe('trace-98');
   });
 
+  it('request_id와 trace_id가 없으면 correlation_id를 표시한다', () => {
+    const ref = getErrorReference(apiError({ correlation_id: 'corr-123456789' }));
+
+    expect(ref).toBe('corr-123');
+  });
+
   it('표시 가능한 추적 ID가 없으면 undefined를 반환한다', () => {
     expect(getErrorReference(apiError({}))).toBeUndefined();
   });

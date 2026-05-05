@@ -1,5 +1,6 @@
-import { create } from "zustand";
-import { WsClient, WsClientState } from "@mmp/ws-client";
+import { create } from 'zustand';
+import type { ErrorPayload } from '@mmp/shared';
+import { WsClient, WsClientState } from '@mmp/ws-client';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,6 +30,7 @@ export interface ConnectionState {
    * explicit clearAuthRevoked.
    */
   authRevoked: AuthRevokedState | null;
+  lastWsError: ErrorPayload | null;
 }
 
 export interface ConnectionActions {
@@ -40,6 +42,7 @@ export interface ConnectionActions {
   setGameState: (state: WsClientState) => void;
   setSocialState: (state: WsClientState) => void;
   clearAuthRevoked: () => void;
+  clearLastWsError: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,7 +51,7 @@ export interface ConnectionActions {
 
 function buildWsBase(): string {
   const { protocol, host } = window.location;
-  const wsProtocol = protocol === "https:" ? "wss:" : "ws:";
+  const wsProtocol = protocol === 'https:' ? 'wss:' : 'ws:';
   return `${wsProtocol}//${host}`;
 }
 
@@ -62,7 +65,7 @@ function authProtocolEnabled(): boolean {
   // Vite injects env vars at build time. In test/SSR contexts where
   // import.meta.env is undefined, fall back to off.
   try {
-    return import.meta.env.VITE_MMP_WS_AUTH_PROTOCOL === "true";
+    return import.meta.env.VITE_MMP_WS_AUTH_PROTOCOL === 'true';
   } catch {
     return false;
   }
@@ -72,118 +75,123 @@ function authProtocolEnabled(): boolean {
 // Store
 // ---------------------------------------------------------------------------
 
-export const useConnectionStore = create<ConnectionState & ConnectionActions>()(
-  (set, get) => ({
-    gameClient: null,
-    socialClient: null,
-    gameState: WsClientState.IDLE,
-    socialState: WsClientState.IDLE,
-    sessionId: null,
-    authRevoked: null,
+export const useConnectionStore = create<ConnectionState & ConnectionActions>()((set, get) => ({
+  gameClient: null,
+  socialClient: null,
+  gameState: WsClientState.IDLE,
+  socialState: WsClientState.IDLE,
+  sessionId: null,
+  authRevoked: null,
+  lastWsError: null,
 
-    connectGame: (sessionId, token) => {
-      const { gameClient } = get();
-      if (gameClient) {
-        gameClient.disconnect();
-      }
+  connectGame: (sessionId, token) => {
+    const { gameClient } = get();
+    if (gameClient) {
+      gameClient.disconnect();
+    }
 
-      const wsBase = buildWsBase();
-      const enabled = authProtocolEnabled();
-      const client = new WsClient({
-        url: `${wsBase}/ws/game?token=${encodeURIComponent(token)}`,
-        token,
-        authProtocol: enabled,
-        onRevoked: (code, reason) => set({ authRevoked: { code, reason } }),
-        onUnauthorized: (reason) =>
-          set({ authRevoked: { code: "unauthorized", reason } }),
-        // onTokenRefreshed wiring (rotate token in useAuthStore) lands
-        // alongside auth.refresh_required scheduling — PR-9 ships only
-        // the manual refresh path, so nothing to forward yet.
-      });
+    const wsBase = buildWsBase();
+    const enabled = authProtocolEnabled();
+    const client = new WsClient({
+      url: `${wsBase}/ws/game?token=${encodeURIComponent(token)}`,
+      token,
+      authProtocol: enabled,
+      onRevoked: (code, reason) => set({ authRevoked: { code, reason } }),
+      onUnauthorized: (reason) => set({ authRevoked: { code: 'unauthorized', reason } }),
+      onServerError: (payload) => set({ lastWsError: payload }),
+      // onTokenRefreshed wiring (rotate token in useAuthStore) lands
+      // alongside auth.refresh_required scheduling — PR-9 ships only
+      // the manual refresh path, so nothing to forward yet.
+    });
 
-      client.onStateChange((state) => {
-        get().setGameState(state);
-      });
+    client.onStateChange((state) => {
+      get().setGameState(state);
+    });
 
-      set({ gameClient: client, sessionId, authRevoked: null });
-      client.connect();
-    },
+    set({ gameClient: client, sessionId, authRevoked: null, lastWsError: null });
+    client.connect();
+  },
 
-    connectSocial: (token) => {
-      const { socialClient } = get();
-      if (socialClient) {
-        socialClient.disconnect();
-      }
+  connectSocial: (token) => {
+    const { socialClient } = get();
+    if (socialClient) {
+      socialClient.disconnect();
+    }
 
-      const wsBase = buildWsBase();
-      const enabled = authProtocolEnabled();
-      const client = new WsClient({
-        url: `${wsBase}/ws/social?token=${encodeURIComponent(token)}`,
-        token,
-        authProtocol: enabled,
-        onRevoked: (code, reason) => set({ authRevoked: { code, reason } }),
-        onUnauthorized: (reason) =>
-          set({ authRevoked: { code: "unauthorized", reason } }),
-      });
+    const wsBase = buildWsBase();
+    const enabled = authProtocolEnabled();
+    const client = new WsClient({
+      url: `${wsBase}/ws/social?token=${encodeURIComponent(token)}`,
+      token,
+      authProtocol: enabled,
+      onRevoked: (code, reason) => set({ authRevoked: { code, reason } }),
+      onUnauthorized: (reason) => set({ authRevoked: { code: 'unauthorized', reason } }),
+      onServerError: (payload) => set({ lastWsError: payload }),
+    });
 
-      client.onStateChange((state) => {
-        get().setSocialState(state);
-      });
+    client.onStateChange((state) => {
+      get().setSocialState(state);
+    });
 
-      set({ socialClient: client, authRevoked: null });
-      client.connect();
-    },
+    set({ socialClient: client, authRevoked: null, lastWsError: null });
+    client.connect();
+  },
 
-    disconnectGame: () => {
-      const { gameClient } = get();
-      if (gameClient) {
-        gameClient.disconnect();
-      }
-      set({
-        gameClient: null,
-        sessionId: null,
-        gameState: WsClientState.DISCONNECTED,
-      });
-    },
+  disconnectGame: () => {
+    const { gameClient } = get();
+    if (gameClient) {
+      gameClient.disconnect();
+    }
+    set({
+      gameClient: null,
+      sessionId: null,
+      gameState: WsClientState.DISCONNECTED,
+      lastWsError: null,
+    });
+  },
 
-    disconnectSocial: () => {
-      const { socialClient } = get();
-      if (socialClient) {
-        socialClient.disconnect();
-      }
-      set({ socialClient: null, socialState: WsClientState.DISCONNECTED });
-    },
+  disconnectSocial: () => {
+    const { socialClient } = get();
+    if (socialClient) {
+      socialClient.disconnect();
+    }
+    set({ socialClient: null, socialState: WsClientState.DISCONNECTED, lastWsError: null });
+  },
 
-    disconnectAll: () => {
-      const { gameClient, socialClient } = get();
-      if (gameClient) {
-        gameClient.disconnect();
-      }
-      if (socialClient) {
-        socialClient.disconnect();
-      }
-      set({
-        gameClient: null,
-        socialClient: null,
-        sessionId: null,
-        gameState: WsClientState.DISCONNECTED,
-        socialState: WsClientState.DISCONNECTED,
-      });
-    },
+  disconnectAll: () => {
+    const { gameClient, socialClient } = get();
+    if (gameClient) {
+      gameClient.disconnect();
+    }
+    if (socialClient) {
+      socialClient.disconnect();
+    }
+    set({
+      gameClient: null,
+      socialClient: null,
+      sessionId: null,
+      gameState: WsClientState.DISCONNECTED,
+      socialState: WsClientState.DISCONNECTED,
+      lastWsError: null,
+    });
+  },
 
-    setGameState: (state) => {
-      set({ gameState: state });
-    },
+  setGameState: (state) => {
+    set({ gameState: state });
+  },
 
-    setSocialState: (state) => {
-      set({ socialState: state });
-    },
+  setSocialState: (state) => {
+    set({ socialState: state });
+  },
 
-    clearAuthRevoked: () => {
-      set({ authRevoked: null });
-    },
-  }),
-);
+  clearAuthRevoked: () => {
+    set({ authRevoked: null });
+  },
+
+  clearLastWsError: () => {
+    set({ lastWsError: null });
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // Selectors
@@ -197,3 +205,4 @@ export const selectIsGameConnected = (s: ConnectionState) =>
 export const selectIsSocialConnected = (s: ConnectionState) =>
   s.socialState === WsClientState.CONNECTED;
 export const selectAuthRevoked = (s: ConnectionState) => s.authRevoked;
+export const selectLastWsError = (s: ConnectionState) => s.lastWsError;

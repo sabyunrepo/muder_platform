@@ -1,4 +1,5 @@
-import type { WsEventType } from "@mmp/shared";
+import type { WsEventType } from '@mmp/shared';
+import type { ErrorPayload } from '@mmp/shared';
 
 export interface WsClientOptions {
   /** WebSocket server URL (ws:// or wss://) */
@@ -52,6 +53,11 @@ export interface WsClientOptions {
    * and falls back to a fresh `auth.identify` on the next connection.
    */
   onUnauthorized?: (reason: string) => void;
+  /**
+   * Called when the server sends the generic `error` frame. Fatal errors
+   * disable reconnect before this callback is invoked.
+   */
+  onServerError?: (payload: ErrorPayload) => void;
 }
 
 export interface ReconnectOptions {
@@ -66,15 +72,14 @@ export interface ReconnectOptions {
 }
 
 export const WsClientState = {
-  IDLE: "idle",
-  CONNECTING: "connecting",
-  CONNECTED: "connected",
-  RECONNECTING: "reconnecting",
-  DISCONNECTED: "disconnected",
+  IDLE: 'idle',
+  CONNECTING: 'connecting',
+  CONNECTED: 'connected',
+  RECONNECTING: 'reconnecting',
+  DISCONNECTED: 'disconnected',
 } as const;
 
-export type WsClientState =
-  (typeof WsClientState)[keyof typeof WsClientState];
+export type WsClientState = (typeof WsClientState)[keyof typeof WsClientState];
 
 export type WsEventHandler<T = unknown> = (payload: T, seq: number) => void;
 export type WsStateChangeHandler = (state: WsClientState) => void;
@@ -85,6 +90,6 @@ export interface WsClientEvents {
 
 /** Internal listener record. */
 export interface Listener {
-  type: WsEventType | "state:change";
+  type: WsEventType | 'state:change';
   handler: WsEventHandler | WsStateChangeHandler;
 }

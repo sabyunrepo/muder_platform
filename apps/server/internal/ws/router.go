@@ -54,7 +54,7 @@ func (r *Router) Route(c *Client, env *Envelope) {
 		return
 	}
 
-	namespace, _, _ := strings.Cut(env.Type, ":")
+	namespace := routeNamespace(env.Type)
 
 	r.mu.RLock()
 	fn, ok := r.handlers[namespace]
@@ -77,6 +77,18 @@ func (r *Router) Route(c *Client, env *Envelope) {
 		Msg("unhandled message type")
 
 	c.SendMessage(NewErrorEnvelope(ErrCodeBadMessage, "unknown message type: "+env.Type))
+}
+
+func routeNamespace(msgType string) string {
+	namespace, _, ok := strings.Cut(msgType, ":")
+	if ok {
+		return namespace
+	}
+	namespace, _, ok = strings.Cut(msgType, ".")
+	if ok {
+		return namespace
+	}
+	return msgType
 }
 
 // Namespaces returns a list of registered namespace names.

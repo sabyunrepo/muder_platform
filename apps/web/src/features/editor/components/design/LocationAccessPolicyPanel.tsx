@@ -9,6 +9,7 @@ import {
   stringifyLocationRestrictedCharacterIds,
 } from '@/features/editor/entities/location/locationEntityAdapter';
 import { useEditorCharacters, useUpdateLocation } from '@/features/editor/api';
+import { getDisplayErrorMessage } from '@/lib/display-error';
 
 interface LocationAccessPolicyPanelProps {
   themeId: string;
@@ -61,7 +62,7 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
         </div>
       ) : isError ? (
         <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-4 text-center text-xs text-red-100">
-          <p>{error instanceof Error ? error.message : '캐릭터 목록을 불러오지 못했습니다.'}</p>
+          <p>{getDisplayErrorMessage(error, '캐릭터 목록을 불러오지 못했습니다.')}</p>
           <button
             type="button"
             onClick={() => refetch?.()}

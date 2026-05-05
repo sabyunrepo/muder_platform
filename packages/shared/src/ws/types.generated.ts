@@ -133,7 +133,7 @@ export const WsEventType = {
   ENDING_NEXT_REVEAL: "ending:next_reveal",
   /**
    * S2C · system
-   * wire payload is ErrorPayload { code, message }
+   * wire payload is ErrorPayload with ProblemDetail-lite recovery metadata
    */
   ERROR: "error",
   /** C2S · event */
@@ -875,6 +875,13 @@ export interface ConnectedPayload {
  */
 export interface ErrorPayload {
   code: number;
+  app_code?: string;
   message: string;
+  severity?: string;
+  retryable: boolean;
+  user_action?: string;
+  request_id?: string;
+  correlation_id?: string;
+  fatal: boolean;
 }
 

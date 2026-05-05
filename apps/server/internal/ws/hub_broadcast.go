@@ -126,9 +126,11 @@ func (h *Hub) Whisper(fromID, toID uuid.UUID, env *Envelope) {
 //
 // Routing priority:
 //  1. Registry validation — rejects unknown types with WS error 4000.
-//  2. Session forwarding — if the client is in a game session AND a
+//  2. Router-first system/auth messages — recovery frames must not be swallowed
+//     by the session actor when a player is already in a game session.
+//  3. Session forwarding — if the client is in a game session AND a
 //     SessionSender is wired, the message is delivered to the session actor.
-//  3. Router fallback — all other messages (lobby, system) go to the Router.
+//  4. Router fallback — all other messages (lobby, system) go to the Router.
 func (h *Hub) Route(sender *Client, env *Envelope) {
 	// 1. Registry validation (when a registry is configured).
 	if h.registry != nil && !isSystemType(env.Type) {
@@ -142,7 +144,13 @@ func (h *Hub) Route(sender *Client, env *Envelope) {
 		}
 	}
 
-	// 2. Session forwarding for in-session clients.
+	// 2. Router-first recovery/system messages for in-session clients.
+	if routesBeforeSession(env.Type) {
+		h.routeViaRouter(sender, env)
+		return
+	}
+
+	// 3. Session forwarding for in-session clients.
 	if sender.SessionID != uuid.Nil && h.sessionSender != nil {
 		// Bound the message context so a stuck handler can't occupy the actor
 		// indefinitely (M-1 fix). The inbox is non-blocking, so we can't defer
@@ -168,7 +176,11 @@ func (h *Hub) Route(sender *Client, env *Envelope) {
 		return
 	}
 
-	// 3. Router fallback (lobby messages, system messages, etc.).
+	// 4. Router fallback (lobby messages, system messages, etc.).
+	h.routeViaRouter(sender, env)
+}
+
+func (h *Hub) routeViaRouter(sender *Client, env *Envelope) {
 	if h.router == nil {
 		h.logger.Error().Msg("router not set, dropping message")
 		sender.SendMessage(NewErrorEnvelope(ErrCodeInternalError, "server misconfigured"))
@@ -185,6 +197,13 @@ func isSystemType(t string) bool {
 		return true
 	}
 	return false
+}
+
+func routesBeforeSession(t string) bool {
+	if isSystemType(t) {
+		return true
+	}
+	return t == TypeAuthIdentify || t == TypeAuthResume || t == TypeAuthRefresh
 }
 
 // SessionClients returns all clients in a given session.

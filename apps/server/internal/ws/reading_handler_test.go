@@ -195,8 +195,8 @@ func findEnvelopeType(received []string, msgType string) bool {
 }
 
 // findErrorWithCode inspects the test client buffer for an error envelope
-// whose payload message contains the given reading error code substring.
-func findErrorWithCode(received []string, codeSubstring string) bool {
+// whose payload carries the given app code without leaking AppError.Detail.
+func findErrorWithCode(received []string, appCode string) bool {
 	for _, raw := range received {
 		var env Envelope
 		if err := json.Unmarshal([]byte(raw), &env); err != nil {
@@ -209,7 +209,7 @@ func findErrorWithCode(received []string, codeSubstring string) bool {
 		if err := json.Unmarshal(env.Payload, &pl); err != nil {
 			continue
 		}
-		if containsString(pl.Message, codeSubstring) {
+		if pl.AppCode == appCode {
 			return true
 		}
 	}

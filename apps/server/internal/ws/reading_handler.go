@@ -389,12 +389,9 @@ func (h *ReadingWSHandler) ForwardEvent(sessionID uuid.UUID, eventType string, p
 func translateReadingError(err error) *Envelope {
 	var ae *apperror.AppError
 	if errors.As(err, &ae) {
-		return MustEnvelope(TypeError, ErrorPayload{
-			Code:    appErrorToWSCode(ae),
-			Message: ae.Code + ": " + ae.Detail,
-		})
+		return NewAppErrorEnvelope(ae, false)
 	}
-	return NewErrorEnvelope(ErrCodeInternalError, err.Error())
+	return NewErrorEnvelope(ErrCodeInternalError, "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
 }
 
 // appErrorToWSCode maps an apperror code to the closest WS error code.
