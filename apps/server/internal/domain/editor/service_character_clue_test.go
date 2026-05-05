@@ -369,6 +369,20 @@ func TestService_CharacterEndcardContract(t *testing.T) {
 	if cleared.EndcardImageURL == nil || *cleared.EndcardImageURL != "https://cdn.example/endcard.webp" {
 		t.Fatalf("omitted endcard image url should be preserved: %+v", cleared.EndcardImageURL)
 	}
+
+	clearedImage, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:            cleared.Name,
+		MysteryRole:     cleared.MysteryRole,
+		IsCulprit:       cleared.IsCulprit,
+		SortOrder:       cleared.SortOrder,
+		EndcardImageURL: textPtr(""),
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter clear image: %v", err)
+	}
+	if clearedImage.EndcardImageURL != nil {
+		t.Fatalf("empty endcard image url should clear stored value: %+v", clearedImage.EndcardImageURL)
+	}
 }
 
 func TestService_CreateCharacterNPCVisibility(t *testing.T) {
