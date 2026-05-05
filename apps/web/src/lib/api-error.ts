@@ -30,6 +30,18 @@ export class ApiHttpError extends Error {
   get requestId(): string | undefined {
     return this.apiError.request_id;
   }
+
+  get severity(): ApiError["severity"] {
+    return this.apiError.severity;
+  }
+
+  get retryable(): boolean | undefined {
+    return this.apiError.retryable;
+  }
+
+  get userAction(): string | undefined {
+    return this.apiError.user_action;
+  }
 }
 
 /** Type guard for ApiError shape. */
