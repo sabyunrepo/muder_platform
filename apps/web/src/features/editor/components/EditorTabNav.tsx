@@ -1,4 +1,4 @@
-import { useRef, useCallback, useMemo, useEffect } from "react";
+import { Fragment, useRef, useCallback, useMemo, useEffect } from "react";
 import { EDITOR_TABS, type EditorTab } from "@/features/editor/constants";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 
@@ -72,28 +72,36 @@ export function EditorTabNav({
       >
         {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab.key;
+          const startsNewGroup = index > 0 && visibleTabs[index - 1]?.group !== tab.group;
           return (
-            <button
-              key={tab.key}
-              ref={(el) => {
-                tabRefs.current[index] = el;
-              }}
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`tabpanel-${tab.key}`}
-              id={`tab-${tab.key}`}
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => setActiveTab(tab.key)}
-              onKeyDown={(e) => handleKeyDown(e, index)}
-              className={`relative flex shrink-0 items-center gap-1.5 px-4 text-xs font-medium transition-colors ${
-                isActive
-                  ? "text-amber-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500"
-                  : "text-slate-500 hover:bg-slate-900/50 hover:text-slate-300"
-              }`}
-            >
-              <tab.icon className="h-3.5 w-3.5" />
-              {tab.label}
-            </button>
+            <Fragment key={tab.key}>
+              {startsNewGroup && (
+                <div
+                  aria-hidden="true"
+                  className="my-2 mr-2 w-px bg-slate-800"
+                />
+              )}
+              <button
+                ref={(el) => {
+                  tabRefs.current[index] = el;
+                }}
+                role="tab"
+                aria-selected={isActive}
+                aria-controls={`tabpanel-${tab.key}`}
+                id={`tab-${tab.key}`}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => setActiveTab(tab.key)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                className={`relative flex shrink-0 items-center gap-1.5 px-4 text-xs font-medium transition-colors ${
+                  isActive
+                    ? "text-amber-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500"
+                    : "text-slate-500 hover:bg-slate-900/50 hover:text-slate-300"
+                }`}
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            </Fragment>
           );
         })}
       </nav>
