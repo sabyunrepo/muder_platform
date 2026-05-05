@@ -168,6 +168,25 @@ func TestCharacterVisibilityPolicy(t *testing.T) {
 	}
 }
 
+func TestCharacterVisibilityPolicyWithDefaultsDisablesVotingWhenPlayableTurnsOff(t *testing.T) {
+	got := BuildCharacterVisibilityPolicyWithDefaults(
+		CharacterVisibilityInput{IsPlayable: boolPtr(false)},
+		CharacterVisibilityPolicy{
+			IsPlayable:        true,
+			ShowInIntro:       true,
+			CanSpeakInReading: true,
+			IsVotingCandidate: true,
+		},
+	)
+
+	if got.IsPlayable || got.IsVotingCandidate {
+		t.Fatalf("NPC conversion should disable voting by default: %+v", got)
+	}
+	if !got.ShowInIntro || !got.CanSpeakInReading {
+		t.Fatalf("unrelated visibility fields should be preserved: %+v", got)
+	}
+}
+
 func boolPtr(value bool) *bool {
 	return &value
 }

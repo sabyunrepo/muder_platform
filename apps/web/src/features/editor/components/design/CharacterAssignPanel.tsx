@@ -123,6 +123,8 @@ export function CharacterAssignPanel({
 
   const handleVisibilityChangeForChar = useCallback(
     (characterId: string, field: CharacterVisibilityField, value: boolean) => {
+      if (updateCharacter.isPending) return;
+
       const selected = characters?.find((char) => char.id === characterId);
       if (!selected) return;
 
@@ -215,7 +217,11 @@ export function CharacterAssignPanel({
             onChangeMission={(missionId, field, value) => handleMissionChangeForChar(char.id, missionId, field, value)}
             onDeleteMission={(missionId) => handleDeleteMissionForChar(char.id, missionId)}
             onMysteryRoleChange={(role) => handleMysteryRoleChangeForChar(char.id, role)}
-            onVisibilityChange={(field, value) => handleVisibilityChangeForChar(char.id, field, value)}
+            onVisibilityChange={
+              updateCharacter.isPending
+                ? undefined
+                : (field, value) => handleVisibilityChangeForChar(char.id, field, value)
+            }
           />
         )}
       />

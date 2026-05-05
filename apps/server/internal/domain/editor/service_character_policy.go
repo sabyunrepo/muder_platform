@@ -56,11 +56,17 @@ func BuildCharacterVisibilityPolicy(rolePolicy CharacterRolePolicy, input Charac
 }
 
 func BuildCharacterVisibilityPolicyWithDefaults(input CharacterVisibilityInput, defaults CharacterVisibilityPolicy) CharacterVisibilityPolicy {
+	isPlayable := boolPtrValue(input.IsPlayable, defaults.IsPlayable)
+	votingFallback := defaults.IsVotingCandidate
+	if input.IsPlayable != nil && !isPlayable && input.IsVotingCandidate == nil {
+		votingFallback = false
+	}
+
 	return CharacterVisibilityPolicy{
-		IsPlayable:        boolPtrValue(input.IsPlayable, defaults.IsPlayable),
+		IsPlayable:        isPlayable,
 		ShowInIntro:       boolPtrValue(input.ShowInIntro, defaults.ShowInIntro),
 		CanSpeakInReading: boolPtrValue(input.CanSpeakInReading, defaults.CanSpeakInReading),
-		IsVotingCandidate: boolPtrValue(input.IsVotingCandidate, defaults.IsVotingCandidate),
+		IsVotingCandidate: boolPtrValue(input.IsVotingCandidate, votingFallback),
 	}
 }
 

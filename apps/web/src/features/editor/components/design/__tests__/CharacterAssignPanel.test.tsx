@@ -16,6 +16,7 @@ const {
   useUpsertCharacterRoleSheetMock,
   upsertRoleSheetMutateMock,
   updateCharacterMutateMock,
+  updateCharacterPendingMock,
   uploadMediaFileMock,
   useMediaDownloadUrlMock,
 } = vi.hoisted(() => ({
@@ -27,6 +28,7 @@ const {
   useUpsertCharacterRoleSheetMock: vi.fn(),
   upsertRoleSheetMutateMock: vi.fn(),
   updateCharacterMutateMock: vi.fn(),
+  updateCharacterPendingMock: { value: false },
   uploadMediaFileMock: vi.fn(),
   useMediaDownloadUrlMock: vi.fn(),
 }));
@@ -49,7 +51,7 @@ vi.mock('@/features/editor/api', () => ({
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   useCharacterRoleSheet: (characterId: string) => useCharacterRoleSheetMock(characterId),
   useUpsertCharacterRoleSheet: (characterId: string) => useUpsertCharacterRoleSheetMock(characterId),
-  useUpdateCharacter: () => ({ mutate: updateCharacterMutateMock, isPending: false }),
+  useUpdateCharacter: () => ({ mutate: updateCharacterMutateMock, isPending: updateCharacterPendingMock.value }),
 }));
 
 vi.mock('@/features/editor/mediaApi', () => ({
@@ -171,6 +173,7 @@ describe('CharacterAssignPanel', () => {
     useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '' } }, isLoading: false });
     useUpsertCharacterRoleSheetMock.mockReturnValue({ mutate: upsertRoleSheetMutateMock, isPending: false });
     useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() });
+    updateCharacterPendingMock.value = false;
   });
 
   it('공통 엔티티 Shell로 캐릭터 목록과 상세를 렌더링한다', () => {
@@ -228,6 +231,19 @@ describe('CharacterAssignPanel', () => {
         is_voting_candidate: false,
       },
     });
+  });
+
+  it('등장인물 유형 저장 중에는 추가 토글을 막는다', () => {
+    updateCharacterPendingMock.value = true;
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+
+    const playableToggle = screen.getByLabelText(/플레이어 캐릭터/) as HTMLInputElement;
+    expect(playableToggle.disabled).toBe(true);
+    fireEvent.click(playableToggle);
+
+    expect(updateCharacterMutateMock).not.toHaveBeenCalled();
   });
 
 
