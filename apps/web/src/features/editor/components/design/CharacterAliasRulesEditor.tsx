@@ -15,6 +15,17 @@ interface CharacterAliasRulesEditorProps {
   onSave: (rules: CharacterAliasRule[]) => void;
 }
 
+interface CharacterAliasRuleItemProps {
+  rule: CharacterAliasRule;
+  index: number;
+  characterName: string;
+  characterImageUrl?: string | null;
+  characterOptions: SelectOption[];
+  disabled: boolean;
+  onUpdate: (index: number, patch: Partial<CharacterAliasRule>) => void;
+  onRemove: (index: number) => void;
+}
+
 export function CharacterAliasRulesEditor({
   characterName,
   characterImageUrl,
@@ -91,68 +102,17 @@ export function CharacterAliasRulesEditor({
             조건부 표시 규칙이 없습니다.
           </p>
         ) : rules.map((rule, index) => (
-          <div key={rule.id} className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
-            <div className="grid gap-2 sm:grid-cols-[1fr_1fr_5rem]">
-              <label className="text-[11px] text-slate-400">
-                규칙 이름
-                <input
-                  value={rule.label ?? ''}
-                  disabled={disabled}
-                  onChange={(event) => updateRule(index, { label: event.currentTarget.value })}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
-                />
-              </label>
-              <label className="text-[11px] text-slate-400">
-                표시 이름
-                <input
-                  value={rule.display_name ?? ''}
-                  placeholder={characterName}
-                  disabled={disabled}
-                  onChange={(event) => updateRule(index, { display_name: event.currentTarget.value })}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
-                />
-              </label>
-              <label className="text-[11px] text-slate-400">
-                우선순위
-                <input
-                  type="number"
-                  min={0}
-                  value={rule.priority}
-                  disabled={disabled}
-                  onChange={(event) => updateRule(index, { priority: Number(event.currentTarget.value) || 0 })}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
-                />
-              </label>
-            </div>
-            <label className="mt-2 block text-[11px] text-slate-400">
-              표시 아이콘 URL
-              <input
-                value={rule.display_icon_url ?? ''}
-                placeholder={characterImageUrl ?? 'https://...'}
-                disabled={disabled}
-                onChange={(event) => updateRule(index, { display_icon_url: event.currentTarget.value })}
-                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
-              />
-            </label>
-            <div className="mt-3">
-              <ConditionBuilder
-                label="표시 조건"
-                condition={rule.condition}
-                onChange={(condition) => updateRule(index, { condition })}
-                characters={characterOptions}
-              />
-            </div>
-            <div className="mt-3 flex justify-end">
-              <button
-                type="button"
-                onClick={() => removeRule(index)}
-                disabled={disabled}
-                className="rounded-md px-2 py-1 text-[11px] text-slate-500 transition hover:bg-red-950/40 hover:text-red-300"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
+          <CharacterAliasRuleItem
+            key={rule.id}
+            rule={rule}
+            index={index}
+            characterName={characterName}
+            characterImageUrl={characterImageUrl}
+            characterOptions={characterOptions}
+            disabled={disabled}
+            onUpdate={updateRule}
+            onRemove={removeRule}
+          />
         ))}
       </div>
 
@@ -167,6 +127,82 @@ export function CharacterAliasRulesEditor({
           className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-default disabled:bg-slate-800 disabled:text-slate-500"
         >
           플레이 중 표시 저장
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CharacterAliasRuleItem({
+  rule,
+  index,
+  characterName,
+  characterImageUrl,
+  characterOptions,
+  disabled,
+  onUpdate,
+  onRemove,
+}: CharacterAliasRuleItemProps) {
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
+      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_5rem]">
+        <label className="text-[11px] text-slate-400">
+          규칙 이름
+          <input
+            value={rule.label ?? ''}
+            disabled={disabled}
+            onChange={(event) => onUpdate(index, { label: event.currentTarget.value })}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          />
+        </label>
+        <label className="text-[11px] text-slate-400">
+          표시 이름
+          <input
+            value={rule.display_name ?? ''}
+            placeholder={characterName}
+            disabled={disabled}
+            onChange={(event) => onUpdate(index, { display_name: event.currentTarget.value })}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          />
+        </label>
+        <label className="text-[11px] text-slate-400">
+          우선순위
+          <input
+            type="number"
+            min={0}
+            value={rule.priority}
+            disabled={disabled}
+            onChange={(event) => onUpdate(index, { priority: Number(event.currentTarget.value) || 0 })}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          />
+        </label>
+      </div>
+      <label className="mt-2 block text-[11px] text-slate-400">
+        표시 아이콘 URL
+        <input
+          value={rule.display_icon_url ?? ''}
+          placeholder={characterImageUrl ?? 'https://...'}
+          disabled={disabled}
+          onChange={(event) => onUpdate(index, { display_icon_url: event.currentTarget.value })}
+          className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+        />
+      </label>
+      <div className="mt-3">
+        <ConditionBuilder
+          label="표시 조건"
+          condition={rule.condition}
+          onChange={(condition) => onUpdate(index, { condition })}
+          characters={characterOptions}
+        />
+      </div>
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          disabled={disabled}
+          className="rounded-md px-2 py-1 text-[11px] text-slate-500 transition hover:bg-red-950/40 hover:text-red-300"
+        >
+          삭제
         </button>
       </div>
     </div>
