@@ -29,6 +29,7 @@ const (
 	ActionUnmuteChat          PhaseAction = "UNMUTE_CHAT"
 	ActionOpenGroupChat       PhaseAction = "OPEN_GROUP_CHAT"
 	ActionCloseGroupChat      PhaseAction = "CLOSE_GROUP_CHAT"
+	ActionApplyDiscussionRoom PhaseAction = "APPLY_DISCUSSION_ROOM_POLICY"
 	ActionLockModule          PhaseAction = "LOCK_MODULE"
 	ActionUnlockModule        PhaseAction = "UNLOCK_MODULE"
 )
@@ -64,6 +65,7 @@ var ActionRequiresModule = map[PhaseAction]string{
 	ActionUnmuteChat:          "text_chat",
 	ActionOpenGroupChat:       "group_chat",
 	ActionCloseGroupChat:      "group_chat",
+	ActionApplyDiscussionRoom: "group_chat",
 	ActionDeliverInformation:  "information_delivery",
 	ActionEvaluateEnding:      "ending_branch",
 }

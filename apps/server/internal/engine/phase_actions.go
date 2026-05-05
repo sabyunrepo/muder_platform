@@ -16,11 +16,33 @@ func (e *PhaseEngine) enterCurrentPhase(ctx context.Context) error {
 	if err := e.dispatchConfiguredActions(ctx, phase.OnEnter); err != nil {
 		return err
 	}
+	if err := e.dispatchDiscussionRoomPolicy(ctx, phase.DiscussionRoomPolicy); err != nil {
+		return err
+	}
 	e.eventBus.Publish(Event{
 		Type:    "phase:entered",
 		Payload: e.CurrentPhase(),
 	})
 	return nil
+}
+
+func (e *PhaseEngine) dispatchDiscussionRoomPolicy(ctx context.Context, policy *DiscussionRoomPolicy) error {
+	if policy == nil {
+		return nil
+	}
+	if !policy.Enabled {
+		if _, ok := e.moduleMap["group_chat"]; !ok {
+			return nil
+		}
+	}
+	params, err := json.Marshal(policy)
+	if err != nil {
+		return fmt.Errorf("engine: invalid discussion room policy: %w", err)
+	}
+	return e.DispatchAction(ctx, PhaseActionPayload{
+		Action: ActionApplyDiscussionRoom,
+		Params: params,
+	})
 }
 
 func (e *PhaseEngine) exitCurrentPhase(ctx context.Context) error {

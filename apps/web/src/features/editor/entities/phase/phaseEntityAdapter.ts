@@ -13,6 +13,7 @@ import {
   type InformationRecipientType,
 } from "../shared/informationDeliveryAdapter";
 import { toCreatorActionLabels } from "../shared/actionAdapter";
+import type { DiscussionRoomPolicy } from "../../flowTypes";
 
 const PHASE_TYPE_LABELS: Record<string, string> = {
   investigation: "수사",
@@ -36,6 +37,7 @@ export interface PhaseEditorViewModel {
   exitActionLabels: string[];
   defaultTransitionLabel: string;
   conditionalTransitionCount: number;
+  discussionRoomPolicy?: DiscussionRoomPolicy;
 }
 
 export {
@@ -75,6 +77,7 @@ export function toPhaseEditorViewModel(
     }),
     defaultTransitionLabel: formatDefaultTransition(defaultEdges.length),
     conditionalTransitionCount: conditionalEdges.length,
+    discussionRoomPolicy: data.discussionRoomPolicy,
   };
 }
 

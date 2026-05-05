@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,16 @@ type GroupRoom struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	MaxMembers int    `json:"maxMembers"`
+}
+
+type discussionRoomPolicy struct {
+	Enabled             bool            `json:"enabled"`
+	MainRoomName        string          `json:"mainRoomName"`
+	PrivateRoomsEnabled bool            `json:"privateRoomsEnabled"`
+	PrivateRoomName     string          `json:"privateRoomName"`
+	Availability        string          `json:"availability"`
+	ConditionalRoomName string          `json:"conditionalRoomName"`
+	Condition           json.RawMessage `json:"condition,omitempty"`
 }
 
 // RoomState holds runtime state for a single group chat room.
@@ -279,11 +290,73 @@ func (m *GroupChatModule) ReactTo(_ context.Context, action engine.PhaseActionPa
 	case engine.ActionUnmuteChat:
 		m.isMuted = false
 		m.mu.Unlock()
+	case engine.ActionApplyDiscussionRoom:
+		var policy discussionRoomPolicy
+		if len(action.Params) > 0 {
+			if err := json.Unmarshal(action.Params, &policy); err != nil {
+				m.mu.Unlock()
+				return fmt.Errorf("group_chat: invalid discussion room policy: %w", err)
+			}
+		}
+		m.applyDiscussionRoomPolicy(policy)
+		m.mu.Unlock()
+		m.deps.EventBus.Publish(engine.Event{
+			Type: "groupchat.policy_applied",
+			Payload: map[string]any{
+				"enabled": policy.Enabled,
+				"isOpen":  policy.Enabled && policy.Availability != "condition",
+			},
+		})
 	default:
 		m.mu.Unlock()
 		return fmt.Errorf("group_chat: unsupported action %q", action.Action)
 	}
 	return nil
+}
+
+func (m *GroupChatModule) applyDiscussionRoomPolicy(policy discussionRoomPolicy) {
+	m.playerRoom = make(map[uuid.UUID]string)
+	m.rooms = make(map[string]*RoomState)
+	m.config.Rooms = nil
+	m.isOpen = false
+
+	if !policy.Enabled {
+		return
+	}
+
+	rooms := []GroupRoom{{
+		ID:   "main",
+		Name: discussionRoomName(policy.MainRoomName, "전체 토론"),
+	}}
+	if policy.PrivateRoomsEnabled {
+		rooms = append(rooms, GroupRoom{
+			ID:   "private",
+			Name: discussionRoomName(policy.PrivateRoomName, "밀담방"),
+		})
+	}
+	if policy.Availability == "condition" && strings.TrimSpace(policy.ConditionalRoomName) != "" {
+		rooms = append(rooms, GroupRoom{
+			ID:   "conditional",
+			Name: strings.TrimSpace(policy.ConditionalRoomName),
+		})
+	}
+
+	m.config.Rooms = rooms
+	for _, room := range rooms {
+		m.rooms[room.ID] = &RoomState{
+			Members:  make([]uuid.UUID, 0),
+			Messages: make([]ChatMessage, 0),
+		}
+	}
+	m.isOpen = policy.Availability != "condition"
+}
+
+func discussionRoomName(value string, fallback string) string {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return fallback
+	}
+	return trimmed
 }
 
 // SupportedActions returns the phase actions this module handles.
@@ -293,6 +366,7 @@ func (m *GroupChatModule) SupportedActions() []engine.PhaseAction {
 		engine.ActionCloseGroupChat,
 		engine.ActionMuteChat,
 		engine.ActionUnmuteChat,
+		engine.ActionApplyDiscussionRoom,
 	}
 }
 
