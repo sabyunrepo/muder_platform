@@ -28,6 +28,7 @@ import EditorPage from '../EditorPage';
 
 const routeMatrixCases = [
   ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
+  ['alias URL /editor/:id/story-map', { id: 'theme-1', tab: 'story-map' }, 'story-map', 'storyMap'],
   ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'storyMap'],
   [
     '직접 URL /editor/:id/characters',
