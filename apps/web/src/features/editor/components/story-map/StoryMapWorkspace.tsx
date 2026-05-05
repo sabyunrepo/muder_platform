@@ -2,7 +2,7 @@ import {
   KeyRound,
   MapPin,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FlowCanvas } from "../design/FlowCanvas";
 import {
   EditorEntityLibrary,
@@ -21,6 +21,10 @@ const INSPECTOR_GROUPS = [
 
 export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
   const [selectedEntity, setSelectedEntity] = useState<StoryLibraryEntity | null>(null);
+
+  useEffect(() => {
+    setSelectedEntity(null);
+  }, [themeId]);
 
   return (
     <section

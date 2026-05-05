@@ -121,4 +121,26 @@ describe("EditorEntityLibrary", () => {
 
     expect(screen.getAllByText("아직 등록된 항목이 없습니다.").length).toBe(4);
   });
+
+  it("목록을 불러오는 동안 로딩 상태를 보여준다", () => {
+    useEditorCharactersMock.mockReturnValue({ data: [], isLoading: true, isError: false });
+    useEditorCluesMock.mockReturnValue({ data: [], isLoading: true, isError: false });
+    useEditorLocationsMock.mockReturnValue({ data: [], isLoading: true, isError: false });
+    useMediaListMock.mockReturnValue({ data: [], isLoading: true, isError: false });
+
+    render(<EditorEntityLibrary themeId="theme-1" onSelectEntity={vi.fn()} />);
+
+    expect(screen.getAllByText("목록을 불러오는 중입니다.").length).toBe(4);
+  });
+
+  it("목록 조회에 실패하면 오류 상태를 보여준다", () => {
+    useEditorCharactersMock.mockReturnValue({ data: [], isLoading: false, isError: true });
+    useEditorCluesMock.mockReturnValue({ data: [], isLoading: false, isError: true });
+    useEditorLocationsMock.mockReturnValue({ data: [], isLoading: false, isError: true });
+    useMediaListMock.mockReturnValue({ data: [], isLoading: false, isError: true });
+
+    render(<EditorEntityLibrary themeId="theme-1" onSelectEntity={vi.fn()} />);
+
+    expect(screen.getAllByText("목록을 불러오지 못했습니다.").length).toBe(4);
+  });
 });
