@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { X, Trash2, Save } from "lucide-react";
-import { toast } from "sonner";
+import { useEffect, useState } from 'react';
+import { AlertTriangle, X, Trash2, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   useDeleteMedia,
   useUpdateMedia,
   type MediaReferenceInfo,
   type MediaResponse,
   type UpdateMediaRequest,
-} from "@/features/editor/mediaApi";
-import { ApiHttpError } from "@/lib/api-error";
+} from '@/features/editor/mediaApi';
+import { ApiHttpError } from '@/lib/api-error';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,18 +26,20 @@ export interface MediaDetailProps {
 
 export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const [name, setName] = useState(media.name);
-  const [tagsText, setTagsText] = useState((media.tags ?? []).join(", "));
+  const [tagsText, setTagsText] = useState((media.tags ?? []).join(', '));
   const [sortOrder, setSortOrder] = useState<number>(media.sort_order);
   const [duration, setDuration] = useState<string>(
-    media.duration != null ? String(media.duration) : "",
+    media.duration != null ? String(media.duration) : ''
   );
+  const [referenceWarning, setReferenceWarning] = useState<MediaReferenceInfo[] | null>(null);
 
   // Reset local state when selected media changes
   useEffect(() => {
     setName(media.name);
-    setTagsText((media.tags ?? []).join(", "));
+    setTagsText((media.tags ?? []).join(', '));
     setSortOrder(media.sort_order);
-    setDuration(media.duration != null ? String(media.duration) : "");
+    setDuration(media.duration != null ? String(media.duration) : '');
+    setReferenceWarning(null);
   }, [media.id, media.name, media.tags, media.sort_order, media.duration]);
 
   const updateMutation = useUpdateMedia(themeId);
@@ -46,16 +48,16 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const handleSave = () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      toast.error("이름은 필수입니다");
+      toast.error('이름은 필수입니다');
       return;
     }
     const tags = tagsText
-      .split(",")
+      .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
     const durationNum = duration.trim() ? Number(duration) : undefined;
     if (durationNum != null && (!Number.isFinite(durationNum) || durationNum < 0)) {
-      toast.error("길이는 0 이상 숫자여야 합니다");
+      toast.error('길이는 0 이상 숫자여야 합니다');
       return;
     }
     const patch: UpdateMediaRequest = {
@@ -68,35 +70,29 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     updateMutation.mutate(
       { id: media.id, patch },
       {
-        onSuccess: () => toast.success("미디어가 저장되었습니다"),
-        onError: () => toast.error("미디어 저장에 실패했습니다"),
-      },
+        onSuccess: () => toast.success('미디어가 저장되었습니다'),
+        onError: () => toast.error('미디어 저장에 실패했습니다'),
+      }
     );
   };
 
   const handleDelete = async () => {
-    if (typeof window !== "undefined") {
+    setReferenceWarning(null);
+    if (typeof window !== 'undefined') {
       const ok = window.confirm(`"${media.name}"을(를) 삭제하시겠습니까?`);
       if (!ok) return;
     }
     try {
       await deleteMutation.mutateAsync(media.id);
-      toast.success("미디어가 삭제되었습니다");
+      toast.success('미디어가 삭제되었습니다');
       onClose();
     } catch (err) {
-      if (err instanceof ApiHttpError && err.apiError.code === "MEDIA_REFERENCE_IN_USE") {
-        const refs = err.apiError.params?.references as
-          | MediaReferenceInfo[]
-          | undefined;
-        const refList = refs?.map((r) => `- ${r.name}`).join("\n") ?? "";
-        if (typeof window !== "undefined") {
-          window.alert(
-            `이 미디어는 다음 리딩 섹션에서 사용 중입니다:\n${refList}`,
-          );
-        }
+      if (err instanceof ApiHttpError && err.apiError.code === 'MEDIA_REFERENCE_IN_USE') {
+        const refs = err.apiError.params?.references as MediaReferenceInfo[] | undefined;
+        setReferenceWarning(refs?.length ? refs : []);
         return;
       }
-      toast.error("미디어 삭제에 실패했습니다");
+      toast.error('미디어 삭제에 실패했습니다');
     }
   };
 
@@ -104,9 +100,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     <div className="flex h-full flex-col gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-slate-500">
-          미디어 상세
-        </h3>
+        <h3 className="text-xs font-mono uppercase tracking-widest text-slate-500">미디어 상세</h3>
         <button
           type="button"
           onClick={onClose}
@@ -178,6 +172,33 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           {media.mime_type && <div>mime: {media.mime_type}</div>}
           {media.file_size != null && <div>size: {media.file_size} B</div>}
         </div>
+
+        {referenceWarning && (
+          <div
+            role="alert"
+            className="rounded-sm border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-xs text-amber-100"
+          >
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none text-amber-400" />
+              <div className="min-w-0 space-y-1">
+                <p className="font-medium">이 미디어는 아직 삭제할 수 없습니다.</p>
+                <p className="text-[11px] text-amber-200/80">
+                  먼저 아래 제작 요소에서 이 미디어 연결을 해제하세요.
+                </p>
+                {referenceWarning.length > 0 && (
+                  <ul className="space-y-1 pt-1">
+                    {referenceWarning.map((ref, index) => (
+                      <li key={`${ref.type}-${ref.id}-${index}`} className="break-words">
+                        <span className="font-medium">{mediaReferenceTypeLabel(ref.type)}</span>:{' '}
+                        {ref.name}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}
@@ -203,4 +224,20 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       </div>
     </div>
   );
+}
+
+function mediaReferenceTypeLabel(type: string): string {
+  switch (type) {
+    case 'reading_section':
+      return '리딩 섹션';
+    case 'role_sheet':
+      return '역할지';
+    case 'phase_action':
+      return '단계 연출';
+    case 'event_trigger_action':
+    case 'event_progression_trigger_action':
+      return '트리거 연출';
+    default:
+      return '사용 위치';
+  }
 }

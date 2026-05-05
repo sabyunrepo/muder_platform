@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -456,6 +457,124 @@ func TestMediaService_Delete_BlockedByRoleSheetReference(t *testing.T) {
 	}
 	if _, ok := q.media[mediaID]; !ok {
 		t.Fatalf("media should not have been deleted")
+	}
+}
+
+func TestMediaService_Delete_BlockedByPhaseOnEnterMediaReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeBGM)
+	theme := q.themes[themeID]
+	theme.ConfigJson = json.RawMessage(fmt.Sprintf(`{
+		"phases": [
+			{
+				"id": "investigation",
+				"name": "조사 단계",
+				"onEnter": [{"id":"bgm","type":"SET_BGM","params":{"mediaId":%q}}]
+			}
+		],
+		"modules": {}
+	}`, mediaID.String()))
+	q.themes[themeID] = theme
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 {
+		t.Fatalf("expected one phase reference, got %#v", refs)
+	}
+	if refs[0]["type"] != "phase_action" || refs[0]["id"] != "investigation:onEnter:bgm" {
+		t.Fatalf("unexpected phase reference: %#v", refs[0])
+	}
+	if !strings.Contains(refs[0]["name"], "조사 단계 시작 트리거") || !strings.Contains(refs[0]["name"], "BGM") {
+		t.Fatalf("unexpected creator label: %#v", refs[0])
+	}
+	if _, ok := q.media[mediaID]; !ok {
+		t.Fatalf("media should not have been deleted")
+	}
+}
+
+func TestMediaService_Delete_BlockedByPhaseOnExitMediaReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeSFX)
+	theme := q.themes[themeID]
+	theme.ConfigJson = json.RawMessage(fmt.Sprintf(`{
+		"phases": [
+			{
+				"id": "debate",
+				"name": "토론 단계",
+				"onExit": {"actions": [{"id":"sfx","type":"PLAY_SOUND","params":{"mediaId":%q}}]}
+			}
+		],
+		"modules": {}
+	}`, mediaID.String()))
+	q.themes[themeID] = theme
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["type"] != "phase_action" || refs[0]["id"] != "debate:onExit:sfx" {
+		t.Fatalf("unexpected phase reference: %#v", refs)
+	}
+	if !strings.Contains(refs[0]["name"], "토론 단계 종료 트리거") || !strings.Contains(refs[0]["name"], "효과음") {
+		t.Fatalf("unexpected creator label: %#v", refs[0])
+	}
+}
+
+func TestMediaService_Delete_BlockedByEventProgressionTriggerMediaReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	theme := q.themes[themeID]
+	theme.ConfigJson = json.RawMessage(fmt.Sprintf(`{
+		"phases": [],
+		"modules": {
+			"event_progression": {
+				"enabled": true,
+				"config": {
+					"Triggers": [
+						{
+							"id": "reveal-room",
+							"label": "비밀 토론방 공개",
+							"actions": [{"id":"bg","type":"SET_BACKGROUND","params":{"mediaId":%q}}]
+						}
+					]
+				}
+			}
+		}
+	}`, mediaID.String()))
+	q.themes[themeID] = theme
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["type"] != "event_progression_trigger_action" || refs[0]["id"] != "reveal-room:bg" {
+		t.Fatalf("unexpected event trigger reference: %#v", refs)
+	}
+	if !strings.Contains(refs[0]["name"], "비밀 토론방 공개 실행 결과") || !strings.Contains(refs[0]["name"], "배경 이미지") {
+		t.Fatalf("unexpected creator label: %#v", refs[0])
+	}
+}
+
+func TestMediaService_Delete_IgnoresMalformedConfigMediaReferenceScan(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeBGM)
+	theme := q.themes[themeID]
+	theme.ConfigJson = json.RawMessage(`{"phases": "malformed", "modules": {"event_progression": {"config": "malformed"}}}`)
+	q.themes[themeID] = theme
+
+	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID); err != nil {
+		t.Fatalf("malformed config should not block media deletion, got %v", err)
+	}
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("media should have been deleted")
 	}
 }
 
