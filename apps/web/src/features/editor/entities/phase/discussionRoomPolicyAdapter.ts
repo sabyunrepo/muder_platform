@@ -37,7 +37,7 @@ export function formatDiscussionRoomSummary(policy: DiscussionRoomPolicy | null 
   if (normalized.availability === "condition" && normalized.conditionalRoomName) {
     rooms.push(normalized.conditionalRoomName);
   }
-  const availability = normalized.availability === "condition" ? "트리거 대기" : "장면 시작 시";
+  const availability = normalized.availability === "condition" ? "트리거가 열 때까지 대기" : "장면 시작 시";
   return `${availability} · ${rooms.join(", ")}`;
 }
 

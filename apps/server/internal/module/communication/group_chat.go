@@ -43,12 +43,13 @@ type GroupRoom struct {
 }
 
 type discussionRoomPolicy struct {
-	Enabled             bool   `json:"enabled"`
-	MainRoomName        string `json:"mainRoomName"`
-	PrivateRoomsEnabled bool   `json:"privateRoomsEnabled"`
-	PrivateRoomName     string `json:"privateRoomName"`
-	Availability        string `json:"availability"`
-	ConditionalRoomName string `json:"conditionalRoomName"`
+	Enabled             bool            `json:"enabled"`
+	MainRoomName        string          `json:"mainRoomName"`
+	PrivateRoomsEnabled bool            `json:"privateRoomsEnabled"`
+	PrivateRoomName     string          `json:"privateRoomName"`
+	Availability        string          `json:"availability"`
+	ConditionalRoomName string          `json:"conditionalRoomName"`
+	Condition           json.RawMessage `json:"condition,omitempty"`
 }
 
 // RoomState holds runtime state for a single group chat room.

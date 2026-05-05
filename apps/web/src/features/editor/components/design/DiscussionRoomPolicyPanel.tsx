@@ -17,7 +17,10 @@ export function DiscussionRoomPolicyPanel({ policy, onChange }: DiscussionRoomPo
   };
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+    <section
+      data-testid="discussion-room-policy-panel"
+      className="rounded-lg border border-slate-800 bg-slate-950/60 p-3"
+    >
       <div className="flex flex-col gap-3">
         <label className="flex items-start gap-3">
           <input

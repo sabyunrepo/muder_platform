@@ -20,6 +20,7 @@
  *  8. 장소 탭 locations[].clueIds (PR-6)
  *  9. 템플릿 탭 GET /api/v1/templates (PR-1)
  */
+import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page, type Request } from "@playwright/test";
 import {
   BASE,
@@ -376,7 +377,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
     await tryClickTab(page, /흐름|flow/i);
 
-    const node = page.locator('[data-id="phase-1"], .react-flow__node').first();
+    const node = page.locator('[data-id="phase-1"]').first();
     await expect(node).toBeVisible({ timeout: 10_000 });
     await node.click();
 
@@ -386,6 +387,13 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await page.getByLabel("메인 토론방").fill("추리 회의");
     await page.getByLabel("이용 가능 시점").selectOption("condition");
     await page.getByLabel("조건부 방명").fill("비밀 토론");
+
+    const a11y = await new AxeBuilder({ page })
+      .include('[data-testid="discussion-room-policy-panel"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
 
     await expect.poll(() => state.flowPatchCalls).toBeGreaterThanOrEqual(1);
     const patch = state.lastFlowNodePatchBody as

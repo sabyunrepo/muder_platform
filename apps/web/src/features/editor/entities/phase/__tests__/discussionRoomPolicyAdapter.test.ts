@@ -49,5 +49,15 @@ describe("discussionRoomPolicyAdapter", () => {
         availability: "phase_active",
       }),
     ).toBe("장면 시작 시 · 추리 회의, 밀담");
+    expect(
+      formatDiscussionRoomSummary({
+        enabled: true,
+        mainRoomName: "추리 회의",
+        privateRoomsEnabled: false,
+        privateRoomName: "밀담",
+        availability: "condition",
+        conditionalRoomName: "비밀 토론",
+      }),
+    ).toBe("트리거가 열 때까지 대기 · 추리 회의, 비밀 토론");
   });
 });
