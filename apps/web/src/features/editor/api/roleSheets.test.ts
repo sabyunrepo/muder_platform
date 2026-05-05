@@ -67,6 +67,29 @@ describe("editor role sheet API hooks", () => {
     expect(result.current.data).toEqual(roleSheet);
   });
 
+  it("uses the QueryClient default retry policy for role sheet loads", async () => {
+    const retry = vi.fn((failureCount: number) => failureCount < 1);
+    testQueryClient = new QueryClient({
+      defaultOptions: { queries: { retry, retryDelay: 0 }, mutations: { retry: false } },
+    });
+    const roleSheet: RoleSheetResponse = {
+      character_id: "char-1",
+      theme_id: "theme-1",
+      format: "markdown",
+      markdown: { body: "## 비밀" },
+    };
+    mockGet.mockRejectedValueOnce(new Error("temporary"));
+    mockGet.mockResolvedValueOnce(roleSheet);
+
+    const { result } = renderHook(() => useCharacterRoleSheet("char-1"), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(retry).toHaveBeenCalled();
+    expect(result.current.data).toEqual(roleSheet);
+  });
+
   it("upserts a markdown role sheet and invalidates its query", async () => {
     const roleSheet: RoleSheetResponse = {
       character_id: "char-1",

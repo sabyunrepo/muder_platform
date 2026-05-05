@@ -9,7 +9,6 @@ export function useCharacterRoleSheet(characterId: string) {
     queryKey: editorKeys.characterRoleSheet(characterId),
     queryFn: () => api.get<RoleSheetResponse>(`/v1/editor/characters/${characterId}/role-sheet`),
     enabled: !!characterId,
-    retry: false,
   });
 }
 

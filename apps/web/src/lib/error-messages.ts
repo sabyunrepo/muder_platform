@@ -38,6 +38,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   MEDIA_REFERENCE_IN_USE: "이 미디어는 다른 곳에서 사용 중이라 삭제할 수 없습니다.",
   MEDIA_NOT_IN_THEME: "이 테마에 속하지 않은 미디어입니다.",
 
+  // Editor
+  EDITOR_CONFIG_VERSION_MISMATCH:
+    "다른 변경사항과 충돌했습니다. 최신 내용으로 새로고침 후 다시 저장해주세요.",
+
   // Generic
   BAD_REQUEST: "잘못된 요청입니다.",
   UNAUTHORIZED: "인증이 필요합니다.",
