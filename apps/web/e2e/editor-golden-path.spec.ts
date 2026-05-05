@@ -20,8 +20,8 @@
  *  8. 장소 탭 locations[].clueIds (PR-6)
  *  9. 템플릿 탭 GET /api/v1/templates (PR-1)
  */
-import AxeBuilder from "@axe-core/playwright";
-import { test, expect, type Page, type Request } from "@playwright/test";
+import AxeBuilder from '@axe-core/playwright';
+import { test, expect, type Page, type Request } from '@playwright/test';
 import {
   BASE,
   THEME_ID,
@@ -31,13 +31,13 @@ import {
   mockCommonApis,
   loginAsE2EUser,
   type MockState,
-} from "./helpers/editor-golden-path-fixtures";
+} from './helpers/editor-golden-path-fixtures';
 
 /** 라우트 밖에서 한 번 더 PUT 방어 — 프론트가 실수로 PUT 을 쓰면 즉시 fail */
 async function installFlowPutGuard(page: Page): Promise<{ putSeen: string[] }> {
   const putSeen: string[] = [];
-  page.on("request", (req: Request) => {
-    if (req.method() === "PUT" && req.url().includes("/flow/nodes/")) {
+  page.on('request', (req: Request) => {
+    if (req.method() === 'PUT' && req.url().includes('/flow/nodes/')) {
       putSeen.push(req.url());
     }
   });
@@ -46,12 +46,12 @@ async function installFlowPutGuard(page: Page): Promise<{ putSeen: string[] }> {
 
 /** 탭 라벨이 렌더되어있으면 클릭, 아니면 soft-skip */
 async function tryClickTab(page: Page, label: RegExp): Promise<boolean> {
-  const tab = page.getByRole("tab", { name: label }).first();
+  const tab = page.getByRole('tab', { name: label }).first();
   if (await tab.isVisible({ timeout: 1_000 }).catch(() => false)) {
     await tab.click().catch(() => {});
     return true;
   }
-  const link = page.getByRole("link", { name: label }).first();
+  const link = page.getByRole('link', { name: label }).first();
   if (await link.isVisible({ timeout: 500 }).catch(() => false)) {
     await link.click().catch(() => {});
     return true;
@@ -59,7 +59,16 @@ async function tryClickTab(page: Page, label: RegExp): Promise<boolean> {
   return false;
 }
 
-test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", () => {
+async function expectNoPageLevelHorizontalOverflow(page: Page) {
+  const metrics = await page.evaluate(() => ({
+    viewportWidth: document.documentElement.clientWidth,
+    pageScrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+  }));
+
+  expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 2);
+}
+
+test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', () => {
   let state: MockState;
   // Phase 18.5 M4 — 전역 PUT 0회 assertion. 어떤 시나리오에서도 /flow/nodes/ 로 향하는
   // PUT 이 있으면 회귀 (CRIT-1 재발) 이므로 테스트가 실패한다.
@@ -68,8 +77,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
   test.beforeEach(async ({ page }) => {
     state = freshState();
     globalPutSeen = [];
-    page.on("request", (req) => {
-      if (req.method() === "PUT" && req.url().includes("/flow/nodes/")) {
+    page.on('request', (req) => {
+      if (req.method() === 'PUT' && req.url().includes('/flow/nodes/')) {
         globalPutSeen.push(req.url());
       }
     });
@@ -81,136 +90,202 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(globalPutSeen).toEqual([]);
   });
 
-  test("[1] 에디터 대시보드 진입 + 기존 테마 노출", async ({ page }) => {
+  test('[1] 에디터 대시보드 진입 + 기존 테마 노출', async ({ page }) => {
     await page.goto(`${BASE}/editor`);
-    await expect(page.getByRole("heading", { name: /에디터|테마/ }).first()).toBeVisible({
+    await expect(page.getByRole('heading', { name: /에디터|테마/ }).first()).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.locator("body")).toContainText("E2E 골든패스");
+    await expect(page.locator('body')).toContainText('E2E 골든패스');
   });
 
-  test("[2A] 단서 탭은 목록과 상세를 함께 보여준다", async ({ page }) => {
+  test('[2A] 단서 탭은 목록과 상세를 함께 보여준다', async ({ page }) => {
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
 
-    await expect(page.getByLabel("단서 목록")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByLabel("단서 상세 영역")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("첫 단서").first()).toBeVisible();
-    await expect(page.getByText("정보 공개하기")).toBeVisible();
-    await expect(page.getByText("사용하면 내 단서함에서 사라짐")).toBeVisible();
-    await expect(page.getByText("이 단서가 쓰이는 곳")).toBeVisible();
+    await expect(page.getByLabel('단서 목록')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel('단서 상세 영역')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('첫 단서').first()).toBeVisible();
+    await expect(page.getByText('정보 공개하기')).toBeVisible();
+    await expect(page.getByText('사용하면 내 단서함에서 사라짐')).toBeVisible();
+    await expect(page.getByText('이 단서가 쓰이는 곳')).toBeVisible();
   });
 
-  test("[2C] 단서 효과 제작 UI는 grant_clue 계약으로 config 를 저장한다", async ({ page }) => {
+  test('[2C] 단서 효과 제작 UI는 grant_clue 계약으로 config 를 저장한다', async ({ page }) => {
     state.conflictCountdown = 0;
 
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
-    await expect(page.getByLabel("단서 상세 영역")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("게임 중 사용 효과")).toBeVisible();
-    await expect(page.getByText("itemEffects")).toHaveCount(0);
-    await expect(page.getByText("grant_clue")).toHaveCount(0);
+    await expect(page.getByLabel('단서 상세 영역')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('게임 중 사용 효과')).toBeVisible();
+    await expect(page.getByText('itemEffects')).toHaveCount(0);
+    await expect(page.getByText('grant_clue')).toHaveCount(0);
 
-    await page.getByRole("button", { name: "새 단서 지급" }).click();
-    await page.getByLabel("지급할 단서 검색").fill("금고");
-    await page.getByRole("button", { name: "금고 비밀번호", exact: true }).click();
+    await page.getByRole('button', { name: '새 단서 지급' }).click();
+    await page.getByLabel('지급할 단서 검색').fill('금고');
+    await page.getByRole('button', { name: '금고 비밀번호', exact: true }).click();
     await page.getByLabel(/사용하면 내 단서함에서 사라짐/).check();
-    await page.getByRole("button", { name: "효과 저장" }).click();
+    await page.getByRole('button', { name: '효과 저장' }).click();
 
     await expect.poll(() => state.configPutCalls).toBeGreaterThanOrEqual(1);
-    const modules = state.configJson.modules as Record<string, { config?: Record<string, unknown> }>;
+    const modules = state.configJson.modules as Record<
+      string,
+      { config?: Record<string, unknown> }
+    >;
     const clueInteraction = modules.clue_interaction?.config as
       | { itemEffects?: Record<string, Record<string, unknown>> }
       | undefined;
 
     expect(clueInteraction?.itemEffects?.[CLUE_ID]).toMatchObject({
-      effect: "grant_clue",
-      target: "self",
+      effect: 'grant_clue',
+      target: 'self',
       consume: true,
       grantClueIds: [REWARD_CLUE_ID],
     });
-    expect(JSON.stringify(state.lastConfigRequestBody)).not.toContain("module_configs");
+    expect(JSON.stringify(state.lastConfigRequestBody)).not.toContain('module_configs');
   });
 
-  test("[2B] 직접 URL은 올바른 제작 탭과 서브탭을 연다", async ({ page }) => {
+  test('[2B] 직접 URL은 올바른 제작 탭과 서브탭을 연다', async ({ page }) => {
     await page.goto(`${BASE}/editor/${THEME_ID}`);
-    await expect(page.getByRole("tab", { name: "기본정보", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '기본정보', selected: true })).toBeVisible({
       timeout: 10_000,
     });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/story`);
-    await expect(page.getByRole("tab", { name: "스토리", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '스토리', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByPlaceholder("마크다운으로 스토리를 작성하세요...")).toBeVisible();
-    await expect(page.getByText("장면별 정보 공개 설정")).toBeVisible();
-    await expect(page.getByRole("button", { name: /조사 단계/ })).toBeVisible();
+    await expect(page.getByPlaceholder('마크다운으로 스토리를 작성하세요...')).toBeVisible();
+    await expect(page.getByText('장면별 정보 공개 설정')).toBeVisible();
+    await expect(page.getByRole('button', { name: /조사 단계/ })).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
-    await expect(page.getByRole("tab", { name: "등장인물", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '등장인물', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByRole("button", { name: "제작" })).toBeVisible();
-    await expect(page.getByLabel("캐릭터 목록")).toBeVisible();
-    await expect(page.getByText("탐정 A").first()).toBeVisible();
+    await expect(page.getByRole('button', { name: '제작' })).toBeVisible();
+    await expect(page.getByLabel('캐릭터 목록')).toBeVisible();
+    await expect(page.getByText('탐정 A').first()).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
-    await expect(page.getByRole("tab", { name: "단서", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '단서', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByLabel("단서 목록")).toBeVisible();
+    await expect(page.getByLabel('단서 목록')).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/relations`);
-    await expect(page.getByRole("tab", { name: "단서", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '단서', selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText(/노드를 드래그하여 연결/).first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/locations`);
-    await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByLabel("장소 목록")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByLabel("거실 단서 조사")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("저택 1층").first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel('거실 단서 조사')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('저택 1층').first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/endings`);
-    await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByTestId("ending-entity-panel")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByTestId('ending-entity-panel')).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/design/modules`);
+    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText('모듈').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('진행').first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/design/flow`);
-    await expect(page.getByRole("tab", { name: "게임설계", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText("장면 흐름")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("스토리 장면 구성")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('장면 흐름')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('스토리 장면 구성')).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/modules`);
+    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText('진행').first()).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
+    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText('장면 흐름')).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/media`);
-    await expect(page.getByRole("tab", { name: "미디어", selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '미디어', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByLabel("미디어 목록")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel('미디어 목록')).toBeVisible({ timeout: 10_000 });
   });
 
-  test("[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)", async ({ page }) => {
+  test('[2D] 핵심 직접 URL은 모바일/데스크톱 폭에서 페이지 레벨 가로 overflow 없이 열린다', async ({
+    page,
+  }) => {
+    const viewports = [
+      { name: 'mobile', width: 390, height: 844 },
+      { name: 'desktop', width: 1440, height: 1000 },
+    ];
+    const routes = [
+      { path: '', tab: '기본정보', content: 'E2E 골든패스' },
+      { path: '/story', tab: '스토리', content: '장면별 정보 공개 설정' },
+      { path: '/characters', tab: '등장인물', content: '캐릭터 목록' },
+      { path: '/clues', tab: '단서', content: '단서 목록' },
+      { path: '/relations', tab: '단서', content: '노드를 드래그하여 연결' },
+      { path: '/design/modules', tab: '게임설계', content: '진행' },
+      { path: '/design/flow', tab: '게임설계', content: '장면 흐름' },
+      { path: '/design/locations', tab: '게임설계', content: '장소 목록' },
+      { path: '/design/endings', tab: '게임설계', content: 'ending-entity-panel' },
+      { path: '/media', tab: '미디어', content: '미디어 목록' },
+    ];
+
+    for (const viewport of viewports) {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+
+      for (const route of routes) {
+        await page.goto(`${BASE}/editor/${THEME_ID}${route.path}`);
+        await expect(page.getByRole('tab', { name: route.tab, selected: true })).toBeVisible({
+          timeout: 10_000,
+        });
+
+        if (route.content === 'ending-entity-panel') {
+          await expect(page.getByTestId('ending-entity-panel')).toBeVisible({ timeout: 10_000 });
+        } else if (route.content.endsWith('목록')) {
+          await expect(page.getByLabel(route.content)).toBeVisible({ timeout: 10_000 });
+        } else {
+          await expect(page.getByText(route.content).first()).toBeVisible({ timeout: 10_000 });
+        }
+
+        await expectNoPageLevelHorizontalOverflow(page);
+      }
+    }
+  });
+
+  test('[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)', async ({
+    page,
+  }) => {
     test.info().annotations.push({
-      type: "soft-skip",
-      description: "UI 렌더 실패 시 네트워크 레벨 회귀 가드만 유지 (state counter fallback)",
+      type: 'soft-skip',
+      description: 'UI 렌더 실패 시 네트워크 레벨 회귀 가드만 유지 (state counter fallback)',
     });
     // 프론트의 단서 탭 진입 + 업로드 트리거를 UI 로 시도하고, 네트워크에서 경로 확인
     const reqPromise = page
       .waitForRequest(
         (req) =>
           req.url().includes(`/v1/editor/themes/${THEME_ID}/images/upload-url`) &&
-          req.method() === "POST",
-        { timeout: 15_000 },
+          req.method() === 'POST',
+        { timeout: 15_000 }
       )
       .catch(() => null);
 
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
 
     // UI: "이미지 업로드" 버튼이 있으면 클릭 (Seed ActionButton). 없으면 파일 input trigger.
-    const uploadBtn = page.getByRole("button", { name: /이미지|업로드|upload/i }).first();
+    const uploadBtn = page.getByRole('button', { name: /이미지|업로드|upload/i }).first();
     if (await uploadBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await uploadBtn.click().catch(() => {});
     }
@@ -219,8 +294,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     if (await fileInput.count().catch(() => 0)) {
       await fileInput
         .setInputFiles({
-          name: "clue.png",
-          mimeType: "image/png",
+          name: 'clue.png',
+          mimeType: 'image/png',
           buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47]),
         })
         .catch(() => {});
@@ -229,7 +304,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     // 프론트가 호출하지 않았다면 마지막 안전망으로 페이지 컨텍스트에서 API 경로만 검증
     const hit = await reqPromise;
     if (hit) {
-      expect(hit.method()).toBe("POST");
+      expect(hit.method()).toBe('POST');
       expect(hit.url()).toContain(`/v1/editor/themes/${THEME_ID}/images/upload-url`);
       expect(state.imageUploadUrlCalls).toBeGreaterThanOrEqual(1);
     } else {
@@ -240,13 +315,14 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[3] 캐릭터 배정 탭 — starting_clue_ids UI 렌더/로드 확인 (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + checkbox soft" });
+  test('[3] 캐릭터 배정 탭 — starting_clue_ids UI 렌더/로드 확인 (network-only)', async ({
+    page,
+  }) => {
+    test.info().annotations.push({ type: 'soft-skip', description: 'tryClickTab + checkbox soft' });
     const charReq = page
       .waitForRequest(
-        (r) =>
-          r.url().includes(`/v1/editor/themes/${THEME_ID}/characters`) && r.method() === "GET",
-        { timeout: 10_000 },
+        (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/characters`) && r.method() === 'GET',
+        { timeout: 10_000 }
       )
       .catch(() => null);
 
@@ -257,21 +333,23 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(got).not.toBeNull();
 
     // UI: 단서 체크박스 → 즉시 반영 확인 (optimistic)
-    const checkbox = page.getByRole("checkbox").first();
+    const checkbox = page.getByRole('checkbox').first();
     if (await checkbox.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await checkbox.click();
-      await expect(checkbox).toBeChecked({ timeout: 2_000 }).catch(() => {});
+      await expect(checkbox)
+        .toBeChecked({ timeout: 2_000 })
+        .catch(() => {});
     }
   });
 
-  test("[4] 단서 목록 GET — image_url 필드 렌더 (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + img soft" });
-    state.clueImageURL = "https://mock-storage.example/themes/test/clues/c1/image.png";
+  test('[4] 단서 목록 GET — image_url 필드 렌더 (network-only)', async ({ page }) => {
+    test.info().annotations.push({ type: 'soft-skip', description: 'tryClickTab + img soft' });
+    state.clueImageURL = 'https://mock-storage.example/themes/test/clues/c1/image.png';
 
     const clueReq = page
       .waitForRequest(
-        (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/clues`) && r.method() === "GET",
-        { timeout: 10_000 },
+        (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/clues`) && r.method() === 'GET',
+        { timeout: 10_000 }
       )
       .catch(() => null);
 
@@ -288,14 +366,14 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     }
   });
 
-  test("[5] clue-edges GET — 빈 결과 200 (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + state fallback" });
+  test('[5] clue-edges GET — 빈 결과 200 (network-only)', async ({ page }) => {
+    test
+      .info()
+      .annotations.push({ type: 'soft-skip', description: 'tryClickTab + state fallback' });
     const relReq = page
       .waitForRequest(
-        (r) =>
-          r.url().includes(`/v1/editor/themes/${THEME_ID}/clue-edges`) &&
-          r.method() === "GET",
-        { timeout: 10_000 },
+        (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/clue-edges`) && r.method() === 'GET',
+        { timeout: 10_000 }
       )
       .catch(() => null);
 
@@ -308,13 +386,15 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(got !== null || state.clueRelationsCalls > 0).toBe(true);
   });
 
-  test("[6] 모듈 토글 → config PUT 409 silent rebase (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "스위치 미렌더 시 auto-save wait" });
+  test('[6] 모듈 토글 → config PUT 409 silent rebase (network-only)', async ({ page }) => {
+    test
+      .info()
+      .annotations.push({ type: 'soft-skip', description: '스위치 미렌더 시 auto-save wait' });
     await page.goto(`${BASE}/editor/${THEME_ID}/modules`);
     await tryClickTab(page, /모듈|module/i);
 
     // UI: 스위치 3개 토글 시도. 렌더 실패 시 한 번의 프론트 mutation 호출을 waitForRequest 로.
-    const switches = page.getByRole("switch");
+    const switches = page.getByRole('switch');
     const n = await switches.count().catch(() => 0);
     let uiInteracted = 0;
     for (let i = 0; i < Math.min(n, 3); i += 1) {
@@ -330,9 +410,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     if (uiInteracted === 0) {
       await page
         .waitForRequest(
-          (r) =>
-            r.url().includes(`/v1/editor/themes/${THEME_ID}/config`) && r.method() === "PUT",
-          { timeout: 5_000 },
+          (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/config`) && r.method() === 'PUT',
+          { timeout: 5_000 }
         )
         .catch(() => null);
     }
@@ -343,8 +422,13 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(state.conflictCountdown).toBeLessThanOrEqual(1);
   });
 
-  test("[7] 흐름 노드 편집 — PATCH 만, PUT 은 회귀 금지 (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "React Flow 노드 미렌더 시 uiEdited=false" });
+  test('[7] 흐름 노드 편집 — PATCH 만, PUT 은 회귀 금지 (network-only)', async ({ page }) => {
+    test
+      .info()
+      .annotations.push({
+        type: 'soft-skip',
+        description: 'React Flow 노드 미렌더 시 uiEdited=false',
+      });
     const { putSeen } = await installFlowPutGuard(page);
 
     await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
@@ -359,7 +443,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
         .locator('input[name="label"], input[placeholder*="label" i], textarea[name="label"]')
         .first();
       if (await labelInput.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await labelInput.fill("갱신");
+        await labelInput.fill('갱신');
         // debounce (~1500ms) 후 PATCH 발송 기대
         await page.waitForTimeout(1_800);
         uiEdited = true;
@@ -375,7 +459,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     expect(putSeen).toEqual([]);
   });
 
-  test("[7A] 흐름 장면 토론방 정책은 flow node PATCH 로 저장된다", async ({ page }) => {
+  test('[7A] 흐름 장면 토론방 정책은 flow node PATCH 로 저장된다', async ({ page }) => {
     await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
     await tryClickTab(page, /흐름|flow/i);
 
@@ -383,38 +467,38 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(node).toBeVisible({ timeout: 10_000 });
     await node.click();
 
-    const discussionToggle = page.getByRole("checkbox", { name: /토론방/ });
+    const discussionToggle = page.getByRole('checkbox', { name: /토론방/ });
     await expect(discussionToggle).toBeVisible({ timeout: 5_000 });
     await discussionToggle.check();
-    await page.getByLabel("메인 토론방").fill("추리 회의");
-    await page.getByLabel("이용 가능 시점").selectOption("condition");
-    await page.getByLabel("조건부 방명").fill("비밀 토론");
+    await page.getByLabel('메인 토론방').fill('추리 회의');
+    await page.getByLabel('이용 가능 시점').selectOption('condition');
+    await page.getByLabel('조건부 방명').fill('비밀 토론');
 
     const a11y = await new AxeBuilder({ page })
       .include('[data-testid="discussion-room-policy-panel"]')
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
     expect(a11y.violations).toEqual([]);
 
     await expect.poll(() => state.flowPatchCalls).toBeGreaterThanOrEqual(1);
-    const patch = state.lastFlowNodePatchBody as
-      | { data?: { discussionRoomPolicy?: Record<string, unknown> } }
-      | null;
+    const patch = state.lastFlowNodePatchBody as {
+      data?: { discussionRoomPolicy?: Record<string, unknown> };
+    } | null;
     expect(patch?.data?.discussionRoomPolicy).toMatchObject({
       enabled: true,
-      mainRoomName: "추리 회의",
-      availability: "condition",
-      conditionalRoomName: "비밀 토론",
+      mainRoomName: '추리 회의',
+      availability: 'condition',
+      conditionalRoomName: '비밀 토론',
     });
     expect(state.flowPutCalls).toBe(0);
   });
 
-  test("[8] 장소 탭 — locations[].clueIds 구조 UI 로드 (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + chip soft" });
+  test('[8] 장소 탭 — locations[].clueIds 구조 UI 로드 (network-only)', async ({ page }) => {
+    test.info().annotations.push({ type: 'soft-skip', description: 'tryClickTab + chip soft' });
     const locReq = page
       .waitForRequest(
-        (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/locations`) && r.method() === "GET",
-        { timeout: 10_000 },
+        (r) => r.url().includes(`/v1/editor/themes/${THEME_ID}/locations`) && r.method() === 'GET',
+        { timeout: 10_000 }
       )
       .catch(() => null);
 
@@ -424,29 +508,33 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     const got = await locReq;
     expect(got).not.toBeNull();
 
-    await expect(page.getByLabel("장소 목록")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText("거실").first()).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText("R2~4").first()).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByLabel("거실 단서 조사")).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('거실').first()).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText('R2~4').first()).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByLabel('거실 단서 조사')).toBeVisible({ timeout: 3_000 });
     await expect(page.getByText(/접근 제한/).first()).toBeVisible({ timeout: 3_000 });
 
     // UI: 단서 chip/체크박스가 있으면 토글 + 즉시 반영
-    const chip = page.getByRole("checkbox").first();
+    const chip = page.getByRole('checkbox').first();
     if (await chip.isVisible({ timeout: 2_000 }).catch(() => false)) {
       const wasChecked = await chip.isChecked().catch(() => false);
       await chip.click().catch(() => {});
-      await expect(chip).toBeChecked({ checked: !wasChecked, timeout: 2_000 }).catch(() => {});
+      await expect(chip)
+        .toBeChecked({ checked: !wasChecked, timeout: 2_000 })
+        .catch(() => {});
     }
   });
 
-  test("[9] 템플릿 탭 GET /api/v1/templates (network-only)", async ({ page }) => {
-    test.info().annotations.push({ type: "soft-skip", description: "tryClickTab + state fallback" });
+  test('[9] 템플릿 탭 GET /api/v1/templates (network-only)', async ({ page }) => {
+    test
+      .info()
+      .annotations.push({ type: 'soft-skip', description: 'tryClickTab + state fallback' });
     const tplReq = page
       .waitForRequest(
         (r) =>
           (r.url().includes(`/api/v1/templates`) || r.url().includes(`/v1/templates`)) &&
-          r.method() === "GET",
-        { timeout: 10_000 },
+          r.method() === 'GET',
+        { timeout: 10_000 }
       )
       .catch(() => null);
 

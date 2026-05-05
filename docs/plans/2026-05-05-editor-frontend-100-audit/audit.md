@@ -37,30 +37,36 @@
 
 현재 `origin/main` 기준 체감 구현률은 약 **70%**다.
 
+2026-05-05 P0 보정 기준:
+
+- #375가 merge되면 creator-safe UI gap이 닫혀 약 **90%**로 본다.
+- #376이 merge되면 직접 URL, alias URL, 모바일/데스크톱 smoke gate가 문서와 테스트에 고정되어 에디터 프론트 1차 목표는 기능 구현 관점에서 **100% 완료**로 판정한다.
+- 이후 남는 작업은 1차 프론트 기능 추가가 아니라 2차 목표인 backend 저장/검증, runtime engine, game screen으로 분류한다.
+
 - 높은 영역: route migration, 캐릭터, 단서 기본, 장소 기본, 결말 기본, 미디어 라이브러리
 - 중간 영역: 스토리/장면 요약, 조건, 트리거, 정보 전달
 - 낮은 영역: 단서 조사, 조사권, 토론방, 연출 cue, creator-safe advanced/raw JSON 제거, 모바일 smoke
 
 ## 감사표
 
-| 제작 단위 | 현재 상태 | 근거 | 1차 100%까지 남은 것 | 연결 이슈 | 우선순위 |
-| --- | --- | --- | --- | --- | --- |
-| `/editor/:id` route | 거의 완료 | `EditorPage.tsx`, `routeSegments.ts`, `EditorPage.test.tsx`, `editor-golden-path.spec.ts` | 직접 URL smoke 유지, `/design/*`와 top-level alias 회귀 방지 | #288 완료 흐름, 후속 구현 PR 공통 | P0 완료 기반 |
-| 스토리/장면 | 기반 완료 | #299 CLOSED, `StoryTab.tsx`, `StorySceneSummary.tsx`, `storySceneAdapter.ts` | 장면 하위 블록이 실제 편집 화면 안에 모이는지 최종 polish | #302, #290, #303, #305 | P0 완료 기반 |
-| 조건 | 기반 완료 | #301 CLOSED, `ConditionBuilder.tsx`, `conditionTypes.ts`, `conditionAdapter.ts` | 각 기능에서 조건 선택지를 실제 데이터로 채우고 raw shape 숨김 유지 | #302, #290, #304, #303, #305, #329 | P0 완료 기반 |
-| 트리거 | 기반 완료 | #300 CLOSED, `ActionListEditor.tsx`, `EntityTriggerPlacementCard.tsx`, `eventProgressionConfig.ts` | 결과 타입을 정보 공개/조사권/토론방/연출과 연결 | #302, #304, #303, #305 | P0 완료 기반 |
-| 등장인물 | 대부분 완료 | #306/#331 merge, `CharactersTab.tsx`, `characterEditorAdapter.ts` | 조건부 이름/아이콘, 엔드카드 소유권 | #329, #330 | P2 |
-| 단서 | 대부분 완료 | `CluesTab.tsx`, `ClueEntityWorkspace.tsx`, `ClueRuntimeEffectCard.tsx` | 단서 조사와 획득 방식 연결, 단서 사용 효과와 조사 결과의 관계 정리 | #290 | P1 |
-| 장소 | 대부분 완료 | `LocationsSubTab.tsx`, `LocationDetailPanel.tsx`, `LocationClueAssignPanel.tsx` | 장소 안의 단서 조사 블록을 제품 용어로 연결 | #290 | P1 |
-| 정보 공개 | 일부 완료 | `ReadingSectionList.tsx`, `InformationDeliveryPanel.tsx`, `informationDeliveryAdapter.ts` | 스토리 장면 하위 블록으로 그룹/조건/대상 편집 | #302 | P1-1 |
-| 단서 조사 | 낮음 | `deckInvestigationAdapter.ts`, #277 audit의 UI 연결 미확인 | 장소/스토리 장면에서 조사 대상 단서, 조건, 공개 정책, 조사권 비용 편집 | #290 | P1-2 |
-| 조사권 | 낮음 | `conditionTypes.ts`에 조건 변수 존재, #304 open | 전역/단서 조사 하위 설정 UI, 초기 배포, 소비 정책 | #304 | P1-3 |
-| 토론방 | 낮음 | `conditionTypes.ts`에 토론방 상태 변수 존재, room/chat runtime은 별도 | 장면별 메인 토론방/밀담방/조건부 접근 정책 편집 | #303 | P1-4 |
-| 연출 | 낮음~중간 | `MediaTab.tsx`, `MediaPicker.tsx`, `play_bgm` action label | 장면/트리거에 BGM, SE, 영상, 배경 cue를 raw JSON 없이 연결 | #305 | P1-5 |
-| 결말 | 기본 완료 | `EndingEntitySubTab.tsx`, `EndingBranchRulesPanel.tsx`, #280 open | 캐릭터별 결말, GM 보정, 감상 공유, 엔드카드 | #280, #330, #293 | P2 |
-| 미디어 | 기본 완료 | `MediaTab.tsx`, `MediaDetail.tsx`, `mediaResourceAdapter.ts` | metadata 과노출 축소, 모바일 상세 패널 개선, 연출 picker와 연결 | #305, #282 | P1/P2 |
-| Creator-safe polish | 미완 | `AdvancedTab.tsx`, `MediaDetail.tsx`, #277 audit | raw `config_json` 기본 노출 제거 또는 debug/admin gate, 오류 복구 UI | #282, #283 | P1 병행 |
-| 저장/검증 안정성 | 프론트 일부 | adapter tests 다수, backend validation gap 존재 | 프론트 1차 PR마다 focused 저장 테스트. backend 최종 검증은 2차로 이동 | #281, #283, #294 | 병행 guard |
+| 제작 단위           | 현재 상태              | 근거                                                                                                               | 1차 100%까지 남은 것                                                                      | 연결 이슈                          | 우선순위     |
+| ------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------- | ------------ |
+| `/editor/:id` route | P0 수용 게이트 진행 중 | `EditorPage.tsx`, `routeSegments.ts`, `EditorPage.test.tsx`, `routeSegments.test.ts`, `editor-golden-path.spec.ts` | #376에서 route matrix, `/design/*`, top-level alias, 390px/desktop smoke를 merge하면 완료 | #376                               | P0           |
+| 스토리/장면         | 기반 완료              | #299 CLOSED, `StoryTab.tsx`, `StorySceneSummary.tsx`, `storySceneAdapter.ts`                                       | 장면 하위 블록이 실제 편집 화면 안에 모이는지 최종 polish                                 | #302, #290, #303, #305             | P0 완료 기반 |
+| 조건                | 기반 완료              | #301 CLOSED, `ConditionBuilder.tsx`, `conditionTypes.ts`, `conditionAdapter.ts`                                    | 각 기능에서 조건 선택지를 실제 데이터로 채우고 raw shape 숨김 유지                        | #302, #290, #304, #303, #305, #329 | P0 완료 기반 |
+| 트리거              | 기반 완료              | #300 CLOSED, `ActionListEditor.tsx`, `EntityTriggerPlacementCard.tsx`, `eventProgressionConfig.ts`                 | 결과 타입을 정보 공개/조사권/토론방/연출과 연결                                           | #302, #304, #303, #305             | P0 완료 기반 |
+| 등장인물            | 대부분 완료            | #306/#331 merge, `CharactersTab.tsx`, `characterEditorAdapter.ts`                                                  | 조건부 이름/아이콘, 엔드카드 소유권                                                       | #329, #330                         | P2           |
+| 단서                | 대부분 완료            | `CluesTab.tsx`, `ClueEntityWorkspace.tsx`, `ClueRuntimeEffectCard.tsx`                                             | 단서 조사와 획득 방식 연결, 단서 사용 효과와 조사 결과의 관계 정리                        | #290                               | P1           |
+| 장소                | 대부분 완료            | `LocationsSubTab.tsx`, `LocationDetailPanel.tsx`, `LocationClueAssignPanel.tsx`                                    | 장소 안의 단서 조사 블록을 제품 용어로 연결                                               | #290                               | P1           |
+| 정보 공개           | 일부 완료              | `ReadingSectionList.tsx`, `InformationDeliveryPanel.tsx`, `informationDeliveryAdapter.ts`                          | 스토리 장면 하위 블록으로 그룹/조건/대상 편집                                             | #302                               | P1-1         |
+| 단서 조사           | 낮음                   | `deckInvestigationAdapter.ts`, #277 audit의 UI 연결 미확인                                                         | 장소/스토리 장면에서 조사 대상 단서, 조건, 공개 정책, 조사권 비용 편집                    | #290                               | P1-2         |
+| 조사권              | 낮음                   | `conditionTypes.ts`에 조건 변수 존재, #304 open                                                                    | 전역/단서 조사 하위 설정 UI, 초기 배포, 소비 정책                                         | #304                               | P1-3         |
+| 토론방              | 낮음                   | `conditionTypes.ts`에 토론방 상태 변수 존재, room/chat runtime은 별도                                              | 장면별 메인 토론방/밀담방/조건부 접근 정책 편집                                           | #303                               | P1-4         |
+| 연출                | 낮음~중간              | `MediaTab.tsx`, `MediaPicker.tsx`, `play_bgm` action label                                                         | 장면/트리거에 BGM, SE, 영상, 배경 cue를 raw JSON 없이 연결                                | #305                               | P1-5         |
+| 결말                | 기본 완료              | `EndingEntitySubTab.tsx`, `EndingBranchRulesPanel.tsx`, #280 open                                                  | 캐릭터별 결말, GM 보정, 감상 공유, 엔드카드                                               | #280, #330, #293                   | P2           |
+| 미디어              | 기본 완료              | `MediaTab.tsx`, `MediaDetail.tsx`, `mediaResourceAdapter.ts`                                                       | metadata 과노출 축소, 모바일 상세 패널 개선, 연출 picker와 연결                           | #305, #282                         | P1/P2        |
+| Creator-safe polish | P0 PR 진행 중          | `AdvancedTab.tsx`, `MediaDetail.tsx`, #277 audit                                                                   | #375에서 raw `config_json` 기본 노출과 raw media metadata 표시를 닫으면 완료              | #375, #282, #283                   | P0/P1 병행   |
+| 저장/검증 안정성    | 프론트 일부            | adapter tests 다수, backend validation gap 존재                                                                    | 프론트 1차 PR마다 focused 저장 테스트. backend 최종 검증은 2차로 이동                     | #281, #283, #294                   | 병행 guard   |
 
 ## 구현 순서 재정렬
 

@@ -26,6 +26,48 @@ vi.mock('@/features/editor/components', () => ({
 
 import EditorPage from '../EditorPage';
 
+const routeMatrixCases = [
+  ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'overview'],
+  ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'story'],
+  [
+    '직접 URL /editor/:id/characters',
+    { id: 'theme-1', tab: 'characters' },
+    'characters',
+    'characters',
+  ],
+  ['직접 URL /editor/:id/clues', { id: 'theme-1', tab: 'clues' }, 'clues', 'clues'],
+  ['직접 URL /editor/:id/relations', { id: 'theme-1', tab: 'relations' }, 'relations', 'clues'],
+  ['직접 URL /editor/:id/media', { id: 'theme-1', tab: 'media' }, 'media', 'media'],
+  [
+    '직접 URL /editor/:id/design/modules',
+    { id: 'theme-1', tab: 'design', designTab: 'modules' },
+    'modules',
+    'design',
+  ],
+  [
+    '직접 URL /editor/:id/design/flow',
+    { id: 'theme-1', tab: 'design', designTab: 'flow' },
+    'flow',
+    'design',
+  ],
+  [
+    '직접 URL /editor/:id/design/locations',
+    { id: 'theme-1', tab: 'design', designTab: 'locations' },
+    'locations',
+    'design',
+  ],
+  [
+    '직접 URL /editor/:id/design/endings',
+    { id: 'theme-1', tab: 'design', designTab: 'endings' },
+    'endings',
+    'design',
+  ],
+  ['alias URL /editor/:id/modules', { id: 'theme-1', tab: 'modules' }, 'modules', 'design'],
+  ['alias URL /editor/:id/flow', { id: 'theme-1', tab: 'flow' }, 'flow', 'design'],
+  ['alias URL /editor/:id/locations', { id: 'theme-1', tab: 'locations' }, 'locations', 'design'],
+  ['alias URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'design'],
+] as const;
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -50,23 +92,17 @@ describe('EditorPage', () => {
     expect(setActiveTabMock).toHaveBeenCalledWith('characters');
   });
 
-  it.each([
-    ['design', 'design'],
-    ['story', 'story'],
-    ['characters', 'characters'],
-    ['clues', 'clues'],
-    ['relations', 'clues'],
-    ['locations', 'design'],
-    ['endings', 'design'],
-    ['media', 'media'],
-  ] as const)('%s 라우트 segment를 %s 탭으로 매핑한다', (segment, expectedTab) => {
-    paramsMock.mockReturnValue({ id: 'theme-1', tab: segment });
+  it.each(routeMatrixCases)(
+    '%s route matrix를 ThemeEditor와 active tab에 반영한다',
+    (_label, params, expectedSegment, expectedTab) => {
+      paramsMock.mockReturnValue(params);
 
-    render(<EditorPage />);
+      render(<EditorPage />);
 
-    expect(screen.getByText(new RegExp(`테마 에디터 theme-1 ${segment}`))).toBeDefined();
-    expect(setActiveTabMock).toHaveBeenCalledWith(expectedTab);
-  });
+      expect(screen.getByText(new RegExp(`테마 에디터 theme-1 ${expectedSegment}`))).toBeDefined();
+      expect(setActiveTabMock).toHaveBeenCalledWith(expectedTab);
+    }
+  );
 
   it('design 하위 route segment를 실제 DesignTab subtab segment로 전달한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'design', designTab: 'flow' });

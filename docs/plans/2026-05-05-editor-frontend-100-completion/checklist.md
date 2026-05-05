@@ -55,17 +55,25 @@ Issue: https://github.com/sabyunrepo/muder_platform/issues/376
 
 직접 URL 기준:
 
-- `/editor/:id`
-- `/editor/:id/story`
-- `/editor/:id/characters`
-- `/editor/:id/clues`
-- `/editor/:id/relations`
-- `/editor/:id/design/modules`
-- `/editor/:id/design/flow`
-- `/editor/:id/design/locations`
-- `/editor/:id/design/endings`
-- `/editor/:id/media`
-- top-level alias: `/editor/:id/modules`, `/editor/:id/flow`, `/editor/:id/locations`, `/editor/:id/endings`
+| URL                            | 열려야 하는 제작 화면 | 비고                    |
+| ------------------------------ | --------------------- | ----------------------- |
+| `/editor/:id`                  | 기본정보              | 기본 진입               |
+| `/editor/:id/story`            | 스토리                | top-level tab           |
+| `/editor/:id/characters`       | 등장인물              | top-level tab           |
+| `/editor/:id/clues`            | 단서                  | top-level tab           |
+| `/editor/:id/relations`        | 단서 관계             | 단서 탭 안 관계 모드    |
+| `/editor/:id/design/modules`   | 게임설계 / 모듈       | canonical design subtab |
+| `/editor/:id/design/flow`      | 게임설계 / 흐름       | canonical design subtab |
+| `/editor/:id/design/locations` | 게임설계 / 장소       | canonical design subtab |
+| `/editor/:id/design/endings`   | 게임설계 / 결말       | canonical design subtab |
+| `/editor/:id/media`            | 미디어                | top-level tab           |
+| `/editor/:id/modules`          | 게임설계 / 모듈       | 유지할 alias            |
+| `/editor/:id/flow`             | 게임설계 / 흐름       | 유지할 alias            |
+| `/editor/:id/locations`        | 게임설계 / 장소       | 유지할 alias            |
+| `/editor/:id/endings`          | 게임설계 / 결말       | 유지할 alias            |
+
+Route matrix의 코드 기준은 `apps/web/src/features/editor/routeSegments.ts`의 `EDITOR_ROUTE_MATRIX`다.
+테스트는 `routeSegments.test.ts`, `EditorPage.test.tsx`, `DesignTab.test.tsx`, `editor-golden-path.spec.ts`가 같은 기준을 나눠 검증한다.
 
 완료 기준:
 
