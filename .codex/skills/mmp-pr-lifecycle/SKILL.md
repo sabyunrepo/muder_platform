@@ -51,7 +51,9 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - A steward may report `MERGE_READY` for `code-rabbit-only` only when latest head SHA was checked, unresolved threads are 0, CodeRabbit is clear, light checks are green, focused local validation for changed scripts/config/docs is recorded, and the handoff scope says `code-rabbit-only`.
    - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for CodeRabbit/check waiting instead of running repeated watcher polling in the main thread.
    - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
-   - After any steward-managed PR is merged, main Codex pulls `origin/main` and rebases or merges it into active feature worktrees before continuing implementation.
+   - After any steward-managed PR is merged, main Codex pulls `origin/main`.
+   - Do not automatically rebase or merge `origin/main` into active PR branches that are already under steward review/CI. Update an active branch only when GitHub reports a merge conflict or up-to-date requirement, the merged main change touches the same files/shared contracts or a stacked parent branch, CI/Codecov failure is caused by main drift, or the user explicitly asks for the branch refresh.
+   - If no branch-refresh trigger exists, preserve the active PR head and let the steward finish the current review/CI cycle. Resolve any remaining conflict at the merge decision point.
 
 ## Done
 - PR has Korean title/body.
