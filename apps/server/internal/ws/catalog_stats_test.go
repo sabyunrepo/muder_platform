@@ -11,10 +11,9 @@ import (
 // baseline numbers whenever Catalog entries are intentionally added — if
 // the counts fall unexpectedly, we have likely dropped an event by accident.
 //
-// Baseline locked at Phase 19 PR-1 (2026-04-18). Observed: total=123,
-// c2s=72, s2c=44, bidi=7, stubs=6. The asserted minima sit a few entries
-// below observed so minor re-categorisation doesn't trip the gate, while
-// an accidental drop of a whole namespace still fails loudly.
+// Baseline locked at Phase 19 PR-1 (2026-04-18). The asserted minima sit a
+// few entries below observed values so minor re-categorisation doesn't trip
+// the gate, while an accidental drop of a whole namespace still fails loudly.
 //
 //	>= 120 total
 //	>= 70  C2S   (legacy module actions, one colon namespace each)

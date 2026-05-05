@@ -95,6 +95,21 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("themeId가 없으면 미디어 선택 버튼을 비활성화하고 안내문을 보여준다", () => {
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[{ id: "bgm", type: "SET_BGM", params: {} }]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByRole("button", { name: "BGM 선택" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(screen.getByText("테마 화면에서 미디어를 선택할 수 있습니다.")).toBeDefined();
+  });
+
   it("저장 전 연출 실행 결과의 mediaId 누락을 검출한다", () => {
     expect(hasIncompletePresentationCueActions([{ id: "bgm", type: "SET_BGM", params: {} }])).toBe(
       true,

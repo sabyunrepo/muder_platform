@@ -3,6 +3,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EntityTriggerPlacementCard } from '../EntityTriggerPlacementCard';
 import { readModuleConfig } from '@/features/editor/utils/configShape';
 
+vi.mock('@/features/editor/components/media/MediaPicker', () => ({
+  MediaPicker: ({
+    open,
+    title,
+    onSelect,
+  }: {
+    open: boolean;
+    title?: string;
+    onSelect: (media: { id: string }) => void;
+  }) =>
+    open ? (
+      <button type="button" onClick={() => onSelect({ id: 'media-1' })}>
+        {title}
+      </button>
+    ) : null,
+}));
+
 afterEach(cleanup);
 
 describe('EntityTriggerPlacementCard', () => {
@@ -76,5 +93,43 @@ describe('EntityTriggerPlacementCard', () => {
     expect(
       (screen.getByRole('button', { name: '트리거 저장' }) as HTMLButtonElement).disabled
     ).toBe(true);
+  });
+
+  it('enables save after a presentation cue media is selected', () => {
+    const onConfigChange = vi.fn();
+    render(
+      <EntityTriggerPlacementCard
+        themeId="theme-1"
+        entityKind="location"
+        entityId="loc-1"
+        entityName="서재"
+        configJson={{}}
+        onConfigChange={onConfigChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '장소 트리거 1 1 실행 결과' }), {
+      target: { value: 'SET_BGM' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'BGM 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '장소 트리거 1 1 BGM 선택' }));
+
+    const saveButton = screen.getByRole('button', { name: '트리거 저장' }) as HTMLButtonElement;
+    expect(saveButton.disabled).toBe(false);
+
+    fireEvent.click(saveButton);
+
+    expect(onConfigChange).toHaveBeenCalledOnce();
+    const [nextConfig] = onConfigChange.mock.calls[0];
+    expect(readModuleConfig(nextConfig, 'event_progression')).toMatchObject({
+      Triggers: [
+        {
+          placement: { kind: 'location', entityId: 'loc-1' },
+          actions: [{ type: 'SET_BGM', params: { mediaId: 'media-1' } }],
+        },
+      ],
+    });
   });
 });

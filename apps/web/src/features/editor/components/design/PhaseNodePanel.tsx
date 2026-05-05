@@ -64,9 +64,10 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
     onUpdate(node.id, patch);
-    if (hasIncompleteActionPatch(patch)) return;
+    const nextData = { ...data, ...patch };
+    if (hasIncompleteActionPatch(nextData)) return;
     debouncer.schedule(
-      { ...data, ...patch },
+      nextData,
       (prev) => ({ ...data, ...(prev ?? {}), ...patch }),
     );
   };
