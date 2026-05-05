@@ -40,6 +40,7 @@ describe('BranchNodePanel', () => {
     ]);
 
     expect(screen.getAllByText('분기 1').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('기본 경로 (조건 없이 통과)')).toBeDefined();
     expect(container.textContent).not.toContain('edge-internal-123');
   });
 

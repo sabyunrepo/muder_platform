@@ -41,6 +41,7 @@ export function BranchNodePanel({
   const nodeData = node.data as BranchNodeData;
   const outEdges = edges.filter((e) => e.source === node.id);
   const { characters, clues } = useFlowConditionData(themeId);
+  const defaultEdgeSelectId = `branch-default-edge-${node.id}`;
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -64,8 +65,11 @@ export function BranchNodePanel({
       {/* Default edge */}
       {outEdges.length > 0 && (
         <div className="flex flex-col gap-1">
-          <label className="text-[11px] text-slate-400">기본 경로 (조건 없이 통과)</label>
+          <label htmlFor={defaultEdgeSelectId} className="text-[11px] text-slate-400">
+            기본 경로 (조건 없이 통과)
+          </label>
           <select
+            id={defaultEdgeSelectId}
             className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-300 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
             value={nodeData.default_edge_id ?? ''}
             onChange={(e) => onUpdate(node.id, { default_edge_id: e.target.value })}
