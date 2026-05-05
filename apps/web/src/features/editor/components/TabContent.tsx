@@ -9,6 +9,9 @@ import type { EditorThemeResponse } from "@/features/editor/api";
 const OverviewTab = lazy(() =>
   import("./OverviewTab").then((m) => ({ default: m.OverviewTab })),
 );
+const StoryMapWorkspace = lazy(() =>
+  import("./story-map/StoryMapWorkspace").then((m) => ({ default: m.StoryMapWorkspace })),
+);
 const StoryTab = lazy(() =>
   import("./StoryTab").then((m) => ({ default: m.StoryTab })),
 );
@@ -44,6 +47,8 @@ interface TabContentProps {
 
 export function TabContent({ tab, theme, themeId, routeSegment }: TabContentProps) {
   switch (tab) {
+    case "storyMap":
+      return <StoryMapWorkspace themeId={themeId} />;
     case "overview":
       return <OverviewTab theme={theme} themeId={themeId} />;
     case "story":

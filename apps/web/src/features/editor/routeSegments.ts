@@ -11,14 +11,19 @@ export interface EditorRouteMatrixEntry {
 }
 
 const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
+  'story-map': 'storyMap',
   overview: 'overview',
   design: 'design',
-  story: 'story',
+  story: 'storyMap',
   characters: 'characters',
   clues: 'clues',
   relations: 'clues',
   modules: 'design',
-  flow: 'design',
+  flow: 'storyMap',
+  'design/modules': 'design',
+  'design/flow': 'design',
+  'design/locations': 'design',
+  'design/endings': 'design',
   locations: 'design',
   endings: 'design',
   media: 'media',
@@ -29,39 +34,43 @@ const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
 
 const DESIGN_ROUTE_SUBTAB_MAP: Record<string, DesignSubTab> = {
   design: 'modules',
+  'design/modules': 'modules',
   modules: 'modules',
+  'design/flow': 'flow',
   flow: 'flow',
+  'design/locations': 'locations',
   locations: 'locations',
+  'design/endings': 'endings',
   endings: 'endings',
 };
 
 export const EDITOR_ROUTE_MATRIX = [
-  { path: '/editor/:id', editorTab: 'overview' },
-  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'story' },
+  { path: '/editor/:id', editorTab: 'storyMap' },
+  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'storyMap' },
   { path: '/editor/:id/characters', routeSegment: 'characters', editorTab: 'characters' },
   { path: '/editor/:id/clues', routeSegment: 'clues', editorTab: 'clues' },
   { path: '/editor/:id/relations', routeSegment: 'relations', editorTab: 'clues' },
   {
     path: '/editor/:id/design/modules',
-    routeSegment: 'modules',
+    routeSegment: 'design/modules',
     editorTab: 'design',
     designSubTab: 'modules',
   },
   {
     path: '/editor/:id/design/flow',
-    routeSegment: 'flow',
+    routeSegment: 'design/flow',
     editorTab: 'design',
     designSubTab: 'flow',
   },
   {
     path: '/editor/:id/design/locations',
-    routeSegment: 'locations',
+    routeSegment: 'design/locations',
     editorTab: 'design',
     designSubTab: 'locations',
   },
   {
     path: '/editor/:id/design/endings',
-    routeSegment: 'endings',
+    routeSegment: 'design/endings',
     editorTab: 'design',
     designSubTab: 'endings',
   },
@@ -76,7 +85,7 @@ export const EDITOR_ROUTE_MATRIX = [
   {
     path: '/editor/:id/flow',
     routeSegment: 'flow',
-    editorTab: 'design',
+    editorTab: 'storyMap',
     designSubTab: 'flow',
     alias: true,
   },
@@ -97,8 +106,8 @@ export const EDITOR_ROUTE_MATRIX = [
 ] as const satisfies readonly EditorRouteMatrixEntry[];
 
 export function readEditorTabFromRouteSegment(routeSegment?: string): EditorTab {
-  if (!routeSegment) return 'overview';
-  return EDITOR_ROUTE_TAB_MAP[routeSegment] ?? 'overview';
+  if (!routeSegment) return 'storyMap';
+  return EDITOR_ROUTE_TAB_MAP[routeSegment] ?? 'storyMap';
 }
 
 export function readDesignSubTabFromRouteSegment(routeSegment?: string): DesignSubTab {

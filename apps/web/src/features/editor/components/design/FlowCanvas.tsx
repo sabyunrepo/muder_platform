@@ -7,7 +7,7 @@ import {
   type OnSelectionChangeParams,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useFlowData } from "../../hooks/useFlowData";
 import { FlowToolbar } from "./FlowToolbar";
 import { StartNode } from "./StartNode";
@@ -66,6 +66,21 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
     updateEdgeCondition,
     applyPreset,
   } = useFlowData(themeId);
+
+  const renderedNodes = useMemo(
+    () =>
+      nodes.map((node) =>
+        node.id === highlightId
+          ? {
+              ...node,
+              className: [node.className, "!ring-2 !ring-amber-400"]
+                .filter(Boolean)
+                .join(" "),
+            }
+          : node,
+      ),
+    [highlightId, nodes],
+  );
 
   // Add node at canvas center
   const handleAddNode = useCallback(
@@ -140,7 +155,7 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
           onDrop={handleDrop}
         >
           <ReactFlow
-            nodes={nodes}
+            nodes={renderedNodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
@@ -151,7 +166,6 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
             deleteKeyCode="Delete"
             edgesFocusable={true}
             edgesReconnectable={true}
-            nodeClassName={(node) => node.id === highlightId ? "!ring-2 !ring-amber-400" : ""}
             fitView
             colorMode="dark"
           >

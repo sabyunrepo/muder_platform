@@ -6,7 +6,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 // ---------------------------------------------------------------------------
 
 const mockSetActiveTab = vi.fn();
-const mockActiveTab = { current: "overview" };
+const mockActiveTab = { current: "storyMap" };
 
 vi.mock("../../stores/editorUIStore", () => ({
   useEditorUI: () => ({
@@ -24,7 +24,7 @@ import { EditorTabNav } from "../EditorTabNav";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  mockActiveTab.current = "overview";
+  mockActiveTab.current = "storyMap";
 });
 
 // ---------------------------------------------------------------------------
@@ -34,6 +34,7 @@ afterEach(() => {
 describe("EditorTabNav dynamic tabs", () => {
   it("모듈 미지정 시 always=true 탭만 표시된다", () => {
     render(<EditorTabNav />);
+    expect(screen.getByText("스토리 진행")).toBeDefined();
     expect(screen.getByText("기본정보")).toBeDefined();
     expect(screen.getByText("게임설계")).toBeDefined();
     expect(screen.queryByText("미디어")).toBeNull();
@@ -54,12 +55,12 @@ describe("EditorTabNav dynamic tabs", () => {
     render(<EditorTabNav activeModules={[]} forcedVisibleTab="media" />);
 
     expect(screen.getByText("미디어")).toBeDefined();
-    expect(mockSetActiveTab).not.toHaveBeenCalledWith("overview");
+    expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
   });
 
-  it("현재 탭이 숨겨지면 overview로 전환된다", () => {
+  it("현재 탭이 숨겨지면 기본 제작 흐름으로 전환된다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} />);
-    expect(mockSetActiveTab).toHaveBeenCalledWith("overview");
+    expect(mockSetActiveTab).toHaveBeenCalledWith("storyMap");
   });
 });

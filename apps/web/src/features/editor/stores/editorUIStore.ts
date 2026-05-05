@@ -14,7 +14,7 @@ interface EditorUIState {
 }
 
 export const useEditorUI = create<EditorUIState>()((set) => ({
-  activeTab: "overview",
+  activeTab: "storyMap",
   setActiveTab: (tab) => set({ activeTab: tab }),
   validationErrors: {},
   setValidationErrors: (errors) => set({ validationErrors: errors }),

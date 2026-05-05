@@ -21,7 +21,7 @@ describe('editor route segment matrix', () => {
   );
 
   it('알 수 없는 segment는 제작 흐름의 안전한 기본 화면으로 되돌린다', () => {
-    expect(readEditorTabFromRouteSegment('unknown')).toBe('overview');
+    expect(readEditorTabFromRouteSegment('unknown')).toBe('storyMap');
     expect(readDesignSubTabFromRouteSegment('unknown')).toBe('modules');
   });
 });
