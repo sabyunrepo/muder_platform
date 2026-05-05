@@ -41,12 +41,13 @@ var errInvalidConfig = apperror.New(
 
 // StartConfig carries everything startModularGame needs.
 type StartConfig struct {
-	SessionID   uuid.UUID
-	ThemeID     uuid.UUID
-	Players     []PlayerState
-	ConfigJSON  json.RawMessage
-	FeatureFlag bool // game_runtime_v2 flag — off by default
-	Broadcaster Broadcaster
+	SessionID     uuid.UUID
+	ThemeID       uuid.UUID
+	Players       []PlayerState
+	ConfigJSON    json.RawMessage
+	FeatureFlag   bool // game_runtime_v2 flag — off by default
+	Broadcaster   Broadcaster
+	MediaResolver engine.MediaResolver
 }
 
 // startModularGame creates a Session, initialises the PhaseEngine with
@@ -81,6 +82,7 @@ func startModularGame(
 		EventBus:           bus,
 		Logger:             adapter,
 		PlayerInfoProvider: newStaticPlayerInfoProvider(cfg.Players),
+		MediaResolver:      cfg.MediaResolver,
 	}
 
 	modules, moduleConfigs, err := engine.BuildModules(ctx, gameCfg, deps)
@@ -105,6 +107,7 @@ func startModularGame(
 		gameCfg.Phases,
 	)
 	eng.SetPlayerInfoProvider(deps.PlayerInfoProvider)
+	eng.SetMediaResolver(deps.MediaResolver)
 	if err := eng.SetSceneTransitions(gameCfg.SceneTransitions); err != nil {
 		logger.Error().Err(err).
 			Str("session_id", cfg.SessionID.String()).

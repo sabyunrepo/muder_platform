@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/engine"
 	"github.com/rs/zerolog"
 )
 
@@ -11,10 +12,11 @@ import (
 // startModularGame. It satisfies the interface without the room package
 // needing to import the session package directly.
 type GameStarterAdapter struct {
-	manager     *SessionManager
-	broadcaster Broadcaster
-	featureFlag bool
-	logger      zerolog.Logger
+	manager       *SessionManager
+	broadcaster   Broadcaster
+	featureFlag   bool
+	mediaResolver engine.MediaResolver
+	logger        zerolog.Logger
 }
 
 // NewGameStarter creates a GameStarterAdapter. featureFlag mirrors
@@ -23,13 +25,15 @@ func NewGameStarter(
 	manager *SessionManager,
 	broadcaster Broadcaster,
 	featureFlag bool,
+	mediaResolver engine.MediaResolver,
 	logger zerolog.Logger,
 ) *GameStarterAdapter {
 	return &GameStarterAdapter{
-		manager:     manager,
-		broadcaster: broadcaster,
-		featureFlag: featureFlag,
-		logger:      logger.With().Str("component", "session.game_starter").Logger(),
+		manager:       manager,
+		broadcaster:   broadcaster,
+		featureFlag:   featureFlag,
+		mediaResolver: mediaResolver,
+		logger:        logger.With().Str("component", "session.game_starter").Logger(),
 	}
 }
 
@@ -38,12 +42,13 @@ func NewGameStarter(
 // scenario config. Returns errGameRuntimeDisabled when the feature flag is off.
 func (g *GameStarterAdapter) Start(ctx context.Context, roomID uuid.UUID, configJSON []byte) error {
 	cfg := StartConfig{
-		SessionID:   roomID,
-		ThemeID:     uuid.Nil, // resolved from configJSON by engine
-		Players:     nil,      // players joined via WS; session actor manages roster
-		ConfigJSON:  configJSON,
-		FeatureFlag: g.featureFlag,
-		Broadcaster: g.broadcaster,
+		SessionID:     roomID,
+		ThemeID:       uuid.Nil, // resolved from configJSON by engine
+		Players:       nil,      // players joined via WS; session actor manages roster
+		ConfigJSON:    configJSON,
+		FeatureFlag:   g.featureFlag,
+		Broadcaster:   g.broadcaster,
+		MediaResolver: g.mediaResolver,
 	}
 	_, err := startModularGame(ctx, g.manager, cfg, g.logger)
 	return err

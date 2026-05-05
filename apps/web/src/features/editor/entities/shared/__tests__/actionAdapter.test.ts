@@ -32,7 +32,14 @@ describe("actionAdapter", () => {
       "PLAY_SOUND",
       "PLAY_MEDIA",
       "STOP_AUDIO",
+      "SET_BACKGROUND",
+      "SET_THEME_COLOR",
     ]);
+  });
+
+  it("visual presentation action label을 제작자용 문구로 제공한다", () => {
+    expect(getCreatorActionLabel("SET_BACKGROUND")).toBe("배경 이미지 변경");
+    expect(getCreatorActionLabel("set_theme_color")).toBe("화면 색상 테마 변경");
   });
 
   it("정보 전달은 phase summary의 일반 action 목록에서 제외할 수 있다", () => {

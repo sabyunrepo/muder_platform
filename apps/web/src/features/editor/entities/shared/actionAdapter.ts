@@ -17,6 +17,8 @@ export const CREATOR_ACTION_OPTIONS: CreatorActionOption[] = [
   { value: "PLAY_SOUND", label: "효과음 재생" },
   { value: "PLAY_MEDIA", label: "영상 재생" },
   { value: "STOP_AUDIO", label: "BGM/효과음 정지" },
+  { value: "SET_BACKGROUND", label: "배경 이미지 변경" },
+  { value: "SET_THEME_COLOR", label: "화면 색상 테마 변경" },
 ];
 
 const ACTION_LABELS = new Map<string, string>([
@@ -33,6 +35,8 @@ const ACTION_LABELS = new Map<string, string>([
   ["play_bgm", "BGM 재생"],
   ["play_sound", "효과음 재생"],
   ["play_media", "영상 재생"],
+  ["set_background", "배경 이미지 변경"],
+  ["set_theme_color", "화면 색상 테마 변경"],
   ["stop_bgm", "BGM 정지"],
 ]);
 

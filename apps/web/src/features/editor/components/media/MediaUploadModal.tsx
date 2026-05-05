@@ -25,10 +25,9 @@ export interface MediaUploadModalProps {
 }
 
 const MAX_SIZE = 20 * 1024 * 1024;
-// Must match backend `AllowedAudioMIMEs` exactly. Adding formats here without
-// backend support causes confusing "rejected after upload" errors.
-const ALLOWED_MIME = ["audio/mpeg", "audio/wav", "audio/ogg"];
-const ACCEPT_ATTR = ALLOWED_MIME.join(",");
+const AUDIO_MIME = ["audio/mpeg", "audio/wav", "audio/ogg"];
+const IMAGE_MIME = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPT_ATTR = [...AUDIO_MIME, ...IMAGE_MIME].join(",");
 
 // ---------------------------------------------------------------------------
 // MediaUploadModal
@@ -85,12 +84,14 @@ export function MediaUploadModal({
       setError("파일 크기는 20MB 이하여야 합니다");
       return;
     }
-    if (!ALLOWED_MIME.includes(f.type)) {
-      setError("지원하지 않는 파일 형식입니다 (MP3, WAV, OGG)");
+    const nextType = inferUploadType(f.type);
+    if (!nextType) {
+      setError("지원하지 않는 파일 형식입니다 (MP3, WAV, OGG, JPG, PNG, WEBP)");
       return;
     }
     setError(null);
     setFile(f);
+    setType(nextType);
     const defaultName = f.name.replace(/\.[^.]+$/, "");
     setName((prev) => (prev ? prev : defaultName));
   };
@@ -214,7 +215,7 @@ export function MediaUploadModal({
               <p className="text-sm text-slate-400">
                 파일을 드래그하거나 클릭하여 선택
               </p>
-              <p className="mt-1 text-xs text-slate-500">(MP3, WAV, OGG)</p>
+              <p className="mt-1 text-xs text-slate-500">(MP3, WAV, OGG, JPG, PNG, WEBP)</p>
             </>
           )}
         </div>
@@ -261,6 +262,7 @@ export function MediaUploadModal({
                 <option value="BGM">배경음악</option>
                 <option value="SFX">효과음</option>
                 <option value="VOICE">음성</option>
+                <option value="IMAGE">이미지</option>
               </select>
             </div>
           </div>
@@ -323,4 +325,10 @@ export function MediaUploadModal({
       </div>
     </div>
   );
+}
+
+function inferUploadType(mimeType: string): MediaType | null {
+  if (AUDIO_MIME.includes(mimeType)) return "BGM";
+  if (IMAGE_MIME.includes(mimeType)) return "IMAGE";
+  return null;
 }

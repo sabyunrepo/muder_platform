@@ -200,6 +200,8 @@ func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 		ActionPlayMedia,
 		ActionSetBGM,
 		ActionStopAudio,
+		ActionSetBackground,
+		ActionSetThemeColor,
 	}
 	for _, action := range implicitActions {
 		moduleName, ok := ActionRequiresModule[action]

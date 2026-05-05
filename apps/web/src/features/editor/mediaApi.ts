@@ -7,7 +7,7 @@ import { queryClient } from "@/services/queryClient";
 // Types — match backend snake_case JSON exactly
 // ---------------------------------------------------------------------------
 
-export type MediaType = "BGM" | "SFX" | "VOICE" | "VIDEO" | "DOCUMENT";
+export type MediaType = "BGM" | "SFX" | "VOICE" | "VIDEO" | "DOCUMENT" | "IMAGE";
 export type MediaSourceType = "FILE" | "YOUTUBE";
 
 export interface MediaResponse {

@@ -182,6 +182,24 @@ describe("MediaUploadModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
+  it("이미지 파일은 IMAGE 타입으로 자동 설정해 업로드한다", async () => {
+    mockedUpload.mockResolvedValueOnce({});
+    renderModal(true);
+    const input = screen.getByTestId(
+      "media-upload-input",
+    ) as HTMLInputElement;
+    const file = makeFile("background.png", 1024, "image/png");
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect((screen.getByLabelText("유형") as HTMLSelectElement).value).toBe("IMAGE");
+
+    fireEvent.click(screen.getByRole("button", { name: "업로드" }));
+
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalledTimes(1));
+    expect(mockedUpload.mock.calls[0][0].type).toBe("IMAGE");
+  });
+
+
   it("progress bar updates from onProgress", async () => {
     mockedUpload.mockImplementationOnce(async (params: any) => {
       params.onProgress?.(42);
