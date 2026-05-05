@@ -158,6 +158,16 @@
         "AGENTS.md"
       ],
       "resolution": "Required steward final reports to pass mmp-pr-status --fail-on-blocker on the latest head, added unresolved review thread details, and clarified that verified target-PR thread resolution is an allowed autonomous steward action."
+    },
+    {
+      "id": "ci-steward-progress-reporting",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        ".codex/agents/mmp-ci-steward.toml",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "scripts/mmp-ci-steward-handoff.sh"
+      ],
+      "resolution": "Clarified that pending CodeRabbit/CI is not a final steward state, required status replies with phase/head/next action, and made timeout/no-progress states report BLOCKED with evidence."
     }
   ],
   "last_review": {

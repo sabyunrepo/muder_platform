@@ -46,12 +46,14 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - The handoff must include `scripts/mmp-pr-ci-scope.sh <PR>` output.
    - A steward's final report is valid only if it ran `scripts/mmp-pr-status.sh <PR> --fail-on-blocker` on the final head. Treat a green `CodeRabbit` check as insufficient unless unresolved review threads are 0 and GitHub review decision is non-blocking.
    - Give the steward enough autonomy to finish the PR lifecycle inside its target branch: it may update the PR branch for strict up-to-date checks, apply `ready-for-ci` through the guard, dispatch missing required workflows through the watcher, and resolve only verified target-PR review threads. Merge authority still stays with main Codex.
+   - A steward must not treat a pending CodeRabbit/CI state as a final result when an allowed next action exists. Pending means the steward keeps watching or advances to the next gate.
    - For `full-ci`, CodeRabbit-only success is not a steward completion state. The steward must continue by applying `scripts/pr-ready-for-ci-guard.sh --apply <PR>` and then watching required workflows and strict up-to-date state with `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows --update-branch-if-needed`.
    - For `code-rabbit-only`, CodeRabbit clear + unresolved 0 + light/focused validation is a valid steward `MERGE_READY` state. The steward must not add `ready-for-ci` or dispatch missing workflows.
    - `ready-for-ci` is an authorization label, not evidence that workflows started. The steward must verify current-head runs for the required set (`CI`, `E2E — Stubbed Backend`, `Security — Fast Feedback`) and rely on `--trigger-missing-workflows` to dispatch missing workflows instead of passively waiting for label-created runs.
    - A steward may report `MERGE_READY` for `full-ci` only when the latest head SHA was checked, unresolved threads are 0, CodeRabbit is clear, `ready-for-ci` label is present, required checks are green, and Codecov is satisfied or explicitly not applicable.
    - A steward may report `MERGE_READY` for `code-rabbit-only` only when latest head SHA was checked, unresolved threads are 0, CodeRabbit is clear, light checks are green, focused local validation for changed scripts/config/docs is recorded, and the handoff scope says `code-rabbit-only`.
    - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for CodeRabbit/check waiting instead of running repeated watcher polling in the main thread.
+   - If main Codex asks an active steward for status, the steward should answer with the latest head SHA, phase, current command, pending checks/threads, and next autonomous action. If no state changes before the watcher timeout, the steward reports `BLOCKED` with timeout/no-progress evidence instead of silently staying active.
    - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
    - After any steward-managed PR is merged, main Codex pulls `origin/main`.
    - Do not automatically rebase or merge `origin/main` into active PR branches that are already under steward review/CI. Update an active branch only when GitHub reports a merge conflict or up-to-date requirement, `main` branch protection has `required_status_checks.strict=true` and the PR is behind, the merged main change touches the same files/shared contracts or a stacked parent branch, CI/Codecov failure is caused by main drift, or the user explicitly asks for the branch refresh.
@@ -68,6 +70,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 - If a CI steward was used, handoff scope, steward result, and main Codex final verification are separated in the report.
 - Completed CI steward agents are closed so agent slots are released.
 - Steward final evidence includes `scripts/mmp-pr-status.sh <PR> --fail-on-blocker` passing on the reported head.
+- Steward pending states are observable: active status replies include head SHA, phase, pending checks, elapsed wait/no-progress evidence, and the next autonomous action.
 
 ## Avoid
 - Do not add `ready-for-ci` at PR creation.
