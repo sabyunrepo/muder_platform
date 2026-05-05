@@ -39,6 +39,44 @@ func TestNormalize_ModulesArrayToMap(t *testing.T) {
 	assert.False(t, hasConfig, "missing inline config must NOT inject empty config key")
 }
 
+func TestLegacyConfigAxes(t *testing.T) {
+	input := json.RawMessage(`{
+		"modules": ["voting"],
+		"module_configs": {"voting": {"mode": "open"}},
+		"clue_placement": {"clue-secret": "library"},
+		"locations": [{"id": "library", "clueIds": ["clue-secret"]}],
+		"character_clues": {"alice": ["clue-secret"]}
+	}`)
+
+	assert.ElementsMatch(t, []string{
+		"modules_array",
+		"module_configs",
+		"clue_placement",
+		"locations_clueIds",
+		"character_clues",
+	}, legacyConfigAxes(input))
+}
+
+func TestLegacyConfigAxes_NewShapeIsEmpty(t *testing.T) {
+	input := json.RawMessage(`{
+		"modules": {"starting_clue": {"enabled": true, "config": {"startingClues": {}}}},
+		"locations": [{"id": "library", "locationClueConfig": {"clueIds": ["clue-secret"]}}]
+	}`)
+
+	assert.Empty(t, legacyConfigAxes(input))
+}
+
+func TestLegacyConfigAxes_MixedLocationShapesDetectsDeadKey(t *testing.T) {
+	input := json.RawMessage(`{
+		"locations": [
+			{"id": "library", "locationClueConfig": {"clueIds": ["c1"]}},
+			{"id": "study_room", "clueIds": ["c2"]}
+		]
+	}`)
+
+	assert.ElementsMatch(t, []string{"locations_clueIds"}, legacyConfigAxes(input))
+}
+
 func TestNormalize_ModulesStringListPlusConfigsMap(t *testing.T) {
 	input := json.RawMessage(`{
 		"modules": ["voting", "audio"],

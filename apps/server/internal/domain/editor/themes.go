@@ -133,11 +133,23 @@ func (s *service) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*
 	if err != nil {
 		return nil, err
 	}
+	legacyAxes := legacyConfigAxes(theme.ConfigJson)
 	normalized, err := NormalizeConfigJSON(theme.ConfigJson)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to normalize config_json")
 		return nil, apperror.Internal("failed to normalize config_json")
 	}
+	s.logLegacyConfigRead(themeID, legacyAxes)
 	theme.ConfigJson = normalized
 	return toThemeResponse(theme), nil
+}
+
+func (s *service) logLegacyConfigRead(themeID uuid.UUID, legacyAxes []string) {
+	if len(legacyAxes) == 0 {
+		return
+	}
+	s.logger.Info().
+		Str("theme_id", themeID.String()).
+		Strs("legacy_axes", legacyAxes).
+		Msg("editor config_json legacy shape normalized on read")
 }
