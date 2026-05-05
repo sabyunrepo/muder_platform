@@ -563,18 +563,53 @@ func TestMediaService_Delete_BlockedByEventProgressionTriggerMediaReference(t *t
 	}
 }
 
-func TestMediaService_Delete_IgnoresMalformedConfigMediaReferenceScan(t *testing.T) {
+func TestMediaService_Delete_LabelsMultipleActionReferencesByActionPurpose(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	theme := q.themes[themeID]
+	theme.ConfigJson = json.RawMessage(fmt.Sprintf(`{
+		"phases": [
+			{
+				"id": "finale",
+				"name": "마지막 단계",
+				"onEnter": [
+					{"id":"bg","type":"SET_BACKGROUND","params":{"mediaId":%q}},
+					{"id":"video","type":"PLAY_MEDIA","params":{"mediaId":%q}}
+				]
+			}
+		],
+		"modules": {}
+	}`, mediaID.String(), mediaID.String()))
+	q.themes[themeID] = theme
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 2 {
+		t.Fatalf("expected two phase references, got %#v", refs)
+	}
+	if !strings.Contains(refs[0]["name"], "배경 이미지") {
+		t.Fatalf("first reference should use background label: %#v", refs[0])
+	}
+	if !strings.Contains(refs[1]["name"], "영상") {
+		t.Fatalf("second reference should use video label: %#v", refs[1])
+	}
+}
+
+func TestMediaService_Delete_BlocksMalformedConfigMediaReferenceScan(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	mediaID := seedMedia(q, themeID, MediaTypeBGM)
 	theme := q.themes[themeID]
 	theme.ConfigJson = json.RawMessage(`{"phases": "malformed", "modules": {"event_progression": {"config": "malformed"}}}`)
 	q.themes[themeID] = theme
 
-	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID); err != nil {
-		t.Fatalf("malformed config should not block media deletion, got %v", err)
-	}
-	if _, ok := q.media[mediaID]; ok {
-		t.Fatalf("media should have been deleted")
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrValidation)
+	if _, ok := q.media[mediaID]; !ok {
+		t.Fatalf("media should not have been deleted")
 	}
 }
 

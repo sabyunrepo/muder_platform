@@ -479,7 +479,12 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media references")
 		return apperror.Internal("failed to check media references")
 	}
-	refList = append(refList, findMediaReferencesInThemeConfig(theme.ConfigJson, mediaID)...)
+	configRefs, err := findMediaReferencesInThemeConfig(theme.ConfigJson, mediaID)
+	if err != nil {
+		s.logger.Warn().Err(err).Str("media_id", mediaID.String()).Msg("failed to scan theme config media references")
+		return apperror.New(apperror.ErrValidation, 422, "theme config contains invalid media references")
+	}
+	refList = append(refList, configRefs...)
 
 	if len(refList) > 0 {
 		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by editor content").

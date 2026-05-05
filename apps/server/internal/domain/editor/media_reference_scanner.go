@@ -20,21 +20,25 @@ func mediaReferenceParams(refs []mediaReferenceInfo) []map[string]string {
 	return out
 }
 
-func findMediaReferencesInThemeConfig(raw json.RawMessage, mediaID uuid.UUID) []mediaReferenceInfo {
+func findMediaReferencesInThemeConfig(raw json.RawMessage, mediaID uuid.UUID) ([]mediaReferenceInfo, error) {
 	if len(raw) == 0 || string(raw) == "null" {
-		return nil
+		return nil, nil
 	}
 	var cfg struct {
 		Phases  json.RawMessage         `json:"phases"`
 		Modules map[string]configModule `json:"modules"`
 	}
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return nil
+		return nil, fmt.Errorf("parse theme config: %w", err)
 	}
 
 	mediaIDText := mediaID.String()
 	refs := []mediaReferenceInfo{}
-	for _, phase := range parseConfigMediaPhases(cfg.Phases) {
+	phases, err := parseConfigMediaPhases(cfg.Phases)
+	if err != nil {
+		return nil, fmt.Errorf("parse theme config phases: %w", err)
+	}
+	for _, phase := range phases {
 		phaseID := phase.ID
 		if phaseID == "" {
 			phaseID = phase.Name
@@ -42,57 +46,69 @@ func findMediaReferencesInThemeConfig(raw json.RawMessage, mediaID uuid.UUID) []
 		if phaseID == "" {
 			phaseID = "phase"
 		}
-		refs = append(refs, findMediaReferencesInActionConfig(
+		phaseRefs, err := findMediaReferencesInActionConfig(
 			phase.OnEnter,
 			mediaIDText,
 			"phase_action",
 			phaseID+":onEnter",
-			fmt.Sprintf("%s 시작 트리거에서 %s으로 사용 중", phaseDisplayName(phase), mediaActionPurpose(phase.OnEnter, mediaIDText)),
-		)...)
-		refs = append(refs, findMediaReferencesInActionConfig(
+			fmt.Sprintf("%s 시작 트리거", phaseDisplayName(phase)),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("parse phase %q onEnter media actions: %w", phaseID, err)
+		}
+		refs = append(refs, phaseRefs...)
+		phaseRefs, err = findMediaReferencesInActionConfig(
 			phase.OnExit,
 			mediaIDText,
 			"phase_action",
 			phaseID+":onExit",
-			fmt.Sprintf("%s 종료 트리거에서 %s으로 사용 중", phaseDisplayName(phase), mediaActionPurpose(phase.OnExit, mediaIDText)),
-		)...)
+			fmt.Sprintf("%s 종료 트리거", phaseDisplayName(phase)),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("parse phase %q onExit media actions: %w", phaseID, err)
+		}
+		refs = append(refs, phaseRefs...)
 	}
 
 	eventModule, ok := cfg.Modules["event_progression"]
 	if !ok || len(eventModule.Config) == 0 {
-		return refs
+		return refs, nil
 	}
 	var eventCfg struct {
 		Triggers []configMediaTrigger `json:"Triggers"`
 	}
 	if err := json.Unmarshal(eventModule.Config, &eventCfg); err != nil {
-		return refs
+		return nil, fmt.Errorf("parse event_progression config: %w", err)
 	}
 	for _, trigger := range eventCfg.Triggers {
 		triggerID := trigger.ID
 		if triggerID == "" {
 			triggerID = "trigger"
 		}
-		refs = append(refs, findMediaReferencesInActionConfig(
+		triggerRefs, err := findMediaReferencesInActionConfig(
 			trigger.Actions,
 			mediaIDText,
 			"event_progression_trigger_action",
 			triggerID,
-			fmt.Sprintf("%s 실행 결과에서 %s으로 사용 중", triggerDisplayName(trigger), mediaActionPurpose(trigger.Actions, mediaIDText)),
-		)...)
+			fmt.Sprintf("%s 실행 결과", triggerDisplayName(trigger)),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("parse event_progression trigger %q media actions: %w", triggerID, err)
+		}
+		refs = append(refs, triggerRefs...)
 	}
-	return refs
+	return refs, nil
 }
 
-func parseConfigMediaPhases(raw json.RawMessage) []configMediaPhase {
+func parseConfigMediaPhases(raw json.RawMessage) ([]configMediaPhase, error) {
 	if len(raw) == 0 || string(raw) == "null" {
-		return nil
+		return nil, nil
 	}
 	var phases []configMediaPhase
 	if err := json.Unmarshal(raw, &phases); err != nil {
-		return nil
+		return nil, err
 	}
-	return phases
+	return phases, nil
 }
 
 type configModule struct {
@@ -119,14 +135,21 @@ type configMediaAction struct {
 	Params json.RawMessage `json:"params"`
 }
 
-func findMediaReferencesInActionConfig(raw json.RawMessage, mediaID string, refType string, ownerID string, label string) []mediaReferenceInfo {
-	actions := parseConfigMediaActions(raw)
+func findMediaReferencesInActionConfig(raw json.RawMessage, mediaID string, refType string, ownerID string, ownerLabel string) ([]mediaReferenceInfo, error) {
+	actions, err := parseConfigMediaActions(raw)
+	if err != nil {
+		return nil, err
+	}
 	if len(actions) == 0 {
-		return nil
+		return nil, nil
 	}
 	refs := []mediaReferenceInfo{}
 	for i, action := range actions {
-		if actionMediaID(action) != mediaID {
+		actionID, err := actionMediaID(action)
+		if err != nil {
+			return nil, fmt.Errorf("parse action %d params: %w", i, err)
+		}
+		if actionID != mediaID {
 			continue
 		}
 		refID := ownerID
@@ -138,40 +161,40 @@ func findMediaReferencesInActionConfig(raw json.RawMessage, mediaID string, refT
 		refs = append(refs, mediaReferenceInfo{
 			Type: refType,
 			ID:   refID,
-			Name: label,
+			Name: fmt.Sprintf("%s에서 %s으로 사용 중", ownerLabel, mediaActionLabel(action)),
 		})
 	}
-	return refs
+	return refs, nil
 }
 
-func parseConfigMediaActions(raw json.RawMessage) []configMediaAction {
+func parseConfigMediaActions(raw json.RawMessage) ([]configMediaAction, error) {
 	if len(raw) == 0 || string(raw) == "null" {
-		return nil
+		return nil, nil
 	}
 	var direct []configMediaAction
 	if err := json.Unmarshal(raw, &direct); err == nil {
-		return direct
+		return direct, nil
 	}
 	var wrapped struct {
 		Actions []configMediaAction `json:"actions"`
 	}
 	if err := json.Unmarshal(raw, &wrapped); err == nil {
-		return wrapped.Actions
+		return wrapped.Actions, nil
 	}
-	return nil
+	return nil, fmt.Errorf("parse media actions")
 }
 
-func actionMediaID(action configMediaAction) string {
+func actionMediaID(action configMediaAction) (string, error) {
 	if len(action.Params) == 0 || string(action.Params) == "null" {
-		return ""
+		return "", nil
 	}
 	var params struct {
 		MediaID string `json:"mediaId"`
 	}
 	if err := json.Unmarshal(action.Params, &params); err != nil {
-		return ""
+		return "", err
 	}
-	return params.MediaID
+	return params.MediaID, nil
 }
 
 func phaseDisplayName(phase configMediaPhase) string {
@@ -192,15 +215,6 @@ func triggerDisplayName(trigger configMediaTrigger) string {
 		return trigger.ID
 	}
 	return "트리거"
-}
-
-func mediaActionPurpose(raw json.RawMessage, mediaID string) string {
-	for _, action := range parseConfigMediaActions(raw) {
-		if actionMediaID(action) == mediaID {
-			return mediaActionLabel(action)
-		}
-	}
-	return "미디어"
 }
 
 func mediaActionLabel(action configMediaAction) string {
