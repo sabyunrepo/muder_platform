@@ -6,6 +6,11 @@ export interface VotingCandidatePolicy {
   includeDeadPlayers: boolean;
 }
 
+type CandidatePlayer = Player & {
+  isPlayable?: boolean;
+  isVotingCandidate?: boolean;
+};
+
 export const DEFAULT_VOTING_CANDIDATE_POLICY: VotingCandidatePolicy = {
   includeDetective: false,
   includeSelf: false,
@@ -41,12 +46,19 @@ export function isDetectivePlayer(player: Player): boolean {
   return player.role === PlayerRole.DETECTIVE;
 }
 
+export function isEligibleCharacterCandidate(player: CandidatePlayer): boolean {
+  if (player.isPlayable === false) return false;
+  if (player.isVotingCandidate === false) return false;
+  return true;
+}
+
 export function filterVotingCandidates(
-  players: Player[],
+  players: CandidatePlayer[],
   myPlayerId: string | null,
   policy: VotingCandidatePolicy,
-): Player[] {
+): CandidatePlayer[] {
   return players.filter((player) => {
+    if (!isEligibleCharacterCandidate(player)) return false;
     if (!policy.includeDeadPlayers && !player.isAlive) return false;
     if (!policy.includeSelf && player.id === myPlayerId) return false;
     if (!policy.includeDetective && isDetectivePlayer(player)) return false;
@@ -55,12 +67,13 @@ export function filterVotingCandidates(
 }
 
 export function countExcludedDetectives(
-  players: Player[],
+  players: CandidatePlayer[],
   myPlayerId: string | null,
   policy: VotingCandidatePolicy,
 ): number {
   if (policy.includeDetective) return 0;
   return players.filter((player) => {
+    if (!isEligibleCharacterCandidate(player)) return false;
     if (!isDetectivePlayer(player)) return false;
     if (!policy.includeDeadPlayers && !player.isAlive) return false;
     if (!policy.includeSelf && player.id === myPlayerId) return false;

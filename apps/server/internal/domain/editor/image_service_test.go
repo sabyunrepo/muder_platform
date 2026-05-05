@@ -41,11 +41,12 @@ func TestConfirmImageUpload_PreservesExistingTargetFields(t *testing.T) {
 		assert    func(*testing.T, *fakeImageQueries)
 	}{
 		{
-			name:      "character mystery role",
+			name:      "character visibility fields",
 			uploadKey: "themes/11111111-1111-1111-1111-111111111111/characters/22222222-2222-2222-2222-222222222222/avatar.webp",
 			assert: func(t *testing.T, q *fakeImageQueries) {
-				if q.updateCharacterArg.MysteryRole != "detective" {
-					t.Fatalf("MysteryRole = %q", q.updateCharacterArg.MysteryRole)
+				arg := q.updateCharacterArg
+				if arg.MysteryRole != "detective" || arg.IsPlayable || arg.ShowInIntro || !arg.CanSpeakInReading || arg.IsVotingCandidate {
+					t.Fatalf("character fields not preserved: %+v", arg)
 				}
 			},
 		},
@@ -96,10 +97,20 @@ type fakeImageQueries struct {
 
 func newFakeImageQueries(creatorID, themeID, charID, clueID, locationID uuid.UUID) *fakeImageQueries {
 	return &fakeImageQueries{
-		theme:     db.Theme{ID: themeID, CreatorID: creatorID},
-		character: db.ThemeCharacter{ID: charID, ThemeID: themeID, Name: "탐정", MysteryRole: "detective", IsCulprit: true},
-		clue:      db.ThemeClue{ID: clueID, ThemeID: themeID, Name: "단서", IsUsable: true, UseEffect: text("peek"), UseTarget: text("player"), UseConsumed: true, RevealRound: int4(2), HideRound: int4(5)},
-		location:  db.ThemeLocation{ID: locationID, ThemeID: themeID, Name: "서재", RestrictedCharacters: text("char-a,char-b"), FromRound: int4(1), UntilRound: int4(4)},
+		theme: db.Theme{ID: themeID, CreatorID: creatorID},
+		character: db.ThemeCharacter{
+			ID:                charID,
+			ThemeID:           themeID,
+			Name:              "탐정",
+			MysteryRole:       "detective",
+			IsCulprit:         true,
+			IsPlayable:        false,
+			ShowInIntro:       false,
+			CanSpeakInReading: true,
+			IsVotingCandidate: false,
+		},
+		clue:     db.ThemeClue{ID: clueID, ThemeID: themeID, Name: "단서", IsUsable: true, UseEffect: text("peek"), UseTarget: text("player"), UseConsumed: true, RevealRound: int4(2), HideRound: int4(5)},
+		location: db.ThemeLocation{ID: locationID, ThemeID: themeID, Name: "서재", RestrictedCharacters: text("char-a,char-b"), FromRound: int4(1), UntilRound: int4(4)},
 	}
 }
 

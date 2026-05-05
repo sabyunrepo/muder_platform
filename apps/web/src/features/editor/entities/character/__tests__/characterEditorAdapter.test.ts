@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { EditorCharacterResponse } from '@/features/editor/api/types';
 import {
+  buildCharacterVisibilityUpdatePayload,
+  getCharacterListBadges,
   buildCharacterRoleUpdatePayload,
   getCharacterRoleBadge,
   normalizeCharacterEditorRole,
@@ -17,6 +19,10 @@ function character(overrides: Partial<EditorCharacterResponse> = {}): EditorChar
     is_culprit: false,
     mystery_role: 'suspect',
     sort_order: 3,
+    is_playable: true,
+    show_in_intro: true,
+    can_speak_in_reading: true,
+    is_voting_candidate: true,
     ...overrides,
   };
 }
@@ -36,7 +42,32 @@ describe('characterEditorAdapter', () => {
       isSpoilerRole: true,
       isDefaultVotingCandidate: false,
       hasPublicIntro: true,
+      isPlayable: true,
+      characterTypeLabel: 'PC',
+      showInIntro: true,
+      canSpeakInReading: true,
+      isVotingCandidate: true,
+      visibilityBadges: ['PC', '소개 표시', '읽기 대사', '투표 후보'],
     });
+  });
+
+  it('NPC 표시 정책을 제작자용 ViewModel 배지로 변환한다', () => {
+    const vm = toCharacterEditorViewModel(character({
+      is_playable: false,
+      show_in_intro: false,
+      can_speak_in_reading: true,
+      is_voting_candidate: false,
+    }));
+
+    expect(vm).toMatchObject({
+      isPlayable: false,
+      characterTypeLabel: 'NPC',
+      showInIntro: false,
+      canSpeakInReading: true,
+      isVotingCandidate: false,
+      visibilityBadges: ['NPC', '읽기 대사'],
+    });
+    expect(getCharacterListBadges(character({ is_playable: false }))).toEqual(['용의자', 'NPC']);
   });
 
   it('legacy is_culprit 플래그만 있어도 범인 역할로 보존한다', () => {
@@ -54,11 +85,26 @@ describe('characterEditorAdapter', () => {
       is_culprit: false,
       mystery_role: 'accomplice',
       sort_order: 3,
+      is_playable: true,
+      show_in_intro: true,
+      can_speak_in_reading: true,
+      is_voting_candidate: true,
     });
   });
 
   it('범인으로 변경할 때만 legacy is_culprit를 true로 보낸다', () => {
     expect(buildCharacterRoleUpdatePayload(character(), 'culprit').is_culprit).toBe(true);
     expect(buildCharacterRoleUpdatePayload(character(), 'detective').is_culprit).toBe(false);
+  });
+
+  it('NPC로 전환할 때 투표 후보를 함께 끈다', () => {
+    const payload = buildCharacterVisibilityUpdatePayload(character(), 'is_playable', false);
+
+    expect(payload).toMatchObject({
+      is_playable: false,
+      show_in_intro: true,
+      can_speak_in_reading: true,
+      is_voting_candidate: false,
+    });
   });
 });

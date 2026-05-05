@@ -31,15 +31,25 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 	if err != nil {
 		return nil, err
 	}
+	visibilityPolicy := BuildCharacterVisibilityPolicy(rolePolicy, CharacterVisibilityInput{
+		IsPlayable:        req.IsPlayable,
+		ShowInIntro:       req.ShowInIntro,
+		CanSpeakInReading: req.CanSpeakInReading,
+		IsVotingCandidate: req.IsVotingCandidate,
+	})
 
 	char, err := s.q.CreateThemeCharacter(ctx, db.CreateThemeCharacterParams{
-		ThemeID:     themeID,
-		Name:        req.Name,
-		Description: ptrToText(req.Description),
-		ImageUrl:    ptrToText(req.ImageURL),
-		IsCulprit:   rolePolicy.IsCulprit,
-		MysteryRole: rolePolicy.MysteryRole,
-		SortOrder:   req.SortOrder,
+		ThemeID:           themeID,
+		Name:              req.Name,
+		Description:       ptrToText(req.Description),
+		ImageUrl:          ptrToText(req.ImageURL),
+		IsCulprit:         rolePolicy.IsCulprit,
+		MysteryRole:       rolePolicy.MysteryRole,
+		SortOrder:         req.SortOrder,
+		IsPlayable:        visibilityPolicy.IsPlayable,
+		ShowInIntro:       visibilityPolicy.ShowInIntro,
+		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
+		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create character")
@@ -65,15 +75,30 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 	if err != nil {
 		return nil, err
 	}
+	visibilityPolicy := BuildCharacterVisibilityPolicyWithDefaults(CharacterVisibilityInput{
+		IsPlayable:        req.IsPlayable,
+		ShowInIntro:       req.ShowInIntro,
+		CanSpeakInReading: req.CanSpeakInReading,
+		IsVotingCandidate: req.IsVotingCandidate,
+	}, CharacterVisibilityPolicy{
+		IsPlayable:        char.IsPlayable,
+		ShowInIntro:       char.ShowInIntro,
+		CanSpeakInReading: char.CanSpeakInReading,
+		IsVotingCandidate: char.IsVotingCandidate,
+	})
 
 	updated, err := s.q.UpdateThemeCharacter(ctx, db.UpdateThemeCharacterParams{
-		ID:          charID,
-		Name:        req.Name,
-		Description: ptrToText(req.Description),
-		ImageUrl:    ptrToText(req.ImageURL),
-		IsCulprit:   rolePolicy.IsCulprit,
-		MysteryRole: rolePolicy.MysteryRole,
-		SortOrder:   req.SortOrder,
+		ID:                charID,
+		Name:              req.Name,
+		Description:       ptrToText(req.Description),
+		ImageUrl:          ptrToText(req.ImageURL),
+		IsCulprit:         rolePolicy.IsCulprit,
+		MysteryRole:       rolePolicy.MysteryRole,
+		SortOrder:         req.SortOrder,
+		IsPlayable:        visibilityPolicy.IsPlayable,
+		ShowInIntro:       visibilityPolicy.ShowInIntro,
+		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
+		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update character")
@@ -159,14 +184,18 @@ func (s *service) ListCharacters(ctx context.Context, creatorID, themeID uuid.UU
 
 func toCharacterResponse(c db.ThemeCharacter) *CharacterResponse {
 	return &CharacterResponse{
-		ID:          c.ID,
-		ThemeID:     c.ThemeID,
-		Name:        c.Name,
-		Description: textToPtr(c.Description),
-		ImageURL:    textToPtr(c.ImageUrl),
-		IsCulprit:   c.IsCulprit,
-		MysteryRole: c.MysteryRole,
-		SortOrder:   c.SortOrder,
+		ID:                c.ID,
+		ThemeID:           c.ThemeID,
+		Name:              c.Name,
+		Description:       textToPtr(c.Description),
+		ImageURL:          textToPtr(c.ImageUrl),
+		IsCulprit:         c.IsCulprit,
+		MysteryRole:       c.MysteryRole,
+		SortOrder:         c.SortOrder,
+		IsPlayable:        c.IsPlayable,
+		ShowInIntro:       c.ShowInIntro,
+		CanSpeakInReading: c.CanSpeakInReading,
+		IsVotingCandidate: c.IsVotingCandidate,
 	}
 }
 

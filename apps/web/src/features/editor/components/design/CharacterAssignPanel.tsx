@@ -10,8 +10,10 @@ import {
   writeCharacterStartingClueMap,
 } from "@/features/editor/utils/configShape";
 import {
+  buildCharacterVisibilityUpdatePayload,
   buildCharacterRoleUpdatePayload,
-  getCharacterRoleBadge,
+  getCharacterListBadges,
+  type CharacterVisibilityField,
 } from "@/features/editor/entities/character/characterEditorAdapter";
 import {
   createMissionDraft,
@@ -119,6 +121,21 @@ export function CharacterAssignPanel({
     [characters, updateCharacter],
   );
 
+  const handleVisibilityChangeForChar = useCallback(
+    (characterId: string, field: CharacterVisibilityField, value: boolean) => {
+      if (updateCharacter.isPending) return;
+
+      const selected = characters?.find((char) => char.id === characterId);
+      if (!selected) return;
+
+      updateCharacter.mutate({
+        characterId: selected.id,
+        body: buildCharacterVisibilityUpdatePayload(selected, field, value),
+      });
+    },
+    [characters, updateCharacter],
+  );
+
   if (charsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -162,7 +179,7 @@ export function CharacterAssignPanel({
         getItemId={(char) => char.id}
         getItemTitle={(char) => char.name}
         getItemDescription={(char) => char.description ?? ''}
-        getItemBadges={(char) => [getCharacterRoleBadge(char)]}
+        getItemBadges={getCharacterListBadges}
         renderItemActions={(char) => (
           <div className="flex gap-1">
             {onEdit && (
@@ -200,6 +217,11 @@ export function CharacterAssignPanel({
             onChangeMission={(missionId, field, value) => handleMissionChangeForChar(char.id, missionId, field, value)}
             onDeleteMission={(missionId) => handleDeleteMissionForChar(char.id, missionId)}
             onMysteryRoleChange={(role) => handleMysteryRoleChangeForChar(char.id, role)}
+            onVisibilityChange={
+              updateCharacter.isPending
+                ? undefined
+                : (field, value) => handleVisibilityChangeForChar(char.id, field, value)
+            }
           />
         )}
       />

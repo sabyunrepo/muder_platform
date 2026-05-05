@@ -16,6 +16,20 @@ type CharacterRolePolicy struct {
 	DefaultVotingCandidate bool
 }
 
+type CharacterVisibilityInput struct {
+	IsPlayable        *bool
+	ShowInIntro       *bool
+	CanSpeakInReading *bool
+	IsVotingCandidate *bool
+}
+
+type CharacterVisibilityPolicy struct {
+	IsPlayable        bool
+	ShowInIntro       bool
+	CanSpeakInReading bool
+	IsVotingCandidate bool
+}
+
 func BuildCharacterRolePolicy(role string, legacyIsCulprit bool) (CharacterRolePolicy, error) {
 	normalized, err := normalizeCharacterMysteryRole(role, legacyIsCulprit)
 	if err != nil {
@@ -28,6 +42,39 @@ func BuildCharacterRolePolicy(role string, legacyIsCulprit bool) (CharacterRoleP
 		IsSpoiler:              normalized == MysteryRoleCulprit || normalized == MysteryRoleAccomplice || normalized == MysteryRoleDetective,
 		DefaultVotingCandidate: normalized != MysteryRoleDetective,
 	}, nil
+}
+
+func BuildCharacterVisibilityPolicy(rolePolicy CharacterRolePolicy, input CharacterVisibilityInput) CharacterVisibilityPolicy {
+	isPlayable := boolPtrValue(input.IsPlayable, true)
+
+	return CharacterVisibilityPolicy{
+		IsPlayable:        isPlayable,
+		ShowInIntro:       boolPtrValue(input.ShowInIntro, true),
+		CanSpeakInReading: boolPtrValue(input.CanSpeakInReading, true),
+		IsVotingCandidate: boolPtrValue(input.IsVotingCandidate, isPlayable && rolePolicy.DefaultVotingCandidate),
+	}
+}
+
+func BuildCharacterVisibilityPolicyWithDefaults(input CharacterVisibilityInput, defaults CharacterVisibilityPolicy) CharacterVisibilityPolicy {
+	isPlayable := boolPtrValue(input.IsPlayable, defaults.IsPlayable)
+	votingFallback := defaults.IsVotingCandidate
+	if input.IsPlayable != nil && !isPlayable && input.IsVotingCandidate == nil {
+		votingFallback = false
+	}
+
+	return CharacterVisibilityPolicy{
+		IsPlayable:        isPlayable,
+		ShowInIntro:       boolPtrValue(input.ShowInIntro, defaults.ShowInIntro),
+		CanSpeakInReading: boolPtrValue(input.CanSpeakInReading, defaults.CanSpeakInReading),
+		IsVotingCandidate: boolPtrValue(input.IsVotingCandidate, votingFallback),
+	}
+}
+
+func boolPtrValue(value *bool, fallback bool) bool {
+	if value == nil {
+		return fallback
+	}
+	return *value
 }
 
 func normalizeCharacterMysteryRole(role string, legacyIsCulprit bool) (string, error) {

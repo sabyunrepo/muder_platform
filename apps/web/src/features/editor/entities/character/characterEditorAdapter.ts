@@ -25,6 +25,12 @@ export interface CharacterEditorViewModel {
   isSpoilerRole: boolean;
   isDefaultVotingCandidate: boolean;
   hasPublicIntro: boolean;
+  isPlayable: boolean;
+  characterTypeLabel: string;
+  showInIntro: boolean;
+  canSpeakInReading: boolean;
+  isVotingCandidate: boolean;
+  visibilityBadges: string[];
 }
 
 export const characterRoleOptions: CharacterRoleOption[] = [
@@ -62,6 +68,12 @@ const roleOptionMap = new Map<MysteryRole, CharacterRoleOption>(
   characterRoleOptions.map((option) => [option.value, option]),
 );
 
+export type CharacterVisibilityField =
+  | 'is_playable'
+  | 'show_in_intro'
+  | 'can_speak_in_reading'
+  | 'is_voting_candidate';
+
 export function getCharacterRoleOption(role: MysteryRole): CharacterRoleOption {
   return roleOptionMap.get(role) ?? roleOptionMap.get('suspect')!;
 }
@@ -71,9 +83,34 @@ export function normalizeCharacterEditorRole(character: { mystery_role?: Mystery
   return character.is_culprit ? 'culprit' : 'suspect';
 }
 
+function boolOrDefault(value: boolean | undefined | null, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function getCharacterVisibility(character: Partial<EditorCharacterResponse>, role: MysteryRole) {
+  const roleOption = getCharacterRoleOption(role);
+  const isPlayable = boolOrDefault(character.is_playable, true);
+
+  return {
+    isPlayable,
+    showInIntro: boolOrDefault(character.show_in_intro, true),
+    canSpeakInReading: boolOrDefault(character.can_speak_in_reading, true),
+    isVotingCandidate: boolOrDefault(character.is_voting_candidate, isPlayable && roleOption.defaultVotingCandidate),
+  };
+}
+
+function getVisibilityBadges(visibility: ReturnType<typeof getCharacterVisibility>): string[] {
+  const badges = [visibility.isPlayable ? 'PC' : 'NPC'];
+  if (visibility.showInIntro) badges.push('소개 표시');
+  if (visibility.canSpeakInReading) badges.push('읽기 대사');
+  if (visibility.isVotingCandidate) badges.push('투표 후보');
+  return badges;
+}
+
 export function toCharacterEditorViewModel(character: EditorCharacterResponse): CharacterEditorViewModel {
   const role = normalizeCharacterEditorRole(character);
   const option = getCharacterRoleOption(role);
+  const visibility = getCharacterVisibility(character, role);
 
   return {
     id: character.id,
@@ -88,6 +125,12 @@ export function toCharacterEditorViewModel(character: EditorCharacterResponse): 
     isSpoilerRole: option.spoiler,
     isDefaultVotingCandidate: option.defaultVotingCandidate,
     hasPublicIntro: Boolean(character.description?.trim() || character.image_url),
+    isPlayable: visibility.isPlayable,
+    characterTypeLabel: visibility.isPlayable ? 'PC' : 'NPC',
+    showInIntro: visibility.showInIntro,
+    canSpeakInReading: visibility.canSpeakInReading,
+    isVotingCandidate: visibility.isVotingCandidate,
+    visibilityBadges: getVisibilityBadges(visibility),
   };
 }
 
@@ -99,6 +142,8 @@ export function buildCharacterRoleUpdatePayload(
   character: EditorCharacterResponse,
   role: MysteryRole,
 ): UpdateCharacterRequest {
+  const visibility = getCharacterVisibility(character, role);
+
   return {
     name: character.name,
     description: character.description ?? undefined,
@@ -106,9 +151,49 @@ export function buildCharacterRoleUpdatePayload(
     is_culprit: role === 'culprit',
     mystery_role: role,
     sort_order: character.sort_order,
+    is_playable: visibility.isPlayable,
+    show_in_intro: visibility.showInIntro,
+    can_speak_in_reading: visibility.canSpeakInReading,
+    is_voting_candidate: visibility.isVotingCandidate,
+  };
+}
+
+export function buildCharacterVisibilityUpdatePayload(
+  character: EditorCharacterResponse,
+  field: CharacterVisibilityField,
+  value: boolean,
+): UpdateCharacterRequest {
+  const role = normalizeCharacterEditorRole(character);
+  const visibility = getCharacterVisibility(character, role);
+  const next = {
+    is_playable: visibility.isPlayable,
+    show_in_intro: visibility.showInIntro,
+    can_speak_in_reading: visibility.canSpeakInReading,
+    is_voting_candidate: visibility.isVotingCandidate,
+    [field]: value,
+  };
+
+  if (field === 'is_playable' && !value) {
+    next.is_voting_candidate = false;
+  }
+
+  return {
+    name: character.name,
+    description: character.description ?? undefined,
+    image_url: character.image_url ?? undefined,
+    is_culprit: role === 'culprit',
+    mystery_role: role,
+    sort_order: character.sort_order,
+    ...next,
   };
 }
 
 export function getCharacterRoleBadge(character: { mystery_role?: MysteryRole | null; is_culprit?: boolean | null }): string {
   return getCharacterRoleOption(normalizeCharacterEditorRole(character)).label;
+}
+
+export function getCharacterListBadges(character: EditorCharacterResponse): string[] {
+  const role = normalizeCharacterEditorRole(character);
+  const visibility = getCharacterVisibility(character, role);
+  return [getCharacterRoleBadge(character), visibility.isPlayable ? 'PC' : 'NPC'];
 }

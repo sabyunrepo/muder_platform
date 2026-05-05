@@ -227,13 +227,17 @@ func (s *ImageService) ConfirmImageUpload(
 			return nil, apperror.NotFound("character not found")
 		}
 		_, err = s.q.UpdateThemeCharacter(ctx, db.UpdateThemeCharacterParams{
-			ID:          char.ID,
-			Name:        char.Name,
-			Description: char.Description,
-			ImageUrl:    pgtype.Text{String: downloadURL, Valid: true},
-			IsCulprit:   char.IsCulprit,
-			MysteryRole: char.MysteryRole,
-			SortOrder:   char.SortOrder,
+			ID:                char.ID,
+			Name:              char.Name,
+			Description:       char.Description,
+			ImageUrl:          pgtype.Text{String: downloadURL, Valid: true},
+			IsCulprit:         char.IsCulprit,
+			MysteryRole:       char.MysteryRole,
+			SortOrder:         char.SortOrder,
+			IsPlayable:        char.IsPlayable,
+			ShowInIntro:       char.ShowInIntro,
+			CanSpeakInReading: char.CanSpeakInReading,
+			IsVotingCandidate: char.IsVotingCandidate,
 		})
 		if err != nil {
 			s.logger.Error().Err(err).Str("character_id", targetID.String()).Msg("failed to update character image_url")

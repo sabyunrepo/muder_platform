@@ -96,6 +96,101 @@ func TestCharacterRolePolicy(t *testing.T) {
 	}
 }
 
+func TestCharacterVisibilityPolicy(t *testing.T) {
+	tests := []struct {
+		name  string
+		role  string
+		input CharacterVisibilityInput
+		want  CharacterVisibilityPolicy
+	}{
+		{
+			name: "playable suspect is visible and voting candidate by default",
+			role: MysteryRoleSuspect,
+			want: CharacterVisibilityPolicy{
+				IsPlayable:        true,
+				ShowInIntro:       true,
+				CanSpeakInReading: true,
+				IsVotingCandidate: true,
+			},
+		},
+		{
+			name: "detective is excluded from voting by default",
+			role: MysteryRoleDetective,
+			want: CharacterVisibilityPolicy{
+				IsPlayable:        true,
+				ShowInIntro:       true,
+				CanSpeakInReading: true,
+				IsVotingCandidate: false,
+			},
+		},
+		{
+			name: "npc is not voting candidate unless creator opts in",
+			role: MysteryRoleSuspect,
+			input: CharacterVisibilityInput{
+				IsPlayable: boolPtr(false),
+			},
+			want: CharacterVisibilityPolicy{
+				IsPlayable:        false,
+				ShowInIntro:       true,
+				CanSpeakInReading: true,
+				IsVotingCandidate: false,
+			},
+		},
+		{
+			name: "creator overrides npc exposure independently",
+			role: MysteryRoleSuspect,
+			input: CharacterVisibilityInput{
+				IsPlayable:        boolPtr(false),
+				ShowInIntro:       boolPtr(false),
+				CanSpeakInReading: boolPtr(true),
+				IsVotingCandidate: boolPtr(true),
+			},
+			want: CharacterVisibilityPolicy{
+				IsPlayable:        false,
+				ShowInIntro:       false,
+				CanSpeakInReading: true,
+				IsVotingCandidate: true,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			rolePolicy, err := BuildCharacterRolePolicy(tc.role, false)
+			if err != nil {
+				t.Fatalf("BuildCharacterRolePolicy: %v", err)
+			}
+			got := BuildCharacterVisibilityPolicy(rolePolicy, tc.input)
+			if got != tc.want {
+				t.Fatalf("policy = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCharacterVisibilityPolicyWithDefaultsDisablesVotingWhenPlayableTurnsOff(t *testing.T) {
+	got := BuildCharacterVisibilityPolicyWithDefaults(
+		CharacterVisibilityInput{IsPlayable: boolPtr(false)},
+		CharacterVisibilityPolicy{
+			IsPlayable:        true,
+			ShowInIntro:       true,
+			CanSpeakInReading: true,
+			IsVotingCandidate: true,
+		},
+	)
+
+	if got.IsPlayable || got.IsVotingCandidate {
+		t.Fatalf("NPC conversion should disable voting by default: %+v", got)
+	}
+	if !got.ShowInIntro || !got.CanSpeakInReading {
+		t.Fatalf("unrelated visibility fields should be preserved: %+v", got)
+	}
+}
+
+func boolPtr(value bool) *bool {
+	return &value
+}
+
 func TestService_CreateCharacter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -118,6 +213,9 @@ func TestService_CreateCharacter(t *testing.T) {
 	}
 	if resp.ThemeID != themeID {
 		t.Errorf("themeID mismatch")
+	}
+	if !resp.IsPlayable || !resp.ShowInIntro || !resp.CanSpeakInReading || !resp.IsVotingCandidate {
+		t.Errorf("default visibility policy not applied: %+v", resp)
 	}
 }
 
@@ -179,6 +277,77 @@ func TestService_UpdateCharacter(t *testing.T) {
 	}
 	if !updated.IsCulprit {
 		t.Error("IsCulprit should be true")
+	}
+	if !updated.IsPlayable || !updated.ShowInIntro || !updated.CanSpeakInReading || !updated.IsVotingCandidate {
+		t.Errorf("update should preserve default playable visibility: %+v", updated)
+	}
+}
+
+func TestService_CreateCharacterNPCVisibility(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	resp, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name:              "피해자",
+		IsPlayable:        boolPtr(false),
+		ShowInIntro:       boolPtr(true),
+		CanSpeakInReading: boolPtr(true),
+		SortOrder:         2,
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	if resp.IsPlayable {
+		t.Fatal("NPC should not be playable")
+	}
+	if !resp.ShowInIntro || !resp.CanSpeakInReading {
+		t.Fatalf("NPC intro/reading policy mismatch: %+v", resp)
+	}
+	if resp.IsVotingCandidate {
+		t.Fatal("NPC should be excluded from voting by default")
+	}
+}
+
+func TestService_UpdateCharacterPreservesVisibilityWhenOmitted(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	created, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name:        "피해자",
+		IsPlayable:  boolPtr(false),
+		ShowInIntro: boolPtr(false),
+		SortOrder:   3,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	updated, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:        "피해자 수정",
+		MysteryRole: created.MysteryRole,
+		IsCulprit:   created.IsCulprit,
+		SortOrder:   created.SortOrder,
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter: %v", err)
+	}
+
+	if updated.IsPlayable || updated.ShowInIntro || updated.IsVotingCandidate {
+		t.Fatalf("visibility should be preserved when omitted: %+v", updated)
+	}
+	if !updated.CanSpeakInReading {
+		t.Fatalf("reading policy should remain enabled: %+v", updated)
 	}
 }
 
