@@ -145,7 +145,6 @@ describe("EndingEntitySubTab", () => {
 
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
-    expect(screen.getByText("결말 목록을 불러오지 못했습니다")).toBeDefined();
     expect(screen.getByText("결말 목록을 불러오지 못했습니다.")).toBeDefined();
     expect(screen.queryByText("권한이 없습니다")).toBeNull();
 
