@@ -24,8 +24,6 @@ vi.mock("../../../readingApi", () => ({
   useReadingSections: () => useReadingSectionsMock(),
 }));
 
-vi.stubGlobal("crypto", { randomUUID: () => "delivery-new" });
-
 const graph: FlowGraphResponse = {
   nodes: [
     {
@@ -53,6 +51,7 @@ const graph: FlowGraphResponse = {
 };
 
 beforeEach(() => {
+  vi.stubGlobal("crypto", { randomUUID: () => "delivery-new" });
   mutateMock.mockClear();
   useEditorCharactersMock.mockReturnValue({
     data: [{ id: "char-1", name: "탐정 A" }],
@@ -71,6 +70,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("StoryInformationDeliverySection", () => {
@@ -120,5 +120,60 @@ describe("StoryInformationDeliverySection", () => {
     expect(screen.getByText("0개")).toBeDefined();
     expect(screen.getByText("스토리 진행에서 장면을 추가하면 정보 공개 대상을 설정할 수 있습니다.")).toBeDefined();
     expect(screen.queryByText("장면 선택")).toBeNull();
+  });
+
+  it("장면을 불러오는 동안 빈 상태와 구분되는 로딩 상태를 보여준다", () => {
+    render(<StoryInformationDeliverySection themeId="theme-1" graph={undefined} isLoading />);
+
+    expect(screen.getByRole("status").textContent).toContain("정보 공개 설정에 사용할 장면을 불러오는 중입니다.");
+    expect(screen.queryByText("스토리 진행에서 장면을 추가하면 정보 공개 대상을 설정할 수 있습니다.")).toBeNull();
+  });
+
+  it("장면 로드 실패를 빈 상태와 구분되는 오류 상태로 보여준다", () => {
+    render(<StoryInformationDeliverySection themeId="theme-1" graph={undefined} isError />);
+
+    expect(screen.getByRole("alert").textContent).toContain("정보 공개 설정에 사용할 장면을 불러오지 못했습니다.");
+    expect(screen.queryByText("스토리 진행에서 장면을 추가하면 정보 공개 대상을 설정할 수 있습니다.")).toBeNull();
+  });
+
+  it("선택된 장면이 사라지면 첫 장면으로 되돌려 정보 공개 패널을 유지한다", () => {
+    const { rerender } = render(<StoryInformationDeliverySection themeId="theme-1" graph={graph} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /조사 시작/ }));
+
+    rerender(<StoryInformationDeliverySection themeId="theme-1" graph={{ nodes: [graph.nodes[1]], edges: [] }} />);
+
+    expect(screen.getByRole("button", { name: /오프닝/ }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.click(screen.getByRole("button", { name: "전체 전달" }));
+    fireEvent.click(screen.getByRole("button", { name: /공통 규칙/ }));
+
+    expect(mutateMock).toHaveBeenLastCalledWith(
+      {
+        nodeId: "scene-1",
+        body: {
+          data: {
+            label: "오프닝",
+            phase_type: "story_progression",
+            onEnter: [
+              {
+                id: "delivery-new",
+                type: DELIVER_INFORMATION_ACTION,
+                params: {
+                  deliveries: [
+                    {
+                      id: "delivery-new",
+                      target: { type: "all_players" },
+                      reading_section_ids: ["rs-1"],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+      expect.any(Object),
+    );
   });
 });

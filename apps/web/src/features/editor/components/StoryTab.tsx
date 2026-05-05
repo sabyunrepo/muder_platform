@@ -201,7 +201,12 @@ export function StoryTab({ themeId }: StoryTabProps) {
           <ReadingSectionList themeId={themeId} />
         </div>
 
-        <StoryInformationDeliverySection themeId={themeId} graph={flowGraph} />
+        <StoryInformationDeliverySection
+          themeId={themeId}
+          graph={flowGraph}
+          isLoading={isFlowLoading}
+          isError={isFlowError}
+        />
       </div>
     </div>
   );

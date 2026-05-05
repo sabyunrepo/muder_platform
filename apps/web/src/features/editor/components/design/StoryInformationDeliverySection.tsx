@@ -12,16 +12,20 @@ import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
 interface StoryInformationDeliverySectionProps {
   themeId: string;
   graph: FlowGraphResponse | undefined;
+  isLoading?: boolean;
+  isError?: boolean;
 }
 
 export function StoryInformationDeliverySection({
   themeId,
   graph,
+  isLoading = false,
+  isError = false,
 }: StoryInformationDeliverySectionProps) {
   const scenes = useMemo(() => getSceneNodes(graph), [graph]);
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const updateNode = useUpdateFlowNode(themeId);
-  const selectedScene = scenes.find((scene) => scene.id === (selectedSceneId ?? scenes[0]?.id));
+  const selectedScene = scenes.find((scene) => scene.id === selectedSceneId) ?? scenes[0];
 
   const updateScene = (patch: Partial<FlowNodeData>) => {
     if (!selectedScene) return;
@@ -53,7 +57,17 @@ export function StoryInformationDeliverySection({
         <SceneCountBadge count={scenes.length} />
       </div>
 
-      {scenes.length === 0 ? (
+      {isLoading ? (
+        <SectionStatusMessage
+          message="정보 공개 설정에 사용할 장면을 불러오는 중입니다."
+          status="loading"
+        />
+      ) : isError ? (
+        <SectionStatusMessage
+          message="정보 공개 설정에 사용할 장면을 불러오지 못했습니다."
+          status="error"
+        />
+      ) : scenes.length === 0 ? (
         <div className="rounded border border-dashed border-slate-800 bg-slate-950/50 px-3 py-4 text-xs leading-5 text-slate-400">
           스토리 진행에서 장면을 추가하면 정보 공개 대상을 설정할 수 있습니다.
         </div>
@@ -75,6 +89,26 @@ export function StoryInformationDeliverySection({
         </div>
       )}
     </section>
+  );
+}
+
+function SectionStatusMessage({
+  message,
+  status,
+}: {
+  message: string;
+  status: "loading" | "error";
+}) {
+  const isError = status === "error";
+  return (
+    <div
+      className="rounded border border-slate-800 bg-slate-950/60 px-3 py-4 text-xs leading-5 text-slate-400"
+      role={isError ? "alert" : "status"}
+      aria-live={isError ? "assertive" : "polite"}
+      aria-atomic="true"
+    >
+      {message}
+    </div>
   );
 }
 
