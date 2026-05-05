@@ -187,6 +187,10 @@ owner="$(gh_retry repo view --json owner --jq '.owner.login')"
 repo="$(gh_retry repo view --json name --jq '.name')"
 ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
 eval "$ci_scope_env"
+if [[ "$CI_SCOPE" != "code-rabbit-only" && "$code_rabbit_only" == "1" ]]; then
+  echo "🚫 PR #$pr_number 은 full-ci scope입니다. --code-rabbit-only 를 사용할 수 없습니다." >&2
+  exit 64
+fi
 if [[ "$CI_SCOPE" == "code-rabbit-only" && "$code_rabbit_only" != "1" ]]; then
   echo "🚫 PR #$pr_number 은 code-rabbit-only scope입니다." >&2
   echo "   heavy CI workflow가 path filter 때문에 생성되지 않는 경로만 변경했습니다." >&2

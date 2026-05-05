@@ -33,6 +33,11 @@ pr_number=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --format)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--format requires a value: text|env" >&2
+        usage >&2
+        exit 64
+      fi
       format="$2"
       shift 2
       ;;

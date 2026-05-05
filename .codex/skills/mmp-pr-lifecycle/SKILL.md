@@ -33,11 +33,10 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 5. For Codecov: treat patch coverage under 70% as a blocker unless the user approves an exception and the PR documents why.
 6. Operational-only PR exception:
    - Start by running `scripts/mmp-pr-ci-scope.sh <PR>`. Do not infer from `mergeStateStatus=BLOCKED` alone.
-   - If changed files do **not** touch app/runtime/test/build/security/workflow trigger paths (`apps/**`, `packages/**`, `tooling/**`, `.github/workflows/**`, `package.json`, lockfiles, `turbo.json`, `playwright.config.ts`, `e2e/**`, `**/go.mod`, `**/go.sum`, `.gitleaks.toml`, `infra/runners/**`), treat the PR as `code-rabbit-only`.
+   - Use `scripts/mmp-pr-ci-scope.sh` as the canonical source for full path rules; examples such as `AGENTS.md`, `.codex/**`, docs, memory, and PR helper scripts usually classify as `code-rabbit-only`.
    - `code-rabbit-only` means heavy CI runs are intentionally not created by workflow path filters. Do not add `ready-for-ci`, do not dispatch `CI`/`E2E — Stubbed Backend`/`Security — Fast Feedback`, and do not wait for branch-protection required check names that cannot appear on that head.
    - For these PRs, merge after CodeRabbit is clear, unresolved review threads are 0, light checks pass, and focused local checks for changed scripts/config pass. If waiting is needed, hand off to `mmp-ci-steward`; do not keep the main thread in a watcher loop.
    - If GitHub reports `MERGEABLE` + `BLOCKED` only because required heavy-CI contexts are absent on a `code-rabbit-only` PR, main Codex may admin-merge after recording the scope evidence. This is not a CI failure.
-   - Examples: `AGENTS.md`, `.codex/**`, `docs/**`, `memory/**`, PR helper scripts that were locally shell-checked.
 7. CI steward handoff:
    - Use when PR review/CI waiting would block starting the next issue and the user has approved agent delegation.
    - Generate a copy-ready handoff with `scripts/mmp-ci-steward-handoff.sh <PR>`.
