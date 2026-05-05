@@ -17,6 +17,8 @@ export interface ApiError {
   params?: Record<string, unknown>;
   extensions?: Record<string, unknown>;
   request_id?: string;
+  correlation_id?: string;
+  timestamp: string;
   severity?: 'critical' | 'high' | 'medium' | 'low';
   retryable?: boolean;
   user_action?: string;

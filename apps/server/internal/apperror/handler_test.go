@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 func TestWriteError_AppError(t *testing.T) {
@@ -171,6 +172,10 @@ func TestWriteError_WithRequestIDAndRegistryMetadata(t *testing.T) {
 	if body["request_id"] != "req-123" {
 		t.Errorf("request_id = %v, want req-123", body["request_id"])
 	}
+	if body["correlation_id"] != "req-123" {
+		t.Errorf("correlation_id = %v, want req-123", body["correlation_id"])
+	}
+	assertRFC3339Timestamp(t, body["timestamp"])
 	if body["severity"] != string(SeverityHigh) {
 		t.Errorf("severity = %v, want %s", body["severity"], SeverityHigh)
 	}
@@ -202,6 +207,9 @@ func TestWriteError_UsesResponseRequestIDFromMiddleware(t *testing.T) {
 
 	if body["request_id"] != "middleware-generated" {
 		t.Errorf("request_id = %v, want middleware-generated", body["request_id"])
+	}
+	if body["correlation_id"] != "middleware-generated" {
+		t.Errorf("correlation_id = %v, want middleware-generated", body["correlation_id"])
 	}
 }
 
@@ -362,5 +370,17 @@ func TestWriteError_WrappedError_Logging(t *testing.T) {
 
 	if body["code"] != ErrInternal {
 		t.Errorf("expected code %q, got %v", ErrInternal, body["code"])
+	}
+}
+
+func assertRFC3339Timestamp(t *testing.T, value any) {
+	t.Helper()
+
+	raw, ok := value.(string)
+	if !ok || raw == "" {
+		t.Fatalf("timestamp = %v, want non-empty RFC3339 timestamp", value)
+	}
+	if _, err := time.Parse(time.RFC3339Nano, raw); err != nil {
+		t.Fatalf("timestamp = %q, want RFC3339Nano: %v", raw, err)
 	}
 }
