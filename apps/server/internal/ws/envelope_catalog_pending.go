@@ -36,18 +36,5 @@ func init() {
 		EventDef{Type: "game.end", Direction: DirS2C, Category: "game",
 			Status: StatusStub,
 			Note:   "FE listen-only; server currently uses ending.completed instead"},
-
-		// Server-pushed audio broadcast — covered by apps/web audio hooks
-		// and tests, but no server emitter exists. Retain under stub so
-		// the FE useGameMediaEvents assertions compile; Phase 20 decides
-		// whether server engine publishes these or FE drops the surface.
-		EventDef{Type: "audio.set_bgm", Direction: DirS2C, Category: "audio",
-			Status: StatusStub, Note: "FE listen-only; server yet to emit"},
-		EventDef{Type: "audio.play_voice", Direction: DirS2C, Category: "audio",
-			Status: StatusStub, Note: "FE listen-only"},
-		EventDef{Type: "audio.play_media", Direction: DirS2C, Category: "audio",
-			Status: StatusStub, Note: "FE listen-only"},
-		EventDef{Type: "audio.stop", Direction: DirS2C, Category: "audio",
-			Status: StatusStub, Note: "FE listen-only; distinct from C2S audio:stop control intent"},
 	)
 }

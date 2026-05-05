@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KeyRound, Plus, Save, Trash2, Zap } from 'lucide-react';
-import { ActionListEditor } from '@/features/editor/components/design/ActionListEditor';
+import {
+  ActionListEditor,
+  hasIncompletePresentationCueActions,
+} from '@/features/editor/components/design/ActionListEditor';
 import type { PhaseAction } from '@/features/editor/flowTypes';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import {
@@ -11,6 +14,7 @@ import {
 } from '@/features/editor/utils/eventProgressionConfig';
 
 interface EntityTriggerPlacementCardProps {
+  themeId?: string;
   entityKind: TriggerPlacementKind;
   entityId: string;
   entityName: string;
@@ -33,10 +37,15 @@ function createTrigger(
 }
 
 function isTriggerValid(trigger: EventProgressionTriggerConfig) {
-  return (trigger.actions ?? []).some((action) => action.type.trim().length > 0);
+  const actions = trigger.actions ?? [];
+  return (
+    actions.some((action) => action.type.trim().length > 0) &&
+    !hasIncompletePresentationCueActions(actions)
+  );
 }
 
 export function EntityTriggerPlacementCard({
+  themeId,
   entityKind,
   entityId,
   entityName,
@@ -124,6 +133,7 @@ export function EntityTriggerPlacementCard({
               trigger={trigger}
               index={index}
               title={title}
+              themeId={themeId}
               onChange={(patch) => updateDraft(index, patch)}
               onRemove={() => handleRemove(index)}
             />
@@ -138,12 +148,14 @@ function TriggerDraftRow({
   trigger,
   index,
   title,
+  themeId,
   onChange,
   onRemove,
 }: {
   trigger: EventProgressionTriggerConfig;
   index: number;
   title: string;
+  themeId?: string;
   onChange: (patch: Partial<EventProgressionTriggerConfig>) => void;
   onRemove: () => void;
 }) {
@@ -200,11 +212,14 @@ function TriggerDraftRow({
           label={`${title} ${index + 1}`}
           actions={actions}
           onChange={handleActionChange}
+          themeId={themeId}
         />
       </div>
 
       {!isTriggerValid(trigger) && (
-        <p className="mt-2 text-xs text-amber-300">저장하려면 실행 결과를 하나 이상 추가하세요.</p>
+        <p className="mt-2 text-xs text-amber-300">
+          저장하려면 실행 결과를 하나 이상 추가하고 필요한 미디어를 선택하세요.
+        </p>
       )}
     </article>
   );

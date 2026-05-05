@@ -150,7 +150,11 @@ var legacyPhaseActionAliases = map[string]PhaseAction{
 	"enable_chat":         ActionUnmuteChat,
 	"disable_chat":        ActionMuteChat,
 	"play_bgm":            ActionSetBGM,
+	"set_bgm":             ActionSetBGM,
+	"play_sound":          ActionPlaySound,
+	"play_media":          ActionPlayMedia,
 	"stop_bgm":            ActionStopAudio,
+	"stop_audio":          ActionStopAudio,
 	"broadcast":           ActionBroadcastMessage,
 }
 

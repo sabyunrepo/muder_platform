@@ -241,6 +241,7 @@ function SelectedLocationDetail({
         </div>
       </section>
       <EntityTriggerPlacementCard
+        themeId={themeId}
         entityKind="location"
         entityId={location.id}
         entityName={location.name}

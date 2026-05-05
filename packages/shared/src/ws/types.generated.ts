@@ -7,7 +7,7 @@
 // Any hand edit will be overwritten by the next go generate run.
 // Phase 19 PR-1 (2026-04-18).
 //
-// Catalog: 132 events (active=123, stub=7, deprec=2) · 10 //wsgen:payload structs.
+// Catalog: 133 events (active=128, stub=3, deprec=2) · 10 //wsgen:payload structs.
 
 /* eslint-disable */
 /* prettier-ignore */
@@ -20,29 +20,15 @@ export const WsEventType = {
   ACCUSATION_RESET: "accusation:reset",
   /** C2S · accusation */
   ACCUSATION_VOTE: "accusation:vote",
-  /**
-   * S2C · audio
-   * status=stub
-   * FE listen-only
-   */
+  /** S2C · audio */
   AUDIO_PLAY_MEDIA: "audio.play_media",
-  /**
-   * S2C · audio
-   * status=stub
-   * FE listen-only
-   */
+  /** S2C · audio */
+  AUDIO_PLAY_SOUND: "audio.play_sound",
+  /** S2C · audio */
   AUDIO_PLAY_VOICE: "audio.play_voice",
-  /**
-   * S2C · audio
-   * status=stub
-   * FE listen-only; server yet to emit
-   */
+  /** S2C · audio */
   AUDIO_SET_BGM: "audio.set_bgm",
-  /**
-   * S2C · audio
-   * status=stub
-   * FE listen-only; distinct from C2S audio:stop control intent
-   */
+  /** S2C · audio */
   AUDIO_STOP: "audio.stop",
   /** C2S · audio */
   AUDIO_PAUSE: "audio:pause",
@@ -378,6 +364,7 @@ export const WsEventDirection: Readonly<Record<WsEventType, "c2s" | "s2c" | "bid
   "accusation:reset": "c2s",
   "accusation:vote": "c2s",
   "audio.play_media": "s2c",
+  "audio.play_sound": "s2c",
   "audio.play_voice": "s2c",
   "audio.set_bgm": "s2c",
   "audio.stop": "s2c",
@@ -514,6 +501,7 @@ export const WsEventCategory: Readonly<Record<WsEventType, string>> = {
   "accusation:reset": "accusation",
   "accusation:vote": "accusation",
   "audio.play_media": "audio",
+  "audio.play_sound": "audio",
   "audio.play_voice": "audio",
   "audio.set_bgm": "audio",
   "audio.stop": "audio",
@@ -649,10 +637,11 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
   "accusation:accuse": "active",
   "accusation:reset": "active",
   "accusation:vote": "active",
-  "audio.play_media": "stub",
-  "audio.play_voice": "stub",
-  "audio.set_bgm": "stub",
-  "audio.stop": "stub",
+  "audio.play_media": "active",
+  "audio.play_sound": "active",
+  "audio.play_voice": "active",
+  "audio.set_bgm": "active",
+  "audio.stop": "active",
   "audio:pause": "active",
   "audio:play": "active",
   "audio:resume": "active",

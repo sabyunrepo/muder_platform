@@ -226,6 +226,17 @@ func TestParseGameConfig_AddsEndingBranchModuleForEvaluateEndingAction(t *testin
 	}
 }
 
+func TestParseGameConfig_AddsAudioModuleForPresentationAction(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"intro","name":"Intro","onEnter":[{"type":"SET_BGM","params":{"mediaId":"bgm-1"}}]}],"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "audio" {
+		t.Fatalf("implicit modules = %#v", cfg.Modules)
+	}
+}
+
 func TestParseGameConfig_DoesNotDuplicateImplicitEndingBranchModule(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"final","name":"Final","onEnter":[{"type":"EVALUATE_ENDING"}]}],"modules":[{"name":"ending_branch","config":{"defaultEnding":"미해결"}}]}`)
 	cfg, err := ParseGameConfig(data)

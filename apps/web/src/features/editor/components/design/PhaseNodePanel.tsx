@@ -9,7 +9,10 @@ import type {
 } from "../../flowTypes";
 import { flowKeys } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
-import { ActionListEditor } from "./ActionListEditor";
+import {
+  ActionListEditor,
+  hasIncompletePresentationCueActions,
+} from "./ActionListEditor";
 import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
 import {
   DELIVER_INFORMATION_ACTION,
@@ -63,8 +66,10 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
     onUpdate(node.id, patch);
+    const nextData = { ...data, ...patch };
+    if (hasIncompleteActionPatch(nextData)) return;
     debouncer.schedule(
-      { ...data, ...patch },
+      nextData,
       (prev) => ({ ...data, ...(prev ?? {}), ...patch }),
     );
   };
@@ -119,13 +124,24 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
         actions={(data.onEnter as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onEnter: actions })}
         hiddenTypes={[DELIVER_INFORMATION_ACTION, "deliver_information"]}
+        themeId={themeId}
       />
       <ActionListEditor
         label="장면 종료 트리거"
         actions={(data.onExit as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onExit: actions })}
+        themeId={themeId}
       />
     </div>
+  );
+}
+
+function hasIncompleteActionPatch(patch: Partial<FlowNodeData>): boolean {
+  const onEnter = Array.isArray(patch.onEnter) ? (patch.onEnter as PhaseAction[]) : null;
+  const onExit = Array.isArray(patch.onExit) ? (patch.onExit as PhaseAction[]) : null;
+  return (
+    (onEnter ? hasIncompletePresentationCueActions(onEnter) : false) ||
+    (onExit ? hasIncompletePresentationCueActions(onExit) : false)
   );
 }
 

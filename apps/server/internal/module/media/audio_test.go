@@ -94,6 +94,58 @@ func TestAudioModule_ReactTo_SetBGM(t *testing.T) {
 	}
 }
 
+func TestAudioModule_ReactTo_PlaySoundAndMedia(t *testing.T) {
+	deps, bus := newTestDeps(t)
+	m := NewAudioModule()
+	if err := m.Init(context.Background(), deps, nil); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	defer func() { _ = m.Cleanup(context.Background()) }()
+
+	soundReceived := make(chan engine.Event, 1)
+	mediaReceived := make(chan engine.Event, 1)
+	bus.Subscribe("audio.play_sound", func(e engine.Event) {
+		soundReceived <- e
+	})
+	bus.Subscribe("audio.play_media", func(e engine.Event) {
+		mediaReceived <- e
+	})
+
+	params, _ := json.Marshal(map[string]any{"mediaId": "sfx-1"})
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionPlaySound,
+		Params: params,
+	}); err != nil {
+		t.Fatalf("ReactTo play sound: %v", err)
+	}
+	params, _ = json.Marshal(map[string]any{"mediaId": "movie-1", "mode": "cutscene"})
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionPlayMedia,
+		Params: params,
+	}); err != nil {
+		t.Fatalf("ReactTo play media: %v", err)
+	}
+
+	select {
+	case e := <-soundReceived:
+		payload, _ := e.Payload.(json.RawMessage)
+		if string(payload) != `{"mediaId":"sfx-1"}` {
+			t.Fatalf("sound payload = %s", payload)
+		}
+	default:
+		t.Fatal("expected audio.play_sound event to be published")
+	}
+	select {
+	case e := <-mediaReceived:
+		payload, _ := e.Payload.(json.RawMessage)
+		if string(payload) != `{"mediaId":"movie-1","mode":"cutscene"}` {
+			t.Fatalf("media payload = %s", payload)
+		}
+	default:
+		t.Fatal("expected audio.play_media event to be published")
+	}
+}
+
 func TestAudioModule_ReactTo_UnsupportedAction(t *testing.T) {
 	deps, _ := newTestDeps(t)
 	m := NewAudioModule()

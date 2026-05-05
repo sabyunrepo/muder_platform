@@ -43,6 +43,7 @@ var relayPrefixes = []string{
 	"ready.",
 	"reading.",
 	"ending.",
+	"audio.",
 }
 
 // shouldRelay reports whether an engine event type should be broadcast

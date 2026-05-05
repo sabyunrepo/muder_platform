@@ -41,6 +41,13 @@ func init() {
 		EventDef{Type: "reading.resumed", Direction: DirS2C, Category: "reading"},
 		EventDef{Type: "reading.completed", Direction: DirS2C, Category: "reading"},
 
+		// --- audio/media presentation cues (engine relay) ---
+		EventDef{Type: "audio.set_bgm", Direction: DirS2C, Category: "audio"},
+		EventDef{Type: "audio.play_voice", Direction: DirS2C, Category: "audio"},
+		EventDef{Type: "audio.play_sound", Direction: DirS2C, Category: "audio"},
+		EventDef{Type: "audio.play_media", Direction: DirS2C, Category: "audio"},
+		EventDef{Type: "audio.stop", Direction: DirS2C, Category: "audio"},
+
 		// --- phase (engine relay) ---
 		EventDef{Type: "phase.advanced", Direction: DirS2C, Category: "phase"},
 		EventDef{Type: "phase:entered", Direction: DirS2C, Category: "phase",

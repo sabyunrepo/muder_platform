@@ -28,6 +28,9 @@ describe("actionAdapter", () => {
       "CLOSE_VOTING",
       "UNMUTE_CHAT",
       "MUTE_CHAT",
+      "SET_BGM",
+      "PLAY_SOUND",
+      "PLAY_MEDIA",
       "STOP_AUDIO",
     ]);
   });

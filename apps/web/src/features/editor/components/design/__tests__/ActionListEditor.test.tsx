@@ -1,6 +1,26 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ActionListEditor } from "../ActionListEditor";
+import {
+  ActionListEditor,
+  hasIncompletePresentationCueActions,
+} from "../ActionListEditor";
+
+vi.mock("../../media/MediaPicker", () => ({
+  MediaPicker: ({
+    open,
+    title,
+    onSelect,
+  }: {
+    open: boolean;
+    title?: string;
+    onSelect: (media: { id: string }) => void;
+  }) =>
+    open ? (
+      <button type="button" onClick={() => onSelect({ id: "media-1" })}>
+        {title}
+      </button>
+    ) : null,
+}));
 
 afterEach(cleanup);
 
@@ -54,5 +74,69 @@ describe("ActionListEditor", () => {
       { id: "a1", type: "OPEN_VOTING" },
       { id: "a2", type: "STOP_AUDIO" },
     ]);
+  });
+
+  it("연출 실행 결과의 미디어를 raw JSON 없이 params.mediaId로 저장한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[{ id: "bgm", type: "SET_BGM", params: {} }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "BGM 선택" }));
+    fireEvent.click(screen.getByRole("button", { name: "장면 시작 트리거 1 BGM 선택" }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+    ]);
+  });
+
+  it("themeId가 없으면 미디어 선택 버튼을 비활성화하고 안내문을 보여준다", () => {
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[{ id: "bgm", type: "SET_BGM", params: {} }]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByRole("button", { name: "BGM 선택" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(screen.getByText("테마 화면에서 미디어를 선택할 수 있습니다.")).toBeDefined();
+  });
+
+  it("저장 전 연출 실행 결과의 mediaId 누락을 검출한다", () => {
+    expect(hasIncompletePresentationCueActions([{ id: "bgm", type: "SET_BGM", params: {} }])).toBe(
+      true,
+    );
+    expect(
+      hasIncompletePresentationCueActions([
+        { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+        { id: "vote", type: "OPEN_VOTING" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("연출이 아닌 실행 결과로 바꾸면 미디어 params를 비운다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 종료 트리거"
+        actions={[{ id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "장면 종료 트리거 1 실행 결과" }), {
+      target: { value: "OPEN_VOTING" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([{ id: "bgm", type: "OPEN_VOTING" }]);
   });
 });
