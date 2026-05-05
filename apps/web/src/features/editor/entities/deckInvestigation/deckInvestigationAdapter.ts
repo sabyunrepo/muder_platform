@@ -82,8 +82,8 @@ export interface DeckInvestigationRuntimeDraft {
 
 const DEFAULT_TOKEN: InvestigationTokenDraft = {
   id: 'investigation-token',
-  name: '조사 토큰',
-  iconLabel: '🔎',
+  name: '조사권',
+  iconLabel: '권',
   defaultAmount: 0,
 };
 
@@ -122,8 +122,8 @@ function normalizeToken(value: unknown, index: number): InvestigationTokenDraft 
     : 0;
   return {
     id: rawId || `token-${index + 1}`,
-    name: rawName || '조사 토큰',
-    iconLabel: rawIconLabel || '🔎',
+    name: rawName || '조사권',
+    iconLabel: rawIconLabel || '권',
     defaultAmount,
   };
 }
@@ -152,7 +152,7 @@ function normalizeDeck(value: unknown, index: number, fallbackTokenId: string): 
   const description = typeof value.description === 'string' ? value.description.trim() : '';
   const rawTokenId = typeof value.tokenId === 'string' ? value.tokenId.trim() : '';
   const id = rawId || `deck-${index + 1}`;
-  const title = rawTitle || '새 조사 덱';
+  const title = rawTitle || '새 단서 조사';
   const tokenId = rawTokenId || fallbackTokenId;
   const tokenCost = typeof value.tokenCost === 'number' && Number.isFinite(value.tokenCost)
     ? Math.max(0, Math.floor(value.tokenCost))
@@ -185,7 +185,7 @@ export function createDeckInvestigationDraft(): DeckInvestigationConfigDraft {
 export function createInvestigationDeckDraft(index = 0, tokenId = DEFAULT_TOKEN.id): InvestigationDeckDraft {
   return {
     id: `deck-${index + 1}`,
-    title: '새 조사 덱',
+    title: '새 단서 조사',
     description: '',
     tokenId,
     tokenCost: 1,
@@ -266,8 +266,8 @@ export function toDeckInvestigationViewModel(
     };
   });
   return {
-    deckCountLabel: `조사 덱 ${draft.decks.length}개`,
-    tokenCountLabel: `토큰 ${draft.tokens.length}종`,
+    deckCountLabel: `단서 조사 ${draft.decks.length}개`,
+    tokenCountLabel: `조사권 ${draft.tokens.length}종`,
     warnings,
     decks,
   };
@@ -279,16 +279,16 @@ function buildDeckWarnings(
   clueIds: Set<string>,
 ): string[] {
   const warnings: string[] = [];
-  if (!tokenById.has(deck.tokenId)) warnings.push('소비 토큰을 선택해야 합니다.');
-  if (deck.cards.length === 0) warnings.push('덱에 지급할 단서를 추가해야 합니다.');
+  if (!tokenById.has(deck.tokenId)) warnings.push('소비 조사권을 선택해야 합니다.');
+  if (deck.cards.length === 0) warnings.push('단서 조사에 지급할 단서를 추가해야 합니다.');
   const missingClueCount = deck.cards.filter((card) => !clueIds.has(card.clueId)).length;
   if (clueIds.size > 0 && missingClueCount > 0) warnings.push(`없는 단서 ${missingClueCount}개가 연결되어 있습니다.`);
-  if (deck.tokenCost < 0) warnings.push('소비 토큰 수는 0 이상이어야 합니다.');
+  if (deck.tokenCost < 0) warnings.push('소비 조사권 수는 0 이상이어야 합니다.');
   return warnings;
 }
 
 function formatTokenLabel(deck: InvestigationDeckDraft, token?: InvestigationTokenDraft): string {
-  const tokenName = token ? `${token.iconLabel} ${token.name}` : '토큰 미선택';
+  const tokenName = token ? `${token.iconLabel} ${token.name}` : '조사권 미선택';
   return `${tokenName} ${deck.tokenCost}개 소비`;
 }
 
@@ -296,10 +296,10 @@ function formatPlacementLabel(
   locationIds: string[],
   locationById: Map<string, LocationResponse>,
 ): string {
-  if (locationIds.length === 0) return '모든 배치 위치에서 실행 가능';
+  if (locationIds.length === 0) return '모든 단서 조사 위치에서 실행 가능';
   const names = locationIds.map((id) => locationById.get(id)?.name).filter((name): name is string => !!name);
   const shownCount = names.length;
-  if (shownCount === 0) return `${locationIds.length}개 위치에 배치`;
+  if (shownCount === 0) return `${locationIds.length}개 조사 위치에 배치`;
   if (shownCount <= 2 && shownCount === locationIds.length) return names.join(', ');
   const displayedCount = Math.min(2, shownCount);
   return `${names.slice(0, displayedCount).join(', ')} 외 ${locationIds.length - displayedCount}곳`;

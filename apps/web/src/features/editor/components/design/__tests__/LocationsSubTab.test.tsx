@@ -302,7 +302,7 @@ describe('LocationsSubTab', () => {
     it('location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
       fireEvent.click(screen.getByRole('button', { name: '주방 선택' }));
-      expect(screen.getByLabelText('주방 조사 시 발견 단서')).toBeDefined();
+      expect(screen.getByLabelText('주방 단서 조사')).toBeDefined();
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
     });
 

@@ -73,7 +73,7 @@ describe('locationEntityAdapter', () => {
       imageUrl: 'https://cdn.example/study.webp',
       roundLabel: 'R2~4',
       accessLabel: '탐정 한나 접근 제한',
-      clueCountLabel: '조사 시 발견 단서 3개',
+      clueCountLabel: '단서 조사 3개',
       clueShortLabel: '단서 3개',
       badges: ['저택 1층', 'R2~4', '접근 제한 있음', '단서 3', '이미지 있음'],
     });
