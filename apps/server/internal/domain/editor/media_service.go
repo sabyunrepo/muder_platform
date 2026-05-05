@@ -62,6 +62,12 @@ type mediaService struct {
 	logger  zerolog.Logger
 }
 
+type mediaReferenceInfo struct {
+	Type string
+	ID   string
+	Name string
+}
+
 // NewMediaService constructs a MediaService.
 // Theme ownership checks are performed directly via db.Queries to minimize the dependency surface.
 func NewMediaService(q *db.Queries, storageProvider storage.Provider, logger zerolog.Logger) MediaService {
@@ -428,6 +434,8 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		return apperror.Internal("failed to get media")
 	}
 
+	refList := []mediaReferenceInfo{}
+
 	// Block deletion if the media is referenced by any reading section
 	// (either as bgmMediaId or inside a line's voiceMediaId).
 	refs, err := s.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
@@ -439,16 +447,13 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		return apperror.Internal("failed to check media references")
 	}
 	if len(refs) > 0 {
-		refList := make([]map[string]string, len(refs))
-		for i, r := range refs {
-			refList[i] = map[string]string{
-				"type": "reading_section",
-				"id":   r.ID.String(),
-				"name": r.Name,
-			}
+		for _, r := range refs {
+			refList = append(refList, mediaReferenceInfo{
+				Type: "reading_section",
+				ID:   r.ID.String(),
+				Name: r.Name,
+			})
 		}
-		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by reading sections").
-			WithParams(map[string]any{"references": refList})
 	}
 
 	roleSheetRefs, err := s.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
@@ -460,16 +465,30 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		return apperror.Internal("failed to check media references")
 	}
 	if len(roleSheetRefs) > 0 {
-		refList := make([]map[string]string, len(roleSheetRefs))
-		for i, r := range roleSheetRefs {
-			refList[i] = map[string]string{
-				"type": "role_sheet",
-				"id":   r.Key,
-				"name": r.Key,
-			}
+		for _, r := range roleSheetRefs {
+			refList = append(refList, mediaReferenceInfo{
+				Type: "role_sheet",
+				ID:   r.Key,
+				Name: r.Key,
+			})
 		}
-		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by role sheets").
-			WithParams(map[string]any{"references": refList})
+	}
+
+	theme, err := s.q.GetTheme(ctx, media.ThemeID)
+	if err != nil {
+		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media references")
+		return apperror.Internal("failed to check media references")
+	}
+	configRefs, err := findMediaReferencesInThemeConfig(theme.ConfigJson, mediaID)
+	if err != nil {
+		s.logger.Warn().Err(err).Str("media_id", mediaID.String()).Msg("failed to scan theme config media references")
+		return apperror.New(apperror.ErrValidation, 422, "theme config contains invalid media references")
+	}
+	refList = append(refList, configRefs...)
+
+	if len(refList) > 0 {
+		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by editor content").
+			WithParams(map[string]any{"references": mediaReferenceParams(refList)})
 	}
 
 	if media.SourceType == SourceTypeFile && media.StorageKey.Valid && s.storage != nil {
