@@ -130,7 +130,9 @@ Do:
 9. 이미 steward가 맡아 CodeRabbit/CI가 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 다만 이 repo의 `main`은 required status checks의 `strict`가 켜져 있어 PR이 base보다 뒤처지면 `mergeable=MERGEABLE`이어도 merge gate에서 막힐 수 있다. 최신화는 GitHub가 merge conflict 또는 up-to-date 요구를 하거나, `main` branch protection의 strict status check가 켜진 상태에서 PR이 behind이거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, CI/Codecov 실패 원인이 main drift이거나, 사용자가 명시적으로 최신화를 요청할 때만 수행한다. CI steward는 이 strict/behind 조합을 감지하면 `gh pr update-branch <PR>` 또는 `scripts/mmp-pr-watch.sh <PR> --update-branch-if-needed`로 직접 branch update를 수행하고, 새 head 기준으로 CodeRabbit/CI를 처음부터 다시 확인한다. local rebase, local merge commit, force-push는 금지한다.
 10. Steward-managed PR에 메인 Codex가 추가 커밋, rebase, merge commit을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
 11. 메인 Codex thread는 `scripts/mmp-pr-watch.sh`를 직접 장시간 실행하지 않는다. `scripts/mmp-pr-status.sh <PR>` 또는 `gh pr view` 같은 단발 조회만 사용하고, 30초 이상 대기가 필요하면 CI steward에 위임한다.
-12. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
+12. CI steward 최종 보고는 `scripts/mmp-pr-status.sh <PR> --fail-on-blocker`가 최신 head에서 통과해야 유효하다. `CodeRabbit` check pass만으로는 부족하며 unresolved review thread 또는 `CHANGES_REQUESTED` review decision이 남아 있으면 steward가 계속 처리하거나 `BLOCKED`로 보고해야 한다.
+13. CI steward는 안전 규칙 안에서 자율적으로 PR을 마무리한다. 대상 PR의 타당한 review thread를 고치고 검증한 경우 해당 thread resolve까지 수행할 수 있으며, full-ci PR에서는 guard를 통한 `ready-for-ci` 적용과 watcher를 통한 missing workflow dispatch까지 이어간다.
+14. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
 
 Done when:
 - 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
@@ -138,7 +140,7 @@ Done when:
 - 완료된 sub-agent가 `close_agent`로 해제되어 다음 작업 슬롯을 막지 않는다.
 
 Avoid:
-- secret 조회, destructive command, PR 생성, merge, 배포 트리거를 sub-agent에 맡기지 않는다. 단, CI steward는 `scripts/pr-ready-for-ci-guard.sh --apply <PR>`를 통과한 경우에만 `ready-for-ci` 라벨을 붙일 수 있고, strict up-to-date merge gate 해소가 필요할 때만 `gh pr update-branch <PR>`를 실행할 수 있다.
+- secret 조회, destructive command, PR 생성, merge, 배포 트리거를 sub-agent에 맡기지 않는다. 단, CI steward는 검증된 대상 PR review thread resolve, `scripts/pr-ready-for-ci-guard.sh --apply <PR>`를 통한 `ready-for-ci` 라벨, strict up-to-date merge gate 해소용 `gh pr update-branch <PR>`를 수행할 수 있다.
 - 다음 로컬 작업이 바로 막히는 critical path를 불필요하게 위임하지 않는다.
 - API DTO, frontend adapter/ViewModel mapping, migration, PR/CI 라벨 전환처럼 공유 계약을 바꾸는 작업은 최종 통합 전까지 여러 agent가 동시에 수정하지 않는다.
 
