@@ -146,6 +146,18 @@
         "AGENTS.md"
       ],
       "resolution": "Made long-running mmp-pr-watch use CI-steward-only by default and updated PR lifecycle guidance so main Codex uses one-shot status checks plus steward handoff instead of direct background watcher loops."
+    },
+    {
+      "id": "steward-final-review-thread-gate",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "scripts/mmp-pr-status.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        ".codex/agents/mmp-ci-steward.toml",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "AGENTS.md"
+      ],
+      "resolution": "Required steward final reports to pass mmp-pr-status --fail-on-blocker on the latest head, added unresolved review thread details, and clarified that verified target-PR thread resolution is an allowed autonomous steward action."
     }
   ],
   "last_review": {
