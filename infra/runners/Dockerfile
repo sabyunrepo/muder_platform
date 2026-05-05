@@ -31,7 +31,7 @@ RUN /opt/hostedtoolcache/go/${GO_VERSION}/x64/bin/go install \
 RUN /opt/hostedtoolcache/go/${GO_VERSION}/x64/bin/go install \
       github.com/pressly/goose/v3/cmd/goose@v${GOOSE_VERSION} \
     && cp /root/go/bin/goose /usr/local/bin/
-RUN curl -fsSL \
+RUN curl -fsSL --retry 3 --retry-all-errors --connect-timeout 10 --max-time 120 \
       "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_linux_amd64" \
       -o /usr/local/bin/osv-scanner \
     && echo "${OSV_SCANNER_LINUX_AMD64_SHA256}  /usr/local/bin/osv-scanner" | sha256sum -c - \
