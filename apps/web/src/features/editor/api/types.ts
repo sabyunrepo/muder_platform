@@ -57,7 +57,7 @@ export interface EditorCharacterResponse {
   endcard_title?: string | null;
   endcard_body?: string | null;
   endcard_image_url?: string | null;
-  alias_rules?: CharacterAliasRule[];
+  alias_rules: CharacterAliasRule[];
 }
 
 export type MysteryRole = 'suspect' | 'culprit' | 'accomplice' | 'detective';

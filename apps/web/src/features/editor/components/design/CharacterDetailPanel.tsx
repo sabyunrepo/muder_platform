@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion } from '@/shared/components/ui';
 import type { CharacterAliasRule, MysteryRole } from '@/features/editor/api';
 import type { Mission } from './MissionEditor';
@@ -84,6 +84,7 @@ export function CharacterDetailPanel({
   onEndcardChange,
 }: CharacterDetailPanelProps) {
   const [aliasDrafts, setAliasDrafts] = useState<CharacterAliasRule[]>([]);
+  const aliasDraftCharacterIdRef = useRef<string | null>(null);
   const [endcardTitle, setEndcardTitle] = useState('');
   const [endcardBody, setEndcardBody] = useState('');
   const [endcardImageUrl, setEndcardImageUrl] = useState('');
@@ -93,8 +94,10 @@ export function CharacterDetailPanel({
   );
 
   useEffect(() => {
+    if (aliasDraftCharacterIdRef.current === (selectedChar?.id ?? null)) return;
+    aliasDraftCharacterIdRef.current = selectedChar?.id ?? null;
     setAliasDrafts(normalizeCharacterAliasRules(selectedChar?.alias_rules));
-  }, [selectedChar?.id, selectedChar?.alias_rules]);
+  }, [selectedChar]);
 
   useEffect(() => {
     setEndcardTitle(selectedChar?.endcard_title ?? '');

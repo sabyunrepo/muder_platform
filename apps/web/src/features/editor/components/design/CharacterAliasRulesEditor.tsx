@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { CharacterAliasRule } from '@/features/editor/api';
 import type { SelectOption } from './condition/ConditionRule';
 import { ConditionBuilder } from './condition/ConditionBuilder';
@@ -23,7 +24,11 @@ export function CharacterAliasRulesEditor({
   onChange,
   onSave,
 }: CharacterAliasRulesEditorProps) {
+  const [validationError, setValidationError] = useState<string | null>(null);
+
   const addRule = () => {
+    if (disabled) return;
+    setValidationError(null);
     onChange([
       ...rules,
       {
@@ -37,10 +42,24 @@ export function CharacterAliasRulesEditor({
     ]);
   };
   const updateRule = (index: number, patch: Partial<CharacterAliasRule>) => {
+    if (disabled) return;
+    setValidationError(null);
     onChange(rules.map((rule, i) => (i === index ? { ...rule, ...patch } : rule)));
   };
   const removeRule = (index: number) => {
+    if (disabled) return;
+    setValidationError(null);
     onChange(rules.filter((_, i) => i !== index));
+  };
+  const handleSave = () => {
+    if (disabled) return;
+    const invalidRule = rules.find((rule) => !rule.display_name?.trim() && !rule.display_icon_url?.trim());
+    if (invalidRule) {
+      setValidationError('표시 이름 또는 표시 아이콘 URL을 입력하세요.');
+      return;
+    }
+    setValidationError(null);
+    onSave(normalizeCharacterAliasRules(rules));
   };
 
   return (
@@ -74,8 +93,9 @@ export function CharacterAliasRulesEditor({
                 규칙 이름
                 <input
                   value={rule.label ?? ''}
+                  disabled={disabled}
                   onChange={(event) => updateRule(index, { label: event.currentTarget.value })}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
                 />
               </label>
               <label className="text-[11px] text-slate-400">
@@ -83,8 +103,9 @@ export function CharacterAliasRulesEditor({
                 <input
                   value={rule.display_name ?? ''}
                   placeholder={characterName}
+                  disabled={disabled}
                   onChange={(event) => updateRule(index, { display_name: event.currentTarget.value })}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
                 />
               </label>
               <label className="text-[11px] text-slate-400">
@@ -93,8 +114,9 @@ export function CharacterAliasRulesEditor({
                   type="number"
                   min={0}
                   value={rule.priority}
+                  disabled={disabled}
                   onChange={(event) => updateRule(index, { priority: Number(event.currentTarget.value) || 0 })}
-                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                  className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
                 />
               </label>
             </div>
@@ -103,8 +125,9 @@ export function CharacterAliasRulesEditor({
               <input
                 value={rule.display_icon_url ?? ''}
                 placeholder={characterImageUrl ?? 'https://...'}
+                disabled={disabled}
                 onChange={(event) => updateRule(index, { display_icon_url: event.currentTarget.value })}
-                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200"
+                className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
               />
             </label>
             <div className="mt-3">
@@ -130,9 +153,12 @@ export function CharacterAliasRulesEditor({
       </div>
 
       <div className="mt-3 flex justify-end">
+        {validationError ? (
+          <p className="mr-auto self-center text-[11px] text-red-300">{validationError}</p>
+        ) : null}
         <button
           type="button"
-          onClick={() => onSave(normalizeCharacterAliasRules(rules))}
+          onClick={handleSave}
           disabled={disabled}
           className="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-default disabled:bg-slate-800 disabled:text-slate-500"
         >

@@ -126,8 +126,28 @@ describe('CharacterAliasRulesEditor', () => {
     expect((topLevelAddButton as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: '플레이 중 표시 저장' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: '삭제' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByLabelText('표시 이름') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('표시 아이콘 URL') as HTMLInputElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('미완성 규칙은 조용히 삭제하지 않고 저장을 막는다', () => {
+    const onSave = vi.fn();
+    const rule: CharacterAliasRule = {
+      id: 'alias-1',
+      label: '정체 공개',
+      display_name: '',
+      display_icon_url: '',
+      priority: 1,
+      condition: { id: 'group-1', operator: 'AND', rules: [{ id: 'rule-1', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }] },
+    };
+
+    renderEditor({ rules: [rule], onSave });
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeTruthy();
   });
 });

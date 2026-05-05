@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/mmp-platform/server/internal/engine"
@@ -83,7 +84,7 @@ func TestNormalizeCharacterAliasRules_ValidatesConditionAndDisplayValue(t *testi
 	tooMany := make([]CharacterAliasRule, MaxCharacterAliasRules+1)
 	for i := range tooMany {
 		rule := valid
-		rule.ID = string(rune('a' + i))
+		rule.ID = fmt.Sprintf("alias-%d", i)
 		tooMany[i] = rule
 	}
 
@@ -171,7 +172,9 @@ func TestService_CharacterAliasRulesContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCharacter: %v", err)
 	}
-	if len(created.AliasRules) != 1 || *created.AliasRules[0].DisplayName != "밤의 목격자" {
+	if len(created.AliasRules) != 1 ||
+		created.AliasRules[0].DisplayName == nil ||
+		*created.AliasRules[0].DisplayName != "밤의 목격자" {
 		t.Fatalf("created alias rules = %+v", created.AliasRules)
 	}
 
