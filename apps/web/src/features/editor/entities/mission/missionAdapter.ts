@@ -169,6 +169,7 @@ export function getMissionVerificationOptions(
 
 export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
   const runtimeType = toRuntimeType(mission);
+  const legacyConditionNote = mission.condition?.trim();
   return {
     id: mission.id,
     type: runtimeType,
@@ -179,7 +180,7 @@ export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
     engineOwner: "backend_engine",
     ...(mission.targetCharacterId ? { targetCharacterId: mission.targetCharacterId } : {}),
     ...(mission.targetClueId ? { targetClueId: mission.targetClueId } : {}),
-    ...(mission.condition ? { legacyConditionNote: mission.condition } : {}),
+    ...(legacyConditionNote ? { legacyConditionNote } : {}),
   };
 }
 

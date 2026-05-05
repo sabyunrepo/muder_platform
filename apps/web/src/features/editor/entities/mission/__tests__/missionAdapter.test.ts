@@ -58,6 +58,26 @@ describe("missionAdapter", () => {
     });
   });
 
+  it("미션 조건 메모는 공백을 제거하고 빈 값은 runtime 후보에서 제외한다", () => {
+    expect(toMissionRuntimeDraft({
+      id: "m-trim",
+      type: "secret",
+      description: "비밀",
+      points: 1,
+      condition: "  토론 이후 공개  ",
+    })).toEqual(expect.objectContaining({
+      legacyConditionNote: "토론 이후 공개",
+    }));
+
+    expect(toMissionRuntimeDraft({
+      id: "m-empty",
+      type: "secret",
+      description: "비밀",
+      points: 1,
+      condition: "   ",
+    })).not.toHaveProperty("legacyConditionNote");
+  });
+
   it("새 미션을 자동 판정 타입으로 바꾸면 runtime verification은 auto가 된다", () => {
     vi.spyOn(crypto, "randomUUID").mockReturnValue("mission-new");
     const draft = createMissionDraft();
