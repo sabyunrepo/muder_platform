@@ -8,6 +8,7 @@ import { useAutoSave } from '@/features/editor/hooks/useAutoSave';
 import { toStorySceneFlowSummaryFromGraph } from '@/features/editor/entities/story/storySceneAdapter';
 import { StorySceneSummary } from './design/StorySceneSummary';
 import { ReadingSectionList } from './reading/ReadingSectionList';
+import { StoryInformationDeliverySection } from './design/StoryInformationDeliverySection';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -199,6 +200,13 @@ export function StoryTab({ themeId }: StoryTabProps) {
         <div className="border-t border-slate-800 px-5 py-6">
           <ReadingSectionList themeId={themeId} />
         </div>
+
+        <StoryInformationDeliverySection
+          themeId={themeId}
+          graph={flowGraph}
+          isLoading={isFlowLoading}
+          isError={isFlowError}
+        />
       </div>
     </div>
   );
