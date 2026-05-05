@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KeyRound, Plus, Save, Trash2, Zap } from 'lucide-react';
-import { ActionListEditor } from '@/features/editor/components/design/ActionListEditor';
+import {
+  ActionListEditor,
+  hasIncompletePresentationCueActions,
+} from '@/features/editor/components/design/ActionListEditor';
 import type { PhaseAction } from '@/features/editor/flowTypes';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import {
@@ -34,7 +37,11 @@ function createTrigger(
 }
 
 function isTriggerValid(trigger: EventProgressionTriggerConfig) {
-  return (trigger.actions ?? []).some((action) => action.type.trim().length > 0);
+  const actions = trigger.actions ?? [];
+  return (
+    actions.some((action) => action.type.trim().length > 0) &&
+    !hasIncompletePresentationCueActions(actions)
+  );
 }
 
 export function EntityTriggerPlacementCard({
@@ -210,7 +217,9 @@ function TriggerDraftRow({
       </div>
 
       {!isTriggerValid(trigger) && (
-        <p className="mt-2 text-xs text-amber-300">저장하려면 실행 결과를 하나 이상 추가하세요.</p>
+        <p className="mt-2 text-xs text-amber-300">
+          저장하려면 실행 결과를 하나 이상 추가하고 필요한 미디어를 선택하세요.
+        </p>
       )}
     </article>
   );

@@ -89,6 +89,14 @@ function createDefaultParams(type: string): Record<string, unknown> | undefined 
   return getPresentationCueConfig(type) ? {} : undefined;
 }
 
+export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boolean {
+  return actions.some((action) => {
+    if (!getPresentationCueConfig(action.type)) return false;
+    const mediaId = action.params?.mediaId;
+    return typeof mediaId !== "string" || mediaId.trim().length === 0;
+  });
+}
+
 function withActionType(action: PhaseAction, type: string): PhaseAction {
   const params = createDefaultParams(type);
   const next: PhaseAction = { ...action, type };

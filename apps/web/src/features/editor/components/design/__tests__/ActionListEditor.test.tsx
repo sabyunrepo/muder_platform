@@ -1,6 +1,9 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ActionListEditor } from "../ActionListEditor";
+import {
+  ActionListEditor,
+  hasIncompletePresentationCueActions,
+} from "../ActionListEditor";
 
 vi.mock("../../media/MediaPicker", () => ({
   MediaPicker: ({
@@ -90,6 +93,18 @@ describe("ActionListEditor", () => {
     expect(onChange).toHaveBeenCalledWith([
       { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
     ]);
+  });
+
+  it("저장 전 연출 실행 결과의 mediaId 누락을 검출한다", () => {
+    expect(hasIncompletePresentationCueActions([{ id: "bgm", type: "SET_BGM", params: {} }])).toBe(
+      true,
+    );
+    expect(
+      hasIncompletePresentationCueActions([
+        { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+        { id: "vote", type: "OPEN_VOTING" },
+      ]),
+    ).toBe(false);
   });
 
   it("연출이 아닌 실행 결과로 바꾸면 미디어 params를 비운다", () => {

@@ -35,7 +35,7 @@ describe('EntityTriggerPlacementCard', () => {
     });
   });
 
-  it('keeps save disabled until each trigger has at least one action', () => {
+  it('keeps save disabled until each trigger has at least one complete action', () => {
     render(
       <EntityTriggerPlacementCard
         entityKind="location"
@@ -51,6 +51,30 @@ describe('EntityTriggerPlacementCard', () => {
     expect(
       (screen.getByRole('button', { name: '트리거 저장' }) as HTMLButtonElement).disabled
     ).toBe(true);
-    expect(screen.getByText('저장하려면 실행 결과를 하나 이상 추가하세요.')).toBeDefined();
+    expect(
+      screen.getByText('저장하려면 실행 결과를 하나 이상 추가하고 필요한 미디어를 선택하세요.')
+    ).toBeDefined();
+  });
+
+  it('keeps save disabled when a presentation cue is missing mediaId', () => {
+    render(
+      <EntityTriggerPlacementCard
+        entityKind="location"
+        entityId="loc-1"
+        entityName="서재"
+        configJson={{}}
+        onConfigChange={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '추가' }));
+    fireEvent.change(screen.getByRole('combobox', { name: '장소 트리거 1 1 실행 결과' }), {
+      target: { value: 'SET_BGM' },
+    });
+
+    expect(
+      (screen.getByRole('button', { name: '트리거 저장' }) as HTMLButtonElement).disabled
+    ).toBe(true);
   });
 });

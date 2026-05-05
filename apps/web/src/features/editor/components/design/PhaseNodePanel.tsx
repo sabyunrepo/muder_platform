@@ -9,7 +9,10 @@ import type {
 } from "../../flowTypes";
 import { flowKeys } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
-import { ActionListEditor } from "./ActionListEditor";
+import {
+  ActionListEditor,
+  hasIncompletePresentationCueActions,
+} from "./ActionListEditor";
 import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
 import {
   DELIVER_INFORMATION_ACTION,
@@ -61,6 +64,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
     onUpdate(node.id, patch);
+    if (hasIncompleteActionPatch(patch)) return;
     debouncer.schedule(
       { ...data, ...patch },
       (prev) => ({ ...data, ...(prev ?? {}), ...patch }),
@@ -119,6 +123,15 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
         themeId={themeId}
       />
     </div>
+  );
+}
+
+function hasIncompleteActionPatch(patch: Partial<FlowNodeData>): boolean {
+  const onEnter = Array.isArray(patch.onEnter) ? (patch.onEnter as PhaseAction[]) : null;
+  const onExit = Array.isArray(patch.onExit) ? (patch.onExit as PhaseAction[]) : null;
+  return (
+    (onEnter ? hasIncompletePresentationCueActions(onEnter) : false) ||
+    (onExit ? hasIncompletePresentationCueActions(onExit) : false)
   );
 }
 
