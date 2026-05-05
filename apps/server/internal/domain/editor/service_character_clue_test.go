@@ -191,6 +191,10 @@ func boolPtr(value bool) *bool {
 	return &value
 }
 
+func textPtr(value string) *string {
+	return &value
+}
+
 func TestService_CreateCharacter(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -280,6 +284,87 @@ func TestService_UpdateCharacter(t *testing.T) {
 	}
 	if !updated.IsPlayable || !updated.ShowInIntro || !updated.CanSpeakInReading || !updated.IsVotingCandidate {
 		t.Errorf("update should preserve default playable visibility: %+v", updated)
+	}
+}
+
+func TestService_CharacterEndcardContract(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+
+	created, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name:            "탐정",
+		EndcardTitle:    textPtr("탐정의 결말"),
+		EndcardBody:     textPtr("사건 이후에도 기록을 이어간다."),
+		EndcardImageURL: textPtr("https://cdn.example/endcard.webp"),
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+	if created.EndcardTitle == nil || *created.EndcardTitle != "탐정의 결말" {
+		t.Fatalf("EndcardTitle mismatch: %+v", created.EndcardTitle)
+	}
+	if created.EndcardBody == nil || *created.EndcardBody != "사건 이후에도 기록을 이어간다." {
+		t.Fatalf("EndcardBody mismatch: %+v", created.EndcardBody)
+	}
+	if created.EndcardImageURL == nil || *created.EndcardImageURL != "https://cdn.example/endcard.webp" {
+		t.Fatalf("EndcardImageURL mismatch: %+v", created.EndcardImageURL)
+	}
+
+	updated, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:            "탐정 수정",
+		MysteryRole:     created.MysteryRole,
+		IsCulprit:       created.IsCulprit,
+		SortOrder:       created.SortOrder,
+		EndcardTitle:    textPtr("탐정의 후일담"),
+		EndcardBody:     created.EndcardBody,
+		EndcardImageURL: created.EndcardImageURL,
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter: %v", err)
+	}
+	if updated.EndcardTitle == nil || *updated.EndcardTitle != "탐정의 후일담" {
+		t.Fatalf("updated EndcardTitle mismatch: %+v", updated.EndcardTitle)
+	}
+
+	listed, err := f.svc.ListCharacters(ctx, creatorID, themeID)
+	if err != nil {
+		t.Fatalf("ListCharacters: %v", err)
+	}
+	if len(listed) != 1 || listed[0].EndcardBody == nil || *listed[0].EndcardBody != "사건 이후에도 기록을 이어간다." {
+		t.Fatalf("list endcard body mismatch: %+v", listed)
+	}
+
+	preserved, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:        "탐정 이름만 수정",
+		MysteryRole: updated.MysteryRole,
+		IsCulprit:   updated.IsCulprit,
+		SortOrder:   updated.SortOrder,
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter preserve: %v", err)
+	}
+	if preserved.EndcardTitle == nil || *preserved.EndcardTitle != "탐정의 후일담" {
+		t.Fatalf("omitted endcard title should be preserved: %+v", preserved.EndcardTitle)
+	}
+
+	cleared, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:         preserved.Name,
+		MysteryRole:  preserved.MysteryRole,
+		IsCulprit:    preserved.IsCulprit,
+		SortOrder:    preserved.SortOrder,
+		EndcardTitle: textPtr(""),
+		EndcardBody:  textPtr(""),
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter clear: %v", err)
+	}
+	if cleared.EndcardTitle != nil || cleared.EndcardBody != nil {
+		t.Fatalf("empty endcard fields should clear stored values: %+v", cleared)
 	}
 }
 

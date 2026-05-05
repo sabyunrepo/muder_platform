@@ -246,6 +246,41 @@ describe('CharacterAssignPanel', () => {
     expect(updateCharacterMutateMock).not.toHaveBeenCalled();
   });
 
+  it('결과 카드 내용을 캐릭터 저장 계약으로 보낸다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+
+    fireEvent.change(screen.getByRole('textbox', { name: '제목' }), {
+      target: { value: '범인의 후일담' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '이미지 URL' }), {
+      target: { value: 'https://cdn.example/endcard.webp' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '본문' }), {
+      target: { value: '사건 이후의 선택을 보여준다.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '결과 카드 저장' }));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: {
+        name: '홍길동',
+        description: undefined,
+        image_url: undefined,
+        is_culprit: true,
+        mystery_role: 'culprit',
+        sort_order: 0,
+        is_playable: true,
+        show_in_intro: true,
+        can_speak_in_reading: true,
+        is_voting_candidate: true,
+        endcard_title: '범인의 후일담',
+        endcard_body: '사건 이후의 선택을 보여준다.',
+        endcard_image_url: 'https://cdn.example/endcard.webp',
+      },
+    });
+  });
+
 
   it('선택한 캐릭터가 목록에서 사라지면 현재 상세 캐릭터 ID로 저장한다', async () => {
     let currentCharacters = mockCharacters;

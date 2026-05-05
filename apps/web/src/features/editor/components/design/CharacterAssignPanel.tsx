@@ -12,6 +12,7 @@ import {
 import {
   buildCharacterVisibilityUpdatePayload,
   buildCharacterRoleUpdatePayload,
+  buildCharacterEndcardUpdatePayload,
   getCharacterListBadges,
   type CharacterVisibilityField,
 } from "@/features/editor/entities/character/characterEditorAdapter";
@@ -136,6 +137,21 @@ export function CharacterAssignPanel({
     [characters, updateCharacter],
   );
 
+  const handleEndcardChangeForChar = useCallback(
+    (characterId: string, values: { title: string; body: string; imageUrl: string }) => {
+      if (updateCharacter.isPending) return;
+
+      const selected = characters?.find((char) => char.id === characterId);
+      if (!selected) return;
+
+      updateCharacter.mutate({
+        characterId: selected.id,
+        body: buildCharacterEndcardUpdatePayload(selected, values),
+      });
+    },
+    [characters, updateCharacter],
+  );
+
   if (charsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -221,6 +237,11 @@ export function CharacterAssignPanel({
               updateCharacter.isPending
                 ? undefined
                 : (field, value) => handleVisibilityChangeForChar(char.id, field, value)
+            }
+            onEndcardChange={
+              updateCharacter.isPending
+                ? undefined
+                : (values) => handleEndcardChangeForChar(char.id, values)
             }
           />
         )}

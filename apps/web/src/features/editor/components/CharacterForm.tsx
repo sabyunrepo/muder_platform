@@ -74,6 +74,12 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
     if (Object.keys(validationErrors).length > 0) return;
 
     if (isEditMode) {
+      const nextMysteryRole = isCulprit
+        ? 'culprit'
+        : character.mystery_role === 'culprit'
+          ? 'suspect'
+          : character.mystery_role;
+
       updateCharacter.mutate(
         {
           characterId: character.id,
@@ -83,6 +89,14 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
             image_url: imageUrl || undefined,
             is_culprit: isCulprit,
             sort_order: sortOrder,
+            mystery_role: nextMysteryRole,
+            is_playable: character.is_playable,
+            show_in_intro: character.show_in_intro,
+            can_speak_in_reading: character.can_speak_in_reading,
+            is_voting_candidate: character.is_voting_candidate,
+            endcard_title: character.endcard_title ?? undefined,
+            endcard_body: character.endcard_body ?? undefined,
+            endcard_image_url: character.endcard_image_url ?? undefined,
           },
         },
         {

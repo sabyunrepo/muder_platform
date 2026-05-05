@@ -288,6 +288,9 @@ type ThemeCharacter struct {
 	ShowInIntro       bool        `json:"show_in_intro"`
 	CanSpeakInReading bool        `json:"can_speak_in_reading"`
 	IsVotingCandidate bool        `json:"is_voting_candidate"`
+	EndcardTitle      pgtype.Text `json:"endcard_title"`
+	EndcardBody       pgtype.Text `json:"endcard_body"`
+	EndcardImageUrl   pgtype.Text `json:"endcard_image_url"`
 }
 
 type ThemeClue struct {

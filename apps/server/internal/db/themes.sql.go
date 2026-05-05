@@ -86,9 +86,13 @@ func (q *Queries) CreateTheme(ctx context.Context, arg CreateThemeParams) (Theme
 }
 
 const createThemeCharacter = `-- name: CreateThemeCharacter :one
-INSERT INTO theme_characters (theme_id, name, description, image_url, is_culprit, mystery_role, sort_order, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate
+INSERT INTO theme_characters (
+  theme_id, name, description, image_url, is_culprit, mystery_role, sort_order,
+  is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate,
+  endcard_title, endcard_body, endcard_image_url
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url
 `
 
 type CreateThemeCharacterParams struct {
@@ -103,6 +107,9 @@ type CreateThemeCharacterParams struct {
 	ShowInIntro       bool        `json:"show_in_intro"`
 	CanSpeakInReading bool        `json:"can_speak_in_reading"`
 	IsVotingCandidate bool        `json:"is_voting_candidate"`
+	EndcardTitle      pgtype.Text `json:"endcard_title"`
+	EndcardBody       pgtype.Text `json:"endcard_body"`
+	EndcardImageUrl   pgtype.Text `json:"endcard_image_url"`
 }
 
 func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeCharacterParams) (ThemeCharacter, error) {
@@ -118,6 +125,9 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 		arg.ShowInIntro,
 		arg.CanSpeakInReading,
 		arg.IsVotingCandidate,
+		arg.EndcardTitle,
+		arg.EndcardBody,
+		arg.EndcardImageUrl,
 	)
 	var i ThemeCharacter
 	err := row.Scan(
@@ -133,6 +143,9 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 		&i.ShowInIntro,
 		&i.CanSpeakInReading,
 		&i.IsVotingCandidate,
+		&i.EndcardTitle,
+		&i.EndcardBody,
+		&i.EndcardImageUrl,
 	)
 	return i, err
 }
@@ -220,7 +233,7 @@ func (q *Queries) GetThemeBySlug(ctx context.Context, slug string) (Theme, error
 }
 
 const getThemeCharacter = `-- name: GetThemeCharacter :one
-SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate FROM theme_characters WHERE id = $1
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url FROM theme_characters WHERE id = $1
 `
 
 func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCharacter, error) {
@@ -239,12 +252,15 @@ func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCha
 		&i.ShowInIntro,
 		&i.CanSpeakInReading,
 		&i.IsVotingCandidate,
+		&i.EndcardTitle,
+		&i.EndcardBody,
+		&i.EndcardImageUrl,
 	)
 	return i, err
 }
 
 const getThemeCharacters = `-- name: GetThemeCharacters :many
-SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]ThemeCharacter, error) {
@@ -269,6 +285,9 @@ func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]
 			&i.ShowInIntro,
 			&i.CanSpeakInReading,
 			&i.IsVotingCandidate,
+			&i.EndcardTitle,
+			&i.EndcardBody,
+			&i.EndcardImageUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -527,9 +546,22 @@ func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme
 }
 
 const updateThemeCharacter = `-- name: UpdateThemeCharacter :one
-UPDATE theme_characters SET name = $2, description = $3, image_url = $4, is_culprit = $5, mystery_role = $6, sort_order = $7, is_playable = $8, show_in_intro = $9, can_speak_in_reading = $10, is_voting_candidate = $11
+UPDATE theme_characters SET
+  name = $2,
+  description = $3,
+  image_url = $4,
+  is_culprit = $5,
+  mystery_role = $6,
+  sort_order = $7,
+  is_playable = $8,
+  show_in_intro = $9,
+  can_speak_in_reading = $10,
+  is_voting_candidate = $11,
+  endcard_title = $12,
+  endcard_body = $13,
+  endcard_image_url = $14
 WHERE id = $1
-RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url
 `
 
 type UpdateThemeCharacterParams struct {
@@ -544,6 +576,9 @@ type UpdateThemeCharacterParams struct {
 	ShowInIntro       bool        `json:"show_in_intro"`
 	CanSpeakInReading bool        `json:"can_speak_in_reading"`
 	IsVotingCandidate bool        `json:"is_voting_candidate"`
+	EndcardTitle      pgtype.Text `json:"endcard_title"`
+	EndcardBody       pgtype.Text `json:"endcard_body"`
+	EndcardImageUrl   pgtype.Text `json:"endcard_image_url"`
 }
 
 func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeCharacterParams) (ThemeCharacter, error) {
@@ -559,6 +594,9 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 		arg.ShowInIntro,
 		arg.CanSpeakInReading,
 		arg.IsVotingCandidate,
+		arg.EndcardTitle,
+		arg.EndcardBody,
+		arg.EndcardImageUrl,
 	)
 	var i ThemeCharacter
 	err := row.Scan(
@@ -574,6 +612,9 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 		&i.ShowInIntro,
 		&i.CanSpeakInReading,
 		&i.IsVotingCandidate,
+		&i.EndcardTitle,
+		&i.EndcardBody,
+		&i.EndcardImageUrl,
 	)
 	return i, err
 }
