@@ -57,9 +57,19 @@ export interface EditorCharacterResponse {
   endcard_title?: string | null;
   endcard_body?: string | null;
   endcard_image_url?: string | null;
+  alias_rules: CharacterAliasRule[];
 }
 
 export type MysteryRole = 'suspect' | 'culprit' | 'accomplice' | 'detective';
+
+export interface CharacterAliasRule {
+  id: string;
+  label?: string;
+  display_name?: string;
+  display_icon_url?: string;
+  priority: number;
+  condition: Record<string, unknown>;
+}
 
 export interface CreateThemeRequest {
   title: string;
@@ -97,6 +107,7 @@ export interface CreateCharacterRequest {
   endcard_title?: string;
   endcard_body?: string;
   endcard_image_url?: string;
+  alias_rules?: CharacterAliasRule[];
 }
 
 export interface UpdateCharacterRequest {
@@ -113,6 +124,7 @@ export interface UpdateCharacterRequest {
   endcard_title?: string;
   endcard_body?: string;
   endcard_image_url?: string;
+  alias_rules?: CharacterAliasRule[];
 }
 
 export interface CreateClueRequest {

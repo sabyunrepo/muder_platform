@@ -1379,6 +1379,18 @@ components:
         sort_order:
           type: integer
           minimum: 0
+        is_playable:
+          type: boolean
+        show_in_intro:
+          type: boolean
+        can_speak_in_reading:
+          type: boolean
+        is_voting_candidate:
+          type: boolean
+        alias_rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterAliasRule"
 
     UpdateCharacterRequest:
       type: object
@@ -1410,6 +1422,38 @@ components:
         sort_order:
           type: integer
           minimum: 0
+        is_playable:
+          type: boolean
+        show_in_intro:
+          type: boolean
+        can_speak_in_reading:
+          type: boolean
+        is_voting_candidate:
+          type: boolean
+        alias_rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterAliasRule"
+
+    CharacterAliasRule:
+      type: object
+      required: [id, priority, condition]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        display_name:
+          type: string
+          maxLength: 50
+        display_icon_url:
+          type: string
+          format: uri
+        priority:
+          type: integer
+          minimum: 0
+        condition:
+          type: object
 
     EditorThemeSummary:
       type: object
@@ -1468,7 +1512,7 @@ components:
 
     EditorCharacterResponse:
       type: object
-      required: [id, theme_id, name, is_culprit, mystery_role, sort_order]
+      required: [id, theme_id, name, is_culprit, mystery_role, sort_order, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, alias_rules]
       properties:
         id:
           type: string
@@ -1497,6 +1541,18 @@ components:
           enum: [suspect, culprit, accomplice, detective]
         sort_order:
           type: integer
+        is_playable:
+          type: boolean
+        show_in_intro:
+          type: boolean
+        can_speak_in_reading:
+          type: boolean
+        is_voting_candidate:
+          type: boolean
+        alias_rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/CharacterAliasRule"
 
     RoleSheetMarkdown:
       type: object

@@ -1,15 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion } from '@/shared/components/ui';
-import type { MysteryRole } from '@/features/editor/api';
+import type { CharacterAliasRule, MysteryRole } from '@/features/editor/api';
 import type { Mission } from './MissionEditor';
 import { MissionEditor } from './MissionEditor';
 import { StartingClueAssigner } from './StartingClueAssigner';
 import { CharacterRoleSheetSection } from './CharacterRoleSheetSection';
+import { CharacterAliasRulesEditor } from './CharacterAliasRulesEditor';
 import {
   type CharacterVisibilityField,
   characterRoleOptions,
   getCharacterRoleOption,
   normalizeCharacterEditorRole,
+  normalizeCharacterAliasRules,
   toCharacterEditorViewModel,
 } from '@/features/editor/entities/character/characterEditorAdapter';
 
@@ -41,6 +43,7 @@ interface CharacterItem {
   endcard_title?: string | null;
   endcard_body?: string | null;
   endcard_image_url?: string | null;
+  alias_rules?: CharacterAliasRule[];
 }
 
 interface CharacterDetailPanelProps {
@@ -56,6 +59,7 @@ interface CharacterDetailPanelProps {
   onDeleteMission: (missionId: string) => void;
   onMysteryRoleChange?: (role: MysteryRole) => void;
   onVisibilityChange?: (field: CharacterVisibilityField, value: boolean) => void;
+  onAliasRulesSave?: (rules: CharacterAliasRule[]) => void;
   onEndcardChange?: (values: { title: string; body: string; imageUrl: string }) => void;
 }
 
@@ -76,11 +80,24 @@ export function CharacterDetailPanel({
   onDeleteMission,
   onMysteryRoleChange,
   onVisibilityChange,
+  onAliasRulesSave,
   onEndcardChange,
 }: CharacterDetailPanelProps) {
+  const [aliasDrafts, setAliasDrafts] = useState<CharacterAliasRule[]>([]);
+  const aliasDraftCharacterIdRef = useRef<string | null>(null);
   const [endcardTitle, setEndcardTitle] = useState('');
   const [endcardBody, setEndcardBody] = useState('');
   const [endcardImageUrl, setEndcardImageUrl] = useState('');
+  const characterOptions = useMemo(
+    () => characters.map((char) => ({ id: char.id, name: char.name })),
+    [characters],
+  );
+
+  useEffect(() => {
+    if (aliasDraftCharacterIdRef.current === (selectedChar?.id ?? null)) return;
+    aliasDraftCharacterIdRef.current = selectedChar?.id ?? null;
+    setAliasDrafts(normalizeCharacterAliasRules(selectedChar?.alias_rules));
+  }, [selectedChar]);
 
   useEffect(() => {
     setEndcardTitle(selectedChar?.endcard_title ?? '');
@@ -114,6 +131,7 @@ export function CharacterDetailPanel({
     endcard_title: selectedChar.endcard_title ?? null,
     endcard_body: selectedChar.endcard_body ?? null,
     endcard_image_url: selectedChar.endcard_image_url ?? null,
+    alias_rules: selectedChar.alias_rules ?? [],
   });
   const endcardDirty =
     endcardTitle !== (selectedChar.endcard_title ?? '') ||
@@ -209,6 +227,18 @@ export function CharacterDetailPanel({
                       {selectedChar.description || '공개 소개가 없습니다.'}
                     </p>
                   </div>
+                  <CharacterAliasRulesEditor
+                    characterName={selectedChar.name}
+                    characterImageUrl={selectedChar.image_url}
+                    rules={aliasDrafts}
+                    characterOptions={characterOptions}
+                    disabled={!onAliasRulesSave}
+                    onChange={setAliasDrafts}
+                    onSave={(rules) => {
+                      if (!onAliasRulesSave) return;
+                      onAliasRulesSave(rules);
+                    }}
+                  />
                 </div>
               </div>
             ),

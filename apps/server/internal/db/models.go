@@ -276,21 +276,22 @@ type Theme struct {
 }
 
 type ThemeCharacter struct {
-	ID                uuid.UUID   `json:"id"`
-	ThemeID           uuid.UUID   `json:"theme_id"`
-	Name              string      `json:"name"`
-	Description       pgtype.Text `json:"description"`
-	ImageUrl          pgtype.Text `json:"image_url"`
-	IsCulprit         bool        `json:"is_culprit"`
-	SortOrder         int32       `json:"sort_order"`
-	MysteryRole       string      `json:"mystery_role"`
-	IsPlayable        bool        `json:"is_playable"`
-	ShowInIntro       bool        `json:"show_in_intro"`
-	CanSpeakInReading bool        `json:"can_speak_in_reading"`
-	IsVotingCandidate bool        `json:"is_voting_candidate"`
-	EndcardTitle      pgtype.Text `json:"endcard_title"`
-	EndcardBody       pgtype.Text `json:"endcard_body"`
-	EndcardImageUrl   pgtype.Text `json:"endcard_image_url"`
+	ID                uuid.UUID       `json:"id"`
+	ThemeID           uuid.UUID       `json:"theme_id"`
+	Name              string          `json:"name"`
+	Description       pgtype.Text     `json:"description"`
+	ImageUrl          pgtype.Text     `json:"image_url"`
+	IsCulprit         bool            `json:"is_culprit"`
+	SortOrder         int32           `json:"sort_order"`
+	MysteryRole       string          `json:"mystery_role"`
+	IsPlayable        bool            `json:"is_playable"`
+	ShowInIntro       bool            `json:"show_in_intro"`
+	CanSpeakInReading bool            `json:"can_speak_in_reading"`
+	IsVotingCandidate bool            `json:"is_voting_candidate"`
+	EndcardTitle      pgtype.Text     `json:"endcard_title"`
+	EndcardBody       pgtype.Text     `json:"endcard_body"`
+	EndcardImageUrl   pgtype.Text     `json:"endcard_image_url"`
+	AliasRules        json.RawMessage `json:"alias_rules"`
 }
 
 type ThemeClue struct {
