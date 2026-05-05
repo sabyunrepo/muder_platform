@@ -168,10 +168,23 @@
         "scripts/mmp-ci-steward-handoff.sh"
       ],
       "resolution": "Clarified that pending CodeRabbit/CI is not a final steward state, required status replies with phase/head/next action, and made timeout/no-progress states report BLOCKED with evidence."
+    },
+    {
+      "id": "merge-batch-steward-behind-policy",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        ".codex/agents/mmp-ci-steward.toml",
+        "scripts/mmp-pr-status.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Changed strict-behind handling from automatic steward branch update to merge-batch decision ownership by main Codex, preserving current-head CI evidence unless the PR is the next merge target, conflicts, main drift, or user direction requires refresh."
     }
   ],
   "last_review": {
     "date": "2026-05-05",
-    "summary": "Recorded deterministic CI scope gate and CI-steward-only watcher replacement after PR #332/#334/#336 exposed main-thread waiting mistakes."
+    "summary": "Recorded merge-batch steward policy so strict-behind PRs are not automatically updated after every merge and CI evidence is preserved until main Codex chooses admin merge or targeted refresh."
   }
 }
