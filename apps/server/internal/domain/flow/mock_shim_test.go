@@ -25,7 +25,7 @@ type mockService struct {
 	saveFlowFn      func(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error)
 	createNodeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error)
 	updateNodeFn    func(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
-	deleteNodeFn    func(ctx context.Context, creatorID, nodeID uuid.UUID) error
+	deleteNodeFn    func(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error
 	createEdgeFn    func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
 	updateEdgeFn    func(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
 	deleteEdgeFn    func(ctx context.Context, creatorID, edgeID uuid.UUID) error
@@ -56,9 +56,9 @@ func (m *mockService) UpdateNode(ctx context.Context, creatorID, nodeID uuid.UUI
 	}
 	return nil, nil
 }
-func (m *mockService) DeleteNode(ctx context.Context, creatorID, nodeID uuid.UUID) error {
+func (m *mockService) DeleteNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error {
 	if m.deleteNodeFn != nil {
-		return m.deleteNodeFn(ctx, creatorID, nodeID)
+		return m.deleteNodeFn(ctx, creatorID, themeID, nodeID)
 	}
 	return nil
 }

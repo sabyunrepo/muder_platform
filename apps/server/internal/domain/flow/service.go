@@ -3,8 +3,10 @@ package flow
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
@@ -17,7 +19,7 @@ type Service interface {
 	SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error)
 	CreateNode(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error)
 	UpdateNode(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
-	DeleteNode(ctx context.Context, creatorID, nodeID uuid.UUID) error
+	DeleteNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error
 	CreateEdge(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
 	UpdateEdge(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
 	DeleteEdge(ctx context.Context, creatorID, edgeID uuid.UUID) error
@@ -127,10 +129,53 @@ func (s *serviceImpl) UpdateNode(ctx context.Context, _, nodeID uuid.UUID, req U
 	return scanNode(row)
 }
 
-func (s *serviceImpl) DeleteNode(ctx context.Context, _, nodeID uuid.UUID) error {
-	_, err := s.pool.Exec(ctx, `DELETE FROM flow_nodes WHERE id=$1`, nodeID)
+func (s *serviceImpl) DeleteNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return apperror.Internal("failed to begin transaction")
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	var nodeType string
+	var configJSON json.RawMessage
+	if err := tx.QueryRow(ctx, `
+		SELECT n.type, t.config_json
+		FROM flow_nodes n
+		JOIN themes t ON t.id = n.theme_id
+		WHERE n.id = $1 AND n.theme_id = $2 AND t.creator_id = $3
+		FOR UPDATE OF n, t
+	`, nodeID, themeID, creatorID).Scan(&nodeType, &configJSON); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("flow node not found")
+		}
+		return apperror.Internal("failed to load node")
+	}
+
+	if nodeType == NodeTypeEnding {
+		cleanedConfig, changed, err := removeEndingReferencesFromConfigJSON(configJSON, nodeID)
+		if err != nil {
+			return apperror.Internal("failed to clean ending references")
+		}
+		if changed {
+			if _, err := tx.Exec(ctx, `
+				UPDATE themes
+				SET config_json = $2, version = version + 1, updated_at = NOW()
+				WHERE id = $1
+			`, themeID, cleanedConfig); err != nil {
+				return apperror.Internal("failed to update theme config")
+			}
+		}
+	}
+
+	cmdTag, err := tx.Exec(ctx, `DELETE FROM flow_nodes WHERE id=$1`, nodeID)
 	if err != nil {
 		return apperror.Internal("failed to delete node")
+	}
+	if cmdTag.RowsAffected() != 1 {
+		return apperror.NotFound("flow node not found")
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return apperror.Internal("failed to commit transaction")
 	}
 	return nil
 }
