@@ -38,6 +38,7 @@ type PhaseEngine struct {
 	audit              AuditLogger
 	logger             Logger
 	playerInfoProvider PlayerInfoProvider
+	mediaResolver      MediaResolver
 	phases             []PhaseDefinition
 	sceneTransitions   []SceneTransition
 	current            int // index into phases, -1 = not started
@@ -88,6 +89,10 @@ func (e *PhaseEngine) SetPlayerInfoProvider(provider PlayerInfoProvider) {
 	e.playerInfoProvider = provider
 }
 
+func (e *PhaseEngine) SetMediaResolver(resolver MediaResolver) {
+	e.mediaResolver = resolver
+}
+
 // Start initialises all modules and enters the first phase.
 func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.RawMessage) error {
 	if e.started {
@@ -104,6 +109,7 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 		PlayerInfoProvider: e.playerInfoProvider,
 		ActionDispatcher:   e,
 		SceneController:    e,
+		MediaResolver:      e.mediaResolver,
 	}
 
 	for _, mod := range e.modules {

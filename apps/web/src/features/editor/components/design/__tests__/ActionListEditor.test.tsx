@@ -95,6 +95,43 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("배경 이미지 실행 결과를 이미지 picker의 params.mediaId로 저장한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[{ id: "bg", type: "SET_BACKGROUND", params: {} }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "배경 이미지 선택" }));
+    fireEvent.click(screen.getByRole("button", { name: "장면 시작 트리거 1 배경 이미지 선택" }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "bg", type: "SET_BACKGROUND", params: { mediaId: "media-1" } },
+    ]);
+  });
+
+  it("컬러 테마 실행 결과를 preset token으로 저장한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[{ id: "theme", type: "SET_THEME_COLOR", params: {} }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "긴장" }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "theme", type: "SET_THEME_COLOR", params: { themeToken: "tension" } },
+    ]);
+  });
+
   it("themeId가 없으면 미디어 선택 버튼을 비활성화하고 안내문을 보여준다", () => {
     render(
       <ActionListEditor
@@ -118,6 +155,14 @@ describe("ActionListEditor", () => {
       hasIncompletePresentationCueActions([
         { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
         { id: "vote", type: "OPEN_VOTING" },
+      ]),
+    ).toBe(false);
+    expect(
+      hasIncompletePresentationCueActions([{ id: "theme", type: "SET_THEME_COLOR", params: {} }]),
+    ).toBe(true);
+    expect(
+      hasIncompletePresentationCueActions([
+        { id: "theme", type: "SET_THEME_COLOR", params: { themeToken: "noir" } },
       ]),
     ).toBe(false);
   });

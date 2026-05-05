@@ -10,6 +10,7 @@ export type MediaResourceUseCase =
   | "role_sheet_document"
   | "story_voice"
   | "location_image"
+  | "presentation_background"
   | "video_action";
 
 export interface MediaResourceViewModel {
@@ -34,6 +35,7 @@ const TYPE_LABEL: Record<MediaType, string> = {
   VOICE: "음성/내레이션",
   VIDEO: "영상",
   DOCUMENT: "문서",
+  IMAGE: "이미지",
 };
 
 const SOURCE_LABEL: Record<MediaSourceType, string> = {
@@ -47,6 +49,7 @@ const USE_CASE_ALLOWED_TYPES: Record<MediaResourceUseCase, MediaType[]> = {
   role_sheet_document: ["DOCUMENT"],
   story_voice: ["VOICE", "SFX"],
   location_image: [],
+  presentation_background: ["IMAGE"],
   video_action: ["VIDEO"],
 };
 
@@ -57,6 +60,7 @@ const USE_CASE_EMPTY_REASON: Record<MediaResourceUseCase, string> = {
   story_voice: "스토리 음성에는 음성/내레이션 또는 효과음만 선택할 수 있어요.",
   location_image:
     "장소 이미지는 현재 이미지 업로드 흐름에서 선택해요. 공통 이미지 리소스는 후속 작업에서 연결합니다.",
+  presentation_background: "배경 연출에는 이미지 리소스만 선택할 수 있어요.",
   video_action: "영상 액션에는 영상 리소스만 선택할 수 있어요.",
 };
 

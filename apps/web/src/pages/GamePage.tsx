@@ -25,6 +25,7 @@ import {
   ResultBreakdownPanel,
 } from "@/features/game/components";
 import { AudioProvider } from "@/features/audio/AudioProvider";
+import { PresentationLayer } from "@/features/presentation/PresentationLayer";
 import { GameErrorBoundary } from "@/components/error";
 
 // ---------------------------------------------------------------------------
@@ -149,7 +150,8 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
         </div>
       </div>
     )}
-    <div className="flex h-screen flex-col bg-slate-950">
+    <PresentationLayer>
+    <div className="flex h-full flex-col bg-slate-950/90">
       {/* 상단: GameHUD */}
       <Suspense fallback={null}>
         <GameHUD />
@@ -216,6 +218,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
         </div>
       )}
     </div>
+    </PresentationLayer>
     </GameErrorBoundary>
     </AudioProvider>
   );

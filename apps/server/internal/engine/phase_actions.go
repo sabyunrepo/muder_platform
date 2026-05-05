@@ -153,6 +153,8 @@ var legacyPhaseActionAliases = map[string]PhaseAction{
 	"set_bgm":             ActionSetBGM,
 	"play_sound":          ActionPlaySound,
 	"play_media":          ActionPlayMedia,
+	"set_background":      ActionSetBackground,
+	"set_theme_color":     ActionSetThemeColor,
 	"stop_bgm":            ActionStopAudio,
 	"stop_audio":          ActionStopAudio,
 	"broadcast":           ActionBroadcastMessage,

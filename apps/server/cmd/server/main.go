@@ -262,7 +262,7 @@ func main() {
 
 	// 11.2. GameStarter for room service.
 	broadcaster := &hubBroadcaster{hub: wsHub}
-	gameStarter := session.NewGameStarter(sessionMgr, broadcaster, cfg.GameRuntimeV2, logger)
+	gameStarter := session.NewGameStarter(sessionMgr, broadcaster, cfg.GameRuntimeV2, mediaSvc, logger)
 	roomSvc := room.NewServiceWithStarter(pool, queries, logger, gameStarter)
 	roomHandler := room.NewHandler(roomSvc)
 

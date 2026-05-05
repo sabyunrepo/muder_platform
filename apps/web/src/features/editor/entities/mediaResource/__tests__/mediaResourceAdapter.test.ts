@@ -71,6 +71,25 @@ describe("mediaResourceAdapter", () => {
     expect(vm.unselectableReason).toContain("이미지 업로드 흐름");
   });
 
+  it("presentation_background는 IMAGE 리소스만 선택 가능하게 한다", () => {
+    const imageMedia: MediaResponse = {
+      ...baseMedia,
+      id: "image-1",
+      name: "응접실 배경",
+      type: "IMAGE",
+      mime_type: "image/png",
+    };
+
+    expect(getAllowedMediaTypesForUseCase("presentation_background")).toEqual(["IMAGE"]);
+    expect(isMediaSelectableForUseCase(imageMedia, "presentation_background")).toBe(true);
+    expect(isMediaSelectableForUseCase(baseMedia, "presentation_background")).toBe(false);
+    expect(toMediaResourceViewModel(imageMedia, { useCase: "presentation_background" })).toMatchObject({
+      typeLabel: "이미지",
+      isSelectable: true,
+    });
+  });
+
+
   it("검색어로 이름, 라벨, 태그를 필터링한다", () => {
     const resources = [
       toMediaResourceViewModel(baseMedia),

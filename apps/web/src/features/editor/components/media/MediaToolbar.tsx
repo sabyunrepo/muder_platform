@@ -21,6 +21,7 @@ const PILLS: Array<{ value: MediaFilter; label: string }> = [
   { value: "VOICE", label: "음성" },
   { value: "VIDEO", label: "비디오" },
   { value: "DOCUMENT", label: "문서" },
+  { value: "IMAGE", label: "이미지" },
 ];
 
 // ---------------------------------------------------------------------------

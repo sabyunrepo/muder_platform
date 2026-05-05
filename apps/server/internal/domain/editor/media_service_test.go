@@ -431,6 +431,55 @@ func TestMediaService_RequestUploadURL_DocumentPDFSuccess(t *testing.T) {
 	}
 }
 
+func TestMediaService_RequestUploadURL_ImageSuccess(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+
+	resp, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "background.png",
+		Type:     MediaTypeImage,
+		MimeType: "image/png",
+		FileSize: 1024,
+	})
+	if err != nil {
+		t.Fatalf("RequestUpload IMAGE/png: %v", err)
+	}
+	created := q.media[resp.UploadID]
+	if created.Type != MediaTypeImage || !created.StorageKey.Valid || !strings.HasSuffix(created.StorageKey.String, ".png") {
+		t.Fatalf("unexpected image media row: %#v", created)
+	}
+}
+
+func TestMediaService_ConfirmUpload_ImageMagicBytes(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := uuid.New()
+	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".png"
+	header := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 'b', 'o', 'd', 'y'}
+	q.media[mediaID] = db.ThemeMedium{
+		ID:         mediaID,
+		ThemeID:    themeID,
+		Name:       "background.png",
+		Type:       MediaTypeImage,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: storageKey, Valid: true},
+		FileSize:   pgtype.Int8{Int64: int64(len(header)), Valid: true},
+		MimeType:   pgtype.Text{String: "image/png", Valid: true},
+		Tags:       []string{},
+	}
+	st.objects[storageKey] = header
+
+	resp, err := svc.ConfirmUpload(context.Background(), creatorID, themeID, ConfirmUploadRequest{UploadID: mediaID})
+	if err != nil {
+		t.Fatalf("ConfirmUpload IMAGE/png: %v", err)
+	}
+	if resp.Type != MediaTypeImage || resp.MimeType == nil || *resp.MimeType != "image/png" {
+		t.Fatalf("unexpected response: %#v", resp)
+	}
+}
+
 func TestMediaService_ConfirmUpload_DocumentPDFMagicBytes(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	st := newFakeStorageProvider()

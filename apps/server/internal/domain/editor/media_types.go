@@ -18,6 +18,7 @@ const (
 	MediaTypeVoice    = "VOICE"
 	MediaTypeVideo    = "VIDEO"
 	MediaTypeDocument = "DOCUMENT"
+	MediaTypeImage    = "IMAGE"
 
 	SourceTypeFile    = "FILE"
 	SourceTypeYouTube = "YOUTUBE"
@@ -35,9 +36,15 @@ var AllowedDocumentMIMEs = map[string]string{
 	"application/pdf": ".pdf",
 }
 
+var AllowedMediaImageMIMEs = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+	"image/webp": ".webp",
+}
+
 type RequestMediaUploadRequest struct {
 	Name     string `json:"name" validate:"required,min=1,max=200"`
-	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT"`
+	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
 	MimeType string `json:"mime_type" validate:"required"`
 	FileSize int64  `json:"file_size" validate:"required,min=1"`
 }
@@ -65,7 +72,7 @@ type CreateMediaYouTubeRequest struct {
 
 type UpdateMediaRequest struct {
 	Name      string   `json:"name" validate:"required,min=1,max=200"`
-	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT"`
+	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
 	Duration  *int32   `json:"duration,omitempty"`
 	Tags      []string `json:"tags" validate:"max=10,dive,max=50"`
 	SortOrder int32    `json:"sort_order" validate:"min=0"`

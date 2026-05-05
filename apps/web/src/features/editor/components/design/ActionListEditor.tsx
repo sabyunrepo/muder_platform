@@ -91,7 +91,12 @@ function createDefaultParams(type: string): Record<string, unknown> | undefined 
 
 export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boolean {
   return actions.some((action) => {
-    if (!getPresentationCueConfig(action.type)) return false;
+    const config = getPresentationCueConfig(action.type);
+    if (!config) return false;
+    if (config.kind === "theme") {
+      const themeToken = action.params?.themeToken;
+      return typeof themeToken !== "string" || themeToken.trim().length === 0;
+    }
     const mediaId = action.params?.mediaId;
     return typeof mediaId !== "string" || mediaId.trim().length === 0;
   });
@@ -169,6 +174,7 @@ function ActionRow({
 }
 
 interface PresentationCueConfig {
+  kind: "media" | "theme";
   buttonLabel: string;
   selectedLabel: string;
   dialogTitle: string;
@@ -178,6 +184,7 @@ interface PresentationCueConfig {
 
 const PRESENTATION_CUE_CONFIG: Record<string, PresentationCueConfig> = {
   SET_BGM: {
+    kind: "media",
     buttonLabel: "BGM 선택",
     selectedLabel: "BGM 선택됨",
     dialogTitle: "BGM 선택",
@@ -185,6 +192,7 @@ const PRESENTATION_CUE_CONFIG: Record<string, PresentationCueConfig> = {
     filterType: "BGM",
   },
   play_bgm: {
+    kind: "media",
     buttonLabel: "BGM 선택",
     selectedLabel: "BGM 선택됨",
     dialogTitle: "BGM 선택",
@@ -192,18 +200,21 @@ const PRESENTATION_CUE_CONFIG: Record<string, PresentationCueConfig> = {
     filterType: "BGM",
   },
   PLAY_SOUND: {
+    kind: "media",
     buttonLabel: "효과음 선택",
     selectedLabel: "효과음 선택됨",
     dialogTitle: "효과음 선택",
     useCase: "phase_sound_effect",
   },
   play_sound: {
+    kind: "media",
     buttonLabel: "효과음 선택",
     selectedLabel: "효과음 선택됨",
     dialogTitle: "효과음 선택",
     useCase: "phase_sound_effect",
   },
   PLAY_MEDIA: {
+    kind: "media",
     buttonLabel: "영상 선택",
     selectedLabel: "영상 선택됨",
     dialogTitle: "영상 선택",
@@ -211,11 +222,42 @@ const PRESENTATION_CUE_CONFIG: Record<string, PresentationCueConfig> = {
     filterType: "VIDEO",
   },
   play_media: {
+    kind: "media",
     buttonLabel: "영상 선택",
     selectedLabel: "영상 선택됨",
     dialogTitle: "영상 선택",
     useCase: "video_action",
     filterType: "VIDEO",
+  },
+  SET_BACKGROUND: {
+    kind: "media",
+    buttonLabel: "배경 이미지 선택",
+    selectedLabel: "배경 이미지 선택됨",
+    dialogTitle: "배경 이미지 선택",
+    useCase: "presentation_background",
+    filterType: "IMAGE",
+  },
+  set_background: {
+    kind: "media",
+    buttonLabel: "배경 이미지 선택",
+    selectedLabel: "배경 이미지 선택됨",
+    dialogTitle: "배경 이미지 선택",
+    useCase: "presentation_background",
+    filterType: "IMAGE",
+  },
+  SET_THEME_COLOR: {
+    kind: "theme",
+    buttonLabel: "",
+    selectedLabel: "",
+    dialogTitle: "",
+    useCase: "presentation_background",
+  },
+  set_theme_color: {
+    kind: "theme",
+    buttonLabel: "",
+    selectedLabel: "",
+    dialogTitle: "",
+    useCase: "presentation_background",
   },
 };
 
@@ -242,6 +284,33 @@ function PresentationCueFields({
 
   const params = action.params ?? {};
   const mediaId = typeof params.mediaId === "string" ? params.mediaId : null;
+
+  if (config.kind === "theme") {
+    const themeToken = typeof params.themeToken === "string" ? params.themeToken : "";
+    return (
+      <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
+        <span className="text-[11px] text-slate-500">화면 분위기를 선택하세요</span>
+        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+          {THEME_COLOR_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => onParamsChange({ ...params, themeToken: preset.value })}
+              aria-pressed={themeToken === preset.value}
+              className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors ${
+                themeToken === preset.value
+                  ? "border-amber-400 bg-amber-500/10 text-amber-200"
+                  : "border-slate-700 text-slate-300 hover:border-slate-500"
+              }`}
+            >
+              <span className={`h-3 w-3 shrink-0 rounded-full ${preset.swatchClass}`} />
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
@@ -278,3 +347,10 @@ function PresentationCueFields({
     </div>
   );
 }
+
+const THEME_COLOR_PRESETS = [
+  { value: "noir", label: "누아르", swatchClass: "bg-slate-700" },
+  { value: "tension", label: "긴장", swatchClass: "bg-red-500" },
+  { value: "calm", label: "차분", swatchClass: "bg-cyan-500" },
+  { value: "reveal", label: "폭로", swatchClass: "bg-amber-400" },
+] as const;

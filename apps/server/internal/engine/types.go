@@ -25,6 +25,8 @@ const (
 	ActionPlayMedia           PhaseAction = "PLAY_MEDIA"
 	ActionSetBGM              PhaseAction = "SET_BGM"
 	ActionStopAudio           PhaseAction = "STOP_AUDIO"
+	ActionSetBackground       PhaseAction = "SET_BACKGROUND"
+	ActionSetThemeColor       PhaseAction = "SET_THEME_COLOR"
 	ActionMuteChat            PhaseAction = "MUTE_CHAT"
 	ActionUnmuteChat          PhaseAction = "UNMUTE_CHAT"
 	ActionOpenGroupChat       PhaseAction = "OPEN_GROUP_CHAT"
@@ -72,6 +74,8 @@ var ActionRequiresModule = map[PhaseAction]string{
 	ActionPlayMedia:           "audio",
 	ActionSetBGM:              "audio",
 	ActionStopAudio:           "audio",
+	ActionSetBackground:       "presentation",
+	ActionSetThemeColor:       "presentation",
 }
 
 // --- Module Interfaces ---
@@ -181,6 +185,12 @@ type SceneController interface {
 	SkipToPhase(ctx context.Context, phaseID string) error
 }
 
+// MediaResolver resolves editor-managed media into runtime-safe URLs.
+// Runtime modules use this instead of trusting creator-facing action params.
+type MediaResolver interface {
+	ResolveMediaURL(ctx context.Context, sessionID, mediaID uuid.UUID, allowedTypes ...string) (url string, sourceType string, err error)
+}
+
 // ConfigSchema is an optional interface for modules that expose their settings schema.
 // Used by the editor to auto-generate UI.
 type ConfigSchema interface {
@@ -219,6 +229,7 @@ type ModuleDeps struct {
 	PlayerInfoProvider PlayerInfoProvider
 	ActionDispatcher   PhaseActionDispatcher
 	SceneController    SceneController
+	MediaResolver      MediaResolver
 }
 
 // ModuleFactory creates a new module instance per session (no singletons).

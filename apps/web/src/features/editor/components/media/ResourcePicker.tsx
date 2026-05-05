@@ -1,5 +1,6 @@
 import {
   FileAudio,
+  Image,
   FileText,
   Film,
   Mic,
@@ -41,6 +42,8 @@ function MediaTypeIcon({ type }: { type: MediaType }) {
       return <Film className="h-5 w-5 text-rose-400" />;
     case "DOCUMENT":
       return <FileText className="h-5 w-5 text-violet-400" />;
+    case "IMAGE":
+      return <Image className="h-5 w-5 text-teal-400" />;
     default:
       return <FileAudio className="h-5 w-5 text-slate-400" />;
   }

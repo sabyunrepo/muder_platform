@@ -32,6 +32,7 @@ type MediaService interface {
 	DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) error
 	GetEditorMediaDownloadURL(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDownloadURLResponse, error)
 	GetMediaPlayURL(ctx context.Context, sessionID, mediaID uuid.UUID) (string, error)
+	ResolveMediaURL(ctx context.Context, sessionID, mediaID uuid.UUID, allowedTypes ...string) (string, string, error)
 }
 
 // mediaQueries is the subset of db.Queries that mediaService depends on.
@@ -518,38 +519,55 @@ func (s *mediaService) GetEditorMediaDownloadURL(ctx context.Context, creatorID,
 // --- GetMediaPlayURL ---
 
 func (s *mediaService) GetMediaPlayURL(ctx context.Context, sessionID, mediaID uuid.UUID) (string, error) {
-	_ = sessionID // sessionID reserved for future authorization (e.g. session→theme binding)
+	url, _, err := s.ResolveMediaURL(ctx, sessionID, mediaID)
+	return url, err
+}
 
+func (s *mediaService) ResolveMediaURL(ctx context.Context, sessionID, mediaID uuid.UUID, allowedTypes ...string) (string, string, error) {
+	_ = sessionID // sessionID reserved for future authorization (e.g. session→theme binding)
 	media, err := s.q.GetMedia(ctx, mediaID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apperror.NotFound("media not found")
+			return "", "", apperror.NotFound("media not found")
 		}
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
-		return "", apperror.Internal("failed to get media")
+		return "", "", apperror.Internal("failed to get media")
+	}
+
+	if len(allowedTypes) > 0 {
+		allowed := false
+		for _, t := range allowedTypes {
+			if media.Type == t {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return "", "", apperror.New(apperror.ErrMediaInvalidType, 422, "media type is not allowed for this action")
+		}
 	}
 
 	switch media.SourceType {
 	case SourceTypeYouTube:
 		if !media.Url.Valid {
-			return "", apperror.Internal("media has no url")
+			return "", "", apperror.Internal("media has no url")
 		}
-		return media.Url.String, nil
+		return media.Url.String, SourceTypeYouTube, nil
 	case SourceTypeFile:
 		if !media.StorageKey.Valid {
-			return "", apperror.Internal("media has no storage key")
+			return "", "", apperror.Internal("media has no storage key")
 		}
 		if err := s.requireStorage(); err != nil {
-			return "", err
+			return "", "", err
 		}
 		url, err := s.storage.GenerateDownloadURL(ctx, media.StorageKey.String, 15*time.Minute)
 		if err != nil {
 			s.logger.Error().Err(err).Str("storage_key", media.StorageKey.String).Msg("failed to generate download URL")
-			return "", apperror.Internal("failed to generate download URL")
+			return "", "", apperror.Internal("failed to generate download URL")
 		}
-		return url, nil
+		return url, SourceTypeFile, nil
 	default:
-		return "", apperror.Internal("unknown media source type")
+		return "", "", apperror.Internal("unknown media source type")
 	}
 }
 
@@ -654,6 +672,10 @@ func uploadExtensionFor(mediaType, mimeType string) (string, bool) {
 		ext, ok := AllowedDocumentMIMEs[mimeType]
 		return ext, ok
 	}
+	if mediaType == MediaTypeImage {
+		ext, ok := AllowedMediaImageMIMEs[mimeType]
+		return ext, ok
+	}
 	ext, ok := AllowedAudioMIMEs[mimeType]
 	return ext, ok
 }
@@ -661,6 +683,9 @@ func uploadExtensionFor(mediaType, mimeType string) (string, bool) {
 func validateMediaMagicBytes(header []byte, mediaType, declaredMime string) error {
 	if mediaType == MediaTypeDocument {
 		return validateDocumentMagicBytes(header, declaredMime)
+	}
+	if mediaType == MediaTypeImage {
+		return validateImageMagicBytes(header, declaredMime)
 	}
 	return validateAudioMagicBytes(header, declaredMime)
 }
@@ -690,6 +715,30 @@ func validateAudioMagicBytes(header []byte, declaredMime string) error {
 func validateDocumentMagicBytes(header []byte, declaredMime string) error {
 	if declaredMime == "application/pdf" && len(header) >= 5 && string(header[:5]) == "%PDF-" {
 		return nil
+	}
+	return apperror.New(apperror.ErrMediaInvalidType, 422, "file content does not match declared type")
+}
+
+func validateImageMagicBytes(header []byte, declaredMime string) error {
+	switch declaredMime {
+	case "image/jpeg":
+		if len(header) >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF {
+			return nil
+		}
+	case "image/png":
+		if len(header) >= 8 &&
+			header[0] == 0x89 &&
+			string(header[1:4]) == "PNG" &&
+			header[4] == 0x0D &&
+			header[5] == 0x0A &&
+			header[6] == 0x1A &&
+			header[7] == 0x0A {
+			return nil
+		}
+	case "image/webp":
+		if len(header) >= 12 && string(header[:4]) == "RIFF" && string(header[8:12]) == "WEBP" {
+			return nil
+		}
 	}
 	return apperror.New(apperror.ErrMediaInvalidType, 422, "file content does not match declared type")
 }

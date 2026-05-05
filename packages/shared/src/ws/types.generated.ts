@@ -7,7 +7,7 @@
 // Any hand edit will be overwritten by the next go generate run.
 // Phase 19 PR-1 (2026-04-18).
 //
-// Catalog: 133 events (active=128, stub=3, deprec=2) · 10 //wsgen:payload structs.
+// Catalog: 135 events (active=130, stub=3, deprec=2) · 10 //wsgen:payload structs.
 
 /* eslint-disable */
 /* prettier-ignore */
@@ -240,6 +240,10 @@ export const WsEventType = {
   PLAYER_LEFT: "player.left",
   /** BIDI · system */
   PONG: "pong",
+  /** S2C · presentation */
+  PRESENTATION_SET_BACKGROUND: "presentation.set_background",
+  /** S2C · presentation */
+  PRESENTATION_SET_THEME_COLOR: "presentation.set_theme_color",
   /** S2C · reading */
   READING_COMPLETED: "reading.completed",
   /** S2C · reading */
@@ -447,6 +451,8 @@ export const WsEventDirection: Readonly<Record<WsEventType, "c2s" | "s2c" | "bid
   "player.joined": "s2c",
   "player.left": "s2c",
   "pong": "bidi",
+  "presentation.set_background": "s2c",
+  "presentation.set_theme_color": "s2c",
   "reading.completed": "s2c",
   "reading.line_changed": "s2c",
   "reading.paused": "s2c",
@@ -584,6 +590,8 @@ export const WsEventCategory: Readonly<Record<WsEventType, string>> = {
   "player.joined": "player",
   "player.left": "player",
   "pong": "system",
+  "presentation.set_background": "presentation",
+  "presentation.set_theme_color": "presentation",
   "reading.completed": "reading",
   "reading.line_changed": "reading",
   "reading.paused": "reading",
@@ -721,6 +729,8 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
   "player.joined": "active",
   "player.left": "active",
   "pong": "active",
+  "presentation.set_background": "active",
+  "presentation.set_theme_color": "active",
   "reading.completed": "active",
   "reading.line_changed": "active",
   "reading.paused": "active",
