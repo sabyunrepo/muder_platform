@@ -140,6 +140,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
       timeout: 10_000,
     });
     await expect(page.getByPlaceholder("마크다운으로 스토리를 작성하세요...")).toBeVisible();
+    await expect(page.getByText("장면별 정보 공개 설정")).toBeVisible();
+    await expect(page.getByRole("button", { name: /조사 단계/ })).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
     await expect(page.getByRole("tab", { name: "등장인물", selected: true })).toBeVisible({
