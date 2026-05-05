@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Edit3, Trash2 } from "lucide-react";
-import type { EditorCharacterResponse, EditorThemeResponse, MysteryRole } from "@/features/editor/api";
+import type { CharacterAliasRule, EditorCharacterResponse, EditorThemeResponse, MysteryRole } from "@/features/editor/api";
 import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
@@ -10,6 +10,7 @@ import {
   writeCharacterStartingClueMap,
 } from "@/features/editor/utils/configShape";
 import {
+  buildCharacterAliasRulesUpdatePayload,
   buildCharacterVisibilityUpdatePayload,
   buildCharacterRoleUpdatePayload,
   getCharacterListBadges,
@@ -136,6 +137,21 @@ export function CharacterAssignPanel({
     [characters, updateCharacter],
   );
 
+  const handleAliasRulesSaveForChar = useCallback(
+    (characterId: string, rules: CharacterAliasRule[]) => {
+      if (updateCharacter.isPending) return;
+
+      const selected = characters?.find((char) => char.id === characterId);
+      if (!selected) return;
+
+      updateCharacter.mutate({
+        characterId: selected.id,
+        body: buildCharacterAliasRulesUpdatePayload(selected, rules),
+      });
+    },
+    [characters, updateCharacter],
+  );
+
   if (charsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -221,6 +237,11 @@ export function CharacterAssignPanel({
               updateCharacter.isPending
                 ? undefined
                 : (field, value) => handleVisibilityChangeForChar(char.id, field, value)
+            }
+            onAliasRulesSave={
+              updateCharacter.isPending
+                ? undefined
+                : (rules) => handleAliasRulesSaveForChar(char.id, rules)
             }
           />
         )}

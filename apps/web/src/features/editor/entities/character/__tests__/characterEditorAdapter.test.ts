@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { EditorCharacterResponse } from '@/features/editor/api/types';
 import {
   buildCharacterVisibilityUpdatePayload,
+  buildCharacterAliasRulesUpdatePayload,
   getCharacterListBadges,
   buildCharacterRoleUpdatePayload,
   getCharacterRoleBadge,
@@ -23,6 +24,7 @@ function character(overrides: Partial<EditorCharacterResponse> = {}): EditorChar
     show_in_intro: true,
     can_speak_in_reading: true,
     is_voting_candidate: true,
+    alias_rules: [],
     ...overrides,
   };
 }
@@ -48,7 +50,52 @@ describe('characterEditorAdapter', () => {
       canSpeakInReading: true,
       isVotingCandidate: true,
       visibilityBadges: ['PC', '소개 표시', '읽기 대사', '투표 후보'],
+      aliasRules: [],
+      hasAliasRules: false,
     });
+  });
+
+  it('조건부 표시 규칙을 제작자용 ViewModel로 변환한다', () => {
+    const vm = toCharacterEditorViewModel(character({
+      alias_rules: [{
+        id: 'alias-1',
+        label: '정체 공개',
+        display_name: '밤의 목격자',
+        display_icon_url: 'https://cdn.example/witness.webp',
+        priority: 2,
+        condition: {
+          id: 'group-1',
+          operator: 'AND',
+          rules: [{
+            id: 'rule-1',
+            variable: 'character_alive',
+            target_character_id: 'char-1',
+            comparator: '=',
+            value: 'true',
+          }],
+        },
+      }],
+    }));
+
+    expect(vm.hasAliasRules).toBe(true);
+    expect(vm.aliasRules).toEqual([{
+      id: 'alias-1',
+      label: '정체 공개',
+      display_name: '밤의 목격자',
+      display_icon_url: 'https://cdn.example/witness.webp',
+      priority: 2,
+      condition: {
+        id: 'group-1',
+        operator: 'AND',
+        rules: [{
+          id: 'rule-1',
+          variable: 'character_alive',
+          target_character_id: 'char-1',
+          comparator: '=',
+          value: 'true',
+        }],
+      },
+    }]);
   });
 
   it('NPC 표시 정책을 제작자용 ViewModel 배지로 변환한다', () => {
@@ -89,6 +136,7 @@ describe('characterEditorAdapter', () => {
       show_in_intro: true,
       can_speak_in_reading: true,
       is_voting_candidate: true,
+      alias_rules: [],
     });
   });
 
@@ -105,6 +153,42 @@ describe('characterEditorAdapter', () => {
       show_in_intro: true,
       can_speak_in_reading: true,
       is_voting_candidate: false,
+    });
+  });
+
+  it('조건부 표시 저장 payload가 기존 역할과 노출 정책을 보존한다', () => {
+    const payload = buildCharacterAliasRulesUpdatePayload(character({ mystery_role: 'detective' }), [{
+      id: ' alias-1 ',
+      label: ' 공개 후 ',
+      display_name: ' 별칭 ',
+      priority: 1,
+      condition: {
+        id: 'group-1',
+        operator: 'AND',
+        rules: [{
+          id: 'rule-1',
+          variable: 'character_alive',
+          target_character_id: 'char-1',
+          comparator: '=',
+          value: 'true',
+        }],
+      },
+    }]);
+
+    expect(payload).toMatchObject({
+      name: '홍길동',
+      mystery_role: 'detective',
+      is_culprit: false,
+      is_playable: true,
+      show_in_intro: true,
+      can_speak_in_reading: true,
+      is_voting_candidate: true,
+      alias_rules: [{
+        id: 'alias-1',
+        label: '공개 후',
+        display_name: '별칭',
+        priority: 1,
+      }],
     });
   });
 });

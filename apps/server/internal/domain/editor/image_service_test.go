@@ -48,6 +48,9 @@ func TestConfirmImageUpload_PreservesExistingTargetFields(t *testing.T) {
 				if arg.MysteryRole != "detective" || arg.IsPlayable || arg.ShowInIntro || !arg.CanSpeakInReading || arg.IsVotingCandidate {
 					t.Fatalf("character fields not preserved: %+v", arg)
 				}
+				if string(arg.AliasRules) != `[{"id":"alias-1"}]` {
+					t.Fatalf("character alias rules not preserved: %s", string(arg.AliasRules))
+				}
 			},
 		},
 		{
@@ -108,6 +111,7 @@ func newFakeImageQueries(creatorID, themeID, charID, clueID, locationID uuid.UUI
 			ShowInIntro:       false,
 			CanSpeakInReading: true,
 			IsVotingCandidate: false,
+			AliasRules:        []byte(`[{"id":"alias-1"}]`),
 		},
 		clue:     db.ThemeClue{ID: clueID, ThemeID: themeID, Name: "단서", IsUsable: true, UseEffect: text("peek"), UseTarget: text("player"), UseConsumed: true, RevealRound: int4(2), HideRound: int4(5)},
 		location: db.ThemeLocation{ID: locationID, ThemeID: themeID, Name: "서재", RestrictedCharacters: text("char-a,char-b"), FromRound: int4(1), UntilRound: int4(4)},

@@ -37,6 +37,15 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		CanSpeakInReading: req.CanSpeakInReading,
 		IsVotingCandidate: req.IsVotingCandidate,
 	})
+	aliasRules, err := normalizeCharacterAliasRules(req.AliasRules)
+	if err != nil {
+		return nil, err
+	}
+	aliasRulesJSON, err := marshalCharacterAliasRules(aliasRules)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to marshal character alias rules")
+		return nil, apperror.Internal("failed to create character")
+	}
 
 	char, err := s.q.CreateThemeCharacter(ctx, db.CreateThemeCharacterParams{
 		ThemeID:           themeID,
@@ -50,6 +59,7 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		ShowInIntro:       visibilityPolicy.ShowInIntro,
 		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
 		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
+		AliasRules:        aliasRulesJSON,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create character")
@@ -86,6 +96,18 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		CanSpeakInReading: char.CanSpeakInReading,
 		IsVotingCandidate: char.IsVotingCandidate,
 	})
+	aliasRulesJSON := char.AliasRules
+	if req.AliasRules != nil {
+		aliasRules, err := normalizeCharacterAliasRules(req.AliasRules)
+		if err != nil {
+			return nil, err
+		}
+		aliasRulesJSON, err = marshalCharacterAliasRules(aliasRules)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to marshal character alias rules")
+			return nil, apperror.Internal("failed to update character")
+		}
+	}
 
 	updated, err := s.q.UpdateThemeCharacter(ctx, db.UpdateThemeCharacterParams{
 		ID:                charID,
@@ -99,6 +121,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		ShowInIntro:       visibilityPolicy.ShowInIntro,
 		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
 		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
+		AliasRules:        aliasRulesJSON,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update character")
@@ -196,6 +219,7 @@ func toCharacterResponse(c db.ThemeCharacter) *CharacterResponse {
 		ShowInIntro:       c.ShowInIntro,
 		CanSpeakInReading: c.CanSpeakInReading,
 		IsVotingCandidate: c.IsVotingCandidate,
+		AliasRules:        unmarshalCharacterAliasRules(c.AliasRules),
 	}
 }
 

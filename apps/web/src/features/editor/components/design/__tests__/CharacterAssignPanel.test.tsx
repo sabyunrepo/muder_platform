@@ -207,6 +207,7 @@ describe('CharacterAssignPanel', () => {
         show_in_intro: true,
         can_speak_in_reading: true,
         is_voting_candidate: true,
+        alias_rules: [],
       },
     });
   });
@@ -229,7 +230,55 @@ describe('CharacterAssignPanel', () => {
         show_in_intro: true,
         can_speak_in_reading: true,
         is_voting_candidate: false,
+        alias_rules: [],
       },
+    });
+  });
+
+  it('조건부 표시 규칙을 저장한다', () => {
+    useEditorCharactersMock.mockReturnValue({
+      data: [{
+        ...mockCharacters[0],
+        alias_rules: [{
+          id: 'alias-1',
+          label: '정체 공개',
+          display_name: '밤의 목격자',
+          display_icon_url: '',
+          priority: 1,
+          condition: {
+            id: 'group-1',
+            operator: 'AND',
+            rules: [{
+              id: 'rule-1',
+              variable: 'character_alive',
+              target_character_id: 'char-1',
+              comparator: '=',
+              value: 'true',
+            }],
+          },
+        }],
+      }],
+      isLoading: false,
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    fireEvent.change(screen.getByLabelText('표시 이름'), { target: { value: '비밀 목격자' } });
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: expect.objectContaining({
+        name: '홍길동',
+        mystery_role: 'culprit',
+        is_culprit: true,
+        alias_rules: [expect.objectContaining({
+          id: 'alias-1',
+          label: '정체 공개',
+          display_name: '비밀 목격자',
+          priority: 1,
+        })],
+      }),
     });
   });
 

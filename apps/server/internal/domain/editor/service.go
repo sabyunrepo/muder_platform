@@ -26,6 +26,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/engine"
 )
 
 const (
@@ -90,44 +91,49 @@ type ThemeSummary struct {
 }
 
 type CreateCharacterRequest struct {
-	Name              string  `json:"name" validate:"required,min=1,max=50"`
-	Description       *string `json:"description" validate:"omitempty,max=2000"`
-	ImageURL          *string `json:"image_url" validate:"omitempty,url"`
-	IsCulprit         bool    `json:"is_culprit"`
-	MysteryRole       string  `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
-	SortOrder         int32   `json:"sort_order" validate:"min=0"`
-	IsPlayable        *bool   `json:"is_playable"`
-	ShowInIntro       *bool   `json:"show_in_intro"`
-	CanSpeakInReading *bool   `json:"can_speak_in_reading"`
-	IsVotingCandidate *bool   `json:"is_voting_candidate"`
+	Name              string               `json:"name" validate:"required,min=1,max=50"`
+	Description       *string              `json:"description" validate:"omitempty,max=2000"`
+	ImageURL          *string              `json:"image_url" validate:"omitempty,url"`
+	IsCulprit         bool                 `json:"is_culprit"`
+	MysteryRole       string               `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
+	SortOrder         int32                `json:"sort_order" validate:"min=0"`
+	IsPlayable        *bool                `json:"is_playable"`
+	ShowInIntro       *bool                `json:"show_in_intro"`
+	CanSpeakInReading *bool                `json:"can_speak_in_reading"`
+	IsVotingCandidate *bool                `json:"is_voting_candidate"`
+	AliasRules        []CharacterAliasRule `json:"alias_rules"`
 }
 
 type UpdateCharacterRequest struct {
-	Name              string  `json:"name" validate:"required,min=1,max=50"`
-	Description       *string `json:"description" validate:"omitempty,max=2000"`
-	ImageURL          *string `json:"image_url" validate:"omitempty,url"`
-	IsCulprit         bool    `json:"is_culprit"`
-	MysteryRole       string  `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
-	SortOrder         int32   `json:"sort_order" validate:"min=0"`
-	IsPlayable        *bool   `json:"is_playable"`
-	ShowInIntro       *bool   `json:"show_in_intro"`
-	CanSpeakInReading *bool   `json:"can_speak_in_reading"`
-	IsVotingCandidate *bool   `json:"is_voting_candidate"`
+	Name              string               `json:"name" validate:"required,min=1,max=50"`
+	Description       *string              `json:"description" validate:"omitempty,max=2000"`
+	ImageURL          *string              `json:"image_url" validate:"omitempty,url"`
+	IsCulprit         bool                 `json:"is_culprit"`
+	MysteryRole       string               `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
+	SortOrder         int32                `json:"sort_order" validate:"min=0"`
+	IsPlayable        *bool                `json:"is_playable"`
+	ShowInIntro       *bool                `json:"show_in_intro"`
+	CanSpeakInReading *bool                `json:"can_speak_in_reading"`
+	IsVotingCandidate *bool                `json:"is_voting_candidate"`
+	AliasRules        []CharacterAliasRule `json:"alias_rules"`
 }
 
+type CharacterAliasRule = engine.CharacterAliasRule
+
 type CharacterResponse struct {
-	ID                uuid.UUID `json:"id"`
-	ThemeID           uuid.UUID `json:"theme_id"`
-	Name              string    `json:"name"`
-	Description       *string   `json:"description,omitempty"`
-	ImageURL          *string   `json:"image_url,omitempty"`
-	IsCulprit         bool      `json:"is_culprit"`
-	MysteryRole       string    `json:"mystery_role"`
-	SortOrder         int32     `json:"sort_order"`
-	IsPlayable        bool      `json:"is_playable"`
-	ShowInIntro       bool      `json:"show_in_intro"`
-	CanSpeakInReading bool      `json:"can_speak_in_reading"`
-	IsVotingCandidate bool      `json:"is_voting_candidate"`
+	ID                uuid.UUID            `json:"id"`
+	ThemeID           uuid.UUID            `json:"theme_id"`
+	Name              string               `json:"name"`
+	Description       *string              `json:"description,omitempty"`
+	ImageURL          *string              `json:"image_url,omitempty"`
+	IsCulprit         bool                 `json:"is_culprit"`
+	MysteryRole       string               `json:"mystery_role"`
+	SortOrder         int32                `json:"sort_order"`
+	IsPlayable        bool                 `json:"is_playable"`
+	ShowInIntro       bool                 `json:"show_in_intro"`
+	CanSpeakInReading bool                 `json:"can_speak_in_reading"`
+	IsVotingCandidate bool                 `json:"is_voting_candidate"`
+	AliasRules        []CharacterAliasRule `json:"alias_rules"`
 }
 
 // --- Service interface ---

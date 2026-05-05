@@ -1,4 +1,5 @@
 import type {
+  CharacterAliasRule,
   EditorCharacterResponse,
   MysteryRole,
   UpdateCharacterRequest,
@@ -31,6 +32,8 @@ export interface CharacterEditorViewModel {
   canSpeakInReading: boolean;
   isVotingCandidate: boolean;
   visibilityBadges: string[];
+  aliasRules: CharacterAliasRule[];
+  hasAliasRules: boolean;
 }
 
 export const characterRoleOptions: CharacterRoleOption[] = [
@@ -107,10 +110,43 @@ function getVisibilityBadges(visibility: ReturnType<typeof getCharacterVisibilit
   return badges;
 }
 
+export function normalizeCharacterAliasRules(rules: CharacterAliasRule[] | null | undefined): CharacterAliasRule[] {
+  if (!Array.isArray(rules)) return [];
+  return rules
+    .filter((rule) => rule && typeof rule.id === 'string' && rule.condition)
+    .map((rule) => ({
+      id: rule.id.trim(),
+      label: rule.label?.trim() || undefined,
+      display_name: rule.display_name?.trim() || undefined,
+      display_icon_url: rule.display_icon_url?.trim() || undefined,
+      priority: Number.isFinite(rule.priority) ? Math.max(0, Math.trunc(rule.priority)) : 0,
+      condition: rule.condition,
+    }))
+    .filter((rule) => Boolean(rule.id && (rule.display_name || rule.display_icon_url)));
+}
+
+function buildCharacterBaseUpdatePayload(character: EditorCharacterResponse, role = normalizeCharacterEditorRole(character)) {
+  const visibility = getCharacterVisibility(character, role);
+  return {
+    name: character.name,
+    description: character.description ?? undefined,
+    image_url: character.image_url ?? undefined,
+    is_culprit: role === 'culprit',
+    mystery_role: role,
+    sort_order: character.sort_order,
+    is_playable: visibility.isPlayable,
+    show_in_intro: visibility.showInIntro,
+    can_speak_in_reading: visibility.canSpeakInReading,
+    is_voting_candidate: visibility.isVotingCandidate,
+    alias_rules: normalizeCharacterAliasRules(character.alias_rules),
+  };
+}
+
 export function toCharacterEditorViewModel(character: EditorCharacterResponse): CharacterEditorViewModel {
   const role = normalizeCharacterEditorRole(character);
   const option = getCharacterRoleOption(role);
   const visibility = getCharacterVisibility(character, role);
+  const aliasRules = normalizeCharacterAliasRules(character.alias_rules);
 
   return {
     id: character.id,
@@ -131,6 +167,8 @@ export function toCharacterEditorViewModel(character: EditorCharacterResponse): 
     canSpeakInReading: visibility.canSpeakInReading,
     isVotingCandidate: visibility.isVotingCandidate,
     visibilityBadges: getVisibilityBadges(visibility),
+    aliasRules,
+    hasAliasRules: aliasRules.length > 0,
   };
 }
 
@@ -142,19 +180,8 @@ export function buildCharacterRoleUpdatePayload(
   character: EditorCharacterResponse,
   role: MysteryRole,
 ): UpdateCharacterRequest {
-  const visibility = getCharacterVisibility(character, role);
-
   return {
-    name: character.name,
-    description: character.description ?? undefined,
-    image_url: character.image_url ?? undefined,
-    is_culprit: role === 'culprit',
-    mystery_role: role,
-    sort_order: character.sort_order,
-    is_playable: visibility.isPlayable,
-    show_in_intro: visibility.showInIntro,
-    can_speak_in_reading: visibility.canSpeakInReading,
-    is_voting_candidate: visibility.isVotingCandidate,
+    ...buildCharacterBaseUpdatePayload(character, role),
   };
 }
 
@@ -178,13 +205,18 @@ export function buildCharacterVisibilityUpdatePayload(
   }
 
   return {
-    name: character.name,
-    description: character.description ?? undefined,
-    image_url: character.image_url ?? undefined,
-    is_culprit: role === 'culprit',
-    mystery_role: role,
-    sort_order: character.sort_order,
+    ...buildCharacterBaseUpdatePayload(character, role),
     ...next,
+  };
+}
+
+export function buildCharacterAliasRulesUpdatePayload(
+  character: EditorCharacterResponse,
+  aliasRules: CharacterAliasRule[],
+): UpdateCharacterRequest {
+  return {
+    ...buildCharacterBaseUpdatePayload(character),
+    alias_rules: normalizeCharacterAliasRules(aliasRules),
   };
 }
 

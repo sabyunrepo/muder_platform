@@ -54,9 +54,19 @@ export interface EditorCharacterResponse {
   show_in_intro: boolean;
   can_speak_in_reading: boolean;
   is_voting_candidate: boolean;
+  alias_rules?: CharacterAliasRule[];
 }
 
 export type MysteryRole = 'suspect' | 'culprit' | 'accomplice' | 'detective';
+
+export interface CharacterAliasRule {
+  id: string;
+  label?: string;
+  display_name?: string;
+  display_icon_url?: string;
+  priority: number;
+  condition: Record<string, unknown>;
+}
 
 export interface CreateThemeRequest {
   title: string;
@@ -91,6 +101,7 @@ export interface CreateCharacterRequest {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  alias_rules?: CharacterAliasRule[];
 }
 
 export interface UpdateCharacterRequest {
@@ -104,6 +115,7 @@ export interface UpdateCharacterRequest {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  alias_rules?: CharacterAliasRule[];
 }
 
 export interface CreateClueRequest {
