@@ -123,7 +123,8 @@ $checks_summary
 - 이 PR branch/worktree에서만 CodeRabbit, CI, Codecov 원인을 확인하고 수정합니다.
 - 타당한 리뷰/실패만 고치고 focused validation을 실행한 뒤 fix commit을 push할 수 있습니다.
 - CodeRabbit 정리 후 full CI가 필요하면 반드시 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙입니다.
-- 대기에는 scripts/mmp-pr-watch.sh $number --code-rabbit-only 또는 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 를 사용합니다.
+- scripts/mmp-pr-watch.sh $number --code-rabbit-only 는 CodeRabbit 정리 확인용 중간 대기입니다. 성공해도 완료 보고하지 말고 즉시 ready-for-ci guard를 적용하세요.
+- ready-for-ci 라벨 적용 후에는 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 required workflow가 끝날 때까지 확인합니다.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
 
 ## Steward 금지 범위
@@ -131,7 +132,7 @@ $checks_summary
 - 테스트 스킵, coverage 약화, 유효한 리뷰 무시도 금지입니다.
 
 ## 메인 Codex 복귀 조건
-- MERGE_READY: unresolved thread 0, CodeRabbit clear, required checks green, Codecov 기준 충족.
+- MERGE_READY: unresolved thread 0, CodeRabbit clear, ready-for-ci label present, required checks green, Codecov 기준 충족 또는 비대상 근거 확인.
 - NEEDS_FIX: steward가 수정 commit을 push했고 재검토/CI 재대기 필요.
 - BLOCKED: 권한, 외부 장애, 설계 판단, merge conflict 등 main/user 결정이 필요.
 
@@ -145,6 +146,8 @@ $checks_summary
 - 이 PR branch/worktree만 수정하세요.
 - PR 생성/Issue 생성/merge/force-push/destructive git/secret 조회는 하지 마세요.
 - ready-for-ci 라벨은 scripts/pr-ready-for-ci-guard.sh --apply $number 를 통과할 때만 붙이세요.
+- CodeRabbit 통과만으로 완료 보고하지 마세요. CodeRabbit 통과 후 ready-for-ci 라벨을 붙이고 required workflow와 Codecov까지 확인해야 합니다.
+- scripts/mmp-pr-watch.sh $number --code-rabbit-only 성공은 중간 단계입니다. 그 다음 scripts/pr-ready-for-ci-guard.sh --apply $number 와 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 를 이어서 실행하세요.
 - 변경했다면 focused validation을 실행하고 push하세요.
 - 최종 보고는 한국어로 발견 / 수행 / 판단 / 미해결 4섹션으로 작성하고, 확인한 Head SHA와 판단의 MERGE_READY, NEEDS_FIX, BLOCKED 중 하나를 명시하세요.
 MSG
