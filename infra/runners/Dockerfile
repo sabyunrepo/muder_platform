@@ -31,7 +31,8 @@ ARG NODE_VERSION=20.18.0
 USER root
 
 # Phase 23 OS deps (jq + Playwright runtime libs) + docker CLI (DinD 사이드카 통신)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN rm -f /etc/apt/sources.list.d/git-core-ubuntu-ppa*.list /etc/apt/sources.list.d/git-core-ubuntu-ppa*.sources \
+    && apt-get update && apt-get install -y --no-install-recommends \
       jq libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 \
       libcups2 libdbus-1-3 libdrm2 libx11-6 libx11-xcb1 libxcb1 \
       libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 \
