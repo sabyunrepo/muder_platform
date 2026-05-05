@@ -127,7 +127,7 @@ Do:
 6. 병렬 실행 계획이 필요한 경우 `.codex/agents/mmp-parallel-coordinator.toml` 역할을 먼저 사용해 read-heavy audit, write ownership, 중단 조건, 메인 통합 체크리스트를 만든다.
 7. 기본 병렬화 순서는 `parallel-coordinator → 필요한 reviewer/worker 병렬 실행 → 메인 Codex 취합 → 충돌 없는 구현 → focused 검증`이다.
 8. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 CodeRabbit/Codecov/CI 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져온다.
-9. 이미 steward가 맡아 CodeRabbit/CI가 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 최신화는 GitHub가 merge conflict 또는 up-to-date branch를 요구하거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, CI/Codecov 실패 원인이 main drift일 때만 수행한다. 명확한 트리거가 없으면 기존 head를 유지하고 merge 시점에 충돌 여부를 판단한다.
+9. 이미 steward가 맡아 CodeRabbit/CI가 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 최신화는 GitHub가 merge conflict 또는 up-to-date 요구를 하거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, CI/Codecov 실패 원인이 main drift이거나, 사용자가 명시적으로 최신화를 요청할 때만 수행한다. 명확한 트리거가 없으면 기존 head를 유지하고 merge 시점에 충돌 여부를 판단한다.
 10. Steward-managed PR에 메인 Codex가 추가 커밋, rebase, merge commit을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
 11. 메인 Codex thread는 `scripts/mmp-pr-watch.sh`를 직접 장시간 실행하지 않는다. `scripts/mmp-pr-status.sh <PR>` 또는 `gh pr view` 같은 단발 조회만 사용하고, 30초 이상 대기가 필요하면 CI steward에 위임한다.
 12. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
