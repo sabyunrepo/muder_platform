@@ -126,13 +126,17 @@ Do:
 5. MMP 전용 리뷰에는 가능한 경우 `.codex/agents/mmp-frontend-editor-reviewer.toml`, `.codex/agents/mmp-backend-engine-reviewer.toml`, `.codex/agents/mmp-test-coverage-reviewer.toml` 역할을 사용한다.
 6. 병렬 실행 계획이 필요한 경우 `.codex/agents/mmp-parallel-coordinator.toml` 역할을 먼저 사용해 read-heavy audit, write ownership, 중단 조건, 메인 통합 체크리스트를 만든다.
 7. 기본 병렬화 순서는 `parallel-coordinator → 필요한 reviewer/worker 병렬 실행 → 메인 Codex 취합 → 충돌 없는 구현 → focused 검증`이다.
+8. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 CodeRabbit/Codecov/CI 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져와 진행 중인 worktree에 반영한다.
+9. Steward-managed PR에 메인 Codex가 추가 커밋을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
+10. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
 
 Done when:
 - 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
 - 병렬화로 줄인 작업과 병렬화하지 않은 이유가 함께 보고된다.
+- 완료된 sub-agent가 `close_agent`로 해제되어 다음 작업 슬롯을 막지 않는다.
 
 Avoid:
-- secret 조회, destructive command, PR 생성, label 부착, merge, 배포 트리거를 sub-agent에 맡기지 않는다.
+- secret 조회, destructive command, PR 생성, merge, 배포 트리거를 sub-agent에 맡기지 않는다. 단, CI steward는 `scripts/pr-ready-for-ci-guard.sh --apply <PR>`를 통과한 경우에만 `ready-for-ci` 라벨을 붙일 수 있다.
 - 다음 로컬 작업이 바로 막히는 critical path를 불필요하게 위임하지 않는다.
 - API DTO, frontend adapter/ViewModel mapping, migration, PR/CI 라벨 전환처럼 공유 계약을 바꾸는 작업은 최종 통합 전까지 여러 agent가 동시에 수정하지 않는다.
 

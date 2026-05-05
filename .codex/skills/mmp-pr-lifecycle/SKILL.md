@@ -35,6 +35,18 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - If changed files do **not** touch app/runtime/test/build trigger paths (`apps/**`, `packages/**`, `tooling/**`, `.github/workflows/**`, `package.json`, lockfiles, `turbo.json`, `playwright.config.ts`, `e2e/**`, `go.mod`, `go.sum`), do not force full CI or manual workflow dispatch.
    - For these PRs, merge after CodeRabbit is clear, unresolved review threads are 0, light checks pass, and focused local checks for changed scripts/config pass. Use `scripts/mmp-pr-watch.sh <PR> --code-rabbit-only` for this path.
    - Examples: `AGENTS.md`, `.codex/**`, `docs/ops/**`, PR helper scripts that were locally shell-checked.
+7. CI steward handoff:
+   - Use when PR review/CI waiting would block starting the next issue and the user has approved agent delegation.
+   - Generate a copy-ready handoff with `scripts/mmp-ci-steward-handoff.sh <PR>`.
+   - The steward owns only the target PR branch/worktree: CodeRabbit fixes, focused checks, Codecov/CI fixes, push commits, and `ready-for-ci` through `scripts/pr-ready-for-ci-guard.sh --apply <PR>`.
+   - Main Codex continues the next issue only from a separate worktree/branch based on `origin/main` unless intentionally stacking work.
+   - Merge authority stays with main Codex until the user explicitly changes the policy. When the steward reports `MERGE_READY`, main Codex verifies unresolved threads 0, required checks green, Codecov policy, then merges.
+   - CodeRabbit-only success is not a steward completion state. The steward must continue by applying `scripts/pr-ready-for-ci-guard.sh --apply <PR>` and then watching required workflows with `scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows`, unless the handoff explicitly says "code-rabbit-only exception".
+   - `ready-for-ci` is an authorization label, not evidence that workflows started. The steward must verify current-head runs for the required set (`CI`, `E2E — Stubbed Backend`, `Security — Fast Feedback`) and rely on `--trigger-missing-workflows` to dispatch missing workflows instead of passively waiting for label-created runs.
+   - A steward may report `MERGE_READY` only when the latest head SHA was checked, unresolved threads are 0, CodeRabbit is clear, `ready-for-ci` label is present, required checks are green, and Codecov is satisfied or explicitly not applicable.
+   - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for CodeRabbit/check waiting instead of running repeated watcher polling in the main thread.
+   - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
+   - After any steward-managed PR is merged, main Codex pulls `origin/main` and rebases or merges it into active feature worktrees before continuing implementation.
 
 ## Done
 - PR has Korean title/body.
@@ -42,6 +54,8 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 - CodeRabbit valid feedback is fixed or explicitly rejected with reason.
 - `ready-for-ci` was added only after review cleanup.
 - CI and Codecov evidence is reported before merge.
+- If a CI steward was used, handoff scope, steward result, and main Codex final verification are separated in the report.
+- Completed CI steward agents are closed so agent slots are released.
 
 ## Avoid
 - Do not add `ready-for-ci` at PR creation.

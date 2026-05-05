@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-04",
+  "updated_at": "2026-05-05",
   "policy": {
     "read_first": "Read this state file before archive logs.",
     "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
@@ -89,10 +89,39 @@
         "scripts/mmp-pr-watch.sh"
       ],
       "resolution": "Tracked workflow names already dispatched by the watcher so missing workflow dispatch happens at most once per session."
+    },
+    {
+      "id": "ci-steward-handoff-workflow",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        ".codex/agents/mmp-ci-steward.toml",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "scripts/mmp-ci-steward-handoff.sh",
+        "AGENTS.md"
+      ],
+      "resolution": "Added a CI steward handoff workflow so PR review, Codecov, and CI hardening can run on a single PR branch while main Codex continues next-issue work in a separate worktree."
+    },
+    {
+      "id": "completed-agent-slot-release",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that completed sub-agents must be closed after final result collection, and that slot-limit failures should first close completed agents."
+    },
+    {
+      "id": "steward-rehandoff-after-main-push",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that when main Codex adds a commit to a steward-managed PR, repeated CodeRabbit/check waiting must be re-handed to the steward while main keeps only one-shot status checks and final merge judgment."
     }
   ],
   "last_review": {
-    "date": "2026-05-04",
-    "summary": "Recorded watcher exit continuation and CodeRabbit hardening fixes for the self-improvement routine."
+    "date": "2026-05-05",
+    "summary": "Recorded CI steward handoff workflow, completed-agent slot release, and re-handoff after main push rules for non-blocking PR hardening while main issue work continues."
   }
 }
