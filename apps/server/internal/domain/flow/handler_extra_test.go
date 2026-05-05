@@ -81,3 +81,59 @@ func TestCreateEdge_Success(t *testing.T) {
 		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
 	}
 }
+
+func TestUpdateEdge_Success(t *testing.T) {
+	themeID := uuid.New()
+	edgeID := uuid.New()
+	srcID := uuid.New()
+	tgtID := uuid.New()
+	svc := &mockService{
+		updateEdgeFn: func(_ context.Context, creatorID, routeThemeID, routeEdgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
+			if creatorID != testCreatorIDInternal {
+				t.Fatalf("creatorID = %s, want %s", creatorID, testCreatorIDInternal)
+			}
+			if routeThemeID != themeID {
+				t.Fatalf("themeID = %s, want %s", routeThemeID, themeID)
+			}
+			if routeEdgeID != edgeID {
+				t.Fatalf("edgeID = %s, want %s", routeEdgeID, edgeID)
+			}
+			return &FlowEdge{ID: routeEdgeID, ThemeID: routeThemeID, SourceID: req.SourceID, TargetID: req.TargetID}, nil
+		},
+	}
+	r := newRouter(NewHandler(svc))
+	body, _ := json.Marshal(UpdateEdgeRequest{SourceID: srcID, TargetID: tgtID, Condition: validFlowCondition()})
+	req := withAuth(httptest.NewRequest(http.MethodPatch, "/themes/"+themeID.String()+"/flow/edges/"+edgeID.String(), bytes.NewReader(body)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestDeleteEdge_Success(t *testing.T) {
+	themeID := uuid.New()
+	edgeID := uuid.New()
+	svc := &mockService{
+		deleteEdgeFn: func(_ context.Context, creatorID, routeThemeID, routeEdgeID uuid.UUID) error {
+			if creatorID != testCreatorIDInternal {
+				t.Fatalf("creatorID = %s, want %s", creatorID, testCreatorIDInternal)
+			}
+			if routeThemeID != themeID {
+				t.Fatalf("themeID = %s, want %s", routeThemeID, themeID)
+			}
+			if routeEdgeID != edgeID {
+				t.Fatalf("edgeID = %s, want %s", routeEdgeID, edgeID)
+			}
+			return nil
+		},
+	}
+	r := newRouter(NewHandler(svc))
+	req := withAuth(httptest.NewRequest(http.MethodDelete, "/themes/"+themeID.String()+"/flow/edges/"+edgeID.String(), nil))
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
+	}
+}

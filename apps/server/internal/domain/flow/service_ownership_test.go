@@ -227,6 +227,57 @@ func TestServiceFlowOwnership_RejectsCrossThemeEdgeEndpoints(t *testing.T) {
 	assertFlowNodeExists(t, pool, nodeA.ID)
 }
 
+func TestServiceFlowOwnership_SaveFlowOwnedGraph(t *testing.T) {
+	ctx := context.Background()
+	pool := setupFlowTestPool(t)
+	svc := NewService(pool, zerolog.Nop())
+	creatorID := insertFlowTestUser(t, pool)
+	themeID := insertFlowTestTheme(t, pool, creatorID, json.RawMessage(`{}`))
+	clientStartID := uuid.New()
+	clientPhaseID := uuid.New()
+
+	graph, err := svc.SaveFlow(ctx, creatorID, themeID, SaveFlowRequest{
+		Nodes: []FlowNodeInput{
+			{
+				ID:        &clientStartID,
+				Type:      NodeTypeStart,
+				PositionX: 0,
+				PositionY: 0,
+			},
+			{
+				ID:        &clientPhaseID,
+				Type:      NodeTypePhase,
+				Data:      json.RawMessage(`{"label":"조사"}`),
+				PositionX: 100,
+				PositionY: 50,
+			},
+		},
+		Edges: []FlowEdgeInput{{
+			SourceID:  clientStartID,
+			TargetID:  clientPhaseID,
+			Condition: validFlowCondition(),
+			SortOrder: 1,
+		}},
+	})
+	if err != nil {
+		t.Fatalf("SaveFlow: %v", err)
+	}
+	if len(graph.Nodes) != 2 || len(graph.Edges) != 1 {
+		t.Fatalf("graph sizes = nodes %d edges %d, want 2/1", len(graph.Nodes), len(graph.Edges))
+	}
+	if graph.Edges[0].SourceID != graph.Nodes[0].ID || graph.Edges[0].TargetID != graph.Nodes[1].ID {
+		t.Fatalf("edge endpoints were not remapped to saved node IDs")
+	}
+
+	loaded, err := svc.GetFlow(ctx, creatorID, themeID)
+	if err != nil {
+		t.Fatalf("GetFlow: %v", err)
+	}
+	if len(loaded.Nodes) != 2 || len(loaded.Edges) != 1 {
+		t.Fatalf("loaded graph sizes = nodes %d edges %d, want 2/1", len(loaded.Nodes), len(loaded.Edges))
+	}
+}
+
 func validSaveFlowRequest() SaveFlowRequest {
 	return SaveFlowRequest{
 		Nodes: []FlowNodeInput{{
