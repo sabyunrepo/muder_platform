@@ -15,14 +15,14 @@ import (
 
 // Service defines the flow domain operations.
 type Service interface {
-	GetFlow(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error)
+	GetFlow(ctx context.Context, creatorID, themeID uuid.UUID) (*FlowGraph, error)
 	SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error)
 	CreateNode(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error)
-	UpdateNode(ctx context.Context, creatorID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
+	UpdateNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error)
 	DeleteNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error
 	CreateEdge(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error)
-	UpdateEdge(ctx context.Context, creatorID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
-	DeleteEdge(ctx context.Context, creatorID, edgeID uuid.UUID) error
+	UpdateEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error)
+	DeleteEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID) error
 	MigratePhases(ctx context.Context, themeID uuid.UUID, phases []map[string]any) error
 }
 
@@ -36,7 +36,10 @@ func NewService(pool *pgxpool.Pool, logger zerolog.Logger) Service {
 	return &serviceImpl{pool: pool, logger: logger}
 }
 
-func (s *serviceImpl) GetFlow(ctx context.Context, themeID uuid.UUID) (*FlowGraph, error) {
+func (s *serviceImpl) GetFlow(ctx context.Context, creatorID, themeID uuid.UUID) (*FlowGraph, error) {
+	if err := ensureThemeOwner(ctx, s.pool, creatorID, themeID); err != nil {
+		return nil, err
+	}
 	nodes, err := listNodes(ctx, s.pool, themeID)
 	if err != nil {
 		return nil, err
@@ -49,15 +52,18 @@ func (s *serviceImpl) GetFlow(ctx context.Context, themeID uuid.UUID) (*FlowGrap
 }
 
 func (s *serviceImpl) SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error) {
-	if err := validateSaveRequest(req); err != nil {
-		return nil, err
-	}
-
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, apperror.Internal("failed to begin transaction")
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := ensureThemeOwner(ctx, tx, creatorID, themeID); err != nil {
+		return nil, err
+	}
+	if err := validateSaveRequest(req); err != nil {
+		return nil, err
+	}
 
 	// Delete existing graph
 	if _, err := tx.Exec(ctx, `DELETE FROM flow_edges WHERE theme_id = $1`, themeID); err != nil {
@@ -103,7 +109,10 @@ func (s *serviceImpl) SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID
 	return &FlowGraph{Nodes: nodes, Edges: edges}, nil
 }
 
-func (s *serviceImpl) CreateNode(ctx context.Context, _, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error) {
+func (s *serviceImpl) CreateNode(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error) {
+	if err := ensureThemeOwner(ctx, s.pool, creatorID, themeID); err != nil {
+		return nil, err
+	}
 	if err := ValidateNodeType(req.Type); err != nil {
 		return nil, err
 	}
@@ -114,7 +123,7 @@ func (s *serviceImpl) CreateNode(ctx context.Context, _, themeID uuid.UUID, req 
 	return insertNode(ctx, s.pool, themeID, req.Type, data, req.PositionX, req.PositionY)
 }
 
-func (s *serviceImpl) UpdateNode(ctx context.Context, _, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
+func (s *serviceImpl) UpdateNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
 	if err := ValidateNodeType(req.Type); err != nil {
 		return nil, err
 	}
@@ -123,8 +132,12 @@ func (s *serviceImpl) UpdateNode(ctx context.Context, _, nodeID uuid.UUID, req U
 		data = json.RawMessage(`{}`)
 	}
 	row := s.pool.QueryRow(ctx,
-		`UPDATE flow_nodes SET type=$2, data=$3, position_x=$4, position_y=$5, updated_at=now() WHERE id=$1 RETURNING *`,
-		nodeID, req.Type, data, req.PositionX, req.PositionY,
+		`UPDATE flow_nodes n
+		SET type=$2, data=$3, position_x=$4, position_y=$5, updated_at=now()
+		FROM themes t
+		WHERE n.id=$1 AND n.theme_id=$6 AND t.id=n.theme_id AND t.creator_id=$7
+		RETURNING n.*`,
+		nodeID, req.Type, data, req.PositionX, req.PositionY, themeID, creatorID,
 	)
 	return scanNode(row)
 }
@@ -180,33 +193,112 @@ func (s *serviceImpl) DeleteNode(ctx context.Context, creatorID, themeID, nodeID
 	return nil
 }
 
-func (s *serviceImpl) CreateEdge(ctx context.Context, _, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error) {
+func (s *serviceImpl) CreateEdge(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error) {
+	if err := ensureThemeOwner(ctx, s.pool, creatorID, themeID); err != nil {
+		return nil, err
+	}
 	if err := ValidateEdgeCondition(req.Condition); err != nil {
+		return nil, err
+	}
+	if err := ensureEdgeEndpointsInTheme(ctx, s.pool, themeID, req.SourceID, req.TargetID); err != nil {
 		return nil, err
 	}
 	return insertEdge(ctx, s.pool, themeID, req.SourceID, req.TargetID, req.Condition, req.Label, req.SortOrder)
 }
 
-func (s *serviceImpl) UpdateEdge(ctx context.Context, _, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
+func (s *serviceImpl) UpdateEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
 	if err := ValidateEdgeCondition(req.Condition); err != nil {
 		return nil, err
 	}
-	row := s.pool.QueryRow(ctx,
-		`UPDATE flow_edges SET source_id=$2, target_id=$3, condition=$4, label=$5, sort_order=$6 WHERE id=$1 RETURNING *`,
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, apperror.Internal("failed to begin transaction")
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	var edgeThemeID uuid.UUID
+	if err := tx.QueryRow(ctx, `
+		SELECT e.theme_id
+		FROM flow_edges e
+		JOIN themes t ON t.id = e.theme_id
+		WHERE e.id = $1 AND e.theme_id = $2 AND t.creator_id = $3
+		FOR UPDATE OF e
+	`, edgeID, themeID, creatorID).Scan(&edgeThemeID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NotFound("flow edge not found")
+		}
+		return nil, apperror.Internal("failed to load edge")
+	}
+	if err := ensureEdgeEndpointsInTheme(ctx, tx, edgeThemeID, req.SourceID, req.TargetID); err != nil {
+		return nil, err
+	}
+	row := tx.QueryRow(ctx,
+		`UPDATE flow_edges
+		SET source_id=$2, target_id=$3, condition=$4, label=$5, sort_order=$6
+		WHERE id=$1
+		RETURNING *`,
 		edgeID, req.SourceID, req.TargetID, req.Condition, req.Label, req.SortOrder,
 	)
-	return scanEdge(row)
+	edge, err := scanEdge(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperror.Internal("failed to commit transaction")
+	}
+	return edge, nil
 }
 
-func (s *serviceImpl) DeleteEdge(ctx context.Context, _, edgeID uuid.UUID) error {
-	_, err := s.pool.Exec(ctx, `DELETE FROM flow_edges WHERE id=$1`, edgeID)
+func (s *serviceImpl) DeleteEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID) error {
+	cmdTag, err := s.pool.Exec(ctx, `
+		DELETE FROM flow_edges e
+		USING themes t
+		WHERE e.id=$1 AND e.theme_id=$2 AND t.id=e.theme_id AND t.creator_id=$3
+	`, edgeID, themeID, creatorID)
 	if err != nil {
 		return apperror.Internal("failed to delete edge")
+	}
+	if cmdTag.RowsAffected() != 1 {
+		return apperror.NotFound("flow edge not found")
 	}
 	return nil
 }
 
 // --- helpers ---
+
+func ensureThemeOwner(ctx context.Context, q dbConn, creatorID, themeID uuid.UUID) error {
+	var exists bool
+	if err := q.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM themes WHERE id = $1 AND creator_id = $2
+		)
+	`, themeID, creatorID).Scan(&exists); err != nil {
+		return apperror.Internal("failed to verify theme ownership")
+	}
+	if !exists {
+		return apperror.NotFound("theme not found")
+	}
+	return nil
+}
+
+func ensureEdgeEndpointsInTheme(ctx context.Context, q dbConn, themeID, sourceID, targetID uuid.UUID) error {
+	expected := 2
+	if sourceID == targetID {
+		expected = 1
+	}
+	var count int
+	if err := q.QueryRow(ctx, `
+		SELECT COUNT(*) FROM flow_nodes
+		WHERE theme_id = $1 AND id IN ($2, $3)
+	`, themeID, sourceID, targetID).Scan(&count); err != nil {
+		return apperror.Internal("failed to verify flow edge endpoints")
+	}
+	if count != expected {
+		return apperror.NotFound("flow node not found")
+	}
+	return nil
+}
 
 func validateSaveRequest(req SaveFlowRequest) error {
 	nodes := make([]FlowNode, len(req.Nodes))
