@@ -4,12 +4,41 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
+	"reflect"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/mmp-platform/server/internal/apperror"
 )
 
-var validate = validator.New()
+var validate = newValidator()
+
+func newValidator() *validator.Validate {
+	v := validator.New()
+	if err := v.RegisterValidation("optional_url", validateOptionalURL); err != nil {
+		panic(err)
+	}
+	return v
+}
+
+func validateOptionalURL(fl validator.FieldLevel) bool {
+	field := fl.Field()
+	if field.Kind() == reflect.Ptr {
+		if field.IsNil() {
+			return true
+		}
+		field = field.Elem()
+	}
+	if field.Kind() != reflect.String {
+		return false
+	}
+	rawURL := field.String()
+	if rawURL == "" {
+		return true
+	}
+	parsed, err := url.Parse(rawURL)
+	return err == nil && parsed.Scheme != "" && parsed.Host != ""
+}
 
 // maxBodySize is the maximum allowed request body size (1 MB).
 const maxBodySize = 1 << 20

@@ -366,6 +366,9 @@ func TestService_CharacterEndcardContract(t *testing.T) {
 	if cleared.EndcardTitle != nil || cleared.EndcardBody != nil {
 		t.Fatalf("empty endcard fields should clear stored values: %+v", cleared)
 	}
+	if cleared.EndcardImageURL == nil || *cleared.EndcardImageURL != "https://cdn.example/endcard.webp" {
+		t.Fatalf("omitted endcard image url should be preserved: %+v", cleared.EndcardImageURL)
+	}
 }
 
 func TestService_CreateCharacterNPCVisibility(t *testing.T) {

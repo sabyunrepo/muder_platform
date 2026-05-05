@@ -102,7 +102,7 @@ type CreateCharacterRequest struct {
 	IsVotingCandidate *bool   `json:"is_voting_candidate"`
 	EndcardTitle      *string `json:"endcard_title" validate:"omitempty,max=80"`
 	EndcardBody       *string `json:"endcard_body" validate:"omitempty,max=3000"`
-	EndcardImageURL   *string `json:"endcard_image_url" validate:"omitempty,url"`
+	EndcardImageURL   *string `json:"endcard_image_url" validate:"omitempty,optional_url"`
 }
 
 type UpdateCharacterRequest struct {
@@ -118,7 +118,7 @@ type UpdateCharacterRequest struct {
 	IsVotingCandidate *bool   `json:"is_voting_candidate"`
 	EndcardTitle      *string `json:"endcard_title" validate:"omitempty,max=80"`
 	EndcardBody       *string `json:"endcard_body" validate:"omitempty,max=3000"`
-	EndcardImageURL   *string `json:"endcard_image_url" validate:"omitempty,url"`
+	EndcardImageURL   *string `json:"endcard_image_url" validate:"omitempty,optional_url"`
 }
 
 type CharacterResponse struct {
