@@ -18,7 +18,6 @@ export function useEditorContent(themeId: string, key: string) {
     queryKey: editorKeys.content(themeId, key),
     queryFn: () => api.get<ContentResponse>(`/v1/editor/themes/${themeId}/content/${key}`),
     enabled: !!themeId && !!key,
-    retry: false,
   });
 }
 

@@ -42,6 +42,12 @@ describe("getRecoveryAction", () => {
       "retry-later",
     );
   });
+
+  it("429 rate limit은 입력 오류가 아니라 나중에 재시도할 오류로 분류한다", () => {
+    expect(getRecoveryAction(apiError({ status: 429, code: "RATE_LIMITED" }))).toBe(
+      "retry-later",
+    );
+  });
 });
 
 describe("getErrorRecoveryStrategy", () => {

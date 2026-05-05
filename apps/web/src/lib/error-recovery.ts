@@ -99,6 +99,9 @@ export function getRecoveryAction(error: ApiError): RecoveryAction {
   if (error.status === 409) {
     return "refresh";
   }
+  if (error.status === 429) {
+    return "retry-later";
+  }
   if (error.status >= 500) {
     return "retry-later";
   }
