@@ -110,11 +110,13 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
         actions={(data.onEnter as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onEnter: actions })}
         hiddenTypes={[DELIVER_INFORMATION_ACTION, "deliver_information"]}
+        themeId={themeId}
       />
       <ActionListEditor
         label="장면 종료 트리거"
         actions={(data.onExit as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onExit: actions })}
+        themeId={themeId}
       />
     </div>
   );

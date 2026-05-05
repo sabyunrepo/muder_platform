@@ -20,6 +20,7 @@ import { EntityTriggerPlacementCard } from '@/features/editor/components/trigger
 import { ClueRuntimeEffectCard } from './ClueRuntimeEffectCard';
 
 interface ClueEntityWorkspaceProps {
+  themeId?: string;
   clues: ClueResponse[];
   configJson: EditorConfig | null | undefined;
   locations: LocationResponse[];
@@ -32,6 +33,7 @@ interface ClueEntityWorkspaceProps {
 }
 
 export function ClueEntityWorkspace({
+  themeId,
   clues,
   configJson,
   locations,
@@ -70,6 +72,7 @@ export function ClueEntityWorkspace({
             isSaving={isConfigSaving}
           />
           <EntityTriggerPlacementCard
+            themeId={themeId}
             entityKind="clue"
             entityId={clue.id}
             entityName={clue.name}

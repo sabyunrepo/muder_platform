@@ -2,6 +2,23 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActionListEditor } from "../ActionListEditor";
 
+vi.mock("../../media/MediaPicker", () => ({
+  MediaPicker: ({
+    open,
+    title,
+    onSelect,
+  }: {
+    open: boolean;
+    title?: string;
+    onSelect: (media: { id: string }) => void;
+  }) =>
+    open ? (
+      <button type="button" onClick={() => onSelect({ id: "media-1" })}>
+        {title}
+      </button>
+    ) : null,
+}));
+
 afterEach(cleanup);
 
 describe("ActionListEditor", () => {
@@ -54,5 +71,42 @@ describe("ActionListEditor", () => {
       { id: "a1", type: "OPEN_VOTING" },
       { id: "a2", type: "STOP_AUDIO" },
     ]);
+  });
+
+  it("연출 실행 결과의 미디어를 raw JSON 없이 params.mediaId로 저장한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[{ id: "bgm", type: "SET_BGM", params: {} }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "BGM 선택" }));
+    fireEvent.click(screen.getByRole("button", { name: "장면 시작 트리거 1 BGM 선택" }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+    ]);
+  });
+
+  it("연출이 아닌 실행 결과로 바꾸면 미디어 params를 비운다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 종료 트리거"
+        actions={[{ id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "장면 종료 트리거 1 실행 결과" }), {
+      target: { value: "OPEN_VOTING" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([{ id: "bgm", type: "OPEN_VOTING" }]);
   });
 });

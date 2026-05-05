@@ -58,6 +58,15 @@ export function useGameMediaEvents(): void {
     },
   );
 
+  useWsEvent<PlayMediaPayload>(
+    "game",
+    WsEventType.AUDIO_PLAY_SOUND,
+    (payload) => {
+      if (!orchestrator) return;
+      void orchestrator.handlePlayMedia(payload);
+    },
+  );
+
   useWsEvent<unknown>("game", WsEventType.AUDIO_STOP, () => {
     if (!orchestrator) return;
     orchestrator.handleStopAll();

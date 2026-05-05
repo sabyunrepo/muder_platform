@@ -91,13 +91,14 @@ describe("useGameMediaEvents", () => {
     sendSpy.mockClear();
   });
 
-  it("registers handlers for all 4 audio:* events", () => {
+  it("registers handlers for all audio presentation events", () => {
     const orch = makeOrchestrator();
     renderWithOrchestrator(orch);
 
     expect(handlers.has(WsEventType.AUDIO_SET_BGM)).toBe(true);
     expect(handlers.has(WsEventType.AUDIO_PLAY_VOICE)).toBe(true);
     expect(handlers.has(WsEventType.AUDIO_PLAY_MEDIA)).toBe(true);
+    expect(handlers.has(WsEventType.AUDIO_PLAY_SOUND)).toBe(true);
     expect(handlers.has(WsEventType.AUDIO_STOP)).toBe(true);
   });
 
@@ -135,6 +136,16 @@ describe("useGameMediaEvents", () => {
     expect(orch.handlePlayMedia).toHaveBeenCalledWith(payload);
   });
 
+  it("routes audio:play_sound → orchestrator.handlePlayMedia", () => {
+    const orch = makeOrchestrator();
+    renderWithOrchestrator(orch);
+
+    const payload = { mediaId: "s1", url: "sfx.mp3" };
+    handlers.get(WsEventType.AUDIO_PLAY_SOUND)!(payload, 1);
+
+    expect(orch.handlePlayMedia).toHaveBeenCalledWith(payload);
+  });
+
   it("routes audio:stop → orchestrator.handleStopAll", () => {
     const orch = makeOrchestrator();
     renderWithOrchestrator(orch);
@@ -158,6 +169,7 @@ describe("useGameMediaEvents", () => {
         1,
       );
       handlers.get(WsEventType.AUDIO_PLAY_MEDIA)!({ mediaId: "s1" }, 1);
+      handlers.get(WsEventType.AUDIO_PLAY_SOUND)!({ mediaId: "s2" }, 1);
       handlers.get(WsEventType.AUDIO_STOP)!({}, 1);
     }).not.toThrow();
   });

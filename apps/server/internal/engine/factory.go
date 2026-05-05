@@ -196,6 +196,10 @@ func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 	implicitActions := []PhaseAction{
 		ActionDeliverInformation,
 		ActionEvaluateEnding,
+		ActionPlaySound,
+		ActionPlayMedia,
+		ActionSetBGM,
+		ActionStopAudio,
 	}
 	for _, action := range implicitActions {
 		moduleName, ok := ActionRequiresModule[action]

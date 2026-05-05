@@ -119,6 +119,8 @@ func TestParseConfiguredPhaseActions_NormalizesLegacyAliases(t *testing.T) {
 		{name: "unmute chat", raw: `[{"type":"enable_chat"}]`, want: ActionUnmuteChat},
 		{name: "mute chat", raw: `[{"type":"disable_chat"}]`, want: ActionMuteChat},
 		{name: "set bgm", raw: `[{"type":"play_bgm"}]`, want: ActionSetBGM},
+		{name: "play sound", raw: `[{"type":"play_sound"}]`, want: ActionPlaySound},
+		{name: "play media", raw: `[{"type":"play_media"}]`, want: ActionPlayMedia},
 		{name: "stop audio", raw: `[{"type":"stop_bgm"}]`, want: ActionStopAudio},
 		{name: "broadcast", raw: `[{"type":"broadcast"}]`, want: ActionBroadcastMessage},
 		{name: "wrapped action", raw: `{"actions":[{"type":"disable_chat"}]}`, want: ActionMuteChat},

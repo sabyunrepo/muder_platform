@@ -11,6 +11,7 @@ import {
 } from '@/features/editor/utils/eventProgressionConfig';
 
 interface EntityTriggerPlacementCardProps {
+  themeId?: string;
   entityKind: TriggerPlacementKind;
   entityId: string;
   entityName: string;
@@ -37,6 +38,7 @@ function isTriggerValid(trigger: EventProgressionTriggerConfig) {
 }
 
 export function EntityTriggerPlacementCard({
+  themeId,
   entityKind,
   entityId,
   entityName,
@@ -124,6 +126,7 @@ export function EntityTriggerPlacementCard({
               trigger={trigger}
               index={index}
               title={title}
+              themeId={themeId}
               onChange={(patch) => updateDraft(index, patch)}
               onRemove={() => handleRemove(index)}
             />
@@ -138,12 +141,14 @@ function TriggerDraftRow({
   trigger,
   index,
   title,
+  themeId,
   onChange,
   onRemove,
 }: {
   trigger: EventProgressionTriggerConfig;
   index: number;
   title: string;
+  themeId?: string;
   onChange: (patch: Partial<EventProgressionTriggerConfig>) => void;
   onRemove: () => void;
 }) {
@@ -200,6 +205,7 @@ function TriggerDraftRow({
           label={`${title} ${index + 1}`}
           actions={actions}
           onChange={handleActionChange}
+          themeId={themeId}
         />
       </div>
 

@@ -66,6 +66,10 @@ var ActionRequiresModule = map[PhaseAction]string{
 	ActionCloseGroupChat:      "group_chat",
 	ActionDeliverInformation:  "information_delivery",
 	ActionEvaluateEnding:      "ending_branch",
+	ActionPlaySound:           "audio",
+	ActionPlayMedia:           "audio",
+	ActionSetBGM:              "audio",
+	ActionStopAudio:           "audio",
 }
 
 // --- Module Interfaces ---

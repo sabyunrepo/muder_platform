@@ -27,6 +27,8 @@ func TestShouldRelay(t *testing.T) {
 		{"ready.status_changed", true},
 		{"reading.advance", true},
 		{"ending.revealed", true},
+		{"audio.set_bgm", true},
+		{"audio.play_sound", true},
 		// Negatives — internal/debug types not relayed.
 		{"internal.metric", false},
 		{"debug.trace", false},

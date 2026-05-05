@@ -119,6 +119,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
   return (
     <div className="px-4 py-6">
       <ClueEntityWorkspace
+        themeId={themeId}
         clues={clues}
         configJson={theme?.config_json}
         locations={locations}

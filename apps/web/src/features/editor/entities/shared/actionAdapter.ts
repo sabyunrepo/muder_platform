@@ -13,6 +13,9 @@ export const CREATOR_ACTION_OPTIONS: CreatorActionOption[] = [
   { value: "CLOSE_VOTING", label: "투표 종료" },
   { value: "UNMUTE_CHAT", label: "채팅 열기" },
   { value: "MUTE_CHAT", label: "채팅 닫기" },
+  { value: "SET_BGM", label: "BGM 재생" },
+  { value: "PLAY_SOUND", label: "효과음 재생" },
+  { value: "PLAY_MEDIA", label: "영상 재생" },
   { value: "STOP_AUDIO", label: "BGM/효과음 정지" },
 ];
 
@@ -21,6 +24,8 @@ const ACTION_LABELS = new Map<string, string>([
   [DELIVER_INFORMATION_ACTION, "정보 전달"],
   [LEGACY_DELIVER_INFORMATION_ACTION, "정보 전달"],
   ["SET_BGM", "BGM 재생"],
+  ["PLAY_SOUND", "효과음 재생"],
+  ["PLAY_MEDIA", "영상 재생"],
   ["OPEN_GROUP_CHAT", "토론방 열기"],
   ["CLOSE_GROUP_CHAT", "토론방 닫기"],
   ["broadcast", "공지 전달"],
@@ -29,6 +34,8 @@ const ACTION_LABELS = new Map<string, string>([
   ["enable_chat", "채팅 열기"],
   ["disable_chat", "채팅 닫기"],
   ["play_bgm", "BGM 재생"],
+  ["play_sound", "효과음 재생"],
+  ["play_media", "영상 재생"],
   ["stop_bgm", "BGM 정지"],
 ]);
 
