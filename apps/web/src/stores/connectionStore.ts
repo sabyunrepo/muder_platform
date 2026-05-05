@@ -155,7 +155,7 @@ export const useConnectionStore = create<ConnectionState & ConnectionActions>()(
     if (socialClient) {
       socialClient.disconnect();
     }
-    set({ socialClient: null, socialState: WsClientState.DISCONNECTED });
+    set({ socialClient: null, socialState: WsClientState.DISCONNECTED, lastWsError: null });
   },
 
   disconnectAll: () => {

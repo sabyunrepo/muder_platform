@@ -197,14 +197,30 @@ describe('MediaUploadModal', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it('upload error shows error message', async () => {
-    mockedUpload.mockRejectedValueOnce(new Error('서버 에러'));
+  it('upload error hides raw non-API error message', async () => {
+    mockedUpload.mockRejectedValueOnce(new Error('internal storage timeout'));
     renderModal(true);
     fireEvent.change(screen.getByTestId('media-upload-input'), {
       target: { files: [makeFile('a.mp3', 1024)] },
     });
     fireEvent.click(screen.getByRole('button', { name: '업로드' }));
-    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('서버 에러'));
+    await waitFor(() => {
+      const alert = screen.getByRole('alert');
+      expect(alert.textContent).toContain('업로드 실패');
+      expect(alert.textContent).not.toContain('internal storage timeout');
+    });
+  });
+
+  it('dropzone opens file picker with keyboard activation', () => {
+    renderModal(true);
+    const input = screen.getByTestId('media-upload-input');
+    const clickSpy = vi.spyOn(input, 'click').mockImplementation(() => {});
+    const dropzone = screen.getByRole('button', { name: '파일 드롭 영역' });
+
+    fireEvent.keyDown(dropzone, { key: 'Enter' });
+    fireEvent.keyDown(dropzone, { key: ' ' });
+
+    expect(clickSpy).toHaveBeenCalledTimes(2);
   });
 
   it('API upload error hides raw detail and shows reference', async () => {

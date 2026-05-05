@@ -12,8 +12,8 @@ export function getDisplayErrorMessage(
     return ref ? `${message} (Ref: ${ref})` : message;
   }
 
-  if (error instanceof Error && error.message) {
-    return error.message;
+  if (error instanceof Error) {
+    return fallback;
   }
 
   return fallback;

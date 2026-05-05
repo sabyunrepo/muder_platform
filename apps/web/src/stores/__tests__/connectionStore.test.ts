@@ -196,6 +196,25 @@ describe('connectionStore', () => {
     });
   });
 
+  describe('disconnectSocial', () => {
+    it('lastWsError를 null로 초기화한다', () => {
+      useConnectionStore.getState().connectSocial('token-abc');
+      const options = MockWsClient.mock.calls[0][0];
+      options.onServerError({
+        code: 4003,
+        app_code: 'SESSION_INBOX_FULL',
+        message: '요청이 많아 잠시 후 다시 시도해주세요.',
+        severity: 'medium',
+        retryable: true,
+        fatal: false,
+      });
+
+      useConnectionStore.getState().disconnectSocial();
+
+      expect(useConnectionStore.getState().lastWsError).toBeNull();
+    });
+  });
+
   describe('disconnectGame', () => {
     it('gameClient를 null로 설정한다', () => {
       useConnectionStore.getState().connectGame('session-1', 'token-abc');

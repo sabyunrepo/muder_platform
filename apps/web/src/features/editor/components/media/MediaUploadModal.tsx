@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
 import { Upload, X } from 'lucide-react';
 
 import {
@@ -99,6 +99,17 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
     if (f) handleFile(f);
   };
 
+  const openFilePicker = () => {
+    document.getElementById('media-upload-input')?.click();
+  };
+
+  const handleDropzoneKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openFilePicker();
+    }
+  };
+
   const handleUpload = async () => {
     if (!file) return;
     // Abort any pre-existing controller and create a fresh one for this attempt.
@@ -185,7 +196,8 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
           onDragOver={(e) => e.preventDefault()}
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
-          onClick={() => document.getElementById('media-upload-input')?.click()}
+          onClick={openFilePicker}
+          onKeyDown={handleDropzoneKeyDown}
           role="button"
           tabIndex={0}
           aria-label="파일 드롭 영역"
