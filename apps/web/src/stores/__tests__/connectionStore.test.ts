@@ -241,6 +241,23 @@ describe('connectionStore', () => {
       useConnectionStore.getState().disconnectGame();
       expect(mockDisconnect).toHaveBeenCalledTimes(1);
     });
+
+    it('lastWsError를 null로 초기화한다', () => {
+      useConnectionStore.getState().connectGame('session-1', 'token-abc');
+      const options = MockWsClient.mock.calls[0][0];
+      options.onServerError({
+        code: 4010,
+        app_code: 'INTERNAL_ERROR',
+        message: '서버 오류가 발생했습니다.',
+        severity: 'high',
+        retryable: true,
+        fatal: false,
+      });
+
+      useConnectionStore.getState().disconnectGame();
+
+      expect(useConnectionStore.getState().lastWsError).toBeNull();
+    });
   });
 
   describe('disconnectAll', () => {
@@ -279,6 +296,23 @@ describe('connectionStore', () => {
 
       useConnectionStore.getState().disconnectAll();
       expect(mockDisconnect).toHaveBeenCalledTimes(2);
+    });
+
+    it('lastWsError를 null로 초기화한다', () => {
+      useConnectionStore.getState().connectGame('session-1', 'token-abc');
+      const options = MockWsClient.mock.calls[0][0];
+      options.onServerError({
+        code: 4010,
+        app_code: 'INTERNAL_ERROR',
+        message: '서버 오류가 발생했습니다.',
+        severity: 'high',
+        retryable: true,
+        fatal: false,
+      });
+
+      useConnectionStore.getState().disconnectAll();
+
+      expect(useConnectionStore.getState().lastWsError).toBeNull();
     });
   });
 });

@@ -254,6 +254,36 @@ describe('MediaUploadModal', () => {
     });
   });
 
+  it('API upload error uses correlation_id as reference fallback', async () => {
+    mockedUpload.mockRejectedValueOnce(
+      new ApiHttpError({
+        type: 'about:blank',
+        title: 'Conflict',
+        status: 409,
+        detail: 'internal storage key collision for theme-1',
+        code: 'MEDIA_REFERENCE_IN_USE',
+        correlation_id: 'corr-1234567890',
+        timestamp: '2026-05-05T00:00:00Z',
+        severity: 'medium',
+        retryable: false,
+        user_action: 'review_references',
+      })
+    );
+    renderModal(true);
+    fireEvent.change(screen.getByTestId('media-upload-input'), {
+      target: { files: [makeFile('a.mp3', 1024)] },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '업로드' }));
+    await waitFor(() => {
+      const alert = screen.getByRole('alert');
+      expect(alert.textContent).toContain(
+        '이 미디어는 다른 곳에서 사용 중이라 삭제할 수 없습니다.'
+      );
+      expect(alert.textContent).toContain('Ref: corr-123');
+      expect(alert.textContent).not.toContain('internal storage key');
+    });
+  });
+
   it('passes an AbortSignal to uploadMediaFile', async () => {
     mockedUpload.mockResolvedValueOnce({});
     renderModal(true);
