@@ -97,7 +97,7 @@ func TestDeleteNode_OK(t *testing.T) {
 	themeID := uuid.New()
 	nodeID := uuid.New()
 	mock.EXPECT().
-		DeleteNode(gomock.Any(), gomock.Any(), gomock.Eq(nodeID)).
+		DeleteNode(gomock.Any(), gomock.Any(), gomock.Eq(themeID), gomock.Eq(nodeID)).
 		Return(nil).Times(1)
 
 	r := newExtRouter(flow.NewHandler(mock))
