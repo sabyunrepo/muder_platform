@@ -210,6 +210,18 @@ describe('MediaTab', () => {
     expect(screen.getByText('미디어 상세')).toBeDefined();
     // Editable name input pre-filled
     expect(screen.getByDisplayValue('오프닝 BGM')).toBeDefined();
+    expect(screen.getByText('분류')).toBeDefined();
+    expect(screen.getByText('배경음악')).toBeDefined();
+    expect(screen.getByText('출처')).toBeDefined();
+    expect(screen.getByText('직접 업로드')).toBeDefined();
+    expect(screen.getByText('파일 형식')).toBeDefined();
+    expect(screen.getByText('MP3')).toBeDefined();
+    expect(screen.getByText('파일 크기')).toBeDefined();
+    expect(screen.getByText('1.2 MB')).toBeDefined();
+    expect(screen.queryByText('type: BGM')).toBeNull();
+    expect(screen.queryByText('source: FILE')).toBeNull();
+    expect(screen.queryByText('mime: audio/mpeg')).toBeNull();
+    expect(screen.queryByText('size: 1234567 B')).toBeNull();
   });
 
   it('상세 닫기 버튼이 선택을 해제한다', () => {
