@@ -33,7 +33,7 @@ function normalizeAction(value: unknown): PhaseAction | null {
 
   return {
     ...(typeof value.id === 'string' ? { id: value.id } : {}),
-    type: value.type,
+    type: value.type.trim(),
     ...(isRecord(value.params) ? { params: value.params } : {}),
   };
 }

@@ -50,7 +50,9 @@ func removeClueIDFromConfigValue(value any, clueID string) (any, bool) {
 		return items, changed
 	case map[string]any:
 		if placement, ok := v["placement"].(map[string]any); ok {
-			if entityID, ok := placement["entityId"].(string); ok && entityID == clueID {
+			entityID, hasEntityID := placement["entityId"].(string)
+			placementKind, hasKind := placement["kind"].(string)
+			if hasKind && placementKind == "clue" && hasEntityID && entityID == clueID {
 				return deletedConfigNode, true
 			}
 		}

@@ -19,7 +19,7 @@ describe('eventProgressionConfig', () => {
                 label: '금고 암호',
                 password: '0427',
                 placement: { kind: 'clue', entityId: 'clue-1' },
-                actions: [{ id: 'action-1', type: 'OPEN_VOTING' }],
+                actions: [{ id: 'action-1', type: ' OPEN_VOTING ' }],
               },
               { id: '', actions: [{ type: 'OPEN_VOTING' }] },
               { id: 'trigger-2', placement: { kind: 'bad', entityId: 'clue-1' } },

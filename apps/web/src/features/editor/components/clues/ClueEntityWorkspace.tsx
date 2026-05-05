@@ -150,9 +150,9 @@ function ClueUsageCard({ references }: { references: EntityReference[] }) {
         </p>
       ) : (
         <ul className="mt-3 space-y-2">
-          {references.map((ref) => (
+          {references.map((ref, index) => (
             <li
-              key={`${ref.sourceType}-${ref.sourceId}-${ref.relation}`}
+              key={`${ref.sourceType}-${ref.sourceId}-${ref.relation}-${index}`}
               className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-300"
             >
               {formatReference(ref)}

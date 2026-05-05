@@ -9,7 +9,7 @@ import {
   readLocationClueIds,
   type EditorConfig,
 } from './configShape';
-import { readTriggersForPlacement } from './eventProgressionConfig';
+import { readEventProgressionTriggers } from './eventProgressionConfig';
 
 export type EntityReferenceSource = 'location' | 'character' | 'clue' | 'question';
 export type EntityReferenceRelation =
@@ -66,6 +66,12 @@ export function buildClueUsageMap(params: {
   const clueIds = new Set(clues.map((clue) => clue.id));
   const locationNames = new Map(locations.map((location) => [location.id, location.name]));
   const characterNames = new Map(characters.map((character) => [character.id, character.name]));
+  const triggerClueIds = new Set(
+    readEventProgressionTriggers(configJson)
+      .filter((trigger) => trigger.placement?.kind === 'clue')
+      .map((trigger) => trigger.placement?.entityId)
+      .filter((id): id is string => typeof id === 'string' && clueIds.has(id))
+  );
   const usage = Object.fromEntries(
     clues.map((clue) => [clue.id, { clueId: clue.id, references: [], isUnused: true }])
   ) as Record<string, ClueUsageSummary>;
@@ -108,8 +114,7 @@ export function buildClueUsageMap(params: {
   }
 
   for (const clue of clues) {
-    const triggers = readTriggersForPlacement(configJson, { kind: 'clue', entityId: clue.id });
-    if (triggers.length === 0) continue;
+    if (!triggerClueIds.has(clue.id)) continue;
     pushUnique(usage[clue.id].references, {
       sourceType: 'clue',
       sourceId: clue.id,

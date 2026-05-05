@@ -167,8 +167,8 @@ export function ClueListView({ themeId }: ClueListViewProps) {
               함께 정리될 연결 {deletingReferences.length}곳
             </p>
             <ul className="mt-2 space-y-1.5 text-xs text-amber-100/80">
-              {deletingReferences.map((ref) => (
-                <li key={`${ref.sourceType}-${ref.sourceId}-${ref.relation}`}>
+              {deletingReferences.map((ref, index) => (
+                <li key={`${ref.sourceType}-${ref.sourceId}-${ref.relation}-${index}`}>
                   {formatDeleteReference(ref)}
                 </li>
               ))}
