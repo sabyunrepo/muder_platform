@@ -100,10 +100,19 @@
         "AGENTS.md"
       ],
       "resolution": "Added a CI steward handoff workflow so PR review, Codecov, and CI hardening can run on a single PR branch while main Codex continues next-issue work in a separate worktree."
+    },
+    {
+      "id": "completed-agent-slot-release",
+      "resolved_at": "2026-05-05",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md"
+      ],
+      "resolution": "Documented that completed sub-agents must be closed after final result collection, and that slot-limit failures should first close completed agents."
     }
   ],
   "last_review": {
     "date": "2026-05-05",
-    "summary": "Recorded CI steward handoff workflow for non-blocking PR hardening while main issue work continues."
+    "summary": "Recorded CI steward handoff workflow and completed-agent slot release rule for non-blocking PR hardening while main issue work continues."
   }
 }
