@@ -70,6 +70,28 @@ describe('showErrorToast', () => {
     expect(captureApiError).not.toHaveBeenCalled();
   });
 
+  it('high severity 4xx는 캡처 없이 더 오래 표시한다', () => {
+    showErrorToast(
+      apiError({
+        status: 409,
+        code: 'EDITOR_CONFIG_VERSION_MISMATCH',
+        severity: 'high',
+        retryable: false,
+        user_action: 'reload_or_merge',
+        request_id: 'request-123456789',
+      })
+    );
+
+    expect(captureApiError).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith(
+      '다른 변경사항과 충돌했습니다. 최신 내용으로 새로고침 후 다시 저장해주세요.',
+      {
+        description: 'Ref: request-',
+        duration: 8000,
+      }
+    );
+  });
+
   it('5xx 에러는 Sentry에 캡처하고 수동 닫기 토스트로 표시한다', () => {
     showErrorToast(
       apiError({
