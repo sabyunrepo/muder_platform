@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"sync/atomic"
+	"time"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/rs/zerolog"
@@ -24,10 +25,13 @@ type problemResponse struct {
 	Extensions map[string]any `json:"extensions,omitempty"`
 	TraceID    string         `json:"trace_id,omitempty"`
 	RequestID  string         `json:"request_id,omitempty"`
-	Severity   Severity       `json:"severity,omitempty"`
-	Retryable  bool           `json:"retryable"`
-	UserAction string         `json:"user_action,omitempty"`
-	Debug      *debugInfo     `json:"debug,omitempty"`
+	// CorrelationID mirrors request_id for clients and logs that use correlation terminology.
+	CorrelationID string     `json:"correlation_id,omitempty"`
+	Timestamp     string     `json:"timestamp"`
+	Severity      Severity   `json:"severity,omitempty"`
+	Retryable     bool       `json:"retryable"`
+	UserAction    string     `json:"user_action,omitempty"`
+	Debug         *debugInfo `json:"debug,omitempty"`
 }
 
 // debugInfo holds development-only diagnostic information.
@@ -88,20 +92,23 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 
 	defn := definitionForResponse(appErr)
+	requestID := requestIDFrom(w, r)
 	resp := problemResponse{
-		Type:       typeURI,
-		Title:      appErr.Title,
-		Status:     appErr.Status,
-		Detail:     appErr.Detail,
-		Code:       appErr.Code,
-		Instance:   appErr.Instance,
-		Params:     appErr.Params,
-		Errors:     appErr.Errors,
-		Extensions: appErr.Extensions,
-		RequestID:  requestIDFrom(w, r),
-		Severity:   defn.Severity,
-		Retryable:  defn.Retryable,
-		UserAction: defn.UserAction,
+		Type:          typeURI,
+		Title:         appErr.Title,
+		Status:        appErr.Status,
+		Detail:        appErr.Detail,
+		Code:          appErr.Code,
+		Instance:      appErr.Instance,
+		Params:        appErr.Params,
+		Errors:        appErr.Errors,
+		Extensions:    appErr.Extensions,
+		RequestID:     requestID,
+		CorrelationID: requestID,
+		Timestamp:     time.Now().UTC().Format(time.RFC3339Nano),
+		Severity:      defn.Severity,
+		Retryable:     defn.Retryable,
+		UserAction:    defn.UserAction,
 	}
 
 	// Include trace_id in error response if OTel is active.
