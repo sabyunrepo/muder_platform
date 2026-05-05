@@ -100,6 +100,31 @@ describe('FlowCanvas', () => {
     expect(screen.getByTestId('react-flow')).toBeDefined();
   });
 
+  it('선택 노드 변경 콜백을 현재 선택 상태로 호출한다', () => {
+    const selectedNode = {
+      id: 'scene-1',
+      type: 'start',
+      position: { x: 0, y: 0 },
+      data: { label: '오프닝' },
+    };
+    useFlowDataMock.mockReturnValue({
+      nodes: [selectedNode],
+      edges: [],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+      selectedNode,
+    });
+    const onSelectedNodeChange = vi.fn();
+
+    render(<FlowCanvas themeId="theme-1" onSelectedNodeChange={onSelectedNodeChange} />);
+
+    expect(onSelectedNodeChange).toHaveBeenCalledWith(selectedNode);
+  });
+
   it('장면 노드가 있으면 스토리 장면 요약을 렌더링한다', () => {
     useFlowDataMock.mockReturnValue({
       nodes: [

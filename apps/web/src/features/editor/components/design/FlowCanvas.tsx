@@ -3,11 +3,12 @@ import {
   Background,
   MiniMap,
   Controls,
+  type Node,
   type NodeTypes,
   type OnSelectionChangeParams,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFlowData } from "../../hooks/useFlowData";
 import { FlowToolbar } from "./FlowToolbar";
 import { StartNode } from "./StartNode";
@@ -38,13 +39,14 @@ const edgeTypes = { ...conditionEdgeTypes };
 
 interface FlowCanvasProps {
   themeId: string;
+  onSelectedNodeChange?: (node: Node | null) => void;
 }
 
 // ---------------------------------------------------------------------------
 // FlowCanvas
 // ---------------------------------------------------------------------------
 
-export function FlowCanvas({ themeId }: FlowCanvasProps) {
+export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showOrderReview, setShowOrderReview] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -81,6 +83,10 @@ export function FlowCanvas({ themeId }: FlowCanvasProps) {
       ),
     [highlightId, nodes],
   );
+
+  useEffect(() => {
+    onSelectedNodeChange?.(selectedNode);
+  }, [onSelectedNodeChange, selectedNode]);
 
   // Add node at canvas center
   const handleAddNode = useCallback(
