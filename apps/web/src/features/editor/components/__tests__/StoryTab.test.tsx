@@ -26,6 +26,12 @@ vi.mock("@/features/editor/components/reading/ReadingSectionList", () => ({
   ),
 }));
 
+vi.mock("@/features/editor/components/design/StoryInformationDeliverySection", () => ({
+  StoryInformationDeliverySection: ({ themeId }: { themeId: string }) => (
+    <div data-testid="story-information-delivery-section">{themeId}</div>
+  ),
+}));
+
 import { StoryTab } from "../StoryTab";
 
 afterEach(() => {
@@ -64,6 +70,7 @@ describe("StoryTab", () => {
     expect(screen.getByText("1개 장면")).toBeDefined();
     expect(screen.getAllByText("오프닝").length).toBeGreaterThan(0);
     expect(screen.getByTestId("reading-section-list").textContent).toBe("theme-1");
+    expect(screen.getByTestId("story-information-delivery-section").textContent).toBe("theme-1");
   });
 
   it("장면 구성을 불러오는 동안 빈 장면 요약을 보여주지 않는다", async () => {

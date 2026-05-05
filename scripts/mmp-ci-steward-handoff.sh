@@ -12,6 +12,7 @@ CI steward handoff prompt를 출력합니다.
 
 Steward의 범위:
 - 단일 PR branch/worktree의 CodeRabbit, Codecov, CI 보정
+- strict up-to-date merge gate 발생 시 GitHub PR branch update
 - focused validation 및 fix commit push
 - ready-for-ci guard 통과 후 라벨 적용
 
@@ -74,6 +75,8 @@ repo_root="$(git rev-parse --show-toplevel)"
 current_branch="$(git branch --show-current)"
 
 pr_json="$(gh pr view "$pr_number" --json number,title,url,state,headRefName,headRefOid,baseRefName,mergeStateStatus,reviewDecision,labels)"
+pull_json="$(gh api "repos/$owner/$repo/pulls/$pr_number")"
+protection_json="$(gh api "repos/$owner/$repo/branches/$(printf '%s' "$pr_json" | jq -r '.baseRefName')/protection" 2>/dev/null || printf '{}')"
 number="$(printf '%s' "$pr_json" | jq -r '.number')"
 title="$(printf '%s' "$pr_json" | jq -r '.title')"
 url="$(printf '%s' "$pr_json" | jq -r '.url')"
@@ -82,6 +85,8 @@ head="$(printf '%s' "$pr_json" | jq -r '.headRefName')"
 head_sha="$(printf '%s' "$pr_json" | jq -r '.headRefOid')"
 base="$(printf '%s' "$pr_json" | jq -r '.baseRefName')"
 merge_state="$(printf '%s' "$pr_json" | jq -r '.mergeStateStatus // "UNKNOWN"')"
+mergeable_state="$(printf '%s' "$pull_json" | jq -r '.mergeable_state // "unknown"')"
+strict_status_checks="$(printf '%s' "$protection_json" | jq -r '.required_status_checks.strict // false')"
 review_decision="$(printf '%s' "$pr_json" | jq -r '.reviewDecision // "UNKNOWN"')"
 labels="$(printf '%s' "$pr_json" | jq -r '[.labels[].name] | if length == 0 then "없음" else join(", ") end')"
 
@@ -96,13 +101,13 @@ if [[ "$CI_SCOPE" == "code-rabbit-only" ]]; then
   steward_mode="code-rabbit-only exception"
   ci_instruction="이 PR은 heavy CI path filter에 걸리는 파일이 없습니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. CodeRabbit clear + unresolved 0 + light checks + 변경 스크립트/설정 focused validation이 완료 조건입니다."
   merge_ready_rule="MERGE_READY: code-rabbit-only exception 근거 확인, unresolved thread 0, CodeRabbit clear, light checks pass, changed scripts/config focused validation pass. ready-for-ci 라벨과 required workflow green은 요구하지 않습니다."
-  copy_ready_rule="이 PR은 code-rabbit-only exception입니다. MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --code-rabbit-only 로 CodeRabbit/threads만 확인하고, ready-for-ci 라벨이나 workflow_dispatch/full CI는 실행하지 마세요."
+  copy_ready_rule="이 PR은 code-rabbit-only exception입니다. MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --code-rabbit-only --update-branch-if-needed 로 CodeRabbit/threads와 strict up-to-date 상태만 확인하고, ready-for-ci 라벨이나 workflow_dispatch/full CI는 실행하지 마세요."
   full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 path-filter 기대 동작입니다."
 else
   steward_mode="full-ci"
   ci_instruction="이 PR은 heavy CI trigger path를 변경했습니다. CodeRabbit 정리 후 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙이고, scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하세요."
   merge_ready_rule="MERGE_READY: unresolved thread 0, CodeRabbit clear, ready-for-ci label present, required checks green, Codecov 기준 충족 또는 비대상 근거 확인."
-  copy_ready_rule="CodeRabbit 통과 후 scripts/pr-ready-for-ci-guard.sh --apply $number 와 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 를 이어서 실행하세요."
+  copy_ready_rule="CodeRabbit 통과 후 scripts/pr-ready-for-ci-guard.sh --apply $number 와 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows --update-branch-if-needed 를 이어서 실행하세요."
   full_ci_wait_rule="라벨 이벤트만 기다리지 마세요. required workflow(CI, E2E — Stubbed Backend, Security — Fast Feedback)가 현재 head SHA에 없으면 watcher가 workflow_dispatch로 생성해야 합니다."
 fi
 state_note=""
@@ -124,6 +129,8 @@ $state_note
 - Branch: $head -> $base
 - Head SHA: $head_sha
 - Merge state: $merge_state
+- REST mergeable_state: $mergeable_state
+- Base requires up-to-date checks: $strict_status_checks
 - Review decision: $review_decision
 - Labels: $labels
 - CodeRabbit latest: $latest_coderabbit
@@ -143,6 +150,7 @@ $ci_instruction
 ## Steward 허용 범위
 - 이 PR branch/worktree에서만 CodeRabbit, CI, Codecov 원인을 확인하고 수정합니다.
 - 타당한 리뷰/실패만 고치고 focused validation을 실행한 뒤 fix commit을 push할 수 있습니다.
+- Base requires up-to-date checks가 true이고 REST mergeable_state가 behind이면 steward가 gh pr update-branch $number 로 branch update를 수행한 뒤 새 Head SHA 기준으로 처음부터 다시 확인합니다.
 - full-ci PR에서는 CodeRabbit 정리 후 반드시 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙입니다.
 - code-rabbit-only exception PR에서는 ready-for-ci 라벨과 workflow_dispatch를 실행하지 않습니다.
 - watcher는 CI steward 전용입니다. 메인 Codex thread에서 직접 실행하지 않습니다.
@@ -152,10 +160,10 @@ $ci_instruction
 - Required workflow set: CI, E2E — Stubbed Backend, Security — Fast Feedback.
 - gitleaks, File Size Guard, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
-- base/main 최신화, rebase, merge commit, force-push는 steward의 기본 책임이 아닙니다. 메인 Codex가 명시적으로 최신 head를 다시 위임한 경우에만 그 head를 기준으로 대기/검증합니다.
+- local rebase, local merge commit, force-push는 금지입니다. Strict up-to-date gate 해소에는 gh pr update-branch $number 만 사용합니다.
 
 ## Steward 금지 범위
-- PR merge, PR 생성, Issue 생성, force-push, destructive git, secret 조회, unrelated branch/worktree 수정, 임의 branch 최신화는 금지입니다.
+- PR merge, PR 생성, Issue 생성, force-push, destructive git, secret 조회, unrelated branch/worktree 수정, 임의 branch 최신화는 금지입니다. 단, 위 strict up-to-date 조건을 만족한 대상 PR의 gh pr update-branch 실행은 허용합니다.
 - 테스트 스킵, coverage 약화, 유효한 리뷰 무시도 금지입니다.
 
 ## 메인 Codex 복귀 조건

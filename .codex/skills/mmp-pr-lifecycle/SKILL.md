@@ -40,7 +40,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 7. CI steward handoff:
    - Use when PR review/CI waiting would block starting the next issue and the user has approved agent delegation.
    - Generate a copy-ready handoff with `scripts/mmp-ci-steward-handoff.sh <PR>`.
-   - The steward owns only the target PR branch/worktree: CodeRabbit fixes, focused checks, Codecov/CI fixes, push commits, and `ready-for-ci` through `scripts/pr-ready-for-ci-guard.sh --apply <PR>`.
+   - The steward owns only the target PR branch/worktree: CodeRabbit fixes, focused checks, Codecov/CI fixes, push commits, strict up-to-date branch refresh through `gh pr update-branch <PR>`, and `ready-for-ci` through `scripts/pr-ready-for-ci-guard.sh --apply <PR>`.
    - Main Codex continues the next issue only from a separate worktree/branch based on `origin/main` unless intentionally stacking work.
    - Merge authority stays with main Codex until the user explicitly changes the policy. When the steward reports `MERGE_READY`, main Codex verifies the scope-specific gate, then merges.
    - The handoff must include `scripts/mmp-pr-ci-scope.sh <PR>` output.
@@ -52,7 +52,8 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for CodeRabbit/check waiting instead of running repeated watcher polling in the main thread.
    - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
    - After any steward-managed PR is merged, main Codex pulls `origin/main`.
-   - Do not automatically rebase or merge `origin/main` into active PR branches that are already under steward review/CI. Update an active branch only when GitHub reports a merge conflict or up-to-date requirement, the merged main change touches the same files/shared contracts or a stacked parent branch, CI/Codecov failure is caused by main drift, or the user explicitly asks for the branch refresh.
+   - Do not automatically rebase or merge `origin/main` into active PR branches that are already under steward review/CI. Update an active branch only when GitHub reports a merge conflict or up-to-date requirement, `main` branch protection has `required_status_checks.strict=true` and the PR is behind, the merged main change touches the same files/shared contracts or a stacked parent branch, CI/Codecov failure is caused by main drift, or the user explicitly asks for the branch refresh.
+   - In this repo, `main` currently requires strict up-to-date status checks. Therefore `mergeable_state=behind` / `mergeStateStatus=BEHIND` can block merge even when `mergeable=MERGEABLE`; the steward should update the PR branch with `gh pr update-branch <PR>` or `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR> --update-branch-if-needed ...`, then restart latest-head review/CI verification.
    - If no branch-refresh trigger exists, preserve the active PR head and let the steward finish the current review/CI cycle. Resolve any remaining conflict at the merge decision point.
 
 ## Done
