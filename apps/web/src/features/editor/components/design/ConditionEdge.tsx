@@ -10,7 +10,7 @@ import {
 // ---------------------------------------------------------------------------
 
 interface ConditionEdgeData {
-  condition?: string;
+  condition?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 

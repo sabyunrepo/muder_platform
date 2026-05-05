@@ -156,6 +156,26 @@ describe("phaseEntityAdapter", () => {
         id: "e2",
         source: "phase-1",
         target: "ending-1",
+        data: {
+          condition: {
+            id: "group-1",
+            operator: "AND",
+            rules: [
+              {
+                id: "rule-1",
+                variable: "custom_flag",
+                target_flag_key: "route_open",
+                comparator: "=",
+                value: "true",
+              },
+            ],
+          },
+        },
+      },
+      {
+        id: "e3",
+        source: "phase-1",
+        target: "ending-2",
         data: { condition: { type: "has_clue", clueId: "clue-1" } },
       },
     ];
@@ -170,7 +190,7 @@ describe("phaseEntityAdapter", () => {
       informationDeliveryCount: 1,
       enterActionLabels: ["BGM 재생"],
       exitActionLabels: ["채팅 닫기"],
-      defaultTransitionLabel: "기본 이동 1개",
+      defaultTransitionLabel: "기본 이동 2개",
       conditionalTransitionCount: 1,
     });
   });
