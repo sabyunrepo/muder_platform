@@ -423,7 +423,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
     expect(cached?.config_json).toEqual({}); // rolled back to baseTheme.config_json
-    expect(toastError).toHaveBeenCalledWith('장소 조사 단서 저장에 실패했습니다');
+    expect(toastError).toHaveBeenCalledWith('단서 조사 저장에 실패했습니다');
   });
 
   it('연속 토글에서 첫 mutation 실패 시 첫 토글 직전 상태로 rollback 된다 (M5 closure)', () => {
@@ -469,7 +469,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     // 핵심 검증: 첫 토글 직전 상태로 롤백 (빈 config_json).
     // 단일 rollbackRef 구현이었다면 두 번째 토글 직전 스냅샷(clue-1 포함)으로 잘못 복원됨.
     expect(cached?.config_json).toEqual({});
-    expect(toastError).toHaveBeenCalledWith('장소 조사 단서 저장에 실패했습니다');
+    expect(toastError).toHaveBeenCalledWith('단서 조사 저장에 실패했습니다');
   });
 
   it('theme 캐시가 없으면 mutate 만 호출되고 rollback 대상도 없다', () => {
