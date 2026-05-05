@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -192,6 +193,83 @@ func TestUpdateConfigJson_NotFound(t *testing.T) {
 	if appErr.Code != apperror.ErrNotFound {
 		t.Errorf("expected NOT_FOUND, got %s", appErr.Code)
 	}
+}
+
+func TestUpdateConfigJson_ValidatesEndingBranchReferences(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	endingID := insertEditorFlowNode(t, f.pool, themeID, "ending")
+
+	config := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"ending_branch": {
+				"enabled": true,
+				"config": {
+					"defaultEnding": "%s",
+					"matrix": [{"priority": 1, "ending": "%s", "conditions": {}}]
+				}
+			}
+		}
+	}`, endingID, endingID))
+	resp, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, config)
+	if err != nil {
+		t.Fatalf("UpdateConfigJson: %v", err)
+	}
+	if resp == nil {
+		t.Fatal("expected response, got nil")
+	}
+}
+
+func TestUpdateConfigJson_RejectsEndingBranchReferenceOutsideTheme(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	foreignEndingID := insertEditorFlowNode(t, f.pool, otherThemeID, "ending")
+
+	config := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"ending_branch": {
+				"enabled": true,
+				"config": {
+					"defaultEnding": "%s",
+					"matrix": [{"priority": 1, "ending": "%s", "conditions": {}}]
+				}
+			}
+		}
+	}`, foreignEndingID, foreignEndingID))
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, config)
+	if err == nil {
+		t.Fatal("expected ending_branch reference validation error, got nil")
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.AppError, got %T", err)
+	}
+	if appErr.Code != apperror.ErrBadRequest {
+		t.Fatalf("expected BAD_REQUEST, got %s", appErr.Code)
+	}
+	if !strings.Contains(appErr.Detail, "defaultEnding must belong to this theme as an ending flow node") {
+		t.Fatalf("unexpected error detail: %s", appErr.Detail)
+	}
+}
+
+func insertEditorFlowNode(t *testing.T, pool interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, themeID uuid.UUID, nodeType string) uuid.UUID {
+	t.Helper()
+	var id uuid.UUID
+	if err := pool.QueryRow(context.Background(), `
+		INSERT INTO flow_nodes (theme_id, type, data, position_x, position_y)
+		VALUES ($1, $2, '{}', 0, 0)
+		RETURNING id
+	`, themeID, nodeType).Scan(&id); err != nil {
+		t.Fatalf("insert flow node: %v", err)
+	}
+	return id
 }
 
 // TestUpdateConfigJson_RejectsLegacyShape verifies that UpdateConfigJson rejects

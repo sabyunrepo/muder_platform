@@ -87,17 +87,17 @@ func (mr *MockServiceMockRecorder) DeleteEdge(ctx, creatorID, edgeID any) *gomoc
 }
 
 // DeleteNode mocks base method.
-func (m *MockService) DeleteNode(ctx context.Context, creatorID, nodeID uuid.UUID) error {
+func (m *MockService) DeleteNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteNode", ctx, creatorID, nodeID)
+	ret := m.ctrl.Call(m, "DeleteNode", ctx, creatorID, themeID, nodeID)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteNode indicates an expected call of DeleteNode.
-func (mr *MockServiceMockRecorder) DeleteNode(ctx, creatorID, nodeID any) *gomock.Call {
+func (mr *MockServiceMockRecorder) DeleteNode(ctx, creatorID, themeID, nodeID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNode", reflect.TypeOf((*MockService)(nil).DeleteNode), ctx, creatorID, nodeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNode", reflect.TypeOf((*MockService)(nil).DeleteNode), ctx, creatorID, themeID, nodeID)
 }
 
 // GetFlow mocks base method.

@@ -78,6 +78,12 @@ type locationDiscoveryRef struct {
 	requiredClueIDs []string
 }
 
+type endingBranchRef struct {
+	field string
+	index int
+	id    string
+}
+
 func extractLocationDiscoveryRefs(cfg map[string]any) ([]locationDiscoveryRef, error) {
 	modules, ok := cfg["modules"].(map[string]any)
 	if !ok {
@@ -221,6 +227,130 @@ func (s *service) validateLocationDiscoveryReferences(ctx context.Context, q *db
 	return nil
 }
 
+func extractEndingBranchRefs(cfg map[string]any) ([]endingBranchRef, error) {
+	modules, ok := cfg["modules"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	rawModule, exists := modules["ending_branch"]
+	if !exists {
+		return nil, nil
+	}
+	module, ok := rawModule.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.ending_branch must be an object")
+	}
+	moduleConfigRaw, exists := module["config"]
+	if !exists {
+		return nil, nil
+	}
+	if moduleConfigRaw == nil {
+		return nil, fmt.Errorf("config_json: modules.ending_branch.config cannot be null")
+	}
+	moduleConfig, ok := moduleConfigRaw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.ending_branch.config must be an object")
+	}
+
+	refs := make([]endingBranchRef, 0)
+	if defaultEnding, exists := moduleConfig["defaultEnding"]; exists {
+		if defaultEnding == nil {
+			return nil, fmt.Errorf("config_json: modules.ending_branch.config.defaultEnding cannot be null")
+		}
+		value, ok := defaultEnding.(string)
+		if !ok {
+			return nil, fmt.Errorf("config_json: modules.ending_branch.config.defaultEnding must be a string")
+		}
+		if strings.TrimSpace(value) != "" {
+			refs = append(refs, endingBranchRef{field: "defaultEnding", index: -1, id: value})
+		}
+	}
+
+	rawMatrix, exists := moduleConfig["matrix"]
+	if !exists {
+		return refs, nil
+	}
+	if rawMatrix == nil {
+		return nil, fmt.Errorf("config_json: modules.ending_branch.config.matrix cannot be null")
+	}
+	matrix, ok := rawMatrix.([]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.ending_branch.config.matrix must be an array")
+	}
+	for i, rawRow := range matrix {
+		row, ok := rawRow.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("config_json: modules.ending_branch.config.matrix[%d] must be an object", i)
+		}
+		rawEnding, exists := row["ending"]
+		if !exists {
+			continue
+		}
+		if rawEnding == nil {
+			return nil, fmt.Errorf("config_json: modules.ending_branch.config.matrix[%d].ending cannot be null", i)
+		}
+		endingID, ok := rawEnding.(string)
+		if !ok {
+			return nil, fmt.Errorf("config_json: modules.ending_branch.config.matrix[%d].ending must be a string", i)
+		}
+		if strings.TrimSpace(endingID) != "" {
+			refs = append(refs, endingBranchRef{field: "matrix", index: i, id: endingID})
+		}
+	}
+	return refs, nil
+}
+
+func (s *service) validateEndingBranchReferences(ctx context.Context, tx pgx.Tx, themeID uuid.UUID, raw json.RawMessage) error {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("config_json: invalid JSON: %w", err)
+	}
+	refs, err := extractEndingBranchRefs(cfg)
+	if err != nil {
+		return err
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+
+	rows, err := tx.Query(ctx, `SELECT id FROM flow_nodes WHERE theme_id = $1 AND type = $2`, themeID, "ending")
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to validate ending_branch ending nodes")
+		return apperror.Internal("failed to validate ending_branch references")
+	}
+	defer rows.Close()
+
+	endingIDs := make(map[string]struct{})
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return apperror.Internal("failed to validate ending_branch references")
+		}
+		endingIDs[id.String()] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return apperror.Internal("failed to validate ending_branch references")
+	}
+
+	for _, ref := range refs {
+		parsedID, err := uuid.Parse(ref.id)
+		if err != nil {
+			return apperror.BadRequest(endingBranchRefError(ref, "must be a valid ending flow node id"))
+		}
+		if _, ok := endingIDs[parsedID.String()]; !ok {
+			return apperror.BadRequest(endingBranchRefError(ref, "must belong to this theme as an ending flow node"))
+		}
+	}
+	return nil
+}
+
+func endingBranchRefError(ref endingBranchRef, suffix string) string {
+	if ref.field == "defaultEnding" {
+		return "config_json: modules.ending_branch.config.defaultEnding " + suffix
+	}
+	return fmt.Sprintf("config_json: modules.ending_branch.config.matrix[%d].ending %s", ref.index, suffix)
+}
+
 func validateClueInteractionConfigShape(cfg map[string]any) error {
 	modules, ok := cfg["modules"].(map[string]any)
 	if !ok {
@@ -352,6 +482,9 @@ func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.
 
 		qtx := s.q.WithTx(tx)
 		if err := s.validateLocationDiscoveryReferences(ctx, qtx, themeID, config); err != nil {
+			return err
+		}
+		if err := s.validateEndingBranchReferences(ctx, tx, themeID, config); err != nil {
 			return err
 		}
 

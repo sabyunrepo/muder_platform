@@ -3,6 +3,7 @@ package ending_branch
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -185,6 +186,38 @@ func TestModule_ReactTo_EvaluatesPriorityMatrixAndPublishesEvent(t *testing.T) {
 	require.Len(t, events, 1)
 	payload := events[0].Payload.(map[string]any)
 	assert.Equal(t, "진실", payload["selectedEnding"])
+}
+
+func TestModule_ReactTo_SelectedEndingPreservesFlowNodeID(t *testing.T) {
+	bus := engine.NewEventBus(nil)
+	var events []engine.Event
+	bus.Subscribe("ending.evaluated", func(event engine.Event) { events = append(events, event) })
+	m := NewModule()
+	endingID := uuid.New().String()
+	cfg := json.RawMessage(fmt.Sprintf(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [
+			{"priority": 1, "conditions": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "%s"}
+		],
+		"defaultEnding": "%s"
+	}`, endingID, endingID))
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{EventBus: bus}, cfg))
+	player := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), player, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildStateFor(player)
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, endingID, result["selectedEnding"])
+	require.Len(t, events, 1)
+	payload := events[0].Payload.(map[string]any)
+	assert.Equal(t, endingID, payload["selectedEnding"])
 }
 
 func TestModule_BuildStateAfterEvaluationSeparatesAdminScoresFromPlayerState(t *testing.T) {

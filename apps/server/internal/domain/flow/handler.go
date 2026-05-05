@@ -102,12 +102,17 @@ func (h *Handler) UpdateNode(w http.ResponseWriter, r *http.Request) {
 // DeleteNode handles DELETE /editor/themes/{id}/flow/nodes/{nodeId}.
 func (h *Handler) DeleteNode(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
+	themeID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
 	nodeID, err := parseUUID(r, "nodeId")
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}
-	if err := h.svc.DeleteNode(r.Context(), creatorID, nodeID); err != nil {
+	if err := h.svc.DeleteNode(r.Context(), creatorID, themeID, nodeID); err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}
