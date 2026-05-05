@@ -113,4 +113,18 @@ describe("StoryMapWorkspace", () => {
       ),
     ).toBeDefined();
   });
+
+  it("테마가 바뀌면 이전 테마의 선택 항목을 초기화한다", () => {
+    const { rerender } = render(<StoryMapWorkspace themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /찢어진 초대장/ }));
+    expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(1);
+
+    rerender(<StoryMapWorkspace themeId="theme-2" />);
+
+    expect(screen.getAllByText("찢어진 초대장")).toHaveLength(1);
+    expect(
+      screen.getByText("왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다."),
+    ).toBeDefined();
+  });
 });
