@@ -35,12 +35,15 @@
 
 ## 현재 구현률 요약
 
-현재 `origin/main` 기준 체감 구현률은 약 **70%**다.
+현재 스토리 중심 리빌드 PR stack 기준 체감 구현률은 약 **95%**다.
 
-2026-05-05 P0 보정 기준:
+2026-05-05 story-centered 보정 기준:
 
-- #375가 merge되면 creator-safe UI gap이 닫혀 약 **90%**로 본다.
-- #376이 merge되면 직접 URL, alias URL, 모바일/데스크톱 smoke gate가 문서와 테스트에 고정되어 에디터 프론트 1차 목표는 기능 구현 관점에서 **100% 완료**로 판정한다.
+- #387은 merge되어 `/editor/:id` 기본 제작 흐름을 `스토리 진행` 화면으로 전환했다.
+- #390이 merge되면 좌측 제작 라이브러리가 실제 entity read hook 기반으로 연결된다.
+- #391이 merge되면 우측 장면 속성 패널이 선택 장면과 연결 대상을 함께 보여준다.
+- #392가 merge되면 기존 characters/clues/locations/endings/media 페이지는 direct URL을 유지한 보조 관리 화면으로 정리된다.
+- #393이 merge되면 story-centered direct URL, alias URL, 모바일/데스크톱 smoke gate가 문서와 테스트에 고정되어 에디터 프론트 1차 목표는 기능 구현 관점에서 **100% 완료**로 판정한다.
 - 이후 남는 작업은 1차 프론트 기능 추가가 아니라 2차 목표인 backend 저장/검증, runtime engine, game screen으로 분류한다.
 
 - 높은 영역: route migration, 캐릭터, 단서 기본, 장소 기본, 결말 기본, 미디어 라이브러리
@@ -51,7 +54,7 @@
 
 | 제작 단위           | 현재 상태              | 근거                                                                                                               | 1차 100%까지 남은 것                                                                      | 연결 이슈                          | 우선순위     |
 | ------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------- | ------------ |
-| `/editor/:id` route | P0 수용 게이트 진행 중 | `EditorPage.tsx`, `routeSegments.ts`, `EditorPage.test.tsx`, `routeSegments.test.ts`, `editor-golden-path.spec.ts` | #376에서 route matrix, `/design/*`, top-level alias, 390px/desktop smoke를 merge하면 완료 | #376                               | P0           |
+| `/editor/:id` route | P0 수용 게이트 진행 중 | `EditorPage.tsx`, `routeSegments.ts`, `EditorPage.test.tsx`, `routeSegments.test.ts` | PR #393 머지(= #386 close) 시 story map 기본 진입, `/story-map`, `/story`, 기존 entity direct URL, 390px/desktop smoke 기준으로 완료 | #386, #393                         | P0           |
 | 스토리/장면         | 기반 완료              | #299 CLOSED, `StoryTab.tsx`, `StorySceneSummary.tsx`, `storySceneAdapter.ts`                                       | 장면 하위 블록이 실제 편집 화면 안에 모이는지 최종 polish                                 | #302, #290, #303, #305             | P0 완료 기반 |
 | 조건                | 기반 완료              | #301 CLOSED, `ConditionBuilder.tsx`, `conditionTypes.ts`, `conditionAdapter.ts`                                    | 각 기능에서 조건 선택지를 실제 데이터로 채우고 raw shape 숨김 유지                        | #302, #290, #304, #303, #305, #329 | P0 완료 기반 |
 | 트리거              | 기반 완료              | #300 CLOSED, `ActionListEditor.tsx`, `EntityTriggerPlacementCard.tsx`, `eventProgressionConfig.ts`                 | 결과 타입을 정보 공개/조사권/토론방/연출과 연결                                           | #302, #304, #303, #305             | P0 완료 기반 |
@@ -65,7 +68,7 @@
 | 연출                | 낮음~중간              | `MediaTab.tsx`, `MediaPicker.tsx`, `play_bgm` action label                                                         | 장면/트리거에 BGM, SE, 영상, 배경 cue를 raw JSON 없이 연결                                | #305                               | P1-5         |
 | 결말                | 기본 완료              | `EndingEntitySubTab.tsx`, `EndingBranchRulesPanel.tsx`, #280 open                                                  | 캐릭터별 결말, GM 보정, 감상 공유, 엔드카드                                               | #280, #330, #293                   | P2           |
 | 미디어              | 기본 완료              | `MediaTab.tsx`, `MediaDetail.tsx`, `mediaResourceAdapter.ts`                                                       | metadata 과노출 축소, 모바일 상세 패널 개선, 연출 picker와 연결                           | #305, #282                         | P1/P2        |
-| Creator-safe polish | P0 PR 진행 중          | `AdvancedTab.tsx`, `MediaDetail.tsx`, #277 audit                                                                   | #375에서 raw `config_json` 기본 노출과 raw media metadata 표시를 닫으면 완료              | #375, #282, #283                   | P0/P1 병행   |
+| Creator-safe polish | 병행 guard             | `AdvancedTab.tsx`, `MediaDetail.tsx`, #277 audit                                                                   | 스토리 중심 화면이 기본 진입이 되었으므로 raw/debug 화면은 보조 설정 영역에서 별도 polish | #282, #283                         | P1 병행      |
 | 저장/검증 안정성    | 프론트 일부            | adapter tests 다수, backend validation gap 존재                                                                    | 프론트 1차 PR마다 focused 저장 테스트. backend 최종 검증은 2차로 이동                     | #281, #283, #294                   | 병행 guard   |
 
 ## 구현 순서 재정렬

@@ -46,6 +46,7 @@ const DESIGN_ROUTE_SUBTAB_MAP: Record<string, DesignSubTab> = {
 
 export const EDITOR_ROUTE_MATRIX = [
   { path: '/editor/:id', editorTab: 'storyMap' },
+  { path: '/editor/:id/story-map', routeSegment: 'story-map', editorTab: 'storyMap', alias: true },
   { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'storyMap' },
   { path: '/editor/:id/characters', routeSegment: 'characters', editorTab: 'characters' },
   { path: '/editor/:id/clues', routeSegment: 'clues', editorTab: 'clues' },

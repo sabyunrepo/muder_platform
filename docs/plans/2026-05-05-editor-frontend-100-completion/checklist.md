@@ -10,12 +10,14 @@
 
 ## 최신 판정
 
-2026-05-05 현재 `origin/main` 기준으로 #290, #302, #303, #304, #305가 각각 PR #338, #337, #342, #340, #345로 머지되어 핵심 제작 블록은 들어왔다.
+2026-05-05 현재 story-centered PR stack 기준으로 #382가 PR #387로 merge되어 `/editor/:id` 기본 진입은 `스토리 진행` 제작 화면이 되었다. #383, #384, #385, #386은 각각 #390, #391, #392, #393으로 이어지는 stack에서 좌측 제작 라이브러리, 우측 장면 속성, 기존 엔티티 보조 관리, 최종 수용 게이트를 닫는다.
 
-따라서 남은 1차 프론트 100% gap은 새 대형 entity 구현이 아니라 다음 두 가지다.
+따라서 남은 1차 프론트 100% gap은 새 대형 entity 구현이 아니라 다음 네 가지다.
 
-- creator-safe UI: `AdvancedTab` raw `config_json` 기본 노출과 `MediaDetail` raw metadata 표시를 정리한다.
-- final acceptance gate: 직접 URL, tab/subtab, 모바일/데스크톱 smoke, 감사표 최신화를 한 PR에서 고정한다.
+- entity library: 실제 characters/clues/locations/media read hook을 좌측 제작 라이브러리에서 불러온다.
+- scene inspector: 선택한 장면과 선택한 연결 대상을 우측 패널에서 함께 확인한다.
+- auxiliary pages: 기존 characters/clues/locations/endings/media 페이지를 direct URL 유지 보조 관리 화면으로 정리한다.
+- final acceptance gate: story-centered 직접 URL, tab/subtab, 모바일/데스크톱 smoke, 감사표 최신화를 한 PR에서 고정한다.
 
 ## 근거
 
@@ -25,26 +27,55 @@
 
 ## 실행 순서
 
-### P0-1. #375 Creator-safe 고급/미디어 UI 정리
+### P0-1. #383 좌측 엔티티 라이브러리
 
-Issue: https://github.com/sabyunrepo/muder_platform/issues/375
+Issue: https://github.com/sabyunrepo/muder_platform/issues/383
 
 작업:
 
-- `AdvancedTab.tsx` raw `config_json` 편집 UI를 기본 제작 nav에서 제거하거나 dev/admin/debug gate로 격리한다.
-- 검증 기능은 제작자용 `ValidationPanel` 또는 안전한 검수 UI로 남긴다.
-- `MediaDetail.tsx`의 `type/source/mime/size` raw metadata 표시를 제작자용 문구로 바꾼다.
-- 내부 ID, module key, 저장 JSON shape가 기본 제작 화면에 노출되지 않는지 component test로 고정한다.
+- 스토리 맵 좌측에 등장인물, 단서, 장소, 미디어를 제작 라이브러리로 표시한다.
+- 실제 editor read hook을 사용하고 mock/dev preview 데이터에 기대지 않는다.
+- 조사권, 토론방, 트리거 같은 진행 자원은 별도 저장 계약을 만들지 않고 장면 연결 후보로 노출한다.
 
 완료 기준:
 
-- 제작자 기본 화면에서 raw `config_json`을 직접 편집하지 않는다.
-- 미디어 상세가 내부 key 대신 사람이 읽는 라벨을 보여준다.
+- `/editor/:id`에서 제작 라이브러리가 보인다.
+- 라이브러리 항목 선택 상태가 우측 장면 속성의 연결 대상과 이어진다.
 - focused Vitest와 `pnpm --filter @mmp/web exec tsc --noEmit`이 통과한다.
 
-### P0-2. #376 직접 URL·모바일 최종 수용 게이트
+### P0-2. #384 우측 장면 속성 패널
 
-Issue: https://github.com/sabyunrepo/muder_platform/issues/376
+Issue: https://github.com/sabyunrepo/muder_platform/issues/384
+
+작업:
+
+- 중앙 `FlowCanvas`에서 선택한 장면을 우측 패널로 전달한다.
+- 정보 공개, 단서 배포, 장소, 조사권, 토론방, 연출, 조건, 액션 상태를 제작자용 문구로 요약한다.
+- 선택한 라이브러리 연결 대상과 선택한 장면을 동시에 보여준다.
+
+완료 기준:
+
+- 장면을 선택하지 않은 상태와 선택한 상태가 모두 테스트된다.
+- 내부 저장 key나 raw JSON 없이 제작자 언어로 표시된다.
+
+### P0-3. #385 기존 엔티티 페이지 보조 관리 정리
+
+Issue: https://github.com/sabyunrepo/muder_platform/issues/385
+
+작업:
+
+- 상단 탭을 `스토리 진행 → 보조 관리 → 설정` 순서로 정리한다.
+- 기존 characters/clues/locations/endings/media direct URL은 유지한다.
+- 등장인물, 단서, 미디어는 `관리` 라벨로 보조 관리 성격을 분명히 한다.
+
+완료 기준:
+
+- `/characters`, `/clues`, `/locations`, `/endings`, `/media`가 계속 열린다.
+- 기본 제작 흐름은 `/editor/:id`의 스토리 진행 화면으로 유지된다.
+
+### P0-4. #386 직접 URL·모바일 최종 수용 게이트
+
+Issue: https://github.com/sabyunrepo/muder_platform/issues/386
 
 작업:
 
@@ -57,18 +88,19 @@ Issue: https://github.com/sabyunrepo/muder_platform/issues/376
 
 | URL                            | 열려야 하는 제작 화면 | 비고                    |
 | ------------------------------ | --------------------- | ----------------------- |
-| `/editor/:id`                  | 기본정보              | 기본 진입               |
-| `/editor/:id/story`            | 스토리                | top-level tab           |
-| `/editor/:id/characters`       | 등장인물              | top-level tab           |
-| `/editor/:id/clues`            | 단서                  | top-level tab           |
+| `/editor/:id`                  | 스토리 진행           | 기본 제작 진입          |
+| `/editor/:id/story-map`        | 스토리 진행           | 유지할 alias            |
+| `/editor/:id/story`            | 스토리 진행           | 기존 story URL 흡수     |
+| `/editor/:id/characters`       | 등장인물 관리         | 보조 관리 화면          |
+| `/editor/:id/clues`            | 단서 관리             | 보조 관리 화면          |
 | `/editor/:id/relations`        | 단서 관계             | 단서 탭 안 관계 모드    |
 | `/editor/:id/design/modules`   | 게임설계 / 모듈       | canonical design subtab |
 | `/editor/:id/design/flow`      | 게임설계 / 흐름       | canonical design subtab |
 | `/editor/:id/design/locations` | 게임설계 / 장소       | canonical design subtab |
 | `/editor/:id/design/endings`   | 게임설계 / 결말       | canonical design subtab |
-| `/editor/:id/media`            | 미디어                | top-level tab           |
+| `/editor/:id/media`            | 미디어 관리           | 보조 관리 화면          |
 | `/editor/:id/modules`          | 게임설계 / 모듈       | 유지할 alias            |
-| `/editor/:id/flow`             | 게임설계 / 흐름       | 유지할 alias            |
+| `/editor/:id/flow`             | 스토리 진행           | 기존 flow URL 흡수      |
 | `/editor/:id/locations`        | 게임설계 / 장소       | 유지할 alias            |
 | `/editor/:id/endings`          | 게임설계 / 결말       | 유지할 alias            |
 
@@ -83,7 +115,7 @@ Route matrix의 코드 기준은 `apps/web/src/features/editor/routeSegments.ts`
 
 ## 이후 순서
 
-\#375와 \#376이 닫히면 에디터 프론트 1차 목표는 기능 구현 관점에서 100%로 본다. 이후 작업은 2차 목표로 이동한다.
+\#390, \#391, \#392, \#393이 닫히면 에디터 프론트 1차 목표는 기능 구현 관점에서 100%로 본다. 이후 작업은 2차 목표로 이동한다.
 
 2차는 다음 순서로 재정렬한다.
 
