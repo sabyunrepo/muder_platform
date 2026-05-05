@@ -18,7 +18,7 @@ func init() {
 		EventDef{Type: TypePing, Direction: DirBidi, Category: "system"},
 		EventDef{Type: TypePong, Direction: DirBidi, Category: "system"},
 		EventDef{Type: TypeError, Direction: DirS2C, Category: "system",
-			Note: "wire payload is ErrorPayload { code, message }"},
+			Note: "wire payload is ErrorPayload with ProblemDetail-lite recovery metadata"},
 		EventDef{Type: TypeConnected, Direction: DirS2C, Category: "system",
 			Note: "first server frame on upgrade; payload is ConnectedPayload"},
 		EventDef{Type: TypeReconnect, Direction: DirS2C, Category: "system",

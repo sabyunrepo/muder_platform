@@ -9,14 +9,15 @@ import {
   type AuthTokenIssuedPayload,
   type AuthInvalidSessionPayload,
   type ConnectedPayload,
-} from "@mmp/shared";
-import { ReconnectManager } from "./reconnect.js";
+  type ErrorPayload,
+} from '@mmp/shared';
+import { ReconnectManager } from './reconnect.js';
 import {
   WsClientState,
   type WsClientOptions,
   type WsEventHandler,
   type WsStateChangeHandler,
-} from "./types.js";
+} from './types.js';
 
 /**
  * WebSocket client with heartbeat + reconnect + typed event dispatch.
@@ -42,10 +43,7 @@ export class WsClient {
   private ws: WebSocket | null = null;
   private seq = 0;
   private state: WsClientState = WsClientState.IDLE;
-  private readonly options: Required<
-    Pick<WsClientOptions, "heartbeatInterval">
-  > &
-    WsClientOptions;
+  private readonly options: Required<Pick<WsClientOptions, 'heartbeatInterval'>> & WsClientOptions;
   private readonly reconnect: ReconnectManager;
   private readonly listeners = new Map<string, Set<WsEventHandler>>();
   private readonly stateListeners = new Set<WsStateChangeHandler>();
@@ -73,10 +71,7 @@ export class WsClient {
 
   /** Connect to the WebSocket server. */
   connect(): void {
-    if (
-      this.state === WsClientState.CONNECTED ||
-      this.state === WsClientState.CONNECTING
-    ) {
+    if (this.state === WsClientState.CONNECTED || this.state === WsClientState.CONNECTING) {
       return;
     }
     this.setState(WsClientState.CONNECTING);
@@ -93,7 +88,7 @@ export class WsClient {
     this.stopHeartbeat();
     if (this.ws) {
       this.ws.onclose = null; // suppress reconnect on intentional close
-      this.ws.close(1000, "client disconnect");
+      this.ws.close(1000, 'client disconnect');
       this.ws = null;
     }
     this.setState(WsClientState.DISCONNECTED);
@@ -122,7 +117,7 @@ export class WsClient {
    */
   refreshToken(refreshToken: string): void {
     if (!this.options.authProtocol) {
-      throw new Error("refreshToken requires authProtocol: true");
+      throw new Error('refreshToken requires authProtocol: true');
     }
     const payload: AuthRefreshPayload = { token: refreshToken };
     this.send(Events.AUTH_REFRESH, payload);
@@ -206,7 +201,7 @@ export class WsClient {
    */
   private maybeSendAuthGreeting(): void {
     if (!this.options.authProtocol) return;
-    const token = this.currentToken ?? "";
+    const token = this.currentToken ?? '';
     if (this.sessionId !== undefined && this.lastSeq !== undefined) {
       const payload: AuthResumePayload = {
         token,
@@ -238,19 +233,16 @@ export class WsClient {
       message = JSON.parse(raw) as WsMessage;
     } catch (err) {
       if (this.options.onParseError) {
-        this.options.onParseError(
-          err instanceof Error ? err : new Error(String(err)),
-          raw,
-        );
+        this.options.onParseError(err instanceof Error ? err : new Error(String(err)), raw);
       } else {
-        console.warn("[WsClient] Failed to parse message:", err);
+        console.warn('[WsClient] Failed to parse message:', err);
       }
       return;
     }
 
     // Track lastSeq for the next resume attempt — every server-stamped
     // envelope carries a monotonically increasing seq.
-    if (typeof message.seq === "number") {
+    if (typeof message.seq === 'number') {
       this.lastSeq = message.seq;
     }
 
@@ -266,6 +258,15 @@ export class WsClient {
     // PR-9 auth.* dispatch — these never reach the regular emit path
     // because consumers register dedicated callbacks instead.
     if (this.handleAuthFrame(message)) {
+      return;
+    }
+
+    if (message.type === Events.ERROR) {
+      const payload = message.payload as ErrorPayload;
+      if (payload.fatal) {
+        this.reconnect.disable();
+      }
+      this.options.onServerError?.(payload);
       return;
     }
 
@@ -327,7 +328,7 @@ function buildUrl(url: string, token: string | undefined): string {
   if (!token) return url;
   try {
     const u = new URL(url);
-    if (!u.searchParams.has("token")) u.searchParams.set("token", token);
+    if (!u.searchParams.has('token')) u.searchParams.set('token', token);
     return u.toString();
   } catch {
     // Relative or otherwise non-parseable URL — fall back to raw.

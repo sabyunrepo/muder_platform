@@ -321,7 +321,7 @@ func (h *AuthHandler) userRevokedAndStop(c *Client, userID uuid.UUID, since time
 // ---------------------------------------------------------------------------
 
 func (h *AuthHandler) unauthorize(c *Client, reason string) {
-	c.SendMessage(NewErrorEnvelope(ErrCodeUnauthorized, reason))
+	c.SendMessage(NewFatalErrorEnvelope(ErrCodeUnauthorized, reason))
 	c.Close()
 }
 

@@ -389,6 +389,54 @@ func TestHub_Route_WithRouter(t *testing.T) {
 	}
 }
 
+func TestHub_Route_AuthBypassesSessionForwarding(t *testing.T) {
+	router := NewRouter(zerolog.Nop())
+	var routed bool
+	router.Handle("auth", func(c *Client, env *Envelope) {
+		routed = true
+	})
+
+	h := newTestHub(router)
+	defer h.Stop()
+
+	sender := &stubSessionSender{}
+	h.SetSessionSender(sender)
+
+	c := newTestClient(h, uuid.New())
+	c.SessionID = uuid.New()
+
+	h.Route(c, MustEnvelope(TypeAuthResume, map[string]string{"token": "t"}))
+
+	if !routed {
+		t.Fatal("auth recovery message was not routed through router")
+	}
+	if len(sender.received) != 0 {
+		t.Fatalf("auth recovery message forwarded to session actor: got %d", len(sender.received))
+	}
+}
+
+func TestHub_Route_PingBypassesSessionForwarding(t *testing.T) {
+	router := NewRouter(zerolog.Nop())
+	h := newTestHub(router)
+	defer h.Stop()
+
+	sender := &stubSessionSender{}
+	h.SetSessionSender(sender)
+
+	c := newTestClient(h, uuid.New())
+	c.SessionID = uuid.New()
+
+	h.Route(c, MustEnvelope(TypePing, nil))
+
+	got := readEnvelope(c, 200*time.Millisecond)
+	if got == nil || got.Type != TypePong {
+		t.Fatalf("expected pong via router, got %#v", got)
+	}
+	if len(sender.received) != 0 {
+		t.Fatalf("ping forwarded to session actor: got %d", len(sender.received))
+	}
+}
+
 func TestHub_Route_NilRouter(t *testing.T) {
 	h := NewHub(nil, NoopPubSub{}, zerolog.Nop())
 	defer h.Stop()
@@ -451,6 +499,25 @@ func TestRouter_Handle_MultipleNamespaces(t *testing.T) {
 	}
 	if !chatHit {
 		t.Error("chat handler was not called")
+	}
+}
+
+func TestRouter_Handle_DotNamespace(t *testing.T) {
+	r := NewRouter(zerolog.Nop())
+
+	var receivedType string
+	r.Handle("auth", func(c *Client, env *Envelope) {
+		receivedType = env.Type
+	})
+
+	h := newTestHub(r)
+	defer h.Stop()
+
+	c := newTestClient(h, uuid.New())
+	r.Route(c, MustEnvelope(TypeAuthIdentify, nil))
+
+	if receivedType != TypeAuthIdentify {
+		t.Errorf("handler received type %q, want %q", receivedType, TypeAuthIdentify)
 	}
 }
 
