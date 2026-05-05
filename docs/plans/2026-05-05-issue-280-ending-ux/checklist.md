@@ -23,5 +23,5 @@
 
 ## 검증
 
-- [ ] `git diff --check`
-- [ ] 문서 링크와 Issue 번호가 실제 존재하는지 확인
+- [x] `git diff --check`
+- [x] 문서 링크와 Issue 번호가 실제 존재하는지 확인
