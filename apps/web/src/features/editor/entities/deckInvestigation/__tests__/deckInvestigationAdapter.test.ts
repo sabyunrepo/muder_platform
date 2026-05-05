@@ -38,13 +38,13 @@ const location = (id: string, name: string): LocationResponse => ({
 });
 
 describe('deckInvestigationAdapter', () => {
-  it('설정이 없으면 제작자가 바로 이해할 기본 토큰을 제공한다', () => {
+  it('설정이 없으면 제작자가 바로 이해할 기본 조사권을 제공한다', () => {
     expect(createDeckInvestigationDraft()).toMatchObject({
-      tokens: [{ id: 'investigation-token', name: '조사 토큰', defaultAmount: 0 }],
+      tokens: [{ id: 'investigation-token', name: '조사권', defaultAmount: 0 }],
       decks: [],
     });
     expect(readDeckInvestigationConfig(null)).toMatchObject({
-      tokens: [{ id: 'investigation-token', name: '조사 토큰' }],
+      tokens: [{ id: 'investigation-token', name: '조사권' }],
       decks: [],
     });
   });
@@ -169,8 +169,8 @@ describe('deckInvestigationAdapter', () => {
       locations: [location('loc-1', '응접실'), location('loc-2', '서재')],
     });
 
-    expect(vm.deckCountLabel).toBe('조사 덱 1개');
-    expect(vm.tokenCountLabel).toBe('토큰 1종');
+    expect(vm.deckCountLabel).toBe('단서 조사 1개');
+    expect(vm.tokenCountLabel).toBe('조사권 1종');
     expect(vm.decks[0]).toMatchObject({
       title: '응접실 조사',
       tokenLabel: '🪙 동전 1개 소비',
