@@ -146,6 +146,7 @@ describe('ModulesSubTab deck investigation settings', () => {
       target: { value: '3' },
     });
 
+    expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     expect(config.modules).toMatchObject({
       [DECK_INVESTIGATION_MODULE_ID]: {
@@ -221,6 +222,7 @@ describe('ModulesSubTab deck investigation settings', () => {
       '조사권 "추가 조사권"을(를) 삭제할까요?\n' +
         '연결된 단서 조사 덱 1개는 다른 조사권으로 자동 변경됩니다.',
     );
+    expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     expect(config.modules).toMatchObject({
       [DECK_INVESTIGATION_MODULE_ID]: {
