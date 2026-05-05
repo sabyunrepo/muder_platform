@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -30,6 +30,12 @@ vi.mock("@/features/editor/mediaApi", () => ({
 }));
 
 import { StoryMapWorkspace } from "../StoryMapWorkspace";
+
+function getScenePropertiesPanel(): HTMLElement {
+  const panel = screen.getByRole("heading", { name: "장면 속성" }).closest("aside");
+  expect(panel).not.toBeNull();
+  return panel as HTMLElement;
+}
 
 afterEach(() => {
   cleanup();
@@ -87,21 +93,24 @@ describe("StoryMapWorkspace", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /찢어진 초대장/ }));
 
-    expect(screen.getByText("선택한 연결 대상")).toBeDefined();
-    expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(1);
+    const inspector = getScenePropertiesPanel();
+    expect(within(inspector).getByText("선택한 연결 대상")).toBeDefined();
+    expect(within(inspector).getByText("찢어진 초대장")).toBeDefined();
   });
 
   it("테마가 바뀌면 이전 테마의 선택 항목을 초기화한다", () => {
     const { rerender } = render(<StoryMapWorkspace themeId="theme-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: /찢어진 초대장/ }));
-    expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(1);
+    expect(within(getScenePropertiesPanel()).getByText("찢어진 초대장")).toBeDefined();
 
     rerender(<StoryMapWorkspace themeId="theme-2" />);
 
-    expect(screen.getAllByText("찢어진 초대장")).toHaveLength(1);
+    expect(within(getScenePropertiesPanel()).queryByText("찢어진 초대장")).toBeNull();
     expect(
-      screen.getByText("왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다."),
+      within(getScenePropertiesPanel()).getByText(
+        "왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다.",
+      ),
     ).toBeDefined();
   });
 });

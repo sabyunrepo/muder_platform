@@ -81,7 +81,7 @@ function mapLocations(locations: LocationResponse[] = []): StoryLibraryEntity[] 
     kind: "location",
     title: location.name,
     detail:
-      location.from_round || location.until_round
+      location.from_round != null || location.until_round != null
         ? "공개 구간 있음"
         : "상시 사용 가능",
     section: "장소",
@@ -263,7 +263,7 @@ export function EditorEntityLibrary({
       key: "progression",
       title: "진행 자원",
       icon: Zap,
-      status: "3종",
+      status: `${PROGRESSION_ENTITIES.length}종`,
       entities: PROGRESSION_ENTITIES,
     },
   ];

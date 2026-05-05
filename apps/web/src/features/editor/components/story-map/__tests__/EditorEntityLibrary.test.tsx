@@ -48,7 +48,7 @@ beforeEach(() => {
     isError: false,
   });
   useEditorLocationsMock.mockReturnValue({
-    data: [{ id: "loc-1", name: "응접실", from_round: 1, until_round: 2 }],
+    data: [{ id: "loc-1", name: "응접실", from_round: 0, until_round: null }],
     isLoading: false,
     isError: false,
   });
@@ -68,6 +68,7 @@ describe("EditorEntityLibrary", () => {
     expect(screen.getByText("찢어진 초대장")).toBeDefined();
     expect(screen.getByText("피 묻은 장갑")).toBeDefined();
     expect(screen.getByText("응접실")).toBeDefined();
+    expect(screen.getByText("공개 구간 있음")).toBeDefined();
     expect(screen.getByText("오프닝 음악")).toBeDefined();
     expect(screen.getByText("조사권")).toBeDefined();
     expect(screen.getByText("토론방")).toBeDefined();
