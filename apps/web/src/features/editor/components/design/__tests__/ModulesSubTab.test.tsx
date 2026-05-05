@@ -70,6 +70,7 @@ import {
   OPTIONAL_MODULE_CATEGORIES,
   REQUIRED_MODULE_IDS,
 } from '@/features/editor/constants';
+import { DECK_INVESTIGATION_MODULE_ID } from '@/features/editor/entities/deckInvestigation/deckInvestigationAdapter';
 
 // ---------------------------------------------------------------------------
 // Mock data
@@ -243,6 +244,163 @@ describe('ModulesSubTab', () => {
         config: {
           maxRounds: 3,
           candidatePolicy: { includeSelf: false, includeDetective: true },
+        },
+      },
+    });
+  });
+
+  it('단서 조사 모듈이 활성화되면 조사권 설정 패널을 렌더링한다', () => {
+    const themeWithDeckInvestigation: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          [DECK_INVESTIGATION_MODULE_ID]: {
+            enabled: true,
+            config: {
+              tokens: [
+                {
+                  id: 'basic-token',
+                  name: '기본 조사권',
+                  iconLabel: '권',
+                  defaultAmount: 1,
+                },
+              ],
+              decks: [],
+            },
+          },
+        },
+      },
+    };
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithDeckInvestigation} />);
+
+    expect(screen.getByText('조사권 설정')).toBeDefined();
+    expect(screen.getByRole('textbox', { name: '기본 조사권 조사권 이름' })).toBeDefined();
+    expect(screen.getByRole('spinbutton', { name: '기본 조사권 초기 배포량' })).toBeDefined();
+  });
+
+  it('조사권 시작 수량 변경을 deck_investigation module config로 저장한다', () => {
+    const themeWithDeckInvestigation: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          [DECK_INVESTIGATION_MODULE_ID]: {
+            enabled: true,
+            config: {
+              tokens: [
+                {
+                  id: 'basic-token',
+                  name: '기본 조사권',
+                  iconLabel: '권',
+                  defaultAmount: 1,
+                },
+              ],
+              decks: [
+                {
+                  id: 'deck-1',
+                  title: '주방 조사',
+                  description: '',
+                  tokenId: 'basic-token',
+                  tokenCost: 1,
+                  drawOrder: 'sequential',
+                  emptyMessage: '더 이상 얻을 단서가 없습니다.',
+                  access: {
+                    phaseIds: [],
+                    locationIds: ['loc-1'],
+                    blockedCharacterIds: [],
+                    requiredClueIds: [],
+                  },
+                  cards: [],
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithDeckInvestigation} />);
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: '기본 조사권 초기 배포량' }), {
+      target: { value: '3' },
+    });
+
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(config.modules).toMatchObject({
+      [DECK_INVESTIGATION_MODULE_ID]: {
+        enabled: true,
+        config: {
+          tokens: [
+            {
+              id: 'basic-token',
+              name: '기본 조사권',
+              iconLabel: '권',
+              defaultAmount: 3,
+            },
+          ],
+          decks: [{ id: 'deck-1', tokenId: 'basic-token' }],
+        },
+      },
+    });
+    expect(config.version).toBe(1);
+  });
+
+  it('사용 중인 조사권 삭제 시 단서 조사 덱을 남은 조사권으로 이동한다', () => {
+    const themeWithDeckInvestigation: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          [DECK_INVESTIGATION_MODULE_ID]: {
+            enabled: true,
+            config: {
+              tokens: [
+                {
+                  id: 'basic-token',
+                  name: '기본 조사권',
+                  iconLabel: '권',
+                  defaultAmount: 1,
+                },
+                {
+                  id: 'bonus-token',
+                  name: '추가 조사권',
+                  iconLabel: '추',
+                  defaultAmount: 0,
+                },
+              ],
+              decks: [
+                {
+                  id: 'deck-1',
+                  title: '주방 조사',
+                  description: '',
+                  tokenId: 'bonus-token',
+                  tokenCost: 1,
+                  drawOrder: 'sequential',
+                  emptyMessage: '더 이상 얻을 단서가 없습니다.',
+                  access: {
+                    phaseIds: [],
+                    locationIds: ['loc-1'],
+                    blockedCharacterIds: [],
+                    requiredClueIds: [],
+                  },
+                  cards: [],
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithDeckInvestigation} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '추가 조사권 조사권 삭제' }));
+
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(config.modules).toMatchObject({
+      [DECK_INVESTIGATION_MODULE_ID]: {
+        config: {
+          tokens: [{ id: 'basic-token' }],
+          decks: [{ id: 'deck-1', tokenId: 'basic-token' }],
         },
       },
     });
