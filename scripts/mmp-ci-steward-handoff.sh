@@ -124,6 +124,7 @@ $checks_summary
 - 타당한 리뷰/실패만 고치고 focused validation을 실행한 뒤 fix commit을 push할 수 있습니다.
 - CodeRabbit 정리 후 full CI가 필요하면 반드시 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙입니다.
 - 대기에는 scripts/mmp-pr-watch.sh $number --code-rabbit-only 또는 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 를 사용합니다.
+- 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
 
 ## Steward 금지 범위
 - PR merge, PR 생성, Issue 생성, force-push, destructive git, secret 조회, unrelated branch/worktree 수정은 금지입니다.
@@ -145,5 +146,5 @@ $checks_summary
 - PR 생성/Issue 생성/merge/force-push/destructive git/secret 조회는 하지 마세요.
 - ready-for-ci 라벨은 scripts/pr-ready-for-ci-guard.sh --apply $number 를 통과할 때만 붙이세요.
 - 변경했다면 focused validation을 실행하고 push하세요.
-- 최종 보고는 한국어로 발견 / 수행 / 판단 / 미해결 4섹션으로 작성하고, 판단에 MERGE_READY, NEEDS_FIX, BLOCKED 중 하나를 명시하세요.
+- 최종 보고는 한국어로 발견 / 수행 / 판단 / 미해결 4섹션으로 작성하고, 확인한 Head SHA와 판단의 MERGE_READY, NEEDS_FIX, BLOCKED 중 하나를 명시하세요.
 MSG

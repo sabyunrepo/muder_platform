@@ -41,6 +41,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - The steward owns only the target PR branch/worktree: CodeRabbit fixes, focused checks, Codecov/CI fixes, push commits, and `ready-for-ci` through `scripts/pr-ready-for-ci-guard.sh --apply <PR>`.
    - Main Codex continues the next issue only from a separate worktree/branch based on `origin/main` unless intentionally stacking work.
    - Merge authority stays with main Codex until the user explicitly changes the policy. When the steward reports `MERGE_READY`, main Codex verifies unresolved threads 0, required checks green, Codecov policy, then merges.
+   - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for CodeRabbit/check waiting instead of running repeated watcher polling in the main thread.
    - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
    - After any steward-managed PR is merged, main Codex pulls `origin/main` and rebases or merges it into active feature worktrees before continuing implementation.
 
