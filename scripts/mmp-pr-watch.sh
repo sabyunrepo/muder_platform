@@ -19,6 +19,9 @@ Options:
                            Default: CI,E2E — Stubbed Backend,Security — Fast Feedback
   --trigger-missing-workflows
                            Trigger missing required workflows once CodeRabbit is clear
+  --update-branch-if-needed
+                           If base branch requires strict up-to-date checks and PR is behind,
+                           update the PR branch through GitHub and restart latest-head waiting
   --code-rabbit-only       Stop once CodeRabbit is clear and review threads are resolved
   --no-notify              Do not send macOS notification / terminal bell
   -h, --help               Show help
@@ -111,11 +114,24 @@ latest_workflow_rows() {
     | jq -r --arg head_sha "$head_sha" '.[] | select(.headSha == $head_sha) | [.workflowName, .status, (if (.conclusion == null or .conclusion == "") then "none" else .conclusion end), (.databaseId|tostring), .url, .createdAt, .headSha] | @tsv'
 }
 
+base_requires_up_to_date_checks() {
+  local owner="$1"
+  local repo="$2"
+  local base="$3"
+  local protection_json
+  if ! protection_json="$(gh_retry api "repos/$owner/$repo/branches/$base/protection" 2>/dev/null)"; then
+    printf 'false'
+    return 0
+  fi
+  printf '%s' "$protection_json" | jq -r '.required_status_checks.strict // false'
+}
+
 interval=60
 timeout=3600
 workflow_csv="CI,E2E — Stubbed Backend,Security — Fast Feedback"
 notify_enabled=1
 trigger_missing_workflows=0
+update_branch_if_needed=0
 code_rabbit_only=0
 pr_number=""
 
@@ -135,6 +151,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --trigger-missing-workflows)
       trigger_missing_workflows=1
+      shift
+      ;;
+    --update-branch-if-needed)
+      update_branch_if_needed=1
       shift
       ;;
     --code-rabbit-only)
@@ -216,8 +236,27 @@ while :; do
     sleep "$interval"
     continue
   fi
+  if ! pull_json="$(gh_retry api "repos/$owner/$repo/pulls/$pr_number")"; then
+    echo "⚠️ PR REST 상태 조회 실패; 다음 주기에 재시도합니다." >&2
+    sleep "$interval"
+    continue
+  fi
   branch="$(printf '%s' "$pr_json" | jq -r '.headRefName')"
   head_sha="$(printf '%s' "$pr_json" | jq -r '.headRefOid')"
+  base_branch="$(printf '%s' "$pull_json" | jq -r '.base.ref')"
+  mergeable_state="$(printf '%s' "$pull_json" | jq -r '.mergeable_state // "unknown"')"
+  strict_status_checks="$(base_requires_up_to_date_checks "$owner" "$repo" "$base_branch")"
+  if [[ "$update_branch_if_needed" == "1" && "$strict_status_checks" == "true" && "$mergeable_state" == "behind" ]]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] PR #$pr_number sha=${head_sha:0:7} is behind $base_branch and strict status checks are enabled. Updating branch through GitHub..."
+    if gh_retry pr update-branch "$pr_number" >/dev/null; then
+      triggered_workflows="|"
+      sleep "$interval"
+      continue
+    fi
+    notify "MMP PR branch update failed" "PR #$pr_number could not be updated"
+    scripts/mmp-pr-status.sh "$pr_number" || true
+    exit 2
+  fi
   labels_csv="$(printf '%s' "$pr_json" | jq -r '.labels | join(",")')"
   latest_coderabbit="$(printf '%s' "$pr_json" | jq -r '.latestCodeRabbit')"
   checks_json="$(gh_retry pr checks "$pr_number" --json name,bucket || true)"
@@ -255,7 +294,7 @@ while :; do
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
   if [[ "$code_rabbit_only" == "1" ]]; then
-    echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음}"
+    echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} mergeable_state=$mergeable_state strict=$strict_status_checks CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음}"
     if [[ "$coderabbit_clear" == "1" ]]; then
       notify "MMP PR CodeRabbit clear" "PR #$pr_number CodeRabbit clear and review threads resolved"
       scripts/mmp-pr-status.sh "$pr_number" || true
@@ -310,7 +349,7 @@ while :; do
   done
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
+  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} mergeable_state=$mergeable_state strict=$strict_status_checks CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
 
   if [[ "$workflow_failure" == "1" ]]; then
     notify "MMP CI failed" "PR #$pr_number has failed CI"

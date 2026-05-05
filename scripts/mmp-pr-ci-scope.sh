@@ -26,6 +26,15 @@ require_cmd() {
   fi
 }
 
+join_by_comma() {
+  if [[ "$#" -eq 0 ]]; then
+    return 0
+  fi
+
+  local IFS=,
+  printf '%s' "$*"
+}
+
 format="text"
 from_stdin="0"
 pr_number=""
@@ -115,13 +124,15 @@ fi
 
 heavy=()
 light=()
-for file in "${files[@]}"; do
-  if reason="$(heavy_reason_for_path "$file")"; then
-    heavy+=("$file:$reason")
-  else
-    light+=("$file")
-  fi
-done
+if [[ "${#files[@]}" -gt 0 ]]; then
+  for file in "${files[@]}"; do
+    if reason="$(heavy_reason_for_path "$file")"; then
+      heavy+=("$file:$reason")
+    else
+      light+=("$file")
+    fi
+  done
+fi
 
 if [[ "${#heavy[@]}" -gt 0 ]]; then
   scope="full-ci"
@@ -130,11 +141,20 @@ else
 fi
 
 if [[ "$format" == "env" ]]; then
+  heavy_files=""
+  light_files=""
+  if [[ "${#heavy[@]}" -gt 0 ]]; then
+    heavy_files="$(join_by_comma "${heavy[@]}")"
+  fi
+  if [[ "${#light[@]}" -gt 0 ]]; then
+    light_files="$(join_by_comma "${light[@]}")"
+  fi
+
   printf 'CI_SCOPE=%q\n' "$scope"
   printf 'CI_HEAVY_COUNT=%q\n' "${#heavy[@]}"
   printf 'CI_LIGHT_COUNT=%q\n' "${#light[@]}"
-  printf 'CI_HEAVY_FILES=%q\n' "$(IFS=','; printf '%s' "${heavy[*]}")"
-  printf 'CI_LIGHT_FILES=%q\n' "$(IFS=','; printf '%s' "${light[*]}")"
+  printf 'CI_HEAVY_FILES=%q\n' "$heavy_files"
+  printf 'CI_LIGHT_FILES=%q\n' "$light_files"
 else
   printf 'CI scope: %s\n' "$scope"
   if [[ "${#heavy[@]}" -gt 0 ]]; then
