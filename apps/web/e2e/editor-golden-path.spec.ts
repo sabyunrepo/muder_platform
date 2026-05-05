@@ -166,7 +166,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
       timeout: 10_000,
     });
     await expect(page.getByLabel("장소 목록")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByLabel("거실 조사 시 발견 단서")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel("거실 단서 조사")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("저택 1층").first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/endings`);
@@ -390,7 +390,7 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     await expect(page.getByLabel("장소 목록")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("거실").first()).toBeVisible({ timeout: 3_000 });
     await expect(page.getByText("R2~4").first()).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByLabel("거실 조사 시 발견 단서")).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByLabel("거실 단서 조사")).toBeVisible({ timeout: 3_000 });
     await expect(page.getByText(/접근 제한/).first()).toBeVisible({ timeout: 3_000 });
 
     // UI: 단서 chip/체크박스가 있으면 토글 + 즉시 반영

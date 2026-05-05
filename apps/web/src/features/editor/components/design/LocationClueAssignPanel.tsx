@@ -77,12 +77,12 @@ export function LocationClueAssignPanel({
       });
     updateConfig.mutate(nextConfig, {
       onSuccess: () => {
-        toast.success('장소 조사 단서가 저장되었습니다');
+        toast.success('단서 조사가 저장되었습니다');
         onChange?.(nextIds);
       },
       onError: () => {
         if (previous) queryClient.setQueryData(cacheKey, previous);
-        toast.error('장소 조사 단서 저장에 실패했습니다');
+        toast.error('단서 조사 저장에 실패했습니다');
       },
     });
   }
@@ -126,7 +126,7 @@ export function LocationClueAssignPanel({
   if (!allClues && isError) {
     return (
       <section
-        aria-label={`${location.name} 조사 시 발견 단서`}
+        aria-label={`${location.name} 단서 조사`}
         className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-100"
       >
         <p>단서 목록을 불러오지 못했습니다.</p>
@@ -143,15 +143,18 @@ export function LocationClueAssignPanel({
 
   return (
     <section
-      aria-label={`${location.name} 조사 시 발견 단서`}
+      aria-label={`${location.name} 단서 조사`}
       className="rounded-lg border border-slate-800 bg-slate-950/70 p-3"
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <MapPin className="h-3.5 w-3.5 text-amber-500/70" />
-        <h4 className="text-sm font-semibold text-slate-200">{location.name} 조사 시 발견 단서</h4>
+        <h4 className="text-sm font-semibold text-slate-200">{location.name} 단서 조사</h4>
         <span className="text-xs text-slate-600">
           ({assignedIds.length}/{clues.length})
         </span>
+        <p className="basis-full text-xs text-slate-500">
+          이 장소를 조사했을 때 얻는 단서와 먼저 필요한 단서를 정합니다.
+        </p>
       </header>
       {clues.length === 0 ? (
         <EmptyClues />
@@ -198,7 +201,7 @@ export function LocationClueAssignPanel({
           <section className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
-                조사 보상
+                조사 결과
               </p>
               <span className="text-[10px] text-slate-600">플레이어당 1회</span>
             </div>
