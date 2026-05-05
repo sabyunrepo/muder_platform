@@ -8,6 +8,13 @@ import { OPTIONAL_MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { TemplateSchema } from '@/features/editor/templateApi';
 import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm';
 import {
+  DECK_INVESTIGATION_MODULE_ID,
+  readDeckInvestigationConfig,
+  writeDeckInvestigationConfig,
+  type DeckInvestigationConfigDraft,
+} from '@/features/editor/entities/deckInvestigation/deckInvestigationAdapter';
+import { InvestigationTokenSettingsPanel } from './InvestigationTokenSettingsPanel';
+import {
   readEnabledModuleIds,
   readModuleConfig,
   writeModuleConfigPath,
@@ -110,6 +117,17 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     [theme.config_json, mutateConfig],
   );
 
+  const handleDeckInvestigationChange = useCallback(
+    (draft: DeckInvestigationConfigDraft) => {
+      mutateConfig(
+        writeDeckInvestigationConfig(theme.config_json, draft),
+        '조사권 설정이 저장되었습니다',
+        '조사권 설정 저장에 실패했습니다',
+      );
+    },
+    [theme.config_json, mutateConfig],
+  );
+
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
     if (!moduleSchemasResp?.schemas) return {};
     const result: Record<string, TemplateSchema | null> = {};
@@ -181,8 +199,16 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                       </button>
                     </div>
 
+                    {isEnabled && mod.id === DECK_INVESTIGATION_MODULE_ID && (
+                      <InvestigationTokenSettingsPanel
+                        draft={readDeckInvestigationConfig(theme.config_json)}
+                        isSaving={updateConfig.isPending}
+                        onChange={handleDeckInvestigationChange}
+                      />
+                    )}
+
                     {/* Inline config form when enabled and schema exists */}
-                    {isEnabled && schema && (
+                    {isEnabled && mod.id !== DECK_INVESTIGATION_MODULE_ID && schema && (
                       <div className="border-t border-slate-700 px-3 py-3">
                         <SchemaDrivenForm
                           schema={schema}

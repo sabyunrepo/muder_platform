@@ -32,9 +32,12 @@ USER root
 
 # Phase 23 OS deps (jq + Playwright runtime libs) + docker CLI (DinD 사이드카 통신)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      jq libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
-      libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
-      libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2t64 \
+      jq libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 \
+      libcups2 libdbus-1-3 libdrm2 libx11-6 libx11-xcb1 libxcb1 \
+      libxcomposite1 libxdamage1 libxext6 libxfixes3 libxkbcommon0 \
+      libxrandr2 libxrender1 libxshmfence1 libxtst6 libgbm1 \
+      libgtk-3-0 libpango-1.0-0 libcairo2 libasound2t64 \
+      fonts-liberation fonts-noto-color-emoji fonts-unifont xdg-utils \
       build-essential \
       ca-certificates curl gnupg git \
     && install -m 0755 -d /etc/apt/keyrings \
@@ -44,6 +47,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        > /etc/apt/sources.list.d/docker.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends docker-ce-cli docker-buildx-plugin \
+    && mkdir -p /opt/mmp-runner \
+    && printf '%s\n' "chromium-webkit-system-deps" > /opt/mmp-runner/playwright-deps-ready \
     && rm -rf /var/lib/apt/lists/*
 
 # Phase 23 hostedtoolcache (Go 1.25 + Node 20.18) + govulncheck

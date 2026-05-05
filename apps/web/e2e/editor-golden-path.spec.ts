@@ -20,6 +20,7 @@
  *  8. 장소 탭 locations[].clueIds (PR-6)
  *  9. 템플릿 탭 GET /api/v1/templates (PR-1)
  */
+import AxeBuilder from "@axe-core/playwright";
 import { test, expect, type Page, type Request } from "@playwright/test";
 import {
   BASE,
@@ -140,6 +141,8 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
       timeout: 10_000,
     });
     await expect(page.getByPlaceholder("마크다운으로 스토리를 작성하세요...")).toBeVisible();
+    await expect(page.getByText("장면별 정보 공개 설정")).toBeVisible();
+    await expect(page.getByRole("button", { name: /조사 단계/ })).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
     await expect(page.getByRole("tab", { name: "등장인물", selected: true })).toBeVisible({
@@ -370,6 +373,40 @@ test.describe("Phase 18.4 에디터 골든패스 (mocked — UI interaction)", (
     // 반드시 PUT 은 0 이어야 한다 — fixture + 전역 옵저버 모두에서
     expect(state.flowPutCalls).toBe(0);
     expect(putSeen).toEqual([]);
+  });
+
+  test("[7A] 흐름 장면 토론방 정책은 flow node PATCH 로 저장된다", async ({ page }) => {
+    await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
+    await tryClickTab(page, /흐름|flow/i);
+
+    const node = page.locator('[data-id="phase-1"]').first();
+    await expect(node).toBeVisible({ timeout: 10_000 });
+    await node.click();
+
+    const discussionToggle = page.getByRole("checkbox", { name: /토론방/ });
+    await expect(discussionToggle).toBeVisible({ timeout: 5_000 });
+    await discussionToggle.check();
+    await page.getByLabel("메인 토론방").fill("추리 회의");
+    await page.getByLabel("이용 가능 시점").selectOption("condition");
+    await page.getByLabel("조건부 방명").fill("비밀 토론");
+
+    const a11y = await new AxeBuilder({ page })
+      .include('[data-testid="discussion-room-policy-panel"]')
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
+
+    await expect.poll(() => state.flowPatchCalls).toBeGreaterThanOrEqual(1);
+    const patch = state.lastFlowNodePatchBody as
+      | { data?: { discussionRoomPolicy?: Record<string, unknown> } }
+      | null;
+    expect(patch?.data?.discussionRoomPolicy).toMatchObject({
+      enabled: true,
+      mainRoomName: "추리 회의",
+      availability: "condition",
+      conditionalRoomName: "비밀 토론",
+    });
+    expect(state.flowPutCalls).toBe(0);
   });
 
   test("[8] 장소 탭 — locations[].clueIds 구조 UI 로드 (network-only)", async ({ page }) => {

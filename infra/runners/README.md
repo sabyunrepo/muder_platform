@@ -119,6 +119,13 @@ docker compose up -d
 | `go-build-cache` | `/home/runner/.cache/go-build` | Go build artifact cache |
 | `pnpm-store` | `/home/runner/.pnpm-store` | pnpm content-addressable store (workspace deps) |
 
+Playwright system dependency marker:
+- `/opt/mmp-runner/playwright-deps-ready`
+- E2E workflows detect this marker and skip the per-job `apt-get update` +
+  `playwright install-deps` fallback on ARC runners.
+- Browser binaries still use `PLAYWRIGHT_BROWSERS_PATH=/opt/cache/playwright`,
+  so Playwright package version drift stays controlled by the repo lockfile.
+
 ### 환경변수 (image ENV로 정의 — Dockerfile)
 
 `setup-go`/`setup-node` 가 PATH 자동 hit:

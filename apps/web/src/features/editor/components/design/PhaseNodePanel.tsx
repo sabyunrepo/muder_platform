@@ -22,6 +22,8 @@ import {
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { PhasePanelTimerSettings } from "./PhasePanelTimerSettings";
 import { PhasePanelAdvanceToggle } from "./PhasePanelAdvanceToggle";
+import { DiscussionRoomPolicyPanel } from "./DiscussionRoomPolicyPanel";
+import { formatDiscussionRoomSummary } from "../../entities/phase/discussionRoomPolicyAdapter";
 
 interface PhaseNodePanelProps {
   node: Node;
@@ -110,6 +112,13 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
 
       <div className="border-t border-slate-800" />
 
+      <DiscussionRoomPolicyPanel
+        policy={data.discussionRoomPolicy}
+        onChange={(discussionRoomPolicy) => handleChange({ discussionRoomPolicy })}
+      />
+
+      <div className="border-t border-slate-800" />
+
       <ActionListEditor
         label="장면 시작 트리거"
         actions={(data.onEnter as PhaseAction[]) ?? []}
@@ -164,6 +173,7 @@ function PhaseSummaryCard({ viewModel }: { viewModel: PhaseEditorViewModel }) {
           value={`${viewModel.defaultTransitionLabel} · 조건 이동 ${viewModel.conditionalTransitionCount}개`}
         />
         <SummaryRow label="정보 전달" value={`${viewModel.informationDeliveryCount}개 설정`} />
+        <SummaryRow label="토론방" value={formatDiscussionRoomSummary(viewModel.discussionRoomPolicy)} />
         <SummaryRow label="시작 트리거" value={enterActions} />
         <SummaryRow label="종료 트리거" value={exitActions} />
       </dl>

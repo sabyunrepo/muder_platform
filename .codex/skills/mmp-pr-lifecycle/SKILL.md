@@ -40,11 +40,13 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 7. CI steward handoff:
    - Use when PR review/CI waiting would block starting the next issue and the user has approved agent delegation.
    - Generate a copy-ready handoff with `scripts/mmp-ci-steward-handoff.sh <PR>`.
-   - The steward owns only the target PR branch/worktree: CodeRabbit fixes, focused checks, Codecov/CI fixes, push commits, and `ready-for-ci` through `scripts/pr-ready-for-ci-guard.sh --apply <PR>`.
+   - The steward owns only the target PR branch/worktree: CodeRabbit fixes, focused checks, Codecov/CI fixes, push commits, strict up-to-date branch refresh through `gh pr update-branch <PR>`, and `ready-for-ci` through `scripts/pr-ready-for-ci-guard.sh --apply <PR>`.
    - Main Codex continues the next issue only from a separate worktree/branch based on `origin/main` unless intentionally stacking work.
    - Merge authority stays with main Codex until the user explicitly changes the policy. When the steward reports `MERGE_READY`, main Codex verifies the scope-specific gate, then merges.
    - The handoff must include `scripts/mmp-pr-ci-scope.sh <PR>` output.
-   - For `full-ci`, CodeRabbit-only success is not a steward completion state. The steward must continue by applying `scripts/pr-ready-for-ci-guard.sh --apply <PR>` and then watching required workflows with `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows`.
+   - A steward's final report is valid only if it ran `scripts/mmp-pr-status.sh <PR> --fail-on-blocker` on the final head. Treat a green `CodeRabbit` check as insufficient unless unresolved review threads are 0 and GitHub review decision is non-blocking.
+   - Give the steward enough autonomy to finish the PR lifecycle inside its target branch: it may update the PR branch for strict up-to-date checks, apply `ready-for-ci` through the guard, dispatch missing required workflows through the watcher, and resolve only verified target-PR review threads. Merge authority still stays with main Codex.
+   - For `full-ci`, CodeRabbit-only success is not a steward completion state. The steward must continue by applying `scripts/pr-ready-for-ci-guard.sh --apply <PR>` and then watching required workflows and strict up-to-date state with `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR> --trigger-missing-workflows --update-branch-if-needed`.
    - For `code-rabbit-only`, CodeRabbit clear + unresolved 0 + light/focused validation is a valid steward `MERGE_READY` state. The steward must not add `ready-for-ci` or dispatch missing workflows.
    - `ready-for-ci` is an authorization label, not evidence that workflows started. The steward must verify current-head runs for the required set (`CI`, `E2E — Stubbed Backend`, `Security — Fast Feedback`) and rely on `--trigger-missing-workflows` to dispatch missing workflows instead of passively waiting for label-created runs.
    - A steward may report `MERGE_READY` for `full-ci` only when the latest head SHA was checked, unresolved threads are 0, CodeRabbit is clear, `ready-for-ci` label is present, required checks are green, and Codecov is satisfied or explicitly not applicable.
@@ -52,7 +54,8 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for CodeRabbit/check waiting instead of running repeated watcher polling in the main thread.
    - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
    - After any steward-managed PR is merged, main Codex pulls `origin/main`.
-   - Do not automatically rebase or merge `origin/main` into active PR branches that are already under steward review/CI. Update an active branch only when GitHub reports a merge conflict or up-to-date requirement, the merged main change touches the same files/shared contracts or a stacked parent branch, CI/Codecov failure is caused by main drift, or the user explicitly asks for the branch refresh.
+   - Do not automatically rebase or merge `origin/main` into active PR branches that are already under steward review/CI. Update an active branch only when GitHub reports a merge conflict or up-to-date requirement, `main` branch protection has `required_status_checks.strict=true` and the PR is behind, the merged main change touches the same files/shared contracts or a stacked parent branch, CI/Codecov failure is caused by main drift, or the user explicitly asks for the branch refresh.
+   - In this repo, `main` currently requires strict up-to-date status checks. Therefore `mergeable_state=behind` / `mergeStateStatus=BEHIND` can block merge even when `mergeable=MERGEABLE`; the steward should update the PR branch with `gh pr update-branch <PR>` or `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR> --update-branch-if-needed ...`, then restart latest-head review/CI verification.
    - If no branch-refresh trigger exists, preserve the active PR head and let the steward finish the current review/CI cycle. Resolve any remaining conflict at the merge decision point.
 
 ## Done
@@ -64,6 +67,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 - For `code-rabbit-only`, no `ready-for-ci`/workflow dispatch was used and light/focused validation evidence is reported before merge.
 - If a CI steward was used, handoff scope, steward result, and main Codex final verification are separated in the report.
 - Completed CI steward agents are closed so agent slots are released.
+- Steward final evidence includes `scripts/mmp-pr-status.sh <PR> --fail-on-blocker` passing on the reported head.
 
 ## Avoid
 - Do not add `ready-for-ci` at PR creation.

@@ -51,7 +51,7 @@ concurrency:
 jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'self-hosted' }}
+    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
     # H-1: fork PR 의 untrusted code 가 shared named volume (playwright-cache/hostedtool-cache) 에
     # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
     # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
@@ -300,6 +300,10 @@ jobs:
         continue-on-error: true
         working-directory: apps/web
         run: |
+          if [ -f /opt/mmp-runner/playwright-deps-ready ]; then
+            echo "Playwright system deps are pre-baked in the ARC runner image"
+            exit 0
+          fi
           timeout 480s bash -lc 'sudo apt-get update -y || true; pnpm exec playwright install-deps ${{ matrix.browser }}' || \
             echo "::warning::Playwright install-deps failed or timed out (likely ARC apt/deps flake); continuing without"
 
@@ -386,7 +390,7 @@ jobs:
     # H-1 consistency: e2e 와 동일 fork PR 게이트 (cache mount runner 일관성).
     if: (always()) && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.fork == false && contains(github.event.pull_request.labels.*.name, 'ready-for-ci')))
     needs: [e2e]
-    runs-on: self-hosted
+    runs-on: arc-runner-set
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0

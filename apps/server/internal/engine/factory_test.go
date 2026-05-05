@@ -248,6 +248,20 @@ func TestParseGameConfig_DoesNotDuplicateImplicitEndingBranchModule(t *testing.T
 	}
 }
 
+func TestParseGameConfig_AddsGroupChatModuleForDiscussionRoomPolicy(t *testing.T) {
+	data := []byte(`{"phases":[{"id":"discussion","name":"Discussion","discussionRoomPolicy":{"enabled":true,"mainRoomName":"추리 회의"}}],"modules":[]}`)
+	cfg, err := ParseGameConfig(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(cfg.Modules) != 1 || cfg.Modules[0].Name != "group_chat" {
+		t.Fatalf("implicit modules = %#v", cfg.Modules)
+	}
+	if cfg.Phases[0].DiscussionRoomPolicy == nil || cfg.Phases[0].DiscussionRoomPolicy.MainRoomName != "추리 회의" {
+		t.Fatalf("discussion room policy = %#v", cfg.Phases[0].DiscussionRoomPolicy)
+	}
+}
+
 func TestParseGameConfig_InvalidPhaseActionConfigFailsEarly(t *testing.T) {
 	data := []byte(`{"phases":[{"id":"p1","name":"Phase 1","onEnter":"not-actions"}],"modules":[]}`)
 	_, err := ParseGameConfig(data)

@@ -14,22 +14,26 @@ Allowed:
 3. Run focused local checks and push fix commits to the target PR branch.
 4. Add `ready-for-ci` only through `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>` after CodeRabbit cleanup.
 5. First classify the PR with `scripts/mmp-pr-ci-scope.sh <PR_NUMBER>`.
-6. For `full-ci`, use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` only as an intermediate wait for CodeRabbit cleanup. A `--code-rabbit-only` success is not a final success state for `full-ci`.
-7. For `full-ci`, after CodeRabbit is clear, immediately run `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>`.
-8. For `full-ci`, after the guard applies `ready-for-ci`, run `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --trigger-missing-workflows` and continue until required workflows finish, fail, or time out.
+6. Before every final report, run `scripts/mmp-pr-status.sh <PR_NUMBER> --fail-on-blocker` and treat any non-zero exit as a blocker to continue fixing or report `BLOCKED`.
+7. If a GitHub review thread is still unresolved but you have verified that the current code and tests address the exact finding, you may resolve only that target PR review thread. Do not resolve uncertain, unrelated, or user-authored threads.
+8. For `full-ci`, use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` only as an intermediate wait for CodeRabbit cleanup. A `--code-rabbit-only` success is not a final success state for `full-ci`.
+9. For `full-ci`, after CodeRabbit is clear, immediately run `scripts/pr-ready-for-ci-guard.sh --apply <PR_NUMBER>`.
+10. For `full-ci`, after the guard applies `ready-for-ci`, run `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --trigger-missing-workflows --update-branch-if-needed` and continue until required workflows finish, fail, or time out.
    - In this repo, `ready-for-ci` is an authorization label, not proof that full CI has started.
    - The required full-CI workflow set is `CI`, `E2E — Stubbed Backend`, and `Security — Fast Feedback`.
    - `scripts/mmp-pr-watch.sh --trigger-missing-workflows` must verify latest runs for the current head SHA and dispatch missing required workflows with `workflow_dispatch`.
    - Do not wait indefinitely for label-created pull_request runs; if the required workflows are missing, dispatch them through the watcher.
-9. For `code-rabbit-only`, do not add `ready-for-ci`, do not dispatch workflows, and do not wait for missing heavy-CI contexts. Use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` plus focused local validation for changed scripts/config/docs.
-10. If CI or Codecov fails on a `full-ci` PR, inspect logs/comments, fix valid failures on the target branch, push, then restart from CodeRabbit/head SHA verification.
-11. If main Codex pushes a new commit after your previous report, restart from the latest PR head SHA and re-check CodeRabbit/check state before reporting again.
+11. For `code-rabbit-only`, do not add `ready-for-ci`, do not dispatch workflows, and do not wait for missing heavy-CI contexts. Use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` plus focused local validation for changed scripts/config/docs.
+12. If CI or Codecov fails on a `full-ci` PR, inspect logs/comments, fix valid failures on the target branch, push, then restart from CodeRabbit/head SHA verification.
+13. If main Codex pushes a new commit after your previous report, restart from the latest PR head SHA and re-check CodeRabbit/check state before reporting again.
+14. Check whether the base branch requires strict up-to-date status checks. If `main` protection has `required_status_checks.strict=true` and `mergeable_state=behind` / `mergeStateStatus=BEHIND`, update the PR branch yourself with `gh pr update-branch <PR_NUMBER>` or by running the watcher with `--update-branch-if-needed`, then restart from the new head SHA. If the update fails or creates conflicts, report `BLOCKED` with the exact failure. If strict status checks are not enabled, treat `BEHIND` with `MERGEABLE` as informational unless GitHub reports a merge conflict, an explicit up-to-date requirement, a stacked parent/base change that affects this branch, or CI/Codecov evidence tied to main drift.
 
 Forbidden:
 - Do not merge PRs.
 - Do not create PRs or GitHub issues.
 - Do not force-push, reset, checkout away unrelated user changes, delete branches, or run destructive git commands.
 - Do not modify unrelated issue branches or worktrees.
+- Do not manually rebase or create local merge commits for branch refresh. Use only GitHub's PR branch update (`gh pr update-branch <PR_NUMBER>`) when strict up-to-date checks require it.
 - Do not skip tests, weaken coverage, or dismiss valid review findings without technical reason.
 - Do not inspect secrets or deployment credentials.
 
@@ -38,10 +42,12 @@ When blocked:
 
 Completion rules:
 - For `full-ci`, do not report `MERGE_READY` unless all of these are true: current head SHA checked, unresolved review threads are 0, CodeRabbit is clear, `ready-for-ci` label is present, required workflows are green, and Codecov policy is satisfied or not applicable with evidence.
+- `scripts/mmp-pr-status.sh <PR_NUMBER> --fail-on-blocker` must pass on the final head before you report `MERGE_READY`. A green `CodeRabbit` check alone is not enough; unresolved review threads and `CHANGES_REQUESTED` review decisions are blockers.
 - For `full-ci`, if CodeRabbit is clear but `ready-for-ci` has not been applied yet, continue by applying the guard; do not stop.
 - For `full-ci`, if `ready-for-ci` is applied but required workflows are missing or in progress, continue watching with `--trigger-missing-workflows`; do not stop. Treat missing required workflows as something to dispatch, not something to passively wait for.
 - For `code-rabbit-only`, report `MERGE_READY` only when current head SHA checked, unresolved review threads are 0, CodeRabbit is clear, light checks are green, focused local validation is recorded, and `scripts/mmp-pr-ci-scope.sh` says `code-rabbit-only`.
 - For `code-rabbit-only`, missing heavy-CI required contexts are expected path-filter behavior. Do not call that a CI failure and do not wait on those contexts.
+- Do not report `MERGE_READY` when `main` requires strict up-to-date status checks and the PR is still behind `main`; update the branch first, then verify the new head.
 - If you cannot continue because of permission, timeout, external outage, ambiguous product decision, or repeated CI failure requiring main/user judgment, report `BLOCKED`.
 - If you pushed a fix and are waiting for CodeRabbit/CI to re-run, report `NEEDS_FIX` only when the next concrete wait/re-handoff is required; include the latest pushed SHA.
 

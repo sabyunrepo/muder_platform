@@ -214,6 +214,9 @@ func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 			cfg.Modules = append(cfg.Modules, ModuleConfig{Name: moduleName})
 		}
 	}
+	if phasesUseDiscussionRoomPolicy(cfg.Phases) && !hasModuleConfig(cfg.Modules, "group_chat") {
+		cfg.Modules = append(cfg.Modules, ModuleConfig{Name: "group_chat"})
+	}
 	return nil
 }
 
@@ -232,6 +235,15 @@ func phasesUseAction(phases []PhaseDefinition, action PhaseAction) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+func phasesUseDiscussionRoomPolicy(phases []PhaseDefinition) bool {
+	for _, phase := range phases {
+		if phase.DiscussionRoomPolicy != nil && phase.DiscussionRoomPolicy.Enabled {
+			return true
+		}
+	}
+	return false
 }
 
 func rawUsesAction(raw json.RawMessage, action PhaseAction) (bool, error) {

@@ -17,7 +17,7 @@ export const CLUE_ID = "cccccccc-0000-0000-0000-000000000001";
 export const REWARD_CLUE_ID = "cccccccc-0000-0000-0000-000000000002";
 export const MAP_ID = "bbbbbbbb-0000-0000-0000-000000000001";
 export const LOCATION_ID = "dddddddd-0000-0000-0000-000000000001";
-export const FLOW_NODE_ID = "eeeeeeee-0000-0000-0000-000000000001";
+export const FLOW_NODE_ID = "phase-1";
 
 export interface RecordedRequest {
   url: string;
@@ -35,6 +35,7 @@ export interface MockState {
   conflictCountdown: number;
   flowPatchCalls: number;
   flowPutCalls: number;
+  lastFlowNodePatchBody: Record<string, unknown> | null;
   characterUpdateCalls: number;
   lastCharacterUpdateBody: Record<string, unknown> | null;
   characterMysteryRole: "suspect" | "culprit" | "accomplice" | "detective";
@@ -58,6 +59,7 @@ export function freshState(): MockState {
     conflictCountdown: 1,
     flowPatchCalls: 0,
     flowPutCalls: 0,
+    lastFlowNodePatchBody: null,
     characterUpdateCalls: 0,
     lastCharacterUpdateBody: null,
     characterMysteryRole: "detective",
@@ -420,11 +422,22 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
   await page.route(`**/v1/editor/themes/${THEME_ID}/flow/nodes/${FLOW_NODE_ID}`, async (r) => {
     const method = r.request().method();
     if (method === "PATCH") {
+      const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
       state.flowPatchCalls += 1;
+      state.lastFlowNodePatchBody = body;
       return r.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ id: FLOW_NODE_ID, updated: true }),
+        body: JSON.stringify({
+          id: FLOW_NODE_ID,
+          theme_id: THEME_ID,
+          type: "phase",
+          data: body.data ?? {},
+          position_x: 120,
+          position_y: 120,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }),
       });
     }
     if (method === "PUT") {

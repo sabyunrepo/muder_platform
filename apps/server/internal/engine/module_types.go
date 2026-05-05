@@ -44,6 +44,20 @@ type PhaseDefinition struct {
 	OnEnter json.RawMessage `json:"onEnter,omitempty"`
 	// OnExit is an optional configured action payload dispatched by the engine.
 	OnExit json.RawMessage `json:"onExit,omitempty"`
+	// DiscussionRoomPolicy is the creator-authored room policy for this scene.
+	// PhaseEngine dispatches it to the group_chat runtime on phase enter so the
+	// backend remains the final source of truth for room access.
+	DiscussionRoomPolicy *DiscussionRoomPolicy `json:"discussionRoomPolicy,omitempty"`
+}
+
+type DiscussionRoomPolicy struct {
+	Enabled             bool            `json:"enabled"`
+	MainRoomName        string          `json:"mainRoomName,omitempty"`
+	PrivateRoomsEnabled bool            `json:"privateRoomsEnabled,omitempty"`
+	PrivateRoomName     string          `json:"privateRoomName,omitempty"`
+	Availability        string          `json:"availability,omitempty"`
+	ConditionalRoomName string          `json:"conditionalRoomName,omitempty"`
+	Condition           json.RawMessage `json:"condition,omitempty"`
 }
 
 // SceneTransition is the backend runtime contract for graph-based story

@@ -139,6 +139,10 @@ jobs:
         continue-on-error: true
         working-directory: apps/web
         run: |
+          if [ -f /opt/mmp-runner/playwright-deps-ready ]; then
+            echo "Playwright system deps are pre-baked in the ARC runner image"
+            exit 0
+          fi
           timeout 480s bash -lc 'sudo apt-get update -y || true; pnpm exec playwright install-deps chromium' || \
             echo "::warning::Playwright install-deps failed or timed out (likely ARC apt/deps flake); continuing without"
 
