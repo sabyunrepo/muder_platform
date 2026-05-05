@@ -52,16 +52,17 @@ func (s *serviceImpl) GetFlow(ctx context.Context, creatorID, themeID uuid.UUID)
 }
 
 func (s *serviceImpl) SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID, req SaveFlowRequest) (*FlowGraph, error) {
+	if err := validateSaveRequest(req); err != nil {
+		return nil, err
+	}
+
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return nil, apperror.Internal("failed to begin transaction")
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	if err := ensureThemeOwner(ctx, tx, creatorID, themeID); err != nil {
-		return nil, err
-	}
-	if err := validateSaveRequest(req); err != nil {
+	if err := lockThemeOwner(ctx, tx, creatorID, themeID); err != nil {
 		return nil, err
 	}
 
@@ -110,17 +111,31 @@ func (s *serviceImpl) SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID
 }
 
 func (s *serviceImpl) CreateNode(ctx context.Context, creatorID, themeID uuid.UUID, req CreateNodeRequest) (*FlowNode, error) {
-	if err := ensureThemeOwner(ctx, s.pool, creatorID, themeID); err != nil {
+	if err := ValidateNodeType(req.Type); err != nil {
 		return nil, err
 	}
-	if err := ValidateNodeType(req.Type); err != nil {
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, apperror.Internal("failed to begin transaction")
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := lockThemeOwner(ctx, tx, creatorID, themeID); err != nil {
 		return nil, err
 	}
 	data := req.Data
 	if data == nil {
 		data = json.RawMessage(`{}`)
 	}
-	return insertNode(ctx, s.pool, themeID, req.Type, data, req.PositionX, req.PositionY)
+	node, err := insertNode(ctx, tx, themeID, req.Type, data, req.PositionX, req.PositionY)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperror.Internal("failed to commit transaction")
+	}
+	return node, nil
 }
 
 func (s *serviceImpl) UpdateNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
@@ -194,16 +209,30 @@ func (s *serviceImpl) DeleteNode(ctx context.Context, creatorID, themeID, nodeID
 }
 
 func (s *serviceImpl) CreateEdge(ctx context.Context, creatorID, themeID uuid.UUID, req CreateEdgeRequest) (*FlowEdge, error) {
-	if err := ensureThemeOwner(ctx, s.pool, creatorID, themeID); err != nil {
-		return nil, err
-	}
 	if err := ValidateEdgeCondition(req.Condition); err != nil {
 		return nil, err
 	}
-	if err := ensureEdgeEndpointsInTheme(ctx, s.pool, themeID, req.SourceID, req.TargetID); err != nil {
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, apperror.Internal("failed to begin transaction")
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := lockThemeOwner(ctx, tx, creatorID, themeID); err != nil {
 		return nil, err
 	}
-	return insertEdge(ctx, s.pool, themeID, req.SourceID, req.TargetID, req.Condition, req.Label, req.SortOrder)
+	if err := ensureEdgeEndpointsInTheme(ctx, tx, themeID, req.SourceID, req.TargetID); err != nil {
+		return nil, err
+	}
+	edge, err := insertEdge(ctx, tx, themeID, req.SourceID, req.TargetID, req.Condition, req.Label, req.SortOrder)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperror.Internal("failed to commit transaction")
+	}
+	return edge, nil
 }
 
 func (s *serviceImpl) UpdateEdge(ctx context.Context, creatorID, themeID, edgeID uuid.UUID, req UpdateEdgeRequest) (*FlowEdge, error) {
@@ -278,6 +307,21 @@ func ensureThemeOwner(ctx context.Context, q dbConn, creatorID, themeID uuid.UUI
 	}
 	if !exists {
 		return apperror.NotFound("theme not found")
+	}
+	return nil
+}
+
+func lockThemeOwner(ctx context.Context, q dbConn, creatorID, themeID uuid.UUID) error {
+	var id uuid.UUID
+	if err := q.QueryRow(ctx, `
+		SELECT id FROM themes
+		WHERE id = $1 AND creator_id = $2
+		FOR UPDATE
+	`, themeID, creatorID).Scan(&id); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("theme not found")
+		}
+		return apperror.Internal("failed to lock theme ownership")
 	}
 	return nil
 }

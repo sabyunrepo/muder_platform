@@ -112,6 +112,13 @@ func TestServiceFlowOwnership_RejectsDifferentCreatorMutations(t *testing.T) {
 		assertFlowNotFound(t, err)
 	}
 	assertFlowEdgeExists(t, pool, edge.ID)
+
+	if err := svc.DeleteNode(ctx, otherCreatorID, themeID, startNode.ID); err == nil {
+		t.Fatal("expected DeleteNode to reject a different creator")
+	} else {
+		assertFlowNotFound(t, err)
+	}
+	assertFlowNodeExists(t, pool, startNode.ID)
 }
 
 func TestServiceFlowOwnership_RejectsCrossThemeEdgeEndpoints(t *testing.T) {
@@ -211,6 +218,13 @@ func TestServiceFlowOwnership_RejectsCrossThemeEdgeEndpoints(t *testing.T) {
 		assertFlowNotFound(t, err)
 	}
 	assertFlowEdgeExists(t, pool, edge.ID)
+
+	if err := svc.DeleteNode(ctx, creatorID, themeBID, nodeA.ID); err == nil {
+		t.Fatal("expected DeleteNode to reject a node from a different route theme")
+	} else {
+		assertFlowNotFound(t, err)
+	}
+	assertFlowNodeExists(t, pool, nodeA.ID)
 }
 
 func validSaveFlowRequest() SaveFlowRequest {
