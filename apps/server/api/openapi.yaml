@@ -987,6 +987,13 @@ components:
         request_id:
           type: string
           description: Request identifier mirrored from X-Request-ID
+        correlation_id:
+          type: string
+          description: Correlation identifier for client support flows; mirrors request_id
+        timestamp:
+          type: string
+          format: date-time
+          description: UTC time when the problem response was generated
         severity:
           type: string
           enum: [critical, high, medium, low]

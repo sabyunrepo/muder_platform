@@ -2,6 +2,8 @@ package apperror
 
 import (
 	"net/http"
+	"os"
+	"regexp"
 	"testing"
 )
 
@@ -23,6 +25,64 @@ func TestLookupDefinition_KnownCode(t *testing.T) {
 	if defn.DefaultKR == "" {
 		t.Error("DefaultKR should be set for creator-facing message fallback")
 	}
+}
+
+func TestAllPublicErrorCodesHaveRegistryDefinition(t *testing.T) {
+	codes := errorCodesFromSource(t)
+	seen := make(map[string]struct{}, len(codes))
+	for _, code := range codes {
+		if _, duplicated := seen[code]; duplicated {
+			t.Fatalf("duplicate public error code in invariant list: %s", code)
+		}
+		seen[code] = struct{}{}
+
+		defn, ok := LookupDefinition(code)
+		if !ok {
+			t.Errorf("missing registry definition for %s", code)
+			continue
+		}
+		if defn.Code != code {
+			t.Errorf("%s definition Code = %s", code, defn.Code)
+		}
+		if defn.Domain == "" {
+			t.Errorf("%s definition Domain must be set", code)
+		}
+		if defn.Layer == "" {
+			t.Errorf("%s definition Layer must be set", code)
+		}
+		if defn.Severity == "" {
+			t.Errorf("%s definition Severity must be set", code)
+		}
+		if defn.HTTPStatus < 400 {
+			t.Errorf("%s definition HTTPStatus = %d, want >= 400", code, defn.HTTPStatus)
+		}
+		if defn.UserAction == "" {
+			t.Errorf("%s definition UserAction must be set", code)
+		}
+		if defn.DefaultKR == "" {
+			t.Errorf("%s definition DefaultKR must be set", code)
+		}
+	}
+}
+
+func errorCodesFromSource(t *testing.T) []string {
+	t.Helper()
+
+	source, err := os.ReadFile("codes.go")
+	if err != nil {
+		t.Fatalf("failed to read codes.go: %v", err)
+	}
+
+	matches := regexp.MustCompile(`Err[A-Za-z0-9_]+\s*=\s*"([^"]+)"`).FindAllSubmatch(source, -1)
+	if len(matches) == 0 {
+		t.Fatal("no public error codes found in codes.go")
+	}
+
+	codes := make([]string, 0, len(matches))
+	for _, match := range matches {
+		codes = append(codes, string(match[1]))
+	}
+	return codes
 }
 
 func TestDefinitionForResponse_PreservesOccurrenceStatus(t *testing.T) {
