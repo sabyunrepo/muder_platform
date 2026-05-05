@@ -150,4 +150,48 @@ describe('CharacterAliasRulesEditor', () => {
     expect(onSave).not.toHaveBeenCalled();
     expect(screen.getByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeTruthy();
   });
+
+  it('캐릭터가 바뀌면 이전 검증 메시지를 지운다', () => {
+    const incompleteRule: CharacterAliasRule = {
+      id: 'alias-1',
+      display_name: '',
+      display_icon_url: '',
+      priority: 1,
+      condition: { id: 'group-1', operator: 'AND', rules: [{ id: 'rule-1', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }] },
+    };
+    const completeRule: CharacterAliasRule = {
+      id: 'alias-2',
+      display_name: '목격자',
+      priority: 1,
+      condition: { id: 'group-1', operator: 'AND', rules: [{ id: 'rule-1', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }] },
+    };
+    const { rerender } = render(
+      <CharacterAliasRulesEditor
+        characterName="홍길동"
+        characterImageUrl="https://cdn.example/base.webp"
+        rules={[incompleteRule]}
+        characterOptions={characterOptions}
+        disabled={false}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+    expect(screen.getByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeTruthy();
+
+    rerender(
+      <CharacterAliasRulesEditor
+        characterName="김영희"
+        characterImageUrl="https://cdn.example/next.webp"
+        rules={[completeRule]}
+        characterOptions={characterOptions}
+        disabled={false}
+        onChange={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeNull();
+  });
 });

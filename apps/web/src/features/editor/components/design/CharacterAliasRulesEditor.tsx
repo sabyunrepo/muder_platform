@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CharacterAliasRule } from '@/features/editor/api';
 import type { SelectOption } from './condition/ConditionRule';
 import { ConditionBuilder } from './condition/ConditionBuilder';
@@ -25,6 +25,10 @@ export function CharacterAliasRulesEditor({
   onSave,
 }: CharacterAliasRulesEditorProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setValidationError(null);
+  }, [rules, characterName]);
 
   const addRule = () => {
     if (disabled) return;
@@ -169,11 +173,14 @@ export function CharacterAliasRulesEditor({
   );
 }
 
+let aliasRuleIdSeq = 0;
+
 function createAliasRuleID(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
   }
-  return `alias-${Date.now()}`;
+  aliasRuleIdSeq += 1;
+  return `alias-${Date.now()}-${aliasRuleIdSeq}`;
 }
 
 function createDefaultAliasCondition(): ConditionGroup {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/mmp-platform/server/internal/engine"
@@ -89,23 +90,28 @@ func TestNormalizeCharacterAliasRules_ValidatesConditionAndDisplayValue(t *testi
 	}
 
 	tests := []struct {
-		name  string
-		rules []CharacterAliasRule
+		name            string
+		rules           []CharacterAliasRule
+		wantErrContains string
 	}{
-		{name: "missing display", rules: []CharacterAliasRule{{ID: "missing-display", Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}},
-		{name: "bad condition", rules: []CharacterAliasRule{{ID: "bad-condition", DisplayName: strPtr("별칭"), Priority: 0, Condition: json.RawMessage(`{"id":"g","operator":"AND","rules":[]}`)}}},
-		{name: "empty id", rules: []CharacterAliasRule{{ID: " ", DisplayName: strPtr("별칭"), Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}},
-		{name: "duplicated id", rules: []CharacterAliasRule{valid, valid}},
-		{name: "negative priority", rules: []CharacterAliasRule{{ID: "negative", DisplayName: strPtr("별칭"), Priority: -1, Condition: aliasCondition("identity_revealed", "true")}}},
-		{name: "long display name", rules: []CharacterAliasRule{{ID: "long", DisplayName: &longName, Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}},
-		{name: "invalid icon URL", rules: []CharacterAliasRule{{ID: "url", DisplayIconURL: strPtr("not a url"), Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}},
-		{name: "too many rules", rules: tooMany},
+		{name: "missing display", rules: []CharacterAliasRule{{ID: "missing-display", Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "display_name or display_icon_url"},
+		{name: "bad condition", rules: []CharacterAliasRule{{ID: "bad-condition", DisplayName: strPtr("별칭"), Priority: 0, Condition: json.RawMessage(`{"id":"g","operator":"AND","rules":[]}`)}}, wantErrContains: "condition invalid"},
+		{name: "empty id", rules: []CharacterAliasRule{{ID: " ", DisplayName: strPtr("별칭"), Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "id is required"},
+		{name: "duplicated id", rules: []CharacterAliasRule{valid, valid}, wantErrContains: "duplicated"},
+		{name: "negative priority", rules: []CharacterAliasRule{{ID: "negative", DisplayName: strPtr("별칭"), Priority: -1, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "priority"},
+		{name: "long display name", rules: []CharacterAliasRule{{ID: "long", DisplayName: &longName, Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "display_name is too long"},
+		{name: "invalid icon URL", rules: []CharacterAliasRule{{ID: "url", DisplayIconURL: strPtr("not a url"), Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "display_icon_url"},
+		{name: "too many rules", rules: tooMany, wantErrContains: "at most"},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := normalizeCharacterAliasRules(tc.rules); err == nil {
+			_, err := normalizeCharacterAliasRules(tc.rules)
+			if err == nil {
 				t.Fatal("expected validation error")
+			}
+			if !strings.Contains(err.Error(), tc.wantErrContains) {
+				t.Fatalf("expected error containing %q, got %v", tc.wantErrContains, err)
 			}
 		})
 	}
@@ -186,7 +192,11 @@ func TestService_CharacterAliasRulesContract(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateCharacter preserve alias rules: %v", err)
 	}
-	if len(updated.AliasRules) != 1 {
+	if len(updated.AliasRules) != 1 ||
+		updated.AliasRules[0].ID != "identity-open" ||
+		updated.AliasRules[0].DisplayName == nil ||
+		*updated.AliasRules[0].DisplayName != "밤의 목격자" ||
+		updated.AliasRules[0].Priority != 2 {
 		t.Fatalf("alias rules should be preserved: %+v", updated.AliasRules)
 	}
 
