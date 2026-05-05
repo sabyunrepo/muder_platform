@@ -16,6 +16,7 @@ Usage: scripts/pr-ready-for-ci-guard.sh [--apply] [PR_NUMBER]
 
 예외:
 - ALLOW_NO_CODERABBIT=1 이면 CodeRabbit 리뷰 없음은 경고만 출력합니다.
+- ALLOW_OPERATIONAL_READY_FOR_CI=1 이면 code-rabbit-only PR에도 라벨을 붙일 수 있지만, 기본 정책은 차단입니다.
 MSG
 }
 
@@ -109,6 +110,16 @@ fi
 if [[ "$latest_state" == "CHANGES_REQUESTED" ]]; then
   echo "🚫 ready-for-ci 차단: 최신 CodeRabbit review가 CHANGES_REQUESTED 입니다." >&2
   exit 4
+fi
+
+ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
+eval "$ci_scope_env"
+if [[ "$CI_SCOPE" == "code-rabbit-only" && "${ALLOW_OPERATIONAL_READY_FOR_CI:-}" != "1" ]]; then
+  echo "🚫 ready-for-ci 차단: 이 PR은 code-rabbit-only scope입니다." >&2
+  echo "   heavy CI workflow가 path filter 때문에 생성되지 않는 경로만 변경했습니다." >&2
+  echo "   CodeRabbit clear + unresolved 0 + light/focused validation 후 main Codex가 merge 판단하세요." >&2
+  echo "   scope 근거: scripts/mmp-pr-ci-scope.sh $pr_number" >&2
+  exit 5
 fi
 
 if [[ "$apply" == "1" ]]; then

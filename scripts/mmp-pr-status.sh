@@ -87,6 +87,8 @@ latest_coderabbit="$(gh pr view "$pr_number" --json reviews,comments --jq '([.re
 codecov_summary="$(gh pr view "$pr_number" --json comments --jq '[.comments[] | select((.author.login == "codecov-commenter") or (.body | contains("Codecov Report")))] | last | if . then (.body | split("\n") | .[0:6] | join("\n")) else "없음" end')"
 checks_json="$(gh pr checks "$pr_number" --json name,bucket,state 2>/dev/null || printf '[]')"
 coderabbit_check_bucket="$(printf '%s' "$checks_json" | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
+ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
+eval "$ci_scope_env"
 
 if [[ "$unresolved_threads" -gt 0 ]]; then
   coderabbit_action_state="blocker: unresolved review thread가 남아 있습니다"
@@ -111,6 +113,8 @@ cat <<MSG
 - Labels: $labels
 - Merge state: $merge_state
 - Review decision: $review_decision
+- CI scope: $CI_SCOPE
+- Heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
 - CodeRabbit latest review: $latest_coderabbit
 - CodeRabbit actionable state: $coderabbit_action_state
 - Review threads: unresolved $unresolved_threads / total $total_threads

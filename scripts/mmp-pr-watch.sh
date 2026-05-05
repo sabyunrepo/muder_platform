@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Watch MMP PR CodeRabbit and CI state until it needs attention or is complete.
+# Intended for CI steward agents, not the main Codex thread.
 
 set -euo pipefail
 
 usage() {
   cat <<'MSG'
 Usage: scripts/mmp-pr-watch.sh [options] [PR_NUMBER]
+
+This is a CI steward tool. Main Codex should use one-shot status commands
+(`scripts/mmp-pr-status.sh`, `gh pr view`) and delegate waiting to
+`mmp-ci-steward`.
 
 Options:
   --interval SECONDS       Poll interval. Default: 60
@@ -164,12 +169,31 @@ done
 require_cmd gh
 require_cmd jq
 
+if [[ "${MMP_CI_STEWARD:-}" != "1" && "${MMP_ALLOW_MAIN_PR_WATCH:-}" != "1" ]]; then
+  cat >&2 <<'MSG'
+🚫 mmp-pr-watch는 CI steward 전용 장시간 대기 도구입니다.
+   메인 Codex thread에서 직접 watcher를 돌리지 마세요.
+   대신 scripts/mmp-ci-steward-handoff.sh <PR> 로 steward에 위임하세요.
+   수동 디버깅 예외가 꼭 필요하면 MMP_ALLOW_MAIN_PR_WATCH=1 을 명시하세요.
+MSG
+  exit 65
+fi
+
 if [[ -z "$pr_number" ]]; then
   pr_number="$(gh_retry pr view --json number --jq '.number')"
 fi
 
 owner="$(gh_retry repo view --json owner --jq '.owner.login')"
 repo="$(gh_retry repo view --json name --jq '.name')"
+ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
+eval "$ci_scope_env"
+if [[ "$CI_SCOPE" == "code-rabbit-only" && "$code_rabbit_only" != "1" ]]; then
+  echo "🚫 PR #$pr_number 은 code-rabbit-only scope입니다." >&2
+  echo "   heavy CI workflow가 path filter 때문에 생성되지 않는 경로만 변경했습니다." >&2
+  echo "   scripts/mmp-pr-watch.sh $pr_number --code-rabbit-only 로 확인하세요." >&2
+  echo "   ready-for-ci 라벨이나 --trigger-missing-workflows 를 사용하지 마세요." >&2
+  exit 64
+fi
 triggered_workflows="|"
 
 start_epoch="$(date +%s)"
