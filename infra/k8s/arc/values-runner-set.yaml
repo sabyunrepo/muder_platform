@@ -27,7 +27,7 @@ template:
     containers:
       - name: runner
         # versioned tag 사용 (latest 금지) — imagePullPolicy: IfNotPresent 와 결합해 노드 캐시 재사용.
-        image: registry.cloud.kt.com/dldxu5p5/mmp-runner:v2026-05-04
+        image: registry.cloud.kt.com/dldxu5p5/mmp-runner:v2026-05-05-runner-scanners
         imagePullPolicy: IfNotPresent
         command: ["/home/runner/run.sh"]
         resources:
