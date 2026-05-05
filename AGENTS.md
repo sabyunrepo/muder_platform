@@ -50,6 +50,8 @@ When:
 Do:
 1. 작업 계획 문서와 GitHub Issue를 상호 링크한다.
 2. PR 본문에 `Closes #번호` 또는 `Refs #번호`를 명시한다.
+   - 해당 PR이 이슈를 완료하면 반드시 `Closes #번호`를 사용해 merge 시 자동 close되게 한다.
+   - 일부만 처리하는 PR은 `Refs #번호`를 사용해 이슈가 조기 종료되지 않게 한다.
 3. 작업 중 scope가 바뀌면 Issue checklist 또는 plan 문서를 먼저 갱신한다.
 4. 완료 보고에는 닫힌 Issue, 남은 Issue, 다음 권장 Issue를 포함한다.
 5. 새 Issue를 만들거나 기존 Issue를 재설계할 때는 가능한 경우 `mmp-issue-planning` skill을 사용한다.

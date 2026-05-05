@@ -14,6 +14,9 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - run focused checks for the changed scope
    - run/perform code review using available review skill or manual review
    - write PR title/body in Korean
+   - link the GitHub issue in the PR body:
+     - use `Closes #<issue>` when the PR completes the issue so GitHub closes it on merge
+     - use `Refs #<issue>` only for partial PRs that must leave the issue open
    - do **not** add `ready-for-ci`
 3. PR sequence:
    - create PR without CI label
@@ -35,6 +38,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 
 ## Done
 - PR has Korean title/body.
+- Completed issues are linked with `Closes #<issue>` and are confirmed closed after merge.
 - CodeRabbit valid feedback is fixed or explicitly rejected with reason.
 - `ready-for-ci` was added only after review cleanup.
 - CI and Codecov evidence is reported before merge.
