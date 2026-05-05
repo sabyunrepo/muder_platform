@@ -1360,6 +1360,15 @@ components:
         image_url:
           type: string
           format: uri
+        endcard_title:
+          type: string
+          maxLength: 80
+        endcard_body:
+          type: string
+          maxLength: 3000
+        endcard_image_url:
+          type: string
+          format: uri
         is_culprit:
           type: boolean
           default: false
@@ -1394,6 +1403,15 @@ components:
           type: string
           maxLength: 2000
         image_url:
+          type: string
+          format: uri
+        endcard_title:
+          type: string
+          maxLength: 80
+        endcard_body:
+          type: string
+          maxLength: 3000
+        endcard_image_url:
           type: string
           format: uri
         is_culprit:
@@ -1507,6 +1525,13 @@ components:
         description:
           type: string
         image_url:
+          type: string
+          format: uri
+        endcard_title:
+          type: string
+        endcard_body:
+          type: string
+        endcard_image_url:
           type: string
           format: uri
         is_culprit:

@@ -54,6 +54,9 @@ export interface EditorCharacterResponse {
   show_in_intro: boolean;
   can_speak_in_reading: boolean;
   is_voting_candidate: boolean;
+  endcard_title?: string | null;
+  endcard_body?: string | null;
+  endcard_image_url?: string | null;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -101,6 +104,9 @@ export interface CreateCharacterRequest {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  endcard_title?: string;
+  endcard_body?: string;
+  endcard_image_url?: string;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -115,6 +121,9 @@ export interface UpdateCharacterRequest {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  endcard_title?: string;
+  endcard_body?: string;
+  endcard_image_url?: string;
   alias_rules?: CharacterAliasRule[];
 }
 

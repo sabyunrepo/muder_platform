@@ -238,6 +238,9 @@ func (s *ImageService) ConfirmImageUpload(
 			ShowInIntro:       char.ShowInIntro,
 			CanSpeakInReading: char.CanSpeakInReading,
 			IsVotingCandidate: char.IsVotingCandidate,
+			EndcardTitle:      char.EndcardTitle,
+			EndcardBody:       char.EndcardBody,
+			EndcardImageUrl:   char.EndcardImageUrl,
 			AliasRules:        char.AliasRules,
 		})
 		if err != nil {
