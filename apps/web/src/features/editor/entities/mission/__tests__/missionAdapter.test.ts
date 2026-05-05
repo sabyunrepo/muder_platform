@@ -44,6 +44,7 @@ describe("missionAdapter", () => {
       description: "단서를 가진다",
       points: 7,
       targetClueId: "clue-1",
+      condition: "토론 이후 공개",
     })).toEqual({
       id: "m1",
       type: "hold_clue",
@@ -53,7 +54,28 @@ describe("missionAdapter", () => {
       resultVisibility: "result_only",
       engineOwner: "backend_engine",
       targetClueId: "clue-1",
+      legacyConditionNote: "토론 이후 공개",
     });
+  });
+
+  it("미션 조건 메모는 공백을 제거하고 빈 값은 runtime 후보에서 제외한다", () => {
+    expect(toMissionRuntimeDraft({
+      id: "m-trim",
+      type: "secret",
+      description: "비밀",
+      points: 1,
+      condition: "  토론 이후 공개  ",
+    })).toEqual(expect.objectContaining({
+      legacyConditionNote: "토론 이후 공개",
+    }));
+
+    expect(toMissionRuntimeDraft({
+      id: "m-empty",
+      type: "secret",
+      description: "비밀",
+      points: 1,
+      condition: "   ",
+    })).not.toHaveProperty("legacyConditionNote");
   });
 
   it("새 미션을 자동 판정 타입으로 바꾸면 runtime verification은 auto가 된다", () => {
@@ -112,7 +134,7 @@ describe("missionAdapter", () => {
   });
 
   it("제작자가 이해할 요약과 자동 판정 경고를 만든다", () => {
-    expect(toMissionViewModel({ id: "m2", type: "kill", description: "", points: -1 })).toEqual({
+    expect(toMissionViewModel({ id: "m2", type: "kill", description: "", points: -1, condition: "공모" })).toEqual({
       id: "m2",
       title: "미션 내용을 입력해 주세요",
       typeLabel: "살해",
@@ -125,6 +147,7 @@ describe("missionAdapter", () => {
       warnings: [
         "플레이어가 이해할 미션 내용을 입력해 주세요.",
         "투표형 미션은 대상 캐릭터를 선택해야 자동 판정할 수 있습니다.",
+        "미션 조건 메모는 제작자 참고용이며, 실제 진행 분기는 스토리 이동 조건에서 판정됩니다.",
       ],
     });
   });

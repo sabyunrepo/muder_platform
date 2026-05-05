@@ -1,5 +1,6 @@
 import type { Edge } from "@xyflow/react";
 import type { FlowNodeData } from "../../flowTypes";
+import { isCompleteConditionGroupRecord } from "../../components/design/condition/conditionTypes";
 import {
   DELIVER_INFORMATION_ACTION,
   LEGACY_DELIVER_INFORMATION_ACTION,
@@ -100,6 +101,5 @@ function formatDefaultTransition(count: number): string {
 
 function hasEdgeCondition(edge: Edge): boolean {
   const condition = (edge.data as { condition?: unknown } | undefined)?.condition;
-  if (!condition || typeof condition !== "object") return false;
-  return Object.keys(condition).length > 0;
+  return isCompleteConditionGroupRecord(condition);
 }

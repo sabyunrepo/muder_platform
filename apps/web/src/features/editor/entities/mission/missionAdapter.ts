@@ -57,7 +57,7 @@ export interface MissionRuntimeDraft {
   engineOwner: MissionRuntimeOwner;
   targetCharacterId?: string;
   targetClueId?: string;
-  condition?: string;
+  legacyConditionNote?: string;
 }
 
 export interface MissionEngineAssignmentDraft {
@@ -169,6 +169,7 @@ export function getMissionVerificationOptions(
 
 export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
   const runtimeType = toRuntimeType(mission);
+  const legacyConditionNote = mission.condition?.trim();
   return {
     id: mission.id,
     type: runtimeType,
@@ -179,7 +180,7 @@ export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
     engineOwner: "backend_engine",
     ...(mission.targetCharacterId ? { targetCharacterId: mission.targetCharacterId } : {}),
     ...(mission.targetClueId ? { targetClueId: mission.targetClueId } : {}),
-    ...(mission.condition ? { condition: mission.condition } : {}),
+    ...(legacyConditionNote ? { legacyConditionNote } : {}),
   };
 }
 
@@ -261,6 +262,9 @@ function buildMissionWarnings(mission: Mission, runtimeDraft: MissionRuntimeDraf
   }
   if (runtimeDraft.type === "custom") {
     warnings.push("이 미션은 자동 판정 대신 플레이어 신고 또는 진행자 확인으로 처리됩니다.");
+  }
+  if (mission.condition?.trim()) {
+    warnings.push("미션 조건 메모는 제작자 참고용이며, 실제 진행 분기는 스토리 이동 조건에서 판정됩니다.");
   }
   return warnings;
 }

@@ -6,6 +6,20 @@ import {
   toStorySceneFlowSummaryFromGraph,
 } from "../storySceneAdapter";
 
+const completeCondition = {
+  id: "group-1",
+  operator: "AND",
+  rules: [
+    {
+      id: "rule-1",
+      variable: "custom_flag",
+      target_flag_key: "route_open",
+      comparator: "=",
+      value: "true",
+    },
+  ],
+};
+
 describe("storySceneAdapter", () => {
   it("Flow phase node를 제작자용 스토리 장면 요약으로 변환한다", () => {
     const nodes: Node[] = [
@@ -46,13 +60,19 @@ describe("storySceneAdapter", () => {
         id: "edge-2",
         source: "scene-2",
         target: "ending-1",
+        data: { condition: completeCondition },
+      },
+      {
+        id: "edge-legacy",
+        source: "scene-2",
+        target: "ending-2",
         data: { condition: { op: "and", clauses: [{ fact: "has_clue" }] } },
       },
     ];
 
     expect(toStorySceneFlowSummary(nodes, edges)).toEqual({
       sceneCountLabel: "2개 장면",
-      transitionCountLabel: "2개 이동",
+      transitionCountLabel: "3개 이동",
       conditionalTransitionCountLabel: "조건 이동 1개",
       scenes: [
         {
@@ -69,7 +89,7 @@ describe("storySceneAdapter", () => {
           title: "토론",
           typeLabel: "토론",
           informationLabel: "0개 정보 공개",
-          transitionLabel: "기본 이동 없음 · 조건 이동 1개",
+          transitionLabel: "기본 이동 1개 · 조건 이동 1개",
           startActionLabel: "변화 없음",
           endActionLabel: "변화 1개",
         },
@@ -97,7 +117,7 @@ describe("storySceneAdapter", () => {
           theme_id: "theme-1",
           source_id: "scene-1",
           target_id: "ending-1",
-          condition: { op: "and", clauses: [{ fact: "accused" }] },
+          condition: completeCondition,
           label: null,
           sort_order: 1,
           created_at: "2026-05-05T00:00:00Z",

@@ -4,13 +4,14 @@ import {
   getBezierPath,
   type EdgeProps,
 } from "@xyflow/react";
+import { isCompleteConditionGroupRecord } from "./condition/conditionTypes";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface ConditionEdgeData {
-  condition?: string;
+  condition?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 
@@ -41,7 +42,7 @@ export function ConditionEdge(props: EdgeProps) {
   });
 
   const edgeData = data as ConditionEdgeData | undefined;
-  const isDefault = !edgeData?.condition;
+  const isDefault = !isCompleteConditionGroupRecord(edgeData?.condition ?? null);
 
   const edgeStyle: React.CSSProperties = {
     ...style,

@@ -4,6 +4,7 @@ import type {
   FlowGraphResponse,
   FlowNodeData,
 } from "../../flowTypes";
+import { isCompleteConditionGroupRecord } from "../../components/design/condition/conditionTypes";
 import { toPhaseEditorViewModel } from "../phase/phaseEntityAdapter";
 
 export interface StorySceneViewModel {
@@ -101,9 +102,5 @@ function toStorySceneEdge(edge: FlowEdgeResponse): Edge {
 
 function hasCompleteCondition(edge: Edge): boolean {
   const condition = (edge.data as { condition?: unknown } | undefined)?.condition;
-  return (
-    !!condition &&
-    typeof condition === "object" &&
-    Object.keys(condition).length > 0
-  );
+  return isCompleteConditionGroupRecord(condition);
 }
