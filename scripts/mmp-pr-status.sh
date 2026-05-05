@@ -17,6 +17,7 @@ Usage: scripts/mmp-pr-status.sh [options] [PR_NUMBER]
 
 Options:
   --fail-on-blocker  CodeRabbit/review/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
+  --allow-behind     strict up-to-date + behind 상태를 blocker가 아니라 main Codex merge-decision 대상으로 표시합니다.
   -h, --help         Show help
 MSG
 }
@@ -32,11 +33,16 @@ require_cmd gh
 require_cmd jq
 
 fail_on_blocker=0
+allow_behind=0
 pr_number=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --fail-on-blocker)
       fail_on_blocker=1
+      shift
+      ;;
+    --allow-behind)
+      allow_behind=1
       shift
       ;;
     -h|--help)
@@ -145,7 +151,9 @@ else
   coderabbit_action_state="unknown: CodeRabbit 상태를 수동 확인하세요"
 fi
 
-if [[ "$strict_status_checks" == "true" && "$mergeable_state" == "behind" ]]; then
+if [[ "$strict_status_checks" == "true" && "$mergeable_state" == "behind" && "$allow_behind" == "1" ]]; then
+  merge_gate_state="merge-decision: strict up-to-date check가 켜져 있고 PR branch가 뒤처졌지만, 품질 gate가 clear라면 main Codex가 admin merge 또는 branch update를 결정합니다"
+elif [[ "$strict_status_checks" == "true" && "$mergeable_state" == "behind" ]]; then
   merge_gate_state="blocker: strict up-to-date check가 켜져 있고 PR branch가 base보다 뒤처졌습니다"
 else
   merge_gate_state="clear"
