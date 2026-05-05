@@ -73,13 +73,15 @@ jobs:
       - name: Verify image-resident toolchain
         if: github.event_name == 'pull_request'
         run: |
-          docker run --rm --entrypoint /bin/bash \
+          docker run --rm --platform linux/amd64 --entrypoint /bin/bash \
             ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }} \
             -c '
               set -euo pipefail
               # Toolchain pre-bake
               jq --version
               govulncheck -version
+              goose -version
+              osv-scanner --version
               ls /opt/hostedtoolcache/go/1.25.0/x64/bin/go
               ls /opt/hostedtoolcache/node/20.18.0/x64/bin/node
               # PATH가 image ENV로 설정 — go/node가 PATH로 직접 호출 가능해야

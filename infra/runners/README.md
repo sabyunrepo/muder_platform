@@ -28,7 +28,7 @@ myoung34/github-runner 4 컨테이너 ephemeral pool. PR-164 fix를 넘어 runne
 
 이 pool은 **`ghcr.io/sabyunrepo/mmp-runner` Custom Image**로 가동합니다 (myoung34 base 직접 사용 X). 정공:
 
-- 사전 install: jq, govulncheck, Go 1.25, Node 20, Playwright deps
+- 사전 install: jq, govulncheck, goose, osv-scanner, Go 1.25, Node 20, Playwright deps
 - **Image-resident toolchain (Phase 23 follow-up)** — `PATH`에 Go/Node bin 추가, `GOMODCACHE`/`GOCACHE`/`PNPM_STORE_PATH` ENV pre-set, `apps/server/go.mod` deps `go mod download` pre-bake
 - docker GID 990 정착 (testcontainers-go + Trivy 자연 권한)
   - **GID 990 의미**: Dockerfile이 `groupadd -g 990 docker-host`로 group 생성 후 runner user에 가입. 사용자 host의 docker.sock GID와 매칭되어야 효력. `.env`의 `DOCKER_GID`가 dual-control 추가 안전망 (compose `group_add: ${DOCKER_GID}`)
@@ -126,6 +126,18 @@ Playwright system dependency marker:
 - Browser binaries still use `PLAYWRIGHT_BROWSERS_PATH=/opt/cache/playwright`,
   so Playwright package version drift stays controlled by the repo lockfile.
 
+Pre-baked CLI tools:
+- `govulncheck`: used by `security-fast.yml`; pinned in
+  `infra/runners/Dockerfile`; workflow must not run a per-job `go install` on
+  ARC.
+- `goose`: used by `e2e-stubbed.yml` migrations; required PR/full-CI path uses
+  the ARC image-resident binary.
+- `osv-scanner`: used by `security-deep.yml`; installed from the pinned
+  upstream release binary and SHA256 in `infra/runners/Dockerfile`, avoiding a
+  per-job Go 1.26 toolchain download just to build the scanner.
+- Optional/nightly workflows that still run on `ubuntu-latest` may keep local
+  install steps because they do not consume the ARC runner image.
+
 ### 환경변수 (image ENV로 정의 — Dockerfile)
 
 `setup-go`/`setup-node` 가 PATH 자동 hit:
@@ -159,6 +171,30 @@ GHA cache restore 가 일어나지 않음 → 매 run 의 ~913MB 다운로드 0.
 | 매 run GOMODCACHE 다운로드 | ~913MB (~13초) | **0 (image pre-bake)** |
 | Go toolchain mismatch fallback | 매 fire 마다 다운로드 후 named volume 비대 | image PATH 즉시 hit |
 | pnpm install 첫 run | GHA cache restore 의존 | named volume 영구 persist (4 runner 공유) |
+| security-fast scanner install | 매 fire 마다 `go install govulncheck` | image PATH 즉시 hit |
+| E2E migration CLI install | 매 shard 마다 `go install goose` | image PATH 즉시 hit |
+| security-deep OSV install | Go 1.26 setup + `go install osv-scanner` | pinned binary 즉시 hit |
+
+### #349 pre-bake 판단 기록
+
+이번 runner image 최적화에서 바로 pre-bake 하는 항목:
+- `goose`: 버전 고정(`v3.27.0`)이고 DB migration CLI라 workspace lockfile과
+  결합도가 낮다.
+- `osv-scanner`: `security-deep.yml`에서 scanner 설치만 위해 Go 1.26.2를
+  매번 내려받던 비용을 제거한다. Dockerfile의 release SHA256 검증으로
+  supply-chain drift를 줄인다.
+- `govulncheck`: 기존 image에 이미 들어가던 도구다. workflow install step만
+  제거해 image-resident 카논과 일치시킨다.
+
+이번 PR에서 pre-bake 하지 않는 항목:
+- Playwright browser binaries: 속도 이득은 크지만 image size가 빠르게 커지고,
+  repo의 Playwright package version과 browser revision이 lockstep으로 맞아야
+  한다. 현 단계에서는 `/opt/mmp-runner/playwright-deps-ready` system deps
+  marker와 `/opt/cache/playwright` cache를 유지한다.
+- `pnpm install` workspace deps: public PR cache poisoning과 secret residue
+  위험이 있어 image에 workspace `node_modules`를 굽지 않는다.
+- Trivy/gitleaks action 내부 바이너리: action이 관리하는 download/cache 영역이라
+  로그 기반 측정 후 별도 이슈에서 판단한다.
 
 ### 운영 카논 — image rebuild 후 cleanup
 
