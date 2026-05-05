@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { CheckCircle2, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import { Button, Badge } from '@/shared/components/ui';
+import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Button } from '@/shared/components/ui';
 import type { EditorThemeResponse } from '@/features/editor/api';
-import { useUpdateConfigJson, useValidateTheme } from '@/features/editor/api';
+import { useValidateTheme } from '@/features/editor/api';
 import { useEditorUI } from '@/features/editor/stores/editorUIStore';
 import type { EditorTab } from '@/features/editor/constants';
 import { validateGameDesign } from '@/features/editor/validation';
@@ -24,14 +24,6 @@ interface ValidationItem {
   severity: ValidationSeverity;
   message: string;
   tab?: EditorTab;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function serialize(value: Record<string, unknown> | null): string {
-  return JSON.stringify(value ?? {}, null, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -77,42 +69,10 @@ function ValidationRow({ item, onNavigate }: ValidationRowProps) {
 // ---------------------------------------------------------------------------
 
 export function AdvancedTab({ themeId, theme }: AdvancedTabProps) {
-  const serverText = serialize(theme.config_json);
-  const [text, setText] = useState(serverText);
-  const [parseError, setParseError] = useState<string | null>(null);
   const [validationItems, setValidationItems] = useState<ValidationItem[] | null>(null);
 
-  const updateConfig = useUpdateConfigJson(themeId);
   const validateTheme = useValidateTheme(themeId);
   const { setActiveTab } = useEditorUI();
-
-  useEffect(() => {
-    setText(serverText);
-    setParseError(null);
-  }, [serverText]);
-
-  const isDirty = text !== serverText;
-  const lines = text.split('\n');
-
-  const handleSave = () => {
-    let parsed: Record<string, unknown>;
-    try {
-      parsed = JSON.parse(text) as Record<string, unknown>;
-    } catch {
-      setParseError('유효하지 않은 JSON 형식입니다');
-      return;
-    }
-    setParseError(null);
-    updateConfig.mutate(parsed, {
-      onSuccess: () => toast.success('설정이 저장되었습니다'),
-      onError: () => toast.error('설정 저장에 실패했습니다'),
-    });
-  };
-
-  const handleReset = () => {
-    setText(serverText);
-    setParseError(null);
-  };
 
   const handleValidate = () => {
     validateTheme.mutate(undefined, {
@@ -152,73 +112,48 @@ export function AdvancedTab({ themeId, theme }: AdvancedTabProps) {
   };
 
   return (
-    <div className="flex h-full flex-col lg:flex-row">
-      {/* ── JSON Editor ── */}
-      <div className="flex flex-1 flex-col overflow-hidden border-b border-slate-800 lg:border-b-0 lg:border-r">
-        {/* Editor header */}
-        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-2">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono font-medium text-slate-400">config_json</span>
-            {isDirty && <Badge variant="warning">변경사항 있음</Badge>}
+    <div className="grid min-h-full gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-4">
+        <div className="flex items-start gap-3">
+          <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-300">
+            <ShieldCheck className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleReset}
-              disabled={!isDirty || updateConfig.isPending}
-            >
-              초기화
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSave}
-              isLoading={updateConfig.isPending}
-              disabled={!isDirty}
-            >
-              저장
-            </Button>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-slate-100">제작 검수</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-400">
+              현재 제작 흐름에서 누락된 단서, 등장인물, 장면 연결을 확인합니다.
+              내부 저장 구조는 기본 제작 화면에서 직접 편집하지 않습니다.
+            </p>
           </div>
         </div>
 
-        {/* Editor with line numbers */}
-        <div className="relative flex flex-1 overflow-auto font-mono">
-          {/* Line numbers */}
-          <div className="sticky left-0 z-10 w-10 shrink-0 select-none overflow-hidden border-r border-slate-800 bg-slate-950 py-3">
-            {lines.map((_, i) => (
-              <div
-                key={i}
-                className="text-right pr-2 text-[11px] leading-5 text-slate-700"
-              >
-                {i + 1}
-              </div>
-            ))}
-          </div>
-
-          {/* Textarea */}
-          <textarea
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              if (parseError) setParseError(null);
-            }}
-            spellCheck={false}
-            className="flex-1 bg-slate-950 py-3 pl-3 pr-4 font-mono text-sm leading-5 text-slate-300 caret-amber-500 selection:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset resize-none min-h-[400px]"
-          />
+        <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            검수 기준
+          </p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-300">
+            <li className="flex gap-2">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+              단서와 등장인물이 서로 참조 가능한 상태인지 확인합니다.
+            </li>
+            <li className="flex gap-2">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+              장면 흐름과 조건 분기가 끊기지 않았는지 확인합니다.
+            </li>
+            <li className="flex gap-2">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+              저장된 제작 규칙을 사용자에게 필요한 말로 요약합니다.
+            </li>
+          </ul>
         </div>
-
-        {/* Parse error */}
-        {parseError && (
-          <div className="border-t border-slate-800 bg-red-500/5 px-4 py-2">
-            <p className="text-xs text-red-400">{parseError}</p>
-          </div>
-        )}
       </div>
 
       {/* ── Validation Panel ── */}
-      <div className="w-full lg:w-72 shrink-0 flex flex-col bg-slate-950">
-        <div className="border-b border-slate-800 bg-slate-900 px-4 py-2">
-          <span className="text-xs font-mono font-medium text-slate-400">검증 결과</span>
+      <div className="flex min-h-[18rem] flex-col rounded-lg border border-slate-800 bg-slate-950">
+        <div className="border-b border-slate-800 bg-slate-900 px-4 py-3">
+          <span className="text-xs font-semibold uppercase tracking-widest text-slate-400">
+            검증 결과
+          </span>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-3">
@@ -233,8 +168,8 @@ export function AdvancedTab({ themeId, theme }: AdvancedTabProps) {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-700 font-mono">
-              검증 버튼을 클릭하세요
+            <p className="text-sm leading-6 text-slate-500">
+              아직 검증을 실행하지 않았습니다. 아래 버튼으로 현재 제작 상태를 확인하세요.
             </p>
           )}
         </div>

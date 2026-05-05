@@ -165,13 +165,14 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           </label>
         </div>
 
-        {/* Read-only metadata */}
-        <div className="rounded-sm border border-slate-800 bg-slate-950/50 px-3 py-2 text-[10px] font-mono text-slate-500">
-          <div>type: {media.type}</div>
-          <div>source: {media.source_type}</div>
-          {media.mime_type && <div>mime: {media.mime_type}</div>}
-          {media.file_size != null && <div>size: {media.file_size} B</div>}
-        </div>
+        <dl className="grid gap-2 rounded-sm border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs">
+          <MediaInfoRow label="분류" value={mediaTypeLabel(media.type)} />
+          <MediaInfoRow label="출처" value={mediaSourceLabel(media.source_type)} />
+          {media.mime_type && <MediaInfoRow label="파일 형식" value={mimeTypeLabel(media.mime_type)} />}
+          {media.file_size != null && (
+            <MediaInfoRow label="파일 크기" value={formatFileSize(media.file_size)} />
+          )}
+        </dl>
 
         {referenceWarning && (
           <div
@@ -224,6 +225,66 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       </div>
     </div>
   );
+}
+
+function MediaInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="text-right text-slate-300">{value}</dd>
+    </div>
+  );
+}
+
+function mediaTypeLabel(type: MediaResponse['type']): string {
+  switch (type) {
+    case 'BGM':
+      return '배경음악';
+    case 'SFX':
+      return '효과음';
+    case 'VOICE':
+      return '음성';
+    case 'IMAGE':
+      return '이미지';
+    case 'VIDEO':
+      return '영상';
+    case 'DOCUMENT':
+      return '문서';
+    default:
+      return '미디어';
+  }
+}
+
+function mediaSourceLabel(source: MediaResponse['source_type']): string {
+  switch (source) {
+    case 'FILE':
+      return '직접 업로드';
+    case 'YOUTUBE':
+      return 'YouTube';
+    default:
+      return '등록된 리소스';
+  }
+}
+
+function mimeTypeLabel(mimeType: string): string {
+  const labels: Record<string, string> = {
+    'audio/mpeg': 'MP3',
+    'audio/wav': 'WAV',
+    'audio/ogg': 'OGG',
+    'image/jpeg': 'JPEG',
+    'image/png': 'PNG',
+    'image/webp': 'WEBP',
+    'video/mp4': 'MP4',
+    'video/webm': 'WEBM',
+  };
+  return labels[mimeType.toLowerCase()] ?? '지원 파일';
+}
+
+function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '알 수 없음';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function mediaReferenceTypeLabel(type: string): string {
