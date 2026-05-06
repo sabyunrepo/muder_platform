@@ -12,6 +12,7 @@ import {
 import type { Node } from "@xyflow/react";
 import type { FlowNodeData } from "@/features/editor/flowTypes";
 import type { StoryLibraryEntity } from "./EditorEntityLibrary";
+import { formatDiscussionRoomSummary } from "@/features/editor/entities/phase/discussionRoomPolicyAdapter";
 
 interface SceneInspectorProps {
   selectedScene: Node<FlowNodeData> | null;
@@ -84,7 +85,7 @@ function buildRows(scene: Node<FlowNodeData> | null): InspectorRow[] {
     },
     {
       label: "토론방",
-      value: data.discussionRoomPolicy?.enabled ? "사용" : "사용 안 함",
+      value: formatDiscussionRoomSummary(data.discussionRoomPolicy),
     },
     {
       label: "연출",

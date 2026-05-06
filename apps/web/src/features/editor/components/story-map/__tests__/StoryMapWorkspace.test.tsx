@@ -32,7 +32,16 @@ vi.mock("../../design/FlowCanvas", () => ({
             data: {
               label: "오프닝",
               description: "도입 장면",
-              discussionRoomPolicy: { enabled: true },
+              discussionRoomPolicy: {
+                enabled: true,
+                roomKind: "all",
+                mainRoomName: "전체 토론",
+                privateRoomsEnabled: false,
+                privateRoomName: "밀담방",
+                participantMode: "all",
+                availability: "phase_active",
+                closeBehavior: "close_on_exit",
+              },
             },
           })
         }
@@ -165,6 +174,6 @@ describe("StoryMapWorkspace", () => {
     expect(screen.getByText("오프닝")).toBeDefined();
     expect(screen.getByText("스토리 장면")).toBeDefined();
     expect(screen.getByText("장면 설명 있음")).toBeDefined();
-    expect(screen.getByText("사용")).toBeDefined();
+    expect(screen.getByText("장면 시작 시 · 전원 참여 · 장면 종료 시 닫기 · 전체 토론: 전체 토론")).toBeDefined();
   });
 });
