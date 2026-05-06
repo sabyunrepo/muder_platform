@@ -307,6 +307,17 @@ func main() {
 	revokePublisher := auth.NewCompositeRevokePublisher(wsHub, socialHub)
 	authSvc := auth.NewService(queries, redisCache.Client(), []byte(cfg.JWTSecret),
 		auditLog, revokeRepo, revokePublisher, logger)
+	if drainer, ok := authSvc.(interface {
+		DrainRevokePushes(context.Context) error
+	}); ok {
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if err := drainer.DrainRevokePushes(ctx); err != nil {
+				logger.Warn().Err(err).Msg("auth revoke pushes did not drain before shutdown")
+			}
+		}()
+	}
 	authHandler := auth.NewHandler(authSvc)
 	wsAuthHandler := ws.NewAuthHandler([]byte(cfg.JWTSecret), revokeRepo, authSvc,
 		cfg.WSAuthProtocol, logger)
