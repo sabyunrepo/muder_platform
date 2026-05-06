@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -270,7 +271,7 @@ func TestHub_RevokeUser_ConcurrentRegister(t *testing.T) {
 	h := newTestHub(nil)
 	defer h.Stop()
 
-	const iterations = 50
+	const iterations = 200
 	for i := 0; i < iterations; i++ {
 		userID := uuid.New()
 		c := newTestClient(h, userID)
@@ -279,10 +280,12 @@ func TestHub_RevokeUser_ConcurrentRegister(t *testing.T) {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()
+			runtime.Gosched()
 			h.Register(c)
 		}()
 		go func() {
 			defer wg.Done()
+			runtime.Gosched()
 			_ = h.RevokeUser(context.Background(), userID,
 				auth.RevokeCodeBanned, "ban")
 		}()

@@ -561,9 +561,6 @@ func TestAuthHandler_Identify_UsesClientContextCancelledOnClose(t *testing.T) {
 	if ctx.Err() != nil {
 		t.Fatalf("captured ctx prematurely cancelled: %v", ctx.Err())
 	}
-	if ctx == context.Background() {
-		t.Fatal("BLOCKER regression: handler passed context.Background() — closing client cannot abort the lookup")
-	}
 
 	c.Close()
 	select {
@@ -571,6 +568,32 @@ func TestAuthHandler_Identify_UsesClientContextCancelledOnClose(t *testing.T) {
 		// expected
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("Client.Close() did not cancel the captured revoke ctx")
+	}
+}
+
+func TestAuthHandler_Identify_RevokeContextAlreadyCancelledWhenClientClosed(t *testing.T) {
+	t.Parallel()
+	userID := uuid.New()
+	checker := &ctxObservingRevokeChecker{captured: make(chan context.Context, 1)}
+	h := newAuthHandler(t, checker, nil, true)
+	c := newTestAuthClient(userID)
+	c.Close()
+
+	h.Handle(c, identifyEnv(t, AuthIdentifyPayload{
+		Token: mintAccessToken(t, userID, testJWTSecret),
+	}))
+
+	var ctx context.Context
+	select {
+	case ctx = <-checker.captured:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("revoke checker not invoked")
+	}
+	select {
+	case <-ctx.Done():
+		// expected: the context came from the already-closed Client.
+	default:
+		t.Fatal("revoke checker ctx is not tied to the closed Client lifecycle")
 	}
 }
 
