@@ -165,7 +165,9 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('맵 이름들을 렌더링한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      const { container } = render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      expect(container.firstElementChild?.className).toContain('overflow-y-auto');
+      expect(container.firstElementChild?.className).toContain('md:overflow-hidden');
       expect(screen.getAllByText('저택 1층').length).toBeGreaterThan(0);
       expect(screen.getByText('저택 2층')).toBeDefined();
     });

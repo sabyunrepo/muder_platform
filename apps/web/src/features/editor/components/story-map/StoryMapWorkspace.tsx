@@ -24,7 +24,7 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
   return (
     <section
       aria-label="스토리 진행 제작"
-      className="flex min-h-[calc(100vh-9.5rem)] flex-col bg-slate-950 text-slate-100"
+      className="flex h-full min-h-[calc(100vh-9.5rem)] flex-col overflow-y-auto bg-slate-950 text-slate-100 lg:overflow-hidden"
     >
       <div className="border-b border-slate-800 px-4 py-4 sm:px-6">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
@@ -58,7 +58,7 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
           onSelectEntity={setSelectedEntity}
         />
 
-        <main className="min-h-[620px] min-w-0 border-b border-slate-800 lg:border-b-0">
+        <main className="min-h-[520px] min-w-0 border-b border-slate-800 lg:min-h-0 lg:border-b-0">
           <FlowCanvas themeId={themeId} onSelectedNodeChange={setSelectedScene} />
         </main>
 

@@ -108,9 +108,9 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   }
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="flex h-full min-h-0 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
       {/* ── Map list (full-width on mobile, 240px on md+) ── */}
-      <aside className="shrink-0 overflow-y-auto border-b border-slate-800 bg-slate-950 py-2 md:w-60 md:border-b-0 md:border-r">
+      <aside className="shrink-0 border-b border-slate-800 bg-slate-950 py-2 md:min-h-0 md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
         <div className="flex items-center justify-between px-3 pb-2">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
             맵
@@ -184,7 +184,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
       </aside>
 
       {/* ── Location detail ── */}
-      <div className="flex-1 overflow-y-auto px-5 py-5">
+      <div className="min-h-0 flex-1 px-5 py-5 md:overflow-y-auto">
         <LocationDetailPanel
           themeId={themeId}
           theme={theme}

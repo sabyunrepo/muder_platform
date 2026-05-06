@@ -269,7 +269,7 @@ export function EditorEntityLibrary({
   ];
 
   return (
-    <aside className="border-b border-slate-800 bg-slate-950 lg:border-b-0 lg:border-r">
+    <aside className="border-b border-slate-800 bg-slate-950 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
       <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
         <FileText className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-slate-100">제작 라이브러리</h3>

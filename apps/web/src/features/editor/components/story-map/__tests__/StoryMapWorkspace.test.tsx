@@ -93,8 +93,12 @@ describe("StoryMapWorkspace", () => {
   it("스토리 진행 중심 제작 화면과 플로우 캔버스를 함께 렌더링한다", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
+    expect(screen.getByLabelText("스토리 진행 제작").className).toContain("lg:overflow-hidden");
     expect(screen.getByRole("heading", { name: "스토리 진행 제작" })).toBeDefined();
     expect(screen.getByRole("heading", { name: "제작 라이브러리" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "제작 라이브러리" }).closest("aside")?.className).toContain(
+      "lg:overflow-y-auto",
+    );
     expect(screen.getByRole("heading", { name: "장면 속성" })).toBeDefined();
     expect(screen.getByTestId("flow-canvas").textContent).toContain("theme-1");
   });
