@@ -17,6 +17,7 @@ export interface ClueEditorViewModel {
   name: string;
   description: string;
   imageUrl: string | null;
+  imageMediaId: string | null;
   publicScopeLabel: string;
   roundLabel: string;
   useEffectLabel: string;
@@ -79,6 +80,7 @@ export function toClueEditorViewModel(clue: ClueResponse, referenceCount = 0): C
     name: clue.name,
     description: clue.description?.trim() || '플레이어에게 보일 단서 설명을 입력하세요.',
     imageUrl: clue.image_url ?? null,
+    imageMediaId: clue.image_media_id ?? null,
     publicScopeLabel: clue.is_common ? '모든 플레이어가 공유' : '지정된 캐릭터나 장소에서만 획득',
     roundLabel: formatRoundRange(clue.reveal_round, clue.hide_round) || '처음부터 끝까지',
     useEffectLabel: effect?.label ?? '사용 효과 없음',

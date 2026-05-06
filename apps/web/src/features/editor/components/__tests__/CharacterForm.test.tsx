@@ -23,10 +23,6 @@ vi.mock('@/features/editor/api', () => ({
   useUpdateCharacter: () => useUpdateCharacterMock(),
 }));
 
-vi.mock('@/features/editor/components/ImageCropUpload', () => ({
-  ImageCropUpload: () => <div data-testid="character-image-upload" />,
-}));
-
 vi.mock('@/shared/components/ui/Modal', () => ({
   Modal: ({
     isOpen,
@@ -149,12 +145,12 @@ describe('CharacterForm', () => {
     );
   });
 
-  it('수정 모달은 기존 quick edit 필드를 유지한다', () => {
+  it('수정 모달도 이미지 슬롯은 상세 기본정보에서만 관리하게 한다', () => {
     render(<CharacterForm themeId="theme-1" character={character} isOpen onClose={vi.fn()} />);
 
     expect(screen.getByRole('dialog', { name: '캐릭터 수정' })).toBeDefined();
     expect(screen.getByLabelText('설명')).toBeDefined();
-    expect(screen.getByTestId('character-image-upload')).toBeDefined();
+    expect(screen.queryByText('캐릭터 이미지')).toBeNull();
     expect(screen.getByLabelText(/범인 여부/)).toBeDefined();
     expect(screen.getByLabelText('정렬 순서')).toBeDefined();
   });

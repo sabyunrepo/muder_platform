@@ -4,7 +4,7 @@ import { Button } from '@/shared/components/ui/Button';
 import { Input } from '@/shared/components/ui/Input';
 import { type ClueResponse } from '@/features/editor/api';
 import { useClueFormSubmit } from '@/features/editor/hooks/useClueFormSubmit';
-import { ClueFormImageSection } from './ClueFormImageSection';
+import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
 import { buildClueUsePayload, getClueUseEffectOption } from '@/features/editor/entities/clue/clueEntityAdapter';
 import { ClueFormAdvancedFields } from './ClueFormAdvancedFields';
 
@@ -23,9 +23,9 @@ interface ClueFormProps {
 // ClueForm
 //
 // Slim shell that owns controlled form state and delegates:
-//   - image upload UI → ClueFormImageSection
+//   - image media selection → ImageMediaReferenceField
 //   - advanced/item-usage fields → ClueFormAdvancedFields
-//   - create/update + post-create image upload → useClueFormSubmit
+//   - create/update → useClueFormSubmit
 // ---------------------------------------------------------------------------
 
 export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
@@ -35,6 +35,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageMediaId, setImageMediaId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Advanced fields (hidden by default)
@@ -57,10 +58,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
   const [revealRound, setRevealRound] = useState<number | null>(null);
   const [hideRound, setHideRound] = useState<number | null>(null);
 
-  // Pending image for new clue (staged upload)
-  const [pendingImage, setPendingImage] = useState<File | null>(null);
-  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
-
   const { submit, isPending } = useClueFormSubmit({
     themeId,
     clue,
@@ -74,6 +71,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setName(clue.name);
       setDescription(clue.description ?? '');
       setImageUrl(clue.image_url ?? '');
+      setImageMediaId(clue.image_media_id ?? null);
       setIsCommon(clue.is_common ?? false);
       setLevel(clue.level ?? 1);
       setSortOrder(clue.sort_order ?? 0);
@@ -87,6 +85,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setName('');
       setDescription('');
       setImageUrl('');
+      setImageMediaId(null);
       setIsCommon(false);
       setLevel(1);
       setSortOrder(0);
@@ -97,8 +96,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setRevealRound(null);
       setHideRound(null);
     }
-    setPendingImage(null);
-    setPendingPreview(null);
     setErrors({});
     setShowAdvanced(false);
   }, [isOpen, clue]);
@@ -124,18 +121,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     return next;
   }
 
-  function handlePendingImageSelect(file: File) {
-    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-    setPendingImage(file);
-    setPendingPreview(URL.createObjectURL(file));
-  }
-
-  function handlePendingImageClear() {
-    if (pendingPreview) URL.revokeObjectURL(pendingPreview);
-    setPendingImage(null);
-    setPendingPreview(null);
-  }
-
   function handleUseEffectChange(effect: string) {
     setUseEffect(effect);
     const option = getClueUseEffectOption(effect);
@@ -148,11 +133,18 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
+    const nextImageUrl = imageMediaId
+      ? ''
+      : clue?.image_url && imageUrl === ''
+        ? ''
+        : imageUrl || undefined;
+
     submit(
       buildClueUsePayload({
         name: name.trim(),
         description: description || undefined,
-        image_url: imageUrl || undefined,
+        image_url: nextImageUrl,
+        image_media_id: imageMediaId,
         level,
         sort_order: sortOrder,
         is_common: isCommon,
@@ -163,7 +155,7 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         reveal_round: revealRound,
         hide_round: hideRound,
       }),
-      pendingImage,
+      null,
     );
   }
 
@@ -184,17 +176,23 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       }
     >
       <form id="clue-form" onSubmit={handleSubmit} className="space-y-4">
-        <ClueFormImageSection
+        <ImageMediaReferenceField
           themeId={themeId}
-          isEditMode={isEditMode}
-          clueId={clue?.id}
-          imageUrl={imageUrl}
-          onImageUrlChange={setImageUrl}
-          pendingImage={pendingImage}
-          pendingPreview={pendingPreview}
-          isUploading={isPending && !!pendingImage}
-          onPendingImageSelect={handlePendingImageSelect}
-          onPendingImageClear={handlePendingImageClear}
+          label="단서 이미지"
+          imageMediaId={imageMediaId}
+          legacyImageUrl={imageUrl || null}
+          pickerTitle="단서 이미지 선택"
+          emptyLabel="단서 이미지 선택"
+          compact
+          disabled={isPending}
+          onSelect={(media) => {
+            setImageMediaId(media.id);
+            setImageUrl('');
+          }}
+          onClear={() => {
+            setImageMediaId(null);
+            setImageUrl('');
+          }}
         />
 
         <Input

@@ -401,6 +401,75 @@ func TestService_CharacterEndcardContract(t *testing.T) {
 	}
 }
 
+func TestService_CharacterImageMediaReferences(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	profileMedia := createLocationMedia(t, f.q, themeID, "프로필 이미지", MediaTypeImage)
+	endcardMedia := createLocationMedia(t, f.q, themeID, "엔드카드 이미지", MediaTypeImage)
+	otherThemeMedia := createLocationMedia(t, f.q, otherThemeID, "다른 테마 이미지", MediaTypeImage)
+	voiceMedia := createLocationMedia(t, f.q, themeID, "목소리", MediaTypeVoice)
+
+	profileID := profileMedia.ID
+	endcardID := endcardMedia.ID
+	created, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name:                "탐정",
+		ImageMediaID:        &profileID,
+		EndcardImageMediaID: &endcardID,
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter with media refs: %v", err)
+	}
+	if created.ImageMediaID == nil || *created.ImageMediaID != profileMedia.ID {
+		t.Fatalf("ImageMediaID = %v, want %s", created.ImageMediaID, profileMedia.ID)
+	}
+	if created.EndcardImageMediaID == nil || *created.EndcardImageMediaID != endcardMedia.ID {
+		t.Fatalf("EndcardImageMediaID = %v, want %s", created.EndcardImageMediaID, endcardMedia.ID)
+	}
+
+	otherThemeIDRef := otherThemeMedia.ID
+	if _, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:         created.Name,
+		MysteryRole:  created.MysteryRole,
+		IsCulprit:    created.IsCulprit,
+		SortOrder:    created.SortOrder,
+		ImageMediaID: OptionalUUID{Set: true, Value: &otherThemeIDRef},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateCharacter with other theme image error = %T %v, want media not in theme", err, err)
+	}
+
+	voiceID := voiceMedia.ID
+	if _, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:                created.Name,
+		MysteryRole:         created.MysteryRole,
+		IsCulprit:           created.IsCulprit,
+		SortOrder:           created.SortOrder,
+		EndcardImageMediaID: OptionalUUID{Set: true, Value: &voiceID},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateCharacter with non-image endcard media error = %T %v, want media not in theme", err, err)
+	}
+
+	cleared, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:                created.Name,
+		MysteryRole:         created.MysteryRole,
+		IsCulprit:           created.IsCulprit,
+		SortOrder:           created.SortOrder,
+		ImageMediaID:        OptionalUUID{Set: true},
+		EndcardImageMediaID: OptionalUUID{Set: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter clear media refs: %v", err)
+	}
+	if cleared.ImageMediaID != nil || cleared.EndcardImageMediaID != nil {
+		t.Fatalf("cleared media refs = profile %v endcard %v, want nil", cleared.ImageMediaID, cleared.EndcardImageMediaID)
+	}
+}
+
 func TestService_CreateCharacterNPCVisibility(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -523,6 +592,63 @@ func TestService_CreateClue(t *testing.T) {
 	}
 	if resp.Level != 2 {
 		t.Errorf("level mismatch: got %d", resp.Level)
+	}
+}
+
+func TestService_ClueImageMediaReference(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	imageMedia := createLocationMedia(t, f.q, themeID, "단서 이미지", MediaTypeImage)
+	otherThemeMedia := createLocationMedia(t, f.q, otherThemeID, "다른 테마 이미지", MediaTypeImage)
+	voiceMedia := createLocationMedia(t, f.q, themeID, "목소리", MediaTypeVoice)
+
+	imageID := imageMedia.ID
+	created, err := f.svc.CreateClue(ctx, creatorID, themeID, CreateClueRequest{
+		Name:         "혈흔",
+		Level:        1,
+		ImageMediaID: &imageID,
+	})
+	if err != nil {
+		t.Fatalf("CreateClue with image media: %v", err)
+	}
+	if created.ImageMediaID == nil || *created.ImageMediaID != imageMedia.ID {
+		t.Fatalf("ImageMediaID = %v, want %s", created.ImageMediaID, imageMedia.ID)
+	}
+
+	otherThemeIDRef := otherThemeMedia.ID
+	if _, err := f.svc.UpdateClue(ctx, creatorID, created.ID, UpdateClueRequest{
+		Name:         created.Name,
+		Level:        created.Level,
+		ImageMediaID: OptionalUUID{Set: true, Value: &otherThemeIDRef},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateClue with other theme image error = %T %v, want media not in theme", err, err)
+	}
+
+	voiceID := voiceMedia.ID
+	if _, err := f.svc.UpdateClue(ctx, creatorID, created.ID, UpdateClueRequest{
+		Name:         created.Name,
+		Level:        created.Level,
+		ImageMediaID: OptionalUUID{Set: true, Value: &voiceID},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateClue with non-image media error = %T %v, want media not in theme", err, err)
+	}
+
+	cleared, err := f.svc.UpdateClue(ctx, creatorID, created.ID, UpdateClueRequest{
+		Name:         created.Name,
+		Level:        created.Level,
+		ImageMediaID: OptionalUUID{Set: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateClue clear image media: %v", err)
+	}
+	if cleared.ImageMediaID != nil {
+		t.Fatalf("ImageMediaID after clear = %v, want nil", cleared.ImageMediaID)
 	}
 }
 

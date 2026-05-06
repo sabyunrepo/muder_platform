@@ -21,6 +21,7 @@ const {
   useUpdateClueMock,
   mergeClueImageMock,
   uploadImageMock,
+  useMediaListMock,
   toastSuccessMock,
   toastErrorMock,
 } = vi.hoisted(() => ({
@@ -28,6 +29,7 @@ const {
   useUpdateClueMock: vi.fn(),
   mergeClueImageMock: vi.fn(),
   uploadImageMock: vi.fn(),
+  useMediaListMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
 }));
@@ -47,6 +49,36 @@ vi.mock('@/features/editor/editorClueApi', () => ({
 
 vi.mock('@/features/editor/imageApi', () => ({
   uploadImage: uploadImageMock,
+}));
+
+vi.mock('@/features/editor/mediaApi', () => ({
+  useMediaList: () => useMediaListMock(),
+}));
+
+vi.mock('@/features/editor/components/media/MediaPicker', () => ({
+  MediaPicker: ({
+    open,
+    filterType,
+    selectedId,
+    onSelect,
+  }: {
+    open: boolean;
+    filterType?: string;
+    selectedId?: string | null;
+    onSelect: (media: { id: string; name: string; type: string }) => void;
+  }) =>
+    open ? (
+      <div>
+        <span>filter:{filterType}</span>
+        <span>selected:{selectedId ?? 'none'}</span>
+        <button
+          type="button"
+          onClick={() => onSelect({ id: 'image-1', name: '증거 사진', type: 'IMAGE' })}
+        >
+          증거 사진 선택
+        </button>
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/shared/components/ui/Modal', () => ({
@@ -143,6 +175,10 @@ describe('ClueForm', () => {
     useUpdateClueMock.mockReturnValue({ mutate: updateMutate, isPending: false });
     mergeClueImageMock.mockReset();
     uploadImageMock.mockReset();
+    useMediaListMock.mockReturnValue({
+      data: [{ id: 'image-1', name: '증거 사진', type: 'IMAGE' }],
+      isLoading: false,
+    });
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
   });
@@ -162,45 +198,58 @@ describe('ClueForm', () => {
     expect(body.is_usable).toBe(false);
   });
 
-  it('create 성공 후 pendingImage가 있으면 uploadImage + mergeClueImage가 호출된다', async () => {
-    uploadImageMock.mockResolvedValueOnce('https://cdn/clue.png');
+  it('미디어 관리의 IMAGE 항목을 단서 이미지로 선택한다', () => {
     const onClose = vi.fn();
 
     render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
 
-    // 이름 입력
     fireEvent.change(screen.getByLabelText('이름'), {
       target: { value: 'with-image' },
     });
-
-    // 파일 input에 파일 주입 (hidden input)
-    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(fileInput).not.toBeNull();
-    const file = new File(['data'], 'test.png', { type: 'image/png' });
-    Object.defineProperty(fileInput, 'files', { value: [file] });
-    fireEvent.change(fileInput);
-
-    // 저장
+    fireEvent.click(screen.getByRole('button', { name: '단서 이미지 선택' }));
+    expect(screen.getByText('filter:IMAGE')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '증거 사진 선택' }));
     fireEvent.submit(document.getElementById('clue-form')!);
+
     expect(createMutate).toHaveBeenCalledTimes(1);
+    const [body] = createMutate.mock.calls[0];
+    expect(body.image_media_id).toBe('image-1');
+    expect(body.image_url).toBe('');
+    expect(uploadImageMock).not.toHaveBeenCalled();
+    expect(mergeClueImageMock).not.toHaveBeenCalled();
+  });
 
-    // onSuccess 시뮬레이션
-    const [, options] = createMutate.mock.calls[0];
-    await options.onSuccess({ id: 'new-clue-id' });
+  it('edit 모드에서 이미지 제거 시 media id와 legacy URL을 함께 비운다', () => {
+    const onClose = vi.fn();
+    const existing = {
+      id: 'clue-with-image',
+      theme_id: 'theme-1',
+      location_id: null,
+      name: '이미지 단서',
+      description: null,
+      image_url: 'https://cdn.example/legacy-clue.webp',
+      image_media_id: 'image-1',
+      is_common: false,
+      level: 1,
+      sort_order: 0,
+      created_at: '2026-04-15T00:00:00Z',
+      is_usable: false,
+      use_effect: null,
+      use_target: null,
+      use_consumed: false,
+    };
 
-    expect(uploadImageMock).toHaveBeenCalledWith(
-      'theme-1',
-      'clue',
-      'new-clue-id',
-      expect.any(File),
-      'image/png',
+    render(
+      <ClueForm themeId="theme-1" clue={existing} isOpen onClose={onClose} />,
     );
-    expect(mergeClueImageMock).toHaveBeenCalledWith(
-      'theme-1',
-      'new-clue-id',
-      'https://cdn/clue.png',
-    );
-    expect(onClose).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: '제거' }));
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(updateMutate).toHaveBeenCalledTimes(1);
+    const [args] = updateMutate.mock.calls[0];
+    expect(args.body.image_media_id).toBeNull();
+    expect(args.body.image_url).toBe('');
   });
 
   it('edit 모드에서는 useUpdateClue.mutate가 호출된다', () => {

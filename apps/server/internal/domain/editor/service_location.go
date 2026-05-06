@@ -136,7 +136,7 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if count >= MaxLocationsPerMap {
 		return nil, apperror.BadRequest(fmt.Sprintf("map cannot have more than %d locations", MaxLocationsPerMap))
 	}
-	imageMediaID, err := s.resolveLocationImage(ctx, themeID, req.ImageMediaID)
+	imageMediaID, err := s.resolveThemeImageMedia(ctx, themeID, req.ImageMediaID, "location image")
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		if req.ImageMediaID.Value == nil {
 			imageMediaID = pgtype.UUID{}
 		} else {
-			imageMediaID, err = s.resolveLocationImage(ctx, l.ThemeID, req.ImageMediaID.Value)
+			imageMediaID, err = s.resolveThemeImageMedia(ctx, l.ThemeID, req.ImageMediaID.Value, "location image")
 		}
 		if err != nil {
 			return nil, err
@@ -235,7 +235,7 @@ func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID
 	return accessPolicy, nil
 }
 
-func (s *service) resolveLocationImage(ctx context.Context, themeID uuid.UUID, mediaID *uuid.UUID) (pgtype.UUID, error) {
+func (s *service) resolveThemeImageMedia(ctx context.Context, themeID uuid.UUID, mediaID *uuid.UUID, purpose string) (pgtype.UUID, error) {
 	if mediaID == nil {
 		return pgtype.UUID{}, nil
 	}
@@ -244,11 +244,11 @@ func (s *service) resolveLocationImage(ctx context.Context, themeID uuid.UUID, m
 		if errors.Is(err, pgx.ErrNoRows) {
 			return pgtype.UUID{}, apperror.New(apperror.ErrMediaNotInTheme, 400, "media not found")
 		}
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to verify location image")
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Str("purpose", purpose).Msg("failed to verify image media")
 		return pgtype.UUID{}, apperror.Internal("failed to verify media reference")
 	}
 	if media.ThemeID != themeID || media.Type != MediaTypeImage {
-		return pgtype.UUID{}, apperror.New(apperror.ErrMediaNotInTheme, 400, "media has wrong type for location image")
+		return pgtype.UUID{}, apperror.New(apperror.ErrMediaNotInTheme, 400, "media has wrong type for "+purpose)
 	}
 	return pgtype.UUID{Bytes: *mediaID, Valid: true}, nil
 }

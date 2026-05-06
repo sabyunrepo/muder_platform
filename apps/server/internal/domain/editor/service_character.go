@@ -47,23 +47,33 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		s.logger.Error().Err(err).Msg("failed to marshal character alias rules")
 		return nil, apperror.Internal("failed to create character")
 	}
+	imageMediaID, err := s.resolveThemeImageMedia(ctx, themeID, req.ImageMediaID, "character profile image")
+	if err != nil {
+		return nil, err
+	}
+	endcardImageMediaID, err := s.resolveThemeImageMedia(ctx, themeID, req.EndcardImageMediaID, "character endcard image")
+	if err != nil {
+		return nil, err
+	}
 
 	char, err := s.q.CreateThemeCharacter(ctx, db.CreateThemeCharacterParams{
-		ThemeID:           themeID,
-		Name:              req.Name,
-		Description:       ptrToText(req.Description),
-		ImageUrl:          characterImageText(req.ImageURL),
-		IsCulprit:         rolePolicy.IsCulprit,
-		MysteryRole:       rolePolicy.MysteryRole,
-		SortOrder:         req.SortOrder,
-		IsPlayable:        visibilityPolicy.IsPlayable,
-		ShowInIntro:       visibilityPolicy.ShowInIntro,
-		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
-		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
-		EndcardTitle:      ptrToText(req.EndcardTitle),
-		EndcardBody:       ptrToText(req.EndcardBody),
-		EndcardImageUrl:   ptrToText(req.EndcardImageURL),
-		AliasRules:        aliasRulesJSON,
+		ThemeID:             themeID,
+		Name:                req.Name,
+		Description:         ptrToText(req.Description),
+		ImageUrl:            characterImageText(req.ImageURL),
+		IsCulprit:           rolePolicy.IsCulprit,
+		MysteryRole:         rolePolicy.MysteryRole,
+		SortOrder:           req.SortOrder,
+		IsPlayable:          visibilityPolicy.IsPlayable,
+		ShowInIntro:         visibilityPolicy.ShowInIntro,
+		CanSpeakInReading:   visibilityPolicy.CanSpeakInReading,
+		IsVotingCandidate:   visibilityPolicy.IsVotingCandidate,
+		EndcardTitle:        ptrToText(req.EndcardTitle),
+		EndcardBody:         ptrToText(req.EndcardBody),
+		EndcardImageUrl:     ptrToText(req.EndcardImageURL),
+		ImageMediaID:        imageMediaID,
+		EndcardImageMediaID: endcardImageMediaID,
+		AliasRules:          aliasRulesJSON,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create character")
@@ -112,23 +122,47 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 			return nil, apperror.Internal("failed to update character")
 		}
 	}
+	imageMediaID := char.ImageMediaID
+	if req.ImageMediaID.Set {
+		if req.ImageMediaID.Value == nil {
+			imageMediaID = pgtype.UUID{}
+		} else {
+			imageMediaID, err = s.resolveThemeImageMedia(ctx, char.ThemeID, req.ImageMediaID.Value, "character profile image")
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	endcardImageMediaID := char.EndcardImageMediaID
+	if req.EndcardImageMediaID.Set {
+		if req.EndcardImageMediaID.Value == nil {
+			endcardImageMediaID = pgtype.UUID{}
+		} else {
+			endcardImageMediaID, err = s.resolveThemeImageMedia(ctx, char.ThemeID, req.EndcardImageMediaID.Value, "character endcard image")
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	updated, err := s.q.UpdateThemeCharacter(ctx, db.UpdateThemeCharacterParams{
-		ID:                charID,
-		Name:              req.Name,
-		Description:       ptrToText(req.Description),
-		ImageUrl:          characterImageText(req.ImageURL, char.ImageUrl),
-		IsCulprit:         rolePolicy.IsCulprit,
-		MysteryRole:       rolePolicy.MysteryRole,
-		SortOrder:         req.SortOrder,
-		IsPlayable:        visibilityPolicy.IsPlayable,
-		ShowInIntro:       visibilityPolicy.ShowInIntro,
-		CanSpeakInReading: visibilityPolicy.CanSpeakInReading,
-		IsVotingCandidate: visibilityPolicy.IsVotingCandidate,
-		EndcardTitle:      characterEndcardText(req.EndcardTitle, char.EndcardTitle),
-		EndcardBody:       characterEndcardText(req.EndcardBody, char.EndcardBody),
-		EndcardImageUrl:   characterEndcardText(req.EndcardImageURL, char.EndcardImageUrl),
-		AliasRules:        aliasRulesJSON,
+		ID:                  charID,
+		Name:                req.Name,
+		Description:         ptrToText(req.Description),
+		ImageUrl:            characterImageText(req.ImageURL, char.ImageUrl),
+		IsCulprit:           rolePolicy.IsCulprit,
+		MysteryRole:         rolePolicy.MysteryRole,
+		SortOrder:           req.SortOrder,
+		IsPlayable:          visibilityPolicy.IsPlayable,
+		ShowInIntro:         visibilityPolicy.ShowInIntro,
+		CanSpeakInReading:   visibilityPolicy.CanSpeakInReading,
+		IsVotingCandidate:   visibilityPolicy.IsVotingCandidate,
+		EndcardTitle:        characterEndcardText(req.EndcardTitle, char.EndcardTitle),
+		EndcardBody:         characterEndcardText(req.EndcardBody, char.EndcardBody),
+		EndcardImageUrl:     characterEndcardText(req.EndcardImageURL, char.EndcardImageUrl),
+		ImageMediaID:        imageMediaID,
+		EndcardImageMediaID: endcardImageMediaID,
+		AliasRules:          aliasRulesJSON,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update character")
@@ -214,22 +248,24 @@ func (s *service) ListCharacters(ctx context.Context, creatorID, themeID uuid.UU
 
 func toCharacterResponse(c db.ThemeCharacter) *CharacterResponse {
 	return &CharacterResponse{
-		ID:                c.ID,
-		ThemeID:           c.ThemeID,
-		Name:              c.Name,
-		Description:       textToPtr(c.Description),
-		ImageURL:          textToPtr(c.ImageUrl),
-		IsCulprit:         c.IsCulprit,
-		MysteryRole:       c.MysteryRole,
-		SortOrder:         c.SortOrder,
-		IsPlayable:        c.IsPlayable,
-		ShowInIntro:       c.ShowInIntro,
-		CanSpeakInReading: c.CanSpeakInReading,
-		IsVotingCandidate: c.IsVotingCandidate,
-		EndcardTitle:      textToPtr(c.EndcardTitle),
-		EndcardBody:       textToPtr(c.EndcardBody),
-		EndcardImageURL:   textToPtr(c.EndcardImageUrl),
-		AliasRules:        unmarshalCharacterAliasRules(c.AliasRules),
+		ID:                  c.ID,
+		ThemeID:             c.ThemeID,
+		Name:                c.Name,
+		Description:         textToPtr(c.Description),
+		ImageURL:            textToPtr(c.ImageUrl),
+		ImageMediaID:        pgtypeUUIDToPtr(c.ImageMediaID),
+		IsCulprit:           c.IsCulprit,
+		MysteryRole:         c.MysteryRole,
+		SortOrder:           c.SortOrder,
+		IsPlayable:          c.IsPlayable,
+		ShowInIntro:         c.ShowInIntro,
+		CanSpeakInReading:   c.CanSpeakInReading,
+		IsVotingCandidate:   c.IsVotingCandidate,
+		EndcardTitle:        textToPtr(c.EndcardTitle),
+		EndcardBody:         textToPtr(c.EndcardBody),
+		EndcardImageURL:     textToPtr(c.EndcardImageUrl),
+		EndcardImageMediaID: pgtypeUUIDToPtr(c.EndcardImageMediaID),
+		AliasRules:          unmarshalCharacterAliasRules(c.AliasRules),
 	}
 }
 
