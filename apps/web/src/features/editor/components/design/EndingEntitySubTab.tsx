@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import type { EditorThemeResponse } from '@/features/editor/api';
+import { useEditorCharacters, type EditorThemeResponse } from '@/features/editor/api';
 import { useFlowData } from '../../hooks/useFlowData';
 import type { FlowNodeData } from '../../flowTypes';
 import { EndingEntityDetail } from './EndingEntityDetail';
@@ -10,6 +10,7 @@ import { EndingEntityHeader } from './EndingEntityHeader';
 import { EndingBranchRulesPanel } from './EndingBranchRulesPanel';
 import {
   buildEndingDecisionSummary,
+  buildCharacterEndcardSummary,
   toEndingEditorViewModel,
 } from '../../entities/ending/endingEntityAdapter';
 import { getDisplayErrorMessage } from '@/lib/display-error';
@@ -22,6 +23,7 @@ interface EndingEntitySubTabProps {
 export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { data: characters = [] } = useEditorCharacters(themeId);
   const {
     nodes,
     edges = [],
@@ -50,6 +52,7 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
     filteredNodes.find((node) => node.id === selectedId) ?? filteredNodes[0] ?? null;
 
   const decisionSummary = useMemo(() => buildEndingDecisionSummary(nodes, edges), [nodes, edges]);
+  const endcardSummary = useMemo(() => buildCharacterEndcardSummary(characters), [characters]);
 
   const handleAddEnding = () => {
     addNode('ending', { x: 360 + endingNodes.length * 40, y: 220 });
@@ -161,7 +164,12 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
           </aside>
 
           {selectedNode && (
-            <EndingEntityDetail node={selectedNode} themeId={themeId} onChange={updateNodeData} />
+            <EndingEntityDetail
+              node={selectedNode}
+              themeId={themeId}
+              endcardSummary={endcardSummary}
+              onChange={updateNodeData}
+            />
           )}
         </div>
       )}

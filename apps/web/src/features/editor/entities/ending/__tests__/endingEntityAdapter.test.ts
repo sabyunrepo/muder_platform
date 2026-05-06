@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Edge, Node } from "@xyflow/react";
-import { buildEndingDecisionSummary, toEndingEditorViewModel } from "../endingEntityAdapter";
+import {
+  buildCharacterEndcardSummary,
+  buildEndingDecisionSummary,
+  toEndingEditorViewModel,
+} from "../endingEntityAdapter";
 
 function node(id: string, data: Record<string, unknown> = {}): Node {
   return { id, type: "ending", position: { x: 0, y: 0 }, data };
@@ -17,6 +21,9 @@ describe("endingEntityAdapter", () => {
       icon: "⚖️",
       description: "정답 결말",
       endingContent: "범인이 밝혀졌다.",
+      endingVisibility: "players_only",
+      endingSpoilerWarning: "스포일러 주의",
+      endingShareText: "감상을 공유해 주세요.",
     }), 2);
 
     expect(vm).toMatchObject({
@@ -25,9 +32,14 @@ describe("endingEntityAdapter", () => {
       icon: "⚖️",
       description: "정답 결말",
       contentPreview: "범인이 밝혀졌다.",
+      visibility: "players_only",
+      visibilityLabel: "참가자에게만 공개",
+      spoilerWarning: "스포일러 주의",
+      shareText: "감상을 공유해 주세요.",
       isReady: true,
     });
     expect(vm.badges).toContain("도달 경로 2개");
+    expect(vm.badges).toContain("참가자에게만 공개");
   });
 
   it("결말 준비 상태와 제작자용 경고를 요약한다", () => {
@@ -51,5 +63,19 @@ describe("endingEntityAdapter", () => {
 
     expect(summary.totalCount).toBe(0);
     expect(summary.warnings).toEqual(["최종 장면에서 보여줄 결말을 1개 이상 추가해 주세요."]);
+  });
+
+  it("캐릭터별 결과 카드 작성 현황을 요약한다", () => {
+    const summary = buildCharacterEndcardSummary([
+      { name: "하윤", endcard_title: "후일담", endcard_body: "", endcard_image_url: null },
+      { name: "민재", endcard_title: null, endcard_body: null, endcard_image_url: null },
+      { name: "서윤", endcard_title: "", endcard_body: "남겨진 이야기", endcard_image_url: "" },
+    ]);
+
+    expect(summary).toEqual({
+      totalCount: 3,
+      readyCount: 2,
+      missingNames: ["민재"],
+    });
   });
 });
