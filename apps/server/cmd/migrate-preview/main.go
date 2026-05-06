@@ -2,17 +2,17 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		fatalf("DATABASE_URL is required")
+		log.Fatal().Msg("DATABASE_URL is required")
 	}
 
 	migrationsDir := os.Getenv("MIGRATIONS_DIR")
@@ -22,20 +22,15 @@ func main() {
 
 	db, err := sql.Open("pgx", databaseURL)
 	if err != nil {
-		fatalf("open db: %v", err)
+		log.Fatal().Err(err).Msg("open db")
 	}
 	defer db.Close()
 
 	if err := goose.SetDialect("postgres"); err != nil {
-		fatalf("set goose dialect: %v", err)
+		log.Fatal().Err(err).Msg("set goose dialect")
 	}
 	if err := goose.Up(db, migrationsDir); err != nil {
-		fatalf("goose up: %v", err)
+		log.Fatal().Err(err).Msg("goose up")
 	}
-	fmt.Fprintf(os.Stdout, "migrations applied from %s\n", migrationsDir)
-}
-
-func fatalf(format string, args ...any) {
-	fmt.Fprintf(os.Stderr, format+"\n", args...)
-	os.Exit(1)
+	log.Info().Str("migrations_dir", migrationsDir).Msg("migrations applied")
 }
