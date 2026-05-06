@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -7,6 +7,9 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 const {
   useMediaListMock,
+  useMediaCategoriesMock,
+  useCreateMediaCategoryMock,
+  useDeleteMediaCategoryMock,
   useUpdateMediaMock,
   useDeleteMediaMock,
   useRequestUploadUrlMock,
@@ -16,6 +19,9 @@ const {
   toastError,
 } = vi.hoisted(() => ({
   useMediaListMock: vi.fn(),
+  useMediaCategoriesMock: vi.fn(),
+  useCreateMediaCategoryMock: vi.fn(),
+  useDeleteMediaCategoryMock: vi.fn(),
   useUpdateMediaMock: vi.fn(),
   useDeleteMediaMock: vi.fn(),
   useRequestUploadUrlMock: vi.fn(),
@@ -27,6 +33,9 @@ const {
 
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+  useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
+  useCreateMediaCategory: () => useCreateMediaCategoryMock(),
+  useDeleteMediaCategory: () => useDeleteMediaCategoryMock(),
   useUpdateMedia: () => useUpdateMediaMock(),
   useDeleteMedia: () => useDeleteMediaMock(),
   useRequestUploadUrl: () => useRequestUploadUrlMock(),
@@ -113,6 +122,19 @@ function mutationStub() {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  useMediaCategoriesMock.mockReturnValue({
+    data: [
+      {
+        id: 'category-screen',
+        theme_id: 'theme-1',
+        name: '스크린',
+        sort_order: 1,
+        created_at: '2026-04-05T00:00:00Z',
+      },
+    ],
+  });
+  useCreateMediaCategoryMock.mockReturnValue(mutationStub());
+  useDeleteMediaCategoryMock.mockReturnValue(mutationStub());
   useUpdateMediaMock.mockReturnValue(mutationStub());
   useDeleteMediaMock.mockReturnValue(mutationStub());
   useRequestUploadUrlMock.mockReturnValue(mutationStub());
@@ -180,13 +202,60 @@ describe('MediaTab', () => {
     render(<MediaTab themeId="theme-1" />);
 
     // 초기에는 'all' → undefined
-    expect(useMediaListMock).toHaveBeenLastCalledWith('theme-1', undefined);
+    expect(useMediaListMock).toHaveBeenLastCalledWith('theme-1', undefined, undefined);
 
     // BGM 필터 클릭 — pill button (효과음/음성과 분리되도록 BGM 정확 매칭)
     const bgmPill = screen.getByRole('button', { name: 'BGM', pressed: false });
     fireEvent.click(bgmPill);
 
-    expect(useMediaListMock).toHaveBeenLastCalledWith('theme-1', 'BGM');
+    expect(useMediaListMock).toHaveBeenLastCalledWith('theme-1', 'BGM', undefined);
+  });
+
+  it('카테고리와 검색 필터를 함께 적용한다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '스크린', pressed: false }));
+    expect(useMediaListMock).toHaveBeenLastCalledWith('theme-1', undefined, 'category-screen');
+
+    fireEvent.change(screen.getByLabelText('미디어 검색'), { target: { value: '문 닫는' } });
+    expect(screen.queryByText('오프닝 BGM')).toBeNull();
+    expect(screen.getByText('문 닫는 소리')).toBeDefined();
+  });
+
+  it('선택한 카테고리를 삭제하면 전체 카테고리로 돌아간다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutate = vi.fn((_id: string, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.();
+    });
+    useDeleteMediaCategoryMock.mockReturnValue({
+      mutate,
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    try {
+      render(<MediaTab themeId="theme-1" />);
+
+      fireEvent.click(screen.getByRole('button', { name: '스크린', pressed: false }));
+      fireEvent.click(screen.getByRole('button', { name: /카테고리 삭제/ }));
+
+      expect(mutate).toHaveBeenCalledWith('category-screen', expect.any(Object));
+      const categoryGroup = screen.getByRole('group', { name: '미디어 카테고리 필터' });
+      expect(within(categoryGroup).getByRole('button', { name: '전체', pressed: true })).toBeDefined();
+    } finally {
+      confirmSpy.mockRestore();
+    }
   });
 
   it('카드 클릭 시 상세 패널이 열린다', () => {

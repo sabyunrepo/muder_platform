@@ -3,6 +3,7 @@ import { AlertTriangle, X, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useDeleteMedia,
+  useMediaCategories,
   useUpdateMedia,
   type MediaReferenceInfo,
   type MediaResponse,
@@ -28,6 +29,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const [name, setName] = useState(media.name);
   const [tagsText, setTagsText] = useState((media.tags ?? []).join(', '));
   const [sortOrder, setSortOrder] = useState<number>(media.sort_order);
+  const [categoryId, setCategoryId] = useState<string>(media.category_id ?? '');
   const [duration, setDuration] = useState<string>(
     media.duration != null ? String(media.duration) : ''
   );
@@ -38,12 +40,14 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     setName(media.name);
     setTagsText((media.tags ?? []).join(', '));
     setSortOrder(media.sort_order);
+    setCategoryId(media.category_id ?? '');
     setDuration(media.duration != null ? String(media.duration) : '');
     setReferenceWarning(null);
-  }, [media.id, media.name, media.tags, media.sort_order, media.duration]);
+  }, [media.id, media.name, media.tags, media.sort_order, media.category_id, media.duration]);
 
   const updateMutation = useUpdateMedia(themeId);
   const deleteMutation = useDeleteMedia(themeId);
+  const { data: categories = [] } = useMediaCategories(themeId);
 
   const handleSave = () => {
     const trimmedName = name.trim();
@@ -65,6 +69,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       type: media.type,
       sort_order: sortOrder,
       tags,
+      category_id: categoryId || undefined,
       ...(durationNum != null ? { duration: durationNum } : {}),
     };
     updateMutation.mutate(
@@ -141,14 +146,20 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              정렬 순서
+              카테고리
             </span>
-            <input
-              type="number"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(Number(e.target.value))}
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
               className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
-            />
+            >
+              <option value="">전체</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">

@@ -5,12 +5,26 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { useMediaListMock } = vi.hoisted(() => ({
+const {
+  useMediaListMock,
+  useMediaCategoriesMock,
+  useRequestUploadUrlMock,
+  useConfirmUploadMock,
+  uploadMediaFileMock,
+} = vi.hoisted(() => ({
   useMediaListMock: vi.fn(),
+  useMediaCategoriesMock: vi.fn(),
+  useRequestUploadUrlMock: vi.fn(),
+  useConfirmUploadMock: vi.fn(),
+  uploadMediaFileMock: vi.fn(),
 }));
 
 vi.mock("@/features/editor/mediaApi", () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+  useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
+  useRequestUploadUrl: () => useRequestUploadUrlMock(),
+  useConfirmUpload: () => useConfirmUploadMock(),
+  uploadMediaFile: (...args: unknown[]) => uploadMediaFileMock(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -75,6 +89,19 @@ beforeEach(() => {
     data: mockMedia,
     isLoading: false,
   });
+  useMediaCategoriesMock.mockReturnValue({
+    data: [
+      {
+        id: "category-screen",
+        theme_id: "theme-1",
+        name: "스크린",
+        sort_order: 1,
+        created_at: "2026-04-05T00:00:00Z",
+      },
+    ],
+  });
+  useRequestUploadUrlMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  useConfirmUploadMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
 });
 
 afterEach(() => {
@@ -123,7 +150,7 @@ describe("MediaPicker", () => {
         filterType="BGM"
       />,
     );
-    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", "BGM");
+    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", "BGM", undefined);
     // Footer hint 표시
     expect(screen.getByText(/배경음악 유형만 표시됩니다/)).toBeDefined();
   });
@@ -142,7 +169,7 @@ describe("MediaPicker", () => {
       />,
     );
 
-    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", filterType);
+    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", filterType, undefined);
     expect(screen.getByText(hint)).toBeDefined();
   });
 
@@ -246,7 +273,7 @@ describe("MediaPicker", () => {
     expect(otherBtn.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("useCase가 맞지 않는 항목은 선택하지 못하게 한다", () => {
+  it("useCase가 맞지 않는 항목은 목록에서 제외한다", () => {
     const onSelect = vi.fn();
     const onClose = vi.fn();
     render(
@@ -259,12 +286,25 @@ describe("MediaPicker", () => {
       />,
     );
 
-    const bgmItem = screen.getByText("오프닝 BGM").closest("button") as HTMLElement;
-    fireEvent.click(bgmItem);
-
+    expect(screen.queryByText("오프닝 BGM")).toBeNull();
     expect(onSelect).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getAllByText(/문서 리소스만 선택/).length).toBeGreaterThan(0);
+    expect(screen.getByText("미디어가 없습니다")).toBeDefined();
+  });
+
+  it("카테고리 탭 선택 시 해당 카테고리로 목록을 다시 조회한다", () => {
+    render(
+      <MediaPicker
+        open={true}
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "스크린", pressed: false }));
+
+    expect(useMediaListMock).toHaveBeenLastCalledWith("theme-1", undefined, "category-screen");
   });
 
   it("로딩 상태를 표시한다", () => {

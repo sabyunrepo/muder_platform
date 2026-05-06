@@ -76,6 +76,8 @@ export function MediaCard({
   const youtubeId = isYouTube && media.url ? extractYouTubeVideoId(media.url) : null;
   const thumbnailUrl = youtubeId
     ? `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`
+    : media.type === "IMAGE" && media.url
+      ? media.url
     : null;
   const duration = formatDuration(media.duration);
   const badgeClass = TYPE_BADGE[media.type] ?? "bg-slate-700 text-slate-300";
@@ -101,7 +103,7 @@ export function MediaCard({
       }`}
     >
       {/* Thumbnail */}
-      <div className="relative flex h-24 items-center justify-center bg-slate-950/60">
+      <div className="relative flex aspect-[4/3] min-h-28 items-center justify-center bg-slate-950/60">
         {thumbnailUrl ? (
           <img
             src={thumbnailUrl}
@@ -153,7 +155,12 @@ export function MediaCard({
             <span className="text-[10px] font-mono text-slate-500">{duration}</span>
           )}
         </div>
-        <p className="truncate text-xs font-medium text-slate-200">{media.name}</p>
+        <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-slate-200">
+          {media.name}
+        </p>
+        {media.tags.length > 0 && (
+          <p className="truncate text-[10px] text-slate-500">{media.tags.slice(0, 3).join(", ")}</p>
+        )}
       </div>
     </div>
   );
