@@ -11,33 +11,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
+	"go.uber.org/mock/gomock"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/auditlog"
 )
-
-type fakeStoryInfoService struct {
-	listFn   func(context.Context, uuid.UUID, uuid.UUID) ([]StoryInfoResponse, error)
-	createFn func(context.Context, uuid.UUID, uuid.UUID, CreateStoryInfoRequest) (*StoryInfoResponse, error)
-	updateFn func(context.Context, uuid.UUID, uuid.UUID, UpdateStoryInfoRequest) (*StoryInfoResponse, error)
-	deleteFn func(context.Context, uuid.UUID, uuid.UUID) (uuid.UUID, error)
-}
-
-func (f fakeStoryInfoService) List(ctx context.Context, creatorID, themeID uuid.UUID) ([]StoryInfoResponse, error) {
-	return f.listFn(ctx, creatorID, themeID)
-}
-
-func (f fakeStoryInfoService) Create(ctx context.Context, creatorID, themeID uuid.UUID, req CreateStoryInfoRequest) (*StoryInfoResponse, error) {
-	return f.createFn(ctx, creatorID, themeID, req)
-}
-
-func (f fakeStoryInfoService) Update(ctx context.Context, creatorID, infoID uuid.UUID, req UpdateStoryInfoRequest) (*StoryInfoResponse, error) {
-	return f.updateFn(ctx, creatorID, infoID, req)
-}
-
-func (f fakeStoryInfoService) Delete(ctx context.Context, creatorID, infoID uuid.UUID) (uuid.UUID, error) {
-	return f.deleteFn(ctx, creatorID, infoID)
-}
 
 type failingStoryInfoAuditLogger struct{}
 
@@ -45,17 +23,24 @@ func (failingStoryInfoAuditLogger) Append(context.Context, auditlog.AuditEvent) 
 	return errors.New("audit append failed")
 }
 
+func newStoryInfoHandlerMock(t *testing.T, audit auditlog.Logger) (*StoryInfoHandler, *MockStoryInfoService) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	mock := NewMockStoryInfoService(ctrl)
+	return NewStoryInfoHandler(mock, audit, zerolog.Nop()), mock
+}
+
 func TestStoryInfoHandler_List_UsesCreatorAndTheme(t *testing.T) {
 	infoID := uuid.New()
-	svc := fakeStoryInfoService{
-		listFn: func(_ context.Context, creatorID, themeID uuid.UUID) ([]StoryInfoResponse, error) {
+	h, svc := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
+	svc.EXPECT().
+		List(gomock.Any(), testCreatorID, testThemeID).
+		DoAndReturn(func(_ context.Context, creatorID, themeID uuid.UUID) ([]StoryInfoResponse, error) {
 			if creatorID != testCreatorID || themeID != testThemeID {
 				t.Fatalf("unexpected owner scope: creator=%s theme=%s", creatorID, themeID)
 			}
 			return []StoryInfoResponse{{ID: infoID, ThemeID: themeID, Title: "공개 정보"}}, nil
-		},
-	}
-	h := NewStoryInfoHandler(svc, auditlog.NoOpLogger{}, zerolog.Nop())
+		})
 	req := httptest.NewRequest(http.MethodGet, "/editor/themes/"+testThemeID.String()+"/story-infos", nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": testThemeID.String()})
@@ -76,7 +61,7 @@ func TestStoryInfoHandler_List_UsesCreatorAndTheme(t *testing.T) {
 }
 
 func TestStoryInfoHandler_List_RejectsInvalidThemeID(t *testing.T) {
-	h := NewStoryInfoHandler(fakeStoryInfoService{}, auditlog.NoOpLogger{}, zerolog.Nop())
+	h, _ := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
 	req := httptest.NewRequest(http.MethodGet, "/editor/themes/not-a-uuid/story-infos", nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": "not-a-uuid"})
@@ -90,12 +75,10 @@ func TestStoryInfoHandler_List_RejectsInvalidThemeID(t *testing.T) {
 }
 
 func TestStoryInfoHandler_List_WritesServiceError(t *testing.T) {
-	svc := fakeStoryInfoService{
-		listFn: func(context.Context, uuid.UUID, uuid.UUID) ([]StoryInfoResponse, error) {
-			return nil, apperror.NotFound("theme not found")
-		},
-	}
-	h := NewStoryInfoHandler(svc, auditlog.NoOpLogger{}, zerolog.Nop())
+	h, svc := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
+	svc.EXPECT().
+		List(gomock.Any(), testCreatorID, testThemeID).
+		Return(nil, apperror.NotFound("theme not found"))
 	req := httptest.NewRequest(http.MethodGet, "/editor/themes/"+testThemeID.String()+"/story-infos", nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": testThemeID.String()})
@@ -111,15 +94,15 @@ func TestStoryInfoHandler_List_WritesServiceError(t *testing.T) {
 func TestStoryInfoHandler_Create_AuditsWrite(t *testing.T) {
 	capture := auditlog.NewCapturingLogger()
 	infoID := uuid.New()
-	svc := fakeStoryInfoService{
-		createFn: func(_ context.Context, creatorID, themeID uuid.UUID, req CreateStoryInfoRequest) (*StoryInfoResponse, error) {
+	h, svc := newStoryInfoHandlerMock(t, capture)
+	svc.EXPECT().
+		Create(gomock.Any(), testCreatorID, testThemeID, gomock.Any()).
+		DoAndReturn(func(_ context.Context, creatorID, themeID uuid.UUID, req CreateStoryInfoRequest) (*StoryInfoResponse, error) {
 			if creatorID != testCreatorID || themeID != testThemeID || req.Title != "새 정보" {
 				t.Fatalf("unexpected create request: creator=%s theme=%s req=%+v", creatorID, themeID, req)
 			}
 			return &StoryInfoResponse{ID: infoID, ThemeID: themeID, Title: req.Title}, nil
-		},
-	}
-	h := NewStoryInfoHandler(svc, capture, zerolog.Nop())
+		})
 	body, _ := json.Marshal(CreateStoryInfoRequest{Title: "새 정보"})
 	req := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/story-infos", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -136,7 +119,7 @@ func TestStoryInfoHandler_Create_AuditsWrite(t *testing.T) {
 }
 
 func TestStoryInfoHandler_Create_RejectsInvalidJSON(t *testing.T) {
-	h := NewStoryInfoHandler(fakeStoryInfoService{}, auditlog.NoOpLogger{}, zerolog.Nop())
+	h, _ := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
 	req := httptest.NewRequest(http.MethodPost, "/editor/themes/not-a-uuid/story-infos", nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": "not-a-uuid"})
@@ -163,12 +146,10 @@ func TestStoryInfoHandler_Create_RejectsInvalidJSON(t *testing.T) {
 
 func TestStoryInfoHandler_Create_WritesServiceErrorWithoutAudit(t *testing.T) {
 	capture := auditlog.NewCapturingLogger()
-	svc := fakeStoryInfoService{
-		createFn: func(context.Context, uuid.UUID, uuid.UUID, CreateStoryInfoRequest) (*StoryInfoResponse, error) {
-			return nil, apperror.New(apperror.ErrValidation, http.StatusUnprocessableEntity, "story info title is required")
-		},
-	}
-	h := NewStoryInfoHandler(svc, capture, zerolog.Nop())
+	h, svc := newStoryInfoHandlerMock(t, capture)
+	svc.EXPECT().
+		Create(gomock.Any(), testCreatorID, testThemeID, gomock.Any()).
+		Return(nil, apperror.New(apperror.ErrValidation, http.StatusUnprocessableEntity, "story info title is required"))
 	body, _ := json.Marshal(CreateStoryInfoRequest{Title: ""})
 	req := httptest.NewRequest(http.MethodPost, "/editor/themes/"+testThemeID.String()+"/story-infos", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -190,15 +171,15 @@ func TestStoryInfoHandler_Update_AuditsWrite(t *testing.T) {
 	capture := auditlog.NewCapturingLogger()
 	infoID := uuid.New()
 	title := "수정 정보"
-	svc := fakeStoryInfoService{
-		updateFn: func(_ context.Context, creatorID, gotInfoID uuid.UUID, req UpdateStoryInfoRequest) (*StoryInfoResponse, error) {
+	h, svc := newStoryInfoHandlerMock(t, capture)
+	svc.EXPECT().
+		Update(gomock.Any(), testCreatorID, infoID, gomock.Any()).
+		DoAndReturn(func(_ context.Context, creatorID, gotInfoID uuid.UUID, req UpdateStoryInfoRequest) (*StoryInfoResponse, error) {
 			if creatorID != testCreatorID || gotInfoID != infoID || req.Title == nil || *req.Title != title {
 				t.Fatalf("unexpected update request: creator=%s info=%s req=%+v", creatorID, gotInfoID, req)
 			}
 			return &StoryInfoResponse{ID: infoID, ThemeID: testThemeID, Title: title, Version: req.Version + 1}, nil
-		},
-	}
-	h := NewStoryInfoHandler(svc, capture, zerolog.Nop())
+		})
 	body, _ := json.Marshal(UpdateStoryInfoRequest{Title: &title, Version: 3})
 	req := httptest.NewRequest(http.MethodPatch, "/editor/story-infos/"+infoID.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -215,7 +196,7 @@ func TestStoryInfoHandler_Update_AuditsWrite(t *testing.T) {
 }
 
 func TestStoryInfoHandler_Update_RejectsInvalidIDAndJSON(t *testing.T) {
-	h := NewStoryInfoHandler(fakeStoryInfoService{}, auditlog.NoOpLogger{}, zerolog.Nop())
+	h, _ := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
 	req := httptest.NewRequest(http.MethodPatch, "/editor/story-infos/not-a-uuid", nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": "not-a-uuid"})
@@ -243,12 +224,10 @@ func TestStoryInfoHandler_Update_RejectsInvalidIDAndJSON(t *testing.T) {
 func TestStoryInfoHandler_Update_WritesConflictWithoutAudit(t *testing.T) {
 	capture := auditlog.NewCapturingLogger()
 	infoID := uuid.New()
-	svc := fakeStoryInfoService{
-		updateFn: func(context.Context, uuid.UUID, uuid.UUID, UpdateStoryInfoRequest) (*StoryInfoResponse, error) {
-			return nil, apperror.Conflict("version mismatch")
-		},
-	}
-	h := NewStoryInfoHandler(svc, capture, zerolog.Nop())
+	h, svc := newStoryInfoHandlerMock(t, capture)
+	svc.EXPECT().
+		Update(gomock.Any(), testCreatorID, infoID, gomock.Any()).
+		Return(nil, apperror.Conflict("version mismatch"))
 	body, _ := json.Marshal(UpdateStoryInfoRequest{Version: 1})
 	req := httptest.NewRequest(http.MethodPatch, "/editor/story-infos/"+infoID.String(), bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -269,15 +248,15 @@ func TestStoryInfoHandler_Update_WritesConflictWithoutAudit(t *testing.T) {
 func TestStoryInfoHandler_Delete_AuditsThemeAndInfo(t *testing.T) {
 	capture := auditlog.NewCapturingLogger()
 	infoID := uuid.New()
-	svc := fakeStoryInfoService{
-		deleteFn: func(_ context.Context, creatorID, gotInfoID uuid.UUID) (uuid.UUID, error) {
+	h, svc := newStoryInfoHandlerMock(t, capture)
+	svc.EXPECT().
+		Delete(gomock.Any(), testCreatorID, infoID).
+		DoAndReturn(func(_ context.Context, creatorID, gotInfoID uuid.UUID) (uuid.UUID, error) {
 			if creatorID != testCreatorID || gotInfoID != infoID {
 				t.Fatalf("unexpected delete request: creator=%s info=%s", creatorID, gotInfoID)
 			}
 			return testThemeID, nil
-		},
-	}
-	h := NewStoryInfoHandler(svc, capture, zerolog.Nop())
+		})
 	req := httptest.NewRequest(http.MethodDelete, "/editor/story-infos/"+infoID.String(), nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": infoID.String()})
@@ -292,7 +271,7 @@ func TestStoryInfoHandler_Delete_AuditsThemeAndInfo(t *testing.T) {
 }
 
 func TestStoryInfoHandler_Delete_RejectsInvalidIDAndWritesServiceError(t *testing.T) {
-	h := NewStoryInfoHandler(fakeStoryInfoService{}, auditlog.NoOpLogger{}, zerolog.Nop())
+	h, _ := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
 	req := httptest.NewRequest(http.MethodDelete, "/editor/story-infos/not-a-uuid", nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": "not-a-uuid"})
@@ -305,11 +284,10 @@ func TestStoryInfoHandler_Delete_RejectsInvalidIDAndWritesServiceError(t *testin
 	}
 
 	infoID := uuid.New()
-	h = NewStoryInfoHandler(fakeStoryInfoService{
-		deleteFn: func(context.Context, uuid.UUID, uuid.UUID) (uuid.UUID, error) {
-			return uuid.Nil, apperror.NotFound("story info not found")
-		},
-	}, auditlog.NoOpLogger{}, zerolog.Nop())
+	h, svc := newStoryInfoHandlerMock(t, auditlog.NoOpLogger{})
+	svc.EXPECT().
+		Delete(gomock.Any(), testCreatorID, infoID).
+		Return(uuid.Nil, apperror.NotFound("story info not found"))
 	req = httptest.NewRequest(http.MethodDelete, "/editor/story-infos/"+infoID.String(), nil)
 	req = withAuth(req)
 	req = chiContext(req, map[string]string{"id": infoID.String()})
@@ -324,7 +302,7 @@ func TestStoryInfoHandler_Delete_RejectsInvalidIDAndWritesServiceError(t *testin
 
 func TestStoryInfoHandler_RecordAudit_IgnoresNilActorMarshalAndAppendFailures(t *testing.T) {
 	capture := auditlog.NewCapturingLogger()
-	h := NewStoryInfoHandler(fakeStoryInfoService{}, capture, zerolog.Nop())
+	h, _ := newStoryInfoHandlerMock(t, capture)
 	h.recordAudit(context.Background(), auditlog.ActionEditorStoryInfoCreate, uuid.Nil, map[string]any{"story_info_id": uuid.New().String()})
 	if len(capture.Entries()) != 0 {
 		t.Fatalf("expected nil actor to skip audit, got %+v", capture.Entries())
@@ -335,10 +313,10 @@ func TestStoryInfoHandler_RecordAudit_IgnoresNilActorMarshalAndAppendFailures(t 
 		t.Fatalf("expected marshal failure to skip audit, got %+v", capture.Entries())
 	}
 
-	h = NewStoryInfoHandler(fakeStoryInfoService{}, failingStoryInfoAuditLogger{}, zerolog.Nop())
+	h, _ = newStoryInfoHandlerMock(t, failingStoryInfoAuditLogger{})
 	h.recordAudit(context.Background(), auditlog.ActionEditorStoryInfoCreate, testCreatorID, map[string]any{"story_info_id": uuid.New().String()})
 
-	h = NewStoryInfoHandler(fakeStoryInfoService{}, nil, zerolog.Nop())
+	h, _ = newStoryInfoHandlerMock(t, nil)
 	h.recordAudit(context.Background(), auditlog.ActionEditorStoryInfoCreate, testCreatorID, nil)
 }
 
