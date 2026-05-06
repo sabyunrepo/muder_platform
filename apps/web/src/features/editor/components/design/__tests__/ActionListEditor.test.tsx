@@ -230,6 +230,24 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("legacy 읽기 대사 공개 실행 결과도 같은 필드와 필수값 검증을 사용한다", () => {
+    render(
+      <ActionListEditor
+        label="단서 트리거"
+        actions={[{ id: "legacy-info", type: "deliver_information", params: { deliveries: [] } }]}
+        onChange={vi.fn()}
+        themeId="theme-1"
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "단서 트리거 1 공개할 읽기 대사" })).toBeDefined();
+    expect(
+      hasIncompletePresentationCueActions([
+        { id: "legacy-info", type: "deliver_information", params: { deliveries: [] } },
+      ]),
+    ).toBe(true);
+  });
+
   it("알림 보내기 실행 결과의 문구를 params.message로 저장한다", () => {
     const onChange = vi.fn();
     render(
