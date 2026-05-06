@@ -460,6 +460,85 @@ func TestMediaService_Delete_BlockedByReadingImageReference(t *testing.T) {
 	}
 }
 
+func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
+	fixture := setupFixture(t)
+	ctx := context.Background()
+	creatorID := fixture.createUser(t)
+	themeID := fixture.createThemeForUser(t, creatorID)
+
+	voice := createMediaForReferenceTest(t, fixture.q, themeID, "Narration voice", MediaTypeVoice)
+	image := createMediaForReferenceTest(t, fixture.q, themeID, "Crime scene image", MediaTypeImage)
+	linesJSON, err := json.Marshal([]map[string]any{
+		{"Index": 0, "Text": "목소리가 들린다.", "AdvanceBy": "voice", "VoiceMediaID": voice.ID.String()},
+		{"Index": 1, "Text": "현장 사진을 본다.", "AdvanceBy": "gm", "ImageMediaID": image.ID.String()},
+	})
+	if err != nil {
+		t.Fatalf("marshal lines: %v", err)
+	}
+	section, err := fixture.q.CreateReadingSection(ctx, db.CreateReadingSectionParams{
+		ThemeID:   themeID,
+		Name:      "JSONB refs",
+		Lines:     linesJSON,
+		SortOrder: 0,
+	})
+	if err != nil {
+		t.Fatalf("CreateReadingSection: %v", err)
+	}
+	svc := NewMediaService(fixture.q, nil, zerolog.Nop())
+
+	for _, tt := range []struct {
+		name    string
+		mediaID uuid.UUID
+	}{
+		{name: "voice", mediaID: voice.ID},
+		{name: "image", mediaID: image.ID},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			refs, err := fixture.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
+				ThemeID: themeID,
+				MediaID: tt.mediaID,
+			})
+			if err != nil {
+				t.Fatalf("FindMediaReferencesInReadingSections: %v", err)
+			}
+			if len(refs) != 1 || refs[0].ID != section.ID || refs[0].Name != "JSONB refs" {
+				t.Fatalf("unexpected refs: %#v", refs)
+			}
+
+			err = svc.DeleteMedia(ctx, creatorID, tt.mediaID)
+			assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+			var appErr *apperror.AppError
+			_ = errors.As(err, &appErr)
+			references, ok := appErr.Params["references"].([]map[string]string)
+			if !ok || len(references) != 1 {
+				t.Fatalf("expected references param with 1 entry, got %#v", appErr.Params["references"])
+			}
+			if references[0]["type"] != "reading_section" || references[0]["id"] != section.ID.String() || references[0]["name"] != "JSONB refs" {
+				t.Fatalf("unexpected reference payload: %#v", references[0])
+			}
+		})
+	}
+}
+
+func createMediaForReferenceTest(t *testing.T, q *db.Queries, themeID uuid.UUID, name string, mediaType string) db.ThemeMedium {
+	t.Helper()
+	media, err := q.CreateMedia(context.Background(), db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       name,
+		Type:       mediaType,
+		SourceType: SourceTypeFile,
+		Url:        pgtype.Text{String: "https://cdn.example/" + name, Valid: true},
+		StorageKey: pgtype.Text{String: "test/" + uuid.New().String(), Valid: true},
+		MimeType:   pgtype.Text{String: "application/octet-stream", Valid: true},
+		Tags:       []string{},
+		SortOrder:  0,
+	})
+	if err != nil {
+		t.Fatalf("CreateMedia(%s): %v", name, err)
+	}
+	return media
+}
+
 func TestMediaService_Delete_Success_NoReferences(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	mediaID := seedMedia(q, themeID, MediaTypeBGM)
