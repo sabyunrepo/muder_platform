@@ -180,7 +180,7 @@ export function LocationClueAssignPanel({
                 className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
               />
             </label>
-            <div className="max-h-80 space-y-1 overflow-auto pr-1">
+            <div className="space-y-1 pr-1 lg:max-h-80 lg:overflow-y-auto">
               {visibleClues.length === 0 ? (
                 <p className="rounded-md border border-dashed border-slate-800 px-3 py-8 text-center text-xs text-slate-600">
                   검색 결과가 없습니다.

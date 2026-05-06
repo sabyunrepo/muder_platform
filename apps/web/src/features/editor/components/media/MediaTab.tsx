@@ -51,7 +51,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <MediaToolbar
         filter={filter}
         onFilterChange={handleFilterChange}
@@ -59,9 +59,9 @@ export function MediaTab({ themeId }: MediaTabProps) {
         onYouTubeClick={() => setYoutubeOpen(true)}
       />
 
-      <div className="flex flex-1 gap-4 overflow-hidden p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:flex-row lg:overflow-hidden">
         {/* List */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-visible lg:overflow-y-auto">
           {isLoading ? (
             <div
               className="flex h-full items-center justify-center"
@@ -105,7 +105,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
 
         {/* Detail */}
         {selected && (
-          <aside className="w-96 shrink-0 overflow-y-auto border-l border-slate-800 pl-4">
+          <aside className="min-h-0 w-full shrink-0 border-t border-slate-800 pt-4 lg:w-96 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
             <MediaDetail media={selected} themeId={themeId} onClose={handleClose} />
           </aside>
         )}
