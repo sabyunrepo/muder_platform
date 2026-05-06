@@ -25,7 +25,9 @@ description: Use after repeated MMP work, PR merges, recurring review or CI mist
    - `subagent`: narrow independent review/exploration role.
    - `docs`: human/project context that should not load every turn.
    - `no-change`: one-off or not enough evidence.
-5. Prefer the smallest durable change. Do not add broad rules from a single anecdote.
+5. Prefer the smallest durable change, but group related repo-local workflow edits into one self-improvement PR when that lowers review and CI cost without mixing feature work.
+   - Avoid micro-PRs for AGENTS/skill/subagent/script wording that shares the same root cause.
+   - Split only when a change has separate runtime risk, separate owner, or would make validation unclear.
 6. Mark resolved candidates in `state.json` so old evidence is not repeatedly re-used.
 
 ## Done

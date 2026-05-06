@@ -25,11 +25,12 @@ fail_ready_for_ci() {
 순서:
 1. PR 생성
 2. Coverage Plan 확인: 변경 파일/분기별 focused test 매핑을 PR 본문 또는 작업 메모에 기록
-3. CodeRabbit / Codecov Report / 코드 리뷰 이슈 확인
-4. 수정 커밋 push + review thread resolve
-5. `scripts/mmp-pr-ci-scope.sh <PR>`로 full-ci / code-rabbit-only 분류
-6. full-ci PR만 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
-7. code-rabbit-only PR은 라벨 없이 light/focused validation 후 merge 판단
+3. PR 묶음 확인: 같은 이슈/같은 CI scope의 저충돌 workflow 변경은 하나로 묶고, 실패 영향이 큰 변경만 분리
+4. CodeRabbit / Codecov Report / 코드 리뷰 이슈 확인
+5. 수정 커밋 push + review thread resolve
+6. `scripts/mmp-pr-ci-scope.sh <PR>`로 full-ci / code-rabbit-only 분류
+7. full-ci PR만 마지막에 `ready-for-ci` 라벨 부착으로 Full CI 실행
+8. code-rabbit-only PR은 라벨 없이 light/focused validation 후 merge 판단
 MSG
   exit 2
 }
@@ -63,6 +64,7 @@ done
 cat <<'MSG'
 ✅ PR 생성 가드 통과: `ready-for-ci` 라벨 없이 PR을 생성합니다.
    Coverage Plan과 focused test 근거를 PR 본문에 남긴 뒤, CodeRabbit/Codecov/리뷰 이슈 해결 후 full-ci PR에만 `ready-for-ci` 라벨을 붙이세요.
+   같은 CI scope의 저충돌 workflow 변경은 하나의 PR로 묶고, heavy CI를 반복 소모하는 초소형 PR은 피하세요.
 MSG
 
 if [[ "${PR_CREATE_GUARD_DRY_RUN:-}" == "1" ]]; then

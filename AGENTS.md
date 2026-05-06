@@ -153,6 +153,7 @@ Avoid:
 - `main`을 보호한다. 병합 가능한 변경은 feature branch와 PR을 사용한다.
 - PR 또는 merge 전에는 관련 focused check를 실행하고 `memory/feedback_pre_pr_review_checklist.md` 기준으로 검토한다.
 - PR 제목과 본문은 기본적으로 한글로 작성한다. 코드 식별자, 명령어, 에러 메시지, 공식 API명은 원문을 유지한다.
+- PR 분할은 CI 비용과 리뷰 비용을 함께 본다. 같은 이슈, 같은 CI scope, 같은 운영/문서/스크립트 원인의 저충돌 변경은 하나의 PR로 묶고, shared contract, migration, runtime behavior, 큰 UI route처럼 실패 영향이 큰 변경만 별도 PR로 분리한다. 너무 작은 PR을 여러 개 만들어 heavy CI를 반복 소모하지 않는다.
 - PR 생성은 `scripts/pr-create-guard.sh` wrapper를 사용한다. 직접 `gh pr create`를 실행하지 않으며, 생성 단계에서는 `ready-for-ci` 라벨을 붙이지 않는다. Codex 로컬 PreToolUse hook도 이 규칙을 생성 직전에 차단한다.
 - 코드 작성/수정 PR은 구현 시작 전 관련 Issue 또는 작업 계획에 `Coverage Plan`을 명시한다. 변경될 파일/분기/API handler/adapter별로 어떤 unit/integration/E2E 테스트가 patch coverage를 덮는지 먼저 매핑하고, PR 생성 전 그 계획이 실제 focused test로 실행됐는지 확인한다. Codecov 70% 미만을 PR 끝에서 처음 발견하는 흐름은 실패로 본다.
 - 구현 중 scope를 줄이거나 일부 기능을 제외하면 PR 생성 전 관련 Issue에 `Deferred / Follow-up` 기록을 남긴다. 독립적으로 실행 가능한 작업이면 새 Issue를 만들고 PR 본문에 `Refs #번호`로 연결한다.

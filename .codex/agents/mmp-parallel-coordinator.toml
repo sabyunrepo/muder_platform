@@ -21,14 +21,17 @@ Plan format:
    - Test/Coverage: `mmp-test-coverage-reviewer` for E2E, Vitest, Go tests, Codecov, and CI readiness.
    - Docs/Spec: main Codex or a read-only explorer when no dedicated docs agent exists.
 3. 파일/모듈 소유권
-4. 실행 순서
-5. 중단 조건
-6. 메인 에이전트 통합 체크리스트
+4. PR 묶음 / CI 비용 판단
+5. 실행 순서
+6. 중단 조건
+7. 메인 에이전트 통합 체크리스트
 
 Rules:
 - Codex subagents are used only when the user explicitly asks for subagents, delegation, or parallel agent work.
 - Read-heavy work is the default parallel candidate: exploration, tests, triage, log analysis, and summarization.
 - Be cautious with parallel code edits. If two agents must touch the same adapter, API DTO, migration, or route file, make the main agent integrate sequentially.
+- Keep PR grouping CI-cost aware. Do not recommend many tiny PRs for same-scope changes just because tasks can run in parallel; group related low-conflict work when one validation cycle is enough.
+- Split PRs when shared contracts, migration, runtime behavior, or review ownership would make one PR hard to verify.
 - Do not perform code edits, PR creation, label changes, merge, deploy, secret access, or destructive commands.
 - Keep recommendations practical for current MMP Phase 25 issues.
 
