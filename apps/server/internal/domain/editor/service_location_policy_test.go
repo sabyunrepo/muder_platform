@@ -269,6 +269,9 @@ func TestService_MapImageMediaReference(t *testing.T) {
 	if created.ImageMediaID == nil || *created.ImageMediaID != media.ID {
 		t.Fatalf("ImageMediaID = %v, want %s", created.ImageMediaID, media.ID)
 	}
+	if created.ImageURL != nil {
+		t.Fatalf("ImageURL = %q, want nil when ImageMediaID is set", *created.ImageURL)
+	}
 
 	if _, err := f.svc.UpdateMap(ctx, creatorID, created.ID, UpdateMapRequest{
 		Name:         created.Name,

@@ -1,9 +1,20 @@
 -- +goose Up
+ALTER TABLE theme_media
+  ADD CONSTRAINT theme_media_theme_id_id_unique UNIQUE (theme_id, id);
+
 ALTER TABLE themes
-  ADD COLUMN cover_image_media_id UUID REFERENCES theme_media(id) ON DELETE SET NULL;
+  ADD COLUMN cover_image_media_id UUID,
+  ADD CONSTRAINT themes_cover_image_media_same_theme_fk
+    FOREIGN KEY (id, cover_image_media_id)
+    REFERENCES theme_media(theme_id, id)
+    ON DELETE SET NULL;
 
 ALTER TABLE theme_maps
-  ADD COLUMN image_media_id UUID REFERENCES theme_media(id) ON DELETE SET NULL;
+  ADD COLUMN image_media_id UUID,
+  ADD CONSTRAINT theme_maps_image_media_same_theme_fk
+    FOREIGN KEY (theme_id, image_media_id)
+    REFERENCES theme_media(theme_id, id)
+    ON DELETE SET NULL;
 
 CREATE INDEX idx_themes_cover_image_media
   ON themes(cover_image_media_id)
@@ -18,7 +29,12 @@ DROP INDEX IF EXISTS idx_theme_maps_image_media;
 DROP INDEX IF EXISTS idx_themes_cover_image_media;
 
 ALTER TABLE theme_maps
+  DROP CONSTRAINT IF EXISTS theme_maps_image_media_same_theme_fk,
   DROP COLUMN IF EXISTS image_media_id;
 
 ALTER TABLE themes
+  DROP CONSTRAINT IF EXISTS themes_cover_image_media_same_theme_fk,
   DROP COLUMN IF EXISTS cover_image_media_id;
+
+ALTER TABLE theme_media
+  DROP CONSTRAINT IF EXISTS theme_media_theme_id_id_unique;
