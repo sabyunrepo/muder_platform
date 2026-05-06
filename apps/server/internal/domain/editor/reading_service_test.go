@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -132,6 +133,7 @@ type readingTestFixture struct {
 	themeID   uuid.UUID
 	bgmID     uuid.UUID
 	voiceID   uuid.UUID
+	imageID   uuid.UUID
 	otherBgm  uuid.UUID // BGM in a different theme
 }
 
@@ -152,6 +154,9 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 	voiceID := uuid.New()
 	q.media[voiceID] = db.ThemeMedium{ID: voiceID, ThemeID: themeID, Type: MediaTypeVoice}
 
+	imageID := uuid.New()
+	q.media[imageID] = db.ThemeMedium{ID: imageID, ThemeID: themeID, Type: MediaTypeImage}
+
 	otherBgm := uuid.New()
 	q.media[otherBgm] = db.ThemeMedium{ID: otherBgm, ThemeID: otherThemeID, Type: MediaTypeBGM}
 
@@ -162,6 +167,7 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 		themeID:   themeID,
 		bgmID:     bgmID,
 		voiceID:   voiceID,
+		imageID:   imageID,
 		otherBgm:  otherBgm,
 	}
 }
@@ -259,6 +265,49 @@ func TestReadingService_Create_VoiceMediaNotInTheme(t *testing.T) {
 		Name: "Bad",
 		Lines: []ReadingLineDTO{
 			{Text: "x", AdvanceBy: AdvanceByVoice, VoiceMediaID: otherVoice.String()},
+		},
+	})
+	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
+}
+
+func TestReadingService_Create_ImageMediaReference(t *testing.T) {
+	f := newReadingFixture(t)
+	resp, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "With image",
+		Lines: []ReadingLineDTO{
+			{Text: "사진을 확인한다.", AdvanceBy: AdvanceByGM, ImageMediaID: f.imageID.String()},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if got := resp.Lines[0].ImageMediaID; got != f.imageID.String() {
+		t.Fatalf("ImageMediaID = %q, want %q", got, f.imageID.String())
+	}
+}
+
+func TestReadingService_Create_ImageMediaMustBeImageInTheme(t *testing.T) {
+	f := newReadingFixture(t)
+	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "Wrong type",
+		Lines: []ReadingLineDTO{
+			{Text: "x", AdvanceBy: AdvanceByGM, ImageMediaID: f.voiceID.String()},
+		},
+	})
+	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
+	if !strings.Contains(err.Error(), "line 0: imageMediaId") {
+		t.Fatalf("expected line context in error, got %v", err)
+	}
+
+	otherImage := uuid.New()
+	otherTheme := uuid.New()
+	f.q.themes[otherTheme] = db.Theme{ID: otherTheme, CreatorID: f.creatorID}
+	f.q.media[otherImage] = db.ThemeMedium{ID: otherImage, ThemeID: otherTheme, Type: MediaTypeImage}
+
+	_, err = f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "Other theme",
+		Lines: []ReadingLineDTO{
+			{Text: "x", AdvanceBy: AdvanceByGM, ImageMediaID: otherImage.String()},
 		},
 	})
 	assertAppCode(t, err, apperror.ErrMediaNotInTheme)

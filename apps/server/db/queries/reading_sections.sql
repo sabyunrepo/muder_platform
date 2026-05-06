@@ -35,7 +35,7 @@ WHERE rs.id = $1 AND rs.theme_id = t.id AND t.creator_id = $2;
 
 -- name: FindMediaReferencesInReadingSections :many
 -- Returns reading sections that reference the given media as bgm_media_id
--- OR inside any line's VoiceMediaID (PascalCase key — matches engine struct serialization).
+-- OR inside any line's VoiceMediaID/ImageMediaID (PascalCase keys — match engine struct serialization).
 SELECT DISTINCT rs.id, rs.name FROM reading_sections rs
 WHERE rs.theme_id = sqlc.arg('theme_id')
   AND (
@@ -43,5 +43,6 @@ WHERE rs.theme_id = sqlc.arg('theme_id')
     OR EXISTS (
       SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
       WHERE line->>'VoiceMediaID' = sqlc.arg('media_id')::text
+         OR line->>'ImageMediaID' = sqlc.arg('media_id')::text
     )
   );

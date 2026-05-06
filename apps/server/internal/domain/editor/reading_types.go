@@ -21,13 +21,14 @@ const (
 
 // ReadingLineDTO is the JSON shape of a single reading line as stored in
 // the reading_sections.lines JSONB column. The Go field names use PascalCase
-// (matching progression.ReadingLine) so that the encoding round-trips
-// between editor and engine without translation.
+// so engine-compatible fields and editor-only media cues round-trip without
+// translation.
 type ReadingLineDTO struct {
 	Index        int    `json:"Index"`
 	Text         string `json:"Text"`
 	Speaker      string `json:"Speaker,omitempty"`
 	VoiceMediaID string `json:"VoiceMediaID,omitempty"`
+	ImageMediaID string `json:"ImageMediaID,omitempty"`
 	AdvanceBy    string `json:"AdvanceBy,omitempty"`
 }
 

@@ -116,16 +116,39 @@ func (s *readingService) validateLines(ctx context.Context, themeID uuid.UUID, l
 			return apperror.New(apperror.ErrReadingVoiceRequired, 400, "line "+itoa(i)+": voice mode requires voiceMediaId")
 		}
 		if ln.VoiceMediaID != "" {
-			mediaID, err := uuid.Parse(ln.VoiceMediaID)
-			if err != nil {
-				return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(i)+": invalid voiceMediaId")
+			if err := s.assertLineMediaInTheme(ctx, themeID, ln.VoiceMediaID, MediaTypeVoice, "voiceMediaId", i); err != nil {
+				return err
 			}
-			if err := s.assertMediaInTheme(ctx, themeID, mediaID, MediaTypeVoice); err != nil {
+		}
+		if ln.ImageMediaID != "" {
+			if err := s.assertLineMediaInTheme(ctx, themeID, ln.ImageMediaID, MediaTypeImage, "imageMediaId", i); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+func (s *readingService) assertLineMediaInTheme(ctx context.Context, themeID uuid.UUID, raw string, wantType string, field string, lineIndex int) error {
+	mediaID, err := uuid.Parse(raw)
+	if err != nil {
+		return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": invalid "+field)
+	}
+	if err := s.assertMediaInTheme(ctx, themeID, mediaID, wantType); err != nil {
+		return prefixLineMediaError(err, lineIndex, field)
+	}
+	return nil
+}
+
+func prefixLineMediaError(err error, lineIndex int, field string) error {
+	prefix := "line " + itoa(lineIndex) + ": " + field + ": "
+	var appErr *apperror.AppError
+	if errors.As(err, &appErr) {
+		copied := *appErr
+		copied.Detail = prefix + appErr.Detail
+		return &copied
+	}
+	return errors.New(prefix + err.Error())
 }
 
 // assertMediaInTheme verifies that mediaID exists and belongs to themeID.
