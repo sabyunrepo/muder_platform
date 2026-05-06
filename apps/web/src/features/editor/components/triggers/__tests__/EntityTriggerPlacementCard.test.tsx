@@ -102,6 +102,7 @@ describe('EntityTriggerPlacementCard', () => {
 
   it('keeps save disabled when a presentation cue is missing mediaId', () => {
     renderCard({
+      themeId: 'theme-1',
       entityKind: 'location',
       entityId: 'loc-1',
       entityName: '서재',
