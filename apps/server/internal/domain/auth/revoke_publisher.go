@@ -23,12 +23,14 @@ type RevokePublisher interface {
 	// changes — anything that invalidates the whole user.
 	RevokeUser(ctx context.Context, userID uuid.UUID, code, reason string) error
 
-	// RevokeSession closes a single WS session without touching the
-	// user's other devices. Used for "kick this tab" admin actions.
+	// RevokeSession closes live game sockets bound to sessionID. Social
+	// sockets do not carry the game session concept, so SocialHub treats
+	// this as a no-op.
 	RevokeSession(ctx context.Context, sessionID uuid.UUID, code, reason string) error
 
-	// RevokeToken closes any session that authenticated with the given
-	// refresh-token JTI. Used for logout-elsewhere precision.
+	// RevokeToken is a best-effort hook for future token-JTI indexed
+	// sockets. Current Hub/SocialHub implementations log and no-op; use
+	// RevokeUser for the concrete logout-elsewhere end state.
 	RevokeToken(ctx context.Context, tokenJTI, code, reason string) error
 }
 

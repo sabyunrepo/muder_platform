@@ -13,7 +13,7 @@ var envVarsToClean = []string{
 	"LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET",
 	"R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY",
 	"R2_BUCKET_NAME", "R2_PUBLIC_URL",
-	"GAME_RUNTIME_V2",
+	"GAME_RUNTIME_V2", "MMP_WS_AUTH_PROTOCOL",
 }
 
 // cleanEnv unsets all config-related env vars for the duration of the test,

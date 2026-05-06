@@ -42,6 +42,9 @@ export class ReconnectManager {
   /** Schedule next reconnect. Returns the delay used (ms). */
   schedule(callback: () => void): number {
     this.cancel();
+    if (!this.options.enabled) {
+      return 0;
+    }
     const delay = this.getDelay();
     this.attempt++;
     this.timer = setTimeout(callback, delay);

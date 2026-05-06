@@ -159,16 +159,7 @@ test.describe("PR-9 WS Auth Protocol — revoke pushes close within 30s", () => 
     ).toBe(true);
     expect(result.lapsedMs).toBeLessThan(REVOKE_DEADLINE_MS);
 
-    // receivedRevoked is informational: when the social Hub publisher
-    // wiring lands the auth.revoked frame should arrive before close.
-    // For now (game-only publisher) the close still fires because the
-    // socket is dropped, just without the in-band envelope. Soft check.
-    if (!result.receivedRevoked) {
-      console.warn(
-        "[ws-auth-revoke] auth.revoked envelope was not observed before close — " +
-          "social Hub publisher wiring is a documented PR-9 follow-up",
-      );
-    }
+    expect(result.receivedRevoked).toBe(true);
   });
 
   test("post-revoke reconnect with the same token is rejected within 30s", async ({
@@ -251,5 +242,6 @@ test.describe("PR-9 WS Auth Protocol — revoke pushes close within 30s", () => 
 
     expect(result.closed).toBe(true);
     expect(result.lapsedMs).toBeLessThan(REVOKE_DEADLINE_MS);
+    expect(result.receivedRevoked).toBe(true);
   });
 });

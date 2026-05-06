@@ -28,6 +28,7 @@ function newClient(
     onRevoked?: (code: string, reason: string) => void;
     onUnauthorized?: (reason: string) => void;
     onTokenRefreshed?: (token: string, expiresAt: number) => void;
+    onRefreshRequired?: (expiresAt: number, reason?: string) => void;
     onServerError?: (payload: ErrorPayload) => void;
     reconnect?: { enabled?: boolean; baseDelay?: number; maxAttempts?: number };
   } = {}
@@ -39,6 +40,7 @@ function newClient(
     onRevoked: opts.onRevoked,
     onUnauthorized: opts.onUnauthorized,
     onTokenRefreshed: opts.onTokenRefreshed,
+    onRefreshRequired: opts.onRefreshRequired,
     onServerError: opts.onServerError,
     heartbeatInterval: 999_999, // park heartbeat way out of test timelines
     reconnect: { baseDelay: 10, maxAttempts: 5, ...opts.reconnect },
@@ -156,6 +158,47 @@ describe('WsClient — auth.token_issued', () => {
     handle.getLast().triggerMessage({
       type: WsEventType.AUTH_TOKEN_ISSUED,
       payload: { token: 'x', expiresAt: 0 },
+      ts: 0,
+      seq: 1,
+    });
+    expect(handler).not.toHaveBeenCalled();
+    c.disconnect();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// auth.refresh_required
+// ---------------------------------------------------------------------------
+
+describe('WsClient — auth.refresh_required', () => {
+  it('fires onRefreshRequired with epoch-ms expiry and reason', () => {
+    const onRefreshRequired = vi.fn();
+    const c = newClient({ authProtocol: true, onRefreshRequired });
+    c.connect();
+    const ws1 = handle.getLast();
+    ws1.triggerOpen();
+
+    ws1.triggerMessage({
+      type: WsEventType.AUTH_REFRESH_REQUIRED,
+      payload: { expiresAt: 1234567, reason: 'expiring_soon' },
+      ts: 0,
+      seq: 1,
+    });
+
+    expect(onRefreshRequired).toHaveBeenCalledTimes(1);
+    expect(onRefreshRequired).toHaveBeenCalledWith(1234567, 'expiring_soon');
+    c.disconnect();
+  });
+
+  it('does not bubble auth.refresh_required to ordinary listeners', () => {
+    const c = newClient({ authProtocol: true });
+    const handler = vi.fn();
+    c.on(WsEventType.AUTH_REFRESH_REQUIRED, handler);
+    c.connect();
+    handle.getLast().triggerOpen();
+    handle.getLast().triggerMessage({
+      type: WsEventType.AUTH_REFRESH_REQUIRED,
+      payload: { expiresAt: 1234567 },
       ts: 0,
       seq: 1,
     });
