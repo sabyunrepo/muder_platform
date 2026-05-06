@@ -19,6 +19,9 @@ export interface MediaCardProps {
   onClick: () => void;
   isPreviewPlaying: boolean;
   onPreviewToggle: () => void;
+  selectionMode?: boolean;
+  checked?: boolean;
+  onCheckedChange?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -43,6 +46,9 @@ export function MediaCard({
   onClick,
   isPreviewPlaying,
   onPreviewToggle,
+  selectionMode = false,
+  checked = false,
+  onCheckedChange,
 }: MediaCardProps) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const isYouTube = media.source_type === "YOUTUBE";
@@ -67,13 +73,29 @@ export function MediaCard({
           onClick();
         }
       }}
-      aria-pressed={selected}
+      aria-pressed={selectionMode ? checked : selected}
       className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-sm border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 ${
         selected
           ? "border-amber-500 bg-slate-900"
           : "border-slate-800 bg-slate-900/50 hover:border-slate-600"
       }`}
     >
+      {selectionMode && (
+        <div className="absolute left-2 top-2 z-10 rounded-sm bg-black/70 p-1">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => {
+              event.stopPropagation();
+              onCheckedChange?.();
+            }}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`${media.name} 선택`}
+            className="h-4 w-4 rounded-sm border-slate-500 bg-slate-950 text-amber-500 focus:ring-amber-500"
+          />
+        </div>
+      )}
+
       {/* Thumbnail */}
       <div className="relative flex aspect-[4/3] min-h-28 items-center justify-center bg-slate-950/60">
         {thumbnailUrl && !thumbnailFailed ? (
