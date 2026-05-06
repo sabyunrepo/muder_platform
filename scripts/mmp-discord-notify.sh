@@ -146,6 +146,8 @@ NODE
 )"
 
 if curl -fsS \
+  --connect-timeout 3 \
+  --max-time 8 \
   -H "Content-Type: application/json" \
   -X POST \
   --data "$content" \
