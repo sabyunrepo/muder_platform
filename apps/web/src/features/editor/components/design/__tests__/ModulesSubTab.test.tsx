@@ -1,15 +1,17 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
+const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock, invalidateQueriesMock, writeTextMock } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
   useModuleSchemasMock: vi.fn(),
+  invalidateQueriesMock: vi.fn(),
+  writeTextMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -34,7 +36,7 @@ vi.mock('@/features/editor/editorConfigApi', () => ({
 }));
 
 vi.mock('@/services/queryClient', () => ({
-  queryClient: { invalidateQueries: vi.fn() },
+  queryClient: { invalidateQueries: invalidateQueriesMock },
 }));
 
 vi.mock('@/features/editor/templateApi', () => ({}));
@@ -102,6 +104,11 @@ const baseTheme: EditorThemeResponse = {
 let capturedConflictHandler: (() => void) | undefined;
 
 beforeEach(() => {
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: writeTextMock,
+    },
+  });
   capturedConflictHandler = undefined;
   useUpdateConfigJsonMock.mockImplementation((opts?: { onConflictAfterRetry?: () => void }) => {
     capturedConflictHandler = opts?.onConflictAfterRetry;
@@ -300,7 +307,7 @@ describe('ModulesSubTab', () => {
     expect(config.version).toBe(42);
   });
 
-  it('conflict-after-retry 시 Snackbar 충돌 메시지를 표시한다', () => {
+  it('conflict-after-retry 시 저장 충돌 복구 배너를 표시한다', () => {
     const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
 
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
@@ -312,11 +319,20 @@ describe('ModulesSubTab', () => {
       unknown,
       { onError: () => void },
     ];
-    callbacks.onError();
+    act(() => callbacks.onError());
 
-    expect(toast.error).toHaveBeenCalledWith(
-      '동시 편집 충돌 — 최신 상태 다시 불러오기',
-    );
+    expect(screen.getByRole('alert', { name: '모듈 설정 저장 충돌' })).toBeDefined();
+    expect(screen.getByText(/다른 탭이나 사용자가 더 최신 내용을 저장했습니다/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '내 변경 복사' }));
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining(optionalMod.id));
+    expect(toast.success).toHaveBeenCalledWith('내 변경 내용을 클립보드에 복사했습니다');
+
+    fireEvent.click(screen.getByRole('button', { name: '최신 상태 다시 불러오기' }));
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({
+      queryKey: ['editor', 'themes', 'theme-1'],
+    });
+    expect(screen.queryByRole('alert', { name: '모듈 설정 저장 충돌' })).toBeNull();
   });
 
   it('일반 에러는 기본 에러 메시지를 표시한다 (충돌 아님)', () => {

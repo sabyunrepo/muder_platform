@@ -10,11 +10,13 @@ const {
   useDeleteReadingSectionMock,
   useMediaListMock,
   invalidateQueriesMock,
+  writeTextMock,
 } = vi.hoisted(() => ({
   useUpdateReadingSectionMock: vi.fn(),
   useDeleteReadingSectionMock: vi.fn(),
   useMediaListMock: vi.fn(),
   invalidateQueriesMock: vi.fn(),
+  writeTextMock: vi.fn(),
 }));
 
 vi.mock("@/features/editor/readingApi", async () => {
@@ -93,6 +95,11 @@ let mutateAsyncUpdate: ReturnType<typeof vi.fn>;
 let mutateAsyncDelete: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: writeTextMock,
+    },
+  });
   mutateAsyncUpdate = vi.fn().mockResolvedValue(sampleSection);
   mutateAsyncDelete = vi.fn().mockResolvedValue(undefined);
 
@@ -325,7 +332,7 @@ describe("ReadingSectionEditor", () => {
     await waitFor(() => expect(onDeleted).toHaveBeenCalled());
   });
 
-  it("409 conflict error shows refresh prompt", async () => {
+  it("409 conflict error shows reload, preserve, and cancel recovery actions", async () => {
     mutateAsyncUpdate.mockRejectedValueOnce(new Error("HTTP 409 Conflict"));
     renderEditor();
     const input = screen.getByLabelText("섹션 이름") as HTMLInputElement;
@@ -333,10 +340,23 @@ describe("ReadingSectionEditor", () => {
     fireEvent.click(screen.getByRole("button", { name: /저장/ }));
 
     await waitFor(() =>
-      expect(screen.getByText(/다른 곳에서 수정되었습니다/)).toBeTruthy(),
+      expect(screen.getByRole("alert", { name: "읽기 대사 저장 충돌" })).toBeTruthy(),
     );
+    expect(screen.getByText(/다른 탭이나 사용자가 더 최신 내용을 저장했습니다/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /새로고침/ }));
+    fireEvent.click(screen.getByRole("button", { name: "내 변경 복사" }));
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining("섹션: x"));
+
+    fireEvent.click(screen.getByRole("button", { name: "최신 상태 다시 불러오기" }));
     expect(invalidateQueriesMock).toHaveBeenCalled();
+    expect(screen.queryByRole("alert", { name: "읽기 대사 저장 충돌" })).toBeNull();
+
+    mutateAsyncUpdate.mockRejectedValueOnce(new Error("HTTP 409 Conflict"));
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+    await waitFor(() =>
+      expect(screen.getByRole("alert", { name: "읽기 대사 저장 충돌" })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "취소" }));
+    expect(screen.queryByRole("alert", { name: "읽기 대사 저장 충돌" })).toBeNull();
   });
 });

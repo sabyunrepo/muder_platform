@@ -6,6 +6,7 @@ import { useUpdateConfigJson } from '@/features/editor/editorConfigApi';
 import { queryClient } from '@/services/queryClient';
 import { OPTIONAL_MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { TemplateSchema } from '@/features/editor/templateApi';
+import { EditorSaveConflictBanner } from '@/features/editor/components/EditorSaveConflictBanner';
 import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm';
 import {
   DECK_INVESTIGATION_MODULE_ID,
@@ -20,8 +21,6 @@ import {
   writeModuleConfigPath,
   writeModuleEnabled,
 } from '@/features/editor/utils/configShape';
-
-const CONFLICT_SNACKBAR_MSG = '동시 편집 충돌 — 최신 상태 다시 불러오기';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +37,7 @@ interface ModulesSubTabProps {
 
 export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   const { data: moduleSchemasResp } = useModuleSchemas();
+  const [conflictDraft, setConflictDraft] = useState<Record<string, unknown> | null>(null);
   // conflictRef distinguishes conflict-after-retry from generic errors in
   // onError. useRef avoids re-creating the hook on every render.
   const conflictRef = useRef(false);
@@ -57,7 +57,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
           onSuccess: () => toast.success(successMsg),
           onError: () => {
             if (conflictRef.current) {
-              toast.error(CONFLICT_SNACKBAR_MSG);
+              setConflictDraft(nextConfig);
             } else {
               toast.error(errorMsg);
             }
@@ -67,6 +67,22 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     },
     [theme.version, updateConfig],
   );
+
+  const handleReloadAfterConflict = useCallback(() => {
+    setConflictDraft(null);
+    queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+  }, [themeId]);
+
+  const handleCopyConflictDraft = useCallback(() => {
+    const serialized = [
+      '모듈 설정 변경 백업',
+      '최신 상태를 다시 불러온 뒤 필요한 값을 참고해 다시 적용하세요.',
+      '',
+      JSON.stringify(conflictDraft ?? theme.config_json ?? {}, null, 2),
+    ].join('\n');
+    void navigator.clipboard?.writeText(serialized);
+    toast.success('내 변경 내용을 클립보드에 복사했습니다');
+  }, [conflictDraft, theme.config_json]);
 
   const serverModules = useMemo(
     () => readEnabledModuleIds(theme.config_json),
@@ -142,6 +158,15 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6">
+      {conflictDraft && (
+        <EditorSaveConflictBanner
+          scopeLabel="모듈 설정"
+          onReload={handleReloadAfterConflict}
+          onPreserve={handleCopyConflictDraft}
+          onDismiss={() => setConflictDraft(null)}
+        />
+      )}
+
       {OPTIONAL_MODULE_CATEGORIES.map((category) => {
         const activeCount = category.modules.filter((m) =>
           selectedModules.includes(m.id),

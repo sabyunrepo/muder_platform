@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Music, Plus, RefreshCcw, Save, Trash2, X } from "lucide-react";
+import { Music, Plus, Save, Trash2, X } from "lucide-react";
 
 import { queryClient } from "@/services/queryClient";
 import { isApiHttpError } from "@/lib/api-error";
@@ -16,6 +16,7 @@ import { MediaPicker } from "../media/MediaPicker";
 import type { MediaResponse } from "../../mediaApi";
 import { useMediaList } from "../../mediaApi";
 import { ReadingLineRow } from "./ReadingLineRow";
+import { EditorSaveConflictBanner } from "../EditorSaveConflictBanner";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -213,7 +214,16 @@ export function ReadingSectionEditor({
   }
 
   function handleRefresh() {
+    setConflict(false);
     queryClient.invalidateQueries({ queryKey: readingKeys.list(themeId) });
+  }
+
+  function handleCopyDraft() {
+    const text = [
+      `섹션: ${draft.name}`,
+      draft.lines.map((line) => `${line.Speaker ? `${line.Speaker}: ` : ""}${line.Text}`).join("\n"),
+    ].join("\n\n");
+    void navigator.clipboard?.writeText(text);
   }
 
   // -------------------------------------------------------------------------
@@ -223,17 +233,12 @@ export function ReadingSectionEditor({
   return (
     <div className="space-y-4">
       {conflict && (
-        <div className="flex items-center justify-between rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-          <span>다른 곳에서 수정되었습니다. 새로고침이 필요합니다.</span>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="flex items-center gap-1 rounded bg-rose-500/20 px-2 py-1 text-rose-100 hover:bg-rose-500/30"
-          >
-            <RefreshCcw className="h-3 w-3" />
-            새로고침
-          </button>
-        </div>
+        <EditorSaveConflictBanner
+          scopeLabel="읽기 대사"
+          onReload={handleRefresh}
+          onPreserve={handleCopyDraft}
+          onDismiss={() => setConflict(false)}
+        />
       )}
 
       {saveError && !conflict && (
