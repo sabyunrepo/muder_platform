@@ -1,10 +1,34 @@
 package editor
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type OptionalUUID struct {
+	Set   bool
+	Value *uuid.UUID
+}
+
+func (o *OptionalUUID) UnmarshalJSON(data []byte) error {
+	o.Set = true
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return err
+	}
+	o.Value = &id
+	return nil
+}
 
 // --- Map types ---
 
@@ -32,34 +56,37 @@ type MapResponse struct {
 // --- Location types ---
 
 type CreateLocationRequest struct {
-	Name                 string  `json:"name" validate:"required,min=1,max=100"`
-	RestrictedCharacters *string `json:"restricted_characters"`
-	ImageURL             *string `json:"image_url" validate:"omitempty,url"`
-	SortOrder            int32   `json:"sort_order" validate:"min=0"`
-	FromRound            *int32  `json:"from_round" validate:"omitempty,min=1"`
-	UntilRound           *int32  `json:"until_round" validate:"omitempty,min=1"`
+	Name                 string     `json:"name" validate:"required,min=1,max=100"`
+	RestrictedCharacters *string    `json:"restricted_characters"`
+	ImageURL             *string    `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID         *uuid.UUID `json:"image_media_id"`
+	SortOrder            int32      `json:"sort_order" validate:"min=0"`
+	FromRound            *int32     `json:"from_round" validate:"omitempty,min=1"`
+	UntilRound           *int32     `json:"until_round" validate:"omitempty,min=1"`
 }
 
 type UpdateLocationRequest struct {
-	Name                 string  `json:"name" validate:"required,min=1,max=100"`
-	RestrictedCharacters *string `json:"restricted_characters"`
-	ImageURL             *string `json:"image_url" validate:"omitempty,url"`
-	SortOrder            int32   `json:"sort_order" validate:"min=0"`
-	FromRound            *int32  `json:"from_round" validate:"omitempty,min=1"`
-	UntilRound           *int32  `json:"until_round" validate:"omitempty,min=1"`
+	Name                 string       `json:"name" validate:"required,min=1,max=100"`
+	RestrictedCharacters *string      `json:"restricted_characters"`
+	ImageURL             *string      `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID         OptionalUUID `json:"image_media_id"`
+	SortOrder            int32        `json:"sort_order" validate:"min=0"`
+	FromRound            *int32       `json:"from_round" validate:"omitempty,min=1"`
+	UntilRound           *int32       `json:"until_round" validate:"omitempty,min=1"`
 }
 
 type LocationResponse struct {
-	ID                   uuid.UUID `json:"id"`
-	ThemeID              uuid.UUID `json:"theme_id"`
-	MapID                uuid.UUID `json:"map_id"`
-	Name                 string    `json:"name"`
-	RestrictedCharacters *string   `json:"restricted_characters,omitempty"`
-	ImageURL             *string   `json:"image_url,omitempty"`
-	SortOrder            int32     `json:"sort_order"`
-	CreatedAt            time.Time `json:"created_at"`
-	FromRound            *int32    `json:"from_round,omitempty"`
-	UntilRound           *int32    `json:"until_round,omitempty"`
+	ID                   uuid.UUID  `json:"id"`
+	ThemeID              uuid.UUID  `json:"theme_id"`
+	MapID                uuid.UUID  `json:"map_id"`
+	Name                 string     `json:"name"`
+	RestrictedCharacters *string    `json:"restricted_characters,omitempty"`
+	ImageURL             *string    `json:"image_url,omitempty"`
+	ImageMediaID         *uuid.UUID `json:"image_media_id,omitempty"`
+	SortOrder            int32      `json:"sort_order"`
+	CreatedAt            time.Time  `json:"created_at"`
+	FromRound            *int32     `json:"from_round,omitempty"`
+	UntilRound           *int32     `json:"until_round,omitempty"`
 }
 
 // --- Clue types ---

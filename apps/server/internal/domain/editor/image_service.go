@@ -301,6 +301,7 @@ func (s *ImageService) ConfirmImageUpload(
 			FromRound:            loc.FromRound,
 			UntilRound:           loc.UntilRound,
 			ImageUrl:             pgtype.Text{String: downloadURL, Valid: true},
+			ImageMediaID:         loc.ImageMediaID,
 		})
 		if err != nil {
 			s.logger.Error().Err(err).Str("location_id", targetID.String()).Msg("failed to update location image_url")

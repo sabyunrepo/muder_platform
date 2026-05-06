@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
@@ -135,6 +136,10 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if count >= MaxLocationsPerMap {
 		return nil, apperror.BadRequest(fmt.Sprintf("map cannot have more than %d locations", MaxLocationsPerMap))
 	}
+	imageMediaID, err := s.resolveLocationImage(ctx, themeID, req.ImageMediaID)
+	if err != nil {
+		return nil, err
+	}
 	loc, err := s.q.CreateLocation(ctx, db.CreateLocationParams{
 		ThemeID:              themeID,
 		MapID:                mapID,
@@ -144,6 +149,7 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
 		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             ptrToText(req.ImageURL),
+		ImageMediaID:         imageMediaID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create location")
@@ -170,6 +176,17 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	if req.ImageURL != nil {
 		imageURL = ptrToText(req.ImageURL)
 	}
+	imageMediaID := l.ImageMediaID
+	if req.ImageMediaID.Set {
+		if req.ImageMediaID.Value == nil {
+			imageMediaID = pgtype.UUID{}
+		} else {
+			imageMediaID, err = s.resolveLocationImage(ctx, l.ThemeID, req.ImageMediaID.Value)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	updated, err := s.q.UpdateLocation(ctx, db.UpdateLocationParams{
 		ID:                   l.ID,
 		Name:                 req.Name,
@@ -178,6 +195,7 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
 		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             imageURL,
+		ImageMediaID:         imageMediaID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update location")
@@ -215,6 +233,24 @@ func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID
 		}
 	}
 	return accessPolicy, nil
+}
+
+func (s *service) resolveLocationImage(ctx context.Context, themeID uuid.UUID, mediaID *uuid.UUID) (pgtype.UUID, error) {
+	if mediaID == nil {
+		return pgtype.UUID{}, nil
+	}
+	media, err := s.q.GetMedia(ctx, *mediaID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgtype.UUID{}, apperror.New(apperror.ErrMediaNotInTheme, 400, "media not found")
+		}
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to verify location image")
+		return pgtype.UUID{}, apperror.Internal("failed to verify media reference")
+	}
+	if media.ThemeID != themeID || media.Type != MediaTypeImage {
+		return pgtype.UUID{}, apperror.New(apperror.ErrMediaNotInTheme, 400, "media has wrong type for location image")
+	}
+	return pgtype.UUID{Bytes: *mediaID, Valid: true}, nil
 }
 
 // validateLocationRoundOrder enforces from_round <= until_round when both set.
@@ -306,6 +342,7 @@ func toLocationResponse(l db.ThemeLocation) LocationResponse {
 		Name:                 l.Name,
 		RestrictedCharacters: textToPtr(l.RestrictedCharacters),
 		ImageURL:             textToPtr(l.ImageUrl),
+		ImageMediaID:         pgtypeUUIDToPtr(l.ImageMediaID),
 		SortOrder:            l.SortOrder,
 		CreatedAt:            l.CreatedAt,
 		FromRound:            pgtypeInt4ToPtr(l.FromRound),

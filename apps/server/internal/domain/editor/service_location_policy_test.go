@@ -2,10 +2,15 @@ package editor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/db"
 )
 
 func int32Value(value int32) *int32 { return &value }
@@ -86,6 +91,38 @@ func TestBuildLocationAccessPolicy(t *testing.T) {
 	})
 }
 
+func TestOptionalUUIDUnmarshal(t *testing.T) {
+	t.Parallel()
+
+	type patch struct {
+		ImageMediaID OptionalUUID `json:"image_media_id"`
+	}
+	var omitted patch
+	if err := json.Unmarshal([]byte(`{}`), &omitted); err != nil {
+		t.Fatalf("unmarshal omitted: %v", err)
+	}
+	if omitted.ImageMediaID.Set {
+		t.Fatal("omitted image_media_id should not be marked as set")
+	}
+
+	var cleared patch
+	if err := json.Unmarshal([]byte(`{"image_media_id":null}`), &cleared); err != nil {
+		t.Fatalf("unmarshal null: %v", err)
+	}
+	if !cleared.ImageMediaID.Set || cleared.ImageMediaID.Value != nil {
+		t.Fatalf("null image_media_id = %+v, want set with nil value", cleared.ImageMediaID)
+	}
+
+	rawID := uuid.New()
+	var selected patch
+	if err := json.Unmarshal([]byte(`{"image_media_id":"`+rawID.String()+`"}`), &selected); err != nil {
+		t.Fatalf("unmarshal uuid: %v", err)
+	}
+	if !selected.ImageMediaID.Set || selected.ImageMediaID.Value == nil || *selected.ImageMediaID.Value != rawID {
+		t.Fatalf("uuid image_media_id = %+v, want %s", selected.ImageMediaID, rawID)
+	}
+}
+
 func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
@@ -150,7 +187,89 @@ func TestService_LocationRestrictedCharactersMustBelongToTheme(t *testing.T) {
 	}
 }
 
+func TestService_LocationImageMediaReference(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	mapResp, err := f.svc.CreateMap(ctx, creatorID, themeID, CreateMapRequest{Name: "지도"})
+	if err != nil {
+		t.Fatalf("CreateMap: %v", err)
+	}
+	media := createLocationMedia(t, f.q, themeID, "장소 이미지", MediaTypeImage)
+	otherThemeMedia := createLocationMedia(t, f.q, otherThemeID, "다른 테마 이미지", MediaTypeImage)
+	voiceMedia := createLocationMedia(t, f.q, themeID, "효과음", MediaTypeVoice)
+
+	imageID := media.ID
+	created, err := f.svc.CreateLocation(ctx, creatorID, themeID, mapResp.ID, CreateLocationRequest{
+		Name:         "서재",
+		ImageMediaID: &imageID,
+	})
+	if err != nil {
+		t.Fatalf("CreateLocation with image media: %v", err)
+	}
+	if created.ImageMediaID == nil || *created.ImageMediaID != media.ID {
+		t.Fatalf("ImageMediaID = %v, want %s", created.ImageMediaID, media.ID)
+	}
+
+	otherThemeImageID := otherThemeMedia.ID
+	otherThemeImageRef := &otherThemeImageID
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, created.ID, UpdateLocationRequest{
+		Name:         created.Name,
+		ImageMediaID: OptionalUUID{Set: true, Value: otherThemeImageRef},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateLocation with other theme image error = %T %v, want media not in theme", err, err)
+	}
+	voiceID := voiceMedia.ID
+	voiceRef := &voiceID
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, created.ID, UpdateLocationRequest{
+		Name:         created.Name,
+		ImageMediaID: OptionalUUID{Set: true, Value: voiceRef},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateLocation with non-image media error = %T %v, want media not in theme", err, err)
+	}
+
+	updated, err := f.svc.UpdateLocation(ctx, creatorID, created.ID, UpdateLocationRequest{
+		Name:         created.Name,
+		SortOrder:    created.SortOrder,
+		ImageMediaID: OptionalUUID{Set: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateLocation clear image media: %v", err)
+	}
+	if updated.ImageMediaID != nil {
+		t.Fatalf("ImageMediaID after clear = %v, want nil", updated.ImageMediaID)
+	}
+}
+
 func isBadRequest(err error) bool {
 	var appErr *apperror.AppError
 	return errors.As(err, &appErr) && appErr.Code == apperror.ErrBadRequest
+}
+
+func isMediaNotInTheme(err error) bool {
+	var appErr *apperror.AppError
+	return errors.As(err, &appErr) && appErr.Code == apperror.ErrMediaNotInTheme
+}
+
+func createLocationMedia(t *testing.T, q *db.Queries, themeID uuid.UUID, name string, mediaType string) db.ThemeMedium {
+	t.Helper()
+	media, err := q.CreateMedia(context.Background(), db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       name,
+		Type:       mediaType,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: "themes/test/" + uuid.New().String(), Valid: true},
+		FileSize:   pgtype.Int8{Int64: 1024, Valid: true},
+		MimeType:   pgtype.Text{String: "image/png", Valid: true},
+		Tags:       []string{},
+	})
+	if err != nil {
+		t.Fatalf("CreateMedia(%s): %v", name, err)
+	}
+	return media
 }

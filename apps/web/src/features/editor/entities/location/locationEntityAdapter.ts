@@ -5,6 +5,7 @@ export interface LocationEditorViewModel {
   id: string;
   name: string;
   imageUrl: string | null;
+  imageMediaId: string | null;
   roundLabel: string;
   accessLabel: string;
   clueCountLabel: string;
@@ -21,6 +22,7 @@ export function toLocationEditorViewModel(
     id: location.id,
     name: location.name,
     imageUrl: location.image_url ?? null,
+    imageMediaId: location.image_media_id ?? null,
     roundLabel: formatLocationRoundLabel(location),
     accessLabel: formatLocationAccessLabel(
       location.restricted_characters,
@@ -88,6 +90,6 @@ export function buildLocationBadges(
       ? '접근 제한 있음'
       : '전체 접근',
     clueCount > 0 ? `단서 ${clueCount}` : '단서 없음',
-    location.image_url ? '이미지 있음' : null,
+    location.image_media_id || location.image_url ? '이미지 있음' : null,
   ].filter((badge): badge is string => Boolean(badge));
 }
