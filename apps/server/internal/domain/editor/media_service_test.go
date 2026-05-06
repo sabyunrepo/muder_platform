@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
+	"go.uber.org/mock/gomock"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
@@ -466,7 +467,11 @@ func (f *fakeMediaQueries) FindRoleSheetReferencesForMedia(_ context.Context, ar
 }
 
 type fakeStorageProvider struct {
-	objects map[string][]byte
+	objects             map[string][]byte
+	generateUploadErr   error
+	generateDownloadErr error
+	headErr             error
+	rangeErr            error
 }
 
 func newFakeStorageProvider() *fakeStorageProvider {
@@ -474,14 +479,23 @@ func newFakeStorageProvider() *fakeStorageProvider {
 }
 
 func (f *fakeStorageProvider) GenerateUploadURL(_ context.Context, key string, _ string, _ int64, _ time.Duration) (string, error) {
+	if f.generateUploadErr != nil {
+		return "", f.generateUploadErr
+	}
 	return "https://upload.example/" + key, nil
 }
 
 func (f *fakeStorageProvider) GenerateDownloadURL(_ context.Context, key string, _ time.Duration) (string, error) {
+	if f.generateDownloadErr != nil {
+		return "", f.generateDownloadErr
+	}
 	return "https://download.example/" + key, nil
 }
 
 func (f *fakeStorageProvider) HeadObject(_ context.Context, key string) (*storage.ObjectMeta, error) {
+	if f.headErr != nil {
+		return nil, f.headErr
+	}
 	body, ok := f.objects[key]
 	if !ok {
 		return nil, storage.ErrObjectNotFound
@@ -490,6 +504,9 @@ func (f *fakeStorageProvider) HeadObject(_ context.Context, key string) (*storag
 }
 
 func (f *fakeStorageProvider) GetObjectRange(_ context.Context, key string, offset int64, length int64) (io.ReadCloser, error) {
+	if f.rangeErr != nil {
+		return nil, f.rangeErr
+	}
 	body, ok := f.objects[key]
 	if !ok {
 		return nil, storage.ErrObjectNotFound
@@ -549,6 +566,25 @@ func seedFileMedia(q *fakeMediaQueries, themeID uuid.UUID, mediaType string) uui
 		MimeType:   pgtype.Text{String: "image/png", Valid: true},
 	}
 	return id
+}
+
+func expectEmptyMediaReferenceCollection(q *MockmediaQueries, themeID uuid.UUID) {
+	expectEmptyMediaReferenceCollectionWithConfig(q, themeID, json.RawMessage(`{"phases":[],"modules":{}}`))
+}
+
+func expectEmptyMediaReferenceCollectionWithConfig(q *MockmediaQueries, themeID uuid.UUID, cfg json.RawMessage) {
+	q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
+	q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+	q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+	q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+	q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{ID: themeID, ConfigJson: cfg}, nil)
+}
+
+func expectSuccessfulMediaReferenceClears(q *MockmediaQueries) {
+	q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+	q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+	q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+	q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 }
 
 func assertMediaAppCode(t *testing.T, err error, want string) {
@@ -1192,6 +1228,228 @@ func TestMediaService_Delete_BlocksMalformedConfigMediaReferenceScan(t *testing.
 	}
 }
 
+func TestMediaService_CollectMediaReferences_QueryErrorsReturnInternal(t *testing.T) {
+	tests := []struct {
+		name string
+		mock func(*MockmediaQueries, uuid.UUID, uuid.UUID)
+	}{
+		{
+			name: "reading sections",
+			mock: func(q *MockmediaQueries, _ uuid.UUID, _ uuid.UUID) {
+				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
+			},
+		},
+		{
+			name: "theme cover",
+			mock: func(q *MockmediaQueries, _ uuid.UUID, _ uuid.UUID) {
+				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
+			},
+		},
+		{
+			name: "map",
+			mock: func(q *MockmediaQueries, _ uuid.UUID, _ uuid.UUID) {
+				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
+			},
+		},
+		{
+			name: "role sheet",
+			mock: func(q *MockmediaQueries, _ uuid.UUID, _ uuid.UUID) {
+				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
+			},
+		},
+		{
+			name: "theme config",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, _ uuid.UUID) {
+				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{}, errors.New("db down"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			q := NewMockmediaQueries(ctrl)
+			themeID := uuid.New()
+			mediaID := uuid.New()
+			tt.mock(q, themeID, mediaID)
+			svc := newMediaServiceWith(q, nil, zerolog.Nop())
+
+			_, err := svc.collectMediaReferencesWithQueries(context.Background(), q, db.ThemeMedium{ID: mediaID, ThemeID: themeID}, mediaID)
+
+			assertMediaAppCode(t, err, apperror.ErrInternal)
+		})
+	}
+}
+
+func TestMediaService_CleanupMediaReferences_QueryErrorsReturnInternal(t *testing.T) {
+	tests := []struct {
+		name string
+		mock func(*MockmediaQueries, uuid.UUID, uuid.UUID)
+	}{
+		{
+			name: "clear reading section",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
+				_ = mediaID
+			},
+		},
+		{
+			name: "clear role sheet",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
+				_ = mediaID
+			},
+		},
+		{
+			name: "clear theme cover",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
+				_ = mediaID
+			},
+		},
+		{
+			name: "clear map",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
+				_ = mediaID
+			},
+		},
+		{
+			name: "load theme for config cleanup",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				expectSuccessfulMediaReferenceClears(q)
+				q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{}, errors.New("db down"))
+				_ = mediaID
+			},
+		},
+		{
+			name: "persist cleaned config",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				cfg := json.RawMessage(fmt.Sprintf(`{
+					"phases": [{"id": "opening", "onEnter": [{"params": {"mediaId": %q}}]}],
+					"modules": {}
+				}`, mediaID.String()))
+				expectEmptyMediaReferenceCollectionWithConfig(q, themeID, cfg)
+				expectSuccessfulMediaReferenceClears(q)
+				q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{ID: themeID, ConfigJson: cfg}, nil)
+				q.EXPECT().UpdateThemeConfigJsonWithOwner(gomock.Any(), gomock.Any()).Return(db.Theme{}, errors.New("db down"))
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			q := NewMockmediaQueries(ctrl)
+			creatorID := uuid.New()
+			themeID := uuid.New()
+			mediaID := uuid.New()
+			tt.mock(q, themeID, mediaID)
+			svc := newMediaServiceWith(q, nil, zerolog.Nop())
+
+			err := svc.cleanupMediaReferences(context.Background(), q, creatorID, db.ThemeMedium{ID: mediaID, ThemeID: themeID}, mediaID)
+
+			assertMediaAppCode(t, err, apperror.ErrInternal)
+		})
+	}
+}
+
+func TestMediaReferenceScanner_ClearEventProgressionAndWrappedActions(t *testing.T) {
+	mediaID := uuid.New()
+	raw := json.RawMessage(fmt.Sprintf(`{
+		"phases": [
+			{"id": "intro", "onEnter": {"actions": [{"params": {"mediaId": %q}}]}},
+			{"id": "outro", "onExit": [{"params": {"mediaId": %q}}, {"params": {"mediaId": "other"}}]}
+		],
+		"modules": {
+			"event_progression": {
+				"config": {
+					"Triggers": [
+						{"actions": {"actions": [{"params": {"mediaId": %q}}]}},
+						{"actions": [{"params": {"mediaId": "other"}}]}
+					]
+				}
+			}
+		}
+	}`, mediaID.String(), mediaID.String(), mediaID.String()))
+
+	cleaned, changed, err := clearMediaReferencesInThemeConfig(raw, mediaID)
+	if err != nil {
+		t.Fatalf("clearMediaReferencesInThemeConfig: %v", err)
+	}
+	if !changed {
+		t.Fatalf("expected config to change")
+	}
+	if strings.Contains(string(cleaned), mediaID.String()) {
+		t.Fatalf("expected target media id to be removed: %s", cleaned)
+	}
+	if !strings.Contains(string(cleaned), "other") {
+		t.Fatalf("expected unrelated media references to remain: %s", cleaned)
+	}
+}
+
+func TestMediaReferenceScanner_DefaultLabelsAndMalformedActionParams(t *testing.T) {
+	mediaID := uuid.New()
+	raw := json.RawMessage(fmt.Sprintf(`{
+		"phases": [
+			{"onEnter": [{"action": "PLAY_BGM", "params": {"mediaId": %q}}]},
+			{"id": "broken", "onExit": [{"params": {"mediaId": 42}}]}
+		],
+		"modules": {
+			"event_progression": {
+				"config": {
+					"Triggers": [{"actions": [{"params": {"mediaId": %q}}]}]
+				}
+			}
+		}
+	}`, mediaID.String(), mediaID.String()))
+
+	_, err := findMediaReferencesInThemeConfig(raw, mediaID)
+	if err == nil {
+		t.Fatalf("expected malformed action params to fail")
+	}
+	if !strings.Contains(err.Error(), "broken") {
+		t.Fatalf("expected error to include owner context, got %v", err)
+	}
+
+	phaseOnly := json.RawMessage(fmt.Sprintf(`{
+		"phases": [{"onEnter": [{"action": "PLAY_BGM", "params": {"mediaId": %q}}]}],
+		"modules": {"event_progression": {"config": {"Triggers": [{"actions": [{"type": "SET_SFX", "params": {"mediaId": %q}}]}]}}}
+	}`, mediaID.String(), mediaID.String()))
+	refs, err := findMediaReferencesInThemeConfig(phaseOnly, mediaID)
+	if err != nil {
+		t.Fatalf("findMediaReferencesInThemeConfig: %v", err)
+	}
+	if len(refs) != 2 {
+		t.Fatalf("expected default phase and trigger refs, got %#v", refs)
+	}
+	if refs[0].ID != "phase:onEnter:0" || !strings.Contains(refs[0].Name, "단계 시작 트리거") {
+		t.Fatalf("unexpected default phase ref: %#v", refs[0])
+	}
+	if refs[1].ID != "trigger:0" || !strings.Contains(refs[1].Name, "트리거 실행 결과") {
+		t.Fatalf("unexpected default trigger ref: %#v", refs[1])
+	}
+}
+
 func TestMediaService_RequestUploadURL_VideoTypeRejected(t *testing.T) {
 	svc, _, creatorID, themeID := newMediaTestService(t)
 
@@ -1684,6 +1942,42 @@ func TestMediaService_RequestReplacementUpload_RejectsInvalidInputs(t *testing.T
 	assertMediaAppCode(t, err, apperror.ErrMediaTooLarge)
 }
 
+func TestMediaService_RequestReplacementUpload_RollsBackPendingOnUploadURLError(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	st.generateUploadErr = errors.New("presign failed")
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+
+	_, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+
+	assertMediaAppCode(t, err, apperror.ErrInternal)
+	if len(q.replacements) != 0 {
+		t.Fatalf("failed presign should rollback pending replacement rows: %#v", q.replacements)
+	}
+}
+
+func TestMediaService_RequestReplacementUpload_RequiresStorageAndExistingMedia(t *testing.T) {
+	svc, _, creatorID, _ := newMediaTestService(t)
+	mediaID := uuid.New()
+
+	_, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+	assertMediaAppCode(t, err, apperror.ErrInternal)
+
+	svc.storage = newFakeStorageProvider()
+	_, err = svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+	assertMediaAppCode(t, err, apperror.ErrNotFound)
+}
+
 func TestMediaService_ConfirmReplacementUpload_CleansPendingWhenObjectMissing(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	st := newFakeStorageProvider()
@@ -1705,6 +1999,45 @@ func TestMediaService_ConfirmReplacementUpload_CleansPendingWhenObjectMissing(t 
 	if _, ok := q.replacements[upload.UploadID]; ok {
 		t.Fatalf("missing uploaded object should delete pending replacement")
 	}
+}
+
+func TestMediaService_ConfirmReplacementUpload_ErrorPaths(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	otherMediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	upload, err := svc.RequestReplacementUpload(context.Background(), creatorID, otherMediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+	if err != nil {
+		t.Fatalf("RequestReplacementUpload: %v", err)
+	}
+
+	_, err = svc.ConfirmReplacementUpload(context.Background(), creatorID, mediaID, ConfirmUploadRequest{UploadID: upload.UploadID})
+	assertMediaAppCode(t, err, apperror.ErrNotFound)
+
+	_, err = svc.ConfirmReplacementUpload(context.Background(), creatorID, mediaID, ConfirmUploadRequest{UploadID: uuid.New()})
+	assertMediaAppCode(t, err, apperror.ErrNotFound)
+
+	st.headErr = errors.New("storage unavailable")
+	_, err = svc.ConfirmReplacementUpload(context.Background(), creatorID, otherMediaID, ConfirmUploadRequest{UploadID: upload.UploadID})
+	assertMediaAppCode(t, err, apperror.ErrInternal)
+
+	st.headErr = nil
+	upload, err = svc.RequestReplacementUpload(context.Background(), creatorID, otherMediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+	if err != nil {
+		t.Fatalf("RequestReplacementUpload for range failure: %v", err)
+	}
+	pending := q.replacements[upload.UploadID]
+	st.objects[pending.StorageKey] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	st.rangeErr = errors.New("range failed")
+	_, err = svc.ConfirmReplacementUpload(context.Background(), creatorID, otherMediaID, ConfirmUploadRequest{UploadID: upload.UploadID})
+	assertMediaAppCode(t, err, apperror.ErrInternal)
 }
 
 func TestMediaService_ConfirmUpload_CleansMissingObject(t *testing.T) {
@@ -1759,6 +2092,30 @@ func TestMediaService_ResolveMediaURL_YouTubeAndInvalidSource(t *testing.T) {
 	broken.SourceType = "BROKEN"
 	q.media[brokenID] = broken
 	_, _, err = svc.ResolveMediaURL(context.Background(), sessionID, brokenID)
+	assertMediaAppCode(t, err, apperror.ErrInternal)
+}
+
+func TestMediaService_GetMediaPlayURL_FileAndAllowedTypeErrors(t *testing.T) {
+	svc, q, _, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	sessionID := uuid.New()
+	q.sessions[sessionID] = db.GameSession{ID: sessionID, ThemeID: themeID}
+	mediaID := seedFileMedia(q, themeID, MediaTypeBGM)
+
+	url, err := svc.GetMediaPlayURL(context.Background(), sessionID, mediaID)
+	if err != nil {
+		t.Fatalf("GetMediaPlayURL file: %v", err)
+	}
+	if !strings.Contains(url, "https://download.example/") {
+		t.Fatalf("unexpected file play URL: %s", url)
+	}
+
+	_, _, err = svc.ResolveMediaURL(context.Background(), sessionID, mediaID, MediaTypeImage)
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidType)
+
+	st.generateDownloadErr = errors.New("download presign failed")
+	_, _, err = svc.ResolveMediaURL(context.Background(), sessionID, mediaID)
 	assertMediaAppCode(t, err, apperror.ErrInternal)
 }
 

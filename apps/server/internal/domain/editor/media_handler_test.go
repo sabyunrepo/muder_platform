@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
@@ -245,5 +246,265 @@ func TestMediaHandler_DeletePreviewAndReplacementUpload(t *testing.T) {
 	h.ConfirmReplacementUpload(confirmW, confirm)
 	if confirmW.Code != http.StatusOK {
 		t.Fatalf("expected confirm 200, got %d: %s", confirmW.Code, confirmW.Body.String())
+	}
+}
+
+func TestMediaHandler_InvalidRouteIDs(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	h := NewMediaHandler(NewMockMediaService(ctrl))
+	tests := []struct {
+		name    string
+		handler func(http.ResponseWriter, *http.Request)
+		method  string
+		path    string
+	}{
+		{name: "list media", handler: h.ListMedia, method: http.MethodGet, path: "/editor/themes/bad/media"},
+		{name: "list categories", handler: h.ListCategories, method: http.MethodGet, path: "/editor/themes/bad/media/categories"},
+		{name: "create category", handler: h.CreateCategory, method: http.MethodPost, path: "/editor/themes/bad/media/categories"},
+		{name: "update category", handler: h.UpdateCategory, method: http.MethodPatch, path: "/editor/media/categories/bad"},
+		{name: "delete category", handler: h.DeleteCategory, method: http.MethodDelete, path: "/editor/media/categories/bad"},
+		{name: "request upload", handler: h.RequestUpload, method: http.MethodPost, path: "/editor/themes/bad/media/upload-url"},
+		{name: "confirm upload", handler: h.ConfirmUpload, method: http.MethodPost, path: "/editor/themes/bad/media/confirm"},
+		{name: "create youtube", handler: h.CreateYouTube, method: http.MethodPost, path: "/editor/themes/bad/media/youtube"},
+		{name: "update media", handler: h.UpdateMedia, method: http.MethodPatch, path: "/editor/media/bad"},
+		{name: "delete media", handler: h.DeleteMedia, method: http.MethodDelete, path: "/editor/media/bad"},
+		{name: "preview delete", handler: h.PreviewDeleteMedia, method: http.MethodGet, path: "/editor/media/bad/references"},
+		{name: "request replacement", handler: h.RequestReplacementUpload, method: http.MethodPost, path: "/editor/media/bad/replace-upload-url"},
+		{name: "confirm replacement", handler: h.ConfirmReplacementUpload, method: http.MethodPost, path: "/editor/media/bad/replace-confirm"},
+		{name: "download", handler: h.GetDownloadURL, method: http.MethodGet, path: "/editor/media/bad/download-url"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := mediaHandlerRequest(tt.method, tt.path, []byte(`{}`), map[string]string{"id": "bad"})
+			w := httptest.NewRecorder()
+
+			tt.handler(w, r)
+
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestMediaHandler_InvalidJSONBodies(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	h := NewMediaHandler(NewMockMediaService(ctrl))
+	themeID := uuid.New()
+	mediaID := uuid.New()
+	categoryID := uuid.New()
+	tests := []struct {
+		name    string
+		handler func(http.ResponseWriter, *http.Request)
+		method  string
+		path    string
+		id      uuid.UUID
+	}{
+		{name: "create category", handler: h.CreateCategory, method: http.MethodPost, path: "/editor/themes/" + themeID.String() + "/media/categories", id: themeID},
+		{name: "update category", handler: h.UpdateCategory, method: http.MethodPatch, path: "/editor/media/categories/" + categoryID.String(), id: categoryID},
+		{name: "request upload", handler: h.RequestUpload, method: http.MethodPost, path: "/editor/themes/" + themeID.String() + "/media/upload-url", id: themeID},
+		{name: "confirm upload", handler: h.ConfirmUpload, method: http.MethodPost, path: "/editor/themes/" + themeID.String() + "/media/confirm", id: themeID},
+		{name: "create youtube", handler: h.CreateYouTube, method: http.MethodPost, path: "/editor/themes/" + themeID.String() + "/media/youtube", id: themeID},
+		{name: "update media", handler: h.UpdateMedia, method: http.MethodPatch, path: "/editor/media/" + mediaID.String(), id: mediaID},
+		{name: "request replacement", handler: h.RequestReplacementUpload, method: http.MethodPost, path: "/editor/media/" + mediaID.String() + "/replace-upload-url", id: mediaID},
+		{name: "confirm replacement", handler: h.ConfirmReplacementUpload, method: http.MethodPost, path: "/editor/media/" + mediaID.String() + "/replace-confirm", id: mediaID},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := mediaHandlerRequest(tt.method, tt.path, []byte(`{"broken"`), map[string]string{"id": tt.id.String()})
+			w := httptest.NewRecorder()
+
+			tt.handler(w, r)
+
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
+func TestMediaHandler_ServiceErrors(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := NewMockMediaService(ctrl)
+	h := NewMediaHandler(mock)
+	themeID := uuid.New()
+	mediaID := uuid.New()
+	categoryID := uuid.New()
+	uploadID := uuid.New()
+	serviceErr := apperror.Internal("service failed")
+	tests := []struct {
+		name    string
+		handler func(http.ResponseWriter, *http.Request)
+		method  string
+		path    string
+		id      uuid.UUID
+		body    string
+		expect  func()
+	}{
+		{
+			name:    "list media",
+			handler: h.ListMedia,
+			method:  http.MethodGet,
+			path:    "/editor/themes/" + themeID.String() + "/media",
+			id:      themeID,
+			expect: func() {
+				mock.EXPECT().ListMedia(gomock.Any(), gomock.Any(), themeID, "", (*uuid.UUID)(nil)).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "list categories",
+			handler: h.ListCategories,
+			method:  http.MethodGet,
+			path:    "/editor/themes/" + themeID.String() + "/media/categories",
+			id:      themeID,
+			expect: func() {
+				mock.EXPECT().ListCategories(gomock.Any(), gomock.Any(), themeID).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "create category",
+			handler: h.CreateCategory,
+			method:  http.MethodPost,
+			path:    "/editor/themes/" + themeID.String() + "/media/categories",
+			id:      themeID,
+			body:    `{"name":"배경"}`,
+			expect: func() {
+				mock.EXPECT().CreateCategory(gomock.Any(), gomock.Any(), themeID, MediaCategoryRequest{Name: "배경"}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "update category",
+			handler: h.UpdateCategory,
+			method:  http.MethodPatch,
+			path:    "/editor/media/categories/" + categoryID.String(),
+			id:      categoryID,
+			body:    `{"name":"전경"}`,
+			expect: func() {
+				mock.EXPECT().UpdateCategory(gomock.Any(), gomock.Any(), categoryID, MediaCategoryRequest{Name: "전경"}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "delete category",
+			handler: h.DeleteCategory,
+			method:  http.MethodDelete,
+			path:    "/editor/media/categories/" + categoryID.String(),
+			id:      categoryID,
+			expect: func() {
+				mock.EXPECT().DeleteCategory(gomock.Any(), gomock.Any(), categoryID).Return(serviceErr)
+			},
+		},
+		{
+			name:    "request upload",
+			handler: h.RequestUpload,
+			method:  http.MethodPost,
+			path:    "/editor/themes/" + themeID.String() + "/media/upload-url",
+			id:      themeID,
+			body:    `{"name":"map","type":"IMAGE","mime_type":"image/png","file_size":8}`,
+			expect: func() {
+				mock.EXPECT().RequestUpload(gomock.Any(), gomock.Any(), themeID, RequestMediaUploadRequest{Name: "map", Type: MediaTypeImage, MimeType: "image/png", FileSize: 8}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "confirm upload",
+			handler: h.ConfirmUpload,
+			method:  http.MethodPost,
+			path:    "/editor/themes/" + themeID.String() + "/media/confirm",
+			id:      themeID,
+			body:    `{"upload_id":"` + uploadID.String() + `"}`,
+			expect: func() {
+				mock.EXPECT().ConfirmUpload(gomock.Any(), gomock.Any(), themeID, ConfirmUploadRequest{UploadID: uploadID}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "create youtube",
+			handler: h.CreateYouTube,
+			method:  http.MethodPost,
+			path:    "/editor/themes/" + themeID.String() + "/media/youtube",
+			id:      themeID,
+			body:    `{"name":"trailer","type":"VIDEO","url":"https://youtu.be/dQw4w9WgXcQ"}`,
+			expect: func() {
+				mock.EXPECT().CreateYouTube(gomock.Any(), gomock.Any(), themeID, CreateMediaYouTubeRequest{Name: "trailer", Type: MediaTypeVideo, URL: "https://youtu.be/dQw4w9WgXcQ"}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "update media",
+			handler: h.UpdateMedia,
+			method:  http.MethodPatch,
+			path:    "/editor/media/" + mediaID.String(),
+			id:      mediaID,
+			body:    `{"name":"updated","type":"IMAGE"}`,
+			expect: func() {
+				mock.EXPECT().UpdateMedia(gomock.Any(), gomock.Any(), mediaID, UpdateMediaRequest{Name: "updated", Type: MediaTypeImage}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "delete media",
+			handler: h.DeleteMedia,
+			method:  http.MethodDelete,
+			path:    "/editor/media/" + mediaID.String(),
+			id:      mediaID,
+			expect: func() {
+				mock.EXPECT().DeleteMedia(gomock.Any(), gomock.Any(), mediaID).Return(serviceErr)
+			},
+		},
+		{
+			name:    "preview delete",
+			handler: h.PreviewDeleteMedia,
+			method:  http.MethodGet,
+			path:    "/editor/media/" + mediaID.String() + "/references",
+			id:      mediaID,
+			expect: func() {
+				mock.EXPECT().PreviewDeleteMedia(gomock.Any(), gomock.Any(), mediaID).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "request replacement",
+			handler: h.RequestReplacementUpload,
+			method:  http.MethodPost,
+			path:    "/editor/media/" + mediaID.String() + "/replace-upload-url",
+			id:      mediaID,
+			body:    `{"mime_type":"image/png","file_size":8}`,
+			expect: func() {
+				mock.EXPECT().RequestReplacementUpload(gomock.Any(), gomock.Any(), mediaID, RequestMediaReplacementUploadRequest{MimeType: "image/png", FileSize: 8}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "confirm replacement",
+			handler: h.ConfirmReplacementUpload,
+			method:  http.MethodPost,
+			path:    "/editor/media/" + mediaID.String() + "/replace-confirm",
+			id:      mediaID,
+			body:    `{"upload_id":"` + uploadID.String() + `"}`,
+			expect: func() {
+				mock.EXPECT().ConfirmReplacementUpload(gomock.Any(), gomock.Any(), mediaID, ConfirmUploadRequest{UploadID: uploadID}).Return(nil, serviceErr)
+			},
+		},
+		{
+			name:    "download",
+			handler: h.GetDownloadURL,
+			method:  http.MethodGet,
+			path:    "/editor/media/" + mediaID.String() + "/download-url",
+			id:      mediaID,
+			expect: func() {
+				mock.EXPECT().GetEditorMediaDownloadURL(gomock.Any(), gomock.Any(), mediaID).Return(nil, serviceErr)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.expect()
+			body := []byte(tt.body)
+			if body == nil {
+				body = []byte(`{}`)
+			}
+			r := mediaHandlerRequest(tt.method, tt.path, body, map[string]string{"id": tt.id.String()})
+			w := httptest.NewRecorder()
+
+			tt.handler(w, r)
+
+			if w.Code != http.StatusInternalServerError {
+				t.Fatalf("expected 500, got %d: %s", w.Code, w.Body.String())
+			}
+		})
 	}
 }
