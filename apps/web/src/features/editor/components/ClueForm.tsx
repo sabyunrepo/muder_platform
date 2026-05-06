@@ -155,7 +155,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
         reveal_round: revealRound,
         hide_round: hideRound,
       }),
-      null,
     );
   }
 

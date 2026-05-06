@@ -68,15 +68,33 @@ vi.mock('@/features/editor/components/media/MediaPicker', () => ({
   MediaPicker: ({
     open,
     filterType,
+    useCase,
     selectedId,
     onSelect,
   }: {
     open: boolean;
     filterType?: string;
+    useCase?: string;
     selectedId?: string | null;
     onSelect: (media: { id: string; name: string; type: string }) => void;
-  }) =>
-    open ? (
+  }) => {
+    if (!open) return null;
+    if (useCase === 'role_sheet_document') {
+      return (
+        <div>
+          <span>useCase:{useCase}</span>
+          <span>selected:{selectedId ?? 'none'}</span>
+          <button
+            type="button"
+            onClick={() => onSelect({ id: 'document-1', name: 'PDF 역할지', type: 'DOCUMENT' })}
+          >
+            PDF 역할지 선택
+          </button>
+        </div>
+      );
+    }
+
+    return (
       <div>
         <span>filter:{filterType}</span>
         <span>selected:{selectedId ?? 'none'}</span>
@@ -87,7 +105,8 @@ vi.mock('@/features/editor/components/media/MediaPicker', () => ({
           캐릭터 이미지 선택
         </button>
       </div>
-    ) : null,
+    );
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -614,6 +633,26 @@ describe('CharacterAssignPanel', () => {
       'https://cdn.example/role.pdf#page=1&toolbar=0&navpanes=0&view=FitH',
     );
     expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
+  });
+
+  it('PDF 역할지를 미디어 관리 문서 picker로 연결한다', () => {
+    upsertRoleSheetMutateMock.mockImplementation((_payload, options) => {
+      options?.onSuccess?.();
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
+    fireEvent.click(screen.getByRole('button', { name: /PDF미디어 문서 선택/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'PDF 선택' }));
+
+    expect(screen.getByText('useCase:role_sheet_document')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'PDF 역할지 선택' }));
+
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
+      { format: 'pdf', pdf: { media_id: 'document-1' } },
+      expect.any(Object),
+    );
   });
 
   it('이미지 롤지는 한 페이지씩 넘겨 볼 수 있다', () => {
