@@ -960,6 +960,61 @@ func TestService_UpsertAndGetCharacterRoleSheetImages(t *testing.T) {
 	}
 }
 
+func TestService_UpsertAndGetCharacterRoleSheetImageMediaIDs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	image := createMediaForReferenceTest(t, f.q, themeID, "role-sheet-page", MediaTypeImage)
+	document := createMediaForReferenceTest(t, f.q, themeID, "role-sheet-doc", MediaTypeDocument)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	otherThemeImage := createMediaForReferenceTest(t, f.q, otherThemeID, "other-role-sheet-page", MediaTypeImage)
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "미디어 역할지 캐릭터"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	upserted, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format: RoleSheetFormatImages,
+		Images: &RoleSheetImages{ImageMediaIDs: []uuid.UUID{image.ID}},
+	})
+	if err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet images with media ids: %v", err)
+	}
+	if upserted.Images == nil || len(upserted.Images.ImageMediaIDs) != 1 || upserted.Images.ImageMediaIDs[0] != image.ID {
+		t.Fatalf("image media ids not persisted: %+v", upserted.Images)
+	}
+
+	got, err := f.svc.GetCharacterRoleSheet(ctx, creatorID, char.ID)
+	if err != nil {
+		t.Fatalf("GetCharacterRoleSheet images with media ids: %v", err)
+	}
+	if got.Images == nil || len(got.Images.ImageMediaIDs) != 1 || got.Images.ImageMediaIDs[0] != image.ID {
+		t.Fatalf("stored image media ids mismatch: %+v", got.Images)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		mediaID uuid.UUID
+	}{
+		{name: "non image media", mediaID: document.ID},
+		{name: "other theme media", mediaID: otherThemeImage.ID},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+				Format: RoleSheetFormatImages,
+				Images: &RoleSheetImages{ImageMediaIDs: []uuid.UUID{tc.mediaID}},
+			})
+			if err == nil || !strings.Contains(err.Error(), "image role sheet media") {
+				t.Fatalf("expected image media id validation error, got %v", err)
+			}
+		})
+	}
+}
+
 func TestService_UpsertCharacterRoleSheet_RejectsInvalidImages(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -971,6 +1026,8 @@ func TestService_UpsertCharacterRoleSheet_RejectsInvalidImages(t *testing.T) {
 		{name: "blank URL", images: &RoleSheetImages{ImageURLs: []string{" "}}, wantErr: "image role sheet page URL is required"},
 		{name: "relative URL", images: &RoleSheetImages{ImageURLs: []string{"/uploads/page-1.png"}}, wantErr: "image role sheet page URL must be a valid URL"},
 		{name: "non web URL", images: &RoleSheetImages{ImageURLs: []string{"ftp://example.com/page-1.png"}}, wantErr: "image role sheet page URL must be a valid URL"},
+		{name: "nil media id", images: &RoleSheetImages{ImageMediaIDs: []uuid.UUID{uuid.Nil}}, wantErr: "image role sheet media_id is required"},
+		{name: "duplicate media id", images: &RoleSheetImages{ImageMediaIDs: []uuid.UUID{uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001")}}, wantErr: "image role sheet media_id is duplicated"},
 	}
 
 	for _, tc := range tests {
@@ -987,6 +1044,16 @@ func TestService_UpsertCharacterRoleSheet_RejectsInvalidImages(t *testing.T) {
 				t.Fatalf("expected %q error, got %v", tc.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestParseStoredRoleSheet_AllowsEmptyImagesFromMediaCleanup(t *testing.T) {
+	stored, ok := parseStoredRoleSheet(`{"version":1,"format":"images","images":{"image_urls":[],"image_media_ids":[]}}`)
+	if !ok {
+		t.Fatal("expected stored images role sheet to parse")
+	}
+	if stored.Images == nil || len(stored.Images.ImageURLs) != 0 || len(stored.Images.ImageMediaIDs) != 0 {
+		t.Fatalf("stored images should be empty after cleanup: %+v", stored.Images)
 	}
 }
 

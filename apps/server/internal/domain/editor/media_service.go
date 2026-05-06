@@ -74,12 +74,14 @@ type mediaQueries interface {
 	UpdateThemeConfigJsonWithOwner(ctx context.Context, arg db.UpdateThemeConfigJsonWithOwnerParams) (db.Theme, error)
 	ClearReadingSectionMediaReferencesWithOwner(ctx context.Context, arg db.ClearReadingSectionMediaReferencesWithOwnerParams) (int64, error)
 	ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, arg db.ClearRoleSheetMediaReferencesWithOwnerParams) (int64, error)
+	ClearCharacterAliasIconMediaReferencesWithOwner(ctx context.Context, arg db.ClearCharacterAliasIconMediaReferencesWithOwnerParams) (int64, error)
 	ClearThemeCoverMediaReferencesWithOwner(ctx context.Context, arg db.ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error)
 	ClearMapMediaReferencesWithOwner(ctx context.Context, arg db.ClearMapMediaReferencesWithOwnerParams) (int64, error)
 	FindThemeCoverReferencesForMedia(ctx context.Context, arg db.FindThemeCoverReferencesForMediaParams) ([]db.FindThemeCoverReferencesForMediaRow, error)
 	FindMapReferencesForMedia(ctx context.Context, arg db.FindMapReferencesForMediaParams) ([]db.FindMapReferencesForMediaRow, error)
 	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
 	FindRoleSheetReferencesForMedia(ctx context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error)
+	FindCharacterAliasIconReferencesForMedia(ctx context.Context, arg db.FindCharacterAliasIconReferencesForMediaParams) ([]db.FindCharacterAliasIconReferencesForMediaRow, error)
 }
 
 type mediaService struct {

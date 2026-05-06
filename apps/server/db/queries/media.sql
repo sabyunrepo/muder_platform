@@ -170,19 +170,53 @@ WHERE rs.theme_id = t.id
 
 -- name: ClearRoleSheetMediaReferencesWithOwner :execrows
 UPDATE theme_contents c
-SET body = regexp_replace(
-      c.body,
-      '"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
-      '"media_id":null',
-      'g'
-    ),
+SET body = jsonb_set(
+      regexp_replace(
+        c.body,
+        '"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
+        '"media_id":null',
+        'g'
+      )::jsonb,
+      '{images,image_media_ids}',
+      COALESCE((
+        SELECT jsonb_agg(page_id ORDER BY ord)
+        FROM jsonb_array_elements_text(
+          COALESCE(
+            regexp_replace(
+              c.body,
+              '"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
+              '"media_id":null',
+              'g'
+            )::jsonb #> '{images,image_media_ids}',
+            '[]'::jsonb
+          )
+        ) WITH ORDINALITY AS elem(page_id, ord)
+        WHERE page_id <> sqlc.arg('media_id')::text
+      ), '[]'::jsonb),
+      true
+    )::text,
     updated_at = NOW()
 FROM themes t
 WHERE c.theme_id = t.id
   AND t.creator_id = sqlc.arg('creator_id')
   AND c.theme_id = sqlc.arg('theme_id')
   AND c.key ~ '^role_sheet:'
-  AND c.body ~ ('"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"');
+  AND c.body ~ sqlc.arg('media_id')::text;
+
+-- name: ClearCharacterAliasIconMediaReferencesWithOwner :execrows
+UPDATE theme_characters c
+SET alias_rules = regexp_replace(
+      c.alias_rules::text,
+      '"display_icon_media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
+      '"display_icon_media_id":null',
+      'g'
+    )::jsonb,
+    updated_at = NOW()
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND c.theme_id = sqlc.arg('theme_id')
+  AND c.alias_rules::text ~ ('"display_icon_media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"');
 
 -- name: ClearThemeCoverMediaReferencesWithOwner :execrows
 UPDATE themes
@@ -202,11 +236,17 @@ WHERE m.theme_id = t.id
   AND m.image_media_id = sqlc.arg('media_id');
 
 -- name: FindRoleSheetReferencesForMedia :many
-SELECT id, key
+SELECT id, key, body
 FROM theme_contents
 WHERE theme_id = $1
   AND key ~ '^role_sheet:'
   AND body ~ $2;
+
+-- name: FindCharacterAliasIconReferencesForMedia :many
+SELECT id, name
+FROM theme_characters
+WHERE theme_id = sqlc.arg('theme_id')
+  AND alias_rules::text ~ ('"display_icon_media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"');
 
 -- name: FindThemeCoverReferencesForMedia :many
 SELECT id, title

@@ -310,6 +310,21 @@ func (m *MockmediaQueries) EXPECT() *MockmediaQueriesMockRecorder {
 	return m.recorder
 }
 
+// ClearCharacterAliasIconMediaReferencesWithOwner mocks base method.
+func (m *MockmediaQueries) ClearCharacterAliasIconMediaReferencesWithOwner(ctx context.Context, arg db.ClearCharacterAliasIconMediaReferencesWithOwnerParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearCharacterAliasIconMediaReferencesWithOwner", ctx, arg)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClearCharacterAliasIconMediaReferencesWithOwner indicates an expected call of ClearCharacterAliasIconMediaReferencesWithOwner.
+func (mr *MockmediaQueriesMockRecorder) ClearCharacterAliasIconMediaReferencesWithOwner(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearCharacterAliasIconMediaReferencesWithOwner", reflect.TypeOf((*MockmediaQueries)(nil).ClearCharacterAliasIconMediaReferencesWithOwner), ctx, arg)
+}
+
 // ClearMapMediaReferencesWithOwner mocks base method.
 func (m *MockmediaQueries) ClearMapMediaReferencesWithOwner(ctx context.Context, arg db.ClearMapMediaReferencesWithOwnerParams) (int64, error) {
 	m.ctrl.T.Helper()
@@ -486,6 +501,21 @@ func (m *MockmediaQueries) DeleteMediaWithOwner(ctx context.Context, arg db.Dele
 func (mr *MockmediaQueriesMockRecorder) DeleteMediaWithOwner(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMediaWithOwner", reflect.TypeOf((*MockmediaQueries)(nil).DeleteMediaWithOwner), ctx, arg)
+}
+
+// FindCharacterAliasIconReferencesForMedia mocks base method.
+func (m *MockmediaQueries) FindCharacterAliasIconReferencesForMedia(ctx context.Context, arg db.FindCharacterAliasIconReferencesForMediaParams) ([]db.FindCharacterAliasIconReferencesForMediaRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindCharacterAliasIconReferencesForMedia", ctx, arg)
+	ret0, _ := ret[0].([]db.FindCharacterAliasIconReferencesForMediaRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindCharacterAliasIconReferencesForMedia indicates an expected call of FindCharacterAliasIconReferencesForMedia.
+func (mr *MockmediaQueriesMockRecorder) FindCharacterAliasIconReferencesForMedia(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindCharacterAliasIconReferencesForMedia", reflect.TypeOf((*MockmediaQueries)(nil).FindCharacterAliasIconReferencesForMedia), ctx, arg)
 }
 
 // FindMapReferencesForMedia mocks base method.

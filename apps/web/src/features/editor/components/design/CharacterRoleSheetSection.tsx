@@ -80,18 +80,20 @@ export function CharacterRoleSheetSection({
         />
       ) : state.selectedFormat === 'images' ? (
         <ImageRoleSheetPanel
+          themeId={themeId}
           characterName={characterName}
-          imageUrls={state.imageUrls}
+          imagePages={state.imagePages}
           imageDraft={state.imageDraft}
           page={state.page}
           saveStatus={state.saveStatus}
           isPending={state.upsertContent.isPending}
           onImageDraftChange={state.setImageDraft}
           onAddImagePage={state.addImagePage}
+          onAddImageMediaPage={state.addImageMediaPage}
           onRemoveImagePage={state.removeImagePage}
           onMoveImagePage={state.moveImagePage}
           onPrevious={() => state.setPage((current) => Math.max(1, current - 1))}
-          onNext={() => state.setPage((current) => Math.min(state.imageUrls.length, current + 1))}
+          onNext={() => state.setPage((current) => Math.min(state.imagePages.length, current + 1))}
           onSave={state.saveImages}
         />
       ) : (

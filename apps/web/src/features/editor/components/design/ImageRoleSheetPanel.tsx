@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Image, Plus, Save, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
+import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
+import { useMediaList } from '@/features/editor/mediaApi';
+import type { ImageRoleSheetPageDraft } from './useRoleSheetEditorState';
 
 export interface ImageRoleSheetPanelProps {
+  themeId: string;
   characterName: string;
-  imageUrls: string[];
+  imagePages: ImageRoleSheetPageDraft[];
   imageDraft: string;
   page: number;
   saveStatus: 'idle' | 'saved' | 'failed';
   isPending: boolean;
   onImageDraftChange: (url: string) => void;
   onAddImagePage: () => void;
+  onAddImageMediaPage: (mediaId: string) => void;
   onRemoveImagePage: (index: number) => void;
   onMoveImagePage: (index: number, direction: -1 | 1) => void;
   onPrevious: () => void;
@@ -19,23 +24,31 @@ export interface ImageRoleSheetPanelProps {
 }
 
 export function ImageRoleSheetPanel({
+  themeId,
   characterName,
-  imageUrls,
+  imagePages,
   imageDraft,
   page,
   saveStatus,
   isPending,
   onImageDraftChange,
   onAddImagePage,
+  onAddImageMediaPage,
   onRemoveImagePage,
   onMoveImagePage,
   onPrevious,
   onNext,
   onSave,
 }: ImageRoleSheetPanelProps) {
-  const totalPages = imageUrls.length;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const { data: imageMedia = [] } = useMediaList(themeId, 'IMAGE');
+  const imageMediaById = new Map(imageMedia.map((media) => [media.id, media]));
+  const totalPages = imagePages.length;
   const safePage = totalPages === 0 ? 1 : Math.min(page, totalPages);
-  const currentImageUrl = totalPages > 0 ? imageUrls[safePage - 1] : undefined;
+  const currentPage = imagePages[safePage - 1];
+  const currentImageUrl = currentPage?.kind === 'media'
+    ? imageMediaById.get(currentPage.mediaId)?.url
+    : currentPage?.url;
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   useEffect(() => {
@@ -67,6 +80,10 @@ export function ImageRoleSheetPanel({
           이미지 페이지 추가
         </Button>
       </div>
+      <Button size="sm" variant="secondary" onClick={() => setPickerOpen(true)}>
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        미디어 라이브러리에서 추가
+      </Button>
 
       {totalPages === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950 p-6 text-center">
@@ -76,24 +93,28 @@ export function ImageRoleSheetPanel({
       ) : (
         <>
           <ol className="min-w-0 space-y-2" aria-label="이미지 롤지 페이지 목록">
-            {imageUrls.map((imageUrl, index) => (
-              <li key={`${imageUrl}-${index}`} className="min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 sm:flex sm:items-center sm:gap-2">
-                <span className="block min-w-0 flex-1 truncate text-xs text-slate-300">
-                  {index + 1}. {imageUrl}
-                </span>
-                <div className="mt-2 flex flex-wrap gap-1 sm:mt-0">
-                  <Button size="sm" variant="secondary" onClick={() => onMoveImagePage(index, -1)} disabled={index === 0} aria-label={`${index + 1}번 이미지 페이지 위로 이동`}>
-                    <ArrowUp className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => onMoveImagePage(index, 1)} disabled={index === totalPages - 1} aria-label={`${index + 1}번 이미지 페이지 아래로 이동`}>
-                    <ArrowDown className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => onRemoveImagePage(index)} aria-label={`${index + 1}번 이미지 페이지 삭제`}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </li>
-            ))}
+            {imagePages.map((imagePage, index) => {
+              const media = imagePage.kind === 'media' ? imageMediaById.get(imagePage.mediaId) : undefined;
+              const label = imagePage.kind === 'media' ? media?.name ?? '선택된 이미지' : imagePage.url;
+              return (
+                <li key={imagePage.kind === 'media' ? `${imagePage.mediaId}-${index}` : `${imagePage.url}-${index}`} className="min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 sm:flex sm:items-center sm:gap-2">
+                  <span className="block min-w-0 flex-1 truncate text-xs text-slate-300">
+                    {index + 1}. {label}
+                  </span>
+                  <div className="mt-2 flex flex-wrap gap-1 sm:mt-0">
+                    <Button size="sm" variant="secondary" onClick={() => onMoveImagePage(index, -1)} disabled={index === 0} aria-label={`${index + 1}번 이미지 페이지 위로 이동`}>
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => onMoveImagePage(index, 1)} disabled={index === imagePages.length - 1} aria-label={`${index + 1}번 이미지 페이지 아래로 이동`}>
+                      <ArrowDown className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => onRemoveImagePage(index)} aria-label={`${index + 1}번 이미지 페이지 삭제`}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
 
           <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950 px-2 py-2">
@@ -151,6 +172,16 @@ export function ImageRoleSheetPanel({
           이미지 롤지 저장
         </Button>
       </div>
+      {pickerOpen ? (
+        <MediaPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSelect={(media) => onAddImageMediaPage(media.id)}
+          themeId={themeId}
+          useCase="role_sheet_image"
+          title="이미지 페이지 선택"
+        />
+      ) : null}
     </div>
   );
 }
