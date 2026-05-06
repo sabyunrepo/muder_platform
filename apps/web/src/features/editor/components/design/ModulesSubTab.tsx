@@ -60,6 +60,10 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
       errorMsg: string,
       onRollback?: () => void,
     ) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       conflictRef.current = false;
       updateConfig.mutate(
         { ...nextConfig, version: theme.version },
@@ -128,6 +132,10 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
 
   const handleToggle = useCallback(
     (moduleId: string) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       setSelectedModules((prev) => {
         const enabled = !prev.includes(moduleId);
         const next = enabled ? [...prev, moduleId] : prev.filter((id) => id !== moduleId);
@@ -142,26 +150,34 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
         return next;
       });
     },
-    [activeConfig, mutateConfig]
+    [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
   const handleConfigChange = useCallback(
     (moduleId: string, path: string, value: unknown) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       const nextConfig = writeModuleConfigPath(activeConfig, moduleId, path, value);
       mutateConfig(nextConfig, '설정이 저장되었습니다', '설정 저장에 실패했습니다');
     },
-    [activeConfig, mutateConfig]
+    [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
   const handleDeckInvestigationChange = useCallback(
     (draft: DeckInvestigationConfigDraft) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       mutateConfig(
         writeDeckInvestigationConfig(activeConfig, draft),
         '조사권 설정이 저장되었습니다',
         '조사권 설정 저장에 실패했습니다'
       );
     },
-    [activeConfig, mutateConfig]
+    [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {

@@ -225,6 +225,21 @@ describe('ModulesSubTab', () => {
     expect(config.modules).toMatchObject({ [optionalMod.id]: { enabled: false } });
   });
 
+  it('저장 중에는 추가 모듈 토글 저장을 시작하지 않는다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+    useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: true });
+
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+
+    const toggleBtn = screen.getByRole('switch', { name: `${optionalMod.name} 활성화` });
+    expect(toggleBtn).toHaveProperty('disabled', true);
+
+    fireEvent.click(toggleBtn);
+
+    expect(mutateMock).not.toHaveBeenCalled();
+    expect(toggleBtn.getAttribute('aria-checked')).toBe('false');
+  });
+
   it('활성화 + 스키마 있으면 SchemaDrivenForm이 바로 렌더링된다', () => {
     const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
     const themeWithMod: EditorThemeResponse = {
