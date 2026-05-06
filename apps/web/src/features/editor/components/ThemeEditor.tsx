@@ -4,6 +4,7 @@ import { useEditorTheme } from "@/features/editor/api";
 import { useEditorClues } from "@/features/editor/editorClueApi";
 import { validateGameDesign, validateClueGraph } from "@/features/editor/validation";
 import { useClueEdges } from "@/features/editor/clueEdgeApi";
+import { isApiHttpError } from "@/lib/api-error";
 import { EditorLayout } from "./EditorLayout";
 
 // ---------------------------------------------------------------------------
@@ -32,7 +33,27 @@ function FullPageError({ message, detail }: { message: string; detail?: string }
 const uuidLikeRe =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function buildThemeLoadError(themeId: string) {
+function buildThemeLoadError(themeId: string, error?: unknown) {
+  if (isApiHttpError(error)) {
+    if (error.status === 400) {
+      return {
+        message: "테마 주소 형식이 올바르지 않습니다",
+        detail: "주소에는 테마 UUID 또는 영문 소문자, 숫자, 하이픈으로 된 slug만 사용할 수 있습니다.",
+      };
+    }
+    if (error.status === 403) {
+      return {
+        message: "테마 편집 권한이 없습니다",
+        detail: "현재 로그인한 계정으로는 이 테마를 편집할 수 없습니다. 다른 계정으로 로그인했는지 확인하세요.",
+      };
+    }
+    if (error.status === 404) {
+      return {
+        message: "테마를 찾을 수 없습니다",
+        detail: "삭제됐거나 현재 계정에서 접근할 수 없는 테마일 수 있습니다.",
+      };
+    }
+  }
   if (uuidLikeRe.test(themeId)) {
     return {
       message: "테마를 찾을 수 없습니다",
@@ -56,7 +77,7 @@ interface ThemeEditorProps {
 }
 
 export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
-  const { data: theme, isLoading, isError } = useEditorTheme(themeId);
+  const { data: theme, error, isLoading, isError } = useEditorTheme(themeId);
   const resolvedThemeId = theme?.id ?? "";
   const { data: clues } = useEditorClues(resolvedThemeId);
   const { data: clueEdgeGroups } = useClueEdges(resolvedThemeId);
@@ -87,7 +108,7 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
 
   if (isLoading) return <FullPageSpinner />;
   if (isError || !theme) {
-    const errorCopy = buildThemeLoadError(themeId);
+    const errorCopy = buildThemeLoadError(themeId, error);
     return <FullPageError message={errorCopy.message} detail={errorCopy.detail} />;
   }
 

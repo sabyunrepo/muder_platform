@@ -32,4 +32,18 @@ http://localhost:3000/editor/{theme}/endings
 http://localhost:3000/editor/{theme}/media
 ```
 
+로컬 샘플 slug를 바로 확인할 때는 아래 목록을 그대로 열면 된다.
+
+```text
+http://localhost:3000/editor/e2e-test-theme
+http://localhost:3000/editor/e2e-test-theme/flow
+http://localhost:3000/editor/e2e-test-theme/story
+http://localhost:3000/editor/e2e-test-theme/info
+http://localhost:3000/editor/e2e-test-theme/characters
+http://localhost:3000/editor/e2e-test-theme/clues
+http://localhost:3000/editor/e2e-test-theme/locations
+http://localhost:3000/editor/e2e-test-theme/endings
+http://localhost:3000/editor/e2e-test-theme/media
+```
+
 `/flow`는 제작 흐름의 기본 스토리 진행 화면으로 들어가는 짧은 주소다. 세부 설계 탭의 흐름 하위 화면을 직접 열려면 `/editor/{theme}/design/flow`를 사용한다.

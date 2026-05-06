@@ -151,7 +151,7 @@ func (s *service) GetThemeBySlug(ctx context.Context, creatorID uuid.UUID, slug 
 		return nil, apperror.Internal("failed to get theme")
 	}
 	if theme.CreatorID != creatorID {
-		return nil, apperror.Forbidden("you do not own this theme")
+		return nil, apperror.NotFound("theme not found")
 	}
 	return s.themeResponseForRead(theme)
 }

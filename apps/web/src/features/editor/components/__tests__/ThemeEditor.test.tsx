@@ -38,6 +38,7 @@ vi.mock('../EditorLayout', () => ({
 }));
 
 import { ThemeEditor } from '../ThemeEditor';
+import { ApiHttpError } from '@/lib/api-error';
 
 const theme = {
   id: 'theme-1',
@@ -93,6 +94,46 @@ describe('ThemeEditor', () => {
 
     expect(screen.getByText('샘플 또는 slug 테마를 찾을 수 없습니다')).toBeDefined();
     expect(screen.getByText(/e2e-test-theme seed/)).toBeDefined();
+  });
+
+  it('서버가 invalid locator를 반환하면 주소 형식 메시지를 표시한다', () => {
+    useEditorThemeMock.mockReturnValue({
+      data: undefined,
+      error: new ApiHttpError({
+        type: 'about:blank',
+        code: 'BAD_REQUEST',
+        status: 400,
+        title: 'Bad Request',
+        detail: 'invalid theme locator',
+      }),
+      isLoading: false,
+      isError: true,
+    });
+
+    render(<ThemeEditor themeId="bad_slug!" />);
+
+    expect(screen.getByText('테마 주소 형식이 올바르지 않습니다')).toBeDefined();
+    expect(screen.getByText(/영문 소문자, 숫자, 하이픈/)).toBeDefined();
+  });
+
+  it('서버가 forbidden을 반환하면 권한 메시지를 표시한다', () => {
+    useEditorThemeMock.mockReturnValue({
+      data: undefined,
+      error: new ApiHttpError({
+        type: 'about:blank',
+        code: 'FORBIDDEN',
+        status: 403,
+        title: 'Forbidden',
+        detail: 'you do not own this theme',
+      }),
+      isLoading: false,
+      isError: true,
+    });
+
+    render(<ThemeEditor themeId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" />);
+
+    expect(screen.getByText('테마 편집 권한이 없습니다')).toBeDefined();
+    expect(screen.getByText(/현재 로그인한 계정/)).toBeDefined();
   });
 
   it('routeSegment를 EditorLayout으로 전달하고 검증 결과를 합친다', () => {

@@ -36,6 +36,7 @@ type mockService struct {
 	updateThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID, req UpdateThemeRequest) (*ThemeResponse, error)
 	deleteThemeFn      func(ctx context.Context, creatorID, themeID uuid.UUID) error
 	listMyThemesFn     func(ctx context.Context, creatorID uuid.UUID) ([]ThemeSummary, error)
+	getThemeBySlugFn   func(ctx context.Context, creatorID uuid.UUID, slug string) (*ThemeResponse, error)
 	publishThemeFn     func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
 	unpublishThemeFn   func(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
 	createCharFn       func(ctx context.Context, creatorID, themeID uuid.UUID, req CreateCharacterRequest) (*CharacterResponse, error)
@@ -113,6 +114,9 @@ func (m *mockService) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID
 	return nil, nil
 }
 func (m *mockService) GetThemeBySlug(ctx context.Context, creatorID uuid.UUID, slug string) (*ThemeResponse, error) {
+	if m.getThemeBySlugFn != nil {
+		return m.getThemeBySlugFn(ctx, creatorID, slug)
+	}
 	return nil, nil
 }
 func (m *mockService) CreateMap(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMapRequest) (*MapResponse, error) {

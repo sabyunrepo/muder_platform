@@ -87,7 +87,7 @@ func TestService_GetThemeBySlug_OwnershipEnforced(t *testing.T) {
 
 	_, err = f.svc.GetThemeBySlug(ctx, otherID, theme.Slug)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "you do not own this theme")
+	assert.Contains(t, err.Error(), "theme not found")
 }
 
 func TestService_GetThemeBySlug_InvalidSlug(t *testing.T) {
