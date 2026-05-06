@@ -32,6 +32,7 @@ type authedDeps struct {
 	media        *editor.MediaHandler
 	image        *editor.ImageHandler
 	reading      *editor.ReadingHandler
+	storyInfo    *editor.StoryInfoHandler
 	admin        *admin.Handler
 	review       *admin.ReviewHandler
 }

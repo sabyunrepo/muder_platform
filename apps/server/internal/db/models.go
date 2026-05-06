@@ -252,6 +252,21 @@ type Settlement struct {
 	UpdatedAt   time.Time          `json:"updated_at"`
 }
 
+type StoryInfo struct {
+	ID                  uuid.UUID       `json:"id"`
+	ThemeID             uuid.UUID       `json:"theme_id"`
+	Title               string          `json:"title"`
+	Body                string          `json:"body"`
+	ImageMediaID        pgtype.UUID     `json:"image_media_id"`
+	RelatedCharacterIds json.RawMessage `json:"related_character_ids"`
+	RelatedClueIds      json.RawMessage `json:"related_clue_ids"`
+	RelatedLocationIds  json.RawMessage `json:"related_location_ids"`
+	SortOrder           int32           `json:"sort_order"`
+	Version             int32           `json:"version"`
+	CreatedAt           time.Time       `json:"created_at"`
+	UpdatedAt           time.Time       `json:"updated_at"`
+}
+
 type Theme struct {
 	ID          uuid.UUID          `json:"id"`
 	CreatorID   uuid.UUID          `json:"creator_id"`

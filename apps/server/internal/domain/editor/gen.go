@@ -4,5 +4,6 @@
 // 전용 파일로 분리. 'make mocks' 또는 'cd apps/server && go generate ./...' 에서 실행.
 
 //go:generate go tool mockgen -destination=mocks/mock_service.go -package=mocks -source=service.go Service
+//go:generate go tool mockgen -destination=mock_story_info_service_test.go -package=editor -source=story_info_service.go StoryInfoService
 
 package editor

@@ -15,6 +15,9 @@ const StoryMapWorkspace = lazy(() =>
 const StoryTab = lazy(() =>
   import("./StoryTab").then((m) => ({ default: m.StoryTab })),
 );
+const InfoTab = lazy(() =>
+  import("./info/InfoTab").then((m) => ({ default: m.InfoTab })),
+);
 const CharactersTab = lazy(() =>
   import("./CharactersTab").then((m) => ({ default: m.CharactersTab })),
 );
@@ -49,6 +52,8 @@ export function TabContent({ tab, theme, themeId, routeSegment }: TabContentProp
   switch (tab) {
     case "storyMap":
       return <StoryMapWorkspace themeId={themeId} />;
+    case "info":
+      return <InfoTab themeId={themeId} />;
     case "overview":
       return <OverviewTab theme={theme} themeId={themeId} />;
     case "story":

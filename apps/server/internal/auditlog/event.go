@@ -54,6 +54,9 @@ const (
 	ActionEditorClueEdgeDelete     AuditAction = "editor.clue_edge.delete"
 	ActionEditorClueRelationCreate AuditAction = "editor.clue_relation.create"
 	ActionEditorClueRelationDelete AuditAction = "editor.clue_relation.delete"
+	ActionEditorStoryInfoCreate    AuditAction = "editor.story_info.create"
+	ActionEditorStoryInfoUpdate    AuditAction = "editor.story_info.update"
+	ActionEditorStoryInfoDelete    AuditAction = "editor.story_info.delete"
 )
 
 // AuditEvent is the domain representation of a single audit log entry.
