@@ -1,4 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EntityTriggerPlacementCard } from '../EntityTriggerPlacementCard';
 import { readModuleConfig } from '@/features/editor/utils/configShape';
@@ -39,19 +41,29 @@ vi.mock('@/features/editor/readingApi', () => ({
 
 afterEach(cleanup);
 
+function renderCard(props: ComponentProps<typeof EntityTriggerPlacementCard>) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+
+  return render(
+    <QueryClientProvider client={client}>
+      <EntityTriggerPlacementCard {...props} />
+    </QueryClientProvider>
+  );
+}
+
 describe('EntityTriggerPlacementCard', () => {
   it('adds a clue trigger and writes it to event_progression placement config', () => {
     const onConfigChange = vi.fn();
 
-    render(
-      <EntityTriggerPlacementCard
-        entityKind="clue"
-        entityId="clue-1"
-        entityName="단검"
-        configJson={{}}
-        onConfigChange={onConfigChange}
-      />
-    );
+    renderCard({
+      entityKind: 'clue',
+      entityId: 'clue-1',
+      entityName: '단검',
+      configJson: {},
+      onConfigChange,
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
     fireEvent.click(screen.getByRole('button', { name: '추가' }));
@@ -70,15 +82,13 @@ describe('EntityTriggerPlacementCard', () => {
   });
 
   it('keeps save disabled until each trigger has at least one complete action', () => {
-    render(
-      <EntityTriggerPlacementCard
-        entityKind="location"
-        entityId="loc-1"
-        entityName="서재"
-        configJson={{}}
-        onConfigChange={vi.fn()}
-      />
-    );
+    renderCard({
+      entityKind: 'location',
+      entityId: 'loc-1',
+      entityName: '서재',
+      configJson: {},
+      onConfigChange: vi.fn(),
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
 
@@ -91,15 +101,14 @@ describe('EntityTriggerPlacementCard', () => {
   });
 
   it('keeps save disabled when a presentation cue is missing mediaId', () => {
-    render(
-      <EntityTriggerPlacementCard
-        entityKind="location"
-        entityId="loc-1"
-        entityName="서재"
-        configJson={{}}
-        onConfigChange={vi.fn()}
-      />
-    );
+    renderCard({
+      themeId: 'theme-1',
+      entityKind: 'location',
+      entityId: 'loc-1',
+      entityName: '서재',
+      configJson: {},
+      onConfigChange: vi.fn(),
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
     fireEvent.click(screen.getByRole('button', { name: '추가' }));
@@ -114,16 +123,14 @@ describe('EntityTriggerPlacementCard', () => {
 
   it('enables save after a presentation cue media is selected', () => {
     const onConfigChange = vi.fn();
-    render(
-      <EntityTriggerPlacementCard
-        themeId="theme-1"
-        entityKind="location"
-        entityId="loc-1"
-        entityName="서재"
-        configJson={{}}
-        onConfigChange={onConfigChange}
-      />
-    );
+    renderCard({
+      themeId: 'theme-1',
+      entityKind: 'location',
+      entityId: 'loc-1',
+      entityName: '서재',
+      configJson: {},
+      onConfigChange,
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
     fireEvent.click(screen.getByRole('button', { name: '추가' }));
@@ -152,16 +159,14 @@ describe('EntityTriggerPlacementCard', () => {
 
   it('stores a target scene without requiring an extra action', () => {
     const onConfigChange = vi.fn();
-    render(
-      <EntityTriggerPlacementCard
-        themeId="theme-1"
-        entityKind="clue"
-        entityId="clue-1"
-        entityName="단검"
-        configJson={{}}
-        onConfigChange={onConfigChange}
-      />
-    );
+    renderCard({
+      themeId: 'theme-1',
+      entityKind: 'clue',
+      entityId: 'clue-1',
+      entityName: '단검',
+      configJson: {},
+      onConfigChange,
+    });
 
     fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
     fireEvent.change(screen.getByRole('textbox', { name: '단서 트리거 1 플레이어 버튼 이름' }), {

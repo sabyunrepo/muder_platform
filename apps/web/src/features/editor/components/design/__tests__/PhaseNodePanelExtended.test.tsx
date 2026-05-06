@@ -15,6 +15,24 @@ vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => ({ mutate: vi.fn() }),
 }));
 
+vi.mock("../../../mediaApi", () => ({
+  useMediaList: () => ({
+    data: [
+      {
+        id: "media-1",
+        theme_id: "t1",
+        name: "오프닝 BGM",
+        type: "BGM",
+        source_type: "FILE",
+        tags: [],
+        sort_order: 0,
+        created_at: "2026-05-06T00:00:00Z",
+      },
+    ],
+    isLoading: false,
+  }),
+}));
+
 // ---------------------------------------------------------------------------
 // Import after mocks
 // ---------------------------------------------------------------------------
@@ -97,9 +115,61 @@ describe("PhaseNodePanel extended fields", () => {
         onUpdate={vi.fn()}
       />,
     );
+    expect(screen.getByText("장면 연출")).toBeDefined();
     expect(screen.getByText("장면 시작 트리거")).toBeDefined();
     expect(screen.getByText("장면 종료 트리거")).toBeDefined();
-    expect(screen.getAllByText("트리거 실행 결과 없음")).toHaveLength(2);
+    expect(screen.getAllByText("트리거 실행 결과 없음")).toHaveLength(3);
+  });
+
+  it("장면 연출 cue를 시작 트리거와 분리해 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          onEnter: [
+            { id: "vote", type: "OPEN_VOTING" },
+            { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+          ],
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    expect(screen.getByText("오프닝 BGM · 배경음악")).toBeDefined();
+    expect(screen.queryByRole("combobox", { name: "장면 시작 트리거 2 실행 결과" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "장면 연출 1 삭제" }));
+
+    expect(onUpdate).toHaveBeenCalledWith("node-1", {
+      onEnter: [{ id: "vote", type: "OPEN_VOTING" }],
+    });
+  });
+
+  it("장면 연출 cue만 수정해도 기존 시작 트리거 실행 순서를 유지한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          onEnter: [
+            { id: "bgm", type: "SET_BGM", params: {} },
+            { id: "vote", type: "OPEN_VOTING" },
+          ],
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "BGM 선택" }));
+    fireEvent.click(screen.getByRole("button", { name: /오프닝 BGM/ }));
+
+    expect(onUpdate).toHaveBeenCalledWith("node-1", {
+      onEnter: [
+        { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+        { id: "vote", type: "OPEN_VOTING" },
+      ],
+    });
   });
 
   it("토론방 정책을 장면 데이터로 저장한다", () => {

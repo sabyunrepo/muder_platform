@@ -26,6 +26,7 @@ interface ActionListEditorProps {
   actions: PhaseAction[];
   onChange: (actions: PhaseAction[]) => void;
   hiddenTypes?: string[];
+  allowedTypes?: readonly string[];
   themeId?: string;
 }
 
@@ -34,14 +35,19 @@ export function ActionListEditor({
   actions,
   onChange,
   hiddenTypes = [],
+  allowedTypes,
   themeId,
 }: ActionListEditorProps) {
   const { data: readingSections = [] } = useReadingSections(themeId ?? "");
   const readingOptions = toReadingSectionPickerOptions(readingSections);
+  const isTypeVisible = (type: string) =>
+    !hiddenTypes.includes(type) && (!allowedTypes || allowedTypes.includes(type));
   const visibleActions = actions
     .map((action, index) => ({ action, index }))
-    .filter(({ action }) => !hiddenTypes.includes(action.type));
-  const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes);
+    .filter(({ action }) => isTypeVisible(action.type));
+  const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes).filter(
+    (actionType) => !allowedTypes || allowedTypes.includes(actionType.value),
+  );
   const defaultActionType = visibleActionTypes[0]?.value;
   const handleAdd = () => {
     if (!defaultActionType) return;
@@ -82,11 +88,12 @@ export function ActionListEditor({
         <p className="text-[10px] text-slate-600">트리거 실행 결과 없음</p>
       )}
 
-      {visibleActions.map(({ action, index: idx }) => (
+      {visibleActions.map(({ action, index: idx }, visibleIndex) => (
         <ActionRow
           key={action.id ?? idx}
           action={action}
           index={idx}
+          displayIndex={visibleIndex}
           label={label}
           visibleActionTypes={visibleActionTypes}
           onTypeChange={handleTypeChange}
@@ -130,6 +137,10 @@ export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boo
   });
 }
 
+export function isPresentationCueAction(action: PhaseAction): boolean {
+  return getPresentationCueConfig(action.type) !== null;
+}
+
 function withActionType(action: PhaseAction, type: string): PhaseAction {
   const params = createDefaultParams(type);
   const next: PhaseAction = { ...action, type };
@@ -144,6 +155,7 @@ function withActionType(action: PhaseAction, type: string): PhaseAction {
 interface ActionRowProps {
   action: PhaseAction;
   index: number;
+  displayIndex: number;
   label: string;
   visibleActionTypes: ReturnType<typeof getVisibleCreatorActionOptions>;
   onTypeChange: (index: number, type: string) => void;
@@ -156,6 +168,7 @@ interface ActionRowProps {
 function ActionRow({
   action,
   index,
+  displayIndex,
   label,
   visibleActionTypes,
   onTypeChange,
@@ -173,7 +186,7 @@ function ActionRow({
         <select
           value={action.type}
           onChange={(e) => onTypeChange(index, e.target.value)}
-          aria-label={`${label} ${index + 1} 실행 결과`}
+          aria-label={`${label} ${displayIndex + 1} 실행 결과`}
           className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
         >
           {!hasCurrentOption && <option value={action.type}>{fallbackLabel} (기존값)</option>}
@@ -186,7 +199,7 @@ function ActionRow({
         <button
           type="button"
           onClick={() => onRemove(index)}
-          aria-label={`${label} ${index + 1} 삭제`}
+          aria-label={`${label} ${displayIndex + 1} 삭제`}
           className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-500 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
         >
           <Trash2 className="h-3 w-3" />
@@ -196,7 +209,7 @@ function ActionRow({
         <PresentationCueFields
           action={action}
           label={label}
-          index={index}
+          index={displayIndex}
           themeId={themeId}
           onParamsChange={(params) => onParamsChange(index, params)}
         />
@@ -204,14 +217,14 @@ function ActionRow({
       <InformationActionFields
         action={action}
         label={label}
-        index={index}
+        index={displayIndex}
         readingOptions={readingOptions}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
       <BroadcastActionFields
         action={action}
         label={label}
-        index={index}
+        index={displayIndex}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
     </div>

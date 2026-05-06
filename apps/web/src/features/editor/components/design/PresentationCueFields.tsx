@@ -1,8 +1,11 @@
 import { Check } from "lucide-react";
 import { useState } from "react";
 import type { PhaseAction } from "../../flowTypes";
-import type { MediaResourceUseCase } from "../../entities/mediaResource/mediaResourceAdapter";
-import type { MediaType } from "../../mediaApi";
+import {
+  getMediaResourceTypeLabel,
+  type MediaResourceUseCase,
+} from "../../entities/mediaResource/mediaResourceAdapter";
+import { useMediaList, type MediaType } from "../../mediaApi";
 import { MediaPicker } from "../media/MediaPicker";
 
 interface PresentationCueConfig {
@@ -111,7 +114,6 @@ export function PresentationCueFields({
   onParamsChange: (params: Record<string, unknown>) => void;
 }) {
   const config = getPresentationCueConfig(action.type);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
   if (!config) {
     return (
       <div className="rounded border border-amber-700/40 bg-amber-950/30 p-2 text-[11px] text-amber-200">
@@ -120,59 +122,137 @@ export function PresentationCueFields({
     );
   }
 
+  if (config.kind === "theme") {
+    return (
+      <ThemePresentationCueFields
+        action={action}
+        onParamsChange={onParamsChange}
+      />
+    );
+  }
+
+  return (
+    <MediaPresentationCueFields
+      action={action}
+      label={label}
+      index={index}
+      themeId={themeId}
+      config={config}
+      onParamsChange={onParamsChange}
+    />
+  );
+}
+
+function ThemePresentationCueFields({
+  action,
+  onParamsChange,
+}: {
+  action: PhaseAction;
+  onParamsChange: (params: Record<string, unknown>) => void;
+}) {
+  const params = action.params ?? {};
+  const themeToken = typeof params.themeToken === "string" ? params.themeToken : "";
+  return (
+    <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
+      <span className="text-[11px] text-slate-500">화면 분위기를 선택하세요</span>
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {THEME_COLOR_PRESETS.map((preset) => {
+          const isSelected = themeToken === preset.value;
+          return (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => onParamsChange({ ...params, themeToken: preset.value })}
+              aria-pressed={isSelected}
+              className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors ${
+                isSelected
+                  ? "border-amber-400 bg-amber-500/10 text-amber-200"
+                  : "border-slate-700 text-slate-300 hover:border-slate-500"
+              }`}
+            >
+              <span className={`h-3 w-3 shrink-0 rounded-full ${preset.swatchClass}`} />
+              <span>{preset.label}</span>
+              {isSelected ? (
+                <>
+                  <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
+                  <span className="sr-only">선택됨</span>
+                </>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MediaPresentationCueFields({
+  action,
+  label,
+  index,
+  themeId,
+  config,
+  onParamsChange,
+}: {
+  action: PhaseAction;
+  label: string;
+  index: number;
+  themeId?: string;
+  config: PresentationCueConfig;
+  onParamsChange: (params: Record<string, unknown>) => void;
+}) {
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const params = action.params ?? {};
   const mediaId = typeof params.mediaId === "string" ? params.mediaId : null;
+  const { data: media = [], isLoading } = useMediaList(themeId ?? "", config.filterType);
+  const selectedMedia = media.find((item) => item.id === mediaId) ?? null;
+  const hasBrokenReference = !!mediaId && !isLoading && !selectedMedia;
 
-  if (config.kind === "theme") {
-    const themeToken = typeof params.themeToken === "string" ? params.themeToken : "";
-    return (
-      <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
-        <span className="text-[11px] text-slate-500">화면 분위기를 선택하세요</span>
-        <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-          {THEME_COLOR_PRESETS.map((preset) => {
-            const isSelected = themeToken === preset.value;
-            return (
-              <button
-                key={preset.value}
-                type="button"
-                onClick={() => onParamsChange({ ...params, themeToken: preset.value })}
-                aria-pressed={isSelected}
-                className={`flex items-center gap-1.5 rounded border px-2 py-1 text-[11px] transition-colors ${
-                  isSelected
-                    ? "border-amber-400 bg-amber-500/10 text-amber-200"
-                    : "border-slate-700 text-slate-300 hover:border-slate-500"
-                }`}
-              >
-                <span className={`h-3 w-3 shrink-0 rounded-full ${preset.swatchClass}`} />
-                <span>{preset.label}</span>
-                {isSelected ? (
-                  <>
-                    <Check className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="sr-only">선택됨</span>
-                  </>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
+  function clearMedia() {
+    const { mediaId: _removed, ...rest } = params;
+    onParamsChange(rest);
   }
 
   return (
     <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-[11px] text-slate-500">
-          {mediaId ? config.selectedLabel : "재생할 미디어를 선택하세요"}
-        </span>
-        <button
-          type="button"
-          onClick={() => setIsPickerOpen(true)}
-          disabled={!themeId}
-          className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {config.buttonLabel}
-        </button>
+        <div className="min-w-0">
+          <span className="text-[11px] text-slate-500">
+            {mediaId ? config.selectedLabel : "재생할 미디어를 선택하세요"}
+          </span>
+          {selectedMedia ? (
+            <div className="mt-1 space-y-0.5">
+              <p className="truncate text-xs text-slate-200">
+                {selectedMedia.name || "이름 없는 미디어"} · {getMediaResourceTypeLabel(selectedMedia.type)}
+              </p>
+              <p className="text-[10px] text-slate-500">사용 위치: {label}</p>
+            </div>
+          ) : null}
+          {hasBrokenReference ? (
+            <p className="mt-1 text-[10px] text-amber-300">
+              선택한 미디어가 삭제됐거나 이 연출 유형과 맞지 않습니다.
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          {mediaId ? (
+            <button
+              type="button"
+              onClick={clearMedia}
+              className="rounded border border-slate-800 px-2 py-1 text-[11px] text-slate-400 transition-colors hover:border-red-500/50 hover:text-red-300"
+            >
+              선택 해제
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setIsPickerOpen(true)}
+            disabled={!themeId}
+            className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {config.buttonLabel}
+          </button>
+        </div>
       </div>
       {!themeId ? (
         <p className="mt-1 text-[10px] text-slate-600">
