@@ -12,7 +12,7 @@ const EMPTY_SUMMARY = "아직 작성된 내용이 없습니다.";
 type ReadingLineView = Pick<ReadingSectionResponse["lines"][number], "Text" | "Speaker">;
 
 /**
- * Frontend Adapter for creator-facing story information.
+ * Frontend Adapter for creator-facing reading scripts.
  *
  * Current backend stores reading sections as text lines with optional BGM.
  * Keep this adapter as the boundary for future content blocks such as images,
@@ -26,7 +26,7 @@ export function toReadingSectionPickerOption(
   const lineCount = lines.length;
   return {
     id: section.id,
-    name: section.name.trim() || "이름 없는 스토리 정보",
+    name: section.name.trim() || "이름 없는 읽기 대사",
     summary: buildSummary(lines),
     metaLabel: section.bgmMediaId ? `${lineCount}줄 · BGM 있음` : `${lineCount}줄`,
     groupLabel: inferGroupLabel(lines),
@@ -76,10 +76,10 @@ function buildSummary(lines: Pick<ReadingLineView, "Text">[]): string {
 function inferGroupLabel(lines: ReadingLineView[]): string {
   const contentLines = lines.filter((line) => line.Text.trim().length > 0);
   const speakers = new Set(contentLines.map((line) => line.Speaker?.trim()).filter(Boolean));
-  if (contentLines.length === 0) return "빈 정보";
+  if (contentLines.length === 0) return "빈 대사";
   if (speakers.size === 0) return "공통 서술";
   if (speakers.size === 1) return "캐릭터 대사";
-  return "합독 정보";
+  return "합독 대사";
 }
 
 function readSortOrder(section: unknown): number {
