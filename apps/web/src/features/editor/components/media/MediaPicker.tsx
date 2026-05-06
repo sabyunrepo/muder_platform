@@ -128,6 +128,10 @@ export function MediaPicker({
         themeId={themeId}
         categoryId={categoryId}
         allowedTypes={uploadTypes}
+        onUploaded={(media) => {
+          onSelect(media);
+          onClose();
+        }}
       />
     </>
   );

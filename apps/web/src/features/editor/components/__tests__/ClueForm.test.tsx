@@ -19,16 +19,12 @@ beforeAll(() => {
 const {
   useCreateClueMock,
   useUpdateClueMock,
-  mergeClueImageMock,
-  uploadImageMock,
   useMediaListMock,
   toastSuccessMock,
   toastErrorMock,
 } = vi.hoisted(() => ({
   useCreateClueMock: vi.fn(),
   useUpdateClueMock: vi.fn(),
-  mergeClueImageMock: vi.fn(),
-  uploadImageMock: vi.fn(),
   useMediaListMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
@@ -41,14 +37,6 @@ vi.mock('sonner', () => ({
 vi.mock('@/features/editor/api', () => ({
   useCreateClue: () => useCreateClueMock(),
   useUpdateClue: () => useUpdateClueMock(),
-}));
-
-vi.mock('@/features/editor/editorClueApi', () => ({
-  mergeClueImage: mergeClueImageMock,
-}));
-
-vi.mock('@/features/editor/imageApi', () => ({
-  uploadImage: uploadImageMock,
 }));
 
 vi.mock('@/features/editor/mediaApi', () => ({
@@ -148,10 +136,6 @@ vi.mock('@/shared/components/ui/Input', () => ({
   ),
 }));
 
-vi.mock('../ImageUpload', () => ({
-  ImageUpload: () => <div data-testid="image-upload" />,
-}));
-
 // ---------------------------------------------------------------------------
 // Imports after mocks
 // ---------------------------------------------------------------------------
@@ -173,8 +157,6 @@ describe('ClueForm', () => {
     updateMutate = vi.fn();
     useCreateClueMock.mockReturnValue({ mutate: createMutate, isPending: false });
     useUpdateClueMock.mockReturnValue({ mutate: updateMutate, isPending: false });
-    mergeClueImageMock.mockReset();
-    uploadImageMock.mockReset();
     useMediaListMock.mockReturnValue({
       data: [{ id: 'image-1', name: '증거 사진', type: 'IMAGE' }],
       isLoading: false,
@@ -215,8 +197,6 @@ describe('ClueForm', () => {
     const [body] = createMutate.mock.calls[0];
     expect(body.image_media_id).toBe('image-1');
     expect(body.image_url).toBe('');
-    expect(uploadImageMock).not.toHaveBeenCalled();
-    expect(mergeClueImageMock).not.toHaveBeenCalled();
   });
 
   it('edit 모드에서 이미지 제거 시 media id와 legacy URL을 함께 비운다', () => {

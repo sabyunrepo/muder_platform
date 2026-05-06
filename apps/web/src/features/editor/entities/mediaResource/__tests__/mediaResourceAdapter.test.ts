@@ -65,10 +65,24 @@ describe("mediaResourceAdapter", () => {
     ]);
   });
 
-  it("location_image는 현재 미디어 타입으로 직접 선택하지 않도록 막는다", () => {
+  it("이미지 필드 유스케이스는 IMAGE 리소스만 선택 가능하게 한다", () => {
+    const imageMedia: MediaResponse = {
+      ...baseMedia,
+      id: "image-1",
+      name: "응접실 이미지",
+      type: "IMAGE",
+      mime_type: "image/png",
+    };
+
+    expect(getAllowedMediaTypesForUseCase("location_image")).toEqual(["IMAGE"]);
+    expect(getAllowedMediaTypesForUseCase("cover_image")).toEqual(["IMAGE"]);
+    expect(getAllowedMediaTypesForUseCase("character_image")).toEqual(["IMAGE"]);
+    expect(getAllowedMediaTypesForUseCase("clue_image")).toEqual(["IMAGE"]);
+    expect(getAllowedMediaTypesForUseCase("info_image")).toEqual(["IMAGE"]);
+    expect(isMediaSelectableForUseCase(imageMedia, "location_image")).toBe(true);
     expect(isMediaSelectableForUseCase(baseMedia, "location_image")).toBe(false);
     const vm = toMediaResourceViewModel(baseMedia, { useCase: "location_image" });
-    expect(vm.unselectableReason).toContain("이미지 업로드 흐름");
+    expect(vm.unselectableReason).toContain("이미지 리소스만 선택");
   });
 
   it("presentation_background는 IMAGE 리소스만 선택 가능하게 한다", () => {
