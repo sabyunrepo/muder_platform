@@ -34,6 +34,7 @@ export function useRoleSheetEditorState({
   const [draft, setDraft] = useState('');
   const [imageUrls, setImageUrls] = useState<string[]>([]);
   const [imageDraft, setImageDraft] = useState('');
+  const [pdfMediaId, setPdfMediaId] = useState<string | undefined>(sync.pdfMediaId);
 
   useEffect(() => {
     setDraft(sync.originalBody);
@@ -44,6 +45,10 @@ export function useRoleSheetEditorState({
     setImageUrls(sync.imageUrls);
     setImageDraft('');
   }, [sync.imageUrls, characterId]);
+
+  useEffect(() => {
+    setPdfMediaId(sync.pdfMediaId);
+  }, [sync.pdfMediaId, characterId]);
 
   useEffect(() => {
     const nextFormat = resolveEditableFormat(roleSheetQuery.data?.format);
@@ -65,6 +70,7 @@ export function useRoleSheetEditorState({
     upsertContent,
     setSelectedFormat,
     setPage,
+    setPdfMediaId,
   });
   const saveImages = useRoleSheetImagesSaver({
     imageUrls,
@@ -89,7 +95,7 @@ export function useRoleSheetEditorState({
     manualSaveRef,
     isMissingDocument: sync.isMissingDocument,
     isUnsupportedFormat: sync.isUnsupportedFormat,
-    pdfMediaId: sync.pdfMediaId,
+    pdfMediaId,
     upsertContent,
     setDraft,
     saveMarkdown,
@@ -255,15 +261,17 @@ function useRoleSheetPdfMediaSaver({
   upsertContent,
   setSelectedFormat,
   setPage,
+  setPdfMediaId,
 }: {
   upsertContent: UpsertRoleSheetMutation;
   setSelectedFormat: (format: EditableRoleSheetFormat) => void;
   setPage: (page: number) => void;
+  setPdfMediaId: (mediaId: string) => void;
 }) {
   return (media: MediaResponse) => {
     if (upsertContent.isPending) return;
-    if (media.type !== 'DOCUMENT') {
-      toast.error('문서 파일만 역할지 PDF로 연결할 수 있습니다');
+    if (media.type !== 'DOCUMENT' || media.mime_type !== 'application/pdf') {
+      toast.error('PDF 파일만 역할지 PDF로 연결할 수 있습니다');
       return;
     }
 
@@ -273,6 +281,7 @@ function useRoleSheetPdfMediaSaver({
         onSuccess: () => {
           setSelectedFormat('pdf');
           setPage(1);
+          setPdfMediaId(media.id);
           toast.success('PDF 역할지가 연결되었습니다');
         },
         onError: () => {

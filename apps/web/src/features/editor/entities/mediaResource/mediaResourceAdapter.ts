@@ -153,6 +153,7 @@ export function toMediaResourceViewModel(
     isExternal: media.source_type === "YOUTUBE",
     canPreview:
       media.source_type === "FILE" &&
+      Boolean(media.url) &&
       (media.type === "BGM" || media.type === "SFX" || media.type === "VOICE"),
     isSelectable,
     unselectableReason: isSelectable

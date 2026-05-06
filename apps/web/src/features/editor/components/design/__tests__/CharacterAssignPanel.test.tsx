@@ -76,7 +76,7 @@ vi.mock('@/features/editor/components/media/MediaPicker', () => ({
     filterType?: string;
     useCase?: string;
     selectedId?: string | null;
-    onSelect: (media: { id: string; name: string; type: string }) => void;
+    onSelect: (media: { id: string; name: string; type: string; mime_type?: string }) => void;
   }) => {
     if (!open) return null;
     if (useCase === 'role_sheet_document') {
@@ -86,9 +86,15 @@ vi.mock('@/features/editor/components/media/MediaPicker', () => ({
           <span>selected:{selectedId ?? 'none'}</span>
           <button
             type="button"
-            onClick={() => onSelect({ id: 'document-1', name: 'PDF 역할지', type: 'DOCUMENT' })}
+            onClick={() => onSelect({ id: 'document-1', name: 'PDF 역할지', type: 'DOCUMENT', mime_type: 'application/pdf' })}
           >
             PDF 역할지 선택
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelect({ id: 'document-2', name: 'DOCX 역할지', type: 'DOCUMENT', mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })}
+          >
+            DOCX 역할지 선택
           </button>
         </div>
       );
@@ -653,6 +659,19 @@ describe('CharacterAssignPanel', () => {
       { format: 'pdf', pdf: { media_id: 'document-1' } },
       expect.any(Object),
     );
+    expect(screen.getByText('selected:document-1')).toBeDefined();
+  });
+
+  it('PDF가 아닌 문서는 역할지 PDF로 연결하지 않는다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
+    fireEvent.click(screen.getByRole('button', { name: /PDF미디어 문서 선택/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'PDF 선택' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'DOCX 역할지 선택' }));
+
+    expect(upsertRoleSheetMutateMock).not.toHaveBeenCalled();
   });
 
   it('이미지 롤지는 한 페이지씩 넘겨 볼 수 있다', () => {

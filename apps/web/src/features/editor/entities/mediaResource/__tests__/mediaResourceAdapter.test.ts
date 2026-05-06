@@ -45,6 +45,12 @@ describe("mediaResourceAdapter", () => {
     expect(JSON.stringify(vm)).not.toContain("object-key");
   });
 
+  it("파일 URL이 없는 오디오 리소스는 인라인 미리보기를 노출하지 않는다", () => {
+    const vm = toMediaResourceViewModel({ ...baseMedia, url: "" }, { useCase: "phase_bgm" });
+
+    expect(vm.canPreview).toBe(false);
+  });
+
   it("사용 위치에 맞지 않는 리소스는 선택 불가 사유를 제공한다", () => {
     const vm = toMediaResourceViewModel(
       { ...baseMedia, type: "VIDEO", name: "엔딩 영상" },

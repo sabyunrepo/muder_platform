@@ -195,31 +195,39 @@ export function MediaTab({ themeId }: MediaTabProps) {
     setBulkDeleting(true);
     const result: BulkDeleteResult = { deleted: [], blocked: [], failed: [] };
 
-    for (const item of bulkSelectedMedia) {
-      try {
-        await deleteMediaMutation.mutateAsync(item.id);
-        result.deleted.push(item);
-      } catch (err) {
-        if (err instanceof ApiHttpError && err.apiError.code === "MEDIA_REFERENCE_IN_USE") {
-          const references = err.apiError.params?.references as MediaReferenceInfo[] | undefined;
-          result.blocked.push({
-            media: item,
-            references: references ?? [],
-          });
-        } else {
-          result.failed.push(item);
+    try {
+      for (const item of bulkSelectedMedia) {
+        try {
+          await deleteMediaMutation.mutateAsync(item.id);
+          result.deleted.push(item);
+        } catch (err) {
+          if (err instanceof ApiHttpError && err.apiError.code === "MEDIA_REFERENCE_IN_USE") {
+            const references = err.apiError.params?.references as MediaReferenceInfo[] | undefined;
+            result.blocked.push({
+              media: item,
+              references: references ?? [],
+            });
+          } else {
+            result.failed.push(item);
+          }
         }
       }
-    }
 
-    setSelectedIds(new Set([...result.blocked, ...result.failed].map((item) => item.media.id)));
-    setDeleteResult(result);
-    setBulkDeleting(false);
+      setSelectedIds(
+        new Set([
+          ...result.blocked.map((item) => item.media.id),
+          ...result.failed.map((item) => item.id),
+        ]),
+      );
+      setDeleteResult(result);
 
-    if (result.deleted.length > 0 && result.blocked.length === 0 && result.failed.length === 0) {
-      toast.success(`${result.deleted.length}개 미디어를 삭제했습니다`);
-    } else if (result.deleted.length > 0) {
-      toast.success(`${result.deleted.length}개 미디어를 삭제했습니다`);
+      if (result.deleted.length > 0 && result.blocked.length === 0 && result.failed.length === 0) {
+        toast.success(`${result.deleted.length}개 미디어를 삭제했습니다`);
+      } else if (result.deleted.length > 0) {
+        toast.success(`${result.deleted.length}개 미디어를 삭제했습니다`);
+      }
+    } finally {
+      setBulkDeleting(false);
     }
   };
 

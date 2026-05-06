@@ -495,6 +495,39 @@ describe('MediaTab', () => {
     expect(resultDialog.textContent).not.toContain('https://example.com/sfx.mp3');
   });
 
+  it('다중 삭제 중 일반 실패 항목을 결과에 표시하고 실패 항목을 다시 선택한다', async () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutateAsync = vi.fn((id: string) => {
+      if (id === 'media-2') {
+        return Promise.reject(new Error('delete failed'));
+      }
+      return Promise.resolve();
+    });
+    useDeleteMediaMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '선택', pressed: false }));
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    fireEvent.click(screen.getByText('문 닫는 소리').closest("[role='button']")!);
+    fireEvent.click(screen.getByRole('button', { name: '선택 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+    const resultDialog = await screen.findByRole('dialog', { name: '미디어 삭제 결과' });
+    expect(within(resultDialog).getByText('삭제됨 1개')).toBeDefined();
+    expect(within(resultDialog).getByText('삭제 실패 1개')).toBeDefined();
+    expect(within(resultDialog).getByText('문 닫는 소리')).toBeDefined();
+    expect(screen.getAllByText('문 닫는 소리')[0].closest("[role='button']")?.getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('참조 중인 미디어 삭제가 차단되면 제작 위치를 상세 패널에 표시한다', async () => {
     useMediaListMock.mockReturnValue({
       data: mockMedia,
