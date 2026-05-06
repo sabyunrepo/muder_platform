@@ -484,6 +484,7 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateReadingSection: %v", err)
 	}
+	svc := NewMediaService(fixture.q, nil, zerolog.Nop())
 
 	for _, tt := range []struct {
 		name    string
@@ -502,6 +503,18 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 			}
 			if len(refs) != 1 || refs[0].ID != section.ID || refs[0].Name != "JSONB refs" {
 				t.Fatalf("unexpected refs: %#v", refs)
+			}
+
+			err = svc.DeleteMedia(ctx, creatorID, tt.mediaID)
+			assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+			var appErr *apperror.AppError
+			_ = errors.As(err, &appErr)
+			references, ok := appErr.Params["references"].([]map[string]string)
+			if !ok || len(references) != 1 {
+				t.Fatalf("expected references param with 1 entry, got %#v", appErr.Params["references"])
+			}
+			if references[0]["type"] != "reading_section" || references[0]["id"] != section.ID.String() || references[0]["name"] != "JSONB refs" {
+				t.Fatalf("unexpected reference payload: %#v", references[0])
 			}
 		})
 	}
