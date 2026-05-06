@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -58,6 +59,43 @@ type revokeUserCall struct {
 	UserID uuid.UUID
 	Code   string
 	Reason string
+}
+
+type blockingPublisher struct {
+	release chan struct{}
+	calls   atomic.Int64
+	active  atomic.Int64
+	maxSeen atomic.Int64
+}
+
+func newBlockingPublisher() *blockingPublisher {
+	return &blockingPublisher{release: make(chan struct{})}
+}
+
+func (b *blockingPublisher) RevokeUser(ctx context.Context, _ uuid.UUID, _, _ string) error {
+	b.calls.Add(1)
+	current := b.active.Add(1)
+	for {
+		maxSeen := b.maxSeen.Load()
+		if current <= maxSeen || b.maxSeen.CompareAndSwap(maxSeen, current) {
+			break
+		}
+	}
+	defer b.active.Add(-1)
+
+	select {
+	case <-b.release:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (b *blockingPublisher) RevokeSession(context.Context, uuid.UUID, string, string) error {
+	return nil
+}
+func (b *blockingPublisher) RevokeToken(context.Context, string, string, string) error {
+	return nil
 }
 
 func (c *capturingPublisher) RevokeUser(_ context.Context, userID uuid.UUID, code, reason string) error {
@@ -115,9 +153,10 @@ func newWireTestService(repo RevokeRepo, pub RevokePublisher) *service {
 		pub = NoopRevokePublisher{}
 	}
 	return &service{
-		logger:     zerolog.Nop(),
-		revokeRepo: repo,
-		publisher:  pub,
+		logger:        zerolog.Nop(),
+		revokeRepo:    repo,
+		publisher:     pub,
+		revokePushSem: make(chan struct{}, revokePushConcurrency),
 	}
 }
 
@@ -206,6 +245,128 @@ func TestRecordRevoke_PublisherFailure_DoesNotError(t *testing.T) {
 	// Drain the async push goroutine so it doesn't leak into the next
 	// test under -race.
 	pub.waitForUserCalls(t, 1)
+}
+
+func TestRecordRevoke_BoundsConcurrentPushFanout(t *testing.T) {
+	repo := &capturingRevokeRepo{}
+	pub := newBlockingPublisher()
+	svc := newWireTestService(repo, pub)
+
+	const attempts = 1000
+	var wg sync.WaitGroup
+	wg.Add(attempts)
+	for i := 0; i < attempts; i++ {
+		go func() {
+			defer wg.Done()
+			if err := svc.recordRevoke(context.Background(), uuid.New(), RevokeCodeLoggedOutElsewhere, "logout storm"); err != nil {
+				t.Errorf("recordRevoke: %v", err)
+			}
+		}()
+	}
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("recordRevoke calls did not return promptly under logout storm")
+	}
+
+	if len(repo.entries) != attempts {
+		t.Fatalf("revokeRepo.Insert calls = %d, want %d", len(repo.entries), attempts)
+	}
+	if got := pub.maxSeen.Load(); got > revokePushConcurrency {
+		t.Fatalf("max concurrent revoke pushes = %d, want <= %d", got, revokePushConcurrency)
+	}
+	if got := pub.calls.Load(); got > revokePushConcurrency {
+		t.Fatalf("publisher calls = %d, want <= %d", got, revokePushConcurrency)
+	}
+
+	close(pub.release)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := svc.DrainRevokePushes(ctx); err != nil {
+		t.Fatalf("DrainRevokePushes: %v", err)
+	}
+}
+
+func TestDrainRevokePushes_RespectsContextDeadline(t *testing.T) {
+	repo := &capturingRevokeRepo{}
+	pub := newBlockingPublisher()
+	svc := newWireTestService(repo, pub)
+
+	if err := svc.recordRevoke(context.Background(), uuid.New(), RevokeCodeLoggedOutElsewhere, "logout"); err != nil {
+		t.Fatalf("recordRevoke: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	if err := svc.DrainRevokePushes(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("DrainRevokePushes err = %v, want context deadline exceeded", err)
+	}
+
+	close(pub.release)
+	ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := svc.DrainRevokePushes(ctx); err != nil {
+		t.Fatalf("DrainRevokePushes after release: %v", err)
+	}
+}
+
+func TestDrainRevokePushes_BlocksNewPushSchedules(t *testing.T) {
+	repo := &capturingRevokeRepo{}
+	pub := newBlockingPublisher()
+	svc := newWireTestService(repo, pub)
+
+	if err := svc.recordRevoke(context.Background(), uuid.New(), RevokeCodeLoggedOutElsewhere, "first logout"); err != nil {
+		t.Fatalf("recordRevoke first: %v", err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for pub.calls.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(2 * time.Millisecond)
+	}
+	if got := pub.calls.Load(); got != 1 {
+		t.Fatalf("publisher calls before drain = %d, want 1", got)
+	}
+
+	drained := make(chan error, 1)
+	drainCtx, cancelDrain := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelDrain()
+	go func() {
+		drained <- svc.DrainRevokePushes(drainCtx)
+	}()
+
+	deadline = time.Now().Add(2 * time.Second)
+	for !svc.isRevokePushDrainingForTest() && time.Now().Before(deadline) {
+		time.Sleep(2 * time.Millisecond)
+	}
+	if !svc.isRevokePushDrainingForTest() {
+		t.Fatal("DrainRevokePushes did not mark the service as draining")
+	}
+
+	if err := svc.recordRevoke(context.Background(), uuid.New(), RevokeCodeAdminRevoked, "during shutdown"); err != nil {
+		t.Fatalf("recordRevoke during drain: %v", err)
+	}
+	if got := len(repo.entries); got != 2 {
+		t.Fatalf("revokeRepo.Insert calls = %d, want 2", got)
+	}
+	if got := pub.calls.Load(); got != 1 {
+		t.Fatalf("publisher calls during drain = %d, want 1", got)
+	}
+
+	close(pub.release)
+	if err := <-drained; err != nil {
+		t.Fatalf("DrainRevokePushes: %v", err)
+	}
+}
+
+func (s *service) isRevokePushDrainingForTest() bool {
+	s.revokePushMu.Lock()
+	defer s.revokePushMu.Unlock()
+	return s.revokePushDraining
 }
 
 // ---------------------------------------------------------------------------

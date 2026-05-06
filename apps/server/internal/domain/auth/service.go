@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -71,6 +72,11 @@ type service struct {
 	audit      auditlog.Logger
 	revokeRepo RevokeRepo
 	publisher  RevokePublisher
+
+	revokePushMu       sync.Mutex
+	revokePushSem      chan struct{}
+	revokePushWG       sync.WaitGroup
+	revokePushDraining bool
 }
 
 // NewService creates a new auth service.
@@ -105,13 +111,14 @@ func NewService(
 		publisher = NoopRevokePublisher{}
 	}
 	return &service{
-		queries:    queries,
-		redis:      redisClient,
-		jwtSecret:  jwtSecret,
-		logger:     logger.With().Str("domain", "auth").Logger(),
-		audit:      audit,
-		revokeRepo: revokeRepo,
-		publisher:  publisher,
+		queries:       queries,
+		redis:         redisClient,
+		jwtSecret:     jwtSecret,
+		logger:        logger.With().Str("domain", "auth").Logger(),
+		audit:         audit,
+		revokeRepo:    revokeRepo,
+		publisher:     publisher,
+		revokePushSem: make(chan struct{}, revokePushConcurrency),
 	}
 }
 

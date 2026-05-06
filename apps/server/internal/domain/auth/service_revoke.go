@@ -15,6 +15,8 @@ import (
 // healthy publishers always finish first.
 const revokePushTimeout = 15 * time.Second
 
+const revokePushConcurrency = 256
+
 // recordRevoke writes a persistent revoke_log row and pushes auth.revoked
 // to live WS sessions. The two side effects have different criticality:
 //
@@ -47,8 +49,41 @@ func (s *service) recordRevoke(ctx context.Context, userID uuid.UUID, code, reas
 		// trigger is silently bypassed on the very next reconnect.
 		return apperror.Internal("failed to record revocation")
 	}
-	go s.pushRevokeAsync(userID, code, reason)
+	s.scheduleRevokePush(userID, code, reason)
 	return nil
+}
+
+func (s *service) scheduleRevokePush(userID uuid.UUID, code, reason string) {
+	s.revokePushMu.Lock()
+	defer s.revokePushMu.Unlock()
+
+	if s.revokePushSem == nil {
+		s.revokePushSem = make(chan struct{}, revokePushConcurrency)
+	}
+	if s.revokePushDraining {
+		s.logger.Warn().
+			Str("user_id", userID.String()).
+			Str("code", code).
+			Msg("revoke push drain is active; skipping live push, pull-fallback remains authoritative")
+		return
+	}
+	select {
+	case s.revokePushSem <- struct{}{}:
+	default:
+		s.logger.Warn().
+			Str("user_id", userID.String()).
+			Str("code", code).
+			Int("limit", revokePushConcurrency).
+			Msg("revoke push concurrency limit reached; skipping live push, pull-fallback remains authoritative")
+		return
+	}
+
+	s.revokePushWG.Add(1)
+	go func() {
+		defer s.revokePushWG.Done()
+		defer func() { <-s.revokePushSem }()
+		s.pushRevokeAsync(userID, code, reason)
+	}()
 }
 
 // pushRevokeAsync invokes the configured RevokePublisher off the caller's
@@ -63,5 +98,27 @@ func (s *service) pushRevokeAsync(userID uuid.UUID, code, reason string) {
 			Str("user_id", userID.String()).
 			Str("code", code).
 			Msg("revoke push failed")
+	}
+}
+
+// DrainRevokePushes waits for in-flight revoke pushes to finish. Callers
+// use this during graceful shutdown so best-effort live closes can drain
+// while the persisted revoke_log row remains the source of truth.
+func (s *service) DrainRevokePushes(ctx context.Context) error {
+	s.revokePushMu.Lock()
+	s.revokePushDraining = true
+	s.revokePushMu.Unlock()
+
+	done := make(chan struct{})
+	go func() {
+		s.revokePushWG.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
