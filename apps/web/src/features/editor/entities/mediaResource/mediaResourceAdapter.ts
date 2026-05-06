@@ -10,6 +10,10 @@ export type MediaResourceUseCase =
   | "role_sheet_document"
   | "role_sheet_image"
   | "story_voice"
+  | "cover_image"
+  | "character_image"
+  | "clue_image"
+  | "info_image"
   | "location_image"
   | "character_alias_icon"
   | "presentation_background"
@@ -51,7 +55,11 @@ const USE_CASE_ALLOWED_TYPES: Record<MediaResourceUseCase, MediaType[]> = {
   role_sheet_document: ["DOCUMENT"],
   role_sheet_image: ["IMAGE"],
   story_voice: ["VOICE", "SFX"],
-  location_image: [],
+  cover_image: ["IMAGE"],
+  character_image: ["IMAGE"],
+  clue_image: ["IMAGE"],
+  info_image: ["IMAGE"],
+  location_image: ["IMAGE"],
   character_alias_icon: ["IMAGE"],
   presentation_background: ["IMAGE"],
   video_action: ["VIDEO"],
@@ -63,8 +71,11 @@ const USE_CASE_EMPTY_REASON: Record<MediaResourceUseCase, string> = {
   role_sheet_document: "롤지 문서에는 PDF 같은 문서 리소스만 선택할 수 있어요.",
   role_sheet_image: "이미지 롤지에는 이미지 리소스만 선택할 수 있어요.",
   story_voice: "스토리 음성에는 음성/내레이션 또는 효과음만 선택할 수 있어요.",
-  location_image:
-    "장소 이미지는 현재 이미지 업로드 흐름에서 선택해요. 공통 이미지 리소스는 후속 작업에서 연결합니다.",
+  cover_image: "테마 커버에는 이미지 리소스만 선택할 수 있어요.",
+  character_image: "캐릭터 이미지에는 이미지 리소스만 선택할 수 있어요.",
+  clue_image: "단서 이미지에는 이미지 리소스만 선택할 수 있어요.",
+  info_image: "정보 이미지에는 이미지 리소스만 선택할 수 있어요.",
+  location_image: "장소 이미지는 이미지 리소스만 선택할 수 있어요.",
   character_alias_icon: "플레이 중 표시 아이콘에는 이미지 리소스만 선택할 수 있어요.",
   presentation_background: "배경 연출에는 이미지 리소스만 선택할 수 있어요.",
   video_action: "영상 액션에는 영상 리소스만 선택할 수 있어요.",
@@ -146,7 +157,10 @@ export function toMediaResourceViewModel(
     metaLabel: metaParts.join(" · "),
     tags: [...media.tags],
     isExternal: media.source_type === "YOUTUBE",
-    canPreview: media.type !== "DOCUMENT" && media.source_type === "FILE",
+    canPreview:
+      media.source_type === "FILE" &&
+      Boolean(media.url) &&
+      (media.type === "BGM" || media.type === "SFX" || media.type === "VOICE"),
     isSelectable,
     unselectableReason: isSelectable
       ? null

@@ -1,19 +1,11 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   useCharacterRoleSheet,
   useUpsertCharacterRoleSheet,
   type RoleSheetResponse,
 } from '@/features/editor/api';
-import {
-  uploadMediaFile,
-  useConfirmUpload,
-  useRequestUploadUrl,
-  type ConfirmUploadRequest,
-  type MediaResponse,
-  type RequestUploadUrlRequest,
-  type UploadUrlResponse,
-} from '@/features/editor/mediaApi';
+import type { MediaResponse } from '@/features/editor/mediaApi';
 import { isApiHttpError } from '@/lib/api-error';
 
 type EditableRoleSheetFormat = 'markdown' | 'pdf' | 'images';
@@ -24,8 +16,6 @@ export type ImageRoleSheetPageDraft =
   | { kind: 'url'; url: string };
 
 type UpsertRoleSheetMutation = ReturnType<typeof useUpsertCharacterRoleSheet>;
-type RequestUploadUrlMutation = ReturnType<typeof useRequestUploadUrl>;
-type ConfirmUploadMutation = ReturnType<typeof useConfirmUpload>;
 
 interface UseRoleSheetEditorStateParams {
   themeId: string;
@@ -34,20 +24,13 @@ interface UseRoleSheetEditorStateParams {
 }
 
 export function useRoleSheetEditorState({
-  themeId,
   characterId,
-  characterName,
 }: UseRoleSheetEditorStateParams) {
   const roleSheetQuery = useCharacterRoleSheet(characterId);
   const upsertContent = useUpsertCharacterRoleSheet(characterId);
-  const requestUploadUrl = useRequestUploadUrl(themeId);
-  const confirmUpload = useConfirmUpload(themeId);
   const [selectedFormat, setSelectedFormat] = useState<EditableRoleSheetFormat>('markdown');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [page, setPage] = useState(1);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const manualSaveRef = useRef(false);
 
   const sync = useRoleSheetSync({ roleSheet: roleSheetQuery.data, roleSheetError: roleSheetQuery.error });
@@ -56,6 +39,7 @@ export function useRoleSheetEditorState({
   const [imageDraft, setImageDraft] = useState('');
   const imageUrls = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'url' ? [imagePage.url] : []), [imagePages]);
   const imageMediaIds = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'media' ? [imagePage.mediaId] : []), [imagePages]);
+  const [pdfMediaId, setPdfMediaId] = useState<string | undefined>(sync.pdfMediaId);
 
   useEffect(() => {
     setDraft(sync.originalBody);
@@ -66,6 +50,10 @@ export function useRoleSheetEditorState({
     setImagePages(sync.imagePages);
     setImageDraft('');
   }, [sync.imagePages, characterId]);
+
+  useEffect(() => {
+    setPdfMediaId(sync.pdfMediaId);
+  }, [sync.pdfMediaId, characterId]);
 
   useEffect(() => {
     const nextFormat = resolveEditableFormat(roleSheetQuery.data?.format);
@@ -83,16 +71,11 @@ export function useRoleSheetEditorState({
     setSelectedFormat,
     setSaveStatus,
   });
-  const handlePDFFile = useRoleSheetPdfUploader({
-    themeId,
-    characterName,
-    requestUploadUrl,
-    confirmUpload,
+  const savePDFMedia = useRoleSheetPdfMediaSaver({
     upsertContent,
     setSelectedFormat,
     setPage,
-    setUploading,
-    setUploadProgress,
+    setPdfMediaId,
   });
   const saveImages = useRoleSheetImagesSaver({
     imagePages,
@@ -109,8 +92,6 @@ export function useRoleSheetEditorState({
     draft,
     saveStatus,
     setSaveStatus,
-    uploading,
-    uploadProgress,
     page,
     setPage,
     imageUrls,
@@ -118,17 +99,14 @@ export function useRoleSheetEditorState({
     imagePages,
     imageDraft,
     setImageDraft,
-    fileInputRef,
     manualSaveRef,
     isMissingDocument: sync.isMissingDocument,
     isUnsupportedFormat: sync.isUnsupportedFormat,
-    pdfMediaId: sync.pdfMediaId,
+    pdfMediaId,
     upsertContent,
-    requestUploadUrl,
-    confirmUpload,
     setDraft,
     saveMarkdown,
-    handlePDFFile,
+    savePDFMedia,
     addImagePage: () => {
       const nextURL = imageDraft.trim();
       if (!isValidWebURL(nextURL)) {
@@ -299,92 +277,37 @@ function isValidWebURL(value: string) {
   }
 }
 
-function useRoleSheetPdfUploader({
-  themeId,
-  characterName,
-  requestUploadUrl,
-  confirmUpload,
+function useRoleSheetPdfMediaSaver({
   upsertContent,
   setSelectedFormat,
   setPage,
-  setUploading,
-  setUploadProgress,
+  setPdfMediaId,
 }: {
-  themeId: string;
-  characterName: string;
-  requestUploadUrl: RequestUploadUrlMutation;
-  confirmUpload: ConfirmUploadMutation;
   upsertContent: UpsertRoleSheetMutation;
   setSelectedFormat: (format: EditableRoleSheetFormat) => void;
   setPage: (page: number) => void;
-  setUploading: (uploading: boolean) => void;
-  setUploadProgress: (progress: number) => void;
+  setPdfMediaId: (mediaId: string) => void;
 }) {
-  return async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    const looksLikePDF = file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name));
-    if (!looksLikePDF) {
-      toast.error('PDF 파일만 업로드할 수 있습니다');
+  return (media: MediaResponse) => {
+    if (upsertContent.isPending) return;
+    if (media.type !== 'DOCUMENT' || media.mime_type !== 'application/pdf') {
+      toast.error('PDF 파일만 역할지 PDF로 연결할 수 있습니다');
       return;
     }
 
-    setUploading(true);
-    setUploadProgress(0);
-    try {
-      const media = await uploadRoleSheetPDF({
-        themeId,
-        file,
-        name: file.name.replace(/\.pdf$/i, '') || `${characterName} 역할지`,
-        requestUploadUrl: (req) => requestUploadUrl.mutateAsync(req),
-        confirmUpload: (req) => confirmUpload.mutateAsync(req),
-        onProgress: setUploadProgress,
-      });
-      upsertContent.mutate(
-        { format: 'pdf', pdf: { media_id: media.id } },
-        {
-          onSuccess: () => {
-            setSelectedFormat('pdf');
-            setPage(1);
-            toast.success('PDF 역할지가 연결되었습니다');
-          },
-          onError: () => {
-            toast.error('PDF 역할지 연결에 실패했습니다');
-          },
+    upsertContent.mutate(
+      { format: 'pdf', pdf: { media_id: media.id } },
+      {
+        onSuccess: () => {
+          setSelectedFormat('pdf');
+          setPage(1);
+          setPdfMediaId(media.id);
+          toast.success('PDF 역할지가 연결되었습니다');
         },
-      );
-    } catch {
-      toast.error('PDF 업로드에 실패했습니다');
-    } finally {
-      setUploading(false);
-    }
+        onError: () => {
+          toast.error('PDF 역할지 연결에 실패했습니다');
+        },
+      },
+    );
   };
-}
-
-function uploadRoleSheetPDF({
-  themeId,
-  file,
-  name,
-  requestUploadUrl,
-  confirmUpload,
-  onProgress,
-}: {
-  themeId: string;
-  file: File;
-  name: string;
-  requestUploadUrl: (req: RequestUploadUrlRequest) => Promise<UploadUrlResponse>;
-  confirmUpload: (req: ConfirmUploadRequest) => Promise<MediaResponse>;
-  onProgress: (progress: number) => void;
-}) {
-  return uploadMediaFile({
-    themeId,
-    file,
-    type: 'DOCUMENT',
-    name,
-    mimeType: 'application/pdf',
-    requestUploadUrl,
-    confirmUpload,
-    onProgress,
-  });
 }

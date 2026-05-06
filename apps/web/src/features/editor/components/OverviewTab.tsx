@@ -7,8 +7,7 @@ import {
   type UpdateThemeRequest,
 } from '@/features/editor/api';
 import { SectionDivider } from './SectionDivider';
-import { CoverImageCropUpload } from './CoverImageCropUpload';
-import { LocationImageMediaField } from './design/LocationImageMediaField';
+import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
 
 // ---------------------------------------------------------------------------
 // SpecField — inline number input with label + unit
@@ -168,14 +167,22 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[180px_1fr]">
         {/* Thumbnail */}
-        <CoverImageCropUpload
+        <ImageMediaReferenceField
           themeId={themeId}
-          currentImageUrl={coverImage}
-          onUploaded={(url) => {
-            setCoverImage(url || null);
-            setCoverImageMediaId(null);
+          label="테마 커버 이미지"
+          pickerTitle="테마 커버 이미지 선택"
+          emptyLabel="미디어에서 커버 선택"
+          legacyHint="기존 커버 업로드 이미지가 있습니다. 미디어 관리 이미지로 교체하면 이후 한 곳에서 관리할 수 있습니다."
+          imageMediaId={coverImageMediaId}
+          legacyImageUrl={coverImage}
+          onSelect={(media) => {
+            setCoverImageMediaId(media.id);
+            setCoverImage(null);
           }}
-          className="w-full"
+          onClear={() => {
+            setCoverImageMediaId(null);
+            setCoverImage(null);
+          }}
         />
 
         {/* Text fields */}
@@ -214,23 +221,6 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="mt-4">
-        <LocationImageMediaField
-          themeId={themeId}
-          label="테마 커버 이미지"
-          pickerTitle="테마 커버 이미지 선택"
-          emptyLabel="미디어에서 커버 선택"
-          legacyMessage="기존 커버 업로드 이미지가 있습니다. 미디어 관리 이미지로 교체하면 이후 한 곳에서 관리할 수 있습니다."
-          imageMediaId={coverImageMediaId}
-          legacyImageUrl={coverImage}
-          onSelect={(media) => {
-            setCoverImageMediaId(media.id);
-            setCoverImage(null);
-          }}
-          onClear={() => setCoverImageMediaId(null)}
-        />
       </div>
 
       {/* ── 게임 스펙 ── */}

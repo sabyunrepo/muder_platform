@@ -53,9 +53,6 @@ vi.mock('@/features/editor/api', () => ({
 vi.mock('../ClueForm', () => ({
   ClueForm: () => null,
 }));
-vi.mock('../ImageUpload', () => ({
-  ImageUpload: () => null,
-}));
 vi.mock('../clues/ClueEdgeGraph', () => ({
   ClueEdgeGraph: () => <div>단서 관계 그래프</div>,
 }));
