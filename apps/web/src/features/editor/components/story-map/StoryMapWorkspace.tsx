@@ -6,6 +6,7 @@ import {
   EditorEntityLibrary,
   type StoryLibraryEntity,
 } from "./EditorEntityLibrary";
+import { RoundVisibilityPreviewPanel } from "./RoundVisibilityPreviewPanel";
 import { SceneInspector } from "./SceneInspector";
 
 interface StoryMapWorkspaceProps {
@@ -50,6 +51,8 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
           </div>
         </div>
       </div>
+
+      <RoundVisibilityPreviewPanel themeId={themeId} />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[17rem_minmax(0,1fr)_20rem]">
         <EditorEntityLibrary
