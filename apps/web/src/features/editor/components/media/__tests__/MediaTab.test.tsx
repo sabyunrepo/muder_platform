@@ -208,6 +208,7 @@ describe('MediaTab', () => {
 
     // Detail visible
     expect(screen.getByText('미디어 상세')).toBeDefined();
+    expect(screen.getByText('미디어 상세').closest('aside')?.className).toContain('lg:overflow-y-auto');
     // Editable name input pre-filled
     expect(screen.getByDisplayValue('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('분류')).toBeDefined();

@@ -93,7 +93,7 @@ type ThemeSummary struct {
 type CreateCharacterRequest struct {
 	Name              string               `json:"name" validate:"required,min=1,max=50"`
 	Description       *string              `json:"description" validate:"omitempty,max=2000"`
-	ImageURL          *string              `json:"image_url" validate:"omitempty,url"`
+	ImageURL          *string              `json:"image_url" validate:"omitempty,optional_url"`
 	IsCulprit         bool                 `json:"is_culprit"`
 	MysteryRole       string               `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
 	SortOrder         int32                `json:"sort_order" validate:"min=0"`
@@ -110,7 +110,7 @@ type CreateCharacterRequest struct {
 type UpdateCharacterRequest struct {
 	Name              string               `json:"name" validate:"required,min=1,max=50"`
 	Description       *string              `json:"description" validate:"omitempty,max=2000"`
-	ImageURL          *string              `json:"image_url" validate:"omitempty,url"`
+	ImageURL          *string              `json:"image_url" validate:"omitempty,optional_url"`
 	IsCulprit         bool                 `json:"is_culprit"`
 	MysteryRole       string               `json:"mystery_role" validate:"omitempty,oneof=suspect culprit accomplice detective"`
 	SortOrder         int32                `json:"sort_order" validate:"min=0"`

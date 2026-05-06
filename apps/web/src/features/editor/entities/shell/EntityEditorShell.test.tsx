@@ -37,12 +37,28 @@ afterEach(cleanup);
 
 describe('EntityEditorShell', () => {
   it('목록, 상세 슬롯, 검수 슬롯을 모바일 우선 흐름으로 렌더링한다', () => {
-    renderShell();
+    const { container } = renderShell();
 
     expect(screen.getByRole('region', { name: '단서 목록' })).toBeDefined();
+    expect(screen.getByRole('region', { name: '단서 상세 영역' })).toBeDefined();
     expect(screen.getByLabelText('상세 슬롯').textContent).toContain('첫 단서 상세');
     expect(screen.getByLabelText('검수 슬롯').textContent).toContain('첫 단서 검수');
     expect(screen.getByText('2개의 단서')).toBeDefined();
+    expect(container.firstElementChild?.className).toContain('min-h-0');
+    expect(container.firstElementChild?.className).toContain('lg:overflow-hidden');
+  });
+
+  it('데스크톱에서는 목록과 상세 패널이 각자 스크롤 책임을 가진다', () => {
+    renderShell();
+
+    const list = screen.getByRole('region', { name: '단서 목록' });
+    const detail = screen.getByRole('region', { name: '단서 상세 영역' });
+    const listScroller = list.querySelector('.overflow-y-auto');
+
+    expect(list.className).toContain('flex');
+    expect(list.className).toContain('min-h-0');
+    expect(listScroller?.className).toContain('lg:flex-1');
+    expect(detail.className).toContain('lg:overflow-y-auto');
   });
 
   it('검색어에 맞는 항목만 보여준다', () => {

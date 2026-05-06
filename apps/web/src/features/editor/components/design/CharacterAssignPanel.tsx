@@ -12,6 +12,7 @@ import {
 import {
   buildCharacterAliasRulesUpdatePayload,
   buildCharacterVisibilityUpdatePayload,
+  buildCharacterProfileImageUpdatePayload,
   buildCharacterRoleUpdatePayload,
   buildCharacterEndcardUpdatePayload,
   getCharacterListBadges,
@@ -168,6 +169,21 @@ export function CharacterAssignPanel({
     [characters, updateCharacter],
   );
 
+  const handleProfileImageChangeForChar = useCallback(
+    (characterId: string, imageUrl: string | null) => {
+      if (updateCharacter.isPending) return;
+
+      const selected = characters?.find((char) => char.id === characterId);
+      if (!selected) return;
+
+      updateCharacter.mutate({
+        characterId: selected.id,
+        body: buildCharacterProfileImageUpdatePayload(selected, imageUrl),
+      });
+    },
+    [characters, updateCharacter],
+  );
+
   if (charsLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -263,6 +279,11 @@ export function CharacterAssignPanel({
               updateCharacter.isPending
                 ? undefined
                 : (values) => handleEndcardChangeForChar(char.id, values)
+            }
+            onProfileImageChange={
+              updateCharacter.isPending
+                ? undefined
+                : (imageUrl) => handleProfileImageChangeForChar(char.id, imageUrl)
             }
           />
         )}

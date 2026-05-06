@@ -258,6 +258,16 @@ export function buildCharacterEndcardUpdatePayload(
   };
 }
 
+export function buildCharacterProfileImageUpdatePayload(
+  character: EditorCharacterResponse,
+  imageUrl: string | null,
+): UpdateCharacterRequest {
+  return {
+    ...buildCharacterBaseUpdatePayload(character),
+    image_url: imageUrl ?? '',
+  };
+}
+
 export function buildCharacterAliasRulesUpdatePayload(
   character: EditorCharacterResponse,
   aliasRules: CharacterAliasRule[],

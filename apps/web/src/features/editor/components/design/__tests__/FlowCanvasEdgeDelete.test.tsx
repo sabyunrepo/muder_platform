@@ -56,8 +56,10 @@ const baseFlowData = {
   addNode: vi.fn(),
   updateNodeData: vi.fn(),
   deleteNode: vi.fn(),
+  deleteEdge: vi.fn(),
   onSelectionChange: vi.fn(),
   updateEdgeCondition: vi.fn(),
+  applyPreset: vi.fn(),
 };
 
 beforeEach(() => {
@@ -69,9 +71,9 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("FlowCanvas edge delete props", () => {
-  it("deleteKeyCode='Delete' prop이 전달된다", () => {
+  it("키보드 Delete 즉시 삭제를 비활성화한다", () => {
     render(<FlowCanvas themeId="t1" />);
-    expect(reactFlowProps.current.deleteKeyCode).toBe("Delete");
+    expect(reactFlowProps.current.deleteKeyCode).toBeNull();
   });
 
   it("edgesFocusable={true} prop이 전달된다", () => {

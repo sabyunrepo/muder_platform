@@ -76,8 +76,11 @@ export function EntityEditorShell<TItem>({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(16rem,0.85fr)_minmax(0,1.45fr)]">
-      <section aria-label={`${title} 목록`} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto lg:grid lg:grid-cols-[minmax(16rem,0.85fr)_minmax(0,1.45fr)] lg:overflow-hidden">
+      <section
+        aria-label={`${title} 목록`}
+        className="flex min-h-0 flex-col rounded-xl border border-slate-800 bg-slate-950/70 p-3"
+      >
         <header className="mb-3 flex items-center justify-between gap-2">
           <div>
             <h3 className="text-sm font-semibold text-slate-200">{title} 목록</h3>
@@ -106,7 +109,7 @@ export function EntityEditorShell<TItem>({
             className="w-full rounded-lg border border-slate-800 bg-slate-900 py-2.5 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
           />
         </label>
-        <div className="max-h-[34rem] space-y-2 overflow-auto pr-1">
+        <div className="max-h-80 min-h-0 space-y-2 overflow-y-auto pr-1 lg:max-h-none lg:flex-1">
           {visibleItems.length === 0 ? (
             <p className="rounded-lg border border-dashed border-slate-800 px-3 py-8 text-center text-xs text-slate-600">
               검색 결과가 없습니다.
@@ -131,9 +134,14 @@ export function EntityEditorShell<TItem>({
       </section>
 
       {selected && (
-        <section className="space-y-4" aria-label={`${title} 상세 영역`}>
-          {renderDetail(selected)}
-          {renderInspector?.(selected)}
+        <section
+          className="min-h-0 overflow-y-visible lg:overflow-y-auto lg:pr-2"
+          aria-label={`${title} 상세 영역`}
+        >
+          <div className="space-y-4 pb-4">
+            {renderDetail(selected)}
+            {renderInspector?.(selected)}
+          </div>
         </section>
       )}
     </div>

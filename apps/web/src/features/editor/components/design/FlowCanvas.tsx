@@ -6,19 +6,19 @@ import {
   type Node,
   type NodeTypes,
   type OnSelectionChangeParams,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFlowData } from "../../hooks/useFlowData";
-import { FlowToolbar } from "./FlowToolbar";
-import { StartNode } from "./StartNode";
-import { PhaseNode } from "./PhaseNode";
-import { EndingNode } from "./EndingNode";
-import { NodeDetailPanel } from "./NodeDetailPanel";
-import { FlowOrderReviewPanel } from "./FlowOrderReviewPanel";
-import { StorySceneSummary } from "./StorySceneSummary";
-import { branchNodeTypes, conditionEdgeTypes } from "./flowNodeRegistry";
-import type { FlowNodeType } from "../../flowTypes";
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFlowData } from '../../hooks/useFlowData';
+import { FlowToolbar } from './FlowToolbar';
+import { StartNode } from './StartNode';
+import { PhaseNode } from './PhaseNode';
+import { EndingNode } from './EndingNode';
+import { NodeDetailPanel } from './NodeDetailPanel';
+import { FlowOrderReviewPanel } from './FlowOrderReviewPanel';
+import { StorySceneSummary } from './StorySceneSummary';
+import { branchNodeTypes, conditionEdgeTypes } from './flowNodeRegistry';
+import type { FlowNodeType } from '../../flowTypes';
 
 // ---------------------------------------------------------------------------
 // Node / edge type registries
@@ -50,6 +50,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showOrderReview, setShowOrderReview] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const {
     nodes,
@@ -64,6 +65,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     addNode,
     updateNodeData,
     deleteNode,
+    deleteEdge,
     onSelectionChange,
     updateEdgeCondition,
     applyPreset,
@@ -75,18 +77,21 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         node.id === highlightId
           ? {
               ...node,
-              className: [node.className, "!ring-2 !ring-amber-400"]
-                .filter(Boolean)
-                .join(" "),
+              className: [node.className, '!ring-2 !ring-amber-400'].filter(Boolean).join(' '),
             }
-          : node,
+          : node
       ),
-    [highlightId, nodes],
+    [highlightId, nodes]
   );
 
   useEffect(() => {
     onSelectedNodeChange?.(selectedNode);
   }, [onSelectedNodeChange, selectedNode]);
+
+  const selectedEdge = useMemo(
+    () => edges.find((edge) => edge.id === selectedEdgeId) ?? null,
+    [edges, selectedEdgeId]
+  );
 
   // Add node at canvas center
   const handleAddNode = useCallback(
@@ -96,20 +101,20 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
       const cy = wrapper ? wrapper.clientHeight / 2 : 200;
       addNode(type as FlowNodeType, { x: cx, y: cy });
     },
-    [addNode],
+    [addNode]
   );
 
   // Drag over — allow drop
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = 'move';
   }, []);
 
   // Drop — create node at drop position
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const type = e.dataTransfer.getData("application/flow-node-type");
+      const type = e.dataTransfer.getData('application/flow-node-type');
       if (!type) return;
       const wrapper = reactFlowWrapper.current;
       if (!wrapper) return;
@@ -119,15 +124,25 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         y: e.clientY - rect.top,
       });
     },
-    [addNode],
+    [addNode]
   );
 
   const handleSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
       onSelectionChange({ nodes: params.nodes });
+      setSelectedEdgeId(
+        params.nodes.length === 0 && params.edges.length === 1 ? params.edges[0].id : null
+      );
     },
-    [onSelectionChange],
+    [onSelectionChange]
   );
+
+  const selectedEdgeLabel = useMemo(() => {
+    if (!selectedEdge) return null;
+    const source = nodes.find((node) => node.id === selectedEdge.source);
+    const target = nodes.find((node) => node.id === selectedEdge.target);
+    return `${String(source?.data?.label ?? selectedEdge.source)} -> ${String(target?.data?.label ?? selectedEdge.target)}`;
+  }, [nodes, selectedEdge]);
 
   if (isLoading) {
     return (
@@ -152,7 +167,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         isOrderReviewing={showOrderReview}
       />
       <StorySceneSummary nodes={nodes} edges={edges} />
-      <div data-testid="flow-workspace" className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <div
+        data-testid="flow-workspace"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"
+      >
         {/* Canvas */}
         <div
           ref={reactFlowWrapper}
@@ -169,7 +187,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
             onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            deleteKeyCode="Delete"
+            deleteKeyCode={null}
             edgesFocusable={true}
             edgesReconnectable={true}
             fitView
@@ -185,7 +203,27 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
           {!showOrderReview && !selectedNode && (
             <div className="p-4 text-sm leading-6 text-slate-400">
-              장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.
+              {selectedEdge ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-300">선 연결</p>
+                    <p className="mt-1 break-words text-xs text-slate-500">{selectedEdgeLabel}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!window.confirm('선 연결을 끊을까요? 이 작업은 즉시 저장됩니다.')) return;
+                      deleteEdge(selectedEdge.id);
+                      setSelectedEdgeId(null);
+                    }}
+                    className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+                  >
+                    연결 끊기
+                  </button>
+                </div>
+              ) : (
+                '장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.'
+              )}
             </div>
           )}
           {showOrderReview && (
@@ -194,7 +232,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
                 nodes={nodes}
                 edges={edges}
                 onHighlight={setHighlightId}
-                onClose={() => { setShowOrderReview(false); setHighlightId(null); }}
+                onClose={() => {
+                  setShowOrderReview(false);
+                  setHighlightId(null);
+                }}
               />
             </div>
           )}

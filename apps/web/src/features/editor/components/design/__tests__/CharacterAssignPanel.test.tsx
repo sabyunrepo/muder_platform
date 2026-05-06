@@ -61,6 +61,29 @@ vi.mock('@/features/editor/mediaApi', () => ({
   useMediaDownloadUrl: (mediaId?: string) => useMediaDownloadUrlMock(mediaId),
 }));
 
+vi.mock('@/features/editor/components/ImageCropUpload', () => ({
+  ImageCropUpload: ({
+    currentImageUrl,
+    onUploaded,
+    onRemoved,
+  }: {
+    currentImageUrl?: string | null;
+    onUploaded: (url: string) => void;
+    onRemoved?: () => void;
+  }) => (
+    <div>
+      <button type="button" onClick={() => onUploaded('https://cdn.example/character.webp')}>
+        프로필 사진 업로드
+      </button>
+      {currentImageUrl && onRemoved && (
+        <button type="button" onClick={onRemoved}>
+          프로필 사진 삭제
+        </button>
+      )}
+    </div>
+  ),
+}));
+
 // ---------------------------------------------------------------------------
 // Import
 // ---------------------------------------------------------------------------
@@ -368,6 +391,43 @@ describe('CharacterAssignPanel', () => {
         endcard_body: '사건 이후의 선택을 보여준다.',
         endcard_image_url: 'https://cdn.example/endcard.webp',
       },
+    });
+  });
+
+  it('기본 정보에서 캐릭터 이미지를 업로드한다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '프로필 사진 업로드' }));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: expect.objectContaining({
+        name: '홍길동',
+        image_url: 'https://cdn.example/character.webp',
+        mystery_role: 'culprit',
+        is_culprit: true,
+      }),
+    });
+  });
+
+  it('기본 정보에서 캐릭터 이미지를 삭제한다', () => {
+    useEditorCharactersMock.mockReturnValue({
+      data: [{ ...mockCharacters[0], image_url: 'https://cdn.example/old.webp' }],
+      isLoading: false,
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '프로필 사진 삭제' }));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: expect.objectContaining({
+        name: '홍길동',
+        image_url: '',
+        mystery_role: 'culprit',
+        is_culprit: true,
+      }),
     });
   });
 
