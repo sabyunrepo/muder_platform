@@ -4,15 +4,13 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
-
-	"github.com/pressly/goose/v3"
 )
 
 func TestRunRequiresDatabaseURL(t *testing.T) {
 	t.Setenv("DATABASE_URL", "")
 	t.Setenv("MIGRATIONS_DIR", "")
 
-	if err := run(); err == nil || err.Error() != "DATABASE_URL is required" {
+	if err := run(fakeMigrationRunner{}); err == nil || err.Error() != "DATABASE_URL is required" {
 		t.Fatalf("run() error = %v, want DATABASE_URL is required", err)
 	}
 }
@@ -24,9 +22,13 @@ func TestRunUsesDefaultMigrationsDir(t *testing.T) {
 	var gotDriver string
 	var gotDialect string
 	var gotMigrationsDir string
-	stubMigrationDependencies(t, &gotDriver, &gotDialect, &gotMigrationsDir, nil)
+	runner := fakeMigrationRunner{
+		gotDriver:        &gotDriver,
+		gotDialect:       &gotDialect,
+		gotMigrationsDir: &gotMigrationsDir,
+	}
 
-	if err := run(); err != nil {
+	if err := run(runner); err != nil {
 		t.Fatalf("run() error = %v", err)
 	}
 	if gotDriver != "pgx" {
@@ -47,10 +49,20 @@ func TestRunUsesMigrationsDirOverride(t *testing.T) {
 	var gotDriver string
 	var gotDialect string
 	var gotMigrationsDir string
-	stubMigrationDependencies(t, &gotDriver, &gotDialect, &gotMigrationsDir, nil)
+	runner := fakeMigrationRunner{
+		gotDriver:        &gotDriver,
+		gotDialect:       &gotDialect,
+		gotMigrationsDir: &gotMigrationsDir,
+	}
 
-	if err := run(); err != nil {
+	if err := run(runner); err != nil {
 		t.Fatalf("run() error = %v", err)
+	}
+	if gotDriver != "pgx" {
+		t.Fatalf("driver = %q, want pgx", gotDriver)
+	}
+	if gotDialect != "postgres" {
+		t.Fatalf("dialect = %q, want postgres", gotDialect)
 	}
 	if gotMigrationsDir != "/custom/migrations" {
 		t.Fatalf("migrations dir = %q, want /custom/migrations", gotMigrationsDir)
@@ -65,36 +77,66 @@ func TestRunWrapsGooseUpError(t *testing.T) {
 	var gotDriver string
 	var gotDialect string
 	var gotMigrationsDir string
-	stubMigrationDependencies(t, &gotDriver, &gotDialect, &gotMigrationsDir, gooseErr)
+	runner := fakeMigrationRunner{
+		gotDriver:        &gotDriver,
+		gotDialect:       &gotDialect,
+		gotMigrationsDir: &gotMigrationsDir,
+		gooseErr:         gooseErr,
+	}
 
-	err := run()
+	err := run(runner)
 	if !errors.Is(err, gooseErr) {
 		t.Fatalf("run() error = %v, want wrapped goose error", err)
 	}
 }
 
-func stubMigrationDependencies(t *testing.T, gotDriver, gotDialect, gotMigrationsDir *string, gooseErr error) {
-	t.Helper()
-
-	originalOpenDB := openDB
-	originalSetGooseDialect := setGooseDialect
-	originalRunGooseUp := runGooseUp
+func TestGooseMigrationRunnerOpenDB(t *testing.T) {
+	db, err := gooseMigrationRunner{}.OpenDB("pgx", "postgres://mmp:mmp@localhost:5432/mmf")
+	if err != nil {
+		t.Fatalf("OpenDB() error = %v", err)
+	}
 	t.Cleanup(func() {
-		openDB = originalOpenDB
-		setGooseDialect = originalSetGooseDialect
-		runGooseUp = originalRunGooseUp
+		if err := db.Close(); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
 	})
+}
 
-	openDB = func(driverName, dataSourceName string) (*sql.DB, error) {
-		*gotDriver = driverName
-		return sql.Open(driverName, dataSourceName)
+func TestGooseMigrationRunnerSetDialect(t *testing.T) {
+	if err := (gooseMigrationRunner{}).SetDialect("postgres"); err != nil {
+		t.Fatalf("SetDialect() error = %v", err)
 	}
-	setGooseDialect = func(dialect string) error {
-		*gotDialect = dialect
-		return nil
+}
+
+type fakeMigrationRunner struct {
+	gotDriver        *string
+	gotDialect       *string
+	gotMigrationsDir *string
+	openErr          error
+	dialectErr       error
+	gooseErr         error
+}
+
+func (f fakeMigrationRunner) OpenDB(driverName, dataSourceName string) (*sql.DB, error) {
+	if f.gotDriver != nil {
+		*f.gotDriver = driverName
 	}
-	runGooseUp = func(_ *sql.DB, dir string, _ ...goose.OptionsFunc) error {
-		*gotMigrationsDir = dir
-		return gooseErr
+	if f.openErr != nil {
+		return nil, f.openErr
 	}
+	return sql.Open(driverName, dataSourceName)
+}
+
+func (f fakeMigrationRunner) SetDialect(dialect string) error {
+	if f.gotDialect != nil {
+		*f.gotDialect = dialect
+	}
+	return f.dialectErr
+}
+
+func (f fakeMigrationRunner) Up(_ *sql.DB, dir string) error {
+	if f.gotMigrationsDir != nil {
+		*f.gotMigrationsDir = dir
+	}
+	return f.gooseErr
 }

@@ -11,19 +11,33 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var (
-	openDB          = sql.Open
-	setGooseDialect = goose.SetDialect
-	runGooseUp      = goose.Up
-)
-
 func main() {
-	if err := run(); err != nil {
+	if err := run(gooseMigrationRunner{}); err != nil {
 		log.Fatal().Err(err).Msg("migrate preview")
 	}
 }
 
-func run() error {
+type migrationRunner interface {
+	OpenDB(driverName, dataSourceName string) (*sql.DB, error)
+	SetDialect(dialect string) error
+	Up(db *sql.DB, dir string) error
+}
+
+type gooseMigrationRunner struct{}
+
+func (gooseMigrationRunner) OpenDB(driverName, dataSourceName string) (*sql.DB, error) {
+	return sql.Open(driverName, dataSourceName)
+}
+
+func (gooseMigrationRunner) SetDialect(dialect string) error {
+	return goose.SetDialect(dialect)
+}
+
+func (gooseMigrationRunner) Up(db *sql.DB, dir string) error {
+	return goose.Up(db, dir)
+}
+
+func run(runner migrationRunner) error {
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
 		return errors.New("DATABASE_URL is required")
@@ -34,16 +48,16 @@ func run() error {
 		migrationsDir = "/db/migrations"
 	}
 
-	db, err := openDB("pgx", databaseURL)
+	db, err := runner.OpenDB("pgx", databaseURL)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
 	defer db.Close()
 
-	if err := setGooseDialect("postgres"); err != nil {
+	if err := runner.SetDialect("postgres"); err != nil {
 		return fmt.Errorf("set goose dialect: %w", err)
 	}
-	if err := runGooseUp(db, migrationsDir); err != nil {
+	if err := runner.Up(db, migrationsDir); err != nil {
 		return fmt.Errorf("goose up: %w", err)
 	}
 	log.Info().Str("migrations_dir", migrationsDir).Msg("migrations applied")
