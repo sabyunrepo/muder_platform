@@ -12,7 +12,7 @@ import {
 import {
   buildCharacterAliasRulesUpdatePayload,
   buildCharacterVisibilityUpdatePayload,
-  buildCharacterProfileImageUpdatePayload,
+  buildCharacterProfileImageMediaUpdatePayload,
   buildCharacterRoleUpdatePayload,
   buildCharacterEndcardUpdatePayload,
   getCharacterListBadges,
@@ -155,7 +155,7 @@ export function CharacterAssignPanel({
   );
 
   const handleEndcardChangeForChar = useCallback(
-    (characterId: string, values: { title: string; body: string; imageUrl: string }) => {
+    (characterId: string, values: { title: string; body: string; imageUrl: string; imageMediaId?: string | null }) => {
       if (updateCharacter.isPending) return;
 
       const selected = characters?.find((char) => char.id === characterId);
@@ -170,7 +170,7 @@ export function CharacterAssignPanel({
   );
 
   const handleProfileImageChangeForChar = useCallback(
-    (characterId: string, imageUrl: string | null) => {
+    (characterId: string, imageMediaId: string | null) => {
       if (updateCharacter.isPending) return;
 
       const selected = characters?.find((char) => char.id === characterId);
@@ -178,7 +178,7 @@ export function CharacterAssignPanel({
 
       updateCharacter.mutate({
         characterId: selected.id,
-        body: buildCharacterProfileImageUpdatePayload(selected, imageUrl),
+        body: buildCharacterProfileImageMediaUpdatePayload(selected, imageMediaId),
       });
     },
     [characters, updateCharacter],

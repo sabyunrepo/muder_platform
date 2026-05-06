@@ -6,7 +6,7 @@ import { MissionEditor } from './MissionEditor';
 import { StartingClueAssigner } from './StartingClueAssigner';
 import { CharacterRoleSheetSection } from './CharacterRoleSheetSection';
 import { CharacterAliasRulesEditor } from './CharacterAliasRulesEditor';
-import { ImageCropUpload } from '@/features/editor/components/ImageCropUpload';
+import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
 import {
   type CharacterVisibilityField,
   characterRoleOptions,
@@ -34,6 +34,7 @@ interface CharacterItem {
   name: string;
   description?: string | null;
   image_url?: string | null;
+  image_media_id?: string | null;
   is_culprit?: boolean;
   mystery_role?: MysteryRole;
   sort_order?: number;
@@ -44,6 +45,7 @@ interface CharacterItem {
   endcard_title?: string | null;
   endcard_body?: string | null;
   endcard_image_url?: string | null;
+  endcard_image_media_id?: string | null;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -61,8 +63,8 @@ interface CharacterDetailPanelProps {
   onMysteryRoleChange?: (role: MysteryRole) => void;
   onVisibilityChange?: (field: CharacterVisibilityField, value: boolean) => void;
   onAliasRulesSave?: (rules: CharacterAliasRule[]) => void;
-  onEndcardChange?: (values: { title: string; body: string; imageUrl: string }) => void;
-  onProfileImageChange?: (imageUrl: string | null) => void;
+  onEndcardChange?: (values: { title: string; body: string; imageUrl: string; imageMediaId?: string | null }) => void;
+  onProfileImageChange?: (imageMediaId: string | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +93,7 @@ export function CharacterDetailPanel({
   const [endcardTitle, setEndcardTitle] = useState('');
   const [endcardBody, setEndcardBody] = useState('');
   const [endcardImageUrl, setEndcardImageUrl] = useState('');
+  const [endcardImageMediaId, setEndcardImageMediaId] = useState<string | null>(null);
   const characterOptions = useMemo(
     () => characters.map((char) => ({ id: char.id, name: char.name })),
     [characters]
@@ -106,11 +109,13 @@ export function CharacterDetailPanel({
     setEndcardTitle(selectedChar?.endcard_title ?? '');
     setEndcardBody(selectedChar?.endcard_body ?? '');
     setEndcardImageUrl(selectedChar?.endcard_image_url ?? '');
+    setEndcardImageMediaId(selectedChar?.endcard_image_media_id ?? null);
   }, [
     selectedChar?.id,
     selectedChar?.endcard_title,
     selectedChar?.endcard_body,
     selectedChar?.endcard_image_url,
+    selectedChar?.endcard_image_media_id,
   ]);
 
   if (!selectedChar) {
@@ -128,6 +133,7 @@ export function CharacterDetailPanel({
     name: selectedChar.name,
     description: selectedChar.description ?? null,
     image_url: selectedChar.image_url ?? null,
+    image_media_id: selectedChar.image_media_id ?? null,
     is_culprit: Boolean(selectedChar.is_culprit),
     mystery_role: selectedRole,
     sort_order: selectedChar.sort_order ?? 0,
@@ -140,12 +146,14 @@ export function CharacterDetailPanel({
     endcard_title: selectedChar.endcard_title ?? null,
     endcard_body: selectedChar.endcard_body ?? null,
     endcard_image_url: selectedChar.endcard_image_url ?? null,
+    endcard_image_media_id: selectedChar.endcard_image_media_id ?? null,
     alias_rules: selectedChar.alias_rules ?? [],
   });
   const endcardDirty =
     endcardTitle !== (selectedChar.endcard_title ?? '') ||
     endcardBody !== (selectedChar.endcard_body ?? '') ||
-    endcardImageUrl !== (selectedChar.endcard_image_url ?? '');
+    endcardImageUrl !== (selectedChar.endcard_image_url ?? '') ||
+    endcardImageMediaId !== (selectedChar.endcard_image_media_id ?? null);
 
   return (
     <div className="max-w-4xl space-y-3">
@@ -177,27 +185,25 @@ export function CharacterDetailPanel({
             forceOpen: true,
             children: (
               <div className="grid gap-3 md:grid-cols-[8rem_minmax(0,1fr)]">
-                <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-950 p-2 text-xs text-slate-600">
+                <div className="min-w-0">
                   {onProfileImageChange ? (
-                    <>
-                      <ImageCropUpload
+                    <ImageMediaReferenceField
                         themeId={themeId}
-                        targetId={selectedChar.id}
-                        target="character"
-                        currentImageUrl={selectedChar.image_url ?? null}
-                        onUploaded={onProfileImageChange}
-                        onRemoved={
-                          selectedChar.image_url ? () => onProfileImageChange(null) : undefined
-                        }
-                        size="sm"
-                        shape="circle"
-                      />
-                      <span>{selectedChar.image_url ? '이미지 변경' : '이미지 업로드'}</span>
-                    </>
+                        label="프로필 이미지"
+                        imageMediaId={selectedChar.image_media_id ?? null}
+                        legacyImageUrl={selectedChar.image_url ?? null}
+                        pickerTitle="프로필 이미지 선택"
+                        emptyLabel="이미지 선택"
+                        compact
+                        onSelect={(media) => onProfileImageChange(media.id)}
+                        onClear={() => onProfileImageChange(null)}
+                    />
                   ) : (
-                    <span className="px-2 text-center text-[11px] leading-5 text-slate-500">
+                    <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-center">
+                      <span className="px-2 text-[11px] leading-5 text-slate-500">
                       현재 프로필 이미지를 편집할 수 없습니다.
-                    </span>
+                      </span>
+                    </div>
                   )}
                 </div>
                 <div className="space-y-2.5">
@@ -314,19 +320,21 @@ export function CharacterDetailPanel({
                       placeholder={`${selectedChar.name}의 후일담`}
                     />
                   </label>
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                      이미지 URL
-                    </span>
-                    <input
-                      type="url"
-                      value={endcardImageUrl}
-                      disabled={!onEndcardChange}
-                      onChange={(event) => setEndcardImageUrl(event.currentTarget.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-500/60 disabled:opacity-70"
-                      placeholder="https://..."
-                    />
-                  </label>
+                  <ImageMediaReferenceField
+                    themeId={themeId}
+                    label="결과 카드 이미지"
+                    imageMediaId={endcardImageMediaId}
+                    legacyImageUrl={selectedChar.endcard_image_url ?? null}
+                    pickerTitle="결과 카드 이미지 선택"
+                    emptyLabel="결과 카드 이미지 선택"
+                    compact
+                    disabled={!onEndcardChange}
+                    onSelect={(media) => {
+                      setEndcardImageMediaId(media.id);
+                      setEndcardImageUrl('');
+                    }}
+                    onClear={() => setEndcardImageMediaId(null)}
+                  />
                 </div>
                 <label className="block">
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
@@ -351,6 +359,7 @@ export function CharacterDetailPanel({
                         title: endcardTitle,
                         body: endcardBody,
                         imageUrl: endcardImageUrl,
+                        imageMediaId: endcardImageMediaId,
                       })
                     }
                     className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"

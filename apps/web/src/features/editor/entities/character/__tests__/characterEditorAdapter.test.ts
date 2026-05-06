@@ -4,7 +4,7 @@ import {
   buildCharacterVisibilityUpdatePayload,
   buildCharacterAliasRulesUpdatePayload,
   buildCharacterEndcardUpdatePayload,
-  buildCharacterProfileImageUpdatePayload,
+  buildCharacterProfileImageMediaUpdatePayload,
   getCharacterListBadges,
   buildCharacterRoleUpdatePayload,
   getCharacterRoleBadge,
@@ -244,7 +244,8 @@ describe('characterEditorAdapter', () => {
     const payload = buildCharacterEndcardUpdatePayload(character({ is_playable: false }), {
       title: '  새 결말  ',
       body: '  공개되는 후일담  ',
-      imageUrl: '  https://cdn.example/new.webp  ',
+      imageUrl: '',
+      imageMediaId: 'image-1',
     });
 
     expect(payload).toMatchObject({
@@ -253,7 +254,8 @@ describe('characterEditorAdapter', () => {
       is_playable: false,
       endcard_title: '새 결말',
       endcard_body: '공개되는 후일담',
-      endcard_image_url: 'https://cdn.example/new.webp',
+      endcard_image_url: '',
+      endcard_image_media_id: 'image-1',
     });
   });
 
@@ -271,15 +273,16 @@ describe('characterEditorAdapter', () => {
     });
   });
 
-  it('프로필 이미지 삭제 payload는 빈 문자열로 backend clear 계약을 사용한다', () => {
-    const payload = buildCharacterProfileImageUpdatePayload(
+  it('프로필 이미지 선택 payload는 미디어 참조를 사용하고 URL을 비운다', () => {
+    const payload = buildCharacterProfileImageMediaUpdatePayload(
       character({ image_url: 'https://cdn.example/old.webp' }),
-      null,
+      'image-1',
     );
 
     expect(payload).toMatchObject({
       name: '홍길동',
       image_url: '',
+      image_media_id: 'image-1',
       mystery_role: 'suspect',
     });
   });

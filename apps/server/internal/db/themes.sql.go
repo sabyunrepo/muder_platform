@@ -89,28 +89,30 @@ const createThemeCharacter = `-- name: CreateThemeCharacter :one
 INSERT INTO theme_characters (
   theme_id, name, description, image_url, is_culprit, mystery_role, sort_order,
   is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate,
-  endcard_title, endcard_body, endcard_image_url, alias_rules
+  endcard_title, endcard_body, endcard_image_url, image_media_id, endcard_image_media_id, alias_rules
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules, image_media_id, endcard_image_media_id
 `
 
 type CreateThemeCharacterParams struct {
-	ThemeID           uuid.UUID       `json:"theme_id"`
-	Name              string          `json:"name"`
-	Description       pgtype.Text     `json:"description"`
-	ImageUrl          pgtype.Text     `json:"image_url"`
-	IsCulprit         bool            `json:"is_culprit"`
-	MysteryRole       string          `json:"mystery_role"`
-	SortOrder         int32           `json:"sort_order"`
-	IsPlayable        bool            `json:"is_playable"`
-	ShowInIntro       bool            `json:"show_in_intro"`
-	CanSpeakInReading bool            `json:"can_speak_in_reading"`
-	IsVotingCandidate bool            `json:"is_voting_candidate"`
-	EndcardTitle      pgtype.Text     `json:"endcard_title"`
-	EndcardBody       pgtype.Text     `json:"endcard_body"`
-	EndcardImageUrl   pgtype.Text     `json:"endcard_image_url"`
-	AliasRules        json.RawMessage `json:"alias_rules"`
+	ThemeID             uuid.UUID       `json:"theme_id"`
+	Name                string          `json:"name"`
+	Description         pgtype.Text     `json:"description"`
+	ImageUrl            pgtype.Text     `json:"image_url"`
+	IsCulprit           bool            `json:"is_culprit"`
+	MysteryRole         string          `json:"mystery_role"`
+	SortOrder           int32           `json:"sort_order"`
+	IsPlayable          bool            `json:"is_playable"`
+	ShowInIntro         bool            `json:"show_in_intro"`
+	CanSpeakInReading   bool            `json:"can_speak_in_reading"`
+	IsVotingCandidate   bool            `json:"is_voting_candidate"`
+	EndcardTitle        pgtype.Text     `json:"endcard_title"`
+	EndcardBody         pgtype.Text     `json:"endcard_body"`
+	EndcardImageUrl     pgtype.Text     `json:"endcard_image_url"`
+	ImageMediaID        pgtype.UUID     `json:"image_media_id"`
+	EndcardImageMediaID pgtype.UUID     `json:"endcard_image_media_id"`
+	AliasRules          json.RawMessage `json:"alias_rules"`
 }
 
 func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeCharacterParams) (ThemeCharacter, error) {
@@ -129,6 +131,8 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 		arg.EndcardTitle,
 		arg.EndcardBody,
 		arg.EndcardImageUrl,
+		arg.ImageMediaID,
+		arg.EndcardImageMediaID,
 		arg.AliasRules,
 	)
 	var i ThemeCharacter
@@ -149,6 +153,8 @@ func (q *Queries) CreateThemeCharacter(ctx context.Context, arg CreateThemeChara
 		&i.EndcardBody,
 		&i.EndcardImageUrl,
 		&i.AliasRules,
+		&i.ImageMediaID,
+		&i.EndcardImageMediaID,
 	)
 	return i, err
 }
@@ -236,7 +242,7 @@ func (q *Queries) GetThemeBySlug(ctx context.Context, slug string) (Theme, error
 }
 
 const getThemeCharacter = `-- name: GetThemeCharacter :one
-SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules FROM theme_characters WHERE id = $1
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules, image_media_id, endcard_image_media_id FROM theme_characters WHERE id = $1
 `
 
 func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCharacter, error) {
@@ -259,12 +265,14 @@ func (q *Queries) GetThemeCharacter(ctx context.Context, id uuid.UUID) (ThemeCha
 		&i.EndcardBody,
 		&i.EndcardImageUrl,
 		&i.AliasRules,
+		&i.ImageMediaID,
+		&i.EndcardImageMediaID,
 	)
 	return i, err
 }
 
 const getThemeCharacters = `-- name: GetThemeCharacters :many
-SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules, image_media_id, endcard_image_media_id FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]ThemeCharacter, error) {
@@ -293,6 +301,8 @@ func (q *Queries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]
 			&i.EndcardBody,
 			&i.EndcardImageUrl,
 			&i.AliasRules,
+			&i.ImageMediaID,
+			&i.EndcardImageMediaID,
 		); err != nil {
 			return nil, err
 		}
@@ -565,27 +575,31 @@ UPDATE theme_characters SET
   endcard_title = $12,
   endcard_body = $13,
   endcard_image_url = $14,
-  alias_rules = $15
+  image_media_id = $15,
+  endcard_image_media_id = $16,
+  alias_rules = $17
 WHERE id = $1
-RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules
+RETURNING id, theme_id, name, description, image_url, is_culprit, sort_order, mystery_role, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, endcard_title, endcard_body, endcard_image_url, alias_rules, image_media_id, endcard_image_media_id
 `
 
 type UpdateThemeCharacterParams struct {
-	ID                uuid.UUID       `json:"id"`
-	Name              string          `json:"name"`
-	Description       pgtype.Text     `json:"description"`
-	ImageUrl          pgtype.Text     `json:"image_url"`
-	IsCulprit         bool            `json:"is_culprit"`
-	MysteryRole       string          `json:"mystery_role"`
-	SortOrder         int32           `json:"sort_order"`
-	IsPlayable        bool            `json:"is_playable"`
-	ShowInIntro       bool            `json:"show_in_intro"`
-	CanSpeakInReading bool            `json:"can_speak_in_reading"`
-	IsVotingCandidate bool            `json:"is_voting_candidate"`
-	EndcardTitle      pgtype.Text     `json:"endcard_title"`
-	EndcardBody       pgtype.Text     `json:"endcard_body"`
-	EndcardImageUrl   pgtype.Text     `json:"endcard_image_url"`
-	AliasRules        json.RawMessage `json:"alias_rules"`
+	ID                  uuid.UUID       `json:"id"`
+	Name                string          `json:"name"`
+	Description         pgtype.Text     `json:"description"`
+	ImageUrl            pgtype.Text     `json:"image_url"`
+	IsCulprit           bool            `json:"is_culprit"`
+	MysteryRole         string          `json:"mystery_role"`
+	SortOrder           int32           `json:"sort_order"`
+	IsPlayable          bool            `json:"is_playable"`
+	ShowInIntro         bool            `json:"show_in_intro"`
+	CanSpeakInReading   bool            `json:"can_speak_in_reading"`
+	IsVotingCandidate   bool            `json:"is_voting_candidate"`
+	EndcardTitle        pgtype.Text     `json:"endcard_title"`
+	EndcardBody         pgtype.Text     `json:"endcard_body"`
+	EndcardImageUrl     pgtype.Text     `json:"endcard_image_url"`
+	ImageMediaID        pgtype.UUID     `json:"image_media_id"`
+	EndcardImageMediaID pgtype.UUID     `json:"endcard_image_media_id"`
+	AliasRules          json.RawMessage `json:"alias_rules"`
 }
 
 func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeCharacterParams) (ThemeCharacter, error) {
@@ -604,6 +618,8 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 		arg.EndcardTitle,
 		arg.EndcardBody,
 		arg.EndcardImageUrl,
+		arg.ImageMediaID,
+		arg.EndcardImageMediaID,
 		arg.AliasRules,
 	)
 	var i ThemeCharacter
@@ -624,6 +640,8 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 		&i.EndcardBody,
 		&i.EndcardImageUrl,
 		&i.AliasRules,
+		&i.ImageMediaID,
+		&i.EndcardImageMediaID,
 	)
 	return i, err
 }

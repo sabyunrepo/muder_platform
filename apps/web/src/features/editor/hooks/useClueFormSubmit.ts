@@ -23,6 +23,7 @@ export interface ClueSubmitBody {
   name: string;
   description?: string;
   image_url?: string;
+  image_media_id?: string | null;
   level: number;
   sort_order: number;
   is_common: boolean;

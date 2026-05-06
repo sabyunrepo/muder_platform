@@ -54,21 +54,26 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 	if count >= MaxCluesPerTheme {
 		return nil, apperror.BadRequest(fmt.Sprintf("theme cannot have more than %d clues", MaxCluesPerTheme))
 	}
+	imageMediaID, err := s.resolveThemeImageMedia(ctx, themeID, req.ImageMediaID, "clue image")
+	if err != nil {
+		return nil, err
+	}
 	clue, err := s.q.CreateClue(ctx, db.CreateClueParams{
-		ThemeID:     themeID,
-		LocationID:  uuidPtrToPgtype(req.LocationID),
-		Name:        req.Name,
-		Description: ptrToText(req.Description),
-		ImageUrl:    ptrToText(req.ImageURL),
-		IsCommon:    req.IsCommon,
-		Level:       req.Level,
-		SortOrder:   req.SortOrder,
-		IsUsable:    usePolicy.IsUsable,
-		UseEffect:   ptrToText(usePolicy.UseEffect),
-		UseTarget:   ptrToText(usePolicy.UseTarget),
-		UseConsumed: usePolicy.UseConsumed,
-		RevealRound: int32PtrToPgtype(req.RevealRound),
-		HideRound:   int32PtrToPgtype(req.HideRound),
+		ThemeID:      themeID,
+		LocationID:   uuidPtrToPgtype(req.LocationID),
+		Name:         req.Name,
+		Description:  ptrToText(req.Description),
+		ImageUrl:     ptrToText(req.ImageURL),
+		ImageMediaID: imageMediaID,
+		IsCommon:     req.IsCommon,
+		Level:        req.Level,
+		SortOrder:    req.SortOrder,
+		IsUsable:     usePolicy.IsUsable,
+		UseEffect:    ptrToText(usePolicy.UseEffect),
+		UseTarget:    ptrToText(usePolicy.UseTarget),
+		UseConsumed:  usePolicy.UseConsumed,
+		RevealRound:  int32PtrToPgtype(req.RevealRound),
+		HideRound:    int32PtrToPgtype(req.HideRound),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create clue")
@@ -94,21 +99,33 @@ func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, r
 		s.logger.Error().Err(err).Msg("failed to get clue")
 		return nil, apperror.Internal("failed to get clue")
 	}
+	imageMediaID := c.ImageMediaID
+	if req.ImageMediaID.Set {
+		if req.ImageMediaID.Value == nil {
+			imageMediaID = pgtype.UUID{}
+		} else {
+			imageMediaID, err = s.resolveThemeImageMedia(ctx, c.ThemeID, req.ImageMediaID.Value, "clue image")
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	updated, err := s.q.UpdateClue(ctx, db.UpdateClueParams{
-		ID:          c.ID,
-		LocationID:  uuidPtrToPgtype(req.LocationID),
-		Name:        req.Name,
-		Description: ptrToText(req.Description),
-		ImageUrl:    ptrToText(req.ImageURL),
-		IsCommon:    req.IsCommon,
-		Level:       req.Level,
-		SortOrder:   req.SortOrder,
-		IsUsable:    usePolicy.IsUsable,
-		UseEffect:   ptrToText(usePolicy.UseEffect),
-		UseTarget:   ptrToText(usePolicy.UseTarget),
-		UseConsumed: usePolicy.UseConsumed,
-		RevealRound: int32PtrToPgtype(req.RevealRound),
-		HideRound:   int32PtrToPgtype(req.HideRound),
+		ID:           c.ID,
+		LocationID:   uuidPtrToPgtype(req.LocationID),
+		Name:         req.Name,
+		Description:  ptrToText(req.Description),
+		ImageUrl:     ptrToText(req.ImageURL),
+		ImageMediaID: imageMediaID,
+		IsCommon:     req.IsCommon,
+		Level:        req.Level,
+		SortOrder:    req.SortOrder,
+		IsUsable:     usePolicy.IsUsable,
+		UseEffect:    ptrToText(usePolicy.UseEffect),
+		UseTarget:    ptrToText(usePolicy.UseTarget),
+		UseConsumed:  usePolicy.UseConsumed,
+		RevealRound:  int32PtrToPgtype(req.RevealRound),
+		HideRound:    int32PtrToPgtype(req.HideRound),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update clue")
@@ -244,22 +261,23 @@ func (s *service) UpsertContent(ctx context.Context, creatorID, themeID uuid.UUI
 
 func toClueResponse(c db.ThemeClue) ClueResponse {
 	return ClueResponse{
-		ID:          c.ID,
-		ThemeID:     c.ThemeID,
-		LocationID:  pgtypeUUIDToPtr(c.LocationID),
-		Name:        c.Name,
-		Description: textToPtr(c.Description),
-		ImageURL:    textToPtr(c.ImageUrl),
-		IsCommon:    c.IsCommon,
-		Level:       c.Level,
-		SortOrder:   c.SortOrder,
-		CreatedAt:   c.CreatedAt,
-		IsUsable:    c.IsUsable,
-		UseEffect:   textToPtr(c.UseEffect),
-		UseTarget:   textToPtr(c.UseTarget),
-		UseConsumed: c.UseConsumed,
-		RevealRound: pgtypeInt4ToPtr(c.RevealRound),
-		HideRound:   pgtypeInt4ToPtr(c.HideRound),
+		ID:           c.ID,
+		ThemeID:      c.ThemeID,
+		LocationID:   pgtypeUUIDToPtr(c.LocationID),
+		Name:         c.Name,
+		Description:  textToPtr(c.Description),
+		ImageURL:     textToPtr(c.ImageUrl),
+		ImageMediaID: pgtypeUUIDToPtr(c.ImageMediaID),
+		IsCommon:     c.IsCommon,
+		Level:        c.Level,
+		SortOrder:    c.SortOrder,
+		CreatedAt:    c.CreatedAt,
+		IsUsable:     c.IsUsable,
+		UseEffect:    textToPtr(c.UseEffect),
+		UseTarget:    textToPtr(c.UseTarget),
+		UseConsumed:  c.UseConsumed,
+		RevealRound:  pgtypeInt4ToPtr(c.RevealRound),
+		HideRound:    pgtypeInt4ToPtr(c.HideRound),
 	}
 }
 

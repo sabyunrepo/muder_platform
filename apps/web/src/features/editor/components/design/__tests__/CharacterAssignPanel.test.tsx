@@ -19,6 +19,7 @@ const {
   updateCharacterPendingMock,
   uploadMediaFileMock,
   useMediaDownloadUrlMock,
+  useMediaListMock,
 } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
@@ -31,6 +32,7 @@ const {
   updateCharacterPendingMock: { value: false },
   uploadMediaFileMock: vi.fn(),
   useMediaDownloadUrlMock: vi.fn(),
+  useMediaListMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -59,29 +61,33 @@ vi.mock('@/features/editor/mediaApi', () => ({
   useRequestUploadUrl: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useConfirmUpload: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useMediaDownloadUrl: (mediaId?: string) => useMediaDownloadUrlMock(mediaId),
+  useMediaList: () => useMediaListMock(),
 }));
 
-vi.mock('@/features/editor/components/ImageCropUpload', () => ({
-  ImageCropUpload: ({
-    currentImageUrl,
-    onUploaded,
-    onRemoved,
+vi.mock('@/features/editor/components/media/MediaPicker', () => ({
+  MediaPicker: ({
+    open,
+    filterType,
+    selectedId,
+    onSelect,
   }: {
-    currentImageUrl?: string | null;
-    onUploaded: (url: string) => void;
-    onRemoved?: () => void;
-  }) => (
-    <div>
-      <button type="button" onClick={() => onUploaded('https://cdn.example/character.webp')}>
-        프로필 사진 업로드
-      </button>
-      {currentImageUrl && onRemoved && (
-        <button type="button" onClick={onRemoved}>
-          프로필 사진 삭제
+    open: boolean;
+    filterType?: string;
+    selectedId?: string | null;
+    onSelect: (media: { id: string; name: string; type: string }) => void;
+  }) =>
+    open ? (
+      <div>
+        <span>filter:{filterType}</span>
+        <span>selected:{selectedId ?? 'none'}</span>
+        <button
+          type="button"
+          onClick={() => onSelect({ id: 'image-1', name: '캐릭터 이미지', type: 'IMAGE' })}
+        >
+          캐릭터 이미지 선택
         </button>
-      )}
-    </div>
-  ),
+      </div>
+    ) : null,
 }));
 
 // ---------------------------------------------------------------------------
@@ -225,6 +231,10 @@ describe('CharacterAssignPanel', () => {
     useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '' } }, isLoading: false });
     useUpsertCharacterRoleSheetMock.mockReturnValue({ mutate: upsertRoleSheetMutateMock, isPending: false });
     useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() });
+    useMediaListMock.mockReturnValue({
+      data: [{ id: 'image-1', name: '캐릭터 이미지', type: 'IMAGE' }],
+      isLoading: false,
+    });
     updateCharacterPendingMock.value = false;
   });
 
@@ -366,9 +376,8 @@ describe('CharacterAssignPanel', () => {
     fireEvent.change(screen.getByRole('textbox', { name: '제목' }), {
       target: { value: '범인의 후일담' },
     });
-    fireEvent.change(screen.getByRole('textbox', { name: '이미지 URL' }), {
-      target: { value: 'https://cdn.example/endcard.webp' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: '결과 카드 이미지 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
     fireEvent.change(screen.getByRole('textbox', { name: '본문' }), {
       target: { value: '사건 이후의 선택을 보여준다.' },
     });
@@ -389,21 +398,25 @@ describe('CharacterAssignPanel', () => {
         is_voting_candidate: true,
         endcard_title: '범인의 후일담',
         endcard_body: '사건 이후의 선택을 보여준다.',
-        endcard_image_url: 'https://cdn.example/endcard.webp',
+        endcard_image_url: '',
+        endcard_image_media_id: 'image-1',
       },
     });
   });
 
-  it('기본 정보에서 캐릭터 이미지를 업로드한다', () => {
+  it('기본 정보에서 캐릭터 이미지를 미디어 관리 IMAGE로 선택한다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
-    fireEvent.click(screen.getByRole('button', { name: '프로필 사진 업로드' }));
+    fireEvent.click(screen.getByRole('button', { name: '이미지 선택' }));
+    expect(screen.getByText('filter:IMAGE')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
 
     expect(updateCharacterMutateMock).toHaveBeenCalledWith({
       characterId: 'char-1',
       body: expect.objectContaining({
         name: '홍길동',
-        image_url: 'https://cdn.example/character.webp',
+        image_url: '',
+        image_media_id: 'image-1',
         mystery_role: 'culprit',
         is_culprit: true,
       }),
@@ -412,19 +425,19 @@ describe('CharacterAssignPanel', () => {
 
   it('기본 정보에서 캐릭터 이미지를 삭제한다', () => {
     useEditorCharactersMock.mockReturnValue({
-      data: [{ ...mockCharacters[0], image_url: 'https://cdn.example/old.webp' }],
+      data: [{ ...mockCharacters[0], image_media_id: 'image-1' }],
       isLoading: false,
     });
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
-    fireEvent.click(screen.getByRole('button', { name: '프로필 사진 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '제거' }));
 
     expect(updateCharacterMutateMock).toHaveBeenCalledWith({
       characterId: 'char-1',
       body: expect.objectContaining({
         name: '홍길동',
-        image_url: '',
+        image_media_id: null,
         mystery_role: 'culprit',
         is_culprit: true,
       }),
@@ -639,7 +652,7 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
-    fireEvent.click(screen.getByRole('button', { name: /이미지/ }));
+    fireEvent.click(screen.getAllByRole('button', { name: /이미지/ }).at(-1)!);
     fireEvent.change(screen.getByRole('textbox', { name: '이미지 페이지 URL' }), {
       target: { value: 'https://cdn.example/role-1.webp' },
     });

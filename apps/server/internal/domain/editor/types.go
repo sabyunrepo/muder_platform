@@ -92,54 +92,57 @@ type LocationResponse struct {
 // --- Clue types ---
 
 type CreateClueRequest struct {
-	LocationID  *uuid.UUID `json:"location_id"`
-	Name        string     `json:"name" validate:"required,min=1,max=200"`
-	Description *string    `json:"description" validate:"omitempty,max=2000"`
-	ImageURL    *string    `json:"image_url" validate:"omitempty,url"`
-	IsCommon    bool       `json:"is_common"`
-	Level       int32      `json:"level" validate:"min=1,max=10"`
-	SortOrder   int32      `json:"sort_order" validate:"min=0"`
-	IsUsable    bool       `json:"is_usable"`
-	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
-	UseTarget   *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
-	UseConsumed bool       `json:"use_consumed"`
-	RevealRound *int32     `json:"reveal_round" validate:"omitempty,min=1"`
-	HideRound   *int32     `json:"hide_round" validate:"omitempty,min=1"`
+	LocationID   *uuid.UUID `json:"location_id"`
+	Name         string     `json:"name" validate:"required,min=1,max=200"`
+	Description  *string    `json:"description" validate:"omitempty,max=2000"`
+	ImageURL     *string    `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID *uuid.UUID `json:"image_media_id"`
+	IsCommon     bool       `json:"is_common"`
+	Level        int32      `json:"level" validate:"min=1,max=10"`
+	SortOrder    int32      `json:"sort_order" validate:"min=0"`
+	IsUsable     bool       `json:"is_usable"`
+	UseEffect    *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
+	UseTarget    *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
+	UseConsumed  bool       `json:"use_consumed"`
+	RevealRound  *int32     `json:"reveal_round" validate:"omitempty,min=1"`
+	HideRound    *int32     `json:"hide_round" validate:"omitempty,min=1"`
 }
 
 type UpdateClueRequest struct {
-	LocationID  *uuid.UUID `json:"location_id"`
-	Name        string     `json:"name" validate:"required,min=1,max=200"`
-	Description *string    `json:"description" validate:"omitempty,max=2000"`
-	ImageURL    *string    `json:"image_url" validate:"omitempty,url"`
-	IsCommon    bool       `json:"is_common"`
-	Level       int32      `json:"level" validate:"min=1,max=10"`
-	SortOrder   int32      `json:"sort_order" validate:"min=0"`
-	IsUsable    bool       `json:"is_usable"`
-	UseEffect   *string    `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
-	UseTarget   *string    `json:"use_target" validate:"omitempty,oneof=player clue self"`
-	UseConsumed bool       `json:"use_consumed"`
-	RevealRound *int32     `json:"reveal_round" validate:"omitempty,min=1"`
-	HideRound   *int32     `json:"hide_round" validate:"omitempty,min=1"`
+	LocationID   *uuid.UUID   `json:"location_id"`
+	Name         string       `json:"name" validate:"required,min=1,max=200"`
+	Description  *string      `json:"description" validate:"omitempty,max=2000"`
+	ImageURL     *string      `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID OptionalUUID `json:"image_media_id"`
+	IsCommon     bool         `json:"is_common"`
+	Level        int32        `json:"level" validate:"min=1,max=10"`
+	SortOrder    int32        `json:"sort_order" validate:"min=0"`
+	IsUsable     bool         `json:"is_usable"`
+	UseEffect    *string      `json:"use_effect" validate:"omitempty,oneof=peek steal reveal block swap"`
+	UseTarget    *string      `json:"use_target" validate:"omitempty,oneof=player clue self"`
+	UseConsumed  bool         `json:"use_consumed"`
+	RevealRound  *int32       `json:"reveal_round" validate:"omitempty,min=1"`
+	HideRound    *int32       `json:"hide_round" validate:"omitempty,min=1"`
 }
 
 type ClueResponse struct {
-	ID          uuid.UUID  `json:"id"`
-	ThemeID     uuid.UUID  `json:"theme_id"`
-	LocationID  *uuid.UUID `json:"location_id,omitempty"`
-	Name        string     `json:"name"`
-	Description *string    `json:"description,omitempty"`
-	ImageURL    *string    `json:"image_url,omitempty"`
-	IsCommon    bool       `json:"is_common"`
-	Level       int32      `json:"level"`
-	SortOrder   int32      `json:"sort_order"`
-	CreatedAt   time.Time  `json:"created_at"`
-	IsUsable    bool       `json:"is_usable"`
-	UseEffect   *string    `json:"use_effect,omitempty"`
-	UseTarget   *string    `json:"use_target,omitempty"`
-	UseConsumed bool       `json:"use_consumed"`
-	RevealRound *int32     `json:"reveal_round,omitempty"`
-	HideRound   *int32     `json:"hide_round,omitempty"`
+	ID           uuid.UUID  `json:"id"`
+	ThemeID      uuid.UUID  `json:"theme_id"`
+	LocationID   *uuid.UUID `json:"location_id,omitempty"`
+	Name         string     `json:"name"`
+	Description  *string    `json:"description,omitempty"`
+	ImageURL     *string    `json:"image_url,omitempty"`
+	ImageMediaID *uuid.UUID `json:"image_media_id,omitempty"`
+	IsCommon     bool       `json:"is_common"`
+	Level        int32      `json:"level"`
+	SortOrder    int32      `json:"sort_order"`
+	CreatedAt    time.Time  `json:"created_at"`
+	IsUsable     bool       `json:"is_usable"`
+	UseEffect    *string    `json:"use_effect,omitempty"`
+	UseTarget    *string    `json:"use_target,omitempty"`
+	UseConsumed  bool       `json:"use_consumed"`
+	RevealRound  *int32     `json:"reveal_round,omitempty"`
+	HideRound    *int32     `json:"hide_round,omitempty"`
 }
 
 // --- Clue edge (unified group) types ---

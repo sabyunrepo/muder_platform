@@ -47,6 +47,7 @@ export interface EditorCharacterResponse {
   name: string;
   description: string | null;
   image_url: string | null;
+  image_media_id?: string | null;
   is_culprit: boolean;
   mystery_role: MysteryRole;
   sort_order: number;
@@ -57,6 +58,7 @@ export interface EditorCharacterResponse {
   endcard_title?: string | null;
   endcard_body?: string | null;
   endcard_image_url?: string | null;
+  endcard_image_media_id?: string | null;
   alias_rules: CharacterAliasRule[];
 }
 
@@ -97,6 +99,7 @@ export interface CreateCharacterRequest {
   name: string;
   description?: string;
   image_url?: string;
+  image_media_id?: string | null;
   is_culprit?: boolean;
   mystery_role?: MysteryRole;
   sort_order?: number;
@@ -107,6 +110,7 @@ export interface CreateCharacterRequest {
   endcard_title?: string;
   endcard_body?: string;
   endcard_image_url?: string;
+  endcard_image_media_id?: string | null;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -114,6 +118,7 @@ export interface UpdateCharacterRequest {
   name?: string;
   description?: string;
   image_url?: string;
+  image_media_id?: string | null;
   is_culprit?: boolean;
   mystery_role?: MysteryRole;
   sort_order?: number;
@@ -124,6 +129,7 @@ export interface UpdateCharacterRequest {
   endcard_title?: string;
   endcard_body?: string;
   endcard_image_url?: string;
+  endcard_image_media_id?: string | null;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -131,6 +137,7 @@ export interface CreateClueRequest {
   name: string;
   description?: string;
   image_url?: string;
+  image_media_id?: string | null;
   level?: number;
   is_common?: boolean;
   sort_order?: number;
@@ -147,6 +154,7 @@ export interface UpdateClueRequest {
   name?: string;
   description?: string;
   image_url?: string;
+  image_media_id?: string | null;
   level?: number;
   is_common?: boolean;
   sort_order?: number;
@@ -199,6 +207,7 @@ export interface ClueResponse {
   name: string;
   description: string | null;
   image_url: string | null;
+  image_media_id?: string | null;
   is_common: boolean;
   level: number;
   sort_order: number;
