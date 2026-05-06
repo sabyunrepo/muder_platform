@@ -68,15 +68,31 @@ async function expectNoPageLevelHorizontalOverflow(page: Page) {
   expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 2);
 }
 
-async function expectFocusIndicator(locator: Locator) {
+async function expectFocusIndicator(page: Page, locator: Locator) {
   const readStyle = (el: Element) => {
     const cs = window.getComputedStyle(el);
     return { outline: cs.outline, boxShadow: cs.boxShadow };
   };
 
+  await locator.scrollIntoViewIfNeeded();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  });
   const before = await locator.evaluate(readStyle);
-  await locator.focus();
+  let reachedTarget = false;
+
+  for (let i = 0; i < 80; i += 1) {
+    await page.keyboard.press('Tab');
+    reachedTarget = await locator.evaluate((el) => el === document.activeElement);
+    if (reachedTarget) {
+      break;
+    }
+  }
+
   const after = await locator.evaluate(readStyle);
+  const isFocusVisible = await locator.evaluate((el) => el.matches(':focus-visible'));
 
   const hasOutline =
     after.outline !== before.outline &&
@@ -85,9 +101,12 @@ async function expectFocusIndicator(locator: Locator) {
     !after.outline.startsWith('rgba(0, 0, 0, 0)');
   const hasRing =
     after.boxShadow !== before.boxShadow && !!after.boxShadow && after.boxShadow !== 'none';
+  expect(reachedTarget, 'target element was not reachable through keyboard Tab navigation').toBe(
+    true,
+  );
   expect(
-    hasOutline || hasRing,
-    `focus indicator missing — before=${before.outline}/${before.boxShadow}, after=${after.outline}/${after.boxShadow}`,
+    isFocusVisible && (hasOutline || hasRing),
+    `focus indicator missing — focusVisible=${isFocusVisible}, before=${before.outline}/${before.boxShadow}, after=${after.outline}/${after.boxShadow}`,
   ).toBe(true);
 }
 
@@ -295,17 +314,17 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByRole('tab', { name: '등장인물', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expectFocusIndicator(page.getByRole('textbox', { name: '캐릭터 검색' }));
-    await expectFocusIndicator(page.getByRole('button', { name: '탐정 A 선택' }));
+    await expectFocusIndicator(page, page.getByRole('textbox', { name: '캐릭터 검색' }));
+    await expectFocusIndicator(page, page.getByRole('button', { name: '탐정 A 선택' }));
     await expectNoPageLevelHorizontalOverflow(page);
 
     await page.goto(`${BASE}/editor/${THEME_ID}/media`);
     await expect(page.getByRole('tab', { name: '미디어', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expectFocusIndicator(page.getByRole('button', { name: '파일 업로드' }));
-    await expectFocusIndicator(page.getByRole('button', { name: 'YouTube' }));
-    await expectFocusIndicator(page.getByRole('button', { name: '전체' }));
+    await expectFocusIndicator(page, page.getByRole('button', { name: '파일 업로드' }));
+    await expectFocusIndicator(page, page.getByRole('button', { name: 'YouTube' }));
+    await expectFocusIndicator(page, page.getByRole('button', { name: '전체' }));
     await expectNoPageLevelHorizontalOverflow(page);
   });
 
