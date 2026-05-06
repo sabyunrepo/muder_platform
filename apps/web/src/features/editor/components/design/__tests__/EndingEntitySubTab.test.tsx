@@ -3,8 +3,9 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-const { useFlowDataMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock } = vi.hoisted(() => ({
+const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
+  useEditorCharactersMock: vi.fn(),
   addNodeMock: vi.fn(),
   updateNodeDataMock: vi.fn(),
   mutateMock: vi.fn(),
@@ -20,6 +21,14 @@ vi.mock("../../../hooks/useFlowData", () => ({
 vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => useUpdateFlowNodeMock(),
 }));
+
+vi.mock("@/features/editor/api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/editor/api")>();
+  return {
+    ...actual,
+    useEditorCharacters: () => useEditorCharactersMock(),
+  };
+});
 
 vi.mock("../../../editorConfigApi", () => ({
   useUpdateConfigJson: () => ({ mutate: configMutateMock, isPending: false }),
@@ -79,9 +88,58 @@ const makeNode = (id: string, data: Record<string, unknown> = {}, type = "ending
 
 beforeEach(() => {
   useUpdateFlowNodeMock.mockReturnValue({ mutate: mutateMock });
+  useEditorCharactersMock.mockReturnValue({
+    data: [
+      {
+        id: "char-1",
+        theme_id: "theme-1",
+        name: "하윤",
+        description: null,
+        image_url: null,
+        is_culprit: false,
+        mystery_role: "detective",
+        sort_order: 1,
+        is_playable: true,
+        show_in_intro: true,
+        can_speak_in_reading: true,
+        is_voting_candidate: true,
+        endcard_title: "하윤의 후일담",
+        endcard_body: "사건 이후의 선택",
+        endcard_image_url: null,
+        alias_rules: [],
+      },
+      {
+        id: "char-2",
+        theme_id: "theme-1",
+        name: "민재",
+        description: null,
+        image_url: null,
+        is_culprit: false,
+        mystery_role: "suspect",
+        sort_order: 2,
+        is_playable: true,
+        show_in_intro: true,
+        can_speak_in_reading: true,
+        is_voting_candidate: true,
+        endcard_title: null,
+        endcard_body: null,
+        endcard_image_url: null,
+        alias_rules: [],
+      },
+    ],
+    isLoading: false,
+    isError: false,
+  });
   useFlowDataMock.mockReturnValue({
     nodes: [
-      makeNode("ending-1", { label: "진실", icon: "🎭", endingContent: "범인은 밝혀졌다." }),
+      makeNode("ending-1", {
+        label: "진실",
+        icon: "🎭",
+        endingContent: "범인은 밝혀졌다.",
+        endingVisibility: "players_only",
+        endingSpoilerWarning: "스포일러 주의",
+        endingShareText: "오늘의 추리는 어땠나요?",
+      }),
       makeNode("phase-1", { label: "1막" }, "phase"),
       makeNode("ending-2", { label: "오판", description: "잘못된 선택" }),
     ],
@@ -109,6 +167,9 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("결말 판정 준비")).toBeDefined();
     expect(screen.getByText("본문 작성")).toBeDefined();
+    expect(screen.getAllByText("참가자에게만 공개").length).toBeGreaterThan(0);
+    expect(screen.getByText("캐릭터 결과 카드 1/2명 작성")).toBeDefined();
+    expect(screen.getByText("결과 카드가 비어 있는 캐릭터: 민재")).toBeDefined();
     expect(screen.queryByText("1막")).toBeNull();
   });
 
@@ -185,6 +246,38 @@ describe("EndingEntitySubTab", () => {
       { nodeId: "ending-1", body: { data: expect.objectContaining({ label: "자비" }) } },
       expect.objectContaining({ onError: expect.any(Function) }),
     );
+  });
+
+  it("결말 본문, 공개 범위, 스포일러 안내, 감상 공유 문구를 저장 payload로 보낸다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.change(screen.getByLabelText("결말 본문"), {
+      target: { value: "진실은 모두에게 남았다." },
+    });
+    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
+      endingContent: "진실은 모두에게 남았다.",
+    });
+
+    fireEvent.change(screen.getByLabelText("공개 범위"), {
+      target: { value: "private_note" },
+    });
+    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
+      endingVisibility: "private_note",
+    });
+
+    fireEvent.change(screen.getByLabelText("스포일러 안내"), {
+      target: { value: "이 결말은 플레이 후 공개됩니다." },
+    });
+    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
+      endingSpoilerWarning: "이 결말은 플레이 후 공개됩니다.",
+    });
+
+    fireEvent.change(screen.getByLabelText("감상 공유 문구"), {
+      target: { value: "당신의 선택을 공유해 보세요." },
+    });
+    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
+      endingShareText: "당신의 선택을 공유해 보세요.",
+    });
   });
 
   it("결말 판정 질문과 규칙을 제작자용 UI로 저장한다", () => {

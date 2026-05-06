@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useUpdateFlowNode } from "../../flowApi";
 import { flowKeys, type FlowGraphResponse, type FlowNodeData } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
+import { toEndingEditorViewModel } from "../../entities/ending/endingEntityAdapter";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -13,6 +14,7 @@ import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
 interface EndingNodePanelProps {
   node: Node;
   themeId: string;
+  edges?: { target: string }[];
   onUpdate: (id: string, data: Partial<FlowNodeData>) => void;
 }
 
@@ -26,6 +28,7 @@ const SAVE_DEBOUNCE_MS = 500;
 export function EndingNodePanel({
   node,
   themeId,
+  edges = [],
   onUpdate,
 }: EndingNodePanelProps) {
   const labelInputId = useId();
@@ -35,6 +38,8 @@ export function EndingNodePanel({
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
   const data = node.data as FlowNodeData;
+  const incomingCount = edges.filter((edge) => edge.target === node.id).length;
+  const viewModel = toEndingEditorViewModel(node, incomingCount);
 
   const debouncer = useDebouncedMutation<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
@@ -69,6 +74,24 @@ export function EndingNodePanel({
       <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         엔딩 설정
       </h3>
+
+      <section className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300/80">
+          결말 연결 요약
+        </p>
+        <h4 className="mt-1 text-sm font-semibold text-slate-100">{viewModel.name}</h4>
+        <p className="mt-1 text-xs leading-5 text-slate-400">{viewModel.contentPreview}</p>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {viewModel.badges.map((badge) => (
+            <span key={badge} className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+              {badge}
+            </span>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] leading-5 text-slate-500">
+          상세 본문, 공개 범위, 캐릭터별 결과 카드는 결말 관리 탭에서 편집합니다.
+        </p>
+      </section>
 
       {/* Label */}
       <div className="flex flex-col gap-1">

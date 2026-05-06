@@ -11,6 +11,7 @@ export interface PhaseAction {
 }
 
 export type DiscussionRoomAvailability = "phase_active" | "condition";
+export type EndingVisibility = "public" | "players_only" | "private_note";
 export type DiscussionRoomKind = "all" | "small_group" | "private";
 export type DiscussionParticipantMode = "all" | "characters" | "condition";
 export type DiscussionRoomCloseBehavior = "close_on_exit" | "keep_until_next_scene";
@@ -37,6 +38,9 @@ export interface FlowNodeData {
   icon?: string;
   color?: string;
   endingContent?: string;
+  endingVisibility?: EndingVisibility;
+  endingSpoilerWarning?: string;
+  endingShareText?: string;
   score_multiplier?: number;
   default_edge_id?: string;
   autoAdvance?: boolean;
