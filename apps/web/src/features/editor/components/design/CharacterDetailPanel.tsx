@@ -198,7 +198,7 @@ export function CharacterDetailPanel({
                             aria-pressed={active}
                             title={option.description}
                             onClick={() => onMysteryRoleChange?.(option.value)}
-                            className={`rounded-lg border px-3 py-2 text-center transition ${
+                            className={`min-h-11 rounded-lg border px-3 py-2 text-center transition ${
                               active
                                 ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
                                 : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'

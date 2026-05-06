@@ -156,6 +156,11 @@ function readStartingClues(config: Record<string, unknown>) {
   return modules?.starting_clue?.config?.startingClues ?? {};
 }
 
+const endcardSectionName = /^결과 카드(?:작성됨|비어 있음)$/;
+const roleSheetSectionName = /^역할지Markdown 또는 PDF$/;
+const startingClueSectionName = /^시작 단서\d+\/\d+개 배정$/;
+const hiddenMissionSectionName = /^히든 미션\d+개$/;
+
 function openCharacterSection(name: RegExp) {
   const button = screen.getByRole('button', { name });
   if (button.getAttribute('aria-expanded') === 'false') {
@@ -164,19 +169,19 @@ function openCharacterSection(name: RegExp) {
 }
 
 function openEndcardSection() {
-  openCharacterSection(/결과 카드/);
+  openCharacterSection(endcardSectionName);
 }
 
 function openRoleSheetSection() {
-  openCharacterSection(/역할지Markdown 또는 PDF/);
+  openCharacterSection(roleSheetSectionName);
 }
 
 function openStartingClueSection() {
-  openCharacterSection(/시작 단서/);
+  openCharacterSection(startingClueSectionName);
 }
 
 function openHiddenMissionSection() {
-  openCharacterSection(/히든 미션/);
+  openCharacterSection(hiddenMissionSectionName);
 }
 
 function clickFirstClue() {
@@ -212,10 +217,10 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
 
     expect(screen.getByRole('button', { name: /기본 정보/ }).getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('button', { name: /결과 카드/ }).getAttribute('aria-expanded')).toBe('false');
-    expect(screen.getByRole('button', { name: /역할지Markdown 또는 PDF/ }).getAttribute('aria-expanded')).toBe('false');
-    expect(screen.getByRole('button', { name: /시작 단서/ }).getAttribute('aria-expanded')).toBe('false');
-    expect(screen.getByRole('button', { name: /히든 미션/ }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: endcardSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: roleSheetSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: startingClueSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: hiddenMissionSectionName }).getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
   });
 
