@@ -65,6 +65,11 @@ func pgtypeInt4ToPtr(i pgtype.Int4) *int32 {
 }
 
 var slugCleanRe = regexp.MustCompile(`[^a-z0-9-]+`)
+var themeSlugRe = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+
+func isValidThemeSlug(slug string) bool {
+	return themeSlugRe.MatchString(slug)
+}
 
 func generateSlug(title string) string {
 	s := strings.ToLower(strings.TrimSpace(title))

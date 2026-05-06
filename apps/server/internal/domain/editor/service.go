@@ -199,6 +199,7 @@ type Service interface {
 
 	// Theme detail
 	GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error)
+	GetThemeBySlug(ctx context.Context, creatorID uuid.UUID, slug string) (*ThemeResponse, error)
 
 	// Validation
 	ValidateTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ValidationResponse, error)

@@ -104,13 +104,22 @@ func (h *Handler) CreateTheme(w http.ResponseWriter, r *http.Request) {
 // GetTheme handles GET /editor/themes/{id}.
 func (h *Handler) GetTheme(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())
-	themeID, err := parseUUID(r, "id")
-	if err != nil {
-		apperror.WriteError(w, r, err)
-		return
+	locator := chi.URLParam(r, "id")
+
+	var (
+		resp *ThemeResponse
+		err  error
+	)
+	if themeID, parseErr := uuid.Parse(locator); parseErr == nil {
+		resp, err = h.svc.GetTheme(r.Context(), creatorID, themeID)
+	} else {
+		if !isValidThemeSlug(locator) {
+			apperror.WriteError(w, r, apperror.BadRequest("invalid theme id or slug format"))
+			return
+		}
+		resp, err = h.svc.GetThemeBySlug(r.Context(), creatorID, locator)
 	}
 
-	resp, err := h.svc.GetTheme(r.Context(), creatorID, themeID)
 	if err != nil {
 		apperror.WriteError(w, r, err)
 		return

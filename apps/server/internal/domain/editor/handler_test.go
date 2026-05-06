@@ -136,6 +136,67 @@ func TestCreateTheme_InvalidBody(t *testing.T) {
 	}
 }
 
+func TestGetTheme_ByUUID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		GetTheme(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq(extThemeID)).
+		Return(extSampleThemeResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/themes/"+extThemeID.String(), nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extThemeID.String()})
+	w := httptest.NewRecorder()
+
+	h.GetTheme(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetTheme_BySlug(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		GetThemeBySlug(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq("e2e-test-theme")).
+		Return(extSampleThemeResponse(), nil).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/themes/e2e-test-theme", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": "e2e-test-theme"})
+	w := httptest.NewRecorder()
+
+	h.GetTheme(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestGetTheme_InvalidLocator(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	r := httptest.NewRequest(http.MethodGet, "/editor/themes/not_a_slug", nil)
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": "not_a_slug"})
+	w := httptest.NewRecorder()
+
+	h.GetTheme(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestUpdateTheme_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockService(ctrl)

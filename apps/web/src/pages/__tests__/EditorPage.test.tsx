@@ -70,6 +70,7 @@ const routeMatrixCases = [
   ],
   ['alias URL /editor/:id/modules', { id: 'theme-1', tab: 'modules' }, 'modules', 'design'],
   ['alias URL /editor/:id/flow', { id: 'theme-1', tab: 'flow' }, 'flow', 'storyMap'],
+  ['sample slug URL /editor/e2e-test-theme/flow', { id: 'e2e-test-theme', tab: 'flow' }, 'flow', 'storyMap'],
   ['alias URL /editor/:id/locations', { id: 'theme-1', tab: 'locations' }, 'locations', 'design'],
   ['alias URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'design'],
 ] as const;
@@ -105,7 +106,7 @@ describe('EditorPage', () => {
 
       render(<EditorPage />);
 
-      expect(screen.getByText(new RegExp(`테마 에디터 theme-1 ${expectedSegment}`))).toBeDefined();
+      expect(screen.getByText(new RegExp(`테마 에디터 ${params.id} ${expectedSegment}`))).toBeDefined();
       expect(setActiveTabMock).toHaveBeenCalledWith(expectedTab);
     }
   );
