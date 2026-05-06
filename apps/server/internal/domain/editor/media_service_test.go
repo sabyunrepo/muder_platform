@@ -1161,6 +1161,39 @@ func TestMediaService_CategoryCRUDAndFiltering(t *testing.T) {
 	}
 }
 
+func TestMediaService_ListMedia_CategoryFromAnotherTheme_NotFound(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	otherThemeID := uuid.New()
+	q.themes[otherThemeID] = db.Theme{ID: otherThemeID, CreatorID: creatorID}
+	category := db.ThemeMediaCategory{
+		ID:        uuid.New(),
+		ThemeID:   otherThemeID,
+		Name:      "다른 테마",
+		SortOrder: 1,
+		CreatedAt: time.Now(),
+	}
+	q.categories[category.ID] = category
+
+	_, err := svc.ListMedia(context.Background(), creatorID, themeID, "", &category.ID)
+	assertMediaAppCode(t, err, apperror.ErrNotFound)
+}
+
+func TestMediaService_CategoryErrors_NotFound(t *testing.T) {
+	svc, _, creatorID, _ := newMediaTestService(t)
+	missingID := uuid.New()
+
+	if _, err := svc.UpdateCategory(context.Background(), creatorID, missingID, MediaCategoryRequest{Name: "x"}); err == nil {
+		t.Fatalf("UpdateCategory should fail for missing category")
+	} else {
+		assertMediaAppCode(t, err, apperror.ErrNotFound)
+	}
+	if err := svc.DeleteCategory(context.Background(), creatorID, missingID); err == nil {
+		t.Fatalf("DeleteCategory should fail for missing category")
+	} else {
+		assertMediaAppCode(t, err, apperror.ErrNotFound)
+	}
+}
+
 func TestMediaService_Delete_CleansReadingAndConfigReferences(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	mediaID := seedMedia(q, themeID, MediaTypeImage)
@@ -1253,6 +1286,54 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	}
 	if _, ok := q.replacements[upload.UploadID]; ok {
 		t.Fatalf("pending replacement should be deleted")
+	}
+}
+
+func TestMediaService_RequestReplacementUpload_RejectsInvalidInputs(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	svc.storage = newFakeStorageProvider()
+	youtubeID := seedMedia(q, themeID, MediaTypeImage)
+	fileID := seedFileMedia(q, themeID, MediaTypeImage)
+
+	_, err := svc.RequestReplacementUpload(context.Background(), creatorID, youtubeID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidType)
+
+	_, err = svc.RequestReplacementUpload(context.Background(), creatorID, fileID, RequestMediaReplacementUploadRequest{
+		MimeType: "application/pdf",
+		FileSize: 8,
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidType)
+
+	_, err = svc.RequestReplacementUpload(context.Background(), creatorID, fileID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: MaxMediaFileSize + 1,
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaTooLarge)
+}
+
+func TestMediaService_ConfirmReplacementUpload_CleansPendingWhenObjectMissing(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	upload, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: 8,
+	})
+	if err != nil {
+		t.Fatalf("RequestReplacementUpload: %v", err)
+	}
+
+	err = func() error {
+		_, confirmErr := svc.ConfirmReplacementUpload(context.Background(), creatorID, mediaID, ConfirmUploadRequest{UploadID: upload.UploadID})
+		return confirmErr
+	}()
+	assertMediaAppCode(t, err, apperror.ErrMediaUploadExpired)
+	if _, ok := q.replacements[upload.UploadID]; ok {
+		t.Fatalf("missing uploaded object should delete pending replacement")
 	}
 }
 
