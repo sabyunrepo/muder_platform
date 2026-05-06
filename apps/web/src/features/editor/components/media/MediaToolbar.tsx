@@ -50,7 +50,7 @@ export function MediaToolbar({
               type="button"
               onClick={() => onFilterChange(pill.value)}
               aria-pressed={isActive}
-              className={`h-7 rounded-sm border px-3 text-xs font-medium transition-colors ${
+              className={`h-7 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
                 isActive
                   ? "border-amber-500 bg-amber-500/10 text-amber-300"
                   : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
@@ -67,7 +67,7 @@ export function MediaToolbar({
         <button
           type="button"
           onClick={onUploadClick}
-          className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100"
+          className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
         >
           <Upload className="h-3.5 w-3.5" />
           파일 업로드
@@ -75,7 +75,7 @@ export function MediaToolbar({
         <button
           type="button"
           onClick={onYouTubeClick}
-          className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100"
+          className="flex h-7 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
         >
           <Youtube className="h-3.5 w-3.5" />
           YouTube
