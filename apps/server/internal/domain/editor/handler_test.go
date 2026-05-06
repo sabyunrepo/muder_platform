@@ -327,6 +327,35 @@ func TestUpdateCharacter_AllowsEmptyEndcardImageURL(t *testing.T) {
 	}
 }
 
+func TestUpdateCharacter_AllowsEmptyImageURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		UpdateCharacter(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq(extCharID), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ uuid.UUID, _ uuid.UUID, req editor.UpdateCharacterRequest) (*editor.CharacterResponse, error) {
+			if req.ImageURL == nil || *req.ImageURL != "" {
+				t.Fatalf("expected empty image URL to reach service, got %+v", req.ImageURL)
+			}
+			return extSampleCharResponse(), nil
+		}).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	body := `{"name":"Detective Updated","is_culprit":false,"sort_order":1,"image_url":""}`
+	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+extCharID.String(), bytes.NewBufferString(body))
+	r.Header.Set("Content-Type", "application/json")
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extCharID.String()})
+	w := httptest.NewRecorder()
+
+	h.UpdateCharacter(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestDeleteCharacter_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockService(ctrl)

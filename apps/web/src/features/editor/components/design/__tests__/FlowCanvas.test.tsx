@@ -18,17 +18,26 @@ vi.mock('@xyflow/react', () => ({
   ReactFlow: ({
     children,
     nodes = [],
+    edges = [],
+    onSelectionChange,
   }: {
     children?: React.ReactNode;
     nodes?: Array<{ id: string; className?: string }>;
+    edges?: Array<{ id: string; source: string; target: string }>;
+    onSelectionChange?: (params: { nodes: unknown[]; edges: unknown[] }) => void;
   }) => (
     <div data-testid="react-flow">
       {nodes.map((node) => (
-        <div
-          key={node.id}
-          data-testid={`rf-node-${node.id}`}
-          className={node.className ?? ""}
-        />
+        <div key={node.id} data-testid={`rf-node-${node.id}`} className={node.className ?? ''} />
+      ))}
+      {edges.map((edge) => (
+        <button
+          key={edge.id}
+          type="button"
+          onClick={() => onSelectionChange?.({ nodes: [], edges: [edge] })}
+        >
+          {edge.id} 선택
+        </button>
       ))}
       {children}
     </div>
@@ -71,6 +80,14 @@ beforeEach(() => {
     isLoading: false,
     isSaving: false,
     save: saveMock,
+    selectedNode: null,
+    addNode: vi.fn(),
+    updateNodeData: vi.fn(),
+    deleteNode: vi.fn(),
+    deleteEdge: vi.fn(),
+    onSelectionChange: vi.fn(),
+    updateEdgeCondition: vi.fn(),
+    applyPreset: vi.fn(),
   });
 });
 
@@ -198,6 +215,82 @@ describe('FlowCanvas', () => {
     fireEvent.click(screen.getByRole('button', { name: '순서 점검' }));
     expect(screen.getByTestId('rf-node-p2').className).not.toContain('!ring-2');
   });
+
+  it('선택한 연결선을 버튼으로 끊을 수 있다', () => {
+    const deleteEdge = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        {
+          id: 'p1',
+          type: 'phase',
+          position: { x: 0, y: 0 },
+          data: { label: '오프닝' },
+        },
+        {
+          id: 'p2',
+          type: 'phase',
+          position: { x: 100, y: 0 },
+          data: { label: '조사' },
+        },
+      ],
+      edges: [{ id: 'e-p1-p2', source: 'p1', target: 'p2' }],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+      selectedNode: null,
+      addNode: vi.fn(),
+      updateNodeData: vi.fn(),
+      deleteNode: vi.fn(),
+      deleteEdge,
+      onSelectionChange: vi.fn(),
+      updateEdgeCondition: vi.fn(),
+      applyPreset: vi.fn(),
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'e-p1-p2 선택' }));
+    expect(screen.getByText('오프닝 -> 조사')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '연결 끊기' }));
+    expect(window.confirm).toHaveBeenCalledWith('선 연결을 끊을까요? 이 작업은 즉시 저장됩니다.');
+    expect(deleteEdge).toHaveBeenCalledWith('e-p1-p2');
+  });
+
+  it('연결선 삭제 확인을 취소하면 연결을 유지한다', () => {
+    const deleteEdge = vi.fn();
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        { id: 'p1', type: 'phase', position: { x: 0, y: 0 }, data: { label: '오프닝' } },
+        { id: 'p2', type: 'phase', position: { x: 100, y: 0 }, data: { label: '조사' } },
+      ],
+      edges: [{ id: 'e-p1-p2', source: 'p1', target: 'p2' }],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+      selectedNode: null,
+      addNode: vi.fn(),
+      updateNodeData: vi.fn(),
+      deleteNode: vi.fn(),
+      deleteEdge,
+      onSelectionChange: vi.fn(),
+      updateEdgeCondition: vi.fn(),
+      applyPreset: vi.fn(),
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'e-p1-p2 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '연결 끊기' }));
+
+    expect(deleteEdge).not.toHaveBeenCalled();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -206,31 +299,23 @@ describe('FlowCanvas', () => {
 
 describe('FlowToolbar', () => {
   it('저장 버튼이 렌더링된다', () => {
-    render(
-      <FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />,
-    );
+    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
     expect(screen.getByText('저장')).toBeDefined();
   });
 
   it('저장 버튼 클릭 시 onSave가 호출된다', () => {
-    render(
-      <FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />,
-    );
+    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
     fireEvent.click(screen.getByText('저장'));
     expect(saveMock).toHaveBeenCalledOnce();
   });
 
   it('isSaving=true 일 때 "저장 중..." 텍스트를 표시한다', () => {
-    render(
-      <FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={true} />,
-    );
+    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={true} />);
     expect(screen.getByText('저장 중...')).toBeDefined();
   });
 
   it('항목 추가 버튼 클릭 시 드롭다운이 열린다', () => {
-    render(
-      <FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />,
-    );
+    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
     fireEvent.click(screen.getByText('항목 추가'));
     expect(screen.getByText('장면')).toBeDefined();
     expect(screen.getByText('분기')).toBeDefined();
@@ -239,9 +324,7 @@ describe('FlowToolbar', () => {
 
   it('드롭다운에서 노드 선택 시 onAddNode가 호출된다', () => {
     const onAddNode = vi.fn();
-    render(
-      <FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />,
-    );
+    render(<FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />);
     fireEvent.click(screen.getByText('항목 추가'));
     fireEvent.click(screen.getByText('장면'));
     expect(onAddNode).toHaveBeenCalledWith('phase');

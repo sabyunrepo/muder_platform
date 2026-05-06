@@ -4,6 +4,7 @@ import {
   buildCharacterVisibilityUpdatePayload,
   buildCharacterAliasRulesUpdatePayload,
   buildCharacterEndcardUpdatePayload,
+  buildCharacterProfileImageUpdatePayload,
   getCharacterListBadges,
   buildCharacterRoleUpdatePayload,
   getCharacterRoleBadge,
@@ -267,6 +268,19 @@ describe('characterEditorAdapter', () => {
       endcard_title: '',
       endcard_body: '',
       endcard_image_url: '',
+    });
+  });
+
+  it('프로필 이미지 삭제 payload는 빈 문자열로 backend clear 계약을 사용한다', () => {
+    const payload = buildCharacterProfileImageUpdatePayload(
+      character({ image_url: 'https://cdn.example/old.webp' }),
+      null,
+    );
+
+    expect(payload).toMatchObject({
+      name: '홍길동',
+      image_url: '',
+      mystery_role: 'suspect',
     });
   });
 });
