@@ -12,14 +12,14 @@ const { getCroppedBlobMock, uploadImageMock, toastErrorMock, toastSuccessMock } 
   })
 );
 
-vi.mock('react-image-crop', () => ({
-  default: ({
+vi.mock('react-image-crop', () => {
+  function MockReactCrop({
     children,
     onComplete,
   }: {
     children: React.ReactNode;
     onComplete: (crop: { x: number; y: number; width: number; height: number; unit: 'px' }) => void;
-  }) => {
+  }) {
     const completed = useRef(false);
     useEffect(() => {
       if (completed.current) return;
@@ -27,8 +27,10 @@ vi.mock('react-image-crop', () => ({
       onComplete({ x: 0, y: 0, width: 80, height: 80, unit: 'px' });
     }, [onComplete]);
     return <div data-testid="react-crop">{children}</div>;
-  },
-}));
+  }
+
+  return { default: MockReactCrop };
+});
 
 vi.mock('../cropUtils', () => ({
   getCroppedBlob: getCroppedBlobMock,

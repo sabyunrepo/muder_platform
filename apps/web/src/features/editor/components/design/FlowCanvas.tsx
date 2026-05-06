@@ -4,7 +4,6 @@ import {
   MiniMap,
   Controls,
   type Node,
-  type Edge,
   type NodeTypes,
   type OnSelectionChangeParams,
 } from '@xyflow/react';
