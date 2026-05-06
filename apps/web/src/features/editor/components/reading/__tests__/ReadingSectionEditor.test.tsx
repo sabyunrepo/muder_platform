@@ -10,12 +10,18 @@ const {
   useUpdateReadingSectionMock,
   useDeleteReadingSectionMock,
   useMediaListMock,
+  useMediaCategoriesMock,
+  useRequestUploadUrlMock,
+  useConfirmUploadMock,
   invalidateQueriesMock,
   writeTextMock,
 } = vi.hoisted(() => ({
   useUpdateReadingSectionMock: vi.fn(),
   useDeleteReadingSectionMock: vi.fn(),
   useMediaListMock: vi.fn(),
+  useMediaCategoriesMock: vi.fn(),
+  useRequestUploadUrlMock: vi.fn(),
+  useConfirmUploadMock: vi.fn(),
   invalidateQueriesMock: vi.fn(),
   writeTextMock: vi.fn(),
 }));
@@ -34,6 +40,9 @@ vi.mock("@/features/editor/readingApi", async () => {
 
 vi.mock("@/features/editor/mediaApi", () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+  useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
+  useRequestUploadUrl: (...args: unknown[]) => useRequestUploadUrlMock(...args),
+  useConfirmUpload: (...args: unknown[]) => useConfirmUploadMock(...args),
 }));
 
 vi.mock("@/services/queryClient", () => ({
@@ -118,6 +127,15 @@ beforeEach(() => {
     isPending: false,
   });
   useMediaListMock.mockReturnValue({ data: [], isLoading: false });
+  useMediaCategoriesMock.mockReturnValue({ data: [] });
+  useRequestUploadUrlMock.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  });
+  useConfirmUploadMock.mockReturnValue({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  });
 });
 
 afterEach(() => {
