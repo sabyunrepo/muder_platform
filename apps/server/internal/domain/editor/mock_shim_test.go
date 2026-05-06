@@ -112,6 +112,9 @@ func (m *mockService) ListCharacters(ctx context.Context, creatorID, themeID uui
 func (m *mockService) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*ThemeResponse, error) {
 	return nil, nil
 }
+func (m *mockService) GetThemeBySlug(ctx context.Context, creatorID uuid.UUID, slug string) (*ThemeResponse, error) {
+	return nil, nil
+}
 func (m *mockService) CreateMap(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMapRequest) (*MapResponse, error) {
 	return nil, nil
 }

@@ -263,6 +263,21 @@ func (mr *MockServiceMockRecorder) GetTheme(ctx, creatorID, themeID any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTheme", reflect.TypeOf((*MockService)(nil).GetTheme), ctx, creatorID, themeID)
 }
 
+// GetThemeBySlug mocks base method.
+func (m *MockService) GetThemeBySlug(ctx context.Context, creatorID uuid.UUID, slug string) (*editor.ThemeResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetThemeBySlug", ctx, creatorID, slug)
+	ret0, _ := ret[0].(*editor.ThemeResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetThemeBySlug indicates an expected call of GetThemeBySlug.
+func (mr *MockServiceMockRecorder) GetThemeBySlug(ctx, creatorID, slug any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetThemeBySlug", reflect.TypeOf((*MockService)(nil).GetThemeBySlug), ctx, creatorID, slug)
+}
+
 // ListCharacters mocks base method.
 func (m *MockService) ListCharacters(ctx context.Context, creatorID, themeID uuid.UUID) ([]editor.CharacterResponse, error) {
 	m.ctrl.T.Helper()

@@ -133,13 +133,37 @@ func (s *service) GetTheme(ctx context.Context, creatorID, themeID uuid.UUID) (*
 	if err != nil {
 		return nil, err
 	}
+	return s.themeResponseForRead(theme)
+}
+
+// GetThemeBySlug fetches a single theme by slug, enforcing creator ownership.
+// This is intentionally read-only: mutating editor endpoints remain UUID-only.
+func (s *service) GetThemeBySlug(ctx context.Context, creatorID uuid.UUID, slug string) (*ThemeResponse, error) {
+	if !isValidThemeSlug(slug) {
+		return nil, apperror.BadRequest("invalid theme slug format")
+	}
+	theme, err := s.q.GetThemeBySlug(ctx, slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NotFound("theme not found")
+		}
+		s.logger.Error().Err(err).Str("slug", slug).Msg("failed to get theme by slug")
+		return nil, apperror.Internal("failed to get theme")
+	}
+	if theme.CreatorID != creatorID {
+		return nil, apperror.Forbidden("you do not own this theme")
+	}
+	return s.themeResponseForRead(theme)
+}
+
+func (s *service) themeResponseForRead(theme db.Theme) (*ThemeResponse, error) {
 	legacyAxes := legacyConfigAxes(theme.ConfigJson)
 	normalized, err := NormalizeConfigJSON(theme.ConfigJson)
 	if err != nil {
-		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to normalize config_json")
+		s.logger.Error().Err(err).Str("theme_id", theme.ID.String()).Msg("failed to normalize config_json")
 		return nil, apperror.Internal("failed to normalize config_json")
 	}
-	s.logLegacyConfigRead(themeID, legacyAxes)
+	s.logLegacyConfigRead(theme.ID, legacyAxes)
 	theme.ConfigJson = normalized
 	return toThemeResponse(theme), nil
 }

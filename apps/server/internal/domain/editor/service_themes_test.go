@@ -68,6 +68,41 @@ func TestService_GetTheme_OwnershipEnforced(t *testing.T) {
 	}
 }
 
+func TestService_GetThemeBySlug_OwnershipEnforced(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	otherID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	theme, err := f.q.GetTheme(ctx, themeID)
+	require.NoError(t, err)
+
+	resp, err := f.svc.GetThemeBySlug(ctx, creatorID, theme.Slug)
+	require.NoError(t, err)
+	assert.Equal(t, themeID, resp.ID)
+	assert.Equal(t, theme.Slug, resp.Slug)
+
+	_, err = f.svc.GetThemeBySlug(ctx, otherID, theme.Slug)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "you do not own this theme")
+}
+
+func TestService_GetThemeBySlug_InvalidSlug(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+
+	_, err := f.svc.GetThemeBySlug(ctx, creatorID, "not_a_slug")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid theme slug format")
+}
+
 func TestService_ListMyThemes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")

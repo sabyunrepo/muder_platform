@@ -80,17 +80,51 @@ describe('ThemeEditor', () => {
   it('테마 로드 실패 시 오류 메시지를 표시한다', () => {
     useEditorThemeMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
 
-    render(<ThemeEditor themeId="theme-1" />);
+    render(<ThemeEditor themeId="aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" />);
 
     expect(screen.getByText('테마를 찾을 수 없습니다')).toBeDefined();
+    expect(screen.getByText(/편집 권한이 없는 테마/)).toBeDefined();
+  });
+
+  it('slug 주소 로드 실패 시 seed 확인 메시지를 표시한다', () => {
+    useEditorThemeMock.mockReturnValue({ data: undefined, isLoading: false, isError: true });
+
+    render(<ThemeEditor themeId="e2e-test-theme" />);
+
+    expect(screen.getByText('샘플 또는 slug 테마를 찾을 수 없습니다')).toBeDefined();
+    expect(screen.getByText(/e2e-test-theme seed/)).toBeDefined();
   });
 
   it('routeSegment를 EditorLayout으로 전달하고 검증 결과를 합친다', () => {
     render(<ThemeEditor themeId="theme-1" routeSegment="modules" />);
 
     expect(screen.getByText('EditorLayout modules')).toBeDefined();
-    const props = editorLayoutMock.mock.calls[0][0] as { onValidate: () => string[]; routeSegment: string };
+    expect(useEditorThemeMock).toHaveBeenCalledWith('theme-1');
+    expect(useEditorCluesMock).toHaveBeenCalledWith('theme-1');
+    expect(useClueEdgesMock).toHaveBeenCalledWith('theme-1');
+    const props = editorLayoutMock.mock.calls[0][0] as {
+      onValidate: () => string[];
+      routeSegment: string;
+      themeId: string;
+    };
     expect(props.routeSegment).toBe('modules');
+    expect(props.themeId).toBe('theme-1');
     expect(props.onValidate()).toEqual(['game-warning', 'graph-warning']);
+  });
+
+  it('slug로 열린 뒤 하위 편집 API에는 응답의 UUID를 사용한다', () => {
+    useEditorThemeMock.mockReturnValue({
+      data: { ...theme, id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa' },
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<ThemeEditor themeId="e2e-test-theme" routeSegment="flow" />);
+
+    expect(useEditorThemeMock).toHaveBeenCalledWith('e2e-test-theme');
+    expect(useEditorCluesMock).toHaveBeenCalledWith('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    expect(useClueEdgesMock).toHaveBeenCalledWith('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    const props = editorLayoutMock.mock.calls[0][0] as { themeId: string };
+    expect(props.themeId).toBe('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   });
 });

@@ -18,12 +18,32 @@ function FullPageSpinner() {
   );
 }
 
-function FullPageError({ message }: { message: string }) {
+function FullPageError({ message, detail }: { message: string; detail?: string }) {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-950">
-      <p className="text-sm text-red-400">{message}</p>
+    <div className="flex h-screen items-center justify-center bg-slate-950 px-6 text-center">
+      <div className="max-w-md space-y-2">
+        <p className="text-sm font-medium text-red-300">{message}</p>
+        {detail && <p className="text-sm leading-6 text-slate-400">{detail}</p>}
+      </div>
     </div>
   );
+}
+
+const uuidLikeRe =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function buildThemeLoadError(themeId: string) {
+  if (uuidLikeRe.test(themeId)) {
+    return {
+      message: "테마를 찾을 수 없습니다",
+      detail: "삭제됐거나 현재 계정에 편집 권한이 없는 테마일 수 있습니다.",
+    };
+  }
+  return {
+    message: "샘플 또는 slug 테마를 찾을 수 없습니다",
+    detail:
+      "이 주소는 UUID가 아닌 slug로 열린 주소입니다. 로컬 샘플이라면 e2e-test-theme seed가 적용됐는지 확인하세요.",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -37,8 +57,9 @@ interface ThemeEditorProps {
 
 export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
   const { data: theme, isLoading, isError } = useEditorTheme(themeId);
-  const { data: clues } = useEditorClues(themeId);
-  const { data: clueEdgeGroups } = useClueEdges(themeId);
+  const resolvedThemeId = theme?.id ?? "";
+  const { data: clues } = useEditorClues(resolvedThemeId);
+  const { data: clueEdgeGroups } = useClueEdges(resolvedThemeId);
 
   const handleValidate = useCallback(() => {
     if (!theme) return [];
@@ -65,12 +86,15 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
   }, [theme, clues, clueEdgeGroups]);
 
   if (isLoading) return <FullPageSpinner />;
-  if (isError || !theme) return <FullPageError message="테마를 찾을 수 없습니다" />;
+  if (isError || !theme) {
+    const errorCopy = buildThemeLoadError(themeId);
+    return <FullPageError message={errorCopy.message} detail={errorCopy.detail} />;
+  }
 
   return (
     <EditorLayout
       theme={theme}
-      themeId={themeId}
+      themeId={resolvedThemeId}
       routeSegment={routeSegment}
       onValidate={handleValidate}
     />
