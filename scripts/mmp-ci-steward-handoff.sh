@@ -154,7 +154,7 @@ $ci_instruction
 - 최종 보고 직전 반드시 scripts/mmp-pr-status.sh $number --fail-on-blocker --allow-behind 를 실행합니다. 이 명령이 실패하면 MERGE_READY/MERGE_CANDIDATE 보고 금지이며, 남은 thread/check를 계속 처리하거나 BLOCKED로 보고합니다.
 - CodeRabbit check pass는 충분 조건이 아닙니다. Review threads unresolved 0, GitHub review decision non-blocking, CodeRabbit actionable state clear를 모두 만족해야 합니다.
 - Codecov patch coverage 70% 미만은 실제 blocker입니다. scripts/mmp-pr-status.sh가 Codecov gate state를 blocker로 표시하면 해당 changed file/branch를 덮는 focused test를 추가하고 다시 검증하세요.
-- Coverage Plan 또는 deferred/follow-up 추적이 누락되어 있으면 대상 PR/Issue에 근거를 보강하세요. 단, 별도 PR로 쪼개지 말고 handed-off PR branch 안에서 해결하세요.
+- Coverage Plan 또는 deferred/follow-up 추적이 누락되어 PR/Issue metadata 수정이 필요하면 main Codex로 `NEEDS_FIX` 또는 `BLOCKED`를 보고하세요. steward가 직접 PR 본문이나 Issue checklist를 수정하지 않습니다.
 - 남은 review thread가 현재 코드와 테스트로 해결됐다고 검증되면 steward가 해당 thread만 resolve할 수 있습니다. 애매하거나 사용자-authored thread면 resolve하지 말고 BLOCKED로 보고합니다.
 - Base requires up-to-date checks가 true이고 REST mergeable_state가 behind이면 자동 branch update를 하지 않습니다. 품질 gate가 clear이면 MERGE_CANDIDATE로 보고하고, main Codex가 merge batch 순서에서 admin merge 또는 gh pr update-branch $number 실행을 결정합니다. 단, main Codex가 명시적으로 최신화를 요청했거나 merge conflict/main drift 근거가 있으면 gh pr update-branch $number 를 수행한 뒤 새 Head SHA 기준으로 처음부터 다시 확인합니다.
 - full-ci PR에서는 CodeRabbit 정리 후 반드시 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙입니다.
