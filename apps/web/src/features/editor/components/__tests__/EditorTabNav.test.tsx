@@ -65,7 +65,8 @@ describe("EditorTabNav dynamic tabs", () => {
   it("현재 미디어 탭은 모듈이 없어도 숨겨지지 않는다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} />);
-    expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
+
+    expect(screen.getByText("미디어 관리")).toBeDefined();
   });
 
   it("스토리 진행, 보조 관리, 설정 순서로 탭 우선순위를 유지한다", () => {
@@ -107,7 +108,7 @@ describe("EditorTabNav dynamic tabs", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav themeId="theme-1" activeModules={[]} />);
 
-    expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
+    expect(screen.getByText("미디어 관리")).toBeDefined();
     expect(mockNavigate).not.toHaveBeenCalledWith("/editor/theme-1");
   });
 });

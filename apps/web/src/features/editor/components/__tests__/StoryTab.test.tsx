@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/features/editor/components/reading/ReadingSectionList", () => ({
+vi.mock("../reading/ReadingSectionList", () => ({
   ReadingSectionList: ({ themeId }: { themeId: string }) => (
     <div data-testid="reading-section-list">{themeId}</div>
   ),
