@@ -7,14 +7,14 @@ ALTER TABLE themes
   ADD CONSTRAINT themes_cover_image_media_same_theme_fk
     FOREIGN KEY (id, cover_image_media_id)
     REFERENCES theme_media(theme_id, id)
-    ON DELETE SET NULL;
+    ON DELETE SET NULL (cover_image_media_id);
 
 ALTER TABLE theme_maps
   ADD COLUMN image_media_id UUID,
   ADD CONSTRAINT theme_maps_image_media_same_theme_fk
     FOREIGN KEY (theme_id, image_media_id)
     REFERENCES theme_media(theme_id, id)
-    ON DELETE SET NULL;
+    ON DELETE SET NULL (image_media_id);
 
 CREATE INDEX idx_themes_cover_image_media
   ON themes(cover_image_media_id)
