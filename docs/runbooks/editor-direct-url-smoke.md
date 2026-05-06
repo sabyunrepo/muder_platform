@@ -16,6 +16,12 @@ psql "$DATABASE_URL" -f apps/server/db/seed/e2e-themes.sql
 PGPASSWORD=mmp_dev psql -h localhost -p 25432 -U mmp -d mmf -f apps/server/db/seed/e2e-themes.sql
 ```
 
+Seed 적용 여부와 slug가 해석될 실제 UUID는 다음 명령으로 확인한다.
+
+```bash
+PGPASSWORD=mmp_dev psql -h localhost -p 25432 -U mmp -d mmf -c "SELECT slug, id AS resolved_uuid FROM themes WHERE slug = 'e2e-test-theme';"
+```
+
 ## Smoke URL
 
 아래 URL은 같은 테마 locator에 대해 기본 진입과 주요 탭이 올바르게 열리는지 확인한다. `{theme}`에는 실제 UUID 또는 `e2e-test-theme` 같은 slug를 넣을 수 있다.
