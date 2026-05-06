@@ -790,10 +790,11 @@ func TestAuthHandler_Refresh_HappyPath_TokenIssued(t *testing.T) {
 	if tp.Token != pair.AccessToken {
 		t.Errorf("Token=%q, want %q", tp.Token, pair.AccessToken)
 	}
-	// ExpiresAt should be roughly before+ExpiresIn .. after+ExpiresIn.
-	earliest := before.Add(time.Duration(pair.ExpiresIn) * time.Second)
-	latest := after.Add(time.Duration(pair.ExpiresIn) * time.Second)
-	if tp.ExpiresAt.Before(earliest) || tp.ExpiresAt.After(latest) {
+	// ExpiresAt should be roughly before+ExpiresIn .. after+ExpiresIn,
+	// encoded as epoch-ms to match the generated TypeScript contract.
+	earliest := before.Add(time.Duration(pair.ExpiresIn) * time.Second).UnixMilli()
+	latest := after.Add(time.Duration(pair.ExpiresIn) * time.Second).UnixMilli()
+	if tp.ExpiresAt < earliest || tp.ExpiresAt > latest {
 		t.Errorf("ExpiresAt=%v, want within [%v, %v]", tp.ExpiresAt, earliest, latest)
 	}
 	assertChannelOpen(t, c)

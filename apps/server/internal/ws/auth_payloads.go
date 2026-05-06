@@ -1,10 +1,6 @@
 package ws
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "github.com/google/uuid"
 
 // auth.* protocol payloads (PR-9 WS Auth Protocol).
 //
@@ -82,24 +78,26 @@ type AuthRevokedPayload struct {
 }
 
 // AuthRefreshRequiredPayload — S2C, the token is approaching expiry.
-// The client should reply with auth.refresh before ExpiresAt.
+// The client should reply with auth.refresh before ExpiresAt. ExpiresAt
+// is an epoch-ms timestamp to match the generated TypeScript contract.
 //
 // wsgen:payload
 type AuthRefreshRequiredPayload struct {
-	ExpiresAt time.Time `json:"expiresAt"`
-	Reason    string    `json:"reason,omitempty"`
+	ExpiresAt int64  `json:"expiresAt"`
+	Reason    string `json:"reason,omitempty"`
 }
 
 // AuthTokenIssuedPayload — S2C, server's response to a successful
 // auth.refresh. Carries the rotated short-lived access token plus its
-// expiry so the client can schedule the next refresh deterministically.
+// expiry, as an epoch-ms timestamp, so the client can schedule the next
+// refresh deterministically.
 // Sent as a dedicated frame (not piggybacked on another event) per
 // videosdk 2025 / websockets.readthedocs guidance.
 //
 // wsgen:payload
 type AuthTokenIssuedPayload struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	Token     string `json:"token"`
+	ExpiresAt int64  `json:"expiresAt"`
 }
 
 // AuthInvalidSessionPayload — S2C, the resume target the client sent

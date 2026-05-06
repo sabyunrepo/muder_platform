@@ -39,6 +39,12 @@ export interface WsClientOptions {
    */
   onTokenRefreshed?: (token: string, expiresAt: number) => void;
   /**
+   * Called when the server sends `auth.refresh_required`, signalling
+   * that the current access token is approaching expiry. Consumers
+   * should call refreshToken() with their refresh token before expiresAt.
+   */
+  onRefreshRequired?: (expiresAt: number, reason?: string) => void;
+  /**
    * Called when the server sends `auth.revoked` (ban / logout-elsewhere /
    * password change / admin revoke). The connection is closed and
    * reconnect is disabled — consumers typically navigate to a blocked

@@ -221,7 +221,7 @@ func (h *AuthHandler) handleRefresh(c *Client, env *Envelope) {
 	expiresAt := time.Now().Add(time.Duration(pair.ExpiresIn) * time.Second)
 	c.SendMessage(MustEnvelope(TypeAuthTokenIssued, AuthTokenIssuedPayload{
 		Token:     pair.AccessToken,
-		ExpiresAt: expiresAt,
+		ExpiresAt: expiresAt.UnixMilli(),
 	}))
 }
 

@@ -5,6 +5,7 @@ import {
   type AuthIdentifyPayload,
   type AuthResumePayload,
   type AuthRefreshPayload,
+  type AuthRefreshRequiredPayload,
   type AuthRevokedPayload,
   type AuthTokenIssuedPayload,
   type AuthInvalidSessionPayload,
@@ -286,6 +287,11 @@ export class WsClient {
         const payload = message.payload as AuthTokenIssuedPayload;
         this.currentToken = payload.token;
         this.options.onTokenRefreshed?.(payload.token, payload.expiresAt);
+        return true;
+      }
+      case Events.AUTH_REFRESH_REQUIRED: {
+        const payload = message.payload as AuthRefreshRequiredPayload;
+        this.options.onRefreshRequired?.(payload.expiresAt, payload.reason);
         return true;
       }
       case Events.AUTH_REVOKED: {
