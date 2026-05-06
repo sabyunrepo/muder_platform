@@ -9,7 +9,7 @@ import {
 vi.stubGlobal("crypto", { randomUUID: () => "generated-id" });
 
 describe("phaseEditorAdapter", () => {
-  it("API flow node의 정보 전달 action을 제작자용 ViewModel로 변환한다", () => {
+  it("API flow node의 정보 공개 action을 제작자용 ViewModel로 변환한다", () => {
     const data: FlowNodeData = {
       onEnter: [
         { id: "a1", type: "broadcast", params: { message: "시작" } },
@@ -40,16 +40,18 @@ describe("phaseEditorAdapter", () => {
         recipientType: "character",
         characterId: "char-1",
         readingSectionIds: ["rs-1", "rs-2"],
+        storyInfoIds: [],
       },
       {
         id: "d2",
         recipientType: "all_players",
         readingSectionIds: ["rs-common"],
+        storyInfoIds: [],
       },
     ]);
   });
 
-  it("정보 전달 ViewModel을 기존 onEnter action과 함께 round-trip 저장 payload로 되돌린다", () => {
+  it("정보 공개 ViewModel을 기존 onEnter action과 함께 round-trip 저장 payload로 되돌린다", () => {
     const data: FlowNodeData = {
       onEnter: [
         { id: "legacy", type: "deliver_information", params: { deliveries: [] } },
@@ -62,12 +64,14 @@ describe("phaseEditorAdapter", () => {
         id: "draft",
         recipientType: "character",
         readingSectionIds: [],
+        storyInfoIds: [],
       },
       {
         id: "d1",
         recipientType: "character",
         characterId: "char-1",
         readingSectionIds: ["rs-1", "rs-2", "rs-1"],
+        storyInfoIds: ["info-1", "info-1"],
       },
     ]);
 
@@ -82,6 +86,7 @@ describe("phaseEditorAdapter", () => {
               id: "d1",
               target: { type: "character", character_id: "char-1" },
               reading_section_ids: ["rs-1", "rs-2"],
+              story_info_ids: ["info-1"],
             },
           ],
         },
@@ -89,7 +94,7 @@ describe("phaseEditorAdapter", () => {
     ]);
   });
 
-  it("마지막 전달 설정을 삭제하면 정보 전달 action만 제거하고 다른 action은 유지한다", () => {
+  it("마지막 공개 설정을 삭제하면 정보 공개 action만 제거하고 다른 action은 유지한다", () => {
     const data: FlowNodeData = {
       onEnter: [
         { id: "info", type: DELIVER_INFORMATION_ACTION, params: { deliveries: [] } },
@@ -102,20 +107,20 @@ describe("phaseEditorAdapter", () => {
     });
   });
 
-  it("미완성 전달 설정은 저장 payload에서 제외한다", () => {
+  it("미완성 공개 설정은 저장 payload에서 제외한다", () => {
     const data: FlowNodeData = { onEnter: [{ id: "chat", type: "enable_chat" }] };
 
     expect(
       informationDeliveriesToFlowNodePatch(data, [
-        { id: "empty", recipientType: "character", readingSectionIds: [] },
-        { id: "no-character", recipientType: "character", readingSectionIds: ["rs-1"] },
-        { id: "no-section", recipientType: "all_players", readingSectionIds: [] },
+        { id: "empty", recipientType: "character", readingSectionIds: [], storyInfoIds: [] },
+        { id: "no-character", recipientType: "character", readingSectionIds: ["rs-1"], storyInfoIds: [] },
+        { id: "no-section", recipientType: "all_players", readingSectionIds: [], storyInfoIds: [] },
       ]),
     ).toEqual({ onEnter: [{ id: "chat", type: "enable_chat" }] });
   });
 
 
-  it("모든 페이즈에서 all_players 전달 설정을 저장한다", () => {
+  it("모든 페이즈에서 all_players 공개 설정을 저장한다", () => {
     expect(
       informationDeliveriesToFlowNodePatch(
         { phase_type: "investigation" },
@@ -124,6 +129,7 @@ describe("phaseEditorAdapter", () => {
             id: "all",
             recipientType: "all_players",
             readingSectionIds: ["rs-common"],
+            storyInfoIds: [],
           },
         ],
       ).onEnter,
@@ -137,6 +143,7 @@ describe("phaseEditorAdapter", () => {
               id: "all",
               target: { type: "all_players" },
               reading_section_ids: ["rs-common"],
+              story_info_ids: [],
             },
           ],
         },

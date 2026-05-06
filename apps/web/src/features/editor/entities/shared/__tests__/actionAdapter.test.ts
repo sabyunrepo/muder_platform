@@ -13,7 +13,7 @@ describe("actionAdapter", () => {
     expect(getCreatorActionLabel("unknown_custom_action")).toBe("직접 설정한 실행");
   });
 
-  it("정보 전달 action의 legacy/current 타입을 동일하게 판정한다", () => {
+  it("정보 공개 action의 legacy/current 타입을 동일하게 판정한다", () => {
     expect(isInformationDeliveryAction({ type: DELIVER_INFORMATION_ACTION })).toBe(true);
     expect(isInformationDeliveryAction({ type: "deliver_information" })).toBe(true);
     expect(isInformationDeliveryAction({ type: "SET_BGM" })).toBe(false);
@@ -42,7 +42,7 @@ describe("actionAdapter", () => {
     expect(getCreatorActionLabel("set_theme_color")).toBe("화면 색상 테마 변경");
   });
 
-  it("정보 전달은 phase summary의 일반 action 목록에서 제외할 수 있다", () => {
+  it("정보 공개는 phase summary의 일반 action 목록에서 제외할 수 있다", () => {
     expect(
       toCreatorActionLabels(
         [{ type: "SET_BGM" }, { type: DELIVER_INFORMATION_ACTION }, { type: "MUTE_CHAT" }],

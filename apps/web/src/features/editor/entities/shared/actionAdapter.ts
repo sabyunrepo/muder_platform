@@ -23,8 +23,8 @@ export const CREATOR_ACTION_OPTIONS: CreatorActionOption[] = [
 
 const ACTION_LABELS = new Map<string, string>([
   ...CREATOR_ACTION_OPTIONS.map((option) => [option.value, option.label] as const),
-  [DELIVER_INFORMATION_ACTION, "정보 전달"],
-  [LEGACY_DELIVER_INFORMATION_ACTION, "정보 전달"],
+  [DELIVER_INFORMATION_ACTION, "정보 공개"],
+  [LEGACY_DELIVER_INFORMATION_ACTION, "정보 공개"],
   ["OPEN_GROUP_CHAT", "토론방 열기"],
   ["CLOSE_GROUP_CHAT", "토론방 닫기"],
   ["broadcast", "공지 전달"],

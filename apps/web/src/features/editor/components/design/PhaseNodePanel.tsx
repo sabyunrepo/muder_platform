@@ -172,7 +172,7 @@ function PhaseSummaryCard({ viewModel }: { viewModel: PhaseEditorViewModel }) {
           label="다음 이동"
           value={`${viewModel.defaultTransitionLabel} · 조건 이동 ${viewModel.conditionalTransitionCount}개`}
         />
-        <SummaryRow label="정보 전달" value={`${viewModel.informationDeliveryCount}개 설정`} />
+        <SummaryRow label="정보 공개" value={`${viewModel.informationDeliveryCount}개 설정`} />
         <SummaryRow label="토론방" value={formatDiscussionRoomSummary(viewModel.discussionRoomPolicy)} />
         <SummaryRow label="시작 트리거" value={enterActions} />
         <SummaryRow label="종료 트리거" value={exitActions} />
