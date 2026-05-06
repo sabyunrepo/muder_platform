@@ -44,11 +44,20 @@ func (s *service) CreateMap(ctx context.Context, creatorID, themeID uuid.UUID, r
 	if count >= MaxMapsPerTheme {
 		return nil, apperror.BadRequest(fmt.Sprintf("theme cannot have more than %d maps", MaxMapsPerTheme))
 	}
+	imageMediaID, err := s.resolveThemeImageMedia(ctx, themeID, req.ImageMediaID, "map image")
+	if err != nil {
+		return nil, err
+	}
+	imageURL := ptrToText(req.ImageURL)
+	if imageMediaID.Valid {
+		imageURL = pgtype.Text{}
+	}
 	m, err := s.q.CreateMap(ctx, db.CreateMapParams{
-		ThemeID:   themeID,
-		Name:      req.Name,
-		ImageUrl:  ptrToText(req.ImageURL),
-		SortOrder: req.SortOrder,
+		ThemeID:      themeID,
+		Name:         req.Name,
+		ImageUrl:     imageURL,
+		ImageMediaID: imageMediaID,
+		SortOrder:    req.SortOrder,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create map")
@@ -67,11 +76,28 @@ func (s *service) UpdateMap(ctx context.Context, creatorID, mapID uuid.UUID, req
 		s.logger.Error().Err(err).Msg("failed to get map")
 		return nil, apperror.Internal("failed to get map")
 	}
+	imageURL := m.ImageUrl
+	if req.ImageURL != nil {
+		imageURL = ptrToText(req.ImageURL)
+	}
+	imageMediaID := m.ImageMediaID
+	if req.ImageMediaID.Set {
+		if req.ImageMediaID.Value == nil {
+			imageMediaID = pgtype.UUID{}
+		} else {
+			imageMediaID, err = s.resolveThemeImageMedia(ctx, m.ThemeID, req.ImageMediaID.Value, "map image")
+			imageURL = pgtype.Text{}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 	updated, err := s.q.UpdateMap(ctx, db.UpdateMapParams{
-		ID:        m.ID,
-		Name:      req.Name,
-		ImageUrl:  ptrToText(req.ImageURL),
-		SortOrder: req.SortOrder,
+		ID:           m.ID,
+		Name:         req.Name,
+		ImageUrl:     imageURL,
+		ImageMediaID: imageMediaID,
+		SortOrder:    req.SortOrder,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update map")
@@ -182,6 +208,7 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 			imageMediaID = pgtype.UUID{}
 		} else {
 			imageMediaID, err = s.resolveThemeImageMedia(ctx, l.ThemeID, req.ImageMediaID.Value, "location image")
+			imageURL = pgtype.Text{}
 		}
 		if err != nil {
 			return nil, err
@@ -325,12 +352,13 @@ func (s *service) DeleteLocation(ctx context.Context, creatorID, locID uuid.UUID
 
 func toMapResponse(m db.ThemeMap) MapResponse {
 	return MapResponse{
-		ID:        m.ID,
-		ThemeID:   m.ThemeID,
-		Name:      m.Name,
-		ImageURL:  textToPtr(m.ImageUrl),
-		SortOrder: m.SortOrder,
-		CreatedAt: m.CreatedAt,
+		ID:           m.ID,
+		ThemeID:      m.ThemeID,
+		Name:         m.Name,
+		ImageURL:     textToPtr(m.ImageUrl),
+		ImageMediaID: pgtypeUUIDToPtr(m.ImageMediaID),
+		SortOrder:    m.SortOrder,
+		CreatedAt:    m.CreatedAt,
 	}
 }
 

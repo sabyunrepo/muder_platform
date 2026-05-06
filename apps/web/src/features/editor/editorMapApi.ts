@@ -10,7 +10,9 @@ import type { MapResponse, LocationResponse } from './api';
 
 export interface UpdateMapRequest {
   name?: string;
-  image_url?: string;
+  image_url?: string | null;
+  image_media_id?: string | null;
+  sort_order?: number;
 }
 
 export interface CreateLocationRequest {
@@ -51,7 +53,16 @@ export function useEditorMaps(themeId: string) {
 // ---------------------------------------------------------------------------
 
 export function useCreateMap(themeId: string) {
-  return useMutation<MapResponse, Error, { name: string; image_url?: string }>({
+  return useMutation<
+    MapResponse,
+    Error,
+    {
+      name: string;
+      image_url?: string | null;
+      image_media_id?: string | null;
+      sort_order?: number;
+    }
+  >({
     mutationFn: (body) => api.post<MapResponse>(`/v1/editor/themes/${themeId}/maps`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: editorKeys.maps(themeId) });

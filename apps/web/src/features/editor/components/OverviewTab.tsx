@@ -8,6 +8,7 @@ import {
 } from '@/features/editor/api';
 import { SectionDivider } from './SectionDivider';
 import { CoverImageCropUpload } from './CoverImageCropUpload';
+import { LocationImageMediaField } from './design/LocationImageMediaField';
 
 // ---------------------------------------------------------------------------
 // SpecField — inline number input with label + unit
@@ -94,6 +95,9 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   const [title, setTitle] = useState(theme.title);
   const [description, setDescription] = useState(theme.description ?? '');
   const [coverImage, setCoverImage] = useState<string | null>(theme.cover_image || null);
+  const [coverImageMediaId, setCoverImageMediaId] = useState<string | null>(
+    theme.cover_image_media_id ?? null
+  );
   const [minPlayers, setMinPlayers] = useState(theme.min_players);
   const [maxPlayers, setMaxPlayers] = useState(theme.max_players);
   const [durationMin, setDurationMin] = useState(theme.duration_min);
@@ -107,6 +111,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     setTitle(theme.title);
     setDescription(theme.description ?? '');
     setCoverImage(theme.cover_image || null);
+    setCoverImageMediaId(theme.cover_image_media_id ?? null);
     setMinPlayers(theme.min_players);
     setMaxPlayers(theme.max_players);
     setDurationMin(theme.duration_min);
@@ -124,9 +129,11 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     if (minPlayers < 2 || minPlayers > 20) next.minPlayers = '최소 인원은 2~20 사이여야 합니다';
     if (maxPlayers < 2 || maxPlayers > 20) next.maxPlayers = '최대 인원은 2~20 사이여야 합니다';
     else if (maxPlayers < minPlayers) next.maxPlayers = '최대 인원은 최소 인원 이상이어야 합니다';
-    if (durationMin < 10 || durationMin > 300) next.durationMin = '진행 시간은 10~300분 사이여야 합니다';
+    if (durationMin < 10 || durationMin > 300)
+      next.durationMin = '진행 시간은 10~300분 사이여야 합니다';
     if (price < 0) next.price = '가격은 0 이상이어야 합니다';
-    if (coinPrice < 0 || coinPrice > 100000) next.coinPrice = '코인 가격은 0~100,000 사이여야 합니다';
+    if (coinPrice < 0 || coinPrice > 100000)
+      next.coinPrice = '코인 가격은 0~100,000 사이여야 합니다';
     return next;
   }
 
@@ -140,6 +147,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
       title: title.trim(),
       description: description || undefined,
       cover_image: coverImage || undefined,
+      cover_image_media_id: coverImageMediaId,
       min_players: minPlayers,
       max_players: maxPlayers,
       duration_min: durationMin,
@@ -163,7 +171,10 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
         <CoverImageCropUpload
           themeId={themeId}
           currentImageUrl={coverImage}
-          onUploaded={(url) => setCoverImage(url || null)}
+          onUploaded={(url) => {
+            setCoverImage(url || null);
+            setCoverImageMediaId(null);
+          }}
           className="w-full"
         />
 
@@ -198,9 +209,28 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
               rows={3}
               className="w-full rounded-sm border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-700 focus:border-amber-500/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900 transition-colors resize-none"
             />
-            {errors.description && <p className="mt-1 text-xs text-red-400">{errors.description}</p>}
+            {errors.description && (
+              <p className="mt-1 text-xs text-red-400">{errors.description}</p>
+            )}
           </div>
         </div>
+      </div>
+
+      <div className="mt-4">
+        <LocationImageMediaField
+          themeId={themeId}
+          label="테마 커버 이미지"
+          pickerTitle="테마 커버 이미지 선택"
+          emptyLabel="미디어에서 커버 선택"
+          legacyMessage="기존 커버 업로드 이미지가 있습니다. 미디어 관리 이미지로 교체하면 이후 한 곳에서 관리할 수 있습니다."
+          imageMediaId={coverImageMediaId}
+          legacyImageUrl={coverImage}
+          onSelect={(media) => {
+            setCoverImageMediaId(media.id);
+            setCoverImage(null);
+          }}
+          onClear={() => setCoverImageMediaId(null)}
+        />
       </div>
 
       {/* ── 게임 스펙 ── */}

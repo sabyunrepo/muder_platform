@@ -24,7 +24,7 @@ SET status       = 'PUBLISHED',
     updated_at   = NOW()
 WHERE id = $1
   AND status = 'PENDING_REVIEW'
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type ApproveThemeParams struct {
@@ -57,6 +57,7 @@ func (q *Queries) ApproveTheme(ctx context.Context, arg ApproveThemeParams) (The
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -73,7 +74,7 @@ func (q *Queries) GetUserTrustedCreator(ctx context.Context, id uuid.UUID) (bool
 }
 
 const listPendingReviewThemes = `-- name: ListPendingReviewThemes :many
-SELECT t.id, t.creator_id, t.title, t.slug, t.description, t.cover_image, t.min_players, t.max_players, t.duration_min, t.price, t.status, t.config_json, t.version, t.published_at, t.created_at, t.updated_at, t.coin_price, t.review_note, t.reviewed_at, t.reviewed_by, u.nickname AS creator_name
+SELECT t.id, t.creator_id, t.title, t.slug, t.description, t.cover_image, t.min_players, t.max_players, t.duration_min, t.price, t.status, t.config_json, t.version, t.published_at, t.created_at, t.updated_at, t.coin_price, t.review_note, t.reviewed_at, t.reviewed_by, t.cover_image_media_id, u.nickname AS creator_name
 FROM themes t
 JOIN users u ON t.creator_id = u.id
 WHERE t.status = 'PENDING_REVIEW'
@@ -81,27 +82,28 @@ ORDER BY t.updated_at ASC
 `
 
 type ListPendingReviewThemesRow struct {
-	ID          uuid.UUID          `json:"id"`
-	CreatorID   uuid.UUID          `json:"creator_id"`
-	Title       string             `json:"title"`
-	Slug        string             `json:"slug"`
-	Description pgtype.Text        `json:"description"`
-	CoverImage  pgtype.Text        `json:"cover_image"`
-	MinPlayers  int32              `json:"min_players"`
-	MaxPlayers  int32              `json:"max_players"`
-	DurationMin int32              `json:"duration_min"`
-	Price       int32              `json:"price"`
-	Status      string             `json:"status"`
-	ConfigJson  json.RawMessage    `json:"config_json"`
-	Version     int32              `json:"version"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
-	CoinPrice   int32              `json:"coin_price"`
-	ReviewNote  pgtype.Text        `json:"review_note"`
-	ReviewedAt  pgtype.Timestamptz `json:"reviewed_at"`
-	ReviewedBy  pgtype.UUID        `json:"reviewed_by"`
-	CreatorName string             `json:"creator_name"`
+	ID                uuid.UUID          `json:"id"`
+	CreatorID         uuid.UUID          `json:"creator_id"`
+	Title             string             `json:"title"`
+	Slug              string             `json:"slug"`
+	Description       pgtype.Text        `json:"description"`
+	CoverImage        pgtype.Text        `json:"cover_image"`
+	MinPlayers        int32              `json:"min_players"`
+	MaxPlayers        int32              `json:"max_players"`
+	DurationMin       int32              `json:"duration_min"`
+	Price             int32              `json:"price"`
+	Status            string             `json:"status"`
+	ConfigJson        json.RawMessage    `json:"config_json"`
+	Version           int32              `json:"version"`
+	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	CoinPrice         int32              `json:"coin_price"`
+	ReviewNote        pgtype.Text        `json:"review_note"`
+	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
+	ReviewedBy        pgtype.UUID        `json:"reviewed_by"`
+	CoverImageMediaID pgtype.UUID        `json:"cover_image_media_id"`
+	CreatorName       string             `json:"creator_name"`
 }
 
 func (q *Queries) ListPendingReviewThemes(ctx context.Context) ([]ListPendingReviewThemesRow, error) {
@@ -134,6 +136,7 @@ func (q *Queries) ListPendingReviewThemes(ctx context.Context) ([]ListPendingRev
 			&i.ReviewNote,
 			&i.ReviewedAt,
 			&i.ReviewedBy,
+			&i.CoverImageMediaID,
 			&i.CreatorName,
 		); err != nil {
 			return nil, err
@@ -155,7 +158,7 @@ SET status      = 'REJECTED',
     updated_at  = NOW()
 WHERE id = $1
   AND status = 'PENDING_REVIEW'
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type RejectThemeParams struct {
@@ -188,6 +191,7 @@ func (q *Queries) RejectTheme(ctx context.Context, arg RejectThemeParams) (Theme
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -214,7 +218,7 @@ SET status      = 'PENDING_REVIEW',
     reviewed_by = NULL,
     updated_at  = NOW()
 WHERE id = $1
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 func (q *Queries) SubmitThemeForReview(ctx context.Context, id uuid.UUID) (Theme, error) {
@@ -241,6 +245,7 @@ func (q *Queries) SubmitThemeForReview(ctx context.Context, id uuid.UUID) (Theme
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -254,7 +259,7 @@ SET status      = 'SUSPENDED',
     updated_at  = NOW()
 WHERE id = $1
   AND status IN ('PUBLISHED', 'PENDING_REVIEW')
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type SuspendThemeParams struct {
@@ -287,6 +292,7 @@ func (q *Queries) SuspendTheme(ctx context.Context, arg SuspendThemeParams) (The
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -296,7 +302,7 @@ UPDATE themes
 SET status     = 'UNPUBLISHED',
     updated_at = NOW()
 WHERE id = $1
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 func (q *Queries) UnpublishTheme(ctx context.Context, id uuid.UUID) (Theme, error) {
@@ -323,6 +329,7 @@ func (q *Queries) UnpublishTheme(ctx context.Context, id uuid.UUID) (Theme, erro
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }

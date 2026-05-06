@@ -62,6 +62,18 @@ WHERE theme_id = $1
   AND key ~ '^role_sheet:'
   AND body ~ $2;
 
+-- name: FindThemeCoverReferencesForMedia :many
+SELECT id, title
+FROM themes
+WHERE id = sqlc.arg('theme_id')
+  AND cover_image_media_id = sqlc.arg('media_id');
+
+-- name: FindMapReferencesForMedia :many
+SELECT id, name
+FROM theme_maps
+WHERE theme_id = sqlc.arg('theme_id')
+  AND image_media_id = sqlc.arg('media_id');
+
 -- ============================================================
 -- Media (Batch)
 -- ============================================================

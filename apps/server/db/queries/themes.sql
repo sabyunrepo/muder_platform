@@ -34,10 +34,10 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $
 RETURNING *;
 
 -- name: UpdateTheme :one
-UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5,
-  min_players = $6, max_players = $7, duration_min = $8, price = $9, coin_price = $10,
+UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5, cover_image_media_id = $6,
+  min_players = $7, max_players = $8, duration_min = $9, price = $10, coin_price = $11,
   version = version + 1, updated_at = NOW()
-WHERE id = $1 AND version = $11
+WHERE id = $1 AND version = $12
 RETURNING *;
 
 -- name: DeleteTheme :exec
@@ -85,4 +85,4 @@ SELECT * FROM themes ORDER BY created_at DESC LIMIT $1 OFFSET $2;
 SELECT * FROM rooms ORDER BY created_at DESC LIMIT $1 OFFSET $2;
 
 -- name: UpdateThemeCoverImage :exec
-UPDATE themes SET cover_image = $2, updated_at = NOW() WHERE id = $1;
+UPDATE themes SET cover_image = $2, cover_image_media_id = NULL, updated_at = NOW() WHERE id = $1;

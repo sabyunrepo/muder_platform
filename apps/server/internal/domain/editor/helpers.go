@@ -91,19 +91,20 @@ func isUniqueViolation(err error) bool {
 
 func toThemeResponse(t db.Theme) *ThemeResponse {
 	resp := &ThemeResponse{
-		ID:          t.ID,
-		Title:       t.Title,
-		Slug:        t.Slug,
-		Description: textToPtr(t.Description),
-		CoverImage:  textToPtr(t.CoverImage),
-		MinPlayers:  t.MinPlayers,
-		MaxPlayers:  t.MaxPlayers,
-		DurationMin: t.DurationMin,
-		Price:       t.Price,
-		CoinPrice:   t.CoinPrice,
-		Status:      t.Status,
-		Version:     t.Version,
-		CreatedAt:   t.CreatedAt,
+		ID:                t.ID,
+		Title:             t.Title,
+		Slug:              t.Slug,
+		Description:       textToPtr(t.Description),
+		CoverImage:        textToPtr(t.CoverImage),
+		CoverImageMediaID: pgtypeUUIDToPtr(t.CoverImageMediaID),
+		MinPlayers:        t.MinPlayers,
+		MaxPlayers:        t.MaxPlayers,
+		DurationMin:       t.DurationMin,
+		Price:             t.Price,
+		CoinPrice:         t.CoinPrice,
+		Status:            t.Status,
+		Version:           t.Version,
+		CreatedAt:         t.CreatedAt,
 	}
 	if len(t.ConfigJson) > 0 && string(t.ConfigJson) != "null" {
 		resp.ConfigJson = t.ConfigJson

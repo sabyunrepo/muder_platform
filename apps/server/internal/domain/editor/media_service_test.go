@@ -25,6 +25,7 @@ import (
 type fakeMediaQueries struct {
 	themes        map[uuid.UUID]db.Theme
 	media         map[uuid.UUID]db.ThemeMedium
+	maps          map[uuid.UUID]db.ThemeMap
 	sessions      map[uuid.UUID]db.GameSession
 	sections      map[uuid.UUID]db.ReadingSection
 	roleSheetRefs map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow
@@ -34,6 +35,7 @@ func newFakeMediaQueries() *fakeMediaQueries {
 	return &fakeMediaQueries{
 		themes:        make(map[uuid.UUID]db.Theme),
 		media:         make(map[uuid.UUID]db.ThemeMedium),
+		maps:          make(map[uuid.UUID]db.ThemeMap),
 		sessions:      make(map[uuid.UUID]db.GameSession),
 		sections:      make(map[uuid.UUID]db.ReadingSection),
 		roleSheetRefs: make(map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow),
@@ -184,6 +186,30 @@ func (f *fakeMediaQueries) DeleteMediaWithOwner(_ context.Context, arg db.Delete
 	}
 	delete(f.media, arg.ID)
 	return 1, nil
+}
+
+func (f *fakeMediaQueries) FindThemeCoverReferencesForMedia(_ context.Context, arg db.FindThemeCoverReferencesForMediaParams) ([]db.FindThemeCoverReferencesForMediaRow, error) {
+	if !arg.MediaID.Valid {
+		return []db.FindThemeCoverReferencesForMediaRow{}, nil
+	}
+	theme, ok := f.themes[arg.ThemeID]
+	if !ok || !theme.CoverImageMediaID.Valid || theme.CoverImageMediaID.Bytes != arg.MediaID.Bytes {
+		return []db.FindThemeCoverReferencesForMediaRow{}, nil
+	}
+	return []db.FindThemeCoverReferencesForMediaRow{{ID: theme.ID, Title: theme.Title}}, nil
+}
+
+func (f *fakeMediaQueries) FindMapReferencesForMedia(_ context.Context, arg db.FindMapReferencesForMediaParams) ([]db.FindMapReferencesForMediaRow, error) {
+	out := []db.FindMapReferencesForMediaRow{}
+	if !arg.MediaID.Valid {
+		return out, nil
+	}
+	for _, m := range f.maps {
+		if m.ThemeID == arg.ThemeID && m.ImageMediaID.Valid && m.ImageMediaID.Bytes == arg.MediaID.Bytes {
+			out = append(out, db.FindMapReferencesForMediaRow{ID: m.ID, Name: m.Name})
+		}
+	}
+	return out, nil
 }
 
 func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error) {
@@ -548,6 +574,47 @@ func TestMediaService_Delete_Success_NoReferences(t *testing.T) {
 	}
 	if _, ok := q.media[mediaID]; ok {
 		t.Fatalf("media should have been deleted")
+	}
+}
+
+func TestMediaService_Delete_BlockedByThemeCoverReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	theme := q.themes[themeID]
+	theme.Title = "저택 살인사건"
+	theme.CoverImageMediaID = pgtype.UUID{Bytes: mediaID, Valid: true}
+	q.themes[themeID] = theme
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["type"] != "theme_cover" || refs[0]["id"] != themeID.String() || refs[0]["name"] != "저택 살인사건" {
+		t.Fatalf("unexpected theme cover references: %#v", refs)
+	}
+}
+
+func TestMediaService_Delete_BlockedByMapImageReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	mapID := uuid.New()
+	q.maps[mapID] = db.ThemeMap{
+		ID:           mapID,
+		ThemeID:      themeID,
+		Name:         "1층 지도",
+		ImageMediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
+	}
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["type"] != "map" || refs[0]["id"] != mapID.String() || refs[0]["name"] != "1층 지도" {
+		t.Fatalf("unexpected map references: %#v", refs)
 	}
 }
 
