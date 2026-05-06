@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Info, MapPin, Trash2 } from 'lucide-react';
+import { Info, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
 import { useUpdateConfigJson, useUpdateLocation } from '@/features/editor/api';
-import { ImageUpload } from '@/features/editor/components/ImageUpload';
 import { EntityTriggerPlacementCard } from '@/features/editor/components/triggers/EntityTriggerPlacementCard';
 import { readLocationClueIds } from '@/features/editor/editorTypes';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
@@ -12,6 +11,7 @@ import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
 import { LocationClueAssignPanel } from './LocationClueAssignPanel';
+import { LocationImageMediaField } from './LocationImageMediaField';
 
 interface LocationDetailPanelProps {
   themeId: string;
@@ -173,17 +173,20 @@ function SelectedLocationDetail({
     const nextImageUrl = Object.prototype.hasOwnProperty.call(patch, 'image_url')
       ? (patch.image_url ?? null)
       : location.image_url;
+    const hasImageMediaPatch = Object.prototype.hasOwnProperty.call(patch, 'image_media_id');
+    const body = {
+      name: patch.name ?? location.name,
+      restricted_characters: patch.restricted_characters ?? location.restricted_characters,
+      image_url: nextImageUrl,
+      sort_order: patch.sort_order ?? location.sort_order,
+      from_round: nextFrom,
+      until_round: nextUntil,
+      ...(hasImageMediaPatch ? { image_media_id: patch.image_media_id ?? null } : {}),
+    };
     updateLocation.mutate(
       {
         locationId: location.id,
-        body: {
-          name: patch.name ?? location.name,
-          restricted_characters: patch.restricted_characters ?? location.restricted_characters,
-          image_url: nextImageUrl,
-          sort_order: patch.sort_order ?? location.sort_order,
-          from_round: nextFrom,
-          until_round: nextUntil,
-        },
+        body,
       },
       { onError: () => toast.error('장소 저장에 실패했습니다') }
     );
@@ -213,20 +216,13 @@ function SelectedLocationDetail({
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(12rem,0.42fr)_minmax(0,1fr)]">
-          <div>
-            <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-slate-300">
-              <Image className="h-3.5 w-3.5 text-amber-400" />
-              장소 이미지
-            </div>
-            <ImageUpload
-              themeId={themeId}
-              target="location"
-              targetId={location.id}
-              currentImageUrl={viewModel.imageUrl}
-              aspectRatio="16 / 10"
-              onUploaded={(url) => saveLocation({ image_url: url || null })}
-            />
-          </div>
+          <LocationImageMediaField
+            themeId={themeId}
+            imageMediaId={location.image_media_id}
+            legacyImageUrl={viewModel.imageUrl}
+            onSelect={(media) => saveLocation({ image_media_id: media.id, image_url: null })}
+            onClear={() => saveLocation({ image_media_id: null })}
+          />
           <div className="space-y-3">
             <RoundFields
               location={location}

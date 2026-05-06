@@ -18,6 +18,7 @@ export interface CreateLocationRequest {
   description?: string;
   restricted_characters?: string | null;
   image_url?: string | null;
+  image_media_id?: string | null;
   from_round?: number | null;
   until_round?: number | null;
 }
@@ -27,6 +28,7 @@ export interface UpdateLocationRequest {
   description?: string;
   restricted_characters?: string | null;
   image_url?: string | null;
+  image_media_id?: string | null;
   sort_order?: number;
   from_round?: number | null;
   until_round?: number | null;
