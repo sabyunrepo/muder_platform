@@ -980,6 +980,7 @@ SET source_type = 'FILE',
     storage_key = $3,
     file_size = $4,
     mime_type = $5,
+    duration = NULL,
     updated_at = NOW()
 FROM themes t
 WHERE m.id = $1 AND m.theme_id = t.id AND t.creator_id = $2

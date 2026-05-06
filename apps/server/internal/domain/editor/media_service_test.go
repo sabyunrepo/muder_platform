@@ -210,6 +210,7 @@ func (f *fakeMediaQueries) UpdateMediaFileWithOwner(_ context.Context, arg db.Up
 	m.StorageKey = arg.StorageKey
 	m.FileSize = arg.FileSize
 	m.MimeType = arg.MimeType
+	m.Duration = pgtype.Int4{}
 	f.media[arg.ID] = m
 	return m, nil
 }
@@ -1219,6 +1220,9 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	svc.storage = st
 	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
 	oldKey := q.media[mediaID].StorageKey.String
+	media := q.media[mediaID]
+	media.Duration = pgtype.Int4{Int32: 123, Valid: true}
+	q.media[mediaID] = media
 	st.objects[oldKey] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
 
 	upload, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
@@ -1240,6 +1244,9 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	}
 	if q.media[mediaID].StorageKey.String != pending.StorageKey {
 		t.Fatalf("storage key was not replaced")
+	}
+	if q.media[mediaID].Duration.Valid {
+		t.Fatalf("replacement should clear stale duration metadata")
 	}
 	if _, ok := st.objects[oldKey]; ok {
 		t.Fatalf("old object should be deleted")
