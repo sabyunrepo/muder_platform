@@ -3,6 +3,7 @@ package room
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -78,10 +79,26 @@ type Service interface {
 	StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
+// GameStartPlayer is the player-facing roster input handed to the runtime
+// session when a waiting room starts.
+type GameStartPlayer struct {
+	UserID                uuid.UUID
+	CharacterID           *uuid.UUID
+	Nickname              string
+	AvatarURL             *string
+	IsHost                bool
+	IsReady               bool
+	JoinedAt              time.Time
+	CharacterName         string
+	CharacterImageURL     *string
+	CharacterImageMediaID *string
+	CharacterAliasRules   json.RawMessage
+}
+
 // GameStarter abstracts startModularGame so the room service has no direct
-// dependency on the session package. Implement with session.StartModularGameFunc.
+// dependency on the session package.
 type GameStarter interface {
-	Start(ctx context.Context, roomID uuid.UUID, configJSON []byte) error
+	Start(ctx context.Context, roomID, themeID uuid.UUID, configJSON []byte, players []GameStartPlayer) error
 }
 
 type service struct {
@@ -484,7 +501,12 @@ func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req S
 		)
 	}
 
-	if err := s.gameStarter.Start(ctx, roomID, req.ConfigJSON); err != nil {
+	players, err := s.buildGameStartPlayers(ctx, room)
+	if err != nil {
+		return err
+	}
+
+	if err := s.gameStarter.Start(ctx, roomID, room.ThemeID, req.ConfigJSON, players); err != nil {
 		s.logger.Error().Err(err).Str("room_id", roomID.String()).Msg("StartRoom: gameStarter failed")
 		return err
 	}
@@ -494,6 +516,63 @@ func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req S
 		Str("host_id", hostID.String()).
 		Msg("StartRoom: game started")
 	return nil
+}
+
+func (s *service) buildGameStartPlayers(ctx context.Context, room db.Room) ([]GameStartPlayer, error) {
+	rows, err := s.queries.GetRoomPlayersWithUser(ctx, room.ID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("room_id", room.ID).Msg("StartRoom: failed to get room players")
+		return nil, apperror.Internal("failed to get room players")
+	}
+	chars, err := s.queries.GetThemeCharacters(ctx, room.ThemeID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("theme_id", room.ThemeID).Msg("StartRoom: failed to get theme characters")
+		return nil, apperror.Internal("failed to get theme characters")
+	}
+	return mapGameStartPlayers(rows, chars, room.HostID), nil
+}
+
+func mapGameStartPlayers(
+	rows []db.GetRoomPlayersWithUserRow,
+	chars []db.ThemeCharacter,
+	hostID uuid.UUID,
+) []GameStartPlayer {
+	charByID := make(map[uuid.UUID]db.ThemeCharacter, len(chars))
+	for _, char := range chars {
+		charByID[char.ID] = char
+	}
+
+	players := make([]GameStartPlayer, 0, len(rows))
+	for _, row := range rows {
+		player := GameStartPlayer{
+			UserID:    row.UserID,
+			Nickname:  row.Nickname,
+			AvatarURL: textToPtr(row.AvatarUrl),
+			IsHost:    row.UserID == hostID,
+			IsReady:   row.IsReady,
+			JoinedAt:  row.JoinedAt,
+		}
+		if row.CharacterID.Valid {
+			charID := uuid.UUID(row.CharacterID.Bytes)
+			player.CharacterID = &charID
+			if char, ok := charByID[charID]; ok {
+				player.CharacterName = char.Name
+				player.CharacterImageURL = textToPtr(char.ImageUrl)
+				player.CharacterImageMediaID = uuidToStringPtr(char.ImageMediaID)
+				player.CharacterAliasRules = char.AliasRules
+			}
+		}
+		players = append(players, player)
+	}
+	return players
+}
+
+func uuidToStringPtr(value pgtype.UUID) *string {
+	if !value.Valid {
+		return nil
+	}
+	id := uuid.UUID(value.Bytes).String()
+	return &id
 }
 
 // mapRoomResponse converts a db.Room to a RoomResponse.

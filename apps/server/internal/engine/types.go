@@ -207,10 +207,17 @@ type Logger interface {
 // may need to validate player-targeted actions without owning the full session
 // roster.
 type PlayerRuntimeInfo struct {
-	PlayerID   uuid.UUID
-	TargetCode string
-	Role       string
-	IsAlive    bool
+	PlayerID           uuid.UUID
+	TargetCode         string
+	Nickname           string
+	Role               string
+	IsAlive            bool
+	IsHost             bool
+	IsReady            bool
+	ConnectedAt        int64
+	DisplayName        string
+	DisplayIconURL     *string
+	DisplayIconMediaID *string
 }
 
 // PlayerInfoProvider resolves runtime player metadata for modules that must
@@ -219,6 +226,13 @@ type PlayerRuntimeInfo struct {
 type PlayerInfoProvider interface {
 	ResolvePlayerID(ctx context.Context, targetCode string) (uuid.UUID, bool)
 	PlayerRuntimeInfo(ctx context.Context, playerID uuid.UUID) (PlayerRuntimeInfo, bool)
+}
+
+// PlayerRuntimeRosterProvider optionally exposes a player-facing roster for
+// session snapshots. Implementations must return resolved display values only;
+// raw alias rules or spoiler fields must never be included.
+type PlayerRuntimeRosterProvider interface {
+	PlayerRuntimeRoster(ctx context.Context) []PlayerRuntimeInfo
 }
 
 // ModuleDeps provides session-scoped dependencies to modules.

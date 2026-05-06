@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/engine"
 )
 
 // MessageKind identifies the category of a SessionMessage routed through the actor inbox.
@@ -69,11 +70,17 @@ const (
 
 // PlayerState holds per-player runtime state visible to the session actor.
 type PlayerState struct {
-	PlayerID   uuid.UUID
-	TargetCode string
-	Connected  bool
-	Role       string
-	IsAlive    *bool
+	PlayerID       uuid.UUID
+	TargetCode     string
+	Nickname       string
+	Connected      bool
+	Role           string
+	IsAlive        *bool
+	IsHost         bool
+	IsReady        bool
+	ConnectedAt    int64
+	DisplayBase    engine.CharacterDisplayBase
+	DisplayContext json.RawMessage
 }
 
 // EngineCommandPayload is the structured payload for KindEngineCommand messages.

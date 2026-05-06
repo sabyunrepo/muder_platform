@@ -1,18 +1,19 @@
-import { useState, useMemo } from "react";
-import { User, Vote } from "lucide-react";
-import { WsEventType } from "@mmp/shared";
-import type { Player } from "@mmp/shared";
+import { useState, useMemo } from 'react';
+import { User, Vote } from 'lucide-react';
+import { WsEventType } from '@mmp/shared';
+import type { Player } from '@mmp/shared';
 
-import { Button, Badge, Card } from "@/shared/components/ui";
-import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
-import { selectMyPlayerId, selectPlayers } from "@/stores/gameSelectors";
-import { useModuleStore } from "@/stores/moduleStoreFactory";
-import { useCountUp } from "../hooks/useCountUp";
+import { Button, Badge, Card } from '@/shared/components/ui';
+import { useGameSessionStore as useGameStore } from '@/stores/gameSessionStore';
+import { selectMyPlayerId, selectPlayers } from '@/stores/gameSelectors';
+import { useModuleStore } from '@/stores/moduleStoreFactory';
+import { useCountUp } from '../hooks/useCountUp';
 import {
   countExcludedDetectives,
   filterVotingCandidates,
   readVotingCandidatePolicy,
-} from "../utils/votingCandidates";
+} from '../utils/votingCandidates';
+import { playerDisplayName, playerDisplayNameById } from '../utils/resultBreakdownAdapter';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,7 +47,7 @@ function VoteBar({
 }) {
   const animatedVotes = useCountUp(result.votes);
   const widthPct = maxVotes > 0 ? (animatedVotes / maxVotes) * 100 : 0;
-  const barColor = isTop ? "bg-amber-500" : "bg-slate-600";
+  const barColor = isTop ? 'bg-amber-500' : 'bg-slate-600';
   const delay = `${staggerIndex * 100}ms`;
 
   return (
@@ -54,9 +55,9 @@ function VoteBar({
       className="motion-safe:animate-fade-slide-up space-y-1"
       style={
         {
-          "--stagger-index": staggerIndex,
+          '--stagger-index': staggerIndex,
           animationDelay: delay,
-          animationFillMode: "backwards",
+          animationFillMode: 'backwards',
         } as React.CSSProperties
       }
     >
@@ -90,30 +91,35 @@ export function VotingPanel({ send, moduleId }: VotingPanelProps) {
   const results = moduleData.results as VotingResult[] | null | undefined;
   const isSecret = results === null;
   const hasResults = Array.isArray(results) && results.length > 0;
+  const displayResults = hasResults
+    ? results.map((result) => ({
+        ...result,
+        nickname: playerDisplayNameById(players, result.playerId, result.nickname),
+      }))
+    : [];
 
   const candidatePolicy = readVotingCandidatePolicy(moduleData);
   const candidates = filterVotingCandidates(players, myPlayerId, candidatePolicy);
   const excludedDetectiveCount = countExcludedDetectives(players, myPlayerId, candidatePolicy);
-  const emptyMessage = excludedDetectiveCount > 0
-    ? "탐정 제외 정책 때문에 투표 가능한 플레이어가 없습니다"
-    : "투표 가능한 플레이어가 없습니다";
+  const emptyMessage =
+    excludedDetectiveCount > 0
+      ? '탐정 제외 정책 때문에 투표 가능한 플레이어가 없습니다'
+      : '투표 가능한 플레이어가 없습니다';
 
   // 최대 득표수 (바 너비 계산용)
-  const maxVotes = hasResults
-    ? Math.max(...results.map((r) => r.votes), 1)
-    : 1;
+  const maxVotes = hasResults ? Math.max(...displayResults.map((r) => r.votes), 1) : 1;
 
   // 낮은 득표 → 높은 득표 순 정렬 (stagger: 작은 것부터 공개)
   const sortedResults = useMemo(
-    () => (hasResults ? [...results].sort((a, b) => a.votes - b.votes) : []),
-    [hasResults, results],
+    () => (hasResults ? [...displayResults].sort((a, b) => a.votes - b.votes) : []),
+    [hasResults, displayResults]
   );
 
   /** 투표 전송 */
   const handleVote = (targetId: string) => {
     if (votedTargetId) return; // 이미 투표함
     setVotedTargetId(targetId);
-    send(WsEventType.GAME_ACTION, { type: "vote", targetId });
+    send(WsEventType.GAME_ACTION, { type: 'vote', targetId });
   };
 
   return (
@@ -121,17 +127,11 @@ export function VotingPanel({ send, moduleId }: VotingPanelProps) {
       <div className="flex items-center gap-2">
         <Vote className="h-5 w-5 text-amber-400" />
         <h3 className="text-lg font-semibold text-slate-100">투표</h3>
-        {votedTargetId && (
-          <Badge variant="success">투표 완료</Badge>
-        )}
+        {votedTargetId && <Badge variant="success">투표 완료</Badge>}
       </div>
 
       {/* 비밀 투표 안내 */}
-      {isSecret && (
-        <p className="text-sm text-slate-400">
-          비밀 투표 — 결과가 공개되지 않습니다
-        </p>
-      )}
+      {isSecret && <p className="text-sm text-slate-400">비밀 투표 — 결과가 공개되지 않습니다</p>}
 
       {/* 투표 결과 (결과 수신 시) — 낮은 득표 → 높은 득표 순 stagger */}
       {hasResults && (
@@ -167,8 +167,8 @@ export function VotingPanel({ send, moduleId }: VotingPanelProps) {
                   key={player.id}
                   className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
                     isSelected
-                      ? "border-amber-500 ring-2 ring-amber-500 bg-amber-500/10"
-                      : "border-slate-700 bg-slate-800/50"
+                      ? 'border-amber-500 ring-2 ring-amber-500 bg-amber-500/10'
+                      : 'border-slate-700 bg-slate-800/50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -176,7 +176,7 @@ export function VotingPanel({ send, moduleId }: VotingPanelProps) {
                       <User className="h-4 w-4 text-slate-300" />
                     </div>
                     <span className="text-sm font-medium text-slate-200">
-                      {player.nickname}
+                      {playerDisplayName(player)}
                     </span>
                   </div>
                   {isSelected ? (

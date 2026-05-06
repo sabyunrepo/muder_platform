@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"runtime/debug"
+	"sort"
 
 	"github.com/google/uuid"
 )
@@ -372,6 +373,9 @@ func (e *PhaseEngine) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
 		"sessionId": e.sessionID,
 		"phase":     e.CurrentPhase(),
 	}
+	if rosterProvider, ok := e.playerInfoProvider.(PlayerRuntimeRosterProvider); ok {
+		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRoster(context.Background()))
+	}
 
 	moduleStates := make(map[string]json.RawMessage, len(e.modules))
 	for _, mod := range e.modules {
@@ -384,6 +388,51 @@ func (e *PhaseEngine) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
 	state["modules"] = moduleStates
 
 	return json.Marshal(state)
+}
+
+func playerRuntimeRosterPayload(players []PlayerRuntimeInfo) []map[string]any {
+	if len(players) == 0 {
+		return []map[string]any{}
+	}
+	players = append([]PlayerRuntimeInfo(nil), players...)
+	sort.SliceStable(players, func(i, j int) bool {
+		if players[i].ConnectedAt != players[j].ConnectedAt {
+			return players[i].ConnectedAt < players[j].ConnectedAt
+		}
+		return players[i].PlayerID.String() < players[j].PlayerID.String()
+	})
+	payload := make([]map[string]any, 0, len(players))
+	for _, player := range players {
+		name := player.DisplayName
+		if name == "" {
+			name = player.Nickname
+		}
+		row := map[string]any{
+			"id":          player.PlayerID.String(),
+			"nickname":    player.Nickname,
+			"displayName": name,
+			"role":        nullableString(player.Role),
+			"isAlive":     player.IsAlive,
+			"isHost":      player.IsHost,
+			"isReady":     player.IsReady,
+			"connectedAt": player.ConnectedAt,
+		}
+		if player.DisplayIconURL != nil {
+			row["displayIconUrl"] = *player.DisplayIconURL
+		}
+		if player.DisplayIconMediaID != nil {
+			row["displayIconMediaId"] = *player.DisplayIconMediaID
+		}
+		payload = append(payload, row)
+	}
+	return payload
+}
+
+func nullableString(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
 }
 
 // Stop gracefully shuts down the engine and all modules.
