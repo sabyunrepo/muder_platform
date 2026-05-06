@@ -46,6 +46,10 @@ const serverGraph = {
   ],
 };
 
+function cloneServerGraph() {
+  return JSON.parse(JSON.stringify(serverGraph)) as typeof serverGraph;
+}
+
 function latestSavedGraph() {
   const calls = saveFlowMutateMock.mock.calls;
   return calls[calls.length - 1][0];
@@ -55,7 +59,7 @@ describe('useFlowData', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     useFlowGraphMock.mockReturnValue({
-      data: serverGraph,
+      data: cloneServerGraph(),
       isLoading: false,
       isError: false,
       error: null,

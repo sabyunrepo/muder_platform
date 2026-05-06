@@ -187,7 +187,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
             onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            deleteKeyCode="Delete"
+            deleteKeyCode={null}
             edgesFocusable={true}
             edgesReconnectable={true}
             fitView
