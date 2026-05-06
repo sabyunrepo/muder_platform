@@ -100,6 +100,91 @@ func findMediaReferencesInThemeConfig(raw json.RawMessage, mediaID uuid.UUID) ([
 	return refs, nil
 }
 
+func clearMediaReferencesInThemeConfig(raw json.RawMessage, mediaID uuid.UUID) (json.RawMessage, bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return raw, false, nil
+	}
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil, false, fmt.Errorf("parse theme config: %w", err)
+	}
+	changed := false
+	mediaIDText := mediaID.String()
+	if phases, ok := cfg["phases"].([]any); ok {
+		for _, phaseAny := range phases {
+			phase, ok := phaseAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			if clearMediaReferencesInActionNode(phase["onEnter"], mediaIDText) {
+				changed = true
+			}
+			if clearMediaReferencesInActionNode(phase["onExit"], mediaIDText) {
+				changed = true
+			}
+		}
+	}
+	modules, _ := cfg["modules"].(map[string]any)
+	eventModule, _ := modules["event_progression"].(map[string]any)
+	eventConfig, _ := eventModule["config"].(map[string]any)
+	if triggers, ok := eventConfig["Triggers"].([]any); ok {
+		for _, triggerAny := range triggers {
+			trigger, ok := triggerAny.(map[string]any)
+			if !ok {
+				continue
+			}
+			if clearMediaReferencesInActionNode(trigger["actions"], mediaIDText) {
+				changed = true
+			}
+		}
+	}
+	if !changed {
+		return raw, false, nil
+	}
+	out, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal theme config: %w", err)
+	}
+	return out, true, nil
+}
+
+func clearMediaReferencesInActionNode(node any, mediaID string) bool {
+	changed := false
+	switch v := node.(type) {
+	case []any:
+		for _, item := range v {
+			action, ok := item.(map[string]any)
+			if !ok {
+				continue
+			}
+			if clearMediaReferenceInAction(action, mediaID) {
+				changed = true
+			}
+		}
+	case map[string]any:
+		if actions, ok := v["actions"]; ok {
+			if clearMediaReferencesInActionNode(actions, mediaID) {
+				changed = true
+			}
+		} else if clearMediaReferenceInAction(v, mediaID) {
+			changed = true
+		}
+	}
+	return changed
+}
+
+func clearMediaReferenceInAction(action map[string]any, mediaID string) bool {
+	params, ok := action["params"].(map[string]any)
+	if !ok {
+		return false
+	}
+	if current, ok := params["mediaId"].(string); ok && current == mediaID {
+		delete(params, "mediaId")
+		return true
+	}
+	return false
+}
+
 func parseConfigMediaPhases(raw json.RawMessage) ([]configMediaPhase, error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil, nil

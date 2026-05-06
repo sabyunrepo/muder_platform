@@ -43,10 +43,11 @@ var AllowedMediaImageMIMEs = map[string]string{
 }
 
 type RequestMediaUploadRequest struct {
-	Name     string `json:"name" validate:"required,min=1,max=200"`
-	Type     string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
-	MimeType string `json:"mime_type" validate:"required"`
-	FileSize int64  `json:"file_size" validate:"required,min=1"`
+	Name       string     `json:"name" validate:"required,min=1,max=200"`
+	Type       string     `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
+	MimeType   string     `json:"mime_type" validate:"required"`
+	FileSize   int64      `json:"file_size" validate:"required,min=1"`
+	CategoryID *uuid.UUID `json:"category_id,omitempty"`
 }
 
 type MediaDownloadURLResponse struct {
@@ -65,30 +66,61 @@ type ConfirmUploadRequest struct {
 }
 
 type CreateMediaYouTubeRequest struct {
-	Name string `json:"name" validate:"required,min=1,max=200"`
-	Type string `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
-	URL  string `json:"url" validate:"required,url"`
+	Name       string     `json:"name" validate:"required,min=1,max=200"`
+	Type       string     `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO"`
+	URL        string     `json:"url" validate:"required,url"`
+	CategoryID *uuid.UUID `json:"category_id,omitempty"`
 }
 
 type UpdateMediaRequest struct {
-	Name      string   `json:"name" validate:"required,min=1,max=200"`
-	Type      string   `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
-	Duration  *int32   `json:"duration,omitempty"`
-	Tags      []string `json:"tags" validate:"max=10,dive,max=50"`
-	SortOrder int32    `json:"sort_order" validate:"min=0"`
+	Name       string     `json:"name" validate:"required,min=1,max=200"`
+	Type       string     `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
+	Duration   *int32     `json:"duration,omitempty"`
+	Tags       []string   `json:"tags" validate:"max=10,dive,max=50"`
+	SortOrder  int32      `json:"sort_order" validate:"min=0"`
+	CategoryID *uuid.UUID `json:"category_id,omitempty"`
 }
 
 type MediaResponse struct {
-	ID         uuid.UUID `json:"id"`
-	ThemeID    uuid.UUID `json:"theme_id"`
-	Name       string    `json:"name"`
-	Type       string    `json:"type"`
-	SourceType string    `json:"source_type"`
-	URL        *string   `json:"url,omitempty"`
-	Duration   *int32    `json:"duration,omitempty"`
-	FileSize   *int64    `json:"file_size,omitempty"`
-	MimeType   *string   `json:"mime_type,omitempty"`
-	Tags       []string  `json:"tags"`
-	SortOrder  int32     `json:"sort_order"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID         uuid.UUID  `json:"id"`
+	ThemeID    uuid.UUID  `json:"theme_id"`
+	Name       string     `json:"name"`
+	Type       string     `json:"type"`
+	SourceType string     `json:"source_type"`
+	URL        *string    `json:"url,omitempty"`
+	Duration   *int32     `json:"duration,omitempty"`
+	FileSize   *int64     `json:"file_size,omitempty"`
+	MimeType   *string    `json:"mime_type,omitempty"`
+	Tags       []string   `json:"tags"`
+	SortOrder  int32      `json:"sort_order"`
+	CategoryID *uuid.UUID `json:"category_id,omitempty"`
+	CreatedAt  time.Time  `json:"created_at"`
+}
+
+type MediaCategoryRequest struct {
+	Name      string `json:"name" validate:"required,min=1,max=80"`
+	SortOrder int32  `json:"sort_order" validate:"min=0"`
+}
+
+type MediaCategoryResponse struct {
+	ID        uuid.UUID `json:"id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type MediaReferenceResponse struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type MediaDeletePreviewResponse struct {
+	References []MediaReferenceResponse `json:"references"`
+}
+
+type RequestMediaReplacementUploadRequest struct {
+	MimeType string `json:"mime_type" validate:"required"`
+	FileSize int64  `json:"file_size" validate:"required,min=1"`
 }

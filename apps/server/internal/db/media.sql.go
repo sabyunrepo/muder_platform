@@ -12,6 +12,86 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearReadingSectionMediaReferencesWithOwner = `-- name: ClearReadingSectionMediaReferencesWithOwner :execrows
+
+UPDATE reading_sections rs
+SET bgm_media_id = CASE
+      WHEN rs.bgm_media_id = $1::uuid THEN NULL
+      ELSE rs.bgm_media_id
+    END,
+    lines = COALESCE((
+      SELECT jsonb_agg(
+        line
+          - CASE WHEN line->>'VoiceMediaID' = $1::text THEN 'VoiceMediaID' ELSE '__noop__' END
+          - CASE WHEN line->>'ImageMediaID' = $1::text THEN 'ImageMediaID' ELSE '__noop__' END
+        ORDER BY ord
+      )
+      FROM jsonb_array_elements(rs.lines) WITH ORDINALITY AS elem(line, ord)
+    ), '[]'::jsonb),
+    version = version + 1,
+    updated_at = NOW()
+FROM themes t
+WHERE rs.theme_id = t.id
+  AND t.creator_id = $2
+  AND rs.theme_id = $3
+  AND (
+    rs.bgm_media_id = $1::uuid
+    OR EXISTS (
+      SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
+      WHERE line->>'VoiceMediaID' = $1::text
+         OR line->>'ImageMediaID' = $1::text
+    )
+  )
+`
+
+type ClearReadingSectionMediaReferencesWithOwnerParams struct {
+	MediaID   uuid.UUID `json:"media_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+}
+
+// ============================================================
+// Media Reference Cleanup
+// ============================================================
+func (q *Queries) ClearReadingSectionMediaReferencesWithOwner(ctx context.Context, arg ClearReadingSectionMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearReadingSectionMediaReferencesWithOwner, arg.MediaID, arg.CreatorID, arg.ThemeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearRoleSheetMediaReferencesWithOwner = `-- name: ClearRoleSheetMediaReferencesWithOwner :execrows
+UPDATE theme_contents c
+SET body = regexp_replace(
+      c.body,
+      '"media_id"\s*:\s*"' || $1::text || '"',
+      '"media_id":null',
+      'g'
+    ),
+    updated_at = NOW()
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = $2
+  AND c.theme_id = $3
+  AND c.key ~ '^role_sheet:'
+  AND c.body ~ ('"media_id"\s*:\s*"' || $1::text || '"')
+`
+
+type ClearRoleSheetMediaReferencesWithOwnerParams struct {
+	MediaID   string    `json:"media_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+}
+
+func (q *Queries) ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, arg ClearRoleSheetMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearRoleSheetMediaReferencesWithOwner, arg.MediaID, arg.CreatorID, arg.ThemeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const countMediaByTheme = `-- name: CountMediaByTheme :one
 SELECT count(*) FROM theme_media WHERE theme_id = $1
 `
@@ -24,9 +104,9 @@ func (q *Queries) CountMediaByTheme(ctx context.Context, themeID uuid.UUID) (int
 }
 
 const createMedia = `-- name: CreateMedia :one
-INSERT INTO theme_media (theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at
+INSERT INTO theme_media (theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, category_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id
 `
 
 type CreateMediaParams struct {
@@ -41,6 +121,7 @@ type CreateMediaParams struct {
 	MimeType   pgtype.Text `json:"mime_type"`
 	Tags       []string    `json:"tags"`
 	SortOrder  int32       `json:"sort_order"`
+	CategoryID pgtype.UUID `json:"category_id"`
 }
 
 func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (ThemeMedium, error) {
@@ -56,6 +137,7 @@ func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Theme
 		arg.MimeType,
 		arg.Tags,
 		arg.SortOrder,
+		arg.CategoryID,
 	)
 	var i ThemeMedium
 	err := row.Scan(
@@ -73,6 +155,82 @@ func (q *Queries) CreateMedia(ctx context.Context, arg CreateMediaParams) (Theme
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const createMediaCategory = `-- name: CreateMediaCategory :one
+INSERT INTO theme_media_categories (theme_id, name, sort_order)
+SELECT $1, $2, $3
+FROM themes t
+WHERE t.id = $1 AND t.creator_id = $4
+RETURNING id, theme_id, name, sort_order, created_at, updated_at
+`
+
+type CreateMediaCategoryParams struct {
+	ThemeID   uuid.UUID `json:"theme_id"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
+
+func (q *Queries) CreateMediaCategory(ctx context.Context, arg CreateMediaCategoryParams) (ThemeMediaCategory, error) {
+	row := q.db.QueryRow(ctx, createMediaCategory,
+		arg.ThemeID,
+		arg.Name,
+		arg.SortOrder,
+		arg.CreatorID,
+	)
+	var i ThemeMediaCategory
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createMediaReplacementUpload = `-- name: CreateMediaReplacementUpload :one
+
+INSERT INTO theme_media_replacement_uploads (media_id, storage_key, file_size, mime_type)
+SELECT $1, $2, $3, $4
+FROM theme_media m
+JOIN themes t ON m.theme_id = t.id
+WHERE m.id = $1 AND t.creator_id = $5
+RETURNING id, media_id, storage_key, file_size, mime_type, created_at
+`
+
+type CreateMediaReplacementUploadParams struct {
+	MediaID    uuid.UUID `json:"media_id"`
+	StorageKey string    `json:"storage_key"`
+	FileSize   int64     `json:"file_size"`
+	MimeType   string    `json:"mime_type"`
+	CreatorID  uuid.UUID `json:"creator_id"`
+}
+
+// ============================================================
+// Media Replacement Uploads
+// ============================================================
+func (q *Queries) CreateMediaReplacementUpload(ctx context.Context, arg CreateMediaReplacementUploadParams) (ThemeMediaReplacementUpload, error) {
+	row := q.db.QueryRow(ctx, createMediaReplacementUpload,
+		arg.MediaID,
+		arg.StorageKey,
+		arg.FileSize,
+		arg.MimeType,
+		arg.CreatorID,
+	)
+	var i ThemeMediaReplacementUpload
+	err := row.Scan(
+		&i.ID,
+		&i.MediaID,
+		&i.StorageKey,
+		&i.FileSize,
+		&i.MimeType,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -83,6 +241,33 @@ DELETE FROM theme_media WHERE id = $1
 
 func (q *Queries) DeleteMedia(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteMedia, id)
+	return err
+}
+
+const deleteMediaCategoryWithOwner = `-- name: DeleteMediaCategoryWithOwner :execrows
+DELETE FROM theme_media_categories c USING themes t
+WHERE c.id = $1 AND c.theme_id = t.id AND t.creator_id = $2
+`
+
+type DeleteMediaCategoryWithOwnerParams struct {
+	ID        uuid.UUID `json:"id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
+
+func (q *Queries) DeleteMediaCategoryWithOwner(ctx context.Context, arg DeleteMediaCategoryWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteMediaCategoryWithOwner, arg.ID, arg.CreatorID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteMediaReplacementUpload = `-- name: DeleteMediaReplacementUpload :exec
+DELETE FROM theme_media_replacement_uploads WHERE id = $1
+`
+
+func (q *Queries) DeleteMediaReplacementUpload(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteMediaReplacementUpload, id)
 	return err
 }
 
@@ -217,7 +402,7 @@ func (q *Queries) FindThemeCoverReferencesForMedia(ctx context.Context, arg Find
 }
 
 const getMedia = `-- name: GetMedia :one
-SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at FROM theme_media WHERE id = $1
+SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id FROM theme_media WHERE id = $1
 `
 
 func (q *Queries) GetMedia(ctx context.Context, id uuid.UUID) (ThemeMedium, error) {
@@ -238,12 +423,38 @@ func (q *Queries) GetMedia(ctx context.Context, id uuid.UUID) (ThemeMedium, erro
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const getMediaCategoryWithOwner = `-- name: GetMediaCategoryWithOwner :one
+SELECT c.id, c.theme_id, c.name, c.sort_order, c.created_at, c.updated_at FROM theme_media_categories c
+JOIN themes t ON c.theme_id = t.id
+WHERE c.id = $1 AND t.creator_id = $2
+`
+
+type GetMediaCategoryWithOwnerParams struct {
+	ID        uuid.UUID `json:"id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
+
+func (q *Queries) GetMediaCategoryWithOwner(ctx context.Context, arg GetMediaCategoryWithOwnerParams) (ThemeMediaCategory, error) {
+	row := q.db.QueryRow(ctx, getMediaCategoryWithOwner, arg.ID, arg.CreatorID)
+	var i ThemeMediaCategory
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getMediaForSession = `-- name: GetMediaForSession :one
-SELECT m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at
+SELECT m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at, m.category_id
 FROM theme_media m
 JOIN game_sessions s ON s.theme_id = m.theme_id
 WHERE s.id = $1
@@ -273,13 +484,40 @@ func (q *Queries) GetMediaForSession(ctx context.Context, arg GetMediaForSession
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const getMediaReplacementUploadWithOwner = `-- name: GetMediaReplacementUploadWithOwner :one
+SELECT r.id, r.media_id, r.storage_key, r.file_size, r.mime_type, r.created_at FROM theme_media_replacement_uploads r
+JOIN theme_media m ON r.media_id = m.id
+JOIN themes t ON m.theme_id = t.id
+WHERE r.id = $1 AND t.creator_id = $2
+`
+
+type GetMediaReplacementUploadWithOwnerParams struct {
+	ID        uuid.UUID `json:"id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
+
+func (q *Queries) GetMediaReplacementUploadWithOwner(ctx context.Context, arg GetMediaReplacementUploadWithOwnerParams) (ThemeMediaReplacementUpload, error) {
+	row := q.db.QueryRow(ctx, getMediaReplacementUploadWithOwner, arg.ID, arg.CreatorID)
+	var i ThemeMediaReplacementUpload
+	err := row.Scan(
+		&i.ID,
+		&i.MediaID,
+		&i.StorageKey,
+		&i.FileSize,
+		&i.MimeType,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getMediaWithOwner = `-- name: GetMediaWithOwner :one
 
-SELECT m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at FROM theme_media m
+SELECT m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at, m.category_id FROM theme_media m
 JOIN themes t ON m.theme_id = t.id
 WHERE m.id = $1 AND t.creator_id = $2
 `
@@ -310,13 +548,14 @@ func (q *Queries) GetMediaWithOwner(ctx context.Context, arg GetMediaWithOwnerPa
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CategoryID,
 	)
 	return i, err
 }
 
 const listMediaByIDs = `-- name: ListMediaByIDs :many
 
-SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at FROM theme_media WHERE id = ANY($1::uuid[])
+SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id FROM theme_media WHERE id = ANY($1::uuid[])
 `
 
 // ============================================================
@@ -346,6 +585,7 @@ func (q *Queries) ListMediaByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]T
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CategoryID,
 		); err != nil {
 			return nil, err
 		}
@@ -359,7 +599,7 @@ func (q *Queries) ListMediaByIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]T
 
 const listMediaByTheme = `-- name: ListMediaByTheme :many
 
-SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at FROM theme_media WHERE theme_id = $1 ORDER BY sort_order, created_at
+SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id FROM theme_media WHERE theme_id = $1 ORDER BY sort_order, created_at
 `
 
 // ============================================================
@@ -389,6 +629,55 @@ func (q *Queries) ListMediaByTheme(ctx context.Context, themeID uuid.UUID) ([]Th
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMediaByThemeAndCategory = `-- name: ListMediaByThemeAndCategory :many
+SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id FROM theme_media
+WHERE theme_id = $1
+  AND category_id = $2
+ORDER BY sort_order, created_at
+`
+
+type ListMediaByThemeAndCategoryParams struct {
+	ThemeID    uuid.UUID   `json:"theme_id"`
+	CategoryID pgtype.UUID `json:"category_id"`
+}
+
+func (q *Queries) ListMediaByThemeAndCategory(ctx context.Context, arg ListMediaByThemeAndCategoryParams) ([]ThemeMedium, error) {
+	rows, err := q.db.Query(ctx, listMediaByThemeAndCategory, arg.ThemeID, arg.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ThemeMedium{}
+	for rows.Next() {
+		var i ThemeMedium
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.Name,
+			&i.Type,
+			&i.SourceType,
+			&i.Url,
+			&i.StorageKey,
+			&i.Duration,
+			&i.FileSize,
+			&i.MimeType,
+			&i.Tags,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CategoryID,
 		); err != nil {
 			return nil, err
 		}
@@ -401,7 +690,7 @@ func (q *Queries) ListMediaByTheme(ctx context.Context, themeID uuid.UUID) ([]Th
 }
 
 const listMediaByThemeAndType = `-- name: ListMediaByThemeAndType :many
-SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at FROM theme_media WHERE theme_id = $1 AND type = $2 ORDER BY sort_order, created_at
+SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id FROM theme_media WHERE theme_id = $1 AND type = $2 ORDER BY sort_order, created_at
 `
 
 type ListMediaByThemeAndTypeParams struct {
@@ -430,6 +719,94 @@ func (q *Queries) ListMediaByThemeAndType(ctx context.Context, arg ListMediaByTh
 			&i.FileSize,
 			&i.MimeType,
 			&i.Tags,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMediaByThemeTypeAndCategory = `-- name: ListMediaByThemeTypeAndCategory :many
+SELECT id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id FROM theme_media
+WHERE theme_id = $1
+  AND type = $2
+  AND category_id = $3
+ORDER BY sort_order, created_at
+`
+
+type ListMediaByThemeTypeAndCategoryParams struct {
+	ThemeID    uuid.UUID   `json:"theme_id"`
+	Type       string      `json:"type"`
+	CategoryID pgtype.UUID `json:"category_id"`
+}
+
+func (q *Queries) ListMediaByThemeTypeAndCategory(ctx context.Context, arg ListMediaByThemeTypeAndCategoryParams) ([]ThemeMedium, error) {
+	rows, err := q.db.Query(ctx, listMediaByThemeTypeAndCategory, arg.ThemeID, arg.Type, arg.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ThemeMedium{}
+	for rows.Next() {
+		var i ThemeMedium
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.Name,
+			&i.Type,
+			&i.SourceType,
+			&i.Url,
+			&i.StorageKey,
+			&i.Duration,
+			&i.FileSize,
+			&i.MimeType,
+			&i.Tags,
+			&i.SortOrder,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CategoryID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listMediaCategoriesByTheme = `-- name: ListMediaCategoriesByTheme :many
+
+SELECT id, theme_id, name, sort_order, created_at, updated_at FROM theme_media_categories
+WHERE theme_id = $1
+ORDER BY sort_order, created_at
+`
+
+// ============================================================
+// Media Categories
+// ============================================================
+func (q *Queries) ListMediaCategoriesByTheme(ctx context.Context, themeID uuid.UUID) ([]ThemeMediaCategory, error) {
+	rows, err := q.db.Query(ctx, listMediaCategoriesByTheme, themeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ThemeMediaCategory{}
+	for rows.Next() {
+		var i ThemeMediaCategory
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.Name,
 			&i.SortOrder,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -469,18 +846,19 @@ func (q *Queries) SumMediaSizeByTheme(ctx context.Context, themeID uuid.UUID) (i
 }
 
 const updateMedia = `-- name: UpdateMedia :one
-UPDATE theme_media SET name = $2, type = $3, duration = $4, tags = $5, sort_order = $6, updated_at = NOW()
+UPDATE theme_media SET name = $2, type = $3, duration = $4, tags = $5, sort_order = $6, category_id = $7, updated_at = NOW()
 WHERE id = $1
-RETURNING id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at
+RETURNING id, theme_id, name, type, source_type, url, storage_key, duration, file_size, mime_type, tags, sort_order, created_at, updated_at, category_id
 `
 
 type UpdateMediaParams struct {
-	ID        uuid.UUID   `json:"id"`
-	Name      string      `json:"name"`
-	Type      string      `json:"type"`
-	Duration  pgtype.Int4 `json:"duration"`
-	Tags      []string    `json:"tags"`
-	SortOrder int32       `json:"sort_order"`
+	ID         uuid.UUID   `json:"id"`
+	Name       string      `json:"name"`
+	Type       string      `json:"type"`
+	Duration   pgtype.Int4 `json:"duration"`
+	Tags       []string    `json:"tags"`
+	SortOrder  int32       `json:"sort_order"`
+	CategoryID pgtype.UUID `json:"category_id"`
 }
 
 func (q *Queries) UpdateMedia(ctx context.Context, arg UpdateMediaParams) (ThemeMedium, error) {
@@ -491,6 +869,7 @@ func (q *Queries) UpdateMedia(ctx context.Context, arg UpdateMediaParams) (Theme
 		arg.Duration,
 		arg.Tags,
 		arg.SortOrder,
+		arg.CategoryID,
 	)
 	var i ThemeMedium
 	err := row.Scan(
@@ -508,6 +887,91 @@ func (q *Queries) UpdateMedia(ctx context.Context, arg UpdateMediaParams) (Theme
 		&i.SortOrder,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CategoryID,
+	)
+	return i, err
+}
+
+const updateMediaCategory = `-- name: UpdateMediaCategory :one
+UPDATE theme_media_categories c
+SET name = $2, sort_order = $3, updated_at = NOW()
+FROM themes t
+WHERE c.id = $1 AND c.theme_id = t.id AND t.creator_id = $4
+RETURNING c.id, c.theme_id, c.name, c.sort_order, c.created_at, c.updated_at
+`
+
+type UpdateMediaCategoryParams struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
+
+func (q *Queries) UpdateMediaCategory(ctx context.Context, arg UpdateMediaCategoryParams) (ThemeMediaCategory, error) {
+	row := q.db.QueryRow(ctx, updateMediaCategory,
+		arg.ID,
+		arg.Name,
+		arg.SortOrder,
+		arg.CreatorID,
+	)
+	var i ThemeMediaCategory
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateMediaFileWithOwner = `-- name: UpdateMediaFileWithOwner :one
+UPDATE theme_media m
+SET source_type = 'FILE',
+    url = NULL,
+    storage_key = $3,
+    file_size = $4,
+    mime_type = $5,
+    updated_at = NOW()
+FROM themes t
+WHERE m.id = $1 AND m.theme_id = t.id AND t.creator_id = $2
+RETURNING m.id, m.theme_id, m.name, m.type, m.source_type, m.url, m.storage_key, m.duration, m.file_size, m.mime_type, m.tags, m.sort_order, m.created_at, m.updated_at, m.category_id
+`
+
+type UpdateMediaFileWithOwnerParams struct {
+	ID         uuid.UUID   `json:"id"`
+	CreatorID  uuid.UUID   `json:"creator_id"`
+	StorageKey pgtype.Text `json:"storage_key"`
+	FileSize   pgtype.Int8 `json:"file_size"`
+	MimeType   pgtype.Text `json:"mime_type"`
+}
+
+func (q *Queries) UpdateMediaFileWithOwner(ctx context.Context, arg UpdateMediaFileWithOwnerParams) (ThemeMedium, error) {
+	row := q.db.QueryRow(ctx, updateMediaFileWithOwner,
+		arg.ID,
+		arg.CreatorID,
+		arg.StorageKey,
+		arg.FileSize,
+		arg.MimeType,
+	)
+	var i ThemeMedium
+	err := row.Scan(
+		&i.ID,
+		&i.ThemeID,
+		&i.Name,
+		&i.Type,
+		&i.SourceType,
+		&i.Url,
+		&i.StorageKey,
+		&i.Duration,
+		&i.FileSize,
+		&i.MimeType,
+		&i.Tags,
+		&i.SortOrder,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CategoryID,
 	)
 	return i, err
 }

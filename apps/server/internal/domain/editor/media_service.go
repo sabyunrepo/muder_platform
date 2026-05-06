@@ -24,12 +24,19 @@ import (
 
 // MediaService manages theme audio assets (file uploads + YouTube embeds).
 type MediaService interface {
-	ListMedia(ctx context.Context, creatorID, themeID uuid.UUID, mediaType string) ([]MediaResponse, error)
+	ListMedia(ctx context.Context, creatorID, themeID uuid.UUID, mediaType string, categoryID *uuid.UUID) ([]MediaResponse, error)
+	ListCategories(ctx context.Context, creatorID, themeID uuid.UUID) ([]MediaCategoryResponse, error)
+	CreateCategory(ctx context.Context, creatorID, themeID uuid.UUID, req MediaCategoryRequest) (*MediaCategoryResponse, error)
+	UpdateCategory(ctx context.Context, creatorID, categoryID uuid.UUID, req MediaCategoryRequest) (*MediaCategoryResponse, error)
+	DeleteCategory(ctx context.Context, creatorID, categoryID uuid.UUID) error
 	RequestUpload(ctx context.Context, creatorID, themeID uuid.UUID, req RequestMediaUploadRequest) (*UploadURLResponse, error)
 	ConfirmUpload(ctx context.Context, creatorID, themeID uuid.UUID, req ConfirmUploadRequest) (*MediaResponse, error)
 	CreateYouTube(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMediaYouTubeRequest) (*MediaResponse, error)
 	UpdateMedia(ctx context.Context, creatorID, mediaID uuid.UUID, req UpdateMediaRequest) (*MediaResponse, error)
+	PreviewDeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDeletePreviewResponse, error)
 	DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) error
+	RequestReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req RequestMediaReplacementUploadRequest) (*UploadURLResponse, error)
+	ConfirmReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req ConfirmUploadRequest) (*MediaResponse, error)
 	GetEditorMediaDownloadURL(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDownloadURLResponse, error)
 	GetMediaPlayURL(ctx context.Context, sessionID, mediaID uuid.UUID) (string, error)
 	ResolveMediaURL(ctx context.Context, sessionID, mediaID uuid.UUID, allowedTypes ...string) (string, string, error)
@@ -45,13 +52,27 @@ type mediaQueries interface {
 	GetMediaWithOwner(ctx context.Context, arg db.GetMediaWithOwnerParams) (db.ThemeMedium, error)
 	ListMediaByTheme(ctx context.Context, themeID uuid.UUID) ([]db.ThemeMedium, error)
 	ListMediaByThemeAndType(ctx context.Context, arg db.ListMediaByThemeAndTypeParams) ([]db.ThemeMedium, error)
+	ListMediaByThemeAndCategory(ctx context.Context, arg db.ListMediaByThemeAndCategoryParams) ([]db.ThemeMedium, error)
+	ListMediaByThemeTypeAndCategory(ctx context.Context, arg db.ListMediaByThemeTypeAndCategoryParams) ([]db.ThemeMedium, error)
 	CountMediaByTheme(ctx context.Context, themeID uuid.UUID) (int64, error)
 	SumMediaSizeByTheme(ctx context.Context, themeID uuid.UUID) (int64, error)
 	SumMediaSizeByCreator(ctx context.Context, creatorID uuid.UUID) (int64, error)
 	CreateMedia(ctx context.Context, arg db.CreateMediaParams) (db.ThemeMedium, error)
 	UpdateMedia(ctx context.Context, arg db.UpdateMediaParams) (db.ThemeMedium, error)
+	UpdateMediaFileWithOwner(ctx context.Context, arg db.UpdateMediaFileWithOwnerParams) (db.ThemeMedium, error)
 	DeleteMedia(ctx context.Context, id uuid.UUID) error
 	DeleteMediaWithOwner(ctx context.Context, arg db.DeleteMediaWithOwnerParams) (int64, error)
+	ListMediaCategoriesByTheme(ctx context.Context, themeID uuid.UUID) ([]db.ThemeMediaCategory, error)
+	GetMediaCategoryWithOwner(ctx context.Context, arg db.GetMediaCategoryWithOwnerParams) (db.ThemeMediaCategory, error)
+	CreateMediaCategory(ctx context.Context, arg db.CreateMediaCategoryParams) (db.ThemeMediaCategory, error)
+	UpdateMediaCategory(ctx context.Context, arg db.UpdateMediaCategoryParams) (db.ThemeMediaCategory, error)
+	DeleteMediaCategoryWithOwner(ctx context.Context, arg db.DeleteMediaCategoryWithOwnerParams) (int64, error)
+	CreateMediaReplacementUpload(ctx context.Context, arg db.CreateMediaReplacementUploadParams) (db.ThemeMediaReplacementUpload, error)
+	GetMediaReplacementUploadWithOwner(ctx context.Context, arg db.GetMediaReplacementUploadWithOwnerParams) (db.ThemeMediaReplacementUpload, error)
+	DeleteMediaReplacementUpload(ctx context.Context, id uuid.UUID) error
+	UpdateThemeConfigJsonWithOwner(ctx context.Context, arg db.UpdateThemeConfigJsonWithOwnerParams) (db.Theme, error)
+	ClearReadingSectionMediaReferencesWithOwner(ctx context.Context, arg db.ClearReadingSectionMediaReferencesWithOwnerParams) (int64, error)
+	ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, arg db.ClearRoleSheetMediaReferencesWithOwnerParams) (int64, error)
 	FindThemeCoverReferencesForMedia(ctx context.Context, arg db.FindThemeCoverReferencesForMediaParams) ([]db.FindThemeCoverReferencesForMediaRow, error)
 	FindMapReferencesForMedia(ctx context.Context, arg db.FindMapReferencesForMediaParams) ([]db.FindMapReferencesForMediaRow, error)
 	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
@@ -115,19 +136,40 @@ func (s *mediaService) requireStorage() error {
 
 // --- ListMedia ---
 
-func (s *mediaService) ListMedia(ctx context.Context, creatorID, themeID uuid.UUID, mediaType string) ([]MediaResponse, error) {
+func (s *mediaService) ListMedia(ctx context.Context, creatorID, themeID uuid.UUID, mediaType string, categoryID *uuid.UUID) ([]MediaResponse, error) {
 	if _, err := s.ownedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
+	}
+	if categoryID != nil {
+		category, err := s.ownedCategory(ctx, creatorID, *categoryID)
+		if err != nil {
+			return nil, err
+		}
+		if category.ThemeID != themeID {
+			return nil, apperror.NotFound("media category not found")
+		}
 	}
 
 	var rows []db.ThemeMedium
 	var err error
-	if mediaType == "" {
+	switch {
+	case mediaType == "" && categoryID == nil:
 		rows, err = s.q.ListMediaByTheme(ctx, themeID)
-	} else {
+	case mediaType != "" && categoryID == nil:
 		rows, err = s.q.ListMediaByThemeAndType(ctx, db.ListMediaByThemeAndTypeParams{
 			ThemeID: themeID,
 			Type:    mediaType,
+		})
+	case mediaType == "" && categoryID != nil:
+		rows, err = s.q.ListMediaByThemeAndCategory(ctx, db.ListMediaByThemeAndCategoryParams{
+			ThemeID:    themeID,
+			CategoryID: pgtype.UUID{Bytes: *categoryID, Valid: true},
+		})
+	default:
+		rows, err = s.q.ListMediaByThemeTypeAndCategory(ctx, db.ListMediaByThemeTypeAndCategoryParams{
+			ThemeID:    themeID,
+			Type:       mediaType,
+			CategoryID: pgtype.UUID{Bytes: *categoryID, Valid: true},
 		})
 	}
 	if err != nil {
@@ -154,6 +196,10 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 		return nil, err
 	}
 	if _, err := s.ownedTheme(ctx, creatorID, themeID); err != nil {
+		return nil, err
+	}
+	category, err := s.mediaCategoryParam(ctx, creatorID, themeID, req.CategoryID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -207,6 +253,7 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 		MimeType:   pgtype.Text{String: req.MimeType, Valid: true},
 		Tags:       []string{},
 		SortOrder:  0,
+		CategoryID: category,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to create media row")
@@ -323,6 +370,10 @@ func (s *mediaService) CreateYouTube(ctx context.Context, creatorID, themeID uui
 	if _, err := s.ownedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
+	category, err := s.mediaCategoryParam(ctx, creatorID, themeID, req.CategoryID)
+	if err != nil {
+		return nil, err
+	}
 
 	videoID := parseYouTubeVideoID(req.URL)
 	if videoID == "" {
@@ -363,6 +414,7 @@ func (s *mediaService) CreateYouTube(ctx context.Context, creatorID, themeID uui
 		MimeType:   pgtype.Text{},
 		Tags:       []string{},
 		SortOrder:  0,
+		CategoryID: category,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to create youtube media")
@@ -404,13 +456,19 @@ func (s *mediaService) UpdateMedia(ctx context.Context, creatorID, mediaID uuid.
 		duration = media.Duration
 	}
 
+	category, err := s.mediaCategoryParam(ctx, creatorID, media.ThemeID, req.CategoryID)
+	if err != nil {
+		return nil, err
+	}
+
 	updated, err := s.q.UpdateMedia(ctx, db.UpdateMediaParams{
-		ID:        mediaID,
-		Name:      req.Name,
-		Type:      req.Type,
-		Duration:  duration,
-		Tags:      tags,
-		SortOrder: req.SortOrder,
+		ID:         mediaID,
+		Name:       req.Name,
+		Type:       req.Type,
+		Duration:   duration,
+		Tags:       tags,
+		SortOrder:  req.SortOrder,
+		CategoryID: category,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to update media")
@@ -419,130 +477,6 @@ func (s *mediaService) UpdateMedia(ctx context.Context, creatorID, mediaID uuid.
 
 	resp := toMediaResponse(updated)
 	return &resp, nil
-}
-
-// --- DeleteMedia ---
-
-func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) error {
-	media, err := s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
-		ID:        mediaID,
-		CreatorID: creatorID,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return apperror.NotFound("media not found")
-		}
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
-		return apperror.Internal("failed to get media")
-	}
-
-	refList := []mediaReferenceInfo{}
-
-	// Block deletion if the media is referenced by any reading section
-	// (either as bgmMediaId or inside a line's voiceMediaId).
-	refs, err := s.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
-		ThemeID: media.ThemeID,
-		MediaID: mediaID,
-	})
-	if err != nil {
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check media references")
-		return apperror.Internal("failed to check media references")
-	}
-	if len(refs) > 0 {
-		for _, r := range refs {
-			refList = append(refList, mediaReferenceInfo{
-				Type: "reading_section",
-				ID:   r.ID.String(),
-				Name: r.Name,
-			})
-		}
-	}
-
-	themeCoverRefs, err := s.q.FindThemeCoverReferencesForMedia(ctx, db.FindThemeCoverReferencesForMediaParams{
-		ThemeID: media.ThemeID,
-		MediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
-	})
-	if err != nil {
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check theme cover media references")
-		return apperror.Internal("failed to check media references")
-	}
-	for _, r := range themeCoverRefs {
-		refList = append(refList, mediaReferenceInfo{
-			Type: "theme_cover",
-			ID:   r.ID.String(),
-			Name: r.Title,
-		})
-	}
-
-	mapRefs, err := s.q.FindMapReferencesForMedia(ctx, db.FindMapReferencesForMediaParams{
-		ThemeID: media.ThemeID,
-		MediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
-	})
-	if err != nil {
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check map media references")
-		return apperror.Internal("failed to check media references")
-	}
-	for _, r := range mapRefs {
-		refList = append(refList, mediaReferenceInfo{
-			Type: "map",
-			ID:   r.ID.String(),
-			Name: r.Name,
-		})
-	}
-
-	roleSheetRefs, err := s.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
-		ThemeID: media.ThemeID,
-		Body:    `"media_id"\s*:\s*"` + mediaID.String() + `"`,
-	})
-	if err != nil {
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check role sheet references")
-		return apperror.Internal("failed to check media references")
-	}
-	if len(roleSheetRefs) > 0 {
-		for _, r := range roleSheetRefs {
-			refList = append(refList, mediaReferenceInfo{
-				Type: "role_sheet",
-				ID:   r.Key,
-				Name: r.Key,
-			})
-		}
-	}
-
-	theme, err := s.q.GetTheme(ctx, media.ThemeID)
-	if err != nil {
-		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media references")
-		return apperror.Internal("failed to check media references")
-	}
-	configRefs, err := findMediaReferencesInThemeConfig(theme.ConfigJson, mediaID)
-	if err != nil {
-		s.logger.Warn().Err(err).Str("media_id", mediaID.String()).Msg("failed to scan theme config media references")
-		return apperror.New(apperror.ErrValidation, 422, "theme config contains invalid media references")
-	}
-	refList = append(refList, configRefs...)
-
-	if len(refList) > 0 {
-		return apperror.New(apperror.ErrMediaReferenceInUse, 409, "media is referenced by editor content").
-			WithParams(map[string]any{"references": mediaReferenceParams(refList)})
-	}
-
-	if media.SourceType == SourceTypeFile && media.StorageKey.Valid && s.storage != nil {
-		if delErr := s.storage.DeleteObject(ctx, media.StorageKey.String); delErr != nil {
-			s.logger.Warn().Err(delErr).Str("storage_key", media.StorageKey.String).Msg("failed to delete storage object")
-		}
-	}
-
-	rows, err := s.q.DeleteMediaWithOwner(ctx, db.DeleteMediaWithOwnerParams{
-		ID:        mediaID,
-		CreatorID: creatorID,
-	})
-	if err != nil {
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to delete media")
-		return apperror.Internal("failed to delete media")
-	}
-	if rows == 0 {
-		return apperror.NotFound("media not found")
-	}
-	return nil
 }
 
 // --- GetEditorMediaDownloadURL ---
@@ -837,5 +771,19 @@ func toMediaResponse(m db.ThemeMedium) MediaResponse {
 		mt := m.MimeType.String
 		resp.MimeType = &mt
 	}
+	if m.CategoryID.Valid {
+		categoryID := uuid.UUID(m.CategoryID.Bytes)
+		resp.CategoryID = &categoryID
+	}
 	return resp
+}
+
+func toMediaCategoryResponse(c db.ThemeMediaCategory) MediaCategoryResponse {
+	return MediaCategoryResponse{
+		ID:        c.ID,
+		ThemeID:   c.ThemeID,
+		Name:      c.Name,
+		SortOrder: c.SortOrder,
+		CreatedAt: c.CreatedAt,
+	}
 }

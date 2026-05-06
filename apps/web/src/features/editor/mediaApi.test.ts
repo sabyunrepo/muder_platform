@@ -93,11 +93,26 @@ describe("mediaKeys", () => {
       "media",
       THEME_ID,
       "BGM",
+      "all-categories",
     ]);
   });
 
   it("uses 'all' as type fallback", () => {
-    expect(mediaKeys.list(THEME_ID)).toEqual(["media", THEME_ID, "all"]);
+    expect(mediaKeys.list(THEME_ID)).toEqual([
+      "media",
+      THEME_ID,
+      "all",
+      "all-categories",
+    ]);
+  });
+
+  it("includes category in list key when provided", () => {
+    expect(mediaKeys.list(THEME_ID, "IMAGE", "category-1")).toEqual([
+      "media",
+      THEME_ID,
+      "IMAGE",
+      "category-1",
+    ]);
   });
 });
 

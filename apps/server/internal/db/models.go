@@ -364,6 +364,24 @@ type ThemeMap struct {
 	ImageMediaID pgtype.UUID `json:"image_media_id"`
 }
 
+type ThemeMediaCategory struct {
+	ID        uuid.UUID `json:"id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type ThemeMediaReplacementUpload struct {
+	ID         uuid.UUID `json:"id"`
+	MediaID    uuid.UUID `json:"media_id"`
+	StorageKey string    `json:"storage_key"`
+	FileSize   int64     `json:"file_size"`
+	MimeType   string    `json:"mime_type"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type ThemeMedium struct {
 	ID         uuid.UUID   `json:"id"`
 	ThemeID    uuid.UUID   `json:"theme_id"`
@@ -379,6 +397,7 @@ type ThemeMedium struct {
 	SortOrder  int32       `json:"sort_order"`
 	CreatedAt  time.Time   `json:"created_at"`
 	UpdatedAt  time.Time   `json:"updated_at"`
+	CategoryID pgtype.UUID `json:"category_id"`
 }
 
 type ThemePurchase struct {
