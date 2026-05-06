@@ -148,6 +148,25 @@ Avoid:
 - 다음 로컬 작업이 바로 막히는 critical path를 불필요하게 위임하지 않는다.
 - API DTO, frontend adapter/ViewModel mapping, migration, PR/CI 라벨 전환처럼 공유 계약을 바꾸는 작업은 최종 통합 전까지 여러 agent가 동시에 수정하지 않는다.
 
+### Discord 사용자 호출 알림
+
+When:
+- Codex가 브레인스토밍 결정, 승인, 위험 작업 확인, 장기 정지/Stop 상태처럼 사용자 응답 없이는 진행하기 어려운 지점에 도달했을 때
+
+Do:
+1. `scripts/mmp-discord-notify.sh`를 사용해 짧은 Discord 알림을 보낸다.
+2. 알림에는 전체 작업 로그를 넣지 않고, 사용자가 터미널로 돌아와야 하는 이유와 필요한 응답만 적는다.
+3. Discord webhook URL은 repo에 저장하지 않는다. 로컬에서는 `MMP_DISCORD_WEBHOOK_URL` 또는 `~/.codex/mmp-discord-webhook-url`을 사용한다.
+4. Stop hook 알림은 중복 방지를 위해 cooldown을 둔다.
+
+Done when:
+- 사용자가 Discord에서 작업 대기 상태를 알 수 있고, 민감한 URL/토큰이 git diff나 문서에 남지 않는다.
+
+Avoid:
+- Discord 응답을 자동 명령으로 실행하지 않는다.
+- webhook URL, bot token, channel secret을 repo 파일이나 PR 본문에 기록하지 않는다.
+- 모든 테스트/CI 로그를 Discord로 전송하지 않는다.
+
 ## Git 및 PR 규율
 
 - `main`을 보호한다. 병합 가능한 변경은 feature branch와 PR을 사용한다.
