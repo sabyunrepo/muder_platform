@@ -1,20 +1,15 @@
 import {
-  FileAudio,
-  Image,
-  FileText,
-  Film,
-  Mic,
-  Music,
   Search,
-  Sparkles,
   X,
   Youtube,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import type {
   MediaResourceViewModel,
 } from "@/features/editor/entities/mediaResource/mediaResourceAdapter";
 import type { MediaCategoryResponse, MediaType } from "@/features/editor/mediaApi";
+import { MediaTypeIcon } from "./mediaVisuals";
 
 export interface PickerMediaResource extends MediaResourceViewModel {
   thumbnailUrl?: string | null;
@@ -36,25 +31,6 @@ export interface ResourcePickerProps {
   emptyLabel?: string;
   searchEmptyLabel?: string;
   filterHint?: string | null;
-}
-
-function MediaTypeIcon({ type }: { type: MediaType }) {
-  switch (type) {
-    case "BGM":
-      return <Music className="h-5 w-5 text-amber-400" />;
-    case "SFX":
-      return <Sparkles className="h-5 w-5 text-cyan-400" />;
-    case "VOICE":
-      return <Mic className="h-5 w-5 text-emerald-400" />;
-    case "VIDEO":
-      return <Film className="h-5 w-5 text-rose-400" />;
-    case "DOCUMENT":
-      return <FileText className="h-5 w-5 text-violet-400" />;
-    case "IMAGE":
-      return <Image className="h-5 w-5 text-teal-400" />;
-    default:
-      return <FileAudio className="h-5 w-5 text-slate-400" />;
-  }
 }
 
 export function ResourcePicker({
@@ -194,16 +170,10 @@ export function ResourcePicker({
                       }`}
                     >
                       <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-slate-950/80">
-                        {thumbnailUrl ? (
-                          <img
-                            src={thumbnailUrl}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <MediaTypeIcon type={resource.type} />
-                        )}
+                        <ResourceThumbnail
+                          type={resource.type}
+                          thumbnailUrl={thumbnailUrl}
+                        />
                         {resource.isExternal ? (
                           <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
                             YouTube
@@ -235,4 +205,32 @@ export function ResourcePicker({
       </div>
     </div>
   );
+}
+
+function ResourceThumbnail({
+  type,
+  thumbnailUrl,
+}: {
+  type: MediaType;
+  thumbnailUrl?: string | null;
+}) {
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+
+  useEffect(() => {
+    setThumbnailFailed(false);
+  }, [thumbnailUrl]);
+
+  if (thumbnailUrl && !thumbnailFailed) {
+    return (
+      <img
+        src={thumbnailUrl}
+        alt=""
+        className="h-full w-full object-cover"
+        loading="lazy"
+        onError={() => setThumbnailFailed(true)}
+      />
+    );
+  }
+
+  return <MediaTypeIcon type={type} size="sm" />;
 }

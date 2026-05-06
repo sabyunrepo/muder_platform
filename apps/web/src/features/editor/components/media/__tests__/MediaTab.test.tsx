@@ -184,9 +184,9 @@ describe('MediaTab', () => {
     render(<MediaTab themeId="theme-1" />);
     expect(screen.getByText('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('문 닫는 소리')).toBeDefined();
-    // Type badges — "BGM" also appears in toolbar pill, so use getAllByText
-    expect(screen.getAllByText('BGM').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('SFX').length).toBeGreaterThanOrEqual(1);
+    // Type badges render creator-facing labels on cards.
+    expect(screen.getAllByText('배경음악').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('효과음').length).toBeGreaterThanOrEqual(1);
     // Duration formatted mm:ss
     expect(screen.getByText('2:05')).toBeDefined();
     expect(screen.getByText('0:03')).toBeDefined();
@@ -327,7 +327,7 @@ describe('MediaTab', () => {
     // Editable name input pre-filled
     expect(screen.getByDisplayValue('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('분류')).toBeDefined();
-    expect(screen.getByText('배경음악')).toBeDefined();
+    expect(screen.getAllByText('배경음악').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('출처')).toBeDefined();
     expect(screen.getByText('직접 업로드')).toBeDefined();
     expect(screen.getByText('파일 형식')).toBeDefined();

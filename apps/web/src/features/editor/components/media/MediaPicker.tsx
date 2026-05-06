@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ResourcePicker } from "./ResourcePicker";
 import { MediaUploadModal } from "./MediaUploadModal";
-import { extractYouTubeVideoId } from "@/features/audio/YouTubePlayer";
 import {
   filterMediaResourceViewModels,
   getAllowedMediaTypesForUseCase,
@@ -16,6 +15,7 @@ import {
   type MediaResponse,
   type MediaType,
 } from "@/features/editor/mediaApi";
+import { getMediaThumbnailUrl } from "./mediaVisuals";
 
 export interface MediaPickerProps {
   open: boolean;
@@ -79,7 +79,7 @@ export function MediaPicker({
         const source = media.find((item) => item.id === resource.id);
         return {
           ...resource,
-          thumbnailUrl: source ? getPickerThumbnailUrl(source) : null,
+          thumbnailUrl: source ? getMediaThumbnailUrl(source) : null,
         };
       }),
     [media, selectableResources, searchQuery],
@@ -135,13 +135,4 @@ export function MediaPicker({
       />
     </>
   );
-}
-
-function getPickerThumbnailUrl(media: MediaResponse): string | null {
-  if (media.type === "IMAGE" && media.url) return media.url;
-  if (media.source_type === "YOUTUBE" && media.url) {
-    const youtubeId = extractYouTubeVideoId(media.url);
-    return youtubeId ? `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg` : null;
-  }
-  return null;
 }
