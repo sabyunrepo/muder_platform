@@ -32,7 +32,16 @@ vi.mock("../../design/FlowCanvas", () => ({
             data: {
               label: "오프닝",
               description: "도입 장면",
-              discussionRoomPolicy: { enabled: true },
+              discussionRoomPolicy: {
+                enabled: true,
+                roomKind: "all",
+                mainRoomName: "전체 토론",
+                privateRoomsEnabled: false,
+                privateRoomName: "밀담방",
+                participantMode: "all",
+                availability: "phase_active",
+                closeBehavior: "close_on_exit",
+              },
             },
           })
         }
@@ -74,12 +83,15 @@ describe("StoryMapWorkspace", () => {
       isError: false,
     });
     useEditorCluesMock.mockReturnValue({
-      data: [{ id: "clue-1", name: "찢어진 초대장", location_id: null }],
+      data: [
+        { id: "clue-1", name: "찢어진 초대장", location_id: "loc-1", reveal_round: 1, hide_round: 2 },
+        { id: "clue-2", name: "봉인된 유언장", location_id: "loc-1", reveal_round: 3, hide_round: 3 },
+      ],
       isLoading: false,
       isError: false,
     });
     useEditorLocationsMock.mockReturnValue({
-      data: [{ id: "loc-1", name: "응접실", from_round: null, until_round: null }],
+      data: [{ id: "loc-1", name: "응접실", from_round: 1, until_round: 2 }],
       isLoading: false,
       isError: false,
     });
@@ -95,6 +107,7 @@ describe("StoryMapWorkspace", () => {
 
     expect(screen.getByLabelText("스토리 진행 제작").className).toContain("lg:overflow-hidden");
     expect(screen.getByRole("heading", { name: "스토리 진행 제작" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "라운드 공개 미리보기" })).toBeDefined();
     expect(screen.getByRole("heading", { name: "제작 라이브러리" })).toBeDefined();
     expect(screen.getByRole("heading", { name: "제작 라이브러리" }).closest("aside")?.className).toContain(
       "lg:overflow-y-auto",
@@ -107,13 +120,26 @@ describe("StoryMapWorkspace", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
     expect(screen.getByText("한서윤")).toBeDefined();
-    expect(screen.getByText("찢어진 초대장")).toBeDefined();
-    expect(screen.getByText("응접실")).toBeDefined();
+    expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("응접실").length).toBeGreaterThan(0);
     expect(screen.getByText("오프닝 음악")).toBeDefined();
     expect(screen.getByText("단서")).toBeDefined();
     expect(screen.getAllByText("장소").length).toBeGreaterThan(1);
     expect(screen.getAllByText("토론방").length).toBeGreaterThan(1);
     expect(screen.getAllByText("조사권").length).toBeGreaterThan(1);
+  });
+
+  it("라운드별 공개 장소/단서와 범위 밖 경고를 제작자 언어로 표시한다", () => {
+    render(<StoryMapWorkspace themeId="theme-1" />);
+
+    const preview = screen.getByLabelText("라운드 공개 미리보기");
+    expect(within(preview).getByRole("heading", { name: "1라운드" })).toBeDefined();
+    expect(within(preview).getByRole("heading", { name: "3라운드" })).toBeDefined();
+    expect(within(preview).getAllByText("찢어진 초대장").length).toBeGreaterThan(0);
+    expect(within(preview).getByText("봉인된 유언장")).toBeDefined();
+    expect(
+      within(preview).getByText("봉인된 유언장 단서는 공개되지만 응접실 장소는 이 라운드에 보이지 않습니다."),
+    ).toBeDefined();
   });
 
   it("라이브러리 항목을 선택하면 우측 패널에 연결 대상으로 표시한다", () => {
@@ -150,7 +176,7 @@ describe("StoryMapWorkspace", () => {
 
     rerender(<StoryMapWorkspace themeId="theme-2" />);
 
-    expect(screen.getAllByText("찢어진 초대장")).toHaveLength(1);
+    expect(within(getScenePropertiesPanel()).queryByText("찢어진 초대장")).toBeNull();
     expect(
       screen.getByText("왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다."),
     ).toBeDefined();
@@ -165,6 +191,6 @@ describe("StoryMapWorkspace", () => {
     expect(screen.getByText("오프닝")).toBeDefined();
     expect(screen.getByText("스토리 장면")).toBeDefined();
     expect(screen.getByText("장면 설명 있음")).toBeDefined();
-    expect(screen.getByText("사용")).toBeDefined();
+    expect(screen.getByText("장면 시작 시 · 전원 참여 · 장면 종료 시 닫기 · 전체 토론: 전체 토론")).toBeDefined();
   });
 });
