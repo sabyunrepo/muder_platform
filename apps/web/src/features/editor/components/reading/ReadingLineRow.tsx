@@ -1,9 +1,15 @@
 import { useState } from "react";
-import { Image as ImageIcon, Mic, Trash2, X } from "lucide-react";
+import {
+  Image as ImageIcon,
+  Mic,
+  Trash2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 import type { ReadingLineDTO } from "../../readingApi";
 import { MediaPicker } from "../media/MediaPicker";
-import type { MediaResponse } from "../../mediaApi";
+import type { MediaResponse, MediaType } from "../../mediaApi";
 import { computeSmartAdvanceBy } from "./advanceByDefaults";
 
 // ---------------------------------------------------------------------------
@@ -20,6 +26,80 @@ export interface ReadingLineRowProps {
   onDelete: () => void;
 }
 
+interface MediaSlotPickerProps {
+  themeId: string;
+  label: string;
+  labelClassName?: string;
+  emptyLabel: string;
+  removeLabel: string;
+  pickerTitle: string;
+  filterType: MediaType;
+  selectedId?: string;
+  selectedLabel: string;
+  selectedMedia?: MediaResponse | null;
+  icon: LucideIcon;
+  selectedClassName: string;
+  onSelect: (media: MediaResponse) => void;
+  onClear: () => void;
+}
+
+function MediaSlotPicker({
+  themeId,
+  label,
+  labelClassName = "",
+  emptyLabel,
+  removeLabel,
+  pickerTitle,
+  filterType,
+  selectedId,
+  selectedLabel,
+  selectedMedia,
+  icon: Icon,
+  selectedClassName,
+  onSelect,
+  onClear,
+}: MediaSlotPickerProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  return (
+    <>
+      <label className={`text-xs text-slate-400 ${labelClassName}`}>{label}:</label>
+      {selectedId ? (
+        <span className={`flex items-center gap-1 text-xs ${selectedClassName}`}>
+          <Icon className="h-3 w-3" />
+          {selectedMedia?.name ?? selectedLabel}
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label={removeLabel}
+            className="ml-0.5 hover:text-slate-100"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="text-xs text-slate-400 underline hover:text-slate-200"
+        >
+          {emptyLabel}
+        </button>
+      )}
+
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={onSelect}
+        themeId={themeId}
+        filterType={filterType}
+        selectedId={selectedId}
+        title={pickerTitle}
+      />
+    </>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // ReadingLineRow
 // ---------------------------------------------------------------------------
@@ -33,9 +113,6 @@ export function ReadingLineRow({
   onChange,
   onDelete,
 }: ReadingLineRowProps) {
-  const [voicePickerOpen, setVoicePickerOpen] = useState(false);
-  const [imagePickerOpen, setImagePickerOpen] = useState(false);
-
   const isNarration = line.Speaker === "나레이션";
   const advanceBy = line.AdvanceBy ?? "";
   const isRoleAdvance = advanceBy.startsWith("role:");
@@ -152,53 +229,37 @@ export function ReadingLineRow({
       </div>
 
       <div className="ml-8 flex flex-wrap items-center gap-2">
-        <label className="text-xs text-slate-400">음성:</label>
-        {line.VoiceMediaID ? (
-          <span className="flex items-center gap-1 text-xs text-amber-300">
-            <Mic className="h-3 w-3" />
-            설정됨
-            <button
-              type="button"
-              onClick={handleVoiceClear}
-              aria-label="음성 제거"
-              className="ml-0.5 text-amber-300 hover:text-amber-200"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setVoicePickerOpen(true)}
-            className="text-xs text-slate-400 underline hover:text-slate-200"
-          >
-            음성 추가
-          </button>
-        )}
+        <MediaSlotPicker
+          themeId={themeId}
+          label="음성"
+          emptyLabel="음성 추가"
+          removeLabel="음성 제거"
+          pickerTitle="음성 선택"
+          filterType="VOICE"
+          selectedId={line.VoiceMediaID}
+          selectedLabel="설정됨"
+          icon={Mic}
+          selectedClassName="text-amber-300"
+          onSelect={handleVoiceSelect}
+          onClear={handleVoiceClear}
+        />
 
-        <label className="ml-4 text-xs text-slate-400">이미지:</label>
-        {line.ImageMediaID ? (
-          <span className="flex items-center gap-1 text-xs text-sky-300">
-            <ImageIcon className="h-3 w-3" />
-            {selectedImage?.name ?? "선택됨"}
-            <button
-              type="button"
-              onClick={handleImageClear}
-              aria-label="이미지 제거"
-              className="ml-0.5 text-sky-300 hover:text-sky-200"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setImagePickerOpen(true)}
-            className="text-xs text-slate-400 underline hover:text-slate-200"
-          >
-            이미지 추가
-          </button>
-        )}
+        <MediaSlotPicker
+          themeId={themeId}
+          label="이미지"
+          labelClassName="ml-4"
+          emptyLabel="이미지 추가"
+          removeLabel="이미지 제거"
+          pickerTitle="이미지 선택"
+          filterType="IMAGE"
+          selectedId={line.ImageMediaID}
+          selectedLabel="선택됨"
+          selectedMedia={selectedImage}
+          icon={ImageIcon}
+          selectedClassName="text-sky-300"
+          onSelect={handleImageSelect}
+          onClear={handleImageClear}
+        />
 
         <label className="ml-4 text-xs text-slate-400">진행:</label>
         <select
@@ -228,24 +289,6 @@ export function ReadingLineRow({
         )}
       </div>
 
-      <MediaPicker
-        open={voicePickerOpen}
-        onClose={() => setVoicePickerOpen(false)}
-        onSelect={handleVoiceSelect}
-        themeId={themeId}
-        filterType="VOICE"
-        selectedId={line.VoiceMediaID}
-        title="음성 선택"
-      />
-      <MediaPicker
-        open={imagePickerOpen}
-        onClose={() => setImagePickerOpen(false)}
-        onSelect={handleImageSelect}
-        themeId={themeId}
-        filterType="IMAGE"
-        selectedId={line.ImageMediaID}
-        title="이미지 선택"
-      />
     </div>
   );
 }
