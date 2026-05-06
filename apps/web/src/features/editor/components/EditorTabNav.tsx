@@ -1,5 +1,7 @@
 import { Fragment, useRef, useCallback, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router";
 import { EDITOR_TABS, type EditorTab } from "@/features/editor/constants";
+import { buildEditorRouteForTab } from "@/features/editor/routeSegments";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 
 // ---------------------------------------------------------------------------
@@ -9,6 +11,7 @@ import { useEditorUI } from "@/features/editor/stores/editorUIStore";
 const EMPTY_MODULES: string[] = [];
 
 interface EditorTabNavProps {
+  themeId?: string;
   activeModules?: string[];
   forcedVisibleTab?: EditorTab;
 }
@@ -18,9 +21,11 @@ interface EditorTabNavProps {
 // ---------------------------------------------------------------------------
 
 export function EditorTabNav({
+  themeId,
   activeModules = EMPTY_MODULES,
   forcedVisibleTab,
 }: EditorTabNavProps) {
+  const navigate = useNavigate();
   const { activeTab, setActiveTab } = useEditorUI();
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -39,8 +44,21 @@ export function EditorTabNav({
   useEffect(() => {
     if (!visibleTabs.some((t) => t.key === activeTab)) {
       setActiveTab("storyMap");
+      if (themeId) {
+        navigate(buildEditorRouteForTab(themeId, "storyMap"));
+      }
     }
-  }, [visibleTabs, activeTab, setActiveTab]);
+  }, [visibleTabs, activeTab, setActiveTab, themeId, navigate]);
+
+  const selectTab = useCallback(
+    (tab: EditorTab) => {
+      setActiveTab(tab);
+      if (themeId) {
+        navigate(buildEditorRouteForTab(themeId, tab));
+      }
+    },
+    [navigate, setActiveTab, themeId],
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent, index: number) => {
@@ -54,11 +72,11 @@ export function EditorTabNav({
 
       if (next !== null) {
         e.preventDefault();
-        setActiveTab(visibleTabs[next].key);
+        selectTab(visibleTabs[next].key);
         tabRefs.current[next]?.focus();
       }
     },
-    [setActiveTab, visibleTabs],
+    [selectTab, visibleTabs],
   );
 
   return (
@@ -90,7 +108,7 @@ export function EditorTabNav({
                 aria-controls={`tabpanel-${tab.key}`}
                 id={`tab-${tab.key}`}
                 tabIndex={isActive ? 0 : -1}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => selectTab(tab.key)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
                 className={`relative flex shrink-0 items-center gap-1.5 px-4 text-xs font-medium transition-colors ${
                   isActive

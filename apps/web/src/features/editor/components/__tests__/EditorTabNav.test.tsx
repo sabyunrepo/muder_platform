@@ -1,12 +1,17 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 const mockSetActiveTab = vi.fn();
+const mockNavigate = vi.fn();
 const mockActiveTab = { current: "storyMap" };
+
+vi.mock("react-router", () => ({
+  useNavigate: () => mockNavigate,
+}));
 
 vi.mock("../../stores/editorUIStore", () => ({
   useEditorUI: () => ({
@@ -82,5 +87,31 @@ describe("EditorTabNav dynamic tabs", () => {
       "템플릿",
       "고급 설정",
     ]);
+  });
+
+  it("탭 클릭 시 제작자가 다시 열 수 있는 canonical URL로 이동한다", () => {
+    render(<EditorTabNav themeId="theme-1" activeModules={["voice_chat"]} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: /등장인물 관리/ }));
+
+    expect(mockSetActiveTab).toHaveBeenCalledWith("characters");
+    expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1/characters");
+  });
+
+  it("게임 설계 탭 클릭은 기본 설계 화면 URL로 이동한다", () => {
+    render(<EditorTabNav themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole("tab", { name: /게임 설계/ }));
+
+    expect(mockSetActiveTab).toHaveBeenCalledWith("design");
+    expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1/design/modules");
+  });
+
+  it("숨겨진 현재 탭은 스토리 진행 URL로 되돌린다", () => {
+    mockActiveTab.current = "media";
+    render(<EditorTabNav themeId="theme-1" activeModules={[]} />);
+
+    expect(mockSetActiveTab).toHaveBeenCalledWith("storyMap");
+    expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1");
   });
 });

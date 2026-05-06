@@ -129,7 +129,11 @@ export function EditorLayout({
       </header>
 
       {/* ── Tab nav ── */}
-      <EditorTabNav activeModules={activeModules} forcedVisibleTab={routeTab} />
+      <EditorTabNav
+        themeId={themeId}
+        activeModules={activeModules}
+        forcedVisibleTab={routeTab}
+      />
 
       {/* ── Validation panel ── */}
       {!dismissed && (validationResult ?? externalWarnings) && (

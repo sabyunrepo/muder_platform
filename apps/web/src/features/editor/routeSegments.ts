@@ -14,7 +14,7 @@ const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
   'story-map': 'storyMap',
   overview: 'overview',
   design: 'design',
-  story: 'storyMap',
+  story: 'story',
   characters: 'characters',
   clues: 'clues',
   relations: 'clues',
@@ -44,13 +44,29 @@ const DESIGN_ROUTE_SUBTAB_MAP: Record<string, DesignSubTab> = {
   endings: 'endings',
 };
 
+const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
+  storyMap: undefined,
+  story: 'story',
+  characters: 'characters',
+  clues: 'clues',
+  design: 'design/modules',
+  media: 'media',
+  overview: 'overview',
+  template: 'template',
+  advanced: 'advanced',
+};
+
 export const EDITOR_ROUTE_MATRIX = [
   { path: '/editor/:id', editorTab: 'storyMap' },
   { path: '/editor/:id/story-map', routeSegment: 'story-map', editorTab: 'storyMap', alias: true },
-  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'storyMap' },
+  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'story' },
   { path: '/editor/:id/characters', routeSegment: 'characters', editorTab: 'characters' },
   { path: '/editor/:id/clues', routeSegment: 'clues', editorTab: 'clues' },
   { path: '/editor/:id/relations', routeSegment: 'relations', editorTab: 'clues' },
+  { path: '/editor/:id/overview', routeSegment: 'overview', editorTab: 'overview' },
+  { path: '/editor/:id/template', routeSegment: 'template', editorTab: 'template' },
+  { path: '/editor/:id/templates', routeSegment: 'templates', editorTab: 'template', alias: true },
+  { path: '/editor/:id/advanced', routeSegment: 'advanced', editorTab: 'advanced' },
   {
     path: '/editor/:id/design/modules',
     routeSegment: 'design/modules',
@@ -114,4 +130,10 @@ export function readEditorTabFromRouteSegment(routeSegment?: string): EditorTab 
 export function readDesignSubTabFromRouteSegment(routeSegment?: string): DesignSubTab {
   if (!routeSegment) return 'modules';
   return DESIGN_ROUTE_SUBTAB_MAP[routeSegment] ?? 'modules';
+}
+
+export function buildEditorRouteForTab(themeId: string, tab: EditorTab): string {
+  const encodedThemeId = encodeURIComponent(themeId);
+  const segment = EDITOR_TAB_ROUTE_SEGMENTS[tab];
+  return segment ? `/editor/${encodedThemeId}/${segment}` : `/editor/${encodedThemeId}`;
 }
