@@ -4,6 +4,7 @@ import {
   ActionListEditor,
   hasIncompletePresentationCueActions,
 } from '@/features/editor/components/design/ActionListEditor';
+import { useFlowGraph } from '@/features/editor/flowApi';
 import type { PhaseAction } from '@/features/editor/flowTypes';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import {
@@ -23,6 +24,11 @@ interface EntityTriggerPlacementCardProps {
   isSaving?: boolean;
 }
 
+interface SceneOption {
+  id: string;
+  label: string;
+}
+
 function createTrigger(
   entityKind: TriggerPlacementKind,
   entityId: string
@@ -38,8 +44,9 @@ function createTrigger(
 
 function isTriggerValid(trigger: EventProgressionTriggerConfig) {
   const actions = trigger.actions ?? [];
+  const hasTargetScene = typeof trigger.to === 'string' && trigger.to.trim().length > 0;
   return (
-    actions.some((action) => action.type.trim().length > 0) &&
+    (hasTargetScene || actions.some((action) => action.type.trim().length > 0)) &&
     !hasIncompletePresentationCueActions(actions)
   );
 }
@@ -57,6 +64,21 @@ export function EntityTriggerPlacementCard({
   const savedTriggers = useMemo(
     () => readTriggersForPlacement(configJson, placement),
     [configJson, placement]
+  );
+  const { data: flowGraph } = useFlowGraph(themeId ?? '');
+  const sceneOptions = useMemo(
+    () =>
+      (flowGraph?.nodes ?? [])
+        .filter((node) => node.type === 'phase' || node.type === 'ending')
+        .map((node) => ({
+          id: node.id,
+          label: typeof node.data.label === 'string' && node.data.label.trim()
+            ? node.data.label.trim()
+            : node.type === 'ending'
+              ? '이름 없는 결말'
+              : '이름 없는 장면',
+        })),
+    [flowGraph]
   );
   const [drafts, setDrafts] = useState<EventProgressionTriggerConfig[]>(savedTriggers);
 
@@ -136,6 +158,7 @@ export function EntityTriggerPlacementCard({
               themeId={themeId}
               onChange={(patch) => updateDraft(index, patch)}
               onRemove={() => handleRemove(index)}
+              sceneOptions={sceneOptions}
             />
           ))}
         </div>
@@ -151,6 +174,7 @@ function TriggerDraftRow({
   themeId,
   onChange,
   onRemove,
+  sceneOptions,
 }: {
   trigger: EventProgressionTriggerConfig;
   index: number;
@@ -158,6 +182,7 @@ function TriggerDraftRow({
   themeId?: string;
   onChange: (patch: Partial<EventProgressionTriggerConfig>) => void;
   onRemove: () => void;
+  sceneOptions: SceneOption[];
 }) {
   const actions = trigger.actions ?? [];
 
@@ -183,12 +208,13 @@ function TriggerDraftRow({
       </div>
 
       <label className="mt-3 block text-xs font-semibold text-slate-400">
-        화면 이름
+        플레이어 버튼 이름
         <input
           type="text"
           value={trigger.label ?? ''}
           onChange={(e) => onChange({ label: e.target.value })}
-          placeholder="예: 금고 암호 확인"
+          placeholder="예: 금고 암호 확인하기"
+          aria-label={`${title} ${index + 1} 플레이어 버튼 이름`}
           className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
         />
       </label>
@@ -207,6 +233,27 @@ function TriggerDraftRow({
         />
       </label>
 
+      <label className="mt-3 block text-xs font-semibold text-slate-400">
+        실행 후 이동할 장면
+        <select
+          value={trigger.to ?? ''}
+          onChange={(e) => onChange({ to: e.target.value || undefined })}
+          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+        >
+          <option value="">장면 이동 없음</option>
+          {sceneOptions.map((scene) => (
+            <option key={scene.id} value={scene.id}>
+              {scene.label}
+            </option>
+          ))}
+        </select>
+        {sceneOptions.length === 0 ? (
+          <span className="mt-1 block text-[11px] font-normal text-slate-600">
+            스토리 진행에서 장면을 만든 뒤 이동 대상을 선택할 수 있습니다.
+          </span>
+        ) : null}
+      </label>
+
       <div className="mt-3">
         <ActionListEditor
           label={`${title} ${index + 1}`}
@@ -218,7 +265,7 @@ function TriggerDraftRow({
 
       {!isTriggerValid(trigger) && (
         <p className="mt-2 text-xs text-amber-300">
-          저장하려면 실행 결과를 하나 이상 추가하고 필요한 미디어를 선택하세요.
+          저장하려면 이동할 장면이나 실행 결과를 추가하고 필요한 값을 채우세요.
         </p>
       )}
     </article>

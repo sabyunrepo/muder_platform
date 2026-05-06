@@ -22,6 +22,19 @@ vi.mock("../../media/MediaPicker", () => ({
     ) : null,
 }));
 
+vi.mock("../../../readingApi", () => ({
+  useReadingSections: () => ({
+    data: [
+      {
+        id: "reading-1",
+        name: "금고 편지",
+        lines: [{ Speaker: "", Text: "편지가 공개된다." }],
+        bgmMediaId: null,
+      },
+    ],
+  }),
+}));
+
 afterEach(cleanup);
 
 describe("ActionListEditor", () => {
@@ -183,5 +196,82 @@ describe("ActionListEditor", () => {
     });
 
     expect(onChange).toHaveBeenCalledWith([{ id: "bgm", type: "OPEN_VOTING" }]);
+  });
+
+  it("읽기 대사 공개 실행 결과를 all players delivery params로 저장한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="단서 트리거"
+        actions={[{ id: "info", type: "DELIVER_INFORMATION", params: { deliveries: [] } }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "단서 트리거 1 공개할 읽기 대사" }), {
+      target: { value: "reading-1" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        id: "info",
+        type: "DELIVER_INFORMATION",
+        params: {
+          deliveries: [
+            {
+              id: "delivery-reading-1",
+              target: { type: "all_players" },
+              reading_section_ids: ["reading-1"],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it("알림 보내기 실행 결과의 문구를 params.message로 저장한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장소 트리거"
+        actions={[{ id: "broadcast", type: "BROADCAST_MESSAGE", params: { message: "" } }]}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("textbox", { name: "장소 트리거 1 알림 문구" }), {
+      target: { value: "금고가 열렸습니다." },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "broadcast", type: "BROADCAST_MESSAGE", params: { message: "금고가 열렸습니다." } },
+    ]);
+  });
+
+  it("읽기 대사 공개와 알림 보내기의 필수값 누락을 검출한다", () => {
+    expect(
+      hasIncompletePresentationCueActions([
+        { id: "info", type: "DELIVER_INFORMATION", params: { deliveries: [] } },
+      ]),
+    ).toBe(true);
+    expect(
+      hasIncompletePresentationCueActions([
+        {
+          id: "info",
+          type: "DELIVER_INFORMATION",
+          params: {
+            deliveries: [
+              { target: { type: "all_players" }, reading_section_ids: ["reading-1"] },
+            ],
+          },
+        },
+      ]),
+    ).toBe(false);
+    expect(
+      hasIncompletePresentationCueActions([
+        { id: "broadcast", type: "BROADCAST_MESSAGE", params: { message: "" } },
+      ]),
+    ).toBe(true);
   });
 });

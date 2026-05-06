@@ -2,12 +2,18 @@ import { Check, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { PhaseAction } from "../../flowTypes";
 import {
+  DELIVER_INFORMATION_ACTION,
   getCreatorActionLabel,
   getVisibleCreatorActionOptions,
 } from "../../entities/shared/actionAdapter";
 import { MediaPicker } from "../media/MediaPicker";
 import type { MediaResourceUseCase } from "../../entities/mediaResource/mediaResourceAdapter";
 import type { MediaType } from "../../mediaApi";
+import { useReadingSections } from "../../readingApi";
+import {
+  toReadingSectionPickerOptions,
+  type ReadingSectionPickerOption,
+} from "../../entities/story/readingSectionAdapter";
 
 interface ActionListEditorProps {
   label: string;
@@ -24,6 +30,8 @@ export function ActionListEditor({
   hiddenTypes = [],
   themeId,
 }: ActionListEditorProps) {
+  const { data: readingSections = [] } = useReadingSections(themeId ?? "");
+  const readingOptions = toReadingSectionPickerOptions(readingSections);
   const visibleActions = actions
     .map((action, index) => ({ action, index }))
     .filter(({ action }) => !hiddenTypes.includes(action.type));
@@ -79,6 +87,7 @@ export function ActionListEditor({
           onParamsChange={handleParamsChange}
           onRemove={handleRemove}
           themeId={themeId}
+          readingOptions={readingOptions}
         />
       ))}
     </div>
@@ -86,11 +95,24 @@ export function ActionListEditor({
 }
 
 function createDefaultParams(type: string): Record<string, unknown> | undefined {
+  if (type === DELIVER_INFORMATION_ACTION) {
+    return { deliveries: [] };
+  }
+  if (type === "BROADCAST_MESSAGE") {
+    return { message: "" };
+  }
   return getPresentationCueConfig(type) ? {} : undefined;
 }
 
 export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boolean {
   return actions.some((action) => {
+    if (action.type === DELIVER_INFORMATION_ACTION) {
+      return readAllPlayerReadingSectionId(action.params) === "";
+    }
+    if (action.type === "BROADCAST_MESSAGE") {
+      const message = action.params?.message;
+      return typeof message !== "string" || message.trim().length === 0;
+    }
     const config = getPresentationCueConfig(action.type);
     if (!config) return false;
     if (config.kind === "theme") {
@@ -122,6 +144,7 @@ interface ActionRowProps {
   onParamsChange: (index: number, params: Record<string, unknown>) => void;
   onRemove: (index: number) => void;
   themeId?: string;
+  readingOptions: ReadingSectionPickerOption[];
 }
 
 function ActionRow({
@@ -133,6 +156,7 @@ function ActionRow({
   onParamsChange,
   onRemove,
   themeId,
+  readingOptions,
 }: ActionRowProps) {
   const hasCurrentOption = visibleActionTypes.some((actionType) => actionType.value === action.type);
   const fallbackLabel = getCreatorActionLabel(action.type);
@@ -169,8 +193,124 @@ function ActionRow({
         themeId={themeId}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
+      <InformationActionFields
+        action={action}
+        label={label}
+        index={index}
+        readingOptions={readingOptions}
+        onParamsChange={(params) => onParamsChange(index, params)}
+      />
+      <BroadcastActionFields
+        action={action}
+        label={label}
+        index={index}
+        onParamsChange={(params) => onParamsChange(index, params)}
+      />
     </div>
   );
+}
+
+function InformationActionFields({
+  action,
+  label,
+  index,
+  readingOptions,
+  onParamsChange,
+}: {
+  action: PhaseAction;
+  label: string;
+  index: number;
+  readingOptions: ReadingSectionPickerOption[];
+  onParamsChange: (params: Record<string, unknown>) => void;
+}) {
+  if (action.type !== DELIVER_INFORMATION_ACTION) return null;
+
+  const selectedId = readAllPlayerReadingSectionId(action.params);
+
+  return (
+    <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
+      <label className="block text-[11px] font-medium text-slate-400">
+        모두에게 공개할 읽기 대사
+        <select
+          value={selectedId}
+          onChange={(e) => onParamsChange(createAllPlayerDeliveryParams(e.target.value))}
+          aria-label={`${label} ${index + 1} 공개할 읽기 대사`}
+          className="mt-1 w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+        >
+          <option value="">읽기 대사를 선택하세요</option>
+          {readingOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.name} · {option.metaLabel}
+            </option>
+          ))}
+        </select>
+      </label>
+      {readingOptions.length === 0 ? (
+        <p className="mt-1 text-[10px] text-slate-600">
+          스토리 탭에서 읽기 대사를 먼저 만들어야 선택할 수 있습니다.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function BroadcastActionFields({
+  action,
+  label,
+  index,
+  onParamsChange,
+}: {
+  action: PhaseAction;
+  label: string;
+  index: number;
+  onParamsChange: (params: Record<string, unknown>) => void;
+}) {
+  if (action.type !== "BROADCAST_MESSAGE") return null;
+
+  const params = action.params ?? {};
+  const message = typeof params.message === "string" ? params.message : "";
+
+  return (
+    <label className="block rounded border border-slate-800 bg-slate-950/80 p-2 text-[11px] font-medium text-slate-400">
+      플레이어에게 보여줄 알림 문구
+      <textarea
+        value={message}
+        onChange={(e) => onParamsChange({ ...params, message: e.target.value })}
+        aria-label={`${label} ${index + 1} 알림 문구`}
+        placeholder="예: 금고가 열리며 오래된 편지가 공개됩니다."
+        rows={2}
+        className="mt-1 w-full resize-y rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+      />
+    </label>
+  );
+}
+
+function readAllPlayerReadingSectionId(params: PhaseAction["params"]): string {
+  if (!params || typeof params !== "object") return "";
+  const deliveries = (params as { deliveries?: unknown }).deliveries;
+  if (!Array.isArray(deliveries)) return "";
+  const delivery = deliveries.find((item): item is Record<string, unknown> => {
+    if (!item || typeof item !== "object") return false;
+    const target = (item as { target?: unknown }).target;
+    return !!target && typeof target === "object" && (target as { type?: unknown }).type === "all_players";
+  });
+  const ids = delivery?.reading_section_ids;
+  if (!Array.isArray(ids)) return "";
+  const [first] = ids;
+  return typeof first === "string" ? first : "";
+}
+
+function createAllPlayerDeliveryParams(readingSectionId: string): Record<string, unknown> {
+  if (!readingSectionId) return { deliveries: [] };
+  return {
+    deliveries: [
+      {
+        id: `delivery-${readingSectionId}`,
+        target: { type: "all_players" },
+        reading_section_ids: [readingSectionId],
+      },
+    ],
+  };
 }
 
 interface PresentationCueConfig {

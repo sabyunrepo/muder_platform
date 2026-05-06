@@ -28,6 +28,8 @@ describe("actionAdapter", () => {
       "CLOSE_VOTING",
       "UNMUTE_CHAT",
       "MUTE_CHAT",
+      "DELIVER_INFORMATION",
+      "BROADCAST_MESSAGE",
       "SET_BGM",
       "PLAY_SOUND",
       "PLAY_MEDIA",
