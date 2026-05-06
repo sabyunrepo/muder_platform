@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, MapPin, Package, Plus, Search, X } from 'lucide-react';
+import { Check, MapPin, Package, Plus, Search } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { EditorThemeResponse, LocationResponse, ClueResponse } from '@/features/editor/api';
@@ -10,6 +10,18 @@ import {
   writeLocationDiscoveries,
   type LocationDiscoveryConfig,
 } from '@/features/editor/editorTypes';
+import {
+  readDeckInvestigationConfig,
+  writeDeckInvestigationConfig,
+} from '@/features/editor/entities/deckInvestigation/deckInvestigationAdapter';
+import {
+  readLocationClueInvestigationCost,
+  removeLocationClueInvestigationCost,
+  syncLocationClueInvestigationRequirements,
+  writeLocationClueInvestigationCost,
+  type InvestigationCostDraft,
+} from '@/features/editor/entities/deckInvestigation/locationClueInvestigationCost';
+import { LocationSelectedClueItem } from './LocationSelectedClueItem';
 
 interface LocationClueAssignPanelProps {
   themeId: string;
@@ -46,6 +58,10 @@ export function LocationClueAssignPanel({
     () => readLocationDiscoveries(theme.config_json, location.id),
     [theme.config_json, location.id]
   );
+  const investigationDraft = useMemo(
+    () => readDeckInvestigationConfig(theme.config_json),
+    [theme.config_json]
+  );
   const assignedIds = useMemo(
     () => discoveries.map((discovery) => discovery.clueId),
     [discoveries]
@@ -65,8 +81,11 @@ export function LocationClueAssignPanel({
     );
   }, [clues, query]);
 
-  function commit(next: LocationDiscoveryConfig[]) {
-    const nextConfig = writeLocationDiscoveries(theme.config_json, location.id, next);
+  function commit(next: LocationDiscoveryConfig[], deckDraft?: typeof investigationDraft) {
+    const locationConfig = writeLocationDiscoveries(theme.config_json, location.id, next);
+    const nextConfig = deckDraft
+      ? writeDeckInvestigationConfig(locationConfig, deckDraft)
+      : locationConfig;
     const nextIds = next.map((discovery) => discovery.clueId);
     const cacheKey = editorKeys.theme(themeId);
     const previous = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
@@ -96,21 +115,54 @@ export function LocationClueAssignPanel({
   }
 
   function removeClue(clueId: string) {
-    commit(discoveries.filter((discovery) => discovery.clueId !== clueId));
+    const cost = readLocationClueInvestigationCost(investigationDraft, location.id, clueId);
+    commit(
+      discoveries.filter((discovery) => discovery.clueId !== clueId),
+      cost.mode === 'token'
+        ? removeLocationClueInvestigationCost(investigationDraft, location.id, clueId)
+        : undefined
+    );
   }
 
   function toggleRequiredClue(clueId: string, requiredClueId: string) {
+    let nextRequiredIds: string[] = [];
+    const nextDiscoveries = discoveries.map((discovery) => {
+      if (discovery.clueId !== clueId) return discovery;
+      const requiredSet = new Set(discovery.requiredClueIds);
+      if (requiredSet.has(requiredClueId)) requiredSet.delete(requiredClueId);
+      else requiredSet.add(requiredClueId);
+      nextRequiredIds = Array.from(requiredSet).filter((id) => id !== clueId);
+      return {
+        ...discovery,
+        requiredClueIds: nextRequiredIds,
+        oncePerPlayer: true,
+      };
+    });
     commit(
-      discoveries.map((discovery) => {
-        if (discovery.clueId !== clueId) return discovery;
-        const requiredSet = new Set(discovery.requiredClueIds);
-        if (requiredSet.has(requiredClueId)) requiredSet.delete(requiredClueId);
-        else requiredSet.add(requiredClueId);
-        return {
-          ...discovery,
-          requiredClueIds: Array.from(requiredSet).filter((id) => id !== clueId),
-          oncePerPlayer: true,
-        };
+      nextDiscoveries,
+      readLocationClueInvestigationCost(investigationDraft, location.id, clueId).mode === 'token'
+        ? syncLocationClueInvestigationRequirements(
+            investigationDraft,
+            location.id,
+            clueId,
+            nextRequiredIds
+          )
+        : undefined
+    );
+  }
+
+  function updateInvestigationCost(clue: ClueResponse, cost: InvestigationCostDraft) {
+    const discovery = discoveries.find((item) => item.clueId === clue.id);
+    if (!discovery) return;
+    commit(
+      discoveries,
+      writeLocationClueInvestigationCost(investigationDraft, {
+        locationId: location.id,
+        locationName: location.name,
+        clueId: clue.id,
+        clueName: clue.name,
+        requiredClueIds: discovery.requiredClueIds,
+        cost,
       })
     );
   }
@@ -212,15 +264,23 @@ export function LocationClueAssignPanel({
             ) : (
               <div className="space-y-2">
                 {selectedClues.map((clue) => (
-                  <SelectedClue
+                  <LocationSelectedClueItem
                     key={clue.id}
                     clue={clue}
                     discovery={discoveries.find((item) => item.clueId === clue.id)}
                     availableClues={clues.filter((candidate) => candidate.id !== clue.id)}
                     clueById={clueById}
+                    tokens={investigationDraft.tokens}
+                    cost={readLocationClueInvestigationCost(
+                      investigationDraft,
+                      location.id,
+                      clue.id
+                    )}
                     disabled={updateConfig.isPending}
+                    manageHref={`/editor/${themeId}/design/modules`}
                     onRemove={removeClue}
                     onToggleRequired={toggleRequiredClue}
+                    onCostChange={updateInvestigationCost}
                   />
                 ))}
               </div>
@@ -262,91 +322,6 @@ function ClueOption({
         {selected ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
       </span>
     </button>
-  );
-}
-
-function SelectedClue({
-  clue,
-  discovery,
-  availableClues,
-  clueById,
-  disabled,
-  onRemove,
-  onToggleRequired,
-}: {
-  clue: ClueResponse;
-  discovery?: LocationDiscoveryConfig;
-  availableClues: ClueResponse[];
-  clueById: Map<string, ClueResponse>;
-  disabled: boolean;
-  onRemove: (id: string) => void;
-  onToggleRequired: (clueId: string, requiredClueId: string) => void;
-}) {
-  const requiredIds = discovery?.requiredClueIds ?? [];
-  const requiredSet = new Set(requiredIds);
-  const selectedRequiredNames = requiredIds
-    .map((id) => clueById.get(id)?.name)
-    .filter(Boolean)
-    .join(', ');
-
-  return (
-    <div className="rounded-lg border border-amber-500/20 bg-slate-950/80 px-2.5 py-2">
-      <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-[9px] font-semibold text-amber-300">
-          {roundLabel(clue)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-medium text-slate-200">{clue.name}</span>
-          <span className="block truncate text-[10px] text-slate-600">{clueMeta(clue)}</span>
-        </span>
-        <span className="shrink-0 rounded-full border border-slate-800 px-2 py-0.5 text-[10px] text-slate-500">
-          1회 발견
-        </span>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onRemove(clue.id)}
-          aria-label={`${clue.name} 제거`}
-          className="rounded-full p-1 text-slate-600 hover:bg-red-950/40 hover:text-red-300 disabled:opacity-50"
-        >
-          <X className="h-3 w-3" />
-        </button>
-      </div>
-      <div className="mt-2 rounded-md border border-slate-800 bg-slate-950/80 p-2">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          필요 단서
-        </p>
-        {availableClues.length === 0 ? (
-          <p className="text-[10px] text-slate-600">조건으로 사용할 다른 단서가 없습니다.</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {availableClues.map((candidate) => {
-              const selected = requiredSet.has(candidate.id);
-              return (
-                <button
-                  key={candidate.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onToggleRequired(clue.id, candidate.id)}
-                  aria-pressed={selected}
-                  aria-label={`${clue.name} 발견 조건 ${candidate.name} ${selected ? '해제' : '필요'}`}
-                  className={`rounded-full border px-2 py-1 text-[10px] transition disabled:opacity-50 ${
-                    selected
-                      ? 'border-amber-400/50 bg-amber-500/10 text-amber-200'
-                      : 'border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
-                  }`}
-                >
-                  {candidate.name}
-                </button>
-              );
-            })}
-          </div>
-        )}
-        <p className="mt-1.5 text-[10px] text-slate-600">
-          {selectedRequiredNames ? `${selectedRequiredNames} 보유 시 발견` : '조건 없음'}
-        </p>
-      </div>
-    </div>
   );
 }
 

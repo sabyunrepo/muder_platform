@@ -273,6 +273,107 @@ describe('LocationClueAssignPanel', () => {
     ]);
   });
 
+  it('장소 단서 조사 비용을 deck_investigation 단일 단서 deck으로 저장한다', () => {
+    const theme: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }],
+        modules: {
+          deck_investigation: {
+            enabled: true,
+            config: {
+              tokens: [
+                { id: 'basic-token', name: '기본 조사권', iconLabel: '권', defaultAmount: 1 },
+              ],
+              decks: [],
+            },
+          },
+        },
+      },
+    };
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
+
+    expect(screen.getByText('무료 조사')).toBeDefined();
+    expect(screen.getByRole('link', { name: '조사권 관리' }).getAttribute('href')).toBe(
+      '/editor/theme-1/design/modules'
+    );
+    fireEvent.change(screen.getByLabelText('단검 조사권 소비량'), { target: { value: '2' } });
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    const modules = config.modules as {
+      deck_investigation: {
+        config: {
+          tokens: Array<{ id: string }>;
+          decks: Array<{
+            id: string;
+            title: string;
+            tokenId: string;
+            tokenCost: number;
+            access: { locationIds: string[]; requiredClueIds: string[] };
+            cards: Array<{ clueId: string; delivery: string }>;
+          }>;
+        };
+      };
+    };
+    expect(modules.deck_investigation.config.decks[0]).toMatchObject({
+      id: 'location-clue-loc-1-clue-1',
+      title: '서재 - 단검 조사',
+      tokenId: 'basic-token',
+      tokenCost: 2,
+      access: { locationIds: ['loc-1'], requiredClueIds: [] },
+      cards: [{ clueId: 'clue-1', delivery: 'private_ownership' }],
+    });
+  });
+
+  it('장소 단서 조사 비용을 무료로 바꾸면 연결된 비용 deck을 제거한다', () => {
+    const theme: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }],
+        modules: {
+          deck_investigation: {
+            enabled: true,
+            config: {
+              tokens: [
+                { id: 'basic-token', name: '기본 조사권', iconLabel: '권', defaultAmount: 1 },
+              ],
+              decks: [
+                {
+                  id: 'location-clue-loc-1-clue-1',
+                  title: '서재 - 단검 조사',
+                  description: '',
+                  tokenId: 'basic-token',
+                  tokenCost: 2,
+                  drawOrder: 'sequential',
+                  emptyMessage: '더 이상 얻을 단서가 없습니다.',
+                  access: {
+                    phaseIds: [],
+                    locationIds: ['loc-1'],
+                    blockedCharacterIds: [],
+                    requiredClueIds: [],
+                  },
+                  cards: [{ clueId: 'clue-1', delivery: 'private_ownership' }],
+                },
+              ],
+            },
+          },
+        },
+      },
+    };
+    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
+
+    expect(screen.getByText('권 기본 조사권 2개 필요')).toBeDefined();
+    fireEvent.click(screen.getByLabelText('단검 무료 조사로 설정'));
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    const modules = config.modules as {
+      deck_investigation: { config: { decks: unknown[] } };
+    };
+    expect(modules.deck_investigation.config.decks).toEqual([]);
+  });
+
   it('이미 선택된 필요 단서를 다시 클릭하면 requiredClueIds에서 해제된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
