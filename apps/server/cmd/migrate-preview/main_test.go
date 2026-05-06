@@ -3,6 +3,9 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -187,7 +190,12 @@ func TestGooseMigrationRunnerSetDialect(t *testing.T) {
 }
 
 func TestGooseMigrationRunnerUpReturnsConnectionError(t *testing.T) {
-	db, err := sql.Open("pgx", "invalid database url")
+	runner := gooseMigrationRunner{}
+	if err := runner.SetDialect("postgres"); err != nil {
+		t.Fatalf("SetDialect() error = %v", err)
+	}
+
+	db, err := sql.Open("pgx", "postgres://mmp:mmp@127.0.0.1:1/mmf?connect_timeout=1")
 	if err != nil {
 		t.Fatalf("sql.Open() error = %v", err)
 	}
@@ -197,8 +205,19 @@ func TestGooseMigrationRunnerUpReturnsConnectionError(t *testing.T) {
 		}
 	})
 
-	if err := (gooseMigrationRunner{}).Up(db, t.TempDir()); err == nil {
+	migrationsDir := t.TempDir()
+	migrationPath := filepath.Join(migrationsDir, "00001_create_test_table.sql")
+	migrationSQL := "-- +goose Up\nCREATE TABLE migrate_preview_test (id integer);\n-- +goose Down\nDROP TABLE migrate_preview_test;\n"
+	if err := os.WriteFile(migrationPath, []byte(migrationSQL), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	err = runner.Up(db, migrationsDir)
+	if err == nil {
 		t.Fatal("Up() error = nil, want connection error")
+	}
+	if !strings.Contains(strings.ToLower(err.Error()), "connect") {
+		t.Fatalf("Up() error = %v, want connection-related error", err)
 	}
 }
 
