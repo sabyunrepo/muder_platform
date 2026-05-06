@@ -219,10 +219,7 @@ export function ReadingSectionEditor({
   }
 
   function handleCopyDraft() {
-    const text = [
-      `섹션: ${draft.name}`,
-      draft.lines.map((line) => `${line.Speaker ? `${line.Speaker}: ` : ""}${line.Text}`).join("\n"),
-    ].join("\n\n");
+    const text = JSON.stringify(draft, null, 2);
     void navigator.clipboard?.writeText(text);
   }
 

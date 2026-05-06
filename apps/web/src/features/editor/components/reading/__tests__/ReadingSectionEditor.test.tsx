@@ -345,7 +345,18 @@ describe("ReadingSectionEditor", () => {
     expect(screen.getByText(/다른 탭이나 사용자가 더 최신 내용을 저장했습니다/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "내 변경 복사" }));
-    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining("섹션: x"));
+    expect(writeTextMock).toHaveBeenCalledWith(
+      JSON.stringify(
+        {
+          name: "x",
+          bgmMediaId: sampleSection.bgmMediaId,
+          lines: sampleSection.lines,
+          sortOrder: sampleSection.sortOrder,
+        },
+        null,
+        2,
+      ),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "최신 상태 다시 불러오기" }));
     expect(invalidateQueriesMock).toHaveBeenCalled();
