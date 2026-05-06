@@ -8,18 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func mediaReferenceParams(refs []mediaReferenceInfo) []map[string]string {
-	out := make([]map[string]string, 0, len(refs))
-	for _, ref := range refs {
-		out = append(out, map[string]string{
-			"type": ref.Type,
-			"id":   ref.ID,
-			"name": ref.Name,
-		})
-	}
-	return out
-}
-
 func findMediaReferencesInThemeConfig(raw json.RawMessage, mediaID uuid.UUID) ([]mediaReferenceInfo, error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil, nil
