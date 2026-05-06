@@ -66,6 +66,7 @@ const sampleSection: ReadingSectionResponse = {
       Text: "어두운 방 안.",
       Speaker: "나레이션",
       VoiceMediaID: "",
+      ImageMediaID: "",
       AdvanceBy: "gm",
     },
     {
@@ -73,6 +74,7 @@ const sampleSection: ReadingSectionResponse = {
       Text: "누구냐?",
       Speaker: "Alice",
       VoiceMediaID: "",
+      ImageMediaID: "",
       AdvanceBy: "role:c1",
     },
   ],
@@ -226,6 +228,45 @@ describe("ReadingSectionEditor", () => {
     expect(callArg.patch.version).toBe(3);
     expect(callArg.patch.name).toBe("재명명");
     expect(Array.isArray(callArg.patch.lines)).toBe(true);
+  });
+
+  it("line image picker stores an IMAGE media reference", async () => {
+    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
+      if (type === "IMAGE") {
+        return {
+          data: [
+            {
+              id: "image-1",
+              theme_id: "theme-1",
+              name: "현장 사진",
+              type: "IMAGE",
+              source_type: "FILE",
+              url: "https://example.com/image.png",
+              tags: [],
+              sort_order: 1,
+              created_at: "2026-04-05T00:00:00Z",
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      return { data: [], isLoading: false };
+    });
+
+    renderEditor();
+    fireEvent.click(screen.getAllByRole("button", { name: "이미지 추가" })[0]);
+
+    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", "IMAGE");
+    expect(screen.getByText(/이미지 유형만 표시됩니다/)).toBeTruthy();
+    fireEvent.click(screen.getByText("현장 사진").closest("button") as HTMLElement);
+
+    expect(screen.getByText("현장 사진")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+
+    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].ImageMediaID).toBe(
+      "image-1",
+    );
   });
 
   it("save button is disabled when not dirty", () => {

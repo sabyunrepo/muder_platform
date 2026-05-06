@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mic, Trash2, X } from "lucide-react";
+import { Image as ImageIcon, Mic, Trash2, X } from "lucide-react";
 
 import type { ReadingLineDTO } from "../../readingApi";
 import { MediaPicker } from "../media/MediaPicker";
@@ -15,6 +15,7 @@ export interface ReadingLineRowProps {
   line: ReadingLineDTO;
   index: number;
   characters: Array<{ id: string; name: string }>;
+  selectedImage?: MediaResponse | null;
   onChange: (line: ReadingLineDTO) => void;
   onDelete: () => void;
 }
@@ -28,10 +29,12 @@ export function ReadingLineRow({
   line,
   index,
   characters,
+  selectedImage,
   onChange,
   onDelete,
 }: ReadingLineRowProps) {
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [voicePickerOpen, setVoicePickerOpen] = useState(false);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
 
   const isNarration = line.Speaker === "나레이션";
   const advanceBy = line.AdvanceBy ?? "";
@@ -84,6 +87,14 @@ export function ReadingLineRow({
       ) as ReadingLineDTO["AdvanceBy"];
     }
     onChange(next);
+  }
+
+  function handleImageSelect(media: MediaResponse) {
+    onChange({ ...line, ImageMediaID: media.id });
+  }
+
+  function handleImageClear() {
+    onChange({ ...line, ImageMediaID: "" });
   }
 
   function handleAdvanceModeChange(val: string) {
@@ -158,10 +169,34 @@ export function ReadingLineRow({
         ) : (
           <button
             type="button"
-            onClick={() => setPickerOpen(true)}
+            onClick={() => setVoicePickerOpen(true)}
             className="text-xs text-slate-400 underline hover:text-slate-200"
           >
             음성 추가
+          </button>
+        )}
+
+        <label className="ml-4 text-xs text-slate-400">이미지:</label>
+        {line.ImageMediaID ? (
+          <span className="flex items-center gap-1 text-xs text-sky-300">
+            <ImageIcon className="h-3 w-3" />
+            {selectedImage?.name ?? "선택됨"}
+            <button
+              type="button"
+              onClick={handleImageClear}
+              aria-label="이미지 제거"
+              className="ml-0.5 text-sky-300 hover:text-sky-200"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setImagePickerOpen(true)}
+            className="text-xs text-slate-400 underline hover:text-slate-200"
+          >
+            이미지 추가
           </button>
         )}
 
@@ -194,12 +229,22 @@ export function ReadingLineRow({
       </div>
 
       <MediaPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
+        open={voicePickerOpen}
+        onClose={() => setVoicePickerOpen(false)}
         onSelect={handleVoiceSelect}
         themeId={themeId}
         filterType="VOICE"
+        selectedId={line.VoiceMediaID}
         title="음성 선택"
+      />
+      <MediaPicker
+        open={imagePickerOpen}
+        onClose={() => setImagePickerOpen(false)}
+        onSelect={handleImageSelect}
+        themeId={themeId}
+        filterType="IMAGE"
+        selectedId={line.ImageMediaID}
+        title="이미지 선택"
       />
     </div>
   );

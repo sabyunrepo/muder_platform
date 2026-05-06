@@ -10,8 +10,8 @@ import { queryClient } from "@/services/queryClient";
 //   - The OUTER wrapper (CreateReadingSectionRequest, ReadingSectionResponse,
 //     UpdateReadingSectionRequest) uses camelCase JSON tags.
 //   - The INNER ReadingLineDTO inside `lines[]` uses PascalCase JSON tags
-//     because the storage JSONB column round-trips with the engine's
-//     progression.ReadingLine struct (Go field names).
+//     because the storage JSONB column keeps the engine-compatible field
+//     names and editor-only media cues in the same line object.
 // Do not "normalize" either side — both must match the backend exactly.
 // ---------------------------------------------------------------------------
 
@@ -26,13 +26,14 @@ export type AdvanceBy = "voice" | "gm" | `role:${string}` | "";
 
 /**
  * A single reading line. Field names are PascalCase to match the JSONB
- * shape stored by the backend (which mirrors progression.ReadingLine).
+ * shape stored by the backend.
  */
 export interface ReadingLineDTO {
   Index: number;
   Text: string;
   Speaker?: string;
   VoiceMediaID?: string;
+  ImageMediaID?: string;
   AdvanceBy?: AdvanceBy;
 }
 

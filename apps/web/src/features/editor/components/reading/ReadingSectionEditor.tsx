@@ -92,6 +92,7 @@ export function ReadingSectionEditor({
   // BGM list (BGM filter only) — used to display selected BGM name without
   // an extra fetch when picker is closed.
   const { data: bgmList = [] } = useMediaList(themeId, "BGM");
+  const { data: imageList = [] } = useMediaList(themeId, "IMAGE");
   const selectedBgm = useMemo(
     () => bgmList.find((m) => m.id === draft.bgmMediaId) ?? null,
     [bgmList, draft.bgmMediaId],
@@ -110,6 +111,7 @@ export function ReadingSectionEditor({
         a.Text !== b.Text ||
         (a.Speaker ?? "") !== (b.Speaker ?? "") ||
         (a.VoiceMediaID ?? "") !== (b.VoiceMediaID ?? "") ||
+        (a.ImageMediaID ?? "") !== (b.ImageMediaID ?? "") ||
         (a.AdvanceBy ?? "") !== (b.AdvanceBy ?? "")
       ) {
         return true;
@@ -132,6 +134,7 @@ export function ReadingSectionEditor({
           Text: "",
           Speaker: "",
           VoiceMediaID: "",
+          ImageMediaID: "",
           AdvanceBy: "gm",
         },
       ],
@@ -302,6 +305,9 @@ export function ReadingSectionEditor({
               line={line}
               index={idx}
               characters={characters}
+              selectedImage={
+                imageList.find((m) => m.id === line.ImageMediaID) ?? null
+              }
               onChange={(next) => handleLineChange(idx, next)}
               onDelete={() => handleLineDelete(idx)}
             />

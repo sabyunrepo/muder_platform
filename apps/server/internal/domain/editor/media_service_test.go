@@ -197,12 +197,16 @@ func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Contex
 		if s.BgmMediaID.Valid && uuid.UUID(s.BgmMediaID.Bytes) == arg.MediaID {
 			matched = true
 		}
-		// Check voice references inside lines JSONB.
+		// Check line-level media references inside lines JSONB.
 		if !matched && len(s.Lines) > 0 {
 			var lines []map[string]any
 			if err := json.Unmarshal(s.Lines, &lines); err == nil {
 				for _, ln := range lines {
 					if v, ok := ln["VoiceMediaID"].(string); ok && v == arg.MediaID.String() {
+						matched = true
+						break
+					}
+					if v, ok := ln["ImageMediaID"].(string); ok && v == arg.MediaID.String() {
 						matched = true
 						break
 					}
@@ -417,6 +421,32 @@ func TestMediaService_Delete_BlockedByVoiceReference(t *testing.T) {
 	}
 
 	err := svc.DeleteMedia(context.Background(), creatorID, voiceID)
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+
+	var appErr *apperror.AppError
+	_ = errors.As(err, &appErr)
+	refs := appErr.Params["references"].([]map[string]string)
+	if len(refs) != 1 || refs[0]["id"] != sectionID.String() {
+		t.Fatalf("unexpected references: %#v", refs)
+	}
+}
+
+func TestMediaService_Delete_BlockedByReadingImageReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	imageID := seedMedia(q, themeID, MediaTypeImage)
+
+	linesJSON, _ := json.Marshal([]map[string]any{
+		{"Index": 0, "Text": "사진을 공개한다.", "AdvanceBy": "gm", "ImageMediaID": imageID.String()},
+	})
+	sectionID := uuid.New()
+	q.sections[sectionID] = db.ReadingSection{
+		ID:      sectionID,
+		ThemeID: themeID,
+		Name:    "Image cue",
+		Lines:   linesJSON,
+	}
+
+	err := svc.DeleteMedia(context.Background(), creatorID, imageID)
 	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
 
 	var appErr *apperror.AppError
