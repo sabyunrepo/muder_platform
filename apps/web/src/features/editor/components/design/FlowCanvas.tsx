@@ -4,6 +4,7 @@ import {
   MiniMap,
   Controls,
   type Node,
+  type Edge,
   type NodeTypes,
   type OnSelectionChangeParams,
 } from "@xyflow/react";
@@ -50,6 +51,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showOrderReview, setShowOrderReview] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
 
   const {
     nodes,
@@ -64,6 +66,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     addNode,
     updateNodeData,
     deleteNode,
+    deleteEdge,
     onSelectionChange,
     updateEdgeCondition,
     applyPreset,
@@ -125,9 +128,17 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const handleSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
       onSelectionChange({ nodes: params.nodes });
+      setSelectedEdge(params.nodes.length === 0 && params.edges.length === 1 ? params.edges[0] : null);
     },
     [onSelectionChange],
   );
+
+  const selectedEdgeLabel = useMemo(() => {
+    if (!selectedEdge) return null;
+    const source = nodes.find((node) => node.id === selectedEdge.source);
+    const target = nodes.find((node) => node.id === selectedEdge.target);
+    return `${String(source?.data?.label ?? selectedEdge.source)} -> ${String(target?.data?.label ?? selectedEdge.target)}`;
+  }, [nodes, selectedEdge]);
 
   if (isLoading) {
     return (
@@ -185,7 +196,26 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
           {!showOrderReview && !selectedNode && (
             <div className="p-4 text-sm leading-6 text-slate-400">
-              장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.
+              {selectedEdge ? (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-300">선 연결</p>
+                    <p className="mt-1 break-words text-xs text-slate-500">{selectedEdgeLabel}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      deleteEdge(selectedEdge.id);
+                      setSelectedEdge(null);
+                    }}
+                    className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+                  >
+                    연결 끊기
+                  </button>
+                </div>
+              ) : (
+                '장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.'
+              )}
             </div>
           )}
           {showOrderReview && (

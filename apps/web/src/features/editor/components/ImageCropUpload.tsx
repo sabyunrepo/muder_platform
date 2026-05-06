@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import ReactCrop, { type Crop, type PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { Camera, Loader2 } from 'lucide-react';
+import { Camera, Loader2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Modal } from '@/shared/components/ui/Modal';
 import { Button } from '@/shared/components/ui/Button';
@@ -18,6 +18,7 @@ export interface ImageCropUploadProps {
   target: 'character' | 'clue' | 'location';
   currentImageUrl?: string | null;
   onUploaded: (url: string) => void;
+  onRemoved?: () => void;
   size?: 'sm' | 'md' | 'lg';
   shape?: 'circle' | 'square';
 }
@@ -40,6 +41,7 @@ export function ImageCropUpload({
   target,
   currentImageUrl,
   onUploaded,
+  onRemoved,
   size = 'md',
   shape = 'circle',
 }: ImageCropUploadProps) {
@@ -112,24 +114,36 @@ export function ImageCropUpload({
     <>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
 
-      <button
-        type="button"
-        onClick={handleClick}
-        className="group relative flex-shrink-0 overflow-hidden border-2 border-slate-700 bg-slate-800 transition-colors hover:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
-        style={{ width: previewPx, height: previewPx, borderRadius: isCircle ? '50%' : '0.5rem' }}
-        aria-label="이미지 업로드"
-      >
-        {currentImageUrl ? (
-          <img src={currentImageUrl} alt="캐릭터 이미지" className="h-full w-full object-cover" />
-        ) : (
-          <span className="flex h-full w-full items-center justify-center text-slate-500">
-            <Camera className="h-6 w-6" />
+      <div className="flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={handleClick}
+          className="group relative flex-shrink-0 overflow-hidden border-2 border-slate-700 bg-slate-800 transition-colors hover:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+          style={{ width: previewPx, height: previewPx, borderRadius: isCircle ? '50%' : '0.5rem' }}
+          aria-label="이미지 업로드"
+        >
+          {currentImageUrl ? (
+            <img src={currentImageUrl} alt="캐릭터 이미지" className="h-full w-full object-cover" />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-slate-500">
+              <Camera className="h-6 w-6" />
+            </span>
+          )}
+          <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
+            <Camera className="h-5 w-5 text-white" />
           </span>
+        </button>
+        {currentImageUrl && onRemoved && (
+          <button
+            type="button"
+            onClick={onRemoved}
+            className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-[11px] font-medium text-slate-400 transition hover:border-red-500/40 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+          >
+            <Trash2 className="h-3 w-3" />
+            삭제
+          </button>
         )}
-        <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
-          <Camera className="h-5 w-5 text-white" />
-        </span>
-      </button>
+      </div>
 
       <Modal
         isOpen={modalOpen}

@@ -52,7 +52,7 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		ThemeID:           themeID,
 		Name:              req.Name,
 		Description:       ptrToText(req.Description),
-		ImageUrl:          ptrToText(req.ImageURL),
+		ImageUrl:          characterImageText(req.ImageURL),
 		IsCulprit:         rolePolicy.IsCulprit,
 		MysteryRole:       rolePolicy.MysteryRole,
 		SortOrder:         req.SortOrder,
@@ -117,7 +117,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		ID:                charID,
 		Name:              req.Name,
 		Description:       ptrToText(req.Description),
-		ImageUrl:          ptrToText(req.ImageURL),
+		ImageUrl:          characterImageText(req.ImageURL),
 		IsCulprit:         rolePolicy.IsCulprit,
 		MysteryRole:       rolePolicy.MysteryRole,
 		SortOrder:         req.SortOrder,
@@ -238,6 +238,13 @@ func characterEndcardText(next *string, current pgtype.Text) pgtype.Text {
 		return current
 	}
 	if *next == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *next, Valid: true}
+}
+
+func characterImageText(next *string) pgtype.Text {
+	if next == nil || *next == "" {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: *next, Valid: true}

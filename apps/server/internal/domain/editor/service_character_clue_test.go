@@ -262,7 +262,7 @@ func TestService_UpdateCharacter(t *testing.T) {
 	themeID := f.createThemeForUser(t, creatorID)
 
 	created, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
-		Name: "Original", SortOrder: 0,
+		Name: "Original", SortOrder: 0, ImageURL: textPtr("https://cdn.example/original.webp"),
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -284,6 +284,19 @@ func TestService_UpdateCharacter(t *testing.T) {
 	}
 	if !updated.IsPlayable || !updated.ShowInIntro || !updated.CanSpeakInReading || !updated.IsVotingCandidate {
 		t.Errorf("update should preserve default playable visibility: %+v", updated)
+	}
+
+	clearedImage, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:      "Updated",
+		IsCulprit: true,
+		SortOrder: 0,
+		ImageURL:  textPtr(""),
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter clear image: %v", err)
+	}
+	if clearedImage.ImageURL != nil {
+		t.Fatalf("empty image_url should clear stored character image: %+v", clearedImage.ImageURL)
 	}
 }
 

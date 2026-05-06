@@ -59,7 +59,7 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
       next.name = '이름은 50자 이하여야 합니다';
     }
 
-    if (description.length > 2000) {
+    if (isEditMode && description.length > 2000) {
       next.description = '설명은 2000자 이하여야 합니다';
     }
 
@@ -86,7 +86,7 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
           body: {
             name: name.trim(),
             description: description || undefined,
-            image_url: imageUrl || undefined,
+            image_url: imageUrl,
             is_culprit: isCulprit,
             sort_order: sortOrder,
             mystery_role: nextMysteryRole,
@@ -113,10 +113,6 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
       createCharacter.mutate(
         {
           name: name.trim(),
-          description: description || undefined,
-          image_url: imageUrl || undefined,
-          is_culprit: isCulprit,
-          sort_order: sortOrder,
         },
         {
           onSuccess: () => {
@@ -160,64 +156,69 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
           error={errors.name}
         />
 
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="character-description" className="text-sm font-medium text-slate-300">
-            설명
-          </label>
-          <textarea
-            id="character-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="캐릭터에 대한 설명"
-            maxLength={2000}
-            rows={3}
-            className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
-          />
-          {errors.description && (
-            <p className="text-sm text-red-400">{errors.description}</p>
-          )}
-        </div>
+        {isEditMode && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="character-description" className="text-sm font-medium text-slate-300">
+                설명
+              </label>
+              <textarea
+                id="character-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="캐릭터에 대한 설명"
+                maxLength={2000}
+                rows={3}
+                className="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+              />
+              {errors.description && (
+                <p className="text-sm text-red-400">{errors.description}</p>
+              )}
+            </div>
 
-        <div className="flex flex-col gap-1.5">
-          <span className="text-sm font-medium text-slate-300">캐릭터 이미지</span>
-          <div className="flex items-center gap-4">
-            <ImageCropUpload
-              themeId={themeId}
-              targetId={character?.id ?? ''}
-              target="character"
-              currentImageUrl={imageUrl || null}
-              onUploaded={(url) => setImageUrl(url)}
-              size="lg"
-              shape="circle"
+            <div className="flex flex-col gap-1.5">
+              <span className="text-sm font-medium text-slate-300">캐릭터 이미지</span>
+              <div className="flex items-center gap-4">
+                <ImageCropUpload
+                  themeId={themeId}
+                  targetId={character?.id ?? ''}
+                  target="character"
+                  currentImageUrl={imageUrl || null}
+                  onUploaded={(url) => setImageUrl(url)}
+                  onRemoved={imageUrl ? () => setImageUrl('') : undefined}
+                  size="lg"
+                  shape="circle"
+                />
+                <p className="text-xs text-slate-500">
+                  클릭하여 이미지를 업로드하세요
+                  <br />
+                  1:1 비율로 자동 자르기됩니다
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                id="character-is-culprit"
+                type="checkbox"
+                checked={isCulprit}
+                onChange={(e) => setIsCulprit(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+              />
+              <label htmlFor="character-is-culprit" className="text-sm font-medium text-slate-300">
+                범인 여부
+              </label>
+            </div>
+
+            <Input
+              label="정렬 순서"
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(Number(e.target.value))}
+              min={0}
             />
-            <p className="text-xs text-slate-500">
-              클릭하여 이미지를 업로드하세요
-              <br />
-              1:1 비율로 자동 자르기됩니다
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            id="character-is-culprit"
-            type="checkbox"
-            checked={isCulprit}
-            onChange={(e) => setIsCulprit(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
-          />
-          <label htmlFor="character-is-culprit" className="text-sm font-medium text-slate-300">
-            범인 여부
-          </label>
-        </div>
-
-        <Input
-          label="정렬 순서"
-          type="number"
-          value={sortOrder}
-          onChange={(e) => setSortOrder(Number(e.target.value))}
-          min={0}
-        />
+          </>
+        )}
       </form>
     </Modal>
   );

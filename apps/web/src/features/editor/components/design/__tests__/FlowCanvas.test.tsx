@@ -18,9 +18,13 @@ vi.mock('@xyflow/react', () => ({
   ReactFlow: ({
     children,
     nodes = [],
+    edges = [],
+    onSelectionChange,
   }: {
     children?: React.ReactNode;
     nodes?: Array<{ id: string; className?: string }>;
+    edges?: Array<{ id: string; source: string; target: string }>;
+    onSelectionChange?: (params: { nodes: unknown[]; edges: unknown[] }) => void;
   }) => (
     <div data-testid="react-flow">
       {nodes.map((node) => (
@@ -29,6 +33,15 @@ vi.mock('@xyflow/react', () => ({
           data-testid={`rf-node-${node.id}`}
           className={node.className ?? ""}
         />
+      ))}
+      {edges.map((edge) => (
+        <button
+          key={edge.id}
+          type="button"
+          onClick={() => onSelectionChange?.({ nodes: [], edges: [edge] })}
+        >
+          {edge.id} 선택
+        </button>
       ))}
       {children}
     </div>
@@ -71,6 +84,14 @@ beforeEach(() => {
     isLoading: false,
     isSaving: false,
     save: saveMock,
+    selectedNode: null,
+    addNode: vi.fn(),
+    updateNodeData: vi.fn(),
+    deleteNode: vi.fn(),
+    deleteEdge: vi.fn(),
+    onSelectionChange: vi.fn(),
+    updateEdgeCondition: vi.fn(),
+    applyPreset: vi.fn(),
   });
 });
 
@@ -197,6 +218,48 @@ describe('FlowCanvas', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '순서 점검' }));
     expect(screen.getByTestId('rf-node-p2').className).not.toContain('!ring-2');
+  });
+
+  it('선택한 연결선을 버튼으로 끊을 수 있다', () => {
+    const deleteEdge = vi.fn();
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        {
+          id: 'p1',
+          type: 'phase',
+          position: { x: 0, y: 0 },
+          data: { label: '오프닝' },
+        },
+        {
+          id: 'p2',
+          type: 'phase',
+          position: { x: 100, y: 0 },
+          data: { label: '조사' },
+        },
+      ],
+      edges: [{ id: 'e-p1-p2', source: 'p1', target: 'p2' }],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+      selectedNode: null,
+      addNode: vi.fn(),
+      updateNodeData: vi.fn(),
+      deleteNode: vi.fn(),
+      deleteEdge,
+      onSelectionChange: vi.fn(),
+      updateEdgeCondition: vi.fn(),
+      applyPreset: vi.fn(),
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'e-p1-p2 선택' }));
+    expect(screen.getByText('오프닝 -> 조사')).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '연결 끊기' }));
+    expect(deleteEdge).toHaveBeenCalledWith('e-p1-p2');
   });
 });
 

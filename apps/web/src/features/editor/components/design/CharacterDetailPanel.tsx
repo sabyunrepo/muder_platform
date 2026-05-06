@@ -6,6 +6,7 @@ import { MissionEditor } from './MissionEditor';
 import { StartingClueAssigner } from './StartingClueAssigner';
 import { CharacterRoleSheetSection } from './CharacterRoleSheetSection';
 import { CharacterAliasRulesEditor } from './CharacterAliasRulesEditor';
+import { ImageCropUpload } from '@/features/editor/components/ImageCropUpload';
 import {
   type CharacterVisibilityField,
   characterRoleOptions,
@@ -61,6 +62,7 @@ interface CharacterDetailPanelProps {
   onVisibilityChange?: (field: CharacterVisibilityField, value: boolean) => void;
   onAliasRulesSave?: (rules: CharacterAliasRule[]) => void;
   onEndcardChange?: (values: { title: string; body: string; imageUrl: string }) => void;
+  onProfileImageChange?: (imageUrl: string | null) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,6 +84,7 @@ export function CharacterDetailPanel({
   onVisibilityChange,
   onAliasRulesSave,
   onEndcardChange,
+  onProfileImageChange,
 }: CharacterDetailPanelProps) {
   const [aliasDrafts, setAliasDrafts] = useState<CharacterAliasRule[]>([]);
   const aliasDraftCharacterIdRef = useRef<string | null>(null);
@@ -156,8 +159,22 @@ export function CharacterDetailPanel({
             forceOpen: true,
             children: (
               <div className="grid gap-3 md:grid-cols-[10rem_1fr]">
-                <div className="flex h-36 items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950 text-xs text-slate-600">
-                  {selectedChar.image_url ? '사진 등록됨' : '사진 없음'}
+                <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-950 p-3 text-xs text-slate-600">
+                  <ImageCropUpload
+                    themeId={themeId}
+                    targetId={selectedChar.id}
+                    target="character"
+                    currentImageUrl={selectedChar.image_url ?? null}
+                    onUploaded={(url) => onProfileImageChange?.(url)}
+                    onRemoved={
+                      selectedChar.image_url && onProfileImageChange
+                        ? () => onProfileImageChange(null)
+                        : undefined
+                    }
+                    size="md"
+                    shape="circle"
+                  />
+                  <span>{selectedChar.image_url ? '이미지 변경' : '이미지 업로드'}</span>
                 </div>
                 <div className="space-y-3">
                   <div>

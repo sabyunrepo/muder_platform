@@ -1199,6 +1199,7 @@ components:
         image_url:
           type: string
           format: uri
+          description: "빈 문자열을 보내면 저장된 캐릭터 이미지를 제거합니다."
         sort_order:
           type: integer
 
