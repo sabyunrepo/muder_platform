@@ -95,37 +95,28 @@ export function useFlowData(themeId: string) {
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      setNodes((nds) => {
-        const next = applyNodeChanges(changes, nds);
-        nodesRef.current = next;
-        autoSave(next, edgesRef.current);
-        return next;
-      });
+      const next = applyNodeChanges(changes, nodesRef.current);
+      setNodesAndRef(next);
+      autoSave(next, edgesRef.current);
     },
-    [setNodes, autoSave]
+    [setNodesAndRef, autoSave]
   );
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      setEdges((eds) => {
-        const next = applyEdgeChanges(changes, eds);
-        edgesRef.current = next;
-        autoSave(nodesRef.current, next);
-        return next;
-      });
+      const next = applyEdgeChanges(changes, edgesRef.current);
+      setEdgesAndRef(next);
+      autoSave(nodesRef.current, next);
     },
-    [setEdges, autoSave]
+    [setEdgesAndRef, autoSave]
   );
   const onConnect: OnConnect = useCallback(
     (connection) => {
-      setEdges((eds) => {
-        const next = addEdge(connection, eds);
-        edgesRef.current = next;
-        autoSave(nodesRef.current, next);
-        return next;
-      });
+      const next = addEdge(connection, edgesRef.current);
+      setEdgesAndRef(next);
+      autoSave(nodesRef.current, next);
     },
-    [setEdges, autoSave]
+    [setEdgesAndRef, autoSave]
   );
 
   const save = useCallback(() => {
@@ -143,32 +134,28 @@ export function useFlowData(themeId: string) {
         },
         {
           onSuccess: (created) => {
-            setNodes((nds) => {
-              const next = [...nds, toReactFlowNode(created)];
-              nodesRef.current = next;
-              autoSave(next, edgesRef.current);
-              return next;
-            });
+            const next = [...nodesRef.current, toReactFlowNode(created)];
+            setNodesAndRef(next);
+            autoSave(next, edgesRef.current);
           },
         }
       );
     },
-    [createNode, setNodes, autoSave]
+    [createNode, setNodesAndRef, autoSave]
   );
 
   const updateNodeData = useCallback(
     (id: string, patch: Partial<FlowNodeData>) => {
-      setNodes((nds) => {
-        const next = nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n));
-        nodesRef.current = next;
-        autoSave(next, edgesRef.current);
-        return next;
-      });
+      const next = nodesRef.current.map((n) =>
+        n.id === id ? { ...n, data: { ...n.data, ...patch } } : n
+      );
+      setNodesAndRef(next);
+      autoSave(next, edgesRef.current);
       setSelectedNode((prev) =>
         prev && prev.id === id ? { ...prev, data: { ...prev.data, ...patch } } : prev
       );
     },
-    [setNodes, autoSave]
+    [setNodesAndRef, autoSave]
   );
 
   const deleteNode = useCallback(

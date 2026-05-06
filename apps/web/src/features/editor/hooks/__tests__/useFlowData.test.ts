@@ -1,183 +1,150 @@
-import { describe, it, expect } from "vitest";
-import type { Node, Edge } from "@xyflow/react";
-import type { FlowNodeResponse, FlowEdgeResponse } from "../../flowTypes";
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useFlowData } from '../useFlowData';
 
-// ---------------------------------------------------------------------------
-// Re-export converter functions for testing via module boundary
-// We test them by importing the pure converter logic directly.
-// Since they are module-internal, we replicate the same logic here to verify
-// the shape contract between server response and ReactFlow format.
-// ---------------------------------------------------------------------------
+const { useFlowGraphMock, saveFlowMutateMock, createNodeMutateMock, deleteNodeMutateMock } =
+  vi.hoisted(() => ({
+    useFlowGraphMock: vi.fn(),
+    saveFlowMutateMock: vi.fn(),
+    createNodeMutateMock: vi.fn(),
+    deleteNodeMutateMock: vi.fn(),
+  }));
 
-function toReactFlowNode(node: FlowNodeResponse): Node {
-  return {
-    id: node.id,
-    type: node.type,
-    position: { x: node.position_x, y: node.position_y },
-    data: { ...node.data },
-  };
-}
+vi.mock('../../flowApi', () => ({
+  useFlowGraph: useFlowGraphMock,
+  useSaveFlow: () => ({ mutate: saveFlowMutateMock, isPending: false }),
+  useCreateFlowNode: () => ({ mutate: createNodeMutateMock }),
+  useDeleteFlowNode: () => ({ mutate: deleteNodeMutateMock }),
+}));
 
-function toReactFlowEdge(edge: FlowEdgeResponse): Edge {
-  return {
-    id: edge.id,
-    source: edge.source_id,
-    target: edge.target_id,
-    label: edge.label ?? undefined,
-    data: { condition: edge.condition, sort_order: edge.sort_order },
-  };
-}
-
-function toSaveRequest(nodes: Node[], edges: Edge[]) {
-  return {
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      type: (n.type ?? "phase") as FlowNodeResponse["type"],
-      data: n.data as FlowNodeResponse["data"],
-      position_x: n.position.x,
-      position_y: n.position.y,
-    })),
-    edges: edges.map((e, i) => ({
-      id: e.id,
-      source_id: e.source,
-      target_id: e.target,
-      condition:
-        (e.data as { condition?: Record<string, unknown> } | undefined)
-          ?.condition ?? null,
-      label: typeof e.label === "string" ? e.label : null,
-      sort_order: i,
-    })),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Test data
-// ---------------------------------------------------------------------------
-
-const nodeResponse: FlowNodeResponse = {
-  id: "node-abc",
-  theme_id: "theme-1",
-  type: "phase",
-  data: { label: "조사 페이즈", duration: 20 },
-  position_x: 100,
-  position_y: 200,
-  created_at: "2026-04-14T00:00:00Z",
-  updated_at: "2026-04-14T00:00:00Z",
+const serverGraph = {
+  nodes: [
+    {
+      id: 'n1',
+      type: 'phase',
+      data: { label: '오프닝' },
+      position_x: 0,
+      position_y: 0,
+    },
+    {
+      id: 'n2',
+      type: 'phase',
+      data: { label: '조사' },
+      position_x: 100,
+      position_y: 0,
+    },
+  ],
+  edges: [
+    {
+      id: 'e1',
+      source_id: 'n1',
+      target_id: 'n2',
+      label: null,
+      condition: null,
+      sort_order: 0,
+    },
+  ],
 };
 
-const edgeResponse: FlowEdgeResponse = {
-  id: "edge-xyz",
-  theme_id: "theme-1",
-  source_id: "node-abc",
-  target_id: "node-def",
-  condition: null,
-  label: "성공",
-  sort_order: 0,
-  created_at: "2026-04-14T00:00:00Z",
-};
+function latestSavedGraph() {
+  const calls = saveFlowMutateMock.mock.calls;
+  return calls[calls.length - 1][0];
+}
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe("toReactFlowNode", () => {
-  it("id를 그대로 유지한다", () => {
-    const result = toReactFlowNode(nodeResponse);
-    expect(result.id).toBe("node-abc");
+describe('useFlowData', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useFlowGraphMock.mockReturnValue({
+      data: serverGraph,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    createNodeMutateMock.mockImplementation((_body, options) => {
+      options?.onSuccess?.({
+        id: 'n3',
+        type: 'phase',
+        data: { label: '새 장면' },
+        position_x: 200,
+        position_y: 0,
+      });
+    });
+    deleteNodeMutateMock.mockImplementation((_id, options) => {
+      options?.onSuccess?.();
+    });
   });
 
-  it("type을 그대로 유지한다", () => {
-    const result = toReactFlowNode(nodeResponse);
-    expect(result.type).toBe("phase");
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
-  it("position_x/y를 position.x/y로 변환한다", () => {
-    const result = toReactFlowNode(nodeResponse);
-    expect(result.position.x).toBe(100);
-    expect(result.position.y).toBe(200);
+  it('edge 삭제 직후 ref를 갱신해 저장 payload에서 연결을 제거한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.deleteEdge('e1');
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges).toEqual([]);
   });
 
-  it("data 필드를 복사한다", () => {
-    const result = toReactFlowNode(nodeResponse);
-    expect((result.data as { label: string }).label).toBe("조사 페이즈");
-  });
-});
+  it('연속 node 변경과 edge 삭제가 stale graph로 저장되지 않는다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
 
-describe("toReactFlowEdge", () => {
-  it("id를 그대로 유지한다", () => {
-    const result = toReactFlowEdge(edgeResponse);
-    expect(result.id).toBe("edge-xyz");
-  });
+    act(() => {
+      result.current.updateNodeData('n1', { label: '수정된 장면' });
+      result.current.deleteEdge('e1');
+      vi.runOnlyPendingTimers();
+    });
 
-  it("source_id/target_id를 source/target으로 변환한다", () => {
-    const result = toReactFlowEdge(edgeResponse);
-    expect(result.source).toBe("node-abc");
-    expect(result.target).toBe("node-def");
+    expect(latestSavedGraph().nodes[0].data).toEqual({ label: '수정된 장면' });
+    expect(latestSavedGraph().edges).toEqual([]);
   });
 
-  it("label을 그대로 유지한다", () => {
-    const result = toReactFlowEdge(edgeResponse);
-    expect(result.label).toBe("성공");
+  it('node 삭제 성공 시 연결된 edge도 ref와 저장 payload에서 제거한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.deleteNode('n1');
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(deleteNodeMutateMock).toHaveBeenCalledWith('n1', expect.any(Object));
+    expect(latestSavedGraph().nodes.map((node: { id: string }) => node.id)).toEqual(['n2']);
+    expect(latestSavedGraph().edges).toEqual([]);
   });
 
-  it("label이 null이면 undefined로 변환한다", () => {
-    const result = toReactFlowEdge({ ...edgeResponse, label: null });
-    expect(result.label).toBeUndefined();
+  it('프리셋 적용 후 edge 삭제가 최신 프리셋 edge 목록을 기준으로 동작한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.applyPreset(
+        [
+          { id: 'p1', type: 'phase', position: { x: 0, y: 0 }, data: { label: '프리셋 1' } },
+          { id: 'p2', type: 'phase', position: { x: 100, y: 0 }, data: { label: '프리셋 2' } },
+        ],
+        [{ id: 'preset-edge', source: 'p1', target: 'p2' }]
+      );
+      result.current.deleteEdge('preset-edge');
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().nodes.map((node: { id: string }) => node.id)).toEqual(['p1', 'p2']);
+    expect(latestSavedGraph().edges).toEqual([]);
   });
 
-  it("condition과 sort_order를 data에 포함한다", () => {
-    const result = toReactFlowEdge(edgeResponse);
-    const data = result.data as { condition: unknown; sort_order: number };
-    expect(data.condition).toBeNull();
-    expect(data.sort_order).toBe(0);
-  });
-});
+  it('새 node 생성 성공 시 ref를 갱신해 다음 저장에 포함한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
 
-describe("toSaveRequest", () => {
-  const rfNode: Node = {
-    id: "node-abc",
-    type: "phase",
-    position: { x: 150, y: 250 },
-    data: { label: "조사", duration: 20 },
-  };
+    act(() => {
+      result.current.addNode('phase', { x: 200, y: 0 });
+      vi.runOnlyPendingTimers();
+    });
 
-  const rfEdge: Edge = {
-    id: "edge-xyz",
-    source: "node-abc",
-    target: "node-def",
-    label: "성공",
-    data: { condition: null, sort_order: 0 },
-  };
-
-  it("노드를 서버 형식으로 역변환한다", () => {
-    const result = toSaveRequest([rfNode], []);
-    expect(result.nodes[0].id).toBe("node-abc");
-    expect(result.nodes[0].position_x).toBe(150);
-    expect(result.nodes[0].position_y).toBe(250);
-  });
-
-  it("엣지를 서버 형식으로 역변환한다", () => {
-    const result = toSaveRequest([], [rfEdge]);
-    expect(result.edges[0].id).toBe("edge-xyz");
-    expect(result.edges[0].source_id).toBe("node-abc");
-    expect(result.edges[0].target_id).toBe("node-def");
-  });
-
-  it("엣지 sort_order는 배열 인덱스로 설정된다", () => {
-    const e2: Edge = { ...rfEdge, id: "edge-2", source: "node-def", target: "node-ghi" };
-    const result = toSaveRequest([], [rfEdge, e2]);
-    expect(result.edges[0].sort_order).toBe(0);
-    expect(result.edges[1].sort_order).toBe(1);
-  });
-
-  it("string label은 그대로 유지한다", () => {
-    const result = toSaveRequest([], [rfEdge]);
-    expect(result.edges[0].label).toBe("성공");
-  });
-
-  it("non-string label은 null로 변환한다", () => {
-    const edgeNoLabel: Edge = { ...rfEdge, label: undefined };
-    const result = toSaveRequest([], [edgeNoLabel]);
-    expect(result.edges[0].label).toBeNull();
+    expect(createNodeMutateMock).toHaveBeenCalled();
+    expect(latestSavedGraph().nodes.map((node: { id: string }) => node.id)).toContain('n3');
   });
 });
