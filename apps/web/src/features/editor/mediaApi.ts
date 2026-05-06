@@ -22,6 +22,7 @@ export interface MediaResponse {
   mime_type?: string;
   tags: string[];
   sort_order: number;
+  category_id?: string;
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ export interface RequestUploadUrlRequest {
   type: MediaType;
   mime_type: string;
   file_size: number;
+  category_id?: string;
 }
 
 export interface UploadUrlResponse {
@@ -51,6 +53,7 @@ export interface CreateYouTubeMediaRequest {
   name: string;
   type: MediaType;
   url: string;
+  category_id?: string;
 }
 
 /**
@@ -63,6 +66,29 @@ export interface UpdateMediaRequest {
   sort_order: number;
   duration?: number;
   tags?: string[];
+  category_id?: string;
+}
+
+export interface MediaCategoryResponse {
+  id: string;
+  theme_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface MediaCategoryRequest {
+  name: string;
+  sort_order: number;
+}
+
+export interface MediaDeletePreviewResponse {
+  references: MediaReferenceInfo[];
+}
+
+export interface RequestReplacementUploadRequest {
+  mime_type: string;
+  file_size: number;
 }
 
 // Reference info returned in 409 problem-details `params.references`.
@@ -79,9 +105,11 @@ export interface MediaReferenceInfo {
 
 export const mediaKeys = {
   all: ["media"] as const,
-  list: (themeId: string, type?: MediaType) =>
-    ["media", themeId, type ?? "all"] as const,
+  list: (themeId: string, type?: MediaType, categoryId?: string) =>
+    ["media", themeId, type ?? "all", categoryId ?? "all-categories"] as const,
   byTheme: (themeId: string) => ["media", themeId] as const,
+  categories: (themeId: string) => ["media", themeId, "categories"] as const,
+  references: (mediaId: string) => ["media", mediaId, "references"] as const,
   downloadUrl: (mediaId: string) => ["media", mediaId, "download-url"] as const,
 };
 
@@ -89,16 +117,39 @@ export const mediaKeys = {
 // Queries
 // ---------------------------------------------------------------------------
 
-export function useMediaList(themeId: string, type?: MediaType) {
+export function useMediaList(themeId: string, type?: MediaType, categoryId?: string) {
   return useQuery<MediaResponse[]>({
-    queryKey: mediaKeys.list(themeId, type),
+    queryKey: mediaKeys.list(themeId, type, categoryId),
     queryFn: () => {
-      const qs = type ? `?type=${encodeURIComponent(type)}` : "";
+      const params = new URLSearchParams();
+      if (type) params.set("type", type);
+      if (categoryId) params.set("category_id", categoryId);
+      const qs = params.toString() ? `?${params.toString()}` : "";
       return api.get<MediaResponse[]>(
         `/v1/editor/themes/${themeId}/media${qs}`,
       );
     },
     enabled: !!themeId,
+  });
+}
+
+export function useMediaCategories(themeId: string) {
+  return useQuery<MediaCategoryResponse[]>({
+    queryKey: mediaKeys.categories(themeId),
+    queryFn: () =>
+      api.get<MediaCategoryResponse[]>(
+        `/v1/editor/themes/${themeId}/media/categories`,
+      ),
+    enabled: !!themeId,
+  });
+}
+
+export function useMediaDeletePreview(mediaId?: string) {
+  return useQuery<MediaDeletePreviewResponse>({
+    queryKey: mediaKeys.references(mediaId ?? ""),
+    queryFn: () =>
+      api.get<MediaDeletePreviewResponse>(`/v1/editor/media/${mediaId}/references`),
+    enabled: !!mediaId,
   });
 }
 
@@ -163,6 +214,65 @@ export function useUpdateMedia(themeId: string) {
       api.patch<MediaResponse>(`/v1/editor/media/${id}`, patch),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mediaKeys.byTheme(themeId) });
+    },
+  });
+}
+
+export function useCreateMediaCategory(themeId: string) {
+  return useMutation<MediaCategoryResponse, Error, MediaCategoryRequest>({
+    mutationFn: (body) =>
+      api.post<MediaCategoryResponse>(
+        `/v1/editor/themes/${themeId}/media/categories`,
+        body,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.categories(themeId) });
+    },
+  });
+}
+
+export function useUpdateMediaCategory(themeId: string) {
+  return useMutation<
+    MediaCategoryResponse,
+    Error,
+    { id: string; patch: MediaCategoryRequest }
+  >({
+    mutationFn: ({ id, patch }) =>
+      api.patch<MediaCategoryResponse>(`/v1/editor/media/categories/${id}`, patch),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.categories(themeId) });
+      queryClient.invalidateQueries({ queryKey: mediaKeys.byTheme(themeId) });
+    },
+  });
+}
+
+export function useDeleteMediaCategory(themeId: string) {
+  return useMutation<void, Error, string>({
+    mutationFn: (id) => api.deleteVoid(`/v1/editor/media/categories/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.categories(themeId) });
+      queryClient.invalidateQueries({ queryKey: mediaKeys.byTheme(themeId) });
+    },
+  });
+}
+
+export function useRequestReplacementUpload(mediaId: string) {
+  return useMutation<UploadUrlResponse, Error, RequestReplacementUploadRequest>({
+    mutationFn: (body) =>
+      api.post<UploadUrlResponse>(
+        `/v1/editor/media/${mediaId}/replace-upload-url`,
+        body,
+      ),
+  });
+}
+
+export function useConfirmReplacementUpload(themeId: string, mediaId: string) {
+  return useMutation<MediaResponse, Error, ConfirmUploadRequest>({
+    mutationFn: (body) =>
+      api.post<MediaResponse>(`/v1/editor/media/${mediaId}/replace-confirm`, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: mediaKeys.byTheme(themeId) });
+      queryClient.invalidateQueries({ queryKey: mediaKeys.downloadUrl(mediaId) });
     },
   });
 }
@@ -233,6 +343,7 @@ export interface UploadMediaFileParams {
   file: File;
   type: MediaType;
   name: string;
+  categoryId?: string;
   requestUploadUrl: (
     req: RequestUploadUrlRequest,
   ) => Promise<UploadUrlResponse>;
@@ -283,6 +394,7 @@ export async function uploadMediaFile(
     type,
     mime_type: effectiveMimeType,
     file_size: file.size,
+    category_id: params.categoryId,
   });
 
   // Step 2: PUT to R2 with retry

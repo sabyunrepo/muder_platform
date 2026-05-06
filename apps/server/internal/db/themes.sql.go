@@ -695,6 +695,47 @@ func (q *Queries) UpdateThemeConfigJson(ctx context.Context, arg UpdateThemeConf
 	return i, err
 }
 
+const updateThemeConfigJsonWithOwner = `-- name: UpdateThemeConfigJsonWithOwner :one
+UPDATE themes SET config_json = $3, version = version + 1, updated_at = NOW()
+WHERE id = $1 AND creator_id = $2
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
+`
+
+type UpdateThemeConfigJsonWithOwnerParams struct {
+	ID         uuid.UUID       `json:"id"`
+	CreatorID  uuid.UUID       `json:"creator_id"`
+	ConfigJson json.RawMessage `json:"config_json"`
+}
+
+func (q *Queries) UpdateThemeConfigJsonWithOwner(ctx context.Context, arg UpdateThemeConfigJsonWithOwnerParams) (Theme, error) {
+	row := q.db.QueryRow(ctx, updateThemeConfigJsonWithOwner, arg.ID, arg.CreatorID, arg.ConfigJson)
+	var i Theme
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.CoverImage,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.DurationMin,
+		&i.Price,
+		&i.Status,
+		&i.ConfigJson,
+		&i.Version,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.CoinPrice,
+		&i.ReviewNote,
+		&i.ReviewedAt,
+		&i.ReviewedBy,
+		&i.CoverImageMediaID,
+	)
+	return i, err
+}
+
 const updateThemeCoverImage = `-- name: UpdateThemeCoverImage :exec
 UPDATE themes SET cover_image = $2, cover_image_media_id = NULL, updated_at = NOW() WHERE id = $1
 `

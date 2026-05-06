@@ -5,5 +5,6 @@
 
 //go:generate go tool mockgen -destination=mocks/mock_service.go -package=mocks -source=service.go Service
 //go:generate go tool mockgen -destination=mock_story_info_service_test.go -package=editor -source=story_info_service.go StoryInfoService
+//go:generate go tool mockgen -destination=mock_media_service_test.go -package=editor -source=media_service.go MediaService
 
 package editor

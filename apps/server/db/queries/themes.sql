@@ -48,6 +48,11 @@ UPDATE themes SET config_json = $2, version = version + 1, updated_at = NOW()
 WHERE id = $1 AND version = $3
 RETURNING *;
 
+-- name: UpdateThemeConfigJsonWithOwner :one
+UPDATE themes SET config_json = $3, version = version + 1, updated_at = NOW()
+WHERE id = $1 AND creator_id = $2
+RETURNING *;
+
 -- name: GetThemeCharacter :one
 SELECT * FROM theme_characters WHERE id = $1;
 
