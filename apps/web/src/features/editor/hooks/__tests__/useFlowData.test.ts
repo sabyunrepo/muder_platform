@@ -100,8 +100,50 @@ describe('useFlowData', () => {
       vi.runOnlyPendingTimers();
     });
 
+    expect(saveFlowMutateMock).toHaveBeenCalledTimes(1);
     expect(latestSavedGraph().nodes[0].data).toEqual({ label: '수정된 장면' });
     expect(latestSavedGraph().edges).toEqual([]);
+  });
+
+  it('onNodesChange가 position 변경을 ref와 autosave payload에 반영한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.onNodesChange([
+        { type: 'position', id: 'n1', position: { x: 50, y: 50 } },
+      ]);
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().nodes[0]).toMatchObject({ position_x: 50, position_y: 50 });
+  });
+
+  it('onEdgesChange가 edge 삭제를 ref와 autosave payload에 반영한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.onEdgesChange([{ type: 'remove', id: 'e1' }]);
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges).toEqual([]);
+  });
+
+  it('onConnect가 새 edge를 추가하고 autosave payload에 포함한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.onConnect({
+        source: 'n2',
+        target: 'n1',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges).toHaveLength(2);
+    expect(latestSavedGraph().edges[1]).toMatchObject({ source_id: 'n2', target_id: 'n1' });
   });
 
   it('node 삭제 성공 시 연결된 edge도 ref와 저장 payload에서 제거한다', () => {
