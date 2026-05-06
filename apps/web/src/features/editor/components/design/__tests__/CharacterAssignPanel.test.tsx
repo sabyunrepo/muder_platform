@@ -179,7 +179,36 @@ function readStartingClues(config: Record<string, unknown>) {
   return modules?.starting_clue?.config?.startingClues ?? {};
 }
 
+const endcardSectionName = /^결과 카드(?:작성됨|비어 있음)$/;
+const roleSheetSectionName = /^역할지Markdown 또는 PDF$/;
+const startingClueSectionName = /^시작 단서\d+\/\d+개 배정$/;
+const hiddenMissionSectionName = /^히든 미션\d+개$/;
+
+function openCharacterSection(name: RegExp) {
+  const button = screen.getByRole('button', { name });
+  if (button.getAttribute('aria-expanded') === 'false') {
+    fireEvent.click(button);
+  }
+}
+
+function openEndcardSection() {
+  openCharacterSection(endcardSectionName);
+}
+
+function openRoleSheetSection() {
+  openCharacterSection(roleSheetSectionName);
+}
+
+function openStartingClueSection() {
+  openCharacterSection(startingClueSectionName);
+}
+
+function openHiddenMissionSection() {
+  openCharacterSection(hiddenMissionSectionName);
+}
+
 function clickFirstClue() {
+  openStartingClueSection();
   fireEvent.click(screen.getByRole('button', { name: /피 묻은 칼/ }));
 }
 
@@ -205,6 +234,17 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByRole('button', { name: '홍길동 선택' })).toBeDefined();
     expect(screen.getByRole('button', { name: '김철수 선택' })).toBeDefined();
     expect(screen.queryByText(/시스템 ID/)).toBeNull();
+  });
+
+  it('기본 정보만 처음부터 열고 세부 제작 섹션은 접어 둔다', () => {
+    renderPanel();
+
+    expect(screen.getByRole('button', { name: /기본 정보/ }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: endcardSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: roleSheetSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: startingClueSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('button', { name: hiddenMissionSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
   });
 
   it('범인 캐릭터에 "범인" 라벨이 표시된다', () => {
@@ -321,6 +361,7 @@ describe('CharacterAssignPanel', () => {
   it('결과 카드 내용을 캐릭터 저장 계약으로 보낸다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openEndcardSection();
 
     fireEvent.change(screen.getByRole('textbox', { name: '제목' }), {
       target: { value: '범인의 후일담' },
@@ -406,6 +447,7 @@ describe('CharacterAssignPanel', () => {
     );
 
     expect(screen.queryByRole('button', { name: '김철수 선택' })).toBeNull();
+    openStartingClueSection();
     expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
 
     clickFirstClue();
@@ -424,6 +466,7 @@ describe('CharacterAssignPanel', () => {
       target: { value: '홍길동' },
     });
 
+    openStartingClueSection();
     expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
     clickFirstClue();
     await act(async () => { vi.advanceTimersByTime(1500); });
@@ -436,6 +479,7 @@ describe('CharacterAssignPanel', () => {
   it('캐릭터 선택 시 좌측 전체 단서와 우측 배정 영역이 표시된다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openStartingClueSection();
     expect(screen.getByText('전체 단서 목록')).toBeDefined();
     expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
     expect(screen.getByText('피 묻은 칼')).toBeDefined();
@@ -450,6 +494,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
 
     const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
@@ -474,6 +519,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
 
     expect(screen.getByText('아직 저장된 역할지가 없습니다.')).toBeDefined();
     expect((screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement).value).toBe('');
@@ -496,6 +542,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
     fireEvent.click(screen.getByRole('button', { name: '다시 시도' }));
 
     expect(screen.getByText('역할지를 불러오지 못했습니다.')).toBeDefined();
@@ -507,6 +554,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
     fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
 
     expect(upsertRoleSheetMutateMock).not.toHaveBeenCalled();
@@ -516,6 +564,7 @@ describe('CharacterAssignPanel', () => {
   it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', async () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
 
     const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
     const saveButton = screen.getByRole('button', { name: '역할지 저장' });
@@ -544,6 +593,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
 
     expect(screen.getByText('PDF 역할지')).toBeDefined();
     expect(screen.getByText('1페이지')).toBeDefined();
@@ -570,6 +620,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
 
     expect(screen.getByText('이미지 롤지')).toBeDefined();
     expect(screen.getByText('1 / 2페이지')).toBeDefined();
@@ -587,6 +638,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
     fireEvent.click(screen.getByRole('button', { name: /이미지/ }));
     fireEvent.change(screen.getByRole('textbox', { name: '이미지 페이지 URL' }), {
       target: { value: 'https://cdn.example/role-1.webp' },
@@ -607,6 +659,7 @@ describe('CharacterAssignPanel', () => {
   it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openStartingClueSection();
 
     fireEvent.change(screen.getByPlaceholderText('단서명, 장소, 태그 검색'), {
       target: { value: '부엌' },
@@ -702,6 +755,7 @@ describe('CharacterAssignPanel', () => {
   it('미션 추가 버튼이 동작한다 (1500ms debounce)', async () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openHiddenMissionSection();
     fireEvent.click(screen.getByText('추가'));
 
     await act(async () => { vi.advanceTimersByTime(1500); });
@@ -735,6 +789,7 @@ describe('CharacterAssignPanel', () => {
 
     // 3) Add a mission → character_missions must merge with existing pending
     //    starting_clue config rather than overwrite it.
+    openHiddenMissionSection();
     fireEvent.click(screen.getByText('추가'));
 
     // 4) Full debounce window from the latest edit → single mutation.

@@ -148,16 +148,26 @@ export function CharacterDetailPanel({
     endcardImageUrl !== (selectedChar.endcard_image_url ?? '');
 
   return (
-    <div className="max-w-5xl space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold text-slate-200">{selectedChar.name}</h3>
-        <p className="mt-1 text-xs text-slate-500">
-          역할지, 시작 단서, 히든 미션을 한 곳에서 관리합니다.
-        </p>
+    <div className="max-w-4xl space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold text-slate-200">{selectedChar.name}</h3>
+          <p className="mt-1 text-xs text-slate-500">역할지, 시작 단서, 히든 미션을 한 곳에서 관리합니다.</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5" aria-label={`${selectedChar.name} 요약`}>
+          {[selectedView.roleLabel, ...selectedView.visibilityBadges].map((badge) => (
+            <span
+              key={badge}
+              className="rounded-full border border-slate-800 bg-slate-950 px-2 py-1 text-[11px] font-medium text-slate-300"
+            >
+              {badge}
+            </span>
+          ))}
+        </div>
       </div>
 
       <Accordion
-        storageKey={`editor:character:${selectedChar.id}:sections`}
+        storageKey={`editor:character:${selectedChar.id}:sections:v2`}
         items={[
           {
             id: 'base',
@@ -166,8 +176,8 @@ export function CharacterDetailPanel({
             defaultOpen: true,
             forceOpen: true,
             children: (
-              <div className="grid gap-3 md:grid-cols-[10rem_1fr]">
-                <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-950 p-3 text-xs text-slate-600">
+              <div className="grid gap-3 md:grid-cols-[8rem_minmax(0,1fr)]">
+                <div className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-950 p-2 text-xs text-slate-600">
                   {onProfileImageChange ? (
                     <>
                       <ImageCropUpload
@@ -179,7 +189,7 @@ export function CharacterDetailPanel({
                         onRemoved={
                           selectedChar.image_url ? () => onProfileImageChange(null) : undefined
                         }
-                        size="md"
+                        size="sm"
                         shape="circle"
                       />
                       <span>{selectedChar.image_url ? '이미지 변경' : '이미지 업로드'}</span>
@@ -190,18 +200,22 @@ export function CharacterDetailPanel({
                     </span>
                   )}
                 </div>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                      이름
-                    </p>
-                    <p className="mt-1 text-sm text-slate-200">{selectedChar.name}</p>
+                <div className="space-y-2.5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">이름</p>
+                      <p className="mt-1 text-sm text-slate-200">{selectedChar.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">공개 소개</p>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
+                        {selectedChar.description || '공개 소개가 없습니다.'}
+                      </p>
+                    </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                      역할
-                    </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">역할</p>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-4">
                       {characterRoleOptions.map((option) => {
                         const active = selectedRole === option.value;
                         return (
@@ -209,17 +223,18 @@ export function CharacterDetailPanel({
                             key={option.value}
                             type="button"
                             disabled={!onMysteryRoleChange}
+                            aria-label={option.label}
+                            aria-pressed={active}
+                            title={option.description}
                             onClick={() => onMysteryRoleChange?.(option.value)}
-                            className={`rounded-lg border px-3 py-2 text-left transition ${
+                            className={`min-h-11 rounded-lg border px-3 py-2 text-center transition ${
                               active
                                 ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
                                 : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
                             } disabled:cursor-default disabled:opacity-80`}
                           >
                             <span className="block text-xs font-semibold">{option.label}</span>
-                            <span className="mt-1 block text-[11px] leading-4 text-slate-500">
-                              {option.description}
-                            </span>
+                            <span className="sr-only">{option.description}</span>
                           </button>
                         );
                       })}
@@ -262,14 +277,6 @@ export function CharacterDetailPanel({
                       />
                     </div>
                   </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                      공개 소개
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs leading-5 text-slate-400">
-                      {selectedChar.description || '공개 소개가 없습니다.'}
-                    </p>
-                  </div>
                   <CharacterAliasRulesEditor
                     characterName={selectedChar.name}
                     characterImageUrl={selectedChar.image_url}
@@ -290,7 +297,6 @@ export function CharacterDetailPanel({
             id: 'endcard',
             title: '결과 카드',
             subtitle: selectedView.hasEndcard ? '작성됨' : '비어 있음',
-            defaultOpen: true,
             children: (
               <div className="space-y-3">
                 <div className="grid gap-3 md:grid-cols-2">
@@ -359,7 +365,6 @@ export function CharacterDetailPanel({
             id: 'role-sheet',
             title: '역할지',
             subtitle: 'Markdown 또는 PDF',
-            defaultOpen: true,
             children: (
               <CharacterRoleSheetSection
                 themeId={themeId}
@@ -372,7 +377,6 @@ export function CharacterDetailPanel({
             id: 'starting-clue',
             title: '시작 단서',
             subtitle: `${charClueIds.length}/${clues?.length ?? 0}개 배정`,
-            defaultOpen: true,
             children: (
               <StartingClueAssigner
                 characterName={selectedChar.name}
@@ -386,7 +390,6 @@ export function CharacterDetailPanel({
             id: 'hidden-mission',
             title: '히든 미션',
             subtitle: `${charMissions.length}개`,
-            defaultOpen: true,
             children: (
               <MissionEditor
                 missions={charMissions}
@@ -420,17 +423,21 @@ function VisibilityToggle({
   onChange,
 }: VisibilityToggleProps) {
   return (
-    <label className="flex min-h-24 items-start gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-left">
+    <label
+      className="flex min-h-14 items-center gap-3 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-left"
+      title={description}
+    >
       <input
         type="checkbox"
-        className="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500"
+        aria-label={label}
+        className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500"
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.currentTarget.checked)}
       />
       <span>
         <span className="block text-xs font-semibold text-slate-200">{label}</span>
-        <span className="mt-1 block text-[11px] leading-4 text-slate-500">{description}</span>
+        <span className="sr-only">{description}</span>
       </span>
     </label>
   );
