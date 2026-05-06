@@ -11,7 +11,11 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 ## Do
 1. Work on a feature branch or dedicated worktree; never commit directly to `main`.
 2. Before PR creation:
+   - confirm the issue or working note has a `Coverage Plan` mapping changed files and important branches to focused tests
+   - confirm any minimized, excluded, or deferred behavior is tracked in the issue body, issue checklist/comment, or a newly created follow-up issue
    - run focused checks for the changed scope
+   - include the Coverage Plan evidence in the PR body or final handoff summary
+   - include `Refs #<issue>` for deferred/follow-up issue links when the PR intentionally leaves work out
    - run/perform code review using available review skill or manual review
    - write PR title/body in Korean
    - link the GitHub issue in the PR body:
@@ -30,7 +34,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
    - for `code-rabbit-only`, do not add `ready-for-ci` or dispatch workflows; merge after light/focused checks and review gates are clear
    - merge only when scope-specific checks and required reviews are satisfied
 4. API polling cadence: 30-60 seconds unless user explicitly asks for faster status. Main Codex must not run `scripts/mmp-pr-watch.sh` for repeated waiting. Use one-shot checks (`scripts/mmp-pr-status.sh <PR>`, `gh pr view`) in the main thread, and delegate repeated CodeRabbit/CI waiting to `mmp-ci-steward` through `scripts/mmp-ci-steward-handoff.sh <PR>`.
-5. For Codecov: treat patch coverage under 70% as a blocker unless the user approves an exception and the PR documents why.
+5. For Codecov: treat patch coverage under 70% as a blocker unless the user approves an exception and the PR documents why. Do not wait until Codecov comments to discover obvious untested handler/service/adapter files; add focused tests before PR creation when new code paths are introduced.
 6. Operational-only PR exception:
    - Start by running `scripts/mmp-pr-ci-scope.sh <PR>`. Do not infer from `mergeStateStatus=BLOCKED` alone.
    - Use `scripts/mmp-pr-ci-scope.sh` as the canonical source for full path rules; examples such as `AGENTS.md`, `.codex/**`, docs, memory, and PR helper scripts usually classify as `code-rabbit-only`.
@@ -68,6 +72,8 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 
 ## Done
 - PR has Korean title/body.
+- Coverage Plan evidence maps changed files/branches to focused tests before PR creation.
+- Deferred/minimized work is tracked by issue checklist/comment or a follow-up GitHub Issue before merge.
 - Completed issues are linked with `Closes #<issue>` and are confirmed closed after merge.
 - CodeRabbit valid feedback is fixed or explicitly rejected with reason.
 - CI scope evidence from `scripts/mmp-pr-ci-scope.sh <PR>` is recorded.
@@ -82,3 +88,4 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 - Do not add `ready-for-ci` at PR creation.
 - Do not treat all bot comments as automatically correct.
 - Do not trigger repeated CI runs while review threads are still unresolved.
+- Do not say "follow-up" only in chat or PR prose without an issue/checklist reference.

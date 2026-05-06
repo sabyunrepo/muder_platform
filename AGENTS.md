@@ -53,18 +53,21 @@ Do:
    - 해당 PR이 이슈를 완료하면 반드시 `Closes #번호`를 사용해 merge 시 자동 close되게 한다.
    - 일부만 처리하는 PR은 `Refs #번호`를 사용해 이슈가 조기 종료되지 않게 한다.
 3. 작업 중 scope가 바뀌면 Issue checklist 또는 plan 문서를 먼저 갱신한다.
-4. 완료 보고에는 닫힌 Issue, 남은 Issue, 다음 권장 Issue를 포함한다.
-5. 새 Issue를 만들거나 기존 Issue를 재설계할 때는 가능한 경우 `mmp-issue-planning` skill을 사용한다.
-6. 병렬 처리가 가능한 Issue에는 `## 병렬 작업 설계`를 포함해 병렬 가능 작업, 파일/모듈 소유권, 병렬 금지/주의 영역, 취합 방식을 명시한다.
-7. Issue 작성/재작성 자체가 복잡하면 `.codex/agents/mmp-issue-architect.toml` 역할을 사용해 초안을 만들고, 메인 Codex가 scope와 우선순위를 최종 검토한다.
+4. 작업 중 “이번 PR에서는 최소화”, “후속으로 넘김”, “여기까지가 MVP”로 판단한 항목은 즉시 추적한다. 기존 Issue의 체크리스트/댓글로 충분하면 거기에 남기고, 독립 실행 단위면 새 GitHub Issue를 만든다. 말로만 보고하고 추적 없이 넘기지 않는다.
+5. 완료 보고에는 닫힌 Issue, 남은 Issue, 다음 권장 Issue, 작업 중 새로 만든/갱신한 후속 Issue를 포함한다.
+6. 새 Issue를 만들거나 기존 Issue를 재설계할 때는 가능한 경우 `mmp-issue-planning` skill을 사용한다.
+7. 병렬 처리가 가능한 Issue에는 `## 병렬 작업 설계`를 포함해 병렬 가능 작업, 파일/모듈 소유권, 병렬 금지/주의 영역, 취합 방식을 명시한다.
+8. Issue 작성/재작성 자체가 복잡하면 `.codex/agents/mmp-issue-architect.toml` 역할을 사용해 초안을 만들고, 메인 Codex가 scope와 우선순위를 최종 검토한다.
 
 Done when:
 - PR/commit/보고에서 어떤 Issue를 해결했는지 추적 가능하다.
 - 다음 세션이 Issue 본문만 보고도 병렬 audit, 순차 통합, 검증 범위를 알 수 있다.
+- 축소/제외/deferred 판단이 기존 Issue 업데이트 또는 새 Issue로 추적 가능하다.
 
 Avoid:
 - 계획 없는 대형 PR로 여러 Issue를 한 번에 섞지 않는다. 단, 사용자가 명시적으로 묶기를 승인한 경우는 예외다.
 - 병렬작업 설계 없이 여러 sub-agent나 worker에게 같은 파일/계약을 동시에 맡기지 않는다.
+- “후속”이라고 말만 하고 Issue/plan에 남기지 않는다.
 
 ## 작업 루틴
 
@@ -151,6 +154,8 @@ Avoid:
 - PR 또는 merge 전에는 관련 focused check를 실행하고 `memory/feedback_pre_pr_review_checklist.md` 기준으로 검토한다.
 - PR 제목과 본문은 기본적으로 한글로 작성한다. 코드 식별자, 명령어, 에러 메시지, 공식 API명은 원문을 유지한다.
 - PR 생성은 `scripts/pr-create-guard.sh` wrapper를 사용한다. 직접 `gh pr create`를 실행하지 않으며, 생성 단계에서는 `ready-for-ci` 라벨을 붙이지 않는다. Codex 로컬 PreToolUse hook도 이 규칙을 생성 직전에 차단한다.
+- 코드 작성/수정 PR은 구현 시작 전 관련 Issue 또는 작업 계획에 `Coverage Plan`을 명시한다. 변경될 파일/분기/API handler/adapter별로 어떤 unit/integration/E2E 테스트가 patch coverage를 덮는지 먼저 매핑하고, PR 생성 전 그 계획이 실제 focused test로 실행됐는지 확인한다. Codecov 70% 미만을 PR 끝에서 처음 발견하는 흐름은 실패로 본다.
+- 구현 중 scope를 줄이거나 일부 기능을 제외하면 PR 생성 전 관련 Issue에 `Deferred / Follow-up` 기록을 남긴다. 독립적으로 실행 가능한 작업이면 새 Issue를 만들고 PR 본문에 `Refs #번호`로 연결한다.
 - Full CI 실행 후에는 GitHub Actions CI뿐 아니라 Codecov Report를 확인한다. 커버리지 리포트가 실패하거나 기준 미달 코멘트를 남기면 원인을 확인하고 필요한 테스트 보강 또는 코드 수정을 진행한 뒤 다시 검증한다.
 - 코드 작성/수정 PR은 Codecov patch coverage 70% 이상을 목표가 아니라 merge 기준으로 본다. 70% 미만이거나 Codecov가 부족 라인을 지적하면 해당 라인의 단위/통합/E2E 테스트를 보강한 뒤 다시 CI를 통과시킨다.
 - PR 생성 후 CodeRabbit 리뷰를 확인한다. 문제 제기 코멘트는 수정 커밋으로 해결하고, GitHub review thread가 unresolved 상태로 남지 않도록 resolve 상태까지 확인한 뒤 merge한다.
@@ -165,7 +170,7 @@ When:
 - 코드 변경 PR을 생성하거나 merge할 때
 
 Do:
-1. 로컬 구현 후 focused test와 가능한 로컬 리뷰를 먼저 수행한다.
+1. 로컬 구현 후 focused test와 가능한 로컬 리뷰를 먼저 수행한다. 이때 PR 본문 또는 작업 메모에 `Coverage Plan`을 남겨 변경 파일별 테스트 매핑과 E2E 제외 사유를 기록한다.
 2. PR은 라벨 없이 생성한다. 특히 생성 시 `ready-for-ci`를 붙이지 않는다.
 3. CodeRabbit 1차 리뷰를 확인한다.
 4. 타당한 리뷰만 수정하고 push한다. 타당하지 않은 리뷰는 근거를 남기고 resolve한다.
@@ -179,6 +184,7 @@ Do:
 
 Done when:
 - CodeRabbit unresolved thread 0
+- 작업 중 제외/최소화한 항목이 있으면 기존 Issue/새 Issue/PR 본문 `Refs`로 추적된다.
 - `scripts/mmp-pr-ci-scope.sh <PR>` scope 근거
 - full-ci: Codecov patch coverage 70% 이상, required CI green
 - code-rabbit-only: no ready-for-ci, no workflow dispatch, light/focused validation evidence
@@ -195,12 +201,15 @@ When:
 - 기능 구현, 버그 수정, 리팩터링, 에디터 UI/백엔드 engine 동작 변경이 있을 때
 
 Do:
-1. 사용자 관점의 E2E 테스트를 추가하거나 기존 E2E를 갱신한다.
-2. E2E로 직접 검증하기 어려운 내부 분기와 에러 처리는 unit/integration test로 보강한다.
-3. Codecov patch coverage 70% 이상을 merge 기준으로 맞춘다.
-4. E2E가 부적합한 순수 내부 변경이면 PR/보고에 E2E 미작성 사유와 대체 테스트를 명시한다.
+1. 구현 전에 `Coverage Plan`을 작성한다. 변경 예정 파일, 새 분기, 에러 경로, handler/service/adapter 함수별로 어떤 테스트가 덮을지 먼저 적는다.
+2. 사용자 관점의 E2E 테스트를 추가하거나 기존 E2E를 갱신한다.
+3. E2E로 직접 검증하기 어려운 내부 분기와 에러 처리는 unit/integration test로 보강한다.
+4. backend handler/service, frontend adapter/hook, 저장/삭제 guard처럼 Codecov가 줄 단위로 보는 파일은 성공 경로뿐 아니라 validation, not found, ownership, conflict, delete-blocked 같은 실패 경로도 focused test에 포함한다.
+5. Codecov patch coverage 70% 이상을 merge 기준으로 맞춘다.
+6. E2E가 부적합한 순수 내부 변경이면 PR/보고에 E2E 미작성 사유와 대체 테스트를 명시한다.
 
 Done when:
+- `Coverage Plan`의 변경 파일별 테스트 매핑이 PR/보고에 남아 있다.
 - 변경된 사용자 흐름 또는 런타임 동작을 E2E/integration/unit 조합으로 검증했다.
 - patch coverage가 70% 이상이다.
 
