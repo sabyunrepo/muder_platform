@@ -83,9 +83,11 @@ export function MediaTab({ themeId }: MediaTabProps) {
   const handleCreateCategory = () => {
     const name = window.prompt("새 미디어 카테고리 이름을 입력하세요")?.trim();
     if (!name) return;
+    const nextSortOrder =
+      categories.reduce((max, category) => Math.max(max, category.sort_order), 0) + 1;
     createCategoryMutation.mutate({
       name,
-      sort_order: categories.length + 1,
+      sort_order: nextSortOrder,
     });
   };
 

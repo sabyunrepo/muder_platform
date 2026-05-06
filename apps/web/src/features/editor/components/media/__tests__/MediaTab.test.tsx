@@ -258,6 +258,52 @@ describe('MediaTab', () => {
     }
   });
 
+  it('새 카테고리는 기존 sort_order 최댓값 다음 순서로 생성한다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    useMediaCategoriesMock.mockReturnValue({
+      data: [
+        {
+          id: 'category-screen',
+          theme_id: 'theme-1',
+          name: '스크린',
+          sort_order: 1,
+          created_at: '2026-04-05T00:00:00Z',
+        },
+        {
+          id: 'category-clue',
+          theme_id: 'theme-1',
+          name: '단서',
+          sort_order: 7,
+          created_at: '2026-04-05T00:00:00Z',
+        },
+      ],
+    });
+    const mutate = vi.fn();
+    useCreateMediaCategoryMock.mockReturnValue({
+      mutate,
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+    const promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('증거 사진');
+
+    try {
+      render(<MediaTab themeId="theme-1" />);
+
+      fireEvent.click(screen.getByRole('button', { name: '카테고리' }));
+
+      expect(mutate).toHaveBeenCalledWith({
+        name: '증거 사진',
+        sort_order: 8,
+      });
+    } finally {
+      promptSpy.mockRestore();
+    }
+  });
+
   it('카드 클릭 시 상세 패널이 열린다', () => {
     useMediaListMock.mockReturnValue({
       data: mockMedia,
