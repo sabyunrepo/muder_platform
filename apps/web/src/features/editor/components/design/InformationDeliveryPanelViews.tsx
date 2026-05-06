@@ -16,9 +16,9 @@ export function InformationDeliveryHeader({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h4 className="text-sm font-semibold text-slate-100">정보 전달</h4>
+        <h4 className="text-sm font-semibold text-slate-100">읽기 대사 전달</h4>
         <p className="mt-1 text-xs leading-5 text-slate-400">
-          이 페이즈가 시작될 때 캐릭터별로 보여줄 스토리 정보를 선택합니다.
+          이 페이즈가 시작될 때 전체 또는 캐릭터별로 보여줄 읽기 대사를 선택합니다.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -90,7 +90,7 @@ export function InformationDeliveryContent({
   if (loading) {
     return (
       <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs text-slate-400">
-        캐릭터와 스토리 정보를 불러오는 중입니다.
+        캐릭터와 읽기 대사를 불러오는 중입니다.
       </p>
     );
   }
@@ -98,7 +98,7 @@ export function InformationDeliveryContent({
   if (hasLoadError) {
     return (
       <div className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-100">
-        <p>정보 전달에 필요한 캐릭터와 스토리 정보를 불러오지 못했습니다.</p>
+        <p>읽기 대사 전달에 필요한 캐릭터와 대사 목록을 불러오지 못했습니다.</p>
         <button
           type="button"
           onClick={onRetryLoad}
@@ -113,7 +113,7 @@ export function InformationDeliveryContent({
   if (!hasSections) {
     return (
       <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-400">
-        전달할 정보가 없습니다. 먼저 스토리 탭의 스토리 정보에서 플레이어에게 보여줄 정보를 만들어 주세요.
+        전달할 읽기 대사가 없습니다. 먼저 읽기 대사 탭에서 플레이어에게 보여줄 대사를 만들어 주세요.
       </p>
     );
   }
@@ -128,10 +128,10 @@ export function InformationDeliveryContent({
           placeholder="이름으로 찾기"
         />
         <SearchField
-          label="전달 정보 검색"
+          label="읽기 대사 검색"
           value={sectionQuery}
           onChange={onSectionQueryChange}
-          placeholder="정보 이름으로 찾기"
+          placeholder="대사 이름으로 찾기"
         />
       </div>
 
@@ -164,7 +164,7 @@ export function InformationDeliveryContent({
 
 function getEmptyDeliveryMessage(hasCharacters: boolean): string {
   if (!hasCharacters) {
-    return "아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 정보를 설정해 주세요.";
+    return "아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 대사를 설정해 주세요.";
   }
   return "아직 전달 설정이 없습니다. 전체 전달 또는 캐릭터별 추가를 눌러 전달 대상을 정해 주세요.";
 }
@@ -228,7 +228,7 @@ function DeliveryCard({
         <div>
           <p className="text-xs font-semibold text-slate-200">전달 설정 {index + 1}</p>
           <p className="mt-1 text-[11px] text-slate-400">
-            {selectedCharacterName ?? "받을 캐릭터를 선택하세요"} · {delivery.readingSectionIds.length}개 정보
+            {selectedCharacterName ?? "받을 캐릭터를 선택하세요"} · {delivery.readingSectionIds.length}개 대사
           </p>
         </div>
         <button
@@ -245,7 +245,7 @@ function DeliveryCard({
         {delivery.recipientType === "all_players" ? (
           <div className="flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             <Users className="h-4 w-4" />
-            이 페이즈의 공통 정보로 모든 플레이어에게 전달됩니다.
+            이 페이즈의 공통 읽기 대사로 모든 플레이어에게 전달됩니다.
           </div>
         ) : (
           <OptionList
@@ -260,7 +260,7 @@ function DeliveryCard({
         )}
 
         <OptionList
-          title="전달할 정보"
+          title="전달할 읽기 대사"
           emptyText="검색 결과가 없습니다."
           items={sections}
           selectedIds={delivery.readingSectionIds}

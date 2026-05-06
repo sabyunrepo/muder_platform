@@ -40,25 +40,21 @@ describe("EditorTabNav dynamic tabs", () => {
   it("모듈 미지정 시 always=true 탭만 표시된다", () => {
     render(<EditorTabNav />);
     expect(screen.getByText("스토리 진행")).toBeDefined();
+    expect(screen.getByText("읽기 대사")).toBeDefined();
     expect(screen.getByText("등장인물 관리")).toBeDefined();
     expect(screen.getByText("단서 관리")).toBeDefined();
     expect(screen.getByText("게임 설계")).toBeDefined();
+    expect(screen.getByText("미디어 관리")).toBeDefined();
     expect(screen.getByText("기본 설정")).toBeDefined();
     expect(screen.getByText("고급 설정")).toBeDefined();
-    expect(screen.queryByText("미디어 관리")).toBeNull();
   });
 
-  it("voice_chat 모듈 활성 시 미디어 탭이 표시된다", () => {
-    render(<EditorTabNav activeModules={["voice_chat"]} />);
+  it("미디어 탭은 voice_chat 모듈 없이도 표시된다", () => {
+    render(<EditorTabNav activeModules={["text_chat"]} />);
     expect(screen.getByText("미디어 관리")).toBeDefined();
   });
 
-  it("모듈 비활성 시 미디어 탭이 숨겨진다", () => {
-    render(<EditorTabNav activeModules={["text_chat"]} />);
-    expect(screen.queryByText("미디어 관리")).toBeNull();
-  });
-
-  it("직접 URL로 열린 탭은 모듈이 비활성이어도 숨기지 않는다", () => {
+  it("직접 URL로 열린 미디어 탭은 기본 노출 탭으로 유지된다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} forcedVisibleTab="media" />);
 
@@ -66,10 +62,10 @@ describe("EditorTabNav dynamic tabs", () => {
     expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
   });
 
-  it("현재 탭이 숨겨지면 기본 제작 흐름으로 전환된다", () => {
+  it("현재 미디어 탭은 모듈이 없어도 숨겨지지 않는다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav activeModules={[]} />);
-    expect(mockSetActiveTab).toHaveBeenCalledWith("storyMap");
+    expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
   });
 
   it("스토리 진행, 보조 관리, 설정 순서로 탭 우선순위를 유지한다", () => {
@@ -78,7 +74,7 @@ describe("EditorTabNav dynamic tabs", () => {
     const tabLabels = screen.getAllByRole("tab").map((tab) => tab.textContent);
     expect(tabLabels).toEqual([
       "스토리 진행",
-      "스토리",
+      "읽기 대사",
       "등장인물 관리",
       "단서 관리",
       "게임 설계",
@@ -107,11 +103,11 @@ describe("EditorTabNav dynamic tabs", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1/design/modules");
   });
 
-  it("숨겨진 현재 탭은 스토리 진행 URL로 되돌린다", () => {
+  it("항상 표시되는 미디어 현재 탭은 스토리 진행 URL로 되돌리지 않는다", () => {
     mockActiveTab.current = "media";
     render(<EditorTabNav themeId="theme-1" activeModules={[]} />);
 
-    expect(mockSetActiveTab).toHaveBeenCalledWith("storyMap");
-    expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1");
+    expect(mockSetActiveTab).not.toHaveBeenCalledWith("storyMap");
+    expect(mockNavigate).not.toHaveBeenCalledWith("/editor/theme-1");
   });
 });

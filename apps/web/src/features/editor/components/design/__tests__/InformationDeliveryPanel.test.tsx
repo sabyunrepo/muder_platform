@@ -56,7 +56,7 @@ describe("InformationDeliveryPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "캐릭터별 추가" }));
 
-    expect(screen.getByText("받을 캐릭터를 선택하세요 · 0개 정보")).toBeDefined();
+    expect(screen.getByText("받을 캐릭터를 선택하세요 · 0개 대사")).toBeDefined();
     expect(onChange).toHaveBeenCalledWith({ onEnter: [] });
   });
 
@@ -105,7 +105,7 @@ describe("InformationDeliveryPanel", () => {
       ],
     });
 
-    fireEvent.change(screen.getByPlaceholderText("정보 이름으로 찾기"), {
+    fireEvent.change(screen.getByPlaceholderText("대사 이름으로 찾기"), {
       target: { value: "저택" },
     });
     fireEvent.click(screen.getByRole("button", { name: /저택 소문/ }));
@@ -133,7 +133,7 @@ describe("InformationDeliveryPanel", () => {
   });
 
 
-  it("캐릭터 또는 스토리 정보 조회 실패를 빈 상태와 구분하고 재시도할 수 있다", () => {
+  it("캐릭터 또는 읽기 대사 조회 실패를 빈 상태와 구분하고 재시도할 수 있다", () => {
     const refetchCharacters = vi.fn();
     const refetchSections = vi.fn();
     useEditorCharactersMock.mockReturnValue({
@@ -151,7 +151,7 @@ describe("InformationDeliveryPanel", () => {
 
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
-    expect(screen.getByText("정보 전달에 필요한 캐릭터와 스토리 정보를 불러오지 못했습니다.")).toBeDefined();
+    expect(screen.getByText("읽기 대사 전달에 필요한 캐릭터와 대사 목록을 불러오지 못했습니다.")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
 
     expect(refetchCharacters).toHaveBeenCalledTimes(1);
@@ -197,11 +197,11 @@ describe("InformationDeliveryPanel", () => {
     const { rerender } = render(
       <InformationDeliveryPanel themeId="theme-1" phaseData={firstPhaseData} onChange={vi.fn()} />,
     );
-    expect(screen.getByText("탐정 A · 1개 정보")).toBeDefined();
+    expect(screen.getByText("탐정 A · 1개 대사")).toBeDefined();
 
     rerender(<InformationDeliveryPanel themeId="theme-1" phaseData={nextPhaseData} onChange={vi.fn()} />);
 
-    expect(screen.getByText("용의자 B · 1개 정보")).toBeDefined();
+    expect(screen.getByText("용의자 B · 1개 대사")).toBeDefined();
   });
 
 
@@ -216,7 +216,7 @@ describe("InformationDeliveryPanel", () => {
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
     expect((screen.getByRole("button", { name: "캐릭터별 추가" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 정보를 설정해 주세요.")).toBeDefined();
+    expect(screen.getByText("아직 전달 설정이 없습니다. 전체 전달을 눌러 모든 플레이어에게 줄 공통 대사를 설정해 주세요.")).toBeDefined();
   });
 
   it("모든 페이즈에서 모든 플레이어 공통 전달을 추가할 수 있다", () => {
@@ -231,7 +231,7 @@ describe("InformationDeliveryPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "전체 전달" }));
 
-    expect(screen.getByText("모든 플레이어 · 0개 정보")).toBeDefined();
+    expect(screen.getByText("모든 플레이어 · 0개 대사")).toBeDefined();
     expect(onChange).toHaveBeenCalledWith({ onEnter: [] });
   });
 });

@@ -38,14 +38,14 @@ export function ReadingSectionList({ themeId }: ReadingSectionListProps) {
       sections.length > 0 ? Math.max(...sections.map((s) => s.sortOrder)) : -1;
     try {
       const created = await createMutation.mutateAsync({
-        name: "새 스토리 정보",
+        name: "새 읽기 대사",
         lines: [],
         sortOrder: maxSort + 1,
       });
       setExpandedId(created.id);
     } catch (err) {
       console.error("Failed to create reading section", err);
-      setCreateError("정보 추가에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      setCreateError("읽기 대사 추가에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     }
   }
 
@@ -60,7 +60,7 @@ export function ReadingSectionList({ themeId }: ReadingSectionListProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-200">스토리 정보</h3>
+        <h3 className="text-sm font-medium text-slate-200">읽기 대사 목록</h3>
         <button
           type="button"
           onClick={handleAdd}
@@ -68,7 +68,7 @@ export function ReadingSectionList({ themeId }: ReadingSectionListProps) {
           className="flex items-center gap-1 rounded bg-amber-500 px-3 py-1 text-xs font-medium text-slate-900 hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
         >
           <Plus className="h-3 w-3" />
-          정보 추가
+          대사 추가
         </button>
       </div>
 
@@ -80,7 +80,7 @@ export function ReadingSectionList({ themeId }: ReadingSectionListProps) {
 
       {sections.length === 0 ? (
         <p className="py-8 text-center text-sm text-slate-500">
-          스토리 정보가 없습니다. "정보 추가" 버튼으로 시작하세요.
+          읽기 대사가 없습니다. "대사 추가" 버튼으로 시작하세요.
         </p>
       ) : (
         sections.map((section) => {

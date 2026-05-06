@@ -17,11 +17,11 @@ import type { ThemeStatus } from "./api";
 
 export const EDITOR_TABS = [
   { key: "storyMap" as const, label: "스토리 진행", icon: GitBranch, always: true, group: "primary" },
-  { key: "story" as const, label: "스토리", icon: BookOpen, always: true, group: "manage" },
+  { key: "story" as const, label: "읽기 대사", icon: BookOpen, always: true, group: "manage" },
   { key: "characters" as const, label: "등장인물 관리", icon: Users, always: true, group: "manage" },
   { key: "clues" as const, label: "단서 관리", icon: Search, always: true, group: "manage" },
   { key: "design" as const, label: "게임 설계", icon: Settings, always: true, group: "manage" },
-  { key: "media" as const, label: "미디어 관리", icon: Music, always: false, requiredModule: "voice_chat", group: "manage" },
+  { key: "media" as const, label: "미디어 관리", icon: Music, always: true, group: "manage" },
   { key: "overview" as const, label: "기본 설정", icon: FileText, always: true, group: "settings" },
   { key: "template" as const, label: "템플릿", icon: LayoutTemplate, always: true, group: "settings" },
   { key: "advanced" as const, label: "고급 설정", icon: Code, always: true, group: "settings" },
