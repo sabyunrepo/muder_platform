@@ -11,28 +11,58 @@ cooldown_seconds=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --event)
-      event="${2:-manual}"
-      shift 2
+      if [[ $# -ge 2 && "${2:-}" != --* ]]; then
+        event="$2"
+        shift 2
+      else
+        event="manual"
+        shift 1
+      fi
       ;;
     --title)
-      title="${2:-MMP Codex 알림}"
-      shift 2
+      if [[ $# -ge 2 && "${2:-}" != --* ]]; then
+        title="$2"
+        shift 2
+      else
+        title="MMP Codex 알림"
+        shift 1
+      fi
       ;;
     --message)
-      message="${2:-}"
-      shift 2
+      if [[ $# -ge 2 && "${2:-}" != --* ]]; then
+        message="$2"
+        shift 2
+      else
+        message=""
+        shift 1
+      fi
       ;;
     --urgency)
-      urgency="${2:-normal}"
-      shift 2
+      if [[ $# -ge 2 && "${2:-}" != --* ]]; then
+        urgency="$2"
+        shift 2
+      else
+        urgency="normal"
+        shift 1
+      fi
       ;;
     --cooldown-key)
-      cooldown_key="${2:-}"
-      shift 2
+      if [[ $# -ge 2 && "${2:-}" != --* ]]; then
+        cooldown_key="$2"
+        shift 2
+      else
+        cooldown_key=""
+        shift 1
+      fi
       ;;
     --cooldown-seconds)
-      cooldown_seconds="${2:-0}"
-      shift 2
+      if [[ $# -ge 2 && "${2:-}" != --* ]]; then
+        cooldown_seconds="$2"
+        shift 2
+      else
+        cooldown_seconds="0"
+        shift 1
+      fi
       ;;
     *)
       if [[ -z "$message" ]]; then
@@ -65,32 +95,37 @@ if [[ "$webhook_url" != https://discord.com/api/webhooks/* ]]; then
 fi
 
 repo_dir="$(pwd)"
+repo_name="$(basename "$repo_dir")"
 branch=""
 if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  if [[ -n "$repo_root" ]]; then
+    repo_name="$(basename "$repo_root")"
+  fi
   branch="$(git branch --show-current 2>/dev/null || true)"
 fi
 
 if [[ -z "$cooldown_key" ]]; then
-  cooldown_key="${event}:${repo_dir}:${title}"
+  cooldown_key="${event}:${repo_name}:${title}"
 fi
 
+stamp_file=""
+now="$(date +%s)"
 if [[ "$cooldown_seconds" =~ ^[0-9]+$ && "$cooldown_seconds" -gt 0 ]]; then
   state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/mmp-discord-notify"
   mkdir -p "$state_dir"
-  key_hash="$(printf '%s' "$cooldown_key" | shasum -a 256 | awk '{print $1}')"
+  key_hash="$(node -e 'const crypto=require("crypto"); process.stdout.write(crypto.createHash("sha256").update(process.argv[1]).digest("hex"))' "$cooldown_key")"
   stamp_file="$state_dir/$key_hash"
-  now="$(date +%s)"
   if [[ -r "$stamp_file" ]]; then
     last="$(cat "$stamp_file" 2>/dev/null || echo 0)"
     if [[ "$last" =~ ^[0-9]+$ && $((now - last)) -lt "$cooldown_seconds" ]]; then
       exit 0
     fi
   fi
-  printf '%s' "$now" > "$stamp_file"
 fi
 
-content="$(node - "$event" "$title" "$message" "$urgency" "$repo_dir" "$branch" <<'NODE'
-const [, , event, title, message, urgency, repoDir, branch] = process.argv;
+content="$(node - "$event" "$title" "$message" "$urgency" "$repo_name" "$branch" <<'NODE'
+const [, , event, title, message, urgency, repoName, branch] = process.argv;
 const lines = [
   '🔔 **MMP Codex 알림**',
   `**${title}**`,
@@ -98,7 +133,7 @@ const lines = [
   message,
   '',
   `event: \`${event}\` · urgency: \`${urgency}\``,
-  `repo: \`${repoDir}\`${branch ? ` · branch: \`${branch}\`` : ''}`,
+  `repo: \`${repoName}\`${branch ? ` · branch: \`${branch}\`` : ''}`,
   '',
   '터미널로 돌아와 응답해 주세요.',
 ];
@@ -110,8 +145,14 @@ process.stdout.write(JSON.stringify({
 NODE
 )"
 
-curl -fsS \
+if curl -fsS \
   -H "Content-Type: application/json" \
   -X POST \
   --data "$content" \
-  "$webhook_url" >/dev/null 2>&1 || true
+  "$webhook_url" >/dev/null 2>&1; then
+  if [[ -n "$stamp_file" ]]; then
+    tmp_stamp="${stamp_file}.$$"
+    printf '%s' "$now" > "$tmp_stamp"
+    mv "$tmp_stamp" "$stamp_file"
+  fi
+fi
