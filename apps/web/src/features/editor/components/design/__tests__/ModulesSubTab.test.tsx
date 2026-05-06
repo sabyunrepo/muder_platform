@@ -407,9 +407,11 @@ describe('ModulesSubTab', () => {
 
     // No conflict handler fired — regular failure
     const [, callbacks] = mutateMock.mock.calls[0] as [unknown, { onError: () => void }];
-    callbacks.onError();
+    act(() => callbacks.onError());
 
     expect(toast.error).toHaveBeenCalledWith('모듈 설정 저장에 실패했습니다');
+    const rolledBackToggle = screen.getByRole('switch', { name: `${optionalMod.name} 활성화` });
+    expect(rolledBackToggle.getAttribute('aria-checked')).toBe('false');
   });
 
   it('REQUIRED_MODULE_IDS의 모듈은 toggle 버튼이 없다', () => {

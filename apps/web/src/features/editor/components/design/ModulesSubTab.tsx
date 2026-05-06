@@ -54,7 +54,12 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   });
 
   const mutateConfig = useCallback(
-    (nextConfig: Record<string, unknown>, successMsg: string, errorMsg: string) => {
+    (
+      nextConfig: Record<string, unknown>,
+      successMsg: string,
+      errorMsg: string,
+      onRollback?: () => void,
+    ) => {
       conflictRef.current = false;
       updateConfig.mutate(
         { ...nextConfig, version: theme.version },
@@ -69,6 +74,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
               setConflictDraft(nextConfig);
               setConflictBannerDismissed(false);
             } else {
+              onRollback?.();
               toast.error(errorMsg);
             }
           },
@@ -129,7 +135,8 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
         mutateConfig(
           writeModuleEnabled(activeConfig, moduleId, enabled),
           '모듈 설정이 저장되었습니다',
-          '모듈 설정 저장에 실패했습니다'
+          '모듈 설정 저장에 실패했습니다',
+          () => setSelectedModules(prev),
         );
 
         return next;

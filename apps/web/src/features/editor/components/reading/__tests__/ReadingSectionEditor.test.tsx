@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -39,6 +40,10 @@ vi.mock("@/services/queryClient", () => ({
   queryClient: {
     invalidateQueries: invalidateQueriesMock,
   },
+}));
+
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 // ---------------------------------------------------------------------------
@@ -100,6 +105,7 @@ beforeEach(() => {
       writeText: writeTextMock,
     },
   });
+  writeTextMock.mockResolvedValue(undefined);
   mutateAsyncUpdate = vi.fn().mockResolvedValue(sampleSection);
   mutateAsyncDelete = vi.fn().mockResolvedValue(undefined);
 
@@ -357,6 +363,9 @@ describe("ReadingSectionEditor", () => {
         2,
       ),
     );
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith("내 변경 내용을 클립보드에 복사했습니다"),
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "최신 상태 다시 불러오기" }));
     expect(invalidateQueriesMock).toHaveBeenCalled();
@@ -369,5 +378,25 @@ describe("ReadingSectionEditor", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: "취소" }));
     expect(screen.queryByRole("alert", { name: "읽기 대사 저장 충돌" })).toBeNull();
+  });
+
+  it("copy draft reports clipboard failure", async () => {
+    writeTextMock.mockRejectedValueOnce(new Error("denied"));
+    mutateAsyncUpdate.mockRejectedValueOnce(new Error("HTTP 409 Conflict"));
+
+    renderEditor();
+    const input = screen.getByLabelText("섹션 이름") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "x" } });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("alert", { name: "읽기 대사 저장 충돌" })).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "내 변경 복사" }));
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith("클립보드에 복사할 수 없습니다"),
+    );
+    expect(toast.success).not.toHaveBeenCalledWith("내 변경 내용을 클립보드에 복사했습니다");
   });
 });

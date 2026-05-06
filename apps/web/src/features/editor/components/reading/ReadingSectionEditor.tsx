@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Music, Plus, Save, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { queryClient } from "@/services/queryClient";
 import { isApiHttpError } from "@/lib/api-error";
@@ -218,9 +219,17 @@ export function ReadingSectionEditor({
     queryClient.invalidateQueries({ queryKey: readingKeys.list(themeId) });
   }
 
-  function handleCopyDraft() {
+  async function handleCopyDraft() {
     const text = JSON.stringify(draft, null, 2);
-    void navigator.clipboard?.writeText(text);
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard API is not available");
+      }
+      await navigator.clipboard.writeText(text);
+      toast.success("내 변경 내용을 클립보드에 복사했습니다");
+    } catch {
+      toast.error("클립보드에 복사할 수 없습니다");
+    }
   }
 
   // -------------------------------------------------------------------------
