@@ -19,31 +19,34 @@ vi.mock("../../design/FlowCanvas", () => ({
     onSelectedNodeChange,
   }: {
     themeId: string;
-    onSelectedNodeChange?: (node: unknown) => void;
+    onSelectedNodeChange?: (node: unknown, context: { outgoingEdges: unknown[] }) => void;
   }) => (
     <div data-testid="flow-canvas">
       flow canvas {themeId}
       <button
         type="button"
         onClick={() =>
-          onSelectedNodeChange?.({
-            id: "scene-1",
-            type: "phase",
-            data: {
-              label: "오프닝",
-              description: "도입 장면",
-              discussionRoomPolicy: {
-                enabled: true,
-                roomKind: "all",
-                mainRoomName: "전체 토론",
-                privateRoomsEnabled: false,
-                privateRoomName: "밀담방",
-                participantMode: "all",
-                availability: "phase_active",
-                closeBehavior: "close_on_exit",
+          onSelectedNodeChange?.(
+            {
+              id: "scene-1",
+              type: "phase",
+              data: {
+                label: "오프닝",
+                description: "도입 장면",
+                discussionRoomPolicy: {
+                  enabled: true,
+                  roomKind: "all",
+                  mainRoomName: "전체 토론",
+                  privateRoomsEnabled: false,
+                  privateRoomName: "밀담방",
+                  participantMode: "all",
+                  availability: "phase_active",
+                  closeBehavior: "close_on_exit",
+                },
               },
             },
-          })
+            { outgoingEdges: [] },
+          )
         }
       >
         장면 선택
@@ -190,7 +193,7 @@ describe("StoryMapWorkspace", () => {
 
     expect(screen.getByText("오프닝")).toBeDefined();
     expect(screen.getByText("스토리 장면")).toBeDefined();
-    expect(screen.getByText("장면 설명 있음")).toBeDefined();
+    expect(screen.getByText("정보 공개 설정 없음")).toBeDefined();
     expect(screen.getByText("장면 시작 시 · 전원 참여 · 장면 종료 시 닫기 · 전체 토론: 전체 토론")).toBeDefined();
   });
 });

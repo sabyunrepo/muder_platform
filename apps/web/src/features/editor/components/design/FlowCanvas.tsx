@@ -3,6 +3,7 @@ import {
   Background,
   MiniMap,
   Controls,
+  type Edge,
   type Node,
   type NodeTypes,
   type OnSelectionChangeParams,
@@ -40,7 +41,10 @@ const edgeTypes = { ...conditionEdgeTypes };
 
 interface FlowCanvasProps {
   themeId: string;
-  onSelectedNodeChange?: (node: Node | null) => void;
+  onSelectedNodeChange?: (
+    node: Node | null,
+    context: { outgoingEdges: Edge[] },
+  ) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -87,8 +91,12 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   );
 
   useEffect(() => {
-    onSelectedNodeChange?.(selectedNode);
-  }, [onSelectedNodeChange, selectedNode]);
+    onSelectedNodeChange?.(selectedNode, {
+      outgoingEdges: selectedNode
+        ? edges.filter((edge) => edge.source === selectedNode.id)
+        : [],
+    });
+  }, [edges, onSelectedNodeChange, selectedNode]);
 
   const selectedEdge = useMemo(
     () => edges.find((edge) => edge.id === selectedEdgeId) ?? null,
