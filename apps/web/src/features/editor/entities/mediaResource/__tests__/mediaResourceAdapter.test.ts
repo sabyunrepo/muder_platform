@@ -89,6 +89,23 @@ describe("mediaResourceAdapter", () => {
     });
   });
 
+  it("연출 cue 유스케이스는 BGM과 VIDEO 타입을 각각 제한한다", () => {
+    const videoMedia: MediaResponse = {
+      ...baseMedia,
+      id: "video-1",
+      name: "범인 공개 영상",
+      type: "VIDEO",
+      mime_type: "video/mp4",
+    };
+
+    expect(getAllowedMediaTypesForUseCase("phase_bgm")).toEqual(["BGM"]);
+    expect(getAllowedMediaTypesForUseCase("video_action")).toEqual(["VIDEO"]);
+    expect(isMediaSelectableForUseCase(baseMedia, "phase_bgm")).toBe(true);
+    expect(isMediaSelectableForUseCase(videoMedia, "phase_bgm")).toBe(false);
+    expect(isMediaSelectableForUseCase(videoMedia, "video_action")).toBe(true);
+    expect(isMediaSelectableForUseCase(baseMedia, "video_action")).toBe(false);
+  });
+
 
   it("검색어로 이름, 라벨, 태그를 필터링한다", () => {
     const resources = [

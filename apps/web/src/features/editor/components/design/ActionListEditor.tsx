@@ -7,13 +7,16 @@ import {
 } from "../../entities/shared/actionAdapter";
 import { MediaPicker } from "../media/MediaPicker";
 import type { MediaResourceUseCase } from "../../entities/mediaResource/mediaResourceAdapter";
+import { getMediaResourceTypeLabel } from "../../entities/mediaResource/mediaResourceAdapter";
 import type { MediaType } from "../../mediaApi";
+import { useMediaList } from "../../mediaApi";
 
 interface ActionListEditorProps {
   label: string;
   actions: PhaseAction[];
   onChange: (actions: PhaseAction[]) => void;
   hiddenTypes?: string[];
+  allowedTypes?: string[];
   themeId?: string;
 }
 
@@ -22,12 +25,17 @@ export function ActionListEditor({
   actions,
   onChange,
   hiddenTypes = [],
+  allowedTypes,
   themeId,
 }: ActionListEditorProps) {
+  const isTypeVisible = (type: string) =>
+    !hiddenTypes.includes(type) && (!allowedTypes || allowedTypes.includes(type));
   const visibleActions = actions
     .map((action, index) => ({ action, index }))
-    .filter(({ action }) => !hiddenTypes.includes(action.type));
-  const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes);
+    .filter(({ action }) => isTypeVisible(action.type));
+  const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes).filter((actionType) =>
+    !allowedTypes || allowedTypes.includes(actionType.value),
+  );
   const defaultActionType = visibleActionTypes[0]?.value;
   const handleAdd = () => {
     if (!defaultActionType) return;
@@ -68,11 +76,12 @@ export function ActionListEditor({
         <p className="text-[10px] text-slate-600">트리거 실행 결과 없음</p>
       )}
 
-      {visibleActions.map(({ action, index: idx }) => (
+      {visibleActions.map(({ action, index: idx }, visibleIndex) => (
         <ActionRow
           key={action.id ?? idx}
           action={action}
           index={idx}
+          displayIndex={visibleIndex}
           label={label}
           visibleActionTypes={visibleActionTypes}
           onTypeChange={handleTypeChange}
@@ -102,6 +111,10 @@ export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boo
   });
 }
 
+export function isPresentationCueAction(action: PhaseAction): boolean {
+  return getPresentationCueConfig(action.type) !== null;
+}
+
 function withActionType(action: PhaseAction, type: string): PhaseAction {
   const params = createDefaultParams(type);
   const next: PhaseAction = { ...action, type };
@@ -116,6 +129,7 @@ function withActionType(action: PhaseAction, type: string): PhaseAction {
 interface ActionRowProps {
   action: PhaseAction;
   index: number;
+  displayIndex: number;
   label: string;
   visibleActionTypes: ReturnType<typeof getVisibleCreatorActionOptions>;
   onTypeChange: (index: number, type: string) => void;
@@ -127,6 +141,7 @@ interface ActionRowProps {
 function ActionRow({
   action,
   index,
+  displayIndex,
   label,
   visibleActionTypes,
   onTypeChange,
@@ -143,7 +158,7 @@ function ActionRow({
         <select
           value={action.type}
           onChange={(e) => onTypeChange(index, e.target.value)}
-          aria-label={`${label} ${index + 1} 실행 결과`}
+          aria-label={`${label} ${displayIndex + 1} 실행 결과`}
           className="flex-1 bg-transparent text-xs text-slate-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset"
         >
           {!hasCurrentOption && <option value={action.type}>{fallbackLabel} (기존값)</option>}
@@ -156,7 +171,7 @@ function ActionRow({
         <button
           type="button"
           onClick={() => onRemove(index)}
-          aria-label={`${label} ${index + 1} 삭제`}
+          aria-label={`${label} ${displayIndex + 1} 삭제`}
           className="inline-flex h-9 w-9 items-center justify-center rounded text-slate-500 transition-colors hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
         >
           <Trash2 className="h-3 w-3" />
@@ -165,7 +180,7 @@ function ActionRow({
       <PresentationCueFields
         action={action}
         label={label}
-        index={index}
+        displayIndex={displayIndex}
         themeId={themeId}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
@@ -261,6 +276,8 @@ const PRESENTATION_CUE_CONFIG: Record<string, PresentationCueConfig> = {
   },
 };
 
+export const PRESENTATION_CUE_ACTION_TYPES = Object.freeze(Object.keys(PRESENTATION_CUE_CONFIG));
+
 function getPresentationCueConfig(type: string): PresentationCueConfig | null {
   return PRESENTATION_CUE_CONFIG[type] ?? null;
 }
@@ -268,22 +285,20 @@ function getPresentationCueConfig(type: string): PresentationCueConfig | null {
 function PresentationCueFields({
   action,
   label,
-  index,
+  displayIndex,
   themeId,
   onParamsChange,
 }: {
   action: PhaseAction;
   label: string;
-  index: number;
+  displayIndex: number;
   themeId?: string;
   onParamsChange: (params: Record<string, unknown>) => void;
 }) {
   const config = getPresentationCueConfig(action.type);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
   if (!config) return null;
 
   const params = action.params ?? {};
-  const mediaId = typeof params.mediaId === "string" ? params.mediaId : null;
 
   if (config.kind === "theme") {
     const themeToken = typeof params.themeToken === "string" ? params.themeToken : "";
@@ -324,19 +339,84 @@ function PresentationCueFields({
   }
 
   return (
+    <MediaPresentationCueFields
+      action={action}
+      label={label}
+      displayIndex={displayIndex}
+      themeId={themeId}
+      config={config}
+      onParamsChange={onParamsChange}
+    />
+  );
+}
+
+function MediaPresentationCueFields({
+  action,
+  label,
+  displayIndex,
+  themeId,
+  config,
+  onParamsChange,
+}: {
+  action: PhaseAction;
+  label: string;
+  displayIndex: number;
+  themeId?: string;
+  config: PresentationCueConfig;
+  onParamsChange: (params: Record<string, unknown>) => void;
+}) {
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const params = action.params ?? {};
+  const mediaId = typeof params.mediaId === "string" ? params.mediaId : null;
+  const { data: media = [], isLoading } = useMediaList(themeId ?? "", config.filterType);
+  const selectedMedia = media.find((item) => item.id === mediaId) ?? null;
+  const hasBrokenReference = !!mediaId && !isLoading && !selectedMedia;
+
+  function clearMedia() {
+    const { mediaId: _removed, ...rest } = params;
+    onParamsChange(rest);
+  }
+
+  return (
     <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <span className="text-[11px] text-slate-500">
-          {mediaId ? config.selectedLabel : "재생할 미디어를 선택하세요"}
-        </span>
-        <button
-          type="button"
-          onClick={() => setIsPickerOpen(true)}
-          disabled={!themeId}
-          className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {config.buttonLabel}
-        </button>
+        <div className="min-w-0">
+          <span className="text-[11px] text-slate-500">
+            {mediaId ? config.selectedLabel : "재생할 미디어를 선택하세요"}
+          </span>
+          {selectedMedia ? (
+            <div className="mt-1 space-y-0.5">
+              <p className="truncate text-xs text-slate-200">
+                {selectedMedia.name || "이름 없는 미디어"} · {getMediaResourceTypeLabel(selectedMedia.type)}
+              </p>
+              <p className="text-[10px] text-slate-500">사용 위치: {label}</p>
+            </div>
+          ) : null}
+          {hasBrokenReference ? (
+            <p className="mt-1 text-[10px] text-amber-300">
+              선택한 미디어가 삭제됐거나 이 연출 유형과 맞지 않습니다.
+            </p>
+          ) : null}
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          {mediaId ? (
+            <button
+              type="button"
+              onClick={clearMedia}
+              className="rounded border border-slate-800 px-2 py-1 text-[11px] text-slate-400 transition-colors hover:border-red-500/50 hover:text-red-300"
+            >
+              선택 해제
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setIsPickerOpen(true)}
+            disabled={!themeId}
+            className="rounded border border-slate-700 px-2 py-1 text-[11px] text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {config.buttonLabel}
+          </button>
+        </div>
       </div>
       {!themeId ? (
         <p className="mt-1 text-[10px] text-slate-600">
@@ -352,7 +432,7 @@ function PresentationCueFields({
           filterType={config.filterType}
           useCase={config.useCase}
           selectedId={mediaId}
-          title={`${label} ${index + 1} ${config.dialogTitle}`}
+          title={`${label} ${displayIndex + 1} ${config.dialogTitle}`}
         />
       ) : null}
     </div>

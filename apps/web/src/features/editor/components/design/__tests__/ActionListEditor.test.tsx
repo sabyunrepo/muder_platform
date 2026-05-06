@@ -1,26 +1,64 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ActionListEditor,
   hasIncompletePresentationCueActions,
 } from "../ActionListEditor";
 
+const { useMediaListMock } = vi.hoisted(() => ({
+  useMediaListMock: vi.fn(),
+}));
+
+vi.mock("../../../mediaApi", () => ({
+  useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+}));
+
 vi.mock("../../media/MediaPicker", () => ({
   MediaPicker: ({
     open,
     title,
+    filterType,
+    useCase,
+    selectedId,
     onSelect,
   }: {
     open: boolean;
     title?: string;
+    filterType?: string;
+    useCase?: string;
+    selectedId?: string | null;
     onSelect: (media: { id: string }) => void;
   }) =>
     open ? (
-      <button type="button" onClick={() => onSelect({ id: "media-1" })}>
+      <button
+        type="button"
+        data-filter-type={filterType}
+        data-use-case={useCase}
+        data-selected-id={selectedId ?? ""}
+        onClick={() => onSelect({ id: "media-1" })}
+      >
         {title}
       </button>
     ) : null,
 }));
+
+beforeEach(() => {
+  useMediaListMock.mockImplementation((_themeId: string, type?: string) => ({
+    data: [
+      {
+        id: "media-1",
+        theme_id: "theme-1",
+        name: type === "VIDEO" ? "엔딩 영상" : type === "IMAGE" ? "현장 사진" : "오프닝 BGM",
+        type: type ?? "BGM",
+        source_type: "FILE",
+        tags: [],
+        sort_order: 0,
+        created_at: "2026-05-06T00:00:00Z",
+      },
+    ],
+    isLoading: false,
+  }));
+});
 
 afterEach(cleanup);
 
@@ -88,7 +126,10 @@ describe("ActionListEditor", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "BGM 선택" }));
-    fireEvent.click(screen.getByRole("button", { name: "장면 시작 트리거 1 BGM 선택" }));
+    const picker = screen.getByRole("button", { name: "장면 시작 트리거 1 BGM 선택" });
+    expect(picker.getAttribute("data-filter-type")).toBe("BGM");
+    expect(picker.getAttribute("data-use-case")).toBe("phase_bgm");
+    fireEvent.click(picker);
 
     expect(onChange).toHaveBeenCalledWith([
       { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
@@ -107,10 +148,83 @@ describe("ActionListEditor", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "배경 이미지 선택" }));
-    fireEvent.click(screen.getByRole("button", { name: "장면 시작 트리거 1 배경 이미지 선택" }));
+    const picker = screen.getByRole("button", { name: "장면 시작 트리거 1 배경 이미지 선택" });
+    expect(picker.getAttribute("data-filter-type")).toBe("IMAGE");
+    expect(picker.getAttribute("data-use-case")).toBe("presentation_background");
+    fireEvent.click(picker);
 
     expect(onChange).toHaveBeenCalledWith([
       { id: "bg", type: "SET_BACKGROUND", params: { mediaId: "media-1" } },
+    ]);
+  });
+
+  it("영상 연출 실행 결과는 VIDEO 미디어만 선택하도록 picker에 전달한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 연출"
+        actions={[{ id: "video", type: "PLAY_MEDIA", params: { mediaId: "media-1" } }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    expect(screen.getByText("엔딩 영상 · 영상")).toBeDefined();
+    expect(screen.getByText("사용 위치: 장면 연출")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "영상 선택" }));
+    const picker = screen.getByRole("button", { name: "장면 연출 1 영상 선택" });
+    expect(picker.getAttribute("data-filter-type")).toBe("VIDEO");
+    expect(picker.getAttribute("data-use-case")).toBe("video_action");
+    expect(picker.getAttribute("data-selected-id")).toBe("media-1");
+  });
+
+  it("선택된 미디어가 목록에 없으면 삭제 또는 타입 불일치 상태를 표시하고 선택 해제할 수 있다", () => {
+    useMediaListMock.mockReturnValue({ data: [], isLoading: false });
+    const onChange = vi.fn();
+
+    render(
+      <ActionListEditor
+        label="장면 연출"
+        actions={[{ id: "bgm", type: "SET_BGM", params: { mediaId: "missing-media" } }]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    expect(screen.getByText("선택한 미디어가 삭제됐거나 이 연출 유형과 맞지 않습니다.")).toBeDefined();
+
+    fireEvent.click(screen.getByRole("button", { name: "선택 해제" }));
+
+    expect(onChange).toHaveBeenCalledWith([{ id: "bgm", type: "SET_BGM", params: {} }]);
+  });
+
+  it("allowedTypes가 있으면 연출 cue만 추가하고 기존 일반 액션은 숨긴다", () => {
+    const onChange = vi.fn();
+
+    render(
+      <ActionListEditor
+        label="장면 연출"
+        actions={[
+          { id: "vote", type: "OPEN_VOTING" },
+          { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+        ]}
+        allowedTypes={["SET_BGM", "PLAY_MEDIA"]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    const select = screen.getByRole("combobox", { name: "장면 연출 1 실행 결과" });
+    expect(select).toHaveProperty("value", "SET_BGM");
+    expect(screen.queryByRole("option", { name: "투표 시작" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "추가" }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "vote", type: "OPEN_VOTING" },
+      { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+      expect.objectContaining({ type: "SET_BGM" }),
     ]);
   });
 
