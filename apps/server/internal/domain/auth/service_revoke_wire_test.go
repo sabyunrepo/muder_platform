@@ -316,6 +316,59 @@ func TestDrainRevokePushes_RespectsContextDeadline(t *testing.T) {
 	}
 }
 
+func TestDrainRevokePushes_BlocksNewPushSchedules(t *testing.T) {
+	repo := &capturingRevokeRepo{}
+	pub := newBlockingPublisher()
+	svc := newWireTestService(repo, pub)
+
+	if err := svc.recordRevoke(context.Background(), uuid.New(), RevokeCodeLoggedOutElsewhere, "first logout"); err != nil {
+		t.Fatalf("recordRevoke first: %v", err)
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for pub.calls.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(2 * time.Millisecond)
+	}
+	if got := pub.calls.Load(); got != 1 {
+		t.Fatalf("publisher calls before drain = %d, want 1", got)
+	}
+
+	drained := make(chan error, 1)
+	drainCtx, cancelDrain := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelDrain()
+	go func() {
+		drained <- svc.DrainRevokePushes(drainCtx)
+	}()
+
+	deadline = time.Now().Add(2 * time.Second)
+	for !svc.isRevokePushDrainingForTest() && time.Now().Before(deadline) {
+		time.Sleep(2 * time.Millisecond)
+	}
+	if !svc.isRevokePushDrainingForTest() {
+		t.Fatal("DrainRevokePushes did not mark the service as draining")
+	}
+
+	if err := svc.recordRevoke(context.Background(), uuid.New(), RevokeCodeAdminRevoked, "during shutdown"); err != nil {
+		t.Fatalf("recordRevoke during drain: %v", err)
+	}
+	if got := len(repo.entries); got != 2 {
+		t.Fatalf("revokeRepo.Insert calls = %d, want 2", got)
+	}
+	if got := pub.calls.Load(); got != 1 {
+		t.Fatalf("publisher calls during drain = %d, want 1", got)
+	}
+
+	close(pub.release)
+	if err := <-drained; err != nil {
+		t.Fatalf("DrainRevokePushes: %v", err)
+	}
+}
+
+func (s *service) isRevokePushDrainingForTest() bool {
+	s.revokePushMu.Lock()
+	defer s.revokePushMu.Unlock()
+	return s.revokePushDraining
+}
+
 // ---------------------------------------------------------------------------
 // NewService nil fallback — the constructor must accept nil deps and
 // substitute the Noop variants so existing call sites stay buildable

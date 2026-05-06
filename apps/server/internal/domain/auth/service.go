@@ -73,8 +73,10 @@ type service struct {
 	revokeRepo RevokeRepo
 	publisher  RevokePublisher
 
-	revokePushSem chan struct{}
-	revokePushWG  sync.WaitGroup
+	revokePushMu       sync.Mutex
+	revokePushSem      chan struct{}
+	revokePushWG       sync.WaitGroup
+	revokePushDraining bool
 }
 
 // NewService creates a new auth service.
