@@ -69,7 +69,6 @@ import {
   MODULE_CATEGORIES,
   OPTIONAL_MODULE_CATEGORIES,
   REQUIRED_MODULE_IDS,
-  isSelectableModule,
 } from '@/features/editor/constants';
 
 // ---------------------------------------------------------------------------
@@ -147,23 +146,41 @@ describe('ModulesSubTab', () => {
   });
 
   it('선택 모듈 목록에는 실제 선택 가능한 모듈만 포함된다', () => {
-    const catalogModules = OPTIONAL_MODULE_CATEGORIES.flatMap((c) => c.modules);
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
-    expect(catalogModules.length).toBeGreaterThan(0);
-    for (const mod of catalogModules) {
-      expect(isSelectableModule(mod)).toBe(true);
+    const expectedVisibleModuleNames = [
+      '텍스트 채팅',
+      '귓속말',
+      '그룹 채팅',
+      '투표',
+      '고발',
+      '단서 조사',
+      '단서 교환',
+    ];
+
+    for (const moduleName of expectedVisibleModuleNames) {
+      expect(screen.getByText(moduleName)).toBeDefined();
     }
   });
 
   it('미지원 계획 모듈과 기본 제작 화면 모듈은 렌더링되지 않는다', () => {
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
 
-    const hiddenModules = MODULE_CATEGORIES
-      .flatMap((c) => c.modules)
-      .filter((m) => !isSelectableModule(m));
+    const expectedHiddenModuleNames = [
+      '접속 관리',
+      '스크립트 진행',
+      '하이브리드 진행',
+      '리딩',
+      '엔딩',
+      '히든 미션',
+      '층 탐색',
+      '시작 단서',
+      '라운드 단서',
+      '시간 단서',
+    ];
 
-    for (const mod of hiddenModules) {
-      expect(screen.queryByText(mod.name)).toBeNull();
+    for (const moduleName of expectedHiddenModuleNames) {
+      expect(screen.queryByText(moduleName)).toBeNull();
     }
   });
 
