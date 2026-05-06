@@ -90,6 +90,66 @@ func TestRunWrapsGooseUpError(t *testing.T) {
 	}
 }
 
+func TestRunWrapsOpenDBError(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://mmp:mmp@localhost:5432/mmf")
+	t.Setenv("MIGRATIONS_DIR", "")
+
+	openErr := errors.New("open failed")
+	var gotDriver string
+	var gotDialect string
+	var gotMigrationsDir string
+	runner := fakeMigrationRunner{
+		gotDriver:        &gotDriver,
+		gotDialect:       &gotDialect,
+		gotMigrationsDir: &gotMigrationsDir,
+		openErr:          openErr,
+	}
+
+	err := run(runner)
+	if !errors.Is(err, openErr) {
+		t.Fatalf("run() error = %v, want wrapped open error", err)
+	}
+	if gotDriver != "pgx" {
+		t.Fatalf("driver = %q, want pgx", gotDriver)
+	}
+	if gotDialect != "" {
+		t.Fatalf("dialect = %q, want empty because OpenDB failed first", gotDialect)
+	}
+	if gotMigrationsDir != "" {
+		t.Fatalf("migrations dir = %q, want empty because OpenDB failed first", gotMigrationsDir)
+	}
+}
+
+func TestRunWrapsSetDialectError(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://mmp:mmp@localhost:5432/mmf")
+	t.Setenv("MIGRATIONS_DIR", "")
+
+	dialectErr := errors.New("unknown dialect")
+	var gotDriver string
+	var gotDialect string
+	var gotMigrationsDir string
+	runner := fakeMigrationRunner{
+		gotDriver:        &gotDriver,
+		gotDialect:       &gotDialect,
+		gotMigrationsDir: &gotMigrationsDir,
+		dialectErr:       dialectErr,
+	}
+
+	err := run(runner)
+	if !errors.Is(err, dialectErr) {
+		t.Fatalf("run() error = %v, want wrapped dialect error", err)
+	}
+	if gotDriver != "pgx" {
+		t.Fatalf("driver = %q, want pgx", gotDriver)
+	}
+	if gotDialect != "postgres" {
+		t.Fatalf("dialect = %q, want postgres", gotDialect)
+	}
+	if gotMigrationsDir != "" {
+		t.Fatalf("migrations dir = %q, want empty because SetDialect failed first", gotMigrationsDir)
+	}
+}
+
 func TestGooseMigrationRunnerOpenDB(t *testing.T) {
 	db, err := gooseMigrationRunner{}.OpenDB("pgx", "postgres://mmp:mmp@localhost:5432/mmf")
 	if err != nil {
