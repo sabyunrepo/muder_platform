@@ -52,8 +52,10 @@ export const STATUS_COLOR: Record<ThemeStatus, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Module Categories (29개 모듈, 6 카테고리)
+// Module Categories
 // ---------------------------------------------------------------------------
+
+export type ModuleCatalogVisibility = "optional" | "built_in";
 
 export interface ModuleInfo {
   id: string;
@@ -61,6 +63,7 @@ export interface ModuleInfo {
   description: string;
   supported: boolean;
   required: boolean;
+  catalogVisibility?: ModuleCatalogVisibility;
 }
 
 export interface ModuleCategory {
@@ -84,14 +87,14 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     key: "progression",
     label: "진행",
     modules: [
-      { id: "script_progression", name: "스크립트 진행", description: "순차적 페이즈 진행", supported: true, required: false },
+      { id: "script_progression", name: "스크립트 진행", description: "순차적 페이즈 진행", supported: true, required: false, catalogVisibility: "built_in" },
       { id: "hybrid_progression", name: "하이브리드 진행", description: "타이머+합의 기반 진행", supported: false, required: false },
       { id: "event_progression", name: "이벤트 진행", description: "비선형 이벤트 그래프", supported: false, required: false },
       { id: "skip_consensus", name: "스킵 합의", description: "페이즈 스킵 투표", supported: false, required: false },
       { id: "gm_control", name: "GM 제어", description: "진행자 수동 제어", supported: false, required: false },
       { id: "consensus_control", name: "합의 제어", description: "플레이어 합의 기반 제어", supported: false, required: false },
-      { id: "reading", name: "리딩", description: "대사 낭독 시스템", supported: true, required: false },
-      { id: "ending", name: "엔딩", description: "엔딩 분기/결과 처리", supported: true, required: false },
+      { id: "reading", name: "리딩", description: "대사 낭독 시스템", supported: true, required: false, catalogVisibility: "built_in" },
+      { id: "ending", name: "엔딩", description: "엔딩 분기/결과 처리", supported: true, required: false, catalogVisibility: "built_in" },
     ],
   },
   {
@@ -111,14 +114,14 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     modules: [
       { id: "voting", name: "투표", description: "다수결 투표 시스템", supported: true, required: false },
       { id: "accusation", name: "고발", description: "범인 지목/변호", supported: true, required: false },
-      { id: "hidden_mission", name: "히든 미션", description: "비밀 임무 시스템", supported: true, required: false },
+      { id: "hidden_mission", name: "히든 미션", description: "비밀 임무 시스템", supported: true, required: false, catalogVisibility: "built_in" },
     ],
   },
   {
     key: "exploration",
     label: "탐색",
     modules: [
-      { id: "floor_exploration", name: "층 탐색", description: "건물 층별 탐색", supported: true, required: false },
+      { id: "floor_exploration", name: "층 탐색", description: "건물 층별 탐색", supported: false, required: false },
       { id: "room_exploration", name: "방 탐색", description: "방별 탐색", supported: false, required: false },
       { id: "timed_exploration", name: "시간 제한 탐색", description: "제한 시간 내 탐색", supported: false, required: false },
       { id: "location_clue", name: "장소 단서", description: "위치 기반 단서 발견", supported: false, required: false },
@@ -130,9 +133,9 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
     label: "단서 배포",
     modules: [
       { id: "conditional_clue", name: "조건부 단서", description: "조건 충족 시 단서 제공", supported: false, required: false },
-      { id: "starting_clue", name: "시작 단서", description: "게임 시작 시 배포", supported: true, required: false },
-      { id: "round_clue", name: "라운드 단서", description: "라운드별 단서 배포", supported: true, required: false },
-      { id: "timed_clue", name: "시간 단서", description: "시간 경과 시 배포", supported: true, required: false },
+      { id: "starting_clue", name: "시작 단서", description: "게임 시작 시 배포", supported: true, required: false, catalogVisibility: "built_in" },
+      { id: "round_clue", name: "라운드 단서", description: "라운드별 단서 배포", supported: false, required: false },
+      { id: "timed_clue", name: "시간 단서", description: "시간 경과 시 배포", supported: false, required: false },
       { id: "trade_clue", name: "단서 교환", description: "플레이어 간 단서 교환", supported: true, required: false },
     ],
   },
@@ -147,7 +150,11 @@ export const REQUIRED_MODULE_IDS = MODULE_CATEGORIES
   .filter((m) => m.required)
   .map((m) => m.id);
 
+export function isSelectableModule(module: ModuleInfo): boolean {
+  return module.supported && !module.required && module.catalogVisibility !== "built_in";
+}
+
 export const OPTIONAL_MODULE_CATEGORIES = MODULE_CATEGORIES.map((cat) => ({
   ...cat,
-  modules: cat.modules.filter((m) => !m.required),
+  modules: cat.modules.filter(isSelectableModule),
 })).filter((cat) => cat.modules.length > 0);

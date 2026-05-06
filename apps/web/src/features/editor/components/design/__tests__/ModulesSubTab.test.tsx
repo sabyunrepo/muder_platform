@@ -69,6 +69,7 @@ import {
   MODULE_CATEGORIES,
   OPTIONAL_MODULE_CATEGORIES,
   REQUIRED_MODULE_IDS,
+  isSelectableModule,
 } from '@/features/editor/constants';
 
 // ---------------------------------------------------------------------------
@@ -143,6 +144,27 @@ describe('ModulesSubTab', () => {
 
     // "코어" label should not appear since all its modules are required
     expect(screen.queryByText('코어')).toBeNull();
+  });
+
+  it('선택 모듈 목록에는 실제 선택 가능한 모듈만 포함된다', () => {
+    const catalogModules = OPTIONAL_MODULE_CATEGORIES.flatMap((c) => c.modules);
+
+    expect(catalogModules.length).toBeGreaterThan(0);
+    for (const mod of catalogModules) {
+      expect(isSelectableModule(mod)).toBe(true);
+    }
+  });
+
+  it('미지원 계획 모듈과 기본 제작 화면 모듈은 렌더링되지 않는다', () => {
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+
+    const hiddenModules = MODULE_CATEGORIES
+      .flatMap((c) => c.modules)
+      .filter((m) => !isSelectableModule(m));
+
+    for (const mod of hiddenModules) {
+      expect(screen.queryByText(mod.name)).toBeNull();
+    }
   });
 
   it('토글 버튼 클릭 시 mutate가 호출된다', () => {
