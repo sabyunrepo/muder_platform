@@ -529,6 +529,14 @@ func (s *service) buildGameStartPlayers(ctx context.Context, room db.Room) ([]Ga
 		s.logger.Error().Err(err).Stringer("theme_id", room.ThemeID).Msg("StartRoom: failed to get theme characters")
 		return nil, apperror.Internal("failed to get theme characters")
 	}
+	return mapGameStartPlayers(rows, chars, room.HostID), nil
+}
+
+func mapGameStartPlayers(
+	rows []db.GetRoomPlayersWithUserRow,
+	chars []db.ThemeCharacter,
+	hostID uuid.UUID,
+) []GameStartPlayer {
 	charByID := make(map[uuid.UUID]db.ThemeCharacter, len(chars))
 	for _, char := range chars {
 		charByID[char.ID] = char
@@ -540,7 +548,7 @@ func (s *service) buildGameStartPlayers(ctx context.Context, room db.Room) ([]Ga
 			UserID:    row.UserID,
 			Nickname:  row.Nickname,
 			AvatarURL: textToPtr(row.AvatarUrl),
-			IsHost:    row.UserID == room.HostID,
+			IsHost:    row.UserID == hostID,
 			IsReady:   row.IsReady,
 			JoinedAt:  row.JoinedAt,
 		}
@@ -556,7 +564,7 @@ func (s *service) buildGameStartPlayers(ctx context.Context, room db.Room) ([]Ga
 		}
 		players = append(players, player)
 	}
-	return players, nil
+	return players
 }
 
 func uuidToStringPtr(value pgtype.UUID) *string {

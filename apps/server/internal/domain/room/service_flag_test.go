@@ -2,11 +2,14 @@ package room
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -210,4 +213,80 @@ func TestNewService_GameStarterNil(t *testing.T) {
 		t.Error("NewServiceWithStarter should set gameStarter")
 	}
 
+}
+
+func TestMapGameStartPlayers_UsesAssignedCharacterDisplayMetadata(t *testing.T) {
+	hostID := uuid.New()
+	guestID := uuid.New()
+	charID := uuid.New()
+	themeID := uuid.New()
+	joinedAt := time.Unix(1700, 123_000_000)
+	avatarURL := "https://cdn.example/avatar.png"
+	characterImageURL := "https://cdn.example/character.png"
+	characterImageMediaID := uuid.New()
+	aliasRules := json.RawMessage(`[{"id":"mask","display_name":"가면 쓴 탐정"}]`)
+
+	got := mapGameStartPlayers(
+		[]db.GetRoomPlayersWithUserRow{{
+			UserID: hostID,
+			CharacterID: pgtype.UUID{
+				Bytes: charID,
+				Valid: true,
+			},
+			Nickname: "계정 닉네임",
+			AvatarUrl: pgtype.Text{
+				String: avatarURL,
+				Valid:  true,
+			},
+			IsReady:  true,
+			JoinedAt: joinedAt,
+		}, {
+			UserID:   guestID,
+			Nickname: "캐릭터 미배정",
+			JoinedAt: joinedAt.Add(time.Second),
+		}},
+		[]db.ThemeCharacter{{
+			ID:       charID,
+			ThemeID:  themeID,
+			Name:     "홍길동",
+			ImageUrl: pgtype.Text{String: characterImageURL, Valid: true},
+			ImageMediaID: pgtype.UUID{
+				Bytes: characterImageMediaID,
+				Valid: true,
+			},
+			AliasRules: aliasRules,
+		}},
+		hostID,
+	)
+
+	if len(got) != 2 {
+		t.Fatalf("players len = %d, want 2", len(got))
+	}
+	host := got[0]
+	if host.UserID != hostID || host.CharacterID == nil || *host.CharacterID != charID {
+		t.Fatalf("host identity mismatch: %+v", host)
+	}
+	if host.Nickname != "계정 닉네임" || host.AvatarURL == nil || *host.AvatarURL != avatarURL {
+		t.Fatalf("host account display mismatch: %+v", host)
+	}
+	if !host.IsHost || !host.IsReady || !host.JoinedAt.Equal(joinedAt) {
+		t.Fatalf("host roster flags mismatch: %+v", host)
+	}
+	if host.CharacterName != "홍길동" {
+		t.Fatalf("CharacterName = %q, want 홍길동", host.CharacterName)
+	}
+	if host.CharacterImageURL == nil || *host.CharacterImageURL != characterImageURL {
+		t.Fatalf("CharacterImageURL = %v, want %s", host.CharacterImageURL, characterImageURL)
+	}
+	if host.CharacterImageMediaID == nil || *host.CharacterImageMediaID != characterImageMediaID.String() {
+		t.Fatalf("CharacterImageMediaID = %v, want %s", host.CharacterImageMediaID, characterImageMediaID)
+	}
+	if string(host.CharacterAliasRules) != string(aliasRules) {
+		t.Fatalf("CharacterAliasRules = %s, want %s", host.CharacterAliasRules, aliasRules)
+	}
+
+	guest := got[1]
+	if guest.UserID != guestID || guest.CharacterID != nil || guest.CharacterName != "" {
+		t.Fatalf("unassigned guest should keep account-only roster data: %+v", guest)
+	}
 }

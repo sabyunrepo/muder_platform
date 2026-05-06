@@ -186,3 +186,85 @@ func TestPhaseEngine_BuildStateForIncludesResolvedRosterWithoutAliasRules(t *tes
 		t.Fatalf("player payload leaked targetCode: %s", raw)
 	}
 }
+
+func TestPhaseEngine_BuildStateForRosterSortsAndUsesNicknameFallback(t *testing.T) {
+	earlyID := uuid.New()
+	lateID := uuid.New()
+	displayIconURL := "https://cdn.example/icon.png"
+	pe, _ := newTestPhaseEngine(t, []Module{&stubCoreModule{name: "public_mod"}}, testPhaseDefinitions)
+	pe.SetPlayerInfoProvider(rosterProviderStub{players: []PlayerRuntimeInfo{{
+		PlayerID:       lateID,
+		Nickname:       "두 번째 참가자",
+		Role:           "",
+		IsAlive:        true,
+		ConnectedAt:    200,
+		DisplayIconURL: &displayIconURL,
+	}, {
+		PlayerID:    earlyID,
+		Nickname:    "첫 번째 참가자",
+		Role:        "detective",
+		IsAlive:     true,
+		ConnectedAt: 100,
+	}}})
+
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	raw, err := pe.BuildStateFor(earlyID)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var body struct {
+		Players []map[string]any `json:"players"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	if len(body.Players) != 2 {
+		t.Fatalf("players len = %d, want 2: %s", len(body.Players), raw)
+	}
+	if body.Players[0]["id"] != earlyID.String() {
+		t.Fatalf("first player id = %v, want %s", body.Players[0]["id"], earlyID)
+	}
+	if body.Players[1]["displayName"] != "두 번째 참가자" {
+		t.Fatalf("displayName fallback = %v, want nickname", body.Players[1]["displayName"])
+	}
+	if body.Players[1]["role"] != nil {
+		t.Fatalf("empty role should be null, got %+v", body.Players[1]["role"])
+	}
+	if body.Players[1]["displayIconUrl"] != displayIconURL {
+		t.Fatalf("displayIconUrl = %v, want %s", body.Players[1]["displayIconUrl"], displayIconURL)
+	}
+}
+
+func TestPhaseEngine_BuildStateForIncludesEmptyRosterWhenProviderIsPresent(t *testing.T) {
+	playerID := uuid.New()
+	pe, _ := newTestPhaseEngine(t, []Module{&stubCoreModule{name: "public_mod"}}, testPhaseDefinitions)
+	pe.SetPlayerInfoProvider(rosterProviderStub{})
+
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	raw, err := pe.BuildStateFor(playerID)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var body struct {
+		Players []map[string]any `json:"players"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	if body.Players == nil {
+		t.Fatalf("players should be an empty array when roster provider is present: %s", raw)
+	}
+	if len(body.Players) != 0 {
+		t.Fatalf("players len = %d, want 0", len(body.Players))
+	}
+}

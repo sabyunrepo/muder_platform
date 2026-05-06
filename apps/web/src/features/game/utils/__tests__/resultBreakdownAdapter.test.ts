@@ -3,6 +3,8 @@ import { PlayerRole, type Player } from '@mmp/shared';
 
 import {
   buildResultBreakdownViewModel,
+  playerDisplayName,
+  playerDisplayNameById,
   readEndingBranchResult,
   readVoteBreakdown,
 } from '../resultBreakdownAdapter';
@@ -105,6 +107,12 @@ describe('resultBreakdownAdapter', () => {
 
     expect(vm.voteSummary).toContain('가면 쓴 탐정');
     expect(vm.voteItems[0]).toMatchObject({ id: 'p2', label: '가면 쓴 탐정' });
+  });
+
+  it('trims display names and falls back to nicknames or caller labels', () => {
+    expect(playerDisplayName({ ...players[1], displayName: '  비밀 탐정  ' })).toBe('비밀 탐정');
+    expect(playerDisplayName({ ...players[0], displayName: '   ' })).toBe('한서윤');
+    expect(playerDisplayNameById(players, 'missing', '알 수 없음')).toBe('알 수 없음');
   });
 
   it('returns null before backend exposes a result', () => {
