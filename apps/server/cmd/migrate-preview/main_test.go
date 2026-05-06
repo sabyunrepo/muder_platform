@@ -15,6 +15,24 @@ func TestRunRequiresDatabaseURL(t *testing.T) {
 	}
 }
 
+func TestRunCLIReturnsFailureCode(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+	t.Setenv("MIGRATIONS_DIR", "")
+
+	if code := runCLI(fakeMigrationRunner{}); code != 1 {
+		t.Fatalf("runCLI() = %d, want 1", code)
+	}
+}
+
+func TestRunCLIReturnsSuccessCode(t *testing.T) {
+	t.Setenv("DATABASE_URL", "postgres://mmp:mmp@localhost:5432/mmf")
+	t.Setenv("MIGRATIONS_DIR", "")
+
+	if code := runCLI(fakeMigrationRunner{}); code != 0 {
+		t.Fatalf("runCLI() = %d, want 0", code)
+	}
+}
+
 func TestRunUsesDefaultMigrationsDir(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://mmp:mmp@localhost:5432/mmf")
 	t.Setenv("MIGRATIONS_DIR", "")
@@ -165,6 +183,22 @@ func TestGooseMigrationRunnerOpenDB(t *testing.T) {
 func TestGooseMigrationRunnerSetDialect(t *testing.T) {
 	if err := (gooseMigrationRunner{}).SetDialect("postgres"); err != nil {
 		t.Fatalf("SetDialect() error = %v", err)
+	}
+}
+
+func TestGooseMigrationRunnerUpReturnsConnectionError(t *testing.T) {
+	db, err := sql.Open("pgx", "invalid database url")
+	if err != nil {
+		t.Fatalf("sql.Open() error = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	})
+
+	if err := (gooseMigrationRunner{}).Up(db, t.TempDir()); err == nil {
+		t.Fatal("Up() error = nil, want connection error")
 	}
 }
 

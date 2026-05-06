@@ -12,9 +12,15 @@ import (
 )
 
 func main() {
-	if err := run(gooseMigrationRunner{}); err != nil {
-		log.Fatal().Err(err).Msg("migrate preview")
+	os.Exit(runCLI(gooseMigrationRunner{}))
+}
+
+func runCLI(runner migrationRunner) int {
+	if err := run(runner); err != nil {
+		log.Error().Err(err).Msg("migrate preview")
+		return 1
 	}
+	return 0
 }
 
 type migrationRunner interface {
