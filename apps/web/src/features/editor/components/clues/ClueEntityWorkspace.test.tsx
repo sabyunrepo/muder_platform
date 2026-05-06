@@ -3,6 +3,23 @@ import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import type { ClueResponse, EditorCharacterResponse, LocationResponse } from '@/features/editor/api';
 import { ClueEntityWorkspace } from './ClueEntityWorkspace';
 
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: () => ({
+    data: {
+      nodes: [
+        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+        { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
+      ],
+    },
+  }),
+}));
+
+vi.mock('@/features/editor/readingApi', () => ({
+  useReadingSections: () => ({
+    data: [],
+  }),
+}));
+
 function clue(overrides: Partial<ClueResponse>): ClueResponse {
   return {
     id: 'clue-1',

@@ -73,6 +73,17 @@ vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: () => useMediaListMock(),
 }));
 
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: () => ({
+    data: {
+      nodes: [
+        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+        { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
+      ],
+    },
+  }),
+}));
+
 vi.mock('@/features/editor/components/media/MediaPicker', () => ({
   MediaPicker: ({
     open,

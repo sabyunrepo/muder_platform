@@ -59,6 +59,21 @@ vi.mock('../ImageUpload', () => ({
 vi.mock('../clues/ClueEdgeGraph', () => ({
   ClueEdgeGraph: () => <div>단서 관계 그래프</div>,
 }));
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: () => ({
+    data: {
+      nodes: [
+        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+        { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
+      ],
+    },
+  }),
+}));
+vi.mock('@/features/editor/readingApi', () => ({
+  useReadingSections: () => ({
+    data: [],
+  }),
+}));
 // ---------------------------------------------------------------------------
 // Import after mocks
 // ---------------------------------------------------------------------------

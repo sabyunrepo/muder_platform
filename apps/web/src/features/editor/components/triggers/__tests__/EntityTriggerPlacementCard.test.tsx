@@ -20,6 +20,23 @@ vi.mock('@/features/editor/components/media/MediaPicker', () => ({
     ) : null,
 }));
 
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: () => ({
+    data: {
+      nodes: [
+        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+        { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
+      ],
+    },
+  }),
+}));
+
+vi.mock('@/features/editor/readingApi', () => ({
+  useReadingSections: () => ({
+    data: [],
+  }),
+}));
+
 afterEach(cleanup);
 
 describe('EntityTriggerPlacementCard', () => {
@@ -69,7 +86,7 @@ describe('EntityTriggerPlacementCard', () => {
       (screen.getByRole('button', { name: '트리거 저장' }) as HTMLButtonElement).disabled
     ).toBe(true);
     expect(
-      screen.getByText('저장하려면 실행 결과를 하나 이상 추가하고 필요한 미디어를 선택하세요.')
+      screen.getByText('저장하려면 이동할 장면이나 실행 결과를 추가하고 필요한 값을 채우세요.')
     ).toBeDefined();
   });
 
@@ -128,6 +145,41 @@ describe('EntityTriggerPlacementCard', () => {
         {
           placement: { kind: 'location', entityId: 'loc-1' },
           actions: [{ type: 'SET_BGM', params: { mediaId: 'media-1' } }],
+        },
+      ],
+    });
+  });
+
+  it('stores a target scene without requiring an extra action', () => {
+    const onConfigChange = vi.fn();
+    render(
+      <EntityTriggerPlacementCard
+        themeId="theme-1"
+        entityKind="clue"
+        entityId="clue-1"
+        entityName="단검"
+        configJson={{}}
+        onConfigChange={onConfigChange}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '트리거 추가' }));
+    fireEvent.change(screen.getByRole('textbox', { name: '단서 트리거 1 플레이어 버튼 이름' }), {
+      target: { value: '금고 암호 확인하기' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: '실행 후 이동할 장면' }), {
+      target: { value: 'scene-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '트리거 저장' }));
+
+    expect(onConfigChange).toHaveBeenCalledOnce();
+    const [nextConfig] = onConfigChange.mock.calls[0];
+    expect(readModuleConfig(nextConfig, 'event_progression')).toMatchObject({
+      Triggers: [
+        {
+          placement: { kind: 'clue', entityId: 'clue-1' },
+          label: '금고 암호 확인하기',
+          to: 'scene-1',
         },
       ],
     });

@@ -75,7 +75,7 @@ function normalizeTrigger(value: unknown): EventProgressionTriggerConfig | null 
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
     ...(password !== undefined ? { password } : {}),
-    ...(actions ? { actions } : {}),
+    ...(actions && actions.length > 0 ? { actions } : {}),
     ...(placement ? { placement } : {}),
   };
 }

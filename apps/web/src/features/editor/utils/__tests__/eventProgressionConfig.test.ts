@@ -142,4 +142,21 @@ describe('eventProgressionConfig', () => {
       ],
     });
   });
+
+  it('omits empty actions when a trigger only moves to a target scene', () => {
+    const next = writeTriggersForPlacement({}, { kind: 'clue', entityId: 'clue-1' }, [
+      { id: 'scene-jump', to: 'scene-2', actions: [] },
+    ]);
+
+    expect(readModuleConfig(next, 'event_progression')).toMatchObject({
+      Triggers: [
+        {
+          id: 'scene-jump',
+          to: 'scene-2',
+          placement: { kind: 'clue', entityId: 'clue-1' },
+        },
+      ],
+    });
+    expect(readModuleConfig(next, 'event_progression').Triggers[0]).not.toHaveProperty('actions');
+  });
 });
