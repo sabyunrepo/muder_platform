@@ -269,6 +269,46 @@ describe("ReadingSectionEditor", () => {
     );
   });
 
+  it("line image picker serializes cleared image references", async () => {
+    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
+      if (type === "IMAGE") {
+        return {
+          data: [
+            {
+              id: "image-1",
+              theme_id: "theme-1",
+              name: "현장 사진",
+              type: "IMAGE",
+              source_type: "FILE",
+              url: "https://example.com/image.png",
+              tags: [],
+              sort_order: 1,
+              created_at: "2026-04-05T00:00:00Z",
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      return { data: [], isLoading: false };
+    });
+
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [{ ...sampleSection.lines[0], ImageMediaID: "image-1" }],
+      },
+    });
+
+    expect(screen.getByText("현장 사진")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "이미지 제거" }));
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+
+    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].ImageMediaID).toBe(
+      "",
+    );
+  });
+
   it("save button is disabled when not dirty", () => {
     renderEditor();
     const saveBtn = screen.getByRole("button", { name: /저장/ }) as HTMLButtonElement;

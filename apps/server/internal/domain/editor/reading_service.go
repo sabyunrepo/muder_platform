@@ -134,7 +134,21 @@ func (s *readingService) assertLineMediaInTheme(ctx context.Context, themeID uui
 	if err != nil {
 		return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": invalid "+field)
 	}
-	return s.assertMediaInTheme(ctx, themeID, mediaID, wantType)
+	if err := s.assertMediaInTheme(ctx, themeID, mediaID, wantType); err != nil {
+		return prefixLineMediaError(err, lineIndex, field)
+	}
+	return nil
+}
+
+func prefixLineMediaError(err error, lineIndex int, field string) error {
+	prefix := "line " + itoa(lineIndex) + ": " + field + ": "
+	var appErr *apperror.AppError
+	if errors.As(err, &appErr) {
+		copied := *appErr
+		copied.Detail = prefix + appErr.Detail
+		return &copied
+	}
+	return errors.New(prefix + err.Error())
 }
 
 // assertMediaInTheme verifies that mediaID exists and belongs to themeID.

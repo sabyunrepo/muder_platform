@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -294,6 +295,9 @@ func TestReadingService_Create_ImageMediaMustBeImageInTheme(t *testing.T) {
 		},
 	})
 	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
+	if !strings.Contains(err.Error(), "line 0: imageMediaId") {
+		t.Fatalf("expected line context in error, got %v", err)
+	}
 
 	otherImage := uuid.New()
 	otherTheme := uuid.New()

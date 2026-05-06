@@ -97,6 +97,10 @@ export function ReadingSectionEditor({
     () => bgmList.find((m) => m.id === draft.bgmMediaId) ?? null,
     [bgmList, draft.bgmMediaId],
   );
+  const imageById = useMemo(
+    () => new Map(imageList.map((media) => [media.id, media])),
+    [imageList],
+  );
 
   const isDirty = useMemo(() => {
     if (draft.name !== section.name) return true;
@@ -305,9 +309,7 @@ export function ReadingSectionEditor({
               line={line}
               index={idx}
               characters={characters}
-              selectedImage={
-                imageList.find((m) => m.id === line.ImageMediaID) ?? null
-              }
+              selectedImage={imageById.get(line.ImageMediaID ?? "") ?? null}
               onChange={(next) => handleLineChange(idx, next)}
               onDelete={() => handleLineDelete(idx)}
             />

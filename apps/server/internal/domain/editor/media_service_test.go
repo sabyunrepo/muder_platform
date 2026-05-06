@@ -452,8 +452,11 @@ func TestMediaService_Delete_BlockedByReadingImageReference(t *testing.T) {
 	var appErr *apperror.AppError
 	_ = errors.As(err, &appErr)
 	refs := appErr.Params["references"].([]map[string]string)
-	if len(refs) != 1 || refs[0]["id"] != sectionID.String() {
+	if len(refs) != 1 || refs[0]["id"] != sectionID.String() || refs[0]["type"] != "reading_section" || refs[0]["name"] != "Image cue" {
 		t.Fatalf("unexpected references: %#v", refs)
+	}
+	if _, ok := q.media[imageID]; !ok {
+		t.Fatalf("media should not have been deleted")
 	}
 }
 
