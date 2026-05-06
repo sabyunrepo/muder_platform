@@ -10,13 +10,13 @@ Usage: scripts/mmp-pr-status.sh [options] [PR_NUMBER]
 현재 브랜치의 PR 또는 지정한 PR 번호에 대해 다음을 요약합니다.
 - labels / merge state / review decision
 - CodeRabbit 최신 리뷰와 unresolved review thread 수
-- Codecov Report 최신 코멘트 요약
+- Codecov Report 최신 코멘트 요약과 patch coverage gate
 - GitHub checks 상태
 
 반복 조회가 필요하면 30초 이상 간격으로 실행하세요.
 
 Options:
-  --fail-on-blocker  CodeRabbit/review/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
+  --fail-on-blocker  CodeRabbit/review/Codecov/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
   --allow-behind     strict up-to-date + behind 상태를 blocker가 아니라 main Codex merge-decision 대상으로 표시합니다.
   -h, --help         Show help
 MSG
@@ -129,7 +129,12 @@ done
 
 # shellcheck disable=SC2016
 latest_coderabbit="$(gh pr view "$pr_number" --json reviews,comments --jq '([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login == "coderabbitai") or (.author.login == "coderabbitai[bot]") or (.body | contains("coderabbit.ai")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
-codecov_summary="$(gh pr view "$pr_number" --json comments --jq '[.comments[] | select((.author.login == "codecov-commenter") or (.body | contains("Codecov Report")))] | last | if . then (.body | split("\n") | .[0:6] | join("\n")) else "없음" end')"
+codecov_body="$(gh pr view "$pr_number" --json comments --jq '[.comments[] | select((.author.login == "codecov-commenter") or (.body | contains("Codecov Report")))] | last | if . then .body else "" end')"
+if [[ -n "$codecov_body" ]]; then
+  codecov_summary="$(printf '%s' "$codecov_body" | awk 'NR <= 6 { print }')"
+else
+  codecov_summary="없음"
+fi
 checks_json="$(gh pr checks "$pr_number" --json name,bucket,state 2>/dev/null || printf '[]')"
 coderabbit_check_bucket="$(printf '%s' "$checks_json" | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
 ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
@@ -149,6 +154,22 @@ elif [[ "$coderabbit_check_bucket" == "pass" && "$unresolved_threads" -eq 0 ]]; 
   coderabbit_action_state="clear: CodeRabbit check pass + unresolved 0"
 else
   coderabbit_action_state="unknown: CodeRabbit 상태를 수동 확인하세요"
+fi
+
+codecov_gate_state="not-applicable: Codecov comment 없음"
+if [[ -n "$codecov_body" ]]; then
+  patch_coverage="$(printf '%s' "$codecov_body" | sed -nE 's/.*Patch coverage is `([0-9]+(\.[0-9]+)?)%`.*/\1/p' | head -n1)"
+  if [[ -n "$patch_coverage" ]]; then
+    if awk "BEGIN { exit !($patch_coverage < 70) }"; then
+      codecov_gate_state="blocker: patch coverage ${patch_coverage}% < 70%"
+    else
+      codecov_gate_state="clear: patch coverage ${patch_coverage}% >= 70%"
+    fi
+  elif grep -q "All modified and coverable lines are covered by tests" <<< "$codecov_body"; then
+    codecov_gate_state="clear: modified coverable lines covered"
+  elif grep -q "Codecov Report" <<< "$codecov_body"; then
+    codecov_gate_state="unknown: Codecov comment found but patch coverage line not parsed"
+  fi
 fi
 
 if [[ "$strict_status_checks" == "true" && "$mergeable_state" == "behind" && "$allow_behind" == "1" ]]; then
@@ -175,6 +196,7 @@ cat <<MSG
 - Heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
 - CodeRabbit latest review: $latest_coderabbit
 - CodeRabbit actionable state: $coderabbit_action_state
+- Codecov gate state: $codecov_gate_state
 - Review threads: unresolved $unresolved_threads / total $total_threads
 
 # Unresolved review thread details
@@ -189,7 +211,7 @@ MSG
 gh pr checks "$pr_number" || true
 
 if [[ "$fail_on_blocker" == "1" ]]; then
-  if [[ "$coderabbit_action_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
+  if [[ "$coderabbit_action_state" == blocker:* || "$codecov_gate_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
     exit 3
   fi
 fi

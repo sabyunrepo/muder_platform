@@ -26,6 +26,8 @@ Allowed:
    - Do not wait indefinitely for label-created pull_request runs; if the required workflows are missing, dispatch them through the watcher.
 11. For `code-rabbit-only`, do not add `ready-for-ci`, do not dispatch workflows, and do not wait for missing heavy-CI contexts. Use `MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh <PR_NUMBER> --code-rabbit-only` plus focused local validation for changed scripts/config/docs.
 12. If CI or Codecov fails on a `full-ci` PR, inspect logs/comments, fix valid failures on the target branch, push, then restart from CodeRabbit/head SHA verification.
+   - Treat Codecov patch coverage under 70% as a real blocker. Add focused tests for the uncovered changed files instead of reporting success from green CodeRabbit alone.
+   - When adding coverage, preserve the existing Coverage Plan. If missing Coverage Plan or new deferred behavior requires PR/issue metadata changes beyond this agent's allowed actions, report `NEEDS_FIX` or `BLOCKED` so main Codex can update the tracking before final merge judgment.
 13. If main Codex pushes a new commit after your previous report, restart from the latest PR head SHA and re-check CodeRabbit/check state before reporting again.
 14. Check whether the base branch requires strict up-to-date status checks. If `main` protection has `required_status_checks.strict=true` and `mergeable_state=behind` / `mergeStateStatus=BEHIND`, do not automatically update the branch. If CodeRabbit, required checks, and Codecov are otherwise clear, report `MERGE_CANDIDATE` and let main Codex decide whether to admin merge in the current merge batch or refresh the branch. Only run `gh pr update-branch <PR_NUMBER>` when main Codex explicitly asks, GitHub reports a merge conflict, the merged base change touches the same files/shared contracts, or CI/Codecov evidence points to main drift. If the update fails or creates conflicts, report `BLOCKED` with the exact failure.
 15. Treat a waiting state as work, not completion:
@@ -41,6 +43,7 @@ Forbidden:
 - Do not modify unrelated issue branches or worktrees.
 - Do not manually rebase or create local merge commits for branch refresh. Use only GitHub's PR branch update (`gh pr update-branch <PR_NUMBER>`) when main Codex explicitly requests it or merge-conflict/main-drift evidence requires it.
 - Do not skip tests, weaken coverage, or dismiss valid review findings without technical reason.
+- Do not split steward fixes into extra PRs. Fix the handed-off PR branch unless main Codex explicitly changes the scope.
 - Do not inspect secrets or deployment credentials.
 
 When blocked:

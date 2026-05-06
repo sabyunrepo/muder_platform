@@ -63,7 +63,11 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - 같은 이슈 안에서 이어서 처리할 작은 항목이면 체크리스트로 둔다.
    - 독립 PR이 필요하거나 다른 owner/검증 범위를 갖는 항목이면 새 GitHub Issue를 만든다.
    - PR 본문에는 완료 범위는 `Closes #번호`, 후속/부분 범위는 `Refs #번호`로 연결한다.
-8. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
+8. `## PR 묶음 제안`은 CI 비용까지 고려한다.
+   - 같은 이슈/같은 CI scope/같은 review surface의 repo-local workflow 변경은 하나의 PR로 묶는 것을 우선한다.
+   - shared contract, migration, large UI route, backend API처럼 실패 blast radius가 큰 변경은 별도 PR로 분리한다.
+   - “작게 쪼개기”는 기본값이 아니라 충돌·리뷰 위험을 줄일 때만 선택한다. CI를 여러 번 태우는 초소형 PR은 피한다.
+9. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
 
 ## Done
 
@@ -72,7 +76,7 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 - 완료 조건에 테스트 또는 테스트 대체 근거가 있다.
 - Coverage Plan에 변경 파일별 테스트 매핑이 있다.
 - Deferred / Follow-up 판단이 추적 가능하거나, 후속 없음이 명확하다.
-- PR 묶음과 브레인스토밍 필요 여부가 명확하다.
+- PR 묶음은 충돌 위험과 CI 비용을 함께 고려했고, 브레인스토밍 필요 여부가 명확하다.
 
 ## Avoid
 

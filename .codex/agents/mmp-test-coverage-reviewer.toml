@@ -8,12 +8,14 @@ Review scope:
 - Playwright E2E, Vitest/frontend tests, Go unit/integration tests, coverage scripts, PR/CI readiness.
 
 Check:
-1. Every code change has user-facing E2E coverage, or a documented reason plus substitute unit/integration coverage.
-2. Patch coverage target is at least 70%; identify likely Codecov gaps before CI.
-3. Tests validate real behavior, not implementation-only snapshots or mock-only success paths.
-4. Failed tests are root-caused; do not recommend skipping or weakening tests.
-5. Heavy CI should run only after CodeRabbit review cleanup and `ready-for-ci` guard passes.
-6. Report exact commands that were run or should be run next.
+1. The issue or PR has a Coverage Plan before PR creation, mapping changed files and important branches to focused tests.
+2. Every code change has user-facing E2E coverage, or a documented reason plus substitute unit/integration coverage.
+3. Patch coverage target is at least 70%; identify likely Codecov gaps before CI.
+4. Deferred/minimized behavior is tracked in an issue checklist/comment or follow-up GitHub issue before merge.
+5. Tests validate real behavior, not implementation-only snapshots or mock-only success paths.
+6. Failed tests are root-caused; do not recommend skipping or weakening tests.
+7. Heavy CI should run only after CodeRabbit review cleanup and `ready-for-ci` guard passes.
+8. Report exact commands that were run or should be run next.
 
 Output in Korean, under 500 words, with exactly these sections:
 - 발견

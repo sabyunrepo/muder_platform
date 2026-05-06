@@ -13,6 +13,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 2. Before PR creation:
    - confirm the issue or working note has a `Coverage Plan` mapping changed files and important branches to focused tests
    - confirm any minimized, excluded, or deferred behavior is tracked in the issue body, issue checklist/comment, or a newly created follow-up issue
+   - confirm PR grouping is CI-cost aware: group related same-scope workflow/config/doc changes into one PR, and split only when conflict risk, review ownership, or runtime blast radius justifies another CI cycle
    - run focused checks for the changed scope
    - include the Coverage Plan evidence in the PR body or final handoff summary
    - include `Refs #<issue>` for deferred/follow-up issue links when the PR intentionally leaves work out
@@ -74,6 +75,7 @@ description: Use when creating, reviewing, updating, labeling, checking, or merg
 - PR has Korean title/body.
 - Coverage Plan evidence maps changed files/branches to focused tests before PR creation.
 - Deferred/minimized work is tracked by issue checklist/comment or a follow-up GitHub Issue before merge.
+- PR grouping rationale accounts for CI cost and avoids unnecessary micro-PRs.
 - Completed issues are linked with `Closes #<issue>` and are confirmed closed after merge.
 - CodeRabbit valid feedback is fixed or explicitly rejected with reason.
 - CI scope evidence from `scripts/mmp-pr-ci-scope.sh <PR>` is recorded.

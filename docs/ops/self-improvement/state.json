@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-05",
+  "updated_at": "2026-05-06",
   "policy": {
     "read_first": "Read this state file before archive logs.",
     "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
@@ -204,10 +204,39 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Required minimized, excluded, or deferred implementation scope to be tracked in the current issue, an issue checklist/comment, or a new follow-up GitHub Issue before PR merge, with PR Refs links for intentional leftovers."
+    },
+    {
+      "id": "workflow-pr-grouping-ci-cost",
+      "resolved_at": "2026-05-06",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-issue-planning/SKILL.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        ".codex/skills/mmp-self-improvement-loop/SKILL.md",
+        ".codex/agents/mmp-issue-architect.toml",
+        ".codex/agents/mmp-parallel-coordinator.toml",
+        "scripts/pr-create-guard.sh",
+        "docs/ops/codex-workflow-optimization.md",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Documented CI-cost-aware PR grouping so related workflow/config/docs changes can be handled in one PR while high-risk runtime or contract changes still split for reviewability."
+    },
+    {
+      "id": "pr-status-codecov-blocker-gate",
+      "resolved_at": "2026-05-06",
+      "applied_to": [
+        "scripts/mmp-pr-status.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        ".codex/agents/mmp-ci-steward.toml",
+        ".codex/agents/mmp-test-coverage-reviewer.toml",
+        "docs/ops/codex-workflow-optimization.md",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Made mmp-pr-status parse Codecov patch coverage and fail --fail-on-blocker when patch coverage is below 70%, so steward final checks cannot miss the real coverage blocker."
     }
   ],
   "last_review": {
     "date": "2026-05-06",
-    "summary": "Recorded Coverage Plan-before-PR and deferred-work issue tracking policies so coverage gaps and minimized scope are visible before merge."
+    "summary": "Optimized Codex workflow surfaces for CI-cost-aware PR grouping and added a deterministic Codecov blocker gate to mmp-pr-status."
   }
 }
