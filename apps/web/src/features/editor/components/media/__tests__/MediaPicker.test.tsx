@@ -128,6 +128,24 @@ describe("MediaPicker", () => {
     expect(screen.getByText(/배경음악 유형만 표시됩니다/)).toBeDefined();
   });
 
+  it.each([
+    ["IMAGE", "이미지 유형만 표시됩니다"],
+    ["VIDEO", "영상 유형만 표시됩니다"],
+  ] as const)("filterType %s도 useMediaList와 안내문에 반영한다", (filterType, hint) => {
+    render(
+      <MediaPicker
+        open={true}
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+        themeId="theme-1"
+        filterType={filterType}
+      />,
+    );
+
+    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", filterType);
+    expect(screen.getByText(hint)).toBeDefined();
+  });
+
   it("검색어로 이름을 필터링한다", () => {
     render(
       <MediaPicker

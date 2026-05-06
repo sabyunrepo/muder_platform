@@ -12,6 +12,8 @@ import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
 import {
   ActionListEditor,
   hasIncompletePresentationCueActions,
+  isPresentationCueAction,
+  PRESENTATION_CUE_ACTION_TYPES,
 } from "./ActionListEditor";
 import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
 import {
@@ -120,10 +122,26 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
       <div className="border-t border-slate-800" />
 
       <ActionListEditor
+        label="장면 연출"
+        actions={getPresentationCueActions((data.onEnter as PhaseAction[]) ?? [])}
+        onChange={(actions) => handleChange({
+          onEnter: mergePresentationCueActions((data.onEnter as PhaseAction[]) ?? [], actions),
+        })}
+        allowedTypes={PRESENTATION_CUE_ACTION_TYPES}
+        themeId={themeId}
+      />
+
+      <div className="border-t border-slate-800" />
+
+      <ActionListEditor
         label="장면 시작 트리거"
         actions={(data.onEnter as PhaseAction[]) ?? []}
         onChange={(actions) => handleChange({ onEnter: actions })}
-        hiddenTypes={[DELIVER_INFORMATION_ACTION, "deliver_information"]}
+        hiddenTypes={[
+          ...PRESENTATION_CUE_ACTION_TYPES,
+          DELIVER_INFORMATION_ACTION,
+          "deliver_information",
+        ]}
         themeId={themeId}
       />
       <ActionListEditor
@@ -134,6 +152,20 @@ export function PhaseNodePanel({ node, themeId, onUpdate, edges = [] }: PhaseNod
       />
     </div>
   );
+}
+
+function getPresentationCueActions(actions: PhaseAction[]): PhaseAction[] {
+  return actions.filter(isPresentationCueAction);
+}
+
+function mergePresentationCueActions(
+  currentActions: PhaseAction[],
+  presentationActions: PhaseAction[],
+): PhaseAction[] {
+  return [
+    ...currentActions.filter((action) => !isPresentationCueAction(action)),
+    ...presentationActions,
+  ];
 }
 
 function hasIncompleteActionPatch(patch: Partial<FlowNodeData>): boolean {
