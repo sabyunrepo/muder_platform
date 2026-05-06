@@ -133,11 +133,17 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
+    const nextImageUrl = imageMediaId
+      ? ''
+      : clue?.image_url && imageUrl === ''
+        ? ''
+        : imageUrl || undefined;
+
     submit(
       buildClueUsePayload({
         name: name.trim(),
         description: description || undefined,
-        image_url: imageMediaId ? '' : imageUrl || undefined,
+        image_url: nextImageUrl,
         image_media_id: imageMediaId,
         level,
         sort_order: sortOrder,

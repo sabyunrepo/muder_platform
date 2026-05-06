@@ -249,7 +249,7 @@ describe('ClueForm', () => {
     expect(updateMutate).toHaveBeenCalledTimes(1);
     const [args] = updateMutate.mock.calls[0];
     expect(args.body.image_media_id).toBeNull();
-    expect(args.body.image_url).toBeUndefined();
+    expect(args.body.image_url).toBe('');
   });
 
   it('edit 모드에서는 useUpdateClue.mutate가 호출된다', () => {
