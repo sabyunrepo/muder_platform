@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -37,6 +37,14 @@ function makeNode(type: string, data: Record<string, unknown> = {}): Node {
     data,
   };
 }
+
+const storyNodes: Node[] = [
+  makeNode("phase", { label: "오프닝" }),
+  { ...makeNode("phase", { label: "조사" }), id: "node-2" },
+  { ...makeNode("ending", { label: "엔딩" }), id: "node-3" },
+];
+
+const storyEdges: Edge[] = [{ id: "edge-1", source: "node-1", target: "node-2" }];
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -115,5 +123,49 @@ describe("NodeDetailPanel", () => {
     );
     fireEvent.click(screen.getByText("선택 항목 삭제"));
     expect(onDelete).toHaveBeenCalledWith("node-1");
+  });
+
+  it("선택한 장면에서 다음 장면을 버튼으로 연결할 수 있다", () => {
+    const onConnectNodes = vi.fn();
+    render(
+      <NodeDetailPanel
+        node={storyNodes[0]}
+        themeId="t1"
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        nodes={storyNodes}
+        edges={[]}
+        onConnectNodes={onConnectNodes}
+        onDeleteEdge={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("연결할 다음 장면"), {
+      target: { value: "node-2" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "연결" }));
+
+    expect(onConnectNodes).toHaveBeenCalledWith("node-1", "node-2");
+  });
+
+  it("선택한 장면에서 기존 연결을 해제할 수 있다", () => {
+    const onDeleteEdge = vi.fn();
+    render(
+      <NodeDetailPanel
+        node={storyNodes[0]}
+        themeId="t1"
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        nodes={storyNodes}
+        edges={storyEdges}
+        onConnectNodes={vi.fn()}
+        onDeleteEdge={onDeleteEdge}
+      />,
+    );
+
+    expect(screen.getByText("조사")).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "조사 연결 해제" }));
+
+    expect(onDeleteEdge).toHaveBeenCalledWith("edge-1");
   });
 });

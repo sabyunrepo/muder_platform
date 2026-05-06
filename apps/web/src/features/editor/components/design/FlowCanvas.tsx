@@ -9,6 +9,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { useFlowData } from '../../hooks/useFlowData';
 import { FlowToolbar } from './FlowToolbar';
 import { StartNode } from './StartNode';
@@ -66,6 +67,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     updateNodeData,
     deleteNode,
     deleteEdge,
+    connectNodes,
     onSelectionChange,
     updateEdgeCondition,
     applyPreset,
@@ -143,6 +145,22 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     const target = nodes.find((node) => node.id === selectedEdge.target);
     return `${String(source?.data?.label ?? selectedEdge.source)} -> ${String(target?.data?.label ?? selectedEdge.target)}`;
   }, [nodes, selectedEdge]);
+
+  const handleConnectNodes = useCallback(
+    (sourceId: string, targetId: string) => {
+      if (sourceId === targetId) {
+        toast.error('같은 장면으로는 연결할 수 없습니다');
+        return;
+      }
+      if (edges.some((edge) => edge.source === sourceId && edge.target === targetId)) {
+        toast.error('이미 연결된 장면입니다');
+        return;
+      }
+      connectNodes(sourceId, targetId);
+      toast.success('다음 장면을 연결했습니다');
+    },
+    [connectNodes, edges]
+  );
 
   if (isLoading) {
     return (
@@ -245,7 +263,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
               themeId={themeId}
               onUpdate={updateNodeData}
               onDelete={deleteNode}
+              nodes={nodes}
               edges={edges}
+              onConnectNodes={handleConnectNodes}
+              onDeleteEdge={deleteEdge}
               onEdgeConditionChange={updateEdgeCondition}
             />
           )}

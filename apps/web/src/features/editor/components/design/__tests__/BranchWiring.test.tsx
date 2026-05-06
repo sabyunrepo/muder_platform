@@ -59,8 +59,11 @@ const baseFlowData = {
   addNode: vi.fn(),
   updateNodeData: vi.fn(),
   deleteNode: vi.fn(),
+  deleteEdge: vi.fn(),
+  connectNodes: vi.fn(),
   onSelectionChange: vi.fn(),
   updateEdgeCondition: vi.fn(),
+  applyPreset: vi.fn(),
 };
 
 const validCondition = {

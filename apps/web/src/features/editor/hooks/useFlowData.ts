@@ -119,6 +119,15 @@ export function useFlowData(themeId: string) {
     [setEdgesAndRef, autoSave]
   );
 
+  const connectNodes = useCallback(
+    (sourceId: string, targetId: string) => {
+      const next = addEdge({ source: sourceId, target: targetId, type: 'condition' }, edgesRef.current);
+      setEdgesAndRef(next);
+      autoSave(nodesRef.current, next);
+    },
+    [setEdgesAndRef, autoSave]
+  );
+
   const save = useCallback(() => {
     saveFlow.mutate(toSaveRequest(nodes, edges));
   }, [saveFlow, nodes, edges]);
@@ -209,6 +218,7 @@ export function useFlowData(themeId: string) {
     updateNodeData,
     deleteNode,
     deleteEdge,
+    connectNodes,
     onSelectionChange,
     updateEdgeCondition,
     applyPreset,
