@@ -746,6 +746,213 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 	}
 }
 
+func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *testing.T) {
+	fixture := setupFixture(t)
+	ctx := context.Background()
+	creatorID := fixture.createUser(t)
+	themeID := fixture.createThemeForUser(t, creatorID)
+
+	category, err := fixture.q.CreateMediaCategory(ctx, db.CreateMediaCategoryParams{
+		ThemeID:   themeID,
+		Name:      "배경",
+		SortOrder: 2,
+		CreatorID: creatorID,
+	})
+	if err != nil {
+		t.Fatalf("CreateMediaCategory: %v", err)
+	}
+	if _, err := fixture.q.GetMediaCategoryWithOwner(ctx, db.GetMediaCategoryWithOwnerParams{ID: category.ID, CreatorID: creatorID}); err != nil {
+		t.Fatalf("GetMediaCategoryWithOwner: %v", err)
+	}
+	if _, err := fixture.q.UpdateMediaCategory(ctx, db.UpdateMediaCategoryParams{
+		ID:        category.ID,
+		Name:      "전경",
+		SortOrder: 3,
+		CreatorID: creatorID,
+	}); err != nil {
+		t.Fatalf("UpdateMediaCategory: %v", err)
+	}
+	categories, err := fixture.q.ListMediaCategoriesByTheme(ctx, themeID)
+	if err != nil {
+		t.Fatalf("ListMediaCategoriesByTheme: %v", err)
+	}
+	if len(categories) != 1 || categories[0].Name != "전경" {
+		t.Fatalf("unexpected categories: %#v", categories)
+	}
+
+	image := createMediaForReferenceTest(t, fixture.q, themeID, "crime-scene", MediaTypeImage)
+	bgm := createMediaForReferenceTest(t, fixture.q, themeID, "theme-bgm", MediaTypeBGM)
+	updatedImage, err := fixture.q.UpdateMedia(ctx, db.UpdateMediaParams{
+		ID:         image.ID,
+		Name:       "사건 현장",
+		Type:       MediaTypeImage,
+		Duration:   pgtype.Int4{},
+		Tags:       []string{"scene"},
+		SortOrder:  4,
+		CategoryID: pgtype.UUID{Bytes: category.ID, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateMedia: %v", err)
+	}
+	if !updatedImage.CategoryID.Valid || updatedImage.CategoryID.Bytes != category.ID {
+		t.Fatalf("category was not assigned: %#v", updatedImage)
+	}
+	if rows, err := fixture.q.ListMediaByThemeTypeAndCategory(ctx, db.ListMediaByThemeTypeAndCategoryParams{
+		ThemeID:    themeID,
+		Type:       MediaTypeImage,
+		CategoryID: pgtype.UUID{Bytes: category.ID, Valid: true},
+	}); err != nil || len(rows) != 1 || rows[0].ID != image.ID {
+		t.Fatalf("ListMediaByThemeTypeAndCategory err=%v rows=%#v", err, rows)
+	}
+	if rows, err := fixture.q.ListMediaByThemeAndCategory(ctx, db.ListMediaByThemeAndCategoryParams{
+		ThemeID:    themeID,
+		CategoryID: pgtype.UUID{Bytes: category.ID, Valid: true},
+	}); err != nil || len(rows) != 1 || rows[0].ID != image.ID {
+		t.Fatalf("ListMediaByThemeAndCategory err=%v rows=%#v", err, rows)
+	}
+
+	pending, err := fixture.q.CreateMediaReplacementUpload(ctx, db.CreateMediaReplacementUploadParams{
+		MediaID:    image.ID,
+		StorageKey: "themes/" + themeID.String() + "/media/replacement.png",
+		FileSize:   8,
+		MimeType:   "image/png",
+		CreatorID:  creatorID,
+	})
+	if err != nil {
+		t.Fatalf("CreateMediaReplacementUpload: %v", err)
+	}
+	if got, err := fixture.q.GetMediaReplacementUploadWithOwner(ctx, db.GetMediaReplacementUploadWithOwnerParams{
+		ID:        pending.ID,
+		CreatorID: creatorID,
+	}); err != nil || got.MediaID != image.ID {
+		t.Fatalf("GetMediaReplacementUploadWithOwner err=%v got=%#v", err, got)
+	}
+	fileUpdated, err := fixture.q.UpdateMediaFileWithOwner(ctx, db.UpdateMediaFileWithOwnerParams{
+		ID:         image.ID,
+		CreatorID:  creatorID,
+		StorageKey: pgtype.Text{String: pending.StorageKey, Valid: true},
+		FileSize:   pgtype.Int8{Int64: pending.FileSize, Valid: true},
+		MimeType:   pgtype.Text{String: pending.MimeType, Valid: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateMediaFileWithOwner: %v", err)
+	}
+	if !fileUpdated.StorageKey.Valid || fileUpdated.StorageKey.String != pending.StorageKey || fileUpdated.Url.Valid {
+		t.Fatalf("unexpected updated file media: %#v", fileUpdated)
+	}
+	if err := fixture.q.DeleteMediaReplacementUpload(ctx, pending.ID); err != nil {
+		t.Fatalf("DeleteMediaReplacementUpload: %v", err)
+	}
+
+	section, err := fixture.q.CreateReadingSection(ctx, db.CreateReadingSectionParams{
+		ThemeID:    themeID,
+		Name:       "참조 읽기",
+		BgmMediaID: pgtype.UUID{Bytes: bgm.ID, Valid: true},
+		Lines:      json.RawMessage(fmt.Sprintf(`[{"Text":"사진","ImageMediaID":%q,"VoiceMediaID":%q}]`, image.ID.String(), image.ID.String())),
+		SortOrder:  1,
+	})
+	if err != nil {
+		t.Fatalf("CreateReadingSection: %v", err)
+	}
+	if refs, err := fixture.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
+		ThemeID: themeID,
+		MediaID: image.ID,
+	}); err != nil || len(refs) != 1 || refs[0].ID != section.ID {
+		t.Fatalf("FindMediaReferencesInReadingSections image err=%v refs=%#v", err, refs)
+	}
+	if rows, err := fixture.q.ClearReadingSectionMediaReferencesWithOwner(ctx, db.ClearReadingSectionMediaReferencesWithOwnerParams{
+		MediaID:   image.ID,
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearReadingSectionMediaReferencesWithOwner image rows=%d err=%v", rows, err)
+	}
+
+	if _, err := fixture.q.CreateMap(ctx, db.CreateMapParams{
+		ThemeID:      themeID,
+		Name:         "지도",
+		ImageMediaID: pgtype.UUID{Bytes: image.ID, Valid: true},
+		SortOrder:    1,
+	}); err != nil {
+		t.Fatalf("CreateMap: %v", err)
+	}
+	if refs, err := fixture.q.FindMapReferencesForMedia(ctx, db.FindMapReferencesForMediaParams{
+		ThemeID: themeID,
+		MediaID: pgtype.UUID{Bytes: image.ID, Valid: true},
+	}); err != nil || len(refs) != 1 || refs[0].Name != "지도" {
+		t.Fatalf("FindMapReferencesForMedia err=%v refs=%#v", err, refs)
+	}
+	if rows, err := fixture.q.ClearMapMediaReferencesWithOwner(ctx, db.ClearMapMediaReferencesWithOwnerParams{
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+		MediaID:   pgtype.UUID{Bytes: image.ID, Valid: true},
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearMapMediaReferencesWithOwner rows=%d err=%v", rows, err)
+	}
+
+	theme, err := fixture.q.GetTheme(ctx, themeID)
+	if err != nil {
+		t.Fatalf("GetTheme: %v", err)
+	}
+	if _, err := fixture.q.UpdateTheme(ctx, db.UpdateThemeParams{
+		ID:                themeID,
+		Title:             theme.Title,
+		Slug:              theme.Slug,
+		Description:       theme.Description,
+		CoverImage:        theme.CoverImage,
+		CoverImageMediaID: pgtype.UUID{Bytes: image.ID, Valid: true},
+		MinPlayers:        theme.MinPlayers,
+		MaxPlayers:        theme.MaxPlayers,
+		DurationMin:       theme.DurationMin,
+		Price:             theme.Price,
+		CoinPrice:         theme.CoinPrice,
+		Version:           theme.Version,
+	}); err != nil {
+		t.Fatalf("UpdateTheme cover media: %v", err)
+	}
+	if refs, err := fixture.q.FindThemeCoverReferencesForMedia(ctx, db.FindThemeCoverReferencesForMediaParams{
+		ThemeID: themeID,
+		MediaID: pgtype.UUID{Bytes: image.ID, Valid: true},
+	}); err != nil || len(refs) != 1 {
+		t.Fatalf("FindThemeCoverReferencesForMedia err=%v refs=%#v", err, refs)
+	}
+	if rows, err := fixture.q.ClearThemeCoverMediaReferencesWithOwner(ctx, db.ClearThemeCoverMediaReferencesWithOwnerParams{
+		ThemeID:   themeID,
+		CreatorID: creatorID,
+		MediaID:   pgtype.UUID{Bytes: image.ID, Valid: true},
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearThemeCoverMediaReferencesWithOwner rows=%d err=%v", rows, err)
+	}
+
+	if _, err := fixture.q.UpsertContent(ctx, db.UpsertContentParams{
+		ThemeID: themeID,
+		Key:     "role_sheet:detective",
+		Body:    fmt.Sprintf(`{"portrait":{"media_id":"%s"}}`, image.ID.String()),
+	}); err != nil {
+		t.Fatalf("UpsertContent role sheet: %v", err)
+	}
+	if refs, err := fixture.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
+		ThemeID: themeID,
+		Body:    `"media_id"\s*:\s*"` + image.ID.String() + `"`,
+	}); err != nil || len(refs) != 1 || refs[0].Key != "role_sheet:detective" {
+		t.Fatalf("FindRoleSheetReferencesForMedia err=%v refs=%#v", err, refs)
+	}
+	if rows, err := fixture.q.ClearRoleSheetMediaReferencesWithOwner(ctx, db.ClearRoleSheetMediaReferencesWithOwnerParams{
+		MediaID:   image.ID.String(),
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearRoleSheetMediaReferencesWithOwner rows=%d err=%v", rows, err)
+	}
+
+	if rows, err := fixture.q.DeleteMediaCategoryWithOwner(ctx, db.DeleteMediaCategoryWithOwnerParams{ID: category.ID, CreatorID: creatorID}); err != nil || rows != 1 {
+		t.Fatalf("DeleteMediaCategoryWithOwner rows=%d err=%v", rows, err)
+	}
+	if rows, err := fixture.q.DeleteMediaWithOwner(ctx, db.DeleteMediaWithOwnerParams{ID: image.ID, CreatorID: creatorID}); err != nil || rows != 1 {
+		t.Fatalf("DeleteMediaWithOwner rows=%d err=%v", rows, err)
+	}
+}
+
 func createMediaForReferenceTest(t *testing.T, q *db.Queries, themeID uuid.UUID, name string, mediaType string) db.ThemeMedium {
 	t.Helper()
 	media, err := q.CreateMedia(context.Background(), db.CreateMediaParams{
@@ -1178,6 +1385,41 @@ func TestMediaService_ListMedia_CategoryFromAnotherTheme_NotFound(t *testing.T) 
 	assertMediaAppCode(t, err, apperror.ErrNotFound)
 }
 
+func TestMediaService_ListMedia_FilterVariants(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	category := db.ThemeMediaCategory{ID: uuid.New(), ThemeID: themeID, Name: "배경", SortOrder: 1, CreatedAt: time.Now()}
+	q.categories[category.ID] = category
+	imageID := seedMedia(q, themeID, MediaTypeImage)
+	image := q.media[imageID]
+	image.CategoryID = pgtype.UUID{Bytes: category.ID, Valid: true}
+	q.media[imageID] = image
+	bgmID := seedMedia(q, themeID, MediaTypeBGM)
+
+	all, err := svc.ListMedia(context.Background(), creatorID, themeID, "", nil)
+	if err != nil {
+		t.Fatalf("ListMedia all: %v", err)
+	}
+	if len(all) != 2 {
+		t.Fatalf("expected all media, got %#v", all)
+	}
+
+	byType, err := svc.ListMedia(context.Background(), creatorID, themeID, MediaTypeBGM, nil)
+	if err != nil {
+		t.Fatalf("ListMedia type: %v", err)
+	}
+	if len(byType) != 1 || byType[0].ID != bgmID {
+		t.Fatalf("unexpected type-filtered media: %#v", byType)
+	}
+
+	byCategory, err := svc.ListMedia(context.Background(), creatorID, themeID, "", &category.ID)
+	if err != nil {
+		t.Fatalf("ListMedia category: %v", err)
+	}
+	if len(byCategory) != 1 || byCategory[0].ID != imageID {
+		t.Fatalf("unexpected category-filtered media: %#v", byCategory)
+	}
+}
+
 func TestMediaService_ListCategoriesAndRequestUpload_WithCategory(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	svc.storage = newFakeStorageProvider()
@@ -1253,6 +1495,53 @@ func TestMediaService_CategoryErrors_NotFound(t *testing.T) {
 		t.Fatalf("DeleteCategory should fail for missing category")
 	} else {
 		assertMediaAppCode(t, err, apperror.ErrNotFound)
+	}
+}
+
+func TestMediaService_UpdateMedia_SuccessPreservesDurationAndSetsCategory(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeBGM)
+	media := q.media[mediaID]
+	media.Duration = pgtype.Int4{Int32: 120, Valid: true}
+	q.media[mediaID] = media
+	category := db.ThemeMediaCategory{ID: uuid.New(), ThemeID: themeID, Name: "BGM", SortOrder: 1, CreatedAt: time.Now()}
+	q.categories[category.ID] = category
+
+	resp, err := svc.UpdateMedia(context.Background(), creatorID, mediaID, UpdateMediaRequest{
+		Name:       "오프닝 음악",
+		Type:       MediaTypeBGM,
+		Tags:       []string{"intro"},
+		SortOrder:  3,
+		CategoryID: &category.ID,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMedia: %v", err)
+	}
+	if resp.Name != "오프닝 음악" || resp.Duration == nil || *resp.Duration != 120 || resp.CategoryID == nil || *resp.CategoryID != category.ID {
+		t.Fatalf("unexpected updated response: %#v", resp)
+	}
+	if got := q.media[mediaID]; got.Name != "오프닝 음악" || !got.Duration.Valid || got.Duration.Int32 != 120 || !got.CategoryID.Valid {
+		t.Fatalf("unexpected stored media: %#v", got)
+	}
+}
+
+func TestMediaService_UpdateMedia_ExplicitDurationAndNilTags(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeVoice)
+	duration := int32(42)
+
+	resp, err := svc.UpdateMedia(context.Background(), creatorID, mediaID, UpdateMediaRequest{
+		Name:      "증언 음성",
+		Type:      MediaTypeVoice,
+		Duration:  &duration,
+		Tags:      nil,
+		SortOrder: 4,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMedia: %v", err)
+	}
+	if resp.Duration == nil || *resp.Duration != duration || resp.Tags == nil || len(resp.Tags) != 0 {
+		t.Fatalf("unexpected updated response: %#v", resp)
 	}
 }
 
@@ -1351,6 +1640,25 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	}
 }
 
+func TestMediaService_Delete_FileMediaBestEffortStorageCleanup(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	key := q.media[mediaID].StorageKey.String
+	st.objects[key] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+
+	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID); err != nil {
+		t.Fatalf("DeleteMedia: %v", err)
+	}
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("media row should be deleted")
+	}
+	if _, ok := st.objects[key]; ok {
+		t.Fatalf("storage object should be deleted")
+	}
+}
+
 func TestMediaService_RequestReplacementUpload_RejectsInvalidInputs(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	svc.storage = newFakeStorageProvider()
@@ -1399,6 +1707,72 @@ func TestMediaService_ConfirmReplacementUpload_CleansPendingWhenObjectMissing(t 
 	}
 }
 
+func TestMediaService_ConfirmUpload_CleansMissingObject(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	svc.storage = newFakeStorageProvider()
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+
+	_, err := svc.ConfirmUpload(context.Background(), creatorID, themeID, ConfirmUploadRequest{UploadID: mediaID})
+	assertMediaAppCode(t, err, apperror.ErrMediaUploadExpired)
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("missing object should remove pending media")
+	}
+}
+
+func TestMediaService_ConfirmUpload_SizeMismatchCleansPendingMedia(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	key := q.media[mediaID].StorageKey.String
+	st.objects[key] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+
+	_, err := svc.ConfirmUpload(context.Background(), creatorID, themeID, ConfirmUploadRequest{UploadID: mediaID})
+	assertMediaAppCode(t, err, apperror.ErrMediaTooLarge)
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("size mismatch should remove pending media")
+	}
+	if _, ok := st.objects[key]; ok {
+		t.Fatalf("size mismatch should delete uploaded object")
+	}
+}
+
+func TestMediaService_ResolveMediaURL_YouTubeAndInvalidSource(t *testing.T) {
+	svc, q, _, themeID := newMediaTestService(t)
+	sessionID := uuid.New()
+	q.sessions[sessionID] = db.GameSession{ID: sessionID, ThemeID: themeID}
+	youtubeID := seedMedia(q, themeID, MediaTypeVideo)
+	youtube := q.media[youtubeID]
+	youtube.Url = pgtype.Text{String: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", Valid: true}
+	q.media[youtubeID] = youtube
+
+	url, sourceType, err := svc.ResolveMediaURL(context.Background(), sessionID, youtubeID, MediaTypeVideo)
+	if err != nil {
+		t.Fatalf("ResolveMediaURL youtube: %v", err)
+	}
+	if url != youtube.Url.String || sourceType != SourceTypeYouTube {
+		t.Fatalf("unexpected youtube resolve: url=%q source=%q", url, sourceType)
+	}
+
+	brokenID := seedMedia(q, themeID, MediaTypeImage)
+	broken := q.media[brokenID]
+	broken.SourceType = "BROKEN"
+	q.media[brokenID] = broken
+	_, _, err = svc.ResolveMediaURL(context.Background(), sessionID, brokenID)
+	assertMediaAppCode(t, err, apperror.ErrInternal)
+}
+
+func TestMediaService_CreateYouTube_RejectsInvalidURLBeforeOEmbed(t *testing.T) {
+	svc, _, creatorID, themeID := newMediaTestService(t)
+
+	_, err := svc.CreateYouTube(context.Background(), creatorID, themeID, CreateMediaYouTubeRequest{
+		Name: "intro",
+		Type: MediaTypeVideo,
+		URL:  "https://example.com/not-youtube",
+	})
+	assertMediaAppCode(t, err, apperror.ErrMediaInvalidURL)
+}
+
 func TestMediaService_CreateYouTubeMedia_VideoType_Success(t *testing.T) {
 	_, q, _, themeID := newMediaTestService(t)
 
@@ -1420,6 +1794,52 @@ func TestMediaService_CreateYouTubeMedia_VideoType_Success(t *testing.T) {
 	}
 	if created.Type != MediaTypeVideo || created.SourceType != SourceTypeYouTube {
 		t.Fatalf("unexpected created media: type=%s source=%s", created.Type, created.SourceType)
+	}
+}
+
+func TestUploadExtensionFor_ImageAndDocumentTypes(t *testing.T) {
+	tests := []struct {
+		name      string
+		mediaType string
+		mimeType  string
+		wantExt   string
+		wantOK    bool
+	}{
+		{name: "jpeg image", mediaType: MediaTypeImage, mimeType: "image/jpeg", wantExt: ".jpg", wantOK: true},
+		{name: "webp image", mediaType: MediaTypeImage, mimeType: "image/webp", wantExt: ".webp", wantOK: true},
+		{name: "pdf document", mediaType: MediaTypeDocument, mimeType: "application/pdf", wantExt: ".pdf", wantOK: true},
+		{name: "unsupported image", mediaType: MediaTypeImage, mimeType: "image/gif", wantOK: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotExt, gotOK := uploadExtensionFor(tt.mediaType, tt.mimeType)
+			if gotExt != tt.wantExt || gotOK != tt.wantOK {
+				t.Fatalf("uploadExtensionFor() = (%q, %v), want (%q, %v)", gotExt, gotOK, tt.wantExt, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestValidateImageMagicBytes(t *testing.T) {
+	tests := []struct {
+		name    string
+		header  []byte
+		mime    string
+		wantErr bool
+	}{
+		{"JPEG valid", []byte{0xFF, 0xD8, 0xFF, 0xEE}, "image/jpeg", false},
+		{"PNG valid", []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}, "image/png", false},
+		{"WEBP valid", []byte("RIFF\x00\x00\x00\x00WEBPVP8 "), "image/webp", false},
+		{"MIME mismatch", []byte{0xFF, 0xD8, 0xFF}, "image/png", true},
+		{"Unknown MIME", []byte{0xFF, 0xD8, 0xFF}, "image/gif", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateImageMagicBytes(tt.header, tt.mime)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("validateImageMagicBytes() err=%v, wantErr=%v", err, tt.wantErr)
+			}
+		})
 	}
 }
 

@@ -52,7 +52,7 @@ SET bgm_media_id = CASE
       )
       FROM jsonb_array_elements(rs.lines) WITH ORDINALITY AS elem(line, ord)
     ), '[]'::jsonb),
-    version = version + 1,
+    version = rs.version + 1,
     updated_at = NOW()
 FROM themes t
 WHERE rs.theme_id = t.id

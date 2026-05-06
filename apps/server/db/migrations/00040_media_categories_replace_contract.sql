@@ -21,7 +21,7 @@ ALTER TABLE theme_media
   ADD CONSTRAINT theme_media_category_same_theme_fk
     FOREIGN KEY (theme_id, category_id)
     REFERENCES theme_media_categories(theme_id, id)
-    ON DELETE SET NULL;
+    ON DELETE SET NULL (category_id);
 
 CREATE INDEX idx_theme_media_category
   ON theme_media(theme_id, category_id, sort_order, created_at);
