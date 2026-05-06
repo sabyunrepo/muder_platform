@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">MMP</title>
+  <desc id="desc">Murder Mystery Platform app icon</desc>
+  <rect width="512" height="512" rx="104" fill="#020617"/>
+  <path d="M112 136h288v240H112z" fill="#0f172a"/>
+  <path d="M144 168h224v176H144z" fill="#111827" stroke="#38bdf8" stroke-width="16"/>
+  <path d="M176 304h160" stroke="#f43f5e" stroke-width="24" stroke-linecap="round"/>
+  <path d="M176 224h48l32 80 32-80h48" fill="none" stroke="#e5e7eb" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

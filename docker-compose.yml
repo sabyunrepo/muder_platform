@@ -29,6 +29,7 @@ services:
       - internal
 
   server:
+    image: mmp-server:preview
     build:
       context: ./apps/server
       dockerfile: Dockerfile
@@ -38,10 +39,28 @@ services:
       DATABASE_URL: postgres://mmp:mmp_dev@postgres:5432/mmf?sslmode=disable
       REDIS_URL: redis://redis:6379
     depends_on:
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - internal
+
+  migrate:
+    image: mmp-server:preview
+    build:
+      context: ./apps/server
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://mmp:mmp_dev@postgres:5432/mmf?sslmode=disable
+      MIGRATIONS_DIR: /db/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/migrate-preview"]
+    restart: "no"
     networks:
       - internal
 
