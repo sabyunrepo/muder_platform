@@ -3,6 +3,7 @@ import type { Node, Edge } from "@xyflow/react";
 import { PhaseNodePanel } from "./PhaseNodePanel";
 import { EndingNodePanel } from "./EndingNodePanel";
 import { BranchNodePanel } from "./BranchNodePanel";
+import { NodeConnectionPanel } from "./NodeConnectionPanel";
 import type { FlowNodeData } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
@@ -14,7 +15,10 @@ interface NodeDetailPanelProps {
   themeId: string;
   onUpdate: (id: string, data: Partial<FlowNodeData>) => void;
   onDelete: (id: string) => void;
+  nodes?: Node[];
   edges?: Edge[];
+  onConnectNodes?: (sourceId: string, targetId: string) => void;
+  onDeleteEdge?: (edgeId: string) => void;
   onEdgeConditionChange?: (edgeId: string, condition: Record<string, unknown>) => void;
 }
 
@@ -27,7 +31,10 @@ export function NodeDetailPanel({
   themeId,
   onUpdate,
   onDelete,
+  nodes = [],
   edges = [],
+  onConnectNodes,
+  onDeleteEdge,
   onEdgeConditionChange,
 }: NodeDetailPanelProps) {
   if (!node) {
@@ -77,6 +84,16 @@ export function NodeDetailPanel({
           </div>
         )}
       </div>
+
+      {!isStart && node.type !== "ending" && onConnectNodes && onDeleteEdge && (
+        <NodeConnectionPanel
+          node={node}
+          nodes={nodes}
+          edges={edges}
+          onConnectNodes={onConnectNodes}
+          onDeleteEdge={onDeleteEdge}
+        />
+      )}
 
       {/* Delete button — start 노드 제외 */}
       {!isStart && (
