@@ -284,6 +284,7 @@ export function CharacterDetailPanel({
                     </div>
                   </div>
                   <CharacterAliasRulesEditor
+                    themeId={themeId}
                     characterName={selectedChar.name}
                     characterImageUrl={selectedChar.image_url}
                     rules={aliasDrafts}

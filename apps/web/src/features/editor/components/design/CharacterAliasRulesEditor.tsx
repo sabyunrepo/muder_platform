@@ -4,8 +4,10 @@ import type { SelectOption } from './condition/ConditionRule';
 import { ConditionBuilder } from './condition/ConditionBuilder';
 import { groupToRecord, type ConditionGroup } from './condition/conditionTypes';
 import { normalizeCharacterAliasRules } from '@/features/editor/entities/character/characterEditorAdapter';
+import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
 
 interface CharacterAliasRulesEditorProps {
+  themeId: string;
   characterName: string;
   characterImageUrl?: string | null;
   rules: CharacterAliasRule[];
@@ -16,6 +18,7 @@ interface CharacterAliasRulesEditorProps {
 }
 
 interface CharacterAliasRuleItemProps {
+  themeId: string;
   rule: CharacterAliasRule;
   index: number;
   characterName: string;
@@ -27,6 +30,7 @@ interface CharacterAliasRuleItemProps {
 }
 
 export function CharacterAliasRulesEditor({
+  themeId,
   characterName,
   characterImageUrl,
   rules,
@@ -52,6 +56,7 @@ export function CharacterAliasRulesEditor({
         label: '',
         display_name: '',
         display_icon_url: '',
+        display_icon_media_id: '',
         priority: nextPriority,
         condition: groupToRecord(createDefaultAliasCondition()),
       },
@@ -69,9 +74,9 @@ export function CharacterAliasRulesEditor({
   };
   const handleSave = () => {
     if (disabled) return;
-    const invalidRule = rules.find((rule) => !rule.display_name?.trim() && !rule.display_icon_url?.trim());
+    const invalidRule = rules.find((rule) => !rule.display_name?.trim() && !rule.display_icon_url?.trim() && !rule.display_icon_media_id?.trim());
     if (invalidRule) {
-      setValidationError('표시 이름 또는 표시 아이콘 URL을 입력하세요.');
+      setValidationError('표시 이름 또는 표시 아이콘을 입력하세요.');
       return;
     }
     setValidationError(null);
@@ -105,6 +110,7 @@ export function CharacterAliasRulesEditor({
         ) : rules.map((rule, index) => (
           <CharacterAliasRuleItem
             key={rule.id}
+            themeId={themeId}
             rule={rule}
             index={index}
             characterName={characterName}
@@ -135,6 +141,7 @@ export function CharacterAliasRulesEditor({
 }
 
 function CharacterAliasRuleItem({
+  themeId,
   rule,
   index,
   characterName,
@@ -144,6 +151,7 @@ function CharacterAliasRuleItem({
   onUpdate,
   onRemove,
 }: CharacterAliasRuleItemProps) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_5rem]">
@@ -188,6 +196,31 @@ function CharacterAliasRuleItem({
           className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
         />
       </label>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          disabled={disabled}
+          className="rounded-md border border-slate-700 px-2 py-1 text-[11px] font-medium text-slate-300 transition hover:border-amber-500/50 hover:text-amber-100 disabled:cursor-default disabled:opacity-50"
+        >
+          미디어에서 아이콘 선택
+        </button>
+        {rule.display_icon_media_id ? (
+          <button
+            type="button"
+            onClick={() => onUpdate(index, { display_icon_media_id: '' })}
+            disabled={disabled}
+            className="rounded-md px-2 py-1 text-[11px] text-slate-500 transition hover:bg-red-950/40 hover:text-red-300 disabled:cursor-default disabled:opacity-50"
+          >
+            선택 해제
+          </button>
+        ) : null}
+        {rule.display_icon_media_id ? (
+          <span className="max-w-full truncate text-[11px] text-slate-500">
+            미디어 이미지 선택됨
+          </span>
+        ) : null}
+      </div>
       <div className="mt-3">
         <ConditionBuilder
           label="표시 조건"
@@ -206,6 +239,20 @@ function CharacterAliasRuleItem({
           삭제
         </button>
       </div>
+      {pickerOpen ? (
+        <MediaPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSelect={(media) => {
+            onUpdate(index, { display_icon_media_id: media.id, display_icon_url: '' });
+            setPickerOpen(false);
+          }}
+          themeId={themeId}
+          useCase="character_alias_icon"
+          selectedId={rule.display_icon_media_id ?? null}
+          title="표시 아이콘 선택"
+        />
+      ) : null}
     </div>
   );
 }

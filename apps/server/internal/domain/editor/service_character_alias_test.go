@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/mmp-platform/server/internal/engine"
 )
 
@@ -94,7 +96,7 @@ func TestNormalizeCharacterAliasRules_ValidatesConditionAndDisplayValue(t *testi
 		rules           []CharacterAliasRule
 		wantErrContains string
 	}{
-		{name: "missing display", rules: []CharacterAliasRule{{ID: "missing-display", Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "display_name or display_icon_url"},
+		{name: "missing display", rules: []CharacterAliasRule{{ID: "missing-display", Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "display_name, display_icon_url, or display_icon_media_id"},
 		{name: "bad condition", rules: []CharacterAliasRule{{ID: "bad-condition", DisplayName: strPtr("별칭"), Priority: 0, Condition: json.RawMessage(`{"id":"g","operator":"AND","rules":[]}`)}}, wantErrContains: "condition invalid"},
 		{name: "empty id", rules: []CharacterAliasRule{{ID: " ", DisplayName: strPtr("별칭"), Priority: 0, Condition: aliasCondition("identity_revealed", "true")}}, wantErrContains: "id is required"},
 		{name: "duplicated id", rules: []CharacterAliasRule{valid, valid}, wantErrContains: "duplicated"},
@@ -114,6 +116,75 @@ func TestNormalizeCharacterAliasRules_ValidatesConditionAndDisplayValue(t *testi
 				t.Fatalf("expected error containing %q, got %v", tc.wantErrContains, err)
 			}
 		})
+	}
+}
+
+func TestService_CreateCharacter_ValidatesAliasIconMediaID(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	image := createMediaForReferenceTest(t, f.q, themeID, "alias-icon", MediaTypeImage)
+	document := createMediaForReferenceTest(t, f.q, themeID, "alias-doc", MediaTypeDocument)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	otherThemeImage := createMediaForReferenceTest(t, f.q, otherThemeID, "other-alias-icon", MediaTypeImage)
+
+	created, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name: "별칭 캐릭터",
+		AliasRules: []CharacterAliasRule{{
+			ID:                 "alias-icon",
+			DisplayIconMediaID: strPtr(image.ID.String()),
+			Priority:           0,
+			Condition:          aliasCondition("identity_revealed", "true"),
+		}},
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter with alias icon media id: %v", err)
+	}
+	if len(created.AliasRules) != 1 || created.AliasRules[0].DisplayIconMediaID == nil || *created.AliasRules[0].DisplayIconMediaID != image.ID.String() {
+		t.Fatalf("alias icon media id not persisted: %+v", created.AliasRules)
+	}
+
+	_, err = f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name: "잘못된 별칭 캐릭터",
+		AliasRules: []CharacterAliasRule{{
+			ID:                 "alias-doc",
+			DisplayIconMediaID: strPtr(document.ID.String()),
+			Priority:           0,
+			Condition:          aliasCondition("identity_revealed", "true"),
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "display_icon_media_id must be an image in this theme") {
+		t.Fatalf("expected wrong media type validation error, got %v", err)
+	}
+
+	_, err = f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name: "다른 테마 별칭 캐릭터",
+		AliasRules: []CharacterAliasRule{{
+			ID:                 "alias-other-theme",
+			DisplayIconMediaID: strPtr(otherThemeImage.ID.String()),
+			Priority:           0,
+			Condition:          aliasCondition("identity_revealed", "true"),
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "display_icon_media_id must be an image in this theme") {
+		t.Fatalf("expected other theme media validation error, got %v", err)
+	}
+
+	_, err = f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name: "없는 미디어 별칭 캐릭터",
+		AliasRules: []CharacterAliasRule{{
+			ID:                 "alias-missing",
+			DisplayIconMediaID: strPtr(uuid.NewString()),
+			Priority:           0,
+			Condition:          aliasCondition("identity_revealed", "true"),
+		}},
+	})
+	if err == nil || !strings.Contains(err.Error(), "display_icon_media_id media not found") {
+		t.Fatalf("expected missing media validation error, got %v", err)
 	}
 }
 

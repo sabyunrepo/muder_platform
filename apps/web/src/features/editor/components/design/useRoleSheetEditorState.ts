@@ -19,6 +19,9 @@ import { isApiHttpError } from '@/lib/api-error';
 type EditableRoleSheetFormat = 'markdown' | 'pdf' | 'images';
 type ResolvedRoleSheetFormat = EditableRoleSheetFormat | null;
 type SaveStatus = 'idle' | 'saved' | 'failed';
+export type ImageRoleSheetPageDraft =
+  | { kind: 'media'; mediaId: string }
+  | { kind: 'url'; url: string };
 
 type UpsertRoleSheetMutation = ReturnType<typeof useUpsertCharacterRoleSheet>;
 type RequestUploadUrlMutation = ReturnType<typeof useRequestUploadUrl>;
@@ -49,8 +52,10 @@ export function useRoleSheetEditorState({
 
   const sync = useRoleSheetSync({ roleSheet: roleSheetQuery.data, roleSheetError: roleSheetQuery.error });
   const [draft, setDraft] = useState('');
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imagePages, setImagePages] = useState<ImageRoleSheetPageDraft[]>([]);
   const [imageDraft, setImageDraft] = useState('');
+  const imageUrls = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'url' ? [imagePage.url] : []), [imagePages]);
+  const imageMediaIds = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'media' ? [imagePage.mediaId] : []), [imagePages]);
 
   useEffect(() => {
     setDraft(sync.originalBody);
@@ -58,9 +63,9 @@ export function useRoleSheetEditorState({
   }, [sync.originalBody, characterId]);
 
   useEffect(() => {
-    setImageUrls(sync.imageUrls);
+    setImagePages(sync.imagePages);
     setImageDraft('');
-  }, [sync.imageUrls, characterId]);
+  }, [sync.imagePages, characterId]);
 
   useEffect(() => {
     const nextFormat = resolveEditableFormat(roleSheetQuery.data?.format);
@@ -90,7 +95,7 @@ export function useRoleSheetEditorState({
     setUploadProgress,
   });
   const saveImages = useRoleSheetImagesSaver({
-    imageUrls,
+    imagePages,
     upsertContent,
     setSelectedFormat,
     setSaveStatus,
@@ -109,6 +114,8 @@ export function useRoleSheetEditorState({
     page,
     setPage,
     imageUrls,
+    imageMediaIds,
+    imagePages,
     imageDraft,
     setImageDraft,
     fileInputRef,
@@ -128,15 +135,23 @@ export function useRoleSheetEditorState({
         toast.error('http 또는 https 이미지 URL을 입력해 주세요');
         return;
       }
-      setImageUrls((current) => {
+      setImagePages((current) => {
         setPage(current.length + 1);
-        return [...current, nextURL];
+        return [...current, { kind: 'url', url: nextURL }];
       });
       setImageDraft('');
       setSaveStatus('idle');
     },
+    addImageMediaPage: (mediaId: string) => {
+      setImagePages((current) => {
+        if (current.some((imagePage) => imagePage.kind === 'media' && imagePage.mediaId === mediaId)) return current;
+        setPage(current.length + 1);
+        return [...current, { kind: 'media', mediaId }];
+      });
+      setSaveStatus('idle');
+    },
     removeImagePage: (index: number) => {
-      setImageUrls((current) => {
+      setImagePages((current) => {
         const next = current.filter((_, currentIndex) => currentIndex !== index);
         setPage((currentPage) => {
           if (currentPage > index + 1) return currentPage - 1;
@@ -148,7 +163,7 @@ export function useRoleSheetEditorState({
       setSaveStatus('idle');
     },
     moveImagePage: (index: number, direction: -1 | 1) => {
-      setImageUrls((current) => {
+      setImagePages((current) => {
         const nextIndex = index + direction;
         if (nextIndex < 0 || nextIndex >= current.length) return current;
         const next = [...current];
@@ -184,12 +199,15 @@ function useRoleSheetSync({
   const isUnsupportedFormat = Boolean(roleSheet?.format && !resolveEditableFormat(roleSheet.format));
   const originalBody = isMissingDocument ? '' : (roleSheet?.markdown?.body ?? '');
   const pdfMediaId = roleSheet?.format === 'pdf' ? roleSheet.pdf?.media_id : undefined;
-  const imageUrls = useMemo(
-    () => (roleSheet?.format === 'images' ? (roleSheet.images?.image_urls ?? []) : []),
-    [roleSheet?.format, roleSheet?.images?.image_urls],
-  );
+  const imagePages = useMemo<ImageRoleSheetPageDraft[]>(() => {
+    if (roleSheet?.format !== 'images') return [];
+    return [
+      ...(roleSheet.images?.image_media_ids ?? []).map((mediaId) => ({ kind: 'media' as const, mediaId })),
+      ...(roleSheet.images?.image_urls ?? []).map((url) => ({ kind: 'url' as const, url })),
+    ];
+  }, [roleSheet?.format, roleSheet?.images?.image_media_ids, roleSheet?.images?.image_urls]);
 
-  return { isMissingDocument, isUnsupportedFormat, originalBody, pdfMediaId, imageUrls };
+  return { isMissingDocument, isUnsupportedFormat, originalBody, pdfMediaId, imagePages };
 }
 
 function useRoleSheetMarkdownSaver({
@@ -232,13 +250,13 @@ function useRoleSheetMarkdownSaver({
 }
 
 function useRoleSheetImagesSaver({
-  imageUrls,
+  imagePages,
   upsertContent,
   setSelectedFormat,
   setSaveStatus,
   setPage,
 }: {
-  imageUrls: string[];
+  imagePages: ImageRoleSheetPageDraft[];
   upsertContent: UpsertRoleSheetMutation;
   setSelectedFormat: (format: EditableRoleSheetFormat) => void;
   setSaveStatus: (status: SaveStatus) => void;
@@ -246,14 +264,16 @@ function useRoleSheetImagesSaver({
 }) {
   return () => {
     if (upsertContent.isPending) return;
-    if (imageUrls.length === 0) {
+    const imageUrls = imagePages.flatMap((imagePage) => imagePage.kind === 'url' ? [imagePage.url] : []);
+    const imageMediaIds = imagePages.flatMap((imagePage) => imagePage.kind === 'media' ? [imagePage.mediaId] : []);
+    if (imageUrls.length === 0 && imageMediaIds.length === 0) {
       setSaveStatus('failed');
       toast.error('이미지 페이지를 1개 이상 추가해 주세요');
       return;
     }
 
     upsertContent.mutate(
-      { format: 'images', images: { image_urls: imageUrls } },
+      { format: 'images', images: { image_urls: imageUrls, image_media_ids: imageMediaIds } },
       {
         onSuccess: () => {
           setSelectedFormat('images');

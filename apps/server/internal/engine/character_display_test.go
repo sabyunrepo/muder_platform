@@ -27,13 +27,15 @@ func TestParseCharacterAliasRules(t *testing.T) {
 
 func TestResolveCharacterDisplay_AppliesHighestPriorityMatchingRule(t *testing.T) {
 	baseIcon := "https://cdn.example/base.webp"
+	baseMediaID := "00000000-0000-4000-8000-000000000001"
 	lowName := "낮은 우선순위"
 	highIcon := "https://cdn.example/high.webp"
 	highName := "밤의 목격자"
 
 	display := ResolveCharacterDisplay(CharacterDisplayBase{
-		Name:     "홍길동",
-		ImageURL: &baseIcon,
+		Name:         "홍길동",
+		ImageURL:     &baseIcon,
+		ImageMediaID: &baseMediaID,
 		AliasRules: []CharacterAliasRule{
 			{
 				ID:          "low",
@@ -57,12 +59,42 @@ func TestResolveCharacterDisplay_AppliesHighestPriorityMatchingRule(t *testing.T
 	if display.AppliedAliasRuleID == nil || *display.AppliedAliasRuleID != "high" {
 		t.Fatalf("AppliedAliasRuleID = %v, want high", display.AppliedAliasRuleID)
 	}
+	if display.ImageMediaID != nil {
+		t.Fatalf("ImageMediaID = %v, want nil when URL alias is applied", display.ImageMediaID)
+	}
+}
+
+func TestResolveCharacterDisplay_AppliesAliasIconMediaID(t *testing.T) {
+	baseIcon := "https://cdn.example/base.webp"
+	baseMediaID := "00000000-0000-4000-8000-000000000001"
+	aliasMediaID := "00000000-0000-4000-8000-000000000002"
+
+	display := ResolveCharacterDisplay(CharacterDisplayBase{
+		Name:         "홍길동",
+		ImageURL:     &baseIcon,
+		ImageMediaID: &baseMediaID,
+		AliasRules: []CharacterAliasRule{{
+			ID:                 "media",
+			DisplayIconMediaID: &aliasMediaID,
+			Priority:           1,
+			Condition:          matchingAliasCondition(),
+		}},
+	}, json.RawMessage(`{"flags":{"alias_ready":true}}`))
+
+	if display.ImageURL != nil {
+		t.Fatalf("ImageURL = %v, want nil when media alias is applied", display.ImageURL)
+	}
+	if display.ImageMediaID == nil || *display.ImageMediaID != aliasMediaID {
+		t.Fatalf("ImageMediaID = %v, want %s", display.ImageMediaID, aliasMediaID)
+	}
 }
 
 func TestResolveCharacterDisplay_FallsBackWhenConditionMissesOrContextMissing(t *testing.T) {
+	baseMediaID := "00000000-0000-4000-8000-000000000001"
 	base := CharacterDisplayBase{
-		Name:     "홍길동",
-		ImageURL: strPtr("https://cdn.example/base.webp"),
+		Name:         "홍길동",
+		ImageURL:     strPtr("https://cdn.example/base.webp"),
+		ImageMediaID: &baseMediaID,
 		AliasRules: []CharacterAliasRule{{
 			ID:          "alias-1",
 			DisplayName: strPtr("목격자"),
@@ -77,7 +109,7 @@ func TestResolveCharacterDisplay_FallsBackWhenConditionMissesOrContextMissing(t 
 		json.RawMessage(`{"flags":{"alias_ready":false}}`),
 	} {
 		display := ResolveCharacterDisplay(base, context)
-		if display.Name != base.Name || display.ImageURL != base.ImageURL || display.AppliedAliasRuleID != nil {
+		if display.Name != base.Name || display.ImageURL != base.ImageURL || display.ImageMediaID != base.ImageMediaID || display.AppliedAliasRuleID != nil {
 			t.Fatalf("ResolveCharacterDisplay(%s) = %+v, want base display", string(context), display)
 		}
 	}

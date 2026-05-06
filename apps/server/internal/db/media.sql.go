@@ -12,6 +12,36 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearCharacterAliasIconMediaReferencesWithOwner = `-- name: ClearCharacterAliasIconMediaReferencesWithOwner :execrows
+UPDATE theme_characters c
+SET alias_rules = regexp_replace(
+      c.alias_rules::text,
+      '"display_icon_media_id"\s*:\s*"' || $1::text || '"',
+      '"display_icon_media_id":null',
+      'g'
+    )::jsonb,
+    updated_at = NOW()
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = $2
+  AND c.theme_id = $3
+  AND c.alias_rules::text ~ ('"display_icon_media_id"\s*:\s*"' || $1::text || '"')
+`
+
+type ClearCharacterAliasIconMediaReferencesWithOwnerParams struct {
+	MediaID   string    `json:"media_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+}
+
+func (q *Queries) ClearCharacterAliasIconMediaReferencesWithOwner(ctx context.Context, arg ClearCharacterAliasIconMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearCharacterAliasIconMediaReferencesWithOwner, arg.MediaID, arg.CreatorID, arg.ThemeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearMapMediaReferencesWithOwner = `-- name: ClearMapMediaReferencesWithOwner :execrows
 UPDATE theme_maps m
 SET image_media_id = NULL
@@ -87,19 +117,38 @@ func (q *Queries) ClearReadingSectionMediaReferencesWithOwner(ctx context.Contex
 
 const clearRoleSheetMediaReferencesWithOwner = `-- name: ClearRoleSheetMediaReferencesWithOwner :execrows
 UPDATE theme_contents c
-SET body = regexp_replace(
-      c.body,
-      '"media_id"\s*:\s*"' || $1::text || '"',
-      '"media_id":null',
-      'g'
-    ),
+SET body = jsonb_set(
+      regexp_replace(
+        c.body,
+        '"media_id"\s*:\s*"' || $1::text || '"',
+        '"media_id":null',
+        'g'
+      )::jsonb,
+      '{images,image_media_ids}',
+      COALESCE((
+        SELECT jsonb_agg(page_id ORDER BY ord)
+        FROM jsonb_array_elements_text(
+          COALESCE(
+            regexp_replace(
+              c.body,
+              '"media_id"\s*:\s*"' || $1::text || '"',
+              '"media_id":null',
+              'g'
+            )::jsonb #> '{images,image_media_ids}',
+            '[]'::jsonb
+          )
+        ) WITH ORDINALITY AS elem(page_id, ord)
+        WHERE page_id <> $1::text
+      ), '[]'::jsonb),
+      true
+    )::text,
     updated_at = NOW()
 FROM themes t
 WHERE c.theme_id = t.id
   AND t.creator_id = $2
   AND c.theme_id = $3
   AND c.key ~ '^role_sheet:'
-  AND c.body ~ ('"media_id"\s*:\s*"' || $1::text || '"')
+  AND c.body ~ $1::text
 `
 
 type ClearRoleSheetMediaReferencesWithOwnerParams struct {
@@ -336,6 +385,43 @@ func (q *Queries) DeleteMediaWithOwner(ctx context.Context, arg DeleteMediaWithO
 	return result.RowsAffected(), nil
 }
 
+const findCharacterAliasIconReferencesForMedia = `-- name: FindCharacterAliasIconReferencesForMedia :many
+SELECT id, name
+FROM theme_characters
+WHERE theme_id = $1
+  AND alias_rules::text ~ ('"display_icon_media_id"\s*:\s*"' || $2::text || '"')
+`
+
+type FindCharacterAliasIconReferencesForMediaParams struct {
+	ThemeID uuid.UUID `json:"theme_id"`
+	MediaID string    `json:"media_id"`
+}
+
+type FindCharacterAliasIconReferencesForMediaRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) FindCharacterAliasIconReferencesForMedia(ctx context.Context, arg FindCharacterAliasIconReferencesForMediaParams) ([]FindCharacterAliasIconReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findCharacterAliasIconReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindCharacterAliasIconReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindCharacterAliasIconReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findMapReferencesForMedia = `-- name: FindMapReferencesForMedia :many
 SELECT id, name
 FROM theme_maps
@@ -374,7 +460,7 @@ func (q *Queries) FindMapReferencesForMedia(ctx context.Context, arg FindMapRefe
 }
 
 const findRoleSheetReferencesForMedia = `-- name: FindRoleSheetReferencesForMedia :many
-SELECT id, key
+SELECT id, key, body
 FROM theme_contents
 WHERE theme_id = $1
   AND key ~ '^role_sheet:'
@@ -387,8 +473,9 @@ type FindRoleSheetReferencesForMediaParams struct {
 }
 
 type FindRoleSheetReferencesForMediaRow struct {
-	ID  uuid.UUID `json:"id"`
-	Key string    `json:"key"`
+	ID   uuid.UUID `json:"id"`
+	Key  string    `json:"key"`
+	Body string    `json:"body"`
 }
 
 func (q *Queries) FindRoleSheetReferencesForMedia(ctx context.Context, arg FindRoleSheetReferencesForMediaParams) ([]FindRoleSheetReferencesForMediaRow, error) {
@@ -400,7 +487,7 @@ func (q *Queries) FindRoleSheetReferencesForMedia(ctx context.Context, arg FindR
 	items := []FindRoleSheetReferencesForMediaRow{}
 	for rows.Next() {
 		var i FindRoleSheetReferencesForMediaRow
-		if err := rows.Scan(&i.ID, &i.Key); err != nil {
+		if err := rows.Scan(&i.ID, &i.Key, &i.Body); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

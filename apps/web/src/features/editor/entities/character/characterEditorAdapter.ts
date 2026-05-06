@@ -125,10 +125,11 @@ export function normalizeCharacterAliasRules(rules: CharacterAliasRule[] | null 
       label: rule.label?.trim() || undefined,
       display_name: rule.display_name?.trim() || undefined,
       display_icon_url: rule.display_icon_url?.trim() || undefined,
+      display_icon_media_id: rule.display_icon_media_id?.trim() || undefined,
       priority: Number.isFinite(rule.priority) ? Math.max(0, Math.trunc(rule.priority)) : 0,
       condition: rule.condition,
     }))
-    .filter((rule) => Boolean(rule.id && (rule.display_name || rule.display_icon_url)));
+    .filter((rule) => Boolean(rule.id && (rule.display_name || rule.display_icon_url || rule.display_icon_media_id)));
 }
 
 function getExistingEndcardPayload(character: EditorCharacterResponse): Pick<

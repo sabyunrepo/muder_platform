@@ -4,6 +4,26 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CharacterAliasRulesEditor } from '../CharacterAliasRulesEditor';
 import type { CharacterAliasRule } from '@/features/editor/api';
 
+vi.mock('@/features/editor/components/media/MediaPicker', () => ({
+  MediaPicker: ({
+    open,
+    selectedId,
+    onSelect,
+  }: {
+    open: boolean;
+    selectedId?: string | null;
+    onSelect: (media: { id: string; name: string; type: string }) => void;
+  }) =>
+    open ? (
+      <div>
+        <span>selected:{selectedId ?? 'none'}</span>
+        <button type="button" onClick={() => onSelect({ id: 'media-image-1', name: '별칭 아이콘', type: 'IMAGE' })}>
+          별칭 아이콘 선택
+        </button>
+      </div>
+    ) : null,
+}));
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -21,6 +41,7 @@ function renderEditor(overrides: Partial<{
   const onSave = overrides.onSave ?? vi.fn();
   render(
     <CharacterAliasRulesEditor
+      themeId="theme-1"
       characterName="홍길동"
       characterImageUrl="https://cdn.example/base.webp"
       rules={overrides.rules ?? []}
@@ -38,6 +59,7 @@ function renderStatefulEditor(initialRules: CharacterAliasRule[], onSave = vi.fn
     const [rules, setRules] = useState(initialRules);
     return (
       <CharacterAliasRulesEditor
+        themeId="theme-1"
         characterName="홍길동"
         characterImageUrl="https://cdn.example/base.webp"
         rules={rules}
@@ -141,6 +163,42 @@ describe('CharacterAliasRulesEditor', () => {
     })]);
   });
 
+  it('미디어 아이콘을 선택하면 URL 아이콘을 비우고 media id로 저장한다', () => {
+    const onSave = vi.fn();
+    const rules: CharacterAliasRule[] = [{
+      id: 'alias-1',
+      label: '정체 공개',
+      display_name: '',
+      display_icon_url: 'https://cdn.example/legacy.webp',
+      priority: 1,
+      condition: {
+        id: 'group-1',
+        operator: 'AND',
+        rules: [{
+          id: 'rule-1',
+          variable: 'custom_flag',
+          target_flag_key: 'alias_ready',
+          comparator: '=',
+          value: 'true',
+        }],
+      },
+    }];
+
+    renderStatefulEditor(rules, onSave);
+    fireEvent.click(screen.getByRole('button', { name: '미디어에서 아이콘 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '별칭 아이콘 선택' }));
+    expect(screen.getByText('미디어 이미지 선택됨')).toBeTruthy();
+    expect((screen.getByLabelText('표시 아이콘 URL') as HTMLInputElement).value).toBe('');
+
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+
+    expect(onSave).toHaveBeenCalledWith([expect.objectContaining({
+      id: 'alias-1',
+      display_icon_media_id: 'media-image-1',
+      display_icon_url: undefined,
+    })]);
+  });
+
   it('우선순위 입력은 음수와 소수를 즉시 0 이상의 정수로 정리한다', () => {
     const onSave = vi.fn();
     const rules: CharacterAliasRule[] = [{
@@ -199,7 +257,7 @@ describe('CharacterAliasRulesEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
 
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeTruthy();
+    expect(screen.getByText('표시 이름 또는 표시 아이콘을 입력하세요.')).toBeTruthy();
   });
 
   it('캐릭터가 바뀌면 이전 검증 메시지를 지운다', () => {
@@ -218,6 +276,7 @@ describe('CharacterAliasRulesEditor', () => {
     };
     const { rerender } = render(
       <CharacterAliasRulesEditor
+        themeId="theme-1"
         characterName="홍길동"
         characterImageUrl="https://cdn.example/base.webp"
         rules={[incompleteRule]}
@@ -229,10 +288,11 @@ describe('CharacterAliasRulesEditor', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
-    expect(screen.getByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeTruthy();
+    expect(screen.getByText('표시 이름 또는 표시 아이콘을 입력하세요.')).toBeTruthy();
 
     rerender(
       <CharacterAliasRulesEditor
+        themeId="theme-1"
         characterName="김영희"
         characterImageUrl="https://cdn.example/next.webp"
         rules={[completeRule]}
@@ -243,6 +303,6 @@ describe('CharacterAliasRulesEditor', () => {
       />,
     );
 
-    expect(screen.queryByText('표시 이름 또는 표시 아이콘 URL을 입력하세요.')).toBeNull();
+    expect(screen.queryByText('표시 이름 또는 표시 아이콘을 입력하세요.')).toBeNull();
   });
 });

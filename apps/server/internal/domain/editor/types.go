@@ -202,7 +202,8 @@ type RoleSheetPDF struct {
 }
 
 type RoleSheetImages struct {
-	ImageURLs []string `json:"image_urls"`
+	ImageURLs     []string    `json:"image_urls,omitempty"`
+	ImageMediaIDs []uuid.UUID `json:"image_media_ids,omitempty"`
 }
 
 type RoleSheetResponse struct {

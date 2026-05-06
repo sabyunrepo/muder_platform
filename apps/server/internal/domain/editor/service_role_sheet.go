@@ -102,15 +102,18 @@ func validateRoleSheetRequestShape(req UpsertRoleSheetRequest) error {
 }
 
 func validateRoleSheetImages(images *RoleSheetImages) error {
-	_, err := normalizeRoleSheetImages(images)
+	_, err := normalizeRoleSheetImages(images, false)
 	return err
 }
 
-func normalizeRoleSheetImages(images *RoleSheetImages) (*RoleSheetImages, error) {
-	if images == nil || len(images.ImageURLs) == 0 {
+func normalizeRoleSheetImages(images *RoleSheetImages, allowEmpty bool) (*RoleSheetImages, error) {
+	if images == nil || (len(images.ImageURLs) == 0 && len(images.ImageMediaIDs) == 0) {
+		if allowEmpty {
+			return &RoleSheetImages{}, nil
+		}
 		return nil, apperror.BadRequest("image role sheet pages are required")
 	}
-	if len(images.ImageURLs) > maxRoleSheetImagePages {
+	if len(images.ImageURLs)+len(images.ImageMediaIDs) > maxRoleSheetImagePages {
 		return nil, apperror.BadRequest("image role sheet has too many pages")
 	}
 	normalizedURLs := make([]string, 0, len(images.ImageURLs))
@@ -125,7 +128,19 @@ func normalizeRoleSheetImages(images *RoleSheetImages) (*RoleSheetImages, error)
 		}
 		normalizedURLs = append(normalizedURLs, trimmed)
 	}
-	return &RoleSheetImages{ImageURLs: normalizedURLs}, nil
+	normalizedMediaIDs := make([]uuid.UUID, 0, len(images.ImageMediaIDs))
+	seenMediaIDs := make(map[uuid.UUID]struct{}, len(images.ImageMediaIDs))
+	for _, mediaID := range images.ImageMediaIDs {
+		if mediaID == uuid.Nil {
+			return nil, apperror.BadRequest("image role sheet media_id is required")
+		}
+		if _, ok := seenMediaIDs[mediaID]; ok {
+			return nil, apperror.BadRequest("image role sheet media_id is duplicated")
+		}
+		seenMediaIDs[mediaID] = struct{}{}
+		normalizedMediaIDs = append(normalizedMediaIDs, mediaID)
+	}
+	return &RoleSheetImages{ImageURLs: normalizedURLs, ImageMediaIDs: normalizedMediaIDs}, nil
 }
 
 func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID, char db.ThemeCharacter, req UpsertRoleSheetRequest) (string, error) {
@@ -148,8 +163,11 @@ func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID,
 		}
 		return string(body), nil
 	case RoleSheetFormatImages:
-		images, err := normalizeRoleSheetImages(req.Images)
+		images, err := normalizeRoleSheetImages(req.Images, false)
 		if err != nil {
+			return "", err
+		}
+		if err := s.assertRoleSheetImageMediaIDs(ctx, creatorID, char.ThemeID, images.ImageMediaIDs); err != nil {
 			return "", err
 		}
 		body, err := json.Marshal(storedRoleSheet{Version: 1, Format: RoleSheetFormatImages, Images: images})
@@ -161,6 +179,29 @@ func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID,
 	default:
 		return "", apperror.BadRequest("unsupported role sheet format")
 	}
+}
+
+func (s *service) assertRoleSheetImageMediaIDs(ctx context.Context, creatorID, themeID uuid.UUID, mediaIDs []uuid.UUID) error {
+	for _, mediaID := range mediaIDs {
+		media, err := s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
+			ID:        mediaID,
+			CreatorID: creatorID,
+		})
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return apperror.BadRequest("image role sheet media not found")
+			}
+			s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get role sheet image media")
+			return apperror.Internal("failed to validate role sheet media")
+		}
+		if media.ThemeID != themeID {
+			return apperror.BadRequest("image role sheet media must belong to the same theme")
+		}
+		if media.Type != MediaTypeImage {
+			return apperror.BadRequest("image role sheet media must be an image")
+		}
+	}
+	return nil
 }
 
 func (s *service) assertRoleSheetPDFMedia(ctx context.Context, creatorID, themeID, mediaID uuid.UUID) error {
@@ -244,7 +285,7 @@ func parseStoredRoleSheet(body string) (storedRoleSheet, bool) {
 	case RoleSheetFormatPDF:
 		return stored, stored.PDF != nil && stored.PDF.MediaID != uuid.Nil
 	case RoleSheetFormatImages:
-		images, err := normalizeRoleSheetImages(stored.Images)
+		images, err := normalizeRoleSheetImages(stored.Images, true)
 		if err != nil {
 			return storedRoleSheet{}, false
 		}

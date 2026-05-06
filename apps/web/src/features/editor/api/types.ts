@@ -70,6 +70,7 @@ export interface CharacterAliasRule {
   label?: string;
   display_name?: string;
   display_icon_url?: string;
+  display_icon_media_id?: string;
   priority: number;
   condition: Record<string, unknown>;
 }
@@ -243,7 +244,8 @@ export interface RoleSheetPDF {
 }
 
 export interface RoleSheetImages {
-  image_urls: string[];
+  image_urls?: string[];
+  image_media_ids?: string[];
 }
 
 export interface RoleSheetResponse {

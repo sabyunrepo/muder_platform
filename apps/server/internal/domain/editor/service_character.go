@@ -42,6 +42,9 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 	if err != nil {
 		return nil, err
 	}
+	if err := s.validateCharacterAliasMedia(ctx, themeID, aliasRules); err != nil {
+		return nil, err
+	}
 	aliasRulesJSON, err := marshalCharacterAliasRules(aliasRules)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to marshal character alias rules")
@@ -114,6 +117,9 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 	if req.AliasRules != nil {
 		aliasRules, err := normalizeCharacterAliasRules(req.AliasRules)
 		if err != nil {
+			return nil, err
+		}
+		if err := s.validateCharacterAliasMedia(ctx, char.ThemeID, aliasRules); err != nil {
 			return nil, err
 		}
 		aliasRulesJSON, err = marshalCharacterAliasRules(aliasRules)

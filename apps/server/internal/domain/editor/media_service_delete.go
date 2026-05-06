@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -134,14 +135,26 @@ func (s *mediaService) collectMediaReferencesWithQueries(ctx context.Context, q 
 
 	roleSheetRefs, err := q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
 		ThemeID: media.ThemeID,
-		Body:    `"media_id"\s*:\s*"` + mediaID.String() + `"`,
+		Body:    mediaID.String(),
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check role sheet references")
 		return nil, apperror.Internal("failed to check media references")
 	}
 	for _, r := range roleSheetRefs {
-		refList = append(refList, mediaReferenceInfo{Type: "role_sheet", ID: r.Key, Name: r.Key})
+		refList = append(refList, mediaReferenceInfo{Type: roleSheetMediaReferenceType(r.Body, mediaID), ID: r.Key, Name: r.Key})
+	}
+
+	aliasIconRefs, err := q.FindCharacterAliasIconReferencesForMedia(ctx, db.FindCharacterAliasIconReferencesForMediaParams{
+		ThemeID: media.ThemeID,
+		MediaID: mediaID.String(),
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check character alias icon references")
+		return nil, apperror.Internal("failed to check media references")
+	}
+	for _, r := range aliasIconRefs {
+		refList = append(refList, mediaReferenceInfo{Type: "character_alias_icon", ID: r.ID.String(), Name: r.Name})
 	}
 
 	theme, err := q.GetTheme(ctx, media.ThemeID)
@@ -177,6 +190,15 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear role sheet media references")
+		return apperror.Internal("failed to clear media references")
+	}
+
+	if _, err := q.ClearCharacterAliasIconMediaReferencesWithOwner(ctx, db.ClearCharacterAliasIconMediaReferencesWithOwnerParams{
+		MediaID:   mediaID.String(),
+		CreatorID: creatorID,
+		ThemeID:   media.ThemeID,
+	}); err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear character alias icon media references")
 		return apperror.Internal("failed to clear media references")
 	}
 
@@ -219,6 +241,13 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		}
 	}
 	return nil
+}
+
+func roleSheetMediaReferenceType(body string, mediaID uuid.UUID) string {
+	if strings.Contains(body, `"image_media_ids"`) && strings.Contains(body, mediaID.String()) {
+		return "role_sheet_image_page"
+	}
+	return "role_sheet"
 }
 
 func toMediaReferenceResponses(refs []mediaReferenceInfo) []MediaReferenceResponse {

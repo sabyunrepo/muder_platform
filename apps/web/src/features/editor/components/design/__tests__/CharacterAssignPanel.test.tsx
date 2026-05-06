@@ -662,11 +662,40 @@ describe('CharacterAssignPanel', () => {
     expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
       {
         format: 'images',
-        images: { image_urls: ['https://cdn.example/role-1.webp'] },
+        images: {
+          image_urls: ['https://cdn.example/role-1.webp'],
+          image_media_ids: [],
+        },
       },
       expect.any(Object),
     );
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
+  });
+
+  it('미디어 라이브러리 이미지를 역할지 페이지로 추가해 저장한다', () => {
+    upsertRoleSheetMutateMock.mockImplementation((_payload, options) => {
+      options?.onSuccess?.();
+    });
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
+    fireEvent.click(screen.getAllByRole('button', { name: /이미지/ }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: '미디어 라이브러리에서 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '이미지 롤지 저장' }));
+
+    expect(screen.getByText('1. 캐릭터 이미지')).toBeDefined();
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
+      {
+        format: 'images',
+        images: {
+          image_urls: [],
+          image_media_ids: ['image-1'],
+        },
+      },
+      expect.any(Object),
+    );
   });
 
   it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {

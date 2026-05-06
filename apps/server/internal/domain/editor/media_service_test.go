@@ -32,6 +32,7 @@ type fakeMediaQueries struct {
 	sessions      map[uuid.UUID]db.GameSession
 	sections      map[uuid.UUID]db.ReadingSection
 	roleSheetRefs map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow
+	aliasIconRefs map[uuid.UUID][]db.FindCharacterAliasIconReferencesForMediaRow
 }
 
 func newFakeMediaQueries() *fakeMediaQueries {
@@ -44,6 +45,7 @@ func newFakeMediaQueries() *fakeMediaQueries {
 		sessions:      make(map[uuid.UUID]db.GameSession),
 		sections:      make(map[uuid.UUID]db.ReadingSection),
 		roleSheetRefs: make(map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow),
+		aliasIconRefs: make(map[uuid.UUID][]db.FindCharacterAliasIconReferencesForMediaRow),
 	}
 }
 
@@ -349,6 +351,11 @@ func (f *fakeMediaQueries) ClearRoleSheetMediaReferencesWithOwner(_ context.Cont
 	return 1, nil
 }
 
+func (f *fakeMediaQueries) ClearCharacterAliasIconMediaReferencesWithOwner(_ context.Context, arg db.ClearCharacterAliasIconMediaReferencesWithOwnerParams) (int64, error) {
+	delete(f.aliasIconRefs, uuid.MustParse(arg.MediaID))
+	return 1, nil
+}
+
 func (f *fakeMediaQueries) ClearThemeCoverMediaReferencesWithOwner(_ context.Context, arg db.ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error) {
 	if !arg.MediaID.Valid {
 		return 0, nil
@@ -458,12 +465,19 @@ func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Contex
 }
 
 func (f *fakeMediaQueries) FindRoleSheetReferencesForMedia(_ context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error) {
-	mediaIDText := strings.TrimPrefix(strings.TrimSuffix(arg.Body, `"`), `"media_id"\s*:\s*"`)
-	mediaID, err := uuid.Parse(mediaIDText)
+	mediaID, err := uuid.Parse(arg.Body)
 	if err != nil {
 		return []db.FindRoleSheetReferencesForMediaRow{}, nil
 	}
 	return f.roleSheetRefs[mediaID], nil
+}
+
+func (f *fakeMediaQueries) FindCharacterAliasIconReferencesForMedia(_ context.Context, arg db.FindCharacterAliasIconReferencesForMediaParams) ([]db.FindCharacterAliasIconReferencesForMediaRow, error) {
+	mediaID, err := uuid.Parse(arg.MediaID)
+	if err != nil {
+		return []db.FindCharacterAliasIconReferencesForMediaRow{}, nil
+	}
+	return f.aliasIconRefs[mediaID], nil
 }
 
 type fakeStorageProvider struct {
@@ -577,12 +591,14 @@ func expectEmptyMediaReferenceCollectionWithConfig(q *MockmediaQueries, themeID 
 	q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+	q.EXPECT().FindCharacterAliasIconReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{ID: themeID, ConfigJson: cfg}, nil)
 }
 
 func expectSuccessfulMediaReferenceClears(q *MockmediaQueries) {
 	q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 	q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+	q.EXPECT().ClearCharacterAliasIconMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 	q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 	q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 }
@@ -1079,6 +1095,41 @@ func TestMediaService_PreviewDelete_ReportsRoleSheetReference(t *testing.T) {
 	}
 }
 
+func TestMediaService_PreviewDelete_ReportsRoleSheetImagePageReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	q.roleSheetRefs[mediaID] = []db.FindRoleSheetReferencesForMediaRow{
+		{ID: uuid.New(), Key: "role_sheet:char-1", Body: fmt.Sprintf(`{"format":"images","images":{"image_media_ids":["%s"]}}`, mediaID.String())},
+	}
+
+	preview, err := svc.PreviewDeleteMedia(context.Background(), creatorID, mediaID)
+	if err != nil {
+		t.Fatalf("PreviewDeleteMedia: %v", err)
+	}
+	refs := preview.References
+	if len(refs) != 1 || refs[0].Type != "role_sheet_image_page" || refs[0].ID != "role_sheet:char-1" {
+		t.Fatalf("unexpected role sheet image references: %#v", refs)
+	}
+}
+
+func TestMediaService_PreviewDelete_ReportsCharacterAliasIconReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	charID := uuid.New()
+	q.aliasIconRefs[mediaID] = []db.FindCharacterAliasIconReferencesForMediaRow{
+		{ID: charID, Name: "밤의 목격자"},
+	}
+
+	preview, err := svc.PreviewDeleteMedia(context.Background(), creatorID, mediaID)
+	if err != nil {
+		t.Fatalf("PreviewDeleteMedia: %v", err)
+	}
+	refs := preview.References
+	if len(refs) != 1 || refs[0].Type != "character_alias_icon" || refs[0].ID != charID.String() || refs[0].Name != "밤의 목격자" {
+		t.Fatalf("unexpected character alias icon references: %#v", refs)
+	}
+}
+
 func TestMediaService_PreviewDelete_ReportsPhaseOnEnterMediaReference(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	mediaID := seedMedia(q, themeID, MediaTypeBGM)
@@ -1270,6 +1321,7 @@ func TestMediaService_CollectMediaReferences_QueryErrorsReturnInternal(t *testin
 				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindCharacterAliasIconReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{}, errors.New("db down"))
 			},
 		},
@@ -1318,6 +1370,7 @@ func TestMediaService_CleanupMediaReferences_QueryErrorsReturnInternal(t *testin
 				expectEmptyMediaReferenceCollection(q, themeID)
 				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearCharacterAliasIconMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 				q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
 				_ = mediaID
 			},
@@ -1328,6 +1381,7 @@ func TestMediaService_CleanupMediaReferences_QueryErrorsReturnInternal(t *testin
 				expectEmptyMediaReferenceCollection(q, themeID)
 				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearCharacterAliasIconMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 				q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 				q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
 				_ = mediaID

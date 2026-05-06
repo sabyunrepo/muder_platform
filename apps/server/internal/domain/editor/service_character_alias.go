@@ -1,10 +1,15 @@
 package editor
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
@@ -46,8 +51,9 @@ func normalizeCharacterAliasRule(rule CharacterAliasRule, index int) (CharacterA
 	}
 	rule.DisplayName = trimOptionalText(rule.DisplayName)
 	rule.DisplayIconURL = trimOptionalText(rule.DisplayIconURL)
-	if rule.DisplayName == nil && rule.DisplayIconURL == nil {
-		return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d] requires display_name or display_icon_url", index))
+	rule.DisplayIconMediaID = trimOptionalText(rule.DisplayIconMediaID)
+	if rule.DisplayName == nil && rule.DisplayIconURL == nil && rule.DisplayIconMediaID == nil {
+		return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d] requires display_name, display_icon_url, or display_icon_media_id", index))
 	}
 	if rule.DisplayName != nil && len([]rune(*rule.DisplayName)) > 50 {
 		return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d].display_name is too long", index))
@@ -57,6 +63,11 @@ func normalizeCharacterAliasRule(rule CharacterAliasRule, index int) (CharacterA
 			return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d].display_icon_url must be a valid URL", index))
 		}
 	}
+	if rule.DisplayIconMediaID != nil {
+		if _, err := uuid.Parse(*rule.DisplayIconMediaID); err != nil {
+			return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d].display_icon_media_id must be a valid media id", index))
+		}
+	}
 	if len(rule.Condition) == 0 || string(rule.Condition) == "null" {
 		return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d].condition is required", index))
 	}
@@ -64,6 +75,30 @@ func normalizeCharacterAliasRule(rule CharacterAliasRule, index int) (CharacterA
 		return CharacterAliasRule{}, apperror.BadRequest(fmt.Sprintf("alias_rules[%d].condition invalid: %v", index, err))
 	}
 	return rule, nil
+}
+
+func (s *service) validateCharacterAliasMedia(ctx context.Context, themeID uuid.UUID, rules []CharacterAliasRule) error {
+	for i, rule := range rules {
+		if rule.DisplayIconMediaID == nil {
+			continue
+		}
+		mediaID, err := uuid.Parse(*rule.DisplayIconMediaID)
+		if err != nil {
+			return apperror.BadRequest(fmt.Sprintf("alias_rules[%d].display_icon_media_id must be a valid media id", i))
+		}
+		media, err := s.q.GetMedia(ctx, mediaID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return apperror.BadRequest(fmt.Sprintf("alias_rules[%d].display_icon_media_id media not found", i))
+			}
+			s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get character alias icon media")
+			return apperror.Internal("failed to validate character alias icon media")
+		}
+		if media.ThemeID != themeID || media.Type != MediaTypeImage {
+			return apperror.BadRequest(fmt.Sprintf("alias_rules[%d].display_icon_media_id must be an image in this theme", i))
+		}
+	}
+	return nil
 }
 
 func trimOptionalText(value *string) *string {

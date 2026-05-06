@@ -44,11 +44,12 @@ type ThemeResponse struct {
 // CharacterResponse is the public character representation.
 // IsCulprit is intentionally excluded to prevent spoilers.
 type CharacterResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Description *string   `json:"description,omitempty"`
-	ImageURL    *string   `json:"image_url,omitempty"`
-	SortOrder   int32     `json:"sort_order"`
+	ID           uuid.UUID `json:"id"`
+	Name         string    `json:"name"`
+	Description  *string   `json:"description,omitempty"`
+	ImageURL     *string   `json:"image_url,omitempty"`
+	ImageMediaID *string   `json:"image_media_id,omitempty"`
+	SortOrder    int32     `json:"sort_order"`
 }
 
 // Service defines theme domain operations.
@@ -123,19 +124,29 @@ func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]Chara
 	result := make([]CharacterResponse, len(chars))
 	for i, c := range chars {
 		display := engine.ResolveCharacterDisplay(engine.CharacterDisplayBase{
-			Name:       c.Name,
-			ImageURL:   textToPtr(c.ImageUrl),
-			AliasRules: engine.ParseCharacterAliasRules(c.AliasRules),
+			Name:         c.Name,
+			ImageURL:     textToPtr(c.ImageUrl),
+			ImageMediaID: pgUUIDToStringPtr(c.ImageMediaID),
+			AliasRules:   engine.ParseCharacterAliasRules(c.AliasRules),
 		}, json.RawMessage(`{}`))
 		result[i] = CharacterResponse{
-			ID:          c.ID,
-			Name:        display.Name,
-			Description: textToPtr(c.Description),
-			ImageURL:    display.ImageURL,
-			SortOrder:   c.SortOrder,
+			ID:           c.ID,
+			Name:         display.Name,
+			Description:  textToPtr(c.Description),
+			ImageURL:     display.ImageURL,
+			ImageMediaID: display.ImageMediaID,
+			SortOrder:    c.SortOrder,
 		}
 	}
 	return result, nil
+}
+
+func pgUUIDToStringPtr(value pgtype.UUID) *string {
+	if !value.Valid {
+		return nil
+	}
+	id := uuid.UUID(value.Bytes).String()
+	return &id
 }
 
 func toThemeSummary(t db.Theme) ThemeSummary {
