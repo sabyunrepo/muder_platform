@@ -2,9 +2,9 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ResourcePicker } from "../ResourcePicker";
-import type { MediaResourceViewModel } from "@/features/editor/entities/mediaResource/mediaResourceAdapter";
+import type { PickerMediaResource } from "../ResourcePicker";
 
-const resources: MediaResourceViewModel[] = [
+const resources: PickerMediaResource[] = [
   {
     id: "resource-1",
     name: "오프닝 BGM",
@@ -115,6 +115,66 @@ describe("ResourcePicker", () => {
     );
 
     expect(screen.getByLabelText("YouTube")).toBeDefined();
+  });
+
+  it("썸네일 URL이 있으면 이미지를 보여주고 실패 시 타입 fallback을 보여준다", () => {
+    render(
+      <ResourcePicker
+        title="리소스 선택"
+        resources={[
+          {
+            ...resources[0],
+            type: "IMAGE",
+            typeLabel: "이미지",
+            thumbnailUrl: "https://example.com/image.webp",
+          },
+        ]}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    const image = document.querySelector("img") as HTMLImageElement;
+    expect(image).not.toBeNull();
+    expect(image.getAttribute("src")).toBe("https://example.com/image.webp");
+
+    fireEvent.error(image);
+    expect(screen.getByLabelText("이미지")).toBeDefined();
+  });
+
+  it("썸네일 없는 영상/문서는 타입 fallback 아이콘으로 구분한다", () => {
+    render(
+      <ResourcePicker
+        title="리소스 선택"
+        resources={[
+          {
+            ...resources[0],
+            id: "video-1",
+            name: "엔딩 영상",
+            type: "VIDEO",
+            typeLabel: "영상",
+            metaLabel: "영상 · 업로드 파일",
+          },
+          {
+            ...resources[0],
+            id: "doc-1",
+            name: "역할지 PDF",
+            type: "DOCUMENT",
+            typeLabel: "문서",
+            metaLabel: "문서 · 업로드 파일",
+          },
+        ]}
+        searchQuery=""
+        onSearchQueryChange={vi.fn()}
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("영상")).toBeDefined();
+    expect(screen.getByLabelText("문서")).toBeDefined();
   });
 
   it("빈 상태와 로딩 상태를 사용자 문장으로 표시한다", () => {

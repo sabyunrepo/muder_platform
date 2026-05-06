@@ -1,6 +1,13 @@
-import { FileText, Image, Music, Mic, Volume2, Video, Pause, Play, Youtube } from "lucide-react";
-import type { MediaResponse, MediaType } from "@/features/editor/mediaApi";
-import { extractYouTubeVideoId } from "@/features/audio/YouTubePlayer";
+import { useEffect, useState } from "react";
+import { Pause, Play, Youtube } from "lucide-react";
+import type { MediaResponse } from "@/features/editor/mediaApi";
+import {
+  canPlayInlinePreview,
+  getMediaThumbnailUrl,
+  getMediaTypeBadgeClass,
+  getMediaTypeBadgeLabel,
+  MediaTypeIcon,
+} from "./mediaVisuals";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,41 +33,6 @@ function formatDuration(seconds?: number): string | null {
   return `${mm}:${ss.toString().padStart(2, "0")}`;
 }
 
-const TYPE_BADGE: Record<string, string> = {
-  BGM: "bg-amber-500/20 text-amber-300",
-  SFX: "bg-cyan-500/20 text-cyan-300",
-  VOICE: "bg-emerald-500/20 text-emerald-300",
-  VIDEO: "bg-rose-500/20 text-rose-300",
-  DOCUMENT: "bg-violet-500/20 text-violet-300",
-  IMAGE: "bg-teal-500/20 text-teal-300",
-};
-
-const TYPE_LABEL: Record<string, string> = {
-  BGM: "BGM",
-  SFX: "SFX",
-  VOICE: "VOICE",
-  VIDEO: "VIDEO",
-  DOCUMENT: "DOCUMENT",
-  IMAGE: "IMAGE",
-};
-
-function TypeIcon({ type }: { type: MediaType | "VIDEO" }) {
-  switch (type) {
-    case "BGM":
-      return <Music className="h-6 w-6 text-amber-400" />;
-    case "SFX":
-      return <Volume2 className="h-6 w-6 text-cyan-400" />;
-    case "VOICE":
-      return <Mic className="h-6 w-6 text-emerald-400" />;
-    case "VIDEO":
-      return <Video className="h-6 w-6 text-rose-400" />;
-    case "DOCUMENT":
-      return <FileText className="h-6 w-6 text-violet-400" />;
-    case "IMAGE":
-      return <Image className="h-6 w-6 text-teal-400" />;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // MediaCard
 // ---------------------------------------------------------------------------
@@ -72,17 +44,17 @@ export function MediaCard({
   isPreviewPlaying,
   onPreviewToggle,
 }: MediaCardProps) {
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const isYouTube = media.source_type === "YOUTUBE";
-  const youtubeId = isYouTube && media.url ? extractYouTubeVideoId(media.url) : null;
-  const thumbnailUrl = youtubeId
-    ? `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg`
-    : media.type === "IMAGE" && media.url
-      ? media.url
-    : null;
+  const thumbnailUrl = getMediaThumbnailUrl(media);
   const duration = formatDuration(media.duration);
-  const badgeClass = TYPE_BADGE[media.type] ?? "bg-slate-700 text-slate-300";
-  const badgeLabel = TYPE_LABEL[media.type] ?? media.type;
-  const canPreview = !isYouTube && media.type !== "DOCUMENT" && media.type !== "IMAGE" && !!media.url;
+  const badgeClass = getMediaTypeBadgeClass(media.type);
+  const badgeLabel = getMediaTypeBadgeLabel(media.type);
+  const canPreview = canPlayInlinePreview(media);
+
+  useEffect(() => {
+    setThumbnailFailed(false);
+  }, [thumbnailUrl]);
 
   return (
     <div
@@ -104,15 +76,16 @@ export function MediaCard({
     >
       {/* Thumbnail */}
       <div className="relative flex aspect-[4/3] min-h-28 items-center justify-center bg-slate-950/60">
-        {thumbnailUrl ? (
+        {thumbnailUrl && !thumbnailFailed ? (
           <img
             src={thumbnailUrl}
             alt=""
             className="h-full w-full object-cover"
             loading="lazy"
+            onError={() => setThumbnailFailed(true)}
           />
         ) : (
-          <TypeIcon type={media.type} />
+          <MediaTypeIcon type={media.type} />
         )}
 
         {/* YouTube overlay */}

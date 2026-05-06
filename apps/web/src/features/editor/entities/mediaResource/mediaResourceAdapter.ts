@@ -140,7 +140,9 @@ export function toMediaResourceViewModel(
     metaLabel: metaParts.join(" · "),
     tags: [...media.tags],
     isExternal: media.source_type === "YOUTUBE",
-    canPreview: media.type !== "DOCUMENT" && media.source_type === "FILE",
+    canPreview:
+      media.source_type === "FILE" &&
+      (media.type === "BGM" || media.type === "SFX" || media.type === "VOICE"),
     isSelectable,
     unselectableReason: isSelectable
       ? null

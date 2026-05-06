@@ -73,9 +73,21 @@ const mockMedia: MediaResponse[] = [
     name: "유튜브 트랙",
     type: "BGM",
     source_type: "YOUTUBE",
-    url: "https://www.youtube.com/watch?v=xyz",
+    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     tags: [],
     sort_order: 3,
+    created_at: "2026-04-05T00:00:00Z",
+  },
+  {
+    id: "media-4",
+    theme_id: "theme-1",
+    name: "증거 사진",
+    type: "IMAGE",
+    source_type: "FILE",
+    url: "https://example.com/evidence.webp",
+    mime_type: "image/webp",
+    tags: [],
+    sort_order: 4,
     created_at: "2026-04-05T00:00:00Z",
   },
 ];
@@ -248,8 +260,25 @@ describe("MediaPicker", () => {
       />,
     );
     expect(screen.getByLabelText("YouTube")).toBeDefined();
-    expect(screen.queryByText("https://www.youtube.com/watch?v=xyz")).toBeNull();
+    expect(screen.queryByText("https://www.youtube.com/watch?v=dQw4w9WgXcQ")).toBeNull();
     expect(screen.queryByText("https://example.com/bgm.mp3")).toBeNull();
+  });
+
+  it("picker thumbnail은 공통 visual helper 계약을 따라 이미지와 YouTube 썸네일을 제공한다", () => {
+    render(
+      <MediaPicker
+        open={true}
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+        themeId="theme-1"
+      />,
+    );
+
+    const images = Array.from(document.querySelectorAll("img")) as HTMLImageElement[];
+    const sources = images.map((image) => image.getAttribute("src"));
+
+    expect(sources).toContain("https://example.com/evidence.webp");
+    expect(sources).toContain("https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg");
   });
 
   it("selectedId와 일치하는 항목을 강조한다", () => {
