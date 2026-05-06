@@ -40,7 +40,11 @@ import { uploadMediaFile } from '@/features/editor/mediaApi';
 
 const mockedUpload = uploadMediaFile as unknown as ReturnType<typeof vi.fn>;
 
-function renderModal(open = true, onClose = vi.fn()) {
+function renderModal(
+  open = true,
+  onClose = vi.fn(),
+  props: Partial<React.ComponentProps<typeof MediaUploadModal>> = {},
+) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -48,7 +52,7 @@ function renderModal(open = true, onClose = vi.fn()) {
     onClose,
     ...render(
       <QueryClientProvider client={qc}>
-        <MediaUploadModal open={open} onClose={onClose} themeId="theme-1" />
+        <MediaUploadModal open={open} onClose={onClose} themeId="theme-1" {...props} />
       </QueryClientProvider>
     ),
   };
@@ -104,7 +108,7 @@ describe('MediaUploadModal', () => {
   it('rejects wrong MIME type', () => {
     renderModal(true);
     const input = screen.getByTestId('media-upload-input') as HTMLInputElement;
-    const file = makeFile('doc.pdf', 1024, 'application/pdf');
+    const file = makeFile('notes.txt', 1024, 'text/plain');
     fireEvent.change(input, { target: { files: [file] } });
 
     expect(screen.getByRole('alert').textContent).toContain('지원하지 않는 파일 형식입니다');
@@ -135,7 +139,7 @@ describe('MediaUploadModal', () => {
 
   it('upload button triggers uploadMediaFile with correct params', async () => {
     mockedUpload.mockResolvedValueOnce({});
-    const { onClose } = renderModal(true);
+    const { onClose } = renderModal(true, vi.fn(), { categoryId: 'category-screen' });
     const input = screen.getByTestId('media-upload-input') as HTMLInputElement;
     const file = makeFile('track.mp3', 1024);
     fireEvent.change(input, { target: { files: [file] } });
@@ -148,6 +152,7 @@ describe('MediaUploadModal', () => {
     expect(args.file).toBe(file);
     expect(args.type).toBe('BGM');
     expect(args.name).toBe('track');
+    expect(args.categoryId).toBe('category-screen');
     expect(typeof args.requestUploadUrl).toBe('function');
     expect(typeof args.confirmUpload).toBe('function');
     expect(typeof args.onProgress).toBe('function');
@@ -167,6 +172,30 @@ describe('MediaUploadModal', () => {
 
     await waitFor(() => expect(mockedUpload).toHaveBeenCalledTimes(1));
     expect(mockedUpload.mock.calls[0][0].type).toBe('IMAGE');
+  });
+
+  it('문서 파일은 DOCUMENT 타입으로 자동 설정해 업로드한다', async () => {
+    mockedUpload.mockResolvedValueOnce({});
+    renderModal(true);
+    const input = screen.getByTestId('media-upload-input') as HTMLInputElement;
+    const file = makeFile('role-sheet.pdf', 1024, 'application/pdf');
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect((screen.getByLabelText('유형') as HTMLSelectElement).value).toBe('DOCUMENT');
+
+    fireEvent.click(screen.getByRole('button', { name: '업로드' }));
+
+    await waitFor(() => expect(mockedUpload).toHaveBeenCalledTimes(1));
+    expect(mockedUpload.mock.calls[0][0].type).toBe('DOCUMENT');
+  });
+
+  it('allowedTypes가 있으면 해당 유형 파일만 받는다', () => {
+    renderModal(true, vi.fn(), { allowedTypes: ['IMAGE'] });
+    const input = screen.getByTestId('media-upload-input') as HTMLInputElement;
+    const file = makeFile('song.mp3', 1024, 'audio/mpeg');
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(screen.getByRole('alert').textContent).toContain('지원하지 않는 파일 형식입니다');
   });
 
   it('progress bar updates from onProgress', async () => {

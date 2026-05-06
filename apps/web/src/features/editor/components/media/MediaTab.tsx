@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { Spinner } from "@/shared/components/ui";
 import {
+  useCreateMediaCategory,
+  useDeleteMediaCategory,
+  useMediaCategories,
   useMediaList,
   type MediaResponse,
   type MediaType,
@@ -26,6 +29,8 @@ export interface MediaTabProps {
 
 export function MediaTab({ themeId }: MediaTabProps) {
   const [filter, setFilter] = useState<MediaFilter>("all");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   // Modal state.
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -34,8 +39,25 @@ export function MediaTab({ themeId }: MediaTabProps) {
   const queryType: MediaType | undefined =
     filter === "all" ? undefined : filter;
 
-  const { data: mediaList, isLoading, isError } = useMediaList(themeId, queryType);
-  const media: MediaResponse[] = useMemo(() => mediaList ?? [], [mediaList]);
+  const { data: categories = [] } = useMediaCategories(themeId);
+  const createCategoryMutation = useCreateMediaCategory(themeId);
+  const deleteCategoryMutation = useDeleteMediaCategory(themeId);
+  const { data: mediaList, isLoading, isError } = useMediaList(
+    themeId,
+    queryType,
+    categoryId ?? undefined,
+  );
+  const media: MediaResponse[] = useMemo(() => {
+    const list = mediaList ?? [];
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) return list;
+    return list.filter((item) =>
+      [item.name, item.type, item.source_type, ...item.tags]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [mediaList, searchQuery]);
   const selected = media.find((m) => m.id === selectedId) ?? null;
 
   const { playingId, toggle: togglePreview, stop: stopPreview } = usePreviewPlayer();
@@ -44,6 +66,45 @@ export function MediaTab({ themeId }: MediaTabProps) {
     setFilter(next);
     setSelectedId(null);
     stopPreview();
+  };
+
+  const handleCategoryChange = (nextCategoryId: string | null) => {
+    setCategoryId(nextCategoryId);
+    setSelectedId(null);
+    stopPreview();
+  };
+
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setSelectedId(null);
+    stopPreview();
+  };
+
+  const handleCreateCategory = () => {
+    const name = window.prompt("새 미디어 카테고리 이름을 입력하세요")?.trim();
+    if (!name) return;
+    const nextSortOrder =
+      categories.reduce((max, category) => Math.max(max, category.sort_order), 0) + 1;
+    createCategoryMutation.mutate({
+      name,
+      sort_order: nextSortOrder,
+    });
+  };
+
+  const handleDeleteCategory = () => {
+    if (!categoryId) return;
+    const category = categories.find((item) => item.id === categoryId);
+    const ok = window.confirm(
+      `"${category?.name ?? "선택한 카테고리"}" 카테고리를 삭제하시겠습니까? 연결된 미디어는 전체 카테고리로 이동합니다.`,
+    );
+    if (!ok) return;
+    deleteCategoryMutation.mutate(categoryId, {
+      onSuccess: () => {
+        setCategoryId(null);
+        setSelectedId(null);
+        stopPreview();
+      },
+    });
   };
 
   const handleClose = () => {
@@ -55,6 +116,13 @@ export function MediaTab({ themeId }: MediaTabProps) {
       <MediaToolbar
         filter={filter}
         onFilterChange={handleFilterChange}
+        categories={categories}
+        categoryId={categoryId}
+        onCategoryChange={handleCategoryChange}
+        searchQuery={searchQuery}
+        onSearchQueryChange={handleSearchChange}
+        onCreateCategory={handleCreateCategory}
+        onDeleteCategory={handleDeleteCategory}
         onUploadClick={() => setUploadOpen(true)}
         onYouTubeClick={() => setYoutubeOpen(true)}
       />
@@ -76,13 +144,18 @@ export function MediaTab({ themeId }: MediaTabProps) {
             </div>
           ) : media.length === 0 ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
-                미디어 없음
-              </p>
+              <div className="text-center">
+                <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
+                  미디어 없음
+                </p>
+                {searchQuery.trim() && (
+                  <p className="mt-2 text-xs text-slate-500">검색어나 필터를 조정해 보세요</p>
+                )}
+              </div>
             </div>
           ) : (
             <div
-              className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
               role="list"
               aria-label="미디어 목록"
             >
@@ -115,6 +188,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
         open={uploadOpen}
         onClose={() => setUploadOpen(false)}
         themeId={themeId}
+        categoryId={categoryId}
       />
       <YouTubeAddModal
         open={youtubeOpen}

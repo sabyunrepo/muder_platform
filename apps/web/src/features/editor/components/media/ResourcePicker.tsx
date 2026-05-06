@@ -14,15 +14,23 @@ import {
 import type {
   MediaResourceViewModel,
 } from "@/features/editor/entities/mediaResource/mediaResourceAdapter";
-import type { MediaType } from "@/features/editor/mediaApi";
+import type { MediaCategoryResponse, MediaType } from "@/features/editor/mediaApi";
+
+export interface PickerMediaResource extends MediaResourceViewModel {
+  thumbnailUrl?: string | null;
+}
 
 export interface ResourcePickerProps {
   title: string;
-  resources: MediaResourceViewModel[];
+  resources: PickerMediaResource[];
   searchQuery: string;
   onSearchQueryChange: (query: string) => void;
   onClose: () => void;
   onSelect: (resourceId: string) => void;
+  categories?: MediaCategoryResponse[];
+  categoryId?: string | null;
+  onCategoryChange?: (categoryId: string | null) => void;
+  onUploadClick?: () => void;
   selectedId?: string | null;
   isLoading?: boolean;
   emptyLabel?: string;
@@ -56,6 +64,10 @@ export function ResourcePicker({
   onSearchQueryChange,
   onClose,
   onSelect,
+  categories = [],
+  categoryId = null,
+  onCategoryChange,
+  onUploadClick,
   selectedId,
   isLoading = false,
   emptyLabel = "리소스가 없습니다",
@@ -71,7 +83,7 @@ export function ResourcePicker({
       aria-modal="true"
       aria-label={title}
     >
-      <div className="flex max-h-[84vh] w-full max-w-2xl flex-col rounded-xl border border-slate-700 bg-slate-900 p-4 shadow-2xl shadow-black/40 sm:p-6">
+      <div className="flex max-h-[88vh] w-full max-w-5xl flex-col rounded-lg border border-slate-700 bg-slate-900 p-4 shadow-2xl shadow-black/40 sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
@@ -89,16 +101,64 @@ export function ResourcePicker({
           </button>
         </div>
 
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
-            placeholder="이름, 태그, 종류로 검색"
-            value={searchQuery}
-            onChange={(event) => onSearchQueryChange(event.target.value)}
-            aria-label="미디어 이름 검색"
-          />
+        <div className="mb-3 flex flex-col gap-2">
+          {onCategoryChange ? (
+            <div
+              className="flex gap-1.5 overflow-x-auto pb-1"
+              role="group"
+              aria-label="미디어 카테고리 필터"
+            >
+              <button
+                type="button"
+                onClick={() => onCategoryChange(null)}
+                aria-pressed={categoryId == null}
+                className={`h-7 shrink-0 rounded-sm border px-3 text-xs font-medium ${
+                  categoryId == null
+                    ? "border-amber-500 bg-amber-500/10 text-amber-300"
+                    : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                }`}
+              >
+                전체
+              </button>
+              {categories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => onCategoryChange(category.id)}
+                  aria-pressed={categoryId === category.id}
+                  className={`h-7 shrink-0 rounded-sm border px-3 text-xs font-medium ${
+                    categoryId === category.id
+                      ? "border-amber-500 bg-amber-500/10 text-amber-300"
+                      : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                  }`}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <label className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                className="w-full rounded-sm border border-slate-700 bg-slate-950 py-2 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+                placeholder="이름, 태그, 종류로 검색"
+                value={searchQuery}
+                onChange={(event) => onSearchQueryChange(event.target.value)}
+                aria-label="미디어 이름 검색"
+              />
+            </label>
+            {onUploadClick ? (
+              <button
+                type="button"
+                onClick={onUploadClick}
+                className="h-10 shrink-0 rounded-sm border border-slate-700 px-3 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:text-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              >
+                바로 업로드
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto pr-1">
@@ -114,11 +174,12 @@ export function ResourcePicker({
               {hasQuery ? searchEmptyLabel : emptyLabel}
             </div>
           ) : (
-            <ul className="space-y-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3" role="list">
               {resources.map((resource) => {
                 const isSelected = selectedId === resource.id;
+                const thumbnailUrl = resource.thumbnailUrl;
                 return (
-                  <li key={resource.id}>
+                  <div key={resource.id} role="listitem">
                     <button
                       type="button"
                       onClick={() => {
@@ -126,37 +187,45 @@ export function ResourcePicker({
                       }}
                       disabled={!resource.isSelectable}
                       aria-pressed={isSelected}
-                      className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                      className={`flex h-full w-full flex-col overflow-hidden rounded-sm border text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                         isSelected
                           ? "border-amber-500/50 bg-amber-500/15"
                           : "border-slate-800 bg-slate-950 hover:border-slate-700 hover:bg-slate-800"
                       }`}
                     >
-                      <MediaTypeIcon type={resource.type} />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="truncate text-sm font-medium text-slate-100">
-                            {resource.name}
-                          </p>
-                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
-                            {resource.typeLabel}
+                      <div className="relative flex aspect-[4/3] w-full items-center justify-center bg-slate-950/80">
+                        {thumbnailUrl ? (
+                          <img
+                            src={thumbnailUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <MediaTypeIcon type={resource.type} />
+                        )}
+                        {resource.isExternal ? (
+                          <span className="absolute left-2 top-2 rounded-sm bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                            YouTube
                           </span>
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 px-3 py-2">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p className="truncate text-sm font-medium text-slate-100">{resource.name}</p>
+                          {resource.isExternal ? (
+                            <Youtube className="h-4 w-4 shrink-0 text-rose-500" aria-label="YouTube" />
+                          ) : null}
                         </div>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 line-clamp-2 text-xs text-slate-400">
                           {resource.unselectableReason ?? resource.metaLabel}
                         </p>
                       </div>
-                      {resource.isExternal ? (
-                        <Youtube
-                          className="h-4 w-4 shrink-0 text-rose-500"
-                          aria-label="YouTube"
-                        />
-                      ) : null}
                     </button>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           )}
         </div>
 

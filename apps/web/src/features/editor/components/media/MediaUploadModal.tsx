@@ -1,10 +1,19 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type KeyboardEvent,
+} from 'react';
 import { Upload, X } from 'lucide-react';
 
 import {
   uploadMediaFile,
   useConfirmUpload,
   useRequestUploadUrl,
+  type MediaResponse,
   type MediaType,
 } from '@/features/editor/mediaApi';
 import { getDisplayErrorMessage } from '@/lib/display-error';
@@ -17,18 +26,43 @@ export interface MediaUploadModalProps {
   open: boolean;
   onClose: () => void;
   themeId: string;
+  categoryId?: string | null;
+  allowedTypes?: MediaType[];
+  onUploaded?: (media: MediaResponse) => void;
 }
 
 const MAX_SIZE = 20 * 1024 * 1024;
 const AUDIO_MIME = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
 const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];
-const ACCEPT_ATTR = [...AUDIO_MIME, ...IMAGE_MIME].join(',');
+const DOCUMENT_MIME = ['application/pdf'];
+const MIME_BY_TYPE: Record<MediaType, string[]> = {
+  BGM: AUDIO_MIME,
+  SFX: AUDIO_MIME,
+  VOICE: AUDIO_MIME,
+  IMAGE: IMAGE_MIME,
+  DOCUMENT: DOCUMENT_MIME,
+  VIDEO: [],
+};
+const TYPE_OPTIONS: Array<{ value: MediaType; label: string }> = [
+  { value: 'BGM', label: '배경음악' },
+  { value: 'SFX', label: '효과음' },
+  { value: 'VOICE', label: '음성' },
+  { value: 'IMAGE', label: '이미지' },
+  { value: 'DOCUMENT', label: '문서' },
+];
 
 // ---------------------------------------------------------------------------
 // MediaUploadModal
 // ---------------------------------------------------------------------------
 
-export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalProps) {
+export function MediaUploadModal({
+  open,
+  onClose,
+  themeId,
+  categoryId,
+  allowedTypes,
+  onUploaded,
+}: MediaUploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<MediaType>('BGM');
@@ -39,6 +73,21 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
 
   const requestUrlMutation = useRequestUploadUrl(themeId);
   const confirmMutation = useConfirmUpload(themeId);
+  const uploadableTypes = useMemo(
+    () =>
+      TYPE_OPTIONS.filter((option) =>
+        allowedTypes?.length ? allowedTypes.includes(option.value) : true,
+      ).filter((option) => MIME_BY_TYPE[option.value].length > 0),
+    [allowedTypes],
+  );
+  const acceptedMimeTypes = useMemo(
+    () => Array.from(new Set(uploadableTypes.flatMap((option) => MIME_BY_TYPE[option.value]))),
+    [uploadableTypes],
+  );
+  const acceptAttr = acceptedMimeTypes.join(',');
+  const typeOptionsForFile = file
+    ? uploadableTypes.filter((option) => MIME_BY_TYPE[option.value].includes(file.type))
+    : uploadableTypes;
 
   // Abort controller for the in-flight upload. Re-created per upload attempt.
   const controllerRef = useRef<AbortController | null>(null);
@@ -62,22 +111,25 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
       controllerRef.current = null;
       setFile(null);
       setName('');
-      setType('BGM');
+      setType(uploadableTypes[0]?.value ?? 'BGM');
       setProgress(0);
       setError(null);
       setUploading(false);
       setIsDragging(false);
     }
-  }, [open]);
+  }, [open, uploadableTypes]);
 
   const handleFile = (f: File) => {
     if (f.size > MAX_SIZE) {
       setError('파일 크기는 20MB 이하여야 합니다');
       return;
     }
-    const nextType = inferUploadType(f.type);
+    const nextType = inferUploadType(
+      f.type,
+      uploadableTypes.map((option) => option.value),
+    );
     if (!nextType) {
-      setError('지원하지 않는 파일 형식입니다 (MP3, WAV, OGG, JPG, PNG, WEBP)');
+      setError(`지원하지 않는 파일 형식입니다 (${acceptedMimeTypesLabel(acceptedMimeTypes)})`);
       return;
     }
     setError(null);
@@ -121,11 +173,12 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
     setError(null);
     setProgress(0);
     try {
-      await uploadMediaFile({
+      const uploaded = await uploadMediaFile({
         themeId,
         file,
         type,
         name: name || file.name,
+        categoryId: categoryId ?? undefined,
         requestUploadUrl: requestUrlMutation.mutateAsync,
         confirmUpload: confirmMutation.mutateAsync,
         onProgress: (p) => {
@@ -136,6 +189,7 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
         signal: controller.signal,
       });
       if (!isMountedRef.current || controller.signal.aborted) return;
+      onUploaded?.(uploaded);
       onClose();
     } catch (err) {
       if (!isMountedRef.current || controller.signal.aborted) return;
@@ -211,7 +265,7 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
           ) : (
             <>
               <p className="text-sm text-slate-400">파일을 드래그하거나 클릭하여 선택</p>
-              <p className="mt-1 text-xs text-slate-500">(MP3, WAV, OGG, JPG, PNG, WEBP)</p>
+              <p className="mt-1 text-xs text-slate-500">({acceptedMimeTypesLabel(acceptedMimeTypes)})</p>
             </>
           )}
         </div>
@@ -220,7 +274,7 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
           data-testid="media-upload-input"
           type="file"
           className="hidden"
-          accept={ACCEPT_ATTR}
+          accept={acceptAttr}
           onChange={handleInputChange}
         />
 
@@ -249,10 +303,11 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
                 onChange={(e) => setType(e.target.value as MediaType)}
                 disabled={uploading}
               >
-                <option value="BGM">배경음악</option>
-                <option value="SFX">효과음</option>
-                <option value="VOICE">음성</option>
-                <option value="IMAGE">이미지</option>
+                {typeOptionsForFile.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -317,8 +372,38 @@ export function MediaUploadModal({ open, onClose, themeId }: MediaUploadModalPro
   );
 }
 
-function inferUploadType(mimeType: string): MediaType | null {
-  if (AUDIO_MIME.includes(mimeType)) return 'BGM';
-  if (IMAGE_MIME.includes(mimeType)) return 'IMAGE';
+function inferUploadType(mimeType: string, allowedTypes: MediaType[]): MediaType | null {
+  if (AUDIO_MIME.includes(mimeType)) {
+    return allowedTypes.find((type) => ['BGM', 'SFX', 'VOICE'].includes(type)) ?? null;
+  }
+  if (IMAGE_MIME.includes(mimeType)) return allowedTypes.includes('IMAGE') ? 'IMAGE' : null;
+  if (DOCUMENT_MIME.includes(mimeType)) {
+    return allowedTypes.includes('DOCUMENT') ? 'DOCUMENT' : null;
+  }
   return null;
+}
+
+function acceptedMimeTypesLabel(mimeTypes: string[]): string {
+  return mimeTypes
+    .map((mime) => {
+      switch (mime) {
+        case 'audio/mpeg':
+          return 'MP3';
+        case 'audio/wav':
+          return 'WAV';
+        case 'audio/ogg':
+          return 'OGG';
+        case 'image/jpeg':
+          return 'JPG';
+        case 'image/png':
+          return 'PNG';
+        case 'image/webp':
+          return 'WEBP';
+        case 'application/pdf':
+          return 'PDF';
+        default:
+          return mime;
+      }
+    })
+    .join(', ');
 }
