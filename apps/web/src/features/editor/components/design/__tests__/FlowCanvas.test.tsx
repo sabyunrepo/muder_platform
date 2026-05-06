@@ -140,7 +140,7 @@ describe('FlowCanvas', () => {
 
     render(<FlowCanvas themeId="theme-1" onSelectedNodeChange={onSelectedNodeChange} />);
 
-    expect(onSelectedNodeChange).toHaveBeenCalledWith(selectedNode);
+    expect(onSelectedNodeChange).toHaveBeenCalledWith(selectedNode, { outgoingEdges: [] });
   });
 
   it('장면 노드가 있으면 스토리 장면 요약을 렌더링한다', () => {

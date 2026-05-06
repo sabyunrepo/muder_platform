@@ -9,13 +9,23 @@ import {
   Search,
   Zap,
 } from "lucide-react";
-import type { Node } from "@xyflow/react";
-import type { FlowNodeData } from "@/features/editor/flowTypes";
+import type { Edge, Node } from "@xyflow/react";
+import type { FlowNodeData, PhaseAction } from "@/features/editor/flowTypes";
 import type { StoryLibraryEntity } from "./EditorEntityLibrary";
 import { formatDiscussionRoomSummary } from "@/features/editor/entities/phase/discussionRoomPolicyAdapter";
+import { toPhaseEditorViewModel } from "@/features/editor/entities/phase/phaseEntityAdapter";
+import {
+  flowNodeToInformationDeliveries,
+  isInformationDeliveryAction,
+} from "@/features/editor/entities/shared/informationDeliveryAdapter";
+import {
+  getCreatorActionLabel,
+  toCreatorActionLabels,
+} from "@/features/editor/entities/shared/actionAdapter";
 
 interface SceneInspectorProps {
   selectedScene: Node<FlowNodeData> | null;
+  selectedSceneEdges?: Edge[];
   selectedEntity: StoryLibraryEntity | null;
 }
 
@@ -46,6 +56,21 @@ const ROW_ICONS = [
   Zap,
 ] as const;
 
+const PRESENTATION_ACTION_TYPES = new Set([
+  "SET_BGM",
+  "PLAY_SOUND",
+  "PLAY_MEDIA",
+  "STOP_AUDIO",
+  "SET_BACKGROUND",
+  "SET_THEME_COLOR",
+  "play_bgm",
+  "play_sound",
+  "play_media",
+  "stop_bgm",
+  "set_background",
+  "set_theme_color",
+]);
+
 function describeSceneType(type?: string): string {
   if (type === "phase") return "스토리 장면";
   if (type === "branch") return "분기";
@@ -54,34 +79,81 @@ function describeSceneType(type?: string): string {
   return "스토리 항목";
 }
 
-function countActions(actions?: FlowNodeData["onEnter"]): string {
-  const count = actions?.length ?? 0;
-  return count > 0 ? `${count}개 설정됨` : "설정 없음";
+function countKeywordActions(data: FlowNodeData, keywords: string[]): number {
+  return (data.onEnter ?? []).filter((action) =>
+    keywords.some((keyword) => action.type.toLowerCase().includes(keyword)),
+  ).length;
 }
 
-function hasAction(data: FlowNodeData, keyword: string): boolean {
-  return (data.onEnter ?? []).some((action) => action.type.includes(keyword));
+function splitActions(actions: PhaseAction[]) {
+  const presentation = actions.filter((action) => PRESENTATION_ACTION_TYPES.has(action.type));
+  const trigger = actions.filter(
+    (action) =>
+      !PRESENTATION_ACTION_TYPES.has(action.type) &&
+      !isInformationDeliveryAction(action),
+  );
+  return { presentation, trigger };
 }
 
-function buildRows(scene: Node<FlowNodeData> | null): InspectorRow[] {
+function formatInformationDelivery(data: FlowNodeData): string {
+  const deliveries = flowNodeToInformationDeliveries(data);
+  if (deliveries.length === 0) return "정보 공개 설정 없음";
+  const readingCount = deliveries.reduce(
+    (sum, delivery) => sum + delivery.readingSectionIds.length,
+    0,
+  );
+  const infoCount = deliveries.reduce(
+    (sum, delivery) => sum + delivery.storyInfoIds.length,
+    0,
+  );
+  return `공개 설정 ${deliveries.length}개 · 읽기 대사 ${readingCount}개 · 스토리 정보 ${infoCount}개`;
+}
+
+function formatPresentation(data: FlowNodeData): string {
+  const { presentation } = splitActions(data.onEnter ?? []);
+  const visualLabels = [data.icon ? "아이콘" : null, data.color ? "색상" : null].filter(Boolean);
+  const actionLabels = presentation.map((action) => getCreatorActionLabel(action.type));
+  const labels = [...visualLabels, ...actionLabels];
+  return labels.length > 0 ? labels.join(", ") : "연출 설정 없음";
+}
+
+function formatTriggerActions(data: FlowNodeData): string {
+  const enter = splitActions(data.onEnter ?? []).trigger;
+  const exit = data.onExit ?? [];
+  const enterLabel = enter.length > 0
+    ? enter.map((action) => getCreatorActionLabel(action.type)).join(", ")
+    : "시작 트리거 없음";
+  const exitLabel = exit.length > 0
+    ? toCreatorActionLabels(exit).join(", ")
+    : "종료 트리거 없음";
+  return `시작: ${enterLabel} · 종료: ${exitLabel}`;
+}
+
+function buildRows(scene: Node<FlowNodeData> | null, outgoingEdges: Edge[]): InspectorRow[] {
   if (!scene) return EMPTY_ROWS;
   const data = scene.data;
+  const phaseSummary = toPhaseEditorViewModel(data, outgoingEdges);
+  const clueActionCount = countKeywordActions(data, ["clue"]);
+  const locationActionCount = countKeywordActions(data, ["location"]);
+  const investigationActionCount = countKeywordActions(data, ["investigation", "token"]);
   return [
     {
       label: "정보 공개",
-      value: data.description ? "장면 설명 있음" : "공개 설명 없음",
+      value: formatInformationDelivery(data),
     },
     {
       label: "단서 배포",
-      value: hasAction(data, "clue") ? "입장 시 단서 동작 있음" : "연결된 단서 동작 없음",
+      value: clueActionCount > 0 ? `단서 실행 ${clueActionCount}개` : "연결된 단서 실행 없음",
     },
     {
       label: "장소",
-      value: hasAction(data, "location") ? "장소 동작 있음" : "장소 동작 없음",
+      value: locationActionCount > 0 ? `장소 실행 ${locationActionCount}개` : "장소 열림/잠금 실행 없음",
     },
     {
       label: "조사권",
-      value: hasAction(data, "investigation") ? "조사권 동작 있음" : "조사권 동작 없음",
+      value: investigationActionCount > 0
+        ? `조사권 실행 ${investigationActionCount}개`
+        : "조사권 실행 없음",
     },
     {
       label: "토론방",
@@ -89,21 +161,25 @@ function buildRows(scene: Node<FlowNodeData> | null): InspectorRow[] {
     },
     {
       label: "연출",
-      value: data.icon || data.color ? "표시 설정 있음" : "기본 표시",
+      value: formatPresentation(data),
     },
     {
       label: "조건",
-      value: data.autoAdvance ? "자동 진행" : "수동 또는 연결선 조건",
+      value: `${phaseSummary.autoAdvanceLabel} · ${phaseSummary.defaultTransitionLabel} · 조건 이동 ${phaseSummary.conditionalTransitionCount}개`,
     },
     {
       label: "액션",
-      value: `입장 ${countActions(data.onEnter)} · 퇴장 ${countActions(data.onExit)}`,
+      value: formatTriggerActions(data),
     },
   ];
 }
 
-export function SceneInspector({ selectedScene, selectedEntity }: SceneInspectorProps) {
-  const rows = buildRows(selectedScene);
+export function SceneInspector({
+  selectedScene,
+  selectedSceneEdges = [],
+  selectedEntity,
+}: SceneInspectorProps) {
+  const rows = buildRows(selectedScene, selectedSceneEdges);
   const sceneTitle = selectedScene?.data.label ?? "선택한 장면 없음";
 
   return (

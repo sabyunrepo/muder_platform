@@ -1,5 +1,5 @@
-import type { Node } from "@xyflow/react";
-import { useEffect, useState } from "react";
+import type { Edge, Node } from "@xyflow/react";
+import { useCallback, useEffect, useState } from "react";
 import type { FlowNodeData } from "@/features/editor/flowTypes";
 import { FlowCanvas } from "../design/FlowCanvas";
 import {
@@ -16,11 +16,21 @@ interface StoryMapWorkspaceProps {
 export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
   const [selectedEntity, setSelectedEntity] = useState<StoryLibraryEntity | null>(null);
   const [selectedScene, setSelectedScene] = useState<Node<FlowNodeData> | null>(null);
+  const [selectedSceneEdges, setSelectedSceneEdges] = useState<Edge[]>([]);
 
   useEffect(() => {
     setSelectedEntity(null);
     setSelectedScene(null);
+    setSelectedSceneEdges([]);
   }, [themeId]);
+
+  const handleSelectedNodeChange = useCallback(
+    (node: Node | null, context: { outgoingEdges: Edge[] }) => {
+      setSelectedScene(node as Node<FlowNodeData> | null);
+      setSelectedSceneEdges(context.outgoingEdges);
+    },
+    [],
+  );
 
   return (
     <section
@@ -62,10 +72,14 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
         />
 
         <main className="min-h-[520px] min-w-0 border-b border-slate-800 lg:min-h-0 lg:border-b-0">
-          <FlowCanvas themeId={themeId} onSelectedNodeChange={setSelectedScene} />
+          <FlowCanvas themeId={themeId} onSelectedNodeChange={handleSelectedNodeChange} />
         </main>
 
-        <SceneInspector selectedScene={selectedScene} selectedEntity={selectedEntity} />
+        <SceneInspector
+          selectedScene={selectedScene}
+          selectedSceneEdges={selectedSceneEdges}
+          selectedEntity={selectedEntity}
+        />
       </div>
     </section>
   );
