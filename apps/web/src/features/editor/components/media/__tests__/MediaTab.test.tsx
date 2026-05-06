@@ -361,6 +361,140 @@ describe('MediaTab', () => {
     expect(screen.queryByText('미디어 상세')).toBeNull();
   });
 
+  it('선택 모드에서는 카드 클릭이 상세 패널을 열지 않고 선택 상태만 토글한다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '선택', pressed: false }));
+    const card = screen.getByText('오프닝 BGM').closest("[role='button']") as HTMLElement | null;
+    fireEvent.click(card!);
+
+    expect(screen.queryByText('미디어 상세')).toBeNull();
+    expect((screen.getByLabelText('오프닝 BGM 선택') as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByText('선택한 미디어 1개')).toBeDefined();
+
+    fireEvent.click(card!);
+    expect((screen.getByLabelText('오프닝 BGM 선택') as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText('선택한 미디어 0개')).toBeDefined();
+  });
+
+  it('다중 삭제 확인 모달에서 취소하면 삭제 API를 호출하지 않는다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    useDeleteMediaMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '선택', pressed: false }));
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    fireEvent.click(screen.getByRole('button', { name: '선택 삭제' }));
+
+    const dialog = screen.getByRole('dialog', { name: '선택한 미디어 삭제' });
+    expect(within(dialog).getByText('오프닝 BGM')).toBeDefined();
+    expect(dialog.textContent).not.toContain('media-1');
+    expect(dialog.textContent).not.toContain('https://example.com/bgm.mp3');
+
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
+    expect(mutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('선택한 미디어를 모두 삭제하고 결과를 이름 기준으로 보여준다', async () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    useDeleteMediaMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '선택', pressed: false }));
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    fireEvent.click(screen.getByText('문 닫는 소리').closest("[role='button']")!);
+    fireEvent.click(screen.getByRole('button', { name: '선택 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+    const resultDialog = await screen.findByRole('dialog', { name: '미디어 삭제 결과' });
+    expect(mutateAsync).toHaveBeenCalledWith('media-1');
+    expect(mutateAsync).toHaveBeenCalledWith('media-2');
+    expect(within(resultDialog).getByText('삭제됨 2개')).toBeDefined();
+    expect(within(resultDialog).getByText('오프닝 BGM')).toBeDefined();
+    expect(within(resultDialog).getByText('문 닫는 소리')).toBeDefined();
+    expect(resultDialog.textContent).not.toContain('media-1');
+    expect(resultDialog.textContent).not.toContain('https://example.com');
+    expect(toastSuccess).toHaveBeenCalledWith('2개 미디어를 삭제했습니다');
+  });
+
+  it('다중 삭제 중 참조 차단 항목은 제작 위치만 보여주고 raw id/url은 숨긴다', async () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutateAsync = vi.fn((id: string) => {
+      if (id === 'media-2') {
+        return Promise.reject(
+          new ApiHttpError({
+            status: 409,
+            title: 'Conflict',
+            detail: 'media is referenced by editor content',
+            code: 'MEDIA_REFERENCE_IN_USE',
+            params: {
+              references: [
+                {
+                  type: 'event_progression_trigger_action',
+                  id: 'trigger-secret-room:0',
+                  name: '비밀 토론방 공개 실행 결과에서 효과음으로 사용 중',
+                },
+              ],
+            },
+          })
+        );
+      }
+      return Promise.resolve();
+    });
+    useDeleteMediaMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '선택', pressed: false }));
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    fireEvent.click(screen.getByText('문 닫는 소리').closest("[role='button']")!);
+    fireEvent.click(screen.getByRole('button', { name: '선택 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+    const resultDialog = await screen.findByRole('dialog', { name: '미디어 삭제 결과' });
+    expect(within(resultDialog).getByText('삭제됨 1개')).toBeDefined();
+    expect(within(resultDialog).getByText('참조 중이라 삭제되지 않음 1개')).toBeDefined();
+    expect(within(resultDialog).getByText('트리거 연출')).toBeDefined();
+    expect(resultDialog.textContent).toContain('비밀 토론방 공개 실행 결과에서 효과음으로 사용 중');
+    expect(resultDialog.textContent).not.toContain('media-2');
+    expect(resultDialog.textContent).not.toContain('trigger-secret-room');
+    expect(resultDialog.textContent).not.toContain('https://example.com/sfx.mp3');
+  });
+
   it('참조 중인 미디어 삭제가 차단되면 제작 위치를 상세 패널에 표시한다', async () => {
     useMediaListMock.mockReturnValue({
       data: mockMedia,
