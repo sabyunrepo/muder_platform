@@ -12,6 +12,7 @@ export interface InformationDeliveryViewModel {
   recipientType: InformationRecipientType;
   characterId?: string;
   readingSectionIds: string[];
+  storyInfoIds: string[];
 }
 
 interface StoredInformationDelivery {
@@ -24,6 +25,8 @@ interface StoredInformationDelivery {
   character_id?: unknown;
   reading_section_ids?: unknown;
   readingSectionIds?: unknown;
+  story_info_ids?: unknown;
+  storyInfoIds?: unknown;
 }
 
 interface DeliverInformationParams {
@@ -74,11 +77,12 @@ export function makeEmptyInformationDelivery(
     id: makeId(),
     recipientType,
     readingSectionIds: [],
+    storyInfoIds: [],
   };
 }
 
 export function isCompleteInformationDelivery(delivery: InformationDeliveryViewModel): boolean {
-  if (delivery.readingSectionIds.length === 0) return false;
+  if (delivery.readingSectionIds.length === 0 && delivery.storyInfoIds.length === 0) return false;
   return delivery.recipientType === "all_players" || Boolean(delivery.characterId);
 }
 
@@ -110,6 +114,11 @@ function normalizeDelivery(
     : Array.isArray(delivery.readingSectionIds)
       ? delivery.readingSectionIds
       : [];
+  const rawStoryInfoIds = Array.isArray(delivery.story_info_ids)
+    ? delivery.story_info_ids
+    : Array.isArray(delivery.storyInfoIds)
+      ? delivery.storyInfoIds
+      : [];
 
   return normalizeViewModel({
     id: typeof delivery.id === "string" && delivery.id ? delivery.id : makeId(),
@@ -123,6 +132,9 @@ function normalizeDelivery(
     readingSectionIds: rawSectionIds.filter(
       (id): id is string => typeof id === "string" && id.length > 0,
     ),
+    storyInfoIds: rawStoryInfoIds.filter(
+      (id): id is string => typeof id === "string" && id.length > 0,
+    ),
   });
 }
 
@@ -130,11 +142,13 @@ function normalizeViewModel(
   delivery: InformationDeliveryViewModel,
 ): InformationDeliveryViewModel {
   const uniqueSectionIds = Array.from(new Set(delivery.readingSectionIds)).filter(Boolean);
+  const uniqueStoryInfoIds = Array.from(new Set(delivery.storyInfoIds)).filter(Boolean);
   if (delivery.recipientType === "all_players") {
     return {
       id: delivery.id || makeId(),
       recipientType: "all_players",
       readingSectionIds: uniqueSectionIds,
+      storyInfoIds: uniqueStoryInfoIds,
     };
   }
   return {
@@ -142,6 +156,7 @@ function normalizeViewModel(
     recipientType: "character",
     characterId: delivery.characterId,
     readingSectionIds: uniqueSectionIds,
+    storyInfoIds: uniqueStoryInfoIds,
   };
 }
 
@@ -153,6 +168,7 @@ function toStoredDelivery(delivery: InformationDeliveryViewModel) {
         ? { type: "all_players" }
         : { type: "character", character_id: delivery.characterId },
     reading_section_ids: delivery.readingSectionIds,
+    story_info_ids: delivery.storyInfoIds,
   };
 }
 

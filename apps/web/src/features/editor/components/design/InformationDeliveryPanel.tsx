@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useEditorCharacters } from "../../api";
 import { useReadingSections } from "../../readingApi";
+import { useStoryInfos, type StoryInfoResponse } from "../../storyInfoApi";
 import {
   filterReadingSectionOptions,
   toReadingSectionPickerOptions,
 } from "../../entities/story/readingSectionAdapter";
-import { InformationDeliveryContent, InformationDeliveryHeader } from "./InformationDeliveryPanelViews";
+import {
+  InformationDeliveryContent,
+  InformationDeliveryHeader,
+  type StoryInfoOption,
+} from "./InformationDeliveryPanelViews";
 import type { FlowNodeData } from "../../flowTypes";
 import {
   flowNodeToInformationDeliveries,
@@ -38,8 +43,15 @@ export function InformationDeliveryPanel({
     isError: sectionsError,
     refetch: refetchSections,
   } = useReadingSections(themeId);
+  const {
+    data: storyInfos = [],
+    isLoading: storyInfosLoading,
+    isError: storyInfosError,
+    refetch: refetchStoryInfos,
+  } = useStoryInfos(themeId);
   const [characterQuery, setCharacterQuery] = useState("");
   const [sectionQuery, setSectionQuery] = useState("");
+  const [infoQuery, setInfoQuery] = useState("");
   const savedDeliveries = useMemo(
     () => flowNodeToInformationDeliveries(phaseData),
     [phaseData],
@@ -63,10 +75,15 @@ export function InformationDeliveryPanel({
   }, [characters, characterQuery]);
 
   const sectionOptions = useMemo(() => toReadingSectionPickerOptions(sections), [sections]);
+  const storyInfoOptions = useMemo(() => toStoryInfoOptions(storyInfos), [storyInfos]);
 
   const filteredSections = useMemo(
     () => filterReadingSectionOptions(sectionOptions, sectionQuery),
     [sectionOptions, sectionQuery],
+  );
+  const filteredStoryInfos = useMemo(
+    () => filterStoryInfoOptions(storyInfoOptions, infoQuery),
+    [storyInfoOptions, infoQuery],
   );
 
   const updateDeliveries = (next: InformationDeliveryViewModel[]) => {
@@ -102,14 +119,23 @@ export function InformationDeliveryPanel({
         : [...delivery.readingSectionIds, sectionId],
     });
   };
+  const toggleStoryInfo = (delivery: InformationDeliveryViewModel, storyInfoId: string) => {
+    const hasStoryInfo = delivery.storyInfoIds.includes(storyInfoId);
+    updateDelivery(delivery.id, {
+      storyInfoIds: hasStoryInfo
+        ? delivery.storyInfoIds.filter((id) => id !== storyInfoId)
+        : [...delivery.storyInfoIds, storyInfoId],
+    });
+  };
 
-  const loading = charactersLoading || sectionsLoading;
-  const hasLoadError = charactersError || sectionsError;
+  const loading = charactersLoading || sectionsLoading || storyInfosLoading;
+  const hasLoadError = charactersError || sectionsError || storyInfosError;
   const canAddCharacterDelivery = characters.length > 0;
 
   const retryLoad = () => {
     if (charactersError) void refetchCharacters();
     if (sectionsError) void refetchSections();
+    if (storyInfosError) void refetchStoryInfos();
   };
 
   return (
@@ -125,20 +151,51 @@ export function InformationDeliveryPanel({
         hasLoadError={hasLoadError}
         hasCharacters={characters.length > 0}
         hasSections={sections.length > 0}
+        hasStoryInfos={storyInfos.length > 0}
         characterQuery={characterQuery}
         sectionQuery={sectionQuery}
+        infoQuery={infoQuery}
         deliveries={draftDeliveries}
         characters={filteredCharacters}
         allCharacters={characters}
         sections={filteredSections}
         allSections={sectionOptions}
+        storyInfos={filteredStoryInfos}
+        allStoryInfos={storyInfoOptions}
         onRetryLoad={retryLoad}
         onCharacterQueryChange={setCharacterQuery}
         onSectionQueryChange={setSectionQuery}
+        onInfoQueryChange={setInfoQuery}
         onSelectCharacter={(deliveryId, characterId) => updateDelivery(deliveryId, { characterId })}
         onToggleSection={toggleSection}
+        onToggleStoryInfo={toggleStoryInfo}
         onRemoveDelivery={removeDelivery}
       />
     </section>
   );
+}
+
+function toStoryInfoOptions(infos: StoryInfoResponse[]): StoryInfoOption[] {
+  return infos.map((info) => ({
+    id: info.id,
+    name: info.title,
+    summary: summarizeInfo(info.body),
+    metaLabel: info.imageMediaId ? "이미지 포함" : undefined,
+  }));
+}
+
+function filterStoryInfoOptions(options: StoryInfoOption[], query: string): StoryInfoOption[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return options;
+  return options.filter(
+    (option) =>
+      option.name.toLowerCase().includes(normalized) ||
+      (option.summary?.toLowerCase().includes(normalized) ?? false),
+  );
+}
+
+function summarizeInfo(body: string): string | undefined {
+  const trimmed = body.trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > 48 ? `${trimmed.slice(0, 48)}...` : trimmed;
 }
