@@ -1,15 +1,23 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
+const {
+  mutateMock,
+  useUpdateConfigJsonMock,
+  useModuleSchemasMock,
+  invalidateQueriesMock,
+  writeTextMock,
+} = vi.hoisted(() => ({
   mutateMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
   useModuleSchemasMock: vi.fn(),
+  invalidateQueriesMock: vi.fn(),
+  writeTextMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -34,7 +42,7 @@ vi.mock('@/features/editor/editorConfigApi', () => ({
 }));
 
 vi.mock('@/services/queryClient', () => ({
-  queryClient: { invalidateQueries: vi.fn() },
+  queryClient: { invalidateQueries: invalidateQueriesMock },
 }));
 
 vi.mock('@/features/editor/templateApi', () => ({}));
@@ -49,10 +57,7 @@ vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
   }) => (
     <div data-testid="schema-driven-form">
       <span>{schema?.title ?? 'form'}</span>
-      <button
-        type="button"
-        onClick={() => onChange('candidatePolicy.includeDetective', true)}
-      >
+      <button type="button" onClick={() => onChange('candidatePolicy.includeDetective', true)}>
         탐정 포함 저장
       </button>
     </div>
@@ -102,6 +107,12 @@ const baseTheme: EditorThemeResponse = {
 let capturedConflictHandler: (() => void) | undefined;
 
 beforeEach(() => {
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: writeTextMock,
+    },
+  });
+  writeTextMock.mockResolvedValue(undefined);
   capturedConflictHandler = undefined;
   useUpdateConfigJsonMock.mockImplementation((opts?: { onConflictAfterRetry?: () => void }) => {
     capturedConflictHandler = opts?.onConflictAfterRetry;
@@ -214,6 +225,21 @@ describe('ModulesSubTab', () => {
     expect(config.modules).toMatchObject({ [optionalMod.id]: { enabled: false } });
   });
 
+  it('저장 중에는 추가 모듈 토글 저장을 시작하지 않는다', () => {
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+    useUpdateConfigJsonMock.mockReturnValue({ mutate: mutateMock, isPending: true });
+
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+
+    const toggleBtn = screen.getByRole('switch', { name: `${optionalMod.name} 활성화` });
+    expect(toggleBtn).toHaveProperty('disabled', true);
+
+    fireEvent.click(toggleBtn);
+
+    expect(mutateMock).not.toHaveBeenCalled();
+    expect(toggleBtn.getAttribute('aria-checked')).toBe('false');
+  });
+
   it('활성화 + 스키마 있으면 SchemaDrivenForm이 바로 렌더링된다', () => {
     const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
     const themeWithMod: EditorThemeResponse = {
@@ -300,7 +326,7 @@ describe('ModulesSubTab', () => {
     expect(config.version).toBe(42);
   });
 
-  it('conflict-after-retry 시 Snackbar 충돌 메시지를 표시한다', () => {
+  it('conflict-after-retry 시 저장 충돌 복구 배너를 표시한다', async () => {
     const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
 
     render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
@@ -308,15 +334,84 @@ describe('ModulesSubTab', () => {
 
     // Simulate hook's conflict path: first onConflictAfterRetry, then onError
     capturedConflictHandler?.();
-    const [, callbacks] = mutateMock.mock.calls[0] as [
-      unknown,
-      { onError: () => void },
-    ];
-    callbacks.onError();
+    const [, callbacks] = mutateMock.mock.calls[0] as [unknown, { onError: () => void }];
+    act(() => callbacks.onError());
 
-    expect(toast.error).toHaveBeenCalledWith(
-      '동시 편집 충돌 — 최신 상태 다시 불러오기',
+    expect(screen.getByRole('alert', { name: '모듈 설정 저장 충돌' })).toBeDefined();
+    expect(screen.getByText(/다른 탭이나 사용자가 더 최신 내용을 저장했습니다/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '내 변경 복사' }));
+    expect(writeTextMock).toHaveBeenCalledWith(expect.stringContaining(optionalMod.id));
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('내 변경 내용을 클립보드에 복사했습니다')
     );
+
+    fireEvent.click(screen.getByRole('button', { name: '최신 상태 다시 불러오기' }));
+    expect(invalidateQueriesMock).toHaveBeenCalledWith({
+      queryKey: ['editor', 'themes', 'theme-1'],
+    });
+    expect(screen.queryByRole('alert', { name: '모듈 설정 저장 충돌' })).toBeNull();
+  });
+
+  it('conflict draft 복사 실패 시 오류 토스트를 표시한다', async () => {
+    writeTextMock.mockRejectedValueOnce(new Error('denied'));
+    const optionalMod = OPTIONAL_MODULE_CATEGORIES[0].modules[0];
+
+    render(<ModulesSubTab themeId="theme-1" theme={baseTheme} />);
+    fireEvent.click(screen.getByRole('switch', { name: `${optionalMod.name} 활성화` }));
+
+    capturedConflictHandler?.();
+    const [, callbacks] = mutateMock.mock.calls[0] as [unknown, { onError: () => void }];
+    act(() => callbacks.onError());
+
+    fireEvent.click(screen.getByRole('button', { name: '내 변경 복사' }));
+
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('클립보드에 복사할 수 없습니다'));
+    expect(toast.success).not.toHaveBeenCalledWith('내 변경 내용을 클립보드에 복사했습니다');
+  });
+
+  it('충돌 배너를 닫아도 후속 저장은 conflict draft 위에 누적된다', () => {
+    const themeWithVoting: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          voting: {
+            enabled: true,
+            config: { candidatePolicy: { includeSelf: false }, maxRounds: 3 },
+          },
+        },
+      },
+    };
+    useModuleSchemasMock.mockReturnValue({
+      data: {
+        schemas: {
+          voting: { type: 'object', title: '투표 설정', properties: {} },
+        },
+      },
+      isLoading: false,
+    });
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithVoting} />);
+    fireEvent.click(screen.getByRole('button', { name: '탐정 포함 저장' }));
+
+    capturedConflictHandler?.();
+    const [, callbacks] = mutateMock.mock.calls[0] as [unknown, { onError: () => void }];
+    act(() => callbacks.onError());
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    fireEvent.click(screen.getByRole('switch', { name: '텍스트 채팅 활성화' }));
+
+    const [config] = mutateMock.mock.calls[1] as [Record<string, unknown>];
+    expect(config.modules).toMatchObject({
+      voting: {
+        enabled: true,
+        config: {
+          maxRounds: 3,
+          candidatePolicy: { includeSelf: false, includeDetective: true },
+        },
+      },
+      text_chat: { enabled: true },
+    });
   });
 
   it('일반 에러는 기본 에러 메시지를 표시한다 (충돌 아님)', () => {
@@ -326,13 +421,12 @@ describe('ModulesSubTab', () => {
     fireEvent.click(screen.getByRole('switch', { name: `${optionalMod.name} 활성화` }));
 
     // No conflict handler fired — regular failure
-    const [, callbacks] = mutateMock.mock.calls[0] as [
-      unknown,
-      { onError: () => void },
-    ];
-    callbacks.onError();
+    const [, callbacks] = mutateMock.mock.calls[0] as [unknown, { onError: () => void }];
+    act(() => callbacks.onError());
 
     expect(toast.error).toHaveBeenCalledWith('모듈 설정 저장에 실패했습니다');
+    const rolledBackToggle = screen.getByRole('switch', { name: `${optionalMod.name} 활성화` });
+    expect(rolledBackToggle.getAttribute('aria-checked')).toBe('false');
   });
 
   it('REQUIRED_MODULE_IDS의 모듈은 toggle 버튼이 없다', () => {

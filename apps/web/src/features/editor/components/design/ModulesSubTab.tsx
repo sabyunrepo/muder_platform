@@ -6,6 +6,7 @@ import { useUpdateConfigJson } from '@/features/editor/editorConfigApi';
 import { queryClient } from '@/services/queryClient';
 import { OPTIONAL_MODULE_CATEGORIES } from '@/features/editor/constants';
 import type { TemplateSchema } from '@/features/editor/templateApi';
+import { EditorSaveConflictBanner } from '@/features/editor/components/EditorSaveConflictBanner';
 import { SchemaDrivenForm } from '@/features/editor/components/SchemaDrivenForm';
 import {
   DECK_INVESTIGATION_MODULE_ID,
@@ -20,8 +21,6 @@ import {
   writeModuleConfigPath,
   writeModuleEnabled,
 } from '@/features/editor/utils/configShape';
-
-const CONFLICT_SNACKBAR_MSG = '동시 편집 충돌 — 최신 상태 다시 불러오기';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,9 +37,15 @@ interface ModulesSubTabProps {
 
 export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   const { data: moduleSchemasResp } = useModuleSchemas();
+  const [conflictDraft, setConflictDraft] = useState<Record<string, unknown> | null>(null);
+  const [isConflictBannerDismissed, setConflictBannerDismissed] = useState(false);
   // conflictRef distinguishes conflict-after-retry from generic errors in
   // onError. useRef avoids re-creating the hook on every render.
   const conflictRef = useRef(false);
+  const activeConfig = useMemo(
+    () => conflictDraft ?? theme.config_json ?? {},
+    [conflictDraft, theme.config_json]
+  );
   const updateConfig = useUpdateConfigJson(themeId, {
     onConflictAfterRetry: () => {
       conflictRef.current = true;
@@ -49,39 +54,75 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   });
 
   const mutateConfig = useCallback(
-    (nextConfig: Record<string, unknown>, successMsg: string, errorMsg: string) => {
+    (
+      nextConfig: Record<string, unknown>,
+      successMsg: string,
+      errorMsg: string,
+      onRollback?: () => void,
+    ) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       conflictRef.current = false;
       updateConfig.mutate(
         { ...nextConfig, version: theme.version },
         {
-          onSuccess: () => toast.success(successMsg),
+          onSuccess: () => {
+            setConflictDraft(null);
+            setConflictBannerDismissed(false);
+            toast.success(successMsg);
+          },
           onError: () => {
             if (conflictRef.current) {
-              toast.error(CONFLICT_SNACKBAR_MSG);
+              setConflictDraft(nextConfig);
+              setConflictBannerDismissed(false);
             } else {
+              onRollback?.();
               toast.error(errorMsg);
             }
           },
-        },
+        }
       );
     },
-    [theme.version, updateConfig],
+    [theme.version, updateConfig]
   );
 
-  const serverModules = useMemo(
-    () => readEnabledModuleIds(theme.config_json),
-    [theme.config_json],
-  );
+  const handleReloadAfterConflict = useCallback(() => {
+    setConflictDraft(null);
+    setConflictBannerDismissed(false);
+    queryClient.invalidateQueries({ queryKey: editorKeys.theme(themeId) });
+  }, [themeId]);
+
+  const handleCopyConflictDraft = useCallback(async () => {
+    const serialized = [
+      '모듈 설정 변경 백업',
+      '최신 상태를 다시 불러온 뒤 필요한 값을 참고해 다시 적용하세요.',
+      '',
+      JSON.stringify(conflictDraft ?? theme.config_json ?? {}, null, 2),
+    ].join('\n');
+    try {
+      if (!navigator.clipboard) {
+        throw new Error('Clipboard API is not available');
+      }
+      await navigator.clipboard.writeText(serialized);
+      toast.success('내 변경 내용을 클립보드에 복사했습니다');
+    } catch {
+      toast.error('클립보드에 복사할 수 없습니다');
+    }
+  }, [conflictDraft, theme.config_json]);
+
+  const serverModules = useMemo(() => readEnabledModuleIds(activeConfig), [activeConfig]);
 
   const moduleConfigs = useMemo((): Record<string, Record<string, unknown>> => {
     const result: Record<string, Record<string, unknown>> = {};
     for (const cat of OPTIONAL_MODULE_CATEGORIES) {
       for (const mod of cat.modules) {
-        result[mod.id] = readModuleConfig(theme.config_json, mod.id);
+        result[mod.id] = readModuleConfig(activeConfig, mod.id);
       }
     }
     return result;
-  }, [theme.config_json]);
+  }, [activeConfig]);
 
   const [selectedModules, setSelectedModules] = useState<string[]>(serverModules);
 
@@ -91,41 +132,52 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
 
   const handleToggle = useCallback(
     (moduleId: string) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       setSelectedModules((prev) => {
         const enabled = !prev.includes(moduleId);
-        const next = enabled
-          ? [...prev, moduleId]
-          : prev.filter((id) => id !== moduleId);
+        const next = enabled ? [...prev, moduleId] : prev.filter((id) => id !== moduleId);
 
         mutateConfig(
-          writeModuleEnabled(theme.config_json, moduleId, enabled),
+          writeModuleEnabled(activeConfig, moduleId, enabled),
           '모듈 설정이 저장되었습니다',
           '모듈 설정 저장에 실패했습니다',
+          () => setSelectedModules(prev),
         );
 
         return next;
       });
     },
-    [theme.config_json, mutateConfig],
+    [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
   const handleConfigChange = useCallback(
     (moduleId: string, path: string, value: unknown) => {
-      const nextConfig = writeModuleConfigPath(theme.config_json, moduleId, path, value);
+      if (updateConfig.isPending) {
+        return;
+      }
+
+      const nextConfig = writeModuleConfigPath(activeConfig, moduleId, path, value);
       mutateConfig(nextConfig, '설정이 저장되었습니다', '설정 저장에 실패했습니다');
     },
-    [theme.config_json, mutateConfig],
+    [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
   const handleDeckInvestigationChange = useCallback(
     (draft: DeckInvestigationConfigDraft) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
       mutateConfig(
-        writeDeckInvestigationConfig(theme.config_json, draft),
+        writeDeckInvestigationConfig(activeConfig, draft),
         '조사권 설정이 저장되었습니다',
-        '조사권 설정 저장에 실패했습니다',
+        '조사권 설정 저장에 실패했습니다'
       );
     },
-    [theme.config_json, mutateConfig],
+    [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
@@ -142,10 +194,17 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6">
+      {conflictDraft && !isConflictBannerDismissed && (
+        <EditorSaveConflictBanner
+          scopeLabel="모듈 설정"
+          onReload={handleReloadAfterConflict}
+          onPreserve={handleCopyConflictDraft}
+          onDismiss={() => setConflictBannerDismissed(true)}
+        />
+      )}
+
       {OPTIONAL_MODULE_CATEGORIES.map((category) => {
-        const activeCount = category.modules.filter((m) =>
-          selectedModules.includes(m.id),
-        ).length;
+        const activeCount = category.modules.filter((m) => selectedModules.includes(m.id)).length;
 
         return (
           <section key={category.key}>
@@ -166,14 +225,13 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                 const schema = schemaMap[mod.id] ?? null;
 
                 return (
-                  <div
-                    key={mod.id}
-                    className="rounded-lg border border-slate-700 bg-slate-800/50"
-                  >
+                  <div key={mod.id} className="rounded-lg border border-slate-700 bg-slate-800/50">
                     {/* Card header row */}
                     <div className="flex items-center gap-3 p-3">
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium ${isEnabled ? 'text-slate-200' : 'text-slate-500'}`}>
+                        <p
+                          className={`text-xs font-medium ${isEnabled ? 'text-slate-200' : 'text-slate-500'}`}
+                        >
                           {mod.name}
                         </p>
                         <p className="text-[10px] text-slate-600 mt-0.5 truncate">
@@ -187,6 +245,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                         aria-checked={isEnabled}
                         aria-label={`${mod.name} ${isEnabled ? '비활성화' : '활성화'}`}
                         onClick={() => handleToggle(mod.id)}
+                        disabled={updateConfig.isPending}
                         className={`relative shrink-0 h-5 w-9 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
                           isEnabled ? 'bg-amber-500' : 'bg-slate-700'
                         }`}
@@ -201,7 +260,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
 
                     {isEnabled && mod.id === DECK_INVESTIGATION_MODULE_ID && (
                       <InvestigationTokenSettingsPanel
-                        draft={readDeckInvestigationConfig(theme.config_json)}
+                        draft={readDeckInvestigationConfig(activeConfig)}
                         isSaving={updateConfig.isPending}
                         onChange={handleDeckInvestigationChange}
                       />
