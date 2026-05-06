@@ -346,6 +346,31 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("숨겨진 실행 결과가 있어도 정보공개와 알림 필드는 화면 순번을 사용한다", () => {
+    render(
+      <ActionListEditor
+        label="장면 시작 트리거"
+        actions={[
+          { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+          { id: "info", type: "DELIVER_INFORMATION", params: { deliveries: [] } },
+          { id: "broadcast", type: "BROADCAST_MESSAGE", params: { message: "" } },
+        ]}
+        hiddenTypes={["SET_BGM"]}
+        onChange={vi.fn()}
+        themeId="theme-1"
+      />,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: "장면 시작 트리거 1 공개할 읽기 대사" }),
+    ).toBeDefined();
+    expect(screen.getByRole("textbox", { name: "장면 시작 트리거 2 알림 문구" })).toBeDefined();
+    expect(
+      screen.queryByRole("combobox", { name: "장면 시작 트리거 2 공개할 읽기 대사" }),
+    ).toBeNull();
+    expect(screen.queryByRole("textbox", { name: "장면 시작 트리거 3 알림 문구" })).toBeNull();
+  });
+
   it("legacy 읽기 대사 공개 실행 결과도 같은 필드와 필수값 검증을 사용한다", () => {
     render(
       <ActionListEditor

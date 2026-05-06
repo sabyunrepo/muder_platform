@@ -162,10 +162,18 @@ function mergePresentationCueActions(
   currentActions: PhaseAction[],
   presentationActions: PhaseAction[],
 ): PhaseAction[] {
-  return [
-    ...currentActions.filter((action) => !isPresentationCueAction(action)),
-    ...presentationActions,
-  ];
+  const remainingPresentationActions = [...presentationActions];
+
+  const mergedActions = currentActions.flatMap((action) => {
+    if (!isPresentationCueAction(action)) {
+      return [action];
+    }
+
+    const replacementAction = remainingPresentationActions.shift();
+    return replacementAction ? [replacementAction] : [];
+  });
+
+  return [...mergedActions, ...remainingPresentationActions];
 }
 
 function hasIncompleteActionPatch(patch: Partial<FlowNodeData>): boolean {

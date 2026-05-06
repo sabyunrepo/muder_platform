@@ -217,14 +217,14 @@ function ActionRow({
       <InformationActionFields
         action={action}
         label={label}
-        index={index}
+        index={displayIndex}
         readingOptions={readingOptions}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
       <BroadcastActionFields
         action={action}
         label={label}
-        index={index}
+        index={displayIndex}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
     </div>
