@@ -8,6 +8,13 @@ import {
   toDeckInvestigationViewModel,
   writeDeckInvestigationConfig,
 } from '../deckInvestigationAdapter';
+import {
+  formatInvestigationCostLabel,
+  readLocationClueInvestigationCost,
+  removeLocationClueInvestigationCost,
+  syncLocationClueInvestigationRequirements,
+  writeLocationClueInvestigationCost,
+} from '../locationClueInvestigationCost';
 
 const clue = (id: string, name = id): ClueResponse => ({
   id,
@@ -243,5 +250,70 @@ describe('deckInvestigationAdapter', () => {
         emptyMessage: '더 이상 얻을 단서가 없습니다.',
       }],
     });
+  });
+
+  it('장소 단서별 조사 비용을 단일 단서 deck으로 읽고 쓴다', () => {
+    const draft = {
+      tokens: [{ id: 'coin', name: '동전', iconLabel: '코', defaultAmount: 2 }],
+      decks: [],
+    };
+
+    const paid = writeLocationClueInvestigationCost(draft, {
+      locationId: 'loc-1',
+      locationName: '서재',
+      clueId: 'clue-1',
+      clueName: '단검',
+      requiredClueIds: ['clue-2', 'clue-1'],
+      cost: { mode: 'token', tokenId: 'coin', tokenCost: 3 },
+    });
+
+    expect(readLocationClueInvestigationCost(paid, 'loc-1', 'clue-1')).toEqual({
+      mode: 'token',
+      tokenId: 'coin',
+      tokenCost: 3,
+    });
+    expect(paid.decks[0]).toMatchObject({
+      id: 'location-clue-loc-1-clue-1',
+      title: '서재 - 단검 조사',
+      tokenId: 'coin',
+      tokenCost: 3,
+      access: { locationIds: ['loc-1'], requiredClueIds: ['clue-2'] },
+      cards: [{ clueId: 'clue-1', delivery: 'private_ownership' }],
+    });
+    expect(formatInvestigationCostLabel({ mode: 'token', tokenId: 'coin', tokenCost: 3 }, paid.tokens))
+      .toBe('코 동전 3개 필요');
+  });
+
+  it('장소 단서 비용을 무료로 바꾸면 자동 생성 deck만 제거한다', () => {
+    const paid = writeLocationClueInvestigationCost(createDeckInvestigationDraft(), {
+      locationId: 'loc-1',
+      locationName: '서재',
+      clueId: 'clue-1',
+      clueName: '단검',
+      requiredClueIds: [],
+      cost: { mode: 'token', tokenId: 'investigation-token', tokenCost: 1 },
+    });
+
+    expect(removeLocationClueInvestigationCost(paid, 'loc-1', 'clue-1').decks).toEqual([]);
+    expect(readLocationClueInvestigationCost(paid, 'loc-1', 'missing')).toEqual({ mode: 'free' });
+    expect(formatInvestigationCostLabel({ mode: 'free' }, paid.tokens)).toBe('무료 조사');
+  });
+
+  it('필요 단서 조건 변경 시 비용 deck의 실행 조건도 동기화한다', () => {
+    const paid = writeLocationClueInvestigationCost(createDeckInvestigationDraft(), {
+      locationId: 'loc-1',
+      locationName: '서재',
+      clueId: 'clue-1',
+      clueName: '단검',
+      requiredClueIds: [],
+      cost: { mode: 'token', tokenId: 'investigation-token', tokenCost: 1 },
+    });
+
+    const synced = syncLocationClueInvestigationRequirements(paid, 'loc-1', 'clue-1', [
+      'clue-2',
+      'clue-1',
+    ]);
+
+    expect(synced.decks[0].access.requiredClueIds).toEqual(['clue-2']);
   });
 });

@@ -1,4 +1,10 @@
-import type { DiscussionRoomAvailability, DiscussionRoomPolicy } from "../../flowTypes";
+import type {
+  DiscussionParticipantMode,
+  DiscussionRoomAvailability,
+  DiscussionRoomCloseBehavior,
+  DiscussionRoomKind,
+  DiscussionRoomPolicy,
+} from "../../flowTypes";
 import {
   normalizeDiscussionRoomPolicy,
   patchDiscussionRoomPolicy,
@@ -39,6 +45,19 @@ export function DiscussionRoomPolicyPanel({ policy, onChange }: DiscussionRoomPo
 
         {normalized.enabled && (
           <div className="grid gap-3">
+            <label className="grid gap-1 text-xs text-slate-400">
+              <span className="font-medium text-slate-300">토론 유형</span>
+              <select
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                value={normalized.roomKind}
+                onChange={(event) => update({ roomKind: event.target.value as DiscussionRoomKind })}
+              >
+                <option value="all">전체 토론</option>
+                <option value="small_group">소그룹 토론</option>
+                <option value="private">비공개 토론</option>
+              </select>
+            </label>
+
             <LabeledTextInput
               label="메인 토론방"
               value={normalized.mainRoomName}
@@ -70,6 +89,36 @@ export function DiscussionRoomPolicyPanel({ policy, onChange }: DiscussionRoomPo
               />
             )}
 
+            <div className="grid gap-2 rounded border border-slate-800 bg-slate-900/40 px-3 py-2">
+              <label className="grid gap-1 text-xs text-slate-400">
+                <span className="font-medium text-slate-300">참여 대상</span>
+                <select
+                  className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                  value={normalized.participantMode}
+                  onChange={(event) =>
+                    update({ participantMode: event.target.value as DiscussionParticipantMode })
+                  }
+                >
+                  <option value="all">전원 참여</option>
+                  <option value="characters">특정 캐릭터</option>
+                  <option value="condition">조건 그룹</option>
+                </select>
+              </label>
+
+              {normalized.participantMode !== "all" && (
+                <LabeledTextInput
+                  label={normalized.participantMode === "characters" ? "참여 캐릭터 메모" : "참여 조건 메모"}
+                  value={normalized.participantSummary ?? ""}
+                  placeholder={
+                    normalized.participantMode === "characters"
+                      ? "예: 탐정, 피해자 가족"
+                      : "예: 단서 A 보유자만"
+                  }
+                  onChange={(participantSummary) => update({ participantSummary })}
+                />
+              )}
+            </div>
+
             <label className="grid gap-1 text-xs text-slate-400">
               <span className="font-medium text-slate-300">이용 가능 시점</span>
               <select
@@ -92,6 +141,20 @@ export function DiscussionRoomPolicyPanel({ policy, onChange }: DiscussionRoomPo
                 onChange={(conditionalRoomName) => update({ conditionalRoomName })}
               />
             )}
+
+            <label className="grid gap-1 text-xs text-slate-400">
+              <span className="font-medium text-slate-300">장면 종료 시 처리</span>
+              <select
+                className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"
+                value={normalized.closeBehavior}
+                onChange={(event) =>
+                  update({ closeBehavior: event.target.value as DiscussionRoomCloseBehavior })
+                }
+              >
+                <option value="close_on_exit">장면 종료 시 닫기</option>
+                <option value="keep_until_next_scene">다음 장면까지 유지</option>
+              </select>
+            </label>
           </div>
         )}
       </div>
