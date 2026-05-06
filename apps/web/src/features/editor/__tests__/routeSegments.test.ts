@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildEditorRouteForTab,
   EDITOR_ROUTE_MATRIX,
   readDesignSubTabFromRouteSegment,
   readEditorTabFromRouteSegment,
@@ -23,5 +24,25 @@ describe('editor route segment matrix', () => {
   it('알 수 없는 segment는 제작 흐름의 안전한 기본 화면으로 되돌린다', () => {
     expect(readEditorTabFromRouteSegment('unknown')).toBe('storyMap');
     expect(readDesignSubTabFromRouteSegment('unknown')).toBe('modules');
+  });
+
+  it.each([
+    ['storyMap', '/editor/theme-1'],
+    ['story', '/editor/theme-1/story'],
+    ['characters', '/editor/theme-1/characters'],
+    ['clues', '/editor/theme-1/clues'],
+    ['design', '/editor/theme-1/design/modules'],
+    ['media', '/editor/theme-1/media'],
+    ['overview', '/editor/theme-1/overview'],
+    ['template', '/editor/theme-1/template'],
+    ['advanced', '/editor/theme-1/advanced'],
+  ] as const)('%s 탭의 canonical URL을 만든다', (tab, expectedPath) => {
+    expect(buildEditorRouteForTab('theme-1', tab)).toBe(expectedPath);
+  });
+
+  it('theme id를 URL segment로 안전하게 인코딩한다', () => {
+    expect(buildEditorRouteForTab('theme/with space', 'characters')).toBe(
+      '/editor/theme%2Fwith%20space/characters',
+    );
   });
 });

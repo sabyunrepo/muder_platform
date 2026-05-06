@@ -39,6 +39,10 @@ const routeMatrixCases = [
   ['직접 URL /editor/:id/clues', { id: 'theme-1', tab: 'clues' }, 'clues', 'clues'],
   ['직접 URL /editor/:id/relations', { id: 'theme-1', tab: 'relations' }, 'relations', 'clues'],
   ['직접 URL /editor/:id/media', { id: 'theme-1', tab: 'media' }, 'media', 'media'],
+  ['직접 URL /editor/:id/overview', { id: 'theme-1', tab: 'overview' }, 'overview', 'overview'],
+  ['직접 URL /editor/:id/template', { id: 'theme-1', tab: 'template' }, 'template', 'template'],
+  ['alias URL /editor/:id/templates', { id: 'theme-1', tab: 'templates' }, 'templates', 'template'],
+  ['직접 URL /editor/:id/advanced', { id: 'theme-1', tab: 'advanced' }, 'advanced', 'advanced'],
   [
     '직접 URL /editor/:id/design/modules',
     { id: 'theme-1', tab: 'design', designTab: 'modules' },
