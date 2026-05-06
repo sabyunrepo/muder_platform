@@ -1,4 +1,4 @@
-import { Plus, Search, Trash2, Upload, Youtube } from "lucide-react";
+import { ListChecks, Plus, Search, Trash2, Upload, Youtube } from "lucide-react";
 import type { MediaCategoryResponse, MediaType } from "@/features/editor/mediaApi";
 
 // ---------------------------------------------------------------------------
@@ -19,6 +19,9 @@ export interface MediaToolbarProps {
   onDeleteCategory: () => void;
   onUploadClick: () => void;
   onYouTubeClick: () => void;
+  selectionMode?: boolean;
+  selectedCount?: number;
+  onSelectionModeToggle?: () => void;
 }
 
 const PILLS: Array<{ value: MediaFilter; label: string }> = [
@@ -47,6 +50,9 @@ export function MediaToolbar({
   onDeleteCategory,
   onUploadClick,
   onYouTubeClick,
+  selectionMode = false,
+  selectedCount = 0,
+  onSelectionModeToggle,
 }: MediaToolbarProps) {
   return (
     <div
@@ -125,6 +131,19 @@ export function MediaToolbar({
             />
           </label>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSelectionModeToggle}
+              aria-pressed={selectionMode}
+              className={`flex h-8 items-center gap-1.5 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
+                selectionMode
+                  ? "border-amber-500 bg-amber-500/10 text-amber-300"
+                  : "border-slate-700 text-slate-300 hover:border-slate-500 hover:text-slate-100"
+              }`}
+            >
+              <ListChecks className="h-3.5 w-3.5" />
+              {selectionMode ? `선택 중 ${selectedCount}` : "선택"}
+            </button>
             <button
               type="button"
               onClick={onUploadClick}

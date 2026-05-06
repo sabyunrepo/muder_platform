@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, FileText, FileUp, Save } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 import { Spinner } from '@/shared/components/ui/Spinner';
-import { useMediaDownloadUrl } from '@/features/editor/mediaApi';
+import { useMediaDownloadUrl, type MediaResponse } from '@/features/editor/mediaApi';
+import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
 import { ImageRoleSheetPanel } from './ImageRoleSheetPanel';
 import { useRoleSheetEditorState } from './useRoleSheetEditorState';
 
@@ -68,13 +70,13 @@ export function CharacterRoleSheetSection({
       {state.selectedFormat === 'pdf' ? (
         <PDFRoleSheetPanel
           characterName={characterName}
+          themeId={themeId}
           mediaId={state.pdfMediaId}
           page={state.page}
-          uploading={state.uploading || state.requestUploadUrl.isPending || state.confirmUpload.isPending || state.upsertContent.isPending}
-          uploadProgress={state.uploadProgress}
+          isPending={state.upsertContent.isPending}
           onPrevious={() => state.setPage((current) => Math.max(1, current - 1))}
           onNext={() => state.setPage((current) => current + 1)}
-          onUploadClick={() => state.fileInputRef.current?.click()}
+          onSelectPDF={state.savePDFMedia}
         />
       ) : state.selectedFormat === 'images' ? (
         <ImageRoleSheetPanel
@@ -128,15 +130,6 @@ export function CharacterRoleSheetSection({
           }}
         />
       )}
-
-      <input
-        ref={state.fileInputRef}
-        type="file"
-        accept="application/pdf,.pdf"
-        className="sr-only"
-        onChange={(event) => void state.handlePDFFile(event)}
-        aria-label="PDF 역할지 파일 선택"
-      />
     </section>
   );
 }
@@ -177,7 +170,7 @@ function RoleSheetFormatSelector({
       />
       <FormatButton
         label="PDF"
-        description="업로드 후 페이지 단위 보기"
+        description="미디어 문서 선택"
         active={selectedFormat === 'pdf'}
         onClick={() => onFormatChange('pdf')}
       />
@@ -292,23 +285,24 @@ function MarkdownRoleSheetEditor({
 
 function PDFRoleSheetPanel({
   characterName,
+  themeId,
   mediaId,
   page,
-  uploading,
-  uploadProgress,
+  isPending,
   onPrevious,
   onNext,
-  onUploadClick,
+  onSelectPDF,
 }: {
   characterName: string;
+  themeId: string;
   mediaId?: string;
   page: number;
-  uploading: boolean;
-  uploadProgress: number;
+  isPending: boolean;
   onPrevious: () => void;
   onNext: () => void;
-  onUploadClick: () => void;
+  onSelectPDF: (media: MediaResponse) => void;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
   const { data, isLoading, isError, refetch } = useMediaDownloadUrl(mediaId);
   const viewerUrl = data?.url ? `${data.url}#page=${page}&toolbar=0&navpanes=0&view=FitH` : undefined;
 
@@ -317,24 +311,18 @@ function PDFRoleSheetPanel({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-semibold text-slate-300">PDF 역할지</p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">모바일에서도 한 페이지씩 넘겨 읽을 수 있게 표시합니다.</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">미디어 관리의 문서 파일을 연결해 모바일에서도 한 페이지씩 넘겨 읽을 수 있게 표시합니다.</p>
         </div>
-        <Button size="sm" variant="secondary" onClick={onUploadClick} disabled={uploading}>
+        <Button size="sm" variant="secondary" onClick={() => setPickerOpen(true)} disabled={isPending}>
           <FileUp className="mr-1.5 h-3.5 w-3.5" />
-          {mediaId ? 'PDF 교체' : 'PDF 업로드'}
+          {mediaId ? 'PDF 교체' : 'PDF 선택'}
         </Button>
       </div>
-
-      {uploading && (
-        <p className="rounded-md border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-100">
-          PDF 업로드 중입니다{uploadProgress > 0 ? ` (${uploadProgress}%)` : ''}.
-        </p>
-      )}
 
       {!mediaId ? (
         <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950 p-6 text-center">
           <p className="text-sm font-semibold text-slate-300">아직 연결된 PDF가 없습니다.</p>
-          <p className="mt-2 text-xs leading-5 text-slate-500">{characterName} 플레이어가 받을 역할지 PDF를 업로드해 주세요.</p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{characterName} 플레이어가 받을 역할지 PDF를 미디어 관리에서 선택해 주세요.</p>
         </div>
       ) : isLoading ? (
         <div className="flex min-h-72 items-center justify-center" role="status" aria-label="PDF 역할지 로딩 중">
@@ -368,6 +356,15 @@ function PDFRoleSheetPanel({
           </div>
         </>
       )}
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={onSelectPDF}
+        themeId={themeId}
+        useCase="role_sheet_document"
+        selectedId={mediaId}
+        title="역할지 PDF 선택"
+      />
     </div>
   );
 }
