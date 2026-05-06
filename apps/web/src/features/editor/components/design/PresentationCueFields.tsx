@@ -112,7 +112,13 @@ export function PresentationCueFields({
 }) {
   const config = getPresentationCueConfig(action.type);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
-  if (!config) return null;
+  if (!config) {
+    return (
+      <div className="rounded border border-amber-700/40 bg-amber-950/30 p-2 text-[11px] text-amber-200">
+        지원되지 않는 연출 액션입니다. 액션 타입을 다시 선택해 주세요.
+      </div>
+    );
+  }
 
   const params = action.params ?? {};
   const mediaId = typeof params.mediaId === "string" ? params.mediaId : null;

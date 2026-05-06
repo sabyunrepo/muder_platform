@@ -246,6 +246,22 @@ describe("ActionListEditor", () => {
         { id: "legacy-info", type: "deliver_information", params: { deliveries: [] } },
       ]),
     ).toBe(true);
+    expect(
+      hasIncompletePresentationCueActions([
+        {
+          id: "legacy-info",
+          type: "deliver_information",
+          params: {
+            deliveries: [
+              {
+                recipient_type: "all_players",
+                readingSectionIds: ["reading-1"],
+              },
+            ],
+          },
+        },
+      ]),
+    ).toBe(false);
   });
 
   it("알림 보내기 실행 결과의 문구를 params.message로 저장한다", () => {

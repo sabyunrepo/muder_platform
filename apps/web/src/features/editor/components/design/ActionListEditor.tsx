@@ -192,13 +192,15 @@ function ActionRow({
           <Trash2 className="h-3 w-3" />
         </button>
       </div>
-      <PresentationCueFields
-        action={action}
-        label={label}
-        index={index}
-        themeId={themeId}
-        onParamsChange={(params) => onParamsChange(index, params)}
-      />
+      {getPresentationCueConfig(action.type) ? (
+        <PresentationCueFields
+          action={action}
+          label={label}
+          index={index}
+          themeId={themeId}
+          onParamsChange={(params) => onParamsChange(index, params)}
+        />
+      ) : null}
       <InformationActionFields
         action={action}
         label={label}

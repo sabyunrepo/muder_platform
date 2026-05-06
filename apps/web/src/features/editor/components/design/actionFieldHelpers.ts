@@ -7,9 +7,12 @@ export function readAllPlayerReadingSectionId(params: PhaseAction["params"]): st
   const delivery = deliveries.find((item): item is Record<string, unknown> => {
     if (!item || typeof item !== "object") return false;
     const target = (item as { target?: unknown }).target;
-    return !!target && typeof target === "object" && (target as { type?: unknown }).type === "all_players";
+    const targetType =
+      !!target && typeof target === "object" ? (target as { type?: unknown }).type : undefined;
+    const recipientType = (item as { recipient_type?: unknown }).recipient_type;
+    return targetType === "all_players" || recipientType === "all_players";
   });
-  const ids = delivery?.reading_section_ids;
+  const ids = delivery?.reading_section_ids ?? delivery?.readingSectionIds;
   if (!Array.isArray(ids)) return "";
   const [first] = ids;
   return typeof first === "string" ? first : "";
