@@ -3,7 +3,10 @@
 -- ============================================================
 
 -- name: ListStoryInfosByTheme :many
-SELECT * FROM story_infos WHERE theme_id = $1 ORDER BY sort_order, created_at;
+SELECT si.* FROM story_infos si
+JOIN themes t ON si.theme_id = t.id
+WHERE si.theme_id = $1 AND t.creator_id = $2
+ORDER BY si.sort_order, si.created_at;
 
 -- name: GetStoryInfoWithOwner :one
 SELECT si.* FROM story_infos si
@@ -21,7 +24,9 @@ INSERT INTO story_infos (
   related_location_ids,
   sort_order
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8
+FROM themes t
+WHERE t.id = $1 AND t.creator_id = $9
 RETURNING *;
 
 -- name: UpdateStoryInfo :one
@@ -35,9 +40,14 @@ SET title = $2,
     sort_order = $8,
     version = version + 1,
     updated_at = NOW()
-WHERE id = $1 AND version = $9
-RETURNING *;
+FROM themes t
+WHERE story_infos.id = $1
+  AND story_infos.theme_id = t.id
+  AND t.creator_id = $10
+  AND story_infos.version = $9
+RETURNING story_infos.*;
 
--- name: DeleteStoryInfoWithOwner :execrows
+-- name: DeleteStoryInfoWithOwner :one
 DELETE FROM story_infos si USING themes t
-WHERE si.id = $1 AND si.theme_id = t.id AND t.creator_id = $2;
+WHERE si.id = $1 AND si.theme_id = t.id AND t.creator_id = $2
+RETURNING si.theme_id;

@@ -24,7 +24,9 @@ INSERT INTO story_infos (
   related_location_ids,
   sort_order
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8
+FROM themes t
+WHERE t.id = $1 AND t.creator_id = $9
 RETURNING id, theme_id, title, body, image_media_id, related_character_ids, related_clue_ids, related_location_ids, sort_order, version, created_at, updated_at
 `
 
@@ -37,6 +39,7 @@ type CreateStoryInfoParams struct {
 	RelatedClueIds      json.RawMessage `json:"related_clue_ids"`
 	RelatedLocationIds  json.RawMessage `json:"related_location_ids"`
 	SortOrder           int32           `json:"sort_order"`
+	CreatorID           uuid.UUID       `json:"creator_id"`
 }
 
 func (q *Queries) CreateStoryInfo(ctx context.Context, arg CreateStoryInfoParams) (StoryInfo, error) {
@@ -49,6 +52,7 @@ func (q *Queries) CreateStoryInfo(ctx context.Context, arg CreateStoryInfoParams
 		arg.RelatedClueIds,
 		arg.RelatedLocationIds,
 		arg.SortOrder,
+		arg.CreatorID,
 	)
 	var i StoryInfo
 	err := row.Scan(
@@ -68,9 +72,10 @@ func (q *Queries) CreateStoryInfo(ctx context.Context, arg CreateStoryInfoParams
 	return i, err
 }
 
-const deleteStoryInfoWithOwner = `-- name: DeleteStoryInfoWithOwner :execrows
+const deleteStoryInfoWithOwner = `-- name: DeleteStoryInfoWithOwner :one
 DELETE FROM story_infos si USING themes t
 WHERE si.id = $1 AND si.theme_id = t.id AND t.creator_id = $2
+RETURNING si.theme_id
 `
 
 type DeleteStoryInfoWithOwnerParams struct {
@@ -78,12 +83,11 @@ type DeleteStoryInfoWithOwnerParams struct {
 	CreatorID uuid.UUID `json:"creator_id"`
 }
 
-func (q *Queries) DeleteStoryInfoWithOwner(ctx context.Context, arg DeleteStoryInfoWithOwnerParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteStoryInfoWithOwner, arg.ID, arg.CreatorID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+func (q *Queries) DeleteStoryInfoWithOwner(ctx context.Context, arg DeleteStoryInfoWithOwnerParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, deleteStoryInfoWithOwner, arg.ID, arg.CreatorID)
+	var theme_id uuid.UUID
+	err := row.Scan(&theme_id)
+	return theme_id, err
 }
 
 const getStoryInfoWithOwner = `-- name: GetStoryInfoWithOwner :one
@@ -119,14 +123,22 @@ func (q *Queries) GetStoryInfoWithOwner(ctx context.Context, arg GetStoryInfoWit
 
 const listStoryInfosByTheme = `-- name: ListStoryInfosByTheme :many
 
-SELECT id, theme_id, title, body, image_media_id, related_character_ids, related_clue_ids, related_location_ids, sort_order, version, created_at, updated_at FROM story_infos WHERE theme_id = $1 ORDER BY sort_order, created_at
+SELECT si.id, si.theme_id, si.title, si.body, si.image_media_id, si.related_character_ids, si.related_clue_ids, si.related_location_ids, si.sort_order, si.version, si.created_at, si.updated_at FROM story_infos si
+JOIN themes t ON si.theme_id = t.id
+WHERE si.theme_id = $1 AND t.creator_id = $2
+ORDER BY si.sort_order, si.created_at
 `
+
+type ListStoryInfosByThemeParams struct {
+	ThemeID   uuid.UUID `json:"theme_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+}
 
 // ============================================================
 // Story Infos
 // ============================================================
-func (q *Queries) ListStoryInfosByTheme(ctx context.Context, themeID uuid.UUID) ([]StoryInfo, error) {
-	rows, err := q.db.Query(ctx, listStoryInfosByTheme, themeID)
+func (q *Queries) ListStoryInfosByTheme(ctx context.Context, arg ListStoryInfosByThemeParams) ([]StoryInfo, error) {
+	rows, err := q.db.Query(ctx, listStoryInfosByTheme, arg.ThemeID, arg.CreatorID)
 	if err != nil {
 		return nil, err
 	}
@@ -169,8 +181,12 @@ SET title = $2,
     sort_order = $8,
     version = version + 1,
     updated_at = NOW()
-WHERE id = $1 AND version = $9
-RETURNING id, theme_id, title, body, image_media_id, related_character_ids, related_clue_ids, related_location_ids, sort_order, version, created_at, updated_at
+FROM themes t
+WHERE story_infos.id = $1
+  AND story_infos.theme_id = t.id
+  AND t.creator_id = $10
+  AND story_infos.version = $9
+RETURNING story_infos.id, story_infos.theme_id, story_infos.title, story_infos.body, story_infos.image_media_id, story_infos.related_character_ids, story_infos.related_clue_ids, story_infos.related_location_ids, story_infos.sort_order, story_infos.version, story_infos.created_at, story_infos.updated_at
 `
 
 type UpdateStoryInfoParams struct {
@@ -183,6 +199,7 @@ type UpdateStoryInfoParams struct {
 	RelatedLocationIds  json.RawMessage `json:"related_location_ids"`
 	SortOrder           int32           `json:"sort_order"`
 	Version             int32           `json:"version"`
+	CreatorID           uuid.UUID       `json:"creator_id"`
 }
 
 func (q *Queries) UpdateStoryInfo(ctx context.Context, arg UpdateStoryInfoParams) (StoryInfo, error) {
@@ -196,6 +213,7 @@ func (q *Queries) UpdateStoryInfo(ctx context.Context, arg UpdateStoryInfoParams
 		arg.RelatedLocationIds,
 		arg.SortOrder,
 		arg.Version,
+		arg.CreatorID,
 	)
 	var i StoryInfo
 	err := row.Scan(

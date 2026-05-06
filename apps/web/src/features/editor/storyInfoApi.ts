@@ -41,7 +41,6 @@ export interface UpdateStoryInfoRequest {
 }
 
 export const storyInfoKeys = {
-  all: ["story-infos"] as const,
   list: (themeId: string) => editorKeys.storyInfos(themeId),
 };
 

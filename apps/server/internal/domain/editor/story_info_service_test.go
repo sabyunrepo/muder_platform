@@ -21,6 +21,7 @@ type fakeStoryInfoQueries struct {
 	clues      map[uuid.UUID]db.ThemeClue
 	locations  map[uuid.UUID]db.ThemeLocation
 	infos      map[uuid.UUID]db.StoryInfo
+	charErr    error
 }
 
 func newFakeStoryInfoQueries() *fakeStoryInfoQueries {
@@ -51,6 +52,9 @@ func (f *fakeStoryInfoQueries) GetMedia(_ context.Context, id uuid.UUID) (db.The
 }
 
 func (f *fakeStoryInfoQueries) GetThemeCharacter(_ context.Context, id uuid.UUID) (db.ThemeCharacter, error) {
+	if f.charErr != nil {
+		return db.ThemeCharacter{}, f.charErr
+	}
 	row, ok := f.characters[id]
 	if !ok {
 		return db.ThemeCharacter{}, pgx.ErrNoRows
@@ -74,10 +78,11 @@ func (f *fakeStoryInfoQueries) GetLocation(_ context.Context, id uuid.UUID) (db.
 	return row, nil
 }
 
-func (f *fakeStoryInfoQueries) ListStoryInfosByTheme(_ context.Context, themeID uuid.UUID) ([]db.StoryInfo, error) {
+func (f *fakeStoryInfoQueries) ListStoryInfosByTheme(_ context.Context, arg db.ListStoryInfosByThemeParams) ([]db.StoryInfo, error) {
 	out := []db.StoryInfo{}
 	for _, info := range f.infos {
-		if info.ThemeID == themeID {
+		theme, ok := f.themes[info.ThemeID]
+		if info.ThemeID == arg.ThemeID && ok && theme.CreatorID == arg.CreatorID {
 			out = append(out, info)
 		}
 	}
@@ -97,6 +102,10 @@ func (f *fakeStoryInfoQueries) GetStoryInfoWithOwner(_ context.Context, arg db.G
 }
 
 func (f *fakeStoryInfoQueries) CreateStoryInfo(_ context.Context, arg db.CreateStoryInfoParams) (db.StoryInfo, error) {
+	theme, ok := f.themes[arg.ThemeID]
+	if !ok || theme.CreatorID != arg.CreatorID {
+		return db.StoryInfo{}, pgx.ErrNoRows
+	}
 	info := db.StoryInfo{
 		ID:                  uuid.New(),
 		ThemeID:             arg.ThemeID,
@@ -120,6 +129,10 @@ func (f *fakeStoryInfoQueries) UpdateStoryInfo(_ context.Context, arg db.UpdateS
 	if !ok || info.Version != arg.Version {
 		return db.StoryInfo{}, pgx.ErrNoRows
 	}
+	theme, ok := f.themes[info.ThemeID]
+	if !ok || theme.CreatorID != arg.CreatorID {
+		return db.StoryInfo{}, pgx.ErrNoRows
+	}
 	info.Title = arg.Title
 	info.Body = arg.Body
 	info.ImageMediaID = arg.ImageMediaID
@@ -133,17 +146,17 @@ func (f *fakeStoryInfoQueries) UpdateStoryInfo(_ context.Context, arg db.UpdateS
 	return info, nil
 }
 
-func (f *fakeStoryInfoQueries) DeleteStoryInfoWithOwner(_ context.Context, arg db.DeleteStoryInfoWithOwnerParams) (int64, error) {
+func (f *fakeStoryInfoQueries) DeleteStoryInfoWithOwner(_ context.Context, arg db.DeleteStoryInfoWithOwnerParams) (uuid.UUID, error) {
 	info, ok := f.infos[arg.ID]
 	if !ok {
-		return 0, nil
+		return uuid.Nil, pgx.ErrNoRows
 	}
 	theme, ok := f.themes[info.ThemeID]
 	if !ok || theme.CreatorID != arg.CreatorID {
-		return 0, nil
+		return uuid.Nil, pgx.ErrNoRows
 	}
 	delete(f.infos, arg.ID)
-	return 1, nil
+	return info.ThemeID, nil
 }
 
 type storyInfoFixture struct {
@@ -242,6 +255,17 @@ func TestStoryInfoService_Create_RejectsRelatedEntityFromOtherTheme(t *testing.T
 		RelatedCharacterIDs: []string{f.otherCharID.String()},
 	})
 	assertAppCode(t, err, apperror.ErrValidation)
+}
+
+func TestStoryInfoService_Create_ReturnsInternalForRelatedLookupFailure(t *testing.T) {
+	f := newStoryInfoFixture(t)
+	f.q.charErr = context.DeadlineExceeded
+
+	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateStoryInfoRequest{
+		Title:               "DB 장애",
+		RelatedCharacterIDs: []string{f.characterID.String()},
+	})
+	assertAppCode(t, err, apperror.ErrInternal)
 }
 
 func TestStoryInfoService_Update_ClearsImageAndChecksVersion(t *testing.T) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Save, Trash2 } from "lucide-react";
 
 import {
@@ -27,6 +27,7 @@ type RefKind = "character" | "clue" | "location";
 export function InfoTab({ themeId }: InfoTabProps) {
   const { data: infos = [], isLoading, isError, refetch } = useStoryInfos(themeId);
   const createInfo = useCreateStoryInfo(themeId);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const sortedInfos = useMemo(
     () => [...infos].sort((a, b) => a.sortOrder - b.sortOrder),
@@ -35,16 +36,21 @@ export function InfoTab({ themeId }: InfoTabProps) {
   const selected = sortedInfos.find((info) => info.id === selectedId) ?? sortedInfos[0] ?? null;
 
   async function handleCreate() {
-    const created = await createInfo.mutateAsync({
-      title: "새 스토리 정보",
-      body: "",
-      imageMediaId: null,
-      relatedCharacterIds: [],
-      relatedClueIds: [],
-      relatedLocationIds: [],
-      sortOrder: sortedInfos.length,
-    });
-    setSelectedId(created.id);
+    setCreateError(null);
+    try {
+      const created = await createInfo.mutateAsync({
+        title: "새 스토리 정보",
+        body: "",
+        imageMediaId: null,
+        relatedCharacterIds: [],
+        relatedClueIds: [],
+        relatedLocationIds: [],
+        sortOrder: sortedInfos.length,
+      });
+      setSelectedId(created.id);
+    } catch (err) {
+      setCreateError(errorMessage(err, "정보 생성에 실패했습니다"));
+    }
   }
 
   if (isLoading) {
@@ -77,6 +83,11 @@ export function InfoTab({ themeId }: InfoTabProps) {
           <p className="mt-1 text-xs text-slate-400">
             장면에서 공개할 정보를 대사와 분리해 카드로 관리합니다.
           </p>
+          {createError && (
+            <p className="mt-2 text-xs text-rose-300" role="alert">
+              {createError}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -131,6 +142,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
 
 function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoResponse }) {
   const [draft, setDraft] = useState(() => ({ ...info }));
+  const [baseline, setBaseline] = useState(() => ({ ...info }));
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const updateInfo = useUpdateStoryInfo(themeId);
@@ -139,7 +151,12 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const { data: clues = [] } = useEditorClues(themeId);
   const { data: locations = [] } = useEditorLocations(themeId);
 
-  const isDirty = JSON.stringify(draft) !== JSON.stringify(info);
+  useEffect(() => {
+    setDraft({ ...info });
+    setBaseline({ ...info });
+  }, [info]);
+
+  const isDirty = hasEditableChanges(draft, baseline);
 
   function patchRefs(kind: RefKind, id: string, checked: boolean) {
     const key =
@@ -170,12 +187,13 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
           relatedClueIds: draft.relatedClueIds,
           relatedLocationIds: draft.relatedLocationIds,
           sortOrder: draft.sortOrder,
-          version: info.version,
+          version: draft.version,
         },
       });
       setDraft({ ...saved });
+      setBaseline({ ...saved });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "저장에 실패했습니다");
+      setError(errorMessage(err, "저장에 실패했습니다"));
     }
   }
 
@@ -184,7 +202,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     try {
       await deleteInfo.mutateAsync(info.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "삭제에 실패했습니다");
+      setError(errorMessage(err, "삭제에 실패했습니다"));
     }
   }
 
@@ -272,4 +290,24 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
       </div>
     </section>
   );
+}
+
+function sameIds(a: string[], b: string[]) {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+function hasEditableChanges(current: StoryInfoResponse, baseline: StoryInfoResponse) {
+  return (
+    current.title !== baseline.title ||
+    current.body !== baseline.body ||
+    (current.imageMediaId ?? null) !== (baseline.imageMediaId ?? null) ||
+    !sameIds(current.relatedCharacterIds, baseline.relatedCharacterIds) ||
+    !sameIds(current.relatedClueIds, baseline.relatedClueIds) ||
+    !sameIds(current.relatedLocationIds, baseline.relatedLocationIds) ||
+    current.sortOrder !== baseline.sortOrder
+  );
+}
+
+function errorMessage(err: unknown, fallback: string) {
+  return err instanceof Error && err.message ? err.message : fallback;
 }

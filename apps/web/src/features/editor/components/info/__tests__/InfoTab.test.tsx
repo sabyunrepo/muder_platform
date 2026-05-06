@@ -159,6 +159,15 @@ describe("InfoTab", () => {
     });
   });
 
+  it("shows a user-visible message when story info creation fails", async () => {
+    createMutate.mockRejectedValueOnce(new Error("서버 오류"));
+    render(<InfoTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /정보 추가/ }));
+
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "서버 오류");
+  });
+
   it("uses IMAGE-only MediaPicker and saves selected image plus references", async () => {
     render(<InfoTab themeId="theme-1" />);
 
@@ -191,5 +200,53 @@ describe("InfoTab", () => {
         version: 3,
       },
     });
+  });
+
+  it("uses the saved version for a second save without stale dirty metadata", async () => {
+    updateMutate
+      .mockResolvedValueOnce({
+        ...baseInfo,
+        title: "1차 수정",
+        version: 4,
+        updatedAt: "2026-05-06T00:01:00Z",
+      })
+      .mockResolvedValueOnce({
+        ...baseInfo,
+        title: "2차 수정",
+        version: 5,
+        updatedAt: "2026-05-06T00:02:00Z",
+      });
+    render(<InfoTab themeId="theme-1" />);
+
+    fireEvent.change(screen.getByLabelText("정보 제목"), {
+      target: { value: "1차 수정" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+    await waitFor(() =>
+      expect(updateMutate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          patch: expect.objectContaining({ title: "1차 수정", version: 3 }),
+        }),
+      ),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /저장/ })).toHaveProperty(
+        "disabled",
+        true,
+      ),
+    );
+    fireEvent.change(screen.getByLabelText("정보 제목"), {
+      target: { value: "2차 수정" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /저장/ }));
+
+    await waitFor(() =>
+      expect(updateMutate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          patch: expect.objectContaining({ title: "2차 수정", version: 4 }),
+        }),
+      ),
+    );
   });
 });

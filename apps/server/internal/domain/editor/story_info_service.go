@@ -21,18 +21,18 @@ type storyInfoQueries interface {
 	GetThemeCharacter(ctx context.Context, id uuid.UUID) (db.ThemeCharacter, error)
 	GetClue(ctx context.Context, id uuid.UUID) (db.ThemeClue, error)
 	GetLocation(ctx context.Context, id uuid.UUID) (db.ThemeLocation, error)
-	ListStoryInfosByTheme(ctx context.Context, themeID uuid.UUID) ([]db.StoryInfo, error)
+	ListStoryInfosByTheme(ctx context.Context, arg db.ListStoryInfosByThemeParams) ([]db.StoryInfo, error)
 	GetStoryInfoWithOwner(ctx context.Context, arg db.GetStoryInfoWithOwnerParams) (db.StoryInfo, error)
 	CreateStoryInfo(ctx context.Context, arg db.CreateStoryInfoParams) (db.StoryInfo, error)
 	UpdateStoryInfo(ctx context.Context, arg db.UpdateStoryInfoParams) (db.StoryInfo, error)
-	DeleteStoryInfoWithOwner(ctx context.Context, arg db.DeleteStoryInfoWithOwnerParams) (int64, error)
+	DeleteStoryInfoWithOwner(ctx context.Context, arg db.DeleteStoryInfoWithOwnerParams) (uuid.UUID, error)
 }
 
 type StoryInfoService interface {
 	List(ctx context.Context, creatorID, themeID uuid.UUID) ([]StoryInfoResponse, error)
 	Create(ctx context.Context, creatorID, themeID uuid.UUID, req CreateStoryInfoRequest) (*StoryInfoResponse, error)
 	Update(ctx context.Context, creatorID, infoID uuid.UUID, req UpdateStoryInfoRequest) (*StoryInfoResponse, error)
-	Delete(ctx context.Context, creatorID, infoID uuid.UUID) error
+	Delete(ctx context.Context, creatorID, infoID uuid.UUID) (uuid.UUID, error)
 }
 
 type storyInfoService struct {
@@ -55,7 +55,7 @@ func (s *storyInfoService) List(ctx context.Context, creatorID, themeID uuid.UUI
 	if _, err := s.ownedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
-	rows, err := s.q.ListStoryInfosByTheme(ctx, themeID)
+	rows, err := s.q.ListStoryInfosByTheme(ctx, db.ListStoryInfosByThemeParams{ThemeID: themeID, CreatorID: creatorID})
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to list story infos")
 		return nil, apperror.Internal("failed to list story infos")
@@ -97,6 +97,7 @@ func (s *storyInfoService) Create(ctx context.Context, creatorID, themeID uuid.U
 		RelatedClueIds:      clueRefs,
 		RelatedLocationIds:  locationRefs,
 		SortOrder:           req.SortOrder,
+		CreatorID:           creatorID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to create story info")
@@ -167,6 +168,7 @@ func (s *storyInfoService) Update(ctx context.Context, creatorID, infoID uuid.UU
 		RelatedLocationIds:  locationRefs,
 		SortOrder:           sortOrder,
 		Version:             req.Version,
+		CreatorID:           creatorID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -178,19 +180,19 @@ func (s *storyInfoService) Update(ctx context.Context, creatorID, infoID uuid.UU
 	return toStoryInfoResponse(row)
 }
 
-func (s *storyInfoService) Delete(ctx context.Context, creatorID, infoID uuid.UUID) error {
-	rows, err := s.q.DeleteStoryInfoWithOwner(ctx, db.DeleteStoryInfoWithOwnerParams{
+func (s *storyInfoService) Delete(ctx context.Context, creatorID, infoID uuid.UUID) (uuid.UUID, error) {
+	themeID, err := s.q.DeleteStoryInfoWithOwner(ctx, db.DeleteStoryInfoWithOwnerParams{
 		ID:        infoID,
 		CreatorID: creatorID,
 	})
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, apperror.NotFound("story info not found")
+		}
 		s.logger.Error().Err(err).Str("story_info_id", infoID.String()).Msg("failed to delete story info")
-		return apperror.Internal("failed to delete story info")
+		return uuid.Nil, apperror.Internal("failed to delete story info")
 	}
-	if rows == 0 {
-		return apperror.NotFound("story info not found")
-	}
-	return nil
+	return themeID, nil
 }
 
 func (s *storyInfoService) ownedTheme(ctx context.Context, creatorID, themeID uuid.UUID) (db.Theme, error) {
@@ -306,21 +308,38 @@ func (s *storyInfoService) assertRelatedIDInTheme(ctx context.Context, themeID u
 	switch kind {
 	case "character":
 		row, err := s.q.GetThemeCharacter(ctx, id)
-		if err != nil || row.ThemeID != themeID {
+		if err != nil {
+			return s.relatedIDError(err, "character", id)
+		}
+		if row.ThemeID != themeID {
 			return apperror.New(apperror.ErrValidation, 422, "related character does not belong to this theme")
 		}
 	case "clue":
 		row, err := s.q.GetClue(ctx, id)
-		if err != nil || row.ThemeID != themeID {
+		if err != nil {
+			return s.relatedIDError(err, "clue", id)
+		}
+		if row.ThemeID != themeID {
 			return apperror.New(apperror.ErrValidation, 422, "related clue does not belong to this theme")
 		}
 	case "location":
 		row, err := s.q.GetLocation(ctx, id)
-		if err != nil || row.ThemeID != themeID {
+		if err != nil {
+			return s.relatedIDError(err, "location", id)
+		}
+		if row.ThemeID != themeID {
 			return apperror.New(apperror.ErrValidation, 422, "related location does not belong to this theme")
 		}
 	}
 	return nil
+}
+
+func (s *storyInfoService) relatedIDError(err error, kind string, id uuid.UUID) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return apperror.New(apperror.ErrValidation, 422, "related "+kind+" does not belong to this theme")
+	}
+	s.logger.Error().Err(err).Str(kind+"_id", id.String()).Msg("failed to verify related " + kind)
+	return apperror.Internal("failed to verify related " + kind)
 }
 
 func toStoryInfoResponse(row db.StoryInfo) (*StoryInfoResponse, error) {
