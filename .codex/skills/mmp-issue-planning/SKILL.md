@@ -37,10 +37,12 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - `## 병렬 작업 설계`
    - `## 제외`
    - `## 완료 조건`
+   - `## Coverage Plan`
    - `## 검증 계획`
    - `## PR 묶음 제안`
    - `## 브레인스토밍 필요 여부`
    - `## 순서/의존성`
+   - 필요 시 `## Deferred / Follow-up`
 3. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
    - `### 병렬 가능 작업`: 실제 사용할 agent lane을 적는다.
    - `### 파일/모듈 소유권`: 각 lane이 읽거나 수정할 수 있는 디렉터리/파일을 적는다.
@@ -52,14 +54,24 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - `mmp-backend-engine-reviewer`
    - `mmp-test-coverage-reviewer`
 5. API DTO, frontend adapter/ViewModel mapping, migration 결정, PR 생성, label, merge는 메인 Codex 소유로 둔다.
-6. MVP와 후순위를 분리한다. 범위가 커지면 후속 Issue를 만든다.
-7. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
+6. 코드 작성/수정 이슈의 `## Coverage Plan`에는 변경 예상 파일/모듈별 테스트 책임을 적는다.
+   - Backend handler/service: 성공 경로, validation, not found, ownership, conflict, delete-blocked 같은 실패 경로를 unit/integration test로 매핑한다.
+   - Frontend adapter/hook/component: 저장 payload, dirty state, error UI, empty/loading state, direct URL/tab state를 Vitest/E2E로 매핑한다.
+   - E2E 제외 시에는 왜 E2E가 부적합한지와 대체 테스트를 적는다.
+   - Codecov patch coverage 70%를 PR 끝에서 처음 확인하는 흐름을 피하기 위해, issue 단계에서 미리 테스트 파일 후보를 지정한다.
+7. MVP와 후순위를 분리한다. 범위가 커지거나 구현 중 제외하는 항목이 생기면 `## Deferred / Follow-up`에 남긴다.
+   - 같은 이슈 안에서 이어서 처리할 작은 항목이면 체크리스트로 둔다.
+   - 독립 PR이 필요하거나 다른 owner/검증 범위를 갖는 항목이면 새 GitHub Issue를 만든다.
+   - PR 본문에는 완료 범위는 `Closes #번호`, 후속/부분 범위는 `Refs #번호`로 연결한다.
+8. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
 
 ## Done
 
 - Issue 본문만 읽어도 병렬 audit, 순차 통합, 검증 범위가 보인다.
 - 병렬 가능한 lane과 충돌 금지 영역이 둘 다 적혀 있다.
 - 완료 조건에 테스트 또는 테스트 대체 근거가 있다.
+- Coverage Plan에 변경 파일별 테스트 매핑이 있다.
+- Deferred / Follow-up 판단이 추적 가능하거나, 후속 없음이 명확하다.
 - PR 묶음과 브레인스토밍 필요 여부가 명확하다.
 
 ## Avoid
@@ -68,3 +80,4 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 - 여러 agent에게 같은 파일/모듈 write ownership을 주지 않는다.
 - 제작자 UI 요구사항에 내부 ID, raw JSON, engine key, debug state 노출을 넣지 않는다.
 - 이슈 작성만으로 구현 검증이 끝났다고 주장하지 않는다.
+- “후속”이라고만 쓰고 실행 가능한 Issue나 체크리스트로 추적하지 않는 상태를 남기지 않는다.

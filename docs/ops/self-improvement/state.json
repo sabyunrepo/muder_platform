@@ -181,10 +181,33 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Changed strict-behind handling from automatic steward branch update to merge-batch decision ownership by main Codex, preserving current-head CI evidence unless the PR is the next merge target, conflicts, main drift, or user direction requires refresh."
+    },
+    {
+      "id": "coverage-plan-before-pr",
+      "resolved_at": "2026-05-06",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-issue-planning/SKILL.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "scripts/pr-create-guard.sh",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Moved Codecov risk left by requiring a Coverage Plan in issues/working notes and PR bodies before PR creation, with changed files and branches mapped to focused tests so 70% patch coverage gaps are not first discovered at merge time."
+    },
+    {
+      "id": "deferred-work-issue-tracking",
+      "resolved_at": "2026-05-06",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-issue-planning/SKILL.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Required minimized, excluded, or deferred implementation scope to be tracked in the current issue, an issue checklist/comment, or a new follow-up GitHub Issue before PR merge, with PR Refs links for intentional leftovers."
     }
   ],
   "last_review": {
-    "date": "2026-05-05",
-    "summary": "Recorded merge-batch steward policy so strict-behind PRs are not automatically updated after every merge and CI evidence is preserved until main Codex chooses admin merge or targeted refresh."
+    "date": "2026-05-06",
+    "summary": "Recorded Coverage Plan-before-PR and deferred-work issue tracking policies so coverage gaps and minimized scope are visible before merge."
   }
 }
