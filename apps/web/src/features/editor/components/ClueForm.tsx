@@ -183,7 +183,10 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
             setImageMediaId(media.id);
             setImageUrl('');
           }}
-          onClear={() => setImageMediaId(null)}
+          onClear={() => {
+            setImageMediaId(null);
+            setImageUrl('');
+          }}
         />
 
         <Input

@@ -219,6 +219,39 @@ describe('ClueForm', () => {
     expect(mergeClueImageMock).not.toHaveBeenCalled();
   });
 
+  it('edit 모드에서 이미지 제거 시 media id와 legacy URL을 함께 비운다', () => {
+    const onClose = vi.fn();
+    const existing = {
+      id: 'clue-with-image',
+      theme_id: 'theme-1',
+      location_id: null,
+      name: '이미지 단서',
+      description: null,
+      image_url: 'https://cdn.example/legacy-clue.webp',
+      image_media_id: 'image-1',
+      is_common: false,
+      level: 1,
+      sort_order: 0,
+      created_at: '2026-04-15T00:00:00Z',
+      is_usable: false,
+      use_effect: null,
+      use_target: null,
+      use_consumed: false,
+    };
+
+    render(
+      <ClueForm themeId="theme-1" clue={existing} isOpen onClose={onClose} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '제거' }));
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(updateMutate).toHaveBeenCalledTimes(1);
+    const [args] = updateMutate.mock.calls[0];
+    expect(args.body.image_media_id).toBeNull();
+    expect(args.body.image_url).toBeUndefined();
+  });
+
   it('edit 모드에서는 useUpdateClue.mutate가 호출된다', () => {
     const onClose = vi.fn();
     const existing = {
