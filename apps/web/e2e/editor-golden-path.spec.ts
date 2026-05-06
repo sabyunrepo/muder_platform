@@ -69,18 +69,25 @@ async function expectNoPageLevelHorizontalOverflow(page: Page) {
 }
 
 async function expectFocusIndicator(locator: Locator) {
-  await locator.focus();
-  const style = await locator.evaluate((el) => {
+  const readStyle = (el: Element) => {
     const cs = window.getComputedStyle(el);
     return { outline: cs.outline, boxShadow: cs.boxShadow };
-  });
+  };
+
+  const before = await locator.evaluate(readStyle);
+  await locator.focus();
+  const after = await locator.evaluate(readStyle);
 
   const hasOutline =
-    !!style.outline && style.outline !== 'none' && !style.outline.startsWith('rgba(0, 0, 0, 0)');
-  const hasRing = !!style.boxShadow && style.boxShadow !== 'none';
+    after.outline !== before.outline &&
+    !!after.outline &&
+    after.outline !== 'none' &&
+    !after.outline.startsWith('rgba(0, 0, 0, 0)');
+  const hasRing =
+    after.boxShadow !== before.boxShadow && !!after.boxShadow && after.boxShadow !== 'none';
   expect(
     hasOutline || hasRing,
-    `focus indicator missing — outline=${style.outline} boxShadow=${style.boxShadow}`,
+    `focus indicator missing — before=${before.outline}/${before.boxShadow}, after=${after.outline}/${after.boxShadow}`,
   ).toBe(true);
 }
 
@@ -297,6 +304,8 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
       timeout: 10_000,
     });
     await expectFocusIndicator(page.getByRole('button', { name: '파일 업로드' }));
+    await expectFocusIndicator(page.getByRole('button', { name: 'YouTube' }));
+    await expectFocusIndicator(page.getByRole('button', { name: '전체' }));
     await expectNoPageLevelHorizontalOverflow(page);
   });
 
