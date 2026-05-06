@@ -28,6 +28,7 @@ describe('editor route segment matrix', () => {
 
   it.each([
     ['storyMap', '/editor/theme-1'],
+    ['info', '/editor/theme-1/info'],
     ['story', '/editor/theme-1/story'],
     ['characters', '/editor/theme-1/characters'],
     ['clues', '/editor/theme-1/clues'],

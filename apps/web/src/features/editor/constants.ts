@@ -8,6 +8,7 @@ import {
   LayoutTemplate,
   Search,
   GitBranch,
+  Info,
 } from "lucide-react";
 import type { ThemeStatus } from "./api";
 
@@ -17,6 +18,7 @@ import type { ThemeStatus } from "./api";
 
 export const EDITOR_TABS = [
   { key: "storyMap" as const, label: "스토리 진행", icon: GitBranch, always: true, group: "primary" },
+  { key: "info" as const, label: "정보 관리", icon: Info, always: true, group: "manage" },
   { key: "story" as const, label: "읽기 대사", icon: BookOpen, always: true, group: "manage" },
   { key: "characters" as const, label: "등장인물 관리", icon: Users, always: true, group: "manage" },
   { key: "clues" as const, label: "단서 관리", icon: Search, always: true, group: "manage" },

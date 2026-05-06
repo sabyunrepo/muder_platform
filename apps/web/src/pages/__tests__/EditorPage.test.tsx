@@ -30,6 +30,7 @@ const routeMatrixCases = [
   ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
   ['alias URL /editor/:id/story-map', { id: 'theme-1', tab: 'story-map' }, 'story-map', 'storyMap'],
   ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'story'],
+  ['직접 URL /editor/:id/info', { id: 'theme-1', tab: 'info' }, 'info', 'info'],
   [
     '직접 URL /editor/:id/characters',
     { id: 'theme-1', tab: 'characters' },

@@ -40,6 +40,7 @@ describe("EditorTabNav dynamic tabs", () => {
   it("모듈 미지정 시 always=true 탭만 표시된다", () => {
     render(<EditorTabNav />);
     expect(screen.getByText("스토리 진행")).toBeDefined();
+    expect(screen.getByText("정보 관리")).toBeDefined();
     expect(screen.getByText("읽기 대사")).toBeDefined();
     expect(screen.getByText("등장인물 관리")).toBeDefined();
     expect(screen.getByText("단서 관리")).toBeDefined();
@@ -75,6 +76,7 @@ describe("EditorTabNav dynamic tabs", () => {
     const tabLabels = screen.getAllByRole("tab").map((tab) => tab.textContent);
     expect(tabLabels).toEqual([
       "스토리 진행",
+      "정보 관리",
       "읽기 대사",
       "등장인물 관리",
       "단서 관리",

@@ -24,4 +24,10 @@ func registerEditorMediaRoutes(r chi.Router, deps authedDeps) {
 	r.Post("/themes/{id}/reading-sections", deps.reading.CreateReadingSection)
 	r.Patch("/reading-sections/{id}", deps.reading.UpdateReadingSection)
 	r.Delete("/reading-sections/{id}", deps.reading.DeleteReadingSection)
+
+	// Story information cards
+	r.Get("/themes/{id}/story-infos", deps.storyInfo.ListStoryInfos)
+	r.Post("/themes/{id}/story-infos", deps.storyInfo.CreateStoryInfo)
+	r.Patch("/story-infos/{id}", deps.storyInfo.UpdateStoryInfo)
+	r.Delete("/story-infos/{id}", deps.storyInfo.DeleteStoryInfo)
 }
