@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
@@ -54,22 +55,39 @@ func (s *service) UpdateTheme(ctx context.Context, creatorID, themeID uuid.UUID,
 	if err != nil {
 		return nil, err
 	}
+	coverImage := theme.CoverImage
+	if req.CoverImage != nil {
+		coverImage = ptrToText(req.CoverImage)
+	}
+	coverImageMediaID := theme.CoverImageMediaID
+	if req.CoverImageMediaID.Set {
+		if req.CoverImageMediaID.Value == nil {
+			coverImageMediaID = pgtype.UUID{}
+		} else {
+			coverImageMediaID, err = s.resolveThemeImageMedia(ctx, theme.ID, req.CoverImageMediaID.Value, "theme cover image")
+			coverImage = pgtype.Text{}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	var updated db.Theme
 	for attempt := 0; attempt < 3; attempt++ {
 		slug := generateSlug(req.Title)
 		updated, err = s.q.UpdateTheme(ctx, db.UpdateThemeParams{
-			ID:          theme.ID,
-			Title:       req.Title,
-			Slug:        slug,
-			Description: ptrToText(req.Description),
-			CoverImage:  ptrToText(req.CoverImage),
-			MinPlayers:  req.MinPlayers,
-			MaxPlayers:  req.MaxPlayers,
-			DurationMin: req.DurationMin,
-			Price:       req.Price,
-			CoinPrice:   req.CoinPrice,
-			Version:     theme.Version,
+			ID:                theme.ID,
+			Title:             req.Title,
+			Slug:              slug,
+			Description:       ptrToText(req.Description),
+			CoverImage:        coverImage,
+			CoverImageMediaID: coverImageMediaID,
+			MinPlayers:        req.MinPlayers,
+			MaxPlayers:        req.MaxPlayers,
+			DurationMin:       req.DurationMin,
+			Price:             req.Price,
+			CoinPrice:         req.CoinPrice,
+			Version:           theme.Version,
 		})
 		if err == nil {
 			return toThemeResponse(updated), nil

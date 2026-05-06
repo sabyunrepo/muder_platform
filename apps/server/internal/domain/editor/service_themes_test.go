@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -157,6 +159,72 @@ func TestService_UpdateTheme(t *testing.T) {
 	if resp.MinPlayers != 3 {
 		t.Errorf("min_players not updated: got %d", resp.MinPlayers)
 	}
+}
+
+func TestService_UpdateTheme_CoverImageMediaReference(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	media := createLocationMedia(t, f.q, themeID, "커버 이미지", MediaTypeImage)
+	otherThemeMedia := createLocationMedia(t, f.q, otherThemeID, "다른 테마 이미지", MediaTypeImage)
+	voiceMedia := createLocationMedia(t, f.q, themeID, "음성", MediaTypeVoice)
+
+	updated, err := f.svc.UpdateTheme(ctx, creatorID, themeID, UpdateThemeRequest{
+		Title:             "커버 참조 테마",
+		CoverImageMediaID: OptionalUUID{Set: true, Value: uuidPtr(media.ID)},
+		MinPlayers:        2,
+		MaxPlayers:        6,
+		DurationMin:       90,
+	})
+	if err != nil {
+		t.Fatalf("UpdateTheme with cover image media: %v", err)
+	}
+	if updated.CoverImageMediaID == nil || *updated.CoverImageMediaID != media.ID {
+		t.Fatalf("CoverImageMediaID = %v, want %s", updated.CoverImageMediaID, media.ID)
+	}
+
+	if _, err := f.svc.UpdateTheme(ctx, creatorID, updated.ID, UpdateThemeRequest{
+		Title:             updated.Title,
+		CoverImageMediaID: OptionalUUID{Set: true, Value: uuidPtr(otherThemeMedia.ID)},
+		MinPlayers:        updated.MinPlayers,
+		MaxPlayers:        updated.MaxPlayers,
+		DurationMin:       updated.DurationMin,
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateTheme with other theme media error = %T %v, want media not in theme", err, err)
+	}
+
+	if _, err := f.svc.UpdateTheme(ctx, creatorID, updated.ID, UpdateThemeRequest{
+		Title:             updated.Title,
+		CoverImageMediaID: OptionalUUID{Set: true, Value: uuidPtr(voiceMedia.ID)},
+		MinPlayers:        updated.MinPlayers,
+		MaxPlayers:        updated.MaxPlayers,
+		DurationMin:       updated.DurationMin,
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateTheme with non-image media error = %T %v, want media not in theme", err, err)
+	}
+
+	cleared, err := f.svc.UpdateTheme(ctx, creatorID, updated.ID, UpdateThemeRequest{
+		Title:             updated.Title,
+		CoverImageMediaID: OptionalUUID{Set: true},
+		MinPlayers:        updated.MinPlayers,
+		MaxPlayers:        updated.MaxPlayers,
+		DurationMin:       updated.DurationMin,
+	})
+	if err != nil {
+		t.Fatalf("UpdateTheme clear cover image media: %v", err)
+	}
+	if cleared.CoverImageMediaID != nil {
+		t.Fatalf("CoverImageMediaID after clear = %v, want nil", cleared.CoverImageMediaID)
+	}
+}
+
+func uuidPtr(id uuid.UUID) *uuid.UUID {
+	return &id
 }
 
 func TestService_UpdateTheme_ForbiddenForNonOwner(t *testing.T) {

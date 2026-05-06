@@ -158,16 +158,17 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 }
 
 const createMap = `-- name: CreateMap :one
-INSERT INTO theme_maps (theme_id, name, image_url, sort_order)
-VALUES ($1, $2, $3, $4)
-RETURNING id, theme_id, name, image_url, sort_order, created_at
+INSERT INTO theme_maps (theme_id, name, image_url, image_media_id, sort_order)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, theme_id, name, image_url, sort_order, created_at, image_media_id
 `
 
 type CreateMapParams struct {
-	ThemeID   uuid.UUID   `json:"theme_id"`
-	Name      string      `json:"name"`
-	ImageUrl  pgtype.Text `json:"image_url"`
-	SortOrder int32       `json:"sort_order"`
+	ThemeID      uuid.UUID   `json:"theme_id"`
+	Name         string      `json:"name"`
+	ImageUrl     pgtype.Text `json:"image_url"`
+	ImageMediaID pgtype.UUID `json:"image_media_id"`
+	SortOrder    int32       `json:"sort_order"`
 }
 
 func (q *Queries) CreateMap(ctx context.Context, arg CreateMapParams) (ThemeMap, error) {
@@ -175,6 +176,7 @@ func (q *Queries) CreateMap(ctx context.Context, arg CreateMapParams) (ThemeMap,
 		arg.ThemeID,
 		arg.Name,
 		arg.ImageUrl,
+		arg.ImageMediaID,
 		arg.SortOrder,
 	)
 	var i ThemeMap
@@ -185,6 +187,7 @@ func (q *Queries) CreateMap(ctx context.Context, arg CreateMapParams) (ThemeMap,
 		&i.ImageUrl,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.ImageMediaID,
 	)
 	return i, err
 }
@@ -429,7 +432,7 @@ func (q *Queries) GetLocationWithOwner(ctx context.Context, arg GetLocationWithO
 }
 
 const getMap = `-- name: GetMap :one
-SELECT id, theme_id, name, image_url, sort_order, created_at FROM theme_maps WHERE id = $1
+SELECT id, theme_id, name, image_url, sort_order, created_at, image_media_id FROM theme_maps WHERE id = $1
 `
 
 func (q *Queries) GetMap(ctx context.Context, id uuid.UUID) (ThemeMap, error) {
@@ -442,13 +445,14 @@ func (q *Queries) GetMap(ctx context.Context, id uuid.UUID) (ThemeMap, error) {
 		&i.ImageUrl,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.ImageMediaID,
 	)
 	return i, err
 }
 
 const getMapWithOwner = `-- name: GetMapWithOwner :one
 
-SELECT m.id, m.theme_id, m.name, m.image_url, m.sort_order, m.created_at FROM theme_maps m
+SELECT m.id, m.theme_id, m.name, m.image_url, m.sort_order, m.created_at, m.image_media_id FROM theme_maps m
 JOIN themes t ON m.theme_id = t.id
 WHERE m.id = $1 AND t.creator_id = $2
 `
@@ -471,6 +475,7 @@ func (q *Queries) GetMapWithOwner(ctx context.Context, arg GetMapWithOwnerParams
 		&i.ImageUrl,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.ImageMediaID,
 	)
 	return i, err
 }
@@ -671,7 +676,7 @@ func (q *Queries) ListLocationsByTheme(ctx context.Context, themeID uuid.UUID) (
 
 const listMapsByTheme = `-- name: ListMapsByTheme :many
 
-SELECT id, theme_id, name, image_url, sort_order, created_at FROM theme_maps WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, name, image_url, sort_order, created_at, image_media_id FROM theme_maps WHERE theme_id = $1 ORDER BY sort_order
 `
 
 // ============================================================
@@ -693,6 +698,7 @@ func (q *Queries) ListMapsByTheme(ctx context.Context, themeID uuid.UUID) ([]The
 			&i.ImageUrl,
 			&i.SortOrder,
 			&i.CreatedAt,
+			&i.ImageMediaID,
 		); err != nil {
 			return nil, err
 		}
@@ -817,16 +823,17 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 }
 
 const updateMap = `-- name: UpdateMap :one
-UPDATE theme_maps SET name = $2, image_url = $3, sort_order = $4
+UPDATE theme_maps SET name = $2, image_url = $3, image_media_id = $4, sort_order = $5
 WHERE id = $1
-RETURNING id, theme_id, name, image_url, sort_order, created_at
+RETURNING id, theme_id, name, image_url, sort_order, created_at, image_media_id
 `
 
 type UpdateMapParams struct {
-	ID        uuid.UUID   `json:"id"`
-	Name      string      `json:"name"`
-	ImageUrl  pgtype.Text `json:"image_url"`
-	SortOrder int32       `json:"sort_order"`
+	ID           uuid.UUID   `json:"id"`
+	Name         string      `json:"name"`
+	ImageUrl     pgtype.Text `json:"image_url"`
+	ImageMediaID pgtype.UUID `json:"image_media_id"`
+	SortOrder    int32       `json:"sort_order"`
 }
 
 func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (ThemeMap, error) {
@@ -834,6 +841,7 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (ThemeMap,
 		arg.ID,
 		arg.Name,
 		arg.ImageUrl,
+		arg.ImageMediaID,
 		arg.SortOrder,
 	)
 	var i ThemeMap
@@ -844,6 +852,7 @@ func (q *Queries) UpdateMap(ctx context.Context, arg UpdateMapParams) (ThemeMap,
 		&i.ImageUrl,
 		&i.SortOrder,
 		&i.CreatedAt,
+		&i.ImageMediaID,
 	)
 	return i, err
 }

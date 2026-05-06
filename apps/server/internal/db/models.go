@@ -268,26 +268,27 @@ type StoryInfo struct {
 }
 
 type Theme struct {
-	ID          uuid.UUID          `json:"id"`
-	CreatorID   uuid.UUID          `json:"creator_id"`
-	Title       string             `json:"title"`
-	Slug        string             `json:"slug"`
-	Description pgtype.Text        `json:"description"`
-	CoverImage  pgtype.Text        `json:"cover_image"`
-	MinPlayers  int32              `json:"min_players"`
-	MaxPlayers  int32              `json:"max_players"`
-	DurationMin int32              `json:"duration_min"`
-	Price       int32              `json:"price"`
-	Status      string             `json:"status"`
-	ConfigJson  json.RawMessage    `json:"config_json"`
-	Version     int32              `json:"version"`
-	PublishedAt pgtype.Timestamptz `json:"published_at"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
-	CoinPrice   int32              `json:"coin_price"`
-	ReviewNote  pgtype.Text        `json:"review_note"`
-	ReviewedAt  pgtype.Timestamptz `json:"reviewed_at"`
-	ReviewedBy  pgtype.UUID        `json:"reviewed_by"`
+	ID                uuid.UUID          `json:"id"`
+	CreatorID         uuid.UUID          `json:"creator_id"`
+	Title             string             `json:"title"`
+	Slug              string             `json:"slug"`
+	Description       pgtype.Text        `json:"description"`
+	CoverImage        pgtype.Text        `json:"cover_image"`
+	MinPlayers        int32              `json:"min_players"`
+	MaxPlayers        int32              `json:"max_players"`
+	DurationMin       int32              `json:"duration_min"`
+	Price             int32              `json:"price"`
+	Status            string             `json:"status"`
+	ConfigJson        json.RawMessage    `json:"config_json"`
+	Version           int32              `json:"version"`
+	PublishedAt       pgtype.Timestamptz `json:"published_at"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	CoinPrice         int32              `json:"coin_price"`
+	ReviewNote        pgtype.Text        `json:"review_note"`
+	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
+	ReviewedBy        pgtype.UUID        `json:"reviewed_by"`
+	CoverImageMediaID pgtype.UUID        `json:"cover_image_media_id"`
 }
 
 type ThemeCharacter struct {
@@ -354,12 +355,13 @@ type ThemeLocation struct {
 }
 
 type ThemeMap struct {
-	ID        uuid.UUID   `json:"id"`
-	ThemeID   uuid.UUID   `json:"theme_id"`
-	Name      string      `json:"name"`
-	ImageUrl  pgtype.Text `json:"image_url"`
-	SortOrder int32       `json:"sort_order"`
-	CreatedAt time.Time   `json:"created_at"`
+	ID           uuid.UUID   `json:"id"`
+	ThemeID      uuid.UUID   `json:"theme_id"`
+	Name         string      `json:"name"`
+	ImageUrl     pgtype.Text `json:"image_url"`
+	SortOrder    int32       `json:"sort_order"`
+	CreatedAt    time.Time   `json:"created_at"`
+	ImageMediaID pgtype.UUID `json:"image_media_id"`
 }
 
 type ThemeMedium struct {

@@ -7,12 +7,14 @@ import {
   useEditorMaps,
   useCreateMap,
   useDeleteMap,
+  useUpdateMap,
   useEditorLocations,
   useCreateLocation,
   useDeleteLocation,
 } from '@/features/editor/api';
 import { AddNameInput } from './AddNameInput';
 import { LocationDetailPanel } from './LocationDetailPanel';
+import { LocationImageMediaField } from './LocationImageMediaField';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,6 +34,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const { data: locations, isLoading: locsLoading } = useEditorLocations(themeId);
   const createMap = useCreateMap(themeId);
   const deleteMap = useDeleteMap(themeId);
+  const updateMap = useUpdateMap(themeId);
   const createLocation = useCreateLocation(themeId);
   const deleteLocation = useDeleteLocation(themeId);
 
@@ -168,7 +171,11 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
                 <button
                   type="button"
                   onClick={(e) => {
-                    if (window.confirm(`${map.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`)) {
+                    if (
+                      window.confirm(
+                        `${map.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`
+                      )
+                    ) {
                       handleDeleteMap(map.id);
                     }
                   }}
@@ -185,6 +192,52 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
 
       {/* ── Location detail ── */}
       <div className="min-h-0 flex-1 px-5 py-5 md:overflow-y-auto">
+        {selectedMap ? (
+          <div className="mb-4 rounded-lg border border-slate-800 bg-slate-950/70 p-4">
+            <div className="mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-300/80">
+                토론방 배경
+              </p>
+              <h3 className="mt-1 text-base font-semibold text-slate-100">{selectedMap.name}</h3>
+            </div>
+            <LocationImageMediaField
+              themeId={themeId}
+              label="지도 이미지"
+              pickerTitle="지도 이미지 선택"
+              emptyLabel="미디어에서 지도 선택"
+              legacyMessage="기존 지도 이미지 URL이 있습니다. 미디어 관리 이미지로 교체하면 이후 한 곳에서 관리할 수 있습니다."
+              imageMediaId={selectedMap.image_media_id}
+              legacyImageUrl={selectedMap.image_url}
+              onSelect={(media) =>
+                updateMap.mutate(
+                  {
+                    mapId: selectedMap.id,
+                    body: {
+                      name: selectedMap.name,
+                      image_url: null,
+                      image_media_id: media.id,
+                      sort_order: selectedMap.sort_order,
+                    },
+                  },
+                  { onError: () => toast.error('지도 이미지 저장에 실패했습니다') }
+                )
+              }
+              onClear={() =>
+                updateMap.mutate(
+                  {
+                    mapId: selectedMap.id,
+                    body: {
+                      name: selectedMap.name,
+                      image_media_id: null,
+                      sort_order: selectedMap.sort_order,
+                    },
+                  },
+                  { onError: () => toast.error('지도 이미지 저장에 실패했습니다') }
+                )
+              }
+            />
+          </div>
+        ) : null}
         <LocationDetailPanel
           themeId={themeId}
           theme={theme}

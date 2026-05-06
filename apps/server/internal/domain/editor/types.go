@@ -33,24 +33,27 @@ func (o *OptionalUUID) UnmarshalJSON(data []byte) error {
 // --- Map types ---
 
 type CreateMapRequest struct {
-	Name      string  `json:"name" validate:"required,min=1,max=100"`
-	ImageURL  *string `json:"image_url" validate:"omitempty,url"`
-	SortOrder int32   `json:"sort_order" validate:"min=0"`
+	Name         string     `json:"name" validate:"required,min=1,max=100"`
+	ImageURL     *string    `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID *uuid.UUID `json:"image_media_id"`
+	SortOrder    int32      `json:"sort_order" validate:"min=0"`
 }
 
 type UpdateMapRequest struct {
-	Name      string  `json:"name" validate:"required,min=1,max=100"`
-	ImageURL  *string `json:"image_url" validate:"omitempty,url"`
-	SortOrder int32   `json:"sort_order" validate:"min=0"`
+	Name         string       `json:"name" validate:"required,min=1,max=100"`
+	ImageURL     *string      `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID OptionalUUID `json:"image_media_id"`
+	SortOrder    int32        `json:"sort_order" validate:"min=0"`
 }
 
 type MapResponse struct {
-	ID        uuid.UUID `json:"id"`
-	ThemeID   uuid.UUID `json:"theme_id"`
-	Name      string    `json:"name"`
-	ImageURL  *string   `json:"image_url,omitempty"`
-	SortOrder int32     `json:"sort_order"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           uuid.UUID  `json:"id"`
+	ThemeID      uuid.UUID  `json:"theme_id"`
+	Name         string     `json:"name"`
+	ImageURL     *string    `json:"image_url,omitempty"`
+	ImageMediaID *uuid.UUID `json:"image_media_id,omitempty"`
+	SortOrder    int32      `json:"sort_order"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 // --- Location types ---

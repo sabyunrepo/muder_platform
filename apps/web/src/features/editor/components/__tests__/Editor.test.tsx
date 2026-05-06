@@ -19,6 +19,7 @@ const {
   useEditorCharactersMock,
   useDeleteCharacterMock,
   useUpdateConfigJsonMock,
+  useMediaListMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
   toastSuccess: vi.fn(),
@@ -33,6 +34,7 @@ const {
   useEditorCharactersMock: vi.fn(),
   useDeleteCharacterMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
+  useMediaListMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -56,6 +58,35 @@ vi.mock("@/features/editor/components/SchemaDrivenForm", () => ({
   SchemaDrivenForm: () => null,
 }));
 
+vi.mock("@/features/editor/mediaApi", () => ({
+  useMediaList: () => useMediaListMock(),
+}));
+
+vi.mock("@/features/editor/components/media/MediaPicker", () => ({
+  MediaPicker: ({
+    open,
+    filterType,
+    selectedId,
+    onSelect,
+  }: {
+    open: boolean;
+    filterType?: string;
+    selectedId?: string | null;
+    onSelect: (media: { id: string; name: string; type: string }) => void;
+  }) =>
+    open ? (
+      <div>
+        <span>filter:{filterType}</span>
+        <span>selected:{selectedId ?? "none"}</span>
+        <button
+          type="button"
+          onClick={() => onSelect({ id: "image-1", name: "커버 이미지", type: "IMAGE" })}
+        >
+          커버 이미지 선택
+        </button>
+      </div>
+    ) : null,
+}));
 
 // ---------------------------------------------------------------------------
 // Mock: @/features/editor/api
@@ -383,6 +414,10 @@ describe("PublishBar", () => {
 describe("OverviewTab", () => {
   beforeEach(() => {
     useUpdateThemeMock.mockReturnValue(defaultMutationReturn());
+    useMediaListMock.mockReturnValue({
+      data: [{ id: "image-1", name: "커버 이미지", type: "IMAGE" }],
+      isLoading: false,
+    });
   });
 
   it("테마 데이터가 폼에 미리 채워져 렌더링된다", () => {
@@ -431,6 +466,20 @@ describe("OverviewTab", () => {
     expect(body).toHaveProperty("min_players", 4);
     expect(body).toHaveProperty("max_players", 6);
     expect(body).toHaveProperty("duration_min", 90);
+  });
+
+  it("미디어 관리 IMAGE를 커버 이미지 참조로 저장한다", () => {
+    render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
+
+    fireEvent.click(screen.getByText("미디어에서 커버 선택"));
+    expect(screen.getByText("filter:IMAGE")).toBeDefined();
+    fireEvent.click(screen.getByText("커버 이미지 선택"));
+    fireEvent.click(screen.getByText("저장"));
+
+    expect(mutateMock).toHaveBeenCalledTimes(1);
+    const [body] = mutateMock.mock.calls[0];
+    expect(body).toHaveProperty("cover_image_media_id", "image-1");
+    expect(body.cover_image).toBeUndefined();
   });
 });
 

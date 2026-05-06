@@ -49,34 +49,36 @@ type CreateThemeRequest struct {
 }
 
 type UpdateThemeRequest struct {
-	Title       string  `json:"title" validate:"required,min=2,max=100"`
-	Description *string `json:"description" validate:"omitempty,max=2000"`
-	CoverImage  *string `json:"cover_image" validate:"omitempty,url"`
-	MinPlayers  int32   `json:"min_players" validate:"required,min=2,max=20"`
-	MaxPlayers  int32   `json:"max_players" validate:"required,min=2,max=20"`
-	DurationMin int32   `json:"duration_min" validate:"required,min=10,max=300"`
-	Price       int32   `json:"price" validate:"min=0"`
-	CoinPrice   int32   `json:"coin_price" validate:"min=0,max=100000"`
+	Title             string       `json:"title" validate:"required,min=2,max=100"`
+	Description       *string      `json:"description" validate:"omitempty,max=2000"`
+	CoverImage        *string      `json:"cover_image" validate:"omitempty,url"`
+	CoverImageMediaID OptionalUUID `json:"cover_image_media_id"`
+	MinPlayers        int32        `json:"min_players" validate:"required,min=2,max=20"`
+	MaxPlayers        int32        `json:"max_players" validate:"required,min=2,max=20"`
+	DurationMin       int32        `json:"duration_min" validate:"required,min=10,max=300"`
+	Price             int32        `json:"price" validate:"min=0"`
+	CoinPrice         int32        `json:"coin_price" validate:"min=0,max=100000"`
 }
 
 type ThemeResponse struct {
-	ID          uuid.UUID       `json:"id"`
-	Title       string          `json:"title"`
-	Slug        string          `json:"slug"`
-	Description *string         `json:"description,omitempty"`
-	CoverImage  *string         `json:"cover_image,omitempty"`
-	MinPlayers  int32           `json:"min_players"`
-	MaxPlayers  int32           `json:"max_players"`
-	DurationMin int32           `json:"duration_min"`
-	Price       int32           `json:"price"`
-	CoinPrice   int32           `json:"coin_price"`
-	Status      string          `json:"status"`
-	ConfigJson  json.RawMessage `json:"config_json,omitempty"`
-	Version     int32           `json:"version"`
-	CreatedAt   time.Time       `json:"created_at"`
-	ReviewNote  *string         `json:"review_note,omitempty"`
-	ReviewedAt  *time.Time      `json:"reviewed_at,omitempty"`
-	ReviewedBy  *uuid.UUID      `json:"reviewed_by,omitempty"`
+	ID                uuid.UUID       `json:"id"`
+	Title             string          `json:"title"`
+	Slug              string          `json:"slug"`
+	Description       *string         `json:"description,omitempty"`
+	CoverImage        *string         `json:"cover_image,omitempty"`
+	CoverImageMediaID *uuid.UUID      `json:"cover_image_media_id,omitempty"`
+	MinPlayers        int32           `json:"min_players"`
+	MaxPlayers        int32           `json:"max_players"`
+	DurationMin       int32           `json:"duration_min"`
+	Price             int32           `json:"price"`
+	CoinPrice         int32           `json:"coin_price"`
+	Status            string          `json:"status"`
+	ConfigJson        json.RawMessage `json:"config_json,omitempty"`
+	Version           int32           `json:"version"`
+	CreatedAt         time.Time       `json:"created_at"`
+	ReviewNote        *string         `json:"review_note,omitempty"`
+	ReviewedAt        *time.Time      `json:"reviewed_at,omitempty"`
+	ReviewedBy        *uuid.UUID      `json:"reviewed_by,omitempty"`
 }
 
 type ThemeSummary struct {

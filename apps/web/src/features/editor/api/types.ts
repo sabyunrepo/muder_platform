@@ -27,6 +27,7 @@ export interface EditorThemeResponse {
   slug: string;
   description: string | null;
   cover_image: string | null;
+  cover_image_media_id?: string | null;
   min_players: number;
   max_players: number;
   duration_min: number;
@@ -88,6 +89,7 @@ export interface UpdateThemeRequest {
   title: string;
   description?: string;
   cover_image?: string;
+  cover_image_media_id?: string | null;
   min_players: number;
   max_players: number;
   duration_min: number;
@@ -176,6 +178,7 @@ export interface MapResponse {
   theme_id: string;
   name: string;
   image_url: string | null;
+  image_media_id?: string | null;
   sort_order: number;
   created_at: string;
 }
@@ -183,6 +186,7 @@ export interface MapResponse {
 export interface CreateMapRequest {
   name: string;
   image_url?: string;
+  image_media_id?: string | null;
   sort_order?: number;
 }
 

@@ -9,12 +9,12 @@ SELECT * FROM theme_maps WHERE theme_id = $1 ORDER BY sort_order;
 SELECT * FROM theme_maps WHERE id = $1;
 
 -- name: CreateMap :one
-INSERT INTO theme_maps (theme_id, name, image_url, sort_order)
-VALUES ($1, $2, $3, $4)
+INSERT INTO theme_maps (theme_id, name, image_url, image_media_id, sort_order)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: UpdateMap :one
-UPDATE theme_maps SET name = $2, image_url = $3, sort_order = $4
+UPDATE theme_maps SET name = $2, image_url = $3, image_media_id = $4, sort_order = $5
 WHERE id = $1
 RETURNING *;
 

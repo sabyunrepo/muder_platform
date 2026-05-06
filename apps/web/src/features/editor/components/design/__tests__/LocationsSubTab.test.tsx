@@ -15,6 +15,7 @@ const {
   useEditorMapsMock,
   useCreateMapMock,
   useDeleteMapMock,
+  useUpdateMapMock,
   useEditorLocationsMock,
   useCreateLocationMock,
   useDeleteLocationMock,
@@ -32,6 +33,7 @@ const {
   useEditorMapsMock: vi.fn(),
   useCreateMapMock: vi.fn(),
   useDeleteMapMock: vi.fn(),
+  useUpdateMapMock: vi.fn(),
   useEditorLocationsMock: vi.fn(),
   useCreateLocationMock: vi.fn(),
   useDeleteLocationMock: vi.fn(),
@@ -58,6 +60,7 @@ vi.mock('@/features/editor/api', () => ({
   useEditorMaps: () => useEditorMapsMock(),
   useCreateMap: () => useCreateMapMock(),
   useDeleteMap: () => useDeleteMapMock(),
+  useUpdateMap: () => useUpdateMapMock(),
   useEditorLocations: () => useEditorLocationsMock(),
   useCreateLocation: () => useCreateLocationMock(),
   useDeleteLocation: () => useDeleteLocationMock(),
@@ -152,6 +155,7 @@ function setupDefaultMocks() {
   useEditorLocationsMock.mockReturnValue({ data: mockLocations, isLoading: false });
   useCreateMapMock.mockReturnValue(defaultMutation());
   useDeleteMapMock.mockReturnValue(defaultMutation());
+  useUpdateMapMock.mockReturnValue(defaultMutation());
   useCreateLocationMock.mockReturnValue(defaultMutation());
   useDeleteLocationMock.mockReturnValue(defaultMutation());
   useUpdateLocationMock.mockReturnValue({
@@ -434,6 +438,42 @@ describe('LocationsSubTab', () => {
 
   describe('장소 이미지 미디어 참조', () => {
     beforeEach(setupDefaultMocks);
+
+    it('IMAGE 미디어를 지도 이미지 참조로 저장한다', () => {
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+
+      fireEvent.click(screen.getByText('미디어에서 지도 선택'));
+      expect(screen.getByText('filter:IMAGE')).toBeDefined();
+      fireEvent.click(screen.getByText('저택 사진 선택'));
+
+      expect(mutateMock).toHaveBeenCalledOnce();
+      const [payload] = mutateMock.mock.calls[0] as [
+        { mapId: string; body: Record<string, unknown> },
+      ];
+      expect(payload.mapId).toBe('map-1');
+      expect(payload.body.image_media_id).toBe('image-1');
+      expect(payload.body.image_url).toBeNull();
+      expect(payload.body.name).toBe('저택 1층');
+    });
+
+    it('선택된 지도 이미지 참조를 제거할 수 있다', () => {
+      useEditorMapsMock.mockReturnValue({
+        data: [{ ...mockMaps[0], image_media_id: 'image-1' }, ...mockMaps.slice(1)],
+        isLoading: false,
+      });
+
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+
+      expect(screen.getByText('저택 사진')).toBeDefined();
+      fireEvent.click(screen.getAllByText('제거')[0]);
+
+      expect(mutateMock).toHaveBeenCalledOnce();
+      const [payload] = mutateMock.mock.calls[0] as [
+        { mapId: string; body: Record<string, unknown> },
+      ];
+      expect(payload.mapId).toBe('map-1');
+      expect(payload.body.image_media_id).toBeNull();
+    });
 
     it('IMAGE 미디어만 선택해 장소 이미지 참조로 저장한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);

@@ -104,6 +104,43 @@ func (q *Queries) DeleteMediaWithOwner(ctx context.Context, arg DeleteMediaWithO
 	return result.RowsAffected(), nil
 }
 
+const findMapReferencesForMedia = `-- name: FindMapReferencesForMedia :many
+SELECT id, name
+FROM theme_maps
+WHERE theme_id = $1
+  AND image_media_id = $2
+`
+
+type FindMapReferencesForMediaParams struct {
+	ThemeID uuid.UUID   `json:"theme_id"`
+	MediaID pgtype.UUID `json:"media_id"`
+}
+
+type FindMapReferencesForMediaRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) FindMapReferencesForMedia(ctx context.Context, arg FindMapReferencesForMediaParams) ([]FindMapReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findMapReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindMapReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindMapReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const findRoleSheetReferencesForMedia = `-- name: FindRoleSheetReferencesForMedia :many
 SELECT id, key
 FROM theme_contents
@@ -132,6 +169,43 @@ func (q *Queries) FindRoleSheetReferencesForMedia(ctx context.Context, arg FindR
 	for rows.Next() {
 		var i FindRoleSheetReferencesForMediaRow
 		if err := rows.Scan(&i.ID, &i.Key); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findThemeCoverReferencesForMedia = `-- name: FindThemeCoverReferencesForMedia :many
+SELECT id, title
+FROM themes
+WHERE id = $1
+  AND cover_image_media_id = $2
+`
+
+type FindThemeCoverReferencesForMediaParams struct {
+	ThemeID uuid.UUID   `json:"theme_id"`
+	MediaID pgtype.UUID `json:"media_id"`
+}
+
+type FindThemeCoverReferencesForMediaRow struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+}
+
+func (q *Queries) FindThemeCoverReferencesForMedia(ctx context.Context, arg FindThemeCoverReferencesForMediaParams) ([]FindThemeCoverReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findThemeCoverReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindThemeCoverReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindThemeCoverReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Title); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

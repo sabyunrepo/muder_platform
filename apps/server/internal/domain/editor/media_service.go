@@ -52,6 +52,8 @@ type mediaQueries interface {
 	UpdateMedia(ctx context.Context, arg db.UpdateMediaParams) (db.ThemeMedium, error)
 	DeleteMedia(ctx context.Context, id uuid.UUID) error
 	DeleteMediaWithOwner(ctx context.Context, arg db.DeleteMediaWithOwnerParams) (int64, error)
+	FindThemeCoverReferencesForMedia(ctx context.Context, arg db.FindThemeCoverReferencesForMediaParams) ([]db.FindThemeCoverReferencesForMediaRow, error)
+	FindMapReferencesForMedia(ctx context.Context, arg db.FindMapReferencesForMediaParams) ([]db.FindMapReferencesForMediaRow, error)
 	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
 	FindRoleSheetReferencesForMedia(ctx context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error)
 }
@@ -454,6 +456,38 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 				Name: r.Name,
 			})
 		}
+	}
+
+	themeCoverRefs, err := s.q.FindThemeCoverReferencesForMedia(ctx, db.FindThemeCoverReferencesForMediaParams{
+		ThemeID: media.ThemeID,
+		MediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check theme cover media references")
+		return apperror.Internal("failed to check media references")
+	}
+	for _, r := range themeCoverRefs {
+		refList = append(refList, mediaReferenceInfo{
+			Type: "theme_cover",
+			ID:   r.ID.String(),
+			Name: r.Title,
+		})
+	}
+
+	mapRefs, err := s.q.FindMapReferencesForMedia(ctx, db.FindMapReferencesForMediaParams{
+		ThemeID: media.ThemeID,
+		MediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check map media references")
+		return apperror.Internal("failed to check media references")
+	}
+	for _, r := range mapRefs {
+		refList = append(refList, mediaReferenceInfo{
+			Type: "map",
+			ID:   r.ID.String(),
+			Name: r.Name,
+		})
 	}
 
 	roleSheetRefs, err := s.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{

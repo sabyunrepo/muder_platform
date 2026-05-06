@@ -28,7 +28,7 @@ func (q *Queries) CountThemeCharacters(ctx context.Context, themeID uuid.UUID) (
 const createTheme = `-- name: CreateTheme :one
 INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, config_json)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type CreateThemeParams struct {
@@ -81,6 +81,7 @@ func (q *Queries) CreateTheme(ctx context.Context, arg CreateThemeParams) (Theme
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -178,7 +179,7 @@ func (q *Queries) DeleteThemeCharacter(ctx context.Context, id uuid.UUID) error 
 }
 
 const getTheme = `-- name: GetTheme :one
-SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by FROM themes WHERE id = $1
+SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id FROM themes WHERE id = $1
 `
 
 func (q *Queries) GetTheme(ctx context.Context, id uuid.UUID) (Theme, error) {
@@ -205,12 +206,13 @@ func (q *Queries) GetTheme(ctx context.Context, id uuid.UUID) (Theme, error) {
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
 
 const getThemeBySlug = `-- name: GetThemeBySlug :one
-SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by FROM themes WHERE slug = $1
+SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id FROM themes WHERE slug = $1
 `
 
 func (q *Queries) GetThemeBySlug(ctx context.Context, slug string) (Theme, error) {
@@ -237,6 +239,7 @@ func (q *Queries) GetThemeBySlug(ctx context.Context, slug string) (Theme, error
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -354,7 +357,7 @@ func (q *Queries) ListAllRooms(ctx context.Context, arg ListAllRoomsParams) ([]R
 }
 
 const listAllThemes = `-- name: ListAllThemes :many
-SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by FROM themes ORDER BY created_at DESC LIMIT $1 OFFSET $2
+SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id FROM themes ORDER BY created_at DESC LIMIT $1 OFFSET $2
 `
 
 type ListAllThemesParams struct {
@@ -392,6 +395,7 @@ func (q *Queries) ListAllThemes(ctx context.Context, arg ListAllThemesParams) ([
 			&i.ReviewNote,
 			&i.ReviewedAt,
 			&i.ReviewedBy,
+			&i.CoverImageMediaID,
 		); err != nil {
 			return nil, err
 		}
@@ -404,7 +408,7 @@ func (q *Queries) ListAllThemes(ctx context.Context, arg ListAllThemesParams) ([
 }
 
 const listPublishedThemes = `-- name: ListPublishedThemes :many
-SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by FROM themes WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT $1 OFFSET $2
+SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id FROM themes WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT $1 OFFSET $2
 `
 
 type ListPublishedThemesParams struct {
@@ -442,6 +446,7 @@ func (q *Queries) ListPublishedThemes(ctx context.Context, arg ListPublishedThem
 			&i.ReviewNote,
 			&i.ReviewedAt,
 			&i.ReviewedBy,
+			&i.CoverImageMediaID,
 		); err != nil {
 			return nil, err
 		}
@@ -499,25 +504,26 @@ func (q *Queries) ListThemesByCreator(ctx context.Context, creatorID uuid.UUID) 
 }
 
 const updateTheme = `-- name: UpdateTheme :one
-UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5,
-  min_players = $6, max_players = $7, duration_min = $8, price = $9, coin_price = $10,
+UPDATE themes SET title = $2, slug = $3, description = $4, cover_image = $5, cover_image_media_id = $6,
+  min_players = $7, max_players = $8, duration_min = $9, price = $10, coin_price = $11,
   version = version + 1, updated_at = NOW()
-WHERE id = $1 AND version = $11
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+WHERE id = $1 AND version = $12
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type UpdateThemeParams struct {
-	ID          uuid.UUID   `json:"id"`
-	Title       string      `json:"title"`
-	Slug        string      `json:"slug"`
-	Description pgtype.Text `json:"description"`
-	CoverImage  pgtype.Text `json:"cover_image"`
-	MinPlayers  int32       `json:"min_players"`
-	MaxPlayers  int32       `json:"max_players"`
-	DurationMin int32       `json:"duration_min"`
-	Price       int32       `json:"price"`
-	CoinPrice   int32       `json:"coin_price"`
-	Version     int32       `json:"version"`
+	ID                uuid.UUID   `json:"id"`
+	Title             string      `json:"title"`
+	Slug              string      `json:"slug"`
+	Description       pgtype.Text `json:"description"`
+	CoverImage        pgtype.Text `json:"cover_image"`
+	CoverImageMediaID pgtype.UUID `json:"cover_image_media_id"`
+	MinPlayers        int32       `json:"min_players"`
+	MaxPlayers        int32       `json:"max_players"`
+	DurationMin       int32       `json:"duration_min"`
+	Price             int32       `json:"price"`
+	CoinPrice         int32       `json:"coin_price"`
+	Version           int32       `json:"version"`
 }
 
 func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme, error) {
@@ -527,6 +533,7 @@ func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme
 		arg.Slug,
 		arg.Description,
 		arg.CoverImage,
+		arg.CoverImageMediaID,
 		arg.MinPlayers,
 		arg.MaxPlayers,
 		arg.DurationMin,
@@ -556,6 +563,7 @@ func (q *Queries) UpdateTheme(ctx context.Context, arg UpdateThemeParams) (Theme
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
@@ -649,7 +657,7 @@ func (q *Queries) UpdateThemeCharacter(ctx context.Context, arg UpdateThemeChara
 const updateThemeConfigJson = `-- name: UpdateThemeConfigJson :one
 UPDATE themes SET config_json = $2, version = version + 1, updated_at = NOW()
 WHERE id = $1 AND version = $3
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type UpdateThemeConfigJsonParams struct {
@@ -682,12 +690,13 @@ func (q *Queries) UpdateThemeConfigJson(ctx context.Context, arg UpdateThemeConf
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }
 
 const updateThemeCoverImage = `-- name: UpdateThemeCoverImage :exec
-UPDATE themes SET cover_image = $2, updated_at = NOW() WHERE id = $1
+UPDATE themes SET cover_image = $2, cover_image_media_id = NULL, updated_at = NOW() WHERE id = $1
 `
 
 type UpdateThemeCoverImageParams struct {
@@ -703,7 +712,7 @@ func (q *Queries) UpdateThemeCoverImage(ctx context.Context, arg UpdateThemeCove
 const updateThemeStatus = `-- name: UpdateThemeStatus :one
 UPDATE themes SET status = $2, published_at = CASE WHEN $2 = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
 WHERE id = $1
-RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by
+RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type UpdateThemeStatusParams struct {
@@ -735,6 +744,7 @@ func (q *Queries) UpdateThemeStatus(ctx context.Context, arg UpdateThemeStatusPa
 		&i.ReviewNote,
 		&i.ReviewedAt,
 		&i.ReviewedBy,
+		&i.CoverImageMediaID,
 	)
 	return i, err
 }

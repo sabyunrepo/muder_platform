@@ -246,6 +246,59 @@ func TestService_LocationImageMediaReference(t *testing.T) {
 	}
 }
 
+func TestService_MapImageMediaReference(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	media := createLocationMedia(t, f.q, themeID, "지도 이미지", MediaTypeImage)
+	otherThemeMedia := createLocationMedia(t, f.q, otherThemeID, "다른 테마 이미지", MediaTypeImage)
+	voiceMedia := createLocationMedia(t, f.q, themeID, "효과음", MediaTypeVoice)
+
+	created, err := f.svc.CreateMap(ctx, creatorID, themeID, CreateMapRequest{
+		Name:         "1층 지도",
+		ImageMediaID: uuidPtr(media.ID),
+	})
+	if err != nil {
+		t.Fatalf("CreateMap with image media: %v", err)
+	}
+	if created.ImageMediaID == nil || *created.ImageMediaID != media.ID {
+		t.Fatalf("ImageMediaID = %v, want %s", created.ImageMediaID, media.ID)
+	}
+	if created.ImageURL != nil {
+		t.Fatalf("ImageURL = %q, want nil when ImageMediaID is set", *created.ImageURL)
+	}
+
+	if _, err := f.svc.UpdateMap(ctx, creatorID, created.ID, UpdateMapRequest{
+		Name:         created.Name,
+		ImageMediaID: OptionalUUID{Set: true, Value: uuidPtr(otherThemeMedia.ID)},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateMap with other theme image error = %T %v, want media not in theme", err, err)
+	}
+	if _, err := f.svc.UpdateMap(ctx, creatorID, created.ID, UpdateMapRequest{
+		Name:         created.Name,
+		ImageMediaID: OptionalUUID{Set: true, Value: uuidPtr(voiceMedia.ID)},
+	}); !isMediaNotInTheme(err) {
+		t.Fatalf("UpdateMap with non-image media error = %T %v, want media not in theme", err, err)
+	}
+
+	updated, err := f.svc.UpdateMap(ctx, creatorID, created.ID, UpdateMapRequest{
+		Name:         created.Name,
+		SortOrder:    created.SortOrder,
+		ImageMediaID: OptionalUUID{Set: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateMap clear image media: %v", err)
+	}
+	if updated.ImageMediaID != nil {
+		t.Fatalf("ImageMediaID after clear = %v, want nil", updated.ImageMediaID)
+	}
+}
+
 func isBadRequest(err error) bool {
 	var appErr *apperror.AppError
 	return errors.As(err, &appErr) && appErr.Code == apperror.ErrBadRequest
