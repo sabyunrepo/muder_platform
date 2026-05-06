@@ -29,12 +29,20 @@ import {
   mediaKeys,
   uploadMediaFile,
   useConfirmUpload,
+  useConfirmReplacementUpload,
+  useCreateMediaCategory,
   useCreateYouTubeMedia,
+  useDeleteMediaCategory,
   useDeleteMedia,
+  useMediaCategories,
   useMediaDownloadUrl,
   useMediaList,
+  useMediaDeletePreview,
+  useRequestReplacementUpload,
   useRequestUploadUrl,
+  useUpdateMediaCategory,
   useUpdateMedia,
+  type MediaCategoryResponse,
   type MediaResponse,
   type UploadUrlResponse,
 } from "./mediaApi";
@@ -64,6 +72,14 @@ const mockUploadUrl: UploadUrlResponse = {
   upload_id: "upload-1",
   upload_url: "https://r2.example.com/upload",
   expires_at: "2026-04-07T01:00:00Z",
+};
+
+const mockCategory: MediaCategoryResponse = {
+  id: "category-1",
+  theme_id: THEME_ID,
+  name: "배경",
+  sort_order: 1,
+  created_at: "2026-04-07T00:00:00Z",
 };
 
 function makeWrapper() {
@@ -146,6 +162,60 @@ describe("useMediaList", () => {
       ),
     );
   });
+
+  it("respects category filter in query string", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([]);
+
+    renderHook(() => useMediaList(THEME_ID, "IMAGE", "category-1"), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith(
+        `/v1/editor/themes/${THEME_ID}/media?type=IMAGE&category_id=category-1`,
+      ),
+    );
+  });
+});
+
+describe("useMediaCategories", () => {
+  it("fetches media categories for a theme", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([mockCategory]);
+
+    const { result } = renderHook(() => useMediaCategories(THEME_ID), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith(
+      `/v1/editor/themes/${THEME_ID}/media/categories`,
+    );
+    expect(result.current.data).toEqual([mockCategory]);
+  });
+});
+
+describe("useMediaDeletePreview", () => {
+  it("fetches media references when media id is present", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce({
+      references: [{ type: "map", id: "map-1", name: "1층 지도" }],
+    });
+
+    const { result } = renderHook(() => useMediaDeletePreview("media-1"), {
+      wrapper: makeWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(api.get).toHaveBeenCalledWith("/v1/editor/media/media-1/references");
+    expect(result.current.data?.references[0]?.type).toBe("map");
+  });
+
+  it("does not fetch media references without media id", () => {
+    renderHook(() => useMediaDeletePreview(undefined), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(api.get).not.toHaveBeenCalled();
+  });
 });
 
 describe("useMediaDownloadUrl", () => {
@@ -197,6 +267,33 @@ describe("useRequestUploadUrl", () => {
     expect(api.post).toHaveBeenCalledWith(
       `/v1/editor/themes/${THEME_ID}/media/upload-url`,
       body,
+    );
+  });
+
+  it("keeps category id in the upload-url request body", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce(mockUploadUrl);
+
+    const { result } = renderHook(() => useRequestUploadUrl(THEME_ID), {
+      wrapper: makeWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      name: "map.png",
+      type: "IMAGE",
+      mime_type: "image/png",
+      file_size: 2048,
+      category_id: "category-1",
+    });
+
+    expect(api.post).toHaveBeenCalledWith(
+      `/v1/editor/themes/${THEME_ID}/media/upload-url`,
+      {
+        name: "map.png",
+        type: "IMAGE",
+        mime_type: "image/png",
+        file_size: 2048,
+        category_id: "category-1",
+      },
     );
   });
 });
@@ -309,6 +406,112 @@ describe("useDeleteMedia", () => {
   });
 });
 
+describe("media category mutations", () => {
+  it("creates a category and invalidates category list", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce(mockCategory);
+
+    const { result } = renderHook(() => useCreateMediaCategory(THEME_ID), {
+      wrapper: makeWrapper(),
+    });
+
+    await result.current.mutateAsync({ name: "배경", sort_order: 1 });
+
+    expect(api.post).toHaveBeenCalledWith(
+      `/v1/editor/themes/${THEME_ID}/media/categories`,
+      { name: "배경", sort_order: 1 },
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.categories(THEME_ID),
+    });
+  });
+
+  it("updates a category and invalidates categories plus media list", async () => {
+    vi.mocked(api.patch).mockResolvedValueOnce(mockCategory);
+
+    const { result } = renderHook(() => useUpdateMediaCategory(THEME_ID), {
+      wrapper: makeWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      id: "category-1",
+      patch: { name: "배경", sort_order: 2 },
+    });
+
+    expect(api.patch).toHaveBeenCalledWith(
+      "/v1/editor/media/categories/category-1",
+      { name: "배경", sort_order: 2 },
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.categories(THEME_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.byTheme(THEME_ID),
+    });
+  });
+
+  it("deletes a category and invalidates categories plus media list", async () => {
+    vi.mocked(api.deleteVoid).mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useDeleteMediaCategory(THEME_ID), {
+      wrapper: makeWrapper(),
+    });
+
+    await result.current.mutateAsync("category-1");
+
+    expect(api.deleteVoid).toHaveBeenCalledWith(
+      "/v1/editor/media/categories/category-1",
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.categories(THEME_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.byTheme(THEME_ID),
+    });
+  });
+});
+
+describe("replacement upload mutations", () => {
+  it("requests a replacement upload URL for an existing media item", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce(mockUploadUrl);
+
+    const { result } = renderHook(() => useRequestReplacementUpload("media-1"), {
+      wrapper: makeWrapper(),
+    });
+
+    await result.current.mutateAsync({
+      mime_type: "image/png",
+      file_size: 2048,
+    });
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/v1/editor/media/media-1/replace-upload-url",
+      { mime_type: "image/png", file_size: 2048 },
+    );
+  });
+
+  it("confirms replacement upload and invalidates media plus download URL", async () => {
+    vi.mocked(api.post).mockResolvedValueOnce(mockMedia);
+
+    const { result } = renderHook(
+      () => useConfirmReplacementUpload(THEME_ID, "media-1"),
+      { wrapper: makeWrapper() },
+    );
+
+    await result.current.mutateAsync({ upload_id: "upload-1" });
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/v1/editor/media/media-1/replace-confirm",
+      { upload_id: "upload-1" },
+    );
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.byTheme(THEME_ID),
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: mediaKeys.downloadUrl("media-1"),
+    });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // uploadMediaFile helper
 // ---------------------------------------------------------------------------
@@ -336,6 +539,7 @@ describe("uploadMediaFile", () => {
       type: "BGM",
       mime_type: "audio/mpeg",
       file_size: file.size,
+      category_id: undefined,
     });
     expect(putFile).toHaveBeenCalledTimes(1);
     expect(putFile).toHaveBeenCalledWith(
@@ -375,6 +579,7 @@ describe("uploadMediaFile", () => {
       type: "DOCUMENT",
       mime_type: "application/pdf",
       file_size: pdf.size,
+      category_id: undefined,
     });
     expect(putFile).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -455,5 +660,31 @@ describe("uploadMediaFile", () => {
     expect(onProgress).toHaveBeenCalledWith(25);
     expect(onProgress).toHaveBeenCalledWith(75);
     expect(onProgress).toHaveBeenCalledWith(100);
+  });
+
+  it("passes category id through the upload helper request", async () => {
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue(mockMedia);
+    const putFile = vi.fn().mockResolvedValue(undefined);
+
+    await uploadMediaFile({
+      themeId: THEME_ID,
+      file,
+      type: "IMAGE",
+      name: "map",
+      categoryId: "category-1",
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+      retryBaseDelayMs: 0,
+    });
+
+    expect(requestUploadUrl).toHaveBeenCalledWith({
+      name: "map",
+      type: "IMAGE",
+      mime_type: "audio/mpeg",
+      file_size: file.size,
+      category_id: "category-1",
+    });
   });
 });
