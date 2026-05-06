@@ -1,7 +1,8 @@
-import { User, CheckCircle } from "lucide-react";
-import type { Player } from "@mmp/shared";
+import { User, CheckCircle } from 'lucide-react';
+import type { Player } from '@mmp/shared';
+import { playerDisplayName } from '../utils/resultBreakdownAdapter';
 
-import { Button, Badge } from "@/shared/components/ui";
+import { Button, Badge } from '@/shared/components/ui';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,12 +23,10 @@ export function VoteOptionList({
   candidates,
   votedTargetId,
   onVote,
-  emptyMessage = "투표 가능한 플레이어가 없습니다",
+  emptyMessage = '투표 가능한 플레이어가 없습니다',
 }: VoteOptionListProps) {
   if (candidates.length === 0) {
-    return (
-      <p className="text-sm text-slate-400">{emptyMessage}</p>
-    );
+    return <p className="text-sm text-slate-400">{emptyMessage}</p>;
   }
 
   return (
@@ -39,8 +38,8 @@ export function VoteOptionList({
             key={player.id}
             className={`flex items-center justify-between rounded-lg border p-3 transition-colors ${
               isSelected
-                ? "border-amber-500 ring-2 ring-amber-500 bg-amber-500/10"
-                : "border-slate-700 bg-slate-800/50"
+                ? 'border-amber-500 ring-2 ring-amber-500 bg-amber-500/10'
+                : 'border-slate-700 bg-slate-800/50'
             }`}
           >
             <div className="flex items-center gap-3">
@@ -48,7 +47,7 @@ export function VoteOptionList({
                 <User className="h-4 w-4 text-slate-300" />
               </div>
               <span className="text-sm font-medium text-slate-200">
-                {player.nickname}
+                {playerDisplayName(player)}
               </span>
             </div>
             {isSelected ? (

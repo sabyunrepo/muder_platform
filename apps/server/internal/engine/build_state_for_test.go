@@ -27,6 +27,32 @@ func (p *playerAwareStubModule) BuildStateFor(playerID uuid.UUID) (json.RawMessa
 	})
 }
 
+type rosterProviderStub struct {
+	players []PlayerRuntimeInfo
+}
+
+func (r rosterProviderStub) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
+	for _, player := range r.players {
+		if player.PlayerID.String() == targetCode || player.TargetCode == targetCode {
+			return player.PlayerID, true
+		}
+	}
+	return uuid.Nil, false
+}
+
+func (r rosterProviderStub) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (PlayerRuntimeInfo, bool) {
+	for _, player := range r.players {
+		if player.PlayerID == playerID {
+			return player, true
+		}
+	}
+	return PlayerRuntimeInfo{}, false
+}
+
+func (r rosterProviderStub) PlayerRuntimeRoster(context.Context) []PlayerRuntimeInfo {
+	return r.players
+}
+
 // TestPhaseEngine_BuildStateFor_TwoPlayersDiffer verifies that player-aware
 // modules emit distinct state per player and that non-aware modules fall back
 // to BuildState (identical across players).
@@ -108,5 +134,55 @@ func TestBuildModuleStateFor_FallsBackWhenNotAware(t *testing.T) {
 	}
 	if string(got) != string(want) {
 		t.Errorf("fallback mismatch: got %s want %s", got, want)
+	}
+}
+
+func TestPhaseEngine_BuildStateForIncludesResolvedRosterWithoutAliasRules(t *testing.T) {
+	playerID := uuid.New()
+	aliasIconMediaID := uuid.New().String()
+	pe, _ := newTestPhaseEngine(t, []Module{&stubCoreModule{name: "public_mod"}}, testPhaseDefinitions)
+	pe.SetPlayerInfoProvider(rosterProviderStub{players: []PlayerRuntimeInfo{{
+		PlayerID:           playerID,
+		TargetCode:         "char_witness",
+		Nickname:           "참가자",
+		Role:               "detective",
+		IsAlive:            true,
+		IsHost:             true,
+		IsReady:            true,
+		DisplayName:        "밤의 목격자",
+		DisplayIconMediaID: &aliasIconMediaID,
+	}}})
+
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	raw, err := pe.BuildStateFor(playerID)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var body struct {
+		Players []map[string]any `json:"players"`
+	}
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	if len(body.Players) != 1 {
+		t.Fatalf("players len = %d, want 1: %s", len(body.Players), raw)
+	}
+	player := body.Players[0]
+	if player["displayName"] != "밤의 목격자" || player["nickname"] != "참가자" {
+		t.Fatalf("player display mismatch: %+v", player)
+	}
+	if player["displayIconMediaId"] != aliasIconMediaID {
+		t.Fatalf("displayIconMediaId = %v, want %s", player["displayIconMediaId"], aliasIconMediaID)
+	}
+	if _, leaked := player["alias_rules"]; leaked {
+		t.Fatalf("player payload leaked alias_rules: %s", raw)
+	}
+	if _, leaked := player["targetCode"]; leaked {
+		t.Fatalf("player payload leaked targetCode: %s", raw)
 	}
 }

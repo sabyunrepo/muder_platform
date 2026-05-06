@@ -1,19 +1,20 @@
-import { useState } from "react";
-import { Vote, Lock, Users } from "lucide-react";
-import { WsEventType } from "@mmp/shared";
+import { useState } from 'react';
+import { Vote, Lock, Users } from 'lucide-react';
+import { WsEventType } from '@mmp/shared';
 
-import { Badge, Card } from "@/shared/components/ui";
-import { useGameSessionStore as useGameStore } from "@/stores/gameSessionStore";
-import { selectMyPlayerId, selectPlayers } from "@/stores/gameSelectors";
-import { useModuleStore } from "@/stores/moduleStoreFactory";
-import { VoteOptionList } from "./VoteOptionList";
-import { VoteResultChart } from "./VoteResultChart";
-import type { VoteResult } from "./VoteResultChart";
+import { Badge, Card } from '@/shared/components/ui';
+import { useGameSessionStore as useGameStore } from '@/stores/gameSessionStore';
+import { selectMyPlayerId, selectPlayers } from '@/stores/gameSelectors';
+import { useModuleStore } from '@/stores/moduleStoreFactory';
+import { VoteOptionList } from './VoteOptionList';
+import { VoteResultChart } from './VoteResultChart';
+import type { VoteResult } from './VoteResultChart';
 import {
   countExcludedDetectives,
   filterVotingCandidates,
   readVotingCandidatePolicy,
-} from "../utils/votingCandidates";
+} from '../utils/votingCandidates';
+import { playerDisplayNameById } from '../utils/resultBreakdownAdapter';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,18 +40,25 @@ export function VotePanel({ send, moduleId }: VotePanelProps) {
   const results = moduleData.results as VoteResult[] | null | undefined;
   const isSecret = results === null;
   const hasResults = Array.isArray(results) && results.length > 0;
+  const displayResults = hasResults
+    ? results.map((result) => ({
+        ...result,
+        nickname: playerDisplayNameById(players, result.playerId, result.nickname),
+      }))
+    : [];
 
   const candidatePolicy = readVotingCandidatePolicy(moduleData);
   const candidates = filterVotingCandidates(players, myPlayerId, candidatePolicy);
   const excludedDetectiveCount = countExcludedDetectives(players, myPlayerId, candidatePolicy);
-  const emptyMessage = excludedDetectiveCount > 0
-    ? "탐정 제외 정책 때문에 투표 가능한 플레이어가 없습니다"
-    : "투표 가능한 플레이어가 없습니다";
+  const emptyMessage =
+    excludedDetectiveCount > 0
+      ? '탐정 제외 정책 때문에 투표 가능한 플레이어가 없습니다'
+      : '투표 가능한 플레이어가 없습니다';
 
   const handleVote = (targetId: string) => {
     if (votedTargetId) return;
     setVotedTargetId(targetId);
-    send(WsEventType.GAME_ACTION, { type: "vote", targetId });
+    send(WsEventType.GAME_ACTION, { type: 'vote', targetId });
   };
 
   return (
@@ -75,7 +83,7 @@ export function VotePanel({ send, moduleId }: VotePanelProps) {
       )}
 
       {/* 투표 결과 */}
-      {hasResults && <VoteResultChart results={results!} />}
+      {hasResults && <VoteResultChart results={displayResults} />}
 
       {/* 투표 대상 목록 (결과 미수신 & 비밀 투표 아닐 때) */}
       {!hasResults && !isSecret && (

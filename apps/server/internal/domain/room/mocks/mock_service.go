@@ -169,15 +169,15 @@ func (m *MockGameStarter) EXPECT() *MockGameStarterMockRecorder {
 }
 
 // Start mocks base method.
-func (m *MockGameStarter) Start(ctx context.Context, roomID uuid.UUID, configJSON []byte) error {
+func (m *MockGameStarter) Start(ctx context.Context, roomID, themeID uuid.UUID, configJSON []byte, players []room.GameStartPlayer) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", ctx, roomID, configJSON)
+	ret := m.ctrl.Call(m, "Start", ctx, roomID, themeID, configJSON, players)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Start indicates an expected call of Start.
-func (mr *MockGameStarterMockRecorder) Start(ctx, roomID, configJSON any) *gomock.Call {
+func (mr *MockGameStarterMockRecorder) Start(ctx, roomID, themeID, configJSON, players any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockGameStarter)(nil).Start), ctx, roomID, configJSON)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockGameStarter)(nil).Start), ctx, roomID, themeID, configJSON, players)
 }

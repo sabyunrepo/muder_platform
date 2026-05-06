@@ -422,6 +422,64 @@ func TestStaticPlayerInfoProvider_ResolvesTargetCodeAndRuntimeInfo(t *testing.T)
 	}
 }
 
+func TestStaticPlayerInfoProvider_ResolvesCharacterDisplayForRoster(t *testing.T) {
+	playerID := uuid.New()
+	iconMediaID := uuid.New().String()
+	aliasName := "밤의 목격자"
+
+	provider := newStaticPlayerInfoProvider([]PlayerState{{
+		PlayerID:   playerID,
+		TargetCode: "char_witness",
+		Nickname:   "참가자",
+		Connected:  true,
+		IsHost:     true,
+		IsReady:    true,
+		DisplayBase: engine.CharacterDisplayBase{
+			Name: "홍길동",
+			AliasRules: []engine.CharacterAliasRule{{
+				ID:                 "identity-open",
+				DisplayName:        &aliasName,
+				DisplayIconMediaID: &iconMediaID,
+				Priority:           1,
+				Condition: json.RawMessage(`{
+					"id":"group-1",
+					"operator":"AND",
+					"rules":[{
+						"id":"rule-1",
+						"variable":"custom_flag",
+						"target_flag_key":"identity_revealed",
+						"comparator":"=",
+						"value":"true"
+					}]
+				}`),
+			}},
+		},
+		DisplayContext: json.RawMessage(`{"flags":{"identity_revealed":true}}`),
+	}})
+	if provider == nil {
+		t.Fatal("expected provider")
+	}
+
+	rosterProvider, ok := provider.(engine.PlayerRuntimeRosterProvider)
+	if !ok {
+		t.Fatal("provider should expose runtime roster")
+	}
+	roster := rosterProvider.PlayerRuntimeRoster(context.Background())
+	if len(roster) != 1 {
+		t.Fatalf("roster len = %d, want 1", len(roster))
+	}
+	got := roster[0]
+	if got.DisplayName != aliasName {
+		t.Fatalf("DisplayName = %q, want %q", got.DisplayName, aliasName)
+	}
+	if got.DisplayIconMediaID == nil || *got.DisplayIconMediaID != iconMediaID {
+		t.Fatalf("DisplayIconMediaID = %v, want %s", got.DisplayIconMediaID, iconMediaID)
+	}
+	if got.Nickname != "참가자" || !got.IsHost || !got.IsReady {
+		t.Fatalf("roster metadata mismatch: %+v", got)
+	}
+}
+
 func TestStaticPlayerInfoProvider_EmptyPlayersReturnsNil(t *testing.T) {
 	if got := newStaticPlayerInfoProvider(nil); got != nil {
 		t.Fatalf("newStaticPlayerInfoProvider(nil) = %T, want nil", got)

@@ -23,7 +23,7 @@ type fakeGameStarter struct {
 	returnErr error
 }
 
-func (f *fakeGameStarter) Start(_ context.Context, _ uuid.UUID, _ []byte) error {
+func (f *fakeGameStarter) Start(_ context.Context, _, _ uuid.UUID, _ []byte, _ []GameStartPlayer) error {
 	f.called = true
 	return f.returnErr
 }
@@ -108,7 +108,7 @@ func TestStartRoom_FlagOff_NoGameStarterCalled(t *testing.T) {
 					"game runtime not enabled",
 				)
 			}
-			return starter.Start(context.Background(), uuid.New(), nil)
+			return starter.Start(context.Background(), uuid.New(), uuid.New(), nil, nil)
 		},
 	}
 
@@ -136,7 +136,7 @@ func TestStartRoom_FlagOn_StarterCalled(t *testing.T) {
 
 	svc := &mockService{
 		startRoomFn: func(_ context.Context, _, _ uuid.UUID, _ StartRoomRequest) error {
-			return starter.Start(context.Background(), uuid.New(), nil)
+			return starter.Start(context.Background(), uuid.New(), uuid.New(), nil, nil)
 		},
 	}
 
@@ -154,7 +154,7 @@ func TestStartRoom_FlagOn_StarterError(t *testing.T) {
 
 	svc := &mockService{
 		startRoomFn: func(_ context.Context, _, _ uuid.UUID, _ StartRoomRequest) error {
-			return starter.Start(context.Background(), uuid.New(), nil)
+			return starter.Start(context.Background(), uuid.New(), uuid.New(), nil, nil)
 		},
 	}
 

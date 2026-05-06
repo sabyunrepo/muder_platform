@@ -213,10 +213,22 @@ func newStaticPlayerInfoProvider(players []PlayerState) engine.PlayerInfoProvide
 			isAlive = *player.IsAlive
 		}
 		infos[player.PlayerID] = engine.PlayerRuntimeInfo{
-			PlayerID:   player.PlayerID,
-			TargetCode: player.TargetCode,
-			Role:       player.Role,
-			IsAlive:    isAlive,
+			PlayerID:    player.PlayerID,
+			TargetCode:  player.TargetCode,
+			Nickname:    player.Nickname,
+			Role:        player.Role,
+			IsAlive:     isAlive,
+			IsHost:      player.IsHost,
+			IsReady:     player.IsReady,
+			ConnectedAt: player.ConnectedAt,
+		}
+		if player.DisplayBase.Name != "" {
+			display := engine.ResolveCharacterDisplay(player.DisplayBase, player.DisplayContext)
+			info := infos[player.PlayerID]
+			info.DisplayName = display.Name
+			info.DisplayIconURL = display.ImageURL
+			info.DisplayIconMediaID = display.ImageMediaID
+			infos[player.PlayerID] = info
 		}
 		if player.TargetCode != "" {
 			targetCodeIDs[player.TargetCode] = player.PlayerID
@@ -239,4 +251,12 @@ func (p staticPlayerInfoProvider) ResolvePlayerID(_ context.Context, targetCode 
 func (p staticPlayerInfoProvider) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (engine.PlayerRuntimeInfo, bool) {
 	info, ok := p.players[playerID]
 	return info, ok
+}
+
+func (p staticPlayerInfoProvider) PlayerRuntimeRoster(_ context.Context) []engine.PlayerRuntimeInfo {
+	players := make([]engine.PlayerRuntimeInfo, 0, len(p.players))
+	for _, player := range p.players {
+		players = append(players, player)
+	}
+	return players
 }

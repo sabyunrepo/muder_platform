@@ -25,6 +25,9 @@ export type PlayerRole = (typeof PlayerRole)[keyof typeof PlayerRole];
 export interface Player {
   id: string;
   nickname: string;
+  displayName?: string;
+  displayIconUrl?: string;
+  displayIconMediaId?: string;
   role: PlayerRole | null;
   isAlive: boolean;
   isHost: boolean;
