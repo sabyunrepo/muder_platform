@@ -28,10 +28,13 @@ describe("SceneInspector", () => {
         description: "도입 장면",
         discussionRoomPolicy: {
           enabled: true,
+          roomKind: "all",
           mainRoomName: "전체 토론",
           privateRoomsEnabled: false,
           privateRoomName: "비밀 대화",
+          participantMode: "all",
           availability: "phase_active",
+          closeBehavior: "close_on_exit",
         },
         onEnter: [{ type: "give_clue", params: {} }],
       },
@@ -55,6 +58,8 @@ describe("SceneInspector", () => {
     expect(screen.getByText("찢어진 초대장")).toBeDefined();
     expect(screen.getByText("장면 설명 있음")).toBeDefined();
     expect(screen.getByText("입장 시 단서 동작 있음")).toBeDefined();
-    expect(screen.getByText("사용")).toBeDefined();
+    expect(
+      screen.getByText("장면 시작 시 · 전원 참여 · 장면 종료 시 닫기 · 전체 토론: 전체 토론"),
+    ).toBeDefined();
   });
 });

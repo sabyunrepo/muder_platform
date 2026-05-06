@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 
@@ -127,11 +127,15 @@ describe("PhaseNodePanel extended fields", () => {
     expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
       discussionRoomPolicy: {
         enabled: true,
+        roomKind: "all",
         mainRoomName: "추리 회의",
         privateRoomsEnabled: false,
         privateRoomName: "밀담방",
+        participantMode: "all",
+        participantSummary: "",
         availability: "phase_active",
         conditionalRoomName: "",
+        closeBehavior: "close_on_exit",
       },
     });
   });
@@ -161,12 +165,140 @@ describe("PhaseNodePanel extended fields", () => {
     expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
       discussionRoomPolicy: {
         enabled: true,
+        roomKind: "all",
         mainRoomName: "전체 토론",
         privateRoomsEnabled: false,
         privateRoomName: "밀담방",
+        participantMode: "all",
+        participantSummary: "",
         availability: "condition",
         conditionalRoomName: "비밀 토론",
+        closeBehavior: "close_on_exit",
       },
+    });
+  });
+
+  it("토론방 사용 여부와 밀담방 허용 상태를 장면 데이터로 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          discussionRoomPolicy: {
+            enabled: true,
+            roomKind: "all",
+            mainRoomName: "전체 토론",
+            privateRoomsEnabled: false,
+            privateRoomName: "밀담방",
+            participantMode: "all",
+            participantSummary: "",
+            availability: "phase_active",
+            conditionalRoomName: "",
+            closeBehavior: "close_on_exit",
+          },
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    const discussionPanel = screen.getByTestId("discussion-room-policy-panel");
+    fireEvent.click(within(discussionPanel).getByRole("checkbox", { name: /토론방/ }));
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: expect.objectContaining({
+        enabled: false,
+      }),
+    });
+
+    fireEvent.click(within(discussionPanel).getByRole("checkbox", { name: /밀담방 허용/ }));
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: expect.objectContaining({
+        enabled: true,
+        privateRoomsEnabled: true,
+      }),
+    });
+  });
+
+  it("토론 유형, 참여 대상, 종료 정책을 장면 데이터로 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          discussionRoomPolicy: {
+            enabled: true,
+            mainRoomName: "전체 토론",
+            privateRoomsEnabled: false,
+            privateRoomName: "밀담방",
+            availability: "phase_active",
+          },
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("토론 유형"), {
+      target: { value: "small_group" },
+    });
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: expect.objectContaining({
+        enabled: true,
+        roomKind: "small_group",
+      }),
+    });
+
+    fireEvent.change(screen.getByLabelText("참여 대상"), {
+      target: { value: "characters" },
+    });
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: expect.objectContaining({
+        enabled: true,
+        participantMode: "characters",
+      }),
+    });
+
+    fireEvent.change(screen.getByLabelText("장면 종료 시 처리"), {
+      target: { value: "keep_until_next_scene" },
+    });
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: expect.objectContaining({
+        enabled: true,
+        closeBehavior: "keep_until_next_scene",
+      }),
+    });
+  });
+
+  it("특정 참여 대상 메모를 장면 데이터로 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({
+          discussionRoomPolicy: {
+            enabled: true,
+            roomKind: "small_group",
+            mainRoomName: "전체 토론",
+            privateRoomsEnabled: false,
+            privateRoomName: "밀담방",
+            participantMode: "characters",
+            participantSummary: "",
+            availability: "phase_active",
+            closeBehavior: "close_on_exit",
+          },
+        })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("참여 캐릭터 메모"), {
+      target: { value: "탐정, 목격자" },
+    });
+
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      discussionRoomPolicy: expect.objectContaining({
+        enabled: true,
+        participantMode: "characters",
+        participantSummary: "탐정, 목격자",
+      }),
     });
   });
 });
