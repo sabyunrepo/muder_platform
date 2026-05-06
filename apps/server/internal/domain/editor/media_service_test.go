@@ -1178,6 +1178,68 @@ func TestMediaService_ListMedia_CategoryFromAnotherTheme_NotFound(t *testing.T) 
 	assertMediaAppCode(t, err, apperror.ErrNotFound)
 }
 
+func TestMediaService_ListCategoriesAndRequestUpload_WithCategory(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	svc.storage = newFakeStorageProvider()
+	category, err := svc.CreateCategory(context.Background(), creatorID, themeID, MediaCategoryRequest{
+		Name:      "배경",
+		SortOrder: 2,
+	})
+	if err != nil {
+		t.Fatalf("CreateCategory: %v", err)
+	}
+
+	categories, err := svc.ListCategories(context.Background(), creatorID, themeID)
+	if err != nil {
+		t.Fatalf("ListCategories: %v", err)
+	}
+	if len(categories) != 1 || categories[0].ID != category.ID {
+		t.Fatalf("unexpected categories: %#v", categories)
+	}
+
+	upload, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:       "map",
+		Type:       MediaTypeImage,
+		MimeType:   "image/png",
+		FileSize:   8,
+		CategoryID: &category.ID,
+	})
+	if err != nil {
+		t.Fatalf("RequestUpload: %v", err)
+	}
+	if upload.UploadID == uuid.Nil {
+		t.Fatalf("expected upload id")
+	}
+	pending := q.media[upload.UploadID]
+	if pending.CategoryID.Valid && pending.CategoryID.Bytes != category.ID {
+		t.Fatalf("unexpected category id on pending media: %#v", pending.CategoryID)
+	}
+}
+
+func TestMediaService_RequestUpload_CategoryFromAnotherTheme_NotFound(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	svc.storage = newFakeStorageProvider()
+	otherThemeID := uuid.New()
+	q.themes[otherThemeID] = db.Theme{ID: otherThemeID, CreatorID: creatorID}
+	otherCategory := db.ThemeMediaCategory{
+		ID:        uuid.New(),
+		ThemeID:   otherThemeID,
+		Name:      "다른 테마",
+		SortOrder: 1,
+		CreatedAt: time.Now(),
+	}
+	q.categories[otherCategory.ID] = otherCategory
+
+	_, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:       "map",
+		Type:       MediaTypeImage,
+		MimeType:   "image/png",
+		FileSize:   8,
+		CategoryID: &otherCategory.ID,
+	})
+	assertMediaAppCode(t, err, apperror.ErrNotFound)
+}
+
 func TestMediaService_CategoryErrors_NotFound(t *testing.T) {
 	svc, _, creatorID, _ := newMediaTestService(t)
 	missingID := uuid.New()

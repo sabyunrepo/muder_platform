@@ -109,6 +109,100 @@ func TestMediaHandler_CategoryCRUD(t *testing.T) {
 	}
 }
 
+func TestMediaHandler_ListCategories(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := NewMockMediaService(ctrl)
+	h := NewMediaHandler(mock)
+	themeID := uuid.New()
+	mock.EXPECT().
+		ListCategories(gomock.Any(), gomock.Any(), themeID).
+		Return([]MediaCategoryResponse{{ID: uuid.New(), ThemeID: themeID, Name: "배경", SortOrder: 1, CreatedAt: time.Now()}}, nil).
+		Times(1)
+	r := mediaHandlerRequest(http.MethodGet, "/editor/themes/"+themeID.String()+"/media/categories", nil, map[string]string{"id": themeID.String()})
+	w := httptest.NewRecorder()
+
+	h.ListCategories(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestMediaHandler_FileAndYouTubeMutations(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := NewMockMediaService(ctrl)
+	h := NewMediaHandler(mock)
+	themeID := uuid.New()
+	mediaID := uuid.New()
+	uploadID := uuid.New()
+	mock.EXPECT().
+		RequestUpload(gomock.Any(), gomock.Any(), themeID, RequestMediaUploadRequest{Name: "map", Type: MediaTypeImage, MimeType: "image/png", FileSize: 8}).
+		Return(&UploadURLResponse{UploadID: uploadID, UploadURL: "https://upload.example/new", ExpiresAt: time.Now()}, nil).
+		Times(1)
+	mock.EXPECT().
+		ConfirmUpload(gomock.Any(), gomock.Any(), themeID, ConfirmUploadRequest{UploadID: uploadID}).
+		Return(&MediaResponse{ID: mediaID, ThemeID: themeID, Name: "map", Type: MediaTypeImage, SourceType: SourceTypeFile, Tags: []string{}, CreatedAt: time.Now()}, nil).
+		Times(1)
+	mock.EXPECT().
+		CreateYouTube(gomock.Any(), gomock.Any(), themeID, CreateMediaYouTubeRequest{Name: "trailer", Type: MediaTypeVideo, URL: "https://youtu.be/dQw4w9WgXcQ"}).
+		Return(&MediaResponse{ID: mediaID, ThemeID: themeID, Name: "trailer", Type: MediaTypeVideo, SourceType: SourceTypeYouTube, Tags: []string{}, CreatedAt: time.Now()}, nil).
+		Times(1)
+	mock.EXPECT().
+		UpdateMedia(gomock.Any(), gomock.Any(), mediaID, UpdateMediaRequest{Name: "updated", Type: MediaTypeImage, SortOrder: 1}).
+		Return(&MediaResponse{ID: mediaID, ThemeID: themeID, Name: "updated", Type: MediaTypeImage, SourceType: SourceTypeFile, Tags: []string{}, CreatedAt: time.Now()}, nil).
+		Times(1)
+	mock.EXPECT().
+		DeleteMedia(gomock.Any(), gomock.Any(), mediaID).
+		Return(nil).
+		Times(1)
+	mock.EXPECT().
+		GetEditorMediaDownloadURL(gomock.Any(), gomock.Any(), mediaID).
+		Return(&MediaDownloadURLResponse{URL: "https://download.example/media", ExpiresAt: time.Now()}, nil).
+		Times(1)
+
+	requestUpload := mediaHandlerRequest(http.MethodPost, "/editor/themes/"+themeID.String()+"/media/upload-url", []byte(`{"name":"map","type":"IMAGE","mime_type":"image/png","file_size":8}`), map[string]string{"id": themeID.String()})
+	requestUploadW := httptest.NewRecorder()
+	h.RequestUpload(requestUploadW, requestUpload)
+	if requestUploadW.Code != http.StatusCreated {
+		t.Fatalf("expected upload request 201, got %d: %s", requestUploadW.Code, requestUploadW.Body.String())
+	}
+
+	confirmUpload := mediaHandlerRequest(http.MethodPost, "/editor/themes/"+themeID.String()+"/media/confirm", []byte(`{"upload_id":"`+uploadID.String()+`"}`), map[string]string{"id": themeID.String()})
+	confirmUploadW := httptest.NewRecorder()
+	h.ConfirmUpload(confirmUploadW, confirmUpload)
+	if confirmUploadW.Code != http.StatusOK {
+		t.Fatalf("expected confirm upload 200, got %d: %s", confirmUploadW.Code, confirmUploadW.Body.String())
+	}
+
+	youtube := mediaHandlerRequest(http.MethodPost, "/editor/themes/"+themeID.String()+"/media/youtube", []byte(`{"name":"trailer","type":"VIDEO","url":"https://youtu.be/dQw4w9WgXcQ"}`), map[string]string{"id": themeID.String()})
+	youtubeW := httptest.NewRecorder()
+	h.CreateYouTube(youtubeW, youtube)
+	if youtubeW.Code != http.StatusCreated {
+		t.Fatalf("expected youtube 201, got %d: %s", youtubeW.Code, youtubeW.Body.String())
+	}
+
+	update := mediaHandlerRequest(http.MethodPatch, "/editor/media/"+mediaID.String(), []byte(`{"name":"updated","type":"IMAGE","sort_order":1}`), map[string]string{"id": mediaID.String()})
+	updateW := httptest.NewRecorder()
+	h.UpdateMedia(updateW, update)
+	if updateW.Code != http.StatusOK {
+		t.Fatalf("expected update 200, got %d: %s", updateW.Code, updateW.Body.String())
+	}
+
+	download := mediaHandlerRequest(http.MethodGet, "/editor/media/"+mediaID.String()+"/download-url", nil, map[string]string{"id": mediaID.String()})
+	downloadW := httptest.NewRecorder()
+	h.GetDownloadURL(downloadW, download)
+	if downloadW.Code != http.StatusOK {
+		t.Fatalf("expected download 200, got %d: %s", downloadW.Code, downloadW.Body.String())
+	}
+
+	deleteReq := mediaHandlerRequest(http.MethodDelete, "/editor/media/"+mediaID.String(), nil, map[string]string{"id": mediaID.String()})
+	deleteW := httptest.NewRecorder()
+	h.DeleteMedia(deleteW, deleteReq)
+	if deleteW.Code != http.StatusNoContent {
+		t.Fatalf("expected delete 204, got %d: %s", deleteW.Code, deleteW.Body.String())
+	}
+}
+
 func TestMediaHandler_DeletePreviewAndReplacementUpload(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := NewMockMediaService(ctrl)
