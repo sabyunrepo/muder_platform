@@ -21,7 +21,7 @@
  *  9. 템플릿 탭 GET /api/v1/templates (PR-1)
  */
 import AxeBuilder from '@axe-core/playwright';
-import { test, expect, type Page, type Request } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Request } from '@playwright/test';
 import {
   BASE,
   THEME_ID,
@@ -66,6 +66,22 @@ async function expectNoPageLevelHorizontalOverflow(page: Page) {
   }));
 
   expect(metrics.pageScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth + 2);
+}
+
+async function expectFocusIndicator(locator: Locator) {
+  await locator.focus();
+  const style = await locator.evaluate((el) => {
+    const cs = window.getComputedStyle(el);
+    return { outline: cs.outline, boxShadow: cs.boxShadow };
+  });
+
+  const hasOutline =
+    !!style.outline && style.outline !== 'none' && !style.outline.startsWith('rgba(0, 0, 0, 0)');
+  const hasRing = !!style.boxShadow && style.boxShadow !== 'none';
+  expect(
+    hasOutline || hasRing,
+    `focus indicator missing — outline=${style.outline} boxShadow=${style.boxShadow}`,
+  ).toBe(true);
 }
 
 test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', () => {
@@ -263,6 +279,25 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
         await expectNoPageLevelHorizontalOverflow(page);
       }
     }
+  });
+
+  test('[2E] 모바일 제작 화면의 주요 컨트롤은 focus 지표를 가진다', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
+    await expect(page.getByRole('tab', { name: '등장인물', selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expectFocusIndicator(page.getByRole('textbox', { name: '캐릭터 검색' }));
+    await expectFocusIndicator(page.getByRole('button', { name: '탐정 A 선택' }));
+    await expectNoPageLevelHorizontalOverflow(page);
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/media`);
+    await expect(page.getByRole('tab', { name: '미디어', selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expectFocusIndicator(page.getByRole('button', { name: '파일 업로드' }));
+    await expectNoPageLevelHorizontalOverflow(page);
   });
 
   test('[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)', async ({
