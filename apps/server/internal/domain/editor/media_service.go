@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -73,6 +74,8 @@ type mediaQueries interface {
 	UpdateThemeConfigJsonWithOwner(ctx context.Context, arg db.UpdateThemeConfigJsonWithOwnerParams) (db.Theme, error)
 	ClearReadingSectionMediaReferencesWithOwner(ctx context.Context, arg db.ClearReadingSectionMediaReferencesWithOwnerParams) (int64, error)
 	ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, arg db.ClearRoleSheetMediaReferencesWithOwnerParams) (int64, error)
+	ClearThemeCoverMediaReferencesWithOwner(ctx context.Context, arg db.ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error)
+	ClearMapMediaReferencesWithOwner(ctx context.Context, arg db.ClearMapMediaReferencesWithOwnerParams) (int64, error)
 	FindThemeCoverReferencesForMedia(ctx context.Context, arg db.FindThemeCoverReferencesForMediaParams) ([]db.FindThemeCoverReferencesForMediaRow, error)
 	FindMapReferencesForMedia(ctx context.Context, arg db.FindMapReferencesForMediaParams) ([]db.FindMapReferencesForMediaRow, error)
 	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
@@ -80,7 +83,10 @@ type mediaQueries interface {
 }
 
 type mediaService struct {
-	q       mediaQueries
+	q      mediaQueries
+	pool   *pgxpool.Pool
+	withTx func(pgx.Tx) mediaQueries
+
 	storage storage.Provider
 	logger  zerolog.Logger
 }
@@ -93,8 +99,13 @@ type mediaReferenceInfo struct {
 
 // NewMediaService constructs a MediaService.
 // Theme ownership checks are performed directly via db.Queries to minimize the dependency surface.
-func NewMediaService(q *db.Queries, storageProvider storage.Provider, logger zerolog.Logger) MediaService {
-	return newMediaServiceWith(q, storageProvider, logger)
+func NewMediaService(q *db.Queries, pool *pgxpool.Pool, storageProvider storage.Provider, logger zerolog.Logger) MediaService {
+	svc := newMediaServiceWith(q, storageProvider, logger)
+	svc.pool = pool
+	svc.withTx = func(tx pgx.Tx) mediaQueries {
+		return q.WithTx(tx)
+	}
+	return svc
 }
 
 // newMediaServiceWith is the test-friendly constructor that accepts the

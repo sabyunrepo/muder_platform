@@ -12,6 +12,30 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearMapMediaReferencesWithOwner = `-- name: ClearMapMediaReferencesWithOwner :execrows
+UPDATE theme_maps m
+SET image_media_id = NULL
+FROM themes t
+WHERE m.theme_id = t.id
+  AND t.creator_id = $1
+  AND m.theme_id = $2
+  AND m.image_media_id = $3
+`
+
+type ClearMapMediaReferencesWithOwnerParams struct {
+	CreatorID uuid.UUID   `json:"creator_id"`
+	ThemeID   uuid.UUID   `json:"theme_id"`
+	MediaID   pgtype.UUID `json:"media_id"`
+}
+
+func (q *Queries) ClearMapMediaReferencesWithOwner(ctx context.Context, arg ClearMapMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearMapMediaReferencesWithOwner, arg.CreatorID, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearReadingSectionMediaReferencesWithOwner = `-- name: ClearReadingSectionMediaReferencesWithOwner :execrows
 
 UPDATE reading_sections rs
@@ -86,6 +110,29 @@ type ClearRoleSheetMediaReferencesWithOwnerParams struct {
 
 func (q *Queries) ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, arg ClearRoleSheetMediaReferencesWithOwnerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, clearRoleSheetMediaReferencesWithOwner, arg.MediaID, arg.CreatorID, arg.ThemeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearThemeCoverMediaReferencesWithOwner = `-- name: ClearThemeCoverMediaReferencesWithOwner :execrows
+UPDATE themes
+SET cover_image_media_id = NULL,
+    updated_at = NOW()
+WHERE id = $1
+  AND creator_id = $2
+  AND cover_image_media_id = $3
+`
+
+type ClearThemeCoverMediaReferencesWithOwnerParams struct {
+	ThemeID   uuid.UUID   `json:"theme_id"`
+	CreatorID uuid.UUID   `json:"creator_id"`
+	MediaID   pgtype.UUID `json:"media_id"`
+}
+
+func (q *Queries) ClearThemeCoverMediaReferencesWithOwner(ctx context.Context, arg ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearThemeCoverMediaReferencesWithOwner, arg.ThemeID, arg.CreatorID, arg.MediaID)
 	if err != nil {
 		return 0, err
 	}

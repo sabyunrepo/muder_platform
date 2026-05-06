@@ -347,6 +347,38 @@ func (f *fakeMediaQueries) ClearRoleSheetMediaReferencesWithOwner(_ context.Cont
 	return 1, nil
 }
 
+func (f *fakeMediaQueries) ClearThemeCoverMediaReferencesWithOwner(_ context.Context, arg db.ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error) {
+	if !arg.MediaID.Valid {
+		return 0, nil
+	}
+	t, ok := f.themes[arg.ThemeID]
+	if !ok || t.CreatorID != arg.CreatorID || !t.CoverImageMediaID.Valid || t.CoverImageMediaID.Bytes != arg.MediaID.Bytes {
+		return 0, nil
+	}
+	t.CoverImageMediaID = pgtype.UUID{}
+	f.themes[arg.ThemeID] = t
+	return 1, nil
+}
+
+func (f *fakeMediaQueries) ClearMapMediaReferencesWithOwner(_ context.Context, arg db.ClearMapMediaReferencesWithOwnerParams) (int64, error) {
+	if !arg.MediaID.Valid {
+		return 0, nil
+	}
+	var rows int64
+	theme, ok := f.themes[arg.ThemeID]
+	if !ok || theme.CreatorID != arg.CreatorID {
+		return 0, nil
+	}
+	for id, m := range f.maps {
+		if m.ThemeID == arg.ThemeID && m.ImageMediaID.Valid && m.ImageMediaID.Bytes == arg.MediaID.Bytes {
+			m.ImageMediaID = pgtype.UUID{}
+			f.maps[id] = m
+			rows++
+		}
+	}
+	return rows, nil
+}
+
 func (f *fakeMediaQueries) DeleteMedia(_ context.Context, id uuid.UUID) error {
 	delete(f.media, id)
 	return nil
@@ -677,7 +709,7 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateReadingSection: %v", err)
 	}
-	svc := NewMediaService(fixture.q, nil, zerolog.Nop())
+	svc := NewMediaService(fixture.q, nil, nil, zerolog.Nop())
 
 	for _, tt := range []struct {
 		name    string
@@ -1137,11 +1169,19 @@ func TestMediaService_Delete_CleansReadingAndConfigReferences(t *testing.T) {
 	})
 	q.sections[sectionID] = db.ReadingSection{ID: sectionID, ThemeID: themeID, Name: "이미지 읽기", Lines: linesJSON}
 	theme := q.themes[themeID]
+	theme.CoverImageMediaID = pgtype.UUID{Bytes: mediaID, Valid: true}
 	theme.ConfigJson = json.RawMessage(fmt.Sprintf(`{
 		"phases": [{"id":"intro","onEnter":[{"id":"bg","type":"SET_BACKGROUND","params":{"mediaId":%q,"keep":"x"}}]}],
 		"modules": {}
 	}`, mediaID.String()))
 	q.themes[themeID] = theme
+	mapID := uuid.New()
+	q.maps[mapID] = db.ThemeMap{
+		ID:           mapID,
+		ThemeID:      themeID,
+		Name:         "사건 현장",
+		ImageMediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
+	}
 
 	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID); err != nil {
 		t.Fatalf("DeleteMedia: %v", err)
@@ -1164,6 +1204,12 @@ func TestMediaService_Delete_CleansReadingAndConfigReferences(t *testing.T) {
 	}
 	if !strings.Contains(string(q.themes[themeID].ConfigJson), `"keep":"x"`) {
 		t.Fatalf("non-media action params should remain: %s", string(q.themes[themeID].ConfigJson))
+	}
+	if q.themes[themeID].CoverImageMediaID.Valid {
+		t.Fatalf("theme cover media reference should be cleared")
+	}
+	if q.maps[mapID].ImageMediaID.Valid {
+		t.Fatalf("map image media reference should be cleared")
 	}
 }
 

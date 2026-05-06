@@ -183,6 +183,23 @@ WHERE c.theme_id = t.id
   AND c.key ~ '^role_sheet:'
   AND c.body ~ ('"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"');
 
+-- name: ClearThemeCoverMediaReferencesWithOwner :execrows
+UPDATE themes
+SET cover_image_media_id = NULL,
+    updated_at = NOW()
+WHERE id = sqlc.arg('theme_id')
+  AND creator_id = sqlc.arg('creator_id')
+  AND cover_image_media_id = sqlc.arg('media_id');
+
+-- name: ClearMapMediaReferencesWithOwner :execrows
+UPDATE theme_maps m
+SET image_media_id = NULL
+FROM themes t
+WHERE m.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND m.theme_id = sqlc.arg('theme_id')
+  AND m.image_media_id = sqlc.arg('media_id');
+
 -- name: FindRoleSheetReferencesForMedia :many
 SELECT id, key
 FROM theme_contents

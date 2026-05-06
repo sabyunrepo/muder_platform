@@ -32,19 +32,8 @@ func (s *mediaService) PreviewDeleteMedia(ctx context.Context, creatorID, mediaI
 }
 
 func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) error {
-	media, err := s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
-		ID:        mediaID,
-		CreatorID: creatorID,
-	})
+	media, err := s.deleteMediaRecord(ctx, s.q, creatorID, mediaID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return apperror.NotFound("media not found")
-		}
-		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
-		return apperror.Internal("failed to get media")
-	}
-
-	if err := s.cleanupMediaReferences(ctx, creatorID, media, mediaID); err != nil {
 		return err
 	}
 
@@ -53,25 +42,61 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 			s.logger.Warn().Err(delErr).Str("storage_key", media.StorageKey.String).Msg("failed to delete storage object")
 		}
 	}
+	return nil
+}
 
-	rows, err := s.q.DeleteMediaWithOwner(ctx, db.DeleteMediaWithOwnerParams{
+func (s *mediaService) deleteMediaRecord(ctx context.Context, q mediaQueries, creatorID, mediaID uuid.UUID) (db.ThemeMedium, error) {
+	var media db.ThemeMedium
+	if s.pool != nil && s.withTx != nil {
+		err := pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+			var txErr error
+			media, txErr = s.deleteMediaRecordWithQueries(ctx, s.withTx(tx), creatorID, mediaID)
+			return txErr
+		})
+		return media, err
+	}
+	return s.deleteMediaRecordWithQueries(ctx, q, creatorID, mediaID)
+}
+
+func (s *mediaService) deleteMediaRecordWithQueries(ctx context.Context, q mediaQueries, creatorID, mediaID uuid.UUID) (db.ThemeMedium, error) {
+	media, err := q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
+		ID:        mediaID,
+		CreatorID: creatorID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.ThemeMedium{}, apperror.NotFound("media not found")
+		}
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
+		return db.ThemeMedium{}, apperror.Internal("failed to get media")
+	}
+
+	if err := s.cleanupMediaReferences(ctx, q, creatorID, media, mediaID); err != nil {
+		return db.ThemeMedium{}, err
+	}
+
+	rows, err := q.DeleteMediaWithOwner(ctx, db.DeleteMediaWithOwnerParams{
 		ID:        mediaID,
 		CreatorID: creatorID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to delete media")
-		return apperror.Internal("failed to delete media")
+		return db.ThemeMedium{}, apperror.Internal("failed to delete media")
 	}
 	if rows == 0 {
-		return apperror.NotFound("media not found")
+		return db.ThemeMedium{}, apperror.NotFound("media not found")
 	}
-	return nil
+	return media, nil
 }
 
 func (s *mediaService) collectMediaReferences(ctx context.Context, media db.ThemeMedium, mediaID uuid.UUID) ([]mediaReferenceInfo, error) {
+	return s.collectMediaReferencesWithQueries(ctx, s.q, media, mediaID)
+}
+
+func (s *mediaService) collectMediaReferencesWithQueries(ctx context.Context, q mediaQueries, media db.ThemeMedium, mediaID uuid.UUID) ([]mediaReferenceInfo, error) {
 	refList := []mediaReferenceInfo{}
 
-	refs, err := s.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
+	refs, err := q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{
 		ThemeID: media.ThemeID,
 		MediaID: mediaID,
 	})
@@ -83,7 +108,7 @@ func (s *mediaService) collectMediaReferences(ctx context.Context, media db.Them
 		refList = append(refList, mediaReferenceInfo{Type: "reading_section", ID: r.ID.String(), Name: r.Name})
 	}
 
-	themeCoverRefs, err := s.q.FindThemeCoverReferencesForMedia(ctx, db.FindThemeCoverReferencesForMediaParams{
+	themeCoverRefs, err := q.FindThemeCoverReferencesForMedia(ctx, db.FindThemeCoverReferencesForMediaParams{
 		ThemeID: media.ThemeID,
 		MediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
 	})
@@ -95,7 +120,7 @@ func (s *mediaService) collectMediaReferences(ctx context.Context, media db.Them
 		refList = append(refList, mediaReferenceInfo{Type: "theme_cover", ID: r.ID.String(), Name: r.Title})
 	}
 
-	mapRefs, err := s.q.FindMapReferencesForMedia(ctx, db.FindMapReferencesForMediaParams{
+	mapRefs, err := q.FindMapReferencesForMedia(ctx, db.FindMapReferencesForMediaParams{
 		ThemeID: media.ThemeID,
 		MediaID: pgtype.UUID{Bytes: mediaID, Valid: true},
 	})
@@ -107,7 +132,7 @@ func (s *mediaService) collectMediaReferences(ctx context.Context, media db.Them
 		refList = append(refList, mediaReferenceInfo{Type: "map", ID: r.ID.String(), Name: r.Name})
 	}
 
-	roleSheetRefs, err := s.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
+	roleSheetRefs, err := q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
 		ThemeID: media.ThemeID,
 		Body:    `"media_id"\s*:\s*"` + mediaID.String() + `"`,
 	})
@@ -119,7 +144,7 @@ func (s *mediaService) collectMediaReferences(ctx context.Context, media db.Them
 		refList = append(refList, mediaReferenceInfo{Type: "role_sheet", ID: r.Key, Name: r.Key})
 	}
 
-	theme, err := s.q.GetTheme(ctx, media.ThemeID)
+	theme, err := q.GetTheme(ctx, media.ThemeID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media references")
 		return nil, apperror.Internal("failed to check media references")
@@ -133,11 +158,11 @@ func (s *mediaService) collectMediaReferences(ctx context.Context, media db.Them
 	return refList, nil
 }
 
-func (s *mediaService) cleanupMediaReferences(ctx context.Context, creatorID uuid.UUID, media db.ThemeMedium, mediaID uuid.UUID) error {
-	if _, err := s.collectMediaReferences(ctx, media, mediaID); err != nil {
+func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQueries, creatorID uuid.UUID, media db.ThemeMedium, mediaID uuid.UUID) error {
+	if _, err := s.collectMediaReferencesWithQueries(ctx, q, media, mediaID); err != nil {
 		return err
 	}
-	if _, err := s.q.ClearReadingSectionMediaReferencesWithOwner(ctx, db.ClearReadingSectionMediaReferencesWithOwnerParams{
+	if _, err := q.ClearReadingSectionMediaReferencesWithOwner(ctx, db.ClearReadingSectionMediaReferencesWithOwnerParams{
 		MediaID:   mediaID,
 		CreatorID: creatorID,
 		ThemeID:   media.ThemeID,
@@ -146,7 +171,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, creatorID uui
 		return apperror.Internal("failed to clear media references")
 	}
 
-	if _, err := s.q.ClearRoleSheetMediaReferencesWithOwner(ctx, db.ClearRoleSheetMediaReferencesWithOwnerParams{
+	if _, err := q.ClearRoleSheetMediaReferencesWithOwner(ctx, db.ClearRoleSheetMediaReferencesWithOwnerParams{
 		MediaID:   mediaID.String(),
 		CreatorID: creatorID,
 		ThemeID:   media.ThemeID,
@@ -155,7 +180,25 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, creatorID uui
 		return apperror.Internal("failed to clear media references")
 	}
 
-	theme, err := s.q.GetTheme(ctx, media.ThemeID)
+	if _, err := q.ClearThemeCoverMediaReferencesWithOwner(ctx, db.ClearThemeCoverMediaReferencesWithOwnerParams{
+		MediaID:   pgtype.UUID{Bytes: mediaID, Valid: true},
+		CreatorID: creatorID,
+		ThemeID:   media.ThemeID,
+	}); err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear theme cover media references")
+		return apperror.Internal("failed to clear media references")
+	}
+
+	if _, err := q.ClearMapMediaReferencesWithOwner(ctx, db.ClearMapMediaReferencesWithOwnerParams{
+		MediaID:   pgtype.UUID{Bytes: mediaID, Valid: true},
+		CreatorID: creatorID,
+		ThemeID:   media.ThemeID,
+	}); err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear map media references")
+		return apperror.Internal("failed to clear media references")
+	}
+
+	theme, err := q.GetTheme(ctx, media.ThemeID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media reference cleanup")
 		return apperror.Internal("failed to clear media references")
@@ -166,7 +209,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, creatorID uui
 		return apperror.New(apperror.ErrValidation, 422, "theme config contains invalid media references")
 	}
 	if changed {
-		if _, err := s.q.UpdateThemeConfigJsonWithOwner(ctx, db.UpdateThemeConfigJsonWithOwnerParams{
+		if _, err := q.UpdateThemeConfigJsonWithOwner(ctx, db.UpdateThemeConfigJsonWithOwnerParams{
 			ID:         media.ThemeID,
 			CreatorID:  creatorID,
 			ConfigJson: cleaned,

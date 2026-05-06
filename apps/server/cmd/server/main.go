@@ -186,7 +186,7 @@ func main() {
 		storageProvider = localStorageProvider
 		logger.Warn().Msg("local file storage provider initialized (dev only — do not use in production)")
 	}
-	mediaSvc := editor.NewMediaService(queries, storageProvider, logger)
+	mediaSvc := editor.NewMediaService(queries, pool, storageProvider, logger)
 	mediaHandler := editor.NewMediaHandler(mediaSvc)
 	imageSvc := editor.NewImageService(queries, storageProvider, logger)
 	imageHandler := editor.NewImageHandler(imageSvc)
