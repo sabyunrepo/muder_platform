@@ -14,7 +14,7 @@ const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
   'story-map': 'storyMap',
   overview: 'overview',
   design: 'design',
-  story: 'storyMap',
+  story: 'story',
   characters: 'characters',
   clues: 'clues',
   relations: 'clues',
@@ -59,7 +59,7 @@ const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
 export const EDITOR_ROUTE_MATRIX = [
   { path: '/editor/:id', editorTab: 'storyMap' },
   { path: '/editor/:id/story-map', routeSegment: 'story-map', editorTab: 'storyMap', alias: true },
-  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'storyMap' },
+  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'story' },
   { path: '/editor/:id/characters', routeSegment: 'characters', editorTab: 'characters' },
   { path: '/editor/:id/clues', routeSegment: 'clues', editorTab: 'clues' },
   { path: '/editor/:id/relations', routeSegment: 'relations', editorTab: 'clues' },

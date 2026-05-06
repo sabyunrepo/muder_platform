@@ -37,7 +37,11 @@ describe('editor route segment matrix', () => {
     ['template', '/editor/theme-1/template'],
     ['advanced', '/editor/theme-1/advanced'],
   ] as const)('%s 탭의 canonical URL을 만든다', (tab, expectedPath) => {
-    expect(buildEditorRouteForTab('theme-1', tab)).toBe(expectedPath);
+    const route = buildEditorRouteForTab('theme-1', tab);
+    const routeSegment = route.split('/').slice(3).join('/') || undefined;
+
+    expect(route).toBe(expectedPath);
+    expect(readEditorTabFromRouteSegment(routeSegment)).toBe(tab);
   });
 
   it('theme id를 URL segment로 안전하게 인코딩한다', () => {
