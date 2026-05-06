@@ -57,7 +57,9 @@ export function ImageCropUpload({
   const previewPx = PREVIEW_SIZE[size];
   const isCircle = shape === 'circle';
 
-  function handleClick() { fileInputRef.current?.click(); }
+  function handleClick() {
+    fileInputRef.current?.click();
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -94,7 +96,10 @@ export function ImageCropUpload({
     setIsUploading(true);
     try {
       const { blob, contentType } = await getCroppedBlob(
-        imgRef.current, completedCrop, CANVAS_OUTPUT_SIZE, CANVAS_OUTPUT_SIZE,
+        imgRef.current,
+        completedCrop,
+        CANVAS_OUTPUT_SIZE,
+        CANVAS_OUTPUT_SIZE
       );
       const url = await uploadImage(themeId, target, targetId, blob, contentType);
       onUploaded(url);
@@ -108,11 +113,25 @@ export function ImageCropUpload({
     }
   }
 
-  function handleCancel() { setModalOpen(false); setSrcUrl(null); }
+  function handleCancel() {
+    setModalOpen(false);
+    setSrcUrl(null);
+  }
+
+  function handleRemoveClick() {
+    if (!window.confirm('이미지를 삭제할까요? 이 작업은 즉시 저장됩니다.')) return;
+    onRemoved?.();
+  }
 
   return (
     <>
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
       <div className="flex flex-col items-center gap-2">
         <button
@@ -129,14 +148,18 @@ export function ImageCropUpload({
               <Camera className="h-6 w-6" />
             </span>
           )}
-          <span className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden="true">
+          <span
+            className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+            aria-hidden="true"
+          >
             <Camera className="h-5 w-5 text-white" />
           </span>
         </button>
         {currentImageUrl && onRemoved && (
           <button
             type="button"
-            onClick={onRemoved}
+            onClick={handleRemoveClick}
+            aria-label="이미지 삭제"
             className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-950 px-2 py-1 text-[11px] font-medium text-slate-400 transition hover:border-red-500/40 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
           >
             <Trash2 className="h-3 w-3" />
@@ -152,9 +175,21 @@ export function ImageCropUpload({
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={handleCancel} disabled={isUploading}>취소</Button>
-            <Button onClick={handleConfirm} disabled={isUploading || !completedCrop || !themeId || !targetId}>
-              {isUploading ? <><Loader2 className="h-4 w-4 animate-spin" />업로드 중…</> : '확인'}
+            <Button variant="secondary" onClick={handleCancel} disabled={isUploading}>
+              취소
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={isUploading || !completedCrop || !themeId || !targetId}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  업로드 중…
+                </>
+              ) : (
+                '확인'
+              )}
             </Button>
           </>
         }

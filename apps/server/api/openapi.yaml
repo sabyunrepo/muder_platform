@@ -1199,7 +1199,6 @@ components:
         image_url:
           type: string
           format: uri
-          description: "빈 문자열을 보내면 저장된 캐릭터 이미지를 제거합니다."
         sort_order:
           type: integer
 
@@ -1367,7 +1366,10 @@ components:
           maxLength: 2000
         image_url:
           type: string
-          format: uri
+          description: "캐릭터 이미지 URL입니다. 빈 문자열을 보내면 저장된 캐릭터 이미지를 제거합니다."
+          anyOf:
+            - format: uri
+            - enum: [""]
         endcard_title:
           type: string
           maxLength: 80
@@ -1412,7 +1414,10 @@ components:
           maxLength: 2000
         image_url:
           type: string
-          format: uri
+          description: "캐릭터 이미지 URL입니다. 빈 문자열을 보내면 저장된 캐릭터 이미지를 제거합니다."
+          anyOf:
+            - format: uri
+            - enum: [""]
         endcard_title:
           type: string
           maxLength: 80

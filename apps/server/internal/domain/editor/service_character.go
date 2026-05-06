@@ -117,7 +117,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		ID:                charID,
 		Name:              req.Name,
 		Description:       ptrToText(req.Description),
-		ImageUrl:          characterImageText(req.ImageURL),
+		ImageUrl:          characterImageText(req.ImageURL, char.ImageUrl),
 		IsCulprit:         rolePolicy.IsCulprit,
 		MysteryRole:       rolePolicy.MysteryRole,
 		SortOrder:         req.SortOrder,
@@ -243,8 +243,14 @@ func characterEndcardText(next *string, current pgtype.Text) pgtype.Text {
 	return pgtype.Text{String: *next, Valid: true}
 }
 
-func characterImageText(next *string) pgtype.Text {
-	if next == nil || *next == "" {
+func characterImageText(next *string, current ...pgtype.Text) pgtype.Text {
+	if next == nil {
+		if len(current) > 0 {
+			return current[0]
+		}
+		return pgtype.Text{}
+	}
+	if *next == "" {
 		return pgtype.Text{}
 	}
 	return pgtype.Text{String: *next, Valid: true}

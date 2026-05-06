@@ -113,7 +113,7 @@ export interface CreateCharacterRequest {
 export interface UpdateCharacterRequest {
   name?: string;
   description?: string;
-  image_url?: string | null;
+  image_url?: string;
   is_culprit?: boolean;
   mystery_role?: MysteryRole;
   sort_order?: number;

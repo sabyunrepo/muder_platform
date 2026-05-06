@@ -93,7 +93,7 @@ export function CharacterDetailPanel({
   const [endcardImageUrl, setEndcardImageUrl] = useState('');
   const characterOptions = useMemo(
     () => characters.map((char) => ({ id: char.id, name: char.name })),
-    [characters],
+    [characters]
   );
 
   useEffect(() => {
@@ -106,7 +106,12 @@ export function CharacterDetailPanel({
     setEndcardTitle(selectedChar?.endcard_title ?? '');
     setEndcardBody(selectedChar?.endcard_body ?? '');
     setEndcardImageUrl(selectedChar?.endcard_image_url ?? '');
-  }, [selectedChar?.id, selectedChar?.endcard_title, selectedChar?.endcard_body, selectedChar?.endcard_image_url]);
+  }, [
+    selectedChar?.id,
+    selectedChar?.endcard_title,
+    selectedChar?.endcard_body,
+    selectedChar?.endcard_image_url,
+  ]);
 
   if (!selectedChar) {
     return (
@@ -130,7 +135,8 @@ export function CharacterDetailPanel({
     show_in_intro: selectedChar.show_in_intro ?? true,
     can_speak_in_reading: selectedChar.can_speak_in_reading ?? true,
     is_voting_candidate:
-      selectedChar.is_voting_candidate ?? getCharacterRoleOption(selectedRole).defaultVotingCandidate,
+      selectedChar.is_voting_candidate ??
+      getCharacterRoleOption(selectedRole).defaultVotingCandidate,
     endcard_title: selectedChar.endcard_title ?? null,
     endcard_body: selectedChar.endcard_body ?? null,
     endcard_image_url: selectedChar.endcard_image_url ?? null,
@@ -145,7 +151,9 @@ export function CharacterDetailPanel({
     <div className="max-w-5xl space-y-4">
       <div>
         <h3 className="text-sm font-semibold text-slate-200">{selectedChar.name}</h3>
-        <p className="mt-1 text-xs text-slate-500">역할지, 시작 단서, 히든 미션을 한 곳에서 관리합니다.</p>
+        <p className="mt-1 text-xs text-slate-500">
+          역할지, 시작 단서, 히든 미션을 한 곳에서 관리합니다.
+        </p>
       </div>
 
       <Accordion
@@ -160,29 +168,39 @@ export function CharacterDetailPanel({
             children: (
               <div className="grid gap-3 md:grid-cols-[10rem_1fr]">
                 <div className="flex min-h-36 flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-950 p-3 text-xs text-slate-600">
-                  <ImageCropUpload
-                    themeId={themeId}
-                    targetId={selectedChar.id}
-                    target="character"
-                    currentImageUrl={selectedChar.image_url ?? null}
-                    onUploaded={(url) => onProfileImageChange?.(url)}
-                    onRemoved={
-                      selectedChar.image_url && onProfileImageChange
-                        ? () => onProfileImageChange(null)
-                        : undefined
-                    }
-                    size="md"
-                    shape="circle"
-                  />
-                  <span>{selectedChar.image_url ? '이미지 변경' : '이미지 업로드'}</span>
+                  {onProfileImageChange ? (
+                    <>
+                      <ImageCropUpload
+                        themeId={themeId}
+                        targetId={selectedChar.id}
+                        target="character"
+                        currentImageUrl={selectedChar.image_url ?? null}
+                        onUploaded={onProfileImageChange}
+                        onRemoved={
+                          selectedChar.image_url ? () => onProfileImageChange(null) : undefined
+                        }
+                        size="md"
+                        shape="circle"
+                      />
+                      <span>{selectedChar.image_url ? '이미지 변경' : '이미지 업로드'}</span>
+                    </>
+                  ) : (
+                    <span className="px-2 text-center text-[11px] leading-5 text-slate-500">
+                      현재 프로필 이미지를 편집할 수 없습니다.
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">이름</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                      이름
+                    </p>
                     <p className="mt-1 text-sm text-slate-200">{selectedChar.name}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">역할</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                      역할
+                    </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       {characterRoleOptions.map((option) => {
                         const active = selectedRole === option.value;
@@ -199,14 +217,18 @@ export function CharacterDetailPanel({
                             } disabled:cursor-default disabled:opacity-80`}
                           >
                             <span className="block text-xs font-semibold">{option.label}</span>
-                            <span className="mt-1 block text-[11px] leading-4 text-slate-500">{option.description}</span>
+                            <span className="mt-1 block text-[11px] leading-4 text-slate-500">
+                              {option.description}
+                            </span>
                           </button>
                         );
                       })}
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">등장인물 유형</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                      등장인물 유형
+                    </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <VisibilityToggle
                         label="플레이어 캐릭터"
@@ -227,7 +249,9 @@ export function CharacterDetailPanel({
                         description="스토리 읽기 화면에서 이 인물의 대사를 사용할 수 있습니다."
                         checked={selectedView.canSpeakInReading}
                         disabled={!onVisibilityChange}
-                        onChange={(checked) => onVisibilityChange?.('can_speak_in_reading', checked)}
+                        onChange={(checked) =>
+                          onVisibilityChange?.('can_speak_in_reading', checked)
+                        }
                       />
                       <VisibilityToggle
                         label="투표 후보에 포함"
@@ -239,7 +263,9 @@ export function CharacterDetailPanel({
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">공개 소개</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                      공개 소개
+                    </p>
                     <p className="mt-1 whitespace-pre-wrap rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs leading-5 text-slate-400">
                       {selectedChar.description || '공개 소개가 없습니다.'}
                     </p>
@@ -269,7 +295,9 @@ export function CharacterDetailPanel({
               <div className="space-y-3">
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">제목</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                      제목
+                    </span>
                     <input
                       type="text"
                       value={endcardTitle}
@@ -281,7 +309,9 @@ export function CharacterDetailPanel({
                     />
                   </label>
                   <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">이미지 URL</span>
+                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                      이미지 URL
+                    </span>
                     <input
                       type="url"
                       value={endcardImageUrl}
@@ -293,7 +323,9 @@ export function CharacterDetailPanel({
                   </label>
                 </div>
                 <label className="block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">본문</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                    본문
+                  </span>
                   <textarea
                     value={endcardBody}
                     maxLength={3000}
@@ -308,11 +340,13 @@ export function CharacterDetailPanel({
                   <button
                     type="button"
                     disabled={!onEndcardChange || !endcardDirty}
-                    onClick={() => onEndcardChange?.({
-                      title: endcardTitle,
-                      body: endcardBody,
-                      imageUrl: endcardImageUrl,
-                    })}
+                    onClick={() =>
+                      onEndcardChange?.({
+                        title: endcardTitle,
+                        body: endcardBody,
+                        imageUrl: endcardImageUrl,
+                      })
+                    }
                     className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
                   >
                     결과 카드 저장
@@ -378,7 +412,13 @@ interface VisibilityToggleProps {
   onChange: (checked: boolean) => void;
 }
 
-function VisibilityToggle({ label, description, checked, disabled, onChange }: VisibilityToggleProps) {
+function VisibilityToggle({
+  label,
+  description,
+  checked,
+  disabled,
+  onChange,
+}: VisibilityToggleProps) {
   return (
     <label className="flex min-h-24 items-start gap-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-left">
       <input

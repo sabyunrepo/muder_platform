@@ -285,6 +285,9 @@ func TestService_UpdateCharacter(t *testing.T) {
 	if !updated.IsPlayable || !updated.ShowInIntro || !updated.CanSpeakInReading || !updated.IsVotingCandidate {
 		t.Errorf("update should preserve default playable visibility: %+v", updated)
 	}
+	if updated.ImageURL == nil || *updated.ImageURL != "https://cdn.example/original.webp" {
+		t.Fatalf("omitted image_url should preserve stored character image: %+v", updated.ImageURL)
+	}
 
 	clearedImage, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
 		Name:      "Updated",

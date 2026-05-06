@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useCallback, useRef, useEffect, useState } from 'react';
 import {
   useNodesState,
   useEdgesState,
@@ -11,18 +11,13 @@ import {
   type NodeChange,
   type OnConnect,
   type XYPosition,
-} from "@xyflow/react";
-import {
-  useFlowGraph,
-  useSaveFlow,
-  useCreateFlowNode,
-  useDeleteFlowNode,
-} from "../flowApi";
-import type { FlowNodeType, FlowNodeData } from "../flowTypes";
-import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from "./flowConverters";
-import { createDefaultTemplate } from "./flowDefaults";
-import { useEdgeCondition } from "./useEdgeCondition";
-import { useApplyPreset } from "./useApplyPreset";
+} from '@xyflow/react';
+import { useFlowGraph, useSaveFlow, useCreateFlowNode, useDeleteFlowNode } from '../flowApi';
+import type { FlowNodeType, FlowNodeData } from '../flowTypes';
+import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from './flowConverters';
+import { createDefaultTemplate } from './flowDefaults';
+import { useEdgeCondition } from './useEdgeCondition';
+import { useApplyPreset } from './useApplyPreset';
 
 export function useFlowData(themeId: string) {
   const { data, isLoading, isError, error, refetch } = useFlowGraph(themeId);
@@ -46,6 +41,22 @@ export function useFlowData(themeId: string) {
   const edgesRef = useRef(edges);
   edgesRef.current = edges;
 
+  const setNodesAndRef = useCallback(
+    (next: Node[]) => {
+      nodesRef.current = next;
+      setNodes(next);
+    },
+    [setNodes]
+  );
+
+  const setEdgesAndRef = useCallback(
+    (next: Edge[]) => {
+      edgesRef.current = next;
+      setEdges(next);
+    },
+    [setEdges]
+  );
+
   useEffect(() => {
     if (!data) return;
     const nodes_ = data.nodes ?? [];
@@ -54,13 +65,15 @@ export function useFlowData(themeId: string) {
       if (hasInitialized.current) return;
       hasInitialized.current = true;
       const tpl = createDefaultTemplate();
-      setNodes(tpl.nodes);
-      setEdges(tpl.edges);
+      setNodesAndRef(tpl.nodes);
+      setEdgesAndRef(tpl.edges);
       saveFlow.mutate(toSaveRequest(tpl.nodes, tpl.edges));
       return;
     }
-    setNodes(nodes_.map(toReactFlowNode));
-    setEdges(edges_.map(toReactFlowEdge));
+    const nextNodes = nodes_.map(toReactFlowNode);
+    const nextEdges = edges_.map(toReactFlowEdge);
+    setNodesAndRef(nextNodes);
+    setEdgesAndRef(nextEdges);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
@@ -77,39 +90,42 @@ export function useFlowData(themeId: string) {
         saveFlow.mutate(toSaveRequest(nextNodes, nextEdges));
       }, 1000);
     },
-    [saveFlow],
+    [saveFlow]
   );
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
       setNodes((nds) => {
         const next = applyNodeChanges(changes, nds);
+        nodesRef.current = next;
         autoSave(next, edgesRef.current);
         return next;
       });
     },
-    [setNodes, autoSave],
+    [setNodes, autoSave]
   );
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       setEdges((eds) => {
         const next = applyEdgeChanges(changes, eds);
+        edgesRef.current = next;
         autoSave(nodesRef.current, next);
         return next;
       });
     },
-    [setEdges, autoSave],
+    [setEdges, autoSave]
   );
   const onConnect: OnConnect = useCallback(
     (connection) => {
       setEdges((eds) => {
         const next = addEdge(connection, eds);
+        edgesRef.current = next;
         autoSave(nodesRef.current, next);
         return next;
       });
     },
-    [setEdges, autoSave],
+    [setEdges, autoSave]
   );
 
   const save = useCallback(() => {
@@ -121,7 +137,7 @@ export function useFlowData(themeId: string) {
       createNode.mutate(
         {
           type,
-          data: { label: type === "phase" ? "새 장면" : undefined },
+          data: { label: type === 'phase' ? '새 장면' : undefined },
           position_x: position.x,
           position_y: position.y,
         },
@@ -129,32 +145,30 @@ export function useFlowData(themeId: string) {
           onSuccess: (created) => {
             setNodes((nds) => {
               const next = [...nds, toReactFlowNode(created)];
+              nodesRef.current = next;
               autoSave(next, edgesRef.current);
               return next;
             });
           },
-        },
+        }
       );
     },
-    [createNode, setNodes, autoSave],
+    [createNode, setNodes, autoSave]
   );
 
   const updateNodeData = useCallback(
     (id: string, patch: Partial<FlowNodeData>) => {
       setNodes((nds) => {
-        const next = nds.map((n) =>
-          n.id === id ? { ...n, data: { ...n.data, ...patch } } : n,
-        );
+        const next = nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...patch } } : n));
+        nodesRef.current = next;
         autoSave(next, edgesRef.current);
         return next;
       });
       setSelectedNode((prev) =>
-        prev && prev.id === id
-          ? { ...prev, data: { ...prev.data, ...patch } }
-          : prev,
+        prev && prev.id === id ? { ...prev, data: { ...prev.data, ...patch } } : prev
       );
     },
-    [setNodes, autoSave],
+    [setNodes, autoSave]
   );
 
   const deleteNode = useCallback(
@@ -162,50 +176,54 @@ export function useFlowData(themeId: string) {
       deleteNodeMutation.mutate(id, {
         onSuccess: () => {
           const nextNodes = nodesRef.current.filter((n) => n.id !== id);
-          const nextEdges = edgesRef.current.filter(
-            (e) => e.source !== id && e.target !== id,
-          );
-          setNodes(nextNodes);
-          setEdges(nextEdges);
+          const nextEdges = edgesRef.current.filter((e) => e.source !== id && e.target !== id);
+          setNodesAndRef(nextNodes);
+          setEdgesAndRef(nextEdges);
           autoSave(nextNodes, nextEdges);
           setSelectedNode((prev) => (prev?.id === id ? null : prev));
         },
       });
     },
-    [deleteNodeMutation, setNodes, setEdges, autoSave],
+    [deleteNodeMutation, setNodesAndRef, setEdgesAndRef, autoSave]
   );
 
   const deleteEdge = useCallback(
     (id: string) => {
       const nextEdges = edgesRef.current.filter((edge) => edge.id !== id);
-      setEdges(nextEdges);
+      setEdgesAndRef(nextEdges);
       autoSave(nodesRef.current, nextEdges);
     },
-    [setEdges, autoSave],
+    [setEdgesAndRef, autoSave]
   );
 
-  const onSelectionChange = useCallback(
-    ({ nodes: selected }: { nodes: Node[] }) => {
-      setSelectedNode(selected.length === 1 ? selected[0] : null);
-    },
-    [],
-  );
+  const onSelectionChange = useCallback(({ nodes: selected }: { nodes: Node[] }) => {
+    setSelectedNode(selected.length === 1 ? selected[0] : null);
+  }, []);
 
   const getNodes = useCallback(() => nodesRef.current, []);
   const getEdges = useCallback(() => edgesRef.current, []);
-  const { updateEdgeCondition } = useEdgeCondition(
-    setEdges,
-    getNodes,
-    getEdges,
-    autoSave,
-  );
-  const { applyPreset } = useApplyPreset(setNodes, setEdges, autoSave);
+  const { updateEdgeCondition } = useEdgeCondition(setEdgesAndRef, getNodes, getEdges, autoSave);
+  const { applyPreset } = useApplyPreset(setNodesAndRef, setEdgesAndRef, autoSave);
 
   return {
-    nodes, edges,
-    onNodesChange: handleNodesChange, onEdgesChange: handleEdgesChange,
-    onConnect, isLoading, isError, error, refetch, isSaving: saveFlow.isPending, save,
-    selectedNode, addNode, updateNodeData, deleteNode, deleteEdge,
-    onSelectionChange, updateEdgeCondition, applyPreset,
+    nodes,
+    edges,
+    onNodesChange: handleNodesChange,
+    onEdgesChange: handleEdgesChange,
+    onConnect,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isSaving: saveFlow.isPending,
+    save,
+    selectedNode,
+    addNode,
+    updateNodeData,
+    deleteNode,
+    deleteEdge,
+    onSelectionChange,
+    updateEdgeCondition,
+    applyPreset,
   };
 }

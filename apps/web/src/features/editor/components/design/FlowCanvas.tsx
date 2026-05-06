@@ -7,19 +7,19 @@ import {
   type Edge,
   type NodeTypes,
   type OnSelectionChangeParams,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useFlowData } from "../../hooks/useFlowData";
-import { FlowToolbar } from "./FlowToolbar";
-import { StartNode } from "./StartNode";
-import { PhaseNode } from "./PhaseNode";
-import { EndingNode } from "./EndingNode";
-import { NodeDetailPanel } from "./NodeDetailPanel";
-import { FlowOrderReviewPanel } from "./FlowOrderReviewPanel";
-import { StorySceneSummary } from "./StorySceneSummary";
-import { branchNodeTypes, conditionEdgeTypes } from "./flowNodeRegistry";
-import type { FlowNodeType } from "../../flowTypes";
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFlowData } from '../../hooks/useFlowData';
+import { FlowToolbar } from './FlowToolbar';
+import { StartNode } from './StartNode';
+import { PhaseNode } from './PhaseNode';
+import { EndingNode } from './EndingNode';
+import { NodeDetailPanel } from './NodeDetailPanel';
+import { FlowOrderReviewPanel } from './FlowOrderReviewPanel';
+import { StorySceneSummary } from './StorySceneSummary';
+import { branchNodeTypes, conditionEdgeTypes } from './flowNodeRegistry';
+import type { FlowNodeType } from '../../flowTypes';
 
 // ---------------------------------------------------------------------------
 // Node / edge type registries
@@ -51,7 +51,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showOrderReview, setShowOrderReview] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
-  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
 
   const {
     nodes,
@@ -78,18 +78,21 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         node.id === highlightId
           ? {
               ...node,
-              className: [node.className, "!ring-2 !ring-amber-400"]
-                .filter(Boolean)
-                .join(" "),
+              className: [node.className, '!ring-2 !ring-amber-400'].filter(Boolean).join(' '),
             }
-          : node,
+          : node
       ),
-    [highlightId, nodes],
+    [highlightId, nodes]
   );
 
   useEffect(() => {
     onSelectedNodeChange?.(selectedNode);
   }, [onSelectedNodeChange, selectedNode]);
+
+  const selectedEdge = useMemo(
+    () => edges.find((edge) => edge.id === selectedEdgeId) ?? null,
+    [edges, selectedEdgeId]
+  );
 
   // Add node at canvas center
   const handleAddNode = useCallback(
@@ -99,20 +102,20 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
       const cy = wrapper ? wrapper.clientHeight / 2 : 200;
       addNode(type as FlowNodeType, { x: cx, y: cy });
     },
-    [addNode],
+    [addNode]
   );
 
   // Drag over — allow drop
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
+    e.dataTransfer.dropEffect = 'move';
   }, []);
 
   // Drop — create node at drop position
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const type = e.dataTransfer.getData("application/flow-node-type");
+      const type = e.dataTransfer.getData('application/flow-node-type');
       if (!type) return;
       const wrapper = reactFlowWrapper.current;
       if (!wrapper) return;
@@ -122,15 +125,17 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         y: e.clientY - rect.top,
       });
     },
-    [addNode],
+    [addNode]
   );
 
   const handleSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
       onSelectionChange({ nodes: params.nodes });
-      setSelectedEdge(params.nodes.length === 0 && params.edges.length === 1 ? params.edges[0] : null);
+      setSelectedEdgeId(
+        params.nodes.length === 0 && params.edges.length === 1 ? params.edges[0].id : null
+      );
     },
-    [onSelectionChange],
+    [onSelectionChange]
   );
 
   const selectedEdgeLabel = useMemo(() => {
@@ -163,7 +168,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         isOrderReviewing={showOrderReview}
       />
       <StorySceneSummary nodes={nodes} edges={edges} />
-      <div data-testid="flow-workspace" className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <div
+        data-testid="flow-workspace"
+        className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"
+      >
         {/* Canvas */}
         <div
           ref={reactFlowWrapper}
@@ -205,8 +213,9 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
                   <button
                     type="button"
                     onClick={() => {
+                      if (!window.confirm('선 연결을 끊을까요? 이 작업은 즉시 저장됩니다.')) return;
                       deleteEdge(selectedEdge.id);
-                      setSelectedEdge(null);
+                      setSelectedEdgeId(null);
                     }}
                     className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
                   >
@@ -224,7 +233,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
                 nodes={nodes}
                 edges={edges}
                 onHighlight={setHighlightId}
-                onClose={() => { setShowOrderReview(false); setHighlightId(null); }}
+                onClose={() => {
+                  setShowOrderReview(false);
+                  setHighlightId(null);
+                }}
               />
             </div>
           )}
