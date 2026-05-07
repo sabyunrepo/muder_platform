@@ -26,6 +26,12 @@ export interface ReplaceMediaFileParams {
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+const throwIfAborted = (signal?: AbortSignal): void => {
+  if (signal?.aborted) {
+    throw new Error("업로드가 취소되었습니다");
+  }
+};
+
 export async function replaceMediaFile(
   params: ReplaceMediaFileParams,
 ): Promise<MediaResponse> {
@@ -47,16 +53,16 @@ export async function replaceMediaFile(
   const effectiveMimeType =
     (mimeType ?? file.type) || "application/octet-stream";
 
+  throwIfAborted(signal);
   const uploadUrl = await requestReplacementUpload({
     mime_type: effectiveMimeType,
     file_size: file.size,
   });
+  throwIfAborted(signal);
 
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    if (signal?.aborted) {
-      throw new Error("업로드가 취소되었습니다");
-    }
+    throwIfAborted(signal);
     try {
       await putFile({
         url: uploadUrl.upload_url,
@@ -74,6 +80,7 @@ export async function replaceMediaFile(
       }
       if (attempt < maxAttempts - 1) {
         await sleep(retryBaseDelayMs * 2 ** attempt);
+        throwIfAborted(signal);
       }
     }
   }
@@ -81,5 +88,6 @@ export async function replaceMediaFile(
     throw lastError;
   }
 
+  throwIfAborted(signal);
   return confirmReplacementUpload({ upload_id: uploadUrl.upload_id });
 }

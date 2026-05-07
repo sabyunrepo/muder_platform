@@ -111,6 +111,57 @@ describe("replaceMediaFile", () => {
     expect(confirmReplacementUpload).not.toHaveBeenCalled();
   });
 
+  it("이미 취소된 상태에서는 업로드 URL 요청을 시작하지 않는다", async () => {
+    const file = new File(["image"], "evidence.png", { type: "image/png" });
+    const abortController = new AbortController();
+    abortController.abort();
+    const requestReplacementUpload = vi.fn();
+    const putFile = vi.fn();
+    const confirmReplacementUpload = vi.fn();
+
+    await expect(
+      replaceMediaFile({
+        file,
+        requestReplacementUpload,
+        confirmReplacementUpload,
+        putFile,
+        signal: abortController.signal,
+      }),
+    ).rejects.toThrow("업로드가 취소되었습니다");
+
+    expect(requestReplacementUpload).not.toHaveBeenCalled();
+    expect(putFile).not.toHaveBeenCalled();
+    expect(confirmReplacementUpload).not.toHaveBeenCalled();
+  });
+
+  it("PUT 성공 후 취소되면 confirm을 호출하지 않는다", async () => {
+    const file = new File(["image"], "evidence.png", { type: "image/png" });
+    const abortController = new AbortController();
+    const requestReplacementUpload = vi.fn().mockResolvedValue({
+      upload_id: "replace-upload-cancel-before-confirm",
+      upload_url: "https://upload.example.com/cancel-before-confirm",
+      expires_at: "2026-05-07T00:00:00Z",
+    });
+    const putFile = vi.fn().mockImplementation(() => {
+      abortController.abort();
+      return Promise.resolve();
+    });
+    const confirmReplacementUpload = vi.fn();
+
+    await expect(
+      replaceMediaFile({
+        file,
+        requestReplacementUpload,
+        confirmReplacementUpload,
+        putFile,
+        signal: abortController.signal,
+      }),
+    ).rejects.toThrow("업로드가 취소되었습니다");
+
+    expect(putFile).toHaveBeenCalledTimes(1);
+    expect(confirmReplacementUpload).not.toHaveBeenCalled();
+  });
+
   it("maxAttempts가 1 미만이면 업로드 URL 요청 없이 실패한다", async () => {
     const file = new File(["image"], "evidence.png", { type: "image/png" });
     const requestReplacementUpload = vi.fn();
