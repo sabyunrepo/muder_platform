@@ -47,35 +47,36 @@ const routeMatrixCases = [
   ['직접 URL /editor/:id/template', { id: 'theme-1', tab: 'template' }, 'template', 'template'],
   ['alias URL /editor/:id/templates', { id: 'theme-1', tab: 'templates' }, 'templates', 'template'],
   ['직접 URL /editor/:id/advanced', { id: 'theme-1', tab: 'advanced' }, 'advanced', 'advanced'],
+  ['직접 URL /editor/:id/design', { id: 'theme-1', tab: 'design' }, 'design', 'design'],
   [
-    '직접 URL /editor/:id/design/modules',
+    'alias URL /editor/:id/design/modules',
     { id: 'theme-1', tab: 'design', designTab: 'modules' },
     'design/modules',
     'design',
   ],
   [
-    '직접 URL /editor/:id/design/flow',
+    'alias URL /editor/:id/design/flow',
     { id: 'theme-1', tab: 'design', designTab: 'flow' },
     'design/flow',
-    'design',
+    'storyMap',
   ],
   [
-    '직접 URL /editor/:id/design/locations',
+    'alias URL /editor/:id/design/locations',
     { id: 'theme-1', tab: 'design', designTab: 'locations' },
     'design/locations',
-    'design',
+    'locations',
   ],
   [
-    '직접 URL /editor/:id/design/endings',
+    'alias URL /editor/:id/design/endings',
     { id: 'theme-1', tab: 'design', designTab: 'endings' },
     'design/endings',
-    'design',
+    'endings',
   ],
   ['alias URL /editor/:id/modules', { id: 'theme-1', tab: 'modules' }, 'modules', 'design'],
   ['alias URL /editor/:id/flow', { id: 'theme-1', tab: 'flow' }, 'flow', 'storyMap'],
   ['sample slug URL /editor/e2e-test-theme/flow', { id: 'e2e-test-theme', tab: 'flow' }, 'flow', 'storyMap'],
-  ['alias URL /editor/:id/locations', { id: 'theme-1', tab: 'locations' }, 'locations', 'design'],
-  ['alias URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'design'],
+  ['직접 URL /editor/:id/locations', { id: 'theme-1', tab: 'locations' }, 'locations', 'locations'],
+  ['직접 URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'endings'],
 ] as const;
 
 afterEach(() => {
@@ -129,7 +130,7 @@ describe('EditorPage', () => {
     render(<EditorPage />);
 
     expect(screen.getByText(/테마 에디터 theme-1 design\/flow/)).toBeDefined();
-    expect(setActiveTabMock).toHaveBeenCalledWith('design');
+    expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
   });
 
   it('modules 라우트 segment를 design 탭으로 매핑한다', () => {

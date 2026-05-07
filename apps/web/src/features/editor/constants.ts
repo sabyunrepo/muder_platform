@@ -9,6 +9,8 @@ import {
   Search,
   GitBranch,
   Info,
+  MapPin,
+  Drama,
 } from "lucide-react";
 import type { ThemeStatus } from "./api";
 
@@ -23,6 +25,8 @@ export const EDITOR_TABS = [
   { key: "characters" as const, label: "등장인물 관리", icon: Users, always: true, group: "manage" },
   { key: "clues" as const, label: "단서 관리", icon: Search, always: true, group: "manage" },
   { key: "design" as const, label: "게임 설계", icon: Settings, always: true, group: "manage" },
+  { key: "endings" as const, label: "결말 관리", icon: Drama, always: true, group: "manage" },
+  { key: "locations" as const, label: "장소 관리", icon: MapPin, always: true, group: "manage" },
   { key: "media" as const, label: "미디어 관리", icon: Music, always: true, group: "manage" },
   { key: "overview" as const, label: "기본 설정", icon: FileText, always: true, group: "settings" },
   { key: "template" as const, label: "템플릿", icon: LayoutTemplate, always: true, group: "settings" },

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEditorRouteForTab,
   EDITOR_ROUTE_MATRIX,
-  readDesignSubTabFromRouteSegment,
   readEditorTabFromRouteSegment,
 } from '../routeSegments';
 
@@ -14,16 +13,8 @@ describe('editor route segment matrix', () => {
     }
   );
 
-  it.each(EDITOR_ROUTE_MATRIX.filter((entry) => entry.editorTab === 'design'))(
-    '$path 직접 URL을 올바른 design subtab으로 매핑한다',
-    ({ routeSegment, designSubTab }) => {
-      expect(readDesignSubTabFromRouteSegment(routeSegment)).toBe(designSubTab);
-    }
-  );
-
   it('알 수 없는 segment는 제작 흐름의 안전한 기본 화면으로 되돌린다', () => {
     expect(readEditorTabFromRouteSegment('unknown')).toBe('storyMap');
-    expect(readDesignSubTabFromRouteSegment('unknown')).toBe('modules');
   });
 
   it.each([
@@ -32,7 +23,9 @@ describe('editor route segment matrix', () => {
     ['story', '/editor/theme-1/reading'],
     ['characters', '/editor/theme-1/characters'],
     ['clues', '/editor/theme-1/clues'],
-    ['design', '/editor/theme-1/design/modules'],
+    ['design', '/editor/theme-1/design'],
+    ['endings', '/editor/theme-1/endings'],
+    ['locations', '/editor/theme-1/locations'],
     ['media', '/editor/theme-1/media'],
     ['overview', '/editor/theme-1/overview'],
     ['template', '/editor/theme-1/template'],
@@ -49,5 +42,18 @@ describe('editor route segment matrix', () => {
     expect(buildEditorRouteForTab('theme/with space', 'characters')).toBe(
       '/editor/theme%2Fwith%20space/characters',
     );
+  });
+
+  it.each([
+    ['design/flow', 'storyMap'],
+    ['flow', 'storyMap'],
+    ['design/endings', 'endings'],
+    ['endings', 'endings'],
+    ['design/locations', 'locations'],
+    ['locations', 'locations'],
+    ['design/modules', 'design'],
+    ['modules', 'design'],
+  ] as const)('legacy segment %s를 새 상위 탭 구조로 매핑한다', (segment, expectedTab) => {
+    expect(readEditorTabFromRouteSegment(segment)).toBe(expectedTab);
   });
 });

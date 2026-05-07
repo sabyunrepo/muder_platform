@@ -80,6 +80,8 @@ describe("EditorTabNav dynamic tabs", () => {
     expect(screen.getByText("등장인물 관리")).toBeDefined();
     expect(screen.getByText("단서 관리")).toBeDefined();
     expect(screen.getByText("게임 설계")).toBeDefined();
+    expect(screen.getByText("결말 관리")).toBeDefined();
+    expect(screen.getByText("장소 관리")).toBeDefined();
     expect(screen.getByText("미디어 관리")).toBeDefined();
     expect(screen.getByText("기본 설정")).toBeDefined();
     expect(screen.getByText("고급 설정")).toBeDefined();
@@ -116,6 +118,8 @@ describe("EditorTabNav dynamic tabs", () => {
       "등장인물 관리",
       "단서 관리",
       "게임 설계",
+      "결말 관리",
+      "장소 관리",
       "미디어 관리",
       "기본 설정",
       "템플릿",
@@ -138,7 +142,7 @@ describe("EditorTabNav dynamic tabs", () => {
     fireEvent.click(screen.getByRole("tab", { name: /게임 설계/ }));
 
     expect(mockSetActiveTab).toHaveBeenCalledWith("design");
-    expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1/design/modules");
+    expect(mockNavigate).toHaveBeenCalledWith("/editor/theme-1/design");
   });
 
   it("항상 표시되는 미디어 현재 탭은 스토리 진행 URL로 되돌리지 않는다", () => {
