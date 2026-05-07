@@ -303,12 +303,54 @@ WHERE theme_id = sqlc.arg('theme_id')
   AND image_media_id = sqlc.arg('media_id');
 
 -- name: FindStoryInfoReferencesForMedia :many
-SELECT si.id, si.title, refs.usage
-FROM story_info_media_refs refs
-JOIN story_infos si ON si.id = refs.story_info_id
-WHERE si.theme_id = sqlc.arg('theme_id')
-  AND refs.media_id = sqlc.arg('media_id')::uuid
-ORDER BY si.sort_order, refs.sort_order;
+WITH matching_story_infos AS (
+  SELECT si.id, si.title, refs.usage, si.sort_order, refs.sort_order AS usage_sort_order
+  FROM story_info_media_refs refs
+  JOIN story_infos si ON si.id = refs.story_info_id
+  WHERE si.theme_id = sqlc.arg('theme_id')
+    AND refs.media_id = sqlc.arg('media_id')::uuid
+
+  UNION ALL
+
+  SELECT si.id, si.title, 'cover'::text AS usage, si.sort_order, -2 AS usage_sort_order
+  FROM story_infos si
+  WHERE si.theme_id = sqlc.arg('theme_id')
+    AND si.image_media_id = sqlc.arg('media_id')::uuid
+    AND NOT EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = sqlc.arg('media_id')::uuid
+        AND refs.usage = 'cover'
+    )
+
+  UNION ALL
+
+  SELECT si.id,
+         si.title,
+         CASE WHEN media.type = 'VIDEO' THEN 'embedded_video' ELSE 'embedded_image' END AS usage,
+         si.sort_order,
+         -1 AS usage_sort_order
+  FROM story_infos si
+  JOIN theme_media media ON media.id = sqlc.arg('media_id')::uuid
+  WHERE si.theme_id = sqlc.arg('theme_id')
+    AND media.theme_id = si.theme_id
+    AND si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      sqlc.arg('media_id')::text ||
+      '"[^>]*/?>'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = sqlc.arg('media_id')::uuid
+        AND refs.usage = CASE WHEN media.type = 'VIDEO' THEN 'embedded_video' ELSE 'embedded_image' END
+    )
+)
+SELECT id, title, usage
+FROM matching_story_infos
+ORDER BY sort_order, usage_sort_order, usage;
 
 -- ============================================================
 -- Media (Batch)

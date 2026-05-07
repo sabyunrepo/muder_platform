@@ -1093,6 +1093,50 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 		t.Fatalf("FindStoryInfoReferencesForMedia after cleanup err=%v refs=%#v", err, refs)
 	}
 
+	orphanCoverInfo, err := fixture.q.CreateStoryInfo(ctx, db.CreateStoryInfoParams{
+		ThemeID:             themeID,
+		Title:               "누락된 커버 참조 정보",
+		Body:                `커버 이미지만 있는 정보`,
+		ContentFormat:       StoryInfoContentFormatMDXV1,
+		ImageMediaID:        pgtype.UUID{Bytes: image.ID, Valid: true},
+		RelatedCharacterIds: json.RawMessage(`[]`),
+		RelatedClueIds:      json.RawMessage(`[]`),
+		RelatedLocationIds:  json.RawMessage(`[]`),
+		SortOrder:           2,
+		CreatorID:           creatorID,
+	})
+	if err != nil {
+		t.Fatalf("CreateStoryInfo orphan cover: %v", err)
+	}
+	if refs, err := fixture.q.FindStoryInfoReferencesForMedia(ctx, db.FindStoryInfoReferencesForMediaParams{
+		ThemeID: themeID,
+		MediaID: image.ID,
+	}); err != nil || len(refs) != 1 || refs[0].ID != orphanCoverInfo.ID || refs[0].Usage != "cover" {
+		t.Fatalf("FindStoryInfoReferencesForMedia orphan cover err=%v refs=%#v", err, refs)
+	}
+	if rows, err := fixture.q.ClearStoryInfoMediaReferencesWithOwner(ctx, db.ClearStoryInfoMediaReferencesWithOwnerParams{
+		MediaID:   image.ID,
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearStoryInfoMediaReferencesWithOwner orphan cover rows=%d err=%v", rows, err)
+	}
+	var orphanCoverImageID pgtype.UUID
+	var orphanCoverVersion int32
+	if err := fixture.pool.QueryRow(ctx, `
+		SELECT image_media_id, version
+		FROM story_infos
+		WHERE id = $1
+	`, orphanCoverInfo.ID).Scan(&orphanCoverImageID, &orphanCoverVersion); err != nil {
+		t.Fatalf("select orphan cover story_info: %v", err)
+	}
+	if orphanCoverImageID.Valid {
+		t.Fatalf("orphan cover story info image media id should be cleared")
+	}
+	if orphanCoverVersion != orphanCoverInfo.Version+1 {
+		t.Fatalf("orphan cover story info version = %d, want %d", orphanCoverVersion, orphanCoverInfo.Version+1)
+	}
+
 	orphanInfo, err := fixture.q.CreateStoryInfo(ctx, db.CreateStoryInfoParams{
 		ThemeID:             themeID,
 		Title:               "누락된 참조 정보",
@@ -1107,6 +1151,12 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 	})
 	if err != nil {
 		t.Fatalf("CreateStoryInfo orphan: %v", err)
+	}
+	if refs, err := fixture.q.FindStoryInfoReferencesForMedia(ctx, db.FindStoryInfoReferencesForMediaParams{
+		ThemeID: themeID,
+		MediaID: image.ID,
+	}); err != nil || len(refs) != 1 || refs[0].ID != orphanInfo.ID || refs[0].Usage != "embedded_image" {
+		t.Fatalf("FindStoryInfoReferencesForMedia orphan embed err=%v refs=%#v", err, refs)
 	}
 	if rows, err := fixture.q.ClearStoryInfoMediaReferencesWithOwner(ctx, db.ClearStoryInfoMediaReferencesWithOwnerParams{
 		MediaID:   image.ID,
