@@ -55,7 +55,7 @@ describe("ConditionEdge", () => {
     );
 
     const path = screen.getByTestId("condition-edge-path");
-    expect(path.style.stroke).toBe("rgb(100, 116, 139)");
+    expect(["#64748b", "rgb(100, 116, 139)"]).toContain(path.style.stroke);
     expect(path.style.strokeDasharray).toBe("5 5");
   });
 
@@ -63,7 +63,7 @@ describe("ConditionEdge", () => {
     render(<ConditionEdge {...baseProps} data={{ condition: completeCondition }} />);
 
     const path = screen.getByTestId("condition-edge-path");
-    expect(path.style.stroke).toBe("rgb(139, 92, 246)");
+    expect(["#8b5cf6", "rgb(139, 92, 246)"]).toContain(path.style.stroke);
     expect(path.style.strokeDasharray).toBe("");
   });
 });

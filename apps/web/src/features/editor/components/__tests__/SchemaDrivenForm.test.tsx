@@ -430,6 +430,62 @@ describe("GenreSelect", () => {
     expect(screen.getAllByText("추리").length).toBe(1);
   });
 
+  it("템플릿 장르 키를 사용자용 한글 라벨로 표시하고 원문 키로 저장한다", () => {
+    useTemplatesMock.mockReturnValue({
+      data: [
+        {
+          id: "tpl-crime",
+          genre: "crime_scene",
+          name: "크라임씬 템플릿",
+          description: "",
+          min_players: 4,
+          max_players: 6,
+          duration_min: 90,
+        },
+        {
+          id: "tpl-jubensha",
+          genre: "jubensha",
+          name: "쥐번샤 템플릿",
+          description: "",
+          min_players: 4,
+          max_players: 8,
+          duration_min: 120,
+        },
+        {
+          id: "tpl-murder",
+          genre: "murder_mystery",
+          name: "머더미스터리 템플릿",
+          description: "",
+          min_players: 5,
+          max_players: 8,
+          duration_min: 120,
+        },
+        {
+          id: "tpl-script",
+          genre: "script_kill",
+          name: "스크립트킬 템플릿",
+          description: "",
+          min_players: 5,
+          max_players: 10,
+          duration_min: 150,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<GenreSelect />);
+
+    expect(screen.getByText("크라임씬")).toBeDefined();
+    expect(screen.getByText("쥐번샤")).toBeDefined();
+    expect(screen.getByText("머더미스터리")).toBeDefined();
+    expect(screen.getByText("스크립트킬")).toBeDefined();
+    expect(screen.queryByText("crime_scene")).toBeNull();
+
+    fireEvent.click(screen.getByText("크라임씬"));
+    expect(mockSetGenre).toHaveBeenCalledWith("crime_scene");
+  });
+
   it("장르 클릭 시 setGenre를 호출한다", () => {
     useTemplatesMock.mockReturnValue({ data: mockTemplates, isLoading: false, isError: false });
     render(<GenreSelect />);

@@ -33,6 +33,12 @@ const AdminPage = lazy(() => import("@/pages/AdminPage"));
 const PublicProfilePage = lazy(() => import("@/pages/PublicProfilePage"));
 const GamePage = lazy(() => import("@/pages/GamePage"));
 const SocialPage = lazy(() => import("@/pages/SocialPage"));
+const ReadingScriptEditorMockPage = lazy(
+  () => import("@/pages/ReadingScriptEditorMockPage"),
+);
+const ReadingScriptPlayerMockPage = lazy(
+  () => import("@/pages/ReadingScriptPlayerMockPage"),
+);
 
 // Shop
 const ShopPage = lazy(() => import("@/pages/ShopPage"));
@@ -153,6 +159,8 @@ export function App() {
 
               {/* 인증 필요 — 게임/에디터 상세는 전체화면 (MainLayout 밖) */}
               <Route element={<ProtectedRoute />}>
+                <Route path="/dev/reading-script" element={<ReadingScriptEditorMockPage />} />
+                <Route path="/dev/reading-player" element={<ReadingScriptPlayerMockPage />} />
                 <Route path="/game/:id" element={<GamePage />} />
                 <Route path="/editor/:id" element={<EditorPage />} />
                 <Route path="/editor/:id/:tab" element={<EditorPage />} />

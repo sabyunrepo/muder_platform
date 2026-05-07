@@ -210,10 +210,10 @@ function readStartingClues(config: Record<string, unknown>) {
   return modules?.starting_clue?.config?.startingClues ?? {};
 }
 
-const endcardSectionName = /^결과 카드(?:작성됨|비어 있음)$/;
-const roleSheetSectionName = /^역할지Markdown 또는 PDF$/;
-const startingClueSectionName = /^시작 단서\d+\/\d+개 배정$/;
-const hiddenMissionSectionName = /^히든 미션\d+개$/;
+const endcardSectionName = /^결과 카드 (?:작성됨|비어 있음)$/;
+const roleSheetSectionName = /^역할지 Markdown 또는 PDF$/;
+const startingClueSectionName = /^시작 단서 \d+\/\d+개 배정$/;
+const hiddenMissionSectionName = /^히든 미션 \d+개$/;
 
 function openCharacterSection(name: RegExp) {
   const button = screen.getByRole('button', { name });
@@ -649,7 +649,7 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
-    fireEvent.click(screen.getByRole('button', { name: /PDF미디어 문서 선택/ }));
+    fireEvent.click(screen.getByRole('button', { name: /PDF 미디어 문서 선택/ }));
     fireEvent.click(screen.getByRole('button', { name: 'PDF 선택' }));
 
     expect(screen.getByText('useCase:role_sheet_document')).toBeDefined();
@@ -666,7 +666,7 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
-    fireEvent.click(screen.getByRole('button', { name: /PDF미디어 문서 선택/ }));
+    fireEvent.click(screen.getByRole('button', { name: /PDF 미디어 문서 선택/ }));
     fireEvent.click(screen.getByRole('button', { name: 'PDF 선택' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'DOCX 역할지 선택' }));
