@@ -118,35 +118,43 @@ func (q *Queries) ClearReadingSectionMediaReferencesWithOwner(ctx context.Contex
 }
 
 const clearRoleSheetMediaReferencesWithOwner = `-- name: ClearRoleSheetMediaReferencesWithOwner :execrows
-UPDATE theme_contents c
-SET body = jsonb_set(
+WITH cleaned_role_sheets AS (
+  SELECT
+    rc.id,
+    regexp_replace(
       regexp_replace(
-        c.body,
+        rc.body,
         '"media_id"\s*:\s*"' || $1::text || '"',
         '"media_id":null',
         'g'
-      )::jsonb,
-      '{images,image_media_ids}',
-      COALESCE((
-        SELECT jsonb_agg(page_id ORDER BY ord)
-        FROM jsonb_array_elements_text(
-          COALESCE(
-            regexp_replace(
-              c.body,
-              '"media_id"\s*:\s*"' || $1::text || '"',
-              '"media_id":null',
-              'g'
-            )::jsonb #> '{images,image_media_ids}',
-            '[]'::jsonb
-          )
-        ) WITH ORDINALITY AS elem(page_id, ord)
-        WHERE page_id <> $1::text
-      ), '[]'::jsonb),
-      true
-    )::text,
+      ),
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*\\?"' || $1::text || '\\?"[^>]*/?>',
+      '',
+      'g'
+    )::jsonb AS doc
+  FROM theme_contents rc
+  WHERE rc.theme_id = $3
+    AND rc.key ~ '^role_sheet:'
+    AND rc.body ~ $1::text
+)
+UPDATE theme_contents c
+SET body = CASE
+      WHEN cleaned.doc #> '{images,image_media_ids}' IS NULL THEN cleaned.doc::text
+      ELSE jsonb_set(
+        cleaned.doc,
+        '{images,image_media_ids}',
+        COALESCE((
+          SELECT jsonb_agg(page_id ORDER BY ord)
+          FROM jsonb_array_elements_text(COALESCE(cleaned.doc #> '{images,image_media_ids}', '[]'::jsonb)) WITH ORDINALITY AS elem(page_id, ord)
+          WHERE page_id <> $1::text
+        ), '[]'::jsonb),
+        true
+      )::text
+    END,
     updated_at = NOW()
-FROM themes t
+FROM themes t, cleaned_role_sheets cleaned
 WHERE c.theme_id = t.id
+  AND c.id = cleaned.id
   AND t.creator_id = $2
   AND c.theme_id = $3
   AND c.key ~ '^role_sheet:'

@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -849,6 +850,81 @@ func TestService_UpsertAndGetCharacterRoleSheet(t *testing.T) {
 	}
 	if got.Markdown == nil || got.Markdown.Body != "## 비밀\n알리바이" {
 		t.Fatalf("body mismatch after upsert: %+v", got)
+	}
+}
+
+func TestService_UpsertCharacterRoleSheetMarkdown_ValidatesMediaEmbeds(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	image := createMediaForReferenceTest(t, f.q, themeID, "role-sheet-inline-image", MediaTypeImage)
+	voice := createMediaForReferenceTest(t, f.q, themeID, "role-sheet-voice", MediaTypeVoice)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	otherThemeImage := createMediaForReferenceTest(t, f.q, otherThemeID, "other-role-sheet-inline-image", MediaTypeImage)
+	video, err := f.q.CreateMedia(ctx, db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       "role-sheet-video",
+		Type:       MediaTypeVideo,
+		SourceType: SourceTypeYouTube,
+		Url:        pgtype.Text{String: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", Valid: true},
+		Tags:       []string{},
+		SortOrder:  0,
+	})
+	if err != nil {
+		t.Fatalf("CreateMedia video: %v", err)
+	}
+	char, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{Name: "미디어 역할지"})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	upserted, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format: RoleSheetFormatMarkdown,
+		Markdown: &RoleSheetMarkdown{Body: fmt.Sprintf(
+			`증거 <MediaEmbed mediaId="%s" type="image" /> 영상 <MediaEmbed mediaId="%s" type="video" />`,
+			image.ID.String(),
+			video.ID.String(),
+		)},
+	})
+	if err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet markdown embeds: %v", err)
+	}
+	if upserted.Markdown == nil || !strings.Contains(upserted.Markdown.Body, image.ID.String()) || !strings.Contains(upserted.Markdown.Body, video.ID.String()) {
+		t.Fatalf("embedded media markdown was not persisted: %+v", upserted)
+	}
+
+	if _, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format:   RoleSheetFormatMarkdown,
+		Markdown: &RoleSheetMarkdown{Body: fmt.Sprintf(`증거 <MediaEmbed mediaId='%s' type='image' />`, image.ID.String())},
+	}); err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet single quoted markdown embeds: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		body    string
+		wantErr string
+	}{
+		{name: "invalid uuid", body: `<MediaEmbed mediaId="not-a-uuid" type="image" />`, wantErr: "invalid MediaEmbed mediaId"},
+		{name: "wrong type", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="image" />`, voice.ID.String()), wantErr: "wrong type or theme"},
+		{name: "other theme", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="image" />`, otherThemeImage.ID.String()), wantErr: "wrong type or theme"},
+		{name: "type mismatch", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="video" />`, image.ID.String()), wantErr: "type does not match"},
+		{name: "duplicate media id still validates each embed type", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="image" /><MediaEmbed mediaId="%s" type="video" />`, image.ID.String(), image.ID.String()), wantErr: "type does not match"},
+		{name: "unsupported type", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="audio" />`, image.ID.String()), wantErr: "unsupported role sheet MediaEmbed type"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+				Format:   RoleSheetFormatMarkdown,
+				Markdown: &RoleSheetMarkdown{Body: tc.body},
+			})
+			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("expected %q error, got %v", tc.wantErr, err)
+			}
+		})
 	}
 }
 

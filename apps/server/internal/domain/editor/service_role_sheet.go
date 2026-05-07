@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/google/uuid"
@@ -17,6 +18,16 @@ import (
 
 const maxRoleSheetBodyBytes = 50000
 const maxRoleSheetImagePages = 50
+
+type roleSheetMediaEmbed struct {
+	mediaID uuid.UUID
+	rawType string
+}
+
+var (
+	roleSheetMediaEmbedRe = regexp.MustCompile(`(?s)<MediaEmbed\b([^>]*)/?>`)
+	roleSheetAttrRe       = regexp.MustCompile(`\b(mediaId|type)\s*=\s*(?:\\?"([^"\\]*)\\?"|'([^'\\]*)')`)
+)
 
 type storedRoleSheet struct {
 	Version  int                `json:"version"`
@@ -146,6 +157,9 @@ func normalizeRoleSheetImages(images *RoleSheetImages, allowEmpty bool) (*RoleSh
 func (s *service) roleSheetStorageBody(ctx context.Context, creatorID uuid.UUID, char db.ThemeCharacter, req UpsertRoleSheetRequest) (string, error) {
 	switch req.Format {
 	case RoleSheetFormatMarkdown:
+		if err := s.assertRoleSheetMarkdownMediaEmbeds(ctx, creatorID, char.ThemeID, req.Markdown.Body); err != nil {
+			return "", err
+		}
 		body, err := json.Marshal(storedRoleSheet{Version: 1, Format: RoleSheetFormatMarkdown, Markdown: req.Markdown})
 		if err != nil {
 			s.logger.Error().Err(err).Msg("failed to marshal markdown role sheet")
@@ -199,6 +213,76 @@ func (s *service) assertRoleSheetImageMediaIDs(ctx context.Context, creatorID, t
 		}
 		if media.Type != MediaTypeImage {
 			return apperror.BadRequest("image role sheet media must be an image")
+		}
+	}
+	return nil
+}
+
+func extractRoleSheetMediaEmbeds(body string) []roleSheetMediaEmbed {
+	matches := roleSheetMediaEmbedRe.FindAllStringSubmatch(body, -1)
+	out := make([]roleSheetMediaEmbed, 0, len(matches))
+	for _, match := range matches {
+		attrs := map[string]string{}
+		for _, attr := range roleSheetAttrRe.FindAllStringSubmatch(match[1], -1) {
+			value := attr[2]
+			if value == "" {
+				value = attr[3]
+			}
+			attrs[attr[1]] = value
+		}
+		id, err := uuid.Parse(strings.TrimSpace(attrs["mediaId"]))
+		if err != nil {
+			out = append(out, roleSheetMediaEmbed{})
+			continue
+		}
+		out = append(out, roleSheetMediaEmbed{
+			mediaID: id,
+			rawType: strings.ToLower(strings.TrimSpace(attrs["type"])),
+		})
+	}
+	return out
+}
+
+func (s *service) assertRoleSheetMarkdownMediaEmbeds(ctx context.Context, creatorID, themeID uuid.UUID, body string) error {
+	checked := map[uuid.UUID]db.ThemeMedium{}
+	for _, embed := range extractRoleSheetMediaEmbeds(body) {
+		if embed.mediaID == uuid.Nil {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "invalid MediaEmbed mediaId")
+		}
+		media, ok := checked[embed.mediaID]
+		if !ok {
+			var err error
+			media, err = s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
+				ID:        embed.mediaID,
+				CreatorID: creatorID,
+			})
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return apperror.New(apperror.ErrMediaNotInTheme, 400, "embedded role sheet media not found")
+				}
+				s.logger.Error().Err(err).Str("media_id", embed.mediaID.String()).Msg("failed to verify role sheet embedded media")
+				return apperror.Internal("failed to verify role sheet media")
+			}
+			checked[embed.mediaID] = media
+		}
+		if media.ThemeID != themeID || (media.Type != MediaTypeImage && media.Type != MediaTypeVideo) {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "embedded role sheet media has wrong type or theme")
+		}
+		if media.Type == MediaTypeVideo && media.SourceType != SourceTypeYouTube {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "role sheet MediaEmbed video must reference a YouTube media item")
+		}
+		switch embed.rawType {
+		case "":
+		case "image":
+			if media.Type != MediaTypeImage {
+				return apperror.New(apperror.ErrMediaNotInTheme, 400, "role sheet MediaEmbed type does not match media")
+			}
+		case "video":
+			if media.Type != MediaTypeVideo {
+				return apperror.New(apperror.ErrMediaNotInTheme, 400, "role sheet MediaEmbed type does not match media")
+			}
+		default:
+			return apperror.New(apperror.ErrValidation, 422, "unsupported role sheet MediaEmbed type")
 		}
 	}
 	return nil
