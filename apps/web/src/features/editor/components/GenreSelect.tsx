@@ -6,6 +6,17 @@ import { useThemeStore } from "@/stores/themeStore";
 // GenreSelect
 // ---------------------------------------------------------------------------
 
+const GENRE_LABELS: Record<string, string> = {
+  crime_scene: "크라임씬",
+  jubensha: "쥐번샤",
+  murder_mystery: "머더미스터리",
+  script_kill: "스크립트킬",
+};
+
+function getGenreLabel(genre: string) {
+  return GENRE_LABELS[genre] ?? genre;
+}
+
 export function GenreSelect() {
   const { data: templates, isLoading, isError } = useTemplates();
   const { selectedGenre, setGenre } = useThemeStore();
@@ -45,7 +56,7 @@ export function GenreSelect() {
                   : "border-slate-700 bg-slate-800/50 text-slate-300 hover:border-slate-500 hover:bg-slate-800"
               }`}
             >
-              {genre}
+              {getGenreLabel(genre)}
             </button>
           );
         })}
