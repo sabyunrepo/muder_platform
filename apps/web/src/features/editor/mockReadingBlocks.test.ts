@@ -34,14 +34,16 @@ afterEach(() => {
 
 describe("mockReadingBlocks", () => {
   it("대본 줄을 읽기 블록 타입으로 변환한다", () => {
-    const blocks = parseReadingScript([
-      "이미지: 저택 전경 full large",
-      "영상: CCTV 01",
-      "BGM: 심문 테마 반복",
-      "GM: 단서를 공개한다",
-      "변상훈: 저는 현장에 없었습니다.",
-      "알 수 없음: 수상한 대사",
-    ].join("\n"));
+    const blocks = parseReadingScript(
+      [
+        "이미지: 저택 전경 full large",
+        "영상: CCTV 01",
+        "BGM: 심문 테마 반복",
+        "GM: 단서를 공개한다",
+        "변상훈: 저는 현장에 없었습니다.",
+        "알 수 없음: 수상한 대사",
+      ].join("\n")
+    );
 
     expect(blocks).toHaveLength(6);
     expect(blocks[0]).toMatchObject({
@@ -83,5 +85,30 @@ describe("mockReadingBlocks", () => {
     localStorage.setItem(MOCK_READING_STORAGE_KEY, "{bad-json");
 
     expect(readMockBlocks()).toEqual(defaultBlocks);
+  });
+
+  it("저장된 블록 스키마가 깨졌으면 기본 블록으로 되돌린다", () => {
+    localStorage.setItem(
+      MOCK_READING_STORAGE_KEY,
+      JSON.stringify([{ id: "dialogue-501", type: "dialogue", text: "speaker 누락" }])
+    );
+
+    expect(readMockBlocks()).toEqual(defaultBlocks);
+  });
+
+  it("저장된 블록 ID 이후 번호로 새 블록을 만든다", () => {
+    const saved: ReadingBlock[] = [
+      {
+        id: "dialogue-501",
+        type: "dialogue",
+        speaker: "나레이션",
+        text: "저장된 대사",
+        advanceType: "gm",
+      },
+    ];
+    writeMockBlocks(saved);
+
+    expect(readMockBlocks()).toEqual(saved);
+    expect(createEmptyBlock("dialogue").id).toBe("dialogue-502");
   });
 });

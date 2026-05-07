@@ -97,6 +97,14 @@ function createId(prefix: string): string {
   return `${prefix}-${nextBlockId}`;
 }
 
+function syncNextBlockId(blocks: ReadingBlock[]): void {
+  const maxSuffix = blocks.reduce((max, block) => {
+    const suffix = Number(block.id.split("-").at(-1));
+    return Number.isFinite(suffix) ? Math.max(max, suffix) : max;
+  }, 0);
+  nextBlockId = Math.max(nextBlockId, maxSuffix);
+}
+
 export const defaultScript = `나레이션: 모두 눈을 감아주세요.
 이미지: 저택 전경
 변상훈: 저는 아무것도 보지 못했습니다.
@@ -204,10 +212,24 @@ export function parseReadingScript(input: string): ReadingBlock[] {
 
 export function createEmptyBlock(type: BlockType): ReadingBlock {
   if (type === "image") {
-    return { id: createId("image"), type, mediaId: "image-mansion", position: "center", size: "medium", advanceType: "gm" };
+    return {
+      id: createId("image"),
+      type,
+      mediaId: "image-mansion",
+      position: "center",
+      size: "medium",
+      advanceType: "gm",
+    };
   }
   if (type === "video") {
-    return { id: createId("video"), type, mediaId: "video-cctv", autoplay: true, waitUntilEnd: true, advanceType: "voice" };
+    return {
+      id: createId("video"),
+      type,
+      mediaId: "video-cctv",
+      autoplay: true,
+      waitUntilEnd: true,
+      advanceType: "voice",
+    };
   }
   if (type === "bgm") {
     return { id: createId("bgm"), type, mediaId: "bgm-opening", mode: "loop" };
@@ -215,16 +237,28 @@ export function createEmptyBlock(type: BlockType): ReadingBlock {
   if (type === "gmNote") {
     return { id: createId("note"), type, text: "여기에 GM 진행 메모를 작성하세요." };
   }
-  return { id: createId("dialogue"), type, speaker: "나레이션", text: "새 대사를 입력하세요.", advanceType: "gm" };
+  return {
+    id: createId("dialogue"),
+    type,
+    speaker: "나레이션",
+    text: "새 대사를 입력하세요.",
+    advanceType: "gm",
+  };
 }
 
 export function readMockBlocks(): ReadingBlock[] {
   try {
     const raw = localStorage.getItem(MOCK_READING_STORAGE_KEY);
-    if (!raw) return defaultBlocks;
+    if (!raw) {
+      syncNextBlockId(defaultBlocks);
+      return defaultBlocks;
+    }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : defaultBlocks;
+    const blocks = isReadingBlockArray(parsed) ? parsed : defaultBlocks;
+    syncNextBlockId(blocks);
+    return blocks;
   } catch {
+    syncNextBlockId(defaultBlocks);
     return defaultBlocks;
   }
 }
@@ -245,7 +279,9 @@ export function characterName(id?: string): string {
 
 function findMediaId(label: string, type: MockMedia["type"]): string | undefined {
   const compact = label.replace(/\s+/g, "").toLowerCase();
-  return mockMedia.find((media) => media.type === type && compact.includes(media.name.replace(/\s+/g, "").toLowerCase()))?.id;
+  return mockMedia.find(
+    (media) => media.type === type && compact.includes(media.name.replace(/\s+/g, "").toLowerCase())
+  )?.id;
 }
 
 function isBgmStop(text: string) {
@@ -266,4 +302,82 @@ function parseBgmMediaId(text: string) {
     return undefined;
   }
   return findMediaId(text, "bgm") ?? "bgm-opening";
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
+}
+
+function isStringValue(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isBooleanValue(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || isStringValue(value);
+}
+
+function isAdvanceType(value: unknown): value is AdvanceType {
+  return value === "gm" || value === "voice" || value === "character";
+}
+
+function isImageAdvanceType(value: unknown): value is ImageBlock["advanceType"] {
+  return value === "gm" || value === "character";
+}
+
+function isImagePosition(value: unknown): value is ImageBlock["position"] {
+  return value === "left" || value === "center" || value === "right" || value === "full";
+}
+
+function isImageSize(value: unknown): value is ImageBlock["size"] {
+  return value === "small" || value === "medium" || value === "large";
+}
+
+function isBgmMode(value: unknown): value is BgmMode {
+  return value === "loop" || value === "once" || value === "stop";
+}
+
+function isReadingBlock(value: unknown): value is ReadingBlock {
+  if (!isObjectRecord(value) || !isStringValue(value.id)) return false;
+
+  switch (value.type) {
+    case "dialogue":
+      return (
+        isStringValue(value.speaker) &&
+        isStringValue(value.text) &&
+        isAdvanceType(value.advanceType) &&
+        isOptionalString(value.voiceMediaId) &&
+        isOptionalString(value.imageMediaId) &&
+        isOptionalString(value.advanceCharacterId)
+      );
+    case "image":
+      return (
+        isStringValue(value.mediaId) &&
+        isImagePosition(value.position) &&
+        isImageSize(value.size) &&
+        isImageAdvanceType(value.advanceType) &&
+        isOptionalString(value.advanceCharacterId)
+      );
+    case "video":
+      return (
+        isStringValue(value.mediaId) &&
+        isBooleanValue(value.autoplay) &&
+        isBooleanValue(value.waitUntilEnd) &&
+        isAdvanceType(value.advanceType) &&
+        isOptionalString(value.advanceCharacterId)
+      );
+    case "bgm":
+      return isOptionalString(value.mediaId) && isBgmMode(value.mode);
+    case "gmNote":
+      return isStringValue(value.text);
+    default:
+      return false;
+  }
+}
+
+function isReadingBlockArray(value: unknown): value is ReadingBlock[] {
+  return Array.isArray(value) && value.every(isReadingBlock);
 }
