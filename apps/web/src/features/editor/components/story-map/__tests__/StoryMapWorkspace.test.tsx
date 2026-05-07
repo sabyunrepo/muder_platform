@@ -115,7 +115,9 @@ describe("StoryMapWorkspace", () => {
     expect(screen.getByRole("heading", { name: "제작 라이브러리" }).closest("aside")?.className).toContain(
       "lg:overflow-y-auto",
     );
+    expect(screen.getByRole("heading", { name: "제작 라이브러리" }).closest("aside")?.querySelector("div[class*='overflow-x-auto']")).toBeTruthy();
     expect(screen.getByRole("heading", { name: "장면 속성" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "장면 속성" }).closest("aside")?.querySelector("div[class*='sm:grid-cols-2']")).toBeTruthy();
     expect(screen.getByTestId("flow-canvas").textContent).toContain("theme-1");
   });
 

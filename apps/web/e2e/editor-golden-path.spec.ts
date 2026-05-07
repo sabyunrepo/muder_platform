@@ -327,6 +327,11 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByRole('tab', { name: /등장인물/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
+    const editorHeader = page.locator('header').first();
+    await expect(editorHeader.getByText('에디터', { exact: true })).toBeHidden();
+    await expect(editorHeader.getByText('초안', { exact: true })).toBeHidden();
+    await expect(editorHeader.getByRole('button', { name: '검증' })).toBeVisible();
+    await expect(editorHeader.getByRole('button', { name: '출판' })).toBeVisible();
     await expectFocusIndicator(page, page.getByRole('textbox', { name: '캐릭터 검색' }));
     await expectFocusIndicator(page, page.getByRole('button', { name: '탐정 A 선택' }));
     await expectNoPageLevelHorizontalOverflow(page);
@@ -341,6 +346,16 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
       page,
       page.getByLabel('미디어 카테고리 필터').getByRole('button', { name: '전체' }),
     );
+    await expectNoPageLevelHorizontalOverflow(page);
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/story`);
+    await expect(page.getByRole('tab', { name: /스토리 진행/, selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByLabel('스토리 진행 제작')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: '제작 라이브러리' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '장면 속성' })).toBeVisible();
+    await expect(page.locator('[data-testid="flow-canvas"]')).toBeVisible({ timeout: 10_000 });
     await expectNoPageLevelHorizontalOverflow(page);
   });
 

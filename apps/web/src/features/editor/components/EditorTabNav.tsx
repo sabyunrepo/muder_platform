@@ -50,6 +50,14 @@ export function EditorTabNav({
     }
   }, [visibleTabs, activeTab, setActiveTab, themeId, navigate]);
 
+  useEffect(() => {
+    const activeIndex = visibleTabs.findIndex((tab) => tab.key === activeTab);
+    tabRefs.current[activeIndex]?.scrollIntoView?.({
+      block: "nearest",
+      inline: "center",
+    });
+  }, [activeTab, visibleTabs]);
+
   const selectTab = useCallback(
     (tab: EditorTab) => {
       setActiveTab(tab);
@@ -80,13 +88,13 @@ export function EditorTabNav({
   );
 
   return (
-    <div className="sticky top-12 z-40 h-10 shrink-0 border-b border-slate-800 bg-slate-950">
+    <div className="sticky top-12 z-40 h-11 shrink-0 border-b border-slate-800 bg-slate-950">
       <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-slate-950 to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-slate-950 to-transparent" />
       <nav
         role="tablist"
         aria-label="에디터 탭"
-        className="flex h-full overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex h-full overflow-x-auto px-2 [scrollbar-width:none] sm:px-4 [&::-webkit-scrollbar]:hidden"
       >
         {visibleTabs.map((tab, index) => {
           const isActive = activeTab === tab.key;
@@ -110,7 +118,7 @@ export function EditorTabNav({
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => selectTab(tab.key)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
-                className={`relative flex shrink-0 items-center gap-1.5 px-4 text-xs font-medium transition-colors ${
+                className={`relative flex min-h-11 shrink-0 items-center gap-1.5 px-3 text-xs font-medium transition-colors sm:px-4 ${
                   isActive
                     ? "text-amber-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500"
                     : "text-slate-500 hover:bg-slate-900/50 hover:text-slate-300"
