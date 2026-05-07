@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { forwardRef, useImperativeHandle } from 'react';
 import { ApiHttpError } from '@/lib/api-error';
@@ -75,7 +75,7 @@ vi.mock('@mdxeditor/editor', () => ({
     }));
     return (
       <textarea
-        aria-label="역할지 Markdown"
+        aria-label="editable markdown"
         value={markdown}
         onChange={(event) => onChange(event.currentTarget.value)}
       />
@@ -257,6 +257,12 @@ function readStartingClues(config: Record<string, unknown>) {
 
 const endcardSectionName = /^결과 카드 (?:작성됨|비어 있음)$/;
 const roleSheetSectionName = /^역할지 Markdown 또는 PDF$/;
+
+function getRoleSheetEditor() {
+  return within(screen.getByRole('region', { name: '역할지 Markdown' })).getByRole('textbox', {
+    name: 'editable markdown',
+  });
+}
 const startingClueSectionName = /^시작 단서 \d+\/\d+개 배정$/;
 const hiddenMissionSectionName = /^히든 미션 \d+개$/;
 
@@ -327,7 +333,7 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByRole('button', { name: roleSheetSectionName }).getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: startingClueSectionName }).getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: hiddenMissionSectionName }).getAttribute('aria-expanded')).toBe('false');
-    expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
+    expect(screen.queryByRole('region', { name: '역할지 Markdown' })).toBeNull();
   });
 
   it('범인 캐릭터에 "범인" 라벨이 표시된다', () => {
@@ -582,7 +588,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
 
-    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
+    const roleSheet = getRoleSheetEditor();
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
     fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
 
@@ -598,7 +604,7 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('filter:IMAGE')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
 
-    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement;
+    const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
     expect(roleSheet.value).toContain('<MediaEmbed mediaId="image-1" type="image" />');
     expect(screen.getByText('이미지: 캐릭터 이미지')).toBeDefined();
   });
@@ -612,7 +618,7 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('filter:VIDEO')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: '역할지 영상 선택' }));
 
-    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement;
+    const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
     expect(roleSheet.value).toContain('<MediaEmbed mediaId="video-1" type="video" />');
     expect(screen.getByText('영상: 역할지 영상')).toBeDefined();
   });
@@ -636,7 +642,7 @@ describe('CharacterAssignPanel', () => {
     openRoleSheetSection();
 
     expect(screen.getByText('아직 저장된 역할지가 없습니다.')).toBeDefined();
-    expect((screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement).value).toBe('');
+    expect((getRoleSheetEditor() as HTMLTextAreaElement).value).toBe('');
   });
 
   it('역할지 로드 실패 시 재시도 버튼을 표시한다', () => {
@@ -680,7 +686,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
 
-    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' });
+    const roleSheet = getRoleSheetEditor();
     const saveButton = screen.getByRole('button', { name: '역할지 저장' });
     fireEvent.change(roleSheet, { target: { value: '수정된 역할지' } });
     fireEvent.mouseDown(saveButton);
@@ -714,7 +720,7 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByTitle('홍길동 PDF 역할지 1페이지').getAttribute('src')).toBe(
       'https://cdn.example/role.pdf#page=1&toolbar=0&navpanes=0&view=FitH',
     );
-    expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
+    expect(screen.queryByRole('region', { name: '역할지 Markdown' })).toBeNull();
   });
 
   it('PDF 역할지를 미디어 관리 문서 picker로 연결한다', () => {
@@ -775,7 +781,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '다음 이미지 페이지' }));
     expect(screen.getByText('2 / 2페이지')).toBeDefined();
     expect(screen.getByAltText('홍길동 이미지 롤지 2페이지').getAttribute('src')).toBe('https://cdn.example/role-2.webp');
-    expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
+    expect(screen.queryByRole('region', { name: '역할지 Markdown' })).toBeNull();
   });
 
   it('이미지 URL을 추가하고 이미지 롤지를 저장한다', () => {

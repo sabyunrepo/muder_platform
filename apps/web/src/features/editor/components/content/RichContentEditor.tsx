@@ -78,6 +78,7 @@ export function RichContentEditor({
   return (
     <div
       className="space-y-2"
+      role="region"
       aria-label={ariaLabel}
       onBlurCapture={(event) => onBlurCapture?.(event.relatedTarget)}
     >

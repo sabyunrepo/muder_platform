@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { forwardRef, useImperativeHandle } from 'react';
 
 const {
@@ -51,7 +51,7 @@ vi.mock('@mdxeditor/editor', () => ({
     }));
     return (
       <textarea
-        aria-label="정보 본문"
+        aria-label="editable markdown"
         value={markdown}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -116,6 +116,12 @@ const baseInfo = {
   createdAt: '2026-05-06T00:00:00Z',
   updatedAt: '2026-05-06T00:00:00Z',
 };
+
+function getInfoBodyEditor() {
+  return within(screen.getByRole('region', { name: '정보 본문 작성기' })).getByRole('textbox', {
+    name: 'editable markdown',
+  });
+}
 
 let createMutate: ReturnType<typeof vi.fn>;
 let updateMutate: ReturnType<typeof vi.fn>;
@@ -247,7 +253,7 @@ describe('InfoTab', () => {
     expect(screen.getByText('filter:VIDEO')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'CCTV 선택' }));
 
-    expect(screen.getByLabelText('정보 본문')).toHaveProperty(
+    expect(getInfoBodyEditor()).toHaveProperty(
       'value',
       expect.stringContaining('<MediaEmbed mediaId="video-1" type="video" />')
     );
