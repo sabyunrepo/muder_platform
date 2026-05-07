@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, Save } from "lucide-react";
 import { toast } from "sonner";
 import type { Node } from "@xyflow/react";
-import type { EditorThemeResponse } from "@/features/editor/api";
+import type { EditorCharacterResponse, EditorThemeResponse } from "@/features/editor/api";
 import { useUpdateConfigJson } from "@/features/editor/editorConfigApi";
 import {
   createEndingBranchMatrixRow,
@@ -21,6 +21,7 @@ interface EndingBranchRulesPanelProps {
   themeId: string;
   theme: EditorThemeResponse;
   endingNodes: Node[];
+  characters: EditorCharacterResponse[];
 }
 
 function reorderPriorities(config: EndingBranchConfig): EndingBranchConfig {
@@ -70,7 +71,7 @@ function updateChoiceValues(
   return question.choices.map((choice, index) => (index === choiceIndex ? value : choice));
 }
 
-export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBranchRulesPanelProps) {
+export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters }: EndingBranchRulesPanelProps) {
   const updateConfig = useUpdateConfigJson(themeId);
   const serverConfig = useMemo(() => readEndingBranchConfig(theme.config_json), [theme.config_json]);
   const [draft, setDraft] = useState<EndingBranchConfig>(serverConfig);
@@ -101,6 +102,10 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
 
   const handleSave = () => {
     const submittedDraft = draft;
+    if (draft.questions.some((question) => question.target.type === "specific_players" && question.target.characterIds.length === 0)) {
+      toast.error("특정 플레이어 질문은 받을 캐릭터를 1명 이상 선택해야 합니다");
+      return;
+    }
     updateConfig.mutate(
       { ...writeEndingBranchConfig(theme.config_json, draft), version: theme.version },
       {
@@ -159,6 +164,7 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes }: EndingBr
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
         <EndingBranchQuestionList
           questions={draft.questions}
+          characters={characters}
           onAddQuestion={() => applyDraft({ ...draft, questions: [...draft.questions, createEndingBranchQuestion(draft.questions.length)] })}
           onRemoveQuestion={handleRemoveQuestion}
           onChangeQuestion={(questionId, updater) => applyDraft(updateQuestionAt(draft, questionId, updater))}

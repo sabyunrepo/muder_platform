@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock } = vi.hoisted(() => ({
+const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock, toastErrorMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
   addNodeMock: vi.fn(),
@@ -12,6 +12,7 @@ const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMoc
   configMutateMock: vi.fn(),
   useUpdateFlowNodeMock: vi.fn(),
   refetchMock: vi.fn(),
+  toastErrorMock: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useFlowData", () => ({
@@ -35,7 +36,7 @@ vi.mock("../../../editorConfigApi", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: vi.fn() },
+  toast: { error: toastErrorMock, success: vi.fn() },
 }));
 
 import { EndingEntitySubTab } from "../EndingEntitySubTab";
@@ -307,6 +308,75 @@ describe("EndingEntitySubTab", () => {
       }),
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
+  });
+
+  it("결말 질문 대상을 특정 플레이어 여러 명으로 저장한다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /하윤/ }));
+    fireEvent.click(screen.getByRole("button", { name: /민재/ }));
+    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              questions: [
+                expect.objectContaining({
+                  respondents: "char-1",
+                  target: { type: "specific_players", characterIds: ["char-1", "char-2"] },
+                }),
+              ],
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it("특정 플레이어 질문에서 대상이 비면 저장하지 않고 경고한다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /하윤/ }));
+    fireEvent.click(screen.getByRole("button", { name: /하윤/ }));
+    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+
+    expect(configMutateMock).not.toHaveBeenCalled();
+    expect(toastErrorMock).toHaveBeenCalledWith("특정 플레이어 질문은 받을 캐릭터를 1명 이상 선택해야 합니다");
+  });
+
+  it("삭제된 캐릭터 참조를 깨지지 않는 fallback으로 표시한다", () => {
+    renderWithClient(
+      <EndingEntitySubTab
+        themeId="theme-1"
+        theme={{
+          ...theme,
+          config_json: {
+            modules: {
+              ending_branch: {
+                enabled: true,
+                config: {
+                  questions: [{
+                    id: "q1",
+                    text: "사라진 대상 질문",
+                    type: "single",
+                    choices: ["A", "B"],
+                    impact: "branch",
+                    target: { type: "specific_players", characterIds: ["missing-character"] },
+                  }],
+                  matrix: [{ priority: 1, ending: "ending-1", condition: { in: ["A", { var: "answers.q1.choices" }] } }],
+                  defaultEnding: "ending-2",
+                },
+              },
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("삭제된 캐릭터")).toBeDefined();
   });
 
   it("결말 선택지는 같은 질문 안에서 중복 저장되지 않는다", () => {

@@ -72,6 +72,74 @@ describe("endingBranchAdapter", () => {
     expect(viewModel.warnings).toEqual([]);
   });
 
+  it("target 없는 기존 질문은 모든 플레이어 대상으로 보정한다", () => {
+    const config = readEndingBranchConfig({
+      modules: {
+        ending_branch: {
+          enabled: true,
+          config: {
+            questions: [{ id: "q1", text: "범인은?", type: "single", choices: ["A", "B"], impact: "branch" }],
+          },
+        },
+      },
+    });
+
+    expect(config.questions[0]).toMatchObject({
+      respondents: "all",
+      target: { type: "all_players" },
+    });
+  });
+
+  it("legacy respondents 캐릭터 id를 specific_players target으로 읽는다", () => {
+    const config = readEndingBranchConfig({
+      modules: {
+        ending_branch: {
+          enabled: true,
+          config: {
+            questions: [{ id: "q1", text: "개인 질문", type: "single", choices: ["A", "B"], impact: "branch", respondents: "char-1" }],
+          },
+        },
+      },
+    });
+
+    expect(config.questions[0]).toMatchObject({
+      respondents: "char-1",
+      target: { type: "specific_players", characterIds: ["char-1"] },
+    });
+  });
+
+  it("specific_players target은 중복 없는 캐릭터 id 배열로 저장/로드한다", () => {
+    const saved = writeEndingBranchConfig(null, {
+      questions: [{
+        id: "q1",
+        text: "비밀 선택",
+        type: "multi",
+        choices: ["A", "B"],
+        respondents: "char-1",
+        target: { type: "specific_players", characterIds: ["char-1", "char-2"] },
+        impact: "score",
+      }],
+      matrix: [],
+      defaultEnding: "",
+    });
+
+    expect(saved).toMatchObject({
+      modules: {
+        ending_branch: {
+          config: {
+            questions: [expect.objectContaining({
+              target: { type: "specific_players", characterIds: ["char-1", "char-2"] },
+            })],
+          },
+        },
+      },
+    });
+    expect(readEndingBranchConfig(saved).questions[0].target).toEqual({
+      type: "specific_players",
+      characterIds: ["char-1", "char-2"],
+    });
+  });
+
   it("선택지가 비어 있는 결말 규칙은 저장 전 경고로 표시한다", () => {
     const viewModel = toEndingBranchEditorViewModel({
       modules: {
@@ -102,7 +170,7 @@ describe("endingBranchAdapter", () => {
     const question = createEndingBranchQuestion(0);
     const row = createEndingBranchMatrixRow({ questions: [question], matrix: [], defaultEnding: "" }, "end-1");
 
-    expect(question).toMatchObject({ id: "ending-question-1234-1", choices: ["선택지 1", "선택지 2"], respondents: "all" });
+    expect(question).toMatchObject({ id: "ending-question-1234-1", choices: ["선택지 1", "선택지 2"], respondents: "all", target: { type: "all_players" } });
     expect(row).toMatchObject({ priority: 1, ending: "end-1" });
     expect(readChoiceCondition(row.condition)).toEqual({ questionId: question.id, choice: "선택지 1" });
   });

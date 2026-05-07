@@ -1,8 +1,13 @@
 import { Plus, Trash2 } from "lucide-react";
-import type { EndingBranchQuestion } from "../../entities/ending/endingBranchAdapter";
+import type { EditorCharacterResponse } from "@/features/editor/api";
+import { OptionList, type OptionItem } from "./InformationDeliveryOptionList";
+import type { EndingBranchQuestion, EndingBranchQuestionTarget } from "../../entities/ending/endingBranchAdapter";
+
+const ALL_PLAYERS_TARGET_ID = "__all_players__";
 
 interface EndingBranchQuestionListProps {
   questions: EndingBranchQuestion[];
+  characters: EditorCharacterResponse[];
   onAddQuestion: () => void;
   onRemoveQuestion: (questionId: string) => void;
   onChangeQuestion: (questionId: string, updater: (question: EndingBranchQuestion) => EndingBranchQuestion) => void;
@@ -13,6 +18,7 @@ interface EndingBranchQuestionListProps {
 
 export function EndingBranchQuestionList({
   questions,
+  characters,
   onAddQuestion,
   onRemoveQuestion,
   onChangeQuestion,
@@ -71,6 +77,13 @@ export function EndingBranchQuestionList({
               </label>
             </div>
 
+            <QuestionTargetSelector
+              question={question}
+              questionIndex={questionIndex}
+              characters={characters}
+              onChangeQuestion={onChangeQuestion}
+            />
+
             <ChoiceRows
               question={question}
               questionIndex={questionIndex}
@@ -82,6 +95,91 @@ export function EndingBranchQuestionList({
           </article>
         ))}
       </div>
+    </div>
+  );
+}
+
+interface TargetOption extends OptionItem {
+  roleLabel?: string;
+}
+
+interface QuestionTargetSelectorProps {
+  question: EndingBranchQuestion;
+  questionIndex: number;
+  characters: EditorCharacterResponse[];
+  onChangeQuestion: (questionId: string, updater: (question: EndingBranchQuestion) => EndingBranchQuestion) => void;
+}
+
+function characterSummary(character: EditorCharacterResponse): string | undefined {
+  if (!character.is_playable) return "비플레이어";
+  if (character.mystery_role === "detective") return "탐정";
+  if (character.mystery_role === "culprit") return "범인";
+  if (character.mystery_role === "accomplice") return "공범";
+  return "플레이어 캐릭터";
+}
+
+function targetToSelectedIds(target: EndingBranchQuestionTarget): string[] {
+  return target.type === "specific_players" ? target.characterIds : [ALL_PLAYERS_TARGET_ID];
+}
+
+function targetFromToggle(target: EndingBranchQuestionTarget, id: string): EndingBranchQuestionTarget {
+  if (id === ALL_PLAYERS_TARGET_ID) return { type: "all_players" };
+  const currentIds = target.type === "specific_players" ? target.characterIds : [];
+  const nextIds = currentIds.includes(id)
+    ? currentIds.filter((characterId) => characterId !== id)
+    : [...currentIds, id];
+  return { type: "specific_players", characterIds: nextIds };
+}
+
+function legacyRespondents(target: EndingBranchQuestionTarget): "all" | string {
+  return target.type === "specific_players" ? target.characterIds[0] ?? "" : "all";
+}
+
+function QuestionTargetSelector({
+  question,
+  questionIndex,
+  characters,
+  onChangeQuestion,
+}: QuestionTargetSelectorProps) {
+  const characterOptions: TargetOption[] = characters.map((character) => ({
+    id: character.id,
+    name: character.name.trim() || "이름 없는 캐릭터",
+    summary: character.description?.trim() || characterSummary(character),
+  }));
+  const knownIds = new Set(characterOptions.map((item) => item.id));
+  const deletedOptions: TargetOption[] = question.target.type === "specific_players"
+    ? question.target.characterIds
+      .filter((id) => !knownIds.has(id))
+      .map((id) => ({ id, name: "삭제된 캐릭터", summary: id }))
+    : [];
+  const allPlayerOption: TargetOption = {
+    id: ALL_PLAYERS_TARGET_ID,
+    name: "모든 플레이어",
+    summary: "공통 종료 질문",
+  };
+  const items = [allPlayerOption, ...characterOptions];
+  const allItems = [...items, ...deletedOptions];
+  const selectedIds = targetToSelectedIds(question.target);
+
+  return (
+    <div className="mt-3">
+      <OptionList
+        title="받을 대상"
+        emptyText="선택 가능한 캐릭터가 없습니다."
+        items={items}
+        allItems={allItems}
+        selectedIds={selectedIds}
+        getMeta={(item) => item.id === ALL_PLAYERS_TARGET_ID ? "공통 종료 질문" : item.summary}
+        onToggle={(id) => onChangeQuestion(question.id, (item) => {
+          const target = targetFromToggle(item.target, id);
+          return { ...item, target, respondents: legacyRespondents(target) };
+        })}
+      />
+      {question.target.type === "specific_players" && question.target.characterIds.length === 0 && (
+        <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          질문 {questionIndex + 1}을 받을 캐릭터를 1명 이상 선택해 주세요.
+        </p>
+      )}
     </div>
   );
 }
