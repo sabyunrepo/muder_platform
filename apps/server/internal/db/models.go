@@ -265,6 +265,16 @@ type StoryInfo struct {
 	Version             int32           `json:"version"`
 	CreatedAt           time.Time       `json:"created_at"`
 	UpdatedAt           time.Time       `json:"updated_at"`
+	ContentFormat       string          `json:"content_format"`
+}
+
+type StoryInfoMediaRef struct {
+	ID          uuid.UUID `json:"id"`
+	StoryInfoID uuid.UUID `json:"story_info_id"`
+	MediaID     uuid.UUID `json:"media_id"`
+	Usage       string    `json:"usage"`
+	SortOrder   int32     `json:"sort_order"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type Theme struct {

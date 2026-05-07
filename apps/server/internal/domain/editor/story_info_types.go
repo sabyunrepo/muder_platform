@@ -10,11 +10,14 @@ const (
 	MaxStoryInfoTitleLength = 200
 	MaxStoryInfoBodyLength  = 20000
 	MaxStoryInfoRefs        = 100
+
+	StoryInfoContentFormatMDXV1 = "mdx_v1"
 )
 
 type CreateStoryInfoRequest struct {
 	Title               string   `json:"title"`
 	Body                string   `json:"body"`
+	ContentFormat       *string  `json:"contentFormat,omitempty"`
 	ImageMediaID        *string  `json:"imageMediaId,omitempty"`
 	RelatedCharacterIDs []string `json:"relatedCharacterIds"`
 	RelatedClueIDs      []string `json:"relatedClueIds"`
@@ -25,6 +28,7 @@ type CreateStoryInfoRequest struct {
 type UpdateStoryInfoRequest struct {
 	Title               *string   `json:"title,omitempty"`
 	Body                *string   `json:"body,omitempty"`
+	ContentFormat       *string   `json:"contentFormat,omitempty"`
 	ImageMediaID        **string  `json:"imageMediaId,omitempty"`
 	RelatedCharacterIDs *[]string `json:"relatedCharacterIds,omitempty"`
 	RelatedClueIDs      *[]string `json:"relatedClueIds,omitempty"`
@@ -38,6 +42,7 @@ type StoryInfoResponse struct {
 	ThemeID             uuid.UUID `json:"themeId"`
 	Title               string    `json:"title"`
 	Body                string    `json:"body"`
+	ContentFormat       string    `json:"contentFormat"`
 	ImageMediaID        *string   `json:"imageMediaId,omitempty"`
 	RelatedCharacterIDs []string  `json:"relatedCharacterIds"`
 	RelatedClueIDs      []string  `json:"relatedClueIds"`

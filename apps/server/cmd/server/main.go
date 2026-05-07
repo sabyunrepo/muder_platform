@@ -192,7 +192,7 @@ func main() {
 	imageHandler := editor.NewImageHandler(imageSvc)
 	readingSvc := editor.NewReadingService(queries, logger)
 	readingHandler := editor.NewReadingHandler(readingSvc)
-	storyInfoSvc := editor.NewStoryInfoService(queries, logger)
+	storyInfoSvc := editor.NewStoryInfoService(queries, pool, logger)
 	storyInfoHandler := editor.NewStoryInfoHandler(storyInfoSvc, auditLog, logger)
 	adminSvc := admin.NewService(queries, logger)
 	friendSvc := social.NewFriendService(queries, logger)

@@ -9,6 +9,7 @@ export interface StoryInfoResponse {
   themeId: string;
   title: string;
   body: string;
+  contentFormat: "mdx_v1";
   imageMediaId?: string | null;
   relatedCharacterIds: string[];
   relatedClueIds: string[];
@@ -22,6 +23,7 @@ export interface StoryInfoResponse {
 export interface CreateStoryInfoRequest {
   title: string;
   body: string;
+  contentFormat?: "mdx_v1";
   imageMediaId?: string | null;
   relatedCharacterIds: string[];
   relatedClueIds: string[];
@@ -32,6 +34,7 @@ export interface CreateStoryInfoRequest {
 export interface UpdateStoryInfoRequest {
   title?: string;
   body?: string;
+  contentFormat?: "mdx_v1";
   imageMediaId?: string | null;
   relatedCharacterIds?: string[];
   relatedClueIds?: string[];

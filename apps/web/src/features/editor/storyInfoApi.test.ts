@@ -37,6 +37,7 @@ const mockInfo: StoryInfoResponse = {
   themeId: THEME_ID,
   title: "피해자의 비밀",
   body: "모두에게 공개할 정보",
+  contentFormat: "mdx_v1",
   imageMediaId: "image-1",
   relatedCharacterIds: ["char-1"],
   relatedClueIds: ["clue-1"],
