@@ -54,10 +54,10 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 | E-3 | Config 409 **3-way merge** 의미론 | 백엔드+프론트 | L+ (별도 brainstorm 필수) | 미해결 — Phase 24 후보 |
 | ~~E-4~~ | ~~`LocationClueAssignPanel` optimistic + rollback~~ | — | — | **해소 (2026-04-30)** |
 | E-5 | `location_clue_assignment_v2` feature flag (런타임 엔진 소비 게이트) | 프론트+런타임 | S+ (brainstorm 필수) | 미해결 — Phase 24 후보 |
-| ~~E-6~~ | ~~파일 크기 누적 가드 (PR마다 +수줄 누적 정책)~~ | — | — | **제거 예정 (2026-05-07, #471/#472). LOC 숫자 중심 신호가 강해 카논 문구 기반 책임 경계 리뷰로 대체** |
+| ~~E-6~~ | ~~파일 크기 누적 가드 (PR마다 +수줄 누적 정책)~~ | — | — | **제거됨 (2026-05-07, #471/#472). LOC 숫자 중심 신호가 강해 카논 문구 기반 책임 경계 리뷰로 대체** |
 | ~~E-7~~ | ~~`PhaseNodePanel` 서브컴포넌트 분리~~ | — | — | **해소 (2026-05-01, PR #191)** |
 | ~~E-8~~ | ~~`CharacterAssignPanel` 분리 + `useCharacterConfigDebounce` hook~~ | — | — | **해소 (2026-05-01, PR #191)** |
-| ~~E-9~~ | ~~`file-size-guard.yml` glob 패턴 정정~~ | — | — | **무효 예정 (2026-05-07, #471/#472). workflow 제거로 후속 정정 불필요** |
+| ~~E-9~~ | ~~`file-size-guard.yml` glob 패턴 정정~~ | — | — | **무효 (2026-05-07, #471/#472). workflow 제거로 후속 정정 불필요** |
 | ~~E-10~~ | ~~`useDebouncedMutation` `FlushRefs` bag 단순화~~ | — | — | **해소 (2026-05-01, PR #189)** |
 | ~~E-11~~ | ~~`useDebouncedMutation` `useUnmountFlush` inline~~ | — | — | **해소 (2026-05-01, PR #189)** |
 | ~~E-12~~ | ~~`useDebouncedMutation` 추가 회귀 테스트 3건~~ | — | — | **해소 (2026-05-01, PR #189)** |
@@ -136,7 +136,7 @@ round-2/3에서 4-agent + CodeRabbit 발견 9건 in-PR 해소 (perf-H1/H2, arch-
 - **에디터 E-5**: Phase 24 후보로 보류 (2026-05-01 결정). 게이트 대상 v2 구현이 부재한 상태라 placeholder flag 추가 = partial impl 카논 위반 risk. brainstorm에서 v2 동작 spec 확정 후 진입.
 - ~~**에디터 E-7/E-8**~~: 해소 (PR #191, 2026-05-01).
 - ~~**에디터 E-10/E-11/E-12**~~: 해소 (PR #189, 2026-05-01).
-- ~~**에디터 E-9**~~: 무효 예정. `file-size-guard.yml` 제거로 glob 패턴 정정 follow-up은 더 이상 필요하지 않다.
+- ~~**에디터 E-9**~~: 무효. `file-size-guard.yml` 제거로 glob 패턴 정정 follow-up은 더 이상 필요하지 않다.
 
 ---
 

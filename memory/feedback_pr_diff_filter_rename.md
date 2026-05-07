@@ -32,7 +32,8 @@ PR diff에서 변경된 파일 목록을 추출할 때 `git diff --name-only --d
 ```yaml
 - name: Inspect changed files
   run: |
-    # --diff-filter=AMR: include Added, Modified, AND Renamed-and-modified
+    # --diff-filter=AMR: include Added, Modified, and Renamed
+    # (including pure renames and rename+modify cases)
     # so renames do not bypass PR diff checks.
     changed=$(git diff --name-only --diff-filter=AMR "$BASE_SHA" "$HEAD_SHA" || true)
 ```

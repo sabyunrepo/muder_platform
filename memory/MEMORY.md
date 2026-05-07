@@ -8,7 +8,7 @@
 - [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol 머지 #203, PR-10 Runtime Payload Validation L 미착수). #200/#201/#202/#204~#210 follow-ups carry-over
 
 ## Backlog
-- [Phase 21 backlog](project_phase21_backlog.md) — Phase 19 audit log orphan action 7건. 에디터 리팩터 잔존 2건: E-3/E-5(Phase 24 후보, brainstorm 필수). E-6 file-size guard는 LOC 숫자 중심 신호라 제거 예정, E-9 glob 정정은 제거와 함께 무효. E-7/E-8/E-10/E-11/E-12는 Resolved 2026-05-01 (PR #189/#191). Phase 23 인프라 follow-ups 5건은 Closed 2026-05-01 (KT Cloud KS arc-runner-set 진화로 superseded)
+- [Phase 21 backlog](project_phase21_backlog.md) — Phase 19 audit log orphan action 7건. 에디터 리팩터 잔존 2건: E-3/E-5(Phase 24 후보, brainstorm 필수). E-6 file-size guard는 LOC 숫자 중심 신호라 제거됨, E-9 glob 정정은 제거와 함께 무효. E-7/E-8/E-10/E-11/E-12는 Resolved 2026-05-01 (PR #189/#191). Phase 23 인프라 follow-ups 5건은 Closed 2026-05-01 (KT Cloud KS arc-runner-set 진화로 superseded)
 
 ## 도메인 카논
 - [소셜 시스템](project_social_system.md) — SocialHub, Redis Presence, WS 핸들러, 차단 필터링
