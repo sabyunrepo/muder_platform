@@ -164,7 +164,7 @@ curl -s -o /tmp/seed-user.out -w "%{http_code}" \
   -H "Content-Type: application/json" \
   -d "{\"email\":\"e2e@test.com\",\"password\":\"e2etest1234\",\"nickname\":\"E2E Tester\"}" \
   | grep -Eq "^(201|409)$" || { cat /tmp/seed-user.out; exit 1; }
-PGPASSWORD=mmp_test psql -h postgres -U mmp -d mmp_test -v ON_ERROR_STOP=1 < db/seed/e2e-themes.sql
+psql "${E2E_DB_URL}" -v ON_ERROR_STOP=1 < db/seed/e2e-themes.sql
 cd ../..
 pnpm --filter "@mmp/game-logic" --filter "@mmp/shared" --filter "@mmp/ws-client" build
 cd apps/web
