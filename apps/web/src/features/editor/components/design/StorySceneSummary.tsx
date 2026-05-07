@@ -40,7 +40,7 @@ export function StorySceneSummary({
       </div>
 
       {previewScenes.length > 0 ? (
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-3 grid gap-2 md:grid-cols-2 lg:hidden">
           {previewScenes.map((scene) => (
             <article
               key={scene.id}
@@ -64,7 +64,7 @@ export function StorySceneSummary({
           ))}
         </div>
       ) : (
-        <div className="mt-3 rounded border border-dashed border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-500">
+        <div className="mt-3 rounded border border-dashed border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-500 lg:hidden">
           장면을 추가하면 스토리 진행 구성이 여기에 표시됩니다.
         </div>
       )}

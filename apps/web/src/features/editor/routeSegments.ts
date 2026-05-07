@@ -12,10 +12,11 @@ export interface EditorRouteMatrixEntry {
 
 const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
   'story-map': 'storyMap',
+  story: 'storyMap',
+  reading: 'story',
   overview: 'overview',
   design: 'design',
   info: 'info',
-  story: 'story',
   characters: 'characters',
   clues: 'clues',
   relations: 'clues',
@@ -48,7 +49,7 @@ const DESIGN_ROUTE_SUBTAB_MAP: Record<string, DesignSubTab> = {
 const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
   storyMap: undefined,
   info: 'info',
-  story: 'story',
+  story: 'reading',
   characters: 'characters',
   clues: 'clues',
   design: 'design/modules',
@@ -61,8 +62,9 @@ const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
 export const EDITOR_ROUTE_MATRIX = [
   { path: '/editor/:id', editorTab: 'storyMap' },
   { path: '/editor/:id/story-map', routeSegment: 'story-map', editorTab: 'storyMap', alias: true },
+  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'storyMap' },
   { path: '/editor/:id/info', routeSegment: 'info', editorTab: 'info' },
-  { path: '/editor/:id/story', routeSegment: 'story', editorTab: 'story' },
+  { path: '/editor/:id/reading', routeSegment: 'reading', editorTab: 'story' },
   { path: '/editor/:id/characters', routeSegment: 'characters', editorTab: 'characters' },
   { path: '/editor/:id/clues', routeSegment: 'clues', editorTab: 'clues' },
   { path: '/editor/:id/relations', routeSegment: 'relations', editorTab: 'clues' },
