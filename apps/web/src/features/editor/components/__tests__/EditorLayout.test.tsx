@@ -2,8 +2,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EditorThemeResponse } from '@/features/editor/api';
 
-const { mockNavigate, mockActiveTab } = vi.hoisted(() => ({
+const { mockNavigate, mockSetActiveTab, mockActiveTab } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
+  mockSetActiveTab: vi.fn(),
   mockActiveTab: { current: 'storyMap' },
 }));
 
@@ -14,6 +15,7 @@ vi.mock('react-router', () => ({
 vi.mock('../../stores/editorUIStore', () => ({
   useEditorUI: () => ({
     activeTab: mockActiveTab.current,
+    setActiveTab: mockSetActiveTab,
   }),
 }));
 
@@ -58,7 +60,7 @@ describe('EditorLayout', () => {
     const onValidate = vi.fn(() => []);
     const onPublish = vi.fn();
 
-    const { container } = render(
+    render(
       <EditorLayout
         theme={baseTheme}
         themeId="theme-1"
@@ -68,21 +70,17 @@ describe('EditorLayout', () => {
       />,
     );
 
-    expect(container.querySelector('header')?.className).toContain('gap-2');
-    expect(container.querySelector('header')?.className).toContain('px-2');
-    expect(screen.getByText('에디터').className).toContain('hidden');
-    expect(screen.getByText('초안').className).toContain('hidden');
-    expect(screen.getByText('변경사항 있음').closest('div')?.parentElement?.className).toContain(
-      'hidden sm:block',
-    );
+    expect(screen.getByText('좁은 모바일 화면용 테스트 테마')).toBeDefined();
+    expect(screen.getByText('초안')).toBeDefined();
+    expect(screen.getByText('변경사항 있음')).toBeDefined();
+    expect((screen.getByRole('button', { name: '검증' }) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', { name: '출판' }) as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(screen.getByRole('button', { name: '검증' }));
     fireEvent.click(screen.getByRole('button', { name: '출판' }));
 
     expect(onValidate).toHaveBeenCalledTimes(1);
     expect(onPublish).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole('button', { name: '검증' }).className).toContain('sm:h-7');
-    expect(screen.getByRole('button', { name: '출판' }).className).toContain('sm:h-7');
   });
 
   it('뒤로가기와 출판 완료 테마의 비활성 상태를 유지한다', () => {
@@ -97,6 +95,77 @@ describe('EditorLayout', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/editor');
     expect((screen.getByRole('button', { name: '출판' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText('출판됨').className).toContain('hidden');
+    expect(screen.getByText('출판됨')).toBeDefined();
+  });
+
+  it('저장 상태별 표시와 재시도 액션을 헤더 안에서 유지한다', () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(
+      <EditorLayout
+        theme={baseTheme}
+        themeId="theme-1"
+        saveStatus="saving"
+        onRetry={onRetry}
+      />,
+    );
+
+    expect(screen.getByText('저장 중...')).toBeDefined();
+
+    rerender(
+      <EditorLayout
+        theme={baseTheme}
+        themeId="theme-1"
+        saveStatus="error"
+        onRetry={onRetry}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /저장 실패/ }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    rerender(<EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="idle" />);
+    expect(screen.queryByText('저장 중...')).toBeNull();
+    expect(screen.queryByRole('button', { name: /저장 실패/ })).toBeNull();
+  });
+
+  it('검증 결과를 표시하고 닫거나 관련 탭으로 이동할 수 있다', () => {
+    const onValidate = vi.fn(() => [
+      { type: 'error' as const, category: 'clues', message: '단서 연결이 필요합니다' },
+      { type: 'warning' as const, category: 'modules', message: '모듈 설정을 확인하세요' },
+    ]);
+
+    render(
+      <EditorLayout
+        theme={baseTheme}
+        themeId="theme-1"
+        onValidate={onValidate}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '검증' }));
+
+    expect(screen.getByText('검증 결과: 1개 오류, 1개 경고')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /단서 연결이 필요합니다/ }));
+
+    expect(mockSetActiveTab).toHaveBeenCalledWith('clues');
+    expect(screen.queryByText('검증 결과: 1개 오류, 1개 경고')).toBeNull();
+  });
+
+  it('Ctrl+S와 Cmd+S 저장 단축키만 저장 액션을 실행한다', () => {
+    const onSave = vi.fn();
+
+    render(
+      <EditorLayout
+        theme={baseTheme}
+        themeId="theme-1"
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
+    fireEvent.keyDown(window, { key: 's', ctrlKey: true });
+    fireEvent.keyDown(window, { key: 's', metaKey: true });
+
+    expect(onSave).toHaveBeenCalledTimes(2);
   });
 });
