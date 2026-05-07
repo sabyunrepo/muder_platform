@@ -130,34 +130,16 @@ describe('CharactersTab', () => {
     useDeleteCharacterMock.mockReturnValue({ mutate: deleteMutateMock, isPending: false });
   });
 
-  it('서브탭 제작, 빠른 목록 2개를 렌더링한다', () => {
+  it('등장인물 제작 workspace를 바로 렌더링한다', () => {
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
 
-    expect(screen.getByText('제작')).toBeDefined();
-    expect(screen.getByText('빠른 목록')).toBeDefined();
-  });
-
-  it('기본 선택 탭은 새 제작 workspace다', () => {
-    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-
-    const workspaceTab = screen.getByText('제작').closest('button');
-    expect(workspaceTab?.className).toContain('border-amber-500');
     expect(screen.getByText('CharacterAssignPanel 콘텐츠')).toBeDefined();
   });
 
-  it('빠른 목록 탭 클릭 시 캐릭터 목록 콘텐츠가 표시된다', () => {
+  it('빠른 목록 서브탭을 노출하지 않는다', () => {
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
 
-    fireEvent.click(screen.getByText('빠른 목록'));
-    expect(screen.getByText('등장인물 없음')).toBeDefined();
-  });
-
-  it('빠른 목록에서 제작 탭으로 돌아가면 Entity workspace가 표시된다', () => {
-    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-
-    fireEvent.click(screen.getByText('빠른 목록'));
-    fireEvent.click(screen.getByText('제작'));
-    expect(screen.getByText('CharacterAssignPanel 콘텐츠')).toBeDefined();
+    expect(screen.queryByRole('button', { name: '빠른 목록' })).toBeNull();
   });
 
   it('제작 workspace에서 캐릭터 생성 폼을 연다', () => {

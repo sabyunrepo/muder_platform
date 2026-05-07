@@ -156,7 +156,7 @@ export function CharacterDetailPanel({
     endcardImageMediaId !== (selectedChar.endcard_image_media_id ?? null);
 
   return (
-    <div className="max-w-4xl space-y-3">
+    <div className="w-full space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="truncate text-sm font-semibold text-slate-200">{selectedChar.name}</h3>

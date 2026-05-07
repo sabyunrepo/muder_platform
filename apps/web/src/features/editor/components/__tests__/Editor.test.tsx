@@ -220,27 +220,6 @@ const mockPublishedTheme = {
   status: "PUBLISHED" as const,
 };
 
-const mockCharacters = [
-  {
-    id: "char-1",
-    theme_id: "theme-1",
-    name: "탐정",
-    description: "사건을 조사하는 탐정",
-    image_url: null,
-    is_culprit: false,
-    sort_order: 1,
-  },
-  {
-    id: "char-2",
-    theme_id: "theme-1",
-    name: "범인 캐릭터",
-    description: "진짜 범인",
-    image_url: null,
-    is_culprit: true,
-    sort_order: 2,
-  },
-];
-
 const mockThemeSummaries = [
   {
     id: "theme-1",
@@ -492,61 +471,24 @@ describe("CharactersTab", () => {
     useDeleteCharacterMock.mockReturnValue(defaultMutationReturn());
   });
 
-  it("로딩 중일 때 스피너를 표시한다", () => {
+  it("캐릭터 제작 workspace를 바로 표시한다", () => {
     useEditorCharactersMock.mockReturnValue({
       data: undefined,
       isLoading: true,
     });
 
-    const { container } = render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
-    const spinner = container.querySelector('[role="status"]');
-    expect(spinner).not.toBeNull();
+    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
+    expect(screen.getByText("CharacterAssignPanel 콘텐츠")).toBeDefined();
   });
 
-  it("캐릭터가 없을 때 빈 상태를 표시한다", () => {
+  it("빠른 목록 서브탭을 노출하지 않는다", () => {
     useEditorCharactersMock.mockReturnValue({
       data: [],
       isLoading: false,
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
-    expect(screen.getByText("등장인물 없음")).toBeDefined();
-  });
-
-  it("캐릭터 이름을 렌더링한다", () => {
-    useEditorCharactersMock.mockReturnValue({
-      data: mockCharacters,
-      isLoading: false,
-    });
-
-    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
-    expect(screen.getByText("탐정")).toBeDefined();
-    expect(screen.getByText("범인 캐릭터")).toBeDefined();
-  });
-
-  it("범인 캐릭터에 '범인' 배지를 표시한다", () => {
-    useEditorCharactersMock.mockReturnValue({
-      data: mockCharacters,
-      isLoading: false,
-    });
-
-    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
-    expect(screen.getByText("범인")).toBeDefined();
-  });
-
-  it("'캐릭터 추가' 버튼이 존재한다", () => {
-    useEditorCharactersMock.mockReturnValue({
-      data: mockCharacters,
-      isLoading: false,
-    });
-
-    render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    fireEvent.click(screen.getByRole("button", { name: "빠른 목록" }));
-    expect(screen.getByText("캐릭터 추가")).toBeDefined();
+    expect(screen.queryByRole("button", { name: "빠른 목록" })).toBeNull();
   });
 });
 
