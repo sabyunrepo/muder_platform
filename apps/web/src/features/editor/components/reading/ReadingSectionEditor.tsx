@@ -98,6 +98,7 @@ export function ReadingSectionEditor({
   const mediaById = useMemo(() => new Map(allMedia.map((media) => [media.id, media])), [allMedia]);
 
   const isDirty = useMemo(() => isReadingDraftDirty(draft, section), [draft, section]);
+  const previewLines = useMemo(() => normalizeReadingBlocks(draft.lines), [draft.lines]);
 
   // -------------------------------------------------------------------------
   // Block operations
@@ -428,7 +429,7 @@ export function ReadingSectionEditor({
       <ReadingSectionPreviewModal
         open={previewOpen}
         sectionName={draft.name || section.name}
-        lines={normalizeReadingBlocks(draft.lines)}
+        lines={previewLines}
         characters={characters}
         mediaById={mediaById}
         dirty={isDirty}

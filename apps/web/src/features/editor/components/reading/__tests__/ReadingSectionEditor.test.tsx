@@ -562,7 +562,21 @@ describe('ReadingSectionEditor', () => {
     expect(within(dialog).getByText('저택 전경 · center')).toBeTruthy();
   });
 
-  it('auto-advances BGM cue in the test player preview', () => {
+  it('renders an empty test player without crashing', () => {
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트' }));
+
+    const dialog = screen.getByRole('dialog', { name: '오프닝 테스트' });
+    expect(within(dialog).getByText('0 / 0')).toBeTruthy();
+  });
+
+  it('auto-advances BGM cue in the test player preview', async () => {
     vi.useFakeTimers();
     useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
       if (type === 'BGM') {
@@ -601,11 +615,13 @@ describe('ReadingSectionEditor', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '테스트' }));
 
-    expect(screen.getByText('오프닝 테마 · 반복 재생')).toBeTruthy();
+    const dialog = screen.getByRole('dialog', { name: '오프닝 테스트' });
+    expect(within(dialog).getByText('오프닝 테마 · 반복 재생')).toBeTruthy();
+    await act(async () => {});
     act(() => {
       vi.advanceTimersByTime(700);
     });
-    expect(screen.getByText('조명을 낮춘다.')).toBeTruthy();
+    expect(within(dialog).getByText('조명을 낮춘다.')).toBeTruthy();
   });
 
   it('save button is disabled when not dirty', () => {

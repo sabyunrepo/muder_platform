@@ -50,12 +50,12 @@ export function ReadingSectionPreviewModal({
 }: ReadingSectionPreviewModalProps) {
   const [index, setIndex] = useState(0);
   const [waitReady, setWaitReady] = useState(false);
-  const [autoApplied, setAutoApplied] = useState(false);
+  const autoAppliedRef = useRef(false);
   const latestRef = useRef<HTMLDivElement | null>(null);
 
   const currentLine = lines[index];
   const visibleLines = lines.slice(0, index + 1);
-  const waitMediaId = getReadingPreviewWaitMediaId(currentLine);
+  const waitMediaId = currentLine ? getReadingPreviewWaitMediaId(currentLine) : null;
   const activeBgm = useMemo(
     () => getReadingPreviewActiveBgm(lines, index, mediaById),
     [index, lines, mediaById]
@@ -73,15 +73,16 @@ export function ReadingSectionPreviewModal({
     if (!open) return;
     setIndex(0);
     setWaitReady(false);
-    setAutoApplied(false);
+    autoAppliedRef.current = false;
   }, [open, lines]);
 
   useEffect(() => {
     if (!open) return;
     setWaitReady(!waitMediaId);
-    setAutoApplied(false);
+    autoAppliedRef.current = false;
     if (!waitMediaId) return;
 
+    if (!currentLine) return;
     const type = getReadingPreviewBlockType(currentLine);
     const duration =
       type === 'video' ? readingPreviewVideoDurationMs : readingPreviewVoiceDurationMs;
@@ -90,14 +91,19 @@ export function ReadingSectionPreviewModal({
   }, [currentLine, index, open, waitMediaId]);
 
   useEffect(() => {
-    if (!open || !currentLine || autoApplied || getReadingPreviewBlockType(currentLine) !== 'bgm') {
+    if (
+      !open ||
+      !currentLine ||
+      autoAppliedRef.current ||
+      getReadingPreviewBlockType(currentLine) !== 'bgm'
+    ) {
       return;
     }
-    setAutoApplied(true);
+    autoAppliedRef.current = true;
     if (isLast) return;
     const timer = window.setTimeout(() => goNext(), readingPreviewBgmAdvanceDelayMs);
     return () => window.clearTimeout(timer);
-  }, [autoApplied, currentLine, goNext, isLast, open]);
+  }, [currentLine, goNext, isLast, open]);
 
   useEffect(() => {
     if (!open) return;
