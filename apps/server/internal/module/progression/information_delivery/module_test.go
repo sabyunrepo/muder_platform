@@ -86,6 +86,75 @@ func TestModule_DeliversOnlyToTargetCharacter(t *testing.T) {
 	}
 }
 
+func TestModule_DeliversStoryInfoOnlyToTargetCharacter(t *testing.T) {
+	alice := uuid.New()
+	bob := uuid.New()
+	provider := testPlayerProvider{
+		byID: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			alice: {PlayerID: alice, TargetCode: "char-alice"},
+			bob:   {PlayerID: bob, TargetCode: "char-bob"},
+		},
+		byTarget: map[string]uuid.UUID{"char-alice": alice, "char-bob": bob},
+	}
+	m := newTestModule(t, provider)
+
+	err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionDeliverInformation,
+		Params: json.RawMessage(`{"deliveries":[{"id":"d1","target":{"type":"character","character_id":"char-alice"},"story_info_ids":["info-2","info-1","info-1"]}]}`),
+	})
+	if err != nil {
+		t.Fatalf("ReactTo: %v", err)
+	}
+
+	aliceState := decodeState(t, mustStateFor(t, m, alice))
+	bobState := decodeState(t, mustStateFor(t, m, bob))
+
+	if got := aliceState.VisibleStoryInfoIDs; len(got) != 2 || got[0] != "info-1" || got[1] != "info-2" {
+		t.Fatalf("alice visible story info = %#v", got)
+	}
+	if got := aliceState.VisibleReadingSectionIDs; len(got) != 0 {
+		t.Fatalf("story info delivery should not create reading sections, got %#v", got)
+	}
+	if got := aliceState.Deliveries[0].StoryInfoIDs; len(got) != 2 || got[0] != "info-1" || got[1] != "info-2" {
+		t.Fatalf("alice delivery story info = %#v", got)
+	}
+	if got := bobState.VisibleStoryInfoIDs; len(got) != 0 {
+		t.Fatalf("bob should not see alice story info, got %#v", got)
+	}
+}
+
+func TestModule_DeliversReadingAndStoryInfoWithoutMixing(t *testing.T) {
+	alice := uuid.New()
+	m := newTestModule(t, nil)
+	action := engine.PhaseActionPayload{
+		Action: engine.ActionDeliverInformation,
+		Params: json.RawMessage(`{"deliveries":[{"id":"mixed","target":{"type":"all_players"},"reading_section_ids":["rs-common"],"story_info_ids":["info-common"]}]}`),
+	}
+	if err := m.ReactTo(context.Background(), action); err != nil {
+		t.Fatalf("ReactTo first: %v", err)
+	}
+	if err := m.ReactTo(context.Background(), action); err != nil {
+		t.Fatalf("ReactTo second: %v", err)
+	}
+
+	state := decodeState(t, mustStateFor(t, m, alice))
+	if got := state.VisibleReadingSectionIDs; len(got) != 1 || got[0] != "rs-common" {
+		t.Fatalf("visible sections = %#v", got)
+	}
+	if got := state.VisibleStoryInfoIDs; len(got) != 1 || got[0] != "info-common" {
+		t.Fatalf("visible story info = %#v", got)
+	}
+	if len(state.Deliveries) != 1 || state.Deliveries[0].DeliveryID != "mixed" {
+		t.Fatalf("deliveries should not duplicate: %#v", state.Deliveries)
+	}
+	if got := state.Deliveries[0].ReadingSectionIDs; len(got) != 1 || got[0] != "rs-common" {
+		t.Fatalf("delivery sections = %#v", got)
+	}
+	if got := state.Deliveries[0].StoryInfoIDs; len(got) != 1 || got[0] != "info-common" {
+		t.Fatalf("delivery story info = %#v", got)
+	}
+}
+
 func TestModule_AllPlayersAndReentryAreIdempotent(t *testing.T) {
 	alice := uuid.New()
 	m := newTestModule(t, nil)
@@ -178,6 +247,50 @@ func TestEnginePhaseEnterDeliversAndReconnectStatePersists(t *testing.T) {
 	}
 }
 
+func TestEnginePhaseEnterDeliversStoryInfoAndReconnectStatePersists(t *testing.T) {
+	alice := uuid.New()
+	bob := uuid.New()
+	provider := testPlayerProvider{
+		byID: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			alice: {PlayerID: alice, TargetCode: "char-alice"},
+			bob:   {PlayerID: bob, TargetCode: "char-bob"},
+		},
+		byTarget: map[string]uuid.UUID{"char-alice": alice, "char-bob": bob},
+	}
+	bus := engine.NewEventBus(testLogger{t})
+	module := NewModule()
+	phases := []engine.PhaseDefinition{
+		{
+			ID:   "investigation",
+			Name: "Investigation",
+			OnEnter: json.RawMessage(`[
+				{"type":"DELIVER_INFORMATION","params":{"deliveries":[
+					{"id":"alice-info","target":{"type":"character","character_id":"char-alice"},"story_info_ids":["info-secret"]},
+					{"id":"common-info","target":{"type":"all_players"},"story_info_ids":["info-common"]}
+				]}}
+			]`),
+		},
+	}
+	pe := engine.NewPhaseEngine(uuid.New(), []engine.Module{module}, bus, nil, testLogger{t}, phases)
+	pe.SetPlayerInfoProvider(provider)
+	if err := pe.Start(context.Background(), map[string]json.RawMessage{module.Name(): nil}); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(context.Background())
+
+	aliceState := decodeState(t, mustStateFor(t, module, alice))
+	bobState := decodeState(t, mustStateFor(t, module, bob))
+	if got := aliceState.VisibleStoryInfoIDs; len(got) != 2 || got[0] != "info-common" || got[1] != "info-secret" {
+		t.Fatalf("alice story info reconnect state = %#v", got)
+	}
+	if got := bobState.VisibleStoryInfoIDs; len(got) != 1 || got[0] != "info-common" {
+		t.Fatalf("bob story info reconnect state = %#v", got)
+	}
+	if got := aliceState.VisibleReadingSectionIDs; len(got) != 0 {
+		t.Fatalf("story info phase action should not create reading sections, got %#v", got)
+	}
+}
+
 func TestModule_TargetCodeFallbackAndBuildState(t *testing.T) {
 	m := newTestModule(t, nil)
 	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
@@ -207,6 +320,33 @@ func TestModule_TargetCodeFallbackAndBuildState(t *testing.T) {
 	}
 }
 
+func TestModule_StoryInfoTargetCodeFallbackAndBuildState(t *testing.T) {
+	m := newTestModule(t, nil)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionDeliverInformation,
+		Params: json.RawMessage(`{"deliveries":[{"id":"fallback","target":{"type":"character","character_id":"char-late"},"story_info_ids":["info-late"]}]}`),
+	}); err != nil {
+		t.Fatalf("ReactTo: %v", err)
+	}
+
+	state := decodeState(t, mustBuildState(t, m))
+	if len(state.VisibleStoryInfoIDs) != 1 || state.VisibleStoryInfoIDs[0] != "info-late" {
+		t.Fatalf("build state story info = %#v", state.VisibleStoryInfoIDs)
+	}
+
+	latePlayer := uuid.New()
+	m.deps.PlayerInfoProvider = testPlayerProvider{
+		byID: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			latePlayer: {PlayerID: latePlayer, TargetCode: "char-late"},
+		},
+		byTarget: map[string]uuid.UUID{"char-late": latePlayer},
+	}
+	playerState := decodeState(t, mustStateFor(t, m, latePlayer))
+	if len(playerState.VisibleStoryInfoIDs) != 1 || playerState.VisibleStoryInfoIDs[0] != "info-late" {
+		t.Fatalf("late player story info = %#v", playerState.VisibleStoryInfoIDs)
+	}
+}
+
 func TestModule_CleanupAndUnknownMessage(t *testing.T) {
 	m := newTestModule(t, nil)
 	if err := m.HandleMessage(context.Background(), uuid.New(), "noop", nil); err == nil {
@@ -233,7 +373,7 @@ func TestModule_InvalidDeliverySemanticsReturnError(t *testing.T) {
 		params json.RawMessage
 	}{
 		{
-			name:   "empty sections",
+			name:   "empty sections and story info",
 			params: json.RawMessage(`{"deliveries":[{"id":"bad","target":{"type":"all_players"},"reading_section_ids":[]}]}`),
 		},
 		{
