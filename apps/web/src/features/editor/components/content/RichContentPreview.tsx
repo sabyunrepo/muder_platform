@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { marked } from 'marked';
 
@@ -23,16 +24,19 @@ export function RichContentPreview({
   emptyMessage: string;
 }) {
   const { data: media = [] } = useMediaList(themeId);
-  const markdownWithMedia = markdown.replace(
-    mediaEmbedPattern,
-    (_, mediaId: string, type: string) => {
-      const item = media.find((candidate) => candidate.id === mediaId);
-      const label = item?.name ?? '삭제되었거나 접근할 수 없는 미디어';
-      const kind = type === 'video' ? '영상' : '이미지';
-      return `\n\n> ${kind}: ${label}\n\n`;
-    },
-  );
-  const html = DOMPurify.sanitize(marked.parse(markdownWithMedia, { async: false }) as string);
+  const html = useMemo(() => {
+    const markdownWithMedia = markdown.replace(
+      mediaEmbedPattern,
+      (_, mediaId: string, type: string) => {
+        const item = media.find((candidate) => candidate.id === mediaId);
+        const label = item?.name ?? '삭제되었거나 접근할 수 없는 미디어';
+        const kind = type === 'video' ? '영상' : '이미지';
+        return `\n\n> ${kind}: ${label}\n\n`;
+      },
+    );
+
+    return DOMPurify.sanitize(marked.parse(markdownWithMedia, { async: false }) as string);
+  }, [markdown, media]);
 
   return (
     <section

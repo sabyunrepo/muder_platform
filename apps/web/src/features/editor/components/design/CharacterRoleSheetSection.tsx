@@ -251,7 +251,7 @@ function MarkdownRoleSheetEditor({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <RichContentEditor
           themeId={themeId}
           markdown={draft}
