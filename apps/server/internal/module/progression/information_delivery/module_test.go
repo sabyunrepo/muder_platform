@@ -117,6 +117,9 @@ func TestModule_DeliversStoryInfoOnlyToTargetCharacter(t *testing.T) {
 	if got := aliceState.VisibleReadingSectionIDs; len(got) != 0 {
 		t.Fatalf("story info delivery should not create reading sections, got %#v", got)
 	}
+	if len(aliceState.Deliveries) != 1 {
+		t.Fatalf("alice deliveries = %#v", aliceState.Deliveries)
+	}
 	if got := aliceState.Deliveries[0].StoryInfoIDs; len(got) != 2 || got[0] != "info-1" || got[1] != "info-2" {
 		t.Fatalf("alice delivery story info = %#v", got)
 	}
@@ -421,7 +424,7 @@ func TestModule_InvalidDeliverySemanticsReturnError(t *testing.T) {
 	}{
 		{
 			name:   "empty sections and story info",
-			params: json.RawMessage(`{"deliveries":[{"id":"bad","target":{"type":"all_players"},"reading_section_ids":[]}]}`),
+			params: json.RawMessage(`{"deliveries":[{"id":"bad","target":{"type":"all_players"},"reading_section_ids":[],"story_info_ids":[]}]}`),
 		},
 		{
 			name:   "missing character",
