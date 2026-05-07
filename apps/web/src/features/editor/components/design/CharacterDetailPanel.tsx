@@ -42,10 +42,6 @@ interface CharacterItem {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
-  endcard_title?: string | null;
-  endcard_body?: string | null;
-  endcard_image_url?: string | null;
-  endcard_image_media_id?: string | null;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -63,7 +59,6 @@ interface CharacterDetailPanelProps {
   onMysteryRoleChange?: (role: MysteryRole) => void;
   onVisibilityChange?: (field: CharacterVisibilityField, value: boolean) => void;
   onAliasRulesSave?: (rules: CharacterAliasRule[]) => void;
-  onEndcardChange?: (values: { title: string; body: string; imageUrl: string; imageMediaId?: string | null }) => void;
   onProfileImageChange?: (imageMediaId: string | null) => void;
 }
 
@@ -85,15 +80,10 @@ export function CharacterDetailPanel({
   onMysteryRoleChange,
   onVisibilityChange,
   onAliasRulesSave,
-  onEndcardChange,
   onProfileImageChange,
 }: CharacterDetailPanelProps) {
   const [aliasDrafts, setAliasDrafts] = useState<CharacterAliasRule[]>([]);
   const aliasDraftCharacterIdRef = useRef<string | null>(null);
-  const [endcardTitle, setEndcardTitle] = useState('');
-  const [endcardBody, setEndcardBody] = useState('');
-  const [endcardImageUrl, setEndcardImageUrl] = useState('');
-  const [endcardImageMediaId, setEndcardImageMediaId] = useState<string | null>(null);
   const characterOptions = useMemo(
     () => characters.map((char) => ({ id: char.id, name: char.name })),
     [characters]
@@ -104,19 +94,6 @@ export function CharacterDetailPanel({
     aliasDraftCharacterIdRef.current = selectedChar?.id ?? null;
     setAliasDrafts(normalizeCharacterAliasRules(selectedChar?.alias_rules));
   }, [selectedChar]);
-
-  useEffect(() => {
-    setEndcardTitle(selectedChar?.endcard_title ?? '');
-    setEndcardBody(selectedChar?.endcard_body ?? '');
-    setEndcardImageUrl(selectedChar?.endcard_image_url ?? '');
-    setEndcardImageMediaId(selectedChar?.endcard_image_media_id ?? null);
-  }, [
-    selectedChar?.id,
-    selectedChar?.endcard_title,
-    selectedChar?.endcard_body,
-    selectedChar?.endcard_image_url,
-    selectedChar?.endcard_image_media_id,
-  ]);
 
   if (!selectedChar) {
     return (
@@ -143,17 +120,8 @@ export function CharacterDetailPanel({
     is_voting_candidate:
       selectedChar.is_voting_candidate ??
       getCharacterRoleOption(selectedRole).defaultVotingCandidate,
-    endcard_title: selectedChar.endcard_title ?? null,
-    endcard_body: selectedChar.endcard_body ?? null,
-    endcard_image_url: selectedChar.endcard_image_url ?? null,
-    endcard_image_media_id: selectedChar.endcard_image_media_id ?? null,
     alias_rules: selectedChar.alias_rules ?? [],
   });
-  const endcardDirty =
-    endcardTitle !== (selectedChar.endcard_title ?? '') ||
-    endcardBody !== (selectedChar.endcard_body ?? '') ||
-    endcardImageUrl !== (selectedChar.endcard_image_url ?? '') ||
-    endcardImageMediaId !== (selectedChar.endcard_image_media_id ?? null);
 
   return (
     <div className="w-full space-y-3">
@@ -184,28 +152,7 @@ export function CharacterDetailPanel({
             defaultOpen: true,
             forceOpen: true,
             children: (
-              <div className="grid gap-3 md:grid-cols-[8rem_minmax(0,1fr)]">
-                <div className="min-w-0">
-                  {onProfileImageChange ? (
-                    <ImageMediaReferenceField
-                        themeId={themeId}
-                        label="프로필 이미지"
-                        imageMediaId={selectedChar.image_media_id ?? null}
-                        legacyImageUrl={selectedChar.image_url ?? null}
-                        pickerTitle="프로필 이미지 선택"
-                        emptyLabel="이미지 선택"
-                        compact
-                        onSelect={(media) => onProfileImageChange(media.id)}
-                        onClear={() => onProfileImageChange(null)}
-                    />
-                  ) : (
-                    <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-center">
-                      <span className="px-2 text-[11px] leading-5 text-slate-500">
-                      현재 프로필 이미지를 편집할 수 없습니다.
-                      </span>
-                    </div>
-                  )}
-                </div>
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_14rem]">
                 <div className="space-y-2.5">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
@@ -297,76 +244,26 @@ export function CharacterDetailPanel({
                     }}
                   />
                 </div>
-              </div>
-            ),
-          },
-          {
-            id: 'endcard',
-            title: '결과 카드',
-            subtitle: selectedView.hasEndcard ? '작성됨' : '비어 있음',
-            children: (
-              <div className="space-y-3">
-                <div className="grid gap-3 md:grid-cols-2">
-                  <label className="block">
-                    <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                      제목
-                    </span>
-                    <input
-                      type="text"
-                      value={endcardTitle}
-                      maxLength={80}
-                      disabled={!onEndcardChange}
-                      onChange={(event) => setEndcardTitle(event.currentTarget.value)}
-                      className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-200 outline-none transition focus:border-amber-500/60 disabled:opacity-70"
-                      placeholder={`${selectedChar.name}의 후일담`}
+                <div className="min-w-0 xl:order-last">
+                  {onProfileImageChange ? (
+                    <ImageMediaReferenceField
+                      themeId={themeId}
+                      label="프로필 이미지"
+                      imageMediaId={selectedChar.image_media_id ?? null}
+                      legacyImageUrl={selectedChar.image_url ?? null}
+                      pickerTitle="프로필 이미지 선택"
+                      emptyLabel="이미지 선택"
+                      compact
+                      onSelect={(media) => onProfileImageChange(media.id)}
+                      onClear={() => onProfileImageChange(null)}
                     />
-                  </label>
-                  <ImageMediaReferenceField
-                    themeId={themeId}
-                    label="결과 카드 이미지"
-                    imageMediaId={endcardImageMediaId}
-                    legacyImageUrl={selectedChar.endcard_image_url ?? null}
-                    pickerTitle="결과 카드 이미지 선택"
-                    emptyLabel="결과 카드 이미지 선택"
-                    compact
-                    disabled={!onEndcardChange}
-                    onSelect={(media) => {
-                      setEndcardImageMediaId(media.id);
-                      setEndcardImageUrl('');
-                    }}
-                    onClear={() => setEndcardImageMediaId(null)}
-                  />
-                </div>
-                <label className="block">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                    본문
-                  </span>
-                  <textarea
-                    value={endcardBody}
-                    maxLength={3000}
-                    rows={5}
-                    disabled={!onEndcardChange}
-                    onChange={(event) => setEndcardBody(event.currentTarget.value)}
-                    className="mt-1 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm leading-5 text-slate-200 outline-none transition focus:border-amber-500/60 disabled:opacity-70"
-                    placeholder="게임 종료 후 이 인물에게 보여줄 내용을 작성하세요."
-                  />
-                </label>
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    disabled={!onEndcardChange || !endcardDirty}
-                    onClick={() =>
-                      onEndcardChange?.({
-                        title: endcardTitle,
-                        body: endcardBody,
-                        imageUrl: endcardImageUrl,
-                        imageMediaId: endcardImageMediaId,
-                      })
-                    }
-                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-slate-950 disabled:text-slate-600"
-                  >
-                    결과 카드 저장
-                  </button>
+                  ) : (
+                    <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-center">
+                      <span className="px-2 text-[11px] leading-5 text-slate-500">
+                        현재 프로필 이미지를 편집할 수 없습니다.
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             ),

@@ -3,7 +3,6 @@ import type { EditorCharacterResponse } from '@/features/editor/api/types';
 import {
   buildCharacterVisibilityUpdatePayload,
   buildCharacterAliasRulesUpdatePayload,
-  buildCharacterEndcardUpdatePayload,
   buildCharacterProfileImageMediaUpdatePayload,
   getCharacterListBadges,
   buildCharacterRoleUpdatePayload,
@@ -103,21 +102,6 @@ describe('characterEditorAdapter', () => {
     }]);
   });
 
-  it('결과 카드 필드를 제작자용 ViewModel로 변환한다', () => {
-    const vm = toCharacterEditorViewModel(character({
-      endcard_title: '홍길동의 후일담',
-      endcard_body: '사건 이후에도 단서를 정리한다.',
-      endcard_image_url: 'https://cdn.example/endcard.webp',
-    }));
-
-    expect(vm).toMatchObject({
-      endcardTitle: '홍길동의 후일담',
-      endcardBody: '사건 이후에도 단서를 정리한다.',
-      endcardImageUrl: 'https://cdn.example/endcard.webp',
-      hasEndcard: true,
-    });
-  });
-
   it('NPC 표시 정책을 제작자용 ViewModel 배지로 변환한다', () => {
     const vm = toCharacterEditorViewModel(character({
       is_playable: false,
@@ -165,19 +149,18 @@ describe('characterEditorAdapter', () => {
     expect(buildCharacterRoleUpdatePayload(character(), 'detective').is_culprit).toBe(false);
   });
 
-  it('역할 변경 저장 payload에서 기존 결과 카드 내용을 보존한다', () => {
+  it('역할 변경 저장 payload에서 기존 결과 카드 내용을 보내지 않는다', () => {
     const payload = buildCharacterRoleUpdatePayload(character({
       endcard_title: '결과 제목',
       endcard_body: '결과 본문',
       endcard_image_url: 'https://cdn.example/result.webp',
     }), 'detective');
 
-    expect(payload).toMatchObject({
-      mystery_role: 'detective',
-      endcard_title: '결과 제목',
-      endcard_body: '결과 본문',
-      endcard_image_url: 'https://cdn.example/result.webp',
-    });
+    expect(payload).toMatchObject({ mystery_role: 'detective' });
+    expect(payload).not.toHaveProperty('endcard_title');
+    expect(payload).not.toHaveProperty('endcard_body');
+    expect(payload).not.toHaveProperty('endcard_image_url');
+    expect(payload).not.toHaveProperty('endcard_image_media_id');
   });
 
   it('NPC로 전환할 때 투표 후보를 함께 끈다', () => {
@@ -227,50 +210,15 @@ describe('characterEditorAdapter', () => {
     });
   });
 
-  it('등장인물 유형 변경 저장 payload에서 기존 결과 카드 내용을 보존한다', () => {
+  it('등장인물 유형 변경 저장 payload에서 기존 결과 카드 내용을 보내지 않는다', () => {
     const payload = buildCharacterVisibilityUpdatePayload(character({
       endcard_title: '결과 제목',
       endcard_body: '결과 본문',
     }), 'show_in_intro', false);
 
-    expect(payload).toMatchObject({
-      show_in_intro: false,
-      endcard_title: '결과 제목',
-      endcard_body: '결과 본문',
-    });
-  });
-
-  it('결과 카드 저장 payload를 만든다', () => {
-    const payload = buildCharacterEndcardUpdatePayload(character({ is_playable: false }), {
-      title: '  새 결말  ',
-      body: '  공개되는 후일담  ',
-      imageUrl: '',
-      imageMediaId: 'image-1',
-    });
-
-    expect(payload).toMatchObject({
-      name: '홍길동',
-      mystery_role: 'suspect',
-      is_playable: false,
-      endcard_title: '새 결말',
-      endcard_body: '공개되는 후일담',
-      endcard_image_url: '',
-      endcard_image_media_id: 'image-1',
-    });
-  });
-
-  it('빈 결과 카드 저장 payload는 빈 문자열을 유지해 backend clear 계약을 사용한다', () => {
-    const payload = buildCharacterEndcardUpdatePayload(character(), {
-      title: ' ',
-      body: ' ',
-      imageUrl: ' ',
-    });
-
-    expect(payload).toMatchObject({
-      endcard_title: '',
-      endcard_body: '',
-      endcard_image_url: '',
-    });
+    expect(payload).toMatchObject({ show_in_intro: false });
+    expect(payload).not.toHaveProperty('endcard_title');
+    expect(payload).not.toHaveProperty('endcard_body');
   });
 
   it('프로필 이미지 선택 payload는 미디어 참조를 사용하고 URL을 비운다', () => {

@@ -91,10 +91,6 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
             show_in_intro: character.show_in_intro,
             can_speak_in_reading: character.can_speak_in_reading,
             is_voting_candidate: character.is_voting_candidate,
-            endcard_title: character.endcard_title ?? undefined,
-            endcard_body: character.endcard_body ?? undefined,
-            endcard_image_url: character.endcard_image_url ?? undefined,
-            endcard_image_media_id: character.endcard_image_media_id ?? undefined,
           },
         },
         {

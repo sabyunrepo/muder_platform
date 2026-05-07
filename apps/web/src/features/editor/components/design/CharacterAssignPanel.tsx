@@ -14,7 +14,6 @@ import {
   buildCharacterVisibilityUpdatePayload,
   buildCharacterProfileImageMediaUpdatePayload,
   buildCharacterRoleUpdatePayload,
-  buildCharacterEndcardUpdatePayload,
   getCharacterListBadges,
   type CharacterVisibilityField,
 } from "@/features/editor/entities/character/characterEditorAdapter";
@@ -154,21 +153,6 @@ export function CharacterAssignPanel({
     [characters, updateCharacter],
   );
 
-  const handleEndcardChangeForChar = useCallback(
-    (characterId: string, values: { title: string; body: string; imageUrl: string; imageMediaId?: string | null }) => {
-      if (updateCharacter.isPending) return;
-
-      const selected = characters?.find((char) => char.id === characterId);
-      if (!selected) return;
-
-      updateCharacter.mutate({
-        characterId: selected.id,
-        body: buildCharacterEndcardUpdatePayload(selected, values),
-      });
-    },
-    [characters, updateCharacter],
-  );
-
   const handleProfileImageChangeForChar = useCallback(
     (characterId: string, imageMediaId: string | null) => {
       if (updateCharacter.isPending) return;
@@ -274,11 +258,6 @@ export function CharacterAssignPanel({
               updateCharacter.isPending
                 ? undefined
                 : (rules) => handleAliasRulesSaveForChar(char.id, rules)
-            }
-            onEndcardChange={
-              updateCharacter.isPending
-                ? undefined
-                : (values) => handleEndcardChangeForChar(char.id, values)
             }
             onProfileImageChange={
               updateCharacter.isPending
