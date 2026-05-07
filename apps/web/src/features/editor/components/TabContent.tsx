@@ -24,6 +24,12 @@ const CharactersTab = lazy(() =>
 const DesignTab = lazy(() =>
   import("./DesignTab").then((m) => ({ default: m.DesignTab })),
 );
+const EndingEntitySubTab = lazy(() =>
+  import("./design/EndingEntitySubTab").then((m) => ({ default: m.EndingEntitySubTab })),
+);
+const LocationsSubTab = lazy(() =>
+  import("./design/LocationsSubTab").then((m) => ({ default: m.LocationsSubTab })),
+);
 const MediaTab = lazy(() =>
   import("./media/MediaTab").then((m) => ({ default: m.MediaTab })),
 );
@@ -64,6 +70,10 @@ export function TabContent({ tab, theme, themeId, routeSegment }: TabContentProp
       return <CluesTab themeId={themeId} routeSegment={routeSegment} />;
     case "design":
       return <DesignTab theme={theme} themeId={themeId} routeSegment={routeSegment} />;
+    case "endings":
+      return <EndingEntitySubTab theme={theme} themeId={themeId} />;
+    case "locations":
+      return <LocationsSubTab theme={theme} themeId={themeId} />;
     case "media":
       return <MediaTab themeId={themeId} />;
     case "advanced":

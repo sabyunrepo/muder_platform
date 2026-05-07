@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { mutateMock, navigateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(
+const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(
   () => ({
     mutateMock: vi.fn(),
-    navigateMock: vi.fn(),
     useUpdateConfigJsonMock: vi.fn(),
     useModuleSchemasMock: vi.fn(),
   })
@@ -23,7 +22,7 @@ vi.mock('sonner', () => ({
 }));
 
 vi.mock('react-router', () => ({
-  useNavigate: () => navigateMock,
+  useNavigate: () => vi.fn(),
 }));
 
 vi.mock('@/features/editor/api', () => ({
@@ -47,17 +46,6 @@ vi.mock('@/features/editor/templateApi', () => ({}));
 
 vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
   SchemaDrivenForm: () => null,
-}));
-
-// Mock subtab components that have external dependencies
-vi.mock('../../design/FlowSubTab', () => ({
-  FlowSubTab: () => <div>FlowSubTab 콘텐츠</div>,
-}));
-vi.mock('../../design/LocationsSubTab', () => ({
-  LocationsSubTab: () => <div>LocationsSubTab 콘텐츠</div>,
-}));
-vi.mock('../../design/EndingEntitySubTab', () => ({
-  EndingEntitySubTab: () => <div>EndingEntitySubTab 콘텐츠</div>,
 }));
 
 vi.mock('@/features/editor/constants', () => ({
@@ -135,63 +123,34 @@ describe('DesignTab', () => {
     useModuleSchemasMock.mockReturnValue({ data: null, isLoading: false });
   });
 
-  it('서브탭 4개를 모두 렌더링한다', () => {
+  it('모듈 설정 단일 화면을 렌더링한다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
-    expect(screen.getByText('모듈')).toBeDefined();
-    expect(screen.getByText('흐름')).toBeDefined();
-    expect(screen.getByText('장소')).toBeDefined();
-    expect(screen.getByText('결말')).toBeDefined();
+    expect(screen.getByText('진행')).toBeDefined();
+    expect(screen.getByRole('switch', { name: '리딩 활성화' })).toBeDefined();
   });
 
-  it('배치, 설정 탭이 없다', () => {
+  it('게임 설계 내부 서브탭을 렌더링하지 않는다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
 
+    expect(screen.queryByRole('button', { name: '흐름' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '장소' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '결말' })).toBeNull();
     expect(screen.queryByText('배치')).toBeNull();
     expect(screen.queryByText('설정')).toBeNull();
   });
 
-  it('기본 선택 탭은 모듈이다', () => {
-    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
-
-    const modulesTab = screen.getByText('모듈').closest('button');
-    expect(modulesTab?.className).toContain('border-amber-500');
-  });
-
-  it('흐름 탭 클릭 시 흐름 콘텐츠로 전환된다', () => {
-    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
-
-    fireEvent.click(screen.getByText('흐름'));
-    expect(screen.getByText('FlowSubTab 콘텐츠')).toBeDefined();
-    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/design/flow');
-  });
-
-  it('장소 탭 클릭 시 장소 콘텐츠로 전환된다', () => {
-    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
-
-    fireEvent.click(screen.getByText('장소'));
-    expect(screen.getByText('LocationsSubTab 콘텐츠')).toBeDefined();
-    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/design/locations');
-  });
-
-  it('결말 탭 클릭 시 결말 entity 콘텐츠로 전환된다', () => {
-    render(<DesignTab themeId="theme-1" theme={mockTheme} />);
-
-    fireEvent.click(screen.getByText('결말'));
-    expect(screen.getByText('EndingEntitySubTab 콘텐츠')).toBeDefined();
-    expect(navigateMock).toHaveBeenCalledWith('/editor/theme-1/design/endings');
-  });
-
-  it.each([
-    ['modules', '진행'],
-    ['locations', 'LocationsSubTab 콘텐츠'],
-    ['endings', 'EndingEntitySubTab 콘텐츠'],
-    ['flow', 'FlowSubTab 콘텐츠'],
-  ] as const)('routeSegment=%s이면 해당 제작 서브탭을 바로 연다', (routeSegment, expectedText) => {
+  it.each(['modules', 'design/flow', 'design/locations', 'design/endings'] as const)(
+    'legacy routeSegment=%s이어도 게임 설계 화면은 모듈 설정만 보여준다',
+    (routeSegment) => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} routeSegment={routeSegment} />);
 
-    expect(screen.getByText(expectedText)).toBeDefined();
-  });
+    expect(screen.getByText('진행')).toBeDefined();
+    expect(screen.queryByText('FlowSubTab 콘텐츠')).toBeNull();
+    expect(screen.queryByText('LocationsSubTab 콘텐츠')).toBeNull();
+    expect(screen.queryByText('EndingEntitySubTab 콘텐츠')).toBeNull();
+  },
+  );
 
   it('모듈 탭이 기본 선택되어 모듈 사이드바가 표시된다', () => {
     render(<DesignTab themeId="theme-1" theme={mockTheme} />);
