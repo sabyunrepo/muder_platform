@@ -1093,6 +1093,51 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 		t.Fatalf("FindStoryInfoReferencesForMedia after cleanup err=%v refs=%#v", err, refs)
 	}
 
+	orphanInfo, err := fixture.q.CreateStoryInfo(ctx, db.CreateStoryInfoParams{
+		ThemeID:             themeID,
+		Title:               "누락된 참조 정보",
+		Body:                fmt.Sprintf(`본문 <MediaEmbed type="image" mediaId="%s" /> 끝`, image.ID.String()),
+		ContentFormat:       StoryInfoContentFormatMDXV1,
+		ImageMediaID:        pgtype.UUID{},
+		RelatedCharacterIds: json.RawMessage(`[]`),
+		RelatedClueIds:      json.RawMessage(`[]`),
+		RelatedLocationIds:  json.RawMessage(`[]`),
+		SortOrder:           2,
+		CreatorID:           creatorID,
+	})
+	if err != nil {
+		t.Fatalf("CreateStoryInfo orphan: %v", err)
+	}
+	if rows, err := fixture.q.ClearStoryInfoMediaReferencesWithOwner(ctx, db.ClearStoryInfoMediaReferencesWithOwnerParams{
+		MediaID:   image.ID,
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearStoryInfoMediaReferencesWithOwner orphan rows=%d err=%v", rows, err)
+	}
+	if rows, err := fixture.q.DeleteStoryInfoMediaRefsForMediaWithOwner(ctx, db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams{
+		MediaID:   image.ID,
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 0 {
+		t.Fatalf("DeleteStoryInfoMediaRefsForMediaWithOwner orphan rows=%d err=%v", rows, err)
+	}
+	var orphanBody string
+	var orphanVersion int32
+	if err := fixture.pool.QueryRow(ctx, `
+		SELECT body, version
+		FROM story_infos
+		WHERE id = $1
+	`, orphanInfo.ID).Scan(&orphanBody, &orphanVersion); err != nil {
+		t.Fatalf("select orphan story_info: %v", err)
+	}
+	if strings.Contains(orphanBody, image.ID.String()) || strings.Contains(orphanBody, "MediaEmbed") {
+		t.Fatalf("orphan story info body media embed should be removed: %s", orphanBody)
+	}
+	if orphanVersion != orphanInfo.Version+1 {
+		t.Fatalf("orphan story info version = %d, want %d", orphanVersion, orphanInfo.Version+1)
+	}
+
 	if rows, err := fixture.q.DeleteMediaCategoryWithOwner(ctx, db.DeleteMediaCategoryWithOwnerParams{ID: category.ID, CreatorID: creatorID}); err != nil || rows != 1 {
 		t.Fatalf("DeleteMediaCategoryWithOwner rows=%d err=%v", rows, err)
 	}

@@ -255,6 +255,11 @@ WHERE si.theme_id = t.id
   AND si.theme_id = sqlc.arg('theme_id')
   AND (
     si.image_media_id = sqlc.arg('media_id')::uuid
+    OR si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      sqlc.arg('media_id')::text ||
+      '"[^>]*/?>'
+    )
     OR EXISTS (
       SELECT 1
       FROM story_info_media_refs refs

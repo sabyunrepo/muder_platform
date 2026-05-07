@@ -185,6 +185,11 @@ WHERE si.theme_id = t.id
   AND si.theme_id = $3
   AND (
     si.image_media_id = $1::uuid
+    OR si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      $1::text ||
+      '"[^>]*/?>'
+    )
     OR EXISTS (
       SELECT 1
       FROM story_info_media_refs refs
