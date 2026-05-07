@@ -176,7 +176,13 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 		if mode != ReadingBGMModeLoop && mode != ReadingBGMModeOnce && mode != ReadingBGMModeStop {
 			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid bgm mode")
 		}
+		if err := validateBlockAdvanceBy(ln.AdvanceBy, lineIndex); err != nil {
+			return err
+		}
 		if mode == ReadingBGMModeStop {
+			if ln.MediaID != "" {
+				return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": mediaId is not allowed")
+			}
 			return nil
 		}
 		if ln.MediaID == "" {
@@ -184,7 +190,10 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 		}
 		return s.assertLineMediaInTheme(ctx, themeID, ln.MediaID, MediaTypeBGM, "mediaId", lineIndex)
 	case ReadingBlockGMNote:
-		return nil
+		if ln.MediaID != "" {
+			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": mediaId is not allowed")
+		}
+		return validateBlockAdvanceBy(ln.AdvanceBy, lineIndex)
 	default:
 		return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid reading block type")
 	}

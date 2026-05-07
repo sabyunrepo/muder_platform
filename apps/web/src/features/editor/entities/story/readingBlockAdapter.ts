@@ -1,5 +1,5 @@
-import type { AdvanceBy, ReadingBgmMode, ReadingBlockType, ReadingLineDTO } from "../../readingApi";
-import type { MediaType } from "../../mediaApi";
+import type { AdvanceBy, ReadingBgmMode, ReadingBlockType, ReadingLineDTO } from '../../readingApi';
+import type { MediaType } from '../../mediaApi';
 
 export interface ReadingParserCharacter {
   id: string;
@@ -14,7 +14,7 @@ export interface ReadingParserMedia {
 
 export interface ReadingParseIssue {
   lineNumber: number;
-  kind: "unknown-speaker" | "unknown-media" | "empty-directive";
+  kind: 'unknown-speaker' | 'unknown-media' | 'empty-directive';
   value: string;
 }
 
@@ -28,7 +28,7 @@ export function parseReadingScriptToBlocks(
   options: {
     characters: ReadingParserCharacter[];
     media: ReadingParserMedia[];
-  },
+  }
 ): ReadingParseResult {
   const issues: ReadingParseIssue[] = [];
   const blocks = input
@@ -38,67 +38,97 @@ export function parseReadingScriptToBlocks(
     .map(({ raw, lineNumber }, index): ReadingLineDTO => {
       const [rawHead, ...rest] = raw.split(/[:：]/);
       const head = rawHead.trim();
-      const body = rest.join(":").trim();
+      const body = rest.join(':').trim();
 
       if (!head || rest.length === 0) {
-        issues.push({ lineNumber, kind: "empty-directive", value: raw });
-        return dialogueBlock(index, "나레이션", raw, "gm");
+        issues.push({ lineNumber, kind: 'empty-directive', value: raw });
+        return dialogueBlock(index, '나레이션', raw, 'gm');
       }
 
-      if (head === "이미지") {
-        const media = findMedia(body, "IMAGE", options.media);
-        if (!media) issues.push({ lineNumber, kind: "unknown-media", value: body });
-        return mediaBlock(index, "image", media?.id ?? "", "gm", {
-          Position: inferImagePosition(body),
-          Size: inferImageSize(body),
-        });
-      }
-
-      if (head === "영상") {
-        const media = findMedia(body, "VIDEO", options.media);
-        if (!media) issues.push({ lineNumber, kind: "unknown-media", value: body });
-        return mediaBlock(index, "video", media?.id ?? "", "gm", {
-          Autoplay: true,
-          WaitUntilEnd: true,
-        });
-      }
-
-      if (head.toUpperCase() === "BGM") {
-        const mode = inferBgmMode(body);
-        const media = mode === "stop" ? null : findMedia(body, "BGM", options.media);
-        if (mode !== "stop" && !media) {
-          issues.push({ lineNumber, kind: "unknown-media", value: body });
-        }
-        return {
-          Index: index,
-          Type: "bgm",
-          Text: "",
-          MediaID: media?.id ?? "",
-          BGMMode: mode,
-        };
-      }
-
-      if (head.toUpperCase() === "GM") {
-        return {
-          Index: index,
-          Type: "gmNote",
-          Text: body,
-        };
-      }
-
-      const character = options.characters.find((item) => item.name === head);
-      if (!character && head !== "나레이션") {
-        issues.push({ lineNumber, kind: "unknown-speaker", value: head });
-      }
-      return dialogueBlock(
-        index,
-        head || "나레이션",
-        body || raw,
-        character ? `role:${character.id}` : "gm",
-      );
+      return parseDirectiveLine(index, lineNumber, head, body, raw, options, issues);
     });
 
   return { blocks, issues };
+}
+
+function parseDirectiveLine(
+  index: number,
+  lineNumber: number,
+  head: string,
+  body: string,
+  raw: string,
+  options: { characters: ReadingParserCharacter[]; media: ReadingParserMedia[] },
+  issues: ReadingParseIssue[]
+): ReadingLineDTO {
+  if (head === '이미지') return parseImageDirective(index, lineNumber, body, options.media, issues);
+  if (head === '영상') return parseVideoDirective(index, lineNumber, body, options.media, issues);
+  if (head.toUpperCase() === 'BGM')
+    return parseBgmDirective(index, lineNumber, body, options.media, issues);
+  if (head.toUpperCase() === 'GM') return { Index: index, Type: 'gmNote', Text: body };
+  return parseDialogueDirective(index, lineNumber, head, body || raw, options.characters, issues);
+}
+
+function parseImageDirective(
+  index: number,
+  lineNumber: number,
+  body: string,
+  media: ReadingParserMedia[],
+  issues: ReadingParseIssue[]
+): ReadingLineDTO {
+  const found = findMedia(body, 'IMAGE', media);
+  if (!found) issues.push({ lineNumber, kind: 'unknown-media', value: body });
+  return mediaBlock(index, 'image', found?.id ?? '', 'gm', {
+    Position: inferImagePosition(body),
+    Size: inferImageSize(body),
+  });
+}
+
+function parseVideoDirective(
+  index: number,
+  lineNumber: number,
+  body: string,
+  media: ReadingParserMedia[],
+  issues: ReadingParseIssue[]
+): ReadingLineDTO {
+  const found = findMedia(body, 'VIDEO', media);
+  if (!found) issues.push({ lineNumber, kind: 'unknown-media', value: body });
+  return mediaBlock(index, 'video', found?.id ?? '', 'gm', {
+    Autoplay: true,
+    WaitUntilEnd: true,
+  });
+}
+
+function parseBgmDirective(
+  index: number,
+  lineNumber: number,
+  body: string,
+  media: ReadingParserMedia[],
+  issues: ReadingParseIssue[]
+): ReadingLineDTO {
+  const mode = inferBgmMode(body);
+  const found = mode === 'stop' ? null : findMedia(body, 'BGM', media);
+  if (mode !== 'stop' && !found) issues.push({ lineNumber, kind: 'unknown-media', value: body });
+  return { Index: index, Type: 'bgm', Text: '', MediaID: found?.id ?? '', BGMMode: mode };
+}
+
+function parseDialogueDirective(
+  index: number,
+  lineNumber: number,
+  speaker: string,
+  text: string,
+  characters: ReadingParserCharacter[],
+  issues: ReadingParseIssue[]
+): ReadingLineDTO {
+  const character = characters.find((item) => item.name === speaker);
+  if (!character && speaker !== '나레이션') {
+    issues.push({ lineNumber, kind: 'unknown-speaker', value: speaker });
+  }
+  return dialogueBlock(
+    index,
+    speaker || '나레이션',
+    text,
+    character ? `role:${character.id}` : 'gm'
+  );
 }
 
 export function normalizeReadingBlocks(lines: ReadingLineDTO[]): ReadingLineDTO[] {
@@ -106,18 +136,23 @@ export function normalizeReadingBlocks(lines: ReadingLineDTO[]): ReadingLineDTO[
     ...line,
     Index: index,
     Type: normalizeBlockType(line.Type),
-    Text: line.Text ?? "",
+    Text: line.Text ?? '',
   }));
 }
 
 export function isDialogueBlock(line: ReadingLineDTO): boolean {
-  return normalizeBlockType(line.Type) === "dialogue";
+  return normalizeBlockType(line.Type) === 'dialogue';
 }
 
-function dialogueBlock(index: number, speaker: string, text: string, advanceBy: AdvanceBy): ReadingLineDTO {
+function dialogueBlock(
+  index: number,
+  speaker: string,
+  text: string,
+  advanceBy: AdvanceBy
+): ReadingLineDTO {
   return {
     Index: index,
-    Type: "dialogue",
+    Type: 'dialogue',
     Text: text,
     Speaker: speaker,
     AdvanceBy: advanceBy,
@@ -126,61 +161,93 @@ function dialogueBlock(index: number, speaker: string, text: string, advanceBy: 
 
 function mediaBlock(
   index: number,
-  type: Extract<ReadingBlockType, "image" | "video">,
+  type: Extract<ReadingBlockType, 'image' | 'video'>,
   mediaId: string,
   advanceBy: AdvanceBy,
-  extras: Partial<ReadingLineDTO>,
+  extras: Partial<ReadingLineDTO>
 ): ReadingLineDTO {
   return {
     Index: index,
     Type: type,
-    Text: "",
+    Text: '',
     MediaID: mediaId,
     AdvanceBy: advanceBy,
     ...extras,
   };
 }
 
-function findMedia(name: string, type: MediaType, media: ReadingParserMedia[]): ReadingParserMedia | null {
+function findMedia(
+  name: string,
+  type: MediaType,
+  media: ReadingParserMedia[]
+): ReadingParserMedia | null {
   const normalized = normalizeLookupName(name);
   if (!normalized) return null;
-  return media.find((item) => item.type === type && normalizeLookupName(item.name) === normalized) ?? null;
+  return (
+    media.find((item) => item.type === type && normalizeLookupName(item.name) === normalized) ??
+    null
+  );
 }
 
 function normalizeLookupName(value: string): string {
-  const controlWords = ["반복", "1회", "한번", "정지", "loop", "once", "stop", "full", "large", "small", "left", "right", "center"];
+  const controlWords = [
+    '반복',
+    '1회',
+    '한번',
+    '정지',
+    'loop',
+    'once',
+    'stop',
+    'full',
+    'large',
+    'small',
+    'left',
+    'right',
+    'center',
+  ];
   let normalized = value;
   for (const word of controlWords) {
-    normalized = normalized.replaceAll(word, "");
+    normalized = normalized.replace(controlWordPattern(word), '$1');
   }
-  return normalized
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+  return normalized.replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-function inferImagePosition(value: string): ReadingLineDTO["Position"] {
-  const lower = value.toLowerCase();
-  if (lower.includes("left")) return "left";
-  if (lower.includes("right")) return "right";
-  if (lower.includes("full")) return "full";
-  return "center";
+function inferImagePosition(value: string): ReadingLineDTO['Position'] {
+  if (hasControlWord(value, 'left')) return 'left';
+  if (hasControlWord(value, 'right')) return 'right';
+  if (hasControlWord(value, 'full')) return 'full';
+  return 'center';
 }
 
-function inferImageSize(value: string): ReadingLineDTO["Size"] {
-  const lower = value.toLowerCase();
-  if (lower.includes("small")) return "small";
-  if (lower.includes("large") || lower.includes("full")) return "large";
-  return "medium";
+function inferImageSize(value: string): ReadingLineDTO['Size'] {
+  if (hasControlWord(value, 'small')) return 'small';
+  if (hasControlWord(value, 'large') || hasControlWord(value, 'full')) return 'large';
+  return 'medium';
 }
 
 function inferBgmMode(value: string): ReadingBgmMode {
-  const lower = value.toLowerCase();
-  if (lower.includes("정지") || lower.includes("stop")) return "stop";
-  if (lower.includes("1회") || lower.includes("한번") || lower.includes("once")) return "once";
-  return "loop";
+  if (hasControlWord(value, '정지') || hasControlWord(value, 'stop')) return 'stop';
+  if (
+    hasControlWord(value, '1회') ||
+    hasControlWord(value, '한번') ||
+    hasControlWord(value, 'once')
+  )
+    return 'once';
+  return 'loop';
 }
 
-function normalizeBlockType(type: ReadingLineDTO["Type"]): ReadingBlockType {
-  return type ?? "dialogue";
+function normalizeBlockType(type: ReadingLineDTO['Type']): ReadingBlockType {
+  return type ?? 'dialogue';
+}
+
+function hasControlWord(value: string, word: string): boolean {
+  return controlWordPattern(word).test(value);
+}
+
+function controlWordPattern(word: string): RegExp {
+  return new RegExp(`(^|[\\s_-])${escapeRegExp(word)}(?=$|[\\s_-])`, 'iu');
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }

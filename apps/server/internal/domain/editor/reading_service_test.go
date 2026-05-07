@@ -345,6 +345,34 @@ func TestReadingService_Create_BGMBlockRequiresMediaUnlessStop(t *testing.T) {
 	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
 }
 
+func TestReadingService_Create_StructuredBlocksRejectInvalidFields(t *testing.T) {
+	f := newReadingFixture(t)
+
+	t.Run("bgm stop rejects media", func(t *testing.T) {
+		_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+			Name:  "Invalid stop bgm",
+			Lines: []ReadingLineDTO{{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeStop, MediaID: f.bgmID.String()}},
+		})
+		assertAppCode(t, err, apperror.ErrValidation)
+	})
+
+	t.Run("bgm stop validates advance by", func(t *testing.T) {
+		_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+			Name:  "Invalid stop advance",
+			Lines: []ReadingLineDTO{{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeStop, AdvanceBy: AdvanceByVoice}},
+		})
+		assertAppCode(t, err, apperror.ErrReadingInvalidAdvanceBy)
+	})
+
+	t.Run("gm note rejects media", func(t *testing.T) {
+		_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+			Name:  "Invalid gm note",
+			Lines: []ReadingLineDTO{{Type: ReadingBlockGMNote, Text: "note", MediaID: f.imageID.String()}},
+		})
+		assertAppCode(t, err, apperror.ErrValidation)
+	})
+}
+
 func TestReadingService_Create_ImageMediaMustBeImageInTheme(t *testing.T) {
 	f := newReadingFixture(t)
 	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
