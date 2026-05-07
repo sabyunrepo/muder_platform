@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sort"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 )
 
@@ -241,7 +243,7 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 		sections := uniqueStrings(delivery.ReadingSectionIDs)
 		storyInfoIDs := uniqueStrings(delivery.StoryInfoIDs)
 		if len(sections) == 0 && len(storyInfoIDs) == 0 {
-			return fmt.Errorf("information_delivery: delivery %q has empty reading_section_ids and story_info_ids", delivery.ID)
+			return invalidDeliveryError("delivery %q has empty reading_section_ids and story_info_ids", delivery.ID)
 		}
 		item := deliveredItem{DeliveryID: delivery.ID, ReadingSectionIDs: sections, StoryInfoIDs: storyInfoIDs}
 		next := preparedDelivery{delivery: delivery, item: item}
@@ -250,7 +252,7 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 			// valid
 		case targetCharacter:
 			if delivery.Target.CharacterID == "" {
-				return fmt.Errorf("information_delivery: delivery %q missing character_id", delivery.ID)
+				return invalidDeliveryError("delivery %q missing character_id", delivery.ID)
 			}
 			if m.deps.PlayerInfoProvider != nil {
 				if playerID, ok := m.deps.PlayerInfoProvider.ResolvePlayerID(ctx, delivery.Target.CharacterID); ok {
@@ -259,7 +261,7 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 				}
 			}
 		default:
-			return fmt.Errorf("information_delivery: delivery %q has unsupported target type %q", delivery.ID, delivery.Target.Type)
+			return invalidDeliveryError("delivery %q has unsupported target type %q", delivery.ID, delivery.Target.Type)
 		}
 		prepared = append(prepared, next)
 	}
@@ -285,6 +287,14 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 		m.appliedDeliveryIDs[next.delivery.ID] = struct{}{}
 	}
 	return nil
+}
+
+func invalidDeliveryError(format string, args ...any) *apperror.AppError {
+	return apperror.New(
+		apperror.ErrValidation,
+		http.StatusUnprocessableEntity,
+		"information_delivery: "+fmt.Sprintf(format, args...),
+	)
 }
 
 func (m *Module) applyPlayerDelivery(playerID uuid.UUID, item deliveredItem) {

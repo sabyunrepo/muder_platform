@@ -3,9 +3,11 @@ package informationdelivery
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 )
 
@@ -186,6 +188,43 @@ func TestModule_InvalidParamsReturnError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected invalid params error")
+	}
+}
+
+func TestModule_InvalidDeliveryConfigReturnsAppError(t *testing.T) {
+	tests := []struct {
+		name   string
+		params json.RawMessage
+	}{
+		{
+			name:   "empty content ids",
+			params: json.RawMessage(`{"deliveries":[{"id":"empty","target":{"type":"all_players"}}]}`),
+		},
+		{
+			name:   "missing character id",
+			params: json.RawMessage(`{"deliveries":[{"id":"missing-character","target":{"type":"character"},"story_info_ids":["info-1"]}]}`),
+		},
+		{
+			name:   "unsupported target type",
+			params: json.RawMessage(`{"deliveries":[{"id":"bad-target","target":{"type":"room"},"story_info_ids":["info-1"]}]}`),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			m := newTestModule(t, nil)
+			err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+				Action: engine.ActionDeliverInformation,
+				Params: tc.params,
+			})
+			var appErr *apperror.AppError
+			if !errors.As(err, &appErr) {
+				t.Fatalf("ReactTo error = %T %v, want *apperror.AppError", err, err)
+			}
+			if appErr.Code != apperror.ErrValidation {
+				t.Fatalf("AppError code = %q, want %q", appErr.Code, apperror.ErrValidation)
+			}
+		})
 	}
 }
 
