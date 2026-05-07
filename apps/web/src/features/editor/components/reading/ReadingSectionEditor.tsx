@@ -176,13 +176,19 @@ export function ReadingSectionEditor({
   async function handleSave() {
     setSaveError(null);
     setConflict(false);
+    const validRoleIds = new Set(characters.map((character) => character.id));
+    const normalizedLines = normalizeReadingBlocks(draft.lines).map((line) =>
+      line.AdvanceBy?.startsWith('role:') && !validRoleIds.has(line.AdvanceBy.slice('role:'.length))
+        ? { ...line, AdvanceBy: 'gm' as const }
+        : line
+    );
 
     const patch: UpdateReadingSectionRequest = {
       version: section.version,
       name: draft.name,
       // bgmMediaId uses triple-state: null = clear, string = set, undefined = keep
       bgmMediaId: draft.bgmMediaId,
-      lines: normalizeReadingBlocks(draft.lines),
+      lines: normalizedLines,
       sortOrder: draft.sortOrder,
     };
 

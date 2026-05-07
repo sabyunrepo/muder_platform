@@ -434,6 +434,30 @@ describe('ReadingSectionEditor', () => {
     ]);
   });
 
+  it('does not save role advance when no matching character exists', async () => {
+    renderEditor({
+      characters: [],
+      section: {
+        ...sampleSection,
+        lines: [
+          {
+            Index: 0,
+            Type: 'dialogue',
+            Text: '진행 역할 없음',
+            Speaker: 'Alice',
+            AdvanceBy: 'role:c1',
+          },
+        ],
+      },
+    });
+    fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '역할 없음' } });
+    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+
+    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].AdvanceBy).toBe('gm');
+    expect(screen.queryByRole('option', { name: '역할 지정' })).toBeNull();
+  });
+
   it('moves blocks and keeps saved indices sequential', async () => {
     renderEditor();
     fireEvent.click(screen.getAllByLabelText('블록 아래로 이동')[0]);
