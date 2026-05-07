@@ -10,6 +10,9 @@ export const ENDING_BRANCH_MODULE_ID = "ending_branch";
 
 export type EndingBranchQuestionType = "single" | "multi";
 export type EndingBranchQuestionImpact = "branch" | "score";
+export type EndingBranchQuestionTarget =
+  | { type: "all_players" }
+  | { type: "specific_players"; characterIds: string[] };
 
 export interface EndingBranchQuestion {
   id: string;
@@ -17,6 +20,7 @@ export interface EndingBranchQuestion {
   type: EndingBranchQuestionType;
   choices: string[];
   respondents: "all" | string;
+  target: EndingBranchQuestionTarget;
   impact: EndingBranchQuestionImpact;
   scoreMap?: Record<string, number>;
 }
@@ -85,6 +89,29 @@ function readScoreMap(value: unknown): Record<string, number> | undefined {
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 }
 
+function uniqueNonEmptyStrings(value: unknown): string[] {
+  return Array.from(new Set(stringList(value).map((item) => item.trim()).filter(Boolean)));
+}
+
+function readQuestionTarget(value: EditorConfig): EndingBranchQuestionTarget {
+  const target = isRecord(value.target) ? value.target : null;
+  if (target?.type === "specific_players") {
+    return { type: "specific_players", characterIds: uniqueNonEmptyStrings(target.characterIds) };
+  }
+  if (target?.type === "all_players") {
+    return { type: "all_players" };
+  }
+
+  if (typeof value.respondents === "string" && value.respondents.trim() && value.respondents !== "all") {
+    return { type: "specific_players", characterIds: [value.respondents.trim()] };
+  }
+  return { type: "all_players" };
+}
+
+function legacyRespondentsFromTarget(target: EndingBranchQuestionTarget): "all" | string {
+  return target.type === "specific_players" ? target.characterIds[0] ?? "" : "all";
+}
+
 function normalizeThreshold(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.min(1, Math.max(0, value))
@@ -96,14 +123,14 @@ function normalizeQuestion(value: unknown, index: number): EndingBranchQuestion 
   const id = typeof value.id === "string" && value.id.trim() ? value.id.trim() : `question-${index + 1}`;
   const text = typeof value.text === "string" ? value.text : "";
   const choices = stringList(value.choices).filter((choice) => choice.trim());
+  const target = readQuestionTarget(value);
   return {
     id,
     text,
     type: readQuestionType(value.type),
     choices,
-    respondents: typeof value.respondents === "string" && value.respondents.trim()
-      ? value.respondents
-      : "all",
+    respondents: legacyRespondentsFromTarget(target),
+    target,
     impact: readQuestionImpact(value.impact),
     ...(readScoreMap(value.scoreMap) ? { scoreMap: readScoreMap(value.scoreMap) } : {}),
   };
@@ -166,6 +193,7 @@ export function createEndingBranchQuestion(index: number): EndingBranchQuestion 
     type: "single",
     choices: ["선택지 1", "선택지 2"],
     respondents: "all",
+    target: { type: "all_players" },
     impact: "branch",
   };
 }
@@ -279,6 +307,9 @@ function buildEndingBranchWarnings(config: EndingBranchConfig, endingNodes: Node
   for (const question of config.questions) {
     if (!question.text.trim()) warnings.push("내용이 비어 있는 결말 질문이 있습니다.");
     if (question.choices.length < 2) warnings.push(`'${question.text || "이름 없는 질문"}' 질문은 선택지가 2개 이상 필요합니다.`);
+    if (question.target.type === "specific_players" && question.target.characterIds.length === 0) {
+      warnings.push(`'${question.text || "이름 없는 질문"}' 질문의 받을 대상을 1명 이상 선택해 주세요.`);
+    }
   }
   for (const row of config.matrix) {
     if (!endingIds.has(row.ending)) warnings.push("결말 규칙 중 도착 결말이 비어 있습니다.");

@@ -98,7 +98,7 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
 
       <EndingDecisionSummaryPanel summary={decisionSummary} />
 
-      <EndingBranchRulesPanel themeId={themeId} theme={theme} endingNodes={endingNodes} />
+      <EndingBranchRulesPanel themeId={themeId} theme={theme} endingNodes={endingNodes} characters={characters} />
 
       {endingNodes.length === 0 ? (
         <EndingEmptyState />
