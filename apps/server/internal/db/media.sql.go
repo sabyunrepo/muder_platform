@@ -78,6 +78,7 @@ SET bgm_media_id = CASE
         line
           - CASE WHEN line->>'VoiceMediaID' = $1::text THEN 'VoiceMediaID' ELSE '__noop__' END
           - CASE WHEN line->>'ImageMediaID' = $1::text THEN 'ImageMediaID' ELSE '__noop__' END
+          - CASE WHEN line->>'MediaID' = $1::text THEN 'MediaID' ELSE '__noop__' END
         ORDER BY ord
       )
       FROM jsonb_array_elements(rs.lines) WITH ORDINALITY AS elem(line, ord)
@@ -94,6 +95,7 @@ WHERE rs.theme_id = t.id
       SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
       WHERE line->>'VoiceMediaID' = $1::text
          OR line->>'ImageMediaID' = $1::text
+         OR line->>'MediaID' = $1::text
     )
   )
 `

@@ -109,6 +109,16 @@ func (s *readingService) validateLines(ctx context.Context, themeID uuid.UUID, l
 		return apperror.New(apperror.ErrValidation, 422, "too many lines in section")
 	}
 	for i, ln := range lines {
+		blockType := normalizeReadingBlockType(ln.Type)
+		if blockType == "" {
+			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(i)+": invalid reading block type")
+		}
+		if blockType != ReadingBlockDialogue {
+			if err := s.validateStructuredReadingBlock(ctx, themeID, ln, blockType, i); err != nil {
+				return err
+			}
+			continue
+		}
 		if !validateAdvanceBy(ln.AdvanceBy) {
 			return apperror.New(apperror.ErrReadingInvalidAdvanceBy, 400, "line "+itoa(i)+": invalid advanceBy")
 		}
@@ -125,6 +135,76 @@ func (s *readingService) validateLines(ctx context.Context, themeID uuid.UUID, l
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func normalizeReadingBlockType(raw string) string {
+	switch raw {
+	case "", ReadingBlockDialogue:
+		return ReadingBlockDialogue
+	case ReadingBlockImage, ReadingBlockVideo, ReadingBlockBGM, ReadingBlockGMNote:
+		return raw
+	default:
+		return ""
+	}
+}
+
+func (s *readingService) validateStructuredReadingBlock(ctx context.Context, themeID uuid.UUID, ln ReadingLineDTO, blockType string, lineIndex int) error {
+	switch blockType {
+	case ReadingBlockImage:
+		if ln.MediaID == "" {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId is required")
+		}
+		if err := s.assertLineMediaInTheme(ctx, themeID, ln.MediaID, MediaTypeImage, "mediaId", lineIndex); err != nil {
+			return err
+		}
+		return validateBlockAdvanceBy(ln.AdvanceBy, lineIndex)
+	case ReadingBlockVideo:
+		if ln.MediaID == "" {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId is required")
+		}
+		if err := s.assertLineMediaInTheme(ctx, themeID, ln.MediaID, MediaTypeVideo, "mediaId", lineIndex); err != nil {
+			return err
+		}
+		return validateBlockAdvanceBy(ln.AdvanceBy, lineIndex)
+	case ReadingBlockBGM:
+		mode := ln.BGMMode
+		if mode == "" {
+			mode = ReadingBGMModeLoop
+		}
+		if mode != ReadingBGMModeLoop && mode != ReadingBGMModeOnce && mode != ReadingBGMModeStop {
+			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid bgm mode")
+		}
+		if err := validateBlockAdvanceBy(ln.AdvanceBy, lineIndex); err != nil {
+			return err
+		}
+		if mode == ReadingBGMModeStop {
+			if ln.MediaID != "" {
+				return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": mediaId is not allowed")
+			}
+			return nil
+		}
+		if ln.MediaID == "" {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId is required")
+		}
+		return s.assertLineMediaInTheme(ctx, themeID, ln.MediaID, MediaTypeBGM, "mediaId", lineIndex)
+	case ReadingBlockGMNote:
+		if ln.MediaID != "" {
+			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": mediaId is not allowed")
+		}
+		return validateBlockAdvanceBy(ln.AdvanceBy, lineIndex)
+	default:
+		return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid reading block type")
+	}
+}
+
+func validateBlockAdvanceBy(advanceBy string, lineIndex int) error {
+	if advanceBy == AdvanceByVoice {
+		return apperror.New(apperror.ErrReadingInvalidAdvanceBy, 400, "line "+itoa(lineIndex)+": invalid advanceBy")
+	}
+	if !validateAdvanceBy(advanceBy) {
+		return apperror.New(apperror.ErrReadingInvalidAdvanceBy, 400, "line "+itoa(lineIndex)+": invalid advanceBy")
 	}
 	return nil
 }

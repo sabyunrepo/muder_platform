@@ -335,6 +335,10 @@ func (f *fakeMediaQueries) ClearReadingSectionMediaReferencesWithOwner(_ context
 					delete(line, "ImageMediaID")
 					changed = true
 				}
+				if line["MediaID"] == arg.MediaID.String() {
+					delete(line, "MediaID")
+					changed = true
+				}
 			}
 			if changed {
 				s.Lines, _ = json.Marshal(lines)
@@ -467,6 +471,10 @@ func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Contex
 						break
 					}
 					if v, ok := ln["ImageMediaID"].(string); ok && v == arg.MediaID.String() {
+						matched = true
+						break
+					}
+					if v, ok := ln["MediaID"].(string); ok && v == arg.MediaID.String() {
 						matched = true
 						break
 					}
@@ -757,6 +765,31 @@ func TestMediaService_PreviewDelete_ReportsReadingImageReference(t *testing.T) {
 	}
 }
 
+func TestMediaService_PreviewDelete_ReportsReadingBlockMediaReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	imageID := seedMedia(q, themeID, MediaTypeImage)
+
+	linesJSON, _ := json.Marshal([]map[string]any{
+		{"Index": 0, "Type": "image", "MediaID": imageID.String(), "AdvanceBy": "gm"},
+	})
+	sectionID := uuid.New()
+	q.sections[sectionID] = db.ReadingSection{
+		ID:      sectionID,
+		ThemeID: themeID,
+		Name:    "Image block",
+		Lines:   linesJSON,
+	}
+
+	preview, err := svc.PreviewDeleteMedia(context.Background(), creatorID, imageID)
+	if err != nil {
+		t.Fatalf("PreviewDeleteMedia: %v", err)
+	}
+	refs := preview.References
+	if len(refs) != 1 || refs[0].ID != sectionID.String() || refs[0].Type != "reading_section" || refs[0].Name != "Image block" {
+		t.Fatalf("unexpected references: %#v", refs)
+	}
+}
+
 func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 	fixture := setupFixture(t)
 	ctx := context.Background()
@@ -765,9 +798,11 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 
 	voice := createMediaForReferenceTest(t, fixture.q, themeID, "Narration voice", MediaTypeVoice)
 	image := createMediaForReferenceTest(t, fixture.q, themeID, "Crime scene image", MediaTypeImage)
+	blockImage := createMediaForReferenceTest(t, fixture.q, themeID, "Projected image", MediaTypeImage)
 	linesJSON, err := json.Marshal([]map[string]any{
 		{"Index": 0, "Text": "목소리가 들린다.", "AdvanceBy": "voice", "VoiceMediaID": voice.ID.String()},
 		{"Index": 1, "Text": "현장 사진을 본다.", "AdvanceBy": "gm", "ImageMediaID": image.ID.String()},
+		{"Index": 2, "Type": "image", "MediaID": blockImage.ID.String(), "AdvanceBy": "gm"},
 	})
 	if err != nil {
 		t.Fatalf("marshal lines: %v", err)
@@ -789,6 +824,7 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 	}{
 		{name: "voice", mediaID: voice.ID},
 		{name: "image", mediaID: image.ID},
+		{name: "block image", mediaID: blockImage.ID},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			refs, err := fixture.q.FindMediaReferencesInReadingSections(ctx, db.FindMediaReferencesInReadingSectionsParams{

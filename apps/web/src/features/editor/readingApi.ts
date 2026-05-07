@@ -1,7 +1,7 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from '@tanstack/react-query';
 
-import { api } from "@/services/api";
-import { queryClient } from "@/services/queryClient";
+import { api } from '@/services/api';
+import { queryClient } from '@/services/queryClient';
 
 // ---------------------------------------------------------------------------
 // Types — match backend exactly
@@ -22,7 +22,7 @@ import { queryClient } from "@/services/queryClient";
  *  - "role:<id>"  → advances on action from the player assigned to that role
  *  - ""           → unset (defaults to engine policy)
  */
-export type AdvanceBy = "voice" | "gm" | `role:${string}` | "";
+export type AdvanceBy = 'voice' | 'gm' | `role:${string}` | '';
 
 /**
  * A single reading line. Field names are PascalCase to match the JSONB
@@ -30,12 +30,22 @@ export type AdvanceBy = "voice" | "gm" | `role:${string}` | "";
  */
 export interface ReadingLineDTO {
   Index: number;
-  Text: string;
+  Type?: ReadingBlockType;
+  Text?: string;
   Speaker?: string;
   VoiceMediaID?: string;
   ImageMediaID?: string;
   AdvanceBy?: AdvanceBy;
+  MediaID?: string;
+  Position?: 'left' | 'center' | 'right' | 'full';
+  Size?: 'small' | 'medium' | 'large';
+  Autoplay?: boolean;
+  WaitUntilEnd?: boolean;
+  BGMMode?: ReadingBgmMode;
 }
+
+export type ReadingBlockType = 'dialogue' | 'image' | 'video' | 'bgm' | 'gmNote';
+export type ReadingBgmMode = 'loop' | 'once' | 'stop';
 
 export interface CreateReadingSectionRequest {
   name: string;
@@ -80,8 +90,8 @@ export interface ReadingSectionResponse {
 // ---------------------------------------------------------------------------
 
 export const readingKeys = {
-  all: ["reading-sections"] as const,
-  list: (themeId: string) => ["reading-sections", themeId] as const,
+  all: ['reading-sections'] as const,
+  list: (themeId: string) => ['reading-sections', themeId] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -96,8 +106,8 @@ export const readingKeys = {
  *   - "role:<non-empty>"
  */
 export function isValidAdvanceBy(s: string): boolean {
-  if (s === "" || s === "voice" || s === "gm") return true;
-  return s.startsWith("role:") && s.length > "role:".length;
+  if (s === '' || s === 'voice' || s === 'gm') return true;
+  return s.startsWith('role:') && s.length > 'role:'.length;
 }
 
 /**
@@ -106,9 +116,7 @@ export function isValidAdvanceBy(s: string): boolean {
  * `null` values are preserved (backend sees *string pointing to nil =
  * "clear field"). This is the wire encoding for the triple-state pattern.
  */
-export function buildUpdateBody(
-  patch: UpdateReadingSectionRequest,
-): Record<string, unknown> {
+export function buildUpdateBody(patch: UpdateReadingSectionRequest): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(patch)) {
     if (value !== undefined) {
@@ -126,9 +134,7 @@ export function useReadingSections(themeId: string) {
   return useQuery<ReadingSectionResponse[]>({
     queryKey: readingKeys.list(themeId),
     queryFn: () =>
-      api.get<ReadingSectionResponse[]>(
-        `/v1/editor/themes/${themeId}/reading-sections`,
-      ),
+      api.get<ReadingSectionResponse[]>(`/v1/editor/themes/${themeId}/reading-sections`),
     enabled: !!themeId,
   });
 }
@@ -140,10 +146,7 @@ export function useReadingSections(themeId: string) {
 export function useCreateReadingSection(themeId: string) {
   return useMutation<ReadingSectionResponse, Error, CreateReadingSectionRequest>({
     mutationFn: (body) =>
-      api.post<ReadingSectionResponse>(
-        `/v1/editor/themes/${themeId}/reading-sections`,
-        body,
-      ),
+      api.post<ReadingSectionResponse>(`/v1/editor/themes/${themeId}/reading-sections`, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: readingKeys.list(themeId) });
     },
@@ -159,7 +162,7 @@ export function useUpdateReadingSection(themeId: string) {
     mutationFn: ({ id, patch }) =>
       api.patch<ReadingSectionResponse>(
         `/v1/editor/reading-sections/${id}`,
-        buildUpdateBody(patch),
+        buildUpdateBody(patch)
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: readingKeys.list(themeId) });
