@@ -154,7 +154,7 @@ func (s *mediaService) collectMediaReferencesWithQueries(ctx context.Context, q 
 		return nil, apperror.Internal("failed to check media references")
 	}
 	for _, r := range roleSheetRefs {
-		refList = append(refList, mediaReferenceInfo{Type: roleSheetMediaReferenceType(r.Body, mediaID), ID: r.Key, Name: r.Key})
+		refList = append(refList, mediaReferenceInfo{Type: roleSheetMediaReferenceType(r.Body, mediaID, media.Type), ID: r.Key, Name: r.Key})
 	}
 
 	aliasIconRefs, err := q.FindCharacterAliasIconReferencesForMedia(ctx, db.FindCharacterAliasIconReferencesForMediaParams{
@@ -272,12 +272,12 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 	return nil
 }
 
-func roleSheetMediaReferenceType(body string, mediaID uuid.UUID) string {
+func roleSheetMediaReferenceType(body string, mediaID uuid.UUID, mediaType string) string {
 	for _, embed := range extractRoleSheetMediaEmbeds(body) {
 		if embed.mediaID != mediaID {
 			continue
 		}
-		if embed.rawType == "video" {
+		if embed.rawType == "video" || (embed.rawType == "" && mediaType == MediaTypeVideo) {
 			return "role_sheet_embedded_video"
 		}
 		return "role_sheet_embedded_image"

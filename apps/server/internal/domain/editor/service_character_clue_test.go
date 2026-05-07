@@ -906,6 +906,7 @@ func TestService_UpsertCharacterRoleSheetMarkdown_ValidatesMediaEmbeds(t *testin
 		{name: "wrong type", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="image" />`, voice.ID.String()), wantErr: "wrong type or theme"},
 		{name: "other theme", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="image" />`, otherThemeImage.ID.String()), wantErr: "wrong type or theme"},
 		{name: "type mismatch", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="video" />`, image.ID.String()), wantErr: "type does not match"},
+		{name: "duplicate media id still validates each embed type", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="image" /><MediaEmbed mediaId="%s" type="video" />`, image.ID.String(), image.ID.String()), wantErr: "type does not match"},
 		{name: "unsupported type", body: fmt.Sprintf(`<MediaEmbed mediaId="%s" type="audio" />`, image.ID.String()), wantErr: "unsupported role sheet MediaEmbed type"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

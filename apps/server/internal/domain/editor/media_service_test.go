@@ -1367,6 +1367,13 @@ func TestMediaService_PreviewDelete_ReportsRoleSheetImagePageReference(t *testin
 	}
 }
 
+func roleSheetEmbedBody(mediaID uuid.UUID, embedTyp string) string {
+	if embedTyp == "" {
+		return fmt.Sprintf(`{"format":"markdown","markdown":{"body":"증거 <MediaEmbed mediaId=\"%s\" />"}}`, mediaID.String())
+	}
+	return fmt.Sprintf(`{"format":"markdown","markdown":{"body":"증거 <MediaEmbed mediaId=\"%s\" type=\"%s\" />"}}`, mediaID.String(), embedTyp)
+}
+
 func TestMediaService_PreviewDelete_ReportsRoleSheetEmbeddedMediaReferences(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -1376,6 +1383,7 @@ func TestMediaService_PreviewDelete_ReportsRoleSheetEmbeddedMediaReferences(t *t
 	}{
 		{name: "image", mediaTyp: MediaTypeImage, embedTyp: "image", wantTyp: "role_sheet_embedded_image"},
 		{name: "video", mediaTyp: MediaTypeVideo, embedTyp: "video", wantTyp: "role_sheet_embedded_video"},
+		{name: "video without explicit embed type", mediaTyp: MediaTypeVideo, embedTyp: "", wantTyp: "role_sheet_embedded_video"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, q, creatorID, themeID := newMediaTestService(t)
@@ -1384,7 +1392,7 @@ func TestMediaService_PreviewDelete_ReportsRoleSheetEmbeddedMediaReferences(t *t
 				{
 					ID:   uuid.New(),
 					Key:  "role_sheet:char-1",
-					Body: fmt.Sprintf(`{"format":"markdown","markdown":{"body":"증거 <MediaEmbed mediaId=\"%s\" type=\"%s\" />"}}`, mediaID.String(), tc.embedTyp),
+					Body: roleSheetEmbedBody(mediaID, tc.embedTyp),
 				},
 			}
 

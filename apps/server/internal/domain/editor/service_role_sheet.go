@@ -240,25 +240,26 @@ func extractRoleSheetMediaEmbeds(body string) []roleSheetMediaEmbed {
 }
 
 func (s *service) assertRoleSheetMarkdownMediaEmbeds(ctx context.Context, creatorID, themeID uuid.UUID, body string) error {
-	seen := map[uuid.UUID]struct{}{}
+	checked := map[uuid.UUID]db.ThemeMedium{}
 	for _, embed := range extractRoleSheetMediaEmbeds(body) {
 		if embed.mediaID == uuid.Nil {
 			return apperror.New(apperror.ErrMediaNotInTheme, 400, "invalid MediaEmbed mediaId")
 		}
-		if _, ok := seen[embed.mediaID]; ok {
-			continue
-		}
-		seen[embed.mediaID] = struct{}{}
-		media, err := s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
-			ID:        embed.mediaID,
-			CreatorID: creatorID,
-		})
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return apperror.New(apperror.ErrMediaNotInTheme, 400, "embedded role sheet media not found")
+		media, ok := checked[embed.mediaID]
+		if !ok {
+			var err error
+			media, err = s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
+				ID:        embed.mediaID,
+				CreatorID: creatorID,
+			})
+			if err != nil {
+				if errors.Is(err, pgx.ErrNoRows) {
+					return apperror.New(apperror.ErrMediaNotInTheme, 400, "embedded role sheet media not found")
+				}
+				s.logger.Error().Err(err).Str("media_id", embed.mediaID.String()).Msg("failed to verify role sheet embedded media")
+				return apperror.Internal("failed to verify role sheet media")
 			}
-			s.logger.Error().Err(err).Str("media_id", embed.mediaID.String()).Msg("failed to verify role sheet embedded media")
-			return apperror.Internal("failed to verify role sheet media")
+			checked[embed.mediaID] = media
 		}
 		if media.ThemeID != themeID || (media.Type != MediaTypeImage && media.Type != MediaTypeVideo) {
 			return apperror.New(apperror.ErrMediaNotInTheme, 400, "embedded role sheet media has wrong type or theme")
