@@ -181,8 +181,8 @@ export function parseReadingScript(input: string): ReadingBlock[] {
         return {
           id: createId("bgm"),
           type: "bgm",
-          mediaId: lower.includes("정지") || lower.includes("stop") ? undefined : findMediaId(body, "bgm") ?? "bgm-opening",
-          mode: lower.includes("정지") || lower.includes("stop") ? "stop" : lower.includes("1회") || lower.includes("once") ? "once" : "loop",
+          mediaId: parseBgmMediaId(body),
+          mode: parseBgmMode(body),
         };
       }
 
@@ -246,4 +246,24 @@ export function characterName(id?: string): string {
 function findMediaId(label: string, type: MockMedia["type"]): string | undefined {
   const compact = label.replace(/\s+/g, "").toLowerCase();
   return mockMedia.find((media) => media.type === type && compact.includes(media.name.replace(/\s+/g, "").toLowerCase()))?.id;
+}
+
+function isBgmStop(text: string) {
+  const lower = text.toLowerCase();
+  return lower.includes("정지") || lower.includes("stop");
+}
+
+function parseBgmMode(text: string): BgmMode {
+  if (isBgmStop(text)) {
+    return "stop";
+  }
+  const lower = text.toLowerCase();
+  return lower.includes("1회") || lower.includes("once") ? "once" : "loop";
+}
+
+function parseBgmMediaId(text: string) {
+  if (isBgmStop(text)) {
+    return undefined;
+  }
+  return findMediaId(text, "bgm") ?? "bgm-opening";
 }

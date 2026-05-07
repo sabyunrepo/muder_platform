@@ -156,11 +156,11 @@ export function App() {
               {/* 퍼블릭 */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/callback" element={<AuthCallbackPage />} />
-              <Route path="/dev/reading-script" element={<ReadingScriptEditorMockPage />} />
-              <Route path="/dev/reading-player" element={<ReadingScriptPlayerMockPage />} />
 
               {/* 인증 필요 — 게임/에디터 상세는 전체화면 (MainLayout 밖) */}
               <Route element={<ProtectedRoute />}>
+                <Route path="/dev/reading-script" element={<ReadingScriptEditorMockPage />} />
+                <Route path="/dev/reading-player" element={<ReadingScriptPlayerMockPage />} />
                 <Route path="/game/:id" element={<GamePage />} />
                 <Route path="/editor/:id" element={<EditorPage />} />
                 <Route path="/editor/:id/:tab" element={<EditorPage />} />
