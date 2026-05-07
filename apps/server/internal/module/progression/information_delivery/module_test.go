@@ -317,6 +317,14 @@ func TestEnginePhaseEnterDeliversStoryInfoAndReconnectStatePersists(t *testing.T
 	}
 	defer pe.Stop(context.Background())
 
+	// Re-entering the same action must not duplicate the reconnect state.
+	if err := module.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionDeliverInformation,
+		Params: json.RawMessage(`{"deliveries":[{"id":"alice-info","target":{"type":"character","character_id":"char-alice"},"story_info_ids":["info-secret"]},{"id":"common-info","target":{"type":"all_players"},"story_info_ids":["info-common"]}]}`),
+	}); err != nil {
+		t.Fatalf("ReactTo retry: %v", err)
+	}
+
 	aliceState := decodeState(t, mustStateFor(t, module, alice))
 	bobState := decodeState(t, mustStateFor(t, module, bob))
 	if got := aliceState.VisibleStoryInfoIDs; len(got) != 2 || got[0] != "info-common" || got[1] != "info-secret" {
