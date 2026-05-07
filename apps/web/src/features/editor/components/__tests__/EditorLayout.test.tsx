@@ -56,7 +56,7 @@ afterEach(() => {
 });
 
 describe('EditorLayout', () => {
-  it('모바일 헤더에서 보조 정보는 숨기고 주요 액션은 유지한다', () => {
+  it('헤더에서 핵심 정보와 주요 액션을 유지한다', () => {
     const onValidate = vi.fn(() => []);
     const onPublish = vi.fn();
 

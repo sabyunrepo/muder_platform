@@ -327,6 +327,11 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByRole('tab', { name: /등장인물/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
+    const editorHeader = page.locator('header').first();
+    await expect(editorHeader.getByText('에디터', { exact: true })).toBeHidden();
+    await expect(editorHeader.getByText('초안', { exact: true })).toBeHidden();
+    await expect(editorHeader.getByRole('button', { name: '검증' })).toBeVisible();
+    await expect(editorHeader.getByRole('button', { name: '출판' })).toBeVisible();
     await expectFocusIndicator(page, page.getByRole('textbox', { name: '캐릭터 검색' }));
     await expectFocusIndicator(page, page.getByRole('button', { name: '탐정 A 선택' }));
     await expectNoPageLevelHorizontalOverflow(page);
