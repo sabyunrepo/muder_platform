@@ -19,17 +19,44 @@ const (
 	AdvanceByRolePfx = "role:"
 )
 
+// Reading block types. An empty Type is treated as dialogue for backward
+// compatibility with sections created before the block editor.
+const (
+	ReadingBlockDialogue = "dialogue"
+	ReadingBlockImage    = "image"
+	ReadingBlockVideo    = "video"
+	ReadingBlockBGM      = "bgm"
+	ReadingBlockGMNote   = "gmNote"
+)
+
+const (
+	ReadingBGMModeLoop = "loop"
+	ReadingBGMModeOnce = "once"
+	ReadingBGMModeStop = "stop"
+)
+
 // ReadingLineDTO is the JSON shape of a single reading line as stored in
 // the reading_sections.lines JSONB column. The Go field names use PascalCase
 // so engine-compatible fields and editor-only media cues round-trip without
 // translation.
 type ReadingLineDTO struct {
 	Index        int    `json:"Index"`
-	Text         string `json:"Text"`
+	Type         string `json:"Type,omitempty"`
+	Text         string `json:"Text,omitempty"`
 	Speaker      string `json:"Speaker,omitempty"`
 	VoiceMediaID string `json:"VoiceMediaID,omitempty"`
 	ImageMediaID string `json:"ImageMediaID,omitempty"`
 	AdvanceBy    string `json:"AdvanceBy,omitempty"`
+
+	// Block editor fields. These are intentionally stored in the same JSONB
+	// array so legacy dialogue lines and new production blocks can coexist
+	// while the runtime reader is migrated incrementally.
+	MediaID      string `json:"MediaID,omitempty"`
+	Position     string `json:"Position,omitempty"`
+	Size         string `json:"Size,omitempty"`
+	Autoplay     bool   `json:"Autoplay,omitempty"`
+	WaitUntilEnd bool   `json:"WaitUntilEnd,omitempty"`
+	BGMMode      string `json:"BGMMode,omitempty"`
 }
 
 // CreateReadingSectionRequest is the JSON body for POST /editor/themes/{themeID}/reading-sections.

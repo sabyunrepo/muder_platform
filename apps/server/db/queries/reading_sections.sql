@@ -44,5 +44,6 @@ WHERE rs.theme_id = sqlc.arg('theme_id')
       SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
       WHERE line->>'VoiceMediaID' = sqlc.arg('media_id')::text
          OR line->>'ImageMediaID' = sqlc.arg('media_id')::text
+         OR line->>'MediaID' = sqlc.arg('media_id')::text
     )
   );

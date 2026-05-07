@@ -149,6 +149,7 @@ SET bgm_media_id = CASE
         line
           - CASE WHEN line->>'VoiceMediaID' = sqlc.arg('media_id')::text THEN 'VoiceMediaID' ELSE '__noop__' END
           - CASE WHEN line->>'ImageMediaID' = sqlc.arg('media_id')::text THEN 'ImageMediaID' ELSE '__noop__' END
+          - CASE WHEN line->>'MediaID' = sqlc.arg('media_id')::text THEN 'MediaID' ELSE '__noop__' END
         ORDER BY ord
       )
       FROM jsonb_array_elements(rs.lines) WITH ORDINALITY AS elem(line, ord)
@@ -165,6 +166,7 @@ WHERE rs.theme_id = t.id
       SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
       WHERE line->>'VoiceMediaID' = sqlc.arg('media_id')::text
          OR line->>'ImageMediaID' = sqlc.arg('media_id')::text
+         OR line->>'MediaID' = sqlc.arg('media_id')::text
     )
   );
 
