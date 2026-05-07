@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mdxeditor/editor": "3.55.0",
     "@mmp/game-logic": "workspace:*",
     "@mmp/shared": "workspace:*",
     "@mmp/ui-tokens": "workspace:*",

@@ -1,46 +1,41 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Save, Trash2 } from 'lucide-react';
 
-import {
-  useEditorCharacters,
-  useEditorClues,
-  useEditorLocations,
-} from "@/features/editor/api";
+import { useEditorCharacters, useEditorClues, useEditorLocations } from '@/features/editor/api';
 import {
   useCreateStoryInfo,
   useDeleteStoryInfo,
   useStoryInfos,
   useUpdateStoryInfo,
   type StoryInfoResponse,
-} from "@/features/editor/storyInfoApi";
-import type { MediaResponse } from "@/features/editor/mediaApi";
-import { Spinner } from "@/shared/components/ui";
-import { InfoImageField } from "./InfoImageField";
-import { ReferencePicker } from "./ReferencePicker";
+} from '@/features/editor/storyInfoApi';
+import type { MediaResponse, MediaType } from '@/features/editor/mediaApi';
+import { Spinner } from '@/shared/components/ui';
+import { InfoImageField } from './InfoImageField';
+import { InfoMarkdownEditor } from './InfoMarkdownEditor';
+import { InfoPreview } from './InfoPreview';
+import { ReferencePicker } from './ReferencePicker';
 
 interface InfoTabProps {
   themeId: string;
 }
 
-type RefKind = "character" | "clue" | "location";
+type RefKind = 'character' | 'clue' | 'location';
 
 export function InfoTab({ themeId }: InfoTabProps) {
   const { data: infos = [], isLoading, isError, refetch } = useStoryInfos(themeId);
   const createInfo = useCreateStoryInfo(themeId);
   const [createError, setCreateError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const sortedInfos = useMemo(
-    () => [...infos].sort((a, b) => a.sortOrder - b.sortOrder),
-    [infos],
-  );
+  const sortedInfos = useMemo(() => [...infos].sort((a, b) => a.sortOrder - b.sortOrder), [infos]);
   const selected = sortedInfos.find((info) => info.id === selectedId) ?? sortedInfos[0] ?? null;
 
   async function handleCreate() {
     setCreateError(null);
     try {
       const created = await createInfo.mutateAsync({
-        title: "새 스토리 정보",
-        body: "",
+        title: '새 스토리 정보',
+        body: '',
         imageMediaId: null,
         relatedCharacterIds: [],
         relatedClueIds: [],
@@ -49,7 +44,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
       });
       setSelectedId(created.id);
     } catch (err) {
-      setCreateError(errorMessage(err, "정보 생성에 실패했습니다"));
+      setCreateError(errorMessage(err, '정보 생성에 실패했습니다'));
     }
   }
 
@@ -119,7 +114,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
                   {info.title}
                 </span>
                 <span className="mt-1 block line-clamp-2 text-xs text-slate-500">
-                  {info.body || "본문 없음"}
+                  {info.body || '본문 없음'}
                 </span>
               </button>
             ))
@@ -144,6 +139,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const [draft, setDraft] = useState(() => ({ ...info }));
   const [baseline, setBaseline] = useState(() => ({ ...info }));
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [embedPickerType, setEmbedPickerType] = useState<MediaType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const updateInfo = useUpdateStoryInfo(themeId);
   const deleteInfo = useDeleteStoryInfo(themeId);
@@ -160,11 +156,11 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
 
   function patchRefs(kind: RefKind, id: string, checked: boolean) {
     const key =
-      kind === "character"
-        ? "relatedCharacterIds"
-        : kind === "clue"
-          ? "relatedClueIds"
-          : "relatedLocationIds";
+      kind === 'character'
+        ? 'relatedCharacterIds'
+        : kind === 'clue'
+          ? 'relatedClueIds'
+          : 'relatedLocationIds';
     setDraft((current) => {
       const currentIds = current[key];
       const nextIds = checked
@@ -193,7 +189,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
       setDraft({ ...saved });
       setBaseline({ ...saved });
     } catch (err) {
-      setError(errorMessage(err, "저장에 실패했습니다"));
+      setError(errorMessage(err, '저장에 실패했습니다'));
     }
   }
 
@@ -202,7 +198,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     try {
       await deleteInfo.mutateAsync(info.id);
     } catch (err) {
-      setError(errorMessage(err, "삭제에 실패했습니다"));
+      setError(errorMessage(err, '삭제에 실패했습니다'));
     }
   }
 
@@ -211,83 +207,87 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   }
 
   return (
-    <section className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
-      {error && (
-        <div className="rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-          {error}
+    <section className="grid min-h-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
+        {error && (
+          <div className="rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+            {error}
+          </div>
+        )}
+
+        <label className="block text-xs text-slate-400">
+          제목
+          <input
+            aria-label="정보 제목"
+            value={draft.title}
+            onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+            className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+          />
+        </label>
+
+        <div className="space-y-1">
+          <span className="block text-xs text-slate-400">본문</span>
+          <InfoMarkdownEditor
+            themeId={themeId}
+            markdown={draft.body}
+            onChange={(body) => setDraft((current) => ({ ...current, body }))}
+            pickerType={embedPickerType}
+            onOpenPicker={setEmbedPickerType}
+            onClosePicker={() => setEmbedPickerType(null)}
+          />
         </div>
-      )}
 
-      <label className="block text-xs text-slate-400">
-        제목
-        <input
-          aria-label="정보 제목"
-          value={draft.title}
-          onChange={(event) => setDraft({ ...draft, title: event.target.value })}
-          className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+        <InfoImageField
+          themeId={themeId}
+          imageMediaId={draft.imageMediaId}
+          pickerOpen={imagePickerOpen}
+          onOpenPicker={() => setImagePickerOpen(true)}
+          onClosePicker={() => setImagePickerOpen(false)}
+          onSelect={handleImageSelect}
+          onClear={() => setDraft({ ...draft, imageMediaId: null })}
         />
-      </label>
 
-      <label className="block text-xs text-slate-400">
-        본문
-        <textarea
-          aria-label="정보 본문"
-          value={draft.body}
-          onChange={(event) => setDraft({ ...draft, body: event.target.value })}
-          rows={8}
-          className="mt-1 w-full resize-y rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+        <ReferencePicker
+          title="관련 등장인물"
+          items={characters.map((character) => ({ id: character.id, name: character.name }))}
+          selectedIds={draft.relatedCharacterIds}
+          onToggle={(id, checked) => patchRefs('character', id, checked)}
         />
-      </label>
+        <ReferencePicker
+          title="관련 단서"
+          items={clues.map((clue) => ({ id: clue.id, name: clue.name }))}
+          selectedIds={draft.relatedClueIds}
+          onToggle={(id, checked) => patchRefs('clue', id, checked)}
+        />
+        <ReferencePicker
+          title="관련 장소"
+          items={locations.map((location) => ({ id: location.id, name: location.name }))}
+          selectedIds={draft.relatedLocationIds}
+          onToggle={(id, checked) => patchRefs('location', id, checked)}
+        />
 
-      <InfoImageField
-        themeId={themeId}
-        imageMediaId={draft.imageMediaId}
-        pickerOpen={imagePickerOpen}
-        onOpenPicker={() => setImagePickerOpen(true)}
-        onClosePicker={() => setImagePickerOpen(false)}
-        onSelect={handleImageSelect}
-        onClear={() => setDraft({ ...draft, imageMediaId: null })}
-      />
-
-      <ReferencePicker
-        title="관련 등장인물"
-        items={characters.map((character) => ({ id: character.id, name: character.name }))}
-        selectedIds={draft.relatedCharacterIds}
-        onToggle={(id, checked) => patchRefs("character", id, checked)}
-      />
-      <ReferencePicker
-        title="관련 단서"
-        items={clues.map((clue) => ({ id: clue.id, name: clue.name }))}
-        selectedIds={draft.relatedClueIds}
-        onToggle={(id, checked) => patchRefs("clue", id, checked)}
-      />
-      <ReferencePicker
-        title="관련 장소"
-        items={locations.map((location) => ({ id: location.id, name: location.name }))}
-        selectedIds={draft.relatedLocationIds}
-        onToggle={(id, checked) => patchRefs("location", id, checked)}
-      />
-
-      <div className="flex items-center justify-between border-t border-slate-800 pt-3">
-        <button
-          type="button"
-          onClick={() => void handleDelete()}
-          disabled={deleteInfo.isPending}
-          className="flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10"
-        >
-          <Trash2 className="h-3 w-3" />
-          정보 삭제
-        </button>
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={!isDirty || updateInfo.isPending}
-          className="flex items-center gap-1 rounded bg-amber-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500"
-        >
-          <Save className="h-4 w-4" />
-          {updateInfo.isPending ? "저장 중..." : "저장"}
-        </button>
+        <div className="flex items-center justify-between border-t border-slate-800 pt-3">
+          <button
+            type="button"
+            onClick={() => void handleDelete()}
+            disabled={deleteInfo.isPending}
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10"
+          >
+            <Trash2 className="h-3 w-3" />
+            정보 삭제
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={!isDirty || updateInfo.isPending}
+            className="flex items-center gap-1 rounded bg-amber-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500"
+          >
+            <Save className="h-4 w-4" />
+            {updateInfo.isPending ? '저장 중...' : '저장'}
+          </button>
+        </div>
       </div>
+      <InfoPreview themeId={themeId} title={draft.title} markdown={draft.body} />
     </section>
   );
 }
