@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+  act,
+  within,
+} from '@testing-library/react';
 import { toast } from 'sonner';
 
 // ---------------------------------------------------------------------------
@@ -108,6 +116,7 @@ let mutateAsyncUpdate: ReturnType<typeof vi.fn>;
 let mutateAsyncDelete: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn();
   Object.assign(navigator, {
     clipboard: {
       writeText: writeTextMock,
@@ -139,6 +148,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -468,6 +478,134 @@ describe('ReadingSectionEditor', () => {
       { Index: 0, Text: '누구냐?' },
       { Index: 1, Text: '어두운 방 안.' },
     ]);
+  });
+
+  it('opens a test player preview and advances after voice playback finishes', async () => {
+    vi.useFakeTimers();
+    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
+      if (type === 'VOICE') {
+        return {
+          data: [
+            {
+              id: 'voice-1',
+              theme_id: 'theme-1',
+              name: '나레이션 음성',
+              type: 'VOICE',
+              source_type: 'FILE',
+              url: 'https://example.com/voice.mp3',
+              tags: [],
+              sort_order: 1,
+              created_at: '2026-04-05T00:00:00Z',
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      if (type === 'IMAGE') {
+        return {
+          data: [
+            {
+              id: 'image-1',
+              theme_id: 'theme-1',
+              name: '저택 전경',
+              type: 'IMAGE',
+              source_type: 'FILE',
+              url: 'https://example.com/image.png',
+              tags: [],
+              sort_order: 2,
+              created_at: '2026-04-05T00:00:00Z',
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      return { data: [], isLoading: false };
+    });
+
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [
+          {
+            Index: 0,
+            Type: 'dialogue',
+            Text: '모두 눈을 감아주세요.',
+            Speaker: '나레이션',
+            VoiceMediaID: 'voice-1',
+            AdvanceBy: 'voice',
+          },
+          {
+            Index: 1,
+            Type: 'image',
+            MediaID: 'image-1',
+            Position: 'center',
+            Size: 'medium',
+            AdvanceBy: 'gm',
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트' }));
+
+    const dialog = screen.getByRole('dialog', { name: '오프닝 테스트' });
+    expect(dialog).toBeTruthy();
+    expect(within(dialog).getByText('모두 눈을 감아주세요.')).toBeTruthy();
+    expect(within(dialog).getByRole<HTMLButtonElement>('button', { name: '종료 대기' }).disabled)
+      .toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(2600);
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '음성 종료 후 계속' }));
+
+    expect(within(dialog).getByText('저택 전경 · center')).toBeTruthy();
+  });
+
+  it('auto-advances BGM cue in the test player preview', () => {
+    vi.useFakeTimers();
+    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
+      if (type === 'BGM') {
+        return {
+          data: [
+            {
+              id: 'bgm-1',
+              theme_id: 'theme-1',
+              name: '오프닝 테마',
+              type: 'BGM',
+              source_type: 'FILE',
+              tags: [],
+              sort_order: 1,
+              created_at: '2026-04-05T00:00:00Z',
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      return { data: [], isLoading: false };
+    });
+
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [
+          { Index: 0, Type: 'bgm', MediaID: 'bgm-1', BGMMode: 'loop' },
+          {
+            Index: 1,
+            Type: 'gmNote',
+            Text: '조명을 낮춘다.',
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트' }));
+
+    expect(screen.getByText('오프닝 테마 · 반복 재생')).toBeTruthy();
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+    expect(screen.getByText('조명을 낮춘다.')).toBeTruthy();
   });
 
   it('save button is disabled when not dirty', () => {
