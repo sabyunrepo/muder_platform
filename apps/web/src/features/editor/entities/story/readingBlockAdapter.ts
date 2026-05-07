@@ -132,12 +132,17 @@ function parseDialogueDirective(
 }
 
 export function normalizeReadingBlocks(lines: ReadingLineDTO[]): ReadingLineDTO[] {
-  return lines.map((line, index) => ({
-    ...line,
-    Index: index,
-    Type: normalizeBlockType(line.Type),
-    Text: line.Text ?? '',
-  }));
+  return lines.map((line, index) => {
+    const type = normalizeBlockType(line.Type);
+    const supportsVoiceAdvance = type === 'dialogue' && Boolean(line.VoiceMediaID);
+    return {
+      ...line,
+      Index: index,
+      Type: type,
+      Text: line.Text ?? '',
+      AdvanceBy: line.AdvanceBy === 'voice' && !supportsVoiceAdvance ? 'gm' : line.AdvanceBy,
+    };
+  });
 }
 
 export function isDialogueBlock(line: ReadingLineDTO): boolean {
