@@ -273,6 +273,15 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 }
 
 func roleSheetMediaReferenceType(body string, mediaID uuid.UUID) string {
+	for _, embed := range extractRoleSheetMediaEmbeds(body) {
+		if embed.mediaID != mediaID {
+			continue
+		}
+		if embed.rawType == "video" {
+			return "role_sheet_embedded_video"
+		}
+		return "role_sheet_embedded_image"
+	}
 	if strings.Contains(body, `"image_media_ids"`) && strings.Contains(body, mediaID.String()) {
 		return "role_sheet_image_page"
 	}

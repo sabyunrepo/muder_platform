@@ -169,35 +169,43 @@ WHERE rs.theme_id = t.id
   );
 
 -- name: ClearRoleSheetMediaReferencesWithOwner :execrows
-UPDATE theme_contents c
-SET body = jsonb_set(
+WITH cleaned_role_sheets AS (
+  SELECT
+    rc.id,
+    regexp_replace(
       regexp_replace(
-        c.body,
+        rc.body,
         '"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
         '"media_id":null',
         'g'
-      )::jsonb,
-      '{images,image_media_ids}',
-      COALESCE((
-        SELECT jsonb_agg(page_id ORDER BY ord)
-        FROM jsonb_array_elements_text(
-          COALESCE(
-            regexp_replace(
-              c.body,
-              '"media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
-              '"media_id":null',
-              'g'
-            )::jsonb #> '{images,image_media_ids}',
-            '[]'::jsonb
-          )
-        ) WITH ORDINALITY AS elem(page_id, ord)
-        WHERE page_id <> sqlc.arg('media_id')::text
-      ), '[]'::jsonb),
-      true
-    )::text,
+      ),
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*\\?"' || sqlc.arg('media_id')::text || '\\?"[^>]*/?>',
+      '',
+      'g'
+    )::jsonb AS doc
+  FROM theme_contents rc
+  WHERE rc.theme_id = sqlc.arg('theme_id')
+    AND rc.key ~ '^role_sheet:'
+    AND rc.body ~ sqlc.arg('media_id')::text
+)
+UPDATE theme_contents c
+SET body = CASE
+      WHEN cleaned.doc #> '{images,image_media_ids}' IS NULL THEN cleaned.doc::text
+      ELSE jsonb_set(
+        cleaned.doc,
+        '{images,image_media_ids}',
+        COALESCE((
+          SELECT jsonb_agg(page_id ORDER BY ord)
+          FROM jsonb_array_elements_text(COALESCE(cleaned.doc #> '{images,image_media_ids}', '[]'::jsonb)) WITH ORDINALITY AS elem(page_id, ord)
+          WHERE page_id <> sqlc.arg('media_id')::text
+        ), '[]'::jsonb),
+        true
+      )::text
+    END,
     updated_at = NOW()
-FROM themes t
+FROM themes t, cleaned_role_sheets cleaned
 WHERE c.theme_id = t.id
+  AND c.id = cleaned.id
   AND t.creator_id = sqlc.arg('creator_id')
   AND c.theme_id = sqlc.arg('theme_id')
   AND c.key ~ '^role_sheet:'

@@ -998,13 +998,13 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 	if _, err := fixture.q.UpsertContent(ctx, db.UpsertContentParams{
 		ThemeID: themeID,
 		Key:     "role_sheet:detective",
-		Body:    fmt.Sprintf(`{"portrait":{"media_id":"%s"}}`, image.ID.String()),
+		Body:    fmt.Sprintf(`{"version":1,"format":"markdown","markdown":{"body":"사진 <MediaEmbed mediaId=\"%s\" type=\"image\" />"},"portrait":{"media_id":"%s"},"images":{"image_media_ids":["%s"]}}`, image.ID.String(), image.ID.String(), image.ID.String()),
 	}); err != nil {
 		t.Fatalf("UpsertContent role sheet: %v", err)
 	}
 	if refs, err := fixture.q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
 		ThemeID: themeID,
-		Body:    `"media_id"\s*:\s*"` + image.ID.String() + `"`,
+		Body:    image.ID.String(),
 	}); err != nil || len(refs) != 1 || refs[0].Key != "role_sheet:detective" {
 		t.Fatalf("FindRoleSheetReferencesForMedia err=%v refs=%#v", err, refs)
 	}
@@ -1014,6 +1014,16 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 		ThemeID:   themeID,
 	}); err != nil || rows != 1 {
 		t.Fatalf("ClearRoleSheetMediaReferencesWithOwner rows=%d err=%v", rows, err)
+	}
+	cleanedRoleSheet, err := fixture.q.GetContent(ctx, db.GetContentParams{ThemeID: themeID, Key: "role_sheet:detective"})
+	if err != nil {
+		t.Fatalf("GetContent cleaned role sheet: %v", err)
+	}
+	if strings.Contains(cleanedRoleSheet.Body, image.ID.String()) || strings.Contains(cleanedRoleSheet.Body, "<MediaEmbed") {
+		t.Fatalf("role sheet media refs should be cleaned: %s", cleanedRoleSheet.Body)
+	}
+	if !strings.Contains(cleanedRoleSheet.Body, `"image_media_ids": []`) || !strings.Contains(cleanedRoleSheet.Body, `"media_id": null`) {
+		t.Fatalf("role sheet PDF/image references should be nulled/emptied: %s", cleanedRoleSheet.Body)
 	}
 
 	info, err := fixture.q.CreateStoryInfo(ctx, db.CreateStoryInfoParams{
@@ -1318,6 +1328,39 @@ func TestMediaService_PreviewDelete_ReportsRoleSheetImagePageReference(t *testin
 	refs := preview.References
 	if len(refs) != 1 || refs[0].Type != "role_sheet_image_page" || refs[0].ID != "role_sheet:char-1" {
 		t.Fatalf("unexpected role sheet image references: %#v", refs)
+	}
+}
+
+func TestMediaService_PreviewDelete_ReportsRoleSheetEmbeddedMediaReferences(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		mediaTyp string
+		embedTyp string
+		wantTyp  string
+	}{
+		{name: "image", mediaTyp: MediaTypeImage, embedTyp: "image", wantTyp: "role_sheet_embedded_image"},
+		{name: "video", mediaTyp: MediaTypeVideo, embedTyp: "video", wantTyp: "role_sheet_embedded_video"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, q, creatorID, themeID := newMediaTestService(t)
+			mediaID := seedMedia(q, themeID, tc.mediaTyp)
+			q.roleSheetRefs[mediaID] = []db.FindRoleSheetReferencesForMediaRow{
+				{
+					ID:   uuid.New(),
+					Key:  "role_sheet:char-1",
+					Body: fmt.Sprintf(`{"format":"markdown","markdown":{"body":"증거 <MediaEmbed mediaId=\"%s\" type=\"%s\" />"}}`, mediaID.String(), tc.embedTyp),
+				},
+			}
+
+			preview, err := svc.PreviewDeleteMedia(context.Background(), creatorID, mediaID)
+			if err != nil {
+				t.Fatalf("PreviewDeleteMedia: %v", err)
+			}
+			refs := preview.References
+			if len(refs) != 1 || refs[0].Type != tc.wantTyp || refs[0].ID != "role_sheet:char-1" {
+				t.Fatalf("unexpected role sheet embedded references: %#v", refs)
+			}
+		})
 	}
 }
 
