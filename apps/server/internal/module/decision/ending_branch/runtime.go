@@ -18,9 +18,20 @@ type submittedAnswer struct {
 }
 
 type evaluationResult struct {
-	SelectedEnding  string         `json:"selectedEnding"`
-	MatchedPriority *int           `json:"matchedPriority,omitempty"`
-	Scores          map[string]int `json:"scores,omitempty"`
+	SelectedEnding  string          `json:"selectedEnding"`
+	MatchedRuleID   string          `json:"matchedRuleId,omitempty"`
+	MatchedPriority *int            `json:"matchedPriority,omitempty"`
+	Fallback        bool            `json:"fallback"`
+	AnswerSummary   []answerSummary `json:"answerSummary,omitempty"`
+	Scores          map[string]int  `json:"scores,omitempty"`
+}
+
+type answerSummary struct {
+	QuestionID       string         `json:"questionId"`
+	Answered         int            `json:"answered"`
+	Counts           map[string]int `json:"counts"`
+	WinningChoice    string         `json:"winningChoice,omitempty"`
+	ThresholdChoices []string       `json:"thresholdChoices,omitempty"`
 }
 
 func (m *Module) submitAnswer(ctx context.Context, playerID uuid.UUID, payload json.RawMessage) error {
@@ -76,10 +87,22 @@ func (m *Module) evaluateLocked() (*evaluationResult, error) {
 		}
 		if res.Bool {
 			priority := row.Priority
-			return &evaluationResult{SelectedEnding: row.Ending, MatchedPriority: &priority, Scores: scoreTotals(ctx)}, nil
+			return &evaluationResult{
+				SelectedEnding:  row.Ending,
+				MatchedRuleID:   row.ID,
+				MatchedPriority: &priority,
+				Fallback:        false,
+				AnswerSummary:   m.answerSummariesLocked(),
+				Scores:          scoreTotals(ctx),
+			}, nil
 		}
 	}
-	return &evaluationResult{SelectedEnding: m.cfg.DefaultEnding, Scores: scoreTotals(ctx)}, nil
+	return &evaluationResult{
+		SelectedEnding: m.cfg.DefaultEnding,
+		Fallback:       true,
+		AnswerSummary:  m.answerSummariesLocked(),
+		Scores:         scoreTotals(ctx),
+	}, nil
 }
 
 func (m *Module) evaluationContextLocked() map[string]any {
@@ -116,6 +139,31 @@ func scoreTotals(ctx map[string]any) map[string]int {
 		out[k] = v
 	}
 	return out
+}
+
+func (m *Module) answerSummariesLocked() []answerSummary {
+	if len(m.cfg.Questions) == 0 {
+		return nil
+	}
+	summaries := make([]answerSummary, 0, len(m.cfg.Questions))
+	threshold := m.thresholdLocked()
+	for _, question := range m.cfg.Questions {
+		byPlayer := m.answers[question.ID]
+		counts := make(map[string]int, len(question.Choices))
+		for _, choices := range byPlayer {
+			for _, choice := range choices {
+				counts[choice]++
+			}
+		}
+		summaries = append(summaries, answerSummary{
+			QuestionID:       question.ID,
+			Answered:         len(byPlayer),
+			Counts:           counts,
+			WinningChoice:    winningChoice(counts),
+			ThresholdChoices: thresholdChoices(counts, len(byPlayer), threshold),
+		})
+	}
+	return summaries
 }
 
 func findQuestion(questions []Question, questionID string) (Question, bool) {
@@ -158,6 +206,21 @@ func normalizeAnswerChoices(question Question, input submittedAnswer) ([]string,
 }
 
 func respondentAllowed(ctx context.Context, deps engine.ModuleDeps, question Question, playerID uuid.UUID) bool {
+	if question.Target != nil {
+		switch question.Target.Type {
+		case "all_players", "":
+			return true
+		case "specific_players":
+			items := make([]any, len(question.Target.CharacterIDs))
+			for i, item := range question.Target.CharacterIDs {
+				items[i] = item
+			}
+			return respondentListAllows(ctx, deps, items, playerID)
+		default:
+			return false
+		}
+	}
+
 	switch respondents := question.Respondents.(type) {
 	case nil:
 		return true
@@ -165,7 +228,10 @@ func respondentAllowed(ctx context.Context, deps engine.ModuleDeps, question Que
 		if respondents == "some" && deps.Logger != nil {
 			deps.Logger.Printf("ending_branch: unsupported respondents value %q", respondents)
 		}
-		return respondents == "" || respondents == "all"
+		if respondents == "" || respondents == "all" {
+			return true
+		}
+		return respondentListAllows(ctx, deps, []any{respondents}, playerID)
 	case []any:
 		return respondentListAllows(ctx, deps, respondents, playerID)
 	case []string:
@@ -238,11 +304,17 @@ func (m *Module) stateLocked(playerID *uuid.UUID) (json.RawMessage, error) {
 	}
 	if m.result != nil {
 		state["selectedEnding"] = m.result.SelectedEnding
+		state["fallback"] = m.result.Fallback
 		if m.result.MatchedPriority != nil {
 			state["matchedPriority"] = *m.result.MatchedPriority
 		}
 		result := map[string]any{
 			"selectedEnding": m.result.SelectedEnding,
+			"fallback":       m.result.Fallback,
+			"answerSummary":  m.result.AnswerSummary,
+		}
+		if m.result.MatchedRuleID != "" {
+			result["matchedRuleId"] = m.result.MatchedRuleID
 		}
 		if m.result.MatchedPriority != nil {
 			result["matchedPriority"] = *m.result.MatchedPriority

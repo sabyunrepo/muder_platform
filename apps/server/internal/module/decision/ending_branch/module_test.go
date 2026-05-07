@@ -13,6 +13,19 @@ import (
 	"github.com/mmp-platform/server/internal/engine"
 )
 
+type endingBranchTestPlayerProvider struct {
+	byTarget map[string]uuid.UUID
+}
+
+func (p endingBranchTestPlayerProvider) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
+	id, ok := p.byTarget[targetCode]
+	return id, ok
+}
+
+func (p endingBranchTestPlayerProvider) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (engine.PlayerRuntimeInfo, bool) {
+	return engine.PlayerRuntimeInfo{PlayerID: playerID}, true
+}
+
 func TestModule_Name(t *testing.T) {
 	m := NewModule()
 	assert.Equal(t, "ending_branch", m.Name())
@@ -154,6 +167,39 @@ func TestModule_HandleMessage_SubmitAnswerAndPlayerAwareState(t *testing.T) {
 	assert.NotEqual(t, answersA["q1"], answersB["q1"], "players must not receive sibling answers")
 }
 
+func TestModule_HandleMessage_UsesSpecificPlayerTarget(t *testing.T) {
+	playerA := uuid.New()
+	playerB := uuid.New()
+	playerC := uuid.New()
+	provider := endingBranchTestPlayerProvider{byTarget: map[string]uuid.UUID{
+		"char-1": playerA,
+		"char-2": playerB,
+	}}
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{
+				"id": "q1",
+				"text": "대상 질문",
+				"type": "single",
+				"choices": ["A","B"],
+				"respondents": "char-1",
+				"target": {"type":"specific_players","characterIds":["char-1","char-2"]},
+				"impact": "branch"
+			}
+		],
+		"matrix": [],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{PlayerInfoProvider: provider}, cfg))
+
+	require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerB, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"B"}`)))
+	err := m.HandleMessage(context.Background(), playerC, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "not allowed")
+}
+
 func TestModule_ReactTo_EvaluatesPriorityMatrixAndPublishesEvent(t *testing.T) {
 	bus := engine.NewEventBus(nil)
 	var events []engine.Event
@@ -218,6 +264,89 @@ func TestModule_ReactTo_SelectedEndingPreservesFlowNodeID(t *testing.T) {
 	require.Len(t, events, 1)
 	payload := events[0].Payload.(map[string]any)
 	assert.Equal(t, endingID, payload["selectedEnding"])
+}
+
+func TestModule_ApplyConfig_AcceptsLegacyConditionKey(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [
+			{"priority": 1, "condition": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결"
+	}`)
+
+	require.NoError(t, m.ApplyConfig(context.Background(), cfg))
+	require.Len(t, m.cfg.Matrix, 1)
+	assert.Equal(t, map[string]any{"==": []any{map[string]any{"var": "answers.q1.winning"}, "A"}}, m.cfg.Matrix[0].Conditions)
+}
+
+func TestModule_ReactTo_ThresholdRuleReturnsAnswerSummary(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [
+			{"id":"rule-a-majority","priority": 1, "conditions": {"in": ["A", {"var":"answers.q1.choices"}]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결",
+		"multiVoteThreshold": 0.5
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{}, cfg))
+	playerA := uuid.New()
+	playerB := uuid.New()
+	playerC := uuid.New()
+	require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerB, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"A"}`)))
+	require.NoError(t, m.HandleMessage(context.Background(), playerC, "submit_answer", json.RawMessage(`{"question_id":"q1","choice":"B"}`)))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, "진실", result["selectedEnding"])
+	assert.Equal(t, false, result["fallback"])
+	assert.Equal(t, "rule-a-majority", result["matchedRuleId"])
+	summaries := result["answerSummary"].([]any)
+	require.Len(t, summaries, 1)
+	summary := summaries[0].(map[string]any)
+	assert.Equal(t, "q1", summary["questionId"])
+	assert.Equal(t, float64(3), summary["answered"])
+	assert.Equal(t, "A", summary["winningChoice"])
+	assert.Equal(t, []any{"A"}, summary["thresholdChoices"])
+	counts := summary["counts"].(map[string]any)
+	assert.Equal(t, float64(2), counts["A"])
+	assert.Equal(t, float64(1), counts["B"])
+}
+
+func TestModule_ReactTo_FallbackWhenNoRuleMatches(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [
+			{"id": "q1", "text": "진범은?", "type": "single", "choices": ["A","B"], "impact": "branch"}
+		],
+		"matrix": [
+			{"priority": 1, "conditions": {"==": [{"var":"answers.q1.winning"}, "A"]}, "ending": "진실"}
+		],
+		"defaultEnding": "미해결"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{}, cfg))
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, "미해결", result["selectedEnding"])
+	assert.Equal(t, true, result["fallback"])
+	assert.NotContains(t, result, "matchedPriority")
 }
 
 func TestModule_BuildStateAfterEvaluationSeparatesAdminScoresFromPlayerState(t *testing.T) {
