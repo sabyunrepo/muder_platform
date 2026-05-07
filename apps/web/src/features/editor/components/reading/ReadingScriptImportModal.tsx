@@ -44,12 +44,16 @@ export function ReadingScriptImportModal({
 
   if (!open) return null;
 
-  function handleApply() {
-    if (!canApply) return;
-    onApply(result.blocks);
+  function handleClose() {
     setScript('');
     setConfirmedOverwrite(false);
     onClose();
+  }
+
+  function handleApply() {
+    if (!canApply) return;
+    onApply(result.blocks);
+    handleClose();
   }
 
   return (
@@ -75,7 +79,7 @@ export function ReadingScriptImportModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             aria-label="대본 입력 닫기"
             className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-slate-100"
           >
@@ -121,7 +125,7 @@ export function ReadingScriptImportModal({
         <footer className="flex flex-col gap-2 border-t border-slate-800 px-4 py-3 sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded border border-slate-700 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
           >
             취소

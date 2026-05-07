@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FileInput, Music, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -51,7 +51,15 @@ export function ReadingSectionEditor({
   characters,
   onDeleted,
 }: ReadingSectionEditorProps) {
+  const lineKeyCounter = useRef(0);
+  const createLineKey = useCallback(
+    () => `reading-line-${section.id}-${lineKeyCounter.current++}`,
+    [section.id]
+  );
   const [draft, setDraft] = useState<ReadingSectionDraft>(() => toDraft(section));
+  const [lineKeys, setLineKeys] = useState<string[]>(() =>
+    section.lines.map(() => createLineKey())
+  );
   const [bgmPickerOpen, setBgmPickerOpen] = useState(false);
   const [scriptImportOpen, setScriptImportOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -66,9 +74,10 @@ export function ReadingSectionEditor({
   // a successful save returns a new version, or a refetch).
   useEffect(() => {
     setDraft(toDraft(section));
+    setLineKeys(section.lines.map(() => createLineKey()));
     setConflict(false);
     setSaveError(null);
-  }, [section]);
+  }, [createLineKey, section]);
 
   // BGM list (BGM filter only) — used to display selected BGM name without
   // an extra fetch when picker is closed.
@@ -97,6 +106,7 @@ export function ReadingSectionEditor({
       ...d,
       lines: [...d.lines, createBlock(type, d.lines.length)],
     }));
+    setLineKeys((keys) => [...keys, createLineKey()]);
   }
 
   function handleLineChange(idx: number, next: ReadingLineDTO) {
@@ -126,10 +136,17 @@ export function ReadingSectionEditor({
         lines: lines.map((line, index) => ({ ...line, Index: index })),
       };
     });
+    setLineKeys((keys) => {
+      const nextKeys = keys.slice();
+      const [movedKey] = nextKeys.splice(from, 1);
+      nextKeys.splice(to, 0, movedKey);
+      return nextKeys;
+    });
   }
 
   function handleApplyParsedBlocks(blocks: ReadingLineDTO[]) {
     setDraft((d) => ({ ...d, lines: normalizeReadingBlocks(blocks) }));
+    setLineKeys(blocks.map(() => createLineKey()));
   }
 
   function handleLineDelete(idx: number) {
@@ -137,6 +154,7 @@ export function ReadingSectionEditor({
       const lines = d.lines.filter((_, i) => i !== idx).map((l, i) => ({ ...l, Index: i }));
       return { ...d, lines };
     });
+    setLineKeys((keys) => keys.filter((_, i) => i !== idx));
   }
 
   // -------------------------------------------------------------------------
@@ -164,7 +182,7 @@ export function ReadingSectionEditor({
       name: draft.name,
       // bgmMediaId uses triple-state: null = clear, string = set, undefined = keep
       bgmMediaId: draft.bgmMediaId,
-      lines: draft.lines,
+      lines: normalizeReadingBlocks(draft.lines),
       sortOrder: draft.sortOrder,
     };
 
@@ -311,7 +329,7 @@ export function ReadingSectionEditor({
         ) : (
           draft.lines.map((line, idx) => (
             <ReadingBlockRow
-              key={idx}
+              key={lineKeys[idx] ?? `reading-line-fallback-${idx}`}
               themeId={themeId}
               line={line}
               index={idx}

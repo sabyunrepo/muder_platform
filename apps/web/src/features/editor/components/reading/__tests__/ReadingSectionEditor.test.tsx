@@ -386,6 +386,54 @@ describe('ReadingSectionEditor', () => {
     ]);
   });
 
+  it('clears script import draft when the modal is cancelled', () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole('button', { name: '대본 입력' }));
+    fireEvent.change(screen.getByLabelText('대본 입력 내용'), {
+      target: { value: '나레이션: 이전 입력' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '대본 입력' }));
+    expect((screen.getByLabelText('대본 입력 내용') as HTMLTextAreaElement).value).toBe('');
+    expect(
+      (screen.getByLabelText('현재 블록을 대본 입력 결과로 교체합니다.') as HTMLInputElement)
+        .checked
+    ).toBe(false);
+  });
+
+  it('does not save voice auto advance for blocks without voice media', async () => {
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [
+          {
+            Index: 0,
+            Type: 'image',
+            MediaID: 'image-1',
+            AdvanceBy: 'voice',
+          },
+          {
+            Index: 1,
+            Type: 'dialogue',
+            Text: '음성 없음',
+            Speaker: 'Alice',
+            VoiceMediaID: '',
+            AdvanceBy: 'voice',
+          },
+        ],
+      },
+    });
+    fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '정규화' } });
+    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+
+    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
+      { Index: 0, Type: 'image', AdvanceBy: 'gm' },
+      { Index: 1, Type: 'dialogue', AdvanceBy: 'gm' },
+    ]);
+  });
+
   it('moves blocks and keeps saved indices sequential', async () => {
     renderEditor();
     fireEvent.click(screen.getAllByLabelText('블록 아래로 이동')[0]);

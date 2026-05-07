@@ -75,7 +75,7 @@ export function ReadingBlockFields({
               ['large', '크게'],
             ]}
           />
-          <AdvanceField line={line} characters={characters} onChange={onPatch} />
+          <AdvanceField line={line} characters={characters} onChange={onPatch} allowVoice={false} />
         </div>
       </>
     );
@@ -117,7 +117,13 @@ export function ReadingBlockFields({
             />
             종료 후 다음 진행
           </label>
-          <AdvanceField line={line} characters={characters} onChange={onPatch} compact />
+          <AdvanceField
+            line={line}
+            characters={characters}
+            onChange={onPatch}
+            compact
+            allowVoice={false}
+          />
         </div>
       </>
     );
@@ -225,7 +231,12 @@ export function ReadingBlockFields({
           onSelect={(media) => onPatch({ ImageMediaID: media.id })}
           onClear={() => onPatch({ ImageMediaID: '' })}
         />
-        <AdvanceField line={line} characters={characters} onChange={onPatch} />
+        <AdvanceField
+          line={line}
+          characters={characters}
+          onChange={onPatch}
+          allowVoice={Boolean(line.VoiceMediaID)}
+        />
       </div>
     </>
   );
@@ -293,17 +304,27 @@ function AdvanceField({
   characters,
   onChange,
   compact = false,
+  allowVoice = true,
 }: {
   line: ReadingLineDTO;
   characters: CharacterOption[];
   onChange: (patch: Partial<ReadingLineDTO>) => void;
   compact?: boolean;
+  allowVoice?: boolean;
 }) {
   const advanceBy = line.AdvanceBy ?? 'gm';
-  const mode = advanceBy.startsWith('role:') ? 'role' : advanceBy === 'voice' ? 'voice' : 'gm';
+  const mode = advanceBy.startsWith('role:')
+    ? 'role'
+    : advanceBy === 'voice' && allowVoice
+      ? 'voice'
+      : 'gm';
   const roleId = advanceBy.startsWith('role:') ? advanceBy.slice('role:'.length) : '';
 
   function setMode(nextMode: string) {
+    if (nextMode === 'voice' && !allowVoice) {
+      onChange({ AdvanceBy: 'gm' });
+      return;
+    }
     if (nextMode === 'role') {
       onChange({ AdvanceBy: characters[0] ? (`role:${characters[0].id}` as AdvanceBy) : '' });
       return;
@@ -321,7 +342,7 @@ function AdvanceField({
         onChange={(event) => setMode(event.target.value)}
       >
         <option value="gm">방장</option>
-        <option value="voice">음성 자동</option>
+        {allowVoice && <option value="voice">음성 자동</option>}
         <option value="role">역할 지정</option>
       </select>
       {mode === 'role' && (
