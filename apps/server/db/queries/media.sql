@@ -235,6 +235,48 @@ WHERE m.theme_id = t.id
   AND m.theme_id = sqlc.arg('theme_id')
   AND m.image_media_id = sqlc.arg('media_id');
 
+-- name: ClearStoryInfoMediaReferencesWithOwner :execrows
+UPDATE story_infos si
+SET image_media_id = CASE
+      WHEN si.image_media_id = sqlc.arg('media_id')::uuid THEN NULL
+      ELSE si.image_media_id
+    END,
+    body = regexp_replace(
+      si.body,
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' || sqlc.arg('media_id')::text || '"[^>]*/?>',
+      '',
+      'g'
+    ),
+    version = si.version + 1,
+    updated_at = NOW()
+FROM themes t
+WHERE si.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND si.theme_id = sqlc.arg('theme_id')
+  AND (
+    si.image_media_id = sqlc.arg('media_id')::uuid
+    OR si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      sqlc.arg('media_id')::text ||
+      '"[^>]*/?>'
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = sqlc.arg('media_id')::uuid
+    )
+  );
+
+-- name: DeleteStoryInfoMediaRefsForMediaWithOwner :execrows
+DELETE FROM story_info_media_refs refs
+USING story_infos si, themes t
+WHERE refs.story_info_id = si.id
+  AND si.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND si.theme_id = sqlc.arg('theme_id')
+  AND refs.media_id = sqlc.arg('media_id')::uuid;
+
 -- name: FindRoleSheetReferencesForMedia :many
 SELECT id, key, body
 FROM theme_contents
@@ -259,6 +301,56 @@ SELECT id, name
 FROM theme_maps
 WHERE theme_id = sqlc.arg('theme_id')
   AND image_media_id = sqlc.arg('media_id');
+
+-- name: FindStoryInfoReferencesForMedia :many
+WITH matching_story_infos AS (
+  SELECT si.id, si.title, refs.usage, si.sort_order, refs.sort_order AS usage_sort_order
+  FROM story_info_media_refs refs
+  JOIN story_infos si ON si.id = refs.story_info_id
+  WHERE si.theme_id = sqlc.arg('theme_id')
+    AND refs.media_id = sqlc.arg('media_id')::uuid
+
+  UNION ALL
+
+  SELECT si.id, si.title, 'cover'::text AS usage, si.sort_order, -2 AS usage_sort_order
+  FROM story_infos si
+  WHERE si.theme_id = sqlc.arg('theme_id')
+    AND si.image_media_id = sqlc.arg('media_id')::uuid
+    AND NOT EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = sqlc.arg('media_id')::uuid
+        AND refs.usage = 'cover'
+    )
+
+  UNION ALL
+
+  SELECT si.id,
+         si.title,
+         CASE WHEN media.type = 'VIDEO' THEN 'embedded_video' ELSE 'embedded_image' END AS usage,
+         si.sort_order,
+         -1 AS usage_sort_order
+  FROM story_infos si
+  JOIN theme_media media ON media.id = sqlc.arg('media_id')::uuid
+  WHERE si.theme_id = sqlc.arg('theme_id')
+    AND media.theme_id = si.theme_id
+    AND si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      sqlc.arg('media_id')::text ||
+      '"[^>]*/?>'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = sqlc.arg('media_id')::uuid
+        AND refs.usage = CASE WHEN media.type = 'VIDEO' THEN 'embedded_video' ELSE 'embedded_image' END
+    )
+)
+SELECT id, title, usage
+FROM matching_story_infos
+ORDER BY sort_order, usage_sort_order, usage;
 
 -- ============================================================
 -- Media (Batch)

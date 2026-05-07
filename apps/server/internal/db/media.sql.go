@@ -165,6 +165,54 @@ func (q *Queries) ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, ar
 	return result.RowsAffected(), nil
 }
 
+const clearStoryInfoMediaReferencesWithOwner = `-- name: ClearStoryInfoMediaReferencesWithOwner :execrows
+UPDATE story_infos si
+SET image_media_id = CASE
+      WHEN si.image_media_id = $1::uuid THEN NULL
+      ELSE si.image_media_id
+    END,
+    body = regexp_replace(
+      si.body,
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' || $1::text || '"[^>]*/?>',
+      '',
+      'g'
+    ),
+    version = si.version + 1,
+    updated_at = NOW()
+FROM themes t
+WHERE si.theme_id = t.id
+  AND t.creator_id = $2
+  AND si.theme_id = $3
+  AND (
+    si.image_media_id = $1::uuid
+    OR si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      $1::text ||
+      '"[^>]*/?>'
+    )
+    OR EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = $1::uuid
+    )
+  )
+`
+
+type ClearStoryInfoMediaReferencesWithOwnerParams struct {
+	MediaID   uuid.UUID `json:"media_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+}
+
+func (q *Queries) ClearStoryInfoMediaReferencesWithOwner(ctx context.Context, arg ClearStoryInfoMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearStoryInfoMediaReferencesWithOwner, arg.MediaID, arg.CreatorID, arg.ThemeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearThemeCoverMediaReferencesWithOwner = `-- name: ClearThemeCoverMediaReferencesWithOwner :execrows
 UPDATE themes
 SET cover_image_media_id = NULL,
@@ -385,6 +433,30 @@ func (q *Queries) DeleteMediaWithOwner(ctx context.Context, arg DeleteMediaWithO
 	return result.RowsAffected(), nil
 }
 
+const deleteStoryInfoMediaRefsForMediaWithOwner = `-- name: DeleteStoryInfoMediaRefsForMediaWithOwner :execrows
+DELETE FROM story_info_media_refs refs
+USING story_infos si, themes t
+WHERE refs.story_info_id = si.id
+  AND si.theme_id = t.id
+  AND t.creator_id = $1
+  AND si.theme_id = $2
+  AND refs.media_id = $3::uuid
+`
+
+type DeleteStoryInfoMediaRefsForMediaWithOwnerParams struct {
+	CreatorID uuid.UUID `json:"creator_id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+	MediaID   uuid.UUID `json:"media_id"`
+}
+
+func (q *Queries) DeleteStoryInfoMediaRefsForMediaWithOwner(ctx context.Context, arg DeleteStoryInfoMediaRefsForMediaWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteStoryInfoMediaRefsForMediaWithOwner, arg.CreatorID, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const findCharacterAliasIconReferencesForMedia = `-- name: FindCharacterAliasIconReferencesForMedia :many
 SELECT id, name
 FROM theme_characters
@@ -488,6 +560,88 @@ func (q *Queries) FindRoleSheetReferencesForMedia(ctx context.Context, arg FindR
 	for rows.Next() {
 		var i FindRoleSheetReferencesForMediaRow
 		if err := rows.Scan(&i.ID, &i.Key, &i.Body); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findStoryInfoReferencesForMedia = `-- name: FindStoryInfoReferencesForMedia :many
+WITH matching_story_infos AS (
+  SELECT si.id, si.title, refs.usage, si.sort_order, refs.sort_order AS usage_sort_order
+  FROM story_info_media_refs refs
+  JOIN story_infos si ON si.id = refs.story_info_id
+  WHERE si.theme_id = $1
+    AND refs.media_id = $2::uuid
+
+  UNION ALL
+
+  SELECT si.id, si.title, 'cover'::text AS usage, si.sort_order, -2 AS usage_sort_order
+  FROM story_infos si
+  WHERE si.theme_id = $1
+    AND si.image_media_id = $2::uuid
+    AND NOT EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = $2::uuid
+        AND refs.usage = 'cover'
+    )
+
+  UNION ALL
+
+  SELECT si.id,
+         si.title,
+         CASE WHEN media.type = 'VIDEO' THEN 'embedded_video' ELSE 'embedded_image' END AS usage,
+         si.sort_order,
+         -1 AS usage_sort_order
+  FROM story_infos si
+  JOIN theme_media media ON media.id = $2::uuid
+  WHERE si.theme_id = $1
+    AND media.theme_id = si.theme_id
+    AND si.body ~ (
+      '<MediaEmbed[^>]*[[:space:]]mediaId[[:space:]]*=[[:space:]]*"' ||
+      $2::text ||
+      '"[^>]*/?>'
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM story_info_media_refs refs
+      WHERE refs.story_info_id = si.id
+        AND refs.media_id = $2::uuid
+        AND refs.usage = CASE WHEN media.type = 'VIDEO' THEN 'embedded_video' ELSE 'embedded_image' END
+    )
+)
+SELECT id, title, usage
+FROM matching_story_infos
+ORDER BY sort_order, usage_sort_order, usage
+`
+
+type FindStoryInfoReferencesForMediaParams struct {
+	ThemeID uuid.UUID `json:"theme_id"`
+	MediaID uuid.UUID `json:"media_id"`
+}
+
+type FindStoryInfoReferencesForMediaRow struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
+	Usage string    `json:"usage"`
+}
+
+func (q *Queries) FindStoryInfoReferencesForMedia(ctx context.Context, arg FindStoryInfoReferencesForMediaParams) ([]FindStoryInfoReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findStoryInfoReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindStoryInfoReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindStoryInfoReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.Usage); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

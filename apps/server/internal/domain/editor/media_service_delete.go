@@ -133,6 +133,18 @@ func (s *mediaService) collectMediaReferencesWithQueries(ctx context.Context, q 
 		refList = append(refList, mediaReferenceInfo{Type: "map", ID: r.ID.String(), Name: r.Name})
 	}
 
+	storyInfoRefs, err := q.FindStoryInfoReferencesForMedia(ctx, db.FindStoryInfoReferencesForMediaParams{
+		ThemeID: media.ThemeID,
+		MediaID: mediaID,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to check story info media references")
+		return nil, apperror.Internal("failed to check media references")
+	}
+	for _, r := range storyInfoRefs {
+		refList = append(refList, mediaReferenceInfo{Type: storyInfoMediaReferenceType(r.Usage), ID: r.ID.String(), Name: r.Title})
+	}
+
 	roleSheetRefs, err := q.FindRoleSheetReferencesForMedia(ctx, db.FindRoleSheetReferencesForMediaParams{
 		ThemeID: media.ThemeID,
 		Body:    mediaID.String(),
@@ -220,6 +232,23 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		return apperror.Internal("failed to clear media references")
 	}
 
+	if _, err := q.ClearStoryInfoMediaReferencesWithOwner(ctx, db.ClearStoryInfoMediaReferencesWithOwnerParams{
+		MediaID:   mediaID,
+		CreatorID: creatorID,
+		ThemeID:   media.ThemeID,
+	}); err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear story info media references")
+		return apperror.Internal("failed to clear media references")
+	}
+	if _, err := q.DeleteStoryInfoMediaRefsForMediaWithOwner(ctx, db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams{
+		MediaID:   mediaID,
+		CreatorID: creatorID,
+		ThemeID:   media.ThemeID,
+	}); err != nil {
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to delete story info media refs")
+		return apperror.Internal("failed to clear media references")
+	}
+
 	theme, err := q.GetTheme(ctx, media.ThemeID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media reference cleanup")
@@ -248,6 +277,19 @@ func roleSheetMediaReferenceType(body string, mediaID uuid.UUID) string {
 		return "role_sheet_image_page"
 	}
 	return "role_sheet"
+}
+
+func storyInfoMediaReferenceType(usage string) string {
+	switch usage {
+	case "cover":
+		return "story_info_cover"
+	case "embedded_image":
+		return "story_info_embedded_image"
+	case "embedded_video":
+		return "story_info_embedded_video"
+	default:
+		return "story_info"
+	}
 }
 
 func toMediaReferenceResponses(refs []mediaReferenceInfo) []MediaReferenceResponse {
