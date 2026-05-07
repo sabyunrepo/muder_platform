@@ -1,22 +1,5 @@
-import { useMemo, useRef } from 'react';
-import {
-  BlockTypeSelect,
-  BoldItalicUnderlineToggles,
-  CreateLink,
-  ListsToggle,
-  MDXEditor,
-  UndoRedo,
-  headingsPlugin,
-  linkPlugin,
-  listsPlugin,
-  quotePlugin,
-  thematicBreakPlugin,
-  toolbarPlugin,
-  type MDXEditorMethods,
-} from '@mdxeditor/editor';
-
-import type { MediaResponse, MediaType } from '@/features/editor/mediaApi';
-import { InfoMediaEmbedPicker } from './InfoMediaEmbedPicker';
+import type { MediaType } from '@/features/editor/mediaApi';
+import { RichContentEditor } from '@/features/editor/components/content/RichContentEditor';
 
 export function InfoMarkdownEditor({
   themeId,
@@ -33,53 +16,17 @@ export function InfoMarkdownEditor({
   onOpenPicker: (type: MediaType) => void;
   onClosePicker: () => void;
 }) {
-  const editorRef = useRef<MDXEditorMethods>(null);
-  const plugins = useMemo(
-    () => [
-      headingsPlugin(),
-      listsPlugin(),
-      quotePlugin(),
-      linkPlugin(),
-      thematicBreakPlugin(),
-      toolbarPlugin({
-        toolbarContents: () => (
-          <>
-            <UndoRedo />
-            <BlockTypeSelect />
-            <BoldItalicUnderlineToggles />
-            <ListsToggle />
-            <CreateLink />
-          </>
-        ),
-      }),
-    ],
-    []
-  );
-
-  function handleSelectMedia(media: MediaResponse) {
-    const type = media.type === 'VIDEO' ? 'video' : 'image';
-    const snippet = `\n\n<MediaEmbed mediaId="${media.id}" type="${type}" />\n`;
-    editorRef.current?.insertMarkdown(snippet);
-    onClosePicker();
-  }
-
   return (
-    <div className="space-y-2" aria-label="정보 본문 작성기">
-      <InfoMediaEmbedPicker
-        themeId={themeId}
-        pickerType={pickerType}
-        onOpen={onOpenPicker}
-        onClose={onClosePicker}
-        onSelect={handleSelectMedia}
-      />
-      <MDXEditor
-        ref={editorRef}
-        markdown={markdown}
-        onChange={onChange}
-        plugins={plugins}
-        className="mmp-mdx-editor"
-        contentEditableClassName="text-sm leading-6 text-slate-100"
-      />
-    </div>
+    <RichContentEditor
+      themeId={themeId}
+      markdown={markdown}
+      onChange={onChange}
+      pickerType={pickerType}
+      onOpenPicker={onOpenPicker}
+      onClosePicker={onClosePicker}
+      ariaLabel="정보 본문 작성기"
+      imagePickerTitle="정보 이미지 선택"
+      videoPickerTitle="정보 영상 선택"
+    />
   );
 }

@@ -3,15 +3,23 @@ import { Image, Video, X } from 'lucide-react';
 import type { MediaResponse, MediaType } from '@/features/editor/mediaApi';
 import { MediaPicker } from '../media/MediaPicker';
 
-export function InfoMediaEmbedPicker({
+export function MediaEmbedPicker({
   themeId,
   pickerType,
+  imageButtonLabel = '이미지 삽입',
+  videoButtonLabel = '영상 삽입',
+  imagePickerTitle = '이미지 선택',
+  videoPickerTitle = '영상 선택',
   onOpen,
   onClose,
   onSelect,
 }: {
   themeId: string;
   pickerType: MediaType | null;
+  imageButtonLabel?: string;
+  videoButtonLabel?: string;
+  imagePickerTitle?: string;
+  videoPickerTitle?: string;
   onOpen: (type: MediaType) => void;
   onClose: () => void;
   onSelect: (media: MediaResponse) => void;
@@ -20,23 +28,26 @@ export function InfoMediaEmbedPicker({
     <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
+        data-rich-content-control="true"
         onClick={() => onOpen('IMAGE')}
         className="inline-flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 hover:border-amber-400 hover:text-amber-200"
       >
         <Image className="h-3.5 w-3.5" />
-        이미지 삽입
+        {imageButtonLabel}
       </button>
       <button
         type="button"
+        data-rich-content-control="true"
         onClick={() => onOpen('VIDEO')}
         className="inline-flex items-center gap-1.5 rounded border border-slate-700 px-2.5 py-1.5 text-xs text-slate-200 hover:border-amber-400 hover:text-amber-200"
       >
         <Video className="h-3.5 w-3.5" />
-        영상 삽입
+        {videoButtonLabel}
       </button>
       {pickerType && (
         <button
           type="button"
+          data-rich-content-control="true"
           onClick={onClose}
           className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-slate-200"
         >
@@ -50,7 +61,7 @@ export function InfoMediaEmbedPicker({
         onSelect={onSelect}
         themeId={themeId}
         filterType={pickerType ?? undefined}
-        title={pickerType === 'VIDEO' ? '정보 영상 선택' : '정보 이미지 선택'}
+        title={pickerType === 'VIDEO' ? videoPickerTitle : imagePickerTitle}
       />
     </div>
   );
