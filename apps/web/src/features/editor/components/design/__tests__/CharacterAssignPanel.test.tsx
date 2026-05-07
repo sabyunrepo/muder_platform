@@ -210,7 +210,6 @@ function readStartingClues(config: Record<string, unknown>) {
   return modules?.starting_clue?.config?.startingClues ?? {};
 }
 
-const endcardSectionName = /^결과 카드 (?:작성됨|비어 있음)$/;
 const roleSheetSectionName = /^역할지 Markdown 또는 PDF$/;
 const startingClueSectionName = /^시작 단서 \d+\/\d+개 배정$/;
 const hiddenMissionSectionName = /^히든 미션 \d+개$/;
@@ -220,10 +219,6 @@ function openCharacterSection(name: RegExp) {
   if (button.getAttribute('aria-expanded') === 'false') {
     fireEvent.click(button);
   }
-}
-
-function openEndcardSection() {
-  openCharacterSection(endcardSectionName);
 }
 
 function openRoleSheetSection() {
@@ -275,10 +270,11 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
 
     expect(screen.getByRole('button', { name: /기본 정보/ }).getAttribute('aria-expanded')).toBe('true');
-    expect(screen.getByRole('button', { name: endcardSectionName }).getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: roleSheetSectionName }).getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: startingClueSectionName }).getAttribute('aria-expanded')).toBe('false');
     expect(screen.getByRole('button', { name: hiddenMissionSectionName }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: /결과 카드/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: '결과 카드 저장' })).toBeNull();
     expect(screen.queryByRole('textbox', { name: '역할지 Markdown' })).toBeNull();
   });
 
@@ -393,39 +389,30 @@ describe('CharacterAssignPanel', () => {
     expect(updateCharacterMutateMock).not.toHaveBeenCalled();
   });
 
-  it('결과 카드 내용을 캐릭터 저장 계약으로 보낸다', () => {
+  it('기존 결과 카드 값이 있어도 등장인물 화면 저장 payload에 포함하지 않는다', () => {
+    useEditorCharactersMock.mockReturnValue({
+      data: [{
+        ...mockCharacters[0],
+        endcard_title: '범인의 후일담',
+        endcard_body: '사건 이후의 선택',
+        endcard_image_media_id: 'image-1',
+      }],
+      isLoading: false,
+    });
+
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
-    openEndcardSection();
+    fireEvent.click(screen.getByRole('button', { name: /공범/ }));
 
-    fireEvent.change(screen.getByRole('textbox', { name: '제목' }), {
-      target: { value: '범인의 후일담' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '결과 카드 이미지 선택' }));
-    fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
-    fireEvent.change(screen.getByRole('textbox', { name: '본문' }), {
-      target: { value: '사건 이후의 선택을 보여준다.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: '결과 카드 저장' }));
-
+    expect(screen.queryByRole('button', { name: /결과 카드/ })).toBeNull();
     expect(updateCharacterMutateMock).toHaveBeenCalledWith({
       characterId: 'char-1',
-      body: {
-        name: '홍길동',
-        description: undefined,
-        image_url: undefined,
-        is_culprit: true,
-        mystery_role: 'culprit',
-        sort_order: 0,
-        is_playable: true,
-        show_in_intro: true,
-        can_speak_in_reading: true,
-        is_voting_candidate: true,
-        endcard_title: '범인의 후일담',
-        endcard_body: '사건 이후의 선택을 보여준다.',
-        endcard_image_url: '',
-        endcard_image_media_id: 'image-1',
-      },
+      body: expect.not.objectContaining({
+        endcard_title: expect.anything(),
+        endcard_body: expect.anything(),
+        endcard_image_url: expect.anything(),
+        endcard_image_media_id: expect.anything(),
+      }),
     });
   });
 
