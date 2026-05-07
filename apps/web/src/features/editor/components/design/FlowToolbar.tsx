@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { Plus, Save, ChevronDown, LayoutTemplate, Play } from "lucide-react";
 import { FLOW_PRESETS, createPresetFlow } from "../../hooks/flowPresets";
 import type { Node, Edge } from "@xyflow/react";
+import type { FlowNodeData, FlowNodeType } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface FlowToolbarProps {
-  onAddNode: (type: string) => void;
+  onAddNode: (type: FlowNodeType, data?: Partial<FlowNodeData>) => void;
   onSave: () => void;
   isSaving: boolean;
   onApplyPreset?: (nodes: Node[], edges: Edge[]) => void;
@@ -18,15 +19,37 @@ interface FlowToolbarProps {
 }
 
 interface NodeOption {
-  type: string;
+  id: string;
+  type: FlowNodeType;
   label: string;
   description: string;
+  data?: Partial<FlowNodeData>;
 }
 
 const NODE_OPTIONS: NodeOption[] = [
-  { type: "phase", label: "장면", description: "스토리 진행" },
-  { type: "branch", label: "분기", description: "조건 분기" },
-  { type: "ending", label: "엔딩", description: "게임 종료" },
+  {
+    id: "investigation-round",
+    type: "phase",
+    label: "게임 라운드",
+    description: "조사 라운드 진행",
+    data: { label: "1라운드 조사", phase_type: "investigation", rounds: 1 },
+  },
+  {
+    id: "story-scene",
+    type: "phase",
+    label: "장면",
+    description: "대사/연출 진행",
+    data: { label: "새 장면", phase_type: "story_progression" },
+  },
+  {
+    id: "voting-phase",
+    type: "phase",
+    label: "투표",
+    description: "범인 지목 단계",
+    data: { label: "투표", phase_type: "voting" },
+  },
+  { id: "ending", type: "ending", label: "엔딩", description: "게임 종료" },
+  { id: "condition-branch", type: "branch", label: "조건 분기", description: "진행 조건" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -61,8 +84,8 @@ export function FlowToolbar({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const handleSelect = (type: string) => {
-    onAddNode(type);
+  const handleSelect = (option: NodeOption) => {
+    onAddNode(option.type, option.data);
     setOpen(false);
   };
 
@@ -84,9 +107,9 @@ export function FlowToolbar({
           <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded border border-slate-700 bg-slate-800 py-1 shadow-lg">
             {NODE_OPTIONS.map((opt) => (
               <button
-                key={opt.type}
+                key={opt.id}
                 type="button"
-                onClick={() => handleSelect(opt.type)}
+                onClick={() => handleSelect(opt)}
                 className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-slate-700"
               >
                 <span className="text-xs font-medium text-slate-200">

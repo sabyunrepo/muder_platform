@@ -133,11 +133,11 @@ export function useFlowData(themeId: string) {
   }, [saveFlow, nodes, edges]);
 
   const addNode = useCallback(
-    (type: FlowNodeType, position: XYPosition) => {
+    (type: FlowNodeType, position: XYPosition, data?: Partial<FlowNodeData>) => {
       createNode.mutate(
         {
           type,
-          data: { label: type === 'phase' ? '새 장면' : undefined },
+          data: data ?? { label: type === 'phase' ? '새 장면' : undefined },
           position_x: position.x,
           position_y: position.y,
         },
