@@ -18,9 +18,8 @@ import { PhaseNode } from './PhaseNode';
 import { EndingNode } from './EndingNode';
 import { NodeDetailPanel } from './NodeDetailPanel';
 import { FlowOrderReviewPanel } from './FlowOrderReviewPanel';
-import { StorySceneSummary } from './StorySceneSummary';
 import { branchNodeTypes, conditionEdgeTypes } from './flowNodeRegistry';
-import type { FlowNodeType } from '../../flowTypes';
+import type { FlowNodeData, FlowNodeType } from '../../flowTypes';
 
 // ---------------------------------------------------------------------------
 // Node / edge type registries
@@ -104,12 +103,19 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   );
 
   // Add node at canvas center
+  const flowStats = useMemo(() => {
+    const phaseCount = nodes.filter((node) => node.type === 'phase').length;
+    const endingCount = nodes.filter((node) => node.type === 'ending').length;
+    const branchCount = nodes.filter((node) => node.type === 'branch').length;
+    return { phaseCount, endingCount, branchCount, edgeCount: edges.length };
+  }, [edges.length, nodes]);
+
   const handleAddNode = useCallback(
-    (type: string) => {
+    (type: FlowNodeType, data?: Partial<FlowNodeData>) => {
       const wrapper = reactFlowWrapper.current;
       const cx = wrapper ? wrapper.clientWidth / 2 : 300;
       const cy = wrapper ? wrapper.clientHeight / 2 : 200;
-      addNode(type as FlowNodeType, { x: cx, y: cy });
+      addNode(type, { x: cx, y: cy }, data);
     },
     [addNode]
   );
@@ -192,7 +198,23 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         }}
         isOrderReviewing={showOrderReview}
       />
-      <StorySceneSummary nodes={nodes} edges={edges} />
+      <div
+        aria-label="게임 진행 요약"
+        className="flex shrink-0 gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950/80 px-4 py-2 text-[11px] text-slate-300 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
+          진행 단계 {flowStats.phaseCount}
+        </span>
+        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
+          연결 {flowStats.edgeCount}
+        </span>
+        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
+          조건 {flowStats.branchCount}
+        </span>
+        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
+          엔딩 {flowStats.endingCount}
+        </span>
+      </div>
       <div
         data-testid="flow-workspace"
         className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"

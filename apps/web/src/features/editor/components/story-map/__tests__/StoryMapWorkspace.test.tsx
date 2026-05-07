@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -14,45 +14,7 @@ const {
 }));
 
 vi.mock("../../design/FlowCanvas", () => ({
-  FlowCanvas: ({
-    themeId,
-    onSelectedNodeChange,
-  }: {
-    themeId: string;
-    onSelectedNodeChange?: (node: unknown, context: { outgoingEdges: unknown[] }) => void;
-  }) => (
-    <div data-testid="flow-canvas">
-      flow canvas {themeId}
-      <button
-        type="button"
-        onClick={() =>
-          onSelectedNodeChange?.(
-            {
-              id: "scene-1",
-              type: "phase",
-              data: {
-                label: "오프닝",
-                description: "도입 장면",
-                discussionRoomPolicy: {
-                  enabled: true,
-                  roomKind: "all",
-                  mainRoomName: "전체 토론",
-                  privateRoomsEnabled: false,
-                  privateRoomName: "밀담방",
-                  participantMode: "all",
-                  availability: "phase_active",
-                  closeBehavior: "close_on_exit",
-                },
-              },
-            },
-            { outgoingEdges: [] },
-          )
-        }
-      >
-        장면 선택
-      </button>
-    </div>
-  ),
+  FlowCanvas: ({ themeId }: { themeId: string }) => <div data-testid="flow-canvas">flow canvas {themeId}</div>,
 }));
 
 vi.mock("@/features/editor/api", () => ({
@@ -66,12 +28,6 @@ vi.mock("@/features/editor/mediaApi", () => ({
 }));
 
 import { StoryMapWorkspace } from "../StoryMapWorkspace";
-
-function getScenePropertiesPanel(): HTMLElement {
-  const panel = screen.getByRole("heading", { name: "장면 속성" }).closest("aside");
-  expect(panel).not.toBeNull();
-  return panel as HTMLElement;
-}
 
 afterEach(() => {
   cleanup();
@@ -105,97 +61,35 @@ describe("StoryMapWorkspace", () => {
     });
   });
 
-  it("스토리 진행 중심 제작 화면과 플로우 캔버스를 함께 렌더링한다", () => {
+  it("게임 진행 플로우 중심 제작 화면과 플로우 캔버스를 함께 렌더링한다", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
-    expect(screen.getByLabelText("스토리 진행 제작").className).toContain("lg:overflow-hidden");
-    expect(screen.getByRole("heading", { name: "스토리 진행 제작" })).toBeDefined();
-    expect(screen.getByRole("heading", { name: "라운드 공개 미리보기" })).toBeDefined();
-    expect(screen.getByRole("heading", { name: "제작 라이브러리" })).toBeDefined();
-    expect(screen.getByRole("heading", { name: "제작 라이브러리" }).closest("aside")?.className).toContain(
-      "lg:overflow-y-auto",
-    );
-    expect(screen.getByRole("heading", { name: "제작 라이브러리" }).closest("aside")?.querySelector("div[class*='overflow-x-auto']")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "장면 속성" })).toBeDefined();
-    expect(screen.getByRole("heading", { name: "장면 속성" }).closest("aside")?.querySelector("div[class*='sm:grid-cols-2']")).toBeTruthy();
+    expect(screen.getByLabelText("게임 진행 플로우").className).toContain("lg:overflow-hidden");
+    expect(screen.getByRole("heading", { name: "게임 진행 플로우" })).toBeDefined();
+    expect(screen.getByText("Game Flow")).toBeDefined();
+    expect(screen.getByText("진행 단계")).toBeDefined();
+    expect(screen.getByText("라운드")).toBeDefined();
+    expect(screen.getByText("투표")).toBeDefined();
+    expect(screen.getByText("엔딩")).toBeDefined();
     expect(screen.getByTestId("flow-canvas").textContent).toContain("theme-1");
   });
 
-  it("작성자가 장면 흐름에 연결할 엔티티 묶음을 볼 수 있다", () => {
+  it("상단 라운드 미리보기와 좌우 보조 패널을 렌더링하지 않는다", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
-    expect(screen.getByText("한서윤")).toBeDefined();
-    expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("응접실").length).toBeGreaterThan(0);
-    expect(screen.getByText("오프닝 음악")).toBeDefined();
-    expect(screen.getByText("단서")).toBeDefined();
-    expect(screen.getAllByText("장소").length).toBeGreaterThan(1);
-    expect(screen.getAllByText("토론방").length).toBeGreaterThan(1);
-    expect(screen.getAllByText("조사권").length).toBeGreaterThan(1);
+    expect(screen.queryByRole("heading", { name: "라운드 공개 미리보기" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "제작 라이브러리" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "장면 속성" })).toBeNull();
+    expect(screen.queryByText("찢어진 초대장")).toBeNull();
+    expect(screen.queryByText("오프닝 음악")).toBeNull();
   });
 
-  it("라운드별 공개 장소/단서와 범위 밖 경고를 제작자 언어로 표시한다", () => {
+  it("중앙 캔버스를 단일 주 작업 영역으로 넓게 배치한다", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
-    const preview = screen.getByLabelText("라운드 공개 미리보기");
-    expect(within(preview).getByRole("heading", { name: "1라운드" })).toBeDefined();
-    expect(within(preview).getByRole("heading", { name: "3라운드" })).toBeDefined();
-    expect(within(preview).getAllByText("찢어진 초대장").length).toBeGreaterThan(0);
-    expect(within(preview).getByText("봉인된 유언장")).toBeDefined();
-    expect(
-      within(preview).getByText("봉인된 유언장 단서는 공개되지만 응접실 장소는 이 라운드에 보이지 않습니다."),
-    ).toBeDefined();
-  });
-
-  it("라이브러리 항목을 선택하면 우측 패널에 연결 대상으로 표시한다", () => {
-    render(<StoryMapWorkspace themeId="theme-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /찢어진 초대장/ }));
-
-    const inspector = getScenePropertiesPanel();
-    expect(within(inspector).getByText("선택한 연결 대상")).toBeDefined();
-    expect(within(inspector).getByText("찢어진 초대장")).toBeDefined();
-  });
-
-  it("테마가 바뀌면 이전 테마의 선택 항목을 초기화한다", () => {
-    const { rerender } = render(<StoryMapWorkspace themeId="theme-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /찢어진 초대장/ }));
-    expect(within(getScenePropertiesPanel()).getByText("찢어진 초대장")).toBeDefined();
-
-    rerender(<StoryMapWorkspace themeId="theme-2" />);
-
-    expect(within(getScenePropertiesPanel()).queryByText("찢어진 초대장")).toBeNull();
-    expect(
-      within(getScenePropertiesPanel()).getByText(
-        "왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다.",
-      ),
-    ).toBeDefined();
-  });
-
-  it("테마가 바뀌면 이전 테마의 선택 항목을 초기화한다", () => {
-    const { rerender } = render(<StoryMapWorkspace themeId="theme-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: /찢어진 초대장/ }));
-    expect(screen.getAllByText("찢어진 초대장").length).toBeGreaterThan(1);
-
-    rerender(<StoryMapWorkspace themeId="theme-2" />);
-
-    expect(within(getScenePropertiesPanel()).queryByText("찢어진 초대장")).toBeNull();
-    expect(
-      screen.getByText("왼쪽 라이브러리에서 항목을 선택하면 장면에 붙일 연결 대상으로 표시합니다."),
-    ).toBeDefined();
-    expect(screen.getByText("선택한 장면 없음")).toBeDefined();
-  });
-
-  it("중앙 흐름에서 장면이 선택되면 우측 패널에 장면 요약을 표시한다", () => {
-    render(<StoryMapWorkspace themeId="theme-1" />);
-
-    fireEvent.click(screen.getByRole("button", { name: "장면 선택" }));
-
-    expect(screen.getByText("오프닝")).toBeDefined();
-    expect(screen.getByText("스토리 장면")).toBeDefined();
-    expect(screen.getByText("정보 공개 설정 없음")).toBeDefined();
-    expect(screen.getByText("장면 시작 시 · 전원 참여 · 장면 종료 시 닫기 · 전체 토론: 전체 토론")).toBeDefined();
+    const main = screen.getByTestId("flow-canvas").closest("main");
+    expect(main?.className).toContain("flex-1");
+    expect(main?.className).toContain("overflow-hidden");
+    expect(main?.className).not.toContain("lg:border-l");
   });
 });

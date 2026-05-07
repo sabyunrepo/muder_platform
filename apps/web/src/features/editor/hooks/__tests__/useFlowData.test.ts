@@ -163,6 +163,28 @@ describe('useFlowData', () => {
     expect(latestSavedGraph().edges).toEqual([]);
   });
 
+  it('node 추가 시 전달된 제작자용 기본값을 create payload에 포함한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.addNode(
+        'phase',
+        { x: 200, y: 120 },
+        { label: '1라운드 조사', phase_type: 'investigation', rounds: 1 }
+      );
+    });
+
+    expect(createNodeMutateMock).toHaveBeenCalledWith(
+      {
+        type: 'phase',
+        data: { label: '1라운드 조사', phase_type: 'investigation', rounds: 1 },
+        position_x: 200,
+        position_y: 120,
+      },
+      expect.any(Object)
+    );
+  });
+
   it('프리셋 적용 후 edge 삭제가 최신 프리셋 edge 목록을 기준으로 동작한다', () => {
     const { result } = renderHook(() => useFlowData('theme-1'));
 

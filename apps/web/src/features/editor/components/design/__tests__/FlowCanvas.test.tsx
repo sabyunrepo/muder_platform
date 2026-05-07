@@ -145,7 +145,7 @@ describe('FlowCanvas', () => {
     expect(onSelectedNodeChange).toHaveBeenCalledWith(selectedNode, { outgoingEdges: [] });
   });
 
-  it('장면 노드가 있으면 스토리 장면 요약을 렌더링한다', () => {
+  it('노드와 연결 수를 작은 게임 진행 요약으로 표시한다', () => {
     useFlowDataMock.mockReturnValue({
       nodes: [
         {
@@ -154,8 +154,14 @@ describe('FlowCanvas', () => {
           position: { x: 0, y: 0 },
           data: { label: '오프닝', phase_type: 'story_progression' },
         },
+        {
+          id: 'ending-1',
+          type: 'ending',
+          position: { x: 100, y: 0 },
+          data: { label: '진실 엔딩' },
+        },
       ],
-      edges: [],
+      edges: [{ id: 'e-scene-ending', source: 'scene-1', target: 'ending-1' }],
       onNodesChange: vi.fn(),
       onEdgesChange: vi.fn(),
       onConnect: vi.fn(),
@@ -165,9 +171,12 @@ describe('FlowCanvas', () => {
     });
 
     render(<FlowCanvas themeId="theme-1" />);
-    expect(screen.getByText('스토리 장면 구성')).toBeDefined();
-    expect(screen.getByText('1개 장면')).toBeDefined();
-    expect(screen.getByText('오프닝')).toBeDefined();
+    expect(screen.getByLabelText('게임 진행 요약')).toBeDefined();
+    expect(screen.getByText('진행 단계 1')).toBeDefined();
+    expect(screen.getByText('연결 1')).toBeDefined();
+    expect(screen.getByText('조건 0')).toBeDefined();
+    expect(screen.getByText('엔딩 1')).toBeDefined();
+    expect(screen.queryByText('스토리 장면 구성')).toBeNull();
   });
 
   it('모바일 우선 세로 레이아웃을 사용하고 데스크톱에서만 2열로 바뀐다', () => {
@@ -329,16 +338,33 @@ describe('FlowToolbar', () => {
   it('항목 추가 버튼 클릭 시 드롭다운이 열린다', () => {
     render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
     fireEvent.click(screen.getByText('항목 추가'));
+    expect(screen.getByText('게임 라운드')).toBeDefined();
     expect(screen.getByText('장면')).toBeDefined();
-    expect(screen.getByText('분기')).toBeDefined();
+    expect(screen.getByText('투표')).toBeDefined();
     expect(screen.getByText('엔딩')).toBeDefined();
+    expect(screen.getByText('조건 분기')).toBeDefined();
   });
 
-  it('드롭다운에서 노드 선택 시 onAddNode가 호출된다', () => {
+  it('드롭다운에서 게임 라운드 선택 시 phase 기본값과 함께 onAddNode가 호출된다', () => {
     const onAddNode = vi.fn();
     render(<FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />);
     fireEvent.click(screen.getByText('항목 추가'));
-    fireEvent.click(screen.getByText('장면'));
-    expect(onAddNode).toHaveBeenCalledWith('phase');
+    fireEvent.click(screen.getByText('게임 라운드'));
+    expect(onAddNode).toHaveBeenCalledWith('phase', {
+      label: '1라운드 조사',
+      phase_type: 'investigation',
+      rounds: 1,
+    });
+  });
+
+  it('드롭다운에서 투표 선택 시 voting phase 기본값과 함께 onAddNode가 호출된다', () => {
+    const onAddNode = vi.fn();
+    render(<FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />);
+    fireEvent.click(screen.getByText('항목 추가'));
+    fireEvent.click(screen.getByText('투표'));
+    expect(onAddNode).toHaveBeenCalledWith('phase', {
+      label: '투표',
+      phase_type: 'voting',
+    });
   });
 });
