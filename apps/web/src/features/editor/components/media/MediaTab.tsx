@@ -346,6 +346,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
         open={youtubeOpen}
         onClose={() => setYoutubeOpen(false)}
         themeId={themeId}
+        categoryId={categoryId}
       />
       <BulkDeleteDialog
         open={deleteDialogOpen}

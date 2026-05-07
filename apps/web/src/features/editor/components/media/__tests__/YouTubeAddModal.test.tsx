@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ComponentProps } from "react";
 import {
   cleanup,
   fireEvent,
@@ -26,7 +27,11 @@ vi.mock("@/features/editor/mediaApi", async () => {
   };
 });
 
-function renderModal(open = true, onClose = vi.fn()) {
+function renderModal(
+  open = true,
+  onClose = vi.fn(),
+  props: Partial<ComponentProps<typeof YouTubeAddModal>> = {},
+) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
@@ -34,7 +39,7 @@ function renderModal(open = true, onClose = vi.fn()) {
     onClose,
     ...render(
       <QueryClientProvider client={qc}>
-        <YouTubeAddModal open={open} onClose={onClose} themeId="theme-1" />
+        <YouTubeAddModal open={open} onClose={onClose} themeId="theme-1" {...props} />
       </QueryClientProvider>,
     ),
   };
@@ -174,6 +179,26 @@ describe("YouTubeAddModal", () => {
         url: "https://youtu.be/dQw4w9WgXcQ",
         name: "Cutscene",
         type: "VIDEO",
+      }),
+    );
+  });
+
+  it("선택한 카테고리가 있으면 YouTube 생성 payload에 포함한다", async () => {
+    mockMutateAsync.mockResolvedValueOnce({});
+    renderModal(true, vi.fn(), { categoryId: "category-screen" });
+    fireEvent.change(screen.getByLabelText("YouTube URL"), {
+      target: { value: "https://youtu.be/dQw4w9WgXcQ" },
+    });
+    fireEvent.change(screen.getByLabelText("이름"), {
+      target: { value: "Screen Clip" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "추가" }));
+    await waitFor(() =>
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        url: "https://youtu.be/dQw4w9WgXcQ",
+        name: "Screen Clip",
+        type: "BGM",
+        category_id: "category-screen",
       }),
     );
   });

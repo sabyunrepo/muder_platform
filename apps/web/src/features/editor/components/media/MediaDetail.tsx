@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, X, Trash2, Save } from 'lucide-react';
+import { AlertTriangle, Link2, RefreshCw, X, Trash2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   useDeleteMedia,
   useMediaCategories,
+  useMediaDeletePreview,
   useUpdateMedia,
   type MediaReferenceInfo,
   type MediaResponse,
   type UpdateMediaRequest,
 } from '@/features/editor/mediaApi';
 import { ApiHttpError } from '@/lib/api-error';
+import { MediaReplaceModal } from './MediaReplaceModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +36,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     media.duration != null ? String(media.duration) : ''
   );
   const [referenceWarning, setReferenceWarning] = useState<MediaReferenceInfo[] | null>(null);
+  const [replaceOpen, setReplaceOpen] = useState(false);
 
   // Reset local state when selected media changes
   useEffect(() => {
@@ -43,11 +46,15 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     setCategoryId(media.category_id ?? '');
     setDuration(media.duration != null ? String(media.duration) : '');
     setReferenceWarning(null);
+    setReplaceOpen(false);
   }, [media.id, media.name, media.tags, media.sort_order, media.category_id, media.duration]);
 
   const updateMutation = useUpdateMedia(themeId);
   const deleteMutation = useDeleteMedia(themeId);
   const { data: categories = [] } = useMediaCategories(themeId);
+  const { data: deletePreview, isLoading: deletePreviewLoading } = useMediaDeletePreview(media.id);
+  const references = deletePreview?.references ?? [];
+  const canReplaceFile = media.source_type === 'FILE' && media.type !== 'VIDEO';
 
   const handleSave = () => {
     const trimmedName = name.trim();
@@ -185,6 +192,8 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           )}
         </dl>
 
+        <MediaReferencesPreview references={references} loading={deletePreviewLoading} />
+
         {referenceWarning && (
           <div
             role="alert"
@@ -224,15 +233,77 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           <Trash2 className="h-3.5 w-3.5" />
           삭제
         </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="flex h-8 items-center gap-1.5 rounded-sm bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          <Save className="h-3.5 w-3.5" />
-          저장
-        </button>
+        <div className="flex items-center gap-2">
+          {canReplaceFile && (
+            <button
+              type="button"
+              onClick={() => setReplaceOpen(true)}
+              className="flex h-8 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              교체
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="flex h-8 items-center gap-1.5 rounded-sm bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Save className="h-3.5 w-3.5" />
+            저장
+          </button>
+        </div>
+      </div>
+      <MediaReplaceModal
+        open={replaceOpen}
+        onClose={() => setReplaceOpen(false)}
+        themeId={themeId}
+        media={media}
+        onReplaced={() => toast.success('파일을 교체했습니다')}
+      />
+    </div>
+  );
+}
+
+function MediaReferencesPreview({
+  references,
+  loading,
+}: {
+  references: MediaReferenceInfo[];
+  loading: boolean;
+}) {
+  if (loading) {
+    return (
+      <div className="rounded-sm border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-500">
+        사용 위치 확인 중...
+      </div>
+    );
+  }
+  if (references.length === 0) {
+    return (
+      <div className="rounded-sm border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-500">
+        아직 연결된 제작 요소가 없습니다.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-sm border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-100">
+      <div className="flex items-start gap-2">
+        <Link2 className="mt-0.5 h-3.5 w-3.5 flex-none text-amber-400" />
+        <div className="min-w-0">
+          <p className="font-medium">사용 중인 위치 {references.length}개</p>
+          <p className="mt-1 text-[11px] text-amber-200/80">
+            삭제하면 아래 연결도 함께 해제됩니다. 교체는 연결을 유지합니다.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {references.slice(0, 5).map((ref, index) => (
+              <li key={`${ref.type}-${ref.id}-${index}`} className="break-words">
+                <span className="font-medium">{mediaReferenceTypeLabel(ref.type)}</span>: {ref.name}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </div>
   );
