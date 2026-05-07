@@ -134,6 +134,7 @@ type readingTestFixture struct {
 	bgmID     uuid.UUID
 	voiceID   uuid.UUID
 	imageID   uuid.UUID
+	videoID   uuid.UUID
 	otherBgm  uuid.UUID // BGM in a different theme
 }
 
@@ -157,6 +158,9 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 	imageID := uuid.New()
 	q.media[imageID] = db.ThemeMedium{ID: imageID, ThemeID: themeID, Type: MediaTypeImage}
 
+	videoID := uuid.New()
+	q.media[videoID] = db.ThemeMedium{ID: videoID, ThemeID: themeID, Type: MediaTypeVideo}
+
 	otherBgm := uuid.New()
 	q.media[otherBgm] = db.ThemeMedium{ID: otherBgm, ThemeID: otherThemeID, Type: MediaTypeBGM}
 
@@ -168,6 +172,7 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 		bgmID:     bgmID,
 		voiceID:   voiceID,
 		imageID:   imageID,
+		videoID:   videoID,
 		otherBgm:  otherBgm,
 	}
 }
@@ -284,6 +289,60 @@ func TestReadingService_Create_ImageMediaReference(t *testing.T) {
 	if got := resp.Lines[0].ImageMediaID; got != f.imageID.String() {
 		t.Fatalf("ImageMediaID = %q, want %q", got, f.imageID.String())
 	}
+}
+
+func TestReadingService_Create_BlockMediaReferences(t *testing.T) {
+	f := newReadingFixture(t)
+	resp, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "With blocks",
+		Lines: []ReadingLineDTO{
+			{Type: ReadingBlockImage, MediaID: f.imageID.String(), AdvanceBy: AdvanceByGM, Position: "center", Size: "large"},
+			{Type: ReadingBlockVideo, MediaID: f.videoID.String(), AdvanceBy: AdvanceByGM, Autoplay: true, WaitUntilEnd: true},
+			{Type: ReadingBlockBGM, MediaID: f.bgmID.String(), BGMMode: ReadingBGMModeOnce},
+			{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeStop},
+			{Type: ReadingBlockGMNote, Text: "GM only"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if len(resp.Lines) != 5 {
+		t.Fatalf("expected 5 blocks, got %d", len(resp.Lines))
+	}
+	if got := resp.Lines[0].MediaID; got != f.imageID.String() {
+		t.Fatalf("image MediaID = %q, want %q", got, f.imageID.String())
+	}
+	if got := resp.Lines[1].MediaID; got != f.videoID.String() {
+		t.Fatalf("video MediaID = %q, want %q", got, f.videoID.String())
+	}
+	if got := resp.Lines[2].BGMMode; got != ReadingBGMModeOnce {
+		t.Fatalf("BGMMode = %q, want %q", got, ReadingBGMModeOnce)
+	}
+}
+
+func TestReadingService_Create_BlockMediaMustMatchType(t *testing.T) {
+	f := newReadingFixture(t)
+	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "Wrong block media",
+		Lines: []ReadingLineDTO{
+			{Type: ReadingBlockVideo, MediaID: f.imageID.String(), AdvanceBy: AdvanceByGM},
+		},
+	})
+	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
+	if !strings.Contains(err.Error(), "line 0: mediaId") {
+		t.Fatalf("expected line context in error, got %v", err)
+	}
+}
+
+func TestReadingService_Create_BGMBlockRequiresMediaUnlessStop(t *testing.T) {
+	f := newReadingFixture(t)
+	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "Missing bgm media",
+		Lines: []ReadingLineDTO{
+			{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeLoop},
+		},
+	})
+	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
 }
 
 func TestReadingService_Create_ImageMediaMustBeImageInTheme(t *testing.T) {

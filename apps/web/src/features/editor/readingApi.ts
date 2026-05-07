@@ -30,12 +30,22 @@ export type AdvanceBy = "voice" | "gm" | `role:${string}` | "";
  */
 export interface ReadingLineDTO {
   Index: number;
+  Type?: ReadingBlockType;
   Text: string;
   Speaker?: string;
   VoiceMediaID?: string;
   ImageMediaID?: string;
   AdvanceBy?: AdvanceBy;
+  MediaID?: string;
+  Position?: "left" | "center" | "right" | "full";
+  Size?: "small" | "medium" | "large";
+  Autoplay?: boolean;
+  WaitUntilEnd?: boolean;
+  BGMMode?: ReadingBgmMode;
 }
+
+export type ReadingBlockType = "dialogue" | "image" | "video" | "bgm" | "gmNote";
+export type ReadingBgmMode = "loop" | "once" | "stop";
 
 export interface CreateReadingSectionRequest {
   name: string;

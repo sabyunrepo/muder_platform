@@ -77,6 +77,7 @@ WHERE rs.theme_id = $1
       SELECT 1 FROM jsonb_array_elements(rs.lines) AS line
       WHERE line->>'VoiceMediaID' = $2::text
          OR line->>'ImageMediaID' = $2::text
+         OR line->>'MediaID' = $2::text
     )
   )
 `
@@ -92,7 +93,7 @@ type FindMediaReferencesInReadingSectionsRow struct {
 }
 
 // Returns reading sections that reference the given media as bgm_media_id
-// OR inside any line's VoiceMediaID/ImageMediaID (PascalCase keys — match engine struct serialization).
+// OR inside any line's VoiceMediaID/ImageMediaID/MediaID (PascalCase keys — match engine struct serialization).
 func (q *Queries) FindMediaReferencesInReadingSections(ctx context.Context, arg FindMediaReferencesInReadingSectionsParams) ([]FindMediaReferencesInReadingSectionsRow, error) {
 	rows, err := q.db.Query(ctx, findMediaReferencesInReadingSections, arg.ThemeID, arg.MediaID)
 	if err != nil {
