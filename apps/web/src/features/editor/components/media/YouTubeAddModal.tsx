@@ -15,6 +15,7 @@ export interface YouTubeAddModalProps {
   open: boolean;
   onClose: () => void;
   themeId: string;
+  categoryId?: string | null;
 }
 
 type YouTubeMediaType = Extract<MediaType, "BGM" | "VIDEO">;
@@ -27,6 +28,7 @@ export function YouTubeAddModal({
   open,
   onClose,
   themeId,
+  categoryId,
 }: YouTubeAddModalProps) {
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
@@ -60,7 +62,12 @@ export function YouTubeAddModal({
     setCreating(true);
     setError(null);
     try {
-      await createMutation.mutateAsync({ url, name: name.trim(), type });
+      await createMutation.mutateAsync({
+        url,
+        name: name.trim(),
+        type,
+        ...(categoryId ? { category_id: categoryId } : {}),
+      });
       onClose();
     } catch (err) {
       const message =

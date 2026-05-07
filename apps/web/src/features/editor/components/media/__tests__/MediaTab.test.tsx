@@ -10,8 +10,11 @@ const {
   useMediaCategoriesMock,
   useCreateMediaCategoryMock,
   useDeleteMediaCategoryMock,
+  useMediaDeletePreviewMock,
   useUpdateMediaMock,
   useDeleteMediaMock,
+  useRequestReplacementUploadMock,
+  useConfirmReplacementUploadMock,
   useRequestUploadUrlMock,
   useConfirmUploadMock,
   useCreateYouTubeMediaMock,
@@ -22,8 +25,11 @@ const {
   useMediaCategoriesMock: vi.fn(),
   useCreateMediaCategoryMock: vi.fn(),
   useDeleteMediaCategoryMock: vi.fn(),
+  useMediaDeletePreviewMock: vi.fn(),
   useUpdateMediaMock: vi.fn(),
   useDeleteMediaMock: vi.fn(),
+  useRequestReplacementUploadMock: vi.fn(),
+  useConfirmReplacementUploadMock: vi.fn(),
   useRequestUploadUrlMock: vi.fn(),
   useConfirmUploadMock: vi.fn(),
   useCreateYouTubeMediaMock: vi.fn(),
@@ -36,8 +42,11 @@ vi.mock('@/features/editor/mediaApi', () => ({
   useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
   useCreateMediaCategory: () => useCreateMediaCategoryMock(),
   useDeleteMediaCategory: () => useDeleteMediaCategoryMock(),
+  useMediaDeletePreview: (...args: unknown[]) => useMediaDeletePreviewMock(...args),
   useUpdateMedia: () => useUpdateMediaMock(),
   useDeleteMedia: () => useDeleteMediaMock(),
+  useRequestReplacementUpload: () => useRequestReplacementUploadMock(),
+  useConfirmReplacementUpload: () => useConfirmReplacementUploadMock(),
   useRequestUploadUrl: () => useRequestUploadUrlMock(),
   useConfirmUpload: () => useConfirmUploadMock(),
   useCreateYouTubeMedia: () => useCreateYouTubeMediaMock(),
@@ -135,8 +144,11 @@ beforeEach(() => {
   });
   useCreateMediaCategoryMock.mockReturnValue(mutationStub());
   useDeleteMediaCategoryMock.mockReturnValue(mutationStub());
+  useMediaDeletePreviewMock.mockReturnValue({ data: { references: [] }, isLoading: false });
   useUpdateMediaMock.mockReturnValue(mutationStub());
   useDeleteMediaMock.mockReturnValue(mutationStub());
+  useRequestReplacementUploadMock.mockReturnValue(mutationStub());
+  useConfirmReplacementUploadMock.mockReturnValue(mutationStub());
   useRequestUploadUrlMock.mockReturnValue(mutationStub());
   useConfirmUploadMock.mockReturnValue(mutationStub());
   useCreateYouTubeMediaMock.mockReturnValue(mutationStub());
@@ -338,6 +350,40 @@ describe('MediaTab', () => {
     expect(screen.queryByText('source: FILE')).toBeNull();
     expect(screen.queryByText('mime: audio/mpeg')).toBeNull();
     expect(screen.queryByText('size: 1234567 B')).toBeNull();
+    expect(screen.getByText('아직 연결된 제작 요소가 없습니다.')).toBeDefined();
+    expect(screen.getByRole('button', { name: '교체' })).toBeDefined();
+  });
+
+  it('상세 패널은 삭제 전 사용 위치와 파일 교체 모달을 보여준다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    useMediaDeletePreviewMock.mockReturnValue({
+      data: {
+        references: [
+          {
+            type: 'reading_section',
+            id: 'reading-1',
+            name: '공통 오프닝 읽기 대사',
+          },
+        ],
+      },
+      isLoading: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    const card = screen.getByText('오프닝 BGM').closest("[role='button']") as HTMLElement | null;
+    fireEvent.click(card!);
+
+    expect(screen.getByText('사용 중인 위치 1개')).toBeDefined();
+    expect(screen.getByText(/공통 오프닝 읽기 대사/)).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '교체' }));
+    expect(screen.getByRole('dialog', { name: '미디어 파일 교체' })).toBeDefined();
+    expect(screen.getByText('같은 배경음악 파일로 교체하면 기존 연결은 유지됩니다.')).toBeDefined();
   });
 
   it('상세 닫기 버튼이 선택을 해제한다', () => {
