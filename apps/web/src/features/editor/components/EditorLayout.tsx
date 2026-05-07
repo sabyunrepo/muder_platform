@@ -80,7 +80,7 @@ export function EditorLayout({
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-50 flex h-12 shrink-0 items-center gap-3 border-b border-slate-800 bg-slate-900 px-3">
+      <header className="sticky top-0 z-50 flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900 px-2 sm:gap-3 sm:px-3">
         <button
           type="button"
           onClick={() => navigate("/editor")}
@@ -92,29 +92,31 @@ export function EditorLayout({
 
         <div className="h-5 w-px bg-slate-800" />
 
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="shrink-0 text-xs text-slate-600">에디터</span>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-700" />
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+          <span className="hidden shrink-0 text-xs text-slate-600 sm:inline">에디터</span>
+          <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-slate-700 sm:block" />
           <span className="truncate text-sm font-mono font-medium text-slate-200">
             {theme.title}
           </span>
-          <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-500">
+          <span className="hidden shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 sm:inline">
             {STATUS_LABEL[theme.status] ?? theme.status}
           </span>
         </div>
 
-        <SaveIndicator
-          status={saveStatus}
-          lastSaved={lastSaved}
-          onRetry={onRetry}
-        />
+        <div className="hidden sm:block">
+          <SaveIndicator
+            status={saveStatus}
+            lastSaved={lastSaved}
+            onRetry={onRetry}
+          />
+        </div>
 
-        <div className="h-5 w-px bg-slate-800" />
+        <div className="hidden h-5 w-px bg-slate-800 sm:block" />
 
         <button
           type="button"
           onClick={handleValidate}
-          className="h-7 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500"
+          className="h-8 rounded-sm border border-slate-700 px-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 sm:h-7 sm:px-3"
         >
           검증
         </button>
@@ -122,7 +124,7 @@ export function EditorLayout({
           type="button"
           onClick={onPublish}
           disabled={theme.status === "PUBLISHED"}
-          className="h-7 rounded-sm bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-8 rounded-sm bg-amber-600 px-2 text-xs font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:h-7 sm:px-3"
         >
           출판
         </button>

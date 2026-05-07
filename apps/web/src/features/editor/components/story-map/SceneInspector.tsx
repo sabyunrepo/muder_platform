@@ -188,7 +188,7 @@ export function SceneInspector({
         <MapPin className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-slate-100">장면 속성</h3>
       </div>
-      <div className="space-y-3 p-4">
+      <div className="grid gap-3 p-4 sm:grid-cols-2 lg:block lg:space-y-3">
         <div className="rounded-md border border-slate-800 bg-slate-900/70 p-4">
           <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
             <Link2 className="h-4 w-4 text-amber-400" />
@@ -223,7 +223,7 @@ export function SceneInspector({
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="grid gap-2 sm:col-span-2 sm:grid-cols-2 lg:block lg:space-y-2">
           {rows.map((row, index) => {
             const Icon = ROW_ICONS[index];
             return (

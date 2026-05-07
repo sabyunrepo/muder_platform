@@ -37,6 +37,19 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("EditorTabNav dynamic tabs", () => {
+  it("선택된 탭을 모바일 가로 탭바 중앙으로 자동 스크롤한다", () => {
+    const scrollIntoView = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    mockActiveTab.current = "media";
+
+    render(<EditorTabNav activeModules={[]} />);
+
+    expect(scrollIntoView).toHaveBeenCalledWith({
+      block: "nearest",
+      inline: "center",
+    });
+  });
+
   it("모듈 미지정 시 always=true 탭만 표시된다", () => {
     render(<EditorTabNav />);
     expect(screen.getByText("스토리 진행")).toBeDefined();

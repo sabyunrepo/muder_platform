@@ -171,7 +171,7 @@ function LibrarySectionPanel({
 }) {
   const Icon = section.icon;
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900/70 p-3">
+    <div className="min-w-[16rem] rounded-md border border-slate-800 bg-slate-900/70 p-3 sm:min-w-0">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 text-sm font-medium text-slate-100">
           <Icon className="h-4 w-4 text-amber-400" />
@@ -182,7 +182,7 @@ function LibrarySectionPanel({
         </span>
       </div>
 
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 max-h-52 space-y-2 overflow-y-auto pr-1 sm:max-h-none sm:overflow-visible sm:pr-0">
         {section.isLoading && (
           <p className="rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-xs text-slate-400">
             목록을 불러오는 중입니다.
@@ -274,7 +274,7 @@ export function EditorEntityLibrary({
         <FileText className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-slate-100">제작 라이브러리</h3>
       </div>
-      <div className="space-y-3 p-4">
+      <div className="flex gap-3 overflow-x-auto p-4 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible lg:block lg:space-y-3 [&::-webkit-scrollbar]:hidden">
         {sections.map((section) => (
           <LibrarySectionPanel
             key={section.key}

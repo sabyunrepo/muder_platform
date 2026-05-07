@@ -342,6 +342,16 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
       page.getByLabel('미디어 카테고리 필터').getByRole('button', { name: '전체' }),
     );
     await expectNoPageLevelHorizontalOverflow(page);
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/story`);
+    await expect(page.getByRole('tab', { name: /스토리 진행/, selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByLabel('스토리 진행 제작')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole('heading', { name: '제작 라이브러리' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '장면 속성' })).toBeVisible();
+    await expect(page.locator('[data-testid="flow-canvas"]')).toBeVisible({ timeout: 10_000 });
+    await expectNoPageLevelHorizontalOverflow(page);
   });
 
   test('[2] 단서 이미지 업로드 경로는 /v1/editor/themes/{id}/images/upload-url (network-only)', async ({
