@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Watch MMP PR CodeRabbit and CI state until it needs attention or is complete.
+# Watch MMP PR CodeRabbit state until it needs attention or is complete.
 # Intended for CI steward agents, not the main Codex thread.
 
 set -euo pipefail
@@ -15,10 +15,9 @@ This is a CI steward tool. Main Codex should use one-shot status commands
 Options:
   --interval SECONDS       Poll interval. Default: 60
   --timeout SECONDS        Stop after timeout. Default: 3600
-  --workflows LIST         Comma-separated workflow names to require.
-                           Default: CI,E2E — Stubbed Backend,Security — Fast Feedback
+  --workflows LIST         Deprecated; ignored in development-minimum mode.
   --trigger-missing-workflows
-                           Trigger missing required workflows once CodeRabbit is clear
+                           Deprecated; never dispatches workflows in development-minimum mode.
   --update-branch-if-needed
                            If base branch requires strict up-to-date checks and PR is behind,
                            update the PR branch through GitHub and restart latest-head waiting
@@ -27,8 +26,8 @@ Options:
   -h, --help               Show help
 
 Stops with:
-  0 when CodeRabbit is clear and required workflows succeeded
-  2 when any required workflow fails/cancels/times out
+  0 when CodeRabbit is clear
+  2 reserved for legacy workflow failures
   3 when CodeRabbit has unresolved threads or latest review requests changes
   4 on timeout
 MSG
@@ -150,7 +149,8 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --trigger-missing-workflows)
-      trigger_missing_workflows=1
+      echo "⚠️ --trigger-missing-workflows is ignored in development-minimum mode." >&2
+      trigger_missing_workflows=0
       shift
       ;;
     --update-branch-if-needed)
@@ -207,13 +207,9 @@ owner="$(gh_retry repo view --json owner --jq '.owner.login')"
 repo="$(gh_retry repo view --json name --jq '.name')"
 ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
 eval "$ci_scope_env"
-if [[ "$CI_SCOPE" != "code-rabbit-only" && "$code_rabbit_only" == "1" ]]; then
-  echo "🚫 PR #$pr_number 은 full-ci scope입니다. --code-rabbit-only 를 사용할 수 없습니다." >&2
-  exit 64
-fi
 if [[ "$CI_SCOPE" == "code-rabbit-only" && "$code_rabbit_only" != "1" ]]; then
   echo "🚫 PR #$pr_number 은 code-rabbit-only scope입니다." >&2
-  echo "   heavy CI workflow가 path filter 때문에 생성되지 않는 경로만 변경했습니다." >&2
+  echo "   개발 최소 워커 모드에서는 heavy CI workflow를 PR gate로 실행하지 않습니다." >&2
   echo "   scripts/mmp-pr-watch.sh $pr_number --code-rabbit-only 로 확인하세요." >&2
   echo "   ready-for-ci 라벨이나 --trigger-missing-workflows 를 사용하지 마세요." >&2
   exit 64

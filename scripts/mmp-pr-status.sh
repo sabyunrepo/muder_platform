@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Summarize MMP PR review, label, CI, CodeRabbit, and Codecov state.
+# Summarize MMP PR review, label, CodeRabbit, and optional GitHub CI/Codecov state.
 
 set -euo pipefail
 
@@ -10,13 +10,13 @@ Usage: scripts/mmp-pr-status.sh [options] [PR_NUMBER]
 현재 브랜치의 PR 또는 지정한 PR 번호에 대해 다음을 요약합니다.
 - labels / merge state / review decision
 - CodeRabbit 최신 리뷰와 unresolved review thread 수
-- Codecov Report 최신 코멘트 요약과 patch coverage gate
+- Codecov Report 최신 코멘트 요약. 개발 최소 워커 모드에서는 수동 GitHub CI를 실행한 경우에만 blocker로 봅니다.
 - GitHub checks 상태
 
 반복 조회가 필요하면 30초 이상 간격으로 실행하세요.
 
 Options:
-  --fail-on-blocker  CodeRabbit/review/Codecov/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
+  --fail-on-blocker  CodeRabbit/review/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
   --allow-behind     strict up-to-date + behind 상태를 blocker가 아니라 main Codex merge-decision 대상으로 표시합니다.
   -h, --help         Show help
 MSG
@@ -156,19 +156,19 @@ else
   coderabbit_action_state="unknown: CodeRabbit 상태를 수동 확인하세요"
 fi
 
-codecov_gate_state="not-applicable: Codecov comment 없음"
+codecov_gate_state="not-applicable: development-minimum mode"
 if [[ -n "$codecov_body" ]]; then
   patch_coverage="$(printf '%s' "$codecov_body" | sed -nE 's/.*Patch coverage is `([0-9]+(\.[0-9]+)?)%`.*/\1/p' | head -n1)"
   if [[ -n "$patch_coverage" ]]; then
     if awk "BEGIN { exit !($patch_coverage < 70) }"; then
-      codecov_gate_state="blocker: patch coverage ${patch_coverage}% < 70%"
+      codecov_gate_state="informational: patch coverage ${patch_coverage}% < 70% (manual GitHub CI only)"
     else
-      codecov_gate_state="clear: patch coverage ${patch_coverage}% >= 70%"
+      codecov_gate_state="informational: patch coverage ${patch_coverage}% >= 70%"
     fi
   elif grep -q "All modified and coverable lines are covered by tests" <<< "$codecov_body"; then
-    codecov_gate_state="clear: modified coverable lines covered"
+    codecov_gate_state="informational: modified coverable lines covered"
   elif grep -q "Codecov Report" <<< "$codecov_body"; then
-    codecov_gate_state="unknown: Codecov comment found but patch coverage line not parsed"
+    codecov_gate_state="informational: Codecov comment found but patch coverage line not parsed"
   fi
 fi
 
@@ -193,7 +193,7 @@ cat <<MSG
 - Merge gate state: $merge_gate_state
 - Review decision: $review_decision
 - CI scope: $CI_SCOPE
-- Heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
+- Former heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
 - CodeRabbit latest review: $latest_coderabbit
 - CodeRabbit actionable state: $coderabbit_action_state
 - Codecov gate state: $codecov_gate_state
@@ -211,7 +211,7 @@ MSG
 gh pr checks "$pr_number" || true
 
 if [[ "$fail_on_blocker" == "1" ]]; then
-  if [[ "$coderabbit_action_state" == blocker:* || "$codecov_gate_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
+  if [[ "$coderabbit_action_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
     exit 3
   fi
 fi

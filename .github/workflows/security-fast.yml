@@ -1,12 +1,9 @@
 name: Security — Fast Feedback
 
-# Development-minimum mode: do not run security workers automatically.
-# CodeRabbit remains the default PR feedback loop. Run this workflow manually or
-# by applying the `ready-for-ci` label when a PR is ready for full validation.
+# Development-minimum mode: do not run security workers from PR events.
+# CodeRabbit remains the default PR feedback loop; run this workflow manually
+# only when a maintainer explicitly needs GitHub-hosted security verification.
 on:
-  pull_request:
-    branches: [main]
-    types: [labeled]
   workflow_dispatch:
 
 concurrency:
@@ -19,7 +16,6 @@ permissions:
 jobs:
   govulncheck:
     name: govulncheck (Go SCA)
-    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     # Phase 22 W1.5 PR-8 fold-in (PR-170 8ce9c0b run cancelled at 5:13):
     # containerized runner 의 setup-go cache miss + scanner install +
