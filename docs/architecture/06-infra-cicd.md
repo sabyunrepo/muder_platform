@@ -2,13 +2,13 @@
 file: 06-infra-cicd.md
 purpose: Docker · Nginx · ARC self-hosted runner · CI 정책 — AI가 배포·검증 파이프라인 파악
 audience: design-AI
-last_verified: 2026-04-30
+last_verified: 2026-05-07
 sources_of_truth:
   - docker-compose.yml + docker-compose.dev.yml
   - apps/web/nginx.conf
   - .github/workflows/
   - memory/project_infra_docker.md
-  - memory/project_ci_admin_skip_until_2026-05-01.md
+  - docs/ops/ci-security-worker-reactivation.md
   - memory/sessions/2026-04-28-debt-cleanup-runner-network.md
   - memory/sessions/2026-04-29-phase-23-custom-runner-image-merge.md
 related: [07-tech-stack.md, 09-issues-debt.md, 08-roadmap.md]
@@ -18,7 +18,7 @@ related: [07-tech-stack.md, 09-issues-debt.md, 08-roadmap.md]
 
 ## 한 줄 요약 {#tldr}
 
-Docker compose가 dev/prod 모두 단일 진입점 — Nginx:80 외부 노출 + 나머지(server/postgres/redis)는 internal network. CI는 GitHub Actions + ARC self-hosted runner (KT Cloud K8s, 5 runner pool). admin-skip 머지 정책 유지 중 (부채 정리 phase 종료까지). Phase 23에서 KT registry → GHCR custom image로 전환.
+Docker compose가 dev/prod 모두 단일 진입점 — Nginx:80 외부 노출 + 나머지(server/postgres/redis)는 internal network. CI는 GitHub Actions + ARC self-hosted runner (KT Cloud K8s, runner pool). 현재 PR 기본 게이트는 개발 최소 워커 모드로 운영하며, CodeRabbit + 로컬 컨테이너 검증을 우선한다. 자동 CI/security worker 재활성화 기준은 `docs/ops/ci-security-worker-reactivation.md`가 최신 카논이다.
 
 ## Docker Compose 구성 {#compose}
 
@@ -79,17 +79,18 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) \
 - **`runner-image.yml`** (Phase 23 도입) — custom runner image 빌드 + GHCR push
 - **arc.yml** (UNVERIFIED 정확한 파일명) — ARC RunnerScaleSet values + smoke test (PR #179)
 
-### 13~15 required status checks
+### 현재 required status checks
 
-> Phase 18.7 + 19 Residual에 걸쳐 누적된 status check 묶음. 정확한 개수·이름은 GitHub branch protection 설정 직접 확인.
+> 2026-05-07 기준 `gh api repos/sabyunrepo/muder_platform/branches/main/protection`로 확인.
 
-대표:
-- Go: build, test, vet, gofmt, staticcheck, race
-- Web: typecheck, lint, test, coverage
-- Migration drift gate
-- Security: govulncheck, gitleaks, trivy, OSV, CodeQL
-- Supply chain: SBOM, provenance
-- E2E: chromium shard 1~4, firefox shard 1
+- Required check: `CodeRabbit`
+- Strict up-to-date: enabled
+- Required approving review count: 0
+- Stale PR review dismissal: enabled
+
+개발 최소 워커 모드에서는 GitHub Actions full CI/E2E/security worker를 PR 생성이나 push만으로 자동 실행하지 않는다. 코드 변경 PR은 PR 생성 전 `scripts/mmp-local-ci.sh quick`을 기본 실행하고, 위험도에 따라 `coverage`, `e2e`, `full`로 넓힌다.
+
+서비스 운영 전 자동 worker를 다시 켜는 기준과 branch protection 갱신 절차는 `docs/ops/ci-security-worker-reactivation.md`를 따른다.
 
 ## ARC Self-hosted Runner (Phase 22~23) {#arc}
 
@@ -114,24 +115,21 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) \
   - `runners-net` 동적 검출 (compose project prefix 회피)
   - host 재배포 후 4 shard 진행
 
-## 머지 정책 (admin-skip) {#admin-skip}
+## 머지 정책 {#merge-policy}
 
-> 출처: `memory/project_ci_admin_skip_until_2026-05-01.md`.
+> 출처: `AGENTS.md`, `.codex/skills/mmp-pr-lifecycle/SKILL.md`, `docs/ops/ci-security-worker-reactivation.md`.
 
-### 현 상태 (2026-04-30 기준)
-- **`gh pr merge --admin --squash` 유지** — 만료 시도 reverse, 부채 정리 phase 종료까지.
-- **2026-04-28 만료 시도 → reverse 사유**: PR-166 + PR-165 CI 결과로 main 누적 부채 5건 노출 (DEBT-1~5).
+### 현 상태 (2026-05-07 기준)
 
-### 진입 조건 (정상 머지 모드 복귀)
-1. DEBT-1/2 (Go gofmt 3 + staticcheck 1) fix → ✅ PR #167 (`6fa7460`)
-2. DEBT-3 (E2E `/api/v1/auth/register` HTTP 500) fix → ✅ PR #167
-3. DEBT-4 (gitleaks) — false positive 분석 또는 baseline 추가
-4. DEBT-5 (govulncheck) — CRITICAL/HIGH CVE 검토 + 5분 timeout fix
-5. main의 13 required check 5 PR 연속 green
+- `main` 직접 커밋 금지.
+- feature branch/worktree → PR → merge.
+- PR 기본 게이트는 CodeRabbit clear, unresolved review thread 0, focused local validation evidence.
+- 기본 PR 처리에서는 `ready-for-ci` 라벨과 `workflow_dispatch`를 사용하지 않는다.
+- GitHub Actions full CI는 위험 PR의 명시적 최종 확인 버튼으로만 사용한다.
 
-### 카논 ref
-- `memory/feedback_branch_pr_workflow.md` — main 보호 + PR 필수 (2026-04-17 `d1262a7` 사건)
-- `memory/feedback_4agent_review_before_admin_merge.md` — HIGH 잔존 머지 금지 (PR-2c #107 사고 이후)
+### 정상 자동 worker 모드 복귀
+
+자동 CI/security worker 복귀는 `docs/ops/ci-security-worker-reactivation.md`의 Phase 1/2 기준을 따른다. required status check는 실제 PR head에서 안정적으로 생성되는 check만 추가한다.
 
 ## 4-agent Review (admin-merge 전 강제) {#4-agent-review}
 
