@@ -186,7 +186,7 @@ export function CharacterAssignPanel({
 
   if (charsLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex h-full min-h-0 items-center justify-center overflow-hidden">
         <p className="text-xs text-slate-600">로딩 중...</p>
       </div>
     );
@@ -211,7 +211,7 @@ export function CharacterAssignPanel({
 
   return (
     <div
-      className="flex h-full flex-col md:flex-row"
+      className="h-full min-h-0 overflow-hidden"
       onBlur={(e) => {
         // Flush pending config when focus leaves the panel entirely. `relatedTarget`
         // is null when the user clicks outside React's focus tree (e.g. tab switch).

@@ -53,11 +53,14 @@ describe('EntityEditorShell', () => {
 
     const list = screen.getByRole('region', { name: '단서 목록' });
     const detail = screen.getByRole('region', { name: '단서 상세 영역' });
-    const listScroller = list.querySelector('.overflow-y-auto');
+    const listScroller = Array.from(list.querySelectorAll('div')).find((node) =>
+      node.className.includes('lg:overflow-y-auto'),
+    );
 
     expect(list.className).toContain('flex');
     expect(list.className).toContain('min-h-0');
     expect(listScroller?.className).toContain('lg:flex-1');
+    expect(listScroller?.className).toContain('lg:overflow-y-auto');
     expect(detail.className).toContain('lg:overflow-y-auto');
   });
 
