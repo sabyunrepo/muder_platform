@@ -21,7 +21,7 @@
 - #280 설계 PR은 code/docs 중심으로 작게 끝낸다.
 - 구현 PR은 UI-only, runtime cleanup, 캐릭터 엔드카드, GM override로 나눈다.
 - 사용자 결정이 필요한 GM override 공개 범위는 구현 전에 별도 확인한다.
-- GitHub Issue #280은 PR 본문 `Closes #280`으로 연결해 merge 시 자동 종료한다.
+- GitHub Issue #280은 이미 닫혔으므로 후속 문서/구현 PR은 `Refs #280`으로 연결한다.
 - 닫힌 #280 GitHub Issue에는 2026-05-07 조건 UI 변경 내용을 댓글로 남겨 후속 구현자가 현재 Figma 기준을 찾을 수 있게 한다.
 
 ## 검증
