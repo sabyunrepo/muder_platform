@@ -20,6 +20,12 @@ vi.mock('@/features/editor/readingApi', () => ({
   }),
 }));
 
+vi.mock('@/features/editor/components/media/ImageMediaReferenceField', () => ({
+  ImageMediaReferenceField: ({ label }: { label: string }) => (
+    <div data-testid="image-media-field">{label}</div>
+  ),
+}));
+
 function clue(overrides: Partial<ClueResponse>): ClueResponse {
   return {
     id: 'clue-1',
@@ -77,9 +83,10 @@ const characters: EditorCharacterResponse[] = [
 afterEach(cleanup);
 
 describe('ClueEntityWorkspace', () => {
-  it('선택한 단서의 실제 편집 상세와 사용 효과를 제작자 언어로 보여준다', () => {
+  it('선택한 단서의 인라인 편집 상세와 사용 공개 규칙을 제작자 언어로 보여준다', () => {
     render(
       <ClueEntityWorkspace
+        themeId="theme-1"
         clues={[clue({ id: 'clue-1' }), clue({ id: 'clue-2', name: '비밀 편지', is_usable: false })]}
         configJson={{
           locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }],
@@ -88,27 +95,30 @@ describe('ClueEntityWorkspace', () => {
         locations={locations}
         characters={characters}
         onCreate={vi.fn()}
-        onEdit={vi.fn()}
+        onUpdate={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
 
-    expect(screen.getByText('단서 상세')).toBeDefined();
-    expect(screen.getByText('다른 플레이어에게서 단서 가져오기')).toBeDefined();
+    expect(screen.getByText('단서 기본 정보')).toBeDefined();
+    expect(screen.getByText('단서 사용 / 공개 규칙')).toBeDefined();
     expect(screen.getAllByText('사용하면 내 단서함에서 사라짐').length).toBeGreaterThan(0);
     expect(screen.getByText('서재의 발견 단서')).toBeDefined();
     expect(screen.getByText('탐정의 시작 단서')).toBeDefined();
+    expect(screen.queryByText('단서 트리거')).toBeNull();
+    expect(screen.queryByText('투표 시작')).toBeNull();
   });
 
   it('목록에서 다른 단서를 클릭하면 상세가 교체된다', () => {
     render(
       <ClueEntityWorkspace
+        themeId="theme-1"
         clues={[clue({ id: 'clue-1' }), clue({ id: 'clue-2', name: '비밀 편지', description: '숨겨진 메시지', is_usable: false })]}
         configJson={{}}
         locations={[]}
         characters={[]}
         onCreate={vi.fn()}
-        onEdit={vi.fn()}
+        onUpdate={vi.fn()}
         onDelete={vi.fn()}
       />,
     );
@@ -116,6 +126,41 @@ describe('ClueEntityWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: '비밀 편지 선택' }));
 
     expect(screen.getAllByText('숨겨진 메시지').length).toBeGreaterThan(0);
-    expect(screen.getByText('사용 효과 없음')).toBeDefined();
+    expect(screen.getByRole('button', { name: '효과 없음' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
+
+  it('인라인 기본 정보 저장 시 선택 단서 update payload를 보낸다', () => {
+    const onUpdate = vi.fn();
+
+    render(
+      <ClueEntityWorkspace
+        themeId="theme-1"
+        clues={[clue({ id: 'clue-1' })]}
+        configJson={{}}
+        locations={[]}
+        characters={[]}
+        onCreate={vi.fn()}
+        onUpdate={onUpdate}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '피 묻은 열쇠 조각' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '기본 정보 저장' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'clue-1',
+      expect.objectContaining({
+        name: '피 묻은 열쇠 조각',
+        is_usable: true,
+        use_effect: 'steal',
+        use_target: 'player',
+        use_consumed: true,
+      }),
+    );
   });
 });

@@ -44,6 +44,8 @@ describe('ClueRuntimeEffectCard', () => {
               'clue-1': {
                 effect: 'reveal',
                 target: 'self',
+                trigger: 'on_view',
+                condition: { kind: 'password', value: '0427' },
                 revealText: '숫자 0427이 보입니다.',
                 consume: false,
               },
@@ -62,7 +64,9 @@ describe('ClueRuntimeEffectCard', () => {
       />,
     );
 
-    expect(screen.getByText('게임 중 사용 효과')).toBeDefined();
+    expect(screen.getByText('단서 사용 / 공개 규칙')).toBeDefined();
+    expect(screen.getByRole('button', { name: '단서 확인 시' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByLabelText('암호')).toHaveProperty('value', '0427');
     expect(screen.queryByText('itemEffects')).toBeNull();
     expect(screen.queryByText('grant_clue')).toBeNull();
 
@@ -70,13 +74,15 @@ describe('ClueRuntimeEffectCard', () => {
       target: { value: '열쇠 뒤에 새 숫자 1234가 보입니다.' },
     });
     fireEvent.click(screen.getByLabelText(/사용하면 내 단서함에서 사라짐/));
-    fireEvent.click(screen.getByRole('button', { name: '효과 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '규칙 저장' }));
 
     expect(onConfigChange).toHaveBeenCalledTimes(1);
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
       effect: 'reveal',
       target: 'self',
+      trigger: 'on_view',
+      condition: { kind: 'password', value: '0427' },
       revealText: '열쇠 뒤에 새 숫자 1234가 보입니다.',
       consume: true,
     });
@@ -99,15 +105,19 @@ describe('ClueRuntimeEffectCard', () => {
       target: { value: '금고' },
     });
     fireEvent.click(screen.getByRole('button', { name: '금고 비밀번호' }));
+    fireEvent.click(screen.getByRole('button', { name: '암호 입력 후 공개' }));
+    fireEvent.change(screen.getByLabelText('암호'), { target: { value: 'gold' } });
 
     expect(screen.getByText('선택된 지급 단서')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: '효과 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '규칙 저장' }));
 
     expect(onConfigChange).toHaveBeenCalledTimes(1);
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
       effect: 'grant_clue',
       target: 'self',
+      trigger: 'on_use',
+      condition: { kind: 'password', value: 'gold' },
       grantClueIds: ['clue-2'],
     });
   });
@@ -136,7 +146,7 @@ describe('ClueRuntimeEffectCard', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: '효과 없음' }));
-    fireEvent.click(screen.getByRole('button', { name: '효과 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '규칙 저장' }));
 
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toBeNull();
