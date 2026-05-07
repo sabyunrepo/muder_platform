@@ -131,6 +131,7 @@ function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange
       <div className="mt-3 grid gap-3">
         <QuestionSelect draft={draft} rowIndex={rowIndex} selectedQuestionId={parsed?.questionId ?? ""} branchQuestions={branchQuestions} onChange={onChange} />
         <ChoiceSelect draft={draft} rowIndex={rowIndex} selectedQuestion={selectedQuestion} selectedChoice={parsed?.choice ?? ""} onChange={onChange} />
+        <AggregationSelect draft={draft} rowIndex={rowIndex} selectedQuestion={selectedQuestion} selectedChoice={parsed?.choice ?? ""} aggregation={parsed?.aggregation ?? "threshold"} onChange={onChange} />
         <EndingSelect draft={draft} rowIndex={rowIndex} endingNodes={endingNodes} onChange={onChange} />
       </div>
     </article>
@@ -153,13 +154,46 @@ function QuestionSelect({ draft, rowIndex, selectedQuestionId, branchQuestions, 
           ...draft,
           matrix: draft.matrix.map((item, index) =>
             index === rowIndex
-              ? (question ? updateMatrixCondition(item, question.id, "") : { ...item, condition: {} })
+              ? (question ? updateMatrixCondition(item, question.id, "", "threshold") : { ...item, condition: {} })
               : item,
           ),
         });
       }} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100">
         <option value="">질문 선택</option>
         {branchQuestions.map((question) => <option key={question.id} value={question.id}>{question.text || "질문 내용 필요"}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function AggregationSelect({ draft, rowIndex, selectedQuestion, selectedChoice, aggregation, onChange }: {
+  draft: EndingBranchConfig;
+  rowIndex: number;
+  selectedQuestion?: EndingBranchQuestion;
+  selectedChoice: string;
+  aggregation: "threshold" | "winning";
+  onChange: (next: EndingBranchConfig) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-slate-400">어떤 기준이면</span>
+      <select
+        value={aggregation}
+        onChange={(event) =>
+          selectedQuestion && selectedChoice && onChange({
+            ...draft,
+            matrix: draft.matrix.map((item, index) =>
+              index === rowIndex
+                ? updateMatrixCondition(item, selectedQuestion.id, selectedChoice, event.target.value === "winning" ? "winning" : "threshold")
+                : item,
+            ),
+          })
+        }
+        disabled={!selectedQuestion || !selectedChoice}
+        className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <option value="threshold">설정한 비율 이상 선택되면</option>
+        <option value="winning">가장 많이 선택되면</option>
       </select>
     </label>
   );

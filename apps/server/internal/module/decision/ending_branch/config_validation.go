@@ -26,6 +26,9 @@ func validateConfig(cfg Config) error {
 		if len(question.Choices) == 0 {
 			return fmt.Errorf("question %q requires at least one choice", question.ID)
 		}
+		if err := validateQuestionTarget(question.ID, question.Target); err != nil {
+			return err
+		}
 		if err := validateRespondents(question.ID, question.Respondents); err != nil {
 			return err
 		}
@@ -60,6 +63,28 @@ func validateConfig(cfg Config) error {
 	return nil
 }
 
+func validateQuestionTarget(questionID string, target *QuestionTarget) error {
+	if target == nil {
+		return nil
+	}
+	switch target.Type {
+	case "all_players":
+		return nil
+	case "specific_players":
+		if len(target.CharacterIDs) == 0 {
+			return fmt.Errorf("question %q target must contain at least one character id", questionID)
+		}
+		for _, characterID := range target.CharacterIDs {
+			if characterID == "" {
+				return fmt.Errorf("question %q target must contain non-empty character ids", questionID)
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("question %q has invalid target type %q", questionID, target.Type)
+	}
+}
+
 func validateRespondents(questionID string, respondents any) error {
 	switch value := respondents.(type) {
 	case nil:
@@ -71,7 +96,7 @@ func validateRespondents(questionID string, respondents any) error {
 		case "some":
 			return fmt.Errorf("question %q respondents value %q is not supported; use explicit player or target codes", questionID, value)
 		default:
-			return fmt.Errorf("question %q has invalid respondents value %q", questionID, value)
+			return nil
 		}
 	case []any:
 		if len(value) == 0 {

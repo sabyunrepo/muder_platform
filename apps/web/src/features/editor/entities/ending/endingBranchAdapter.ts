@@ -10,6 +10,7 @@ export const ENDING_BRANCH_MODULE_ID = "ending_branch";
 
 export type EndingBranchQuestionType = "single" | "multi";
 export type EndingBranchQuestionImpact = "branch" | "score";
+export type EndingBranchAggregation = "threshold" | "winning";
 export type EndingBranchQuestionTarget =
   | { type: "all_players" }
   | { type: "specific_players"; characterIds: string[] };
@@ -51,6 +52,7 @@ export interface EndingBranchMatrixDraft {
   priority: number;
   questionId: string | null;
   choice: string | null;
+  aggregation: EndingBranchAggregation;
   endingId: string;
   endingName: string;
 }
@@ -139,7 +141,11 @@ function normalizeQuestion(value: unknown, index: number): EndingBranchQuestion 
 function normalizeMatrixRow(value: unknown, index: number): EndingBranchMatrixRow | null {
   if (!isRecord(value)) return null;
   const ending = typeof value.ending === "string" ? value.ending : "";
-  const condition = isRecord(value.condition) ? value.condition : {};
+  const condition = isRecord(value.conditions)
+    ? value.conditions
+    : isRecord(value.condition)
+      ? value.condition
+      : {};
   const priority = typeof value.priority === "number" && Number.isFinite(value.priority)
     ? value.priority
     : index + 1;
@@ -178,7 +184,11 @@ export function writeEndingBranchConfig(
 ): EditorConfig {
   return writeModuleConfig(configJson, ENDING_BRANCH_MODULE_ID, {
     questions: config.questions,
-    matrix: config.matrix,
+    matrix: config.matrix.map((row) => ({
+      priority: row.priority,
+      ending: row.ending,
+      conditions: row.condition,
+    })),
     defaultEnding: config.defaultEnding,
     ...(config.multiVoteThreshold !== undefined
       ? { multiVoteThreshold: config.multiVoteThreshold }
@@ -217,23 +227,42 @@ export function buildChoiceCondition(questionId: string, choice: string): Editor
   return { in: [choice, { var: `answers.${questionId}.choices` }] };
 }
 
+export function buildWinningChoiceCondition(questionId: string, choice: string): EditorConfig {
+  return { "==": [{ var: `answers.${questionId}.winning` }, choice] };
+}
+
 export function updateMatrixCondition(
   row: EndingBranchMatrixRow,
   questionId: string,
   choice: string,
+  aggregation: EndingBranchAggregation = readChoiceCondition(row.condition)?.aggregation ?? "threshold",
 ): EndingBranchMatrixRow {
-  return { ...row, condition: buildChoiceCondition(questionId, choice) };
+  return {
+    ...row,
+    condition: aggregation === "winning"
+      ? buildWinningChoiceCondition(questionId, choice)
+      : buildChoiceCondition(questionId, choice),
+  };
 }
 
 export function readChoiceCondition(
   condition: EditorConfig,
-): { questionId: string; choice: string } | null {
+): { questionId: string; choice: string; aggregation: EndingBranchAggregation } | null {
   const raw = condition.in;
-  if (!Array.isArray(raw) || raw.length < 2) return null;
-  const [choice, source] = raw;
-  if (typeof choice !== "string" || !isRecord(source) || typeof source.var !== "string") return null;
-  const match = source.var.match(/^answers\.(.+)\.choices$/);
-  return match ? { questionId: match[1], choice } : null;
+  if (Array.isArray(raw) && raw.length >= 2) {
+    const [choice, source] = raw;
+    if (typeof choice === "string" && isRecord(source) && typeof source.var === "string") {
+      const match = source.var.match(/^answers\.(.+)\.choices$/);
+      if (match) return { questionId: match[1], choice, aggregation: "threshold" };
+    }
+  }
+
+  const equals = condition["=="];
+  if (!Array.isArray(equals) || equals.length < 2) return null;
+  const [source, choice] = equals;
+  if (!isRecord(source) || typeof source.var !== "string" || typeof choice !== "string") return null;
+  const match = source.var.match(/^answers\.(.+)\.winning$/);
+  return match ? { questionId: match[1], choice, aggregation: "winning" } : null;
 }
 
 function endingNameById(nodes: Node[]): Map<string, string> {
@@ -282,6 +311,7 @@ export function toEndingBranchEditorViewModel(
       priority: row.priority,
       questionId: question?.id ?? null,
       choice,
+      aggregation: parsed?.aggregation ?? "threshold",
       endingId: row.ending,
       endingName: names.get(row.ending) ?? "결말 선택 필요",
     };

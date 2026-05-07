@@ -150,7 +150,10 @@ func (m *Module) ReactTo(_ context.Context, action engine.PhaseActionPayload) er
 			Type: "ending.evaluated",
 			Payload: map[string]any{
 				"selectedEnding":  result.SelectedEnding,
+				"matchedRuleId":   result.MatchedRuleID,
 				"matchedPriority": result.MatchedPriority,
+				"fallback":        result.Fallback,
+				"answerSummary":   result.AnswerSummary,
 			},
 		})
 	}
@@ -161,7 +164,10 @@ func evaluationResultsEqual(a, b *evaluationResult) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
-	if a.SelectedEnding != b.SelectedEnding || !matchedPriorityEqual(a.MatchedPriority, b.MatchedPriority) {
+	if a.SelectedEnding != b.SelectedEnding ||
+		a.MatchedRuleID != b.MatchedRuleID ||
+		a.Fallback != b.Fallback ||
+		!matchedPriorityEqual(a.MatchedPriority, b.MatchedPriority) {
 		return false
 	}
 	if len(a.Scores) != len(b.Scores) {
@@ -218,6 +224,15 @@ func (m *Module) Schema() json.RawMessage {
 						"respondents": map[string]any{
 							"description": "all or array of player IDs / character target codes",
 						},
+						"target": map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"type":         map[string]any{"type": "string", "enum": []string{"all_players", "specific_players"}},
+								"characterIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+							},
+							"required":             []string{"type"},
+							"additionalProperties": false,
+						},
 						"impact": map[string]any{"type": "string", "enum": []string{"branch", "score"}},
 						"scoreMap": map[string]any{
 							"type":                 "object",
@@ -233,6 +248,7 @@ func (m *Module) Schema() json.RawMessage {
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
+						"id":         map[string]any{"type": "string"},
 						"priority":   map[string]any{"type": "integer", "minimum": 1},
 						"conditions": map[string]any{"type": "object"},
 						"ending":     map[string]any{"type": "string"},

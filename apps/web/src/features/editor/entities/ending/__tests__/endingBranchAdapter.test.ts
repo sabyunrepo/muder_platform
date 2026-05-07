@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { Node } from "@xyflow/react";
 import {
   buildChoiceCondition,
+  buildWinningChoiceCondition,
   createEndingBranchMatrixRow,
   createEndingBranchQuestion,
   readChoiceCondition,
@@ -44,7 +45,11 @@ describe("endingBranchAdapter", () => {
       modules: {
         ending_branch: {
           enabled: true,
-          config: expect.objectContaining({ defaultEnding: "end-2", multiVoteThreshold: 0.6 }),
+          config: expect.objectContaining({
+            defaultEnding: "end-2",
+            multiVoteThreshold: 0.6,
+            matrix: [{ priority: 2, ending: "end-1", conditions: buildChoiceCondition("q1", "A") }],
+          }),
         },
       },
     });
@@ -66,7 +71,7 @@ describe("endingBranchAdapter", () => {
     }, [endingNode("end-truth", "진실"), endingNode("end-fail", "미해결")]);
 
     expect(viewModel.questions[0]).toMatchObject({ label: "누가 진범인가?", typeLabel: "하나 선택", impactLabel: "결말 분기" });
-    expect(viewModel.matrix[0]).toMatchObject({ questionId: "q1", choice: "하윤", endingName: "진실" });
+    expect(viewModel.matrix[0]).toMatchObject({ questionId: "q1", choice: "하윤", aggregation: "threshold", endingName: "진실" });
     expect(viewModel.defaultEndingName).toBe("미해결");
     expect(viewModel.thresholdPercent).toBe(50);
     expect(viewModel.warnings).toEqual([]);
@@ -161,9 +166,18 @@ describe("endingBranchAdapter", () => {
   it("선택지 조건을 JSONLogic으로 숨겨 저장하고 다시 읽는다", () => {
     const condition = buildChoiceCondition("q1", "비밀 편지 획득");
     expect(condition).toEqual({ in: ["비밀 편지 획득", { var: "answers.q1.choices" }] });
-    expect(readChoiceCondition(condition)).toEqual({ questionId: "q1", choice: "비밀 편지 획득" });
+    expect(readChoiceCondition(condition)).toEqual({ questionId: "q1", choice: "비밀 편지 획득", aggregation: "threshold" });
     expect(updateMatrixCondition({ priority: 1, ending: "end-1", condition: {} }, "q2", "A").condition)
       .toEqual({ in: ["A", { var: "answers.q2.choices" }] });
+  });
+
+  it("가장 많이 선택된 답 기준 조건도 읽고 저장한다", () => {
+    const condition = buildWinningChoiceCondition("q1", "하윤");
+
+    expect(condition).toEqual({ "==": [{ var: "answers.q1.winning" }, "하윤"] });
+    expect(readChoiceCondition(condition)).toEqual({ questionId: "q1", choice: "하윤", aggregation: "winning" });
+    expect(updateMatrixCondition({ priority: 1, ending: "end-1", condition: {} }, "q2", "B", "winning").condition)
+      .toEqual({ "==": [{ var: "answers.q2.winning" }, "B"] });
   });
 
   it("새 질문과 규칙의 기본값은 제작자가 바로 수정 가능한 형태다", () => {
@@ -172,6 +186,6 @@ describe("endingBranchAdapter", () => {
 
     expect(question).toMatchObject({ id: "ending-question-1234-1", choices: ["선택지 1", "선택지 2"], respondents: "all", target: { type: "all_players" } });
     expect(row).toMatchObject({ priority: 1, ending: "end-1" });
-    expect(readChoiceCondition(row.condition)).toEqual({ questionId: question.id, choice: "선택지 1" });
+    expect(readChoiceCondition(row.condition)).toEqual({ questionId: question.id, choice: "선택지 1", aggregation: "threshold" });
   });
 });

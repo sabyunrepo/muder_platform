@@ -298,7 +298,7 @@ describe("EndingEntitySubTab", () => {
               matrix: [
                 expect.objectContaining({
                   ending: "ending-1",
-                  condition: { in: ["하윤", { var: "answers.q1.choices" }] },
+                  conditions: { in: ["하윤", { var: "answers.q1.choices" }] },
                 }),
               ],
               defaultEnding: "ending-2",
@@ -393,6 +393,31 @@ describe("EndingEntitySubTab", () => {
               questions: [
                 expect.objectContaining({
                   choices: ["하윤", "민재"],
+                }),
+              ],
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it("가장 많이 선택된 답 기준 결말 규칙을 저장한다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.change(screen.getByLabelText("어떤 기준이면"), { target: { value: "winning" } });
+    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              matrix: [
+                expect.objectContaining({
+                  ending: "ending-1",
+                  conditions: { "==": [{ var: "answers.q1.winning" }, "하윤"] },
                 }),
               ],
             }),
