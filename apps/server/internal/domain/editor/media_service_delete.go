@@ -280,7 +280,10 @@ func roleSheetMediaReferenceType(body string, mediaID uuid.UUID, mediaType strin
 		if embed.rawType == "video" || (embed.rawType == "" && mediaType == MediaTypeVideo) {
 			return "role_sheet_embedded_video"
 		}
-		return "role_sheet_embedded_image"
+		if embed.rawType == "image" || (embed.rawType == "" && mediaType == MediaTypeImage) {
+			return "role_sheet_embedded_image"
+		}
+		return "role_sheet"
 	}
 	if strings.Contains(body, `"image_media_ids"`) && strings.Contains(body, mediaID.String()) {
 		return "role_sheet_image_page"

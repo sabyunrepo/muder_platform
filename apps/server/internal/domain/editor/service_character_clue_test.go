@@ -897,6 +897,13 @@ func TestService_UpsertCharacterRoleSheetMarkdown_ValidatesMediaEmbeds(t *testin
 		t.Fatalf("embedded media markdown was not persisted: %+v", upserted)
 	}
 
+	if _, err := f.svc.UpsertCharacterRoleSheet(ctx, creatorID, char.ID, UpsertRoleSheetRequest{
+		Format:   RoleSheetFormatMarkdown,
+		Markdown: &RoleSheetMarkdown{Body: fmt.Sprintf(`증거 <MediaEmbed mediaId='%s' type='image' />`, image.ID.String())},
+	}); err != nil {
+		t.Fatalf("UpsertCharacterRoleSheet single quoted markdown embeds: %v", err)
+	}
+
 	for _, tc := range []struct {
 		name    string
 		body    string

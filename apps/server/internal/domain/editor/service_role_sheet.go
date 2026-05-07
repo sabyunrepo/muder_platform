@@ -26,7 +26,7 @@ type roleSheetMediaEmbed struct {
 
 var (
 	roleSheetMediaEmbedRe = regexp.MustCompile(`(?s)<MediaEmbed\b([^>]*)/?>`)
-	roleSheetAttrRe       = regexp.MustCompile(`\b(mediaId|type)\s*=\s*\\?"([^"\\]*)\\?"`)
+	roleSheetAttrRe       = regexp.MustCompile(`\b(mediaId|type)\s*=\s*(?:\\?"([^"\\]*)\\?"|'([^'\\]*)')`)
 )
 
 type storedRoleSheet struct {
@@ -224,7 +224,11 @@ func extractRoleSheetMediaEmbeds(body string) []roleSheetMediaEmbed {
 	for _, match := range matches {
 		attrs := map[string]string{}
 		for _, attr := range roleSheetAttrRe.FindAllStringSubmatch(match[1], -1) {
-			attrs[attr[1]] = attr[2]
+			value := attr[2]
+			if value == "" {
+				value = attr[3]
+			}
+			attrs[attr[1]] = value
 		}
 		id, err := uuid.Parse(strings.TrimSpace(attrs["mediaId"]))
 		if err != nil {

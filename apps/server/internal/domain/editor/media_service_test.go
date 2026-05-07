@@ -1384,6 +1384,7 @@ func TestMediaService_PreviewDelete_ReportsRoleSheetEmbeddedMediaReferences(t *t
 		{name: "image", mediaTyp: MediaTypeImage, embedTyp: "image", wantTyp: "role_sheet_embedded_image"},
 		{name: "video", mediaTyp: MediaTypeVideo, embedTyp: "video", wantTyp: "role_sheet_embedded_video"},
 		{name: "video without explicit embed type", mediaTyp: MediaTypeVideo, embedTyp: "", wantTyp: "role_sheet_embedded_video"},
+		{name: "unknown embed type", mediaTyp: MediaTypeImage, embedTyp: "audio", wantTyp: "role_sheet"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, q, creatorID, themeID := newMediaTestService(t)
