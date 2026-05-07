@@ -2,7 +2,8 @@ name: Security — Deep Scan (SARIF)
 
 on:
   # Development-minimum mode: deep security scan is manual only. Re-enable
-  # schedule/main-push scans before service operations.
+  # schedule/main-push scans before service operations through #474.
+  # Owner: main Codex during service-hardening planning.
   workflow_dispatch:
 
 concurrency:
