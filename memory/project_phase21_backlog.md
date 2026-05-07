@@ -54,10 +54,10 @@ Phase 18.4/18.5 종료 시 명시된 잔여 에디터 부채. Phase 19 W4 완료
 | E-3 | Config 409 **3-way merge** 의미론 | 백엔드+프론트 | L+ (별도 brainstorm 필수) | 미해결 — Phase 24 후보 |
 | ~~E-4~~ | ~~`LocationClueAssignPanel` optimistic + rollback~~ | — | — | **해소 (2026-04-30)** |
 | E-5 | `location_clue_assignment_v2` feature flag (런타임 엔진 소비 게이트) | 프론트+런타임 | S+ (brainstorm 필수) | 미해결 — Phase 24 후보 |
-| ~~E-6~~ | ~~파일 크기 누적 가드 (PR마다 +수줄 누적 정책)~~ | — | — | **해소 (2026-05-01, PR #184 file-size-guard.yml warn-only)** |
+| ~~E-6~~ | ~~파일 크기 누적 가드 (PR마다 +수줄 누적 정책)~~ | — | — | **제거 예정 (2026-05-07, #471/#472). LOC 숫자 중심 신호가 강해 카논 문구 기반 책임 경계 리뷰로 대체** |
 | ~~E-7~~ | ~~`PhaseNodePanel` 서브컴포넌트 분리~~ | — | — | **해소 (2026-05-01, PR #191)** |
 | ~~E-8~~ | ~~`CharacterAssignPanel` 분리 + `useCharacterConfigDebounce` hook~~ | — | — | **해소 (2026-05-01, PR #191)** |
-| E-9 | `file-size-guard.yml` glob 패턴 정정 (`**/dist/**` → `*/dist/*`, `*/internal/*/mocks/*` 한정, `*.pb.go` / `*.gen.go` 추가) | 인프라 | S | 미해결 (round-2 arch M-1/M-2) |
+| ~~E-9~~ | ~~`file-size-guard.yml` glob 패턴 정정~~ | — | — | **무효 예정 (2026-05-07, #471/#472). workflow 제거로 후속 정정 불필요** |
 | ~~E-10~~ | ~~`useDebouncedMutation` `FlushRefs` bag 단순화~~ | — | — | **해소 (2026-05-01, PR #189)** |
 | ~~E-11~~ | ~~`useDebouncedMutation` `useUnmountFlush` inline~~ | — | — | **해소 (2026-05-01, PR #189)** |
 | ~~E-12~~ | ~~`useDebouncedMutation` 추가 회귀 테스트 3건~~ | — | — | **해소 (2026-05-01, PR #189)** |
@@ -120,11 +120,11 @@ E-3 (Config 409 3-way merge)와 함께 **Phase 24 후보**로 묶음.
 
 round-2/3에서 4-agent + CodeRabbit 발견 9건 in-PR 해소 (perf-H1/H2, arch-H1/H2, test-H1/H2, CR-1, CR-2, N-1/N-2). 잔여 LOW/MEDIUM 6건은 E-7~E-12로 이월.
 
-### E-6 해소 근거 (2026-05-01, PR #184)
+### E-6 상태 변경 (2026-05-07, #471/#472)
 
-`.github/workflows/file-size-guard.yml` — PR diff 변경 파일을 `git diff --name-only --diff-filter=AMR`로 추출, 유형별 한도 (Go 500 / TS·TSX 400 / MD 500 / CLAUDE.md 200) 위반 시 `::warning::` + Step Summary 출력. warn-only (실제 차단 X). 자동 생성물 (sqlc/mockgen/dist) 예외. AMR로 rename 우회 차단.
+`.github/workflows/file-size-guard.yml`는 warn-only였지만 LOC 숫자 중심 신호를 계속 만들어, 에이전트가 책임 분리보다 한도 통과를 우선하는 부작용이 있었다. #471/#472에서 workflow를 제거하고 `memory/feedback_file_size_limit.md`의 Done/Avoid 기준으로 책임 경계 리뷰를 남기는 방향으로 전환한다.
 
-근거: `memory/project_phase184_progress.md` "후속 과제 (Phase 18.5 후보)" + Phase 18.5 종료 시점 미해소 항목 + 2026-04-30 / 2026-05-01 검증.
+근거: 2026-05-07 사용자 요청 — "500줄 안에 다 구현하려고 대충 구현"하는 왜곡을 줄이기 위해 파일 크기 규칙을 책임 경계 기준으로 재정의.
 
 ---
 
@@ -136,7 +136,7 @@ round-2/3에서 4-agent + CodeRabbit 발견 9건 in-PR 해소 (perf-H1/H2, arch-
 - **에디터 E-5**: Phase 24 후보로 보류 (2026-05-01 결정). 게이트 대상 v2 구현이 부재한 상태라 placeholder flag 추가 = partial impl 카논 위반 risk. brainstorm에서 v2 동작 spec 확정 후 진입.
 - ~~**에디터 E-7/E-8**~~: 해소 (PR #191, 2026-05-01).
 - ~~**에디터 E-10/E-11/E-12**~~: 해소 (PR #189, 2026-05-01).
-- **에디터 E-9**: 잔존. `file-size-guard.yml` glob 패턴 정정 (round-2 arch M-1/M-2). 단독 인프라 PR로 처리 가능 (S 규모).
+- ~~**에디터 E-9**~~: 무효 예정. `file-size-guard.yml` 제거로 glob 패턴 정정 follow-up은 더 이상 필요하지 않다.
 
 ---
 
