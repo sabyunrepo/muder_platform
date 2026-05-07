@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FileInput, Music, Save, Trash2, X } from 'lucide-react';
+import { FileInput, Music, Play, Save, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { queryClient } from '@/services/queryClient';
@@ -18,6 +18,7 @@ import type { MediaResponse } from '../../mediaApi';
 import { useMediaList } from '../../mediaApi';
 import { normalizeReadingBlocks } from '../../entities/story/readingBlockAdapter';
 import { ReadingBlockRow } from './ReadingBlockRow';
+import { ReadingSectionPreviewModal } from './ReadingSectionPreviewModal';
 import { ReadingScriptImportModal } from './ReadingScriptImportModal';
 import { EditorSaveConflictBanner } from '../EditorSaveConflictBanner';
 import {
@@ -62,6 +63,7 @@ export function ReadingSectionEditor({
   );
   const [bgmPickerOpen, setBgmPickerOpen] = useState(false);
   const [scriptImportOpen, setScriptImportOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -96,6 +98,7 @@ export function ReadingSectionEditor({
   const mediaById = useMemo(() => new Map(allMedia.map((media) => [media.id, media])), [allMedia]);
 
   const isDirty = useMemo(() => isReadingDraftDirty(draft, section), [draft, section]);
+  const previewLines = useMemo(() => normalizeReadingBlocks(draft.lines), [draft.lines]);
 
   // -------------------------------------------------------------------------
   // Block operations
@@ -305,6 +308,14 @@ export function ReadingSectionEditor({
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
+              onClick={() => setPreviewOpen(true)}
+              className="inline-flex items-center gap-1 rounded border border-amber-500/50 px-2 py-1 text-xs font-medium text-amber-200 hover:bg-amber-500/10"
+            >
+              <Play className="h-3.5 w-3.5" />
+              테스트
+            </button>
+            <button
+              type="button"
               onClick={() => setScriptImportOpen(true)}
               className="inline-flex items-center gap-1 rounded border border-slate-700 px-2 py-1 text-xs text-slate-200 hover:bg-slate-800"
             >
@@ -414,6 +425,15 @@ export function ReadingSectionEditor({
         media={allMedia.map(toParserMedia)}
         onClose={() => setScriptImportOpen(false)}
         onApply={handleApplyParsedBlocks}
+      />
+      <ReadingSectionPreviewModal
+        open={previewOpen}
+        sectionName={draft.name || section.name}
+        lines={previewLines}
+        characters={characters}
+        mediaById={mediaById}
+        dirty={isDirty}
+        onClose={() => setPreviewOpen(false)}
       />
     </div>
   );
