@@ -199,8 +199,9 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
       >
         {/* Canvas */}
         <div
+          data-testid="flow-canvas"
           ref={reactFlowWrapper}
-          className="min-h-[420px] flex-1 lg:min-h-0"
+          className="relative min-h-[420px] flex-1 overflow-hidden lg:min-h-0"
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
@@ -217,6 +218,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
             edgesFocusable={true}
             edgesReconnectable={true}
             fitView
+            fitViewOptions={{ padding: 0.35 }}
             colorMode="dark"
           >
             <Background />

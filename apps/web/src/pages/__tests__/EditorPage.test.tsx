@@ -1,12 +1,14 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const { paramsMock, setActiveTabMock } = vi.hoisted(() => ({
+const { locationPathMock, paramsMock, setActiveTabMock } = vi.hoisted(() => ({
+  locationPathMock: vi.fn(() => '/editor'),
   paramsMock: vi.fn(),
   setActiveTabMock: vi.fn(),
 }));
 
 vi.mock('react-router', () => ({
+  useLocation: () => ({ pathname: locationPathMock() }),
   useParams: () => paramsMock(),
 }));
 
@@ -29,7 +31,8 @@ import EditorPage from '../EditorPage';
 const routeMatrixCases = [
   ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
   ['alias URL /editor/:id/story-map', { id: 'theme-1', tab: 'story-map' }, 'story-map', 'storyMap'],
-  ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'story'],
+  ['직접 URL /editor/:id/story', { id: 'theme-1', tab: 'story' }, 'story', 'storyMap'],
+  ['직접 URL /editor/:id/reading', { id: 'theme-1', tab: 'reading' }, 'reading', 'story'],
   ['직접 URL /editor/:id/info', { id: 'theme-1', tab: 'info' }, 'info', 'info'],
   [
     '직접 URL /editor/:id/characters',
@@ -47,25 +50,25 @@ const routeMatrixCases = [
   [
     '직접 URL /editor/:id/design/modules',
     { id: 'theme-1', tab: 'design', designTab: 'modules' },
-    'modules',
+    'design/modules',
     'design',
   ],
   [
     '직접 URL /editor/:id/design/flow',
     { id: 'theme-1', tab: 'design', designTab: 'flow' },
-    'flow',
+    'design/flow',
     'design',
   ],
   [
     '직접 URL /editor/:id/design/locations',
     { id: 'theme-1', tab: 'design', designTab: 'locations' },
-    'locations',
+    'design/locations',
     'design',
   ],
   [
     '직접 URL /editor/:id/design/endings',
     { id: 'theme-1', tab: 'design', designTab: 'endings' },
-    'endings',
+    'design/endings',
     'design',
   ],
   ['alias URL /editor/:id/modules', { id: 'theme-1', tab: 'modules' }, 'modules', 'design'],
@@ -78,11 +81,13 @@ const routeMatrixCases = [
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  locationPathMock.mockReturnValue('/editor');
 });
 
 describe('EditorPage', () => {
   it('id가 없으면 에디터 대시보드를 보여주고 기본 제작 흐름 탭을 활성화한다', () => {
     paramsMock.mockReturnValue({});
+    locationPathMock.mockReturnValue('/editor');
 
     render(<EditorPage />);
 
@@ -92,6 +97,7 @@ describe('EditorPage', () => {
 
   it('characters 라우트 segment를 characters 탭으로 매핑한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
+    locationPathMock.mockReturnValue('/editor/theme-1/characters');
 
     render(<EditorPage />);
 
@@ -103,6 +109,11 @@ describe('EditorPage', () => {
     '%s route matrix를 ThemeEditor와 active tab에 반영한다',
     (_label, params, expectedSegment, expectedTab) => {
       paramsMock.mockReturnValue(params);
+      locationPathMock.mockReturnValue(
+        expectedSegment === 'no-segment'
+          ? `/editor/${params.id}`
+          : `/editor/${params.id}/${expectedSegment}`,
+      );
 
       render(<EditorPage />);
 
@@ -111,17 +122,19 @@ describe('EditorPage', () => {
     }
   );
 
-  it('design 하위 route segment를 실제 DesignTab subtab segment로 전달한다', () => {
+  it('design 하위 route segment를 전체 direct URL segment로 전달한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'design', designTab: 'flow' });
+    locationPathMock.mockReturnValue('/editor/theme-1/design/flow');
 
     render(<EditorPage />);
 
-    expect(screen.getByText(/테마 에디터 theme-1 flow/)).toBeDefined();
+    expect(screen.getByText(/테마 에디터 theme-1 design\/flow/)).toBeDefined();
     expect(setActiveTabMock).toHaveBeenCalledWith('design');
   });
 
   it('modules 라우트 segment를 design 탭으로 매핑한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'modules' });
+    locationPathMock.mockReturnValue('/editor/theme-1/modules');
 
     render(<EditorPage />);
 
@@ -130,6 +143,7 @@ describe('EditorPage', () => {
 
   it('알 수 없는 segment는 기본 제작 흐름 탭으로 되돌린다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'unknown' });
+    locationPathMock.mockReturnValue('/editor/theme-1/unknown');
 
     render(<EditorPage />);
 

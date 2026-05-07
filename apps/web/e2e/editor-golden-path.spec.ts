@@ -186,20 +186,29 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
 
   test('[2B] 직접 URL은 올바른 제작 탭과 서브탭을 연다', async ({ page }) => {
     await page.goto(`${BASE}/editor/${THEME_ID}`);
-    await expect(page.getByRole('tab', { name: '기본정보', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '스토리 진행', selected: true })).toBeVisible({
       timeout: 10_000,
     });
+    await expect(page.getByText('스토리 진행 제작')).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/story`);
-    await expect(page.getByRole('tab', { name: '스토리', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '스토리 진행', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByPlaceholder('마크다운으로 스토리를 작성하세요...')).toBeVisible();
-    await expect(page.getByText('장면별 정보 공개 설정')).toBeVisible();
-    await expect(page.getByRole('button', { name: /조사 단계/ })).toBeVisible();
+    await expect(page.getByText('스토리 진행 제작')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('라운드 공개 미리보기')).toBeVisible({ timeout: 10_000 });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/reading`);
+    await expect(page.getByRole('tab', { name: '읽기 대사', selected: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText('장면에서 읽거나 들려줄 대사 묶음')).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByText('읽기 대사 목록')).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
-    await expect(page.getByRole('tab', { name: '등장인물', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /등장인물/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByRole('button', { name: '제작' })).toBeVisible();
@@ -207,19 +216,19 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByText('탐정 A').first()).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
-    await expect(page.getByRole('tab', { name: '단서', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /단서/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByLabel('단서 목록')).toBeVisible();
 
     await page.goto(`${BASE}/editor/${THEME_ID}/relations`);
-    await expect(page.getByRole('tab', { name: '단서', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /단서/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText(/노드를 드래그하여 연결/).first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/locations`);
-    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /게임 설계|게임설계/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
@@ -227,39 +236,39 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByText('저택 1층').first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/endings`);
-    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /게임 설계|게임설계/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByTestId('ending-entity-panel')).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/design/modules`);
-    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /게임 설계|게임설계/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText('모듈').first()).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('진행').first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/design/flow`);
-    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /게임 설계|게임설계/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText('장면 흐름')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('스토리 장면 구성')).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/modules`);
-    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /게임 설계|게임설계/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByText('진행').first()).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
-    await expect(page.getByRole('tab', { name: '게임설계', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: '스토리 진행', selected: true })).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText('장면 흐름')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('스토리 진행 제작')).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/media`);
-    await expect(page.getByRole('tab', { name: '미디어', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /미디어/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByLabel('미디어 목록')).toBeVisible({ timeout: 10_000 });
@@ -273,16 +282,18 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
       { name: 'desktop', width: 1440, height: 1000 },
     ];
     const routes = [
-      { path: '', tab: '기본정보', content: 'E2E 골든패스' },
-      { path: '/story', tab: '스토리', content: '장면별 정보 공개 설정' },
-      { path: '/characters', tab: '등장인물', content: '캐릭터 목록' },
-      { path: '/clues', tab: '단서', content: '단서 목록' },
-      { path: '/relations', tab: '단서', content: '노드를 드래그하여 연결' },
-      { path: '/design/modules', tab: '게임설계', content: '진행' },
-      { path: '/design/flow', tab: '게임설계', content: '장면 흐름' },
-      { path: '/design/locations', tab: '게임설계', content: '장소 목록' },
-      { path: '/design/endings', tab: '게임설계', content: 'ending-entity-panel' },
-      { path: '/media', tab: '미디어', content: '미디어 목록' },
+      { path: '', tab: /스토리 진행/, content: '스토리 진행 제작' },
+      { path: '/story', tab: /스토리 진행/, content: '스토리 진행 제작' },
+      { path: '/reading', tab: /읽기 대사/, content: '읽기 대사 목록' },
+      { path: '/characters', tab: /등장인물/, content: '캐릭터 목록' },
+      { path: '/clues', tab: /단서/, content: '단서 목록' },
+      { path: '/relations', tab: /단서/, content: '노드를 드래그하여 연결' },
+      { path: '/design/modules', tab: /게임 설계|게임설계/, content: '진행' },
+      { path: '/design/flow', tab: /게임 설계|게임설계/, content: '장면 흐름' },
+      { path: '/design/locations', tab: /게임 설계|게임설계/, content: '장소 목록' },
+      { path: '/design/endings', tab: /게임 설계|게임설계/, content: 'ending-entity-panel' },
+      { path: '/flow', tab: /스토리 진행/, content: '스토리 진행 제작' },
+      { path: '/media', tab: /미디어/, content: '미디어 목록' },
     ];
 
     for (const viewport of viewports) {
@@ -296,6 +307,8 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
 
         if (route.content === 'ending-entity-panel') {
           await expect(page.getByTestId('ending-entity-panel')).toBeVisible({ timeout: 10_000 });
+        } else if (route.content === '읽기 대사 목록') {
+          await expect(page.getByText(route.content).first()).toBeVisible({ timeout: 10_000 });
         } else if (route.content.endsWith('목록')) {
           await expect(page.getByLabel(route.content)).toBeVisible({ timeout: 10_000 });
         } else {
@@ -311,7 +324,7 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await page.setViewportSize({ width: 390, height: 844 });
 
     await page.goto(`${BASE}/editor/${THEME_ID}/characters`);
-    await expect(page.getByRole('tab', { name: '등장인물', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /등장인물/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expectFocusIndicator(page, page.getByRole('textbox', { name: '캐릭터 검색' }));
@@ -319,12 +332,15 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expectNoPageLevelHorizontalOverflow(page);
 
     await page.goto(`${BASE}/editor/${THEME_ID}/media`);
-    await expect(page.getByRole('tab', { name: '미디어', selected: true })).toBeVisible({
+    await expect(page.getByRole('tab', { name: /미디어/, selected: true })).toBeVisible({
       timeout: 10_000,
     });
     await expectFocusIndicator(page, page.getByRole('button', { name: '파일 업로드' }));
     await expectFocusIndicator(page, page.getByRole('button', { name: 'YouTube' }));
-    await expectFocusIndicator(page, page.getByRole('button', { name: '전체' }));
+    await expectFocusIndicator(
+      page,
+      page.getByLabel('미디어 카테고리 필터').getByRole('button', { name: '전체' }),
+    );
     await expectNoPageLevelHorizontalOverflow(page);
   });
 

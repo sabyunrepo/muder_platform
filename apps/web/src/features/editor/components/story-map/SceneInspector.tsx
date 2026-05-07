@@ -183,7 +183,7 @@ export function SceneInspector({
   const sceneTitle = selectedScene?.data.label ?? "선택한 장면 없음";
 
   return (
-    <aside className="bg-slate-950 lg:min-h-0 lg:overflow-y-auto">
+    <aside className="bg-slate-950 lg:min-h-0 lg:w-80 lg:shrink-0 lg:overflow-y-auto">
       <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
         <MapPin className="h-4 w-4 text-amber-400" />
         <h3 className="text-sm font-semibold text-slate-100">장면 속성</h3>

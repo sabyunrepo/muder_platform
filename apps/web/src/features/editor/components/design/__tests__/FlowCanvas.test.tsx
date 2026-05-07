@@ -19,14 +19,16 @@ vi.mock('@xyflow/react', () => ({
     children,
     nodes = [],
     edges = [],
+    fitViewOptions,
     onSelectionChange,
   }: {
     children?: React.ReactNode;
     nodes?: Array<{ id: string; className?: string }>;
     edges?: Array<{ id: string; source: string; target: string }>;
+    fitViewOptions?: { padding?: number };
     onSelectionChange?: (params: { nodes: unknown[]; edges: unknown[] }) => void;
   }) => (
-    <div data-testid="react-flow">
+    <div data-testid="react-flow" data-fit-padding={String(fitViewOptions?.padding ?? '')}>
       {nodes.map((node) => (
         <div key={node.id} data-testid={`rf-node-${node.id}`} className={node.className ?? ''} />
       ))}
@@ -173,6 +175,13 @@ describe('FlowCanvas', () => {
     const workspace = screen.getByTestId('flow-workspace');
     expect(workspace.className).toContain('flex-col');
     expect(workspace.className).toContain('lg:flex-row');
+  });
+
+  it('캔버스 밖으로 튀어나온 노드가 상단 미리보기 패널 클릭을 가로막지 않게 자른다', () => {
+    render(<FlowCanvas themeId="theme-1" />);
+    const canvas = screen.getByTestId('flow-canvas');
+    expect(canvas.className).toContain('overflow-hidden');
+    expect(screen.getByTestId('react-flow').getAttribute('data-fit-padding')).toBe('0.35');
   });
 
   it('ReactFlow 보조 컴포넌트들이 렌더링된다', () => {

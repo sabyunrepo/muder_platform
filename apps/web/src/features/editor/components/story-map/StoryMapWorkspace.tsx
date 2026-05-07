@@ -64,14 +64,14 @@ export function StoryMapWorkspace({ themeId }: StoryMapWorkspaceProps) {
 
       <RoundVisibilityPreviewPanel themeId={themeId} />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[17rem_minmax(0,1fr)_20rem]">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:overflow-hidden">
         <EditorEntityLibrary
           themeId={themeId}
           selectedEntity={selectedEntity}
           onSelectEntity={setSelectedEntity}
         />
 
-        <main className="min-h-[520px] min-w-0 border-b border-slate-800 lg:min-h-0 lg:border-b-0">
+        <main className="min-h-[520px] min-w-0 flex-1 border-b border-slate-800 lg:min-h-0 lg:overflow-hidden lg:border-b-0">
           <FlowCanvas themeId={themeId} onSelectedNodeChange={handleSelectedNodeChange} />
         </main>
 

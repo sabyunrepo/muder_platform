@@ -90,7 +90,7 @@ export function RoundVisibilityPreviewPanel({ themeId }: RoundVisibilityPreviewP
       )}
 
       {!isLoading && !isError && (
-        <div className="mt-4 flex gap-3 overflow-x-auto pb-1">
+        <div className="mt-4 flex gap-3 overflow-x-auto pb-1 lg:hidden">
           {previews.map((preview) => (
             <article
               key={preview.round}
