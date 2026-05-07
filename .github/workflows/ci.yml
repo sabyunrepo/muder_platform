@@ -1,12 +1,9 @@
 name: CI
 
-# Development-minimum mode: do not run CI automatically on every PR/push.
-# CodeRabbit remains the default PR feedback loop. Run this workflow manually or
-# by applying the `ready-for-ci` label when a PR is ready for full validation.
+# Development-minimum mode: do not run CI workers from PR events.
+# CodeRabbit remains the default PR feedback loop; run this workflow manually
+# only when a maintainer explicitly needs GitHub-hosted verification.
 on:
-  pull_request:
-    branches: [main]
-    types: [labeled]
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +13,6 @@ concurrency:
 jobs:
   go-check:
     name: Go Lint + Test
-    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     defaults:
       run:
@@ -198,7 +194,6 @@ jobs:
 
   ts-check:
     name: TypeScript Lint + Test + Build
-    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     steps:
       - name: Harden Runner
@@ -270,7 +265,6 @@ jobs:
     #   Phase 21: Go 70% / FE Lines 65% / FE Branches 85% (+15%p — 하한 상향 전 반드시 테스트 보강)
     #   하한 상향 전에 반드시 추가 테스트 PR 로 baseline 끌어올리기.
     name: Coverage Regression Guard
-    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     needs: [go-check, ts-check]
     steps:
@@ -346,7 +340,6 @@ jobs:
 
   docker-build:
     name: Docker Build Check
-    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     needs: [go-check, ts-check]
     permissions:

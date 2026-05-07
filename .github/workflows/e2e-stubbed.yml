@@ -1,8 +1,8 @@
 name: E2E — Stubbed Backend
 
-# Development-minimum mode: not run on every PR/push.
-# CodeRabbit remains the default PR feedback loop. Run this workflow manually or
-# by applying the `ready-for-ci` label when a PR is ready for E2E validation.
+# Development-minimum mode: do not run E2E workers from PR events.
+# CodeRabbit remains the default PR feedback loop; run this workflow manually
+# only when a maintainer explicitly needs real-backend E2E verification.
 # Uses a real Postgres + Redis + Go server so PLAYWRIGHT_BACKEND=1
 # is set, releasing the skip guard in all backend-gated spec files.
 #
@@ -12,9 +12,6 @@ name: E2E — Stubbed Backend
 #   3. Redaction 확인               (game-redaction.spec.ts)
 #
 on:
-  pull_request:
-    branches: [main]
-    types: [labeled]
   workflow_dispatch:
 
 concurrency:
@@ -28,14 +25,11 @@ jobs:
     # H-1: fork PR 의 untrusted code 가 shared named volume (playwright-cache/hostedtool-cache) 에
     # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
     # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
-    if: github.event_name != 'pull_request' || (github.event.label.name == 'ready-for-ci' && github.event.pull_request.head.repo.fork == false)
-    # Phase 23 follow-up — CI pruning P2: PR fire 시 chromium 만 (2 job).
-    # push main / workflow_dispatch 시 chromium + firefox (4 job).
-    # firefox-only 회귀는 main 머지 후 push fire 또는 dispatch 로 검증.
+    # Manual verification runs chromium + firefox (4 jobs).
     strategy:
       fail-fast: false
       matrix:
-        browser: ${{ fromJSON(github.event_name == 'pull_request' && '["chromium"]' || '["chromium","firefox"]') }}
+        browser: ["chromium", "firefox"]
         shard: [1, 2]
 
     env:
@@ -353,8 +347,7 @@ jobs:
 
   merge-reports:
     name: Merge Playwright reports
-    # H-1 consistency: e2e 와 동일 fork PR 게이트 (cache mount runner 일관성).
-    if: (always()) && (github.event_name != 'pull_request' || (github.event.label.name == 'ready-for-ci' && github.event.pull_request.head.repo.fork == false))
+    if: always()
     needs: [e2e]
     runs-on: arc-runner-set
     steps:

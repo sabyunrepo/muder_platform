@@ -18,7 +18,7 @@ Plan format:
    - Coordinator: `mmp-parallel-coordinator` when the task needs orchestration before spawning others.
    - Frontend: `mmp-frontend-editor-reviewer` for editor UI, adapter, responsive UX, creator-facing exposure, and E2E readiness.
    - Backend: `mmp-backend-engine-reviewer` for Go API, persistence, runtime engine, migration, and deletion consistency.
-   - Test/Coverage: `mmp-test-coverage-reviewer` for E2E, Vitest, Go tests, Codecov, and CI readiness.
+   - Test/Coverage: `mmp-test-coverage-reviewer` for E2E, Vitest, Go tests, coverage gaps, and focused local validation readiness.
    - Docs/Spec: main Codex or a read-only explorer when no dedicated docs agent exists.
 3. 파일/모듈 소유권
 4. PR 묶음 / CI 비용 판단
