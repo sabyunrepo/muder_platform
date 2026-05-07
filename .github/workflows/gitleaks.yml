@@ -1,13 +1,10 @@
 name: Gitleaks Secret Scan
 
-# Secret scan은 모든 PR/push에 fire (paths-filter 없음).
-# 이유: secret leak은 코드 외 경로(infra/, scripts/, docs/, root config)에서도 발생 가능.
-# security-fast.yml의 paths-filter trap (코드 PR에만 fire) 회귀 hotfix.
+# Development-minimum mode: CodeRabbit remains the default PR feedback loop and
+# this scan is manual only. Re-enable PR/push secret scanning before service
+# operations or when external contributors are added.
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: gitleaks-${{ github.ref }}

@@ -1,21 +1,9 @@
 name: Build Runner Image
+
+# Development-minimum mode: runner image builds are expensive and are not
+# triggered automatically. Run manually when infra/runners or toolchain deps
+# intentionally change; re-enable push automation for service operations.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'infra/runners/Dockerfile'
-      - 'infra/runners/hooks/**'
-      - '.github/workflows/build-runner-image.yml'
-      # Image-resident Go module pre-bake: go.mod/go.sum 변경 시 image rebuild.
-      - 'apps/server/go.mod'
-      - 'apps/server/go.sum'
-  pull_request:
-    paths:
-      - 'infra/runners/Dockerfile'
-      - 'infra/runners/hooks/**'
-      - '.github/workflows/build-runner-image.yml'
-      - 'apps/server/go.mod'
-      - 'apps/server/go.sum'
   workflow_dispatch:
 
 concurrency:
@@ -33,7 +21,6 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
       - name: Login to GHCR
-        if: github.event_name == 'push'
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: ghcr.io
@@ -43,7 +30,6 @@ jobs:
       # (intra-region pull, KT 인바운드 트래픽 미과금). GHCR 는 fallback / 외부 협업용.
       # 자격증명 회전 시 KT_REGISTRY_USERNAME / KT_REGISTRY_PASSWORD secret 도 갱신 필수.
       - name: Login to KT Container Registry
-        if: github.event_name == 'push'
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
           registry: registry.cloud.kt.com
@@ -54,7 +40,7 @@ jobs:
         with:
           context: .
           file: infra/runners/Dockerfile
-          push: ${{ github.event_name == 'push' }}
+          push: true
           tags: |
             ghcr.io/sabyunrepo/mmp-runner:latest
             ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}
@@ -62,38 +48,3 @@ jobs:
             registry.cloud.kt.com/dldxu5p5/mmp-runner:${{ github.sha }}
           cache-from: type=gha,scope=runner-image
           cache-to: type=gha,mode=max,scope=runner-image
-          load: ${{ github.event_name == 'pull_request' }}
-      - name: Verify image loaded
-        if: github.event_name == 'pull_request'
-        run: |
-          docker images "ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }}" --format '{{.Repository}}:{{.Tag}}' | grep -q "${{ github.sha }}" || {
-            echo "FAIL: image not loaded — check buildx load behavior"
-            exit 1
-          }
-      - name: Verify image-resident toolchain
-        if: github.event_name == 'pull_request'
-        run: |
-          docker run --rm --platform linux/amd64 --entrypoint /bin/bash \
-            ghcr.io/sabyunrepo/mmp-runner:${{ github.sha }} \
-            -c '
-              set -euo pipefail
-              # Toolchain pre-bake
-              jq --version
-              govulncheck -version
-              goose -version
-              osv-scanner --version
-              ls /opt/hostedtoolcache/go/1.25.0/x64/bin/go
-              ls /opt/hostedtoolcache/node/20.18.0/x64/bin/node
-              # PATH가 image ENV로 설정 — go/node가 PATH로 직접 호출 가능해야
-              go version | grep -q "go1.25"
-              node --version | grep -q "v20"
-              # Image-resident GOMODCACHE pre-bake (apps/server/go.mod deps)
-              [ -d /home/runner/go/pkg/mod/cache ] || (echo "FAIL: GOMODCACHE pre-bake missing" && exit 1)
-              # E2E workflows skip per-job apt install when this marker exists.
-              [ -f /opt/mmp-runner/playwright-deps-ready ] || (echo "FAIL: Playwright deps marker missing" && exit 1)
-              # Hook 실행 후에도 pre-bake 데이터 보존 (image-resident 카논)
-              touch /home/runner/go/pkg/mod/cache/sentinel
-              bash /opt/runner-hooks/job-started.sh
-              [ -f /home/runner/go/pkg/mod/cache/sentinel ] || (echo "FAIL: hook이 GOMODCACHE 삭제 (image-resident 위배)" && exit 1)
-              echo "PASS: image-resident toolchain verified"
-            '

@@ -179,6 +179,6 @@ Avoid:
 
 | 규칙 | Master |
 | ---- | ------ |
-| 파일/함수 크기: TS/TSX 400줄, 일반 함수 60줄, JSX 컴포넌트 150줄 | `memory/feedback_file_size_limit.md` |
+| 파일/함수 크기: TS/TSX 400줄, 일반 함수 60줄, JSX 컴포넌트 150줄. 숫자 통과보다 view/interaction/adapter/persistence 책임 분리 우선 | `memory/feedback_file_size_limit.md` |
 | React/PWA/audio 리뷰 패턴 | `memory/feedback_code_review_patterns.md` |
 | WebSocket 토큰 쿼리 파라미터 | `memory/feedback_ws_token_query.md` |

@@ -1,6 +1,8 @@
 name: E2E — Stubbed Backend
 
-# PR-required job: runs on every PR and push to main.
+# Development-minimum mode: not run on every PR/push.
+# CodeRabbit remains the default PR feedback loop. Run this workflow manually or
+# by applying the `ready-for-ci` label when a PR is ready for E2E validation.
 # Uses a real Postgres + Redis + Go server so PLAYWRIGHT_BACKEND=1
 # is set, releasing the skip guard in all backend-gated spec files.
 #
@@ -9,39 +11,10 @@ name: E2E — Stubbed Backend
 #   2. 재접속 복원                    (game-reconnect.spec.ts)
 #   3. Redaction 확인               (game-redaction.spec.ts)
 #
-# NOTE: job name changed from "E2E Stubbed Backend (Chromium)" to the matrix
-# form below. Branch-protection required-check labels MUST be updated after
-# this PR merges.
-
 on:
-  # paths filter (Phase 23 follow-up — CI pruning P0): docs/메모리 commit 시 fire 0.
-  push:
-    branches: [main]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'tooling/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'turbo.json'
-      - 'playwright.config.ts'
-      - 'e2e/**'
-      - '.github/workflows/**'
   pull_request:
     branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'tooling/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'turbo.json'
-      - 'playwright.config.ts'
-      - 'e2e/**'
-      - '.github/workflows/**'
-  # Phase 18.8 PR-5: 수동 트리거 추가. PR에서 stubbed CI를 재실행하거나
-  # 베타 단계에서 임시 시나리오 재현이 필요할 때 사용.
+    types: [labeled]
   workflow_dispatch:
 
 concurrency:
@@ -51,11 +24,11 @@ concurrency:
 jobs:
   e2e:
     name: E2E (${{ matrix.browser }} shard ${{ matrix.shard }})
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    runs-on: arc-runner-set
     # H-1: fork PR 의 untrusted code 가 shared named volume (playwright-cache/hostedtool-cache) 에
     # 악성 binary 를 심어 4 runner 횡전파하는 cache poisoning 차단.
     # fork PR 은 cache mount runner 를 우회 (skip). main / same-repo PR 만 실행.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false
+    if: github.event_name != 'pull_request' || (github.event.label.name == 'ready-for-ci' && github.event.pull_request.head.repo.fork == false)
     # Phase 23 follow-up — CI pruning P2: PR fire 시 chromium 만 (2 job).
     # push main / workflow_dispatch 시 chromium + firefox (4 job).
     # firefox-only 회귀는 main 머지 후 push fire 또는 dispatch 로 검증.
@@ -70,14 +43,6 @@ jobs:
       PLAYWRIGHT_BACKEND: "1"
 
     steps:
-      - name: Full CI ready gate
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
-        working-directory: ${{ github.workspace }}
-        run: |
-          echo "::error::Full CI는 CodeRabbit/Codecov 정리 후 'ready-for-ci' 라벨을 붙였을 때 실행합니다."
-          echo "::error::리뷰 대응 중에는 light checks만 사용하고, merge 전 라벨을 붙여 full CI를 다시 실행하세요."
-          exit 1
-
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:
@@ -389,7 +354,7 @@ jobs:
   merge-reports:
     name: Merge Playwright reports
     # H-1 consistency: e2e 와 동일 fork PR 게이트 (cache mount runner 일관성).
-    if: (always()) && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.fork == false && contains(github.event.pull_request.labels.*.name, 'ready-for-ci')))
+    if: (always()) && (github.event_name != 'pull_request' || (github.event.label.name == 'ready-for-ci' && github.event.pull_request.head.repo.fork == false))
     needs: [e2e]
     runs-on: arc-runner-set
     steps:

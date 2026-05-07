@@ -186,7 +186,7 @@ flowchart TB
 
 - 파일 500줄 / 함수 80줄 (table-driven 데이터 제외).
 - 자동 생성(sqlc 생성물) 예외.
-- 초과 예상 시: handler 분리 / service 인터페이스 쪼개기 / 모듈은 core+schema+factory+reactor.
+- 줄 수는 책임 분리 경보다. 초과 예상 시 기능을 빼거나 한 파일에 압축하지 말고 handler / service / repository-provider / engine-runtime 경계로 나눈다.
 
 ## AI 설계 시 주의 {#design-notes-for-ai}
 

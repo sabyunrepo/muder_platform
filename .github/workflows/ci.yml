@@ -1,30 +1,12 @@
 name: CI
 
-# paths filter (Phase 23 follow-up — CI pruning P0):
-# docs(wrap)/메모리/plan 변경 commit 시 fire 0. apps/server, packages, tooling, lockfile,
-# 본 workflow 자체 변경에만 fire.
+# Development-minimum mode: do not run CI automatically on every PR/push.
+# CodeRabbit remains the default PR feedback loop. Run this workflow manually or
+# by applying the `ready-for-ci` label when a PR is ready for full validation.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'tooling/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'turbo.json'
-      - '.github/workflows/**'
   pull_request:
     branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'tooling/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'turbo.json'
-      - '.github/workflows/**'
+    types: [labeled]
   workflow_dispatch:
 
 concurrency:
@@ -34,19 +16,12 @@ concurrency:
 jobs:
   go-check:
     name: Go Lint + Test
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
+    runs-on: arc-runner-set
     defaults:
       run:
         working-directory: apps/server
     steps:
-      - name: Full CI ready gate
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
-        working-directory: ${{ github.workspace }}
-        run: |
-          echo "::error::Full CI는 CodeRabbit/Codecov 정리 후 'ready-for-ci' 라벨을 붙였을 때 실행합니다."
-          echo "::error::리뷰 대응 중에는 light checks만 사용하고, merge 전 라벨을 붙여 full CI를 다시 실행하세요."
-          exit 1
-
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:
@@ -223,16 +198,9 @@ jobs:
 
   ts-check:
     name: TypeScript Lint + Test + Build
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
+    runs-on: arc-runner-set
     steps:
-      - name: Full CI ready gate
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
-        working-directory: ${{ github.workspace }}
-        run: |
-          echo "::error::Full CI는 CodeRabbit/Codecov 정리 후 'ready-for-ci' 라벨을 붙였을 때 실행합니다."
-          echo "::error::리뷰 대응 중에는 light checks만 사용하고, merge 전 라벨을 붙여 full CI를 다시 실행하세요."
-          exit 1
-
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:
@@ -302,6 +270,7 @@ jobs:
     #   Phase 21: Go 70% / FE Lines 65% / FE Branches 85% (+15%p — 하한 상향 전 반드시 테스트 보강)
     #   하한 상향 전에 반드시 추가 테스트 PR 로 baseline 끌어올리기.
     name: Coverage Regression Guard
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     needs: [go-check, ts-check]
     steps:
@@ -377,6 +346,7 @@ jobs:
 
   docker-build:
     name: Docker Build Check
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
     runs-on: arc-runner-set
     needs: [go-check, ts-check]
     permissions:

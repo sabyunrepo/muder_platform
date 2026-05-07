@@ -100,10 +100,10 @@ ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$number" --format env)"
 eval "$ci_scope_env"
 if [[ "$CI_SCOPE" == "code-rabbit-only" ]]; then
   steward_mode="code-rabbit-only exception"
-  ci_instruction="이 PR은 heavy CI path filter에 걸리는 파일이 없습니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. CodeRabbit clear + unresolved 0 + light checks + 변경 스크립트/설정 focused validation이 완료 조건입니다."
+  ci_instruction="이 PR은 heavy CI 실행 대상 파일이 없습니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. CodeRabbit clear + unresolved 0 + light checks + 변경 스크립트/설정 focused validation이 완료 조건입니다."
   merge_ready_rule="MERGE_READY 또는 MERGE_CANDIDATE: code-rabbit-only exception 근거 확인, unresolved thread 0, CodeRabbit clear, light checks pass, changed scripts/config focused validation pass. ready-for-ci 라벨과 required workflow green은 요구하지 않습니다. strict behind만 남으면 MERGE_CANDIDATE로 보고하고 main Codex가 admin merge 또는 update를 결정합니다."
   copy_ready_rule="이 PR은 code-rabbit-only exception입니다. MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --code-rabbit-only 로 CodeRabbit/threads 상태만 확인하고, ready-for-ci 라벨이나 workflow_dispatch/full CI는 실행하지 마세요. main Codex가 명시하지 않은 branch update는 하지 마세요."
-  full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 path-filter 기대 동작입니다."
+  full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 개발 최소 워커 trigger 정책의 기대 동작입니다."
 else
   steward_mode="full-ci"
   ci_instruction="이 PR은 heavy CI trigger path를 변경했습니다. CodeRabbit 정리 후 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙이고, scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하세요. strict behind는 품질 실패가 아니므로 main Codex가 merge batch 순서에서 update 또는 admin merge를 결정합니다."
@@ -164,7 +164,7 @@ $ci_instruction
 - full-ci PR에서 ready-for-ci 라벨은 full CI 실행 허가일 뿐이며, 라벨만으로 모든 workflow가 생성됐다고 가정하지 않습니다.
 - full-ci PR에서 ready-for-ci 라벨 적용 후에는 MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하고, 누락된 workflow를 workflow_dispatch로 생성합니다. branch update는 main Codex가 명시한 경우에만 추가합니다.
 - Required workflow set: CI, E2E — Stubbed Backend, Security — Fast Feedback.
-- gitleaks, File Size Guard, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
+- gitleaks, ci-hooks, module-isolation, build-runner-image 등은 이 steward의 full-CI 완료 판정용 required set이 아닙니다. PR checks에 보이면 참고하되, 위 required set 누락 여부를 기준으로 행동하세요.
 - 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
 - local rebase, local merge commit, force-push는 금지입니다. main Codex가 branch update를 지시한 경우 strict up-to-date gate 해소에는 gh pr update-branch $number 만 사용합니다.
 - pending 상태는 완료가 아닙니다. CodeRabbit/CI/Codecov가 아직 도는 중이고 watcher가 계속 가능하면 최종 보고하지 말고 계속 진행하세요.

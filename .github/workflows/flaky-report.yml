@@ -8,8 +8,8 @@ name: Flaky Test Report (weekly)
 # green for 2 weeks, un-flag and promote back to e2e-stubbed.
 
 on:
-  schedule:
-    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  # Development-minimum mode: weekly retry workers are disabled. Dispatch
+  # manually when investigating a known flaky E2E failure.
   workflow_dispatch: {}
 
 concurrency:

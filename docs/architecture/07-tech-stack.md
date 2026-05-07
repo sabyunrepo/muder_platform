@@ -170,4 +170,4 @@ pnpm --filter @mmp/web dev   # http://localhost:3000
 | `.ts` / `.tsx` | 400줄 | 함수 60줄 / JSX 컴포넌트 150줄 |
 | `.md` | 500줄 | (CLAUDE.md만 200줄) |
 
-> 강제: `memory/feedback_file_size_limit.md`. 자동생성(sqlc/gen) 예외.
+> 강제: `memory/feedback_file_size_limit.md`. 자동생성(sqlc/gen) 예외. LOC 한도는 숫자 맞추기가 아니라 책임 분리 경보로 다룬다.

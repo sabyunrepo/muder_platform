@@ -20,7 +20,7 @@
 | 룰 | master |
 |----|--------|
 | 코딩 작업 규율 (구현 전 사고 · 단순함 · 외과적 변경 · 목표 검증) | `memory/feedback_coding_discipline.md` |
-| 파일/함수 크기 티어 (Go 500 / TS·TSX 400 / MD 500 / CLAUDE.md 200) | `memory/feedback_file_size_limit.md` |
+| 파일/함수 크기 티어와 책임 경계 (Go 500 / TS·TSX 400 / MD 500 / CLAUDE.md 200) | `memory/feedback_file_size_limit.md` |
 | Git 워크플로우 (main 보호 + PR 필수, 15 status check) | `memory/feedback_branch_pr_workflow.md` |
 | 4-agent 리뷰 정책 (admin-merge 전 필수) | `memory/feedback_4agent_review_before_admin_merge.md` |
 | 메모리 canonical 룰 (repo `memory/` 단일 source) | `memory/feedback_memory_canonical_repo.md` |

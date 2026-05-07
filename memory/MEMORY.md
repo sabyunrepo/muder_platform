@@ -8,7 +8,7 @@
 - [Phase 19 Residual](project_phase19_residual_progress.md) — **진행 중** W0~W3 완료, **W4만 잔존** (PR-9 WS Auth Protocol 머지 #203, PR-10 Runtime Payload Validation L 미착수). #200/#201/#202/#204~#210 follow-ups carry-over
 
 ## Backlog
-- [Phase 21 backlog](project_phase21_backlog.md) — Phase 19 audit log orphan action 7건. 에디터 리팩터 잔존 3건: E-3/E-5(Phase 24 후보, brainstorm 필수) + E-9(인프라 file-size-guard glob 정정, S). E-7/E-8/E-10/E-11/E-12는 Resolved 2026-05-01 (PR #189/#191). Phase 23 인프라 follow-ups 5건은 Closed 2026-05-01 (KT Cloud KS arc-runner-set 진화로 superseded)
+- [Phase 21 backlog](project_phase21_backlog.md) — Phase 19 audit log orphan action 7건. 에디터 리팩터 잔존 2건: E-3/E-5(Phase 24 후보, brainstorm 필수). E-6 file-size guard는 LOC 숫자 중심 신호라 제거됨, E-9 glob 정정은 제거와 함께 무효. E-7/E-8/E-10/E-11/E-12는 Resolved 2026-05-01 (PR #189/#191). Phase 23 인프라 follow-ups 5건은 Closed 2026-05-01 (KT Cloud KS arc-runner-set 진화로 superseded)
 
 ## 도메인 카논
 - [소셜 시스템](project_social_system.md) — SocialHub, Redis Presence, WS 핸들러, 차단 필터링
@@ -54,7 +54,7 @@
 - [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25, ESLint9 config 미흡
 - [CI admin-skip 정책 (만료 — 2026-04-29)](project_ci_admin_skip_expired_2026-04-29.md) — 정상 squash 모드 복귀
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — `?token=` 쿼리 인증
-- [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/80, TS·TSX 400/60·150, MD 500(CLAUDE.md만 200)
+- [파일/함수 크기 티어와 책임 경계](feedback_file_size_limit.md) — Go 500/80, TS·TSX 400/60·150, MD 500(CLAUDE.md만 200). LOC 한도는 숫자 맞추기가 아니라 책임 분리 경보
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화, 장시간 세션 주기 재시작
 - [wsgen / codegen 결정성 카논](feedback_wsgen_deterministic.md) — Go map iteration randomized → sort.Slice 강제 (PR-1 #212)
 - [모듈 Skeleton = PublicStateMarker로 시작](project_module_skeleton_publicstate.md) — F-sec-2 playeraware-lint canon이 강제 (PR-1 #212)
