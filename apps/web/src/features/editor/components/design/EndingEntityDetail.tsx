@@ -219,7 +219,7 @@ export function EndingEntityDetail({
           <div>
             <h4 className="text-sm font-semibold text-slate-100">캐릭터별 결과 카드 작성 현황</h4>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              상세 문구는 등장인물 관리의 결과 카드에서 작성합니다. 이곳에서는 누락된 캐릭터를 확인합니다.
+              캐릭터별 결과 문구는 엔딩 관리 책임으로 이동합니다. 이곳에서는 기존 작성 현황과 누락된 캐릭터를 확인합니다.
             </p>
           </div>
           <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-amber-100">

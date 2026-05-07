@@ -154,4 +154,34 @@ describe('CharacterForm', () => {
     expect(screen.getByLabelText(/범인 여부/)).toBeDefined();
     expect(screen.getByLabelText('정렬 순서')).toBeDefined();
   });
+
+  it('수정 요청은 기존 결과 카드 값을 등장인물 payload에 보존하지 않는다', () => {
+    render(
+      <CharacterForm
+        themeId="theme-1"
+        character={{
+          ...character,
+          endcard_title: '홍길동의 후일담',
+          endcard_body: '사건 이후의 선택',
+          endcard_image_url: 'https://cdn.example/endcard.webp',
+        }}
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.not.objectContaining({
+          endcard_title: expect.anything(),
+          endcard_body: expect.anything(),
+          endcard_image_url: expect.anything(),
+          endcard_image_media_id: expect.anything(),
+        }),
+      }),
+      expect.any(Object),
+    );
+  });
 });

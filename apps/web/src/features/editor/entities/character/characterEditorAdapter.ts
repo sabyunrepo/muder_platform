@@ -33,11 +33,6 @@ export interface CharacterEditorViewModel {
   canSpeakInReading: boolean;
   isVotingCandidate: boolean;
   visibilityBadges: string[];
-  endcardTitle: string;
-  endcardBody: string;
-  endcardImageUrl: string | null;
-  endcardImageMediaId: string | null;
-  hasEndcard: boolean;
   aliasRules: CharacterAliasRule[];
   hasAliasRules: boolean;
 }
@@ -132,17 +127,6 @@ export function normalizeCharacterAliasRules(rules: CharacterAliasRule[] | null 
     .filter((rule) => Boolean(rule.id && (rule.display_name || rule.display_icon_url || rule.display_icon_media_id)));
 }
 
-function getExistingEndcardPayload(character: EditorCharacterResponse): Pick<
-  UpdateCharacterRequest,
-  'endcard_title' | 'endcard_body' | 'endcard_image_url'
-> {
-  return {
-    ...(character.endcard_title ? { endcard_title: character.endcard_title } : {}),
-    ...(character.endcard_body ? { endcard_body: character.endcard_body } : {}),
-    ...(character.endcard_image_url ? { endcard_image_url: character.endcard_image_url } : {}),
-  };
-}
-
 function buildCharacterBaseUpdatePayload(character: EditorCharacterResponse, role = normalizeCharacterEditorRole(character)) {
   const visibility = getCharacterVisibility(character, role);
   return {
@@ -156,7 +140,6 @@ function buildCharacterBaseUpdatePayload(character: EditorCharacterResponse, rol
     show_in_intro: visibility.showInIntro,
     can_speak_in_reading: visibility.canSpeakInReading,
     is_voting_candidate: visibility.isVotingCandidate,
-    ...getExistingEndcardPayload(character),
     alias_rules: normalizeCharacterAliasRules(character.alias_rules),
   };
 }
@@ -187,16 +170,6 @@ export function toCharacterEditorViewModel(character: EditorCharacterResponse): 
     canSpeakInReading: visibility.canSpeakInReading,
     isVotingCandidate: visibility.isVotingCandidate,
     visibilityBadges: getVisibilityBadges(visibility),
-    endcardTitle: character.endcard_title?.trim() ?? '',
-    endcardBody: character.endcard_body?.trim() ?? '',
-    endcardImageUrl: character.endcard_image_url,
-    endcardImageMediaId: character.endcard_image_media_id ?? null,
-    hasEndcard: Boolean(
-      character.endcard_title?.trim() ||
-      character.endcard_body?.trim() ||
-      character.endcard_image_media_id ||
-      character.endcard_image_url,
-    ),
     aliasRules,
     hasAliasRules: aliasRules.length > 0,
   };
@@ -237,36 +210,6 @@ export function buildCharacterVisibilityUpdatePayload(
   return {
     ...buildCharacterBaseUpdatePayload(character, role),
     ...next,
-    ...getExistingEndcardPayload(character),
-  };
-}
-
-export function buildCharacterEndcardUpdatePayload(
-  character: EditorCharacterResponse,
-  values: { title: string; body: string; imageUrl: string; imageMediaId?: string | null },
-): UpdateCharacterRequest {
-  const role = normalizeCharacterEditorRole(character);
-  const visibility = getCharacterVisibility(character, role);
-  const title = values.title.trim();
-  const body = values.body.trim();
-  const imageUrl = values.imageUrl.trim();
-  const imageMediaId = values.imageMediaId ?? null;
-
-  return {
-    name: character.name,
-    description: character.description ?? undefined,
-    image_url: character.image_url ?? undefined,
-    is_culprit: role === 'culprit',
-    mystery_role: role,
-    sort_order: character.sort_order,
-    is_playable: visibility.isPlayable,
-    show_in_intro: visibility.showInIntro,
-    can_speak_in_reading: visibility.canSpeakInReading,
-    is_voting_candidate: visibility.isVotingCandidate,
-    endcard_title: title,
-    endcard_body: body,
-    endcard_image_url: imageMediaId ? '' : imageUrl,
-    endcard_image_media_id: imageMediaId,
   };
 }
 
