@@ -9,8 +9,10 @@ import {
   useEditorLocations,
   useEditorClues,
   useDeleteClue,
+  useUpdateClue,
   useUpdateConfigJson,
   type ClueResponse,
+  type UpdateClueRequest,
 } from '@/features/editor/api';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { buildClueUsageMap, type EntityReference } from '@/features/editor/utils/entityReferences';
@@ -35,24 +37,27 @@ export function ClueListView({ themeId }: ClueListViewProps) {
   const { data: locations = [] } = useEditorLocations(themeId);
   const { data: characters = [] } = useEditorCharacters(themeId);
   const deleteClue = useDeleteClue(themeId);
+  const updateClue = useUpdateClue(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingClue, setEditingClue] = useState<ClueResponse | undefined>(undefined);
   const [deletingClue, setDeletingClue] = useState<ClueResponse | undefined>(undefined);
 
   function handleCreate() {
-    setEditingClue(undefined);
-    setIsFormOpen(true);
-  }
-
-  function handleEdit(clue: ClueResponse) {
-    setEditingClue(clue);
     setIsFormOpen(true);
   }
 
   function handleFormClose() {
     setIsFormOpen(false);
-    setEditingClue(undefined);
+  }
+
+  function handleUpdate(clueId: string, body: UpdateClueRequest) {
+    updateClue.mutate(
+      { clueId, body },
+      {
+        onSuccess: () => toast.success('단서가 수정되었습니다'),
+        onError: (err) => toast.error(err.message || '단서 수정에 실패했습니다'),
+      }
+    );
   }
 
   function handleDeleteConfirm() {
@@ -125,18 +130,14 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         locations={locations}
         characters={characters}
         onCreate={handleCreate}
-        onEdit={handleEdit}
+        onUpdate={handleUpdate}
         onDelete={setDeletingClue}
+        isClueSaving={updateClue.isPending}
         onConfigChange={handleConfigChange}
         isConfigSaving={updateConfig.isPending}
       />
 
-      <ClueForm
-        themeId={themeId}
-        clue={editingClue}
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-      />
+      <ClueForm themeId={themeId} isOpen={isFormOpen} onClose={handleFormClose} />
 
       <Modal
         isOpen={!!deletingClue}

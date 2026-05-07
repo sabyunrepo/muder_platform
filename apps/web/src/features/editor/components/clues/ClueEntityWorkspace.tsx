@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Edit3, Trash2 } from 'lucide-react';
 import type {
   ClueResponse,
   EditorCharacterResponse,
   LocationResponse,
+  UpdateClueRequest,
 } from '@/features/editor/api';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
@@ -14,10 +14,9 @@ import {
 } from '@/features/editor/utils/entityReferences';
 import {
   buildClueBadges,
-  toClueEditorViewModel,
 } from '@/features/editor/entities/clue/clueEntityAdapter';
-import { EntityTriggerPlacementCard } from '@/features/editor/components/triggers/EntityTriggerPlacementCard';
 import { ClueRuntimeEffectCard } from './ClueRuntimeEffectCard';
+import { ClueBasicInfoCard } from './ClueBasicInfoCard';
 
 interface ClueEntityWorkspaceProps {
   themeId?: string;
@@ -26,8 +25,9 @@ interface ClueEntityWorkspaceProps {
   locations: LocationResponse[];
   characters: EditorCharacterResponse[];
   onCreate: () => void;
-  onEdit: (clue: ClueResponse) => void;
+  onUpdate: (clueId: string, body: UpdateClueRequest) => void;
   onDelete: (clue: ClueResponse) => void;
+  isClueSaving?: boolean;
   onConfigChange?: (configJson: EditorConfig) => void;
   isConfigSaving?: boolean;
 }
@@ -39,8 +39,9 @@ export function ClueEntityWorkspace({
   locations,
   characters,
   onCreate,
-  onEdit,
+  onUpdate,
   onDelete,
+  isClueSaving,
   onConfigChange,
   isConfigSaving,
 }: ClueEntityWorkspaceProps) {
@@ -63,19 +64,16 @@ export function ClueEntityWorkspace({
       getItemBadges={(clue) => buildClueBadges(clue, usageMap[clue.id]?.references.length ?? 0)}
       renderDetail={(clue) => (
         <div className="space-y-4">
-          <ClueDetailCard clue={clue} onEdit={onEdit} onDelete={onDelete} />
+          <ClueBasicInfoCard
+            themeId={themeId ?? ''}
+            clue={clue}
+            isSaving={isClueSaving}
+            onSave={onUpdate}
+            onDelete={onDelete}
+          />
           <ClueRuntimeEffectCard
             clue={clue}
             clues={clues}
-            configJson={configJson}
-            onConfigChange={onConfigChange}
-            isSaving={isConfigSaving}
-          />
-          <EntityTriggerPlacementCard
-            themeId={themeId}
-            entityKind="clue"
-            entityId={clue.id}
-            entityName={clue.name}
             configJson={configJson}
             onConfigChange={onConfigChange}
             isSaving={isConfigSaving}
@@ -84,59 +82,6 @@ export function ClueEntityWorkspace({
       )}
       renderInspector={(clue) => <ClueUsageCard references={getClueBacklinks(usageMap, clue.id)} />}
     />
-  );
-}
-function ClueDetailCard({
-  clue,
-  onEdit,
-  onDelete,
-}: {
-  clue: ClueResponse;
-  onEdit: (clue: ClueResponse) => void;
-  onDelete: (clue: ClueResponse) => void;
-}) {
-  const view = toClueEditorViewModel(clue);
-
-  return (
-    <article className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/70">
-            단서 상세
-          </p>
-          <h3 className="mt-1 text-xl font-bold text-slate-100">{clue.name}</h3>
-          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">
-            {view.description}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={() => onEdit(clue)}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-200 hover:border-amber-500/50 hover:text-amber-300"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            수정
-          </button>
-          <button
-            type="button"
-            onClick={() => onDelete(clue)}
-            aria-label={`${clue.name} 삭제`}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-red-500/20 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/10"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            삭제
-          </button>
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
-        <InfoBlock title="공개 범위" value={view.publicScopeLabel} />
-        <InfoBlock title="등장 라운드" value={view.roundLabel} />
-        <InfoBlock title="사용 효과" value={view.useEffectLabel} />
-        <InfoBlock title="사용 후 처리" value={view.consumeLabel} />
-      </div>
-    </article>
   );
 }
 
@@ -164,15 +109,6 @@ function ClueUsageCard({ references }: { references: EntityReference[] }) {
         </ul>
       )}
     </aside>
-  );
-}
-
-function InfoBlock({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-      <p className="text-xs font-semibold text-slate-500">{title}</p>
-      <p className="mt-1 text-sm text-slate-200">{value}</p>
-    </div>
   );
 }
 

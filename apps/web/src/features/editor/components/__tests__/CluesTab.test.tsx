@@ -11,6 +11,7 @@ const {
   useEditorThemeMock,
   useEditorLocationsMock,
   useEditorCharactersMock,
+  useUpdateClueMock,
   useUpdateConfigJsonMock,
 } = vi.hoisted(() => ({
   useEditorCluesMock: vi.fn(),
@@ -18,6 +19,7 @@ const {
   useEditorThemeMock: vi.fn(),
   useEditorLocationsMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
+  useUpdateClueMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
 }));
 
@@ -47,6 +49,7 @@ vi.mock('@/features/editor/api', () => ({
   useEditorTheme: () => useEditorThemeMock(),
   useEditorLocations: () => useEditorLocationsMock(),
   useEditorCharacters: () => useEditorCharactersMock(),
+  useUpdateClue: () => useUpdateClueMock(),
   useUpdateConfigJson: () => useUpdateConfigJsonMock(),
   editorKeys: { clues: (id: string) => ['clues', id] },
 }));
@@ -55,6 +58,11 @@ vi.mock('../ClueForm', () => ({
 }));
 vi.mock('../clues/ClueEdgeGraph', () => ({
   ClueEdgeGraph: () => <div>단서 관계 그래프</div>,
+}));
+vi.mock('@/features/editor/components/media/ImageMediaReferenceField', () => ({
+  ImageMediaReferenceField: ({ label }: { label: string }) => (
+    <div data-testid="image-media-field">{label}</div>
+  ),
 }));
 vi.mock('@/features/editor/flowApi', () => ({
   useFlowGraph: () => ({
@@ -94,6 +102,7 @@ describe('CluesTab', () => {
     useEditorThemeMock.mockReturnValue({ data: { config_json: {} } });
     useEditorLocationsMock.mockReturnValue({ data: [] });
     useEditorCharactersMock.mockReturnValue({ data: [] });
+    useUpdateClueMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
     useUpdateConfigJsonMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
   });
 
@@ -132,7 +141,7 @@ describe('CluesTab', () => {
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     render(<CluesTab themeId="theme-1" />);
     expect(screen.getAllByText('피 묻은 칼').length).toBeGreaterThan(0);
-    expect(screen.getByText('단서 상세')).toBeDefined();
+    expect(screen.getByText('단서 기본 정보')).toBeDefined();
     expect(screen.getByText('이 단서가 쓰이는 곳')).toBeDefined();
   });
 
