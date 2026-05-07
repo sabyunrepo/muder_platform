@@ -49,7 +49,7 @@ RUN mkdir -p /go/pkg/mod /go-build-cache /pnpm /pnpm-store /workspace \
     && npm install -g pnpm@9.15.4 \
     && go install github.com/pressly/goose/v3/cmd/goose@v${GOOSE_VERSION} \
     && curl -fsSL \
-      "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh" \
+      "https://raw.githubusercontent.com/golangci/golangci-lint/v${GOLANGCI_LINT_VERSION}/install.sh" \
       | sh -s -- -b /usr/local/bin "v${GOLANGCI_LINT_VERSION}"
 
 WORKDIR /workspace

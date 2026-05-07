@@ -10,6 +10,17 @@ if ! git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
   base_ref="${MMP_PR_GUARD_FALLBACK_BASE_REF:-main}"
 fi
 
+require_jq() {
+  if ! command -v jq >/dev/null 2>&1; then
+    cat >&2 <<'MSG'
+🚫 PR 생성 중단: 로컬 CI marker 확인에는 jq가 필요합니다.
+   macOS: brew install jq
+   Linux: apt-get install jq
+MSG
+    exit 2
+  fi
+}
+
 local_ci_marker() {
   local common_dir
   common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
@@ -77,6 +88,7 @@ MSG
   fi
 
   local marker head marker_head marker_status
+  require_jq
   marker="$(local_ci_marker)"
   head="$(git rev-parse HEAD)"
 

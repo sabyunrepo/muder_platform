@@ -23,7 +23,7 @@ services:
       MMP_LOCAL_CI_SKIP_INSTALL: ${MMP_LOCAL_CI_SKIP_INSTALL:-}
       DATABASE_URL: postgres://mmp:mmp_test@postgres:5432/mmp_test?sslmode=disable
       REDIS_URL: redis://redis:6379
-      E2E_DATABASE_URL: postgres://mmp:mmp_e2e@postgres:5432/mmp_e2e?sslmode=disable
+      E2E_DATABASE_URL: postgres://mmp:mmp_test@postgres:5432/mmp_test?sslmode=disable
     volumes:
       - ${MMP_LOCAL_CI_WORKDIR:-.}:${MMP_LOCAL_CI_WORKDIR:-/workspace}
       # Worktrees store .git as a file pointing at the main repository's git

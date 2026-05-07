@@ -146,8 +146,9 @@ cleanup() {
 trap cleanup EXIT
 cd apps/server
 go build -o /tmp/mmp-server ./cmd/server
-goose -dir db/migrations postgres "host=postgres port=5432 user=mmp password=mmp_test dbname=mmp_test sslmode=disable" up
-DATABASE_URL="${DATABASE_URL}" REDIS_URL="${REDIS_URL}" GAME_RUNTIME_V2=true /tmp/mmp-server > /tmp/mmp-server-local-ci.log 2>&1 &
+E2E_DB_URL="${E2E_DATABASE_URL:-${DATABASE_URL}}"
+goose -dir db/migrations postgres "${E2E_DB_URL}" up
+DATABASE_URL="${E2E_DB_URL}" REDIS_URL="${REDIS_URL}" GAME_RUNTIME_V2=true /tmp/mmp-server > /tmp/mmp-server-local-ci.log 2>&1 &
 SERVER_PID=$!
 for i in $(seq 1 40); do
   if ! kill -0 "$SERVER_PID" 2>/dev/null; then
@@ -196,11 +197,12 @@ case "$MODE" in
     run_in_ci docker "$docker_cmd"
     ;;
   full)
+    full_started_at="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
     run_in_ci quick "$quick_cmd"
     run_in_ci coverage "$coverage_cmd"
     run_in_ci docker "$docker_cmd"
     run_in_ci e2e "$e2e_cmd"
-    record_result full success "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    record_result full success "$full_started_at"
     ;;
   shell)
     compose run --rm local-ci bash "$@"
