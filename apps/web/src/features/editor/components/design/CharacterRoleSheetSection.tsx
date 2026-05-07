@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, FileText, FileUp, Save } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 import { Spinner } from '@/shared/components/ui/Spinner';
-import { useMediaDownloadUrl, type MediaResponse } from '@/features/editor/mediaApi';
+import { useMediaDownloadUrl, type MediaResponse, type MediaType } from '@/features/editor/mediaApi';
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
+import { RichContentEditor } from '@/features/editor/components/content/RichContentEditor';
+import { RichContentPreview } from '@/features/editor/components/content/RichContentPreview';
 import { ImageRoleSheetPanel } from './ImageRoleSheetPanel';
 import { useRoleSheetEditorState } from './useRoleSheetEditorState';
 
@@ -98,6 +100,7 @@ export function CharacterRoleSheetSection({
         />
       ) : (
         <MarkdownRoleSheetEditor
+          themeId={themeId}
           characterName={characterName}
           draft={state.draft}
           saveStatus={state.saveStatus}
@@ -152,7 +155,10 @@ function UnsupportedRoleSheetFormatNotice({ characterName }: { characterName: st
 }
 
 function isSaveButtonTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement && target.closest('[data-role-sheet-save="true"]') !== null;
+  return (
+    target instanceof HTMLElement &&
+    target.closest('[data-role-sheet-save="true"], [data-rich-content-control="true"]') !== null
+  );
 }
 
 function RoleSheetFormatSelector({
@@ -215,6 +221,7 @@ function FormatButton({
 }
 
 function MarkdownRoleSheetEditor({
+  themeId,
   characterName,
   draft,
   saveStatus,
@@ -227,6 +234,7 @@ function MarkdownRoleSheetEditor({
   onSave,
   onSaveBlur,
 }: {
+  themeId: string;
   characterName: string;
   draft: string;
   saveStatus: 'idle' | 'saved' | 'failed';
@@ -239,16 +247,35 @@ function MarkdownRoleSheetEditor({
   onSave: () => void;
   onSaveBlur: () => void;
 }) {
+  const [pickerType, setPickerType] = useState<MediaType | null>(null);
+
   return (
     <div className="space-y-3">
-      <textarea
-        aria-label="역할지 Markdown"
-        value={draft}
-        onChange={(event) => onDraftChange(event.target.value)}
-        onBlur={(event) => onBlur(event.relatedTarget)}
-        placeholder={`## ${characterName}의 정체\n\n## 비밀\n\n## 동기\n\n## 알리바이`}
-        className="min-h-64 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs leading-5 text-slate-200 placeholder:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-      />
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <RichContentEditor
+          themeId={themeId}
+          markdown={draft}
+          onChange={onDraftChange}
+          pickerType={pickerType}
+          onOpenPicker={setPickerType}
+          onClosePicker={() => setPickerType(null)}
+          ariaLabel="역할지 Markdown"
+          imageButtonLabel="역할지 이미지 삽입"
+          videoButtonLabel="역할지 영상 삽입"
+          imagePickerTitle="역할지 이미지 선택"
+          videoPickerTitle="역할지 영상 선택"
+          onBlurCapture={onBlur}
+        />
+        <RichContentPreview
+          themeId={themeId}
+          title={`${characterName} 역할지`}
+          titleFallback="역할지 프리뷰"
+          markdown={draft}
+          ariaLabel="역할지 프리뷰"
+          eyebrow="Player Preview"
+          emptyMessage="본문을 작성하면 플레이어에게 보일 역할지가 표시됩니다."
+        />
+      </div>
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p

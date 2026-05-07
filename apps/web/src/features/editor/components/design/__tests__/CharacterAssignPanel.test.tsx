@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { forwardRef, useImperativeHandle } from 'react';
 import { ApiHttpError } from '@/lib/api-error';
 
 // ---------------------------------------------------------------------------
@@ -64,6 +65,35 @@ vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: () => useMediaListMock(),
 }));
 
+vi.mock('@mdxeditor/editor', () => ({
+  MDXEditor: forwardRef<
+    { insertMarkdown: (snippet: string) => void },
+    { markdown: string; onChange: (markdown: string) => void }
+  >(({ markdown, onChange }, ref) => {
+    useImperativeHandle(ref, () => ({
+      insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
+    }));
+    return (
+      <textarea
+        aria-label="역할지 Markdown"
+        value={markdown}
+        onChange={(event) => onChange(event.currentTarget.value)}
+      />
+    );
+  }),
+  headingsPlugin: vi.fn(() => ({})),
+  listsPlugin: vi.fn(() => ({})),
+  quotePlugin: vi.fn(() => ({})),
+  linkPlugin: vi.fn(() => ({})),
+  thematicBreakPlugin: vi.fn(() => ({})),
+  toolbarPlugin: vi.fn(() => ({})),
+  UndoRedo: () => null,
+  BlockTypeSelect: () => null,
+  BoldItalicUnderlineToggles: () => null,
+  ListsToggle: () => null,
+  CreateLink: () => null,
+}));
+
 vi.mock('@/features/editor/components/media/MediaPicker', () => ({
   MediaPicker: ({
     open,
@@ -95,6 +125,21 @@ vi.mock('@/features/editor/components/media/MediaPicker', () => ({
             onClick={() => onSelect({ id: 'document-2', name: 'DOCX 역할지', type: 'DOCUMENT', mime_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })}
           >
             DOCX 역할지 선택
+          </button>
+        </div>
+      );
+    }
+
+    if (filterType === 'VIDEO') {
+      return (
+        <div>
+          <span>filter:{filterType}</span>
+          <span>selected:{selectedId ?? 'none'}</span>
+          <button
+            type="button"
+            onClick={() => onSelect({ id: 'video-1', name: '역할지 영상', type: 'VIDEO' })}
+          >
+            역할지 영상 선택
           </button>
         </div>
       );
@@ -257,7 +302,10 @@ describe('CharacterAssignPanel', () => {
     useUpsertCharacterRoleSheetMock.mockReturnValue({ mutate: upsertRoleSheetMutateMock, isPending: false });
     useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() });
     useMediaListMock.mockReturnValue({
-      data: [{ id: 'image-1', name: '캐릭터 이미지', type: 'IMAGE' }],
+      data: [
+        { id: 'image-1', name: '캐릭터 이미지', type: 'IMAGE' },
+        { id: 'video-1', name: '역할지 영상', type: 'VIDEO' },
+      ],
       isLoading: false,
     });
     updateCharacterPendingMock.value = false;
@@ -541,6 +589,34 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
+  it('역할지 작성기는 미디어 관리 이미지를 mediaId embed로 삽입하고 프리뷰한다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
+
+    fireEvent.click(screen.getByRole('button', { name: '역할지 이미지 삽입' }));
+    expect(screen.getByText('filter:IMAGE')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
+
+    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement;
+    expect(roleSheet.value).toContain('<MediaEmbed mediaId="image-1" type="image" />');
+    expect(screen.getByText('이미지: 캐릭터 이미지')).toBeDefined();
+  });
+
+  it('역할지 작성기는 지원 영상 미디어를 mediaId embed로 삽입한다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
+
+    fireEvent.click(screen.getByRole('button', { name: '역할지 영상 삽입' }));
+    expect(screen.getByText('filter:VIDEO')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '역할지 영상 선택' }));
+
+    const roleSheet = screen.getByRole('textbox', { name: '역할지 Markdown' }) as HTMLTextAreaElement;
+    expect(roleSheet.value).toContain('<MediaEmbed mediaId="video-1" type="video" />');
+    expect(screen.getByText('영상: 역할지 영상')).toBeDefined();
+  });
+
   it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {
     useCharacterRoleSheetMock.mockReturnValue({
       data: undefined,
@@ -710,7 +786,7 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
-    fireEvent.click(screen.getAllByRole('button', { name: /이미지/ }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: '이미지 여러 장을 순서대로 보기' }));
     fireEvent.change(screen.getByRole('textbox', { name: '이미지 페이지 URL' }), {
       target: { value: 'https://cdn.example/role-1.webp' },
     });
@@ -738,7 +814,7 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
-    fireEvent.click(screen.getAllByRole('button', { name: /이미지/ }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: '이미지 여러 장을 순서대로 보기' }));
     fireEvent.click(screen.getByRole('button', { name: '미디어 라이브러리에서 추가' }));
     fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
     fireEvent.click(screen.getByRole('button', { name: '이미지 롤지 저장' }));
