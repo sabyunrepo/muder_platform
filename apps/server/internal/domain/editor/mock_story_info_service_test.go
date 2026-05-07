@@ -57,6 +57,34 @@ func (mr *MockstoryInfoQueriesMockRecorder) CreateStoryInfo(ctx, arg any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStoryInfo", reflect.TypeOf((*MockstoryInfoQueries)(nil).CreateStoryInfo), ctx, arg)
 }
 
+// CreateStoryInfoMediaRef mocks base method.
+func (m *MockstoryInfoQueries) CreateStoryInfoMediaRef(ctx context.Context, arg db.CreateStoryInfoMediaRefParams) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateStoryInfoMediaRef", ctx, arg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateStoryInfoMediaRef indicates an expected call of CreateStoryInfoMediaRef.
+func (mr *MockstoryInfoQueriesMockRecorder) CreateStoryInfoMediaRef(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStoryInfoMediaRef", reflect.TypeOf((*MockstoryInfoQueries)(nil).CreateStoryInfoMediaRef), ctx, arg)
+}
+
+// DeleteStoryInfoMediaRefs mocks base method.
+func (m *MockstoryInfoQueries) DeleteStoryInfoMediaRefs(ctx context.Context, storyInfoID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteStoryInfoMediaRefs", ctx, storyInfoID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteStoryInfoMediaRefs indicates an expected call of DeleteStoryInfoMediaRefs.
+func (mr *MockstoryInfoQueriesMockRecorder) DeleteStoryInfoMediaRefs(ctx, storyInfoID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteStoryInfoMediaRefs", reflect.TypeOf((*MockstoryInfoQueries)(nil).DeleteStoryInfoMediaRefs), ctx, storyInfoID)
+}
+
 // DeleteStoryInfoWithOwner mocks base method.
 func (m *MockstoryInfoQueries) DeleteStoryInfoWithOwner(ctx context.Context, arg db.DeleteStoryInfoWithOwnerParams) (uuid.UUID, error) {
 	m.ctrl.T.Helper()

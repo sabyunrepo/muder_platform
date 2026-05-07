@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/apperror"
@@ -26,6 +27,8 @@ type storyInfoQueries interface {
 	CreateStoryInfo(ctx context.Context, arg db.CreateStoryInfoParams) (db.StoryInfo, error)
 	UpdateStoryInfo(ctx context.Context, arg db.UpdateStoryInfoParams) (db.StoryInfo, error)
 	DeleteStoryInfoWithOwner(ctx context.Context, arg db.DeleteStoryInfoWithOwnerParams) (uuid.UUID, error)
+	DeleteStoryInfoMediaRefs(ctx context.Context, storyInfoID uuid.UUID) error
+	CreateStoryInfoMediaRef(ctx context.Context, arg db.CreateStoryInfoMediaRefParams) error
 }
 
 type StoryInfoService interface {
@@ -37,11 +40,30 @@ type StoryInfoService interface {
 
 type storyInfoService struct {
 	q      storyInfoQueries
+	pool   *pgxpool.Pool
+	withTx func(pgx.Tx) storyInfoQueries
 	logger zerolog.Logger
 }
 
-func NewStoryInfoService(q *db.Queries, logger zerolog.Logger) StoryInfoService {
-	return newStoryInfoServiceWith(q, logger)
+type storyInfoUpdatePayload struct {
+	title             string
+	body              string
+	contentFormat     string
+	sortOrder         int32
+	currentImageParam pgtype.UUID
+	imageMediaID      **string
+	characterIDs      []string
+	clueIDs           []string
+	locationIDs       []string
+}
+
+func NewStoryInfoService(q *db.Queries, pool *pgxpool.Pool, logger zerolog.Logger) StoryInfoService {
+	svc := newStoryInfoServiceWith(q, logger)
+	svc.pool = pool
+	svc.withTx = func(tx pgx.Tx) storyInfoQueries {
+		return q.WithTx(tx)
+	}
+	return svc
 }
 
 func newStoryInfoServiceWith(q storyInfoQueries, logger zerolog.Logger) *storyInfoService {
@@ -80,7 +102,15 @@ func (s *storyInfoService) Create(ctx context.Context, creatorID, themeID uuid.U
 	if err != nil {
 		return nil, err
 	}
+	contentFormat, err := resolveStoryInfoContentFormat(req.ContentFormat)
+	if err != nil {
+		return nil, err
+	}
 	imageParam, err := s.resolveStoryInfoImage(ctx, themeID, req.ImageMediaID)
+	if err != nil {
+		return nil, err
+	}
+	mediaRefs, err := s.resolveStoryInfoMediaRefs(ctx, themeID, imageParam, body)
 	if err != nil {
 		return nil, err
 	}
@@ -88,17 +118,18 @@ func (s *storyInfoService) Create(ctx context.Context, creatorID, themeID uuid.U
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.q.CreateStoryInfo(ctx, db.CreateStoryInfoParams{
+	row, err := s.createStoryInfoWithRefs(ctx, db.CreateStoryInfoParams{
 		ThemeID:             themeID,
 		Title:               title,
 		Body:                body,
+		ContentFormat:       contentFormat,
 		ImageMediaID:        imageParam,
 		RelatedCharacterIds: charRefs,
 		RelatedClueIds:      clueRefs,
 		RelatedLocationIds:  locationRefs,
 		SortOrder:           req.SortOrder,
 		CreatorID:           creatorID,
-	})
+	}, mediaRefs)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to create story info")
 		return nil, apperror.Internal("failed to create story info")
@@ -111,65 +142,31 @@ func (s *storyInfoService) Update(ctx context.Context, creatorID, infoID uuid.UU
 	if err != nil {
 		return nil, err
 	}
-	resp, err := toStoryInfoResponse(current)
-	if err != nil {
-		return nil, apperror.Internal("corrupted story info data")
-	}
-	title := resp.Title
-	if req.Title != nil {
-		title = *req.Title
-	}
-	body := resp.Body
-	if req.Body != nil {
-		body = *req.Body
-	}
-	title, body, err = validateStoryInfoText(title, body)
+	payload, err := s.mergeUpdateRequest(current, req)
 	if err != nil {
 		return nil, err
 	}
-	sortOrder := current.SortOrder
-	if req.SortOrder != nil {
-		sortOrder = *req.SortOrder
-	}
-	imageParam := current.ImageMediaID
-	switch {
-	case req.ImageMediaID == nil:
-	case *req.ImageMediaID == nil:
-		imageParam = pgtype.UUID{}
-	default:
-		imageParam, err = s.resolveStoryInfoImage(ctx, current.ThemeID, *req.ImageMediaID)
-		if err != nil {
-			return nil, err
-		}
-	}
-	charIDs := resp.RelatedCharacterIDs
-	if req.RelatedCharacterIDs != nil {
-		charIDs = *req.RelatedCharacterIDs
-	}
-	clueIDs := resp.RelatedClueIDs
-	if req.RelatedClueIDs != nil {
-		clueIDs = *req.RelatedClueIDs
-	}
-	locationIDs := resp.RelatedLocationIDs
-	if req.RelatedLocationIDs != nil {
-		locationIDs = *req.RelatedLocationIDs
-	}
-	charRefs, clueRefs, locationRefs, err := s.resolveStoryInfoRefs(ctx, current.ThemeID, charIDs, clueIDs, locationIDs)
+	imageParam, mediaRefs, err := s.resolveUpdateMedia(ctx, current.ThemeID, payload)
 	if err != nil {
 		return nil, err
 	}
-	row, err := s.q.UpdateStoryInfo(ctx, db.UpdateStoryInfoParams{
+	charRefs, clueRefs, locationRefs, err := s.resolveUpdateRefs(ctx, current.ThemeID, payload)
+	if err != nil {
+		return nil, err
+	}
+	row, err := s.updateStoryInfoWithRefs(ctx, db.UpdateStoryInfoParams{
 		ID:                  infoID,
-		Title:               title,
-		Body:                body,
+		Title:               payload.title,
+		Body:                payload.body,
+		ContentFormat:       payload.contentFormat,
 		ImageMediaID:        imageParam,
 		RelatedCharacterIds: charRefs,
 		RelatedClueIds:      clueRefs,
 		RelatedLocationIds:  locationRefs,
-		SortOrder:           sortOrder,
+		SortOrder:           payload.sortOrder,
 		Version:             req.Version,
 		CreatorID:           creatorID,
-	})
+	}, mediaRefs)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.New(apperror.ErrConflict, 409, "version mismatch")
@@ -178,6 +175,73 @@ func (s *storyInfoService) Update(ctx context.Context, creatorID, infoID uuid.UU
 		return nil, apperror.Internal("failed to update story info")
 	}
 	return toStoryInfoResponse(row)
+}
+
+func (s *storyInfoService) mergeUpdateRequest(current db.StoryInfo, req UpdateStoryInfoRequest) (*storyInfoUpdatePayload, error) {
+	resp, err := toStoryInfoResponse(current)
+	if err != nil {
+		return nil, apperror.Internal("corrupted story info data")
+	}
+	payload := &storyInfoUpdatePayload{
+		title:             resp.Title,
+		body:              resp.Body,
+		contentFormat:     resp.ContentFormat,
+		sortOrder:         current.SortOrder,
+		currentImageParam: current.ImageMediaID,
+		imageMediaID:      req.ImageMediaID,
+		characterIDs:      resp.RelatedCharacterIDs,
+		clueIDs:           resp.RelatedClueIDs,
+		locationIDs:       resp.RelatedLocationIDs,
+	}
+	if req.Title != nil {
+		payload.title = *req.Title
+	}
+	if req.Body != nil {
+		payload.body = *req.Body
+	}
+	if req.ContentFormat != nil {
+		payload.contentFormat, err = resolveStoryInfoContentFormat(req.ContentFormat)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if payload.title, payload.body, err = validateStoryInfoText(payload.title, payload.body); err != nil {
+		return nil, err
+	}
+	if req.SortOrder != nil {
+		payload.sortOrder = *req.SortOrder
+	}
+	if req.RelatedCharacterIDs != nil {
+		payload.characterIDs = *req.RelatedCharacterIDs
+	}
+	if req.RelatedClueIDs != nil {
+		payload.clueIDs = *req.RelatedClueIDs
+	}
+	if req.RelatedLocationIDs != nil {
+		payload.locationIDs = *req.RelatedLocationIDs
+	}
+	return payload, nil
+}
+
+func (s *storyInfoService) resolveUpdateMedia(ctx context.Context, themeID uuid.UUID, payload *storyInfoUpdatePayload) (pgtype.UUID, []storyInfoMediaRef, error) {
+	imageParam := payload.currentImageParam
+	switch {
+	case payload.imageMediaID == nil:
+	case *payload.imageMediaID == nil:
+		imageParam = pgtype.UUID{}
+	default:
+		resolved, err := s.resolveStoryInfoImage(ctx, themeID, *payload.imageMediaID)
+		if err != nil {
+			return pgtype.UUID{}, nil, err
+		}
+		imageParam = resolved
+	}
+	mediaRefs, err := s.resolveStoryInfoMediaRefs(ctx, themeID, imageParam, payload.body)
+	return imageParam, mediaRefs, err
+}
+
+func (s *storyInfoService) resolveUpdateRefs(ctx context.Context, themeID uuid.UUID, payload *storyInfoUpdatePayload) (json.RawMessage, json.RawMessage, json.RawMessage, error) {
+	return s.resolveStoryInfoRefs(ctx, themeID, payload.characterIDs, payload.clueIDs, payload.locationIDs)
 }
 
 func (s *storyInfoService) Delete(ctx context.Context, creatorID, infoID uuid.UUID) (uuid.UUID, error) {
@@ -234,6 +298,16 @@ func validateStoryInfoText(title string, body string) (string, string, error) {
 		return "", "", apperror.New(apperror.ErrValidation, 422, "story info body is too long")
 	}
 	return title, body, nil
+}
+
+func resolveStoryInfoContentFormat(raw *string) (string, error) {
+	if raw == nil || strings.TrimSpace(*raw) == "" {
+		return StoryInfoContentFormatMDXV1, nil
+	}
+	if strings.TrimSpace(*raw) != StoryInfoContentFormatMDXV1 {
+		return "", apperror.New(apperror.ErrValidation, 422, "unsupported story info content format")
+	}
+	return StoryInfoContentFormatMDXV1, nil
 }
 
 func (s *storyInfoService) resolveStoryInfoImage(ctx context.Context, themeID uuid.UUID, raw *string) (pgtype.UUID, error) {
@@ -360,6 +434,7 @@ func toStoryInfoResponse(row db.StoryInfo) (*StoryInfoResponse, error) {
 		ThemeID:             row.ThemeID,
 		Title:               row.Title,
 		Body:                row.Body,
+		ContentFormat:       storyInfoContentFormatOrDefault(row.ContentFormat),
 		RelatedCharacterIDs: charIDs,
 		RelatedClueIDs:      clueIDs,
 		RelatedLocationIDs:  locationIDs,
@@ -384,4 +459,11 @@ func decodeStoryInfoRefs(raw json.RawMessage) ([]string, error) {
 		return nil, err
 	}
 	return out, nil
+}
+
+func storyInfoContentFormatOrDefault(raw string) string {
+	if strings.TrimSpace(raw) == "" {
+		return StoryInfoContentFormatMDXV1
+	}
+	return raw
 }

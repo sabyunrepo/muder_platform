@@ -18,22 +18,24 @@ INSERT INTO story_infos (
   theme_id,
   title,
   body,
+  content_format,
   image_media_id,
   related_character_ids,
   related_clue_ids,
   related_location_ids,
   sort_order
 )
-SELECT $1, $2, $3, $4, $5, $6, $7, $8
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
 FROM themes t
-WHERE t.id = $1 AND t.creator_id = $9
-RETURNING id, theme_id, title, body, image_media_id, related_character_ids, related_clue_ids, related_location_ids, sort_order, version, created_at, updated_at
+WHERE t.id = $1 AND t.creator_id = $10
+RETURNING id, theme_id, title, body, image_media_id, related_character_ids, related_clue_ids, related_location_ids, sort_order, version, created_at, updated_at, content_format
 `
 
 type CreateStoryInfoParams struct {
 	ThemeID             uuid.UUID       `json:"theme_id"`
 	Title               string          `json:"title"`
 	Body                string          `json:"body"`
+	ContentFormat       string          `json:"content_format"`
 	ImageMediaID        pgtype.UUID     `json:"image_media_id"`
 	RelatedCharacterIds json.RawMessage `json:"related_character_ids"`
 	RelatedClueIds      json.RawMessage `json:"related_clue_ids"`
@@ -47,6 +49,7 @@ func (q *Queries) CreateStoryInfo(ctx context.Context, arg CreateStoryInfoParams
 		arg.ThemeID,
 		arg.Title,
 		arg.Body,
+		arg.ContentFormat,
 		arg.ImageMediaID,
 		arg.RelatedCharacterIds,
 		arg.RelatedClueIds,
@@ -68,8 +71,46 @@ func (q *Queries) CreateStoryInfo(ctx context.Context, arg CreateStoryInfoParams
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContentFormat,
 	)
 	return i, err
+}
+
+const createStoryInfoMediaRef = `-- name: CreateStoryInfoMediaRef :exec
+INSERT INTO story_info_media_refs (
+  story_info_id,
+  media_id,
+  usage,
+  sort_order
+)
+VALUES ($1, $2, $3, $4)
+`
+
+type CreateStoryInfoMediaRefParams struct {
+	StoryInfoID uuid.UUID `json:"story_info_id"`
+	MediaID     uuid.UUID `json:"media_id"`
+	Usage       string    `json:"usage"`
+	SortOrder   int32     `json:"sort_order"`
+}
+
+func (q *Queries) CreateStoryInfoMediaRef(ctx context.Context, arg CreateStoryInfoMediaRefParams) error {
+	_, err := q.db.Exec(ctx, createStoryInfoMediaRef,
+		arg.StoryInfoID,
+		arg.MediaID,
+		arg.Usage,
+		arg.SortOrder,
+	)
+	return err
+}
+
+const deleteStoryInfoMediaRefs = `-- name: DeleteStoryInfoMediaRefs :exec
+DELETE FROM story_info_media_refs
+WHERE story_info_id = $1
+`
+
+func (q *Queries) DeleteStoryInfoMediaRefs(ctx context.Context, storyInfoID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteStoryInfoMediaRefs, storyInfoID)
+	return err
 }
 
 const deleteStoryInfoWithOwner = `-- name: DeleteStoryInfoWithOwner :one
@@ -91,7 +132,7 @@ func (q *Queries) DeleteStoryInfoWithOwner(ctx context.Context, arg DeleteStoryI
 }
 
 const getStoryInfoWithOwner = `-- name: GetStoryInfoWithOwner :one
-SELECT si.id, si.theme_id, si.title, si.body, si.image_media_id, si.related_character_ids, si.related_clue_ids, si.related_location_ids, si.sort_order, si.version, si.created_at, si.updated_at FROM story_infos si
+SELECT si.id, si.theme_id, si.title, si.body, si.image_media_id, si.related_character_ids, si.related_clue_ids, si.related_location_ids, si.sort_order, si.version, si.created_at, si.updated_at, si.content_format FROM story_infos si
 JOIN themes t ON si.theme_id = t.id
 WHERE si.id = $1 AND t.creator_id = $2
 `
@@ -117,13 +158,14 @@ func (q *Queries) GetStoryInfoWithOwner(ctx context.Context, arg GetStoryInfoWit
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContentFormat,
 	)
 	return i, err
 }
 
 const listStoryInfosByTheme = `-- name: ListStoryInfosByTheme :many
 
-SELECT si.id, si.theme_id, si.title, si.body, si.image_media_id, si.related_character_ids, si.related_clue_ids, si.related_location_ids, si.sort_order, si.version, si.created_at, si.updated_at FROM story_infos si
+SELECT si.id, si.theme_id, si.title, si.body, si.image_media_id, si.related_character_ids, si.related_clue_ids, si.related_location_ids, si.sort_order, si.version, si.created_at, si.updated_at, si.content_format FROM story_infos si
 JOIN themes t ON si.theme_id = t.id
 WHERE si.theme_id = $1 AND t.creator_id = $2
 ORDER BY si.sort_order, si.created_at
@@ -159,6 +201,7 @@ func (q *Queries) ListStoryInfosByTheme(ctx context.Context, arg ListStoryInfosB
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ContentFormat,
 		); err != nil {
 			return nil, err
 		}
@@ -174,25 +217,27 @@ const updateStoryInfo = `-- name: UpdateStoryInfo :one
 UPDATE story_infos
 SET title = $2,
     body = $3,
-    image_media_id = $4,
-    related_character_ids = $5,
-    related_clue_ids = $6,
-    related_location_ids = $7,
-    sort_order = $8,
+    content_format = $4,
+    image_media_id = $5,
+    related_character_ids = $6,
+    related_clue_ids = $7,
+    related_location_ids = $8,
+    sort_order = $9,
     version = version + 1,
     updated_at = NOW()
 FROM themes t
 WHERE story_infos.id = $1
   AND story_infos.theme_id = t.id
-  AND t.creator_id = $10
-  AND story_infos.version = $9
-RETURNING story_infos.id, story_infos.theme_id, story_infos.title, story_infos.body, story_infos.image_media_id, story_infos.related_character_ids, story_infos.related_clue_ids, story_infos.related_location_ids, story_infos.sort_order, story_infos.version, story_infos.created_at, story_infos.updated_at
+  AND t.creator_id = $11
+  AND story_infos.version = $10
+RETURNING story_infos.id, story_infos.theme_id, story_infos.title, story_infos.body, story_infos.image_media_id, story_infos.related_character_ids, story_infos.related_clue_ids, story_infos.related_location_ids, story_infos.sort_order, story_infos.version, story_infos.created_at, story_infos.updated_at, story_infos.content_format
 `
 
 type UpdateStoryInfoParams struct {
 	ID                  uuid.UUID       `json:"id"`
 	Title               string          `json:"title"`
 	Body                string          `json:"body"`
+	ContentFormat       string          `json:"content_format"`
 	ImageMediaID        pgtype.UUID     `json:"image_media_id"`
 	RelatedCharacterIds json.RawMessage `json:"related_character_ids"`
 	RelatedClueIds      json.RawMessage `json:"related_clue_ids"`
@@ -207,6 +252,7 @@ func (q *Queries) UpdateStoryInfo(ctx context.Context, arg UpdateStoryInfoParams
 		arg.ID,
 		arg.Title,
 		arg.Body,
+		arg.ContentFormat,
 		arg.ImageMediaID,
 		arg.RelatedCharacterIds,
 		arg.RelatedClueIds,
@@ -229,6 +275,7 @@ func (q *Queries) UpdateStoryInfo(ctx context.Context, arg UpdateStoryInfoParams
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ContentFormat,
 	)
 	return i, err
 }
