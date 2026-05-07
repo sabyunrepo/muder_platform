@@ -175,6 +175,7 @@ Avoid:
 - PR 분할은 CI 비용과 리뷰 비용을 함께 본다. 같은 이슈, 같은 CI scope, 같은 운영/문서/스크립트 원인의 저충돌 변경은 하나의 PR로 묶고, shared contract, migration, runtime behavior, 큰 UI route처럼 실패 영향이 큰 변경만 별도 PR로 분리한다. 너무 작은 PR을 여러 개 만들어 heavy CI를 반복 소모하지 않는다.
 - PR 생성은 `scripts/pr-create-guard.sh` wrapper를 사용한다. 직접 `gh pr create`를 실행하지 않으며, 생성 단계에서는 `ready-for-ci` 라벨을 붙이지 않는다. Codex 로컬 PreToolUse hook도 이 규칙을 생성 직전에 차단한다.
 - 현재 개발 최소 워커 모드에서는 CodeRabbit을 기본 PR 피드백 루프로 둔다. GitHub Actions의 CI/E2E/security 워커는 PR 생성, push, synchronize만으로 자동 실행하지 않고, CodeRabbit 정리 후 `ready-for-ci` 라벨 또는 명시적 `workflow_dispatch`가 있을 때만 실행한다.
+- 개발 최소 워커 모드의 기본 품질 게이트는 PR 생성 전 로컬 컨테이너 검증이다. 코드 변경 PR은 최종 커밋 후 `scripts/mmp-local-ci.sh quick` 또는 변경 위험에 맞는 `coverage`/`e2e`/`full`을 실행하고, PR 본문 `Local validation` 섹션에 실행 모드와 결과를 남긴다. GitHub full CI는 DB migration, auth/realtime/runtime engine, Docker/runner/workflow, E2E 흐름처럼 환경 차이가 중요한 PR의 최종 확인 버튼으로만 사용한다.
 - 코드 작성/수정 PR은 구현 시작 전 관련 Issue 또는 작업 계획에 `Coverage Plan`을 명시한다. 변경될 파일/분기/API handler/adapter별로 어떤 unit/integration/E2E 테스트가 patch coverage를 덮는지 먼저 매핑하고, PR 생성 전 그 계획이 실제 focused test로 실행됐는지 확인한다. Codecov 70% 미만을 PR 끝에서 처음 발견하는 흐름은 실패로 본다.
 - 구현 중 scope를 줄이거나 일부 기능을 제외하면 PR 생성 전 관련 Issue에 `Deferred / Follow-up` 기록을 남긴다. 독립적으로 실행 가능한 작업이면 새 Issue를 만들고 PR 본문에 `Refs #번호`로 연결한다.
 - Full CI 실행 후에는 GitHub Actions CI뿐 아니라 Codecov Report를 확인한다. 커버리지 리포트가 실패하거나 기준 미달 코멘트를 남기면 원인을 확인하고 필요한 테스트 보강 또는 코드 수정을 진행한 뒤 다시 검증한다.
@@ -191,7 +192,7 @@ When:
 - 코드 변경 PR을 생성하거나 merge할 때
 
 Do:
-1. 로컬 구현 후 focused test와 가능한 로컬 리뷰를 먼저 수행한다. 이때 PR 본문 또는 작업 메모에 `Coverage Plan`을 남겨 변경 파일별 테스트 매핑과 E2E 제외 사유를 기록한다.
+1. 로컬 구현 후 focused test와 가능한 로컬 리뷰를 먼저 수행한다. 코드 변경 PR은 최종 커밋 기준 `scripts/mmp-local-ci.sh quick`을 기본 실행하고, 변경 위험에 따라 `coverage`, `e2e`, `full`을 선택한다. 이때 PR 본문 또는 작업 메모에 `Coverage Plan`과 `Local validation`을 남겨 변경 파일별 테스트 매핑, 실행 모드, E2E 제외 사유를 기록한다.
 2. PR은 라벨 없이 생성한다. 특히 생성 시 `ready-for-ci`를 붙이지 않는다.
 3. CodeRabbit 1차 리뷰를 확인한다.
 4. 타당한 리뷰만 수정하고 push한다. 타당하지 않은 리뷰는 근거를 남기고 resolve한다.
@@ -205,6 +206,7 @@ Do:
 
 Done when:
 - CodeRabbit unresolved thread 0
+- 코드 변경 PR: 최종 HEAD 기준 local-ci 성공 marker 또는 명시적 우회 사유
 - 작업 중 제외/최소화한 항목이 있으면 기존 Issue/새 Issue/PR 본문 `Refs`로 추적된다.
 - `scripts/mmp-pr-ci-scope.sh <PR>` scope 근거
 - full-ci: Codecov patch coverage 70% 이상, required CI green
