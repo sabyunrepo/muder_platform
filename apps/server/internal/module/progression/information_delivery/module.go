@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sort"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/engine"
 )
 
@@ -29,6 +31,7 @@ type deliveryConfig struct {
 	ID                string         `json:"id"`
 	Target            deliveryTarget `json:"target"`
 	ReadingSectionIDs []string       `json:"reading_section_ids"`
+	StoryInfoIDs      []string       `json:"story_info_ids"`
 }
 
 type deliverInformationParams struct {
@@ -38,10 +41,12 @@ type deliverInformationParams struct {
 type deliveredItem struct {
 	DeliveryID        string   `json:"deliveryId"`
 	ReadingSectionIDs []string `json:"readingSectionIds"`
+	StoryInfoIDs      []string `json:"storyInfoIds"`
 }
 
 type moduleState struct {
 	VisibleReadingSectionIDs []string        `json:"visibleReadingSectionIds"`
+	VisibleStoryInfoIDs      []string        `json:"visibleStoryInfoIds"`
 	Deliveries               []deliveredItem `json:"deliveries"`
 }
 
@@ -51,18 +56,21 @@ type Module struct {
 	deps engine.ModuleDeps
 
 	// all-player deliveries are visible to every viewer once delivered.
-	allPlayerSections map[string]struct{}
-	allPlayerItems    map[string]deliveredItem
+	allPlayerSections  map[string]struct{}
+	allPlayerStoryInfo map[string]struct{}
+	allPlayerItems     map[string]deliveredItem
 
 	// playerDeliveries stores player-specific deliveries after target resolution.
-	playerSections map[uuid.UUID]map[string]struct{}
-	playerItems    map[uuid.UUID]map[string]deliveredItem
+	playerSections  map[uuid.UUID]map[string]struct{}
+	playerStoryInfo map[uuid.UUID]map[string]struct{}
+	playerItems     map[uuid.UUID]map[string]deliveredItem
 
 	// targetCodeDeliveries is used when a session has no PlayerInfoProvider or a
 	// future reconnect resolves the player after delivery time. BuildStateFor can
 	// still match by PlayerRuntimeInfo.TargetCode.
-	targetCodeSections map[string]map[string]struct{}
-	targetCodeItems    map[string]map[string]deliveredItem
+	targetCodeSections  map[string]map[string]struct{}
+	targetCodeStoryInfo map[string]map[string]struct{}
+	targetCodeItems     map[string]map[string]deliveredItem
 
 	// appliedDeliveryIDs makes phase re-entry/retry idempotent.
 	appliedDeliveryIDs map[string]struct{}
@@ -79,10 +87,13 @@ func (m *Module) Init(_ context.Context, deps engine.ModuleDeps, _ json.RawMessa
 	defer m.mu.Unlock()
 	m.deps = deps
 	m.allPlayerSections = map[string]struct{}{}
+	m.allPlayerStoryInfo = map[string]struct{}{}
 	m.allPlayerItems = map[string]deliveredItem{}
 	m.playerSections = map[uuid.UUID]map[string]struct{}{}
+	m.playerStoryInfo = map[uuid.UUID]map[string]struct{}{}
 	m.playerItems = map[uuid.UUID]map[string]deliveredItem{}
 	m.targetCodeSections = map[string]map[string]struct{}{}
+	m.targetCodeStoryInfo = map[string]map[string]struct{}{}
 	m.targetCodeItems = map[string]map[string]deliveredItem{}
 	m.appliedDeliveryIDs = map[string]struct{}{}
 	return nil
@@ -93,17 +104,31 @@ func (m *Module) BuildState() (json.RawMessage, error) {
 	defer m.mu.RUnlock()
 
 	sections := map[string]struct{}{}
+	storyInfo := map[string]struct{}{}
 	for id := range m.allPlayerSections {
 		sections[id] = struct{}{}
+	}
+	for id := range m.allPlayerStoryInfo {
+		storyInfo[id] = struct{}{}
 	}
 	for _, perPlayer := range m.playerSections {
 		for id := range perPlayer {
 			sections[id] = struct{}{}
 		}
 	}
+	for _, perPlayer := range m.playerStoryInfo {
+		for id := range perPlayer {
+			storyInfo[id] = struct{}{}
+		}
+	}
 	for _, perTarget := range m.targetCodeSections {
 		for id := range perTarget {
 			sections[id] = struct{}{}
+		}
+	}
+	for _, perTarget := range m.targetCodeStoryInfo {
+		for id := range perTarget {
+			storyInfo[id] = struct{}{}
 		}
 	}
 
@@ -124,6 +149,7 @@ func (m *Module) BuildState() (json.RawMessage, error) {
 
 	return json.Marshal(moduleState{
 		VisibleReadingSectionIDs: sortedKeys(sections),
+		VisibleStoryInfoIDs:      sortedKeys(storyInfo),
 		Deliveries:               sortedItems(items),
 	})
 }
@@ -140,18 +166,23 @@ func (m *Module) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error) {
 	defer m.mu.RUnlock()
 
 	sections := map[string]struct{}{}
+	storyInfo := map[string]struct{}{}
 	items := map[string]deliveredItem{}
 	mergeSections(sections, m.allPlayerSections)
+	mergeSections(storyInfo, m.allPlayerStoryInfo)
 	mergeItems(items, m.allPlayerItems)
 	mergeSections(sections, m.playerSections[playerID])
+	mergeSections(storyInfo, m.playerStoryInfo[playerID])
 	mergeItems(items, m.playerItems[playerID])
 	if targetCode != "" {
 		mergeSections(sections, m.targetCodeSections[targetCode])
+		mergeSections(storyInfo, m.targetCodeStoryInfo[targetCode])
 		mergeItems(items, m.targetCodeItems[targetCode])
 	}
 
 	return json.Marshal(moduleState{
 		VisibleReadingSectionIDs: sortedKeys(sections),
+		VisibleStoryInfoIDs:      sortedKeys(storyInfo),
 		Deliveries:               sortedItems(items),
 	})
 }
@@ -164,10 +195,13 @@ func (m *Module) Cleanup(_ context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.allPlayerSections = nil
+	m.allPlayerStoryInfo = nil
 	m.allPlayerItems = nil
 	m.playerSections = nil
+	m.playerStoryInfo = nil
 	m.playerItems = nil
 	m.targetCodeSections = nil
+	m.targetCodeStoryInfo = nil
 	m.targetCodeItems = nil
 	m.appliedDeliveryIDs = nil
 	return nil
@@ -207,17 +241,18 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 	for _, delivery := range deliveries {
 		delivery.ID = normalizeDeliveryID(delivery)
 		sections := uniqueStrings(delivery.ReadingSectionIDs)
-		if len(sections) == 0 {
-			return fmt.Errorf("information_delivery: delivery %q has empty reading_section_ids", delivery.ID)
+		storyInfoIDs := uniqueStrings(delivery.StoryInfoIDs)
+		if len(sections) == 0 && len(storyInfoIDs) == 0 {
+			return invalidDeliveryError("delivery %q has empty reading_section_ids and story_info_ids", delivery.ID)
 		}
-		item := deliveredItem{DeliveryID: delivery.ID, ReadingSectionIDs: sections}
+		item := deliveredItem{DeliveryID: delivery.ID, ReadingSectionIDs: sections, StoryInfoIDs: storyInfoIDs}
 		next := preparedDelivery{delivery: delivery, item: item}
 		switch delivery.Target.Type {
 		case targetAllPlayers:
 			// valid
 		case targetCharacter:
 			if delivery.Target.CharacterID == "" {
-				return fmt.Errorf("information_delivery: delivery %q missing character_id", delivery.ID)
+				return invalidDeliveryError("delivery %q missing character_id", delivery.ID)
 			}
 			if m.deps.PlayerInfoProvider != nil {
 				if playerID, ok := m.deps.PlayerInfoProvider.ResolvePlayerID(ctx, delivery.Target.CharacterID); ok {
@@ -226,7 +261,7 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 				}
 			}
 		default:
-			return fmt.Errorf("information_delivery: delivery %q has unsupported target type %q", delivery.ID, delivery.Target.Type)
+			return invalidDeliveryError("delivery %q has unsupported target type %q", delivery.ID, delivery.Target.Type)
 		}
 		prepared = append(prepared, next)
 	}
@@ -240,6 +275,7 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 		switch next.delivery.Target.Type {
 		case targetAllPlayers:
 			mergeStringIDs(m.allPlayerSections, next.item.ReadingSectionIDs)
+			mergeStringIDs(m.allPlayerStoryInfo, next.item.StoryInfoIDs)
 			m.allPlayerItems[next.item.DeliveryID] = next.item
 		case targetCharacter:
 			if next.hasPlayer {
@@ -253,14 +289,26 @@ func (m *Module) applyDeliveries(ctx context.Context, deliveries []deliveryConfi
 	return nil
 }
 
+func invalidDeliveryError(format string, args ...any) *apperror.AppError {
+	return apperror.New(
+		apperror.ErrValidation,
+		http.StatusUnprocessableEntity,
+		"information_delivery: "+fmt.Sprintf(format, args...),
+	)
+}
+
 func (m *Module) applyPlayerDelivery(playerID uuid.UUID, item deliveredItem) {
 	if m.playerSections[playerID] == nil {
 		m.playerSections[playerID] = map[string]struct{}{}
+	}
+	if m.playerStoryInfo[playerID] == nil {
+		m.playerStoryInfo[playerID] = map[string]struct{}{}
 	}
 	if m.playerItems[playerID] == nil {
 		m.playerItems[playerID] = map[string]deliveredItem{}
 	}
 	mergeStringIDs(m.playerSections[playerID], item.ReadingSectionIDs)
+	mergeStringIDs(m.playerStoryInfo[playerID], item.StoryInfoIDs)
 	m.playerItems[playerID][item.DeliveryID] = item
 }
 
@@ -268,10 +316,14 @@ func (m *Module) applyTargetCodeDelivery(characterID string, item deliveredItem)
 	if m.targetCodeSections[characterID] == nil {
 		m.targetCodeSections[characterID] = map[string]struct{}{}
 	}
+	if m.targetCodeStoryInfo[characterID] == nil {
+		m.targetCodeStoryInfo[characterID] = map[string]struct{}{}
+	}
 	if m.targetCodeItems[characterID] == nil {
 		m.targetCodeItems[characterID] = map[string]deliveredItem{}
 	}
 	mergeStringIDs(m.targetCodeSections[characterID], item.ReadingSectionIDs)
+	mergeStringIDs(m.targetCodeStoryInfo[characterID], item.StoryInfoIDs)
 	m.targetCodeItems[characterID][item.DeliveryID] = item
 }
 
@@ -279,7 +331,7 @@ func normalizeDeliveryID(delivery deliveryConfig) string {
 	if delivery.ID != "" {
 		return delivery.ID
 	}
-	return delivery.Target.Type + ":" + delivery.Target.CharacterID + ":" + joinSorted(uniqueStrings(delivery.ReadingSectionIDs))
+	return delivery.Target.Type + ":" + delivery.Target.CharacterID + ":reading:" + joinSorted(uniqueStrings(delivery.ReadingSectionIDs)) + ":story:" + joinSorted(uniqueStrings(delivery.StoryInfoIDs))
 }
 
 func mergeStringIDs(dst map[string]struct{}, ids []string) {
@@ -332,6 +384,7 @@ func sortedItems(items map[string]deliveredItem) []deliveredItem {
 	out := make([]deliveredItem, 0, len(items))
 	for _, item := range items {
 		item.ReadingSectionIDs = uniqueStrings(item.ReadingSectionIDs)
+		item.StoryInfoIDs = uniqueStrings(item.StoryInfoIDs)
 		out = append(out, item)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].DeliveryID < out[j].DeliveryID })
