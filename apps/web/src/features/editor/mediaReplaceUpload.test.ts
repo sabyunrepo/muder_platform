@@ -80,4 +80,34 @@ describe("replaceMediaFile", () => {
     expect(putFile).toHaveBeenCalledTimes(2);
     expect(confirmReplacementUpload).toHaveBeenCalledTimes(1);
   });
+
+  it("취소된 PUT 실패는 재시도하지 않고 confirm도 호출하지 않는다", async () => {
+    const file = new File(["voice"], "voice.mp3", { type: "audio/mpeg" });
+    const abortController = new AbortController();
+    const abortError = new DOMException("aborted", "AbortError");
+    const requestReplacementUpload = vi.fn().mockResolvedValue({
+      upload_id: "replace-upload-abort",
+      upload_url: "https://upload.example.com/abort",
+      expires_at: "2026-05-07T00:00:00Z",
+    });
+    const putFile = vi.fn().mockImplementation(() => {
+      abortController.abort();
+      return Promise.reject(abortError);
+    });
+    const confirmReplacementUpload = vi.fn();
+
+    await expect(
+      replaceMediaFile({
+        file,
+        requestReplacementUpload,
+        confirmReplacementUpload,
+        putFile,
+        signal: abortController.signal,
+        retryBaseDelayMs: 0,
+      }),
+    ).rejects.toBe(abortError);
+
+    expect(putFile).toHaveBeenCalledTimes(1);
+    expect(confirmReplacementUpload).not.toHaveBeenCalled();
+  });
 });

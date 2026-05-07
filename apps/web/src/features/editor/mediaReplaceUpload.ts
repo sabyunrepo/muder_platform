@@ -65,6 +65,9 @@ export async function replaceMediaFile(
       break;
     } catch (err) {
       lastError = err;
+      if (signal?.aborted) {
+        throw err;
+      }
       if (attempt < maxAttempts - 1) {
         await sleep(retryBaseDelayMs * 2 ** attempt);
       }
