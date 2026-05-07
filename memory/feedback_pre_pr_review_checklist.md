@@ -6,12 +6,29 @@ type: feedback
 
 # PR 리뷰 / acceptance gate 사전 체크리스트
 
-PR 의 worktree commit chain 을 마무리하고 4-agent 리뷰 또는 manual E2E 에 들어가기 *전*, 아래 4 axis 를 self-check. 본 체크리스트는 PR-9 (2026-05-01) 의 BLOCKER 1 + HIGH 4 를 모두 *사전* 에 잡을 수 있었던 항목들.
+PR 의 worktree commit chain 을 마무리하고 4-agent 리뷰 또는 manual E2E 에 들어가기 *전*, local-ci 기본 검증과 아래 4 axis 를 self-check. 본 체크리스트는 PR-9 (2026-05-01) 의 BLOCKER 1 + HIGH 4 를 모두 *사전* 에 잡을 수 있었던 항목들.
 
 ## 발동 트리거
 
 - 코딩 task chain (Task 3.1~3.6, Task 4~6 같은 sub-task 분해 작업) 의 *마지막 commit* 직후
 - PR cover letter 작성 직전
+
+## Local validation gate
+
+개발 최소 워커 모드에서는 GitHub Actions full CI/E2E/security 워커가 PR 생성/push만으로 자동 실행되지 않는다. 코드 변경 PR은 최종 commit 이후 로컬 컨테이너 검증을 먼저 실행하고 PR 본문에 근거를 남긴다.
+
+**기본 명령**:
+
+```bash
+scripts/mmp-local-ci.sh quick
+```
+
+**위험도별 추가 명령**:
+- coverage/테스트 기준 변경: `scripts/mmp-local-ci.sh coverage`
+- DB, auth, realtime, runtime engine, 사용자 E2E 흐름 변경: `scripts/mmp-local-ci.sh e2e` 또는 `full`
+- Dockerfile/server image 변경: `scripts/mmp-local-ci.sh docker`
+
+**why**: GitHub Actions 비용을 줄여도 품질 게이트가 비면 안 된다. 로컬 컨테이너는 같은 Go/Node/Playwright/Linux 의존성을 재사용하고, GitHub full CI는 환경 차이가 중요한 PR의 최종 확인 버튼으로 남긴다.
 
 ## Axis 1 — Wire format / catalog ↔ 구현 일치
 

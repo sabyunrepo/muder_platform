@@ -5,6 +5,18 @@
 
 set -euo pipefail
 
+base_ref="${MMP_PR_GUARD_BASE_REF:-origin/main}"
+if ! git rev-parse --verify "$base_ref" >/dev/null 2>&1; then
+  base_ref="${MMP_PR_GUARD_FALLBACK_BASE_REF:-main}"
+fi
+
+local_ci_marker() {
+  local common_dir
+  common_dir="$(git rev-parse --git-common-dir 2>/dev/null || true)"
+  [ -n "$common_dir" ] || return 1
+  printf '%s/mmp-local-ci/last-run.json\n' "$common_dir"
+}
+
 contains_ready_for_ci() {
   local value="$1"
   IFS=',' read -ra labels <<< "$value"
@@ -35,6 +47,79 @@ MSG
   exit 2
 }
 
+changed_code_files() {
+  local merge_base
+  merge_base="$(git merge-base "$base_ref" HEAD 2>/dev/null || true)"
+  [ -n "$merge_base" ] || return 0
+
+  git diff --name-only "$merge_base"...HEAD -- \
+    'apps/**' \
+    'packages/**' \
+    'tooling/**' \
+    'package.json' \
+    'pnpm-lock.yaml' \
+    'turbo.json' \
+    'apps/server/go.mod' \
+    'apps/server/go.sum'
+}
+
+require_local_ci_for_code_changes() {
+  local code_files
+  code_files="$(changed_code_files)"
+  [ -n "$code_files" ] || return 0
+
+  if [ "${MMP_SKIP_LOCAL_CI_GUARD:-}" = "1" ]; then
+    cat >&2 <<'MSG'
+⚠️ 로컬 CI 가드 우회: MMP_SKIP_LOCAL_CI_GUARD=1 이 설정되어 있습니다.
+   PR 본문에 우회 사유와 대체 검증 근거를 반드시 남기세요.
+MSG
+    return 0
+  fi
+
+  local marker head marker_head marker_status
+  marker="$(local_ci_marker)"
+  head="$(git rev-parse HEAD)"
+
+  if [ ! -f "$marker" ]; then
+    cat >&2 <<MSG
+🚫 PR 생성 중단: 코드 변경이 있지만 로컬 CI 성공 기록이 없습니다.
+
+변경된 코드 경로:
+$code_files
+
+먼저 다음 중 하나를 실행하세요:
+  scripts/mmp-local-ci.sh quick
+  scripts/mmp-local-ci.sh coverage
+  scripts/mmp-local-ci.sh full
+
+예외가 필요한 운영/긴급 PR이면:
+  MMP_SKIP_LOCAL_CI_GUARD=1 scripts/pr-create-guard.sh ...
+
+marker: $marker
+MSG
+    exit 2
+  fi
+
+  marker_head="$(jq -r '.head // ""' "$marker" 2>/dev/null || true)"
+  marker_status="$(jq -r '.status // ""' "$marker" 2>/dev/null || true)"
+
+  if [ "$marker_head" != "$head" ] || [ "$marker_status" != "success" ]; then
+    cat >&2 <<MSG
+🚫 PR 생성 중단: 로컬 CI 기록이 현재 HEAD 성공 기록과 일치하지 않습니다.
+
+현재 HEAD: $head
+marker HEAD: ${marker_head:-<missing>}
+marker status: ${marker_status:-<missing>}
+
+최종 커밋 이후 다시 실행하세요:
+  scripts/mmp-local-ci.sh quick
+  scripts/mmp-local-ci.sh coverage
+  scripts/mmp-local-ci.sh full
+MSG
+    exit 2
+  fi
+}
+
 prev=""
 for arg in "$@"; do
   case "$prev" in
@@ -61,9 +146,11 @@ for arg in "$@"; do
   fi
 done
 
+require_local_ci_for_code_changes
+
 cat <<'MSG'
 ✅ PR 생성 가드 통과: `ready-for-ci` 라벨 없이 PR을 생성합니다.
-   Coverage Plan과 focused test 근거를 PR 본문에 남긴 뒤, CodeRabbit/Codecov/리뷰 이슈 해결 후 full-ci PR에만 `ready-for-ci` 라벨을 붙이세요.
+   Coverage Plan과 local validation 근거를 PR 본문에 남긴 뒤, CodeRabbit/Codecov/리뷰 이슈 해결 후 full-ci PR에만 `ready-for-ci` 라벨을 붙이세요.
    같은 CI scope의 저충돌 workflow 변경은 하나의 PR로 묶고, heavy CI를 반복 소모하는 초소형 PR은 피하세요.
 MSG
 

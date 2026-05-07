@@ -1,0 +1,72 @@
+# Local PR validation stack.
+#
+# This stack keeps GitHub Actions workers off the hot path by running the same
+# heavy checks locally in a reusable Linux container with persistent caches.
+#
+# Common usage:
+#   scripts/mmp-local-ci.sh quick
+#   scripts/mmp-local-ci.sh coverage
+#   scripts/mmp-local-ci.sh e2e
+#   scripts/mmp-local-ci.sh full
+
+services:
+  local-ci:
+    build:
+      context: .
+      dockerfile: infra/local-ci/Dockerfile
+    working_dir: ${MMP_LOCAL_CI_WORKDIR:-/workspace}
+    environment:
+      CI: "1"
+      APP_ENV: test
+      GAME_RUNTIME_V2: "true"
+      PLAYWRIGHT_BACKEND: "1"
+      MMP_LOCAL_CI_SKIP_INSTALL: ${MMP_LOCAL_CI_SKIP_INSTALL:-}
+      DATABASE_URL: postgres://mmp:mmp_test@postgres:5432/mmp_test?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      E2E_DATABASE_URL: postgres://mmp:mmp_e2e@postgres:5432/mmp_e2e?sslmode=disable
+    volumes:
+      - ${MMP_LOCAL_CI_WORKDIR:-.}:${MMP_LOCAL_CI_WORKDIR:-/workspace}
+      # Worktrees store .git as a file pointing at the main repository's git
+      # common dir. Mount both paths at their host-absolute locations so git
+      # drift checks work inside the container.
+      - ${MMP_LOCAL_CI_GIT_COMMON:-.git}:${MMP_LOCAL_CI_GIT_COMMON:-/workspace/.git}
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/go-build-cache
+      - pnpm-store:/pnpm-store
+      - playwright-cache:/ms-playwright
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mmp_test
+      POSTGRES_USER: mmp
+      POSTGRES_PASSWORD: mmp_test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mmp -d mmp_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - local-ci-postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save ""
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  go-mod-cache:
+  go-build-cache:
+  pnpm-store:
+  playwright-cache:
+  local-ci-postgres:
