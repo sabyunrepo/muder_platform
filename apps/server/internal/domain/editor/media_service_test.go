@@ -33,6 +33,7 @@ type fakeMediaQueries struct {
 	sections      map[uuid.UUID]db.ReadingSection
 	roleSheetRefs map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow
 	aliasIconRefs map[uuid.UUID][]db.FindCharacterAliasIconReferencesForMediaRow
+	storyInfoRefs map[uuid.UUID][]db.FindStoryInfoReferencesForMediaRow
 }
 
 func newFakeMediaQueries() *fakeMediaQueries {
@@ -46,6 +47,7 @@ func newFakeMediaQueries() *fakeMediaQueries {
 		sections:      make(map[uuid.UUID]db.ReadingSection),
 		roleSheetRefs: make(map[uuid.UUID][]db.FindRoleSheetReferencesForMediaRow),
 		aliasIconRefs: make(map[uuid.UUID][]db.FindCharacterAliasIconReferencesForMediaRow),
+		storyInfoRefs: make(map[uuid.UUID][]db.FindStoryInfoReferencesForMediaRow),
 	}
 }
 
@@ -388,6 +390,16 @@ func (f *fakeMediaQueries) ClearMapMediaReferencesWithOwner(_ context.Context, a
 	return rows, nil
 }
 
+func (f *fakeMediaQueries) ClearStoryInfoMediaReferencesWithOwner(_ context.Context, arg db.ClearStoryInfoMediaReferencesWithOwnerParams) (int64, error) {
+	return int64(len(f.storyInfoRefs[arg.MediaID])), nil
+}
+
+func (f *fakeMediaQueries) DeleteStoryInfoMediaRefsForMediaWithOwner(_ context.Context, arg db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams) (int64, error) {
+	rows := int64(len(f.storyInfoRefs[arg.MediaID]))
+	delete(f.storyInfoRefs, arg.MediaID)
+	return rows, nil
+}
+
 func (f *fakeMediaQueries) DeleteMedia(_ context.Context, id uuid.UUID) error {
 	delete(f.media, id)
 	return nil
@@ -428,6 +440,10 @@ func (f *fakeMediaQueries) FindMapReferencesForMedia(_ context.Context, arg db.F
 		}
 	}
 	return out, nil
+}
+
+func (f *fakeMediaQueries) FindStoryInfoReferencesForMedia(_ context.Context, arg db.FindStoryInfoReferencesForMediaParams) ([]db.FindStoryInfoReferencesForMediaRow, error) {
+	return f.storyInfoRefs[arg.MediaID], nil
 }
 
 func (f *fakeMediaQueries) FindMediaReferencesInReadingSections(_ context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error) {
@@ -590,6 +606,7 @@ func expectEmptyMediaReferenceCollectionWithConfig(q *MockmediaQueries, themeID 
 	q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+	q.EXPECT().FindStoryInfoReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().FindCharacterAliasIconReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 	q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{ID: themeID, ConfigJson: cfg}, nil)
@@ -601,6 +618,8 @@ func expectSuccessfulMediaReferenceClears(q *MockmediaQueries) {
 	q.EXPECT().ClearCharacterAliasIconMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 	q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 	q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+	q.EXPECT().ClearStoryInfoMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+	q.EXPECT().DeleteStoryInfoMediaRefsForMediaWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
 }
 
 func assertMediaAppCode(t *testing.T, err error, want string) {
@@ -997,6 +1016,83 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 		t.Fatalf("ClearRoleSheetMediaReferencesWithOwner rows=%d err=%v", rows, err)
 	}
 
+	info, err := fixture.q.CreateStoryInfo(ctx, db.CreateStoryInfoParams{
+		ThemeID:             themeID,
+		Title:               "현장 정보",
+		Body:                fmt.Sprintf(`사진 전 <MediaEmbed mediaId="%s" type="image" /> 사진 후`, image.ID.String()),
+		ContentFormat:       StoryInfoContentFormatMDXV1,
+		ImageMediaID:        pgtype.UUID{Bytes: image.ID, Valid: true},
+		RelatedCharacterIds: json.RawMessage(`[]`),
+		RelatedClueIds:      json.RawMessage(`[]`),
+		RelatedLocationIds:  json.RawMessage(`[]`),
+		SortOrder:           1,
+		CreatorID:           creatorID,
+	})
+	if err != nil {
+		t.Fatalf("CreateStoryInfo: %v", err)
+	}
+	if err := fixture.q.CreateStoryInfoMediaRef(ctx, db.CreateStoryInfoMediaRefParams{
+		StoryInfoID: info.ID,
+		MediaID:     image.ID,
+		Usage:       "cover",
+		SortOrder:   0,
+	}); err != nil {
+		t.Fatalf("CreateStoryInfoMediaRef cover: %v", err)
+	}
+	if err := fixture.q.CreateStoryInfoMediaRef(ctx, db.CreateStoryInfoMediaRefParams{
+		StoryInfoID: info.ID,
+		MediaID:     image.ID,
+		Usage:       "embedded_image",
+		SortOrder:   1,
+	}); err != nil {
+		t.Fatalf("CreateStoryInfoMediaRef embedded: %v", err)
+	}
+	if refs, err := fixture.q.FindStoryInfoReferencesForMedia(ctx, db.FindStoryInfoReferencesForMediaParams{
+		ThemeID: themeID,
+		MediaID: image.ID,
+	}); err != nil || len(refs) != 2 || refs[0].Title != "현장 정보" {
+		t.Fatalf("FindStoryInfoReferencesForMedia err=%v refs=%#v", err, refs)
+	}
+	if rows, err := fixture.q.ClearStoryInfoMediaReferencesWithOwner(ctx, db.ClearStoryInfoMediaReferencesWithOwnerParams{
+		MediaID:   image.ID,
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 1 {
+		t.Fatalf("ClearStoryInfoMediaReferencesWithOwner rows=%d err=%v", rows, err)
+	}
+	if rows, err := fixture.q.DeleteStoryInfoMediaRefsForMediaWithOwner(ctx, db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams{
+		MediaID:   image.ID,
+		CreatorID: creatorID,
+		ThemeID:   themeID,
+	}); err != nil || rows != 2 {
+		t.Fatalf("DeleteStoryInfoMediaRefsForMediaWithOwner rows=%d err=%v", rows, err)
+	}
+	var cleanedBody string
+	var cleanedImageID pgtype.UUID
+	var cleanedVersion int32
+	if err := fixture.pool.QueryRow(ctx, `
+		SELECT body, image_media_id, version
+		FROM story_infos
+		WHERE id = $1
+	`, info.ID).Scan(&cleanedBody, &cleanedImageID, &cleanedVersion); err != nil {
+		t.Fatalf("select cleaned story_info: %v", err)
+	}
+	if cleanedImageID.Valid {
+		t.Fatalf("story info image media id should be cleared")
+	}
+	if strings.Contains(cleanedBody, image.ID.String()) || strings.Contains(cleanedBody, "MediaEmbed") {
+		t.Fatalf("story info body media embed should be removed: %s", cleanedBody)
+	}
+	if cleanedVersion != info.Version+1 {
+		t.Fatalf("story info version = %d, want %d", cleanedVersion, info.Version+1)
+	}
+	if refs, err := fixture.q.FindStoryInfoReferencesForMedia(ctx, db.FindStoryInfoReferencesForMediaParams{
+		ThemeID: themeID,
+		MediaID: image.ID,
+	}); err != nil || len(refs) != 0 {
+		t.Fatalf("FindStoryInfoReferencesForMedia after cleanup err=%v refs=%#v", err, refs)
+	}
+
 	if rows, err := fixture.q.DeleteMediaCategoryWithOwner(ctx, db.DeleteMediaCategoryWithOwnerParams{ID: category.ID, CreatorID: creatorID}); err != nil || rows != 1 {
 		t.Fatalf("DeleteMediaCategoryWithOwner rows=%d err=%v", rows, err)
 	}
@@ -1072,6 +1168,24 @@ func TestMediaService_PreviewDelete_ReportsMapImageReference(t *testing.T) {
 	refs := preview.References
 	if len(refs) != 1 || refs[0].Type != "map" || refs[0].ID != mapID.String() || refs[0].Name != "1층 지도" {
 		t.Fatalf("unexpected map references: %#v", refs)
+	}
+}
+
+func TestMediaService_PreviewDelete_ReportsStoryInfoReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	infoID := uuid.New()
+	q.storyInfoRefs[mediaID] = []db.FindStoryInfoReferencesForMediaRow{
+		{ID: infoID, Title: "사건 현장 정보", Usage: "embedded_image"},
+	}
+
+	preview, err := svc.PreviewDeleteMedia(context.Background(), creatorID, mediaID)
+	if err != nil {
+		t.Fatalf("PreviewDeleteMedia: %v", err)
+	}
+	refs := preview.References
+	if len(refs) != 1 || refs[0].Type != "story_info_embedded_image" || refs[0].ID != infoID.String() || refs[0].Name != "사건 현장 정보" {
+		t.Fatalf("unexpected story info references: %#v", refs)
 	}
 }
 
@@ -1311,7 +1425,17 @@ func TestMediaService_CollectMediaReferences_QueryErrorsReturnInternal(t *testin
 				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindStoryInfoReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
+			},
+		},
+		{
+			name: "story info",
+			mock: func(q *MockmediaQueries, _ uuid.UUID, _ uuid.UUID) {
+				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindStoryInfoReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, errors.New("db down"))
 			},
 		},
 		{
@@ -1320,6 +1444,7 @@ func TestMediaService_CollectMediaReferences_QueryErrorsReturnInternal(t *testin
 				q.EXPECT().FindMediaReferencesInReadingSections(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindThemeCoverReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindMapReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
+				q.EXPECT().FindStoryInfoReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindRoleSheetReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().FindCharacterAliasIconReferencesForMedia(gomock.Any(), gomock.Any()).Return(nil, nil)
 				q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{}, errors.New("db down"))
@@ -1407,6 +1532,33 @@ func TestMediaService_CleanupMediaReferences_QueryErrorsReturnInternal(t *testin
 				expectSuccessfulMediaReferenceClears(q)
 				q.EXPECT().GetTheme(gomock.Any(), themeID).Return(db.Theme{ID: themeID, ConfigJson: cfg}, nil)
 				q.EXPECT().UpdateThemeConfigJsonWithOwner(gomock.Any(), gomock.Any()).Return(db.Theme{}, errors.New("db down"))
+			},
+		},
+		{
+			name: "clear story info",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearCharacterAliasIconMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearStoryInfoMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
+				_ = mediaID
+			},
+		},
+		{
+			name: "delete story info refs",
+			mock: func(q *MockmediaQueries, themeID uuid.UUID, mediaID uuid.UUID) {
+				expectEmptyMediaReferenceCollection(q, themeID)
+				q.EXPECT().ClearReadingSectionMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearRoleSheetMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearCharacterAliasIconMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearThemeCoverMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearMapMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().ClearStoryInfoMediaReferencesWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), nil)
+				q.EXPECT().DeleteStoryInfoMediaRefsForMediaWithOwner(gomock.Any(), gomock.Any()).Return(int64(0), errors.New("db down"))
+				_ = mediaID
 			},
 		},
 	}
@@ -1907,6 +2059,26 @@ func TestMediaService_Delete_CleansReadingAndConfigReferences(t *testing.T) {
 	}
 	if q.maps[mapID].ImageMediaID.Valid {
 		t.Fatalf("map image media reference should be cleared")
+	}
+}
+
+func TestMediaService_Delete_CleansStoryInfoMediaReferences(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	infoID := uuid.New()
+	q.storyInfoRefs[mediaID] = []db.FindStoryInfoReferencesForMediaRow{
+		{ID: infoID, Title: "현장 사진", Usage: "cover"},
+		{ID: infoID, Title: "현장 사진", Usage: "embedded_image"},
+	}
+
+	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID); err != nil {
+		t.Fatalf("DeleteMedia: %v", err)
+	}
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("media should be deleted")
+	}
+	if refs, ok := q.storyInfoRefs[mediaID]; ok {
+		t.Fatalf("story info media refs should be deleted: %#v", refs)
 	}
 }
 

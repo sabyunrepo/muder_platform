@@ -370,6 +370,21 @@ func (mr *MockmediaQueriesMockRecorder) ClearRoleSheetMediaReferencesWithOwner(c
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearRoleSheetMediaReferencesWithOwner", reflect.TypeOf((*MockmediaQueries)(nil).ClearRoleSheetMediaReferencesWithOwner), ctx, arg)
 }
 
+// ClearStoryInfoMediaReferencesWithOwner mocks base method.
+func (m *MockmediaQueries) ClearStoryInfoMediaReferencesWithOwner(ctx context.Context, arg db.ClearStoryInfoMediaReferencesWithOwnerParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClearStoryInfoMediaReferencesWithOwner", ctx, arg)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClearStoryInfoMediaReferencesWithOwner indicates an expected call of ClearStoryInfoMediaReferencesWithOwner.
+func (mr *MockmediaQueriesMockRecorder) ClearStoryInfoMediaReferencesWithOwner(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClearStoryInfoMediaReferencesWithOwner", reflect.TypeOf((*MockmediaQueries)(nil).ClearStoryInfoMediaReferencesWithOwner), ctx, arg)
+}
+
 // ClearThemeCoverMediaReferencesWithOwner mocks base method.
 func (m *MockmediaQueries) ClearThemeCoverMediaReferencesWithOwner(ctx context.Context, arg db.ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error) {
 	m.ctrl.T.Helper()
@@ -503,6 +518,21 @@ func (mr *MockmediaQueriesMockRecorder) DeleteMediaWithOwner(ctx, arg any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMediaWithOwner", reflect.TypeOf((*MockmediaQueries)(nil).DeleteMediaWithOwner), ctx, arg)
 }
 
+// DeleteStoryInfoMediaRefsForMediaWithOwner mocks base method.
+func (m *MockmediaQueries) DeleteStoryInfoMediaRefsForMediaWithOwner(ctx context.Context, arg db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteStoryInfoMediaRefsForMediaWithOwner", ctx, arg)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteStoryInfoMediaRefsForMediaWithOwner indicates an expected call of DeleteStoryInfoMediaRefsForMediaWithOwner.
+func (mr *MockmediaQueriesMockRecorder) DeleteStoryInfoMediaRefsForMediaWithOwner(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteStoryInfoMediaRefsForMediaWithOwner", reflect.TypeOf((*MockmediaQueries)(nil).DeleteStoryInfoMediaRefsForMediaWithOwner), ctx, arg)
+}
+
 // FindCharacterAliasIconReferencesForMedia mocks base method.
 func (m *MockmediaQueries) FindCharacterAliasIconReferencesForMedia(ctx context.Context, arg db.FindCharacterAliasIconReferencesForMediaParams) ([]db.FindCharacterAliasIconReferencesForMediaRow, error) {
 	m.ctrl.T.Helper()
@@ -561,6 +591,21 @@ func (m *MockmediaQueries) FindRoleSheetReferencesForMedia(ctx context.Context, 
 func (mr *MockmediaQueriesMockRecorder) FindRoleSheetReferencesForMedia(ctx, arg any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindRoleSheetReferencesForMedia", reflect.TypeOf((*MockmediaQueries)(nil).FindRoleSheetReferencesForMedia), ctx, arg)
+}
+
+// FindStoryInfoReferencesForMedia mocks base method.
+func (m *MockmediaQueries) FindStoryInfoReferencesForMedia(ctx context.Context, arg db.FindStoryInfoReferencesForMediaParams) ([]db.FindStoryInfoReferencesForMediaRow, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStoryInfoReferencesForMedia", ctx, arg)
+	ret0, _ := ret[0].([]db.FindStoryInfoReferencesForMediaRow)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStoryInfoReferencesForMedia indicates an expected call of FindStoryInfoReferencesForMedia.
+func (mr *MockmediaQueriesMockRecorder) FindStoryInfoReferencesForMedia(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStoryInfoReferencesForMedia", reflect.TypeOf((*MockmediaQueries)(nil).FindStoryInfoReferencesForMedia), ctx, arg)
 }
 
 // FindThemeCoverReferencesForMedia mocks base method.
