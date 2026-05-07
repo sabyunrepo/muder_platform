@@ -40,6 +40,10 @@ export async function replaceMediaFile(
     maxAttempts = 3,
     retryBaseDelayMs = 200,
   } = params;
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new Error("maxAttempts는 1 이상의 정수여야 합니다");
+  }
+
   const effectiveMimeType =
     (mimeType ?? file.type) || "application/octet-stream";
 

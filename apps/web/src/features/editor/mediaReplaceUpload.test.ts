@@ -110,4 +110,25 @@ describe("replaceMediaFile", () => {
     expect(putFile).toHaveBeenCalledTimes(1);
     expect(confirmReplacementUpload).not.toHaveBeenCalled();
   });
+
+  it("maxAttempts가 1 미만이면 업로드 URL 요청 없이 실패한다", async () => {
+    const file = new File(["image"], "evidence.png", { type: "image/png" });
+    const requestReplacementUpload = vi.fn();
+    const putFile = vi.fn();
+    const confirmReplacementUpload = vi.fn();
+
+    await expect(
+      replaceMediaFile({
+        file,
+        requestReplacementUpload,
+        confirmReplacementUpload,
+        putFile,
+        maxAttempts: 0,
+      }),
+    ).rejects.toThrow("maxAttempts는 1 이상의 정수여야 합니다");
+
+    expect(requestReplacementUpload).not.toHaveBeenCalled();
+    expect(putFile).not.toHaveBeenCalled();
+    expect(confirmReplacementUpload).not.toHaveBeenCalled();
+  });
 });
