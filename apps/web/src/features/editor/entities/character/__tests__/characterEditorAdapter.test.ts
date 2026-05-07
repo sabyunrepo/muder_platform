@@ -214,11 +214,15 @@ describe('characterEditorAdapter', () => {
     const payload = buildCharacterVisibilityUpdatePayload(character({
       endcard_title: '결과 제목',
       endcard_body: '결과 본문',
+      endcard_image_url: 'https://cdn.example/result.webp',
+      endcard_image_media_id: 'image-1',
     }), 'show_in_intro', false);
 
     expect(payload).toMatchObject({ show_in_intro: false });
     expect(payload).not.toHaveProperty('endcard_title');
     expect(payload).not.toHaveProperty('endcard_body');
+    expect(payload).not.toHaveProperty('endcard_image_url');
+    expect(payload).not.toHaveProperty('endcard_image_media_id');
   });
 
   it('프로필 이미지 선택 payload는 미디어 참조를 사용하고 URL을 비운다', () => {
