@@ -174,13 +174,14 @@ Avoid:
 - PR 제목과 본문은 기본적으로 한글로 작성한다. 코드 식별자, 명령어, 에러 메시지, 공식 API명은 원문을 유지한다.
 - PR 분할은 CI 비용과 리뷰 비용을 함께 본다. 같은 이슈, 같은 CI scope, 같은 운영/문서/스크립트 원인의 저충돌 변경은 하나의 PR로 묶고, shared contract, migration, runtime behavior, 큰 UI route처럼 실패 영향이 큰 변경만 별도 PR로 분리한다. 너무 작은 PR을 여러 개 만들어 heavy CI를 반복 소모하지 않는다.
 - PR 생성은 `scripts/pr-create-guard.sh` wrapper를 사용한다. 직접 `gh pr create`를 실행하지 않으며, 생성 단계에서는 `ready-for-ci` 라벨을 붙이지 않는다. Codex 로컬 PreToolUse hook도 이 규칙을 생성 직전에 차단한다.
+- 현재 개발 최소 워커 모드에서는 CodeRabbit을 기본 PR 피드백 루프로 둔다. GitHub Actions의 CI/E2E/security 워커는 PR 생성, push, synchronize만으로 자동 실행하지 않고, CodeRabbit 정리 후 `ready-for-ci` 라벨 또는 명시적 `workflow_dispatch`가 있을 때만 실행한다.
 - 코드 작성/수정 PR은 구현 시작 전 관련 Issue 또는 작업 계획에 `Coverage Plan`을 명시한다. 변경될 파일/분기/API handler/adapter별로 어떤 unit/integration/E2E 테스트가 patch coverage를 덮는지 먼저 매핑하고, PR 생성 전 그 계획이 실제 focused test로 실행됐는지 확인한다. Codecov 70% 미만을 PR 끝에서 처음 발견하는 흐름은 실패로 본다.
 - 구현 중 scope를 줄이거나 일부 기능을 제외하면 PR 생성 전 관련 Issue에 `Deferred / Follow-up` 기록을 남긴다. 독립적으로 실행 가능한 작업이면 새 Issue를 만들고 PR 본문에 `Refs #번호`로 연결한다.
 - Full CI 실행 후에는 GitHub Actions CI뿐 아니라 Codecov Report를 확인한다. 커버리지 리포트가 실패하거나 기준 미달 코멘트를 남기면 원인을 확인하고 필요한 테스트 보강 또는 코드 수정을 진행한 뒤 다시 검증한다.
 - 코드 작성/수정 PR은 Codecov patch coverage 70% 이상을 목표가 아니라 merge 기준으로 본다. 70% 미만이거나 Codecov가 부족 라인을 지적하면 해당 라인의 단위/통합/E2E 테스트를 보강한 뒤 다시 CI를 통과시킨다.
 - PR 생성 후 CodeRabbit 리뷰를 확인한다. 문제 제기 코멘트는 수정 커밋으로 해결하고, GitHub review thread가 unresolved 상태로 남지 않도록 resolve 상태까지 확인한 뒤 merge한다.
 - Full CI는 리뷰 대응이 끝난 뒤 `scripts/mmp-pr-ci-scope.sh <PR>`가 `full-ci`로 분류한 PR에만 `ready-for-ci` 라벨을 붙여 실행한다. 리뷰/Codecov/CodeRabbit 수정 중에는 라벨을 제거해 heavy CI 반복 실행을 피하고, merge 전에는 scope별 gate를 통과한다.
-- `scripts/mmp-pr-ci-scope.sh <PR>`가 `code-rabbit-only`로 분류한 운영/문서/규칙 PR은 heavy CI workflow가 path filter 때문에 생성되지 않는 것이 정상이다. 이 경우 `ready-for-ci` 라벨, workflow_dispatch, heavy CI 대기를 하지 말고 CodeRabbit clear, unresolved thread 0, light checks, focused local validation 근거로 main Codex가 merge 판단한다.
+- `scripts/mmp-pr-ci-scope.sh <PR>`가 `code-rabbit-only`로 분류한 운영/문서/규칙 PR은 heavy CI workflow가 trigger 정책 때문에 생성되지 않는 것이 정상이다. 이 경우 `ready-for-ci` 라벨, workflow_dispatch, heavy CI 대기를 하지 말고 CodeRabbit clear, unresolved thread 0, light checks, focused local validation 근거로 main Codex가 merge 판단한다.
 - PR/CI/리뷰 상태 확인을 반복할 때는 GitHub/API 호출을 과도하게 하지 않는다. 기본 폴링 간격은 30초~1분으로 두고, 긴 작업은 `--watch --interval 30` 이상 또는 단발 조회를 사용한다.
 - 4-agent review 정책의 canonical 문서는 `memory/feedback_4agent_review_before_admin_merge.md`다. Codex에서 사용 가능한 도구와 사용자 승인 범위에 맞춰 적용한다.
 
@@ -199,7 +200,7 @@ Do:
 7. 마지막 리뷰 대응 push 이후 unresolved review thread가 0인지 확인한다.
 8. `scripts/mmp-pr-ci-scope.sh <PR>`로 full-ci / code-rabbit-only를 분류한다.
 9. full-ci면 `ready-for-ci` 라벨을 붙여 full CI를 실행하고, CI 실패나 Codecov Report 문제가 있으면 원인을 수정하고 다시 검증한다.
-10. code-rabbit-only면 `ready-for-ci` 라벨이나 workflow_dispatch 없이 light/focused validation 근거를 기록한다.
+10. code-rabbit-only면 `ready-for-ci` 라벨이나 workflow_dispatch 없이 light/focused validation 근거를 기록한다. 개발 최소 워커 모드의 workflow-pruning PR도 사용자가 CodeRabbit-only 운영을 명시한 경우 이 기준으로 판단한다.
 11. scope별 required gate를 통과한 뒤 merge한다.
 
 Done when:

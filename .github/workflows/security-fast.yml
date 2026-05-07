@@ -1,30 +1,12 @@
 name: Security — Fast Feedback
 
-# paths filter (CI 슬림화 — Phase 23 follow-up "CI pruning P0" 후속):
-# docs/memory/plan 변경 PR 시 fire 0. Go/Node 의존성 또는 본 workflow 자체 변경에만 fire.
-# gitleaks는 별도 .github/workflows/gitleaks.yml 로 분리됨 (모든 경로 secret scan 보장).
+# Development-minimum mode: do not run security workers automatically.
+# CodeRabbit remains the default PR feedback loop. Run this workflow manually or
+# by applying the `ready-for-ci` label when a PR is ready for full validation.
 on:
   pull_request:
     branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'pnpm-lock.yaml'
-      - '.gitleaks.toml'
-      - '.github/workflows/security-fast.yml'
-  push:
-    branches: [main]
-    paths:
-      - 'apps/**'
-      - 'packages/**'
-      - 'go.mod'
-      - 'go.sum'
-      - 'pnpm-lock.yaml'
-      - '.gitleaks.toml'
-      - '.github/workflows/security-fast.yml'
+    types: [labeled]
   workflow_dispatch:
 
 concurrency:
@@ -37,21 +19,14 @@ permissions:
 jobs:
   govulncheck:
     name: govulncheck (Go SCA)
-    runs-on: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci') && 'ubuntu-latest' || 'arc-runner-set' }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ready-for-ci'
+    runs-on: arc-runner-set
     # Phase 22 W1.5 PR-8 fold-in (PR-170 8ce9c0b run cancelled at 5:13):
     # containerized runner 의 setup-go cache miss + scanner install +
     # scan 이 5분 timeout 초과. 10분 으로 상향 (cache warm-up 후 정상 ~3분).
     # Phase 25 #349: govulncheck CLI 는 ARC runner image 에 pre-bake 한다.
     timeout-minutes: 10
     steps:
-      - name: Full CI ready gate
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'ready-for-ci')
-        working-directory: ${{ github.workspace }}
-        run: |
-          echo "::error::Full CI는 CodeRabbit/Codecov 정리 후 'ready-for-ci' 라벨을 붙였을 때 실행합니다."
-          echo "::error::리뷰 대응 중에는 light checks만 사용하고, merge 전 라벨을 붙여 full CI를 다시 실행하세요."
-          exit 1
-
       - name: Harden Runner
         uses: step-security/harden-runner@6c3c2f2c1c457b00c10c4848d6f5491db3b629df # v2.18.0
         with:

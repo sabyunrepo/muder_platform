@@ -100,10 +100,10 @@ ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$number" --format env)"
 eval "$ci_scope_env"
 if [[ "$CI_SCOPE" == "code-rabbit-only" ]]; then
   steward_mode="code-rabbit-only exception"
-  ci_instruction="이 PR은 heavy CI path filter에 걸리는 파일이 없습니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. CodeRabbit clear + unresolved 0 + light checks + 변경 스크립트/설정 focused validation이 완료 조건입니다."
+  ci_instruction="이 PR은 heavy CI 실행 대상 파일이 없습니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. CodeRabbit clear + unresolved 0 + light checks + 변경 스크립트/설정 focused validation이 완료 조건입니다."
   merge_ready_rule="MERGE_READY 또는 MERGE_CANDIDATE: code-rabbit-only exception 근거 확인, unresolved thread 0, CodeRabbit clear, light checks pass, changed scripts/config focused validation pass. ready-for-ci 라벨과 required workflow green은 요구하지 않습니다. strict behind만 남으면 MERGE_CANDIDATE로 보고하고 main Codex가 admin merge 또는 update를 결정합니다."
   copy_ready_rule="이 PR은 code-rabbit-only exception입니다. MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --code-rabbit-only 로 CodeRabbit/threads 상태만 확인하고, ready-for-ci 라벨이나 workflow_dispatch/full CI는 실행하지 마세요. main Codex가 명시하지 않은 branch update는 하지 마세요."
-  full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 path-filter 기대 동작입니다."
+  full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 개발 최소 워커 trigger 정책의 기대 동작입니다."
 else
   steward_mode="full-ci"
   ci_instruction="이 PR은 heavy CI trigger path를 변경했습니다. CodeRabbit 정리 후 scripts/pr-ready-for-ci-guard.sh --apply $number 로 ready-for-ci 라벨을 붙이고, scripts/mmp-pr-watch.sh $number --trigger-missing-workflows 로 현재 head SHA의 required workflow를 확인하세요. strict behind는 품질 실패가 아니므로 main Codex가 merge batch 순서에서 update 또는 admin merge를 결정합니다."

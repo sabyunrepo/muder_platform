@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Classify whether an MMP PR should run full CI or the CodeRabbit-only exception.
+# Classify whether an MMP PR should run explicit full CI or the CodeRabbit-only exception.
 
 set -euo pipefail
 
@@ -7,7 +7,7 @@ usage() {
   cat <<'MSG'
 Usage: scripts/mmp-pr-ci-scope.sh [--format text|env] [--stdin] [PR_NUMBER]
 
-PR 변경 파일이 heavy CI path filter에 걸리는지 분류합니다.
+PR 변경 파일이 heavy CI 실행 대상인지 분류합니다.
 
 Modes:
 - full-ci: apps/runtime/test/build/security/workflow trigger path를 변경했습니다.

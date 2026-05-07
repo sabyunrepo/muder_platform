@@ -1,11 +1,9 @@
 name: Module Isolation
 
+# Development-minimum mode: module isolation is manual while the project is in
+# active solo development. Re-enable PR path triggers before service hardening.
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'apps/server/internal/module/**'
-      - 'apps/server/internal/engine/**'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
