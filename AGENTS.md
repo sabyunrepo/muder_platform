@@ -262,7 +262,7 @@ Avoid:
 | 규칙 | Master |
 | ---- | ------ |
 | 코딩 작업 규율 | `memory/feedback_coding_discipline.md` |
-| 파일/함수 크기 제한 | `memory/feedback_file_size_limit.md` |
+| 파일/함수 크기: 줄 수 통과가 아니라 책임 분리 경보 | `memory/feedback_file_size_limit.md` |
 | Git 워크플로우 | `memory/feedback_branch_pr_workflow.md` |
 | 4-agent 리뷰 정책 | `memory/feedback_4agent_review_before_admin_merge.md` |
 | 메모리 canonical 규칙 | `memory/feedback_memory_canonical_repo.md` |

@@ -153,7 +153,7 @@ flowchart LR
 ## 파일 크기 한도 {#size}
 
 - `.ts` / `.tsx` 400줄 / 함수 60줄 / JSX 컴포넌트 150줄.
-- 초과 예상 시: 서브컴포넌트 추출 / hooks 개별 파일 + 배럴 / api 도메인별 파일 + 배럴.
+- 줄 수는 책임 분리 경보다. 초과 예상 시 기능을 빼거나 한 파일에 압축하지 말고 view 서브컴포넌트 / interaction hook / adapter / persistence helper / api 도메인별 파일로 나눈다.
 
 ## 빌드 {#build}
 
@@ -173,5 +173,5 @@ pnpm --filter @mmp/web build
 - 신규 WS 메시지 타입 → `packages/shared/ws/` 정의 → connectionStore 디스패치 → Domain store 반영. CI drift gate가 미동기화 잡아냄.
 - 신규 에러 코드 → 백엔드 `apperror/codes.go` + 프론트 `lib/error-messages.ts` 동시 추가.
 - Tailwind 클래스 인라인이 기본. CSS module은 사용 안 함.
-- 컴포넌트 분할 한계: JSX 150줄 초과 시 서브컴포넌트로.
+- 컴포넌트 분할 한계: JSX 150줄 초과 시 서브컴포넌트로. 단순 숫자 맞추기보다 변경 이유별 분리와 테스트 가능성을 우선한다.
 - UNVERIFIED: `features/` vs `components/` 분리 규칙 — 직접 read 또는 graphify로 확인 필요.

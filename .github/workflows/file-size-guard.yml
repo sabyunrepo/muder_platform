@@ -5,7 +5,7 @@ name: File Size Guard
 # 카논: memory/feedback_file_size_limit.md 의 유형별 티어 한도를 PR diff에서 검사.
 # warn-only — 실제 차단은 하지 않고 GitHub Actions ::warning:: 메시지로 PR check에
 # 표시한다. 누적 +수줄 패턴(예: ClueForm 474→481→490 ...)을 사람이 보고 판단할 수
-# 있도록 가시화하는 게 목적.
+# 있도록 가시화하는 게 목적. LOC 한도는 숫자 맞추기 목표가 아니라 책임 분리 경보다.
 #
 # 한도:
 #   .go            500
@@ -82,7 +82,7 @@ jobs:
             esac
             lines=$(wc -l < "$f" | tr -d ' ')
             if [ "$lines" -gt "$limit" ]; then
-              echo "::warning file=$f::file-size $lines > $limit ($kind, canon: memory/feedback_file_size_limit.md)"
+              echo "::warning file=$f::file-size $lines > $limit ($kind, canon: memory/feedback_file_size_limit.md). Treat as a responsibility-boundary review signal, not a request to compress code."
               summary="$summary"$'\n'"| \`$f\` | $lines | $limit | $kind |"
               over=$((over + 1))
             fi
@@ -100,7 +100,7 @@ jobs:
               echo ""
               echo "$summary"
               echo ""
-              echo "Canon: \`memory/feedback_file_size_limit.md\`. Split pattern: \`index + refs/<topic>.md\`."
+              echo "Canon: \`memory/feedback_file_size_limit.md\`. This is a responsibility-boundary warning, not a request to compress code. Split by change reason: component/hook/adapter/service/refs."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 

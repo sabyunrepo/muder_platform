@@ -47,7 +47,7 @@ dev psql: `PGPASSWORD=mmp_dev psql -h localhost -p 25432 -U mmp -d mmf`
 
 | 룰 | master |
 |----|--------|
-| 파일/함수 크기 (Go 500줄 / 함수 80줄, sqlc/mockgen 자동생성 예외) | `memory/feedback_file_size_limit.md` |
+| 파일/함수 크기와 책임 경계 (Go 500줄 / 함수 80줄, sqlc/mockgen 자동생성 예외) | `memory/feedback_file_size_limit.md` |
 | 모듈 시스템 (PlayerAware 의무, registry boot panic 강제 — F-sec-2 게이트) | `memory/project_module_system.md` |
 | 에러 처리 (AppError + RFC 9457 Problem Details + 에러 코드 레지스트리) | `memory/project_error_system.md` |
 | 코드 리뷰 패턴 (Go/DB/보안 — auditlog, 입력 검증, 비밀정보 redact) | `memory/feedback_code_review_patterns.md` |

@@ -48,6 +48,6 @@
 
 | 룰 | master |
 |----|--------|
-| 파일/함수 크기 (TS·TSX 400줄 / 일반 함수 60줄 / JSX 컴포넌트 150줄) | `memory/feedback_file_size_limit.md` |
+| 파일/함수 크기와 책임 경계 (TS·TSX 400줄 / 일반 함수 60줄 / JSX 컴포넌트 150줄) | `memory/feedback_file_size_limit.md` |
 | 코드 리뷰 패턴 (React/PWA/오디오 통합) | `memory/feedback_code_review_patterns.md` |
 | WS 토큰 쿼리 파라미터 (백엔드 ↔ 프론트 공통) | `memory/feedback_ws_token_query.md` |

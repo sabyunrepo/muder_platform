@@ -54,7 +54,7 @@
 - [CI 인프라 부채](feedback_ci_infra_debt.md) — golangci-lint↔Go1.25, ESLint9 config 미흡
 - [CI admin-skip 정책 (만료 — 2026-04-29)](project_ci_admin_skip_expired_2026-04-29.md) — 정상 squash 모드 복귀
 - [WS 토큰 쿼리 파라미터](feedback_ws_token_query.md) — `?token=` 쿼리 인증
-- [파일/함수 크기 티어](feedback_file_size_limit.md) — Go 500/80, TS·TSX 400/60·150, MD 500(CLAUDE.md만 200)
+- [파일/함수 크기 티어와 책임 경계](feedback_file_size_limit.md) — Go 500/80, TS·TSX 400/60·150, MD 500(CLAUDE.md만 200). LOC 한도는 숫자 맞추기가 아니라 책임 분리 경보
 - [QMD MCP 메모리 누수 운영](feedback_qmd_memory_leak.md) — 컬렉션 최소화, 장시간 세션 주기 재시작
 - [wsgen / codegen 결정성 카논](feedback_wsgen_deterministic.md) — Go map iteration randomized → sort.Slice 강제 (PR-1 #212)
 - [모듈 Skeleton = PublicStateMarker로 시작](project_module_skeleton_publicstate.md) — F-sec-2 playeraware-lint canon이 강제 (PR-1 #212)
