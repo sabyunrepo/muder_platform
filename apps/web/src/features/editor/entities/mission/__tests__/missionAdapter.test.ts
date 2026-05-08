@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createMissionDraft,
-  getMissionVerificationOptions,
   readCharacterMissionMap,
   toMissionEngineContractDraft,
   toMissionRuntimeDraft,
@@ -33,6 +32,8 @@ describe("missionAdapter", () => {
       type: "secret",
       description: "",
       points: 0,
+      verification: "auto",
+      visibleFrom: "game_start",
     });
     vi.restoreAllMocks();
   });
@@ -53,6 +54,7 @@ describe("missionAdapter", () => {
       verification: "auto",
       resultVisibility: "result_only",
       engineOwner: "backend_engine",
+      visibleFrom: "game_start",
       targetClueId: "clue-1",
       legacyConditionNote: "토론 이후 공개",
     });
@@ -88,22 +90,23 @@ describe("missionAdapter", () => {
       verification: "auto",
       resultVisibility: "result_only",
       engineOwner: "backend_engine",
+      visibleFrom: "game_start",
     }));
     vi.restoreAllMocks();
   });
 
-  it("custom 런타임은 저장값이 auto여도 수동 판정으로 정규화한다", () => {
+  it("legacy 수동 판정값이 있어도 runtime 후보는 auto로 정규화한다", () => {
     const runtime = toMissionRuntimeDraft({
       id: "m-custom",
       type: "secret",
       description: "비밀을 지킨다",
       points: 3,
-      verification: "auto",
+      verification: "gm_verify",
     });
 
     expect(runtime).toEqual(expect.objectContaining({
       type: "custom",
-      verification: "self_report",
+      verification: "auto",
     }));
     expect(toMissionEngineContractDraft({
       "char-1": [
@@ -112,29 +115,17 @@ describe("missionAdapter", () => {
           type: "secret",
           description: "비밀을 지킨다",
           points: 3,
-          verification: "auto",
+          verification: "gm_verify",
         },
       ],
     }).assignments[0]).toEqual(expect.objectContaining({
-      autoVerifiableCount: 0,
-      manualReviewCount: 1,
+      autoVerifiableCount: 1,
+      manualReviewCount: 0,
     }));
   });
 
-  it("판정 방식 선택지는 runtime 타입에 맞게 제한한다", () => {
-    expect(getMissionVerificationOptions("custom").map((option) => option.value)).toEqual([
-      "self_report",
-      "gm_verify",
-    ]);
-    expect(getMissionVerificationOptions("hold_clue").map((option) => option.value)).toEqual([
-      "auto",
-      "self_report",
-      "gm_verify",
-    ]);
-  });
-
   it("제작자가 이해할 요약과 자동 판정 경고를 만든다", () => {
-    expect(toMissionViewModel({ id: "m2", type: "kill", description: "", points: -1, condition: "공모" })).toEqual({
+    expect(toMissionViewModel({ id: "m2", type: "kill", description: "", points: -1, condition: "공모", visibleFrom: "round_start", revealRound: 2 })).toEqual({
       id: "m2",
       title: "미션 내용을 입력해 주세요",
       typeLabel: "살해",
@@ -143,6 +134,7 @@ describe("missionAdapter", () => {
       runtimeType: "vote_target",
       verification: "auto",
       verificationLabel: "자동 판정",
+      revealLabel: "2라운드 시작부터",
       engineOwnerLabel: "게임 판정은 백엔드가 담당",
       warnings: [
         "플레이어가 이해할 미션 내용을 입력해 주세요.",
@@ -167,14 +159,37 @@ describe("missionAdapter", () => {
         {
           characterId: "char-1",
           totalPoints: 5,
-          autoVerifiableCount: 1,
-          manualReviewCount: 1,
+          autoVerifiableCount: 2,
+          manualReviewCount: 0,
           missions: [
             expect.objectContaining({ id: "m1", type: "hold_clue", verification: "auto" }),
-            expect.objectContaining({ id: "m2", type: "custom", verification: "self_report" }),
+            expect.objectContaining({ id: "m2", type: "custom", verification: "auto" }),
           ],
         },
       ],
+    });
+  });
+
+  it("미션 공개 시점 필드를 저장 DTO와 runtime 후보에 유지한다", () => {
+    expect(toMissionRuntimeDraft({
+      id: "m-round",
+      type: "possess",
+      description: "2라운드 이후 단서를 가진다",
+      points: 5,
+      targetClueId: "clue-1",
+      visibleFrom: "round_start",
+      revealRound: 2,
+    })).toEqual(expect.objectContaining({
+      visibleFrom: "round_start",
+      revealRound: 2,
+    }));
+
+    expect(writeCharacterMissionMap(
+      { title: "기존 설정" },
+      { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "intro_end" }] },
+    )).toEqual({
+      title: "기존 설정",
+      character_missions: { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "intro_end" }] },
     });
   });
 

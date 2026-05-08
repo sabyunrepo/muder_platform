@@ -43,7 +43,6 @@ function renderEditor(overrides: Partial<{
     <CharacterAliasRulesEditor
       themeId="theme-1"
       characterName="홍길동"
-      characterImageUrl="https://cdn.example/base.webp"
       rules={overrides.rules ?? []}
       characterOptions={characterOptions}
       disabled={overrides.disabled ?? false}
@@ -61,7 +60,6 @@ function renderStatefulEditor(initialRules: CharacterAliasRule[], onSave = vi.fn
       <CharacterAliasRulesEditor
         themeId="theme-1"
         characterName="홍길동"
-        characterImageUrl="https://cdn.example/base.webp"
         rules={rules}
         characterOptions={characterOptions}
         disabled={false}
@@ -91,7 +89,7 @@ describe('CharacterAliasRulesEditor', () => {
           operator: 'AND',
           rules: [expect.objectContaining({
             variable: 'custom_flag',
-            target_flag_key: 'alias_ready',
+            target_flag_key: 'game_started',
             comparator: '=',
             value: 'true',
           })],
@@ -128,7 +126,7 @@ describe('CharacterAliasRulesEditor', () => {
     ]);
   });
 
-  it('표시 이름, 아이콘, 우선순위를 수정해 저장한다', () => {
+  it('표시 이름, 우선순위, 공개 시점 프리셋을 수정해 저장한다', () => {
     const onSave = vi.fn();
     const rules: CharacterAliasRule[] = [{
       id: 'alias-1',
@@ -142,7 +140,7 @@ describe('CharacterAliasRulesEditor', () => {
         rules: [{
           id: 'rule-1',
           variable: 'custom_flag',
-          target_flag_key: 'alias_ready',
+          target_flag_key: 'game_started',
           comparator: '=',
           value: 'true',
         }],
@@ -151,15 +149,17 @@ describe('CharacterAliasRulesEditor', () => {
 
     renderStatefulEditor(rules, onSave);
     fireEvent.change(screen.getByLabelText('표시 이름'), { target: { value: '밤의 목격자' } });
-    fireEvent.change(screen.getByLabelText('표시 아이콘 URL'), { target: { value: 'https://cdn.example/night.webp' } });
     fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('별칭 표시 시점'), { target: { value: 'intro_end' } });
     fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
 
     expect(onSave).toHaveBeenCalledWith([expect.objectContaining({
       id: 'alias-1',
       display_name: '밤의 목격자',
-      display_icon_url: 'https://cdn.example/night.webp',
       priority: 3,
+      condition: expect.objectContaining({
+        rules: [expect.objectContaining({ target_flag_key: 'intro_finished' })],
+      }),
     })]);
   });
 
@@ -188,7 +188,7 @@ describe('CharacterAliasRulesEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '미디어에서 아이콘 선택' }));
     fireEvent.click(screen.getByRole('button', { name: '별칭 아이콘 선택' }));
     expect(screen.getByText('미디어 이미지 선택됨')).toBeTruthy();
-    expect((screen.getByLabelText('표시 아이콘 URL') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByLabelText('표시 아이콘 URL')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
 
@@ -236,7 +236,7 @@ describe('CharacterAliasRulesEditor', () => {
     expect((screen.getByRole('button', { name: '플레이 중 표시 저장' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: '삭제' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText('표시 이름') as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByLabelText('표시 아이콘 URL') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('표시 아이콘 URL')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '삭제' }));
     expect(onChange).not.toHaveBeenCalled();
@@ -278,7 +278,6 @@ describe('CharacterAliasRulesEditor', () => {
       <CharacterAliasRulesEditor
         themeId="theme-1"
         characterName="홍길동"
-        characterImageUrl="https://cdn.example/base.webp"
         rules={[incompleteRule]}
         characterOptions={characterOptions}
         disabled={false}
@@ -294,7 +293,6 @@ describe('CharacterAliasRulesEditor', () => {
       <CharacterAliasRulesEditor
         themeId="theme-1"
         characterName="김영희"
-        characterImageUrl="https://cdn.example/next.webp"
         rules={[completeRule]}
         characterOptions={characterOptions}
         disabled={false}

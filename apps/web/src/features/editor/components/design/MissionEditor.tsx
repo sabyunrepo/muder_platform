@@ -2,7 +2,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { MissionTypeFields } from './MissionTypeFields';
 import {
   MISSION_TYPES,
-  getMissionVerificationOptions,
+  MISSION_REVEAL_OPTIONS,
   toMissionViewModel,
   type Mission,
   type MissionEditorCharacter,
@@ -83,7 +83,6 @@ function MissionCard({
   onDelete: (missionId: string) => void;
 }) {
   const viewModel = toMissionViewModel(mission);
-  const verificationOptions = getMissionVerificationOptions(viewModel.runtimeType);
   const descriptionId = `mission-description-${mission.id}`;
   return (
     <div className="rounded border border-slate-800 bg-slate-900 p-3">
@@ -129,14 +128,14 @@ function MissionCard({
           />
         </label>
         <label className="flex items-center gap-2">
-          <span>판정:</span>
+          <span>공개:</span>
           <select
-            value={viewModel.verification}
-            onChange={(e) => onChange(mission.id, 'verification', e.target.value)}
+            value={mission.visibleFrom ?? 'game_start'}
+            onChange={(e) => onChange(mission.id, 'visibleFrom', e.target.value)}
             className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
-            aria-label="미션 판정 방식"
+            aria-label="미션 공개 시점"
           >
-            {verificationOptions.map((option) => (
+            {MISSION_REVEAL_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -144,8 +143,32 @@ function MissionCard({
           </select>
         </label>
       </div>
+      {mission.visibleFrom === 'round_start' ? (
+        <label className="mb-2 flex max-w-xs items-center gap-2 text-xs text-slate-500">
+          <span>시작 라운드:</span>
+          <input
+            type="number"
+            min={1}
+            value={mission.revealRound ?? 1}
+            onChange={(e) => onChange(mission.id, 'revealRound', Number(e.target.value))}
+            className="w-20 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
+          />
+        </label>
+      ) : null}
+      {mission.visibleFrom === 'node_reached' ? (
+        <label className="mb-2 block text-xs text-slate-500">
+          진행 노드
+          <input
+            type="text"
+            value={mission.revealNodeId ?? ''}
+            onChange={(e) => onChange(mission.id, 'revealNodeId', e.target.value)}
+            placeholder="예: intro-complete"
+            className="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
+          />
+        </label>
+      ) : null}
       <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
-        <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.resultVisibilityLabel}</span>
+        <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.revealLabel}</span>
         <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.verificationLabel}</span>
         <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.engineOwnerLabel}</span>
       </div>

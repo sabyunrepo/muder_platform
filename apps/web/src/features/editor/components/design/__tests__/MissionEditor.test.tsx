@@ -113,41 +113,40 @@ describe('MissionEditor', () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
-  it('결과 공개 시점과 백엔드 판정 경계를 제작자용 문구로 표시한다', () => {
+  it('미션 공개 시점과 백엔드 판정 경계를 제작자용 문구로 표시한다', () => {
     const onChange = vi.fn();
     render(
       <MissionEditor
-        missions={[baseMission({ type: 'secret' })]}
+        missions={[baseMission({ type: 'secret', visibleFrom: 'intro_end' })]}
         onAdd={noop}
         onChange={onChange}
         onDelete={noop}
       />,
     );
 
-    expect(screen.getByText('결과 화면에서만 공개')).toBeDefined();
-    expect(screen.getAllByText('플레이어 신고').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('자기소개 종료 후').length).toBeGreaterThan(0);
+    expect(screen.getByText('자동 판정')).toBeDefined();
     expect(screen.getByText('게임 판정은 백엔드가 담당')).toBeDefined();
 
-    fireEvent.change(screen.getByLabelText('미션 판정 방식'), { target: { value: 'gm_verify' } });
-    expect(onChange).toHaveBeenCalledWith('mission-1', 'verification', 'gm_verify');
+    fireEvent.change(screen.getByLabelText('미션 공개 시점'), { target: { value: 'round_start' } });
+    expect(onChange).toHaveBeenCalledWith('mission-1', 'visibleFrom', 'round_start');
   });
 
-  it('수동 판정 미션에서는 자동 판정을 선택지에서 숨긴다', () => {
+  it('라운드와 진행 노드 공개 시점의 추가 입력을 저장한다', () => {
+    const onChange = vi.fn();
     render(
       <MissionEditor
-        missions={[baseMission({ type: 'secret', verification: 'auto' })]}
+        missions={[baseMission({ visibleFrom: 'round_start', revealRound: 2 })]}
         onAdd={noop}
-        onChange={noop}
+        onChange={onChange}
         onDelete={noop}
       />,
     );
 
-    const select = screen.getByLabelText('미션 판정 방식') as HTMLSelectElement;
-    expect(select.value).toBe('self_report');
-    expect(Array.from(select.options).map((option) => option.value)).toEqual([
-      'self_report',
-      'gm_verify',
-    ]);
+    fireEvent.change(screen.getByLabelText('미션 공개 시점'), { target: { value: 'node_reached' } });
+    expect(onChange).toHaveBeenCalledWith('mission-1', 'visibleFrom', 'node_reached');
+    fireEvent.change(screen.getByLabelText('시작 라운드:'), { target: { value: '3' } });
+    expect(onChange).toHaveBeenCalledWith('mission-1', 'revealRound', 3);
   });
 
   it('MISSION_TYPES에 kill/possess/secret/protect가 포함된다', () => {
