@@ -134,6 +134,22 @@ describe('locationEntityAdapter', () => {
     ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
   });
 
+  it('부모 장소 후보 계산도 API parent_location_id를 locationMeta보다 우선한다', () => {
+    const locations = [
+      location({ id: 'loc-1', name: '저택' }),
+      location({ id: 'loc-2', name: '1층', parent_location_id: 'loc-1' }),
+      location({ id: 'loc-3', name: '서재', parent_location_id: 'loc-2' }),
+      location({ id: 'loc-4', name: '정원' }),
+    ];
+
+    expect(
+      buildLocationParentOptions('loc-1', locations, {
+        'loc-2': { parentLocationId: null },
+        'loc-3': { parentLocationId: null },
+      })
+    ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
+  });
+
   it('restricted character CSV를 trim/dedupe한다', () => {
     expect(parseLocationRestrictedCharacterIds(' char-1, char-2, char-1, ')).toEqual([
       'char-1',
