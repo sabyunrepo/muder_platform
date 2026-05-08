@@ -15,6 +15,10 @@ import {
   normalizeCharacterAliasRules,
   toCharacterEditorViewModel,
 } from '@/features/editor/entities/character/characterEditorAdapter';
+import type {
+  ProgressNodeRevealOption,
+  RoundRevealOption,
+} from '@/features/editor/entities/reveal/revealTimingOptions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +56,8 @@ interface CharacterDetailPanelProps {
   clues: ClueItem[] | undefined;
   charClueIds: string[];
   charMissions: Mission[];
+  revealRoundOptions?: RoundRevealOption[];
+  revealNodeOptions?: ProgressNodeRevealOption[];
   onClueToggle: (clueId: string, checked: boolean) => void;
   onAddMission: () => void;
   onChangeMission: (missionId: string, field: keyof Mission, value: string | number) => void;
@@ -73,6 +79,8 @@ export function CharacterDetailPanel({
   clues,
   charClueIds,
   charMissions,
+  revealRoundOptions,
+  revealNodeOptions,
   onClueToggle,
   onAddMission,
   onChangeMission,
@@ -252,6 +260,8 @@ export function CharacterDetailPanel({
                   themeId={themeId}
                   characterName={selectedChar.name}
                   rules={aliasDrafts}
+                  roundOptions={revealRoundOptions}
+                  nodeOptions={revealNodeOptions}
                   disabled={!onAliasRulesSave}
                   onChange={setAliasDrafts}
                   onSave={(rules) => {
@@ -296,6 +306,8 @@ export function CharacterDetailPanel({
                 missions={charMissions}
                 characters={characters}
                 clues={clues ?? []}
+                roundOptions={revealRoundOptions}
+                nodeOptions={revealNodeOptions}
                 onAdd={onAddMission}
                 onChange={onChangeMission}
                 onDelete={onDeleteMission}

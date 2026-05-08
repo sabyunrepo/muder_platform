@@ -3,12 +3,15 @@ import { MissionTypeFields } from './MissionTypeFields';
 import {
   MISSION_TYPES,
   MISSION_REVEAL_OPTIONS,
-  MISSION_REVEAL_NODE_OPTIONS,
   toMissionViewModel,
   type Mission,
   type MissionEditorCharacter,
   type MissionEditorClue,
 } from '../../entities/mission/missionAdapter';
+import type {
+  ProgressNodeRevealOption,
+  RoundRevealOption,
+} from '@/features/editor/entities/reveal/revealTimingOptions';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +23,8 @@ interface MissionEditorProps {
   missions: Mission[];
   characters?: MissionEditorCharacter[];
   clues?: MissionEditorClue[];
+  roundOptions?: RoundRevealOption[];
+  nodeOptions?: ProgressNodeRevealOption[];
   onAdd: () => void;
   onChange: (missionId: string, field: keyof Mission, value: string | number) => void;
   onDelete: (missionId: string) => void;
@@ -33,6 +38,8 @@ export function MissionEditor({
   missions,
   characters = [],
   clues = [],
+  roundOptions = DEFAULT_MISSION_ROUND_OPTIONS,
+  nodeOptions = DEFAULT_MISSION_NODE_OPTIONS,
   onAdd,
   onChange,
   onDelete,
@@ -58,6 +65,8 @@ export function MissionEditor({
               mission={mission}
               characters={characters}
               clues={clues}
+              roundOptions={roundOptions}
+              nodeOptions={nodeOptions}
               onChange={onChange}
               onDelete={onDelete}
             />
@@ -74,12 +83,16 @@ function MissionCard({
   mission,
   characters,
   clues,
+  roundOptions,
+  nodeOptions,
   onChange,
   onDelete,
 }: {
   mission: Mission;
   characters: MissionEditorCharacter[];
   clues: MissionEditorClue[];
+  roundOptions: RoundRevealOption[];
+  nodeOptions: ProgressNodeRevealOption[];
   onChange: (missionId: string, field: keyof Mission, value: string | number) => void;
   onDelete: (missionId: string) => void;
 }) {
@@ -145,26 +158,33 @@ function MissionCard({
         </label>
       </div>
       {mission.visibleFrom === 'round_start' ? (
-        <label className="mb-2 flex max-w-xs items-center gap-2 text-xs text-slate-500">
-          <span>시작 라운드:</span>
-          <input
-            type="number"
-            min={1}
-            value={mission.revealRound ?? 1}
+        <label className="mb-2 block text-xs text-slate-500">
+          시작 라운드
+          <select
+            value={String(mission.revealRound ?? 1)}
             onChange={(e) => onChange(mission.id, 'revealRound', Number(e.target.value))}
-            className="w-20 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
-          />
+            className="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
+          >
+            {roundOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} 시작
+              </option>
+            ))}
+          </select>
         </label>
       ) : null}
       {mission.visibleFrom === 'node_reached' ? (
         <label className="mb-2 block text-xs text-slate-500">
           진행 노드
           <select
-            value={mission.revealNodeId ?? MISSION_REVEAL_NODE_OPTIONS[0].value}
+            value={mission.revealNodeId ?? nodeOptions[0]?.value ?? ''}
             onChange={(e) => onChange(mission.id, 'revealNodeId', e.target.value)}
             className="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
           >
-            {MISSION_REVEAL_NODE_OPTIONS.map((option) => (
+            {nodeOptions.length === 0 ? (
+              <option value="">진행 장면 없음</option>
+            ) : null}
+            {nodeOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -191,3 +211,14 @@ function MissionCard({
     </div>
   );
 }
+
+const DEFAULT_MISSION_ROUND_OPTIONS = Array.from({ length: 5 }, (_, index) => {
+  const round = index + 1;
+  return { value: round, label: `${round}라운드` };
+});
+
+const DEFAULT_MISSION_NODE_OPTIONS = [
+  { value: 'intro_finished', label: '자기소개 종료' },
+  { value: 'round_summary', label: '라운드 정리' },
+  { value: 'voting_started', label: '투표 시작' },
+];

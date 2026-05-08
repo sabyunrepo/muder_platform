@@ -145,7 +145,7 @@ describe('MissionEditor', () => {
 
     fireEvent.change(screen.getByLabelText('미션 공개 시점'), { target: { value: 'node_reached' } });
     expect(onChange).toHaveBeenCalledWith('mission-1', 'visibleFrom', 'node_reached');
-    fireEvent.change(screen.getByLabelText('시작 라운드:'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('시작 라운드'), { target: { value: '3' } });
     expect(onChange).toHaveBeenCalledWith('mission-1', 'revealRound', 3);
 
     rerender(
@@ -158,6 +158,25 @@ describe('MissionEditor', () => {
     );
     fireEvent.change(screen.getByLabelText('진행 노드'), { target: { value: 'voting_started' } });
     expect(onChange).toHaveBeenCalledWith('mission-1', 'revealNodeId', 'voting_started');
+  });
+
+  it('실제 flow/round 후보를 공개 시점 selector에 사용한다', () => {
+    render(
+      <MissionEditor
+        missions={[baseMission({ visibleFrom: 'node_reached', revealNodeId: 'scene-2' })]}
+        roundOptions={[{ value: 1, label: '1라운드' }, { value: 2, label: '2라운드' }]}
+        nodeOptions={[
+          { value: 'scene-1', label: '오프닝 (장면)' },
+          { value: 'scene-2', label: '현장 조사 (장면)' },
+        ]}
+        onAdd={noop}
+        onChange={noop}
+        onDelete={noop}
+      />,
+    );
+
+    expect(screen.getByRole('option', { name: '현장 조사 (장면)' })).toBeDefined();
+    expect(screen.queryByRole('option', { name: '투표 시작' })).toBeNull();
   });
 
   it('MISSION_TYPES에 kill/possess/secret/protect가 포함된다', () => {

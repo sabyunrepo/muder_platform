@@ -3,6 +3,10 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CharacterAliasRulesEditor } from '../CharacterAliasRulesEditor';
 import type { CharacterAliasRule } from '@/features/editor/api';
+import type {
+  ProgressNodeRevealOption,
+  RoundRevealOption,
+} from '@/features/editor/entities/reveal/revealTimingOptions';
 
 vi.mock('@/features/editor/components/media/MediaPicker', () => ({
   MediaPicker: ({
@@ -34,6 +38,8 @@ const characterOptions = [{ id: 'char-1', name: '홍길동' }];
 function renderEditor(overrides: Partial<{
   rules: CharacterAliasRule[];
   disabled: boolean;
+  roundOptions: RoundRevealOption[];
+  nodeOptions: ProgressNodeRevealOption[];
   onChange: (rules: CharacterAliasRule[]) => void;
   onSave: (rules: CharacterAliasRule[]) => void;
 }> = {}) {
@@ -45,6 +51,8 @@ function renderEditor(overrides: Partial<{
       characterName="홍길동"
       rules={overrides.rules ?? []}
       characterOptions={characterOptions}
+      roundOptions={overrides.roundOptions}
+      nodeOptions={overrides.nodeOptions}
       disabled={overrides.disabled ?? false}
       onChange={onChange}
       onSave={onSave}
@@ -53,7 +61,14 @@ function renderEditor(overrides: Partial<{
   return { onChange, onSave };
 }
 
-function renderStatefulEditor(initialRules: CharacterAliasRule[], onSave = vi.fn()) {
+function renderStatefulEditor(
+  initialRules: CharacterAliasRule[],
+  onSave = vi.fn(),
+  options: {
+    roundOptions?: RoundRevealOption[];
+    nodeOptions?: ProgressNodeRevealOption[];
+  } = {},
+) {
   function Harness() {
     const [rules, setRules] = useState(initialRules);
     return (
@@ -62,6 +77,8 @@ function renderStatefulEditor(initialRules: CharacterAliasRule[], onSave = vi.fn
         characterName="홍길동"
         rules={rules}
         characterOptions={characterOptions}
+        roundOptions={options.roundOptions}
+        nodeOptions={options.nodeOptions}
         disabled={false}
         onChange={setRules}
         onSave={onSave}
@@ -201,6 +218,43 @@ describe('CharacterAliasRulesEditor', () => {
     expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({
       condition: expect.objectContaining({
         rules: [expect.objectContaining({ target_flag_key: 'story_node_reached', value: 'voting_started' })],
+      }),
+    })]);
+  });
+
+  it('실제 flow 후보로 별칭 진행 노드를 선택한다', () => {
+    const onSave = vi.fn();
+    const rules: CharacterAliasRule[] = [{
+      id: 'alias-1',
+      label: '장면 공개',
+      display_name: '현장 목격자',
+      priority: 1,
+      condition: {
+        id: 'group-1',
+        operator: 'AND',
+        rules: [{
+          id: 'rule-1',
+          variable: 'custom_flag',
+          target_flag_key: 'story_node_reached',
+          comparator: '=',
+          value: 'scene-2',
+        }],
+      },
+    }];
+
+    renderStatefulEditor(rules, onSave, {
+      nodeOptions: [
+        { value: 'scene-1', label: '오프닝 (장면)' },
+        { value: 'scene-2', label: '현장 조사 (장면)' },
+      ],
+    });
+
+    expect(screen.getByRole('option', { name: '현장 조사 (장면)' })).toBeDefined();
+    expect(screen.queryByRole('option', { name: '투표 시작' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+    expect(onSave).toHaveBeenCalledWith([expect.objectContaining({
+      condition: expect.objectContaining({
+        rules: [expect.objectContaining({ target_flag_key: 'story_node_reached', value: 'scene-2' })],
       }),
     })]);
   });

@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import { Edit3, Trash2 } from "lucide-react";
 import type { CharacterAliasRule, EditorCharacterResponse, EditorThemeResponse, MysteryRole } from "@/features/editor/api";
 import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
+import { useFlowGraph } from "@/features/editor/flowApi";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
 import { EntityEditorShell } from "@/features/editor/entities/shell/EntityEditorShell";
@@ -23,6 +24,10 @@ import {
   writeCharacterMissionMap,
   type Mission,
 } from "@/features/editor/entities/mission/missionAdapter";
+import {
+  buildProgressNodeRevealOptions,
+  buildRoundRevealOptions,
+} from "@/features/editor/entities/reveal/revealTimingOptions";
 
 interface CharacterAssignPanelProps {
   themeId: string;
@@ -41,6 +46,7 @@ export function CharacterAssignPanel({
 }: CharacterAssignPanelProps) {
   const { data: characters, isLoading: charsLoading } = useEditorCharacters(themeId);
   const { data: clues } = useEditorClues(themeId);
+  const { data: flowGraph } = useFlowGraph(themeId);
   const updateCharacter = useUpdateCharacter(themeId);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const activeCharId = characters?.some((char) => char.id === selectedCharId)
@@ -55,6 +61,34 @@ export function CharacterAssignPanel({
   const characterMissions = useMemo((): Record<string, Mission[]> => {
     return readCharacterMissionMap(theme.config_json);
   }, [theme.config_json]);
+  const missionList = useMemo(
+    () => Object.values(characterMissions).flat(),
+    [characterMissions],
+  );
+  const aliasRules = useMemo(
+    () => (characters ?? []).flatMap((character) => character.alias_rules ?? []),
+    [characters],
+  );
+  const revealRoundOptions = useMemo(
+    () => buildRoundRevealOptions(
+      flowGraph?.nodes,
+      [
+        ...missionList.map((mission) => mission.revealRound),
+        ...aliasRules.map((rule) => readAliasRoundValue(rule.condition)),
+      ],
+    ),
+    [flowGraph?.nodes, missionList, aliasRules],
+  );
+  const revealNodeOptions = useMemo(
+    () => buildProgressNodeRevealOptions(
+      flowGraph?.nodes,
+      [
+        ...missionList.map((mission) => mission.revealNodeId),
+        ...aliasRules.map((rule) => readAliasNodeValue(rule.condition)),
+      ],
+    ),
+    [flowGraph?.nodes, missionList, aliasRules],
+  );
 
   const { saveConfig, flush } = useCharacterConfigDebounce(themeId, theme.config_json);
 
@@ -244,6 +278,8 @@ export function CharacterAssignPanel({
             clues={clues}
             charClueIds={characterClues[char.id] ?? []}
             charMissions={characterMissions[char.id] ?? []}
+            revealRoundOptions={revealRoundOptions}
+            revealNodeOptions={revealNodeOptions}
             onClueToggle={(clueId, checked) => handleClueToggleForChar(char.id, clueId, checked)}
             onAddMission={() => handleAddMissionForChar(char.id)}
             onChangeMission={(missionId, field, value) => handleMissionChangeForChar(char.id, missionId, field, value)}
@@ -269,4 +305,27 @@ export function CharacterAssignPanel({
       />
     </div>
   );
+}
+
+function readAliasRoundValue(condition: unknown): number | null {
+  const rule = readSingleCustomFlagRule(condition);
+  if (rule?.target_flag_key !== "round_started" || typeof rule.value !== "string") return null;
+  const round = Number(rule.value);
+  if (!Number.isFinite(round) || round < 1) return null;
+  return Math.trunc(round);
+}
+
+function readAliasNodeValue(condition: unknown): string | null {
+  const rule = readSingleCustomFlagRule(condition);
+  if (rule?.target_flag_key !== "story_node_reached" || typeof rule.value !== "string") return null;
+  return rule.value.trim() || null;
+}
+
+function readSingleCustomFlagRule(condition: unknown): { target_flag_key?: unknown; value?: unknown } | null {
+  if (!condition || typeof condition !== "object" || Array.isArray(condition)) return null;
+  const rules = (condition as { rules?: unknown }).rules;
+  if (!Array.isArray(rules) || rules.length !== 1) return null;
+  const rule = rules[0] as { variable?: unknown; comparator?: unknown; target_flag_key?: unknown; value?: unknown };
+  if (rule.variable !== "custom_flag" || rule.comparator !== "=") return null;
+  return rule;
 }

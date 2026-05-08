@@ -5,6 +5,7 @@ import type {
   LocationResponse,
   UpdateClueRequest,
 } from '@/features/editor/api';
+import type { FlowNodeResponse } from '@/features/editor/flowTypes';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import {
@@ -17,11 +18,13 @@ import {
 } from '@/features/editor/entities/clue/clueEntityAdapter';
 import { ClueRuntimeEffectCard } from './ClueRuntimeEffectCard';
 import { ClueBasicInfoCard } from './ClueBasicInfoCard';
+import { buildRoundRevealOptions } from '@/features/editor/entities/reveal/revealTimingOptions';
 
 interface ClueEntityWorkspaceProps {
   themeId?: string;
   clues: ClueResponse[];
   configJson: EditorConfig | null | undefined;
+  flowNodes?: FlowNodeResponse[];
   locations: LocationResponse[];
   characters: EditorCharacterResponse[];
   onCreate: () => void;
@@ -36,6 +39,7 @@ export function ClueEntityWorkspace({
   themeId,
   clues,
   configJson,
+  flowNodes,
   locations,
   characters,
   onCreate,
@@ -49,6 +53,13 @@ export function ClueEntityWorkspace({
   const usageMap = useMemo(
     () => buildClueUsageMap({ configJson, clues, locations, characters }),
     [configJson, clues, locations, characters]
+  );
+  const roundOptions = useMemo(
+    () => buildRoundRevealOptions(
+      flowNodes,
+      clues.flatMap((clue) => [clue.reveal_round, clue.hide_round]),
+    ),
+    [flowNodes, clues],
   );
 
   return (
@@ -70,6 +81,7 @@ export function ClueEntityWorkspace({
             configJson={configJson}
             isSaving={isClueSaving}
             isConfigSaving={isConfigSaving}
+            roundOptions={roundOptions}
             onSave={onUpdate}
             onConfigChange={onConfigChange}
             onDelete={onDelete}
