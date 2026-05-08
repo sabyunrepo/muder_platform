@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { EditorCharacterResponse, LocationResponse } from '@/features/editor/api/types';
 import {
+  buildLocationParentOptions,
   buildLocationBadges,
   formatLocationAccessLabel,
   parseLocationRestrictedCharacterIds,
@@ -77,6 +78,38 @@ describe('locationEntityAdapter', () => {
       clueShortLabel: '단서 3개',
       badges: ['저택 1층', 'R2~4', '접근 제한 있음', '단서 3', '이미지 있음'],
     });
+  });
+
+  it('locationMeta를 제작자용 공개 설명과 부모 요약으로 변환한다', () => {
+    const vm = toLocationEditorViewModel(location(), {
+      locationMeta: {
+        publicDescription: '모든 플레이어에게 보이는 설명',
+        entryMessage: '차가운 바람이 분다.',
+        parentLocationId: 'loc-parent',
+      },
+      allLocations: [location({ id: 'loc-parent', name: '저택 1층' })],
+    });
+
+    expect(vm.publicDescription).toBe('모든 플레이어에게 보이는 설명');
+    expect(vm.entryMessage).toBe('차가운 바람이 분다.');
+    expect(vm.parentLocationId).toBe('loc-parent');
+    expect(vm.parentLabel).toBe('저택 1층');
+  });
+
+  it('부모 장소 후보에서 자기 자신과 자손을 제외한다', () => {
+    const locations = [
+      location({ id: 'loc-1', name: '저택' }),
+      location({ id: 'loc-2', name: '1층' }),
+      location({ id: 'loc-3', name: '서재' }),
+      location({ id: 'loc-4', name: '정원' }),
+    ];
+
+    expect(
+      buildLocationParentOptions('loc-1', locations, {
+        'loc-2': { parentLocationId: 'loc-1' },
+        'loc-3': { parentLocationId: 'loc-2' },
+      })
+    ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
   });
 
   it('restricted character CSV를 trim/dedupe한다', () => {

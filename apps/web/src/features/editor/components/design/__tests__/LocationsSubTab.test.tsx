@@ -385,15 +385,18 @@ describe('LocationsSubTab', () => {
   describe('LocationRow 라운드 편집', () => {
     beforeEach(setupDefaultMocks);
 
-    it('등장/퇴장 라운드 입력이 각 장소 행마다 존재한다', () => {
+    it('공개 시점을 제작자용 선택지로 표시한다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      expect(screen.getByLabelText('거실 등장 라운드')).toBeDefined();
-      expect(screen.getByLabelText('거실 퇴장 라운드')).toBeDefined();
+      expect(screen.getByText('공개 시점')).toBeDefined();
+      expect(screen.getAllByText('처음부터 끝까지').length).toBeGreaterThan(0);
+      expect(screen.getByText('특정 라운드부터')).toBeDefined();
     });
 
-    it('라운드 값 입력 후 blur 하면 useUpdateLocation.mutate 가 호출된다', () => {
+    it('시작 라운드 값 입력 후 blur 하면 useUpdateLocation.mutate 가 호출된다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      const fromInput = screen.getByLabelText('거실 등장 라운드') as HTMLInputElement;
+      fireEvent.click(screen.getByText('특정 라운드부터'));
+      updateLocationMutateMock.mockClear();
+      const fromInput = screen.getByLabelText('거실 시작 라운드') as HTMLInputElement;
       fireEvent.change(fromInput, { target: { value: '2' } });
       fireEvent.blur(fromInput);
       expect(updateLocationMutateMock).toHaveBeenCalledOnce();
@@ -407,8 +410,10 @@ describe('LocationsSubTab', () => {
 
     it('등장 > 퇴장 조합은 에러 토스트 후 저장되지 않는다', () => {
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      const fromInput = screen.getByLabelText('거실 등장 라운드') as HTMLInputElement;
-      const untilInput = screen.getByLabelText('거실 퇴장 라운드') as HTMLInputElement;
+      fireEvent.click(screen.getByText('특정 구간만'));
+      updateLocationMutateMock.mockClear();
+      const fromInput = screen.getByLabelText('거실 시작 라운드') as HTMLInputElement;
+      const untilInput = screen.getByLabelText('거실 종료 라운드') as HTMLInputElement;
       fireEvent.change(untilInput, { target: { value: '2' } });
       fireEvent.blur(untilInput);
       updateLocationMutateMock.mockClear();
@@ -424,7 +429,7 @@ describe('LocationsSubTab', () => {
         isLoading: false,
       });
       render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      const fromInput = screen.getByLabelText('거실 등장 라운드') as HTMLInputElement;
+      const fromInput = screen.getByLabelText('거실 시작 라운드') as HTMLInputElement;
       fireEvent.change(fromInput, { target: { value: '' } });
       fireEvent.blur(fromInput);
       expect(updateLocationMutateMock).toHaveBeenCalledOnce();
@@ -433,6 +438,54 @@ describe('LocationsSubTab', () => {
       ];
       expect(payload.body.from_round).toBeNull();
       expect(payload.body.until_round).toBe(5);
+    });
+  });
+
+  describe('장소 기본 정보', () => {
+    beforeEach(setupDefaultMocks);
+
+    it('공개 설명, 진입 메시지, 부모 장소를 locationMeta 기반으로 편집한다', () => {
+      useEditorLocationsMock.mockReturnValue({
+        data: [{ ...mockLocations[0], name: '거실' }, ...mockLocations.slice(1)],
+        isLoading: false,
+      });
+
+      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+
+      fireEvent.change(screen.getByLabelText('거실 장소 이름'), {
+        target: { value: '응접실' },
+      });
+      fireEvent.change(screen.getByLabelText('거실 공개 설명'), {
+        target: { value: '손님들이 모이는 공간' },
+      });
+      fireEvent.change(screen.getByLabelText('거실 진입 메시지'), {
+        target: { value: '낡은 시계 소리가 들린다.' },
+      });
+      fireEvent.change(screen.getByLabelText('거실 부모 장소'), {
+        target: { value: 'loc-2' },
+      });
+      fireEvent.click(screen.getByText('저장'));
+
+      expect(updateLocationMutateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 'loc-1',
+          body: expect.objectContaining({ name: '응접실' }),
+        }),
+        expect.any(Object)
+      );
+      const [, updateLocationOptions] = updateLocationMutateMock.mock.calls[0] as [
+        unknown,
+        { onSuccess?: () => void },
+      ];
+      updateLocationOptions.onSuccess?.();
+      const [config] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
+      expect(config.locationMeta).toMatchObject({
+        'loc-1': {
+          publicDescription: '손님들이 모이는 공간',
+          entryMessage: '낡은 시계 소리가 들린다.',
+          parentLocationId: 'loc-2',
+        },
+      });
     });
   });
 

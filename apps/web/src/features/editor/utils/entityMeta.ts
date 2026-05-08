@@ -2,6 +2,7 @@ import { normalizeConfigForSave, type EditorConfig } from './configShape';
 
 export interface LocationMeta extends Record<string, unknown> {
   parentLocationId?: string | null;
+  publicDescription?: string;
   entryMessage?: string;
   imageUrl?: string | null;
 }
@@ -11,18 +12,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function readLocationMetaMap(
-  configJson: EditorConfig | null | undefined,
+  configJson: EditorConfig | null | undefined
 ): Record<string, LocationMeta> {
   const raw = configJson?.locationMeta;
   if (!isRecord(raw)) return {};
   return Object.fromEntries(
-    Object.entries(raw).filter((entry): entry is [string, LocationMeta] => isRecord(entry[1])),
+    Object.entries(raw).filter((entry): entry is [string, LocationMeta] => isRecord(entry[1]))
   );
 }
 
 export function readLocationMeta(
   configJson: EditorConfig | null | undefined,
-  locationId: string,
+  locationId: string
 ): LocationMeta {
   return { ...(readLocationMetaMap(configJson)[locationId] ?? {}) };
 }
@@ -30,7 +31,7 @@ export function readLocationMeta(
 export function writeLocationMeta(
   configJson: EditorConfig | null | undefined,
   locationId: string,
-  patch: LocationMeta,
+  patch: LocationMeta
 ): EditorConfig {
   const next = normalizeConfigForSave(configJson);
   const map = readLocationMetaMap(next);
