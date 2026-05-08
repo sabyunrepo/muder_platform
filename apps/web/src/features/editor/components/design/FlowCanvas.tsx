@@ -102,14 +102,6 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     [edges, selectedEdgeId]
   );
 
-  // Add node at canvas center
-  const flowStats = useMemo(() => {
-    const phaseCount = nodes.filter((node) => node.type === 'phase').length;
-    const endingCount = nodes.filter((node) => node.type === 'ending').length;
-    const branchCount = nodes.filter((node) => node.type === 'branch').length;
-    return { phaseCount, endingCount, branchCount, edgeCount: edges.length };
-  }, [edges.length, nodes]);
-
   const handleAddNode = useCallback(
     (type: FlowNodeType, data?: Partial<FlowNodeData>) => {
       const wrapper = reactFlowWrapper.current;
@@ -199,23 +191,6 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         isOrderReviewing={showOrderReview}
       />
       <div
-        aria-label="게임 진행 요약"
-        className="flex shrink-0 gap-2 overflow-x-auto border-b border-slate-800 bg-slate-950/80 px-4 py-2 text-[11px] text-slate-300 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
-          진행 단계 {flowStats.phaseCount}
-        </span>
-        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
-          연결 {flowStats.edgeCount}
-        </span>
-        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
-          조건 {flowStats.branchCount}
-        </span>
-        <span className="shrink-0 rounded border border-slate-800 bg-slate-900 px-2.5 py-1">
-          엔딩 {flowStats.endingCount}
-        </span>
-      </div>
-      <div
         data-testid="flow-workspace"
         className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"
       >
@@ -250,7 +225,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         </div>
 
         {/* Side panels */}
-        <div className="flex max-h-[55vh] w-full shrink-0 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 lg:max-h-none lg:w-72 lg:border-l lg:border-t-0">
+        <div
+          data-testid="flow-side-panel"
+          className="flex max-h-[55vh] w-full shrink-0 scroll-pb-10 flex-col overflow-y-auto border-t border-slate-800 bg-slate-900 pb-10 lg:max-h-none lg:w-[36rem] lg:border-l lg:border-t-0 xl:w-[40rem]"
+        >
           {!showOrderReview && !selectedNode && (
             <div className="p-4 text-sm leading-6 text-slate-400">
               {selectedEdge ? (
