@@ -1,4 +1,4 @@
-import type { AdvanceBy, ReadingBgmMode, ReadingBlockType, ReadingLineDTO } from '../../readingApi';
+import type { AdvanceBy, ReadingBlockType, ReadingLineDTO } from '../../readingApi';
 import type { MediaType } from '../../mediaApi';
 
 export interface ReadingParserCharacter {
@@ -62,9 +62,9 @@ function parseDirectiveLine(
 ): ReadingLineDTO {
   if (head === '이미지') return parseImageDirective(index, lineNumber, body, options.media, issues);
   if (head === '영상') return parseVideoDirective(index, lineNumber, body, options.media, issues);
-  if (head.toUpperCase() === 'BGM')
-    return parseBgmDirective(index, lineNumber, body, options.media, issues);
-  if (head.toUpperCase() === 'GM') return { Index: index, Type: 'gmNote', Text: body };
+  if (head === '효과음' || head.toUpperCase() === 'SFX' || head.toUpperCase() === 'BGM')
+    return parseEffectSoundDirective(index, lineNumber, body, options.media, issues);
+  if (head.toUpperCase() === 'GM') return dialogueBlock(index, '나레이션', body, 'gm');
   return parseDialogueDirective(index, lineNumber, head, body || raw, options.characters, issues);
 }
 
@@ -98,17 +98,16 @@ function parseVideoDirective(
   });
 }
 
-function parseBgmDirective(
+function parseEffectSoundDirective(
   index: number,
   lineNumber: number,
   body: string,
   media: ReadingParserMedia[],
   issues: ReadingParseIssue[]
 ): ReadingLineDTO {
-  const mode = inferBgmMode(body);
-  const found = mode === 'stop' ? null : findMedia(body, 'BGM', media);
-  if (mode !== 'stop' && !found) issues.push({ lineNumber, kind: 'unknown-media', value: body });
-  return { Index: index, Type: 'bgm', Text: '', MediaID: found?.id ?? '', BGMMode: mode };
+  const found = findMedia(body, 'SFX', media) ?? findMedia(body, 'BGM', media);
+  if (!found) issues.push({ lineNumber, kind: 'unknown-media', value: body });
+  return { Index: index, Type: 'bgm', Text: '', MediaID: found?.id ?? '', BGMMode: 'once' };
 }
 
 function parseDialogueDirective(
@@ -196,13 +195,9 @@ function findMedia(
 
 function normalizeLookupName(value: string): string {
   const controlWords = [
-    '반복',
     '1회',
     '한번',
-    '정지',
-    'loop',
     'once',
-    'stop',
     'full',
     'large',
     'small',
@@ -228,17 +223,6 @@ function inferImageSize(value: string): ReadingLineDTO['Size'] {
   if (hasControlWord(value, 'small')) return 'small';
   if (hasControlWord(value, 'large') || hasControlWord(value, 'full')) return 'large';
   return 'medium';
-}
-
-function inferBgmMode(value: string): ReadingBgmMode {
-  if (hasControlWord(value, '정지') || hasControlWord(value, 'stop')) return 'stop';
-  if (
-    hasControlWord(value, '1회') ||
-    hasControlWord(value, '한번') ||
-    hasControlWord(value, 'once')
-  )
-    return 'once';
-  return 'loop';
 }
 
 function normalizeBlockType(type: ReadingLineDTO['Type']): ReadingBlockType {

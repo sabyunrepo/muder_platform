@@ -1,13 +1,19 @@
-import { Image as ImageIcon, Mic, Music, StickyNote, Video, type LucideIcon } from 'lucide-react';
+import { Image as ImageIcon, Mic, Music, Video, type LucideIcon } from 'lucide-react';
 
 import { isApiHttpError } from '@/lib/api-error';
 
-import type { ReadingBlockType, ReadingLineDTO, ReadingSectionResponse } from '../../readingApi';
+import type {
+  ReadingBlockType,
+  ReadingLineDTO,
+  ReadingSectionBgmMode,
+  ReadingSectionResponse,
+} from '../../readingApi';
 import type { MediaResponse, MediaType } from '../../mediaApi';
 
 export interface ReadingSectionDraft {
   name: string;
   bgmMediaId: string | null;
+  bgmMode: ReadingSectionBgmMode;
   lines: ReadingLineDTO[];
   sortOrder: number;
 }
@@ -20,15 +26,15 @@ export const blockActions: Array<{
   { type: 'dialogue', label: '대사', icon: Mic },
   { type: 'image', label: '이미지', icon: ImageIcon },
   { type: 'video', label: '영상', icon: Video },
-  { type: 'bgm', label: 'BGM', icon: Music },
-  { type: 'gmNote', label: 'GM 메모', icon: StickyNote },
+  { type: 'bgm', label: '효과음', icon: Music },
 ];
 
 export function toDraft(section: ReadingSectionResponse): ReadingSectionDraft {
   return {
     name: section.name,
     bgmMediaId: section.bgmMediaId ?? null,
-    lines: section.lines.map((line) => ({ ...line })),
+    bgmMode: section.bgmMode ?? 'loop',
+    lines: section.lines.filter((line) => line.Type !== 'gmNote').map((line) => ({ ...line })),
     sortOrder: section.sortOrder,
   };
 }
@@ -46,11 +52,13 @@ export function isReadingDraftDirty(
 ): boolean {
   if (draft.name !== section.name) return true;
   if ((draft.bgmMediaId ?? null) !== (section.bgmMediaId ?? null)) return true;
+  if (draft.bgmMode !== (section.bgmMode ?? 'loop')) return true;
   if (draft.sortOrder !== section.sortOrder) return true;
-  if (draft.lines.length !== section.lines.length) return true;
+  const savedLines = section.lines.filter((line) => line.Type !== 'gmNote');
+  if (draft.lines.length !== savedLines.length) return true;
 
   return draft.lines.some((draftLine, index) => {
-    const savedLine = section.lines[index];
+    const savedLine = savedLines[index];
     return (
       draftLine.Index !== savedLine.Index ||
       draftLine.Text !== savedLine.Text ||
@@ -91,10 +99,7 @@ export function createBlock(type: ReadingBlockType, index: number): ReadingLineD
     };
   }
   if (type === 'bgm') {
-    return { Index: index, Type: type, MediaID: '', BGMMode: 'loop' };
-  }
-  if (type === 'gmNote') {
-    return { Index: index, Type: type, Text: '' };
+    return { Index: index, Type: type, MediaID: '', BGMMode: 'once' };
   }
   return {
     Index: index,

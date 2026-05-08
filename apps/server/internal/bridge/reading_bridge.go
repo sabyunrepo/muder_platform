@@ -111,6 +111,7 @@ func (a *ReadingModuleAdapter) GetReadingStateSnapshot() ws.ReadingStateSnapshot
 		CurrentIndex: wire.CurrentIndex,
 		Status:       wire.Status,
 		BgmMediaID:   wire.BgmMediaID,
+		BgmMode:      wire.BgmMode,
 		Lines:        convertLinesToCamelCase(wire.Lines),
 	}
 }

@@ -184,6 +184,7 @@ type ReadingSection struct {
 	Version    int32           `json:"version"`
 	CreatedAt  time.Time       `json:"created_at"`
 	UpdatedAt  time.Time       `json:"updated_at"`
+	BgmMode    string          `json:"bgm_mode"`
 }
 
 type RevokeLog struct {

@@ -102,6 +102,21 @@ func validateAdvanceBy(s string) bool {
 	return false
 }
 
+func normalizeSectionBgmMode(raw string) string {
+	if raw == "" {
+		return ReadingBGMModeLoop
+	}
+	return raw
+}
+
+func validateSectionBgmMode(raw string) error {
+	mode := normalizeSectionBgmMode(raw)
+	if mode == ReadingBGMModeLoop || mode == ReadingBGMModeOnce {
+		return nil
+	}
+	return apperror.New(apperror.ErrValidation, 422, "invalid bgm mode")
+}
+
 // validateLines applies per-line invariants and cross-checks every referenced
 // media ID against the same theme.
 func (s *readingService) validateLines(ctx context.Context, themeID uuid.UUID, lines []ReadingLineDTO) error {
@@ -171,10 +186,10 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 	case ReadingBlockBGM:
 		mode := ln.BGMMode
 		if mode == "" {
-			mode = ReadingBGMModeLoop
+			mode = ReadingBGMModeOnce
 		}
 		if mode != ReadingBGMModeLoop && mode != ReadingBGMModeOnce && mode != ReadingBGMModeStop {
-			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid bgm mode")
+			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid effect sound mode")
 		}
 		if err := validateBlockAdvanceBy(ln.AdvanceBy, lineIndex); err != nil {
 			return err
@@ -188,7 +203,7 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 		if ln.MediaID == "" {
 			return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId is required")
 		}
-		return s.assertLineMediaInTheme(ctx, themeID, ln.MediaID, MediaTypeBGM, "mediaId", lineIndex)
+		return s.assertEffectSoundMediaInTheme(ctx, themeID, ln.MediaID, lineIndex)
 	case ReadingBlockGMNote:
 		if ln.MediaID != "" {
 			return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": mediaId is not allowed")
@@ -197,6 +212,28 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 	default:
 		return apperror.New(apperror.ErrValidation, 422, "line "+itoa(lineIndex)+": invalid reading block type")
 	}
+}
+
+func (s *readingService) assertEffectSoundMediaInTheme(ctx context.Context, themeID uuid.UUID, raw string, lineIndex int) error {
+	mediaID, err := uuid.Parse(raw)
+	if err != nil {
+		return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": invalid mediaId")
+	}
+	media, err := s.q.GetMedia(ctx, mediaID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId: media not found")
+		}
+		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to get media")
+		return apperror.Internal("failed to verify media reference")
+	}
+	if media.ThemeID != themeID {
+		return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId: media does not belong to this theme")
+	}
+	if media.Type != MediaTypeSFX && media.Type != MediaTypeBGM {
+		return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId: media has wrong type for this slot")
+	}
+	return nil
 }
 
 func validateBlockAdvanceBy(advanceBy string, lineIndex int) error {
@@ -289,6 +326,9 @@ func (s *readingService) Create(ctx context.Context, creatorID, themeID uuid.UUI
 	if err := s.validateLines(ctx, themeID, req.Lines); err != nil {
 		return nil, err
 	}
+	if err := validateSectionBgmMode(req.BgmMode); err != nil {
+		return nil, err
+	}
 
 	bgmParam, err := s.resolveBgmMediaID(ctx, themeID, req.BgmMediaID)
 	if err != nil {
@@ -305,6 +345,7 @@ func (s *readingService) Create(ctx context.Context, creatorID, themeID uuid.UUI
 		ThemeID:    themeID,
 		Name:       req.Name,
 		BgmMediaID: bgmParam,
+		BgmMode:    normalizeSectionBgmMode(req.BgmMode),
 		Lines:      linesJSON,
 		SortOrder:  req.SortOrder,
 	})
@@ -332,6 +373,14 @@ func (s *readingService) Update(ctx context.Context, creatorID, sectionID uuid.U
 	sortOrder := current.SortOrder
 	if req.SortOrder != nil {
 		sortOrder = *req.SortOrder
+	}
+
+	bgmMode := normalizeSectionBgmMode(current.BgmMode)
+	if req.BgmMode != nil {
+		if err := validateSectionBgmMode(*req.BgmMode); err != nil {
+			return nil, err
+		}
+		bgmMode = normalizeSectionBgmMode(*req.BgmMode)
 	}
 
 	// Lines: if patch supplies new lines, validate them; otherwise keep current.
@@ -375,6 +424,7 @@ func (s *readingService) Update(ctx context.Context, creatorID, sectionID uuid.U
 		ID:         sectionID,
 		Name:       name,
 		BgmMediaID: bgmParam,
+		BgmMode:    bgmMode,
 		Lines:      linesJSON,
 		SortOrder:  sortOrder,
 		Version:    req.Version,
@@ -444,6 +494,7 @@ func toReadingSectionResponse(r db.ReadingSection) (*ReadingSectionResponse, err
 		ID:        r.ID,
 		ThemeID:   r.ThemeID,
 		Name:      r.Name,
+		BgmMode:   normalizeSectionBgmMode(r.BgmMode),
 		Lines:     lines,
 		SortOrder: r.SortOrder,
 		Version:   r.Version,

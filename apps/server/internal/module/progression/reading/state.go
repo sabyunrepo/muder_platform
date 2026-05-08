@@ -13,6 +13,7 @@ type ReadingState struct {
 	CurrentIndex int                 `json:"currentIndex"`
 	Lines        []readingLineConfig `json:"lines"`
 	BgmMediaID   string              `json:"bgmMediaId,omitempty"`
+	BgmMode      string              `json:"bgmMode"`
 	Status       string              `json:"status"`
 }
 
@@ -25,6 +26,7 @@ type ReadingStateWire struct {
 	CurrentIndex int             `json:"currentIndex"`
 	Lines        json.RawMessage `json:"lines"`
 	BgmMediaID   string          `json:"bgmMediaId,omitempty"`
+	BgmMode      string          `json:"bgmMode"`
 	Status       string          `json:"status"`
 }
 
@@ -55,6 +57,7 @@ func (m *ReadingModule) GetState() ReadingState {
 		CurrentIndex: m.currentLineIndex,
 		Lines:        linesCopy,
 		BgmMediaID:   m.bgmId,
+		BgmMode:      normalizeBGMMode(m.bgmMode),
 		Status:       status,
 	}
 }
@@ -76,6 +79,7 @@ func (m *ReadingModule) GetReadingStateWire() ReadingStateWire {
 		CurrentIndex: state.CurrentIndex,
 		Lines:        linesJSON,
 		BgmMediaID:   state.BgmMediaID,
+		BgmMode:      state.BgmMode,
 		Status:       state.Status,
 	}
 }

@@ -8,7 +8,6 @@ import {
   Pause,
   Play,
   SkipForward,
-  StickyNote,
   Video,
   X,
   type LucideIcon,
@@ -16,6 +15,7 @@ import {
 
 import type { ReadingLineDTO } from '../../readingApi';
 import type { MediaResponse } from '../../mediaApi';
+import { useMediaDownloadUrl } from '../../mediaApi';
 import type { CharacterOption } from './readingBlockUiTypes';
 import {
   getReadingPreviewActiveBgm,
@@ -24,7 +24,7 @@ import {
   getReadingPreviewMediaLabel,
   getReadingPreviewMediaUrl,
   getReadingPreviewWaitMediaId,
-  readingPreviewBgmAdvanceDelayMs,
+  readingPreviewEffectSoundAdvanceDelayMs,
   readingPreviewVideoDurationMs,
   readingPreviewVoiceDurationMs,
 } from './readingPreviewModel';
@@ -32,6 +32,8 @@ import {
 export interface ReadingSectionPreviewModalProps {
   open: boolean;
   sectionName: string;
+  bgmMediaId?: string | null;
+  bgmMode: 'loop' | 'once';
   lines: ReadingLineDTO[];
   characters: CharacterOption[];
   mediaById: Map<string, MediaResponse>;
@@ -42,6 +44,8 @@ export interface ReadingSectionPreviewModalProps {
 export function ReadingSectionPreviewModal({
   open,
   sectionName,
+  bgmMediaId,
+  bgmMode,
   lines,
   characters,
   mediaById,
@@ -57,8 +61,8 @@ export function ReadingSectionPreviewModal({
   const visibleLines = lines.slice(0, index + 1);
   const waitMediaId = currentLine ? getReadingPreviewWaitMediaId(currentLine) : null;
   const activeBgm = useMemo(
-    () => getReadingPreviewActiveBgm(lines, index, mediaById),
-    [index, lines, mediaById]
+    () => getReadingPreviewActiveBgm(bgmMediaId, bgmMode, mediaById),
+    [bgmMediaId, bgmMode, mediaById]
   );
   const stepLabel = lines.length > 0 ? `${index + 1} / ${lines.length}` : '0 / 0';
   const advanceLabel = getReadingPreviewAdvanceLabel(currentLine?.AdvanceBy, characters);
@@ -101,7 +105,7 @@ export function ReadingSectionPreviewModal({
     }
     autoAppliedRef.current = true;
     if (isLast) return;
-    const timer = window.setTimeout(() => goNext(), readingPreviewBgmAdvanceDelayMs);
+    const timer = window.setTimeout(() => goNext(), readingPreviewEffectSoundAdvanceDelayMs);
     return () => window.clearTimeout(timer);
   }, [currentLine, goNext, isLast, open]);
 
@@ -219,8 +223,8 @@ function PreviewBlock({
         mediaById={mediaById}
       />
     );
-  if (type === 'bgm') return <BgmBlock line={line} mediaById={mediaById} />;
-  if (type === 'gmNote') return <GmNoteBlock line={line} />;
+  if (type === 'bgm') return <EffectSoundBlock line={line} mediaById={mediaById} />;
+  if (type === 'gmNote') return null;
   return (
     <DialogueBlock
       line={line}
@@ -246,11 +250,11 @@ function DialogueBlock({
   return (
     <article className="rounded-md border border-slate-700 bg-slate-950/80 p-4 shadow-lg shadow-black/20">
       <BlockLabel icon={Mic} label={line.Speaker || '나레이션'} tone="text-amber-200" />
-      {imageUrl && (
-        <img
+      {line.ImageMediaID && (
+        <PreviewImage
           className="mt-3 max-h-72 w-full rounded border border-slate-700 object-cover"
+          mediaId={line.ImageMediaID}
           src={imageUrl}
-          alt=""
         />
       )}
       <p className="mt-3 whitespace-pre-wrap text-xl font-semibold leading-relaxed text-white md:text-2xl">
@@ -283,11 +287,11 @@ function ImageBlock({
         label={`${getReadingPreviewMediaLabel(line.MediaID, mediaById)} · ${line.Position ?? 'center'}`}
         tone="text-sky-200"
       />
-      {imageUrl ? (
-        <img
+      {line.MediaID ? (
+        <PreviewImage
           className={`mx-auto mt-3 max-h-[58vh] ${widthClass} rounded border border-slate-700 object-cover`}
+          mediaId={line.MediaID}
           src={imageUrl}
-          alt=""
         />
       ) : (
         <MissingMedia />
@@ -328,36 +332,20 @@ function VideoBlock({
   );
 }
 
-function BgmBlock({
+function EffectSoundBlock({
   line,
   mediaById,
 }: {
   line: ReadingLineDTO;
   mediaById: Map<string, MediaResponse>;
 }) {
-  const label =
-    line.BGMMode === 'stop'
-      ? '현재 BGM 정지'
-      : `${getReadingPreviewMediaLabel(line.MediaID, mediaById)} · ${
-          line.BGMMode === 'once' ? '1회 재생' : '반복 재생'
-        }`;
+  const label = `${getReadingPreviewMediaLabel(line.MediaID, mediaById)} · 효과음 1회 재생`;
   return (
     <article className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-5 text-center">
       <Music className="mx-auto mb-3 h-8 w-8 text-emerald-200" />
       <p className="font-semibold text-emerald-100">{label}</p>
       <p className="mt-2 text-xs text-emerald-100/70">
-        BGM 큐는 적용 후 자동으로 다음 블록으로 넘어갑니다.
-      </p>
-    </article>
-  );
-}
-
-function GmNoteBlock({ line }: { line: ReadingLineDTO }) {
-  return (
-    <article className="rounded-md border border-slate-600 bg-slate-800/70 p-4">
-      <BlockLabel icon={StickyNote} label="GM 진행 메모" tone="text-slate-200" />
-      <p className="mt-3 whitespace-pre-wrap text-base leading-relaxed text-slate-100">
-        {line.Text || '메모가 비어 있습니다.'}
+        효과음은 적용 후 자동으로 다음 블록으로 넘어갑니다.
       </p>
     </article>
   );
@@ -418,4 +406,21 @@ function MissingMedia() {
       미디어 프리뷰 없음
     </div>
   );
+}
+
+function PreviewImage({
+  mediaId,
+  src,
+  className,
+}: {
+  mediaId?: string;
+  src?: string;
+  className: string;
+}) {
+  const needsDownloadUrl = Boolean(mediaId && !src);
+  const { data } = useMediaDownloadUrl(needsDownloadUrl ? mediaId : undefined);
+  const resolvedSrc = src ?? data?.url;
+
+  if (!resolvedSrc) return <MissingMedia />;
+  return <img className={className} src={resolvedSrc} alt="선택된 이미지 미리보기" />;
 }

@@ -83,6 +83,7 @@ func (f *fakeReadingQueries) CreateReadingSection(_ context.Context, arg db.Crea
 		ThemeID:    arg.ThemeID,
 		Name:       arg.Name,
 		BgmMediaID: arg.BgmMediaID,
+		BgmMode:    arg.BgmMode,
 		Lines:      arg.Lines,
 		SortOrder:  arg.SortOrder,
 		Version:    1,
@@ -103,6 +104,7 @@ func (f *fakeReadingQueries) UpdateReadingSection(_ context.Context, arg db.Upda
 	}
 	s.Name = arg.Name
 	s.BgmMediaID = arg.BgmMediaID
+	s.BgmMode = arg.BgmMode
 	s.Lines = arg.Lines
 	s.SortOrder = arg.SortOrder
 	s.Version++
@@ -132,6 +134,7 @@ type readingTestFixture struct {
 	creatorID uuid.UUID
 	themeID   uuid.UUID
 	bgmID     uuid.UUID
+	sfxID     uuid.UUID
 	voiceID   uuid.UUID
 	imageID   uuid.UUID
 	videoID   uuid.UUID
@@ -152,6 +155,9 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 	bgmID := uuid.New()
 	q.media[bgmID] = db.ThemeMedium{ID: bgmID, ThemeID: themeID, Type: MediaTypeBGM}
 
+	sfxID := uuid.New()
+	q.media[sfxID] = db.ThemeMedium{ID: sfxID, ThemeID: themeID, Type: MediaTypeSFX}
+
 	voiceID := uuid.New()
 	q.media[voiceID] = db.ThemeMedium{ID: voiceID, ThemeID: themeID, Type: MediaTypeVoice}
 
@@ -170,6 +176,7 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 		creatorID: creatorID,
 		themeID:   themeID,
 		bgmID:     bgmID,
+		sfxID:     sfxID,
 		voiceID:   voiceID,
 		imageID:   imageID,
 		videoID:   videoID,
@@ -216,6 +223,9 @@ func TestReadingService_Create_Success(t *testing.T) {
 	}
 	if resp.BgmMediaID == nil || *resp.BgmMediaID != bgm {
 		t.Fatalf("bgm not persisted")
+	}
+	if resp.BgmMode != ReadingBGMModeLoop {
+		t.Fatalf("BgmMode = %q, want %q", resp.BgmMode, ReadingBGMModeLoop)
 	}
 	// Indices must be normalized.
 	for i, ln := range resp.Lines {
@@ -298,7 +308,7 @@ func TestReadingService_Create_BlockMediaReferences(t *testing.T) {
 		Lines: []ReadingLineDTO{
 			{Type: ReadingBlockImage, MediaID: f.imageID.String(), AdvanceBy: AdvanceByGM, Position: "center", Size: "large"},
 			{Type: ReadingBlockVideo, MediaID: f.videoID.String(), AdvanceBy: AdvanceByGM, Autoplay: true, WaitUntilEnd: true},
-			{Type: ReadingBlockBGM, MediaID: f.bgmID.String(), BGMMode: ReadingBGMModeOnce},
+			{Type: ReadingBlockBGM, MediaID: f.sfxID.String(), BGMMode: ReadingBGMModeOnce},
 			{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeStop},
 			{Type: ReadingBlockGMNote, Text: "GM only"},
 		},
@@ -318,6 +328,33 @@ func TestReadingService_Create_BlockMediaReferences(t *testing.T) {
 	if got := resp.Lines[2].BGMMode; got != ReadingBGMModeOnce {
 		t.Fatalf("BGMMode = %q, want %q", got, ReadingBGMModeOnce)
 	}
+}
+
+func TestReadingService_Create_SectionBgmModeOnce(t *testing.T) {
+	f := newReadingFixture(t)
+	bgm := f.bgmID.String()
+	resp, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name:       "One shot BGM",
+		BgmMediaID: &bgm,
+		BgmMode:    ReadingBGMModeOnce,
+		Lines:      []ReadingLineDTO{},
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if resp.BgmMode != ReadingBGMModeOnce {
+		t.Fatalf("BgmMode = %q, want %q", resp.BgmMode, ReadingBGMModeOnce)
+	}
+}
+
+func TestReadingService_Create_RejectsInvalidSectionBgmMode(t *testing.T) {
+	f := newReadingFixture(t)
+	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name:    "Invalid BGM mode",
+		BgmMode: ReadingBGMModeStop,
+		Lines:   []ReadingLineDTO{},
+	})
+	assertAppCode(t, err, apperror.ErrValidation)
 }
 
 func TestReadingService_Create_BlockMediaMustMatchType(t *testing.T) {
@@ -420,12 +457,37 @@ func TestReadingService_Update_OptimisticLock(t *testing.T) {
 	if updated.Version != created.Version+1 {
 		t.Fatalf("version did not bump: %d → %d", created.Version, updated.Version)
 	}
+	if updated.BgmMode != ReadingBGMModeLoop {
+		t.Fatalf("BgmMode = %q, want %q", updated.BgmMode, ReadingBGMModeLoop)
+	}
 	// Second update with stale version fails with conflict.
 	_, err = f.svc.Update(context.Background(), f.creatorID, created.ID, UpdateReadingSectionRequest{
 		Name:    ptr("Stale"),
 		Version: created.Version, // stale
 	})
 	assertAppCode(t, err, apperror.ErrConflict)
+}
+
+func TestReadingService_Update_SectionBgmMode(t *testing.T) {
+	f := newReadingFixture(t)
+	created, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name:  "Original",
+		Lines: []ReadingLineDTO{},
+	})
+	if err != nil {
+		t.Fatalf("seed create failed: %v", err)
+	}
+
+	updated, err := f.svc.Update(context.Background(), f.creatorID, created.ID, UpdateReadingSectionRequest{
+		BgmMode: ptr(ReadingBGMModeOnce),
+		Version: created.Version,
+	})
+	if err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	if updated.BgmMode != ReadingBGMModeOnce {
+		t.Fatalf("BgmMode = %q, want %q", updated.BgmMode, ReadingBGMModeOnce)
+	}
 }
 
 func TestReadingService_List_SortedBySortOrder(t *testing.T) {

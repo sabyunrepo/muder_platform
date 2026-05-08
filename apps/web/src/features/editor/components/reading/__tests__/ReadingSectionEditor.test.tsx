@@ -18,6 +18,7 @@ const {
   useUpdateReadingSectionMock,
   useDeleteReadingSectionMock,
   useMediaListMock,
+  useMediaDownloadUrlMock,
   useMediaCategoriesMock,
   useRequestUploadUrlMock,
   useConfirmUploadMock,
@@ -27,6 +28,7 @@ const {
   useUpdateReadingSectionMock: vi.fn(),
   useDeleteReadingSectionMock: vi.fn(),
   useMediaListMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
   useMediaCategoriesMock: vi.fn(),
   useRequestUploadUrlMock: vi.fn(),
   useConfirmUploadMock: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock('@/features/editor/readingApi', async () => {
 
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+  useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
   useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
   useRequestUploadUrl: (...args: unknown[]) => useRequestUploadUrlMock(...args),
   useConfirmUpload: (...args: unknown[]) => useConfirmUploadMock(...args),
@@ -135,6 +138,7 @@ beforeEach(() => {
     isPending: false,
   });
   useMediaListMock.mockReturnValue({ data: [], isLoading: false });
+  useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
   useMediaCategoriesMock.mockReturnValue({ data: [] });
   useRequestUploadUrlMock.mockReturnValue({
     mutateAsync: vi.fn(),
@@ -209,6 +213,45 @@ describe('ReadingSectionEditor', () => {
     renderEditor();
     expect(screen.getByDisplayValue('어두운 방 안.')).toBeTruthy();
     expect(screen.getByDisplayValue('누구냐?')).toBeTruthy();
+  });
+
+  it('offers effect sound blocks but not new GM memo blocks', () => {
+    renderEditor();
+    expect(screen.getByRole('button', { name: '효과음' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'GM 메모' })).toBeNull();
+  });
+
+  it('saves section background music playback mode', async () => {
+    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
+      if (type === 'BGM') {
+        return {
+          data: [
+            {
+              id: 'bgm-1',
+              theme_id: 'theme-1',
+              name: '오프닝 배경음악',
+              type: 'BGM',
+              source_type: 'FILE',
+              tags: [],
+              sort_order: 1,
+              created_at: '2026-04-05T00:00:00Z',
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      return { data: [], isLoading: false };
+    });
+
+    renderEditor();
+    fireEvent.click(screen.getByRole('button', { name: '배경음악 선택' }));
+    fireEvent.click(screen.getByText('오프닝 배경음악').closest('button') as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: '1회' }));
+    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+
+    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.bgmMediaId).toBe('bgm-1');
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.bgmMode).toBe('once');
   });
 
   it('add dialogue block appends a new empty row', () => {
@@ -351,14 +394,14 @@ describe('ReadingSectionEditor', () => {
           isLoading: false,
         };
       }
-      if (type === 'BGM') {
+      if (type === 'SFX') {
         return {
           data: [
             {
-              id: 'bgm-1',
+              id: 'sfx-1',
               theme_id: 'theme-1',
-              name: '심문 테마',
-              type: 'BGM',
+              name: '문 닫히는 소리',
+              type: 'SFX',
               source_type: 'FILE',
               tags: [],
               sort_order: 2,
@@ -378,8 +421,7 @@ describe('ReadingSectionEditor', () => {
         value: [
           '나레이션: 모두 눈을 감아주세요.',
           '이미지: 현장 사진',
-          'BGM: 심문 테마 반복',
-          'GM: 조명을 낮춘다',
+          '효과음: 문 닫히는 소리',
         ].join('\n'),
       },
     });
@@ -391,8 +433,7 @@ describe('ReadingSectionEditor', () => {
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { Index: 0, Type: 'dialogue', Speaker: '나레이션' },
       { Index: 1, Type: 'image', MediaID: 'image-1' },
-      { Index: 2, Type: 'bgm', MediaID: 'bgm-1', BGMMode: 'loop' },
-      { Index: 3, Type: 'gmNote', Text: '조명을 낮춘다' },
+      { Index: 2, Type: 'bgm', MediaID: 'sfx-1', BGMMode: 'once' },
     ]);
   });
 
@@ -562,6 +603,56 @@ describe('ReadingSectionEditor', () => {
     expect(within(dialog).getByText('저택 전경 · center')).toBeTruthy();
   });
 
+  it('uses a download URL for selected preview images without inline URLs', async () => {
+    useMediaDownloadUrlMock.mockReturnValue({
+      data: { url: 'https://download.example/image.png', expires_at: '2026-04-05T00:15:00Z' },
+      isLoading: false,
+      isError: false,
+    });
+    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
+      if (type === 'IMAGE') {
+        return {
+          data: [
+            {
+              id: 'image-1',
+              theme_id: 'theme-1',
+              name: '저택 전경',
+              type: 'IMAGE',
+              source_type: 'FILE',
+              tags: [],
+              sort_order: 2,
+              created_at: '2026-04-05T00:00:00Z',
+            },
+          ],
+          isLoading: false,
+        };
+      }
+      return { data: [], isLoading: false };
+    });
+
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [
+          {
+            Index: 0,
+            Type: 'image',
+            MediaID: 'image-1',
+            Position: 'center',
+            Size: 'medium',
+            AdvanceBy: 'gm',
+          },
+        ],
+      },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트' }));
+
+    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith('image-1');
+    const image = screen.getByRole('img', { name: '선택된 이미지 미리보기' }) as HTMLImageElement;
+    expect(image.src).toBe('https://download.example/image.png');
+  });
+
   it('renders an empty test player without crashing', () => {
     renderEditor({
       section: {
@@ -576,17 +667,17 @@ describe('ReadingSectionEditor', () => {
     expect(within(dialog).getByText('0 / 0')).toBeTruthy();
   });
 
-  it('auto-advances BGM cue in the test player preview', async () => {
+  it('auto-advances effect sound cue in the test player preview', async () => {
     vi.useFakeTimers();
     useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
-      if (type === 'BGM') {
+      if (type === 'SFX') {
         return {
           data: [
             {
-              id: 'bgm-1',
+              id: 'sfx-1',
               theme_id: 'theme-1',
-              name: '오프닝 테마',
-              type: 'BGM',
+              name: '문 닫힘',
+              type: 'SFX',
               source_type: 'FILE',
               tags: [],
               sort_order: 1,
@@ -603,11 +694,13 @@ describe('ReadingSectionEditor', () => {
       section: {
         ...sampleSection,
         lines: [
-          { Index: 0, Type: 'bgm', MediaID: 'bgm-1', BGMMode: 'loop' },
+          { Index: 0, Type: 'bgm', MediaID: 'sfx-1', BGMMode: 'once' },
           {
             Index: 1,
-            Type: 'gmNote',
+            Type: 'dialogue',
             Text: '조명을 낮춘다.',
+            Speaker: '나레이션',
+            AdvanceBy: 'gm',
           },
         ],
       },
@@ -616,10 +709,10 @@ describe('ReadingSectionEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '테스트' }));
 
     const dialog = screen.getByRole('dialog', { name: '오프닝 테스트' });
-    expect(within(dialog).getByText('오프닝 테마 · 반복 재생')).toBeTruthy();
+    expect(within(dialog).getByText('문 닫힘 · 효과음 1회 재생')).toBeTruthy();
     await act(async () => {});
     act(() => {
-      vi.advanceTimersByTime(700);
+      vi.advanceTimersByTime(500);
     });
     expect(within(dialog).getByText('조명을 낮춘다.')).toBeTruthy();
   });
@@ -658,6 +751,7 @@ describe('ReadingSectionEditor', () => {
         {
           name: 'x',
           bgmMediaId: sampleSection.bgmMediaId,
+          bgmMode: 'loop',
           lines: sampleSection.lines,
           sortOrder: sampleSection.sortOrder,
         },

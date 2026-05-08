@@ -12,6 +12,13 @@ const (
 	readingStatusPaused  readingStatus = "paused"
 )
 
+func normalizeBGMMode(raw string) string {
+	if raw == "once" {
+		return "once"
+	}
+	return "loop"
+}
+
 // validAdvanceBy reports whether s is a recognized advanceBy value:
 //   - "" (empty falls back to module-level advanceMode default; treated as "gm")
 //   - "gm"

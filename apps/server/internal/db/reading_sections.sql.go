@@ -14,15 +14,16 @@ import (
 )
 
 const createReadingSection = `-- name: CreateReadingSection :one
-INSERT INTO reading_sections (theme_id, name, bgm_media_id, lines, sort_order)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at
+INSERT INTO reading_sections (theme_id, name, bgm_media_id, bgm_mode, lines, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode
 `
 
 type CreateReadingSectionParams struct {
 	ThemeID    uuid.UUID       `json:"theme_id"`
 	Name       string          `json:"name"`
 	BgmMediaID pgtype.UUID     `json:"bgm_media_id"`
+	BgmMode    string          `json:"bgm_mode"`
 	Lines      json.RawMessage `json:"lines"`
 	SortOrder  int32           `json:"sort_order"`
 }
@@ -32,6 +33,7 @@ func (q *Queries) CreateReadingSection(ctx context.Context, arg CreateReadingSec
 		arg.ThemeID,
 		arg.Name,
 		arg.BgmMediaID,
+		arg.BgmMode,
 		arg.Lines,
 		arg.SortOrder,
 	)
@@ -46,6 +48,7 @@ func (q *Queries) CreateReadingSection(ctx context.Context, arg CreateReadingSec
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BgmMode,
 	)
 	return i, err
 }
@@ -115,7 +118,7 @@ func (q *Queries) FindMediaReferencesInReadingSections(ctx context.Context, arg 
 }
 
 const getReadingSection = `-- name: GetReadingSection :one
-SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at FROM reading_sections WHERE id = $1
+SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode FROM reading_sections WHERE id = $1
 `
 
 func (q *Queries) GetReadingSection(ctx context.Context, id uuid.UUID) (ReadingSection, error) {
@@ -131,12 +134,13 @@ func (q *Queries) GetReadingSection(ctx context.Context, id uuid.UUID) (ReadingS
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BgmMode,
 	)
 	return i, err
 }
 
 const getReadingSectionWithOwner = `-- name: GetReadingSectionWithOwner :one
-SELECT rs.id, rs.theme_id, rs.name, rs.bgm_media_id, rs.lines, rs.sort_order, rs.version, rs.created_at, rs.updated_at FROM reading_sections rs
+SELECT rs.id, rs.theme_id, rs.name, rs.bgm_media_id, rs.lines, rs.sort_order, rs.version, rs.created_at, rs.updated_at, rs.bgm_mode FROM reading_sections rs
 JOIN themes t ON rs.theme_id = t.id
 WHERE rs.id = $1 AND t.creator_id = $2
 `
@@ -159,13 +163,14 @@ func (q *Queries) GetReadingSectionWithOwner(ctx context.Context, arg GetReading
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BgmMode,
 	)
 	return i, err
 }
 
 const listReadingSectionsByTheme = `-- name: ListReadingSectionsByTheme :many
 
-SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at FROM reading_sections WHERE theme_id = $1 ORDER BY sort_order, created_at
+SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode FROM reading_sections WHERE theme_id = $1 ORDER BY sort_order, created_at
 `
 
 // ============================================================
@@ -190,6 +195,7 @@ func (q *Queries) ListReadingSectionsByTheme(ctx context.Context, themeID uuid.U
 			&i.Version,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.BgmMode,
 		); err != nil {
 			return nil, err
 		}
@@ -205,18 +211,20 @@ const updateReadingSection = `-- name: UpdateReadingSection :one
 UPDATE reading_sections
 SET name = $2,
     bgm_media_id = $3,
-    lines = $4,
-    sort_order = $5,
+    bgm_mode = $4,
+    lines = $5,
+    sort_order = $6,
     version = version + 1,
     updated_at = NOW()
-WHERE id = $1 AND version = $6
-RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at
+WHERE id = $1 AND version = $7
+RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode
 `
 
 type UpdateReadingSectionParams struct {
 	ID         uuid.UUID       `json:"id"`
 	Name       string          `json:"name"`
 	BgmMediaID pgtype.UUID     `json:"bgm_media_id"`
+	BgmMode    string          `json:"bgm_mode"`
 	Lines      json.RawMessage `json:"lines"`
 	SortOrder  int32           `json:"sort_order"`
 	Version    int32           `json:"version"`
@@ -227,6 +235,7 @@ func (q *Queries) UpdateReadingSection(ctx context.Context, arg UpdateReadingSec
 		arg.ID,
 		arg.Name,
 		arg.BgmMediaID,
+		arg.BgmMode,
 		arg.Lines,
 		arg.SortOrder,
 		arg.Version,
@@ -242,6 +251,7 @@ func (q *Queries) UpdateReadingSection(ctx context.Context, arg UpdateReadingSec
 		&i.Version,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.BgmMode,
 	)
 	return i, err
 }

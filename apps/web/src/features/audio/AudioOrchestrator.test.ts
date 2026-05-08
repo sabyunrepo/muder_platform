@@ -124,8 +124,23 @@ describe("AudioOrchestrator", () => {
       expect(h.bgmManager.play).toHaveBeenCalledWith({
         id: "m1",
         url: "https://example.com/a.mp3",
+        mode: "loop",
       });
       expect(h.onBgmMediaIdChange).toHaveBeenCalledWith("m1");
+    });
+
+    it("forwards once mode to the file BGM manager", async () => {
+      await h.orchestrator.handleSetBgm({
+        mediaId: "m1",
+        sourceType: "FILE",
+        url: "https://example.com/a.mp3",
+        mode: "once",
+      });
+      expect(h.bgmManager.play).toHaveBeenCalledWith({
+        id: "m1",
+        url: "https://example.com/a.mp3",
+        mode: "once",
+      });
     });
 
     it("ignores FILE payload missing url", async () => {
@@ -194,7 +209,7 @@ describe("AudioOrchestrator", () => {
         url: "u1",
       });
       expect(yt.destroy).toHaveBeenCalled();
-      expect(h.bgmManager.play).toHaveBeenCalledWith({ id: "f1", url: "u1" });
+      expect(h.bgmManager.play).toHaveBeenCalledWith({ id: "f1", url: "u1", mode: "loop" });
     });
 
     it("YOUTUBE → YOUTUBE: destroys previous and creates new player", async () => {
@@ -226,6 +241,22 @@ describe("AudioOrchestrator", () => {
       });
       expect(h.bgmManager.play).toHaveBeenCalledTimes(1);
       expect(h.onBgmMediaIdChange).toHaveBeenCalledTimes(1);
+    });
+
+    it("same mediaId with a new mode reconfigures the current file track", async () => {
+      await h.orchestrator.handleSetBgm({
+        mediaId: "m1",
+        sourceType: "FILE",
+        url: "u1",
+      });
+      await h.orchestrator.handleSetBgm({
+        mediaId: "m1",
+        sourceType: "FILE",
+        url: "u1",
+        mode: "once",
+      });
+      expect(h.bgmManager.play).toHaveBeenCalledTimes(2);
+      expect(h.bgmManager.play).toHaveBeenLastCalledWith({ id: "m1", url: "u1", mode: "once" });
     });
   });
 

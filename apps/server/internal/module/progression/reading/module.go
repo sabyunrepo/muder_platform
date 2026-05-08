@@ -24,6 +24,7 @@ type ReadingModule struct {
 	advanceMode    string // "gm", "auto", "player"
 	defaultVoiceID string
 	bgmId          string
+	bgmMode        string
 	lines          []readingLineConfig
 
 	// state
@@ -64,6 +65,7 @@ func (m *ReadingModule) Init(ctx context.Context, deps engine.ModuleDeps, config
 	m.advanceMode = cfg.AdvanceMode
 	m.defaultVoiceID = cfg.DefaultVoiceID
 	m.bgmId = cfg.BGMId
+	m.bgmMode = normalizeBGMMode(cfg.BGMMode)
 	m.lines = cfg.Lines
 	m.totalLines = cfg.TotalLines
 	if m.totalLines == 0 && len(m.lines) > 0 {
@@ -78,7 +80,7 @@ func (m *ReadingModule) Init(ctx context.Context, deps engine.ModuleDeps, config
 	if m.bgmId != "" {
 		deps.EventBus.Publish(engine.Event{
 			Type:    "audio.set_bgm",
-			Payload: map[string]any{"mediaId": m.bgmId, "fadeMs": 1000},
+			Payload: map[string]any{"mediaId": m.bgmId, "fadeMs": 1000, "mode": m.bgmMode},
 		})
 	}
 
@@ -94,6 +96,7 @@ func (m *ReadingModule) Init(ctx context.Context, deps engine.ModuleDeps, config
 		Payload: map[string]any{
 			"lines":      linesCopy,
 			"bgmMediaId": m.bgmId,
+			"bgmMode":    m.bgmMode,
 			"totalLines": m.totalLines,
 		},
 	})

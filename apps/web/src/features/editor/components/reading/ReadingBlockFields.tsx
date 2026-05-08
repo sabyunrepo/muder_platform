@@ -37,13 +37,9 @@ export function ReadingBlockFields({
 
   if (type === 'gmNote') {
     return (
-      <textarea
-        aria-label="GM 메모"
-        className="min-h-20 w-full resize-y rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm leading-6 text-slate-100"
-        value={line.Text ?? ''}
-        onChange={(event) => onPatch({ Text: event.target.value })}
-        placeholder="진행자만 보는 메모"
-      />
+      <p className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300">
+        이전 버전의 GM 메모입니다. 저장하면 새 대본에서는 제거됩니다.
+      </p>
     );
   }
 

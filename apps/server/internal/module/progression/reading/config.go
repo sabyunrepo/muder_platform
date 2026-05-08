@@ -9,6 +9,7 @@ type readingConfig struct {
 	TotalLines     int                 `json:"TotalLines"`
 	Lines          []readingLineConfig `json:"Lines,omitempty"`
 	BGMId          string              `json:"BGMId,omitempty"`
+	BGMMode        string              `json:"BGMMode,omitempty"`
 }
 
 // readingLineConfig describes a single script line's storage representation.
@@ -28,9 +29,10 @@ func (m *ReadingModule) Schema() json.RawMessage {
 		"properties": {
 			"AdvanceMode": {"type": "string", "enum": ["gm", "auto", "player"], "default": "gm"},
 			"DefaultVoiceID": {"type": "string"},
-			"TotalLines": {"type": "integer", "minimum": 0},
-			"BGMId": {"type": "string"},
-			"Lines": {
+				"TotalLines": {"type": "integer", "minimum": 0},
+				"BGMId": {"type": "string"},
+				"BGMMode": {"type": "string", "enum": ["loop", "once"], "default": "loop"},
+				"Lines": {
 				"type": "array",
 				"items": {
 					"type": "object",

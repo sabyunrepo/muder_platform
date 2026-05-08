@@ -22,8 +22,7 @@ const sampleScript = [
   '나레이션: 모두 눈을 감아주세요.',
   '이미지: 저택 전경 large',
   '변상훈: 저는 아무것도 보지 못했습니다.',
-  'BGM: 심문 테마 반복',
-  'GM: 다음 장면 준비',
+  '효과음: 문 닫히는 소리',
 ].join('\n');
 
 export function ReadingScriptImportModal({
@@ -116,8 +115,7 @@ export function ReadingScriptImportModal({
               <p className="mt-1">화자: 대사</p>
               <p>이미지: 미디어명</p>
               <p>영상: 미디어명</p>
-              <p>BGM: 미디어명 반복 / 1회 / 정지</p>
-              <p>GM: 진행자 메모</p>
+              <p>효과음: 미디어명</p>
             </div>
           </aside>
         </div>
