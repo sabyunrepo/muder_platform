@@ -26,6 +26,9 @@ func (e *PhaseEngine) safeCallReactor(ctx context.Context, name string, reactor 
 }
 
 func (e *PhaseEngine) auditEvent(ctx context.Context, eventType string, payload map[string]any) {
-	data, _ := json.Marshal(payload)
+	data, err := json.Marshal(payload)
+	if err != nil {
+		data = json.RawMessage(fmt.Sprintf(`{"marshalError":%q}`, err.Error()))
+	}
 	e.audit.Log(ctx, e.sessionID, eventType, data)
 }

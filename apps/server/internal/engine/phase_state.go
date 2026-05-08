@@ -55,9 +55,9 @@ func (e *PhaseEngine) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
 		"phase":     e.CurrentPhase(),
 	}
 	if rosterProvider, ok := e.playerInfoProvider.(PlayerRuntimeRosterContextProvider); ok {
-		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRosterWithContext(context.Background(), e.PlayerDisplayContext()))
+		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRosterWithContext(context.Background(), e.PlayerDisplayContext()), playerID)
 	} else if rosterProvider, ok := e.playerInfoProvider.(PlayerRuntimeRosterProvider); ok {
-		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRoster(context.Background()))
+		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRoster(context.Background()), playerID)
 	}
 
 	moduleStates := make(map[string]json.RawMessage, len(e.modules))
@@ -73,7 +73,7 @@ func (e *PhaseEngine) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
 	return json.Marshal(state)
 }
 
-func playerRuntimeRosterPayload(players []PlayerRuntimeInfo) []map[string]any {
+func playerRuntimeRosterPayload(players []PlayerRuntimeInfo, viewerID uuid.UUID) []map[string]any {
 	if len(players) == 0 {
 		return []map[string]any{}
 	}
@@ -94,11 +94,13 @@ func playerRuntimeRosterPayload(players []PlayerRuntimeInfo) []map[string]any {
 			"id":          player.PlayerID.String(),
 			"nickname":    player.Nickname,
 			"displayName": name,
-			"role":        nullableString(player.Role),
 			"isAlive":     player.IsAlive,
 			"isHost":      player.IsHost,
 			"isReady":     player.IsReady,
 			"connectedAt": player.ConnectedAt,
+		}
+		if player.PlayerID == viewerID && player.Role != "" {
+			row["role"] = player.Role
 		}
 		if player.DisplayIconURL != nil {
 			row["displayIconUrl"] = *player.DisplayIconURL
@@ -109,11 +111,4 @@ func playerRuntimeRosterPayload(players []PlayerRuntimeInfo) []map[string]any {
 		payload = append(payload, row)
 	}
 	return payload
-}
-
-func nullableString(value string) any {
-	if value == "" {
-		return nil
-	}
-	return value
 }

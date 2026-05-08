@@ -52,11 +52,18 @@ func (e *PhaseEngine) introPhaseBounds() (int, int) {
 }
 
 func isIntroPhase(phase PhaseDefinition) bool {
-	id := strings.ToLower(string(phase.ID))
-	name := strings.ToLower(phase.Name)
-	return strings.Contains(id, "intro") ||
-		strings.Contains(id, "introduction") ||
-		strings.Contains(name, "intro") ||
-		strings.Contains(name, "introduction") ||
-		strings.Contains(name, "자기소개")
+	switch normalizePhaseKind(phase.Type) {
+	case "intro", "introduction", "self_introduction":
+		return true
+	}
+	switch normalizePhaseKind(string(phase.ID)) {
+	case "intro", "introduction", "self_introduction":
+		return true
+	default:
+		return false
+	}
+}
+
+func normalizePhaseKind(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
 }

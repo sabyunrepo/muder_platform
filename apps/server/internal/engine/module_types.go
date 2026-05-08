@@ -39,6 +39,7 @@ type Phase string
 type PhaseDefinition struct {
 	ID          Phase  `json:"id"`
 	Name        string `json:"name"`
+	Type        string `json:"type,omitempty"`
 	Description string `json:"description,omitempty"`
 	// OnEnter is an optional configured action payload dispatched by the engine.
 	OnEnter json.RawMessage `json:"onEnter,omitempty"`

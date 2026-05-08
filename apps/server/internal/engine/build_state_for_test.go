@@ -176,6 +176,9 @@ func TestPhaseEngine_BuildStateForIncludesResolvedRosterWithoutAliasRules(t *tes
 	if player["displayName"] != "밤의 목격자" || player["nickname"] != "참가자" {
 		t.Fatalf("player display mismatch: %+v", player)
 	}
+	if player["role"] != "detective" {
+		t.Fatalf("viewer should see own role, got %+v", player["role"])
+	}
 	if player["displayIconMediaId"] != aliasIconMediaID {
 		t.Fatalf("displayIconMediaId = %v, want %s", player["displayIconMediaId"], aliasIconMediaID)
 	}
@@ -320,8 +323,11 @@ func TestPhaseEngine_BuildStateForRosterSortsAndUsesNicknameFallback(t *testing.
 	if body.Players[1]["displayName"] != "두 번째 참가자" {
 		t.Fatalf("displayName fallback = %v, want nickname", body.Players[1]["displayName"])
 	}
-	if body.Players[1]["role"] != nil {
-		t.Fatalf("empty role should be null, got %+v", body.Players[1]["role"])
+	if body.Players[0]["role"] != "detective" {
+		t.Fatalf("viewer should see own role, got %+v", body.Players[0]["role"])
+	}
+	if _, leaked := body.Players[1]["role"]; leaked {
+		t.Fatalf("other player role should be omitted, got %+v", body.Players[1]["role"])
 	}
 	if body.Players[1]["displayIconUrl"] != displayIconURL {
 		t.Fatalf("displayIconUrl = %v, want %s", body.Players[1]["displayIconUrl"], displayIconURL)

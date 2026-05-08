@@ -376,6 +376,7 @@ func (e *PhaseEngine) phaseInfo(idx int) *PhaseInfo {
 	return &PhaseInfo{
 		ID:    string(p.ID),
 		Name:  p.Name,
+		Type:  p.Type,
 		Index: idx,
 		Round: e.currentRound,
 	}
