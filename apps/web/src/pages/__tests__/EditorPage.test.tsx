@@ -44,8 +44,13 @@ const routeMatrixCases = [
   ['직접 URL /editor/:id/relations', { id: 'theme-1', tab: 'relations' }, 'relations', 'clues'],
   ['직접 URL /editor/:id/media', { id: 'theme-1', tab: 'media' }, 'media', 'media'],
   ['직접 URL /editor/:id/overview', { id: 'theme-1', tab: 'overview' }, 'overview', 'overview'],
-  ['직접 URL /editor/:id/template', { id: 'theme-1', tab: 'template' }, 'template', 'template'],
-  ['alias URL /editor/:id/templates', { id: 'theme-1', tab: 'templates' }, 'templates', 'template'],
+  ['legacy URL /editor/:id/template', { id: 'theme-1', tab: 'template' }, 'template', 'overview'],
+  [
+    'legacy URL /editor/:id/templates',
+    { id: 'theme-1', tab: 'templates' },
+    'templates',
+    'overview',
+  ],
   ['직접 URL /editor/:id/advanced', { id: 'theme-1', tab: 'advanced' }, 'advanced', 'advanced'],
   ['직접 URL /editor/:id/design', { id: 'theme-1', tab: 'design' }, 'design', 'design'],
   [
@@ -74,7 +79,12 @@ const routeMatrixCases = [
   ],
   ['alias URL /editor/:id/modules', { id: 'theme-1', tab: 'modules' }, 'modules', 'design'],
   ['alias URL /editor/:id/flow', { id: 'theme-1', tab: 'flow' }, 'flow', 'storyMap'],
-  ['sample slug URL /editor/e2e-test-theme/flow', { id: 'e2e-test-theme', tab: 'flow' }, 'flow', 'storyMap'],
+  [
+    'sample slug URL /editor/e2e-test-theme/flow',
+    { id: 'e2e-test-theme', tab: 'flow' },
+    'flow',
+    'storyMap',
+  ],
   ['직접 URL /editor/:id/locations', { id: 'theme-1', tab: 'locations' }, 'locations', 'locations'],
   ['직접 URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'endings'],
 ] as const;
@@ -113,12 +123,14 @@ describe('EditorPage', () => {
       locationPathMock.mockReturnValue(
         expectedSegment === 'no-segment'
           ? `/editor/${params.id}`
-          : `/editor/${params.id}/${expectedSegment}`,
+          : `/editor/${params.id}/${expectedSegment}`
       );
 
       render(<EditorPage />);
 
-      expect(screen.getByText(new RegExp(`테마 에디터 ${params.id} ${expectedSegment}`))).toBeDefined();
+      expect(
+        screen.getByText(new RegExp(`테마 에디터 ${params.id} ${expectedSegment}`))
+      ).toBeDefined();
       expect(setActiveTabMock).toHaveBeenCalledWith(expectedTab);
     }
   );
