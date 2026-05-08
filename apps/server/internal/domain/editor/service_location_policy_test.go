@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -320,6 +321,22 @@ func TestService_LocationTextContractAndParentValidation(t *testing.T) {
 	}
 	if updated.ParentLocationID != nil {
 		t.Fatalf("updated ParentLocationID = %v, want nil", updated.ParentLocationID)
+	}
+
+	overlongText := strings.Repeat("가", MaxLocationTextLen+1)
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{
+		Name:              child.Name,
+		SortOrder:         child.SortOrder,
+		PublicDescription: OptionalString{Set: true, Value: &overlongText},
+	}); !isBadRequest(err) {
+		t.Fatalf("UpdateLocation overlong public_description error = %T %v, want bad request", err, err)
+	}
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{
+		Name:         child.Name,
+		SortOrder:    child.SortOrder,
+		EntryMessage: OptionalString{Set: true, Value: &overlongText},
+	}); !isBadRequest(err) {
+		t.Fatalf("UpdateLocation overlong entry_message error = %T %v, want bad request", err, err)
 	}
 
 	if _, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{

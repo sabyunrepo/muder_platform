@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -141,6 +142,12 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
+	if err := validateLocationText("public_description", req.PublicDescription); err != nil {
+		return nil, err
+	}
+	if err := validateLocationText("entry_message", req.EntryMessage); err != nil {
+		return nil, err
+	}
 	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, themeID, req.RestrictedCharacters, req.FromRound, req.UntilRound)
 	if err != nil {
 		return nil, err
@@ -223,10 +230,16 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	}
 	publicDescription := l.PublicDescription
 	if req.PublicDescription.Set {
+		if err := validateLocationText("public_description", req.PublicDescription.Value); err != nil {
+			return nil, err
+		}
 		publicDescription = ptrToText(req.PublicDescription.Value)
 	}
 	entryMessage := l.EntryMessage
 	if req.EntryMessage.Set {
+		if err := validateLocationText("entry_message", req.EntryMessage.Value); err != nil {
+			return nil, err
+		}
 		entryMessage = ptrToText(req.EntryMessage.Value)
 	}
 	parentLocationID := l.ParentLocationID
@@ -255,6 +268,13 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	}
 	resp := toLocationResponse(updated)
 	return &resp, nil
+}
+
+func validateLocationText(field string, value *string) error {
+	if value != nil && utf8.RuneCountInString(*value) > MaxLocationTextLen {
+		return apperror.BadRequest(fmt.Sprintf("%s is too long", field))
+	}
+	return nil
 }
 
 func (s *service) resolveLocationParent(ctx context.Context, themeID, mapID, currentLocationID uuid.UUID, parentLocationID *uuid.UUID) (pgtype.UUID, error) {

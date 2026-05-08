@@ -33,6 +33,7 @@ const (
 	MaxMapsPerTheme    = 20
 	MaxLocationsPerMap = 50
 	MaxCluesPerTheme   = 500
+	MaxLocationTextLen = 2000
 )
 
 // --- Request / Response types ---
