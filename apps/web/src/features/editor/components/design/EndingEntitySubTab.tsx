@@ -10,7 +10,6 @@ import { EndingEntityHeader } from './EndingEntityHeader';
 import { EndingBranchRulesPanel } from './EndingBranchRulesPanel';
 import {
   buildEndingDecisionSummary,
-  buildCharacterEndcardSummary,
   toEndingEditorViewModel,
 } from '../../entities/ending/endingEntityAdapter';
 import { getDisplayErrorMessage } from '@/lib/display-error';
@@ -23,6 +22,7 @@ interface EndingEntitySubTabProps {
 export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [section, setSection] = useState<'questions' | 'endings'>('questions');
   const { data: characters = [] } = useEditorCharacters(themeId);
   const {
     nodes,
@@ -52,7 +52,6 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
     filteredNodes.find((node) => node.id === selectedId) ?? filteredNodes[0] ?? null;
 
   const decisionSummary = useMemo(() => buildEndingDecisionSummary(nodes, edges), [nodes, edges]);
-  const endcardSummary = useMemo(() => buildCharacterEndcardSummary(characters), [characters]);
 
   const handleAddEnding = () => {
     addNode('ending', { x: 360 + endingNodes.length * 40, y: 220 });
@@ -98,9 +97,42 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
 
       <EndingDecisionSummaryPanel summary={decisionSummary} />
 
-      <EndingBranchRulesPanel themeId={themeId} theme={theme} endingNodes={endingNodes} characters={characters} />
+      <nav className="flex flex-wrap gap-2" aria-label="결말 편집 섹션">
+        <button
+          type="button"
+          onClick={() => setSection('questions')}
+          aria-pressed={section === 'questions'}
+          className={`min-h-11 rounded-xl border px-4 text-sm font-medium transition ${
+            section === 'questions'
+              ? 'border-amber-500/70 bg-amber-500/15 text-amber-100'
+              : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600'
+          }`}
+        >
+          질문 관리
+        </button>
+        <button
+          type="button"
+          onClick={() => setSection('endings')}
+          aria-pressed={section === 'endings'}
+          className={`min-h-11 rounded-xl border px-4 text-sm font-medium transition ${
+            section === 'endings'
+              ? 'border-amber-500/70 bg-amber-500/15 text-amber-100'
+              : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600'
+          }`}
+        >
+          결말 관리
+        </button>
+      </nav>
 
-      {endingNodes.length === 0 ? (
+      <EndingBranchRulesPanel
+        themeId={themeId}
+        theme={theme}
+        endingNodes={endingNodes}
+        characters={characters}
+        section={section}
+      />
+
+      {section !== 'endings' ? null : endingNodes.length === 0 ? (
         <EndingEmptyState />
       ) : (
         <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
@@ -167,7 +199,6 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
             <EndingEntityDetail
               node={selectedNode}
               themeId={themeId}
-              endcardSummary={endcardSummary}
               onChange={updateNodeData}
             />
           )}

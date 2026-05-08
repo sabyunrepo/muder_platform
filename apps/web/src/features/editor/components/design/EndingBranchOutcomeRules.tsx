@@ -1,10 +1,12 @@
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, X } from "lucide-react";
 import type { Node } from "@xyflow/react";
 import type {
   EndingBranchConfig,
+  EndingBranchMatrixRow,
   EndingBranchQuestion,
 } from "../../entities/ending/endingBranchAdapter";
-import { readChoiceCondition, updateMatrixCondition } from "../../entities/ending/endingBranchAdapter";
+import { createEndingBranchMatrixRow, readChoiceCondition, updateMatrixCondition } from "../../entities/ending/endingBranchAdapter";
 import type { FlowNodeData } from "../../flowTypes";
 
 interface EndingBranchOutcomeRulesProps {
@@ -13,7 +15,6 @@ interface EndingBranchOutcomeRulesProps {
   branchQuestions: EndingBranchQuestion[];
   canAddRule: boolean;
   onChange: (next: EndingBranchConfig) => void;
-  onAddRule: () => void;
 }
 
 function endingName(node: Node): string {
@@ -31,7 +32,6 @@ export function EndingBranchOutcomeRules({
   branchQuestions,
   canAddRule,
   onChange,
-  onAddRule,
 }: EndingBranchOutcomeRulesProps) {
   return (
     <div className="space-y-4">
@@ -42,7 +42,6 @@ export function EndingBranchOutcomeRules({
         branchQuestions={branchQuestions}
         canAddRule={canAddRule}
         onChange={onChange}
-        onAddRule={onAddRule}
       />
     </div>
   );
@@ -76,7 +75,21 @@ function DefaultEndingCard({ draft, endingNodes, onChange }: DefaultEndingCardPr
 
 type MatrixRulesCardProps = EndingBranchOutcomeRulesProps;
 
-function MatrixRulesCard({ draft, endingNodes, branchQuestions, canAddRule, onChange, onAddRule }: MatrixRulesCardProps) {
+function MatrixRulesCard({ draft, endingNodes, branchQuestions, canAddRule, onChange }: MatrixRulesCardProps) {
+  const [modalState, setModalState] = useState<{ mode: "create" | "edit"; rowIndex?: number } | null>(null);
+
+  const handleSaveRule = (row: EndingBranchMatrixRow) => {
+    if (modalState?.mode === "edit" && modalState.rowIndex !== undefined) {
+      onChange(reorderPriorities({
+        ...draft,
+        matrix: draft.matrix.map((item, index) => (index === modalState.rowIndex ? row : item)),
+      }));
+    } else {
+      onChange(reorderPriorities({ ...draft, matrix: [...draft.matrix, row] }));
+    }
+    setModalState(null);
+  };
+
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -84,8 +97,8 @@ function MatrixRulesCard({ draft, endingNodes, branchQuestions, canAddRule, onCh
           <h4 className="font-semibold text-slate-100">결말 규칙</h4>
           <p className="mt-1 text-xs leading-5 text-slate-400">위에서부터 먼저 맞는 규칙이 적용됩니다.</p>
         </div>
-        <button type="button" onClick={onAddRule} disabled={!canAddRule} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-700 px-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
-          <Plus className="h-4 w-4" aria-hidden="true" /> 규칙 추가
+        <button type="button" onClick={() => setModalState({ mode: "create" })} disabled={!canAddRule} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-700 px-3 text-sm text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+          <Plus className="h-4 w-4" aria-hidden="true" /> 조건 만들기
         </button>
       </div>
       <div className="mt-4 space-y-3">
@@ -99,9 +112,20 @@ function MatrixRulesCard({ draft, endingNodes, branchQuestions, canAddRule, onCh
             endingNodes={endingNodes}
             branchQuestions={branchQuestions}
             onChange={onChange}
+            onEdit={() => setModalState({ mode: "edit", rowIndex })}
           />
         ))}
       </div>
+      {modalState && (
+        <EndingConditionModal
+          draft={draft}
+          endingNodes={endingNodes}
+          branchQuestions={branchQuestions}
+          initialRow={modalState.mode === "edit" && modalState.rowIndex !== undefined ? draft.matrix[modalState.rowIndex] : null}
+          onClose={() => setModalState(null)}
+          onSave={handleSaveRule}
+        />
+      )}
     </div>
   );
 }
@@ -112,9 +136,10 @@ interface MatrixRuleRowProps {
   endingNodes: Node[];
   branchQuestions: EndingBranchQuestion[];
   onChange: (next: EndingBranchConfig) => void;
+  onEdit: () => void;
 }
 
-function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange }: MatrixRuleRowProps) {
+function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange, onEdit }: MatrixRuleRowProps) {
   const row = draft.matrix[rowIndex];
   const parsed = readChoiceCondition(row.condition);
   const selectedQuestion = parsed
@@ -124,112 +149,126 @@ function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange
     <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
       <div className="flex items-center justify-between gap-3">
         <p className="font-medium text-slate-100">규칙 {rowIndex + 1}</p>
-        <button type="button" onClick={() => onChange(reorderPriorities({ ...draft, matrix: draft.matrix.filter((_, index) => index !== rowIndex) }))} className="rounded-lg p-2 text-slate-400 hover:bg-rose-500/10 hover:text-rose-200" aria-label={`규칙 ${rowIndex + 1} 삭제`}>
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={onEdit} className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800">
+            수정
+          </button>
+          <button type="button" onClick={() => onChange(reorderPriorities({ ...draft, matrix: draft.matrix.filter((_, index) => index !== rowIndex) }))} className="rounded-lg p-2 text-slate-400 hover:bg-rose-500/10 hover:text-rose-200" aria-label={`규칙 ${rowIndex + 1} 삭제`}>
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
-      <div className="mt-3 grid gap-3">
-        <QuestionSelect draft={draft} rowIndex={rowIndex} selectedQuestionId={parsed?.questionId ?? ""} branchQuestions={branchQuestions} onChange={onChange} />
-        <ChoiceSelect draft={draft} rowIndex={rowIndex} selectedQuestion={selectedQuestion} selectedChoice={parsed?.choice ?? ""} onChange={onChange} />
-        <AggregationSelect draft={draft} rowIndex={rowIndex} selectedQuestion={selectedQuestion} selectedChoice={parsed?.choice ?? ""} aggregation={parsed?.aggregation ?? "threshold"} onChange={onChange} />
-        <EndingSelect draft={draft} rowIndex={rowIndex} endingNodes={endingNodes} onChange={onChange} />
-      </div>
+      <p className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm leading-6 text-slate-300">
+        <span className="font-semibold text-slate-100">{selectedQuestion?.text || "질문 선택 필요"}</span>
+        {" 에서 "}
+        <span className="font-semibold text-amber-100">{parsed?.choice || "선택지 선택 필요"}</span>
+        {parsed?.aggregation === "winning" ? " 이 가장 많이 선택되면 " : " 이 기준 이상 선택되면 "}
+        <span className="font-semibold text-emerald-100">{endingName(endingNodes.find((node) => node.id === row.ending) ?? { id: "", type: "ending", position: { x: 0, y: 0 }, data: {} } as Node)}</span>
+        {" 결말을 보여줍니다."}
+      </p>
     </article>
   );
 }
 
-function QuestionSelect({ draft, rowIndex, selectedQuestionId, branchQuestions, onChange }: {
+function EndingConditionModal({
+  draft,
+  endingNodes,
+  branchQuestions,
+  initialRow,
+  onClose,
+  onSave,
+}: {
   draft: EndingBranchConfig;
-  rowIndex: number;
-  selectedQuestionId: string;
-  branchQuestions: EndingBranchQuestion[];
-  onChange: (next: EndingBranchConfig) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-slate-400">어떤 질문에서</span>
-      <select value={selectedQuestionId} onChange={(event) => {
-        const question = branchQuestions.find((item) => item.id === event.target.value);
-        onChange({
-          ...draft,
-          matrix: draft.matrix.map((item, index) =>
-            index === rowIndex
-              ? (question ? updateMatrixCondition(item, question.id, "", "threshold") : { ...item, condition: {} })
-              : item,
-          ),
-        });
-      }} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100">
-        <option value="">질문 선택</option>
-        {branchQuestions.map((question) => <option key={question.id} value={question.id}>{question.text || "질문 내용 필요"}</option>)}
-      </select>
-    </label>
-  );
-}
-
-function AggregationSelect({ draft, rowIndex, selectedQuestion, selectedChoice, aggregation, onChange }: {
-  draft: EndingBranchConfig;
-  rowIndex: number;
-  selectedQuestion?: EndingBranchQuestion;
-  selectedChoice: string;
-  aggregation: "threshold" | "winning";
-  onChange: (next: EndingBranchConfig) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-slate-400">어떤 기준이면</span>
-      <select
-        value={aggregation}
-        onChange={(event) =>
-          selectedQuestion && selectedChoice && onChange({
-            ...draft,
-            matrix: draft.matrix.map((item, index) =>
-              index === rowIndex
-                ? updateMatrixCondition(item, selectedQuestion.id, selectedChoice, event.target.value === "winning" ? "winning" : "threshold")
-                : item,
-            ),
-          })
-        }
-        disabled={!selectedQuestion || !selectedChoice}
-        className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <option value="threshold">설정한 비율 이상 선택되면</option>
-        <option value="winning">가장 많이 선택되면</option>
-      </select>
-    </label>
-  );
-}
-
-function ChoiceSelect({ draft, rowIndex, selectedQuestion, selectedChoice, onChange }: {
-  draft: EndingBranchConfig;
-  rowIndex: number;
-  selectedQuestion?: EndingBranchQuestion;
-  selectedChoice: string;
-  onChange: (next: EndingBranchConfig) => void;
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-medium text-slate-400">어떤 선택이면</span>
-      <select value={selectedChoice} onChange={(event) => selectedQuestion && event.target.value && onChange({ ...draft, matrix: draft.matrix.map((item, index) => index === rowIndex ? updateMatrixCondition(item, selectedQuestion.id, event.target.value) : item) })} disabled={!selectedQuestion} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-50">
-        <option value="">선택지 선택</option>
-        {selectedQuestion?.choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
-      </select>
-    </label>
-  );
-}
-
-function EndingSelect({ draft, rowIndex, endingNodes, onChange }: {
-  draft: EndingBranchConfig;
-  rowIndex: number;
   endingNodes: Node[];
-  onChange: (next: EndingBranchConfig) => void;
+  branchQuestions: EndingBranchQuestion[];
+  initialRow: EndingBranchMatrixRow | null;
+  onClose: () => void;
+  onSave: (row: EndingBranchMatrixRow) => void;
 }) {
+  const parsed = initialRow ? readChoiceCondition(initialRow.condition) : null;
+  const firstQuestion = branchQuestions[0];
+  const [questionId, setQuestionId] = useState(parsed?.questionId ?? firstQuestion?.id ?? "");
+  const selectedQuestion = branchQuestions.find((question) => question.id === questionId);
+  const [choice, setChoice] = useState(parsed?.choice ?? selectedQuestion?.choices[0] ?? "");
+  const [aggregation, setAggregation] = useState<"threshold" | "winning">(parsed?.aggregation ?? "threshold");
+  const [endingId, setEndingId] = useState(initialRow?.ending ?? draft.defaultEnding ?? endingNodes[0]?.id ?? "");
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" || event.key === "Esc") onClose();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const preview = useMemo(() => {
+    const questionText = selectedQuestion?.text.trim() || "질문";
+    const ending = endingName(endingNodes.find((node) => node.id === endingId) ?? { id: "", type: "ending", position: { x: 0, y: 0 }, data: {} } as Node);
+    return `${questionText}에서 '${choice || "선택지"}' 답변이 ${aggregation === "winning" ? "가장 많으면" : "설정 비율 이상이면"} '${ending}' 결말로 보냅니다.`;
+  }, [aggregation, choice, endingId, endingNodes, selectedQuestion]);
+
+  const handleQuestionChange = (nextQuestionId: string) => {
+    const nextQuestion = branchQuestions.find((question) => question.id === nextQuestionId);
+    setQuestionId(nextQuestionId);
+    setChoice(nextQuestion?.choices[0] ?? "");
+    setAggregation("threshold");
+  };
+
+  const handleSubmit = () => {
+    if (!selectedQuestion || !choice || !endingId) return;
+    const base = initialRow ?? createEndingBranchMatrixRow(draft, endingId);
+    onSave({
+      ...updateMatrixCondition(base, selectedQuestion.id, choice, aggregation),
+      ending: endingId,
+    });
+  };
+
   return (
-    <label className="block">
-      <span className="text-xs font-medium text-slate-400">보여줄 결말</span>
-      <select value={draft.matrix[rowIndex].ending} onChange={(event) => onChange({ ...draft, matrix: draft.matrix.map((item, index) => index === rowIndex ? { ...item, ending: event.target.value } : item) })} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100">
-        <option value="">결말 선택</option>
-        {endingNodes.map((node) => <option key={node.id} value={node.id}>{endingName(node)}</option>)}
-      </select>
-    </label>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4" role="dialog" aria-modal="true" aria-label="조건 만들기">
+      <section className="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-950 p-5 shadow-2xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-400">Condition</p>
+            <h3 className="mt-1 text-lg font-semibold text-slate-100">조건 만들기</h3>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-slate-800 hover:text-slate-100" aria-label="조건 만들기 닫기">
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
+        <div className="mt-5 grid gap-4">
+          <label className="block">
+            <span className="text-xs font-medium text-slate-400">질문</span>
+            <select value={questionId} onChange={(event) => handleQuestionChange(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
+              {branchQuestions.map((question) => <option key={question.id} value={question.id}>{question.text || "질문 내용 필요"}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-400">답변</span>
+            <select value={choice} onChange={(event) => setChoice(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
+              {(selectedQuestion?.choices ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-400">집계 기준</span>
+            <select value={aggregation} onChange={(event) => setAggregation(event.target.value === "winning" ? "winning" : "threshold")} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
+              <option value="threshold">과반수 / 설정 비율 이상</option>
+              <option value="winning">가장 많이 선택</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-medium text-slate-400">보여줄 결말</span>
+            <select value={endingId} onChange={(event) => setEndingId(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
+              {endingNodes.map((node) => <option key={node.id} value={node.id}>{endingName(node)}</option>)}
+            </select>
+          </label>
+          <p className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm leading-6 text-emerald-100">{preview}</p>
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-slate-700 px-4 text-sm text-slate-200 hover:bg-slate-800">취소</button>
+          <button type="button" onClick={handleSubmit} disabled={!selectedQuestion || !choice || !endingId} className="min-h-11 rounded-xl border border-amber-500/60 bg-amber-500/15 px-4 text-sm font-medium text-amber-100 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50">조건 저장</button>
+        </div>
+      </section>
+    </div>
   );
 }

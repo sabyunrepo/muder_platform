@@ -48,6 +48,15 @@ function renderWithClient(ui: ReactNode) {
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
+function openEndingManagement() {
+  fireEvent.click(screen.getByRole("button", { name: "결말 관리" }));
+}
+
+function clickLastButton(name: RegExp) {
+  const buttons = screen.getAllByRole("button", { name });
+  fireEvent.click(buttons[buttons.length - 1]);
+}
+
 
 const theme = {
   id: "theme-1",
@@ -162,6 +171,7 @@ afterEach(() => {
 describe("EndingEntitySubTab", () => {
   it("Flow의 ending 노드만 결말 목록에 표시한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    openEndingManagement();
 
     expect(screen.getByText("결말 목록")).toBeDefined();
     expect(screen.getAllByText("진실").length).toBeGreaterThan(0);
@@ -169,8 +179,7 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getByLabelText("결말 판정 준비")).toBeDefined();
     expect(screen.getByText("본문 작성")).toBeDefined();
     expect(screen.getAllByText("참가자에게만 공개").length).toBeGreaterThan(0);
-    expect(screen.getByText("캐릭터 결과 카드 1/2명 작성")).toBeDefined();
-    expect(screen.getByText("결과 카드가 비어 있는 캐릭터: 민재")).toBeDefined();
+    expect(screen.queryByText("캐릭터 결과 카드 1/2명 작성")).toBeNull();
     expect(screen.queryByText("1막")).toBeNull();
   });
 
@@ -187,6 +196,7 @@ describe("EndingEntitySubTab", () => {
     });
 
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    openEndingManagement();
 
     expect(screen.getByText("아직 결말이 없습니다")).toBeDefined();
     expect(screen.getByText(/Flow에서 결말 노드를 추가하면/)).toBeDefined();
@@ -227,6 +237,7 @@ describe("EndingEntitySubTab", () => {
 
   it("검색어로 결말 목록을 좁힌다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    openEndingManagement();
 
     fireEvent.change(screen.getByPlaceholderText("결말 검색"), { target: { value: "오판" } });
 
@@ -237,6 +248,7 @@ describe("EndingEntitySubTab", () => {
 
   it("상세 입력을 변경하면 선택한 결말 노드 데이터만 갱신한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    openEndingManagement();
 
     fireEvent.change(screen.getByLabelText("결말 이름"), { target: { value: "자비" } });
 
@@ -251,6 +263,7 @@ describe("EndingEntitySubTab", () => {
 
   it("결말 본문, 공개 범위, 스포일러 안내, 감상 공유 문구를 저장 payload로 보낸다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    openEndingManagement();
 
     fireEvent.change(screen.getByLabelText("결말 본문"), {
       target: { value: "진실은 모두에게 남았다." },
@@ -313,8 +326,8 @@ describe("EndingEntitySubTab", () => {
   it("결말 질문 대상을 특정 플레이어 여러 명으로 저장한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /하윤/ }));
-    fireEvent.click(screen.getByRole("button", { name: /민재/ }));
+    clickLastButton(/하윤/);
+    clickLastButton(/민재/);
     fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(
@@ -339,8 +352,8 @@ describe("EndingEntitySubTab", () => {
   it("특정 플레이어 질문에서 대상이 비면 저장하지 않고 경고한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /하윤/ }));
-    fireEvent.click(screen.getByRole("button", { name: /하윤/ }));
+    clickLastButton(/하윤/);
+    clickLastButton(/하윤/);
     fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
 
     expect(configMutateMock).not.toHaveBeenCalled();
@@ -376,7 +389,7 @@ describe("EndingEntitySubTab", () => {
       />,
     );
 
-    expect(screen.getByText("삭제된 캐릭터")).toBeDefined();
+    expect(screen.getAllByText("삭제된 캐릭터").length).toBeGreaterThan(0);
   });
 
   it("결말 선택지는 같은 질문 안에서 중복 저장되지 않는다", () => {
@@ -405,8 +418,11 @@ describe("EndingEntitySubTab", () => {
 
   it("가장 많이 선택된 답 기준 결말 규칙을 저장한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    openEndingManagement();
 
-    fireEvent.change(screen.getByLabelText("어떤 기준이면"), { target: { value: "winning" } });
+    fireEvent.click(screen.getByRole("button", { name: "수정" }));
+    fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "winning" } });
+    fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
     fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(

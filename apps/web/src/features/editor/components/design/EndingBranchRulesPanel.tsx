@@ -5,7 +5,6 @@ import type { Node } from "@xyflow/react";
 import type { EditorCharacterResponse, EditorThemeResponse } from "@/features/editor/api";
 import { useUpdateConfigJson } from "@/features/editor/editorConfigApi";
 import {
-  createEndingBranchMatrixRow,
   createEndingBranchQuestion,
   readChoiceCondition,
   readEndingBranchConfig,
@@ -22,6 +21,7 @@ interface EndingBranchRulesPanelProps {
   theme: EditorThemeResponse;
   endingNodes: Node[];
   characters: EditorCharacterResponse[];
+  section: "questions" | "endings";
 }
 
 function reorderPriorities(config: EndingBranchConfig): EndingBranchConfig {
@@ -71,7 +71,7 @@ function updateChoiceValues(
   return question.choices.map((choice, index) => (index === choiceIndex ? value : choice));
 }
 
-export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters }: EndingBranchRulesPanelProps) {
+export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters, section }: EndingBranchRulesPanelProps) {
   const updateConfig = useUpdateConfigJson(themeId);
   const serverConfig = useMemo(() => readEndingBranchConfig(theme.config_json), [theme.config_json]);
   const [draft, setDraft] = useState<EndingBranchConfig>(serverConfig);
@@ -161,7 +161,8 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
     <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300" aria-label="결말 판정 설정">
       <Header dirty={dirty} isPending={updateConfig.isPending} onSave={handleSave} />
       <Warnings warnings={viewModel.warnings} />
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+      <div className="mt-5">
+        {section === "questions" ? (
         <EndingBranchQuestionList
           questions={draft.questions}
           characters={characters}
@@ -172,14 +173,15 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
           onAddChoice={(questionId) => applyDraft(updateQuestionAt(draft, questionId, (question) => ({ ...question, choices: [...question.choices, createUniqueChoiceLabel(question)] })))}
           onRemoveChoice={handleRemoveChoice}
         />
+        ) : (
         <EndingBranchOutcomeRules
           draft={draft}
           endingNodes={endingNodes}
           branchQuestions={branchQuestions}
           canAddRule={canAddRule}
           onChange={applyDraft}
-          onAddRule={() => applyDraft(reorderPriorities({ ...draft, matrix: [...draft.matrix, createEndingBranchMatrixRow(draft, draft.defaultEnding || endingNodes[0]?.id || "")] }))}
         />
+        )}
       </div>
     </section>
   );
