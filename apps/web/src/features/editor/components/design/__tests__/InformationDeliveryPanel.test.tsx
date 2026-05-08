@@ -279,6 +279,44 @@ describe("InformationDeliveryPanel", () => {
     expect(refetchStoryInfos).toHaveBeenCalledTimes(1);
   });
 
+  it("옵션 목록이 비어도 저장된 장면 진입 효과는 계속 표시한다", () => {
+    useStoryInfosMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    useEditorCluesMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    const phaseData: FlowNodeData = {
+      onEnter: [
+        {
+          id: "info",
+          type: DELIVER_INFORMATION_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "d1",
+                target: { type: "character", character_id: "char-1" },
+                story_info_ids: ["missing-info"],
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    render(<InformationDeliveryPanel themeId="theme-1" phaseData={phaseData} onChange={vi.fn()} />);
+
+    expect(screen.getByText("탐정 A · 정보 1개 · 단서 0개")).toBeDefined();
+    expect(screen.queryByText(/연결할 정보나 단서가 없습니다/)).toBeNull();
+  });
+
   it("phaseData onEnter 변경이 들어오면 저장된 장면 연결 설정을 다시 반영한다", () => {
     const firstPhaseData: FlowNodeData = {
       onEnter: [

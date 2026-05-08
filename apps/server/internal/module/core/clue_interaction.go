@@ -280,6 +280,7 @@ func (m *ClueInteractionModule) applyClueGrants(ctx context.Context, deliveries 
 		clueIDs   []string
 		playerIDs []uuid.UUID
 	}
+	events := make([]engine.Event, 0, len(deliveries))
 	prepared := make([]preparedGrant, 0, len(deliveries))
 	for _, delivery := range deliveries {
 		delivery.ID = normalizeClueGrantID(delivery)
@@ -311,7 +312,6 @@ func (m *ClueInteractionModule) applyClueGrants(ctx context.Context, deliveries 
 	}
 
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	for _, grant := range prepared {
 		if _, applied := m.appliedGrantIDs[grant.delivery.ID]; applied {
 			continue
@@ -334,7 +334,7 @@ func (m *ClueInteractionModule) applyClueGrants(ctx context.Context, deliveries 
 				)
 			}
 		}
-		m.deps.EventBus.Publish(engine.Event{
+		events = append(events, engine.Event{
 			Type: "clue.granted",
 			Payload: map[string]any{
 				"deliveryId": grant.delivery.ID,
@@ -343,6 +343,10 @@ func (m *ClueInteractionModule) applyClueGrants(ctx context.Context, deliveries 
 			},
 		})
 		m.appliedGrantIDs[grant.delivery.ID] = struct{}{}
+	}
+	m.mu.Unlock()
+	for _, event := range events {
+		m.deps.EventBus.Publish(event)
 	}
 	return nil
 }
@@ -475,6 +479,7 @@ func (m *ClueInteractionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessa
 			acquiredClues[playerID] = mergeClueList(acquiredClues[playerID], m.targetCodeClues[info.TargetCode])
 		}
 	}
+	acquiredClues[playerID] = mergeClueList(acquiredClues[playerID], m.targetCodeClues[playerID.String()])
 	return json.Marshal(clueInteractionState{
 		PlayerDrawCounts: engine.FilterByPlayer(m.playerDrawCounts, playerID),
 		CurrentClueLevel: m.currentClueLevel,

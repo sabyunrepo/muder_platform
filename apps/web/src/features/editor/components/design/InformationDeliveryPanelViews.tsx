@@ -136,7 +136,7 @@ export function InformationDeliveryContent({
     );
   }
 
-  if (!hasStoryInfos && !hasClues) {
+  if (!hasStoryInfos && !hasClues && deliveries.length === 0) {
     return (
       <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-400">
         연결할 정보나 단서가 없습니다. 먼저 정보 관리 또는 단서 관리에서 장면 효과로 쓸 항목을 만들어 주세요.

@@ -332,6 +332,67 @@ func TestClueInteractionModule_ReactTo_GrantClueToCharacter(t *testing.T) {
 	}
 }
 
+func TestClueInteractionModule_ReactTo_GrantClueOfflinePlayerIDFallback(t *testing.T) {
+	playerID := uuid.New()
+	deps := newTestDeps()
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), deps, nil)
+
+	params := json.RawMessage(`{"deliveries":[{"id":"grant-offline","target":{"type":"character","character_id":"` + playerID.String() + `"},"clue_ids":["clue-late"]}]}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionGrantClue, Params: params}); err != nil {
+		t.Fatalf("ReactTo GRANT_CLUE failed: %v", err)
+	}
+
+	m.deps.PlayerInfoProvider = clueGrantTestProvider{
+		players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			playerID: {PlayerID: playerID, TargetCode: "detective"},
+		},
+	}
+	data, err := m.BuildStateFor(playerID)
+	if err != nil {
+		t.Fatalf("BuildStateFor failed: %v", err)
+	}
+	var state clueInteractionState
+	if err := json.Unmarshal(data, &state); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	if !reflect.DeepEqual(state.AcquiredClues[playerID], []string{"clue-late"}) {
+		t.Fatalf("acquired clues = %#v, want offline grant", state.AcquiredClues[playerID])
+	}
+}
+
+func TestClueInteractionModule_ReactTo_GrantCluePublishesAfterUnlock(t *testing.T) {
+	playerID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = clueGrantTestProvider{
+		players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			playerID: {PlayerID: playerID, TargetCode: "detective"},
+		},
+	}
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), deps, nil)
+	deps.EventBus.Subscribe("clue.granted", func(engine.Event) {
+		if _, err := m.BuildStateFor(playerID); err != nil {
+			t.Errorf("BuildStateFor in event handler failed: %v", err)
+		}
+	})
+
+	done := make(chan error, 1)
+	go func() {
+		params := json.RawMessage(`{"deliveries":[{"id":"grant-publish","target":{"type":"character","character_id":"detective"},"clue_ids":["clue-1"]}]}`)
+		done <- m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionGrantClue, Params: params})
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("ReactTo GRANT_CLUE failed: %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("ReactTo GRANT_CLUE timed out; event publish likely held module lock")
+	}
+}
+
 func TestClueInteractionModule_ReactTo_GrantClueToAllPlayers(t *testing.T) {
 	p1 := uuid.New()
 	p2 := uuid.New()

@@ -52,6 +52,82 @@ describe("sceneEntryEffectAdapter", () => {
     ]);
   });
 
+  it("같은 타입의 장면 진입 action이 여러 개면 모두 읽어서 병합한다", () => {
+    expect(
+      flowNodeToSceneEntryEffects({
+        onEnter: [
+          {
+            id: "info-action-1",
+            type: DELIVER_INFORMATION_ACTION,
+            params: {
+              deliveries: [
+                {
+                  id: "effect-1",
+                  target: { type: "character", character_id: "char-1" },
+                  story_info_ids: ["info-1"],
+                },
+              ],
+            },
+          },
+          {
+            id: "info-action-2",
+            type: DELIVER_INFORMATION_ACTION,
+            params: {
+              deliveries: [
+                {
+                  id: "effect-2",
+                  target: { type: "character", character_id: "char-2" },
+                  story_info_ids: ["info-2"],
+                },
+              ],
+            },
+          },
+          {
+            id: "clue-action-1",
+            type: GRANT_CLUE_ACTION,
+            params: {
+              deliveries: [
+                {
+                  id: "effect-1",
+                  target: { type: "character", character_id: "char-1" },
+                  clue_ids: ["clue-1"],
+                },
+              ],
+            },
+          },
+          {
+            id: "clue-action-2",
+            type: GRANT_CLUE_ACTION,
+            params: {
+              deliveries: [
+                {
+                  id: "effect-2",
+                  target: { type: "character", character_id: "char-2" },
+                  clue_ids: ["clue-2"],
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual([
+      {
+        id: "effect-1",
+        recipientType: "character",
+        characterId: "char-1",
+        storyInfoIds: ["info-1"],
+        clueIds: ["clue-1"],
+      },
+      {
+        id: "effect-2",
+        recipientType: "character",
+        characterId: "char-2",
+        storyInfoIds: ["info-2"],
+        clueIds: ["clue-2"],
+      },
+    ]);
+  });
+
   it("정보와 단서를 각각 런타임 action으로 저장하고 빈 effect는 제거한다", () => {
     expect(
       sceneEntryEffectsToFlowNodePatch(

@@ -37,11 +37,15 @@ export { DELIVER_INFORMATION_ACTION, GRANT_CLUE_ACTION };
 
 export function flowNodeToSceneEntryEffects(data: FlowNodeData): SceneEntryEffectViewModel[] {
   const merged = new Map<string, SceneEntryEffectViewModel>();
-  for (const delivery of readDeliveries(findAction(data.onEnter ?? [], isInformationDeliveryAction)?.params)) {
-    mergeEffect(merged, normalizeStoredDelivery(delivery, "story"));
+  for (const action of (data.onEnter ?? []).filter(isInformationDeliveryAction)) {
+    for (const delivery of readDeliveries(action.params)) {
+      mergeEffect(merged, normalizeStoredDelivery(delivery, "story"));
+    }
   }
-  for (const delivery of readDeliveries(findAction(data.onEnter ?? [], isClueGrantAction)?.params)) {
-    mergeEffect(merged, normalizeStoredDelivery(delivery, "clue"));
+  for (const action of (data.onEnter ?? []).filter(isClueGrantAction)) {
+    for (const delivery of readDeliveries(action.params)) {
+      mergeEffect(merged, normalizeStoredDelivery(delivery, "clue"));
+    }
   }
   return Array.from(merged.values()).map(normalizeViewModel).filter(hasAnyEffect);
 }
