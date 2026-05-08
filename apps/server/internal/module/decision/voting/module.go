@@ -16,15 +16,16 @@ import (
 
 // VotingModule handles voting mechanics during game phases.
 type VotingModule struct {
-	mu           sync.RWMutex
-	deps         engine.ModuleDeps
-	config       VotingConfig
-	votes        map[uuid.UUID]string // playerID → targetCode
-	isOpen       bool
-	currentRound int
-	totalPlayers int
-	alivePlayers int
-	lastResult   *VoteResult // populated after each closeVoting
+	mu              sync.RWMutex
+	deps            engine.ModuleDeps
+	config          VotingConfig
+	votes           map[uuid.UUID]string // playerID → targetCode
+	isOpen          bool
+	currentRound    int
+	totalPlayers    int
+	alivePlayers    int
+	lastResult      *VoteResult // populated after each closeVoting
+	subscriptionIDs []int
 }
 
 // NewVotingModule creates a new VotingModule instance.
@@ -84,6 +85,10 @@ func (m *VotingModule) Init(_ context.Context, deps engine.ModuleDeps, config js
 		}
 	}
 
+	if deps.EventBus != nil {
+		m.subscriptionIDs = append(m.subscriptionIDs,
+			deps.EventBus.Subscribe("player.status_changed", m.onPlayerStatusChanged))
+	}
 	m.currentRound = 0
 	return nil
 }
@@ -96,6 +101,12 @@ func (m *VotingModule) Cleanup(_ context.Context) error {
 	m.votes = nil
 	m.isOpen = false
 	m.lastResult = nil
+	for _, subID := range m.subscriptionIDs {
+		if m.deps.EventBus != nil {
+			m.deps.EventBus.Unsubscribe(subID)
+		}
+	}
+	m.subscriptionIDs = nil
 	return nil
 }
 
