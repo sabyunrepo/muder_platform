@@ -145,7 +145,7 @@ describe('FlowCanvas', () => {
     expect(onSelectedNodeChange).toHaveBeenCalledWith(selectedNode, { outgoingEdges: [] });
   });
 
-  it('노드와 연결 수를 작은 게임 진행 요약으로 표시한다', () => {
+  it('중복 게임 진행 요약 배지를 렌더링하지 않는다', () => {
     useFlowDataMock.mockReturnValue({
       nodes: [
         {
@@ -171,11 +171,11 @@ describe('FlowCanvas', () => {
     });
 
     render(<FlowCanvas themeId="theme-1" />);
-    expect(screen.getByLabelText('게임 진행 요약')).toBeDefined();
-    expect(screen.getByText('진행 단계 1')).toBeDefined();
-    expect(screen.getByText('연결 1')).toBeDefined();
-    expect(screen.getByText('조건 0')).toBeDefined();
-    expect(screen.getByText('엔딩 1')).toBeDefined();
+    expect(screen.queryByLabelText('게임 진행 요약')).toBeNull();
+    expect(screen.queryByText('진행 단계 1')).toBeNull();
+    expect(screen.queryByText('연결 1')).toBeNull();
+    expect(screen.queryByText('조건 0')).toBeNull();
+    expect(screen.queryByText('엔딩 1')).toBeNull();
     expect(screen.queryByText('스토리 장면 구성')).toBeNull();
   });
 
@@ -184,6 +184,15 @@ describe('FlowCanvas', () => {
     const workspace = screen.getByTestId('flow-workspace');
     expect(workspace.className).toContain('flex-col');
     expect(workspace.className).toContain('lg:flex-row');
+  });
+
+  it('우측 설정 패널을 데스크톱에서 넓게 잡고 하단 여백을 둔다', () => {
+    render(<FlowCanvas themeId="theme-1" />);
+    const sidePanel = screen.getByTestId('flow-side-panel');
+    expect(sidePanel.className).toContain('lg:w-[36rem]');
+    expect(sidePanel.className).toContain('xl:w-[40rem]');
+    expect(sidePanel.className).toContain('scroll-pb-10');
+    expect(sidePanel.className).toContain('pb-10');
   });
 
   it('캔버스 밖으로 튀어나온 노드가 상단 미리보기 패널 클릭을 가로막지 않게 자른다', () => {

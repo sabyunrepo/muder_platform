@@ -75,6 +75,18 @@ describe("PhaseNodePanel extended fields", () => {
     expect(screen.getByRole("switch")).toBeDefined();
   });
 
+  it("반복 정보인 장면 요약 카드를 렌더링하지 않는다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode()}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("장면 요약")).toBeNull();
+  });
+
   it("자동진행 토글 클릭 시 onUpdate가 호출된다", () => {
     const onUpdate = vi.fn();
     renderWithQC(

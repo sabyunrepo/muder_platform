@@ -64,13 +64,14 @@ describe("StoryMapWorkspace", () => {
   it("게임 진행 플로우 중심 제작 화면과 플로우 캔버스를 함께 렌더링한다", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
-    expect(screen.getByLabelText("게임 진행 플로우").className).toContain("lg:overflow-hidden");
+    expect(screen.getByLabelText("게임 진행 플로우").className).toContain("min-h-0");
+    expect(screen.getByLabelText("게임 진행 플로우").className).toContain("overflow-hidden");
     expect(screen.getByRole("heading", { name: "게임 진행 플로우" })).toBeDefined();
     expect(screen.getByText("Game Flow")).toBeDefined();
-    expect(screen.getByText("진행 단계")).toBeDefined();
-    expect(screen.getByText("라운드")).toBeDefined();
-    expect(screen.getByText("투표")).toBeDefined();
-    expect(screen.getByText("엔딩")).toBeDefined();
+    expect(screen.queryByText("진행 단계")).toBeNull();
+    expect(screen.queryByText("라운드")).toBeNull();
+    expect(screen.queryByText("투표")).toBeNull();
+    expect(screen.queryByText("엔딩")).toBeNull();
     expect(screen.getByTestId("flow-canvas").textContent).toContain("theme-1");
   });
 

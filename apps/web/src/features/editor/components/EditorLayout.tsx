@@ -152,7 +152,7 @@ export function EditorLayout({
         role="tabpanel"
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
-        className={activeTab === "storyMap" ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto"}
+        className={activeTab === "storyMap" ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto"}
       >
         <Suspense
           fallback={
