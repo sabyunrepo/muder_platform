@@ -447,6 +447,62 @@ func TestHiddenMissionModule_BuildState(t *testing.T) {
 	}
 }
 
+func TestHiddenMissionModule_BuildStateForFiltersMissionsByRevealTiming(t *testing.T) {
+	pid := uuid.New()
+	cfg := map[string]any{
+		"playerMissions": map[string]any{
+			pid.String(): []map[string]any{
+				{"id": "game", "type": "custom", "description": "게임 시작", "points": 1, "visibleFrom": "game_start"},
+				{"id": "round3", "type": "custom", "description": "3라운드", "points": 1, "visibleFrom": "round_start", "revealRound": 3},
+				{"id": "node", "type": "custom", "description": "투표", "points": 1, "visibleFrom": "node_reached", "revealNodeId": "voting_started"},
+			},
+		},
+	}
+	data, _ := json.Marshal(cfg)
+	m := initHiddenMissionModule(t, string(data))
+
+	m.onPhaseEntered(engine.Event{Type: "phase:entered", Payload: &engine.PhaseInfo{ID: "intro", Name: "자기소개", Index: 0, Round: 1}})
+	state := buildHiddenMissionStateFor(t, m, pid)
+	assertMissionIDs(t, state.PlayerMissions[pid], []string{"game"})
+
+	m.onPhaseEntered(engine.Event{Type: "phase:entered", Payload: &engine.PhaseInfo{ID: "investigation", Name: "조사", Index: 1, Round: 2}})
+	state = buildHiddenMissionStateFor(t, m, pid)
+	assertMissionIDs(t, state.PlayerMissions[pid], []string{"game"})
+
+	m.onPhaseEntered(engine.Event{Type: "phase:entered", Payload: &engine.PhaseInfo{ID: "round_three", Name: "3라운드", Index: 2, Round: 3}})
+	state = buildHiddenMissionStateFor(t, m, pid)
+	assertMissionIDs(t, state.PlayerMissions[pid], []string{"game", "round3"})
+
+	m.onPhaseEntered(engine.Event{Type: "phase:entered", Payload: &engine.PhaseInfo{ID: "voting_started", Name: "투표", Index: 3, Round: 4}})
+	state = buildHiddenMissionStateFor(t, m, pid)
+	assertMissionIDs(t, state.PlayerMissions[pid], []string{"game", "round3", "node"})
+}
+
+func buildHiddenMissionStateFor(t *testing.T, m *HiddenMissionModule, pid uuid.UUID) hiddenMissionState {
+	t.Helper()
+	raw, err := m.BuildStateFor(pid)
+	if err != nil {
+		t.Fatalf("BuildStateFor: %v", err)
+	}
+	var state hiddenMissionState
+	if err := json.Unmarshal(raw, &state); err != nil {
+		t.Fatalf("unmarshal state: %v", err)
+	}
+	return state
+}
+
+func assertMissionIDs(t *testing.T, missions []Mission, want []string) {
+	t.Helper()
+	if len(missions) != len(want) {
+		t.Fatalf("missions len = %d, want %d: %+v", len(missions), len(want), missions)
+	}
+	for i, mission := range missions {
+		if mission.ID != want[i] {
+			t.Fatalf("mission[%d] = %q, want %q; all=%+v", i, mission.ID, want[i], missions)
+		}
+	}
+}
+
 func TestHiddenMissionModule_Schema(t *testing.T) {
 	m := NewHiddenMissionModule()
 	schema := m.Schema()

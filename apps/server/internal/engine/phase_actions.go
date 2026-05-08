@@ -19,6 +19,7 @@ func (e *PhaseEngine) enterCurrentPhase(ctx context.Context) error {
 	if err := e.dispatchDiscussionRoomPolicy(ctx, phase.DiscussionRoomPolicy); err != nil {
 		return err
 	}
+	e.recordPhaseVisit(phase.ID)
 	e.eventBus.Publish(Event{
 		Type:    "phase:entered",
 		Payload: e.CurrentPhase(),

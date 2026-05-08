@@ -21,6 +21,9 @@ type Mission struct {
 	TargetCharacterID string `json:"targetCharacterId,omitempty"`
 	TargetEndingID    string `json:"targetEndingId,omitempty"`
 	Condition         string `json:"condition,omitempty"`
+	VisibleFrom       string `json:"visibleFrom,omitempty"`
+	RevealRound       int32  `json:"revealRound,omitempty"`
+	RevealNodeID      string `json:"revealNodeId,omitempty"`
 	Completed         bool   `json:"completed"`
 }
 

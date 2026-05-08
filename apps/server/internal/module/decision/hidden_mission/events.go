@@ -1,6 +1,8 @@
 package hidden_mission
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
@@ -93,4 +95,41 @@ func (m *HiddenMissionModule) onClueTransferred(event engine.Event) {
 			m.completeMission(pid, mission.ID, "clue.transferred")
 		}
 	}
+}
+
+func (m *HiddenMissionModule) onPhaseEntered(event engine.Event) {
+	info, ok := event.Payload.(*engine.PhaseInfo)
+	if !ok || info == nil {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.gameStarted = true
+	m.currentRound = info.Round
+	if m.currentRound == 0 {
+		m.currentRound = int32(info.Index + 1)
+	}
+	m.currentNodeID = info.ID
+	if m.visitedNodes == nil {
+		m.visitedNodes = make(map[string]bool)
+	}
+	if info.ID != "" {
+		m.visitedNodes[info.ID] = true
+	}
+	if isIntroPhaseInfo(info) {
+		m.introStarted = true
+	} else if m.introStarted {
+		m.introFinished = true
+	}
+}
+
+func isIntroPhaseInfo(info *engine.PhaseInfo) bool {
+	id := strings.ToLower(info.ID)
+	name := strings.ToLower(info.Name)
+	return strings.Contains(id, "intro") ||
+		strings.Contains(id, "introduction") ||
+		strings.Contains(name, "intro") ||
+		strings.Contains(name, "introduction") ||
+		strings.Contains(name, "자기소개")
 }

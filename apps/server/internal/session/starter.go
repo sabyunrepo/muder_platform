@@ -198,6 +198,7 @@ func startModularGame(
 
 type staticPlayerInfoProvider struct {
 	players       map[uuid.UUID]engine.PlayerRuntimeInfo
+	displayBases  map[uuid.UUID]engine.CharacterDisplayBase
 	targetCodeIDs map[string]uuid.UUID
 }
 
@@ -206,6 +207,7 @@ func newStaticPlayerInfoProvider(players []PlayerState) engine.PlayerInfoProvide
 		return nil
 	}
 	infos := make(map[uuid.UUID]engine.PlayerRuntimeInfo, len(players))
+	displayBases := make(map[uuid.UUID]engine.CharacterDisplayBase, len(players))
 	targetCodeIDs := make(map[string]uuid.UUID, len(players))
 	for _, player := range players {
 		isAlive := true
@@ -223,6 +225,7 @@ func newStaticPlayerInfoProvider(players []PlayerState) engine.PlayerInfoProvide
 			ConnectedAt: player.ConnectedAt,
 		}
 		if player.DisplayBase.Name != "" {
+			displayBases[player.PlayerID] = player.DisplayBase
 			display := engine.ResolveCharacterDisplay(player.DisplayBase, player.DisplayContext)
 			info := infos[player.PlayerID]
 			info.DisplayName = display.Name
@@ -234,7 +237,7 @@ func newStaticPlayerInfoProvider(players []PlayerState) engine.PlayerInfoProvide
 			targetCodeIDs[player.TargetCode] = player.PlayerID
 		}
 	}
-	return staticPlayerInfoProvider{players: infos, targetCodeIDs: targetCodeIDs}
+	return staticPlayerInfoProvider{players: infos, displayBases: displayBases, targetCodeIDs: targetCodeIDs}
 }
 
 func (p staticPlayerInfoProvider) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
@@ -254,8 +257,23 @@ func (p staticPlayerInfoProvider) PlayerRuntimeInfo(_ context.Context, playerID 
 }
 
 func (p staticPlayerInfoProvider) PlayerRuntimeRoster(_ context.Context) []engine.PlayerRuntimeInfo {
+	return p.PlayerRuntimeRosterWithContext(context.Background(), nil)
+}
+
+func (p staticPlayerInfoProvider) PlayerRuntimeRosterWithContext(_ context.Context, displayContext json.RawMessage) []engine.PlayerRuntimeInfo {
 	players := make([]engine.PlayerRuntimeInfo, 0, len(p.players))
 	for _, player := range p.players {
+		if len(displayContext) > 0 && string(displayContext) != "null" {
+			base, ok := p.displayBases[player.PlayerID]
+			if !ok || base.Name == "" {
+				players = append(players, player)
+				continue
+			}
+			display := engine.ResolveCharacterDisplay(base, displayContext)
+			player.DisplayName = display.Name
+			player.DisplayIconURL = display.ImageURL
+			player.DisplayIconMediaID = display.ImageMediaID
+		}
 		players = append(players, player)
 	}
 	return players
