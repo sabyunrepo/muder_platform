@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import type { Node } from "@xyflow/react";
 import type {
@@ -192,6 +192,15 @@ function EndingConditionModal({
   const [choice, setChoice] = useState(parsed?.choice ?? selectedQuestion?.choices[0] ?? "");
   const [aggregation, setAggregation] = useState<"threshold" | "winning">(parsed?.aggregation ?? "threshold");
   const [endingId, setEndingId] = useState(initialRow?.ending ?? draft.defaultEnding ?? endingNodes[0]?.id ?? "");
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape" || event.key === "Esc") onClose();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   const preview = useMemo(() => {
     const questionText = selectedQuestion?.text.trim() || "질문";
