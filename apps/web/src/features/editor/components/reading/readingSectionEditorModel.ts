@@ -26,7 +26,7 @@ export const blockActions: Array<{
   { type: 'dialogue', label: '대사', icon: Mic },
   { type: 'image', label: '이미지', icon: ImageIcon },
   { type: 'video', label: '영상', icon: Video },
-  { type: 'bgm', label: '효과음', icon: Music },
+  { type: 'sfx', label: '효과음', icon: Music },
 ];
 
 export function toDraft(section: ReadingSectionResponse): ReadingSectionDraft {
@@ -98,7 +98,7 @@ export function createBlock(type: ReadingBlockType, index: number): ReadingLineD
       AdvanceBy: 'gm',
     };
   }
-  if (type === 'bgm') {
+  if (type === 'sfx' || type === 'bgm') {
     return { Index: index, Type: type, MediaID: '', BGMMode: 'once' };
   }
   return {

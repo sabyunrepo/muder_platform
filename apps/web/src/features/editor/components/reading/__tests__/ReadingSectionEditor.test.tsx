@@ -433,7 +433,7 @@ describe('ReadingSectionEditor', () => {
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { Index: 0, Type: 'dialogue', Speaker: '나레이션' },
       { Index: 1, Type: 'image', MediaID: 'image-1' },
-      { Index: 2, Type: 'bgm', MediaID: 'sfx-1', BGMMode: 'once' },
+      { Index: 2, Type: 'sfx', MediaID: 'sfx-1', BGMMode: 'once' },
     ]);
   });
 
@@ -694,7 +694,7 @@ describe('ReadingSectionEditor', () => {
       section: {
         ...sampleSection,
         lines: [
-          { Index: 0, Type: 'bgm', MediaID: 'sfx-1', BGMMode: 'once' },
+          { Index: 0, Type: 'sfx', MediaID: 'sfx-1', BGMMode: 'once' },
           {
             Index: 1,
             Type: 'dialogue',

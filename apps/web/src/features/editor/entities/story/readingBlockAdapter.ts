@@ -105,9 +105,9 @@ function parseEffectSoundDirective(
   media: ReadingParserMedia[],
   issues: ReadingParseIssue[]
 ): ReadingLineDTO {
-  const found = findMedia(body, 'SFX', media) ?? findMedia(body, 'BGM', media);
+  const found = findMedia(body, 'SFX', media);
   if (!found) issues.push({ lineNumber, kind: 'unknown-media', value: body });
-  return { Index: index, Type: 'bgm', Text: '', MediaID: found?.id ?? '', BGMMode: 'once' };
+  return { Index: index, Type: 'sfx', Text: '', MediaID: found?.id ?? '', BGMMode: 'once' };
 }
 
 function parseDialogueDirective(

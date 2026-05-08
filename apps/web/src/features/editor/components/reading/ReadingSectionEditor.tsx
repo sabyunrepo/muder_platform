@@ -309,6 +309,7 @@ export function ReadingSectionEditor({
               key={mode}
               type="button"
               onClick={() => handleBgmModeChange(mode)}
+              aria-pressed={draft.bgmMode === mode}
               className={`rounded px-3 py-1.5 text-xs ${
                 draft.bgmMode === mode
                   ? 'bg-amber-500 text-slate-950'

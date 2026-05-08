@@ -158,7 +158,7 @@ func normalizeReadingBlockType(raw string) string {
 	switch raw {
 	case "", ReadingBlockDialogue:
 		return ReadingBlockDialogue
-	case ReadingBlockImage, ReadingBlockVideo, ReadingBlockBGM, ReadingBlockGMNote:
+	case ReadingBlockImage, ReadingBlockVideo, ReadingBlockSFX, ReadingBlockBGM, ReadingBlockGMNote:
 		return raw
 	default:
 		return ""
@@ -183,7 +183,7 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 			return err
 		}
 		return validateBlockAdvanceBy(ln.AdvanceBy, lineIndex)
-	case ReadingBlockBGM:
+	case ReadingBlockSFX, ReadingBlockBGM:
 		mode := ln.BGMMode
 		if mode == "" {
 			mode = ReadingBGMModeOnce
@@ -202,6 +202,9 @@ func (s *readingService) validateStructuredReadingBlock(ctx context.Context, the
 		}
 		if ln.MediaID == "" {
 			return apperror.New(apperror.ErrMediaNotInTheme, 400, "line "+itoa(lineIndex)+": mediaId is required")
+		}
+		if blockType == ReadingBlockSFX {
+			return s.assertLineMediaInTheme(ctx, themeID, ln.MediaID, MediaTypeSFX, "mediaId", lineIndex)
 		}
 		return s.assertEffectSoundMediaInTheme(ctx, themeID, ln.MediaID, lineIndex)
 	case ReadingBlockGMNote:

@@ -64,7 +64,7 @@ describe('parseReadingScriptToBlocks', () => {
         WaitUntilEnd: true,
         AdvanceBy: 'gm',
       },
-      { Index: 4, Type: 'bgm', MediaID: 'sfx-1', BGMMode: 'once' },
+      { Index: 4, Type: 'sfx', MediaID: 'sfx-1', BGMMode: 'once' },
       { Index: 5, Type: 'dialogue', Speaker: '나레이션', Text: '진행자만 보는 메모' },
     ]);
   });
@@ -81,7 +81,7 @@ describe('parseReadingScriptToBlocks', () => {
       AdvanceBy: 'gm',
     });
     expect(result.blocks[1]).toMatchObject({ Type: 'image', MediaID: '' });
-    expect(result.blocks[2]).toMatchObject({ Type: 'bgm', MediaID: '', BGMMode: 'once' });
+    expect(result.blocks[2]).toMatchObject({ Type: 'sfx', MediaID: '', BGMMode: 'once' });
     expect(result.issues).toEqual([
       { lineNumber: 1, kind: 'unknown-speaker', value: '모르는사람' },
       { lineNumber: 2, kind: 'unknown-media', value: '없는 사진' },
@@ -107,7 +107,7 @@ describe('parseReadingScriptToBlocks', () => {
     expect(result.blocks).toMatchObject([
       { Type: 'image', MediaID: 'image-leftover', Position: 'center', Size: 'medium' },
       { Type: 'video', MediaID: 'video-fullscreen' },
-      { Type: 'bgm', MediaID: 'sfx-stopper', BGMMode: 'once' },
+      { Type: 'sfx', MediaID: 'sfx-stopper', BGMMode: 'once' },
     ]);
   });
 });

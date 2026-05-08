@@ -44,7 +44,7 @@ export interface ReadingLineDTO {
   BGMMode?: ReadingBgmMode;
 }
 
-export type ReadingBlockType = 'dialogue' | 'image' | 'video' | 'bgm' | 'gmNote';
+export type ReadingBlockType = 'dialogue' | 'image' | 'video' | 'sfx' | 'bgm' | 'gmNote';
 export type ReadingBgmMode = 'loop' | 'once' | 'stop';
 
 export interface CreateReadingSectionRequest {

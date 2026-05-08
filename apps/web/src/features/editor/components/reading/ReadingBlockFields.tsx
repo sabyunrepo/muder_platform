@@ -31,7 +31,7 @@ export function ReadingBlockFields({
     return <VideoBlockFields {...fieldProps} />;
   }
 
-  if (type === 'bgm') {
+  if (type === 'sfx' || type === 'bgm') {
     return <BgmBlockFields {...fieldProps} />;
   }
 

@@ -99,7 +99,7 @@ export function ReadingSectionPreviewModal({
       !open ||
       !currentLine ||
       autoAppliedRef.current ||
-      getReadingPreviewBlockType(currentLine) !== 'bgm'
+      !isEffectSoundBlock(currentLine)
     ) {
       return;
     }
@@ -223,7 +223,7 @@ function PreviewBlock({
         mediaById={mediaById}
       />
     );
-  if (type === 'bgm') return <EffectSoundBlock line={line} mediaById={mediaById} />;
+  if (type === 'sfx' || type === 'bgm') return <EffectSoundBlock line={line} mediaById={mediaById} />;
   if (type === 'gmNote') return null;
   return (
     <DialogueBlock
@@ -233,6 +233,11 @@ function PreviewBlock({
       mediaById={mediaById}
     />
   );
+}
+
+function isEffectSoundBlock(line: ReadingLineDTO): boolean {
+  const type = getReadingPreviewBlockType(line);
+  return type === 'sfx' || type === 'bgm';
 }
 
 function DialogueBlock({

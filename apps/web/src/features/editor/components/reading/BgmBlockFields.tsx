@@ -18,7 +18,7 @@ export function BgmBlockFields({ line, mediaById, themeId, onPatch }: BlockField
         icon={Music}
         selectedClassName="text-emerald-300"
         onSelect={(media) => onPatch({ MediaID: media.id, BGMMode: 'once' })}
-        onClear={() => onPatch({ MediaID: '' })}
+        onClear={() => onPatch({ MediaID: '', BGMMode: 'once' })}
       />
     </div>
   );

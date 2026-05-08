@@ -47,6 +47,11 @@ const blockMeta: Record<ReadingBlockType, { label: string; icon: LucideIcon; cla
       icon: Video,
       className: 'border-violet-500/30 bg-violet-500/5 text-violet-200',
     },
+    sfx: {
+      label: '효과음',
+      icon: Music,
+      className: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200',
+    },
     bgm: {
       label: '효과음',
       icon: Music,

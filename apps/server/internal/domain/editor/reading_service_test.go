@@ -308,7 +308,7 @@ func TestReadingService_Create_BlockMediaReferences(t *testing.T) {
 		Lines: []ReadingLineDTO{
 			{Type: ReadingBlockImage, MediaID: f.imageID.String(), AdvanceBy: AdvanceByGM, Position: "center", Size: "large"},
 			{Type: ReadingBlockVideo, MediaID: f.videoID.String(), AdvanceBy: AdvanceByGM, Autoplay: true, WaitUntilEnd: true},
-			{Type: ReadingBlockBGM, MediaID: f.sfxID.String(), BGMMode: ReadingBGMModeOnce},
+			{Type: ReadingBlockSFX, MediaID: f.sfxID.String(), BGMMode: ReadingBGMModeOnce},
 			{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeStop},
 			{Type: ReadingBlockGMNote, Text: "GM only"},
 		},
@@ -377,6 +377,17 @@ func TestReadingService_Create_BGMBlockRequiresMediaUnlessStop(t *testing.T) {
 		Name: "Missing bgm media",
 		Lines: []ReadingLineDTO{
 			{Type: ReadingBlockBGM, BGMMode: ReadingBGMModeLoop},
+		},
+	})
+	assertAppCode(t, err, apperror.ErrMediaNotInTheme)
+}
+
+func TestReadingService_Create_SFXBlockRejectsBGMReference(t *testing.T) {
+	f := newReadingFixture(t)
+	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name: "Wrong sfx media",
+		Lines: []ReadingLineDTO{
+			{Type: ReadingBlockSFX, MediaID: f.bgmID.String(), BGMMode: ReadingBGMModeOnce},
 		},
 	})
 	assertAppCode(t, err, apperror.ErrMediaNotInTheme)

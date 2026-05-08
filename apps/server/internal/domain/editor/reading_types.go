@@ -25,6 +25,7 @@ const (
 	ReadingBlockDialogue = "dialogue"
 	ReadingBlockImage    = "image"
 	ReadingBlockVideo    = "video"
+	ReadingBlockSFX      = "sfx"
 	ReadingBlockBGM      = "bgm"
 	ReadingBlockGMNote   = "gmNote"
 )
