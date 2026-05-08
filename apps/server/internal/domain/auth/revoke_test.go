@@ -13,11 +13,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib" // pgx stdlib driver for goose
 	"github.com/pressly/goose/v3"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/mmp-platform/server/internal/db"
+	"github.com/mmp-platform/server/internal/testutil/postgrestest"
 )
 
 // ---------------------------------------------------------------------------
@@ -73,26 +71,7 @@ func setupRevokeRepo(t *testing.T) (RevokeRepo, *pgxpool.Pool) {
 	t.Helper()
 	ctx := context.Background()
 
-	pgC, err := postgres.Run(ctx,
-		"public.ecr.aws/docker/library/postgres:16-alpine",
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2),
-		),
-	)
-	if err != nil {
-		t.Fatalf("failed to start postgres container: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := pgC.Terminate(ctx); err != nil {
-			t.Logf("failed to terminate postgres container: %v", err)
-		}
-	})
-
-	connStr, err := pgC.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("connection string: %v", err)
-	}
+	connStr := postgrestest.Start(ctx, t)
 
 	sqlDB, err := sql.Open("pgx", connStr)
 	if err != nil {
