@@ -181,4 +181,55 @@ describe("sceneEntryEffectAdapter", () => {
       ],
     });
   });
+
+  it("장면 진입 효과 저장 시 기존 읽기 대사 delivery 연결을 보존한다", () => {
+    expect(
+      sceneEntryEffectsToFlowNodePatch(
+        {
+          onEnter: [
+            {
+              id: "info-action",
+              type: DELIVER_INFORMATION_ACTION,
+              params: {
+                deliveries: [
+                  {
+                    id: "effect-1",
+                    target: { type: "character", character_id: "char-1" },
+                    reading_section_ids: ["reading-1", "reading-1"],
+                    story_info_ids: ["old-info"],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        [
+          {
+            id: "effect-1",
+            recipientType: "character",
+            characterId: "char-1",
+            storyInfoIds: ["new-info"],
+            clueIds: [],
+          },
+        ],
+      ),
+    ).toEqual({
+      onEnter: [
+        {
+          id: "info-action",
+          type: DELIVER_INFORMATION_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "effect-1",
+                target: { type: "character", character_id: "char-1" },
+                reading_section_ids: ["reading-1"],
+                story_info_ids: ["new-info"],
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
 });

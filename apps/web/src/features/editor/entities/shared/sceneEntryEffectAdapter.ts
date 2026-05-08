@@ -23,6 +23,7 @@ interface StoredEffectDelivery {
   };
   recipient_type?: unknown;
   character_id?: unknown;
+  reading_section_ids?: unknown;
   story_info_ids?: unknown;
   storyInfoIds?: unknown;
   clue_ids?: unknown;
@@ -69,7 +70,7 @@ export function sceneEntryEffectsToFlowNodePatch(
         deliveries: infoDeliveries.map((effect) => ({
           id: effect.id,
           target: toStoredTarget(effect),
-          reading_section_ids: [],
+          reading_section_ids: findExistingReadingSectionIds(data.onEnter ?? [], effect),
           story_info_ids: effect.storyInfoIds,
         })),
       },
@@ -120,6 +121,44 @@ function readDeliveries(params: PhaseAction["params"]): StoredEffectDelivery[] {
   if (!params || typeof params !== "object") return [];
   const maybeDeliveries = (params as DeliveryParams).deliveries;
   return Array.isArray(maybeDeliveries) ? (maybeDeliveries as StoredEffectDelivery[]) : [];
+}
+
+function findExistingReadingSectionIds(
+  actions: PhaseAction[],
+  effect: SceneEntryEffectViewModel,
+): string[] {
+  const matchingDeliveries = actions
+    .filter(isInformationDeliveryAction)
+    .flatMap((action) => readDeliveries(action.params))
+    .filter((delivery) => isSameStoredDelivery(delivery, effect));
+
+  return uniqueStrings(
+    matchingDeliveries.flatMap((delivery) =>
+      Array.isArray(delivery.reading_section_ids)
+        ? delivery.reading_section_ids.filter((id): id is string => typeof id === "string" && id.length > 0)
+        : [],
+    ),
+  );
+}
+
+function isSameStoredDelivery(
+  delivery: StoredEffectDelivery,
+  effect: SceneEntryEffectViewModel,
+): boolean {
+  if (delivery.id === effect.id) return true;
+  const deliveryType =
+    delivery.target?.type === "all_players" || delivery.recipient_type === "all_players"
+      ? "all_players"
+      : "character";
+  if (deliveryType !== effect.recipientType) return false;
+  if (effect.recipientType === "all_players") return true;
+  const deliveryCharacterId =
+    typeof delivery.target?.character_id === "string"
+      ? delivery.target.character_id
+      : typeof delivery.character_id === "string"
+        ? delivery.character_id
+        : undefined;
+  return Boolean(effect.characterId) && deliveryCharacterId === effect.characterId;
 }
 
 function normalizeStoredDelivery(
