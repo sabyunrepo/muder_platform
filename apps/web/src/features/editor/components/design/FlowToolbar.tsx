@@ -48,8 +48,7 @@ const NODE_OPTIONS: NodeOption[] = [
     description: "범인 지목 단계",
     data: { label: "투표", phase_type: "voting" },
   },
-  { id: "ending", type: "ending", label: "엔딩", description: "게임 종료" },
-  { id: "condition-branch", type: "branch", label: "조건 분기", description: "진행 조건" },
+  { id: "ending", type: "ending", label: "결말 연결", description: "결말 관리 항목으로 진행" },
 ];
 
 // ---------------------------------------------------------------------------

@@ -348,8 +348,8 @@ describe('FlowToolbar', () => {
     expect(screen.getByText('게임 라운드')).toBeDefined();
     expect(screen.getByText('장면')).toBeDefined();
     expect(screen.getByText('투표')).toBeDefined();
-    expect(screen.getByText('엔딩')).toBeDefined();
-    expect(screen.getByText('조건 분기')).toBeDefined();
+    expect(screen.getByText('결말 연결')).toBeDefined();
+    expect(screen.queryByText('조건 분기')).toBeNull();
   });
 
   it('드롭다운에서 게임 라운드 선택 시 phase 기본값과 함께 onAddNode가 호출된다', () => {
