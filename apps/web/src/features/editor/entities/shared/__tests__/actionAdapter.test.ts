@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   DELIVER_INFORMATION_ACTION,
+  GRANT_CLUE_ACTION,
   getCreatorActionLabel,
   getVisibleCreatorActionOptions,
+  isClueGrantAction,
   isInformationDeliveryAction,
   toCreatorActionLabels,
 } from "../actionAdapter";
@@ -19,6 +21,12 @@ describe("actionAdapter", () => {
     expect(isInformationDeliveryAction({ type: "SET_BGM" })).toBe(false);
   });
 
+  it("단서 지급 action의 legacy/current 타입을 동일하게 판정한다", () => {
+    expect(isClueGrantAction({ type: GRANT_CLUE_ACTION })).toBe(true);
+    expect(isClueGrantAction({ type: "grant_clue" })).toBe(true);
+    expect(isClueGrantAction({ type: "SET_BGM" })).toBe(false);
+  });
+
   it("hidden type을 제외한 선택 옵션을 반환한다", () => {
     expect(getVisibleCreatorActionOptions(["SET_BGM"]).map((option) => option.value)).not.toContain(
       "SET_BGM",
@@ -29,6 +37,7 @@ describe("actionAdapter", () => {
       "UNMUTE_CHAT",
       "MUTE_CHAT",
       "DELIVER_INFORMATION",
+      "GRANT_CLUE",
       "BROADCAST_MESSAGE",
       "SET_BGM",
       "PLAY_SOUND",

@@ -158,6 +158,7 @@ var legacyPhaseActionAliases = map[string]PhaseAction{
 	"stop_bgm":            ActionStopAudio,
 	"stop_audio":          ActionStopAudio,
 	"broadcast":           ActionBroadcastMessage,
+	"grant_clue":          ActionGrantClue,
 }
 
 // NormalizePhaseActionType maps editor/legacy action names to the backend
