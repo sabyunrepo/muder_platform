@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { CharacterAliasRule } from '@/features/editor/api';
-import type { SelectOption } from './condition/ConditionRule';
-import { ConditionBuilder } from './condition/ConditionBuilder';
 import { groupToRecord, type ConditionGroup } from './condition/conditionTypes';
 import { normalizeCharacterAliasRules } from '@/features/editor/entities/character/characterEditorAdapter';
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
@@ -9,9 +7,7 @@ import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
 interface CharacterAliasRulesEditorProps {
   themeId: string;
   characterName: string;
-  characterImageUrl?: string | null;
   rules: CharacterAliasRule[];
-  characterOptions: SelectOption[];
   disabled: boolean;
   onChange: (rules: CharacterAliasRule[]) => void;
   onSave: (rules: CharacterAliasRule[]) => void;
@@ -22,8 +18,6 @@ interface CharacterAliasRuleItemProps {
   rule: CharacterAliasRule;
   index: number;
   characterName: string;
-  characterImageUrl?: string | null;
-  characterOptions: SelectOption[];
   disabled: boolean;
   onUpdate: (index: number, patch: Partial<CharacterAliasRule>) => void;
   onRemove: (index: number) => void;
@@ -32,9 +26,7 @@ interface CharacterAliasRuleItemProps {
 export function CharacterAliasRulesEditor({
   themeId,
   characterName,
-  characterImageUrl,
   rules,
-  characterOptions,
   disabled,
   onChange,
   onSave,
@@ -58,7 +50,7 @@ export function CharacterAliasRulesEditor({
         display_icon_url: '',
         display_icon_media_id: '',
         priority: nextPriority,
-        condition: groupToRecord(createDefaultAliasCondition()),
+        condition: groupToRecord(createAliasPresetCondition('game_start')),
       },
     ]);
   };
@@ -114,8 +106,6 @@ export function CharacterAliasRulesEditor({
             rule={rule}
             index={index}
             characterName={characterName}
-            characterImageUrl={characterImageUrl}
-            characterOptions={characterOptions}
             disabled={disabled}
             onUpdate={updateRule}
             onRemove={removeRule}
@@ -145,13 +135,13 @@ function CharacterAliasRuleItem({
   rule,
   index,
   characterName,
-  characterImageUrl,
-  characterOptions,
   disabled,
   onUpdate,
   onRemove,
 }: CharacterAliasRuleItemProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const selectedPreset = inferAliasPreset(rule.condition);
+  const presetValue = inferAliasPresetValue(rule.condition);
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_5rem]">
@@ -186,16 +176,11 @@ function CharacterAliasRuleItem({
           />
         </label>
       </div>
-      <label className="mt-2 block text-[11px] text-slate-400">
-        표시 아이콘 URL
-        <input
-          value={rule.display_icon_url ?? ''}
-          placeholder={characterImageUrl ?? 'https://...'}
-          disabled={disabled}
-          onChange={(event) => onUpdate(index, { display_icon_url: event.currentTarget.value })}
-          className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
-        />
-      </label>
+      {rule.display_icon_url && !rule.display_icon_media_id ? (
+        <p className="mt-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-2 py-1.5 text-[11px] leading-4 text-amber-100">
+          이전 URL 아이콘이 저장되어 있습니다. 새 아이콘을 선택하면 미디어 관리 이미지로 교체됩니다.
+        </p>
+      ) : null}
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -221,14 +206,66 @@ function CharacterAliasRuleItem({
           </span>
         ) : null}
       </div>
-      <div className="mt-3">
-        <ConditionBuilder
-          label="표시 조건"
-          condition={rule.condition}
-          onChange={(condition) => onUpdate(index, { condition })}
-          characters={characterOptions}
-        />
-      </div>
+      <label className="mt-3 block text-[11px] text-slate-400">
+        언제부터 보여줄까요?
+        <select
+          value={selectedPreset}
+          disabled={disabled}
+          onChange={(event) => {
+            const preset = event.currentTarget.value as AliasPreset;
+            if (preset === 'custom') return;
+            onUpdate(index, { condition: groupToRecord(createAliasPresetCondition(preset, presetValue)) });
+          }}
+          className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          aria-label="별칭 표시 시점"
+        >
+          {ALIAS_PRESETS.map((preset) => (
+            <option key={preset.value} value={preset.value}>
+              {preset.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {selectedPreset === 'round_start' ? (
+        <label className="mt-2 block text-[11px] text-slate-400">
+          표시 라운드
+          <input
+            type="number"
+            min={1}
+            value={presetValue.round}
+            disabled={disabled}
+            onChange={(event) => {
+              const round = normalizePositiveNumber(event.currentTarget.value);
+              onUpdate(index, { condition: groupToRecord(createAliasPresetCondition('round_start', { ...presetValue, round })) });
+            }}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          />
+        </label>
+      ) : null}
+      {selectedPreset === 'node_reached' ? (
+        <label className="mt-2 block text-[11px] text-slate-400">
+          표시 진행 노드
+          <select
+            value={presetValue.nodeId}
+            disabled={disabled}
+            onChange={(event) => {
+              onUpdate(index, { condition: groupToRecord(createAliasPresetCondition('node_reached', { ...presetValue, nodeId: event.currentTarget.value })) });
+            }}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          >
+            {ALIAS_NODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
+      {selectedPreset === 'custom' ? (
+        <p className="mt-2 rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-[11px] leading-4 text-slate-500">
+          기존 고급 조건이 저장되어 있습니다. 프리셋을 고르면 제작자용 조건으로 바뀝니다.
+        </p>
+      ) : null}
       <div className="mt-3 flex justify-end">
         <button
           type="button"
@@ -267,6 +304,12 @@ function normalizePriorityInput(value: string): number {
   return Math.max(0, priority);
 }
 
+function normalizePositiveNumber(value: string): number {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return n;
+}
+
 function createAliasRuleID(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -275,16 +318,82 @@ function createAliasRuleID(): string {
   return `alias-${Date.now()}-${aliasRuleIdSeq}`;
 }
 
-function createDefaultAliasCondition(): ConditionGroup {
+type AliasPreset =
+  | 'game_start'
+  | 'intro_start'
+  | 'intro_end'
+  | 'round_start'
+  | 'node_reached'
+  | 'custom';
+
+const ALIAS_PRESETS: Array<{ value: AliasPreset; label: string; flagKey?: string }> = [
+  { value: 'game_start', label: '게임 시작 후 표시', flagKey: 'game_started' },
+  { value: 'intro_start', label: '자기소개 시작부터 표시', flagKey: 'intro_started' },
+  { value: 'intro_end', label: '자기소개 이후 표시', flagKey: 'intro_finished' },
+  { value: 'round_start', label: '특정 라운드 시작부터 표시', flagKey: 'round_started' },
+  { value: 'node_reached', label: '특정 진행 노드 도달 후 표시', flagKey: 'story_node_reached' },
+  { value: 'custom', label: '기존 고급 조건 유지' },
+];
+
+const ALIAS_NODE_OPTIONS = [
+  { value: 'intro_finished', label: '자기소개 종료' },
+  { value: 'round_summary', label: '라운드 정리' },
+  { value: 'voting_started', label: '투표 시작' },
+] as const;
+
+interface AliasPresetValue {
+  round: number;
+  nodeId: string;
+}
+
+function createAliasPresetCondition(
+  preset: Exclude<AliasPreset, 'custom'>,
+  value: AliasPresetValue = { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value },
+): ConditionGroup {
+  const option = ALIAS_PRESETS.find((item) => item.value === preset);
   return {
     id: createAliasRuleID(),
     operator: 'AND',
     rules: [{
       id: createAliasRuleID(),
       variable: 'custom_flag',
-      target_flag_key: 'alias_ready',
+      target_flag_key: option?.flagKey ?? 'game_started',
       comparator: '=',
-      value: 'true',
+      value: preset === 'round_start'
+        ? String(value.round)
+        : preset === 'node_reached'
+          ? value.nodeId
+          : 'true',
     }],
   };
+}
+
+function inferAliasPreset(raw: CharacterAliasRule['condition']): AliasPreset {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 'custom';
+  const rules = (raw as { rules?: unknown }).rules;
+  if (!Array.isArray(rules) || rules.length !== 1) return 'custom';
+  const rule = rules[0] as { variable?: unknown; target_flag_key?: unknown; comparator?: unknown; value?: unknown };
+  if (rule.variable !== 'custom_flag' || rule.comparator !== '=') return 'custom';
+  if (rule.target_flag_key === 'round_started') return 'round_start';
+  if (rule.target_flag_key === 'story_node_reached') return 'node_reached';
+  if (rule.value !== 'true') return 'custom';
+  return ALIAS_PRESETS.find((preset) => preset.flagKey === rule.target_flag_key)?.value ?? 'custom';
+}
+
+function inferAliasPresetValue(raw: CharacterAliasRule['condition']): AliasPresetValue {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+  }
+  const rules = (raw as { rules?: unknown }).rules;
+  if (!Array.isArray(rules) || rules.length !== 1) {
+    return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+  }
+  const rule = rules[0] as { target_flag_key?: unknown; value?: unknown };
+  if (rule.target_flag_key === 'round_started' && typeof rule.value === 'string') {
+    return { round: normalizePositiveNumber(rule.value), nodeId: ALIAS_NODE_OPTIONS[0].value };
+  }
+  if (rule.target_flag_key === 'story_node_reached' && typeof rule.value === 'string') {
+    return { round: 1, nodeId: rule.value || ALIAS_NODE_OPTIONS[0].value };
+  }
+  return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
 }

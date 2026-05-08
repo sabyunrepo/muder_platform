@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Accordion } from '@/shared/components/ui';
 import type { CharacterAliasRule, MysteryRole } from '@/features/editor/api';
 import type { Mission } from './MissionEditor';
@@ -84,10 +84,6 @@ export function CharacterDetailPanel({
 }: CharacterDetailPanelProps) {
   const [aliasDrafts, setAliasDrafts] = useState<CharacterAliasRule[]>([]);
   const aliasDraftCharacterIdRef = useRef<string | null>(null);
-  const characterOptions = useMemo(
-    () => characters.map((char) => ({ id: char.id, name: char.name })),
-    [characters]
-  );
 
   useEffect(() => {
     if (aliasDraftCharacterIdRef.current === (selectedChar?.id ?? null)) return;
@@ -152,119 +148,117 @@ export function CharacterDetailPanel({
             defaultOpen: true,
             forceOpen: true,
             children: (
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_14rem]">
-                <div className="space-y-2.5">
-                  <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-4">
+                <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)_minmax(16rem,0.9fr)]">
+                  <div className="min-w-0">
+                    {onProfileImageChange ? (
+                      <ImageMediaReferenceField
+                        themeId={themeId}
+                        label="프로필 이미지"
+                        imageMediaId={selectedChar.image_media_id ?? null}
+                        legacyImageUrl={selectedChar.image_url ?? null}
+                        pickerTitle="프로필 이미지 선택"
+                        emptyLabel="이미지 선택"
+                        compact
+                        onSelect={(media) => onProfileImageChange(media.id)}
+                        onClear={() => onProfileImageChange(null)}
+                      />
+                    ) : (
+                      <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-center">
+                        <span className="px-2 text-[11px] leading-5 text-slate-500">
+                          현재 프로필 이미지를 편집할 수 없습니다.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">이름</p>
                       <p className="mt-1 text-sm text-slate-200">{selectedChar.name}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">공개 소개</p>
-                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
-                        {selectedChar.description || '공개 소개가 없습니다.'}
-                      </p>
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">역할</p>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {characterRoleOptions.map((option) => {
+                          const active = selectedRole === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              disabled={!onMysteryRoleChange}
+                              aria-label={option.label}
+                              aria-pressed={active}
+                              title={option.description}
+                              onClick={() => onMysteryRoleChange?.(option.value)}
+                              className={`min-h-11 rounded-lg border px-3 py-2 text-center transition ${
+                                active
+                                  ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
+                                  : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
+                              } disabled:cursor-default disabled:opacity-80`}
+                            >
+                              <span className="block text-xs font-semibold">{option.label}</span>
+                              <span className="sr-only">{option.description}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">역할</p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-4">
-                      {characterRoleOptions.map((option) => {
-                        const active = selectedRole === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            disabled={!onMysteryRoleChange}
-                            aria-label={option.label}
-                            aria-pressed={active}
-                            title={option.description}
-                            onClick={() => onMysteryRoleChange?.(option.value)}
-                            className={`min-h-11 rounded-lg border px-3 py-2 text-center transition ${
-                              active
-                                ? 'border-amber-500/40 bg-amber-500/10 text-amber-100'
-                                : 'border-slate-800 bg-slate-950 text-slate-400 hover:border-slate-700'
-                            } disabled:cursor-default disabled:opacity-80`}
-                          >
-                            <span className="block text-xs font-semibold">{option.label}</span>
-                            <span className="sr-only">{option.description}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-                      등장인물 유형
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">공개 소개</p>
+                    <p className="mt-2 min-h-24 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs leading-5 text-slate-400">
+                      {selectedChar.description || '공개 소개가 없습니다.'}
                     </p>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                      <VisibilityToggle
-                        label="플레이어 캐릭터"
-                        description="참가자가 선택하고 플레이하는 인물입니다."
-                        checked={selectedView.isPlayable}
-                        disabled={!onVisibilityChange}
-                        onChange={(checked) => onVisibilityChange?.('is_playable', checked)}
-                      />
-                      <VisibilityToggle
-                        label="등장인물 소개에 표시"
-                        description="플레이 중 공개 소개 화면에 노출합니다."
-                        checked={selectedView.showInIntro}
-                        disabled={!onVisibilityChange}
-                        onChange={(checked) => onVisibilityChange?.('show_in_intro', checked)}
-                      />
-                      <VisibilityToggle
-                        label="읽기 대사에 사용"
-                        description="스토리 읽기 화면에서 이 인물의 대사를 사용할 수 있습니다."
-                        checked={selectedView.canSpeakInReading}
-                        disabled={!onVisibilityChange}
-                        onChange={(checked) =>
-                          onVisibilityChange?.('can_speak_in_reading', checked)
-                        }
-                      />
-                      <VisibilityToggle
-                        label="투표 후보에 포함"
-                        description="투표 단계에서 선택 가능한 대상으로 표시합니다."
-                        checked={selectedView.isVotingCandidate}
-                        disabled={!onVisibilityChange}
-                        onChange={(checked) => onVisibilityChange?.('is_voting_candidate', checked)}
-                      />
-                    </div>
                   </div>
-                  <CharacterAliasRulesEditor
-                    themeId={themeId}
-                    characterName={selectedChar.name}
-                    characterImageUrl={selectedChar.image_url}
-                    rules={aliasDrafts}
-                    characterOptions={characterOptions}
-                    disabled={!onAliasRulesSave}
-                    onChange={setAliasDrafts}
-                    onSave={(rules) => {
-                      if (!onAliasRulesSave) return;
-                      onAliasRulesSave(rules);
-                    }}
-                  />
                 </div>
-                <div className="min-w-0 xl:order-last">
-                  {onProfileImageChange ? (
-                    <ImageMediaReferenceField
-                      themeId={themeId}
-                      label="프로필 이미지"
-                      imageMediaId={selectedChar.image_media_id ?? null}
-                      legacyImageUrl={selectedChar.image_url ?? null}
-                      pickerTitle="프로필 이미지 선택"
-                      emptyLabel="이미지 선택"
-                      compact
-                      onSelect={(media) => onProfileImageChange(media.id)}
-                      onClear={() => onProfileImageChange(null)}
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
+                    등장인물 유형
+                  </p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <VisibilityToggle
+                      label="플레이어 캐릭터"
+                      description="참가자가 선택하고 플레이하는 인물입니다."
+                      checked={selectedView.isPlayable}
+                      disabled={!onVisibilityChange}
+                      onChange={(checked) => onVisibilityChange?.('is_playable', checked)}
                     />
-                  ) : (
-                    <div className="rounded-lg border border-slate-800 bg-slate-950 p-3 text-center">
-                      <span className="px-2 text-[11px] leading-5 text-slate-500">
-                        현재 프로필 이미지를 편집할 수 없습니다.
-                      </span>
-                    </div>
-                  )}
+                    <VisibilityToggle
+                      label="등장인물 소개에 표시"
+                      description="플레이 중 공개 소개 화면에 노출합니다."
+                      checked={selectedView.showInIntro}
+                      disabled={!onVisibilityChange}
+                      onChange={(checked) => onVisibilityChange?.('show_in_intro', checked)}
+                    />
+                    <VisibilityToggle
+                      label="읽기 대사에 사용"
+                      description="스토리 읽기 화면에서 이 인물의 대사를 사용할 수 있습니다."
+                      checked={selectedView.canSpeakInReading}
+                      disabled={!onVisibilityChange}
+                      onChange={(checked) =>
+                        onVisibilityChange?.('can_speak_in_reading', checked)
+                      }
+                    />
+                    <VisibilityToggle
+                      label="투표 후보에 포함"
+                      description="투표 단계에서 선택 가능한 대상으로 표시합니다."
+                      checked={selectedView.isVotingCandidate}
+                      disabled={!onVisibilityChange}
+                      onChange={(checked) => onVisibilityChange?.('is_voting_candidate', checked)}
+                    />
+                  </div>
                 </div>
+                <CharacterAliasRulesEditor
+                  themeId={themeId}
+                  characterName={selectedChar.name}
+                  rules={aliasDrafts}
+                  disabled={!onAliasRulesSave}
+                  onChange={setAliasDrafts}
+                  onSave={(rules) => {
+                    if (!onAliasRulesSave) return;
+                    onAliasRulesSave(rules);
+                  }}
+                />
               </div>
             ),
           },
