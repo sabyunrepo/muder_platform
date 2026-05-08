@@ -13,11 +13,9 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/rs/zerolog"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 
 	"github.com/mmp-platform/server/internal/apperror"
+	"github.com/mmp-platform/server/internal/testutil/postgrestest"
 )
 
 func TestServiceDeleteNode_CleansEndingBranchReferencesAndCascadesEdges(t *testing.T) {
@@ -179,26 +177,7 @@ func TestServiceDeleteNode_RejectsDifferentThemeOwnedBySameCreator(t *testing.T)
 func setupFlowTestPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
-	pgC, err := postgres.Run(ctx,
-		"public.ecr.aws/docker/library/postgres:16-alpine",
-		testcontainers.WithWaitStrategy(
-			wait.ForLog("database system is ready to accept connections").
-				WithOccurrence(2),
-		),
-	)
-	if err != nil {
-		t.Fatalf("start postgres container: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := pgC.Terminate(ctx); err != nil {
-			t.Logf("terminate container: %v", err)
-		}
-	})
-
-	connStr, err := pgC.ConnectionString(ctx, "sslmode=disable")
-	if err != nil {
-		t.Fatalf("connection string: %v", err)
-	}
+	connStr := postgrestest.Start(ctx, t)
 
 	sqlDB, err := sql.Open("pgx", connStr)
 	if err != nil {
