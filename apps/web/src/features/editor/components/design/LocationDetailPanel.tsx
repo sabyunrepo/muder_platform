@@ -194,7 +194,10 @@ function SelectedLocationDetail({
     });
   }, [location.id, location.name, location.from_round, location.until_round, locationMeta]);
 
-  function saveLocation(patch: Partial<LocationResponse>) {
+  function saveLocation(
+    patch: Partial<LocationResponse>,
+    options: { onSuccess?: () => void; onErrorMessage?: string } = {}
+  ) {
     const currentFrom = parseRound(fromRoundInput);
     const currentUntil = parseRound(untilRoundInput);
     const nextFrom =
@@ -233,7 +236,10 @@ function SelectedLocationDetail({
         locationId: location.id,
         body,
       },
-      { onError: () => toast.error('장소 저장에 실패했습니다') }
+      {
+        onSuccess: options.onSuccess,
+        onError: () => toast.error(options.onErrorMessage ?? '장소 저장에 실패했습니다'),
+      }
     );
   }
 
@@ -252,16 +258,23 @@ function SelectedLocationDetail({
     }
 
     const nextParentId = basicDraft.parentLocationId || null;
-    saveLocation({ name: nextName });
-    updateConfig.mutate(
-      writeLocationMeta(theme.config_json, location.id, {
-        publicDescription: basicDraft.publicDescription.trim(),
-        entryMessage: basicDraft.entryMessage.trim(),
-        parentLocationId: nextParentId,
-      }),
+    saveLocation(
+      { name: nextName },
       {
-        onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
-        onError: () => toast.error('장소 기본 정보 저장에 실패했습니다'),
+        onSuccess: () => {
+          updateConfig.mutate(
+            writeLocationMeta(theme.config_json, location.id, {
+              publicDescription: basicDraft.publicDescription.trim(),
+              entryMessage: basicDraft.entryMessage.trim(),
+              parentLocationId: nextParentId,
+            }),
+            {
+              onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
+              onError: () => toast.error('장소 기본 정보 저장에 실패했습니다'),
+            }
+          );
+        },
+        onErrorMessage: '장소 기본 정보 저장에 실패했습니다',
       }
     );
   }

@@ -473,6 +473,11 @@ describe('LocationsSubTab', () => {
         }),
         expect.any(Object)
       );
+      const [, updateLocationOptions] = updateLocationMutateMock.mock.calls[0] as [
+        unknown,
+        { onSuccess?: () => void },
+      ];
+      updateLocationOptions.onSuccess?.();
       const [config] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
       expect(config.locationMeta).toMatchObject({
         'loc-1': {
