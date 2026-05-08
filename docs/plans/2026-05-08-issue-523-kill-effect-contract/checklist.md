@@ -16,7 +16,7 @@
 - [x] `kill`을 `clue_interaction` 내부에서 구현할 수 있는지 결정한다.
 - [x] 최소 editor config, request event, authoritative status event, policy boundary를 문서화한다.
 - [x] backend/frontend/test ownership을 포함한 후속 구현 이슈를 만든다: [#536](https://github.com/sabyunrepo/muder_platform/issues/536).
-- [ ] `Closes #523`, `Refs #536`로 PR을 연다.
+- [x] `Closes #523`, `Refs #536`로 PR을 연다.
 
 ## Done When
 
