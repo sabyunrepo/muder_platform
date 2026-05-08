@@ -9,20 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
+	enginemocks "github.com/mmp-platform/server/internal/engine/mocks"
+	"go.uber.org/mock/gomock"
 )
-
-type fakePlayerStatusController struct {
-	actions []engine.PlayerStatusAction
-	err     error
-}
-
-func (f *fakePlayerStatusController) ApplyPlayerStatus(_ context.Context, action engine.PlayerStatusAction) (engine.PlayerRuntimeInfo, error) {
-	if f.err != nil {
-		return engine.PlayerRuntimeInfo{}, f.err
-	}
-	f.actions = append(f.actions, action)
-	return engine.PlayerRuntimeInfo{PlayerID: action.TargetID, IsAlive: action.IsAlive}, nil
-}
 
 func TestClueInteractionModule_ConfiguredRevealConsumesAndRedacts(t *testing.T) {
 	deps := newTestDeps()
@@ -81,7 +70,8 @@ func TestClueInteractionModule_ConfiguredRevealConsumesAndRedacts(t *testing.T) 
 }
 
 func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testing.T) {
-	status := &fakePlayerStatusController{}
+	ctrl := gomock.NewController(t)
+	status := enginemocks.NewMockPlayerStatusController(ctrl)
 	deps := newTestDeps()
 	deps.PlayerStatusController = status
 	m := NewClueInteractionModule()
@@ -109,6 +99,13 @@ func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testi
 		payload := e.Payload.(map[string]any)
 		resolved = payload["effect"] == clueEffectKill && payload["consumed"] == true
 	})
+	var action engine.PlayerStatusAction
+	status.EXPECT().
+		ApplyPlayerStatus(gomock.Any(), gomock.AssignableToTypeOf(engine.PlayerStatusAction{})).
+		DoAndReturn(func(_ context.Context, got engine.PlayerStatusAction) (engine.PlayerRuntimeInfo, error) {
+			action = got
+			return engine.PlayerRuntimeInfo{PlayerID: got.TargetID, IsAlive: got.IsAlive}, nil
+		})
 
 	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
 	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
@@ -122,10 +119,6 @@ func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testi
 	if !killRequested || !resolved {
 		t.Fatalf("expected kill_requested/resolved events, got killRequested=%v resolved=%v", killRequested, resolved)
 	}
-	if len(status.actions) != 1 {
-		t.Fatalf("expected one player status action, got %d", len(status.actions))
-	}
-	action := status.actions[0]
 	if action.ActorID != playerID || action.TargetID != targetID || action.IsAlive {
 		t.Fatalf("unexpected player status action: %+v", action)
 	}
@@ -140,7 +133,8 @@ func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testi
 }
 
 func TestClueInteractionModule_ConfiguredKillDoesNotResolveWhenStatusChangeFails(t *testing.T) {
-	status := &fakePlayerStatusController{err: fmt.Errorf("target already dead")}
+	ctrl := gomock.NewController(t)
+	status := enginemocks.NewMockPlayerStatusController(ctrl)
 	deps := newTestDeps()
 	deps.PlayerStatusController = status
 	m := NewClueInteractionModule()
@@ -156,6 +150,9 @@ func TestClueInteractionModule_ConfiguredKillDoesNotResolveWhenStatusChangeFails
 	m.mu.Lock()
 	m.acquiredClues[playerID] = []string{clueID.String()}
 	m.mu.Unlock()
+	status.EXPECT().
+		ApplyPlayerStatus(gomock.Any(), gomock.AssignableToTypeOf(engine.PlayerStatusAction{})).
+		Return(engine.PlayerRuntimeInfo{}, fmt.Errorf("target already dead"))
 
 	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
 	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
