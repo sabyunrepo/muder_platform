@@ -19,10 +19,23 @@ func init() {
 
 // LocationDef describes a single location in the crime scene.
 type LocationDef struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	AccessRules []string `json:"accessRules"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	Description       string   `json:"description"`
+	PublicDescription string   `json:"publicDescription,omitempty"`
+	EntryMessage      string   `json:"entryMessage,omitempty"`
+	ParentLocationID  string   `json:"parentLocationId,omitempty"`
+	AccessRules       []string `json:"accessRules"`
+}
+
+// LocationPublicState is the player-facing location metadata safe to include in
+// reconnect state and movement events.
+type LocationPublicState struct {
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	PublicDescription string `json:"publicDescription,omitempty"`
+	EntryMessage      string `json:"entryMessage,omitempty"`
+	ParentLocationID  string `json:"parentLocationId,omitempty"`
 }
 
 // LocationClueDiscovery defines a runtime-owned clue discovery candidate for a
@@ -173,8 +186,10 @@ func (m *LocationModule) handleMove(_ context.Context, playerID uuid.UUID, paylo
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "location.moved",
 		Payload: map[string]any{
-			"playerID":   playerID,
-			"locationID": p.LocationID,
+			"playerID":     playerID,
+			"locationID":   p.LocationID,
+			"location":     toLocationPublicState(m.locationSet[p.LocationID]),
+			"entryMessage": m.locationSet[p.LocationID].EntryMessage,
 		},
 	})
 	return nil
@@ -272,9 +287,10 @@ func playerHasDiscoveredClue(clues []string, clueID string) bool {
 
 // locationState is the serialisable snapshot of location positions and history.
 type locationState struct {
-	Positions       map[string]string   `json:"positions"`
-	History         map[string][]string `json:"history"`
-	DiscoveredClues map[string][]string `json:"discoveredClues"`
+	Positions       map[string]string     `json:"positions"`
+	History         map[string][]string   `json:"history"`
+	DiscoveredClues map[string][]string   `json:"discoveredClues"`
+	Locations       []LocationPublicState `json:"locations,omitempty"`
 }
 
 func (m *LocationModule) snapshot() locationState {
@@ -294,7 +310,26 @@ func (m *LocationModule) snapshot() locationState {
 		copy(cp, clueIDs)
 		discoveredClues[pid.String()] = cp
 	}
-	return locationState{Positions: positions, History: history, DiscoveredClues: discoveredClues}
+	locations := make([]LocationPublicState, 0, len(m.config.Locations))
+	for _, location := range m.config.Locations {
+		locations = append(locations, toLocationPublicState(location))
+	}
+	return locationState{
+		Positions:       positions,
+		History:         history,
+		DiscoveredClues: discoveredClues,
+		Locations:       locations,
+	}
+}
+
+func toLocationPublicState(location LocationDef) LocationPublicState {
+	return LocationPublicState{
+		ID:                location.ID,
+		Name:              location.Name,
+		PublicDescription: location.PublicDescription,
+		EntryMessage:      location.EntryMessage,
+		ParentLocationID:  location.ParentLocationID,
+	}
 }
 
 // BuildState returns the module's current state for client sync.

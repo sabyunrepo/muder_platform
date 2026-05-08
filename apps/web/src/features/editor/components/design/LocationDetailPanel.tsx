@@ -10,7 +10,7 @@ import {
   buildLocationParentOptions,
   toLocationEditorViewModel,
 } from '@/features/editor/entities/location/locationEntityAdapter';
-import { readLocationMeta, writeLocationMeta } from '@/features/editor/utils/entityMeta';
+import { readLocationMeta } from '@/features/editor/utils/entityMeta';
 import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
@@ -161,9 +161,9 @@ function SelectedLocationDetail({
   );
   const [basicDraft, setBasicDraft] = useState({
     name: location.name,
-    publicDescription: locationMeta.publicDescription ?? '',
-    entryMessage: locationMeta.entryMessage ?? '',
-    parentLocationId: locationMeta.parentLocationId ?? '',
+    publicDescription: location.public_description ?? locationMeta.publicDescription ?? '',
+    entryMessage: location.entry_message ?? locationMeta.entryMessage ?? '',
+    parentLocationId: location.parent_location_id ?? locationMeta.parentLocationId ?? '',
   });
   const assignedCount = useMemo(
     () => readLocationClueIds(theme.config_json, location.id).length,
@@ -188,11 +188,20 @@ function SelectedLocationDetail({
     );
     setBasicDraft({
       name: location.name,
-      publicDescription: locationMeta.publicDescription ?? '',
-      entryMessage: locationMeta.entryMessage ?? '',
-      parentLocationId: locationMeta.parentLocationId ?? '',
+      publicDescription: location.public_description ?? locationMeta.publicDescription ?? '',
+      entryMessage: location.entry_message ?? locationMeta.entryMessage ?? '',
+      parentLocationId: location.parent_location_id ?? locationMeta.parentLocationId ?? '',
     });
-  }, [location.id, location.name, location.from_round, location.until_round, locationMeta]);
+  }, [
+    location.id,
+    location.name,
+    location.from_round,
+    location.until_round,
+    location.public_description,
+    location.entry_message,
+    location.parent_location_id,
+    locationMeta,
+  ]);
 
   function saveLocation(
     patch: Partial<LocationResponse>,
@@ -226,6 +235,9 @@ function SelectedLocationDetail({
       name: patch.name ?? location.name,
       restricted_characters: patch.restricted_characters ?? location.restricted_characters,
       image_url: nextImageUrl,
+      public_description: patch.public_description ?? location.public_description ?? null,
+      entry_message: patch.entry_message ?? location.entry_message ?? null,
+      parent_location_id: patch.parent_location_id ?? location.parent_location_id ?? null,
       sort_order: patch.sort_order ?? location.sort_order,
       from_round: nextFrom,
       until_round: nextUntil,
@@ -259,21 +271,14 @@ function SelectedLocationDetail({
 
     const nextParentId = basicDraft.parentLocationId || null;
     saveLocation(
-      { name: nextName },
       {
-        onSuccess: () => {
-          updateConfig.mutate(
-            writeLocationMeta(theme.config_json, location.id, {
-              publicDescription: basicDraft.publicDescription.trim(),
-              entryMessage: basicDraft.entryMessage.trim(),
-              parentLocationId: nextParentId,
-            }),
-            {
-              onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
-              onError: () => toast.error('장소 기본 정보 저장에 실패했습니다'),
-            }
-          );
-        },
+        name: nextName,
+        public_description: basicDraft.publicDescription.trim() || null,
+        entry_message: basicDraft.entryMessage.trim() || null,
+        parent_location_id: nextParentId,
+      },
+      {
+        onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
         onErrorMessage: '장소 기본 정보 저장에 실패했습니다',
       }
     );

@@ -30,6 +30,25 @@ func (o *OptionalUUID) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+type OptionalString struct {
+	Set   bool
+	Value *string
+}
+
+func (o *OptionalString) UnmarshalJSON(data []byte) error {
+	o.Set = true
+	if string(data) == "null" {
+		o.Value = nil
+		return nil
+	}
+	var raw string
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	o.Value = &raw
+	return nil
+}
+
 // --- Map types ---
 
 type CreateMapRequest struct {
@@ -63,19 +82,25 @@ type CreateLocationRequest struct {
 	RestrictedCharacters *string    `json:"restricted_characters"`
 	ImageURL             *string    `json:"image_url" validate:"omitempty,url"`
 	ImageMediaID         *uuid.UUID `json:"image_media_id"`
+	PublicDescription    *string    `json:"public_description" validate:"omitempty,max=2000"`
+	EntryMessage         *string    `json:"entry_message" validate:"omitempty,max=2000"`
+	ParentLocationID     *uuid.UUID `json:"parent_location_id"`
 	SortOrder            int32      `json:"sort_order" validate:"min=0"`
 	FromRound            *int32     `json:"from_round" validate:"omitempty,min=1"`
 	UntilRound           *int32     `json:"until_round" validate:"omitempty,min=1"`
 }
 
 type UpdateLocationRequest struct {
-	Name                 string       `json:"name" validate:"required,min=1,max=100"`
-	RestrictedCharacters *string      `json:"restricted_characters"`
-	ImageURL             *string      `json:"image_url" validate:"omitempty,url"`
-	ImageMediaID         OptionalUUID `json:"image_media_id"`
-	SortOrder            int32        `json:"sort_order" validate:"min=0"`
-	FromRound            *int32       `json:"from_round" validate:"omitempty,min=1"`
-	UntilRound           *int32       `json:"until_round" validate:"omitempty,min=1"`
+	Name                 string         `json:"name" validate:"required,min=1,max=100"`
+	RestrictedCharacters *string        `json:"restricted_characters"`
+	ImageURL             *string        `json:"image_url" validate:"omitempty,url"`
+	ImageMediaID         OptionalUUID   `json:"image_media_id"`
+	PublicDescription    OptionalString `json:"public_description"`
+	EntryMessage         OptionalString `json:"entry_message"`
+	ParentLocationID     OptionalUUID   `json:"parent_location_id"`
+	SortOrder            int32          `json:"sort_order" validate:"min=0"`
+	FromRound            *int32         `json:"from_round" validate:"omitempty,min=1"`
+	UntilRound           *int32         `json:"until_round" validate:"omitempty,min=1"`
 }
 
 type LocationResponse struct {
@@ -86,6 +111,9 @@ type LocationResponse struct {
 	RestrictedCharacters *string    `json:"restricted_characters,omitempty"`
 	ImageURL             *string    `json:"image_url,omitempty"`
 	ImageMediaID         *uuid.UUID `json:"image_media_id,omitempty"`
+	PublicDescription    *string    `json:"public_description,omitempty"`
+	EntryMessage         *string    `json:"entry_message,omitempty"`
+	ParentLocationID     *uuid.UUID `json:"parent_location_id,omitempty"`
 	SortOrder            int32      `json:"sort_order"`
 	CreatedAt            time.Time  `json:"created_at"`
 	FromRound            *int32     `json:"from_round,omitempty"`

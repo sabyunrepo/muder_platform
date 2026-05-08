@@ -17,20 +17,24 @@ export interface UpdateMapRequest {
 
 export interface CreateLocationRequest {
   name: string;
-  description?: string;
   restricted_characters?: string | null;
   image_url?: string | null;
   image_media_id?: string | null;
+  public_description?: string | null;
+  entry_message?: string | null;
+  parent_location_id?: string | null;
   from_round?: number | null;
   until_round?: number | null;
 }
 
 export interface UpdateLocationRequest {
   name?: string;
-  description?: string;
   restricted_characters?: string | null;
   image_url?: string | null;
   image_media_id?: string | null;
+  public_description?: string | null;
+  entry_message?: string | null;
+  parent_location_id?: string | null;
   sort_order?: number;
   from_round?: number | null;
   until_round?: number | null;

@@ -363,6 +363,9 @@ type ThemeLocation struct {
 	UntilRound           pgtype.Int4 `json:"until_round"`
 	ImageUrl             pgtype.Text `json:"image_url"`
 	ImageMediaID         pgtype.UUID `json:"image_media_id"`
+	PublicDescription    pgtype.Text `json:"public_description"`
+	EntryMessage         pgtype.Text `json:"entry_message"`
+	ParentLocationID     pgtype.UUID `json:"parent_location_id"`
 }
 
 type ThemeMap struct {

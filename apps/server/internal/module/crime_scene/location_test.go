@@ -101,6 +101,53 @@ func TestLocationModule_HandleMessage_Move(t *testing.T) {
 	m.mu.RUnlock()
 }
 
+func TestLocationModule_MovePublishesLocationTextContract(t *testing.T) {
+	m := NewLocationModule()
+	deps := newTestDeps()
+	config := json.RawMessage(`{
+		"locations": [
+			{
+				"id": "library",
+				"name": "Library",
+				"description": "Book room",
+				"publicDescription": "먼지 쌓인 책장이 보인다.",
+				"entryMessage": "낡은 종이 냄새가 난다.",
+				"parentLocationId": "mansion"
+			},
+			{"id": "mansion", "name": "Mansion", "description": "Old mansion"}
+		]
+	}`)
+	if err := m.Init(context.Background(), deps, config); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	playerID := uuid.New()
+	var moved engine.Event
+	deps.EventBus.Subscribe("location.moved", func(e engine.Event) { moved = e })
+
+	if err := m.HandleMessage(context.Background(), playerID, "move", json.RawMessage(`{"location_id":"library"}`)); err != nil {
+		t.Fatalf("move: %v", err)
+	}
+	payload := moved.Payload.(map[string]any)
+	if payload["entryMessage"] != "낡은 종이 냄새가 난다." {
+		t.Fatalf("entryMessage = %v", payload["entryMessage"])
+	}
+	location := payload["location"].(LocationPublicState)
+	if location.PublicDescription != "먼지 쌓인 책장이 보인다." {
+		t.Fatalf("PublicDescription = %q", location.PublicDescription)
+	}
+	if location.ParentLocationID != "mansion" {
+		t.Fatalf("ParentLocationID = %q", location.ParentLocationID)
+	}
+
+	raw, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	if !bytes.Contains(raw, []byte(`"publicDescription":"먼지 쌓인 책장이 보인다."`)) {
+		t.Fatalf("BuildState missing publicDescription: %s", string(raw))
+	}
+}
+
 func TestLocationModule_HandleMessage_Move_UnknownLocation(t *testing.T) {
 	m := NewLocationModule()
 	if err := m.Init(context.Background(), newTestDeps(), locationCfg()); err != nil {

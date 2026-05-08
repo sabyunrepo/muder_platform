@@ -246,6 +246,105 @@ func TestService_LocationImageMediaReference(t *testing.T) {
 	}
 }
 
+func TestService_LocationTextContractAndParentValidation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	mapResp, err := f.svc.CreateMap(ctx, creatorID, themeID, CreateMapRequest{Name: "지도"})
+	if err != nil {
+		t.Fatalf("CreateMap: %v", err)
+	}
+	otherMapResp, err := f.svc.CreateMap(ctx, creatorID, otherThemeID, CreateMapRequest{Name: "다른 지도"})
+	if err != nil {
+		t.Fatalf("CreateMap other: %v", err)
+	}
+	sameThemeOtherMap, err := f.svc.CreateMap(ctx, creatorID, themeID, CreateMapRequest{Name: "별관 지도"})
+	if err != nil {
+		t.Fatalf("CreateMap same theme other map: %v", err)
+	}
+	parent, err := f.svc.CreateLocation(ctx, creatorID, themeID, mapResp.ID, CreateLocationRequest{Name: "저택"})
+	if err != nil {
+		t.Fatalf("CreateLocation parent: %v", err)
+	}
+	otherParent, err := f.svc.CreateLocation(ctx, creatorID, otherThemeID, otherMapResp.ID, CreateLocationRequest{Name: "다른 저택"})
+	if err != nil {
+		t.Fatalf("CreateLocation other parent: %v", err)
+	}
+	crossMapParent, err := f.svc.CreateLocation(ctx, creatorID, themeID, sameThemeOtherMap.ID, CreateLocationRequest{Name: "별관"})
+	if err != nil {
+		t.Fatalf("CreateLocation cross map parent: %v", err)
+	}
+
+	publicDescription := "누구나 볼 수 있는 응접실 설명"
+	entryMessage := "문을 열자 오래된 나무 냄새가 난다."
+	child, err := f.svc.CreateLocation(ctx, creatorID, themeID, mapResp.ID, CreateLocationRequest{
+		Name:              "응접실",
+		PublicDescription: &publicDescription,
+		EntryMessage:      &entryMessage,
+		ParentLocationID:  &parent.ID,
+	})
+	if err != nil {
+		t.Fatalf("CreateLocation child: %v", err)
+	}
+	if child.PublicDescription == nil || *child.PublicDescription != publicDescription {
+		t.Fatalf("PublicDescription = %v, want %q", child.PublicDescription, publicDescription)
+	}
+	if child.EntryMessage == nil || *child.EntryMessage != entryMessage {
+		t.Fatalf("EntryMessage = %v, want %q", child.EntryMessage, entryMessage)
+	}
+	if child.ParentLocationID == nil || *child.ParentLocationID != parent.ID {
+		t.Fatalf("ParentLocationID = %v, want %s", child.ParentLocationID, parent.ID)
+	}
+
+	nextDescription := "수정된 설명"
+	updated, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{
+		Name:              child.Name,
+		SortOrder:         child.SortOrder,
+		PublicDescription: OptionalString{Set: true, Value: &nextDescription},
+		EntryMessage:      OptionalString{Set: true},
+		ParentLocationID:  OptionalUUID{Set: true},
+	})
+	if err != nil {
+		t.Fatalf("UpdateLocation clear nullable text/parent: %v", err)
+	}
+	if updated.PublicDescription == nil || *updated.PublicDescription != nextDescription {
+		t.Fatalf("updated PublicDescription = %v, want %q", updated.PublicDescription, nextDescription)
+	}
+	if updated.EntryMessage != nil {
+		t.Fatalf("updated EntryMessage = %v, want nil", updated.EntryMessage)
+	}
+	if updated.ParentLocationID != nil {
+		t.Fatalf("updated ParentLocationID = %v, want nil", updated.ParentLocationID)
+	}
+
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{
+		Name:             child.Name,
+		SortOrder:        child.SortOrder,
+		ParentLocationID: OptionalUUID{Set: true, Value: &child.ID},
+	}); !isBadRequest(err) {
+		t.Fatalf("UpdateLocation self parent error = %T %v, want bad request", err, err)
+	}
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{
+		Name:             child.Name,
+		SortOrder:        child.SortOrder,
+		ParentLocationID: OptionalUUID{Set: true, Value: &otherParent.ID},
+	}); !isBadRequest(err) {
+		t.Fatalf("UpdateLocation other theme parent error = %T %v, want bad request", err, err)
+	}
+	if _, err := f.svc.UpdateLocation(ctx, creatorID, child.ID, UpdateLocationRequest{
+		Name:             child.Name,
+		SortOrder:        child.SortOrder,
+		ParentLocationID: OptionalUUID{Set: true, Value: &crossMapParent.ID},
+	}); !isBadRequest(err) {
+		t.Fatalf("UpdateLocation cross map parent error = %T %v, want bad request", err, err)
+	}
+}
+
 func TestService_MapImageMediaReference(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")

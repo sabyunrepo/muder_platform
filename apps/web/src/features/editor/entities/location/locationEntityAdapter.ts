@@ -37,7 +37,7 @@ export function toLocationEditorViewModel(
   const clueCount = options.clueCount ?? 0;
   const parentLocationId = normalizeParentLocationId(
     location.id,
-    options.locationMeta?.parentLocationId
+    location.parent_location_id ?? options.locationMeta?.parentLocationId
   );
   const parentLocation = options.allLocations?.find((item) => item.id === parentLocationId);
   return {
@@ -50,8 +50,10 @@ export function toLocationEditorViewModel(
       location.restricted_characters,
       options.characters ?? []
     ),
-    publicDescription: normalizeMetaText(options.locationMeta?.publicDescription),
-    entryMessage: normalizeMetaText(options.locationMeta?.entryMessage),
+    publicDescription: normalizeMetaText(
+      location.public_description ?? options.locationMeta?.publicDescription
+    ),
+    entryMessage: normalizeMetaText(location.entry_message ?? options.locationMeta?.entryMessage),
     parentLocationId,
     parentLabel: parentLocation?.name ?? '최상위 장소',
     clueCountLabel: `단서 조사 ${clueCount}개`,

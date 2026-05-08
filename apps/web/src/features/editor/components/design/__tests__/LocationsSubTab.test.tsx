@@ -444,7 +444,7 @@ describe('LocationsSubTab', () => {
   describe('장소 기본 정보', () => {
     beforeEach(setupDefaultMocks);
 
-    it('공개 설명, 진입 메시지, 부모 장소를 locationMeta 기반으로 편집한다', () => {
+    it('공개 설명, 진입 메시지, 부모 장소를 Location API payload로 저장한다', () => {
       useEditorLocationsMock.mockReturnValue({
         data: [{ ...mockLocations[0], name: '거실' }, ...mockLocations.slice(1)],
         isLoading: false,
@@ -469,7 +469,12 @@ describe('LocationsSubTab', () => {
       expect(updateLocationMutateMock).toHaveBeenCalledWith(
         expect.objectContaining({
           locationId: 'loc-1',
-          body: expect.objectContaining({ name: '응접실' }),
+          body: expect.objectContaining({
+            name: '응접실',
+            public_description: '손님들이 모이는 공간',
+            entry_message: '낡은 시계 소리가 들린다.',
+            parent_location_id: 'loc-2',
+          }),
         }),
         expect.any(Object)
       );
@@ -478,14 +483,8 @@ describe('LocationsSubTab', () => {
         { onSuccess?: () => void },
       ];
       updateLocationOptions.onSuccess?.();
-      const [config] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
-      expect(config.locationMeta).toMatchObject({
-        'loc-1': {
-          publicDescription: '손님들이 모이는 공간',
-          entryMessage: '낡은 시계 소리가 들린다.',
-          parentLocationId: 'loc-2',
-        },
-      });
+      expect(updateConfigMutateMock).not.toHaveBeenCalled();
+      expect(toastSuccess).toHaveBeenCalledWith('장소 기본 정보가 저장되었습니다');
     });
   });
 
