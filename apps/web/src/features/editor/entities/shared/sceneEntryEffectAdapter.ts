@@ -145,7 +145,6 @@ function isSameStoredDelivery(
   delivery: StoredEffectDelivery,
   effect: SceneEntryEffectViewModel,
 ): boolean {
-  if (delivery.id === effect.id) return true;
   const deliveryType =
     delivery.target?.type === "all_players" || delivery.recipient_type === "all_players"
       ? "all_players"

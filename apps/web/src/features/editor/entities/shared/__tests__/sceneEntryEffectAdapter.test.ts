@@ -232,4 +232,55 @@ describe("sceneEntryEffectAdapter", () => {
       ],
     });
   });
+
+  it("읽기 대사 delivery 연결은 같은 effect id라도 대상이 다르면 섞지 않는다", () => {
+    expect(
+      sceneEntryEffectsToFlowNodePatch(
+        {
+          onEnter: [
+            {
+              id: "info-action",
+              type: DELIVER_INFORMATION_ACTION,
+              params: {
+                deliveries: [
+                  {
+                    id: "effect-1",
+                    target: { type: "character", character_id: "char-old" },
+                    reading_section_ids: ["reading-old"],
+                    story_info_ids: ["old-info"],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+        [
+          {
+            id: "effect-1",
+            recipientType: "character",
+            characterId: "char-new",
+            storyInfoIds: ["new-info"],
+            clueIds: [],
+          },
+        ],
+      ),
+    ).toEqual({
+      onEnter: [
+        {
+          id: "info-action",
+          type: DELIVER_INFORMATION_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "effect-1",
+                target: { type: "character", character_id: "char-new" },
+                reading_section_ids: [],
+                story_info_ids: ["new-info"],
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
 });
