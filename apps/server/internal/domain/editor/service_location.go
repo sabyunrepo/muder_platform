@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -141,6 +142,12 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if _, err := s.getOwnedTheme(ctx, creatorID, themeID); err != nil {
 		return nil, err
 	}
+	if err := validateLocationText("public_description", req.PublicDescription); err != nil {
+		return nil, err
+	}
+	if err := validateLocationText("entry_message", req.EntryMessage); err != nil {
+		return nil, err
+	}
 	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, themeID, req.RestrictedCharacters, req.FromRound, req.UntilRound)
 	if err != nil {
 		return nil, err
@@ -166,6 +173,10 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if err != nil {
 		return nil, err
 	}
+	parentLocationID, err := s.resolveLocationParent(ctx, themeID, mapID, uuid.Nil, req.ParentLocationID)
+	if err != nil {
+		return nil, err
+	}
 	loc, err := s.q.CreateLocation(ctx, db.CreateLocationParams{
 		ThemeID:              themeID,
 		MapID:                mapID,
@@ -176,6 +187,9 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             ptrToText(req.ImageURL),
 		ImageMediaID:         imageMediaID,
+		PublicDescription:    ptrToText(req.PublicDescription),
+		EntryMessage:         ptrToText(req.EntryMessage),
+		ParentLocationID:     parentLocationID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create location")
@@ -214,6 +228,27 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 			return nil, err
 		}
 	}
+	publicDescription := l.PublicDescription
+	if req.PublicDescription.Set {
+		if err := validateLocationText("public_description", req.PublicDescription.Value); err != nil {
+			return nil, err
+		}
+		publicDescription = ptrToText(req.PublicDescription.Value)
+	}
+	entryMessage := l.EntryMessage
+	if req.EntryMessage.Set {
+		if err := validateLocationText("entry_message", req.EntryMessage.Value); err != nil {
+			return nil, err
+		}
+		entryMessage = ptrToText(req.EntryMessage.Value)
+	}
+	parentLocationID := l.ParentLocationID
+	if req.ParentLocationID.Set {
+		parentLocationID, err = s.resolveLocationParent(ctx, l.ThemeID, l.MapID, l.ID, req.ParentLocationID.Value)
+		if err != nil {
+			return nil, err
+		}
+	}
 	updated, err := s.q.UpdateLocation(ctx, db.UpdateLocationParams{
 		ID:                   l.ID,
 		Name:                 req.Name,
@@ -223,6 +258,9 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
 		ImageUrl:             imageURL,
 		ImageMediaID:         imageMediaID,
+		PublicDescription:    publicDescription,
+		EntryMessage:         entryMessage,
+		ParentLocationID:     parentLocationID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update location")
@@ -230,6 +268,51 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 	}
 	resp := toLocationResponse(updated)
 	return &resp, nil
+}
+
+func validateLocationText(field string, value *string) error {
+	if value != nil && utf8.RuneCountInString(*value) > MaxLocationTextLen {
+		return apperror.BadRequest(fmt.Sprintf("%s is too long", field))
+	}
+	return nil
+}
+
+func (s *service) resolveLocationParent(ctx context.Context, themeID, mapID, currentLocationID uuid.UUID, parentLocationID *uuid.UUID) (pgtype.UUID, error) {
+	if parentLocationID == nil {
+		return pgtype.UUID{}, nil
+	}
+	if currentLocationID != uuid.Nil && *parentLocationID == currentLocationID {
+		return pgtype.UUID{}, apperror.BadRequest("location cannot be its own parent")
+	}
+	locations, err := s.q.ListLocationsByTheme(ctx, themeID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to list locations for parent validation")
+		return pgtype.UUID{}, apperror.Internal("failed to validate location parent")
+	}
+	parentByID := make(map[uuid.UUID]uuid.UUID, len(locations))
+	parentFound := false
+	for _, location := range locations {
+		if location.ID == *parentLocationID && location.MapID == mapID {
+			parentFound = true
+		}
+		if location.MapID == mapID && location.ParentLocationID.Valid {
+			parentByID[location.ID] = uuid.UUID(location.ParentLocationID.Bytes)
+		}
+	}
+	if !parentFound {
+		return pgtype.UUID{}, apperror.BadRequest("parent location must belong to the same map")
+	}
+	for next, seen := *parentLocationID, map[uuid.UUID]bool{}; next != uuid.Nil; {
+		if currentLocationID != uuid.Nil && next == currentLocationID {
+			return pgtype.UUID{}, apperror.BadRequest("location parent cycle is not allowed")
+		}
+		if seen[next] {
+			return pgtype.UUID{}, apperror.BadRequest("location parent cycle is not allowed")
+		}
+		seen[next] = true
+		next = parentByID[next]
+	}
+	return uuidPtrToPgtype(parentLocationID), nil
 }
 
 func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID uuid.UUID, restrictedCharacters *string, fromRound, untilRound *int32) (LocationAccessPolicy, error) {
@@ -371,6 +454,9 @@ func toLocationResponse(l db.ThemeLocation) LocationResponse {
 		RestrictedCharacters: textToPtr(l.RestrictedCharacters),
 		ImageURL:             textToPtr(l.ImageUrl),
 		ImageMediaID:         pgtypeUUIDToPtr(l.ImageMediaID),
+		PublicDescription:    textToPtr(l.PublicDescription),
+		EntryMessage:         textToPtr(l.EntryMessage),
+		ParentLocationID:     pgtypeUUIDToPtr(l.ParentLocationID),
 		SortOrder:            l.SortOrder,
 		CreatedAt:            l.CreatedAt,
 		FromRound:            pgtypeInt4ToPtr(l.FromRound),

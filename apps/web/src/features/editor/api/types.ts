@@ -199,6 +199,9 @@ export interface LocationResponse {
   restricted_characters: string | null;
   image_url: string | null;
   image_media_id?: string | null;
+  public_description?: string | null;
+  entry_message?: string | null;
+  parent_location_id?: string | null;
   sort_order: number;
   created_at: string;
   from_round?: number | null;

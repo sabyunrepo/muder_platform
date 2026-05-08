@@ -38,13 +38,13 @@ SELECT * FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order;
 SELECT * FROM theme_locations WHERE id = $1;
 
 -- name: CreateLocation :one
-INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, from_round, until_round, image_url, image_media_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: UpdateLocation :one
 UPDATE theme_locations
-SET name = $2, restricted_characters = $3, sort_order = $4, from_round = $5, until_round = $6, image_url = $7, image_media_id = $8
+SET name = $2, restricted_characters = $3, sort_order = $4, from_round = $5, until_round = $6, image_url = $7, image_media_id = $8, public_description = $9, entry_message = $10, parent_location_id = $11
 WHERE id = $1
 RETURNING *;
 

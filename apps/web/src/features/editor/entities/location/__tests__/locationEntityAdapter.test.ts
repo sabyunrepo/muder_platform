@@ -80,20 +80,42 @@ describe('locationEntityAdapter', () => {
     });
   });
 
-  it('locationMeta를 제작자용 공개 설명과 부모 요약으로 변환한다', () => {
-    const vm = toLocationEditorViewModel(location(), {
-      locationMeta: {
-        publicDescription: '모든 플레이어에게 보이는 설명',
-        entryMessage: '차가운 바람이 분다.',
-        parentLocationId: 'loc-parent',
-      },
-      allLocations: [location({ id: 'loc-parent', name: '저택 1층' })],
-    });
+  it('API 필드를 제작자용 공개 설명과 부모 요약으로 변환한다', () => {
+    const vm = toLocationEditorViewModel(
+      location({
+        public_description: '모든 플레이어에게 보이는 설명',
+        entry_message: '차가운 바람이 분다.',
+        parent_location_id: 'loc-parent',
+      }),
+      {
+        locationMeta: {
+          publicDescription: 'legacy 설명',
+          entryMessage: 'legacy 진입',
+          parentLocationId: 'legacy-parent',
+        },
+        allLocations: [location({ id: 'loc-parent', name: '저택 1층' })],
+      }
+    );
 
     expect(vm.publicDescription).toBe('모든 플레이어에게 보이는 설명');
     expect(vm.entryMessage).toBe('차가운 바람이 분다.');
     expect(vm.parentLocationId).toBe('loc-parent');
     expect(vm.parentLabel).toBe('저택 1층');
+  });
+
+  it('신규 API 필드가 비어 있으면 locationMeta fallback을 사용한다', () => {
+    const vm = toLocationEditorViewModel(location(), {
+      locationMeta: {
+        publicDescription: '기존 설명',
+        entryMessage: '기존 진입',
+        parentLocationId: 'loc-parent',
+      },
+      allLocations: [location({ id: 'loc-parent', name: '저택 1층' })],
+    });
+
+    expect(vm.publicDescription).toBe('기존 설명');
+    expect(vm.entryMessage).toBe('기존 진입');
+    expect(vm.parentLocationId).toBe('loc-parent');
   });
 
   it('부모 장소 후보에서 자기 자신과 자손을 제외한다', () => {
@@ -108,6 +130,22 @@ describe('locationEntityAdapter', () => {
       buildLocationParentOptions('loc-1', locations, {
         'loc-2': { parentLocationId: 'loc-1' },
         'loc-3': { parentLocationId: 'loc-2' },
+      })
+    ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
+  });
+
+  it('부모 장소 후보 계산도 API parent_location_id를 locationMeta보다 우선한다', () => {
+    const locations = [
+      location({ id: 'loc-1', name: '저택' }),
+      location({ id: 'loc-2', name: '1층', parent_location_id: 'loc-1' }),
+      location({ id: 'loc-3', name: '서재', parent_location_id: 'loc-2' }),
+      location({ id: 'loc-4', name: '정원' }),
+    ];
+
+    expect(
+      buildLocationParentOptions('loc-1', locations, {
+        'loc-2': { parentLocationId: null },
+        'loc-3': { parentLocationId: null },
       })
     ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
   });

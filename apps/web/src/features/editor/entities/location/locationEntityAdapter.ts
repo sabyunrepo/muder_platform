@@ -35,10 +35,7 @@ export function toLocationEditorViewModel(
   } = {}
 ): LocationEditorViewModel {
   const clueCount = options.clueCount ?? 0;
-  const parentLocationId = normalizeParentLocationId(
-    location.id,
-    options.locationMeta?.parentLocationId
-  );
+  const parentLocationId = resolveLocationParentId(location, options.locationMeta);
   const parentLocation = options.allLocations?.find((item) => item.id === parentLocationId);
   return {
     id: location.id,
@@ -50,8 +47,10 @@ export function toLocationEditorViewModel(
       location.restricted_characters,
       options.characters ?? []
     ),
-    publicDescription: normalizeMetaText(options.locationMeta?.publicDescription),
-    entryMessage: normalizeMetaText(options.locationMeta?.entryMessage),
+    publicDescription: normalizeMetaText(
+      location.public_description ?? options.locationMeta?.publicDescription
+    ),
+    entryMessage: normalizeMetaText(location.entry_message ?? options.locationMeta?.entryMessage),
     parentLocationId,
     parentLabel: parentLocation?.name ?? '최상위 장소',
     clueCountLabel: `단서 조사 ${clueCount}개`,
@@ -133,6 +132,16 @@ function normalizeParentLocationId(
   return trimmed;
 }
 
+function resolveLocationParentId(
+  location: LocationResponse,
+  locationMeta?: LocationMeta
+): string | null {
+  return normalizeParentLocationId(
+    location.id,
+    location.parent_location_id ?? locationMeta?.parentLocationId
+  );
+}
+
 function collectDescendantLocationIds(
   currentLocationId: string,
   locations: LocationResponse[],
@@ -144,10 +153,7 @@ function collectDescendantLocationIds(
     changed = false;
     for (const location of locations) {
       if (descendants.has(location.id)) continue;
-      const parentId = normalizeParentLocationId(
-        location.id,
-        metaByLocationId[location.id]?.parentLocationId
-      );
+      const parentId = resolveLocationParentId(location, metaByLocationId[location.id]);
       if (parentId === currentLocationId || (parentId != null && descendants.has(parentId))) {
         descendants.add(location.id);
         changed = true;
@@ -167,10 +173,7 @@ function getLocationDepth(
   seen.add(locationId);
   const location = locations.find((item) => item.id === locationId);
   if (!location) return 0;
-  const parentId = normalizeParentLocationId(
-    location.id,
-    metaByLocationId[location.id]?.parentLocationId
-  );
+  const parentId = resolveLocationParentId(location, metaByLocationId[location.id]);
   if (!parentId) return 0;
   return 1 + getLocationDepth(parentId, locations, metaByLocationId, seen);
 }
