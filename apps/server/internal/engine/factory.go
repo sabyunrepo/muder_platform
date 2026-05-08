@@ -195,6 +195,7 @@ func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 	}
 	implicitActions := []PhaseAction{
 		ActionDeliverInformation,
+		ActionGrantClue,
 		ActionEvaluateEnding,
 		ActionPlaySound,
 		ActionPlayMedia,

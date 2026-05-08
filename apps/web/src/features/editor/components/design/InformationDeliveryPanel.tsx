@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { useEditorCharacters } from "../../api";
+import { useEditorCharacters, useEditorClues, type ClueResponse } from "../../api";
 import { useStoryInfos, type StoryInfoResponse } from "../../storyInfoApi";
 import {
   InformationDeliveryContent,
   InformationDeliveryHeader,
+  type ClueOption,
   type StoryInfoOption,
 } from "./InformationDeliveryPanelViews";
 import type { FlowNodeData } from "../../flowTypes";
 import {
-  flowNodeToInformationDeliveries,
-  informationDeliveriesToFlowNodePatch,
-  isCompleteInformationDelivery,
-  makeEmptyInformationDelivery,
-  type InformationDeliveryViewModel,
-} from "../../entities/shared/informationDeliveryAdapter";
+  flowNodeToSceneEntryEffects,
+  isCompleteSceneEntryEffect,
+  makeEmptySceneEntryEffect,
+  sceneEntryEffectsToFlowNodePatch,
+  type SceneEntryEffectViewModel,
+} from "../../entities/shared/sceneEntryEffectAdapter";
 
 interface InformationDeliveryPanelProps {
   themeId: string;
@@ -38,14 +39,17 @@ export function InformationDeliveryPanel({
     isError: storyInfosError,
     refetch: refetchStoryInfos,
   } = useStoryInfos(themeId);
+  const {
+    data: clues = [],
+    isLoading: cluesLoading,
+    isError: cluesError,
+    refetch: refetchClues,
+  } = useEditorClues(themeId);
   const [characterQuery, setCharacterQuery] = useState("");
   const [infoQuery, setInfoQuery] = useState("");
+  const [clueQuery, setClueQuery] = useState("");
   const savedDeliveries = useMemo(
-    () =>
-      flowNodeToInformationDeliveries(phaseData).map((delivery) => ({
-        ...delivery,
-        readingSectionIds: [],
-      })),
+    () => flowNodeToSceneEntryEffects(phaseData),
     [phaseData],
   );
   const [draftDeliveries, setDraftDeliveries] = useState(() => savedDeliveries);
@@ -54,7 +58,7 @@ export function InformationDeliveryPanel({
     setDraftDeliveries((current) => {
       const savedIds = new Set(savedDeliveries.map((delivery) => delivery.id));
       const incompleteDrafts = current.filter(
-        (delivery) => !savedIds.has(delivery.id) && !isCompleteInformationDelivery(delivery),
+        (delivery) => !savedIds.has(delivery.id) && !isCompleteSceneEntryEffect(delivery),
       );
       return [...savedDeliveries, ...incompleteDrafts];
     });
@@ -67,26 +71,31 @@ export function InformationDeliveryPanel({
   }, [characters, characterQuery]);
 
   const storyInfoOptions = useMemo(() => toStoryInfoOptions(storyInfos), [storyInfos]);
+  const clueOptions = useMemo(() => toClueOptions(clues), [clues]);
 
   const filteredStoryInfos = useMemo(
     () => filterStoryInfoOptions(storyInfoOptions, infoQuery),
     [storyInfoOptions, infoQuery],
   );
+  const filteredClues = useMemo(
+    () => filterClueOptions(clueOptions, clueQuery),
+    [clueOptions, clueQuery],
+  );
 
-  const updateDeliveries = (next: InformationDeliveryViewModel[]) => {
+  const updateDeliveries = (next: SceneEntryEffectViewModel[]) => {
     setDraftDeliveries(next);
-    onChange(informationDeliveriesToFlowNodePatch(phaseData, next));
+    onChange(sceneEntryEffectsToFlowNodePatch(phaseData, next));
   };
 
   const addCharacterDelivery = () => {
-    updateDeliveries([...draftDeliveries, makeEmptyInformationDelivery("character")]);
+    updateDeliveries([...draftDeliveries, makeEmptySceneEntryEffect("character")]);
   };
 
   const addAllPlayersDelivery = () => {
-    updateDeliveries([...draftDeliveries, makeEmptyInformationDelivery("all_players")]);
+    updateDeliveries([...draftDeliveries, makeEmptySceneEntryEffect("all_players")]);
   };
 
-  const updateDelivery = (deliveryId: string, patch: Partial<InformationDeliveryViewModel>) => {
+  const updateDelivery = (deliveryId: string, patch: Partial<SceneEntryEffectViewModel>) => {
     updateDeliveries(
       draftDeliveries.map((delivery) =>
         delivery.id === deliveryId ? { ...delivery, ...patch } : delivery,
@@ -98,7 +107,7 @@ export function InformationDeliveryPanel({
     updateDeliveries(draftDeliveries.filter((delivery) => delivery.id !== deliveryId));
   };
 
-  const toggleStoryInfo = (delivery: InformationDeliveryViewModel, storyInfoId: string) => {
+  const toggleStoryInfo = (delivery: SceneEntryEffectViewModel, storyInfoId: string) => {
     const hasStoryInfo = delivery.storyInfoIds.includes(storyInfoId);
     updateDelivery(delivery.id, {
       storyInfoIds: hasStoryInfo
@@ -107,13 +116,23 @@ export function InformationDeliveryPanel({
     });
   };
 
-  const loading = charactersLoading || storyInfosLoading;
-  const hasLoadError = charactersError || storyInfosError;
+  const toggleClue = (delivery: SceneEntryEffectViewModel, clueId: string) => {
+    const hasClue = delivery.clueIds.includes(clueId);
+    updateDelivery(delivery.id, {
+      clueIds: hasClue
+        ? delivery.clueIds.filter((id) => id !== clueId)
+        : [...delivery.clueIds, clueId],
+    });
+  };
+
+  const loading = charactersLoading || storyInfosLoading || cluesLoading;
+  const hasLoadError = charactersError || storyInfosError || cluesError;
   const canAddCharacterDelivery = characters.length > 0;
 
   const retryLoad = () => {
     if (charactersError) void refetchCharacters();
     if (storyInfosError) void refetchStoryInfos();
+    if (cluesError) void refetchClues();
   };
 
   return (
@@ -129,22 +148,37 @@ export function InformationDeliveryPanel({
         hasLoadError={hasLoadError}
         hasCharacters={characters.length > 0}
         hasStoryInfos={storyInfos.length > 0}
+        hasClues={clues.length > 0}
         characterQuery={characterQuery}
         infoQuery={infoQuery}
+        clueQuery={clueQuery}
         deliveries={draftDeliveries}
         characters={filteredCharacters}
         allCharacters={characters}
         storyInfos={filteredStoryInfos}
         allStoryInfos={storyInfoOptions}
+        clues={filteredClues}
+        allClues={clueOptions}
         onRetryLoad={retryLoad}
         onCharacterQueryChange={setCharacterQuery}
         onInfoQueryChange={setInfoQuery}
+        onClueQueryChange={setClueQuery}
         onSelectCharacter={(deliveryId, characterId) => updateDelivery(deliveryId, { characterId })}
         onToggleStoryInfo={toggleStoryInfo}
+        onToggleClue={toggleClue}
         onRemoveDelivery={removeDelivery}
       />
     </section>
   );
+}
+
+function toClueOptions(clues: ClueResponse[]): ClueOption[] {
+  return clues.map((clue) => ({
+    id: clue.id,
+    name: clue.name,
+    summary: clue.description?.trim() || undefined,
+    metaLabel: typeof clue.reveal_round === "number" ? `R${clue.reveal_round}` : undefined,
+  }));
 }
 
 function toStoryInfoOptions(infos: StoryInfoResponse[]): StoryInfoOption[] {
@@ -154,6 +188,16 @@ function toStoryInfoOptions(infos: StoryInfoResponse[]): StoryInfoOption[] {
     summary: summarizeInfo(info.body),
     metaLabel: info.imageMediaId ? "이미지 포함" : undefined,
   }));
+}
+
+function filterClueOptions(options: ClueOption[], query: string): ClueOption[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return options;
+  return options.filter(
+    (option) =>
+      option.name.toLowerCase().includes(normalized) ||
+      (option.summary?.toLowerCase().includes(normalized) ?? false),
+  );
 }
 
 function filterStoryInfoOptions(options: StoryInfoOption[], query: string): StoryInfoOption[] {

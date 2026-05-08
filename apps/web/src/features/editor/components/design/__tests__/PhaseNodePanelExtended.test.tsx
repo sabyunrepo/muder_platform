@@ -161,7 +161,7 @@ describe("PhaseNodePanel extended fields", () => {
     expect(screen.queryByPlaceholderText("정보 제목으로 찾기")).toBeNull();
   });
 
-  it("일반 장면은 정보 공개만 표시하고 읽기 대사 검색을 숨긴다", () => {
+  it("일반 장면은 장면 진입 효과를 표시하고 읽기 대사 검색을 숨긴다", () => {
     renderWithQC(
       <PhaseNodePanel
         node={makeNode({ phase_type: "investigation" })}
@@ -170,7 +170,7 @@ describe("PhaseNodePanel extended fields", () => {
       />,
     );
 
-    expect(screen.getByText("정보 공개")).toBeDefined();
+    expect(screen.getByText("장면 진입 효과")).toBeDefined();
     expect(screen.queryByPlaceholderText("대사 이름으로 찾기")).toBeNull();
   });
 

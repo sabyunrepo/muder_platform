@@ -4,12 +4,39 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
+
+type clueGrantTestProvider struct {
+	players map[uuid.UUID]engine.PlayerRuntimeInfo
+}
+
+func (p clueGrantTestProvider) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
+	for id, info := range p.players {
+		if info.TargetCode == targetCode || id.String() == targetCode {
+			return id, true
+		}
+	}
+	return uuid.Nil, false
+}
+
+func (p clueGrantTestProvider) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (engine.PlayerRuntimeInfo, bool) {
+	info, ok := p.players[playerID]
+	return info, ok
+}
+
+func (p clueGrantTestProvider) PlayerRuntimeRoster(context.Context) []engine.PlayerRuntimeInfo {
+	out := make([]engine.PlayerRuntimeInfo, 0, len(p.players))
+	for _, info := range p.players {
+		out = append(out, info)
+	}
+	return out
+}
 
 func TestClueInteractionModule_Name(t *testing.T) {
 	m := NewClueInteractionModule()
@@ -207,12 +234,13 @@ func TestClueInteractionModule_UnknownMessage(t *testing.T) {
 func TestClueInteractionModule_SupportedActions(t *testing.T) {
 	m := NewClueInteractionModule()
 	actions := m.SupportedActions()
-	if len(actions) != 2 {
-		t.Fatalf("expected 2 supported actions, got %d", len(actions))
+	if len(actions) != 3 {
+		t.Fatalf("expected 3 supported actions, got %d", len(actions))
 	}
 	expected := map[engine.PhaseAction]bool{
 		engine.ActionResetDrawCount: true,
 		engine.ActionSetClueLevel:   true,
+		engine.ActionGrantClue:      true,
 	}
 	for _, a := range actions {
 		if !expected[a] {
@@ -274,6 +302,73 @@ func TestClueInteractionModule_ReactTo_SetClueLevel_InvalidLevel(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for level <= 0")
+	}
+}
+
+func TestClueInteractionModule_ReactTo_GrantClueToCharacter(t *testing.T) {
+	playerID := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = clueGrantTestProvider{
+		players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			playerID: {PlayerID: playerID, TargetCode: "detective"},
+		},
+	}
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), deps, nil)
+
+	params := json.RawMessage(`{"deliveries":[{"id":"grant-1","target":{"type":"character","character_id":"detective"},"clue_ids":["clue-2","clue-1","clue-1"]}]}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionGrantClue, Params: params}); err != nil {
+		t.Fatalf("ReactTo GRANT_CLUE failed: %v", err)
+	}
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionGrantClue, Params: params}); err != nil {
+		t.Fatalf("idempotent GRANT_CLUE failed: %v", err)
+	}
+
+	m.mu.RLock()
+	got := append([]string{}, m.acquiredClues[playerID]...)
+	m.mu.RUnlock()
+	if !reflect.DeepEqual(got, []string{"clue-1", "clue-2"}) {
+		t.Fatalf("acquired clues = %#v, want sorted unique clue list", got)
+	}
+}
+
+func TestClueInteractionModule_ReactTo_GrantClueToAllPlayers(t *testing.T) {
+	p1 := uuid.New()
+	p2 := uuid.New()
+	deps := newTestDeps()
+	deps.PlayerInfoProvider = clueGrantTestProvider{
+		players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			p1: {PlayerID: p1, TargetCode: "detective"},
+			p2: {PlayerID: p2, TargetCode: "suspect"},
+		},
+	}
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), deps, nil)
+
+	params := json.RawMessage(`{"deliveries":[{"id":"grant-all","target":{"type":"all_players"},"clue_ids":["clue-common"]}]}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionGrantClue, Params: params}); err != nil {
+		t.Fatalf("ReactTo GRANT_CLUE failed: %v", err)
+	}
+
+	m.mu.RLock()
+	gotP1 := append([]string{}, m.acquiredClues[p1]...)
+	gotP2 := append([]string{}, m.acquiredClues[p2]...)
+	m.mu.RUnlock()
+	if !reflect.DeepEqual(gotP1, []string{"clue-common"}) || !reflect.DeepEqual(gotP2, []string{"clue-common"}) {
+		t.Fatalf("all-player grant = %#v / %#v, want clue-common for both players", gotP1, gotP2)
+	}
+}
+
+func TestClueInteractionModule_ReactTo_GrantClueValidatesPayload(t *testing.T) {
+	m := NewClueInteractionModule()
+	_ = m.Init(context.Background(), newTestDeps(), nil)
+
+	err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionGrantClue,
+		Params: json.RawMessage(`{"deliveries":[{"id":"empty","target":{"type":"character","character_id":"detective"},"clue_ids":[]}]}`),
+	})
+	if err == nil {
+		t.Fatal("expected empty clue_ids to fail")
 	}
 }
 

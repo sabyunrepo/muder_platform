@@ -7,13 +7,16 @@ export interface CreatorActionOption {
 
 export const DELIVER_INFORMATION_ACTION = "DELIVER_INFORMATION";
 export const LEGACY_DELIVER_INFORMATION_ACTION = "deliver_information";
+export const GRANT_CLUE_ACTION = "GRANT_CLUE";
+export const LEGACY_GRANT_CLUE_ACTION = "grant_clue";
 
 export const CREATOR_ACTION_OPTIONS: CreatorActionOption[] = [
   { value: "OPEN_VOTING", label: "투표 시작" },
   { value: "CLOSE_VOTING", label: "투표 종료" },
   { value: "UNMUTE_CHAT", label: "채팅 열기" },
   { value: "MUTE_CHAT", label: "채팅 닫기" },
-  { value: DELIVER_INFORMATION_ACTION, label: "읽기 대사 공개" },
+  { value: DELIVER_INFORMATION_ACTION, label: "정보 공개" },
+  { value: GRANT_CLUE_ACTION, label: "단서 지급" },
   { value: "BROADCAST_MESSAGE", label: "알림 보내기" },
   { value: "SET_BGM", label: "BGM 재생" },
   { value: "PLAY_SOUND", label: "효과음 재생" },
@@ -27,6 +30,8 @@ const ACTION_LABELS = new Map<string, string>([
   ...CREATOR_ACTION_OPTIONS.map((option) => [option.value, option.label] as const),
   [DELIVER_INFORMATION_ACTION, "정보 공개"],
   [LEGACY_DELIVER_INFORMATION_ACTION, "정보 공개"],
+  [GRANT_CLUE_ACTION, "단서 지급"],
+  [LEGACY_GRANT_CLUE_ACTION, "단서 지급"],
   ["OPEN_GROUP_CHAT", "토론방 열기"],
   ["CLOSE_GROUP_CHAT", "토론방 닫기"],
   ["BROADCAST_MESSAGE", "알림 보내기"],
@@ -49,6 +54,10 @@ export function getCreatorActionLabel(type: string): string {
 
 export function isInformationDeliveryAction(action: PhaseAction): boolean {
   return action.type === DELIVER_INFORMATION_ACTION || action.type === LEGACY_DELIVER_INFORMATION_ACTION;
+}
+
+export function isClueGrantAction(action: PhaseAction): boolean {
+  return action.type === GRANT_CLUE_ACTION || action.type === LEGACY_GRANT_CLUE_ACTION;
 }
 
 export function getVisibleCreatorActionOptions(hiddenTypes: string[] = []): CreatorActionOption[] {

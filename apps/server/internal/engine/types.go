@@ -20,6 +20,7 @@ const (
 	ActionAllowExchange       PhaseAction = "ALLOW_EXCHANGE"
 	ActionBroadcastMessage    PhaseAction = "BROADCAST_MESSAGE"
 	ActionDeliverInformation  PhaseAction = "DELIVER_INFORMATION"
+	ActionGrantClue           PhaseAction = "GRANT_CLUE"
 	ActionEvaluateEnding      PhaseAction = "EVALUATE_ENDING"
 	ActionPlaySound           PhaseAction = "PLAY_SOUND"
 	ActionPlayMedia           PhaseAction = "PLAY_MEDIA"
@@ -69,6 +70,7 @@ var ActionRequiresModule = map[PhaseAction]string{
 	ActionCloseGroupChat:      "group_chat",
 	ActionApplyDiscussionRoom: "group_chat",
 	ActionDeliverInformation:  "information_delivery",
+	ActionGrantClue:           "clue_interaction",
 	ActionEvaluateEnding:      "ending_branch",
 	ActionPlaySound:           "audio",
 	ActionPlayMedia:           "audio",

@@ -3,14 +3,17 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { FlowNodeData } from "../../../flowTypes";
 import { InformationDeliveryPanel } from "../InformationDeliveryPanel";
 import { DELIVER_INFORMATION_ACTION } from "../phaseEditorAdapter";
+import { GRANT_CLUE_ACTION } from "../../../entities/shared/actionAdapter";
 
-const { useEditorCharactersMock, useStoryInfosMock } = vi.hoisted(() => ({
+const { useEditorCharactersMock, useEditorCluesMock, useStoryInfosMock } = vi.hoisted(() => ({
   useEditorCharactersMock: vi.fn(),
+  useEditorCluesMock: vi.fn(),
   useStoryInfosMock: vi.fn(),
 }));
 
 vi.mock("../../../api", () => ({
   useEditorCharacters: () => useEditorCharactersMock(),
+  useEditorClues: () => useEditorCluesMock(),
 }));
 
 vi.mock("../../../storyInfoApi", () => ({
@@ -55,6 +58,47 @@ const storyInfos = [
   },
 ];
 
+const clues = [
+  {
+    id: "clue-1",
+    theme_id: "theme-1",
+    location_id: null,
+    name: "혈흔",
+    description: "현장에서 발견된 흔적",
+    image_url: null,
+    image_media_id: null,
+    is_common: false,
+    level: 1,
+    sort_order: 0,
+    created_at: "2026-05-06T00:00:00Z",
+    is_usable: false,
+    use_effect: null,
+    use_target: null,
+    use_consumed: false,
+    reveal_round: 1,
+    hide_round: null,
+  },
+  {
+    id: "clue-2",
+    theme_id: "theme-1",
+    location_id: null,
+    name: "비밀 편지",
+    description: "봉인된 편지",
+    image_url: null,
+    image_media_id: null,
+    is_common: false,
+    level: 1,
+    sort_order: 1,
+    created_at: "2026-05-06T00:00:00Z",
+    is_usable: false,
+    use_effect: null,
+    use_target: null,
+    use_consumed: false,
+    reveal_round: 2,
+    hide_round: null,
+  },
+];
+
 beforeEach(() => {
   useEditorCharactersMock.mockReturnValue({
     data: characters,
@@ -68,6 +112,12 @@ beforeEach(() => {
     isError: false,
     refetch: vi.fn(),
   });
+  useEditorCluesMock.mockReturnValue({
+    data: clues,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
 });
 
 afterEach(() => {
@@ -76,17 +126,17 @@ afterEach(() => {
 });
 
 describe("InformationDeliveryPanel", () => {
-  it("모든 페이즈에서 캐릭터별 장면 연결 설정을 추가할 수 있다", () => {
+  it("모든 페이즈에서 캐릭터별 장면 진입 효과 설정을 추가할 수 있다", () => {
     const onChange = vi.fn();
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={onChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "캐릭터별 대상 추가" }));
 
-    expect(screen.getByText("받을 캐릭터를 선택하세요 · 정보 0개")).toBeDefined();
+    expect(screen.getByText("받을 캐릭터를 선택하세요 · 정보 0개 · 단서 0개")).toBeDefined();
     expect(onChange).toHaveBeenCalledWith({ onEnter: [] });
   });
 
-  it("캐릭터와 공개 정보를 검색하고 선택/삭제할 수 있다", () => {
+  it("캐릭터, 공개 정보, 단서를 검색하고 선택/삭제할 수 있다", () => {
     const onChange = vi.fn();
     const phaseData: FlowNodeData = {
       onEnter: [
@@ -156,7 +206,44 @@ describe("InformationDeliveryPanel", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "정보 공개 1 삭제" }));
+    fireEvent.change(screen.getByPlaceholderText("단서 이름으로 찾기"), {
+      target: { value: "편지" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /비밀 편지/ }));
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      onEnter: [
+        {
+          id: "info",
+          type: DELIVER_INFORMATION_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "d1",
+                target: { type: "character", character_id: "char-2" },
+                reading_section_ids: [],
+                story_info_ids: ["info-1", "info-2"],
+              },
+            ],
+          },
+        },
+        {
+          id: "delivery-new",
+          type: GRANT_CLUE_ACTION,
+          params: {
+            deliveries: [
+              {
+                id: "d1",
+                target: { type: "character", character_id: "char-2" },
+                clue_ids: ["clue-2"],
+              },
+            ],
+          },
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "진입 효과 1 삭제" }));
     expect(onChange).toHaveBeenLastCalledWith({ onEnter: [] });
   });
 
@@ -176,10 +263,16 @@ describe("InformationDeliveryPanel", () => {
       isError: true,
       refetch: refetchStoryInfos,
     });
+    useEditorCluesMock.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: true,
+      refetch: vi.fn(),
+    });
 
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
-    expect(screen.getByText("정보 공개에 필요한 캐릭터와 정보 목록을 불러오지 못했습니다.")).toBeDefined();
+    expect(screen.getByText("장면 진입 효과에 필요한 캐릭터, 정보, 단서 목록을 불러오지 못했습니다.")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
 
     expect(refetchCharacters).toHaveBeenCalledTimes(1);
@@ -227,11 +320,11 @@ describe("InformationDeliveryPanel", () => {
     const { rerender } = render(
       <InformationDeliveryPanel themeId="theme-1" phaseData={firstPhaseData} onChange={vi.fn()} />,
     );
-    expect(screen.getByText("탐정 A · 정보 1개")).toBeDefined();
+    expect(screen.getByText("탐정 A · 정보 1개 · 단서 0개")).toBeDefined();
 
     rerender(<InformationDeliveryPanel themeId="theme-1" phaseData={nextPhaseData} onChange={vi.fn()} />);
 
-    expect(screen.getByText("용의자 B · 정보 0개")).toBeDefined();
+    expect(screen.queryByText("용의자 B · 정보 0개 · 단서 0개")).toBeNull();
   });
 
 
@@ -246,7 +339,7 @@ describe("InformationDeliveryPanel", () => {
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
     expect((screen.getByRole("button", { name: "캐릭터별 대상 추가" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("아직 정보 공개 대상이 없습니다. 전체 대상 추가를 눌러 모든 플레이어가 볼 정보를 연결해 주세요.")).toBeDefined();
+    expect(screen.getByText("아직 장면 진입 효과 대상이 없습니다. 전체 대상 추가를 눌러 모든 플레이어에게 적용할 효과를 연결해 주세요.")).toBeDefined();
   });
 
   it("모든 페이즈에서 모든 플레이어 공통 전달을 추가할 수 있다", () => {
@@ -261,7 +354,7 @@ describe("InformationDeliveryPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "전체 대상 추가" }));
 
-    expect(screen.getByText("모든 플레이어 · 정보 0개")).toBeDefined();
+    expect(screen.getByText("모든 플레이어 · 정보 0개 · 단서 0개")).toBeDefined();
     expect(onChange).toHaveBeenCalledWith({ onEnter: [] });
   });
 });

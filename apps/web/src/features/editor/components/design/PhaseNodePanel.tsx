@@ -18,6 +18,7 @@ import {
 import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
 import { StoryProgressionPanel } from "./StoryProgressionPanel";
 import { DELIVER_INFORMATION_ACTION } from "../../entities/phase/phaseEntityAdapter";
+import { GRANT_CLUE_ACTION } from "../../entities/shared/actionAdapter";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { PhasePanelTimerSettings } from "./PhasePanelTimerSettings";
 import { PhasePanelAdvanceToggle } from "./PhasePanelAdvanceToggle";
@@ -141,6 +142,8 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
           ...PRESENTATION_CUE_ACTION_TYPES,
           DELIVER_INFORMATION_ACTION,
           "deliver_information",
+          GRANT_CLUE_ACTION,
+          "grant_clue",
         ]}
         themeId={themeId}
       />
