@@ -64,9 +64,9 @@ describe('ClueRuntimeEffectCard', () => {
       />,
     );
 
-    expect(screen.getByText('단서 사용 / 공개 규칙')).toBeDefined();
-    expect(screen.getByRole('button', { name: '단서 확인 시' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByLabelText('암호')).toHaveProperty('value', '0427');
+    expect(screen.getByText('단서 공개 조건')).toBeDefined();
+    expect(screen.queryByRole('button', { name: '즉시 공개' })).toBeNull();
+    expect(screen.getByLabelText(/암호 입력 후 공개/)).toHaveProperty('value', '0427');
     expect(screen.queryByText('itemEffects')).toBeNull();
     expect(screen.queryByText('grant_clue')).toBeNull();
 
@@ -74,14 +74,13 @@ describe('ClueRuntimeEffectCard', () => {
       target: { value: '열쇠 뒤에 새 숫자 1234가 보입니다.' },
     });
     fireEvent.click(screen.getByLabelText(/사용하면 내 단서함에서 사라짐/));
-    fireEvent.click(screen.getByRole('button', { name: '규칙 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '공개 조건 저장' }));
 
     expect(onConfigChange).toHaveBeenCalledTimes(1);
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
       effect: 'reveal',
       target: 'self',
-      trigger: 'on_view',
       condition: { kind: 'password', value: '0427' },
       revealText: '열쇠 뒤에 새 숫자 1234가 보입니다.',
       consume: true,
@@ -105,24 +104,22 @@ describe('ClueRuntimeEffectCard', () => {
       target: { value: '금고' },
     });
     fireEvent.click(screen.getByRole('button', { name: '금고 비밀번호' }));
-    fireEvent.click(screen.getByRole('button', { name: '암호 입력 후 공개' }));
-    fireEvent.change(screen.getByLabelText('암호'), { target: { value: 'gold' } });
+    fireEvent.change(screen.getByLabelText(/암호 입력 후 공개/), { target: { value: 'gold' } });
 
     expect(screen.getByText('선택된 지급 단서')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: '규칙 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '공개 조건 저장' }));
 
     expect(onConfigChange).toHaveBeenCalledTimes(1);
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
       effect: 'grant_clue',
       target: 'self',
-      trigger: 'on_use',
       condition: { kind: 'password', value: 'gold' },
       grantClueIds: ['clue-2'],
     });
   });
 
-  it('효과 없음으로 저장하면 기존 런타임 효과를 제거한다', () => {
+  it('설명 변경 효과를 입력하고 저장한다', () => {
     const onConfigChange = vi.fn();
 
     render(
@@ -134,8 +131,14 @@ describe('ClueRuntimeEffectCard', () => {
             clue_interaction: {
               enabled: true,
               config: {
-                itemEffects: {
-                  'clue-1': { effect: 'grant_clue', grantClueIds: ['clue-2'] },
+            itemEffects: {
+                  'clue-1': {
+                    effect: 'description_change',
+                    target: 'self',
+                    condition: { kind: 'password', value: 'open' },
+                    descriptionText: '사용 후 새 설명',
+                    consume: false,
+                  },
                 },
               },
             },
@@ -145,10 +148,42 @@ describe('ClueRuntimeEffectCard', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '효과 없음' }));
-    fireEvent.click(screen.getByRole('button', { name: '규칙 저장' }));
+    fireEvent.change(screen.getByLabelText('사용 후 바뀔 설명'), {
+      target: { value: '사용 후 다른 문장이 보입니다.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '공개 조건 저장' }));
 
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
-    expect(readClueItemEffect(saved, 'clue-1')).toBeNull();
+    expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
+      effect: 'description_change',
+      target: 'self',
+      condition: { kind: 'password', value: 'open' },
+      descriptionText: '사용 후 다른 문장이 보입니다.',
+    });
+  });
+
+  it('암호가 비어 있으면 저장을 막고 훔쳐보기/가져오기 효과를 저장한다', () => {
+    const onConfigChange = vi.fn();
+
+    render(
+      <ClueRuntimeEffectCard
+        clue={clues[0]}
+        clues={clues}
+        configJson={{}}
+        onConfigChange={onConfigChange}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '공개 조건 저장' })).toHaveProperty('disabled', true);
+    fireEvent.change(screen.getByLabelText(/암호 입력 후 공개/), { target: { value: 'peek' } });
+    fireEvent.click(screen.getByRole('button', { name: '단서 가져오기' }));
+    fireEvent.click(screen.getByRole('button', { name: '공개 조건 저장' }));
+
+    const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
+    expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
+      effect: 'steal',
+      target: 'player',
+      condition: { kind: 'password', value: 'peek' },
+    });
   });
 });

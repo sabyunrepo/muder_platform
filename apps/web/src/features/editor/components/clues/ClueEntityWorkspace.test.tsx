@@ -101,7 +101,10 @@ describe('ClueEntityWorkspace', () => {
     );
 
     expect(screen.getByText('단서 기본 정보')).toBeDefined();
-    expect(screen.getByText('단서 사용 / 공개 규칙')).toBeDefined();
+    expect(screen.getByText('단서 공개 조건')).toBeDefined();
+    expect(screen.getByLabelText('전체 공개')).toBeDefined();
+    expect(screen.getByLabelText(/공개 가능/)).toBeDefined();
+    expect(screen.getByLabelText(/단서 보호/)).toBeDefined();
     expect(screen.getAllByText('사용하면 내 단서함에서 사라짐').length).toBeGreaterThan(0);
     expect(screen.getByText('서재의 발견 단서')).toBeDefined();
     expect(screen.getByText('탐정의 시작 단서')).toBeDefined();
@@ -126,13 +129,14 @@ describe('ClueEntityWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: '비밀 편지 선택' }));
 
     expect(screen.getAllByText('숨겨진 메시지').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: '효과 없음' }).getAttribute('aria-pressed')).toBe(
+    expect(screen.getByRole('button', { name: '설명 변경' }).getAttribute('aria-pressed')).toBe(
       'true',
     );
   });
 
-  it('인라인 기본 정보 저장 시 선택 단서 update payload를 보낸다', () => {
+  it('인라인 기본 정보 저장 시 선택 단서 update payload와 보호 정책을 보낸다', () => {
     const onUpdate = vi.fn();
+    const onConfigChange = vi.fn();
 
     render(
       <ClueEntityWorkspace
@@ -143,6 +147,7 @@ describe('ClueEntityWorkspace', () => {
         characters={[]}
         onCreate={vi.fn()}
         onUpdate={onUpdate}
+        onConfigChange={onConfigChange}
         onDelete={vi.fn()}
       />,
     );
@@ -150,6 +155,7 @@ describe('ClueEntityWorkspace', () => {
     fireEvent.change(screen.getByLabelText('이름'), {
       target: { value: '피 묻은 열쇠 조각' },
     });
+    fireEvent.click(screen.getByLabelText(/단서 보호/));
     fireEvent.click(screen.getByRole('button', { name: '기본 정보 저장' }));
 
     expect(onUpdate).toHaveBeenCalledWith(
@@ -160,6 +166,19 @@ describe('ClueEntityWorkspace', () => {
         use_effect: 'steal',
         use_target: 'player',
         use_consumed: true,
+      }),
+    );
+    expect(onConfigChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          clue_interaction: expect.objectContaining({
+            config: expect.objectContaining({
+              cluePolicies: expect.objectContaining({
+                'clue-1': expect.objectContaining({ revealable: true, protected: true }),
+              }),
+            }),
+          }),
+        }),
       }),
     );
   });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Eye, Gift, Save, Search, X } from 'lucide-react';
+import { Eye, FileText, Gift, Save, Search, Shuffle, X } from 'lucide-react';
 import type { ClueResponse } from '@/features/editor/api';
 import {
   readClueItemEffect,
@@ -9,9 +9,7 @@ import {
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
 
-type EffectMode = 'none' | 'reveal' | 'grant';
-type TriggerMode = 'on_view' | 'on_use';
-type ConditionMode = 'none' | 'password';
+type EffectMode = 'description' | 'reveal' | 'grant' | 'peek' | 'steal';
 
 interface ClueRuntimeEffectCardProps {
   clue: ClueResponse;
@@ -23,9 +21,8 @@ interface ClueRuntimeEffectCardProps {
 
 interface DraftState {
   mode: EffectMode;
-  trigger: TriggerMode;
-  condition: ConditionMode;
   password: string;
+  descriptionText: string;
   revealText: string;
   grantClueIds: string[];
   consume: boolean;
@@ -33,10 +30,6 @@ interface DraftState {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readTrigger(config: ClueItemEffectConfig | null): TriggerMode {
-  return config?.trigger === 'on_view' || config?.trigger === 'on_use' ? config.trigger : 'on_use';
 }
 
 function readPassword(config: ClueItemEffectConfig | null): string {
@@ -49,52 +42,76 @@ function readPassword(config: ClueItemEffectConfig | null): string {
 
 function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
   const password = readPassword(config);
-  const base = {
-    trigger: readTrigger(config),
-    condition: password ? 'password' as ConditionMode : 'none' as ConditionMode,
-    password,
-  };
+  const base = { password, consume: config?.consume === true };
+
+  if (config?.effect === 'description_change') {
+    return {
+      mode: 'description',
+      ...base,
+      descriptionText: config.descriptionText ?? '',
+      revealText: '',
+      grantClueIds: [],
+    };
+  }
 
   if (config?.effect === 'reveal') {
     return {
       mode: 'reveal',
       ...base,
+      descriptionText: '',
       revealText: config.revealText ?? '',
       grantClueIds: [],
-      consume: config.consume === true,
     };
   }
   if (config?.effect === 'grant_clue') {
     return {
       mode: 'grant',
       ...base,
+      descriptionText: '',
       revealText: '',
       grantClueIds: config.grantClueIds ?? [],
-      consume: config.consume === true,
     };
   }
-  return { mode: 'none', ...base, revealText: '', grantClueIds: [], consume: false };
+  if (config?.effect === 'peek') {
+    return { mode: 'peek', ...base, descriptionText: '', revealText: '', grantClueIds: [] };
+  }
+  if (config?.effect === 'steal') {
+    return { mode: 'steal', ...base, descriptionText: '', revealText: '', grantClueIds: [] };
+  }
+  return {
+    mode: 'description',
+    password: '',
+    descriptionText: '',
+    revealText: '',
+    grantClueIds: [],
+    consume: false,
+  };
 }
 
-function ruleFields(draft: DraftState): EditorConfig & {
-  trigger: TriggerMode;
+function passwordCondition(draft: DraftState): EditorConfig & {
   condition?: { kind: 'password'; value: string };
 } {
   const password = draft.password.trim();
   return {
-    trigger: draft.trigger,
-    ...(draft.condition === 'password' && password
-      ? { condition: { kind: 'password' as const, value: password } }
-      : {}),
+    condition: { kind: 'password' as const, value: password },
   };
 }
 
 function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
+  if (draft.mode === 'description') {
+    return {
+      effect: 'description_change',
+      target: 'self',
+      ...passwordCondition(draft),
+      descriptionText: draft.descriptionText.trim(),
+      consume: draft.consume,
+    };
+  }
   if (draft.mode === 'reveal') {
     return {
       effect: 'reveal',
       target: 'self',
-      ...ruleFields(draft),
+      ...passwordCondition(draft),
       revealText: draft.revealText.trim(),
       consume: draft.consume,
     };
@@ -103,16 +120,30 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
     return {
       effect: 'grant_clue',
       target: 'self',
-      ...ruleFields(draft),
+      ...passwordCondition(draft),
       grantClueIds: draft.grantClueIds,
       consume: draft.consume,
     };
   }
-  return null;
+  if (draft.mode === 'peek') {
+    return {
+      effect: 'peek',
+      target: 'player',
+      ...passwordCondition(draft),
+      consume: draft.consume,
+    };
+  }
+  return {
+    effect: 'steal',
+    target: 'player',
+    ...passwordCondition(draft),
+    consume: draft.consume,
+  };
 }
 
 function isDraftValid(draft: DraftState) {
-  if (draft.condition === 'password' && draft.password.trim().length === 0) return false;
+  if (draft.password.trim().length === 0) return false;
+  if (draft.mode === 'description') return draft.descriptionText.trim().length > 0;
   if (draft.mode === 'reveal') return draft.revealText.trim().length > 0;
   if (draft.mode === 'grant') return draft.grantClueIds.length > 0;
   return true;
@@ -179,11 +210,11 @@ export function ClueRuntimeEffectCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/70">
-            단서 사용 / 공개 규칙
+            단서 공개 조건
           </p>
-          <h4 className="mt-1 text-lg font-bold text-slate-100">언제, 어떤 조건으로 공개할지</h4>
+          <h4 className="mt-1 text-lg font-bold text-slate-100">암호로 열람하고, 사용하면 효과를 실행합니다</h4>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            플레이어가 단서를 확인하거나 사용할 때의 공개 조건과 보상을 한곳에서 설정합니다.
+            공개 조건은 암호 입력으로 고정하고, 아이템 사용 효과는 아래에서 따로 고릅니다.
           </p>
         </div>
         <button
@@ -193,54 +224,47 @@ export function ClueRuntimeEffectCard({
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
         >
           <Save className="h-4 w-4" />
-          {isSaving ? '저장 중' : '규칙 저장'}
+          {isSaving ? '저장 중' : '공개 조건 저장'}
         </button>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <RuleGroup label="발동 시점">
-          <RuleChoice
-            selected={draft.trigger === 'on_view'}
-            label="단서 확인 시"
-            onSelect={() => updateDraft({ trigger: 'on_view' })}
-          />
-          <RuleChoice
-            selected={draft.trigger === 'on_use'}
-            label="사용 버튼 클릭 시"
-            onSelect={() => updateDraft({ trigger: 'on_use' })}
-          />
-        </RuleGroup>
-        <RuleGroup label="공개 조건">
-          <RuleChoice
-            selected={draft.condition === 'none'}
-            label="즉시 공개"
-            onSelect={() => updateDraft({ condition: 'none', password: '' })}
-          />
-          <RuleChoice
-            selected={draft.condition === 'password'}
-            label="암호 입력 후 공개"
-            onSelect={() => updateDraft({ condition: 'password' })}
-          />
-        </RuleGroup>
-      </div>
+      <label className="mt-4 block text-sm font-medium text-slate-300">
+        암호 입력 후 공개
+        <input
+          value={draft.password}
+          onChange={(e) => updateDraft({ password: e.target.value })}
+          placeholder="플레이어가 입력해야 하는 암호"
+          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+        />
+        {draft.password.trim().length === 0 && (
+          <span className="mt-1 block text-xs text-red-400">암호를 입력해야 저장할 수 있습니다.</span>
+        )}
+      </label>
 
-      {draft.condition === 'password' && (
-        <label className="mt-3 block text-sm font-medium text-slate-300">
-          암호
-          <input
-            value={draft.password}
-            onChange={(e) => updateDraft({ password: e.target.value })}
-            placeholder="플레이어가 입력해야 하는 암호"
-            className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-          />
-        </label>
-      )}
-
-      <fieldset className="mt-4 grid gap-2 sm:grid-cols-3">
-        <EffectChoice mode="none" current={draft.mode} label="효과 없음" onSelect={() => updateDraft({ mode: 'none' })} />
+      <fieldset className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <legend className="mb-2 text-sm font-semibold text-slate-200">아이템 사용 시</legend>
+        <EffectChoice mode="description" current={draft.mode} label="설명 변경" icon={<FileText className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'description' })} />
         <EffectChoice mode="reveal" current={draft.mode} label="정보 공개" icon={<Eye className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'reveal' })} />
         <EffectChoice mode="grant" current={draft.mode} label="새 단서 지급" icon={<Gift className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'grant' })} />
+        <EffectChoice mode="peek" current={draft.mode} label="단서 훔쳐보기" icon={<Search className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'peek' })} />
+        <EffectChoice mode="steal" current={draft.mode} label="단서 가져오기" icon={<Shuffle className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'steal' })} />
       </fieldset>
+
+      {draft.mode === 'description' && (
+        <div className="mt-4 space-y-2">
+          <label htmlFor="clue-runtime-description" className="text-sm font-semibold text-slate-200">
+            사용 후 바뀔 설명
+          </label>
+          <textarea
+            id="clue-runtime-description"
+            value={draft.descriptionText}
+            onChange={(e) => updateDraft({ descriptionText: e.target.value })}
+            rows={4}
+            placeholder="예: 열쇠를 돌리자 손잡이 안쪽의 새 문장이 드러난다."
+            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+          />
+        </div>
+      )}
 
       {draft.mode === 'reveal' && (
         <div className="mt-4 space-y-2">
@@ -269,57 +293,21 @@ export function ClueRuntimeEffectCard({
         />
       )}
 
-      {draft.mode !== 'none' && (
-        <label className="mt-4 flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
-          <input
-            type="checkbox"
-            checked={draft.consume}
-            onChange={(e) => updateDraft({ consume: e.target.checked })}
-            className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
-          />
-          <span>
-            <span className="font-semibold text-slate-200">사용하면 내 단서함에서 사라짐</span>
-            <span className="mt-1 block text-xs leading-5 text-slate-500">
-              일회용 열쇠처럼 효과를 발동한 뒤 보유 단서에서 제거할 때 켭니다.
-            </span>
+      <label className="mt-4 flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
+        <input
+          type="checkbox"
+          checked={draft.consume}
+          onChange={(e) => updateDraft({ consume: e.target.checked })}
+          className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        />
+        <span>
+          <span className="font-semibold text-slate-200">사용하면 내 단서함에서 사라짐</span>
+          <span className="mt-1 block text-xs leading-5 text-slate-500">
+            일회용 열쇠처럼 효과를 발동한 뒤 보유 단서에서 제거할 때 켭니다.
           </span>
-        </label>
-      )}
+        </span>
+      </label>
     </section>
-  );
-}
-
-function RuleGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <fieldset className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
-      <legend className="px-1 text-sm font-semibold text-slate-200">{label}</legend>
-      <div className="mt-2 grid gap-2 sm:grid-cols-2">{children}</div>
-    </fieldset>
-  );
-}
-
-function RuleChoice({
-  selected,
-  label,
-  onSelect,
-}: {
-  selected: boolean;
-  label: string;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-pressed={selected}
-      className={`min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold ${
-        selected
-          ? 'border-amber-500/70 bg-amber-500/10 text-amber-200'
-          : 'border-slate-800 bg-slate-950/70 text-slate-300 hover:border-slate-700'
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 

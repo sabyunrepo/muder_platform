@@ -67,8 +67,11 @@ export function ClueEntityWorkspace({
           <ClueBasicInfoCard
             themeId={themeId ?? ''}
             clue={clue}
+            configJson={configJson}
             isSaving={isClueSaving}
+            isConfigSaving={isConfigSaving}
             onSave={onUpdate}
+            onConfigChange={onConfigChange}
             onDelete={onDelete}
           />
           <ClueRuntimeEffectCard

@@ -375,27 +375,46 @@ func validateClueInteractionConfigShape(cfg map[string]any) error {
 	if !ok {
 		return fmt.Errorf("config_json: modules.clue_interaction.config must be an object")
 	}
-	rawEffects, exists := moduleConfig["itemEffects"]
-	if !exists {
-		return nil
-	}
-	if rawEffects == nil {
-		return fmt.Errorf("config_json: modules.clue_interaction.config.itemEffects cannot be null")
-	}
-	itemEffects, ok := rawEffects.(map[string]any)
-	if !ok {
-		return fmt.Errorf("config_json: modules.clue_interaction.config.itemEffects must be an object")
-	}
-	for clueID, rawEffect := range itemEffects {
-		if _, err := uuid.Parse(clueID); err != nil {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects invalid clue id %q", clueID)
+	if rawEffects, exists := moduleConfig["itemEffects"]; exists {
+		if rawEffects == nil {
+			return fmt.Errorf("config_json: modules.clue_interaction.config.itemEffects cannot be null")
 		}
-		effect, ok := rawEffect.(map[string]any)
+		itemEffects, ok := rawEffects.(map[string]any)
 		if !ok {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s] must be an object", clueID)
+			return fmt.Errorf("config_json: modules.clue_interaction.config.itemEffects must be an object")
 		}
-		if err := validateClueItemEffectShape(clueID, effect); err != nil {
-			return err
+		for clueID, rawEffect := range itemEffects {
+			if _, err := uuid.Parse(clueID); err != nil {
+				return fmt.Errorf("config_json: clue_interaction.itemEffects invalid clue id %q", clueID)
+			}
+			effect, ok := rawEffect.(map[string]any)
+			if !ok {
+				return fmt.Errorf("config_json: clue_interaction.itemEffects[%s] must be an object", clueID)
+			}
+			if err := validateClueItemEffectShape(clueID, effect); err != nil {
+				return err
+			}
+		}
+	}
+	if rawPolicies, exists := moduleConfig["cluePolicies"]; exists {
+		if rawPolicies == nil {
+			return fmt.Errorf("config_json: modules.clue_interaction.config.cluePolicies cannot be null")
+		}
+		policies, ok := rawPolicies.(map[string]any)
+		if !ok {
+			return fmt.Errorf("config_json: modules.clue_interaction.config.cluePolicies must be an object")
+		}
+		for clueID, rawPolicy := range policies {
+			if _, err := uuid.Parse(clueID); err != nil {
+				return fmt.Errorf("config_json: clue_interaction.cluePolicies invalid clue id %q", clueID)
+			}
+			policy, ok := rawPolicy.(map[string]any)
+			if !ok {
+				return fmt.Errorf("config_json: clue_interaction.cluePolicies[%s] must be an object", clueID)
+			}
+			if err := validateCluePolicyShape(clueID, policy); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -403,7 +422,7 @@ func validateClueInteractionConfigShape(cfg map[string]any) error {
 
 func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 	for key := range effect {
-		if key != "effect" && key != "target" && key != "consume" && key != "revealText" && key != "grantClueIds" {
+		if key != "effect" && key != "target" && key != "consume" && key != "descriptionText" && key != "revealText" && key != "grantClueIds" && key != "condition" && key != "password" && key != "trigger" {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].%s is not supported", clueID, key)
 		}
 	}
@@ -411,7 +430,7 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 	if !ok || kind == "" {
 		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].effect is required", clueID)
 	}
-	if kind != "peek" && kind != "reveal" && kind != "grant_clue" {
+	if kind != "description_change" && kind != "peek" && kind != "steal" && kind != "reveal" && kind != "grant_clue" {
 		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].effect %q is not supported", clueID, kind)
 	}
 	if target, exists := effect["target"]; exists {
@@ -428,6 +447,12 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 		}
 		if _, ok := consume.(bool); !ok {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].consume must be boolean", clueID)
+		}
+	}
+	if kind == "description_change" {
+		text, ok := effect["descriptionText"].(string)
+		if !ok || strings.TrimSpace(text) == "" {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].descriptionText is required for description_change", clueID)
 		}
 	}
 	if kind == "reveal" {
@@ -449,6 +474,21 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 			if _, err := uuid.Parse(grantClueID); err != nil {
 				return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].grantClueIds has invalid clue id %q", clueID, grantClueID)
 			}
+		}
+	}
+	return nil
+}
+
+func validateCluePolicyShape(clueID string, policy map[string]any) error {
+	for key, value := range policy {
+		if key != "revealable" && key != "protected" {
+			return fmt.Errorf("config_json: clue_interaction.cluePolicies[%s].%s is not supported", clueID, key)
+		}
+		if value == nil {
+			return fmt.Errorf("config_json: clue_interaction.cluePolicies[%s].%s cannot be null", clueID, key)
+		}
+		if _, ok := value.(bool); !ok {
+			return fmt.Errorf("config_json: clue_interaction.cluePolicies[%s].%s must be boolean", clueID, key)
 		}
 	}
 	return nil

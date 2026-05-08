@@ -7,7 +7,7 @@
 // Any hand edit will be overwritten by the next go generate run.
 // Phase 19 PR-1 (2026-04-18).
 //
-// Catalog: 135 events (active=130, stub=3, deprec=2) · 10 //wsgen:payload structs.
+// Catalog: 137 events (active=132, stub=3, deprec=2) · 10 //wsgen:payload structs.
 
 /* eslint-disable */
 /* prettier-ignore */
@@ -91,11 +91,15 @@ export const WsEventType = {
   /** S2C · clue */
   CLUE_ACQUIRED: "clue.acquired",
   /** S2C · clue */
+  CLUE_DESCRIPTION_CHANGED: "clue.description_changed",
+  /** S2C · clue */
   CLUE_ITEM_DECLARED: "clue.item_declared",
   /** S2C · clue */
   CLUE_ITEM_RESOLVED: "clue.item_resolved",
   /** S2C · clue */
   CLUE_PEEK_RESULT: "clue.peek_result",
+  /** S2C · clue */
+  CLUE_STEAL_RESULT: "clue.steal_result",
   /** C2S · clue */
   CLUE_SHOW_ACCEPT: "clue:show_accept",
   /** C2S · clue */
@@ -390,9 +394,11 @@ export const WsEventDirection: Readonly<Record<WsEventType, "c2s" | "s2c" | "bid
   "chat:typing_indicator": "s2c",
   "chat:whisper": "s2c",
   "clue.acquired": "s2c",
+  "clue.description_changed": "s2c",
   "clue.item_declared": "s2c",
   "clue.item_resolved": "s2c",
   "clue.peek_result": "s2c",
+  "clue.steal_result": "s2c",
   "clue:show_accept": "c2s",
   "clue:show_decline": "c2s",
   "clue:show_request": "c2s",
@@ -529,9 +535,11 @@ export const WsEventCategory: Readonly<Record<WsEventType, string>> = {
   "chat:typing_indicator": "chat",
   "chat:whisper": "chat",
   "clue.acquired": "clue",
+  "clue.description_changed": "clue",
   "clue.item_declared": "clue",
   "clue.item_resolved": "clue",
   "clue.peek_result": "clue",
+  "clue.steal_result": "clue",
   "clue:show_accept": "clue",
   "clue:show_decline": "clue",
   "clue:show_request": "clue",
@@ -668,9 +676,11 @@ export const WsEventStatus: Readonly<Record<WsEventType, "active" | "stub" | "de
   "chat:typing_indicator": "active",
   "chat:whisper": "active",
   "clue.acquired": "active",
+  "clue.description_changed": "active",
   "clue.item_declared": "active",
   "clue.item_resolved": "active",
   "clue.peek_result": "active",
+  "clue.steal_result": "active",
   "clue:show_accept": "active",
   "clue:show_decline": "active",
   "clue:show_request": "active",

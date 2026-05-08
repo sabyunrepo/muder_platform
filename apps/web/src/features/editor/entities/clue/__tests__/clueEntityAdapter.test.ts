@@ -40,7 +40,7 @@ describe('clueEntityAdapter', () => {
       description: '잠긴 상자를 열 수 있다.',
       publicScopeLabel: '지정된 캐릭터나 장소에서만 획득',
       roundLabel: 'R2~4',
-      useEffectLabel: '다른 플레이어에게서 단서 가져오기',
+      useEffectLabel: '단서 가져오기',
       consumeLabel: '사용하면 내 단서함에서 사라짐',
       badges: ['사용 가능', '연결 3'],
     });
@@ -61,6 +61,7 @@ describe('clueEntityAdapter', () => {
 
   it('효과별 권장 대상 선택 방식을 제공한다', () => {
     expect(getClueUseEffectOption('peek')).toMatchObject({ target: 'player', requiresTargetSelection: true });
+    expect(getClueUseEffectOption('description_change')).toMatchObject({ target: 'self', requiresTargetSelection: false });
     expect(getClueUseEffectOption('reveal')).toMatchObject({ target: 'self', requiresTargetSelection: false });
     expect(getClueUseEffectOption('unknown')).toBeNull();
   });
@@ -93,6 +94,6 @@ describe('clueEntityAdapter', () => {
   });
 
   it('목록 배지는 공개/사용/연결 상태만 제작자 언어로 표시한다', () => {
-    expect(buildClueBadges(clue({ is_common: true }), 0)).toEqual(['모두에게 공개', '사용 가능', '미배치']);
+    expect(buildClueBadges(clue({ is_common: true }), 0)).toEqual(['전체 공개', '사용 가능', '미배치']);
   });
 });

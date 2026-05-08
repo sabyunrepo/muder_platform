@@ -108,6 +108,97 @@ func TestClueInteractionModule_ConfiguredGrantClueIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestClueInteractionModule_ConfiguredDescriptionChangeStoresPerPlayerText(t *testing.T) {
+	deps := newTestDeps()
+	m := NewClueInteractionModule()
+	playerID := uuid.New()
+	clueID := uuid.New()
+	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
+		clueID.String(): {Effect: clueEffectDescriptionChange, Target: "self", DescriptionText: "열쇠 안쪽 문장이 바뀝니다."},
+	}})
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.acquiredClues[playerID] = []string{clueID.String()}
+	m.mu.Unlock()
+
+	var changed, resolved bool
+	deps.EventBus.Subscribe("clue.description_changed", func(e engine.Event) { changed = true })
+	deps.EventBus.Subscribe("clue.item_resolved", func(e engine.Event) { resolved = true })
+
+	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
+		t.Fatalf("clue:use description_change: %v", err)
+	}
+	if !changed || !resolved {
+		t.Fatalf("expected changed/resolved events, got changed=%v resolved=%v", changed, resolved)
+	}
+	m.mu.RLock()
+	if got := m.changedDescriptions[playerID][clueID.String()]; got != "열쇠 안쪽 문장이 바뀝니다." {
+		t.Fatalf("changed description = %q", got)
+	}
+	m.mu.RUnlock()
+}
+
+func TestClueInteractionModule_PeekAndStealSkipProtectedClues(t *testing.T) {
+	deps := newTestDeps()
+	m := NewClueInteractionModule()
+	playerID := uuid.New()
+	targetID := uuid.New()
+	usedClueID := uuid.New()
+	protectedClueID := uuid.New().String()
+	openClueID := uuid.New().String()
+	cfg, _ := json.Marshal(ClueInteractionConfig{
+		ItemEffects: map[string]ClueItemEffectConfig{
+			usedClueID.String(): {Effect: clueEffectSteal, Target: "player"},
+		},
+		CluePolicies: map[string]CluePolicyConfig{
+			protectedClueID: {Revealable: true, Protected: true},
+		},
+	})
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.acquiredClues[playerID] = []string{usedClueID.String()}
+	m.acquiredClues[targetID] = []string{protectedClueID, openClueID}
+	m.mu.Unlock()
+
+	var peeked []string
+	deps.EventBus.Subscribe("clue.peek_result", func(e engine.Event) {
+		payload := e.Payload.(map[string]any)
+		peeked = payload["clues"].([]string)
+	})
+	if err := m.handlePeekEffect(context.Background(), playerID, usedClueID, targetID.String()); err != nil {
+		t.Fatalf("peek: %v", err)
+	}
+	if len(peeked) != 1 || peeked[0] != openClueID {
+		t.Fatalf("peeked clues = %#v", peeked)
+	}
+
+	payload, _ := json.Marshal(itemUsePayload{ClueID: usedClueID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
+		t.Fatalf("clue:use steal: %v", err)
+	}
+	targetPayload, _ := json.Marshal(itemUseTargetPayload{TargetPlayerID: targetID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use_target", targetPayload); err != nil {
+		t.Fatalf("clue:use_target steal: %v", err)
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if !m.playerHasClueLocked(playerID, openClueID) {
+		t.Fatal("player should receive unprotected clue")
+	}
+	if !m.playerHasClueLocked(targetID, protectedClueID) {
+		t.Fatal("protected clue should remain with target")
+	}
+	if m.playerHasClueLocked(targetID, openClueID) {
+		t.Fatal("stolen clue should be removed from target")
+	}
+}
+
 func TestClueInteractionModule_ConfiguredEffectRequiresOwnership(t *testing.T) {
 	m := NewClueInteractionModule()
 	clueID := uuid.New()

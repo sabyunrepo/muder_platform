@@ -3,12 +3,20 @@ import { Save, Trash2 } from 'lucide-react';
 import type { ClueResponse, UpdateClueRequest } from '@/features/editor/api';
 import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
 import { buildClueUsePayload, toClueEditorViewModel } from '@/features/editor/entities/clue/clueEntityAdapter';
+import {
+  readCluePolicy,
+  writeCluePolicy,
+  type EditorConfig,
+} from '@/features/editor/utils/configShape';
 
 interface ClueBasicInfoCardProps {
   themeId: string;
   clue: ClueResponse;
+  configJson: EditorConfig | null | undefined;
   isSaving?: boolean;
+  isConfigSaving?: boolean;
   onSave: (clueId: string, body: UpdateClueRequest) => void;
+  onConfigChange?: (nextConfig: EditorConfig) => void;
   onDelete: (clue: ClueResponse) => void;
 }
 
@@ -18,17 +26,22 @@ interface DraftState {
   imageUrl: string;
   imageMediaId: string | null;
   isCommon: boolean;
+  isRevealable: boolean;
+  isProtected: boolean;
   revealRound: number | null;
   hideRound: number | null;
 }
 
-function toDraft(clue: ClueResponse): DraftState {
+function toDraft(clue: ClueResponse, configJson: EditorConfig | null | undefined): DraftState {
+  const policy = readCluePolicy(configJson, clue.id);
   return {
     name: clue.name,
     description: clue.description ?? '',
     imageUrl: clue.image_url ?? '',
     imageMediaId: clue.image_media_id ?? null,
     isCommon: clue.is_common,
+    isRevealable: clue.is_common ? true : policy.revealable,
+    isProtected: policy.protected,
     revealRound: clue.reveal_round ?? null,
     hideRound: clue.hide_round ?? null,
   };
@@ -42,13 +55,20 @@ function parseRoundInput(raw: string): number | null {
   return Math.floor(n);
 }
 
-function isDirty(draft: DraftState, clue: ClueResponse): boolean {
+function isDirty(
+  draft: DraftState,
+  clue: ClueResponse,
+  configJson: EditorConfig | null | undefined
+): boolean {
+  const policy = readCluePolicy(configJson, clue.id);
   return (
     draft.name !== clue.name ||
     draft.description !== (clue.description ?? '') ||
     draft.imageUrl !== (clue.image_url ?? '') ||
     draft.imageMediaId !== (clue.image_media_id ?? null) ||
     draft.isCommon !== clue.is_common ||
+    (!draft.isCommon && draft.isRevealable !== policy.revealable) ||
+    draft.isProtected !== policy.protected ||
     draft.revealRound !== (clue.reveal_round ?? null) ||
     draft.hideRound !== (clue.hide_round ?? null)
   );
@@ -69,22 +89,30 @@ function validate(draft: DraftState): Record<string, string> {
 export function ClueBasicInfoCard({
   themeId,
   clue,
+  configJson,
   isSaving = false,
+  isConfigSaving = false,
   onSave,
+  onConfigChange,
   onDelete,
 }: ClueBasicInfoCardProps) {
-  const [draft, setDraft] = useState<DraftState>(() => toDraft(clue));
+  const [draft, setDraft] = useState<DraftState>(() => toDraft(clue, configJson));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const view = toClueEditorViewModel(clue);
-  const dirty = isDirty(draft, clue);
+  const dirty = isDirty(draft, clue, configJson);
+  const saving = isSaving || isConfigSaving;
 
   useEffect(() => {
-    setDraft(toDraft(clue));
+    setDraft(toDraft(clue, configJson));
     setErrors({});
-  }, [clue]);
+  }, [clue, configJson]);
 
   function patch(next: Partial<DraftState>) {
-    setDraft((current) => ({ ...current, ...next }));
+    setDraft((current) => {
+      const patched = { ...current, ...next };
+      if (next.isCommon === true) patched.isRevealable = true;
+      return patched;
+    });
   }
 
   function handleSave() {
@@ -116,6 +144,12 @@ export function ClueBasicInfoCard({
         hide_round: draft.hideRound,
       })
     );
+    onConfigChange?.(
+      writeCluePolicy(configJson, clue.id, {
+        revealable: draft.isCommon ? true : draft.isRevealable,
+        protected: draft.isProtected,
+      })
+    );
   }
 
   return (
@@ -134,11 +168,11 @@ export function ClueBasicInfoCard({
           <button
             type="button"
             onClick={handleSave}
-            disabled={!dirty || isSaving}
+            disabled={!dirty || saving}
             className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
           >
             <Save className="h-3.5 w-3.5" />
-            {isSaving ? '저장 중' : '기본 정보 저장'}
+            {saving ? '저장 중' : '기본 정보 저장'}
           </button>
           <button
             type="button"
@@ -185,7 +219,39 @@ export function ClueBasicInfoCard({
               onChange={(event) => patch({ isCommon: event.target.checked })}
               className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
             />
-            모든 플레이어가 공유
+            전체 공개
+          </label>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className={`flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm ${draft.isCommon ? 'text-slate-500' : 'text-slate-300'}`}>
+            <input
+              type="checkbox"
+              checked={draft.isRevealable}
+              disabled={draft.isCommon}
+              onChange={(event) => patch({ isRevealable: event.target.checked })}
+              className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            />
+            <span>
+              <span className="font-semibold text-slate-200">공개 가능</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                전체 공개가 아닌 단서를 장면, 라운드, 암호, 아이템 효과로 나중에 공개할 수 있게 둡니다.
+              </span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={draft.isProtected}
+              onChange={(event) => patch({ isProtected: event.target.checked })}
+              className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            />
+            <span>
+              <span className="font-semibold text-slate-200">단서 보호</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                보호된 단서는 훔쳐보기와 가져오기 효과의 대상에서 제외됩니다.
+              </span>
+            </span>
           </label>
         </div>
 
@@ -206,28 +272,40 @@ export function ClueBasicInfoCard({
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className="text-sm font-medium text-slate-300">
-            등장 라운드
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={draft.revealRound ?? ''}
-              onChange={(event) => patch({ revealRound: parseRoundInput(event.target.value) })}
-              placeholder="처음부터"
+            공개 시점
+            <select
+              value={roundSelectValue(draft.revealRound, 'start')}
+              onChange={(event) => patch({ revealRound: parseRoundSelect(event.target.value) })}
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-            />
+            >
+              <option value="start">처음부터</option>
+              <option value="round:1">1라운드 시작</option>
+              <option value="round:2">2라운드 시작</option>
+              <option value="round:3">3라운드 시작</option>
+              <option value="round:4">4라운드 시작</option>
+              <option value="round:5">5라운드 시작</option>
+              {draft.revealRound != null && draft.revealRound > 5 && (
+                <option value={`round:${draft.revealRound}`}>{draft.revealRound}라운드 시작</option>
+              )}
+            </select>
           </label>
           <label className="text-sm font-medium text-slate-300">
-            사라짐 라운드
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={draft.hideRound ?? ''}
-              onChange={(event) => patch({ hideRound: parseRoundInput(event.target.value) })}
-              placeholder="끝까지"
+            숨김 시점
+            <select
+              value={roundSelectValue(draft.hideRound, 'end')}
+              onChange={(event) => patch({ hideRound: parseRoundSelect(event.target.value) })}
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-            />
+            >
+              <option value="end">끝까지</option>
+              <option value="round:1">1라운드 종료</option>
+              <option value="round:2">2라운드 종료</option>
+              <option value="round:3">3라운드 종료</option>
+              <option value="round:4">4라운드 종료</option>
+              <option value="round:5">5라운드 종료</option>
+              {draft.hideRound != null && draft.hideRound > 5 && (
+                <option value={`round:${draft.hideRound}`}>{draft.hideRound}라운드 종료</option>
+              )}
+            </select>
           </label>
         </div>
         {errors.round && <p className="text-xs text-red-400">{errors.round}</p>}
@@ -240,6 +318,16 @@ export function ClueBasicInfoCard({
       </div>
     </article>
   );
+}
+
+function roundSelectValue(value: number | null, emptyValue: 'start' | 'end'): string {
+  return value == null ? emptyValue : `round:${value}`;
+}
+
+function parseRoundSelect(value: string): number | null {
+  if (value === 'start' || value === 'end') return null;
+  if (!value.startsWith('round:')) return null;
+  return parseRoundInput(value.slice('round:'.length));
 }
 
 function InfoBlock({ title, value }: { title: string; value: string }) {

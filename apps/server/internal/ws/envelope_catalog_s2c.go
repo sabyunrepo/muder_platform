@@ -62,6 +62,8 @@ func init() {
 		EventDef{Type: "clue.item_declared", Direction: DirS2C, Category: "clue"},
 		EventDef{Type: "clue.item_resolved", Direction: DirS2C, Category: "clue"},
 		EventDef{Type: "clue.peek_result", Direction: DirS2C, Category: "clue"},
+		EventDef{Type: "clue.steal_result", Direction: DirS2C, Category: "clue"},
+		EventDef{Type: "clue.description_changed", Direction: DirS2C, Category: "clue"},
 
 		// --- ending (engine relay) ---
 		EventDef{Type: "ending.reveal_step", Direction: DirS2C, Category: "ending"},
