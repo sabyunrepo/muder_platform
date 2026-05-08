@@ -443,4 +443,64 @@ describe("EndingEntitySubTab", () => {
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });
+
+  it("복수 선택 질문은 모두 정답 기준 결말 규칙을 저장한다", () => {
+    renderWithClient(
+      <EndingEntitySubTab
+        themeId="theme-1"
+        theme={{
+          ...theme,
+          config_json: {
+            modules: {
+              ending_branch: {
+                enabled: true,
+                config: {
+                  questions: [{
+                    id: "q1",
+                    text: "확보한 증거는?",
+                    type: "multi",
+                    choices: ["피 묻은 장갑", "부서진 시계", "찢어진 편지"],
+                    impact: "branch",
+                    respondents: "all",
+                  }],
+                  matrix: [{ priority: 1, ending: "ending-1", condition: { in: ["피 묻은 장갑", { var: "answers.q1.choices" }] } }],
+                  defaultEnding: "ending-2",
+                },
+              },
+            },
+          },
+        }}
+      />,
+    );
+    openEndingManagement();
+
+    fireEvent.click(screen.getByRole("button", { name: "수정" }));
+    fireEvent.click(screen.getByRole("button", { name: "부서진 시계" }));
+    fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "all" } });
+    fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              matrix: [
+                expect.objectContaining({
+                  ending: "ending-1",
+                  conditions: {
+                    and: [
+                      { in: ["피 묻은 장갑", { var: "answers.q1.choices" }] },
+                      { in: ["부서진 시계", { var: "answers.q1.choices" }] },
+                    ],
+                  },
+                }),
+              ],
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
 });

@@ -10,7 +10,7 @@ export const ENDING_BRANCH_MODULE_ID = "ending_branch";
 
 export type EndingBranchQuestionType = "single" | "multi";
 export type EndingBranchQuestionImpact = "branch" | "score";
-export type EndingBranchAggregation = "threshold" | "winning";
+export type EndingBranchAggregation = "threshold" | "winning" | "all" | "any";
 export type EndingBranchQuestionTarget =
   | { type: "all_players" }
   | { type: "specific_players"; characterIds: string[] };
@@ -52,6 +52,7 @@ export interface EndingBranchMatrixDraft {
   priority: number;
   questionId: string | null;
   choice: string | null;
+  choices: string[];
   aggregation: EndingBranchAggregation;
   endingId: string;
   endingName: string;
@@ -231,38 +232,82 @@ export function buildWinningChoiceCondition(questionId: string, choice: string):
   return { "==": [{ var: `answers.${questionId}.winning` }, choice] };
 }
 
+function uniqueChoices(choices: string[]): string[] {
+  return Array.from(new Set(choices.map((choice) => choice.trim()).filter(Boolean)));
+}
+
+function thresholdChoiceCondition(questionId: string, choice: string): EditorConfig {
+  return buildChoiceCondition(questionId, choice);
+}
+
+export function buildAllChoicesCondition(questionId: string, choices: string[]): EditorConfig {
+  return { and: uniqueChoices(choices).map((choice) => thresholdChoiceCondition(questionId, choice)) };
+}
+
+export function buildAnyChoicesCondition(questionId: string, choices: string[]): EditorConfig {
+  return { or: uniqueChoices(choices).map((choice) => thresholdChoiceCondition(questionId, choice)) };
+}
+
 export function updateMatrixCondition(
   row: EndingBranchMatrixRow,
   questionId: string,
-  choice: string,
+  choice: string | string[],
   aggregation: EndingBranchAggregation = readChoiceCondition(row.condition)?.aggregation ?? "threshold",
 ): EndingBranchMatrixRow {
+  const choices = Array.isArray(choice) ? uniqueChoices(choice) : uniqueChoices([choice]);
+  const firstChoice = choices[0] ?? "";
   return {
     ...row,
     condition: aggregation === "winning"
-      ? buildWinningChoiceCondition(questionId, choice)
-      : buildChoiceCondition(questionId, choice),
+      ? buildWinningChoiceCondition(questionId, firstChoice)
+      : aggregation === "all"
+        ? buildAllChoicesCondition(questionId, choices)
+        : aggregation === "any"
+          ? buildAnyChoicesCondition(questionId, choices)
+          : buildChoiceCondition(questionId, firstChoice),
   };
 }
 
 export function readChoiceCondition(
   condition: EditorConfig,
-): { questionId: string; choice: string; aggregation: EndingBranchAggregation } | null {
+): { questionId: string; choice: string; choices: string[]; aggregation: EndingBranchAggregation } | null {
   const raw = condition.in;
   if (Array.isArray(raw) && raw.length >= 2) {
     const [choice, source] = raw;
     if (typeof choice === "string" && isRecord(source) && typeof source.var === "string") {
       const match = source.var.match(/^answers\.(.+)\.choices$/);
-      if (match) return { questionId: match[1], choice, aggregation: "threshold" };
+      if (match) return { questionId: match[1], choice, choices: [choice], aggregation: "threshold" };
     }
   }
 
   const equals = condition["=="];
-  if (!Array.isArray(equals) || equals.length < 2) return null;
-  const [source, choice] = equals;
-  if (!isRecord(source) || typeof source.var !== "string" || typeof choice !== "string") return null;
-  const match = source.var.match(/^answers\.(.+)\.winning$/);
-  return match ? { questionId: match[1], choice, aggregation: "winning" } : null;
+  if (Array.isArray(equals) && equals.length >= 2) {
+    const [source, choice] = equals;
+    if (!isRecord(source) || typeof source.var !== "string" || typeof choice !== "string") return null;
+    const match = source.var.match(/^answers\.(.+)\.winning$/);
+    return match ? { questionId: match[1], choice, choices: [choice], aggregation: "winning" } : null;
+  }
+
+  return readCompositeChoiceCondition(condition.and, "all")
+    ?? readCompositeChoiceCondition(condition.or, "any");
+}
+
+function readCompositeChoiceCondition(
+  value: unknown,
+  aggregation: "all" | "any",
+): { questionId: string; choice: string; choices: string[]; aggregation: EndingBranchAggregation } | null {
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const parsed = value
+    .map((item) => isRecord(item) ? readChoiceCondition(item) : null)
+    .filter((item): item is NonNullable<ReturnType<typeof readChoiceCondition>> => Boolean(item));
+  if (parsed.length !== value.length) return null;
+  const questionId = parsed[0]?.questionId;
+  if (!questionId || parsed.some((item) => item.questionId !== questionId || item.aggregation !== "threshold")) {
+    return null;
+  }
+  const choices = uniqueChoices(parsed.map((item) => item.choice));
+  if (choices.length === 0) return null;
+  return { questionId, choice: choices[0], choices, aggregation };
 }
 
 function endingNameById(nodes: Node[]): Map<string, string> {
@@ -311,6 +356,7 @@ export function toEndingBranchEditorViewModel(
       priority: row.priority,
       questionId: question?.id ?? null,
       choice,
+      choices: parsed?.choices.filter((item) => question?.choices.includes(item)) ?? [],
       aggregation: parsed?.aggregation ?? "threshold",
       endingId: row.ending,
       endingName: names.get(row.ending) ?? "결말 선택 필요",
@@ -344,7 +390,7 @@ function buildEndingBranchWarnings(config: EndingBranchConfig, endingNodes: Node
   for (const row of config.matrix) {
     if (!endingIds.has(row.ending)) warnings.push("결말 규칙 중 도착 결말이 비어 있습니다.");
     const parsed = readChoiceCondition(row.condition);
-    if (!parsed || !parsed.choice.trim()) warnings.push("결말 규칙 중 질문/선택지 조건이 비어 있습니다.");
+    if (!parsed || !parsed.choices.some((choice) => choice.trim())) warnings.push("결말 규칙 중 질문/선택지 조건이 비어 있습니다.");
   }
   return Array.from(new Set(warnings));
 }

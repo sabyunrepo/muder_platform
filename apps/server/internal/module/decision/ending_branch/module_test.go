@@ -325,6 +325,80 @@ func TestModule_ReactTo_ThresholdRuleReturnsAnswerSummary(t *testing.T) {
 	assert.Equal(t, float64(1), counts["B"])
 }
 
+func TestModule_ReactTo_EvaluatesMultiAnswerAllAnyRules(t *testing.T) {
+	t.Run("all requires every configured choice to pass threshold", func(t *testing.T) {
+		m := NewModule()
+		cfg := json.RawMessage(`{
+			"questions": [
+				{"id": "q1", "text": "확보한 증거는?", "type": "multi", "choices": ["장갑","시계","편지"], "impact": "branch"}
+			],
+			"matrix": [
+				{"id":"all-evidence","priority": 1, "conditions": {"and": [
+					{"in": ["장갑", {"var":"answers.q1.choices"}]},
+					{"in": ["시계", {"var":"answers.q1.choices"}]}
+				]}, "ending": "진실"},
+				{"id":"any-evidence","priority": 2, "conditions": {"or": [
+					{"in": ["장갑", {"var":"answers.q1.choices"}]},
+					{"in": ["편지", {"var":"answers.q1.choices"}]}
+				]}, "ending": "단서부족"}
+			],
+			"defaultEnding": "미해결",
+			"multiVoteThreshold": 0.5
+		}`)
+		require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{}, cfg))
+		playerA := uuid.New()
+		playerB := uuid.New()
+		require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q1","choices":["장갑","시계"]}`)))
+		require.NoError(t, m.HandleMessage(context.Background(), playerB, "submit_answer", json.RawMessage(`{"question_id":"q1","choices":["장갑","편지"]}`)))
+
+		require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+		raw, err := m.BuildState()
+		require.NoError(t, err)
+		var state map[string]any
+		require.NoError(t, json.Unmarshal(raw, &state))
+		result := state["result"].(map[string]any)
+		assert.Equal(t, "진실", result["selectedEnding"])
+		assert.Equal(t, "all-evidence", result["matchedRuleId"])
+	})
+
+	t.Run("any matches when one configured choice passes threshold", func(t *testing.T) {
+		m := NewModule()
+		cfg := json.RawMessage(`{
+			"questions": [
+				{"id": "q1", "text": "확보한 증거는?", "type": "multi", "choices": ["장갑","시계","편지"], "impact": "branch"}
+			],
+			"matrix": [
+				{"id":"all-evidence","priority": 1, "conditions": {"and": [
+					{"in": ["시계", {"var":"answers.q1.choices"}]},
+					{"in": ["편지", {"var":"answers.q1.choices"}]}
+				]}, "ending": "진실"},
+				{"id":"any-evidence","priority": 2, "conditions": {"or": [
+					{"in": ["장갑", {"var":"answers.q1.choices"}]},
+					{"in": ["편지", {"var":"answers.q1.choices"}]}
+				]}, "ending": "단서부족"}
+			],
+			"defaultEnding": "미해결",
+			"multiVoteThreshold": 0.5
+		}`)
+		require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{}, cfg))
+		playerA := uuid.New()
+		playerB := uuid.New()
+		require.NoError(t, m.HandleMessage(context.Background(), playerA, "submit_answer", json.RawMessage(`{"question_id":"q1","choices":["장갑"]}`)))
+		require.NoError(t, m.HandleMessage(context.Background(), playerB, "submit_answer", json.RawMessage(`{"question_id":"q1","choices":["장갑"]}`)))
+
+		require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+		raw, err := m.BuildState()
+		require.NoError(t, err)
+		var state map[string]any
+		require.NoError(t, json.Unmarshal(raw, &state))
+		result := state["result"].(map[string]any)
+		assert.Equal(t, "단서부족", result["selectedEnding"])
+		assert.Equal(t, "any-evidence", result["matchedRuleId"])
+	})
+}
+
 func TestModule_ReactTo_FallbackWhenNoRuleMatches(t *testing.T) {
 	m := NewModule()
 	cfg := json.RawMessage(`{
