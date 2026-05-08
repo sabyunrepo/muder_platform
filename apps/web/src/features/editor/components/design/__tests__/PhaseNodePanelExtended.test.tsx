@@ -15,6 +15,15 @@ vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => ({ mutate: vi.fn() }),
 }));
 
+vi.mock("../../../readingApi", () => ({
+  useReadingSections: () => ({
+    data: [{ id: "rs-1", name: "오프닝 낭독", lines: [{ Text: "시작" }] }],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}));
+
 vi.mock("../../../mediaApi", () => ({
   useMediaList: () => ({
     data: [
@@ -134,6 +143,35 @@ describe("PhaseNodePanel extended fields", () => {
     expect(screen.getByText("장면 시작 트리거")).toBeDefined();
     expect(screen.getByText("장면 종료 트리거")).toBeDefined();
     expect(screen.getAllByText("트리거 실행 결과 없음")).toHaveLength(3);
+  });
+
+  it("스토리 진행 노드는 읽기 대사 배치만 표시하고 정보 공개 대상 UI를 숨긴다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ phase_type: "story_progression" })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText("읽기 대사 배치").length).toBeGreaterThan(0);
+    expect(screen.getByPlaceholderText("대사 이름으로 찾기")).toBeDefined();
+    expect(screen.queryByText("정보 공개")).toBeNull();
+    expect(screen.queryByRole("button", { name: "캐릭터별 대상 추가" })).toBeNull();
+    expect(screen.queryByPlaceholderText("정보 제목으로 찾기")).toBeNull();
+  });
+
+  it("일반 장면은 정보 공개만 표시하고 읽기 대사 검색을 숨긴다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ phase_type: "investigation" })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("정보 공개")).toBeDefined();
+    expect(screen.queryByPlaceholderText("대사 이름으로 찾기")).toBeNull();
   });
 
   it("장면 연출 cue를 시작 트리거와 분리해 저장한다", () => {

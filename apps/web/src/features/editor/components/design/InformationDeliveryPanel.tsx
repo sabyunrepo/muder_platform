@@ -1,11 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useEditorCharacters } from "../../api";
-import { useReadingSections } from "../../readingApi";
 import { useStoryInfos, type StoryInfoResponse } from "../../storyInfoApi";
-import {
-  filterReadingSectionOptions,
-  toReadingSectionPickerOptions,
-} from "../../entities/story/readingSectionAdapter";
 import {
   InformationDeliveryContent,
   InformationDeliveryHeader,
@@ -38,22 +33,19 @@ export function InformationDeliveryPanel({
     refetch: refetchCharacters,
   } = useEditorCharacters(themeId);
   const {
-    data: sections = [],
-    isLoading: sectionsLoading,
-    isError: sectionsError,
-    refetch: refetchSections,
-  } = useReadingSections(themeId);
-  const {
     data: storyInfos = [],
     isLoading: storyInfosLoading,
     isError: storyInfosError,
     refetch: refetchStoryInfos,
   } = useStoryInfos(themeId);
   const [characterQuery, setCharacterQuery] = useState("");
-  const [sectionQuery, setSectionQuery] = useState("");
   const [infoQuery, setInfoQuery] = useState("");
   const savedDeliveries = useMemo(
-    () => flowNodeToInformationDeliveries(phaseData),
+    () =>
+      flowNodeToInformationDeliveries(phaseData).map((delivery) => ({
+        ...delivery,
+        readingSectionIds: [],
+      })),
     [phaseData],
   );
   const [draftDeliveries, setDraftDeliveries] = useState(() => savedDeliveries);
@@ -74,13 +66,8 @@ export function InformationDeliveryPanel({
     return characters.filter((character) => character.name.toLowerCase().includes(query));
   }, [characters, characterQuery]);
 
-  const sectionOptions = useMemo(() => toReadingSectionPickerOptions(sections), [sections]);
   const storyInfoOptions = useMemo(() => toStoryInfoOptions(storyInfos), [storyInfos]);
 
-  const filteredSections = useMemo(
-    () => filterReadingSectionOptions(sectionOptions, sectionQuery),
-    [sectionOptions, sectionQuery],
-  );
   const filteredStoryInfos = useMemo(
     () => filterStoryInfoOptions(storyInfoOptions, infoQuery),
     [storyInfoOptions, infoQuery],
@@ -111,14 +98,6 @@ export function InformationDeliveryPanel({
     updateDeliveries(draftDeliveries.filter((delivery) => delivery.id !== deliveryId));
   };
 
-  const toggleSection = (delivery: InformationDeliveryViewModel, sectionId: string) => {
-    const hasSection = delivery.readingSectionIds.includes(sectionId);
-    updateDelivery(delivery.id, {
-      readingSectionIds: hasSection
-        ? delivery.readingSectionIds.filter((id) => id !== sectionId)
-        : [...delivery.readingSectionIds, sectionId],
-    });
-  };
   const toggleStoryInfo = (delivery: InformationDeliveryViewModel, storyInfoId: string) => {
     const hasStoryInfo = delivery.storyInfoIds.includes(storyInfoId);
     updateDelivery(delivery.id, {
@@ -128,13 +107,12 @@ export function InformationDeliveryPanel({
     });
   };
 
-  const loading = charactersLoading || sectionsLoading || storyInfosLoading;
-  const hasLoadError = charactersError || sectionsError || storyInfosError;
+  const loading = charactersLoading || storyInfosLoading;
+  const hasLoadError = charactersError || storyInfosError;
   const canAddCharacterDelivery = characters.length > 0;
 
   const retryLoad = () => {
     if (charactersError) void refetchCharacters();
-    if (sectionsError) void refetchSections();
     if (storyInfosError) void refetchStoryInfos();
   };
 
@@ -150,24 +128,18 @@ export function InformationDeliveryPanel({
         loading={loading}
         hasLoadError={hasLoadError}
         hasCharacters={characters.length > 0}
-        hasSections={sections.length > 0}
         hasStoryInfos={storyInfos.length > 0}
         characterQuery={characterQuery}
-        sectionQuery={sectionQuery}
         infoQuery={infoQuery}
         deliveries={draftDeliveries}
         characters={filteredCharacters}
         allCharacters={characters}
-        sections={filteredSections}
-        allSections={sectionOptions}
         storyInfos={filteredStoryInfos}
         allStoryInfos={storyInfoOptions}
         onRetryLoad={retryLoad}
         onCharacterQueryChange={setCharacterQuery}
-        onSectionQueryChange={setSectionQuery}
         onInfoQueryChange={setInfoQuery}
         onSelectCharacter={(deliveryId, characterId) => updateDelivery(deliveryId, { characterId })}
-        onToggleSection={toggleSection}
         onToggleStoryInfo={toggleStoryInfo}
         onRemoveDelivery={removeDelivery}
       />
