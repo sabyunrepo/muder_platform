@@ -78,11 +78,10 @@ func startModularGame(
 	bus := engine.NewEventBus(adapter)
 
 	deps := engine.ModuleDeps{
-		SessionID:          cfg.SessionID,
-		EventBus:           bus,
-		Logger:             adapter,
-		PlayerInfoProvider: newStaticPlayerInfoProvider(cfg.Players),
-		MediaResolver:      cfg.MediaResolver,
+		SessionID:     cfg.SessionID,
+		EventBus:      bus,
+		Logger:        adapter,
+		MediaResolver: cfg.MediaResolver,
 	}
 
 	modules, moduleConfigs, err := engine.BuildModules(ctx, gameCfg, deps)
@@ -106,7 +105,6 @@ func startModularGame(
 		adapter,
 		gameCfg.Phases,
 	)
-	eng.SetPlayerInfoProvider(deps.PlayerInfoProvider)
 	eng.SetMediaResolver(deps.MediaResolver)
 	if err := eng.SetSceneTransitions(gameCfg.SceneTransitions); err != nil {
 		logger.Error().Err(err).
@@ -118,6 +116,8 @@ func startModularGame(
 
 	s := newSession(cfg.SessionID, eng, cfg.Players, logger)
 	s.onAbort = m.removeSession
+	eng.SetPlayerInfoProvider(s)
+	eng.SetPlayerStatusController(s)
 
 	// Wire snapshot dependencies so reconnecting players receive the current
 	// session state. Mirrors SessionManager.Start (H-2 fix).

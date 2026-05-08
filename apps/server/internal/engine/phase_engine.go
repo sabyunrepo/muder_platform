@@ -33,21 +33,22 @@ func (noopAuditLogger) Log(context.Context, uuid.UUID, string, json.RawMessage) 
 // or subscribe to `phase:entered` (payload includes `round`) to gate clue /
 // location visibility against reveal_round/hide_round ranges.
 type PhaseEngine struct {
-	sessionID          uuid.UUID
-	modules            []Module          // ordered module list
-	moduleMap          map[string]Module // name → module for lookups
-	eventBus           *EventBus
-	audit              AuditLogger
-	logger             Logger
-	playerInfoProvider PlayerInfoProvider
-	mediaResolver      MediaResolver
-	phases             []PhaseDefinition
-	sceneTransitions   []SceneTransition
-	sceneVisitCounts   map[string]int
-	current            int // index into phases, -1 = not started
-	currentRound       int32
-	started            bool
-	stopped            bool
+	sessionID              uuid.UUID
+	modules                []Module          // ordered module list
+	moduleMap              map[string]Module // name → module for lookups
+	eventBus               *EventBus
+	audit                  AuditLogger
+	logger                 Logger
+	playerInfoProvider     PlayerInfoProvider
+	playerStatusController PlayerStatusController
+	mediaResolver          MediaResolver
+	phases                 []PhaseDefinition
+	sceneTransitions       []SceneTransition
+	sceneVisitCounts       map[string]int
+	current                int // index into phases, -1 = not started
+	currentRound           int32
+	started                bool
+	stopped                bool
 }
 
 // CurrentRound returns the active round index (1-based). Returns 0 before
@@ -93,6 +94,10 @@ func (e *PhaseEngine) SetPlayerInfoProvider(provider PlayerInfoProvider) {
 	e.playerInfoProvider = provider
 }
 
+func (e *PhaseEngine) SetPlayerStatusController(controller PlayerStatusController) {
+	e.playerStatusController = controller
+}
+
 func (e *PhaseEngine) SetMediaResolver(resolver MediaResolver) {
 	e.mediaResolver = resolver
 }
@@ -107,13 +112,14 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 	}
 
 	deps := ModuleDeps{
-		SessionID:          e.sessionID,
-		EventBus:           e.eventBus,
-		Logger:             e.logger,
-		PlayerInfoProvider: e.playerInfoProvider,
-		ActionDispatcher:   e,
-		SceneController:    e,
-		MediaResolver:      e.mediaResolver,
+		SessionID:              e.sessionID,
+		EventBus:               e.eventBus,
+		Logger:                 e.logger,
+		PlayerInfoProvider:     e.playerInfoProvider,
+		PlayerStatusController: e.playerStatusController,
+		ActionDispatcher:       e,
+		SceneController:        e,
+		MediaResolver:          e.mediaResolver,
 	}
 
 	for _, mod := range e.modules {

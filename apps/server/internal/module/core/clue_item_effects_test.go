@@ -4,11 +4,25 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
 )
+
+type fakePlayerStatusController struct {
+	actions []engine.PlayerStatusAction
+	err     error
+}
+
+func (f *fakePlayerStatusController) ApplyPlayerStatus(_ context.Context, action engine.PlayerStatusAction) (engine.PlayerRuntimeInfo, error) {
+	if f.err != nil {
+		return engine.PlayerRuntimeInfo{}, f.err
+	}
+	f.actions = append(f.actions, action)
+	return engine.PlayerRuntimeInfo{PlayerID: action.TargetID, IsAlive: action.IsAlive}, nil
+}
 
 func TestClueInteractionModule_ConfiguredRevealConsumesAndRedacts(t *testing.T) {
 	deps := newTestDeps()
@@ -63,6 +77,102 @@ func TestClueInteractionModule_ConfiguredRevealConsumesAndRedacts(t *testing.T) 
 	}
 	if bytes.Contains(otherData, []byte("0421")) || bytes.Contains(otherData, []byte(playerID.String())) {
 		t.Fatalf("other player leaked revealed info: %s", otherData)
+	}
+}
+
+func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testing.T) {
+	status := &fakePlayerStatusController{}
+	deps := newTestDeps()
+	deps.PlayerStatusController = status
+	m := NewClueInteractionModule()
+	playerID := uuid.New()
+	targetID := uuid.New()
+	clueID := uuid.New()
+	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true},
+	}})
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.acquiredClues[playerID] = []string{clueID.String()}
+	m.mu.Unlock()
+
+	var killRequested, resolved bool
+	deps.EventBus.Subscribe("clue.kill_requested", func(e engine.Event) {
+		payload := e.Payload.(map[string]any)
+		killRequested = payload["playerId"] == playerID.String() &&
+			payload["targetPlayerId"] == targetID.String() &&
+			payload["clueId"] == clueID.String()
+	})
+	deps.EventBus.Subscribe("clue.item_resolved", func(e engine.Event) {
+		payload := e.Payload.(map[string]any)
+		resolved = payload["effect"] == clueEffectKill && payload["consumed"] == true
+	})
+
+	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
+		t.Fatalf("clue:use kill: %v", err)
+	}
+	targetPayload, _ := json.Marshal(itemUseTargetPayload{TargetPlayerID: targetID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use_target", targetPayload); err != nil {
+		t.Fatalf("clue:use_target kill: %v", err)
+	}
+
+	if !killRequested || !resolved {
+		t.Fatalf("expected kill_requested/resolved events, got killRequested=%v resolved=%v", killRequested, resolved)
+	}
+	if len(status.actions) != 1 {
+		t.Fatalf("expected one player status action, got %d", len(status.actions))
+	}
+	action := status.actions[0]
+	if action.ActorID != playerID || action.TargetID != targetID || action.IsAlive {
+		t.Fatalf("unexpected player status action: %+v", action)
+	}
+	if action.Source != "clue_interaction" || action.Reason != "clue_kill_effect" || action.ClueID != clueID {
+		t.Fatalf("unexpected player status metadata: %+v", action)
+	}
+	m.mu.RLock()
+	if m.playerHasClueLocked(playerID, clueID.String()) {
+		t.Fatal("consumed kill clue should be removed from player inventory")
+	}
+	m.mu.RUnlock()
+}
+
+func TestClueInteractionModule_ConfiguredKillDoesNotResolveWhenStatusChangeFails(t *testing.T) {
+	status := &fakePlayerStatusController{err: fmt.Errorf("target already dead")}
+	deps := newTestDeps()
+	deps.PlayerStatusController = status
+	m := NewClueInteractionModule()
+	playerID := uuid.New()
+	targetID := uuid.New()
+	clueID := uuid.New()
+	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true},
+	}})
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.acquiredClues[playerID] = []string{clueID.String()}
+	m.mu.Unlock()
+
+	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
+		t.Fatalf("clue:use kill: %v", err)
+	}
+	targetPayload, _ := json.Marshal(itemUseTargetPayload{TargetPlayerID: targetID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use_target", targetPayload); err == nil {
+		t.Fatal("expected kill target resolution to fail")
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if !m.playerHasClueLocked(playerID, clueID.String()) {
+		t.Fatal("failed kill should not consume clue")
+	}
+	if len(m.usedItems[playerID]) != 0 {
+		t.Fatalf("failed kill should not record used item, got %d", len(m.usedItems[playerID]))
 	}
 }
 

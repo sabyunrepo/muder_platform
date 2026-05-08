@@ -231,6 +231,24 @@ type PlayerInfoProvider interface {
 	PlayerRuntimeInfo(ctx context.Context, playerID uuid.UUID) (PlayerRuntimeInfo, bool)
 }
 
+// PlayerStatusAction is a backend-owned request to mutate the session roster's
+// live player status. Runtime modules request this contract instead of editing
+// session-owned player state directly.
+type PlayerStatusAction struct {
+	ActorID  uuid.UUID
+	TargetID uuid.UUID
+	IsAlive  bool
+	Reason   string
+	Source   string
+	ClueID   uuid.UUID
+}
+
+// PlayerStatusController applies validated player-status changes inside the
+// session actor, keeping roster state as the single source of truth.
+type PlayerStatusController interface {
+	ApplyPlayerStatus(ctx context.Context, action PlayerStatusAction) (PlayerRuntimeInfo, error)
+}
+
 // PlayerRuntimeRosterProvider optionally exposes a player-facing roster for
 // session snapshots. Implementations must return resolved display values only;
 // raw alias rules or spoiler fields must never be included.
@@ -247,13 +265,14 @@ type PlayerRuntimeRosterContextProvider interface {
 
 // ModuleDeps provides session-scoped dependencies to modules.
 type ModuleDeps struct {
-	SessionID          uuid.UUID
-	EventBus           *EventBus
-	Logger             Logger
-	PlayerInfoProvider PlayerInfoProvider
-	ActionDispatcher   PhaseActionDispatcher
-	SceneController    SceneController
-	MediaResolver      MediaResolver
+	SessionID              uuid.UUID
+	EventBus               *EventBus
+	Logger                 Logger
+	PlayerInfoProvider     PlayerInfoProvider
+	PlayerStatusController PlayerStatusController
+	ActionDispatcher       PhaseActionDispatcher
+	SceneController        SceneController
+	MediaResolver          MediaResolver
 }
 
 // ModuleFactory creates a new module instance per session (no singletons).

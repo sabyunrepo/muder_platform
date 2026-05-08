@@ -16,6 +16,7 @@ const (
 	clueEffectSteal             = "steal"
 	clueEffectReveal            = "reveal"
 	clueEffectGrantClue         = "grant_clue"
+	clueEffectKill              = "kill"
 )
 
 // ClueItemEffectConfig is the runtime-owned contract for configured clue use.
@@ -136,6 +137,12 @@ func (m *ClueInteractionModule) resolveItemUse(ctx context.Context, state ItemUs
 		} else {
 			resolveErr = fmt.Errorf("clue_interaction: effect %q not implemented", state.Effect)
 		}
+	case clueEffectKill:
+		if state.Configured {
+			resolveErr = m.handleKillEffect(ctx, state.UserID, state.ClueID, targetPlayerID)
+		} else {
+			resolveErr = fmt.Errorf("clue_interaction: effect %q not implemented", state.Effect)
+		}
 	case "":
 		resolveErr = fmt.Errorf("clue_interaction: effect not specified")
 	default:
@@ -184,7 +191,7 @@ func validateSingleClueItemEffectConfig(clueID string, cfg ClueItemEffectConfig)
 	if cfg.Effect == "" {
 		return fmt.Errorf("clue_interaction: item effect missing for clue %q", clueID)
 	}
-	if cfg.Effect != clueEffectDescriptionChange && cfg.Effect != clueEffectReveal && cfg.Effect != clueEffectGrantClue && cfg.Effect != clueEffectPeek && cfg.Effect != clueEffectSteal {
+	if cfg.Effect != clueEffectDescriptionChange && cfg.Effect != clueEffectReveal && cfg.Effect != clueEffectGrantClue && cfg.Effect != clueEffectPeek && cfg.Effect != clueEffectSteal && cfg.Effect != clueEffectKill {
 		return fmt.Errorf("clue_interaction: effect %q not implemented", cfg.Effect)
 	}
 	if cfg.Effect == clueEffectDescriptionChange && cfg.DescriptionText == "" {
@@ -195,6 +202,9 @@ func validateSingleClueItemEffectConfig(clueID string, cfg ClueItemEffectConfig)
 	}
 	if cfg.Effect == clueEffectReveal && cfg.RevealText == "" {
 		return fmt.Errorf("clue_interaction: reveal requires revealText")
+	}
+	if cfg.Effect == clueEffectKill && cfg.Target != "player" {
+		return fmt.Errorf("clue_interaction: kill requires player target")
 	}
 	return nil
 }
@@ -329,6 +339,38 @@ func (m *ClueInteractionModule) handleGrantClueEffect(playerID uuid.UUID, clueID
 			"playerId":     playerID.String(),
 			"clueId":       clueID.String(),
 			"grantClueIds": granted,
+		},
+	})
+	return nil
+}
+
+func (m *ClueInteractionModule) handleKillEffect(ctx context.Context, playerID uuid.UUID, clueID uuid.UUID, targetPlayerIDStr string) error {
+	if m.deps.PlayerStatusController == nil {
+		return fmt.Errorf("clue_interaction: player status controller is not configured")
+	}
+
+	targetPlayerID, err := uuid.Parse(targetPlayerIDStr)
+	if err != nil {
+		return fmt.Errorf("clue_interaction: invalid targetPlayerId: %w", err)
+	}
+
+	_, err = m.deps.PlayerStatusController.ApplyPlayerStatus(ctx, engine.PlayerStatusAction{
+		ActorID:  playerID,
+		TargetID: targetPlayerID,
+		IsAlive:  false,
+		Reason:   "clue_kill_effect",
+		Source:   "clue_interaction",
+		ClueID:   clueID,
+	})
+	if err != nil {
+		return fmt.Errorf("clue_interaction: kill effect failed: %w", err)
+	}
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.kill_requested",
+		Payload: map[string]any{
+			"playerId":       playerID.String(),
+			"targetPlayerId": targetPlayerID.String(),
+			"clueId":         clueID.String(),
 		},
 	})
 	return nil
