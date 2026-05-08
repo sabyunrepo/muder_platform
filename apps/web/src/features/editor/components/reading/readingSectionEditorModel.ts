@@ -98,8 +98,11 @@ export function createBlock(type: ReadingBlockType, index: number): ReadingLineD
       AdvanceBy: 'gm',
     };
   }
-  if (type === 'sfx' || type === 'bgm') {
-    return { Index: index, Type: type, MediaID: '', BGMMode: 'once' };
+  if (type === 'sfx') {
+    return { Index: index, Type: 'sfx', MediaID: '', BGMMode: 'once' };
+  }
+  if (type === 'bgm') {
+    return { Index: index, Type: 'bgm', MediaID: '', BGMMode: 'loop' };
   }
   return {
     Index: index,
