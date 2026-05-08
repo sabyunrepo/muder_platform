@@ -844,6 +844,9 @@ func TestClueInteractionModule_BuildStateFor_NoCrossLeak(t *testing.T) {
 	m.mu.Lock()
 	m.acquiredClues[bob] = []string{"bob-clue"}
 	m.playerDrawCounts[bob] = 99
+	m.config.CluePolicies = map[string]CluePolicyConfig{
+		"hidden-clue": {Revealable: false, Protected: true},
+	}
 	m.mu.Unlock()
 
 	aliceData, _ := m.BuildStateFor(alice)
@@ -852,5 +855,8 @@ func TestClueInteractionModule_BuildStateFor_NoCrossLeak(t *testing.T) {
 	}
 	if bytes.Contains(aliceData, []byte(bob.String())) {
 		t.Fatalf("alice leaked bob's uuid: %s", aliceData)
+	}
+	if bytes.Contains(aliceData, []byte("cluePolicies")) || bytes.Contains(aliceData, []byte("hidden-clue")) {
+		t.Fatalf("alice leaked clue policy config: %s", aliceData)
 	}
 }

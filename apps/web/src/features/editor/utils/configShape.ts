@@ -647,5 +647,18 @@ export function removeClueReferencesFromConfig(
   clueId: string
 ): EditorConfig {
   const normalized = normalizeConfigForSave(configJson);
-  return removeClueIdFromValue(normalized, clueId) as EditorConfig;
+  const cleaned = removeClueIdFromValue(normalized, clueId) as EditorConfig;
+  const moduleConfig = readModuleConfig(cleaned, CLUE_INTERACTION_MODULE_ID);
+  const rawPolicies = moduleConfig[CLUE_POLICIES_KEY];
+  if (!isRecord(rawPolicies) || !hasOwnKey(rawPolicies, clueId)) return cleaned;
+
+  const cluePolicies = { ...rawPolicies };
+  delete cluePolicies[clueId];
+  const nextModuleConfig = { ...moduleConfig };
+  if (Object.keys(cluePolicies).length > 0) {
+    nextModuleConfig[CLUE_POLICIES_KEY] = cluePolicies;
+  } else {
+    delete nextModuleConfig[CLUE_POLICIES_KEY];
+  }
+  return writeModuleConfig(cleaned, CLUE_INTERACTION_MODULE_ID, nextModuleConfig);
 }

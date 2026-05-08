@@ -16,7 +16,7 @@ interface ClueBasicInfoCardProps {
   isSaving?: boolean;
   isConfigSaving?: boolean;
   onSave: (clueId: string, body: UpdateClueRequest) => void;
-  onConfigChange?: (nextConfig: EditorConfig) => void;
+  onConfigChange: (nextConfig: EditorConfig) => void;
   onDelete: (clue: ClueResponse) => void;
 }
 
@@ -99,13 +99,35 @@ export function ClueBasicInfoCard({
   const [draft, setDraft] = useState<DraftState>(() => toDraft(clue, configJson));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const view = toClueEditorViewModel(clue);
+  const policy = readCluePolicy(configJson, clue.id);
   const dirty = isDirty(draft, clue, configJson);
   const saving = isSaving || isConfigSaving;
 
   useEffect(() => {
-    setDraft(toDraft(clue, configJson));
+    setDraft({
+      name: clue.name,
+      description: clue.description ?? '',
+      imageUrl: clue.image_url ?? '',
+      imageMediaId: clue.image_media_id ?? null,
+      isCommon: clue.is_common,
+      isRevealable: clue.is_common ? true : policy.revealable,
+      isProtected: policy.protected,
+      revealRound: clue.reveal_round ?? null,
+      hideRound: clue.hide_round ?? null,
+    });
     setErrors({});
-  }, [clue, configJson]);
+  }, [
+    clue.id,
+    clue.name,
+    clue.description,
+    clue.image_url,
+    clue.image_media_id,
+    clue.is_common,
+    clue.reveal_round,
+    clue.hide_round,
+    policy.revealable,
+    policy.protected,
+  ]);
 
   function patch(next: Partial<DraftState>) {
     setDraft((current) => {
@@ -144,7 +166,7 @@ export function ClueBasicInfoCard({
         hide_round: draft.hideRound,
       })
     );
-    onConfigChange?.(
+    onConfigChange(
       writeCluePolicy(configJson, clue.id, {
         revealable: draft.isCommon ? true : draft.isRevealable,
         protected: draft.isProtected,

@@ -562,6 +562,7 @@ func mergeClueList(current []string, next []string) []string {
 func (m *ClueInteractionModule) configForPlayerState() ClueInteractionConfig {
 	config := m.config
 	config.ItemEffects = nil
+	config.CluePolicies = nil
 	return config
 }
 
