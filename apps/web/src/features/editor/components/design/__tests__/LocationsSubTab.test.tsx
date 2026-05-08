@@ -1,213 +1,24 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
-
-// ---------------------------------------------------------------------------
-// Hoisted mocks
-// ---------------------------------------------------------------------------
-
-const {
-  toastSuccess,
-  toastError,
-  mutateMock,
-  updateConfigMutateMock,
-  updateLocationMutateMock,
-  useEditorCharactersMock,
-  useEditorMapsMock,
-  useCreateMapMock,
-  useDeleteMapMock,
-  useUpdateMapMock,
-  useEditorLocationsMock,
-  useCreateLocationMock,
-  useDeleteLocationMock,
-  useUpdateLocationMock,
-  useEditorCluesMock,
-  useUpdateConfigJsonMock,
-  useMediaListMock,
-} = vi.hoisted(() => ({
-  toastSuccess: vi.fn(),
-  toastError: vi.fn(),
-  mutateMock: vi.fn(),
-  updateConfigMutateMock: vi.fn(),
-  updateLocationMutateMock: vi.fn(),
-  useEditorCharactersMock: vi.fn(),
-  useEditorMapsMock: vi.fn(),
-  useCreateMapMock: vi.fn(),
-  useDeleteMapMock: vi.fn(),
-  useUpdateMapMock: vi.fn(),
-  useEditorLocationsMock: vi.fn(),
-  useCreateLocationMock: vi.fn(),
-  useDeleteLocationMock: vi.fn(),
-  useUpdateLocationMock: vi.fn(),
-  useEditorCluesMock: vi.fn(),
-  useUpdateConfigJsonMock: vi.fn(),
-  useMediaListMock: vi.fn(),
-}));
-
-// ---------------------------------------------------------------------------
-// Mock: sonner
-// ---------------------------------------------------------------------------
-
-vi.mock('sonner', () => ({
-  toast: { success: toastSuccess, error: toastError },
-}));
-
-// ---------------------------------------------------------------------------
-// Mock: @/features/editor/api
-// ---------------------------------------------------------------------------
-
-vi.mock('@/features/editor/api', () => ({
-  useEditorCharacters: () => useEditorCharactersMock(),
-  useEditorMaps: () => useEditorMapsMock(),
-  useCreateMap: () => useCreateMapMock(),
-  useDeleteMap: () => useDeleteMapMock(),
-  useUpdateMap: () => useUpdateMapMock(),
-  useEditorLocations: () => useEditorLocationsMock(),
-  useCreateLocation: () => useCreateLocationMock(),
-  useDeleteLocation: () => useDeleteLocationMock(),
-  useUpdateLocation: () => useUpdateLocationMock(),
-  useEditorClues: () => useEditorCluesMock(),
-  useUpdateConfigJson: () => useUpdateConfigJsonMock(),
-  editorKeys: {
-    theme: (id: string) => ['editor', 'themes', id] as const,
-  },
-}));
-
-vi.mock('@/features/editor/mediaApi', () => ({
-  useMediaList: () => useMediaListMock(),
-}));
-
-vi.mock('@/features/editor/flowApi', () => ({
-  useFlowGraph: () => ({
-    data: {
-      nodes: [
-        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
-        { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
-      ],
-    },
-  }),
-}));
-
-vi.mock('@/features/editor/components/media/MediaPicker', () => ({
-  MediaPicker: ({
-    open,
-    filterType,
-    selectedId,
-    onSelect,
-  }: {
-    open: boolean;
-    filterType?: string;
-    selectedId?: string | null;
-    onSelect: (media: { id: string; name: string; type: string }) => void;
-  }) =>
-    open ? (
-      <div>
-        <span>filter:{filterType}</span>
-        <span>selected:{selectedId ?? 'none'}</span>
-        <button
-          type="button"
-          onClick={() => onSelect({ id: 'image-1', name: '저택 사진', type: 'IMAGE' })}
-        >
-          저택 사진 선택
-        </button>
-      </div>
-    ) : null,
-}));
-
-// LocationClueAssignPanel (via LocationsSubTab) now calls `useQueryClient`; stub
-// it so the existing tests don't need a real provider.
-vi.mock('@tanstack/react-query', async () => {
-  const actual =
-    await vi.importActual<typeof import('@tanstack/react-query')>('@tanstack/react-query');
-  return {
-    ...actual,
-    useQueryClient: () => ({
-      getQueryData: () => undefined,
-      setQueryData: () => undefined,
-    }),
-  };
-});
-
-// ---------------------------------------------------------------------------
-// Imports (after mocks)
-// ---------------------------------------------------------------------------
-
-import { LocationsSubTab } from '../LocationsSubTab';
-
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { screen, fireEvent } from '@testing-library/react';
 import {
-  mockCharacters,
-  mockClues,
-  mockLocations,
-  mockMaps,
-  mockTheme,
-} from './locationsSubTabTestData';
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function defaultMutation() {
-  return { mutate: mutateMock, isPending: false };
-}
-
-function setupDefaultMocks() {
-  useEditorCharactersMock.mockReturnValue({ data: mockCharacters, isLoading: false });
-  useEditorMapsMock.mockReturnValue({ data: mockMaps, isLoading: false });
-  useEditorLocationsMock.mockReturnValue({ data: mockLocations, isLoading: false });
-  useCreateMapMock.mockReturnValue(defaultMutation());
-  useDeleteMapMock.mockReturnValue(defaultMutation());
-  useUpdateMapMock.mockReturnValue(defaultMutation());
-  useCreateLocationMock.mockReturnValue(defaultMutation());
-  useDeleteLocationMock.mockReturnValue(defaultMutation());
-  useUpdateLocationMock.mockReturnValue({
-    mutate: updateLocationMutateMock,
-    isPending: false,
-  });
-  useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
-  useUpdateConfigJsonMock.mockReturnValue({
-    mutate: updateConfigMutateMock,
-    isPending: false,
-  });
-  useMediaListMock.mockReturnValue({
-    data: [{ id: 'image-1', name: '저택 사진', type: 'IMAGE' }],
-    isLoading: false,
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Lifecycle
-// ---------------------------------------------------------------------------
-
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
+  mutateMock,
+  renderLocationsSubTab,
+  setupDefaultMocks,
+  updateConfigMutateMock,
+  useEditorLocationsMock,
+  useEditorMapsMock,
+  useMediaListMock,
+} from './locationsSubTabTestUtils';
 
 describe('LocationsSubTab', () => {
   describe('로딩 상태', () => {
     it('맵 로딩 중일 때 스피너를 표시한다', () => {
-      useEditorCharactersMock.mockReturnValue({ data: mockCharacters, isLoading: false });
+      setupDefaultMocks();
       useEditorMapsMock.mockReturnValue({ data: undefined, isLoading: true });
       useEditorLocationsMock.mockReturnValue({ data: undefined, isLoading: false });
-      useCreateMapMock.mockReturnValue(defaultMutation());
-      useDeleteMapMock.mockReturnValue(defaultMutation());
-      useCreateLocationMock.mockReturnValue(defaultMutation());
-      useDeleteLocationMock.mockReturnValue(defaultMutation());
-      useUpdateLocationMock.mockReturnValue({
-        mutate: updateLocationMutateMock,
-        isPending: false,
-      });
-      useEditorCluesMock.mockReturnValue({ data: [], isLoading: false });
-      useUpdateConfigJsonMock.mockReturnValue({
-        mutate: updateConfigMutateMock,
-        isPending: false,
-      });
       useMediaListMock.mockReturnValue({ data: [], isLoading: false });
 
-      const { container } = render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      const { container } = renderLocationsSubTab();
       const spinner = container.querySelector('[role="status"]');
       expect(spinner).not.toBeNull();
     });
@@ -217,7 +28,7 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('맵 이름들을 렌더링한다', () => {
-      const { container } = render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      const { container } = renderLocationsSubTab();
       expect(container.firstElementChild?.className).toContain('overflow-y-auto');
       expect(container.firstElementChild?.className).toContain('md:overflow-hidden');
       expect(screen.getAllByText('저택 1층').length).toBeGreaterThan(0);
@@ -226,12 +37,12 @@ describe('LocationsSubTab', () => {
 
     it('맵이 없을 때 빈 상태를 표시한다', () => {
       useEditorMapsMock.mockReturnValue({ data: [], isLoading: false });
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.getByText('맵 없음')).toBeDefined();
     });
 
     it('맵 추가 버튼이 존재한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       const addBtn = screen.getByLabelText('맵 추가');
       expect(addBtn).toBeDefined();
     });
@@ -241,13 +52,13 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('맵 추가 버튼 클릭 시 인라인 입력이 나타난다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByLabelText('맵 추가'));
       expect(screen.getByPlaceholderText('맵 이름')).toBeDefined();
     });
 
     it('취소 버튼 클릭 시 입력 필드가 사라진다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByLabelText('맵 추가'));
       expect(screen.getByPlaceholderText('맵 이름')).toBeDefined();
       fireEvent.click(screen.getByText('취소'));
@@ -255,7 +66,7 @@ describe('LocationsSubTab', () => {
     });
 
     it('Enter 키로 맵을 추가하면 mutate가 호출된다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByLabelText('맵 추가'));
       const input = screen.getByPlaceholderText('맵 이름');
       fireEvent.change(input, { target: { value: '새 맵' } });
@@ -268,14 +79,14 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('맵 삭제 버튼이 각 맵에 존재한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       const deleteBtn = screen.getByLabelText('저택 1층 삭제');
       expect(deleteBtn).toBeDefined();
     });
 
     it('맵 삭제 버튼 클릭 시 mutate가 호출된다', () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByLabelText('저택 1층 삭제'));
       expect(mutateMock).toHaveBeenCalledWith('map-1', expect.any(Object));
     });
@@ -285,13 +96,13 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('직접 진입 시 첫 맵의 공통 엔티티 Shell을 바로 표시한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
       expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
     });
 
     it('맵 선택 시 공통 엔티티 Shell로 해당 맵의 장소만 표시한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
       // LocationDetailPanel row + clue-assignment picker option 두 곳에서 렌더됨
       expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
@@ -301,7 +112,7 @@ describe('LocationsSubTab', () => {
     });
 
     it('다른 맵을 선택하면 해당 맵의 장소 workspace로 전환한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
 
       fireEvent.click(screen.getByRole('button', { name: '저택 2층' }));
 
@@ -313,7 +124,7 @@ describe('LocationsSubTab', () => {
 
     it('선택한 맵에 장소가 없을 때 빈 상태를 표시한다', () => {
       useEditorLocationsMock.mockReturnValue({ data: [], isLoading: false });
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.getByText('장소 없음')).toBeDefined();
     });
   });
@@ -322,18 +133,18 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('맵 선택 후 장소 추가 버튼이 나타난다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.getByText('장소 추가')).toBeDefined();
     });
 
     it('장소 추가 버튼 클릭 시 인라인 입력이 나타난다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByText('장소 추가'));
       expect(screen.getByPlaceholderText('장소 이름')).toBeDefined();
     });
 
     it('Enter 키로 장소를 추가하면 mutate가 호출된다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByText('장소 추가'));
       const input = screen.getByPlaceholderText('장소 이름');
       fireEvent.change(input, { target: { value: '서재' } });
@@ -349,19 +160,19 @@ describe('LocationsSubTab', () => {
     beforeEach(setupDefaultMocks);
 
     it('맵 선택 시 장소 선택 picker 가 표시된다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.getByText('전체 단서 목록')).toBeDefined();
     });
 
     it('location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByRole('button', { name: '주방 선택' }));
       expect(screen.getByLabelText('주방 단서 조사')).toBeDefined();
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
     });
 
     it('chip 토글 시 useUpdateConfigJson.mutate 가 호출된다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       fireEvent.click(screen.getByLabelText('단검 추가'));
       expect(updateConfigMutateMock).toHaveBeenCalledOnce();
       const [config] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
@@ -377,188 +188,9 @@ describe('LocationsSubTab', () => {
 
     it('맵이 없으면 단서 배정 picker 가 표시되지 않는다', () => {
       useEditorMapsMock.mockReturnValue({ data: [], isLoading: false });
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
+      renderLocationsSubTab();
       expect(screen.queryByText('전체 단서 목록')).toBeNull();
     });
   });
 
-  describe('LocationRow 라운드 편집', () => {
-    beforeEach(setupDefaultMocks);
-
-    it('공개 시점을 제작자용 선택지로 표시한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      expect(screen.getByText('공개 시점')).toBeDefined();
-      expect(screen.getAllByText('처음부터 끝까지').length).toBeGreaterThan(0);
-      expect(screen.getByText('특정 라운드부터')).toBeDefined();
-    });
-
-    it('시작 라운드 값 입력 후 blur 하면 useUpdateLocation.mutate 가 호출된다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('특정 라운드부터'));
-      updateLocationMutateMock.mockClear();
-      const fromInput = screen.getByLabelText('거실 시작 라운드') as HTMLInputElement;
-      fireEvent.change(fromInput, { target: { value: '2' } });
-      fireEvent.blur(fromInput);
-      expect(updateLocationMutateMock).toHaveBeenCalledOnce();
-      const [payload] = updateLocationMutateMock.mock.calls[0] as [
-        { locationId: string; body: Record<string, unknown> },
-      ];
-      expect(payload.locationId).toBe('loc-1');
-      expect(payload.body.from_round).toBe(2);
-      expect(payload.body.name).toBe('거실');
-    });
-
-    it('등장 > 퇴장 조합은 에러 토스트 후 저장되지 않는다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      fireEvent.click(screen.getByText('특정 구간만'));
-      updateLocationMutateMock.mockClear();
-      const fromInput = screen.getByLabelText('거실 시작 라운드') as HTMLInputElement;
-      const untilInput = screen.getByLabelText('거실 종료 라운드') as HTMLInputElement;
-      fireEvent.change(untilInput, { target: { value: '2' } });
-      fireEvent.blur(untilInput);
-      updateLocationMutateMock.mockClear();
-      fireEvent.change(fromInput, { target: { value: '5' } });
-      fireEvent.blur(fromInput);
-      expect(updateLocationMutateMock).not.toHaveBeenCalled();
-      expect(toastError).toHaveBeenCalledWith('등장 라운드는 퇴장 라운드보다 클 수 없습니다');
-    });
-
-    it('값을 비우면 from_round 가 null 로 저장된다', () => {
-      useEditorLocationsMock.mockReturnValue({
-        data: [{ ...mockLocations[0], from_round: 2, until_round: 5 }, ...mockLocations.slice(1)],
-        isLoading: false,
-      });
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-      const fromInput = screen.getByLabelText('거실 시작 라운드') as HTMLInputElement;
-      fireEvent.change(fromInput, { target: { value: '' } });
-      fireEvent.blur(fromInput);
-      expect(updateLocationMutateMock).toHaveBeenCalledOnce();
-      const [payload] = updateLocationMutateMock.mock.calls[0] as [
-        { body: Record<string, unknown> },
-      ];
-      expect(payload.body.from_round).toBeNull();
-      expect(payload.body.until_round).toBe(5);
-    });
-  });
-
-  describe('장소 기본 정보', () => {
-    beforeEach(setupDefaultMocks);
-
-    it('공개 설명, 진입 메시지, 부모 장소를 Location API payload로 저장한다', () => {
-      useEditorLocationsMock.mockReturnValue({
-        data: [{ ...mockLocations[0], name: '거실' }, ...mockLocations.slice(1)],
-        isLoading: false,
-      });
-
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-
-      fireEvent.change(screen.getByLabelText('거실 장소 이름'), {
-        target: { value: '응접실' },
-      });
-      fireEvent.change(screen.getByLabelText('거실 공개 설명'), {
-        target: { value: '손님들이 모이는 공간' },
-      });
-      fireEvent.change(screen.getByLabelText('거실 진입 메시지'), {
-        target: { value: '낡은 시계 소리가 들린다.' },
-      });
-      fireEvent.change(screen.getByLabelText('거실 부모 장소'), {
-        target: { value: 'loc-2' },
-      });
-      fireEvent.click(screen.getByText('저장'));
-
-      expect(updateLocationMutateMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          locationId: 'loc-1',
-          body: expect.objectContaining({
-            name: '응접실',
-            public_description: '손님들이 모이는 공간',
-            entry_message: '낡은 시계 소리가 들린다.',
-            parent_location_id: 'loc-2',
-          }),
-        }),
-        expect.any(Object)
-      );
-      const [, updateLocationOptions] = updateLocationMutateMock.mock.calls[0] as [
-        unknown,
-        { onSuccess?: () => void },
-      ];
-      updateLocationOptions.onSuccess?.();
-      expect(updateConfigMutateMock).not.toHaveBeenCalled();
-      expect(toastSuccess).toHaveBeenCalledWith('장소 기본 정보가 저장되었습니다');
-    });
-  });
-
-  describe('장소 이미지 미디어 참조', () => {
-    beforeEach(setupDefaultMocks);
-
-    it('IMAGE 미디어를 지도 이미지 참조로 저장한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-
-      fireEvent.click(screen.getByText('미디어에서 지도 선택'));
-      expect(screen.getByText('filter:IMAGE')).toBeDefined();
-      fireEvent.click(screen.getByText('저택 사진 선택'));
-
-      expect(mutateMock).toHaveBeenCalledOnce();
-      const [payload] = mutateMock.mock.calls[0] as [
-        { mapId: string; body: Record<string, unknown> },
-      ];
-      expect(payload.mapId).toBe('map-1');
-      expect(payload.body.image_media_id).toBe('image-1');
-      expect(payload.body.image_url).toBeNull();
-      expect(payload.body.name).toBe('저택 1층');
-    });
-
-    it('선택된 지도 이미지 참조를 제거할 수 있다', () => {
-      useEditorMapsMock.mockReturnValue({
-        data: [{ ...mockMaps[0], image_media_id: 'image-1' }, ...mockMaps.slice(1)],
-        isLoading: false,
-      });
-
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-
-      expect(screen.getByText('저택 사진')).toBeDefined();
-      fireEvent.click(screen.getAllByText('제거')[0]);
-
-      expect(mutateMock).toHaveBeenCalledOnce();
-      const [payload] = mutateMock.mock.calls[0] as [
-        { mapId: string; body: Record<string, unknown> },
-      ];
-      expect(payload.mapId).toBe('map-1');
-      expect(payload.body.image_media_id).toBeNull();
-    });
-
-    it('IMAGE 미디어만 선택해 장소 이미지 참조로 저장한다', () => {
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-
-      fireEvent.click(screen.getByText('미디어 이미지 선택'));
-      expect(screen.getByText('filter:IMAGE')).toBeDefined();
-      fireEvent.click(screen.getByText('저택 사진 선택'));
-
-      expect(updateLocationMutateMock).toHaveBeenCalledOnce();
-      const [payload] = updateLocationMutateMock.mock.calls[0] as [
-        { locationId: string; body: Record<string, unknown> },
-      ];
-      expect(payload.locationId).toBe('loc-1');
-      expect(payload.body.image_media_id).toBe('image-1');
-      expect(payload.body.image_url).toBeNull();
-    });
-
-    it('선택된 장소 이미지 참조를 제거할 수 있다', () => {
-      useEditorLocationsMock.mockReturnValue({
-        data: [{ ...mockLocations[0], image_media_id: 'image-1' }, ...mockLocations.slice(1)],
-        isLoading: false,
-      });
-
-      render(<LocationsSubTab themeId="theme-1" theme={mockTheme} />);
-
-      expect(screen.getByText('저택 사진')).toBeDefined();
-      fireEvent.click(screen.getByText('제거'));
-
-      expect(updateLocationMutateMock).toHaveBeenCalledOnce();
-      const [payload] = updateLocationMutateMock.mock.calls[0] as [
-        { body: Record<string, unknown> },
-      ];
-      expect(payload.body.image_media_id).toBeNull();
-    });
-  });
 });
