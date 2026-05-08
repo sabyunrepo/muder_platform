@@ -50,6 +50,7 @@ type PhaseInfo struct {
 	Name     string          `json:"name"`
 	Type     string          `json:"type"`
 	Index    int             `json:"index"`
+	Round    int32           `json:"round"`
 	Duration int             `json:"duration"`
 	Elapsed  int             `json:"elapsed"`
 	State    json.RawMessage `json:"state,omitempty"`
@@ -235,6 +236,13 @@ type PlayerInfoProvider interface {
 // raw alias rules or spoiler fields must never be included.
 type PlayerRuntimeRosterProvider interface {
 	PlayerRuntimeRoster(ctx context.Context) []PlayerRuntimeInfo
+}
+
+// PlayerRuntimeRosterContextProvider resolves player display values against
+// the current backend progress context. It is used for character alias rules
+// whose conditions depend on phase, round, or visited story node state.
+type PlayerRuntimeRosterContextProvider interface {
+	PlayerRuntimeRosterWithContext(ctx context.Context, displayContext json.RawMessage) []PlayerRuntimeInfo
 }
 
 // ModuleDeps provides session-scoped dependencies to modules.

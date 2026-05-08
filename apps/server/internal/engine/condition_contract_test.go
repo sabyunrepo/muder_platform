@@ -34,6 +34,69 @@ func TestConditionGroupToJSONLogic_EvaluatesSharedMMPShape(t *testing.T) {
 	}
 }
 
+func TestConditionGroupToJSONLogic_CustomFlagRevealPresetsUseRuntimeProgress(t *testing.T) {
+	t.Run("round_started means from that round onward", func(t *testing.T) {
+		raw := json.RawMessage(`{
+			"id":"g1",
+			"operator":"AND",
+			"rules":[{
+				"id":"r1",
+				"variable":"custom_flag",
+				"target_flag_key":"round_started",
+				"comparator":"=",
+				"value":"3"
+			}]
+		}`)
+		for _, tc := range []struct {
+			name string
+			ctx  json.RawMessage
+			want bool
+		}{
+			{name: "before round", ctx: json.RawMessage(`{"round":2}`), want: false},
+			{name: "at round", ctx: json.RawMessage(`{"round":3}`), want: true},
+			{name: "after round", ctx: json.RawMessage(`{"round":4}`), want: true},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				got, err := EvaluateConditionGroup(raw, tc.ctx)
+				if err != nil {
+					t.Fatalf("EvaluateConditionGroup: %v", err)
+				}
+				if got.Bool != tc.want {
+					t.Fatalf("Bool = %v, want %v", got.Bool, tc.want)
+				}
+			})
+		}
+	})
+
+	t.Run("story_node_reached uses visited scene count", func(t *testing.T) {
+		raw := json.RawMessage(`{
+			"id":"g1",
+			"operator":"AND",
+			"rules":[{
+				"id":"r1",
+				"variable":"custom_flag",
+				"target_flag_key":"story_node_reached",
+				"comparator":"=",
+				"value":"voting_started"
+			}]
+		}`)
+		got, err := EvaluateConditionGroup(raw, json.RawMessage(`{"scenes":{"voting_started":{"visitCount":1}}}`))
+		if err != nil {
+			t.Fatalf("EvaluateConditionGroup: %v", err)
+		}
+		if !got.Bool {
+			t.Fatalf("Bool = false, want true")
+		}
+		got, err = EvaluateConditionGroup(raw, json.RawMessage(`{"scenes":{"intro_finished":{"visitCount":1}}}`))
+		if err != nil {
+			t.Fatalf("EvaluateConditionGroup miss: %v", err)
+		}
+		if got.Bool {
+			t.Fatalf("Bool = true, want false")
+		}
+	})
+}
+
 func TestParseConditionGroup_RejectsInvalidContract(t *testing.T) {
 	tests := []struct {
 		name string

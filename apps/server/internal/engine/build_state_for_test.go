@@ -187,6 +187,94 @@ func TestPhaseEngine_BuildStateForIncludesResolvedRosterWithoutAliasRules(t *tes
 	}
 }
 
+func TestPhaseEngine_BuildStateForResolvesAliasPresetFromProgressContext(t *testing.T) {
+	playerID := uuid.New()
+	aliasName := "정체를 밝힌 목격자"
+	baseName := "홍길동"
+	pe, _ := newTestPhaseEngine(t, []Module{&stubCoreModule{name: "public_mod"}}, []PhaseDefinition{
+		{ID: "intro", Name: "자기소개"},
+		{ID: "investigation", Name: "조사"},
+		{ID: "voting_started", Name: "투표"},
+	})
+	pe.SetPlayerInfoProvider(rosterProviderStub{players: []PlayerRuntimeInfo{{
+		PlayerID:    playerID,
+		Nickname:    "참가자",
+		DisplayName: baseName,
+	}}})
+	pe.playerInfoProvider = progressRosterProvider{
+		rosterProviderStub: rosterProviderStub{players: []PlayerRuntimeInfo{{
+			PlayerID:    playerID,
+			Nickname:    "참가자",
+			DisplayName: baseName,
+		}}},
+		base: CharacterDisplayBase{
+			Name: baseName,
+			AliasRules: []CharacterAliasRule{{
+				ID:          "round-three",
+				DisplayName: &aliasName,
+				Priority:    1,
+				Condition:   aliasPresetCondition("round_started", "3"),
+			}},
+		},
+	}
+
+	ctx := context.Background()
+	if err := pe.Start(ctx, nil); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pe.Stop(ctx)
+
+	raw, err := pe.BuildStateFor(playerID)
+	if err != nil {
+		t.Fatalf("BuildStateFor round 1: %v", err)
+	}
+	if strings.Contains(string(raw), aliasName) {
+		t.Fatalf("alias should be hidden before round 3: %s", raw)
+	}
+
+	if _, err := pe.AdvancePhase(ctx); err != nil {
+		t.Fatalf("AdvancePhase round 2: %v", err)
+	}
+	if _, err := pe.AdvancePhase(ctx); err != nil {
+		t.Fatalf("AdvancePhase round 3: %v", err)
+	}
+	raw, err = pe.BuildStateFor(playerID)
+	if err != nil {
+		t.Fatalf("BuildStateFor round 3: %v", err)
+	}
+	if !strings.Contains(string(raw), aliasName) {
+		t.Fatalf("alias should be visible from round 3: %s", raw)
+	}
+}
+
+type progressRosterProvider struct {
+	rosterProviderStub
+	base CharacterDisplayBase
+}
+
+func (p progressRosterProvider) PlayerRuntimeRosterWithContext(_ context.Context, displayContext json.RawMessage) []PlayerRuntimeInfo {
+	players := p.PlayerRuntimeRoster(context.Background())
+	for i := range players {
+		display := ResolveCharacterDisplay(p.base, displayContext)
+		players[i].DisplayName = display.Name
+	}
+	return players
+}
+
+func aliasPresetCondition(flagKey, value string) json.RawMessage {
+	return json.RawMessage(`{
+		"id":"group-1",
+		"operator":"AND",
+		"rules":[{
+			"id":"rule-1",
+			"variable":"custom_flag",
+			"target_flag_key":"` + flagKey + `",
+			"comparator":"=",
+			"value":"` + value + `"
+		}]
+	}`)
+}
+
 func TestPhaseEngine_BuildStateForRosterSortsAndUsesNicknameFallback(t *testing.T) {
 	earlyID := uuid.New()
 	lateID := uuid.New()

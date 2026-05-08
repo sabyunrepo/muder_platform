@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sort"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -42,6 +43,7 @@ type PhaseEngine struct {
 	mediaResolver      MediaResolver
 	phases             []PhaseDefinition
 	sceneTransitions   []SceneTransition
+	sceneVisitCounts   map[string]int
 	current            int // index into phases, -1 = not started
 	currentRound       int32
 	started            bool
@@ -71,15 +73,16 @@ func NewPhaseEngine(
 	}
 
 	return &PhaseEngine{
-		sessionID: sessionID,
-		modules:   modules,
-		moduleMap: moduleMap,
-		eventBus:  bus,
-		audit:     audit,
-		logger:    logger,
-		phases:    phases,
-		current:   0,
-		started:   false,
+		sessionID:        sessionID,
+		modules:          modules,
+		moduleMap:        moduleMap,
+		eventBus:         bus,
+		audit:            audit,
+		logger:           logger,
+		phases:           phases,
+		sceneVisitCounts: make(map[string]int),
+		current:          0,
+		started:          false,
 	}
 }
 
@@ -373,7 +376,9 @@ func (e *PhaseEngine) BuildStateFor(playerID uuid.UUID) (json.RawMessage, error)
 		"sessionId": e.sessionID,
 		"phase":     e.CurrentPhase(),
 	}
-	if rosterProvider, ok := e.playerInfoProvider.(PlayerRuntimeRosterProvider); ok {
+	if rosterProvider, ok := e.playerInfoProvider.(PlayerRuntimeRosterContextProvider); ok {
+		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRosterWithContext(context.Background(), e.PlayerDisplayContext()))
+	} else if rosterProvider, ok := e.playerInfoProvider.(PlayerRuntimeRosterProvider); ok {
 		state["players"] = playerRuntimeRosterPayload(rosterProvider.PlayerRuntimeRoster(context.Background()))
 	}
 
@@ -478,7 +483,71 @@ func (e *PhaseEngine) phaseInfo(idx int) *PhaseInfo {
 		ID:    string(p.ID),
 		Name:  p.Name,
 		Index: idx,
+		Round: e.currentRound,
 	}
+}
+
+func (e *PhaseEngine) recordPhaseVisit(phase Phase) {
+	if e.sceneVisitCounts == nil {
+		e.sceneVisitCounts = make(map[string]int)
+	}
+	e.sceneVisitCounts[string(phase)]++
+}
+
+// PlayerDisplayContext is the backend-owned condition context for character
+// alias presets. It keeps creator-authored "from round/node" presets tied to
+// actual engine progress instead of frontend-only labels.
+func (e *PhaseEngine) PlayerDisplayContext() json.RawMessage {
+	phase := e.CurrentPhase()
+	if phase == nil {
+		return json.RawMessage(`{"flags":{}}`)
+	}
+	firstIntro, lastIntro := e.introPhaseBounds()
+	introStarted := firstIntro >= 0 && e.current >= firstIntro
+	introFinished := lastIntro >= 0 && e.current > lastIntro
+
+	scenes := make(map[string]map[string]any, len(e.sceneVisitCounts))
+	for id, count := range e.sceneVisitCounts {
+		scenes[id] = map[string]any{"visitCount": count, "reached": count > 0}
+	}
+
+	payload := map[string]any{
+		"phase": phase.ID,
+		"round": e.currentRound,
+		"flags": map[string]any{
+			"game_started":       e.started && !e.stopped,
+			"intro_started":      introStarted,
+			"intro_finished":     introFinished,
+			"round_started":      e.currentRound,
+			"story_node_reached": phase.ID,
+		},
+		"scenes": scenes,
+	}
+	data, _ := json.Marshal(payload)
+	return data
+}
+
+func (e *PhaseEngine) introPhaseBounds() (int, int) {
+	first, last := -1, -1
+	for idx, phase := range e.phases {
+		if isIntroPhase(phase) {
+			if first == -1 {
+				first = idx
+			}
+			last = idx
+		}
+	}
+	return first, last
+}
+
+func isIntroPhase(phase PhaseDefinition) bool {
+	id := strings.ToLower(string(phase.ID))
+	name := strings.ToLower(phase.Name)
+	return strings.Contains(id, "intro") ||
+		strings.Contains(id, "introduction") ||
+		strings.Contains(name, "intro") ||
+		strings.Contains(name, "introduction") ||
+		strings.Contains(name, "자기소개")
 }
 
 func (e *PhaseEngine) moduleNames() []string {

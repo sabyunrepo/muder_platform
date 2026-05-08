@@ -184,6 +184,9 @@ func conditionGroupLogic(group ConditionGroup) (any, error) {
 }
 
 func conditionRuleLogic(rule ConditionRule) (any, error) {
+	if logic, ok, err := specialCustomFlagLogic(rule); ok || err != nil {
+		return logic, err
+	}
 	pathBuilder, ok := conditionVariablePaths[rule.Variable]
 	if !ok {
 		return nil, fmt.Errorf("condition: rule %q has unsupported variable %q", rule.ID, rule.Variable)
@@ -200,6 +203,29 @@ func conditionRuleLogic(rule ConditionRule) (any, error) {
 		map[string]any{"var": path},
 		coerceConditionValue(rule.Value),
 	}}, nil
+}
+
+func specialCustomFlagLogic(rule ConditionRule) (any, bool, error) {
+	if rule.Variable != "custom_flag" || rule.Comparator != "=" {
+		return nil, false, nil
+	}
+	switch rule.TargetFlagKey {
+	case "round_started":
+		return map[string]any{">=": []any{
+			map[string]any{"var": "round"},
+			coerceConditionValue(rule.Value),
+		}}, true, nil
+	case "story_node_reached":
+		if rule.Value == "" {
+			return nil, true, fmt.Errorf("condition: rule %q requires story node id", rule.ID)
+		}
+		return map[string]any{">": []any{
+			map[string]any{"var": joinConditionPath("scenes", rule.Value, "visitCount")},
+			0,
+		}}, true, nil
+	default:
+		return nil, false, nil
+	}
 }
 
 func targetValue(rule ConditionRule) string {

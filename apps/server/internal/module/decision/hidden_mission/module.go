@@ -22,6 +22,12 @@ type HiddenMissionModule struct {
 	completedMissions map[uuid.UUID][]string // playerID → completed mission IDs
 	scores            map[uuid.UUID]int
 	subscriptionIDs   []int
+	gameStarted       bool
+	introStarted      bool
+	introFinished     bool
+	currentRound      int32
+	currentNodeID     string
+	visitedNodes      map[string]bool
 }
 
 // NewHiddenMissionModule creates a new HiddenMissionModule instance.
@@ -41,6 +47,7 @@ func (m *HiddenMissionModule) Init(_ context.Context, deps engine.ModuleDeps, co
 	m.playerMissions = make(map[uuid.UUID][]Mission)
 	m.completedMissions = make(map[uuid.UUID][]string)
 	m.scores = make(map[uuid.UUID]int)
+	m.visitedNodes = make(map[string]bool)
 
 	// Apply defaults.
 	m.config = HiddenMissionConfig{
@@ -96,6 +103,8 @@ func (m *HiddenMissionModule) Init(_ context.Context, deps engine.ModuleDeps, co
 		deps.EventBus.Subscribe("vote.cast", m.onVoteCast))
 	m.subscriptionIDs = append(m.subscriptionIDs,
 		deps.EventBus.Subscribe("clue.transferred", m.onClueTransferred))
+	m.subscriptionIDs = append(m.subscriptionIDs,
+		deps.EventBus.Subscribe("phase:entered", m.onPhaseEntered))
 
 	return nil
 }
@@ -113,6 +122,7 @@ func (m *HiddenMissionModule) Cleanup(_ context.Context) error {
 	m.playerMissions = nil
 	m.completedMissions = nil
 	m.scores = nil
+	m.visitedNodes = nil
 	return nil
 }
 

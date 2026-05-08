@@ -51,10 +51,44 @@ func (m *HiddenMissionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage
 	}
 
 	if own, ok := m.playerMissions[playerID]; ok && len(own) > 0 {
-		state.PlayerMissions = map[uuid.UUID][]Mission{playerID: own}
+		visible := m.visibleMissions(own)
+		if len(visible) > 0 {
+			state.PlayerMissions = map[uuid.UUID][]Mission{playerID: visible}
+		}
 	}
 
 	return json.Marshal(state)
+}
+
+func (m *HiddenMissionModule) visibleMissions(missions []Mission) []Mission {
+	visible := make([]Mission, 0, len(missions))
+	for _, mission := range missions {
+		if m.isMissionVisible(mission) {
+			visible = append(visible, mission)
+		}
+	}
+	return visible
+}
+
+func (m *HiddenMissionModule) isMissionVisible(mission Mission) bool {
+	switch mission.VisibleFrom {
+	case "", "game_start":
+		return m.gameStarted
+	case "intro_start":
+		return m.introStarted
+	case "intro_end":
+		return m.introFinished
+	case "round_start":
+		round := mission.RevealRound
+		if round <= 0 {
+			round = 1
+		}
+		return m.currentRound >= round
+	case "node_reached":
+		return mission.RevealNodeID != "" && m.visitedNodes[mission.RevealNodeID]
+	default:
+		return m.gameStarted
+	}
 }
 
 // --- SerializableModule ---
@@ -64,6 +98,12 @@ type hiddenMissionSavedState struct {
 	PlayerMissions    map[string][]Mission `json:"playerMissions"`
 	CompletedMissions map[string][]string  `json:"completedMissions"`
 	Scores            map[string]int       `json:"scores"`
+	GameStarted       bool                 `json:"gameStarted,omitempty"`
+	IntroStarted      bool                 `json:"introStarted,omitempty"`
+	IntroFinished     bool                 `json:"introFinished,omitempty"`
+	CurrentRound      int32                `json:"currentRound,omitempty"`
+	CurrentNodeID     string               `json:"currentNodeId,omitempty"`
+	VisitedNodes      map[string]bool      `json:"visitedNodes,omitempty"`
 }
 
 // SaveState snapshots the module's persistable state.
@@ -89,6 +129,12 @@ func (m *HiddenMissionModule) SaveState(_ context.Context) (engine.GameState, er
 		PlayerMissions:    pm,
 		CompletedMissions: cm,
 		Scores:            sc,
+		GameStarted:       m.gameStarted,
+		IntroStarted:      m.introStarted,
+		IntroFinished:     m.introFinished,
+		CurrentRound:      m.currentRound,
+		CurrentNodeID:     m.currentNodeID,
+		VisitedNodes:      cloneStringBoolMap(m.visitedNodes),
 	})
 	if err != nil {
 		return engine.GameState{}, fmt.Errorf("hidden_mission: save state: %w", err)
@@ -138,5 +184,22 @@ func (m *HiddenMissionModule) RestoreState(_ context.Context, _ uuid.UUID, state
 	m.playerMissions = pm
 	m.completedMissions = cm
 	m.scores = sc
+	m.gameStarted = s.GameStarted
+	m.introStarted = s.IntroStarted
+	m.introFinished = s.IntroFinished
+	m.currentRound = s.CurrentRound
+	m.currentNodeID = s.CurrentNodeID
+	m.visitedNodes = cloneStringBoolMap(s.VisitedNodes)
 	return nil
+}
+
+func cloneStringBoolMap(src map[string]bool) map[string]bool {
+	if len(src) == 0 {
+		return map[string]bool{}
+	}
+	dst := make(map[string]bool, len(src))
+	for key, value := range src {
+		dst[key] = value
+	}
+	return dst
 }
