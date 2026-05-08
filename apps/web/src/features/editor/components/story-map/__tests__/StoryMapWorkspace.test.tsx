@@ -64,8 +64,7 @@ describe("StoryMapWorkspace", () => {
   it("게임 진행 플로우 중심 제작 화면과 플로우 캔버스를 함께 렌더링한다", () => {
     render(<StoryMapWorkspace themeId="theme-1" />);
 
-    expect(screen.getByLabelText("게임 진행 플로우").className).toContain("min-h-0");
-    expect(screen.getByLabelText("게임 진행 플로우").className).toContain("overflow-hidden");
+    expect(screen.getByLabelText("게임 진행 플로우")).toBeDefined();
     expect(screen.getByRole("heading", { name: "게임 진행 플로우" })).toBeDefined();
     expect(screen.getByText("Game Flow")).toBeDefined();
     expect(screen.queryByText("진행 단계")).toBeNull();

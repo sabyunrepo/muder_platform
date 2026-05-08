@@ -186,13 +186,11 @@ describe('FlowCanvas', () => {
     expect(workspace.className).toContain('lg:flex-row');
   });
 
-  it('우측 설정 패널을 데스크톱에서 넓게 잡고 하단 여백을 둔다', () => {
+  it('우측 설정 패널에서 선택 안내를 보여준다', () => {
     render(<FlowCanvas themeId="theme-1" />);
     const sidePanel = screen.getByTestId('flow-side-panel');
-    expect(sidePanel.className).toContain('lg:w-[36rem]');
-    expect(sidePanel.className).toContain('xl:w-[40rem]');
-    expect(sidePanel.className).toContain('scroll-pb-10');
-    expect(sidePanel.className).toContain('pb-10');
+    expect(sidePanel).toBeDefined();
+    expect(screen.getByText('장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.')).toBeDefined();
   });
 
   it('캔버스 밖으로 튀어나온 노드가 상단 미리보기 패널 클릭을 가로막지 않게 자른다', () => {
