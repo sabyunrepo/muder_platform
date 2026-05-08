@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Eye, FileText, Gift, Save, Search, Shuffle, X } from 'lucide-react';
+import { Eye, FileText, Gift, Save, Search, Shuffle, TriangleAlert, X } from 'lucide-react';
 import type { ClueResponse } from '@/features/editor/api';
 import {
   readClueItemEffect,
@@ -9,7 +9,7 @@ import {
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
 
-type EffectMode = 'description' | 'reveal' | 'grant' | 'peek' | 'steal';
+type EffectMode = 'description' | 'reveal' | 'grant' | 'peek' | 'steal' | 'kill';
 
 interface ClueRuntimeEffectCardProps {
   clue: ClueResponse;
@@ -78,6 +78,9 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
   if (config?.effect === 'steal') {
     return { mode: 'steal', ...base, descriptionText: '', revealText: '', grantClueIds: [] };
   }
+  if (config?.effect === 'kill') {
+    return { mode: 'kill', ...base, descriptionText: '', revealText: '', grantClueIds: [] };
+  }
   return {
     mode: 'description',
     password: '',
@@ -128,6 +131,14 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
   if (draft.mode === 'peek') {
     return {
       effect: 'peek',
+      target: 'player',
+      ...passwordCondition(draft),
+      consume: draft.consume,
+    };
+  }
+  if (draft.mode === 'kill') {
+    return {
+      effect: 'kill',
       target: 'player',
       ...passwordCondition(draft),
       consume: draft.consume,
@@ -241,13 +252,14 @@ export function ClueRuntimeEffectCard({
         )}
       </label>
 
-      <fieldset className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <fieldset className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <legend className="mb-2 text-sm font-semibold text-slate-200">아이템 사용 시</legend>
         <EffectChoice mode="description" current={draft.mode} label="설명 변경" icon={<FileText className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'description' })} />
         <EffectChoice mode="reveal" current={draft.mode} label="정보 공개" icon={<Eye className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'reveal' })} />
         <EffectChoice mode="grant" current={draft.mode} label="새 단서 지급" icon={<Gift className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'grant' })} />
         <EffectChoice mode="peek" current={draft.mode} label="단서 훔쳐보기" icon={<Search className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'peek' })} />
         <EffectChoice mode="steal" current={draft.mode} label="단서 가져오기" icon={<Shuffle className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'steal' })} />
+        <EffectChoice mode="kill" current={draft.mode} label="살해 요청" icon={<TriangleAlert className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'kill' })} />
       </fieldset>
 
       {draft.mode === 'description' && (
@@ -291,6 +303,12 @@ export function ClueRuntimeEffectCard({
           onQueryChange={setQuery}
           onToggle={toggleGrantClue}
         />
+      )}
+
+      {draft.mode === 'kill' && (
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-100">
+          대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
+        </div>
       )}
 
       <label className="mt-4 flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">

@@ -186,4 +186,30 @@ describe('ClueRuntimeEffectCard', () => {
       condition: { kind: 'password', value: 'peek' },
     });
   });
+
+  it('살해 요청 효과를 위험 모드로 표시하고 저장한다', () => {
+    const onConfigChange = vi.fn();
+
+    render(
+      <ClueRuntimeEffectCard
+        clue={clues[0]}
+        clues={clues}
+        configJson={{}}
+        onConfigChange={onConfigChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/암호 입력 후 공개/), { target: { value: 'knife' } });
+    fireEvent.click(screen.getByRole('button', { name: '살해 요청' }));
+
+    expect(screen.getByText(/생존 상태를 런타임에서 사망으로 변경/)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: '공개 조건 저장' }));
+
+    const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
+    expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
+      effect: 'kill',
+      target: 'player',
+      condition: { kind: 'password', value: 'knife' },
+    });
+  });
 });

@@ -24,7 +24,13 @@ export interface LocationDiscoveryConfig extends EditorConfig {
   oncePerPlayer: boolean;
 }
 
-export type ClueItemEffectKind = 'description_change' | 'peek' | 'steal' | 'reveal' | 'grant_clue';
+export type ClueItemEffectKind =
+  | 'description_change'
+  | 'peek'
+  | 'steal'
+  | 'reveal'
+  | 'grant_clue'
+  | 'kill';
 
 export interface ClueItemEffectConfig extends EditorConfig {
   effect: ClueItemEffectKind;
@@ -75,7 +81,8 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
     effect !== 'peek' &&
     effect !== 'steal' &&
     effect !== 'reveal' &&
-    effect !== 'grant_clue'
+    effect !== 'grant_clue' &&
+    effect !== 'kill'
   ) return null;
 
   const target = value.target === 'player' || value.target === 'self' ? value.target : undefined;

@@ -306,6 +306,11 @@ describe('configShape', () => {
                 target: 'self',
                 descriptionText: '새 설명',
               },
+              'clue-4': {
+                effect: 'kill',
+                target: 'player',
+                consume: true,
+              },
               'clue-2': { effect: 'unknown', revealText: '무시' },
             },
           },
@@ -325,6 +330,11 @@ describe('configShape', () => {
         effect: 'description_change',
         target: 'self',
         descriptionText: '새 설명',
+      },
+      'clue-4': {
+        effect: 'kill',
+        target: 'player',
+        consume: true,
       },
     });
     expect(effects).not.toHaveProperty('root-decoy');
