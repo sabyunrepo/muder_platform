@@ -11,6 +11,7 @@ const {
   useEditorCluesMock,
   useEditorLocationsMock,
   useMediaListMock,
+  useMediaDownloadUrlMock,
   mediaPickerPropsMock,
 } = vi.hoisted(() => ({
   useStoryInfosMock: vi.fn(),
@@ -21,6 +22,7 @@ const {
   useEditorCluesMock: vi.fn(),
   useEditorLocationsMock: vi.fn(),
   useMediaListMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
   mediaPickerPropsMock: vi.fn(),
 }));
 
@@ -39,6 +41,7 @@ vi.mock('@/features/editor/api', () => ({
 
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+  useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
 }));
 
 vi.mock('@mdxeditor/editor', () => ({
@@ -165,6 +168,7 @@ beforeEach(() => {
       { id: 'video-1', name: 'CCTV', type: 'VIDEO' },
     ],
   });
+  useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
 });
 
 afterEach(() => {
@@ -183,7 +187,7 @@ describe('InfoTab', () => {
     expect(screen.getByText('탐정')).toBeDefined();
     expect(screen.getByText('혈흔')).toBeDefined();
     expect(screen.getByText('서재')).toBeDefined();
-    expect(screen.getByRole('region', { name: '정보 카드 프리뷰' })).toBeDefined();
+    expect(screen.queryByRole('region', { name: '정보 카드 프리뷰' })).toBeNull();
   });
 
   it('creates a new story info card with empty refs', async () => {
@@ -246,7 +250,7 @@ describe('InfoTab', () => {
     });
   });
 
-  it('inserts media embeds into the MDX body and previews referenced media', async () => {
+  it('inserts media embeds into the MDX body and renders referenced media inside the editor', async () => {
     render(<InfoTab themeId="theme-1" />);
 
     fireEvent.click(screen.getByRole('button', { name: '영상 삽입' }));
@@ -257,7 +261,8 @@ describe('InfoTab', () => {
       'value',
       expect.stringContaining('<MediaEmbed mediaId="video-1" type="video" />')
     );
-    expect(screen.getByText('영상: CCTV')).toBeDefined();
+    expect(screen.getByText('CCTV')).toBeDefined();
+    expect(screen.getByText('영상 블록')).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: /저장/ }));
     await waitFor(() => expect(updateMutate).toHaveBeenCalledTimes(1));
