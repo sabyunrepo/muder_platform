@@ -8,6 +8,7 @@ import {
   writeCluePolicy,
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
+import type { RoundRevealOption } from '@/features/editor/entities/reveal/revealTimingOptions';
 
 interface ClueBasicInfoCardProps {
   themeId: string;
@@ -15,6 +16,7 @@ interface ClueBasicInfoCardProps {
   configJson: EditorConfig | null | undefined;
   isSaving?: boolean;
   isConfigSaving?: boolean;
+  roundOptions?: RoundRevealOption[];
   onSave: (clueId: string, body: UpdateClueRequest) => void;
   onConfigChange: (nextConfig: EditorConfig) => void;
   onDelete: (clue: ClueResponse) => void;
@@ -92,6 +94,7 @@ export function ClueBasicInfoCard({
   configJson,
   isSaving = false,
   isConfigSaving = false,
+  roundOptions = DEFAULT_CLUE_ROUND_OPTIONS,
   onSave,
   onConfigChange,
   onDelete,
@@ -301,14 +304,11 @@ export function ClueBasicInfoCard({
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
             >
               <option value="start">처음부터</option>
-              <option value="round:1">1라운드 시작</option>
-              <option value="round:2">2라운드 시작</option>
-              <option value="round:3">3라운드 시작</option>
-              <option value="round:4">4라운드 시작</option>
-              <option value="round:5">5라운드 시작</option>
-              {draft.revealRound != null && draft.revealRound > 5 && (
-                <option value={`round:${draft.revealRound}`}>{draft.revealRound}라운드 시작</option>
-              )}
+              {roundOptions.map((option) => (
+                <option key={option.value} value={`round:${option.value}`}>
+                  {option.label} 시작
+                </option>
+              ))}
             </select>
           </label>
           <label className="text-sm font-medium text-slate-300">
@@ -319,14 +319,11 @@ export function ClueBasicInfoCard({
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
             >
               <option value="end">끝까지</option>
-              <option value="round:1">1라운드 종료</option>
-              <option value="round:2">2라운드 종료</option>
-              <option value="round:3">3라운드 종료</option>
-              <option value="round:4">4라운드 종료</option>
-              <option value="round:5">5라운드 종료</option>
-              {draft.hideRound != null && draft.hideRound > 5 && (
-                <option value={`round:${draft.hideRound}`}>{draft.hideRound}라운드 종료</option>
-              )}
+              {roundOptions.map((option) => (
+                <option key={option.value} value={`round:${option.value}`}>
+                  {option.label} 종료
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -360,3 +357,8 @@ function InfoBlock({ title, value }: { title: string; value: string }) {
     </div>
   );
 }
+
+const DEFAULT_CLUE_ROUND_OPTIONS = Array.from({ length: 5 }, (_, index) => {
+  const round = index + 1;
+  return { value: round, label: `${round}라운드` };
+});

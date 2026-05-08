@@ -57,6 +57,17 @@ vi.mock('@/features/editor/api', () => ({
   useUpdateCharacter: () => ({ mutate: updateCharacterMutateMock, isPending: updateCharacterPendingMock.value }),
 }));
 
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: () => ({
+    data: {
+      nodes: [
+        { id: 'scene-1', type: 'phase', data: { label: '오프닝', rounds: 2 } },
+        { id: 'scene-2', type: 'phase', data: { label: '현장 조사', rounds: 3 } },
+      ],
+    },
+  }),
+}));
+
 vi.mock('@/features/editor/mediaApi', () => ({
   uploadMediaFile: uploadMediaFileMock,
   useRequestUploadUrl: () => ({ mutateAsync: vi.fn(), isPending: false }),

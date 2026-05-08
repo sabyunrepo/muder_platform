@@ -18,6 +18,7 @@ import type { EditorConfig } from '@/features/editor/utils/configShape';
 import { buildClueUsageMap, type EntityReference } from '@/features/editor/utils/entityReferences';
 import { ClueForm } from '../ClueForm';
 import { ClueEntityWorkspace } from './ClueEntityWorkspace';
+import { useFlowGraph } from '@/features/editor/flowApi';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +37,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
   const { data: theme } = useEditorTheme(themeId);
   const { data: locations = [] } = useEditorLocations(themeId);
   const { data: characters = [] } = useEditorCharacters(themeId);
+  const { data: flowGraph } = useFlowGraph(themeId);
   const deleteClue = useDeleteClue(themeId);
   const updateClue = useUpdateClue(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
@@ -127,6 +129,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         themeId={themeId}
         clues={clues}
         configJson={theme?.config_json}
+        flowNodes={flowGraph?.nodes}
         locations={locations}
         characters={characters}
         onCreate={handleCreate}

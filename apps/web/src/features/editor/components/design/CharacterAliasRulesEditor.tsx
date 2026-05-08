@@ -3,11 +3,18 @@ import type { CharacterAliasRule } from '@/features/editor/api';
 import { groupToRecord, type ConditionGroup } from './condition/conditionTypes';
 import { normalizeCharacterAliasRules } from '@/features/editor/entities/character/characterEditorAdapter';
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
+import type {
+  ProgressNodeRevealOption,
+  RoundRevealOption,
+} from '@/features/editor/entities/reveal/revealTimingOptions';
 
 interface CharacterAliasRulesEditorProps {
   themeId: string;
   characterName: string;
   rules: CharacterAliasRule[];
+  characterOptions?: unknown;
+  roundOptions?: RoundRevealOption[];
+  nodeOptions?: ProgressNodeRevealOption[];
   disabled: boolean;
   onChange: (rules: CharacterAliasRule[]) => void;
   onSave: (rules: CharacterAliasRule[]) => void;
@@ -18,6 +25,8 @@ interface CharacterAliasRuleItemProps {
   rule: CharacterAliasRule;
   index: number;
   characterName: string;
+  roundOptions: RoundRevealOption[];
+  nodeOptions: ProgressNodeRevealOption[];
   disabled: boolean;
   onUpdate: (index: number, patch: Partial<CharacterAliasRule>) => void;
   onRemove: (index: number) => void;
@@ -27,6 +36,8 @@ export function CharacterAliasRulesEditor({
   themeId,
   characterName,
   rules,
+  roundOptions = DEFAULT_ALIAS_ROUND_OPTIONS,
+  nodeOptions = DEFAULT_ALIAS_NODE_OPTIONS,
   disabled,
   onChange,
   onSave,
@@ -106,6 +117,8 @@ export function CharacterAliasRulesEditor({
             rule={rule}
             index={index}
             characterName={characterName}
+            roundOptions={roundOptions}
+            nodeOptions={nodeOptions}
             disabled={disabled}
             onUpdate={updateRule}
             onRemove={removeRule}
@@ -135,6 +148,8 @@ function CharacterAliasRuleItem({
   rule,
   index,
   characterName,
+  roundOptions,
+  nodeOptions,
   disabled,
   onUpdate,
   onRemove,
@@ -229,17 +244,21 @@ function CharacterAliasRuleItem({
       {selectedPreset === 'round_start' ? (
         <label className="mt-2 block text-[11px] text-slate-400">
           표시 라운드
-          <input
-            type="number"
-            min={1}
-            value={presetValue.round}
+          <select
+            value={String(presetValue.round)}
             disabled={disabled}
             onChange={(event) => {
               const round = normalizePositiveNumber(event.currentTarget.value);
               onUpdate(index, { condition: groupToRecord(createAliasPresetCondition('round_start', { ...presetValue, round })) });
             }}
             className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
-          />
+          >
+            {roundOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} 시작
+              </option>
+            ))}
+          </select>
         </label>
       ) : null}
       {selectedPreset === 'node_reached' ? (
@@ -253,7 +272,7 @@ function CharacterAliasRuleItem({
             }}
             className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
           >
-            {ALIAS_NODE_OPTIONS.map((option) => (
+            {nodeOptions.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>
@@ -335,7 +354,12 @@ const ALIAS_PRESETS: Array<{ value: AliasPreset; label: string; flagKey?: string
   { value: 'custom', label: '기존 고급 조건 유지' },
 ];
 
-const ALIAS_NODE_OPTIONS = [
+const DEFAULT_ALIAS_ROUND_OPTIONS = Array.from({ length: 5 }, (_, index) => {
+  const round = index + 1;
+  return { value: round, label: `${round}라운드` };
+});
+
+const DEFAULT_ALIAS_NODE_OPTIONS = [
   { value: 'intro_finished', label: '자기소개 종료' },
   { value: 'round_summary', label: '라운드 정리' },
   { value: 'voting_started', label: '투표 시작' },
@@ -348,7 +372,7 @@ interface AliasPresetValue {
 
 function createAliasPresetCondition(
   preset: Exclude<AliasPreset, 'custom'>,
-  value: AliasPresetValue = { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value },
+  value: AliasPresetValue = { round: 1, nodeId: DEFAULT_ALIAS_NODE_OPTIONS[0].value },
 ): ConditionGroup {
   const option = ALIAS_PRESETS.find((item) => item.value === preset);
   return {
@@ -382,18 +406,18 @@ function inferAliasPreset(raw: CharacterAliasRule['condition']): AliasPreset {
 
 function inferAliasPresetValue(raw: CharacterAliasRule['condition']): AliasPresetValue {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+    return { round: 1, nodeId: DEFAULT_ALIAS_NODE_OPTIONS[0].value };
   }
   const rules = (raw as { rules?: unknown }).rules;
   if (!Array.isArray(rules) || rules.length !== 1) {
-    return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+    return { round: 1, nodeId: DEFAULT_ALIAS_NODE_OPTIONS[0].value };
   }
   const rule = rules[0] as { target_flag_key?: unknown; value?: unknown };
   if (rule.target_flag_key === 'round_started' && typeof rule.value === 'string') {
-    return { round: normalizePositiveNumber(rule.value), nodeId: ALIAS_NODE_OPTIONS[0].value };
+    return { round: normalizePositiveNumber(rule.value), nodeId: DEFAULT_ALIAS_NODE_OPTIONS[0].value };
   }
   if (rule.target_flag_key === 'story_node_reached' && typeof rule.value === 'string') {
-    return { round: 1, nodeId: rule.value || ALIAS_NODE_OPTIONS[0].value };
+    return { round: 1, nodeId: rule.value || DEFAULT_ALIAS_NODE_OPTIONS[0].value };
   }
-  return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+  return { round: 1, nodeId: DEFAULT_ALIAS_NODE_OPTIONS[0].value };
 }
