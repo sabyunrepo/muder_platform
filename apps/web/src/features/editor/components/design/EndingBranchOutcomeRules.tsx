@@ -145,6 +145,16 @@ function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange
   const selectedQuestion = parsed
     ? branchQuestions.find((question) => question.id === parsed.questionId)
     : undefined;
+  const choiceText = parsed?.choices?.length
+    ? parsed.choices.join(", ")
+    : parsed?.choice;
+  const aggregationText = parsed?.aggregation === "winning"
+    ? " 이 가장 많이 선택되면 "
+    : parsed?.aggregation === "all"
+      ? " 이 모두 기준 이상 선택되면 "
+      : parsed?.aggregation === "any"
+        ? " 중 하나라도 기준 이상 선택되면 "
+        : " 이 기준 이상 선택되면 ";
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
       <div className="flex items-center justify-between gap-3">
@@ -161,8 +171,8 @@ function MatrixRuleRow({ draft, rowIndex, endingNodes, branchQuestions, onChange
       <p className="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-3 text-sm leading-6 text-slate-300">
         <span className="font-semibold text-slate-100">{selectedQuestion?.text || "질문 선택 필요"}</span>
         {" 에서 "}
-        <span className="font-semibold text-amber-100">{parsed?.choice || "선택지 선택 필요"}</span>
-        {parsed?.aggregation === "winning" ? " 이 가장 많이 선택되면 " : " 이 기준 이상 선택되면 "}
+        <span className="font-semibold text-amber-100">{choiceText || "선택지 선택 필요"}</span>
+        {aggregationText}
         <span className="font-semibold text-emerald-100">{endingName(endingNodes.find((node) => node.id === row.ending) ?? { id: "", type: "ending", position: { x: 0, y: 0 }, data: {} } as Node)}</span>
         {" 결말을 보여줍니다."}
       </p>
@@ -189,9 +199,16 @@ function EndingConditionModal({
   const firstQuestion = branchQuestions[0];
   const [questionId, setQuestionId] = useState(parsed?.questionId ?? firstQuestion?.id ?? "");
   const selectedQuestion = branchQuestions.find((question) => question.id === questionId);
-  const [choice, setChoice] = useState(parsed?.choice ?? selectedQuestion?.choices[0] ?? "");
-  const [aggregation, setAggregation] = useState<"threshold" | "winning">(parsed?.aggregation ?? "threshold");
+  const [selectedChoices, setSelectedChoices] = useState<string[]>(
+    parsed?.choices?.length ? parsed.choices : selectedQuestion?.choices[0] ? [selectedQuestion.choices[0]] : [],
+  );
+  const [aggregation, setAggregation] = useState<"threshold" | "winning" | "all" | "any">(
+    selectedQuestion?.type === "multi"
+      ? parsed?.aggregation === "all" ? "all" : "any"
+      : parsed?.aggregation === "winning" ? "winning" : "threshold",
+  );
   const [endingId, setEndingId] = useState(initialRow?.ending ?? draft.defaultEnding ?? endingNodes[0]?.id ?? "");
+  const isMultiQuestion = selectedQuestion?.type === "multi";
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -204,22 +221,43 @@ function EndingConditionModal({
 
   const preview = useMemo(() => {
     const questionText = selectedQuestion?.text.trim() || "질문";
+    const choiceText = selectedChoices.length > 0 ? selectedChoices.join(", ") : "선택지";
     const ending = endingName(endingNodes.find((node) => node.id === endingId) ?? { id: "", type: "ending", position: { x: 0, y: 0 }, data: {} } as Node);
-    return `${questionText}에서 '${choice || "선택지"}' 답변이 ${aggregation === "winning" ? "가장 많으면" : "설정 비율 이상이면"} '${ending}' 결말로 보냅니다.`;
-  }, [aggregation, choice, endingId, endingNodes, selectedQuestion]);
+    const ruleText = aggregation === "winning"
+      ? "가장 많으면"
+      : aggregation === "all"
+        ? "모두 설정 비율 이상이면"
+        : aggregation === "any"
+          ? "하나라도 설정 비율 이상이면"
+          : "설정 비율 이상이면";
+    return `${questionText}에서 '${choiceText}' 답변이 ${ruleText} '${ending}' 결말로 보냅니다.`;
+  }, [aggregation, endingId, endingNodes, selectedChoices, selectedQuestion]);
 
   const handleQuestionChange = (nextQuestionId: string) => {
     const nextQuestion = branchQuestions.find((question) => question.id === nextQuestionId);
     setQuestionId(nextQuestionId);
-    setChoice(nextQuestion?.choices[0] ?? "");
-    setAggregation("threshold");
+    setSelectedChoices(nextQuestion?.choices[0] ? [nextQuestion.choices[0]] : []);
+    setAggregation(nextQuestion?.type === "multi" ? "any" : "threshold");
+  };
+
+  const toggleChoice = (choice: string) => {
+    setSelectedChoices((current) => (
+      current.includes(choice)
+        ? current.filter((item) => item !== choice)
+        : [...current, choice]
+    ));
   };
 
   const handleSubmit = () => {
-    if (!selectedQuestion || !choice || !endingId) return;
+    if (!selectedQuestion || selectedChoices.length === 0 || !endingId) return;
     const base = initialRow ?? createEndingBranchMatrixRow(draft, endingId);
     onSave({
-      ...updateMatrixCondition(base, selectedQuestion.id, choice, aggregation),
+      ...updateMatrixCondition(
+        base,
+        selectedQuestion.id,
+        isMultiQuestion ? selectedChoices : selectedChoices[0],
+        isMultiQuestion ? aggregation === "all" ? "all" : "any" : aggregation,
+      ),
       ending: endingId,
     });
   };
@@ -243,17 +281,48 @@ function EndingConditionModal({
               {branchQuestions.map((question) => <option key={question.id} value={question.id}>{question.text || "질문 내용 필요"}</option>)}
             </select>
           </label>
-          <label className="block">
-            <span className="text-xs font-medium text-slate-400">답변</span>
-            <select value={choice} onChange={(event) => setChoice(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
-              {(selectedQuestion?.choices ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
+          {isMultiQuestion ? (
+            <div>
+              <span className="text-xs font-medium text-slate-400">답변</span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(selectedQuestion?.choices ?? []).map((item) => {
+                  const selected = selectedChoices.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleChoice(item)}
+                      className={`rounded-full border px-3 py-2 text-xs font-medium transition ${selected ? "border-amber-400 bg-amber-400/15 text-amber-100" : "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500"}`}
+                      aria-pressed={selected}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <label className="block">
+              <span className="text-xs font-medium text-slate-400">답변</span>
+              <select value={selectedChoices[0] ?? ""} onChange={(event) => setSelectedChoices(event.target.value ? [event.target.value] : [])} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
+                {(selectedQuestion?.choices ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
+              </select>
+            </label>
+          )}
           <label className="block">
             <span className="text-xs font-medium text-slate-400">집계 기준</span>
-            <select value={aggregation} onChange={(event) => setAggregation(event.target.value === "winning" ? "winning" : "threshold")} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
-              <option value="threshold">과반수 / 설정 비율 이상</option>
-              <option value="winning">가장 많이 선택</option>
+            <select value={aggregation} onChange={(event) => setAggregation(event.target.value === "winning" ? "winning" : event.target.value === "all" ? "all" : event.target.value === "any" ? "any" : "threshold")} className="mt-1 min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-sm text-slate-100">
+              {isMultiQuestion ? (
+                <>
+                  <option value="any">하나라도 정답</option>
+                  <option value="all">모두 정답</option>
+                </>
+              ) : (
+                <>
+                  <option value="threshold">과반수 / 설정 비율 이상</option>
+                  <option value="winning">가장 많이 선택</option>
+                </>
+              )}
             </select>
           </label>
           <label className="block">
@@ -266,7 +335,7 @@ function EndingConditionModal({
         </div>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="min-h-11 rounded-xl border border-slate-700 px-4 text-sm text-slate-200 hover:bg-slate-800">취소</button>
-          <button type="button" onClick={handleSubmit} disabled={!selectedQuestion || !choice || !endingId} className="min-h-11 rounded-xl border border-amber-500/60 bg-amber-500/15 px-4 text-sm font-medium text-amber-100 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50">조건 저장</button>
+          <button type="button" onClick={handleSubmit} disabled={!selectedQuestion || selectedChoices.length === 0 || !endingId} className="min-h-11 rounded-xl border border-amber-500/60 bg-amber-500/15 px-4 text-sm font-medium text-amber-100 hover:bg-amber-500/25 disabled:cursor-not-allowed disabled:opacity-50">조건 저장</button>
         </div>
       </section>
     </div>
