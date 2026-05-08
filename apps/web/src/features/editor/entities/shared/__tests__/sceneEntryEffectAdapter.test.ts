@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import {
   DELIVER_INFORMATION_ACTION,
   GRANT_CLUE_ACTION,
@@ -7,6 +7,10 @@ import {
 } from "../sceneEntryEffectAdapter";
 
 vi.stubGlobal("crypto", { randomUUID: () => "generated-id" });
+
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("sceneEntryEffectAdapter", () => {
   it("정보 공개와 단서 지급 action을 대상별 장면 진입 효과로 병합한다", () => {
