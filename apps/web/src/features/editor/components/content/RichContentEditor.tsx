@@ -25,13 +25,16 @@ import {
 import { getMediaThumbnailUrl } from '@/features/editor/components/media/mediaVisuals';
 import { MediaEmbedPicker } from './MediaEmbedPicker';
 
-const mediaEmbedPattern = /<MediaEmbed\s+mediaId=["']([^"']+)["']\s+type=["']([^"']+)["']\s*\/>/g;
+const mediaEmbedTagPattern = /<MediaEmbed\s+([^>]+)\/>/g;
+const mediaEmbedMediaIdPattern = /mediaId=["']([^"']+)["']/;
+const mediaEmbedTypePattern = /type=["']([^"']+)["']/;
 
 interface MediaEmbedToken {
   id: string;
   mediaId: string;
   type: 'image' | 'video';
   snippet: string;
+  index: number;
 }
 
 export function RichContentEditor({
@@ -244,18 +247,43 @@ function MediaEmbedBlock({
 }
 
 function parseMediaEmbeds(markdown: string): MediaEmbedToken[] {
-  return Array.from(markdown.matchAll(mediaEmbedPattern), (match, index) => ({
-    id: `${match.index ?? index}:${match[0]}`,
-    mediaId: match[1],
-    type: match[2] === 'video' ? 'video' : 'image',
-    snippet: match[0],
-  }));
+  const tokens: MediaEmbedToken[] = [];
+  for (const match of markdown.matchAll(mediaEmbedTagPattern)) {
+    const index = match.index ?? 0;
+    const attrs = match[1] ?? '';
+    const mediaId = mediaEmbedMediaIdPattern.exec(attrs)?.[1];
+    const type = mediaEmbedTypePattern.exec(attrs)?.[1];
+    if (!mediaId || !type) continue;
+    tokens.push({
+      id: `${index}:${match[0]}`,
+      mediaId,
+      type: type === 'video' ? 'video' : 'image',
+      snippet: match[0],
+      index,
+    });
+  }
+  return tokens;
 }
 
 function replaceMediaEmbed(markdown: string, embed: MediaEmbedToken, nextSnippet: string) {
-  return markdown.replace(embed.snippet, nextSnippet.trim());
+  return replaceMediaEmbedAtIndex(markdown, embed, nextSnippet.trim());
 }
 
 function removeMediaEmbed(markdown: string, embed: MediaEmbedToken) {
-  return markdown.replace(embed.snippet, '').replace(/\n{3,}/g, '\n\n').trim();
+  return replaceMediaEmbedAtIndex(markdown, embed, '').replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function replaceMediaEmbedAtIndex(
+  markdown: string,
+  embed: MediaEmbedToken,
+  nextSnippet: string
+) {
+  if (markdown.slice(embed.index, embed.index + embed.snippet.length) !== embed.snippet) {
+    return markdown.replace(embed.snippet, nextSnippet);
+  }
+  return (
+    markdown.slice(0, embed.index) +
+    nextSnippet +
+    markdown.slice(embed.index + embed.snippet.length)
+  );
 }
