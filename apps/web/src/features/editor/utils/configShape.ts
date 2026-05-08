@@ -24,19 +24,26 @@ export interface LocationDiscoveryConfig extends EditorConfig {
   oncePerPlayer: boolean;
 }
 
-export type ClueItemEffectKind = 'peek' | 'reveal' | 'grant_clue';
+export type ClueItemEffectKind = 'description_change' | 'peek' | 'steal' | 'reveal' | 'grant_clue';
 
 export interface ClueItemEffectConfig extends EditorConfig {
   effect: ClueItemEffectKind;
   target?: 'player' | 'self';
   consume?: boolean;
+  descriptionText?: string;
   revealText?: string;
   grantClueIds?: string[];
+}
+
+export interface CluePolicyConfig extends EditorConfig {
+  revealable: boolean;
+  protected: boolean;
 }
 
 const LEGACY_KEYS = ['module_configs', 'clue_placement', 'character_clues'] as const;
 const CLUE_INTERACTION_MODULE_ID = 'clue_interaction';
 const CLUE_ITEM_EFFECTS_KEY = 'itemEffects';
+const CLUE_POLICIES_KEY = 'cluePolicies';
 const LOCATION_MODULE_ID = 'location';
 const LOCATION_DISCOVERIES_KEY = 'discoveries';
 
@@ -63,10 +70,17 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
   if (!isRecord(value)) return null;
 
   const effect = value.effect;
-  if (effect !== 'peek' && effect !== 'reveal' && effect !== 'grant_clue') return null;
+  if (
+    effect !== 'description_change' &&
+    effect !== 'peek' &&
+    effect !== 'steal' &&
+    effect !== 'reveal' &&
+    effect !== 'grant_clue'
+  ) return null;
 
   const target = value.target === 'player' || value.target === 'self' ? value.target : undefined;
   const consume = typeof value.consume === 'boolean' ? value.consume : undefined;
+  const descriptionText = typeof value.descriptionText === 'string' ? value.descriptionText : undefined;
   const revealText = typeof value.revealText === 'string' ? value.revealText : undefined;
   const grantClueIds = stringList(value.grantClueIds);
 
@@ -75,6 +89,7 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
     effect,
     ...(target ? { target } : {}),
     ...(consume !== undefined ? { consume } : {}),
+    ...(descriptionText !== undefined ? { descriptionText } : {}),
     ...(revealText !== undefined ? { revealText } : {}),
     ...(grantClueIds.length > 0 ? { grantClueIds } : {}),
   };
@@ -94,9 +109,27 @@ function stripKnownClueEffectFields(value: unknown): EditorConfig {
   delete next.effect;
   delete next.target;
   delete next.consume;
+  delete next.descriptionText;
   delete next.revealText;
   delete next.grantClueIds;
   return next;
+}
+
+function readRawCluePolicies(
+  configJson: EditorConfig | null | undefined
+): Record<string, unknown> {
+  const moduleConfig = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
+  const rawPolicies = moduleConfig[CLUE_POLICIES_KEY];
+  return isRecord(rawPolicies) ? { ...rawPolicies } : {};
+}
+
+function readCluePolicyConfig(value: unknown): CluePolicyConfig | null {
+  if (!isRecord(value)) return null;
+  return {
+    ...value,
+    revealable: value.revealable !== false,
+    protected: value.protected === true,
+  };
 }
 
 function readLegacyModuleConfigs(configJson: EditorConfig | null | undefined) {
@@ -270,6 +303,35 @@ export function writeClueItemEffect(
   return writeModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID, {
     ...current,
     [CLUE_ITEM_EFFECTS_KEY]: itemEffects,
+  });
+}
+
+export function readCluePolicy(
+  configJson: EditorConfig | null | undefined,
+  clueId: string
+): CluePolicyConfig {
+  return readCluePolicyConfig(readRawCluePolicies(configJson)[clueId]) ?? {
+    revealable: true,
+    protected: false,
+  };
+}
+
+export function writeCluePolicy(
+  configJson: EditorConfig | null | undefined,
+  clueId: string,
+  policy: CluePolicyConfig
+): EditorConfig {
+  const current = readModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID);
+  const cluePolicies = readRawCluePolicies(configJson);
+  cluePolicies[clueId] = {
+    ...(isRecord(cluePolicies[clueId]) ? cluePolicies[clueId] as EditorConfig : {}),
+    revealable: policy.revealable,
+    protected: policy.protected,
+  };
+
+  return writeModuleConfig(configJson, CLUE_INTERACTION_MODULE_ID, {
+    ...current,
+    [CLUE_POLICIES_KEY]: cluePolicies,
   });
 }
 
@@ -585,5 +647,18 @@ export function removeClueReferencesFromConfig(
   clueId: string
 ): EditorConfig {
   const normalized = normalizeConfigForSave(configJson);
-  return removeClueIdFromValue(normalized, clueId) as EditorConfig;
+  const cleaned = removeClueIdFromValue(normalized, clueId) as EditorConfig;
+  const moduleConfig = readModuleConfig(cleaned, CLUE_INTERACTION_MODULE_ID);
+  const rawPolicies = moduleConfig[CLUE_POLICIES_KEY];
+  if (!isRecord(rawPolicies) || !hasOwnKey(rawPolicies, clueId)) return cleaned;
+
+  const cluePolicies = { ...rawPolicies };
+  delete cluePolicies[clueId];
+  const nextModuleConfig = { ...moduleConfig };
+  if (Object.keys(cluePolicies).length > 0) {
+    nextModuleConfig[CLUE_POLICIES_KEY] = cluePolicies;
+  } else {
+    delete nextModuleConfig[CLUE_POLICIES_KEY];
+  }
+  return writeModuleConfig(cleaned, CLUE_INTERACTION_MODULE_ID, nextModuleConfig);
 }

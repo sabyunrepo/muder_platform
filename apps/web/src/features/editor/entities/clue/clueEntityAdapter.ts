@@ -1,7 +1,7 @@
 import type { ClueResponse, CreateClueRequest, UpdateClueRequest } from '@/features/editor/api/types';
 import { formatRoundRange } from '@/features/editor/utils/roundFormat';
 
-export type ClueUseEffect = 'peek' | 'steal' | 'reveal' | 'block' | 'swap';
+export type ClueUseEffect = 'description_change' | 'peek' | 'steal' | 'reveal' | 'block' | 'swap';
 export type ClueUseTarget = 'player' | 'clue' | 'self';
 
 export interface ClueUseEffectOption {
@@ -28,17 +28,24 @@ export interface ClueEditorViewModel {
 
 export const clueUseEffectOptions: ClueUseEffectOption[] = [
   {
+    value: 'description_change',
+    target: 'self',
+    label: '설명 변경',
+    description: '사용 후 단서 설명을 새 내용으로 바꿉니다.',
+    requiresTargetSelection: false,
+  },
+  {
     value: 'peek',
     target: 'player',
-    label: '다른 플레이어 단서 보기',
-    description: '사용자가 선택한 플레이어의 보유 단서 목록을 확인합니다.',
+    label: '단서 훔쳐보기',
+    description: '대상 플레이어의 보호되지 않은 보유 단서를 확인합니다.',
     requiresTargetSelection: true,
   },
   {
     value: 'steal',
     target: 'player',
-    label: '다른 플레이어에게서 단서 가져오기',
-    description: '대상 플레이어의 단서 하나를 가져오는 효과입니다. 실제 양도 기능은 후속 엔진에서 분리합니다.',
+    label: '단서 가져오기',
+    description: '대상 플레이어의 보호되지 않은 단서 하나를 가져옵니다.',
     requiresTargetSelection: true,
   },
   {
@@ -81,7 +88,7 @@ export function toClueEditorViewModel(clue: ClueResponse, referenceCount = 0): C
     description: clue.description?.trim() || '플레이어에게 보일 단서 설명을 입력하세요.',
     imageUrl: clue.image_url ?? null,
     imageMediaId: clue.image_media_id ?? null,
-    publicScopeLabel: clue.is_common ? '모든 플레이어가 공유' : '지정된 캐릭터나 장소에서만 획득',
+    publicScopeLabel: clue.is_common ? '전체 공개' : '지정된 캐릭터나 장소에서만 획득',
     roundLabel: formatRoundRange(clue.reveal_round, clue.hide_round) || '처음부터 끝까지',
     useEffectLabel: effect?.label ?? '사용 효과 없음',
     useEffectDescription: effect?.description ?? '플레이어가 이 단서를 눌러 실행하는 효과가 없습니다.',
@@ -92,7 +99,7 @@ export function toClueEditorViewModel(clue: ClueResponse, referenceCount = 0): C
 
 export function buildClueBadges(clue: ClueResponse, referenceCount: number): string[] {
   return [
-    clue.is_common ? '모두에게 공개' : null,
+    clue.is_common ? '전체 공개' : null,
     clue.is_usable ? '사용 가능' : null,
     referenceCount > 0 ? `연결 ${referenceCount}` : '미배치',
   ].filter((badge): badge is string => Boolean(badge));

@@ -26,6 +26,12 @@ type ClueInteractionConfig struct {
 	CommonClueVisibility string                          `json:"commonClueVisibility"`
 	AutoRevealClues      bool                            `json:"autoRevealClues"`
 	ItemEffects          map[string]ClueItemEffectConfig `json:"itemEffects,omitempty"`
+	CluePolicies         map[string]CluePolicyConfig     `json:"cluePolicies,omitempty"`
+}
+
+type CluePolicyConfig struct {
+	Revealable bool `json:"revealable"`
+	Protected  bool `json:"protected"`
 }
 
 // ItemUseState tracks an in-progress item use action.
@@ -41,19 +47,20 @@ type ItemUseState struct {
 
 // ClueInteractionModule handles clue drawing and transfer mechanics.
 type ClueInteractionModule struct {
-	mu               sync.RWMutex
-	deps             engine.ModuleDeps
-	config           ClueInteractionConfig
-	playerDrawCounts map[uuid.UUID]int
-	currentClueLevel int
-	acquiredClues    map[uuid.UUID][]string
-	targetCodeClues  map[string][]string
-	allPlayerClues   []string
-	activeItemUse    *ItemUseState
-	usedItems        map[uuid.UUID][]uuid.UUID // playerID -> used clue IDs
-	revealedInfo     map[uuid.UUID]map[string]string
-	itemTimeout      *time.Timer
-	appliedGrantIDs  map[string]struct{}
+	mu                  sync.RWMutex
+	deps                engine.ModuleDeps
+	config              ClueInteractionConfig
+	playerDrawCounts    map[uuid.UUID]int
+	currentClueLevel    int
+	acquiredClues       map[uuid.UUID][]string
+	targetCodeClues     map[string][]string
+	allPlayerClues      []string
+	activeItemUse       *ItemUseState
+	usedItems           map[uuid.UUID][]uuid.UUID // playerID -> used clue IDs
+	revealedInfo        map[uuid.UUID]map[string]string
+	changedDescriptions map[uuid.UUID]map[string]string
+	itemTimeout         *time.Timer
+	appliedGrantIDs     map[string]struct{}
 }
 
 // NewClueInteractionModule creates a new ClueInteractionModule instance.
@@ -74,6 +81,7 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	m.allPlayerClues = nil
 	m.usedItems = make(map[uuid.UUID][]uuid.UUID)
 	m.revealedInfo = make(map[uuid.UUID]map[string]string)
+	m.changedDescriptions = make(map[uuid.UUID]map[string]string)
 	m.appliedGrantIDs = make(map[string]struct{})
 
 	// Apply defaults first.
@@ -85,6 +93,7 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 		CommonClueVisibility: "all",
 		AutoRevealClues:      false,
 		ItemEffects:          map[string]ClueItemEffectConfig{},
+		CluePolicies:         map[string]CluePolicyConfig{},
 	}
 
 	// Unmarshal directly into m.config — only provided JSON fields overwrite defaults.
@@ -95,6 +104,9 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	}
 	if m.config.ItemEffects == nil {
 		m.config.ItemEffects = map[string]ClueItemEffectConfig{}
+	}
+	if m.config.CluePolicies == nil {
+		m.config.CluePolicies = map[string]CluePolicyConfig{}
 	}
 	if err := validateClueItemEffectConfig(m.config.ItemEffects); err != nil {
 		return err
@@ -368,16 +380,29 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 				"additionalProperties": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"effect":       map[string]any{"type": "string", "enum": []string{"peek", "reveal", "grant_clue"}},
-						"target":       map[string]any{"type": "string", "enum": []string{"player", "self"}},
-						"consume":      map[string]any{"type": "boolean", "default": false},
-						"revealText":   map[string]any{"type": "string"},
-						"grantClueIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"effect":          map[string]any{"type": "string", "enum": []string{"description_change", "peek", "steal", "reveal", "grant_clue"}},
+						"target":          map[string]any{"type": "string", "enum": []string{"player", "self"}},
+						"consume":         map[string]any{"type": "boolean", "default": false},
+						"descriptionText": map[string]any{"type": "string"},
+						"revealText":      map[string]any{"type": "string"},
+						"grantClueIds":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 					},
 					"required":             []string{"effect"},
 					"additionalProperties": false,
 				},
 				"description": "Runtime clue use effects keyed by clue ID",
+			},
+			"cluePolicies": map[string]any{
+				"type": "object",
+				"additionalProperties": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"revealable": map[string]any{"type": "boolean", "default": true},
+						"protected":  map[string]any{"type": "boolean", "default": false},
+					},
+					"additionalProperties": false,
+				},
+				"description": "Editor-owned clue visibility and protection policies keyed by clue ID",
 			},
 		},
 		"additionalProperties": false,
@@ -387,14 +412,15 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 }
 
 type clueInteractionState struct {
-	PlayerDrawCounts map[uuid.UUID]int               `json:"playerDrawCounts"`
-	CurrentClueLevel int                             `json:"currentClueLevel"`
-	AcquiredClues    map[uuid.UUID][]string          `json:"acquiredClues"`
-	AllPlayerClues   []string                        `json:"allPlayerClues,omitempty"`
-	Config           ClueInteractionConfig           `json:"config"`
-	UsedItems        map[uuid.UUID][]uuid.UUID       `json:"usedItems"`
-	RevealedInfo     map[uuid.UUID]map[string]string `json:"revealedInfo"`
-	ActiveItemUse    *ItemUseState                   `json:"activeItemUse,omitempty"`
+	PlayerDrawCounts    map[uuid.UUID]int               `json:"playerDrawCounts"`
+	CurrentClueLevel    int                             `json:"currentClueLevel"`
+	AcquiredClues       map[uuid.UUID][]string          `json:"acquiredClues"`
+	AllPlayerClues      []string                        `json:"allPlayerClues,omitempty"`
+	Config              ClueInteractionConfig           `json:"config"`
+	UsedItems           map[uuid.UUID][]uuid.UUID       `json:"usedItems"`
+	RevealedInfo        map[uuid.UUID]map[string]string `json:"revealedInfo"`
+	ChangedDescriptions map[uuid.UUID]map[string]string `json:"changedDescriptions"`
+	ActiveItemUse       *ItemUseState                   `json:"activeItemUse,omitempty"`
 }
 
 func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {
@@ -402,14 +428,15 @@ func (m *ClueInteractionModule) BuildState() (json.RawMessage, error) {
 	defer m.mu.RUnlock()
 
 	return json.Marshal(clueInteractionState{
-		PlayerDrawCounts: m.playerDrawCounts,
-		CurrentClueLevel: m.currentClueLevel,
-		AcquiredClues:    m.acquiredClues,
-		AllPlayerClues:   m.allPlayerClues,
-		Config:           m.config,
-		UsedItems:        m.usedItems,
-		RevealedInfo:     m.revealedInfo,
-		ActiveItemUse:    m.activeItemUse,
+		PlayerDrawCounts:    m.playerDrawCounts,
+		CurrentClueLevel:    m.currentClueLevel,
+		AcquiredClues:       m.acquiredClues,
+		AllPlayerClues:      m.allPlayerClues,
+		Config:              m.config,
+		UsedItems:           m.usedItems,
+		RevealedInfo:        m.revealedInfo,
+		ChangedDescriptions: m.changedDescriptions,
+		ActiveItemUse:       m.activeItemUse,
 	})
 }
 
@@ -423,6 +450,7 @@ func (m *ClueInteractionModule) Cleanup(_ context.Context) error {
 	m.allPlayerClues = nil
 	m.usedItems = nil
 	m.revealedInfo = nil
+	m.changedDescriptions = nil
 	m.activeItemUse = nil
 	m.appliedGrantIDs = nil
 	if m.itemTimeout != nil {
@@ -481,14 +509,15 @@ func (m *ClueInteractionModule) BuildStateFor(playerID uuid.UUID) (json.RawMessa
 	}
 	acquiredClues[playerID] = mergeClueList(acquiredClues[playerID], m.targetCodeClues[playerID.String()])
 	return json.Marshal(clueInteractionState{
-		PlayerDrawCounts: engine.FilterByPlayer(m.playerDrawCounts, playerID),
-		CurrentClueLevel: m.currentClueLevel,
-		AcquiredClues:    acquiredClues,
-		AllPlayerClues:   m.allPlayerClues,
-		Config:           m.configForPlayerState(),
-		UsedItems:        engine.FilterByPlayer(m.usedItems, playerID),
-		RevealedInfo:     engine.FilterByPlayer(m.revealedInfo, playerID),
-		ActiveItemUse:    activeItemUse,
+		PlayerDrawCounts:    engine.FilterByPlayer(m.playerDrawCounts, playerID),
+		CurrentClueLevel:    m.currentClueLevel,
+		AcquiredClues:       acquiredClues,
+		AllPlayerClues:      m.allPlayerClues,
+		Config:              m.configForPlayerState(),
+		UsedItems:           engine.FilterByPlayer(m.usedItems, playerID),
+		RevealedInfo:        engine.FilterByPlayer(m.revealedInfo, playerID),
+		ChangedDescriptions: engine.FilterByPlayer(m.changedDescriptions, playerID),
+		ActiveItemUse:       activeItemUse,
 	})
 }
 
@@ -523,6 +552,7 @@ func mergeClueList(current []string, next []string) []string {
 func (m *ClueInteractionModule) configForPlayerState() ClueInteractionConfig {
 	config := m.config
 	config.ItemEffects = nil
+	config.CluePolicies = nil
 	return config
 }
 

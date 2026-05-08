@@ -465,12 +465,25 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 							"target": "self",
 							"consume": true,
 							"grantClueIds": ["%s"]
+						},
+						"%s": {
+							"effect": "description_change",
+							"target": "self",
+							"condition": {"kind": "password", "value": "open"},
+							"descriptionText": "사용 후 설명"
+						},
+						"%s": {
+							"effect": "steal",
+							"target": "player"
 						}
+					},
+					"cluePolicies": {
+						"%s": {"revealable": true, "protected": true}
 					}
 				}
 			}
 		}
-	}`, clueID, rewardClueID))
+	}`, clueID, rewardClueID, uuid.NewString(), uuid.NewString(), clueID))
 	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
 		t.Fatalf("valid clue_interaction itemEffects must save: %v", err)
 	}
@@ -705,11 +718,35 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 				"modules": {
 					"clue_interaction": {
 						"enabled": true,
-						"config": {"itemEffects": {"%s": {"effect": "steal"}}}
+						"config": {"itemEffects": {"%s": {"effect": "kill"}}}
 					}
 				}
 			}`, clueID)),
 			want: "is not supported",
+		},
+		{
+			name: "description change requires text",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "description_change"}}}
+					}
+				}
+			}`, clueID)),
+			want: "descriptionText is required",
+		},
+		{
+			name: "policy must be boolean",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"cluePolicies": {"%s": {"protected": "yes"}}}
+					}
+				}
+			}`, clueID)),
+			want: "protected must be boolean",
 		},
 		{
 			name: "unknown effect field",

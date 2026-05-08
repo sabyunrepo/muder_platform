@@ -11,20 +11,23 @@ import (
 )
 
 const (
-	clueEffectPeek      = "peek"
-	clueEffectReveal    = "reveal"
-	clueEffectGrantClue = "grant_clue"
+	clueEffectDescriptionChange = "description_change"
+	clueEffectPeek              = "peek"
+	clueEffectSteal             = "steal"
+	clueEffectReveal            = "reveal"
+	clueEffectGrantClue         = "grant_clue"
 )
 
 // ClueItemEffectConfig is the runtime-owned contract for configured clue use.
 // Editor labels are mapped to this contract by adapters; the engine executes
 // only this typed shape and never trusts client-side labels as runtime truth.
 type ClueItemEffectConfig struct {
-	Effect       string   `json:"effect"`
-	Target       string   `json:"target,omitempty"`
-	Consume      bool     `json:"consume"`
-	RevealText   string   `json:"revealText,omitempty"`
-	GrantClueIDs []string `json:"grantClueIds,omitempty"`
+	Effect          string   `json:"effect"`
+	Target          string   `json:"target,omitempty"`
+	Consume         bool     `json:"consume"`
+	DescriptionText string   `json:"descriptionText,omitempty"`
+	RevealText      string   `json:"revealText,omitempty"`
+	GrantClueIDs    []string `json:"grantClueIds,omitempty"`
 }
 
 type itemUsePayload struct {
@@ -69,7 +72,7 @@ func (m *ClueInteractionModule) handleItemUse(ctx context.Context, playerID uuid
 		state.Consume = effectCfg.Consume
 	}
 
-	if state.Configured && (state.Target == "self" || state.Effect == clueEffectReveal || state.Effect == clueEffectGrantClue) {
+	if state.Configured && (state.Target == "self" || state.Effect == clueEffectReveal || state.Effect == clueEffectGrantClue || state.Effect == clueEffectDescriptionChange) {
 		m.publishItemDeclared(playerID, clueID)
 		return m.resolveItemUse(ctx, state, "")
 	}
@@ -113,6 +116,14 @@ func (m *ClueInteractionModule) resolveItemUse(ctx context.Context, state ItemUs
 	switch state.Effect {
 	case clueEffectPeek:
 		resolveErr = m.handlePeekEffect(ctx, state.UserID, state.ClueID, targetPlayerID)
+	case clueEffectSteal:
+		resolveErr = m.handleStealEffect(state.UserID, state.ClueID, targetPlayerID)
+	case clueEffectDescriptionChange:
+		if state.Configured {
+			resolveErr = m.handleDescriptionChangeEffect(state.UserID, state.ClueID)
+		} else {
+			resolveErr = fmt.Errorf("clue_interaction: effect %q not implemented", state.Effect)
+		}
 	case clueEffectReveal:
 		if state.Configured {
 			resolveErr = m.handleRevealEffect(state.UserID, state.ClueID)
@@ -173,8 +184,11 @@ func validateSingleClueItemEffectConfig(clueID string, cfg ClueItemEffectConfig)
 	if cfg.Effect == "" {
 		return fmt.Errorf("clue_interaction: item effect missing for clue %q", clueID)
 	}
-	if cfg.Effect != clueEffectReveal && cfg.Effect != clueEffectGrantClue && cfg.Effect != clueEffectPeek {
+	if cfg.Effect != clueEffectDescriptionChange && cfg.Effect != clueEffectReveal && cfg.Effect != clueEffectGrantClue && cfg.Effect != clueEffectPeek && cfg.Effect != clueEffectSteal {
 		return fmt.Errorf("clue_interaction: effect %q not implemented", cfg.Effect)
+	}
+	if cfg.Effect == clueEffectDescriptionChange && cfg.DescriptionText == "" {
+		return fmt.Errorf("clue_interaction: description_change requires descriptionText")
 	}
 	if cfg.Effect == clueEffectGrantClue && len(cfg.GrantClueIDs) == 0 {
 		return fmt.Errorf("clue_interaction: grant_clue requires grantClueIds")
@@ -192,8 +206,7 @@ func (m *ClueInteractionModule) handlePeekEffect(_ context.Context, _ uuid.UUID,
 	}
 
 	m.mu.RLock()
-	clues := make([]string, len(m.acquiredClues[targetPlayerID]))
-	copy(clues, m.acquiredClues[targetPlayerID])
+	clues := m.visibleTargetCluesLocked(targetPlayerID)
 	m.mu.RUnlock()
 
 	m.deps.EventBus.Publish(engine.Event{
@@ -201,6 +214,66 @@ func (m *ClueInteractionModule) handlePeekEffect(_ context.Context, _ uuid.UUID,
 		Payload: map[string]any{
 			"targetPlayerId": targetPlayerID.String(),
 			"clues":          clues,
+		},
+	})
+	return nil
+}
+
+func (m *ClueInteractionModule) handleStealEffect(playerID uuid.UUID, usedClueID uuid.UUID, targetPlayerIDStr string) error {
+	targetPlayerID, err := uuid.Parse(targetPlayerIDStr)
+	if err != nil {
+		return fmt.Errorf("clue_interaction: invalid targetPlayerId: %w", err)
+	}
+
+	m.mu.Lock()
+	targetClues := m.visibleTargetCluesLocked(targetPlayerID)
+	if len(targetClues) == 0 {
+		m.mu.Unlock()
+		return fmt.Errorf("clue_interaction: target has no stealable clues")
+	}
+	stolenClueID := targetClues[0]
+	m.removePlayerClueLocked(targetPlayerID, stolenClueID)
+	if !m.playerHasClueLocked(playerID, stolenClueID) {
+		m.acquiredClues[playerID] = append(m.acquiredClues[playerID], stolenClueID)
+	}
+	m.mu.Unlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.steal_result",
+		Payload: map[string]any{
+			"playerId":       playerID.String(),
+			"targetPlayerId": targetPlayerID.String(),
+			"clueId":         stolenClueID,
+			"usedClue":       usedClueID.String(),
+		},
+	})
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.acquired",
+		Payload: map[string]any{
+			"playerId": playerID.String(),
+			"clueId":   stolenClueID,
+			"source":   "clue_steal",
+			"usedClue": usedClueID.String(),
+		},
+	})
+	return nil
+}
+
+func (m *ClueInteractionModule) handleDescriptionChangeEffect(playerID uuid.UUID, clueID uuid.UUID) error {
+	cfg := m.config.ItemEffects[clueID.String()]
+	m.mu.Lock()
+	if m.changedDescriptions[playerID] == nil {
+		m.changedDescriptions[playerID] = make(map[string]string)
+	}
+	m.changedDescriptions[playerID][clueID.String()] = cfg.DescriptionText
+	m.mu.Unlock()
+
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "clue.description_changed",
+		Payload: map[string]any{
+			"playerId":        playerID.String(),
+			"clueId":          clueID.String(),
+			"descriptionText": cfg.DescriptionText,
 		},
 	})
 	return nil
@@ -346,6 +419,21 @@ func (m *ClueInteractionModule) playerHasClueLocked(playerID uuid.UUID, clueID s
 		}
 	}
 	return false
+}
+
+func (m *ClueInteractionModule) visibleTargetCluesLocked(playerID uuid.UUID) []string {
+	clues := m.acquiredClues[playerID]
+	out := make([]string, 0, len(clues))
+	for _, clueID := range clues {
+		if !m.isProtectedClue(clueID) {
+			out = append(out, clueID)
+		}
+	}
+	return out
+}
+
+func (m *ClueInteractionModule) isProtectedClue(clueID string) bool {
+	return m.config.CluePolicies[clueID].Protected
 }
 
 func (m *ClueInteractionModule) removePlayerClueLocked(playerID uuid.UUID, clueID string) {

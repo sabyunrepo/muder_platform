@@ -65,4 +65,34 @@ describe('removeClueReferencesFromConfig', () => {
       combination: { enabled: true, config: { recipes: [{ required: ['clue-3'] }] } },
     });
   });
+
+  it('removes deleted clue policy map entries keyed by clue id', () => {
+    const next = removeClueReferencesFromConfig(
+      {
+        modules: {
+          clue_interaction: {
+            enabled: true,
+            config: {
+              cluePolicies: {
+                'clue-1': { revealable: false, protected: true },
+                'clue-2': { revealable: true, protected: false },
+              },
+            },
+          },
+        },
+      },
+      'clue-1'
+    );
+
+    expect(next.modules).toMatchObject({
+      clue_interaction: {
+        config: {
+          cluePolicies: {
+            'clue-2': { revealable: true, protected: false },
+          },
+        },
+      },
+    });
+    expect(next.modules.clue_interaction.config.cluePolicies).not.toHaveProperty('clue-1');
+  });
 });

@@ -3,6 +3,7 @@ import {
   normalizeConfigForSave,
   readClueItemEffect,
   readClueItemEffects,
+  readCluePolicy,
   readCharacterStartingClueMap,
   readLocationDiscoveries,
   readCluePlacement,
@@ -11,6 +12,7 @@ import {
   readModuleConfig,
   writeCharacterStartingClueMap,
   writeClueItemEffect,
+  writeCluePolicy,
   writeLocationDiscoveries,
   writeCluePlacement,
   writeLocationClueIds,
@@ -299,6 +301,11 @@ describe('configShape', () => {
                 revealText: '숫자 0427이 보입니다.',
                 consume: true,
               },
+              'clue-3': {
+                effect: 'description_change',
+                target: 'self',
+                descriptionText: '새 설명',
+              },
               'clue-2': { effect: 'unknown', revealText: '무시' },
             },
           },
@@ -313,6 +320,11 @@ describe('configShape', () => {
         target: 'self',
         revealText: '숫자 0427이 보입니다.',
         consume: true,
+      },
+      'clue-3': {
+        effect: 'description_change',
+        target: 'self',
+        descriptionText: '새 설명',
       },
     });
     expect(effects).not.toHaveProperty('root-decoy');
@@ -378,5 +390,20 @@ describe('configShape', () => {
     expect(readClueItemEffect(next, 'missing-clue')).toBeNull();
     expect(readModuleConfig(next, 'clue_interaction')).toEqual({});
     expect(readModuleConfig(next, 'timer')).toEqual({ seconds: 30 });
+  });
+
+  it('writes clue visibility and protection policy in clue interaction config', () => {
+    const next = writeCluePolicy({}, 'clue-1', { revealable: false, protected: true });
+
+    expect(readCluePolicy(next, 'clue-1')).toEqual({
+      revealable: false,
+      protected: true,
+    });
+    expect(readModuleConfig(next, 'clue_interaction')).toMatchObject({
+      cluePolicies: {
+        'clue-1': { revealable: false, protected: true },
+      },
+    });
+    expect(readCluePolicy(next, 'missing')).toEqual({ revealable: true, protected: false });
   });
 });

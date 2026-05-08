@@ -154,7 +154,7 @@ describe('CluesTab', () => {
   it('공통 단서에 제작자 친화적인 공개 범위 badge가 표시된다', () => {
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
     render(<CluesTab themeId="theme-1" />);
-    expect(screen.getByText('모두에게 공개')).toBeDefined();
+    expect(screen.getAllByText('전체 공개').length).toBeGreaterThan(0);
   });
 
   it('단서 개수를 표시한다', () => {
