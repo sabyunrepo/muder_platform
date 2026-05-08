@@ -3,6 +3,7 @@ package postgrestest
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -20,7 +21,9 @@ func Start(ctx context.Context, t testing.TB) string {
 		t.Fatalf("start postgres container: %v", err)
 	}
 	t.Cleanup(func() {
-		if err := pgC.Terminate(ctx); err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		if err := pgC.Terminate(cleanupCtx); err != nil {
 			t.Logf("terminate postgres container: %v", err)
 		}
 	})
