@@ -4,7 +4,7 @@ import type { CharacterOption } from './readingBlockUiTypes';
 
 export const readingPreviewVoiceDurationMs = 2600;
 export const readingPreviewVideoDurationMs = 1800;
-export const readingPreviewBgmAdvanceDelayMs = 700;
+export const readingPreviewEffectSoundAdvanceDelayMs = 500;
 
 export function getReadingPreviewBlockType(line: ReadingLineDTO): ReadingBlockType {
   return line.Type ?? 'dialogue';
@@ -34,17 +34,12 @@ export function getReadingPreviewWaitMediaId(line: ReadingLineDTO): string | nul
 }
 
 export function getReadingPreviewActiveBgm(
-  lines: ReadingLineDTO[],
-  currentIndex: number,
+  bgmMediaId: string | null | undefined,
+  bgmMode: 'loop' | 'once',
   mediaById: Map<string, MediaResponse>
 ): string {
-  const cues = lines
-    .slice(0, currentIndex + 1)
-    .filter((line) => getReadingPreviewBlockType(line) === 'bgm');
-  const lastCue = cues.at(-1);
-  if (!lastCue || lastCue.BGMMode === 'stop') return 'BGM 없음';
-  const mediaName = getReadingPreviewMediaLabel(lastCue.MediaID, mediaById);
-  return `${mediaName} ${lastCue.BGMMode === 'once' ? '1회' : '반복'}`;
+  if (!bgmMediaId) return '배경음악 없음';
+  return `${getReadingPreviewMediaLabel(bgmMediaId, mediaById)} ${bgmMode === 'once' ? '1회' : '반복'}`;
 }
 
 export function getReadingPreviewMediaLabel(
@@ -60,5 +55,6 @@ export function getReadingPreviewMediaUrl(
   mediaById: Map<string, MediaResponse>
 ): string | undefined {
   if (!mediaId) return undefined;
-  return mediaById.get(mediaId)?.url;
+  const media = mediaById.get(mediaId);
+  return media?.url;
 }

@@ -44,6 +44,7 @@ class MockAudio {
   src = "";
   crossOrigin: string | null = null;
   preload = "";
+  loop = false;
   volume = 1;
   currentTime = 0;
   paused = true;
@@ -108,6 +109,28 @@ describe("BgmManager", () => {
     const playing = allAudios.filter((a) => a.src === "https://example.com/bgm.mp3");
     expect(playing.length).toBe(1);
     expect(playing[0].play).toHaveBeenCalled();
+  });
+
+  it("defaults BGM tracks to loop mode", async () => {
+    const mgr = createBgmManager({ graph: makeGraph() });
+    await mgr.play({ id: "t1", url: "u1" });
+    const playing = allAudios.find((a) => a.src === "u1")!;
+    expect(playing.loop).toBe(true);
+  });
+
+  it("supports once mode for section BGM tracks", async () => {
+    const mgr = createBgmManager({ graph: makeGraph() });
+    await mgr.play({ id: "t1", url: "u1", mode: "once" });
+    const playing = allAudios.find((a) => a.src === "u1")!;
+    expect(playing.loop).toBe(false);
+  });
+
+  it("updates loop mode when the same track is reconfigured", async () => {
+    const mgr = createBgmManager({ graph: makeGraph() });
+    await mgr.play({ id: "t1", url: "u1", mode: "loop" });
+    const playing = allAudios.find((a) => a.src === "u1")!;
+    await mgr.play({ id: "t1", url: "u1", mode: "once" });
+    expect(playing.loop).toBe(false);
   });
 
   it("play with same id is a no-op", async () => {

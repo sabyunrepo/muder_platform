@@ -87,13 +87,14 @@ export function ReadingSectionEditor({
   const { data: imageList = [] } = useMediaList(themeId, 'IMAGE');
   const { data: voiceList = [] } = useMediaList(themeId, 'VOICE');
   const { data: videoList = [] } = useMediaList(themeId, 'VIDEO');
+  const { data: sfxList = [] } = useMediaList(themeId, 'SFX');
   const selectedBgm = useMemo(
     () => bgmList.find((m) => m.id === draft.bgmMediaId) ?? null,
     [bgmList, draft.bgmMediaId]
   );
   const allMedia = useMemo(
-    () => [...bgmList, ...imageList, ...voiceList, ...videoList],
-    [bgmList, imageList, voiceList, videoList]
+    () => [...bgmList, ...imageList, ...voiceList, ...videoList, ...sfxList],
+    [bgmList, imageList, voiceList, sfxList, videoList]
   );
   const mediaById = useMemo(() => new Map(allMedia.map((media) => [media.id, media])), [allMedia]);
 
@@ -172,6 +173,10 @@ export function ReadingSectionEditor({
     setDraft((d) => ({ ...d, bgmMediaId: null }));
   }
 
+  function handleBgmModeChange(mode: typeof draft.bgmMode) {
+    setDraft((d) => ({ ...d, bgmMode: mode }));
+  }
+
   // -------------------------------------------------------------------------
   // Save / Delete
   // -------------------------------------------------------------------------
@@ -191,6 +196,7 @@ export function ReadingSectionEditor({
       name: draft.name,
       // bgmMediaId uses triple-state: null = clear, string = set, undefined = keep
       bgmMediaId: draft.bgmMediaId,
+      bgmMode: draft.bgmMode,
       lines: normalizedLines,
       sortOrder: draft.sortOrder,
     };
@@ -267,31 +273,53 @@ export function ReadingSectionEditor({
         />
       </div>
 
-      {/* BGM picker */}
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400">배경 BGM:</label>
-        {draft.bgmMediaId ? (
-          <span className="flex items-center gap-1 text-xs text-amber-300">
-            <Music className="h-3 w-3" />
-            {selectedBgm?.name ?? '(선택됨)'}
+      {/* Section BGM picker */}
+      <div className="flex flex-col gap-2 rounded border border-slate-800 bg-slate-900/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <label className="text-xs font-medium text-slate-300">섹션 배경음악</label>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {draft.bgmMediaId ? (
+              <span className="inline-flex items-center gap-1 text-xs text-amber-300">
+                <Music className="h-3 w-3" />
+                {selectedBgm?.name ?? '(선택됨)'}
+                <button
+                  type="button"
+                  onClick={handleBgmClear}
+                  aria-label="배경음악 제거"
+                  className="ml-1 text-amber-300 hover:text-amber-200"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ) : (
+              <span className="text-xs text-slate-500">선택하면 이 섹션이 시작될 때 재생됩니다.</span>
+            )}
             <button
               type="button"
-              onClick={handleBgmClear}
-              aria-label="BGM 제거"
-              className="ml-1 text-amber-300 hover:text-amber-200"
+              onClick={() => setBgmPickerOpen(true)}
+              className="text-xs text-slate-400 underline hover:text-slate-200"
             >
-              <X className="h-3 w-3" />
+              {draft.bgmMediaId ? '변경' : '배경음악 선택'}
             </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setBgmPickerOpen(true)}
-            className="text-xs text-slate-400 underline hover:text-slate-200"
-          >
-            BGM 선택
-          </button>
-        )}
+          </div>
+        </div>
+        <div className="inline-flex rounded border border-slate-700 bg-slate-950 p-0.5">
+          {(['loop', 'once'] as const).map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => handleBgmModeChange(mode)}
+              aria-pressed={draft.bgmMode === mode}
+              className={`rounded px-3 py-1.5 text-xs ${
+                draft.bgmMode === mode
+                  ? 'bg-amber-500 text-slate-950'
+                  : 'text-slate-300 hover:bg-slate-800'
+              }`}
+            >
+              {mode === 'loop' ? '반복' : '1회'}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Blocks */}
@@ -414,10 +442,10 @@ export function ReadingSectionEditor({
         onClose={() => setBgmPickerOpen(false)}
         onSelect={handleBgmSelect}
         themeId={themeId}
-        filterType="BGM"
-        selectedId={draft.bgmMediaId}
-        title="BGM 선택"
-      />
+	        filterType="BGM"
+	        selectedId={draft.bgmMediaId}
+	        title="배경음악 선택"
+	      />
       <ReadingScriptImportModal
         open={scriptImportOpen}
         hasExistingBlocks={draft.lines.length > 0}
@@ -428,8 +456,10 @@ export function ReadingSectionEditor({
       />
       <ReadingSectionPreviewModal
         open={previewOpen}
-        sectionName={draft.name || section.name}
-        lines={previewLines}
+	        sectionName={draft.name || section.name}
+	        bgmMediaId={draft.bgmMediaId}
+	        bgmMode={draft.bgmMode}
+	        lines={previewLines}
         characters={characters}
         mediaById={mediaById}
         dirty={isDirty}

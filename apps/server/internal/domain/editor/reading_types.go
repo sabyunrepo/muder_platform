@@ -25,6 +25,7 @@ const (
 	ReadingBlockDialogue = "dialogue"
 	ReadingBlockImage    = "image"
 	ReadingBlockVideo    = "video"
+	ReadingBlockSFX      = "sfx"
 	ReadingBlockBGM      = "bgm"
 	ReadingBlockGMNote   = "gmNote"
 )
@@ -63,6 +64,7 @@ type ReadingLineDTO struct {
 type CreateReadingSectionRequest struct {
 	Name       string           `json:"name" validate:"required,min=1,max=200"`
 	BgmMediaID *string          `json:"bgmMediaId,omitempty"`
+	BgmMode    string           `json:"bgmMode,omitempty"`
 	Lines      []ReadingLineDTO `json:"lines"`
 	SortOrder  int32            `json:"sortOrder"`
 }
@@ -76,6 +78,7 @@ type CreateReadingSectionRequest struct {
 type UpdateReadingSectionRequest struct {
 	Name       *string           `json:"name,omitempty" validate:"omitempty,min=1,max=200"`
 	BgmMediaID **string          `json:"bgmMediaId,omitempty"`
+	BgmMode    *string           `json:"bgmMode,omitempty"`
 	Lines      *[]ReadingLineDTO `json:"lines,omitempty"`
 	SortOrder  *int32            `json:"sortOrder,omitempty"`
 	Version    int32             `json:"version"`
@@ -87,6 +90,7 @@ type ReadingSectionResponse struct {
 	ThemeID    uuid.UUID        `json:"themeId"`
 	Name       string           `json:"name"`
 	BgmMediaID *string          `json:"bgmMediaId,omitempty"`
+	BgmMode    string           `json:"bgmMode"`
 	Lines      []ReadingLineDTO `json:"lines"`
 	SortOrder  int32            `json:"sortOrder"`
 	Version    int32            `json:"version"`

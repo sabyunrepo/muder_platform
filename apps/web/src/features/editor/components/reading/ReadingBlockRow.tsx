@@ -5,7 +5,6 @@ import {
   Image as ImageIcon,
   Mic,
   Music,
-  StickyNote,
   Trash2,
   Video,
   type LucideIcon,
@@ -48,14 +47,19 @@ const blockMeta: Record<ReadingBlockType, { label: string; icon: LucideIcon; cla
       icon: Video,
       className: 'border-violet-500/30 bg-violet-500/5 text-violet-200',
     },
+    sfx: {
+      label: '효과음',
+      icon: Music,
+      className: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200',
+    },
     bgm: {
-      label: 'BGM',
+      label: '효과음',
       icon: Music,
       className: 'border-emerald-500/30 bg-emerald-500/5 text-emerald-200',
     },
     gmNote: {
-      label: 'GM 메모',
-      icon: StickyNote,
+      label: '레거시 메모',
+      icon: Mic,
       className: 'border-slate-500/30 bg-slate-800/70 text-slate-200',
     },
   };

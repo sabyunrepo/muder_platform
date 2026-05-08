@@ -15,19 +15,19 @@ const media = [
   { id: 'image-1', name: '저택 전경', type: 'IMAGE' as const },
   { id: 'video-1', name: 'CCTV 01', type: 'VIDEO' as const },
   { id: 'bgm-1', name: '심문 테마', type: 'BGM' as const },
+  { id: 'sfx-1', name: '문 닫히는 소리', type: 'SFX' as const },
 ];
 
 describe('parseReadingScriptToBlocks', () => {
-  it('parses dialogue, media, bgm, and gm note blocks into API-compatible lines', () => {
+  it('parses dialogue, media, and effect sound blocks into API-compatible lines', () => {
     const result = parseReadingScriptToBlocks(
       [
         '나레이션: 모두 눈을 감아주세요.',
         '이미지: 저택 전경 large',
         '변상훈: 저는 아무것도 보지 못했습니다.',
         '영상: CCTV 01',
-        'BGM: 심문 테마 1회',
+        '효과음: 문 닫히는 소리',
         'GM: 진행자만 보는 메모',
-        'BGM: 정지',
       ].join('\n'),
       { characters, media }
     );
@@ -64,15 +64,14 @@ describe('parseReadingScriptToBlocks', () => {
         WaitUntilEnd: true,
         AdvanceBy: 'gm',
       },
-      { Index: 4, Type: 'bgm', MediaID: 'bgm-1', BGMMode: 'once' },
-      { Index: 5, Type: 'gmNote', Text: '진행자만 보는 메모' },
-      { Index: 6, Type: 'bgm', MediaID: '', BGMMode: 'stop' },
+      { Index: 4, Type: 'sfx', MediaID: 'sfx-1', BGMMode: 'once' },
+      { Index: 5, Type: 'dialogue', Speaker: '나레이션', Text: '진행자만 보는 메모' },
     ]);
   });
 
   it('records unresolved speaker and media names instead of inventing IDs', () => {
     const result = parseReadingScriptToBlocks(
-      ['모르는사람: 알리바이가 있습니다.', '이미지: 없는 사진', 'BGM: 없는 음악 반복'].join('\n'),
+      ['모르는사람: 알리바이가 있습니다.', '이미지: 없는 사진', '효과음: 없는 소리'].join('\n'),
       { characters, media }
     );
 
@@ -82,24 +81,24 @@ describe('parseReadingScriptToBlocks', () => {
       AdvanceBy: 'gm',
     });
     expect(result.blocks[1]).toMatchObject({ Type: 'image', MediaID: '' });
-    expect(result.blocks[2]).toMatchObject({ Type: 'bgm', MediaID: '', BGMMode: 'loop' });
+    expect(result.blocks[2]).toMatchObject({ Type: 'sfx', MediaID: '', BGMMode: 'once' });
     expect(result.issues).toEqual([
       { lineNumber: 1, kind: 'unknown-speaker', value: '모르는사람' },
       { lineNumber: 2, kind: 'unknown-media', value: '없는 사진' },
-      { lineNumber: 3, kind: 'unknown-media', value: '없는 음악 반복' },
+      { lineNumber: 3, kind: 'unknown-media', value: '없는 소리' },
     ]);
   });
 
   it('does not strip directive words embedded inside media names', () => {
     const result = parseReadingScriptToBlocks(
-      ['이미지: leftover_theme', '영상: fullscreen_bg', 'BGM: stopper_bgm'].join('\n'),
+      ['이미지: leftover_theme', '영상: fullscreen_bg', '효과음: stopper_sfx'].join('\n'),
       {
         characters,
         media: [
           ...media,
           { id: 'image-leftover', name: 'leftover_theme', type: 'IMAGE' as const },
           { id: 'video-fullscreen', name: 'fullscreen_bg', type: 'VIDEO' as const },
-          { id: 'bgm-stopper', name: 'stopper_bgm', type: 'BGM' as const },
+          { id: 'sfx-stopper', name: 'stopper_sfx', type: 'SFX' as const },
         ],
       }
     );
@@ -108,7 +107,7 @@ describe('parseReadingScriptToBlocks', () => {
     expect(result.blocks).toMatchObject([
       { Type: 'image', MediaID: 'image-leftover', Position: 'center', Size: 'medium' },
       { Type: 'video', MediaID: 'video-fullscreen' },
-      { Type: 'bgm', MediaID: 'bgm-stopper', BGMMode: 'loop' },
+      { Type: 'sfx', MediaID: 'sfx-stopper', BGMMode: 'once' },
     ]);
   });
 });

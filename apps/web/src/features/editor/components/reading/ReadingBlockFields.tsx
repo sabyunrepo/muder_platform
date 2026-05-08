@@ -31,19 +31,23 @@ export function ReadingBlockFields({
     return <VideoBlockFields {...fieldProps} />;
   }
 
-  if (type === 'bgm') {
+  if (type === 'sfx') {
     return <BgmBlockFields {...fieldProps} />;
+  }
+
+  if (type === 'bgm') {
+    return (
+      <p className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300">
+        이전 버전의 BGM 블록입니다. 내용은 보존되며 새 효과음은 SFX 블록으로 추가해 주세요.
+      </p>
+    );
   }
 
   if (type === 'gmNote') {
     return (
-      <textarea
-        aria-label="GM 메모"
-        className="min-h-20 w-full resize-y rounded border border-slate-700 bg-slate-800 px-3 py-2 text-sm leading-6 text-slate-100"
-        value={line.Text ?? ''}
-        onChange={(event) => onPatch({ Text: event.target.value })}
-        placeholder="진행자만 보는 메모"
-      />
+      <p className="rounded border border-slate-700 bg-slate-800 px-3 py-2 text-xs text-slate-300">
+        이전 버전의 GM 메모입니다. 편집 화면에는 표시하지 않지만 저장 시 내용은 보존됩니다.
+      </p>
     );
   }
 

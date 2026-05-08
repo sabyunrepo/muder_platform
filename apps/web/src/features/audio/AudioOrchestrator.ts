@@ -22,6 +22,7 @@ export interface SetBgmPayload {
   url?: string; // for FILE
   videoId?: string; // for YOUTUBE
   fadeMs?: number;
+  mode?: "loop" | "once";
 }
 
 export interface PlayVoicePayload {
@@ -73,7 +74,9 @@ export function createAudioOrchestrator(
 
   let activeBgmKind: "file" | "youtube" | null = null;
   let activeBgmMediaId: string | null = null;
+  let activeBgmMode: "loop" | "once" = "loop";
   let activeYouTubePlayer: YouTubePlayer | null = null;
+  let activeYouTubeEndedUnsubscribe: (() => void) | null = null;
   let lastCutsceneBehavior: BgmBehavior | null = null;
   let cutsceneBgmKindAtStart: "file" | "youtube" | null = null;
   let disposed = false;
@@ -114,6 +117,10 @@ export function createAudioOrchestrator(
   }
 
   function destroyYouTube(): void {
+    if (activeYouTubeEndedUnsubscribe) {
+      activeYouTubeEndedUnsubscribe();
+      activeYouTubeEndedUnsubscribe = null;
+    }
     if (activeYouTubePlayer) {
       try {
         activeYouTubePlayer.destroy();
@@ -126,9 +133,10 @@ export function createAudioOrchestrator(
 
   async function handleSetBgm(payload: SetBgmPayload): Promise<void> {
     if (disposed) return;
+    const mode = payload.mode ?? "loop";
 
     // Idempotent: same mediaId — skip.
-    if (activeBgmMediaId === payload.mediaId) return;
+    if (activeBgmMediaId === payload.mediaId && activeBgmMode === mode) return;
 
     if (payload.sourceType === "FILE") {
       if (!payload.url) {
@@ -144,8 +152,9 @@ export function createAudioOrchestrator(
       if (activeBgmKind === "youtube") {
         destroyYouTube();
       }
-      await bgmManager.play({ id: payload.mediaId, url: payload.url });
+      await bgmManager.play({ id: payload.mediaId, url: payload.url, mode });
       activeBgmKind = "file";
+      activeBgmMode = mode;
       notifyBgmId(payload.mediaId);
       return;
     }
@@ -177,6 +186,13 @@ export function createAudioOrchestrator(
         } catch {
           // ignore
         }
+        activeYouTubeEndedUnsubscribe = player.onEnded(() => {
+          if (activeBgmKind !== "youtube" || activeBgmMediaId !== payload.mediaId) return;
+          if (mode !== "loop") return;
+          void player.play().catch(() => {
+            // ignore
+          });
+        });
         await player.play();
       } catch (err) {
         if (import.meta.env?.DEV) {
@@ -188,6 +204,7 @@ export function createAudioOrchestrator(
         return;
       }
       activeBgmKind = "youtube";
+      activeBgmMode = mode;
       notifyBgmId(payload.mediaId);
     }
   }

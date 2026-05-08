@@ -46,6 +46,7 @@ type ReadingStateSnapshot struct {
 	CurrentIndex int             `json:"currentIndex"`
 	Lines        json.RawMessage `json:"lines"`
 	BgmMediaID   string          `json:"bgmMediaId,omitempty"`
+	BgmMode      string          `json:"bgmMode"`
 	Status       string          `json:"status"`
 }
 
@@ -304,6 +305,7 @@ type readingStartedPayloadWire struct {
 	SectionID  string                   `json:"sectionId"`
 	Lines      []readingStartedLineWire `json:"lines"`
 	BgmMediaID string                   `json:"bgmMediaId,omitempty"`
+	BgmMode    string                   `json:"bgmMode"`
 	TotalLines int                      `json:"totalLines,omitempty"`
 }
 
@@ -327,6 +329,7 @@ func (h *ReadingWSHandler) convertReadingStartedPayload(sessionID uuid.UUID, pay
 	var decoded struct {
 		Lines      []readingStartedLineStorage `json:"lines"`
 		BgmMediaID string                      `json:"bgmMediaId,omitempty"`
+		BgmMode    string                      `json:"bgmMode,omitempty"`
 		TotalLines int                         `json:"totalLines,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &decoded); err != nil {
@@ -334,6 +337,7 @@ func (h *ReadingWSHandler) convertReadingStartedPayload(sessionID uuid.UUID, pay
 		return out
 	}
 	out.BgmMediaID = decoded.BgmMediaID
+	out.BgmMode = normalizeReadingBgmMode(decoded.BgmMode)
 	out.TotalLines = decoded.TotalLines
 	wire := make([]readingStartedLineWire, len(decoded.Lines))
 	for i, s := range decoded.Lines {
@@ -348,6 +352,13 @@ func (h *ReadingWSHandler) convertReadingStartedPayload(sessionID uuid.UUID, pay
 	}
 	out.Lines = wire
 	return out
+}
+
+func normalizeReadingBgmMode(raw string) string {
+	if raw == "once" {
+		return "once"
+	}
+	return "loop"
 }
 
 // ForwardEvent converts an engine reading.* event to a ws envelope and

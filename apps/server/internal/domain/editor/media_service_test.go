@@ -810,6 +810,7 @@ func TestFindMediaReferencesInReadingSections_JSONBIntegration(t *testing.T) {
 	section, err := fixture.q.CreateReadingSection(ctx, db.CreateReadingSectionParams{
 		ThemeID:   themeID,
 		Name:      "JSONB refs",
+		BgmMode:   ReadingBGMModeLoop,
 		Lines:     linesJSON,
 		SortOrder: 0,
 	})
@@ -955,6 +956,7 @@ func TestMediaSQLContract_CategoryReplacementAndReferenceCleanupIntegration(t *t
 		ThemeID:    themeID,
 		Name:       "참조 읽기",
 		BgmMediaID: pgtype.UUID{Bytes: bgm.ID, Valid: true},
+		BgmMode:    ReadingBGMModeLoop,
 		Lines:      json.RawMessage(fmt.Sprintf(`[{"Text":"사진","ImageMediaID":%q,"VoiceMediaID":%q}]`, image.ID.String(), image.ID.String())),
 		SortOrder:  1,
 	})

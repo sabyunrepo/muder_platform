@@ -14,19 +14,20 @@ JOIN themes t ON rs.theme_id = t.id
 WHERE rs.id = $1 AND t.creator_id = $2;
 
 -- name: CreateReadingSection :one
-INSERT INTO reading_sections (theme_id, name, bgm_media_id, lines, sort_order)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO reading_sections (theme_id, name, bgm_media_id, bgm_mode, lines, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: UpdateReadingSection :one
 UPDATE reading_sections
 SET name = $2,
     bgm_media_id = $3,
-    lines = $4,
-    sort_order = $5,
+    bgm_mode = $4,
+    lines = $5,
+    sort_order = $6,
     version = version + 1,
     updated_at = NOW()
-WHERE id = $1 AND version = $6
+WHERE id = $1 AND version = $7
 RETURNING *;
 
 -- name: DeleteReadingSectionWithOwner :execrows

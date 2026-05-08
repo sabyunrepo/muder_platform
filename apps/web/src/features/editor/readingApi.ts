@@ -44,12 +44,13 @@ export interface ReadingLineDTO {
   BGMMode?: ReadingBgmMode;
 }
 
-export type ReadingBlockType = 'dialogue' | 'image' | 'video' | 'bgm' | 'gmNote';
+export type ReadingBlockType = 'dialogue' | 'image' | 'video' | 'sfx' | 'bgm' | 'gmNote';
 export type ReadingBgmMode = 'loop' | 'once' | 'stop';
 
 export interface CreateReadingSectionRequest {
   name: string;
   bgmMediaId?: string | null;
+  bgmMode?: ReadingSectionBgmMode;
   lines: ReadingLineDTO[];
   sortOrder: number;
 }
@@ -67,6 +68,7 @@ export interface CreateReadingSectionRequest {
 export interface UpdateReadingSectionRequest {
   name?: string;
   bgmMediaId?: string | null;
+  bgmMode?: ReadingSectionBgmMode;
   lines?: ReadingLineDTO[];
   sortOrder?: number;
   /** Optimistic-lock version. Required on every PATCH. */
@@ -78,12 +80,15 @@ export interface ReadingSectionResponse {
   themeId: string;
   name: string;
   bgmMediaId?: string | null;
+  bgmMode?: ReadingSectionBgmMode;
   lines: ReadingLineDTO[];
   sortOrder: number;
   version: number;
   createdAt: string;
   updatedAt: string;
 }
+
+export type ReadingSectionBgmMode = 'loop' | 'once';
 
 // ---------------------------------------------------------------------------
 // Query Keys

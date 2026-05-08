@@ -14,6 +14,7 @@ import type { AudioGraph } from "./audioGraph";
 export interface BgmTrack {
   id: string;
   url: string;
+  mode?: "loop" | "once";
 }
 
 export interface BgmManagerOptions {
@@ -92,6 +93,18 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
     return slots[activeIdx];
   }
 
+  function applyTrackMode(slot: Slot, track: BgmTrack): void {
+    slot.audio.loop = (track.mode ?? "loop") === "loop";
+  }
+
+  function updateCurrentTrackMode(track: BgmTrack): void {
+    for (const slot of slots) {
+      if (slot.trackId === track.id) {
+        applyTrackMode(slot, track);
+      }
+    }
+  }
+
   // Force any in-progress crossfade to its end state.
   function settleInFlightFade(): void {
     if (pendingFadeEnd === null) return;
@@ -121,7 +134,10 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
     if (disposed) return;
 
     // Same-track no-op
-    if (currentTrackId === track.id) return;
+    if (currentTrackId === track.id) {
+      updateCurrentTrackMode(track);
+      return;
+    }
 
     // Cancel any pending cleanup/stop timers — a new track is starting.
     clearTimers();
@@ -144,6 +160,7 @@ export function createBgmManager(opts: BgmManagerOptions): BgmManager {
     const target = inactive();
     target.audio.src = track.url;
     target.audio.currentTime = 0;
+    applyTrackMode(target, track);
     target.trackId = track.id;
 
     // Schedule gain ramp on inactive: 0 → 1
