@@ -859,4 +859,11 @@ func TestClueInteractionModule_BuildStateFor_NoCrossLeak(t *testing.T) {
 	if bytes.Contains(aliceData, []byte("cluePolicies")) || bytes.Contains(aliceData, []byte("hidden-clue")) {
 		t.Fatalf("alice leaked clue policy config: %s", aliceData)
 	}
+	var aliceState clueInteractionState
+	if err := json.Unmarshal(aliceData, &aliceState); err != nil {
+		t.Fatalf("unmarshal alice state: %v", err)
+	}
+	if len(aliceState.Config.CluePolicies) > 0 {
+		t.Fatalf("alice state contains clue policies: %+v", aliceState.Config.CluePolicies)
+	}
 }

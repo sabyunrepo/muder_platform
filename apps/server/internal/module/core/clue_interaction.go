@@ -386,16 +386,6 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 						"descriptionText": map[string]any{"type": "string"},
 						"revealText":      map[string]any{"type": "string"},
 						"grantClueIds":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-						"trigger":         map[string]any{"type": "string", "enum": []string{"on_view", "on_use"}},
-						"password":        map[string]any{"type": "string"},
-						"condition": map[string]any{
-							"type": "object",
-							"properties": map[string]any{
-								"kind":  map[string]any{"type": "string", "enum": []string{"password"}},
-								"value": map[string]any{"type": "string"},
-							},
-							"additionalProperties": false,
-						},
 					},
 					"required":             []string{"effect"},
 					"additionalProperties": false,
