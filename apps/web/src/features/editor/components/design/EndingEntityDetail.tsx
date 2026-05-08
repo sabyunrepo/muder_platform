@@ -13,13 +13,11 @@ import {
 import {
   endingVisibilityLabel,
   normalizeEndingVisibility,
-  type EndingCharacterEndcardSummary,
 } from "../../entities/ending/endingEntityAdapter";
 
 interface EndingEntityDetailProps {
   node: Node;
   themeId: string;
-  endcardSummary: EndingCharacterEndcardSummary;
   onChange: (nodeId: string, patch: Partial<FlowNodeData>) => void;
 }
 
@@ -28,7 +26,6 @@ const SAVE_DEBOUNCE_MS = 1000;
 export function EndingEntityDetail({
   node,
   themeId,
-  endcardSummary,
   onChange,
 }: EndingEntityDetailProps) {
   const fieldIdPrefix = useId();
@@ -82,9 +79,6 @@ export function EndingEntityDetail({
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-slate-300">
             공개 범위: {endingVisibilityLabel(visibility)}
-          </span>
-          <span className="rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-slate-300">
-            캐릭터 결과 카드 {endcardSummary.readyCount}/{endcardSummary.totalCount}명 작성
           </span>
         </div>
       </div>
@@ -213,33 +207,6 @@ export function EndingEntityDetail({
           className="resize-y rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         />
       </div>
-
-      <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h4 className="text-sm font-semibold text-slate-100">캐릭터별 결과 카드 작성 현황</h4>
-            <p className="mt-1 text-xs leading-5 text-slate-400">
-              캐릭터별 결과 문구는 엔딩 관리 책임으로 이동합니다. 이곳에서는 기존 작성 현황과 누락된 캐릭터를 확인합니다.
-            </p>
-          </div>
-          <span className="rounded-full bg-slate-950 px-3 py-1 text-xs font-semibold text-amber-100">
-            {endcardSummary.readyCount}/{endcardSummary.totalCount}
-          </span>
-        </div>
-        {endcardSummary.totalCount === 0 ? (
-          <p className="mt-3 rounded-lg border border-slate-800 bg-slate-950 p-3 text-xs text-slate-400">
-            등록된 등장인물이 없습니다.
-          </p>
-        ) : endcardSummary.missingNames.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-100">
-            모든 캐릭터의 결과 카드가 작성되었습니다.
-          </p>
-        ) : (
-          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-100">
-            결과 카드가 비어 있는 캐릭터: {endcardSummary.missingNames.join(", ")}
-          </p>
-        )}
-      </section>
     </section>
   );
 }
