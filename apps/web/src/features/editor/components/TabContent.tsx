@@ -1,47 +1,30 @@
-import { lazy } from "react";
-import type { EditorTab } from "@/features/editor/constants";
-import type { EditorThemeResponse } from "@/features/editor/api";
+import { lazy } from 'react';
+import type { EditorTab } from '@/features/editor/constants';
+import type { EditorThemeResponse } from '@/features/editor/api';
 
 // ---------------------------------------------------------------------------
 // Lazy tab components
 // ---------------------------------------------------------------------------
 
-const OverviewTab = lazy(() =>
-  import("./OverviewTab").then((m) => ({ default: m.OverviewTab })),
-);
+const OverviewTab = lazy(() => import('./OverviewTab').then((m) => ({ default: m.OverviewTab })));
 const StoryMapWorkspace = lazy(() =>
-  import("./story-map/StoryMapWorkspace").then((m) => ({ default: m.StoryMapWorkspace })),
+  import('./story-map/StoryMapWorkspace').then((m) => ({ default: m.StoryMapWorkspace }))
 );
-const StoryTab = lazy(() =>
-  import("./StoryTab").then((m) => ({ default: m.StoryTab })),
-);
-const InfoTab = lazy(() =>
-  import("./info/InfoTab").then((m) => ({ default: m.InfoTab })),
-);
+const StoryTab = lazy(() => import('./StoryTab').then((m) => ({ default: m.StoryTab })));
+const InfoTab = lazy(() => import('./info/InfoTab').then((m) => ({ default: m.InfoTab })));
 const CharactersTab = lazy(() =>
-  import("./CharactersTab").then((m) => ({ default: m.CharactersTab })),
+  import('./CharactersTab').then((m) => ({ default: m.CharactersTab }))
 );
-const DesignTab = lazy(() =>
-  import("./DesignTab").then((m) => ({ default: m.DesignTab })),
-);
+const DesignTab = lazy(() => import('./DesignTab').then((m) => ({ default: m.DesignTab })));
 const EndingEntitySubTab = lazy(() =>
-  import("./design/EndingEntitySubTab").then((m) => ({ default: m.EndingEntitySubTab })),
+  import('./design/EndingEntitySubTab').then((m) => ({ default: m.EndingEntitySubTab }))
 );
 const LocationsSubTab = lazy(() =>
-  import("./design/LocationsSubTab").then((m) => ({ default: m.LocationsSubTab })),
+  import('./design/LocationsSubTab').then((m) => ({ default: m.LocationsSubTab }))
 );
-const MediaTab = lazy(() =>
-  import("./media/MediaTab").then((m) => ({ default: m.MediaTab })),
-);
-const CluesTab = lazy(() =>
-  import("./CluesTab").then((m) => ({ default: m.CluesTab })),
-);
-const AdvancedTab = lazy(() =>
-  import("./AdvancedTab").then((m) => ({ default: m.AdvancedTab })),
-);
-const TemplateConfigTab = lazy(() =>
-  import("./TemplateConfigTab").then((m) => ({ default: m.TemplateConfigTab })),
-);
+const MediaTab = lazy(() => import('./media/MediaTab').then((m) => ({ default: m.MediaTab })));
+const CluesTab = lazy(() => import('./CluesTab').then((m) => ({ default: m.CluesTab })));
+const AdvancedTab = lazy(() => import('./AdvancedTab').then((m) => ({ default: m.AdvancedTab })));
 
 // ---------------------------------------------------------------------------
 // TabContent
@@ -56,29 +39,27 @@ interface TabContentProps {
 
 export function TabContent({ tab, theme, themeId, routeSegment }: TabContentProps) {
   switch (tab) {
-    case "storyMap":
+    case 'storyMap':
       return <StoryMapWorkspace themeId={themeId} />;
-    case "info":
+    case 'info':
       return <InfoTab themeId={themeId} />;
-    case "overview":
+    case 'overview':
       return <OverviewTab theme={theme} themeId={themeId} />;
-    case "story":
+    case 'story':
       return <StoryTab themeId={themeId} />;
-    case "characters":
+    case 'characters':
       return <CharactersTab theme={theme} themeId={themeId} />;
-    case "clues":
+    case 'clues':
       return <CluesTab themeId={themeId} routeSegment={routeSegment} />;
-    case "design":
+    case 'design':
       return <DesignTab theme={theme} themeId={themeId} routeSegment={routeSegment} />;
-    case "endings":
+    case 'endings':
       return <EndingEntitySubTab theme={theme} themeId={themeId} />;
-    case "locations":
+    case 'locations':
       return <LocationsSubTab theme={theme} themeId={themeId} />;
-    case "media":
+    case 'media':
       return <MediaTab themeId={themeId} />;
-    case "advanced":
+    case 'advanced':
       return <AdvancedTab theme={theme} themeId={themeId} />;
-    case "template":
-      return <TemplateConfigTab />;
   }
 }

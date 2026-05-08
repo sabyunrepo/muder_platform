@@ -8,6 +8,7 @@ import {
 } from '@/features/editor/api';
 import { SectionDivider } from './SectionDivider';
 import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
+import { TemplateSettingsSection } from './TemplateConfigTab';
 
 // ---------------------------------------------------------------------------
 // SpecField — inline number input with label + unit
@@ -278,6 +279,9 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
           error={errors.coinPrice}
         />
       </div>
+
+      <SectionDivider label="게임 유형" />
+      <TemplateSettingsSection />
 
       {/* Save */}
       <div className="mt-8 flex justify-end">

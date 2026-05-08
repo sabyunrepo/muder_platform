@@ -28,7 +28,6 @@ describe('editor route segment matrix', () => {
     ['locations', '/editor/theme-1/locations'],
     ['media', '/editor/theme-1/media'],
     ['overview', '/editor/theme-1/overview'],
-    ['template', '/editor/theme-1/template'],
     ['advanced', '/editor/theme-1/advanced'],
   ] as const)('%s 탭의 canonical URL을 만든다', (tab, expectedPath) => {
     const route = buildEditorRouteForTab('theme-1', tab);
@@ -40,7 +39,7 @@ describe('editor route segment matrix', () => {
 
   it('theme id를 URL segment로 안전하게 인코딩한다', () => {
     expect(buildEditorRouteForTab('theme/with space', 'characters')).toBe(
-      '/editor/theme%2Fwith%20space/characters',
+      '/editor/theme%2Fwith%20space/characters'
     );
   });
 
@@ -53,6 +52,8 @@ describe('editor route segment matrix', () => {
     ['locations', 'locations'],
     ['design/modules', 'design'],
     ['modules', 'design'],
+    ['template', 'overview'],
+    ['templates', 'overview'],
   ] as const)('legacy segment %s를 새 상위 탭 구조로 매핑한다', (segment, expectedTab) => {
     expect(readEditorTabFromRouteSegment(segment)).toBe(expectedTab);
   });

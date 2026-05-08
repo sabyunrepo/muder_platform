@@ -27,8 +27,8 @@ const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
   endings: 'endings',
   media: 'media',
   advanced: 'advanced',
-  templates: 'template',
-  template: 'template',
+  templates: 'overview',
+  template: 'overview',
 };
 
 const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
@@ -42,7 +42,6 @@ const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
   locations: 'locations',
   media: 'media',
   overview: 'overview',
-  template: 'template',
   advanced: 'advanced',
 };
 
@@ -56,8 +55,8 @@ export const EDITOR_ROUTE_MATRIX = [
   { path: '/editor/:id/clues', routeSegment: 'clues', editorTab: 'clues' },
   { path: '/editor/:id/relations', routeSegment: 'relations', editorTab: 'clues' },
   { path: '/editor/:id/overview', routeSegment: 'overview', editorTab: 'overview' },
-  { path: '/editor/:id/template', routeSegment: 'template', editorTab: 'template' },
-  { path: '/editor/:id/templates', routeSegment: 'templates', editorTab: 'template', alias: true },
+  { path: '/editor/:id/template', routeSegment: 'template', editorTab: 'overview', alias: true },
+  { path: '/editor/:id/templates', routeSegment: 'templates', editorTab: 'overview', alias: true },
   { path: '/editor/:id/advanced', routeSegment: 'advanced', editorTab: 'advanced' },
   {
     path: '/editor/:id/design/modules',

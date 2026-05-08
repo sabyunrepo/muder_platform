@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks (available inside vi.mock factories)
@@ -41,7 +41,7 @@ const {
 // Mock: react-router
 // ---------------------------------------------------------------------------
 
-vi.mock("react-router", () => ({
+vi.mock('react-router', () => ({
   useNavigate: () => navigateMock,
 }));
 
@@ -49,20 +49,23 @@ vi.mock("react-router", () => ({
 // Mock: sonner
 // ---------------------------------------------------------------------------
 
-vi.mock("sonner", () => ({
+vi.mock('sonner', () => ({
   toast: { success: toastSuccess, error: toastError },
 }));
 
-vi.mock("@/features/editor/templateApi", () => ({}));
-vi.mock("@/features/editor/components/SchemaDrivenForm", () => ({
+vi.mock('@/features/editor/templateApi', () => ({
+  useTemplates: () => ({ data: [], isLoading: false, isError: false }),
+  useTemplateSchema: () => ({ data: null, isLoading: false }),
+}));
+vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
   SchemaDrivenForm: () => null,
 }));
 
-vi.mock("@/features/editor/mediaApi", () => ({
+vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: () => useMediaListMock(),
 }));
 
-vi.mock("@/features/editor/components/media/MediaPicker", () => ({
+vi.mock('@/features/editor/components/media/MediaPicker', () => ({
   MediaPicker: ({
     open,
     filterType,
@@ -77,10 +80,10 @@ vi.mock("@/features/editor/components/media/MediaPicker", () => ({
     open ? (
       <div>
         <span>filter:{filterType}</span>
-        <span>selected:{selectedId ?? "none"}</span>
+        <span>selected:{selectedId ?? 'none'}</span>
         <button
           type="button"
-          onClick={() => onSelect({ id: "image-1", name: "커버 이미지", type: "IMAGE" })}
+          onClick={() => onSelect({ id: 'image-1', name: '커버 이미지', type: 'IMAGE' })}
         >
           커버 이미지 선택
         </button>
@@ -92,7 +95,7 @@ vi.mock("@/features/editor/components/media/MediaPicker", () => ({
 // Mock: @/features/editor/api
 // ---------------------------------------------------------------------------
 
-vi.mock("@/features/editor/api", () => ({
+vi.mock('@/features/editor/api', () => ({
   useEditorThemes: () => useEditorThemesMock(),
   useCreateTheme: () => useCreateThemeMock(),
   useDeleteTheme: () => useDeleteThemeMock(),
@@ -110,63 +113,57 @@ vi.mock("@/features/editor/api", () => ({
 // Mock: @/features/editor/constants
 // ---------------------------------------------------------------------------
 
-vi.mock("@/features/editor/constants", () => ({
-  STATUS_LABEL: { DRAFT: "초안", PUBLISHED: "출판됨" },
+vi.mock('@/features/editor/constants', () => ({
+  STATUS_LABEL: { DRAFT: '초안', PUBLISHED: '출판됨' },
   STATUS_COLOR: {
-    DRAFT: "bg-slate-600 text-slate-200",
-    PUBLISHED: "bg-emerald-600 text-emerald-100",
+    DRAFT: 'bg-slate-600 text-slate-200',
+    PUBLISHED: 'bg-emerald-600 text-emerald-100',
   },
   MODULE_CATEGORIES: [
     {
-      key: "core",
-      label: "코어",
+      key: 'core',
+      label: '코어',
       modules: [
-        { id: "connection", name: "접속 관리", description: "플레이어 접속/재접속 처리" },
-        { id: "room", name: "방 관리", description: "방 생성/참가/나가기" },
+        { id: 'connection', name: '접속 관리', description: '플레이어 접속/재접속 처리' },
+        { id: 'room', name: '방 관리', description: '방 생성/참가/나가기' },
       ],
     },
     {
-      key: "progression",
-      label: "진행",
+      key: 'progression',
+      label: '진행',
       modules: [
-        { id: "script_progression", name: "스크립트 진행", description: "순차적 페이즈 진행" },
+        { id: 'script_progression', name: '스크립트 진행', description: '순차적 페이즈 진행' },
       ],
     },
     {
-      key: "communication",
-      label: "소통",
-      modules: [
-        { id: "text_chat", name: "텍스트 채팅", description: "전체/그룹 채팅" },
-      ],
+      key: 'communication',
+      label: '소통',
+      modules: [{ id: 'text_chat', name: '텍스트 채팅', description: '전체/그룹 채팅' }],
     },
     {
-      key: "decision",
-      label: "결정",
-      modules: [
-        { id: "voting", name: "투표", description: "다수결 투표 시스템" },
-      ],
+      key: 'decision',
+      label: '결정',
+      modules: [{ id: 'voting', name: '투표', description: '다수결 투표 시스템' }],
     },
     {
-      key: "exploration",
-      label: "탐색",
-      modules: [
-        { id: "floor_exploration", name: "층 탐색", description: "건물 층별 탐색" },
-      ],
+      key: 'exploration',
+      label: '탐색',
+      modules: [{ id: 'floor_exploration', name: '층 탐색', description: '건물 층별 탐색' }],
     },
     {
-      key: "clue_distribution",
-      label: "단서 배포",
+      key: 'clue_distribution',
+      label: '단서 배포',
       modules: [
-        { id: "conditional_clue", name: "조건부 단서", description: "조건 충족 시 단서 제공" },
+        { id: 'conditional_clue', name: '조건부 단서', description: '조건 충족 시 단서 제공' },
       ],
     },
   ],
-  REQUIRED_MODULE_IDS: ["connection", "room"],
+  REQUIRED_MODULE_IDS: ['connection', 'room'],
   EDITOR_TABS: [
-    { key: "overview", label: "개요" },
-    { key: "characters", label: "캐릭터" },
-    { key: "modules", label: "모듈" },
-    { key: "config", label: "설정 JSON" },
+    { key: 'overview', label: '개요' },
+    { key: 'characters', label: '캐릭터' },
+    { key: 'modules', label: '모듈' },
+    { key: 'config', label: '설정 JSON' },
   ],
 }));
 
@@ -174,11 +171,11 @@ vi.mock("@/features/editor/constants", () => ({
 // Mock: CharacterForm (used inside CharactersTab)
 // ---------------------------------------------------------------------------
 
-vi.mock("../CharacterForm", () => ({
+vi.mock('../CharacterForm', () => ({
   CharacterForm: () => <div data-testid="character-form" />,
 }));
 
-vi.mock("../design/CharacterAssignPanel", () => ({
+vi.mock('../design/CharacterAssignPanel', () => ({
   CharacterAssignPanel: () => <div>CharacterAssignPanel 콘텐츠</div>,
 }));
 
@@ -186,58 +183,58 @@ vi.mock("../design/CharacterAssignPanel", () => ({
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { EditorDashboard } from "../EditorDashboard";
-import { PublishBar } from "../PublishBar";
-import { OverviewTab } from "../OverviewTab";
-import { CharactersTab } from "../CharactersTab";
-import { ConfigJsonTab } from "../ConfigJsonTab";
-import { ModulesTab } from "../ModulesTab";
+import { EditorDashboard } from '../EditorDashboard';
+import { PublishBar } from '../PublishBar';
+import { OverviewTab } from '../OverviewTab';
+import { CharactersTab } from '../CharactersTab';
+import { ConfigJsonTab } from '../ConfigJsonTab';
+import { ModulesTab } from '../ModulesTab';
 
 // ---------------------------------------------------------------------------
 // Mock data
 // ---------------------------------------------------------------------------
 
 const mockTheme = {
-  id: "theme-1",
-  title: "테스트 테마",
-  slug: "test-theme",
-  description: "테스트 설명",
+  id: 'theme-1',
+  title: '테스트 테마',
+  slug: 'test-theme',
+  description: '테스트 설명',
   cover_image: null,
   min_players: 4,
   max_players: 6,
   duration_min: 90,
   price: 0,
-  status: "DRAFT" as const,
-  config_json: { modules: ["text_chat", "voting"] },
+  status: 'DRAFT' as const,
+  config_json: { modules: ['text_chat', 'voting'] },
   version: 1,
-  created_at: "2026-04-05T00:00:00Z",
+  created_at: '2026-04-05T00:00:00Z',
 };
 
 const mockPublishedTheme = {
   ...mockTheme,
-  id: "theme-2",
-  title: "출판된 테마",
-  status: "PUBLISHED" as const,
+  id: 'theme-2',
+  title: '출판된 테마',
+  status: 'PUBLISHED' as const,
 };
 
 const mockThemeSummaries = [
   {
-    id: "theme-1",
-    title: "테스트 테마",
-    status: "DRAFT" as const,
+    id: 'theme-1',
+    title: '테스트 테마',
+    status: 'DRAFT' as const,
     min_players: 4,
     max_players: 6,
     version: 1,
-    created_at: "2026-04-05T00:00:00Z",
+    created_at: '2026-04-05T00:00:00Z',
   },
   {
-    id: "theme-2",
-    title: "출판된 테마",
-    status: "PUBLISHED" as const,
+    id: 'theme-2',
+    title: '출판된 테마',
+    status: 'PUBLISHED' as const,
     min_players: 3,
     max_players: 8,
     version: 2,
-    created_at: "2026-04-04T00:00:00Z",
+    created_at: '2026-04-04T00:00:00Z',
   },
 ];
 
@@ -262,13 +259,13 @@ afterEach(() => {
 // 1. EditorDashboard
 // =========================================================================
 
-describe("EditorDashboard", () => {
+describe('EditorDashboard', () => {
   beforeEach(() => {
     useCreateThemeMock.mockReturnValue(defaultMutationReturn());
     useDeleteThemeMock.mockReturnValue(defaultMutationReturn());
   });
 
-  it("로딩 중일 때 스피너를 표시한다", () => {
+  it('로딩 중일 때 스피너를 표시한다', () => {
     useEditorThemesMock.mockReturnValue({
       data: undefined,
       isLoading: true,
@@ -280,7 +277,7 @@ describe("EditorDashboard", () => {
     expect(spinner).not.toBeNull();
   });
 
-  it("테마가 없을 때 빈 상태를 표시한다", () => {
+  it('테마가 없을 때 빈 상태를 표시한다', () => {
     useEditorThemesMock.mockReturnValue({
       data: [],
       isLoading: false,
@@ -288,10 +285,10 @@ describe("EditorDashboard", () => {
     });
 
     render(<EditorDashboard />);
-    expect(screen.getByText("아직 테마가 없습니다")).toBeDefined();
+    expect(screen.getByText('아직 테마가 없습니다')).toBeDefined();
   });
 
-  it("테마 카드에 제목과 상태를 렌더링한다", () => {
+  it('테마 카드에 제목과 상태를 렌더링한다', () => {
     useEditorThemesMock.mockReturnValue({
       data: mockThemeSummaries,
       isLoading: false,
@@ -299,10 +296,10 @@ describe("EditorDashboard", () => {
     });
 
     render(<EditorDashboard />);
-    expect(screen.getByText("테스트 테마")).toBeDefined();
-    expect(screen.getByText("출판된 테마")).toBeDefined();
-    expect(screen.getByText("초안")).toBeDefined();
-    expect(screen.getByText("출판됨")).toBeDefined();
+    expect(screen.getByText('테스트 테마')).toBeDefined();
+    expect(screen.getByText('출판된 테마')).toBeDefined();
+    expect(screen.getByText('초안')).toBeDefined();
+    expect(screen.getByText('출판됨')).toBeDefined();
   });
 
   it("'새 테마 만들기' 버튼이 존재한다", () => {
@@ -313,7 +310,7 @@ describe("EditorDashboard", () => {
     });
 
     render(<EditorDashboard />);
-    const buttons = screen.getAllByText("새 테마 만들기");
+    const buttons = screen.getAllByText('새 테마 만들기');
     expect(buttons.length).toBeGreaterThan(0);
   });
 
@@ -327,15 +324,15 @@ describe("EditorDashboard", () => {
     render(<EditorDashboard />);
 
     // 헤더의 '새 테마 만들기' 버튼 클릭
-    const createButton = screen.getByText("새 테마 만들기");
+    const createButton = screen.getByText('새 테마 만들기');
     fireEvent.click(createButton);
 
     // Modal이 열리면 title="새 테마 만들기"인 dialog가 나타남
-    const dialog = screen.getByRole("dialog", { name: "새 테마 만들기" });
+    const dialog = screen.getByRole('dialog', { name: '새 테마 만들기' });
     expect(dialog).toBeDefined();
   });
 
-  it("에러 발생 시 에러 메시지를 표시한다", () => {
+  it('에러 발생 시 에러 메시지를 표시한다', () => {
     useEditorThemesMock.mockReturnValue({
       data: undefined,
       isLoading: false,
@@ -343,9 +340,7 @@ describe("EditorDashboard", () => {
     });
 
     render(<EditorDashboard />);
-    expect(
-      screen.getByText("테마 목록을 불러오는 데 실패했습니다."),
-    ).toBeDefined();
+    expect(screen.getByText('테마 목록을 불러오는 데 실패했습니다.')).toBeDefined();
   });
 });
 
@@ -353,36 +348,36 @@ describe("EditorDashboard", () => {
 // 2. PublishBar
 // =========================================================================
 
-describe("PublishBar", () => {
+describe('PublishBar', () => {
   beforeEach(() => {
     usePublishThemeMock.mockReturnValue(defaultMutationReturn());
     useUnpublishThemeMock.mockReturnValue(defaultMutationReturn());
   });
 
-  it("테마 제목과 상태 배지를 표시한다", () => {
+  it('테마 제목과 상태 배지를 표시한다', () => {
     render(<PublishBar theme={mockTheme} />);
-    expect(screen.getByText("테스트 테마")).toBeDefined();
-    expect(screen.getByText("초안")).toBeDefined();
+    expect(screen.getByText('테스트 테마')).toBeDefined();
+    expect(screen.getByText('초안')).toBeDefined();
   });
 
   it("DRAFT 테마에 '심사 요청' 버튼을 표시한다", () => {
     render(<PublishBar theme={mockTheme} />);
-    expect(screen.getByText("심사 요청")).toBeDefined();
+    expect(screen.getByText('심사 요청')).toBeDefined();
   });
 
   it("PUBLISHED 테마에 '비공개 전환' 버튼을 표시한다", () => {
     render(<PublishBar theme={mockPublishedTheme} />);
-    expect(screen.getByText("비공개 전환")).toBeDefined();
+    expect(screen.getByText('비공개 전환')).toBeDefined();
   });
 
   it("PUBLISHED 테마에는 '심사 요청' 버튼이 없다", () => {
     render(<PublishBar theme={mockPublishedTheme} />);
-    expect(screen.queryByText("심사 요청")).toBeNull();
+    expect(screen.queryByText('심사 요청')).toBeNull();
   });
 
   it("DRAFT 테마에는 '비공개 전환' 버튼이 없다", () => {
     render(<PublishBar theme={mockTheme} />);
-    expect(screen.queryByText("비공개 전환")).toBeNull();
+    expect(screen.queryByText('비공개 전환')).toBeNull();
   });
 });
 
@@ -390,74 +385,75 @@ describe("PublishBar", () => {
 // 3. OverviewTab
 // =========================================================================
 
-describe("OverviewTab", () => {
+describe('OverviewTab', () => {
   beforeEach(() => {
     useUpdateThemeMock.mockReturnValue(defaultMutationReturn());
     useMediaListMock.mockReturnValue({
-      data: [{ id: "image-1", name: "커버 이미지", type: "IMAGE" }],
+      data: [{ id: 'image-1', name: '커버 이미지', type: 'IMAGE' }],
       isLoading: false,
     });
   });
 
-  it("테마 데이터가 폼에 미리 채워져 렌더링된다", () => {
+  it('테마 데이터가 폼에 미리 채워져 렌더링된다', () => {
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
     // Input의 id는 label을 lowercase + 하이픈 변환한 값
-    const titleInput = screen.getByDisplayValue("테스트 테마");
+    const titleInput = screen.getByDisplayValue('테스트 테마');
     expect(titleInput).toBeDefined();
 
     // description textarea
-    const descInput = screen.getByDisplayValue("테스트 설명");
+    const descInput = screen.getByDisplayValue('테스트 설명');
     expect(descInput).toBeDefined();
+    expect(screen.getByText('게임 유형과 초기 프리셋')).toBeDefined();
   });
 
-  it("빈 제목으로 제출 시 에러를 표시한다", () => {
+  it('빈 제목으로 제출 시 에러를 표시한다', () => {
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
     // 제목을 공백만으로 설정 (trim 후 빈 문자열)
-    const titleInput = screen.getByDisplayValue("테스트 테마");
-    fireEvent.change(titleInput, { target: { value: "   " } });
+    const titleInput = screen.getByDisplayValue('테스트 테마');
+    fireEvent.change(titleInput, { target: { value: '   ' } });
 
     // 폼 제출 (저장 버튼 클릭)
-    const submitButton = screen.getByText("저장");
+    const submitButton = screen.getByText('저장');
     fireEvent.click(submitButton);
 
     // 에러 메시지 표시
-    expect(screen.getByText("제목은 필수입니다")).toBeDefined();
+    expect(screen.getByText('제목은 필수입니다')).toBeDefined();
     // mutate가 호출되지 않아야 한다
     expect(mutateMock).not.toHaveBeenCalled();
   });
 
-  it("유효한 제출 시 mutate를 올바른 body로 호출한다", () => {
+  it('유효한 제출 시 mutate를 올바른 body로 호출한다', () => {
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
     // 제목 변경
-    const titleInput = screen.getByDisplayValue("테스트 테마");
-    fireEvent.change(titleInput, { target: { value: "수정된 제목" } });
+    const titleInput = screen.getByDisplayValue('테스트 테마');
+    fireEvent.change(titleInput, { target: { value: '수정된 제목' } });
 
     // 폼 제출
-    const submitButton = screen.getByText("저장");
+    const submitButton = screen.getByText('저장');
     fireEvent.click(submitButton);
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [body] = mutateMock.mock.calls[0];
-    expect(body).toHaveProperty("title", "수정된 제목");
-    expect(body).toHaveProperty("min_players", 4);
-    expect(body).toHaveProperty("max_players", 6);
-    expect(body).toHaveProperty("duration_min", 90);
+    expect(body).toHaveProperty('title', '수정된 제목');
+    expect(body).toHaveProperty('min_players', 4);
+    expect(body).toHaveProperty('max_players', 6);
+    expect(body).toHaveProperty('duration_min', 90);
   });
 
-  it("미디어 관리 IMAGE를 커버 이미지 참조로 저장한다", () => {
+  it('미디어 관리 IMAGE를 커버 이미지 참조로 저장한다', () => {
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
-    fireEvent.click(screen.getByText("미디어에서 커버 선택"));
-    expect(screen.getByText("filter:IMAGE")).toBeDefined();
-    fireEvent.click(screen.getByText("커버 이미지 선택"));
-    fireEvent.click(screen.getByText("저장"));
+    fireEvent.click(screen.getByText('미디어에서 커버 선택'));
+    expect(screen.getByText('filter:IMAGE')).toBeDefined();
+    fireEvent.click(screen.getByText('커버 이미지 선택'));
+    fireEvent.click(screen.getByText('저장'));
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [body] = mutateMock.mock.calls[0];
-    expect(body).toHaveProperty("cover_image_media_id", "image-1");
+    expect(body).toHaveProperty('cover_image_media_id', 'image-1');
     expect(body.cover_image).toBeUndefined();
   });
 });
@@ -466,29 +462,29 @@ describe("OverviewTab", () => {
 // 4. CharactersTab
 // =========================================================================
 
-describe("CharactersTab", () => {
+describe('CharactersTab', () => {
   beforeEach(() => {
     useDeleteCharacterMock.mockReturnValue(defaultMutationReturn());
   });
 
-  it("캐릭터 제작 workspace를 바로 표시한다", () => {
+  it('캐릭터 제작 workspace를 바로 표시한다', () => {
     useEditorCharactersMock.mockReturnValue({
       data: undefined,
       isLoading: true,
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    expect(screen.getByText("CharacterAssignPanel 콘텐츠")).toBeDefined();
+    expect(screen.getByText('CharacterAssignPanel 콘텐츠')).toBeDefined();
   });
 
-  it("빠른 목록 서브탭을 노출하지 않는다", () => {
+  it('빠른 목록 서브탭을 노출하지 않는다', () => {
     useEditorCharactersMock.mockReturnValue({
       data: [],
       isLoading: false,
     });
 
     render(<CharactersTab themeId="theme-1" theme={mockTheme} />);
-    expect(screen.queryByRole("button", { name: "빠른 목록" })).toBeNull();
+    expect(screen.queryByRole('button', { name: '빠른 목록' })).toBeNull();
   });
 });
 
@@ -496,71 +492,63 @@ describe("CharactersTab", () => {
 // 5. ConfigJsonTab
 // =========================================================================
 
-describe("ConfigJsonTab", () => {
+describe('ConfigJsonTab', () => {
   beforeEach(() => {
     useUpdateConfigJsonMock.mockReturnValue(defaultMutationReturn());
   });
 
-  it("JSON 콘텐츠가 textarea에 렌더링된다", () => {
-    const { container } = render(
-      <ConfigJsonTab themeId="theme-1" theme={mockTheme} />,
-    );
-    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+  it('JSON 콘텐츠가 textarea에 렌더링된다', () => {
+    const { container } = render(<ConfigJsonTab themeId="theme-1" theme={mockTheme} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
     expect(textarea).not.toBeNull();
-    expect(textarea.value).toContain("text_chat");
-    expect(textarea.value).toContain("voting");
+    expect(textarea.value).toContain('text_chat');
+    expect(textarea.value).toContain('voting');
   });
 
   it("텍스트 수정 시 '변경사항 있음' 배지를 표시한다", () => {
-    const { container } = render(
-      <ConfigJsonTab themeId="theme-1" theme={mockTheme} />,
-    );
-    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+    const { container } = render(<ConfigJsonTab themeId="theme-1" theme={mockTheme} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
     // 초기에는 배지가 없어야 한다
-    expect(screen.queryByText("변경사항 있음")).toBeNull();
+    expect(screen.queryByText('변경사항 있음')).toBeNull();
 
     // 텍스트 수정
     fireEvent.change(textarea, { target: { value: '{"modules":["voting"]}' } });
 
-    expect(screen.getByText("변경사항 있음")).toBeDefined();
+    expect(screen.getByText('변경사항 있음')).toBeDefined();
   });
 
-  it("유효하지 않은 JSON 저장 시 에러를 표시한다", () => {
-    const { container } = render(
-      <ConfigJsonTab themeId="theme-1" theme={mockTheme} />,
-    );
-    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+  it('유효하지 않은 JSON 저장 시 에러를 표시한다', () => {
+    const { container } = render(<ConfigJsonTab themeId="theme-1" theme={mockTheme} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
     // 잘못된 JSON 입력
-    fireEvent.change(textarea, { target: { value: "{invalid json" } });
+    fireEvent.change(textarea, { target: { value: '{invalid json' } });
 
     // 저장 버튼 클릭
-    const saveButton = screen.getByText("저장");
+    const saveButton = screen.getByText('저장');
     fireEvent.click(saveButton);
 
-    expect(screen.getByText("유효하지 않은 JSON 형식입니다")).toBeDefined();
+    expect(screen.getByText('유효하지 않은 JSON 형식입니다')).toBeDefined();
     expect(mutateMock).not.toHaveBeenCalled();
   });
 
-  it("유효한 JSON 저장 시 mutate를 호출한다", () => {
-    const { container } = render(
-      <ConfigJsonTab themeId="theme-1" theme={mockTheme} />,
-    );
-    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+  it('유효한 JSON 저장 시 mutate를 호출한다', () => {
+    const { container } = render(<ConfigJsonTab themeId="theme-1" theme={mockTheme} />);
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
 
     // 유효한 JSON으로 수정
     const newJson = '{"modules":["voting"]}';
     fireEvent.change(textarea, { target: { value: newJson } });
 
     // 저장 버튼 클릭
-    const saveButton = screen.getByText("저장");
+    const saveButton = screen.getByText('저장');
     fireEvent.click(saveButton);
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [parsed] = mutateMock.mock.calls[0];
-    expect(parsed).toHaveProperty("modules");
-    expect((parsed as Record<string, unknown>).modules).toContain("voting");
+    expect(parsed).toHaveProperty('modules');
+    expect((parsed as Record<string, unknown>).modules).toContain('voting');
   });
 });
 
@@ -568,39 +556,39 @@ describe("ConfigJsonTab", () => {
 // 6. ModulesTab
 // =========================================================================
 
-describe("ModulesTab", () => {
+describe('ModulesTab', () => {
   beforeEach(() => {
     useUpdateConfigJsonMock.mockReturnValue(defaultMutationReturn());
   });
 
-  it("6개 카테고리 라벨을 모두 렌더링한다", () => {
+  it('6개 카테고리 라벨을 모두 렌더링한다', () => {
     render(<ModulesTab themeId="theme-1" theme={mockTheme} />);
 
-    expect(screen.getByText("코어")).toBeDefined();
-    expect(screen.getByText("진행")).toBeDefined();
-    expect(screen.getByText("소통")).toBeDefined();
-    expect(screen.getByText("결정")).toBeDefined();
-    expect(screen.getByText("탐색")).toBeDefined();
-    expect(screen.getByText("단서 배포")).toBeDefined();
+    expect(screen.getByText('코어')).toBeDefined();
+    expect(screen.getByText('진행')).toBeDefined();
+    expect(screen.getByText('소통')).toBeDefined();
+    expect(screen.getByText('결정')).toBeDefined();
+    expect(screen.getByText('탐색')).toBeDefined();
+    expect(screen.getByText('단서 배포')).toBeDefined();
   });
 
-  it("선택된 모듈의 체크박스가 체크되어 있다", () => {
+  it('선택된 모듈의 체크박스가 체크되어 있다', () => {
     render(<ModulesTab themeId="theme-1" theme={mockTheme} />);
 
     // mockTheme.config_json.modules = ["text_chat", "voting"]
-    const checkboxes = screen.getAllByRole("checkbox");
+    const checkboxes = screen.getAllByRole('checkbox');
 
     // text_chat과 voting에 해당하는 체크박스 찾기
     // 라벨에서 모듈 이름으로 찾기
-    const textChatLabel = screen.getByText("텍스트 채팅");
-    const votingLabel = screen.getByText("투표");
+    const textChatLabel = screen.getByText('텍스트 채팅');
+    const votingLabel = screen.getByText('투표');
 
     // 체크박스는 label의 자식으로 있음 — label 요소 내부의 input을 찾는다
     const textChatCheckbox = textChatLabel
-      .closest("label")
+      .closest('label')
       ?.querySelector("input[type='checkbox']") as HTMLInputElement;
     const votingCheckbox = votingLabel
-      .closest("label")
+      .closest('label')
       ?.querySelector("input[type='checkbox']") as HTMLInputElement;
 
     expect(textChatCheckbox).not.toBeNull();
@@ -609,17 +597,17 @@ describe("ModulesTab", () => {
     expect(votingCheckbox.checked).toBe(true);
 
     // 필수 모듈(connection, room)도 항상 체크됨
-    const connectionLabel = screen.getByText("접속 관리");
+    const connectionLabel = screen.getByText('접속 관리');
     const connectionCheckbox = connectionLabel
-      .closest("label")
+      .closest('label')
       ?.querySelector("input[type='checkbox']") as HTMLInputElement;
     expect(connectionCheckbox.checked).toBe(true);
   });
 
-  it("총 선택 개수를 표시한다", () => {
+  it('총 선택 개수를 표시한다', () => {
     render(<ModulesTab themeId="theme-1" theme={mockTheme} />);
 
     // mockTheme에서 text_chat, voting + 필수 connection, room = 4개 / 총 7개 모듈
-    expect(screen.getByText("4/7 모듈 선택됨")).toBeDefined();
+    expect(screen.getByText('4/7 모듈 선택됨')).toBeDefined();
   });
 });
