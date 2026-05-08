@@ -4,18 +4,13 @@ import type { FlowNodeData } from "../../../flowTypes";
 import { InformationDeliveryPanel } from "../InformationDeliveryPanel";
 import { DELIVER_INFORMATION_ACTION } from "../phaseEditorAdapter";
 
-const { useEditorCharactersMock, useReadingSectionsMock, useStoryInfosMock } = vi.hoisted(() => ({
+const { useEditorCharactersMock, useStoryInfosMock } = vi.hoisted(() => ({
   useEditorCharactersMock: vi.fn(),
-  useReadingSectionsMock: vi.fn(),
   useStoryInfosMock: vi.fn(),
 }));
 
 vi.mock("../../../api", () => ({
   useEditorCharacters: () => useEditorCharactersMock(),
-}));
-
-vi.mock("../../../readingApi", () => ({
-  useReadingSections: () => useReadingSectionsMock(),
 }));
 
 vi.mock("../../../storyInfoApi", () => ({
@@ -29,10 +24,6 @@ const characters = [
   { id: "char-2", name: "용의자 B" },
 ];
 
-const sections = [
-  { id: "rs-1", name: "비밀 편지", lines: [{ Text: "편지" }] },
-  { id: "rs-2", name: "저택 소문", lines: [{ Text: "소문" }, { Text: "증언" }] },
-];
 const storyInfos = [
   {
     id: "info-1",
@@ -71,12 +62,6 @@ beforeEach(() => {
     isError: false,
     refetch: vi.fn(),
   });
-  useReadingSectionsMock.mockReturnValue({
-    data: sections,
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
-  });
   useStoryInfosMock.mockReturnValue({
     data: storyInfos,
     isLoading: false,
@@ -97,11 +82,11 @@ describe("InformationDeliveryPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "캐릭터별 대상 추가" }));
 
-    expect(screen.getByText("받을 캐릭터를 선택하세요 · 대사 0개 · 정보 0개")).toBeDefined();
+    expect(screen.getByText("받을 캐릭터를 선택하세요 · 정보 0개")).toBeDefined();
     expect(onChange).toHaveBeenCalledWith({ onEnter: [] });
   });
 
-  it("캐릭터, 읽기 대사, 공개 정보를 검색하고 선택/삭제할 수 있다", () => {
+  it("캐릭터와 공개 정보를 검색하고 선택/삭제할 수 있다", () => {
     const onChange = vi.fn();
     const phaseData: FlowNodeData = {
       onEnter: [
@@ -113,7 +98,6 @@ describe("InformationDeliveryPanel", () => {
               {
                 id: "d1",
                 target: { type: "character" },
-                reading_section_ids: ["rs-1"],
                 story_info_ids: ["info-1"],
               },
             ],
@@ -139,31 +123,7 @@ describe("InformationDeliveryPanel", () => {
               {
                 id: "d1",
                 target: { type: "character", character_id: "char-2" },
-                reading_section_ids: ["rs-1"],
-                story_info_ids: ["info-1"],
-              },
-            ],
-          },
-        },
-      ],
-    });
-
-    fireEvent.change(screen.getByPlaceholderText("대사 이름으로 찾기"), {
-      target: { value: "저택" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /저택 소문/ }));
-
-    expect(onChange).toHaveBeenLastCalledWith({
-      onEnter: [
-        {
-          id: "info",
-          type: DELIVER_INFORMATION_ACTION,
-          params: {
-            deliveries: [
-              {
-                id: "d1",
-                target: { type: "character", character_id: "char-2" },
-                reading_section_ids: ["rs-1", "rs-2"],
+                reading_section_ids: [],
                 story_info_ids: ["info-1"],
               },
             ],
@@ -187,7 +147,7 @@ describe("InformationDeliveryPanel", () => {
               {
                 id: "d1",
                 target: { type: "character", character_id: "char-2" },
-                reading_section_ids: ["rs-1", "rs-2"],
+                reading_section_ids: [],
                 story_info_ids: ["info-1", "info-2"],
               },
             ],
@@ -196,26 +156,19 @@ describe("InformationDeliveryPanel", () => {
       ],
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "장면 연결 1 삭제" }));
+    fireEvent.click(screen.getByRole("button", { name: "정보 공개 1 삭제" }));
     expect(onChange).toHaveBeenLastCalledWith({ onEnter: [] });
   });
 
 
-  it("캐릭터 또는 읽기 대사 조회 실패를 빈 상태와 구분하고 재시도할 수 있다", () => {
+  it("캐릭터 또는 정보 조회 실패를 빈 상태와 구분하고 재시도할 수 있다", () => {
     const refetchCharacters = vi.fn();
-    const refetchSections = vi.fn();
     const refetchStoryInfos = vi.fn();
     useEditorCharactersMock.mockReturnValue({
       data: [],
       isLoading: false,
       isError: true,
       refetch: refetchCharacters,
-    });
-    useReadingSectionsMock.mockReturnValue({
-      data: [],
-      isLoading: false,
-      isError: true,
-      refetch: refetchSections,
     });
     useStoryInfosMock.mockReturnValue({
       data: [],
@@ -226,11 +179,10 @@ describe("InformationDeliveryPanel", () => {
 
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
-    expect(screen.getByText("장면 연결에 필요한 캐릭터, 읽기 대사, 정보 목록을 불러오지 못했습니다.")).toBeDefined();
+    expect(screen.getByText("정보 공개에 필요한 캐릭터와 정보 목록을 불러오지 못했습니다.")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "다시 불러오기" }));
 
     expect(refetchCharacters).toHaveBeenCalledTimes(1);
-    expect(refetchSections).toHaveBeenCalledTimes(1);
     expect(refetchStoryInfos).toHaveBeenCalledTimes(1);
   });
 
@@ -275,11 +227,11 @@ describe("InformationDeliveryPanel", () => {
     const { rerender } = render(
       <InformationDeliveryPanel themeId="theme-1" phaseData={firstPhaseData} onChange={vi.fn()} />,
     );
-    expect(screen.getByText("탐정 A · 대사 1개 · 정보 1개")).toBeDefined();
+    expect(screen.getByText("탐정 A · 정보 1개")).toBeDefined();
 
     rerender(<InformationDeliveryPanel themeId="theme-1" phaseData={nextPhaseData} onChange={vi.fn()} />);
 
-    expect(screen.getByText("용의자 B · 대사 1개 · 정보 0개")).toBeDefined();
+    expect(screen.getByText("용의자 B · 정보 0개")).toBeDefined();
   });
 
 
@@ -294,7 +246,7 @@ describe("InformationDeliveryPanel", () => {
     render(<InformationDeliveryPanel themeId="theme-1" phaseData={{}} onChange={vi.fn()} />);
 
     expect((screen.getByRole("button", { name: "캐릭터별 대상 추가" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("아직 장면 연결이 없습니다. 전체 대상 추가를 눌러 모든 플레이어가 볼 대사나 정보를 연결해 주세요.")).toBeDefined();
+    expect(screen.getByText("아직 정보 공개 대상이 없습니다. 전체 대상 추가를 눌러 모든 플레이어가 볼 정보를 연결해 주세요.")).toBeDefined();
   });
 
   it("모든 페이즈에서 모든 플레이어 공통 전달을 추가할 수 있다", () => {
@@ -309,7 +261,7 @@ describe("InformationDeliveryPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "전체 대상 추가" }));
 
-    expect(screen.getByText("모든 플레이어 · 대사 0개 · 정보 0개")).toBeDefined();
+    expect(screen.getByText("모든 플레이어 · 정보 0개")).toBeDefined();
     expect(onChange).toHaveBeenCalledWith({ onEnter: [] });
   });
 });

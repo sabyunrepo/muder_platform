@@ -1,6 +1,5 @@
 import { Plus, Trash2, Users } from "lucide-react";
 import type { InformationDeliveryViewModel } from "../../entities/shared/informationDeliveryAdapter";
-import type { ReadingSectionPickerOption } from "../../entities/story/readingSectionAdapter";
 import { OptionList, SearchField } from "./InformationDeliveryOptionList";
 
 interface InformationDeliveryHeaderProps {
@@ -17,9 +16,9 @@ export function InformationDeliveryHeader({
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div>
-        <h4 className="text-sm font-semibold text-slate-100">읽기 대사 배치와 정보 공개</h4>
+        <h4 className="text-sm font-semibold text-slate-100">정보 공개</h4>
         <p className="mt-1 text-xs leading-5 text-slate-400">
-          이 장면에서 보여줄 읽기 대사와 공개할 정보 카드를 대상별로 연결합니다.
+          이 장면에서 공개할 정보 카드를 대상별로 연결합니다.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -53,24 +52,18 @@ interface InformationDeliveryContentProps {
   loading: boolean;
   hasLoadError: boolean;
   hasCharacters: boolean;
-  hasSections: boolean;
   hasStoryInfos: boolean;
   characterQuery: string;
-  sectionQuery: string;
   infoQuery: string;
   deliveries: InformationDeliveryViewModel[];
   characters: { id: string; name: string }[];
   allCharacters: { id: string; name: string }[];
-  sections: ReadingSectionPickerOption[];
-  allSections: ReadingSectionPickerOption[];
   storyInfos: StoryInfoOption[];
   allStoryInfos: StoryInfoOption[];
   onRetryLoad: () => void;
   onCharacterQueryChange: (value: string) => void;
-  onSectionQueryChange: (value: string) => void;
   onInfoQueryChange: (value: string) => void;
   onSelectCharacter: (deliveryId: string, characterId: string) => void;
-  onToggleSection: (delivery: InformationDeliveryViewModel, sectionId: string) => void;
   onToggleStoryInfo: (delivery: InformationDeliveryViewModel, storyInfoId: string) => void;
   onRemoveDelivery: (deliveryId: string) => void;
 }
@@ -86,31 +79,25 @@ export function InformationDeliveryContent({
   loading,
   hasLoadError,
   hasCharacters,
-  hasSections,
   hasStoryInfos,
   characterQuery,
-  sectionQuery,
   infoQuery,
   deliveries,
   characters,
   allCharacters,
-  sections,
-  allSections,
   storyInfos,
   allStoryInfos,
   onRetryLoad,
   onCharacterQueryChange,
-  onSectionQueryChange,
   onInfoQueryChange,
   onSelectCharacter,
-  onToggleSection,
   onToggleStoryInfo,
   onRemoveDelivery,
 }: InformationDeliveryContentProps) {
   if (loading) {
     return (
       <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs text-slate-400">
-        캐릭터, 읽기 대사, 정보를 불러오는 중입니다.
+        캐릭터와 정보를 불러오는 중입니다.
       </p>
     );
   }
@@ -118,7 +105,7 @@ export function InformationDeliveryContent({
   if (hasLoadError) {
     return (
       <div className="mt-4 rounded border border-red-500/30 bg-red-500/10 px-3 py-3 text-xs text-red-100">
-        <p>장면 연결에 필요한 캐릭터, 읽기 대사, 정보 목록을 불러오지 못했습니다.</p>
+        <p>정보 공개에 필요한 캐릭터와 정보 목록을 불러오지 못했습니다.</p>
         <button
           type="button"
           onClick={onRetryLoad}
@@ -130,28 +117,22 @@ export function InformationDeliveryContent({
     );
   }
 
-  if (!hasSections && !hasStoryInfos) {
+  if (!hasStoryInfos) {
     return (
       <p className="mt-4 rounded border border-slate-800 bg-slate-900 px-3 py-3 text-xs leading-5 text-slate-400">
-        배치할 읽기 대사와 공개할 정보가 없습니다. 먼저 읽기 대사 또는 정보 관리에서 장면에 연결할 항목을 만들어 주세요.
+        공개할 정보가 없습니다. 먼저 정보 관리에서 장면에 연결할 항목을 만들어 주세요.
       </p>
     );
   }
 
   return (
     <>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <SearchField
           label="캐릭터 검색"
           value={characterQuery}
           onChange={onCharacterQueryChange}
           placeholder="이름으로 찾기"
-        />
-        <SearchField
-          label="읽기 대사 검색"
-          value={sectionQuery}
-          onChange={onSectionQueryChange}
-          placeholder="대사 이름으로 찾기"
         />
         <SearchField
           label="정보 검색"
@@ -174,12 +155,9 @@ export function InformationDeliveryContent({
               delivery={delivery}
               characters={characters}
               allCharacters={allCharacters}
-              sections={sections}
-              allSections={allSections}
               storyInfos={storyInfos}
               allStoryInfos={allStoryInfos}
               onSelectCharacter={(characterId) => onSelectCharacter(delivery.id, characterId)}
-              onToggleSection={(sectionId) => onToggleSection(delivery, sectionId)}
               onToggleStoryInfo={(storyInfoId) => onToggleStoryInfo(delivery, storyInfoId)}
               onRemove={() => onRemoveDelivery(delivery.id)}
             />
@@ -193,9 +171,9 @@ export function InformationDeliveryContent({
 
 function getEmptyDeliveryMessage(hasCharacters: boolean): string {
   if (!hasCharacters) {
-    return "아직 장면 연결이 없습니다. 전체 대상 추가를 눌러 모든 플레이어가 볼 대사나 정보를 연결해 주세요.";
+    return "아직 정보 공개 대상이 없습니다. 전체 대상 추가를 눌러 모든 플레이어가 볼 정보를 연결해 주세요.";
   }
-  return "아직 장면 연결이 없습니다. 전체 대상 추가 또는 캐릭터별 대상 추가를 눌러 대상을 정해 주세요.";
+  return "아직 정보 공개 대상이 없습니다. 전체 대상 추가 또는 캐릭터별 대상 추가를 눌러 대상을 정해 주세요.";
 }
 
 interface DeliveryCardProps {
@@ -203,12 +181,9 @@ interface DeliveryCardProps {
   delivery: InformationDeliveryViewModel;
   characters: { id: string; name: string }[];
   allCharacters: { id: string; name: string }[];
-  sections: ReadingSectionPickerOption[];
-  allSections: ReadingSectionPickerOption[];
   storyInfos: StoryInfoOption[];
   allStoryInfos: StoryInfoOption[];
   onSelectCharacter: (characterId: string) => void;
-  onToggleSection: (sectionId: string) => void;
   onToggleStoryInfo: (storyInfoId: string) => void;
   onRemove: () => void;
 }
@@ -218,12 +193,9 @@ function DeliveryCard({
   delivery,
   characters,
   allCharacters,
-  sections,
-  allSections,
   storyInfos,
   allStoryInfos,
   onSelectCharacter,
-  onToggleSection,
   onToggleStoryInfo,
   onRemove,
 }: DeliveryCardProps) {
@@ -236,15 +208,15 @@ function DeliveryCard({
     <article className="rounded-lg border border-slate-800 bg-slate-900/80 p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-slate-200">장면 연결 {index + 1}</p>
+          <p className="text-xs font-semibold text-slate-200">정보 공개 {index + 1}</p>
           <p className="mt-1 text-[11px] text-slate-400">
-            {selectedCharacterName ?? "받을 캐릭터를 선택하세요"} · 대사 {delivery.readingSectionIds.length}개 · 정보 {delivery.storyInfoIds.length}개
+            {selectedCharacterName ?? "받을 캐릭터를 선택하세요"} · 정보 {delivery.storyInfoIds.length}개
           </p>
         </div>
         <button
           type="button"
           onClick={onRemove}
-          aria-label={`장면 연결 ${index + 1} 삭제`}
+          aria-label={`정보 공개 ${index + 1} 삭제`}
           className="rounded p-1 text-slate-400 hover:bg-red-500/10 hover:text-red-300"
         >
           <Trash2 className="h-4 w-4" />
@@ -255,7 +227,7 @@ function DeliveryCard({
         {delivery.recipientType === "all_players" ? (
           <div className="flex items-center gap-2 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             <Users className="h-4 w-4" />
-            이 장면의 공통 읽기 대사와 공개 정보로 모든 플레이어에게 보여집니다.
+            이 장면의 공개 정보로 모든 플레이어에게 보여집니다.
           </div>
         ) : (
           <OptionList
@@ -269,15 +241,6 @@ function DeliveryCard({
           />
         )}
 
-        <OptionList
-          title="읽기 대사 배치"
-          emptyText="검색 결과가 없습니다."
-          items={sections}
-          selectedIds={delivery.readingSectionIds}
-          getMeta={(section) => section.metaLabel}
-          onToggle={onToggleSection}
-          allItems={allSections}
-        />
         <OptionList
           title="정보 공개"
           emptyText="검색 결과가 없습니다."

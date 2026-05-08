@@ -16,6 +16,7 @@ import {
   PRESENTATION_CUE_ACTION_TYPES,
 } from "./ActionListEditor";
 import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
+import { StoryProgressionPanel } from "./StoryProgressionPanel";
 import { DELIVER_INFORMATION_ACTION } from "../../entities/phase/phaseEntityAdapter";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { PhasePanelTimerSettings } from "./PhasePanelTimerSettings";
@@ -36,6 +37,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
   const data = node.data as FlowNodeData;
+  const isStoryProgression = data.phase_type === "story_progression";
 
   const debouncer = useDebouncedMutation<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
@@ -94,12 +96,21 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
 
       <div className="border-t border-slate-800" />
 
-      <InformationDeliveryPanel
-        key={node.id}
-        themeId={themeId}
-        phaseData={data}
-        onChange={handleChange}
-      />
+      {isStoryProgression ? (
+        <StoryProgressionPanel
+          key={node.id}
+          themeId={themeId}
+          phaseData={data}
+          onChange={handleChange}
+        />
+      ) : (
+        <InformationDeliveryPanel
+          key={node.id}
+          themeId={themeId}
+          phaseData={data}
+          onChange={handleChange}
+        />
+      )}
 
       <div className="border-t border-slate-800" />
 
