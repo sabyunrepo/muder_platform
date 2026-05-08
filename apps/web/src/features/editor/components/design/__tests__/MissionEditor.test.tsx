@@ -125,7 +125,7 @@ describe('MissionEditor', () => {
     );
 
     expect(screen.getAllByText('자기소개 종료 후').length).toBeGreaterThan(0);
-    expect(screen.getByText('자동 판정')).toBeDefined();
+    expect(screen.getByText('엔진 연동 필요')).toBeDefined();
     expect(screen.getByText('게임 판정은 백엔드가 담당')).toBeDefined();
 
     fireEvent.change(screen.getByLabelText('미션 공개 시점'), { target: { value: 'round_start' } });
@@ -134,7 +134,7 @@ describe('MissionEditor', () => {
 
   it('라운드와 진행 노드 공개 시점의 추가 입력을 저장한다', () => {
     const onChange = vi.fn();
-    render(
+    const { rerender } = render(
       <MissionEditor
         missions={[baseMission({ visibleFrom: 'round_start', revealRound: 2 })]}
         onAdd={noop}
@@ -147,6 +147,17 @@ describe('MissionEditor', () => {
     expect(onChange).toHaveBeenCalledWith('mission-1', 'visibleFrom', 'node_reached');
     fireEvent.change(screen.getByLabelText('시작 라운드:'), { target: { value: '3' } });
     expect(onChange).toHaveBeenCalledWith('mission-1', 'revealRound', 3);
+
+    rerender(
+      <MissionEditor
+        missions={[baseMission({ visibleFrom: 'node_reached', revealNodeId: 'intro_finished' })]}
+        onAdd={noop}
+        onChange={onChange}
+        onDelete={noop}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('진행 노드'), { target: { value: 'voting_started' } });
+    expect(onChange).toHaveBeenCalledWith('mission-1', 'revealNodeId', 'voting_started');
   });
 
   it('MISSION_TYPES에 kill/possess/secret/protect가 포함된다', () => {

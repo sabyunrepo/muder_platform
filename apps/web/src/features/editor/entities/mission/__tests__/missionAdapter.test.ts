@@ -95,7 +95,7 @@ describe("missionAdapter", () => {
     vi.restoreAllMocks();
   });
 
-  it("legacy 수동 판정값이 있어도 runtime 후보는 auto로 정규화한다", () => {
+  it("legacy 수동 판정값이 있어도 runtime 후보는 auto로 정규화하되 자동 판정 집계와 분리한다", () => {
     const runtime = toMissionRuntimeDraft({
       id: "m-custom",
       type: "secret",
@@ -119,7 +119,7 @@ describe("missionAdapter", () => {
         },
       ],
     }).assignments[0]).toEqual(expect.objectContaining({
-      autoVerifiableCount: 1,
+      autoVerifiableCount: 0,
       manualReviewCount: 0,
     }));
   });
@@ -133,7 +133,7 @@ describe("missionAdapter", () => {
       resultVisibilityLabel: "결과 화면에서만 공개",
       runtimeType: "vote_target",
       verification: "auto",
-      verificationLabel: "자동 판정",
+      verificationLabel: "엔진 연동 필요",
       revealLabel: "2라운드 시작부터",
       engineOwnerLabel: "게임 판정은 백엔드가 담당",
       warnings: [
@@ -159,7 +159,7 @@ describe("missionAdapter", () => {
         {
           characterId: "char-1",
           totalPoints: 5,
-          autoVerifiableCount: 2,
+          autoVerifiableCount: 1,
           manualReviewCount: 0,
           missions: [
             expect.objectContaining({ id: "m1", type: "hold_clue", verification: "auto" }),

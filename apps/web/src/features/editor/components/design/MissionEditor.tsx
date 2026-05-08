@@ -3,6 +3,7 @@ import { MissionTypeFields } from './MissionTypeFields';
 import {
   MISSION_TYPES,
   MISSION_REVEAL_OPTIONS,
+  MISSION_REVEAL_NODE_OPTIONS,
   toMissionViewModel,
   type Mission,
   type MissionEditorCharacter,
@@ -158,13 +159,17 @@ function MissionCard({
       {mission.visibleFrom === 'node_reached' ? (
         <label className="mb-2 block text-xs text-slate-500">
           진행 노드
-          <input
-            type="text"
-            value={mission.revealNodeId ?? ''}
+          <select
+            value={mission.revealNodeId ?? MISSION_REVEAL_NODE_OPTIONS[0].value}
             onChange={(e) => onChange(mission.id, 'revealNodeId', e.target.value)}
-            placeholder="예: intro-complete"
             className="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
-          />
+          >
+            {MISSION_REVEAL_NODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
       ) : null}
       <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-slate-400">

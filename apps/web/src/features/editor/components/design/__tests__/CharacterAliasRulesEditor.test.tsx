@@ -163,6 +163,48 @@ describe('CharacterAliasRulesEditor', () => {
     })]);
   });
 
+  it('특정 라운드와 진행 노드 별칭 조건 값을 함께 저장한다', () => {
+    const onSave = vi.fn();
+    const rules: CharacterAliasRule[] = [{
+      id: 'alias-1',
+      label: '라운드 공개',
+      display_name: '밤의 목격자',
+      priority: 1,
+      condition: {
+        id: 'group-1',
+        operator: 'AND',
+        rules: [{
+          id: 'rule-1',
+          variable: 'custom_flag',
+          target_flag_key: 'game_started',
+          comparator: '=',
+          value: 'true',
+        }],
+      },
+    }];
+
+    renderStatefulEditor(rules, onSave);
+    fireEvent.change(screen.getByLabelText('별칭 표시 시점'), { target: { value: 'round_start' } });
+    fireEvent.change(screen.getByLabelText('표시 라운드'), { target: { value: '3' } });
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+
+    expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({
+      condition: expect.objectContaining({
+        rules: [expect.objectContaining({ target_flag_key: 'round_started', value: '3' })],
+      }),
+    })]);
+
+    fireEvent.change(screen.getByLabelText('별칭 표시 시점'), { target: { value: 'node_reached' } });
+    fireEvent.change(screen.getByLabelText('표시 진행 노드'), { target: { value: 'voting_started' } });
+    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
+
+    expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({
+      condition: expect.objectContaining({
+        rules: [expect.objectContaining({ target_flag_key: 'story_node_reached', value: 'voting_started' })],
+      }),
+    })]);
+  });
+
   it('미디어 아이콘을 선택하면 URL 아이콘을 비우고 media id로 저장한다', () => {
     const onSave = vi.fn();
     const rules: CharacterAliasRule[] = [{

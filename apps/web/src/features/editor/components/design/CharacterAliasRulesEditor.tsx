@@ -141,6 +141,7 @@ function CharacterAliasRuleItem({
 }: CharacterAliasRuleItemProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const selectedPreset = inferAliasPreset(rule.condition);
+  const presetValue = inferAliasPresetValue(rule.condition);
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-3">
       <div className="grid gap-2 sm:grid-cols-[1fr_1fr_5rem]">
@@ -213,7 +214,7 @@ function CharacterAliasRuleItem({
           onChange={(event) => {
             const preset = event.currentTarget.value as AliasPreset;
             if (preset === 'custom') return;
-            onUpdate(index, { condition: groupToRecord(createAliasPresetCondition(preset)) });
+            onUpdate(index, { condition: groupToRecord(createAliasPresetCondition(preset, presetValue)) });
           }}
           className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
           aria-label="별칭 표시 시점"
@@ -225,6 +226,41 @@ function CharacterAliasRuleItem({
           ))}
         </select>
       </label>
+      {selectedPreset === 'round_start' ? (
+        <label className="mt-2 block text-[11px] text-slate-400">
+          표시 라운드
+          <input
+            type="number"
+            min={1}
+            value={presetValue.round}
+            disabled={disabled}
+            onChange={(event) => {
+              const round = normalizePositiveNumber(event.currentTarget.value);
+              onUpdate(index, { condition: groupToRecord(createAliasPresetCondition('round_start', { ...presetValue, round })) });
+            }}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          />
+        </label>
+      ) : null}
+      {selectedPreset === 'node_reached' ? (
+        <label className="mt-2 block text-[11px] text-slate-400">
+          표시 진행 노드
+          <select
+            value={presetValue.nodeId}
+            disabled={disabled}
+            onChange={(event) => {
+              onUpdate(index, { condition: groupToRecord(createAliasPresetCondition('node_reached', { ...presetValue, nodeId: event.currentTarget.value })) });
+            }}
+            className="mt-1 w-full rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-xs text-slate-200 disabled:opacity-60"
+          >
+            {ALIAS_NODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       {selectedPreset === 'custom' ? (
         <p className="mt-2 rounded-md border border-slate-800 bg-slate-950 px-2 py-1.5 text-[11px] leading-4 text-slate-500">
           기존 고급 조건이 저장되어 있습니다. 프리셋을 고르면 제작자용 조건으로 바뀝니다.
@@ -268,6 +304,12 @@ function normalizePriorityInput(value: string): number {
   return Math.max(0, priority);
 }
 
+function normalizePositiveNumber(value: string): number {
+  const n = Math.floor(Number(value));
+  if (!Number.isFinite(n) || n < 1) return 1;
+  return n;
+}
+
 function createAliasRuleID(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -293,7 +335,21 @@ const ALIAS_PRESETS: Array<{ value: AliasPreset; label: string; flagKey?: string
   { value: 'custom', label: '기존 고급 조건 유지' },
 ];
 
-function createAliasPresetCondition(preset: Exclude<AliasPreset, 'custom'>): ConditionGroup {
+const ALIAS_NODE_OPTIONS = [
+  { value: 'intro_finished', label: '자기소개 종료' },
+  { value: 'round_summary', label: '라운드 정리' },
+  { value: 'voting_started', label: '투표 시작' },
+] as const;
+
+interface AliasPresetValue {
+  round: number;
+  nodeId: string;
+}
+
+function createAliasPresetCondition(
+  preset: Exclude<AliasPreset, 'custom'>,
+  value: AliasPresetValue = { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value },
+): ConditionGroup {
   const option = ALIAS_PRESETS.find((item) => item.value === preset);
   return {
     id: createAliasRuleID(),
@@ -303,7 +359,11 @@ function createAliasPresetCondition(preset: Exclude<AliasPreset, 'custom'>): Con
       variable: 'custom_flag',
       target_flag_key: option?.flagKey ?? 'game_started',
       comparator: '=',
-      value: 'true',
+      value: preset === 'round_start'
+        ? String(value.round)
+        : preset === 'node_reached'
+          ? value.nodeId
+          : 'true',
     }],
   };
 }
@@ -313,6 +373,27 @@ function inferAliasPreset(raw: CharacterAliasRule['condition']): AliasPreset {
   const rules = (raw as { rules?: unknown }).rules;
   if (!Array.isArray(rules) || rules.length !== 1) return 'custom';
   const rule = rules[0] as { variable?: unknown; target_flag_key?: unknown; comparator?: unknown; value?: unknown };
-  if (rule.variable !== 'custom_flag' || rule.comparator !== '=' || rule.value !== 'true') return 'custom';
+  if (rule.variable !== 'custom_flag' || rule.comparator !== '=') return 'custom';
+  if (rule.target_flag_key === 'round_started') return 'round_start';
+  if (rule.target_flag_key === 'story_node_reached') return 'node_reached';
+  if (rule.value !== 'true') return 'custom';
   return ALIAS_PRESETS.find((preset) => preset.flagKey === rule.target_flag_key)?.value ?? 'custom';
+}
+
+function inferAliasPresetValue(raw: CharacterAliasRule['condition']): AliasPresetValue {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+  }
+  const rules = (raw as { rules?: unknown }).rules;
+  if (!Array.isArray(rules) || rules.length !== 1) {
+    return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
+  }
+  const rule = rules[0] as { target_flag_key?: unknown; value?: unknown };
+  if (rule.target_flag_key === 'round_started' && typeof rule.value === 'string') {
+    return { round: normalizePositiveNumber(rule.value), nodeId: ALIAS_NODE_OPTIONS[0].value };
+  }
+  if (rule.target_flag_key === 'story_node_reached' && typeof rule.value === 'string') {
+    return { round: 1, nodeId: rule.value || ALIAS_NODE_OPTIONS[0].value };
+  }
+  return { round: 1, nodeId: ALIAS_NODE_OPTIONS[0].value };
 }

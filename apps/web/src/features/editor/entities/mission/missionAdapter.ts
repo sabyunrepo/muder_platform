@@ -107,6 +107,12 @@ export const MISSION_REVEAL_OPTIONS: Array<{ value: MissionRevealTiming; label: 
   { value: "node_reached", label: "특정 진행 노드 도달 후" },
 ];
 
+export const MISSION_REVEAL_NODE_OPTIONS = [
+  { value: "intro_finished", label: "자기소개 종료" },
+  { value: "round_summary", label: "라운드 정리" },
+  { value: "voting_started", label: "투표 시작" },
+] as const;
+
 const REVEAL_LABELS: Record<MissionRevealTiming, string> = Object.fromEntries(
   MISSION_REVEAL_OPTIONS.map((option) => [option.value, option.label]),
 ) as Record<MissionRevealTiming, string>;
@@ -228,7 +234,7 @@ export function toMissionEngineContractDraft(
         characterId,
         missions: runtimeMissions,
         totalPoints: runtimeMissions.reduce((sum, mission) => sum + mission.points, 0),
-        autoVerifiableCount: runtimeMissions.filter((mission) => mission.verification === "auto").length,
+        autoVerifiableCount: runtimeMissions.filter(isAutoVerifiable).length,
         manualReviewCount: 0,
       };
     })
@@ -245,6 +251,7 @@ export function toMissionEngineContractDraft(
 export function toMissionViewModel(mission: Mission): MissionViewModel {
   const runtimeDraft = toMissionRuntimeDraft(mission);
   const warnings = buildMissionWarnings(mission, runtimeDraft);
+  const autoVerifiable = isAutoVerifiable(runtimeDraft);
   return {
     id: mission.id,
     title: mission.description.trim() || "미션 내용을 입력해 주세요",
@@ -253,11 +260,17 @@ export function toMissionViewModel(mission: Mission): MissionViewModel {
     resultVisibilityLabel: "결과 화면에서만 공개",
     runtimeType: runtimeDraft.type,
     verification: runtimeDraft.verification,
-    verificationLabel: "자동 판정",
+    verificationLabel: autoVerifiable ? "자동 판정" : "엔진 연동 필요",
     revealLabel: formatRevealLabel(runtimeDraft),
     engineOwnerLabel: "게임 판정은 백엔드가 담당",
     warnings,
   };
+}
+
+export function isAutoVerifiable(mission: MissionRuntimeDraft): boolean {
+  if (mission.type === "hold_clue") return Boolean(mission.targetClueId);
+  if (mission.type === "vote_target") return Boolean(mission.targetCharacterId);
+  return false;
 }
 
 function toRuntimeType(mission: Mission): MissionRuntimeType {
@@ -297,7 +310,7 @@ function buildMissionWarnings(mission: Mission, runtimeDraft: MissionRuntimeDraf
     warnings.push("라운드 공개 시점은 시작 라운드를 입력해야 합니다.");
   }
   if (runtimeDraft.visibleFrom === "node_reached" && !runtimeDraft.revealNodeId) {
-    warnings.push("진행 노드 공개 시점은 노드 식별자를 입력해야 합니다.");
+    warnings.push("진행 노드 공개 시점은 노드를 선택해야 합니다.");
   }
   if (mission.condition?.trim()) {
     warnings.push("미션 조건 메모는 제작자 참고용이며, 실제 진행 분기는 스토리 이동 조건에서 판정됩니다.");
