@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { Info, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
@@ -6,7 +6,11 @@ import { useUpdateConfigJson, useUpdateLocation } from '@/features/editor/api';
 import { EntityTriggerPlacementCard } from '@/features/editor/components/triggers/EntityTriggerPlacementCard';
 import { readLocationClueIds } from '@/features/editor/editorTypes';
 import type { EditorConfig } from '@/features/editor/utils/configShape';
-import { toLocationEditorViewModel } from '@/features/editor/entities/location/locationEntityAdapter';
+import {
+  buildLocationParentOptions,
+  toLocationEditorViewModel,
+} from '@/features/editor/entities/location/locationEntityAdapter';
+import { readLocationMeta, writeLocationMeta } from '@/features/editor/utils/entityMeta';
 import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
@@ -40,8 +44,11 @@ function roundToInput(value: number | null | undefined) {
   return value == null ? '' : String(value);
 }
 
-function getPathLabel(map: MapResponse, location: LocationResponse) {
-  return `${map.name} / ${location.name}`;
+interface LocationBasicDraft {
+  name: string;
+  publicDescription: string;
+  entryMessage: string;
+  parentLocationId: string;
 }
 
 export function LocationDetailPanel({
@@ -115,6 +122,7 @@ export function LocationDetailPanel({
           theme={theme}
           map={selectedMap}
           location={location}
+          mapLocations={mapLocations}
         />
       )}
     />
@@ -125,16 +133,38 @@ function SelectedLocationDetail({
   theme,
   map,
   location,
+  mapLocations,
 }: {
   themeId: string;
   theme: EditorThemeResponse;
   map: MapResponse;
   location: LocationResponse;
+  mapLocations: LocationResponse[];
 }) {
   const updateLocation = useUpdateLocation(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
   const [fromRoundInput, setFromRoundInput] = useState(roundToInput(location.from_round));
   const [untilRoundInput, setUntilRoundInput] = useState(roundToInput(location.until_round));
+  const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>(
+    getVisibilityMode(roundToInput(location.from_round), roundToInput(location.until_round))
+  );
+  const locationMeta = useMemo(
+    () => readLocationMeta(theme.config_json, location.id),
+    [theme.config_json, location.id]
+  );
+  const locationMetaById = useMemo(
+    () =>
+      Object.fromEntries(
+        mapLocations.map((item) => [item.id, readLocationMeta(theme.config_json, item.id)])
+      ),
+    [mapLocations, theme.config_json]
+  );
+  const [basicDraft, setBasicDraft] = useState({
+    name: location.name,
+    publicDescription: locationMeta.publicDescription ?? '',
+    entryMessage: locationMeta.entryMessage ?? '',
+    parentLocationId: locationMeta.parentLocationId ?? '',
+  });
   const assignedCount = useMemo(
     () => readLocationClueIds(theme.config_json, location.id).length,
     [theme.config_json, location.id]
@@ -142,12 +172,27 @@ function SelectedLocationDetail({
   const viewModel = toLocationEditorViewModel(location, {
     clueCount: assignedCount,
     mapName: map.name,
+    locationMeta,
+    allLocations: mapLocations,
   });
+  const parentOptions = useMemo(
+    () => buildLocationParentOptions(location.id, mapLocations, locationMetaById),
+    [location.id, locationMetaById, mapLocations]
+  );
 
   useEffect(() => {
     setFromRoundInput(roundToInput(location.from_round));
     setUntilRoundInput(roundToInput(location.until_round));
-  }, [location.id, location.from_round, location.until_round]);
+    setVisibilityMode(
+      getVisibilityMode(roundToInput(location.from_round), roundToInput(location.until_round))
+    );
+    setBasicDraft({
+      name: location.name,
+      publicDescription: locationMeta.publicDescription ?? '',
+      entryMessage: locationMeta.entryMessage ?? '',
+      parentLocationId: locationMeta.parentLocationId ?? '',
+    });
+  }, [location.id, location.name, location.from_round, location.until_round, locationMeta]);
 
   function saveLocation(patch: Partial<LocationResponse>) {
     const currentFrom = parseRound(fromRoundInput);
@@ -199,6 +244,28 @@ function SelectedLocationDetail({
     });
   }
 
+  function saveBasicInfo() {
+    const nextName = basicDraft.name.trim();
+    if (!nextName) {
+      toast.error('장소 이름을 입력해 주세요');
+      return;
+    }
+
+    const nextParentId = basicDraft.parentLocationId || null;
+    saveLocation({ name: nextName });
+    updateConfig.mutate(
+      writeLocationMeta(theme.config_json, location.id, {
+        publicDescription: basicDraft.publicDescription.trim(),
+        entryMessage: basicDraft.entryMessage.trim(),
+        parentLocationId: nextParentId,
+      }),
+      {
+        onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
+        onError: () => toast.error('장소 기본 정보 저장에 실패했습니다'),
+      }
+    );
+  }
+
   return (
     <div className="space-y-4">
       <section className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
@@ -208,7 +275,12 @@ function SelectedLocationDetail({
               장소 상세
             </p>
             <h3 className="mt-1 text-xl font-semibold text-slate-100">{viewModel.name}</h3>
-            <p className="mt-1 text-xs text-slate-500">트리 경로: {getPathLabel(map, location)}</p>
+            <p className="mt-1 text-xs text-slate-500">
+              트리 경로: {map.name} /{' '}
+              {viewModel.parentLabel === '최상위 장소'
+                ? location.name
+                : `${viewModel.parentLabel} / ${location.name}`}
+            </p>
             <p className="mt-1 text-xs text-slate-400">{viewModel.roundLabel}</p>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">
@@ -224,15 +296,33 @@ function SelectedLocationDetail({
             onClear={() => saveLocation({ image_media_id: null })}
           />
           <div className="space-y-3">
+            <LocationBasicInfoFields
+              locationName={location.name}
+              draft={basicDraft}
+              onDraftChange={setBasicDraft}
+              onSave={saveBasicInfo}
+              isSaving={updateLocation.isPending || updateConfig.isPending}
+            />
+            <LocationStructureFields
+              location={location}
+              mapName={map.name}
+              parentLabel={viewModel.parentLabel}
+              parentOptions={parentOptions}
+              selectedParentId={basicDraft.parentLocationId}
+              onParentChange={(parentLocationId) =>
+                setBasicDraft((current) => ({ ...current, parentLocationId }))
+              }
+            />
             <RoundFields
               location={location}
               fromRoundInput={fromRoundInput}
               untilRoundInput={untilRoundInput}
               setFromRoundInput={setFromRoundInput}
               setUntilRoundInput={setUntilRoundInput}
+              visibilityMode={visibilityMode}
+              setVisibilityMode={setVisibilityMode}
               onCommit={saveLocation}
             />
-            <InfoBox />
           </div>
         </div>
       </section>
@@ -251,58 +341,72 @@ function SelectedLocationDetail({
   );
 }
 
-function RoundFields({
-  location,
-  fromRoundInput,
-  untilRoundInput,
-  setFromRoundInput,
-  setUntilRoundInput,
-  onCommit,
+function LocationBasicInfoFields({
+  locationName,
+  draft,
+  onDraftChange,
+  onSave,
+  isSaving,
 }: {
-  location: LocationResponse;
-  fromRoundInput: string;
-  untilRoundInput: string;
-  setFromRoundInput: (value: string) => void;
-  setUntilRoundInput: (value: string) => void;
-  onCommit: (patch: Partial<LocationResponse>) => void;
+  locationName: string;
+  draft: LocationBasicDraft;
+  onDraftChange: Dispatch<SetStateAction<LocationBasicDraft>>;
+  onSave: () => void;
+  isSaving: boolean;
 }) {
-  function commitRound(kind: 'from_round' | 'until_round', raw: string) {
-    const parsed = parseRound(raw);
-    if (parsed === undefined) {
-      toast.error('라운드는 1 이상의 숫자로 입력해 주세요');
-      if (kind === 'from_round') setFromRoundInput(roundToInput(location.from_round));
-      else setUntilRoundInput(roundToInput(location.until_round));
-      return;
-    }
-    onCommit({ [kind]: parsed });
-  }
-
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-      <p className="mb-2 text-xs font-semibold text-slate-300">라운드 노출</p>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-slate-300">기본 정보</p>
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={isSaving}
+          className="rounded-md border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          저장
+        </button>
+      </div>
+      <div className="mt-3 grid gap-3">
         <label className="text-xs text-slate-500">
-          등장 라운드
+          장소 이름
           <input
-            type="number"
-            min={1}
-            aria-label={`${location.name} 등장 라운드`}
-            value={fromRoundInput}
-            onChange={(e) => setFromRoundInput(e.target.value)}
-            onBlur={() => commitRound('from_round', fromRoundInput)}
+            type="text"
+            aria-label={`${locationName} 장소 이름`}
+            value={draft.name}
+            onChange={(event) =>
+              onDraftChange((current) => ({ ...current, name: event.target.value }))
+            }
             className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
           />
         </label>
         <label className="text-xs text-slate-500">
-          퇴장 라운드
-          <input
-            type="number"
-            min={1}
-            aria-label={`${location.name} 퇴장 라운드`}
-            value={untilRoundInput}
-            onChange={(e) => setUntilRoundInput(e.target.value)}
-            onBlur={() => commitRound('until_round', untilRoundInput)}
-            className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+          공개 설명
+          <textarea
+            aria-label={`${locationName} 공개 설명`}
+            value={draft.publicDescription}
+            onChange={(event) =>
+              onDraftChange((current) => ({
+                ...current,
+                publicDescription: event.target.value,
+              }))
+            }
+            rows={3}
+            className="mt-1 w-full resize-none rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm leading-5 text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+            placeholder="플레이어에게 항상 보이는 장소 설명"
+          />
+        </label>
+        <label className="text-xs text-slate-500">
+          진입 메시지
+          <textarea
+            aria-label={`${locationName} 진입 메시지`}
+            value={draft.entryMessage}
+            onChange={(event) =>
+              onDraftChange((current) => ({ ...current, entryMessage: event.target.value }))
+            }
+            rows={3}
+            className="mt-1 w-full resize-none rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm leading-5 text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+            placeholder="플레이어가 이 장소에 들어왔을 때 보여줄 분위기 텍스트"
           />
         </label>
       </div>
@@ -310,16 +414,189 @@ function RoundFields({
   );
 }
 
-function InfoBox() {
+function LocationStructureFields({
+  location,
+  mapName,
+  parentLabel,
+  parentOptions,
+  selectedParentId,
+  onParentChange,
+}: {
+  location: LocationResponse;
+  mapName: string;
+  parentLabel: string;
+  parentOptions: Array<{ id: string; label: string; depth: number }>;
+  selectedParentId: string;
+  onParentChange: (parentLocationId: string) => void;
+}) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-xs leading-5 text-slate-500">
-      <div className="mb-1 flex items-center gap-1.5 font-semibold text-slate-300">
+    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+      <div className="mb-2 flex items-center gap-1.5 font-semibold text-slate-300">
         <Info className="h-3.5 w-3.5 text-amber-400" />
-        기본정보
+        장소 구조
       </div>
-      부모 장소는 별도 입력하지 않습니다. 현재 구조에서는 맵과 장소 트리 위치가 곧 경로입니다.
+      <label className="text-xs text-slate-500">
+        부모 장소
+        <select
+          aria-label={`${location.name} 부모 장소`}
+          value={selectedParentId}
+          onChange={(event) => onParentChange(event.target.value)}
+          className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+        >
+          <option value="">최상위 장소</option>
+          {parentOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {`${'· '.repeat(option.depth)}${option.label}`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        현재 경로: {mapName} /{' '}
+        {parentLabel === '최상위 장소' ? location.name : `${parentLabel} / ${location.name}`}
+      </p>
     </div>
   );
+}
+
+function RoundFields({
+  location,
+  fromRoundInput,
+  untilRoundInput,
+  setFromRoundInput,
+  setUntilRoundInput,
+  visibilityMode,
+  setVisibilityMode,
+  onCommit,
+}: {
+  location: LocationResponse;
+  fromRoundInput: string;
+  untilRoundInput: string;
+  setFromRoundInput: (value: string) => void;
+  setUntilRoundInput: (value: string) => void;
+  visibilityMode: VisibilityMode;
+  setVisibilityMode: (value: VisibilityMode) => void;
+  onCommit: (patch: Partial<LocationResponse>) => void;
+}) {
+  function commitVisibility(nextFrom: string, nextUntil: string) {
+    const parsedFrom = parseRound(nextFrom);
+    const parsedUntil = parseRound(nextUntil);
+    if (parsedFrom === undefined || parsedUntil === undefined) {
+      toast.error('라운드는 1 이상의 숫자로 입력해 주세요');
+      setFromRoundInput(roundToInput(location.from_round));
+      setUntilRoundInput(roundToInput(location.until_round));
+      return;
+    }
+    onCommit({ from_round: parsedFrom, until_round: parsedUntil });
+  }
+
+  function commitRound(kind: 'from_round' | 'until_round', raw: string) {
+    const nextFrom = kind === 'from_round' ? raw : fromRoundInput;
+    const nextUntil = kind === 'until_round' ? raw : untilRoundInput;
+    const parsed = parseRound(raw);
+    if (parsed === undefined) {
+      toast.error('라운드는 1 이상의 숫자로 입력해 주세요');
+      if (kind === 'from_round') setFromRoundInput(roundToInput(location.from_round));
+      else setUntilRoundInput(roundToInput(location.until_round));
+      return;
+    }
+    commitVisibility(nextFrom, nextUntil);
+  }
+
+  function selectMode(nextMode: VisibilityMode) {
+    setVisibilityMode(nextMode);
+    if (nextMode === 'always') {
+      setFromRoundInput('');
+      setUntilRoundInput('');
+      onCommit({ from_round: null, until_round: null });
+      return;
+    }
+    const fallbackFrom = fromRoundInput || '1';
+    const fallbackUntil = untilRoundInput || fallbackFrom;
+    if (nextMode === 'from') {
+      setFromRoundInput(fallbackFrom);
+      setUntilRoundInput('');
+      commitVisibility(fallbackFrom, '');
+    } else if (nextMode === 'until') {
+      setFromRoundInput('');
+      setUntilRoundInput(fallbackUntil);
+      commitVisibility('', fallbackUntil);
+    } else {
+      setFromRoundInput(fallbackFrom);
+      setUntilRoundInput(fallbackUntil);
+      commitVisibility(fallbackFrom, fallbackUntil);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+      <p className="mb-2 text-xs font-semibold text-slate-300">공개 시점</p>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {[
+          ['always', '처음부터 끝까지'],
+          ['from', '특정 라운드부터'],
+          ['until', '특정 라운드까지'],
+          ['range', '특정 구간만'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => selectMode(value as 'always' | 'from' | 'until' | 'range')}
+            className={`rounded-md border px-3 py-2 text-left text-xs transition ${
+              visibilityMode === value
+                ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
+                : 'border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-600'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {visibilityMode !== 'always' ? (
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {visibilityMode === 'from' || visibilityMode === 'range' ? (
+            <label className="text-xs text-slate-500">
+              시작 라운드
+              <input
+                type="number"
+                min={1}
+                aria-label={`${location.name} 시작 라운드`}
+                value={fromRoundInput}
+                onChange={(e) => setFromRoundInput(e.target.value)}
+                onBlur={() => commitRound('from_round', fromRoundInput)}
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              />
+            </label>
+          ) : null}
+          {visibilityMode === 'until' || visibilityMode === 'range' ? (
+            <label className="text-xs text-slate-500">
+              종료 라운드
+              <input
+                type="number"
+                min={1}
+                aria-label={`${location.name} 종료 라운드`}
+                value={untilRoundInput}
+                onChange={(e) => setUntilRoundInput(e.target.value)}
+                onBlur={() => commitRound('until_round', untilRoundInput)}
+                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              />
+            </label>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+type VisibilityMode = 'always' | 'from' | 'until' | 'range';
+
+function getVisibilityMode(fromRoundInput: string, untilRoundInput: string): VisibilityMode {
+  const hasFrom = fromRoundInput.trim() !== '';
+  const hasUntil = untilRoundInput.trim() !== '';
+  if (hasFrom && hasUntil) return 'range';
+  if (hasFrom) return 'from';
+  if (hasUntil) return 'until';
+  return 'always';
 }
 
 function LocationEmptyState({ message, compact = false }: { message: string; compact?: boolean }) {
