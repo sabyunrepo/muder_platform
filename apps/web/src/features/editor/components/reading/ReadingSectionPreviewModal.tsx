@@ -223,7 +223,8 @@ function PreviewBlock({
         mediaById={mediaById}
       />
     );
-  if (type === 'sfx' || type === 'bgm') return <EffectSoundBlock line={line} mediaById={mediaById} />;
+  if (type === 'sfx') return <EffectSoundBlock line={line} mediaById={mediaById} />;
+  if (type === 'bgm') return <LegacyBgmBlock line={line} mediaById={mediaById} />;
   if (type === 'gmNote') return null;
   return (
     <DialogueBlock
@@ -237,7 +238,7 @@ function PreviewBlock({
 
 function isEffectSoundBlock(line: ReadingLineDTO): boolean {
   const type = getReadingPreviewBlockType(line);
-  return type === 'sfx' || type === 'bgm';
+  return type === 'sfx';
 }
 
 function DialogueBlock({
@@ -351,6 +352,28 @@ function EffectSoundBlock({
       <p className="font-semibold text-emerald-100">{label}</p>
       <p className="mt-2 text-xs text-emerald-100/70">
         효과음은 적용 후 자동으로 다음 블록으로 넘어갑니다.
+      </p>
+    </article>
+  );
+}
+
+function LegacyBgmBlock({
+  line,
+  mediaById,
+}: {
+  line: ReadingLineDTO;
+  mediaById: Map<string, MediaResponse>;
+}) {
+  const mode =
+    line.BGMMode === 'stop' ? '정지' : line.BGMMode === 'once' ? '1회 재생' : '반복 재생';
+  return (
+    <article className="rounded-md border border-amber-500/25 bg-amber-500/10 p-5 text-center">
+      <Music className="mx-auto mb-3 h-8 w-8 text-amber-200" />
+      <p className="font-semibold text-amber-100">
+        {getReadingPreviewMediaLabel(line.MediaID, mediaById)} · 레거시 BGM {mode}
+      </p>
+      <p className="mt-2 text-xs text-amber-100/70">
+        이전 버전의 BGM 블록 의미를 보존해 미리보기합니다.
       </p>
     </article>
   );

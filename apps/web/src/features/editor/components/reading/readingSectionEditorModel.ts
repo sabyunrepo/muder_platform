@@ -34,7 +34,7 @@ export function toDraft(section: ReadingSectionResponse): ReadingSectionDraft {
     name: section.name,
     bgmMediaId: section.bgmMediaId ?? null,
     bgmMode: section.bgmMode ?? 'loop',
-    lines: section.lines.filter((line) => line.Type !== 'gmNote').map((line) => ({ ...line })),
+    lines: section.lines.map((line) => ({ ...line })),
     sortOrder: section.sortOrder,
   };
 }
@@ -54,7 +54,7 @@ export function isReadingDraftDirty(
   if ((draft.bgmMediaId ?? null) !== (section.bgmMediaId ?? null)) return true;
   if (draft.bgmMode !== (section.bgmMode ?? 'loop')) return true;
   if (draft.sortOrder !== section.sortOrder) return true;
-  const savedLines = section.lines.filter((line) => line.Type !== 'gmNote');
+  const savedLines = section.lines;
   if (draft.lines.length !== savedLines.length) return true;
 
   return draft.lines.some((draftLine, index) => {
