@@ -583,7 +583,7 @@ describe('CharacterAssignPanel', () => {
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
-  it('역할지 작성기는 미디어 관리 이미지를 mediaId embed로 삽입하고 프리뷰한다', () => {
+  it('역할지 작성기는 미디어 관리 이미지를 mediaId embed로 삽입하고 편집기 안에 표시한다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
@@ -594,7 +594,8 @@ describe('CharacterAssignPanel', () => {
 
     const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
     expect(roleSheet.value).toContain('<MediaEmbed mediaId="image-1" type="image" />');
-    expect(screen.getByText('이미지: 캐릭터 이미지')).toBeDefined();
+    expect(screen.getByText('캐릭터 이미지')).toBeDefined();
+    expect(screen.getByText('이미지 블록')).toBeDefined();
   });
 
   it('역할지 작성기는 지원 영상 미디어를 mediaId embed로 삽입한다', () => {
@@ -608,7 +609,8 @@ describe('CharacterAssignPanel', () => {
 
     const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
     expect(roleSheet.value).toContain('<MediaEmbed mediaId="video-1" type="video" />');
-    expect(screen.getByText('영상: 역할지 영상')).toBeDefined();
+    expect(screen.getByText('역할지 영상')).toBeDefined();
+    expect(screen.getByText('영상 블록')).toBeDefined();
   });
 
   it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {

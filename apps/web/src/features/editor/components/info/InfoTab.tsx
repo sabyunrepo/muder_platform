@@ -13,7 +13,6 @@ import type { MediaResponse, MediaType } from '@/features/editor/mediaApi';
 import { Spinner } from '@/shared/components/ui';
 import { InfoImageField } from './InfoImageField';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
-import { InfoPreview } from './InfoPreview';
 import { ReferencePicker } from './ReferencePicker';
 
 interface InfoTabProps {
@@ -207,7 +206,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   }
 
   return (
-    <section className="grid min-h-full gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <section className="min-h-full">
       <div className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
         {error && (
           <div className="rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
@@ -287,7 +286,6 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
           </button>
         </div>
       </div>
-      <InfoPreview themeId={themeId} title={draft.title} markdown={draft.body} />
     </section>
   );
 }
