@@ -67,6 +67,20 @@ describe("PhaseNodePanel type-specific fields", () => {
     expect(screen.queryByText("장면 시작 트리거")).toBeNull();
   });
 
+  it("진행 시간은 음수를 0으로 보정하고 빈 값은 제거한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel node={makeNode({ duration: 15 })} themeId="t1" onUpdate={onUpdate} />,
+    );
+
+    const durationInput = screen.getByLabelText("시간 (분)");
+    fireEvent.change(durationInput, { target: { value: "-5" } });
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", { duration: 0 });
+
+    fireEvent.change(durationInput, { target: { value: "" } });
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", { duration: undefined });
+  });
+
   it("토론 장면은 시간과 새 토론방 UI를 표시한다", () => {
     renderWithQC(
       <PhaseNodePanel

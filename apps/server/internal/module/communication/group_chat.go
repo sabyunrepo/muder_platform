@@ -178,15 +178,9 @@ func (m *GroupChatModule) handleJoin(playerID uuid.UUID, payload json.RawMessage
 		m.removeFromRoom(playerID, currentRoom)
 	}
 
-	// Check room capacity.
-	maxMembers := m.config.MaxPerRoom
-	for _, r := range m.config.Rooms {
-		if r.ID == p.RoomID && r.MaxMembers > 0 {
-			maxMembers = r.MaxMembers
-			break
-		}
-	}
-	if len(room.Members) >= maxMembers {
+	// Check room capacity. A zero capacity means unlimited.
+	maxMembers := m.roomMaxMembersLocked(p.RoomID)
+	if maxMembers > 0 && len(room.Members) >= maxMembers {
 		m.mu.Unlock()
 		return fmt.Errorf("group_chat: room %q is full (%d/%d)", p.RoomID, len(room.Members), maxMembers)
 	}
@@ -421,6 +415,18 @@ func normalizeDiscussionPrivateRoom(room discussionPrivateRoomPolicy, index int,
 	}
 }
 
+func (m *GroupChatModule) roomMaxMembersLocked(roomID string) int {
+	if roomID == "main" {
+		return 0
+	}
+	for _, room := range m.config.Rooms {
+		if room.ID == roomID && room.MaxMembers > 0 {
+			return room.MaxMembers
+		}
+	}
+	return m.config.MaxPerRoom
+}
+
 func uniqueDiscussionRoomID(preferred string, index int, usedRoomIDs map[string]struct{}) string {
 	id := preferred
 	if id == "" {
@@ -608,15 +614,11 @@ func (m *GroupChatModule) BuildState() (json.RawMessage, error) {
 		if state, ok := m.rooms[r.ID]; ok {
 			memberCount = len(state.Members)
 		}
-		maxMembers := m.config.MaxPerRoom
-		if r.MaxMembers > 0 {
-			maxMembers = r.MaxMembers
-		}
 		rooms = append(rooms, groupChatRoomInfo{
 			ID:          r.ID,
 			Name:        r.Name,
 			MemberCount: memberCount,
-			MaxMembers:  maxMembers,
+			MaxMembers:  m.roomMaxMembersLocked(r.ID),
 		})
 	}
 
@@ -699,10 +701,7 @@ func (m *GroupChatModule) BuildStateFor(playerID uuid.UUID) (json.RawMessage, er
 		info := groupChatRoomInfo{
 			ID:         r.ID,
 			Name:       r.Name,
-			MaxMembers: m.config.MaxPerRoom,
-		}
-		if r.MaxMembers > 0 {
-			info.MaxMembers = r.MaxMembers
+			MaxMembers: m.roomMaxMembersLocked(r.ID),
 		}
 		if state, ok := m.rooms[r.ID]; ok {
 			info.MemberCount = len(state.Members)

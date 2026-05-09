@@ -8,6 +8,9 @@ export const PHASE_TYPE_OPTIONS = [
 export type SupportedPhaseType = (typeof PHASE_TYPE_OPTIONS)[number]["value"];
 
 export function normalizePhaseType(value: string | undefined): SupportedPhaseType {
+  if (value === "reading") return "story_progression";
+  if (value === "voting_question") return "voting";
+
   return PHASE_TYPE_OPTIONS.some((option) => option.value === value)
     ? (value as SupportedPhaseType)
     : "investigation";

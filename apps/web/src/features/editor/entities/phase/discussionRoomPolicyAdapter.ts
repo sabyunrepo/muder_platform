@@ -27,7 +27,9 @@ export function normalizeDiscussionRoomPolicy(
     privateRooms,
     closeBehavior: "return_to_main",
     roomKind: normalizeRoomKind(policy?.roomKind),
-    privateRoomsEnabled: policy?.privateRoomsEnabled ?? privateRooms.length > 0,
+    privateRoomsEnabled: Array.isArray(policy?.privateRooms)
+      ? privateRooms.length > 0
+      : policy?.privateRoomsEnabled ?? privateRooms.length > 0,
     privateRoomName: cleanName(policy?.privateRoomName, DEFAULT_DISCUSSION_ROOM_POLICY.privateRoomName),
     participantMode: normalizeParticipantMode(policy?.participantMode),
     participantSummary: policy?.participantSummary?.trim() ?? "",
@@ -60,11 +62,14 @@ function cleanName(value: unknown, fallback: string): string {
 }
 
 function normalizePrivateRooms(policy: Partial<DiscussionRoomPolicy> | null | undefined): DiscussionPrivateRoomPolicy[] {
-  const privateRooms = Array.isArray(policy?.privateRooms)
+  const hasExplicitPrivateRooms = Array.isArray(policy?.privateRooms);
+  const privateRooms = hasExplicitPrivateRooms
     ? policy.privateRooms.map((room, index) => normalizePrivateRoom(room, index))
     : [];
 
-  if (privateRooms.length > 0 || !policy?.privateRoomsEnabled) return privateRooms;
+  if (hasExplicitPrivateRooms || privateRooms.length > 0 || !policy?.privateRoomsEnabled) {
+    return privateRooms;
+  }
 
   return [
     {

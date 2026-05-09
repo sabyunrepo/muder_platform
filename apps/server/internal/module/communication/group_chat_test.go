@@ -491,6 +491,44 @@ func TestGroupChatModule_ApplyDiscussionRoomPolicyLegacyPrivateRoomStillWorks(t 
 	}
 }
 
+func TestGroupChatModule_DiscussionMainRoomDoesNotInheritPrivateRoomCapacity(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "전체 회의",
+		"availability": "phase_active"
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	for i := 0; i < 4; i++ {
+		if err := m.HandleMessage(context.Background(), uuid.New(), "groupchat:join",
+			json.RawMessage(`{"roomId":"main"}`)); err != nil {
+			t.Fatalf("join main %d: %v", i, err)
+		}
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Rooms) != 1 {
+		t.Fatalf("rooms = %d, want main only: %+v", len(s.Rooms), s.Rooms)
+	}
+	if s.Rooms[0].ID != "main" || s.Rooms[0].MemberCount != 4 || s.Rooms[0].MaxMembers != 0 {
+		t.Fatalf("main room should be unlimited and contain all members: %+v", s.Rooms[0])
+	}
+}
+
 func TestGroupChatModule_DiscussionPrivateRoomNonPositiveTimeLimitsAreUnlimited(t *testing.T) {
 	m, _ := initGroupChat(t)
 	fakeTimers := &fakeGroupChatTimers{}

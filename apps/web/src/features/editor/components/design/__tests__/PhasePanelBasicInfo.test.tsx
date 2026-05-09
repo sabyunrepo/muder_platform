@@ -57,7 +57,7 @@ describe("PhasePanelBasicInfo", () => {
     expect(onChange).toHaveBeenCalledWith({ label: "새 추리 장면" });
   });
 
-  it("리딩과 투표/질문은 기존 저장값을 그대로 사용한다", () => {
+  it("리딩과 투표/질문은 새 타입 값만 선택지로 표시한다", () => {
     const onChange = vi.fn();
 
     render(
@@ -74,7 +74,31 @@ describe("PhasePanelBasicInfo", () => {
 
     fireEvent.change(select, { target: { value: "voting" } });
     expect(onChange).toHaveBeenCalledWith({ phase_type: "voting" });
-    expect(screen.queryByRole("option", { name: "reading" })).toBeNull();
-    expect(screen.queryByRole("option", { name: "voting_question" })).toBeNull();
+    expect(Array.from(select.options, (option) => option.value)).not.toContain("reading");
+    expect(Array.from(select.options, (option) => option.value)).not.toContain("voting_question");
+  });
+
+  it("레거시 타입 저장값은 대응되는 새 타입으로 표시한다", () => {
+    const { rerender } = render(
+      <PhasePanelBasicInfo
+        label=""
+        phaseType="reading"
+        onChange={vi.fn()}
+        onFlush={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("story_progression");
+
+    rerender(
+      <PhasePanelBasicInfo
+        label=""
+        phaseType="voting_question"
+        onChange={vi.fn()}
+        onFlush={vi.fn()}
+      />,
+    );
+
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("voting");
   });
 });

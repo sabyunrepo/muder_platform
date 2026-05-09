@@ -82,6 +82,23 @@ describe("discussionRoomPolicyAdapter", () => {
     });
   });
 
+  it("명시적인 빈 privateRooms 패치는 마지막 밀담방을 제거한다", () => {
+    expect(
+      patchDiscussionRoomPolicy(
+        {
+          enabled: true,
+          privateRoomsEnabled: true,
+          privateRoomName: "기존 밀담",
+        },
+        { privateRooms: [] },
+      ),
+    ).toMatchObject({
+      enabled: true,
+      privateRooms: [],
+      privateRoomsEnabled: false,
+    });
+  });
+
   it("제작자 요약 문구에 메인 토론방과 밀담방 이름을 포함한다", () => {
     expect(formatDiscussionRoomSummary(undefined)).toBe("토론방 사용 안 함");
     expect(
