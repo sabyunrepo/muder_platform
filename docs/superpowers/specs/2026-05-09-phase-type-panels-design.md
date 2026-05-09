@@ -12,12 +12,12 @@
 
 - `investigation` — 수사
 - `discussion` — 토론
-- `voting_question` — 투표/질문
-- `reading` — 리딩
+- `voting` — 투표/질문
+- `story_progression` — 리딩
 
-기존 `free`, `intermission`, `story_progression` 옵션은 새 UI 선택지에서 제거한다.
+기존 `free`, `intermission` 옵션은 새 UI 선택지에서 제거한다.
 
-기존 저장 데이터 호환을 위해 `story_progression`은 읽기/리딩 타입으로 표시하고 처리한다.
+새 저장 타입으로 `voting_question`이나 `reading`을 만들지 않는다. 현재 런타임은 투표 phase를 `voting`으로 알고 있고, 읽기 대사는 phase type이 아니라 `onEnter`의 정보 전달 액션으로 실행된다. 따라서 제작자 UI에서는 4개 타입처럼 보이지만 저장값은 기존 계약을 유지한다.
 
 ## Type-Specific UI
 
@@ -66,7 +66,7 @@
 
 ### 투표/질문
 
-기존 `투표` 타입은 `투표/질문`으로 표시한다.
+기존 `voting` 타입은 `투표/질문`으로 표시한다.
 
 투표/질문은 별도 투표 규칙을 이 패널에서 편집하지 않는다. 질문관리에서 만든 질문을 진행하는 장면으로 본다.
 
@@ -80,7 +80,7 @@
 
 ### 리딩
 
-리딩은 읽기 대사 탭에서 저장한 읽기 대사 목록을 가져와 선택지로 보여준다.
+리딩은 기존 `story_progression` 저장값을 사용하고, 읽기 대사 탭에서 저장한 읽기 대사 목록을 가져와 선택지로 보여준다.
 
 페이즈 패널에는 다음을 둔다.
 
@@ -96,9 +96,37 @@
 
 타입 선택 UI는 4개만 보여준다. 저장 데이터에는 기존 타입이 남아 있을 수 있으므로 어댑터 계층에서 호환 표시를 처리한다.
 
-- `story_progression`은 `reading`으로 표시한다.
-- 새 저장은 가능한 경우 `reading` 값을 사용한다.
-- 기존 엔진/백엔드 계약이 아직 `story_progression`을 기대한다면, 저장 직전 adapter에서 호환 변환을 둔다.
+- `story_progression`은 UI에서 `리딩`으로 표시한다.
+- `voting`은 UI에서 `투표/질문`으로 표시한다.
+- 새 저장도 `story_progression`, `voting`을 그대로 사용한다.
+- `reading`, `voting_question`은 이번 작업에서 저장값으로 도입하지 않는다.
+
+이 결정은 현재 코드 기준의 호환성을 우선한다.
+
+- `packages/shared/src/game/types.ts`의 게임 진행 phase enum에는 `voting`이 있고 `voting_question`은 없다.
+- `apps/server/internal/engine/module_types.go`의 `PhaseDefinition.Type`은 런타임 분기 기준이 아니라 표시/메타데이터 성격이다.
+- 읽기 대사는 `apps/web/src/features/editor/entities/phase/readingPlacementAdapter.ts`가 `DELIVER_INFORMATION` 액션의 `reading_section_ids`로 저장한다.
+- 질문관리는 현재 ending branch 설정의 `questions` 영역에 있으며, phase panel 안에서 질문 선택/규칙을 직접 저장하지 않는다.
+
+토론방은 별도 계약 변경이 필요하다. 현재 frontend `DiscussionRoomPolicy`와 backend `engine.DiscussionRoomPolicy`는 단일 private room/conditional room 중심이며, 사용자 요구인 여러 밀담방, 방별 인원수, 방별 제한시간을 그대로 담는 배열 구조가 없다.
+
+권장 계약:
+
+```ts
+type DiscussionRoomPolicy = {
+  enabled: true;
+  mainRoomName: string;
+  privateRooms: Array<{
+    id: string;
+    name: string;
+    maxMembers: number;
+    timeLimitSeconds: number | null;
+  }>;
+  closeBehavior: "return_to_main";
+};
+```
+
+`timeLimitSeconds: null`은 무제한을 뜻한다. 백엔드 `group_chat` 런타임은 `privateRooms[]`를 여러 방으로 생성하고, 방별 제한시간이 끝난 플레이어를 전체토론방으로 복귀시키는 동작을 지원해야 한다.
 
 타입 변경 시 이전 타입의 설정이 남아 UI에 보이면 안 된다. 다만 기존 데이터를 즉시 삭제하지 않고, 타입별 패널이 자기 타입에 맞는 필드만 읽고 저장하도록 한다.
 
@@ -136,11 +164,13 @@
 - `수사` 선택 시 라벨/타입/진행 시간/자동 진행 안내만 보인다.
 - `토론` 선택 시 전체토론방 기본값과 밀담방 이름/인원수/제한시간 입력이 보인다.
 - 토론 밀담방 제한시간을 비우면 무제한으로 저장된다.
-- `투표/질문` 선택 시 질문 상세 섹션 없이 라벨/타입/진행 시간만 보인다.
+- `투표/질문` 선택 시 저장값은 `voting`이고, 질문 상세 섹션 없이 라벨/타입/진행 시간만 보인다.
 - `리딩` 선택 시 진행 시간 없이 읽기 대사 목록 선택 UI가 보인다.
-- legacy `story_progression` 데이터는 리딩으로 표시된다.
+- `리딩` 선택 시 저장값은 `story_progression`이다.
 
-## Open Questions
+## Resolved Decisions
 
-- 백엔드/runtime이 새 `reading` 값을 바로 받을 수 있는지, 아니면 저장 시 `story_progression`으로 호환 변환해야 하는지 구현 전에 확인한다.
-- `투표/질문`이 질문관리와 어떤 저장 키로 연결되는지는 질문관리 쪽 계약을 확인한 뒤 별도 구현 범위로 판단한다.
+- 리딩은 새 `reading` 타입을 저장하지 않고 기존 `story_progression`을 유지한다.
+- 투표/질문은 새 `voting_question` 타입을 저장하지 않고 기존 `voting`을 유지한다.
+- 질문 선택, 선택지, 응답 대상, 집계 규칙은 phase panel에서 제거하고 질문관리/ending branch 쪽 계약으로 남긴다.
+- 토론 다중 밀담방은 frontend-only 작업이 아니라 shared contract, backend runtime, frontend adapter를 함께 바꾸는 작업으로 본다.
