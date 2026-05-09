@@ -14,19 +14,28 @@ export type DiscussionRoomAvailability = "phase_active" | "condition";
 export type EndingVisibility = "public" | "players_only" | "private_note";
 export type DiscussionRoomKind = "all" | "small_group" | "private";
 export type DiscussionParticipantMode = "all" | "characters" | "condition";
-export type DiscussionRoomCloseBehavior = "close_on_exit" | "keep_until_next_scene";
+export type DiscussionRoomCloseBehavior = "return_to_main";
+export type LegacyDiscussionRoomCloseBehavior = "close_on_exit" | "keep_until_next_scene";
+
+export interface DiscussionPrivateRoomPolicy {
+  id: string;
+  name: string;
+  maxMembers: number;
+  timeLimitSeconds: number | null;
+}
 
 export interface DiscussionRoomPolicy {
   enabled: boolean;
-  roomKind: DiscussionRoomKind;
   mainRoomName: string;
-  privateRoomsEnabled: boolean;
-  privateRoomName: string;
-  participantMode: DiscussionParticipantMode;
+  privateRooms: DiscussionPrivateRoomPolicy[];
+  closeBehavior: DiscussionRoomCloseBehavior | LegacyDiscussionRoomCloseBehavior;
+  roomKind?: DiscussionRoomKind;
+  privateRoomsEnabled?: boolean;
+  privateRoomName?: string;
+  participantMode?: DiscussionParticipantMode;
   participantSummary?: string;
-  availability: DiscussionRoomAvailability;
+  availability?: DiscussionRoomAvailability;
   conditionalRoomName?: string;
-  closeBehavior: DiscussionRoomCloseBehavior;
 }
 
 export interface FlowNodeData {

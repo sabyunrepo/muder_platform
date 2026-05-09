@@ -131,11 +131,15 @@ func TestPhaseEngine_DispatchesDiscussionRoomPolicyAfterOnEnterActions(t *testin
 			ID:   "discussion",
 			Name: "Discussion",
 			DiscussionRoomPolicy: &DiscussionRoomPolicy{
-				Enabled:             true,
-				MainRoomName:        "추리 회의",
-				PrivateRoomsEnabled: true,
-				PrivateRoomName:     "밀담방",
-				Availability:        "phase_active",
+				Enabled:      true,
+				MainRoomName: "추리 회의",
+				PrivateRooms: []DiscussionPrivateRoomPolicy{{
+					ID:         "room-a",
+					Name:       "밀담방 A",
+					MaxMembers: 3,
+				}},
+				CloseBehavior: "return_to_main",
+				Availability:  "phase_active",
 			},
 			OnEnter: json.RawMessage(`[{"type":"enable_chat"}]`),
 		},
@@ -154,7 +158,8 @@ func TestPhaseEngine_DispatchesDiscussionRoomPolicyAfterOnEnterActions(t *testin
 	if err := json.Unmarshal(groupChat.received[0].Params, &params); err != nil {
 		t.Fatalf("unmarshal discussion policy params: %v", err)
 	}
-	if !params.Enabled || params.MainRoomName != "추리 회의" || params.PrivateRoomName != "밀담방" {
+	if !params.Enabled || params.MainRoomName != "추리 회의" || params.CloseBehavior != "return_to_main" ||
+		len(params.PrivateRooms) != 1 || params.PrivateRooms[0].ID != "room-a" {
 		t.Fatalf("policy params = %#v", params)
 	}
 	if len(textChat.received) != 1 || textChat.received[0].Action != ActionUnmuteChat {

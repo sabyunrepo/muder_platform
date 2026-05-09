@@ -22,7 +22,14 @@ describe("PhasePanelBasicInfo", () => {
     );
 
     const select = screen.getByRole("combobox") as HTMLSelectElement;
-    expect(select.value).toBe("");
+    const options = screen.getAllByRole("option") as HTMLOptionElement[];
+    expect(options.map((option) => [option.value, option.textContent])).toEqual([
+      ["investigation", "수사"],
+      ["discussion", "토론"],
+      ["voting", "투표/질문"],
+      ["story_progression", "리딩"],
+    ]);
+    expect(select.value).toBe("investigation");
 
     fireEvent.change(select, { target: { value: "voting" } });
     expect(onChange).toHaveBeenCalledWith({ phase_type: "voting" });
@@ -48,5 +55,26 @@ describe("PhasePanelBasicInfo", () => {
     });
 
     expect(onChange).toHaveBeenCalledWith({ label: "새 추리 장면" });
+  });
+
+  it("리딩과 투표/질문은 기존 저장값을 그대로 사용한다", () => {
+    const onChange = vi.fn();
+
+    render(
+      <PhasePanelBasicInfo
+        label=""
+        phaseType="story_progression"
+        onChange={onChange}
+        onFlush={vi.fn()}
+      />,
+    );
+
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
+    expect(select.value).toBe("story_progression");
+
+    fireEvent.change(select, { target: { value: "voting" } });
+    expect(onChange).toHaveBeenCalledWith({ phase_type: "voting" });
+    expect(screen.queryByRole("option", { name: "reading" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "voting_question" })).toBeNull();
   });
 });

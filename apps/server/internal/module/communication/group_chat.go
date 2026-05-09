@@ -25,7 +25,11 @@ type GroupChatModule struct {
 	isOpen  bool
 	isMuted bool
 	// playerRoom tracks which room each player is in for fast lookup.
-	playerRoom map[uuid.UUID]string
+	playerRoom      map[uuid.UUID]string
+	roomTimers      map[string]groupChatTimer
+	roomTimerTokens map[string]uint64
+	nextTimerToken  uint64
+	timerFactory    groupChatTimerFactory
 }
 
 type groupChatConfig struct {
@@ -37,19 +41,47 @@ type groupChatConfig struct {
 
 // GroupRoom defines a chat room from config.
 type GroupRoom struct {
-	ID         string `json:"id"`
-	Name       string `json:"name"`
-	MaxMembers int    `json:"maxMembers"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	MaxMembers       int    `json:"maxMembers"`
+	TimeLimitSeconds *int   `json:"timeLimitSeconds,omitempty"`
 }
 
 type discussionRoomPolicy struct {
-	Enabled             bool            `json:"enabled"`
-	MainRoomName        string          `json:"mainRoomName"`
-	PrivateRoomsEnabled bool            `json:"privateRoomsEnabled"`
-	PrivateRoomName     string          `json:"privateRoomName"`
-	Availability        string          `json:"availability"`
-	ConditionalRoomName string          `json:"conditionalRoomName"`
-	Condition           json.RawMessage `json:"condition,omitempty"`
+	Enabled             bool                          `json:"enabled"`
+	MainRoomName        string                        `json:"mainRoomName"`
+	PrivateRooms        []discussionPrivateRoomPolicy `json:"privateRooms"`
+	CloseBehavior       string                        `json:"closeBehavior"`
+	PrivateRoomsEnabled bool                          `json:"privateRoomsEnabled"`
+	PrivateRoomName     string                        `json:"privateRoomName"`
+	Availability        string                        `json:"availability"`
+	ConditionalRoomName string                        `json:"conditionalRoomName"`
+	Condition           json.RawMessage               `json:"condition,omitempty"`
+}
+
+type discussionPrivateRoomPolicy struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	MaxMembers       int    `json:"maxMembers"`
+	TimeLimitSeconds *int   `json:"timeLimitSeconds"`
+}
+
+type groupChatTimer interface {
+	Stop() bool
+}
+
+type groupChatTimerFactory func(time.Duration, func()) groupChatTimer
+
+type realGroupChatTimer struct {
+	timer *time.Timer
+}
+
+func (t realGroupChatTimer) Stop() bool {
+	return t.timer.Stop()
+}
+
+func newGroupChatTimer(d time.Duration, fn func()) groupChatTimer {
+	return realGroupChatTimer{timer: time.AfterFunc(d, fn)}
 }
 
 // RoomState holds runtime state for a single group chat room.
@@ -60,7 +92,7 @@ type RoomState struct {
 
 // NewGroupChatModule creates a new GroupChatModule instance.
 func NewGroupChatModule() *GroupChatModule {
-	return &GroupChatModule{}
+	return &GroupChatModule{timerFactory: newGroupChatTimer}
 }
 
 func (m *GroupChatModule) Name() string { return "group_chat" }
@@ -72,6 +104,11 @@ func (m *GroupChatModule) Init(_ context.Context, deps engine.ModuleDeps, config
 	m.deps = deps
 	m.rooms = make(map[string]*RoomState)
 	m.playerRoom = make(map[uuid.UUID]string)
+	m.roomTimers = make(map[string]groupChatTimer)
+	m.roomTimerTokens = make(map[string]uint64)
+	if m.timerFactory == nil {
+		m.timerFactory = newGroupChatTimer
+	}
 
 	m.config = groupChatConfig{
 		MaxPerRoom:   3,
@@ -157,6 +194,7 @@ func (m *GroupChatModule) handleJoin(playerID uuid.UUID, payload json.RawMessage
 	room.Members = append(room.Members, playerID)
 	m.playerRoom[playerID] = p.RoomID
 	roomID := p.RoomID
+	m.startRoomTimerLocked(roomID)
 	m.mu.Unlock()
 
 	m.deps.EventBus.Publish(engine.Event{
@@ -204,6 +242,9 @@ func (m *GroupChatModule) removeFromRoom(playerID uuid.UUID, roomID string) {
 		}
 	}
 	delete(m.playerRoom, playerID)
+	if len(room.Members) == 0 {
+		m.stopRoomTimerLocked(roomID)
+	}
 }
 
 func (m *GroupChatModule) handleSend(playerID uuid.UUID, payload json.RawMessage) error {
@@ -273,6 +314,7 @@ func (m *GroupChatModule) ReactTo(_ context.Context, action engine.PhaseActionPa
 		})
 	case engine.ActionCloseGroupChat:
 		// Clear all rooms.
+		m.stopRoomTimersLocked()
 		for _, room := range m.rooms {
 			room.Members = make([]uuid.UUID, 0)
 			room.Messages = make([]ChatMessage, 0)
@@ -315,6 +357,7 @@ func (m *GroupChatModule) ReactTo(_ context.Context, action engine.PhaseActionPa
 }
 
 func (m *GroupChatModule) applyDiscussionRoomPolicy(policy discussionRoomPolicy) {
+	m.stopRoomTimersLocked()
 	m.playerRoom = make(map[uuid.UUID]string)
 	m.rooms = make(map[string]*RoomState)
 	m.config.Rooms = nil
@@ -324,15 +367,27 @@ func (m *GroupChatModule) applyDiscussionRoomPolicy(policy discussionRoomPolicy)
 		return
 	}
 
+	usedRoomIDs := map[string]struct{}{
+		"main":        {},
+		"conditional": {},
+	}
 	rooms := []GroupRoom{{
 		ID:   "main",
-		Name: discussionRoomName(policy.MainRoomName, "전체 토론"),
+		Name: discussionRoomName(policy.MainRoomName, "전체토론방"),
 	}}
-	if policy.PrivateRoomsEnabled {
+	if len(policy.PrivateRooms) > 0 {
+		for i, privateRoom := range policy.PrivateRooms {
+			room := normalizeDiscussionPrivateRoom(privateRoom, i, usedRoomIDs)
+			rooms = append(rooms, room)
+			usedRoomIDs[room.ID] = struct{}{}
+		}
+	} else if policy.PrivateRoomsEnabled {
+		roomID := uniqueDiscussionRoomID("private", 0, usedRoomIDs)
 		rooms = append(rooms, GroupRoom{
-			ID:   "private",
+			ID:   roomID,
 			Name: discussionRoomName(policy.PrivateRoomName, "밀담방"),
 		})
+		usedRoomIDs[roomID] = struct{}{}
 	}
 	if policy.Availability == "condition" && strings.TrimSpace(policy.ConditionalRoomName) != "" {
 		rooms = append(rooms, GroupRoom{
@@ -351,12 +406,143 @@ func (m *GroupChatModule) applyDiscussionRoomPolicy(policy discussionRoomPolicy)
 	m.isOpen = policy.Availability != "condition"
 }
 
+func normalizeDiscussionPrivateRoom(room discussionPrivateRoomPolicy, index int, usedRoomIDs map[string]struct{}) GroupRoom {
+	id := uniqueDiscussionRoomID(strings.TrimSpace(room.ID), index, usedRoomIDs)
+	name := discussionRoomName(room.Name, fmt.Sprintf("밀담방 %d", index+1))
+	maxMembers := room.MaxMembers
+	if maxMembers < 2 {
+		maxMembers = 2
+	}
+	return GroupRoom{
+		ID:               id,
+		Name:             name,
+		MaxMembers:       maxMembers,
+		TimeLimitSeconds: room.TimeLimitSeconds,
+	}
+}
+
+func uniqueDiscussionRoomID(preferred string, index int, usedRoomIDs map[string]struct{}) string {
+	id := preferred
+	if id == "" {
+		id = fmt.Sprintf("private-%d", index+1)
+	}
+	if _, exists := usedRoomIDs[id]; !exists {
+		return id
+	}
+	for i := index + 1; ; i++ {
+		candidate := fmt.Sprintf("private-%d", i)
+		if _, exists := usedRoomIDs[candidate]; !exists {
+			return candidate
+		}
+	}
+}
+
 func discussionRoomName(value string, fallback string) string {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
 		return fallback
 	}
 	return trimmed
+}
+
+func (m *GroupChatModule) startRoomTimerLocked(roomID string) {
+	if _, exists := m.roomTimers[roomID]; exists {
+		return
+	}
+	limit := m.roomTimeLimitSecondsLocked(roomID)
+	if limit <= 0 {
+		return
+	}
+	m.nextTimerToken++
+	token := m.nextTimerToken
+	m.roomTimerTokens[roomID] = token
+	m.roomTimers[roomID] = m.timerFactory(time.Duration(limit)*time.Second, func() {
+		m.expireRoomToMain(roomID, token)
+	})
+}
+
+func (m *GroupChatModule) roomTimeLimitSecondsLocked(roomID string) int {
+	for _, room := range m.config.Rooms {
+		if room.ID == roomID && room.TimeLimitSeconds != nil {
+			return *room.TimeLimitSeconds
+		}
+	}
+	return 0
+}
+
+func (m *GroupChatModule) stopRoomTimerLocked(roomID string) {
+	timer, ok := m.roomTimers[roomID]
+	if !ok {
+		return
+	}
+	timer.Stop()
+	delete(m.roomTimers, roomID)
+	delete(m.roomTimerTokens, roomID)
+}
+
+func (m *GroupChatModule) stopRoomTimersLocked() {
+	for roomID, timer := range m.roomTimers {
+		timer.Stop()
+		delete(m.roomTimers, roomID)
+		delete(m.roomTimerTokens, roomID)
+	}
+}
+
+func (m *GroupChatModule) expireRoomToMain(roomID string, token uint64) {
+	m.mu.Lock()
+	currentToken, hasToken := m.roomTimerTokens[roomID]
+	if !hasToken || currentToken != token {
+		m.mu.Unlock()
+		return
+	}
+	room, ok := m.rooms[roomID]
+	mainRoom, hasMain := m.rooms["main"]
+	if !ok || !hasMain || roomID == "main" {
+		delete(m.roomTimers, roomID)
+		delete(m.roomTimerTokens, roomID)
+		m.mu.Unlock()
+		return
+	}
+
+	moved := append([]uuid.UUID(nil), room.Members...)
+	room.Members = make([]uuid.UUID, 0)
+	if len(moved) == 0 {
+		delete(m.roomTimers, roomID)
+		delete(m.roomTimerTokens, roomID)
+		m.mu.Unlock()
+		return
+	}
+	for _, playerID := range moved {
+		m.playerRoom[playerID] = "main"
+		if !uuidSliceContains(mainRoom.Members, playerID) {
+			mainRoom.Members = append(mainRoom.Members, playerID)
+		}
+	}
+	delete(m.roomTimers, roomID)
+	delete(m.roomTimerTokens, roomID)
+	m.mu.Unlock()
+
+	movedPlayerIDs := make([]string, len(moved))
+	for i, playerID := range moved {
+		movedPlayerIDs[i] = playerID.String()
+	}
+	m.deps.EventBus.Publish(engine.Event{
+		Type: "groupchat.room_expired",
+		Payload: map[string]any{
+			"roomId":         roomID,
+			"targetRoomId":   "main",
+			"movedPlayerIds": movedPlayerIDs,
+		},
+	})
+}
+
+func uuidSliceContains(values []uuid.UUID, target uuid.UUID) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 // SupportedActions returns the phase actions this module handles.
@@ -447,6 +633,7 @@ func (m *GroupChatModule) Cleanup(_ context.Context) error {
 
 	m.rooms = nil
 	m.playerRoom = nil
+	m.stopRoomTimersLocked()
 	return nil
 }
 
