@@ -9,20 +9,13 @@ import type {
 } from "../../flowTypes";
 import { flowKeys } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
-import {
-  ActionListEditor,
-  hasIncompletePresentationCueActions,
-  isPresentationCueAction,
-  PRESENTATION_CUE_ACTION_TYPES,
-} from "./ActionListEditor";
-import { InformationDeliveryPanel } from "./InformationDeliveryPanel";
-import { StoryProgressionPanel } from "./StoryProgressionPanel";
-import { DELIVER_INFORMATION_ACTION } from "../../entities/phase/phaseEntityAdapter";
-import { GRANT_CLUE_ACTION } from "../../entities/shared/actionAdapter";
+import { hasIncompletePresentationCueActions } from "./ActionListEditor";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
-import { PhasePanelTimerSettings } from "./PhasePanelTimerSettings";
-import { PhasePanelAdvanceToggle } from "./PhasePanelAdvanceToggle";
-import { DiscussionRoomPolicyPanel } from "./DiscussionRoomPolicyPanel";
+import { normalizePhaseType } from "./phaseTypeOptions";
+import { InvestigationPhasePanel } from "./InvestigationPhasePanel";
+import { DiscussionPhasePanel } from "./DiscussionPhasePanel";
+import { VotingQuestionPhasePanel } from "./VotingQuestionPhasePanel";
+import { ReadingPhasePanel } from "./ReadingPhasePanel";
 
 interface PhaseNodePanelProps {
   node: Node;
@@ -38,7 +31,7 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
   const data = node.data as FlowNodeData;
-  const isStoryProgression = data.phase_type === "story_progression";
+  const phaseType = normalizePhaseType(data.phase_type);
 
   const debouncer = useDebouncedMutation<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
@@ -82,101 +75,38 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
         onChange={handleChange}
         onFlush={flush}
       />
-      <PhasePanelTimerSettings
-        duration={data.duration}
-        rounds={data.rounds}
-        onChange={handleChange}
-        onFlush={flush}
-      />
-      <PhasePanelAdvanceToggle
-        autoAdvance={data.autoAdvance}
-        warningAt={data.warningAt}
-        onChange={handleChange}
-        onFlush={flush}
-      />
-
-      <div className="border-t border-slate-800" />
-
-      {isStoryProgression ? (
-        <StoryProgressionPanel
+      {phaseType === "investigation" ? (
+        <InvestigationPhasePanel
+          duration={data.duration}
+          onChange={handleChange}
+          onFlush={flush}
+        />
+      ) : null}
+      {phaseType === "discussion" ? (
+        <DiscussionPhasePanel
+          duration={data.duration}
+          policy={data.discussionRoomPolicy}
+          onChange={handleChange}
+          onFlush={flush}
+        />
+      ) : null}
+      {phaseType === "voting" ? (
+        <VotingQuestionPhasePanel
+          duration={data.duration}
+          onChange={handleChange}
+          onFlush={flush}
+        />
+      ) : null}
+      {phaseType === "story_progression" ? (
+        <ReadingPhasePanel
           key={node.id}
           themeId={themeId}
           phaseData={data}
           onChange={handleChange}
         />
-      ) : (
-        <InformationDeliveryPanel
-          key={node.id}
-          themeId={themeId}
-          phaseData={data}
-          onChange={handleChange}
-        />
-      )}
-
-      <div className="border-t border-slate-800" />
-
-      <DiscussionRoomPolicyPanel
-        policy={data.discussionRoomPolicy}
-        onChange={(discussionRoomPolicy) => handleChange({ discussionRoomPolicy })}
-      />
-
-      <div className="border-t border-slate-800" />
-
-      <ActionListEditor
-        label="장면 연출"
-        actions={getPresentationCueActions((data.onEnter as PhaseAction[]) ?? [])}
-        onChange={(actions) => handleChange({
-          onEnter: mergePresentationCueActions((data.onEnter as PhaseAction[]) ?? [], actions),
-        })}
-        allowedTypes={PRESENTATION_CUE_ACTION_TYPES}
-        themeId={themeId}
-      />
-
-      <div className="border-t border-slate-800" />
-
-      <ActionListEditor
-        label="장면 시작 트리거"
-        actions={(data.onEnter as PhaseAction[]) ?? []}
-        onChange={(actions) => handleChange({ onEnter: actions })}
-        hiddenTypes={[
-          ...PRESENTATION_CUE_ACTION_TYPES,
-          DELIVER_INFORMATION_ACTION,
-          "deliver_information",
-          GRANT_CLUE_ACTION,
-          "grant_clue",
-        ]}
-        themeId={themeId}
-      />
-      <ActionListEditor
-        label="장면 종료 트리거"
-        actions={(data.onExit as PhaseAction[]) ?? []}
-        onChange={(actions) => handleChange({ onExit: actions })}
-        themeId={themeId}
-      />
+      ) : null}
     </div>
   );
-}
-
-function getPresentationCueActions(actions: PhaseAction[]): PhaseAction[] {
-  return actions.filter(isPresentationCueAction);
-}
-
-function mergePresentationCueActions(
-  currentActions: PhaseAction[],
-  presentationActions: PhaseAction[],
-): PhaseAction[] {
-  const remainingPresentationActions = [...presentationActions];
-
-  const mergedActions = currentActions.flatMap((action) => {
-    if (!isPresentationCueAction(action)) {
-      return [action];
-    }
-
-    const replacementAction = remainingPresentationActions.shift();
-    return replacementAction ? [replacementAction] : [];
-  });
-
-  return [...mergedActions, ...remainingPresentationActions];
 }
 
 function hasIncompleteActionPatch(patch: Partial<FlowNodeData>): boolean {

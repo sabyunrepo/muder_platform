@@ -52,13 +52,22 @@ type PhaseDefinition struct {
 }
 
 type DiscussionRoomPolicy struct {
-	Enabled             bool            `json:"enabled"`
-	MainRoomName        string          `json:"mainRoomName,omitempty"`
-	PrivateRoomsEnabled bool            `json:"privateRoomsEnabled,omitempty"`
-	PrivateRoomName     string          `json:"privateRoomName,omitempty"`
-	Availability        string          `json:"availability,omitempty"`
-	ConditionalRoomName string          `json:"conditionalRoomName,omitempty"`
-	Condition           json.RawMessage `json:"condition,omitempty"`
+	Enabled             bool                          `json:"enabled"`
+	MainRoomName        string                        `json:"mainRoomName,omitempty"`
+	PrivateRooms        []DiscussionPrivateRoomPolicy `json:"privateRooms,omitempty"`
+	CloseBehavior       string                        `json:"closeBehavior,omitempty"`
+	PrivateRoomsEnabled bool                          `json:"privateRoomsEnabled,omitempty"`
+	PrivateRoomName     string                        `json:"privateRoomName,omitempty"`
+	Availability        string                        `json:"availability,omitempty"`
+	ConditionalRoomName string                        `json:"conditionalRoomName,omitempty"`
+	Condition           json.RawMessage               `json:"condition,omitempty"`
+}
+
+type DiscussionPrivateRoomPolicy struct {
+	ID               string `json:"id,omitempty"`
+	Name             string `json:"name,omitempty"`
+	MaxMembers       int    `json:"maxMembers,omitempty"`
+	TimeLimitSeconds *int   `json:"timeLimitSeconds,omitempty"`
 }
 
 // SceneTransition is the backend runtime contract for graph-based story

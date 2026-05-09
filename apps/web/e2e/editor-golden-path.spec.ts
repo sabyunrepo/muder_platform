@@ -561,28 +561,42 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(node).toBeVisible({ timeout: 10_000 });
     await node.click();
 
-    const discussionToggle = page.getByRole('checkbox', { name: /토론방/ });
-    await expect(discussionToggle).toBeVisible({ timeout: 5_000 });
-    await discussionToggle.check();
-    await page.getByLabel('메인 토론방').fill('추리 회의');
-    await page.getByLabel('이용 가능 시점').selectOption('condition');
-    await page.getByLabel('조건부 방명').fill('비밀 토론');
+    await page.getByLabel('타입').selectOption('discussion');
+    await page.getByLabel('전체토론방 이름').fill('추리 회의');
+    await page.getByRole('button', { name: '밀담방 추가' }).click();
+    await page.getByLabel('밀담방 1 이름').fill('2인 밀담');
+    await page.getByLabel('최대 인원').fill('3');
+    await page.getByLabel('제한시간 (분)').fill('5');
 
     const a11y = await new AxeBuilder({ page })
-      .include('[data-testid="discussion-room-policy-panel"]')
+      .include('[data-testid="discussion-phase-panel"]')
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
     expect(a11y.violations).toEqual([]);
 
-    await expect.poll(() => state.flowPatchCalls).toBeGreaterThanOrEqual(1);
+    await expect
+      .poll(() => {
+        const patch = state.lastFlowNodePatchBody as {
+          data?: { discussionRoomPolicy?: Record<string, unknown> };
+        } | null;
+        return patch?.data?.discussionRoomPolicy?.mainRoomName;
+      })
+      .toBe('추리 회의');
     const patch = state.lastFlowNodePatchBody as {
       data?: { discussionRoomPolicy?: Record<string, unknown> };
     } | null;
     expect(patch?.data?.discussionRoomPolicy).toMatchObject({
       enabled: true,
       mainRoomName: '추리 회의',
-      availability: 'condition',
-      conditionalRoomName: '비밀 토론',
+      closeBehavior: 'return_to_main',
+      privateRooms: [
+        {
+          id: 'private-1',
+          name: '2인 밀담',
+          maxMembers: 3,
+          timeLimitSeconds: 300,
+        },
+      ],
     });
     expect(state.flowPutCalls).toBe(0);
   });

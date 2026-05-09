@@ -260,7 +260,7 @@ func TestParseGameConfig_DoesNotDuplicateImplicitEndingBranchModule(t *testing.T
 }
 
 func TestParseGameConfig_AddsGroupChatModuleForDiscussionRoomPolicy(t *testing.T) {
-	data := []byte(`{"phases":[{"id":"discussion","name":"Discussion","discussionRoomPolicy":{"enabled":true,"mainRoomName":"추리 회의"}}],"modules":[]}`)
+	data := []byte(`{"phases":[{"id":"discussion","name":"Discussion","discussionRoomPolicy":{"enabled":true,"mainRoomName":"추리 회의","privateRooms":[{"id":"room-a","name":"A","maxMembers":3,"timeLimitSeconds":60}],"closeBehavior":"return_to_main"}}],"modules":[]}`)
 	cfg, err := ParseGameConfig(data)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -270,6 +270,14 @@ func TestParseGameConfig_AddsGroupChatModuleForDiscussionRoomPolicy(t *testing.T
 	}
 	if cfg.Phases[0].DiscussionRoomPolicy == nil || cfg.Phases[0].DiscussionRoomPolicy.MainRoomName != "추리 회의" {
 		t.Fatalf("discussion room policy = %#v", cfg.Phases[0].DiscussionRoomPolicy)
+	}
+	policy := cfg.Phases[0].DiscussionRoomPolicy
+	if policy.CloseBehavior != "return_to_main" || len(policy.PrivateRooms) != 1 {
+		t.Fatalf("new discussion policy fields = %#v", policy)
+	}
+	if policy.PrivateRooms[0].ID != "room-a" || policy.PrivateRooms[0].MaxMembers != 3 ||
+		policy.PrivateRooms[0].TimeLimitSeconds == nil || *policy.PrivateRooms[0].TimeLimitSeconds != 60 {
+		t.Fatalf("private room policy = %#v", policy.PrivateRooms[0])
 	}
 }
 

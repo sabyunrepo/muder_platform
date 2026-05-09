@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mmp-platform/server/internal/engine"
@@ -26,6 +27,35 @@ func initGroupChat(t *testing.T) (*GroupChatModule, engine.ModuleDeps) {
 		t.Fatalf("Init failed: %v", err)
 	}
 	return m, deps
+}
+
+type fakeGroupChatTimers struct {
+	timers []*fakeGroupChatTimer
+}
+
+func (f *fakeGroupChatTimers) AfterFunc(d time.Duration, fn func()) groupChatTimer {
+	timer := &fakeGroupChatTimer{duration: d, fn: fn}
+	f.timers = append(f.timers, timer)
+	return timer
+}
+
+func (f *fakeGroupChatTimers) Count() int {
+	return len(f.timers)
+}
+
+func (f *fakeGroupChatTimers) Fire(index int) {
+	f.timers[index].fn()
+}
+
+type fakeGroupChatTimer struct {
+	duration time.Duration
+	fn       func()
+	stopped  bool
+}
+
+func (t *fakeGroupChatTimer) Stop() bool {
+	t.stopped = true
+	return true
 }
 
 func TestGroupChatModule_Name(t *testing.T) {
@@ -81,6 +111,37 @@ func TestGroupChatModule_JoinRoom(t *testing.T) {
 		t.Error("player not in room-a")
 	}
 	m.mu.RUnlock()
+}
+
+func TestGroupChatModule_JoinFullRoomKeepsPlayerInCurrentRoom(t *testing.T) {
+	m, _ := initGroupChat(t)
+	ctx := context.Background()
+	if err := m.ReactTo(ctx, engine.PhaseActionPayload{Action: engine.ActionOpenGroupChat}); err != nil {
+		t.Fatalf("open group chat: %v", err)
+	}
+
+	alice := uuid.New()
+	if err := m.HandleMessage(ctx, alice, "groupchat:join", json.RawMessage(`{"roomId":"room-a"}`)); err != nil {
+		t.Fatalf("alice join room-a: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if err := m.HandleMessage(ctx, uuid.New(), "groupchat:join", json.RawMessage(`{"roomId":"room-b"}`)); err != nil {
+			t.Fatalf("fill room-b %d: %v", i, err)
+		}
+	}
+
+	if err := m.HandleMessage(ctx, alice, "groupchat:join", json.RawMessage(`{"roomId":"room-b"}`)); err == nil {
+		t.Fatal("expected full room join to fail")
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.playerRoom[alice] != "room-a" {
+		t.Fatalf("player moved after failed join: got %q, want room-a", m.playerRoom[alice])
+	}
+	if len(m.rooms["room-a"].Members) != 1 || m.rooms["room-a"].Members[0] != alice {
+		t.Fatalf("room-a membership changed after failed join: %+v", m.rooms["room-a"].Members)
+	}
 }
 
 func TestGroupChatModule_JoinWhenClosed(t *testing.T) {
@@ -322,6 +383,363 @@ func TestGroupChatModule_ApplyDiscussionRoomPolicyOpensPhaseRooms(t *testing.T) 
 	}
 	if s.Rooms[1].ID != "private" || s.Rooms[1].Name != "2인 밀담" {
 		t.Fatalf("private room not normalized: %+v", s.Rooms[1])
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyRejectsInvalidAvailability(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: json.RawMessage(`{"enabled":true,"availability":"unexpected"}`),
+	})
+	if err == nil {
+		t.Fatal("expected invalid availability to be rejected")
+	}
+
+	state, buildErr := m.BuildState()
+	if buildErr != nil {
+		t.Fatalf("BuildState: %v", buildErr)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.IsOpen || len(s.Rooms) != 2 {
+		t.Fatalf("invalid policy should not mutate existing group chat config: %+v", s)
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyCreatesMultiplePrivateRooms(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "",
+		"availability": "phase_active",
+		"privateRooms": [
+			{"id":"room-alpha","name":"알파 밀담","maxMembers":3},
+			{"id":"","name":"","maxMembers":1}
+		]
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Rooms) != 3 {
+		t.Fatalf("rooms = %d, want main + 2 private: %+v", len(s.Rooms), s.Rooms)
+	}
+	if s.Rooms[0].ID != "main" || s.Rooms[0].Name != "전체토론방" {
+		t.Fatalf("main fallback not normalized: %+v", s.Rooms[0])
+	}
+	if s.Rooms[1].ID != "room-alpha" || s.Rooms[1].Name != "알파 밀담" || s.Rooms[1].MaxMembers != 3 {
+		t.Fatalf("first private room not normalized: %+v", s.Rooms[1])
+	}
+	if s.Rooms[2].ID != "private-2" || s.Rooms[2].Name != "밀담방 2" || s.Rooms[2].MaxMembers != 2 {
+		t.Fatalf("fallback private room not normalized with min capacity: %+v", s.Rooms[2])
+	}
+
+	for i := 0; i < 2; i++ {
+		if err := m.HandleMessage(context.Background(), uuid.New(), "groupchat:join",
+			json.RawMessage(`{"roomId":"private-2"}`)); err != nil {
+			t.Fatalf("join fallback private %d: %v", i, err)
+		}
+	}
+	if err := m.HandleMessage(context.Background(), uuid.New(), "groupchat:join",
+		json.RawMessage(`{"roomId":"private-2"}`)); err == nil {
+		t.Fatal("expected fallback private room capacity to be enforced at min 2")
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyNormalizesReservedAndDuplicatePrivateRoomIDs(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"availability": "phase_active",
+		"privateRooms": [
+			{"id":"main","name":"메인 충돌","maxMembers":2},
+			{"id":"conditional","name":"조건부 충돌","maxMembers":2},
+			{"id":"main","name":"중복 충돌","maxMembers":2},
+			{"id":"","name":"빈 ID","maxMembers":2}
+		]
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Rooms) != 5 {
+		t.Fatalf("rooms = %d, want main + 4 private: %+v", len(s.Rooms), s.Rooms)
+	}
+	seen := make(map[string]struct{})
+	for _, room := range s.Rooms {
+		if _, exists := seen[room.ID]; exists {
+			t.Fatalf("duplicate room id %q in %+v", room.ID, s.Rooms)
+		}
+		seen[room.ID] = struct{}{}
+	}
+	if s.Rooms[0].ID != "main" || s.Rooms[0].Name != "전체토론방" {
+		t.Fatalf("main room was overwritten: %+v", s.Rooms[0])
+	}
+	if _, exists := seen["conditional"]; exists {
+		t.Fatalf("private room reused reserved conditional id: %+v", s.Rooms)
+	}
+	for _, roomID := range []string{"private-1", "private-2", "private-3", "private-4"} {
+		if _, exists := seen[roomID]; !exists {
+			t.Fatalf("missing normalized private room id %q in %+v", roomID, s.Rooms)
+		}
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyLegacyPrivateRoomStillWorks(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "추리 회의",
+		"privateRoomsEnabled": true,
+		"privateRoomName": "기존 밀담",
+		"availability": "phase_active"
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Rooms) != 2 {
+		t.Fatalf("rooms = %d, want main + legacy private: %+v", len(s.Rooms), s.Rooms)
+	}
+	if s.Rooms[1].ID != "private" || s.Rooms[1].Name != "기존 밀담" {
+		t.Fatalf("legacy private room changed: %+v", s.Rooms[1])
+	}
+}
+
+func TestGroupChatModule_DiscussionMainRoomDoesNotInheritPrivateRoomCapacity(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"mainRoomName": "전체 회의",
+		"availability": "phase_active"
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	for i := 0; i < 4; i++ {
+		if err := m.HandleMessage(context.Background(), uuid.New(), "groupchat:join",
+			json.RawMessage(`{"roomId":"main"}`)); err != nil {
+			t.Fatalf("join main %d: %v", i, err)
+		}
+	}
+
+	state, err := m.BuildState()
+	if err != nil {
+		t.Fatalf("BuildState: %v", err)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(s.Rooms) != 1 {
+		t.Fatalf("rooms = %d, want main only: %+v", len(s.Rooms), s.Rooms)
+	}
+	if s.Rooms[0].ID != "main" || s.Rooms[0].MemberCount != 4 || s.Rooms[0].MaxMembers != 0 {
+		t.Fatalf("main room should be unlimited and contain all members: %+v", s.Rooms[0])
+	}
+}
+
+func TestGroupChatModule_DiscussionPrivateRoomNonPositiveTimeLimitsAreUnlimited(t *testing.T) {
+	m, _ := initGroupChat(t)
+	fakeTimers := &fakeGroupChatTimers{}
+	m.timerFactory = fakeTimers.AfterFunc
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"availability": "phase_active",
+		"privateRooms": [
+			{"id":"nil-limit","name":"Nil","maxMembers":2},
+			{"id":"zero-limit","name":"Zero","maxMembers":2,"timeLimitSeconds":0},
+			{"id":"negative-limit","name":"Negative","maxMembers":2,"timeLimitSeconds":-5}
+		]
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	for _, roomID := range []string{"nil-limit", "zero-limit", "negative-limit"} {
+		if err := m.HandleMessage(context.Background(), uuid.New(), "groupchat:join",
+			json.RawMessage(`{"roomId":"`+roomID+`"}`)); err != nil {
+			t.Fatalf("join %s: %v", roomID, err)
+		}
+	}
+	if fakeTimers.Count() != 0 {
+		t.Fatalf("non-positive limits should not schedule timers, got %d", fakeTimers.Count())
+	}
+}
+
+func TestGroupChatModule_TimedDiscussionPrivateRoomReturnsMembersToMain(t *testing.T) {
+	m, deps := initGroupChat(t)
+	fakeTimers := &fakeGroupChatTimers{}
+	m.timerFactory = fakeTimers.AfterFunc
+	var expired bool
+	deps.EventBus.Subscribe("groupchat.room_expired", func(e engine.Event) {
+		expired = true
+		payload, ok := e.Payload.(map[string]any)
+		if !ok || payload["roomId"] != "timer-room" || payload["targetRoomId"] != "main" {
+			t.Fatalf("unexpected expiration event payload: %#v", e.Payload)
+		}
+	})
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"availability": "phase_active",
+		"privateRooms": [
+			{"id":"timer-room","name":"3초 밀담","maxMembers":2,"timeLimitSeconds":3}
+		]
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply policy: %v", err)
+	}
+
+	alice := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:join",
+		json.RawMessage(`{"roomId":"timer-room"}`)); err != nil {
+		t.Fatalf("join timed private room: %v", err)
+	}
+	if got := fakeTimers.Count(); got != 1 {
+		t.Fatalf("scheduled timers = %d, want 1", got)
+	}
+	if fakeTimers.timers[0].duration != 3*time.Second {
+		t.Fatalf("timer duration = %v, want 3s", fakeTimers.timers[0].duration)
+	}
+
+	fakeTimers.Fire(0)
+
+	m.mu.RLock()
+	if m.playerRoom[alice] != "main" {
+		t.Fatalf("player room after expiration = %q, want main", m.playerRoom[alice])
+	}
+	if len(m.rooms["timer-room"].Members) != 0 {
+		t.Fatalf("timer room members after expiration = %+v", m.rooms["timer-room"].Members)
+	}
+	if len(m.rooms["main"].Members) != 1 || m.rooms["main"].Members[0] != alice {
+		t.Fatalf("main room members after expiration = %+v", m.rooms["main"].Members)
+	}
+	m.mu.RUnlock()
+	if !expired {
+		t.Fatal("expected groupchat.room_expired event")
+	}
+}
+
+func TestGroupChatModule_StaleDiscussionRoomTimerCannotExpireRecreatedRoom(t *testing.T) {
+	m, deps := initGroupChat(t)
+	fakeTimers := &fakeGroupChatTimers{}
+	m.timerFactory = fakeTimers.AfterFunc
+	expiredEvents := 0
+	deps.EventBus.Subscribe("groupchat.room_expired", func(_ engine.Event) {
+		expiredEvents++
+	})
+
+	payload := json.RawMessage(`{
+		"enabled": true,
+		"availability": "phase_active",
+		"privateRooms": [
+			{"id":"timer-room","name":"타이머 밀담","maxMembers":2,"timeLimitSeconds":1}
+		]
+	}`)
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply first policy: %v", err)
+	}
+	alice := uuid.New()
+	if err := m.HandleMessage(context.Background(), alice, "groupchat:join",
+		json.RawMessage(`{"roomId":"timer-room"}`)); err != nil {
+		t.Fatalf("alice join timed room: %v", err)
+	}
+	if got := fakeTimers.Count(); got != 1 {
+		t.Fatalf("scheduled timers after first join = %d, want 1", got)
+	}
+
+	if err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: payload,
+	}); err != nil {
+		t.Fatalf("apply recreated policy: %v", err)
+	}
+	bob := uuid.New()
+	if err := m.HandleMessage(context.Background(), bob, "groupchat:join",
+		json.RawMessage(`{"roomId":"timer-room"}`)); err != nil {
+		t.Fatalf("bob join recreated timed room: %v", err)
+	}
+	if got := fakeTimers.Count(); got != 2 {
+		t.Fatalf("scheduled timers after recreated join = %d, want 2", got)
+	}
+
+	fakeTimers.Fire(0)
+	m.mu.RLock()
+	if m.playerRoom[bob] != "timer-room" {
+		t.Fatalf("stale timer moved recreated room member to %q", m.playerRoom[bob])
+	}
+	if len(m.rooms["timer-room"].Members) != 1 || m.rooms["timer-room"].Members[0] != bob {
+		t.Fatalf("stale timer mutated recreated room members: %+v", m.rooms["timer-room"].Members)
+	}
+	m.mu.RUnlock()
+	if expiredEvents != 0 {
+		t.Fatalf("stale timer published %d expiration events", expiredEvents)
+	}
+
+	fakeTimers.Fire(1)
+	m.mu.RLock()
+	if m.playerRoom[bob] != "main" {
+		t.Fatalf("current timer left recreated room member in %q", m.playerRoom[bob])
+	}
+	m.mu.RUnlock()
+	if expiredEvents != 1 {
+		t.Fatalf("current timer expiration events = %d, want 1", expiredEvents)
 	}
 }
 

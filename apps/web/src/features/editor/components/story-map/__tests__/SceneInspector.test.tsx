@@ -104,7 +104,7 @@ describe("SceneInspector", () => {
     expect(screen.getByText("자동 진행 · 기본 이동 없음 · 조건 이동 1개")).toBeDefined();
     expect(screen.getByText("시작: 직접 설정한 실행 · 종료: 채팅 닫기")).toBeDefined();
     expect(
-      screen.getByText("장면 시작 시 · 전원 참여 · 장면 종료 시 닫기 · 전체 토론: 전체 토론"),
+      screen.getByText("메인 토론방: 전체 토론 · 밀담방 없음"),
     ).toBeDefined();
   });
 });
