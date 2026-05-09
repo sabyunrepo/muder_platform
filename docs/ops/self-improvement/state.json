@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-06",
+  "updated_at": "2026-05-09",
   "policy": {
     "read_first": "Read this state file before archive logs.",
     "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
@@ -233,10 +233,26 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Made mmp-pr-status parse Codecov patch coverage and fail --fail-on-blocker when patch coverage is below 70%, so steward final checks cannot miss the real coverage blocker."
+    },
+    {
+      "id": "mmp-agent-orchestration-headquarter-mode",
+      "resolved_at": "2026-05-09",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-subagent-orchestration/SKILL.md",
+        ".codex/agents/mmp-frontend-implementer.toml",
+        ".codex/agents/mmp-backend-implementer.toml",
+        ".codex/agents/mmp-contract-integrator.toml",
+        ".codex/agents/mmp-security-reviewer.toml",
+        ".codex/agents/mmp-performance-reviewer.toml",
+        ".codex/agents/mmp-local-validation-runner.toml",
+        ".codex/agents/mmp-docs-wrap-steward.toml"
+      ],
+      "resolution": "Added the user-approved MMP headquarter/orchestrator workflow so main Codex owns task ledgers and decisions while implementation, review, validation, PR stewardship, and wrap-up are delegated to specialized subagents."
     }
   ],
   "last_review": {
-    "date": "2026-05-06",
-    "summary": "Optimized Codex workflow surfaces for CI-cost-aware PR grouping and added a deterministic Codecov blocker gate to mmp-pr-status."
+    "date": "2026-05-09",
+    "summary": "Added MMP headquarter/orchestrator workflow surfaces with dedicated implementer, contract, security, performance, validation, and wrap-up subagents."
   }
 }
