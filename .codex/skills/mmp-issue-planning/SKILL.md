@@ -48,11 +48,14 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - `## 브레인스토밍 필요 여부`
    - `## 순서/의존성`
    - 필요 시 `## Deferred / Follow-up`
+   - `## 작업 체크리스트` 또는 각 작업 범위 하위에 Markdown 체크박스(`- [ ]`)를 사용해 실행 항목을 둔다.
+   - 작업을 실제로 진행하는 plan/checklist 문서나 Issue 댓글을 갱신할 수 있는 경우, 완료된 항목은 `- [x]`로 바꿔 다음 세션이 남은 일을 바로 알 수 있게 한다.
 4. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
    - `### 병렬 가능 작업`: 실제 사용할 agent lane을 적는다.
    - `### 파일/모듈 소유권`: 각 lane이 읽거나 수정할 수 있는 디렉터리/파일을 적는다.
    - `### 병렬 금지/주의 영역`: shared contract, migration, PR label/merge, 같은 파일 수정 위험을 적는다.
    - `### 취합 방식`: 각 subagent는 `발견 / 수행 / 판단 / 미해결`로 보고하고, 메인 Codex가 중복 제거와 최종 통합을 맡는다고 적는다.
+   - `### 실행 체크리스트`: agent별 todo를 `- [ ]`로 적고, 메인 Codex가 취합하면서 완료 항목을 `- [x]`로 갱신한다고 적는다.
 5. 가능한 경우 실제 MMP agent 이름을 명시한다.
    - `mmp-parallel-coordinator`
    - `mmp-frontend-editor-reviewer`
@@ -77,6 +80,7 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 ## Done
 
 - Issue 본문만 읽어도 병렬 audit, 순차 통합, 검증 범위가 보인다.
+- 작업 항목이 체크박스 todo로 표현되어 있고, 진행 중 완료 항목을 체크할 갱신 위치가 명확하다.
 - 모호했던 요청은 `deep-interview` 실행 브리프 또는 명시한 권장 기본값이 Issue 본문에 반영되어 있다.
 - 병렬 가능한 lane과 충돌 금지 영역이 둘 다 적혀 있다.
 - 완료 조건에 테스트 또는 테스트 대체 근거가 있다.

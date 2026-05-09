@@ -249,10 +249,37 @@
         ".codex/agents/mmp-docs-wrap-steward.toml"
       ],
       "resolution": "Added the user-approved MMP headquarter/orchestrator workflow so main Codex owns task ledgers and decisions while implementation, review, validation, PR stewardship, and wrap-up are delegated to specialized subagents."
+    },
+    {
+      "id": "cmux-browser-qa-routing",
+      "resolved_at": "2026-05-09",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-subagent-orchestration/SKILL.md",
+        ".codex/agents/mmp-frontend-implementer.toml",
+        ".codex/agents/mmp-local-validation-runner.toml",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Documented that cmux browser QA must use the cmux-browse surface first, with Playwright/in-app browser fallback only when cmux control is unavailable and the fallback reason is reported."
+    },
+    {
+      "id": "checkbox-task-ledger",
+      "resolved_at": "2026-05-09",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-subagent-orchestration/SKILL.md",
+        ".codex/skills/mmp-issue-planning/SKILL.md",
+        ".codex/agents/mmp-issue-architect.toml",
+        ".codex/agents/mmp-parallel-coordinator.toml",
+        ".codex/agents/mmp-frontend-implementer.toml",
+        ".codex/agents/mmp-local-validation-runner.toml",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Required plans, task instructions, subagent handoffs, and execution ledgers to use Markdown todo checkboxes and mark verified completed items during progress updates."
     }
   ],
   "last_review": {
     "date": "2026-05-09",
-    "summary": "Added MMP headquarter/orchestrator workflow surfaces with dedicated implementer, contract, security, performance, validation, and wrap-up subagents."
+    "summary": "Added MMP headquarter/orchestrator workflow surfaces, then tightened cmux browser QA routing and checkbox-based task ledger rules for plans, handoffs, and subagent execution."
   }
 }

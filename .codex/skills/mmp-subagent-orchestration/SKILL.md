@@ -15,6 +15,8 @@ description: Use when executing MMP work under the user-approved main-Codex-as-o
 
 1. Main Codex owns the task ledger:
    - goal, issue/plan link, scope, exclusions, Coverage Plan, file/module ownership, stop conditions, and validation gate.
+   - Write executable work items as Markdown checkboxes (`- [ ]`) and update completed items to `- [x]` as agents report verified completion.
+   - Include the checkbox ledger in subagent handoffs when the agent owns multiple steps, so the agent can report which items are done, blocked, or deferred.
 2. Start with `mmp-parallel-coordinator` for non-trivial work:
    - use it to split read-heavy audits, write ownership, conflict risks, and integration checkpoints.
 3. Delegate implementation by ownership:
@@ -29,6 +31,7 @@ description: Use when executing MMP work under the user-approved main-Codex-as-o
    - concurrency/query/render/flakiness risks -> `mmp-performance-reviewer`
 5. Delegate long checks:
    - use `mmp-local-validation-runner` for focused test/build commands that would flood main context.
+   - when local browser QA is explicitly in cmux, instruct validation agents to use the `cmux-browse` skill/CLI first and to report a fallback only if cmux browser control is unavailable.
 6. Delegate PR waiting/fix loop:
    - use `mmp-ci-steward` for one handed-off PR after main Codex creates the PR.
 7. Delegate wrap-up:
@@ -42,6 +45,7 @@ description: Use when executing MMP work under the user-approved main-Codex-as-o
 ## Done
 
 - Assigned agents, ownership, and stop conditions are explicit.
+- The active task ledger uses checkboxes and completed items are checked off before final reporting.
 - Implementation agents changed only assigned files.
 - Review and validation evidence is summarized without raw log dumps.
 - PR creation/merge and product-risk decisions remain with main Codex.
