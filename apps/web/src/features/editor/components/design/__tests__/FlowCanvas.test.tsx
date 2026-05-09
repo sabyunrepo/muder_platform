@@ -69,6 +69,7 @@ import { FlowToolbar } from '../FlowToolbar';
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.clearAllMocks();
 });
 
