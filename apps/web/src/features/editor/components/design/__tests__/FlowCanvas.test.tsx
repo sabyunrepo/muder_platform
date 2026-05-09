@@ -193,6 +193,45 @@ describe('FlowCanvas', () => {
     expect(screen.getByText('장면을 선택하면 세부 설정을 편집할 수 있습니다.')).toBeDefined();
   });
 
+  it('ending 노드만 남은 그래프도 프리셋 적용 전에 덮어쓰기 확인을 요구한다', () => {
+    const applyPreset = vi.fn();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        {
+          id: 'ending-1',
+          type: 'ending',
+          position: { x: 0, y: 0 },
+          data: { label: '진실 엔딩' },
+        },
+      ],
+      edges: [],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+      selectedNode: null,
+      addNode: vi.fn(),
+      updateNodeData: vi.fn(),
+      deleteNode: vi.fn(),
+      deleteEdge: vi.fn(),
+      connectNodes: vi.fn(),
+      onSelectionChange: vi.fn(),
+      updateEdgeCondition: vi.fn(),
+      applyPreset,
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '프리셋' }));
+    fireEvent.click(screen.getByText('클래식 머더미스터리'));
+
+    expect(confirmSpy).toHaveBeenCalledWith('기존 흐름이 대체됩니다. 계속할까요?');
+    expect(applyPreset).not.toHaveBeenCalled();
+  });
+
   it('캔버스 밖으로 튀어나온 노드가 상단 미리보기 패널 클릭을 가로막지 않게 자른다', () => {
     render(<FlowCanvas themeId="theme-1" />);
     const canvas = screen.getByTestId('flow-canvas');

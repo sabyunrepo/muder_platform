@@ -45,7 +45,8 @@ export function NodeDetailPanel({
   }
 
   const isStart = node.type === "start";
-  const canEditConnections = node.type === "phase" || node.type === "branch";
+  const canEditConnections =
+    node.type === "start" || node.type === "phase" || node.type === "branch";
 
   const handleEdgeConditionChange = (
     edgeId: string,

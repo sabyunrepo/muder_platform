@@ -197,7 +197,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
         onSave={save}
         isSaving={isSaving}
         onApplyPreset={applyPreset}
-        hasNodes={flowNodes.length > 0}
+        hasNodes={nodes.length > 0}
         onToggleOrderReview={() => {
           if (showOrderReview) setHighlightId(null);
           setShowOrderReview((v) => !v);

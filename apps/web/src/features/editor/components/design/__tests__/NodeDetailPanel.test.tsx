@@ -87,6 +87,32 @@ describe("NodeDetailPanel", () => {
     expect(screen.queryByText("선택 항목 삭제")).toBeNull();
   });
 
+  it("start 노드에서도 다음 장면 연결을 편집할 수 있다", () => {
+    const onConnectNodes = vi.fn();
+    render(
+      <NodeDetailPanel
+        node={{ ...makeNode("start"), id: "start-1" }}
+        themeId="t1"
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        nodes={[
+          { ...makeNode("start"), id: "start-1" },
+          { ...makeNode("phase", { label: "오프닝" }), id: "node-1" },
+        ]}
+        edges={[]}
+        onConnectNodes={onConnectNodes}
+        onDeleteEdge={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("연결할 다음 장면"), {
+      target: { value: "node-1" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "연결" }));
+
+    expect(onConnectNodes).toHaveBeenCalledWith("start-1", "node-1");
+  });
+
   it("phase 노드이면 PhaseNodePanel을 렌더링한다", () => {
     render(
       <NodeDetailPanel
