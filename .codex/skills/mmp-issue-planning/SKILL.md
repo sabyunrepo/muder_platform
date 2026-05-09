@@ -30,7 +30,12 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 ## Do
 
 1. Issue 편집이나 repo 파일 변경은 feature/chore branch에서 진행한다.
-2. 각 Issue에는 가능한 한 아래 섹션을 포함한다.
+2. Issue 생성/재작성 요청이 모호하면 `deep-interview` skill을 먼저 사용해 실행 브리프를 만든다.
+   - 사용자에게 묻기 전에 repo 코드, 기존 Issue/PR, plan 문서, `memory/`에서 직접 확인 가능한 사실을 먼저 확인한다.
+   - 인터뷰 대상은 목표, 포함 범위, 제외 범위, 제약, 완료 기준 중 실행을 막는 가장 큰 불확실성 하나로 좁힌다.
+   - 마지막 실행 브리프의 목표/범위/제외/제약/완료 기준/열린 질문을 Issue 본문에 반영한다.
+   - 바로 실행해도 안전한 기본값이 있고 사용자가 자율 진행을 허용한 상황이면 질문으로 멈추지 말고 권장 기본값을 명시해 진행한다.
+3. 각 Issue에는 가능한 한 아래 섹션을 포함한다.
    - `## 목표`
    - `## 배경`
    - `## 작업 범위`
@@ -43,35 +48,36 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - `## 브레인스토밍 필요 여부`
    - `## 순서/의존성`
    - 필요 시 `## Deferred / Follow-up`
-3. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
+4. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
    - `### 병렬 가능 작업`: 실제 사용할 agent lane을 적는다.
    - `### 파일/모듈 소유권`: 각 lane이 읽거나 수정할 수 있는 디렉터리/파일을 적는다.
    - `### 병렬 금지/주의 영역`: shared contract, migration, PR label/merge, 같은 파일 수정 위험을 적는다.
    - `### 취합 방식`: 각 subagent는 `발견 / 수행 / 판단 / 미해결`로 보고하고, 메인 Codex가 중복 제거와 최종 통합을 맡는다고 적는다.
-4. 가능한 경우 실제 MMP agent 이름을 명시한다.
+5. 가능한 경우 실제 MMP agent 이름을 명시한다.
    - `mmp-parallel-coordinator`
    - `mmp-frontend-editor-reviewer`
    - `mmp-backend-engine-reviewer`
    - `mmp-test-coverage-reviewer`
-5. API DTO, frontend adapter/ViewModel mapping, migration 결정, PR 생성, label, merge는 메인 Codex 소유로 둔다.
-6. 코드 작성/수정 이슈의 `## Coverage Plan`에는 변경 예상 파일/모듈별 테스트 책임을 적는다.
+6. API DTO, frontend adapter/ViewModel mapping, migration 결정, PR 생성, label, merge는 메인 Codex 소유로 둔다.
+7. 코드 작성/수정 이슈의 `## Coverage Plan`에는 변경 예상 파일/모듈별 테스트 책임을 적는다.
    - Backend handler/service: 성공 경로, validation, not found, ownership, conflict, delete-blocked 같은 실패 경로를 unit/integration test로 매핑한다.
    - Frontend adapter/hook/component: 저장 payload, dirty state, error UI, empty/loading state, direct URL/tab state를 Vitest/E2E로 매핑한다.
    - E2E 제외 시에는 왜 E2E가 부적합한지와 대체 테스트를 적는다.
    - Codecov patch coverage 70%를 PR 끝에서 처음 확인하는 흐름을 피하기 위해, issue 단계에서 미리 테스트 파일 후보를 지정한다.
-7. MVP와 후순위를 분리한다. 범위가 커지거나 구현 중 제외하는 항목이 생기면 `## Deferred / Follow-up`에 남긴다.
+8. MVP와 후순위를 분리한다. 범위가 커지거나 구현 중 제외하는 항목이 생기면 `## Deferred / Follow-up`에 남긴다.
    - 같은 이슈 안에서 이어서 처리할 작은 항목이면 체크리스트로 둔다.
    - 독립 PR이 필요하거나 다른 owner/검증 범위를 갖는 항목이면 새 GitHub Issue를 만든다.
    - PR 본문에는 완료 범위는 `Closes #번호`, 후속/부분 범위는 `Refs #번호`로 연결한다.
-8. `## PR 묶음 제안`은 CI 비용까지 고려한다.
+9. `## PR 묶음 제안`은 CI 비용까지 고려한다.
    - 같은 이슈/같은 CI scope/같은 review surface의 repo-local workflow 변경은 하나의 PR로 묶는 것을 우선한다.
    - shared contract, migration, large UI route, backend API처럼 실패 blast radius가 큰 변경은 별도 PR로 분리한다.
    - “작게 쪼개기”는 기본값이 아니라 충돌·리뷰 위험을 줄일 때만 선택한다. CI를 여러 번 태우는 초소형 PR은 피한다.
-9. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
+10. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
 
 ## Done
 
 - Issue 본문만 읽어도 병렬 audit, 순차 통합, 검증 범위가 보인다.
+- 모호했던 요청은 `deep-interview` 실행 브리프 또는 명시한 권장 기본값이 Issue 본문에 반영되어 있다.
 - 병렬 가능한 lane과 충돌 금지 영역이 둘 다 적혀 있다.
 - 완료 조건에 테스트 또는 테스트 대체 근거가 있다.
 - Coverage Plan에 변경 파일별 테스트 매핑이 있다.
