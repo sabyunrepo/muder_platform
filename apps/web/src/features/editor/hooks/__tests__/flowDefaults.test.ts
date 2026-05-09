@@ -4,10 +4,10 @@ import { createDefaultTemplate } from "../flowDefaults";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 describe("createDefaultTemplate", () => {
-  it("returns 5 nodes and 4 edges", () => {
+  it("returns 4 nodes and 3 edges", () => {
     const { nodes, edges } = createDefaultTemplate();
-    expect(nodes).toHaveLength(5);
-    expect(edges).toHaveLength(4);
+    expect(nodes).toHaveLength(4);
+    expect(edges).toHaveLength(3);
   });
 
   it("generates valid UUID IDs for all nodes and edges", () => {
@@ -26,9 +26,9 @@ describe("createDefaultTemplate", () => {
     expect(nodes.filter((n) => n.type === "phase")).toHaveLength(3);
   });
 
-  it("has exactly 1 ending node", () => {
+  it("does not create an ending node in the flow canvas", () => {
     const { nodes } = createDefaultTemplate();
-    expect(nodes.filter((n) => n.type === "ending")).toHaveLength(1);
+    expect(nodes.filter((n) => n.type === "ending")).toHaveLength(0);
   });
 
   it("phase nodes have expected labels", () => {
@@ -59,6 +59,6 @@ describe("createDefaultTemplate", () => {
   it("node positions are set correctly", () => {
     const { nodes } = createDefaultTemplate();
     expect(nodes[0].position).toEqual({ x: 0, y: 200 });
-    expect(nodes[4].position).toEqual({ x: 1000, y: 200 });
+    expect(nodes[3].position).toEqual({ x: 750, y: 200 });
   });
 });

@@ -51,7 +51,7 @@ const storyEdges: Edge[] = [{ id: "edge-1", source: "node-1", target: "node-2" }
 // ---------------------------------------------------------------------------
 
 describe("NodeDetailPanel", () => {
-  it("node가 null이면 '편집할 장면이나 결말을 선택하세요' 를 표시한다", () => {
+  it("node가 null이면 '편집할 장면을 선택하세요' 를 표시한다", () => {
     render(
       <NodeDetailPanel
         node={null}
@@ -60,7 +60,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("편집할 장면이나 결말을 선택하세요")).toBeDefined();
+    expect(screen.getByText("편집할 장면을 선택하세요")).toBeDefined();
   });
 
   it("start 노드이면 편집 불가 메시지를 표시한다", () => {

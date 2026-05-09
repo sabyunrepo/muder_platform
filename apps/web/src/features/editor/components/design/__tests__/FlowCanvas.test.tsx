@@ -190,7 +190,7 @@ describe('FlowCanvas', () => {
     render(<FlowCanvas themeId="theme-1" />);
     const sidePanel = screen.getByTestId('flow-side-panel');
     expect(sidePanel).toBeDefined();
-    expect(screen.getByText('장면이나 결말을 선택하면 세부 설정을 편집할 수 있습니다.')).toBeDefined();
+    expect(screen.getByText('장면을 선택하면 세부 설정을 편집할 수 있습니다.')).toBeDefined();
   });
 
   it('캔버스 밖으로 튀어나온 노드가 상단 미리보기 패널 클릭을 가로막지 않게 자른다', () => {
@@ -327,51 +327,35 @@ describe('FlowCanvas', () => {
 
 describe('FlowToolbar', () => {
   it('저장 버튼이 렌더링된다', () => {
-    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
+    render(<FlowToolbar onAddScene={vi.fn()} onSave={saveMock} isSaving={false} />);
     expect(screen.getByText('저장')).toBeDefined();
   });
 
   it('저장 버튼 클릭 시 onSave가 호출된다', () => {
-    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
+    render(<FlowToolbar onAddScene={vi.fn()} onSave={saveMock} isSaving={false} />);
     fireEvent.click(screen.getByText('저장'));
     expect(saveMock).toHaveBeenCalledOnce();
   });
 
   it('isSaving=true 일 때 "저장 중..." 텍스트를 표시한다', () => {
-    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={true} />);
+    render(<FlowToolbar onAddScene={vi.fn()} onSave={saveMock} isSaving={true} />);
     expect(screen.getByText('저장 중...')).toBeDefined();
   });
 
-  it('항목 추가 버튼 클릭 시 드롭다운이 열린다', () => {
-    render(<FlowToolbar onAddNode={vi.fn()} onSave={saveMock} isSaving={false} />);
-    fireEvent.click(screen.getByText('항목 추가'));
-    expect(screen.getByText('게임 라운드')).toBeDefined();
-    expect(screen.getByText('장면')).toBeDefined();
-    expect(screen.getByText('투표')).toBeDefined();
-    expect(screen.getByText('결말 연결')).toBeDefined();
+  it('장면 추가 버튼만 렌더링하고 phase subtype 드롭다운을 숨긴다', () => {
+    render(<FlowToolbar onAddScene={vi.fn()} onSave={saveMock} isSaving={false} />);
+    expect(screen.getByRole('button', { name: '장면 추가' })).toBeDefined();
+    expect(screen.queryByText('항목 추가')).toBeNull();
+    expect(screen.queryByText('게임 라운드')).toBeNull();
+    expect(screen.queryByText('투표')).toBeNull();
+    expect(screen.queryByText('결말 연결')).toBeNull();
     expect(screen.queryByText('조건 분기')).toBeNull();
   });
 
-  it('드롭다운에서 게임 라운드 선택 시 phase 기본값과 함께 onAddNode가 호출된다', () => {
-    const onAddNode = vi.fn();
-    render(<FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />);
-    fireEvent.click(screen.getByText('항목 추가'));
-    fireEvent.click(screen.getByText('게임 라운드'));
-    expect(onAddNode).toHaveBeenCalledWith('phase', {
-      label: '1라운드 조사',
-      phase_type: 'investigation',
-      rounds: 1,
-    });
-  });
-
-  it('드롭다운에서 투표 선택 시 voting phase 기본값과 함께 onAddNode가 호출된다', () => {
-    const onAddNode = vi.fn();
-    render(<FlowToolbar onAddNode={onAddNode} onSave={vi.fn()} isSaving={false} />);
-    fireEvent.click(screen.getByText('항목 추가'));
-    fireEvent.click(screen.getByText('투표'));
-    expect(onAddNode).toHaveBeenCalledWith('phase', {
-      label: '투표',
-      phase_type: 'voting',
-    });
+  it('장면 추가 클릭 시 onAddScene이 호출된다', () => {
+    const onAddScene = vi.fn();
+    render(<FlowToolbar onAddScene={onAddScene} onSave={vi.fn()} isSaving={false} />);
+    fireEvent.click(screen.getByText('장면 추가'));
+    expect(onAddScene).toHaveBeenCalledOnce();
   });
 });

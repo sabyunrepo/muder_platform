@@ -1,7 +1,6 @@
 import { Trash2 } from "lucide-react";
 import type { Node, Edge } from "@xyflow/react";
 import { PhaseNodePanel } from "./PhaseNodePanel";
-import { EndingNodePanel } from "./EndingNodePanel";
 import { BranchNodePanel } from "./BranchNodePanel";
 import { NodeConnectionPanel } from "./NodeConnectionPanel";
 import type { FlowNodeData } from "../../flowTypes";
@@ -40,12 +39,13 @@ export function NodeDetailPanel({
   if (!node) {
     return (
       <div className="flex h-full items-center justify-center p-4">
-        <span className="text-xs text-slate-500">편집할 장면이나 결말을 선택하세요</span>
+        <span className="text-xs text-slate-500">편집할 장면을 선택하세요</span>
       </div>
     );
   }
 
   const isStart = node.type === "start";
+  const canEditConnections = node.type === "phase" || node.type === "branch";
 
   const handleEdgeConditionChange = (
     edgeId: string,
@@ -66,8 +66,6 @@ export function NodeDetailPanel({
           </div>
         ) : node.type === "phase" ? (
           <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} edges={edges} />
-        ) : node.type === "ending" ? (
-          <EndingNodePanel node={node} themeId={themeId} edges={edges} onUpdate={onUpdate} />
         ) : node.type === "branch" ? (
           <BranchNodePanel
             node={node}
@@ -85,7 +83,7 @@ export function NodeDetailPanel({
         )}
       </div>
 
-      {!isStart && node.type !== "ending" && onConnectNodes && onDeleteEdge && (
+      {canEditConnections && onConnectNodes && onDeleteEdge && (
         <NodeConnectionPanel
           node={node}
           nodes={nodes}

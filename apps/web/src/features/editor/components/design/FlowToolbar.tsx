@@ -2,14 +2,13 @@ import { useState, useRef, useEffect } from "react";
 import { Plus, Save, ChevronDown, LayoutTemplate, Play } from "lucide-react";
 import { FLOW_PRESETS, createPresetFlow } from "../../hooks/flowPresets";
 import type { Node, Edge } from "@xyflow/react";
-import type { FlowNodeData, FlowNodeType } from "../../flowTypes";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 interface FlowToolbarProps {
-  onAddNode: (type: FlowNodeType, data?: Partial<FlowNodeData>) => void;
+  onAddScene: () => void;
   onSave: () => void;
   isSaving: boolean;
   onApplyPreset?: (nodes: Node[], edges: Edge[]) => void;
@@ -18,45 +17,12 @@ interface FlowToolbarProps {
   isOrderReviewing?: boolean;
 }
 
-interface NodeOption {
-  id: string;
-  type: FlowNodeType;
-  label: string;
-  description: string;
-  data?: Partial<FlowNodeData>;
-}
-
-const NODE_OPTIONS: NodeOption[] = [
-  {
-    id: "investigation-round",
-    type: "phase",
-    label: "게임 라운드",
-    description: "조사 라운드 진행",
-    data: { label: "1라운드 조사", phase_type: "investigation", rounds: 1 },
-  },
-  {
-    id: "story-scene",
-    type: "phase",
-    label: "장면",
-    description: "대사/연출 진행",
-    data: { label: "새 장면", phase_type: "story_progression" },
-  },
-  {
-    id: "voting-phase",
-    type: "phase",
-    label: "투표",
-    description: "범인 지목 단계",
-    data: { label: "투표", phase_type: "voting" },
-  },
-  { id: "ending", type: "ending", label: "결말 연결", description: "결말 관리 항목으로 진행" },
-];
-
 // ---------------------------------------------------------------------------
 // FlowToolbar
 // ---------------------------------------------------------------------------
 
 export function FlowToolbar({
-  onAddNode,
+  onAddScene,
   onSave,
   isSaving,
   onApplyPreset,
@@ -64,17 +30,12 @@ export function FlowToolbar({
   onToggleOrderReview,
   isOrderReviewing,
 }: FlowToolbarProps) {
-  const [open, setOpen] = useState(false);
   const [presetOpen, setPresetOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const presetRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as globalThis.Node)) {
-        setOpen(false);
-      }
       if (presetRef.current && !presetRef.current.contains(e.target as globalThis.Node)) {
         setPresetOpen(false);
       }
@@ -83,45 +44,16 @@ export function FlowToolbar({
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const handleSelect = (option: NodeOption) => {
-    onAddNode(option.type, option.data);
-    setOpen(false);
-  };
-
   return (
     <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900 px-4 py-2">
-      {/* Add node dropdown */}
-      <div className="relative" ref={dropdownRef}>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          항목 추가
-          <ChevronDown className="h-3 w-3" />
-        </button>
-
-        {open && (
-          <div className="absolute left-0 top-full z-50 mt-1 w-40 rounded border border-slate-700 bg-slate-800 py-1 shadow-lg">
-            {NODE_OPTIONS.map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handleSelect(opt)}
-                className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-slate-700"
-              >
-                <span className="text-xs font-medium text-slate-200">
-                  {opt.label}
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  {opt.description}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      <button
+        type="button"
+        onClick={onAddScene}
+        className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        장면 추가
+      </button>
 
       {/* Preset dropdown */}
       {onApplyPreset && (

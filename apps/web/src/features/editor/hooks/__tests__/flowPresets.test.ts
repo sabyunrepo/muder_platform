@@ -17,25 +17,31 @@ describe("FLOW_PRESETS", () => {
 });
 
 describe("createPresetFlow", () => {
-  it("클래식 프리셋: 7 노드 + 6 엣지", () => {
+  it("클래식 프리셋: 6 노드 + 5 엣지", () => {
     const classic = FLOW_PRESETS.find((p) => p.id === "classic")!;
     const flow = createPresetFlow(classic);
-    expect(flow.nodes).toHaveLength(7);
-    expect(flow.edges).toHaveLength(6);
+    expect(flow.nodes).toHaveLength(6);
+    expect(flow.edges).toHaveLength(5);
   });
 
-  it("타임어택 프리셋: 5 노드 + 4 엣지", () => {
+  it("타임어택 프리셋: 4 노드 + 3 엣지", () => {
     const ta = FLOW_PRESETS.find((p) => p.id === "time-attack")!;
     const flow = createPresetFlow(ta);
-    expect(flow.nodes).toHaveLength(5);
-    expect(flow.edges).toHaveLength(4);
-  });
-
-  it("자유탐색 프리셋: 4 노드 + 3 엣지", () => {
-    const free = FLOW_PRESETS.find((p) => p.id === "free-explore")!;
-    const flow = createPresetFlow(free);
     expect(flow.nodes).toHaveLength(4);
     expect(flow.edges).toHaveLength(3);
+  });
+
+  it("자유탐색 프리셋: 3 노드 + 2 엣지", () => {
+    const free = FLOW_PRESETS.find((p) => p.id === "free-explore")!;
+    const flow = createPresetFlow(free);
+    expect(flow.nodes).toHaveLength(3);
+    expect(flow.edges).toHaveLength(2);
+  });
+
+  it("프리셋은 플로우 캔버스용 ending 노드를 만들지 않는다", () => {
+    for (const preset of FLOW_PRESETS) {
+      expect(createPresetFlow(preset).nodes.some((node) => node.type === "ending")).toBe(false);
+    }
   });
 
   it("매 호출마다 고유 UUID를 생성한다", () => {
