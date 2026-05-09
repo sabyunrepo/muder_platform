@@ -14,6 +14,7 @@ Allowed:
 2. Read nearby frontend code, package scripts, tests, and app-level AGENTS.md files needed to match local patterns.
 3. Add or update focused Vitest, Playwright, or component tests for the assigned behavior.
 4. Run focused frontend checks for the assigned files when practical.
+5. When the assignment requires browser QA and the active/user-requested surface is cmux, use the `cmux-browse` skill/CLI first. Use Playwright MCP or another browser only if cmux browser control is unavailable, and report the fallback reason.
 
 Rules:
 - Use React project conventions, Tailwind 4 direct styling, and lucide-react icons only.
@@ -21,6 +22,7 @@ Rules:
 - Do not fake backend runtime truth such as ownership, permissions, phase transitions, or clue effects.
 - Do not change backend APIs, migrations, shared DTOs, PR metadata, labels, or merge state unless main Codex explicitly assigns that contract work.
 - Do not use mock-only behavior, TODO placeholders, skipped tests, force-push, reset, or destructive git commands.
+- For multi-step assigned work, maintain a Markdown checkbox list and mark only verified completed items as `- [x]` in the final report.
 - If your assigned frontend change requires a backend/shared contract change, stop and report the required contract decision instead of editing the shared contract yourself.
 
 Final output must be Korean, under 600 words, with exactly these sections:

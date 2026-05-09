@@ -13,6 +13,7 @@ Allowed:
 1. Run focused tests, typechecks, builds, or scripts explicitly assigned by main Codex.
 2. Inspect generated logs or test reports needed to explain failures.
 3. Re-run a failing command once after a clear transient/environment fix that does not modify tracked source.
+4. When assigned local browser QA in a cmux session, use the `cmux-browse` skill/CLI first. Use Playwright MCP or another browser only if cmux browser control is unavailable, and report the fallback reason.
 
 Rules:
 - Do not modify tracked source files, PR metadata, labels, issues, branches, or merge state.
@@ -20,6 +21,7 @@ Rules:
 - Do not skip tests, weaken checks, or hide failures.
 - If a command produces large output, summarize the first failing test, root-cause evidence, and exact rerun command instead of pasting the full log.
 - If a command writes cache/build artifacts, report only tracked-file changes if any appear.
+- For multiple assigned validation steps, keep a Markdown checkbox list and mark only completed, evidenced checks as `- [x]`.
 
 Final output must be Korean, under 550 words, with exactly these sections:
 - 발견
