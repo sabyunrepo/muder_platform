@@ -113,6 +113,37 @@ func TestGroupChatModule_JoinRoom(t *testing.T) {
 	m.mu.RUnlock()
 }
 
+func TestGroupChatModule_JoinFullRoomKeepsPlayerInCurrentRoom(t *testing.T) {
+	m, _ := initGroupChat(t)
+	ctx := context.Background()
+	if err := m.ReactTo(ctx, engine.PhaseActionPayload{Action: engine.ActionOpenGroupChat}); err != nil {
+		t.Fatalf("open group chat: %v", err)
+	}
+
+	alice := uuid.New()
+	if err := m.HandleMessage(ctx, alice, "groupchat:join", json.RawMessage(`{"roomId":"room-a"}`)); err != nil {
+		t.Fatalf("alice join room-a: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if err := m.HandleMessage(ctx, uuid.New(), "groupchat:join", json.RawMessage(`{"roomId":"room-b"}`)); err != nil {
+			t.Fatalf("fill room-b %d: %v", i, err)
+		}
+	}
+
+	if err := m.HandleMessage(ctx, alice, "groupchat:join", json.RawMessage(`{"roomId":"room-b"}`)); err == nil {
+		t.Fatal("expected full room join to fail")
+	}
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.playerRoom[alice] != "room-a" {
+		t.Fatalf("player moved after failed join: got %q, want room-a", m.playerRoom[alice])
+	}
+	if len(m.rooms["room-a"].Members) != 1 || m.rooms["room-a"].Members[0] != alice {
+		t.Fatalf("room-a membership changed after failed join: %+v", m.rooms["room-a"].Members)
+	}
+}
+
 func TestGroupChatModule_JoinWhenClosed(t *testing.T) {
 	m, _ := initGroupChat(t)
 
@@ -352,6 +383,30 @@ func TestGroupChatModule_ApplyDiscussionRoomPolicyOpensPhaseRooms(t *testing.T) 
 	}
 	if s.Rooms[1].ID != "private" || s.Rooms[1].Name != "2인 밀담" {
 		t.Fatalf("private room not normalized: %+v", s.Rooms[1])
+	}
+}
+
+func TestGroupChatModule_ApplyDiscussionRoomPolicyRejectsInvalidAvailability(t *testing.T) {
+	m, _ := initGroupChat(t)
+
+	err := m.ReactTo(context.Background(), engine.PhaseActionPayload{
+		Action: engine.ActionApplyDiscussionRoom,
+		Params: json.RawMessage(`{"enabled":true,"availability":"unexpected"}`),
+	})
+	if err == nil {
+		t.Fatal("expected invalid availability to be rejected")
+	}
+
+	state, buildErr := m.BuildState()
+	if buildErr != nil {
+		t.Fatalf("BuildState: %v", buildErr)
+	}
+	var s groupChatState
+	if err := json.Unmarshal(state, &s); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if s.IsOpen || len(s.Rooms) != 2 {
+		t.Fatalf("invalid policy should not mutate existing group chat config: %+v", s)
 	}
 }
 

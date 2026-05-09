@@ -173,16 +173,21 @@ func (m *GroupChatModule) handleJoin(playerID uuid.UUID, payload json.RawMessage
 		return fmt.Errorf("group_chat: room %q not found", p.RoomID)
 	}
 
-	// Check if already in a room — leave first.
-	if currentRoom, inRoom := m.playerRoom[playerID]; inRoom {
-		m.removeFromRoom(playerID, currentRoom)
+	currentRoom, inRoom := m.playerRoom[playerID]
+	if inRoom && currentRoom == p.RoomID {
+		m.mu.Unlock()
+		return nil
 	}
 
-	// Check room capacity. A zero capacity means unlimited.
+	// Check room capacity before mutating the player's current room.
 	maxMembers := m.roomMaxMembersLocked(p.RoomID)
 	if maxMembers > 0 && len(room.Members) >= maxMembers {
 		m.mu.Unlock()
 		return fmt.Errorf("group_chat: room %q is full (%d/%d)", p.RoomID, len(room.Members), maxMembers)
+	}
+
+	if inRoom {
+		m.removeFromRoom(playerID, currentRoom)
 	}
 
 	room.Members = append(room.Members, playerID)
@@ -334,6 +339,10 @@ func (m *GroupChatModule) ReactTo(_ context.Context, action engine.PhaseActionPa
 				return fmt.Errorf("group_chat: invalid discussion room policy: %w", err)
 			}
 		}
+		if err := validateDiscussionRoomPolicy(policy); err != nil {
+			m.mu.Unlock()
+			return err
+		}
 		m.applyDiscussionRoomPolicy(policy)
 		m.mu.Unlock()
 		m.deps.EventBus.Publish(engine.Event{
@@ -348,6 +357,15 @@ func (m *GroupChatModule) ReactTo(_ context.Context, action engine.PhaseActionPa
 		return fmt.Errorf("group_chat: unsupported action %q", action.Action)
 	}
 	return nil
+}
+
+func validateDiscussionRoomPolicy(policy discussionRoomPolicy) error {
+	switch policy.Availability {
+	case "", "phase_active", "condition":
+		return nil
+	default:
+		return fmt.Errorf("group_chat: invalid discussion room availability %q", policy.Availability)
+	}
 }
 
 func (m *GroupChatModule) applyDiscussionRoomPolicy(policy discussionRoomPolicy) {
