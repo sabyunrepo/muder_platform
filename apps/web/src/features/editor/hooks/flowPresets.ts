@@ -26,7 +26,6 @@ export const FLOW_PRESETS: FlowPreset[] = [
       { type: "phase", label: "중간투표" },
       { type: "phase", label: "최종변론" },
       { type: "phase", label: "최종투표" },
-      { type: "ending" },
     ],
   },
   {
@@ -38,7 +37,6 @@ export const FLOW_PRESETS: FlowPreset[] = [
       { type: "phase", label: "단서탐색" },
       { type: "phase", label: "긴급토론" },
       { type: "phase", label: "투표" },
-      { type: "ending" },
     ],
   },
   {
@@ -49,7 +47,6 @@ export const FLOW_PRESETS: FlowPreset[] = [
       { type: "start" },
       { type: "phase", label: "자유조사" },
       { type: "phase", label: "투표" },
-      { type: "ending" },
     ],
   },
 ];

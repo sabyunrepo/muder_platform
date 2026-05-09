@@ -17,7 +17,6 @@ const TEMPLATE_NODES: TemplateNode[] = [
   { type: "phase", x: 250, label: "자기소개" },
   { type: "phase", x: 500, label: "자유조사" },
   { type: "phase", x: 750, label: "투표" },
-  { type: "ending", x: 1000 },
 ];
 
 // ---------------------------------------------------------------------------
