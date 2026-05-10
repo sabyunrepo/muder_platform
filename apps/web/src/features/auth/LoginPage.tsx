@@ -101,11 +101,15 @@ function LoginPage() {
         </div>
 
         {/* 이메일/비밀번호 폼 */}
-        <form onSubmit={handleSubmit} className="mb-6 flex flex-col gap-3">
+        <form onSubmit={handleSubmit} autoComplete="on" className="mb-6 flex flex-col gap-3">
           {mode === "register" && (
             <input
+              id="nickname"
+              name="nickname"
               type="text"
               placeholder="닉네임"
+              aria-label="닉네임"
+              autoComplete="nickname"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               required
@@ -115,16 +119,24 @@ function LoginPage() {
             />
           )}
           <input
+            id="email"
+            name="email"
             type="email"
             placeholder="이메일"
+            aria-label="이메일"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
           />
           <input
+            id="password"
+            name="password"
             type="password"
             placeholder="비밀번호"
+            aria-label="비밀번호"
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
