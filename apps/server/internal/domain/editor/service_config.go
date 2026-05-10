@@ -430,7 +430,7 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 	if !ok || kind == "" {
 		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].effect is required", clueID)
 	}
-	if kind != "description_change" && kind != "peek" && kind != "steal" && kind != "reveal" && kind != "grant_clue" {
+	if kind != "description_change" && kind != "peek" && kind != "steal" && kind != "reveal" && kind != "grant_clue" && kind != "kill" {
 		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].effect %q is not supported", clueID, kind)
 	}
 	if target, exists := effect["target"]; exists {

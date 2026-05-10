@@ -18,7 +18,9 @@ import {
 } from '@/features/editor/entities/clue/clueEntityAdapter';
 import { ClueRuntimeEffectCard } from './ClueRuntimeEffectCard';
 import { ClueBasicInfoCard } from './ClueBasicInfoCard';
-import { buildRoundRevealOptions } from '@/features/editor/entities/reveal/revealTimingOptions';
+import {
+  buildProgressNodeRevealOptions,
+} from '@/features/editor/entities/reveal/revealTimingOptions';
 
 interface ClueEntityWorkspaceProps {
   themeId?: string;
@@ -54,10 +56,13 @@ export function ClueEntityWorkspace({
     () => buildClueUsageMap({ configJson, clues, locations, characters }),
     [configJson, clues, locations, characters]
   );
-  const roundOptions = useMemo(
-    () => buildRoundRevealOptions(
+  const sceneOptions = useMemo(
+    () => buildProgressNodeRevealOptions(
       flowNodes,
-      clues.flatMap((clue) => [clue.reveal_round, clue.hide_round]),
+      clues.flatMap((clue) => [
+        clue.reveal_scene_id,
+        clue.hide_scene_id,
+      ]),
     ),
     [flowNodes, clues],
   );
@@ -81,7 +86,7 @@ export function ClueEntityWorkspace({
             configJson={configJson}
             isSaving={isClueSaving}
             isConfigSaving={isConfigSaving}
-            roundOptions={roundOptions}
+            sceneOptions={sceneOptions}
             onSave={onUpdate}
             onConfigChange={onConfigChange}
             onDelete={onDelete}

@@ -151,6 +151,9 @@ export interface CreateClueRequest {
   use_consumed?: boolean;
   reveal_round?: number | null;
   hide_round?: number | null;
+  appearance_scene_id?: string | null;
+  reveal_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 export interface UpdateClueRequest {
@@ -168,6 +171,9 @@ export interface UpdateClueRequest {
   use_consumed?: boolean;
   reveal_round?: number | null;
   hide_round?: number | null;
+  appearance_scene_id?: string | null;
+  reveal_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -226,6 +232,9 @@ export interface ClueResponse {
   use_consumed: boolean;
   reveal_round?: number | null;
   hide_round?: number | null;
+  appearance_scene_id?: string | null;
+  reveal_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 export interface ContentResponse {

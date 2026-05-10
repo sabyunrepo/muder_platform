@@ -59,6 +59,8 @@ describe('EntityEditorShell', () => {
 
     expect(list.className).toContain('flex');
     expect(list.className).toContain('min-h-0');
+    expect(list.className).toContain('shrink-0');
+    expect(detail.className).toContain('shrink-0');
     expect(listScroller?.className).toContain('lg:flex-1');
     expect(listScroller?.className).toContain('lg:overflow-y-auto');
     expect(detail.className).toContain('lg:overflow-y-auto');

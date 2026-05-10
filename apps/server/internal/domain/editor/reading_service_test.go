@@ -20,16 +20,18 @@ import (
 // --- fakeReadingQueries: in-memory readingQueries implementation for unit tests ---
 
 type fakeReadingQueries struct {
-	themes   map[uuid.UUID]db.Theme
-	media    map[uuid.UUID]db.ThemeMedium
-	sections map[uuid.UUID]db.ReadingSection
+	themes     map[uuid.UUID]db.Theme
+	characters map[uuid.UUID]db.ThemeCharacter
+	media      map[uuid.UUID]db.ThemeMedium
+	sections   map[uuid.UUID]db.ReadingSection
 }
 
 func newFakeReadingQueries() *fakeReadingQueries {
 	return &fakeReadingQueries{
-		themes:   make(map[uuid.UUID]db.Theme),
-		media:    make(map[uuid.UUID]db.ThemeMedium),
-		sections: make(map[uuid.UUID]db.ReadingSection),
+		themes:     make(map[uuid.UUID]db.Theme),
+		characters: make(map[uuid.UUID]db.ThemeCharacter),
+		media:      make(map[uuid.UUID]db.ThemeMedium),
+		sections:   make(map[uuid.UUID]db.ReadingSection),
 	}
 }
 
@@ -39,6 +41,14 @@ func (f *fakeReadingQueries) GetTheme(_ context.Context, id uuid.UUID) (db.Theme
 		return db.Theme{}, pgx.ErrNoRows
 	}
 	return t, nil
+}
+
+func (f *fakeReadingQueries) GetThemeCharacter(_ context.Context, id uuid.UUID) (db.ThemeCharacter, error) {
+	character, ok := f.characters[id]
+	if !ok {
+		return db.ThemeCharacter{}, pgx.ErrNoRows
+	}
+	return character, nil
 }
 
 func (f *fakeReadingQueries) GetMedia(_ context.Context, id uuid.UUID) (db.ThemeMedium, error) {
@@ -79,16 +89,17 @@ func (f *fakeReadingQueries) GetReadingSectionWithOwner(_ context.Context, arg d
 
 func (f *fakeReadingQueries) CreateReadingSection(_ context.Context, arg db.CreateReadingSectionParams) (db.ReadingSection, error) {
 	s := db.ReadingSection{
-		ID:         uuid.New(),
-		ThemeID:    arg.ThemeID,
-		Name:       arg.Name,
-		BgmMediaID: arg.BgmMediaID,
-		BgmMode:    arg.BgmMode,
-		Lines:      arg.Lines,
-		SortOrder:  arg.SortOrder,
-		Version:    1,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
+		ID:                  uuid.New(),
+		ThemeID:             arg.ThemeID,
+		Name:                arg.Name,
+		BgmMediaID:          arg.BgmMediaID,
+		BgmMode:             arg.BgmMode,
+		NarratorCharacterID: arg.NarratorCharacterID,
+		Lines:               arg.Lines,
+		SortOrder:           arg.SortOrder,
+		Version:             1,
+		CreatedAt:           time.Now(),
+		UpdatedAt:           time.Now(),
 	}
 	f.sections[s.ID] = s
 	return s, nil
@@ -105,6 +116,7 @@ func (f *fakeReadingQueries) UpdateReadingSection(_ context.Context, arg db.Upda
 	s.Name = arg.Name
 	s.BgmMediaID = arg.BgmMediaID
 	s.BgmMode = arg.BgmMode
+	s.NarratorCharacterID = arg.NarratorCharacterID
 	s.Lines = arg.Lines
 	s.SortOrder = arg.SortOrder
 	s.Version++
@@ -129,16 +141,19 @@ func (f *fakeReadingQueries) DeleteReadingSectionWithOwner(_ context.Context, ar
 // --- helpers ---
 
 type readingTestFixture struct {
-	q         *fakeReadingQueries
-	svc       *readingService
-	creatorID uuid.UUID
-	themeID   uuid.UUID
-	bgmID     uuid.UUID
-	sfxID     uuid.UUID
-	voiceID   uuid.UUID
-	imageID   uuid.UUID
-	videoID   uuid.UUID
-	otherBgm  uuid.UUID // BGM in a different theme
+	q                *fakeReadingQueries
+	svc              *readingService
+	creatorID        uuid.UUID
+	themeID          uuid.UUID
+	bgmID            uuid.UUID
+	sfxID            uuid.UUID
+	voiceID          uuid.UUID
+	imageID          uuid.UUID
+	videoID          uuid.UUID
+	playableID       uuid.UUID
+	npcID            uuid.UUID
+	otherBgm         uuid.UUID // BGM in a different theme
+	otherCharacterID uuid.UUID
 }
 
 func newReadingFixture(t *testing.T) *readingTestFixture {
@@ -151,6 +166,15 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 
 	otherThemeID := uuid.New()
 	q.themes[otherThemeID] = db.Theme{ID: otherThemeID, CreatorID: creatorID}
+
+	playableID := uuid.New()
+	q.characters[playableID] = db.ThemeCharacter{ID: playableID, ThemeID: themeID, Name: "Alice", IsPlayable: true}
+
+	npcID := uuid.New()
+	q.characters[npcID] = db.ThemeCharacter{ID: npcID, ThemeID: themeID, Name: "Butler", IsPlayable: false}
+
+	otherCharacterID := uuid.New()
+	q.characters[otherCharacterID] = db.ThemeCharacter{ID: otherCharacterID, ThemeID: otherThemeID, Name: "Other", IsPlayable: true}
 
 	bgmID := uuid.New()
 	q.media[bgmID] = db.ThemeMedium{ID: bgmID, ThemeID: themeID, Type: MediaTypeBGM}
@@ -171,16 +195,19 @@ func newReadingFixture(t *testing.T) *readingTestFixture {
 	q.media[otherBgm] = db.ThemeMedium{ID: otherBgm, ThemeID: otherThemeID, Type: MediaTypeBGM}
 
 	return &readingTestFixture{
-		q:         q,
-		svc:       newReadingServiceWith(q, zerolog.Nop()),
-		creatorID: creatorID,
-		themeID:   themeID,
-		bgmID:     bgmID,
-		sfxID:     sfxID,
-		voiceID:   voiceID,
-		imageID:   imageID,
-		videoID:   videoID,
-		otherBgm:  otherBgm,
+		q:                q,
+		svc:              newReadingServiceWith(q, zerolog.Nop()),
+		creatorID:        creatorID,
+		themeID:          themeID,
+		bgmID:            bgmID,
+		sfxID:            sfxID,
+		voiceID:          voiceID,
+		imageID:          imageID,
+		videoID:          videoID,
+		playableID:       playableID,
+		npcID:            npcID,
+		otherBgm:         otherBgm,
+		otherCharacterID: otherCharacterID,
 	}
 }
 
@@ -357,6 +384,45 @@ func TestReadingService_Create_RejectsInvalidSectionBgmMode(t *testing.T) {
 	assertAppCode(t, err, apperror.ErrValidation)
 }
 
+func TestReadingService_Create_NarratorCharacter(t *testing.T) {
+	f := newReadingFixture(t)
+	narratorID := f.playableID.String()
+	resp, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name:                "Narrated",
+		NarratorCharacterID: &narratorID,
+		Lines:               []ReadingLineDTO{{Text: "x", AdvanceBy: AdvanceByGM}},
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+	if resp.NarratorCharacterID == nil || *resp.NarratorCharacterID != narratorID {
+		t.Fatalf("NarratorCharacterID = %v, want %s", resp.NarratorCharacterID, narratorID)
+	}
+}
+
+func TestReadingService_Create_RejectsInvalidNarratorCharacter(t *testing.T) {
+	tests := []struct {
+		name string
+		id   func(*readingTestFixture) string
+	}{
+		{name: "missing", id: func(*readingTestFixture) string { return uuid.NewString() }},
+		{name: "npc", id: func(f *readingTestFixture) string { return f.npcID.String() }},
+		{name: "other theme", id: func(f *readingTestFixture) string { return f.otherCharacterID.String() }},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newReadingFixture(t)
+			id := tt.id(f)
+			_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+				Name:                "Narrated",
+				NarratorCharacterID: &id,
+				Lines:               []ReadingLineDTO{{Text: "x", AdvanceBy: AdvanceByGM}},
+			})
+			assertAppCode(t, err, apperror.ErrValidation)
+		})
+	}
+}
+
 func TestReadingService_Create_BlockMediaMustMatchType(t *testing.T) {
 	f := newReadingFixture(t)
 	_, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
@@ -498,6 +564,29 @@ func TestReadingService_Update_SectionBgmMode(t *testing.T) {
 	}
 	if updated.BgmMode != ReadingBGMModeOnce {
 		t.Fatalf("BgmMode = %q, want %q", updated.BgmMode, ReadingBGMModeOnce)
+	}
+}
+
+func TestReadingService_Update_NarratorCharacter(t *testing.T) {
+	f := newReadingFixture(t)
+	created, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateReadingSectionRequest{
+		Name:  "Original",
+		Lines: []ReadingLineDTO{},
+	})
+	if err != nil {
+		t.Fatalf("seed create failed: %v", err)
+	}
+
+	narratorID := f.playableID.String()
+	updated, err := f.svc.Update(context.Background(), f.creatorID, created.ID, UpdateReadingSectionRequest{
+		NarratorCharacterID: &narratorID,
+		Version:             created.Version,
+	})
+	if err != nil {
+		t.Fatalf("update failed: %v", err)
+	}
+	if updated.NarratorCharacterID == nil || *updated.NarratorCharacterID != narratorID {
+		t.Fatalf("NarratorCharacterID = %v, want %s", updated.NarratorCharacterID, narratorID)
 	}
 }
 

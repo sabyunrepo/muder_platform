@@ -70,7 +70,6 @@ vi.mock('sonner', () => ({
 // ---------------------------------------------------------------------------
 
 import { ReadingSectionEditor } from '../ReadingSectionEditor';
-import { computeSmartAdvanceBy } from '../advanceByDefaults';
 import type { ReadingSectionResponse } from '@/features/editor/readingApi';
 
 // ---------------------------------------------------------------------------
@@ -82,6 +81,8 @@ const sampleSection: ReadingSectionResponse = {
   themeId: 'theme-1',
   name: '오프닝',
   bgmMediaId: null,
+  bgmMode: 'loop',
+  narratorCharacterId: null,
   sortOrder: 0,
   version: 3,
   createdAt: '2026-04-05T00:00:00Z',
@@ -107,8 +108,9 @@ const sampleSection: ReadingSectionResponse = {
 };
 
 const characters = [
-  { id: 'c1', name: 'Alice' },
-  { id: 'c2', name: 'Bob' },
+  { id: 'c1', name: 'Alice', isPlayable: true },
+  { id: 'c2', name: 'Bob', isPlayable: true },
+  { id: 'npc-1', name: 'Butler', isPlayable: false },
 ];
 
 // ---------------------------------------------------------------------------
@@ -156,41 +158,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// ---------------------------------------------------------------------------
-// Smart defaults — pure function
-// ---------------------------------------------------------------------------
-
-describe('computeSmartAdvanceBy', () => {
-  it('narration → gm', () => {
-    expect(computeSmartAdvanceBy({ Speaker: '나레이션' }, true, characters)).toBe('gm');
-  });
-
-  it('voice attached → voice', () => {
-    expect(
-      computeSmartAdvanceBy({ Speaker: 'Alice', VoiceMediaID: 'm-1' }, false, characters)
-    ).toBe('voice');
-  });
-
-  it('character speaker → role:<character.id>', () => {
-    // Speaker is a display name; resolved to the stable character id so the
-    // advance permission check on the server (which compares role ids) works.
-    expect(computeSmartAdvanceBy({ Speaker: 'Alice' }, false, characters)).toBe('role:c1');
-    expect(computeSmartAdvanceBy({ Speaker: 'Bob' }, false, characters)).toBe('role:c2');
-  });
-
-  it('unknown speaker (no matching character) → gm fallback', () => {
-    expect(computeSmartAdvanceBy({ Speaker: 'Nobody' }, false, characters)).toBe('gm');
-  });
-
-  it('empty fallback → gm', () => {
-    expect(computeSmartAdvanceBy({}, false, characters)).toBe('gm');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// ReadingSectionEditor
-// ---------------------------------------------------------------------------
-
 describe('ReadingSectionEditor', () => {
   function renderEditor(overrides?: Partial<React.ComponentProps<typeof ReadingSectionEditor>>) {
     return render(
@@ -215,10 +182,21 @@ describe('ReadingSectionEditor', () => {
     expect(screen.getByDisplayValue('누구냐?')).toBeTruthy();
   });
 
+  it('uses the first playable character as the default narration controller', () => {
+    renderEditor();
+    expect((screen.getByLabelText('나레이션 진행') as HTMLSelectElement).value).toBe('c1');
+  });
+
   it('offers effect sound blocks but not new GM memo blocks', () => {
     renderEditor();
     expect(screen.getByRole('button', { name: '효과음' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'GM 메모' })).toBeNull();
+  });
+
+  it('does not expose dialogue image or per-line advance controls', () => {
+    renderEditor();
+    expect(screen.queryByRole('button', { name: '이미지 선택' })).toBeNull();
+    expect(screen.queryByLabelText('진행 방식')).toBeNull();
   });
 
   it('saves section background music playback mode', async () => {
@@ -299,44 +277,31 @@ describe('ReadingSectionEditor', () => {
     expect(Array.isArray(callArg.patch.lines)).toBe(true);
   });
 
-  it('line image picker stores an IMAGE media reference', async () => {
-    useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
-      if (type === 'IMAGE') {
-        return {
-          data: [
-            {
-              id: 'image-1',
-              theme_id: 'theme-1',
-              name: '현장 사진',
-              type: 'IMAGE',
-              source_type: 'FILE',
-              url: 'https://example.com/image.png',
-              tags: [],
-              sort_order: 1,
-              created_at: '2026-04-05T00:00:00Z',
-            },
-          ],
-          isLoading: false,
-        };
-      }
-      return { data: [], isLoading: false };
+  it('blocks save with a clear message when an image block has no selected image', async () => {
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [
+          {
+            Index: 0,
+            Type: 'image',
+            MediaID: '',
+            Position: 'center',
+            Size: 'medium',
+            AdvanceBy: 'gm',
+          },
+        ],
+      },
     });
-
-    renderEditor();
-    fireEvent.click(screen.getAllByRole('button', { name: '이미지 선택' })[0]);
-
-    expect(useMediaListMock).toHaveBeenCalledWith('theme-1', 'IMAGE');
-    expect(screen.getByText(/이미지 유형만 표시됩니다/)).toBeTruthy();
-    fireEvent.click(screen.getByText('현장 사진').closest('button') as HTMLElement);
-
-    expect(screen.getByText('현장 사진')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '이미지 확인' } });
     fireEvent.click(screen.getByRole('button', { name: /저장/ }));
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
-    expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].ImageMediaID).toBe('image-1');
+    expect(mutateAsyncUpdate).not.toHaveBeenCalled();
+    expect(screen.getByText('저장 전에 미디어가 빠진 블록을 확인해 주세요.')).toBeTruthy();
+    expect(screen.getAllByText('1번 이미지 블록: 이미지를 선택해야 저장할 수 있습니다.')).toHaveLength(2);
   });
 
-  it('line image picker serializes cleared image references', async () => {
+  it('serializes cleared dialogue image references', async () => {
     useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
       if (type === 'IMAGE') {
         return {
@@ -366,8 +331,8 @@ describe('ReadingSectionEditor', () => {
       },
     });
 
-    expect(screen.getByText('현장 사진')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '이미지 제거' }));
+    expect(screen.queryByText('현장 사진')).toBeNull();
+    fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '이미지 정리' } });
     fireEvent.click(screen.getByRole('button', { name: /저장/ }));
 
     await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
@@ -481,7 +446,7 @@ describe('ReadingSectionEditor', () => {
     await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { Index: 0, Type: 'image', AdvanceBy: 'gm' },
-      { Index: 1, Type: 'dialogue', AdvanceBy: 'gm' },
+      { Index: 1, Type: 'dialogue', AdvanceBy: 'role:c1' },
     ]);
   });
 
@@ -506,7 +471,30 @@ describe('ReadingSectionEditor', () => {
 
     await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].AdvanceBy).toBe('gm');
-    expect(screen.queryByRole('option', { name: '역할 지정' })).toBeNull();
+    expect(screen.queryByLabelText('진행 방식')).toBeNull();
+  });
+
+  it('saves narration and NPC dialogue with the selected narrator role', async () => {
+    renderEditor({
+      section: {
+        ...sampleSection,
+        lines: [
+          { Index: 0, Type: 'dialogue', Speaker: '나레이션', Text: '서술' },
+          { Index: 1, Type: 'dialogue', Speaker: 'Butler', Text: 'NPC 대사' },
+          { Index: 2, Type: 'dialogue', Speaker: 'Alice', Text: '플레이어 대사' },
+        ],
+      },
+    });
+    fireEvent.change(screen.getByLabelText('나레이션 진행'), { target: { value: 'c2' } });
+    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+
+    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.narratorCharacterId).toBe('c2');
+    expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
+      { AdvanceBy: 'role:c2' },
+      { AdvanceBy: 'role:c2' },
+      { AdvanceBy: 'role:c1' },
+    ]);
   });
 
   it('moves blocks and keeps saved indices sequential', async () => {
@@ -752,6 +740,7 @@ describe('ReadingSectionEditor', () => {
           name: 'x',
           bgmMediaId: sampleSection.bgmMediaId,
           bgmMode: 'loop',
+          narratorCharacterId: null,
           lines: sampleSection.lines,
           sortOrder: sampleSection.sortOrder,
         },

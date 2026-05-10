@@ -52,6 +52,7 @@ export function EditorLayout({
     () => readEnabledModuleIds(theme.config_json),
     [theme.config_json],
   );
+  const usesInternalScroll = activeTab === "storyMap" || activeTab === "characters";
   const routeTab = useMemo(
     () => (routeSegment ? readEditorTabFromRouteSegment(routeSegment) : undefined),
     [routeSegment],
@@ -152,7 +153,7 @@ export function EditorLayout({
         role="tabpanel"
         id={`tabpanel-${activeTab}`}
         aria-labelledby={`tab-${activeTab}`}
-        className={activeTab === "storyMap" ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto"}
+        className={usesInternalScroll ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto"}
       >
         <Suspense
           fallback={

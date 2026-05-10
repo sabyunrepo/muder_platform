@@ -61,6 +61,11 @@ func TestConfirmImageUpload_PreservesExistingTargetFields(t *testing.T) {
 				if !arg.IsUsable || arg.UseEffect.String != "peek" || arg.UseTarget.String != "player" || !arg.UseConsumed || arg.RevealRound.Int32 != 2 || arg.HideRound.Int32 != 5 {
 					t.Fatalf("clue fields not preserved: %+v", arg)
 				}
+				if arg.AppearanceSceneID.Bytes != q.clue.AppearanceSceneID.Bytes ||
+					arg.RevealSceneID.Bytes != q.clue.RevealSceneID.Bytes ||
+					arg.HideSceneID.Bytes != q.clue.HideSceneID.Bytes {
+					t.Fatalf("clue scene fields not preserved: %+v", arg)
+				}
 			},
 		},
 		{
@@ -113,7 +118,20 @@ func newFakeImageQueries(creatorID, themeID, charID, clueID, locationID uuid.UUI
 			IsVotingCandidate: false,
 			AliasRules:        []byte(`[{"id":"alias-1"}]`),
 		},
-		clue:     db.ThemeClue{ID: clueID, ThemeID: themeID, Name: "단서", IsUsable: true, UseEffect: text("peek"), UseTarget: text("player"), UseConsumed: true, RevealRound: int4(2), HideRound: int4(5)},
+		clue: db.ThemeClue{
+			ID:                clueID,
+			ThemeID:           themeID,
+			Name:              "단서",
+			IsUsable:          true,
+			UseEffect:         text("peek"),
+			UseTarget:         text("player"),
+			UseConsumed:       true,
+			RevealRound:       int4(2),
+			HideRound:         int4(5),
+			AppearanceSceneID: uuidValue("55555555-5555-5555-5555-555555555555"),
+			RevealSceneID:     uuidValue("66666666-6666-6666-6666-666666666666"),
+			HideSceneID:       uuidValue("77777777-7777-7777-7777-777777777777"),
+		},
 		location: db.ThemeLocation{ID: locationID, ThemeID: themeID, Name: "서재", RestrictedCharacters: text("char-a,char-b"), FromRound: int4(1), UntilRound: int4(4)},
 	}
 }
@@ -165,3 +183,6 @@ func (fakeImageStorage) DeleteObjects(context.Context, []string) error { return 
 
 func text(value string) pgtype.Text { return pgtype.Text{String: value, Valid: true} }
 func int4(value int32) pgtype.Int4  { return pgtype.Int4{Int32: value, Valid: true} }
+func uuidValue(raw string) pgtype.UUID {
+	return pgtype.UUID{Bytes: uuid.MustParse(raw), Valid: true}
+}

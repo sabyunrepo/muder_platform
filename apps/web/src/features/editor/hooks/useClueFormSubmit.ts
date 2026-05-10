@@ -28,6 +28,8 @@ export interface ClueSubmitBody {
   use_consumed?: boolean;
   reveal_round?: number | null;
   hide_round?: number | null;
+  reveal_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 export interface UseClueFormSubmitOptions {

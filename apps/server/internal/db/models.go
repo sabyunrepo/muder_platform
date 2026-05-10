@@ -175,16 +175,17 @@ type Payment struct {
 }
 
 type ReadingSection struct {
-	ID         uuid.UUID       `json:"id"`
-	ThemeID    uuid.UUID       `json:"theme_id"`
-	Name       string          `json:"name"`
-	BgmMediaID pgtype.UUID     `json:"bgm_media_id"`
-	Lines      json.RawMessage `json:"lines"`
-	SortOrder  int32           `json:"sort_order"`
-	Version    int32           `json:"version"`
-	CreatedAt  time.Time       `json:"created_at"`
-	UpdatedAt  time.Time       `json:"updated_at"`
-	BgmMode    string          `json:"bgm_mode"`
+	ID                  uuid.UUID       `json:"id"`
+	ThemeID             uuid.UUID       `json:"theme_id"`
+	Name                string          `json:"name"`
+	BgmMediaID          pgtype.UUID     `json:"bgm_media_id"`
+	Lines               json.RawMessage `json:"lines"`
+	SortOrder           int32           `json:"sort_order"`
+	Version             int32           `json:"version"`
+	CreatedAt           time.Time       `json:"created_at"`
+	UpdatedAt           time.Time       `json:"updated_at"`
+	BgmMode             string          `json:"bgm_mode"`
+	NarratorCharacterID pgtype.UUID     `json:"narrator_character_id"`
 }
 
 type RevokeLog struct {
@@ -324,23 +325,26 @@ type ThemeCharacter struct {
 }
 
 type ThemeClue struct {
-	ID           uuid.UUID   `json:"id"`
-	ThemeID      uuid.UUID   `json:"theme_id"`
-	LocationID   pgtype.UUID `json:"location_id"`
-	Name         string      `json:"name"`
-	Description  pgtype.Text `json:"description"`
-	ImageUrl     pgtype.Text `json:"image_url"`
-	IsCommon     bool        `json:"is_common"`
-	Level        int32       `json:"level"`
-	SortOrder    int32       `json:"sort_order"`
-	CreatedAt    time.Time   `json:"created_at"`
-	IsUsable     bool        `json:"is_usable"`
-	UseEffect    pgtype.Text `json:"use_effect"`
-	UseTarget    pgtype.Text `json:"use_target"`
-	UseConsumed  bool        `json:"use_consumed"`
-	RevealRound  pgtype.Int4 `json:"reveal_round"`
-	HideRound    pgtype.Int4 `json:"hide_round"`
-	ImageMediaID pgtype.UUID `json:"image_media_id"`
+	ID                uuid.UUID   `json:"id"`
+	ThemeID           uuid.UUID   `json:"theme_id"`
+	LocationID        pgtype.UUID `json:"location_id"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	ImageUrl          pgtype.Text `json:"image_url"`
+	IsCommon          bool        `json:"is_common"`
+	Level             int32       `json:"level"`
+	SortOrder         int32       `json:"sort_order"`
+	CreatedAt         time.Time   `json:"created_at"`
+	IsUsable          bool        `json:"is_usable"`
+	UseEffect         pgtype.Text `json:"use_effect"`
+	UseTarget         pgtype.Text `json:"use_target"`
+	UseConsumed       bool        `json:"use_consumed"`
+	RevealRound       pgtype.Int4 `json:"reveal_round"`
+	HideRound         pgtype.Int4 `json:"hide_round"`
+	ImageMediaID      pgtype.UUID `json:"image_media_id"`
+	AppearanceSceneID pgtype.UUID `json:"appearance_scene_id"`
+	RevealSceneID     pgtype.UUID `json:"reveal_scene_id"`
+	HideSceneID       pgtype.UUID `json:"hide_scene_id"`
 }
 
 type ThemeContent struct {

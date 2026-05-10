@@ -2,6 +2,7 @@ package editor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -594,6 +595,112 @@ func TestService_CreateClue(t *testing.T) {
 	if resp.Level != 2 {
 		t.Errorf("level mismatch: got %d", resp.Level)
 	}
+}
+
+func TestService_ClueAppearanceScene(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	scene := createFlowNodeForTest(t, f, themeID, "phase", "현장 수사")
+	hideScene := createFlowNodeForTest(t, f, themeID, "phase", "증거 정리")
+	branch := createFlowNodeForTest(t, f, themeID, "branch", "이전 분기")
+	start := createFlowNodeForTest(t, f, themeID, "start", "시작")
+	otherScene := createFlowNodeForTest(t, f, otherThemeID, "phase", "다른 테마")
+
+	resp, err := f.svc.CreateClue(ctx, creatorID, themeID, CreateClueRequest{
+		Name:              "현장 단서",
+		Level:             1,
+		AppearanceSceneID: &scene.ID,
+		RevealSceneID:     &scene.ID,
+		HideSceneID:       &hideScene.ID,
+	})
+	if err != nil {
+		t.Fatalf("CreateClue with appearance scene: %v", err)
+	}
+	if resp.AppearanceSceneID == nil || *resp.AppearanceSceneID != scene.ID {
+		t.Fatalf("AppearanceSceneID = %v, want %s", resp.AppearanceSceneID, scene.ID)
+	}
+	if resp.RevealSceneID == nil || *resp.RevealSceneID != scene.ID {
+		t.Fatalf("RevealSceneID = %v, want %s", resp.RevealSceneID, scene.ID)
+	}
+	if resp.HideSceneID == nil || *resp.HideSceneID != hideScene.ID {
+		t.Fatalf("HideSceneID = %v, want %s", resp.HideSceneID, hideScene.ID)
+	}
+
+	listed, err := f.svc.ListClues(ctx, creatorID, themeID)
+	if err != nil {
+		t.Fatalf("ListClues: %v", err)
+	}
+	if len(listed) != 1 || listed[0].AppearanceSceneID == nil || *listed[0].AppearanceSceneID != scene.ID {
+		t.Fatalf("listed AppearanceSceneID = %+v, want %s", listed, scene.ID)
+	}
+	if listed[0].RevealSceneID == nil || *listed[0].RevealSceneID != scene.ID {
+		t.Fatalf("listed RevealSceneID = %+v, want %s", listed, scene.ID)
+	}
+	if listed[0].HideSceneID == nil || *listed[0].HideSceneID != hideScene.ID {
+		t.Fatalf("listed HideSceneID = %+v, want %s", listed, hideScene.ID)
+	}
+
+	updated, err := f.svc.UpdateClue(ctx, creatorID, resp.ID, UpdateClueRequest{
+		Name:              resp.Name,
+		Level:             resp.Level,
+		AppearanceSceneID: nil,
+		RevealSceneID:     nil,
+		HideSceneID:       nil,
+	})
+	if err != nil {
+		t.Fatalf("UpdateClue clear appearance scene: %v", err)
+	}
+	if updated.AppearanceSceneID != nil {
+		t.Fatalf("AppearanceSceneID after clear = %v, want nil", updated.AppearanceSceneID)
+	}
+	if updated.RevealSceneID != nil || updated.HideSceneID != nil {
+		t.Fatalf("RevealSceneID/HideSceneID after clear = %v/%v, want nil", updated.RevealSceneID, updated.HideSceneID)
+	}
+
+	if _, err := f.svc.UpdateClue(ctx, creatorID, resp.ID, UpdateClueRequest{
+		Name:              resp.Name,
+		Level:             resp.Level,
+		AppearanceSceneID: &start.ID,
+	}); err == nil {
+		t.Fatal("expected start node appearance scene to be rejected")
+	}
+
+	if _, err := f.svc.UpdateClue(ctx, creatorID, resp.ID, UpdateClueRequest{
+		Name:          resp.Name,
+		Level:         resp.Level,
+		RevealSceneID: &branch.ID,
+	}); err == nil {
+		t.Fatal("expected branch reveal scene to be rejected")
+	}
+
+	if _, err := f.svc.UpdateClue(ctx, creatorID, resp.ID, UpdateClueRequest{
+		Name:              resp.Name,
+		Level:             resp.Level,
+		AppearanceSceneID: &otherScene.ID,
+	}); err == nil {
+		t.Fatal("expected other theme appearance scene to be rejected")
+	}
+}
+
+func createFlowNodeForTest(t *testing.T, f *testFixture, themeID uuid.UUID, nodeType string, label string) db.FlowNode {
+	t.Helper()
+	node, err := f.q.CreateFlowNode(context.Background(), db.CreateFlowNodeParams{
+		ThemeID:   themeID,
+		Type:      nodeType,
+		Data:      json.RawMessage(fmt.Sprintf(`{"label":%q}`, label)),
+		PositionX: 0,
+		PositionY: 0,
+	})
+	if err != nil {
+		t.Fatalf("CreateFlowNode(%s): %v", label, err)
+	}
+	return node
 }
 
 func TestService_ClueImageMediaReference(t *testing.T) {

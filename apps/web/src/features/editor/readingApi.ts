@@ -51,6 +51,7 @@ export interface CreateReadingSectionRequest {
   name: string;
   bgmMediaId?: string | null;
   bgmMode?: ReadingSectionBgmMode;
+  narratorCharacterId?: string | null;
   lines: ReadingLineDTO[];
   sortOrder: number;
 }
@@ -69,6 +70,7 @@ export interface UpdateReadingSectionRequest {
   name?: string;
   bgmMediaId?: string | null;
   bgmMode?: ReadingSectionBgmMode;
+  narratorCharacterId?: string | null;
   lines?: ReadingLineDTO[];
   sortOrder?: number;
   /** Optimistic-lock version. Required on every PATCH. */
@@ -81,6 +83,7 @@ export interface ReadingSectionResponse {
   name: string;
   bgmMediaId?: string | null;
   bgmMode?: ReadingSectionBgmMode;
+  narratorCharacterId?: string | null;
   lines: ReadingLineDTO[];
   sortOrder: number;
   version: number;

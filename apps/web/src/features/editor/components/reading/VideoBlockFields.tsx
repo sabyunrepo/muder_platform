@@ -1,16 +1,9 @@
 import { Video } from 'lucide-react';
 
-import { AdvanceField } from './AdvanceField';
 import { MediaControl } from './MediaControl';
 import type { BlockFieldProps } from './readingBlockFieldProps';
 
-export function VideoBlockFields({
-  line,
-  characters,
-  mediaById,
-  themeId,
-  onPatch,
-}: BlockFieldProps) {
+export function VideoBlockFields({ line, mediaById, themeId, onPatch }: BlockFieldProps) {
   return (
     <>
       <MediaControl
@@ -46,13 +39,6 @@ export function VideoBlockFields({
           />
           종료 후 다음 진행
         </label>
-        <AdvanceField
-          line={line}
-          characters={characters}
-          onChange={onPatch}
-          compact
-          allowVoice={false}
-        />
       </div>
     </>
   );

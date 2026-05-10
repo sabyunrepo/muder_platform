@@ -62,11 +62,12 @@ type ReadingLineDTO struct {
 
 // CreateReadingSectionRequest is the JSON body for POST /editor/themes/{themeID}/reading-sections.
 type CreateReadingSectionRequest struct {
-	Name       string           `json:"name" validate:"required,min=1,max=200"`
-	BgmMediaID *string          `json:"bgmMediaId,omitempty"`
-	BgmMode    string           `json:"bgmMode,omitempty"`
-	Lines      []ReadingLineDTO `json:"lines"`
-	SortOrder  int32            `json:"sortOrder"`
+	Name                string           `json:"name" validate:"required,min=1,max=200"`
+	BgmMediaID          *string          `json:"bgmMediaId,omitempty"`
+	BgmMode             string           `json:"bgmMode,omitempty"`
+	NarratorCharacterID *string          `json:"narratorCharacterId,omitempty"`
+	Lines               []ReadingLineDTO `json:"lines"`
+	SortOrder           int32            `json:"sortOrder"`
 }
 
 // UpdateReadingSectionRequest is the JSON body for PATCH /editor/reading-sections/{id}.
@@ -76,24 +77,26 @@ type CreateReadingSectionRequest struct {
 //   - field set to null (*BgmMediaID == nil)   → clear bgm
 //   - field set to "<uuid>" (**BgmMediaID set) → set to that media id
 type UpdateReadingSectionRequest struct {
-	Name       *string           `json:"name,omitempty" validate:"omitempty,min=1,max=200"`
-	BgmMediaID **string          `json:"bgmMediaId,omitempty"`
-	BgmMode    *string           `json:"bgmMode,omitempty"`
-	Lines      *[]ReadingLineDTO `json:"lines,omitempty"`
-	SortOrder  *int32            `json:"sortOrder,omitempty"`
-	Version    int32             `json:"version"`
+	Name                *string           `json:"name,omitempty" validate:"omitempty,min=1,max=200"`
+	BgmMediaID          **string          `json:"bgmMediaId,omitempty"`
+	BgmMode             *string           `json:"bgmMode,omitempty"`
+	NarratorCharacterID *string           `json:"narratorCharacterId,omitempty"`
+	Lines               *[]ReadingLineDTO `json:"lines,omitempty"`
+	SortOrder           *int32            `json:"sortOrder,omitempty"`
+	Version             int32             `json:"version"`
 }
 
 // ReadingSectionResponse is the JSON shape returned by all reading section endpoints.
 type ReadingSectionResponse struct {
-	ID         uuid.UUID        `json:"id"`
-	ThemeID    uuid.UUID        `json:"themeId"`
-	Name       string           `json:"name"`
-	BgmMediaID *string          `json:"bgmMediaId,omitempty"`
-	BgmMode    string           `json:"bgmMode"`
-	Lines      []ReadingLineDTO `json:"lines"`
-	SortOrder  int32            `json:"sortOrder"`
-	Version    int32            `json:"version"`
-	CreatedAt  time.Time        `json:"createdAt"`
-	UpdatedAt  time.Time        `json:"updatedAt"`
+	ID                  uuid.UUID        `json:"id"`
+	ThemeID             uuid.UUID        `json:"themeId"`
+	Name                string           `json:"name"`
+	BgmMediaID          *string          `json:"bgmMediaId,omitempty"`
+	BgmMode             string           `json:"bgmMode"`
+	NarratorCharacterID *string          `json:"narratorCharacterId,omitempty"`
+	Lines               []ReadingLineDTO `json:"lines"`
+	SortOrder           int32            `json:"sortOrder"`
+	Version             int32            `json:"version"`
+	CreatedAt           time.Time        `json:"createdAt"`
+	UpdatedAt           time.Time        `json:"updatedAt"`
 }

@@ -56,9 +56,6 @@ vi.mock('@/features/editor/api', () => ({
 vi.mock('../ClueForm', () => ({
   ClueForm: () => null,
 }));
-vi.mock('../clues/ClueEdgeGraph', () => ({
-  ClueEdgeGraph: () => <div>단서 관계 그래프</div>,
-}));
 vi.mock('@/features/editor/components/media/ImageMediaReferenceField', () => ({
   ImageMediaReferenceField: ({ label }: { label: string }) => (
     <div data-testid="image-media-field">{label}</div>
@@ -163,11 +160,12 @@ describe('CluesTab', () => {
     expect(screen.getByText('2개의 단서')).toBeDefined();
   });
 
-  it('relations routeSegment로 직접 진입하면 관계 서브탭을 연다', () => {
+  it('relations routeSegment로 직접 진입해도 단서 목록을 표시한다', () => {
     useEditorCluesMock.mockReturnValue({ data: mockClues, isLoading: false });
 
     render(<CluesTab themeId="theme-1" routeSegment="relations" />);
 
-    expect(screen.getByText('단서 관계 그래프')).toBeDefined();
+    expect(screen.queryByText('단서 관계 그래프')).toBeNull();
+    expect(screen.getByText('단서 기본 정보')).toBeDefined();
   });
 });

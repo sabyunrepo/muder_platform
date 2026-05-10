@@ -93,7 +93,7 @@ vi.mock('@mdxeditor/editor', () => ({
       .find((descriptor) => descriptor.name === 'MediaEmbed');
     const mediaEmbeds = Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
     return (
-      <div data-testid="role-sheet-mdx-editor">
+      <div data-testid="mdx-editor-surface">
         <textarea
           aria-label="editable markdown"
           value={markdown}
@@ -341,8 +341,8 @@ describe('CharacterAssignPanel', () => {
     useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false, refetch: vi.fn() });
     useMediaListMock.mockReturnValue({
       data: [
-        { id: 'image-1', name: '캐릭터 이미지', type: 'IMAGE' },
-        { id: 'video-1', name: '역할지 영상', type: 'VIDEO' },
+        { id: 'image-1', name: '캐릭터 이미지', type: 'IMAGE', source_type: 'FILE', url: 'http://localhost:8080/media/character.png' },
+        { id: 'video-1', name: '역할지 영상', type: 'VIDEO', source_type: 'FILE', url: 'http://localhost:8080/media/role.mp4' },
       ],
       isLoading: false,
     });
@@ -630,11 +630,14 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
 
     const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
-    expect(roleSheet.value).toContain(
-      '<MediaEmbed mediaId="image-1" type="image" align="center" width="medium" />',
-    );
-    expect(screen.getByTestId('media-embed-editor')).toBeDefined();
-    expect(screen.getByRole('button', { name: '캐릭터 이미지 교체' })).toBeDefined();
+    expect(roleSheet.value).toContain('<MediaEmbed mediaId="image-1" type="image" align="center" width="medium" />');
+    const editorSurface = screen.getByTestId('mdx-editor-surface');
+    const embedEditor = within(editorSurface).getByTestId('media-embed-editor');
+    const image = within(embedEditor).getByRole('img', { name: '캐릭터 이미지' });
+    expect(image).toHaveProperty('src', 'http://localhost:8080/media/character.png');
+    expect(image).toHaveProperty('className', expect.stringContaining('h-auto'));
+    expect(embedEditor.querySelector('figcaption')).toBeNull();
+    expect(within(editorSurface).queryByText('이미지 블록')).toBeNull();
   });
 
   it('역할지 작성기는 지원 영상 미디어를 mediaId embed로 삽입한다', () => {
@@ -647,11 +650,12 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '역할지 영상 선택' }));
 
     const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
-    expect(roleSheet.value).toContain(
-      '<MediaEmbed mediaId="video-1" type="video" align="center" width="medium" />',
-    );
-    expect(screen.getByTestId('media-embed-editor')).toBeDefined();
-    expect(screen.getByRole('button', { name: '역할지 영상 교체' })).toBeDefined();
+    expect(roleSheet.value).toContain('<MediaEmbed mediaId="video-1" type="video" align="center" width="medium" />');
+    const editorSurface = screen.getByTestId('mdx-editor-surface');
+    const embedEditor = within(editorSurface).getByTestId('media-embed-editor');
+    expect(within(embedEditor).getByLabelText('역할지 영상 영상')).toBeDefined();
+    expect(embedEditor.querySelector('figcaption')).toBeNull();
+    expect(within(editorSurface).queryByText('영상 블록')).toBeNull();
   });
 
   it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {

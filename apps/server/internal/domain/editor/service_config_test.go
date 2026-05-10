@@ -475,6 +475,10 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 						"%s": {
 							"effect": "steal",
 							"target": "player"
+						},
+						"%s": {
+							"effect": "kill",
+							"target": "player"
 						}
 					},
 					"cluePolicies": {
@@ -483,7 +487,7 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 				}
 			}
 		}
-	}`, clueID, rewardClueID, uuid.NewString(), uuid.NewString(), clueID))
+	}`, clueID, rewardClueID, uuid.NewString(), uuid.NewString(), uuid.NewString(), clueID))
 	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
 		t.Fatalf("valid clue_interaction itemEffects must save: %v", err)
 	}
@@ -718,7 +722,7 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 				"modules": {
 					"clue_interaction": {
 						"enabled": true,
-						"config": {"itemEffects": {"%s": {"effect": "kill"}}}
+						"config": {"itemEffects": {"%s": {"effect": "teleport"}}}
 					}
 				}
 			}`, clueID)),

@@ -261,20 +261,23 @@ func (s *ImageService) ConfirmImageUpload(
 			return nil, apperror.NotFound("clue not found")
 		}
 		_, err = s.q.UpdateClue(ctx, db.UpdateClueParams{
-			ID:          clue.ID,
-			LocationID:  clue.LocationID,
-			Name:        clue.Name,
-			Description: clue.Description,
-			ImageUrl:    pgtype.Text{String: downloadURL, Valid: true},
-			IsCommon:    clue.IsCommon,
-			Level:       clue.Level,
-			SortOrder:   clue.SortOrder,
-			IsUsable:    clue.IsUsable,
-			UseEffect:   clue.UseEffect,
-			UseTarget:   clue.UseTarget,
-			UseConsumed: clue.UseConsumed,
-			RevealRound: clue.RevealRound,
-			HideRound:   clue.HideRound,
+			ID:                clue.ID,
+			LocationID:        clue.LocationID,
+			Name:              clue.Name,
+			Description:       clue.Description,
+			ImageUrl:          pgtype.Text{String: downloadURL, Valid: true},
+			IsCommon:          clue.IsCommon,
+			Level:             clue.Level,
+			SortOrder:         clue.SortOrder,
+			IsUsable:          clue.IsUsable,
+			UseEffect:         clue.UseEffect,
+			UseTarget:         clue.UseTarget,
+			UseConsumed:       clue.UseConsumed,
+			RevealRound:       clue.RevealRound,
+			HideRound:         clue.HideRound,
+			AppearanceSceneID: clue.AppearanceSceneID,
+			RevealSceneID:     clue.RevealSceneID,
+			HideSceneID:       clue.HideSceneID,
 		})
 		if err != nil {
 			s.logger.Error().Err(err).Str("clue_id", targetID.String()).Msg("failed to update clue image_url")

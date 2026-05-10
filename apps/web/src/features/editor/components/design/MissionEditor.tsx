@@ -2,7 +2,6 @@ import { Plus, Trash2 } from 'lucide-react';
 import { MissionTypeFields } from './MissionTypeFields';
 import {
   MISSION_TYPES,
-  MISSION_REVEAL_OPTIONS,
   toMissionViewModel,
   type Mission,
   type MissionEditorCharacter,
@@ -10,8 +9,8 @@ import {
 } from '../../entities/mission/missionAdapter';
 import type {
   ProgressNodeRevealOption,
-  RoundRevealOption,
 } from '@/features/editor/entities/reveal/revealTimingOptions';
+import { SceneSelectField } from '@/features/editor/components/SceneSelectField';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,7 +22,7 @@ interface MissionEditorProps {
   missions: Mission[];
   characters?: MissionEditorCharacter[];
   clues?: MissionEditorClue[];
-  roundOptions?: RoundRevealOption[];
+  roundOptions?: unknown;
   nodeOptions?: ProgressNodeRevealOption[];
   onAdd: () => void;
   onChange: (missionId: string, field: keyof Mission, value: string | number) => void;
@@ -38,7 +37,6 @@ export function MissionEditor({
   missions,
   characters = [],
   clues = [],
-  roundOptions = DEFAULT_MISSION_ROUND_OPTIONS,
   nodeOptions = DEFAULT_MISSION_NODE_OPTIONS,
   onAdd,
   onChange,
@@ -65,7 +63,6 @@ export function MissionEditor({
               mission={mission}
               characters={characters}
               clues={clues}
-              roundOptions={roundOptions}
               nodeOptions={nodeOptions}
               onChange={onChange}
               onDelete={onDelete}
@@ -83,7 +80,6 @@ function MissionCard({
   mission,
   characters,
   clues,
-  roundOptions,
   nodeOptions,
   onChange,
   onDelete,
@@ -91,13 +87,13 @@ function MissionCard({
   mission: Mission;
   characters: MissionEditorCharacter[];
   clues: MissionEditorClue[];
-  roundOptions: RoundRevealOption[];
   nodeOptions: ProgressNodeRevealOption[];
   onChange: (missionId: string, field: keyof Mission, value: string | number) => void;
   onDelete: (missionId: string) => void;
 }) {
   const viewModel = toMissionViewModel(mission);
   const descriptionId = `mission-description-${mission.id}`;
+  const revealNodeId = mission.revealNodeId ?? nodeOptions[0]?.value ?? '';
   return (
     <div className="rounded border border-slate-800 bg-slate-900 p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -131,7 +127,7 @@ function MissionCard({
         placeholder="미션 설명"
         className="mb-2 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
       />
-      <div className="mb-2 grid gap-2 text-xs text-slate-500 sm:grid-cols-2">
+      <div className="mb-2 text-xs text-slate-500">
         <label className="flex items-center gap-2">
           <span>포인트:</span>
           <input
@@ -141,57 +137,16 @@ function MissionCard({
             className="w-16 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
           />
         </label>
-        <label className="flex items-center gap-2">
-          <span>공개:</span>
-          <select
-            value={mission.visibleFrom ?? 'game_start'}
-            onChange={(e) => onChange(mission.id, 'visibleFrom', e.target.value)}
-            className="min-w-0 flex-1 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
-            aria-label="미션 공개 시점"
-          >
-            {MISSION_REVEAL_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
       </div>
-      {mission.visibleFrom === 'round_start' ? (
-        <label className="mb-2 block text-xs text-slate-500">
-          시작 라운드
-          <select
-            value={String(mission.revealRound ?? 1)}
-            onChange={(e) => onChange(mission.id, 'revealRound', Number(e.target.value))}
-            className="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300"
-          >
-            {roundOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label} 시작
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-      {mission.visibleFrom === 'node_reached' ? (
-        <label className="mb-2 block text-xs text-slate-500">
-          진행 노드
-          <select
-            value={mission.revealNodeId ?? nodeOptions[0]?.value ?? ''}
-            onChange={(e) => onChange(mission.id, 'revealNodeId', e.target.value)}
-            className="mt-1 w-full rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 placeholder-slate-600"
-          >
-            {nodeOptions.length === 0 ? (
-              <option value="">진행 장면 없음</option>
-            ) : null}
-            {nodeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
+      <div className="mb-2">
+        <SceneSelectField
+          label="미션 공개 장면"
+          selectedId={revealNodeId}
+          options={nodeOptions}
+          emptyLabel="선택할 장면 없음"
+          onChange={(sceneId) => onChange(mission.id, 'revealNodeId', sceneId ?? '')}
+        />
+      </div>
       <div className="mb-2 flex flex-wrap gap-2 text-[11px] text-slate-400">
         <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.revealLabel}</span>
         <span className="rounded-full bg-slate-800 px-2 py-0.5">{viewModel.verificationLabel}</span>
@@ -211,11 +166,6 @@ function MissionCard({
     </div>
   );
 }
-
-const DEFAULT_MISSION_ROUND_OPTIONS = Array.from({ length: 5 }, (_, index) => {
-  const round = index + 1;
-  return { value: round, label: `${round}라운드` };
-});
 
 const DEFAULT_MISSION_NODE_OPTIONS = [
   { value: 'intro_finished', label: '자기소개 종료' },

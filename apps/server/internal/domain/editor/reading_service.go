@@ -20,6 +20,7 @@ import (
 // without spinning up Postgres.
 type readingQueries interface {
 	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
+	GetThemeCharacter(ctx context.Context, id uuid.UUID) (db.ThemeCharacter, error)
 	GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error)
 	ListReadingSectionsByTheme(ctx context.Context, themeID uuid.UUID) ([]db.ReadingSection, error)
 	GetReadingSectionWithOwner(ctx context.Context, arg db.GetReadingSectionWithOwnerParams) (db.ReadingSection, error)
@@ -337,6 +338,10 @@ func (s *readingService) Create(ctx context.Context, creatorID, themeID uuid.UUI
 	if err != nil {
 		return nil, err
 	}
+	narratorParam, err := s.resolveNarratorCharacterID(ctx, themeID, req.NarratorCharacterID)
+	if err != nil {
+		return nil, err
+	}
 
 	linesJSON, err := json.Marshal(req.Lines)
 	if err != nil {
@@ -345,12 +350,13 @@ func (s *readingService) Create(ctx context.Context, creatorID, themeID uuid.UUI
 	}
 
 	row, err := s.q.CreateReadingSection(ctx, db.CreateReadingSectionParams{
-		ThemeID:    themeID,
-		Name:       req.Name,
-		BgmMediaID: bgmParam,
-		BgmMode:    normalizeSectionBgmMode(req.BgmMode),
-		Lines:      linesJSON,
-		SortOrder:  req.SortOrder,
+		ThemeID:             themeID,
+		Name:                req.Name,
+		BgmMediaID:          bgmParam,
+		BgmMode:             normalizeSectionBgmMode(req.BgmMode),
+		NarratorCharacterID: narratorParam,
+		Lines:               linesJSON,
+		SortOrder:           req.SortOrder,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", themeID.String()).Msg("failed to create reading section")
@@ -384,6 +390,15 @@ func (s *readingService) Update(ctx context.Context, creatorID, sectionID uuid.U
 			return nil, err
 		}
 		bgmMode = normalizeSectionBgmMode(*req.BgmMode)
+	}
+
+	narratorParam := current.NarratorCharacterID
+	if req.NarratorCharacterID != nil {
+		resolved, err := s.resolveNarratorCharacterID(ctx, current.ThemeID, req.NarratorCharacterID)
+		if err != nil {
+			return nil, err
+		}
+		narratorParam = resolved
 	}
 
 	// Lines: if patch supplies new lines, validate them; otherwise keep current.
@@ -424,13 +439,14 @@ func (s *readingService) Update(ctx context.Context, creatorID, sectionID uuid.U
 	}
 
 	row, err := s.q.UpdateReadingSection(ctx, db.UpdateReadingSectionParams{
-		ID:         sectionID,
-		Name:       name,
-		BgmMediaID: bgmParam,
-		BgmMode:    bgmMode,
-		Lines:      linesJSON,
-		SortOrder:  sortOrder,
-		Version:    req.Version,
+		ID:                  sectionID,
+		Name:                name,
+		BgmMediaID:          bgmParam,
+		BgmMode:             bgmMode,
+		NarratorCharacterID: narratorParam,
+		Lines:               linesJSON,
+		SortOrder:           sortOrder,
+		Version:             req.Version,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -478,6 +494,31 @@ func (s *readingService) resolveBgmMediaID(ctx context.Context, themeID uuid.UUI
 	return pgtype.UUID{Bytes: mediaID, Valid: true}, nil
 }
 
+func (s *readingService) resolveNarratorCharacterID(ctx context.Context, themeID uuid.UUID, raw *string) (pgtype.UUID, error) {
+	if raw == nil || *raw == "" {
+		return pgtype.UUID{}, nil
+	}
+	characterID, err := uuid.Parse(*raw)
+	if err != nil {
+		return pgtype.UUID{}, apperror.New(apperror.ErrValidation, 422, "invalid narratorCharacterId")
+	}
+	character, err := s.q.GetThemeCharacter(ctx, characterID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgtype.UUID{}, apperror.New(apperror.ErrValidation, 422, "narratorCharacterId: character not found")
+		}
+		s.logger.Error().Err(err).Str("character_id", characterID.String()).Msg("failed to verify narrator character")
+		return pgtype.UUID{}, apperror.Internal("failed to verify narrator character")
+	}
+	if character.ThemeID != themeID {
+		return pgtype.UUID{}, apperror.New(apperror.ErrValidation, 422, "narratorCharacterId: character does not belong to this theme")
+	}
+	if !character.IsPlayable {
+		return pgtype.UUID{}, apperror.New(apperror.ErrValidation, 422, "narratorCharacterId: character must be playable")
+	}
+	return pgtype.UUID{Bytes: characterID, Valid: true}, nil
+}
+
 // normalizeLineIndices rewrites line.Index to match its position in the slice
 // so the editor doesn't need to keep them in sync manually.
 func normalizeLineIndices(lines []ReadingLineDTO) {
@@ -507,6 +548,10 @@ func toReadingSectionResponse(r db.ReadingSection) (*ReadingSectionResponse, err
 	if r.BgmMediaID.Valid {
 		id := uuid.UUID(r.BgmMediaID.Bytes).String()
 		resp.BgmMediaID = &id
+	}
+	if r.NarratorCharacterID.Valid {
+		id := uuid.UUID(r.NarratorCharacterID.Bytes).String()
+		resp.NarratorCharacterID = &id
 	}
 	return resp, nil
 }
