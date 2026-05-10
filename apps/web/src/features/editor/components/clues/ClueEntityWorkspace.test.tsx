@@ -107,7 +107,7 @@ describe('ClueEntityWorkspace', () => {
     );
 
     expect(screen.getByText('단서 기본 정보')).toBeDefined();
-    expect(screen.getByText('단서 공개 조건')).toBeDefined();
+    expect(screen.getByText('단서 사용 설정')).toBeDefined();
     expect(screen.getByLabelText('전체 공개')).toBeDefined();
     expect(screen.getByLabelText(/공개 가능/)).toBeDefined();
     expect(screen.getByLabelText(/단서 보호/)).toBeDefined();
@@ -136,9 +136,8 @@ describe('ClueEntityWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: '비밀 편지 선택' }));
 
     expect(screen.getAllByText('숨겨진 메시지').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: '설명 변경' }).getAttribute('aria-pressed')).toBe(
-      'true',
-    );
+    expect((screen.getByLabelText('사용 가능한 아이템') as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByRole('button', { name: '설명 변경' })).toBeNull();
   });
 
   it('인라인 기본 정보 저장 시 선택 단서 update payload와 보호 정책을 보낸다', () => {

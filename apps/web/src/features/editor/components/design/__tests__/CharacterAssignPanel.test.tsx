@@ -430,7 +430,7 @@ describe('CharacterAssignPanel', () => {
           label: '정체 공개',
           display_name: '밤의 목격자',
           display_icon_url: '',
-          priority: 1,
+          priority: 0,
           condition: {
             id: 'group-1',
             operator: 'AND',
@@ -462,7 +462,7 @@ describe('CharacterAssignPanel', () => {
           id: 'alias-1',
           label: '정체 공개',
           display_name: '비밀 목격자',
-          priority: 1,
+          priority: 0,
         })],
       }),
     });
