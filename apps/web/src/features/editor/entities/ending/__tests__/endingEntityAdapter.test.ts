@@ -18,28 +18,17 @@ describe("endingEntityAdapter", () => {
   it("제작자에게 필요한 결말 표시 정보만 만든다", () => {
     const vm = toEndingEditorViewModel(node("end-1", {
       label: "진실",
-      icon: "⚖️",
-      description: "정답 결말",
       endingContent: "범인이 밝혀졌다.",
-      endingVisibility: "players_only",
-      endingSpoilerWarning: "스포일러 주의",
-      endingShareText: "감상을 공유해 주세요.",
     }), 2);
 
     expect(vm).toMatchObject({
       id: "end-1",
       name: "진실",
-      icon: "⚖️",
-      description: "정답 결말",
       contentPreview: "범인이 밝혀졌다.",
-      visibility: "players_only",
-      visibilityLabel: "참가자에게만 공개",
-      spoilerWarning: "스포일러 주의",
-      shareText: "감상을 공유해 주세요.",
       isReady: true,
     });
     expect(vm.badges).toContain("도달 경로 2개");
-    expect(vm.badges).toContain("참가자에게만 공개");
+    expect(vm.badges).not.toContain("참가자에게만 공개");
   });
 
   it("결말 준비 상태와 제작자용 경고를 요약한다", () => {

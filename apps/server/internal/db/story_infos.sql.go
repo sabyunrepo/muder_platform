@@ -223,7 +223,7 @@ SET title = $2,
     related_clue_ids = $7,
     related_location_ids = $8,
     sort_order = $9,
-    version = version + 1,
+    version = story_infos.version + 1,
     updated_at = NOW()
 FROM themes t
 WHERE story_infos.id = $1

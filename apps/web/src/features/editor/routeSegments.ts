@@ -24,6 +24,7 @@ const EDITOR_ROUTE_TAB_MAP: Record<string, EditorTab> = {
   'design/locations': 'locations',
   'design/endings': 'endings',
   locations: 'locations',
+  questions: 'questions',
   endings: 'endings',
   media: 'media',
   advanced: 'advanced',
@@ -38,6 +39,7 @@ const EDITOR_TAB_ROUTE_SEGMENTS: Record<EditorTab, string | undefined> = {
   characters: 'characters',
   clues: 'clues',
   design: 'design',
+  questions: 'questions',
   endings: 'endings',
   locations: 'locations',
   media: 'media',
@@ -81,6 +83,11 @@ export const EDITOR_ROUTE_MATRIX = [
     routeSegment: 'design/endings',
     editorTab: 'endings',
     alias: true,
+  },
+  {
+    path: '/editor/:id/questions',
+    routeSegment: 'questions',
+    editorTab: 'questions',
   },
   { path: '/editor/:id/media', routeSegment: 'media', editorTab: 'media' },
   {

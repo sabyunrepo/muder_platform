@@ -19,6 +19,9 @@ const DesignTab = lazy(() => import('./DesignTab').then((m) => ({ default: m.Des
 const EndingEntitySubTab = lazy(() =>
   import('./design/EndingEntitySubTab').then((m) => ({ default: m.EndingEntitySubTab }))
 );
+const EndingQuestionsTab = lazy(() =>
+  import('./design/EndingEntitySubTab').then((m) => ({ default: m.EndingQuestionsTab }))
+);
 const LocationsSubTab = lazy(() =>
   import('./design/LocationsSubTab').then((m) => ({ default: m.LocationsSubTab }))
 );
@@ -53,6 +56,8 @@ export function TabContent({ tab, theme, themeId, routeSegment }: TabContentProp
       return <CluesTab themeId={themeId} routeSegment={routeSegment} />;
     case 'design':
       return <DesignTab theme={theme} themeId={themeId} routeSegment={routeSegment} />;
+    case 'questions':
+      return <EndingQuestionsTab theme={theme} themeId={themeId} />;
     case 'endings':
       return <EndingEntitySubTab theme={theme} themeId={themeId} />;
     case 'locations':

@@ -10,6 +10,7 @@ import {
   Info,
   MapPin,
   Drama,
+  CircleHelp,
 } from 'lucide-react';
 import type { ThemeStatus } from './api';
 
@@ -36,6 +37,7 @@ export const EDITOR_TABS = [
   },
   { key: 'clues' as const, label: '단서 관리', icon: Search, always: true, group: 'manage' },
   { key: 'design' as const, label: '게임 설계', icon: Settings, always: true, group: 'manage' },
+  { key: 'questions' as const, label: '질문 관리', icon: CircleHelp, always: true, group: 'manage' },
   { key: 'endings' as const, label: '결말 관리', icon: Drama, always: true, group: 'manage' },
   { key: 'locations' as const, label: '장소 관리', icon: MapPin, always: true, group: 'manage' },
   { key: 'media' as const, label: '미디어 관리', icon: Music, always: true, group: 'manage' },

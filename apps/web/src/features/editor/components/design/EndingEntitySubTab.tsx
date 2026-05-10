@@ -20,9 +20,20 @@ interface EndingEntitySubTabProps {
 }
 
 export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) {
+  return <EndingEntityWorkspace themeId={themeId} theme={theme} section="endings" />;
+}
+
+export function EndingQuestionsTab({ themeId, theme }: EndingEntitySubTabProps) {
+  return <EndingEntityWorkspace themeId={themeId} theme={theme} section="questions" />;
+}
+
+function EndingEntityWorkspace({
+  themeId,
+  theme,
+  section,
+}: EndingEntitySubTabProps & { section: 'questions' | 'endings' }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [section, setSection] = useState<'questions' | 'endings'>('questions');
   const { data: characters = [] } = useEditorCharacters(themeId);
   const {
     nodes,
@@ -93,36 +104,9 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
       data-testid="ending-entity-panel"
       className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6"
     >
-      <EndingEntityHeader onAddEnding={handleAddEnding} />
+      {section === 'endings' ? <EndingEntityHeader onAddEnding={handleAddEnding} /> : null}
 
-      <EndingDecisionSummaryPanel summary={decisionSummary} />
-
-      <nav className="flex flex-wrap gap-2" aria-label="결말 편집 섹션">
-        <button
-          type="button"
-          onClick={() => setSection('questions')}
-          aria-pressed={section === 'questions'}
-          className={`min-h-11 rounded-xl border px-4 text-sm font-medium transition ${
-            section === 'questions'
-              ? 'border-amber-500/70 bg-amber-500/15 text-amber-100'
-              : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600'
-          }`}
-        >
-          질문 관리
-        </button>
-        <button
-          type="button"
-          onClick={() => setSection('endings')}
-          aria-pressed={section === 'endings'}
-          className={`min-h-11 rounded-xl border px-4 text-sm font-medium transition ${
-            section === 'endings'
-              ? 'border-amber-500/70 bg-amber-500/15 text-amber-100'
-              : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-600'
-          }`}
-        >
-          결말 관리
-        </button>
-      </nav>
+      {section === 'endings' ? <EndingDecisionSummaryPanel summary={decisionSummary} /> : null}
 
       <EndingBranchRulesPanel
         themeId={themeId}
@@ -135,8 +119,8 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
       {section !== 'endings' ? null : endingNodes.length === 0 ? (
         <EndingEmptyState />
       ) : (
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(220px,320px)_minmax(0,1fr)]">
+          <aside className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
@@ -149,7 +133,7 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
               />
             </label>
 
-            <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+            <div className="flex min-w-0 flex-col gap-2">
               {filteredNodes.length === 0 ? (
                 <p className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
                   검색 결과가 없습니다.
@@ -171,13 +155,7 @@ export function EndingEntitySubTab({ themeId, theme }: EndingEntitySubTabProps) 
                           : 'border-slate-800 bg-slate-950 hover:border-slate-600'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <span aria-hidden="true">{viewModel.icon}</span>
-                        <span className="font-medium text-slate-100">{viewModel.name}</span>
-                      </div>
-                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
-                        {viewModel.description}
-                      </p>
+                      <p className="font-medium text-slate-100">{viewModel.name}</p>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {viewModel.badges.map((badge) => (
                           <span

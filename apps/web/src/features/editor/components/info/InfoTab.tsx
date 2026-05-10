@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Save, Trash2 } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 
-import { useEditorCharacters, useEditorClues, useEditorLocations } from '@/features/editor/api';
 import {
   useCreateStoryInfo,
   useDeleteStoryInfo,
@@ -9,17 +8,16 @@ import {
   useUpdateStoryInfo,
   type StoryInfoResponse,
 } from '@/features/editor/storyInfoApi';
-import type { MediaResponse, MediaType } from '@/features/editor/mediaApi';
+import type { MediaType } from '@/features/editor/mediaApi';
 import { Spinner } from '@/shared/components/ui';
-import { InfoImageField } from './InfoImageField';
+import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
-import { ReferencePicker } from './ReferencePicker';
 
 interface InfoTabProps {
   themeId: string;
 }
 
-type RefKind = 'character' | 'clue' | 'location';
+const INFO_EDITOR_ERROR_AUTO_DISMISS_MS = 6000;
 
 export function InfoTab({ themeId }: InfoTabProps) {
   const { data: infos = [], isLoading, isError, refetch } = useStoryInfos(themeId);
@@ -112,9 +110,6 @@ export function InfoTab({ themeId }: InfoTabProps) {
                 <span className="block truncate text-sm font-medium text-slate-100">
                   {info.title}
                 </span>
-                <span className="mt-1 block line-clamp-2 text-xs text-slate-500">
-                  {info.body || '본문 없음'}
-                </span>
               </button>
             ))
           )}
@@ -137,36 +132,31 @@ export function InfoTab({ themeId }: InfoTabProps) {
 function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoResponse }) {
   const [draft, setDraft] = useState(() => ({ ...info }));
   const [baseline, setBaseline] = useState(() => ({ ...info }));
-  const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [embedPickerType, setEmbedPickerType] = useState<MediaType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(() => !hasDisplayableBody(info));
   const updateInfo = useUpdateStoryInfo(themeId);
   const deleteInfo = useDeleteStoryInfo(themeId);
-  const { data: characters = [] } = useEditorCharacters(themeId);
-  const { data: clues = [] } = useEditorClues(themeId);
-  const { data: locations = [] } = useEditorLocations(themeId);
 
   useEffect(() => {
     setDraft({ ...info });
     setBaseline({ ...info });
+    setEmbedPickerType(null);
+    setError(null);
+    setIsEditing(!hasDisplayableBody(info));
   }, [info]);
+
+  useEffect(() => {
+    if (!error) return undefined;
+    const timeout = window.setTimeout(() => setError(null), INFO_EDITOR_ERROR_AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timeout);
+  }, [error]);
 
   const isDirty = hasEditableChanges(draft, baseline);
 
-  function patchRefs(kind: RefKind, id: string, checked: boolean) {
-    const key =
-      kind === 'character'
-        ? 'relatedCharacterIds'
-        : kind === 'clue'
-          ? 'relatedClueIds'
-          : 'relatedLocationIds';
-    setDraft((current) => {
-      const currentIds = current[key];
-      const nextIds = checked
-        ? Array.from(new Set([...currentIds, id]))
-        : currentIds.filter((item) => item !== id);
-      return { ...current, [key]: nextIds };
-    });
+  function updateDraft(patch: Partial<StoryInfoResponse>) {
+    setError(null);
+    setDraft((current) => ({ ...current, ...patch }));
   }
 
   async function handleSave() {
@@ -187,6 +177,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
       });
       setDraft({ ...saved });
       setBaseline({ ...saved });
+      setIsEditing(!hasDisplayableBody(saved));
     } catch (err) {
       setError(errorMessage(err, '저장에 실패했습니다'));
     }
@@ -201,16 +192,36 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     }
   }
 
-  function handleImageSelect(media: MediaResponse) {
-    setDraft((current) => ({ ...current, imageMediaId: media.id }));
+  if (!isEditing) {
+    return (
+      <InfoBodyPreview
+        themeId={themeId}
+        info={baseline}
+        error={error}
+        deletePending={deleteInfo.isPending}
+        onEdit={() => setIsEditing(true)}
+        onDelete={() => void handleDelete()}
+      />
+    );
   }
 
   return (
     <section className="min-h-full">
       <div className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
         {error && (
-          <div className="rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-            {error}
+          <div
+            className="flex items-start justify-between gap-3 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+            role="alert"
+          >
+            <span>{error}</span>
+            <button
+              type="button"
+              aria-label="오류 메시지 닫기"
+              onClick={() => setError(null)}
+              className="shrink-0 rounded p-0.5 text-rose-200 hover:bg-rose-500/20"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
         )}
 
@@ -219,7 +230,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
           <input
             aria-label="정보 제목"
             value={draft.title}
-            onChange={(event) => setDraft({ ...draft, title: event.target.value })}
+            onChange={(event) => updateDraft({ title: event.target.value })}
             className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
           />
         </label>
@@ -229,41 +240,12 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
           <InfoMarkdownEditor
             themeId={themeId}
             markdown={draft.body}
-            onChange={(body) => setDraft((current) => ({ ...current, body }))}
+            onChange={(body) => updateDraft({ body })}
             pickerType={embedPickerType}
             onOpenPicker={setEmbedPickerType}
             onClosePicker={() => setEmbedPickerType(null)}
           />
         </div>
-
-        <InfoImageField
-          themeId={themeId}
-          imageMediaId={draft.imageMediaId}
-          pickerOpen={imagePickerOpen}
-          onOpenPicker={() => setImagePickerOpen(true)}
-          onClosePicker={() => setImagePickerOpen(false)}
-          onSelect={handleImageSelect}
-          onClear={() => setDraft({ ...draft, imageMediaId: null })}
-        />
-
-        <ReferencePicker
-          title="관련 등장인물"
-          items={characters.map((character) => ({ id: character.id, name: character.name }))}
-          selectedIds={draft.relatedCharacterIds}
-          onToggle={(id, checked) => patchRefs('character', id, checked)}
-        />
-        <ReferencePicker
-          title="관련 단서"
-          items={clues.map((clue) => ({ id: clue.id, name: clue.name }))}
-          selectedIds={draft.relatedClueIds}
-          onToggle={(id, checked) => patchRefs('clue', id, checked)}
-        />
-        <ReferencePicker
-          title="관련 장소"
-          items={locations.map((location) => ({ id: location.id, name: location.name }))}
-          selectedIds={draft.relatedLocationIds}
-          onToggle={(id, checked) => patchRefs('location', id, checked)}
-        />
 
         <div className="flex items-center justify-between border-t border-slate-800 pt-3">
           <button
@@ -290,18 +272,14 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   );
 }
 
-function sameIds(a: string[], b: string[]) {
-  return a.length === b.length && a.every((id, index) => id === b[index]);
+function hasDisplayableBody(info: StoryInfoResponse) {
+  return info.body.trim().length > 0;
 }
 
 function hasEditableChanges(current: StoryInfoResponse, baseline: StoryInfoResponse) {
   return (
     current.title !== baseline.title ||
     current.body !== baseline.body ||
-    (current.imageMediaId ?? null) !== (baseline.imageMediaId ?? null) ||
-    !sameIds(current.relatedCharacterIds, baseline.relatedCharacterIds) ||
-    !sameIds(current.relatedClueIds, baseline.relatedClueIds) ||
-    !sameIds(current.relatedLocationIds, baseline.relatedLocationIds) ||
     current.sortOrder !== baseline.sortOrder
   );
 }
