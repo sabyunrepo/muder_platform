@@ -153,8 +153,8 @@ export function EditorLayout({
       {/* ── Content ── */}
       <div
         role="tabpanel"
-        id={`tabpanel-${activeTab}`}
-        aria-labelledby={`tab-${activeTab}`}
+        id={`tabpanel-${effectiveTab}`}
+        aria-labelledby={`tab-${effectiveTab}`}
         className={usesInternalScroll ? "min-h-0 flex-1 overflow-hidden" : "flex-1 overflow-y-auto"}
       >
         <Suspense
@@ -165,7 +165,7 @@ export function EditorLayout({
           }
         >
           <TabContent
-            tab={activeTab}
+            tab={effectiveTab}
             theme={theme}
             themeId={themeId}
             routeSegment={routeSegment}

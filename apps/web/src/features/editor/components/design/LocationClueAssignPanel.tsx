@@ -93,8 +93,17 @@ export function LocationClueAssignPanel({
     );
   }, [clues, query]);
 
-  function commit(next: LocationDiscoveryConfig[], deckDraft?: typeof investigationDraft) {
-    const locationConfig = writeLocationDiscoveries(theme.config_json, location.id, next);
+  function readLatestConfigJson() {
+    return queryClient.getQueryData<EditorThemeResponse>(editorKeys.theme(themeId))?.config_json
+      ?? theme.config_json;
+  }
+
+  function commit(
+    next: LocationDiscoveryConfig[],
+    deckDraft?: typeof investigationDraft,
+    baseConfig = theme.config_json,
+  ) {
+    const locationConfig = writeLocationDiscoveries(baseConfig, location.id, next);
     const nextConfig = deckDraft
       ? writeDeckInvestigationConfig(locationConfig, deckDraft)
       : locationConfig;
@@ -119,35 +128,47 @@ export function LocationClueAssignPanel({
   }
 
   function addClue(clueId: string) {
-    if (assignedSet.has(clueId)) {
+    const baseConfig = readLatestConfigJson();
+    const currentDiscoveries = readLocationDiscoveries(baseConfig, location.id);
+    const currentInvestigationDraft = readDeckInvestigationConfig(baseConfig);
+    const currentAssignedSet = new Set(currentDiscoveries.map((discovery) => discovery.clueId));
+    const currentGloballyAssignedClueIds = new Set(
+      readAllLocationDiscoveries(baseConfig)
+        .filter((discovery) => discovery.locationId !== location.id)
+        .map((discovery) => discovery.clueId)
+    );
+
+    if (currentAssignedSet.has(clueId)) {
       setActiveClueId(clueId);
       return;
     }
-    if (globallyAssignedClueIds.has(clueId)) {
+    if (currentGloballyAssignedClueIds.has(clueId)) {
       toast.error('이미 다른 장소에 배치된 단서입니다');
       return;
     }
     const clue = clueById.get(clueId);
     const nextDiscoveries = [
-      ...discoveries,
+      ...currentDiscoveries,
       { locationId: location.id, clueId, requiredClueIds: [], oncePerPlayer: true },
     ];
     const nextDeckDraft = clue
-      ? writeLocationClueInvestigationCost(investigationDraft, {
+      ? writeLocationClueInvestigationCost(currentInvestigationDraft, {
           locationId: location.id,
           locationName: location.name,
           clueId,
           clueName: clue.name,
           requiredClueIds: [],
-          cost: {
-            mode: 'token',
-            tokenId: investigationDraft.tokens[0]?.id ?? 'investigation-token',
-            tokenCost: 1,
-          },
+          cost: currentInvestigationDraft.tokens[0]
+            ? {
+                mode: 'token',
+                tokenId: currentInvestigationDraft.tokens[0].id,
+                tokenCost: 1,
+              }
+            : { mode: 'free' },
         })
-      : investigationDraft;
+      : currentInvestigationDraft;
     setActiveClueId(clueId);
-    commit(nextDiscoveries, nextDeckDraft);
+    commit(nextDiscoveries, nextDeckDraft, baseConfig);
   }
 
   function removeClue(clueId: string) {

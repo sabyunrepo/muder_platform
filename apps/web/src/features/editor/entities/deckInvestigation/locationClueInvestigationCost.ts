@@ -48,7 +48,9 @@ export function writeLocationClueInvestigationCost(
 ): DeckInvestigationConfigDraft {
   const deckId = buildLocationClueDeckId(params.locationId, params.clueId);
   const fallbackTokenId = draft.tokens[0]?.id ?? DEFAULT_TOKEN_ID;
-  const tokenId = params.cost.mode === 'token' ? params.cost.tokenId || fallbackTokenId : fallbackTokenId;
+  const tokenId = params.cost.mode === 'token'
+    ? params.cost.tokenId || fallbackTokenId
+    : draft.tokens[0]?.id ?? '';
   const tokenCost = params.cost.mode === 'token' ? Math.max(1, Math.floor(params.cost.tokenCost)) : 0;
   const existingDeck = draft.decks.find((deck) => deck.id === deckId);
   const nextDeck = {
