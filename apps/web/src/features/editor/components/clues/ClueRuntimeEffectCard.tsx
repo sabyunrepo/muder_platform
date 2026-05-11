@@ -20,6 +20,8 @@ interface ClueRuntimeEffectCardProps {
 }
 
 interface DraftState {
+  isUsableItem: boolean;
+  usesPassword: boolean;
   mode: EffectMode;
   password: string;
   descriptionText: string;
@@ -42,7 +44,12 @@ function readPassword(config: ClueItemEffectConfig | null): string {
 
 function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
   const password = readPassword(config);
-  const base = { password, consume: config?.consume === true };
+  const base = {
+    isUsableItem: !!config,
+    usesPassword: password.trim().length > 0,
+    password,
+    consume: config?.consume === true,
+  };
 
   if (config?.effect === 'description_change') {
     return {
@@ -82,6 +89,8 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     return { mode: 'kill', ...base, descriptionText: '', revealText: '', grantClueIds: [] };
   }
   return {
+    isUsableItem: false,
+    usesPassword: false,
     mode: 'description',
     password: '',
     descriptionText: '',
@@ -94,6 +103,7 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
 function passwordCondition(draft: DraftState): EditorConfig & {
   condition?: { kind: 'password'; value: string };
 } {
+  if (!draft.usesPassword) return {};
   const password = draft.password.trim();
   return {
     condition: { kind: 'password' as const, value: password },
@@ -101,6 +111,7 @@ function passwordCondition(draft: DraftState): EditorConfig & {
 }
 
 function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
+  if (!draft.isUsableItem) return null;
   if (draft.mode === 'description') {
     return {
       effect: 'description_change',
@@ -153,7 +164,8 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
 }
 
 function isDraftValid(draft: DraftState) {
-  if (draft.password.trim().length === 0) return false;
+  if (!draft.isUsableItem) return true;
+  if (draft.usesPassword && draft.password.trim().length === 0) return false;
   if (draft.mode === 'description') return draft.descriptionText.trim().length > 0;
   if (draft.mode === 'reveal') return draft.revealText.trim().length > 0;
   if (draft.mode === 'grant') return draft.grantClueIds.length > 0;
@@ -195,7 +207,17 @@ export function ClueRuntimeEffectCard({
   const canSave = !!onConfigChange && !isSaving && isDraftValid(draft);
 
   function updateDraft(patch: Partial<DraftState>) {
-    setDraft((current) => ({ ...current, ...patch }));
+    setDraft((current) => {
+      const next = { ...current, ...patch };
+      if (patch.isUsableItem === false) {
+        next.usesPassword = false;
+        next.password = '';
+      }
+      if (patch.usesPassword === false) {
+        next.password = '';
+      }
+      return next;
+    });
   }
 
   function toggleGrantClue(clueId: string) {
@@ -221,11 +243,11 @@ export function ClueRuntimeEffectCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/70">
-            단서 공개 조건
+            단서 사용 설정
           </p>
-          <h4 className="mt-1 text-lg font-bold text-slate-100">암호로 열람하고, 사용하면 효과를 실행합니다</h4>
+          <h4 className="mt-1 text-lg font-bold text-slate-100">사용 가능한 아이템과 실행 조건을 정합니다</h4>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            공개 조건은 암호 입력으로 고정하고, 아이템 사용 효과는 아래에서 따로 고릅니다.
+            단서를 읽기만 하게 둘지, 플레이어가 사용해서 효과를 실행하게 할지 선택합니다.
           </p>
         </div>
         <button
@@ -235,96 +257,136 @@ export function ClueRuntimeEffectCard({
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
         >
           <Save className="h-4 w-4" />
-          {isSaving ? '저장 중' : '공개 조건 저장'}
+          {isSaving ? '저장 중' : '사용 설정 저장'}
         </button>
       </div>
-
-      <label className="mt-4 block text-sm font-medium text-slate-300">
-        암호 입력 후 공개
-        <input
-          value={draft.password}
-          onChange={(e) => updateDraft({ password: e.target.value })}
-          placeholder="플레이어가 입력해야 하는 암호"
-          className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-        />
-        {draft.password.trim().length === 0 && (
-          <span className="mt-1 block text-xs text-red-400">암호를 입력해야 저장할 수 있습니다.</span>
-        )}
-      </label>
-
-      <fieldset className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <legend className="mb-2 text-sm font-semibold text-slate-200">아이템 사용 시</legend>
-        <EffectChoice mode="description" current={draft.mode} label="설명 변경" icon={<FileText className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'description' })} />
-        <EffectChoice mode="reveal" current={draft.mode} label="정보 공개" icon={<Eye className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'reveal' })} />
-        <EffectChoice mode="grant" current={draft.mode} label="새 단서 지급" icon={<Gift className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'grant' })} />
-        <EffectChoice mode="peek" current={draft.mode} label="단서 훔쳐보기" icon={<Search className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'peek' })} />
-        <EffectChoice mode="steal" current={draft.mode} label="단서 가져오기" icon={<Shuffle className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'steal' })} />
-        <EffectChoice mode="kill" current={draft.mode} label="살해 요청" icon={<TriangleAlert className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'kill' })} />
-      </fieldset>
-
-      {draft.mode === 'description' && (
-        <div className="mt-4 space-y-2">
-          <label htmlFor="clue-runtime-description" className="text-sm font-semibold text-slate-200">
-            사용 후 바뀔 설명
-          </label>
-          <textarea
-            id="clue-runtime-description"
-            value={draft.descriptionText}
-            onChange={(e) => updateDraft({ descriptionText: e.target.value })}
-            rows={4}
-            placeholder="예: 열쇠를 돌리자 손잡이 안쪽의 새 문장이 드러난다."
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-          />
-        </div>
-      )}
-
-      {draft.mode === 'reveal' && (
-        <div className="mt-4 space-y-2">
-          <label htmlFor="clue-runtime-reveal" className="text-sm font-semibold text-slate-200">
-            공개할 정보
-          </label>
-          <textarea
-            id="clue-runtime-reveal"
-            value={draft.revealText}
-            onChange={(e) => updateDraft({ revealText: e.target.value })}
-            rows={4}
-            placeholder="예: 낡은 열쇠 안쪽에 작은 숫자 0427이 새겨져 있다."
-            className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-          />
-        </div>
-      )}
-
-      {draft.mode === 'grant' && (
-        <GrantCluePicker
-          candidates={candidates}
-          selectedClues={selectedClues}
-          query={query}
-          selectedIds={draft.grantClueIds}
-          onQueryChange={setQuery}
-          onToggle={toggleGrantClue}
-        />
-      )}
-
-      {draft.mode === 'kill' && (
-        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-100">
-          대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
-        </div>
-      )}
 
       <label className="mt-4 flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
         <input
           type="checkbox"
-          checked={draft.consume}
-          onChange={(e) => updateDraft({ consume: e.target.checked })}
+          aria-label="사용 가능한 아이템"
+          checked={draft.isUsableItem}
+          onChange={(e) => updateDraft({ isUsableItem: e.target.checked })}
           className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
         />
         <span>
-          <span className="font-semibold text-slate-200">사용하면 내 단서함에서 사라짐</span>
+          <span className="font-semibold text-slate-200">사용 가능한 아이템</span>
           <span className="mt-1 block text-xs leading-5 text-slate-500">
-            일회용 열쇠처럼 효과를 발동한 뒤 보유 단서에서 제거할 때 켭니다.
+            플레이어가 이 단서를 눌러 효과를 실행할 수 있게 합니다.
           </span>
         </span>
       </label>
+
+      {draft.isUsableItem && (
+        <div className="mt-4 space-y-4">
+          <fieldset className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <legend className="mb-2 text-sm font-semibold text-slate-200">아이템 사용 시</legend>
+            <EffectChoice mode="description" current={draft.mode} label="설명 변경" icon={<FileText className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'description' })} />
+            <EffectChoice mode="reveal" current={draft.mode} label="정보 공개" icon={<Eye className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'reveal' })} />
+            <EffectChoice mode="grant" current={draft.mode} label="새 단서 지급" icon={<Gift className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'grant' })} />
+            <EffectChoice mode="peek" current={draft.mode} label="단서 훔쳐보기" icon={<Search className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'peek' })} />
+            <EffectChoice mode="steal" current={draft.mode} label="단서 가져오기" icon={<Shuffle className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'steal' })} />
+            <EffectChoice mode="kill" current={draft.mode} label="살해 요청" icon={<TriangleAlert className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'kill' })} />
+          </fieldset>
+
+          <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              aria-label="암호 사용"
+              checked={draft.usesPassword}
+              onChange={(e) => updateDraft({ usesPassword: e.target.checked })}
+              className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            />
+            <span>
+              <span className="font-semibold text-slate-200">암호 사용</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                암호를 맞힌 플레이어만 이 아이템을 사용할 수 있습니다.
+              </span>
+            </span>
+          </label>
+
+          {draft.usesPassword && (
+            <label className="block text-sm font-medium text-slate-300">
+              사용 암호
+              <input
+                aria-label="사용 암호"
+                value={draft.password}
+                onChange={(e) => updateDraft({ password: e.target.value })}
+                placeholder="플레이어가 입력해야 하는 암호"
+                className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              />
+              {draft.password.trim().length === 0 && (
+                <span className="mt-1 block text-xs text-red-400">암호를 입력해야 저장할 수 있습니다.</span>
+              )}
+            </label>
+          )}
+
+          {draft.mode === 'description' && (
+            <div className="space-y-2">
+              <label htmlFor="clue-runtime-description" className="text-sm font-semibold text-slate-200">
+                사용 후 바뀔 설명
+              </label>
+              <textarea
+                id="clue-runtime-description"
+                value={draft.descriptionText}
+                onChange={(e) => updateDraft({ descriptionText: e.target.value })}
+                rows={4}
+                placeholder="예: 열쇠를 돌리자 손잡이 안쪽의 새 문장이 드러난다."
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              />
+            </div>
+          )}
+
+          {draft.mode === 'reveal' && (
+            <div className="space-y-2">
+              <label htmlFor="clue-runtime-reveal" className="text-sm font-semibold text-slate-200">
+                공개할 정보
+              </label>
+              <textarea
+                id="clue-runtime-reveal"
+                value={draft.revealText}
+                onChange={(e) => updateDraft({ revealText: e.target.value })}
+                rows={4}
+                placeholder="예: 낡은 열쇠 안쪽에 작은 숫자 0427이 새겨져 있다."
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm leading-6 text-slate-100 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              />
+            </div>
+          )}
+
+          {draft.mode === 'grant' && (
+            <GrantCluePicker
+              candidates={candidates}
+              selectedClues={selectedClues}
+              query={query}
+              selectedIds={draft.grantClueIds}
+              onQueryChange={setQuery}
+              onToggle={toggleGrantClue}
+            />
+          )}
+
+          {draft.mode === 'kill' && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-100">
+              대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
+            </div>
+          )}
+
+          <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              aria-label="사용하면 내 단서함에서 사라짐"
+              checked={draft.consume}
+              onChange={(e) => updateDraft({ consume: e.target.checked })}
+              className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-800 text-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+            />
+            <span>
+              <span className="font-semibold text-slate-200">사용하면 내 단서함에서 사라짐</span>
+              <span className="mt-1 block text-xs leading-5 text-slate-500">
+                일회용 열쇠처럼 효과를 발동한 뒤 보유 단서에서 제거할 때 켭니다.
+              </span>
+            </span>
+          </label>
+        </div>
+      )}
     </section>
   );
 }

@@ -174,6 +174,18 @@ describe('EditorLayout', () => {
 
     const tabPanel = screen.getByRole('tabpanel');
     expect(tabPanel).toBeDefined();
+    expect(tabPanel.className).toContain('overflow-hidden');
     expect(screen.getByText('탭 콘텐츠')).toBeDefined();
+  });
+
+  it('캐릭터 탭은 내부 편집 화면이 스크롤을 맡도록 탭 패널을 고정한다', () => {
+    mockActiveTab.current = 'characters';
+
+    render(<EditorLayout theme={baseTheme} themeId="theme-1" />);
+
+    const tabPanel = screen.getByRole('tabpanel');
+    expect(tabPanel.id).toBe('tabpanel-characters');
+    expect(tabPanel.className).toContain('min-h-0');
+    expect(tabPanel.className).toContain('overflow-hidden');
   });
 });

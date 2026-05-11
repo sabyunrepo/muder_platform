@@ -106,16 +106,16 @@ describe('CharacterAliasRulesEditor', () => {
           operator: 'AND',
           rules: [expect.objectContaining({
             variable: 'custom_flag',
-            target_flag_key: 'game_started',
+            target_flag_key: 'story_node_reached',
             comparator: '=',
-            value: 'true',
+            value: 'intro_finished',
           })],
         }),
       }),
     ]);
   });
 
-  it('새 규칙 우선순위는 기존 최대값 다음 번호로 만든다', () => {
+  it('새 규칙 우선순위는 내부 저장 순서로 만든다', () => {
     const { onChange } = renderEditor({
       rules: [
         {
@@ -139,11 +139,11 @@ describe('CharacterAliasRulesEditor', () => {
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'alias-1', priority: 7 }),
       expect.objectContaining({ id: 'alias-2', priority: 2 }),
-      expect.objectContaining({ priority: 8 }),
+      expect.objectContaining({ priority: 2 }),
     ]);
   });
 
-  it('표시 이름, 우선순위, 공개 시점 프리셋을 수정해 저장한다', () => {
+  it('표시 이름과 별칭 전환 장면 조건을 저장한다', () => {
     const onSave = vi.fn();
     const rules: CharacterAliasRule[] = [{
       id: 'alias-1',
@@ -166,21 +166,19 @@ describe('CharacterAliasRulesEditor', () => {
 
     renderStatefulEditor(rules, onSave);
     fireEvent.change(screen.getByLabelText('표시 이름'), { target: { value: '밤의 목격자' } });
-    fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: '3' } });
-    fireEvent.change(screen.getByLabelText('별칭 표시 시점'), { target: { value: 'intro_end' } });
     fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
 
     expect(onSave).toHaveBeenCalledWith([expect.objectContaining({
       id: 'alias-1',
       display_name: '밤의 목격자',
-      priority: 3,
+      priority: 0,
       condition: expect.objectContaining({
-        rules: [expect.objectContaining({ target_flag_key: 'intro_finished' })],
+        rules: [expect.objectContaining({ target_flag_key: 'story_node_reached', value: 'intro_finished' })],
       }),
     })]);
   });
 
-  it('특정 라운드와 진행 노드 별칭 조건 값을 함께 저장한다', () => {
+  it('별칭 전환 장면 조건 값을 저장한다', () => {
     const onSave = vi.fn();
     const rules: CharacterAliasRule[] = [{
       id: 'alias-1',
@@ -201,18 +199,7 @@ describe('CharacterAliasRulesEditor', () => {
     }];
 
     renderStatefulEditor(rules, onSave);
-    fireEvent.change(screen.getByLabelText('별칭 표시 시점'), { target: { value: 'round_start' } });
-    fireEvent.change(screen.getByLabelText('표시 라운드'), { target: { value: '3' } });
-    fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
-
-    expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({
-      condition: expect.objectContaining({
-        rules: [expect.objectContaining({ target_flag_key: 'round_started', value: '3' })],
-      }),
-    })]);
-
-    fireEvent.change(screen.getByLabelText('별칭 표시 시점'), { target: { value: 'node_reached' } });
-    fireEvent.change(screen.getByLabelText('표시 진행 노드'), { target: { value: 'voting_started' } });
+    fireEvent.change(screen.getByLabelText('별칭 전환 장면'), { target: { value: 'voting_started' } });
     fireEvent.click(screen.getByRole('button', { name: '플레이 중 표시 저장' }));
 
     expect(onSave).toHaveBeenLastCalledWith([expect.objectContaining({
@@ -222,7 +209,7 @@ describe('CharacterAliasRulesEditor', () => {
     })]);
   });
 
-  it('실제 flow 후보로 별칭 진행 노드를 선택한다', () => {
+  it('실제 flow 후보로 별칭 전환 장면을 선택한다', () => {
     const onSave = vi.fn();
     const rules: CharacterAliasRule[] = [{
       id: 'alias-1',
@@ -295,28 +282,6 @@ describe('CharacterAliasRulesEditor', () => {
     })]);
   });
 
-  it('우선순위 입력은 음수와 소수를 즉시 0 이상의 정수로 정리한다', () => {
-    const onSave = vi.fn();
-    const rules: CharacterAliasRule[] = [{
-      id: 'alias-1',
-      display_name: '목격자',
-      priority: 1,
-      condition: {
-        id: 'group-1',
-        operator: 'AND',
-        rules: [{ id: 'rule-1', variable: 'custom_flag', target_flag_key: 'alias_ready', comparator: '=', value: 'true' }],
-      },
-    }];
-
-    renderStatefulEditor(rules, onSave);
-
-    fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: '-3.8' } });
-    expect((screen.getByLabelText('우선순위') as HTMLInputElement).value).toBe('0');
-
-    fireEvent.change(screen.getByLabelText('우선순위'), { target: { value: '4.9' } });
-    expect((screen.getByLabelText('우선순위') as HTMLInputElement).value).toBe('4');
-  });
-
   it('규칙 삭제와 disabled 상태를 처리한다', () => {
     const onChange = vi.fn();
     const rule: CharacterAliasRule = {
@@ -332,6 +297,7 @@ describe('CharacterAliasRulesEditor', () => {
     expect((screen.getByRole('button', { name: '플레이 중 표시 저장' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole('button', { name: '삭제' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByLabelText('표시 이름') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.queryByLabelText('우선순위')).toBeNull();
     expect(screen.queryByLabelText('표시 아이콘 URL')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: '삭제' }));

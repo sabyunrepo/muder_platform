@@ -79,7 +79,7 @@ export function EntityEditorShell<TItem>({
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto lg:grid lg:grid-cols-[minmax(14rem,0.72fr)_minmax(0,1.9fr)] lg:overflow-hidden">
       <section
         aria-label={`${title} 목록`}
-        className="flex min-h-0 flex-col rounded-xl border border-slate-800 bg-slate-950/70 p-3"
+        className="flex min-h-0 shrink-0 flex-col rounded-xl border border-slate-800 bg-slate-950/70 p-3"
       >
         <header className="mb-3 flex items-center justify-between gap-2">
           <div>
@@ -135,7 +135,7 @@ export function EntityEditorShell<TItem>({
 
       {selected && (
         <section
-          className="min-h-0 overflow-y-visible lg:overflow-y-auto lg:pr-2"
+          className="min-h-0 shrink-0 overflow-y-visible lg:overflow-y-auto lg:pr-2"
           aria-label={`${title} 상세 영역`}
         >
           <div className="space-y-4 pb-4">

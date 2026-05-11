@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FileInput, Music, Play, Save, Trash2, X } from 'lucide-react';
+import { FileInput, Play, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { queryClient } from '@/services/queryClient';
@@ -18,16 +18,23 @@ import type { MediaResponse } from '../../mediaApi';
 import { useMediaList } from '../../mediaApi';
 import { normalizeReadingBlocks } from '../../entities/story/readingBlockAdapter';
 import { ReadingBlockRow } from './ReadingBlockRow';
+import { ReadingSaveErrorBanner } from './ReadingSaveErrorBanner';
+import { ReadingSectionBgmPanel } from './ReadingSectionBgmPanel';
 import { ReadingSectionPreviewModal } from './ReadingSectionPreviewModal';
 import { ReadingScriptImportModal } from './ReadingScriptImportModal';
 import { EditorSaveConflictBanner } from '../EditorSaveConflictBanner';
+import type { CharacterOption } from './readingBlockUiTypes';
 import {
   blockActions,
   createBlock,
+  getReadingSaveErrorMessage,
   isConflictError,
   isReadingDraftDirty,
+  normalizeReadingLinesForSave,
   toDraft,
   toParserMedia,
+  validateReadingLinesForSave,
+  type ReadingSaveValidationIssue,
   type ReadingSectionDraft,
 } from './readingSectionEditorModel';
 
@@ -38,7 +45,7 @@ import {
 export interface ReadingSectionEditorProps {
   themeId: string;
   section: ReadingSectionResponse;
-  characters: Array<{ id: string; name: string }>;
+  characters: CharacterOption[];
   onDeleted?: () => void;
 }
 
@@ -67,6 +74,7 @@ export function ReadingSectionEditor({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [validationIssues, setValidationIssues] = useState<ReadingSaveValidationIssue[]>([]);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   const updateMutation = useUpdateReadingSection(themeId);
@@ -79,6 +87,7 @@ export function ReadingSectionEditor({
     setLineKeys(section.lines.map(() => createLineKey()));
     setConflict(false);
     setSaveError(null);
+    setValidationIssues([]);
   }, [createLineKey, section]);
 
   // BGM list (BGM filter only) — used to display selected BGM name without
@@ -92,6 +101,13 @@ export function ReadingSectionEditor({
     () => bgmList.find((m) => m.id === draft.bgmMediaId) ?? null,
     [bgmList, draft.bgmMediaId]
   );
+  const playableCharacters = useMemo(
+    () => characters.filter((character) => character.isPlayable),
+    [characters]
+  );
+  const defaultNarratorCharacterId = playableCharacters[0]?.id ?? null;
+  const effectiveNarratorCharacterId =
+    draft.narratorCharacterId ?? defaultNarratorCharacterId;
   const allMedia = useMemo(
     () => [...bgmList, ...imageList, ...voiceList, ...videoList, ...sfxList],
     [bgmList, imageList, voiceList, sfxList, videoList]
@@ -100,12 +116,17 @@ export function ReadingSectionEditor({
 
   const isDirty = useMemo(() => isReadingDraftDirty(draft, section), [draft, section]);
   const previewLines = useMemo(() => normalizeReadingBlocks(draft.lines), [draft.lines]);
+  const validationIssueByLine = useMemo(
+    () => new Map(validationIssues.map((issue) => [issue.lineIndex, issue.message])),
+    [validationIssues]
+  );
 
   // -------------------------------------------------------------------------
   // Block operations
   // -------------------------------------------------------------------------
 
   function handleAddBlock(type: ReadingBlockType) {
+    clearSaveFeedback();
     setDraft((d) => ({
       ...d,
       lines: [...d.lines, createBlock(type, d.lines.length)],
@@ -114,6 +135,7 @@ export function ReadingSectionEditor({
   }
 
   function handleLineChange(idx: number, next: ReadingLineDTO) {
+    clearSaveFeedback();
     setDraft((d) => {
       const lines = d.lines.slice();
       lines[idx] = { ...next, Index: idx };
@@ -131,6 +153,7 @@ export function ReadingSectionEditor({
     ) {
       return;
     }
+    clearSaveFeedback();
     setDraft((d) => {
       const lines = d.lines.slice();
       const [moved] = lines.splice(from, 1);
@@ -149,11 +172,13 @@ export function ReadingSectionEditor({
   }
 
   function handleApplyParsedBlocks(blocks: ReadingLineDTO[]) {
+    clearSaveFeedback();
     setDraft((d) => ({ ...d, lines: normalizeReadingBlocks(blocks) }));
     setLineKeys(blocks.map(() => createLineKey()));
   }
 
   function handleLineDelete(idx: number) {
+    clearSaveFeedback();
     setDraft((d) => {
       const lines = d.lines.filter((_, i) => i !== idx).map((l, i) => ({ ...l, Index: i }));
       return { ...d, lines };
@@ -166,15 +191,28 @@ export function ReadingSectionEditor({
   // -------------------------------------------------------------------------
 
   function handleBgmSelect(media: MediaResponse) {
+    clearSaveFeedback();
     setDraft((d) => ({ ...d, bgmMediaId: media.id }));
   }
 
   function handleBgmClear() {
+    clearSaveFeedback();
     setDraft((d) => ({ ...d, bgmMediaId: null }));
   }
 
   function handleBgmModeChange(mode: typeof draft.bgmMode) {
+    clearSaveFeedback();
     setDraft((d) => ({ ...d, bgmMode: mode }));
+  }
+
+  function handleNarratorCharacterChange(characterId: string) {
+    clearSaveFeedback();
+    setDraft((d) => ({ ...d, narratorCharacterId: characterId || null }));
+  }
+
+  function clearSaveFeedback() {
+    setSaveError(null);
+    setValidationIssues([]);
   }
 
   // -------------------------------------------------------------------------
@@ -184,12 +222,18 @@ export function ReadingSectionEditor({
   async function handleSave() {
     setSaveError(null);
     setConflict(false);
-    const validRoleIds = new Set(characters.map((character) => character.id));
-    const normalizedLines = normalizeReadingBlocks(draft.lines).map((line) =>
-      line.AdvanceBy?.startsWith('role:') && !validRoleIds.has(line.AdvanceBy.slice('role:'.length))
-        ? { ...line, AdvanceBy: 'gm' as const }
-        : line
+    setValidationIssues([]);
+    const normalizedLines = normalizeReadingLinesForSave(
+      draft.lines,
+      characters,
+      effectiveNarratorCharacterId
     );
+    const issues = validateReadingLinesForSave(normalizedLines);
+    if (issues.length > 0) {
+      setValidationIssues(issues);
+      setSaveError('저장 전에 미디어가 빠진 블록을 확인해 주세요.');
+      return;
+    }
 
     const patch: UpdateReadingSectionRequest = {
       version: section.version,
@@ -197,6 +241,7 @@ export function ReadingSectionEditor({
       // bgmMediaId uses triple-state: null = clear, string = set, undefined = keep
       bgmMediaId: draft.bgmMediaId,
       bgmMode: draft.bgmMode,
+      narratorCharacterId: effectiveNarratorCharacterId,
       lines: normalizedLines,
       sortOrder: draft.sortOrder,
     };
@@ -208,7 +253,7 @@ export function ReadingSectionEditor({
         setConflict(true);
         return;
       }
-      setSaveError(err instanceof Error ? err.message : '저장에 실패했습니다');
+      setSaveError(getReadingSaveErrorMessage(err));
     }
   }
 
@@ -217,7 +262,7 @@ export function ReadingSectionEditor({
       await deleteMutation.mutateAsync(section.id);
       onDeleted?.();
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : '삭제에 실패했습니다');
+      setSaveError(getReadingSaveErrorMessage(err));
       setConfirmDelete(false);
     }
   }
@@ -256,9 +301,7 @@ export function ReadingSectionEditor({
       )}
 
       {saveError && !conflict && (
-        <div className="rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
-          {saveError}
-        </div>
+        <ReadingSaveErrorBanner message={saveError} issues={validationIssues} />
       )}
 
       {/* Section name */}
@@ -273,53 +316,34 @@ export function ReadingSectionEditor({
         />
       </div>
 
-      {/* Section BGM picker */}
-      <div className="flex flex-col gap-2 rounded border border-slate-800 bg-slate-900/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <label className="text-xs font-medium text-slate-300">섹션 배경음악</label>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            {draft.bgmMediaId ? (
-              <span className="inline-flex items-center gap-1 text-xs text-amber-300">
-                <Music className="h-3 w-3" />
-                {selectedBgm?.name ?? '(선택됨)'}
-                <button
-                  type="button"
-                  onClick={handleBgmClear}
-                  aria-label="배경음악 제거"
-                  className="ml-1 text-amber-300 hover:text-amber-200"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
+      <ReadingSectionBgmPanel
+        draft={draft}
+        selectedBgm={selectedBgm}
+        onOpenPicker={() => setBgmPickerOpen(true)}
+        onClear={handleBgmClear}
+        onModeChange={handleBgmModeChange}
+      />
+
+      <div className="rounded border border-slate-800 bg-slate-900/60 px-3 py-3">
+        <label className="flex max-w-xs flex-col gap-1 text-xs font-medium text-slate-300">
+          나레이션 진행
+          <select
+            aria-label="나레이션 진행"
+            className="h-8 rounded border border-slate-700 bg-slate-800 px-2 text-xs font-normal text-slate-100"
+            value={effectiveNarratorCharacterId ?? ''}
+            onChange={(event) => handleNarratorCharacterChange(event.target.value)}
+          >
+            {playableCharacters.length === 0 ? (
+              <option value="">플레이어 캐릭터 없음</option>
             ) : (
-              <span className="text-xs text-slate-500">선택하면 이 섹션이 시작될 때 재생됩니다.</span>
+              playableCharacters.map((character) => (
+                <option key={character.id} value={character.id}>
+                  {character.name}
+                </option>
+              ))
             )}
-            <button
-              type="button"
-              onClick={() => setBgmPickerOpen(true)}
-              className="text-xs text-slate-400 underline hover:text-slate-200"
-            >
-              {draft.bgmMediaId ? '변경' : '배경음악 선택'}
-            </button>
-          </div>
-        </div>
-        <div className="inline-flex rounded border border-slate-700 bg-slate-950 p-0.5">
-          {(['loop', 'once'] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => handleBgmModeChange(mode)}
-              aria-pressed={draft.bgmMode === mode}
-              className={`rounded px-3 py-1.5 text-xs ${
-                draft.bgmMode === mode
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-300 hover:bg-slate-800'
-              }`}
-            >
-              {mode === 'loop' ? '반복' : '1회'}
-            </button>
-          ))}
-        </div>
+          </select>
+        </label>
       </div>
 
       {/* Blocks */}
@@ -382,6 +406,7 @@ export function ReadingSectionEditor({
               characters={characters}
               mediaById={mediaById}
               dragging={draggingIndex === idx}
+              validationMessage={validationIssueByLine.get(idx)}
               onChange={(next) => handleLineChange(idx, next)}
               onDelete={() => handleLineDelete(idx)}
               onMove={handleMoveBlock}
@@ -442,10 +467,10 @@ export function ReadingSectionEditor({
         onClose={() => setBgmPickerOpen(false)}
         onSelect={handleBgmSelect}
         themeId={themeId}
-	        filterType="BGM"
-	        selectedId={draft.bgmMediaId}
-	        title="배경음악 선택"
-	      />
+        filterType="BGM"
+        selectedId={draft.bgmMediaId}
+        title="배경음악 선택"
+      />
       <ReadingScriptImportModal
         open={scriptImportOpen}
         hasExistingBlocks={draft.lines.length > 0}
@@ -456,10 +481,10 @@ export function ReadingSectionEditor({
       />
       <ReadingSectionPreviewModal
         open={previewOpen}
-	        sectionName={draft.name || section.name}
-	        bgmMediaId={draft.bgmMediaId}
-	        bgmMode={draft.bgmMode}
-	        lines={previewLines}
+        sectionName={draft.name || section.name}
+        bgmMediaId={draft.bgmMediaId}
+        bgmMode={draft.bgmMode}
+        lines={previewLines}
         characters={characters}
         mediaById={mediaById}
         dirty={isDirty}

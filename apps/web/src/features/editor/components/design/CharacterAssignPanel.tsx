@@ -116,9 +116,9 @@ export function CharacterAssignPanel({
     const current = characterMissions[characterId] ?? [];
     saveConfig(writeCharacterMissionMap(undefined, {
       ...characterMissions,
-      [characterId]: [...current, createMissionDraft()],
+      [characterId]: [...current, createMissionDraft(revealNodeOptions[0]?.value)],
     }));
-  }, [characterMissions, saveConfig]);
+  }, [characterMissions, revealNodeOptions, saveConfig]);
 
   const handleDeleteMissionForChar = useCallback(
     (characterId: string, missionId: string) => {

@@ -49,7 +49,7 @@ export function buildProgressNodeRevealOptions(
   currentValues: Array<string | null | undefined> = [],
 ): ProgressNodeRevealOption[] {
   const options = (nodes ?? [])
-    .filter((node) => node.type !== "start")
+    .filter((node) => node.type !== "start" && node.type !== "branch")
     .map((node, index) => ({
       value: node.id,
       label: formatFlowNodeLabel(node, index),

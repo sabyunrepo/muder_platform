@@ -113,42 +113,27 @@ describe('MissionEditor', () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
-  it('미션 공개 시점과 백엔드 판정 경계를 제작자용 문구로 표시한다', () => {
+  it('미션 공개 시점 선택 없이 미션 공개 장면과 백엔드 판정 경계를 표시한다', () => {
     const onChange = vi.fn();
     render(
       <MissionEditor
-        missions={[baseMission({ type: 'secret', visibleFrom: 'intro_end' })]}
+        missions={[baseMission({ type: 'secret', visibleFrom: 'intro_end', revealNodeId: 'intro_finished' })]}
         onAdd={noop}
         onChange={onChange}
         onDelete={noop}
       />,
     );
 
-    expect(screen.getAllByText('자기소개 종료 후').length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText('미션 공개 시점')).toBeNull();
+    expect(screen.getByLabelText('미션 공개 장면')).toBeDefined();
+    expect(screen.getByText('저장된 장면 intro_finished 도달 후 공개')).toBeDefined();
     expect(screen.getByText('엔진 연동 필요')).toBeDefined();
     expect(screen.getByText('게임 판정은 백엔드가 담당')).toBeDefined();
-
-    fireEvent.change(screen.getByLabelText('미션 공개 시점'), { target: { value: 'round_start' } });
-    expect(onChange).toHaveBeenCalledWith('mission-1', 'visibleFrom', 'round_start');
   });
 
-  it('라운드와 진행 노드 공개 시점의 추가 입력을 저장한다', () => {
+  it('미션 공개 장면 입력을 저장한다', () => {
     const onChange = vi.fn();
-    const { rerender } = render(
-      <MissionEditor
-        missions={[baseMission({ visibleFrom: 'round_start', revealRound: 2 })]}
-        onAdd={noop}
-        onChange={onChange}
-        onDelete={noop}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText('미션 공개 시점'), { target: { value: 'node_reached' } });
-    expect(onChange).toHaveBeenCalledWith('mission-1', 'visibleFrom', 'node_reached');
-    fireEvent.change(screen.getByLabelText('시작 라운드'), { target: { value: '3' } });
-    expect(onChange).toHaveBeenCalledWith('mission-1', 'revealRound', 3);
-
-    rerender(
+    render(
       <MissionEditor
         missions={[baseMission({ visibleFrom: 'node_reached', revealNodeId: 'intro_finished' })]}
         onAdd={noop}
@@ -156,7 +141,9 @@ describe('MissionEditor', () => {
         onDelete={noop}
       />,
     );
-    fireEvent.change(screen.getByLabelText('진행 노드'), { target: { value: 'voting_started' } });
+    fireEvent.change(screen.getByLabelText('미션 공개 장면'), {
+      target: { value: 'voting_started' },
+    });
     expect(onChange).toHaveBeenCalledWith('mission-1', 'revealNodeId', 'voting_started');
   });
 

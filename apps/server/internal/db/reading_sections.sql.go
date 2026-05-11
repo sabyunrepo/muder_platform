@@ -14,18 +14,19 @@ import (
 )
 
 const createReadingSection = `-- name: CreateReadingSection :one
-INSERT INTO reading_sections (theme_id, name, bgm_media_id, bgm_mode, lines, sort_order)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode
+INSERT INTO reading_sections (theme_id, name, bgm_media_id, bgm_mode, narrator_character_id, lines, sort_order)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode, narrator_character_id
 `
 
 type CreateReadingSectionParams struct {
-	ThemeID    uuid.UUID       `json:"theme_id"`
-	Name       string          `json:"name"`
-	BgmMediaID pgtype.UUID     `json:"bgm_media_id"`
-	BgmMode    string          `json:"bgm_mode"`
-	Lines      json.RawMessage `json:"lines"`
-	SortOrder  int32           `json:"sort_order"`
+	ThemeID             uuid.UUID       `json:"theme_id"`
+	Name                string          `json:"name"`
+	BgmMediaID          pgtype.UUID     `json:"bgm_media_id"`
+	BgmMode             string          `json:"bgm_mode"`
+	NarratorCharacterID pgtype.UUID     `json:"narrator_character_id"`
+	Lines               json.RawMessage `json:"lines"`
+	SortOrder           int32           `json:"sort_order"`
 }
 
 func (q *Queries) CreateReadingSection(ctx context.Context, arg CreateReadingSectionParams) (ReadingSection, error) {
@@ -34,6 +35,7 @@ func (q *Queries) CreateReadingSection(ctx context.Context, arg CreateReadingSec
 		arg.Name,
 		arg.BgmMediaID,
 		arg.BgmMode,
+		arg.NarratorCharacterID,
 		arg.Lines,
 		arg.SortOrder,
 	)
@@ -49,6 +51,7 @@ func (q *Queries) CreateReadingSection(ctx context.Context, arg CreateReadingSec
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BgmMode,
+		&i.NarratorCharacterID,
 	)
 	return i, err
 }
@@ -118,7 +121,7 @@ func (q *Queries) FindMediaReferencesInReadingSections(ctx context.Context, arg 
 }
 
 const getReadingSection = `-- name: GetReadingSection :one
-SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode FROM reading_sections WHERE id = $1
+SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode, narrator_character_id FROM reading_sections WHERE id = $1
 `
 
 func (q *Queries) GetReadingSection(ctx context.Context, id uuid.UUID) (ReadingSection, error) {
@@ -135,12 +138,13 @@ func (q *Queries) GetReadingSection(ctx context.Context, id uuid.UUID) (ReadingS
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BgmMode,
+		&i.NarratorCharacterID,
 	)
 	return i, err
 }
 
 const getReadingSectionWithOwner = `-- name: GetReadingSectionWithOwner :one
-SELECT rs.id, rs.theme_id, rs.name, rs.bgm_media_id, rs.lines, rs.sort_order, rs.version, rs.created_at, rs.updated_at, rs.bgm_mode FROM reading_sections rs
+SELECT rs.id, rs.theme_id, rs.name, rs.bgm_media_id, rs.lines, rs.sort_order, rs.version, rs.created_at, rs.updated_at, rs.bgm_mode, rs.narrator_character_id FROM reading_sections rs
 JOIN themes t ON rs.theme_id = t.id
 WHERE rs.id = $1 AND t.creator_id = $2
 `
@@ -164,13 +168,14 @@ func (q *Queries) GetReadingSectionWithOwner(ctx context.Context, arg GetReading
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BgmMode,
+		&i.NarratorCharacterID,
 	)
 	return i, err
 }
 
 const listReadingSectionsByTheme = `-- name: ListReadingSectionsByTheme :many
 
-SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode FROM reading_sections WHERE theme_id = $1 ORDER BY sort_order, created_at
+SELECT id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode, narrator_character_id FROM reading_sections WHERE theme_id = $1 ORDER BY sort_order, created_at
 `
 
 // ============================================================
@@ -196,6 +201,7 @@ func (q *Queries) ListReadingSectionsByTheme(ctx context.Context, themeID uuid.U
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.BgmMode,
+			&i.NarratorCharacterID,
 		); err != nil {
 			return nil, err
 		}
@@ -212,22 +218,24 @@ UPDATE reading_sections
 SET name = $2,
     bgm_media_id = $3,
     bgm_mode = $4,
-    lines = $5,
-    sort_order = $6,
+    narrator_character_id = $5,
+    lines = $6,
+    sort_order = $7,
     version = version + 1,
     updated_at = NOW()
-WHERE id = $1 AND version = $7
-RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode
+WHERE id = $1 AND version = $8
+RETURNING id, theme_id, name, bgm_media_id, lines, sort_order, version, created_at, updated_at, bgm_mode, narrator_character_id
 `
 
 type UpdateReadingSectionParams struct {
-	ID         uuid.UUID       `json:"id"`
-	Name       string          `json:"name"`
-	BgmMediaID pgtype.UUID     `json:"bgm_media_id"`
-	BgmMode    string          `json:"bgm_mode"`
-	Lines      json.RawMessage `json:"lines"`
-	SortOrder  int32           `json:"sort_order"`
-	Version    int32           `json:"version"`
+	ID                  uuid.UUID       `json:"id"`
+	Name                string          `json:"name"`
+	BgmMediaID          pgtype.UUID     `json:"bgm_media_id"`
+	BgmMode             string          `json:"bgm_mode"`
+	NarratorCharacterID pgtype.UUID     `json:"narrator_character_id"`
+	Lines               json.RawMessage `json:"lines"`
+	SortOrder           int32           `json:"sort_order"`
+	Version             int32           `json:"version"`
 }
 
 func (q *Queries) UpdateReadingSection(ctx context.Context, arg UpdateReadingSectionParams) (ReadingSection, error) {
@@ -236,6 +244,7 @@ func (q *Queries) UpdateReadingSection(ctx context.Context, arg UpdateReadingSec
 		arg.Name,
 		arg.BgmMediaID,
 		arg.BgmMode,
+		arg.NarratorCharacterID,
 		arg.Lines,
 		arg.SortOrder,
 		arg.Version,
@@ -252,6 +261,7 @@ func (q *Queries) UpdateReadingSection(ctx context.Context, arg UpdateReadingSec
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.BgmMode,
+		&i.NarratorCharacterID,
 	)
 	return i, err
 }

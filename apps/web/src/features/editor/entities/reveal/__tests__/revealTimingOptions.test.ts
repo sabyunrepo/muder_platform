@@ -41,7 +41,7 @@ describe("revealTimingOptions", () => {
     expect(options[3]).toEqual({ value: 4, label: "4라운드" });
   });
 
-  it("flow node label과 id를 진행 노드 후보로 만들고 legacy raw id를 복원한다", () => {
+  it("flow node label과 id를 장면 후보로 만들되 branch는 제외하고 legacy raw id를 복원한다", () => {
     const options = buildProgressNodeRevealOptions(
       [
         node("start", "start", "시작"),
@@ -54,7 +54,6 @@ describe("revealTimingOptions", () => {
 
     expect(options).toEqual([
       { value: "phase-1", label: "현장 조사 (장면)" },
-      { value: "branch-1", label: "증언 분기 (분기)" },
       { value: "ending-1", label: "진엔딩 (결말)" },
       { value: "legacy-node", label: "기존 저장값 (legacy-node)" },
     ]);

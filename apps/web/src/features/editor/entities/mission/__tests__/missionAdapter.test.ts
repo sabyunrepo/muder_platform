@@ -33,7 +33,7 @@ describe("missionAdapter", () => {
       description: "",
       points: 0,
       verification: "auto",
-      visibleFrom: "game_start",
+      visibleFrom: "node_reached",
     });
     vi.restoreAllMocks();
   });
@@ -54,7 +54,7 @@ describe("missionAdapter", () => {
       verification: "auto",
       resultVisibility: "result_only",
       engineOwner: "backend_engine",
-      visibleFrom: "game_start",
+      visibleFrom: "node_reached",
       targetClueId: "clue-1",
       legacyConditionNote: "토론 이후 공개",
     });
@@ -90,7 +90,7 @@ describe("missionAdapter", () => {
       verification: "auto",
       resultVisibility: "result_only",
       engineOwner: "backend_engine",
-      visibleFrom: "game_start",
+      visibleFrom: "node_reached",
     }));
     vi.restoreAllMocks();
   });
@@ -134,11 +134,12 @@ describe("missionAdapter", () => {
       runtimeType: "vote_target",
       verification: "auto",
       verificationLabel: "엔진 연동 필요",
-      revealLabel: "2라운드 시작부터",
+      revealLabel: "공개할 장면 선택 필요",
       engineOwnerLabel: "게임 판정은 백엔드가 담당",
       warnings: [
         "플레이어가 이해할 미션 내용을 입력해 주세요.",
         "투표형 미션은 대상 캐릭터를 선택해야 자동 판정할 수 있습니다.",
+        "미션을 공개할 장면을 선택해야 합니다.",
         "미션 조건 메모는 제작자 참고용이며, 실제 진행 분기는 스토리 이동 조건에서 판정됩니다.",
       ],
     });
@@ -170,7 +171,7 @@ describe("missionAdapter", () => {
     });
   });
 
-  it("미션 공개 시점 필드를 저장 DTO와 runtime 후보에 유지한다", () => {
+  it("미션 공개 시점은 장면 기준으로 정규화한다", () => {
     expect(toMissionRuntimeDraft({
       id: "m-round",
       type: "possess",
@@ -179,17 +180,18 @@ describe("missionAdapter", () => {
       targetClueId: "clue-1",
       visibleFrom: "round_start",
       revealRound: 2,
+      revealNodeId: "scene-2",
     })).toEqual(expect.objectContaining({
-      visibleFrom: "round_start",
-      revealRound: 2,
+      visibleFrom: "node_reached",
+      revealNodeId: "scene-2",
     }));
 
     expect(writeCharacterMissionMap(
       { title: "기존 설정" },
-      { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "intro_end" }] },
+      { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "intro_end", revealRound: 3, revealNodeId: "scene-1" }] },
     )).toEqual({
       title: "기존 설정",
-      character_missions: { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "intro_end" }] },
+      character_missions: { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "node_reached", revealNodeId: "scene-1" }] },
     });
   });
 
@@ -199,7 +201,7 @@ describe("missionAdapter", () => {
       { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0 }] },
     )).toEqual({
       title: "기존 설정",
-      character_missions: { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0 }] },
+      character_missions: { "char-1": [{ id: "m1", type: "secret", description: "비밀", points: 0, visibleFrom: "node_reached" }] },
     });
   });
 });

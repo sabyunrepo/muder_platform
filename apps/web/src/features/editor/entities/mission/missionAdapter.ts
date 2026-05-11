@@ -99,23 +99,11 @@ const MISSION_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   MISSION_TYPES.map((type) => [type.value, type.label]),
 );
 
-export const MISSION_REVEAL_OPTIONS: Array<{ value: MissionRevealTiming; label: string }> = [
-  { value: "game_start", label: "게임 시작부터" },
-  { value: "intro_start", label: "자기소개 시작부터" },
-  { value: "intro_end", label: "자기소개 종료 후" },
-  { value: "round_start", label: "특정 라운드 시작부터" },
-  { value: "node_reached", label: "특정 진행 노드 도달 후" },
-];
-
 export const MISSION_REVEAL_NODE_OPTIONS = [
   { value: "intro_finished", label: "자기소개 종료" },
   { value: "round_summary", label: "라운드 정리" },
   { value: "voting_started", label: "투표 시작" },
 ] as const;
-
-const REVEAL_LABELS: Record<MissionRevealTiming, string> = Object.fromEntries(
-  MISSION_REVEAL_OPTIONS.map((option) => [option.value, option.label]),
-) as Record<MissionRevealTiming, string>;
 
 function isRecord(value: unknown): value is EditorConfig {
   return !!value && typeof value === "object" && !Array.isArray(value);
@@ -123,16 +111,6 @@ function isRecord(value: unknown): value is EditorConfig {
 
 function isMissionVerification(value: unknown): value is MissionVerification {
   return value === "auto" || value === "self_report" || value === "gm_verify";
-}
-
-function isMissionRevealTiming(value: unknown): value is MissionRevealTiming {
-  return (
-    value === "game_start" ||
-    value === "intro_start" ||
-    value === "intro_end" ||
-    value === "round_start" ||
-    value === "node_reached"
-  );
 }
 
 function normalizeMission(value: unknown, index: number): Mission | null {
@@ -154,22 +132,20 @@ function normalizeMission(value: unknown, index: number): Mission | null {
     ...(typeof value.penalty === "number" ? { penalty: value.penalty } : {}),
     ...(typeof value.difficulty === "number" ? { difficulty: value.difficulty } : {}),
     ...(isMissionVerification(value.verification) ? { verification: value.verification } : {}),
-    visibleFrom: isMissionRevealTiming(value.visibleFrom) ? value.visibleFrom : "game_start",
-    ...(typeof value.revealRound === "number" && Number.isFinite(value.revealRound)
-      ? { revealRound: Math.max(1, Math.trunc(value.revealRound)) }
-      : {}),
+    visibleFrom: "node_reached",
     ...(typeof value.revealNodeId === "string" ? { revealNodeId: value.revealNodeId } : {}),
   };
 }
 
-export function createMissionDraft(): Mission {
+export function createMissionDraft(revealNodeId?: string): Mission {
   return {
     id: crypto.randomUUID(),
     type: "secret",
     description: "",
     points: 0,
     verification: "auto",
-    visibleFrom: "game_start",
+    visibleFrom: "node_reached",
+    ...(revealNodeId ? { revealNodeId } : {}),
   };
 }
 
@@ -192,7 +168,15 @@ export function writeCharacterMissionMap(
   configJson: EditorConfig | null | undefined,
   missionsByCharacter: Record<string, Mission[]>,
 ): EditorConfig {
-  return { ...(configJson ?? {}), [LEGACY_CHARACTER_MISSIONS_KEY]: missionsByCharacter };
+  return {
+    ...(configJson ?? {}),
+    [LEGACY_CHARACTER_MISSIONS_KEY]: Object.fromEntries(
+      Object.entries(missionsByCharacter).map(([characterId, missions]) => [
+        characterId,
+        missions.map(normalizeMissionForNodeReveal),
+      ]),
+    ),
+  };
 }
 
 export function getMissionTypeLabel(type: string): string {
@@ -202,7 +186,6 @@ export function getMissionTypeLabel(type: string): string {
 export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
   const runtimeType = toRuntimeType(mission);
   const legacyConditionNote = mission.condition?.trim();
-  const visibleFrom = normalizeRevealTiming(mission.visibleFrom);
   return {
     id: mission.id,
     type: runtimeType,
@@ -211,11 +194,8 @@ export function toMissionRuntimeDraft(mission: Mission): MissionRuntimeDraft {
     verification: "auto",
     resultVisibility: "result_only",
     engineOwner: "backend_engine",
-    visibleFrom,
-    ...(visibleFrom === "round_start" && typeof mission.revealRound === "number"
-      ? { revealRound: Math.max(1, Math.trunc(mission.revealRound)) }
-      : {}),
-    ...(visibleFrom === "node_reached" && mission.revealNodeId?.trim()
+    visibleFrom: "node_reached",
+    ...(mission.revealNodeId?.trim()
       ? { revealNodeId: mission.revealNodeId.trim() }
       : {}),
     ...(mission.targetCharacterId ? { targetCharacterId: mission.targetCharacterId } : {}),
@@ -280,18 +260,11 @@ function toRuntimeType(mission: Mission): MissionRuntimeType {
   return "custom";
 }
 
-function normalizeRevealTiming(value: unknown): MissionRevealTiming {
-  return isMissionRevealTiming(value) ? value : "game_start";
-}
-
 function formatRevealLabel(mission: MissionRuntimeDraft): string {
-  if (mission.visibleFrom === "round_start" && mission.revealRound) {
-    return `${mission.revealRound}라운드 시작부터`;
+  if (mission.revealNodeId) {
+    return `저장된 장면 ${mission.revealNodeId} 도달 후 공개`;
   }
-  if (mission.visibleFrom === "node_reached" && mission.revealNodeId) {
-    return `진행 노드 ${mission.revealNodeId} 도달 후`;
-  }
-  return REVEAL_LABELS[mission.visibleFrom];
+  return "공개할 장면 선택 필요";
 }
 
 function buildMissionWarnings(mission: Mission, runtimeDraft: MissionRuntimeDraft): string[] {
@@ -306,14 +279,21 @@ function buildMissionWarnings(mission: Mission, runtimeDraft: MissionRuntimeDraf
   if (runtimeDraft.type === "custom") {
     warnings.push("직접 작성 미션은 자동 판정 조건이 아직 없으므로 결과 판정 엔진 확장이 필요합니다.");
   }
-  if (runtimeDraft.visibleFrom === "round_start" && !runtimeDraft.revealRound) {
-    warnings.push("라운드 공개 시점은 시작 라운드를 입력해야 합니다.");
-  }
-  if (runtimeDraft.visibleFrom === "node_reached" && !runtimeDraft.revealNodeId) {
-    warnings.push("진행 노드 공개 시점은 노드를 선택해야 합니다.");
+  if (!runtimeDraft.revealNodeId) {
+    warnings.push("미션을 공개할 장면을 선택해야 합니다.");
   }
   if (mission.condition?.trim()) {
     warnings.push("미션 조건 메모는 제작자 참고용이며, 실제 진행 분기는 스토리 이동 조건에서 판정됩니다.");
   }
   return warnings;
+}
+
+function normalizeMissionForNodeReveal(mission: Mission): Mission {
+  const rest = { ...mission };
+  delete rest.revealRound;
+  return {
+    ...rest,
+    visibleFrom: "node_reached",
+    ...(mission.revealNodeId?.trim() ? { revealNodeId: mission.revealNodeId.trim() } : {}),
+  };
 }

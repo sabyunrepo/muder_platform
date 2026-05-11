@@ -68,13 +68,13 @@ SELECT * FROM theme_clues WHERE location_id = $1 ORDER BY sort_order;
 SELECT * FROM theme_clues WHERE id = $1;
 
 -- name: CreateClue :one
-INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, image_media_id, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, image_media_id, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, appearance_scene_id, reveal_scene_id, hide_scene_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- name: UpdateClue :one
 UPDATE theme_clues
-SET location_id = $2, name = $3, description = $4, image_url = $5, image_media_id = $6, is_common = $7, level = $8, sort_order = $9, is_usable = $10, use_effect = $11, use_target = $12, use_consumed = $13, reveal_round = $14, hide_round = $15
+SET location_id = $2, name = $3, description = $4, image_url = $5, image_media_id = $6, is_common = $7, level = $8, sort_order = $9, is_usable = $10, use_effect = $11, use_target = $12, use_consumed = $13, reveal_round = $14, hide_round = $15, appearance_scene_id = $16, reveal_scene_id = $17, hide_scene_id = $18
 WHERE id = $1
 RETURNING *;
 

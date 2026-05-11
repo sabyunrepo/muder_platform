@@ -83,6 +83,12 @@ const characters: EditorCharacterResponse[] = [
 afterEach(cleanup);
 
 describe('ClueEntityWorkspace', () => {
+  const flowNodes = [
+    { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+    { id: 'scene-2', type: 'phase', data: { label: '정리 장면' } },
+    { id: 'branch-1', type: 'branch', data: { label: '이전 분기' } },
+  ] as never;
+
   it('선택한 단서의 인라인 편집 상세와 사용 공개 규칙을 제작자 언어로 보여준다', () => {
     render(
       <ClueEntityWorkspace
@@ -101,7 +107,7 @@ describe('ClueEntityWorkspace', () => {
     );
 
     expect(screen.getByText('단서 기본 정보')).toBeDefined();
-    expect(screen.getByText('단서 공개 조건')).toBeDefined();
+    expect(screen.getByText('단서 사용 설정')).toBeDefined();
     expect(screen.getByLabelText('전체 공개')).toBeDefined();
     expect(screen.getByLabelText(/공개 가능/)).toBeDefined();
     expect(screen.getByLabelText(/단서 보호/)).toBeDefined();
@@ -118,6 +124,7 @@ describe('ClueEntityWorkspace', () => {
         themeId="theme-1"
         clues={[clue({ id: 'clue-1' }), clue({ id: 'clue-2', name: '비밀 편지', description: '숨겨진 메시지', is_usable: false })]}
         configJson={{}}
+        flowNodes={flowNodes}
         locations={[]}
         characters={[]}
         onCreate={vi.fn()}
@@ -129,9 +136,8 @@ describe('ClueEntityWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: '비밀 편지 선택' }));
 
     expect(screen.getAllByText('숨겨진 메시지').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: '설명 변경' }).getAttribute('aria-pressed')).toBe(
-      'true',
-    );
+    expect((screen.getByLabelText('사용 가능한 아이템') as HTMLInputElement).checked).toBe(false);
+    expect(screen.queryByRole('button', { name: '설명 변경' })).toBeNull();
   });
 
   it('인라인 기본 정보 저장 시 선택 단서 update payload와 보호 정책을 보낸다', () => {
@@ -143,6 +149,7 @@ describe('ClueEntityWorkspace', () => {
         themeId="theme-1"
         clues={[clue({ id: 'clue-1' })]}
         configJson={{}}
+        flowNodes={flowNodes}
         locations={[]}
         characters={[]}
         onCreate={vi.fn()}
@@ -155,6 +162,12 @@ describe('ClueEntityWorkspace', () => {
     fireEvent.change(screen.getByLabelText('이름'), {
       target: { value: '피 묻은 열쇠 조각' },
     });
+    fireEvent.change(screen.getByLabelText('공개 시점'), {
+      target: { value: 'scene-1' },
+    });
+    fireEvent.change(screen.getByLabelText('숨김 시점'), {
+      target: { value: 'scene-2' },
+    });
     fireEvent.click(screen.getByLabelText(/단서 보호/));
     fireEvent.click(screen.getByRole('button', { name: '기본 정보 저장' }));
 
@@ -166,6 +179,10 @@ describe('ClueEntityWorkspace', () => {
         use_effect: 'steal',
         use_target: 'player',
         use_consumed: true,
+        reveal_round: null,
+        hide_round: null,
+        reveal_scene_id: 'scene-1',
+        hide_scene_id: 'scene-2',
       }),
     );
     expect(onConfigChange).toHaveBeenCalledWith(

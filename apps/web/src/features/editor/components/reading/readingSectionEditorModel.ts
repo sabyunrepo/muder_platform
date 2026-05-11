@@ -3,19 +3,28 @@ import { Image as ImageIcon, Mic, Music, Video, type LucideIcon } from 'lucide-r
 import { isApiHttpError } from '@/lib/api-error';
 
 import type {
+  AdvanceBy,
   ReadingBlockType,
   ReadingLineDTO,
   ReadingSectionBgmMode,
   ReadingSectionResponse,
 } from '../../readingApi';
 import type { MediaResponse, MediaType } from '../../mediaApi';
+import type { CharacterOption } from './readingBlockUiTypes';
+import { normalizeReadingBlocks } from '../../entities/story/readingBlockAdapter';
 
 export interface ReadingSectionDraft {
   name: string;
   bgmMediaId: string | null;
   bgmMode: ReadingSectionBgmMode;
+  narratorCharacterId: string | null;
   lines: ReadingLineDTO[];
   sortOrder: number;
+}
+
+export interface ReadingSaveValidationIssue {
+  lineIndex: number;
+  message: string;
 }
 
 export const blockActions: Array<{
@@ -34,6 +43,7 @@ export function toDraft(section: ReadingSectionResponse): ReadingSectionDraft {
     name: section.name,
     bgmMediaId: section.bgmMediaId ?? null,
     bgmMode: section.bgmMode ?? 'loop',
+    narratorCharacterId: section.narratorCharacterId ?? null,
     lines: section.lines.map((line) => ({ ...line })),
     sortOrder: section.sortOrder,
   };
@@ -53,6 +63,7 @@ export function isReadingDraftDirty(
   if (draft.name !== section.name) return true;
   if ((draft.bgmMediaId ?? null) !== (section.bgmMediaId ?? null)) return true;
   if (draft.bgmMode !== (section.bgmMode ?? 'loop')) return true;
+  if ((draft.narratorCharacterId ?? null) !== (section.narratorCharacterId ?? null)) return true;
   if (draft.sortOrder !== section.sortOrder) return true;
   const savedLines = section.lines;
   if (draft.lines.length !== savedLines.length) return true;
@@ -117,4 +128,99 @@ export function createBlock(type: ReadingBlockType, index: number): ReadingLineD
 
 export function toParserMedia(media: MediaResponse): { id: string; name: string; type: MediaType } {
   return { id: media.id, name: media.name, type: media.type };
+}
+
+export function normalizeReadingLinesForSave(
+  lines: ReadingLineDTO[],
+  characters: CharacterOption[],
+  narratorCharacterId: string | null
+): ReadingLineDTO[] {
+  return normalizeReadingBlocks(lines).map((line) => {
+    const type = line.Type ?? 'dialogue';
+    if (type !== 'dialogue') {
+      return { ...line, AdvanceBy: 'gm' as const };
+    }
+    return {
+      ...line,
+      ImageMediaID: '',
+      AdvanceBy: resolveDialogueAdvanceBy(line, characters, narratorCharacterId),
+    };
+  });
+}
+
+export function validateReadingLinesForSave(
+  lines: ReadingLineDTO[]
+): ReadingSaveValidationIssue[] {
+  return lines.flatMap((line, index) => {
+    const type = line.Type ?? 'dialogue';
+    if (type === 'dialogue' || type === 'gmNote') return [];
+    if ((type === 'sfx' || type === 'bgm') && line.BGMMode === 'stop') return [];
+    if ((line.MediaID ?? '').trim() !== '') return [];
+    return [
+      {
+        lineIndex: index,
+        message: `${index + 1}번 ${getReadingBlockLabel(type)} 블록: ${getRequiredMediaMessage(
+          type
+        )}`,
+      },
+    ];
+  });
+}
+
+export function getReadingSaveErrorMessage(error: unknown): string {
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  const lineMatch = raw.match(/line\s+(\d+):\s+mediaId is required/i);
+  if (lineMatch) {
+    const lineNumber = Number(lineMatch[1]) + 1;
+    return `${lineNumber}번 미디어 블록에 선택된 파일이 없습니다. 이미지, 영상, 효과음 블록은 파일을 선택해야 저장할 수 있습니다.`;
+  }
+  if (raw) return raw;
+  return '읽기 대사를 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.';
+}
+
+function resolveDialogueAdvanceBy(
+  line: ReadingLineDTO,
+  characters: CharacterOption[],
+  narratorCharacterId: string | null
+): AdvanceBy {
+  const speaker = line.Speaker ?? '';
+  const speakerCharacter = characters.find((character) => character.name === speaker);
+  if (speakerCharacter?.isPlayable) {
+    return `role:${speakerCharacter.id}`;
+  }
+  if (narratorCharacterId) {
+    return `role:${narratorCharacterId}`;
+  }
+  return 'gm';
+}
+
+function getReadingBlockLabel(type: ReadingBlockType): string {
+  switch (type) {
+    case 'image':
+      return '이미지';
+    case 'video':
+      return '영상';
+    case 'sfx':
+    case 'bgm':
+      return '효과음';
+    case 'gmNote':
+      return '메모';
+    case 'dialogue':
+    default:
+      return '대사';
+  }
+}
+
+function getRequiredMediaMessage(type: ReadingBlockType): string {
+  switch (type) {
+    case 'image':
+      return '이미지를 선택해야 저장할 수 있습니다.';
+    case 'video':
+      return '영상을 선택해야 저장할 수 있습니다.';
+    case 'sfx':
+    case 'bgm':
+      return '효과음을 선택해야 저장할 수 있습니다.';
+    default:
+      return '미디어를 선택해야 저장할 수 있습니다.';
+  }
 }

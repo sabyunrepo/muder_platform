@@ -8,7 +8,10 @@ import {
   writeCluePolicy,
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
-import type { RoundRevealOption } from '@/features/editor/entities/reveal/revealTimingOptions';
+import type {
+  ProgressNodeRevealOption,
+} from '@/features/editor/entities/reveal/revealTimingOptions';
+import { SceneSelectField } from '@/features/editor/components/SceneSelectField';
 
 interface ClueBasicInfoCardProps {
   themeId: string;
@@ -16,7 +19,7 @@ interface ClueBasicInfoCardProps {
   configJson: EditorConfig | null | undefined;
   isSaving?: boolean;
   isConfigSaving?: boolean;
-  roundOptions?: RoundRevealOption[];
+  sceneOptions?: ProgressNodeRevealOption[];
   onSave: (clueId: string, body: UpdateClueRequest) => void;
   onConfigChange: (nextConfig: EditorConfig) => void;
   onDelete: (clue: ClueResponse) => void;
@@ -30,8 +33,8 @@ interface DraftState {
   isCommon: boolean;
   isRevealable: boolean;
   isProtected: boolean;
-  revealRound: number | null;
-  hideRound: number | null;
+  revealSceneId: string | null;
+  hideSceneId: string | null;
 }
 
 function toDraft(clue: ClueResponse, configJson: EditorConfig | null | undefined): DraftState {
@@ -44,17 +47,9 @@ function toDraft(clue: ClueResponse, configJson: EditorConfig | null | undefined
     isCommon: clue.is_common,
     isRevealable: clue.is_common ? true : policy.revealable,
     isProtected: policy.protected,
-    revealRound: clue.reveal_round ?? null,
-    hideRound: clue.hide_round ?? null,
+    revealSceneId: clue.reveal_scene_id ?? null,
+    hideSceneId: clue.hide_scene_id ?? null,
   };
-}
-
-function parseRoundInput(raw: string): number | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-  const n = Number(trimmed);
-  if (!Number.isFinite(n) || n < 1) return null;
-  return Math.floor(n);
 }
 
 function isDirty(
@@ -71,8 +66,8 @@ function isDirty(
     draft.isCommon !== clue.is_common ||
     (!draft.isCommon && draft.isRevealable !== policy.revealable) ||
     draft.isProtected !== policy.protected ||
-    draft.revealRound !== (clue.reveal_round ?? null) ||
-    draft.hideRound !== (clue.hide_round ?? null)
+    draft.revealSceneId !== (clue.reveal_scene_id ?? null) ||
+    draft.hideSceneId !== (clue.hide_scene_id ?? null)
   );
 }
 
@@ -82,9 +77,6 @@ function validate(draft: DraftState): Record<string, string> {
   if (!name) errors.name = '이름은 필수입니다';
   if (name.length > 100) errors.name = '이름은 100자 이하여야 합니다';
   if (draft.description.length > 2000) errors.description = '설명은 2000자 이하여야 합니다';
-  if (draft.revealRound != null && draft.hideRound != null && draft.revealRound > draft.hideRound) {
-    errors.round = '공개 라운드는 사라짐 라운드보다 클 수 없습니다';
-  }
   return errors;
 }
 
@@ -94,7 +86,7 @@ export function ClueBasicInfoCard({
   configJson,
   isSaving = false,
   isConfigSaving = false,
-  roundOptions = DEFAULT_CLUE_ROUND_OPTIONS,
+  sceneOptions = [],
   onSave,
   onConfigChange,
   onDelete,
@@ -105,6 +97,10 @@ export function ClueBasicInfoCard({
   const policy = readCluePolicy(configJson, clue.id);
   const dirty = isDirty(draft, clue, configJson);
   const saving = isSaving || isConfigSaving;
+  const selectedRevealSceneLabel =
+    sceneOptions.find((option) => option.value === draft.revealSceneId)?.label ?? '처음부터';
+  const selectedHideSceneLabel =
+    sceneOptions.find((option) => option.value === draft.hideSceneId)?.label ?? '끝까지';
 
   useEffect(() => {
     setDraft({
@@ -115,8 +111,8 @@ export function ClueBasicInfoCard({
       isCommon: clue.is_common,
       isRevealable: clue.is_common ? true : policy.revealable,
       isProtected: policy.protected,
-      revealRound: clue.reveal_round ?? null,
-      hideRound: clue.hide_round ?? null,
+      revealSceneId: clue.reveal_scene_id ?? null,
+      hideSceneId: clue.hide_scene_id ?? null,
     });
     setErrors({});
   }, [
@@ -126,8 +122,8 @@ export function ClueBasicInfoCard({
     clue.image_url,
     clue.image_media_id,
     clue.is_common,
-    clue.reveal_round,
-    clue.hide_round,
+    clue.reveal_scene_id,
+    clue.hide_scene_id,
     policy.revealable,
     policy.protected,
   ]);
@@ -165,8 +161,10 @@ export function ClueBasicInfoCard({
         use_effect: clue.use_effect ?? undefined,
         use_target: clue.use_target ?? undefined,
         use_consumed: clue.use_consumed,
-        reveal_round: draft.revealRound,
-        hide_round: draft.hideRound,
+        reveal_round: null,
+        hide_round: null,
+        reveal_scene_id: draft.revealSceneId,
+        hide_scene_id: draft.hideSceneId,
       })
     );
     onConfigChange(
@@ -249,6 +247,25 @@ export function ClueBasicInfoCard({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
+          <SceneSelectField
+            label="공개 시점"
+            selectedId={draft.revealSceneId}
+            options={sceneOptions}
+            emptyLabel="처음부터"
+            disabled={saving}
+            onChange={(sceneId) => patch({ revealSceneId: sceneId })}
+          />
+          <SceneSelectField
+            label="숨김 시점"
+            selectedId={draft.hideSceneId}
+            options={sceneOptions}
+            emptyLabel="끝까지"
+            disabled={saving}
+            onChange={(sceneId) => patch({ hideSceneId: sceneId })}
+          />
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
           <label className={`flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm ${draft.isCommon ? 'text-slate-500' : 'text-slate-300'}`}>
             <input
               type="checkbox"
@@ -295,58 +312,16 @@ export function ClueBasicInfoCard({
           )}
         </label>
 
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="text-sm font-medium text-slate-300">
-            공개 시점
-            <select
-              value={roundSelectValue(draft.revealRound, 'start')}
-              onChange={(event) => patch({ revealRound: parseRoundSelect(event.target.value) })}
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-            >
-              <option value="start">처음부터</option>
-              {roundOptions.map((option) => (
-                <option key={option.value} value={`round:${option.value}`}>
-                  {option.label} 시작
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-slate-300">
-            숨김 시점
-            <select
-              value={roundSelectValue(draft.hideRound, 'end')}
-              onChange={(event) => patch({ hideRound: parseRoundSelect(event.target.value) })}
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-            >
-              <option value="end">끝까지</option>
-              {roundOptions.map((option) => (
-                <option key={option.value} value={`round:${option.value}`}>
-                  {option.label} 종료
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {errors.round && <p className="text-xs text-red-400">{errors.round}</p>}
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+      <div className="mt-5 grid gap-3 md:grid-cols-4">
         <InfoBlock title="공개 범위" value={view.publicScopeLabel} />
-        <InfoBlock title="등장 라운드" value={view.roundLabel} />
+        <InfoBlock title="공개 시점" value={selectedRevealSceneLabel} />
+        <InfoBlock title="숨김 시점" value={selectedHideSceneLabel} />
         <InfoBlock title="사용 후 처리" value={view.consumeLabel} />
       </div>
     </article>
   );
-}
-
-function roundSelectValue(value: number | null, emptyValue: 'start' | 'end'): string {
-  return value == null ? emptyValue : `round:${value}`;
-}
-
-function parseRoundSelect(value: string): number | null {
-  if (value === 'start' || value === 'end') return null;
-  if (!value.startsWith('round:')) return null;
-  return parseRoundInput(value.slice('round:'.length));
 }
 
 function InfoBlock({ title, value }: { title: string; value: string }) {
@@ -357,8 +332,3 @@ function InfoBlock({ title, value }: { title: string; value: string }) {
     </div>
   );
 }
-
-const DEFAULT_CLUE_ROUND_OPTIONS = Array.from({ length: 5 }, (_, index) => {
-  const round = index + 1;
-  return { value: round, label: `${round}라운드` };
-});

@@ -46,27 +46,30 @@ func (q *Queries) CountMapsByTheme(ctx context.Context, themeID uuid.UUID) (int6
 }
 
 const createClue = `-- name: CreateClue :one
-INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, image_media_id, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id
+INSERT INTO theme_clues (theme_id, location_id, name, description, image_url, image_media_id, is_common, level, sort_order, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, appearance_scene_id, reveal_scene_id, hide_scene_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id, appearance_scene_id, reveal_scene_id, hide_scene_id
 `
 
 type CreateClueParams struct {
-	ThemeID      uuid.UUID   `json:"theme_id"`
-	LocationID   pgtype.UUID `json:"location_id"`
-	Name         string      `json:"name"`
-	Description  pgtype.Text `json:"description"`
-	ImageUrl     pgtype.Text `json:"image_url"`
-	ImageMediaID pgtype.UUID `json:"image_media_id"`
-	IsCommon     bool        `json:"is_common"`
-	Level        int32       `json:"level"`
-	SortOrder    int32       `json:"sort_order"`
-	IsUsable     bool        `json:"is_usable"`
-	UseEffect    pgtype.Text `json:"use_effect"`
-	UseTarget    pgtype.Text `json:"use_target"`
-	UseConsumed  bool        `json:"use_consumed"`
-	RevealRound  pgtype.Int4 `json:"reveal_round"`
-	HideRound    pgtype.Int4 `json:"hide_round"`
+	ThemeID           uuid.UUID   `json:"theme_id"`
+	LocationID        pgtype.UUID `json:"location_id"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	ImageUrl          pgtype.Text `json:"image_url"`
+	ImageMediaID      pgtype.UUID `json:"image_media_id"`
+	IsCommon          bool        `json:"is_common"`
+	Level             int32       `json:"level"`
+	SortOrder         int32       `json:"sort_order"`
+	IsUsable          bool        `json:"is_usable"`
+	UseEffect         pgtype.Text `json:"use_effect"`
+	UseTarget         pgtype.Text `json:"use_target"`
+	UseConsumed       bool        `json:"use_consumed"`
+	RevealRound       pgtype.Int4 `json:"reveal_round"`
+	HideRound         pgtype.Int4 `json:"hide_round"`
+	AppearanceSceneID pgtype.UUID `json:"appearance_scene_id"`
+	RevealSceneID     pgtype.UUID `json:"reveal_scene_id"`
+	HideSceneID       pgtype.UUID `json:"hide_scene_id"`
 }
 
 func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeClue, error) {
@@ -86,6 +89,9 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 		arg.UseConsumed,
 		arg.RevealRound,
 		arg.HideRound,
+		arg.AppearanceSceneID,
+		arg.RevealSceneID,
+		arg.HideSceneID,
 	)
 	var i ThemeClue
 	err := row.Scan(
@@ -106,6 +112,9 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 		&i.RevealRound,
 		&i.HideRound,
 		&i.ImageMediaID,
+		&i.AppearanceSceneID,
+		&i.RevealSceneID,
+		&i.HideSceneID,
 	)
 	return i, err
 }
@@ -297,7 +306,7 @@ func (q *Queries) DeleteMapWithOwner(ctx context.Context, arg DeleteMapWithOwner
 }
 
 const getClue = `-- name: GetClue :one
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id FROM theme_clues WHERE id = $1
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id, appearance_scene_id, reveal_scene_id, hide_scene_id FROM theme_clues WHERE id = $1
 `
 
 func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) {
@@ -321,12 +330,15 @@ func (q *Queries) GetClue(ctx context.Context, id uuid.UUID) (ThemeClue, error) 
 		&i.RevealRound,
 		&i.HideRound,
 		&i.ImageMediaID,
+		&i.AppearanceSceneID,
+		&i.RevealSceneID,
+		&i.HideSceneID,
 	)
 	return i, err
 }
 
 const getClueWithOwner = `-- name: GetClueWithOwner :one
-SELECT c.id, c.theme_id, c.location_id, c.name, c.description, c.image_url, c.is_common, c.level, c.sort_order, c.created_at, c.is_usable, c.use_effect, c.use_target, c.use_consumed, c.reveal_round, c.hide_round, c.image_media_id FROM theme_clues c
+SELECT c.id, c.theme_id, c.location_id, c.name, c.description, c.image_url, c.is_common, c.level, c.sort_order, c.created_at, c.is_usable, c.use_effect, c.use_target, c.use_consumed, c.reveal_round, c.hide_round, c.image_media_id, c.appearance_scene_id, c.reveal_scene_id, c.hide_scene_id FROM theme_clues c
 JOIN themes t ON c.theme_id = t.id
 WHERE c.id = $1 AND t.creator_id = $2
 `
@@ -357,6 +369,9 @@ func (q *Queries) GetClueWithOwner(ctx context.Context, arg GetClueWithOwnerPara
 		&i.RevealRound,
 		&i.HideRound,
 		&i.ImageMediaID,
+		&i.AppearanceSceneID,
+		&i.RevealSceneID,
+		&i.HideSceneID,
 	)
 	return i, err
 }
@@ -496,7 +511,7 @@ func (q *Queries) GetMapWithOwner(ctx context.Context, arg GetMapWithOwnerParams
 }
 
 const listCluesByLocation = `-- name: ListCluesByLocation :many
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id FROM theme_clues WHERE location_id = $1 ORDER BY sort_order
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id, appearance_scene_id, reveal_scene_id, hide_scene_id FROM theme_clues WHERE location_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUID) ([]ThemeClue, error) {
@@ -526,6 +541,9 @@ func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUI
 			&i.RevealRound,
 			&i.HideRound,
 			&i.ImageMediaID,
+			&i.AppearanceSceneID,
+			&i.RevealSceneID,
+			&i.HideSceneID,
 		); err != nil {
 			return nil, err
 		}
@@ -539,7 +557,7 @@ func (q *Queries) ListCluesByLocation(ctx context.Context, locationID pgtype.UUI
 
 const listCluesByTheme = `-- name: ListCluesByTheme :many
 
-SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id FROM theme_clues WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id, appearance_scene_id, reveal_scene_id, hide_scene_id FROM theme_clues WHERE theme_id = $1 ORDER BY sort_order
 `
 
 // ============================================================
@@ -572,6 +590,9 @@ func (q *Queries) ListCluesByTheme(ctx context.Context, themeID uuid.UUID) ([]Th
 			&i.RevealRound,
 			&i.HideRound,
 			&i.ImageMediaID,
+			&i.AppearanceSceneID,
+			&i.RevealSceneID,
+			&i.HideSceneID,
 		); err != nil {
 			return nil, err
 		}
@@ -733,27 +754,30 @@ func (q *Queries) ListMapsByTheme(ctx context.Context, themeID uuid.UUID) ([]The
 
 const updateClue = `-- name: UpdateClue :one
 UPDATE theme_clues
-SET location_id = $2, name = $3, description = $4, image_url = $5, image_media_id = $6, is_common = $7, level = $8, sort_order = $9, is_usable = $10, use_effect = $11, use_target = $12, use_consumed = $13, reveal_round = $14, hide_round = $15
+SET location_id = $2, name = $3, description = $4, image_url = $5, image_media_id = $6, is_common = $7, level = $8, sort_order = $9, is_usable = $10, use_effect = $11, use_target = $12, use_consumed = $13, reveal_round = $14, hide_round = $15, appearance_scene_id = $16, reveal_scene_id = $17, hide_scene_id = $18
 WHERE id = $1
-RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id
+RETURNING id, theme_id, location_id, name, description, image_url, is_common, level, sort_order, created_at, is_usable, use_effect, use_target, use_consumed, reveal_round, hide_round, image_media_id, appearance_scene_id, reveal_scene_id, hide_scene_id
 `
 
 type UpdateClueParams struct {
-	ID           uuid.UUID   `json:"id"`
-	LocationID   pgtype.UUID `json:"location_id"`
-	Name         string      `json:"name"`
-	Description  pgtype.Text `json:"description"`
-	ImageUrl     pgtype.Text `json:"image_url"`
-	ImageMediaID pgtype.UUID `json:"image_media_id"`
-	IsCommon     bool        `json:"is_common"`
-	Level        int32       `json:"level"`
-	SortOrder    int32       `json:"sort_order"`
-	IsUsable     bool        `json:"is_usable"`
-	UseEffect    pgtype.Text `json:"use_effect"`
-	UseTarget    pgtype.Text `json:"use_target"`
-	UseConsumed  bool        `json:"use_consumed"`
-	RevealRound  pgtype.Int4 `json:"reveal_round"`
-	HideRound    pgtype.Int4 `json:"hide_round"`
+	ID                uuid.UUID   `json:"id"`
+	LocationID        pgtype.UUID `json:"location_id"`
+	Name              string      `json:"name"`
+	Description       pgtype.Text `json:"description"`
+	ImageUrl          pgtype.Text `json:"image_url"`
+	ImageMediaID      pgtype.UUID `json:"image_media_id"`
+	IsCommon          bool        `json:"is_common"`
+	Level             int32       `json:"level"`
+	SortOrder         int32       `json:"sort_order"`
+	IsUsable          bool        `json:"is_usable"`
+	UseEffect         pgtype.Text `json:"use_effect"`
+	UseTarget         pgtype.Text `json:"use_target"`
+	UseConsumed       bool        `json:"use_consumed"`
+	RevealRound       pgtype.Int4 `json:"reveal_round"`
+	HideRound         pgtype.Int4 `json:"hide_round"`
+	AppearanceSceneID pgtype.UUID `json:"appearance_scene_id"`
+	RevealSceneID     pgtype.UUID `json:"reveal_scene_id"`
+	HideSceneID       pgtype.UUID `json:"hide_scene_id"`
 }
 
 func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeClue, error) {
@@ -773,6 +797,9 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 		arg.UseConsumed,
 		arg.RevealRound,
 		arg.HideRound,
+		arg.AppearanceSceneID,
+		arg.RevealSceneID,
+		arg.HideSceneID,
 	)
 	var i ThemeClue
 	err := row.Scan(
@@ -793,6 +820,9 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 		&i.RevealRound,
 		&i.HideRound,
 		&i.ImageMediaID,
+		&i.AppearanceSceneID,
+		&i.RevealSceneID,
+		&i.HideSceneID,
 	)
 	return i, err
 }

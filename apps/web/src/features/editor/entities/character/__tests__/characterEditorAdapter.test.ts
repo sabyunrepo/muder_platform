@@ -87,7 +87,7 @@ describe('characterEditorAdapter', () => {
       label: '정체 공개',
       display_name: '밤의 목격자',
       display_icon_url: 'https://cdn.example/witness.webp',
-      priority: 2,
+      priority: 0,
       condition: {
         id: 'group-1',
         operator: 'AND',
@@ -205,7 +205,7 @@ describe('characterEditorAdapter', () => {
         id: 'alias-1',
         label: '공개 후',
         display_name: '별칭',
-        priority: 1,
+        priority: 0,
       }],
     });
   });

@@ -1,18 +1,11 @@
 import { Image as ImageIcon } from 'lucide-react';
 
 import type { ReadingLineDTO } from '../../readingApi';
-import { AdvanceField } from './AdvanceField';
 import { MediaControl } from './MediaControl';
 import { SelectField } from './SelectField';
 import type { BlockFieldProps } from './readingBlockFieldProps';
 
-export function ImageBlockFields({
-  line,
-  characters,
-  mediaById,
-  themeId,
-  onPatch,
-}: BlockFieldProps) {
+export function ImageBlockFields({ line, mediaById, themeId, onPatch }: BlockFieldProps) {
   return (
     <>
       <MediaControl
@@ -29,7 +22,7 @@ export function ImageBlockFields({
         onSelect={(media) => onPatch({ MediaID: media.id })}
         onClear={() => onPatch({ MediaID: '' })}
       />
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2">
         <SelectField
           label="위치"
           value={line.Position ?? 'center'}
@@ -51,7 +44,6 @@ export function ImageBlockFields({
             ['large', '크게'],
           ]}
         />
-        <AdvanceField line={line} characters={characters} onChange={onPatch} allowVoice={false} />
       </div>
     </>
   );

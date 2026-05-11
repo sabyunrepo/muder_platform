@@ -29,8 +29,12 @@ export function ReadingSectionList({ themeId }: ReadingSectionListProps) {
 
   const createMutation = useCreateReadingSection(themeId);
 
-  // Reduce characters to the minimal {id,name} shape used by editor children.
-  const characterOptions = characters.map((c) => ({ id: c.id, name: c.name }));
+  // Reduce characters to the minimal shape used by editor children.
+  const characterOptions = characters.map((c) => ({
+    id: c.id,
+    name: c.name,
+    isPlayable: c.is_playable,
+  }));
 
   async function handleAdd() {
     setCreateError(null);

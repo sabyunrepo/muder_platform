@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowUp,
+  AlertCircle,
   GripVertical,
   Image as ImageIcon,
   Mic,
@@ -23,6 +24,7 @@ export interface ReadingBlockRowProps {
   characters: CharacterOption[];
   mediaById: Map<string, MediaResponse>;
   dragging: boolean;
+  validationMessage?: string;
   onChange: (line: ReadingLineDTO) => void;
   onDelete: () => void;
   onMove: (from: number, to: number) => void;
@@ -72,6 +74,7 @@ export function ReadingBlockRow({
   characters,
   mediaById,
   dragging,
+  validationMessage,
   onChange,
   onDelete,
   onMove,
@@ -105,7 +108,11 @@ export function ReadingBlockRow({
       }}
       onDragEnd={onDragEnd}
       className={`rounded border p-3 transition ${
-        dragging ? 'border-amber-300/70 bg-slate-800/90' : 'border-slate-700 bg-slate-900'
+        validationMessage
+          ? 'border-rose-500/60 bg-rose-500/5'
+          : dragging
+            ? 'border-amber-300/70 bg-slate-800/90'
+            : 'border-slate-700 bg-slate-900'
       }`}
     >
       <div className="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start">
@@ -135,6 +142,12 @@ export function ReadingBlockRow({
             themeId={themeId}
             onPatch={patch}
           />
+          {validationMessage ? (
+            <p className="inline-flex items-start gap-1 rounded border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>{validationMessage}</span>
+            </p>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-end gap-1">

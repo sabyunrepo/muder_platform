@@ -58,22 +58,37 @@ func (s *service) CreateClue(ctx context.Context, creatorID, themeID uuid.UUID, 
 	if err != nil {
 		return nil, err
 	}
+	appearanceSceneID, err := s.resolveClueAppearanceScene(ctx, themeID, req.AppearanceSceneID)
+	if err != nil {
+		return nil, err
+	}
+	revealSceneID, err := s.resolveClueSceneReference(ctx, themeID, req.RevealSceneID, "reveal_scene_id")
+	if err != nil {
+		return nil, err
+	}
+	hideSceneID, err := s.resolveClueSceneReference(ctx, themeID, req.HideSceneID, "hide_scene_id")
+	if err != nil {
+		return nil, err
+	}
 	clue, err := s.q.CreateClue(ctx, db.CreateClueParams{
-		ThemeID:      themeID,
-		LocationID:   uuidPtrToPgtype(req.LocationID),
-		Name:         req.Name,
-		Description:  ptrToText(req.Description),
-		ImageUrl:     ptrToText(req.ImageURL),
-		ImageMediaID: imageMediaID,
-		IsCommon:     req.IsCommon,
-		Level:        req.Level,
-		SortOrder:    req.SortOrder,
-		IsUsable:     usePolicy.IsUsable,
-		UseEffect:    ptrToText(usePolicy.UseEffect),
-		UseTarget:    ptrToText(usePolicy.UseTarget),
-		UseConsumed:  usePolicy.UseConsumed,
-		RevealRound:  int32PtrToPgtype(req.RevealRound),
-		HideRound:    int32PtrToPgtype(req.HideRound),
+		ThemeID:           themeID,
+		LocationID:        uuidPtrToPgtype(req.LocationID),
+		Name:              req.Name,
+		Description:       ptrToText(req.Description),
+		ImageUrl:          ptrToText(req.ImageURL),
+		ImageMediaID:      imageMediaID,
+		IsCommon:          req.IsCommon,
+		Level:             req.Level,
+		SortOrder:         req.SortOrder,
+		IsUsable:          usePolicy.IsUsable,
+		UseEffect:         ptrToText(usePolicy.UseEffect),
+		UseTarget:         ptrToText(usePolicy.UseTarget),
+		UseConsumed:       usePolicy.UseConsumed,
+		RevealRound:       int32PtrToPgtype(req.RevealRound),
+		HideRound:         int32PtrToPgtype(req.HideRound),
+		AppearanceSceneID: appearanceSceneID,
+		RevealSceneID:     revealSceneID,
+		HideSceneID:       hideSceneID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create clue")
@@ -110,22 +125,37 @@ func (s *service) UpdateClue(ctx context.Context, creatorID, clueID uuid.UUID, r
 			return nil, err
 		}
 	}
+	appearanceSceneID, err := s.resolveClueAppearanceScene(ctx, c.ThemeID, req.AppearanceSceneID)
+	if err != nil {
+		return nil, err
+	}
+	revealSceneID, err := s.resolveClueSceneReference(ctx, c.ThemeID, req.RevealSceneID, "reveal_scene_id")
+	if err != nil {
+		return nil, err
+	}
+	hideSceneID, err := s.resolveClueSceneReference(ctx, c.ThemeID, req.HideSceneID, "hide_scene_id")
+	if err != nil {
+		return nil, err
+	}
 	updated, err := s.q.UpdateClue(ctx, db.UpdateClueParams{
-		ID:           c.ID,
-		LocationID:   uuidPtrToPgtype(req.LocationID),
-		Name:         req.Name,
-		Description:  ptrToText(req.Description),
-		ImageUrl:     ptrToText(req.ImageURL),
-		ImageMediaID: imageMediaID,
-		IsCommon:     req.IsCommon,
-		Level:        req.Level,
-		SortOrder:    req.SortOrder,
-		IsUsable:     usePolicy.IsUsable,
-		UseEffect:    ptrToText(usePolicy.UseEffect),
-		UseTarget:    ptrToText(usePolicy.UseTarget),
-		UseConsumed:  usePolicy.UseConsumed,
-		RevealRound:  int32PtrToPgtype(req.RevealRound),
-		HideRound:    int32PtrToPgtype(req.HideRound),
+		ID:                c.ID,
+		LocationID:        uuidPtrToPgtype(req.LocationID),
+		Name:              req.Name,
+		Description:       ptrToText(req.Description),
+		ImageUrl:          ptrToText(req.ImageURL),
+		ImageMediaID:      imageMediaID,
+		IsCommon:          req.IsCommon,
+		Level:             req.Level,
+		SortOrder:         req.SortOrder,
+		IsUsable:          usePolicy.IsUsable,
+		UseEffect:         ptrToText(usePolicy.UseEffect),
+		UseTarget:         ptrToText(usePolicy.UseTarget),
+		UseConsumed:       usePolicy.UseConsumed,
+		RevealRound:       int32PtrToPgtype(req.RevealRound),
+		HideRound:         int32PtrToPgtype(req.HideRound),
+		AppearanceSceneID: appearanceSceneID,
+		RevealSceneID:     revealSceneID,
+		HideSceneID:       hideSceneID,
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update clue")
@@ -143,6 +173,31 @@ func validateClueRoundOrder(reveal, hide *int32) error {
 		return apperror.BadRequest("reveal_round must not be greater than hide_round")
 	}
 	return nil
+}
+
+func (s *service) resolveClueAppearanceScene(ctx context.Context, themeID uuid.UUID, sceneID *uuid.UUID) (pgtype.UUID, error) {
+	return s.resolveClueSceneReference(ctx, themeID, sceneID, "appearance_scene_id")
+}
+
+func (s *service) resolveClueSceneReference(ctx context.Context, themeID uuid.UUID, sceneID *uuid.UUID, field string) (pgtype.UUID, error) {
+	if sceneID == nil {
+		return pgtype.UUID{}, nil
+	}
+	node, err := s.q.GetFlowNode(ctx, *sceneID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgtype.UUID{}, apperror.BadRequest(field + " must reference an existing scene")
+		}
+		s.logger.Error().Err(err).Str("field", field).Msg("failed to get clue scene reference")
+		return pgtype.UUID{}, apperror.Internal("failed to get clue scene reference")
+	}
+	if node.ThemeID != themeID {
+		return pgtype.UUID{}, apperror.BadRequest(field + " must belong to the same theme")
+	}
+	if node.Type == "start" || node.Type == "branch" {
+		return pgtype.UUID{}, apperror.BadRequest(field + " cannot reference start or branch nodes")
+	}
+	return uuidPtrToPgtype(sceneID), nil
 }
 
 func (s *service) DeleteClue(ctx context.Context, creatorID, clueID uuid.UUID) error {
@@ -261,23 +316,26 @@ func (s *service) UpsertContent(ctx context.Context, creatorID, themeID uuid.UUI
 
 func toClueResponse(c db.ThemeClue) ClueResponse {
 	return ClueResponse{
-		ID:           c.ID,
-		ThemeID:      c.ThemeID,
-		LocationID:   pgtypeUUIDToPtr(c.LocationID),
-		Name:         c.Name,
-		Description:  textToPtr(c.Description),
-		ImageURL:     textToPtr(c.ImageUrl),
-		ImageMediaID: pgtypeUUIDToPtr(c.ImageMediaID),
-		IsCommon:     c.IsCommon,
-		Level:        c.Level,
-		SortOrder:    c.SortOrder,
-		CreatedAt:    c.CreatedAt,
-		IsUsable:     c.IsUsable,
-		UseEffect:    textToPtr(c.UseEffect),
-		UseTarget:    textToPtr(c.UseTarget),
-		UseConsumed:  c.UseConsumed,
-		RevealRound:  pgtypeInt4ToPtr(c.RevealRound),
-		HideRound:    pgtypeInt4ToPtr(c.HideRound),
+		ID:                c.ID,
+		ThemeID:           c.ThemeID,
+		LocationID:        pgtypeUUIDToPtr(c.LocationID),
+		Name:              c.Name,
+		Description:       textToPtr(c.Description),
+		ImageURL:          textToPtr(c.ImageUrl),
+		ImageMediaID:      pgtypeUUIDToPtr(c.ImageMediaID),
+		IsCommon:          c.IsCommon,
+		Level:             c.Level,
+		SortOrder:         c.SortOrder,
+		CreatedAt:         c.CreatedAt,
+		IsUsable:          c.IsUsable,
+		UseEffect:         textToPtr(c.UseEffect),
+		UseTarget:         textToPtr(c.UseTarget),
+		UseConsumed:       c.UseConsumed,
+		RevealRound:       pgtypeInt4ToPtr(c.RevealRound),
+		HideRound:         pgtypeInt4ToPtr(c.HideRound),
+		AppearanceSceneID: pgtypeUUIDToPtr(c.AppearanceSceneID),
+		RevealSceneID:     pgtypeUUIDToPtr(c.RevealSceneID),
+		HideSceneID:       pgtypeUUIDToPtr(c.HideSceneID),
 	}
 }
 

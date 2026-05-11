@@ -140,7 +140,11 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         isConfigSaving={updateConfig.isPending}
       />
 
-      <ClueForm themeId={themeId} isOpen={isFormOpen} onClose={handleFormClose} />
+      <ClueForm
+        themeId={themeId}
+        isOpen={isFormOpen}
+        onClose={handleFormClose}
+      />
 
       <Modal
         isOpen={!!deletingClue}
