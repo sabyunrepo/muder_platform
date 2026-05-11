@@ -37,8 +37,8 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
           restricted_characters: stringifyLocationRestrictedCharacterIds(next),
           image_url: location.image_url,
           sort_order: location.sort_order,
-          from_round: location.from_round ?? null,
-          until_round: location.until_round ?? null,
+          appearance_scene_id: location.appearance_scene_id ?? null,
+          hide_scene_id: location.hide_scene_id ?? null,
         },
       },
       { onError: () => toast.error('접근 제한 저장에 실패했습니다') }

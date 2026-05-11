@@ -81,8 +81,8 @@ function mapLocations(locations: LocationResponse[] = []): StoryLibraryEntity[] 
     kind: "location",
     title: location.name,
     detail:
-      location.from_round != null || location.until_round != null
-        ? "공개 구간 있음"
+      location.appearance_scene_id != null || location.hide_scene_id != null
+        ? "공개 장면 있음"
         : "상시 사용 가능",
     section: "장소",
     connectable: true,

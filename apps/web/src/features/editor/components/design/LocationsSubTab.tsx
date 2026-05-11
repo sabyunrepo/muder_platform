@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Map, Plus, Trash2 } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/Spinner';
@@ -7,14 +7,14 @@ import {
   useEditorMaps,
   useCreateMap,
   useDeleteMap,
-  useUpdateMap,
   useEditorLocations,
   useCreateLocation,
   useDeleteLocation,
 } from '@/features/editor/api';
+import { useFlowGraph } from '@/features/editor/flowApi';
+import { buildProgressNodeRevealOptions } from '@/features/editor/entities/reveal/revealTimingOptions';
 import { AddNameInput } from './AddNameInput';
 import { LocationDetailPanel } from './LocationDetailPanel';
-import { LocationImageMediaField } from './LocationImageMediaField';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,9 +32,9 @@ interface LocationsSubTabProps {
 export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const { data: maps, isLoading: mapsLoading } = useEditorMaps(themeId);
   const { data: locations, isLoading: locsLoading } = useEditorLocations(themeId);
+  const { data: flowGraph } = useFlowGraph(themeId);
   const createMap = useCreateMap(themeId);
   const deleteMap = useDeleteMap(themeId);
-  const updateMap = useUpdateMap(themeId);
   const createLocation = useCreateLocation(themeId);
   const deleteLocation = useDeleteLocation(themeId);
 
@@ -48,7 +48,17 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const mapLocations = locations?.filter((l) => l.map_id === effectiveSelectedMapId) ?? [];
   const selectedLocation =
     mapLocations.find((l) => l.id === selectedLocationId) ?? mapLocations[0] ?? null;
-
+  const sceneOptions = useMemo(
+    () =>
+      buildProgressNodeRevealOptions(
+        flowGraph?.nodes,
+        locations?.flatMap((location) => [
+          location.appearance_scene_id ?? null,
+          location.hide_scene_id ?? null,
+        ]) ?? []
+      ),
+    [flowGraph?.nodes, locations]
+  );
   function handleAddMap(name: string) {
     createMap.mutate(
       { name },
@@ -111,139 +121,43 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
-      {/* ── Map list (full-width on mobile, 240px on md+) ── */}
-      <aside className="shrink-0 border-b border-slate-800 bg-slate-950 py-2 md:min-h-0 md:w-60 md:overflow-y-auto md:border-b-0 md:border-r">
-        <div className="flex items-center justify-between px-3 pb-2">
-          <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">
-            맵
-          </span>
-          <button
-            type="button"
-            onClick={() => setAddingMap(true)}
-            aria-label="맵 추가"
-            className="rounded-sm p-0.5 text-slate-600 hover:bg-slate-800 hover:text-amber-400 transition-colors"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-        </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950/40">
+      <div className="border-b border-slate-800 bg-slate-950/80 px-5 py-3">
+        <LocationMapToolbar
+          maps={maps ?? []}
+          selectedMap={selectedMap}
+          effectiveSelectedMapId={effectiveSelectedMapId}
+          addingMap={addingMap}
+          isCreatingMap={createMap.isPending}
+          isDeletingMap={deleteMap.isPending}
+          onSelectMap={(mapId) => {
+            setSelectedMapId(mapId);
+            setSelectedLocationId(null);
+          }}
+          onStartAddMap={() => setAddingMap(true)}
+          onCancelAddMap={() => setAddingMap(false)}
+          onAddMap={handleAddMap}
+          onDeleteSelectedMap={() => {
+            if (!selectedMap) return;
+            if (
+              window.confirm(
+                `${selectedMap.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`
+              )
+            ) {
+              handleDeleteMap(selectedMap.id);
+            }
+          }}
+        />
+      </div>
 
-        {addingMap && (
-          <AddNameInput
-            placeholder="맵 이름"
-            onAdd={handleAddMap}
-            onCancel={() => setAddingMap(false)}
-            isPending={createMap.isPending}
-          />
-        )}
-
-        {!maps || maps.length === 0 ? (
-          <div className="px-3 py-4 text-center">
-            <Map className="mx-auto mb-1.5 h-5 w-5 text-slate-800" />
-            <p className="text-[10px] font-mono uppercase tracking-widest text-slate-700">
-              맵 없음
-            </p>
-          </div>
-        ) : (
-          maps.map((map) => {
-            const isSelected = effectiveSelectedMapId === map.id;
-            return (
-              <div
-                key={map.id}
-                className={`group flex w-full items-center gap-1 border-l-2 px-2 py-1.5 transition-colors ${
-                  isSelected
-                    ? 'border-amber-500 bg-slate-900 text-slate-200'
-                    : 'border-transparent text-slate-500 hover:bg-slate-900/50 hover:text-slate-300'
-                }`}
-              >
-                <button
-                  type="button"
-                  aria-pressed={isSelected}
-                  onClick={() => {
-                    setSelectedMapId(map.id);
-                    setSelectedLocationId(null);
-                  }}
-                  className="flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-                >
-                  <Map className="h-3.5 w-3.5 shrink-0" />
-                  <span className="flex-1 truncate text-xs font-medium">{map.name}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    if (
-                      window.confirm(
-                        `${map.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`
-                      )
-                    ) {
-                      handleDeleteMap(map.id);
-                    }
-                  }}
-                  aria-label={`${map.name} 삭제`}
-                  className="shrink-0 rounded-md p-2 text-slate-600 transition hover:bg-red-950/40 hover:text-red-300 md:text-slate-700 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            );
-          })
-        )}
-      </aside>
-
-      {/* ── Location detail ── */}
-      <div className="min-h-0 flex-1 px-5 py-5 md:overflow-y-auto">
-        {selectedMap ? (
-          <div className="mb-4 rounded-lg border border-slate-800 bg-slate-950/70 p-4">
-            <div className="mb-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-300/80">
-                토론방 배경
-              </p>
-              <h3 className="mt-1 text-base font-semibold text-slate-100">{selectedMap.name}</h3>
-            </div>
-            <LocationImageMediaField
-              themeId={themeId}
-              label="지도 이미지"
-              pickerTitle="지도 이미지 선택"
-              emptyLabel="미디어에서 지도 선택"
-              legacyMessage="기존 지도 이미지 URL이 있습니다. 미디어 관리 이미지로 교체하면 이후 한 곳에서 관리할 수 있습니다."
-              imageMediaId={selectedMap.image_media_id}
-              legacyImageUrl={selectedMap.image_url}
-              onSelect={(media) =>
-                updateMap.mutate(
-                  {
-                    mapId: selectedMap.id,
-                    body: {
-                      name: selectedMap.name,
-                      image_url: null,
-                      image_media_id: media.id,
-                      sort_order: selectedMap.sort_order,
-                    },
-                  },
-                  { onError: () => toast.error('지도 이미지 저장에 실패했습니다') }
-                )
-              }
-              onClear={() =>
-                updateMap.mutate(
-                  {
-                    mapId: selectedMap.id,
-                    body: {
-                      name: selectedMap.name,
-                      image_media_id: null,
-                      sort_order: selectedMap.sort_order,
-                    },
-                  },
-                  { onError: () => toast.error('지도 이미지 저장에 실패했습니다') }
-                )
-              }
-            />
-          </div>
-        ) : null}
+      <div className="min-h-0 flex-1 overflow-hidden px-5 py-5">
         <LocationDetailPanel
           themeId={themeId}
           theme={theme}
           selectedMap={selectedMap}
           selectedLocation={selectedLocation}
           mapLocations={mapLocations}
+          sceneOptions={sceneOptions}
           addingLocation={addingLocation}
           isCreatingLocation={createLocation.isPending}
           onStartAdd={() => setAddingLocation(true)}
@@ -254,5 +168,93 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
         />
       </div>
     </div>
+  );
+}
+
+function LocationMapToolbar({
+  maps,
+  selectedMap,
+  effectiveSelectedMapId,
+  addingMap,
+  isCreatingMap,
+  isDeletingMap,
+  onSelectMap,
+  onStartAddMap,
+  onCancelAddMap,
+  onAddMap,
+  onDeleteSelectedMap,
+}: {
+  maps: NonNullable<ReturnType<typeof useEditorMaps>['data']>;
+  selectedMap: NonNullable<ReturnType<typeof useEditorMaps>['data']>[number] | null;
+  effectiveSelectedMapId: string | null;
+  addingMap: boolean;
+  isCreatingMap: boolean;
+  isDeletingMap: boolean;
+  onSelectMap: (mapId: string) => void;
+  onStartAddMap: () => void;
+  onCancelAddMap: () => void;
+  onAddMap: (name: string) => void;
+  onDeleteSelectedMap: () => void;
+}) {
+  return (
+    <section className="flex flex-col gap-3 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+          <Map className="h-3.5 w-3.5 text-amber-400" />
+          맵
+        </div>
+        {maps.length > 0 ? (
+          <select
+            aria-label="맵 선택"
+            value={effectiveSelectedMapId ?? ''}
+            onChange={(event) => onSelectMap(event.target.value)}
+            className="h-9 min-w-0 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 sm:w-64"
+          >
+            {maps.map((map) => (
+              <option key={map.id} value={map.id}>
+                {map.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="rounded-md border border-dashed border-slate-700 px-3 py-2 text-xs text-slate-500">
+            맵 없음
+          </span>
+        )}
+      </div>
+
+      {addingMap ? (
+        <div className="min-w-0 sm:w-72">
+          <AddNameInput
+            placeholder="맵 이름"
+            onAdd={onAddMap}
+            onCancel={onCancelAddMap}
+            isPending={isCreatingMap}
+          />
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onStartAddMap}
+            aria-label="맵 추가"
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-slate-700 px-3 text-xs font-medium text-slate-300 transition hover:border-amber-500/50 hover:text-amber-100"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            맵 추가
+          </button>
+          <button
+            type="button"
+            onClick={onDeleteSelectedMap}
+            disabled={!selectedMap || isDeletingMap}
+            aria-label={selectedMap ? `${selectedMap.name} 삭제` : '맵 삭제'}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-slate-800 px-3 text-xs font-medium text-slate-500 transition hover:border-red-500/40 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            삭제
+          </button>
+        </div>
+      )}
+    </section>
   );
 }

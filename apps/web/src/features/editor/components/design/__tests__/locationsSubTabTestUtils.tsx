@@ -114,6 +114,7 @@ vi.mock('@tanstack/react-query', async () => {
 });
 
 import { LocationsSubTab } from '../LocationsSubTab';
+import type { EditorThemeResponse } from '@/features/editor/api';
 import {
   mockCharacters as fixtureCharacters,
   mockClues as fixtureClues,
@@ -172,8 +173,8 @@ export function setupDefaultMocks() {
   });
 }
 
-export function renderLocationsSubTab() {
-  return render(<LocationsSubTab themeId="theme-1" theme={fixtureTheme} />);
+export function renderLocationsSubTab(theme: EditorThemeResponse = fixtureTheme as EditorThemeResponse) {
+  return render(<LocationsSubTab themeId="theme-1" theme={theme} />);
 }
 
 afterEach(() => {

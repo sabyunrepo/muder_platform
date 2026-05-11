@@ -84,6 +84,22 @@ export const mockClues = [
     use_target: null,
     use_consumed: false,
   },
+  {
+    id: 'clue-2',
+    theme_id: 'theme-1',
+    location_id: null,
+    name: '서류',
+    description: null,
+    image_url: null,
+    is_common: false,
+    level: 1,
+    sort_order: 1,
+    created_at: '2026-04-13T00:00:00Z',
+    is_usable: false,
+    use_effect: null,
+    use_target: null,
+    use_consumed: false,
+  },
 ];
 
 export const mockCharacters = [

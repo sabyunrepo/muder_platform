@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
-import { Info, MapPin, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { GripVertical, MapPin, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
-import { useUpdateConfigJson, useUpdateLocation } from '@/features/editor/api';
-import { EntityTriggerPlacementCard } from '@/features/editor/components/triggers/EntityTriggerPlacementCard';
-import { readLocationClueIds } from '@/features/editor/editorTypes';
-import type { EditorConfig } from '@/features/editor/utils/configShape';
+import { useEditorClues, useUpdateConfigJson, useUpdateLocation } from '@/features/editor/api';
+import { SceneSelectField } from '@/features/editor/components/SceneSelectField';
 import {
-  buildLocationParentOptions,
-  toLocationEditorViewModel,
-} from '@/features/editor/entities/location/locationEntityAdapter';
+  type LocationDiscoveryConfig,
+  readLocationClueIds,
+  readLocationDiscoveries,
+  readLocationInvestigationSettings,
+  writeLocationDiscoveries,
+} from '@/features/editor/editorTypes';
+import type { ProgressNodeRevealOption } from '@/features/editor/entities/reveal/revealTimingOptions';
+import { toLocationEditorViewModel } from '@/features/editor/entities/location/locationEntityAdapter';
 import { readLocationMeta } from '@/features/editor/utils/entityMeta';
 import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
@@ -23,6 +26,7 @@ interface LocationDetailPanelProps {
   selectedMap: MapResponse | null;
   selectedLocation: LocationResponse | null;
   mapLocations: LocationResponse[];
+  sceneOptions?: ProgressNodeRevealOption[];
   addingLocation: boolean;
   isCreatingLocation: boolean;
   onStartAdd: () => void;
@@ -32,23 +36,10 @@ interface LocationDetailPanelProps {
   onDeleteLocation: (locationId: string) => void;
 }
 
-function parseRound(raw: string): number | null | undefined {
-  const trimmed = raw.trim();
-  if (trimmed === '') return null;
-  const n = Number(trimmed);
-  if (!Number.isFinite(n) || n < 1) return undefined;
-  return Math.floor(n);
-}
-
-function roundToInput(value: number | null | undefined) {
-  return value == null ? '' : String(value);
-}
-
 interface LocationBasicDraft {
   name: string;
   publicDescription: string;
   entryMessage: string;
-  parentLocationId: string;
 }
 
 export function LocationDetailPanel({
@@ -57,6 +48,7 @@ export function LocationDetailPanel({
   selectedMap,
   selectedLocation,
   mapLocations,
+  sceneOptions = [],
   addingLocation,
   isCreatingLocation,
   onStartAdd,
@@ -123,6 +115,7 @@ export function LocationDetailPanel({
           map={selectedMap}
           location={location}
           mapLocations={mapLocations}
+          sceneOptions={sceneOptions}
         />
       )}
     />
@@ -134,40 +127,44 @@ function SelectedLocationDetail({
   map,
   location,
   mapLocations,
+  sceneOptions,
 }: {
   themeId: string;
   theme: EditorThemeResponse;
   map: MapResponse;
   location: LocationResponse;
   mapLocations: LocationResponse[];
+  sceneOptions: ProgressNodeRevealOption[];
 }) {
   const updateLocation = useUpdateLocation(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
-  const [fromRoundInput, setFromRoundInput] = useState(roundToInput(location.from_round));
-  const [untilRoundInput, setUntilRoundInput] = useState(roundToInput(location.until_round));
-  const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>(
-    getVisibilityMode(roundToInput(location.from_round), roundToInput(location.until_round))
-  );
+  const { data: clues } = useEditorClues(themeId);
+  const [appearanceSceneId, setAppearanceSceneId] = useState(location.appearance_scene_id ?? null);
+  const [hideSceneId, setHideSceneId] = useState(location.hide_scene_id ?? null);
   const locationMeta = useMemo(
     () => readLocationMeta(theme.config_json, location.id),
     [theme.config_json, location.id]
-  );
-  const locationMetaById = useMemo(
-    () =>
-      Object.fromEntries(
-        mapLocations.map((item) => [item.id, readLocationMeta(theme.config_json, item.id)])
-      ),
-    [mapLocations, theme.config_json]
   );
   const [basicDraft, setBasicDraft] = useState({
     name: location.name,
     publicDescription: location.public_description ?? locationMeta.publicDescription ?? '',
     entryMessage: location.entry_message ?? locationMeta.entryMessage ?? '',
-    parentLocationId: location.parent_location_id ?? locationMeta.parentLocationId ?? '',
   });
   const assignedCount = useMemo(
     () => readLocationClueIds(theme.config_json, location.id).length,
     [theme.config_json, location.id]
+  );
+  const discoveries = useMemo(
+    () => readLocationDiscoveries(theme.config_json, location.id),
+    [theme.config_json, location.id]
+  );
+  const investigationSettings = useMemo(
+    () => readLocationInvestigationSettings(theme.config_json),
+    [theme.config_json]
+  );
+  const clueNameById = useMemo(
+    () => new Map((clues ?? []).map((clue) => [clue.id, clue.name])),
+    [clues]
   );
   const viewModel = toLocationEditorViewModel(location, {
     clueCount: assignedCount,
@@ -175,31 +172,22 @@ function SelectedLocationDetail({
     locationMeta,
     allLocations: mapLocations,
   });
-  const parentOptions = useMemo(
-    () => buildLocationParentOptions(location.id, mapLocations, locationMetaById),
-    [location.id, locationMetaById, mapLocations]
-  );
 
   useEffect(() => {
-    setFromRoundInput(roundToInput(location.from_round));
-    setUntilRoundInput(roundToInput(location.until_round));
-    setVisibilityMode(
-      getVisibilityMode(roundToInput(location.from_round), roundToInput(location.until_round))
-    );
+    setAppearanceSceneId(location.appearance_scene_id ?? null);
+    setHideSceneId(location.hide_scene_id ?? null);
     setBasicDraft({
       name: location.name,
       publicDescription: location.public_description ?? locationMeta.publicDescription ?? '',
       entryMessage: location.entry_message ?? locationMeta.entryMessage ?? '',
-      parentLocationId: location.parent_location_id ?? locationMeta.parentLocationId ?? '',
     });
   }, [
     location.id,
     location.name,
-    location.from_round,
-    location.until_round,
+    location.appearance_scene_id,
+    location.hide_scene_id,
     location.public_description,
     location.entry_message,
-    location.parent_location_id,
     locationMeta,
   ]);
 
@@ -207,26 +195,14 @@ function SelectedLocationDetail({
     patch: Partial<LocationResponse>,
     options: { onSuccess?: () => void; onErrorMessage?: string } = {}
   ) {
-    const currentFrom = parseRound(fromRoundInput);
-    const currentUntil = parseRound(untilRoundInput);
-    const nextFrom =
-      patch.from_round !== undefined
-        ? patch.from_round
-        : currentFrom === undefined
-          ? (location.from_round ?? null)
-          : currentFrom;
-    const nextUntil =
-      patch.until_round !== undefined
-        ? patch.until_round
-        : currentUntil === undefined
-          ? (location.until_round ?? null)
-          : currentUntil;
-    if (nextFrom != null && nextUntil != null && nextFrom > nextUntil) {
-      toast.error('등장 라운드는 퇴장 라운드보다 클 수 없습니다');
-      setFromRoundInput(roundToInput(location.from_round));
-      setUntilRoundInput(roundToInput(location.until_round));
-      return;
-    }
+    const nextAppearanceSceneId =
+      patch.appearance_scene_id !== undefined
+        ? (patch.appearance_scene_id ?? null)
+        : (appearanceSceneId ?? location.appearance_scene_id ?? null);
+    const nextHideSceneId =
+      patch.hide_scene_id !== undefined
+        ? (patch.hide_scene_id ?? null)
+        : (hideSceneId ?? location.hide_scene_id ?? null);
     const nextImageUrl = Object.prototype.hasOwnProperty.call(patch, 'image_url')
       ? (patch.image_url ?? null)
       : location.image_url;
@@ -237,10 +213,10 @@ function SelectedLocationDetail({
       image_url: nextImageUrl,
       public_description: patch.public_description ?? location.public_description ?? null,
       entry_message: patch.entry_message ?? location.entry_message ?? null,
-      parent_location_id: patch.parent_location_id ?? location.parent_location_id ?? null,
+      parent_location_id: null,
       sort_order: patch.sort_order ?? location.sort_order,
-      from_round: nextFrom,
-      until_round: nextUntil,
+      appearance_scene_id: nextAppearanceSceneId,
+      hide_scene_id: nextHideSceneId,
       ...(hasImageMediaPatch ? { image_media_id: patch.image_media_id ?? null } : {}),
     };
     updateLocation.mutate(
@@ -255,13 +231,6 @@ function SelectedLocationDetail({
     );
   }
 
-  function saveTriggerConfig(nextConfig: EditorConfig) {
-    updateConfig.mutate(nextConfig, {
-      onSuccess: () => toast.success('장소 트리거가 저장되었습니다'),
-      onError: () => toast.error('장소 트리거 저장에 실패했습니다'),
-    });
-  }
-
   function saveBasicInfo() {
     const nextName = basicDraft.name.trim();
     if (!nextName) {
@@ -269,19 +238,29 @@ function SelectedLocationDetail({
       return;
     }
 
-    const nextParentId = basicDraft.parentLocationId || null;
     saveLocation(
       {
         name: nextName,
         public_description: basicDraft.publicDescription.trim() || null,
         entry_message: basicDraft.entryMessage.trim() || null,
-        parent_location_id: nextParentId,
       },
       {
         onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
         onErrorMessage: '장소 기본 정보 저장에 실패했습니다',
       }
     );
+  }
+
+  function saveDiscoveryOrder(nextDiscoveries: LocationDiscoveryConfig[]) {
+    const nextConfig = writeLocationDiscoveries(
+      theme.config_json,
+      location.id,
+      nextDiscoveries.map((discovery, index) => ({ ...discovery, order: index }))
+    );
+    updateConfig.mutate(nextConfig, {
+      onSuccess: () => toast.success('장소 단서 순서가 저장되었습니다'),
+      onError: () => toast.error('장소 단서 순서 저장에 실패했습니다'),
+    });
   }
 
   return (
@@ -294,10 +273,7 @@ function SelectedLocationDetail({
             </p>
             <h3 className="mt-1 text-xl font-semibold text-slate-100">{viewModel.name}</h3>
             <p className="mt-1 text-xs text-slate-500">
-              트리 경로: {map.name} /{' '}
-              {viewModel.parentLabel === '최상위 장소'
-                ? location.name
-                : `${viewModel.parentLabel} / ${location.name}`}
+              소속 맵: {map.name}
             </p>
             <p className="mt-1 text-xs text-slate-400">{viewModel.roundLabel}</p>
           </div>
@@ -319,42 +295,40 @@ function SelectedLocationDetail({
               draft={basicDraft}
               onDraftChange={setBasicDraft}
               onSave={saveBasicInfo}
-              isSaving={updateLocation.isPending || updateConfig.isPending}
+              isSaving={updateLocation.isPending}
             />
-            <LocationStructureFields
+            <SceneVisibilityFields
               location={location}
-              mapName={map.name}
-              parentLabel={viewModel.parentLabel}
-              parentOptions={parentOptions}
-              selectedParentId={basicDraft.parentLocationId}
-              onParentChange={(parentLocationId) =>
-                setBasicDraft((current) => ({ ...current, parentLocationId }))
-              }
-            />
-            <RoundFields
-              location={location}
-              fromRoundInput={fromRoundInput}
-              untilRoundInput={untilRoundInput}
-              setFromRoundInput={setFromRoundInput}
-              setUntilRoundInput={setUntilRoundInput}
-              visibilityMode={visibilityMode}
-              setVisibilityMode={setVisibilityMode}
+              sceneOptions={sceneOptions}
+              appearanceSceneId={appearanceSceneId}
+              hideSceneId={hideSceneId}
+              setAppearanceSceneId={setAppearanceSceneId}
+              setHideSceneId={setHideSceneId}
               onCommit={saveLocation}
+            />
+            <LocationInvestigationStructurePanel
+              location={location}
+              settings={investigationSettings}
+              discoveries={discoveries}
+              clueNameById={clueNameById}
+              isSaving={updateConfig.isPending}
+              onReorder={saveDiscoveryOrder}
+            />
+            <LocationValidationPanel
+              location={location}
+              settings={investigationSettings}
+              discoveries={discoveries}
             />
           </div>
         </div>
       </section>
-      <EntityTriggerPlacementCard
-        themeId={themeId}
-        entityKind="location"
-        entityId={location.id}
-        entityName={location.name}
-        configJson={theme.config_json}
-        onConfigChange={saveTriggerConfig}
-        isSaving={updateConfig.isPending}
-      />
       <LocationAccessPolicyPanel themeId={themeId} location={location} />
-      <LocationClueAssignPanel themeId={themeId} theme={theme} location={location} />
+      <LocationClueAssignPanel
+        themeId={themeId}
+        theme={theme}
+        location={location}
+        allClues={clues}
+      />
     </div>
   );
 }
@@ -432,189 +406,220 @@ function LocationBasicInfoFields({
   );
 }
 
-function LocationStructureFields({
+function SceneVisibilityFields({
   location,
-  mapName,
-  parentLabel,
-  parentOptions,
-  selectedParentId,
-  onParentChange,
-}: {
-  location: LocationResponse;
-  mapName: string;
-  parentLabel: string;
-  parentOptions: Array<{ id: string; label: string; depth: number }>;
-  selectedParentId: string;
-  onParentChange: (parentLocationId: string) => void;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-      <div className="mb-2 flex items-center gap-1.5 font-semibold text-slate-300">
-        <Info className="h-3.5 w-3.5 text-amber-400" />
-        장소 구조
-      </div>
-      <label className="text-xs text-slate-500">
-        부모 장소
-        <select
-          aria-label={`${location.name} 부모 장소`}
-          value={selectedParentId}
-          onChange={(event) => onParentChange(event.target.value)}
-          className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-        >
-          <option value="">최상위 장소</option>
-          {parentOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {`${'· '.repeat(option.depth)}${option.label}`}
-            </option>
-          ))}
-        </select>
-      </label>
-      <p className="mt-2 text-xs leading-5 text-slate-500">
-        현재 경로: {mapName} /{' '}
-        {parentLabel === '최상위 장소' ? location.name : `${parentLabel} / ${location.name}`}
-      </p>
-    </div>
-  );
-}
-
-function RoundFields({
-  location,
-  fromRoundInput,
-  untilRoundInput,
-  setFromRoundInput,
-  setUntilRoundInput,
-  visibilityMode,
-  setVisibilityMode,
+  sceneOptions,
+  appearanceSceneId,
+  hideSceneId,
+  setAppearanceSceneId,
+  setHideSceneId,
   onCommit,
 }: {
   location: LocationResponse;
-  fromRoundInput: string;
-  untilRoundInput: string;
-  setFromRoundInput: (value: string) => void;
-  setUntilRoundInput: (value: string) => void;
-  visibilityMode: VisibilityMode;
-  setVisibilityMode: (value: VisibilityMode) => void;
+  sceneOptions: ProgressNodeRevealOption[];
+  appearanceSceneId: string | null;
+  hideSceneId: string | null;
+  setAppearanceSceneId: (value: string | null) => void;
+  setHideSceneId: (value: string | null) => void;
   onCommit: (patch: Partial<LocationResponse>) => void;
 }) {
-  function commitVisibility(nextFrom: string, nextUntil: string) {
-    const parsedFrom = parseRound(nextFrom);
-    const parsedUntil = parseRound(nextUntil);
-    if (parsedFrom === undefined || parsedUntil === undefined) {
-      toast.error('라운드는 1 이상의 숫자로 입력해 주세요');
-      setFromRoundInput(roundToInput(location.from_round));
-      setUntilRoundInput(roundToInput(location.until_round));
-      return;
-    }
-    onCommit({ from_round: parsedFrom, until_round: parsedUntil });
+  const sceneDraftRef = useRef({ appearanceSceneId, hideSceneId });
+
+  useEffect(() => {
+    sceneDraftRef.current = { appearanceSceneId, hideSceneId };
+  }, [appearanceSceneId, hideSceneId]);
+
+  function changeAppearance(sceneId: string | null) {
+    setAppearanceSceneId(sceneId);
+    sceneDraftRef.current = { ...sceneDraftRef.current, appearanceSceneId: sceneId };
+    onCommit({
+      appearance_scene_id: sceneDraftRef.current.appearanceSceneId,
+      hide_scene_id: sceneDraftRef.current.hideSceneId,
+    });
   }
 
-  function commitRound(kind: 'from_round' | 'until_round', raw: string) {
-    const nextFrom = kind === 'from_round' ? raw : fromRoundInput;
-    const nextUntil = kind === 'until_round' ? raw : untilRoundInput;
-    const parsed = parseRound(raw);
-    if (parsed === undefined) {
-      toast.error('라운드는 1 이상의 숫자로 입력해 주세요');
-      if (kind === 'from_round') setFromRoundInput(roundToInput(location.from_round));
-      else setUntilRoundInput(roundToInput(location.until_round));
-      return;
-    }
-    commitVisibility(nextFrom, nextUntil);
-  }
-
-  function selectMode(nextMode: VisibilityMode) {
-    setVisibilityMode(nextMode);
-    if (nextMode === 'always') {
-      setFromRoundInput('');
-      setUntilRoundInput('');
-      onCommit({ from_round: null, until_round: null });
-      return;
-    }
-    const fallbackFrom = fromRoundInput || '1';
-    const fallbackUntil = untilRoundInput || fallbackFrom;
-    if (nextMode === 'from') {
-      setFromRoundInput(fallbackFrom);
-      setUntilRoundInput('');
-      commitVisibility(fallbackFrom, '');
-    } else if (nextMode === 'until') {
-      setFromRoundInput('');
-      setUntilRoundInput(fallbackUntil);
-      commitVisibility('', fallbackUntil);
-    } else {
-      setFromRoundInput(fallbackFrom);
-      setUntilRoundInput(fallbackUntil);
-      commitVisibility(fallbackFrom, fallbackUntil);
-    }
+  function changeHide(sceneId: string | null) {
+    setHideSceneId(sceneId);
+    sceneDraftRef.current = { ...sceneDraftRef.current, hideSceneId: sceneId };
+    onCommit({
+      appearance_scene_id: sceneDraftRef.current.appearanceSceneId,
+      hide_scene_id: sceneDraftRef.current.hideSceneId,
+    });
   }
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-      <p className="mb-2 text-xs font-semibold text-slate-300">공개 시점</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {[
-          ['always', '처음부터 끝까지'],
-          ['from', '특정 라운드부터'],
-          ['until', '특정 라운드까지'],
-          ['range', '특정 구간만'],
-        ].map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => selectMode(value as 'always' | 'from' | 'until' | 'range')}
-            className={`rounded-md border px-3 py-2 text-left text-xs transition ${
-              visibilityMode === value
-                ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
-                : 'border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-600'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <p className="mb-2 text-xs font-semibold text-slate-300">공개 장면</p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <SceneSelectField
+          label={`${location.name} 출현 장면`}
+          selectedId={appearanceSceneId}
+          options={sceneOptions}
+          onChange={changeAppearance}
+          emptyLabel="처음부터 공개"
+        />
+        <SceneSelectField
+          label={`${location.name} 숨김 장면`}
+          selectedId={hideSceneId}
+          options={sceneOptions}
+          onChange={changeHide}
+          emptyLabel="마지막 장면까지"
+        />
       </div>
-      {visibilityMode !== 'always' ? (
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {visibilityMode === 'from' || visibilityMode === 'range' ? (
-            <label className="text-xs text-slate-500">
-              시작 라운드
-              <input
-                type="number"
-                min={1}
-                aria-label={`${location.name} 시작 라운드`}
-                value={fromRoundInput}
-                onChange={(e) => setFromRoundInput(e.target.value)}
-                onBlur={() => commitRound('from_round', fromRoundInput)}
-                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-              />
-            </label>
-          ) : null}
-          {visibilityMode === 'until' || visibilityMode === 'range' ? (
-            <label className="text-xs text-slate-500">
-              종료 라운드
-              <input
-                type="number"
-                min={1}
-                aria-label={`${location.name} 종료 라운드`}
-                value={untilRoundInput}
-                onChange={(e) => setUntilRoundInput(e.target.value)}
-                onBlur={() => commitRound('until_round', untilRoundInput)}
-                className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-2 py-2 text-sm text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-              />
-            </label>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }
 
-type VisibilityMode = 'always' | 'from' | 'until' | 'range';
+function LocationInvestigationStructurePanel({
+  location,
+  settings,
+  discoveries,
+  clueNameById,
+  isSaving,
+  onReorder,
+}: {
+  location: LocationResponse;
+  settings: ReturnType<typeof readLocationInvestigationSettings>;
+  discoveries: ReturnType<typeof readLocationDiscoveries>;
+  clueNameById: Map<string, string>;
+  isSaving: boolean;
+  onReorder: (discoveries: LocationDiscoveryConfig[]) => void;
+}) {
+  const [draggingClueId, setDraggingClueId] = useState<string | null>(null);
+  const sortedDiscoveries = discoveries
+    .map((discovery, index) => ({ discovery, index }))
+    .sort((a, b) => {
+      const left = typeof a.discovery.order === 'number' ? a.discovery.order : 9999;
+      const right = typeof b.discovery.order === 'number' ? b.discovery.order : 9999;
+      return left === right ? a.index - b.index : left - right;
+    })
+    .map(({ discovery }) => discovery);
 
-function getVisibilityMode(fromRoundInput: string, untilRoundInput: string): VisibilityMode {
-  const hasFrom = fromRoundInput.trim() !== '';
-  const hasUntil = untilRoundInput.trim() !== '';
-  if (hasFrom && hasUntil) return 'range';
-  if (hasFrom) return 'from';
-  if (hasUntil) return 'until';
-  return 'always';
+  function moveDiscovery(sourceClueId: string, targetClueId: string) {
+    if (sourceClueId === targetClueId || isSaving) return;
+    const sourceIndex = sortedDiscoveries.findIndex((discovery) => discovery.clueId === sourceClueId);
+    const targetIndex = sortedDiscoveries.findIndex((discovery) => discovery.clueId === targetClueId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    const next = [...sortedDiscoveries];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    onReorder(next);
+  }
+
+  return (
+    <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+      <div className="mb-3">
+        <p className="text-xs font-semibold text-slate-200">
+          {settings.investigationMode === 'list' ? '장소 단서 목록' : '장소 덱 단서'}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          {settings.investigationMode === 'list'
+            ? `${location.name}에 배치한 단서를 플레이어가 목록에서 확인하고 획득하는 방식입니다.`
+            : `${location.name}에 추가한 단서를 ${
+                settings.deckOrder === 'random' ? '랜덤' : '설정 순서'
+              }으로 한 장씩 획득하는 방식입니다.`}
+        </p>
+      </div>
+      {sortedDiscoveries.length > 0 ? (
+        <ol className="space-y-2">
+          {sortedDiscoveries.map((discovery, index) => (
+            <li
+              key={`${discovery.locationId}:${discovery.clueId}`}
+              draggable={!isSaving}
+              onDragStart={(event) => {
+                setDraggingClueId(discovery.clueId);
+                const dataTransfer = event.dataTransfer as DataTransfer | undefined;
+                if (dataTransfer) {
+                  dataTransfer.effectAllowed = 'move';
+                  dataTransfer.setData('text/plain', discovery.clueId);
+                }
+              }}
+              onDragEnter={(event) => {
+                event.preventDefault();
+              }}
+              onDragOver={(event) => {
+                event.preventDefault();
+                const dataTransfer = event.dataTransfer as DataTransfer | undefined;
+                if (dataTransfer) dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const sourceClueId =
+                  draggingClueId ||
+                  (event.dataTransfer as DataTransfer | undefined)?.getData('text/plain');
+                setDraggingClueId(null);
+                if (sourceClueId) moveDiscovery(sourceClueId, discovery.clueId);
+              }}
+              onDragEnd={() => setDraggingClueId(null)}
+              aria-label={`${clueNameById.get(discovery.clueId) ?? '알 수 없는 단서'} 순서 이동`}
+              className={`flex items-center gap-3 rounded-md border px-3 py-2 transition ${
+                draggingClueId === discovery.clueId
+                  ? 'border-amber-400/50 bg-amber-500/10 opacity-70'
+                  : 'border-slate-800 bg-slate-950'
+              } ${isSaving ? 'cursor-wait opacity-60' : 'cursor-grab active:cursor-grabbing'}`}
+            >
+              <GripVertical className="h-4 w-4 shrink-0 text-slate-600" aria-hidden="true" />
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-amber-500/40 bg-amber-500/10 text-xs font-semibold text-amber-200">
+                {index + 1}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-200">
+                  {clueNameById.get(discovery.clueId) ?? '알 수 없는 단서'}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {settings.investigationMode === 'list'
+                    ? '장소 배치 단서'
+                    : settings.deckOrder === 'random'
+                      ? '랜덤 후보 카드'
+                      : '순차 획득 카드'}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="rounded-md border border-dashed border-slate-800 px-3 py-4 text-xs leading-5 text-slate-500">
+          아직 배치된 단서가 없습니다. 아래 단서 배치에서 단서를 추가하면 이 장소에서
+          획득할 수 있습니다.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function LocationValidationPanel({
+  location,
+  discoveries,
+}: {
+  location: LocationResponse;
+  discoveries: ReturnType<typeof readLocationDiscoveries>;
+}) {
+  const messages: string[] = [];
+  if (!location.appearance_scene_id) messages.push('출현 장면 미선택: 게임 시작부터 공개됩니다.');
+  if (!location.hide_scene_id) messages.push('숨김 장면 미선택: 마지막 장면까지 공개됩니다.');
+  if (discoveries.length === 0) messages.push('이 장소에서 획득할 단서가 아직 없습니다.');
+
+  return (
+    <section className="rounded-lg border border-slate-800 bg-slate-950/70 p-3">
+      <p className="text-xs font-semibold text-slate-200">장소 검수</p>
+      <div className="mt-2 space-y-1">
+        {messages.length > 0 ? (
+          messages.map((message) => (
+            <p
+              key={message}
+              className="rounded-md border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+            >
+              {message}
+            </p>
+          ))
+        ) : (
+          <p className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+            공개 시점과 단서 배치가 기본 조건을 만족합니다.
+          </p>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function LocationEmptyState({ message, compact = false }: { message: string; compact?: boolean }) {
