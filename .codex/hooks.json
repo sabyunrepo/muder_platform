@@ -1,5 +1,29 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .codex/scripts/mmp-session-start-hook.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .codex/scripts/mmp-keyword-router.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -7,6 +31,11 @@
           {
             "type": "command",
             "command": "[ -f graphify-out/graph.json ] && touch graphify-out/.needs_update 2>/dev/null; true"
+          },
+          {
+            "type": "command",
+            "command": "python3 .codex/scripts/mmp-posttool-hook.py",
+            "timeout": 5
           }
         ]
       }

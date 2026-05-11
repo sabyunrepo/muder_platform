@@ -50,19 +50,22 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - 필요 시 `## Deferred / Follow-up`
    - `## 작업 체크리스트` 또는 각 작업 범위 하위에 Markdown 체크박스(`- [ ]`)를 사용해 실행 항목을 둔다.
    - 작업을 실제로 진행하는 plan/checklist 문서나 Issue 댓글을 갱신할 수 있는 경우, 완료된 항목은 `- [x]`로 바꿔 다음 세션이 남은 일을 바로 알 수 있게 한다.
-4. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
+4. Issue 생성 시 acceptance/done 기준이 비어 있으면, issue 시작 전에 반드시 seed 파일을 채운다.
+   - 실행 예시: `scripts/mmp-workflow-agent.sh bootstrap --issue <번호> --auto-approve`
+   - `scripts/mmp-workflow-seed.sh set-status --issue <번호> --status approved` 없이 PR/commit 가이드를 진행하지 않는다.
+5. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
    - `### 병렬 가능 작업`: 실제 사용할 agent lane을 적는다.
    - `### 파일/모듈 소유권`: 각 lane이 읽거나 수정할 수 있는 디렉터리/파일을 적는다.
    - `### 병렬 금지/주의 영역`: shared contract, migration, PR label/merge, 같은 파일 수정 위험을 적는다.
    - `### 취합 방식`: 각 subagent는 `발견 / 수행 / 판단 / 미해결`로 보고하고, 메인 Codex가 중복 제거와 최종 통합을 맡는다고 적는다.
    - `### 실행 체크리스트`: agent별 todo를 `- [ ]`로 적고, 메인 Codex가 취합하면서 완료 항목을 `- [x]`로 갱신한다고 적는다.
-5. 가능한 경우 실제 MMP agent 이름을 명시한다.
+6. 가능한 경우 실제 MMP agent 이름을 명시한다.
    - `mmp-parallel-coordinator`
    - `mmp-frontend-editor-reviewer`
    - `mmp-backend-engine-reviewer`
    - `mmp-test-coverage-reviewer`
-6. API DTO, frontend adapter/ViewModel mapping, migration 결정, PR 생성, label, merge는 메인 Codex 소유로 둔다.
-7. 코드 작성/수정 이슈의 `## Coverage Plan`에는 변경 예상 파일/모듈별 테스트 책임을 적는다.
+7. API DTO, frontend adapter/ViewModel mapping, migration 결정, PR 생성, label, merge는 메인 Codex 소유로 둔다.
+8. 코드 작성/수정 이슈의 `## Coverage Plan`에는 변경 예상 파일/모듈별 테스트 책임을 적는다.
    - Backend handler/service: 성공 경로, validation, not found, ownership, conflict, delete-blocked 같은 실패 경로를 unit/integration test로 매핑한다.
    - Frontend adapter/hook/component: 저장 payload, dirty state, error UI, empty/loading state, direct URL/tab state를 Vitest/E2E로 매핑한다.
    - E2E 제외 시에는 왜 E2E가 부적합한지와 대체 테스트를 적는다.

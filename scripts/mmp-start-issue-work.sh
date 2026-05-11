@@ -55,6 +55,17 @@ if [[ "${ALLOW_DIRTY:-}" != "1" && -n "$(git status --porcelain)" ]]; then
 fi
 
 issue_title="$(gh issue view "$issue_number" --json title --jq '.title')"
+if [[ "${MMP_WORKFLOW_INTERVIEW_STRICT:-1}" == "1" ]]; then
+  if ! scripts/mmp-workflow-gate.sh issue --issue "$issue_number" --min-status approved --require-acceptance --require-done; then
+    echo "🚫 진행 블록: issue $issue_number는 인터뷰/Seed 상태가 승인 기준에 도달하지 않았습니다." >&2
+    echo "다음 경로로 진행하세요:" >&2
+    echo "  scripts/mmp-workflow-seed.sh init --issue $issue_number --title \"$issue_title\" --scope-in \"...\" --scope-out \"...\" --acceptance \"...\" --done-criteria \"...\"" >&2
+    echo "  scripts/mmp-workflow-seed.sh set-status --issue $issue_number --status approved" >&2
+    echo "  scripts/mmp-workflow-agent.sh bootstrap --issue $issue_number --auto-approve --acceptance \"...\" --done-criteria \"...\"" >&2
+    exit 3
+  fi
+fi
+
 if [[ -n "$manual_slug" ]]; then
   slug="$(slugify "$manual_slug")"
 else

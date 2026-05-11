@@ -41,6 +41,44 @@ contains_ready_for_ci() {
   return 1
 }
 
+issue_from_branch() {
+  local branch="$1"
+  if [[ "$branch" =~ (^|/)issue-([0-9]+)($|[^0-9]) ]]; then
+    echo "${BASH_REMATCH[2]}"
+    return 0
+  fi
+  return 1
+}
+
+require_issue_seed_for_pr() {
+  local branch
+  local issue="${MMP_ISSUE_NUMBER:-}"
+  local strict="${MMP_WORKFLOW_INTERVIEW_STRICT:-1}"
+
+  if [[ "$strict" != "1" ]]; then
+    return 0
+  fi
+
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [[ -z "$issue" ]]; then
+    if ! issue="$(issue_from_branch "$branch")"; then
+      echo "🚫 현재 브랜치에서 issue 번호를 추출할 수 없습니다: $branch" >&2
+      echo "   PR 가드 규칙: 브랜치명에 issue-<번호>- 패턴을 넣거나 MMP_ISSUE_NUMBER를 지정해야 합니다." >&2
+      echo "   예: feat/issue-248-<slug>, export MMP_ISSUE_NUMBER=248" >&2
+      echo "   긴급/예외는 MMP_WORKFLOW_INTERVIEW_STRICT=0 으로 우회 가능합니다." >&2
+      return 2
+    fi
+  fi
+
+  if ! scripts/mmp-workflow-gate.sh issue --issue "$issue" --min-status approved --require-acceptance --require-done; then
+    echo "🚫 PR 생성 블록: issue #$issue 의 deep-interview seed가 승인되지 않았습니다." >&2
+    echo "   scripts/mmp-workflow-seed.sh init --issue $issue --title \"$(git branch --show-current)\"" >&2
+    echo "   scripts/mmp-workflow-seed.sh set-status --issue $issue --status approved" >&2
+    echo "   scripts/mmp-workflow-agent.sh bootstrap --issue $issue --auto-approve --acceptance \"...\" --done-criteria \"...\"" >&2
+    return 2
+  fi
+}
+
 fail_ready_for_ci() {
   cat >&2 <<'MSG'
 🚫 PR 생성 중단: `ready-for-ci` 라벨은 PR 생성 단계에서 붙일 수 없습니다.
@@ -158,6 +196,8 @@ for arg in "$@"; do
 done
 
 require_local_ci_for_code_changes
+
+require_issue_seed_for_pr
 
 cat <<'MSG'
 ✅ PR 생성 가드 통과: `ready-for-ci` 라벨 없이 PR을 생성합니다.
