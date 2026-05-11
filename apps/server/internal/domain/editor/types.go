@@ -99,8 +99,8 @@ type UpdateLocationRequest struct {
 	EntryMessage         OptionalString `json:"entry_message"`
 	ParentLocationID     OptionalUUID   `json:"parent_location_id"`
 	SortOrder            int32          `json:"sort_order" validate:"min=0"`
-	AppearanceSceneID    *uuid.UUID     `json:"appearance_scene_id"`
-	HideSceneID          *uuid.UUID     `json:"hide_scene_id"`
+	AppearanceSceneID    OptionalUUID   `json:"appearance_scene_id"`
+	HideSceneID          OptionalUUID   `json:"hide_scene_id"`
 }
 
 type LocationResponse struct {

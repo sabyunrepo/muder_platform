@@ -216,13 +216,19 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		s.logger.Error().Err(err).Msg("failed to get location")
 		return nil, apperror.Internal("failed to get location")
 	}
-	appearanceSceneID, err := s.resolveLocationSceneReference(ctx, l.ThemeID, req.AppearanceSceneID, "appearance_scene_id")
-	if err != nil {
-		return nil, err
+	appearanceSceneID := l.AppearanceSceneID
+	if req.AppearanceSceneID.Set {
+		appearanceSceneID, err = s.resolveLocationSceneReference(ctx, l.ThemeID, req.AppearanceSceneID.Value, "appearance_scene_id")
+		if err != nil {
+			return nil, err
+		}
 	}
-	hideSceneID, err := s.resolveLocationSceneReference(ctx, l.ThemeID, req.HideSceneID, "hide_scene_id")
-	if err != nil {
-		return nil, err
+	hideSceneID := l.HideSceneID
+	if req.HideSceneID.Set {
+		hideSceneID, err = s.resolveLocationSceneReference(ctx, l.ThemeID, req.HideSceneID.Value, "hide_scene_id")
+		if err != nil {
+			return nil, err
+		}
 	}
 	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, l.ThemeID, req.RestrictedCharacters)
 	if err != nil {

@@ -160,8 +160,6 @@ func TestService_LocationRestrictedCharactersMustBelongToTheme(t *testing.T) {
 		Name:                 created.Name,
 		RestrictedCharacters: &invalidCSV,
 		SortOrder:            created.SortOrder,
-		AppearanceSceneID:    created.AppearanceSceneID,
-		HideSceneID:          created.HideSceneID,
 	}); !isBadRequest(err) {
 		t.Fatalf("UpdateLocation with other theme character error = %T %v, want bad request", err, err)
 	}
