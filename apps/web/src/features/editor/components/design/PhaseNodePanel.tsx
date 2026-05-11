@@ -134,6 +134,7 @@ function InvestigationMapField({
   onFlush: () => void;
 }) {
   const selectedMapExists = !mapId || maps.some((map) => map.id === mapId);
+  const showMissingMapWarning = !isLoading && !selectedMapExists;
 
   return (
     <label className="flex flex-col gap-1">
@@ -160,7 +161,7 @@ function InvestigationMapField({
       <p className="text-[11px] leading-4 text-slate-500">
         이 수사 장면에서 플레이어에게 보여줄 장소 묶음입니다.
       </p>
-      {!selectedMapExists ? (
+      {showMissingMapWarning ? (
         <p className="rounded border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[11px] leading-4 text-amber-100">
           이전에 선택한 맵을 찾을 수 없습니다. 사용할 맵을 다시 선택해 주세요.
         </p>
