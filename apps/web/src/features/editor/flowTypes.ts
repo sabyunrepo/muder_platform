@@ -42,6 +42,7 @@ export interface FlowNodeData {
   label?: string;
   phase_type?: string;
   duration?: number;
+  investigationMapId?: string;
   rounds?: number;
   description?: string;
   icon?: string;
