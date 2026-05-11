@@ -178,14 +178,17 @@ describe('EditorLayout', () => {
     expect(screen.getByText('탭 콘텐츠')).toBeDefined();
   });
 
-  it('캐릭터 탭은 내부 편집 화면이 스크롤을 맡도록 탭 패널을 고정한다', () => {
-    mockActiveTab.current = 'characters';
+  it.each(['characters', 'info', 'clues', 'design', 'questions', 'endings', 'locations', 'media'])(
+    '%s 탭은 내부 편집 화면이 스크롤을 맡도록 탭 패널을 고정한다',
+    (tab) => {
+      mockActiveTab.current = tab;
 
-    render(<EditorLayout theme={baseTheme} themeId="theme-1" />);
+      render(<EditorLayout theme={baseTheme} themeId="theme-1" />);
 
-    const tabPanel = screen.getByRole('tabpanel');
-    expect(tabPanel.id).toBe('tabpanel-characters');
-    expect(tabPanel.className).toContain('min-h-0');
-    expect(tabPanel.className).toContain('overflow-hidden');
-  });
+      const tabPanel = screen.getByRole('tabpanel');
+      expect(tabPanel.id).toBe(`tabpanel-${tab}`);
+      expect(tabPanel.className).toContain('min-h-0');
+      expect(tabPanel.className).toContain('overflow-hidden');
+    }
+  );
 });

@@ -9,6 +9,8 @@ import {
   useEditorMapsMock,
   useMediaListMock,
 } from './locationsSubTabTestUtils';
+import { writeLocationDiscoveries } from '@/features/editor/editorTypes';
+import { mockTheme } from './locationsSubTabTestUtils';
 
 describe('LocationsSubTab', () => {
   describe('로딩 상태', () => {
@@ -29,8 +31,10 @@ describe('LocationsSubTab', () => {
 
     it('맵 이름들을 렌더링한다', () => {
       const { container } = renderLocationsSubTab();
-      expect(container.firstElementChild?.className).toContain('overflow-y-auto');
-      expect(container.firstElementChild?.className).toContain('md:overflow-hidden');
+      expect(container.firstElementChild?.className).toContain('overflow-hidden');
+      expect(container.firstElementChild?.className).toContain('bg-slate-950/40');
+      expect(screen.getByRole('combobox', { name: '맵 선택' })).toBeDefined();
+      expect(screen.queryByText('맵은 조사 단계가 아니라 장소들을 묶는 배치 컨테이너입니다.')).toBeNull();
       expect(screen.getAllByText('저택 1층').length).toBeGreaterThan(0);
       expect(screen.getByText('저택 2층')).toBeDefined();
     });
@@ -101,6 +105,25 @@ describe('LocationsSubTab', () => {
       expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
     });
 
+    it('장소 상세에서 하위장소 설정을 표시하지 않는다', () => {
+      renderLocationsSubTab();
+
+      expect(screen.queryByText('장소 구조')).toBeNull();
+      expect(screen.queryByText('부모 장소')).toBeNull();
+      expect(screen.queryByText(/하위 조사 항목/)).toBeNull();
+      expect(screen.queryByText(/2단계/)).toBeNull();
+      expect(screen.getByText('소속 맵: 저택 1층')).toBeDefined();
+    });
+
+    it('장소 상세에서 장소 트리거 UI를 표시하지 않는다', () => {
+      renderLocationsSubTab();
+
+      expect(screen.queryByText('진행 연결')).toBeNull();
+      expect(screen.queryByText('장소 트리거')).toBeNull();
+      expect(screen.queryByRole('button', { name: '트리거 추가' })).toBeNull();
+      expect(screen.queryByRole('button', { name: '트리거 저장' })).toBeNull();
+    });
+
     it('맵 선택 시 공통 엔티티 Shell로 해당 맵의 장소만 표시한다', () => {
       renderLocationsSubTab();
       expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
@@ -114,7 +137,7 @@ describe('LocationsSubTab', () => {
     it('다른 맵을 선택하면 해당 맵의 장소 workspace로 전환한다', () => {
       renderLocationsSubTab();
 
-      fireEvent.click(screen.getByRole('button', { name: '저택 2층' }));
+      fireEvent.change(screen.getByRole('combobox', { name: '맵 선택' }), { target: { value: 'map-2' } });
 
       expect(screen.getByRole('region', { name: '장소 목록' })).toBeDefined();
       expect(screen.getAllByText('침실').length).toBeGreaterThan(0);
@@ -126,6 +149,15 @@ describe('LocationsSubTab', () => {
       useEditorLocationsMock.mockReturnValue({ data: [], isLoading: false });
       renderLocationsSubTab();
       expect(screen.getByText('장소 없음')).toBeDefined();
+    });
+
+    it('장소가 없는 맵에서도 장소 추가 입력을 표시한다', () => {
+      useEditorLocationsMock.mockReturnValue({ data: [], isLoading: false });
+      renderLocationsSubTab();
+
+      fireEvent.click(screen.getByRole('button', { name: '장소 추가' }));
+
+      expect(screen.getByPlaceholderText('장소 이름')).toBeDefined();
     });
   });
 
@@ -184,6 +216,78 @@ describe('LocationsSubTab', () => {
         id: 'loc-1',
         locationClueConfig: { clueIds: ['clue-1'] },
       });
+    });
+
+    it('배정된 단서는 해제할 수 있고 선택한 단서 하나의 조사 설정만 표시한다', () => {
+      const config = writeLocationDiscoveries(null, 'loc-1', [
+        { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: [], oncePerPlayer: true },
+      ]);
+      renderLocationsSubTab({ ...mockTheme, config_json: config });
+
+      expect(screen.getByText('조사 설정')).toBeDefined();
+      expect(screen.queryByText('조사 결과')).toBeNull();
+      expect((screen.getByLabelText('단검 무료 조사') as HTMLInputElement).checked).toBe(false);
+      expect(screen.queryByLabelText('단검 조사권 종류')).toBeNull();
+      expect(screen.getByLabelText('단검 조사권 소비량')).toBeDefined();
+
+      fireEvent.click(screen.getByRole('button', { name: '단검 해제' }));
+      expect(updateConfigMutateMock).toHaveBeenCalledOnce();
+    });
+
+    it('무료 조사를 체크하면 조사권 필드 대신 무료 비용 설정을 저장한다', () => {
+      const config = writeLocationDiscoveries(null, 'loc-1', [
+        { locationId: 'loc-1', clueId: 'clue-1', requiredClueIds: [], oncePerPlayer: true },
+      ]);
+      renderLocationsSubTab({ ...mockTheme, config_json: config });
+
+      fireEvent.click(screen.getByLabelText('단검 무료 조사'));
+
+      expect(updateConfigMutateMock).toHaveBeenCalledOnce();
+      const [nextConfig] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
+      const modules = nextConfig.modules as {
+        deck_investigation: { config: { decks: Array<{ tokenCost: number }> } };
+      };
+      const deckConfig = modules.deck_investigation.config;
+      expect(deckConfig.decks[0]?.tokenCost).toBe(0);
+    });
+
+    it('장소 덱 단서를 드래그앤드롭으로 재정렬하면 순서를 저장한다', () => {
+      const config = writeLocationDiscoveries(null, 'loc-1', [
+        {
+          locationId: 'loc-1',
+          clueId: 'clue-1',
+          requiredClueIds: [],
+          oncePerPlayer: true,
+          order: 0,
+        },
+        {
+          locationId: 'loc-1',
+          clueId: 'clue-2',
+          requiredClueIds: [],
+          oncePerPlayer: true,
+          order: 1,
+        },
+      ]);
+      renderLocationsSubTab({ ...mockTheme, config_json: config });
+
+      fireEvent.dragStart(screen.getByLabelText('단검 순서 이동'));
+      fireEvent.dragEnter(screen.getByLabelText('서류 순서 이동'));
+      fireEvent.drop(screen.getByLabelText('서류 순서 이동'));
+
+      expect(updateConfigMutateMock).toHaveBeenCalledOnce();
+      const [nextConfig] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
+      const modules = nextConfig.modules as {
+        location: {
+          config: {
+            discoveries: Array<{ clueId: string; order?: number }>;
+          };
+        };
+      };
+      const reordered = modules.location.config.discoveries.filter((item) => item.locationId === 'loc-1');
+      expect(reordered.map((item) => [item.clueId, item.order])).toEqual([
+        ['clue-2', 0],
+        ['clue-1', 1],
+      ]);
     });
 
     it('맵이 없으면 단서 배정 picker 가 표시되지 않는다', () => {

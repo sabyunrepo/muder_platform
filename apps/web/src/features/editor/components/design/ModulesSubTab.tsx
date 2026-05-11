@@ -17,9 +17,13 @@ import {
 import { InvestigationTokenSettingsPanel } from './InvestigationTokenSettingsPanel';
 import {
   readEnabledModuleIds,
+  readLocationInvestigationSettings,
   readModuleConfig,
+  writeLocationInvestigationSettings,
   writeModuleConfigPath,
   writeModuleEnabled,
+  type LocationDeckOrder,
+  type LocationInvestigationMode,
 } from '@/features/editor/utils/configShape';
 
 // ---------------------------------------------------------------------------
@@ -30,6 +34,8 @@ interface ModulesSubTabProps {
   themeId: string;
   theme: EditorThemeResponse;
 }
+
+const LOCATION_MODULE_ID = 'location';
 
 // ---------------------------------------------------------------------------
 // ModulesSubTab — card + toggle UI (optional modules only)
@@ -180,6 +186,24 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
+  const handleLocationInvestigationChange = useCallback(
+    (settings: {
+      investigationMode: LocationInvestigationMode;
+      deckOrder: LocationDeckOrder;
+    }) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
+      mutateConfig(
+        writeLocationInvestigationSettings(activeConfig, settings),
+        '장소 탐색 설정이 저장되었습니다',
+        '장소 탐색 설정 저장에 실패했습니다'
+      );
+    },
+    [activeConfig, mutateConfig, updateConfig.isPending]
+  );
+
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
     if (!moduleSchemasResp?.schemas) return {};
     const result: Record<string, TemplateSchema | null> = {};
@@ -266,8 +290,19 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                       />
                     )}
 
+                    {isEnabled && mod.id === LOCATION_MODULE_ID && (
+                      <LocationInvestigationModePanel
+                        settings={readLocationInvestigationSettings(activeConfig)}
+                        isSaving={updateConfig.isPending}
+                        onChange={handleLocationInvestigationChange}
+                      />
+                    )}
+
                     {/* Inline config form when enabled and schema exists */}
-                    {isEnabled && mod.id !== DECK_INVESTIGATION_MODULE_ID && schema && (
+                    {isEnabled &&
+                      mod.id !== DECK_INVESTIGATION_MODULE_ID &&
+                      mod.id !== LOCATION_MODULE_ID &&
+                      schema && (
                       <div className="border-t border-slate-700 px-3 py-3">
                         <SchemaDrivenForm
                           schema={schema}
@@ -283,6 +318,83 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
           </section>
         );
       })}
+    </div>
+  );
+}
+
+function LocationInvestigationModePanel({
+  settings,
+  isSaving,
+  onChange,
+}: {
+  settings: {
+    investigationMode: LocationInvestigationMode;
+    deckOrder: LocationDeckOrder;
+  };
+  isSaving: boolean;
+  onChange: (settings: {
+    investigationMode: LocationInvestigationMode;
+    deckOrder: LocationDeckOrder;
+  }) => void;
+}) {
+  const modes: Array<{ value: LocationInvestigationMode; label: string; description: string }> = [
+    {
+      value: 'list',
+      label: '리스트형',
+      description: '세부 항목별 단서를 제작자가 정한 목록으로 보여줍니다.',
+    },
+    {
+      value: 'deck',
+      label: '덱형',
+      description: '장소에 쌓인 단서를 한 번에 하나씩 뽑아 획득합니다.',
+    },
+  ];
+  const orders: Array<{ value: LocationDeckOrder; label: string }> = [
+    { value: 'fixed', label: '설정 순서' },
+    { value: 'random', label: '랜덤' },
+  ];
+
+  return (
+    <div className="border-t border-slate-700 px-3 py-3">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {modes.map((mode) => (
+          <button
+            key={mode.value}
+            type="button"
+            disabled={isSaving}
+            onClick={() => onChange({ ...settings, investigationMode: mode.value })}
+            className={`rounded-md border px-3 py-2 text-left transition ${
+              settings.investigationMode === mode.value
+                ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
+                : 'border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-600'
+            }`}
+          >
+            <span className="block text-xs font-semibold">{mode.label}</span>
+            <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+              {mode.description}
+            </span>
+          </button>
+        ))}
+      </div>
+      {settings.investigationMode === 'deck' ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {orders.map((order) => (
+            <button
+              key={order.value}
+              type="button"
+              disabled={isSaving}
+              onClick={() => onChange({ ...settings, deckOrder: order.value })}
+              className={`rounded-md border px-3 py-1.5 text-xs font-medium transition ${
+                settings.deckOrder === order.value
+                  ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
+                  : 'border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-600'
+              }`}
+            >
+              {order.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

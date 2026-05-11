@@ -158,10 +158,10 @@ describe('LocationClueAssignPanel', () => {
       ...baseTheme,
       config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
-    renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
-    expect((screen.getByLabelText('단검 추가') as HTMLButtonElement).disabled).toBe(true);
+  renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
+    expect(screen.getByLabelText('단검 설정 열기')).toBeDefined();
     expect((screen.getByLabelText('편지 추가') as HTMLButtonElement).disabled).toBe(false);
-    expect(screen.getByLabelText('단검 제거')).toBeDefined();
+    expect(screen.getByLabelText('단검 해제')).toBeDefined();
   });
 
   it('배정되지 않은 clue 클릭 시 clueIds에 추가되어 mutate가 호출된다', () => {
@@ -202,7 +202,7 @@ describe('LocationClueAssignPanel', () => {
       },
     };
     renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
-    fireEvent.click(screen.getByLabelText('단검 제거'));
+    fireEvent.click(screen.getByLabelText('단검 해제'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const locs = config.locations as Array<{
@@ -293,7 +293,7 @@ describe('LocationClueAssignPanel', () => {
     };
     renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
 
-    expect(screen.getByText('무료 조사')).toBeDefined();
+    expect((screen.getByLabelText('단검 무료 조사') as HTMLInputElement).checked).toBe(false);
     expect(screen.getByRole('link', { name: '조사권 관리' }).getAttribute('href')).toBe(
       '/editor/theme-1/design/modules'
     );
@@ -326,7 +326,7 @@ describe('LocationClueAssignPanel', () => {
     });
   });
 
-  it('장소 단서 조사 비용을 무료로 바꾸면 연결된 비용 deck을 제거한다', () => {
+  it('장소 단서 조사 비용을 무료로 바꾸면 연결된 비용 deck을 무료 비용으로 저장한다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,
       config_json: {
@@ -364,14 +364,18 @@ describe('LocationClueAssignPanel', () => {
     renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
 
     expect(screen.getByText('권 기본 조사권 2개 필요')).toBeDefined();
-    fireEvent.click(screen.getByLabelText('단검 무료 조사로 설정'));
+    fireEvent.click(screen.getByLabelText('단검 무료 조사'));
 
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const modules = config.modules as {
-      deck_investigation: { config: { decks: unknown[] } };
+      deck_investigation: { config: { decks: Array<{ tokenCost: number; tokenId: string }> } };
     };
-    expect(modules.deck_investigation.config.decks).toEqual([]);
+    expect(modules.deck_investigation.config.decks[0]).toMatchObject({
+      id: 'location-clue-loc-1-clue-1',
+      tokenId: 'basic-token',
+      tokenCost: 0,
+    });
   });
 
   it('이미 선택된 필요 단서를 다시 클릭하면 requiredClueIds에서 해제된다', () => {

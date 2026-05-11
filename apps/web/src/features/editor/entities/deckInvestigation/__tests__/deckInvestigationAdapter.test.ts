@@ -295,7 +295,11 @@ describe('deckInvestigationAdapter', () => {
     });
 
     expect(removeLocationClueInvestigationCost(paid, 'loc-1', 'clue-1').decks).toEqual([]);
-    expect(readLocationClueInvestigationCost(paid, 'loc-1', 'missing')).toEqual({ mode: 'free' });
+    expect(readLocationClueInvestigationCost(paid, 'loc-1', 'missing')).toEqual({
+      mode: 'token',
+      tokenId: 'investigation-token',
+      tokenCost: 1,
+    });
     expect(formatInvestigationCostLabel({ mode: 'free' }, paid.tokens)).toBe('무료 조사');
   });
 

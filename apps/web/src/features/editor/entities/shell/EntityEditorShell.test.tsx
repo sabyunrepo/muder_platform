@@ -45,10 +45,10 @@ describe('EntityEditorShell', () => {
     expect(screen.getByLabelText('검수 슬롯').textContent).toContain('첫 단서 검수');
     expect(screen.getByText('2개의 단서')).toBeDefined();
     expect(container.firstElementChild?.className).toContain('min-h-0');
-    expect(container.firstElementChild?.className).toContain('lg:overflow-hidden');
+    expect(container.firstElementChild?.className).toContain('overflow-y-auto');
   });
 
-  it('데스크톱에서는 목록과 상세 패널이 각자 스크롤 책임을 가진다', () => {
+  it('데스크톱에서는 Shell 하나만 스크롤 책임을 가진다', () => {
     renderShell();
 
     const list = screen.getByRole('region', { name: '단서 목록' });
@@ -61,9 +61,8 @@ describe('EntityEditorShell', () => {
     expect(list.className).toContain('min-h-0');
     expect(list.className).toContain('shrink-0');
     expect(detail.className).toContain('shrink-0');
-    expect(listScroller?.className).toContain('lg:flex-1');
-    expect(listScroller?.className).toContain('lg:overflow-y-auto');
-    expect(detail.className).toContain('lg:overflow-y-auto');
+    expect(listScroller).toBeUndefined();
+    expect(detail.className).not.toContain('lg:overflow-y-auto');
   });
 
   it('검색어에 맞는 항목만 보여준다', () => {

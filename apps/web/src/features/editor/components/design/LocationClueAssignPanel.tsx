@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, MapPin, Package, Plus, Search } from 'lucide-react';
+import { Check, MapPin, Package, Plus, Search, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { EditorThemeResponse, LocationResponse, ClueResponse } from '@/features/editor/api';
 import { editorKeys, useEditorClues, useUpdateConfigJson } from '@/features/editor/api';
 import {
+  readAllLocationDiscoveries,
   readLocationDiscoveries,
   writeLocationDiscoveries,
   type LocationDiscoveryConfig,
@@ -53,6 +54,7 @@ export function LocationClueAssignPanel({
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
+  const [activeClueId, setActiveClueId] = useState<string | null>(null);
 
   const discoveries = useMemo(
     () => readLocationDiscoveries(theme.config_json, location.id),
@@ -66,9 +68,19 @@ export function LocationClueAssignPanel({
     () => discoveries.map((discovery) => discovery.clueId),
     [discoveries]
   );
+  const globallyAssignedClueIds = useMemo(
+    () =>
+      new Set(
+        readAllLocationDiscoveries(theme.config_json)
+          .filter((discovery) => discovery.locationId !== location.id)
+          .map((discovery) => discovery.clueId)
+      ),
+    [location.id, theme.config_json]
+  );
   const assignedSet = useMemo(() => new Set(assignedIds), [assignedIds]);
   const clueById = useMemo(() => new Map(clues.map((clue) => [clue.id, clue])), [clues]);
   const selectedClues = clues.filter((clue) => assignedSet.has(clue.id));
+  const activeClue = selectedClues.find((clue) => clue.id === activeClueId) ?? selectedClues[0] ?? null;
   const visibleClues = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return clues;
@@ -107,20 +119,43 @@ export function LocationClueAssignPanel({
   }
 
   function addClue(clueId: string) {
-    if (assignedSet.has(clueId)) return;
-    commit([
+    if (assignedSet.has(clueId)) {
+      setActiveClueId(clueId);
+      return;
+    }
+    if (globallyAssignedClueIds.has(clueId)) {
+      toast.error('이미 다른 장소에 배치된 단서입니다');
+      return;
+    }
+    const clue = clueById.get(clueId);
+    const nextDiscoveries = [
       ...discoveries,
       { locationId: location.id, clueId, requiredClueIds: [], oncePerPlayer: true },
-    ]);
+    ];
+    const nextDeckDraft = clue
+      ? writeLocationClueInvestigationCost(investigationDraft, {
+          locationId: location.id,
+          locationName: location.name,
+          clueId,
+          clueName: clue.name,
+          requiredClueIds: [],
+          cost: {
+            mode: 'token',
+            tokenId: investigationDraft.tokens[0]?.id ?? 'investigation-token',
+            tokenCost: 1,
+          },
+        })
+      : investigationDraft;
+    setActiveClueId(clueId);
+    commit(nextDiscoveries, nextDeckDraft);
   }
 
   function removeClue(clueId: string) {
-    const cost = readLocationClueInvestigationCost(investigationDraft, location.id, clueId);
+    const nextDiscoveries = discoveries.filter((discovery) => discovery.clueId !== clueId);
+    setActiveClueId((current) => (current === clueId ? null : current));
     commit(
-      discoveries.filter((discovery) => discovery.clueId !== clueId),
-      cost.mode === 'token'
-        ? removeLocationClueInvestigationCost(investigationDraft, location.id, clueId)
-        : undefined
+      nextDiscoveries,
+      removeLocationClueInvestigationCost(investigationDraft, location.id, clueId)
     );
   }
 
@@ -243,8 +278,11 @@ export function LocationClueAssignPanel({
                     key={clue.id}
                     clue={clue}
                     selected={assignedSet.has(clue.id)}
+                    active={activeClue?.id === clue.id}
+                    unavailable={globallyAssignedClueIds.has(clue.id)}
                     disabled={updateConfig.isPending}
-                    onAdd={addClue}
+                    onSelect={addClue}
+                    onRemove={removeClue}
                   />
                 ))
               )}
@@ -253,37 +291,35 @@ export function LocationClueAssignPanel({
           <section className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
-                조사 결과
+                조사 설정
               </p>
-              <span className="text-[10px] text-slate-600">플레이어당 1회</span>
+              <span className="text-[10px] text-slate-600">
+                {activeClue ? activeClue.name : '선택 없음'}
+              </span>
             </div>
-            {selectedClues.length === 0 ? (
+            {!activeClue ? (
               <p className="rounded-md border border-dashed border-slate-800 px-2.5 py-5 text-center text-xs text-slate-600">
                 아직 배정된 단서가 없습니다. 좌측 목록에서 조사 시 발견할 단서를 클릭하세요.
               </p>
             ) : (
-              <div className="space-y-2">
-                {selectedClues.map((clue) => (
-                  <LocationSelectedClueItem
-                    key={clue.id}
-                    clue={clue}
-                    discovery={discoveries.find((item) => item.clueId === clue.id)}
-                    availableClues={clues.filter((candidate) => candidate.id !== clue.id)}
-                    clueById={clueById}
-                    tokens={investigationDraft.tokens}
-                    cost={readLocationClueInvestigationCost(
-                      investigationDraft,
-                      location.id,
-                      clue.id
-                    )}
-                    disabled={updateConfig.isPending}
-                    manageHref={`/editor/${themeId}/design/modules`}
-                    onRemove={removeClue}
-                    onToggleRequired={toggleRequiredClue}
-                    onCostChange={updateInvestigationCost}
-                  />
-                ))}
-              </div>
+              <LocationSelectedClueItem
+                key={activeClue.id}
+                clue={activeClue}
+                discovery={discoveries.find((item) => item.clueId === activeClue.id)}
+                availableClues={clues.filter((candidate) => candidate.id !== activeClue.id)}
+                clueById={clueById}
+                tokens={investigationDraft.tokens}
+                cost={readLocationClueInvestigationCost(
+                  investigationDraft,
+                  location.id,
+                  activeClue.id
+                )}
+                disabled={updateConfig.isPending}
+                manageHref={`/editor/${themeId}/design/modules`}
+                onRemove={removeClue}
+                onToggleRequired={toggleRequiredClue}
+                onCostChange={updateInvestigationCost}
+              />
             )}
           </section>
         </div>
@@ -295,33 +331,70 @@ export function LocationClueAssignPanel({
 function ClueOption({
   clue,
   selected,
+  active,
+  unavailable,
   disabled,
-  onAdd,
+  onSelect,
+  onRemove,
 }: {
   clue: ClueResponse;
   selected: boolean;
+  active: boolean;
+  unavailable: boolean;
   disabled: boolean;
-  onAdd: (id: string) => void;
+  onSelect: (id: string) => void;
+  onRemove: (id: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onAdd(clue.id)}
-      disabled={disabled || selected}
-      aria-label={`${clue.name} 추가`}
-      className="group flex w-full items-center gap-3 rounded-md border border-transparent px-2 py-2 text-left transition hover:border-amber-500/30 hover:bg-slate-800/80 disabled:cursor-default disabled:border-amber-500/10 disabled:bg-amber-950/10"
+    <div
+      className={`group flex w-full items-center gap-3 rounded-md border px-2 py-2 text-left transition hover:border-amber-500/30 hover:bg-slate-800/80 disabled:cursor-default disabled:border-slate-800 disabled:bg-slate-950/40 ${
+        active
+          ? 'border-amber-400/50 bg-amber-500/10'
+          : selected
+            ? 'border-amber-500/20 bg-amber-950/10'
+            : 'border-transparent'
+      }`}
     >
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-800 text-[10px] font-semibold text-amber-400">
-        {roundLabel(clue)}
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium text-slate-200">{clue.name}</span>
-        <span className="mt-0.5 block truncate text-xs text-slate-500">{clueMeta(clue)}</span>
-      </span>
-      <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-slate-700 px-2 text-[10px] font-semibold text-slate-500 group-hover:border-amber-500 group-hover:text-amber-300 group-disabled:border-amber-500/20 group-disabled:text-amber-300/70">
-        {selected ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-      </span>
-    </button>
+      <button
+        type="button"
+        onClick={() => onSelect(clue.id)}
+        disabled={disabled || unavailable}
+        aria-label={selected ? `${clue.name} 설정 열기` : `${clue.name} 추가`}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-default"
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-800 text-[10px] font-semibold text-amber-400">
+          {roundLabel(clue)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-medium text-slate-200">{clue.name}</span>
+          <span className="mt-0.5 block truncate text-xs text-slate-500">{clueMeta(clue)}</span>
+        </span>
+        <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-slate-700 px-2 text-[10px] font-semibold text-slate-500 group-hover:border-amber-500 group-hover:text-amber-300">
+          {selected ? (
+            <>
+              <Check className="mr-1 h-3.5 w-3.5" />
+              선택됨
+            </>
+          ) : unavailable ? (
+            '배치됨'
+          ) : (
+            <Plus className="h-3.5 w-3.5" />
+          )}
+        </span>
+      </button>
+      {selected ? (
+        <button
+          type="button"
+          disabled={disabled}
+          aria-label={`${clue.name} 해제`}
+          onClick={() => onRemove(clue.id)}
+          className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-red-500/20 px-2 text-[10px] font-semibold text-red-300 transition hover:border-red-400/50 hover:bg-red-500/10 disabled:opacity-50"
+        >
+          <X className="mr-1 h-3 w-3" />
+          해제
+        </button>
+      ) : null}
+    </div>
   );
 }
 

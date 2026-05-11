@@ -60,8 +60,8 @@ const location: LocationResponse = {
   description: '낡은 서재',
   restricted_characters: 'char-1',
   image_url: '/images/study.webp',
-  from_round: 1,
-  until_round: 3,
+  appearance_scene_id: 'scene-1',
+  hide_scene_id: 'scene-3',
   sort_order: 7,
   created_at: '2026-05-02T00:00:00Z',
 };
@@ -98,8 +98,8 @@ describe('LocationAccessPolicyPanel', () => {
         restricted_characters: 'char-1,char-2',
         image_url: '/images/study.webp',
         sort_order: 7,
-        from_round: 1,
-        until_round: 3,
+        appearance_scene_id: 'scene-1',
+        hide_scene_id: 'scene-3',
       },
     });
   });

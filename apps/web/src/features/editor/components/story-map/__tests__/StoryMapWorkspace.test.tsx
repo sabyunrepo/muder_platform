@@ -50,7 +50,7 @@ describe("StoryMapWorkspace", () => {
       isError: false,
     });
     useEditorLocationsMock.mockReturnValue({
-      data: [{ id: "loc-1", name: "응접실", from_round: 1, until_round: 2 }],
+      data: [{ id: "loc-1", name: "응접실", appearance_scene_id: "scene-1", hide_scene_id: "scene-2" }],
       isLoading: false,
       isError: false,
     });

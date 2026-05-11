@@ -30,7 +30,8 @@ export function readLocationClueInvestigationCost(
   clueId: string,
 ): InvestigationCostDraft {
   const deck = draft.decks.find((item) => item.id === buildLocationClueDeckId(locationId, clueId));
-  if (!deck || deck.tokenCost <= 0) return { mode: 'free' };
+  if (!deck) return { mode: 'token', tokenId: draft.tokens[0]?.id ?? DEFAULT_TOKEN_ID, tokenCost: 1 };
+  if (deck.tokenCost <= 0) return { mode: 'free' };
   return { mode: 'token', tokenId: deck.tokenId, tokenCost: deck.tokenCost };
 }
 
@@ -46,13 +47,9 @@ export function writeLocationClueInvestigationCost(
   },
 ): DeckInvestigationConfigDraft {
   const deckId = buildLocationClueDeckId(params.locationId, params.clueId);
-  if (params.cost.mode === 'free') {
-    return { ...draft, decks: draft.decks.filter((deck) => deck.id !== deckId) };
-  }
-
   const fallbackTokenId = draft.tokens[0]?.id ?? DEFAULT_TOKEN_ID;
-  const tokenId = params.cost.tokenId || fallbackTokenId;
-  const tokenCost = Math.max(1, Math.floor(params.cost.tokenCost));
+  const tokenId = params.cost.mode === 'token' ? params.cost.tokenId || fallbackTokenId : fallbackTokenId;
+  const tokenCost = params.cost.mode === 'token' ? Math.max(1, Math.floor(params.cost.tokenCost)) : 0;
   const existingDeck = draft.decks.find((deck) => deck.id === deckId);
   const nextDeck = {
     ...createInvestigationDeckDraft(draft.decks.length, tokenId),

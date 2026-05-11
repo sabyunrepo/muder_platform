@@ -9,6 +9,7 @@ import { EditorTabNav } from "./EditorTabNav";
 import { TabContent } from "./TabContent";
 import { ValidationPanel } from "./ValidationPanel";
 import { STATUS_LABEL } from "@/features/editor/constants";
+import type { EditorTab } from "@/features/editor/constants";
 import type { DesignWarning } from "@/features/editor/validation";
 import type { SaveStatus } from "@/features/editor/hooks/useAutoSave";
 import { readEnabledModuleIds } from "@/features/editor/utils/configShape";
@@ -52,11 +53,12 @@ export function EditorLayout({
     () => readEnabledModuleIds(theme.config_json),
     [theme.config_json],
   );
-  const usesInternalScroll = activeTab === "storyMap" || activeTab === "characters";
   const routeTab = useMemo(
     () => (routeSegment ? readEditorTabFromRouteSegment(routeSegment) : undefined),
     [routeSegment],
   );
+  const effectiveTab = routeTab ?? activeTab;
+  const usesInternalScroll = INTERNAL_SCROLL_TABS.has(effectiveTab);
 
   const handleValidate = () => {
     if (onValidate) {
@@ -79,7 +81,7 @@ export function EditorLayout({
   }, [onSave]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-slate-950 text-slate-100">
       {/* ── Top bar ── */}
       <header className="sticky top-0 z-50 flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900 px-2 sm:gap-3 sm:px-3">
         <button
@@ -173,3 +175,15 @@ export function EditorLayout({
     </div>
   );
 }
+
+const INTERNAL_SCROLL_TABS = new Set<EditorTab>([
+  "storyMap",
+  "info",
+  "characters",
+  "clues",
+  "design",
+  "questions",
+  "endings",
+  "locations",
+  "media",
+]);
