@@ -131,7 +131,7 @@ describe('configShape', () => {
       {
         locations: [
           { id: 'loc-1', name: '서재' },
-          { id: 'loc-2', name: '복도' },
+          { id: 'loc-2', name: '복도', locationClueConfig: { clueIds: [] } },
         ],
         modules: {
           location: {
