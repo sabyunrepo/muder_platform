@@ -1,5 +1,4 @@
 import type { EditorCharacterResponse, LocationResponse } from '@/features/editor/api/types';
-import { formatRoundRange } from '@/features/editor/utils/roundFormat';
 import type { LocationMeta } from '@/features/editor/utils/entityMeta';
 
 export interface LocationEditorViewModel {
@@ -35,8 +34,6 @@ export function toLocationEditorViewModel(
   } = {}
 ): LocationEditorViewModel {
   const clueCount = options.clueCount ?? 0;
-  const parentLocationId = resolveLocationParentId(location, options.locationMeta);
-  const parentLocation = options.allLocations?.find((item) => item.id === parentLocationId);
   return {
     id: location.id,
     name: location.name,
@@ -51,8 +48,8 @@ export function toLocationEditorViewModel(
       location.public_description ?? options.locationMeta?.publicDescription
     ),
     entryMessage: normalizeMetaText(location.entry_message ?? options.locationMeta?.entryMessage),
-    parentLocationId,
-    parentLabel: parentLocation?.name ?? '최상위 장소',
+    parentLocationId: null,
+    parentLabel: '동등 장소',
     clueCountLabel: `단서 조사 ${clueCount}개`,
     clueShortLabel: `단서 ${clueCount}개`,
     badges: buildLocationBadges(location, clueCount, options.mapName),
@@ -64,14 +61,10 @@ export function buildLocationParentOptions(
   locations: LocationResponse[],
   metaByLocationId: Record<string, LocationMeta | undefined> = {}
 ): LocationParentOption[] {
-  const blocked = collectDescendantLocationIds(currentLocationId, locations, metaByLocationId);
-  return locations
-    .filter((location) => location.id !== currentLocationId && !blocked.has(location.id))
-    .map((location) => ({
-      id: location.id,
-      label: location.name,
-      depth: getLocationDepth(location.id, locations, metaByLocationId, new Set<string>()),
-    }));
+  void currentLocationId;
+  void locations;
+  void metaByLocationId;
+  return [];
 }
 
 export function parseLocationRestrictedCharacterIds(value: string | null | undefined): string[] {
@@ -113,69 +106,16 @@ export function formatLocationAccessLabel(
 }
 
 export function formatLocationRoundLabel(
-  location: Pick<LocationResponse, 'from_round' | 'until_round'>
+  location: Pick<LocationResponse, 'appearance_scene_id' | 'hide_scene_id'>
 ): string {
-  return formatRoundRange(location.from_round, location.until_round) || '처음부터 끝까지';
+  if (!location.appearance_scene_id && !location.hide_scene_id) return '처음부터 끝까지';
+  if (location.appearance_scene_id && location.hide_scene_id) return '장면 구간 공개';
+  if (location.appearance_scene_id) return '선택 장면부터';
+  return '선택 장면까지';
 }
 
 function normalizeMetaText(value: unknown): string {
   return typeof value === 'string' ? value : '';
-}
-
-function normalizeParentLocationId(
-  currentLocationId: string,
-  parentLocationId: unknown
-): string | null {
-  if (typeof parentLocationId !== 'string') return null;
-  const trimmed = parentLocationId.trim();
-  if (!trimmed || trimmed === currentLocationId) return null;
-  return trimmed;
-}
-
-function resolveLocationParentId(
-  location: LocationResponse,
-  locationMeta?: LocationMeta
-): string | null {
-  return normalizeParentLocationId(
-    location.id,
-    location.parent_location_id ?? locationMeta?.parentLocationId
-  );
-}
-
-function collectDescendantLocationIds(
-  currentLocationId: string,
-  locations: LocationResponse[],
-  metaByLocationId: Record<string, LocationMeta | undefined>
-): Set<string> {
-  const descendants = new Set<string>();
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const location of locations) {
-      if (descendants.has(location.id)) continue;
-      const parentId = resolveLocationParentId(location, metaByLocationId[location.id]);
-      if (parentId === currentLocationId || (parentId != null && descendants.has(parentId))) {
-        descendants.add(location.id);
-        changed = true;
-      }
-    }
-  }
-  return descendants;
-}
-
-function getLocationDepth(
-  locationId: string,
-  locations: LocationResponse[],
-  metaByLocationId: Record<string, LocationMeta | undefined>,
-  seen: Set<string>
-): number {
-  if (seen.has(locationId)) return 0;
-  seen.add(locationId);
-  const location = locations.find((item) => item.id === locationId);
-  if (!location) return 0;
-  const parentId = resolveLocationParentId(location, metaByLocationId[location.id]);
-  if (!parentId) return 0;
-  return 1 + getLocationDepth(parentId, locations, metaByLocationId, seen);
 }
 
 export function buildLocationBadges(

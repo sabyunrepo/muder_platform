@@ -131,7 +131,7 @@ describe('configShape', () => {
       {
         locations: [
           { id: 'loc-1', name: '서재' },
-          { id: 'loc-2', name: '복도' },
+          { id: 'loc-2', name: '복도', locationClueConfig: { clueIds: [] } },
         ],
         modules: {
           location: {
@@ -166,7 +166,7 @@ describe('configShape', () => {
     ]);
     expect(next.locations).toEqual([
       { id: 'loc-1', name: '서재', locationClueConfig: { clueIds: ['clue-1'] } },
-      { id: 'loc-2', name: '복도' },
+      { id: 'loc-2', name: '복도', locationClueConfig: { clueIds: [] } },
     ]);
     expect(readModuleConfig(next, 'location')).toMatchObject({
       startingLocation: 'loc-1',

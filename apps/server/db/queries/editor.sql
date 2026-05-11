@@ -29,24 +29,24 @@ SELECT count(*) FROM theme_maps WHERE theme_id = $1;
 -- ============================================================
 
 -- name: ListLocationsByMap :many
-SELECT * FROM theme_locations WHERE map_id = $1 ORDER BY sort_order;
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE map_id = $1 ORDER BY sort_order;
 
 -- name: ListLocationsByTheme :many
-SELECT * FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order;
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order;
 
 -- name: GetLocation :one
-SELECT * FROM theme_locations WHERE id = $1;
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE id = $1;
 
 -- name: CreateLocation :one
-INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id)
+INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING *;
+RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id;
 
 -- name: UpdateLocation :one
 UPDATE theme_locations
-SET name = $2, restricted_characters = $3, sort_order = $4, from_round = $5, until_round = $6, image_url = $7, image_media_id = $8, public_description = $9, entry_message = $10, parent_location_id = $11
+SET name = $2, restricted_characters = $3, sort_order = $4, appearance_scene_id = $5, hide_scene_id = $6, image_url = $7, image_media_id = $8, public_description = $9, entry_message = $10, parent_location_id = $11
 WHERE id = $1
-RETURNING *;
+RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id;
 
 -- name: DeleteLocation :exec
 DELETE FROM theme_locations WHERE id = $1;

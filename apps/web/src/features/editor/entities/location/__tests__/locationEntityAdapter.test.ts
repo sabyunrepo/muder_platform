@@ -50,8 +50,8 @@ function location(overrides: Partial<LocationResponse> = {}): LocationResponse {
     image_url: null,
     sort_order: 0,
     created_at: '2026-05-03T00:00:00Z',
-    from_round: null,
-    until_round: null,
+    appearance_scene_id: null,
+    hide_scene_id: null,
     ...overrides,
   };
 }
@@ -62,8 +62,8 @@ describe('locationEntityAdapter', () => {
       location({
         restricted_characters: 'char-1',
         image_url: 'https://cdn.example/study.webp',
-        from_round: 2,
-        until_round: 4,
+        appearance_scene_id: 'scene-2',
+        hide_scene_id: 'scene-4',
       }),
       { characters, clueCount: 3, mapName: '저택 1층' }
     );
@@ -72,15 +72,15 @@ describe('locationEntityAdapter', () => {
       id: 'loc-1',
       name: '서재',
       imageUrl: 'https://cdn.example/study.webp',
-      roundLabel: 'R2~4',
+      roundLabel: '장면 구간 공개',
       accessLabel: '탐정 한나 접근 제한',
       clueCountLabel: '단서 조사 3개',
       clueShortLabel: '단서 3개',
-      badges: ['저택 1층', 'R2~4', '접근 제한 있음', '단서 3', '이미지 있음'],
+      badges: ['저택 1층', '장면 구간 공개', '접근 제한 있음', '단서 3', '이미지 있음'],
     });
   });
 
-  it('API 필드를 제작자용 공개 설명과 부모 요약으로 변환한다', () => {
+  it('API 필드를 제작자용 공개 설명으로 변환하고 부모 정보는 에디터에서 무시한다', () => {
     const vm = toLocationEditorViewModel(
       location({
         public_description: '모든 플레이어에게 보이는 설명',
@@ -99,8 +99,8 @@ describe('locationEntityAdapter', () => {
 
     expect(vm.publicDescription).toBe('모든 플레이어에게 보이는 설명');
     expect(vm.entryMessage).toBe('차가운 바람이 분다.');
-    expect(vm.parentLocationId).toBe('loc-parent');
-    expect(vm.parentLabel).toBe('저택 1층');
+    expect(vm.parentLocationId).toBeNull();
+    expect(vm.parentLabel).toBe('동등 장소');
   });
 
   it('신규 API 필드가 비어 있으면 locationMeta fallback을 사용한다', () => {
@@ -115,10 +115,10 @@ describe('locationEntityAdapter', () => {
 
     expect(vm.publicDescription).toBe('기존 설명');
     expect(vm.entryMessage).toBe('기존 진입');
-    expect(vm.parentLocationId).toBe('loc-parent');
+    expect(vm.parentLocationId).toBeNull();
   });
 
-  it('부모 장소 후보에서 자기 자신과 자손을 제외한다', () => {
+  it('부모 장소 후보를 제공하지 않는다', () => {
     const locations = [
       location({ id: 'loc-1', name: '저택' }),
       location({ id: 'loc-2', name: '1층' }),
@@ -131,10 +131,10 @@ describe('locationEntityAdapter', () => {
         'loc-2': { parentLocationId: 'loc-1' },
         'loc-3': { parentLocationId: 'loc-2' },
       })
-    ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
+    ).toEqual([]);
   });
 
-  it('부모 장소 후보 계산도 API parent_location_id를 locationMeta보다 우선한다', () => {
+  it('API parent_location_id가 있어도 부모 장소 후보를 제공하지 않는다', () => {
     const locations = [
       location({ id: 'loc-1', name: '저택' }),
       location({ id: 'loc-2', name: '1층', parent_location_id: 'loc-1' }),
@@ -147,7 +147,7 @@ describe('locationEntityAdapter', () => {
         'loc-2': { parentLocationId: null },
         'loc-3': { parentLocationId: null },
       })
-    ).toEqual([{ id: 'loc-4', label: '정원', depth: 0 }]);
+    ).toEqual([]);
   });
 
   it('restricted character CSV를 trim/dedupe한다', () => {

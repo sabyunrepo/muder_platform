@@ -285,10 +285,10 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
         required: false,
       },
       {
-        id: 'location_clue',
-        name: '장소 단서',
-        description: '위치 기반 단서 발견',
-        supported: false,
+        id: 'location',
+        name: '장소 탐색',
+        description: '장소별 단서 발견 방식',
+        supported: true,
         required: false,
       },
       {

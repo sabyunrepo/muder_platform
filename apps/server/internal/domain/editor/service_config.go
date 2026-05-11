@@ -108,6 +108,24 @@ func extractLocationDiscoveryRefs(cfg map[string]any) ([]locationDiscoveryRef, e
 	if !ok {
 		return nil, fmt.Errorf("config_json: modules.location.config must be an object")
 	}
+	if rawMode, exists := moduleConfig["investigationMode"]; exists {
+		if rawMode == nil {
+			return nil, fmt.Errorf("config_json: modules.location.config.investigationMode cannot be null")
+		}
+		mode, ok := rawMode.(string)
+		if !ok || (mode != "list" && mode != "deck") {
+			return nil, fmt.Errorf("config_json: modules.location.config.investigationMode must be list or deck")
+		}
+	}
+	if rawOrder, exists := moduleConfig["deckOrder"]; exists {
+		if rawOrder == nil {
+			return nil, fmt.Errorf("config_json: modules.location.config.deckOrder cannot be null")
+		}
+		order, ok := rawOrder.(string)
+		if !ok || (order != "fixed" && order != "random") {
+			return nil, fmt.Errorf("config_json: modules.location.config.deckOrder must be fixed or random")
+		}
+	}
 	rawDiscoveries, exists := moduleConfig["discoveries"]
 	if !exists {
 		return nil, nil
@@ -199,7 +217,12 @@ func (s *service) validateLocationDiscoveryReferences(ctx context.Context, q *db
 		clueIDs[clue.ID.String()] = struct{}{}
 	}
 
+	clueToLocation := make(map[string]string, len(refs))
 	for _, ref := range refs {
+		if previous, exists := clueToLocation[ref.clueID]; exists {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].clueId is already mapped to location %s", ref.index, previous))
+		}
+		clueToLocation[ref.clueID] = ref.locationID
 		parsedLocationID, err := uuid.Parse(ref.locationID)
 		if err != nil {
 			return apperror.BadRequest(fmt.Sprintf("config_json: modules.location.config.discoveries[%d].locationId must be a valid location id", ref.index))

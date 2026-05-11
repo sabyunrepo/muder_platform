@@ -23,8 +23,8 @@ export interface CreateLocationRequest {
   public_description?: string | null;
   entry_message?: string | null;
   parent_location_id?: string | null;
-  from_round?: number | null;
-  until_round?: number | null;
+  appearance_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 export interface UpdateLocationRequest {
@@ -36,8 +36,8 @@ export interface UpdateLocationRequest {
   entry_message?: string | null;
   parent_location_id?: string | null;
   sort_order?: number;
-  from_round?: number | null;
-  until_round?: number | null;
+  appearance_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 // ---------------------------------------------------------------------------

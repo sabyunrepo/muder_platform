@@ -13,7 +13,7 @@ import {
 describe('LocationsSubTab 장소 기본 정보', () => {
   beforeEach(setupDefaultMocks);
 
-  it('공개 설명, 진입 메시지, 부모 장소를 Location API payload로 저장한다', () => {
+  it('공개 설명과 진입 메시지를 Location API payload로 저장한다', () => {
     useEditorLocationsMock.mockReturnValue({
       data: [{ ...mockLocations[0], name: '거실' }, ...mockLocations.slice(1)],
       isLoading: false,
@@ -30,9 +30,6 @@ describe('LocationsSubTab 장소 기본 정보', () => {
     fireEvent.change(screen.getByLabelText('거실 진입 메시지'), {
       target: { value: '낡은 시계 소리가 들린다.' },
     });
-    fireEvent.change(screen.getByLabelText('거실 부모 장소'), {
-      target: { value: 'loc-2' },
-    });
     fireEvent.click(screen.getByText('저장'));
 
     expect(updateLocationMutateMock).toHaveBeenCalledWith(
@@ -42,7 +39,6 @@ describe('LocationsSubTab 장소 기본 정보', () => {
           name: '응접실',
           public_description: '손님들이 모이는 공간',
           entry_message: '낡은 시계 소리가 들린다.',
-          parent_location_id: 'loc-2',
         }),
       }),
       expect.any(Object)

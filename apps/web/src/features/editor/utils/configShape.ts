@@ -22,6 +22,18 @@ export interface LocationDiscoveryConfig extends EditorConfig {
   clueId: string;
   requiredClueIds: string[];
   oncePerPlayer: boolean;
+  slotId?: string;
+  subLocationId?: string;
+  order?: number;
+  label?: string;
+}
+
+export type LocationInvestigationMode = 'list' | 'deck';
+export type LocationDeckOrder = 'fixed' | 'random';
+
+export interface LocationInvestigationSettings {
+  investigationMode: LocationInvestigationMode;
+  deckOrder: LocationDeckOrder;
 }
 
 export type ClueItemEffectKind =
@@ -52,6 +64,8 @@ const CLUE_ITEM_EFFECTS_KEY = 'itemEffects';
 const CLUE_POLICIES_KEY = 'cluePolicies';
 const LOCATION_MODULE_ID = 'location';
 const LOCATION_DISCOVERIES_KEY = 'discoveries';
+const LOCATION_INVESTIGATION_MODE_KEY = 'investigationMode';
+const LOCATION_DECK_ORDER_KEY = 'deckOrder';
 
 function isRecord(value: unknown): value is EditorConfig {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -350,6 +364,28 @@ export function readLocationsConfig(configJson: EditorConfig | null | undefined)
   );
 }
 
+export function readLocationInvestigationSettings(
+  configJson: EditorConfig | null | undefined
+): LocationInvestigationSettings {
+  const moduleConfig = readModuleConfig(configJson, LOCATION_MODULE_ID);
+  const investigationMode =
+    moduleConfig[LOCATION_INVESTIGATION_MODE_KEY] === 'deck' ? 'deck' : 'list';
+  const deckOrder = moduleConfig[LOCATION_DECK_ORDER_KEY] === 'random' ? 'random' : 'fixed';
+  return { investigationMode, deckOrder };
+}
+
+export function writeLocationInvestigationSettings(
+  configJson: EditorConfig | null | undefined,
+  settings: LocationInvestigationSettings
+): EditorConfig {
+  const current = readModuleConfig(configJson, LOCATION_MODULE_ID);
+  return writeModuleConfig(configJson, LOCATION_MODULE_ID, {
+    ...current,
+    [LOCATION_INVESTIGATION_MODE_KEY]: settings.investigationMode,
+    [LOCATION_DECK_ORDER_KEY]: settings.deckOrder,
+  });
+}
+
 function readRawLocationDiscoveries(
   configJson: EditorConfig | null | undefined
 ): LocationDiscoveryConfig[] {
@@ -427,6 +463,28 @@ export function readLocationDiscoveries(
   }));
 }
 
+export function readAllLocationDiscoveries(
+  configJson: EditorConfig | null | undefined
+): LocationDiscoveryConfig[] {
+  const seen = new Set<string>();
+  const result: LocationDiscoveryConfig[] = [];
+  const pushUnique = (discovery: LocationDiscoveryConfig) => {
+    if (seen.has(discovery.clueId)) return;
+    seen.add(discovery.clueId);
+    result.push(discovery);
+  };
+
+  for (const discovery of readRawLocationDiscoveries(configJson)) {
+    pushUnique(discovery);
+  }
+  for (const location of readLocationsConfig(configJson)) {
+    for (const discovery of readLocationDiscoveries(configJson, location.id)) {
+      pushUnique(discovery);
+    }
+  }
+  return result;
+}
+
 function readLegacyLocationClueIds(
   configJson: EditorConfig | null | undefined,
   locationId: string
@@ -453,14 +511,25 @@ export function writeLocationClueIds(
   const locations = readLocationsConfig(next);
   const idx = locations.findIndex((loc) => loc.id === locationId);
   const cleanIds = Array.from(new Set(clueIds));
+  const assignedHere = new Set(cleanIds);
   const upsert = (loc: LocationConfig): LocationConfig => ({
     ...loc,
     locationClueConfig: { ...(loc.locationClueConfig ?? {}), clueIds: cleanIds },
   });
+  const withoutDuplicates = locations.map((loc, i) => {
+    if (i === idx) return upsert(loc);
+    const existingIds = readLegacyLocationClueIds(next, loc.id).filter(
+      (clueId) => !assignedHere.has(clueId)
+    );
+    return {
+      ...loc,
+      locationClueConfig: { ...(loc.locationClueConfig ?? {}), clueIds: existingIds },
+    };
+  });
   const nextLocations =
     idx >= 0
-      ? locations.map((loc, i) => (i === idx ? upsert(loc) : loc))
-      : [...locations, { id: locationId, locationClueConfig: { clueIds: cleanIds } }];
+      ? withoutDuplicates
+      : [...withoutDuplicates, { id: locationId, locationClueConfig: { clueIds: cleanIds } }];
   return { ...next, locations: nextLocations };
 }
 
@@ -516,8 +585,12 @@ export function writeLocationDiscoveries(
     cleanDiscoveries.map((discovery) => discovery.clueId)
   );
   const current = readModuleConfig(next, LOCATION_MODULE_ID);
+  const assignedHere = new Set(cleanDiscoveries.map((discovery) => discovery.clueId));
   const preservedRawDiscoveries = rawLocationDiscoveries(current[LOCATION_DISCOVERIES_KEY]).filter(
-    (raw) => !isRecord(raw) || raw.locationId !== locationId
+    (raw) =>
+      !isRecord(raw) ||
+      (raw.locationId !== locationId &&
+        (typeof raw.clueId !== 'string' || !assignedHere.has(raw.clueId)))
   );
   const preservedValidDiscoveries = preservedRawDiscoveries
     .map(validRawLocationDiscovery)
@@ -531,6 +604,7 @@ export function writeLocationDiscoveries(
           .map((discovery) => discovery.clueId)
       );
       return readLegacyLocationClueIds(next, loc.id)
+        .filter((clueId) => !assignedHere.has(clueId))
         .filter((clueId) => !existingClueIds.has(clueId))
         .map((clueId) => ({
           locationId: loc.id,

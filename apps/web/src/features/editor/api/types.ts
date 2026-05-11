@@ -210,8 +210,8 @@ export interface LocationResponse {
   parent_location_id?: string | null;
   sort_order: number;
   created_at: string;
-  from_round?: number | null;
-  until_round?: number | null;
+  appearance_scene_id?: string | null;
+  hide_scene_id?: string | null;
 }
 
 export interface ClueResponse {

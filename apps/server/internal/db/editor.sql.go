@@ -120,9 +120,9 @@ func (q *Queries) CreateClue(ctx context.Context, arg CreateClueParams) (ThemeCl
 }
 
 const createLocation = `-- name: CreateLocation :one
-INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id)
+INSERT INTO theme_locations (theme_id, map_id, name, restricted_characters, sort_order, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id
+RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id
 `
 
 type CreateLocationParams struct {
@@ -131,8 +131,8 @@ type CreateLocationParams struct {
 	Name                 string      `json:"name"`
 	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
 	SortOrder            int32       `json:"sort_order"`
-	FromRound            pgtype.Int4 `json:"from_round"`
-	UntilRound           pgtype.Int4 `json:"until_round"`
+	AppearanceSceneID    pgtype.UUID `json:"appearance_scene_id"`
+	HideSceneID          pgtype.UUID `json:"hide_scene_id"`
 	ImageUrl             pgtype.Text `json:"image_url"`
 	ImageMediaID         pgtype.UUID `json:"image_media_id"`
 	PublicDescription    pgtype.Text `json:"public_description"`
@@ -147,8 +147,8 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		arg.Name,
 		arg.RestrictedCharacters,
 		arg.SortOrder,
-		arg.FromRound,
-		arg.UntilRound,
+		arg.AppearanceSceneID,
+		arg.HideSceneID,
 		arg.ImageUrl,
 		arg.ImageMediaID,
 		arg.PublicDescription,
@@ -164,8 +164,8 @@ func (q *Queries) CreateLocation(ctx context.Context, arg CreateLocationParams) 
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
-		&i.FromRound,
-		&i.UntilRound,
+		&i.AppearanceSceneID,
+		&i.HideSceneID,
 		&i.ImageUrl,
 		&i.ImageMediaID,
 		&i.PublicDescription,
@@ -403,7 +403,7 @@ func (q *Queries) GetContent(ctx context.Context, arg GetContentParams) (ThemeCo
 }
 
 const getLocation = `-- name: GetLocation :one
-SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE id = $1
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE id = $1
 `
 
 func (q *Queries) GetLocation(ctx context.Context, id uuid.UUID) (ThemeLocation, error) {
@@ -417,8 +417,8 @@ func (q *Queries) GetLocation(ctx context.Context, id uuid.UUID) (ThemeLocation,
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
-		&i.FromRound,
-		&i.UntilRound,
+		&i.AppearanceSceneID,
+		&i.HideSceneID,
 		&i.ImageUrl,
 		&i.ImageMediaID,
 		&i.PublicDescription,
@@ -429,7 +429,7 @@ func (q *Queries) GetLocation(ctx context.Context, id uuid.UUID) (ThemeLocation,
 }
 
 const getLocationWithOwner = `-- name: GetLocationWithOwner :one
-SELECT l.id, l.theme_id, l.map_id, l.name, l.restricted_characters, l.sort_order, l.created_at, l.from_round, l.until_round, l.image_url, l.image_media_id, l.public_description, l.entry_message, l.parent_location_id FROM theme_locations l
+SELECT l.id, l.theme_id, l.map_id, l.name, l.restricted_characters, l.sort_order, l.created_at, l.appearance_scene_id, l.hide_scene_id, l.image_url, l.image_media_id, l.public_description, l.entry_message, l.parent_location_id FROM theme_locations l
 JOIN themes t ON l.theme_id = t.id
 WHERE l.id = $1 AND t.creator_id = $2
 `
@@ -450,8 +450,8 @@ func (q *Queries) GetLocationWithOwner(ctx context.Context, arg GetLocationWithO
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
-		&i.FromRound,
-		&i.UntilRound,
+		&i.AppearanceSceneID,
+		&i.HideSceneID,
 		&i.ImageUrl,
 		&i.ImageMediaID,
 		&i.PublicDescription,
@@ -636,7 +636,7 @@ func (q *Queries) ListContentsByTheme(ctx context.Context, themeID uuid.UUID) ([
 
 const listLocationsByMap = `-- name: ListLocationsByMap :many
 
-SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE map_id = $1 ORDER BY sort_order
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE map_id = $1 ORDER BY sort_order
 `
 
 // ============================================================
@@ -659,8 +659,8 @@ func (q *Queries) ListLocationsByMap(ctx context.Context, mapID uuid.UUID) ([]Th
 			&i.RestrictedCharacters,
 			&i.SortOrder,
 			&i.CreatedAt,
-			&i.FromRound,
-			&i.UntilRound,
+			&i.AppearanceSceneID,
+			&i.HideSceneID,
 			&i.ImageUrl,
 			&i.ImageMediaID,
 			&i.PublicDescription,
@@ -678,7 +678,7 @@ func (q *Queries) ListLocationsByMap(ctx context.Context, mapID uuid.UUID) ([]Th
 }
 
 const listLocationsByTheme = `-- name: ListLocationsByTheme :many
-SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order
+SELECT id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id FROM theme_locations WHERE theme_id = $1 ORDER BY sort_order
 `
 
 func (q *Queries) ListLocationsByTheme(ctx context.Context, themeID uuid.UUID) ([]ThemeLocation, error) {
@@ -698,8 +698,8 @@ func (q *Queries) ListLocationsByTheme(ctx context.Context, themeID uuid.UUID) (
 			&i.RestrictedCharacters,
 			&i.SortOrder,
 			&i.CreatedAt,
-			&i.FromRound,
-			&i.UntilRound,
+			&i.AppearanceSceneID,
+			&i.HideSceneID,
 			&i.ImageUrl,
 			&i.ImageMediaID,
 			&i.PublicDescription,
@@ -829,9 +829,9 @@ func (q *Queries) UpdateClue(ctx context.Context, arg UpdateClueParams) (ThemeCl
 
 const updateLocation = `-- name: UpdateLocation :one
 UPDATE theme_locations
-SET name = $2, restricted_characters = $3, sort_order = $4, from_round = $5, until_round = $6, image_url = $7, image_media_id = $8, public_description = $9, entry_message = $10, parent_location_id = $11
+SET name = $2, restricted_characters = $3, sort_order = $4, appearance_scene_id = $5, hide_scene_id = $6, image_url = $7, image_media_id = $8, public_description = $9, entry_message = $10, parent_location_id = $11
 WHERE id = $1
-RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, from_round, until_round, image_url, image_media_id, public_description, entry_message, parent_location_id
+RETURNING id, theme_id, map_id, name, restricted_characters, sort_order, created_at, appearance_scene_id, hide_scene_id, image_url, image_media_id, public_description, entry_message, parent_location_id
 `
 
 type UpdateLocationParams struct {
@@ -839,8 +839,8 @@ type UpdateLocationParams struct {
 	Name                 string      `json:"name"`
 	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
 	SortOrder            int32       `json:"sort_order"`
-	FromRound            pgtype.Int4 `json:"from_round"`
-	UntilRound           pgtype.Int4 `json:"until_round"`
+	AppearanceSceneID    pgtype.UUID `json:"appearance_scene_id"`
+	HideSceneID          pgtype.UUID `json:"hide_scene_id"`
 	ImageUrl             pgtype.Text `json:"image_url"`
 	ImageMediaID         pgtype.UUID `json:"image_media_id"`
 	PublicDescription    pgtype.Text `json:"public_description"`
@@ -854,8 +854,8 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		arg.Name,
 		arg.RestrictedCharacters,
 		arg.SortOrder,
-		arg.FromRound,
-		arg.UntilRound,
+		arg.AppearanceSceneID,
+		arg.HideSceneID,
 		arg.ImageUrl,
 		arg.ImageMediaID,
 		arg.PublicDescription,
@@ -871,8 +871,8 @@ func (q *Queries) UpdateLocation(ctx context.Context, arg UpdateLocationParams) 
 		&i.RestrictedCharacters,
 		&i.SortOrder,
 		&i.CreatedAt,
-		&i.FromRound,
-		&i.UntilRound,
+		&i.AppearanceSceneID,
+		&i.HideSceneID,
 		&i.ImageUrl,
 		&i.ImageMediaID,
 		&i.PublicDescription,
