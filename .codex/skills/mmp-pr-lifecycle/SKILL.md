@@ -14,6 +14,9 @@ description: Use when creating, reviewing, updating, checking, or merging MMP pu
    - confirm the issue or working note has a `Coverage Plan` mapping changed files and important branches to focused tests
    - confirm any minimized, excluded, or deferred behavior is tracked in the issue body, issue checklist/comment, or a newly created follow-up issue
    - confirm PR grouping avoids waste: group related same-scope workflow/config/doc changes into one PR, and split only when conflict risk, review ownership, or runtime blast radius justifies it
+   - default로는 MMP 스크립트 경로를 사용한다:
+     - 작업 정리 + PR까지 자동화하려면 `scripts/mmp-workflow-agent.sh commit --issue <번호> --message ... --create-pr -- --title ...`
+     - 이미 브랜치만 있으면 PR만 만들 때는 `scripts/mmp-workflow-agent.sh pr --issue <번호> ...`
    - run focused checks for the changed scope
    - include the Coverage Plan evidence in the PR body or final handoff summary
    - include `Refs #<issue>` for deferred/follow-up issue links when the PR intentionally leaves work out

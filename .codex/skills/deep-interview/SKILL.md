@@ -53,8 +53,6 @@ OMX 환경에서 deep-interview 질문 라운드를 진행할 수 있으면 `omx
 
 - GitHub issue 작성, 재작성, 병렬 작업 설계: `mmp-issue-planning`
 - PR 생성, 리뷰 대응, merge 흐름: `mmp-pr-lifecycle`
-- editor adapter, backend engine, entity migration 설계: `mmp-adapter-engine-design`
-- editor 기능 UX/제작자 흐름 검토: `mmp-editor-uzu-briefing`
 
 ## 종료 기준
 
