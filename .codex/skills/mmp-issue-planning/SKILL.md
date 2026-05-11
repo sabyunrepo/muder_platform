@@ -79,6 +79,13 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - shared contract, migration, large UI route, backend API처럼 실패 blast radius가 큰 변경은 별도 PR로 분리한다.
    - “작게 쪼개기”는 기본값이 아니라 충돌·리뷰 위험을 줄일 때만 선택한다. CI를 여러 번 태우는 초소형 PR은 피한다.
 10. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
+11. 계획 문서나 Issue를 만들 때는 `완료 조건 선행` 방식으로 작성한다.
+   - 먼저 사용자가 체감할 완료 상태, 데이터/계약 완료 상태, 품질/검증 완료 상태를 분리해 적는다.
+   - 이후 작업 체크리스트의 각 항목이 어떤 완료 조건을 만족시키는지 연결되게 쓴다.
+   - 완료 조건을 만족시키지 않는 작업은 MVP에서 제외하거나 `Deferred / Follow-up`으로 분리한다.
+   - UI/UX 계획에서는 사용자가 오해하면 안 되는 핵심 도메인 규칙을 `고정 결정`으로 먼저 적는다.
+   - 예: 장소 관리 계획에서는 `맵은 컨테이너`, `장소 계층은 장소 → 하위 조사 항목 2단계`, `카드덱형은 단서 추가 = 덱 카드`처럼 구현 전제부터 고정한다.
+   - 체크리스트는 `작업 체크리스트`, `완료 조건`, `검증 계획`을 모두 포함해야 하며, 작업 완료만으로 완료 조건 충족을 주장하지 않는다.
 
 ## Done
 
@@ -87,6 +94,7 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 - 모호했던 요청은 `deep-interview` 실행 브리프 또는 명시한 권장 기본값이 Issue 본문에 반영되어 있다.
 - 병렬 가능한 lane과 충돌 금지 영역이 둘 다 적혀 있다.
 - 완료 조건에 테스트 또는 테스트 대체 근거가 있다.
+- 완료 조건이 사용자 경험, 데이터/계약, 품질/검증으로 나뉘어 있고 작업 체크리스트가 그 조건을 만족하도록 구성되어 있다.
 - Coverage Plan에 변경 파일별 테스트 매핑이 있다.
 - Deferred / Follow-up 판단이 추적 가능하거나, 후속 없음이 명확하다.
 - PR 묶음은 충돌 위험과 CI 비용을 함께 고려했고, 브레인스토밍 필요 여부가 명확하다.
