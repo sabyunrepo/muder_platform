@@ -140,7 +140,7 @@ function InvestigationMapField({
       <span className="text-[11px] text-slate-400">사용할 맵</span>
       <select
         value={mapId ?? ""}
-        disabled={isLoading || maps.length === 0}
+        disabled={isLoading}
         aria-label="사용할 맵"
         onChange={(event) =>
           onChange({ investigationMapId: event.target.value || undefined })
