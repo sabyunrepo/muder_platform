@@ -86,8 +86,8 @@ type CreateLocationRequest struct {
 	EntryMessage         *string    `json:"entry_message" validate:"omitempty,max=2000"`
 	ParentLocationID     *uuid.UUID `json:"parent_location_id"`
 	SortOrder            int32      `json:"sort_order" validate:"min=0"`
-	FromRound            *int32     `json:"from_round" validate:"omitempty,min=1"`
-	UntilRound           *int32     `json:"until_round" validate:"omitempty,min=1"`
+	AppearanceSceneID    *uuid.UUID `json:"appearance_scene_id"`
+	HideSceneID          *uuid.UUID `json:"hide_scene_id"`
 }
 
 type UpdateLocationRequest struct {
@@ -99,8 +99,8 @@ type UpdateLocationRequest struct {
 	EntryMessage         OptionalString `json:"entry_message"`
 	ParentLocationID     OptionalUUID   `json:"parent_location_id"`
 	SortOrder            int32          `json:"sort_order" validate:"min=0"`
-	FromRound            *int32         `json:"from_round" validate:"omitempty,min=1"`
-	UntilRound           *int32         `json:"until_round" validate:"omitempty,min=1"`
+	AppearanceSceneID    *uuid.UUID     `json:"appearance_scene_id"`
+	HideSceneID          *uuid.UUID     `json:"hide_scene_id"`
 }
 
 type LocationResponse struct {
@@ -116,8 +116,8 @@ type LocationResponse struct {
 	ParentLocationID     *uuid.UUID `json:"parent_location_id,omitempty"`
 	SortOrder            int32      `json:"sort_order"`
 	CreatedAt            time.Time  `json:"created_at"`
-	FromRound            *int32     `json:"from_round,omitempty"`
-	UntilRound           *int32     `json:"until_round,omitempty"`
+	AppearanceSceneID    *uuid.UUID `json:"appearance_scene_id,omitempty"`
+	HideSceneID          *uuid.UUID `json:"hide_scene_id,omitempty"`
 }
 
 // --- Clue types ---

@@ -44,35 +44,3 @@ func TestValidateClueRoundOrder(t *testing.T) {
 		})
 	}
 }
-
-func TestValidateLocationRoundOrder(t *testing.T) {
-	cases := []struct {
-		name    string
-		from    *int32
-		until   *int32
-		wantErr bool
-	}{
-		{"both nil", nil, nil, false},
-		{"only from", p(1), nil, false},
-		{"only until", nil, p(4), false},
-		{"from < until", p(1), p(4), false},
-		{"from == until", p(2), p(2), false},
-		{"from > until", p(5), p(2), true},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			err := validateLocationRoundOrder(tc.from, tc.until)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatalf("expected error, got nil")
-				}
-				if !strings.Contains(err.Error(), "from_round") {
-					t.Fatalf("expected from_round in error, got %v", err)
-				}
-			} else if err != nil {
-				t.Fatalf("expected nil error, got %v", err)
-			}
-		})
-	}
-}

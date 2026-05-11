@@ -301,10 +301,13 @@ func (s *ImageService) ConfirmImageUpload(
 			Name:                 loc.Name,
 			RestrictedCharacters: loc.RestrictedCharacters,
 			SortOrder:            loc.SortOrder,
-			FromRound:            loc.FromRound,
-			UntilRound:           loc.UntilRound,
+			AppearanceSceneID:    loc.AppearanceSceneID,
+			HideSceneID:          loc.HideSceneID,
 			ImageUrl:             pgtype.Text{String: downloadURL, Valid: true},
 			ImageMediaID:         loc.ImageMediaID,
+			PublicDescription:    loc.PublicDescription,
+			EntryMessage:         loc.EntryMessage,
+			ParentLocationID:     loc.ParentLocationID,
 		})
 		if err != nil {
 			s.logger.Error().Err(err).Str("location_id", targetID.String()).Msg("failed to update location image_url")

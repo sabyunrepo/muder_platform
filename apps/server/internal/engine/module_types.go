@@ -23,7 +23,7 @@ type GameEvent struct {
 // CurrentRound (Phase 20 PR-5) is the game's monotonic round counter — it
 // starts at 1 when the engine starts and increments once per AdvancePhase
 // call. Modules consult this to filter clue/location visibility against
-// reveal_round/hide_round and from_round/until_round.
+// reveal_round/hide_round and scene-based visibility refs.
 type GameState struct {
 	SessionID    uuid.UUID                  `json:"sessionId"`
 	Phase        string                     `json:"phase"`

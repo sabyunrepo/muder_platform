@@ -13,7 +13,10 @@ export type EditorLocationsConfig = import('@/features/editor/utils/configShape'
 export {
   readLocationsConfig,
   readLocationDiscoveries,
+  readAllLocationDiscoveries,
   readLocationClueIds,
+  readLocationInvestigationSettings,
   writeLocationDiscoveries,
   writeLocationClueIds,
+  writeLocationInvestigationSettings,
 } from '@/features/editor/utils/configShape';

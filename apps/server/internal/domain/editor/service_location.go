@@ -148,7 +148,15 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 	if err := validateLocationText("entry_message", req.EntryMessage); err != nil {
 		return nil, err
 	}
-	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, themeID, req.RestrictedCharacters, req.FromRound, req.UntilRound)
+	appearanceSceneID, err := s.resolveLocationSceneReference(ctx, themeID, req.AppearanceSceneID, "appearance_scene_id")
+	if err != nil {
+		return nil, err
+	}
+	hideSceneID, err := s.resolveLocationSceneReference(ctx, themeID, req.HideSceneID, "hide_scene_id")
+	if err != nil {
+		return nil, err
+	}
+	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, themeID, req.RestrictedCharacters)
 	if err != nil {
 		return nil, err
 	}
@@ -183,8 +191,8 @@ func (s *service) CreateLocation(ctx context.Context, creatorID, themeID, mapID 
 		Name:                 req.Name,
 		RestrictedCharacters: ptrToText(accessPolicy.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
-		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
-		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
+		AppearanceSceneID:    appearanceSceneID,
+		HideSceneID:          hideSceneID,
 		ImageUrl:             ptrToText(req.ImageURL),
 		ImageMediaID:         imageMediaID,
 		PublicDescription:    ptrToText(req.PublicDescription),
@@ -208,7 +216,15 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		s.logger.Error().Err(err).Msg("failed to get location")
 		return nil, apperror.Internal("failed to get location")
 	}
-	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, l.ThemeID, req.RestrictedCharacters, req.FromRound, req.UntilRound)
+	appearanceSceneID, err := s.resolveLocationSceneReference(ctx, l.ThemeID, req.AppearanceSceneID, "appearance_scene_id")
+	if err != nil {
+		return nil, err
+	}
+	hideSceneID, err := s.resolveLocationSceneReference(ctx, l.ThemeID, req.HideSceneID, "hide_scene_id")
+	if err != nil {
+		return nil, err
+	}
+	accessPolicy, err := s.buildLocationAccessPolicyForTheme(ctx, l.ThemeID, req.RestrictedCharacters)
 	if err != nil {
 		return nil, err
 	}
@@ -254,8 +270,8 @@ func (s *service) UpdateLocation(ctx context.Context, creatorID, locID uuid.UUID
 		Name:                 req.Name,
 		RestrictedCharacters: ptrToText(accessPolicy.RestrictedCharacters),
 		SortOrder:            req.SortOrder,
-		FromRound:            int32PtrToPgtype(accessPolicy.FromRound),
-		UntilRound:           int32PtrToPgtype(accessPolicy.UntilRound),
+		AppearanceSceneID:    appearanceSceneID,
+		HideSceneID:          hideSceneID,
 		ImageUrl:             imageURL,
 		ImageMediaID:         imageMediaID,
 		PublicDescription:    publicDescription,
@@ -294,6 +310,9 @@ func (s *service) resolveLocationParent(ctx context.Context, themeID, mapID, cur
 	for _, location := range locations {
 		if location.ID == *parentLocationID && location.MapID == mapID {
 			parentFound = true
+			if location.ParentLocationID.Valid {
+				return pgtype.UUID{}, apperror.BadRequest("sub-location cannot have child locations")
+			}
 		}
 		if location.MapID == mapID && location.ParentLocationID.Valid {
 			parentByID[location.ID] = uuid.UUID(location.ParentLocationID.Bytes)
@@ -315,11 +334,8 @@ func (s *service) resolveLocationParent(ctx context.Context, themeID, mapID, cur
 	return uuidPtrToPgtype(parentLocationID), nil
 }
 
-func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID uuid.UUID, restrictedCharacters *string, fromRound, untilRound *int32) (LocationAccessPolicy, error) {
-	accessPolicy, err := BuildLocationAccessPolicy(restrictedCharacters, fromRound, untilRound)
-	if err != nil {
-		return LocationAccessPolicy{}, err
-	}
+func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID uuid.UUID, restrictedCharacters *string) (LocationAccessPolicy, error) {
+	accessPolicy := BuildLocationAccessPolicy(restrictedCharacters)
 	if len(accessPolicy.RestrictedCharacterIDs) == 0 {
 		return accessPolicy, nil
 	}
@@ -345,6 +361,35 @@ func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID
 	return accessPolicy, nil
 }
 
+func uuidPtrToStringPtr(value *uuid.UUID) *string {
+	if value == nil {
+		return nil
+	}
+	text := value.String()
+	return &text
+}
+
+func (s *service) resolveLocationSceneReference(ctx context.Context, themeID uuid.UUID, sceneID *uuid.UUID, field string) (pgtype.UUID, error) {
+	if sceneID == nil {
+		return pgtype.UUID{}, nil
+	}
+	node, err := s.q.GetFlowNode(ctx, *sceneID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgtype.UUID{}, apperror.BadRequest(field + " must reference an existing scene")
+		}
+		s.logger.Error().Err(err).Str("field", field).Msg("failed to get location scene reference")
+		return pgtype.UUID{}, apperror.Internal("failed to get location scene reference")
+	}
+	if node.ThemeID != themeID {
+		return pgtype.UUID{}, apperror.BadRequest(field + " must belong to the same theme")
+	}
+	if node.Type == "start" || node.Type == "branch" {
+		return pgtype.UUID{}, apperror.BadRequest(field + " cannot reference start or branch nodes")
+	}
+	return uuidPtrToPgtype(sceneID), nil
+}
+
 func (s *service) resolveThemeImageMedia(ctx context.Context, themeID uuid.UUID, mediaID *uuid.UUID, purpose string) (pgtype.UUID, error) {
 	if mediaID == nil {
 		return pgtype.UUID{}, nil
@@ -361,14 +406,6 @@ func (s *service) resolveThemeImageMedia(ctx context.Context, themeID uuid.UUID,
 		return pgtype.UUID{}, apperror.New(apperror.ErrMediaNotInTheme, 400, "media has wrong type for "+purpose)
 	}
 	return pgtype.UUID{Bytes: *mediaID, Valid: true}, nil
-}
-
-// validateLocationRoundOrder enforces from_round <= until_round when both set.
-func validateLocationRoundOrder(from, until *int32) error {
-	if from != nil && until != nil && *from > *until {
-		return apperror.BadRequest("from_round must not be greater than until_round")
-	}
-	return nil
 }
 
 func (s *service) DeleteLocation(ctx context.Context, creatorID, locID uuid.UUID) error {
@@ -459,7 +496,7 @@ func toLocationResponse(l db.ThemeLocation) LocationResponse {
 		ParentLocationID:     pgtypeUUIDToPtr(l.ParentLocationID),
 		SortOrder:            l.SortOrder,
 		CreatedAt:            l.CreatedAt,
-		FromRound:            pgtypeInt4ToPtr(l.FromRound),
-		UntilRound:           pgtypeInt4ToPtr(l.UntilRound),
+		AppearanceSceneID:    pgtypeUUIDToPtr(l.AppearanceSceneID),
+		HideSceneID:          pgtypeUUIDToPtr(l.HideSceneID),
 	}
 }

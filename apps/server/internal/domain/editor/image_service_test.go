@@ -73,8 +73,12 @@ func TestConfirmImageUpload_PreservesExistingTargetFields(t *testing.T) {
 			uploadKey: "themes/11111111-1111-1111-1111-111111111111/locations/44444444-4444-4444-4444-444444444444/image.webp",
 			assert: func(t *testing.T, q *fakeImageQueries) {
 				arg := q.updateLocationArg
-				if arg.RestrictedCharacters.String != "char-a,char-b" || arg.FromRound.Int32 != 1 || arg.UntilRound.Int32 != 4 {
+				if arg.RestrictedCharacters.String != "char-a,char-b" {
 					t.Fatalf("location fields not preserved: %+v", arg)
+				}
+				if arg.AppearanceSceneID.Bytes != q.location.AppearanceSceneID.Bytes ||
+					arg.HideSceneID.Bytes != q.location.HideSceneID.Bytes {
+					t.Fatalf("location scene fields not preserved: %+v", arg)
 				}
 			},
 		},
@@ -132,7 +136,14 @@ func newFakeImageQueries(creatorID, themeID, charID, clueID, locationID uuid.UUI
 			RevealSceneID:     uuidValue("66666666-6666-6666-6666-666666666666"),
 			HideSceneID:       uuidValue("77777777-7777-7777-7777-777777777777"),
 		},
-		location: db.ThemeLocation{ID: locationID, ThemeID: themeID, Name: "서재", RestrictedCharacters: text("char-a,char-b"), FromRound: int4(1), UntilRound: int4(4)},
+		location: db.ThemeLocation{
+			ID:                   locationID,
+			ThemeID:              themeID,
+			Name:                 "서재",
+			RestrictedCharacters: text("char-a,char-b"),
+			AppearanceSceneID:    uuidValue("88888888-8888-8888-8888-888888888888"),
+			HideSceneID:          uuidValue("99999999-9999-9999-9999-999999999999"),
+		},
 	}
 }
 

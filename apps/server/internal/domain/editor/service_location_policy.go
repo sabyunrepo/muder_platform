@@ -7,15 +7,9 @@ import "strings"
 type LocationAccessPolicy struct {
 	RestrictedCharacterIDs []string
 	RestrictedCharacters   *string
-	FromRound              *int32
-	UntilRound             *int32
 }
 
-func BuildLocationAccessPolicy(restrictedCharacters *string, fromRound, untilRound *int32) (LocationAccessPolicy, error) {
-	if err := validateLocationRoundOrder(fromRound, untilRound); err != nil {
-		return LocationAccessPolicy{}, err
-	}
-
+func BuildLocationAccessPolicy(restrictedCharacters *string) LocationAccessPolicy {
 	ids := parseLocationRestrictedCharacterIDs(restrictedCharacters)
 	var normalized *string
 	if len(ids) > 0 {
@@ -25,29 +19,14 @@ func BuildLocationAccessPolicy(restrictedCharacters *string, fromRound, untilRou
 	return LocationAccessPolicy{
 		RestrictedCharacterIDs: ids,
 		RestrictedCharacters:   normalized,
-		FromRound:              fromRound,
-		UntilRound:             untilRound,
-	}, nil
+	}
 }
 
 func (p LocationAccessPolicy) IsPublic() bool {
 	return len(p.RestrictedCharacterIDs) == 0
 }
 
-func (p LocationAccessPolicy) IsVisibleInRound(round int32) bool {
-	if p.FromRound != nil && round < *p.FromRound {
-		return false
-	}
-	if p.UntilRound != nil && round > *p.UntilRound {
-		return false
-	}
-	return true
-}
-
-func (p LocationAccessPolicy) CanCharacterAccess(characterID string, round int32) bool {
-	if !p.IsVisibleInRound(round) {
-		return false
-	}
+func (p LocationAccessPolicy) CanCharacterAccess(characterID string) bool {
 	normalizedCharacterID := strings.TrimSpace(characterID)
 	if len(p.RestrictedCharacterIDs) > 0 && normalizedCharacterID == "" {
 		return false

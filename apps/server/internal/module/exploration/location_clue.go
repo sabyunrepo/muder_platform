@@ -12,6 +12,7 @@ import (
 
 func init() {
 	engine.Register("location_clue", func() engine.Module { return NewLocationClueModule() })
+	engine.Register("location", func() engine.Module { return NewLocationClueModule() })
 }
 
 // locationClueConfig holds the parsed configuration.

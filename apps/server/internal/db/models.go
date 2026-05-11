@@ -363,8 +363,8 @@ type ThemeLocation struct {
 	RestrictedCharacters pgtype.Text `json:"restricted_characters"`
 	SortOrder            int32       `json:"sort_order"`
 	CreatedAt            time.Time   `json:"created_at"`
-	FromRound            pgtype.Int4 `json:"from_round"`
-	UntilRound           pgtype.Int4 `json:"until_round"`
+	AppearanceSceneID    pgtype.UUID `json:"appearance_scene_id"`
+	HideSceneID          pgtype.UUID `json:"hide_scene_id"`
 	ImageUrl             pgtype.Text `json:"image_url"`
 	ImageMediaID         pgtype.UUID `json:"image_media_id"`
 	PublicDescription    pgtype.Text `json:"public_description"`

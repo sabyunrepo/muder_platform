@@ -51,29 +51,17 @@ export function buildRoundVisibilityPreview(
   const maxRound = Math.max(
     minRounds,
     maxFiniteRound(clues.flatMap((clue) => [clue.reveal_round, clue.hide_round])),
-    maxFiniteRound(locations.flatMap((location) => [location.from_round, location.until_round])),
   );
   const locationById = new Map(locations.map((location) => [location.id, location]));
 
   return Array.from({ length: maxRound }, (_, index) => {
     const round = index + 1;
-    const visibleLocations = locations.filter((location) =>
-      isVisibleInRound(round, location.from_round, location.until_round),
-    );
+    const visibleLocations = locations;
     const visibleLocationIds = new Set(visibleLocations.map((location) => location.id));
     const visibleClues = clues.filter((clue) =>
       isVisibleInRound(round, clue.reveal_round, clue.hide_round),
     );
     const warnings: RoundVisibilityWarning[] = [];
-
-    for (const location of locations) {
-      if (hasInvalidRange(location.from_round, location.until_round)) {
-        warnings.push({
-          id: `location-range:${location.id}`,
-          message: `${location.name} 장소의 등장/퇴장 라운드가 서로 맞지 않습니다.`,
-        });
-      }
-    }
 
     for (const clue of clues) {
       if (hasInvalidRange(clue.reveal_round, clue.hide_round)) {
@@ -115,7 +103,8 @@ export function buildRoundVisibilityPreview(
       locations: visibleLocations.map((location) => ({
         id: location.id,
         name: location.name,
-        scheduleLabel: formatScheduleLabel(location.from_round, location.until_round),
+        scheduleLabel:
+          location.appearance_scene_id || location.hide_scene_id ? "장면 기준 공개" : "항상 공개",
       })),
       warnings,
     };
