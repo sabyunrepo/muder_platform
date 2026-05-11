@@ -158,8 +158,8 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
   };
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300" aria-label="결말 판정 설정">
-      <Header dirty={dirty} isPending={updateConfig.isPending} onSave={handleSave} />
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300" aria-label={section === "questions" ? "질문 관리" : "결말 판정 규칙"}>
+      <Header dirty={dirty} isPending={updateConfig.isPending} onSave={handleSave} section={section} />
       <Warnings warnings={viewModel.warnings} />
       <div className="mt-5">
         {section === "questions" ? (
@@ -187,17 +187,34 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
   );
 }
 
-function Header({ dirty, isPending, onSave }: { dirty: boolean; isPending: boolean; onSave: () => void }) {
+function Header({
+  dirty,
+  isPending,
+  onSave,
+  section,
+}: {
+  dirty: boolean;
+  isPending: boolean;
+  onSave: () => void;
+  section: "questions" | "endings";
+}) {
+  const isQuestions = section === "questions";
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-400">Ending Rules</p>
-        <h3 className="mt-1 text-lg font-semibold text-slate-100">결말 판정 설정</h3>
-        <p className="mt-1 text-sm leading-6 text-slate-400">최종 투표나 질문 답변이 어떤 결말로 이어지는지 설정합니다. 내부 판정식은 자동으로 만들어집니다.</p>
+        <h3 className="mt-1 text-lg font-semibold text-slate-100">
+          {isQuestions ? "질문 관리" : "결말 판정 규칙"}
+        </h3>
+        <p className="mt-1 text-sm leading-6 text-slate-400">
+          {isQuestions
+            ? "플레이어에게 진행할 최종 질문과 선택지를 설정합니다."
+            : "질문 답변이 어떤 결말로 이어지는지 설정합니다. 내부 판정식은 자동으로 만들어집니다."}
+        </p>
       </div>
       <button type="button" onClick={onSave} disabled={!dirty || isPending} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 text-sm font-medium text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50">
         <Save className="h-4 w-4" aria-hidden="true" />
-        {isPending ? "저장 중" : dirty ? "판정 설정 저장" : "저장됨"}
+        {isPending ? "저장 중" : dirty ? (isQuestions ? "질문 설정 저장" : "판정 규칙 저장") : "저장됨"}
       </button>
     </div>
   );

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle, type ComponentType } from 'react';
 import { ApiHttpError } from '@/lib/api-error';
 
 // ---------------------------------------------------------------------------
@@ -79,19 +79,45 @@ vi.mock('@/features/editor/mediaApi', () => ({
 vi.mock('@mdxeditor/editor', () => ({
   MDXEditor: forwardRef<
     { insertMarkdown: (snippet: string) => void },
-    { markdown: string; onChange: (markdown: string) => void }
-  >(({ markdown, onChange }, ref) => {
+    {
+      markdown: string;
+      onChange: (markdown: string) => void;
+      plugins?: Array<{ jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }> }>;
+    }
+  >(({ markdown, onChange, plugins = [] }, ref) => {
     useImperativeHandle(ref, () => ({
       insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
     }));
+    const mediaEmbedDescriptor = plugins
+      .flatMap((plugin) => plugin.jsxComponentDescriptors ?? [])
+      .find((descriptor) => descriptor.name === 'MediaEmbed');
+    const mediaEmbeds = Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
     return (
-      <textarea
-        aria-label="editable markdown"
-        value={markdown}
-        onChange={(event) => onChange(event.currentTarget.value)}
-      />
+      <div data-testid="role-sheet-mdx-editor">
+        <textarea
+          aria-label="editable markdown"
+          value={markdown}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+        {mediaEmbedDescriptor
+          ? mediaEmbeds.map((match) => {
+              const attrs = match[1] ?? '';
+              const mdastNode = {
+                attributes: Array.from(attrs.matchAll(/(\w+)=["']([^"']+)["']/g)).map((attr) => ({
+                  name: attr[1],
+                  value: attr[2],
+                })),
+              };
+              const Editor = mediaEmbedDescriptor.Editor;
+              return <Editor key={`${match.index}:${match[0]}`} mdastNode={mdastNode} />;
+            })
+          : null}
+      </div>
     );
   }),
+  jsxPlugin: vi.fn((params) => params),
+  useLexicalNodeRemove: vi.fn(() => vi.fn()),
+  useMdastNodeUpdater: vi.fn(() => vi.fn()),
   headingsPlugin: vi.fn(() => ({})),
   listsPlugin: vi.fn(() => ({})),
   quotePlugin: vi.fn(() => ({})),
@@ -604,9 +630,11 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
 
     const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
-    expect(roleSheet.value).toContain('<MediaEmbed mediaId="image-1" type="image" />');
-    expect(screen.getByText('캐릭터 이미지')).toBeDefined();
-    expect(screen.getByText('이미지 블록')).toBeDefined();
+    expect(roleSheet.value).toContain(
+      '<MediaEmbed mediaId="image-1" type="image" align="center" width="medium" />',
+    );
+    expect(screen.getByTestId('media-embed-editor')).toBeDefined();
+    expect(screen.getByRole('button', { name: '캐릭터 이미지 교체' })).toBeDefined();
   });
 
   it('역할지 작성기는 지원 영상 미디어를 mediaId embed로 삽입한다', () => {
@@ -619,9 +647,11 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '역할지 영상 선택' }));
 
     const roleSheet = getRoleSheetEditor() as HTMLTextAreaElement;
-    expect(roleSheet.value).toContain('<MediaEmbed mediaId="video-1" type="video" />');
-    expect(screen.getByText('역할지 영상')).toBeDefined();
-    expect(screen.getByText('영상 블록')).toBeDefined();
+    expect(roleSheet.value).toContain(
+      '<MediaEmbed mediaId="video-1" type="video" align="center" width="medium" />',
+    );
+    expect(screen.getByTestId('media-embed-editor')).toBeDefined();
+    expect(screen.getByRole('button', { name: '역할지 영상 교체' })).toBeDefined();
   });
 
   it('저장된 역할지가 없으면 빈 Markdown 초안으로 시작한다', () => {

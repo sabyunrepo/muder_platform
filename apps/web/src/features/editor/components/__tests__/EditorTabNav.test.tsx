@@ -80,6 +80,7 @@ describe('EditorTabNav dynamic tabs', () => {
     expect(screen.getByText('등장인물 관리')).toBeDefined();
     expect(screen.getByText('단서 관리')).toBeDefined();
     expect(screen.getByText('게임 설계')).toBeDefined();
+    expect(screen.getByText('질문 관리')).toBeDefined();
     expect(screen.getByText('결말 관리')).toBeDefined();
     expect(screen.getByText('장소 관리')).toBeDefined();
     expect(screen.getByText('미디어 관리')).toBeDefined();
@@ -119,6 +120,7 @@ describe('EditorTabNav dynamic tabs', () => {
       '등장인물 관리',
       '단서 관리',
       '게임 설계',
+      '질문 관리',
       '결말 관리',
       '장소 관리',
       '미디어 관리',

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { forwardRef, useImperativeHandle, type ComponentType, type ReactNode } from "react";
 
-const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock, toastErrorMock } = vi.hoisted(() => ({
+const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock, toastErrorMock, useMediaListMock, useMediaCategoriesMock, useMediaDownloadUrlMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
   addNodeMock: vi.fn(),
@@ -13,6 +13,9 @@ const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMoc
   useUpdateFlowNodeMock: vi.fn(),
   refetchMock: vi.fn(),
   toastErrorMock: vi.fn(),
+  useMediaListMock: vi.fn(),
+  useMediaCategoriesMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
 }));
 
 vi.mock("../../../hooks/useFlowData", () => ({
@@ -35,21 +38,78 @@ vi.mock("../../../editorConfigApi", () => ({
   useUpdateConfigJson: () => ({ mutate: configMutateMock, isPending: false }),
 }));
 
+vi.mock("@/features/editor/mediaApi", () => ({
+  useMediaList: (...args: unknown[]) => useMediaListMock(...args),
+  useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
+  useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
+}));
+
+vi.mock("@mdxeditor/editor", () => ({
+  MDXEditor: forwardRef<
+    { insertMarkdown: (snippet: string) => void },
+    {
+      markdown: string;
+      onChange: (markdown: string) => void;
+      plugins?: Array<{ jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }> }>;
+    }
+  >(({ markdown, onChange, plugins = [] }, ref) => {
+    useImperativeHandle(ref, () => ({
+      insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
+    }));
+    const mediaEmbedDescriptor = plugins
+      .flatMap((plugin) => plugin.jsxComponentDescriptors ?? [])
+      .find((descriptor) => descriptor.name === "MediaEmbed");
+    const mediaEmbeds = Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
+    return (
+      <div data-testid="mdx-editor-surface">
+        <textarea
+          aria-label="editable markdown"
+          value={markdown}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+        {mediaEmbedDescriptor
+          ? mediaEmbeds.map((match) => {
+              const attrs = match[1] ?? "";
+              const mdastNode = {
+                attributes: Array.from(attrs.matchAll(/(\w+)=["']([^"']+)["']/g)).map((attr) => ({
+                  name: attr[1],
+                  value: attr[2],
+                })),
+              };
+              const Editor = mediaEmbedDescriptor.Editor;
+              return <Editor key={`${match.index}:${match[0]}`} mdastNode={mdastNode} />;
+            })
+          : null}
+      </div>
+    );
+  }),
+  jsxPlugin: vi.fn((params) => params),
+  useLexicalNodeRemove: vi.fn(() => vi.fn()),
+  useMdastNodeUpdater: vi.fn(() => vi.fn()),
+  headingsPlugin: vi.fn(() => ({})),
+  listsPlugin: vi.fn(() => ({})),
+  quotePlugin: vi.fn(() => ({})),
+  linkPlugin: vi.fn(() => ({})),
+  thematicBreakPlugin: vi.fn(() => ({})),
+  toolbarPlugin: vi.fn(() => ({})),
+  UndoRedo: () => null,
+  BlockTypeSelect: () => null,
+  BoldItalicUnderlineToggles: () => null,
+  ListsToggle: () => null,
+  CreateLink: () => null,
+}));
+
 vi.mock("sonner", () => ({
   toast: { error: toastErrorMock, success: vi.fn() },
 }));
 
-import { EndingEntitySubTab } from "../EndingEntitySubTab";
+import { EndingEntitySubTab, EndingQuestionsTab } from "../EndingEntitySubTab";
 
 function renderWithClient(ui: ReactNode) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
-}
-
-function openEndingManagement() {
-  fireEvent.click(screen.getByRole("button", { name: "결말 관리" }));
 }
 
 function clickLastButton(name: RegExp) {
@@ -98,6 +158,9 @@ const makeNode = (id: string, data: Record<string, unknown> = {}, type = "ending
 
 beforeEach(() => {
   useUpdateFlowNodeMock.mockReturnValue({ mutate: mutateMock });
+  useMediaListMock.mockReturnValue({ data: [], isLoading: false });
+  useMediaCategoriesMock.mockReturnValue({ data: [], isLoading: false });
+  useMediaDownloadUrlMock.mockReturnValue({ data: null, isLoading: false, isError: false });
   useEditorCharactersMock.mockReturnValue({
     data: [
       {
@@ -171,14 +234,13 @@ afterEach(() => {
 describe("EndingEntitySubTab", () => {
   it("Flow의 ending 노드만 결말 목록에 표시한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
-    openEndingManagement();
 
     expect(screen.getByText("결말 목록")).toBeDefined();
     expect(screen.getAllByText("진실").length).toBeGreaterThan(0);
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("결말 판정 준비")).toBeDefined();
     expect(screen.getByText("본문 작성")).toBeDefined();
-    expect(screen.getAllByText("참가자에게만 공개").length).toBeGreaterThan(0);
+    expect(screen.queryByText("참가자에게만 공개")).toBeNull();
     expect(screen.queryByText("캐릭터 결과 카드 1/2명 작성")).toBeNull();
     expect(screen.queryByText("1막")).toBeNull();
   });
@@ -196,7 +258,6 @@ describe("EndingEntitySubTab", () => {
     });
 
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
-    openEndingManagement();
 
     expect(screen.getByText("아직 결말이 없습니다")).toBeDefined();
     expect(screen.getByText(/Flow에서 결말 노드를 추가하면/)).toBeDefined();
@@ -237,7 +298,6 @@ describe("EndingEntitySubTab", () => {
 
   it("검색어로 결말 목록을 좁힌다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
-    openEndingManagement();
 
     fireEvent.change(screen.getByPlaceholderText("결말 검색"), { target: { value: "오판" } });
 
@@ -248,7 +308,6 @@ describe("EndingEntitySubTab", () => {
 
   it("상세 입력을 변경하면 선택한 결말 노드 데이터만 갱신한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
-    openEndingManagement();
 
     fireEvent.change(screen.getByLabelText("결말 이름"), { target: { value: "자비" } });
 
@@ -261,45 +320,33 @@ describe("EndingEntitySubTab", () => {
     );
   });
 
-  it("결말 본문, 공개 범위, 스포일러 안내, 감상 공유 문구를 저장 payload로 보낸다", () => {
+  it("결말 상세에서 필요한 입력만 보여주고 본문을 Markdown 작성기로 저장한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
-    openEndingManagement();
 
-    fireEvent.change(screen.getByLabelText("결말 본문"), {
+    expect(screen.queryByLabelText("아이콘")).toBeNull();
+    expect(screen.queryByLabelText("표시 색상")).toBeNull();
+    expect(screen.queryByLabelText("공개 설명")).toBeNull();
+    expect(screen.queryByLabelText("공개 범위")).toBeNull();
+    expect(screen.queryByLabelText("스포일러 안내")).toBeNull();
+    expect(screen.queryByLabelText("감상 공유 문구")).toBeNull();
+    expect(screen.getByRole("region", { name: "결말 본문 작성기" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "결말 이미지 삽입" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "결말 영상 삽입" })).toBeDefined();
+
+    fireEvent.change(screen.getByLabelText("editable markdown"), {
       target: { value: "진실은 모두에게 남았다." },
     });
     expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
       endingContent: "진실은 모두에게 남았다.",
     });
-
-    fireEvent.change(screen.getByLabelText("공개 범위"), {
-      target: { value: "private_note" },
-    });
-    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
-      endingVisibility: "private_note",
-    });
-
-    fireEvent.change(screen.getByLabelText("스포일러 안내"), {
-      target: { value: "이 결말은 플레이 후 공개됩니다." },
-    });
-    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
-      endingSpoilerWarning: "이 결말은 플레이 후 공개됩니다.",
-    });
-
-    fireEvent.change(screen.getByLabelText("감상 공유 문구"), {
-      target: { value: "당신의 선택을 공유해 보세요." },
-    });
-    expect(updateNodeDataMock).toHaveBeenLastCalledWith("ending-1", {
-      endingShareText: "당신의 선택을 공유해 보세요.",
-    });
   });
 
   it("결말 판정 질문과 규칙을 제작자용 UI로 저장한다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
-    expect(screen.getByText("결말 판정 설정")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "질문 관리", level: 3 })).toBeDefined();
     fireEvent.change(screen.getByLabelText("질문 1 내용"), { target: { value: "진범은 누구인가?" } });
-    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -324,11 +371,11 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("결말 질문 대상을 특정 플레이어 여러 명으로 저장한다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     clickLastButton(/하윤/);
     clickLastButton(/민재/);
-    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -350,11 +397,11 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("특정 플레이어 질문에서 대상이 비면 저장하지 않고 경고한다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     clickLastButton(/하윤/);
     clickLastButton(/하윤/);
-    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
 
     expect(configMutateMock).not.toHaveBeenCalled();
     expect(toastErrorMock).toHaveBeenCalledWith("특정 플레이어 질문은 받을 캐릭터를 1명 이상 선택해야 합니다");
@@ -362,7 +409,7 @@ describe("EndingEntitySubTab", () => {
 
   it("삭제된 캐릭터 참조를 깨지지 않는 fallback으로 표시한다", () => {
     renderWithClient(
-      <EndingEntitySubTab
+      <EndingQuestionsTab
         themeId="theme-1"
         theme={{
           ...theme,
@@ -393,10 +440,10 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("결말 선택지는 같은 질문 안에서 중복 저장되지 않는다", () => {
-    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+    renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     fireEvent.change(screen.getByLabelText("질문 1 선택지 2"), { target: { value: "하윤" } });
-    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -418,12 +465,11 @@ describe("EndingEntitySubTab", () => {
 
   it("가장 많이 선택된 답 기준 결말 규칙을 저장한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
-    openEndingManagement();
 
     fireEvent.click(screen.getByRole("button", { name: "수정" }));
     fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "winning" } });
     fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
-    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "판정 규칙 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -472,13 +518,12 @@ describe("EndingEntitySubTab", () => {
         }}
       />,
     );
-    openEndingManagement();
 
     fireEvent.click(screen.getByRole("button", { name: "수정" }));
     fireEvent.click(screen.getByRole("button", { name: "부서진 시계" }));
     fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "all" } });
     fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
-    fireEvent.click(screen.getByRole("button", { name: "판정 설정 저장" }));
+    fireEvent.click(screen.getByRole("button", { name: "판정 규칙 저장" }));
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({

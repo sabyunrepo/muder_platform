@@ -5,13 +5,7 @@ import type { EditorCharacterResponse } from "../../api";
 export interface EndingEditorViewModel {
   id: string;
   name: string;
-  icon: string;
-  description: string;
   contentPreview: string;
-  visibility: EndingVisibility;
-  visibilityLabel: string;
-  spoilerWarning: string;
-  shareText: string;
   isReady: boolean;
   badges: string[];
 }
@@ -34,19 +28,12 @@ export function toEndingEditorViewModel(node: Node, incomingCount = 0): EndingEd
   const data = node.data as FlowNodeData;
   const name = data.label?.trim() || "이름 없는 결말";
   const content = data.endingContent?.trim() ?? "";
-  const visibility = normalizeEndingVisibility(data.endingVisibility);
   return {
     id: node.id,
     name,
-    icon: data.icon?.trim() || "🎭",
-    description: data.description?.trim() || "플레이어에게 보일 결말 설명을 작성해 주세요.",
     contentPreview: content || "결말 본문을 아직 작성하지 않았습니다.",
-    visibility,
-    visibilityLabel: endingVisibilityLabel(visibility),
-    spoilerWarning: data.endingSpoilerWarning?.trim() || "스포일러 주의: 게임 종료 후 공개되는 결말입니다.",
-    shareText: data.endingShareText?.trim() || "",
     isReady: Boolean(data.label?.trim() && content),
-    badges: buildEndingBadges(Boolean(data.label?.trim()), Boolean(content), incomingCount, visibility),
+    badges: buildEndingBadges(Boolean(data.label?.trim()), Boolean(content), incomingCount),
   };
 }
 
@@ -114,12 +101,10 @@ function buildEndingBadges(
   hasName: boolean,
   hasContent: boolean,
   incomingCount: number,
-  visibility: EndingVisibility,
 ): string[] {
   return [
     hasName ? "이름 있음" : "이름 필요",
     hasContent ? "본문 작성됨" : "본문 필요",
-    endingVisibilityLabel(visibility),
     incomingCount > 0 ? `도달 경로 ${incomingCount}개` : "아직 연결 없음",
   ];
 }

@@ -853,6 +853,47 @@ func TestStoryInfoService_Update_RollsBackStoryRowAndRefsWhenMediaRefInsertFails
 	assertStoryInfoMediaRefCount(t, f.pool, created.ID, 1)
 }
 
+func TestStoryInfoService_Update_PersistsStoryInfoRowAndBumpsVersion(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	svc := NewStoryInfoService(f.q, f.pool, zerolog.Nop()).(*storyInfoService)
+
+	created, err := svc.createStoryInfoWithRefs(ctx, db.CreateStoryInfoParams{
+		ThemeID:             themeID,
+		Title:               "update before",
+		Body:                "before body",
+		ContentFormat:       StoryInfoContentFormatMDXV1,
+		RelatedCharacterIds: json.RawMessage(`[]`),
+		RelatedClueIds:      json.RawMessage(`[]`),
+		RelatedLocationIds:  json.RawMessage(`[]`),
+		CreatorID:           creatorID,
+	}, nil)
+	if err != nil {
+		t.Fatalf("createStoryInfoWithRefs: %v", err)
+	}
+
+	updated, err := svc.updateStoryInfoWithRefs(ctx, db.UpdateStoryInfoParams{
+		ID:                  created.ID,
+		Title:               "update after",
+		Body:                "after body",
+		ContentFormat:       StoryInfoContentFormatMDXV1,
+		RelatedCharacterIds: json.RawMessage(`[]`),
+		RelatedClueIds:      json.RawMessage(`[]`),
+		RelatedLocationIds:  json.RawMessage(`[]`),
+		Version:             created.Version,
+		CreatorID:           creatorID,
+	}, nil)
+	if err != nil {
+		t.Fatalf("updateStoryInfoWithRefs: %v", err)
+	}
+	if updated.Version != created.Version+1 {
+		t.Fatalf("updated version = %d, want %d", updated.Version, created.Version+1)
+	}
+	assertStoryInfoRow(t, f.pool, created.ID, "update after", created.Version+1)
+}
+
 func TestStoryInfoService_Delete_ReturnsThemeIDAndRemovesRow(t *testing.T) {
 	f := newStoryInfoFixture(t)
 	created, err := f.svc.Create(context.Background(), f.creatorID, f.themeID, CreateStoryInfoRequest{Title: "삭제 정보"})
