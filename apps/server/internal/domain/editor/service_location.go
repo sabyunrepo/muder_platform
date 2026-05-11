@@ -361,14 +361,6 @@ func (s *service) buildLocationAccessPolicyForTheme(ctx context.Context, themeID
 	return accessPolicy, nil
 }
 
-func uuidPtrToStringPtr(value *uuid.UUID) *string {
-	if value == nil {
-		return nil
-	}
-	text := value.String()
-	return &text
-}
-
 func (s *service) resolveLocationSceneReference(ctx context.Context, themeID uuid.UUID, sceneID *uuid.UUID, field string) (pgtype.UUID, error) {
 	if sceneID == nil {
 		return pgtype.UUID{}, nil
