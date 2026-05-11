@@ -11,6 +11,30 @@ vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => ({ mutate: vi.fn() }),
 }));
 
+vi.mock("../../../editorMapApi", () => ({
+  useEditorMaps: () => ({
+    data: [
+      {
+        id: "map-1",
+        theme_id: "t1",
+        name: "저택 1층",
+        image_url: null,
+        sort_order: 1,
+        created_at: "2026-04-15T00:00:00Z",
+      },
+      {
+        id: "map-2",
+        theme_id: "t1",
+        name: "저택 2층",
+        image_url: null,
+        sort_order: 2,
+        created_at: "2026-04-15T00:00:00Z",
+      },
+    ],
+    isLoading: false,
+  }),
+}));
+
 vi.mock("../../../readingApi", () => ({
   useReadingSections: () => ({
     data: [{ id: "rs-1", name: "오프닝 낭독", lines: [{ Text: "시작" }] }],
@@ -49,7 +73,7 @@ const makeNode = (data: Record<string, unknown> = {}) => ({
 });
 
 describe("PhaseNodePanel type-specific fields", () => {
-  it("수사 장면은 기본 정보, 시간, 자동 진행 안내만 표시한다", () => {
+  it("수사 장면은 기본 정보, 시간, 맵 선택, 자동 진행 안내를 표시한다", () => {
     renderWithQC(
       <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,
     );
@@ -58,6 +82,7 @@ describe("PhaseNodePanel type-specific fields", () => {
     expect(screen.getByLabelText("라벨")).toBeDefined();
     expect(screen.getByLabelText("타입")).toBeDefined();
     expect(screen.getByLabelText("시간 (분)")).toBeDefined();
+    expect(screen.getByLabelText("사용할 맵")).toBeDefined();
     expect(screen.getByText(/다음 연결 장면으로 자동 진행/)).toBeDefined();
 
     expect(screen.queryByText("라운드 수")).toBeNull();
@@ -65,6 +90,20 @@ describe("PhaseNodePanel type-specific fields", () => {
     expect(screen.queryByText("토론방 설정")).toBeNull();
     expect(screen.queryByText("읽기 대사 배치")).toBeNull();
     expect(screen.queryByText("장면 시작 트리거")).toBeNull();
+  });
+
+  it("수사 장면에서 사용할 맵을 선택하면 investigationMapId를 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel node={makeNode({ investigationMapId: "map-1" })} themeId="t1" onUpdate={onUpdate} />,
+    );
+
+    const mapSelect = screen.getByLabelText("사용할 맵") as HTMLSelectElement;
+    expect(mapSelect.value).toBe("map-1");
+
+    fireEvent.change(mapSelect, { target: { value: "map-2" } });
+
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", { investigationMapId: "map-2" });
   });
 
   it("진행 시간은 음수를 0으로 보정하고 빈 값은 제거한다", () => {
@@ -101,6 +140,7 @@ describe("PhaseNodePanel type-specific fields", () => {
     );
 
     expect(screen.getByText("토론방 설정")).toBeDefined();
+    expect(screen.queryByLabelText("사용할 맵")).toBeNull();
     expect((screen.getByLabelText("전체토론방 이름") as HTMLInputElement).value).toBe("전체 토론");
     expect((screen.getByLabelText("밀담방 1 이름") as HTMLInputElement).value).toBe("비밀방");
     expect((screen.getByLabelText("최대 인원") as HTMLInputElement).value).toBe("3");

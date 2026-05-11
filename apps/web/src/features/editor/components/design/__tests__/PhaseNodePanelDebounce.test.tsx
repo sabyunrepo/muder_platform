@@ -21,6 +21,10 @@ vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => useUpdateFlowNodeMock(),
 }));
 
+vi.mock("../../../editorMapApi", () => ({
+  useEditorMaps: () => ({ data: [], isLoading: false }),
+}));
+
 import { PhaseNodePanel } from "../PhaseNodePanel";
 import { flowKeys } from "../../../flowTypes";
 import type { FlowGraphResponse } from "../../../flowTypes";
@@ -161,7 +165,7 @@ describe("PhaseNodePanel debounce + onBlur flush", () => {
       />,
     );
 
-    const select = screen.getByRole("combobox");
+    const select = screen.getByLabelText("타입");
     fireEvent.change(select, { target: { value: "voting" } });
     fireEvent.blur(select);
     expect(mutateMock).toHaveBeenCalledTimes(1);
