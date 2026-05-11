@@ -83,6 +83,17 @@ MMP 스크립트로 강제해, 이슈/브랜치/PR 단계에서 규칙이 깨지
 - 훅 적용:
   - `scripts/mmp-workflow-install-hooks.sh install --force`
 
+### 훅 레이어 하드닝(오로보스 패턴 흡수)
+- `mmp-keyword-router.py`는 오토 라우팅 시 발화 내 숫자 추출을 context-aware로 개선해서
+  `issue-123`, `#123`, `issue 123`, `이슈 123` 같은 명시 이슈 토큰만 반영하고,
+  오탐 여지가 큰 단일 고립 숫자 자동 추론은 사용하지 않습니다.
+- `mmp-session-start-hook.py`는 세션 시작 시 현재 브랜치/issue/seed 상태를 읽고
+  실행 추천 플로우를 한 번에 노출합니다.
+- `mmp-posttool-hook.py`는 `Edit/Write` 후에도 최근 수정 주기가 짧은 경우 경고를 억제하고,
+  draft/blocked/seed 미존재 상태에서 seed bootstrap 가이드를 반복적으로 보냅니다.
+- 후킹 상태는 `MMP_WORKFLOW_HOOKS_ENABLED`, `MMP_WORKFLOW_HOOKS_SKIP`, `MMP_WORKFLOW_INTERVIEW_STRICT`로 제어합니다.
+- 추가로 `.codex/scripts/mmp-workflow-hook-smoke-test.sh`를 통해 훅 라우터/포스트툴/세션 시작 경로를 회귀 점검한다.
+
 ## 왜 Git common dir에 넣었는가
 - worktree가 여러 개여도 `issue` 기준 상태 공유가 필요
 - repo 루트 상태 파일 노이즈(미반영 파일) 방지
