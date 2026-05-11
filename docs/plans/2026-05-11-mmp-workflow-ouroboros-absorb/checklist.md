@@ -34,6 +34,12 @@
 - [x] 훅/경고 동작에 `MMP_WORKFLOW_HOOKS_ENABLED`, `MMP_WORKFLOW_HOOKS_SKIP`, `MMP_WORKFLOW_INTERVIEW_STRICT` 반영
 - [x] 동일 메시지 스팸 방지를 위해 상태 파일 기반 최소 주기 적용
 
+## 7) 외부 레퍼런스 흡수 분석
+- [x] 외부 레퍼런스(우로보스) 대비 스크립트/훅/skill 존재 여부 분석 스크립트 추가: `scripts/mmp-reference-audit.sh`
+- [x] 해당 분석을 실행해 채택/보류/유지 항목 산출: `bash scripts/mmp-reference-audit.sh --target https://github.com/Q00/ouroboros.git --name ouroboros`
+- [x] 분석 기반 추천 2개(버전 체크, 드리프트 안내)와 보류 항목(MCP 도구 등록 검사) 문서화
+- [x] 신규 분석 스킬 등록: `.codex/skills/mmp-reference-audit/SKILL.md`
+
 ## 3) 계획 문서
 - [x] 실행 계획 문서 작성 (`design.md`)
 - [x] Seed 템플릿 문서 작성 (`seed-template.md`)
