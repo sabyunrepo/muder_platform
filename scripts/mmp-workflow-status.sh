@@ -119,6 +119,10 @@ fi
 branch="${1:-$(git rev-parse --abbrev-ref HEAD)}"
 if ! issue="$(issue_from_branch "$branch")"; then
   if [[ -n "${MMP_ISSUE_NUMBER:-}" ]]; then
+    if ! [[ "${MMP_ISSUE_NUMBER}" =~ ^[0-9]+$ ]]; then
+      echo "🚫 MMP_ISSUE_NUMBER는 숫자여야 합니다: ${MMP_ISSUE_NUMBER}" >&2
+      exit 2
+    fi
     issue="${MMP_ISSUE_NUMBER}"
   else
     echo "⚠️ 현재 브랜치에서 issue 번호를 추출할 수 없습니다: $branch" >&2

@@ -30,9 +30,8 @@
 
 ## 실행 체크리스트
 
-- [ ] 삭제 후보 3개 제거
-- [ ] 삭제 후 `deep-interview` 라우팅에서 삭제된 스킬 참조 제거
-- [ ] 현재 보유 스킬 존재 여부 점검
-- [ ] 레퍼런스 무결성 점검 (`rg --files .codex/skills`, `rg -n` 검색)
-- [ ] 커밋 메시지 포함: `chore(mmp): prune mmp skill surface`
-
+- [x] 삭제 후보 3개 제거
+- [x] 삭제 후 `deep-interview` 라우팅에서 삭제된 스킬 참조 제거
+- [x] 현재 보유 스킬 존재 여부 점검
+- [x] 레퍼런스 무결성 점검 (`rg --files .codex/skills`, `rg -n` 검색)
+- [x] 커밋 메시지 포함: `chore(mmp): prune mmp skill surface`

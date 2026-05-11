@@ -21,12 +21,19 @@ if [[ ! -f scripts/mmp-workflow-gate.sh ]]; then
   exit 1
 fi
 
-branch="$(git rev-parse --abbrev-ref HEAD)"
-if ! scripts/mmp-workflow-gate.sh branch --branch "$branch" --min-status approved --require-acceptance --require-done; then
-  echo "🚫 pre-push 차단: PR 가드 조건이 충족되지 않았습니다." >&2
-  echo "   조건: branch 패턴(issue-번호) + seed approved/completed + acceptance/done 존재" >&2
-  echo "   조치: scripts/mmp-workflow-agent.sh bootstrap --issue <번호> --auto-approve" >&2
-  echo "        또는 환경 변수로 issue를 지정 후 재시도하세요." >&2
+failed=0
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [[ "$local_ref" == refs/heads/* ]] || continue
+  branch="${local_ref#refs/heads/}"
+  if ! scripts/mmp-workflow-gate.sh branch --branch "$branch" --min-status approved --require-acceptance --require-done; then
+    echo "🚫 pre-push 차단: 브랜치 '$branch' 가 PR 가드 조건을 충족하지 않았습니다." >&2
+    echo "   조건: branch 패턴(issue-번호) + seed approved/completed + acceptance/done 존재" >&2
+    echo "   조치: scripts/mmp-workflow-agent.sh bootstrap --issue <번호> --auto-approve" >&2
+    echo "        또는 환경 변수로 issue를 지정 후 재시도하세요." >&2
+    failed=1
+  fi
+done
+
+if [[ "$failed" -ne 0 ]]; then
   exit 1
 fi
-

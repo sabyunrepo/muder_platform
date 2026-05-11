@@ -56,7 +56,7 @@
 - [x] `MMP_WORKFLOW_INTERVIEW_STRICT=1`에서 issue 번호가 없는 브랜치 PR은 우회 메시지를 남기고 진행되지 않거나, 명시적 우회 플래그를 요구한다.
 - [x] 모든 코드 변경 PR은 로컬 CI 가드 + Seed gate를 모두 통과한 상태에서만 진행된다.
 - [x] Seed 상태가 `approved`로 기록되면, 인터뷰 기반 실행 계획(요구사항, 범위, 완료조건)이 최소 항목 기준을 충족한다.
-- [x] 에이전트가 seed-bootstrp → worktree 생성 → PR 가드까지 1회 호출로 진행할 수 있는 경로가 문서화/실행됨.
+- [x] 에이전트가 seed-bootstrap → worktree 생성 → PR 가드까지 1회 호출로 진행할 수 있는 경로가 문서화/실행됨.
 
 ## 운영 시 증상 체크
 - branch 시작 실패: `"issue #N는 인터뷰/Seed 상태가 승인 기준에 도달하지 않았습니다."`

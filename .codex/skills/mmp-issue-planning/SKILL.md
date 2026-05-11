@@ -50,9 +50,9 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - 필요 시 `## Deferred / Follow-up`
    - `## 작업 체크리스트` 또는 각 작업 범위 하위에 Markdown 체크박스(`- [ ]`)를 사용해 실행 항목을 둔다.
    - 작업을 실제로 진행하는 plan/checklist 문서나 Issue 댓글을 갱신할 수 있는 경우, 완료된 항목은 `- [x]`로 바꿔 다음 세션이 남은 일을 바로 알 수 있게 한다.
-4. Issue 생성 시 acceptance/done 기준이 비어 있으면, issue 시작 전에 반드시 seed seed 파일을 채운다.
+4. Issue 생성 시 acceptance/done 기준이 비어 있으면, issue 시작 전에 반드시 seed 파일을 채운다.
    - 실행 예시: `scripts/mmp-workflow-agent.sh bootstrap --issue <번호> --auto-approve`
-   - `mmp-workflow-seed.sh set-status --issue <번호> --status approved` 없이 PR/commit 가이드를 진행하지 않는다.
+   - `scripts/mmp-workflow-seed.sh set-status --issue <번호> --status approved` 없이 PR/commit 가이드를 진행하지 않는다.
 5. `## 병렬 작업 설계`에는 아래 하위 섹션을 둔다.
    - `### 병렬 가능 작업`: 실제 사용할 agent lane을 적는다.
    - `### 파일/모듈 소유권`: 각 lane이 읽거나 수정할 수 있는 디렉터리/파일을 적는다.
