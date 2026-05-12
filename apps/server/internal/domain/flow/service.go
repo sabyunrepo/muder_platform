@@ -355,16 +355,57 @@ func ensureEdgeEndpointsInTheme(ctx context.Context, q dbConn, themeID, sourceID
 
 func validateSaveRequest(req SaveFlowRequest) error {
 	nodes := make([]FlowNode, len(req.Nodes))
+	nodeIDs := make(map[uuid.UUID]struct{}, len(req.Nodes))
 	for i, n := range req.Nodes {
 		if err := ValidateNodeType(n.Type); err != nil {
 			return err
 		}
-		nodes[i] = FlowNode{ID: uuid.New(), Type: n.Type}
+		nodeID := uuid.New()
+		if n.ID != nil {
+			if *n.ID == uuid.Nil {
+				return apperror.Validation("flow node id is invalid", []apperror.FieldError{{
+					Field:   "nodes.id",
+					Message: "node id must be a valid UUID",
+					Code:    "invalid_uuid",
+				}})
+			}
+			nodeID = *n.ID
+		}
+		if _, exists := nodeIDs[nodeID]; exists {
+			return apperror.Validation("flow node id is duplicated", []apperror.FieldError{{
+				Field:   "nodes.id",
+				Message: "node ids must be unique",
+				Code:    "duplicate",
+			}})
+		}
+		nodeIDs[nodeID] = struct{}{}
+		nodes[i] = FlowNode{ID: nodeID, Type: n.Type}
 	}
 	edges := make([]FlowEdge, len(req.Edges))
 	for i, e := range req.Edges {
 		if err := ValidateEdgeCondition(e.Condition); err != nil {
 			return err
+		}
+		if e.SourceID == uuid.Nil || e.TargetID == uuid.Nil {
+			return apperror.Validation("flow edge endpoint is invalid", []apperror.FieldError{{
+				Field:   "edges.endpoint",
+				Message: "edge endpoints must be valid UUIDs",
+				Code:    "invalid_uuid",
+			}})
+		}
+		if _, ok := nodeIDs[e.SourceID]; !ok {
+			return apperror.Validation("flow edge source node was not found", []apperror.FieldError{{
+				Field:   "edges.source_id",
+				Message: "edge source_id must reference a node in the same flow",
+				Code:    "not_found",
+			}})
+		}
+		if _, ok := nodeIDs[e.TargetID]; !ok {
+			return apperror.Validation("flow edge target node was not found", []apperror.FieldError{{
+				Field:   "edges.target_id",
+				Message: "edge target_id must reference a node in the same flow",
+				Code:    "not_found",
+			}})
 		}
 		edges[i] = FlowEdge{SourceID: e.SourceID, TargetID: e.TargetID}
 	}

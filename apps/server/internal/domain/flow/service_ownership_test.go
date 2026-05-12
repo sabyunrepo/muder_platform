@@ -298,6 +298,71 @@ func TestServiceFlowOwnership_SaveFlowOwnedGraphPreservesProvidedNodeIDs(t *test
 	}
 }
 
+func TestServiceSaveFlow_RejectsEdgeEndpointOutsideSubmittedGraph(t *testing.T) {
+	ctx := context.Background()
+	pool := setupFlowTestPool(t)
+	svc := NewService(pool, zerolog.Nop())
+	creatorID := insertFlowTestUser(t, pool)
+	themeID := insertFlowTestTheme(t, pool, creatorID, json.RawMessage(`{}`))
+	startID := uuid.New()
+	unknownTargetID := uuid.New()
+
+	_, err := svc.SaveFlow(ctx, creatorID, themeID, SaveFlowRequest{
+		Nodes: []FlowNodeInput{{
+			ID:        &startID,
+			Type:      NodeTypeStart,
+			PositionX: 0,
+			PositionY: 0,
+		}},
+		Edges: []FlowEdgeInput{{
+			SourceID: startID,
+			TargetID: unknownTargetID,
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected SaveFlow to reject an edge target outside the submitted graph")
+	}
+	appErr, ok := err.(*apperror.AppError)
+	if !ok {
+		t.Fatalf("expected app error, got %T", err)
+	}
+	if appErr.Code != apperror.ErrValidation {
+		t.Fatalf("error code = %q, want %q", appErr.Code, apperror.ErrValidation)
+	}
+}
+
+func TestServiceSaveFlow_RejectsNilEdgeEndpoint(t *testing.T) {
+	ctx := context.Background()
+	pool := setupFlowTestPool(t)
+	svc := NewService(pool, zerolog.Nop())
+	creatorID := insertFlowTestUser(t, pool)
+	themeID := insertFlowTestTheme(t, pool, creatorID, json.RawMessage(`{}`))
+	startID := uuid.New()
+
+	_, err := svc.SaveFlow(ctx, creatorID, themeID, SaveFlowRequest{
+		Nodes: []FlowNodeInput{{
+			ID:        &startID,
+			Type:      NodeTypeStart,
+			PositionX: 0,
+			PositionY: 0,
+		}},
+		Edges: []FlowEdgeInput{{
+			SourceID: startID,
+			TargetID: uuid.Nil,
+		}},
+	})
+	if err == nil {
+		t.Fatal("expected SaveFlow to reject a nil edge endpoint")
+	}
+	appErr, ok := err.(*apperror.AppError)
+	if !ok {
+		t.Fatalf("expected app error, got %T", err)
+	}
+	if appErr.Code != apperror.ErrValidation {
+		t.Fatalf("error code = %q, want %q", appErr.Code, apperror.ErrValidation)
+	}
+}
+
 func TestServiceUpdateNode_PartialDataPatchPreservesTypeAndPosition(t *testing.T) {
 	ctx := context.Background()
 	pool := setupFlowTestPool(t)
