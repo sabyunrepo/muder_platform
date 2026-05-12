@@ -19,6 +19,10 @@ import { createDefaultTemplate } from './flowDefaults';
 import { useEdgeCondition } from './useEdgeCondition';
 import { useApplyPreset } from './useApplyPreset';
 
+function createFlowEdgeId(): string {
+  return crypto.randomUUID();
+}
+
 export function useFlowData(themeId: string) {
   const { data, isLoading, isError, error, refetch } = useFlowGraph(themeId);
   const saveFlow = useSaveFlow(themeId);
@@ -112,7 +116,7 @@ export function useFlowData(themeId: string) {
   );
   const onConnect: OnConnect = useCallback(
     (connection) => {
-      const next = addEdge(connection, edgesRef.current);
+      const next = addEdge({ id: createFlowEdgeId(), ...connection }, edgesRef.current);
       setEdgesAndRef(next);
       autoSave(nodesRef.current, next);
     },
@@ -121,7 +125,10 @@ export function useFlowData(themeId: string) {
 
   const connectNodes = useCallback(
     (sourceId: string, targetId: string) => {
-      const next = addEdge({ source: sourceId, target: targetId, type: 'condition' }, edgesRef.current);
+      const next = addEdge(
+        { id: createFlowEdgeId(), source: sourceId, target: targetId, type: 'condition' },
+        edgesRef.current
+      );
       setEdgesAndRef(next);
       autoSave(nodesRef.current, next);
     },

@@ -55,6 +55,8 @@ function latestSavedGraph() {
   return calls[calls.length - 1][0];
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 describe('useFlowData', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -148,6 +150,33 @@ describe('useFlowData', () => {
 
     expect(latestSavedGraph().edges).toHaveLength(2);
     expect(latestSavedGraph().edges[1]).toMatchObject({ source_id: 'n2', target_id: 'n1' });
+  });
+
+  it('onConnect가 서버 저장 가능한 UUID edge id를 생성한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.onConnect({
+        source: 'n2',
+        target: 'n1',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges[1].id).toMatch(UUID_RE);
+  });
+
+  it('connectNodes가 서버 저장 가능한 UUID edge id를 생성한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.connectNodes('n2', 'n1');
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges[1].id).toMatch(UUID_RE);
   });
 
   it('node 삭제 성공 시 연결된 edge도 ref와 저장 payload에서 제거한다', () => {
