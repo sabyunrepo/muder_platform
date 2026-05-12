@@ -82,8 +82,8 @@ type CreateNodeRequest struct {
 type UpdateNodeRequest struct {
 	Type      string          `json:"type"`
 	Data      json.RawMessage `json:"data"`
-	PositionX float64         `json:"position_x"`
-	PositionY float64         `json:"position_y"`
+	PositionX *float64        `json:"position_x"`
+	PositionY *float64        `json:"position_y"`
 }
 
 // CreateEdgeRequest creates a single new edge.
