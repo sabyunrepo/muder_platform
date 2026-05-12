@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useAuthStore, type User } from "../authStore";
 
 // ---------------------------------------------------------------------------
@@ -123,6 +123,21 @@ describe("authStore", () => {
       useAuthStore.getState().logout();
       expect(localStorage.getItem("mmp_refresh_token")).toBeNull();
     });
+
+    it("모듈 로드 시 저장 토큰이 있어도 refreshToken과 isLoading을 비운다", async () => {
+      vi.resetModules();
+      localStorage.setItem("mmp_refresh_token", "saved-refresh");
+      const { useAuthStore: loadedStore } = await import("../authStore");
+
+      expect(loadedStore.getState().refreshToken).toBe("saved-refresh");
+      expect(loadedStore.getState().isLoading).toBe(true);
+
+      loadedStore.getState().logout();
+
+      expect(loadedStore.getState().refreshToken).toBeNull();
+      expect(loadedStore.getState().isLoading).toBe(false);
+      expect(localStorage.getItem("mmp_refresh_token")).toBeNull();
+    });
   });
 
   describe("clear", () => {
@@ -142,6 +157,21 @@ describe("authStore", () => {
     it("localStorage에서 refreshToken을 제거한다", () => {
       useAuthStore.getState().setTokens("access-123", "refresh-456");
       useAuthStore.getState().clear();
+      expect(localStorage.getItem("mmp_refresh_token")).toBeNull();
+    });
+
+    it("모듈 로드 시 저장 토큰이 있어도 refreshToken과 isLoading을 비운다", async () => {
+      vi.resetModules();
+      localStorage.setItem("mmp_refresh_token", "saved-refresh");
+      const { useAuthStore: loadedStore } = await import("../authStore");
+
+      expect(loadedStore.getState().refreshToken).toBe("saved-refresh");
+      expect(loadedStore.getState().isLoading).toBe(true);
+
+      loadedStore.getState().clear();
+
+      expect(loadedStore.getState().refreshToken).toBeNull();
+      expect(loadedStore.getState().isLoading).toBe(false);
       expect(localStorage.getItem("mmp_refresh_token")).toBeNull();
     });
   });
