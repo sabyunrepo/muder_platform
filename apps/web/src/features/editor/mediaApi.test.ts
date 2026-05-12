@@ -687,4 +687,84 @@ describe("uploadMediaFile", () => {
       category_id: "category-1",
     });
   });
+
+  it("passes detected duration through the upload helper request", async () => {
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue(mockMedia);
+    const putFile = vi.fn().mockResolvedValue(undefined);
+
+    await uploadMediaFile({
+      themeId: THEME_ID,
+      file,
+      type: "BGM",
+      name: "song",
+      duration: 125,
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+      retryBaseDelayMs: 0,
+    });
+
+    expect(requestUploadUrl).toHaveBeenCalledWith({
+      name: "song",
+      type: "BGM",
+      mime_type: "audio/mpeg",
+      file_size: file.size,
+      duration: 125,
+      category_id: undefined,
+    });
+  });
+
+  it("rounds fractional upload duration before requesting an upload URL", async () => {
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue(mockMedia);
+    const putFile = vi.fn().mockResolvedValue(undefined);
+
+    await uploadMediaFile({
+      themeId: THEME_ID,
+      file,
+      type: "BGM",
+      name: "song",
+      duration: 125.6,
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+      retryBaseDelayMs: 0,
+    });
+
+    expect(requestUploadUrl).toHaveBeenCalledWith({
+      name: "song",
+      type: "BGM",
+      mime_type: "audio/mpeg",
+      file_size: file.size,
+      duration: 126,
+      category_id: undefined,
+    });
+  });
+
+  it("omits invalid upload duration before requesting an upload URL", async () => {
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue(mockMedia);
+    const putFile = vi.fn().mockResolvedValue(undefined);
+
+    await uploadMediaFile({
+      themeId: THEME_ID,
+      file,
+      type: "BGM",
+      name: "song",
+      duration: Number.NaN,
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+      retryBaseDelayMs: 0,
+    });
+
+    expect(requestUploadUrl).toHaveBeenCalledWith({
+      name: "song",
+      type: "BGM",
+      mime_type: "audio/mpeg",
+      file_size: file.size,
+      category_id: undefined,
+    });
+  });
 });

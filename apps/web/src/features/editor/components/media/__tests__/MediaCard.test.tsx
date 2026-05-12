@@ -1,8 +1,20 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MediaCard } from "../MediaCard";
 import type { MediaResponse } from "@/features/editor/mediaApi";
+
+const { useMediaDownloadUrlMock } = vi.hoisted(() => ({
+  useMediaDownloadUrlMock: vi.fn(),
+}));
+
+vi.mock("@/features/editor/mediaApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/editor/mediaApi")>();
+  return {
+    ...actual,
+    useMediaDownloadUrl: (mediaId?: string) => useMediaDownloadUrlMock(mediaId),
+  };
+});
 
 const baseMedia: MediaResponse = {
   id: "media-1",
@@ -18,6 +30,11 @@ const baseMedia: MediaResponse = {
   sort_order: 1,
   created_at: "2026-04-05T00:00:00Z",
 };
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
+});
 
 afterEach(() => cleanup());
 
@@ -48,12 +65,39 @@ describe("MediaCard", () => {
     const image = document.querySelector("img") as HTMLImageElement;
     expect(image).not.toBeNull();
     expect(image.getAttribute("src")).toBe("https://example.com/clue.webp");
+    expect(image.className).toContain("object-contain");
+    expect(image.parentElement?.className).toContain("aspect-square");
+    expect(image.parentElement?.className).toContain("w-24");
 
     fireEvent.error(image);
     expect(screen.getByLabelText("이미지")).toBeDefined();
   });
 
-  it("영상과 문서는 깨진 이미지 없이 타입별 fallback 아이콘을 표시한다", () => {
+  it("업로드 이미지는 임시 다운로드 URL로 preview를 보여준다", () => {
+    useMediaDownloadUrlMock.mockReturnValue({
+      data: { url: "https://download.example/clue.webp", expires_at: "2026-05-12T00:15:00Z" },
+      isLoading: false,
+      isError: false,
+    });
+
+    renderCard({
+      ...baseMedia,
+      id: "image-private-1",
+      name: "보관함 단서 사진",
+      type: "IMAGE",
+      url: undefined,
+      mime_type: "image/webp",
+    });
+
+    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith("image-private-1");
+
+    const image = document.querySelector("img") as HTMLImageElement;
+    expect(image).not.toBeNull();
+    expect(image.getAttribute("src")).toBe("https://download.example/clue.webp");
+    expect(image.className).toContain("object-contain");
+  });
+
+  it("비이미지 미디어는 같은 프리뷰 face 안에 타입별 아이콘을 표시한다", () => {
     const { rerender } = renderCard({
       ...baseMedia,
       id: "video-1",
@@ -63,7 +107,12 @@ describe("MediaCard", () => {
       mime_type: "video/mp4",
     });
 
+    expect(screen.getByTestId("media-preview-face")).toBeDefined();
+    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("aspect-square");
+    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("w-24");
     expect(screen.getByLabelText("영상")).toBeDefined();
+    expect(screen.getAllByText("영상").length).toBeGreaterThan(0);
+    expect(document.querySelector("img")).toBeNull();
     expect(screen.queryByRole("button", { name: "프리뷰 재생" })).toBeNull();
 
     rerender(
@@ -83,7 +132,10 @@ describe("MediaCard", () => {
       />,
     );
 
+    expect(screen.getByTestId("media-preview-face")).toBeDefined();
     expect(screen.getByLabelText("문서")).toBeDefined();
+    expect(screen.getAllByText("문서").length).toBeGreaterThan(0);
+    expect(document.querySelector("img")).toBeNull();
     expect(screen.queryByRole("button", { name: "프리뷰 재생" })).toBeNull();
   });
 
@@ -95,7 +147,7 @@ describe("MediaCard", () => {
     fireEvent.click(playButton);
 
     expect(onPreviewToggle).toHaveBeenCalledTimes(1);
-    expect(screen.getByText("배경음악")).toBeDefined();
+    expect(screen.getAllByText("배경음악").length).toBeGreaterThan(0);
     expect(screen.getByText("2:05")).toBeDefined();
   });
 });

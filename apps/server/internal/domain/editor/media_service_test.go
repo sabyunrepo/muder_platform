@@ -644,7 +644,25 @@ func assertMediaAppCode(t *testing.T, err error, want string) {
 	}
 }
 
-func TestMediaService_UpdateMedia_RejectsTypeChange(t *testing.T) {
+func TestMediaService_UpdateMedia_AllowsAudioTypeChange(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeBGM)
+
+	resp, err := svc.UpdateMedia(context.Background(), creatorID, mediaID, UpdateMediaRequest{
+		Name:      "relabel",
+		Type:      MediaTypeSFX,
+		Tags:      []string{},
+		SortOrder: 0,
+	})
+	if err != nil {
+		t.Fatalf("UpdateMedia audio type change: %v", err)
+	}
+	if resp.Type != MediaTypeSFX || q.media[mediaID].Type != MediaTypeSFX {
+		t.Fatalf("media type not changed to SFX: resp=%q stored=%q", resp.Type, q.media[mediaID].Type)
+	}
+}
+
+func TestMediaService_UpdateMedia_RejectsCrossGroupTypeChange(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	mediaID := seedMedia(q, themeID, MediaTypeBGM)
 
@@ -1900,6 +1918,53 @@ func TestMediaService_RequestUploadURL_ImageSuccess(t *testing.T) {
 	}
 }
 
+func TestMediaService_RequestUploadURL_AudioStoresDuration(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	duration := int32(125)
+
+	resp, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "opening.mp3",
+		Type:     MediaTypeBGM,
+		MimeType: "audio/mpeg",
+		FileSize: 1024,
+		Duration: &duration,
+	})
+	if err != nil {
+		t.Fatalf("RequestUpload BGM/mp3: %v", err)
+	}
+	created := q.media[resp.UploadID]
+	if !created.Duration.Valid || created.Duration.Int32 != duration {
+		t.Fatalf("expected audio duration %d, got %#v", duration, created.Duration)
+	}
+}
+
+func TestMediaService_RequestUploadURL_RejectsNegativeDuration(t *testing.T) {
+	svc, _, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	duration := int32(-1)
+
+	_, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "opening.mp3",
+		Type:     MediaTypeBGM,
+		MimeType: "audio/mpeg",
+		FileSize: 1024,
+		Duration: &duration,
+	})
+	if err == nil {
+		t.Fatal("expected negative duration to be rejected")
+	}
+	appErr, ok := err.(*apperror.AppError)
+	if !ok {
+		t.Fatalf("expected app error, got %T", err)
+	}
+	if appErr.Code != apperror.ErrValidation {
+		t.Fatalf("error code = %q, want %q", appErr.Code, apperror.ErrValidation)
+	}
+}
+
 func TestMediaService_ConfirmUpload_ImageMagicBytes(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	st := newFakeStorageProvider()
@@ -2576,6 +2641,10 @@ func TestUploadExtensionFor_ImageAndDocumentTypes(t *testing.T) {
 		{name: "jpeg image", mediaType: MediaTypeImage, mimeType: "image/jpeg", wantExt: ".jpg", wantOK: true},
 		{name: "webp image", mediaType: MediaTypeImage, mimeType: "image/webp", wantExt: ".webp", wantOK: true},
 		{name: "pdf document", mediaType: MediaTypeDocument, mimeType: "application/pdf", wantExt: ".pdf", wantOK: true},
+		{name: "wav audio", mediaType: MediaTypeBGM, mimeType: "audio/wav", wantExt: ".wav", wantOK: true},
+		{name: "wave audio", mediaType: MediaTypeBGM, mimeType: "audio/wave", wantExt: ".wav", wantOK: true},
+		{name: "x-wav audio", mediaType: MediaTypeBGM, mimeType: "audio/x-wav", wantExt: ".wav", wantOK: true},
+		{name: "vendor wave audio", mediaType: MediaTypeBGM, mimeType: "audio/vnd.wave", wantExt: ".wav", wantOK: true},
 		{name: "unsupported image", mediaType: MediaTypeImage, mimeType: "image/gif", wantOK: false},
 	}
 	for _, tt := range tests {
@@ -2655,6 +2724,7 @@ func TestValidateAudioMagicBytes(t *testing.T) {
 		{"MP3 ID3 tag", []byte("ID3\x04\x00"), "audio/mpeg", false},
 		{"OGG valid", []byte("OggS\x00\x00\x00\x00"), "audio/ogg", false},
 		{"WAV valid", []byte("RIFF\x00\x00\x00\x00WAVEfmt "), "audio/wav", false},
+		{"WAV alias valid", []byte("RIFF\x00\x00\x00\x00WAVEfmt "), "audio/x-wav", false},
 		{"MIME mismatch (MP3 as OGG)", []byte{0xFF, 0xFB, 0x00}, "audio/ogg", true},
 		{"Invalid header for MP3", []byte{0x00, 0x00, 0x00}, "audio/mpeg", true},
 		{"WAV without WAVE marker", []byte("RIFF\x00\x00\x00\x00AVIf"), "audio/wav", true},

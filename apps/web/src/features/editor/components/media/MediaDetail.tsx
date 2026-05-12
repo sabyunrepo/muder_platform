@@ -8,6 +8,7 @@ import {
   useUpdateMedia,
   type MediaReferenceInfo,
   type MediaResponse,
+  type MediaType,
   type UpdateMediaRequest,
 } from '@/features/editor/mediaApi';
 import { ApiHttpError } from '@/lib/api-error';
@@ -23,6 +24,9 @@ export interface MediaDetailProps {
   onClose: () => void;
 }
 
+const AUDIO_MEDIA_TYPES: MediaType[] = ['BGM', 'SFX', 'VOICE'];
+const PLAYABLE_MEDIA_TYPES: MediaType[] = ['BGM', 'SFX', 'VOICE', 'VIDEO'];
+
 // ---------------------------------------------------------------------------
 // MediaDetail
 // ---------------------------------------------------------------------------
@@ -32,9 +36,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const [tagsText, setTagsText] = useState((media.tags ?? []).join(', '));
   const [sortOrder, setSortOrder] = useState<number>(media.sort_order);
   const [categoryId, setCategoryId] = useState<string>(media.category_id ?? '');
-  const [duration, setDuration] = useState<string>(
-    media.duration != null ? String(media.duration) : ''
-  );
+  const [mediaType, setMediaType] = useState<MediaType>(media.type);
   const [referenceWarning, setReferenceWarning] = useState<MediaReferenceInfo[] | null>(null);
   const [replaceOpen, setReplaceOpen] = useState(false);
 
@@ -44,10 +46,10 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     setTagsText((media.tags ?? []).join(', '));
     setSortOrder(media.sort_order);
     setCategoryId(media.category_id ?? '');
-    setDuration(media.duration != null ? String(media.duration) : '');
+    setMediaType(media.type);
     setReferenceWarning(null);
     setReplaceOpen(false);
-  }, [media.id, media.name, media.tags, media.sort_order, media.category_id, media.duration]);
+  }, [media.id, media.name, media.tags, media.sort_order, media.category_id, media.type]);
 
   const updateMutation = useUpdateMedia(themeId);
   const deleteMutation = useDeleteMedia(themeId);
@@ -55,6 +57,10 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const { data: deletePreview, isLoading: deletePreviewLoading } = useMediaDeletePreview(media.id);
   const references = deletePreview?.references ?? [];
   const canReplaceFile = media.source_type === 'FILE' && media.type !== 'VIDEO';
+  const typeOptions = getEditableMediaTypeOptions(media.type);
+  const canChangeMediaType = typeOptions.length > 1;
+  const canShowDuration = PLAYABLE_MEDIA_TYPES.includes(mediaType);
+  const showCategorySelect = categories.length > 0 || Boolean(media.category_id);
 
   const handleSave = () => {
     const trimmedName = name.trim();
@@ -66,18 +72,12 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       .split(',')
       .map((t) => t.trim())
       .filter(Boolean);
-    const durationNum = duration.trim() ? Number(duration) : undefined;
-    if (durationNum != null && (!Number.isFinite(durationNum) || durationNum < 0)) {
-      toast.error('길이는 0 이상 숫자여야 합니다');
-      return;
-    }
     const patch: UpdateMediaRequest = {
       name: trimmedName,
-      type: media.type,
+      type: mediaType,
       sort_order: sortOrder,
       tags,
-      category_id: categoryId || undefined,
-      ...(durationNum != null ? { duration: durationNum } : {}),
+      ...(showCategorySelect ? { category_id: categoryId || undefined } : {}),
     };
     updateMutation.mutate(
       { id: media.id, patch },
@@ -150,41 +150,51 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              카테고리
-            </span>
-            <select
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
-            >
-              <option value="">전체</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
-              길이 (초)
-            </span>
-            <input
-              type="number"
-              min={0}
-              step="0.1"
-              value={duration}
-              onChange={(e) => setDuration(e.target.value)}
-              className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
-            />
-          </label>
-        </div>
+        {(showCategorySelect || canChangeMediaType) && (
+          <div className="grid grid-cols-2 gap-3">
+            {showCategorySelect && (
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
+                  카테고리
+                </span>
+                <select
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+                >
+                  <option value="">전체</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {canChangeMediaType && (
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
+                  분류
+                </span>
+                <select
+                  value={mediaType}
+                  onChange={(e) => setMediaType(e.target.value as MediaType)}
+                  className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+                >
+                  {typeOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {mediaTypeLabel(option)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
 
         <dl className="grid gap-2 rounded-sm border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs">
-          <MediaInfoRow label="분류" value={mediaTypeLabel(media.type)} />
+          {!canChangeMediaType && <MediaInfoRow label="분류" value={mediaTypeLabel(media.type)} />}
+          {canShowDuration && <MediaInfoRow label="길이" value={formatDurationInfo(media.duration)} />}
           <MediaInfoRow label="출처" value={mediaSourceLabel(media.source_type)} />
           {media.mime_type && <MediaInfoRow label="파일 형식" value={mimeTypeLabel(media.mime_type)} />}
           {media.file_size != null && (
@@ -337,6 +347,26 @@ function mediaTypeLabel(type: MediaResponse['type']): string {
   }
 }
 
+function getEditableMediaTypeOptions(type: MediaType): MediaType[] {
+  if (AUDIO_MEDIA_TYPES.includes(type)) {
+    return AUDIO_MEDIA_TYPES;
+  }
+  return [type];
+}
+
+function formatDurationInfo(duration: number | undefined): string {
+  if (duration == null || !Number.isFinite(duration) || duration < 0) {
+    return '자동 확인 안 됨';
+  }
+  const totalSeconds = Math.round(duration);
+  if (totalSeconds < 60) {
+    return `${totalSeconds}초`;
+  }
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds > 0 ? `${minutes}분 ${seconds}초` : `${minutes}분`;
+}
+
 function mediaSourceLabel(source: MediaResponse['source_type']): string {
   switch (source) {
     case 'FILE':
@@ -352,6 +382,9 @@ function mimeTypeLabel(mimeType: string): string {
   const labels: Record<string, string> = {
     'audio/mpeg': 'MP3',
     'audio/wav': 'WAV',
+    'audio/x-wav': 'WAV',
+    'audio/wave': 'WAV',
+    'audio/vnd.wave': 'WAV',
     'audio/ogg': 'OGG',
     'image/jpeg': 'JPEG',
     'image/png': 'PNG',

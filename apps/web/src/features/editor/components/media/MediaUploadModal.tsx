@@ -32,7 +32,8 @@ export interface MediaUploadModalProps {
 }
 
 const MAX_SIZE = 20 * 1024 * 1024;
-const AUDIO_MIME = ['audio/mpeg', 'audio/wav', 'audio/ogg'];
+const WAV_MIME = ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'];
+const AUDIO_MIME = ['audio/mpeg', ...WAV_MIME, 'audio/ogg'];
 const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp'];
 const DOCUMENT_MIME = ['application/pdf'];
 const MIME_BY_TYPE: Record<MediaType, string[]> = {
@@ -70,6 +71,8 @@ export function MediaUploadModal({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
+  const [metadataLoading, setMetadataLoading] = useState(false);
 
   const requestUrlMutation = useRequestUploadUrl(themeId);
   const confirmMutation = useConfirmUpload(themeId);
@@ -91,6 +94,7 @@ export function MediaUploadModal({
 
   // Abort controller for the in-flight upload. Re-created per upload attempt.
   const controllerRef = useRef<AbortController | null>(null);
+  const metadataLoadIdRef = useRef(0);
   // Guards setState after unmount or abort.
   const isMountedRef = useRef(true);
 
@@ -114,6 +118,8 @@ export function MediaUploadModal({
       setType(uploadableTypes[0]?.value ?? 'BGM');
       setProgress(0);
       setError(null);
+      setDurationSeconds(null);
+      setMetadataLoading(false);
       setUploading(false);
       setIsDragging(false);
     }
@@ -135,8 +141,20 @@ export function MediaUploadModal({
     setError(null);
     setFile(f);
     setType(nextType);
+    setDurationSeconds(null);
+    setMetadataLoading(false);
+    const loadId = metadataLoadIdRef.current + 1;
+    metadataLoadIdRef.current = loadId;
     const defaultName = f.name.replace(/\.[^.]+$/, '');
     setName((prev) => (prev ? prev : defaultName));
+    if (isPlayableUploadType(nextType)) {
+      setMetadataLoading(true);
+      extractMediaDurationSeconds(f).then((seconds) => {
+        if (!isMountedRef.current || metadataLoadIdRef.current !== loadId) return;
+        setDurationSeconds(seconds);
+        setMetadataLoading(false);
+      });
+    }
   };
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -179,6 +197,7 @@ export function MediaUploadModal({
         type,
         name: name || file.name,
         categoryId: categoryId ?? undefined,
+        duration: durationSeconds ?? undefined,
         requestUploadUrl: requestUrlMutation.mutateAsync,
         confirmUpload: confirmMutation.mutateAsync,
         onProgress: (p) => {
@@ -261,6 +280,11 @@ export function MediaUploadModal({
             <>
               <p className="text-sm text-slate-200">{file.name}</p>
               <p className="text-xs text-slate-400">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+              {isPlayableUploadType(type) && (
+                <p className="text-xs text-slate-500">
+                  길이 {metadataLoading ? '확인 중...' : formatDurationLabel(durationSeconds)}
+                </p>
+              )}
             </>
           ) : (
             <>
@@ -383,6 +407,52 @@ function inferUploadType(mimeType: string, allowedTypes: MediaType[]): MediaType
   return null;
 }
 
+function isPlayableUploadType(type: MediaType): boolean {
+  return type === 'BGM' || type === 'SFX' || type === 'VOICE' || type === 'VIDEO';
+}
+
+function extractMediaDurationSeconds(file: File): Promise<number | null> {
+  if (typeof URL === 'undefined' || typeof URL.createObjectURL !== 'function') {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const element = document.createElement(file.type.startsWith('video/') ? 'video' : 'audio');
+    const objectUrl = URL.createObjectURL(file);
+    let settled = false;
+
+    const cleanup = () => {
+      element.removeAttribute('src');
+      element.load();
+      URL.revokeObjectURL(objectUrl);
+    };
+    const finish = (duration: number | null) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      cleanup();
+      resolve(duration);
+    };
+    const timeout = window.setTimeout(() => finish(null), 2500);
+
+    element.preload = 'metadata';
+    element.onloadedmetadata = () => {
+      const duration = Number.isFinite(element.duration) ? Math.round(element.duration) : null;
+      finish(duration != null && duration >= 0 ? duration : null);
+    };
+    element.onerror = () => finish(null);
+    element.src = objectUrl;
+  });
+}
+
+function formatDurationLabel(duration: number | null): string {
+  if (duration == null) return '자동 확인 안 됨';
+  if (duration < 60) return `${duration}초`;
+  const minutes = Math.floor(duration / 60);
+  const seconds = duration % 60;
+  return seconds > 0 ? `${minutes}분 ${seconds}초` : `${minutes}분`;
+}
+
 function acceptedMimeTypesLabel(mimeTypes: string[]): string {
   return mimeTypes
     .map((mime) => {
@@ -390,6 +460,9 @@ function acceptedMimeTypesLabel(mimeTypes: string[]): string {
         case 'audio/mpeg':
           return 'MP3';
         case 'audio/wav':
+        case 'audio/x-wav':
+        case 'audio/wave':
+        case 'audio/vnd.wave':
           return 'WAV';
         case 'audio/ogg':
           return 'OGG';
@@ -405,5 +478,6 @@ function acceptedMimeTypesLabel(mimeTypes: string[]): string {
           return mime;
       }
     })
+    .filter((label, index, labels) => labels.indexOf(label) === index)
     .join(', ');
 }

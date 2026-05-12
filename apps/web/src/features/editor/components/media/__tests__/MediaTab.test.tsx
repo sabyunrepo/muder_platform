@@ -11,6 +11,7 @@ const {
   useCreateMediaCategoryMock,
   useDeleteMediaCategoryMock,
   useMediaDeletePreviewMock,
+  useMediaDownloadUrlMock,
   useUpdateMediaMock,
   useDeleteMediaMock,
   useRequestReplacementUploadMock,
@@ -26,6 +27,7 @@ const {
   useCreateMediaCategoryMock: vi.fn(),
   useDeleteMediaCategoryMock: vi.fn(),
   useMediaDeletePreviewMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
   useUpdateMediaMock: vi.fn(),
   useDeleteMediaMock: vi.fn(),
   useRequestReplacementUploadMock: vi.fn(),
@@ -43,6 +45,7 @@ vi.mock('@/features/editor/mediaApi', () => ({
   useCreateMediaCategory: () => useCreateMediaCategoryMock(),
   useDeleteMediaCategory: () => useDeleteMediaCategoryMock(),
   useMediaDeletePreview: (...args: unknown[]) => useMediaDeletePreviewMock(...args),
+  useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
   useUpdateMedia: () => useUpdateMediaMock(),
   useDeleteMedia: () => useDeleteMediaMock(),
   useRequestReplacementUpload: () => useRequestReplacementUploadMock(),
@@ -145,6 +148,7 @@ beforeEach(() => {
   useCreateMediaCategoryMock.mockReturnValue(mutationStub());
   useDeleteMediaCategoryMock.mockReturnValue(mutationStub());
   useMediaDeletePreviewMock.mockReturnValue({ data: { references: [] }, isLoading: false });
+  useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
   useUpdateMediaMock.mockReturnValue(mutationStub());
   useDeleteMediaMock.mockReturnValue(mutationStub());
   useRequestReplacementUploadMock.mockReturnValue(mutationStub());
@@ -194,6 +198,9 @@ describe('MediaTab', () => {
     });
 
     render(<MediaTab themeId="theme-1" />);
+    expect(screen.getByRole('list', { name: '미디어 목록' }).className).toContain(
+      'lg:grid-cols-3',
+    );
     expect(screen.getByText('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('문 닫는 소리')).toBeDefined();
     // Type badges render creator-facing labels on cards.
@@ -340,6 +347,9 @@ describe('MediaTab', () => {
     expect(screen.getByDisplayValue('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('분류')).toBeDefined();
     expect(screen.getAllByText('배경음악').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByLabelText('길이 (초)')).toBeNull();
+    expect(screen.getByText('길이')).toBeDefined();
+    expect(screen.getByText('2분 5초')).toBeDefined();
     expect(screen.getByText('출처')).toBeDefined();
     expect(screen.getByText('직접 업로드')).toBeDefined();
     expect(screen.getByText('파일 형식')).toBeDefined();
@@ -352,6 +362,69 @@ describe('MediaTab', () => {
     expect(screen.queryByText('size: 1234567 B')).toBeNull();
     expect(screen.getByText('아직 연결된 제작 요소가 없습니다.')).toBeDefined();
     expect(screen.getByRole('button', { name: '교체' })).toBeDefined();
+  });
+
+  it('오디오 미디어는 같은 오디오 묶음 안에서만 분류를 바꿔 저장한다', () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutate = vi.fn();
+    useUpdateMediaMock.mockReturnValue({
+      mutate,
+      mutateAsync: vi.fn(),
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    fireEvent.change(screen.getByLabelText('분류'), { target: { value: 'VOICE' } });
+    fireEvent.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(mutate).toHaveBeenCalledWith(
+      {
+        id: 'media-1',
+        patch: expect.objectContaining({
+          name: '오프닝 BGM',
+          type: 'VOICE',
+          sort_order: 1,
+        }),
+      },
+      expect.any(Object)
+    );
+    expect(mutate.mock.calls[0][0].patch).not.toHaveProperty('duration');
+  });
+
+  it('이미지 상세에는 길이와 분류 변경 입력을 표시하지 않는다', () => {
+    useMediaListMock.mockReturnValue({
+      data: [
+        {
+          id: 'media-image',
+          theme_id: 'theme-1',
+          name: '현장 사진',
+          type: 'IMAGE',
+          source_type: 'FILE',
+          duration: undefined,
+          file_size: 2048,
+          mime_type: 'image/png',
+          tags: [],
+          sort_order: 1,
+          created_at: '2026-04-05T00:00:00Z',
+        } satisfies MediaResponse,
+      ],
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByText('현장 사진').closest("[role='button']")!);
+
+    expect(screen.queryByLabelText('길이 (초)')).toBeNull();
+    expect(screen.queryByLabelText('분류')).toBeNull();
+    expect(screen.getAllByText('이미지').length).toBeGreaterThanOrEqual(1);
   });
 
   it('상세 패널은 삭제 전 사용 위치와 파일 교체 모달을 보여준다', () => {

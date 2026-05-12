@@ -125,6 +125,20 @@ describe('MediaUploadModal', () => {
     expect(screen.getByRole('alert').textContent).toContain('지원하지 않는 파일 형식입니다');
   });
 
+  it.each(['audio/wav', 'audio/wave', 'audio/x-wav', 'audio/vnd.wave'])(
+    'accepts browser WAV alias MIME type %s',
+    (mimeType) => {
+      renderModal(true);
+      const input = screen.getByTestId('media-upload-input') as HTMLInputElement;
+      const file = makeFile('effect.wav', 1024, mimeType);
+      fireEvent.change(input, { target: { files: [file] } });
+
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByText('effect.wav')).toBeTruthy();
+      expect((screen.getByLabelText('유형') as HTMLSelectElement).value).toBe('BGM');
+    },
+  );
+
   it('type select works', () => {
     renderModal(true);
     const input = screen.getByTestId('media-upload-input') as HTMLInputElement;
