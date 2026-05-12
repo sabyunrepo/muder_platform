@@ -180,6 +180,48 @@ describe('FlowCanvas', () => {
     expect(screen.queryByText('스토리 장면 구성')).toBeNull();
   });
 
+  it('legacy branch 노드는 진행 플로우 캔버스에 렌더링하지 않는다', () => {
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        {
+          id: 'scene-1',
+          type: 'phase',
+          position: { x: 0, y: 0 },
+          data: { label: '오프닝' },
+        },
+        {
+          id: 'branch-1',
+          type: 'branch',
+          position: { x: 100, y: 0 },
+          data: { label: '이전 분기' },
+        },
+      ],
+      edges: [{ id: 'e-scene-branch', source: 'scene-1', target: 'branch-1' }],
+      onNodesChange: vi.fn(),
+      onEdgesChange: vi.fn(),
+      onConnect: vi.fn(),
+      isLoading: false,
+      isSaving: false,
+      save: saveMock,
+      selectedNode: null,
+      addNode: vi.fn(),
+      updateNodeData: vi.fn(),
+      deleteNode: vi.fn(),
+      deleteEdge: vi.fn(),
+      connectNodes: vi.fn(),
+      duplicateNode: vi.fn(),
+      onSelectionChange: vi.fn(),
+      updateEdgeCondition: vi.fn(),
+      applyPreset: vi.fn(),
+    });
+
+    render(<FlowCanvas themeId="theme-1" />);
+
+    expect(screen.getByTestId('rf-node-scene-1')).toBeDefined();
+    expect(screen.queryByTestId('rf-node-branch-1')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'e-scene-branch 선택' })).toBeNull();
+  });
+
   it('모바일 우선 세로 레이아웃을 사용하고 데스크톱에서만 2열로 바뀐다', () => {
     render(<FlowCanvas themeId="theme-1" />);
     const workspace = screen.getByTestId('flow-workspace');

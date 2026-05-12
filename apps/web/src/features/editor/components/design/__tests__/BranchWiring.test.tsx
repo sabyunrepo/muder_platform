@@ -35,7 +35,7 @@ vi.mock("../../../hooks/useFlowData", () => ({
 // ---------------------------------------------------------------------------
 
 import { FlowCanvas } from "../FlowCanvas";
-import { branchNodeTypes, conditionEdgeTypes } from "../flowNodeRegistry";
+import { conditionEdgeTypes } from "../flowNodeRegistry";
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -61,6 +61,7 @@ const baseFlowData = {
   deleteNode: vi.fn(),
   deleteEdge: vi.fn(),
   connectNodes: vi.fn(),
+  duplicateNode: vi.fn(),
   onSelectionChange: vi.fn(),
   updateEdgeCondition: vi.fn(),
   applyPreset: vi.fn(),
@@ -82,16 +83,6 @@ const validCondition = {
 
 beforeEach(() => {
   useFlowDataMock.mockReturnValue(baseFlowData);
-});
-
-// ---------------------------------------------------------------------------
-// Task 1: nodeTypes에 branch 키 존재 확인
-// ---------------------------------------------------------------------------
-
-describe("branchNodeTypes", () => {
-  it("nodeTypes에 branch 키가 존재한다", () => {
-    expect(branchNodeTypes).toHaveProperty("branch");
-  });
 });
 
 // ---------------------------------------------------------------------------
@@ -211,7 +202,7 @@ describe("useEdgeCondition", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 4: NodeDetailPanel에 edges, onEdgeConditionChange props 전달
+// Task 4: FlowCanvas가 연결 편집 상태를 정상 연결
 // ---------------------------------------------------------------------------
 
 describe("FlowCanvas branch wiring", () => {

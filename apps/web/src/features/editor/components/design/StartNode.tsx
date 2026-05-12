@@ -12,7 +12,7 @@ export function StartNode(_props: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!bg-emerald-400"
+        className="!h-4 !w-4 !border-2 !border-slate-900 !bg-emerald-300"
       />
     </div>
   );

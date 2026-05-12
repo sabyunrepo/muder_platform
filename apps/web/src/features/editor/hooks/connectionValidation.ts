@@ -8,9 +8,9 @@ type FlowNodeType = "start" | "phase" | "branch" | "ending";
 
 // Allowed outgoing targets per node type
 const ALLOWED_TARGETS: Record<FlowNodeType, FlowNodeType[]> = {
-  start: ["phase", "branch"],
-  phase: ["phase", "branch", "ending"],
-  branch: ["phase", "branch", "ending"],
+  start: ["phase"],
+  phase: ["phase", "ending"],
+  branch: [],
   ending: [],
 };
 

@@ -116,7 +116,12 @@ export function useFlowData(themeId: string) {
   );
   const onConnect: OnConnect = useCallback(
     (connection) => {
-      const next = addEdge({ id: createFlowEdgeId(), ...connection }, edgesRef.current);
+      if (!connection.source || !connection.target) return;
+      const preservedEdges = edgesRef.current.filter((edge) => edge.source !== connection.source);
+      const next = addEdge(
+        { id: createFlowEdgeId(), type: 'condition', ...connection },
+        preservedEdges
+      );
       setEdgesAndRef(next);
       autoSave(nodesRef.current, next);
     },
@@ -125,9 +130,10 @@ export function useFlowData(themeId: string) {
 
   const connectNodes = useCallback(
     (sourceId: string, targetId: string) => {
+      const preservedEdges = edgesRef.current.filter((edge) => edge.source !== sourceId);
       const next = addEdge(
         { id: createFlowEdgeId(), source: sourceId, target: targetId, type: 'condition' },
-        edgesRef.current
+        preservedEdges
       );
       setEdgesAndRef(next);
       autoSave(nodesRef.current, next);
@@ -149,6 +155,34 @@ export function useFlowData(themeId: string) {
           data: { ...defaultData, ...data },
           position_x: position.x,
           position_y: position.y,
+        },
+        {
+          onSuccess: (created) => {
+            const next = [...nodesRef.current, toReactFlowNode(created)];
+            setNodesAndRef(next);
+            autoSave(next, edgesRef.current);
+          },
+        }
+      );
+    },
+    [createNode, setNodesAndRef, autoSave]
+  );
+
+  const duplicateNode = useCallback(
+    (id: string) => {
+      const source = nodesRef.current.find((node) => node.id === id);
+      if (!source || source.type === 'start' || source.type === 'ending' || source.type === 'branch') {
+        return;
+      }
+      const label = typeof source.data?.label === 'string' && source.data.label.trim()
+        ? `${source.data.label.trim()} 복사본`
+        : '새 장면 복사본';
+      createNode.mutate(
+        {
+          type: (source.type ?? 'phase') as FlowNodeType,
+          data: { ...source.data, label },
+          position_x: source.position.x + 80,
+          position_y: source.position.y + 60,
         },
         {
           onSuccess: (created) => {
@@ -224,6 +258,7 @@ export function useFlowData(themeId: string) {
     save,
     selectedNode,
     addNode,
+    duplicateNode,
     updateNodeData,
     deleteNode,
     deleteEdge,

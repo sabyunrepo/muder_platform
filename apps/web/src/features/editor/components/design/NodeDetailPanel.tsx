@@ -1,7 +1,6 @@
-import { Trash2 } from "lucide-react";
+import { Copy, Trash2 } from "lucide-react";
 import type { Node, Edge } from "@xyflow/react";
 import { PhaseNodePanel } from "./PhaseNodePanel";
-import { BranchNodePanel } from "./BranchNodePanel";
 import { NodeConnectionPanel } from "./NodeConnectionPanel";
 import type { FlowNodeData } from "../../flowTypes";
 
@@ -14,11 +13,11 @@ interface NodeDetailPanelProps {
   themeId: string;
   onUpdate: (id: string, data: Partial<FlowNodeData>) => void;
   onDelete: (id: string) => void;
+  onDuplicate?: (id: string) => void;
   nodes?: Node[];
   edges?: Edge[];
   onConnectNodes?: (sourceId: string, targetId: string) => void;
   onDeleteEdge?: (edgeId: string) => void;
-  onEdgeConditionChange?: (edgeId: string, condition: Record<string, unknown>) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -30,11 +29,11 @@ export function NodeDetailPanel({
   themeId,
   onUpdate,
   onDelete,
+  onDuplicate,
   nodes = [],
   edges = [],
   onConnectNodes,
   onDeleteEdge,
-  onEdgeConditionChange,
 }: NodeDetailPanelProps) {
   if (!node) {
     return (
@@ -46,14 +45,7 @@ export function NodeDetailPanel({
 
   const isStart = node.type === "start";
   const canEditConnections =
-    node.type === "start" || node.type === "phase" || node.type === "branch";
-
-  const handleEdgeConditionChange = (
-    edgeId: string,
-    condition: Record<string, unknown>,
-  ) => {
-    onEdgeConditionChange?.(edgeId, condition);
-  };
+    node.type === "start" || node.type === "phase";
 
   return (
     <div className="min-h-full">
@@ -67,14 +59,6 @@ export function NodeDetailPanel({
           </div>
         ) : node.type === "phase" ? (
           <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} edges={edges} />
-        ) : node.type === "branch" ? (
-          <BranchNodePanel
-            node={node}
-            themeId={themeId}
-            onUpdate={onUpdate}
-            edges={edges}
-            onEdgeConditionChange={handleEdgeConditionChange}
-          />
         ) : (
           <div className="flex h-full items-center justify-center p-4">
             <span className="text-xs text-slate-500">
@@ -96,10 +80,23 @@ export function NodeDetailPanel({
 
       {/* Delete button — start 노드 제외 */}
       {!isStart && (
-        <div className="border-t border-slate-800 p-3">
+        <div className="space-y-2 border-t border-slate-800 p-3">
+          {node.type === "phase" && onDuplicate && (
+            <button
+              type="button"
+              onClick={() => onDuplicate(node.id)}
+              className="flex w-full items-center justify-center gap-1.5 rounded border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-200"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              장면 복제
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => onDelete(node.id)}
+            onClick={() => {
+              if (!window.confirm("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.")) return;
+              onDelete(node.id);
+            }}
             className="flex w-full items-center justify-center gap-1.5 rounded border border-red-800 bg-red-950/30 px-3 py-1.5 text-xs text-red-400 transition-colors hover:border-red-600 hover:bg-red-900/30"
           >
             <Trash2 className="h-3.5 w-3.5" />

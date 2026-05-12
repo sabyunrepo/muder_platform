@@ -21,7 +21,11 @@ export function PhaseNode({
           : "border-slate-700"
       }`}
     >
-      <Handle type="target" position={Position.Top} className="!bg-slate-500" />
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!h-4 !w-4 !border-2 !border-slate-900 !bg-slate-400"
+      />
 
       <div className="flex items-center gap-2">
         <Layers className="h-4 w-4 shrink-0 text-amber-400" />
@@ -46,7 +50,7 @@ export function PhaseNode({
       <Handle
         type="source"
         position={Position.Bottom}
-        className="!bg-slate-500"
+        className="!h-4 !w-4 !border-2 !border-slate-900 !bg-slate-400"
       />
     </div>
   );
