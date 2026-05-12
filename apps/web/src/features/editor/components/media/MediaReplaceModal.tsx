@@ -27,10 +27,12 @@ interface MediaReplaceModalProps {
 }
 
 const MAX_SIZE = 20 * 1024 * 1024;
+const WAV_MIME = ["audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"];
+const AUDIO_MIME = ["audio/mpeg", ...WAV_MIME, "audio/ogg"];
 const MIME_BY_TYPE: Record<MediaType, string[]> = {
-  BGM: ["audio/mpeg", "audio/wav", "audio/ogg"],
-  SFX: ["audio/mpeg", "audio/wav", "audio/ogg"],
-  VOICE: ["audio/mpeg", "audio/wav", "audio/ogg"],
+  BGM: AUDIO_MIME,
+  SFX: AUDIO_MIME,
+  VOICE: AUDIO_MIME,
   IMAGE: ["image/jpeg", "image/png", "image/webp"],
   DOCUMENT: ["application/pdf"],
   VIDEO: [],
@@ -310,5 +312,22 @@ function formatFileSize(bytes: number): string {
 }
 
 function acceptedMimeTypesLabel(mimeTypes: string[]): string {
-  return mimeTypes.map((mime) => mime.split("/")[1]?.toUpperCase() ?? mime).join(", ");
+  return mimeTypes
+    .map((mime) => {
+      switch (mime) {
+        case "audio/mpeg":
+          return "MP3";
+        case "audio/ogg":
+          return "OGG";
+        case "audio/vnd.wave":
+        case "audio/wav":
+        case "audio/wave":
+        case "audio/x-wav":
+          return "WAV";
+        default:
+          return mime.split("/")[1]?.toUpperCase() ?? mime;
+      }
+    })
+    .filter((label, index, labels) => labels.indexOf(label) === index)
+    .join(", ");
 }

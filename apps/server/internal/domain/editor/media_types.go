@@ -26,9 +26,12 @@ const (
 
 // AllowedAudioMIMEs defines allowed MIME types for audio files.
 var AllowedAudioMIMEs = map[string]string{
-	"audio/mpeg": ".mp3",
-	"audio/ogg":  ".ogg",
-	"audio/wav":  ".wav",
+	"audio/mpeg":     ".mp3",
+	"audio/ogg":      ".ogg",
+	"audio/vnd.wave": ".wav",
+	"audio/wav":      ".wav",
+	"audio/wave":     ".wav",
+	"audio/x-wav":    ".wav",
 }
 
 // AllowedDocumentMIMEs defines allowed MIME types for document role sheets.
@@ -47,6 +50,7 @@ type RequestMediaUploadRequest struct {
 	Type       string     `json:"type" validate:"required,oneof=BGM SFX VOICE VIDEO DOCUMENT IMAGE"`
 	MimeType   string     `json:"mime_type" validate:"required"`
 	FileSize   int64      `json:"file_size" validate:"required,min=1"`
+	Duration   *int32     `json:"duration,omitempty" validate:"omitempty,min=0"`
 	CategoryID *uuid.UUID `json:"category_id,omitempty"`
 }
 

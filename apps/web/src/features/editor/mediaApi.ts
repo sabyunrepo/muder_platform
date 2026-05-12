@@ -31,6 +31,7 @@ export interface RequestUploadUrlRequest {
   type: MediaType;
   mime_type: string;
   file_size: number;
+  duration?: number;
   category_id?: string;
 }
 
@@ -344,6 +345,7 @@ export interface UploadMediaFileParams {
   type: MediaType;
   name: string;
   categoryId?: string;
+  duration?: number;
   requestUploadUrl: (
     req: RequestUploadUrlRequest,
   ) => Promise<UploadUrlResponse>;
@@ -377,6 +379,7 @@ export async function uploadMediaFile(
     name,
     requestUploadUrl,
     confirmUpload,
+    duration,
     onProgress,
     signal,
     putFile = defaultPutFile,
@@ -394,6 +397,7 @@ export async function uploadMediaFile(
     type,
     mime_type: effectiveMimeType,
     file_size: file.size,
+    ...(duration != null ? { duration } : {}),
     category_id: params.categoryId,
   });
 

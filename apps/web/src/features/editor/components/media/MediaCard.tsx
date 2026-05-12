@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pause, Play, Youtube } from "lucide-react";
-import type { MediaResponse } from "@/features/editor/mediaApi";
+import { useMediaDownloadUrl, type MediaResponse } from "@/features/editor/mediaApi";
 import {
   canPlayInlinePreview,
   getMediaThumbnailUrl,
@@ -36,6 +36,25 @@ function formatDuration(seconds?: number): string | null {
   return `${mm}:${ss.toString().padStart(2, "0")}`;
 }
 
+function getPreviewSurfaceClass(type: MediaResponse["type"]): string {
+  switch (type) {
+    case "BGM":
+      return "border-amber-500/25 bg-amber-500/10 text-amber-200";
+    case "SFX":
+      return "border-cyan-500/25 bg-cyan-500/10 text-cyan-200";
+    case "VOICE":
+      return "border-emerald-500/25 bg-emerald-500/10 text-emerald-200";
+    case "VIDEO":
+      return "border-rose-500/25 bg-rose-500/10 text-rose-200";
+    case "DOCUMENT":
+      return "border-violet-500/25 bg-violet-500/10 text-violet-200";
+    case "IMAGE":
+      return "border-teal-500/25 bg-teal-500/10 text-teal-200";
+    default:
+      return "border-slate-600/40 bg-slate-800/70 text-slate-200";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // MediaCard
 // ---------------------------------------------------------------------------
@@ -52,7 +71,16 @@ export function MediaCard({
 }: MediaCardProps) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const isYouTube = media.source_type === "YOUTUBE";
-  const thumbnailUrl = getMediaThumbnailUrl(media);
+  const shouldLoadFileImagePreview =
+    media.type === "IMAGE" && media.source_type === "FILE" && !media.url;
+  const { data: fileImagePreview } = useMediaDownloadUrl(
+    shouldLoadFileImagePreview ? media.id : undefined,
+  );
+  const thumbnailUrl = getMediaThumbnailUrl({
+    ...media,
+    url: media.url ?? fileImagePreview?.url,
+  });
+  const shouldRenderImagePreview = media.type === "IMAGE" && thumbnailUrl && !thumbnailFailed;
   const duration = formatDuration(media.duration);
   const badgeClass = getMediaTypeBadgeClass(media.type);
   const badgeLabel = getMediaTypeBadgeLabel(media.type);
@@ -97,17 +125,25 @@ export function MediaCard({
       )}
 
       {/* Thumbnail */}
-      <div className="relative flex aspect-[4/3] min-h-28 items-center justify-center bg-slate-950/60">
-        {thumbnailUrl && !thumbnailFailed ? (
+      <div className="relative mx-auto mt-2 flex aspect-square w-24 items-center justify-center bg-slate-950/70 p-2 sm:w-28">
+        {shouldRenderImagePreview ? (
           <img
             src={thumbnailUrl}
             alt=""
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
             loading="lazy"
             onError={() => setThumbnailFailed(true)}
           />
         ) : (
-          <MediaTypeIcon type={media.type} />
+          <div
+            data-testid="media-preview-face"
+            className={`flex h-full w-full flex-col items-center justify-center gap-1 rounded-sm border ${getPreviewSurfaceClass(
+              media.type,
+            )}`}
+          >
+            <MediaTypeIcon type={media.type} />
+            <span className="text-[10px] font-semibold">{badgeLabel}</span>
+          </div>
         )}
 
         {/* YouTube overlay */}

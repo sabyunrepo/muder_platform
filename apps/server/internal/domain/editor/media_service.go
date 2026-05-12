@@ -256,6 +256,7 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 
 	mediaID := uuid.New()
 	storageKey := fmt.Sprintf("themes/%s/media/%s%s", themeID.String(), mediaID.String(), ext)
+	duration := mediaUploadDurationParam(req.Type, req.Duration)
 
 	created, err := s.q.CreateMedia(ctx, db.CreateMediaParams{
 		ThemeID:    themeID,
@@ -264,7 +265,7 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 		SourceType: SourceTypeFile,
 		Url:        pgtype.Text{},
 		StorageKey: pgtype.Text{String: storageKey, Valid: true},
-		Duration:   pgtype.Int4{},
+		Duration:   duration,
 		FileSize:   pgtype.Int8{Int64: req.FileSize, Valid: true},
 		MimeType:   pgtype.Text{String: req.MimeType, Valid: true},
 		Tags:       []string{},
@@ -293,6 +294,18 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 		UploadURL: uploadURL,
 		ExpiresAt: time.Now().Add(expiry),
 	}, nil
+}
+
+func mediaUploadDurationParam(mediaType string, duration *int32) pgtype.Int4 {
+	if duration == nil || *duration < 0 {
+		return pgtype.Int4{}
+	}
+	switch mediaType {
+	case MediaTypeBGM, MediaTypeSFX, MediaTypeVoice, MediaTypeVideo:
+		return pgtype.Int4{Int32: *duration, Valid: true}
+	default:
+		return pgtype.Int4{}
+	}
 }
 
 // --- ConfirmUpload ---
@@ -456,8 +469,8 @@ func (s *mediaService) UpdateMedia(ctx context.Context, creatorID, mediaID uuid.
 		return nil, apperror.Internal("failed to get media")
 	}
 
-	if req.Type != media.Type {
-		return nil, apperror.New(apperror.ErrMediaInvalidType, 422, "media type cannot be changed")
+	if !canUpdateMediaType(media.Type, req.Type) {
+		return nil, apperror.New(apperror.ErrMediaInvalidType, 422, "media type cannot be changed outside the same media group")
 	}
 
 	tags := req.Tags
@@ -493,6 +506,28 @@ func (s *mediaService) UpdateMedia(ctx context.Context, creatorID, mediaID uuid.
 
 	resp := toMediaResponse(updated)
 	return &resp, nil
+}
+
+func canUpdateMediaType(current, next string) bool {
+	if current == next {
+		return true
+	}
+	return mediaTypeGroup(current) == "audio" && mediaTypeGroup(next) == "audio"
+}
+
+func mediaTypeGroup(mediaType string) string {
+	switch mediaType {
+	case MediaTypeBGM, MediaTypeSFX, MediaTypeVoice:
+		return "audio"
+	case MediaTypeVideo:
+		return "video"
+	case MediaTypeImage:
+		return "image"
+	case MediaTypeDocument:
+		return "document"
+	default:
+		return ""
+	}
 }
 
 // --- GetEditorMediaDownloadURL ---
@@ -718,7 +753,7 @@ func validateAudioMagicBytes(header []byte, declaredMime string) error {
 		if len(header) >= 4 && string(header[:4]) == "OggS" {
 			return nil
 		}
-	case "audio/wav":
+	case "audio/vnd.wave", "audio/wav", "audio/wave", "audio/x-wav":
 		if len(header) >= 12 && string(header[:4]) == "RIFF" && string(header[8:12]) == "WAVE" {
 			return nil
 		}
