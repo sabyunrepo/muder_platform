@@ -6,6 +6,9 @@ import type {
 } from "../flowTypes";
 import { isCompleteConditionGroupRecord } from "../components/design/condition/conditionTypes";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const nonUuidEdgeIdMap = new Map<string, string>();
+
 // ---------------------------------------------------------------------------
 // Converters: server ↔ ReactFlow
 // ---------------------------------------------------------------------------
@@ -39,7 +42,7 @@ export function toSaveRequest(nodes: Node[], edges: Edge[]): SaveFlowRequest {
       position_y: n.position.y,
     })),
     edges: edges.map((e, i) => ({
-      id: e.id,
+      id: toPersistableEdgeId(e.id),
       source_id: e.source,
       target_id: e.target,
       condition: toPersistedCondition(e.data),
@@ -47,6 +50,19 @@ export function toSaveRequest(nodes: Node[], edges: Edge[]): SaveFlowRequest {
       sort_order: i,
     })),
   };
+}
+
+function toPersistableEdgeId(id: string): string {
+  if (UUID_RE.test(id)) {
+    return id;
+  }
+  const cached = nonUuidEdgeIdMap.get(id);
+  if (cached) {
+    return cached;
+  }
+  const next = crypto.randomUUID();
+  nonUuidEdgeIdMap.set(id, next);
+  return next;
 }
 
 function toPersistedCondition(data: Edge["data"]): Record<string, unknown> | null {

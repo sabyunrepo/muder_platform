@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import { toReactFlowNode, toReactFlowEdge, toSaveRequest } from "../flowConverters";
 import type { FlowNodeResponse, FlowEdgeResponse } from "../../flowTypes";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 const baseNode: FlowNodeResponse = {
   id: "node-1",
   theme_id: "theme-1",
@@ -78,6 +80,31 @@ describe("toSaveRequest", () => {
     expect(req.edges[0].source_id).toBe("node-1");
     expect(req.edges[0].target_id).toBe("node-2");
     expect(req.edges[0].sort_order).toBe(0);
+  });
+
+  it("React Flow 임시 edge id는 서버 저장 가능한 UUID로 보정한다", () => {
+    const rfNode = toReactFlowNode(baseNode);
+    const rfEdge = {
+      ...toReactFlowEdge(baseEdge),
+      id: "xy-edge__node-1-node-2",
+    };
+    const req = toSaveRequest([rfNode], [rfEdge]);
+
+    expect(req.edges[0].id).toMatch(UUID_RE);
+  });
+
+  it("React Flow 임시 edge id 보정값은 같은 세션에서 안정적으로 유지한다", () => {
+    const rfNode = toReactFlowNode(baseNode);
+    const makeRfEdge = () => ({
+      ...toReactFlowEdge(baseEdge),
+      id: "xy-edge__node-1-node-2-stable",
+    });
+
+    const first = toSaveRequest([rfNode], [makeRfEdge()]);
+    const second = toSaveRequest([rfNode], [makeRfEdge()]);
+
+    expect(first.edges[0].id).toMatch(UUID_RE);
+    expect(second.edges[0].id).toBe(first.edges[0].id);
   });
 
   it("완성된 조건만 저장 요청에 포함한다", () => {
