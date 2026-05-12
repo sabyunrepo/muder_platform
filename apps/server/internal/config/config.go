@@ -14,7 +14,7 @@ type Config struct {
 	LogLevel     string `env:"LOG_LEVEL" default:"debug"`
 	DatabaseURL  string `env:"DATABASE_URL" required:"true"`
 	RedisURL     string `env:"REDIS_URL" required:"true"`
-	CORSOrigins  string `env:"CORS_ORIGINS" default:"http://localhost:3000,http://localhost:5173"`
+	CORSOrigins  string `env:"CORS_ORIGINS" default:"http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173"`
 	BaseURL      string `env:"BASE_URL" default:"http://localhost:5173"`
 	JWTSecret    string `env:"JWT_SECRET" default:"dev-secret-change-me"`
 	SentryDSN    string `env:"SENTRY_DSN" default:""`
