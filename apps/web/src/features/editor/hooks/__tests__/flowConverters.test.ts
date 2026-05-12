@@ -95,13 +95,13 @@ describe("toSaveRequest", () => {
 
   it("React Flow 임시 edge id 보정값은 같은 세션에서 안정적으로 유지한다", () => {
     const rfNode = toReactFlowNode(baseNode);
-    const rfEdge = {
+    const makeRfEdge = () => ({
       ...toReactFlowEdge(baseEdge),
       id: "xy-edge__node-1-node-2-stable",
-    };
+    });
 
-    const first = toSaveRequest([rfNode], [rfEdge]);
-    const second = toSaveRequest([rfNode], [rfEdge]);
+    const first = toSaveRequest([rfNode], [makeRfEdge()]);
+    const second = toSaveRequest([rfNode], [makeRfEdge()]);
 
     expect(first.edges[0].id).toMatch(UUID_RE);
     expect(second.edges[0].id).toBe(first.edges[0].id);
