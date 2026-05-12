@@ -199,7 +199,7 @@ describe('MediaTab', () => {
 
     render(<MediaTab themeId="theme-1" />);
     expect(screen.getByRole('list', { name: '미디어 목록' }).className).toContain(
-      'grid-cols-[repeat(auto-fill,minmax(10rem,12rem))]',
+      'lg:grid-cols-3',
     );
     expect(screen.getByText('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('문 닫는 소리')).toBeDefined();

@@ -304,7 +304,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
             </div>
           ) : (
             <div
-              className="grid grid-cols-[repeat(auto-fill,minmax(10rem,12rem))] gap-3"
+              className="grid max-w-[39rem] grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3"
               role="list"
               aria-label="미디어 목록"
             >

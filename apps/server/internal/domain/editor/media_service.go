@@ -256,7 +256,10 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 
 	mediaID := uuid.New()
 	storageKey := fmt.Sprintf("themes/%s/media/%s%s", themeID.String(), mediaID.String(), ext)
-	duration := mediaUploadDurationParam(req.Type, req.Duration)
+	duration, err := mediaUploadDurationParam(req.Type, req.Duration)
+	if err != nil {
+		return nil, err
+	}
 
 	created, err := s.q.CreateMedia(ctx, db.CreateMediaParams{
 		ThemeID:    themeID,
@@ -296,15 +299,22 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 	}, nil
 }
 
-func mediaUploadDurationParam(mediaType string, duration *int32) pgtype.Int4 {
-	if duration == nil || *duration < 0 {
-		return pgtype.Int4{}
+func mediaUploadDurationParam(mediaType string, duration *int32) (pgtype.Int4, error) {
+	if duration == nil {
+		return pgtype.Int4{}, nil
+	}
+	if *duration < 0 {
+		return pgtype.Int4{}, apperror.Validation("media duration must be non-negative", []apperror.FieldError{{
+			Field:   "duration",
+			Message: "duration must be greater than or equal to 0",
+			Code:    "invalid_range",
+		}})
 	}
 	switch mediaType {
 	case MediaTypeBGM, MediaTypeSFX, MediaTypeVoice, MediaTypeVideo:
-		return pgtype.Int4{Int32: *duration, Valid: true}
+		return pgtype.Int4{Int32: *duration, Valid: true}, nil
 	default:
-		return pgtype.Int4{}
+		return pgtype.Int4{}, nil
 	}
 }
 

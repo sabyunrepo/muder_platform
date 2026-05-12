@@ -143,11 +143,11 @@ export function MediaUploadModal({
     setType(nextType);
     setDurationSeconds(null);
     setMetadataLoading(false);
+    const loadId = metadataLoadIdRef.current + 1;
+    metadataLoadIdRef.current = loadId;
     const defaultName = f.name.replace(/\.[^.]+$/, '');
     setName((prev) => (prev ? prev : defaultName));
     if (isPlayableUploadType(nextType)) {
-      const loadId = metadataLoadIdRef.current + 1;
-      metadataLoadIdRef.current = loadId;
       setMetadataLoading(true);
       extractMediaDurationSeconds(f).then((seconds) => {
         if (!isMountedRef.current || metadataLoadIdRef.current !== loadId) return;

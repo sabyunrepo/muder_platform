@@ -365,6 +365,13 @@ export interface UploadMediaFileParams {
 const sleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+const normalizeUploadDuration = (duration: number | undefined) => {
+  if (duration == null || !Number.isFinite(duration) || duration < 0) {
+    return undefined;
+  }
+  return Math.round(duration);
+};
+
 /**
  * Three-step media upload: request presigned URL → PUT file → confirm.
  * Retries the PUT step up to maxAttempts on network errors with exponential
@@ -390,6 +397,7 @@ export async function uploadMediaFile(
 
   const effectiveMimeType =
     (mimeType ?? file.type) || "application/octet-stream";
+  const normalizedDuration = normalizeUploadDuration(duration);
 
   // Step 1: request presigned URL
   const uploadUrl = await requestUploadUrl({
@@ -397,7 +405,7 @@ export async function uploadMediaFile(
     type,
     mime_type: effectiveMimeType,
     file_size: file.size,
-    ...(duration != null ? { duration } : {}),
+    ...(normalizedDuration != null ? { duration: normalizedDuration } : {}),
     category_id: params.categoryId,
   });
 

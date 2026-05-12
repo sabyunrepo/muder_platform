@@ -1940,6 +1940,31 @@ func TestMediaService_RequestUploadURL_AudioStoresDuration(t *testing.T) {
 	}
 }
 
+func TestMediaService_RequestUploadURL_RejectsNegativeDuration(t *testing.T) {
+	svc, _, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	duration := int32(-1)
+
+	_, err := svc.RequestUpload(context.Background(), creatorID, themeID, RequestMediaUploadRequest{
+		Name:     "opening.mp3",
+		Type:     MediaTypeBGM,
+		MimeType: "audio/mpeg",
+		FileSize: 1024,
+		Duration: &duration,
+	})
+	if err == nil {
+		t.Fatal("expected negative duration to be rejected")
+	}
+	appErr, ok := err.(*apperror.AppError)
+	if !ok {
+		t.Fatalf("expected app error, got %T", err)
+	}
+	if appErr.Code != apperror.ErrValidation {
+		t.Fatalf("error code = %q, want %q", appErr.Code, apperror.ErrValidation)
+	}
+}
+
 func TestMediaService_ConfirmUpload_ImageMagicBytes(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	st := newFakeStorageProvider()
@@ -2616,7 +2641,10 @@ func TestUploadExtensionFor_ImageAndDocumentTypes(t *testing.T) {
 		{name: "jpeg image", mediaType: MediaTypeImage, mimeType: "image/jpeg", wantExt: ".jpg", wantOK: true},
 		{name: "webp image", mediaType: MediaTypeImage, mimeType: "image/webp", wantExt: ".webp", wantOK: true},
 		{name: "pdf document", mediaType: MediaTypeDocument, mimeType: "application/pdf", wantExt: ".pdf", wantOK: true},
-		{name: "wav alias audio", mediaType: MediaTypeBGM, mimeType: "audio/x-wav", wantExt: ".wav", wantOK: true},
+		{name: "wav audio", mediaType: MediaTypeBGM, mimeType: "audio/wav", wantExt: ".wav", wantOK: true},
+		{name: "wave audio", mediaType: MediaTypeBGM, mimeType: "audio/wave", wantExt: ".wav", wantOK: true},
+		{name: "x-wav audio", mediaType: MediaTypeBGM, mimeType: "audio/x-wav", wantExt: ".wav", wantOK: true},
+		{name: "vendor wave audio", mediaType: MediaTypeBGM, mimeType: "audio/vnd.wave", wantExt: ".wav", wantOK: true},
 		{name: "unsupported image", mediaType: MediaTypeImage, mimeType: "image/gif", wantOK: false},
 	}
 	for _, tt := range tests {
