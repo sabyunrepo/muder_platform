@@ -74,30 +74,33 @@ func (s *serviceImpl) SaveFlow(ctx context.Context, creatorID, themeID uuid.UUID
 		return nil, apperror.Internal("failed to clear nodes")
 	}
 
-	// Insert nodes and build id map (client id → db id)
-	idMap := make(map[uuid.UUID]uuid.UUID, len(req.Nodes))
+	// Insert nodes using client-provided IDs when available. The editor keeps
+	// those IDs in local state and may PATCH a node immediately after autosave.
 	nodes := make([]FlowNode, 0, len(req.Nodes))
 	for _, n := range req.Nodes {
 		data := n.Data
 		if data == nil {
 			data = json.RawMessage(`{}`)
 		}
-		node, err := insertNode(ctx, tx, themeID, n.Type, data, n.PositionX, n.PositionY)
+		nodeID := uuid.New()
+		if n.ID != nil {
+			nodeID = *n.ID
+		}
+		node, err := insertNodeWithID(ctx, tx, nodeID, themeID, n.Type, data, n.PositionX, n.PositionY)
 		if err != nil {
 			return nil, err
 		}
 		nodes = append(nodes, *node)
-		if n.ID != nil {
-			idMap[*n.ID] = node.ID
-		}
 	}
 
-	// Insert edges (remap client ids)
+	// Insert edges after nodes so FK checks validate endpoints.
 	edges := make([]FlowEdge, 0, len(req.Edges))
 	for _, e := range req.Edges {
-		srcID := remapID(idMap, e.SourceID)
-		tgtID := remapID(idMap, e.TargetID)
-		edge, err := insertEdge(ctx, tx, themeID, srcID, tgtID, e.Condition, e.Label, e.SortOrder)
+		edgeID := uuid.New()
+		if e.ID != nil {
+			edgeID = *e.ID
+		}
+		edge, err := insertEdgeWithID(ctx, tx, edgeID, themeID, e.SourceID, e.TargetID, e.Condition, e.Label, e.SortOrder)
 		if err != nil {
 			return nil, err
 		}
@@ -139,16 +142,22 @@ func (s *serviceImpl) CreateNode(ctx context.Context, creatorID, themeID uuid.UU
 }
 
 func (s *serviceImpl) UpdateNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID, req UpdateNodeRequest) (*FlowNode, error) {
-	if err := ValidateNodeType(req.Type); err != nil {
-		return nil, err
+	if req.Type != "" {
+		if err := ValidateNodeType(req.Type); err != nil {
+			return nil, err
+		}
 	}
 	data := req.Data
-	if data == nil {
-		data = json.RawMessage(`{}`)
+	if len(data) == 0 {
+		data = nil
 	}
 	row := s.pool.QueryRow(ctx,
 		`UPDATE flow_nodes n
-		SET type=$2, data=$3, position_x=$4, position_y=$5, updated_at=now()
+		SET type = CASE WHEN $2 = '' THEN n.type ELSE $2 END,
+			data = COALESCE($3, n.data),
+			position_x = COALESCE($4, n.position_x),
+			position_y = COALESCE($5, n.position_y),
+			updated_at = now()
 		FROM themes t
 		WHERE n.id=$1 AND n.theme_id=$6 AND t.id=n.theme_id AND t.creator_id=$7
 		RETURNING n.*`,
@@ -360,11 +369,4 @@ func validateSaveRequest(req SaveFlowRequest) error {
 		edges[i] = FlowEdge{SourceID: e.SourceID, TargetID: e.TargetID}
 	}
 	return ValidateDAG(nodes, edges)
-}
-
-func remapID(m map[uuid.UUID]uuid.UUID, id uuid.UUID) uuid.UUID {
-	if newID, ok := m[id]; ok {
-		return newID
-	}
-	return id
 }

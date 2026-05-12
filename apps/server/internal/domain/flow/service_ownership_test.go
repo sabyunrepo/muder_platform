@@ -75,8 +75,8 @@ func TestServiceFlowOwnership_RejectsDifferentCreatorMutations(t *testing.T) {
 	if _, err := svc.UpdateNode(ctx, otherCreatorID, themeID, startNode.ID, UpdateNodeRequest{
 		Type:      NodeTypeEnding,
 		Data:      json.RawMessage(`{"label":"탈취"}`),
-		PositionX: 999,
-		PositionY: 999,
+		PositionX: flowFloat64Ptr(999),
+		PositionY: flowFloat64Ptr(999),
 	}); err == nil {
 		t.Fatal("expected UpdateNode to reject a different creator")
 	} else {
@@ -159,8 +159,8 @@ func TestServiceFlowOwnership_RejectsCrossThemeEdgeEndpoints(t *testing.T) {
 	if _, err := svc.UpdateNode(ctx, creatorID, themeAID, nodeB.ID, UpdateNodeRequest{
 		Type:      NodeTypeEnding,
 		Data:      json.RawMessage(`{"label":"wrong theme"}`),
-		PositionX: 99,
-		PositionY: 99,
+		PositionX: flowFloat64Ptr(99),
+		PositionY: flowFloat64Ptr(99),
 	}); err == nil {
 		t.Fatal("expected UpdateNode to reject a node from a different theme")
 	} else {
@@ -227,7 +227,7 @@ func TestServiceFlowOwnership_RejectsCrossThemeEdgeEndpoints(t *testing.T) {
 	assertFlowNodeExists(t, pool, nodeA.ID)
 }
 
-func TestServiceFlowOwnership_SaveFlowOwnedGraph(t *testing.T) {
+func TestServiceFlowOwnership_SaveFlowOwnedGraphPreservesProvidedNodeIDs(t *testing.T) {
 	ctx := context.Background()
 	pool := setupFlowTestPool(t)
 	svc := NewService(pool, zerolog.Nop())
@@ -269,14 +269,14 @@ func TestServiceFlowOwnership_SaveFlowOwnedGraph(t *testing.T) {
 	for _, node := range graph.Nodes {
 		nodeIDs[node.ID] = struct{}{}
 	}
-	if _, ok := nodeIDs[graph.Edges[0].SourceID]; !ok {
-		t.Fatalf("edge source %s is not one of saved node IDs", graph.Edges[0].SourceID)
+	if _, ok := nodeIDs[clientStartID]; !ok {
+		t.Fatalf("saved nodes do not include provided start ID %s", clientStartID)
 	}
-	if _, ok := nodeIDs[graph.Edges[0].TargetID]; !ok {
-		t.Fatalf("edge target %s is not one of saved node IDs", graph.Edges[0].TargetID)
+	if _, ok := nodeIDs[clientPhaseID]; !ok {
+		t.Fatalf("saved nodes do not include provided phase ID %s", clientPhaseID)
 	}
-	if graph.Edges[0].SourceID == clientStartID || graph.Edges[0].TargetID == clientPhaseID {
-		t.Fatalf("edge endpoints were not remapped from client IDs")
+	if graph.Edges[0].SourceID != clientStartID || graph.Edges[0].TargetID != clientPhaseID {
+		t.Fatalf("edge endpoints = %s -> %s, want %s -> %s", graph.Edges[0].SourceID, graph.Edges[0].TargetID, clientStartID, clientPhaseID)
 	}
 
 	loaded, err := svc.GetFlow(ctx, creatorID, themeID)
@@ -285,6 +285,55 @@ func TestServiceFlowOwnership_SaveFlowOwnedGraph(t *testing.T) {
 	}
 	if len(loaded.Nodes) != 2 || len(loaded.Edges) != 1 {
 		t.Fatalf("loaded graph sizes = nodes %d edges %d, want 2/1", len(loaded.Nodes), len(loaded.Edges))
+	}
+
+	updated, err := svc.UpdateNode(ctx, creatorID, themeID, clientPhaseID, UpdateNodeRequest{
+		Data: json.RawMessage(`{"label":"수정된 조사"}`),
+	})
+	if err != nil {
+		t.Fatalf("UpdateNode with preserved ID: %v", err)
+	}
+	if updated.ID != clientPhaseID {
+		t.Fatalf("updated node ID = %s, want %s", updated.ID, clientPhaseID)
+	}
+}
+
+func TestServiceUpdateNode_PartialDataPatchPreservesTypeAndPosition(t *testing.T) {
+	ctx := context.Background()
+	pool := setupFlowTestPool(t)
+	svc := NewService(pool, zerolog.Nop())
+	creatorID := insertFlowTestUser(t, pool)
+	themeID := insertFlowTestTheme(t, pool, creatorID, json.RawMessage(`{}`))
+
+	node, err := svc.CreateNode(ctx, creatorID, themeID, CreateNodeRequest{
+		Type:      NodeTypeEnding,
+		Data:      json.RawMessage(`{"label":"새 결말"}`),
+		PositionX: 240,
+		PositionY: 360,
+	})
+	if err != nil {
+		t.Fatalf("CreateNode ending: %v", err)
+	}
+
+	updated, err := svc.UpdateNode(ctx, creatorID, themeID, node.ID, UpdateNodeRequest{
+		Data: json.RawMessage(`{"label":"진실","endingContent":"범인이 밝혀졌다."}`),
+	})
+	if err != nil {
+		t.Fatalf("UpdateNode partial data patch: %v", err)
+	}
+
+	if updated.Type != NodeTypeEnding {
+		t.Fatalf("updated type = %q, want %q", updated.Type, NodeTypeEnding)
+	}
+	if updated.PositionX != 240 || updated.PositionY != 360 {
+		t.Fatalf("updated position = (%v,%v), want (240,360)", updated.PositionX, updated.PositionY)
+	}
+	var data map[string]string
+	if err := json.Unmarshal(updated.Data, &data); err != nil {
+		t.Fatalf("unmarshal updated data: %v", err)
+	}
+	if data["label"] != "진실" || data["endingContent"] != "범인이 밝혀졌다." {
+		t.Fatalf("updated data = %#v", data)
 	}
 }
 
@@ -298,6 +347,10 @@ func validSaveFlowRequest() SaveFlowRequest {
 		}},
 		Edges: []FlowEdgeInput{},
 	}
+}
+
+func flowFloat64Ptr(value float64) *float64 {
+	return &value
 }
 
 func validFlowCondition() json.RawMessage {

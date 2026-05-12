@@ -30,10 +30,26 @@ func insertNode(ctx context.Context, q dbConn, themeID uuid.UUID, nodeType strin
 	return scanNode(row)
 }
 
+func insertNodeWithID(ctx context.Context, q dbConn, id, themeID uuid.UUID, nodeType string, data json.RawMessage, x, y float64) (*FlowNode, error) {
+	row := q.QueryRow(ctx,
+		`INSERT INTO flow_nodes (id, theme_id, type, data, position_x, position_y) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+		id, themeID, nodeType, data, x, y,
+	)
+	return scanNode(row)
+}
+
 func insertEdge(ctx context.Context, q dbConn, themeID, srcID, tgtID uuid.UUID, condition json.RawMessage, label *string, sortOrder int32) (*FlowEdge, error) {
 	row := q.QueryRow(ctx,
 		`INSERT INTO flow_edges (theme_id, source_id, target_id, condition, label, sort_order) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
 		themeID, srcID, tgtID, condition, label, sortOrder,
+	)
+	return scanEdge(row)
+}
+
+func insertEdgeWithID(ctx context.Context, q dbConn, id, themeID, srcID, tgtID uuid.UUID, condition json.RawMessage, label *string, sortOrder int32) (*FlowEdge, error) {
+	row := q.QueryRow(ctx,
+		`INSERT INTO flow_edges (id, theme_id, source_id, target_id, condition, label, sort_order) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+		id, themeID, srcID, tgtID, condition, label, sortOrder,
 	)
 	return scanEdge(row)
 }

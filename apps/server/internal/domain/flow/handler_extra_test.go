@@ -52,7 +52,7 @@ func TestUpdateNode_Success(t *testing.T) {
 		},
 	}
 	r := newRouter(NewHandler(svc))
-	body, _ := json.Marshal(UpdateNodeRequest{Type: NodeTypePhase, PositionX: 100, PositionY: 200})
+	body, _ := json.Marshal(UpdateNodeRequest{Type: NodeTypePhase, PositionX: flowFloat64Ptr(100), PositionY: flowFloat64Ptr(200)})
 	req := withAuth(httptest.NewRequest(http.MethodPatch, "/themes/"+themeID.String()+"/flow/nodes/"+nodeID.String(), bytes.NewReader(body)))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
