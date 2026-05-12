@@ -85,7 +85,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex h-full min-h-0 items-center justify-center py-12">
         <Spinner size="lg" />
       </div>
     );
@@ -93,7 +93,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
 
   if (isError) {
     return (
-      <div className="px-4 py-6">
+      <div className="h-full min-h-0 overflow-y-auto px-4 py-6">
         <div className="rounded-xl border border-red-500/30 bg-red-950/20 p-5">
           <p className="text-sm font-semibold text-red-100">단서를 불러오지 못했습니다</p>
           <p className="mt-2 text-sm leading-6 text-red-200/80">
@@ -107,7 +107,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
 
   if (!clues) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex h-full min-h-0 items-center justify-center py-12">
         <Spinner size="lg" />
       </div>
     );
@@ -124,7 +124,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
       : [];
 
   return (
-    <div className="px-4 py-6">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 py-6">
       <ClueEntityWorkspace
         themeId={themeId}
         clues={clues}

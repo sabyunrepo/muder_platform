@@ -15,8 +15,8 @@ interface CluesTabProps {
 
 export function CluesTab({ themeId }: CluesTabProps) {
   return (
-    <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <ClueListView themeId={themeId} />
       </div>
     </div>
