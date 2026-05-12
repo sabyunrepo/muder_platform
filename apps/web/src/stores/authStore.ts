@@ -53,6 +53,14 @@ const initialState: AuthState = {
   isLoading: !!storedRefreshToken,
 };
 
+const loggedOutState: AuthState = {
+  user: null,
+  accessToken: null,
+  refreshToken: null,
+  isAuthenticated: false,
+  isLoading: false,
+};
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -71,12 +79,12 @@ export const useAuthStore = create<AuthState & AuthActions>()((set) => ({
 
   logout: () => {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
-    set({ ...initialState });
+    set({ ...loggedOutState });
   },
 
   clear: () => {
     localStorage.removeItem(REFRESH_TOKEN_KEY);
-    set({ ...initialState });
+    set({ ...loggedOutState });
   },
 
   setLoading: (loading) => {

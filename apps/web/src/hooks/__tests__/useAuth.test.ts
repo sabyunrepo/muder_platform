@@ -199,6 +199,7 @@ describe("useAuth", () => {
         accessToken: "access-123",
         refreshToken: "refresh-456",
         isAuthenticated: true,
+        isLoading: true,
       });
 
       const { result } = renderHook(() => useAuth());
@@ -211,6 +212,8 @@ describe("useAuth", () => {
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
       expect(state.accessToken).toBeNull();
+      expect(state.refreshToken).toBeNull();
+      expect(state.isLoading).toBe(false);
     });
 
     it("connectionStore.disconnectAll()을 호출한다", async () => {
@@ -231,6 +234,7 @@ describe("useAuth", () => {
         accessToken: "access-123",
         refreshToken: "refresh-456",
         isAuthenticated: true,
+        isLoading: true,
       });
 
       const { result } = renderHook(() => useAuth());
@@ -248,6 +252,8 @@ describe("useAuth", () => {
       const state = useAuthStore.getState();
       expect(state.user).toBeNull();
       expect(state.isAuthenticated).toBe(false);
+      expect(state.refreshToken).toBeNull();
+      expect(state.isLoading).toBe(false);
       expect(__disconnectAll).toHaveBeenCalled();
     });
   });
