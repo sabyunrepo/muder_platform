@@ -285,6 +285,26 @@ describe('InfoTab', () => {
     expect(getInfoBodyEditor()).toHaveProperty('value', '처음 공개되는 정보');
   });
 
+  it('opens legacy escaped markdown in edit mode as editable markdown', () => {
+    useStoryInfosMock.mockReturnValue({
+      data: [
+        {
+          ...baseInfo,
+          body: '\\> \\*2008년 7월 28일 저녁\\*',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<InfoTab themeId="theme-1" />);
+
+    enterInfoEditMode();
+
+    expect(getInfoBodyEditor()).toHaveProperty('value', '> *2008년 7월 28일 저녁*');
+  });
+
   it('opens the editor first when the selected story info has no body', () => {
     useStoryInfosMock.mockReturnValue({
       data: [{ ...baseInfo, body: '' }],
@@ -447,6 +467,38 @@ describe('InfoTab', () => {
         body: expect.stringContaining('<MediaEmbed mediaId="video-2" type="video" align="center" width="medium" />'),
       }),
     });
+  });
+
+  it('replaces media embeds from normalized legacy markdown content', async () => {
+    useStoryInfosMock.mockReturnValue({
+      data: [
+        {
+          ...baseInfo,
+          body: [
+            '\\> \\*2008년 7월 28일 저녁\\*',
+            '<MediaEmbed mediaId="video-1" type="video" align="center" width="medium" />',
+          ].join('\n'),
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+
+    render(<InfoTab themeId="theme-1" />);
+
+    enterInfoEditMode();
+    const editorSurface = screen.getByTestId('mdx-editor-surface');
+    fireEvent.click(within(editorSurface).getByRole('button', { name: 'CCTV 교체' }));
+    fireEvent.click(screen.getByRole('button', { name: 'CCTV 후속 선택' }));
+
+    expect(getInfoBodyEditor()).toHaveProperty(
+      'value',
+      [
+        '> *2008년 7월 28일 저녁*',
+        '<MediaEmbed mediaId="video-2" type="video" align="center" width="medium" />',
+      ].join('\n')
+    );
   });
 
   it('does not mark legacy image or reference metadata as editable changes', async () => {

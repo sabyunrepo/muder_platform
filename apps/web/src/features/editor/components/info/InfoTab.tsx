@@ -9,6 +9,7 @@ import {
   type StoryInfoResponse,
 } from '@/features/editor/storyInfoApi';
 import type { MediaType } from '@/features/editor/mediaApi';
+import { normalizeLegacyEscapedMarkdown } from '@/features/editor/components/content/legacyMarkdown';
 import { ConfirmDialog, Spinner } from '@/shared/components/ui';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
@@ -130,8 +131,8 @@ export function InfoTab({ themeId }: InfoTabProps) {
 }
 
 function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoResponse }) {
-  const [draft, setDraft] = useState(() => ({ ...info }));
-  const [baseline, setBaseline] = useState(() => ({ ...info }));
+  const [draft, setDraft] = useState(() => toEditableInfo(info));
+  const [baseline, setBaseline] = useState(() => toEditableInfo(info));
   const [embedPickerType, setEmbedPickerType] = useState<MediaType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(() => !hasDisplayableBody(info));
@@ -140,8 +141,9 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const deleteInfo = useDeleteStoryInfo(themeId);
 
   useEffect(() => {
-    setDraft({ ...info });
-    setBaseline({ ...info });
+    const editableInfo = toEditableInfo(info);
+    setDraft(editableInfo);
+    setBaseline(editableInfo);
     setEmbedPickerType(null);
     setError(null);
     setIsEditing(!hasDisplayableBody(info));
@@ -177,8 +179,9 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
           version: draft.version,
         },
       });
-      setDraft({ ...saved });
-      setBaseline({ ...saved });
+      const editableSaved = toEditableInfo(saved);
+      setDraft(editableSaved);
+      setBaseline(editableSaved);
       setIsEditing(!hasDisplayableBody(saved));
     } catch (err) {
       setError(errorMessage(err, '저장에 실패했습니다'));
@@ -292,6 +295,10 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
       {deleteDialog}
     </>
   );
+}
+
+function toEditableInfo(info: StoryInfoResponse) {
+  return { ...info, body: normalizeLegacyEscapedMarkdown(info.body) };
 }
 
 function hasDisplayableBody(info: StoryInfoResponse) {
