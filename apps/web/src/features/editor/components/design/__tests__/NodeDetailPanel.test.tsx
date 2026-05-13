@@ -1,13 +1,21 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import type { Edge, Node } from "@xyflow/react";
+import type { ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
 vi.mock("../PhaseNodePanel", () => ({
-  PhaseNodePanel: () => <div>장면 설정</div>,
+  PhaseNodePanel: ({ headerActions }: { headerActions?: ReactNode }) => (
+    <div>
+      <div data-testid="scene-settings-header">
+        <span>장면 설정</span>
+        {headerActions}
+      </div>
+    </div>
+  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -187,7 +195,7 @@ describe("NodeDetailPanel", () => {
     expect(onDuplicate).toHaveBeenCalledWith("node-1");
   });
 
-  it("장면 액션은 다음 장면 연결보다 먼저 보여준다", () => {
+  it("장면 액션은 장면 설정 제목 줄에 보여준다", () => {
     render(
       <NodeDetailPanel
         node={storyNodes[0]}
@@ -202,18 +210,12 @@ describe("NodeDetailPanel", () => {
       />,
     );
 
+    const header = screen.getByTestId("scene-settings-header");
     const duplicateButton = screen.getByRole("button", { name: "장면 복제" });
     const deleteButton = screen.getByRole("button", { name: "장면 삭제" });
-    const nextSceneLabel = screen.getByText("다음 장면 연결");
 
-    expect(
-      duplicateButton.compareDocumentPosition(nextSceneLabel) &
-        globalThis.Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      deleteButton.compareDocumentPosition(nextSceneLabel) &
-        globalThis.Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(header.contains(duplicateButton)).toBe(true);
+    expect(header.contains(deleteButton)).toBe(true);
   });
 
   it("선택한 장면에서 다음 장면을 버튼으로 연결할 수 있다", () => {
