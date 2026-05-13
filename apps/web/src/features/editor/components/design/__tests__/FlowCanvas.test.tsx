@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -238,7 +238,6 @@ describe('FlowCanvas', () => {
 
   it('ending 노드만 남은 그래프도 프리셋 적용 전에 덮어쓰기 확인을 요구한다', () => {
     const applyPreset = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     useFlowDataMock.mockReturnValue({
       nodes: [
         {
@@ -271,7 +270,9 @@ describe('FlowCanvas', () => {
     fireEvent.click(screen.getByRole('button', { name: '프리셋' }));
     fireEvent.click(screen.getByText('클래식 머더미스터리'));
 
-    expect(confirmSpy).toHaveBeenCalledWith('기존 흐름이 대체됩니다. 계속할까요?');
+    const dialog = screen.getByRole('dialog', { name: '기존 흐름을 대체할까요?' });
+    expect(within(dialog).getByText('현재 장면 흐름이 프리셋으로 바뀝니다.')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: '취소' }));
     expect(applyPreset).not.toHaveBeenCalled();
   });
 
@@ -326,7 +327,6 @@ describe('FlowCanvas', () => {
 
   it('선택한 연결선을 버튼으로 끊을 수 있다', () => {
     const deleteEdge = vi.fn();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     useFlowDataMock.mockReturnValue({
       nodes: [
         {
@@ -365,13 +365,14 @@ describe('FlowCanvas', () => {
     expect(screen.getByText('오프닝 -> 조사')).toBeDefined();
 
     fireEvent.click(screen.getByRole('button', { name: '연결 끊기' }));
-    expect(window.confirm).toHaveBeenCalledWith('선 연결을 끊을까요? 이 작업은 즉시 저장됩니다.');
+    const dialog = screen.getByRole('dialog', { name: '선 연결을 끊을까요?' });
+    expect(within(dialog).getByText('이 작업은 즉시 저장됩니다.')).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: '연결 끊기' }));
     expect(deleteEdge).toHaveBeenCalledWith('e-p1-p2');
   });
 
   it('연결선 삭제 확인을 취소하면 연결을 유지한다', () => {
     const deleteEdge = vi.fn();
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     useFlowDataMock.mockReturnValue({
       nodes: [
         { id: 'p1', type: 'phase', position: { x: 0, y: 0 }, data: { label: '오프닝' } },
@@ -398,6 +399,11 @@ describe('FlowCanvas', () => {
     render(<FlowCanvas themeId="theme-1" />);
     fireEvent.click(screen.getByRole('button', { name: 'e-p1-p2 선택' }));
     fireEvent.click(screen.getByRole('button', { name: '연결 끊기' }));
+    fireEvent.click(
+      within(screen.getByRole('dialog', { name: '선 연결을 끊을까요?' })).getByRole('button', {
+        name: '취소',
+      }),
+    );
 
     expect(deleteEdge).not.toHaveBeenCalled();
   });

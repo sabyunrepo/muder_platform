@@ -1,8 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, ListChecks, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
-import { Spinner } from "@/shared/components/ui";
-import { Modal } from "@/shared/components/ui";
+import { ConfirmDialog, Modal, Spinner } from "@/shared/components/ui";
 import {
   useCreateMediaCategory,
   useDeleteMedia,
@@ -55,6 +54,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteResult, setDeleteResult] = useState<BulkDeleteResult | null>(null);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [pendingDeleteCategoryId, setPendingDeleteCategoryId] = useState<string | null>(null);
   // Modal state.
   const [uploadOpen, setUploadOpen] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
@@ -84,6 +84,8 @@ export function MediaTab({ themeId }: MediaTabProps) {
   }, [mediaList, searchQuery]);
   const selected = media.find((m) => m.id === selectedId) ?? null;
   const bulkSelectedMedia = media.filter((m) => selectedIds.has(m.id));
+  const pendingDeleteCategory =
+    categories.find((item) => item.id === pendingDeleteCategoryId) ?? null;
 
   const { playingId, toggle: togglePreview, stop: stopPreview } = usePreviewPlayer();
 
@@ -155,16 +157,20 @@ export function MediaTab({ themeId }: MediaTabProps) {
 
   const handleDeleteCategory = () => {
     if (!categoryId) return;
-    const category = categories.find((item) => item.id === categoryId);
-    const ok = window.confirm(
-      `"${category?.name ?? "선택한 카테고리"}" 카테고리를 삭제하시겠습니까? 연결된 미디어는 전체 카테고리로 이동합니다.`,
-    );
-    if (!ok) return;
-    deleteCategoryMutation.mutate(categoryId, {
+    setPendingDeleteCategoryId(categoryId);
+  };
+
+  const handleConfirmDeleteCategory = () => {
+    if (!pendingDeleteCategoryId) return;
+    deleteCategoryMutation.mutate(pendingDeleteCategoryId, {
       onSuccess: () => {
         setCategoryId(null);
         setSelectedId(null);
+        setPendingDeleteCategoryId(null);
         stopPreview();
+      },
+      onError: () => {
+        setPendingDeleteCategoryId(null);
       },
     });
   };
@@ -355,6 +361,16 @@ export function MediaTab({ themeId }: MediaTabProps) {
         deleting={bulkDeleting}
         onClose={handleCloseBulkDelete}
         onConfirm={handleConfirmBulkDelete}
+      />
+      <ConfirmDialog
+        isOpen={pendingDeleteCategory != null}
+        title="카테고리를 삭제할까요?"
+        description={`"${pendingDeleteCategory?.name ?? '선택한 카테고리'}" 카테고리를 삭제합니다. 연결된 미디어는 전체 카테고리로 이동합니다.`}
+        confirmLabel="카테고리 삭제"
+        isConfirming={deleteCategoryMutation.isPending}
+        tone="danger"
+        onCancel={() => setPendingDeleteCategoryId(null)}
+        onConfirm={handleConfirmDeleteCategory}
       />
     </div>
   );

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { screen, fireEvent, within } from '@testing-library/react';
 import {
   mutateMock,
   renderLocationsSubTab,
@@ -89,9 +89,11 @@ describe('LocationsSubTab', () => {
     });
 
     it('맵 삭제 버튼 클릭 시 mutate가 호출된다', () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
       renderLocationsSubTab();
       fireEvent.click(screen.getByLabelText('저택 1층 삭제'));
+      const dialog = screen.getByRole('dialog', { name: '맵을 삭제할까요?' });
+      expect(within(dialog).getByText(/저택 1층 맵과 하위 장소 편집 흐름도/)).toBeDefined();
+      fireEvent.click(within(dialog).getByRole('button', { name: '맵 삭제' }));
       expect(mutateMock).toHaveBeenCalledWith('map-1', expect.any(Object));
     });
   });

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Map, Plus, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/shared/components/ui';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import {
@@ -42,9 +43,11 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [addingMap, setAddingMap] = useState(false);
   const [addingLocation, setAddingLocation] = useState(false);
+  const [pendingDeleteMapId, setPendingDeleteMapId] = useState<string | null>(null);
 
   const effectiveSelectedMapId = selectedMapId ?? maps?.[0]?.id ?? null;
   const selectedMap = maps?.find((m) => m.id === effectiveSelectedMapId) ?? null;
+  const pendingDeleteMap = maps?.find((m) => m.id === pendingDeleteMapId) ?? null;
   const mapLocations = locations?.filter((l) => l.map_id === effectiveSelectedMapId) ?? [];
   const selectedLocation =
     mapLocations.find((l) => l.id === selectedLocationId) ?? mapLocations[0] ?? null;
@@ -139,13 +142,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           onAddMap={handleAddMap}
           onDeleteSelectedMap={() => {
             if (!selectedMap) return;
-            if (
-              window.confirm(
-                `${selectedMap.name} 맵을 삭제할까요? 하위 장소 편집 흐름도 함께 영향을 받습니다.`
-              )
-            ) {
-              handleDeleteMap(selectedMap.id);
-            }
+            setPendingDeleteMapId(selectedMap.id);
           }}
         />
       </div>
@@ -167,6 +164,20 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           onDeleteLocation={handleDeleteLocation}
         />
       </div>
+      <ConfirmDialog
+        isOpen={pendingDeleteMap != null}
+        title="맵을 삭제할까요?"
+        description={`${pendingDeleteMap?.name ?? '선택한 맵'} 맵과 하위 장소 편집 흐름도 함께 영향을 받습니다.`}
+        confirmLabel="맵 삭제"
+        isConfirming={deleteMap.isPending}
+        tone="danger"
+        onCancel={() => setPendingDeleteMapId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteMap) return;
+          handleDeleteMap(pendingDeleteMap.id);
+          setPendingDeleteMapId(null);
+        }}
+      />
     </div>
   );
 }

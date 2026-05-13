@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
 import type { Edge, Node } from "@xyflow/react";
 import type { ReactNode } from "react";
 
@@ -147,7 +147,6 @@ describe("NodeDetailPanel", () => {
 
   it("삭제 버튼 클릭 시 onDelete가 노드 id와 함께 호출된다", () => {
     const onDelete = vi.fn();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <NodeDetailPanel
         node={makeNode("phase")}
@@ -157,13 +156,14 @@ describe("NodeDetailPanel", () => {
       />,
     );
     fireEvent.click(screen.getByText("장면 삭제"));
-    expect(window.confirm).toHaveBeenCalledWith("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.");
+    const dialog = screen.getByRole("dialog", { name: "장면을 삭제할까요?" });
+    expect(within(dialog).getByText("연결된 선도 함께 삭제됩니다.")).toBeDefined();
+    fireEvent.click(within(dialog).getByRole("button", { name: "장면 삭제" }));
     expect(onDelete).toHaveBeenCalledWith("node-1");
   });
 
   it("삭제 확인을 취소하면 onDelete를 호출하지 않는다", () => {
     const onDelete = vi.fn();
-    vi.spyOn(window, "confirm").mockReturnValue(false);
     render(
       <NodeDetailPanel
         node={makeNode("phase")}
@@ -174,6 +174,12 @@ describe("NodeDetailPanel", () => {
     );
 
     fireEvent.click(screen.getByText("장면 삭제"));
+    fireEvent.click(
+      within(screen.getByRole("dialog", { name: "장면을 삭제할까요?" })).getByRole(
+        "button",
+        { name: "취소" },
+      ),
+    );
 
     expect(onDelete).not.toHaveBeenCalled();
   });

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Copy, Trash2 } from "lucide-react";
 import type { Node, Edge } from "@xyflow/react";
+import { ConfirmDialog } from "@/shared/components/ui";
 import { PhaseNodePanel } from "./PhaseNodePanel";
 import { NodeConnectionPanel } from "./NodeConnectionPanel";
 import type { FlowNodeData } from "../../flowTypes";
@@ -35,6 +37,8 @@ export function NodeDetailPanel({
   onConnectNodes,
   onDeleteEdge,
 }: NodeDetailPanelProps) {
+  const [pendingDeleteNodeId, setPendingDeleteNodeId] = useState<string | null>(null);
+
   if (!node) {
     return (
       <div className="flex h-full items-center justify-center p-4">
@@ -65,10 +69,7 @@ export function NodeDetailPanel({
           type="button"
           aria-label="장면 삭제"
           title="장면 삭제"
-          onClick={() => {
-            if (!window.confirm("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.")) return;
-            onDelete(node.id);
-          }}
+          onClick={() => setPendingDeleteNodeId(node.id)}
           className="inline-flex h-7 items-center gap-1 rounded border border-red-500/50 bg-red-500/10 px-2 text-[11px] font-semibold text-red-200 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -114,6 +115,19 @@ export function NodeDetailPanel({
         />
       )}
 
+      <ConfirmDialog
+        isOpen={pendingDeleteNodeId != null}
+        title="장면을 삭제할까요?"
+        description="연결된 선도 함께 삭제됩니다."
+        confirmLabel="장면 삭제"
+        tone="danger"
+        onCancel={() => setPendingDeleteNodeId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteNodeId) return;
+          onDelete(pendingDeleteNodeId);
+          setPendingDeleteNodeId(null);
+        }}
+      />
     </div>
   );
 }
