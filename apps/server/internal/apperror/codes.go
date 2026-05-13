@@ -114,4 +114,7 @@ const (
 
 	// Editor errors
 	ErrEditorConfigVersionMismatch = "EDITOR_CONFIG_VERSION_MISMATCH"
+	ErrEditorEntityLoadFailed      = "EDITOR_ENTITY_LOAD_FAILED"
+	ErrEditorEntitySaveFailed      = "EDITOR_ENTITY_SAVE_FAILED"
+	ErrEditorEntityDeleteFailed    = "EDITOR_ENTITY_DELETE_FAILED"
 )

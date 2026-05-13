@@ -222,6 +222,7 @@ const mockCharacters = [
     show_in_intro: true,
     can_speak_in_reading: true,
     is_voting_candidate: true,
+    is_victim: false,
   },
   {
     id: 'char-2',
@@ -236,6 +237,7 @@ const mockCharacters = [
     show_in_intro: true,
     can_speak_in_reading: true,
     is_voting_candidate: false,
+    is_victim: false,
   },
 ];
 
@@ -394,6 +396,7 @@ describe('CharacterAssignPanel', () => {
         show_in_intro: true,
         can_speak_in_reading: true,
         is_voting_candidate: true,
+        is_victim: false,
         alias_rules: [],
       },
     });
@@ -417,6 +420,31 @@ describe('CharacterAssignPanel', () => {
         show_in_intro: true,
         can_speak_in_reading: true,
         is_voting_candidate: false,
+        is_victim: false,
+        alias_rules: [],
+      },
+    });
+  });
+
+  it('피해자 표시를 변경해도 플레이어 여부와 범인 역할을 유지한다', () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    fireEvent.click(screen.getByLabelText(/피해자/));
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith({
+      characterId: 'char-1',
+      body: {
+        name: '홍길동',
+        description: undefined,
+        image_url: undefined,
+        is_culprit: true,
+        mystery_role: 'culprit',
+        sort_order: 0,
+        is_playable: true,
+        show_in_intro: true,
+        can_speak_in_reading: true,
+        is_voting_candidate: true,
+        is_victim: true,
         alias_rules: [],
       },
     });

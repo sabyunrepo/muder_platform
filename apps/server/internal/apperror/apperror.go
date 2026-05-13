@@ -12,16 +12,17 @@ import (
 // envelope. Use WithExtensions to attach (e.g. {"current_version": 42} on an
 // optimistic-lock 409). Extensions never leak into the Error() string.
 type AppError struct {
-	Type       string         `json:"type"`
-	Code       string         `json:"code"`
-	Status     int            `json:"status"`
-	Title      string         `json:"title"`
-	Detail     string         `json:"detail"`
-	Instance   string         `json:"instance,omitempty"`
-	Params     map[string]any `json:"params,omitempty"`
-	Errors     []FieldError   `json:"errors,omitempty"`
-	Extensions map[string]any `json:"extensions,omitempty"`
-	Internal   error          `json:"-"`
+	Type        string         `json:"type"`
+	Code        string         `json:"code"`
+	Status      int            `json:"status"`
+	Title       string         `json:"title"`
+	Detail      string         `json:"detail"`
+	UserMessage string         `json:"user_message,omitempty"`
+	Instance    string         `json:"instance,omitempty"`
+	Params      map[string]any `json:"params,omitempty"`
+	Errors      []FieldError   `json:"errors,omitempty"`
+	Extensions  map[string]any `json:"extensions,omitempty"`
+	Internal    error          `json:"-"`
 }
 
 // Error implements the error interface.
@@ -129,6 +130,14 @@ func (e *AppError) WithParams(params map[string]any) *AppError {
 			copied.Params[k] = v
 		}
 	}
+	return &copied
+}
+
+// WithUserMessage returns a copy of the error with a Korean-first user-facing message.
+// Detail may be masked for 5xx production responses, but UserMessage stays safe to show.
+func (e *AppError) WithUserMessage(message string) *AppError {
+	copied := *e
+	copied.UserMessage = message
 	return &copied
 }
 

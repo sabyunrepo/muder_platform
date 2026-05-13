@@ -322,6 +322,7 @@ type ThemeCharacter struct {
 	AliasRules          json.RawMessage `json:"alias_rules"`
 	ImageMediaID        pgtype.UUID     `json:"image_media_id"`
 	EndcardImageMediaID pgtype.UUID     `json:"endcard_image_media_id"`
+	IsVictim            bool            `json:"is_victim"`
 }
 
 type ThemeClue struct {

@@ -19,6 +19,7 @@ import { buildClueUsageMap, type EntityReference } from '@/features/editor/utils
 import { ClueForm } from '../ClueForm';
 import { ClueEntityWorkspace } from './ClueEntityWorkspace';
 import { useFlowGraph } from '@/features/editor/flowApi';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,7 +58,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
       { clueId, body },
       {
         onSuccess: () => toast.success('단서가 수정되었습니다'),
-        onError: (err) => toast.error(err.message || '단서 수정에 실패했습니다'),
+        onError: (err) => showUnknownErrorToast(err, '단서 수정에 실패했습니다'),
       }
     );
   }
@@ -70,7 +71,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         setDeletingClue(undefined);
       },
       onError: (err) => {
-        toast.error(err.message || '단서 삭제에 실패했습니다');
+        showUnknownErrorToast(err, '단서 삭제에 실패했습니다');
         setDeletingClue(undefined);
       },
     });

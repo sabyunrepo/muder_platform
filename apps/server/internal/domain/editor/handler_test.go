@@ -341,11 +341,16 @@ func TestUpdateCharacter_Success(t *testing.T) {
 
 	mock.EXPECT().
 		UpdateCharacter(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-		Return(extSampleCharResponse(), nil).Times(1)
+		DoAndReturn(func(_ context.Context, _ uuid.UUID, _ uuid.UUID, req editor.UpdateCharacterRequest) (*editor.CharacterResponse, error) {
+			if req.IsVictim == nil || !*req.IsVictim {
+				t.Fatalf("expected is_victim=true to reach service, got %+v", req.IsVictim)
+			}
+			return extSampleCharResponse(), nil
+		}).Times(1)
 
 	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
 
-	body := `{"name":"Detective Updated","is_culprit":false,"sort_order":1}`
+	body := `{"name":"Detective Updated","is_culprit":false,"sort_order":1,"is_victim":true}`
 	r := httptest.NewRequest(http.MethodPut, "/editor/characters/"+extCharID.String(), bytes.NewBufferString(body))
 	r.Header.Set("Content-Type", "application/json")
 	r = withExtAuth(r)

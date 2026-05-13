@@ -42,6 +42,7 @@ export interface MockState {
   characterUpdateCalls: number;
   lastCharacterUpdateBody: Record<string, unknown> | null;
   characterMysteryRole: "suspect" | "culprit" | "accomplice" | "detective";
+  characterIsVictim: boolean;
   roleSheet: Record<string, unknown>;
   configPutCalls: number;
   lastConfigRequestBody: Record<string, unknown> | null;
@@ -69,6 +70,7 @@ export function freshState(): MockState {
     characterUpdateCalls: 0,
     lastCharacterUpdateBody: null,
     characterMysteryRole: "detective",
+    characterIsVictim: false,
     roleSheet: {
       character_id: "char-1",
       theme_id: THEME_ID,
@@ -324,6 +326,9 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
       state.characterMysteryRole = "culprit";
     } else if (body.is_culprit === false) {
       state.characterMysteryRole = "suspect";
+    }
+    if (typeof body.is_victim === "boolean") {
+      state.characterIsVictim = body.is_victim;
     }
     return r.fulfill({
       status: 200,
@@ -603,6 +608,11 @@ function characterPayload(state: MockState) {
     image_url: null,
     is_culprit: state.characterMysteryRole === "culprit",
     mystery_role: state.characterMysteryRole,
+    is_playable: true,
+    show_in_intro: true,
+    can_speak_in_reading: true,
+    is_voting_candidate: state.characterMysteryRole !== "detective",
+    is_victim: state.characterIsVictim,
     starting_clue_ids: state.startingClueIds,
     sort_order: 0,
     created_at: new Date().toISOString(),

@@ -105,6 +105,7 @@ type CreateCharacterRequest struct {
 	ShowInIntro         *bool                `json:"show_in_intro"`
 	CanSpeakInReading   *bool                `json:"can_speak_in_reading"`
 	IsVotingCandidate   *bool                `json:"is_voting_candidate"`
+	IsVictim            *bool                `json:"is_victim"`
 	EndcardTitle        *string              `json:"endcard_title" validate:"omitempty,max=80"`
 	EndcardBody         *string              `json:"endcard_body" validate:"omitempty,max=3000"`
 	EndcardImageURL     *string              `json:"endcard_image_url" validate:"omitempty,optional_url"`
@@ -124,6 +125,7 @@ type UpdateCharacterRequest struct {
 	ShowInIntro         *bool                `json:"show_in_intro"`
 	CanSpeakInReading   *bool                `json:"can_speak_in_reading"`
 	IsVotingCandidate   *bool                `json:"is_voting_candidate"`
+	IsVictim            *bool                `json:"is_victim"`
 	EndcardTitle        *string              `json:"endcard_title" validate:"omitempty,max=80"`
 	EndcardBody         *string              `json:"endcard_body" validate:"omitempty,max=3000"`
 	EndcardImageURL     *string              `json:"endcard_image_url" validate:"omitempty,optional_url"`
@@ -147,6 +149,7 @@ type CharacterResponse struct {
 	ShowInIntro         bool                 `json:"show_in_intro"`
 	CanSpeakInReading   bool                 `json:"can_speak_in_reading"`
 	IsVotingCandidate   bool                 `json:"is_voting_candidate"`
+	IsVictim            bool                 `json:"is_victim"`
 	EndcardTitle        *string              `json:"endcard_title,omitempty"`
 	EndcardBody         *string              `json:"endcard_body,omitempty"`
 	EndcardImageURL     *string              `json:"endcard_image_url,omitempty"`

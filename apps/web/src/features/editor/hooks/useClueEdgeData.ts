@@ -19,6 +19,7 @@ import {
   type EdgeTrigger,
 } from "../clueEdgeApi";
 import { queryClient } from "@/services/queryClient";
+import { showUnknownErrorToast } from "@/lib/show-error-toast";
 
 // ---------------------------------------------------------------------------
 // Layout constants
@@ -124,7 +125,7 @@ export function useClueEdgeData(
           },
           onError: (err) => {
             if (overrides?.onError) overrides.onError(err);
-            else toast.error(err.message || "엣지 저장에 실패했습니다");
+            else showUnknownErrorToast(err, "엣지 저장에 실패했습니다");
           },
         });
       }, 1000);

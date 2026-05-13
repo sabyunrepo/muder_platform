@@ -9,6 +9,7 @@ import {
 import { SectionDivider } from './SectionDivider';
 import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
 import { TemplateSettingsSection } from './TemplateConfigTab';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // SpecField — inline number input with label + unit
@@ -157,7 +158,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
 
     updateTheme.mutate(body, {
       onSuccess: () => toast.success('테마가 수정되었습니다'),
-      onError: (err) => toast.error(err.message || '테마 수정에 실패했습니다'),
+      onError: (err) => showUnknownErrorToast(err, '테마 수정에 실패했습니다'),
     });
   }
 

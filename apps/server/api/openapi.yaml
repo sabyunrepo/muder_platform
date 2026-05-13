@@ -954,6 +954,9 @@ components:
         detail:
           type: string
           description: Human-readable explanation
+        user_message:
+          type: string
+          description: Korean-first safe message intended for direct user display
         code:
           type: string
           description: Application-specific error code
@@ -1397,6 +1400,9 @@ components:
           type: boolean
         is_voting_candidate:
           type: boolean
+        is_victim:
+          type: boolean
+          default: false
         alias_rules:
           type: array
           items:
@@ -1442,6 +1448,8 @@ components:
         can_speak_in_reading:
           type: boolean
         is_voting_candidate:
+          type: boolean
+        is_victim:
           type: boolean
         alias_rules:
           type: array
@@ -1525,7 +1533,7 @@ components:
 
     EditorCharacterResponse:
       type: object
-      required: [id, theme_id, name, is_culprit, mystery_role, sort_order, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, alias_rules]
+      required: [id, theme_id, name, is_culprit, mystery_role, sort_order, is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate, is_victim, alias_rules]
       properties:
         id:
           type: string
@@ -1561,6 +1569,8 @@ components:
         can_speak_in_reading:
           type: boolean
         is_voting_candidate:
+          type: boolean
+        is_victim:
           type: boolean
         alias_rules:
           type: array

@@ -264,7 +264,7 @@ func TestService_UpdateCharacter(t *testing.T) {
 	themeID := f.createThemeForUser(t, creatorID)
 
 	created, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
-		Name: "Original", SortOrder: 0, ImageURL: textPtr("https://cdn.example/original.webp"),
+		Name: "Original", SortOrder: 0, ImageURL: textPtr("https://cdn.example/original.webp"), IsVictim: boolPtr(true),
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -287,6 +287,9 @@ func TestService_UpdateCharacter(t *testing.T) {
 	if !updated.IsPlayable || !updated.ShowInIntro || !updated.CanSpeakInReading || !updated.IsVotingCandidate {
 		t.Errorf("update should preserve default playable visibility: %+v", updated)
 	}
+	if !updated.IsVictim {
+		t.Error("omitted is_victim should preserve stored victim flag")
+	}
 	if updated.ImageURL == nil || *updated.ImageURL != "https://cdn.example/original.webp" {
 		t.Fatalf("omitted image_url should preserve stored character image: %+v", updated.ImageURL)
 	}
@@ -302,6 +305,19 @@ func TestService_UpdateCharacter(t *testing.T) {
 	}
 	if clearedImage.ImageURL != nil {
 		t.Fatalf("empty image_url should clear stored character image: %+v", clearedImage.ImageURL)
+	}
+
+	notVictim, err := f.svc.UpdateCharacter(ctx, creatorID, created.ID, UpdateCharacterRequest{
+		Name:      "Updated",
+		IsCulprit: true,
+		SortOrder: 0,
+		IsVictim:  boolPtr(false),
+	})
+	if err != nil {
+		t.Fatalf("UpdateCharacter clear victim flag: %v", err)
+	}
+	if notVictim.IsVictim {
+		t.Error("explicit false is_victim should clear stored victim flag")
 	}
 }
 

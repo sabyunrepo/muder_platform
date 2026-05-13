@@ -292,7 +292,7 @@ describe('MediaUploadModal', () => {
       expect(alert.textContent).toContain(
         '이 미디어는 다른 곳에서 사용 중이라 삭제할 수 없습니다.'
       );
-      expect(alert.textContent).toContain('Ref: req-1234');
+      expect(alert.textContent).toContain('오류 ID: req-1234');
       expect(alert.textContent).not.toContain('internal storage key');
     });
   });
@@ -322,7 +322,7 @@ describe('MediaUploadModal', () => {
       expect(alert.textContent).toContain(
         '이 미디어는 다른 곳에서 사용 중이라 삭제할 수 없습니다.'
       );
-      expect(alert.textContent).toContain('Ref: corr-123');
+      expect(alert.textContent).toContain('오류 ID: corr-123');
       expect(alert.textContent).not.toContain('internal storage key');
     });
   });

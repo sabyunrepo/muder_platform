@@ -345,6 +345,39 @@ func TestWriteError_ProdMode_MaskedDetail(t *testing.T) {
 	}
 }
 
+func TestWriteError_ProdMode_KeepsUserMessageWhenDetailIsMasked(t *testing.T) {
+	SetDevMode(false)
+	defer SetDevMode(false)
+
+	appErr := Internal("pq: relation theme_characters is_victim does not exist").
+		WithUserMessage("캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요.").
+		Wrap(errors.New("SQLSTATE 42703"))
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/test", nil)
+	req.Header.Set("X-Request-ID", "req-character-save")
+
+	WriteError(rec, req, appErr)
+
+	res := rec.Result()
+	defer res.Body.Close()
+
+	var body map[string]any
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body["detail"] != "an unexpected error occurred" {
+		t.Errorf("expected masked detail in prod mode, got %q", body["detail"])
+	}
+	if body["user_message"] != "캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요." {
+		t.Errorf("user_message = %v", body["user_message"])
+	}
+	if body["request_id"] != "req-character-save" {
+		t.Errorf("request_id = %v, want req-character-save", body["request_id"])
+	}
+}
+
 func TestWriteError_WrappedError_Logging(t *testing.T) {
 	cause := errors.New("pg: connection timeout")
 	appErr := Internal("database unavailable").Wrap(cause)
