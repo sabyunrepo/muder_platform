@@ -46,9 +46,36 @@ export function NodeDetailPanel({
   const isStart = node.type === "start";
   const canEditConnections =
     node.type === "start" || node.type === "phase";
+  const canUseSceneActions = node.type === "phase";
 
   return (
     <div className="min-h-full">
+      {canUseSceneActions && (
+        <div className="sticky top-0 z-10 space-y-2 border-b border-slate-800 bg-slate-900 p-3 shadow-[0_8px_20px_rgba(15,23,42,0.35)]">
+          {onDuplicate && (
+            <button
+              type="button"
+              onClick={() => onDuplicate(node.id)}
+              className="flex w-full items-center justify-center gap-1.5 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-200"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              장면 복제
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (!window.confirm("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.")) return;
+              onDelete(node.id);
+            }}
+            className="flex w-full items-center justify-center gap-1.5 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:border-red-600 hover:bg-red-900/30"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            장면 삭제
+          </button>
+        </div>
+      )}
+
       {/* Panel content */}
       <div>
         {isStart ? (
@@ -78,32 +105,6 @@ export function NodeDetailPanel({
         />
       )}
 
-      {/* Delete button — start 노드 제외 */}
-      {!isStart && (
-        <div className="space-y-2 border-t border-slate-800 p-3">
-          {node.type === "phase" && onDuplicate && (
-            <button
-              type="button"
-              onClick={() => onDuplicate(node.id)}
-              className="flex w-full items-center justify-center gap-1.5 rounded border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-200"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              장면 복제
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              if (!window.confirm("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.")) return;
-              onDelete(node.id);
-            }}
-            className="flex w-full items-center justify-center gap-1.5 rounded border border-red-800 bg-red-950/30 px-3 py-1.5 text-xs text-red-400 transition-colors hover:border-red-600 hover:bg-red-900/30"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            선택 항목 삭제
-          </button>
-        </div>
-      )}
     </div>
   );
 }
