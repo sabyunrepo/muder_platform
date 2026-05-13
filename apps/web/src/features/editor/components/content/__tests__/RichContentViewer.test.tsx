@@ -47,4 +47,52 @@ describe('RichContentViewer', () => {
       expect.not.stringContaining('> *2008년'),
     );
   });
+
+  it('renders legacy escaped markdown markers as formatted content', () => {
+    useMediaListMock.mockReturnValue({ data: [] });
+
+    const { container } = render(
+      <RichContentViewer
+        themeId="theme-1"
+        markdown={[
+          '\\> \\*2008년 7월 28일 저녁, 비가 내리는 명우 홀리데이 호텔 2층 식당.\\*',
+          '',
+          '\\---',
+          '',
+          '\\*\\*고동(顾东):\\*\\* 송 사장님',
+        ].join('\n')}
+      />,
+    );
+
+    expect(container.querySelector('blockquote')).not.toBeNull();
+    expect(container.querySelector('blockquote em')?.textContent).toBe(
+      '2008년 7월 28일 저녁, 비가 내리는 명우 홀리데이 호텔 2층 식당.',
+    );
+    expect(container.querySelector('hr')).not.toBeNull();
+    expect(screen.getByText('고동(顾东):')).toHaveProperty('tagName', 'STRONG');
+    expect(container).toHaveProperty(
+      'textContent',
+      expect.not.stringContaining('\\> \\*2008년'),
+    );
+  });
+
+  it('preserves escaped formatting markers inside fenced code blocks', () => {
+    useMediaListMock.mockReturnValue({ data: [] });
+
+    const { container } = render(
+      <RichContentViewer
+        themeId="theme-1"
+        markdown={[
+          '\\> \\*2008년 7월 28일 저녁\\*',
+          '',
+          '```',
+          '\\*literal\\*',
+          '```',
+        ].join('\n')}
+      />,
+    );
+
+    expect(container.querySelector('blockquote em')?.textContent).toBe('2008년 7월 28일 저녁');
+    expect(container.querySelector('code')?.textContent?.trim()).toBe('\\*literal\\*');
+  });
 });

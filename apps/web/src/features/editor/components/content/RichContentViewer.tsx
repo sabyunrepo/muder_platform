@@ -3,6 +3,7 @@ import { marked } from 'marked';
 
 import { useMediaList } from '@/features/editor/mediaApi';
 import { MediaEmbedDisplay } from './MediaEmbedDisplay';
+import { normalizeLegacyEscapedMarkdown } from './legacyMarkdown';
 import { readMediaEmbedAttributesFromSource } from './mediaEmbedMarkdown';
 
 type RichContentPart =
@@ -33,7 +34,8 @@ export function RichContentViewer({
 }
 
 function MarkdownFragment({ markdown }: { markdown: string }) {
-  const html = DOMPurify.sanitize(marked.parse(markdown, { async: false }) as string);
+  const normalizedMarkdown = normalizeLegacyEscapedMarkdown(markdown);
+  const html = DOMPurify.sanitize(marked.parse(normalizedMarkdown, { async: false }) as string);
   if (!html.trim()) return null;
   return (
     <div

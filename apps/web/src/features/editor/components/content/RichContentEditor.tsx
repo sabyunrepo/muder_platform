@@ -30,6 +30,7 @@ import {
   mediaTypeToEmbedType,
   type MediaEmbedAttributes,
 } from './mediaEmbedMarkdown';
+import { normalizeLegacyEscapedMarkdown } from './legacyMarkdown';
 
 export function RichContentEditor({
   themeId,
@@ -59,6 +60,7 @@ export function RichContentEditor({
   onBlurCapture?: (relatedTarget: EventTarget | null) => void;
 }) {
   const editorRef = useRef<MDXEditorMethods>(null);
+  const normalizedMarkdown = useMemo(() => normalizeLegacyEscapedMarkdown(markdown), [markdown]);
   const [replacementTarget, setReplacementTarget] = useState<MediaEmbedAttributes | null>(null);
   const { data: media = [] } = useMediaList(themeId);
   const plugins = useMemo(
@@ -101,7 +103,7 @@ export function RichContentEditor({
         replacementTarget.align,
         replacementTarget.width,
       ).trim();
-      onChange(replaceMediaEmbed(markdown, replacementTarget, snippet));
+      onChange(replaceMediaEmbed(normalizedMarkdown, replacementTarget, snippet));
       setReplacementTarget(null);
       onClosePicker();
       return;
@@ -137,7 +139,7 @@ export function RichContentEditor({
       <div className="mmp-rich-content-surface">
         <MDXEditor
           ref={editorRef}
-          markdown={markdown}
+          markdown={normalizedMarkdown}
           onChange={onChange}
           plugins={plugins}
           className="mmp-mdx-editor"
