@@ -38,12 +38,16 @@ vi.mock('@mdxeditor/editor', () => ({
     {
       markdown: string;
       onChange: (markdown: string) => void;
-      plugins?: Array<{ jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }> }>;
+      plugins?: Array<{
+        markdownShortcuts?: boolean;
+        jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }>;
+      }>;
     }
   >(({ markdown, onChange, plugins = [] }, ref) => {
     useImperativeHandle(ref, () => ({
       insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
     }));
+    const hasMarkdownShortcuts = plugins.some((plugin) => plugin.markdownShortcuts);
     const mediaEmbedDescriptor = plugins
       .flatMap((plugin) => plugin.jsxComponentDescriptors ?? [])
       .find((descriptor) => descriptor.name === 'MediaEmbed');
@@ -55,6 +59,9 @@ vi.mock('@mdxeditor/editor', () => ({
           value={markdown}
           onChange={(event) => onChange(event.target.value)}
         />
+        {hasMarkdownShortcuts && markdown.startsWith('> ') ? (
+          <blockquote>{markdown.slice(2)}</blockquote>
+        ) : null}
         {mediaEmbedDescriptor
           ? mediaEmbeds.map((match) => {
               const attrs = match[1] ?? '';
@@ -78,6 +85,7 @@ vi.mock('@mdxeditor/editor', () => ({
   listsPlugin: vi.fn(() => ({})),
   quotePlugin: vi.fn(() => ({})),
   linkPlugin: vi.fn(() => ({})),
+  markdownShortcutPlugin: vi.fn(() => ({ markdownShortcuts: true })),
   thematicBreakPlugin: vi.fn(() => ({})),
   toolbarPlugin: vi.fn(() => ({})),
   UndoRedo: () => null,
@@ -216,6 +224,16 @@ describe('InfoTab', () => {
     expect(screen.queryByText('관련 단서')).toBeNull();
     expect(screen.queryByText('관련 장소')).toBeNull();
     expect(screen.queryByRole('region', { name: '정보 카드 프리뷰' })).toBeNull();
+  });
+
+  it('shows typed markdown shortcuts as formatted content in the information editor', () => {
+    render(<InfoTab themeId="theme-1" />);
+
+    enterInfoEditMode();
+    fireEvent.change(getInfoBodyEditor(), { target: { value: '> 현장 기록' } });
+
+    const editor = screen.getByTestId('mdx-editor-surface');
+    expect(editor.querySelector('blockquote')).toHaveProperty('textContent', '현장 기록');
   });
 
   it('renders image media embeds in the read-only preview without a card caption', () => {
