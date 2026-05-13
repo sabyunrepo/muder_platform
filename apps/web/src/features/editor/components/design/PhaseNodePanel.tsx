@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -23,12 +24,18 @@ interface PhaseNodePanelProps {
   themeId: string;
   onUpdate: (id: string, data: Partial<FlowNodeData>) => void;
   edges?: Edge[];
+  headerActions?: ReactNode;
 }
 
 /** Debounce window for flow-node saves (W2 PR-5: 500→1500ms). */
 const SAVE_DEBOUNCE_MS = 1500;
 
-export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps) {
+export function PhaseNodePanel({
+  node,
+  themeId,
+  onUpdate,
+  headerActions,
+}: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
   const { data: maps = [], isLoading: mapsLoading } = useEditorMaps(themeId);
   const queryClient = useQueryClient();
@@ -67,9 +74,16 @@ export function PhaseNodePanel({ node, themeId, onUpdate }: PhaseNodePanelProps)
 
   return (
     <div className="flex flex-col gap-3 p-4">
-      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-        장면 설정
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+          장면 설정
+        </h3>
+        {headerActions ? (
+          <div className="flex shrink-0 items-center gap-1.5">
+            {headerActions}
+          </div>
+        ) : null}
+      </div>
 
       <PhasePanelBasicInfo
         label={data.label}

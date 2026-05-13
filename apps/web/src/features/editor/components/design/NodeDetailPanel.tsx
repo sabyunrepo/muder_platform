@@ -46,36 +46,39 @@ export function NodeDetailPanel({
   const isStart = node.type === "start";
   const canEditConnections =
     node.type === "start" || node.type === "phase";
-  const canUseSceneActions = node.type === "phase";
+  const phaseActions =
+    node.type === "phase" ? (
+      <>
+        {onDuplicate ? (
+          <button
+            type="button"
+            aria-label="장면 복제"
+            title="장면 복제"
+            onClick={() => onDuplicate(node.id)}
+            className="inline-flex h-7 items-center gap-1 rounded border border-amber-500/50 bg-amber-500/10 px-2 text-[11px] font-semibold text-amber-100 transition-colors hover:bg-amber-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            장면 복제
+          </button>
+        ) : null}
+        <button
+          type="button"
+          aria-label="장면 삭제"
+          title="장면 삭제"
+          onClick={() => {
+            if (!window.confirm("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.")) return;
+            onDelete(node.id);
+          }}
+          className="inline-flex h-7 items-center gap-1 rounded border border-red-500/50 bg-red-500/10 px-2 text-[11px] font-semibold text-red-200 transition-colors hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          장면 삭제
+        </button>
+      </>
+    ) : undefined;
 
   return (
     <div className="min-h-full">
-      {canUseSceneActions && (
-        <div className="sticky top-0 z-10 space-y-2 border-b border-slate-800 bg-slate-900 p-3 shadow-[0_8px_20px_rgba(15,23,42,0.35)]">
-          {onDuplicate && (
-            <button
-              type="button"
-              onClick={() => onDuplicate(node.id)}
-              className="flex w-full items-center justify-center gap-1.5 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-200"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              장면 복제
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              if (!window.confirm("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.")) return;
-              onDelete(node.id);
-            }}
-            className="flex w-full items-center justify-center gap-1.5 rounded border border-red-800 bg-red-950/30 px-3 py-2 text-xs font-semibold text-red-300 transition-colors hover:border-red-600 hover:bg-red-900/30"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            장면 삭제
-          </button>
-        </div>
-      )}
-
       {/* Panel content */}
       <div>
         {isStart ? (
@@ -85,7 +88,13 @@ export function NodeDetailPanel({
             </span>
           </div>
         ) : node.type === "phase" ? (
-          <PhaseNodePanel node={node} themeId={themeId} onUpdate={onUpdate} edges={edges} />
+          <PhaseNodePanel
+            node={node}
+            themeId={themeId}
+            onUpdate={onUpdate}
+            edges={edges}
+            headerActions={phaseActions}
+          />
         ) : (
           <div className="flex h-full items-center justify-center p-4">
             <span className="text-xs text-slate-500">
