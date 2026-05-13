@@ -29,6 +29,9 @@ func ValidateDAG(nodes []FlowNode, edges []FlowEdge) error {
 		adj[n.ID] = nil
 	}
 	for _, e := range edges {
+		if len(adj[e.SourceID]) > 0 {
+			return apperror.BadRequest("flow graph cannot have multiple outgoing edges from the same node")
+		}
 		adj[e.SourceID] = append(adj[e.SourceID], e.TargetID)
 	}
 

@@ -12,12 +12,13 @@ import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useFlowData } from '../../hooks/useFlowData';
+import { useFlowConnections } from '../../hooks/useFlowConnections';
 import { FlowToolbar } from './FlowToolbar';
 import { StartNode } from './StartNode';
 import { PhaseNode } from './PhaseNode';
 import { NodeDetailPanel } from './NodeDetailPanel';
 import { FlowOrderReviewPanel } from './FlowOrderReviewPanel';
-import { branchNodeTypes, conditionEdgeTypes } from './flowNodeRegistry';
+import { conditionEdgeTypes } from './flowNodeRegistry';
 import type { FlowNodeType } from '../../flowTypes';
 
 // ---------------------------------------------------------------------------
@@ -27,7 +28,6 @@ import type { FlowNodeType } from '../../flowTypes';
 const nodeTypes: NodeTypes = {
   start: StartNode,
   phase: PhaseNode,
-  ...branchNodeTypes,
 };
 
 const edgeTypes = { ...conditionEdgeTypes };
@@ -65,12 +65,12 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     save,
     selectedNode,
     addNode,
+    duplicateNode,
     updateNodeData,
     deleteNode,
     deleteEdge,
     connectNodes,
     onSelectionChange,
-    updateEdgeCondition,
     applyPreset,
   } = useFlowData(themeId);
 
@@ -88,7 +88,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   );
 
   const flowNodes = useMemo(
-    () => renderedNodes.filter((node) => node.type !== 'ending'),
+    () => renderedNodes.filter((node) => node.type !== 'ending' && node.type !== 'branch'),
     [renderedNodes]
   );
 
@@ -101,7 +101,9 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
     () => edges.filter((edge) => flowNodeIds.has(edge.source) && flowNodeIds.has(edge.target)),
     [edges, flowNodeIds]
   );
-  const selectedFlowNode = selectedNode?.type === 'ending' ? null : selectedNode;
+  const selectedFlowNode =
+    selectedNode?.type === 'ending' || selectedNode?.type === 'branch' ? null : selectedNode;
+  const { isValidConnection } = useFlowConnections({ nodes: flowNodes, edges: flowEdges });
 
   useEffect(() => {
     onSelectedNodeChange?.(selectedFlowNode, {
@@ -222,6 +224,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            isValidConnection={isValidConnection}
             onSelectionChange={handleSelectionChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
@@ -287,11 +290,11 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
               themeId={themeId}
               onUpdate={updateNodeData}
               onDelete={deleteNode}
+              onDuplicate={duplicateNode}
               nodes={flowNodes}
               edges={flowEdges}
               onConnectNodes={handleConnectNodes}
               onDeleteEdge={deleteEdge}
-              onEdgeConditionChange={updateEdgeCondition}
             />
           )}
         </div>

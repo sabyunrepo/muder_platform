@@ -152,6 +152,23 @@ describe('useFlowData', () => {
     expect(latestSavedGraph().edges[1]).toMatchObject({ source_id: 'n2', target_id: 'n1' });
   });
 
+  it('onConnect가 같은 source의 기존 연결을 새 연결로 교체한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.onConnect({
+        source: 'n1',
+        target: 'n2',
+        sourceHandle: null,
+        targetHandle: null,
+      });
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges).toHaveLength(1);
+    expect(latestSavedGraph().edges[0]).toMatchObject({ source_id: 'n1', target_id: 'n2' });
+  });
+
   it('onConnect가 서버 저장 가능한 UUID edge id를 생성한다', () => {
     const { result } = renderHook(() => useFlowData('theme-1'));
 
@@ -177,6 +194,36 @@ describe('useFlowData', () => {
     });
 
     expect(latestSavedGraph().edges[1].id).toMatch(UUID_RE);
+  });
+
+  it('connectNodes가 같은 source의 기존 연결을 새 연결로 교체한다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.connectNodes('n1', 'n2');
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(latestSavedGraph().edges).toHaveLength(1);
+    expect(latestSavedGraph().edges[0]).toMatchObject({ source_id: 'n1', target_id: 'n2' });
+  });
+
+  it('duplicateNode가 장면 내용만 복제하고 연결은 복제하지 않는다', () => {
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.duplicateNode('n1');
+    });
+
+    expect(createNodeMutateMock).toHaveBeenCalledWith(
+      {
+        type: 'phase',
+        data: { label: '오프닝 복사본' },
+        position_x: 80,
+        position_y: 60,
+      },
+      expect.any(Object)
+    );
   });
 
   it('node 삭제 성공 시 연결된 edge도 ref와 저장 payload에서 제거한다', () => {

@@ -35,6 +35,9 @@ export interface MockState {
   conflictCountdown: number;
   flowPatchCalls: number;
   flowPutCalls: number;
+  flowCreateNodeCalls: number;
+  flowDeleteNodeCalls: number;
+  lastFlowCreateNodeBody: Record<string, unknown> | null;
   lastFlowNodePatchBody: Record<string, unknown> | null;
   characterUpdateCalls: number;
   lastCharacterUpdateBody: Record<string, unknown> | null;
@@ -59,6 +62,9 @@ export function freshState(): MockState {
     conflictCountdown: 1,
     flowPatchCalls: 0,
     flowPutCalls: 0,
+    flowCreateNodeCalls: 0,
+    flowDeleteNodeCalls: 0,
+    lastFlowCreateNodeBody: null,
     lastFlowNodePatchBody: null,
     characterUpdateCalls: 0,
     lastCharacterUpdateBody: null,
@@ -281,6 +287,27 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
     });
   });
 
+  await page.route(`**/v1/editor/themes/${THEME_ID}/flow/nodes`, async (r) => {
+    if (r.request().method() !== "POST") return r.continue();
+    const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
+    state.flowCreateNodeCalls += 1;
+    state.lastFlowCreateNodeBody = body;
+    return r.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        id: "phase-copy-1",
+        theme_id: THEME_ID,
+        type: body.type ?? "phase",
+        data: body.data ?? {},
+        position_x: body.position_x ?? 200,
+        position_y: body.position_y ?? 200,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  });
+
   await page.route("**/v1/editor/characters/char-1", async (r) => {
     if (r.request().method() !== "PUT") return r.continue();
     const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
@@ -421,6 +448,10 @@ export async function mockCommonApis(page: Page, state: MockState): Promise<void
   // #7 flow nodes — PATCH 만 허용 (PUT 호출 시 카운터 증가해서 테스트가 감지)
   await page.route(`**/v1/editor/themes/${THEME_ID}/flow/nodes/${FLOW_NODE_ID}`, async (r) => {
     const method = r.request().method();
+    if (method === "DELETE") {
+      state.flowDeleteNodeCalls += 1;
+      return r.fulfill({ status: 204, body: "" });
+    }
     if (method === "PATCH") {
       const body = JSON.parse(r.request().postData() ?? "{}") as Record<string, unknown>;
       state.flowPatchCalls += 1;
@@ -534,6 +565,16 @@ function flowPayload() {
         },
         position_x: 420,
         position_y: 180,
+        created_at: now,
+        updated_at: now,
+      },
+      {
+        id: "branch-legacy-1",
+        theme_id: THEME_ID,
+        type: "branch",
+        data: { label: "레거시 분기" },
+        position_x: 260,
+        position_y: 260,
         created_at: now,
         updated_at: now,
       },

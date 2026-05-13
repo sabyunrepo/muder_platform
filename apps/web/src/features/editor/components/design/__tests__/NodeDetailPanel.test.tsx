@@ -139,6 +139,7 @@ describe("NodeDetailPanel", () => {
 
   it("삭제 버튼 클릭 시 onDelete가 노드 id와 함께 호출된다", () => {
     const onDelete = vi.fn();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(
       <NodeDetailPanel
         node={makeNode("phase")}
@@ -148,7 +149,42 @@ describe("NodeDetailPanel", () => {
       />,
     );
     fireEvent.click(screen.getByText("선택 항목 삭제"));
+    expect(window.confirm).toHaveBeenCalledWith("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.");
     expect(onDelete).toHaveBeenCalledWith("node-1");
+  });
+
+  it("삭제 확인을 취소하면 onDelete를 호출하지 않는다", () => {
+    const onDelete = vi.fn();
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(
+      <NodeDetailPanel
+        node={makeNode("phase")}
+        themeId="t1"
+        onUpdate={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("선택 항목 삭제"));
+
+    expect(onDelete).not.toHaveBeenCalled();
+  });
+
+  it("복제 버튼 클릭 시 onDuplicate가 노드 id와 함께 호출된다", () => {
+    const onDuplicate = vi.fn();
+    render(
+      <NodeDetailPanel
+        node={makeNode("phase")}
+        themeId="t1"
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={onDuplicate}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "장면 복제" }));
+
+    expect(onDuplicate).toHaveBeenCalledWith("node-1");
   });
 
   it("선택한 장면에서 다음 장면을 버튼으로 연결할 수 있다", () => {

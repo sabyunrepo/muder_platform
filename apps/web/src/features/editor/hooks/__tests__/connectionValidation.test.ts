@@ -71,9 +71,9 @@ describe("isValidConnection", () => {
     expect(isValidConnection(nodes, [], makeConn("s", "p"))).toBe(true);
   });
 
-  it("Start → Branch는 허용된다", () => {
+  it("Start → Branch는 허용되지 않는다", () => {
     const nodes = [makeNode("s", "start"), makeNode("b", "branch")];
-    expect(isValidConnection(nodes, [], makeConn("s", "b"))).toBe(true);
+    expect(isValidConnection(nodes, [], makeConn("s", "b"))).toBe(false);
   });
 
   it("Start → Ending은 허용되지 않는다", () => {
@@ -86,14 +86,14 @@ describe("isValidConnection", () => {
     expect(isValidConnection(nodes, [], makeConn("e", "p"))).toBe(false);
   });
 
-  it("Branch → Phase는 허용된다", () => {
+  it("Branch → Phase는 허용되지 않는다", () => {
     const nodes = [makeNode("b", "branch"), makeNode("p", "phase")];
-    expect(isValidConnection(nodes, [], makeConn("b", "p"))).toBe(true);
+    expect(isValidConnection(nodes, [], makeConn("b", "p"))).toBe(false);
   });
 
-  it("Branch → Ending은 허용된다", () => {
+  it("Branch → Ending은 허용되지 않는다", () => {
     const nodes = [makeNode("b", "branch"), makeNode("e", "ending")];
-    expect(isValidConnection(nodes, [], makeConn("b", "e"))).toBe(true);
+    expect(isValidConnection(nodes, [], makeConn("b", "e"))).toBe(false);
   });
 
   it("Phase → Phase는 허용된다", () => {

@@ -25,10 +25,19 @@ func TestValidateDAG_NoCycle(t *testing.T) {
 
 func TestValidateDAG_WithCycle(t *testing.T) {
 	a, b, c := uuid.New(), uuid.New(), uuid.New()
-	nodes := []FlowNode{node(a, NodeTypeStart), node(b, NodeTypePhase), node(c, NodeTypeBranch)}
+	nodes := []FlowNode{node(a, NodeTypeStart), node(b, NodeTypePhase), node(c, NodeTypePhase)}
 	edges := []FlowEdge{edge(a, b), edge(b, c), edge(c, b)} // b→c→b cycle
 	if err := ValidateDAG(nodes, edges); err == nil {
 		t.Fatal("expected cycle error, got nil")
+	}
+}
+
+func TestValidateDAG_RejectsMultipleOutgoingEdgesFromSameSource(t *testing.T) {
+	a, b, c := uuid.New(), uuid.New(), uuid.New()
+	nodes := []FlowNode{node(a, NodeTypeStart), node(b, NodeTypePhase), node(c, NodeTypePhase)}
+	edges := []FlowEdge{edge(a, b), edge(a, c)}
+	if err := ValidateDAG(nodes, edges); err == nil {
+		t.Fatal("expected error for multiple outgoing edges from same source")
 	}
 }
 

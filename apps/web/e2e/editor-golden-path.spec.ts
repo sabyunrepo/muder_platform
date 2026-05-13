@@ -601,6 +601,29 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     expect(state.flowPutCalls).toBe(0);
   });
 
+  test('[7B] 흐름 장면은 복제/삭제할 수 있고 레거시 branch 노드는 숨긴다', async ({ page }) => {
+    await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
+    await tryClickTab(page, /흐름|flow/i);
+
+    await expect(page.getByText('레거시 분기')).toHaveCount(0);
+
+    const node = page.locator('[data-id="phase-1"]').first();
+    await expect(node).toBeVisible({ timeout: 10_000 });
+    await node.click();
+
+    await page.getByRole('button', { name: '장면 복제' }).click();
+    await expect.poll(() => state.flowCreateNodeCalls).toBeGreaterThanOrEqual(1);
+    expect(state.lastFlowCreateNodeBody).toMatchObject({
+      type: 'phase',
+      data: expect.objectContaining({ label: '조사 단계 복사본' }),
+    });
+
+    await node.click();
+    page.once('dialog', (dialog) => dialog.accept());
+    await page.getByRole('button', { name: '선택 항목 삭제' }).click();
+    await expect.poll(() => state.flowDeleteNodeCalls).toBeGreaterThanOrEqual(1);
+  });
+
   test('[8] 장소 탭 — locations[].clueIds 구조 UI 로드 (network-only)', async ({ page }) => {
     test.info().annotations.push({ type: 'soft-skip', description: 'tryClickTab + chip soft' });
     const locReq = page
