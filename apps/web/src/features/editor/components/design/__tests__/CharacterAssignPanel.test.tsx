@@ -122,6 +122,7 @@ vi.mock('@mdxeditor/editor', () => ({
   listsPlugin: vi.fn(() => ({})),
   quotePlugin: vi.fn(() => ({})),
   linkPlugin: vi.fn(() => ({})),
+  markdownShortcutPlugin: vi.fn(() => ({ markdownShortcuts: true })),
   thematicBreakPlugin: vi.fn(() => ({})),
   toolbarPlugin: vi.fn(() => ({})),
   UndoRedo: () => null,

@@ -10,6 +10,7 @@ import {
   jsxPlugin,
   linkPlugin,
   listsPlugin,
+  markdownShortcutPlugin,
   quotePlugin,
   thematicBreakPlugin,
   toolbarPlugin,
@@ -86,6 +87,7 @@ export function RichContentEditor({
           </>
         ),
       }),
+      markdownShortcutPlugin(),
     ],
     [media, onOpenPicker],
   );
