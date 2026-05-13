@@ -4,6 +4,7 @@ import {
   useUpdateClue,
   type ClueResponse,
 } from '@/features/editor/api';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // useClueFormSubmit
@@ -62,7 +63,7 @@ export function useClueFormSubmit({
             onDone();
           },
           onError: (err) => {
-            toast.error(err.message || '단서 수정에 실패했습니다');
+            showUnknownErrorToast(err, '단서 수정에 실패했습니다');
           },
         },
       );
@@ -75,7 +76,7 @@ export function useClueFormSubmit({
         onDone();
       },
       onError: (err) => {
-        toast.error(err.message || '단서 추가에 실패했습니다');
+        showUnknownErrorToast(err, '단서 추가에 실패했습니다');
       },
     });
   }

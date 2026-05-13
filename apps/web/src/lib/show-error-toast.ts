@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import type { ApiError } from '@mmp/shared';
+import { isApiHttpError } from '@/lib/api-error';
 import { getUserMessage } from '@/lib/error-messages';
 import { getErrorRecoveryStrategy } from '@/lib/error-recovery';
 import { captureApiError } from '@/lib/sentry';
@@ -20,7 +21,7 @@ export function showErrorToast(error: ApiError): void {
 
   const message = getUserMessage(error);
   const ref = getErrorReference(error);
-  const description = ref ? `Ref: ${ref}` : undefined;
+  const description = ref ? `오류 ID: ${ref}` : undefined;
 
   if (strategy.capture) {
     captureApiError(new Error(error.detail), error);
@@ -30,6 +31,15 @@ export function showErrorToast(error: ApiError): void {
     description,
     duration: strategy.duration,
   });
+}
+
+export function showUnknownErrorToast(error: unknown, fallback: string): void {
+  if (isApiHttpError(error)) {
+    showErrorToast(error.apiError);
+    return;
+  }
+
+  toast.error(fallback);
 }
 
 export function getErrorReference(error: ApiError): string | undefined {

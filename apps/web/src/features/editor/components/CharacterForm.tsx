@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { Modal } from '@/shared/components/ui/Modal';
 import { Button } from '@/shared/components/ui/Button';
 import { Input } from '@/shared/components/ui/Input';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 import {
   useCreateCharacter,
   useUpdateCharacter,
@@ -99,7 +100,7 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
             onClose();
           },
           onError: (err) => {
-            toast.error(err.message || '캐릭터 수정에 실패했습니다');
+            showUnknownErrorToast(err, '캐릭터 수정에 실패했습니다');
           },
         },
       );
@@ -114,7 +115,7 @@ export function CharacterForm({ themeId, character, isOpen, onClose }: Character
             onClose();
           },
           onError: (err) => {
-            toast.error(err.message || '캐릭터 추가에 실패했습니다');
+            showUnknownErrorToast(err, '캐릭터 추가에 실패했습니다');
           },
         },
       );

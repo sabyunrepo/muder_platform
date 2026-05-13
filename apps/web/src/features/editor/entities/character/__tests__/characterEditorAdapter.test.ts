@@ -25,6 +25,7 @@ function character(overrides: Partial<EditorCharacterResponse> = {}): EditorChar
     show_in_intro: true,
     can_speak_in_reading: true,
     is_voting_candidate: true,
+    is_victim: false,
     endcard_title: null,
     endcard_body: null,
     endcard_image_url: null,
@@ -53,6 +54,7 @@ describe('characterEditorAdapter', () => {
       showInIntro: true,
       canSpeakInReading: true,
       isVotingCandidate: true,
+      isVictim: false,
       visibilityBadges: ['PC', '소개 표시', '읽기 대사', '투표 후보'],
       aliasRules: [],
       hasAliasRules: false,
@@ -121,6 +123,16 @@ describe('characterEditorAdapter', () => {
     expect(getCharacterListBadges(character({ is_playable: false }))).toEqual(['용의자', 'NPC']);
   });
 
+  it('피해자 표시 정책을 제작자용 ViewModel과 배지로 변환한다', () => {
+    const vm = toCharacterEditorViewModel(character({ is_victim: true }));
+
+    expect(vm).toMatchObject({
+      isVictim: true,
+      visibilityBadges: ['PC', '소개 표시', '읽기 대사', '투표 후보', '피해자'],
+    });
+    expect(getCharacterListBadges(character({ is_victim: true }))).toEqual(['용의자', 'PC', '피해자']);
+  });
+
   it('legacy is_culprit 플래그만 있어도 범인 역할로 보존한다', () => {
     expect(normalizeCharacterEditorRole(character({ mystery_role: undefined as unknown as EditorCharacterResponse['mystery_role'], is_culprit: true }))).toBe('culprit');
     expect(getCharacterRoleBadge(character({ mystery_role: undefined as unknown as EditorCharacterResponse['mystery_role'], is_culprit: true }))).toBe('범인');
@@ -140,6 +152,7 @@ describe('characterEditorAdapter', () => {
       show_in_intro: true,
       can_speak_in_reading: true,
       is_voting_candidate: true,
+      is_victim: false,
       alias_rules: [],
     });
   });
@@ -171,6 +184,25 @@ describe('characterEditorAdapter', () => {
       show_in_intro: true,
       can_speak_in_reading: true,
       is_voting_candidate: false,
+      is_victim: false,
+    });
+  });
+
+  it('피해자 플래그 변경 저장 payload에서 기존 역할과 노출 정책을 보존한다', () => {
+    const payload = buildCharacterVisibilityUpdatePayload(
+      character({ mystery_role: 'culprit', is_culprit: true }),
+      'is_victim',
+      true,
+    );
+
+    expect(payload).toMatchObject({
+      mystery_role: 'culprit',
+      is_culprit: true,
+      is_playable: true,
+      show_in_intro: true,
+      can_speak_in_reading: true,
+      is_voting_candidate: true,
+      is_victim: true,
     });
   });
 
@@ -201,6 +233,7 @@ describe('characterEditorAdapter', () => {
       show_in_intro: true,
       can_speak_in_reading: true,
       is_voting_candidate: true,
+      is_victim: false,
       alias_rules: [{
         id: 'alias-1',
         label: '공개 후',

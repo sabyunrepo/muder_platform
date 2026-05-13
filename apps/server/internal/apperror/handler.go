@@ -14,17 +14,18 @@ import (
 
 // problemResponse is the RFC 9457 Problem Details JSON structure.
 type problemResponse struct {
-	Type       string         `json:"type"`
-	Title      string         `json:"title"`
-	Status     int            `json:"status"`
-	Detail     string         `json:"detail"`
-	Code       string         `json:"code"`
-	Instance   string         `json:"instance,omitempty"`
-	Params     map[string]any `json:"params,omitempty"`
-	Errors     []FieldError   `json:"errors,omitempty"`
-	Extensions map[string]any `json:"extensions,omitempty"`
-	TraceID    string         `json:"trace_id,omitempty"`
-	RequestID  string         `json:"request_id,omitempty"`
+	Type        string         `json:"type"`
+	Title       string         `json:"title"`
+	Status      int            `json:"status"`
+	Detail      string         `json:"detail"`
+	Code        string         `json:"code"`
+	UserMessage string         `json:"user_message,omitempty"`
+	Instance    string         `json:"instance,omitempty"`
+	Params      map[string]any `json:"params,omitempty"`
+	Errors      []FieldError   `json:"errors,omitempty"`
+	Extensions  map[string]any `json:"extensions,omitempty"`
+	TraceID     string         `json:"trace_id,omitempty"`
+	RequestID   string         `json:"request_id,omitempty"`
 	// CorrelationID mirrors request_id for clients and logs that use correlation terminology.
 	CorrelationID string     `json:"correlation_id,omitempty"`
 	Timestamp     string     `json:"timestamp"`
@@ -99,6 +100,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		Status:        appErr.Status,
 		Detail:        appErr.Detail,
 		Code:          appErr.Code,
+		UserMessage:   userMessageForResponse(appErr, defn),
 		Instance:      appErr.Instance,
 		Params:        appErr.Params,
 		Errors:        appErr.Errors,
@@ -136,6 +138,13 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if encErr := json.NewEncoder(w).Encode(resp); encErr != nil {
 		logger.Error().Err(encErr).Msg("failed to encode error response")
 	}
+}
+
+func userMessageForResponse(appErr *AppError, defn ErrorDefinition) string {
+	if appErr.UserMessage != "" {
+		return appErr.UserMessage
+	}
+	return defn.DefaultKR
 }
 
 func requestIDFrom(w http.ResponseWriter, r *http.Request) string {

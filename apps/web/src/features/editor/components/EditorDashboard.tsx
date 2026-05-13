@@ -18,6 +18,7 @@ import {
 } from "@/features/editor/api";
 import type { CreateThemeRequest, EditorThemeSummary } from "@/features/editor/api";
 import { STATUS_LABEL, STATUS_COLOR } from "@/features/editor/constants";
+import { showUnknownErrorToast } from "@/lib/show-error-toast";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", {
@@ -255,7 +256,7 @@ export function EditorDashboard() {
         navigate(`/editor/${created.id}`);
       },
       onError: (err) => {
-        toast.error(err.message || "테마 생성에 실패했습니다");
+        showUnknownErrorToast(err, "테마 생성에 실패했습니다");
       },
     });
   }
@@ -268,7 +269,7 @@ export function EditorDashboard() {
         setDeletingId(null);
       },
       onError: (err) => {
-        toast.error(err.message || "테마 삭제에 실패했습니다");
+        showUnknownErrorToast(err, "테마 삭제에 실패했습니다");
         setDeletingId(null);
       },
     });

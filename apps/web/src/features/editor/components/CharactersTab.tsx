@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Modal } from '@/shared/components/ui/Modal';
 import { Button } from '@/shared/components/ui/Button';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 import { useDeleteCharacter, type EditorCharacterResponse } from '@/features/editor/api';
 import { CharacterAssignPanel } from './design/CharacterAssignPanel';
 import { CharacterForm } from './CharacterForm';
@@ -49,7 +50,7 @@ export function CharactersTab({ themeId, theme }: CharactersTabProps) {
         setDeletingCharacter(undefined);
       },
       onError: (err) => {
-        toast.error(err.message || '캐릭터 삭제에 실패했습니다');
+        showUnknownErrorToast(err, '캐릭터 삭제에 실패했습니다');
         setDeletingCharacter(undefined);
       },
     });

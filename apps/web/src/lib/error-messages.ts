@@ -60,6 +60,11 @@ const FALLBACK_MESSAGE = "알 수 없는 오류가 발생했습니다.";
  * params가 있으면 {key} 형식의 플레이스홀더를 치환한다.
  */
 export function getUserMessage(error: ApiError): string {
+  const serverMessage = error.user_message?.trim();
+  if (serverMessage) {
+    return serverMessage;
+  }
+
   const template =
     (error.code && ERROR_MESSAGES[error.code]) ?? FALLBACK_MESSAGE;
 

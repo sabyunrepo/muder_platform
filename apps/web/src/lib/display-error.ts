@@ -9,7 +9,7 @@ export function getDisplayErrorMessage(
   if (isApiHttpError(error)) {
     const message = getUserMessage(error.apiError);
     const ref = getErrorReference(error.apiError);
-    return ref ? `${message} (Ref: ${ref})` : message;
+    return ref ? `${message} (오류 ID: ${ref})` : message;
   }
 
   if (error instanceof Error) {

@@ -32,6 +32,7 @@ export interface CharacterEditorViewModel {
   showInIntro: boolean;
   canSpeakInReading: boolean;
   isVotingCandidate: boolean;
+  isVictim: boolean;
   visibilityBadges: string[];
   aliasRules: CharacterAliasRule[];
   hasAliasRules: boolean;
@@ -76,7 +77,8 @@ export type CharacterVisibilityField =
   | 'is_playable'
   | 'show_in_intro'
   | 'can_speak_in_reading'
-  | 'is_voting_candidate';
+  | 'is_voting_candidate'
+  | 'is_victim';
 
 export function getCharacterRoleOption(role: MysteryRole): CharacterRoleOption {
   return roleOptionMap.get(role) ?? roleOptionMap.get('suspect')!;
@@ -100,6 +102,7 @@ function getCharacterVisibility(character: Partial<EditorCharacterResponse>, rol
     showInIntro: boolOrDefault(character.show_in_intro, true),
     canSpeakInReading: boolOrDefault(character.can_speak_in_reading, true),
     isVotingCandidate: boolOrDefault(character.is_voting_candidate, isPlayable && roleOption.defaultVotingCandidate),
+    isVictim: boolOrDefault(character.is_victim, false),
   };
 }
 
@@ -108,6 +111,7 @@ function getVisibilityBadges(visibility: ReturnType<typeof getCharacterVisibilit
   if (visibility.showInIntro) badges.push('소개 표시');
   if (visibility.canSpeakInReading) badges.push('읽기 대사');
   if (visibility.isVotingCandidate) badges.push('투표 후보');
+  if (visibility.isVictim) badges.push('피해자');
   return badges;
 }
 
@@ -140,6 +144,7 @@ function buildCharacterBaseUpdatePayload(character: EditorCharacterResponse, rol
     show_in_intro: visibility.showInIntro,
     can_speak_in_reading: visibility.canSpeakInReading,
     is_voting_candidate: visibility.isVotingCandidate,
+    is_victim: visibility.isVictim,
     alias_rules: normalizeCharacterAliasRules(character.alias_rules),
   };
 }
@@ -169,6 +174,7 @@ export function toCharacterEditorViewModel(character: EditorCharacterResponse): 
     showInIntro: visibility.showInIntro,
     canSpeakInReading: visibility.canSpeakInReading,
     isVotingCandidate: visibility.isVotingCandidate,
+    isVictim: visibility.isVictim,
     visibilityBadges: getVisibilityBadges(visibility),
     aliasRules,
     hasAliasRules: aliasRules.length > 0,
@@ -200,6 +206,7 @@ export function buildCharacterVisibilityUpdatePayload(
     show_in_intro: visibility.showInIntro,
     can_speak_in_reading: visibility.canSpeakInReading,
     is_voting_candidate: visibility.isVotingCandidate,
+    is_victim: visibility.isVictim,
     [field]: value,
   };
 
@@ -241,5 +248,7 @@ export function getCharacterRoleBadge(character: { mystery_role?: MysteryRole | 
 export function getCharacterListBadges(character: EditorCharacterResponse): string[] {
   const role = normalizeCharacterEditorRole(character);
   const visibility = getCharacterVisibility(character, role);
-  return [getCharacterRoleBadge(character), visibility.isPlayable ? 'PC' : 'NPC'];
+  const badges = [getCharacterRoleBadge(character), visibility.isPlayable ? 'PC' : 'NPC'];
+  if (visibility.isVictim) badges.push('피해자');
+  return badges;
 }

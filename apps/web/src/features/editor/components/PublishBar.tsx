@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui";
 import { useSubmitForReview, useUnpublishTheme } from "@/features/editor/api";
 import type { EditorThemeResponse } from "@/features/editor/api";
 import { STATUS_LABEL, STATUS_COLOR } from "@/features/editor/constants";
+import { showUnknownErrorToast } from "@/lib/show-error-toast";
 
 interface PublishBarProps {
   theme: EditorThemeResponse;
@@ -16,14 +17,14 @@ export function PublishBar({ theme }: PublishBarProps) {
   function handleSubmit() {
     submit.mutate(undefined, {
       onSuccess: () => toast.success("심사가 요청되었습니다"),
-      onError: (err) => toast.error(err.message || "심사 요청에 실패했습니다"),
+      onError: (err) => showUnknownErrorToast(err, "심사 요청에 실패했습니다"),
     });
   }
 
   function handleUnpublish() {
     unpublish.mutate(undefined, {
       onSuccess: () => toast.success("비공개로 전환되었습니다"),
-      onError: (err) => toast.error(err.message || "비공개 전환에 실패했습니다"),
+      onError: (err) => showUnknownErrorToast(err, "비공개 전환에 실패했습니다"),
     });
   }
 

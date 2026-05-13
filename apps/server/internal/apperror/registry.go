@@ -115,6 +115,9 @@ var errorDefinitions = map[string]ErrorDefinition{
 	ErrReadingVoiceRequired:    def(ErrReadingVoiceRequired, "reading", "domain", http.StatusConflict, SeverityMedium, false, "add_media", "음성 자동 진행에는 음성 파일이 필요합니다."),
 
 	ErrEditorConfigVersionMismatch: def(ErrEditorConfigVersionMismatch, "editor", "domain", http.StatusConflict, SeverityHigh, false, "reload_or_merge", "다른 변경사항과 충돌했습니다. 최신 내용으로 새로고침 후 다시 저장해주세요."),
+	ErrEditorEntityLoadFailed:      def(ErrEditorEntityLoadFailed, "editor", "application", http.StatusInternalServerError, SeverityHigh, true, "retry_later", "에디터 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요."),
+	ErrEditorEntitySaveFailed:      def(ErrEditorEntitySaveFailed, "editor", "application", http.StatusInternalServerError, SeverityHigh, true, "retry_later", "에디터 데이터를 저장하지 못했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요."),
+	ErrEditorEntityDeleteFailed:    def(ErrEditorEntityDeleteFailed, "editor", "application", http.StatusInternalServerError, SeverityHigh, true, "retry_later", "에디터 데이터를 삭제하지 못했습니다. 잠시 후 다시 시도해주세요."),
 }
 
 func def(code, domain, layer string, status int, severity Severity, retryable bool, userAction, defaultKR string) ErrorDefinition {

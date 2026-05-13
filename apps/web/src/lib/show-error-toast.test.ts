@@ -70,10 +70,30 @@ describe('showErrorToast', () => {
     showErrorToast(apiError({ request_id: 'request-123456789' }));
 
     expect(toast.error).toHaveBeenCalledWith('잘못된 요청입니다.', {
-      description: 'Ref: request-',
+      description: '오류 ID: request-',
       duration: 5000,
     });
     expect(captureApiError).not.toHaveBeenCalled();
+  });
+
+  it('서버가 보낸 user_message를 코드 기본 메시지보다 우선 표시한다', () => {
+    showErrorToast(
+      apiError({
+        status: 500,
+        code: 'INTERNAL_ERROR',
+        detail: 'an unexpected error occurred',
+        user_message: '캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요.',
+        request_id: 'request-123456789',
+      })
+    );
+
+    expect(toast.error).toHaveBeenCalledWith(
+      '캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요.',
+      {
+        description: '오류 ID: request-',
+        duration: Infinity,
+      }
+    );
   });
 
   it('high severity 4xx는 캡처 없이 더 오래 표시한다', () => {
@@ -92,7 +112,7 @@ describe('showErrorToast', () => {
     expect(toast.error).toHaveBeenCalledWith(
       '다른 변경사항과 충돌했습니다. 최신 내용으로 새로고침 후 다시 저장해주세요.',
       {
-        description: 'Ref: request-',
+        description: '오류 ID: request-',
         duration: 8000,
       }
     );
@@ -113,7 +133,7 @@ describe('showErrorToast', () => {
     expect(toast.error).toHaveBeenCalledWith(
       '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
       {
-        description: 'Ref: trace-98',
+        description: '오류 ID: trace-98',
         duration: Infinity,
       }
     );

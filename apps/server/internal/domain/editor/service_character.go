@@ -48,7 +48,7 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 	aliasRulesJSON, err := marshalCharacterAliasRules(aliasRules)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to marshal character alias rules")
-		return nil, apperror.Internal("failed to create character")
+		return nil, apperror.EditorEntitySaveFailed("캐릭터").Wrap(err)
 	}
 	imageMediaID, err := s.resolveThemeImageMedia(ctx, themeID, req.ImageMediaID, "character profile image")
 	if err != nil {
@@ -71,6 +71,7 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 		ShowInIntro:         visibilityPolicy.ShowInIntro,
 		CanSpeakInReading:   visibilityPolicy.CanSpeakInReading,
 		IsVotingCandidate:   visibilityPolicy.IsVotingCandidate,
+		IsVictim:            boolPtrValue(req.IsVictim, false),
 		EndcardTitle:        ptrToText(req.EndcardTitle),
 		EndcardBody:         ptrToText(req.EndcardBody),
 		EndcardImageUrl:     ptrToText(req.EndcardImageURL),
@@ -80,7 +81,7 @@ func (s *service) CreateCharacter(ctx context.Context, creatorID, themeID uuid.U
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to create character")
-		return nil, apperror.Internal("failed to create character")
+		return nil, apperror.EditorEntitySaveFailed("캐릭터").Wrap(err)
 	}
 	return toCharacterResponse(char), nil
 }
@@ -92,7 +93,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 			return nil, apperror.NotFound("character not found")
 		}
 		s.logger.Error().Err(err).Msg("failed to get character")
-		return nil, apperror.Internal("failed to get character")
+		return nil, apperror.EditorEntityLoadFailed("캐릭터").Wrap(err)
 	}
 	if _, err := s.getOwnedTheme(ctx, creatorID, char.ThemeID); err != nil {
 		return nil, err
@@ -125,7 +126,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		aliasRulesJSON, err = marshalCharacterAliasRules(aliasRules)
 		if err != nil {
 			s.logger.Error().Err(err).Msg("failed to marshal character alias rules")
-			return nil, apperror.Internal("failed to update character")
+			return nil, apperror.EditorEntitySaveFailed("캐릭터").Wrap(err)
 		}
 	}
 	imageMediaID := char.ImageMediaID
@@ -163,6 +164,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 		ShowInIntro:         visibilityPolicy.ShowInIntro,
 		CanSpeakInReading:   visibilityPolicy.CanSpeakInReading,
 		IsVotingCandidate:   visibilityPolicy.IsVotingCandidate,
+		IsVictim:            boolPtrValue(req.IsVictim, char.IsVictim),
 		EndcardTitle:        characterEndcardText(req.EndcardTitle, char.EndcardTitle),
 		EndcardBody:         characterEndcardText(req.EndcardBody, char.EndcardBody),
 		EndcardImageUrl:     characterEndcardText(req.EndcardImageURL, char.EndcardImageUrl),
@@ -172,7 +174,7 @@ func (s *service) UpdateCharacter(ctx context.Context, creatorID, charID uuid.UU
 	})
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to update character")
-		return nil, apperror.Internal("failed to update character")
+		return nil, apperror.EditorEntitySaveFailed("캐릭터").Wrap(err)
 	}
 	return toCharacterResponse(updated), nil
 }
@@ -230,7 +232,7 @@ func (s *service) DeleteCharacter(ctx context.Context, creatorID, charID uuid.UU
 			return apperror.NotFound("character not found")
 		}
 		s.logger.Error().Err(err).Msg("failed to delete character")
-		return apperror.Internal("failed to delete character")
+		return apperror.EditorEntityDeleteFailed("캐릭터").Wrap(err)
 	}
 	return nil
 }
@@ -243,7 +245,7 @@ func (s *service) ListCharacters(ctx context.Context, creatorID, themeID uuid.UU
 	chars, err := s.q.GetThemeCharacters(ctx, themeID)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to list characters")
-		return nil, apperror.Internal("failed to list characters")
+		return nil, apperror.EditorEntityLoadFailed("캐릭터 목록").Wrap(err)
 	}
 	out := make([]CharacterResponse, len(chars))
 	for i, c := range chars {
@@ -267,6 +269,7 @@ func toCharacterResponse(c db.ThemeCharacter) *CharacterResponse {
 		ShowInIntro:         c.ShowInIntro,
 		CanSpeakInReading:   c.CanSpeakInReading,
 		IsVotingCandidate:   c.IsVotingCandidate,
+		IsVictim:            c.IsVictim,
 		EndcardTitle:        textToPtr(c.EndcardTitle),
 		EndcardBody:         textToPtr(c.EndcardBody),
 		EndcardImageURL:     textToPtr(c.EndcardImageUrl),

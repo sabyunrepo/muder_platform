@@ -46,6 +46,7 @@ interface CharacterItem {
   show_in_intro?: boolean;
   can_speak_in_reading?: boolean;
   is_voting_candidate?: boolean;
+  is_victim?: boolean;
   alias_rules?: CharacterAliasRule[];
 }
 
@@ -124,6 +125,7 @@ export function CharacterDetailPanel({
     is_voting_candidate:
       selectedChar.is_voting_candidate ??
       getCharacterRoleOption(selectedRole).defaultVotingCandidate,
+    is_victim: selectedChar.is_victim ?? false,
     alias_rules: selectedChar.alias_rules ?? [],
   });
 
@@ -253,6 +255,13 @@ export function CharacterDetailPanel({
                       checked={selectedView.isVotingCandidate}
                       disabled={!onVisibilityChange}
                       onChange={(checked) => onVisibilityChange?.('is_voting_candidate', checked)}
+                    />
+                    <VisibilityToggle
+                      label="피해자"
+                      description="사건의 피해자로 표시합니다. 플레이 가능 여부와 추리 역할은 유지됩니다."
+                      checked={selectedView.isVictim}
+                      disabled={!onVisibilityChange}
+                      onChange={(checked) => onVisibilityChange?.('is_victim', checked)}
                     />
                   </div>
                 </div>

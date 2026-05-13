@@ -28,9 +28,9 @@ SELECT * FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order;
 INSERT INTO theme_characters (
   theme_id, name, description, image_url, is_culprit, mystery_role, sort_order,
   is_playable, show_in_intro, can_speak_in_reading, is_voting_candidate,
-  endcard_title, endcard_body, endcard_image_url, image_media_id, endcard_image_media_id, alias_rules
+  is_victim, endcard_title, endcard_body, endcard_image_url, image_media_id, endcard_image_media_id, alias_rules
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- name: UpdateTheme :one
@@ -68,12 +68,13 @@ UPDATE theme_characters SET
   show_in_intro = $9,
   can_speak_in_reading = $10,
   is_voting_candidate = $11,
-  endcard_title = $12,
-  endcard_body = $13,
-  endcard_image_url = $14,
-  image_media_id = $15,
-  endcard_image_media_id = $16,
-  alias_rules = $17
+  is_victim = $12,
+  endcard_title = $13,
+  endcard_body = $14,
+  endcard_image_url = $15,
+  image_media_id = $16,
+  endcard_image_media_id = $17,
+  alias_rules = $18
 WHERE id = $1
 RETURNING *;
 

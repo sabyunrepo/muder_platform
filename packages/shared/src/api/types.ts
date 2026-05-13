@@ -11,6 +11,7 @@ export interface ApiError {
   title: string;
   status: number;
   detail: string;
+  user_message?: string;
   instance?: string;
   code?: string;
   errors?: FieldError[];
