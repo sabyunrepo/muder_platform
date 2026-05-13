@@ -9,7 +9,7 @@ import {
   type StoryInfoResponse,
 } from '@/features/editor/storyInfoApi';
 import type { MediaType } from '@/features/editor/mediaApi';
-import { Spinner } from '@/shared/components/ui';
+import { ConfirmDialog, Spinner } from '@/shared/components/ui';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
 
@@ -135,6 +135,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const [embedPickerType, setEmbedPickerType] = useState<MediaType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(() => !hasDisplayableBody(info));
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const updateInfo = useUpdateStoryInfo(themeId);
   const deleteInfo = useDeleteStoryInfo(themeId);
 
@@ -144,6 +145,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     setEmbedPickerType(null);
     setError(null);
     setIsEditing(!hasDisplayableBody(info));
+    setDeleteDialogOpen(false);
   }, [info]);
 
   useEffect(() => {
@@ -184,91 +186,111 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   }
 
   async function handleDelete() {
-    if (!window.confirm(`"${info.title}" 정보를 삭제하시겠습니까?`)) return;
     try {
       await deleteInfo.mutateAsync(info.id);
+      setDeleteDialogOpen(false);
     } catch (err) {
       setError(errorMessage(err, '삭제에 실패했습니다'));
+      setDeleteDialogOpen(false);
     }
   }
 
+  const deleteDialog = (
+    <ConfirmDialog
+      isOpen={deleteDialogOpen}
+      title="정보를 삭제할까요?"
+      description={`"${info.title}" 정보를 삭제합니다.`}
+      confirmLabel="정보 삭제"
+      isConfirming={deleteInfo.isPending}
+      tone="danger"
+      onCancel={() => setDeleteDialogOpen(false)}
+      onConfirm={() => void handleDelete()}
+    />
+  );
+
   if (!isEditing) {
     return (
-      <InfoBodyPreview
-        themeId={themeId}
-        info={baseline}
-        error={error}
-        deletePending={deleteInfo.isPending}
-        onEdit={() => setIsEditing(true)}
-        onDelete={() => void handleDelete()}
-      />
+      <>
+        <InfoBodyPreview
+          themeId={themeId}
+          info={baseline}
+          error={error}
+          deletePending={deleteInfo.isPending}
+          onEdit={() => setIsEditing(true)}
+          onDelete={() => setDeleteDialogOpen(true)}
+        />
+        {deleteDialog}
+      </>
     );
   }
 
   return (
-    <section className="min-h-full">
-      <div className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
-        {error && (
-          <div
-            className="flex items-start justify-between gap-3 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
-            role="alert"
-          >
-            <span>{error}</span>
+    <>
+      <section className="min-h-full">
+        <div className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
+          {error && (
+            <div
+              className="flex items-start justify-between gap-3 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+              role="alert"
+            >
+              <span>{error}</span>
+              <button
+                type="button"
+                aria-label="오류 메시지 닫기"
+                onClick={() => setError(null)}
+                className="shrink-0 rounded p-0.5 text-rose-200 hover:bg-rose-500/20"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+
+          <label className="block text-xs text-slate-400">
+            제목
+            <input
+              aria-label="정보 제목"
+              value={draft.title}
+              onChange={(event) => updateDraft({ title: event.target.value })}
+              className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+            />
+          </label>
+
+          <div className="space-y-1">
+            <span className="block text-xs text-slate-400">본문</span>
+            <InfoMarkdownEditor
+              themeId={themeId}
+              markdown={draft.body}
+              onChange={(body) => updateDraft({ body })}
+              pickerType={embedPickerType}
+              onOpenPicker={setEmbedPickerType}
+              onClosePicker={() => setEmbedPickerType(null)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-800 pt-3">
             <button
               type="button"
-              aria-label="오류 메시지 닫기"
-              onClick={() => setError(null)}
-              className="shrink-0 rounded p-0.5 text-rose-200 hover:bg-rose-500/20"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteInfo.isPending}
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10"
             >
-              <X className="h-3.5 w-3.5" />
+              <Trash2 className="h-3 w-3" />
+              정보 삭제
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={!isDirty || updateInfo.isPending}
+              className="flex items-center gap-1 rounded bg-amber-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500"
+            >
+              <Save className="h-4 w-4" />
+              {updateInfo.isPending ? '저장 중...' : '저장'}
             </button>
           </div>
-        )}
-
-        <label className="block text-xs text-slate-400">
-          제목
-          <input
-            aria-label="정보 제목"
-            value={draft.title}
-            onChange={(event) => updateDraft({ title: event.target.value })}
-            className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-          />
-        </label>
-
-        <div className="space-y-1">
-          <span className="block text-xs text-slate-400">본문</span>
-          <InfoMarkdownEditor
-            themeId={themeId}
-            markdown={draft.body}
-            onChange={(body) => updateDraft({ body })}
-            pickerType={embedPickerType}
-            onOpenPicker={setEmbedPickerType}
-            onClosePicker={() => setEmbedPickerType(null)}
-          />
         </div>
-
-        <div className="flex items-center justify-between border-t border-slate-800 pt-3">
-          <button
-            type="button"
-            onClick={() => void handleDelete()}
-            disabled={deleteInfo.isPending}
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10"
-          >
-            <Trash2 className="h-3 w-3" />
-            정보 삭제
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!isDirty || updateInfo.isPending}
-            className="flex items-center gap-1 rounded bg-amber-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500"
-          >
-            <Save className="h-4 w-4" />
-            {updateInfo.isPending ? '저장 중...' : '저장'}
-          </button>
-        </div>
-      </div>
-    </section>
+      </section>
+      {deleteDialog}
+    </>
   );
 }
 

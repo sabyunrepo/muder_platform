@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 
 const { mutateMock, useUpdateConfigJsonMock, useModuleSchemasMock } = vi.hoisted(() => ({
   mutateMock: vi.fn(),
@@ -168,7 +168,6 @@ describe('ModulesSubTab deck investigation settings', () => {
   });
 
   it('사용 중인 조사권 삭제 시 단서 조사 덱을 남은 조사권으로 이동한다', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const themeWithDeckInvestigation: EditorThemeResponse = {
       ...baseTheme,
       config_json: {
@@ -218,10 +217,10 @@ describe('ModulesSubTab deck investigation settings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '추가 조사권 조사권 삭제' }));
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      '조사권 "추가 조사권"을(를) 삭제할까요?\n' +
-        '연결된 단서 조사 덱 1개는 다른 조사권으로 자동 변경됩니다.',
-    );
+    const dialog = screen.getByRole('dialog', { name: '조사권을 삭제할까요?' });
+    expect(within(dialog).getByText(/조사권 "추가 조사권"을\(를\) 삭제합니다/)).toBeDefined();
+    expect(within(dialog).getByText(/연결된 단서 조사 덱 1개/)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: '조사권 삭제' }));
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     expect(config.modules).toMatchObject({
@@ -235,7 +234,6 @@ describe('ModulesSubTab deck investigation settings', () => {
   });
 
   it('조사권 삭제 확인을 취소하면 저장하지 않는다', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const themeWithDeckInvestigation: EditorThemeResponse = {
       ...baseTheme,
       config_json: {
@@ -268,9 +266,12 @@ describe('ModulesSubTab deck investigation settings', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '추가 조사권 조사권 삭제' }));
 
-    expect(confirmSpy).toHaveBeenCalledWith(
-      '조사권 "추가 조사권"을(를) 삭제할까요?\n' +
-        '연결된 단서 조사 덱 0개는 다른 조사권으로 자동 변경됩니다.',
+    const dialog = screen.getByRole('dialog', { name: '조사권을 삭제할까요?' });
+    expect(within(dialog).getByText(/연결된 단서 조사 덱 0개/)).toBeDefined();
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: '취소',
+      }),
     );
     expect(mutateMock).not.toHaveBeenCalled();
   });

@@ -16,6 +16,7 @@ import { toLocationEditorViewModel } from '@/features/editor/entities/location/l
 import { readLocationMeta } from '@/features/editor/utils/entityMeta';
 import { AddNameInput } from './AddNameInput';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
+import { ConfirmDialog } from '@/shared/components/ui';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
 import { LocationClueAssignPanel } from './LocationClueAssignPanel';
 import { LocationImageMediaField } from './LocationImageMediaField';
@@ -57,68 +58,83 @@ export function LocationDetailPanel({
   onSelectLocation,
   onDeleteLocation,
 }: LocationDetailPanelProps) {
+  const [pendingDeleteLocation, setPendingDeleteLocation] =
+    useState<LocationResponse | null>(null);
+
   if (!selectedMap) return <LocationEmptyState message="좌측에서 맵을 선택하세요" />;
 
   return (
-    <EntityEditorShell
-      title="장소"
-      items={mapLocations}
-      selectedId={selectedLocation?.id}
-      onSelect={onSelectLocation}
-      onCreate={onStartAdd}
-      createLabel="장소 추가"
-      emptyMessage="장소 없음"
-      emptyDescription="이 맵에 배치할 장소를 추가하세요."
-      listAccessory={
-        addingLocation ? (
-          <div className="mb-3 rounded-md border border-amber-500/30 bg-slate-900 p-2">
-            <AddNameInput
-              placeholder="장소 이름"
-              onAdd={onAddLocation}
-              onCancel={onCancelAdd}
-              isPending={isCreatingLocation}
-            />
-          </div>
-        ) : null
-      }
-      getItemId={(location) => location.id}
-      getItemTitle={(location) => location.name}
-      getItemDescription={(location) =>
-        toLocationEditorViewModel(location, {
-          clueCount: readLocationClueIds(theme.config_json, location.id).length,
-          mapName: selectedMap.name,
-        }).roundLabel
-      }
-      getItemBadges={(location) =>
-        toLocationEditorViewModel(location, {
-          clueCount: readLocationClueIds(theme.config_json, location.id).length,
-          mapName: selectedMap.name,
-        }).badges
-      }
-      renderItemActions={(location) => (
-        <button
-          type="button"
-          onClick={() => {
-            if (window.confirm(`${location.name} 장소를 삭제할까요?`))
-              onDeleteLocation(location.id);
-          }}
-          aria-label={`${location.name} 삭제`}
-          className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      )}
-      renderDetail={(location) => (
-        <SelectedLocationDetail
-          themeId={themeId}
-          theme={theme}
-          map={selectedMap}
-          location={location}
-          mapLocations={mapLocations}
-          sceneOptions={sceneOptions}
-        />
-      )}
-    />
+    <>
+      <EntityEditorShell
+        title="장소"
+        items={mapLocations}
+        selectedId={selectedLocation?.id}
+        onSelect={onSelectLocation}
+        onCreate={onStartAdd}
+        createLabel="장소 추가"
+        emptyMessage="장소 없음"
+        emptyDescription="이 맵에 배치할 장소를 추가하세요."
+        listAccessory={
+          addingLocation ? (
+            <div className="mb-3 rounded-md border border-amber-500/30 bg-slate-900 p-2">
+              <AddNameInput
+                placeholder="장소 이름"
+                onAdd={onAddLocation}
+                onCancel={onCancelAdd}
+                isPending={isCreatingLocation}
+              />
+            </div>
+          ) : null
+        }
+        getItemId={(location) => location.id}
+        getItemTitle={(location) => location.name}
+        getItemDescription={(location) =>
+          toLocationEditorViewModel(location, {
+            clueCount: readLocationClueIds(theme.config_json, location.id).length,
+            mapName: selectedMap.name,
+          }).roundLabel
+        }
+        getItemBadges={(location) =>
+          toLocationEditorViewModel(location, {
+            clueCount: readLocationClueIds(theme.config_json, location.id).length,
+            mapName: selectedMap.name,
+          }).badges
+        }
+        renderItemActions={(location) => (
+          <button
+            type="button"
+            onClick={() => setPendingDeleteLocation(location)}
+            aria-label={`${location.name} 삭제`}
+            className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+        renderDetail={(location) => (
+          <SelectedLocationDetail
+            themeId={themeId}
+            theme={theme}
+            map={selectedMap}
+            location={location}
+            mapLocations={mapLocations}
+            sceneOptions={sceneOptions}
+          />
+        )}
+      />
+      <ConfirmDialog
+        isOpen={pendingDeleteLocation != null}
+        title="장소를 삭제할까요?"
+        description={`${pendingDeleteLocation?.name ?? '선택한 장소'} 장소를 삭제합니다.`}
+        confirmLabel="장소 삭제"
+        tone="danger"
+        onCancel={() => setPendingDeleteLocation(null)}
+        onConfirm={() => {
+          if (!pendingDeleteLocation) return;
+          onDeleteLocation(pendingDeleteLocation.id);
+          setPendingDeleteLocation(null);
+        }}
+      />
+    </>
   );
 }
 function SelectedLocationDetail({

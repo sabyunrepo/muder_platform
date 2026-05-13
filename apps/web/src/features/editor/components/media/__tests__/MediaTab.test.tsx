@@ -261,20 +261,18 @@ describe('MediaTab', () => {
       mutateAsync: vi.fn(),
       isPending: false,
     });
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-    try {
-      render(<MediaTab themeId="theme-1" />);
+    render(<MediaTab themeId="theme-1" />);
 
-      fireEvent.click(screen.getByRole('button', { name: '스크린', pressed: false }));
-      fireEvent.click(screen.getByRole('button', { name: /카테고리 삭제/ }));
+    fireEvent.click(screen.getByRole('button', { name: '스크린', pressed: false }));
+    fireEvent.click(screen.getByRole('button', { name: /카테고리 삭제/ }));
+    const dialog = screen.getByRole('dialog', { name: '카테고리를 삭제할까요?' });
+    expect(within(dialog).getByText(/"스크린" 카테고리를 삭제합니다/)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: '카테고리 삭제' }));
 
-      expect(mutate).toHaveBeenCalledWith('category-screen', expect.any(Object));
-      const categoryGroup = screen.getByRole('group', { name: '미디어 카테고리 필터' });
-      expect(within(categoryGroup).getByRole('button', { name: '전체', pressed: true })).toBeDefined();
-    } finally {
-      confirmSpy.mockRestore();
-    }
+    expect(mutate).toHaveBeenCalledWith('category-screen', expect.any(Object));
+    const categoryGroup = screen.getByRole('group', { name: '미디어 카테고리 필터' });
+    expect(within(categoryGroup).getByRole('button', { name: '전체', pressed: true })).toBeDefined();
   });
 
   it('새 카테고리는 기존 sort_order 최댓값 다음 순서로 생성한다', () => {
@@ -680,7 +678,6 @@ describe('MediaTab', () => {
       isPending: false,
     };
     useDeleteMediaMock.mockReturnValue(deleteMutation);
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
 
     try {
@@ -689,6 +686,11 @@ describe('MediaTab', () => {
       const card = screen.getByText('오프닝 BGM').closest("[role='button']") as HTMLElement | null;
       fireEvent.click(card!);
       fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+      fireEvent.click(
+        within(screen.getByRole('dialog', { name: '미디어를 삭제할까요?' })).getByRole('button', {
+          name: '미디어 삭제',
+        }),
+      );
 
       const warning = await screen.findByRole('alert');
       expect(warning.textContent).toContain('이 미디어는 아직 삭제할 수 없습니다.');
@@ -703,7 +705,6 @@ describe('MediaTab', () => {
       expect(toastSuccess).not.toHaveBeenCalled();
       expect(alertSpy).not.toHaveBeenCalled();
     } finally {
-      confirmSpy.mockRestore();
       alertSpy.mockRestore();
     }
   });

@@ -12,6 +12,7 @@ import {
   type UpdateMediaRequest,
 } from '@/features/editor/mediaApi';
 import { ApiHttpError } from '@/lib/api-error';
+import { ConfirmDialog } from '@/shared/components/ui';
 import { MediaReplaceModal } from './MediaReplaceModal';
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const [mediaType, setMediaType] = useState<MediaType>(media.type);
   const [referenceWarning, setReferenceWarning] = useState<MediaReferenceInfo[] | null>(null);
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   // Reset local state when selected media changes
   useEffect(() => {
@@ -49,6 +51,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     setMediaType(media.type);
     setReferenceWarning(null);
     setReplaceOpen(false);
+    setDeleteDialogOpen(false);
   }, [media.id, media.name, media.tags, media.sort_order, media.category_id, media.type]);
 
   const updateMutation = useUpdateMedia(themeId);
@@ -90,15 +93,13 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
 
   const handleDelete = async () => {
     setReferenceWarning(null);
-    if (typeof window !== 'undefined') {
-      const ok = window.confirm(`"${media.name}"을(를) 삭제하시겠습니까?`);
-      if (!ok) return;
-    }
     try {
       await deleteMutation.mutateAsync(media.id);
+      setDeleteDialogOpen(false);
       toast.success('미디어가 삭제되었습니다');
       onClose();
     } catch (err) {
+      setDeleteDialogOpen(false);
       if (err instanceof ApiHttpError && err.apiError.code === 'MEDIA_REFERENCE_IN_USE') {
         const refs = err.apiError.params?.references as MediaReferenceInfo[] | undefined;
         setReferenceWarning(refs?.length ? refs : []);
@@ -236,7 +237,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       <div className="mt-auto flex items-center justify-between gap-2 pt-3">
         <button
           type="button"
-          onClick={handleDelete}
+          onClick={() => setDeleteDialogOpen(true)}
           disabled={deleteMutation.isPending}
           className="flex h-8 items-center gap-1.5 rounded-sm border border-rose-800 px-3 text-xs font-medium text-rose-400 transition-colors hover:border-rose-500 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
         >
@@ -271,6 +272,16 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
         themeId={themeId}
         media={media}
         onReplaced={() => toast.success('파일을 교체했습니다')}
+      />
+      <ConfirmDialog
+        isOpen={deleteDialogOpen}
+        title="미디어를 삭제할까요?"
+        description={`"${media.name}" 미디어를 삭제합니다. 사용 중이면 삭제되지 않고 위치가 표시됩니다.`}
+        confirmLabel="미디어 삭제"
+        isConfirming={deleteMutation.isPending}
+        tone="danger"
+        onCancel={() => setDeleteDialogOpen(false)}
+        onConfirm={() => void handleDelete()}
       />
     </div>
   );

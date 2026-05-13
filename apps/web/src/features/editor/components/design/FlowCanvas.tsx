@@ -11,6 +11,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/shared/components/ui';
 import { useFlowData } from '../../hooks/useFlowData';
 import { useFlowConnections } from '../../hooks/useFlowConnections';
 import { FlowToolbar } from './FlowToolbar';
@@ -53,6 +54,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const [showOrderReview, setShowOrderReview] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [pendingDeleteEdgeId, setPendingDeleteEdgeId] = useState<string | null>(null);
 
   const {
     nodes,
@@ -116,6 +118,10 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
   const selectedEdge = useMemo(
     () => flowEdges.find((edge) => edge.id === selectedEdgeId) ?? null,
     [flowEdges, selectedEdgeId]
+  );
+  const pendingDeleteEdge = useMemo(
+    () => flowEdges.find((edge) => edge.id === pendingDeleteEdgeId) ?? null,
+    [flowEdges, pendingDeleteEdgeId]
   );
 
   const handleAddScene = useCallback(
@@ -256,11 +262,7 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
-                      if (!window.confirm('선 연결을 끊을까요? 이 작업은 즉시 저장됩니다.')) return;
-                      deleteEdge(selectedEdge.id);
-                      setSelectedEdgeId(null);
-                    }}
+                    onClick={() => setPendingDeleteEdgeId(selectedEdge.id)}
                     className="w-full rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-200 transition hover:bg-red-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/60"
                   >
                     연결 끊기
@@ -299,6 +301,20 @@ export function FlowCanvas({ themeId, onSelectedNodeChange }: FlowCanvasProps) {
           )}
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={pendingDeleteEdge != null}
+        title="선 연결을 끊을까요?"
+        description="이 작업은 즉시 저장됩니다."
+        confirmLabel="연결 끊기"
+        tone="danger"
+        onCancel={() => setPendingDeleteEdgeId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteEdge) return;
+          deleteEdge(pendingDeleteEdge.id);
+          setSelectedEdgeId(null);
+          setPendingDeleteEdgeId(null);
+        }}
+      />
     </div>
   );
 }

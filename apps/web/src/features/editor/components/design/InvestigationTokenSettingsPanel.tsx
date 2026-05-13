@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
+import { ConfirmDialog } from '@/shared/components/ui';
 import type {
   DeckInvestigationConfigDraft,
   InvestigationTokenDraft,
@@ -35,9 +37,15 @@ export function InvestigationTokenSettingsPanel({
   isSaving,
   onChange,
 }: InvestigationTokenSettingsPanelProps) {
+  const [pendingDeleteTokenId, setPendingDeleteTokenId] = useState<string | null>(null);
   const tokens = draft.tokens.length > 0 ? draft.tokens : [
     { id: 'investigation-token', name: '조사권', iconLabel: '권', defaultAmount: 0 },
   ];
+  const pendingDeleteToken =
+    tokens.find((token) => token.id === pendingDeleteTokenId) ?? null;
+  const affectedDeckCount = pendingDeleteToken
+    ? draft.decks.filter((deck) => deck.tokenId === pendingDeleteToken.id).length
+    : 0;
 
   function updateToken(tokenId: string, patch: Partial<InvestigationTokenDraft>) {
     onChange({
@@ -73,16 +81,6 @@ export function InvestigationTokenSettingsPanel({
         deck.tokenId === tokenId ? { ...deck, tokenId: fallbackTokenId } : deck,
       ),
     });
-  }
-
-  function confirmAndRemoveToken(token: InvestigationTokenDraft) {
-    const affectedDeckCount = draft.decks.filter((deck) => deck.tokenId === token.id).length;
-    const confirmed = window.confirm(
-      `조사권 "${token.name}"을(를) 삭제할까요?\n` +
-        `연결된 단서 조사 덱 ${affectedDeckCount}개는 다른 조사권으로 자동 변경됩니다.`,
-    );
-    if (!confirmed) return;
-    removeToken(token.id);
   }
 
   return (
@@ -159,7 +157,7 @@ export function InvestigationTokenSettingsPanel({
 
             <button
               type="button"
-              onClick={() => confirmAndRemoveToken(token)}
+              onClick={() => setPendingDeleteTokenId(token.id)}
               disabled={isSaving || tokens.length <= 1}
               aria-label={`${token.name} 조사권 삭제`}
               className="self-end rounded p-2 text-slate-500 transition hover:bg-red-950/40 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60 disabled:cursor-not-allowed disabled:opacity-40"
@@ -169,6 +167,19 @@ export function InvestigationTokenSettingsPanel({
           </div>
         ))}
       </div>
+      <ConfirmDialog
+        isOpen={pendingDeleteToken != null}
+        title="조사권을 삭제할까요?"
+        description={`조사권 "${pendingDeleteToken?.name ?? '선택한 조사권'}"을(를) 삭제합니다.\n연결된 단서 조사 덱 ${affectedDeckCount}개는 다른 조사권으로 자동 변경됩니다.`}
+        confirmLabel="조사권 삭제"
+        tone="danger"
+        onCancel={() => setPendingDeleteTokenId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteToken) return;
+          removeToken(pendingDeleteToken.id);
+          setPendingDeleteTokenId(null);
+        }}
+      />
     </div>
   );
 }

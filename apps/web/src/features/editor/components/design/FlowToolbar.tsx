@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, Save, ChevronDown, LayoutTemplate, Play } from "lucide-react";
+import { ConfirmDialog } from "@/shared/components/ui";
 import { FLOW_PRESETS, createPresetFlow } from "../../hooks/flowPresets";
 import type { Node, Edge } from "@xyflow/react";
 
@@ -31,7 +32,15 @@ export function FlowToolbar({
   isOrderReviewing,
 }: FlowToolbarProps) {
   const [presetOpen, setPresetOpen] = useState(false);
+  const [pendingPresetId, setPendingPresetId] = useState<string | null>(null);
   const presetRef = useRef<HTMLDivElement>(null);
+  const pendingPreset = FLOW_PRESETS.find((preset) => preset.id === pendingPresetId) ?? null;
+
+  function applyPresetFromTemplate(preset: (typeof FLOW_PRESETS)[number]) {
+    const flow = createPresetFlow(preset);
+    onApplyPreset?.(flow.nodes, flow.edges);
+    setPresetOpen(false);
+  }
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -75,10 +84,12 @@ export function FlowToolbar({
                   key={preset.id}
                   type="button"
                   onClick={() => {
-                    if (hasNodes && !window.confirm("기존 흐름이 대체됩니다. 계속할까요?")) return;
-                    const flow = createPresetFlow(preset);
-                    onApplyPreset(flow.nodes, flow.edges);
-                    setPresetOpen(false);
+                    if (hasNodes) {
+                      setPendingPresetId(preset.id);
+                      setPresetOpen(false);
+                      return;
+                    }
+                    applyPresetFromTemplate(preset);
                   }}
                   className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-slate-700"
                 >
@@ -123,6 +134,19 @@ export function FlowToolbar({
         <Save className="h-3.5 w-3.5" />
         {isSaving ? "저장 중..." : "저장"}
       </button>
+      <ConfirmDialog
+        isOpen={pendingPreset != null}
+        title="기존 흐름을 대체할까요?"
+        description="현재 장면 흐름이 프리셋으로 바뀝니다."
+        confirmLabel="프리셋 적용"
+        tone="warning"
+        onCancel={() => setPendingPresetId(null)}
+        onConfirm={() => {
+          if (!pendingPreset) return;
+          applyPresetFromTemplate(pendingPreset);
+          setPendingPresetId(null);
+        }}
+      />
     </div>
   );
 }
