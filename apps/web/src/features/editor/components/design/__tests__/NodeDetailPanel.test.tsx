@@ -84,7 +84,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.queryByText("선택 항목 삭제")).toBeNull();
+    expect(screen.queryByText("장면 삭제")).toBeNull();
   });
 
   it("start 노드에서도 다음 장면 연결을 편집할 수 있다", () => {
@@ -134,7 +134,7 @@ describe("NodeDetailPanel", () => {
         onDelete={vi.fn()}
       />,
     );
-    expect(screen.getByText("선택 항목 삭제")).toBeDefined();
+    expect(screen.getByText("장면 삭제")).toBeDefined();
   });
 
   it("삭제 버튼 클릭 시 onDelete가 노드 id와 함께 호출된다", () => {
@@ -148,7 +148,7 @@ describe("NodeDetailPanel", () => {
         onDelete={onDelete}
       />,
     );
-    fireEvent.click(screen.getByText("선택 항목 삭제"));
+    fireEvent.click(screen.getByText("장면 삭제"));
     expect(window.confirm).toHaveBeenCalledWith("이 장면을 삭제할까요? 연결된 선도 함께 삭제됩니다.");
     expect(onDelete).toHaveBeenCalledWith("node-1");
   });
@@ -165,7 +165,7 @@ describe("NodeDetailPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("선택 항목 삭제"));
+    fireEvent.click(screen.getByText("장면 삭제"));
 
     expect(onDelete).not.toHaveBeenCalled();
   });
@@ -185,6 +185,35 @@ describe("NodeDetailPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "장면 복제" }));
 
     expect(onDuplicate).toHaveBeenCalledWith("node-1");
+  });
+
+  it("장면 액션은 다음 장면 연결보다 먼저 보여준다", () => {
+    render(
+      <NodeDetailPanel
+        node={storyNodes[0]}
+        themeId="t1"
+        onUpdate={vi.fn()}
+        onDelete={vi.fn()}
+        onDuplicate={vi.fn()}
+        nodes={storyNodes}
+        edges={[]}
+        onConnectNodes={vi.fn()}
+        onDeleteEdge={vi.fn()}
+      />,
+    );
+
+    const duplicateButton = screen.getByRole("button", { name: "장면 복제" });
+    const deleteButton = screen.getByRole("button", { name: "장면 삭제" });
+    const nextSceneLabel = screen.getByText("다음 장면 연결");
+
+    expect(
+      duplicateButton.compareDocumentPosition(nextSceneLabel) &
+        globalThis.Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      deleteButton.compareDocumentPosition(nextSceneLabel) &
+        globalThis.Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("선택한 장면에서 다음 장면을 버튼으로 연결할 수 있다", () => {

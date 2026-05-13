@@ -620,7 +620,7 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
 
     await node.click();
     page.once('dialog', (dialog) => dialog.accept());
-    await page.getByRole('button', { name: '선택 항목 삭제' }).click();
+    await page.getByRole('button', { name: '장면 삭제' }).click();
     await expect.poll(() => state.flowDeleteNodeCalls).toBeGreaterThanOrEqual(1);
   });
 
