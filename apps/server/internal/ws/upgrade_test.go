@@ -145,6 +145,36 @@ func TestUpgrade_OriginCheck(t *testing.T) {
 	}
 }
 
+func TestUpgrade_DevAllowsConfiguredLoopbackOrigins(t *testing.T) {
+	origins := []string{
+		"http://localhost:3000",
+		"http://127.0.0.1:3000",
+	}
+	for _, origin := range origins {
+		t.Run(origin, func(t *testing.T) {
+			srv, _ := setupTestServer(t, UpgradeConfig{
+				DevMode:        true,
+				AllowedOrigins: "http://localhost:3000,http://127.0.0.1:3000",
+			})
+
+			playerID := uuid.New()
+			url := wsURL(srv, "/ws/game") + "?player_id=" + playerID.String()
+			header := http.Header{}
+			header.Set("Origin", origin)
+
+			conn, resp, err := websocket.DefaultDialer.Dial(url, header)
+			if err != nil {
+				t.Fatalf("dial failed for %s: %v", origin, err)
+			}
+			defer conn.Close()
+
+			if resp.StatusCode != http.StatusSwitchingProtocols {
+				t.Fatalf("expected 101 for %s, got %d", origin, resp.StatusCode)
+			}
+		})
+	}
+}
+
 func TestUpgrade_PingPong(t *testing.T) {
 	srv, _ := setupTestServer(t, UpgradeConfig{DevMode: true})
 

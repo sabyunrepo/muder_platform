@@ -61,7 +61,7 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.RedisURL != "redis://localhost:6379" {
 		t.Errorf("expected RedisURL from env, got %q", cfg.RedisURL)
 	}
-	if cfg.CORSOrigins != "http://localhost:3000,http://localhost:5173" {
+	if cfg.CORSOrigins != "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173" {
 		t.Errorf("expected CORSOrigins default, got %q", cfg.CORSOrigins)
 	}
 	if cfg.BaseURL != "http://localhost:5173" {
