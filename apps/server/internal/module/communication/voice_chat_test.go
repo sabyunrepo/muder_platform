@@ -213,6 +213,28 @@ func TestVoiceChatModule_MuteOnKilledLocksUnmute(t *testing.T) {
 	}
 }
 
+func TestVoiceChatModule_InitResetsMuteOnKilled(t *testing.T) {
+	m := NewVoiceChatModule()
+	deps := newTestDeps()
+	deps.ModuleConfigs = map[string]json.RawMessage{
+		"player_kill": json.RawMessage(`{"muteOnKilled":true}`),
+	}
+	if err := m.Init(context.Background(), deps, nil); err != nil {
+		t.Fatalf("first Init failed: %v", err)
+	}
+	if !m.muteOnKilled {
+		t.Fatal("expected muteOnKilled to be enabled by first init")
+	}
+
+	nextDeps := newTestDeps()
+	if err := m.Init(context.Background(), nextDeps, nil); err != nil {
+		t.Fatalf("second Init failed: %v", err)
+	}
+	if m.muteOnKilled {
+		t.Fatal("expected muteOnKilled to reset when player_kill config is absent")
+	}
+}
+
 func TestVoiceChatModule_MuteNotJoined(t *testing.T) {
 	m := NewVoiceChatModule()
 	deps := newTestDeps()

@@ -828,7 +828,13 @@ func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
 	ctx := context.Background()
 	creatorID := f.createUser(t)
 	themeID := f.createThemeForUser(t, creatorID)
-	characterID := uuid.NewString()
+	character, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name:      "Victim",
+		SortOrder: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
 
 	valid := json.RawMessage(fmt.Sprintf(`{
 		"modules": {
@@ -840,7 +846,7 @@ func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
 				}
 			}
 		}
-	}`, characterID))
+	}`, character.ID))
 	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
 		t.Fatalf("valid player_kill config must save: %v", err)
 	}
@@ -897,6 +903,46 @@ func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
 				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
 			}
 		})
+	}
+}
+
+func TestUpdateConfigJson_RejectsPlayerKillCharacterOutsideTheme(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	foreignCharacter, err := f.svc.CreateCharacter(ctx, creatorID, otherThemeID, CreateCharacterRequest{
+		Name:      "Foreign Victim",
+		SortOrder: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	config := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"player_kill": {
+				"enabled": true,
+				"config": {
+					"killableCharacterIds": ["%s"]
+				}
+			}
+		}
+	}`, foreignCharacter.ID))
+	_, err = f.svc.UpdateConfigJson(ctx, creatorID, themeID, config)
+	if err == nil {
+		t.Fatal("expected player_kill character reference validation error, got nil")
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.AppError, got %T", err)
+	}
+	if appErr.Code != apperror.ErrBadRequest {
+		t.Fatalf("expected BAD_REQUEST, got %s", appErr.Code)
+	}
+	if !strings.Contains(appErr.Detail, "killableCharacterIds[0] must belong to this theme") {
+		t.Fatalf("unexpected error detail: %s", appErr.Detail)
 	}
 }
 

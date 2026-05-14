@@ -50,6 +50,7 @@ func (m *VoiceChatModule) Init(_ context.Context, deps engine.ModuleDeps, config
 	m.deps = deps
 	m.participants = make(map[uuid.UUID]bool)
 	m.killedMuted = make(map[uuid.UUID]struct{})
+	m.muteOnKilled = false
 
 	m.config = voiceChatConfig{
 		AutoJoin:        true,
