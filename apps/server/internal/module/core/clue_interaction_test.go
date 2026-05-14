@@ -471,6 +471,39 @@ func TestClueInteractionModule_Schema(t *testing.T) {
 			t.Fatalf("missing field %q in schema", f)
 		}
 	}
+	itemEffects, ok := props["itemEffects"].(map[string]any)
+	if !ok {
+		t.Fatal("expected itemEffects schema")
+	}
+	additionalProps, ok := itemEffects["additionalProperties"].(map[string]any)
+	if !ok {
+		t.Fatal("expected itemEffects additionalProperties schema")
+	}
+	effectProps, ok := additionalProps["properties"].(map[string]any)
+	if !ok {
+		t.Fatal("expected itemEffects properties schema")
+	}
+	effectField, ok := effectProps["effect"].(map[string]any)
+	if !ok {
+		t.Fatal("expected itemEffects.effect schema")
+	}
+	effectEnum, ok := effectField["enum"].([]any)
+	if !ok {
+		t.Fatal("expected itemEffects.effect enum")
+	}
+	var hasKill bool
+	for _, value := range effectEnum {
+		if value == "kill" {
+			hasKill = true
+			break
+		}
+	}
+	if !hasKill {
+		t.Fatal("expected itemEffects.effect enum to include kill")
+	}
+	if _, exists := effectProps["killChancePercent"]; !exists {
+		t.Fatal("expected itemEffects.killChancePercent schema")
+	}
 }
 
 func TestClueInteractionModule_BuildState(t *testing.T) {
