@@ -27,6 +27,7 @@ interface DraftState {
   descriptionText: string;
   revealText: string;
   grantClueIds: string[];
+  killChancePercent: number;
   consume: boolean;
 }
 
@@ -49,6 +50,7 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     usesPassword: password.trim().length > 0,
     password,
     consume: config?.consume === true,
+    killChancePercent: normalizePercent(config?.killChancePercent ?? 100),
   };
 
   if (config?.effect === 'description_change') {
@@ -96,8 +98,14 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     descriptionText: '',
     revealText: '',
     grantClueIds: [],
+    killChancePercent: 100,
     consume: false,
   };
+}
+
+function normalizePercent(value: number): number {
+  if (!Number.isFinite(value)) return 100;
+  return Math.min(100, Math.max(0, Math.round(value)));
 }
 
 function passwordCondition(draft: DraftState): EditorConfig & {
@@ -152,6 +160,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'kill',
       target: 'player',
       ...passwordCondition(draft),
+      killChancePercent: normalizePercent(draft.killChancePercent),
       consume: draft.consume,
     };
   }
@@ -365,8 +374,25 @@ export function ClueRuntimeEffectCard({
           )}
 
           {draft.mode === 'kill' && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-100">
-              대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
+            <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3">
+              <p className="text-sm leading-6 text-red-100">
+                대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
+              </p>
+              <div className="flex max-w-xs flex-col gap-1.5">
+                <label htmlFor="clue-runtime-kill-chance" className="text-sm font-semibold text-red-100">
+                  살해확률 (%)
+                </label>
+                <input
+                  id="clue-runtime-kill-chance"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={draft.killChancePercent}
+                  onChange={(e) => updateDraft({ killChancePercent: normalizePercent(Number(e.target.value)) })}
+                  className="w-full rounded-lg border border-red-500/40 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+                />
+              </div>
             </div>
           )}
 

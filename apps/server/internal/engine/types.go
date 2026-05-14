@@ -268,6 +268,7 @@ type ModuleDeps struct {
 	SessionID              uuid.UUID
 	EventBus               *EventBus
 	Logger                 Logger
+	ModuleConfigs          map[string]json.RawMessage
 	PlayerInfoProvider     PlayerInfoProvider
 	PlayerStatusController PlayerStatusController
 	ActionDispatcher       PhaseActionDispatcher

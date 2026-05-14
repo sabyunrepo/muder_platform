@@ -65,6 +65,9 @@ interface CharacterDetailPanelProps {
   onDeleteMission: (missionId: string) => void;
   onMysteryRoleChange?: (role: MysteryRole) => void;
   onVisibilityChange?: (field: CharacterVisibilityField, value: boolean) => void;
+  showPlayerKillSettings?: boolean;
+  isKillable?: boolean;
+  onKillableChange?: (value: boolean) => void;
   onAliasRulesSave?: (rules: CharacterAliasRule[]) => void;
   onProfileImageChange?: (imageMediaId: string | null) => void;
 }
@@ -88,6 +91,9 @@ export function CharacterDetailPanel({
   onDeleteMission,
   onMysteryRoleChange,
   onVisibilityChange,
+  showPlayerKillSettings = false,
+  isKillable = false,
+  onKillableChange,
   onAliasRulesSave,
   onProfileImageChange,
 }: CharacterDetailPanelProps) {
@@ -263,6 +269,15 @@ export function CharacterDetailPanel({
                       disabled={!onVisibilityChange}
                       onChange={(checked) => onVisibilityChange?.('is_victim', checked)}
                     />
+                    {showPlayerKillSettings && (
+                      <VisibilityToggle
+                        label="살해 가능"
+                        description="플레이어킬 모드에서 이 캐릭터를 살해 대상으로 허용합니다."
+                        checked={isKillable}
+                        disabled={!onKillableChange}
+                        onChange={(checked) => onKillableChange?.(checked)}
+                      />
+                    )}
                   </div>
                 </div>
                 <CharacterAliasRulesEditor

@@ -478,7 +478,8 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 						},
 						"%s": {
 							"effect": "kill",
-							"target": "player"
+							"target": "player",
+							"killChancePercent": 35
 						}
 					},
 					"cluePolicies": {
@@ -729,6 +730,42 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			want: "is not supported",
 		},
 		{
+			name: "kill chance must be number",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "killChancePercent": "high"}}}
+					}
+				}
+			}`, clueID)),
+			want: "killChancePercent must be a number",
+		},
+		{
+			name: "kill chance must be percent range",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "killChancePercent": 101}}}
+					}
+				}
+			}`, clueID)),
+			want: "killChancePercent must be between 0 and 100",
+		},
+		{
+			name: "kill chance is kill-only",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "player", "killChancePercent": 35}}}
+					}
+				}
+			}`, clueID)),
+			want: "killChancePercent is only supported for kill",
+		},
+		{
 			name: "description change requires text",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {
@@ -778,6 +815,83 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			}
 			if appErr.Status != http.StatusBadRequest {
 				t.Fatalf("expected status 400 for %s, got %d", tc.name, appErr.Status)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	characterID := uuid.NewString()
+
+	valid := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"player_kill": {
+				"enabled": true,
+				"config": {
+					"killableCharacterIds": ["%s"],
+					"muteOnKilled": true
+				}
+			}
+		}
+	}`, characterID))
+	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
+		t.Fatalf("valid player_kill config must save: %v", err)
+	}
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name: "module must be object",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": true}
+			}`),
+			want: "modules.player_kill must be an object",
+		},
+		{
+			name: "config must be object",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": []}}
+			}`),
+			want: "modules.player_kill.config must be an object",
+		},
+		{
+			name: "killable character ids must be strings",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"killableCharacterIds": [123]}}}
+			}`),
+			want: "killableCharacterIds must contain strings",
+		},
+		{
+			name: "killable character ids must be uuids",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"killableCharacterIds": ["char-1"]}}}
+			}`),
+			want: "killableCharacterIds has invalid character id",
+		},
+		{
+			name: "mute flag must be boolean",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"muteOnKilled": "yes"}}}
+			}`),
+			want: "muteOnKilled must be boolean",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
 			}
 			if !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("expected error to contain %q, got: %v", tc.want, err)

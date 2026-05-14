@@ -450,6 +450,37 @@ describe('CharacterAssignPanel', () => {
     });
   });
 
+  it('플레이어킬 모듈이 켜져 있으면 등장인물 유형에서 살해 가능 여부를 저장한다', async () => {
+    const themeWithPlayerKill = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          player_kill: {
+            enabled: true,
+            config: { killableCharacterIds: [], muteOnKilled: true },
+          },
+        },
+      },
+    };
+
+    renderPanel(themeWithPlayerKill);
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    fireEvent.click(screen.getByLabelText(/살해 가능/));
+    await act(async () => { vi.advanceTimersByTime(1500); });
+
+    expect(mutateMock).toHaveBeenCalledOnce();
+    const [payload] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(payload.modules).toMatchObject({
+      player_kill: {
+        enabled: true,
+        config: {
+          killableCharacterIds: ['char-1'],
+          muteOnKilled: true,
+        },
+      },
+    });
+  });
+
   it('조건부 표시 규칙을 저장한다', () => {
     useEditorCharactersMock.mockReturnValue({
       data: [{

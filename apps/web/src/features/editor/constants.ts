@@ -216,6 +216,13 @@ export const MODULE_CATEGORIES: ModuleCategory[] = [
         required: false,
       },
       {
+        id: 'player_kill',
+        name: '플레이어킬',
+        description: '단서로 캐릭터를 살해하고 사망 후 음성 제한',
+        supported: true,
+        required: false,
+      },
+      {
         id: 'voice_chat',
         name: '음성 채팅',
         description: '실시간 음성 통화',

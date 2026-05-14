@@ -7,8 +7,12 @@ import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacter
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
 import { EntityEditorShell } from "@/features/editor/entities/shell/EntityEditorShell";
 import {
+  PLAYER_KILL_MODULE_ID,
   readCharacterStartingClueMap,
+  readEnabledModuleIds,
+  readPlayerKillConfig,
   writeCharacterStartingClueMap,
+  writePlayerKillCharacterEnabled,
 } from "@/features/editor/utils/configShape";
 import {
   buildCharacterAliasRulesUpdatePayload,
@@ -55,6 +59,15 @@ export function CharacterAssignPanel({
 
   const characterClues = useMemo(
     () => readCharacterStartingClueMap(theme.config_json),
+    [theme.config_json],
+  );
+  const enabledModuleIds = useMemo(
+    () => readEnabledModuleIds(theme.config_json),
+    [theme.config_json],
+  );
+  const isPlayerKillEnabled = enabledModuleIds.includes(PLAYER_KILL_MODULE_ID);
+  const playerKillConfig = useMemo(
+    () => readPlayerKillConfig(theme.config_json),
     [theme.config_json],
   );
 
@@ -170,6 +183,13 @@ export function CharacterAssignPanel({
       });
     },
     [characters, updateCharacter],
+  );
+
+  const handleKillableChangeForChar = useCallback(
+    (characterId: string, checked: boolean) => {
+      saveConfig(writePlayerKillCharacterEnabled(theme.config_json, characterId, checked));
+    },
+    [saveConfig, theme.config_json],
   );
 
   const handleAliasRulesSaveForChar = useCallback(
@@ -290,6 +310,9 @@ export function CharacterAssignPanel({
                 ? undefined
                 : (field, value) => handleVisibilityChangeForChar(char.id, field, value)
             }
+            showPlayerKillSettings={isPlayerKillEnabled}
+            isKillable={playerKillConfig.killableCharacterIds.includes(char.id)}
+            onKillableChange={(checked) => handleKillableChangeForChar(char.id, checked)}
             onAliasRulesSave={
               updateCharacter.isPending
                 ? undefined

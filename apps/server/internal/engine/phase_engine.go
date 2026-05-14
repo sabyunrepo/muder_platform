@@ -112,6 +112,7 @@ func (e *PhaseEngine) Start(ctx context.Context, moduleConfigs map[string]json.R
 		SessionID:              e.sessionID,
 		EventBus:               e.eventBus,
 		Logger:                 e.logger,
+		ModuleConfigs:          moduleConfigs,
 		PlayerInfoProvider:     e.playerInfoProvider,
 		PlayerStatusController: e.playerStatusController,
 		ActionDispatcher:       e,

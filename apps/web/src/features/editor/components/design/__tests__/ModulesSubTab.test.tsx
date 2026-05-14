@@ -167,6 +167,7 @@ describe('ModulesSubTab', () => {
       '고발',
       '단서 조사',
       '단서 교환',
+      '플레이어킬',
     ];
 
     for (const moduleName of expectedVisibleModuleNames) {
@@ -309,6 +310,34 @@ describe('ModulesSubTab', () => {
         config: {
           maxRounds: 3,
           candidatePolicy: { includeSelf: false, includeDetective: true },
+        },
+      },
+    });
+  });
+
+  it('플레이어킬 모듈의 살해시 마이크 끔 설정을 저장한다', () => {
+    const themeWithPlayerKill: EditorThemeResponse = {
+      ...baseTheme,
+      config_json: {
+        modules: {
+          player_kill: {
+            enabled: true,
+            config: { killableCharacterIds: ['char-1'], muteOnKilled: false },
+          },
+        },
+      },
+    };
+
+    render(<ModulesSubTab themeId="theme-1" theme={themeWithPlayerKill} />);
+    fireEvent.click(screen.getByLabelText('살해시 마이크 끔'));
+
+    const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
+    expect(config.modules).toMatchObject({
+      player_kill: {
+        enabled: true,
+        config: {
+          killableCharacterIds: ['char-1'],
+          muteOnKilled: true,
         },
       },
     });

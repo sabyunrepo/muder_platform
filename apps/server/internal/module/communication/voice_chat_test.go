@@ -167,6 +167,52 @@ func TestVoiceChatModule_MuteUnmute(t *testing.T) {
 	m.mu.RUnlock()
 }
 
+func TestVoiceChatModule_MuteOnKilledLocksUnmute(t *testing.T) {
+	m := NewVoiceChatModule()
+	deps := newTestDeps()
+	deps.ModuleConfigs = map[string]json.RawMessage{
+		"player_kill": json.RawMessage(`{"muteOnKilled":true}`),
+	}
+	if err := m.Init(context.Background(), deps, nil); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+	playerID := uuid.New()
+	if err := m.HandleMessage(context.Background(), playerID, "voice:join", nil); err != nil {
+		t.Fatalf("join failed: %v", err)
+	}
+
+	var mutedEvent bool
+	deps.EventBus.Subscribe("voice.mute_changed", func(e engine.Event) {
+		payload := e.Payload.(map[string]any)
+		mutedEvent = payload["playerId"] == playerID.String() && payload["muted"] == true
+	})
+	deps.EventBus.Publish(engine.Event{
+		Type: "player.status_changed",
+		Payload: map[string]any{
+			"playerId": playerID.String(),
+			"isAlive":  false,
+		},
+	})
+
+	if !mutedEvent {
+		t.Fatal("expected killed player to be muted")
+	}
+	if err := m.HandleMessage(context.Background(), playerID, "voice:unmute", nil); err == nil {
+		t.Fatal("expected killed player unmute to be rejected")
+	}
+	if err := m.HandleMessage(context.Background(), playerID, "voice:leave", nil); err != nil {
+		t.Fatalf("leave failed: %v", err)
+	}
+	if err := m.HandleMessage(context.Background(), playerID, "voice:join", nil); err == nil {
+		t.Fatal("expected killed player rejoin to be rejected")
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if _, joined := m.participants[playerID]; joined {
+		t.Fatal("killed player should not rejoin voice")
+	}
+}
+
 func TestVoiceChatModule_MuteNotJoined(t *testing.T) {
 	m := NewVoiceChatModule()
 	deps := newTestDeps()

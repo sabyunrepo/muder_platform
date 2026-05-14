@@ -230,6 +230,8 @@ describe('ClueRuntimeEffectCard', () => {
     fireEvent.click(screen.getByRole('button', { name: '살해 요청' }));
 
     expect(screen.getByText(/생존 상태를 런타임에서 사망으로 변경/)).toBeDefined();
+    expect(screen.getByLabelText('살해확률 (%)')).toHaveProperty('value', '100');
+    fireEvent.change(screen.getByLabelText('살해확률 (%)'), { target: { value: '35' } });
     fireEvent.click(screen.getByRole('button', { name: '사용 설정 저장' }));
 
     const saved = onConfigChange.mock.calls[0][0] as EditorConfig;
@@ -237,6 +239,7 @@ describe('ClueRuntimeEffectCard', () => {
       effect: 'kill',
       target: 'player',
       condition: { kind: 'password', value: 'knife' },
+      killChancePercent: 35,
     });
   });
 
