@@ -105,7 +105,14 @@ export function buildClueBadges(clue: ClueResponse, referenceCount: number): str
   ].filter((badge): badge is string => Boolean(badge));
 }
 
-export function formatClueConsumeLabel(clue: Pick<ClueResponse, 'is_usable' | 'use_consumed'>): string {
+export function formatClueConsumeLabel(
+  clue: Pick<ClueResponse, 'is_usable' | 'use_consumed'>,
+  itemEffect?: { consume?: boolean } | null,
+): string {
+  if (itemEffect !== undefined) {
+    if (!itemEffect) return '해당 없음';
+    return itemEffect.consume ? '사용하면 내 단서함에서 사라짐' : '사용 후에도 단서함에 남음';
+  }
   if (!clue.is_usable) return '해당 없음';
   return clue.use_consumed ? '사용하면 내 단서함에서 사라짐' : '사용 후에도 단서함에 남음';
 }

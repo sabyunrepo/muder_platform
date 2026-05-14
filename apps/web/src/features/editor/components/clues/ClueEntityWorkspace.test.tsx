@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, fireEvent } from '@testing-library/react';
 import type { ClueResponse, EditorCharacterResponse, LocationResponse } from '@/features/editor/api';
+import { readClueItemEffect } from '@/features/editor/utils/configShape';
 import { ClueEntityWorkspace } from './ClueEntityWorkspace';
 
 vi.mock('@/features/editor/flowApi', () => ({
@@ -96,7 +97,17 @@ describe('ClueEntityWorkspace', () => {
         clues={[clue({ id: 'clue-1' }), clue({ id: 'clue-2', name: '비밀 편지', is_usable: false })]}
         configJson={{
           locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }],
-          modules: { starting_clue: { enabled: true, config: { startingClues: { 'char-1': ['clue-1'] } } } },
+          modules: {
+            starting_clue: { enabled: true, config: { startingClues: { 'char-1': ['clue-1'] } } },
+            clue_interaction: {
+              enabled: true,
+              config: {
+                itemEffects: {
+                  'clue-1': { effect: 'steal', target: 'player', consume: true },
+                },
+              },
+            },
+          },
         }}
         locations={locations}
         characters={characters}
@@ -140,7 +151,28 @@ describe('ClueEntityWorkspace', () => {
     expect(screen.queryByRole('button', { name: '설명 변경' })).toBeNull();
   });
 
-  it('인라인 기본 정보 저장 시 선택 단서 update payload와 보호 정책을 보낸다', () => {
+  it('단서 상세에는 통합 저장 버튼 하나만 보여준다', () => {
+    render(
+      <ClueEntityWorkspace
+        themeId="theme-1"
+        clues={[clue({ id: 'clue-1' })]}
+        configJson={{}}
+        flowNodes={flowNodes}
+        locations={[]}
+        characters={[]}
+        onCreate={vi.fn()}
+        onUpdate={vi.fn()}
+        onConfigChange={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '단서 저장' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: '기본 정보 저장' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '사용 설정 저장' })).toBeNull();
+  });
+
+  it('통합 저장 시 선택 단서 update payload와 보호 정책을 함께 보낸다', () => {
     const onUpdate = vi.fn();
     const onConfigChange = vi.fn();
 
@@ -169,7 +201,7 @@ describe('ClueEntityWorkspace', () => {
       target: { value: 'scene-2' },
     });
     fireEvent.click(screen.getByLabelText(/단서 보호/));
-    fireEvent.click(screen.getByRole('button', { name: '기본 정보 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '단서 저장' }));
 
     expect(onUpdate).toHaveBeenCalledWith(
       'clue-1',
@@ -198,5 +230,45 @@ describe('ClueEntityWorkspace', () => {
         }),
       }),
     );
+  });
+
+  it('기본 정보와 사용 설정 변경을 단서 저장 한 번으로 저장한다', () => {
+    const onUpdate = vi.fn();
+    const onConfigChange = vi.fn();
+
+    render(
+      <ClueEntityWorkspace
+        themeId="theme-1"
+        clues={[clue({ id: 'clue-1' })]}
+        configJson={{}}
+        flowNodes={flowNodes}
+        locations={[]}
+        characters={[]}
+        onCreate={vi.fn()}
+        onUpdate={onUpdate}
+        onConfigChange={onConfigChange}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '피 묻은 열쇠 조각' },
+    });
+    fireEvent.click(screen.getByLabelText('사용 가능한 아이템'));
+    fireEvent.click(screen.getByRole('button', { name: '살해 요청' }));
+    fireEvent.change(screen.getByLabelText('살해확률 (%)'), { target: { value: '35' } });
+    fireEvent.click(screen.getByRole('button', { name: '단서 저장' }));
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      'clue-1',
+      expect.objectContaining({ name: '피 묻은 열쇠 조각' }),
+    );
+    expect(onConfigChange).toHaveBeenCalledTimes(1);
+    const savedConfig = onConfigChange.mock.calls[0][0];
+    expect(readClueItemEffect(savedConfig, 'clue-1')).toMatchObject({
+      effect: 'kill',
+      target: 'player',
+      killChancePercent: 35,
+    });
   });
 });

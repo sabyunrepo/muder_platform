@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Save } from 'lucide-react';
 import type {
   ClueResponse,
   EditorCharacterResponse,
@@ -17,7 +18,15 @@ import {
   buildClueBadges,
 } from '@/features/editor/entities/clue/clueEntityAdapter';
 import { ClueRuntimeEffectCard } from './ClueRuntimeEffectCard';
+import type {
+  ClueRuntimeEffectCardHandle,
+  ClueRuntimeEffectDraftState,
+} from './ClueRuntimeEffectCard';
 import { ClueBasicInfoCard } from './ClueBasicInfoCard';
+import type {
+  ClueBasicInfoCardHandle,
+  ClueBasicInfoDraftState,
+} from './ClueBasicInfoCard';
 import {
   buildProgressNodeRevealOptions,
 } from '@/features/editor/entities/reveal/revealTimingOptions';
@@ -52,6 +61,16 @@ export function ClueEntityWorkspace({
   isConfigSaving,
 }: ClueEntityWorkspaceProps) {
   const [selectedId, setSelectedId] = useState(clues[0]?.id ?? '');
+  const basicInfoRef = useRef<ClueBasicInfoCardHandle | null>(null);
+  const runtimeEffectRef = useRef<ClueRuntimeEffectCardHandle | null>(null);
+  const [basicInfoState, setBasicInfoState] = useState<ClueBasicInfoDraftState>({
+    dirty: false,
+    valid: true,
+  });
+  const [runtimeEffectState, setRuntimeEffectState] = useState<ClueRuntimeEffectDraftState>({
+    dirty: false,
+    valid: true,
+  });
   const usageMap = useMemo(
     () => buildClueUsageMap({ configJson, clues, locations, characters }),
     [configJson, clues, locations, characters]
@@ -65,6 +84,43 @@ export function ClueEntityWorkspace({
       ]),
     ),
     [flowNodes, clues],
+  );
+  const isSaving = Boolean(isClueSaving || isConfigSaving);
+  const hasDetailChanges = basicInfoState.dirty || runtimeEffectState.dirty;
+  const canSaveDetail =
+    hasDetailChanges && basicInfoState.valid && runtimeEffectState.valid && !isSaving;
+  const handleBasicInfoStateChange = useCallback((state: ClueBasicInfoDraftState) => {
+    setBasicInfoState(state);
+  }, []);
+  const handleRuntimeEffectStateChange = useCallback((state: ClueRuntimeEffectDraftState) => {
+    setRuntimeEffectState(state);
+  }, []);
+  const handleSaveDetail = useCallback(
+    (clue: ClueResponse) => {
+      const basicRequest = basicInfoRef.current?.getSaveRequest();
+      const runtimeRequest = runtimeEffectRef.current?.getSaveRequest();
+      if (!basicRequest?.valid || !runtimeRequest?.valid) return;
+      if (!basicRequest.dirty && !runtimeRequest.dirty) return;
+
+      if (basicRequest.rowDirty && basicRequest.body) {
+        onUpdate(clue.id, basicRequest.body);
+      }
+
+      let nextConfig = configJson ?? {};
+      let shouldSaveConfig = false;
+      if (basicRequest.configDirty) {
+        nextConfig = basicRequest.writeConfig(nextConfig);
+        shouldSaveConfig = true;
+      }
+      if (runtimeRequest.dirty) {
+        nextConfig = runtimeRequest.writeConfig(nextConfig);
+        shouldSaveConfig = true;
+      }
+      if (shouldSaveConfig) {
+        onConfigChange?.(nextConfig);
+      }
+    },
+    [configJson, onConfigChange, onUpdate],
   );
 
   return (
@@ -80,23 +136,40 @@ export function ClueEntityWorkspace({
       getItemBadges={(clue) => buildClueBadges(clue, usageMap[clue.id]?.references.length ?? 0)}
       renderDetail={(clue) => (
         <div className="space-y-4">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-950/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-100">단서 상세 저장</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                기본 정보와 사용 설정을 한 번에 저장합니다.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSaveDetail(clue)}
+              disabled={!canSaveDetail}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:border-slate-800 disabled:bg-transparent disabled:text-slate-600"
+            >
+              <Save className="h-4 w-4" />
+              {isSaving ? '저장 중' : '단서 저장'}
+            </button>
+          </div>
           <ClueBasicInfoCard
+            ref={basicInfoRef}
             themeId={themeId ?? ''}
             clue={clue}
             configJson={configJson}
             isSaving={isClueSaving}
             isConfigSaving={isConfigSaving}
             sceneOptions={sceneOptions}
-            onSave={onUpdate}
-            onConfigChange={onConfigChange}
             onDelete={onDelete}
+            onDraftStateChange={handleBasicInfoStateChange}
           />
           <ClueRuntimeEffectCard
+            ref={runtimeEffectRef}
             clue={clue}
             clues={clues}
             configJson={configJson}
-            onConfigChange={onConfigChange}
-            isSaving={isConfigSaving}
+            onDraftStateChange={handleRuntimeEffectStateChange}
           />
         </div>
       )}
