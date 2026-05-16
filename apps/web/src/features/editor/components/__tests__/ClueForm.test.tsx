@@ -180,6 +180,16 @@ describe('ClueForm', () => {
     expect(body.is_usable).toBe(false);
   });
 
+  it('단서 생성 폼에서는 중복 고급 설정 블록을 렌더링하지 않는다', () => {
+    const onClose = vi.fn();
+    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
+
+    expect(screen.queryByRole('button', { name: '고급 설정' })).toBeNull();
+    expect(screen.queryByText('공개 단서 (모든 플레이어 공유)')).toBeNull();
+    expect(screen.queryByText('라운드 스케줄')).toBeNull();
+    expect(screen.queryByText('사용 가능한 단서')).toBeNull();
+  });
+
   it('미디어 관리의 IMAGE 항목을 단서 이미지로 선택한다', () => {
     const onClose = vi.fn();
 
@@ -273,89 +283,7 @@ describe('ClueForm', () => {
     expect(createMutate).not.toHaveBeenCalled();
   });
 
-
-  it('사용 효과 설정은 제작자가 이해하는 문장으로 표시된다', () => {
-    const onClose = vi.fn();
-    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
-
-    fireEvent.click(screen.getByText('고급 설정'));
-    fireEvent.click(screen.getByLabelText('사용 가능한 단서'));
-
-    expect(screen.getByText('다른 플레이어 단서 보기')).toBeDefined();
-    expect(screen.getByText('다른 플레이어에게서 단서 가져오기')).toBeDefined();
-    expect(screen.getByText('플레이어가 사용할 때 고르는 대상')).toBeDefined();
-    expect(screen.getByText('사용하면 내 단서함에서 사라짐')).toBeDefined();
-  });
-
-
-  it('사용 효과를 정보 공개로 바꾸면 backend policy에 맞게 대상 없음으로 저장한다', () => {
-    const onClose = vi.fn();
-    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
-
-    fireEvent.change(screen.getByLabelText('이름'), {
-      target: { value: '정보 단서' },
-    });
-    fireEvent.click(screen.getByText('고급 설정'));
-    fireEvent.click(screen.getByLabelText('사용 가능한 단서'));
-    fireEvent.change(screen.getByLabelText('사용하면 일어나는 일'), {
-      target: { value: 'reveal' },
-    });
-
-    fireEvent.submit(document.getElementById('clue-form')!);
-
-    expect(createMutate).toHaveBeenCalledTimes(1);
-    const [body] = createMutate.mock.calls[0];
-    expect(body.use_effect).toBe('reveal');
-    expect(body.use_target).toBe('self');
-  });
-
-  it('고급 설정의 공개/사라짐 라운드 입력이 payload에 포함된다', () => {
-    const onClose = vi.fn();
-    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
-
-    fireEvent.change(screen.getByLabelText('이름'), {
-      target: { value: '라운드 단서' },
-    });
-    fireEvent.click(screen.getByText('고급 설정'));
-    fireEvent.change(screen.getByLabelText('공개 라운드'), {
-      target: { value: '2' },
-    });
-    fireEvent.change(screen.getByLabelText('사라짐 라운드'), {
-      target: { value: '4' },
-    });
-
-    fireEvent.submit(document.getElementById('clue-form')!);
-
-    expect(createMutate).toHaveBeenCalledTimes(1);
-    const [body] = createMutate.mock.calls[0];
-    expect(body.reveal_round).toBe(2);
-    expect(body.hide_round).toBe(4);
-  });
-
-  it('공개 > 사라짐 라운드 조합은 에러를 표시하고 mutate를 막는다', () => {
-    const onClose = vi.fn();
-    render(<ClueForm themeId="theme-1" isOpen onClose={onClose} />);
-
-    fireEvent.change(screen.getByLabelText('이름'), {
-      target: { value: '역전 단서' },
-    });
-    fireEvent.click(screen.getByText('고급 설정'));
-    fireEvent.change(screen.getByLabelText('공개 라운드'), {
-      target: { value: '5' },
-    });
-    fireEvent.change(screen.getByLabelText('사라짐 라운드'), {
-      target: { value: '2' },
-    });
-
-    fireEvent.submit(document.getElementById('clue-form')!);
-
-    expect(
-      screen.getByText('공개 라운드는 사라짐 라운드보다 클 수 없습니다'),
-    ).toBeDefined();
-    expect(createMutate).not.toHaveBeenCalled();
-  });
-
-  it('edit 모드에서 기존 reveal_round/hide_round가 초기값으로 로드된다', () => {
+  it('edit 모드에서 기존 고급 설정 값을 보존해 저장한다', () => {
     const onClose = vi.fn();
     const existing = {
       id: 'clue-rr',
@@ -364,14 +292,14 @@ describe('ClueForm', () => {
       name: '기존 단서',
       description: null,
       image_url: null,
-      is_common: false,
       level: 1,
       sort_order: 0,
       created_at: '2026-04-17T00:00:00Z',
-      is_usable: false,
-      use_effect: null,
-      use_target: null,
-      use_consumed: false,
+      is_common: true,
+      is_usable: true,
+      use_effect: 'reveal' as const,
+      use_target: 'self' as const,
+      use_consumed: true,
       reveal_round: 3,
       hide_round: 7,
     };
@@ -379,13 +307,19 @@ describe('ClueForm', () => {
     render(
       <ClueForm themeId="theme-1" clue={existing} isOpen onClose={onClose} />,
     );
-    fireEvent.click(screen.getByText('고급 설정'));
 
-    expect(
-      (screen.getByLabelText('공개 라운드') as HTMLInputElement).value,
-    ).toBe('3');
-    expect(
-      (screen.getByLabelText('사라짐 라운드') as HTMLInputElement).value,
-    ).toBe('7');
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(updateMutate).toHaveBeenCalledTimes(1);
+    const [args] = updateMutate.mock.calls[0];
+    expect(args.body).toMatchObject({
+      is_common: true,
+      is_usable: true,
+      use_effect: 'reveal',
+      use_target: 'self',
+      use_consumed: true,
+      reveal_round: 3,
+      hide_round: 7,
+    });
   });
 });

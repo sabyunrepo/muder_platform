@@ -5,8 +5,7 @@ import { Input } from '@/shared/components/ui/Input';
 import { type ClueResponse } from '@/features/editor/api';
 import { useClueFormSubmit } from '@/features/editor/hooks/useClueFormSubmit';
 import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
-import { buildClueUsePayload, getClueUseEffectOption } from '@/features/editor/entities/clue/clueEntityAdapter';
-import { ClueFormAdvancedFields } from './ClueFormAdvancedFields';
+import { buildClueUsePayload } from '@/features/editor/entities/clue/clueEntityAdapter';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,7 +23,6 @@ interface ClueFormProps {
 //
 // Slim shell that owns controlled form state and delegates:
 //   - image media selection → ImageMediaReferenceField
-//   - advanced/item-usage fields → ClueFormAdvancedFields
 //   - create/update → useClueFormSubmit
 // ---------------------------------------------------------------------------
 
@@ -38,8 +36,8 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
   const [imageMediaId, setImageMediaId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Advanced fields (hidden by default)
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  // These values are edited in the clue detail screen. The create form keeps
+  // defaults/current values only so update payloads remain backward compatible.
   const [isCommon, setIsCommon] = useState(false);
 
   // Level / sort order — UI removed (Phase 20 PR-1) but backend still requires
@@ -97,7 +95,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       setHideRound(null);
     }
     setErrors({});
-    setShowAdvanced(false);
   }, [isOpen, clue]);
 
   function validate(): Record<string, string> {
@@ -119,12 +116,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
       next.round = '공개 라운드는 사라짐 라운드보다 클 수 없습니다';
     }
     return next;
-  }
-
-  function handleUseEffectChange(effect: string) {
-    setUseEffect(effect);
-    const option = getClueUseEffectOption(effect);
-    if (option) setUseTarget(option.target);
   }
 
   function handleSubmit(e: FormEvent) {
@@ -224,26 +215,6 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
             <p className="text-sm text-red-400">{errors.description}</p>
           )}
         </div>
-
-        <ClueFormAdvancedFields
-          showAdvanced={showAdvanced}
-          onToggleAdvanced={() => setShowAdvanced((v) => !v)}
-          isCommon={isCommon}
-          onIsCommonChange={setIsCommon}
-          isUsable={isUsable}
-          onIsUsableChange={setIsUsable}
-          useEffect_={useEffect_}
-          onUseEffectChange={handleUseEffectChange}
-          useTarget={useTarget}
-          onUseTargetChange={setUseTarget}
-          useConsumed={useConsumed}
-          onUseConsumedChange={setUseConsumed}
-          revealRound={revealRound}
-          onRevealRoundChange={setRevealRound}
-          hideRound={hideRound}
-          onHideRoundChange={setHideRound}
-          roundError={errors.round}
-        />
       </form>
     </Modal>
   );

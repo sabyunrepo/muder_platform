@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
-import { Save, Trash2 } from 'lucide-react';
+import { forwardRef, useEffect, useImperativeHandle, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import type { ClueResponse, UpdateClueRequest } from '@/features/editor/api';
 import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
-import { buildClueUsePayload, toClueEditorViewModel } from '@/features/editor/entities/clue/clueEntityAdapter';
+import {
+  buildClueUsePayload,
+  formatClueConsumeLabel,
+  toClueEditorViewModel,
+} from '@/features/editor/entities/clue/clueEntityAdapter';
 import {
   readCluePolicy,
+  readClueItemEffect,
   writeCluePolicy,
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
@@ -20,9 +25,8 @@ interface ClueBasicInfoCardProps {
   isSaving?: boolean;
   isConfigSaving?: boolean;
   sceneOptions?: ProgressNodeRevealOption[];
-  onSave: (clueId: string, body: UpdateClueRequest) => void;
-  onConfigChange: (nextConfig: EditorConfig) => void;
   onDelete: (clue: ClueResponse) => void;
+  onDraftStateChange?: (state: ClueBasicInfoDraftState) => void;
 }
 
 interface DraftState {
@@ -35,6 +39,24 @@ interface DraftState {
   isProtected: boolean;
   revealSceneId: string | null;
   hideSceneId: string | null;
+}
+
+export interface ClueBasicInfoDraftState {
+  dirty: boolean;
+  valid: boolean;
+}
+
+export interface ClueBasicInfoSaveRequest {
+  valid: boolean;
+  dirty: boolean;
+  rowDirty: boolean;
+  configDirty: boolean;
+  body: UpdateClueRequest | null;
+  writeConfig: (baseConfig: EditorConfig | null | undefined) => EditorConfig;
+}
+
+export interface ClueBasicInfoCardHandle {
+  getSaveRequest: () => ClueBasicInfoSaveRequest;
 }
 
 function toDraft(clue: ClueResponse, configJson: EditorConfig | null | undefined): DraftState {
@@ -80,21 +102,71 @@ function validate(draft: DraftState): Record<string, string> {
   return errors;
 }
 
-export function ClueBasicInfoCard({
+function buildUpdateBody(clue: ClueResponse, draft: DraftState): UpdateClueRequest {
+  const imageUrl = draft.imageMediaId
+    ? ''
+    : clue.image_url && draft.imageUrl === ''
+      ? ''
+      : draft.imageUrl || undefined;
+
+  return buildClueUsePayload({
+    name: draft.name.trim(),
+    description: draft.description || undefined,
+    image_url: imageUrl,
+    image_media_id: draft.imageMediaId,
+    level: clue.level,
+    sort_order: clue.sort_order,
+    is_common: draft.isCommon,
+    is_usable: clue.is_usable,
+    use_effect: clue.use_effect ?? undefined,
+    use_target: clue.use_target ?? undefined,
+    use_consumed: clue.use_consumed,
+    reveal_round: null,
+    hide_round: null,
+    reveal_scene_id: draft.revealSceneId,
+    hide_scene_id: draft.hideSceneId,
+  });
+}
+
+function isRowDirty(draft: DraftState, clue: ClueResponse): boolean {
+  return (
+    draft.name !== clue.name ||
+    draft.description !== (clue.description ?? '') ||
+    draft.imageUrl !== (clue.image_url ?? '') ||
+    draft.imageMediaId !== (clue.image_media_id ?? null) ||
+    draft.isCommon !== clue.is_common ||
+    draft.revealSceneId !== (clue.reveal_scene_id ?? null) ||
+    draft.hideSceneId !== (clue.hide_scene_id ?? null)
+  );
+}
+
+function isPolicyDirty(
+  draft: DraftState,
+  clue: ClueResponse,
+  configJson: EditorConfig | null | undefined
+): boolean {
+  const policy = readCluePolicy(configJson, clue.id);
+  return (
+    (!draft.isCommon && draft.isRevealable !== policy.revealable) ||
+    draft.isProtected !== policy.protected
+  );
+}
+
+export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicInfoCardProps>(function ClueBasicInfoCard({
   themeId,
   clue,
   configJson,
   isSaving = false,
   isConfigSaving = false,
   sceneOptions = [],
-  onSave,
-  onConfigChange,
   onDelete,
-}: ClueBasicInfoCardProps) {
+  onDraftStateChange,
+}, ref) {
   const [draft, setDraft] = useState<DraftState>(() => toDraft(clue, configJson));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const view = toClueEditorViewModel(clue);
   const policy = readCluePolicy(configJson, clue.id);
+  const runtimeEffect = readClueItemEffect(configJson, clue.id);
   const dirty = isDirty(draft, clue, configJson);
   const saving = isSaving || isConfigSaving;
   const selectedRevealSceneLabel =
@@ -136,44 +208,34 @@ export function ClueBasicInfoCard({
     });
   }
 
-  function handleSave() {
+  function buildSaveRequest(): ClueBasicInfoSaveRequest {
     const nextErrors = validate(draft);
     setErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
-
-    const imageUrl = draft.imageMediaId
-      ? ''
-      : clue.image_url && draft.imageUrl === ''
-        ? ''
-        : draft.imageUrl || undefined;
-
-    onSave(
-      clue.id,
-      buildClueUsePayload({
-        name: draft.name.trim(),
-        description: draft.description || undefined,
-        image_url: imageUrl,
-        image_media_id: draft.imageMediaId,
-        level: clue.level,
-        sort_order: clue.sort_order,
-        is_common: draft.isCommon,
-        is_usable: clue.is_usable,
-        use_effect: clue.use_effect ?? undefined,
-        use_target: clue.use_target ?? undefined,
-        use_consumed: clue.use_consumed,
-        reveal_round: null,
-        hide_round: null,
-        reveal_scene_id: draft.revealSceneId,
-        hide_scene_id: draft.hideSceneId,
-      })
-    );
-    onConfigChange(
-      writeCluePolicy(configJson, clue.id, {
+    const rowDirty = isRowDirty(draft, clue);
+    const configDirty = isPolicyDirty(draft, clue, configJson);
+    return {
+      valid: Object.keys(nextErrors).length === 0,
+      dirty: rowDirty || configDirty,
+      rowDirty,
+      configDirty,
+      body: rowDirty ? buildUpdateBody(clue, draft) : null,
+      writeConfig: (baseConfig) => writeCluePolicy(baseConfig, clue.id, {
         revealable: draft.isCommon ? true : draft.isRevealable,
         protected: draft.isProtected,
-      })
-    );
+      }),
+    };
   }
+
+  useImperativeHandle(ref, () => ({
+    getSaveRequest: buildSaveRequest,
+  }));
+
+  useEffect(() => {
+    onDraftStateChange?.({
+      dirty: dirty,
+      valid: Object.keys(validate(draft)).length === 0,
+    });
+  }, [dirty, draft, onDraftStateChange]);
 
   return (
     <article className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
@@ -188,15 +250,6 @@ export function ClueBasicInfoCard({
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-xs font-semibold text-amber-200 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
-          >
-            <Save className="h-3.5 w-3.5" />
-            {saving ? '저장 중' : '기본 정보 저장'}
-          </button>
           <button
             type="button"
             onClick={() => onDelete(clue)}
@@ -318,11 +371,11 @@ export function ClueBasicInfoCard({
         <InfoBlock title="공개 범위" value={view.publicScopeLabel} />
         <InfoBlock title="공개 시점" value={selectedRevealSceneLabel} />
         <InfoBlock title="숨김 시점" value={selectedHideSceneLabel} />
-        <InfoBlock title="사용 후 처리" value={view.consumeLabel} />
+        <InfoBlock title="사용 후 처리" value={formatClueConsumeLabel(clue, runtimeEffect)} />
       </div>
     </article>
   );
-}
+});
 
 function InfoBlock({ title, value }: { title: string; value: string }) {
   return (

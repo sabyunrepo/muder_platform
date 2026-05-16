@@ -59,6 +59,12 @@ describe('clueEntityAdapter', () => {
     expect(formatClueConsumeLabel({ is_usable: true, use_consumed: false })).toBe('사용 후에도 단서함에 남음');
   });
 
+  it('config_json 사용 효과가 있으면 legacy consume 대신 runtime consume을 우선 표시한다', () => {
+    expect(formatClueConsumeLabel({ is_usable: true, use_consumed: true }, { consume: false })).toBe('사용 후에도 단서함에 남음');
+    expect(formatClueConsumeLabel({ is_usable: true, use_consumed: false }, { consume: true })).toBe('사용하면 내 단서함에서 사라짐');
+    expect(formatClueConsumeLabel({ is_usable: true, use_consumed: true }, null)).toBe('해당 없음');
+  });
+
   it('효과별 권장 대상 선택 방식을 제공한다', () => {
     expect(getClueUseEffectOption('peek')).toMatchObject({ target: 'player', requiresTargetSelection: true });
     expect(getClueUseEffectOption('description_change')).toMatchObject({ target: 'self', requiresTargetSelection: false });

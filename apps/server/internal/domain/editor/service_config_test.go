@@ -478,7 +478,8 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 						},
 						"%s": {
 							"effect": "kill",
-							"target": "player"
+							"target": "player",
+							"killChancePercent": 35
 						}
 					},
 					"cluePolicies": {
@@ -729,6 +730,42 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			want: "is not supported",
 		},
 		{
+			name: "kill chance must be number",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "killChancePercent": "high"}}}
+					}
+				}
+			}`, clueID)),
+			want: "killChancePercent must be a number",
+		},
+		{
+			name: "kill chance must be percent range",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "killChancePercent": 101}}}
+					}
+				}
+			}`, clueID)),
+			want: "killChancePercent must be between 0 and 100",
+		},
+		{
+			name: "kill chance is kill-only",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "player", "killChancePercent": 35}}}
+					}
+				}
+			}`, clueID)),
+			want: "killChancePercent is only supported for kill",
+		},
+		{
 			name: "description change requires text",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {
@@ -783,6 +820,129 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
 			}
 		})
+	}
+}
+
+func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	character, err := f.svc.CreateCharacter(ctx, creatorID, themeID, CreateCharacterRequest{
+		Name:      "Victim",
+		SortOrder: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	valid := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"player_kill": {
+				"enabled": true,
+				"config": {
+					"killableCharacterIds": ["%s"],
+					"muteOnKilled": true
+				}
+			}
+		}
+	}`, character.ID))
+	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
+		t.Fatalf("valid player_kill config must save: %v", err)
+	}
+
+	cases := []struct {
+		name  string
+		input json.RawMessage
+		want  string
+	}{
+		{
+			name: "module must be object",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": true}
+			}`),
+			want: "modules.player_kill must be an object",
+		},
+		{
+			name: "config must be object",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": []}}
+			}`),
+			want: "modules.player_kill.config must be an object",
+		},
+		{
+			name: "killable character ids must be strings",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"killableCharacterIds": [123]}}}
+			}`),
+			want: "killableCharacterIds must contain strings",
+		},
+		{
+			name: "killable character ids must be uuids",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"killableCharacterIds": ["char-1"]}}}
+			}`),
+			want: "killableCharacterIds has invalid character id",
+		},
+		{
+			name: "mute flag must be boolean",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"muteOnKilled": "yes"}}}
+			}`),
+			want: "muteOnKilled must be boolean",
+		},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, tc.input)
+			if err == nil {
+				t.Fatalf("expected error for %s, got nil", tc.name)
+			}
+			if !strings.Contains(err.Error(), tc.want) {
+				t.Errorf("expected error to contain %q, got: %v", tc.want, err)
+			}
+		})
+	}
+}
+
+func TestUpdateConfigJson_RejectsPlayerKillCharacterOutsideTheme(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	foreignCharacter, err := f.svc.CreateCharacter(ctx, creatorID, otherThemeID, CreateCharacterRequest{
+		Name:      "Foreign Victim",
+		SortOrder: 1,
+	})
+	if err != nil {
+		t.Fatalf("CreateCharacter: %v", err)
+	}
+
+	config := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"player_kill": {
+				"enabled": true,
+				"config": {
+					"killableCharacterIds": ["%s"]
+				}
+			}
+		}
+	}`, foreignCharacter.ID))
+	_, err = f.svc.UpdateConfigJson(ctx, creatorID, themeID, config)
+	if err == nil {
+		t.Fatal("expected player_kill character reference validation error, got nil")
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.AppError, got %T", err)
+	}
+	if appErr.Code != apperror.ErrBadRequest {
+		t.Fatalf("expected BAD_REQUEST, got %s", appErr.Code)
+	}
+	if !strings.Contains(appErr.Detail, "killableCharacterIds[0] must belong to this theme") {
+		t.Fatalf("unexpected error detail: %s", appErr.Detail)
 	}
 }
 

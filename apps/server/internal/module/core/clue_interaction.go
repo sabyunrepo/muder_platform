@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -61,11 +62,15 @@ type ClueInteractionModule struct {
 	changedDescriptions map[uuid.UUID]map[string]string
 	itemTimeout         *time.Timer
 	appliedGrantIDs     map[string]struct{}
+	playerKillConfig    PlayerKillConfig
+	killRoll            func() int
 }
 
 // NewClueInteractionModule creates a new ClueInteractionModule instance.
 func NewClueInteractionModule() *ClueInteractionModule {
-	return &ClueInteractionModule{}
+	return &ClueInteractionModule{
+		killRoll: func() int { return rand.Intn(100) + 1 },
+	}
 }
 
 func (m *ClueInteractionModule) Name() string { return "clue_interaction" }
@@ -75,6 +80,9 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	defer m.mu.Unlock()
 
 	m.deps = deps
+	if m.killRoll == nil {
+		m.killRoll = func() int { return rand.Intn(100) + 1 }
+	}
 	m.playerDrawCounts = make(map[uuid.UUID]int)
 	m.acquiredClues = make(map[uuid.UUID][]string)
 	m.targetCodeClues = make(map[string][]string)
@@ -110,6 +118,12 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	}
 	if err := validateClueItemEffectConfig(m.config.ItemEffects); err != nil {
 		return err
+	}
+	m.playerKillConfig = PlayerKillConfig{}
+	if rawConfig, ok := deps.ModuleConfigs[playerKillModuleName]; ok && len(rawConfig) > 0 {
+		if err := json.Unmarshal(rawConfig, &m.playerKillConfig); err != nil {
+			return fmt.Errorf("clue_interaction: invalid player_kill config: %w", err)
+		}
 	}
 
 	m.currentClueLevel = m.config.InitialClueLevel
@@ -380,12 +394,13 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 				"additionalProperties": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"effect":          map[string]any{"type": "string", "enum": []string{"description_change", "peek", "steal", "reveal", "grant_clue"}},
-						"target":          map[string]any{"type": "string", "enum": []string{"player", "self"}},
-						"consume":         map[string]any{"type": "boolean", "default": false},
-						"descriptionText": map[string]any{"type": "string"},
-						"revealText":      map[string]any{"type": "string"},
-						"grantClueIds":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"effect":            map[string]any{"type": "string", "enum": []string{"description_change", "peek", "steal", "reveal", "grant_clue", "kill"}},
+						"target":            map[string]any{"type": "string", "enum": []string{"player", "self"}},
+						"consume":           map[string]any{"type": "boolean", "default": false},
+						"descriptionText":   map[string]any{"type": "string"},
+						"revealText":        map[string]any{"type": "string"},
+						"grantClueIds":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"killChancePercent": map[string]any{"type": "number", "minimum": 0, "maximum": 100},
 					},
 					"required":             []string{"effect"},
 					"additionalProperties": false,

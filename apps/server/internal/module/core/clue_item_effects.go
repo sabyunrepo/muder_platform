@@ -23,12 +23,13 @@ const (
 // Editor labels are mapped to this contract by adapters; the engine executes
 // only this typed shape and never trusts client-side labels as runtime truth.
 type ClueItemEffectConfig struct {
-	Effect          string   `json:"effect"`
-	Target          string   `json:"target,omitempty"`
-	Consume         bool     `json:"consume"`
-	DescriptionText string   `json:"descriptionText,omitempty"`
-	RevealText      string   `json:"revealText,omitempty"`
-	GrantClueIDs    []string `json:"grantClueIds,omitempty"`
+	Effect            string   `json:"effect"`
+	Target            string   `json:"target,omitempty"`
+	Consume           bool     `json:"consume"`
+	DescriptionText   string   `json:"descriptionText,omitempty"`
+	RevealText        string   `json:"revealText,omitempty"`
+	GrantClueIDs      []string `json:"grantClueIds,omitempty"`
+	KillChancePercent *int     `json:"killChancePercent,omitempty"`
 }
 
 type itemUsePayload struct {
@@ -206,6 +207,14 @@ func validateSingleClueItemEffectConfig(clueID string, cfg ClueItemEffectConfig)
 	if cfg.Effect == clueEffectKill && cfg.Target != "player" {
 		return fmt.Errorf("clue_interaction: kill requires player target")
 	}
+	if cfg.KillChancePercent != nil {
+		if cfg.Effect != clueEffectKill {
+			return fmt.Errorf("clue_interaction: killChancePercent is only supported for kill")
+		}
+		if *cfg.KillChancePercent < 0 || *cfg.KillChancePercent > 100 {
+			return fmt.Errorf("clue_interaction: killChancePercent must be between 0 and 100")
+		}
+	}
 	return nil
 }
 
@@ -353,6 +362,26 @@ func (m *ClueInteractionModule) handleKillEffect(ctx context.Context, playerID u
 	if err != nil {
 		return fmt.Errorf("clue_interaction: invalid targetPlayerId: %w", err)
 	}
+	if err := m.validateKillableTarget(ctx, targetPlayerID); err != nil {
+		return err
+	}
+	cfg := m.config.ItemEffects[clueID.String()]
+	chance := 100
+	if cfg.KillChancePercent != nil {
+		chance = *cfg.KillChancePercent
+	}
+	if chance <= 0 || m.killRoll() > chance {
+		m.deps.EventBus.Publish(engine.Event{
+			Type: "clue.kill_failed",
+			Payload: map[string]any{
+				"playerId":          playerID.String(),
+				"targetPlayerId":    targetPlayerID.String(),
+				"clueId":            clueID.String(),
+				"killChancePercent": chance,
+			},
+		})
+		return nil
+	}
 
 	_, err = m.deps.PlayerStatusController.ApplyPlayerStatus(ctx, engine.PlayerStatusAction{
 		ActorID:  playerID,
@@ -374,6 +403,25 @@ func (m *ClueInteractionModule) handleKillEffect(ctx context.Context, playerID u
 		},
 	})
 	return nil
+}
+
+func (m *ClueInteractionModule) validateKillableTarget(ctx context.Context, targetPlayerID uuid.UUID) error {
+	if len(m.playerKillConfig.KillableCharacterIDs) == 0 {
+		return nil
+	}
+	if m.deps.PlayerInfoProvider == nil {
+		return fmt.Errorf("clue_interaction: player info provider is required for player_kill targets")
+	}
+	targetInfo, ok := m.deps.PlayerInfoProvider.PlayerRuntimeInfo(ctx, targetPlayerID)
+	if !ok {
+		return fmt.Errorf("clue_interaction: target player not found")
+	}
+	for _, characterID := range m.playerKillConfig.KillableCharacterIDs {
+		if characterID == targetInfo.TargetCode || characterID == targetPlayerID.String() {
+			return nil
+		}
+	}
+	return fmt.Errorf("clue_interaction: target is not killable")
 }
 
 func (m *ClueInteractionModule) handleItemUseCancel(_ context.Context, playerID uuid.UUID) error {

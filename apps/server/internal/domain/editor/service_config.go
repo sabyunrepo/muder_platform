@@ -65,6 +65,9 @@ func validateConfigShape(raw json.RawMessage) error {
 	if err := validateClueInteractionConfigShape(cfg); err != nil {
 		return err
 	}
+	if err := validatePlayerKillConfigShape(cfg); err != nil {
+		return err
+	}
 	if _, err := extractLocationDiscoveryRefs(cfg); err != nil {
 		return err
 	}
@@ -80,6 +83,11 @@ type locationDiscoveryRef struct {
 
 type endingBranchRef struct {
 	field string
+	index int
+	id    string
+}
+
+type playerKillCharacterRef struct {
 	index int
 	id    string
 }
@@ -445,7 +453,7 @@ func validateClueInteractionConfigShape(cfg map[string]any) error {
 
 func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 	for key := range effect {
-		if key != "effect" && key != "target" && key != "consume" && key != "descriptionText" && key != "revealText" && key != "grantClueIds" && key != "condition" && key != "password" && key != "trigger" {
+		if key != "effect" && key != "target" && key != "consume" && key != "descriptionText" && key != "revealText" && key != "grantClueIds" && key != "killChancePercent" && key != "condition" && key != "password" && key != "trigger" {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].%s is not supported", clueID, key)
 		}
 	}
@@ -470,6 +478,18 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 		}
 		if _, ok := consume.(bool); !ok {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].consume must be boolean", clueID)
+		}
+	}
+	if rawChance, exists := effect["killChancePercent"]; exists {
+		chance, ok := rawChance.(float64)
+		if !ok {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].killChancePercent must be a number", clueID)
+		}
+		if chance < 0 || chance > 100 {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].killChancePercent must be between 0 and 100", clueID)
+		}
+		if kind != "kill" {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].killChancePercent is only supported for kill", clueID)
 		}
 	}
 	if kind == "description_change" {
@@ -497,6 +517,140 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 			if _, err := uuid.Parse(grantClueID); err != nil {
 				return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].grantClueIds has invalid clue id %q", clueID, grantClueID)
 			}
+		}
+	}
+	return nil
+}
+
+func validatePlayerKillConfigShape(cfg map[string]any) error {
+	modules, ok := cfg["modules"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	rawModule, exists := modules["player_kill"]
+	if !exists {
+		return nil
+	}
+	module, ok := rawModule.(map[string]any)
+	if !ok {
+		return fmt.Errorf("config_json: modules.player_kill must be an object")
+	}
+	moduleConfigRaw, exists := module["config"]
+	if !exists {
+		return nil
+	}
+	if moduleConfigRaw == nil {
+		return fmt.Errorf("config_json: modules.player_kill.config cannot be null")
+	}
+	moduleConfig, ok := moduleConfigRaw.(map[string]any)
+	if !ok {
+		return fmt.Errorf("config_json: modules.player_kill.config must be an object")
+	}
+	if rawIDs, exists := moduleConfig["killableCharacterIds"]; exists {
+		if rawIDs == nil {
+			return fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds cannot be null")
+		}
+		ids, ok := rawIDs.([]any)
+		if !ok {
+			return fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds must be an array")
+		}
+		for _, rawID := range ids {
+			characterID, ok := rawID.(string)
+			if !ok {
+				return fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds must contain strings")
+			}
+			if _, err := uuid.Parse(characterID); err != nil {
+				return fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds has invalid character id %q", characterID)
+			}
+		}
+	}
+	if rawMute, exists := moduleConfig["muteOnKilled"]; exists {
+		if rawMute == nil {
+			return fmt.Errorf("config_json: modules.player_kill.config.muteOnKilled cannot be null")
+		}
+		if _, ok := rawMute.(bool); !ok {
+			return fmt.Errorf("config_json: modules.player_kill.config.muteOnKilled must be boolean")
+		}
+	}
+	return nil
+}
+
+func extractPlayerKillCharacterRefs(raw json.RawMessage) ([]playerKillCharacterRef, error) {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil, fmt.Errorf("config_json: invalid JSON: %w", err)
+	}
+	modules, ok := cfg["modules"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	rawModule, exists := modules["player_kill"]
+	if !exists {
+		return nil, nil
+	}
+	module, ok := rawModule.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.player_kill must be an object")
+	}
+	moduleConfigRaw, exists := module["config"]
+	if !exists {
+		return nil, nil
+	}
+	if moduleConfigRaw == nil {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config cannot be null")
+	}
+	moduleConfig, ok := moduleConfigRaw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config must be an object")
+	}
+	rawIDs, exists := moduleConfig["killableCharacterIds"]
+	if !exists {
+		return nil, nil
+	}
+	if rawIDs == nil {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds cannot be null")
+	}
+	ids, ok := rawIDs.([]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds must be an array")
+	}
+	refs := make([]playerKillCharacterRef, 0, len(ids))
+	for i, rawID := range ids {
+		characterID, ok := rawID.(string)
+		if !ok {
+			return nil, fmt.Errorf("config_json: modules.player_kill.config.killableCharacterIds must contain strings")
+		}
+		refs = append(refs, playerKillCharacterRef{index: i, id: characterID})
+	}
+	return refs, nil
+}
+
+func (s *service) validatePlayerKillConfigReferences(ctx context.Context, q *db.Queries, themeID uuid.UUID, raw json.RawMessage) error {
+	refs, err := extractPlayerKillCharacterRefs(raw)
+	if err != nil {
+		return apperror.BadRequest(err.Error())
+	}
+	if len(refs) == 0 {
+		return nil
+	}
+
+	characters, err := q.GetThemeCharacters(ctx, themeID)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed to validate player_kill characters")
+		return apperror.Internal("failed to validate player_kill references")
+	}
+	characterIDs := make(map[string]struct{}, len(characters))
+	for _, character := range characters {
+		characterIDs[character.ID.String()] = struct{}{}
+	}
+
+	for _, ref := range refs {
+		parsedID, err := uuid.Parse(ref.id)
+		if err != nil {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.killableCharacterIds[%d] must be a valid character id", ref.index))
+		}
+		if _, ok := characterIDs[parsedID.String()]; !ok {
+			return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.killableCharacterIds[%d] must belong to this theme", ref.index))
 		}
 	}
 	return nil
@@ -548,6 +702,9 @@ func (s *service) UpdateConfigJson(ctx context.Context, creatorID, themeID uuid.
 			return err
 		}
 		if err := s.validateEndingBranchReferences(ctx, tx, themeID, config); err != nil {
+			return err
+		}
+		if err := s.validatePlayerKillConfigReferences(ctx, qtx, themeID, config); err != nil {
 			return err
 		}
 

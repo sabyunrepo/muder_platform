@@ -16,14 +16,18 @@ import {
 } from '@/features/editor/entities/deckInvestigation/deckInvestigationAdapter';
 import { InvestigationTokenSettingsPanel } from './InvestigationTokenSettingsPanel';
 import {
+  PLAYER_KILL_MODULE_ID,
   readEnabledModuleIds,
   readLocationInvestigationSettings,
   readModuleConfig,
+  readPlayerKillConfig,
   writeLocationInvestigationSettings,
   writeModuleConfigPath,
   writeModuleEnabled,
+  writePlayerKillConfig,
   type LocationDeckOrder,
   type LocationInvestigationMode,
+  type PlayerKillConfig,
 } from '@/features/editor/utils/configShape';
 
 // ---------------------------------------------------------------------------
@@ -204,6 +208,21 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
     [activeConfig, mutateConfig, updateConfig.isPending]
   );
 
+  const handlePlayerKillConfigChange = useCallback(
+    (settings: PlayerKillConfig) => {
+      if (updateConfig.isPending) {
+        return;
+      }
+
+      mutateConfig(
+        writePlayerKillConfig(activeConfig, settings),
+        '플레이어킬 설정이 저장되었습니다',
+        '플레이어킬 설정 저장에 실패했습니다'
+      );
+    },
+    [activeConfig, mutateConfig, updateConfig.isPending]
+  );
+
   const schemaMap = useMemo((): Record<string, TemplateSchema | null> => {
     if (!moduleSchemasResp?.schemas) return {};
     const result: Record<string, TemplateSchema | null> = {};
@@ -298,10 +317,19 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                       />
                     )}
 
+                    {isEnabled && mod.id === PLAYER_KILL_MODULE_ID && (
+                      <PlayerKillSettingsPanel
+                        settings={readPlayerKillConfig(activeConfig)}
+                        isSaving={updateConfig.isPending}
+                        onChange={handlePlayerKillConfigChange}
+                      />
+                    )}
+
                     {/* Inline config form when enabled and schema exists */}
                     {isEnabled &&
                       mod.id !== DECK_INVESTIGATION_MODULE_ID &&
                       mod.id !== LOCATION_MODULE_ID &&
+                      mod.id !== PLAYER_KILL_MODULE_ID &&
                       schema && (
                       <div className="border-t border-slate-700 px-3 py-3">
                         <SchemaDrivenForm
@@ -318,6 +346,42 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
           </section>
         );
       })}
+    </div>
+  );
+}
+
+function PlayerKillSettingsPanel({
+  settings,
+  isSaving,
+  onChange,
+}: {
+  settings: PlayerKillConfig;
+  isSaving: boolean;
+  onChange: (settings: PlayerKillConfig) => void;
+}) {
+  return (
+    <div className="border-t border-slate-700 px-3 py-3">
+      <label
+        className="flex min-h-14 items-center gap-3 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-left"
+        title="살해된 플레이어가 음성채팅에서 말하지 못하게 막습니다."
+      >
+        <input
+          type="checkbox"
+          aria-label="살해시 마이크 끔"
+          checked={settings.muteOnKilled}
+          disabled={isSaving}
+          onChange={(event) =>
+            onChange({ ...settings, muteOnKilled: event.currentTarget.checked })
+          }
+          className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500"
+        />
+        <span>
+          <span className="block text-xs font-semibold text-slate-200">살해시 마이크 끔</span>
+          <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+            사망 처리된 플레이어는 음성채팅에서 말할 수 없습니다.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }

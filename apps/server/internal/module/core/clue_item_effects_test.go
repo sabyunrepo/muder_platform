@@ -132,6 +132,92 @@ func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testi
 	m.mu.RUnlock()
 }
 
+func TestClueInteractionModule_ConfiguredKillUsesChanceBeforeStatusChange(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	status := enginemocks.NewMockPlayerStatusController(ctrl)
+	deps := newTestDeps()
+	deps.PlayerStatusController = status
+	m := NewClueInteractionModule()
+	m.killRoll = func() int { return 90 }
+	playerID := uuid.New()
+	targetID := uuid.New()
+	clueID := uuid.New()
+	chance := 35
+	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true, KillChancePercent: &chance},
+	}})
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.acquiredClues[playerID] = []string{clueID.String()}
+	m.mu.Unlock()
+
+	var failedEvent bool
+	deps.EventBus.Subscribe("clue.kill_failed", func(e engine.Event) {
+		payload := e.Payload.(map[string]any)
+		failedEvent = payload["playerId"] == playerID.String() &&
+			payload["targetPlayerId"] == targetID.String() &&
+			payload["clueId"] == clueID.String() &&
+			payload["killChancePercent"] == chance
+	})
+
+	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
+		t.Fatalf("clue:use kill: %v", err)
+	}
+	targetPayload, _ := json.Marshal(itemUseTargetPayload{TargetPlayerID: targetID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use_target", targetPayload); err != nil {
+		t.Fatalf("failed chance should still resolve item use: %v", err)
+	}
+
+	if !failedEvent {
+		t.Fatal("expected clue.kill_failed event")
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.playerHasClueLocked(playerID, clueID.String()) {
+		t.Fatal("failed chance should consume configured consumable kill clue")
+	}
+}
+
+func TestClueInteractionModule_ConfiguredKillRejectsNonKillableTarget(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	status := enginemocks.NewMockPlayerStatusController(ctrl)
+	deps := newTestDeps()
+	deps.PlayerStatusController = status
+	playerID := uuid.New()
+	targetID := uuid.New()
+	killableCharacterID := uuid.NewString()
+	targetCharacterID := uuid.NewString()
+	deps.PlayerInfoProvider = clueGrantTestProvider{players: map[uuid.UUID]engine.PlayerRuntimeInfo{
+		targetID: {PlayerID: targetID, TargetCode: targetCharacterID, IsAlive: true},
+	}}
+	deps.ModuleConfigs = map[string]json.RawMessage{
+		"player_kill": json.RawMessage(fmt.Sprintf(`{"killableCharacterIds":["%s"]}`, killableCharacterID)),
+	}
+	m := NewClueInteractionModule()
+	clueID := uuid.New()
+	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true},
+	}})
+	if err := m.Init(context.Background(), deps, cfg); err != nil {
+		t.Fatalf("Init: %v", err)
+	}
+	m.mu.Lock()
+	m.acquiredClues[playerID] = []string{clueID.String()}
+	m.mu.Unlock()
+
+	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use", payload); err != nil {
+		t.Fatalf("clue:use kill: %v", err)
+	}
+	targetPayload, _ := json.Marshal(itemUseTargetPayload{TargetPlayerID: targetID.String()})
+	if err := m.HandleMessage(context.Background(), playerID, "clue:use_target", targetPayload); err == nil {
+		t.Fatal("expected non-killable target to be rejected")
+	}
+}
+
 func TestClueInteractionModule_ConfiguredKillDoesNotResolveWhenStatusChangeFails(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	status := enginemocks.NewMockPlayerStatusController(ctrl)

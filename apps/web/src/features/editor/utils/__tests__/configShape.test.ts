@@ -10,6 +10,7 @@ import {
   readEnabledModuleIds,
   readLocationClueIds,
   readModuleConfig,
+  readPlayerKillConfig,
   writeCharacterStartingClueMap,
   writeClueItemEffect,
   writeCluePolicy,
@@ -19,6 +20,8 @@ import {
   writeModuleConfig,
   writeModuleConfigPath,
   writeModuleEnabled,
+  writePlayerKillCharacterEnabled,
+  writePlayerKillConfig,
 } from '../configShape';
 
 describe('configShape', () => {
@@ -388,6 +391,59 @@ describe('configShape', () => {
       itemEffects: {
         'future-clue': { effect: 'future_effect', custom: true },
       },
+    });
+  });
+
+  it('writes kill chance on clue runtime kill effects', () => {
+    const next = writeClueItemEffect({}, 'clue-1', {
+      effect: 'kill',
+      target: 'player',
+      consume: true,
+      killChancePercent: 35,
+    });
+
+    expect(readClueItemEffect(next, 'clue-1')).toEqual({
+      effect: 'kill',
+      target: 'player',
+      consume: true,
+      killChancePercent: 35,
+    });
+  });
+
+  it('reads and writes player kill module config through canonical modules', () => {
+    const base = {
+      modules: {
+        player_kill: {
+          enabled: true,
+          config: { killableCharacterIds: ['char-1'], muteOnKilled: true },
+        },
+      },
+    };
+
+    expect(readPlayerKillConfig(base)).toEqual({
+      killableCharacterIds: ['char-1'],
+      muteOnKilled: true,
+    });
+
+    const withChar = writePlayerKillCharacterEnabled(base, 'char-2', true);
+    expect(readPlayerKillConfig(withChar)).toEqual({
+      killableCharacterIds: ['char-1', 'char-2'],
+      muteOnKilled: true,
+    });
+
+    const withoutChar = writePlayerKillCharacterEnabled(withChar, 'char-1', false);
+    expect(readPlayerKillConfig(withoutChar)).toEqual({
+      killableCharacterIds: ['char-2'],
+      muteOnKilled: true,
+    });
+
+    const withMuteOff = writePlayerKillConfig(withoutChar, {
+      killableCharacterIds: ['char-2'],
+      muteOnKilled: false,
+    });
+    expect(readModuleConfig(withMuteOff, 'player_kill')).toEqual({
+      killableCharacterIds: ['char-2'],
+      muteOnKilled: false,
     });
   });
 

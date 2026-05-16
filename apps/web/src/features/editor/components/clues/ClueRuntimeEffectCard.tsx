@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Eye, FileText, Gift, Save, Search, Shuffle, TriangleAlert, X } from 'lucide-react';
+import { Eye, FileText, Gift, Search, Shuffle, TriangleAlert, X } from 'lucide-react';
 import type { ClueResponse } from '@/features/editor/api';
 import {
   readClueItemEffect,
@@ -15,8 +15,7 @@ interface ClueRuntimeEffectCardProps {
   clue: ClueResponse;
   clues: ClueResponse[];
   configJson: EditorConfig | null | undefined;
-  onConfigChange?: (nextConfig: EditorConfig) => void;
-  isSaving?: boolean;
+  onDraftStateChange?: (state: ClueRuntimeEffectDraftState) => void;
 }
 
 interface DraftState {
@@ -27,7 +26,23 @@ interface DraftState {
   descriptionText: string;
   revealText: string;
   grantClueIds: string[];
+  killChancePercent: number;
   consume: boolean;
+}
+
+export interface ClueRuntimeEffectDraftState {
+  dirty: boolean;
+  valid: boolean;
+}
+
+export interface ClueRuntimeEffectSaveRequest {
+  dirty: boolean;
+  valid: boolean;
+  writeConfig: (baseConfig: EditorConfig | null | undefined) => EditorConfig;
+}
+
+export interface ClueRuntimeEffectCardHandle {
+  getSaveRequest: () => ClueRuntimeEffectSaveRequest;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -49,6 +64,7 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     usesPassword: password.trim().length > 0,
     password,
     consume: config?.consume === true,
+    killChancePercent: normalizePercent(config?.killChancePercent ?? 100),
   };
 
   if (config?.effect === 'description_change') {
@@ -96,8 +112,14 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     descriptionText: '',
     revealText: '',
     grantClueIds: [],
+    killChancePercent: 100,
     consume: false,
   };
+}
+
+function normalizePercent(value: number): number {
+  if (!Number.isFinite(value)) return 100;
+  return Math.min(100, Math.max(0, Math.round(value)));
 }
 
 function passwordCondition(draft: DraftState): EditorConfig & {
@@ -152,6 +174,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'kill',
       target: 'player',
       ...passwordCondition(draft),
+      killChancePercent: normalizePercent(draft.killChancePercent),
       consume: draft.consume,
     };
   }
@@ -172,13 +195,16 @@ function isDraftValid(draft: DraftState) {
   return true;
 }
 
-export function ClueRuntimeEffectCard({
+function sameEffectConfig(left: ClueItemEffectConfig | null, right: ClueItemEffectConfig | null) {
+  return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
+}
+
+export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, ClueRuntimeEffectCardProps>(function ClueRuntimeEffectCard({
   clue,
   clues,
   configJson,
-  onConfigChange,
-  isSaving = false,
-}: ClueRuntimeEffectCardProps) {
+  onDraftStateChange,
+}, ref) {
   const savedEffect = useMemo(
     () => readClueItemEffect(configJson, clue.id),
     [configJson, clue.id],
@@ -204,7 +230,13 @@ export function ClueRuntimeEffectCard({
     [clues, draft.grantClueIds],
   );
 
-  const canSave = !!onConfigChange && !isSaving && isDraftValid(draft);
+  const draftEffect = useMemo(() => toEffectConfig(draft), [draft]);
+  const savedComparableEffect = useMemo(
+    () => toEffectConfig(draftFromConfig(savedEffect)),
+    [savedEffect],
+  );
+  const dirty = !sameEffectConfig(draftEffect, savedComparableEffect);
+  const valid = isDraftValid(draft);
 
   function updateDraft(patch: Partial<DraftState>) {
     setDraft((current) => {
@@ -232,11 +264,17 @@ export function ClueRuntimeEffectCard({
     });
   }
 
-  function handleSave() {
-    if (!canSave) return;
-    const nextConfig = writeClueItemEffect(configJson, clue.id, toEffectConfig(draft));
-    onConfigChange?.(nextConfig);
-  }
+  useImperativeHandle(ref, () => ({
+    getSaveRequest: () => ({
+      dirty,
+      valid,
+      writeConfig: (baseConfig) => writeClueItemEffect(baseConfig, clue.id, draftEffect),
+    }),
+  }));
+
+  useEffect(() => {
+    onDraftStateChange?.({ dirty, valid });
+  }, [dirty, onDraftStateChange, valid]);
 
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
@@ -250,15 +288,6 @@ export function ClueRuntimeEffectCard({
             단서를 읽기만 하게 둘지, 플레이어가 사용해서 효과를 실행하게 할지 선택합니다.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!canSave}
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-amber-500/30 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:border-slate-800 disabled:text-slate-600"
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? '저장 중' : '사용 설정 저장'}
-        </button>
       </div>
 
       <label className="mt-4 flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
@@ -365,8 +394,25 @@ export function ClueRuntimeEffectCard({
           )}
 
           {draft.mode === 'kill' && (
-            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm leading-6 text-red-100">
-              대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
+            <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3">
+              <p className="text-sm leading-6 text-red-100">
+                대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
+              </p>
+              <div className="flex max-w-xs flex-col gap-1.5">
+                <label htmlFor="clue-runtime-kill-chance" className="text-sm font-semibold text-red-100">
+                  살해확률 (%)
+                </label>
+                <input
+                  id="clue-runtime-kill-chance"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={draft.killChancePercent}
+                  onChange={(e) => updateDraft({ killChancePercent: normalizePercent(Number(e.target.value)) })}
+                  className="w-full rounded-lg border border-red-500/40 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+                />
+              </div>
             </div>
           )}
 
@@ -389,7 +435,7 @@ export function ClueRuntimeEffectCard({
       )}
     </section>
   );
-}
+});
 
 function EffectChoice({
   mode,

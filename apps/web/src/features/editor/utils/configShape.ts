@@ -51,6 +51,7 @@ export interface ClueItemEffectConfig extends EditorConfig {
   descriptionText?: string;
   revealText?: string;
   grantClueIds?: string[];
+  killChancePercent?: number;
 }
 
 export interface CluePolicyConfig extends EditorConfig {
@@ -58,10 +59,16 @@ export interface CluePolicyConfig extends EditorConfig {
   protected: boolean;
 }
 
+export interface PlayerKillConfig extends EditorConfig {
+  killableCharacterIds: string[];
+  muteOnKilled: boolean;
+}
+
 const LEGACY_KEYS = ['module_configs', 'clue_placement', 'character_clues'] as const;
 const CLUE_INTERACTION_MODULE_ID = 'clue_interaction';
 const CLUE_ITEM_EFFECTS_KEY = 'itemEffects';
 const CLUE_POLICIES_KEY = 'cluePolicies';
+export const PLAYER_KILL_MODULE_ID = 'player_kill';
 const LOCATION_MODULE_ID = 'location';
 const LOCATION_DISCOVERIES_KEY = 'discoveries';
 const LOCATION_INVESTIGATION_MODE_KEY = 'investigationMode';
@@ -104,6 +111,9 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
   const descriptionText = typeof value.descriptionText === 'string' ? value.descriptionText : undefined;
   const revealText = typeof value.revealText === 'string' ? value.revealText : undefined;
   const grantClueIds = stringList(value.grantClueIds);
+  const killChancePercent = typeof value.killChancePercent === 'number' && Number.isFinite(value.killChancePercent)
+    ? Math.min(100, Math.max(0, Math.round(value.killChancePercent)))
+    : undefined;
 
   return {
     ...value,
@@ -113,6 +123,7 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
     ...(descriptionText !== undefined ? { descriptionText } : {}),
     ...(revealText !== undefined ? { revealText } : {}),
     ...(grantClueIds.length > 0 ? { grantClueIds } : {}),
+    ...(killChancePercent !== undefined ? { killChancePercent } : {}),
   };
 }
 
@@ -133,6 +144,7 @@ function stripKnownClueEffectFields(value: unknown): EditorConfig {
   delete next.descriptionText;
   delete next.revealText;
   delete next.grantClueIds;
+  delete next.killChancePercent;
   return next;
 }
 
@@ -255,6 +267,45 @@ export function writeModuleConfig(
     config: moduleConfig,
   };
   return { ...next, modules };
+}
+
+export function readPlayerKillConfig(
+  configJson: EditorConfig | null | undefined
+): PlayerKillConfig {
+  const config = readModuleConfig(configJson, PLAYER_KILL_MODULE_ID);
+  return {
+    ...config,
+    killableCharacterIds: uniqueStrings(stringList(config.killableCharacterIds)),
+    muteOnKilled: config.muteOnKilled === true,
+  };
+}
+
+export function writePlayerKillConfig(
+  configJson: EditorConfig | null | undefined,
+  config: PlayerKillConfig
+): EditorConfig {
+  const current = readPlayerKillConfig(configJson);
+  return writeModuleConfig(configJson, PLAYER_KILL_MODULE_ID, {
+    ...current,
+    ...config,
+    killableCharacterIds: uniqueStrings(config.killableCharacterIds),
+    muteOnKilled: config.muteOnKilled === true,
+  });
+}
+
+export function writePlayerKillCharacterEnabled(
+  configJson: EditorConfig | null | undefined,
+  characterId: string,
+  enabled: boolean
+): EditorConfig {
+  const current = readPlayerKillConfig(configJson);
+  const killableCharacterIds = enabled
+    ? uniqueStrings([...current.killableCharacterIds, characterId])
+    : current.killableCharacterIds.filter((id) => id !== characterId);
+  return writePlayerKillConfig(configJson, {
+    ...current,
+    killableCharacterIds,
+  });
 }
 
 function writePath(base: EditorConfig, path: string, value: unknown): EditorConfig {
