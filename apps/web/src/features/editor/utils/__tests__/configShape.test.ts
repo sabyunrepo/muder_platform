@@ -413,6 +413,48 @@ describe('configShape', () => {
     });
   });
 
+  it('strips legacy killChancePercent from clue item effects when normalizing config for save', () => {
+    const next = normalizeConfigForSave({
+      modules: {
+        player_kill: {
+          enabled: true,
+          config: { muteOnKilled: true },
+        },
+        clue_interaction: {
+          enabled: true,
+          config: {
+            itemEffects: {
+              'clue-1': {
+                effect: 'kill',
+                target: 'player',
+                consume: true,
+                killChancePercent: 10,
+              },
+              'clue-2': {
+                effect: 'peek',
+                customFutureField: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    expect(readModuleConfig(next, 'clue_interaction')).toEqual({
+      itemEffects: {
+        'clue-1': {
+          effect: 'kill',
+          target: 'player',
+          consume: true,
+        },
+        'clue-2': {
+          effect: 'peek',
+          customFutureField: true,
+        },
+      },
+    });
+  });
+
   it('reads and writes player kill module config through canonical modules', () => {
     const base = {
       modules: {

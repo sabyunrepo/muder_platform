@@ -162,6 +162,7 @@ function stripKnownClueEffectFields(value: unknown): EditorConfig {
   delete next.grantClueIds;
   delete next.attackPower;
   delete next.defensePower;
+  delete next.killChancePercent;
   return next;
 }
 
@@ -237,6 +238,30 @@ export function readModuleConfig(
 function stripLegacyConfigKeys(configJson: EditorConfig): EditorConfig {
   const next: EditorConfig = { ...configJson };
   for (const key of LEGACY_KEYS) delete next[key];
+
+  const modules = isRecord(next.modules) ? { ...next.modules } : {};
+  const clueInteraction = isRecord(modules[CLUE_INTERACTION_MODULE_ID])
+    ? { ...(modules[CLUE_INTERACTION_MODULE_ID] as ModuleEntry) }
+    : null;
+  const clueInteractionConfig = isRecord(clueInteraction?.config)
+    ? { ...(clueInteraction.config as EditorConfig) }
+    : null;
+  const itemEffects = isRecord(clueInteractionConfig?.[CLUE_ITEM_EFFECTS_KEY])
+    ? { ...(clueInteractionConfig[CLUE_ITEM_EFFECTS_KEY] as EditorConfig) }
+    : null;
+
+  if (clueInteraction && clueInteractionConfig && itemEffects) {
+    for (const [clueId, rawEffect] of Object.entries(itemEffects)) {
+      if (!isRecord(rawEffect) || !hasOwnKey(rawEffect, 'killChancePercent')) continue;
+      const nextEffect = { ...rawEffect };
+      delete nextEffect.killChancePercent;
+      itemEffects[clueId] = nextEffect;
+    }
+    clueInteractionConfig[CLUE_ITEM_EFFECTS_KEY] = itemEffects;
+    clueInteraction.config = clueInteractionConfig;
+    modules[CLUE_INTERACTION_MODULE_ID] = clueInteraction;
+    next.modules = modules;
+  }
 
   const rawLocations = next.locations;
   if (Array.isArray(rawLocations)) {
