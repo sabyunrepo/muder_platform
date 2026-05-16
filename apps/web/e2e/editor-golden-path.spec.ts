@@ -184,6 +184,21 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     expect(JSON.stringify(state.lastConfigRequestBody)).not.toContain('module_configs');
   });
 
+  test('[2D] 플레이어킬 모듈 상태에 따라 단서 살해 요청 효과를 숨기거나 보여준다', async ({ page }) => {
+    state.configJson = { modules: { player_kill: { enabled: false, config: {} } } };
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
+    await expect(page.getByLabel('단서 상세 영역')).toBeVisible({ timeout: 10_000 });
+    await page.getByLabel('사용 가능한 아이템').check();
+    await expect(page.getByRole('button', { name: '살해 요청' })).toHaveCount(0);
+
+    state.configJson = { modules: { player_kill: { enabled: true, config: {} } } };
+    await page.reload();
+    await expect(page.getByLabel('단서 상세 영역')).toBeVisible({ timeout: 10_000 });
+    await page.getByLabel('사용 가능한 아이템').check();
+    await expect(page.getByRole('button', { name: '살해 요청' })).toBeVisible();
+  });
+
   test('[2B] 직접 URL은 올바른 제작 탭과 서브탭을 연다', async ({ page }) => {
     await page.goto(`${BASE}/editor/${THEME_ID}`);
     await expect(page.getByRole('tab', { name: '스토리 진행', selected: true })).toBeVisible({

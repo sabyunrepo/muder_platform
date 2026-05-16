@@ -240,7 +240,7 @@ describe('ClueEntityWorkspace', () => {
       <ClueEntityWorkspace
         themeId="theme-1"
         clues={[clue({ id: 'clue-1' })]}
-        configJson={{}}
+        configJson={{ modules: { player_kill: { enabled: true, config: {} } } }}
         flowNodes={flowNodes}
         locations={[]}
         characters={[]}
@@ -270,5 +270,37 @@ describe('ClueEntityWorkspace', () => {
       target: 'player',
       killChancePercent: 35,
     });
+  });
+
+  it('플레이어킬 모듈 상태에 따라 살해 요청 효과를 숨기거나 보여준다', () => {
+    const baseProps = {
+      themeId: 'theme-1',
+      clues: [clue({ id: 'clue-1' })],
+      flowNodes,
+      locations: [],
+      characters: [],
+      onCreate: vi.fn(),
+      onUpdate: vi.fn(),
+      onDelete: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <ClueEntityWorkspace
+        {...baseProps}
+        configJson={{ modules: { player_kill: { enabled: false, config: {} } } }}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('사용 가능한 아이템'));
+    expect(screen.queryByRole('button', { name: '살해 요청' })).toBeNull();
+
+    rerender(
+      <ClueEntityWorkspace
+        {...baseProps}
+        configJson={{ modules: { player_kill: { enabled: true, config: {} } } }}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '살해 요청' })).toBeDefined();
   });
 });
