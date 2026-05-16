@@ -125,7 +125,7 @@ describe("PhaseNodePanel type-specific fields", () => {
     );
   });
 
-  it("스토리 진행 페이즈가 아니면 장면별 살해 가능 체크를 숨긴다", () => {
+  it("플레이어킬 모듈이 켜져 있으면 수사 장면에도 살해 가능 체크를 표시한다", () => {
     renderWithQC(
       <PhaseNodePanel
         node={makeNode({ phase_type: "investigation" })}
@@ -151,7 +151,7 @@ describe("PhaseNodePanel type-specific fields", () => {
       },
     );
 
-    expect(screen.queryByLabelText("살해 가능 장면")).toBeNull();
+    expect(screen.getByLabelText("살해 가능 장면")).toBeDefined();
   });
 
   it("수사 장면은 기본 정보, 시간, 맵 선택, 자동 진행 안내를 표시한다", () => {
