@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 import sys
+import json
 
 
 def _configure_utf8_stdio() -> None:
@@ -113,23 +114,40 @@ def main() -> None:
   _configure_utf8_stdio()
 
   user_input = sys.stdin.read()
-  text = _normalize(user_input)
+  try:
+    payload = json.loads(user_input) if user_input.strip() else {}
+  except json.JSONDecodeError:
+    payload = {}
+
+  prompt = payload.get("prompt") if isinstance(payload, dict) else None
+  text = _normalize(prompt if isinstance(prompt, str) else user_input)
   if not text:
     print("", end="")
     return
 
   action = detect(text)
   if not action:
-    print(user_input, end="")
+    print("", end="")
     return
 
   issue = _find_issue(text)
   hint = _render(action, issue)
   if not hint:
-    print(user_input, end="")
+    print("", end="")
     return
 
-  print(f"{user_input}\n\n{hint}", end="")
+  print(
+    json.dumps(
+      {
+        "hookSpecificOutput": {
+          "hookEventName": "UserPromptSubmit",
+          "additionalContext": hint,
+        }
+      },
+      ensure_ascii=False,
+    ),
+    end="",
+  )
 
 
 if __name__ == "__main__":
