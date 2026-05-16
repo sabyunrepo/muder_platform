@@ -7,7 +7,11 @@ import type {
   UpdateClueRequest,
 } from '@/features/editor/api';
 import type { FlowNodeResponse } from '@/features/editor/flowTypes';
-import type { EditorConfig } from '@/features/editor/utils/configShape';
+import {
+  PLAYER_KILL_MODULE_ID,
+  readEnabledModuleIds,
+  type EditorConfig,
+} from '@/features/editor/utils/configShape';
 import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import {
   buildClueUsageMap,
@@ -84,6 +88,10 @@ export function ClueEntityWorkspace({
       ]),
     ),
     [flowNodes, clues],
+  );
+  const isPlayerKillEnabled = useMemo(
+    () => readEnabledModuleIds(configJson).includes(PLAYER_KILL_MODULE_ID),
+    [configJson],
   );
   const isSaving = Boolean(isClueSaving || isConfigSaving);
   const hasDetailChanges = basicInfoState.dirty || runtimeEffectState.dirty;
@@ -169,6 +177,7 @@ export function ClueEntityWorkspace({
             clue={clue}
             clues={clues}
             configJson={configJson}
+            isPlayerKillEnabled={isPlayerKillEnabled}
             onDraftStateChange={handleRuntimeEffectStateChange}
           />
         </div>

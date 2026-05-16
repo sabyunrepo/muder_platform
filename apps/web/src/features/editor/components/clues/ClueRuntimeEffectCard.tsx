@@ -15,6 +15,7 @@ interface ClueRuntimeEffectCardProps {
   clue: ClueResponse;
   clues: ClueResponse[];
   configJson: EditorConfig | null | undefined;
+  isPlayerKillEnabled: boolean;
   onDraftStateChange?: (state: ClueRuntimeEffectDraftState) => void;
 }
 
@@ -203,6 +204,7 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
   clue,
   clues,
   configJson,
+  isPlayerKillEnabled,
   onDraftStateChange,
 }, ref) {
   const savedEffect = useMemo(
@@ -315,7 +317,9 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
             <EffectChoice mode="grant" current={draft.mode} label="새 단서 지급" icon={<Gift className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'grant' })} />
             <EffectChoice mode="peek" current={draft.mode} label="단서 훔쳐보기" icon={<Search className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'peek' })} />
             <EffectChoice mode="steal" current={draft.mode} label="단서 가져오기" icon={<Shuffle className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'steal' })} />
-            <EffectChoice mode="kill" current={draft.mode} label="살해 요청" icon={<TriangleAlert className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'kill' })} />
+            {isPlayerKillEnabled && (
+              <EffectChoice mode="kill" current={draft.mode} label="살해 요청" icon={<TriangleAlert className="h-4 w-4" />} onSelect={() => updateDraft({ mode: 'kill' })} />
+            )}
           </fieldset>
 
           <label className="flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-300">
@@ -393,7 +397,7 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
             />
           )}
 
-          {draft.mode === 'kill' && (
+          {draft.mode === 'kill' && isPlayerKillEnabled && (
             <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3">
               <p className="text-sm leading-6 text-red-100">
                 대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.

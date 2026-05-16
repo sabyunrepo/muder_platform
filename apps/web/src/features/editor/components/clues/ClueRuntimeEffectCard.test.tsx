@@ -62,6 +62,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={configJson}
+        isPlayerKillEnabled={true}
       />,
     );
 
@@ -97,6 +98,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={{}}
+        isPlayerKillEnabled={true}
       />,
     );
 
@@ -147,6 +149,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={configJson}
+        isPlayerKillEnabled={true}
       />,
     );
 
@@ -172,6 +175,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={{}}
+        isPlayerKillEnabled={true}
       />,
     );
 
@@ -197,6 +201,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={{}}
+        isPlayerKillEnabled={true}
       />,
     );
 
@@ -216,6 +221,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={{}}
+        isPlayerKillEnabled={true}
       />,
     );
 
@@ -235,6 +241,48 @@ describe('ClueRuntimeEffectCard', () => {
       condition: { kind: 'password', value: 'knife' },
       killChancePercent: 35,
     });
+  });
+
+  it('플레이어킬 모듈이 꺼져 있으면 살해 요청 효과를 숨긴다', () => {
+    render(
+      <ClueRuntimeEffectCard
+        clue={clues[0]}
+        clues={clues}
+        configJson={{}}
+        isPlayerKillEnabled={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('사용 가능한 아이템'));
+
+    expect(screen.queryByRole('button', { name: '살해 요청' })).toBeNull();
+    expect(screen.queryByLabelText('살해확률 (%)')).toBeNull();
+  });
+
+  it('저장된 살해 요청 효과가 있어도 플레이어킬 모듈이 꺼져 있으면 살해 설정을 숨긴다', () => {
+    render(
+      <ClueRuntimeEffectCard
+        clue={clues[0]}
+        clues={clues}
+        configJson={{
+          modules: {
+            clue_interaction: {
+              enabled: true,
+              config: {
+                itemEffects: {
+                  'clue-1': { effect: 'kill', target: 'player', killChancePercent: 35 },
+                },
+              },
+            },
+          },
+        }}
+        isPlayerKillEnabled={false}
+      />,
+    );
+
+    expect(screen.getByLabelText('사용 가능한 아이템')).toHaveProperty('checked', true);
+    expect(screen.queryByRole('button', { name: '살해 요청' })).toBeNull();
+    expect(screen.queryByLabelText('살해확률 (%)')).toBeNull();
   });
 
   it('사용 가능한 아이템을 끄면 저장된 효과를 제거한다', () => {
@@ -262,6 +310,7 @@ describe('ClueRuntimeEffectCard', () => {
         clue={clues[0]}
         clues={clues}
         configJson={configJson}
+        isPlayerKillEnabled={true}
       />,
     );
 
