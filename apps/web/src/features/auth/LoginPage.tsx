@@ -124,14 +124,14 @@ function LoginPage() {
             type="email"
             placeholder="이메일"
             aria-label="이메일"
-            autoComplete="email"
+            autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
           />
           <input
-            id="password"
+            id={mode === "register" ? "new-password" : "current-password"}
             name="password"
             type="password"
             placeholder="비밀번호"
