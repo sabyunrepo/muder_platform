@@ -11,6 +11,12 @@ import (
 
 const playerKillModuleName = "player_kill"
 
+const (
+	KillResolutionAllWeaponsVsAllArmor  = "all_weapons_vs_all_armor"
+	KillResolutionBestWeaponVsAllArmor  = "best_weapon_vs_all_armor"
+	KillResolutionBestWeaponVsBestArmor = "best_weapon_vs_best_armor"
+)
+
 func init() {
 	engine.Register(playerKillModuleName, func() engine.Module { return NewPlayerKillModule() })
 }
@@ -18,6 +24,8 @@ func init() {
 type PlayerKillConfig struct {
 	KillableCharacterIDs []string `json:"killableCharacterIds,omitempty"`
 	MuteOnKilled         bool     `json:"muteOnKilled"`
+	KillResolutionMode   string   `json:"killResolutionMode,omitempty"`
+	AllowedSceneIDs      []string `json:"allowedSceneIds,omitempty"`
 }
 
 type PlayerKillModule struct {

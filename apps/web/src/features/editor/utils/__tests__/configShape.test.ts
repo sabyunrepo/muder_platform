@@ -22,6 +22,7 @@ import {
   writeModuleEnabled,
   writePlayerKillCharacterEnabled,
   writePlayerKillConfig,
+  writePlayerKillSceneEnabled,
 } from '../configShape';
 
 describe('configShape', () => {
@@ -394,19 +395,21 @@ describe('configShape', () => {
     });
   });
 
-  it('writes kill chance on clue runtime kill effects', () => {
+  it('writes attack and defense power on clue runtime kill effects', () => {
     const next = writeClueItemEffect({}, 'clue-1', {
       effect: 'kill',
       target: 'player',
       consume: true,
-      killChancePercent: 35,
+      attackPower: 3,
+      defensePower: 1,
     });
 
     expect(readClueItemEffect(next, 'clue-1')).toEqual({
       effect: 'kill',
       target: 'player',
       consume: true,
-      killChancePercent: 35,
+      attackPower: 3,
+      defensePower: 1,
     });
   });
 
@@ -423,28 +426,41 @@ describe('configShape', () => {
     expect(readPlayerKillConfig(base)).toEqual({
       killableCharacterIds: ['char-1'],
       muteOnKilled: true,
+      killResolutionMode: 'all_weapons_vs_all_armor',
+      allowedSceneIds: [],
     });
 
     const withChar = writePlayerKillCharacterEnabled(base, 'char-2', true);
     expect(readPlayerKillConfig(withChar)).toEqual({
       killableCharacterIds: ['char-1', 'char-2'],
       muteOnKilled: true,
+      killResolutionMode: 'all_weapons_vs_all_armor',
+      allowedSceneIds: [],
     });
 
     const withoutChar = writePlayerKillCharacterEnabled(withChar, 'char-1', false);
     expect(readPlayerKillConfig(withoutChar)).toEqual({
       killableCharacterIds: ['char-2'],
       muteOnKilled: true,
+      killResolutionMode: 'all_weapons_vs_all_armor',
+      allowedSceneIds: [],
     });
 
     const withMuteOff = writePlayerKillConfig(withoutChar, {
       killableCharacterIds: ['char-2'],
       muteOnKilled: false,
+      killResolutionMode: 'best_weapon_vs_all_armor',
+      allowedSceneIds: ['scene-1'],
     });
     expect(readModuleConfig(withMuteOff, 'player_kill')).toEqual({
       killableCharacterIds: ['char-2'],
       muteOnKilled: false,
+      killResolutionMode: 'best_weapon_vs_all_armor',
+      allowedSceneIds: ['scene-1'],
     });
+
+    const withScene = writePlayerKillSceneEnabled(withMuteOff, 'scene-2', true);
+    expect(readPlayerKillConfig(withScene).allowedSceneIds).toEqual(['scene-1', 'scene-2']);
   });
 
   it('does not create clue interaction config when deleting a missing runtime effect', () => {

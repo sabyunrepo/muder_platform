@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -63,14 +62,13 @@ type ClueInteractionModule struct {
 	itemTimeout         *time.Timer
 	appliedGrantIDs     map[string]struct{}
 	playerKillConfig    PlayerKillConfig
-	killRoll            func() int
+	playerKillEnabled   bool
+	currentPhaseID      string
 }
 
 // NewClueInteractionModule creates a new ClueInteractionModule instance.
 func NewClueInteractionModule() *ClueInteractionModule {
-	return &ClueInteractionModule{
-		killRoll: func() int { return rand.Intn(100) + 1 },
-	}
+	return &ClueInteractionModule{}
 }
 
 func (m *ClueInteractionModule) Name() string { return "clue_interaction" }
@@ -80,9 +78,6 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 	defer m.mu.Unlock()
 
 	m.deps = deps
-	if m.killRoll == nil {
-		m.killRoll = func() int { return rand.Intn(100) + 1 }
-	}
 	m.playerDrawCounts = make(map[uuid.UUID]int)
 	m.acquiredClues = make(map[uuid.UUID][]string)
 	m.targetCodeClues = make(map[string][]string)
@@ -120,13 +115,26 @@ func (m *ClueInteractionModule) Init(_ context.Context, deps engine.ModuleDeps, 
 		return err
 	}
 	m.playerKillConfig = PlayerKillConfig{}
+	m.playerKillEnabled = false
 	if rawConfig, ok := deps.ModuleConfigs[playerKillModuleName]; ok && len(rawConfig) > 0 {
+		m.playerKillEnabled = true
 		if err := json.Unmarshal(rawConfig, &m.playerKillConfig); err != nil {
 			return fmt.Errorf("clue_interaction: invalid player_kill config: %w", err)
 		}
 	}
 
 	m.currentClueLevel = m.config.InitialClueLevel
+	return nil
+}
+
+func (m *ClueInteractionModule) OnPhaseEnter(_ context.Context, phase engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentPhaseID = string(phase)
+	return nil
+}
+
+func (m *ClueInteractionModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
 	return nil
 }
 
@@ -394,13 +402,14 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 				"additionalProperties": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"effect":            map[string]any{"type": "string", "enum": []string{"description_change", "peek", "steal", "reveal", "grant_clue", "kill"}},
-						"target":            map[string]any{"type": "string", "enum": []string{"player", "self"}},
-						"consume":           map[string]any{"type": "boolean", "default": false},
-						"descriptionText":   map[string]any{"type": "string"},
-						"revealText":        map[string]any{"type": "string"},
-						"grantClueIds":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-						"killChancePercent": map[string]any{"type": "number", "minimum": 0, "maximum": 100},
+						"effect":          map[string]any{"type": "string", "enum": []string{"description_change", "peek", "steal", "reveal", "grant_clue", "kill"}},
+						"target":          map[string]any{"type": "string", "enum": []string{"player", "self"}},
+						"consume":         map[string]any{"type": "boolean", "default": false},
+						"descriptionText": map[string]any{"type": "string"},
+						"revealText":      map[string]any{"type": "string"},
+						"grantClueIds":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"attackPower":     map[string]any{"type": "number", "minimum": 0},
+						"defensePower":    map[string]any{"type": "number", "minimum": 0},
 					},
 					"required":             []string{"effect"},
 					"additionalProperties": false,
@@ -575,6 +584,7 @@ func (m *ClueInteractionModule) configForPlayerState() ClueInteractionConfig {
 var (
 	_ engine.Module            = (*ClueInteractionModule)(nil)
 	_ engine.PhaseReactor      = (*ClueInteractionModule)(nil)
+	_ engine.PhaseHookModule   = (*ClueInteractionModule)(nil)
 	_ engine.ConfigSchema      = (*ClueInteractionModule)(nil)
 	_ engine.GameEventHandler  = (*ClueInteractionModule)(nil)
 	_ engine.PlayerAwareModule = (*ClueInteractionModule)(nil)

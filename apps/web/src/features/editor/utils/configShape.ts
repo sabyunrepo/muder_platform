@@ -51,7 +51,8 @@ export interface ClueItemEffectConfig extends EditorConfig {
   descriptionText?: string;
   revealText?: string;
   grantClueIds?: string[];
-  killChancePercent?: number;
+  attackPower?: number;
+  defensePower?: number;
 }
 
 export interface CluePolicyConfig extends EditorConfig {
@@ -62,7 +63,16 @@ export interface CluePolicyConfig extends EditorConfig {
 export interface PlayerKillConfig extends EditorConfig {
   killableCharacterIds: string[];
   muteOnKilled: boolean;
+  killResolutionMode: KillResolutionMode;
+  allowedSceneIds: string[];
 }
+
+export type KillResolutionMode =
+  | 'all_weapons_vs_all_armor'
+  | 'best_weapon_vs_all_armor'
+  | 'best_weapon_vs_best_armor';
+
+export const DEFAULT_KILL_RESOLUTION_MODE: KillResolutionMode = 'all_weapons_vs_all_armor';
 
 const LEGACY_KEYS = ['module_configs', 'clue_placement', 'character_clues'] as const;
 const CLUE_INTERACTION_MODULE_ID = 'clue_interaction';
@@ -111,9 +121,8 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
   const descriptionText = typeof value.descriptionText === 'string' ? value.descriptionText : undefined;
   const revealText = typeof value.revealText === 'string' ? value.revealText : undefined;
   const grantClueIds = stringList(value.grantClueIds);
-  const killChancePercent = typeof value.killChancePercent === 'number' && Number.isFinite(value.killChancePercent)
-    ? Math.min(100, Math.max(0, Math.round(value.killChancePercent)))
-    : undefined;
+  const attackPower = normalizePower(value.attackPower);
+  const defensePower = normalizePower(value.defensePower);
 
   return {
     ...value,
@@ -123,8 +132,15 @@ function readClueItemEffectConfig(value: unknown): ClueItemEffectConfig | null {
     ...(descriptionText !== undefined ? { descriptionText } : {}),
     ...(revealText !== undefined ? { revealText } : {}),
     ...(grantClueIds.length > 0 ? { grantClueIds } : {}),
-    ...(killChancePercent !== undefined ? { killChancePercent } : {}),
+    ...(attackPower !== undefined ? { attackPower } : {}),
+    ...(defensePower !== undefined ? { defensePower } : {}),
   };
+}
+
+function normalizePower(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.round(value))
+    : undefined;
 }
 
 function readRawClueItemEffects(
@@ -144,7 +160,8 @@ function stripKnownClueEffectFields(value: unknown): EditorConfig {
   delete next.descriptionText;
   delete next.revealText;
   delete next.grantClueIds;
-  delete next.killChancePercent;
+  delete next.attackPower;
+  delete next.defensePower;
   return next;
 }
 
@@ -273,11 +290,24 @@ export function readPlayerKillConfig(
   configJson: EditorConfig | null | undefined
 ): PlayerKillConfig {
   const config = readModuleConfig(configJson, PLAYER_KILL_MODULE_ID);
+  const killResolutionMode = isKillResolutionMode(config.killResolutionMode)
+    ? config.killResolutionMode
+    : DEFAULT_KILL_RESOLUTION_MODE;
   return {
     ...config,
     killableCharacterIds: uniqueStrings(stringList(config.killableCharacterIds)),
     muteOnKilled: config.muteOnKilled === true,
+    killResolutionMode,
+    allowedSceneIds: uniqueStrings(stringList(config.allowedSceneIds)),
   };
+}
+
+function isKillResolutionMode(value: unknown): value is KillResolutionMode {
+  return (
+    value === 'all_weapons_vs_all_armor' ||
+    value === 'best_weapon_vs_all_armor' ||
+    value === 'best_weapon_vs_best_armor'
+  );
 }
 
 export function writePlayerKillConfig(
@@ -290,6 +320,25 @@ export function writePlayerKillConfig(
     ...config,
     killableCharacterIds: uniqueStrings(config.killableCharacterIds),
     muteOnKilled: config.muteOnKilled === true,
+    killResolutionMode: isKillResolutionMode(config.killResolutionMode)
+      ? config.killResolutionMode
+      : DEFAULT_KILL_RESOLUTION_MODE,
+    allowedSceneIds: uniqueStrings(config.allowedSceneIds),
+  });
+}
+
+export function writePlayerKillSceneEnabled(
+  configJson: EditorConfig | null | undefined,
+  sceneId: string,
+  enabled: boolean
+): EditorConfig {
+  const current = readPlayerKillConfig(configJson);
+  const allowedSceneIds = enabled
+    ? uniqueStrings([...current.allowedSceneIds, sceneId])
+    : current.allowedSceneIds.filter((id) => id !== sceneId);
+  return writePlayerKillConfig(configJson, {
+    ...current,
+    allowedSceneIds,
   });
 }
 

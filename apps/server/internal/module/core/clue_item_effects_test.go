@@ -79,7 +79,7 @@ func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testi
 	targetID := uuid.New()
 	clueID := uuid.New()
 	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
-		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true},
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true, AttackPower: 1},
 	}})
 	if err := m.Init(context.Background(), deps, cfg); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -132,25 +132,26 @@ func TestClueInteractionModule_ConfiguredKillRequestsPlayerStatusChange(t *testi
 	m.mu.RUnlock()
 }
 
-func TestClueInteractionModule_ConfiguredKillUsesChanceBeforeStatusChange(t *testing.T) {
+func TestClueInteractionModule_ConfiguredKillUsesPowerBeforeStatusChange(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	status := enginemocks.NewMockPlayerStatusController(ctrl)
 	deps := newTestDeps()
 	deps.PlayerStatusController = status
 	m := NewClueInteractionModule()
-	m.killRoll = func() int { return 90 }
 	playerID := uuid.New()
 	targetID := uuid.New()
 	clueID := uuid.New()
-	chance := 35
+	armorID := uuid.New()
 	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
-		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true, KillChancePercent: &chance},
+		clueID.String():  {Effect: clueEffectKill, Target: "player", Consume: true, AttackPower: 2},
+		armorID.String(): {Effect: clueEffectReveal, Target: "self", RevealText: "방어구", DefensePower: 2},
 	}})
 	if err := m.Init(context.Background(), deps, cfg); err != nil {
 		t.Fatalf("Init: %v", err)
 	}
 	m.mu.Lock()
 	m.acquiredClues[playerID] = []string{clueID.String()}
+	m.acquiredClues[targetID] = []string{armorID.String()}
 	m.mu.Unlock()
 
 	var failedEvent bool
@@ -159,7 +160,9 @@ func TestClueInteractionModule_ConfiguredKillUsesChanceBeforeStatusChange(t *tes
 		failedEvent = payload["playerId"] == playerID.String() &&
 			payload["targetPlayerId"] == targetID.String() &&
 			payload["clueId"] == clueID.String() &&
-			payload["killChancePercent"] == chance
+			payload["reason"] == "attack_not_greater_than_defense" &&
+			payload["resolvedAttackPower"] == 2 &&
+			payload["resolvedDefensePower"] == 2
 	})
 
 	payload, _ := json.Marshal(itemUsePayload{ClueID: clueID.String()})
@@ -168,7 +171,7 @@ func TestClueInteractionModule_ConfiguredKillUsesChanceBeforeStatusChange(t *tes
 	}
 	targetPayload, _ := json.Marshal(itemUseTargetPayload{TargetPlayerID: targetID.String()})
 	if err := m.HandleMessage(context.Background(), playerID, "clue:use_target", targetPayload); err != nil {
-		t.Fatalf("failed chance should still resolve item use: %v", err)
+		t.Fatalf("failed power should still resolve item use: %v", err)
 	}
 
 	if !failedEvent {
@@ -177,7 +180,7 @@ func TestClueInteractionModule_ConfiguredKillUsesChanceBeforeStatusChange(t *tes
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if m.playerHasClueLocked(playerID, clueID.String()) {
-		t.Fatal("failed chance should consume configured consumable kill clue")
+		t.Fatal("failed power should consume configured consumable kill clue")
 	}
 }
 
@@ -199,7 +202,7 @@ func TestClueInteractionModule_ConfiguredKillRejectsNonKillableTarget(t *testing
 	m := NewClueInteractionModule()
 	clueID := uuid.New()
 	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
-		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true},
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true, AttackPower: 1},
 	}})
 	if err := m.Init(context.Background(), deps, cfg); err != nil {
 		t.Fatalf("Init: %v", err)
@@ -228,7 +231,7 @@ func TestClueInteractionModule_ConfiguredKillDoesNotResolveWhenStatusChangeFails
 	targetID := uuid.New()
 	clueID := uuid.New()
 	cfg, _ := json.Marshal(ClueInteractionConfig{ItemEffects: map[string]ClueItemEffectConfig{
-		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true},
+		clueID.String(): {Effect: clueEffectKill, Target: "player", Consume: true, AttackPower: 1},
 	}})
 	if err := m.Init(context.Background(), deps, cfg); err != nil {
 		t.Fatalf("Init: %v", err)

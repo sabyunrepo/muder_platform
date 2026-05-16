@@ -192,6 +192,37 @@ describe('ClueRuntimeEffectCard', () => {
     expect(readClueItemEffect(saved, 'clue-1')).not.toHaveProperty('condition');
   });
 
+  it('살해 요청이 아닌 보유 단서에도 공격력과 방어력을 저장한다', () => {
+    const ref = createRef<ClueRuntimeEffectCardHandle>();
+
+    render(
+      <ClueRuntimeEffectCard
+        ref={ref}
+        clue={clues[0]}
+        clues={clues}
+        configJson={{}}
+        isPlayerKillEnabled={true}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('사용 가능한 아이템'));
+    fireEvent.click(screen.getByRole('button', { name: '정보 공개' }));
+    fireEvent.change(screen.getByLabelText('공개할 정보'), {
+      target: { value: '방패에 새겨진 문양이 드러납니다.' },
+    });
+    fireEvent.change(screen.getByLabelText('공격력'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText('방어력'), { target: { value: '5' } });
+
+    const saved = ref.current?.getSaveRequest().writeConfig({}) as EditorConfig;
+    expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
+      effect: 'reveal',
+      target: 'self',
+      revealText: '방패에 새겨진 문양이 드러납니다.',
+      attackPower: 2,
+      defensePower: 5,
+    });
+  });
+
   it('암호 사용을 켠 뒤 암호가 비어 있으면 저장을 막는다', () => {
     const ref = createRef<ClueRuntimeEffectCardHandle>();
 
@@ -231,15 +262,17 @@ describe('ClueRuntimeEffectCard', () => {
     fireEvent.click(screen.getByRole('button', { name: '살해 요청' }));
 
     expect(screen.getByText(/생존 상태를 런타임에서 사망으로 변경/)).toBeDefined();
-    expect(screen.getByLabelText('살해확률 (%)')).toHaveProperty('value', '100');
-    fireEvent.change(screen.getByLabelText('살해확률 (%)'), { target: { value: '35' } });
+    expect(screen.getByLabelText('공격력')).toHaveProperty('value', '0');
+    fireEvent.change(screen.getByLabelText('공격력'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('방어력'), { target: { value: '1' } });
 
     const saved = ref.current?.getSaveRequest().writeConfig({}) as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
       effect: 'kill',
       target: 'player',
       condition: { kind: 'password', value: 'knife' },
-      killChancePercent: 35,
+      attackPower: 3,
+      defensePower: 1,
     });
   });
 
@@ -256,7 +289,7 @@ describe('ClueRuntimeEffectCard', () => {
     fireEvent.click(screen.getByLabelText('사용 가능한 아이템'));
 
     expect(screen.queryByRole('button', { name: '살해 요청' })).toBeNull();
-    expect(screen.queryByLabelText('살해확률 (%)')).toBeNull();
+    expect(screen.queryByLabelText('공격력')).toBeNull();
   });
 
   it('저장된 살해 요청 효과가 있어도 플레이어킬 모듈이 꺼져 있으면 살해 설정을 숨긴다', () => {
@@ -270,7 +303,7 @@ describe('ClueRuntimeEffectCard', () => {
               enabled: true,
               config: {
                 itemEffects: {
-                  'clue-1': { effect: 'kill', target: 'player', killChancePercent: 35 },
+                  'clue-1': { effect: 'kill', target: 'player', attackPower: 3 },
                 },
               },
             },
@@ -282,7 +315,7 @@ describe('ClueRuntimeEffectCard', () => {
 
     expect(screen.getByLabelText('사용 가능한 아이템')).toHaveProperty('checked', true);
     expect(screen.queryByRole('button', { name: '살해 요청' })).toBeNull();
-    expect(screen.queryByLabelText('살해확률 (%)')).toBeNull();
+    expect(screen.queryByLabelText('공격력')).toBeNull();
   });
 
   it('사용 가능한 아이템을 끄면 저장된 효과를 제거한다', () => {

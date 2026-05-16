@@ -92,6 +92,11 @@ type playerKillCharacterRef struct {
 	id    string
 }
 
+type playerKillSceneRef struct {
+	index int
+	id    string
+}
+
 func extractLocationDiscoveryRefs(cfg map[string]any) ([]locationDiscoveryRef, error) {
 	modules, ok := cfg["modules"].(map[string]any)
 	if !ok {
@@ -453,7 +458,7 @@ func validateClueInteractionConfigShape(cfg map[string]any) error {
 
 func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 	for key := range effect {
-		if key != "effect" && key != "target" && key != "consume" && key != "descriptionText" && key != "revealText" && key != "grantClueIds" && key != "killChancePercent" && key != "condition" && key != "password" && key != "trigger" {
+		if key != "effect" && key != "target" && key != "consume" && key != "descriptionText" && key != "revealText" && key != "grantClueIds" && key != "attackPower" && key != "defensePower" && key != "condition" && key != "password" && key != "trigger" {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].%s is not supported", clueID, key)
 		}
 	}
@@ -480,16 +485,22 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].consume must be boolean", clueID)
 		}
 	}
-	if rawChance, exists := effect["killChancePercent"]; exists {
-		chance, ok := rawChance.(float64)
+	if rawAttack, exists := effect["attackPower"]; exists {
+		attack, ok := rawAttack.(float64)
 		if !ok {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].killChancePercent must be a number", clueID)
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].attackPower must be a number", clueID)
 		}
-		if chance < 0 || chance > 100 {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].killChancePercent must be between 0 and 100", clueID)
+		if attack < 0 {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].attackPower must be non-negative", clueID)
 		}
-		if kind != "kill" {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].killChancePercent is only supported for kill", clueID)
+	}
+	if rawDefense, exists := effect["defensePower"]; exists {
+		defense, ok := rawDefense.(float64)
+		if !ok {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].defensePower must be a number", clueID)
+		}
+		if defense < 0 {
+			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].defensePower must be non-negative", clueID)
 		}
 	}
 	if kind == "description_change" {
@@ -572,6 +583,33 @@ func validatePlayerKillConfigShape(cfg map[string]any) error {
 			return fmt.Errorf("config_json: modules.player_kill.config.muteOnKilled must be boolean")
 		}
 	}
+	if rawMode, exists := moduleConfig["killResolutionMode"]; exists {
+		mode, ok := rawMode.(string)
+		if !ok {
+			return fmt.Errorf("config_json: modules.player_kill.config.killResolutionMode must be a string")
+		}
+		if mode != "" && mode != "all_weapons_vs_all_armor" && mode != "best_weapon_vs_all_armor" && mode != "best_weapon_vs_best_armor" {
+			return fmt.Errorf("config_json: modules.player_kill.config.killResolutionMode is not supported")
+		}
+	}
+	if rawSceneIDs, exists := moduleConfig["allowedSceneIds"]; exists {
+		if rawSceneIDs == nil {
+			return fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds cannot be null")
+		}
+		sceneIDs, ok := rawSceneIDs.([]any)
+		if !ok {
+			return fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds must be an array")
+		}
+		for _, rawSceneID := range sceneIDs {
+			sceneID, ok := rawSceneID.(string)
+			if !ok {
+				return fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds must contain strings")
+			}
+			if _, err := uuid.Parse(sceneID); err != nil {
+				return fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds has invalid scene id %q", sceneID)
+			}
+		}
+	}
 	return nil
 }
 
@@ -625,32 +663,109 @@ func extractPlayerKillCharacterRefs(raw json.RawMessage) ([]playerKillCharacterR
 	return refs, nil
 }
 
+func extractPlayerKillSceneRefs(raw json.RawMessage) ([]playerKillSceneRef, error) {
+	var cfg map[string]any
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil, fmt.Errorf("config_json: invalid JSON: %w", err)
+	}
+	modules, ok := cfg["modules"].(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	rawModule, exists := modules["player_kill"]
+	if !exists {
+		return nil, nil
+	}
+	module, ok := rawModule.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.player_kill must be an object")
+	}
+	moduleConfigRaw, exists := module["config"]
+	if !exists {
+		return nil, nil
+	}
+	if moduleConfigRaw == nil {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config cannot be null")
+	}
+	moduleConfig, ok := moduleConfigRaw.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config must be an object")
+	}
+	rawIDs, exists := moduleConfig["allowedSceneIds"]
+	if !exists {
+		return nil, nil
+	}
+	if rawIDs == nil {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds cannot be null")
+	}
+	ids, ok := rawIDs.([]any)
+	if !ok {
+		return nil, fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds must be an array")
+	}
+	refs := make([]playerKillSceneRef, 0, len(ids))
+	for i, rawID := range ids {
+		sceneID, ok := rawID.(string)
+		if !ok {
+			return nil, fmt.Errorf("config_json: modules.player_kill.config.allowedSceneIds must contain strings")
+		}
+		refs = append(refs, playerKillSceneRef{index: i, id: sceneID})
+	}
+	return refs, nil
+}
+
 func (s *service) validatePlayerKillConfigReferences(ctx context.Context, q *db.Queries, themeID uuid.UUID, raw json.RawMessage) error {
-	refs, err := extractPlayerKillCharacterRefs(raw)
+	characterRefs, err := extractPlayerKillCharacterRefs(raw)
 	if err != nil {
 		return apperror.BadRequest(err.Error())
 	}
-	if len(refs) == 0 {
-		return nil
-	}
-
-	characters, err := q.GetThemeCharacters(ctx, themeID)
+	sceneRefs, err := extractPlayerKillSceneRefs(raw)
 	if err != nil {
-		s.logger.Error().Err(err).Msg("failed to validate player_kill characters")
-		return apperror.Internal("failed to validate player_kill references")
-	}
-	characterIDs := make(map[string]struct{}, len(characters))
-	for _, character := range characters {
-		characterIDs[character.ID.String()] = struct{}{}
+		return apperror.BadRequest(err.Error())
 	}
 
-	for _, ref := range refs {
-		parsedID, err := uuid.Parse(ref.id)
+	if len(characterRefs) > 0 {
+		characters, err := q.GetThemeCharacters(ctx, themeID)
 		if err != nil {
-			return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.killableCharacterIds[%d] must be a valid character id", ref.index))
+			s.logger.Error().Err(err).Msg("failed to validate player_kill characters")
+			return apperror.Internal("failed to validate player_kill references")
 		}
-		if _, ok := characterIDs[parsedID.String()]; !ok {
-			return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.killableCharacterIds[%d] must belong to this theme", ref.index))
+		characterIDs := make(map[string]struct{}, len(characters))
+		for _, character := range characters {
+			characterIDs[character.ID.String()] = struct{}{}
+		}
+
+		for _, ref := range characterRefs {
+			parsedID, err := uuid.Parse(ref.id)
+			if err != nil {
+				return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.killableCharacterIds[%d] must be a valid character id", ref.index))
+			}
+			if _, ok := characterIDs[parsedID.String()]; !ok {
+				return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.killableCharacterIds[%d] must belong to this theme", ref.index))
+			}
+		}
+	}
+
+	if len(sceneRefs) > 0 {
+		nodes, err := q.ListFlowNodesByTheme(ctx, themeID)
+		if err != nil {
+			s.logger.Error().Err(err).Msg("failed to validate player_kill scenes")
+			return apperror.Internal("failed to validate player_kill references")
+		}
+		phaseNodeIDs := make(map[string]struct{}, len(nodes))
+		for _, node := range nodes {
+			if node.Type == "phase" {
+				phaseNodeIDs[node.ID.String()] = struct{}{}
+			}
+		}
+
+		for _, ref := range sceneRefs {
+			parsedID, err := uuid.Parse(ref.id)
+			if err != nil {
+				return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.allowedSceneIds[%d] must be a valid scene id", ref.index))
+			}
+			if _, ok := phaseNodeIDs[parsedID.String()]; !ok {
+				return apperror.BadRequest(fmt.Sprintf("config_json: modules.player_kill.config.allowedSceneIds[%d] must belong to this theme as a phase flow node", ref.index))
+			}
 		}
 	}
 	return nil

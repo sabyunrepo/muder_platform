@@ -359,8 +359,56 @@ function PlayerKillSettingsPanel({
   isSaving: boolean;
   onChange: (settings: PlayerKillConfig) => void;
 }) {
+  const modes: Array<{ value: PlayerKillConfig['killResolutionMode']; label: string; description: string }> = [
+    {
+      value: 'all_weapons_vs_all_armor',
+      label: '무기 모두 vs 방어구 모두',
+      description: '공격자의 모든 공격 단서 합계와 대상의 모든 방어 단서 합계를 비교합니다.',
+    },
+    {
+      value: 'best_weapon_vs_all_armor',
+      label: '최고 무기 1개 vs 방어구 모두',
+      description: '공격자의 가장 강한 공격 단서 1개와 대상의 모든 방어 단서 합계를 비교합니다.',
+    },
+    {
+      value: 'best_weapon_vs_best_armor',
+      label: '최고 무기 1개 vs 최고 방어구 1개',
+      description: '공격자의 최고 공격력 1개와 대상의 최고 방어력 1개를 비교합니다.',
+    },
+  ];
   return (
-    <div className="border-t border-slate-700 px-3 py-3">
+    <div className="space-y-3 border-t border-slate-700 px-3 py-3">
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-semibold text-slate-200">살해 판정 방식</legend>
+        <div className="grid gap-2 lg:grid-cols-3">
+          {modes.map((mode) => (
+            <label
+              key={mode.value}
+              className={`flex min-h-24 cursor-pointer gap-2 rounded-md border px-3 py-2 text-left ${
+                settings.killResolutionMode === mode.value
+                  ? 'border-red-400 bg-red-500/10'
+                  : 'border-slate-700 bg-slate-950'
+              }`}
+            >
+              <input
+                type="radio"
+                name="killResolutionMode"
+                aria-label={mode.label}
+                checked={settings.killResolutionMode === mode.value}
+                disabled={isSaving}
+                onChange={() => onChange({ ...settings, killResolutionMode: mode.value })}
+                className="mt-0.5 h-4 w-4 border-slate-700 bg-slate-900 text-red-500 focus:ring-red-500"
+              />
+              <span>
+                <span className="block text-xs font-semibold text-slate-100">{mode.label}</span>
+                <span className="mt-1 block text-[10px] leading-4 text-slate-500">
+                  {mode.description}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <label
         className="flex min-h-14 items-center gap-3 rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-left"
         title="살해된 플레이어가 음성채팅에서 말하지 못하게 막습니다."
