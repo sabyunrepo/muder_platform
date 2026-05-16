@@ -479,7 +479,8 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 						"%s": {
 							"effect": "kill",
 							"target": "player",
-							"killChancePercent": 35
+							"attackPower": 3,
+							"defensePower": 1
 						}
 					},
 					"cluePolicies": {
@@ -730,40 +731,64 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			want: "is not supported",
 		},
 		{
-			name: "kill chance must be number",
+			name: "attack power must be number",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {
 					"clue_interaction": {
 						"enabled": true,
-						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "killChancePercent": "high"}}}
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "attackPower": "high"}}}
 					}
 				}
 			}`, clueID)),
-			want: "killChancePercent must be a number",
+			want: "attackPower must be a number",
 		},
 		{
-			name: "kill chance must be percent range",
+			name: "attack power must be non-negative",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {
 					"clue_interaction": {
 						"enabled": true,
-						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "killChancePercent": 101}}}
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "attackPower": -1}}}
 					}
 				}
 			}`, clueID)),
-			want: "killChancePercent must be between 0 and 100",
+			want: "attackPower must be non-negative",
 		},
 		{
-			name: "kill chance is kill-only",
+			name: "attack power must be integer",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {
 					"clue_interaction": {
 						"enabled": true,
-						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "player", "killChancePercent": 35}}}
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "attackPower": 1.5}}}
 					}
 				}
 			}`, clueID)),
-			want: "killChancePercent is only supported for kill",
+			want: "attackPower must be an integer",
+		},
+		{
+			name: "defense power must be number",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "player", "defensePower": "high"}}}
+					}
+				}
+			}`, clueID)),
+			want: "defensePower must be a number",
+		},
+		{
+			name: "defense power must be integer",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "player", "defensePower": 2.25}}}
+					}
+				}
+			}`, clueID)),
+			want: "defensePower must be an integer",
 		},
 		{
 			name: "description change requires text",
@@ -835,6 +860,7 @@ func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateCharacter: %v", err)
 	}
+	phaseID := insertEditorFlowNode(t, f.pool, themeID, "phase")
 
 	valid := json.RawMessage(fmt.Sprintf(`{
 		"modules": {
@@ -842,11 +868,13 @@ func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
 				"enabled": true,
 				"config": {
 					"killableCharacterIds": ["%s"],
-					"muteOnKilled": true
+					"muteOnKilled": true,
+					"killResolutionMode": "best_weapon_vs_all_armor",
+					"allowedSceneIds": ["%s"]
 				}
 			}
 		}
-	}`, character.ID))
+	}`, character.ID, phaseID))
 	if _, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, valid); err != nil {
 		t.Fatalf("valid player_kill config must save: %v", err)
 	}
@@ -890,6 +918,27 @@ func TestUpdateConfigJson_ValidatesPlayerKillModuleConfig(t *testing.T) {
 				"modules": {"player_kill": {"enabled": true, "config": {"muteOnKilled": "yes"}}}
 			}`),
 			want: "muteOnKilled must be boolean",
+		},
+		{
+			name: "resolution mode must be supported",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"killResolutionMode": "coin_flip"}}}
+			}`),
+			want: "killResolutionMode is not supported",
+		},
+		{
+			name: "allowed scene ids must be array",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"allowedSceneIds": "phase-1"}}}
+			}`),
+			want: "allowedSceneIds must be an array",
+		},
+		{
+			name: "allowed scene ids must be uuids",
+			input: json.RawMessage(`{
+				"modules": {"player_kill": {"enabled": true, "config": {"allowedSceneIds": ["phase-1"]}}}
+			}`),
+			want: "allowedSceneIds has invalid scene id",
 		},
 	}
 	for _, tc := range cases {
@@ -942,6 +991,40 @@ func TestUpdateConfigJson_RejectsPlayerKillCharacterOutsideTheme(t *testing.T) {
 		t.Fatalf("expected BAD_REQUEST, got %s", appErr.Code)
 	}
 	if !strings.Contains(appErr.Detail, "killableCharacterIds[0] must belong to this theme") {
+		t.Fatalf("unexpected error detail: %s", appErr.Detail)
+	}
+}
+
+func TestUpdateConfigJson_RejectsPlayerKillSceneOutsideTheme(t *testing.T) {
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	otherThemeID := f.createThemeForUser(t, creatorID)
+	foreignPhaseID := insertEditorFlowNode(t, f.pool, otherThemeID, "phase")
+
+	config := json.RawMessage(fmt.Sprintf(`{
+		"modules": {
+			"player_kill": {
+				"enabled": true,
+				"config": {
+					"allowedSceneIds": ["%s"]
+				}
+			}
+		}
+	}`, foreignPhaseID))
+	_, err := f.svc.UpdateConfigJson(ctx, creatorID, themeID, config)
+	if err == nil {
+		t.Fatal("expected player_kill scene reference validation error, got nil")
+	}
+	var appErr *apperror.AppError
+	if !errors.As(err, &appErr) {
+		t.Fatalf("expected *apperror.AppError, got %T", err)
+	}
+	if appErr.Code != apperror.ErrBadRequest {
+		t.Fatalf("expected BAD_REQUEST, got %s", appErr.Code)
+	}
+	if !strings.Contains(appErr.Detail, "allowedSceneIds[0] must belong to this theme as a phase flow node") {
 		t.Fatalf("unexpected error detail: %s", appErr.Detail)
 	}
 }

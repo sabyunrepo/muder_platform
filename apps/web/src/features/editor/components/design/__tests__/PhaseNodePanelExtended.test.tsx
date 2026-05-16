@@ -2,6 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
+import { editorKeys } from "../../../api";
+
+const { configMutateMock } = vi.hoisted(() => ({
+  configMutateMock: vi.fn(),
+}));
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -9,6 +14,10 @@ vi.mock("sonner", () => ({
 
 vi.mock("../../../flowApi", () => ({
   useUpdateFlowNode: () => ({ mutate: vi.fn() }),
+}));
+
+vi.mock("../../../editorConfigApi", () => ({
+  useUpdateConfigJson: () => ({ mutate: configMutateMock, isPending: false }),
 }));
 
 vi.mock("../../../editorMapApi", () => ({
@@ -58,10 +67,13 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function renderWithQC(ui: ReactElement) {
+function renderWithQC(ui: ReactElement, seedTheme?: Record<string, unknown>) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
+  if (seedTheme) {
+    qc.setQueryData(editorKeys.theme("t1"), seedTheme);
+  }
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 }
 
@@ -73,6 +85,75 @@ const makeNode = (data: Record<string, unknown> = {}) => ({
 });
 
 describe("PhaseNodePanel type-specific fields", () => {
+  it("플레이어킬 모듈이 켜져 있으면 장면별 살해 가능 체크를 저장한다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ phase_type: "story_progression" })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+      {
+        id: "t1",
+        version: 7,
+        config_json: {
+          modules: {
+            player_kill: {
+              enabled: true,
+              config: {
+                killableCharacterIds: [],
+                muteOnKilled: false,
+                killResolutionMode: "all_weapons_vs_all_armor",
+                allowedSceneIds: [],
+              },
+            },
+          },
+        },
+      },
+    );
+
+    fireEvent.click(screen.getByLabelText("살해 가능 장면"));
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        version: 7,
+        modules: expect.objectContaining({
+          player_kill: expect.objectContaining({
+            config: expect.objectContaining({ allowedSceneIds: ["node-1"] }),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("스토리 진행 페이즈가 아니면 장면별 살해 가능 체크를 숨긴다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ phase_type: "investigation" })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+      {
+        id: "t1",
+        version: 7,
+        config_json: {
+          modules: {
+            player_kill: {
+              enabled: true,
+              config: {
+                killableCharacterIds: [],
+                muteOnKilled: false,
+                killResolutionMode: "all_weapons_vs_all_armor",
+                allowedSceneIds: [],
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(screen.queryByLabelText("살해 가능 장면")).toBeNull();
+  });
+
   it("수사 장면은 기본 정보, 시간, 맵 선택, 자동 진행 안내를 표시한다", () => {
     renderWithQC(
       <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,

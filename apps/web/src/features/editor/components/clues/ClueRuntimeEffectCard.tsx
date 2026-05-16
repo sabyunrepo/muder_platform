@@ -27,7 +27,8 @@ interface DraftState {
   descriptionText: string;
   revealText: string;
   grantClueIds: string[];
-  killChancePercent: number;
+  attackPower: number;
+  defensePower: number;
   consume: boolean;
 }
 
@@ -65,7 +66,8 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     usesPassword: password.trim().length > 0,
     password,
     consume: config?.consume === true,
-    killChancePercent: normalizePercent(config?.killChancePercent ?? 100),
+    attackPower: normalizePower(config?.attackPower ?? 0),
+    defensePower: normalizePower(config?.defensePower ?? 0),
   };
 
   if (config?.effect === 'description_change') {
@@ -113,14 +115,15 @@ function draftFromConfig(config: ClueItemEffectConfig | null): DraftState {
     descriptionText: '',
     revealText: '',
     grantClueIds: [],
-    killChancePercent: 100,
+    attackPower: 0,
+    defensePower: 0,
     consume: false,
   };
 }
 
-function normalizePercent(value: number): number {
-  if (!Number.isFinite(value)) return 100;
-  return Math.min(100, Math.max(0, Math.round(value)));
+function normalizePower(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value));
 }
 
 function passwordCondition(draft: DraftState): EditorConfig & {
@@ -133,6 +136,15 @@ function passwordCondition(draft: DraftState): EditorConfig & {
   };
 }
 
+function powerConfig(draft: DraftState): Pick<ClueItemEffectConfig, 'attackPower' | 'defensePower'> {
+  const attackPower = normalizePower(draft.attackPower);
+  const defensePower = normalizePower(draft.defensePower);
+  return {
+    ...(attackPower > 0 ? { attackPower } : {}),
+    ...(defensePower > 0 ? { defensePower } : {}),
+  };
+}
+
 function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
   if (!draft.isUsableItem) return null;
   if (draft.mode === 'description') {
@@ -140,6 +152,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'description_change',
       target: 'self',
       ...passwordCondition(draft),
+      ...powerConfig(draft),
       descriptionText: draft.descriptionText.trim(),
       consume: draft.consume,
     };
@@ -149,6 +162,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'reveal',
       target: 'self',
       ...passwordCondition(draft),
+      ...powerConfig(draft),
       revealText: draft.revealText.trim(),
       consume: draft.consume,
     };
@@ -158,6 +172,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'grant_clue',
       target: 'self',
       ...passwordCondition(draft),
+      ...powerConfig(draft),
       grantClueIds: draft.grantClueIds,
       consume: draft.consume,
     };
@@ -167,6 +182,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'peek',
       target: 'player',
       ...passwordCondition(draft),
+      ...powerConfig(draft),
       consume: draft.consume,
     };
   }
@@ -175,7 +191,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
       effect: 'kill',
       target: 'player',
       ...passwordCondition(draft),
-      killChancePercent: normalizePercent(draft.killChancePercent),
+      ...powerConfig(draft),
       consume: draft.consume,
     };
   }
@@ -183,6 +199,7 @@ function toEffectConfig(draft: DraftState): ClueItemEffectConfig | null {
     effect: 'steal',
     target: 'player',
     ...passwordCondition(draft),
+    ...powerConfig(draft),
     consume: draft.consume,
   };
 }
@@ -398,23 +415,30 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
           )}
 
           {draft.mode === 'kill' && isPlayerKillEnabled && (
-            <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3">
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3">
               <p className="text-sm leading-6 text-red-100">
                 대상 플레이어의 생존 상태를 런타임에서 사망으로 변경합니다.
               </p>
-              <div className="flex max-w-xs flex-col gap-1.5">
-                <label htmlFor="clue-runtime-kill-chance" className="text-sm font-semibold text-red-100">
-                  살해확률 (%)
-                </label>
-                <input
-                  id="clue-runtime-kill-chance"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={1}
-                  value={draft.killChancePercent}
-                  onChange={(e) => updateDraft({ killChancePercent: normalizePercent(Number(e.target.value)) })}
-                  className="w-full rounded-lg border border-red-500/40 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+            </div>
+          )}
+
+          {isPlayerKillEnabled && (
+            <div className="space-y-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-3">
+              <p className="text-sm leading-6 text-red-100">
+                살해 판정에 사용할 단서 수치입니다. 공격력은 공격자 보유 단서, 방어력은 대상 보유 단서에서 계산됩니다.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <PowerField
+                  id="clue-runtime-attack-power"
+                  label="공격력"
+                  value={draft.attackPower}
+                  onChange={(attackPower) => updateDraft({ attackPower })}
+                />
+                <PowerField
+                  id="clue-runtime-defense-power"
+                  label="방어력"
+                  value={draft.defensePower}
+                  onChange={(defensePower) => updateDraft({ defensePower })}
                 />
               </div>
             </div>
@@ -469,6 +493,35 @@ function EffectChoice({
       {icon}
       {label}
     </button>
+  );
+}
+
+function PowerField({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-sm font-semibold text-red-100">
+        {label}
+      </label>
+      <input
+        id={id}
+        type="number"
+        min={0}
+        step={1}
+        value={value}
+        onChange={(e) => onChange(normalizePower(Number(e.target.value)))}
+        className="w-full rounded-lg border border-red-500/40 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
+      />
+    </div>
   );
 }
 

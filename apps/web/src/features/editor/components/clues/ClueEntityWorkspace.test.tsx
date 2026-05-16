@@ -256,7 +256,7 @@ describe('ClueEntityWorkspace', () => {
     });
     fireEvent.click(screen.getByLabelText('사용 가능한 아이템'));
     fireEvent.click(screen.getByRole('button', { name: '살해 요청' }));
-    fireEvent.change(screen.getByLabelText('살해확률 (%)'), { target: { value: '35' } });
+    fireEvent.change(screen.getByLabelText('공격력'), { target: { value: '3' } });
     fireEvent.click(screen.getByRole('button', { name: '단서 저장' }));
 
     expect(onUpdate).toHaveBeenCalledWith(
@@ -268,7 +268,7 @@ describe('ClueEntityWorkspace', () => {
     expect(readClueItemEffect(savedConfig, 'clue-1')).toMatchObject({
       effect: 'kill',
       target: 'player',
-      killChancePercent: 35,
+      attackPower: 3,
     });
   });
 

@@ -23,13 +23,14 @@ const (
 // Editor labels are mapped to this contract by adapters; the engine executes
 // only this typed shape and never trusts client-side labels as runtime truth.
 type ClueItemEffectConfig struct {
-	Effect            string   `json:"effect"`
-	Target            string   `json:"target,omitempty"`
-	Consume           bool     `json:"consume"`
-	DescriptionText   string   `json:"descriptionText,omitempty"`
-	RevealText        string   `json:"revealText,omitempty"`
-	GrantClueIDs      []string `json:"grantClueIds,omitempty"`
-	KillChancePercent *int     `json:"killChancePercent,omitempty"`
+	Effect          string   `json:"effect"`
+	Target          string   `json:"target,omitempty"`
+	Consume         bool     `json:"consume"`
+	DescriptionText string   `json:"descriptionText,omitempty"`
+	RevealText      string   `json:"revealText,omitempty"`
+	GrantClueIDs    []string `json:"grantClueIds,omitempty"`
+	AttackPower     int      `json:"attackPower,omitempty"`
+	DefensePower    int      `json:"defensePower,omitempty"`
 }
 
 type itemUsePayload struct {
@@ -153,7 +154,7 @@ func (m *ClueInteractionModule) resolveItemUse(ctx context.Context, state ItemUs
 		return resolveErr
 	}
 
-	m.finishItemUse(state)
+	m.finishItemUse(ctx, state)
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "clue.item_resolved",
 		Payload: map[string]any{
@@ -207,13 +208,11 @@ func validateSingleClueItemEffectConfig(clueID string, cfg ClueItemEffectConfig)
 	if cfg.Effect == clueEffectKill && cfg.Target != "player" {
 		return fmt.Errorf("clue_interaction: kill requires player target")
 	}
-	if cfg.KillChancePercent != nil {
-		if cfg.Effect != clueEffectKill {
-			return fmt.Errorf("clue_interaction: killChancePercent is only supported for kill")
-		}
-		if *cfg.KillChancePercent < 0 || *cfg.KillChancePercent > 100 {
-			return fmt.Errorf("clue_interaction: killChancePercent must be between 0 and 100")
-		}
+	if cfg.AttackPower < 0 {
+		return fmt.Errorf("clue_interaction: attackPower must be non-negative")
+	}
+	if cfg.DefensePower < 0 {
+		return fmt.Errorf("clue_interaction: defensePower must be non-negative")
 	}
 	return nil
 }
@@ -365,19 +364,21 @@ func (m *ClueInteractionModule) handleKillEffect(ctx context.Context, playerID u
 	if err := m.validateKillableTarget(ctx, targetPlayerID); err != nil {
 		return err
 	}
-	cfg := m.config.ItemEffects[clueID.String()]
-	chance := 100
-	if cfg.KillChancePercent != nil {
-		chance = *cfg.KillChancePercent
+	result, err := m.resolveKillPower(ctx, playerID, targetPlayerID)
+	if err != nil {
+		return err
 	}
-	if chance <= 0 || m.killRoll() > chance {
+	if !result.Allowed {
 		m.deps.EventBus.Publish(engine.Event{
 			Type: "clue.kill_failed",
 			Payload: map[string]any{
-				"playerId":          playerID.String(),
-				"targetPlayerId":    targetPlayerID.String(),
-				"clueId":            clueID.String(),
-				"killChancePercent": chance,
+				"playerId":             playerID.String(),
+				"targetPlayerId":       targetPlayerID.String(),
+				"clueId":               clueID.String(),
+				"reason":               result.Reason,
+				"killResolutionMode":   result.Mode,
+				"resolvedAttackPower":  result.AttackPower,
+				"resolvedDefensePower": result.DefensePower,
 			},
 		})
 		return nil
@@ -397,12 +398,125 @@ func (m *ClueInteractionModule) handleKillEffect(ctx context.Context, playerID u
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "clue.kill_requested",
 		Payload: map[string]any{
-			"playerId":       playerID.String(),
-			"targetPlayerId": targetPlayerID.String(),
-			"clueId":         clueID.String(),
+			"playerId":             playerID.String(),
+			"targetPlayerId":       targetPlayerID.String(),
+			"clueId":               clueID.String(),
+			"killResolutionMode":   result.Mode,
+			"resolvedAttackPower":  result.AttackPower,
+			"resolvedDefensePower": result.DefensePower,
 		},
 	})
 	return nil
+}
+
+type killPowerResult struct {
+	Allowed      bool
+	Reason       string
+	Mode         string
+	AttackPower  int
+	DefensePower int
+}
+
+func (m *ClueInteractionModule) resolveKillPower(ctx context.Context, attackerID uuid.UUID, targetID uuid.UUID) (killPowerResult, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	mode := m.playerKillConfig.KillResolutionMode
+	if mode == "" {
+		mode = KillResolutionAllWeaponsVsAllArmor
+	}
+	result := killPowerResult{Mode: mode}
+	if !m.playerKillEnabled || !m.currentSceneAllowsKillLocked() {
+		result.Reason = "scene_not_allowed"
+		return result, nil
+	}
+
+	weapons := m.playerPowerValuesLocked(ctx, attackerID, true)
+	armor := m.playerPowerValuesLocked(ctx, targetID, false)
+	result.AttackPower = resolveAttackPower(mode, weapons)
+	result.DefensePower = resolveDefensePower(mode, armor)
+	result.Allowed = result.AttackPower > result.DefensePower
+	if !result.Allowed {
+		result.Reason = "attack_not_greater_than_defense"
+	}
+	return result, nil
+}
+
+func (m *ClueInteractionModule) currentSceneAllowsKillLocked() bool {
+	if len(m.playerKillConfig.AllowedSceneIDs) == 0 {
+		return false
+	}
+	for _, sceneID := range m.playerKillConfig.AllowedSceneIDs {
+		if sceneID == m.currentPhaseID {
+			return true
+		}
+	}
+	return false
+}
+
+func resolveAttackPower(mode string, values []int) int {
+	switch mode {
+	case KillResolutionBestWeaponVsAllArmor, KillResolutionBestWeaponVsBestArmor:
+		return maxPower(values)
+	default:
+		return sumPower(values)
+	}
+}
+
+func resolveDefensePower(mode string, values []int) int {
+	switch mode {
+	case KillResolutionBestWeaponVsBestArmor:
+		return maxPower(values)
+	default:
+		return sumPower(values)
+	}
+}
+
+func sumPower(values []int) int {
+	total := 0
+	for _, value := range values {
+		total += value
+	}
+	return total
+}
+
+func maxPower(values []int) int {
+	max := 0
+	for _, value := range values {
+		if value > max {
+			max = value
+		}
+	}
+	return max
+}
+
+func (m *ClueInteractionModule) playerPowerValuesLocked(ctx context.Context, playerID uuid.UUID, attack bool) []int {
+	clueIDs := m.playerInventoryCluesLocked(ctx, playerID)
+	values := make([]int, 0, len(clueIDs))
+	for _, clueID := range clueIDs {
+		cfg, ok := m.config.ItemEffects[clueID]
+		if !ok {
+			continue
+		}
+		value := cfg.DefensePower
+		if attack {
+			value = cfg.AttackPower
+		}
+		if value > 0 {
+			values = append(values, value)
+		}
+	}
+	return values
+}
+
+func (m *ClueInteractionModule) playerInventoryCluesLocked(ctx context.Context, playerID uuid.UUID) []string {
+	clues := mergeClueList(m.acquiredClues[playerID], m.allPlayerClues)
+	if m.deps.PlayerInfoProvider != nil {
+		if info, ok := m.deps.PlayerInfoProvider.PlayerRuntimeInfo(ctx, playerID); ok {
+			clues = mergeClueList(clues, m.targetCodeClues[info.TargetCode])
+		}
+	}
+	return mergeClueList(clues, m.targetCodeClues[playerID.String()])
 }
 
 func (m *ClueInteractionModule) validateKillableTarget(ctx context.Context, targetPlayerID uuid.UUID) error {
@@ -469,7 +583,7 @@ func (m *ClueInteractionModule) publishItemDeclared(playerID uuid.UUID, clueID u
 	})
 }
 
-func (m *ClueInteractionModule) finishItemUse(state ItemUseState) {
+func (m *ClueInteractionModule) finishItemUse(ctx context.Context, state ItemUseState) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.activeItemUse != nil && m.activeItemUse.ClueID == state.ClueID {
@@ -481,7 +595,7 @@ func (m *ClueInteractionModule) finishItemUse(state ItemUseState) {
 	}
 	m.usedItems[state.UserID] = append(m.usedItems[state.UserID], state.ClueID)
 	if state.Consume {
-		m.removePlayerClueLocked(state.UserID, state.ClueID.String())
+		m.removeConsumedClueLocked(ctx, state.UserID, state.ClueID.String())
 	}
 }
 
@@ -527,11 +641,36 @@ func (m *ClueInteractionModule) isProtectedClue(clueID string) bool {
 }
 
 func (m *ClueInteractionModule) removePlayerClueLocked(playerID uuid.UUID, clueID string) {
-	clues := m.acquiredClues[playerID]
-	for i, ownedID := range clues {
-		if ownedID == clueID {
-			m.acquiredClues[playerID] = append(clues[:i], clues[i+1:]...)
-			return
+	m.acquiredClues[playerID] = removeClueID(m.acquiredClues[playerID], clueID)
+}
+
+func (m *ClueInteractionModule) removeConsumedClueLocked(ctx context.Context, playerID uuid.UUID, clueID string) {
+	m.removePlayerClueLocked(playerID, clueID)
+	m.allPlayerClues = removeClueID(m.allPlayerClues, clueID)
+
+	playerKey := playerID.String()
+	m.targetCodeClues[playerKey] = removeClueID(m.targetCodeClues[playerKey], clueID)
+	if len(m.targetCodeClues[playerKey]) == 0 {
+		delete(m.targetCodeClues, playerKey)
+	}
+
+	if m.deps.PlayerInfoProvider == nil {
+		return
+	}
+	if info, ok := m.deps.PlayerInfoProvider.PlayerRuntimeInfo(ctx, playerID); ok {
+		m.targetCodeClues[info.TargetCode] = removeClueID(m.targetCodeClues[info.TargetCode], clueID)
+		if len(m.targetCodeClues[info.TargetCode]) == 0 {
+			delete(m.targetCodeClues, info.TargetCode)
 		}
 	}
+}
+
+func removeClueID(clues []string, clueID string) []string {
+	out := clues[:0]
+	for _, ownedID := range clues {
+		if ownedID != clueID {
+			out = append(out, ownedID)
+		}
+	}
+	return out
 }

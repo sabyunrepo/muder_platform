@@ -3,7 +3,10 @@ import type { Edge, Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useEditorMaps } from "../../editorMapApi";
+import { useUpdateConfigJson } from "../../editorConfigApi";
 import { useUpdateFlowNode } from "../../flowApi";
+import type { EditorThemeResponse } from "../../api";
+import { editorKeys } from "../../api";
 import type {
   FlowGraphResponse,
   FlowNodeData,
@@ -18,6 +21,12 @@ import { InvestigationPhasePanel } from "./InvestigationPhasePanel";
 import { DiscussionPhasePanel } from "./DiscussionPhasePanel";
 import { VotingQuestionPhasePanel } from "./VotingQuestionPhasePanel";
 import { ReadingPhasePanel } from "./ReadingPhasePanel";
+import {
+  PLAYER_KILL_MODULE_ID,
+  readEnabledModuleIds,
+  readPlayerKillConfig,
+  writePlayerKillSceneEnabled,
+} from "../../utils/configShape";
 
 interface PhaseNodePanelProps {
   node: Node;
@@ -37,10 +46,17 @@ export function PhaseNodePanel({
   headerActions,
 }: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
+  const updateConfig = useUpdateConfigJson(themeId);
   const { data: maps = [], isLoading: mapsLoading } = useEditorMaps(themeId);
   const queryClient = useQueryClient();
   const data = node.data as FlowNodeData;
   const phaseType = normalizePhaseType(data.phase_type);
+  const theme = queryClient.getQueryData<EditorThemeResponse>(editorKeys.theme(themeId));
+  const configJson = theme?.config_json ?? {};
+  const playerKillEnabled = readEnabledModuleIds(configJson).includes(PLAYER_KILL_MODULE_ID);
+  const playerKillConfig = readPlayerKillConfig(configJson);
+  const sceneKillEnabled = playerKillConfig.allowedSceneIds.includes(node.id);
+  const isStorySceneNode = node.type === "phase" && phaseType === "story_progression";
 
   const debouncer = useDebouncedMutation<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
@@ -72,6 +88,12 @@ export function PhaseNodePanel({
     );
   };
 
+  const handleSceneKillToggle = (enabled: boolean) => {
+    if (!theme || updateConfig.isPending || !isStorySceneNode) return;
+    const nextConfig = writePlayerKillSceneEnabled(configJson, node.id, enabled);
+    updateConfig.mutate({ ...nextConfig, version: theme.version });
+  };
+
   return (
     <div className="flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-2">
@@ -91,6 +113,24 @@ export function PhaseNodePanel({
         onChange={handleChange}
         onFlush={flush}
       />
+      {isStorySceneNode && playerKillEnabled ? (
+        <label className="flex items-start gap-2 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
+          <input
+            type="checkbox"
+            aria-label="살해 가능 장면"
+            checked={sceneKillEnabled}
+            disabled={updateConfig.isPending}
+            onChange={(event) => handleSceneKillToggle(event.currentTarget.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-red-500/40 bg-slate-950 text-red-500 focus:ring-red-500"
+          />
+          <span>
+            <span className="block font-semibold">살해 가능</span>
+            <span className="mt-1 block leading-4 text-red-100/70">
+              이 장면에서만 플레이어킬 단서 사용이 사망 판정까지 진행됩니다.
+            </span>
+          </span>
+        </label>
+      ) : null}
       {phaseType === "investigation" ? (
         <>
           <InvestigationMapField
