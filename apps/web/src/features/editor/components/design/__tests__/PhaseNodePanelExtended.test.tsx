@@ -87,7 +87,11 @@ const makeNode = (data: Record<string, unknown> = {}) => ({
 describe("PhaseNodePanel type-specific fields", () => {
   it("플레이어킬 모듈이 켜져 있으면 장면별 살해 가능 체크를 저장한다", () => {
     renderWithQC(
-      <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,
+      <PhaseNodePanel
+        node={makeNode({ phase_type: "story_progression" })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
       {
         id: "t1",
         version: 7,
@@ -119,6 +123,35 @@ describe("PhaseNodePanel type-specific fields", () => {
         }),
       }),
     );
+  });
+
+  it("스토리 진행 페이즈가 아니면 장면별 살해 가능 체크를 숨긴다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ phase_type: "investigation" })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+      {
+        id: "t1",
+        version: 7,
+        config_json: {
+          modules: {
+            player_kill: {
+              enabled: true,
+              config: {
+                killableCharacterIds: [],
+                muteOnKilled: false,
+                killResolutionMode: "all_weapons_vs_all_armor",
+                allowedSceneIds: [],
+              },
+            },
+          },
+        },
+      },
+    );
+
+    expect(screen.queryByLabelText("살해 가능 장면")).toBeNull();
   });
 
   it("수사 장면은 기본 정보, 시간, 맵 선택, 자동 진행 안내를 표시한다", () => {

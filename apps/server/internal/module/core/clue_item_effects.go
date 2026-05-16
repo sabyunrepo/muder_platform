@@ -154,7 +154,7 @@ func (m *ClueInteractionModule) resolveItemUse(ctx context.Context, state ItemUs
 		return resolveErr
 	}
 
-	m.finishItemUse(state)
+	m.finishItemUse(ctx, state)
 	m.deps.EventBus.Publish(engine.Event{
 		Type: "clue.item_resolved",
 		Payload: map[string]any{
@@ -426,7 +426,7 @@ func (m *ClueInteractionModule) resolveKillPower(ctx context.Context, attackerID
 		mode = KillResolutionAllWeaponsVsAllArmor
 	}
 	result := killPowerResult{Mode: mode}
-	if m.playerKillEnabled && !m.currentSceneAllowsKillLocked() {
+	if !m.playerKillEnabled || !m.currentSceneAllowsKillLocked() {
 		result.Reason = "scene_not_allowed"
 		return result, nil
 	}
@@ -583,7 +583,7 @@ func (m *ClueInteractionModule) publishItemDeclared(playerID uuid.UUID, clueID u
 	})
 }
 
-func (m *ClueInteractionModule) finishItemUse(state ItemUseState) {
+func (m *ClueInteractionModule) finishItemUse(ctx context.Context, state ItemUseState) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.activeItemUse != nil && m.activeItemUse.ClueID == state.ClueID {
@@ -595,7 +595,7 @@ func (m *ClueInteractionModule) finishItemUse(state ItemUseState) {
 	}
 	m.usedItems[state.UserID] = append(m.usedItems[state.UserID], state.ClueID)
 	if state.Consume {
-		m.removePlayerClueLocked(state.UserID, state.ClueID.String())
+		m.removeConsumedClueLocked(ctx, state.UserID, state.ClueID.String())
 	}
 }
 
@@ -641,11 +641,36 @@ func (m *ClueInteractionModule) isProtectedClue(clueID string) bool {
 }
 
 func (m *ClueInteractionModule) removePlayerClueLocked(playerID uuid.UUID, clueID string) {
-	clues := m.acquiredClues[playerID]
-	for i, ownedID := range clues {
-		if ownedID == clueID {
-			m.acquiredClues[playerID] = append(clues[:i], clues[i+1:]...)
-			return
+	m.acquiredClues[playerID] = removeClueID(m.acquiredClues[playerID], clueID)
+}
+
+func (m *ClueInteractionModule) removeConsumedClueLocked(ctx context.Context, playerID uuid.UUID, clueID string) {
+	m.removePlayerClueLocked(playerID, clueID)
+	m.allPlayerClues = removeClueID(m.allPlayerClues, clueID)
+
+	playerKey := playerID.String()
+	m.targetCodeClues[playerKey] = removeClueID(m.targetCodeClues[playerKey], clueID)
+	if len(m.targetCodeClues[playerKey]) == 0 {
+		delete(m.targetCodeClues, playerKey)
+	}
+
+	if m.deps.PlayerInfoProvider == nil {
+		return
+	}
+	if info, ok := m.deps.PlayerInfoProvider.PlayerRuntimeInfo(ctx, playerID); ok {
+		m.targetCodeClues[info.TargetCode] = removeClueID(m.targetCodeClues[info.TargetCode], clueID)
+		if len(m.targetCodeClues[info.TargetCode]) == 0 {
+			delete(m.targetCodeClues, info.TargetCode)
 		}
 	}
+}
+
+func removeClueID(clues []string, clueID string) []string {
+	out := clues[:0]
+	for _, ownedID := range clues {
+		if ownedID != clueID {
+			out = append(out, ownedID)
+		}
+	}
+	return out
 }

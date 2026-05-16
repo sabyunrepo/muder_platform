@@ -501,11 +501,19 @@ func TestClueInteractionModule_Schema(t *testing.T) {
 	if !hasKill {
 		t.Fatal("expected itemEffects.effect enum to include kill")
 	}
-	if _, exists := effectProps["attackPower"]; !exists {
+	attackPower, exists := effectProps["attackPower"].(map[string]any)
+	if !exists {
 		t.Fatal("expected itemEffects.attackPower schema")
 	}
-	if _, exists := effectProps["defensePower"]; !exists {
+	if attackPower["type"] != "integer" {
+		t.Fatalf("expected attackPower to be integer schema, got %#v", attackPower["type"])
+	}
+	defensePower, exists := effectProps["defensePower"].(map[string]any)
+	if !exists {
 		t.Fatal("expected itemEffects.defensePower schema")
+	}
+	if defensePower["type"] != "integer" {
+		t.Fatalf("expected defensePower to be integer schema, got %#v", defensePower["type"])
 	}
 	if _, exists := effectProps["killChancePercent"]; exists {
 		t.Fatal("did not expect itemEffects.killChancePercent schema")

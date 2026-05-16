@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/google/uuid"
@@ -486,21 +487,13 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 		}
 	}
 	if rawAttack, exists := effect["attackPower"]; exists {
-		attack, ok := rawAttack.(float64)
-		if !ok {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].attackPower must be a number", clueID)
-		}
-		if attack < 0 {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].attackPower must be non-negative", clueID)
+		if err := validateClueItemEffectPower(clueID, "attackPower", rawAttack); err != nil {
+			return err
 		}
 	}
 	if rawDefense, exists := effect["defensePower"]; exists {
-		defense, ok := rawDefense.(float64)
-		if !ok {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].defensePower must be a number", clueID)
-		}
-		if defense < 0 {
-			return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].defensePower must be non-negative", clueID)
+		if err := validateClueItemEffectPower(clueID, "defensePower", rawDefense); err != nil {
+			return err
 		}
 	}
 	if kind == "description_change" {
@@ -529,6 +522,20 @@ func validateClueItemEffectShape(clueID string, effect map[string]any) error {
 				return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].grantClueIds has invalid clue id %q", clueID, grantClueID)
 			}
 		}
+	}
+	return nil
+}
+
+func validateClueItemEffectPower(clueID string, field string, rawValue any) error {
+	value, ok := rawValue.(float64)
+	if !ok {
+		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].%s must be a number", clueID, field)
+	}
+	if value != math.Trunc(value) {
+		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].%s must be an integer", clueID, field)
+	}
+	if value < 0 {
+		return fmt.Errorf("config_json: clue_interaction.itemEffects[%s].%s must be non-negative", clueID, field)
 	}
 	return nil
 }

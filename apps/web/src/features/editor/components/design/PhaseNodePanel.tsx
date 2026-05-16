@@ -56,6 +56,7 @@ export function PhaseNodePanel({
   const playerKillEnabled = readEnabledModuleIds(configJson).includes(PLAYER_KILL_MODULE_ID);
   const playerKillConfig = readPlayerKillConfig(configJson);
   const sceneKillEnabled = playerKillConfig.allowedSceneIds.includes(node.id);
+  const isStorySceneNode = node.type === "phase" && phaseType === "story_progression";
 
   const debouncer = useDebouncedMutation<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
@@ -88,7 +89,7 @@ export function PhaseNodePanel({
   };
 
   const handleSceneKillToggle = (enabled: boolean) => {
-    if (!theme || updateConfig.isPending) return;
+    if (!theme || updateConfig.isPending || !isStorySceneNode) return;
     const nextConfig = writePlayerKillSceneEnabled(configJson, node.id, enabled);
     updateConfig.mutate({ ...nextConfig, version: theme.version });
   };
@@ -112,7 +113,7 @@ export function PhaseNodePanel({
         onChange={handleChange}
         onFlush={flush}
       />
-      {node.type === "phase" && playerKillEnabled ? (
+      {isStorySceneNode && playerKillEnabled ? (
         <label className="flex items-start gap-2 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-100">
           <input
             type="checkbox"

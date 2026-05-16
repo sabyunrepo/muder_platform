@@ -135,6 +135,9 @@ func (m *ClueInteractionModule) OnPhaseEnter(_ context.Context, phase engine.Pha
 }
 
 func (m *ClueInteractionModule) OnPhaseExit(_ context.Context, _ engine.Phase) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.currentPhaseID = ""
 	return nil
 }
 
@@ -408,8 +411,8 @@ func (m *ClueInteractionModule) Schema() json.RawMessage {
 						"descriptionText": map[string]any{"type": "string"},
 						"revealText":      map[string]any{"type": "string"},
 						"grantClueIds":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
-						"attackPower":     map[string]any{"type": "number", "minimum": 0},
-						"defensePower":    map[string]any{"type": "number", "minimum": 0},
+						"attackPower":     map[string]any{"type": "integer", "minimum": 0},
+						"defensePower":    map[string]any{"type": "integer", "minimum": 0},
 					},
 					"required":             []string{"effect"},
 					"additionalProperties": false,

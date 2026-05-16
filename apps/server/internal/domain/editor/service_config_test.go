@@ -755,6 +755,18 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 			want: "attackPower must be non-negative",
 		},
 		{
+			name: "attack power must be integer",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "kill", "target": "player", "attackPower": 1.5}}}
+					}
+				}
+			}`, clueID)),
+			want: "attackPower must be an integer",
+		},
+		{
 			name: "defense power must be number",
 			input: json.RawMessage(fmt.Sprintf(`{
 				"modules": {
@@ -765,6 +777,18 @@ func TestUpdateConfigJson_ValidatesClueInteractionItemEffects(t *testing.T) {
 				}
 			}`, clueID)),
 			want: "defensePower must be a number",
+		},
+		{
+			name: "defense power must be integer",
+			input: json.RawMessage(fmt.Sprintf(`{
+				"modules": {
+					"clue_interaction": {
+						"enabled": true,
+						"config": {"itemEffects": {"%s": {"effect": "peek", "target": "player", "defensePower": 2.25}}}
+					}
+				}
+			}`, clueID)),
+			want: "defensePower must be an integer",
 		},
 		{
 			name: "description change requires text",

@@ -123,7 +123,7 @@
 
 - [x] `go test ./internal/module/core ./internal/domain/editor`
 - [x] `pnpm --filter @mmp/web test -- ClueRuntimeEffectCard configShape ModulesSubTab`
-- [ ] 필요 시 `scripts/mmp-local-ci.sh quick`
+- [x] `scripts/mmp-local-ci.sh quick`
 
 ## PR 묶음 제안
 
