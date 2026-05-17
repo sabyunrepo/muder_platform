@@ -50,6 +50,7 @@ vi.mock('@/features/editor/readingApi', async () => {
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
   useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
+  useMediaDownloadUrls: () => [],
   useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
   useRequestUploadUrl: (...args: unknown[]) => useRequestUploadUrlMock(...args),
   useConfirmUpload: (...args: unknown[]) => useConfirmUploadMock(...args),

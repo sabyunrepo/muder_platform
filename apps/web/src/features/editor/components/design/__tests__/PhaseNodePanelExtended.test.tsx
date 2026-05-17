@@ -55,6 +55,7 @@ vi.mock("../../../readingApi", () => ({
 
 vi.mock("../../../mediaApi", () => ({
   useMediaList: () => ({ data: [], isLoading: false }),
+  useMediaDownloadUrls: () => [],
   useMediaCategories: () => ({ data: [] }),
   useRequestUploadUrl: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useConfirmUpload: () => ({ mutateAsync: vi.fn(), isPending: false }),

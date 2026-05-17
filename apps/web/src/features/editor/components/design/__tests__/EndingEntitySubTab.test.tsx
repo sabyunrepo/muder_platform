@@ -45,6 +45,7 @@ vi.mock("@/features/editor/mediaApi", () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
   useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
   useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
+  useMediaDownloadUrls: () => [],
 }));
 
 vi.mock("@mdxeditor/editor", () => ({

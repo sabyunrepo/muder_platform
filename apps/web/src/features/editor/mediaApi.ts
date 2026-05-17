@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/services/api";
 import { queryClient } from "@/services/queryClient";
@@ -157,12 +157,25 @@ export function useMediaDeletePreview(mediaId?: string) {
 export function useMediaDownloadUrl(mediaId?: string) {
   return useQuery<MediaDownloadUrlResponse>({
     queryKey: mediaKeys.downloadUrl(mediaId ?? ""),
-    queryFn: () =>
-      api.get<MediaDownloadUrlResponse>(
-        `/v1/editor/media/${mediaId}/download-url`,
-      ),
+    queryFn: () => getMediaDownloadUrl(mediaId ?? ""),
     enabled: !!mediaId,
   });
+}
+
+export function useMediaDownloadUrls(mediaIds: string[]) {
+  return useQueries({
+    queries: mediaIds.map((mediaId) => ({
+      queryKey: mediaKeys.downloadUrl(mediaId),
+      queryFn: () => getMediaDownloadUrl(mediaId),
+      enabled: mediaId.length > 0,
+    })),
+  });
+}
+
+function getMediaDownloadUrl(mediaId: string) {
+  return api.get<MediaDownloadUrlResponse>(
+    `/v1/editor/media/${mediaId}/download-url`,
+  );
 }
 
 // ---------------------------------------------------------------------------
