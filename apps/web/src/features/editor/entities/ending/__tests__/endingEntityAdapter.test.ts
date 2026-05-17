@@ -19,7 +19,7 @@ describe("endingEntityAdapter", () => {
     const vm = toEndingEditorViewModel(node("end-1", {
       label: "진실",
       endingContent: "범인이 밝혀졌다.",
-    }), 2);
+    }));
 
     expect(vm).toMatchObject({
       id: "end-1",
@@ -27,8 +27,20 @@ describe("endingEntityAdapter", () => {
       contentPreview: "범인이 밝혀졌다.",
       isReady: true,
     });
-    expect(vm.badges).toContain("도달 경로 2개");
+    expect(vm.badges).toContain("조건 없음");
     expect(vm.badges).not.toContain("참가자에게만 공개");
+  });
+
+  it("결말 목록 배지는 조건 그룹과 기본 결말 상태를 표시한다", () => {
+    const vm = toEndingEditorViewModel(node("end-1", {
+      label: "진실",
+      endingContent: "범인이 밝혀졌다.",
+    }), {
+      conditionGroupCount: 2,
+      isDefaultEnding: true,
+    });
+
+    expect(vm.badges).toEqual(["이름 있음", "본문 작성됨", "기본 결말", "조건 그룹 2개"]);
   });
 
   it("결말 준비 상태와 제작자용 경고를 요약한다", () => {

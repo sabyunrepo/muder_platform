@@ -20,6 +20,7 @@ const {
   useDeleteCharacterMock,
   useUpdateConfigJsonMock,
   useMediaListMock,
+  useMediaDownloadUrlMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
   toastSuccess: vi.fn(),
@@ -35,6 +36,7 @@ const {
   useDeleteCharacterMock: vi.fn(),
   useUpdateConfigJsonMock: vi.fn(),
   useMediaListMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -63,6 +65,7 @@ vi.mock('@/features/editor/components/SchemaDrivenForm', () => ({
 
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: () => useMediaListMock(),
+  useMediaDownloadUrl: () => useMediaDownloadUrlMock(),
 }));
 
 vi.mock('@/features/editor/components/media/MediaPicker', () => ({
@@ -392,6 +395,7 @@ describe('OverviewTab', () => {
       data: [{ id: 'image-1', name: '커버 이미지', type: 'IMAGE' }],
       isLoading: false,
     });
+    useMediaDownloadUrlMock.mockReturnValue({ data: null, isLoading: false, isError: false });
   });
 
   it('테마 데이터가 폼에 미리 채워져 렌더링된다', () => {

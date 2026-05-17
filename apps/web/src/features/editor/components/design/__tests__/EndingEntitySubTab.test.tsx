@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { forwardRef, useImperativeHandle, type ComponentType, type ReactNode } from "react";
+import { forwardRef, useImperativeHandle, useState, type ComponentType, type ReactNode } from "react";
 
 const { useFlowDataMock, useEditorCharactersMock, addNodeMock, deleteNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock, toastErrorMock, toastSuccessMock, toastLoadingMock, useMediaListMock, useMediaCategoriesMock, useMediaDownloadUrlMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
@@ -49,26 +49,35 @@ vi.mock("@/features/editor/mediaApi", () => ({
 
 vi.mock("@mdxeditor/editor", () => ({
   MDXEditor: forwardRef<
-    { insertMarkdown: (snippet: string) => void },
+    { insertMarkdown: (snippet: string) => void; setMarkdown: (nextMarkdown: string) => void },
     {
       markdown: string;
       onChange: (markdown: string) => void;
       plugins?: Array<{ jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }> }>;
     }
   >(({ markdown, onChange, plugins = [] }, ref) => {
+    const [editorMarkdown, setEditorMarkdown] = useState(markdown);
     useImperativeHandle(ref, () => ({
-      insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
-    }));
+      insertMarkdown: (snippet: string) => {
+        const next = `${editorMarkdown}${snippet}`;
+        setEditorMarkdown(next);
+        onChange(next);
+      },
+      setMarkdown: setEditorMarkdown,
+    }), [editorMarkdown, onChange]);
     const mediaEmbedDescriptor = plugins
       .flatMap((plugin) => plugin.jsxComponentDescriptors ?? [])
       .find((descriptor) => descriptor.name === "MediaEmbed");
-    const mediaEmbeds = Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
+    const mediaEmbeds = Array.from(editorMarkdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
     return (
       <div data-testid="mdx-editor-surface">
         <textarea
           aria-label="editable markdown"
-          value={markdown}
-          onChange={(event) => onChange(event.currentTarget.value)}
+          value={editorMarkdown}
+          onChange={(event) => {
+            setEditorMarkdown(event.currentTarget.value);
+            onChange(event.currentTarget.value);
+          }}
         />
         {mediaEmbedDescriptor
           ? mediaEmbeds.map((match) => {
@@ -253,9 +262,12 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getByLabelText("결말 판정 준비")).toBeDefined();
     expect(screen.getByText("본문 작성")).toBeDefined();
     expect(screen.getByRole("heading", { name: "결말 판정 설정", level: 3 })).toBeDefined();
-    expect(screen.getAllByText("기본 결말")).toHaveLength(1);
+    expect(screen.getAllByText("기본 결말").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByLabelText("기본 결말")).toBeDefined();
     expect(screen.getByText("복수 선택 반영 기준")).toBeDefined();
+    expect(screen.getAllByText("조건 그룹 1개").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("기본 결말").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("아직 연결 없음")).toBeNull();
     expect(screen.queryByText("참가자에게만 공개")).toBeNull();
     expect(screen.queryByText("캐릭터 결과 카드 1/2명 작성")).toBeNull();
     expect(screen.queryByText("1막")).toBeNull();
@@ -311,7 +323,43 @@ describe("EndingEntitySubTab", () => {
     expect(addNodeMock).toHaveBeenCalledWith("ending", expect.objectContaining({
       x: expect.any(Number),
       y: expect.any(Number),
-    }));
+    }), undefined, expect.objectContaining({ onCreated: expect.any(Function) }));
+  });
+
+  it("결말 추가 성공 후 새로 만든 결말을 선택한다", () => {
+    const { rerender } = renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.click(screen.getByText("결말 추가"));
+
+    const onCreated = addNodeMock.mock.calls[0][3].onCreated;
+    act(() => {
+      onCreated(makeNode("ending-3", { label: "새 결말", endingContent: "" }));
+    });
+    useFlowDataMock.mockReturnValue({
+      nodes: [
+        makeNode("ending-1", { label: "진실", endingContent: "범인은 밝혀졌다." }),
+        makeNode("phase-1", { label: "1막" }, "phase"),
+        makeNode("ending-2", { label: "오판", description: "잘못된 선택" }),
+        makeNode("ending-3", { label: "새 결말", endingContent: "" }),
+      ],
+      edges: [{ id: "edge-1", source: "phase-1", target: "ending-1" }],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: refetchMock,
+      addNode: addNodeMock,
+      deleteNode: deleteNodeMock,
+      updateNodeData: updateNodeDataMock,
+    });
+
+    rerender(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+        <EndingEntitySubTab themeId="theme-1" theme={theme} />
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByRole("button", { name: "새 결말 선택" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("heading", { name: "새 결말", level: 3 })).toBeDefined();
   });
 
   it("결말 목록 카드에서 결말을 삭제할 수 있다", () => {
@@ -344,6 +392,26 @@ describe("EndingEntitySubTab", () => {
       { nodeId: "ending-1", body: { data: expect.objectContaining({ label: "자비" }) } },
       expect.objectContaining({ onError: expect.any(Function) }),
     );
+  });
+
+  it("다른 결말을 선택하면 본문 작성기가 선택한 결말의 본문으로 바뀐다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    expect((screen.getByLabelText("editable markdown") as HTMLTextAreaElement).value).toBe("범인은 밝혀졌다.");
+
+    fireEvent.click(screen.getByRole("button", { name: "오판 선택" }));
+
+    expect((screen.getByLabelText("editable markdown") as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("결말 카드 전체를 한 번 클릭하면 해당 결말로 전환한다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    const endingCard = screen.getByRole("button", { name: "오판 선택" });
+    fireEvent.click(endingCard);
+
+    expect(endingCard.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("heading", { name: "오판", level: 3 })).toBeDefined();
   });
 
   it("결말 상세에서 필요한 입력만 보여주고 본문을 Markdown 작성기로 저장한다", () => {

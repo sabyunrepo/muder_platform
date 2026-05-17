@@ -20,12 +20,14 @@ const {
   useCreateClueMock,
   useUpdateClueMock,
   useMediaListMock,
+  useMediaDownloadUrlMock,
   toastSuccessMock,
   toastErrorMock,
 } = vi.hoisted(() => ({
   useCreateClueMock: vi.fn(),
   useUpdateClueMock: vi.fn(),
   useMediaListMock: vi.fn(),
+  useMediaDownloadUrlMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
 }));
@@ -41,6 +43,7 @@ vi.mock('@/features/editor/api', () => ({
 
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: () => useMediaListMock(),
+  useMediaDownloadUrl: () => useMediaDownloadUrlMock(),
 }));
 
 vi.mock('@/features/editor/components/media/MediaPicker', () => ({
@@ -161,6 +164,7 @@ describe('ClueForm', () => {
       data: [{ id: 'image-1', name: '증거 사진', type: 'IMAGE' }],
       isLoading: false,
     });
+    useMediaDownloadUrlMock.mockReturnValue({ data: null, isLoading: false, isError: false });
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
   });

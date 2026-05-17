@@ -12,6 +12,7 @@ import {
   buildEndingDecisionSummary,
   toEndingEditorViewModel,
 } from '../../entities/ending/endingEntityAdapter';
+import { readEndingBranchConfig } from '../../entities/ending/endingBranchAdapter';
 import { getDisplayErrorMessage } from '@/lib/display-error';
 
 interface EndingEntitySubTabProps {
@@ -48,6 +49,18 @@ function EndingEntityWorkspace({
   } = useFlowData(themeId);
 
   const endingNodes = useMemo(() => nodes.filter((node) => node.type === 'ending'), [nodes]);
+  const endingBranchConfig = useMemo(
+    () => readEndingBranchConfig(theme.config_json),
+    [theme.config_json],
+  );
+  const conditionGroupCountByEnding = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const row of endingBranchConfig.matrix) {
+      if (!row.ending) continue;
+      counts.set(row.ending, (counts.get(row.ending) ?? 0) + 1);
+    }
+    return counts;
+  }, [endingBranchConfig.matrix]);
 
   const filteredNodes = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -66,7 +79,12 @@ function EndingEntityWorkspace({
   const decisionSummary = useMemo(() => buildEndingDecisionSummary(nodes, edges), [nodes, edges]);
 
   const handleAddEnding = () => {
-    addNode('ending', { x: 360 + endingNodes.length * 40, y: 220 });
+    addNode(
+      'ending',
+      { x: 360 + endingNodes.length * 40, y: 220 },
+      undefined,
+      { onCreated: (node) => setSelectedId(node.id) },
+    );
   };
 
   if (isLoading) {
@@ -163,31 +181,38 @@ function EndingEntityWorkspace({
                 </p>
               ) : (
                 filteredNodes.map((node) => {
-                  const incomingCount = edges.filter((edge) => edge.target === node.id).length;
-                  const viewModel = toEndingEditorViewModel(node, incomingCount);
+                  const viewModel = toEndingEditorViewModel(node, {
+                    conditionGroupCount: conditionGroupCountByEnding.get(node.id) ?? 0,
+                    isDefaultEnding: endingBranchConfig.defaultEnding === node.id,
+                  });
                   const selected = selectedNode?.id === node.id;
                   return (
                     <div
+                      role="button"
+                      tabIndex={0}
                       key={node.id}
-                      className={`rounded-xl border p-3 text-left transition focus-within:ring-2 focus-within:ring-amber-400/60 ${
+                      onClick={() => setSelectedId(node.id)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        setSelectedId(node.id);
+                      }}
+                      aria-pressed={selected}
+                      aria-label={`${viewModel.name} 선택`}
+                      className={`cursor-pointer rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 ${
                         selected
                           ? 'border-amber-500/70 bg-amber-500/10'
                           : 'border-slate-800 bg-slate-950 hover:border-slate-600'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedId(node.id)}
-                          aria-pressed={selected}
-                          aria-label={`${viewModel.name} 선택`}
-                          className="min-w-0 flex-1 text-left focus:outline-none"
-                        >
+                        <div className="min-w-0 flex-1">
                           <p className="truncate font-medium text-slate-100">{viewModel.name}</p>
-                        </button>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation();
                             deleteNode(node.id);
                             if (selectedId === node.id) setSelectedId(null);
                           }}
@@ -197,12 +222,7 @@ function EndingEntityWorkspace({
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedId(node.id)}
-                        className="mt-2 flex flex-wrap gap-1 text-left focus:outline-none"
-                        aria-label={`${viewModel.name} 배지 영역 선택`}
-                      >
+                      <div className="mt-2 flex flex-wrap gap-1 text-left">
                         {viewModel.badges.map((badge) => (
                           <span
                             key={badge}
@@ -211,7 +231,7 @@ function EndingEntityWorkspace({
                             {badge}
                           </span>
                         ))}
-                      </button>
+                      </div>
                     </div>
                   );
                 })
@@ -221,6 +241,7 @@ function EndingEntityWorkspace({
 
           {selectedNode && (
             <EndingEntityDetail
+              key={selectedNode.id}
               node={selectedNode}
               themeId={themeId}
               onChange={updateNodeData}

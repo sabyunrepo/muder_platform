@@ -24,7 +24,15 @@ export interface EndingDecisionSummary {
   warnings: string[];
 }
 
-export function toEndingEditorViewModel(node: Node, incomingCount = 0): EndingEditorViewModel {
+export interface EndingEditorBadgeOptions {
+  conditionGroupCount?: number;
+  isDefaultEnding?: boolean;
+}
+
+export function toEndingEditorViewModel(
+  node: Node,
+  badgeOptions: EndingEditorBadgeOptions = {},
+): EndingEditorViewModel {
   const data = node.data as FlowNodeData;
   const name = data.label?.trim() || "이름 없는 결말";
   const content = data.endingContent?.trim() ?? "";
@@ -33,7 +41,7 @@ export function toEndingEditorViewModel(node: Node, incomingCount = 0): EndingEd
     name,
     contentPreview: content || "결말 본문을 아직 작성하지 않았습니다.",
     isReady: Boolean(data.label?.trim() && content),
-    badges: buildEndingBadges(Boolean(data.label?.trim()), Boolean(content), incomingCount),
+    badges: buildEndingBadges(Boolean(data.label?.trim()), Boolean(content), badgeOptions),
   };
 }
 
@@ -47,9 +55,7 @@ export function buildEndingDecisionSummary(nodes: Node[], edges: Edge[]): Ending
     }
   }
 
-  const viewModels = endingNodes.map((node) =>
-    toEndingEditorViewModel(node, incomingByEnding.get(node.id) ?? 0),
-  );
+  const viewModels = endingNodes.map((node) => toEndingEditorViewModel(node));
   const readyCount = viewModels.filter((ending) => ending.isReady).length;
   const connectedCount = endingNodes.filter((node) => (incomingByEnding.get(node.id) ?? 0) > 0).length;
   const warnings = buildEndingWarnings(viewModels, endingNodes.length, connectedCount);
@@ -100,12 +106,14 @@ export function endingVisibilityLabel(value: EndingVisibility): string {
 function buildEndingBadges(
   hasName: boolean,
   hasContent: boolean,
-  incomingCount: number,
+  options: EndingEditorBadgeOptions,
 ): string[] {
+  const conditionGroupCount = options.conditionGroupCount ?? 0;
   return [
     hasName ? "이름 있음" : "이름 필요",
     hasContent ? "본문 작성됨" : "본문 필요",
-    incomingCount > 0 ? `도달 경로 ${incomingCount}개` : "아직 연결 없음",
+    ...(options.isDefaultEnding ? ["기본 결말"] : []),
+    conditionGroupCount > 0 ? `조건 그룹 ${conditionGroupCount}개` : "조건 없음",
   ];
 }
 

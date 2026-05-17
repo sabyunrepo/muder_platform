@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   BlockTypeSelect,
   BoldItalicUnderlineToggles,
@@ -63,6 +63,11 @@ export function RichContentEditor({
   const normalizedMarkdown = useMemo(() => normalizeLegacyEscapedMarkdown(markdown), [markdown]);
   const [replacementTarget, setReplacementTarget] = useState<MediaEmbedAttributes | null>(null);
   const { data: media = [] } = useMediaList(themeId);
+
+  useEffect(() => {
+    editorRef.current?.setMarkdown?.(normalizedMarkdown);
+  }, [normalizedMarkdown]);
+
   const plugins = useMemo(
     () => [
       headingsPlugin(),
