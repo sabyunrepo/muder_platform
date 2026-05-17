@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -114,6 +114,28 @@ describe('MediaEmbedEditor', () => {
     renderEditor({ onDropOn });
 
     const block = screen.getByRole('group', { name: '포스터 미디어 블록' });
+    const originalGetBoundingClientRect = block.getBoundingClientRect;
+    const originalClientHeight = Object.getOwnPropertyDescriptor(block, 'clientHeight');
+    Object.defineProperty(block, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        x: 0,
+        y: 100,
+        top: 100,
+        left: 0,
+        right: 320,
+        bottom: 300,
+        width: 320,
+        height: 200,
+        toJSON: () => ({}),
+      }),
+    });
+    Object.defineProperty(block, 'clientHeight', {
+      configurable: true,
+      get() {
+        return 200;
+      },
+    });
     const data = new Map<string, string>();
     const dataTransfer = {
       types: ['application/x-mmp-media-embed'],
@@ -123,10 +145,31 @@ describe('MediaEmbedEditor', () => {
       getData: (type: string) => data.get(type) ?? '',
     };
 
-    fireEvent.dragStart(block, { dataTransfer });
-    fireEvent.drop(block, { dataTransfer, clientY: -1 });
+    try {
+      const beforeDrop = createEvent.drop(block);
+      Object.defineProperty(beforeDrop, 'dataTransfer', { value: dataTransfer });
+      Object.defineProperty(beforeDrop, 'clientY', { value: 120 });
+      const afterDrop = createEvent.drop(block);
+      Object.defineProperty(afterDrop, 'dataTransfer', { value: dataTransfer });
+      Object.defineProperty(afterDrop, 'clientY', { value: 260 });
 
-    expect(onDropOn).toHaveBeenCalledWith(attrs, attrs, 'after');
+      fireEvent.dragStart(block, { dataTransfer });
+      fireEvent(block, beforeDrop);
+      fireEvent(block, afterDrop);
+
+      expect(onDropOn).toHaveBeenNthCalledWith(1, attrs, attrs, 'before');
+      expect(onDropOn).toHaveBeenNthCalledWith(2, attrs, attrs, 'after');
+    } finally {
+      Object.defineProperty(block, 'getBoundingClientRect', {
+        configurable: true,
+        value: originalGetBoundingClientRect,
+      });
+      if (originalClientHeight) {
+        Object.defineProperty(block, 'clientHeight', originalClientHeight);
+      } else {
+        delete (block as Partial<HTMLElement>).clientHeight;
+      }
+    }
   });
 
   it('uses icon-only width controls instead of visible M and L text', () => {

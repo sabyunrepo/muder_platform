@@ -60,8 +60,15 @@ export function RichContentEditor({
 }) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const normalizedMarkdown = useMemo(() => normalizeLegacyEscapedMarkdown(markdown), [markdown]);
+  const markdownRef = useRef(normalizedMarkdown);
+  const onChangeRef = useRef(onChange);
   const [replacementTarget, setReplacementTarget] = useState<MediaEmbedAttributes | null>(null);
   const { data: media = [] } = useMediaList(themeId);
+
+  useEffect(() => {
+    markdownRef.current = normalizedMarkdown;
+    onChangeRef.current = onChange;
+  }, [normalizedMarkdown, onChange]);
 
   useEffect(() => {
     if (editorRef.current?.getMarkdown?.() !== normalizedMarkdown) {
@@ -86,13 +93,17 @@ export function RichContentEditor({
             },
             {
               onInsertParagraph: (attrs, position) => {
-                onChange(insertMediaEmbedParagraph(normalizedMarkdown, attrs, position));
+                onChangeRef.current(
+                  insertMediaEmbedParagraph(markdownRef.current, attrs, position)
+                );
               },
               onMove: (attrs, direction) => {
-                onChange(moveMediaEmbedBlock(normalizedMarkdown, attrs, direction));
+                onChangeRef.current(moveMediaEmbedBlock(markdownRef.current, attrs, direction));
               },
               onDropOn: (source, target, position) => {
-                onChange(moveMediaEmbedBlockTo(normalizedMarkdown, source, target, position));
+                onChangeRef.current(
+                  moveMediaEmbedBlockTo(markdownRef.current, source, target, position)
+                );
               },
             }
           ),
@@ -212,7 +223,9 @@ function replaceMediaEmbed(markdown: string, target: MediaEmbedAttributes, nextS
     const attrs = match[1] ?? '';
     if (
       readAttr(attrs, 'mediaId') !== target.mediaId ||
-      (readAttr(attrs, 'type') || 'image') !== target.type
+      (readAttr(attrs, 'type') || 'image') !== target.type ||
+      (readAttr(attrs, 'align') || 'center') !== target.align ||
+      (readAttr(attrs, 'width') || 'medium') !== target.width
     ) {
       continue;
     }

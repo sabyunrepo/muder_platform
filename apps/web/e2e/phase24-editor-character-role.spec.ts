@@ -217,6 +217,12 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
     await expect(block.getByRole("button", { name: "보통" })).toHaveText("");
     await expect(block.getByRole("button", { name: "크게" })).toHaveText("");
 
+    const a11y = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .disableRules(["color-contrast"])
+      .analyze();
+    expect(a11y.violations).toEqual([]);
+
     await block.getByRole("button", { name: "미디어 아래에 문단 추가" }).click();
 
     const roleSheetRequestPromise = page.waitForRequest(
