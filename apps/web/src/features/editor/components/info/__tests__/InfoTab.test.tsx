@@ -13,6 +13,9 @@ const {
   useMediaListMock,
   useMediaDownloadUrlMock,
   mediaPickerPropsMock,
+  toastLoadingMock,
+  toastSuccessMock,
+  toastErrorMock,
 } = vi.hoisted(() => ({
   useStoryInfosMock: vi.fn(),
   useCreateStoryInfoMock: vi.fn(),
@@ -24,6 +27,9 @@ const {
   useMediaListMock: vi.fn(),
   useMediaDownloadUrlMock: vi.fn(),
   mediaPickerPropsMock: vi.fn(),
+  toastLoadingMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  toastErrorMock: vi.fn(),
 }));
 
 vi.mock('@/features/editor/storyInfoApi', () => ({
@@ -45,6 +51,14 @@ vi.mock('@/features/editor/flowApi', () => ({
 
 vi.mock('@/features/editor/api', () => ({
   useEditorCharacters: (...args: unknown[]) => useEditorCharactersMock(...args),
+}));
+
+vi.mock('sonner', () => ({
+  toast: {
+    loading: toastLoadingMock,
+    success: toastSuccessMock,
+    error: toastErrorMock,
+  },
 }));
 
 vi.mock('@mdxeditor/editor', () => ({
@@ -228,6 +242,19 @@ beforeEach(() => {
             ],
           },
           position_x: 0,
+          position_y: 0,
+          created_at: '2026-05-06T00:00:00Z',
+          updated_at: '2026-05-06T00:00:00Z',
+        },
+        {
+          id: 'phase-2',
+          theme_id: 'theme-1',
+          type: 'phase',
+          data: {
+            label: '심문',
+            onEnter: [],
+          },
+          position_x: 160,
           position_y: 0,
           created_at: '2026-05-06T00:00:00Z',
           updated_at: '2026-05-06T00:00:00Z',
@@ -443,23 +470,31 @@ describe('InfoTab', () => {
     });
   });
 
-  it('updates scene-start delivery settings for the selected story info', async () => {
+  it('자동저장으로 선택한 장면의 정보 배포 대상을 바꾼다', async () => {
+    vi.useFakeTimers();
     render(<InfoTab themeId="theme-1" />);
 
     const deliverySettings = screen.getByRole('region', { name: '정보 배포 설정' });
-    fireEvent.click(within(deliverySettings).getByLabelText('캐릭터 선택'));
-    fireEvent.click(within(deliverySettings).getByLabelText('고동'));
-    fireEvent.click(within(deliverySettings).getByRole('button', { name: /배포 적용/ }));
+    fireEvent.change(within(deliverySettings).getByLabelText('배포 장면'), {
+      target: { value: 'phase-2' },
+    });
+    fireEvent.click(within(deliverySettings).getByRole('button', { name: /고동/ }));
 
-    await waitFor(() => expect(updateFlowNode).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(updateFlowNode).toHaveBeenCalledTimes(1);
     expect(updateFlowNode).toHaveBeenCalledWith({
-      nodeId: 'phase-1',
+      nodeId: 'phase-2',
       body: {
         data: {
-          label: '오프닝',
+          label: '심문',
           onEnter: [
-            {
-              id: 'info-action',
+            expect.objectContaining({
               type: 'DELIVER_INFORMATION',
               params: {
                 deliveries: [
@@ -469,11 +504,51 @@ describe('InfoTab', () => {
                   }),
                 ],
               },
-            },
+            }),
           ],
         },
       },
     });
+    expect(toastLoadingMock).toHaveBeenCalledWith('정보 배포 설정 저장 중...', expect.objectContaining({ id: 'info-delivery-autosave' }));
+    expect(toastSuccessMock).toHaveBeenCalledWith('정보 배포 설정이 자동저장되었습니다', expect.objectContaining({ id: 'info-delivery-autosave' }));
+    expect(within(deliverySettings).queryByRole('button', { name: /배포 적용/ })).toBeNull();
+  });
+
+  it('정보 배포 자동저장 실패 토스트에서 같은 변경을 재시도할 수 있다', async () => {
+    vi.useFakeTimers();
+    updateFlowNode
+      .mockRejectedValueOnce(new Error('failed to update delivery'))
+      .mockResolvedValueOnce({});
+    render(<InfoTab themeId="theme-1" />);
+
+    const deliverySettings = screen.getByRole('region', { name: '정보 배포 설정' });
+    fireEvent.change(within(deliverySettings).getByLabelText('배포 장면'), {
+      target: { value: 'phase-2' },
+    });
+    fireEvent.click(within(deliverySettings).getByRole('button', { name: /송 사장/ }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(toastErrorMock).toHaveBeenCalledWith(
+      '정보 배포 설정 저장에 실패했습니다',
+      expect.objectContaining({
+        id: 'info-delivery-autosave',
+        action: expect.objectContaining({ label: '재시도' }),
+      }),
+    );
+    const [, errorOptions] = toastErrorMock.mock.calls[0];
+    errorOptions.action.onClick();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(updateFlowNode).toHaveBeenCalledTimes(2);
+    expect(updateFlowNode.mock.calls[1][0]).toEqual(expect.objectContaining({ nodeId: 'phase-2' }));
   });
 
   it('auto-dismisses save errors and lets creators close them immediately', async () => {
