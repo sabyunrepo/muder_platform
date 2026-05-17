@@ -156,7 +156,11 @@ describe("PhaseNodePanel type-specific fields", () => {
 
   it("수사 장면은 기본 정보, 시간, 맵 선택, 자동 진행 안내를 표시한다", () => {
     renderWithQC(
-      <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={vi.fn()} />,
+      <PhaseNodePanel
+        node={makeNode({ onEnter: [{ id: "bgm", type: "SET_BGM", params: {} }] })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
     );
 
     expect(screen.getByText("장면 설정")).toBeDefined();
@@ -165,12 +169,91 @@ describe("PhaseNodePanel type-specific fields", () => {
     expect(screen.getByLabelText("시간 (분)")).toBeDefined();
     expect(screen.getByLabelText("사용할 맵")).toBeDefined();
     expect(screen.getByText(/다음 연결 장면으로 자동 진행/)).toBeDefined();
+    expect(screen.getByText("장면 액션")).toBeDefined();
+    expect(screen.getByText("장면 시작 액션")).toBeDefined();
+    expect(screen.getByText("장면 종료 액션")).toBeDefined();
 
     expect(screen.queryByText("라운드 수")).toBeNull();
     expect(screen.queryByText("장면 진입 효과")).toBeNull();
     expect(screen.queryByText("토론방 설정")).toBeNull();
     expect(screen.queryByText("읽기 대사 배치")).toBeNull();
-    expect(screen.queryByText("장면 시작 트리거")).toBeNull();
+  });
+
+  it("장면 시작 액션과 종료 액션을 onEnter/onExit에 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel node={makeNode()} themeId="t1" onUpdate={onUpdate} />,
+    );
+
+    const addButtons = screen.getAllByRole("button", { name: "추가" });
+    fireEvent.click(addButtons[0]);
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      onEnter: [expect.objectContaining({ type: "SET_BGM", params: {} })],
+    });
+
+    fireEvent.click(addButtons[1]);
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      onExit: [expect.objectContaining({ type: "SET_BGM", params: {} })],
+    });
+  });
+
+  it("조사권 모듈이 켜져 있으면 장면 액션 목록에 조사권 액션을 표시한다", () => {
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ onEnter: [{ id: "bgm", type: "SET_BGM", params: {} }] })}
+        themeId="t1"
+        onUpdate={vi.fn()}
+      />,
+      {
+        id: "t1",
+        version: 7,
+        config_json: {
+          modules: {
+            deck_investigation: { enabled: true, config: { tokens: [] } },
+          },
+        },
+      },
+    );
+
+    const startSelect = screen.getByRole("combobox", { name: "장면 시작 액션 1 실행 결과" });
+    expect(within(startSelect).getByRole("option", { name: "조사권 추가" })).toBeDefined();
+    expect(within(startSelect).getByRole("option", { name: "조사권 초기화" })).toBeDefined();
+  });
+
+  it("조사권 액션으로 바꾸면 첫 조사권을 기본 tokenId로 저장한다", () => {
+    const onUpdate = vi.fn();
+    renderWithQC(
+      <PhaseNodePanel
+        node={makeNode({ onEnter: [{ id: "bgm", type: "SET_BGM", params: {} }] })}
+        themeId="t1"
+        onUpdate={onUpdate}
+      />,
+      {
+        id: "t1",
+        version: 7,
+        config_json: {
+          modules: {
+            deck_investigation: {
+              enabled: true,
+              config: { tokens: [{ id: "coin", name: "조사권", iconLabel: "AP", defaultAmount: 1 }] },
+            },
+          },
+        },
+      },
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "장면 시작 액션 1 실행 결과" }), {
+      target: { value: "GRANT_INVESTIGATION_TOKEN" },
+    });
+
+    expect(onUpdate).toHaveBeenLastCalledWith("node-1", {
+      onEnter: [
+        expect.objectContaining({
+          type: "GRANT_INVESTIGATION_TOKEN",
+          params: { tokenId: "coin", amount: 1 },
+        }),
+      ],
+    });
   });
 
   it("수사 장면에서 사용할 맵을 선택하면 investigationMapId를 저장한다", () => {

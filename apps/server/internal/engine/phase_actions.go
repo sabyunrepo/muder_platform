@@ -145,21 +145,23 @@ type configuredPhaseAction struct {
 }
 
 var legacyPhaseActionAliases = map[string]PhaseAction{
-	"deliver_information": ActionDeliverInformation,
-	"enable_voting":       ActionOpenVoting,
-	"disable_voting":      ActionCloseVoting,
-	"enable_chat":         ActionUnmuteChat,
-	"disable_chat":        ActionMuteChat,
-	"play_bgm":            ActionSetBGM,
-	"set_bgm":             ActionSetBGM,
-	"play_sound":          ActionPlaySound,
-	"play_media":          ActionPlayMedia,
-	"set_background":      ActionSetBackground,
-	"set_theme_color":     ActionSetThemeColor,
-	"stop_bgm":            ActionStopAudio,
-	"stop_audio":          ActionStopAudio,
-	"broadcast":           ActionBroadcastMessage,
-	"grant_clue":          ActionGrantClue,
+	"deliver_information":       ActionDeliverInformation,
+	"enable_voting":             ActionOpenVoting,
+	"disable_voting":            ActionCloseVoting,
+	"enable_chat":               ActionUnmuteChat,
+	"disable_chat":              ActionMuteChat,
+	"play_bgm":                  ActionSetBGM,
+	"set_bgm":                   ActionSetBGM,
+	"play_sound":                ActionPlaySound,
+	"play_media":                ActionPlayMedia,
+	"set_background":            ActionSetBackground,
+	"set_theme_color":           ActionSetThemeColor,
+	"stop_bgm":                  ActionStopAudio,
+	"stop_audio":                ActionStopAudio,
+	"broadcast":                 ActionBroadcastMessage,
+	"grant_clue":                ActionGrantClue,
+	"grant_investigation_token": ActionGrantInvestigationToken,
+	"reset_investigation_token": ActionResetInvestigationToken,
 }
 
 // NormalizePhaseActionType maps editor/legacy action names to the backend
