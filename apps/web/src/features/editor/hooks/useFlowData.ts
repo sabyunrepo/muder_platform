@@ -23,6 +23,10 @@ function createFlowEdgeId(): string {
   return crypto.randomUUID();
 }
 
+interface AddFlowNodeOptions {
+  onCreated?: (node: Node) => void;
+}
+
 export function useFlowData(themeId: string) {
   const { data, isLoading, isError, error, refetch } = useFlowGraph(themeId);
   const saveFlow = useSaveFlow(themeId);
@@ -157,7 +161,12 @@ export function useFlowData(themeId: string) {
   }, [saveFlow, nodes, edges]);
 
   const addNode = useCallback(
-    (type: FlowNodeType, position: XYPosition, data?: Partial<FlowNodeData>) => {
+    (
+      type: FlowNodeType,
+      position: XYPosition,
+      data?: Partial<FlowNodeData>,
+      options?: AddFlowNodeOptions,
+    ) => {
       const defaultData: Partial<FlowNodeData> = type === 'phase' ? { label: '새 장면' } : {};
 
       createNode.mutate(
@@ -169,9 +178,11 @@ export function useFlowData(themeId: string) {
         },
         {
           onSuccess: (created) => {
-            const next = [...nodesRef.current, toReactFlowNode(created)];
+            const createdNode = toReactFlowNode(created);
+            const next = [...nodesRef.current, createdNode];
             setNodesAndRef(next);
             autoSave(next, edgesRef.current);
+            options?.onCreated?.(createdNode);
           },
         }
       );

@@ -67,13 +67,13 @@ describe('useFlowData', () => {
       error: null,
       refetch: vi.fn(),
     });
-    createNodeMutateMock.mockImplementation((_body, options) => {
+    createNodeMutateMock.mockImplementation((body, options) => {
       options?.onSuccess?.({
         id: 'n3',
-        type: 'phase',
-        data: { label: '새 장면' },
-        position_x: 200,
-        position_y: 0,
+        type: body.type,
+        data: body.data,
+        position_x: body.position_x,
+        position_y: body.position_y,
       });
     });
     deleteNodeMutateMock.mockImplementation((_id, options) => {
@@ -318,5 +318,21 @@ describe('useFlowData', () => {
 
     expect(createNodeMutateMock).toHaveBeenCalled();
     expect(latestSavedGraph().nodes.map((node: { id: string }) => node.id)).toContain('n3');
+  });
+
+  it('node 생성 성공 시 생성된 React Flow node를 콜백으로 전달한다', () => {
+    const onCreated = vi.fn();
+    const { result } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.addNode('ending', { x: 240, y: 160 }, undefined, { onCreated });
+    });
+
+    expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'n3',
+      type: 'ending',
+      position: { x: 240, y: 160 },
+      data: {},
+    }));
   });
 });
