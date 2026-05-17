@@ -80,7 +80,7 @@ describe('deckInvestigationAdapter', () => {
       },
     });
 
-    expect(config.tokens[0]).toMatchObject({ id: 'coin', name: '동전', defaultAmount: 2 });
+    expect(config.tokens[0]).toMatchObject({ id: 'coin', name: '동전', defaultAmount: 0 });
     expect(config.decks[0]).toMatchObject({
       id: 'deck-1',
       title: '서재 조사',
@@ -147,7 +147,7 @@ describe('deckInvestigationAdapter', () => {
         enabled: true,
         config: {
           keep: true,
-          tokens: [{ id: 'coin', name: '동전', iconLabel: '🪙', defaultAmount: 3 }],
+          tokens: [{ id: 'coin', name: '동전', iconLabel: '🪙', defaultAmount: 0 }],
           decks: [expect.objectContaining({ tokenId: 'coin' })],
         },
       },
@@ -236,7 +236,7 @@ describe('deckInvestigationAdapter', () => {
     });
 
     expect(runtime).toEqual({
-      tokens: [{ id: 'coin', defaultAmount: 2 }],
+      tokens: [{ id: 'coin', defaultAmount: 0 }],
       decks: [{
         id: 'deck-1',
         tokenId: 'coin',

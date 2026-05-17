@@ -343,14 +343,14 @@ describe("ActionListEditor", () => {
     ]);
   });
 
-  it("조사권 재설정 액션의 0 초기화 방식을 params로 저장한다", () => {
+  it("조사권 재설정 액션은 기본 수량 옵션 없이 0 초기화 안내를 보여준다", () => {
     const onChange = vi.fn();
 
     render(
       <ActionListEditor
         label="장면 시작 액션"
         actions={[
-          { id: "token", type: "RESET_INVESTIGATION_TOKEN", params: { tokenId: "coin", mode: "default" } },
+          { id: "token", type: "RESET_INVESTIGATION_TOKEN", params: { tokenId: "coin" } },
         ]}
         investigationTokens={[
           { id: "coin", name: "동전", iconLabel: "코", defaultAmount: 2 },
@@ -361,14 +361,17 @@ describe("ActionListEditor", () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole("combobox", { name: "재설정 방식" }), {
-      target: { value: "zero" },
-    });
+    expect(screen.getByText("0으로 초기화")).toBeDefined();
+    expect(screen.queryByText("시작 수량으로")).toBeNull();
+    expect(
+      screen.getByText("장면에서 지급한 조사권을 0개로 되돌립니다. 장면 초반에 필요한 지급량은 장면 시작 액션의 조사권 추가로 설정합니다."),
+    ).toBeDefined();
+
+    fireEvent.change(screen.getByDisplayValue("코 동전"), { target: { value: "badge" } });
 
     expect(onChange).toHaveBeenCalledWith([
-      { id: "token", type: "RESET_INVESTIGATION_TOKEN", params: { tokenId: "coin", mode: "zero" } },
+      { id: "token", type: "RESET_INVESTIGATION_TOKEN", params: { tokenId: "badge" } },
     ]);
-    expect(screen.getByText("시작 수량은 조사권 설정에서 정한 기본 지급량입니다.")).toBeDefined();
   });
 
   it("컬러 테마 실행 결과를 preset token으로 저장한다", () => {

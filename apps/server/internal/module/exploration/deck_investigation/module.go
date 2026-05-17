@@ -48,7 +48,7 @@ func (m *Module) Init(ctx context.Context, deps engine.ModuleDeps, config json.R
 
 	m.defaultTokenAmounts = make(map[string]int, len(m.config.Tokens))
 	for _, token := range m.config.Tokens {
-		m.defaultTokenAmounts[token.ID] = token.DefaultAmount
+		m.defaultTokenAmounts[token.ID] = 0
 	}
 	m.balancesByCharacter = map[string]map[string]int{}
 	m.ensureRosterLocked(ctx)
@@ -98,19 +98,14 @@ func (m *Module) ReactTo(ctx context.Context, action engine.PhaseActionPayload) 
 		if err := json.Unmarshal(action.Params, &params); err != nil {
 			return fmt.Errorf("deck_investigation: invalid RESET_INVESTIGATION_TOKEN params: %w", err)
 		}
-		resetAmount := func(_ int, defaultAmount int) int {
-			return defaultAmount
-		}
 		switch params.Mode {
-		case "", investigationTokenResetModeDefault:
-		case investigationTokenResetModeZero:
-			resetAmount = func(_ int, _ int) int {
-				return 0
-			}
+		case "", investigationTokenResetModeDefault, investigationTokenResetModeZero:
 		default:
 			return fmt.Errorf("deck_investigation: unsupported reset mode %q", params.Mode)
 		}
-		return m.applyTokenAction(ctx, params, resetAmount)
+		return m.applyTokenAction(ctx, params, func(_ int, _ int) int {
+			return 0
+		})
 	default:
 		return fmt.Errorf("deck_investigation: unsupported action %q", action.Action)
 	}

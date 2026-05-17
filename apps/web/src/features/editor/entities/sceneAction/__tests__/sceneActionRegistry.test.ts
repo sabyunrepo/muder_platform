@@ -40,7 +40,6 @@ describe("sceneActionRegistry", () => {
     });
     expect(createSceneActionDefaultParams("RESET_INVESTIGATION_TOKEN")).toEqual({
       tokenId: "",
-      mode: "default",
     });
   });
 

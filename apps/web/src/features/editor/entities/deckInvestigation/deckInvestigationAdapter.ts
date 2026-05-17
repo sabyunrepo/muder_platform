@@ -117,14 +117,11 @@ function normalizeToken(value: unknown, index: number): InvestigationTokenDraft 
   const rawId = typeof value.id === 'string' ? value.id.trim() : '';
   const rawName = typeof value.name === 'string' ? value.name.trim() : '';
   const rawIconLabel = typeof value.iconLabel === 'string' ? value.iconLabel.trim() : '';
-  const defaultAmount = typeof value.defaultAmount === 'number' && Number.isFinite(value.defaultAmount)
-    ? Math.max(0, Math.floor(value.defaultAmount))
-    : 0;
   return {
     id: rawId || `token-${index + 1}`,
     name: rawName || '조사권',
     iconLabel: rawIconLabel || '권',
-    defaultAmount,
+    defaultAmount: 0,
   };
 }
 
@@ -218,7 +215,7 @@ export function writeDeckInvestigationConfig(
   const current = readModuleConfig(configJson, DECK_INVESTIGATION_MODULE_ID);
   return writeModuleConfig(configJson, DECK_INVESTIGATION_MODULE_ID, {
     ...current,
-    tokens: draft.tokens,
+    tokens: draft.tokens.map((token) => ({ ...token, defaultAmount: 0 })),
     decks: draft.decks,
   });
 }
@@ -227,7 +224,7 @@ export function toDeckInvestigationRuntimeDraft(
   draft: DeckInvestigationConfigDraft,
 ): DeckInvestigationRuntimeDraft {
   return {
-    tokens: draft.tokens.map((token) => ({ id: token.id, defaultAmount: token.defaultAmount })),
+    tokens: draft.tokens.map((token) => ({ id: token.id, defaultAmount: 0 })),
     decks: draft.decks.map((deck) => ({
       id: deck.id,
       tokenId: deck.tokenId,
