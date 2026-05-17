@@ -9,7 +9,7 @@ export interface LocationHierarchyNode {
 
 export type LocationDropValidation =
   | { ok: true }
-  | { ok: false; reason: 'missing-location' | 'self' | 'grandchild' };
+  | { ok: false; reason: 'missing-location' | 'self' | 'grandchild' | 'child-parent' };
 
 export function buildLocationHierarchy(
   locations: LocationResponse[],
@@ -72,11 +72,14 @@ export function validateLocationDrop({
   const targetParent = locations.find((location) => location.id === targetParentId);
   if (!targetParent) return { ok: false, reason: 'missing-location' };
   if (targetParent.parent_location_id) return { ok: false, reason: 'grandchild' };
+  if (locations.some((location) => location.parent_location_id === draggedId)) {
+    return { ok: false, reason: 'child-parent' };
+  }
 
   return { ok: true };
 }
 
 function compareLocations(a: LocationResponse, b: LocationResponse): number {
   if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
-  return a.name.localeCompare(b.name, 'ko');
+  return a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id);
 }

@@ -68,7 +68,10 @@ export function buildLocationParentOptions(
   return locations
     .filter((location) => location.id !== currentLocationId)
     .filter((location) => !location.parent_location_id)
-    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'ko'))
+    .sort(
+      (a, b) =>
+        a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id)
+    )
     .map((location) => ({ id: location.id, label: location.name, depth: 0 }));
 }
 

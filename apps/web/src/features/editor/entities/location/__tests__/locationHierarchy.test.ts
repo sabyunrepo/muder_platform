@@ -31,6 +31,22 @@ describe('locationHierarchy', () => {
     expect(tree[0].children.map((node) => node.location.id)).toEqual(['child-1', 'child-2']);
   });
 
+  it('keeps direct clue counts separate for parents and children', () => {
+    const tree = buildLocationHierarchy(
+      [
+        location({ id: 'parent-1', name: '로비', parent_location_id: null, sort_order: 1 }),
+        location({ id: 'child-1', name: '프런트', parent_location_id: 'parent-1', sort_order: 1 }),
+      ],
+      {
+        'parent-1': 2,
+        'child-1': 3,
+      }
+    );
+
+    expect(tree[0].directClueCount).toBe(2);
+    expect(tree[0].children[0].directClueCount).toBe(3);
+  });
+
   it('formats child path labels as parent slash child', () => {
     const locations = [
       location({ id: 'parent-1', name: '로비', parent_location_id: null }),
@@ -55,5 +71,21 @@ describe('locationHierarchy', () => {
         targetParentId: 'child-1',
       })
     ).toEqual({ ok: false, reason: 'grandchild' });
+  });
+
+  it('rejects moving a parent that already owns children under another parent', () => {
+    const locations = [
+      location({ id: 'parent-1', name: '로비', parent_location_id: null }),
+      location({ id: 'child-1', name: '프런트', parent_location_id: 'parent-1' }),
+      location({ id: 'parent-2', name: '객실', parent_location_id: null }),
+    ];
+
+    expect(
+      validateLocationDrop({
+        locations,
+        draggedId: 'parent-1',
+        targetParentId: 'parent-2',
+      })
+    ).toEqual({ ok: false, reason: 'child-parent' });
   });
 });
