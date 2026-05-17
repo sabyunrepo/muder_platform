@@ -7,6 +7,9 @@ const {
   useCreateStoryInfoMock,
   useUpdateStoryInfoMock,
   useDeleteStoryInfoMock,
+  useFlowGraphMock,
+  useUpdateFlowNodeMock,
+  useEditorCharactersMock,
   useMediaListMock,
   useMediaDownloadUrlMock,
   mediaPickerPropsMock,
@@ -15,6 +18,9 @@ const {
   useCreateStoryInfoMock: vi.fn(),
   useUpdateStoryInfoMock: vi.fn(),
   useDeleteStoryInfoMock: vi.fn(),
+  useFlowGraphMock: vi.fn(),
+  useUpdateFlowNodeMock: vi.fn(),
+  useEditorCharactersMock: vi.fn(),
   useMediaListMock: vi.fn(),
   useMediaDownloadUrlMock: vi.fn(),
   mediaPickerPropsMock: vi.fn(),
@@ -30,6 +36,15 @@ vi.mock('@/features/editor/storyInfoApi', () => ({
 vi.mock('@/features/editor/mediaApi', () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
   useMediaDownloadUrl: (...args: unknown[]) => useMediaDownloadUrlMock(...args),
+}));
+
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: (...args: unknown[]) => useFlowGraphMock(...args),
+  useUpdateFlowNode: (...args: unknown[]) => useUpdateFlowNodeMock(...args),
+}));
+
+vi.mock('@/features/editor/api', () => ({
+  useEditorCharacters: (...args: unknown[]) => useEditorCharactersMock(...args),
 }));
 
 vi.mock('@mdxeditor/editor', () => ({
@@ -161,11 +176,13 @@ function enterInfoEditMode() {
 let createMutate: ReturnType<typeof vi.fn>;
 let updateMutate: ReturnType<typeof vi.fn>;
 let deleteMutate: ReturnType<typeof vi.fn>;
+let updateFlowNode: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   createMutate = vi.fn().mockResolvedValue({ ...baseInfo, id: 'info-2' });
   updateMutate = vi.fn().mockResolvedValue({ ...baseInfo, title: '수정된 정보' });
   deleteMutate = vi.fn().mockResolvedValue(undefined);
+  updateFlowNode = vi.fn().mockResolvedValue({});
 
   useStoryInfosMock.mockReturnValue({
     data: [baseInfo],
@@ -184,6 +201,56 @@ beforeEach(() => {
   useDeleteStoryInfoMock.mockReturnValue({
     mutateAsync: deleteMutate,
     isPending: false,
+  });
+  useFlowGraphMock.mockReturnValue({
+    data: {
+      nodes: [
+        {
+          id: 'phase-1',
+          theme_id: 'theme-1',
+          type: 'phase',
+          data: {
+            label: '오프닝',
+            onEnter: [
+              {
+                id: 'info-action',
+                type: 'DELIVER_INFORMATION',
+                params: {
+                  deliveries: [
+                    {
+                      id: 'all',
+                      target: { type: 'all_players' },
+                      story_info_ids: ['info-1'],
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          position_x: 0,
+          position_y: 0,
+          created_at: '2026-05-06T00:00:00Z',
+          updated_at: '2026-05-06T00:00:00Z',
+        },
+      ],
+      edges: [],
+    },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  });
+  useUpdateFlowNodeMock.mockReturnValue({
+    mutateAsync: updateFlowNode,
+    isPending: false,
+  });
+  useEditorCharactersMock.mockReturnValue({
+    data: [
+      { id: 'char-1', name: '고동' },
+      { id: 'char-2', name: '송 사장' },
+    ],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
   });
   useMediaListMock.mockReturnValue({
     data: [
@@ -224,6 +291,11 @@ describe('InfoTab', () => {
     expect(screen.queryByText('관련 단서')).toBeNull();
     expect(screen.queryByText('관련 장소')).toBeNull();
     expect(screen.queryByRole('region', { name: '정보 카드 프리뷰' })).toBeNull();
+    expect(screen.getByRole('region', { name: '정보 배포 설정' })).toHaveProperty(
+      'textContent',
+      expect.stringContaining('오프닝'),
+    );
+    expect(screen.getByText('현재 전체 캐릭터에게 공개됩니다.')).toBeDefined();
   });
 
   it('shows typed markdown shortcuts as formatted content in the information editor', () => {
@@ -367,6 +439,39 @@ describe('InfoTab', () => {
         relatedLocationIds: ['loc-1'],
         sortOrder: 0,
         version: 3,
+      },
+    });
+  });
+
+  it('updates scene-start delivery settings for the selected story info', async () => {
+    render(<InfoTab themeId="theme-1" />);
+
+    const deliverySettings = screen.getByRole('region', { name: '정보 배포 설정' });
+    fireEvent.click(within(deliverySettings).getByLabelText('캐릭터 선택'));
+    fireEvent.click(within(deliverySettings).getByLabelText('고동'));
+    fireEvent.click(within(deliverySettings).getByRole('button', { name: /배포 적용/ }));
+
+    await waitFor(() => expect(updateFlowNode).toHaveBeenCalledTimes(1));
+    expect(updateFlowNode).toHaveBeenCalledWith({
+      nodeId: 'phase-1',
+      body: {
+        data: {
+          label: '오프닝',
+          onEnter: [
+            {
+              id: 'info-action',
+              type: 'DELIVER_INFORMATION',
+              params: {
+                deliveries: [
+                  expect.objectContaining({
+                    target: { type: 'character', character_id: 'char-1' },
+                    story_info_ids: ['info-1'],
+                  }),
+                ],
+              },
+            },
+          ],
+        },
       },
     });
   });
