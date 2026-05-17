@@ -73,7 +73,10 @@ export interface UseDebouncedMutationOptions<TBody> {
    * **재진입 금지**: 이 콜백 안에서 `schedule`/`flush`/`cancel`을 동기 호출
    * 하지 마라. 필요하면 `queueMicrotask`로 다음 tick에 dispatch.
    */
-  mutate: (body: TBody, opts: { onError: (error?: unknown) => void }) => void;
+  mutate: (
+    body: TBody,
+    opts: { onError: (error?: unknown) => void; onSuccess?: () => void },
+  ) => void;
   /** Debounce window in milliseconds. Defaults to 1500 (Phase 18.5 W2 PR-5). */
   debounceMs?: number;
   /**
@@ -85,6 +88,10 @@ export interface UseDebouncedMutationOptions<TBody> {
   applyOptimistic?: (body: TBody) => (() => void) | null;
   /** Fired after rollback when the mutation hits onError. */
   onError?: (error?: unknown) => void;
+  /** Fired after rollback with the failed body for retry-aware wrappers. */
+  onFailure?: (error: unknown | undefined, body: TBody) => void;
+  /** Fired after the mutation succeeds. */
+  onSuccess?: (body: TBody) => void;
 }
 
 export interface UseDebouncedMutationReturn<TBody> {
@@ -108,6 +115,8 @@ interface OptsRef<TBody> {
   mutate: UseDebouncedMutationOptions<TBody>["mutate"];
   applyOptimistic: UseDebouncedMutationOptions<TBody>["applyOptimistic"];
   onError: UseDebouncedMutationOptions<TBody>["onError"];
+  onFailure: UseDebouncedMutationOptions<TBody>["onFailure"];
+  onSuccess: UseDebouncedMutationOptions<TBody>["onSuccess"];
 }
 
 type TimerRef = React.MutableRefObject<ReturnType<typeof setTimeout> | null>;
@@ -139,6 +148,10 @@ function flushPending<TBody>(
     onError: (error) => {
       rollback?.();
       optsRef.current.onError?.(error);
+      optsRef.current.onFailure?.(error, body);
+    },
+    onSuccess: () => {
+      optsRef.current.onSuccess?.(body);
     },
   });
 }
@@ -146,7 +159,14 @@ function flushPending<TBody>(
 export function useDebouncedMutation<TBody>(
   options: UseDebouncedMutationOptions<TBody>,
 ): UseDebouncedMutationReturn<TBody> {
-  const { mutate, debounceMs = DEFAULT_DEBOUNCE_MS, applyOptimistic, onError } = options;
+  const {
+    mutate,
+    debounceMs = DEFAULT_DEBOUNCE_MS,
+    applyOptimistic,
+    onError,
+    onFailure,
+    onSuccess,
+  } = options;
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingRef = useRef<TBody | null>(null);
@@ -154,10 +174,16 @@ export function useDebouncedMutation<TBody>(
   // Latest options snapshot, synced via useEffect so we only mutate the ref
   // post-commit (Round-2 N-2: render-body ref writes are unsafe under React 19
   // concurrent rendering — speculative renders can replay).
-  const optsRef = useRef<OptsRef<TBody>>({ mutate, applyOptimistic, onError });
+  const optsRef = useRef<OptsRef<TBody>>({
+    mutate,
+    applyOptimistic,
+    onError,
+    onFailure,
+    onSuccess,
+  });
   useEffect(() => {
-    optsRef.current = { mutate, applyOptimistic, onError };
-  }, [mutate, applyOptimistic, onError]);
+    optsRef.current = { mutate, applyOptimistic, onError, onFailure, onSuccess };
+  }, [mutate, applyOptimistic, onError, onFailure, onSuccess]);
 
   const flush = useCallback(
     () => flushPending(timerRef, pendingRef, optsRef),

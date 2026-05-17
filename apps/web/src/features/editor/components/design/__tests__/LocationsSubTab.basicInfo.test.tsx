@@ -49,6 +49,9 @@ describe('LocationsSubTab 장소 기본 정보', () => {
     ];
     updateLocationOptions.onSuccess?.();
     expect(updateConfigMutateMock).not.toHaveBeenCalled();
-    expect(toastSuccess).toHaveBeenCalledWith('장소 기본 정보가 저장되었습니다');
+    expect(toastSuccess).toHaveBeenCalledWith(
+      '장소 기본 정보가 저장되었습니다',
+      expect.objectContaining({ id: 'location-basic-autosave-loc-1' })
+    );
   });
 });

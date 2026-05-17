@@ -122,6 +122,7 @@ describe("PhaseNodePanel type-specific fields", () => {
           }),
         }),
       }),
+      expect.any(Object),
     );
   });
 
