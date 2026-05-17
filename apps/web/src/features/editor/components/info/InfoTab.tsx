@@ -11,6 +11,7 @@ import {
 import type { MediaType } from '@/features/editor/mediaApi';
 import { normalizeLegacyEscapedMarkdown } from '@/features/editor/components/content/legacyMarkdown';
 import { ConfirmDialog, Spinner } from '@/shared/components/ui';
+import { InfoDeliverySettingsCard } from './InfoDeliverySettingsCard';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
 
@@ -214,14 +215,17 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   if (!isEditing) {
     return (
       <>
-        <InfoBodyPreview
-          themeId={themeId}
-          info={baseline}
-          error={error}
-          deletePending={deleteInfo.isPending}
-          onEdit={() => setIsEditing(true)}
-          onDelete={() => setDeleteDialogOpen(true)}
-        />
+        <div className="space-y-4">
+          <InfoBodyPreview
+            themeId={themeId}
+            info={baseline}
+            error={error}
+            deletePending={deleteInfo.isPending}
+            onEdit={() => setIsEditing(true)}
+            onDelete={() => setDeleteDialogOpen(true)}
+          />
+          <InfoDeliverySettingsCard themeId={themeId} storyInfoId={info.id} />
+        </div>
         {deleteDialog}
       </>
     );
@@ -290,6 +294,9 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
               {updateInfo.isPending ? '저장 중...' : '저장'}
             </button>
           </div>
+        </div>
+        <div className="mt-4">
+          <InfoDeliverySettingsCard themeId={themeId} storyInfoId={info.id} />
         </div>
       </section>
       {deleteDialog}
