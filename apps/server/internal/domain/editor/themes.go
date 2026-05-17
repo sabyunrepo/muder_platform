@@ -106,33 +106,49 @@ func (s *service) UpdateTheme(ctx context.Context, creatorID, themeID uuid.UUID,
 
 // DeleteTheme removes a draft theme. Published themes must be unpublished first.
 func (s *service) DeleteTheme(ctx context.Context, creatorID, themeID uuid.UUID) error {
-	theme, err := s.getOwnedTheme(ctx, creatorID, themeID)
-	if err != nil {
-		return err
-	}
-	if theme.Status != "DRAFT" {
-		return apperror.BadRequest("only draft themes can be deleted")
-	}
 	var storageKeys []string
-	if s.storage != nil {
-		mediaRows, err := s.q.ListMediaByTheme(ctx, theme.ID)
+	var theme db.Theme
+	if err := pgx.BeginTxFunc(ctx, s.pool, pgx.TxOptions{}, func(tx pgx.Tx) error {
+		qtx := s.q.WithTx(tx)
+		var err error
+		theme, err = qtx.GetTheme(ctx, themeID)
 		if err != nil {
-			s.logger.Error().Err(err).Str("theme_id", theme.ID.String()).Msg("failed to list theme media before delete")
-			return apperror.Internal("failed to list theme media before delete")
+			return err
 		}
-		storageKeys = make([]string, 0, len(mediaRows))
-		for _, media := range mediaRows {
-			if media.SourceType == SourceTypeFile && media.StorageKey.Valid {
-				storageKeys = append(storageKeys, media.StorageKey.String)
+		if theme.CreatorID != creatorID {
+			return apperror.Forbidden("you do not own this theme")
+		}
+		if theme.Status != "DRAFT" {
+			return apperror.BadRequest("only draft themes can be deleted")
+		}
+		if s.storage != nil {
+			mediaRows, err := qtx.ListMediaByTheme(ctx, theme.ID)
+			if err != nil {
+				return err
+			}
+			storageKeys = make([]string, 0, len(mediaRows))
+			for _, media := range mediaRows {
+				if media.SourceType == SourceTypeFile && media.StorageKey.Valid {
+					storageKeys = append(storageKeys, media.StorageKey.String)
+				}
 			}
 		}
-	}
-	if err := s.q.DeleteTheme(ctx, theme.ID); err != nil {
+		return qtx.DeleteTheme(ctx, theme.ID)
+	}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("theme not found")
+		}
+		var appErr *apperror.AppError
+		if errors.As(err, &appErr) {
+			return appErr
+		}
 		s.logger.Error().Err(err).Msg("failed to delete theme")
 		return apperror.Internal("failed to delete theme")
 	}
 	if len(storageKeys) > 0 {
-		if err := s.storage.DeleteObjects(context.WithoutCancel(ctx), storageKeys); err != nil {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		if err := s.storage.DeleteObjects(cleanupCtx, storageKeys); err != nil {
 			s.logger.Warn().Err(err).Str("theme_id", theme.ID.String()).Int("object_count", len(storageKeys)).Msg("failed to delete theme media objects")
 		}
 	}

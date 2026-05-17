@@ -60,7 +60,9 @@ func (s *mediaService) RequestReplacementUpload(ctx context.Context, creatorID, 
 	uploadURL, err := s.storage.GenerateUploadURL(ctx, storageKey, req.MimeType, req.FileSize, expiry)
 	if err != nil {
 		s.logger.Error().Err(err).Str("storage_key", storageKey).Msg("failed to generate replacement upload URL")
-		_ = s.q.DeleteMediaReplacementUpload(context.WithoutCancel(ctx), pending.ID)
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
 		return nil, apperror.Internal("failed to generate upload URL")
 	}
 	return &UploadURLResponse{UploadID: pending.ID, UploadURL: uploadURL, ExpiresAt: time.Now().Add(expiry)}, nil
@@ -97,7 +99,8 @@ func (s *mediaService) ConfirmReplacementUpload(ctx context.Context, creatorID, 
 	}
 
 	if err := s.verifyUploadedObject(ctx, pending.StorageKey, pending.FileSize, pending.MimeType, media.Type); err != nil {
-		cleanupCtx := context.WithoutCancel(ctx)
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
 		_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
 		_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
 		return nil, err
@@ -118,9 +121,11 @@ func (s *mediaService) ConfirmReplacementUpload(ctx context.Context, creatorID, 
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to replace media file")
 		return nil, apperror.Internal("failed to replace media file")
 	}
-	_ = s.q.DeleteMediaReplacementUpload(context.WithoutCancel(ctx), pending.ID)
+	cleanupCtx, cancel := storageCleanupContext(ctx)
+	defer cancel()
+	_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
 	if oldStorageKey != "" && oldStorageKey != pending.StorageKey {
-		if delErr := s.storage.DeleteObject(context.WithoutCancel(ctx), oldStorageKey); delErr != nil {
+		if delErr := s.storage.DeleteObject(cleanupCtx, oldStorageKey); delErr != nil {
 			s.logger.Warn().Err(delErr).Str("storage_key", oldStorageKey).Msg("failed to delete old media object")
 		}
 	}

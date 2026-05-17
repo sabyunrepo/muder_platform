@@ -508,6 +508,7 @@ type fakeStorageProvider struct {
 	objects             map[string][]byte
 	generateUploadErr   error
 	generateDownloadErr error
+	deleteObjectsErr    error
 	headErr             error
 	rangeErr            error
 }
@@ -560,6 +561,9 @@ func (f *fakeStorageProvider) DeleteObject(_ context.Context, key string) error 
 }
 
 func (f *fakeStorageProvider) DeleteObjects(ctx context.Context, keys []string) error {
+	if f.deleteObjectsErr != nil {
+		return f.deleteObjectsErr
+	}
 	for _, key := range keys {
 		_ = f.DeleteObject(ctx, key)
 	}

@@ -79,7 +79,7 @@ describe("ImageMediaReferenceField", () => {
 
     fireEvent.error(screen.getByAltText("우산걸이 미리보기"));
 
-    expect(screen.getByLabelText("이미지")).toBeDefined();
+    screen.getByLabelText("이미지");
     expect(screen.queryByAltText("우산걸이 미리보기")).toBeNull();
   });
 });

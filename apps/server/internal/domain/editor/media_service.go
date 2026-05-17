@@ -123,6 +123,12 @@ func newMediaServiceWith(q mediaQueries, storageProvider storage.Provider, logge
 	}
 }
 
+const storageCleanupTimeout = 10 * time.Second
+
+func storageCleanupContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), storageCleanupTimeout)
+}
+
 // --- ownership helpers ---
 
 func (s *mediaService) ownedTheme(ctx context.Context, creatorID, themeID uuid.UUID) (db.Theme, error) {
@@ -284,8 +290,8 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 	uploadURL, err := s.storage.GenerateUploadURL(ctx, storageKey, req.MimeType, req.FileSize, expiry)
 	if err != nil {
 		s.logger.Error().Err(err).Str("storage_key", storageKey).Msg("failed to generate upload URL")
-		// best-effort rollback — use WithoutCancel so rollback survives upstream ctx cancellation.
-		cleanupCtx := context.WithoutCancel(ctx)
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
 		if delErr := s.q.DeleteMedia(cleanupCtx, created.ID); delErr != nil {
 			s.logger.Error().Err(delErr).Str("media_id", created.ID.String()).Msg("failed to rollback media row")
 		}
@@ -366,14 +372,16 @@ func (s *mediaService) ConfirmUpload(ctx context.Context, creatorID, themeID uui
 			Int64("declared", declaredSize).
 			Int64("actual", meta.Size).
 			Msg("upload size mismatch")
-		cleanupCtx := context.WithoutCancel(ctx)
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
 		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
 		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
 		return nil, apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
 	}
 	// Post-upload hard cap: reject files above the absolute maximum even if declared smaller.
 	if meta.Size > MaxMediaFileSize {
-		cleanupCtx := context.WithoutCancel(ctx)
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
 		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
 		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
 		return nil, apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file exceeds maximum size")
@@ -393,7 +401,8 @@ func (s *mediaService) ConfirmUpload(ctx context.Context, creatorID, themeID uui
 
 	if err := validateMediaMagicBytes(header, media.Type, declaredMime); err != nil {
 		s.logger.Warn().Str("storage_key", storageKey).Str("mime", declaredMime).Msg("magic bytes mismatch")
-		cleanupCtx := context.WithoutCancel(ctx)
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
 		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
 		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
 		return nil, err

@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -301,6 +302,39 @@ func TestService_DeleteTheme_RemovesFileMediaFromStorage(t *testing.T) {
 
 	if _, ok := storageProvider.objects[storageKey]; ok {
 		t.Fatal("expected theme media file to be removed from storage")
+	}
+}
+
+func TestService_DeleteTheme_StorageDeleteErrorIsLoggedAndIgnored(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID := f.createThemeForUser(t, creatorID)
+	storageProvider := newFakeStorageProvider()
+	storageProvider.deleteObjectsErr = errors.New("r2 unavailable")
+	f.svc = NewServiceWithStorage(f.q, f.pool, zerolog.Nop(), storageProvider)
+
+	storageKey := "themes/" + themeID.String() + "/media/" + uuid.NewString() + ".webp"
+	storageProvider.objects[storageKey] = []byte("webp")
+	_, err := f.q.CreateMedia(ctx, db.CreateMediaParams{
+		ThemeID:    themeID,
+		Name:       "cover",
+		Type:       MediaTypeImage,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: storageKey, Valid: true},
+		FileSize:   pgtype.Int8{Int64: 4, Valid: true},
+		MimeType:   pgtype.Text{String: "image/webp", Valid: true},
+		Tags:       []string{},
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, f.svc.DeleteTheme(ctx, creatorID, themeID))
+
+	if _, ok := storageProvider.objects[storageKey]; !ok {
+		t.Fatal("expected storage object to remain when best-effort delete fails")
 	}
 }
 
