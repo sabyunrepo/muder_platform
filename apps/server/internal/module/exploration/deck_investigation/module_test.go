@@ -37,11 +37,11 @@ func TestModule_InitAndGrantInvestigationToken(t *testing.T) {
 	}
 
 	state := decodeModuleState(t, module)
-	if got := state.Tokens.ByCharacter["char-alice"]["coin"]; got != 3 {
-		t.Fatalf("alice coin = %d, want 3", got)
+	if got := state.Tokens.ByCharacter["char-alice"]["coin"]; got != 2 {
+		t.Fatalf("alice coin = %d, want 2", got)
 	}
-	if got := state.Tokens.ByCharacter["char-bob"]["coin"]; got != 3 {
-		t.Fatalf("bob coin = %d, want 3", got)
+	if got := state.Tokens.ByCharacter["char-bob"]["coin"]; got != 2 {
+		t.Fatalf("bob coin = %d, want 2", got)
 	}
 }
 
@@ -68,8 +68,8 @@ func TestModule_ResetInvestigationTokenForCharacter(t *testing.T) {
 	}
 
 	state := decodeModuleState(t, module)
-	if got := state.Tokens.ByCharacter["char-late"]["coin"]; got != 1 {
-		t.Fatalf("char-late coin = %d, want 1", got)
+	if got := state.Tokens.ByCharacter["char-late"]["coin"]; got != 0 {
+		t.Fatalf("char-late coin = %d, want 0", got)
 	}
 }
 
@@ -124,8 +124,8 @@ func TestModule_ResetInvestigationTokenWithDefaultModeLiteral(t *testing.T) {
 	}
 
 	state := decodeModuleState(t, module)
-	if got := state.Tokens.ByCharacter["char-late"]["coin"]; got != 2 {
-		t.Fatalf("char-late coin = %d, want 2", got)
+	if got := state.Tokens.ByCharacter["char-late"]["coin"]; got != 0 {
+		t.Fatalf("char-late coin = %d, want 0", got)
 	}
 }
 

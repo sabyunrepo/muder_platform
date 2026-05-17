@@ -97,10 +97,11 @@ describe('ModulesSubTab deck investigation settings', () => {
 
     expect(screen.getByText('조사권 설정')).toBeDefined();
     expect(screen.getByRole('textbox', { name: '기본 조사권 조사권 이름' })).toBeDefined();
-    expect(screen.getByRole('spinbutton', { name: '기본 조사권 초기 배포량' })).toBeDefined();
+    expect(screen.queryByText('시작 수량')).toBeNull();
+    expect(screen.getByText('단서 조사에 소비할 권한 이름을 정합니다. 지급 수량은 장면 설정에서 관리합니다.')).toBeDefined();
   });
 
-  it('조사권 시작 수량 변경을 deck_investigation module config로 저장한다', () => {
+  it('조사권 이름 변경 시 시작 수량은 0으로 정규화해 저장한다', () => {
     const themeWithDeckInvestigation: EditorThemeResponse = {
       ...baseTheme,
       config_json: {
@@ -142,8 +143,8 @@ describe('ModulesSubTab deck investigation settings', () => {
 
     render(<ModulesSubTab themeId="theme-1" theme={themeWithDeckInvestigation} />);
 
-    fireEvent.change(screen.getByRole('spinbutton', { name: '기본 조사권 초기 배포량' }), {
-      target: { value: '3' },
+    fireEvent.change(screen.getByRole('textbox', { name: '기본 조사권 조사권 이름' }), {
+      target: { value: '장면 조사권' },
     });
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
@@ -155,9 +156,9 @@ describe('ModulesSubTab deck investigation settings', () => {
           tokens: [
             {
               id: 'basic-token',
-              name: '기본 조사권',
+              name: '장면 조사권',
               iconLabel: '권',
-              defaultAmount: 3,
+              defaultAmount: 0,
             },
           ],
           decks: [{ id: 'deck-1', tokenId: 'basic-token' }],

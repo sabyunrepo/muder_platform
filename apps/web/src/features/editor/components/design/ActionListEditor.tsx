@@ -327,7 +327,6 @@ function InvestigationTokenActionFields({
     typeof params.amount === "number" && Number.isFinite(params.amount)
       ? Math.max(1, Math.floor(params.amount))
       : 1;
-  const resetMode = params.mode === "zero" ? "zero" : "default";
 
   return (
     <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
@@ -340,7 +339,6 @@ function InvestigationTokenActionFields({
               onParamsChange({
                 ...params,
                 tokenId: event.target.value,
-                ...(action.type === "RESET_INVESTIGATION_TOKEN" ? { mode: resetMode } : {}),
               })
             }
             className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
@@ -370,28 +368,17 @@ function InvestigationTokenActionFields({
             />
           </label>
         ) : (
-          <label className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1">
             <span className="text-[11px] text-slate-500">재설정 방식</span>
-            <select
-              value={resetMode}
-              onChange={(event) =>
-                onParamsChange({
-                  ...params,
-                  tokenId: selectedTokenId,
-                  mode: event.target.value,
-                })
-              }
-              className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
-            >
-              <option value="default">시작 수량으로</option>
-              <option value="zero">0으로 초기화</option>
-            </select>
-          </label>
+            <span className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200">
+              0으로 초기화
+            </span>
+          </div>
         )}
       </div>
       {action.type === "RESET_INVESTIGATION_TOKEN" ? (
         <p className="mt-2 text-[11px] leading-4 text-slate-500">
-          시작 수량은 조사권 설정에서 정한 기본 지급량입니다.
+          장면에서 지급한 조사권을 0개로 되돌립니다. 장면 초반에 필요한 지급량은 장면 시작 액션의 조사권 추가로 설정합니다.
         </p>
       ) : null}
       {tokens.length === 0 ? (

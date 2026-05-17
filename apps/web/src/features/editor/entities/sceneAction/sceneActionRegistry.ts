@@ -55,7 +55,7 @@ const SCENE_ACTION_DEFINITIONS: SceneActionDefinition[] = [
     value: SCENE_ACTION_TYPES.RESET_INVESTIGATION_TOKEN,
     label: "조사권 재설정",
     requiredModuleId: DECK_INVESTIGATION_MODULE_ID,
-    defaultParams: { tokenId: "", mode: "default" },
+    defaultParams: { tokenId: "" },
   },
 ];
 

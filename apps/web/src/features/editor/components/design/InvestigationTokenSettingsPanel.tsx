@@ -26,12 +26,6 @@ function generateTokenId(tokens: InvestigationTokenDraft[]): string {
   return candidate;
 }
 
-function normalizeAmount(value: string): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, Math.floor(parsed));
-}
-
 export function InvestigationTokenSettingsPanel({
   draft,
   isSaving,
@@ -89,7 +83,7 @@ export function InvestigationTokenSettingsPanel({
         <div>
           <h4 className="text-xs font-semibold text-slate-200">조사권 설정</h4>
           <p className="mt-0.5 text-[10px] text-slate-500">
-            단서 조사에 소비할 권한 이름과 시작 수량을 정합니다.
+            단서 조사에 소비할 권한 이름을 정합니다. 지급 수량은 장면 설정에서 관리합니다.
           </p>
         </div>
         <button
@@ -107,7 +101,7 @@ export function InvestigationTokenSettingsPanel({
         {tokens.map((token) => (
           <div
             key={token.id}
-            className="grid gap-2 rounded-md border border-slate-700 bg-slate-900/60 p-2 md:grid-cols-[minmax(0,1fr)_5rem_7rem_2rem]"
+            className="grid gap-2 rounded-md border border-slate-700 bg-slate-900/60 p-2 md:grid-cols-[minmax(0,1fr)_5rem_2rem]"
           >
             <label className="min-w-0">
               <span className="mb-1 block text-[10px] font-medium text-slate-500">
@@ -134,24 +128,6 @@ export function InvestigationTokenSettingsPanel({
                 disabled={isSaving}
                 aria-label={`${token.name} 표시 라벨`}
                 placeholder="권"
-              />
-            </label>
-
-            <label>
-              <span className="mb-1 block text-[10px] font-medium text-slate-500">
-                시작 수량
-              </span>
-              <input
-                className={inputCls}
-                type="number"
-                min={0}
-                step={1}
-                value={token.defaultAmount}
-                onChange={(event) =>
-                  updateToken(token.id, { defaultAmount: normalizeAmount(event.target.value) })
-                }
-                disabled={isSaving}
-                aria-label={`${token.name} 초기 배포량`}
               />
             </label>
 

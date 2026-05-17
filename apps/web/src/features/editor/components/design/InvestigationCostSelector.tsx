@@ -94,7 +94,7 @@ export function InvestigationCostSelector({
         </div>
       ) : null}
       <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-600">
-        <span>조사권 이름과 시작 수량은 모듈 탭의 조사권 설정에서 관리합니다.</span>
+        <span>조사권 이름은 모듈 탭에서, 지급 수량은 장면 설정에서 관리합니다.</span>
         <a
           href={manageHref}
           className="rounded border border-slate-800 px-2 py-1 text-slate-400 hover:border-amber-500/50 hover:text-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
