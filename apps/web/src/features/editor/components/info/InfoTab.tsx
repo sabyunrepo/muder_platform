@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 
 import {
@@ -14,6 +14,7 @@ import { ConfirmDialog, Spinner } from '@/shared/components/ui';
 import { InfoDeliverySettingsCard } from './InfoDeliverySettingsCard';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
+import { useEditorAutosaveToast } from '@/features/editor/hooks/useEditorAutosaveToast';
 
 interface InfoTabProps {
   themeId: string;
@@ -138,10 +139,57 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(() => !hasDisplayableBody(info));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const exitEditModeAfterSaveRef = useRef(false);
   const updateInfo = useUpdateStoryInfo(themeId);
   const deleteInfo = useDeleteStoryInfo(themeId);
+  const { schedule: scheduleInfoSave, flush: flushInfoSave, cancel: cancelInfoSave } =
+    useEditorAutosaveToast<StoryInfoResponse>({
+      debounceMs: 1000,
+      messages: {
+        toastId: `story-info-autosave-${info.id}`,
+        loading: '정보를 저장 중입니다',
+        success: '정보가 저장되었습니다',
+        error: '정보 저장에 실패했습니다',
+      },
+      mutate: (body, opts) => {
+        updateInfo
+          .mutateAsync({
+            id: info.id,
+            patch: {
+              title: body.title,
+              body: body.body,
+              imageMediaId: body.imageMediaId ?? null,
+              relatedCharacterIds: body.relatedCharacterIds,
+              relatedClueIds: body.relatedClueIds,
+              relatedLocationIds: body.relatedLocationIds,
+              sortOrder: body.sortOrder,
+              version: body.version,
+            },
+          })
+          .then((saved) => {
+            const editableSaved = toEditableInfo(saved);
+            setBaseline(editableSaved);
+            setDraft((current) =>
+              hasEditableChanges(current, body)
+                ? { ...current, version: editableSaved.version }
+                : editableSaved,
+            );
+            if (exitEditModeAfterSaveRef.current) {
+              setIsEditing(!hasDisplayableBody(editableSaved));
+              exitEditModeAfterSaveRef.current = false;
+            }
+            opts.onSuccess?.();
+          })
+          .catch((error) => {
+            exitEditModeAfterSaveRef.current = false;
+            opts.onError(error);
+          });
+      },
+      onError: (err) => setError(errorMessage(err, '저장에 실패했습니다')),
+    });
 
   useEffect(() => {
+    cancelInfoSave();
     const editableInfo = toEditableInfo(info);
     setDraft(editableInfo);
     setBaseline(editableInfo);
@@ -149,7 +197,8 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     setError(null);
     setIsEditing(!hasDisplayableBody(info));
     setDeleteDialogOpen(false);
-  }, [info]);
+    exitEditModeAfterSaveRef.current = false;
+  }, [cancelInfoSave, info]);
 
   useEffect(() => {
     if (!error) return undefined;
@@ -159,6 +208,11 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
 
   const isDirty = hasEditableChanges(draft, baseline);
 
+  useEffect(() => {
+    if (!isDirty) return;
+    scheduleInfoSave(draft);
+  }, [draft, isDirty, scheduleInfoSave]);
+
   function updateDraft(patch: Partial<StoryInfoResponse>) {
     setError(null);
     setDraft((current) => ({ ...current, ...patch }));
@@ -166,27 +220,10 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
 
   async function handleSave() {
     setError(null);
-    try {
-      const saved = await updateInfo.mutateAsync({
-        id: info.id,
-        patch: {
-          title: draft.title,
-          body: draft.body,
-          imageMediaId: draft.imageMediaId ?? null,
-          relatedCharacterIds: draft.relatedCharacterIds,
-          relatedClueIds: draft.relatedClueIds,
-          relatedLocationIds: draft.relatedLocationIds,
-          sortOrder: draft.sortOrder,
-          version: draft.version,
-        },
-      });
-      const editableSaved = toEditableInfo(saved);
-      setDraft(editableSaved);
-      setBaseline(editableSaved);
-      setIsEditing(!hasDisplayableBody(saved));
-    } catch (err) {
-      setError(errorMessage(err, '저장에 실패했습니다'));
-    }
+    if (!isDirty) return;
+    exitEditModeAfterSaveRef.current = true;
+    scheduleInfoSave(draft);
+    flushInfoSave();
   }
 
   async function handleDelete() {

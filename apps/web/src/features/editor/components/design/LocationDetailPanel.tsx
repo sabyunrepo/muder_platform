@@ -21,6 +21,7 @@ import { LocationClueAssignPanel } from './LocationClueAssignPanel';
 import { LocationHierarchyList } from './LocationHierarchyList';
 import { LocationImageMediaField } from './LocationImageMediaField';
 import { LocationStructurePanel } from './LocationStructurePanel';
+import { useEditorAutosaveToast } from '@/features/editor/hooks/useEditorAutosaveToast';
 
 interface LocationDetailPanelProps {
   themeId: string;
@@ -179,6 +180,7 @@ function SelectedLocationDetail({
   const { data: clues } = useEditorClues(themeId);
   const [appearanceSceneId, setAppearanceSceneId] = useState(location.appearance_scene_id ?? null);
   const [hideSceneId, setHideSceneId] = useState(location.hide_scene_id ?? null);
+  const skipNextBasicAutosaveRef = useRef(true);
   const locationMeta = useMemo(
     () => readLocationMeta(theme.config_json, location.id),
     [theme.config_json, location.id]
@@ -211,27 +213,14 @@ function SelectedLocationDetail({
     allLocations: mapLocations,
   });
 
-  useEffect(() => {
-    setAppearanceSceneId(location.appearance_scene_id ?? null);
-    setHideSceneId(location.hide_scene_id ?? null);
-    setBasicDraft({
-      name: location.name,
-      publicDescription: location.public_description ?? locationMeta.publicDescription ?? '',
-      entryMessage: location.entry_message ?? locationMeta.entryMessage ?? '',
-    });
-  }, [
-    location.id,
-    location.name,
-    location.appearance_scene_id,
-    location.hide_scene_id,
-    location.public_description,
-    location.entry_message,
-    locationMeta,
-  ]);
-
   function saveLocation(
     patch: Partial<LocationResponse>,
-    options: { onSuccess?: () => void; onErrorMessage?: string } = {}
+    options: {
+      onSuccess?: () => void;
+      onError?: (error?: unknown) => void;
+      onErrorMessage?: string;
+      suppressErrorToast?: boolean;
+    } = {}
   ) {
     const nextAppearanceSceneId =
       patch.appearance_scene_id !== undefined
@@ -267,10 +256,56 @@ function SelectedLocationDetail({
       },
       {
         onSuccess: options.onSuccess,
-        onError: () => toast.error(options.onErrorMessage ?? '장소 저장에 실패했습니다'),
+        onError: (error) => {
+          options.onError?.(error);
+          if (!options.suppressErrorToast) {
+            toast.error(options.onErrorMessage ?? '장소 저장에 실패했습니다');
+          }
+        },
       }
     );
   }
+
+  const {
+    schedule: scheduleBasicInfoSave,
+    flush: flushBasicInfoSave,
+    cancel: cancelBasicInfoSave,
+  } = useEditorAutosaveToast<Partial<LocationResponse>>({
+    debounceMs: 1000,
+    messages: {
+      toastId: `location-basic-autosave-${location.id}`,
+      loading: '장소 기본 정보를 저장 중입니다',
+      success: '장소 기본 정보가 저장되었습니다',
+      error: '장소 기본 정보 저장에 실패했습니다',
+    },
+    mutate: (body, opts) =>
+      saveLocation(body, {
+        onSuccess: opts.onSuccess,
+        onError: opts.onError,
+        suppressErrorToast: true,
+      }),
+  });
+
+  useEffect(() => {
+    cancelBasicInfoSave();
+    skipNextBasicAutosaveRef.current = true;
+    setAppearanceSceneId(location.appearance_scene_id ?? null);
+    setHideSceneId(location.hide_scene_id ?? null);
+    setBasicDraft({
+      name: location.name,
+      publicDescription: location.public_description ?? locationMeta.publicDescription ?? '',
+      entryMessage: location.entry_message ?? locationMeta.entryMessage ?? '',
+    });
+  }, [
+    location.id,
+    location.name,
+    location.appearance_scene_id,
+    location.hide_scene_id,
+    location.public_description,
+    location.entry_message,
+    locationMeta,
+    cancelBasicInfoSave,
+  ]);
 
   function saveBasicInfo() {
     const nextName = basicDraft.name.trim();
@@ -279,18 +314,54 @@ function SelectedLocationDetail({
       return;
     }
 
-    saveLocation(
-      {
-        name: nextName,
-        public_description: basicDraft.publicDescription.trim() || null,
-        entry_message: basicDraft.entryMessage.trim() || null,
-      },
-      {
-        onSuccess: () => toast.success('장소 기본 정보가 저장되었습니다'),
-        onErrorMessage: '장소 기본 정보 저장에 실패했습니다',
-      }
-    );
+    scheduleBasicInfoSave({
+      name: nextName,
+      public_description: basicDraft.publicDescription.trim() || null,
+      entry_message: basicDraft.entryMessage.trim() || null,
+    });
+    flushBasicInfoSave();
   }
+
+  const isBasicInfoDirty = useMemo(() => {
+    const currentPublicDescription =
+      location.public_description ?? locationMeta.publicDescription ?? '';
+    const currentEntryMessage = location.entry_message ?? locationMeta.entryMessage ?? '';
+    return (
+      basicDraft.name !== location.name ||
+      basicDraft.publicDescription !== currentPublicDescription ||
+      basicDraft.entryMessage !== currentEntryMessage
+    );
+  }, [
+    basicDraft.entryMessage,
+    basicDraft.name,
+    basicDraft.publicDescription,
+    location.entry_message,
+    location.name,
+    location.public_description,
+    locationMeta.entryMessage,
+    locationMeta.publicDescription,
+  ]);
+
+  useEffect(() => {
+    if (skipNextBasicAutosaveRef.current) {
+      skipNextBasicAutosaveRef.current = false;
+      return;
+    }
+    if (!isBasicInfoDirty) return;
+    const nextName = basicDraft.name.trim();
+    if (!nextName) return;
+    scheduleBasicInfoSave({
+      name: nextName,
+      public_description: basicDraft.publicDescription.trim() || null,
+      entry_message: basicDraft.entryMessage.trim() || null,
+    });
+  }, [
+    basicDraft.entryMessage,
+    basicDraft.name,
+    basicDraft.publicDescription,
+    isBasicInfoDirty,
+    scheduleBasicInfoSave,
+  ]);
 
   function saveDiscoveryOrder(nextDiscoveries: LocationDiscoveryConfig[]) {
     const nextConfig = writeLocationDiscoveries(

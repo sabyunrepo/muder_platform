@@ -23,6 +23,7 @@ import { ReadingSectionBgmPanel } from './ReadingSectionBgmPanel';
 import { ReadingSectionPreviewModal } from './ReadingSectionPreviewModal';
 import { ReadingScriptImportModal } from './ReadingScriptImportModal';
 import { EditorSaveConflictBanner } from '../EditorSaveConflictBanner';
+import { useEditorAutosaveToast } from '../../hooks/useEditorAutosaveToast';
 import type { CharacterOption } from './readingBlockUiTypes';
 import {
   blockActions,
@@ -47,6 +48,33 @@ export interface ReadingSectionEditorProps {
   section: ReadingSectionResponse;
   characters: CharacterOption[];
   onDeleted?: () => void;
+}
+
+function buildReadingPatch(
+  draft: ReadingSectionDraft,
+  section: ReadingSectionResponse,
+  characters: CharacterOption[],
+  narratorCharacterId: string | null,
+): { patch: UpdateReadingSectionRequest; issues: ReadingSaveValidationIssue[] } {
+  const normalizedLines = normalizeReadingLinesForSave(
+    draft.lines,
+    characters,
+    narratorCharacterId,
+  );
+  const issues = validateReadingLinesForSave(normalizedLines);
+  return {
+    issues,
+    patch: {
+      version: section.version,
+      name: draft.name,
+      // bgmMediaId uses triple-state: null = clear, string = set, undefined = keep
+      bgmMediaId: draft.bgmMediaId,
+      bgmMode: draft.bgmMode,
+      narratorCharacterId,
+      lines: normalizedLines,
+      sortOrder: draft.sortOrder,
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -79,16 +107,43 @@ export function ReadingSectionEditor({
 
   const updateMutation = useUpdateReadingSection(themeId);
   const deleteMutation = useDeleteReadingSection(themeId);
+  const {
+    schedule: scheduleReadingSave,
+    flush: flushReadingSave,
+    cancel: cancelReadingSave,
+  } = useEditorAutosaveToast<UpdateReadingSectionRequest>({
+    debounceMs: 1200,
+    messages: {
+      toastId: `reading-section-autosave-${section.id}`,
+      loading: '읽기 대사를 저장 중입니다',
+      success: '읽기 대사가 저장되었습니다',
+      error: '읽기 대사 저장에 실패했습니다',
+    },
+    mutate: (patch, opts) => {
+      updateMutation
+        .mutateAsync({ id: section.id, patch })
+        .then(() => opts.onSuccess?.())
+        .catch(opts.onError);
+    },
+    onError: (err) => {
+      if (isConflictError(err)) {
+        setConflict(true);
+        return;
+      }
+      setSaveError(getReadingSaveErrorMessage(err));
+    },
+  });
 
   // Refresh local draft whenever the underlying section changes (e.g. after
   // a successful save returns a new version, or a refetch).
   useEffect(() => {
+    cancelReadingSave();
     setDraft(toDraft(section));
     setLineKeys(section.lines.map(() => createLineKey()));
     setConflict(false);
     setSaveError(null);
     setValidationIssues([]);
-  }, [createLineKey, section]);
+  }, [cancelReadingSave, createLineKey, section]);
 
   // BGM list (BGM filter only) — used to display selected BGM name without
   // an extra fetch when picker is closed.
@@ -120,6 +175,20 @@ export function ReadingSectionEditor({
     () => new Map(validationIssues.map((issue) => [issue.lineIndex, issue.message])),
     [validationIssues]
   );
+
+  const autosavePatch = useMemo(
+    () => buildReadingPatch(draft, section, characters, effectiveNarratorCharacterId),
+    [characters, draft, effectiveNarratorCharacterId, section],
+  );
+
+  useEffect(() => {
+    if (!isDirty) return;
+    if (autosavePatch.issues.length > 0) {
+      cancelReadingSave();
+      return;
+    }
+    scheduleReadingSave(autosavePatch.patch);
+  }, [autosavePatch, cancelReadingSave, isDirty, scheduleReadingSave]);
 
   // -------------------------------------------------------------------------
   // Block operations
@@ -223,38 +292,14 @@ export function ReadingSectionEditor({
     setSaveError(null);
     setConflict(false);
     setValidationIssues([]);
-    const normalizedLines = normalizeReadingLinesForSave(
-      draft.lines,
-      characters,
-      effectiveNarratorCharacterId
-    );
-    const issues = validateReadingLinesForSave(normalizedLines);
-    if (issues.length > 0) {
-      setValidationIssues(issues);
+    if (autosavePatch.issues.length > 0) {
+      setValidationIssues(autosavePatch.issues);
       setSaveError('저장 전에 미디어가 빠진 블록을 확인해 주세요.');
       return;
     }
 
-    const patch: UpdateReadingSectionRequest = {
-      version: section.version,
-      name: draft.name,
-      // bgmMediaId uses triple-state: null = clear, string = set, undefined = keep
-      bgmMediaId: draft.bgmMediaId,
-      bgmMode: draft.bgmMode,
-      narratorCharacterId: effectiveNarratorCharacterId,
-      lines: normalizedLines,
-      sortOrder: draft.sortOrder,
-    };
-
-    try {
-      await updateMutation.mutateAsync({ id: section.id, patch });
-    } catch (err) {
-      if (isConflictError(err)) {
-        setConflict(true);
-        return;
-      }
-      setSaveError(getReadingSaveErrorMessage(err));
-    }
+    scheduleReadingSave(autosavePatch.patch);
+    flushReadingSave();
   }
 
   async function handleDelete() {

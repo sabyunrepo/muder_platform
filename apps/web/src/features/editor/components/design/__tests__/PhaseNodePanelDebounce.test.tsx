@@ -238,7 +238,10 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
 
     const cached = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
     expect(cached?.nodes[0].data.label).toBe("테스트"); // rolled back
-    expect(toastError).toHaveBeenCalledWith("저장에 실패했습니다");
+    expect(toastError).toHaveBeenCalledWith(
+      "저장에 실패했습니다",
+      expect.objectContaining({ id: "phase-node-autosave-node-1" }),
+    );
   });
 
   it("unmount 시 pending 변경도 flush()와 동일한 optimistic+rollback 경로를 탄다 (M1)", () => {
@@ -268,7 +271,10 @@ describe("PhaseNodePanel optimistic update + rollback", () => {
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const cached = qc.getQueryData<FlowGraphResponse>(flowKeys.graph("t1"));
     expect(cached?.nodes[0].data.label).toBe("테스트"); // rolled back
-    expect(toastError).toHaveBeenCalledWith("저장에 실패했습니다");
+    expect(toastError).toHaveBeenCalledWith(
+      "저장에 실패했습니다",
+      expect.objectContaining({ id: "phase-node-autosave-node-1" }),
+    );
   });
 
   it("graph 캐시가 없을 때는 rollback 없이 mutate만 호출된다", () => {

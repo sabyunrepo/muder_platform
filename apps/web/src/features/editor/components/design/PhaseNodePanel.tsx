@@ -13,7 +13,7 @@ import type {
   PhaseAction,
 } from "../../flowTypes";
 import { flowKeys } from "../../flowTypes";
-import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
+import { useEditorAutosaveToast } from "@/features/editor/hooks/useEditorAutosaveToast";
 import { ActionListEditor, hasIncompletePresentationCueActions } from "./ActionListEditor";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { normalizePhaseType } from "./phaseTypeOptions";
@@ -43,6 +43,9 @@ interface PhaseNodePanelProps {
 
 /** Debounce window for flow-node saves (W2 PR-5: 500→1500ms). */
 const SAVE_DEBOUNCE_MS = 1500;
+const toastWithLoading = toast as typeof toast & {
+  loading?: (message: string, options?: Record<string, unknown>) => void;
+};
 
 export function PhaseNodePanel({
   node,
@@ -82,8 +85,14 @@ export function PhaseNodePanel({
   const sceneKillEnabled = playerKillConfig.allowedSceneIds.includes(node.id);
   const isPhaseSceneNode = node.type === "phase";
 
-  const debouncer = useDebouncedMutation<FlowNodeData>({
+  const debouncer = useEditorAutosaveToast<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
+    messages: {
+      toastId: `phase-node-autosave-${node.id}`,
+      loading: "장면 설정을 저장 중입니다",
+      success: "장면 설정이 저장되었습니다",
+      error: "저장에 실패했습니다",
+    },
     mutate: (body, opts) =>
       updateNode.mutate({ nodeId: node.id, body: { data: body } }, opts),
     applyOptimistic: (body) => {
@@ -98,7 +107,6 @@ export function PhaseNodePanel({
       });
       return () => queryClient.setQueryData(cacheKey, previous);
     },
-    onError: () => toast.error("저장에 실패했습니다"),
   });
   const flush = debouncer.flush;
 
@@ -115,7 +123,24 @@ export function PhaseNodePanel({
   const handleSceneKillToggle = (enabled: boolean) => {
     if (!theme || updateConfig.isPending || !isPhaseSceneNode) return;
     const nextConfig = writePlayerKillSceneEnabled(configJson, node.id, enabled);
-    updateConfig.mutate({ ...nextConfig, version: theme.version });
+    toastWithLoading.loading?.("장면 설정을 저장 중입니다", {
+      id: `phase-kill-autosave-${node.id}`,
+    });
+    updateConfig.mutate(
+      { ...nextConfig, version: theme.version },
+      {
+        onSuccess: () =>
+          toast.success("장면 설정이 저장되었습니다", {
+            id: `phase-kill-autosave-${node.id}`,
+            duration: 1200,
+          }),
+        onError: () =>
+          toast.error("장면 설정 저장에 실패했습니다", {
+            id: `phase-kill-autosave-${node.id}`,
+            duration: 6000,
+          }),
+      },
+    );
   };
 
   return (

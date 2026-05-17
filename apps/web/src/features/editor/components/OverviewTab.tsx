@@ -1,5 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
-import { toast } from 'sonner';
+import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
 import { Button } from '@/shared/components/ui/Button';
 import {
   useUpdateTheme,
@@ -9,7 +8,7 @@ import {
 import { SectionDivider } from './SectionDivider';
 import { ImageMediaReferenceField } from '@/features/editor/components/media/ImageMediaReferenceField';
 import { TemplateSettingsSection } from './TemplateConfigTab';
-import { showUnknownErrorToast } from '@/lib/show-error-toast';
+import { useEditorAutosaveToast } from '@/features/editor/hooks/useEditorAutosaveToast';
 
 // ---------------------------------------------------------------------------
 // SpecField — inline number input with label + unit
@@ -105,10 +104,23 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   const [price, setPrice] = useState(theme.price);
   const [coinPrice, setCoinPrice] = useState(theme.coin_price);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const skipNextAutosaveRef = useRef(true);
 
   const updateTheme = useUpdateTheme(themeId);
+  const { schedule: scheduleOverviewSave, flush: flushOverviewSave } =
+    useEditorAutosaveToast<UpdateThemeRequest>({
+    debounceMs: 1200,
+    messages: {
+      toastId: 'theme-overview-autosave',
+      loading: '테마 기본 정보를 저장 중입니다',
+      success: '테마 기본 정보가 저장되었습니다',
+      error: '테마 기본 정보 저장에 실패했습니다',
+    },
+    mutate: (body, opts) => updateTheme.mutate(body, opts),
+  });
 
   useEffect(() => {
+    skipNextAutosaveRef.current = true;
     setTitle(theme.title);
     setDescription(theme.description ?? '');
     setCoverImage(theme.cover_image || null);
@@ -119,9 +131,59 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     setPrice(theme.price);
     setCoinPrice(theme.coin_price);
     setErrors({});
-  }, [theme.id, theme.version]);
+  }, [
+    theme.id,
+    theme.version,
+    theme.title,
+    theme.description,
+    theme.cover_image,
+    theme.cover_image_media_id,
+    theme.min_players,
+    theme.max_players,
+    theme.duration_min,
+    theme.price,
+    theme.coin_price,
+  ]);
 
-  function validate(): Record<string, string> {
+  const autosaveBody = useMemo<UpdateThemeRequest>(
+    () => ({
+      title: title.trim(),
+      description: description || undefined,
+      cover_image: coverImage || undefined,
+      cover_image_media_id: coverImageMediaId,
+      min_players: minPlayers,
+      max_players: maxPlayers,
+      duration_min: durationMin,
+      price,
+      coin_price: coinPrice,
+    }),
+    [
+      coinPrice,
+      coverImage,
+      coverImageMediaId,
+      description,
+      durationMin,
+      maxPlayers,
+      minPlayers,
+      price,
+      title,
+    ],
+  );
+  const isOverviewDirty = useMemo(
+    () =>
+      autosaveBody.title !== theme.title ||
+      (autosaveBody.description ?? '') !== (theme.description ?? '') ||
+      (autosaveBody.cover_image ?? '') !== (theme.cover_image ?? '') ||
+      (autosaveBody.cover_image_media_id ?? null) !== (theme.cover_image_media_id ?? null) ||
+      autosaveBody.min_players !== theme.min_players ||
+      autosaveBody.max_players !== theme.max_players ||
+      autosaveBody.duration_min !== theme.duration_min ||
+      autosaveBody.price !== theme.price ||
+      autosaveBody.coin_price !== theme.coin_price,
+    [autosaveBody, theme],
+  );
+
+  const validateDraft = useCallback((): Record<string, string> => {
     const next: Record<string, string> = {};
     const trimmedTitle = title.trim();
     if (!trimmedTitle) next.title = '제목은 필수입니다';
@@ -136,31 +198,31 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     if (coinPrice < 0 || coinPrice > 100000)
       next.coinPrice = '코인 가격은 0~100,000 사이여야 합니다';
     return next;
-  }
+  }, [coinPrice, description, durationMin, maxPlayers, minPlayers, price, title]);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const validationErrors = validate();
+    const validationErrors = validateDraft();
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
-    const body: UpdateThemeRequest = {
-      title: title.trim(),
-      description: description || undefined,
-      cover_image: coverImage || undefined,
-      cover_image_media_id: coverImageMediaId,
-      min_players: minPlayers,
-      max_players: maxPlayers,
-      duration_min: durationMin,
-      price,
-      coin_price: coinPrice,
-    };
-
-    updateTheme.mutate(body, {
-      onSuccess: () => toast.success('테마가 수정되었습니다'),
-      onError: (err) => showUnknownErrorToast(err, '테마 수정에 실패했습니다'),
-    });
+    scheduleOverviewSave(autosaveBody);
+    flushOverviewSave();
   }
+
+  useEffect(() => {
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false;
+      return;
+    }
+    if (!isOverviewDirty) return;
+    const validationErrors = validateDraft();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+    scheduleOverviewSave(autosaveBody);
+  }, [autosaveBody, isOverviewDirty, scheduleOverviewSave, validateDraft]);
 
   return (
     <form onSubmit={handleSubmit} className="mx-auto max-w-2xl px-4 py-6">

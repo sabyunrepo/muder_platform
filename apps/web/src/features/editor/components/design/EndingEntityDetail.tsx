@@ -1,8 +1,7 @@
 import { useId, useState, type ReactNode } from "react";
 import type { Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
+import { useEditorAutosaveToast } from "@/features/editor/hooks/useEditorAutosaveToast";
 import { RichContentEditor } from "@/features/editor/components/content/RichContentEditor";
 import type { MediaType } from "@/features/editor/mediaApi";
 import { useUpdateFlowNode } from "../../flowApi";
@@ -33,8 +32,14 @@ export function EndingEntityDetail({
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
 
-  const debouncer = useDebouncedMutation<FlowNodeData>({
+  const debouncer = useEditorAutosaveToast<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
+    messages: {
+      toastId: `ending-detail-autosave-${node.id}`,
+      loading: "결말을 저장 중입니다",
+      success: "결말이 저장되었습니다",
+      error: "결말 저장에 실패했습니다",
+    },
     mutate: (body, opts) =>
       updateNode.mutate({ nodeId: node.id, body: { data: body } }, opts),
     applyOptimistic: (body) => {
@@ -51,7 +56,6 @@ export function EndingEntityDetail({
       });
       return () => queryClient.setQueryData(cacheKey, previous);
     },
-    onError: () => toast.error("결말 저장에 실패했습니다"),
   });
 
   const handleChange = (patch: Partial<FlowNodeData>) => {
