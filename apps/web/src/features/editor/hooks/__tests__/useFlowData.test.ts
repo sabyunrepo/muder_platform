@@ -124,6 +124,34 @@ describe('useFlowData', () => {
     expect(latestSavedGraph().nodes[0]).toMatchObject({ position_x: 50, position_y: 50 });
   });
 
+  it('flow graph refetch 후에도 선택한 장면 설정 패널을 유지한다', () => {
+    const { result, rerender } = renderHook(() => useFlowData('theme-1'));
+
+    act(() => {
+      result.current.onSelectionChange({ nodes: [result.current.nodes[0]] });
+    });
+
+    expect(result.current.selectedNode?.id).toBe('n1');
+
+    const refreshedGraph = cloneServerGraph();
+    refreshedGraph.nodes[0].data = { label: '저장된 오프닝' };
+    useFlowGraphMock.mockReturnValue({
+      data: refreshedGraph,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+
+    rerender();
+
+    expect(result.current.selectedNode).toMatchObject({
+      id: 'n1',
+      data: { label: '저장된 오프닝' },
+    });
+    expect(result.current.nodes.find((node) => node.id === 'n1')?.selected).toBe(true);
+  });
+
   it('onEdgesChange가 edge 삭제를 ref와 autosave payload에 반영한다', () => {
     const { result } = renderHook(() => useFlowData('theme-1'));
 
