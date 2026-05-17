@@ -2,11 +2,15 @@ import { Plus, Trash2 } from "lucide-react";
 import type { PhaseAction } from "../../flowTypes";
 import {
   DELIVER_INFORMATION_ACTION,
+  GRANT_CLUE_ACTION,
   type CreatorActionOption,
   getCreatorActionLabel,
   getVisibleCreatorActionOptions,
+  isClueGrantAction,
   isInformationDeliveryAction,
 } from "../../entities/shared/actionAdapter";
+import { useEditorCharacters } from "../../api/characters";
+import { useEditorClues } from "../../editorClueApi";
 import { useReadingSections } from "../../readingApi";
 import {
   toReadingSectionPickerOptions,
@@ -18,6 +22,8 @@ import {
 } from "./PresentationCueFields";
 import { InformationActionFields } from "./InformationActionFields";
 import { BroadcastActionFields } from "./BroadcastActionFields";
+import { ClueGrantActionFields } from "./ClueGrantActionFields";
+import { hasCompleteClueGrantParams } from "./clueGrantActionUtils";
 import { readAllPlayerReadingSectionId } from "./actionFieldHelpers";
 import type { InvestigationTokenDraft } from "../../entities/deckInvestigation/deckInvestigationAdapter";
 
@@ -49,7 +55,18 @@ export function ActionListEditor({
   investigationTokens = [],
 }: ActionListEditorProps) {
   const { data: readingSections = [] } = useReadingSections(themeId ?? "");
+  const { data: characters = [] } = useEditorCharacters(themeId ?? "");
+  const { data: clues = [] } = useEditorClues(themeId ?? "");
   const readingOptions = toReadingSectionPickerOptions(readingSections);
+  const characterOptions = characters.map((character) => ({
+    id: character.id,
+    name: character.name,
+  }));
+  const clueOptions = clues.map((clue) => ({
+    id: clue.id,
+    name: clue.name,
+    summary: clue.is_common ? "공용 단서" : undefined,
+  }));
   const isTypeVisible = (type: string) =>
     !hiddenTypes.includes(type) &&
     (preserveDisallowedActions || !allowedTypes || allowedTypes.includes(type));
@@ -120,6 +137,8 @@ export function ActionListEditor({
           onRemove={handleRemove}
           themeId={themeId}
           readingOptions={readingOptions}
+          characters={characterOptions}
+          clues={clueOptions}
           investigationTokens={investigationTokens}
         />
       ))}
@@ -132,7 +151,10 @@ function createDefaultParams(type: string): Record<string, unknown> | undefined 
     return { deliveries: [] };
   }
   if (type === "BROADCAST_MESSAGE") {
-    return { message: "" };
+    return { message: "", target: { type: "all_players" } };
+  }
+  if (type === GRANT_CLUE_ACTION) {
+    return { deliveries: [] };
   }
   return getPresentationCueConfig(type) ? {} : undefined;
 }
@@ -152,6 +174,9 @@ export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boo
     if (action.type === "BROADCAST_MESSAGE") {
       const message = action.params?.message;
       return typeof message !== "string" || message.trim().length === 0;
+    }
+    if (isClueGrantAction(action)) {
+      return !hasCompleteClueGrantParams(action.params);
     }
     const config = getPresentationCueConfig(action.type);
     if (!config) return false;
@@ -194,6 +219,8 @@ interface ActionRowProps {
   onRemove: (index: number) => void;
   themeId?: string;
   readingOptions: ReadingSectionPickerOption[];
+  characters: { id: string; name: string }[];
+  clues: { id: string; name: string; summary?: string }[];
   investigationTokens: InvestigationTokenDraft[];
 }
 
@@ -208,6 +235,8 @@ function ActionRow({
   onRemove,
   themeId,
   readingOptions,
+  characters,
+  clues,
   investigationTokens,
 }: ActionRowProps) {
   const hasCurrentOption = visibleActionTypes.some((actionType) => actionType.value === action.type);
@@ -258,6 +287,13 @@ function ActionRow({
         action={action}
         label={label}
         index={displayIndex}
+        characters={characters}
+        onParamsChange={(params) => onParamsChange(index, params)}
+      />
+      <ClueGrantActionFields
+        action={action}
+        characters={characters}
+        clues={clues}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
       <InvestigationTokenActionFields

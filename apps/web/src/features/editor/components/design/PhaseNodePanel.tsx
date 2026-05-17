@@ -162,7 +162,7 @@ export function PhaseNodePanel({
               장면 액션
             </h4>
             <p className="mt-1 text-[11px] leading-4 text-slate-500">
-              장면이 시작되거나 끝날 때 정보 공개, BGM, 알림 같은 실행 결과를 순서대로 처리합니다.
+              장면이 시작되거나 끝날 때 BGM, 알림, 단서 지급 같은 실행 결과를 순서대로 처리합니다.
             </p>
           </div>
           <ActionListEditor
