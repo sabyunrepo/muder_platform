@@ -112,7 +112,7 @@ export function LocationDetailPanel({
 
   return (
     <>
-      <div className="grid h-full min-h-0 gap-4 lg:grid-cols-[minmax(16rem,0.32fr)_minmax(0,1fr)]">
+      <div className="grid min-h-0 gap-4 md:h-full md:grid-cols-[minmax(16rem,0.34fr)_minmax(0,1fr)] lg:grid-cols-[minmax(16rem,0.32fr)_minmax(0,1fr)]">
         <LocationHierarchyList
           locations={mapLocations}
           theme={theme}
@@ -125,7 +125,7 @@ export function LocationDetailPanel({
           renderAddChildInput={(parentId) => renderAddInput(parentId)}
           onMoveLocation={moveLocation}
         />
-        <div className="min-w-0">
+        <div className="min-w-0 md:min-h-0 md:overflow-y-auto">
           {selectedLocation ? (
             <SelectedLocationDetail
               themeId={themeId}

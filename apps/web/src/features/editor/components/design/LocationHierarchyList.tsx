@@ -62,7 +62,7 @@ export function LocationHierarchyList({
   return (
     <section
       aria-label="장소 목록"
-      className="flex min-h-0 flex-col rounded-xl border border-slate-800 bg-slate-950/70 p-3"
+      className="flex min-h-0 flex-col overflow-y-auto rounded-xl border border-slate-800 bg-slate-950/70 p-3"
     >
       <header className="mb-3 flex items-center justify-between gap-2">
         <div>
