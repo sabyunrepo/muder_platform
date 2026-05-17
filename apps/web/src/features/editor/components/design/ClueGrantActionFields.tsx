@@ -48,6 +48,8 @@ export function ClueGrantActionFields({
   const selectedClueIds = readClueIds(delivery);
 
   const writeDelivery = (next: ClueGrantDelivery) => {
+    const existingDeliveries = readDeliveries(params);
+    const [, ...remainingDeliveries] = existingDeliveries;
     onParamsChange({
       ...params,
       deliveries: [
@@ -56,6 +58,7 @@ export function ClueGrantActionFields({
           target: next.target,
           clue_ids: next.clue_ids ?? [],
         },
+        ...remainingDeliveries,
       ],
     });
   };
@@ -106,10 +109,16 @@ export function ClueGrantActionFields({
 }
 
 function readFirstDelivery(params: Record<string, unknown>): ClueGrantDelivery | undefined {
+  const deliveries = readDeliveries(params);
+  return deliveries[0];
+}
+
+function readDeliveries(params: Record<string, unknown>): ClueGrantDelivery[] {
   const deliveries = params.deliveries;
-  if (!Array.isArray(deliveries)) return undefined;
-  const first = deliveries[0];
-  return first && typeof first === "object" ? (first as ClueGrantDelivery) : undefined;
+  if (!Array.isArray(deliveries)) return [];
+  return deliveries.filter(
+    (delivery): delivery is ClueGrantDelivery => Boolean(delivery) && typeof delivery === "object",
+  );
 }
 
 function readTargetId(target: ClueGrantDelivery["target"]): string {

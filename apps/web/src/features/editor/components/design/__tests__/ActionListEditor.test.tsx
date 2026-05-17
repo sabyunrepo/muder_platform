@@ -590,6 +590,60 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("단서 지급 실행 결과를 수정할 때 기존 추가 지급 규칙을 보존한다", () => {
+    const onChange = vi.fn();
+    render(
+      <ActionListEditor
+        label="장면 시작 액션"
+        actions={[
+          {
+            id: "grant",
+            type: "GRANT_CLUE",
+            params: {
+              deliveries: [
+                {
+                  id: "grant-1",
+                  target: { type: "all_players" },
+                  clue_ids: ["clue-1"],
+                },
+                {
+                  id: "grant-2",
+                  target: { type: "character", character_id: "character-2" },
+                  clue_ids: ["clue-2"],
+                },
+              ],
+            },
+          },
+        ]}
+        onChange={onChange}
+        themeId="theme-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /탐정/ }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        id: "grant",
+        type: "GRANT_CLUE",
+        params: {
+          deliveries: [
+            {
+              id: "grant-1",
+              target: { type: "character", character_id: "character-1" },
+              clue_ids: ["clue-1"],
+            },
+            {
+              id: "grant-2",
+              target: { type: "character", character_id: "character-2" },
+              clue_ids: ["clue-2"],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
   it("읽기 대사 공개와 알림 보내기의 필수값 누락을 검출한다", () => {
     expect(
       hasIncompletePresentationCueActions([
@@ -632,5 +686,18 @@ describe("ActionListEditor", () => {
         },
       ]),
     ).toBe(false);
+    expect(
+      hasIncompletePresentationCueActions([
+        {
+          id: "grant",
+          type: "GRANT_CLUE",
+          params: {
+            deliveries: [
+              { target: { type: "character", character_id: "   " }, clue_ids: ["clue-1"] },
+            ],
+          },
+        },
+      ]),
+    ).toBe(true);
   });
 });

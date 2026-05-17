@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: UI Flow Reshape
+## Task 1: UI Flow Reshape
 
 **Files:**
 - Modify: `apps/web/src/features/editor/components/info/InfoDeliverySettingsCard.tsx`
@@ -20,7 +20,7 @@
 - [x] Reuse `OptionList` for delivery target selection.
 - [x] Keep `readInfoDeliveryTarget` and `writeInfoDeliveryTarget` unchanged.
 
-### Task 2: Autosave
+## Task 2: Autosave
 
 **Files:**
 - Modify: `apps/web/src/features/editor/components/info/InfoDeliverySettingsCard.tsx`
@@ -30,7 +30,7 @@
 - [x] Flush pending saves when the selected scene changes and when delivery controls blur.
 - [x] Show `sonner` toast states for saving, saved, failed, and retry.
 
-### Task 3: Tests
+## Task 3: Tests
 
 **Files:**
 - Modify: `apps/web/src/features/editor/components/info/__tests__/InfoTab.test.tsx`
@@ -39,10 +39,10 @@
 - [x] Add coverage for retry toast on save failure.
 - [x] Keep existing info body save tests passing.
 
-### Task 4: Validation
+## Task 4: Validation
 
 **Commands:**
 - [x] `pnpm --filter @mmp/web test -- InfoTab.test.tsx infoDeliverySettingsAdapter.test.ts`
 - [x] `pnpm --filter @mmp/web typecheck`
 - [x] `pnpm --filter @mmp/web lint`
-- [ ] `scripts/mmp-local-ci.sh quick`
+- [x] `scripts/mmp-local-ci.sh quick`

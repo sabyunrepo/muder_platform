@@ -25,7 +25,12 @@ function readFirstDelivery(params: Record<string, unknown>): ClueGrantDelivery |
 function hasCompleteTarget(target: ClueGrantDelivery["target"]): boolean {
   if (!target || typeof target !== "object") return false;
   if (target.type === "all_players") return true;
-  return target.type === "character" && Boolean(target.character_id || target.characterId);
+  return target.type === "character" && readCharacterId(target).length > 0;
+}
+
+function readCharacterId(target: NonNullable<ClueGrantDelivery["target"]>): string {
+  const rawId = target.character_id ?? target.characterId ?? "";
+  return typeof rawId === "string" ? rawId.trim() : "";
 }
 
 function readClueIds(delivery: ClueGrantDelivery | undefined): string[] {

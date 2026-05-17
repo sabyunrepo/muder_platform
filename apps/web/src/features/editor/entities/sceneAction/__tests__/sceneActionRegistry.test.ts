@@ -40,6 +40,27 @@ describe("sceneActionRegistry", () => {
     });
   });
 
+  it("중첩된 기본 params를 호출마다 새 객체로 만든다", () => {
+    const firstBroadcast = createSceneActionDefaultParams("BROADCAST_MESSAGE");
+    const secondBroadcast = createSceneActionDefaultParams("BROADCAST_MESSAGE");
+    const firstTarget = firstBroadcast?.target as { type: string };
+
+    firstTarget.type = "character";
+
+    expect(secondBroadcast).toEqual({
+      message: "",
+      target: { type: "all_players" },
+    });
+
+    const firstGrant = createSceneActionDefaultParams("GRANT_CLUE");
+    const secondGrant = createSceneActionDefaultParams("GRANT_CLUE");
+    const firstDeliveries = firstGrant?.deliveries as unknown[];
+
+    firstDeliveries.push({ id: "grant-1" });
+
+    expect(secondGrant).toEqual({ deliveries: [] });
+  });
+
   it("BGM 종료 액션은 별도 미디어 선택 없이 완료 상태다", () => {
     expect(isSceneActionComplete({ type: "STOP_AUDIO", params: { scope: "bgm" } })).toBe(true);
   });

@@ -72,7 +72,11 @@ export function getSceneActionOptions({
 
 export function createSceneActionDefaultParams(type: string): Record<string, unknown> | undefined {
   const definition = SCENE_ACTION_DEFINITIONS.find((item) => item.value === type);
-  return definition?.defaultParams ? { ...definition.defaultParams } : undefined;
+  return definition?.defaultParams ? cloneDefaultParams(definition.defaultParams) : undefined;
+}
+
+function cloneDefaultParams(params: Record<string, unknown>): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(params)) as Record<string, unknown>;
 }
 
 export function isSceneActionComplete(action: { type: string; params?: Record<string, unknown> }): boolean {

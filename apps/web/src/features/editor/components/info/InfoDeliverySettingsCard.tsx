@@ -28,7 +28,7 @@ interface PhaseOption {
 }
 
 interface AutosaveBody {
-  phase: PhaseOption;
+  phaseId: string;
   target: InfoDeliveryTargetDraft;
 }
 
@@ -104,13 +104,19 @@ export function InfoDeliverySettingsCard({
 
   const saveBody = useCallback(
     (body: AutosaveBody, opts?: { onError?: (error?: unknown) => void }) => {
+      const phase = phaseOptions.find((item) => item.id === body.phaseId);
+      if (!phase) {
+        opts?.onError?.(new Error("Selected phase is no longer available"));
+        return;
+      }
+
       toast.loading("정보 배포 설정 저장 중...", { id: INFO_DELIVERY_AUTOSAVE_TOAST_ID });
       updateNode.mutateAsync({
-        nodeId: body.phase.id,
+        nodeId: phase.id,
         body: {
           data: {
-            ...body.phase.node.data,
-            ...writeInfoDeliveryTarget(body.phase.node.data, storyInfoId, normalizeTarget(body.target)),
+            ...phase.node.data,
+            ...writeInfoDeliveryTarget(phase.node.data, storyInfoId, normalizeTarget(body.target)),
           },
         },
       }).then(() => {
@@ -122,7 +128,7 @@ export function InfoDeliverySettingsCard({
         opts?.onError?.(error);
       });
     },
-    [storyInfoId, updateNode],
+    [phaseOptions, storyInfoId, updateNode],
   );
 
   const showFailureToast = useCallback((body: AutosaveBody) => {
@@ -156,7 +162,7 @@ export function InfoDeliverySettingsCard({
       const normalized = normalizeTarget(target);
       setDraftTarget(normalized);
       if (!targetsEqual(savedTarget, normalized)) {
-        schedule({ phase: selectedPhase, target: normalized });
+        schedule({ phaseId: selectedPhase.id, target: normalized });
       } else {
         cancel();
       }
