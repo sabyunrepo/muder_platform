@@ -23,14 +23,13 @@ import { ReadingSectionBgmPanel } from './ReadingSectionBgmPanel';
 import { ReadingSectionPreviewModal } from './ReadingSectionPreviewModal';
 import { ReadingScriptImportModal } from './ReadingScriptImportModal';
 import { EditorSaveConflictBanner } from '../EditorSaveConflictBanner';
-import { useEditorAutosaveToast } from '../../hooks/useEditorAutosaveToast';
+import { useAutosavedDraft } from '../../hooks/useAutosavedDraft';
 import type { CharacterOption } from './readingBlockUiTypes';
 import {
   blockActions,
   createBlock,
   getReadingSaveErrorMessage,
   isConflictError,
-  isReadingDraftDirty,
   normalizeReadingLinesForSave,
   toDraft,
   toParserMedia,
@@ -92,7 +91,6 @@ export function ReadingSectionEditor({
     () => `reading-line-${section.id}-${lineKeyCounter.current++}`,
     [section.id]
   );
-  const [draft, setDraft] = useState<ReadingSectionDraft>(() => toDraft(section));
   const [lineKeys, setLineKeys] = useState<string[]>(() =>
     section.lines.map(() => createLineKey())
   );
@@ -107,23 +105,49 @@ export function ReadingSectionEditor({
 
   const updateMutation = useUpdateReadingSection(themeId);
   const deleteMutation = useDeleteReadingSection(themeId);
+  const toReadingDraft = useCallback((value: ReadingSectionResponse) => toDraft(value), []);
+  const isSameReadingDraft = useCallback(
+    (left: ReadingSectionDraft, right: ReadingSectionDraft) =>
+      JSON.stringify(left) === JSON.stringify(right),
+    [],
+  );
+  const saveReadingPatch = useCallback(
+    (patch: UpdateReadingSectionRequest) =>
+      updateMutation.mutateAsync({ id: section.id, patch }),
+    [section.id, updateMutation],
+  );
+  const buildReadingSaveBody = useCallback(
+    (currentDraft: ReadingSectionDraft, latestSection: ReadingSectionResponse) => {
+      const result = buildReadingPatch(
+        currentDraft,
+        latestSection,
+        characters,
+        currentDraft.narratorCharacterId ??
+          characters.find((character) => character.isPlayable)?.id ??
+          null,
+      );
+      return result.issues.length > 0 ? null : result.patch;
+    },
+    [characters],
+  );
   const {
-    schedule: scheduleReadingSave,
-    flush: flushReadingSave,
-    cancel: cancelReadingSave,
-  } = useEditorAutosaveToast<UpdateReadingSectionRequest>({
+    draft,
+    setDraft,
+    isDirty,
+    saveNow: saveReadingNow,
+  } = useAutosavedDraft<ReadingSectionResponse, ReadingSectionDraft, UpdateReadingSectionRequest>({
+    serverValue: section,
+    serverKey: section.id,
     debounceMs: 1200,
+    toDraft: toReadingDraft,
+    isEqual: isSameReadingDraft,
+    buildSaveBody: buildReadingSaveBody,
+    save: saveReadingPatch,
     messages: {
       toastId: `reading-section-autosave-${section.id}`,
       loading: '읽기 대사를 저장 중입니다',
       success: '읽기 대사가 저장되었습니다',
       error: '읽기 대사 저장에 실패했습니다',
-    },
-    mutate: (patch, opts) => {
-      updateMutation
-        .mutateAsync({ id: section.id, patch })
-        .then(() => opts.onSuccess?.())
-        .catch(opts.onError);
     },
     onError: (err) => {
       if (isConflictError(err)) {
@@ -134,16 +158,13 @@ export function ReadingSectionEditor({
     },
   });
 
-  // Refresh local draft whenever the underlying section changes (e.g. after
-  // a successful save returns a new version, or a refetch).
   useEffect(() => {
-    cancelReadingSave();
-    setDraft(toDraft(section));
+    if (isDirty) return;
     setLineKeys(section.lines.map(() => createLineKey()));
     setConflict(false);
     setSaveError(null);
     setValidationIssues([]);
-  }, [cancelReadingSave, createLineKey, section]);
+  }, [createLineKey, isDirty, section]);
 
   // BGM list (BGM filter only) — used to display selected BGM name without
   // an extra fetch when picker is closed.
@@ -169,7 +190,6 @@ export function ReadingSectionEditor({
   );
   const mediaById = useMemo(() => new Map(allMedia.map((media) => [media.id, media])), [allMedia]);
 
-  const isDirty = useMemo(() => isReadingDraftDirty(draft, section), [draft, section]);
   const previewLines = useMemo(() => normalizeReadingBlocks(draft.lines), [draft.lines]);
   const validationIssueByLine = useMemo(
     () => new Map(validationIssues.map((issue) => [issue.lineIndex, issue.message])),
@@ -180,15 +200,6 @@ export function ReadingSectionEditor({
     () => buildReadingPatch(draft, section, characters, effectiveNarratorCharacterId),
     [characters, draft, effectiveNarratorCharacterId, section],
   );
-
-  useEffect(() => {
-    if (!isDirty) return;
-    if (autosavePatch.issues.length > 0) {
-      cancelReadingSave();
-      return;
-    }
-    scheduleReadingSave(autosavePatch.patch);
-  }, [autosavePatch, cancelReadingSave, isDirty, scheduleReadingSave]);
 
   // -------------------------------------------------------------------------
   // Block operations
@@ -298,8 +309,7 @@ export function ReadingSectionEditor({
       return;
     }
 
-    scheduleReadingSave(autosavePatch.patch);
-    flushReadingSave();
+    saveReadingNow();
   }
 
   async function handleDelete() {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 
 import {
@@ -14,7 +14,7 @@ import { ConfirmDialog, Spinner } from '@/shared/components/ui';
 import { InfoDeliverySettingsCard } from './InfoDeliverySettingsCard';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
-import { useEditorAutosaveToast } from '@/features/editor/hooks/useEditorAutosaveToast';
+import { useAutosavedDraft } from '@/features/editor/hooks/useAutosavedDraft';
 
 interface InfoTabProps {
   themeId: string;
@@ -133,8 +133,6 @@ export function InfoTab({ themeId }: InfoTabProps) {
 }
 
 function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoResponse }) {
-  const [draft, setDraft] = useState(() => toEditableInfo(info));
-  const [baseline, setBaseline] = useState(() => toEditableInfo(info));
   const [embedPickerType, setEmbedPickerType] = useState<MediaType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(() => !hasDisplayableBody(info));
@@ -142,76 +140,83 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const exitEditModeAfterSaveRef = useRef(false);
   const updateInfo = useUpdateStoryInfo(themeId);
   const deleteInfo = useDeleteStoryInfo(themeId);
-  const { schedule: scheduleInfoSave, flush: flushInfoSave, cancel: cancelInfoSave } =
-    useEditorAutosaveToast<StoryInfoResponse>({
-      debounceMs: 1000,
-      messages: {
-        toastId: `story-info-autosave-${info.id}`,
-        loading: '정보를 저장 중입니다',
-        success: '정보가 저장되었습니다',
-        error: '정보 저장에 실패했습니다',
-      },
-      mutate: (body, opts) => {
-        updateInfo
-          .mutateAsync({
-            id: info.id,
-            patch: {
-              title: body.title,
-              body: body.body,
-              imageMediaId: body.imageMediaId ?? null,
-              relatedCharacterIds: body.relatedCharacterIds,
-              relatedClueIds: body.relatedClueIds,
-              relatedLocationIds: body.relatedLocationIds,
-              sortOrder: body.sortOrder,
-              version: body.version,
-            },
-          })
-          .then((saved) => {
-            const editableSaved = toEditableInfo(saved);
-            setBaseline(editableSaved);
-            setDraft((current) =>
-              hasEditableChanges(current, body)
-                ? { ...current, version: editableSaved.version }
-                : editableSaved,
-            );
-            if (exitEditModeAfterSaveRef.current) {
-              setIsEditing(!hasDisplayableBody(editableSaved));
-              exitEditModeAfterSaveRef.current = false;
-            }
-            opts.onSuccess?.();
-          })
-          .catch((error) => {
-            exitEditModeAfterSaveRef.current = false;
-            opts.onError(error);
-          });
-      },
-      onError: (err) => setError(errorMessage(err, '저장에 실패했습니다')),
-    });
-
-  useEffect(() => {
-    cancelInfoSave();
-    const editableInfo = toEditableInfo(info);
-    setDraft(editableInfo);
-    setBaseline(editableInfo);
-    setEmbedPickerType(null);
-    setError(null);
-    setIsEditing(!hasDisplayableBody(info));
-    setDeleteDialogOpen(false);
-    exitEditModeAfterSaveRef.current = false;
-  }, [cancelInfoSave, info]);
+  const toInfoDraft = useCallback((value: StoryInfoResponse) => toEditableInfo(value), []);
+  const isSameInfoDraft = useCallback(
+    (left: StoryInfoResponse, right: StoryInfoResponse) => !hasEditableChanges(left, right),
+    [],
+  );
+  const saveInfo = useCallback(
+    (body: StoryInfoResponse) =>
+      updateInfo.mutateAsync({
+        id: info.id,
+        patch: {
+          title: body.title,
+          body: body.body,
+          imageMediaId: body.imageMediaId ?? null,
+          relatedCharacterIds: body.relatedCharacterIds,
+          relatedClueIds: body.relatedClueIds,
+          relatedLocationIds: body.relatedLocationIds,
+          sortOrder: body.sortOrder,
+          version: body.version,
+        },
+      }),
+    [info.id, updateInfo],
+  );
+  const buildInfoSaveBody = useCallback((current: StoryInfoResponse) => current, []);
+  const mergeSavedInfoDraft = useCallback(
+    ({
+      currentDraft,
+      savedDraft,
+      submittedDraft,
+    }: {
+      currentDraft: StoryInfoResponse;
+      savedDraft: StoryInfoResponse;
+      submittedDraft: StoryInfoResponse;
+    }) =>
+      hasEditableChanges(currentDraft, submittedDraft)
+        ? { ...currentDraft, version: savedDraft.version }
+        : savedDraft,
+    [],
+  );
+  const {
+    draft,
+    setDraft,
+    baseline,
+    isDirty,
+    saveNow: saveInfoNow,
+  } = useAutosavedDraft<StoryInfoResponse, StoryInfoResponse, StoryInfoResponse>({
+    serverValue: info,
+    serverKey: info.id,
+    debounceMs: 1000,
+    toDraft: toInfoDraft,
+    isEqual: isSameInfoDraft,
+    buildSaveBody: buildInfoSaveBody,
+    save: saveInfo,
+    mergeSavedDraft: mergeSavedInfoDraft,
+    messages: {
+      toastId: `story-info-autosave-${info.id}`,
+      loading: '정보를 저장 중입니다',
+      success: '정보가 저장되었습니다',
+      error: '정보 저장에 실패했습니다',
+    },
+    onSaved: (saved) => {
+      const editableSaved = toEditableInfo(saved);
+      if (exitEditModeAfterSaveRef.current) {
+        setIsEditing(!hasDisplayableBody(editableSaved));
+        exitEditModeAfterSaveRef.current = false;
+      }
+    },
+    onError: (err) => {
+      exitEditModeAfterSaveRef.current = false;
+      setError(errorMessage(err, '저장에 실패했습니다'));
+    },
+  });
 
   useEffect(() => {
     if (!error) return undefined;
     const timeout = window.setTimeout(() => setError(null), INFO_EDITOR_ERROR_AUTO_DISMISS_MS);
     return () => window.clearTimeout(timeout);
   }, [error]);
-
-  const isDirty = hasEditableChanges(draft, baseline);
-
-  useEffect(() => {
-    if (!isDirty) return;
-    scheduleInfoSave(draft);
-  }, [draft, isDirty, scheduleInfoSave]);
 
   function updateDraft(patch: Partial<StoryInfoResponse>) {
     setError(null);
@@ -222,8 +227,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     setError(null);
     if (!isDirty) return;
     exitEditModeAfterSaveRef.current = true;
-    scheduleInfoSave(draft);
-    flushInfoSave();
+    saveInfoNow();
   }
 
   async function handleDelete() {
