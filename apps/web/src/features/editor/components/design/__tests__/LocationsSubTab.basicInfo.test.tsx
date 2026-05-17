@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { screen, fireEvent, act } from '@testing-library/react';
 import {
   mockLocations,
   renderLocationsSubTab,
@@ -12,8 +12,19 @@ import {
 
 describe('LocationsSubTab 장소 기본 정보', () => {
   beforeEach(setupDefaultMocks);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-  it('공개 설명과 진입 메시지를 Location API payload로 저장한다', () => {
+  async function flushLocationAutosave() {
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+  }
+
+  it('공개 설명과 진입 메시지를 Location API payload로 자동저장한다', async () => {
+    vi.useFakeTimers();
     useEditorLocationsMock.mockReturnValue({
       data: [{ ...mockLocations[0], name: '거실' }, ...mockLocations.slice(1)],
       isLoading: false,
@@ -30,7 +41,8 @@ describe('LocationsSubTab 장소 기본 정보', () => {
     fireEvent.change(screen.getByLabelText('거실 진입 메시지'), {
       target: { value: '낡은 시계 소리가 들린다.' },
     });
-    fireEvent.click(screen.getByText('저장'));
+    expect(screen.queryByRole('button', { name: /^저장$/ })).toBeNull();
+    await flushLocationAutosave();
 
     expect(updateLocationMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({

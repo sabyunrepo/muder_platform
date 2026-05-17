@@ -120,6 +120,14 @@ const characters = [
 let mutateAsyncUpdate: ReturnType<typeof vi.fn>;
 let mutateAsyncDelete: ReturnType<typeof vi.fn>;
 
+async function flushReadingAutosave() {
+  await act(async () => {
+    vi.advanceTimersByTime(1200);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
   Object.assign(navigator, {
@@ -216,6 +224,7 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('saves section background music playback mode', async () => {
+    vi.useFakeTimers();
     useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
       if (type === 'BGM') {
         return {
@@ -241,9 +250,9 @@ describe('ReadingSectionEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: '배경음악 선택' }));
     fireEvent.click(screen.getByText('오프닝 배경음악').closest('button') as HTMLElement);
     fireEvent.click(screen.getByRole('button', { name: '1회' }));
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.bgmMediaId).toBe('bgm-1');
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.bgmMode).toBe('once');
   });
@@ -278,14 +287,15 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('save calls useUpdateReadingSection with version + patch', async () => {
+    vi.useFakeTimers();
     renderEditor();
     const input = screen.getByLabelText('섹션 이름') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '재명명' } });
 
-    const saveBtn = screen.getByRole('button', { name: /저장/ });
-    fireEvent.click(saveBtn);
+    expect(screen.queryByRole('button', { name: /^저장$/ })).toBeNull();
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     const callArg = mutateAsyncUpdate.mock.calls[0][0];
     expect(callArg.id).toBe('sec-1');
     expect(callArg.patch.version).toBe(3);
@@ -294,6 +304,7 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('blocks save with a clear message when an image block has no selected image', async () => {
+    vi.useFakeTimers();
     renderEditor({
       section: {
         ...sampleSection,
@@ -310,7 +321,7 @@ describe('ReadingSectionEditor', () => {
       },
     });
     fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '이미지 확인' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
     expect(mutateAsyncUpdate).not.toHaveBeenCalled();
     expect(screen.getByText('저장 전에 미디어가 빠진 블록을 확인해 주세요.')).toBeTruthy();
@@ -318,6 +329,7 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('serializes cleared dialogue image references', async () => {
+    vi.useFakeTimers();
     useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
       if (type === 'IMAGE') {
         return {
@@ -349,13 +361,14 @@ describe('ReadingSectionEditor', () => {
 
     expect(screen.queryByText('현장 사진')).toBeNull();
     fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '이미지 정리' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].ImageMediaID).toBe('');
   });
 
   it('imports pasted script into ordered reading blocks', async () => {
+    vi.useFakeTimers();
     useMediaListMock.mockImplementation((_themeId: string, type?: string) => {
       if (type === 'IMAGE') {
         return {
@@ -408,9 +421,9 @@ describe('ReadingSectionEditor', () => {
     });
     fireEvent.click(screen.getByLabelText('현재 블록을 대본 입력 결과로 교체합니다.'));
     fireEvent.click(screen.getByRole('button', { name: '블록으로 적용' }));
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { Index: 0, Type: 'dialogue', Speaker: '나레이션' },
       { Index: 1, Type: 'image', MediaID: 'image-1' },
@@ -435,6 +448,7 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('does not save voice auto advance for blocks without voice media', async () => {
+    vi.useFakeTimers();
     renderEditor({
       section: {
         ...sampleSection,
@@ -457,9 +471,9 @@ describe('ReadingSectionEditor', () => {
       },
     });
     fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '정규화' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { Index: 0, Type: 'image', AdvanceBy: 'gm' },
       { Index: 1, Type: 'dialogue', AdvanceBy: 'role:c1' },
@@ -467,6 +481,7 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('does not save role advance when no matching character exists', async () => {
+    vi.useFakeTimers();
     renderEditor({
       characters: [],
       section: {
@@ -483,14 +498,15 @@ describe('ReadingSectionEditor', () => {
       },
     });
     fireEvent.change(screen.getByLabelText('섹션 이름'), { target: { value: '역할 없음' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines[0].AdvanceBy).toBe('gm');
     expect(screen.queryByLabelText('진행 방식')).toBeNull();
   });
 
   it('saves narration and NPC dialogue with the selected narrator role', async () => {
+    vi.useFakeTimers();
     renderEditor({
       section: {
         ...sampleSection,
@@ -502,9 +518,9 @@ describe('ReadingSectionEditor', () => {
       },
     });
     fireEvent.change(screen.getByLabelText('나레이션 진행'), { target: { value: 'c2' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.narratorCharacterId).toBe('c2');
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { AdvanceBy: 'role:c2' },
@@ -514,11 +530,12 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('moves blocks and keeps saved indices sequential', async () => {
+    vi.useFakeTimers();
     renderEditor();
     fireEvent.click(screen.getAllByLabelText('블록 아래로 이동')[0]);
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() => expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1));
+    expect(mutateAsyncUpdate).toHaveBeenCalledTimes(1);
     expect(mutateAsyncUpdate.mock.calls[0][0].patch.lines).toMatchObject([
       { Index: 0, Text: '누구냐?' },
       { Index: 1, Text: '어두운 방 안.' },
@@ -721,10 +738,9 @@ describe('ReadingSectionEditor', () => {
     expect(within(dialog).getByText('조명을 낮춘다.')).toBeTruthy();
   });
 
-  it('save button is disabled when not dirty', () => {
+  it('does not render a manual save button when autosave is active', () => {
     renderEditor();
-    const saveBtn = screen.getByRole('button', { name: /저장/ }) as HTMLButtonElement;
-    expect(saveBtn.disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: /^저장$/ })).toBeNull();
   });
 
   it('delete section calls useDeleteReadingSection after confirm', async () => {
@@ -738,15 +754,14 @@ describe('ReadingSectionEditor', () => {
   });
 
   it('409 conflict error shows reload, preserve, and cancel recovery actions', async () => {
+    vi.useFakeTimers();
     mutateAsyncUpdate.mockRejectedValueOnce(new Error('HTTP 409 Conflict'));
     renderEditor();
     const input = screen.getByLabelText('섹션 이름') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'x' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() =>
-      expect(screen.getByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeTruthy()
-    );
+    expect(screen.getByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeTruthy();
     expect(screen.getByText(/다른 탭이나 사용자가 더 최신 내용을 저장했습니다/)).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: '내 변경 복사' }));
@@ -764,38 +779,40 @@ describe('ReadingSectionEditor', () => {
         2
       )
     );
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith('내 변경 내용을 클립보드에 복사했습니다')
-    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(toast.success).toHaveBeenCalledWith('내 변경 내용을 클립보드에 복사했습니다');
 
     fireEvent.click(screen.getByRole('button', { name: '최신 상태 다시 불러오기' }));
     expect(invalidateQueriesMock).toHaveBeenCalled();
     expect(screen.queryByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeNull();
 
     mutateAsyncUpdate.mockRejectedValueOnce(new Error('HTTP 409 Conflict'));
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
-    await waitFor(() =>
-      expect(screen.getByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeTruthy()
-    );
+    fireEvent.change(input, { target: { value: 'y' } });
+    await flushReadingAutosave();
+    expect(screen.getByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
     expect(screen.queryByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeNull();
   });
 
   it('copy draft reports clipboard failure', async () => {
+    vi.useFakeTimers();
     writeTextMock.mockRejectedValueOnce(new Error('denied'));
     mutateAsyncUpdate.mockRejectedValueOnce(new Error('HTTP 409 Conflict'));
 
     renderEditor();
     const input = screen.getByLabelText('섹션 이름') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'x' } });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushReadingAutosave();
 
-    await waitFor(() =>
-      expect(screen.getByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeTruthy()
-    );
+    expect(screen.getByRole('alert', { name: '읽기 대사 저장 충돌' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '내 변경 복사' }));
 
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('클립보드에 복사할 수 없습니다'));
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(toast.error).toHaveBeenCalledWith('클립보드에 복사할 수 없습니다');
     expect(toast.success).not.toHaveBeenCalledWith('내 변경 내용을 클립보드에 복사했습니다');
   });
 });

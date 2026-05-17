@@ -268,7 +268,6 @@ function SelectedLocationDetail({
 
   const {
     schedule: scheduleBasicInfoSave,
-    flush: flushBasicInfoSave,
     cancel: cancelBasicInfoSave,
   } = useEditorAutosaveToast<Partial<LocationResponse>>({
     debounceMs: 1000,
@@ -306,21 +305,6 @@ function SelectedLocationDetail({
     locationMeta,
     cancelBasicInfoSave,
   ]);
-
-  function saveBasicInfo() {
-    const nextName = basicDraft.name.trim();
-    if (!nextName) {
-      toast.error('장소 이름을 입력해 주세요');
-      return;
-    }
-
-    scheduleBasicInfoSave({
-      name: nextName,
-      public_description: basicDraft.publicDescription.trim() || null,
-      entry_message: basicDraft.entryMessage.trim() || null,
-    });
-    flushBasicInfoSave();
-  }
 
   const isBasicInfoDirty = useMemo(() => {
     const currentPublicDescription =
@@ -406,8 +390,6 @@ function SelectedLocationDetail({
               locationName={location.name}
               draft={basicDraft}
               onDraftChange={setBasicDraft}
-              onSave={saveBasicInfo}
-              isSaving={updateLocation.isPending}
             />
             <SceneVisibilityFields
               location={location}
@@ -465,27 +447,15 @@ function LocationBasicInfoFields({
   locationName,
   draft,
   onDraftChange,
-  onSave,
-  isSaving,
 }: {
   locationName: string;
   draft: LocationBasicDraft;
   onDraftChange: Dispatch<SetStateAction<LocationBasicDraft>>;
-  onSave: () => void;
-  isSaving: boolean;
 }) {
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold text-slate-300">기본 정보</p>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={isSaving}
-          className="rounded-md border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-100 transition hover:bg-amber-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          저장
-        </button>
       </div>
       <div className="mt-3 grid gap-3">
         <label className="text-xs text-slate-500">

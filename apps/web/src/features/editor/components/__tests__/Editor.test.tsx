@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, act } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks (available inside vi.mock factories)
@@ -249,6 +249,13 @@ function defaultMutationReturn() {
   return { mutate: mutateMock, isPending: false };
 }
 
+async function flushOverviewAutosave() {
+  await act(async () => {
+    vi.advanceTimersByTime(1200);
+    await Promise.resolve();
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -256,6 +263,7 @@ function defaultMutationReturn() {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
 
 // =========================================================================
@@ -411,33 +419,32 @@ describe('OverviewTab', () => {
     expect(screen.getByText('게임 유형과 초기 프리셋')).toBeDefined();
   });
 
-  it('빈 제목으로 제출 시 에러를 표시한다', () => {
+  it('빈 제목으로 자동저장 시 에러를 표시한다', async () => {
+    vi.useFakeTimers();
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
     // 제목을 공백만으로 설정 (trim 후 빈 문자열)
     const titleInput = screen.getByDisplayValue('테스트 테마');
     fireEvent.change(titleInput, { target: { value: '   ' } });
 
-    // 폼 제출 (저장 버튼 클릭)
-    const submitButton = screen.getByText('저장');
-    fireEvent.click(submitButton);
+    await flushOverviewAutosave();
 
     // 에러 메시지 표시
     expect(screen.getByText('제목은 필수입니다')).toBeDefined();
     // mutate가 호출되지 않아야 한다
     expect(mutateMock).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /^저장$/ })).toBeNull();
   });
 
-  it('유효한 제출 시 mutate를 올바른 body로 호출한다', () => {
+  it('유효한 변경 시 자동저장으로 mutate를 올바른 body로 호출한다', async () => {
+    vi.useFakeTimers();
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
     // 제목 변경
     const titleInput = screen.getByDisplayValue('테스트 테마');
     fireEvent.change(titleInput, { target: { value: '수정된 제목' } });
 
-    // 폼 제출
-    const submitButton = screen.getByText('저장');
-    fireEvent.click(submitButton);
+    await flushOverviewAutosave();
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [body] = mutateMock.mock.calls[0];
@@ -447,13 +454,14 @@ describe('OverviewTab', () => {
     expect(body).toHaveProperty('duration_min', 90);
   });
 
-  it('미디어 관리 IMAGE를 커버 이미지 참조로 저장한다', () => {
+  it('미디어 관리 IMAGE를 커버 이미지 참조로 자동저장한다', async () => {
+    vi.useFakeTimers();
     render(<OverviewTab themeId="theme-1" theme={mockTheme} />);
 
     fireEvent.click(screen.getByText('미디어에서 커버 선택'));
     expect(screen.getByText('filter:IMAGE')).toBeDefined();
     fireEvent.click(screen.getByText('커버 이미지 선택'));
-    fireEvent.click(screen.getByText('저장'));
+    await flushOverviewAutosave();
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
     const [body] = mutateMock.mock.calls[0];

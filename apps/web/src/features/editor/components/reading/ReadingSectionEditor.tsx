@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FileInput, Play, Save, Trash2 } from 'lucide-react';
+import { FileInput, Play, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { queryClient } from '@/services/queryClient';
@@ -126,7 +126,14 @@ export function ReadingSectionEditor({
           characters.find((character) => character.isPlayable)?.id ??
           null,
       );
-      return result.issues.length > 0 ? null : result.patch;
+      if (result.issues.length > 0) {
+        setValidationIssues(result.issues);
+        setSaveError('저장 전에 미디어가 빠진 블록을 확인해 주세요.');
+        return null;
+      }
+      setValidationIssues([]);
+      setSaveError(null);
+      return result.patch;
     },
     [characters],
   );
@@ -134,7 +141,6 @@ export function ReadingSectionEditor({
     draft,
     setDraft,
     isDirty,
-    saveNow: saveReadingNow,
   } = useAutosavedDraft<ReadingSectionResponse, ReadingSectionDraft, UpdateReadingSectionRequest>({
     serverValue: section,
     serverKey: section.id,
@@ -194,11 +200,6 @@ export function ReadingSectionEditor({
   const validationIssueByLine = useMemo(
     () => new Map(validationIssues.map((issue) => [issue.lineIndex, issue.message])),
     [validationIssues]
-  );
-
-  const autosavePatch = useMemo(
-    () => buildReadingPatch(draft, section, characters, effectiveNarratorCharacterId),
-    [characters, draft, effectiveNarratorCharacterId, section],
   );
 
   // -------------------------------------------------------------------------
@@ -293,23 +294,6 @@ export function ReadingSectionEditor({
   function clearSaveFeedback() {
     setSaveError(null);
     setValidationIssues([]);
-  }
-
-  // -------------------------------------------------------------------------
-  // Save / Delete
-  // -------------------------------------------------------------------------
-
-  async function handleSave() {
-    setSaveError(null);
-    setConflict(false);
-    setValidationIssues([]);
-    if (autosavePatch.issues.length > 0) {
-      setValidationIssues(autosavePatch.issues);
-      setSaveError('저장 전에 미디어가 빠진 블록을 확인해 주세요.');
-      return;
-    }
-
-    saveReadingNow();
   }
 
   async function handleDelete() {
@@ -473,7 +457,7 @@ export function ReadingSectionEditor({
       </div>
 
       {/* Action bar */}
-      <div className="flex items-center justify-between border-t border-slate-700 pt-3">
+      <div className="flex items-center justify-start border-t border-slate-700 pt-3">
         <button
           type="button"
           onClick={() => setConfirmDelete((v) => !v)}
@@ -481,16 +465,6 @@ export function ReadingSectionEditor({
         >
           <Trash2 className="h-3 w-3" />
           섹션 삭제
-        </button>
-
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!isDirty || updateMutation.isPending}
-          className="flex items-center gap-1 rounded bg-amber-500 px-3 py-1 text-xs font-medium text-slate-900 hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-500"
-        >
-          <Save className="h-3 w-3" />
-          {updateMutation.isPending ? '저장 중...' : '저장'}
         </button>
       </div>
 
