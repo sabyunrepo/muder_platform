@@ -735,4 +735,52 @@ describe('InfoTab', () => {
       )
     );
   });
+
+  it('keeps the local title draft when an earlier autosave refetch returns stale data', async () => {
+    vi.useFakeTimers();
+    let infos = [{ ...baseInfo }];
+    useStoryInfosMock.mockImplementation(() => ({
+      data: infos,
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    }));
+    updateMutate.mockResolvedValueOnce({
+      ...baseInfo,
+      title: '지',
+      version: 4,
+      updatedAt: '2026-05-06T00:01:00Z',
+    });
+
+    const { rerender } = render(<InfoTab themeId="theme-1" />);
+    enterInfoEditMode();
+    fireEvent.change(screen.getByLabelText('정보 제목'), {
+      target: { value: '지' },
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(1000);
+      await Promise.resolve();
+    });
+    expect(updateMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        patch: expect.objectContaining({ title: '지', version: 3 }),
+      })
+    );
+
+    fireEvent.change(screen.getByLabelText('정보 제목'), {
+      target: { value: '지도' },
+    });
+    infos = [
+      {
+        ...baseInfo,
+        title: '지',
+        version: 4,
+        updatedAt: '2026-05-06T00:01:00Z',
+      },
+    ];
+    rerender(<InfoTab themeId="theme-1" />);
+
+    expect(screen.getByLabelText('정보 제목')).toHaveProperty('value', '지도');
+  });
 });

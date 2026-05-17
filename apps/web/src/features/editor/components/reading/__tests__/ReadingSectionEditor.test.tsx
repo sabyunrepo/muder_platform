@@ -176,6 +176,22 @@ describe('ReadingSectionEditor', () => {
     expect(input.value).toBe('오프닝');
   });
 
+  it('keeps the local draft when the same section refetches stale data', () => {
+    const { rerender } = renderEditor();
+    const input = screen.getByLabelText('섹션 이름') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: '새 오프닝' } });
+    rerender(
+      <ReadingSectionEditor
+        themeId="theme-1"
+        section={{ ...sampleSection, name: '오프닝' }}
+        characters={characters}
+      />
+    );
+
+    expect(screen.getByLabelText('섹션 이름')).toHaveProperty('value', '새 오프닝');
+  });
+
   it('renders all line rows', () => {
     renderEditor();
     expect(screen.getByDisplayValue('어두운 방 안.')).toBeTruthy();
