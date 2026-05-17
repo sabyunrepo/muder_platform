@@ -113,7 +113,7 @@ export function LocationDetailPanel({
 
   return (
     <>
-      <div className="grid min-h-0 gap-4 md:h-full md:grid-cols-[minmax(16rem,0.34fr)_minmax(0,1fr)] lg:grid-cols-[minmax(16rem,0.32fr)_minmax(0,1fr)]">
+      <div className="grid min-h-0 gap-4 pb-4 md:h-full md:grid-cols-[minmax(16rem,0.34fr)_minmax(0,1fr)] md:overflow-hidden md:pb-0 lg:grid-cols-[minmax(16rem,0.32fr)_minmax(0,1fr)]">
         <LocationHierarchyList
           locations={mapLocations}
           theme={theme}
