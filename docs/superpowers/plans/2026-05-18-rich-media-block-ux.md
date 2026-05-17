@@ -28,4 +28,10 @@
 - [x] MediaEmbed block control UI 추가
 - [x] focused unit/component test 추가
 - [x] typecheck/E2E focused 검증
+- [x] CodeRabbit 1차 리뷰 반영
+  - [x] 중첩 컨트롤 Enter 키가 figure shortcut에 잡히지 않도록 차단
+  - [x] MediaEmbed 조작 콜백의 stale markdown 참조 방지
+  - [x] 동일 mediaId 재사용 시 align/width까지 매칭해 교체 대상 고정
+  - [x] drag/drop 테스트의 layout 값 명시
+  - [x] 역할지 이미지 블록 E2E 접근성 smoke 추가
 - [ ] PR 생성, CodeRabbit 확인, merge
