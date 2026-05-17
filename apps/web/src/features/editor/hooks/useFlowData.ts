@@ -40,6 +40,7 @@ export function useFlowData(themeId: string) {
   const [nodes, setNodes] = useNodesState(initialNodes);
   const [edges, setEdges] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const selectedNodeIdRef = useRef<string | null>(null);
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
   const edgesRef = useRef(edges);
@@ -74,10 +75,20 @@ export function useFlowData(themeId: string) {
       saveFlow.mutate(toSaveRequest(tpl.nodes, tpl.edges));
       return;
     }
-    const nextNodes = nodes_.map(toReactFlowNode);
+    const selectedNodeId = selectedNodeIdRef.current;
+    const nextNodes = nodes_.map((node) => {
+      const nextNode = toReactFlowNode(node);
+      return selectedNodeId === nextNode.id ? { ...nextNode, selected: true } : nextNode;
+    });
     const nextEdges = edges_.map(toReactFlowEdge);
     setNodesAndRef(nextNodes);
     setEdgesAndRef(nextEdges);
+    setSelectedNode((prev) => {
+      if (!prev) return null;
+      const refreshed = nextNodes.find((node) => node.id === prev.id) ?? null;
+      selectedNodeIdRef.current = refreshed?.id ?? null;
+      return refreshed;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
@@ -204,7 +215,9 @@ export function useFlowData(themeId: string) {
       setNodesAndRef(next);
       autoSave(next, edgesRef.current);
       setSelectedNode((prev) =>
-        prev && prev.id === id ? { ...prev, data: { ...prev.data, ...patch } } : prev
+        prev && prev.id === id
+          ? { ...prev, data: { ...prev.data, ...patch } }
+          : prev
       );
     },
     [setNodesAndRef, autoSave]
@@ -219,7 +232,11 @@ export function useFlowData(themeId: string) {
           setNodesAndRef(nextNodes);
           setEdgesAndRef(nextEdges);
           autoSave(nextNodes, nextEdges);
-          setSelectedNode((prev) => (prev?.id === id ? null : prev));
+          setSelectedNode((prev) => {
+            if (prev?.id !== id) return prev;
+            selectedNodeIdRef.current = null;
+            return null;
+          });
         },
       });
     },
@@ -236,7 +253,9 @@ export function useFlowData(themeId: string) {
   );
 
   const onSelectionChange = useCallback(({ nodes: selected }: { nodes: Node[] }) => {
-    setSelectedNode(selected.length === 1 ? selected[0] : null);
+    const nextSelectedNode = selected.length === 1 ? selected[0] : null;
+    selectedNodeIdRef.current = nextSelectedNode?.id ?? null;
+    setSelectedNode(nextSelectedNode);
   }, []);
 
   const getNodes = useCallback(() => nodesRef.current, []);
