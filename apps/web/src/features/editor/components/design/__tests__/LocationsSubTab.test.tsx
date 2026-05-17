@@ -172,6 +172,7 @@ describe('LocationsSubTab', () => {
       expect(screen.getByRole('button', { name: '호텔 로비 선택' })).toBeDefined();
       expect(screen.getByRole('button', { name: '호텔 로비 / 프런트 데스크 선택' })).toBeDefined();
       expect(screen.getByText('직접 배치 단서 0개 · 하위장소 1개')).toBeDefined();
+      expect(screen.queryByText('직접 배치 단서 0개 · 하위장소 0개')).toBeNull();
     });
 
     it('장소가 없는 맵에서도 장소 추가 입력을 표시한다', () => {
