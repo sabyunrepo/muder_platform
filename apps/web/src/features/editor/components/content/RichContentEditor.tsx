@@ -18,16 +18,15 @@ import {
   type MDXEditorMethods,
 } from '@mdxeditor/editor';
 
-import {
-  useMediaList,
-  type MediaResponse,
-  type MediaType,
-} from '@/features/editor/mediaApi';
+import { useMediaList, type MediaResponse, type MediaType } from '@/features/editor/mediaApi';
 import { MediaEmbedPicker } from './MediaEmbedPicker';
 import { MediaEmbedEditor } from './MediaEmbedEditor';
 import {
   createMediaEmbedSnippet,
+  insertMediaEmbedParagraph,
   mediaTypeToEmbedType,
+  moveMediaEmbedBlock,
+  moveMediaEmbedBlockTo,
   type MediaEmbedAttributes,
 } from './mediaEmbedMarkdown';
 import { normalizeLegacyEscapedMarkdown } from './legacyMarkdown';
@@ -61,11 +60,20 @@ export function RichContentEditor({
 }) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const normalizedMarkdown = useMemo(() => normalizeLegacyEscapedMarkdown(markdown), [markdown]);
+  const markdownRef = useRef(normalizedMarkdown);
+  const onChangeRef = useRef(onChange);
   const [replacementTarget, setReplacementTarget] = useState<MediaEmbedAttributes | null>(null);
   const { data: media = [] } = useMediaList(themeId);
 
   useEffect(() => {
-    editorRef.current?.setMarkdown?.(normalizedMarkdown);
+    markdownRef.current = normalizedMarkdown;
+    onChangeRef.current = onChange;
+  }, [normalizedMarkdown, onChange]);
+
+  useEffect(() => {
+    if (editorRef.current?.getMarkdown?.() !== normalizedMarkdown) {
+      editorRef.current?.setMarkdown?.(normalizedMarkdown);
+    }
   }, [normalizedMarkdown]);
 
   const plugins = useMemo(
@@ -77,10 +85,28 @@ export function RichContentEditor({
       thematicBreakPlugin(),
       jsxPlugin({
         jsxComponentDescriptors: [
-          createMediaEmbedDescriptor(media, (attrs) => {
-            setReplacementTarget(attrs);
-            onOpenPicker(attrs.type === 'video' ? 'VIDEO' : 'IMAGE');
-          }),
+          createMediaEmbedDescriptor(
+            media,
+            (attrs) => {
+              setReplacementTarget(attrs);
+              onOpenPicker(attrs.type === 'video' ? 'VIDEO' : 'IMAGE');
+            },
+            {
+              onInsertParagraph: (attrs, position) => {
+                onChangeRef.current(
+                  insertMediaEmbedParagraph(markdownRef.current, attrs, position)
+                );
+              },
+              onMove: (attrs, direction) => {
+                onChangeRef.current(moveMediaEmbedBlock(markdownRef.current, attrs, direction));
+              },
+              onDropOn: (source, target, position) => {
+                onChangeRef.current(
+                  moveMediaEmbedBlockTo(markdownRef.current, source, target, position)
+                );
+              },
+            }
+          ),
         ],
       }),
       toolbarPlugin({
@@ -96,7 +122,7 @@ export function RichContentEditor({
       }),
       markdownShortcutPlugin(),
     ],
-    [media, onOpenPicker],
+    [media, onOpenPicker]
   );
 
   function handleSelectMedia(media: MediaResponse) {
@@ -106,7 +132,7 @@ export function RichContentEditor({
         media.id,
         type,
         replacementTarget.align,
-        replacementTarget.width,
+        replacementTarget.width
       ).trim();
       onChange(replaceMediaEmbed(normalizedMarkdown, replacementTarget, snippet));
       setReplacementTarget(null);
@@ -158,6 +184,15 @@ export function RichContentEditor({
 function createMediaEmbedDescriptor(
   media: MediaResponse[],
   onRequestReplace: (attrs: MediaEmbedAttributes) => void,
+  controls: {
+    onInsertParagraph: (attrs: MediaEmbedAttributes, position: 'before' | 'after') => void;
+    onMove: (attrs: MediaEmbedAttributes, direction: 'up' | 'down') => void;
+    onDropOn: (
+      source: MediaEmbedAttributes,
+      target: MediaEmbedAttributes,
+      position: 'before' | 'after'
+    ) => void;
+  }
 ): JsxComponentDescriptor {
   return {
     name: 'MediaEmbed',
@@ -170,22 +205,27 @@ function createMediaEmbedDescriptor(
     ],
     hasChildren: false,
     Editor: (props) => (
-      <MediaEmbedEditor {...props} media={media} onRequestReplace={onRequestReplace} />
+      <MediaEmbedEditor
+        {...props}
+        media={media}
+        onRequestReplace={onRequestReplace}
+        onInsertParagraph={controls.onInsertParagraph}
+        onMove={controls.onMove}
+        onDropOn={controls.onDropOn}
+      />
     ),
   };
 }
 
-function replaceMediaEmbed(
-  markdown: string,
-  target: MediaEmbedAttributes,
-  nextSnippet: string,
-) {
+function replaceMediaEmbed(markdown: string, target: MediaEmbedAttributes, nextSnippet: string) {
   const pattern = /<MediaEmbed\s+([^>]+)\/>/g;
   for (const match of markdown.matchAll(pattern)) {
     const attrs = match[1] ?? '';
     if (
       readAttr(attrs, 'mediaId') !== target.mediaId ||
-      (readAttr(attrs, 'type') || 'image') !== target.type
+      (readAttr(attrs, 'type') || 'image') !== target.type ||
+      (readAttr(attrs, 'align') || 'center') !== target.align ||
+      (readAttr(attrs, 'width') || 'medium') !== target.width
     ) {
       continue;
     }
