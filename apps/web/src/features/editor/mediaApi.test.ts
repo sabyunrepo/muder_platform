@@ -36,6 +36,7 @@ import {
   useDeleteMedia,
   useMediaCategories,
   useMediaDownloadUrl,
+  useMediaDownloadUrls,
   useMediaList,
   useMediaDeletePreview,
   useRequestReplacementUpload,
@@ -236,6 +237,49 @@ describe("useMediaDownloadUrl", () => {
 
   it("does not fetch download URL without media id", () => {
     renderHook(() => useMediaDownloadUrl(undefined), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(api.get).not.toHaveBeenCalled();
+  });
+});
+
+describe("useMediaDownloadUrls", () => {
+  it("fetches editor media download URLs for every requested media id", async () => {
+    vi.mocked(api.get)
+      .mockResolvedValueOnce({
+        url: "https://download.example/evidence-1.webp",
+        expires_at: "2026-05-02T00:10:00Z",
+      })
+      .mockResolvedValueOnce({
+        url: "https://download.example/evidence-2.webp",
+        expires_at: "2026-05-02T00:10:00Z",
+      });
+
+    const { result } = renderHook(
+      () => useMediaDownloadUrls(["media-image-1", "media-image-2"]),
+      { wrapper: makeWrapper() },
+    );
+
+    await waitFor(() => {
+      expect(result.current.every((query) => query.isSuccess)).toBe(true);
+    });
+    expect(api.get).toHaveBeenNthCalledWith(
+      1,
+      "/v1/editor/media/media-image-1/download-url",
+    );
+    expect(api.get).toHaveBeenNthCalledWith(
+      2,
+      "/v1/editor/media/media-image-2/download-url",
+    );
+    expect(result.current.map((query) => query.data?.url)).toEqual([
+      "https://download.example/evidence-1.webp",
+      "https://download.example/evidence-2.webp",
+    ]);
+  });
+
+  it("does not fetch download URLs when the requested list is empty", () => {
+    renderHook(() => useMediaDownloadUrls([]), {
       wrapper: makeWrapper(),
     });
 

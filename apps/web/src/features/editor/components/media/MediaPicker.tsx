@@ -11,6 +11,7 @@ import {
 } from "@/features/editor/entities/mediaResource/mediaResourceAdapter";
 import {
   useMediaCategories,
+  useMediaDownloadUrls,
   useMediaList,
   type MediaResponse,
   type MediaType,
@@ -73,17 +74,27 @@ export function MediaPicker({
     () => (useCase ? resourceViewModels.filter((resource) => resource.isSelectable) : resourceViewModels),
     [resourceViewModels, useCase],
   );
-  const filteredResources = useMemo(
-    () =>
-      filterMediaResourceViewModels(selectableResources, searchQuery).map((resource) => {
-        const source = media.find((item) => item.id === resource.id);
-        return {
-          ...resource,
-          thumbnailUrl: source ? getMediaThumbnailUrl(source) : null,
-        };
-      }),
-    [media, selectableResources, searchQuery],
+  const fileImagePreviewIds = useMemo(
+    () => media.filter(needsDownloadUrlThumbnail).map((item) => item.id),
+    [media],
   );
+  const fileImagePreviewQueries = useMediaDownloadUrls(open ? fileImagePreviewIds : []);
+  const fileImagePreviewUrlById = new Map<string, string>();
+  fileImagePreviewQueries.forEach((query, index) => {
+    const previewUrl = query.data?.url;
+    if (previewUrl) {
+      fileImagePreviewUrlById.set(fileImagePreviewIds[index], previewUrl);
+    }
+  });
+  const filteredResources = filterMediaResourceViewModels(selectableResources, searchQuery).map((resource) => {
+    const source = media.find((item) => item.id === resource.id);
+    return {
+      ...resource,
+      thumbnailUrl: source
+        ? getMediaThumbnailUrl(source) ?? fileImagePreviewUrlById.get(source.id) ?? null
+        : null,
+    };
+  });
 
   if (!open) return null;
 
@@ -135,4 +146,8 @@ export function MediaPicker({
       />
     </>
   );
+}
+
+function needsDownloadUrlThumbnail(media: MediaResponse) {
+  return media.type === "IMAGE" && media.source_type === "FILE" && !media.url;
 }

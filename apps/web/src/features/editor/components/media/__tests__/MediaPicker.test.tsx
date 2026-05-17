@@ -8,12 +8,14 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 const {
   useMediaListMock,
   useMediaCategoriesMock,
+  useMediaDownloadUrlsMock,
   useRequestUploadUrlMock,
   useConfirmUploadMock,
   uploadMediaFileMock,
 } = vi.hoisted(() => ({
   useMediaListMock: vi.fn(),
   useMediaCategoriesMock: vi.fn(),
+  useMediaDownloadUrlsMock: vi.fn(),
   useRequestUploadUrlMock: vi.fn(),
   useConfirmUploadMock: vi.fn(),
   uploadMediaFileMock: vi.fn(),
@@ -22,6 +24,7 @@ const {
 vi.mock("@/features/editor/mediaApi", () => ({
   useMediaList: (...args: unknown[]) => useMediaListMock(...args),
   useMediaCategories: (...args: unknown[]) => useMediaCategoriesMock(...args),
+  useMediaDownloadUrls: (...args: unknown[]) => useMediaDownloadUrlsMock(...args),
   useRequestUploadUrl: () => useRequestUploadUrlMock(),
   useConfirmUpload: () => useConfirmUploadMock(),
   uploadMediaFile: (...args: unknown[]) => uploadMediaFileMock(...args),
@@ -114,6 +117,7 @@ beforeEach(() => {
   });
   useRequestUploadUrlMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
   useConfirmUploadMock.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
+  useMediaDownloadUrlsMock.mockReturnValue([]);
 });
 
 afterEach(() => {
@@ -279,6 +283,43 @@ describe("MediaPicker", () => {
 
     expect(sources).toContain("https://example.com/evidence.webp");
     expect(sources).toContain("https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg");
+  });
+
+  it("공개 URL이 없는 파일 이미지도 download URL로 picker thumbnail을 표시한다", () => {
+    useMediaListMock.mockReturnValue({
+      data: [
+        {
+          ...mockMedia[3],
+          id: "private-image-1",
+          name: "비공개 증거 사진",
+          url: undefined,
+        },
+      ],
+      isLoading: false,
+    });
+    useMediaDownloadUrlsMock.mockReturnValue([
+      {
+        data: {
+          url: "https://download.example/private-image.webp",
+          expires_at: "2026-05-18T01:00:00Z",
+        },
+      },
+    ]);
+
+    render(
+      <MediaPicker
+        open={true}
+        onClose={vi.fn()}
+        onSelect={vi.fn()}
+        themeId="theme-1"
+      />,
+    );
+
+    expect(useMediaDownloadUrlsMock).toHaveBeenCalledWith(["private-image-1"]);
+    const images = Array.from(document.querySelectorAll("img")) as HTMLImageElement[];
+    expect(images.map((image) => image.getAttribute("src"))).toContain(
+      "https://download.example/private-image.webp",
+    );
   });
 
   it("selectedId와 일치하는 항목을 강조한다", () => {
