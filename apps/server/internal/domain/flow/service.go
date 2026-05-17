@@ -151,7 +151,18 @@ func (s *serviceImpl) UpdateNode(ctx context.Context, creatorID, themeID, nodeID
 	if len(data) == 0 {
 		data = nil
 	}
-	row := s.pool.QueryRow(ctx,
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return nil, apperror.Internal("failed to begin transaction")
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+
+	if err := lockThemeOwner(ctx, tx, creatorID, themeID); err != nil {
+		return nil, err
+	}
+
+	row := tx.QueryRow(ctx,
 		`UPDATE flow_nodes n
 		SET type = CASE WHEN $2 = '' THEN n.type ELSE $2 END,
 			data = COALESCE($3, n.data),
@@ -163,7 +174,14 @@ func (s *serviceImpl) UpdateNode(ctx context.Context, creatorID, themeID, nodeID
 		RETURNING n.*`,
 		nodeID, req.Type, data, req.PositionX, req.PositionY, themeID, creatorID,
 	)
-	return scanNode(row)
+	node, err := scanNode(row)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, apperror.Internal("failed to commit transaction")
+	}
+	return node, nil
 }
 
 func (s *serviceImpl) DeleteNode(ctx context.Context, creatorID, themeID, nodeID uuid.UUID) error {

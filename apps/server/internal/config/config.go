@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // Config holds all application configuration loaded from environment variables.
@@ -26,12 +27,17 @@ type Config struct {
 	LiveKitAPIKey    string `env:"LIVEKIT_API_KEY" default:""`
 	LiveKitAPISecret string `env:"LIVEKIT_API_SECRET" default:""`
 
+	// Media storage provider configuration.
+	// auto: use R2 when configured, otherwise local dev storage.
+	StorageProvider     string `env:"STORAGE_PROVIDER" default:"auto"`
+	StorageLocalBaseDir string `env:"STORAGE_LOCAL_BASE_DIR" default:"tmp/uploads"`
+
 	// Cloudflare R2 media storage configuration
-	R2AccountID       string `env:"R2_ACCOUNT_ID" default:""`
-	R2AccessKeyID     string `env:"R2_ACCESS_KEY_ID" default:""`
-	R2SecretAccessKey string `env:"R2_SECRET_ACCESS_KEY" default:""`
-	R2BucketName      string `env:"R2_BUCKET_NAME" default:""`
-	R2PublicURL       string `env:"R2_PUBLIC_URL" default:""`
+	R2AccountID       string `env:"R2_ACCOUNT_ID" aliases:"STORAGE_R2_ACCOUNT_ID" default:""`
+	R2AccessKeyID     string `env:"R2_ACCESS_KEY_ID" aliases:"STORAGE_R2_ACCESS_KEY_ID" default:""`
+	R2SecretAccessKey string `env:"R2_SECRET_ACCESS_KEY" aliases:"STORAGE_R2_SECRET_ACCESS_KEY" default:""`
+	R2BucketName      string `env:"R2_BUCKET_NAME" aliases:"STORAGE_R2_BUCKET,STORAGE_R2_BUCKET_NAME" default:""`
+	R2PublicURL       string `env:"R2_PUBLIC_URL" aliases:"STORAGE_R2_PUBLIC_URL" default:""`
 
 	// Feature flags
 	// GameRuntimeV2 enables the Phase 18.x modular game runtime (default off).
@@ -51,6 +57,41 @@ func (c *Config) IsDevelopment() bool {
 // HasLiveKit returns true if LiveKit configuration is present.
 func (c *Config) HasLiveKit() bool {
 	return c.LiveKitURL != "" && c.LiveKitAPIKey != "" && c.LiveKitAPISecret != ""
+}
+
+// NormalizedStorageProvider returns the storage provider mode in a stable form.
+func (c *Config) NormalizedStorageProvider() string {
+	provider := strings.ToLower(strings.TrimSpace(c.StorageProvider))
+	if provider == "" {
+		return "auto"
+	}
+	return provider
+}
+
+// HasR2StorageConfig returns true when the required R2 storage credentials are present.
+func (c *Config) HasR2StorageConfig() bool {
+	return len(c.MissingR2StorageEnv()) == 0
+}
+
+// MissingR2StorageEnv returns canonical R2 env names that are required to use R2.
+func (c *Config) MissingR2StorageEnv() []string {
+	required := []struct {
+		name  string
+		value string
+	}{
+		{name: "R2_ACCOUNT_ID", value: c.R2AccountID},
+		{name: "R2_ACCESS_KEY_ID", value: c.R2AccessKeyID},
+		{name: "R2_SECRET_ACCESS_KEY", value: c.R2SecretAccessKey},
+		{name: "R2_BUCKET_NAME", value: c.R2BucketName},
+	}
+
+	missing := make([]string, 0, len(required))
+	for _, item := range required {
+		if strings.TrimSpace(item.value) == "" {
+			missing = append(missing, item.name)
+		}
+	}
+	return missing
 }
 
 // ServerBaseURL returns the base URL of this server for constructing local
@@ -78,7 +119,7 @@ func Load() (*Config, error) {
 			continue
 		}
 
-		envVal, exists := os.LookupEnv(envKey)
+		envVal, exists := lookupFieldEnv(field)
 		if !exists {
 			envVal = field.Tag.Get("default")
 		}
@@ -121,4 +162,32 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func lookupFieldEnv(field reflect.StructField) (string, bool) {
+	envKey := field.Tag.Get("env")
+	if envKey != "" {
+		if envVal, exists := os.LookupEnv(envKey); exists {
+			if envVal != "" {
+				return envVal, true
+			}
+			if field.Tag.Get("aliases") == "" {
+				return envVal, true
+			}
+		}
+	}
+
+	for _, alias := range strings.Split(field.Tag.Get("aliases"), ",") {
+		alias = strings.TrimSpace(alias)
+		if alias == "" {
+			continue
+		}
+		if envVal, exists := os.LookupEnv(alias); exists {
+			if envVal != "" {
+				return envVal, true
+			}
+		}
+	}
+
+	return "", false
 }
