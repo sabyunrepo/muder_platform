@@ -58,13 +58,30 @@ export interface EndingBranchMatrixDraft {
   endingName: string;
 }
 
+export interface EndingBranchRuleGroupDraft {
+  endingId: string;
+  endingName: string;
+  rows: EndingBranchMatrixRow[];
+}
+
 export interface EndingBranchEditorViewModel {
   questions: EndingBranchQuestionDraft[];
   matrix: EndingBranchMatrixDraft[];
+  groupsByEnding: EndingBranchRuleGroupDraft[];
   defaultEndingId: string;
   defaultEndingName: string;
   thresholdPercent: number;
   warnings: string[];
+}
+
+export type EndingConditionAtom =
+  | { kind: "question_choice"; questionId: string; choice: string; choices: string[]; aggregation: EndingBranchAggregation; negated: boolean }
+  | { kind: "character_alive"; characterId: string; alive: boolean; negated: boolean }
+  | { kind: "unsupported"; condition: EditorConfig };
+
+export interface EndingConditionGroupDraft {
+  operator: "and";
+  conditions: EndingConditionAtom[];
 }
 
 function isRecord(value: unknown): value is EditorConfig {
@@ -248,6 +265,25 @@ export function buildAnyChoicesCondition(questionId: string, choices: string[]):
   return { or: uniqueChoices(choices).map((choice) => thresholdChoiceCondition(questionId, choice)) };
 }
 
+export function buildCharacterAliveCondition(characterId: string, alive: boolean): EditorConfig {
+  return { "==": [{ var: `characters.${characterId}.alive` }, alive] };
+}
+
+export function buildNegatedCondition(condition: EditorConfig): EditorConfig {
+  return Object.keys(condition).length > 0 ? { "!": condition } : {};
+}
+
+export function buildEveryoneAliveCondition(characterIds: string[]): EditorConfig {
+  return { and: uniqueChoices(characterIds).map((characterId) => buildCharacterAliveCondition(characterId, true)) };
+}
+
+export function buildConditionGroup(conditions: EditorConfig[]): EditorConfig {
+  const normalized = conditions.filter((condition) => Object.keys(condition).length > 0);
+  if (normalized.length === 0) return {};
+  if (normalized.length === 1) return normalized[0] ?? {};
+  return { and: normalized };
+}
+
 export function updateMatrixCondition(
   row: EndingBranchMatrixRow,
   questionId: string,
@@ -292,6 +328,56 @@ export function readChoiceCondition(
     ?? readCompositeChoiceCondition(condition.or, "any");
 }
 
+export function readCharacterAliveCondition(
+  condition: EditorConfig,
+): { characterId: string; alive: boolean } | null {
+  const equals = condition["=="];
+  if (!Array.isArray(equals) || equals.length < 2) return null;
+  const [source, alive] = equals;
+  if (!isRecord(source) || typeof source.var !== "string" || typeof alive !== "boolean") return null;
+  const match = source.var.match(/^characters\.(.+)\.alive$/);
+  return match ? { characterId: match[1], alive } : null;
+}
+
+export function readEndingConditionAtom(condition: EditorConfig, negated = false): EndingConditionAtom {
+  const rawNot = condition["!"];
+  if (isRecord(rawNot)) {
+    return readEndingConditionAtom(rawNot, !negated);
+  }
+  const choice = readChoiceCondition(condition);
+  if (choice) {
+    return { kind: "question_choice", ...choice, negated };
+  }
+  const characterAlive = readCharacterAliveCondition(condition);
+  if (characterAlive) {
+    return { kind: "character_alive", ...characterAlive, negated };
+  }
+  return { kind: "unsupported", condition };
+}
+
+export function readEndingConditionGroup(condition: EditorConfig): EndingConditionGroupDraft {
+  const rawNot = condition["!"];
+  if (isRecord(rawNot)) {
+    return { operator: "and", conditions: [readEndingConditionAtom(rawNot, true)] };
+  }
+  const choice = readChoiceCondition(condition);
+  if (choice) {
+    return { operator: "and", conditions: [{ kind: "question_choice", ...choice, negated: false }] };
+  }
+  const characterAlive = readCharacterAliveCondition(condition);
+  if (characterAlive) {
+    return { operator: "and", conditions: [{ kind: "character_alive", ...characterAlive, negated: false }] };
+  }
+  const rawAnd = condition.and;
+  if (Array.isArray(rawAnd) && rawAnd.length > 0) {
+    return {
+      operator: "and",
+      conditions: rawAnd.map((item) => isRecord(item) ? readEndingConditionAtom(item) : { kind: "unsupported", condition: {} }),
+    };
+  }
+  return { operator: "and", conditions: Object.keys(condition).length > 0 ? [readEndingConditionAtom(condition)] : [] };
+}
+
 function readCompositeChoiceCondition(
   value: unknown,
   aggregation: "all" | "any",
@@ -319,6 +405,20 @@ function endingNameById(nodes: Node[]): Map<string, string> {
         return [node.id, data.label?.trim() || "이름 없는 결말"] as const;
       }),
   );
+}
+
+export function groupEndingBranchRowsByEnding(
+  config: EndingBranchConfig,
+  endingNodes: Node[],
+): EndingBranchRuleGroupDraft[] {
+  const names = endingNameById(endingNodes);
+  return endingNodes
+    .filter((node) => node.type === "ending")
+    .map((node) => ({
+      endingId: node.id,
+      endingName: names.get(node.id) ?? "이름 없는 결말",
+      rows: config.matrix.filter((row) => row.ending === node.id),
+    }));
 }
 
 function questionTypeLabel(type: EndingBranchQuestionType): string {
@@ -366,6 +466,7 @@ export function toEndingBranchEditorViewModel(
   return {
     questions,
     matrix,
+    groupsByEnding: groupEndingBranchRowsByEnding(config, endingNodes),
     defaultEndingId,
     defaultEndingName,
     thresholdPercent: Math.round((config.multiVoteThreshold ?? 0.5) * 100),

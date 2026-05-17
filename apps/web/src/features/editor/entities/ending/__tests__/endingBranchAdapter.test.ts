@@ -1,14 +1,19 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { Node } from "@xyflow/react";
 import {
-  buildChoiceCondition,
   buildAllChoicesCondition,
   buildAnyChoicesCondition,
+  buildCharacterAliveCondition,
+  buildChoiceCondition,
+  buildConditionGroup,
+  buildEveryoneAliveCondition,
+  buildNegatedCondition,
   buildWinningChoiceCondition,
   createEndingBranchMatrixRow,
   createEndingBranchQuestion,
   readChoiceCondition,
   readEndingBranchConfig,
+  readEndingConditionGroup,
   toEndingBranchEditorViewModel,
   updateMatrixCondition,
   writeEndingBranchConfig,
@@ -217,6 +222,83 @@ describe("endingBranchAdapter", () => {
           { in: ["B", { var: "answers.q2.choices" }] },
         ],
       });
+  });
+
+  it("캐릭터 생존/사망 조건과 그룹 조건을 JSONLogic으로 저장하고 다시 읽는다", () => {
+    expect(buildCharacterAliveCondition("char-yangji", false)).toEqual({
+      "==": [{ var: "characters.char-yangji.alive" }, false],
+    });
+    expect(buildEveryoneAliveCondition(["char-godong", "char-yangji", "char-godong"])).toEqual({
+      and: [
+        { "==": [{ var: "characters.char-godong.alive" }, true] },
+        { "==": [{ var: "characters.char-yangji.alive" }, true] },
+      ],
+    });
+
+    const group = buildConditionGroup([
+      buildChoiceCondition("q1", "고동"),
+      buildCharacterAliveCondition("char-yangji", false),
+    ]);
+
+    expect(group).toEqual({
+      and: [
+        { in: ["고동", { var: "answers.q1.choices" }] },
+        { "==": [{ var: "characters.char-yangji.alive" }, false] },
+      ],
+    });
+    expect(readEndingConditionGroup(group)).toEqual({
+      operator: "and",
+      conditions: [
+        { kind: "question_choice", questionId: "q1", choice: "고동", choices: ["고동"], aggregation: "threshold", negated: false },
+        { kind: "character_alive", characterId: "char-yangji", alive: false, negated: false },
+      ],
+    });
+  });
+
+  it("아니면 조건을 JSONLogic not으로 저장하고 다시 읽는다", () => {
+    const questionCondition = buildNegatedCondition(buildChoiceCondition("q1", "고동"));
+    const characterCondition = buildNegatedCondition(buildCharacterAliveCondition("char-yangji", false));
+
+    expect(questionCondition).toEqual({ "!": { in: ["고동", { var: "answers.q1.choices" }] } });
+    expect(characterCondition).toEqual({ "!": { "==": [{ var: "characters.char-yangji.alive" }, false] } });
+    expect(readEndingConditionGroup(questionCondition)).toEqual({
+      operator: "and",
+      conditions: [
+        { kind: "question_choice", questionId: "q1", choice: "고동", choices: ["고동"], aggregation: "threshold", negated: true },
+      ],
+    });
+    expect(readEndingConditionGroup(characterCondition)).toEqual({
+      operator: "and",
+      conditions: [
+        { kind: "character_alive", characterId: "char-yangji", alive: false, negated: true },
+      ],
+    });
+  });
+
+  it("결말 규칙을 결말 id 기준 조건 그룹으로 묶는다", () => {
+    const config = readEndingBranchConfig({
+      modules: {
+        ending_branch: {
+          enabled: true,
+          config: {
+            matrix: [
+              { priority: 2, ending: "end-1", conditions: buildCharacterAliveCondition("char-a", false) },
+              { priority: 1, ending: "end-2", conditions: buildCharacterAliveCondition("char-b", true) },
+              { priority: 3, ending: "end-1", conditions: buildCharacterAliveCondition("char-c", true) },
+            ],
+          },
+        },
+      },
+    });
+    const viewModel = toEndingBranchEditorViewModel(
+      writeEndingBranchConfig(null, config),
+      [endingNode("end-1", "결말 1"), endingNode("end-2", "결말 2")],
+    );
+
+    expect(viewModel.groupsByEnding).toEqual([
+      { endingId: "end-1", endingName: "결말 1", rows: [config.matrix[1], config.matrix[2]] },
+      { endingId: "end-2", endingName: "결말 2", rows: [config.matrix[0]] },
+    ]);
   });
 
   it("새 질문과 규칙의 기본값은 제작자가 바로 수정 가능한 형태다", () => {

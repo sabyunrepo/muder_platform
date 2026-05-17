@@ -65,9 +65,9 @@ func (m *Module) submitAnswer(ctx context.Context, playerID uuid.UUID, payload j
 	return nil
 }
 
-func (m *Module) evaluateLocked() (*evaluationResult, error) {
-	ctx := m.evaluationContextLocked()
-	ctxJSON, err := json.Marshal(ctx)
+func (m *Module) evaluateLocked(ctx context.Context) (*evaluationResult, error) {
+	evalCtx := m.evaluationContextLocked(ctx)
+	ctxJSON, err := json.Marshal(evalCtx)
 	if err != nil {
 		return nil, fmt.Errorf("ending_branch: marshal evaluation context: %w", err)
 	}
@@ -93,7 +93,7 @@ func (m *Module) evaluateLocked() (*evaluationResult, error) {
 				MatchedPriority: &priority,
 				Fallback:        false,
 				AnswerSummary:   m.answerSummariesLocked(),
-				Scores:          scoreTotals(ctx),
+				Scores:          scoreTotals(evalCtx),
 			}, nil
 		}
 	}
@@ -101,11 +101,11 @@ func (m *Module) evaluateLocked() (*evaluationResult, error) {
 		SelectedEnding: m.cfg.DefaultEnding,
 		Fallback:       true,
 		AnswerSummary:  m.answerSummariesLocked(),
-		Scores:         scoreTotals(ctx),
+		Scores:         scoreTotals(evalCtx),
 	}, nil
 }
 
-func (m *Module) evaluationContextLocked() map[string]any {
+func (m *Module) evaluationContextLocked(ctx context.Context) map[string]any {
 	answers := make(map[string]any, len(m.cfg.Questions))
 	scores := make(map[string]int)
 	for _, question := range m.cfg.Questions {
@@ -126,7 +126,23 @@ func (m *Module) evaluationContextLocked() map[string]any {
 			"answered": len(byPlayer),
 		}
 	}
-	return map[string]any{"answers": answers, "scores": scores}
+	return map[string]any{"answers": answers, "scores": scores, "characters": m.characterAliveContextLocked(ctx)}
+}
+
+func (m *Module) characterAliveContextLocked(ctx context.Context) map[string]any {
+	provider, ok := m.deps.PlayerInfoProvider.(engine.PlayerRuntimeRosterProvider)
+	if !ok || provider == nil {
+		return map[string]any{}
+	}
+	players := provider.PlayerRuntimeRoster(ctx)
+	characters := make(map[string]any, len(players))
+	for _, player := range players {
+		if player.TargetCode == "" {
+			continue
+		}
+		characters[player.TargetCode] = map[string]any{"alive": player.IsAlive}
+	}
+	return characters
 }
 
 func scoreTotals(ctx map[string]any) map[string]int {

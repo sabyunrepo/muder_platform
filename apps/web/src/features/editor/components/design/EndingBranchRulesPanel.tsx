@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, Save } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent } from "react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Node } from "@xyflow/react";
 import type { EditorCharacterResponse, EditorThemeResponse } from "@/features/editor/api";
 import { useUpdateConfigJson } from "@/features/editor/editorConfigApi";
+import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
 import {
   createEndingBranchQuestion,
   readChoiceCondition,
@@ -22,7 +23,16 @@ interface EndingBranchRulesPanelProps {
   endingNodes: Node[];
   characters: EditorCharacterResponse[];
   section: "questions" | "endings";
+  selectedEndingId?: string;
+  embedded?: boolean;
+  settingsOnly?: boolean;
 }
+
+interface AutosaveBody {
+  draft: EndingBranchConfig;
+}
+
+const ENDING_BRANCH_AUTOSAVE_MS = 1500;
 
 function reorderPriorities(config: EndingBranchConfig): EndingBranchConfig {
   return { ...config, matrix: config.matrix.map((row, index) => ({ ...row, priority: index + 1 })) };
@@ -71,12 +81,28 @@ function updateChoiceValues(
   return question.choices.map((choice, index) => (index === choiceIndex ? value : choice));
 }
 
-export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters, section }: EndingBranchRulesPanelProps) {
+function hasInvalidSpecificPlayerTarget(config: EndingBranchConfig): boolean {
+  return config.questions.some(
+    (question) => question.target.type === "specific_players" && question.target.characterIds.length === 0,
+  );
+}
+
+function endingBranchConfigEqual(left: EndingBranchConfig, right: EndingBranchConfig): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters, section, selectedEndingId, embedded = false, settingsOnly = false }: EndingBranchRulesPanelProps) {
+  const panelRef = useRef<HTMLElement | null>(null);
   const updateConfig = useUpdateConfigJson(themeId);
   const serverConfig = useMemo(() => readEndingBranchConfig(theme.config_json), [theme.config_json]);
   const [draft, setDraft] = useState<EndingBranchConfig>(serverConfig);
   const [dirty, setDirty] = useState(false);
   const draftRef = useRef(draft);
+  const isQuestions = section === "questions";
+  const toastId = isQuestions ? "ending-questions-autosave" : "ending-rules-autosave";
+  const loadingMessage = isQuestions ? "질문 설정 자동저장 중..." : "결말 판정 규칙 자동저장 중...";
+  const successMessage = isQuestions ? "질문 설정이 자동저장되었습니다" : "결말 판정 규칙이 자동저장되었습니다";
+  const failureMessage = isQuestions ? "질문 설정 자동저장에 실패했습니다" : "결말 판정 규칙 자동저장에 실패했습니다";
 
   useEffect(() => {
     if (dirty) return;
@@ -93,32 +119,73 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
     [draft, endingNodes, theme.config_json],
   );
   const branchQuestions = draft.questions.filter((question) => question.impact === "branch");
-  const canAddRule = endingNodes.length > 0 && branchQuestions.some((question) => question.choices.length > 0);
+  const canAddRule = endingNodes.length > 0 && (
+    branchQuestions.some((question) => question.choices.length > 0) ||
+    characters.length > 0
+  );
 
-  const applyDraft = (next: EndingBranchConfig) => {
-    setDraft(next);
-    setDirty(true);
-  };
-
-  const handleSave = () => {
-    const submittedDraft = draft;
-    if (draft.questions.some((question) => question.target.type === "specific_players" && question.target.characterIds.length === 0)) {
-      toast.error("특정 플레이어 질문은 받을 캐릭터를 1명 이상 선택해야 합니다");
-      return;
-    }
+  const saveBody = useCallback((body: AutosaveBody, opts?: { onError?: (error?: unknown) => void }) => {
+    const submittedDraft = body.draft;
+    toast.loading(loadingMessage, { id: toastId });
     updateConfig.mutate(
-      { ...writeEndingBranchConfig(theme.config_json, draft), version: theme.version },
+      { ...writeEndingBranchConfig(theme.config_json, submittedDraft), version: theme.version },
       {
         onSuccess: () => {
           if (draftRef.current === submittedDraft) {
             setDirty(false);
           }
-          toast.success("결말 판정 설정이 저장되었습니다");
+          toast.success(successMessage, { id: toastId, duration: 1200 });
         },
-        onError: () => toast.error("결말 판정 설정 저장에 실패했습니다"),
+        onError: opts?.onError,
       },
     );
-  };
+  }, [loadingMessage, successMessage, theme.config_json, theme.version, toastId, updateConfig]);
+
+  const showFailureToast = useCallback((body: AutosaveBody) => {
+    toast.error(failureMessage, {
+      id: toastId,
+      duration: 6000,
+      action: {
+        label: "재시도",
+        onClick: () => saveBody(body, { onError: () => showFailureToast(body) }),
+      },
+    });
+  }, [failureMessage, saveBody, toastId]);
+
+  const { schedule, flush, cancel } = useDebouncedMutation<AutosaveBody>({
+    debounceMs: ENDING_BRANCH_AUTOSAVE_MS,
+    mutate: (body, opts) => {
+      saveBody(body, {
+        onError: (error) => {
+          opts.onError(error);
+          showFailureToast(body);
+        },
+      });
+    },
+  });
+
+  const applyDraft = useCallback((next: EndingBranchConfig) => {
+    setDraft(next);
+    draftRef.current = next;
+    if (endingBranchConfigEqual(next, serverConfig)) {
+      setDirty(false);
+      cancel();
+      return;
+    }
+    setDirty(true);
+    if (hasInvalidSpecificPlayerTarget(next)) {
+      cancel();
+      toast.error("특정 플레이어 질문은 받을 캐릭터를 1명 이상 선택해야 합니다");
+      return;
+    }
+    schedule({ draft: next });
+  }, [cancel, schedule, serverConfig]);
+
+  const handlePanelBlur = useCallback((event: FocusEvent<HTMLElement>) => {
+    const nextTarget = event.relatedTarget;
+    if (nextTarget instanceof Node && panelRef.current?.contains(nextTarget)) return;
+    flush();
+  }, [flush]);
 
   const handleRemoveQuestion = (questionId: string) => {
     applyDraft(reorderPriorities({
@@ -158,8 +225,13 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
   };
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300" aria-label={section === "questions" ? "질문 관리" : "결말 판정 규칙"}>
-      <Header dirty={dirty} isPending={updateConfig.isPending} onSave={handleSave} section={section} />
+    <section
+      ref={panelRef}
+      className={embedded ? "text-sm text-slate-300" : "rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300"}
+      aria-label={section === "questions" ? "질문 관리" : "결말 판정 규칙"}
+      onBlur={handlePanelBlur}
+    >
+      <Header section={section} embedded={embedded} settingsOnly={settingsOnly} />
       <Warnings warnings={viewModel.warnings} />
       <div className="mt-5">
         {section === "questions" ? (
@@ -178,7 +250,10 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
           draft={draft}
           endingNodes={endingNodes}
           branchQuestions={branchQuestions}
+          characters={characters}
           canAddRule={canAddRule}
+          selectedEndingId={selectedEndingId}
+          display={settingsOnly ? "settings" : selectedEndingId ? "rules" : "all"}
           onChange={applyDraft}
         />
         )}
@@ -188,34 +263,32 @@ export function EndingBranchRulesPanel({ themeId, theme, endingNodes, characters
 }
 
 function Header({
-  dirty,
-  isPending,
-  onSave,
   section,
+  embedded,
+  settingsOnly,
 }: {
-  dirty: boolean;
-  isPending: boolean;
-  onSave: () => void;
   section: "questions" | "endings";
+  embedded: boolean;
+  settingsOnly: boolean;
 }) {
   const isQuestions = section === "questions";
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div>
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-400">Ending Rules</p>
         <h3 className="mt-1 text-lg font-semibold text-slate-100">
-          {isQuestions ? "질문 관리" : "결말 판정 규칙"}
+          {isQuestions ? "질문 관리" : settingsOnly ? "결말 판정 설정" : embedded ? "이 결말로 가는 조건" : "결말 판정 규칙"}
         </h3>
         <p className="mt-1 text-sm leading-6 text-slate-400">
           {isQuestions
             ? "플레이어에게 진행할 최종 질문과 선택지를 설정합니다."
-            : "질문 답변이 어떤 결말로 이어지는지 설정합니다. 내부 판정식은 자동으로 만들어집니다."}
+            : settingsOnly
+              ? "규칙에 맞는 결말이 없을 때 보여줄 기본 결말과 복수 선택 기준을 설정합니다."
+              : embedded
+              ? "조건 그룹 중 하나라도 만족하면 이 결말이 플레이어에게 공개됩니다."
+              : "질문 답변이 어떤 결말로 이어지는지 설정합니다. 내부 판정식은 자동으로 만들어집니다."}
         </p>
       </div>
-      <button type="button" onClick={onSave} disabled={!dirty || isPending} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-4 text-sm font-medium text-amber-100 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50">
-        <Save className="h-4 w-4" aria-hidden="true" />
-        {isPending ? "저장 중" : dirty ? (isQuestions ? "질문 설정 저장" : "판정 규칙 저장") : "저장됨"}
-      </button>
     </div>
   );
 }
