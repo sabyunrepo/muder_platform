@@ -34,6 +34,9 @@ export function toLocationEditorViewModel(
   } = {}
 ): LocationEditorViewModel {
   const clueCount = options.clueCount ?? 0;
+  const parent = location.parent_location_id
+    ? options.allLocations?.find((candidate) => candidate.id === location.parent_location_id)
+    : null;
   return {
     id: location.id,
     name: location.name,
@@ -48,8 +51,8 @@ export function toLocationEditorViewModel(
       location.public_description ?? options.locationMeta?.publicDescription
     ),
     entryMessage: normalizeMetaText(location.entry_message ?? options.locationMeta?.entryMessage),
-    parentLocationId: null,
-    parentLabel: '동등 장소',
+    parentLocationId: location.parent_location_id ?? null,
+    parentLabel: parent ? parent.name : '최상위 장소',
     clueCountLabel: `단서 조사 ${clueCount}개`,
     clueShortLabel: `단서 ${clueCount}개`,
     badges: buildLocationBadges(location, clueCount, options.mapName),
@@ -61,10 +64,12 @@ export function buildLocationParentOptions(
   locations: LocationResponse[],
   metaByLocationId: Record<string, LocationMeta | undefined> = {}
 ): LocationParentOption[] {
-  void currentLocationId;
-  void locations;
   void metaByLocationId;
-  return [];
+  return locations
+    .filter((location) => location.id !== currentLocationId)
+    .filter((location) => !location.parent_location_id)
+    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, 'ko'))
+    .map((location) => ({ id: location.id, label: location.name, depth: 0 }));
 }
 
 export function parseLocationRestrictedCharacterIds(value: string | null | undefined): string[] {
