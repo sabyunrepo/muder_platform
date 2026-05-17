@@ -187,6 +187,14 @@ function enterInfoEditMode() {
   fireEvent.click(screen.getByRole('button', { name: /정보 수정/ }));
 }
 
+async function flushInfoAutosave() {
+  await act(async () => {
+    vi.advanceTimersByTime(1000);
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 let createMutate: ReturnType<typeof vi.fn>;
 let updateMutate: ReturnType<typeof vi.fn>;
 let deleteMutate: ReturnType<typeof vi.fn>;
@@ -446,15 +454,17 @@ describe('InfoTab', () => {
   });
 
   it('saves title/body without exposing image or reference fields', async () => {
+    vi.useFakeTimers();
     render(<InfoTab themeId="theme-1" />);
 
     enterInfoEditMode();
     fireEvent.change(screen.getByLabelText('정보 제목'), {
       target: { value: '수정된 정보' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    expect(screen.queryByRole('button', { name: /^저장$/ })).toBeNull();
+    await flushInfoAutosave();
 
-    await waitFor(() => expect(updateMutate).toHaveBeenCalledTimes(1));
+    expect(updateMutate).toHaveBeenCalledTimes(1);
     expect(updateMutate).toHaveBeenCalledWith({
       id: 'info-1',
       patch: {
@@ -560,7 +570,7 @@ describe('InfoTab', () => {
     fireEvent.change(screen.getByLabelText('정보 제목'), {
       target: { value: '저장 실패 확인' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushInfoAutosave();
 
     await act(async () => {
       await Promise.resolve();
@@ -582,7 +592,10 @@ describe('InfoTab', () => {
     expect(screen.queryByRole('alert')).toBeNull();
 
     updateMutate.mockRejectedValueOnce(new Error('failed to update story info'));
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    fireEvent.change(screen.getByLabelText('정보 제목'), {
+      target: { value: '저장 실패 재확인' },
+    });
+    await flushInfoAutosave();
     await act(async () => {
       await Promise.resolve();
     });
@@ -593,6 +606,7 @@ describe('InfoTab', () => {
   });
 
   it('clears a save error when the creator edits the story info again', async () => {
+    vi.useFakeTimers();
     updateMutate.mockRejectedValueOnce(new Error('failed to update story info'));
     render(<InfoTab themeId="theme-1" />);
 
@@ -600,9 +614,9 @@ describe('InfoTab', () => {
     fireEvent.change(screen.getByLabelText('정보 제목'), {
       target: { value: '저장 실패 확인' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushInfoAutosave();
 
-    expect(await screen.findByRole('alert')).toBeDefined();
+    expect(screen.getByRole('alert')).toBeDefined();
 
     fireEvent.change(screen.getByLabelText('정보 제목'), {
       target: { value: '다시 수정' },
@@ -612,6 +626,7 @@ describe('InfoTab', () => {
   });
 
   it('inserts media embeds into the MDX body and renders referenced media inside the editor', async () => {
+    vi.useFakeTimers();
     render(<InfoTab themeId="theme-1" />);
 
     enterInfoEditMode();
@@ -639,8 +654,8 @@ describe('InfoTab', () => {
     expect(within(editorSurface).getByLabelText('CCTV 후속 영상')).toBeDefined();
     expect(within(editorSurface).getByRole('button', { name: 'CCTV 후속 교체' })).toBeDefined();
 
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
-    await waitFor(() => expect(updateMutate).toHaveBeenCalledTimes(1));
+    await flushInfoAutosave();
+    expect(updateMutate).toHaveBeenCalledTimes(1);
     expect(updateMutate).toHaveBeenCalledWith({
       id: 'info-1',
       patch: expect.objectContaining({
@@ -681,17 +696,18 @@ describe('InfoTab', () => {
     );
   });
 
-  it('does not mark legacy image or reference metadata as editable changes', async () => {
+  it('does not expose a manual save button for legacy image or reference metadata', async () => {
     render(<InfoTab themeId="theme-1" />);
 
     enterInfoEditMode();
-    expect(screen.getByRole('button', { name: /저장/ })).toHaveProperty('disabled', true);
+    expect(screen.queryByRole('button', { name: /^저장$/ })).toBeNull();
     expect(mediaPickerPropsMock).not.toHaveBeenCalledWith(
       expect.objectContaining({ filterType: 'IMAGE', selectedId: 'image-1' })
     );
   });
 
   it('uses the saved version for a second save without stale dirty metadata', async () => {
+    vi.useFakeTimers();
     updateMutate
       .mockResolvedValueOnce({
         ...baseInfo,
@@ -711,28 +727,22 @@ describe('InfoTab', () => {
     fireEvent.change(screen.getByLabelText('정보 제목'), {
       target: { value: '1차 수정' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
-    await waitFor(() =>
-      expect(updateMutate).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          patch: expect.objectContaining({ title: '1차 수정', version: 3 }),
-        })
-      )
+    await flushInfoAutosave();
+    expect(updateMutate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        patch: expect.objectContaining({ title: '1차 수정', version: 3 }),
+      })
     );
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: '1차 수정' })).toBeDefined());
-    enterInfoEditMode();
     fireEvent.change(screen.getByLabelText('정보 제목'), {
       target: { value: '2차 수정' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /저장/ }));
+    await flushInfoAutosave();
 
-    await waitFor(() =>
-      expect(updateMutate).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          patch: expect.objectContaining({ title: '2차 수정', version: 4 }),
-        })
-      )
+    expect(updateMutate).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        patch: expect.objectContaining({ title: '2차 수정', version: 4 }),
+      })
     );
   });
 

@@ -1,5 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, type FormEvent } from 'react';
-import { Button } from '@/shared/components/ui/Button';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   useUpdateTheme,
   type EditorThemeResponse,
@@ -107,7 +106,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   const skipNextAutosaveRef = useRef(true);
 
   const updateTheme = useUpdateTheme(themeId);
-  const { schedule: scheduleOverviewSave, flush: flushOverviewSave } =
+  const { schedule: scheduleOverviewSave } =
     useEditorAutosaveToast<UpdateThemeRequest>({
     debounceMs: 1200,
     messages: {
@@ -200,16 +199,6 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
     return next;
   }, [coinPrice, description, durationMin, maxPlayers, minPlayers, price, title]);
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const validationErrors = validateDraft();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) return;
-
-    scheduleOverviewSave(autosaveBody);
-    flushOverviewSave();
-  }
-
   useEffect(() => {
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false;
@@ -225,7 +214,7 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
   }, [autosaveBody, isOverviewDirty, scheduleOverviewSave, validateDraft]);
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-2xl px-4 py-6">
       {/* ── 기본 정보 ── */}
       <SectionDivider label="기본 정보" />
 
@@ -346,12 +335,6 @@ export function OverviewTab({ themeId, theme }: OverviewTabProps) {
       <SectionDivider label="게임 유형" />
       <TemplateSettingsSection />
 
-      {/* Save */}
-      <div className="mt-8 flex justify-end">
-        <Button type="submit" isLoading={updateTheme.isPending}>
-          저장
-        </Button>
-      </div>
-    </form>
+    </div>
   );
 }

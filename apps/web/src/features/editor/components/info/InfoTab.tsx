@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Save, Trash2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, X } from 'lucide-react';
 
 import {
   useCreateStoryInfo,
@@ -137,7 +137,6 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(() => !hasDisplayableBody(info));
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const exitEditModeAfterSaveRef = useRef(false);
   const updateInfo = useUpdateStoryInfo(themeId);
   const deleteInfo = useDeleteStoryInfo(themeId);
   const toInfoDraft = useCallback((value: StoryInfoResponse) => toEditableInfo(value), []);
@@ -182,8 +181,6 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
     draft,
     setDraft,
     baseline,
-    isDirty,
-    saveNow: saveInfoNow,
   } = useAutosavedDraft<StoryInfoResponse, StoryInfoResponse, StoryInfoResponse>({
     serverValue: info,
     serverKey: info.id,
@@ -199,15 +196,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
       success: '정보가 저장되었습니다',
       error: '정보 저장에 실패했습니다',
     },
-    onSaved: (saved) => {
-      const editableSaved = toEditableInfo(saved);
-      if (exitEditModeAfterSaveRef.current) {
-        setIsEditing(!hasDisplayableBody(editableSaved));
-        exitEditModeAfterSaveRef.current = false;
-      }
-    },
     onError: (err) => {
-      exitEditModeAfterSaveRef.current = false;
       setError(errorMessage(err, '저장에 실패했습니다'));
     },
   });
@@ -221,13 +210,6 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   function updateDraft(patch: Partial<StoryInfoResponse>) {
     setError(null);
     setDraft((current) => ({ ...current, ...patch }));
-  }
-
-  async function handleSave() {
-    setError(null);
-    if (!isDirty) return;
-    exitEditModeAfterSaveRef.current = true;
-    saveInfoNow();
   }
 
   async function handleDelete() {
@@ -315,7 +297,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
             />
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-800 pt-3">
+          <div className="flex items-center justify-start border-t border-slate-800 pt-3">
             <button
               type="button"
               onClick={() => setDeleteDialogOpen(true)}
@@ -324,15 +306,6 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
             >
               <Trash2 className="h-3 w-3" />
               정보 삭제
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleSave()}
-              disabled={!isDirty || updateInfo.isPending}
-              className="flex items-center gap-1 rounded bg-amber-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500"
-            >
-              <Save className="h-4 w-4" />
-              {updateInfo.isPending ? '저장 중...' : '저장'}
             </button>
           </div>
         </div>
