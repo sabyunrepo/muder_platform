@@ -383,6 +383,7 @@ function SelectedLocationDetail({
         themeId={themeId}
         theme={theme}
         location={location}
+        allLocations={mapLocations}
         allClues={clues}
       />
     </div>

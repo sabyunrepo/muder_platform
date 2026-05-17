@@ -22,12 +22,14 @@ import {
   writeLocationClueInvestigationCost,
   type InvestigationCostDraft,
 } from '@/features/editor/entities/deckInvestigation/locationClueInvestigationCost';
+import { getLocationPathLabel } from '@/features/editor/entities/location/locationHierarchy';
 import { LocationSelectedClueItem } from './LocationSelectedClueItem';
 
 interface LocationClueAssignPanelProps {
   themeId: string;
   theme: EditorThemeResponse;
   location: LocationResponse;
+  allLocations?: LocationResponse[];
   allClues?: ClueResponse[];
   onChange?: (clueIds: string[]) => void;
 }
@@ -46,6 +48,7 @@ export function LocationClueAssignPanel({
   themeId,
   theme,
   location,
+  allLocations,
   allClues,
   onChange,
 }: LocationClueAssignPanelProps) {
@@ -81,6 +84,10 @@ export function LocationClueAssignPanel({
   const clueById = useMemo(() => new Map(clues.map((clue) => [clue.id, clue])), [clues]);
   const selectedClues = clues.filter((clue) => assignedSet.has(clue.id));
   const activeClue = selectedClues.find((clue) => clue.id === activeClueId) ?? selectedClues[0] ?? null;
+  const locationPathLabel = useMemo(
+    () => getLocationPathLabel(location, allLocations ?? [location]),
+    [allLocations, location]
+  );
   const visibleClues = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return clues;
@@ -154,7 +161,7 @@ export function LocationClueAssignPanel({
     const nextDeckDraft = clue
       ? writeLocationClueInvestigationCost(currentInvestigationDraft, {
           locationId: location.id,
-          locationName: location.name,
+          locationName: locationPathLabel,
           clueId,
           clueName: clue.name,
           requiredClueIds: [],
@@ -214,7 +221,7 @@ export function LocationClueAssignPanel({
       discoveries,
       writeLocationClueInvestigationCost(investigationDraft, {
         locationId: location.id,
-        locationName: location.name,
+        locationName: locationPathLabel,
         clueId: clue.id,
         clueName: clue.name,
         requiredClueIds: discovery.requiredClueIds,
@@ -234,7 +241,7 @@ export function LocationClueAssignPanel({
   if (!allClues && isError) {
     return (
       <section
-        aria-label={`${location.name} 단서 조사`}
+        aria-label={`${locationPathLabel} 단서 조사`}
         className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-100"
       >
         <p>단서 목록을 불러오지 못했습니다.</p>
@@ -251,12 +258,12 @@ export function LocationClueAssignPanel({
 
   return (
     <section
-      aria-label={`${location.name} 단서 조사`}
+      aria-label={`${locationPathLabel} 단서 조사`}
       className="rounded-lg border border-slate-800 bg-slate-950/70 p-3"
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <MapPin className="h-3.5 w-3.5 text-amber-500/70" />
-        <h4 className="text-sm font-semibold text-slate-200">{location.name} 단서 조사</h4>
+        <h4 className="text-sm font-semibold text-slate-200">{locationPathLabel} 단서 조사</h4>
         <span className="text-xs text-slate-600">
           ({assignedIds.length}/{clues.length})
         </span>
