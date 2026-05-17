@@ -113,9 +113,28 @@ func (s *service) DeleteTheme(ctx context.Context, creatorID, themeID uuid.UUID)
 	if theme.Status != "DRAFT" {
 		return apperror.BadRequest("only draft themes can be deleted")
 	}
+	var storageKeys []string
+	if s.storage != nil {
+		mediaRows, err := s.q.ListMediaByTheme(ctx, theme.ID)
+		if err != nil {
+			s.logger.Error().Err(err).Str("theme_id", theme.ID.String()).Msg("failed to list theme media before delete")
+			return apperror.Internal("failed to list theme media before delete")
+		}
+		storageKeys = make([]string, 0, len(mediaRows))
+		for _, media := range mediaRows {
+			if media.SourceType == SourceTypeFile && media.StorageKey.Valid {
+				storageKeys = append(storageKeys, media.StorageKey.String)
+			}
+		}
+	}
 	if err := s.q.DeleteTheme(ctx, theme.ID); err != nil {
 		s.logger.Error().Err(err).Msg("failed to delete theme")
 		return apperror.Internal("failed to delete theme")
+	}
+	if len(storageKeys) > 0 {
+		if err := s.storage.DeleteObjects(context.WithoutCancel(ctx), storageKeys); err != nil {
+			s.logger.Warn().Err(err).Str("theme_id", theme.ID.String()).Int("object_count", len(storageKeys)).Msg("failed to delete theme media objects")
+		}
 	}
 	return nil
 }

@@ -27,6 +27,7 @@ import (
 
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/infra/storage"
 )
 
 const (
@@ -217,9 +218,10 @@ type Service interface {
 // --- Implementation ---
 
 type service struct {
-	q      *db.Queries
-	pool   *pgxpool.Pool
-	logger zerolog.Logger
+	q       *db.Queries
+	pool    *pgxpool.Pool
+	logger  zerolog.Logger
+	storage storage.Provider
 
 	// preUpdateHook is called inside UpdateConfigJson between the getOwnedTheme
 	// read and the UpdateThemeConfigJson write. It is nil in production; tests
@@ -230,9 +232,16 @@ type service struct {
 
 // NewService creates a new editor service backed by sqlc queries.
 func NewService(q *db.Queries, pool *pgxpool.Pool, logger zerolog.Logger) Service {
+	return NewServiceWithStorage(q, pool, logger, nil)
+}
+
+// NewServiceWithStorage creates an editor service with a storage provider for
+// cleanup paths such as deleting theme-owned media objects.
+func NewServiceWithStorage(q *db.Queries, pool *pgxpool.Pool, logger zerolog.Logger, storageProvider storage.Provider) Service {
 	return &service{
-		q:      q,
-		pool:   pool,
-		logger: logger.With().Str("domain", "editor").Logger(),
+		q:       q,
+		pool:    pool,
+		logger:  logger.With().Str("domain", "editor").Logger(),
+		storage: storageProvider,
 	}
 }

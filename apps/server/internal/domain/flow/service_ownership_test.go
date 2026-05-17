@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -399,6 +400,60 @@ func TestServiceUpdateNode_PartialDataPatchPreservesTypeAndPosition(t *testing.T
 	}
 	if data["label"] != "진실" || data["endingContent"] != "범인이 밝혀졌다." {
 		t.Fatalf("updated data = %#v", data)
+	}
+}
+
+func TestServiceUpdateNode_WaitsForThemeLock(t *testing.T) {
+	ctx := context.Background()
+	pool := setupFlowTestPool(t)
+	svc := NewService(pool, zerolog.Nop())
+	creatorID := insertFlowTestUser(t, pool)
+	themeID := insertFlowTestTheme(t, pool, creatorID, json.RawMessage(`{}`))
+
+	node, err := svc.CreateNode(ctx, creatorID, themeID, CreateNodeRequest{
+		Type:      NodeTypeEnding,
+		Data:      json.RawMessage(`{"label":"초기 결말"}`),
+		PositionX: 240,
+		PositionY: 360,
+	})
+	if err != nil {
+		t.Fatalf("CreateNode ending: %v", err)
+	}
+
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("begin lock tx: %v", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck
+	if err := lockThemeOwner(ctx, tx, creatorID, themeID); err != nil {
+		t.Fatalf("lock theme: %v", err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, updateErr := svc.UpdateNode(ctx, creatorID, themeID, node.ID, UpdateNodeRequest{
+			Data: json.RawMessage(`{"label":"락 이후 결말"}`),
+		})
+		done <- updateErr
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("UpdateNode completed before the theme lock was released: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		t.Fatalf("commit lock tx: %v", err)
+	}
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("UpdateNode after lock release: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("UpdateNode did not complete after the theme lock was released")
 	}
 }
 

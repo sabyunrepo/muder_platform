@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Image, X } from 'lucide-react';
 
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
-import { useMediaList, type MediaResponse } from '@/features/editor/mediaApi';
+import { useMediaDownloadUrl, useMediaList, type MediaResponse } from '@/features/editor/mediaApi';
+import { getMediaThumbnailUrl, MediaTypeIcon } from './mediaVisuals';
 
 interface ImageMediaReferenceFieldProps {
   themeId: string;
@@ -32,8 +33,25 @@ export function ImageMediaReferenceField({
   onClear,
 }: ImageMediaReferenceFieldProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
   const { data: images = [] } = useMediaList(themeId, 'IMAGE');
   const selectedImage = images.find((media) => media.id === imageMediaId) ?? null;
+  const shouldLoadFileImagePreview =
+    selectedImage?.type === 'IMAGE' && selectedImage.source_type === 'FILE' && !selectedImage.url;
+  const { data: fileImagePreview } = useMediaDownloadUrl(
+    shouldLoadFileImagePreview ? selectedImage.id : undefined,
+  );
+  const previewUrl = selectedImage
+    ? getMediaThumbnailUrl({
+        ...selectedImage,
+        url: selectedImage.url ?? fileImagePreview?.url,
+      })
+    : null;
+  const shouldRenderPreview = Boolean(previewUrl) && !previewFailed;
+
+  useEffect(() => {
+    setPreviewFailed(false);
+  }, [previewUrl, imageMediaId]);
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
@@ -59,9 +77,24 @@ export function ImageMediaReferenceField({
           type="button"
           disabled={disabled}
           onClick={() => setPickerOpen(true)}
-          className="flex w-full items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left text-sm text-amber-100 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-70"
+          className="flex w-full items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-left text-sm text-amber-100 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          <span className="truncate">{selectedImage?.name ?? '선택된 이미지'}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-amber-500/25 bg-slate-950/70">
+              {shouldRenderPreview ? (
+                <img
+                  src={previewUrl ?? undefined}
+                  alt={`${selectedImage?.name ?? '선택된 이미지'} 미리보기`}
+                  className="h-full w-full object-contain"
+                  loading="lazy"
+                  onError={() => setPreviewFailed(true)}
+                />
+              ) : (
+                <MediaTypeIcon type="IMAGE" size="sm" />
+              )}
+            </span>
+            <span className="truncate">{selectedImage?.name ?? '선택된 이미지'}</span>
+          </span>
           <span className="shrink-0 text-xs text-amber-200/70">교체</span>
         </button>
       ) : (

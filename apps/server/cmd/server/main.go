@@ -159,15 +159,30 @@ func main() {
 	revokeRepo := auth.NewRevokeRepo(queries)
 	profileSvc := profile.NewService(queries, logger)
 	themeSvc := theme.NewService(queries, logger)
-	editorSvc := editor.NewService(queries, pool, logger)
 	flowSvc := flow.NewService(pool, logger)
 	flowHandler := flow.NewHandler(flowSvc)
 
 	// Phase 7.7: Media storage provider
-	// R2 credentials present → use R2. Otherwise fall back to local file storage for dev.
+	// auto: R2 credentials present → use R2. Otherwise fall back to local file storage for dev.
 	var storageProvider storage.Provider
 	var localStorageProvider *storage.LocalProvider
-	if cfg.R2AccountID != "" {
+	storageMode := cfg.NormalizedStorageProvider()
+	useR2 := false
+	switch storageMode {
+	case "auto":
+		useR2 = cfg.HasR2StorageConfig()
+	case "r2":
+		if missing := cfg.MissingR2StorageEnv(); len(missing) > 0 {
+			logger.Fatal().Strs("missing_env", missing).Msg("R2 storage provider requested but required env vars are missing")
+		}
+		useR2 = true
+	case "local":
+		useR2 = false
+	default:
+		logger.Fatal().Str("storage_provider", cfg.StorageProvider).Msg("invalid STORAGE_PROVIDER; expected auto, r2, or local")
+	}
+
+	if useR2 {
 		r2Cfg := storage.R2Config{
 			AccountID:       cfg.R2AccountID,
 			AccessKeyID:     cfg.R2AccessKeyID,
@@ -182,10 +197,11 @@ func main() {
 		}
 		logger.Info().Msg("R2 storage provider initialized")
 	} else {
-		localStorageProvider = storage.NewLocalProviderWithLogger("tmp/uploads", cfg.ServerBaseURL(), logger)
+		localStorageProvider = storage.NewLocalProviderWithLogger(cfg.StorageLocalBaseDir, cfg.ServerBaseURL(), logger)
 		storageProvider = localStorageProvider
-		logger.Warn().Msg("local file storage provider initialized (dev only — do not use in production)")
+		logger.Warn().Str("base_dir", cfg.StorageLocalBaseDir).Msg("local file storage provider initialized (dev only — do not use in production)")
 	}
+	editorSvc := editor.NewServiceWithStorage(queries, pool, logger, storageProvider)
 	mediaSvc := editor.NewMediaService(queries, pool, storageProvider, logger)
 	mediaHandler := editor.NewMediaHandler(mediaSvc)
 	imageSvc := editor.NewImageService(queries, storageProvider, logger)
