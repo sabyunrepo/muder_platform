@@ -79,6 +79,37 @@ async function installLocationHierarchyRoutes(page: Page) {
 }
 
 test.describe('location hierarchy clue placement', () => {
+  test('모바일 장소관리 탭은 긴 상세 설정을 세로 스크롤로 접근할 수 있다', async ({ page }) => {
+    const commonState = freshState();
+    await mockCommonApis(page, commonState);
+    await installLocationHierarchyRoutes(page);
+    await loginAsE2EUser(page);
+
+    await page.setViewportSize({ width: 390, height: 640 });
+    await page.goto(`${BASE}/editor/${THEME_ID}/locations`);
+    await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
+
+    const scrollRoot = page.getByTestId('locations-sub-tab-scroll');
+    await expect(scrollRoot).toBeVisible();
+    await expect
+      .poll(() =>
+        scrollRoot.evaluate((element) => ({
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
+        }))
+      )
+      .toMatchObject({ clientHeight: expect.any(Number), scrollHeight: expect.any(Number) });
+    await expect
+      .poll(() => scrollRoot.evaluate((element) => element.scrollHeight > element.clientHeight))
+      .toBe(true);
+
+    await scrollRoot.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect.poll(() => scrollRoot.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect(page.getByLabel('거실 단서 조사')).toBeVisible({ timeout: 3_000 });
+  });
+
   test('장소 계층 저장 후 새로고침해도 하위장소와 단서 조사 경로가 복원된다', async ({ page }) => {
     const commonState = freshState();
     await mockCommonApis(page, commonState);
