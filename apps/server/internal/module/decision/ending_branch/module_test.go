@@ -15,6 +15,7 @@ import (
 
 type endingBranchTestPlayerProvider struct {
 	byTarget map[string]uuid.UUID
+	byID     map[uuid.UUID]engine.PlayerRuntimeInfo
 }
 
 func (p endingBranchTestPlayerProvider) ResolvePlayerID(_ context.Context, targetCode string) (uuid.UUID, bool) {
@@ -23,7 +24,19 @@ func (p endingBranchTestPlayerProvider) ResolvePlayerID(_ context.Context, targe
 }
 
 func (p endingBranchTestPlayerProvider) PlayerRuntimeInfo(_ context.Context, playerID uuid.UUID) (engine.PlayerRuntimeInfo, bool) {
+	if p.byID != nil {
+		info, ok := p.byID[playerID]
+		return info, ok
+	}
 	return engine.PlayerRuntimeInfo{PlayerID: playerID}, true
+}
+
+func (p endingBranchTestPlayerProvider) PlayerRuntimeRoster(_ context.Context) []engine.PlayerRuntimeInfo {
+	players := make([]engine.PlayerRuntimeInfo, 0, len(p.byID))
+	for _, info := range p.byID {
+		players = append(players, info)
+	}
+	return players
 }
 
 func TestModule_Name(t *testing.T) {
@@ -421,6 +434,120 @@ func TestModule_ReactTo_FallbackWhenNoRuleMatches(t *testing.T) {
 	assert.Equal(t, "미해결", result["selectedEnding"])
 	assert.Equal(t, true, result["fallback"])
 	assert.NotContains(t, result, "matchedPriority")
+}
+
+func TestModule_ReactTo_EvaluatesDeadCharacterCondition(t *testing.T) {
+	deadPlayer := uuid.New()
+	provider := endingBranchTestPlayerProvider{
+		byTarget: map[string]uuid.UUID{"char-yangji": deadPlayer},
+		byID: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			deadPlayer: {PlayerID: deadPlayer, TargetCode: "char-yangji", IsAlive: false},
+		},
+	}
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [],
+		"matrix": [
+			{"id":"yangji-dead","priority": 1, "conditions": {"==": [{"var":"characters.char-yangji.alive"}, false]}, "ending": "양지사망결말"}
+		],
+		"defaultEnding": "기본결말"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{PlayerInfoProvider: provider}, cfg))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, "양지사망결말", result["selectedEnding"])
+	assert.Equal(t, "yangji-dead", result["matchedRuleId"])
+}
+
+func TestModule_ReactTo_EvaluatesEveryoneAliveCondition(t *testing.T) {
+	playerA := uuid.New()
+	playerB := uuid.New()
+	provider := endingBranchTestPlayerProvider{
+		byTarget: map[string]uuid.UUID{"char-godong": playerA, "char-yangji": playerB},
+		byID: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			playerA: {PlayerID: playerA, TargetCode: "char-godong", IsAlive: true},
+			playerB: {PlayerID: playerB, TargetCode: "char-yangji", IsAlive: true},
+		},
+	}
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [],
+		"matrix": [
+			{"id":"everyone-alive","priority": 1, "conditions": {"and": [
+				{"==": [{"var":"characters.char-godong.alive"}, true]},
+				{"==": [{"var":"characters.char-yangji.alive"}, true]}
+			]}, "ending": "모두생존결말"}
+		],
+		"defaultEnding": "기본결말"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{PlayerInfoProvider: provider}, cfg))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, "모두생존결말", result["selectedEnding"])
+	assert.Equal(t, "everyone-alive", result["matchedRuleId"])
+}
+
+func TestModule_ReactTo_EvaluatesNegatedCharacterCondition(t *testing.T) {
+	livePlayer := uuid.New()
+	provider := endingBranchTestPlayerProvider{
+		byTarget: map[string]uuid.UUID{"char-yangji": livePlayer},
+		byID: map[uuid.UUID]engine.PlayerRuntimeInfo{
+			livePlayer: {PlayerID: livePlayer, TargetCode: "char-yangji", IsAlive: true},
+		},
+	}
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [],
+		"matrix": [
+			{"id":"yangji-not-dead","priority": 1, "conditions": {"!": {"==": [{"var":"characters.char-yangji.alive"}, false]}}, "ending": "양지생존결말"}
+		],
+		"defaultEnding": "기본결말"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{PlayerInfoProvider: provider}, cfg))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, "양지생존결말", result["selectedEnding"])
+	assert.Equal(t, "yangji-not-dead", result["matchedRuleId"])
+}
+
+func TestModule_ReactTo_MissingCharacterStateDoesNotMatchDeadCondition(t *testing.T) {
+	m := NewModule()
+	cfg := json.RawMessage(`{
+		"questions": [],
+		"matrix": [
+			{"id":"missing-dead","priority": 1, "conditions": {"==": [{"var":"characters.missing.alive"}, false]}, "ending": "사망결말"}
+		],
+		"defaultEnding": "기본결말"
+	}`)
+	require.NoError(t, m.Init(context.Background(), engine.ModuleDeps{}, cfg))
+
+	require.NoError(t, m.ReactTo(context.Background(), engine.PhaseActionPayload{Action: engine.ActionEvaluateEnding}))
+
+	raw, err := m.BuildState()
+	require.NoError(t, err)
+	var state map[string]any
+	require.NoError(t, json.Unmarshal(raw, &state))
+	result := state["result"].(map[string]any)
+	assert.Equal(t, "기본결말", result["selectedEnding"])
+	assert.Equal(t, true, result["fallback"])
 }
 
 func TestModule_BuildStateAfterEvaluationSeparatesAdminScoresFromPlayerState(t *testing.T) {

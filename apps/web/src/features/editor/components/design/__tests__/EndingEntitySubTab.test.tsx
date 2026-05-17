@@ -1,18 +1,21 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { forwardRef, useImperativeHandle, type ComponentType, type ReactNode } from "react";
 
-const { useFlowDataMock, useEditorCharactersMock, addNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock, toastErrorMock, useMediaListMock, useMediaCategoriesMock, useMediaDownloadUrlMock } = vi.hoisted(() => ({
+const { useFlowDataMock, useEditorCharactersMock, addNodeMock, deleteNodeMock, updateNodeDataMock, mutateMock, configMutateMock, useUpdateFlowNodeMock, refetchMock, toastErrorMock, toastSuccessMock, toastLoadingMock, useMediaListMock, useMediaCategoriesMock, useMediaDownloadUrlMock } = vi.hoisted(() => ({
   useFlowDataMock: vi.fn(),
   useEditorCharactersMock: vi.fn(),
   addNodeMock: vi.fn(),
+  deleteNodeMock: vi.fn(),
   updateNodeDataMock: vi.fn(),
   mutateMock: vi.fn(),
   configMutateMock: vi.fn(),
   useUpdateFlowNodeMock: vi.fn(),
   refetchMock: vi.fn(),
   toastErrorMock: vi.fn(),
+  toastSuccessMock: vi.fn(),
+  toastLoadingMock: vi.fn(),
   useMediaListMock: vi.fn(),
   useMediaCategoriesMock: vi.fn(),
   useMediaDownloadUrlMock: vi.fn(),
@@ -101,7 +104,7 @@ vi.mock("@mdxeditor/editor", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: toastErrorMock, success: vi.fn() },
+  toast: { error: toastErrorMock, success: toastSuccessMock, loading: toastLoadingMock },
 }));
 
 import { EndingEntitySubTab, EndingQuestionsTab } from "../EndingEntitySubTab";
@@ -116,6 +119,12 @@ function renderWithClient(ui: ReactNode) {
 function clickLastButton(name: RegExp) {
   const buttons = screen.getAllByRole("button", { name });
   fireEvent.click(buttons[buttons.length - 1]);
+}
+
+function flushEndingBranchAutosave() {
+  act(() => {
+    vi.advanceTimersByTime(1500);
+  });
 }
 
 
@@ -223,12 +232,14 @@ beforeEach(() => {
     error: null,
     refetch: refetchMock,
     addNode: addNodeMock,
+    deleteNode: deleteNodeMock,
     updateNodeData: updateNodeDataMock,
   });
 });
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.clearAllMocks();
 });
 
@@ -241,6 +252,10 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("결말 판정 준비")).toBeDefined();
     expect(screen.getByText("본문 작성")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "결말 판정 설정", level: 3 })).toBeDefined();
+    expect(screen.getAllByText("기본 결말")).toHaveLength(1);
+    expect(screen.getByLabelText("기본 결말")).toBeDefined();
+    expect(screen.getByText("복수 선택 반영 기준")).toBeDefined();
     expect(screen.queryByText("참가자에게만 공개")).toBeNull();
     expect(screen.queryByText("캐릭터 결과 카드 1/2명 작성")).toBeNull();
     expect(screen.queryByText("1막")).toBeNull();
@@ -255,6 +270,7 @@ describe("EndingEntitySubTab", () => {
       error: null,
       refetch: refetchMock,
       addNode: addNodeMock,
+      deleteNode: deleteNodeMock,
       updateNodeData: updateNodeDataMock,
     });
 
@@ -274,6 +290,7 @@ describe("EndingEntitySubTab", () => {
       error: new Error("권한이 없습니다"),
       refetch: refetchMock,
       addNode: addNodeMock,
+      deleteNode: deleteNodeMock,
       updateNodeData: updateNodeDataMock,
     });
 
@@ -297,13 +314,21 @@ describe("EndingEntitySubTab", () => {
     }));
   });
 
+  it("결말 목록 카드에서 결말을 삭제할 수 있다", () => {
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "진실 삭제" }));
+
+    expect(deleteNodeMock).toHaveBeenCalledWith("ending-1");
+  });
+
   it("검색어로 결말 목록을 좁힌다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     fireEvent.change(screen.getByPlaceholderText("결말 검색"), { target: { value: "오판" } });
 
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: /오판/ }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "오판 선택" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByRole("button", { name: /진실/ })).toBeNull();
   });
 
@@ -333,6 +358,9 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getByRole("region", { name: "결말 본문 작성기" })).toBeDefined();
     expect(screen.getByRole("button", { name: "결말 이미지 삽입" })).toBeDefined();
     expect(screen.getByRole("button", { name: "결말 영상 삽입" })).toBeDefined();
+    expect(screen.getByRole("heading", { name: "이 결말로 가는 조건", level: 3 })).toBeDefined();
+    expect(screen.getByText("범인은 누구인가?에서 '하윤' 답변이 설정 비율 이상")).toBeDefined();
+    expect(screen.queryByText("규칙에 맞는 결말이 없을 때 보여줄 결말입니다.")).toBeDefined();
 
     fireEvent.change(screen.getByLabelText("editable markdown"), {
       target: { value: "진실은 모두에게 남았다." },
@@ -342,12 +370,14 @@ describe("EndingEntitySubTab", () => {
     });
   });
 
-  it("결말 판정 질문과 규칙을 제작자용 UI로 저장한다", () => {
+  it("결말 판정 질문과 규칙을 자동저장하고 토스트로 상태를 알린다", () => {
+    vi.useFakeTimers();
+    configMutateMock.mockImplementation((_body, options) => options?.onSuccess?.());
     renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     expect(screen.getByRole("heading", { name: "질문 관리", level: 3 })).toBeDefined();
     fireEvent.change(screen.getByLabelText("질문 1 내용"), { target: { value: "진범은 누구인가?" } });
-    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
+    flushEndingBranchAutosave();
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -369,14 +399,18 @@ describe("EndingEntitySubTab", () => {
       }),
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
+    expect(toastLoadingMock).toHaveBeenCalledWith("질문 설정 자동저장 중...", expect.objectContaining({ id: "ending-questions-autosave" }));
+    expect(toastSuccessMock).toHaveBeenCalledWith("질문 설정이 자동저장되었습니다", expect.objectContaining({ id: "ending-questions-autosave" }));
+    expect(screen.queryByRole("button", { name: "질문 설정 저장" })).toBeNull();
   });
 
   it("결말 질문 대상을 특정 플레이어 여러 명으로 저장한다", () => {
+    vi.useFakeTimers();
     renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     clickLastButton(/하윤/);
     clickLastButton(/민재/);
-    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
+    flushEndingBranchAutosave();
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -398,11 +432,12 @@ describe("EndingEntitySubTab", () => {
   });
 
   it("특정 플레이어 질문에서 대상이 비면 저장하지 않고 경고한다", () => {
+    vi.useFakeTimers();
     renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     clickLastButton(/하윤/);
     clickLastButton(/하윤/);
-    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
+    flushEndingBranchAutosave();
 
     expect(configMutateMock).not.toHaveBeenCalled();
     expect(toastErrorMock).toHaveBeenCalledWith("특정 플레이어 질문은 받을 캐릭터를 1명 이상 선택해야 합니다");
@@ -440,37 +475,25 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getAllByText("삭제된 캐릭터").length).toBeGreaterThan(0);
   });
 
-  it("결말 선택지는 같은 질문 안에서 중복 저장되지 않는다", () => {
+  it("결말 선택지는 같은 질문 안에서 중복값이면 자동저장 요청을 만들지 않는다", () => {
+    vi.useFakeTimers();
     renderWithClient(<EndingQuestionsTab themeId="theme-1" theme={theme} />);
 
     fireEvent.change(screen.getByLabelText("질문 1 선택지 2"), { target: { value: "하윤" } });
-    fireEvent.click(screen.getByRole("button", { name: "질문 설정 저장" }));
+    flushEndingBranchAutosave();
 
-    expect(configMutateMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        modules: expect.objectContaining({
-          ending_branch: expect.objectContaining({
-            config: expect.objectContaining({
-              questions: [
-                expect.objectContaining({
-                  choices: ["하윤", "민재"],
-                }),
-              ],
-            }),
-          }),
-        }),
-      }),
-      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
-    );
+    expect(configMutateMock).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("질문 1 선택지 2") as HTMLInputElement).value).toBe("민재");
   });
 
   it("가장 많이 선택된 답 기준 결말 규칙을 저장한다", () => {
+    vi.useFakeTimers();
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
     fireEvent.click(screen.getByRole("button", { name: "수정" }));
     fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "winning" } });
     fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
-    fireEvent.click(screen.getByRole("button", { name: "판정 규칙 저장" }));
+    flushEndingBranchAutosave();
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -491,7 +514,103 @@ describe("EndingEntitySubTab", () => {
     );
   });
 
+  it("기본 결말이 비어 있어도 새 결말 규칙을 첫 결말로 저장한다", () => {
+    vi.useFakeTimers();
+    renderWithClient(
+      <EndingEntitySubTab
+        themeId="theme-1"
+        theme={{
+          ...theme,
+          config_json: {
+            modules: {
+              ending_branch: {
+                enabled: true,
+                config: {
+                  questions: [{
+                    id: "q1",
+                    text: "범인으로 의심되는 용의자를 선택해 주세요",
+                    type: "single",
+                    choices: ["고동", "송료연", "노우", "양지", "희춘안"],
+                    impact: "branch",
+                    respondents: "all",
+                  }],
+                  matrix: [],
+                  defaultEnding: "",
+                },
+              },
+            },
+          },
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getAllByRole("button", { name: "조건 만들기" })[0]);
+    expect(screen.queryByLabelText("보여줄 결말")).toBeNull();
+    expect(screen.queryByRole("option", { name: "모두 생존" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("답변"), { target: { value: "양지" } });
+    fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "winning" } });
+    fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
+    flushEndingBranchAutosave();
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              matrix: [
+                expect.objectContaining({
+                  ending: "ending-1",
+                  conditions: { "==": [{ var: "answers.q1.winning" }, "양지"] },
+                }),
+              ],
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it("질문 답변과 캐릭터 사망 조건을 같은 결말 조건 그룹으로 저장한다", () => {
+    vi.useFakeTimers();
+    renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "수정" }));
+    fireEvent.click(screen.getByRole("button", { name: "조건 추가" }));
+    fireEvent.change(screen.getByLabelText("조건 종류 2"), { target: { value: "character_alive" } });
+    fireEvent.change(screen.getByLabelText("캐릭터 2"), { target: { value: "char-2" } });
+    fireEvent.change(screen.getByLabelText("상태 2"), { target: { value: "dead" } });
+    fireEvent.change(screen.getByLabelText("판정 2"), { target: { value: "not" } });
+    fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
+    expect(screen.getByText("범인은 누구인가?에서 '하윤' 답변이 설정 비율 이상이고, 민재가 사망하지 않은 상태")).toBeDefined();
+    flushEndingBranchAutosave();
+
+    expect(configMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        modules: expect.objectContaining({
+          ending_branch: expect.objectContaining({
+            config: expect.objectContaining({
+              matrix: [
+                expect.objectContaining({
+                  ending: "ending-1",
+                  conditions: {
+                    and: [
+                      { in: ["하윤", { var: "answers.q1.choices" }] },
+                      { "!": { "==": [{ var: "characters.char-2.alive" }, false] } },
+                    ],
+                  },
+                }),
+              ],
+            }),
+          }),
+        }),
+      }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
   it("복수 선택 질문은 모두 정답 기준 결말 규칙을 저장한다", () => {
+    vi.useFakeTimers();
     renderWithClient(
       <EndingEntitySubTab
         themeId="theme-1"
@@ -524,7 +643,7 @@ describe("EndingEntitySubTab", () => {
     fireEvent.click(screen.getByRole("button", { name: "부서진 시계" }));
     fireEvent.change(screen.getByLabelText("집계 기준"), { target: { value: "all" } });
     fireEvent.click(screen.getByRole("button", { name: "조건 저장" }));
-    fireEvent.click(screen.getByRole("button", { name: "판정 규칙 저장" }));
+    flushEndingBranchAutosave();
 
     expect(configMutateMock).toHaveBeenCalledWith(
       expect.objectContaining({

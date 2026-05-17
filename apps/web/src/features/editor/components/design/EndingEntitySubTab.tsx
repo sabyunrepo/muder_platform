@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Plus, Search, Trash2 } from 'lucide-react';
 import { useEditorCharacters, type EditorThemeResponse } from '@/features/editor/api';
 import { useFlowData } from '../../hooks/useFlowData';
 import type { FlowNodeData } from '../../flowTypes';
@@ -43,6 +43,7 @@ function EndingEntityWorkspace({
     error,
     refetch,
     addNode,
+    deleteNode,
     updateNodeData,
   } = useFlowData(themeId);
 
@@ -104,23 +105,45 @@ function EndingEntityWorkspace({
       data-testid="ending-entity-panel"
       className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6"
     >
-      {section === 'endings' ? <EndingEntityHeader onAddEnding={handleAddEnding} /> : null}
+      {section === 'endings' ? <EndingEntityHeader /> : null}
 
       {section === 'endings' ? <EndingDecisionSummaryPanel summary={decisionSummary} /> : null}
 
-      <EndingBranchRulesPanel
-        themeId={themeId}
-        theme={theme}
-        endingNodes={endingNodes}
-        characters={characters}
-        section={section}
-      />
+      {section === 'endings' ? (
+        <EndingBranchRulesPanel
+          themeId={themeId}
+          theme={theme}
+          endingNodes={endingNodes}
+          characters={characters}
+          section={section}
+          settingsOnly
+        />
+      ) : null}
+
+      {section === 'questions' ? (
+        <EndingBranchRulesPanel
+          themeId={themeId}
+          theme={theme}
+          endingNodes={endingNodes}
+          characters={characters}
+          section={section}
+        />
+      ) : null}
 
       {section !== 'endings' ? null : endingNodes.length === 0 ? (
         <EndingEmptyState />
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(220px,320px)_minmax(0,1fr)]">
           <aside className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+            <button
+              type="button"
+              onClick={handleAddEnding}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-3 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              결말 추가
+            </button>
+
             <label className="relative block">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
@@ -144,19 +167,42 @@ function EndingEntityWorkspace({
                   const viewModel = toEndingEditorViewModel(node, incomingCount);
                   const selected = selectedNode?.id === node.id;
                   return (
-                    <button
+                    <div
                       key={node.id}
-                      type="button"
-                      onClick={() => setSelectedId(node.id)}
-                      aria-pressed={selected}
-                      className={`rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 ${
+                      className={`rounded-xl border p-3 text-left transition focus-within:ring-2 focus-within:ring-amber-400/60 ${
                         selected
                           ? 'border-amber-500/70 bg-amber-500/10'
                           : 'border-slate-800 bg-slate-950 hover:border-slate-600'
                       }`}
                     >
-                      <p className="font-medium text-slate-100">{viewModel.name}</p>
-                      <div className="mt-2 flex flex-wrap gap-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(node.id)}
+                          aria-pressed={selected}
+                          aria-label={`${viewModel.name} 선택`}
+                          className="min-w-0 flex-1 text-left focus:outline-none"
+                        >
+                          <p className="truncate font-medium text-slate-100">{viewModel.name}</p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteNode(node.id);
+                            if (selectedId === node.id) setSelectedId(null);
+                          }}
+                          className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-300/60"
+                          aria-label={`${viewModel.name} 삭제`}
+                        >
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(node.id)}
+                        className="mt-2 flex flex-wrap gap-1 text-left focus:outline-none"
+                        aria-label={`${viewModel.name} 배지 영역 선택`}
+                      >
                         {viewModel.badges.map((badge) => (
                           <span
                             key={badge}
@@ -165,8 +211,8 @@ function EndingEntityWorkspace({
                             {badge}
                           </span>
                         ))}
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   );
                 })
               )}
@@ -178,6 +224,17 @@ function EndingEntityWorkspace({
               node={selectedNode}
               themeId={themeId}
               onChange={updateNodeData}
+              rulesSlot={(
+                <EndingBranchRulesPanel
+                  themeId={themeId}
+                  theme={theme}
+                  endingNodes={endingNodes}
+                  characters={characters}
+                  section="endings"
+                  selectedEndingId={selectedNode.id}
+                  embedded
+                />
+              )}
             />
           )}
         </div>

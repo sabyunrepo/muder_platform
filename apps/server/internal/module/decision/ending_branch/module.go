@@ -128,12 +128,12 @@ func (m *Module) HandleMessage(ctx context.Context, playerID uuid.UUID, msgType 
 }
 
 // ReactTo handles phase actions that trigger ending evaluation.
-func (m *Module) ReactTo(_ context.Context, action engine.PhaseActionPayload) error {
+func (m *Module) ReactTo(ctx context.Context, action engine.PhaseActionPayload) error {
 	if action.Action != engine.ActionEvaluateEnding {
 		return nil
 	}
 	m.mu.Lock()
-	result, err := m.evaluateLocked()
+	result, err := m.evaluateLocked(ctx)
 	if err != nil {
 		m.mu.Unlock()
 		return err

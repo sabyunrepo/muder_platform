@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,6 +16,7 @@ interface EndingEntityDetailProps {
   node: Node;
   themeId: string;
   onChange: (nodeId: string, patch: Partial<FlowNodeData>) => void;
+  rulesSlot?: ReactNode;
 }
 
 const SAVE_DEBOUNCE_MS = 1000;
@@ -24,6 +25,7 @@ export function EndingEntityDetail({
   node,
   themeId,
   onChange,
+  rulesSlot,
 }: EndingEntityDetailProps) {
   const fieldIdPrefix = useId();
   const [pickerType, setPickerType] = useState<MediaType | null>(null);
@@ -112,6 +114,11 @@ export function EndingEntityDetail({
           Markdown과 미디어 블록을 사용할 수 있습니다. 플레이어에게 보일 문장만 작성하면 됩니다.
         </p>
       </div>
+      {rulesSlot ? (
+        <div className="border-t border-slate-800 pt-4">
+          {rulesSlot}
+        </div>
+      ) : null}
     </section>
   );
 }
