@@ -11,6 +11,8 @@ describe("sceneActionRegistry", () => {
     const options = getSceneActionOptions({ enabledModuleIds: [] });
 
     expect(options.some((option) => option.value === "SET_BGM")).toBe(true);
+    expect(options.some((option) => option.value === "SET_THEME_COLOR")).toBe(false);
+    expect(options.some((option) => option.value === "DELIVER_INFORMATION")).toBe(false);
     expect(options.some((option) => option.value === "GRANT_INVESTIGATION_TOKEN")).toBe(false);
     expect(options.some((option) => option.value === "RESET_INVESTIGATION_TOKEN")).toBe(false);
   });
@@ -27,7 +29,11 @@ describe("sceneActionRegistry", () => {
   it("장면 액션별 기본 params를 만든다", () => {
     expect(createSceneActionDefaultParams("SET_BGM")).toEqual({});
     expect(createSceneActionDefaultParams("STOP_AUDIO")).toEqual({ scope: "bgm" });
-    expect(createSceneActionDefaultParams("BROADCAST_MESSAGE")).toEqual({ message: "" });
+    expect(createSceneActionDefaultParams("BROADCAST_MESSAGE")).toEqual({
+      message: "",
+      target: { type: "all_players" },
+    });
+    expect(createSceneActionDefaultParams("GRANT_CLUE")).toEqual({ deliveries: [] });
     expect(createSceneActionDefaultParams("GRANT_INVESTIGATION_TOKEN")).toEqual({
       tokenId: "",
       amount: 1,
