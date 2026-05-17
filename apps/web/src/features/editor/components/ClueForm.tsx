@@ -124,8 +124,11 @@ export function ClueForm({ themeId, clue, isOpen, onClose }: ClueFormProps) {
     setErrors(validationErrors);
     if (Object.keys(validationErrors).length > 0) return;
 
+    const imageMediaChanged = imageMediaId !== (clue?.image_media_id ?? null);
     const nextImageUrl = imageMediaId
-      ? ''
+      ? imageMediaChanged
+        ? ''
+        : (clue?.image_url ?? undefined)
       : clue?.image_url && imageUrl === ''
         ? ''
         : imageUrl || undefined;

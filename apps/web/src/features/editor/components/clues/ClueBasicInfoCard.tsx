@@ -103,8 +103,11 @@ function validate(draft: DraftState): Record<string, string> {
 }
 
 function buildUpdateBody(clue: ClueResponse, draft: DraftState): UpdateClueRequest {
+  const imageMediaChanged = draft.imageMediaId !== (clue.image_media_id ?? null);
   const imageUrl = draft.imageMediaId
-    ? ''
+    ? imageMediaChanged
+      ? ''
+      : (clue.image_url ?? undefined)
     : clue.image_url && draft.imageUrl === ''
       ? ''
       : draft.imageUrl || undefined;

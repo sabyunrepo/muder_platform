@@ -242,6 +242,42 @@ describe('ClueForm', () => {
     expect(args.body.image_url).toBe('');
   });
 
+  it('edit 모드에서 이름만 수정하면 기존 media id와 legacy URL을 보존한다', () => {
+    const onClose = vi.fn();
+    const existing = {
+      id: 'clue-with-image',
+      theme_id: 'theme-1',
+      location_id: null,
+      name: '이미지 단서',
+      description: null,
+      image_url: 'https://cdn.example/legacy-clue.webp',
+      image_media_id: 'image-1',
+      is_common: false,
+      level: 1,
+      sort_order: 0,
+      created_at: '2026-04-15T00:00:00Z',
+      is_usable: false,
+      use_effect: null,
+      use_target: null,
+      use_consumed: false,
+    };
+
+    render(
+      <ClueForm themeId="theme-1" clue={existing} isOpen onClose={onClose} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('이름'), {
+      target: { value: '이름만 변경' },
+    });
+    fireEvent.submit(document.getElementById('clue-form')!);
+
+    expect(updateMutate).toHaveBeenCalledTimes(1);
+    const [args] = updateMutate.mock.calls[0];
+    expect(args.body.name).toBe('이름만 변경');
+    expect(args.body.image_media_id).toBe('image-1');
+    expect(args.body.image_url).toBe('https://cdn.example/legacy-clue.webp');
+  });
+
   it('edit 모드에서는 useUpdateClue.mutate가 호출된다', () => {
     const onClose = vi.fn();
     const existing = {

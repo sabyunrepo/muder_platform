@@ -25,6 +25,7 @@ var (
 	extCreatorID = uuid.MustParse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
 	extThemeID   = uuid.MustParse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
 	extCharID    = uuid.MustParse("cccccccc-cccc-cccc-cccc-cccccccccccc")
+	extClueID    = uuid.MustParse("dddddddd-dddd-dddd-dddd-dddddddddddd")
 	extNow       = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 )
 
@@ -67,6 +68,18 @@ func extSampleCharResponse() *editor.CharacterResponse {
 		Name:        "Detective",
 		Description: &desc,
 		IsCulprit:   false,
+		SortOrder:   0,
+	}
+}
+
+func extSampleClueResponse() *editor.ClueResponse {
+	desc := "A clue"
+	return &editor.ClueResponse{
+		ID:          extClueID,
+		ThemeID:     extThemeID,
+		Name:        "Clue",
+		Description: &desc,
+		Level:       1,
 		SortOrder:   0,
 	}
 }
@@ -416,6 +429,35 @@ func TestUpdateCharacter_AllowsEmptyImageURL(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	h.UpdateCharacter(w, r)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestUpdateClue_AllowsEmptyImageURL(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	mock.EXPECT().
+		UpdateClue(gomock.Any(), gomock.Eq(extCreatorID), gomock.Eq(extClueID), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ uuid.UUID, _ uuid.UUID, req editor.UpdateClueRequest) (*editor.ClueResponse, error) {
+			if req.ImageURL == nil || *req.ImageURL != "" {
+				t.Fatalf("expected empty image URL to reach service, got %+v", req.ImageURL)
+			}
+			return extSampleClueResponse(), nil
+		}).Times(1)
+
+	h := editor.NewHandler(mock, auditlog.NoOpLogger{}, zerolog.Nop())
+
+	body := `{"name":"Clue Updated","level":1,"sort_order":1,"is_common":false,"is_usable":false,"use_consumed":false,"image_url":""}`
+	r := httptest.NewRequest(http.MethodPut, "/editor/clues/"+extClueID.String(), bytes.NewBufferString(body))
+	r.Header.Set("Content-Type", "application/json")
+	r = withExtAuth(r)
+	r = extChiContext(r, map[string]string{"id": extClueID.String()})
+	w := httptest.NewRecorder()
+
+	h.UpdateClue(w, r)
 
 	if w.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
