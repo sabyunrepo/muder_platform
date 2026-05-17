@@ -47,7 +47,7 @@ const ACTION_LABELS = new Map<string, string>([
   ["set_theme_color", "화면 색상 테마 변경"],
   ["stop_bgm", "BGM 정지"],
   ["GRANT_INVESTIGATION_TOKEN", "조사권 추가"],
-  ["RESET_INVESTIGATION_TOKEN", "조사권 초기화"],
+  ["RESET_INVESTIGATION_TOKEN", "조사권 재설정"],
 ]);
 
 export function getCreatorActionLabel(type: string): string {

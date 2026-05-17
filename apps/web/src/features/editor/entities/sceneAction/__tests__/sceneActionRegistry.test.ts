@@ -17,7 +17,7 @@ describe("sceneActionRegistry", () => {
     expect(options.some((option) => option.value === "RESET_INVESTIGATION_TOKEN")).toBe(false);
   });
 
-  it("조사권 모듈이 켜져 있으면 조사권 추가와 초기화를 노출한다", () => {
+  it("조사권 모듈이 켜져 있으면 조사권 추가와 재설정을 노출한다", () => {
     const options = getSceneActionOptions({
       enabledModuleIds: [DECK_INVESTIGATION_MODULE_ID],
     });
@@ -37,6 +37,10 @@ describe("sceneActionRegistry", () => {
     expect(createSceneActionDefaultParams("GRANT_INVESTIGATION_TOKEN")).toEqual({
       tokenId: "",
       amount: 1,
+    });
+    expect(createSceneActionDefaultParams("RESET_INVESTIGATION_TOKEN")).toEqual({
+      tokenId: "",
+      mode: "default",
     });
   });
 
