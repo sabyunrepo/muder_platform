@@ -11,6 +11,7 @@ package editor
 
 import (
 	context "context"
+	io "io"
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
@@ -284,6 +285,20 @@ func (m *MockMediaService) UpdateMedia(ctx context.Context, creatorID, mediaID u
 func (mr *MockMediaServiceMockRecorder) UpdateMedia(ctx, creatorID, mediaID, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMedia", reflect.TypeOf((*MockMediaService)(nil).UpdateMedia), ctx, creatorID, mediaID, req)
+}
+
+// UploadObject mocks base method.
+func (m *MockMediaService) UploadObject(ctx context.Context, creatorID, themeID, uploadID uuid.UUID, body io.Reader) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadObject", ctx, creatorID, themeID, uploadID, body)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UploadObject indicates an expected call of UploadObject.
+func (mr *MockMediaServiceMockRecorder) UploadObject(ctx, creatorID, themeID, uploadID, body any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadObject", reflect.TypeOf((*MockMediaService)(nil).UploadObject), ctx, creatorID, themeID, uploadID, body)
 }
 
 // MockmediaQueries is a mock of mediaQueries interface.

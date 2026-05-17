@@ -531,6 +531,15 @@ func (f *fakeStorageProvider) GenerateDownloadURL(_ context.Context, key string,
 	return "https://download.example/" + key, nil
 }
 
+func (f *fakeStorageProvider) PutObject(_ context.Context, key string, body io.Reader, _ string, _ int64) error {
+	b, err := io.ReadAll(body)
+	if err != nil {
+		return err
+	}
+	f.objects[key] = b
+	return nil
+}
+
 func (f *fakeStorageProvider) HeadObject(_ context.Context, key string) (*storage.ObjectMeta, error) {
 	if f.headErr != nil {
 		return nil, f.headErr
@@ -1919,6 +1928,42 @@ func TestMediaService_RequestUploadURL_ImageSuccess(t *testing.T) {
 	created := q.media[resp.UploadID]
 	if created.Type != MediaTypeImage || !created.StorageKey.Valid || !strings.HasSuffix(created.StorageKey.String, ".png") {
 		t.Fatalf("unexpected image media row: %#v", created)
+	}
+}
+
+func TestMediaService_UploadObject_StoresPendingUploadBody(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	uploadID := seedFileMedia(q, themeID, MediaTypeImage)
+	media := q.media[uploadID]
+	media.FileSize = pgtype.Int8{Int64: 8, Valid: true}
+	media.MimeType = pgtype.Text{String: "image/png", Valid: true}
+	q.media[uploadID] = media
+
+	if err := svc.UploadObject(context.Background(), creatorID, themeID, uploadID, strings.NewReader("png-body")); err != nil {
+		t.Fatalf("UploadObject: %v", err)
+	}
+
+	if got := string(st.objects[media.StorageKey.String]); got != "png-body" {
+		t.Fatalf("stored body = %q", got)
+	}
+}
+
+func TestMediaService_UploadObject_SizeMismatchCleansObject(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	uploadID := seedFileMedia(q, themeID, MediaTypeImage)
+	media := q.media[uploadID]
+	media.FileSize = pgtype.Int8{Int64: 4, Valid: true}
+	media.MimeType = pgtype.Text{String: "image/png", Valid: true}
+	q.media[uploadID] = media
+
+	err := svc.UploadObject(context.Background(), creatorID, themeID, uploadID, strings.NewReader("too-large"))
+	assertMediaAppCode(t, err, apperror.ErrMediaTooLarge)
+	if _, ok := st.objects[media.StorageKey.String]; ok {
+		t.Fatalf("size mismatch should remove stored object")
 	}
 }
 

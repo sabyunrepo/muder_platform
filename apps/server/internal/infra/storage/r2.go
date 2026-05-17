@@ -96,6 +96,23 @@ func (r *r2Provider) GenerateDownloadURL(ctx context.Context, key string, expiry
 	return resp.URL, nil
 }
 
+func (r *r2Provider) PutObject(ctx context.Context, key string, body io.Reader, contentType string, size int64) error {
+	input := &s3.PutObjectInput{
+		Bucket:        aws.String(r.bucket),
+		Key:           aws.String(key),
+		Body:          body,
+		ContentType:   aws.String(contentType),
+		ContentLength: aws.Int64(size),
+	}
+
+	if _, err := r.client.PutObject(ctx, input); err != nil {
+		r.log.Error().Err(err).Str("key", key).Msg("failed to put object")
+		return fmt.Errorf("storage: put object: %w", err)
+	}
+	r.log.Debug().Str("key", key).Int64("size", size).Msg("object uploaded")
+	return nil
+}
+
 func (r *r2Provider) HeadObject(ctx context.Context, key string) (*ObjectMeta, error) {
 	input := &s3.HeadObjectInput{
 		Bucket: aws.String(r.bucket),

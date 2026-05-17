@@ -145,6 +145,28 @@ func (h *MediaHandler) RequestUpload(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusCreated, resp)
 }
 
+// UploadObject handles PUT /editor/themes/{id}/media/uploads/{uploadID}.
+func (h *MediaHandler) UploadObject(w http.ResponseWriter, r *http.Request) {
+	creatorID := middleware.UserIDFrom(r.Context())
+	themeID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	uploadID, err := parseUUID(r, "uploadID")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MaxMediaFileSize+1)
+	if err := h.svc.UploadObject(r.Context(), creatorID, themeID, uploadID, r.Body); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ConfirmUpload handles POST /editor/themes/{id}/media/confirm.
 func (h *MediaHandler) ConfirmUpload(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())

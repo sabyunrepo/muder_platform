@@ -22,6 +22,7 @@ type ObjectMeta struct {
 type Provider interface {
 	GenerateUploadURL(ctx context.Context, key string, contentType string, maxSize int64, expiry time.Duration) (string, error)
 	GenerateDownloadURL(ctx context.Context, key string, expiry time.Duration) (string, error)
+	PutObject(ctx context.Context, key string, body io.Reader, contentType string, size int64) error
 	HeadObject(ctx context.Context, key string) (*ObjectMeta, error)
 	GetObjectRange(ctx context.Context, key string, offset int64, length int64) (io.ReadCloser, error)
 	DeleteObject(ctx context.Context, key string) error

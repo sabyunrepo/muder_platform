@@ -183,6 +183,9 @@ func (fakeImageStorage) GenerateUploadURL(context.Context, string, string, int64
 func (fakeImageStorage) GenerateDownloadURL(_ context.Context, key string, _ time.Duration) (string, error) {
 	return "https://cdn.example/" + key, nil
 }
+func (fakeImageStorage) PutObject(context.Context, string, io.Reader, string, int64) error {
+	return nil
+}
 func (fakeImageStorage) HeadObject(_ context.Context, key string) (*storage.ObjectMeta, error) {
 	return &storage.ObjectMeta{Key: key}, nil
 }
