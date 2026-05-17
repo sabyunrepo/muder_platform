@@ -153,6 +153,33 @@ describe('LocationClueAssignPanel', () => {
     expect(screen.getByText('(1/2)')).toBeDefined();
   });
 
+  it('하위장소는 부모 경로를 포함한 단서 조사 라벨로 표시한다', () => {
+    const parentLocation: LocationResponse = {
+      ...mockLocation,
+      id: 'loc-parent',
+      name: '거실',
+      parent_location_id: null,
+    };
+    const childLocation: LocationResponse = {
+      ...mockLocation,
+      id: 'loc-child',
+      name: '금고',
+      parent_location_id: 'loc-parent',
+    };
+
+    renderQC(
+      <LocationClueAssignPanel
+        themeId="theme-1"
+        theme={baseTheme}
+        location={childLocation}
+        allLocations={[parentLocation, childLocation]}
+      />
+    );
+
+    expect(screen.getByLabelText('거실 / 금고 단서 조사')).toBeDefined();
+    expect(screen.getByText('거실 / 금고 단서 조사')).toBeDefined();
+  });
+
   it('배정된 clue는 전체 목록에서 비활성화되고 우측 목록에 표시된다', () => {
     const theme: EditorThemeResponse = {
       ...baseTheme,

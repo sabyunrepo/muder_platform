@@ -126,7 +126,7 @@ type CreateClueRequest struct {
 	LocationID        *uuid.UUID `json:"location_id"`
 	Name              string     `json:"name" validate:"required,min=1,max=200"`
 	Description       *string    `json:"description" validate:"omitempty,max=2000"`
-	ImageURL          *string    `json:"image_url" validate:"omitempty,url"`
+	ImageURL          *string    `json:"image_url" validate:"omitempty,optional_url"`
 	ImageMediaID      *uuid.UUID `json:"image_media_id"`
 	IsCommon          bool       `json:"is_common"`
 	Level             int32      `json:"level" validate:"min=1,max=10"`
@@ -146,7 +146,7 @@ type UpdateClueRequest struct {
 	LocationID        *uuid.UUID   `json:"location_id"`
 	Name              string       `json:"name" validate:"required,min=1,max=200"`
 	Description       *string      `json:"description" validate:"omitempty,max=2000"`
-	ImageURL          *string      `json:"image_url" validate:"omitempty,url"`
+	ImageURL          *string      `json:"image_url" validate:"omitempty,optional_url"`
 	ImageMediaID      OptionalUUID `json:"image_media_id"`
 	IsCommon          bool         `json:"is_common"`
 	Level             int32        `json:"level" validate:"min=1,max=10"`

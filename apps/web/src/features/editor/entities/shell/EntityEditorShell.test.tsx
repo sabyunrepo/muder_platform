@@ -46,23 +46,25 @@ describe('EntityEditorShell', () => {
     expect(screen.getByText('2개의 단서')).toBeDefined();
     expect(container.firstElementChild?.className).toContain('min-h-0');
     expect(container.firstElementChild?.className).toContain('overflow-y-auto');
+    expect(container.firstElementChild?.className).toContain('lg:overflow-hidden');
   });
 
-  it('데스크톱에서는 Shell 하나만 스크롤 책임을 가진다', () => {
+  it('데스크톱에서는 왼쪽 목록 본문과 오른쪽 상세가 각각 독립 스크롤 책임을 가진다', () => {
     renderShell();
 
     const list = screen.getByRole('region', { name: '단서 목록' });
     const detail = screen.getByRole('region', { name: '단서 상세 영역' });
     const listScroller = Array.from(list.querySelectorAll('div')).find((node) =>
-      node.className.includes('lg:overflow-y-auto'),
+      node.className.includes('overflow-y-auto'),
     );
 
     expect(list.className).toContain('flex');
     expect(list.className).toContain('min-h-0');
     expect(list.className).toContain('shrink-0');
     expect(detail.className).toContain('shrink-0');
-    expect(listScroller).toBeUndefined();
-    expect(detail.className).not.toContain('lg:overflow-y-auto');
+    expect(listScroller?.className).toContain('flex-1');
+    expect(listScroller?.className).toContain('min-h-0');
+    expect(detail.className).toContain('lg:overflow-y-auto');
   });
 
   it('검색어에 맞는 항목만 보여준다', () => {
@@ -72,6 +74,20 @@ describe('EntityEditorShell', () => {
 
     const list = screen.getByRole('region', { name: '단서 목록' });
     expect(within(list).getByText('비밀 편지')).toBeDefined();
+    expect(within(list).queryByText('첫 단서')).toBeNull();
+  });
+
+  it('화면에 표시하지 않는 검색 전용 텍스트로도 항목을 찾는다', () => {
+    renderShell({
+      getItemDescription: () => '',
+      getItemSearchText: (item) => item.description ?? '',
+    });
+
+    fireEvent.change(screen.getByLabelText('단서 검색'), { target: { value: '범인의 흔적' } });
+
+    const list = screen.getByRole('region', { name: '단서 목록' });
+    expect(within(list).getByText('비밀 편지')).toBeDefined();
+    expect(within(list).queryByText('범인의 흔적')).toBeNull();
     expect(within(list).queryByText('첫 단서')).toBeNull();
   });
 

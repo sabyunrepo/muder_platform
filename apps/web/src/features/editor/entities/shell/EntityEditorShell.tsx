@@ -14,6 +14,7 @@ export interface EntityEditorShellProps<TItem> {
   getItemId: (item: TItem) => string;
   getItemTitle: (item: TItem) => string;
   getItemDescription?: (item: TItem) => string;
+  getItemSearchText?: (item: TItem) => string;
   getItemBadges?: (item: TItem) => string[];
   renderItemActions?: (item: TItem) => ReactNode;
   renderDetail: (item: TItem) => ReactNode;
@@ -33,6 +34,7 @@ export function EntityEditorShell<TItem>({
   getItemId,
   getItemTitle,
   getItemDescription,
+  getItemSearchText,
   getItemBadges,
   renderItemActions,
   renderDetail,
@@ -40,8 +42,8 @@ export function EntityEditorShell<TItem>({
 }: EntityEditorShellProps<TItem>) {
   const [query, setQuery] = useState('');
   const visibleItems = useMemo(
-    () => filterItems(items, query, getItemTitle, getItemDescription, getItemBadges),
-    [items, query, getItemTitle, getItemDescription, getItemBadges],
+    () => filterItems(items, query, getItemTitle, getItemDescription, getItemSearchText, getItemBadges),
+    [items, query, getItemTitle, getItemDescription, getItemSearchText, getItemBadges],
   );
 
   const selected = visibleItems.find((item) => getItemId(item) === selectedId) ?? visibleItems[0];
@@ -81,7 +83,7 @@ export function EntityEditorShell<TItem>({
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto lg:grid lg:grid-cols-[minmax(14rem,0.72fr)_minmax(0,1.9fr)]">
+    <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto lg:grid lg:grid-cols-[minmax(14rem,0.72fr)_minmax(0,1.9fr)] lg:overflow-hidden">
       <section
         aria-label={`${title} 목록`}
         className="flex min-h-0 shrink-0 flex-col rounded-xl border border-slate-800 bg-slate-950/70 p-3"
@@ -114,7 +116,7 @@ export function EntityEditorShell<TItem>({
             className="w-full rounded-lg border border-slate-800 bg-slate-900 py-2.5 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
           />
         </label>
-        <div className="space-y-2 pr-1">
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
           {visibleItems.length === 0 ? (
             <p className="rounded-lg border border-dashed border-slate-800 px-3 py-8 text-center text-xs text-slate-600">
               검색 결과가 없습니다.
@@ -140,7 +142,7 @@ export function EntityEditorShell<TItem>({
 
       {selected && (
         <section
-          className="min-h-0 shrink-0 overflow-y-visible lg:pr-2"
+          className="min-h-0 shrink-0 overflow-y-visible lg:overflow-y-auto lg:pr-2"
           aria-label={`${title} 상세 영역`}
         >
           <div className="space-y-4 pb-4">
@@ -238,12 +240,18 @@ function filterItems<TItem>(
   query: string,
   getItemTitle: (item: TItem) => string,
   getItemDescription?: (item: TItem) => string,
+  getItemSearchText?: (item: TItem) => string,
   getItemBadges?: (item: TItem) => string[],
 ) {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return items;
   return items.filter((item) =>
-    [getItemTitle(item), getItemDescription?.(item), ...(getItemBadges?.(item) ?? [])]
+    [
+      getItemTitle(item),
+      getItemDescription?.(item),
+      getItemSearchText?.(item),
+      ...(getItemBadges?.(item) ?? []),
+    ]
       .filter(Boolean)
       .join(' ')
       .toLowerCase()

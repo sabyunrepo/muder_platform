@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import { GripVertical, MapPin, Trash2 } from 'lucide-react';
+import { GripVertical, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EditorThemeResponse, MapResponse, LocationResponse } from '@/features/editor/api';
 import { useEditorClues, useUpdateConfigJson, useUpdateLocation } from '@/features/editor/api';
@@ -15,11 +15,12 @@ import type { ProgressNodeRevealOption } from '@/features/editor/entities/reveal
 import { toLocationEditorViewModel } from '@/features/editor/entities/location/locationEntityAdapter';
 import { readLocationMeta } from '@/features/editor/utils/entityMeta';
 import { AddNameInput } from './AddNameInput';
-import { EntityEditorShell } from '@/features/editor/entities/shell/EntityEditorShell';
 import { ConfirmDialog } from '@/shared/components/ui';
 import { LocationAccessPolicyPanel } from './LocationAccessPolicyPanel';
 import { LocationClueAssignPanel } from './LocationClueAssignPanel';
+import { LocationHierarchyList } from './LocationHierarchyList';
 import { LocationImageMediaField } from './LocationImageMediaField';
+import { LocationStructurePanel } from './LocationStructurePanel';
 
 interface LocationDetailPanelProps {
   themeId: string;
@@ -28,11 +29,12 @@ interface LocationDetailPanelProps {
   selectedLocation: LocationResponse | null;
   mapLocations: LocationResponse[];
   sceneOptions?: ProgressNodeRevealOption[];
-  addingLocation: boolean;
+  addingLocationParentId: string | null | 'top';
   isCreatingLocation: boolean;
-  onStartAdd: () => void;
+  onStartAddTopLevel: () => void;
+  onStartAddChild: (parentId: string) => void;
   onCancelAdd: () => void;
-  onAddLocation: (name: string) => void;
+  onAddLocation: (name: string, parentLocationId?: string | null) => void;
   onSelectLocation: (locationId: string) => void;
   onDeleteLocation: (locationId: string) => void;
 }
@@ -50,9 +52,10 @@ export function LocationDetailPanel({
   selectedLocation,
   mapLocations,
   sceneOptions = [],
-  addingLocation,
+  addingLocationParentId,
   isCreatingLocation,
-  onStartAdd,
+  onStartAddTopLevel,
+  onStartAddChild,
   onCancelAdd,
   onAddLocation,
   onSelectLocation,
@@ -60,67 +63,84 @@ export function LocationDetailPanel({
 }: LocationDetailPanelProps) {
   const [pendingDeleteLocation, setPendingDeleteLocation] =
     useState<LocationResponse | null>(null);
+  const updateLocation = useUpdateLocation(themeId);
 
   if (!selectedMap) return <LocationEmptyState message="좌측에서 맵을 선택하세요" />;
 
+  function renderAddInput(parentId: string | null | 'top') {
+    if (addingLocationParentId !== parentId) return null;
+    const parentLocationId = parentId === 'top' ? null : parentId;
+    return (
+      <div className="mb-3 rounded-md border border-amber-500/30 bg-slate-900 p-2">
+        <AddNameInput
+          placeholder={parentLocationId ? '하위장소 이름' : '장소 이름'}
+          onAdd={(name) => onAddLocation(name, parentLocationId)}
+          onCancel={onCancelAdd}
+          isPending={isCreatingLocation}
+        />
+      </div>
+    );
+  }
+
+  function moveLocation(locationId: string, parentLocationId: string | null, sortOrder: number) {
+    const target = mapLocations.find((candidate) => candidate.id === locationId);
+    if (!target) return;
+    updateLocation.mutate(
+      {
+        locationId,
+        body: {
+          name: target.name,
+          restricted_characters: target.restricted_characters,
+          image_url: target.image_url,
+          public_description: target.public_description ?? null,
+          entry_message: target.entry_message ?? null,
+          parent_location_id: parentLocationId,
+          sort_order: sortOrder,
+          appearance_scene_id: target.appearance_scene_id ?? null,
+          hide_scene_id: target.hide_scene_id ?? null,
+          ...(target.image_media_id !== undefined
+            ? { image_media_id: target.image_media_id ?? null }
+            : {}),
+        },
+      },
+      {
+        onSuccess: () => toast.success('장소 위치가 저장되었습니다'),
+        onError: () => toast.error('장소 위치 저장에 실패했습니다'),
+      }
+    );
+  }
+
   return (
     <>
-      <EntityEditorShell
-        title="장소"
-        items={mapLocations}
-        selectedId={selectedLocation?.id}
-        onSelect={onSelectLocation}
-        onCreate={onStartAdd}
-        createLabel="장소 추가"
-        emptyMessage="장소 없음"
-        emptyDescription="이 맵에 배치할 장소를 추가하세요."
-        listAccessory={
-          addingLocation ? (
-            <div className="mb-3 rounded-md border border-amber-500/30 bg-slate-900 p-2">
-              <AddNameInput
-                placeholder="장소 이름"
-                onAdd={onAddLocation}
-                onCancel={onCancelAdd}
-                isPending={isCreatingLocation}
-              />
-            </div>
-          ) : null
-        }
-        getItemId={(location) => location.id}
-        getItemTitle={(location) => location.name}
-        getItemDescription={(location) =>
-          toLocationEditorViewModel(location, {
-            clueCount: readLocationClueIds(theme.config_json, location.id).length,
-            mapName: selectedMap.name,
-          }).roundLabel
-        }
-        getItemBadges={(location) =>
-          toLocationEditorViewModel(location, {
-            clueCount: readLocationClueIds(theme.config_json, location.id).length,
-            mapName: selectedMap.name,
-          }).badges
-        }
-        renderItemActions={(location) => (
-          <button
-            type="button"
-            onClick={() => setPendingDeleteLocation(location)}
-            aria-label={`${location.name} 삭제`}
-            className="rounded-md p-2 text-slate-700 opacity-100 transition hover:bg-red-950/40 hover:text-red-300 md:opacity-0 md:group-hover:opacity-100"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        )}
-        renderDetail={(location) => (
-          <SelectedLocationDetail
-            themeId={themeId}
-            theme={theme}
-            map={selectedMap}
-            location={location}
-            mapLocations={mapLocations}
-            sceneOptions={sceneOptions}
-          />
-        )}
-      />
+      <div className="grid min-h-0 gap-4 md:h-full md:grid-cols-[minmax(16rem,0.34fr)_minmax(0,1fr)] lg:grid-cols-[minmax(16rem,0.32fr)_minmax(0,1fr)]">
+        <LocationHierarchyList
+          locations={mapLocations}
+          theme={theme}
+          selectedId={selectedLocation?.id}
+          onSelect={onSelectLocation}
+          onDelete={setPendingDeleteLocation}
+          onStartAddTopLevel={onStartAddTopLevel}
+          onStartAddChild={onStartAddChild}
+          renderAddTopLevelInput={() => renderAddInput('top')}
+          renderAddChildInput={(parentId) => renderAddInput(parentId)}
+          onMoveLocation={moveLocation}
+        />
+        <div className="min-w-0 md:min-h-0 md:overflow-y-auto">
+          {selectedLocation ? (
+            <SelectedLocationDetail
+              themeId={themeId}
+              theme={theme}
+              map={selectedMap}
+              location={selectedLocation}
+              mapLocations={mapLocations}
+              sceneOptions={sceneOptions}
+              onStartAddChild={onStartAddChild}
+            />
+          ) : (
+            <LocationEmptyState message="장소를 선택하세요" compact />
+          )}
+        </div>
+      </div>
       <ConfirmDialog
         isOpen={pendingDeleteLocation != null}
         title="장소를 삭제할까요?"
@@ -144,6 +164,7 @@ function SelectedLocationDetail({
   location,
   mapLocations,
   sceneOptions,
+  onStartAddChild,
 }: {
   themeId: string;
   theme: EditorThemeResponse;
@@ -151,6 +172,7 @@ function SelectedLocationDetail({
   location: LocationResponse;
   mapLocations: LocationResponse[];
   sceneOptions: ProgressNodeRevealOption[];
+  onStartAddChild: (parentId: string) => void;
 }) {
   const updateLocation = useUpdateLocation(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
@@ -229,7 +251,10 @@ function SelectedLocationDetail({
       image_url: nextImageUrl,
       public_description: patch.public_description ?? location.public_description ?? null,
       entry_message: patch.entry_message ?? location.entry_message ?? null,
-      parent_location_id: null,
+      parent_location_id:
+        patch.parent_location_id !== undefined
+          ? patch.parent_location_id
+          : (location.parent_location_id ?? null),
       sort_order: patch.sort_order ?? location.sort_order,
       appearance_scene_id: nextAppearanceSceneId,
       hide_scene_id: nextHideSceneId,
@@ -322,6 +347,21 @@ function SelectedLocationDetail({
               setHideSceneId={setHideSceneId}
               onCommit={saveLocation}
             />
+            <LocationStructurePanel
+              location={location}
+              locations={mapLocations}
+              isSaving={updateLocation.isPending}
+              onStartAddChild={onStartAddChild}
+              onChangeParent={(parentLocationId) =>
+                saveLocation(
+                  { parent_location_id: parentLocationId },
+                  {
+                    onSuccess: () => toast.success('장소 구조가 저장되었습니다'),
+                    onErrorMessage: '장소 구조 저장에 실패했습니다',
+                  }
+                )
+              }
+            />
             <LocationInvestigationStructurePanel
               location={location}
               settings={investigationSettings}
@@ -343,6 +383,7 @@ function SelectedLocationDetail({
         themeId={themeId}
         theme={theme}
         location={location}
+        allLocations={mapLocations}
         allClues={clues}
       />
     </div>

@@ -42,7 +42,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [addingMap, setAddingMap] = useState(false);
-  const [addingLocation, setAddingLocation] = useState(false);
+  const [addingLocationParentId, setAddingLocationParentId] = useState<string | null | 'top'>(null);
   const [pendingDeleteMapId, setPendingDeleteMapId] = useState<string | null>(null);
 
   const effectiveSelectedMapId = selectedMapId ?? maps?.[0]?.id ?? null;
@@ -90,14 +90,14 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
     });
   }
 
-  function handleAddLocation(name: string) {
+  function handleAddLocation(name: string, parentLocationId: string | null = null) {
     if (!effectiveSelectedMapId) return;
     createLocation.mutate(
-      { mapId: effectiveSelectedMapId, body: { name } },
+      { mapId: effectiveSelectedMapId, body: { name, parent_location_id: parentLocationId } },
       {
         onSuccess: (newLocation) => {
           toast.success('장소가 추가되었습니다');
-          setAddingLocation(false);
+          setAddingLocationParentId(null);
           setSelectedLocationId(newLocation.id);
         },
         onError: () => toast.error('장소 추가에 실패했습니다'),
@@ -155,10 +155,11 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           selectedLocation={selectedLocation}
           mapLocations={mapLocations}
           sceneOptions={sceneOptions}
-          addingLocation={addingLocation}
+          addingLocationParentId={addingLocationParentId}
           isCreatingLocation={createLocation.isPending}
-          onStartAdd={() => setAddingLocation(true)}
-          onCancelAdd={() => setAddingLocation(false)}
+          onStartAddTopLevel={() => setAddingLocationParentId('top')}
+          onStartAddChild={(parentId) => setAddingLocationParentId(parentId)}
+          onCancelAdd={() => setAddingLocationParentId(null)}
           onAddLocation={handleAddLocation}
           onSelectLocation={setSelectedLocationId}
           onDeleteLocation={handleDeleteLocation}

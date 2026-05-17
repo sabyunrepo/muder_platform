@@ -21,6 +21,11 @@ import { ClueEntityWorkspace } from './ClueEntityWorkspace';
 import { useFlowGraph } from '@/features/editor/flowApi';
 import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
+interface ClueAutosaveOptions {
+  onSuccess?: () => void;
+  onError?: (error?: unknown) => void;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -53,12 +58,24 @@ export function ClueListView({ themeId }: ClueListViewProps) {
     setIsFormOpen(false);
   }
 
-  function handleUpdate(clueId: string, body: UpdateClueRequest) {
+  function handleUpdate(clueId: string, body: UpdateClueRequest, options?: ClueAutosaveOptions) {
     updateClue.mutate(
       { clueId, body },
       {
-        onSuccess: () => toast.success('단서가 수정되었습니다'),
-        onError: (err) => showUnknownErrorToast(err, '단서 수정에 실패했습니다'),
+        onSuccess: () => {
+          if (options?.onSuccess) {
+            options.onSuccess();
+            return;
+          }
+          toast.success('단서가 수정되었습니다');
+        },
+        onError: (err) => {
+          if (options?.onError) {
+            options.onError(err);
+            return;
+          }
+          showUnknownErrorToast(err, '단서 수정에 실패했습니다');
+        },
       }
     );
   }
@@ -77,10 +94,22 @@ export function ClueListView({ themeId }: ClueListViewProps) {
     });
   }
 
-  function handleConfigChange(nextConfig: EditorConfig) {
+  function handleConfigChange(nextConfig: EditorConfig, options?: ClueAutosaveOptions) {
     updateConfig.mutate(nextConfig, {
-      onSuccess: () => toast.success('단서 설정이 저장되었습니다'),
-      onError: () => toast.error('단서 설정 저장에 실패했습니다'),
+      onSuccess: () => {
+        if (options?.onSuccess) {
+          options.onSuccess();
+          return;
+        }
+        toast.success('단서 설정이 저장되었습니다');
+      },
+      onError: (err) => {
+        if (options?.onError) {
+          options.onError(err);
+          return;
+        }
+        toast.error('단서 설정 저장에 실패했습니다');
+      },
     });
   }
 

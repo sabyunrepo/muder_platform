@@ -78,7 +78,7 @@ export function LocationImageMediaField({
           className={
             compact
               ? 'shrink-0 rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-1.5 text-xs text-slate-400 hover:border-amber-500/50 hover:text-slate-200'
-              : 'flex aspect-[16/10] w-full items-center justify-center rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-400 hover:border-amber-500/50 hover:text-slate-200'
+              : 'flex aspect-[16/10] max-h-60 min-h-28 w-full items-center justify-center rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-400 hover:border-amber-500/50 hover:text-slate-200'
           }
         >
           {emptyLabel}

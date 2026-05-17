@@ -80,7 +80,7 @@ describe('locationEntityAdapter', () => {
     });
   });
 
-  it('API 필드를 제작자용 공개 설명으로 변환하고 부모 정보는 에디터에서 무시한다', () => {
+  it('API 필드를 제작자용 공개 설명과 부모 정보로 변환한다', () => {
     const vm = toLocationEditorViewModel(
       location({
         public_description: '모든 플레이어에게 보이는 설명',
@@ -99,8 +99,8 @@ describe('locationEntityAdapter', () => {
 
     expect(vm.publicDescription).toBe('모든 플레이어에게 보이는 설명');
     expect(vm.entryMessage).toBe('차가운 바람이 분다.');
-    expect(vm.parentLocationId).toBeNull();
-    expect(vm.parentLabel).toBe('동등 장소');
+    expect(vm.parentLocationId).toBe('loc-parent');
+    expect(vm.parentLabel).toBe('저택 1층');
   });
 
   it('신규 API 필드가 비어 있으면 locationMeta fallback을 사용한다', () => {
@@ -116,14 +116,15 @@ describe('locationEntityAdapter', () => {
     expect(vm.publicDescription).toBe('기존 설명');
     expect(vm.entryMessage).toBe('기존 진입');
     expect(vm.parentLocationId).toBeNull();
+    expect(vm.parentLabel).toBe('최상위 장소');
   });
 
-  it('부모 장소 후보를 제공하지 않는다', () => {
+  it('현재 장소를 제외한 최상위 장소만 부모 후보로 제공한다', () => {
     const locations = [
-      location({ id: 'loc-1', name: '저택' }),
-      location({ id: 'loc-2', name: '1층' }),
-      location({ id: 'loc-3', name: '서재' }),
-      location({ id: 'loc-4', name: '정원' }),
+      location({ id: 'loc-1', name: '저택', sort_order: 1 }),
+      location({ id: 'loc-2', name: '1층', sort_order: 3 }),
+      location({ id: 'loc-3', name: '서재', parent_location_id: 'loc-2', sort_order: 2 }),
+      location({ id: 'loc-4', name: '정원', sort_order: 2 }),
     ];
 
     expect(
@@ -131,23 +132,10 @@ describe('locationEntityAdapter', () => {
         'loc-2': { parentLocationId: 'loc-1' },
         'loc-3': { parentLocationId: 'loc-2' },
       })
-    ).toEqual([]);
-  });
-
-  it('API parent_location_id가 있어도 부모 장소 후보를 제공하지 않는다', () => {
-    const locations = [
-      location({ id: 'loc-1', name: '저택' }),
-      location({ id: 'loc-2', name: '1층', parent_location_id: 'loc-1' }),
-      location({ id: 'loc-3', name: '서재', parent_location_id: 'loc-2' }),
-      location({ id: 'loc-4', name: '정원' }),
-    ];
-
-    expect(
-      buildLocationParentOptions('loc-1', locations, {
-        'loc-2': { parentLocationId: null },
-        'loc-3': { parentLocationId: null },
-      })
-    ).toEqual([]);
+    ).toEqual([
+      { id: 'loc-4', label: '정원', depth: 0 },
+      { id: 'loc-2', label: '1층', depth: 0 },
+    ]);
   });
 
   it('restricted character CSV를 trim/dedupe한다', () => {

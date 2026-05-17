@@ -1,3 +1,5 @@
+import type { LocationResponse } from '@/features/editor/api';
+
 export const mockTheme = {
   id: 'theme-1',
   title: '테스트 테마',
@@ -124,3 +126,20 @@ export const mockCharacters = [
     sort_order: 2,
   },
 ];
+
+export function baseLocation(id: string, name: string): LocationResponse {
+  return {
+    id,
+    theme_id: 'theme-1',
+    map_id: 'map-1',
+    name,
+    restricted_characters: null,
+    image_url: null,
+    image_media_id: null,
+    public_description: null,
+    entry_message: null,
+    parent_location_id: null,
+    sort_order: 0,
+    created_at: '2026-05-17T00:00:00Z',
+  };
+}
