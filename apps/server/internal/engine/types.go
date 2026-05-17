@@ -12,29 +12,31 @@ import (
 type PhaseAction string
 
 const (
-	ActionResetDrawCount      PhaseAction = "RESET_DRAW_COUNT"
-	ActionResetFloorSelection PhaseAction = "RESET_FLOOR_SELECTION"
-	ActionSetClueLevel        PhaseAction = "SET_CLUE_LEVEL"
-	ActionOpenVoting          PhaseAction = "OPEN_VOTING"
-	ActionCloseVoting         PhaseAction = "CLOSE_VOTING"
-	ActionAllowExchange       PhaseAction = "ALLOW_EXCHANGE"
-	ActionBroadcastMessage    PhaseAction = "BROADCAST_MESSAGE"
-	ActionDeliverInformation  PhaseAction = "DELIVER_INFORMATION"
-	ActionGrantClue           PhaseAction = "GRANT_CLUE"
-	ActionEvaluateEnding      PhaseAction = "EVALUATE_ENDING"
-	ActionPlaySound           PhaseAction = "PLAY_SOUND"
-	ActionPlayMedia           PhaseAction = "PLAY_MEDIA"
-	ActionSetBGM              PhaseAction = "SET_BGM"
-	ActionStopAudio           PhaseAction = "STOP_AUDIO"
-	ActionSetBackground       PhaseAction = "SET_BACKGROUND"
-	ActionSetThemeColor       PhaseAction = "SET_THEME_COLOR"
-	ActionMuteChat            PhaseAction = "MUTE_CHAT"
-	ActionUnmuteChat          PhaseAction = "UNMUTE_CHAT"
-	ActionOpenGroupChat       PhaseAction = "OPEN_GROUP_CHAT"
-	ActionCloseGroupChat      PhaseAction = "CLOSE_GROUP_CHAT"
-	ActionApplyDiscussionRoom PhaseAction = "APPLY_DISCUSSION_ROOM_POLICY"
-	ActionLockModule          PhaseAction = "LOCK_MODULE"
-	ActionUnlockModule        PhaseAction = "UNLOCK_MODULE"
+	ActionResetDrawCount          PhaseAction = "RESET_DRAW_COUNT"
+	ActionResetFloorSelection     PhaseAction = "RESET_FLOOR_SELECTION"
+	ActionSetClueLevel            PhaseAction = "SET_CLUE_LEVEL"
+	ActionOpenVoting              PhaseAction = "OPEN_VOTING"
+	ActionCloseVoting             PhaseAction = "CLOSE_VOTING"
+	ActionAllowExchange           PhaseAction = "ALLOW_EXCHANGE"
+	ActionBroadcastMessage        PhaseAction = "BROADCAST_MESSAGE"
+	ActionDeliverInformation      PhaseAction = "DELIVER_INFORMATION"
+	ActionGrantClue               PhaseAction = "GRANT_CLUE"
+	ActionEvaluateEnding          PhaseAction = "EVALUATE_ENDING"
+	ActionPlaySound               PhaseAction = "PLAY_SOUND"
+	ActionPlayMedia               PhaseAction = "PLAY_MEDIA"
+	ActionSetBGM                  PhaseAction = "SET_BGM"
+	ActionStopAudio               PhaseAction = "STOP_AUDIO"
+	ActionSetBackground           PhaseAction = "SET_BACKGROUND"
+	ActionSetThemeColor           PhaseAction = "SET_THEME_COLOR"
+	ActionMuteChat                PhaseAction = "MUTE_CHAT"
+	ActionUnmuteChat              PhaseAction = "UNMUTE_CHAT"
+	ActionOpenGroupChat           PhaseAction = "OPEN_GROUP_CHAT"
+	ActionCloseGroupChat          PhaseAction = "CLOSE_GROUP_CHAT"
+	ActionApplyDiscussionRoom     PhaseAction = "APPLY_DISCUSSION_ROOM_POLICY"
+	ActionGrantInvestigationToken PhaseAction = "GRANT_INVESTIGATION_TOKEN"
+	ActionResetInvestigationToken PhaseAction = "RESET_INVESTIGATION_TOKEN"
+	ActionLockModule              PhaseAction = "LOCK_MODULE"
+	ActionUnlockModule            PhaseAction = "UNLOCK_MODULE"
 )
 
 // PhaseActionPayload carries action-specific data.
@@ -59,26 +61,28 @@ type PhaseInfo struct {
 // ActionRequiresModule maps PhaseActions to the module that must be enabled.
 // Actions not in this map are module-independent (e.g. BROADCAST_MESSAGE).
 var ActionRequiresModule = map[PhaseAction]string{
-	ActionResetDrawCount:      "clue_interaction",
-	ActionResetFloorSelection: "floor_exploration",
-	ActionSetClueLevel:        "clue_interaction",
-	ActionOpenVoting:          "voting",
-	ActionCloseVoting:         "voting",
-	ActionAllowExchange:       "trade_clue",
-	ActionMuteChat:            "text_chat",
-	ActionUnmuteChat:          "text_chat",
-	ActionOpenGroupChat:       "group_chat",
-	ActionCloseGroupChat:      "group_chat",
-	ActionApplyDiscussionRoom: "group_chat",
-	ActionDeliverInformation:  "information_delivery",
-	ActionGrantClue:           "clue_interaction",
-	ActionEvaluateEnding:      "ending_branch",
-	ActionPlaySound:           "audio",
-	ActionPlayMedia:           "audio",
-	ActionSetBGM:              "audio",
-	ActionStopAudio:           "audio",
-	ActionSetBackground:       "presentation",
-	ActionSetThemeColor:       "presentation",
+	ActionResetDrawCount:          "clue_interaction",
+	ActionResetFloorSelection:     "floor_exploration",
+	ActionSetClueLevel:            "clue_interaction",
+	ActionOpenVoting:              "voting",
+	ActionCloseVoting:             "voting",
+	ActionAllowExchange:           "trade_clue",
+	ActionMuteChat:                "text_chat",
+	ActionUnmuteChat:              "text_chat",
+	ActionOpenGroupChat:           "group_chat",
+	ActionCloseGroupChat:          "group_chat",
+	ActionApplyDiscussionRoom:     "group_chat",
+	ActionDeliverInformation:      "information_delivery",
+	ActionGrantClue:               "clue_interaction",
+	ActionEvaluateEnding:          "ending_branch",
+	ActionPlaySound:               "audio",
+	ActionPlayMedia:               "audio",
+	ActionSetBGM:                  "audio",
+	ActionStopAudio:               "audio",
+	ActionSetBackground:           "presentation",
+	ActionSetThemeColor:           "presentation",
+	ActionGrantInvestigationToken: "deck_investigation",
+	ActionResetInvestigationToken: "deck_investigation",
 }
 
 // --- Module Interfaces ---

@@ -243,6 +243,82 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("preserveDisallowedActions가 켜지면 새 목록에 없는 기존 액션도 보존 표시한다", () => {
+    render(
+      <ActionListEditor
+        label="장면 시작 액션"
+        actions={[
+          { id: "old-token", type: "GRANT_INVESTIGATION_TOKEN", params: { tokenId: "coin", amount: 1 } },
+          { id: "bgm", type: "SET_BGM", params: { mediaId: "media-1" } },
+        ]}
+        allowedTypes={["SET_BGM"]}
+        preserveDisallowedActions
+        onChange={vi.fn()}
+        themeId="theme-1"
+      />,
+    );
+
+    expect(screen.getByRole("combobox", { name: "장면 시작 액션 1 실행 결과" })).toHaveProperty(
+      "value",
+      "GRANT_INVESTIGATION_TOKEN",
+    );
+    expect(screen.getByRole("option", { name: "조사권 추가 (기존값)" })).toBeDefined();
+    expect(screen.getByRole("combobox", { name: "장면 시작 액션 2 실행 결과" })).toHaveProperty(
+      "value",
+      "SET_BGM",
+    );
+  });
+
+  it("custom actionOptions와 기본 params로 장면 액션을 추가한다", () => {
+    const onChange = vi.fn();
+
+    render(
+      <ActionListEditor
+        label="장면 종료 액션"
+        actions={[]}
+        actionOptions={[{ value: "STOP_AUDIO", label: "BGM 종료" }]}
+        allowedTypes={["STOP_AUDIO"]}
+        createDefaultParamsForType={(type) => (type === "STOP_AUDIO" ? { scope: "bgm" } : undefined)}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "추가" }));
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ type: "STOP_AUDIO", params: { scope: "bgm" } }),
+    ]);
+  });
+
+  it("조사권 추가 액션의 조사권 종류와 수량을 params로 저장한다", () => {
+    const onChange = vi.fn();
+
+    render(
+      <ActionListEditor
+        label="장면 시작 액션"
+        actions={[{ id: "token", type: "GRANT_INVESTIGATION_TOKEN", params: { tokenId: "coin", amount: 1 } }]}
+        investigationTokens={[
+          { id: "coin", name: "동전", iconLabel: "코", defaultAmount: 2 },
+          { id: "badge", name: "배지", iconLabel: "배", defaultAmount: 0 },
+        ]}
+        preserveDisallowedActions
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByDisplayValue("코 동전"), { target: { value: "badge" } });
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "token", type: "GRANT_INVESTIGATION_TOKEN", params: { tokenId: "badge", amount: 1 } },
+    ]);
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: "추가 수량" }), {
+      target: { value: "3" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith([
+      { id: "token", type: "GRANT_INVESTIGATION_TOKEN", params: { tokenId: "coin", amount: 3 } },
+    ]);
+  });
+
   it("컬러 테마 실행 결과를 preset token으로 저장한다", () => {
     const onChange = vi.fn();
     render(

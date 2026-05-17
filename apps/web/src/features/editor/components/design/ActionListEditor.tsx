@@ -2,6 +2,7 @@ import { Plus, Trash2 } from "lucide-react";
 import type { PhaseAction } from "../../flowTypes";
 import {
   DELIVER_INFORMATION_ACTION,
+  type CreatorActionOption,
   getCreatorActionLabel,
   getVisibleCreatorActionOptions,
   isInformationDeliveryAction,
@@ -18,6 +19,7 @@ import {
 import { InformationActionFields } from "./InformationActionFields";
 import { BroadcastActionFields } from "./BroadcastActionFields";
 import { readAllPlayerReadingSectionId } from "./actionFieldHelpers";
+import type { InvestigationTokenDraft } from "../../entities/deckInvestigation/deckInvestigationAdapter";
 
 export { PRESENTATION_CUE_ACTION_TYPES } from "./PresentationCueFields";
 
@@ -28,6 +30,10 @@ interface ActionListEditorProps {
   hiddenTypes?: string[];
   allowedTypes?: readonly string[];
   themeId?: string;
+  actionOptions?: CreatorActionOption[];
+  createDefaultParamsForType?: (type: string) => Record<string, unknown> | undefined;
+  preserveDisallowedActions?: boolean;
+  investigationTokens?: InvestigationTokenDraft[];
 }
 
 export function ActionListEditor({
@@ -37,21 +43,34 @@ export function ActionListEditor({
   hiddenTypes = [],
   allowedTypes,
   themeId,
+  actionOptions,
+  createDefaultParamsForType,
+  preserveDisallowedActions = false,
+  investigationTokens = [],
 }: ActionListEditorProps) {
   const { data: readingSections = [] } = useReadingSections(themeId ?? "");
   const readingOptions = toReadingSectionPickerOptions(readingSections);
   const isTypeVisible = (type: string) =>
-    !hiddenTypes.includes(type) && (!allowedTypes || allowedTypes.includes(type));
+    !hiddenTypes.includes(type) &&
+    (preserveDisallowedActions || !allowedTypes || allowedTypes.includes(type));
   const visibleActions = actions
     .map((action, index) => ({ action, index }))
     .filter(({ action }) => isTypeVisible(action.type));
-  const visibleActionTypes = getVisibleCreatorActionOptions(hiddenTypes).filter(
+  const visibleActionTypes = (actionOptions ?? getVisibleCreatorActionOptions(hiddenTypes)).filter(
     (actionType) => !allowedTypes || allowedTypes.includes(actionType.value),
   );
   const defaultActionType = visibleActionTypes[0]?.value;
   const handleAdd = () => {
     if (!defaultActionType) return;
-    onChange([...actions, { id: crypto.randomUUID(), type: defaultActionType }]);
+    const params = resolveDefaultParams(defaultActionType, createDefaultParamsForType);
+    onChange([
+      ...actions,
+      {
+        id: crypto.randomUUID(),
+        type: defaultActionType,
+        ...(params ? { params } : {}),
+      },
+    ]);
   };
 
   const handleRemove = (index: number) => {
@@ -60,7 +79,7 @@ export function ActionListEditor({
 
   const handleTypeChange = (index: number, type: string) => {
     const next = actions.map((action, i) =>
-      i === index ? withActionType(action, type) : action,
+      i === index ? withActionType(action, type, createDefaultParamsForType) : action,
     );
     onChange(next);
   };
@@ -101,6 +120,7 @@ export function ActionListEditor({
           onRemove={handleRemove}
           themeId={themeId}
           readingOptions={readingOptions}
+          investigationTokens={investigationTokens}
         />
       ))}
     </div>
@@ -115,6 +135,13 @@ function createDefaultParams(type: string): Record<string, unknown> | undefined 
     return { message: "" };
   }
   return getPresentationCueConfig(type) ? {} : undefined;
+}
+
+function resolveDefaultParams(
+  type: string,
+  customFactory?: (type: string) => Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  return customFactory ? customFactory(type) : createDefaultParams(type);
 }
 
 export function hasIncompletePresentationCueActions(actions: PhaseAction[]): boolean {
@@ -141,8 +168,12 @@ export function isPresentationCueAction(action: PhaseAction): boolean {
   return getPresentationCueConfig(action.type) !== null;
 }
 
-function withActionType(action: PhaseAction, type: string): PhaseAction {
-  const params = createDefaultParams(type);
+function withActionType(
+  action: PhaseAction,
+  type: string,
+  customFactory?: (type: string) => Record<string, unknown> | undefined,
+): PhaseAction {
+  const params = resolveDefaultParams(type, customFactory);
   const next: PhaseAction = { ...action, type };
   if (params) {
     next.params = params;
@@ -163,6 +194,7 @@ interface ActionRowProps {
   onRemove: (index: number) => void;
   themeId?: string;
   readingOptions: ReadingSectionPickerOption[];
+  investigationTokens: InvestigationTokenDraft[];
 }
 
 function ActionRow({
@@ -176,6 +208,7 @@ function ActionRow({
   onRemove,
   themeId,
   readingOptions,
+  investigationTokens,
 }: ActionRowProps) {
   const hasCurrentOption = visibleActionTypes.some((actionType) => actionType.value === action.type);
   const fallbackLabel = getCreatorActionLabel(action.type);
@@ -227,6 +260,81 @@ function ActionRow({
         index={displayIndex}
         onParamsChange={(params) => onParamsChange(index, params)}
       />
+      <InvestigationTokenActionFields
+        action={action}
+        tokens={investigationTokens}
+        onParamsChange={(params) => onParamsChange(index, params)}
+      />
+    </div>
+  );
+}
+
+function InvestigationTokenActionFields({
+  action,
+  tokens,
+  onParamsChange,
+}: {
+  action: PhaseAction;
+  tokens: InvestigationTokenDraft[];
+  onParamsChange: (params: Record<string, unknown>) => void;
+}) {
+  if (action.type !== "GRANT_INVESTIGATION_TOKEN" && action.type !== "RESET_INVESTIGATION_TOKEN") {
+    return null;
+  }
+
+  const params = action.params ?? {};
+  const selectedTokenId =
+    typeof params.tokenId === "string" && params.tokenId
+      ? params.tokenId
+      : tokens[0]?.id ?? "";
+  const amount =
+    typeof params.amount === "number" && Number.isFinite(params.amount)
+      ? Math.max(1, Math.floor(params.amount))
+      : 1;
+
+  return (
+    <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_96px]">
+        <label className="flex flex-col gap-1">
+          <span className="text-[11px] text-slate-500">조사권</span>
+          <select
+            value={selectedTokenId}
+            onChange={(event) => onParamsChange({ ...params, tokenId: event.target.value })}
+            className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+          >
+            {tokens.map((token) => (
+              <option key={token.id} value={token.id}>
+                {token.iconLabel} {token.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {action.type === "GRANT_INVESTIGATION_TOKEN" ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-slate-500">추가 수량</span>
+            <input
+              type="number"
+              min={1}
+              value={amount}
+              onChange={(event) =>
+                onParamsChange({
+                  ...params,
+                  tokenId: selectedTokenId,
+                  amount: Math.max(1, Number.parseInt(event.target.value || "1", 10)),
+                })
+              }
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+            />
+          </label>
+        ) : (
+          <p className="rounded border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-[11px] leading-4 text-slate-400">
+            선택한 조사권을 시작 수량으로 되돌립니다.
+          </p>
+        )}
+      </div>
+      {tokens.length === 0 ? (
+        <p className="mt-2 text-[11px] text-amber-300">조사권 설정에서 조사권을 먼저 추가해 주세요.</p>
+      ) : null}
     </div>
   );
 }

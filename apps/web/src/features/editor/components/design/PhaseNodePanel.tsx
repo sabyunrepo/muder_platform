@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -14,7 +14,7 @@ import type {
 } from "../../flowTypes";
 import { flowKeys } from "../../flowTypes";
 import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
-import { hasIncompletePresentationCueActions } from "./ActionListEditor";
+import { ActionListEditor, hasIncompletePresentationCueActions } from "./ActionListEditor";
 import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
 import { normalizePhaseType } from "./phaseTypeOptions";
 import { InvestigationPhasePanel } from "./InvestigationPhasePanel";
@@ -27,6 +27,11 @@ import {
   readPlayerKillConfig,
   writePlayerKillSceneEnabled,
 } from "../../utils/configShape";
+import {
+  createSceneActionDefaultParams,
+  getSceneActionOptions,
+} from "../../entities/sceneAction/sceneActionRegistry";
+import { readDeckInvestigationConfig } from "../../entities/deckInvestigation/deckInvestigationAdapter";
 
 interface PhaseNodePanelProps {
   node: Node;
@@ -53,7 +58,26 @@ export function PhaseNodePanel({
   const phaseType = normalizePhaseType(data.phase_type);
   const theme = queryClient.getQueryData<EditorThemeResponse>(editorKeys.theme(themeId));
   const configJson = theme?.config_json ?? {};
-  const playerKillEnabled = readEnabledModuleIds(configJson).includes(PLAYER_KILL_MODULE_ID);
+  const enabledModuleIds = readEnabledModuleIds(configJson);
+  const playerKillEnabled = enabledModuleIds.includes(PLAYER_KILL_MODULE_ID);
+  const sceneActionOptions = getSceneActionOptions({ enabledModuleIds });
+  const sceneActionTypes = sceneActionOptions.map((option) => option.value);
+  const investigationTokens = readDeckInvestigationConfig(configJson).tokens;
+  const createSceneActionParams = useCallback(
+    (type: string) => {
+      const params = createSceneActionDefaultParams(type);
+      if (
+        (type === "GRANT_INVESTIGATION_TOKEN" || type === "RESET_INVESTIGATION_TOKEN") &&
+        params &&
+        !params.tokenId &&
+        investigationTokens[0]?.id
+      ) {
+        return { ...params, tokenId: investigationTokens[0].id };
+      }
+      return params;
+    },
+    [investigationTokens],
+  );
   const playerKillConfig = readPlayerKillConfig(configJson);
   const sceneKillEnabled = playerKillConfig.allowedSceneIds.includes(node.id);
   const isPhaseSceneNode = node.type === "phase";
@@ -130,6 +154,40 @@ export function PhaseNodePanel({
             </span>
           </span>
         </label>
+      ) : null}
+      {isPhaseSceneNode ? (
+        <section className="space-y-3 rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+              장면 액션
+            </h4>
+            <p className="mt-1 text-[11px] leading-4 text-slate-500">
+              장면이 시작되거나 끝날 때 정보 공개, BGM, 알림 같은 실행 결과를 순서대로 처리합니다.
+            </p>
+          </div>
+          <ActionListEditor
+            label="장면 시작 액션"
+            actions={data.onEnter ?? []}
+            allowedTypes={sceneActionTypes}
+            actionOptions={sceneActionOptions}
+            createDefaultParamsForType={createSceneActionParams}
+            preserveDisallowedActions
+            themeId={themeId}
+            investigationTokens={investigationTokens}
+            onChange={(actions) => handleChange({ onEnter: actions })}
+          />
+          <ActionListEditor
+            label="장면 종료 액션"
+            actions={data.onExit ?? []}
+            allowedTypes={sceneActionTypes}
+            actionOptions={sceneActionOptions}
+            createDefaultParamsForType={createSceneActionParams}
+            preserveDisallowedActions
+            themeId={themeId}
+            investigationTokens={investigationTokens}
+            onChange={(actions) => handleChange({ onExit: actions })}
+          />
+        </section>
       ) : null}
       {phaseType === "investigation" ? (
         <>

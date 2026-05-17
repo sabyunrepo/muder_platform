@@ -203,6 +203,8 @@ func ensureImplicitPhaseActionModules(cfg *GameConfig) error {
 		ActionStopAudio,
 		ActionSetBackground,
 		ActionSetThemeColor,
+		ActionGrantInvestigationToken,
+		ActionResetInvestigationToken,
 	}
 	for _, action := range implicitActions {
 		moduleName, ok := ActionRequiresModule[action]

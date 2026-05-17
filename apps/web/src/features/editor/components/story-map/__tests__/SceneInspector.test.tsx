@@ -100,7 +100,7 @@ describe("SceneInspector", () => {
     expect(screen.getByText("찢어진 초대장")).toBeDefined();
     expect(screen.getByText("공개 설정 1개 · 읽기 대사 1개 · 스토리 정보 2개")).toBeDefined();
     expect(screen.getByText("단서 실행 1개")).toBeDefined();
-    expect(screen.getByText("BGM 재생")).toBeDefined();
+    expect(screen.getByText("BGM 설정")).toBeDefined();
     expect(screen.getByText("자동 진행 · 기본 이동 없음 · 조건 이동 1개")).toBeDefined();
     expect(screen.getByText("시작: 직접 설정한 실행 · 종료: 채팅 닫기")).toBeDefined();
     expect(

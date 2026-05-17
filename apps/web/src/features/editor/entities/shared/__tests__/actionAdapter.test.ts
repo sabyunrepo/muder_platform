@@ -59,7 +59,7 @@ describe("actionAdapter", () => {
         [{ type: "SET_BGM" }, { type: DELIVER_INFORMATION_ACTION }, { type: "MUTE_CHAT" }],
         { excludeInformationDelivery: true },
       ),
-    ).toEqual(["BGM 재생", "채팅 닫기"]);
+    ).toEqual(["BGM 설정", "채팅 닫기"]);
   });
 
   it("legacy 소문자 action도 기존 저장 데이터용 라벨을 유지한다", () => {

@@ -18,10 +18,10 @@ export const CREATOR_ACTION_OPTIONS: CreatorActionOption[] = [
   { value: DELIVER_INFORMATION_ACTION, label: "정보 공개" },
   { value: GRANT_CLUE_ACTION, label: "단서 지급" },
   { value: "BROADCAST_MESSAGE", label: "알림 보내기" },
-  { value: "SET_BGM", label: "BGM 재생" },
+  { value: "SET_BGM", label: "BGM 설정" },
   { value: "PLAY_SOUND", label: "효과음 재생" },
   { value: "PLAY_MEDIA", label: "영상 재생" },
-  { value: "STOP_AUDIO", label: "BGM/효과음 정지" },
+  { value: "STOP_AUDIO", label: "BGM 종료" },
   { value: "SET_BACKGROUND", label: "배경 이미지 변경" },
   { value: "SET_THEME_COLOR", label: "화면 색상 테마 변경" },
 ];
@@ -46,6 +46,8 @@ const ACTION_LABELS = new Map<string, string>([
   ["set_background", "배경 이미지 변경"],
   ["set_theme_color", "화면 색상 테마 변경"],
   ["stop_bgm", "BGM 정지"],
+  ["GRANT_INVESTIGATION_TOKEN", "조사권 추가"],
+  ["RESET_INVESTIGATION_TOKEN", "조사권 초기화"],
 ]);
 
 export function getCreatorActionLabel(type: string): string {
