@@ -234,7 +234,9 @@ function LocationCard({
             {location.name}
           </span>
           <span className="mt-1 block text-xs text-slate-500">
-            직접 배치 단서 {directClueCount}개 · 하위장소 {childCount}개
+            {child
+              ? `직접 배치 단서 ${directClueCount}개`
+              : `직접 배치 단서 ${directClueCount}개 · 하위장소 ${childCount}개`}
           </span>
         </button>
         <button
