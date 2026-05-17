@@ -32,9 +32,73 @@ export function createMediaEmbedSnippet(
   mediaId: string,
   type: MediaEmbedType,
   align: MediaEmbedAlign = 'center',
-  width: MediaEmbedWidth = 'medium',
+  width: MediaEmbedWidth = 'medium'
 ) {
   return `\n\n<MediaEmbed mediaId="${mediaId}" type="${type}" align="${align}" width="${width}" />\n`;
+}
+
+export function insertMediaEmbedParagraph(
+  markdown: string,
+  target: MediaEmbedAttributes,
+  position: 'before' | 'after'
+) {
+  const range = findMediaEmbedRange(markdown, target);
+  if (!range) return markdown;
+  const insertion = '\n\n';
+  return position === 'before'
+    ? `${markdown.slice(0, range.start)}${insertion}${markdown.slice(range.start)}`
+    : `${markdown.slice(0, range.end)}${insertion}${markdown.slice(range.end)}`;
+}
+
+export function moveMediaEmbedBlock(
+  markdown: string,
+  target: MediaEmbedAttributes,
+  direction: 'up' | 'down'
+) {
+  const blocks = readMediaEmbedBlocks(markdown);
+  const targetIndex = blocks.findIndex((block) => mediaEmbedMatches(block.attrs, target));
+  if (targetIndex < 0) return markdown;
+
+  const neighborIndex = direction === 'up' ? targetIndex - 1 : targetIndex + 1;
+  const neighbor = blocks[neighborIndex];
+  const targetBlock = blocks[targetIndex];
+  if (!neighbor || !targetBlock) return markdown;
+
+  if (direction === 'up') {
+    return replaceRange(
+      markdown,
+      neighbor.start,
+      targetBlock.end,
+      `${targetBlock.source}${markdown.slice(neighbor.end, targetBlock.start)}${neighbor.source}`
+    );
+  }
+
+  return replaceRange(
+    markdown,
+    targetBlock.start,
+    neighbor.end,
+    `${neighbor.source}${markdown.slice(targetBlock.end, neighbor.start)}${targetBlock.source}`
+  );
+}
+
+export function moveMediaEmbedBlockTo(
+  markdown: string,
+  source: MediaEmbedAttributes,
+  target: MediaEmbedAttributes,
+  position: 'before' | 'after'
+) {
+  if (mediaEmbedMatches(source, target)) return markdown;
+
+  const sourceRange = findMediaEmbedRange(markdown, source);
+  if (!sourceRange) return markdown;
+
+  const sourceText = markdown.slice(sourceRange.start, sourceRange.end);
+  const withoutSource = replaceRange(markdown, sourceRange.start, sourceRange.end, '');
+  const targetRange = findMediaEmbedRange(withoutSource, target);
+  if (!targetRange) return markdown;
+
+  const insertAt = position === 'before' ? targetRange.start : targetRange.end;
+  return `${withoutSource.slice(0, insertAt)}\n\n${sourceText}\n\n${withoutSource.slice(insertAt)}`;
 }
 
 export function readMediaEmbedAttributes(node: MediaEmbedMdastNode): MediaEmbedAttributes {
@@ -55,9 +119,40 @@ export function readMediaEmbedAttributesFromSource(attrs: string): MediaEmbedAtt
   return readMediaEmbedAttributes(sourceNode);
 }
 
+function findMediaEmbedRange(markdown: string, target: MediaEmbedAttributes) {
+  return readMediaEmbedBlocks(markdown).find((block) => mediaEmbedMatches(block.attrs, target));
+}
+
+function readMediaEmbedBlocks(markdown: string) {
+  return Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g)).map((match) => {
+    const attrs = readMediaEmbedAttributesFromSource(match[1] ?? '');
+    const start = match.index ?? 0;
+    const source = match[0];
+    return {
+      attrs,
+      start,
+      end: start + source.length,
+      source,
+    };
+  });
+}
+
+function mediaEmbedMatches(current: MediaEmbedAttributes, target: MediaEmbedAttributes) {
+  return (
+    current.mediaId === target.mediaId &&
+    current.type === target.type &&
+    current.align === target.align &&
+    current.width === target.width
+  );
+}
+
+function replaceRange(markdown: string, start: number, end: number, replacement: string) {
+  return `${markdown.slice(0, start)}${replacement}${markdown.slice(end)}`;
+}
+
 export function updateMediaEmbedAttributes(
   node: MediaEmbedMdastNode,
-  patch: Partial<MediaEmbedAttributes>,
+  patch: Partial<MediaEmbedAttributes>
 ) {
   const current = readMediaEmbedAttributes(node);
   const next = { ...current, ...patch };
@@ -105,7 +200,7 @@ function withoutKnownMediaEmbedAttributes(attributes: MdxAttributeLike[]) {
       attr.name !== 'mediaId' &&
       attr.name !== 'type' &&
       attr.name !== 'align' &&
-      attr.name !== 'width',
+      attr.name !== 'width'
   );
 }
 

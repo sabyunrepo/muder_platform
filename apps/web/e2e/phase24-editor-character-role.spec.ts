@@ -150,4 +150,86 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
       .analyze();
     expect(a11y.violations).toEqual([]);
   });
+
+  test("역할지 Markdown 이미지 블록은 선택, 문단 삽입, 저장이 가능하다", async ({ page }) => {
+    const mediaSnippet =
+      '<MediaEmbed mediaId="image-media-1" type="image" align="center" width="medium" />';
+    await page.route(`**/v1/editor/themes/${THEME_ID}/media**`, (route) => {
+      if (route.request().method() !== "GET") return route.continue();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify([
+          {
+            id: "image-media-1",
+            theme_id: THEME_ID,
+            name: "역할지 이미지",
+            type: "IMAGE",
+            source_type: "FILE",
+            url: "https://mock-storage.example/themes/media/role-image.png",
+            duration: null,
+            file_size: 12345,
+            mime_type: "image/png",
+            tags: ["역할지"],
+            sort_order: 1,
+            created_at: new Date().toISOString(),
+          },
+        ]),
+      });
+    });
+    await page.route("https://mock-storage.example/themes/media/role-image.png", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lLduGQAAAABJRU5ErkJggg==",
+          "base64",
+        ),
+      }),
+    );
+    await page.route("**/v1/editor/characters/char-1/role-sheet", async (route) => {
+      const method = route.request().method();
+      if (method === "GET") {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            character_id: "char-1",
+            theme_id: THEME_ID,
+            format: "markdown",
+            markdown: { body: mediaSnippet },
+          }),
+        });
+      }
+      return route.fallback();
+    });
+
+    await page.goto(`${BASE}/editor/${THEME_ID}`);
+    await page.getByRole("tab", { name: "등장인물 관리" }).click();
+    await expect(page.getByRole("region", { name: "캐릭터 목록" })).toBeVisible();
+    await page.getByRole("button", { name: "탐정 A 선택" }).click();
+    await page.getByRole("button", { name: /^역할지/ }).click();
+
+    const block = page.getByRole("group", { name: "역할지 이미지 미디어 블록" });
+    await expect(block).toBeVisible();
+    await block.focus();
+    await expect(block.getByRole("button", { name: "역할지 이미지 위로 이동" })).toBeVisible();
+    await expect(block.getByRole("button", { name: "보통" })).toHaveText("");
+    await expect(block.getByRole("button", { name: "크게" })).toHaveText("");
+
+    await block.getByRole("button", { name: "미디어 아래에 문단 추가" }).click();
+
+    const roleSheetRequestPromise = page.waitForRequest(
+      (request) =>
+        request.method() === "PUT" &&
+        request.url().includes("/v1/editor/characters/char-1/role-sheet"),
+    );
+    await page.getByRole("button", { name: "역할지 저장" }).click();
+    const roleSheetRequest = await roleSheetRequestPromise;
+
+    const body = roleSheetRequest.postDataJSON();
+    expect(body).toMatchObject({ format: "markdown" });
+    expect(body.markdown.body).toContain(mediaSnippet);
+    expect(body.markdown.body).toContain(`${mediaSnippet}\n\n`);
+  });
 });

@@ -18,16 +18,15 @@ import {
   type MDXEditorMethods,
 } from '@mdxeditor/editor';
 
-import {
-  useMediaList,
-  type MediaResponse,
-  type MediaType,
-} from '@/features/editor/mediaApi';
+import { useMediaList, type MediaResponse, type MediaType } from '@/features/editor/mediaApi';
 import { MediaEmbedPicker } from './MediaEmbedPicker';
 import { MediaEmbedEditor } from './MediaEmbedEditor';
 import {
   createMediaEmbedSnippet,
+  insertMediaEmbedParagraph,
   mediaTypeToEmbedType,
+  moveMediaEmbedBlock,
+  moveMediaEmbedBlockTo,
   type MediaEmbedAttributes,
 } from './mediaEmbedMarkdown';
 import { normalizeLegacyEscapedMarkdown } from './legacyMarkdown';
@@ -65,7 +64,9 @@ export function RichContentEditor({
   const { data: media = [] } = useMediaList(themeId);
 
   useEffect(() => {
-    editorRef.current?.setMarkdown?.(normalizedMarkdown);
+    if (editorRef.current?.getMarkdown?.() !== normalizedMarkdown) {
+      editorRef.current?.setMarkdown?.(normalizedMarkdown);
+    }
   }, [normalizedMarkdown]);
 
   const plugins = useMemo(
@@ -77,10 +78,24 @@ export function RichContentEditor({
       thematicBreakPlugin(),
       jsxPlugin({
         jsxComponentDescriptors: [
-          createMediaEmbedDescriptor(media, (attrs) => {
-            setReplacementTarget(attrs);
-            onOpenPicker(attrs.type === 'video' ? 'VIDEO' : 'IMAGE');
-          }),
+          createMediaEmbedDescriptor(
+            media,
+            (attrs) => {
+              setReplacementTarget(attrs);
+              onOpenPicker(attrs.type === 'video' ? 'VIDEO' : 'IMAGE');
+            },
+            {
+              onInsertParagraph: (attrs, position) => {
+                onChange(insertMediaEmbedParagraph(normalizedMarkdown, attrs, position));
+              },
+              onMove: (attrs, direction) => {
+                onChange(moveMediaEmbedBlock(normalizedMarkdown, attrs, direction));
+              },
+              onDropOn: (source, target, position) => {
+                onChange(moveMediaEmbedBlockTo(normalizedMarkdown, source, target, position));
+              },
+            }
+          ),
         ],
       }),
       toolbarPlugin({
@@ -96,7 +111,7 @@ export function RichContentEditor({
       }),
       markdownShortcutPlugin(),
     ],
-    [media, onOpenPicker],
+    [media, onOpenPicker]
   );
 
   function handleSelectMedia(media: MediaResponse) {
@@ -106,7 +121,7 @@ export function RichContentEditor({
         media.id,
         type,
         replacementTarget.align,
-        replacementTarget.width,
+        replacementTarget.width
       ).trim();
       onChange(replaceMediaEmbed(normalizedMarkdown, replacementTarget, snippet));
       setReplacementTarget(null);
@@ -158,6 +173,15 @@ export function RichContentEditor({
 function createMediaEmbedDescriptor(
   media: MediaResponse[],
   onRequestReplace: (attrs: MediaEmbedAttributes) => void,
+  controls: {
+    onInsertParagraph: (attrs: MediaEmbedAttributes, position: 'before' | 'after') => void;
+    onMove: (attrs: MediaEmbedAttributes, direction: 'up' | 'down') => void;
+    onDropOn: (
+      source: MediaEmbedAttributes,
+      target: MediaEmbedAttributes,
+      position: 'before' | 'after'
+    ) => void;
+  }
 ): JsxComponentDescriptor {
   return {
     name: 'MediaEmbed',
@@ -170,16 +194,19 @@ function createMediaEmbedDescriptor(
     ],
     hasChildren: false,
     Editor: (props) => (
-      <MediaEmbedEditor {...props} media={media} onRequestReplace={onRequestReplace} />
+      <MediaEmbedEditor
+        {...props}
+        media={media}
+        onRequestReplace={onRequestReplace}
+        onInsertParagraph={controls.onInsertParagraph}
+        onMove={controls.onMove}
+        onDropOn={controls.onDropOn}
+      />
     ),
   };
 }
 
-function replaceMediaEmbed(
-  markdown: string,
-  target: MediaEmbedAttributes,
-  nextSnippet: string,
-) {
+function replaceMediaEmbed(markdown: string, target: MediaEmbedAttributes, nextSnippet: string) {
   const pattern = /<MediaEmbed\s+([^>]+)\/>/g;
   for (const match of markdown.matchAll(pattern)) {
     const attrs = match[1] ?? '';
