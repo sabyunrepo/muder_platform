@@ -104,6 +104,10 @@ export function MediaEmbedEditor({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLElement>) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-rich-content-control="true"]')) {
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
       onInsertParagraph(attrs, event.shiftKey ? 'before' : 'after');

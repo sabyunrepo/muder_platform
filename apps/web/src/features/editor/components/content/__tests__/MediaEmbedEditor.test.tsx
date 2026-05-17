@@ -94,6 +94,21 @@ describe('MediaEmbedEditor', () => {
     expect(onMove).toHaveBeenNthCalledWith(2, attrs, 'down');
   });
 
+  it('does not treat nested control Enter presses as figure-level shortcuts', () => {
+    const onInsertParagraph = vi.fn();
+    const onMove = vi.fn();
+    renderEditor({ onInsertParagraph, onMove });
+
+    fireEvent.keyDown(screen.getByRole('button', { name: '보통' }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('button', { name: '포스터 위로 이동' }), {
+      key: 'ArrowUp',
+      metaKey: true,
+    });
+
+    expect(onInsertParagraph).not.toHaveBeenCalled();
+    expect(onMove).not.toHaveBeenCalled();
+  });
+
   it('accepts a dragged media block and reports the drop direction', () => {
     const onDropOn = vi.fn();
     renderEditor({ onDropOn });
