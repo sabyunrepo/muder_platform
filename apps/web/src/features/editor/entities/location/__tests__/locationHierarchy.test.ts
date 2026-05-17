@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { LocationResponse } from '@/features/editor/api/types';
 import {
   buildLocationHierarchy,
+  buildLocationMovePatch,
   getLocationPathLabel,
   validateLocationDrop,
 } from '../locationHierarchy';
@@ -87,5 +88,37 @@ describe('locationHierarchy', () => {
         targetParentId: 'parent-2',
       })
     ).toEqual({ ok: false, reason: 'child-parent' });
+  });
+
+  it('builds a patch to move a top-level location under a parent', () => {
+    const locations = [
+      location({ id: 'parent-1', name: '로비', parent_location_id: null, sort_order: 0 }),
+      location({ id: 'source', name: '금고 앞', parent_location_id: null, sort_order: 1 }),
+    ];
+
+    expect(
+      buildLocationMovePatch({
+        locations,
+        draggedId: 'source',
+        targetParentId: 'parent-1',
+        targetIndex: 0,
+      })
+    ).toEqual({ parent_location_id: 'parent-1', sort_order: 0 });
+  });
+
+  it('builds a patch to move a child back to top level', () => {
+    const locations = [
+      location({ id: 'parent-1', name: '로비', parent_location_id: null, sort_order: 0 }),
+      location({ id: 'child-1', name: '프런트', parent_location_id: 'parent-1', sort_order: 0 }),
+    ];
+
+    expect(
+      buildLocationMovePatch({
+        locations,
+        draggedId: 'child-1',
+        targetParentId: null,
+        targetIndex: 1,
+      })
+    ).toEqual({ parent_location_id: null, sort_order: 1 });
   });
 });

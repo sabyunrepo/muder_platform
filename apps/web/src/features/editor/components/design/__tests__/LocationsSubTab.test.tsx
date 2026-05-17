@@ -5,12 +5,13 @@ import {
   renderLocationsSubTab,
   setupDefaultMocks,
   updateConfigMutateMock,
+  updateLocationMutateMock,
   useEditorLocationsMock,
   useEditorMapsMock,
   useMediaListMock,
 } from './locationsSubTabTestUtils';
 import { writeLocationDiscoveries } from '@/features/editor/editorTypes';
-import { mockTheme } from './locationsSubTabTestUtils';
+import { baseLocation, mockTheme } from './locationsSubTabTestUtils';
 
 describe('LocationsSubTab', () => {
   describe('로딩 상태', () => {
@@ -107,11 +108,11 @@ describe('LocationsSubTab', () => {
       expect(screen.getAllByText('거실').length).toBeGreaterThan(0);
     });
 
-    it('장소 상세에서 하위장소 설정을 표시하지 않는다', () => {
+    it('장소 상세에서 장소 구조 설정을 표시한다', () => {
       renderLocationsSubTab();
 
-      expect(screen.queryByText('장소 구조')).toBeNull();
-      expect(screen.queryByText('부모 장소')).toBeNull();
+      expect(screen.getByText('장소 구조')).toBeDefined();
+      expect(screen.getByRole('combobox', { name: '거실 상위 장소' })).toBeDefined();
       expect(screen.queryByText(/하위 조사 항목/)).toBeNull();
       expect(screen.queryByText(/2단계/)).toBeNull();
       expect(screen.getByText('소속 맵: 저택 1층')).toBeDefined();
@@ -153,6 +154,26 @@ describe('LocationsSubTab', () => {
       expect(screen.getByText('장소 없음')).toBeDefined();
     });
 
+    it('부모 장소 아래에 하위장소를 들여쓰기 카드로 표시한다', () => {
+      useEditorLocationsMock.mockReturnValue({
+        data: [
+          { ...baseLocation('loc-parent', '호텔 로비'), sort_order: 0, parent_location_id: null },
+          {
+            ...baseLocation('loc-child', '프런트 데스크'),
+            sort_order: 0,
+            parent_location_id: 'loc-parent',
+          },
+        ],
+        isLoading: false,
+      });
+
+      renderLocationsSubTab();
+
+      expect(screen.getByRole('button', { name: '호텔 로비 선택' })).toBeDefined();
+      expect(screen.getByRole('button', { name: '호텔 로비 / 프런트 데스크 선택' })).toBeDefined();
+      expect(screen.getByText('직접 배치 단서 0개 · 하위장소 1개')).toBeDefined();
+    });
+
     it('장소가 없는 맵에서도 장소 추가 입력을 표시한다', () => {
       useEditorLocationsMock.mockReturnValue({ data: [], isLoading: false });
       renderLocationsSubTab();
@@ -184,9 +205,72 @@ describe('LocationsSubTab', () => {
       fireEvent.change(input, { target: { value: '서재' } });
       fireEvent.keyDown(input, { key: 'Enter' });
       expect(mutateMock).toHaveBeenCalledWith(
-        { mapId: 'map-1', body: { name: '서재' } },
+        { mapId: 'map-1', body: { name: '서재', parent_location_id: null } },
         expect.any(Object)
       );
+    });
+
+    it('부모 카드의 하위장소 추가 버튼은 parent_location_id를 담아 createLocation을 호출한다', () => {
+      renderLocationsSubTab();
+      fireEvent.click(screen.getAllByRole('button', { name: '거실 하위장소 추가' })[0]);
+      const input = screen.getByPlaceholderText('하위장소 이름');
+      fireEvent.change(input, { target: { value: '금고 앞' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(mutateMock).toHaveBeenCalledWith(
+        { mapId: 'map-1', body: { name: '금고 앞', parent_location_id: 'loc-1' } },
+        expect.any(Object)
+      );
+    });
+
+    it('장소 구조 패널에서 상위 장소를 바꾸면 parent_location_id를 저장한다', () => {
+      renderLocationsSubTab();
+
+      fireEvent.change(screen.getByRole('combobox', { name: '거실 상위 장소' }), {
+        target: { value: 'loc-2' },
+      });
+
+      expect(updateLocationMutateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 'loc-1',
+          body: expect.objectContaining({ parent_location_id: 'loc-2' }),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('드래그앤드롭으로 부모 장소 아래 이동 시 parent_location_id payload를 저장한다', () => {
+      renderLocationsSubTab();
+      const dataTransfer = createDataTransfer();
+
+      fireEvent.dragStart(screen.getByLabelText('주방 드래그 영역'), { dataTransfer });
+      fireEvent.drop(screen.getByLabelText('거실 드래그 영역'), { dataTransfer });
+
+      expect(updateLocationMutateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 'loc-2',
+          body: expect.objectContaining({ parent_location_id: 'loc-1' }),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('드래그앤드롭으로 하위장소 아래 이동하려 하면 차단한다', () => {
+      useEditorLocationsMock.mockReturnValue({
+        data: [
+          { ...baseLocation('loc-parent', '거실'), parent_location_id: null },
+          { ...baseLocation('loc-child', '프런트'), parent_location_id: 'loc-parent' },
+          { ...baseLocation('loc-source', '주방'), parent_location_id: null },
+        ],
+        isLoading: false,
+      });
+      renderLocationsSubTab();
+      const dataTransfer = createDataTransfer();
+
+      fireEvent.dragStart(screen.getByLabelText('주방 드래그 영역'), { dataTransfer });
+      fireEvent.drop(screen.getByLabelText('프런트 드래그 영역'), { dataTransfer });
+
+      expect(updateLocationMutateMock).not.toHaveBeenCalled();
     });
   });
 
@@ -300,3 +384,13 @@ describe('LocationsSubTab', () => {
   });
 
 });
+
+function createDataTransfer(): DataTransfer {
+  const data = new Map<string, string>();
+  return {
+    effectAllowed: 'move',
+    dropEffect: 'move',
+    setData: (format: string, value: string) => data.set(format, value),
+    getData: (format: string) => data.get(format) ?? '',
+  } as DataTransfer;
+}

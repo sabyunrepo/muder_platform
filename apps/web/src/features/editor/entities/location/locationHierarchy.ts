@@ -11,6 +11,16 @@ export type LocationDropValidation =
   | { ok: true }
   | { ok: false; reason: 'missing-location' | 'self' | 'grandchild' | 'child-parent' };
 
+export interface LocationParentOption {
+  id: string | null;
+  label: string;
+}
+
+export interface LocationMovePatch {
+  parent_location_id: string | null;
+  sort_order: number;
+}
+
 export function buildLocationHierarchy(
   locations: LocationResponse[],
   clueCounts: Record<string, number> = {}
@@ -55,6 +65,20 @@ export function getLocationPathLabel(
   return parent ? `${parent.name} / ${location.name}` : location.name;
 }
 
+export function buildLocationParentOptions(
+  locationId: string,
+  locations: LocationResponse[]
+): LocationParentOption[] {
+  return [
+    { id: null, label: '최상위 장소' },
+    ...locations
+      .filter((location) => location.id !== locationId && !location.parent_location_id)
+      .filter((location) => !isChildOf(location.id, locationId, locations))
+      .sort(compareLocations)
+      .map((location) => ({ id: location.id, label: location.name })),
+  ];
+}
+
 export function validateLocationDrop({
   locations,
   draggedId,
@@ -77,6 +101,34 @@ export function validateLocationDrop({
   }
 
   return { ok: true };
+}
+
+export function buildLocationMovePatch({
+  locations,
+  draggedId,
+  targetParentId,
+  targetIndex,
+}: {
+  locations: LocationResponse[];
+  draggedId: string;
+  targetParentId: string | null;
+  targetIndex: number;
+}): LocationMovePatch {
+  const validation = validateLocationDrop({ locations, draggedId, targetParentId });
+  if (!validation.ok) throw new Error(validation.reason);
+  return {
+    parent_location_id: targetParentId,
+    sort_order: Math.max(0, targetIndex),
+  };
+}
+
+function isChildOf(locationId: string, potentialParentId: string, locations: LocationResponse[]) {
+  let current = locations.find((location) => location.id === locationId);
+  while (current?.parent_location_id) {
+    if (current.parent_location_id === potentialParentId) return true;
+    current = locations.find((location) => location.id === current?.parent_location_id);
+  }
+  return false;
 }
 
 function compareLocations(a: LocationResponse, b: LocationResponse): number {

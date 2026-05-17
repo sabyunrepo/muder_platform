@@ -123,7 +123,7 @@ import {
   mockTheme as fixtureTheme,
 } from './locationsSubTabTestData';
 
-export { mockLocations, mockMaps, mockTheme } from './locationsSubTabTestData';
+export { baseLocation, mockLocations, mockMaps, mockTheme } from './locationsSubTabTestData';
 
 export {
   mutateMock,
