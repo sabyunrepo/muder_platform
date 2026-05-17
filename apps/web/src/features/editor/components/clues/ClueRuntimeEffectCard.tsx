@@ -17,6 +17,7 @@ interface ClueRuntimeEffectCardProps {
   configJson: EditorConfig | null | undefined;
   isPlayerKillEnabled: boolean;
   onDraftStateChange?: (state: ClueRuntimeEffectDraftState) => void;
+  onAutoSaveFlush?: () => void;
 }
 
 interface DraftState {
@@ -223,6 +224,7 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
   configJson,
   isPlayerKillEnabled,
   onDraftStateChange,
+  onAutoSaveFlush,
 }, ref) {
   const savedEffect = useMemo(
     () => readClueItemEffect(configJson, clue.id),
@@ -293,10 +295,13 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
 
   useEffect(() => {
     onDraftStateChange?.({ dirty, valid });
-  }, [dirty, onDraftStateChange, valid]);
+  }, [dirty, draftEffect, onDraftStateChange, valid]);
 
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+    <section
+      className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+      onBlurCapture={onAutoSaveFlush}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/70">

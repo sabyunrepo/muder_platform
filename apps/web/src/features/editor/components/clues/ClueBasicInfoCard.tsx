@@ -13,10 +13,29 @@ import {
   writeCluePolicy,
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
+import {
+  readDeckInvestigationConfig,
+  writeDeckInvestigationConfig,
+  type InvestigationTokenDraft,
+} from '@/features/editor/entities/deckInvestigation/deckInvestigationAdapter';
+import {
+  writeLocationClueInvestigationCost,
+  type InvestigationCostDraft,
+} from '@/features/editor/entities/deckInvestigation/locationClueInvestigationCost';
 import type {
   ProgressNodeRevealOption,
 } from '@/features/editor/entities/reveal/revealTimingOptions';
 import { SceneSelectField } from '@/features/editor/components/SceneSelectField';
+import { InvestigationCostSelector } from '@/features/editor/components/design/InvestigationCostSelector';
+
+export interface ClueInvestigationCostSettings {
+  enabled: boolean;
+  tokens: InvestigationTokenDraft[];
+  cost: InvestigationCostDraft | null;
+  locationId: string | null;
+  locationName: string | null;
+  requiredClueIds: string[];
+}
 
 interface ClueBasicInfoCardProps {
   themeId: string;
@@ -25,8 +44,10 @@ interface ClueBasicInfoCardProps {
   isSaving?: boolean;
   isConfigSaving?: boolean;
   sceneOptions?: ProgressNodeRevealOption[];
+  investigationSettings?: ClueInvestigationCostSettings;
   onDelete: (clue: ClueResponse) => void;
   onDraftStateChange?: (state: ClueBasicInfoDraftState) => void;
+  onAutoSaveFlush?: () => void;
 }
 
 interface DraftState {
@@ -39,6 +60,7 @@ interface DraftState {
   isProtected: boolean;
   revealSceneId: string | null;
   hideSceneId: string | null;
+  investigationCost: InvestigationCostDraft | null;
 }
 
 export interface ClueBasicInfoDraftState {
@@ -59,7 +81,11 @@ export interface ClueBasicInfoCardHandle {
   getSaveRequest: () => ClueBasicInfoSaveRequest;
 }
 
-function toDraft(clue: ClueResponse, configJson: EditorConfig | null | undefined): DraftState {
+function toDraft(
+  clue: ClueResponse,
+  configJson: EditorConfig | null | undefined,
+  investigationSettings?: ClueInvestigationCostSettings,
+): DraftState {
   const policy = readCluePolicy(configJson, clue.id);
   return {
     name: clue.name,
@@ -71,13 +97,15 @@ function toDraft(clue: ClueResponse, configJson: EditorConfig | null | undefined
     isProtected: policy.protected,
     revealSceneId: clue.reveal_scene_id ?? null,
     hideSceneId: clue.hide_scene_id ?? null,
+    investigationCost: investigationSettings?.cost ?? null,
   };
 }
 
 function isDirty(
   draft: DraftState,
   clue: ClueResponse,
-  configJson: EditorConfig | null | undefined
+  configJson: EditorConfig | null | undefined,
+  investigationSettings?: ClueInvestigationCostSettings,
 ): boolean {
   const policy = readCluePolicy(configJson, clue.id);
   return (
@@ -89,7 +117,8 @@ function isDirty(
     (!draft.isCommon && draft.isRevealable !== policy.revealable) ||
     draft.isProtected !== policy.protected ||
     draft.revealSceneId !== (clue.reveal_scene_id ?? null) ||
-    draft.hideSceneId !== (clue.hide_scene_id ?? null)
+    draft.hideSceneId !== (clue.hide_scene_id ?? null) ||
+    isInvestigationCostDirty(draft, investigationSettings)
   );
 }
 
@@ -155,6 +184,19 @@ function isPolicyDirty(
   );
 }
 
+function isInvestigationCostDirty(
+  draft: DraftState,
+  investigationSettings?: ClueInvestigationCostSettings,
+): boolean {
+  if (!investigationSettings?.enabled || !investigationSettings.locationId) return false;
+  return JSON.stringify(draft.investigationCost) !== JSON.stringify(investigationSettings.cost);
+}
+
+function parseInvestigationCostKey(value: string): InvestigationCostDraft | null {
+  if (value === 'null') return null;
+  return JSON.parse(value) as InvestigationCostDraft;
+}
+
 export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicInfoCardProps>(function ClueBasicInfoCard({
   themeId,
   clue,
@@ -162,20 +204,23 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
   isSaving = false,
   isConfigSaving = false,
   sceneOptions = [],
+  investigationSettings,
   onDelete,
   onDraftStateChange,
+  onAutoSaveFlush,
 }, ref) {
-  const [draft, setDraft] = useState<DraftState>(() => toDraft(clue, configJson));
+  const [draft, setDraft] = useState<DraftState>(() => toDraft(clue, configJson, investigationSettings));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const view = toClueEditorViewModel(clue);
   const policy = readCluePolicy(configJson, clue.id);
   const runtimeEffect = readClueItemEffect(configJson, clue.id);
-  const dirty = isDirty(draft, clue, configJson);
+  const dirty = isDirty(draft, clue, configJson, investigationSettings);
   const saving = isSaving || isConfigSaving;
   const selectedRevealSceneLabel =
     sceneOptions.find((option) => option.value === draft.revealSceneId)?.label ?? '처음부터';
   const selectedHideSceneLabel =
     sceneOptions.find((option) => option.value === draft.hideSceneId)?.label ?? '끝까지';
+  const investigationCostKey = JSON.stringify(investigationSettings?.cost ?? null);
 
   useEffect(() => {
     setDraft({
@@ -188,6 +233,7 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
       isProtected: policy.protected,
       revealSceneId: clue.reveal_scene_id ?? null,
       hideSceneId: clue.hide_scene_id ?? null,
+      investigationCost: parseInvestigationCostKey(investigationCostKey),
     });
     setErrors({});
   }, [
@@ -201,6 +247,9 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
     clue.hide_scene_id,
     policy.revealable,
     policy.protected,
+    investigationCostKey,
+    investigationSettings?.enabled,
+    investigationSettings?.locationId,
   ]);
 
   function patch(next: Partial<DraftState>) {
@@ -215,17 +264,41 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
     const nextErrors = validate(draft);
     setErrors(nextErrors);
     const rowDirty = isRowDirty(draft, clue);
-    const configDirty = isPolicyDirty(draft, clue, configJson);
+    const policyDirty = isPolicyDirty(draft, clue, configJson);
+    const investigationCostDirty = isInvestigationCostDirty(draft, investigationSettings);
+    const configDirty = policyDirty || investigationCostDirty;
     return {
       valid: Object.keys(nextErrors).length === 0,
       dirty: rowDirty || configDirty,
       rowDirty,
       configDirty,
       body: rowDirty ? buildUpdateBody(clue, draft) : null,
-      writeConfig: (baseConfig) => writeCluePolicy(baseConfig, clue.id, {
-        revealable: draft.isCommon ? true : draft.isRevealable,
-        protected: draft.isProtected,
-      }),
+      writeConfig: (baseConfig) => {
+        let next = policyDirty
+          ? writeCluePolicy(baseConfig, clue.id, {
+              revealable: draft.isCommon ? true : draft.isRevealable,
+              protected: draft.isProtected,
+            })
+          : (baseConfig ?? {});
+        if (
+          investigationSettings?.enabled &&
+          investigationSettings.locationId &&
+          draft.investigationCost
+        ) {
+          next = writeDeckInvestigationConfig(
+            next,
+            writeLocationClueInvestigationCost(readDeckInvestigationConfig(next), {
+              locationId: investigationSettings.locationId,
+              locationName: investigationSettings.locationName ?? '배치된 장소',
+              clueId: clue.id,
+              clueName: draft.name.trim() || clue.name,
+              requiredClueIds: investigationSettings.requiredClueIds,
+              cost: draft.investigationCost,
+            }),
+          );
+        }
+        return next;
+      },
     };
   }
 
@@ -241,7 +314,10 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
   }, [dirty, draft, onDraftStateChange]);
 
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+    <article
+      className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+      onBlurCapture={onAutoSaveFlush}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/70">
@@ -367,6 +443,36 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
             <span className="mt-1 block text-xs text-red-400">{errors.description}</span>
           )}
         </label>
+
+        {investigationSettings?.enabled ? (
+          <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-semibold text-slate-200">조사권 소비</p>
+              <p className="text-xs leading-5 text-slate-500">
+                이 단서를 조사할 때 필요한 조사권 수량입니다.
+              </p>
+            </div>
+            {investigationSettings.locationId && draft.investigationCost ? (
+              <div className="mt-3">
+                <p className="text-xs text-slate-500">
+                  배치 장소: <span className="text-slate-300">{investigationSettings.locationName ?? '배치된 장소'}</span>
+                </p>
+                <InvestigationCostSelector
+                  clueName={draft.name.trim() || clue.name}
+                  cost={draft.investigationCost}
+                  tokens={investigationSettings.tokens}
+                  disabled={saving}
+                  manageHref={`/editor/${themeId}/design/modules`}
+                  onChange={(cost) => patch({ investigationCost: cost })}
+                />
+              </div>
+            ) : (
+              <p className="mt-3 rounded-lg border border-dashed border-slate-800 px-3 py-4 text-xs leading-5 text-slate-500">
+                장소에 배치된 단서만 조사권 소비량을 설정할 수 있습니다.
+              </p>
+            )}
+          </section>
+        ) : null}
 
       </div>
 
