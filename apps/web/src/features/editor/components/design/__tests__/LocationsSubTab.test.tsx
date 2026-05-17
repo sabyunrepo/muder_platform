@@ -239,6 +239,24 @@ describe('LocationsSubTab', () => {
       );
     });
 
+    it('자식이 있는 부모 장소는 구조 패널로 다른 부모 밑에 넣을 수 없다', () => {
+      useEditorLocationsMock.mockReturnValue({
+        data: [
+          { ...baseLocation('loc-parent', '거실'), parent_location_id: null },
+          { ...baseLocation('loc-child', '프런트'), parent_location_id: 'loc-parent' },
+          { ...baseLocation('loc-target', '주방'), parent_location_id: null },
+        ],
+        isLoading: false,
+      });
+      renderLocationsSubTab();
+
+      fireEvent.change(screen.getByRole('combobox', { name: '거실 상위 장소' }), {
+        target: { value: 'loc-target' },
+      });
+
+      expect(updateLocationMutateMock).not.toHaveBeenCalled();
+    });
+
     it('드래그앤드롭으로 부모 장소 아래 이동 시 parent_location_id payload를 저장한다', () => {
       renderLocationsSubTab();
       const dataTransfer = createDataTransfer();
@@ -250,6 +268,29 @@ describe('LocationsSubTab', () => {
         expect.objectContaining({
           locationId: 'loc-2',
           body: expect.objectContaining({ parent_location_id: 'loc-1' }),
+        }),
+        expect.any(Object)
+      );
+    });
+
+    it('드래그앤드롭으로 하위장소를 최상위로 이동하면 parent_location_id null을 저장한다', () => {
+      useEditorLocationsMock.mockReturnValue({
+        data: [
+          { ...baseLocation('loc-parent', '거실'), parent_location_id: null },
+          { ...baseLocation('loc-child', '프런트'), parent_location_id: 'loc-parent' },
+        ],
+        isLoading: false,
+      });
+      renderLocationsSubTab();
+      const dataTransfer = createDataTransfer();
+
+      fireEvent.dragStart(screen.getByLabelText('프런트 드래그 영역'), { dataTransfer });
+      fireEvent.drop(screen.getByLabelText('최상위 장소 드롭 영역'), { dataTransfer });
+
+      expect(updateLocationMutateMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          locationId: 'loc-child',
+          body: expect.objectContaining({ parent_location_id: null }),
         }),
         expect.any(Object)
       );
