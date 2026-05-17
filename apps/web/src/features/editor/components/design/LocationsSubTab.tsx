@@ -124,7 +124,10 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950/40">
+    <div
+      data-testid="locations-sub-tab-scroll"
+      className="flex h-full min-h-0 flex-col overflow-y-auto bg-slate-950/40 md:overflow-hidden"
+    >
       <div className="border-b border-slate-800 bg-slate-950/80 px-5 py-3">
         <LocationMapToolbar
           maps={maps ?? []}
@@ -147,7 +150,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden px-5 py-5">
+      <div className="min-h-0 flex-1 overflow-visible px-4 py-4 sm:px-5 sm:py-5 md:overflow-hidden">
         <LocationDetailPanel
           themeId={themeId}
           theme={theme}

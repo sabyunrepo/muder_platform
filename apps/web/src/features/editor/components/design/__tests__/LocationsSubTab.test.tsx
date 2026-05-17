@@ -32,12 +32,25 @@ describe('LocationsSubTab', () => {
 
     it('맵 이름들을 렌더링한다', () => {
       const { container } = renderLocationsSubTab();
-      expect(container.firstElementChild?.className).toContain('overflow-hidden');
+      expect(container.firstElementChild?.className).toContain('overflow-y-auto');
+      expect(container.firstElementChild?.className).toContain('md:overflow-hidden');
       expect(container.firstElementChild?.className).toContain('bg-slate-950/40');
       expect(screen.getByRole('combobox', { name: '맵 선택' })).toBeDefined();
       expect(screen.queryByText('맵은 조사 단계가 아니라 장소들을 묶는 배치 컨테이너입니다.')).toBeNull();
       expect(screen.getAllByText('저택 1층').length).toBeGreaterThan(0);
       expect(screen.getByText('저택 2층')).toBeDefined();
+    });
+
+    it('모바일에서는 장소관리 탭 전체가 세로 스크롤 책임을 가진다', () => {
+      renderLocationsSubTab();
+
+      const scrollRoot = screen.getByTestId('locations-sub-tab-scroll');
+      const locationList = screen.getByRole('region', { name: '장소 목록' });
+
+      expect(scrollRoot.className).toContain('overflow-y-auto');
+      expect(scrollRoot.className).toContain('md:overflow-hidden');
+      expect(locationList.className).toContain('overflow-visible');
+      expect(locationList.className).toContain('md:overflow-y-auto');
     });
 
     it('맵이 없을 때 빈 상태를 표시한다', () => {
