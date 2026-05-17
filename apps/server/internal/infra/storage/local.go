@@ -73,6 +73,26 @@ func (l *LocalProvider) HeadObject(_ context.Context, key string) (*ObjectMeta, 
 	}, nil
 }
 
+func (l *LocalProvider) PutObject(_ context.Context, key string, body io.Reader, _ string, _ int64) error {
+	destPath, err := l.safePath(key)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return fmt.Errorf("storage: local create upload directory: %w", err)
+	}
+	f, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("storage: local create upload file: %w", err)
+	}
+	defer f.Close()
+	if _, err := io.Copy(f, body); err != nil {
+		return fmt.Errorf("storage: local write upload file: %w", err)
+	}
+	l.log.Debug().Str("key", key).Str("path", destPath).Msg("local object uploaded")
+	return nil
+}
+
 // GetObjectRange reads a byte range from a locally stored file.
 func (l *LocalProvider) GetObjectRange(_ context.Context, key string, offset int64, length int64) (io.ReadCloser, error) {
 	path := filepath.Join(l.baseDir, filepath.FromSlash(key))
@@ -135,32 +155,14 @@ func (l *LocalProvider) UploadHandler() http.HandlerFunc {
 			return
 		}
 
-		destPath := filepath.Join(l.baseDir, filepath.FromSlash(key))
-
-		// Guard against path traversal: ensure resolved path stays within baseDir.
-		absBase, _ := filepath.Abs(l.baseDir)
-		absDest, _ := filepath.Abs(destPath)
-		if !strings.HasPrefix(absDest, absBase+string(os.PathSeparator)) {
+		destPath, err := l.safePath(key)
+		if err != nil {
 			apperror.WriteError(w, r, apperror.BadRequest("invalid path"))
 			return
 		}
 
-		if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
-			l.log.Error().Err(err).Str("path", destPath).Msg("failed to create upload directory")
-			apperror.WriteError(w, r, apperror.Internal("failed to create upload directory").Wrap(err))
-			return
-		}
-
-		f, err := os.Create(destPath)
-		if err != nil {
-			l.log.Error().Err(err).Str("path", destPath).Msg("failed to create upload file")
-			apperror.WriteError(w, r, apperror.Internal("failed to create upload file").Wrap(err))
-			return
-		}
-		defer f.Close()
-
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10MB hard cap
-		if _, err := io.Copy(f, r.Body); err != nil {
+		if err := l.PutObject(r.Context(), key, r.Body, r.Header.Get("Content-Type"), r.ContentLength); err != nil {
 			l.log.Error().Err(err).Str("path", destPath).Msg("failed to write upload file")
 			apperror.WriteError(w, r, apperror.Internal("failed to write upload file").Wrap(err))
 			return
@@ -198,6 +200,16 @@ func (l *LocalProvider) ServeHandler() http.HandlerFunc {
 
 		http.ServeFile(w, r, filePath)
 	}
+}
+
+func (l *LocalProvider) safePath(key string) (string, error) {
+	destPath := filepath.Join(l.baseDir, filepath.FromSlash(key))
+	absBase, _ := filepath.Abs(l.baseDir)
+	absDest, _ := filepath.Abs(destPath)
+	if absDest != absBase && !strings.HasPrefix(absDest, absBase+string(os.PathSeparator)) {
+		return "", fmt.Errorf("storage: local invalid path")
+	}
+	return destPath, nil
 }
 
 // limitedReadCloser combines an io.Reader with an io.Closer so we can close

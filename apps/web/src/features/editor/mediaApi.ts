@@ -2,6 +2,7 @@ import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/services/api";
 import { queryClient } from "@/services/queryClient";
+import { useAuthStore } from "@/stores/authStore";
 
 // ---------------------------------------------------------------------------
 // Types — match backend snake_case JSON exactly
@@ -312,6 +313,15 @@ export interface PutFileParams {
   signal?: AbortSignal;
 }
 
+export interface ServerUploadFileParams {
+  themeId: string;
+  uploadId: string;
+  file: File;
+  contentType?: string;
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+}
+
 /** Default putFile implementation using XHR for progress events. */
 export function defaultPutFile(params: PutFileParams): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -352,6 +362,52 @@ export function defaultPutFile(params: PutFileParams): Promise<void> {
   });
 }
 
+export function defaultUploadFileViaServer(params: ServerUploadFileParams): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(
+      "PUT",
+      `/api/v1/editor/themes/${params.themeId}/media/uploads/${params.uploadId}`,
+      true,
+    );
+    const contentType = params.contentType ?? params.file.type;
+    if (contentType) {
+      xhr.setRequestHeader("Content-Type", contentType);
+    }
+    const accessToken = useAuthStore.getState().accessToken;
+    if (accessToken) {
+      xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+    }
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && params.onProgress) {
+        params.onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`업로드 실패: HTTP ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("업로드 네트워크 오류"));
+    xhr.onabort = () => reject(new Error("업로드가 취소되었습니다"));
+
+    if (params.signal) {
+      if (params.signal.aborted) {
+        xhr.abort();
+        reject(new Error("업로드가 취소되었습니다"));
+        return;
+      }
+      params.signal.addEventListener("abort", () => xhr.abort());
+    }
+
+    xhr.send(params.file);
+  });
+}
+
 export interface UploadMediaFileParams {
   themeId: string;
   file: File;
@@ -367,6 +423,8 @@ export interface UploadMediaFileParams {
   signal?: AbortSignal;
   /** Injected for testability; defaults to XHR PUT. */
   putFile?: (params: PutFileParams) => Promise<void>;
+  /** Authenticated backend fallback used when direct object-storage PUT is blocked by CORS/network policy. */
+  uploadFileViaServer?: (params: ServerUploadFileParams) => Promise<void>;
   /** Override request MIME when browsers omit File.type (common for PDFs on some platforms). */
   mimeType?: string;
   /** Number of attempts (1 = no retry). Default 3. */
@@ -403,6 +461,7 @@ export async function uploadMediaFile(
     onProgress,
     signal,
     putFile = defaultPutFile,
+    uploadFileViaServer = defaultUploadFileViaServer,
     mimeType,
     maxAttempts = 3,
     retryBaseDelayMs = 200,
@@ -446,7 +505,14 @@ export async function uploadMediaFile(
     }
   }
   if (lastError) {
-    throw lastError;
+    await uploadFileViaServer({
+      themeId: params.themeId,
+      uploadId: uploadUrl.upload_id,
+      file,
+      contentType: effectiveMimeType,
+      onProgress,
+      signal,
+    });
   }
 
   // Step 3: confirm

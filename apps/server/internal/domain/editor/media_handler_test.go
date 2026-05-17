@@ -141,6 +141,10 @@ func TestMediaHandler_FileAndYouTubeMutations(t *testing.T) {
 		Return(&UploadURLResponse{UploadID: uploadID, UploadURL: "https://upload.example/new", ExpiresAt: time.Now()}, nil).
 		Times(1)
 	mock.EXPECT().
+		UploadObject(gomock.Any(), gomock.Any(), themeID, uploadID, gomock.Any()).
+		Return(nil).
+		Times(1)
+	mock.EXPECT().
 		ConfirmUpload(gomock.Any(), gomock.Any(), themeID, ConfirmUploadRequest{UploadID: uploadID}).
 		Return(&MediaResponse{ID: mediaID, ThemeID: themeID, Name: "map", Type: MediaTypeImage, SourceType: SourceTypeFile, Tags: []string{}, CreatedAt: time.Now()}, nil).
 		Times(1)
@@ -166,6 +170,13 @@ func TestMediaHandler_FileAndYouTubeMutations(t *testing.T) {
 	h.RequestUpload(requestUploadW, requestUpload)
 	if requestUploadW.Code != http.StatusCreated {
 		t.Fatalf("expected upload request 201, got %d: %s", requestUploadW.Code, requestUploadW.Body.String())
+	}
+
+	uploadObject := mediaHandlerRequest(http.MethodPut, "/editor/themes/"+themeID.String()+"/media/uploads/"+uploadID.String(), []byte("png-body"), map[string]string{"id": themeID.String(), "uploadID": uploadID.String()})
+	uploadObjectW := httptest.NewRecorder()
+	h.UploadObject(uploadObjectW, uploadObject)
+	if uploadObjectW.Code != http.StatusNoContent {
+		t.Fatalf("expected object upload 204, got %d: %s", uploadObjectW.Code, uploadObjectW.Body.String())
 	}
 
 	confirmUpload := mediaHandlerRequest(http.MethodPost, "/editor/themes/"+themeID.String()+"/media/confirm", []byte(`{"upload_id":"`+uploadID.String()+`"}`), map[string]string{"id": themeID.String()})

@@ -11,6 +11,7 @@ func registerEditorMediaRoutes(r chi.Router, deps authedDeps) {
 	r.Get("/themes/{id}/media/categories", deps.media.ListCategories)
 	r.Post("/themes/{id}/media/categories", deps.media.CreateCategory)
 	r.Post("/themes/{id}/media/upload-url", deps.media.RequestUpload)
+	r.Put("/themes/{id}/media/uploads/{uploadID}", deps.media.UploadObject)
 	r.Post("/themes/{id}/media/confirm", deps.media.ConfirmUpload)
 	r.Post("/themes/{id}/media/youtube", deps.media.CreateYouTube)
 	r.Patch("/media/categories/{id}", deps.media.UpdateCategory)

@@ -658,10 +658,44 @@ describe("uploadMediaFile", () => {
     expect(result).toEqual(mockMedia);
   });
 
-  it("fails after exhausting all PUT retry attempts", async () => {
+  it("falls back to the authenticated server upload when direct PUT attempts are exhausted", async () => {
     const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
     const confirmUpload = vi.fn().mockResolvedValue(mockMedia);
     const putFile = vi.fn().mockRejectedValue(new Error("network down"));
+    const uploadFileViaServer = vi.fn().mockResolvedValue(undefined);
+
+    const result = await uploadMediaFile({
+      themeId: THEME_ID,
+      file,
+      type: "BGM",
+      name: "song",
+      requestUploadUrl,
+      confirmUpload,
+      putFile,
+      uploadFileViaServer,
+      retryBaseDelayMs: 0,
+    });
+
+    expect(putFile).toHaveBeenCalledTimes(3);
+    expect(uploadFileViaServer).toHaveBeenCalledWith({
+      themeId: THEME_ID,
+      uploadId: mockUploadUrl.upload_id,
+      file,
+      contentType: "audio/mpeg",
+      onProgress: undefined,
+      signal: undefined,
+    });
+    expect(confirmUpload).toHaveBeenCalledWith({ upload_id: "upload-1" });
+    expect(result).toEqual(mockMedia);
+  });
+
+  it("fails when both direct PUT and the authenticated fallback upload fail", async () => {
+    const requestUploadUrl = vi.fn().mockResolvedValue(mockUploadUrl);
+    const confirmUpload = vi.fn().mockResolvedValue(mockMedia);
+    const putFile = vi.fn().mockRejectedValue(new Error("network down"));
+    const uploadFileViaServer = vi
+      .fn()
+      .mockRejectedValue(new Error("fallback unavailable"));
 
     await expect(
       uploadMediaFile({
@@ -672,11 +706,13 @@ describe("uploadMediaFile", () => {
         requestUploadUrl,
         confirmUpload,
         putFile,
+        uploadFileViaServer,
         retryBaseDelayMs: 0,
       }),
-    ).rejects.toThrow("network down");
+    ).rejects.toThrow("fallback unavailable");
 
     expect(putFile).toHaveBeenCalledTimes(3);
+    expect(uploadFileViaServer).toHaveBeenCalledTimes(1);
     expect(confirmUpload).not.toHaveBeenCalled();
   });
 

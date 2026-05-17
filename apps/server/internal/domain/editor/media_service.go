@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -31,6 +32,7 @@ type MediaService interface {
 	UpdateCategory(ctx context.Context, creatorID, categoryID uuid.UUID, req MediaCategoryRequest) (*MediaCategoryResponse, error)
 	DeleteCategory(ctx context.Context, creatorID, categoryID uuid.UUID) error
 	RequestUpload(ctx context.Context, creatorID, themeID uuid.UUID, req RequestMediaUploadRequest) (*UploadURLResponse, error)
+	UploadObject(ctx context.Context, creatorID, themeID, uploadID uuid.UUID, body io.Reader) error
 	ConfirmUpload(ctx context.Context, creatorID, themeID uuid.UUID, req ConfirmUploadRequest) (*MediaResponse, error)
 	CreateYouTube(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMediaYouTubeRequest) (*MediaResponse, error)
 	UpdateMedia(ctx context.Context, creatorID, mediaID uuid.UUID, req UpdateMediaRequest) (*MediaResponse, error)
@@ -303,6 +305,59 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 		UploadURL: uploadURL,
 		ExpiresAt: time.Now().Add(expiry),
 	}, nil
+}
+
+func (s *mediaService) UploadObject(ctx context.Context, creatorID, themeID, uploadID uuid.UUID, body io.Reader) error {
+	if err := s.requireStorage(); err != nil {
+		return err
+	}
+	if _, err := s.ownedTheme(ctx, creatorID, themeID); err != nil {
+		return err
+	}
+	media, err := s.q.GetMediaWithOwner(ctx, db.GetMediaWithOwnerParams{
+		ID:        uploadID,
+		CreatorID: creatorID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("upload not found")
+		}
+		s.logger.Error().Err(err).Str("media_id", uploadID.String()).Msg("failed to get media")
+		return apperror.Internal("failed to get media")
+	}
+	if media.ThemeID != themeID {
+		return apperror.NotFound("upload not found")
+	}
+	if media.SourceType != SourceTypeFile || !media.StorageKey.Valid || !media.FileSize.Valid || !media.MimeType.Valid {
+		return apperror.New(apperror.ErrMediaInvalidType, 422, "media is not a pending file upload")
+	}
+	declaredSize := media.FileSize.Int64
+	if declaredSize <= 0 || declaredSize > MaxMediaFileSize {
+		return apperror.New(apperror.ErrMediaTooLarge, 422, "file exceeds maximum size")
+	}
+	payload, err := io.ReadAll(io.LimitReader(body, declaredSize+1))
+	if err != nil {
+		return apperror.Internal("failed to read upload body")
+	}
+	if int64(len(payload)) != declaredSize {
+		return apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
+	}
+	if err := s.storage.PutObject(ctx, media.StorageKey.String, bytes.NewReader(payload), media.MimeType.String, declaredSize); err != nil {
+		s.logger.Error().Err(err).Str("storage_key", media.StorageKey.String).Msg("failed to upload media object through server")
+		return apperror.Internal("failed to upload media object")
+	}
+	meta, err := s.storage.HeadObject(ctx, media.StorageKey.String)
+	if err != nil {
+		s.logger.Error().Err(err).Str("storage_key", media.StorageKey.String).Msg("failed to verify server-uploaded object")
+		return apperror.Internal("failed to verify upload")
+	}
+	if meta.Size != declaredSize {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, media.StorageKey.String)
+		return apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
+	}
+	return nil
 }
 
 func mediaUploadDurationParam(mediaType string, duration *int32) (pgtype.Int4, error) {
