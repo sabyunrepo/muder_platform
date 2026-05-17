@@ -217,7 +217,7 @@ describe("PhaseNodePanel type-specific fields", () => {
 
     const startSelect = screen.getByRole("combobox", { name: "장면 시작 액션 1 실행 결과" });
     expect(within(startSelect).getByRole("option", { name: "조사권 추가" })).toBeDefined();
-    expect(within(startSelect).getByRole("option", { name: "조사권 초기화" })).toBeDefined();
+    expect(within(startSelect).getByRole("option", { name: "조사권 재설정" })).toBeDefined();
   });
 
   it("조사권 액션으로 바꾸면 첫 조사권을 기본 tokenId로 저장한다", () => {

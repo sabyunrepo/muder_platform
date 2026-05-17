@@ -327,15 +327,22 @@ function InvestigationTokenActionFields({
     typeof params.amount === "number" && Number.isFinite(params.amount)
       ? Math.max(1, Math.floor(params.amount))
       : 1;
+  const resetMode = params.mode === "zero" ? "zero" : "default";
 
   return (
     <div className="rounded border border-slate-800 bg-slate-950/80 p-2">
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_96px]">
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_9rem]">
         <label className="flex flex-col gap-1">
           <span className="text-[11px] text-slate-500">조사권</span>
           <select
             value={selectedTokenId}
-            onChange={(event) => onParamsChange({ ...params, tokenId: event.target.value })}
+            onChange={(event) =>
+              onParamsChange({
+                ...params,
+                tokenId: event.target.value,
+                ...(action.type === "RESET_INVESTIGATION_TOKEN" ? { mode: resetMode } : {}),
+              })
+            }
             className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
           >
             {tokens.map((token) => (
@@ -363,11 +370,30 @@ function InvestigationTokenActionFields({
             />
           </label>
         ) : (
-          <p className="rounded border border-slate-800 bg-slate-900/70 px-2 py-1.5 text-[11px] leading-4 text-slate-400">
-            선택한 조사권을 시작 수량으로 되돌립니다.
-          </p>
+          <label className="flex flex-col gap-1">
+            <span className="text-[11px] text-slate-500">재설정 방식</span>
+            <select
+              value={resetMode}
+              onChange={(event) =>
+                onParamsChange({
+                  ...params,
+                  tokenId: selectedTokenId,
+                  mode: event.target.value,
+                })
+              }
+              className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+            >
+              <option value="default">시작 수량으로</option>
+              <option value="zero">0으로 초기화</option>
+            </select>
+          </label>
         )}
       </div>
+      {action.type === "RESET_INVESTIGATION_TOKEN" ? (
+        <p className="mt-2 text-[11px] leading-4 text-slate-500">
+          시작 수량은 조사권 설정에서 정한 기본 지급량입니다.
+        </p>
+      ) : null}
       {tokens.length === 0 ? (
         <p className="mt-2 text-[11px] text-amber-300">조사권 설정에서 조사권을 먼저 추가해 주세요.</p>
       ) : null}

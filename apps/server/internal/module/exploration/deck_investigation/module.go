@@ -98,17 +98,33 @@ func (m *Module) ReactTo(ctx context.Context, action engine.PhaseActionPayload) 
 		if err := json.Unmarshal(action.Params, &params); err != nil {
 			return fmt.Errorf("deck_investigation: invalid RESET_INVESTIGATION_TOKEN params: %w", err)
 		}
-		return m.applyTokenAction(ctx, params, func(_ int, defaultAmount int) int {
+		resetAmount := func(_ int, defaultAmount int) int {
 			return defaultAmount
-		})
+		}
+		switch params.Mode {
+		case "", investigationTokenResetModeDefault:
+		case investigationTokenResetModeZero:
+			resetAmount = func(_ int, _ int) int {
+				return 0
+			}
+		default:
+			return fmt.Errorf("deck_investigation: unsupported reset mode %q", params.Mode)
+		}
+		return m.applyTokenAction(ctx, params, resetAmount)
 	default:
 		return fmt.Errorf("deck_investigation: unsupported action %q", action.Action)
 	}
 }
 
+const (
+	investigationTokenResetModeDefault = "default"
+	investigationTokenResetModeZero    = "zero"
+)
+
 type investigationTokenActionParams struct {
 	TokenID string                 `json:"tokenId"`
 	Amount  int                    `json:"amount,omitempty"`
+	Mode    string                 `json:"mode,omitempty"`
 	Target  map[string]interface{} `json:"target,omitempty"`
 }
 

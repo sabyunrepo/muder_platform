@@ -343,6 +343,34 @@ describe("ActionListEditor", () => {
     ]);
   });
 
+  it("조사권 재설정 액션의 0 초기화 방식을 params로 저장한다", () => {
+    const onChange = vi.fn();
+
+    render(
+      <ActionListEditor
+        label="장면 시작 액션"
+        actions={[
+          { id: "token", type: "RESET_INVESTIGATION_TOKEN", params: { tokenId: "coin", mode: "default" } },
+        ]}
+        investigationTokens={[
+          { id: "coin", name: "동전", iconLabel: "코", defaultAmount: 2 },
+          { id: "badge", name: "배지", iconLabel: "배", defaultAmount: 0 },
+        ]}
+        preserveDisallowedActions
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "재설정 방식" }), {
+      target: { value: "zero" },
+    });
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: "token", type: "RESET_INVESTIGATION_TOKEN", params: { tokenId: "coin", mode: "zero" } },
+    ]);
+    expect(screen.getByText("시작 수량은 조사권 설정에서 정한 기본 지급량입니다.")).toBeDefined();
+  });
+
   it("컬러 테마 실행 결과를 preset token으로 저장한다", () => {
     const onChange = vi.fn();
     render(
