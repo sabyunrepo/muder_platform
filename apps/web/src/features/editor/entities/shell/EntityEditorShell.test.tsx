@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { EntityEditorShell } from './EntityEditorShell';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 interface DemoEntity {
   id: string;
@@ -41,6 +42,7 @@ describe('EntityEditorShell', () => {
 
     expect(screen.getByRole('region', { name: '단서 목록' })).toBeDefined();
     expect(screen.getByRole('region', { name: '단서 상세 영역' })).toBeDefined();
+    expect(screen.getByRole('region', { name: '단서 목록' }).className).toContain(editorDesignClassNames.panel);
     expect(screen.getByLabelText('상세 슬롯').textContent).toContain('첫 단서 상세');
     expect(screen.getByLabelText('검수 슬롯').textContent).toContain('첫 단서 검수');
     expect(screen.getByText('2개의 단서')).toBeDefined();
@@ -106,6 +108,7 @@ describe('EntityEditorShell', () => {
 
     expect(screen.getByRole('button', { name: '첫 단서 선택' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: '비밀 편지 선택' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: '첫 단서 선택' }).className).toContain(editorDesignClassNames.listItemActive);
     expect(screen.getByText('선택됨')).toBeDefined();
   });
 

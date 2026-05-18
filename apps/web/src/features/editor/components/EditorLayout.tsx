@@ -14,6 +14,7 @@ import type { DesignWarning } from "@/features/editor/validation";
 import type { SaveStatus } from "@/features/editor/hooks/useAutoSave";
 import { readEnabledModuleIds } from "@/features/editor/utils/configShape";
 import { readEditorTabFromRouteSegment } from "@/features/editor/routeSegments";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 
 // ---------------------------------------------------------------------------
 // EditorLayout
@@ -81,27 +82,27 @@ export function EditorLayout({
   }, [onSave]);
 
   return (
-    <div className="fixed inset-0 flex flex-col overflow-hidden bg-slate-950 text-slate-100">
+    <div className={`fixed inset-0 flex flex-col overflow-hidden ${editorDesignClassNames.surface}`}>
       {/* ── Top bar ── */}
-      <header className="sticky top-0 z-50 flex h-12 shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900 px-2 sm:gap-3 sm:px-3">
+      <header className={`sticky top-0 z-50 flex h-12 shrink-0 items-center gap-2 px-2 shadow-sm sm:gap-3 sm:px-3 ${editorDesignClassNames.topBar}`}>
         <button
           type="button"
           onClick={() => navigate("/editor")}
-          className="rounded-sm p-1.5 text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200"
+          className="rounded-md p-1.5 text-[var(--mmp-editor-color-slate)] transition-colors hover:bg-[var(--mmp-editor-color-surface)] hover:text-[var(--mmp-editor-color-charcoal)]"
           aria-label="에디터 목록으로 돌아가기"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
 
-        <div className="h-5 w-px bg-slate-800" />
+        <div className="h-5 w-px bg-[var(--mmp-editor-color-hairline)]" />
 
         <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
-          <span className="hidden shrink-0 text-xs text-slate-600 sm:inline">에디터</span>
-          <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-slate-700 sm:block" />
-          <span className="truncate text-sm font-mono font-medium text-slate-200">
+          <span className="hidden shrink-0 text-xs text-[var(--mmp-editor-color-steel)] sm:inline">에디터</span>
+          <ChevronRight className="hidden h-3.5 w-3.5 shrink-0 text-[var(--mmp-editor-color-muted)] sm:block" />
+          <span className="truncate text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">
             {theme.title}
           </span>
-          <span className="hidden shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-slate-500 sm:inline">
+          <span className={`hidden shrink-0 px-1.5 py-0.5 text-[10px] sm:inline ${editorDesignClassNames.tag}`}>
             {STATUS_LABEL[theme.status] ?? theme.status}
           </span>
         </div>
@@ -114,12 +115,12 @@ export function EditorLayout({
           />
         </div>
 
-        <div className="hidden h-5 w-px bg-slate-800 sm:block" />
+        <div className="hidden h-5 w-px bg-[var(--mmp-editor-color-hairline)] sm:block" />
 
         <button
           type="button"
           onClick={handleValidate}
-          className="h-8 rounded-sm border border-slate-700 px-2 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 sm:h-7 sm:px-3"
+          className={`h-8 px-2 text-xs transition-colors hover:bg-[var(--mmp-editor-color-surface)] sm:h-7 sm:px-3 ${editorDesignClassNames.secondaryAction}`}
         >
           검증
         </button>
@@ -127,7 +128,7 @@ export function EditorLayout({
           type="button"
           onClick={onPublish}
           disabled={theme.status === "PUBLISHED"}
-          className="h-8 rounded-sm bg-amber-600 px-2 text-xs font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:h-7 sm:px-3"
+          className={`h-8 px-2 text-xs transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40 sm:h-7 sm:px-3 ${editorDesignClassNames.primaryAction}`}
         >
           출판
         </button>
@@ -142,7 +143,7 @@ export function EditorLayout({
 
       {/* ── Validation panel ── */}
       {!dismissed && (validationResult ?? externalWarnings) && (
-        <div className="shrink-0 border-b border-slate-800 px-3 py-2">
+        <div className="shrink-0 border-b border-[var(--mmp-editor-color-hairline)] px-3 py-2">
           <ValidationPanel
             warnings={validationResult ?? externalWarnings ?? []}
             onClose={() => { setValidationResult(null); setDismissed(true); }}

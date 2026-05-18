@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { EditorThemeResponse } from '@/features/editor/api';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 const { mockNavigate, mockSetActiveTab, mockActiveTab } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -73,8 +74,11 @@ describe('EditorLayout', () => {
     expect(screen.getByText('좁은 모바일 화면용 테스트 테마')).toBeDefined();
     expect(screen.getByText('초안')).toBeDefined();
     expect(screen.getByText('변경사항 있음')).toBeDefined();
+    expect(screen.getByText('초안').className).toContain(editorDesignClassNames.tag);
     expect((screen.getByRole('button', { name: '검증' }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByRole('button', { name: '출판' }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole('button', { name: '검증' }).className).toContain(editorDesignClassNames.secondaryAction);
+    expect(screen.getByRole('button', { name: '출판' }).className).toContain(editorDesignClassNames.primaryAction);
 
     fireEvent.click(screen.getByRole('button', { name: '검증' }));
     fireEvent.click(screen.getByRole('button', { name: '출판' }));
@@ -173,6 +177,8 @@ describe('EditorLayout', () => {
     render(<EditorLayout theme={baseTheme} themeId="theme-1" />);
 
     const tabPanel = screen.getByRole('tabpanel');
+    const root = tabPanel.parentElement;
+    expect(root?.className).toContain(editorDesignClassNames.surface);
     expect(tabPanel).toBeDefined();
     expect(tabPanel.className).toContain('overflow-hidden');
     expect(screen.getByText('탭 콘텐츠')).toBeDefined();
