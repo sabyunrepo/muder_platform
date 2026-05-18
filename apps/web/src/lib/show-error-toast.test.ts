@@ -82,13 +82,37 @@ describe('showErrorToast', () => {
         status: 500,
         code: 'INTERNAL_ERROR',
         detail: 'an unexpected error occurred',
-        user_message: '캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요.',
+        user_message:
+          '캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요.',
         request_id: 'request-123456789',
       })
     );
 
     expect(toast.error).toHaveBeenCalledWith(
       '캐릭터 저장에 실패했습니다. 입력 내용은 유지됩니다. 잠시 후 다시 시도해주세요.',
+      {
+        description: '오류 ID: request-',
+        duration: Infinity,
+      }
+    );
+  });
+
+  it('미디어 저장소 삭제 실패는 도메인 메시지와 오류 ID를 표시한다', () => {
+    showErrorToast(
+      apiError({
+        status: 502,
+        title: 'Bad Gateway',
+        code: 'MEDIA_STORAGE_DELETE_FAILED',
+        detail: 'an unexpected error occurred',
+        request_id: 'request-storage-delete',
+        severity: 'high',
+        retryable: true,
+        user_action: 'retry_later',
+      })
+    );
+
+    expect(toast.error).toHaveBeenCalledWith(
+      '파일 저장소에서 미디어를 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.',
       {
         description: '오류 ID: request-',
         duration: Infinity,
