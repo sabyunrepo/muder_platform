@@ -306,10 +306,19 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Added a reusable browser evidence format for cmux/browser QA reports."
+    },
+    {
+      "id": "local-ci-generated-drift-snapshot",
+      "resolved_at": "2026-05-18",
+      "applied_to": [
+        "scripts/mmp-local-ci.sh",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Changed local-ci generated drift checks to compare pre/post git diff snapshots around generation commands, so existing dirty worktree changes are not misreported as newly generated drift."
     }
   ],
   "last_review": {
     "date": "2026-05-18",
-    "summary": "Added MMP workflow harness v1, preflight status script, OOO run scope guard, and browser QA evidence format."
+    "summary": "Added MMP workflow harness v1, preflight status script, OOO run scope guard, browser QA evidence format, and generated-drift snapshot checks for local-ci."
   }
 }
