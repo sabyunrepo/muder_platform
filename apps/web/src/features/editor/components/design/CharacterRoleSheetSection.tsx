@@ -112,9 +112,9 @@ export function CharacterRoleSheetSection({
             if (isSaveButtonTarget(relatedTarget)) {
               return;
             }
-            state.saveMarkdown(state.draft);
+            state.saveMarkdown();
           }}
-          onPreview={() => state.saveMarkdown(state.draft)}
+          onPreview={() => state.saveMarkdown()}
         />
       )}
     </section>

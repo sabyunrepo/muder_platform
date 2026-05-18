@@ -684,6 +684,10 @@ describe('CharacterAssignPanel', () => {
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
     fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
 
+    expect(upsertRoleSheetMutateMock).toHaveBeenCalledWith(
+      { format: 'markdown', markdown: { body: '## 비밀\n범인은 아직 모른다.' } },
+      expect.any(Object)
+    );
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
