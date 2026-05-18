@@ -8,7 +8,7 @@
 - [x] Execution issues created: #662, #663, #664, #665, #666, #667, #668
 - [x] PR-1 foundation
 - [x] PR-2 UI kit core
-- [ ] PR-3 app shell
+- [x] PR-3 app shell
 - [ ] PR-4 creator/admin/shop/profile
 - [ ] PR-5 lobby/room/social
 - [ ] PR-6 editor detail
@@ -63,20 +63,22 @@ Merge gate:
 
 Goal: Convert global shell and feedback surfaces before page migrations.
 
-- [ ] Migrate `MainLayout`, `Sidebar`, and base layout wrappers.
-- [ ] Migrate `NetworkBanner`.
-- [ ] Migrate global/page/component error boundaries where they are product shell surfaces.
-- [ ] Migrate loading/suspense fallback surfaces.
-- [ ] Migrate toast styling to follow shared appearance.
-- [ ] Keep feature page internals out of scope unless needed for shell correctness.
-- [ ] Run focused tests and typecheck.
-- [ ] Capture `/lobby` shell desktop/mobile light/dark screenshots.
+- [x] Migrate `MainLayout`, `Sidebar`, and base layout wrappers.
+- [x] Migrate `NetworkBanner`.
+- [x] Migrate global/page/component error boundaries where they are product shell surfaces.
+- [x] Migrate loading/suspense fallback surfaces.
+- [x] Migrate toast styling to follow shared appearance.
+- [x] Keep feature page internals out of scope unless needed for shell correctness.
+- [x] Run focused tests and typecheck.
+- [x] Capture `/lobby` shell desktop/mobile light/dark screenshots.
 
 Merge gate:
 
-- [ ] Navigation and feedback surfaces are readable in light/dark.
-- [ ] Toast is not hardcoded to dark.
-- [ ] No page group migration is half-started.
+- [x] Navigation and feedback surfaces are readable in light/dark.
+- [x] Toast is not hardcoded to dark.
+- [x] No page group migration is half-started.
+
+Note: PR-3 keeps an explicit legacy content bridge for unmigrated feature page internals. PR-4/5 remove that bridge as page groups move to semantic tokens.
 
 ## PR-4: Creator/Admin/Shop/Profile (#665)
 

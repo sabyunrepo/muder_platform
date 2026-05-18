@@ -39,6 +39,18 @@ body {
   color: var(--mmp-color-ink);
 }
 
+/*
+ * Temporary bridge for feature pages that still use hardcoded dark Tailwind
+ * utilities. PR-4/5 migrate those pages to semantic tokens and can remove this
+ * content surface bridge once high-traffic routes no longer depend on it.
+ */
+:root,
+[data-theme='light'],
+[data-theme='dark'] {
+  --mmp-legacy-content-bg: #020617;
+  --mmp-legacy-content-text: #f8fafc;
+}
+
 .mmp-rich-content-surface {
   min-width: 0;
   max-width: 100%;

@@ -1,31 +1,25 @@
-import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
-import type { ReactNode } from "react";
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
+import type { ReactNode } from 'react';
+import { Alert, Button, Panel } from '@/shared/components/ui';
 
 function PageFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
-      <p className="text-lg font-semibold text-red-400">
-        페이지를 불러오지 못했습니다
-      </p>
-      {import.meta.env.DEV && (
-        <pre className="max-w-md overflow-auto rounded bg-slate-900 p-3 text-xs text-red-300">
-          {error.message}
-        </pre>
-      )}
-      <button
-        onClick={resetErrorBoundary}
-        className="rounded bg-amber-500 px-4 py-2 text-sm font-medium text-slate-900 transition hover:bg-amber-400"
-      >
-        다시 시도
-      </button>
+    <div className="flex min-h-[50vh] items-center justify-center">
+      <Panel className="w-full max-w-lg space-y-4 text-center">
+        <Alert title="페이지를 불러오지 못했습니다" tone="error">
+          잠시 후 다시 시도해 주세요.
+        </Alert>
+        {import.meta.env.DEV && (
+          <pre className="max-h-56 overflow-auto rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface-soft)] p-3 text-left text-xs text-[var(--mmp-color-error)]">
+            {error.message}
+          </pre>
+        )}
+        <Button onClick={resetErrorBoundary}>다시 시도</Button>
+      </Panel>
     </div>
   );
 }
 
 export function PageErrorBoundary({ children }: { children: ReactNode }) {
-  return (
-    <ErrorBoundary FallbackComponent={PageFallback}>
-      {children}
-    </ErrorBoundary>
-  );
+  return <ErrorBoundary FallbackComponent={PageFallback}>{children}</ErrorBoundary>;
 }

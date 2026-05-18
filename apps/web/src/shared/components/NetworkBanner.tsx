@@ -39,24 +39,22 @@ export function NetworkBanner() {
     <div
       role="alert"
       aria-live="assertive"
-      className={`fixed top-0 w-full z-[60] h-10 flex items-center justify-center gap-2 backdrop-blur-sm ${
-        isOffline ? 'bg-red-900/90' : 'bg-emerald-900/90'
+      className={`fixed top-0 z-[60] flex h-10 w-full items-center justify-center gap-2 border-b px-4 text-sm font-medium shadow-[var(--mmp-shadow-card)] backdrop-blur-sm ${
+        isOffline
+          ? 'border-[var(--mmp-color-error)] bg-[var(--mmp-color-error)] text-white'
+          : 'border-[var(--mmp-color-success)] bg-[var(--mmp-color-success)] text-white'
       } ${exiting ? 'motion-safe:animate-slide-out-top' : 'motion-safe:animate-slide-in-top'}`}
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {isOffline ? (
         <>
-          <WifiOff className="h-4 w-4 text-red-200" />
-          <span className="text-red-200 text-sm font-medium">
-            연결이 끊어졌습니다
-          </span>
+          <WifiOff className="h-4 w-4" />
+          <span>연결이 끊어졌습니다</span>
         </>
       ) : (
         <>
-          <Wifi className="h-4 w-4 text-emerald-200" />
-          <span className="text-emerald-200 text-sm font-medium">
-            다시 연결되었습니다
-          </span>
+          <Wifi className="h-4 w-4" />
+          <span>다시 연결되었습니다</span>
         </>
       )}
     </div>
