@@ -1,30 +1,93 @@
-:root {
-  /* Background */
-  --color-bg-primary: #0f172a;    /* slate-900 */
-  --color-bg-deep: #020617;       /* slate-950 */
+:root,
+[data-theme='light'] {
+  --mmp-color-primary: #5645d4;
+  --mmp-color-primary-pressed: #4534b3;
+  --mmp-color-on-primary: #ffffff;
+  --mmp-color-canvas: #ffffff;
+  --mmp-color-surface: #f6f5f4;
+  --mmp-color-surface-soft: #fafaf9;
+  --mmp-color-hairline: #e5e3df;
+  --mmp-color-hairline-strong: #c8c4be;
+  --mmp-color-ink: #1a1a1a;
+  --mmp-color-charcoal: #37352f;
+  --mmp-color-slate: #4f4d47;
+  --mmp-color-steel: #5d5b54;
+  --mmp-color-muted: #8f8a83;
+  --mmp-color-success: #1aae39;
+  --mmp-color-warning: #a84600;
+  --mmp-color-error: #e03131;
+  --mmp-color-info: #2563eb;
+  --mmp-color-tint-peach: #ffe8d4;
+  --mmp-color-tint-rose: #fde0ec;
+  --mmp-color-tint-mint: #d9f3e1;
+  --mmp-color-tint-lavender: #e6e0f5;
+  --mmp-color-tint-sky: #dcecfa;
+  --mmp-color-tint-yellow: #fef7d6;
+  --mmp-color-tag-bg: var(--mmp-color-tint-lavender);
+  --mmp-color-tag-text: #391c57;
+  --mmp-shadow-card: rgba(15, 15, 15, 0.08) 0 4px 12px 0;
+  --mmp-shadow-modal: rgba(15, 15, 15, 0.16) 0 16px 48px -8px;
 
-  /* Surface */
-  --color-surface-primary: #1e293b;  /* slate-800 */
-  --color-surface-elevated: #1e2738; /* slate-850 approx */
+  /* Legacy aliases kept for pages not migrated to the project design system yet. */
+  --color-bg-primary: var(--mmp-color-surface);
+  --color-bg-deep: var(--mmp-color-canvas);
+  --color-surface-primary: var(--mmp-color-canvas);
+  --color-surface-elevated: var(--mmp-color-surface-soft);
+  --color-text-primary: var(--mmp-color-ink);
+  --color-text-secondary: var(--mmp-color-charcoal);
+  --color-text-muted: var(--mmp-color-steel);
+  --color-accent: var(--mmp-color-primary);
+  --color-accent-hover: var(--mmp-color-primary-pressed);
+  --color-error: var(--mmp-color-error);
+  --color-error-hover: #b91c1c;
+  --color-success: var(--mmp-color-success);
+  --color-success-hover: #15803d;
+  --color-border: var(--mmp-color-hairline);
+  --color-border-accent: var(--mmp-color-primary);
+}
 
-  /* Text */
-  --color-text-primary: #f8fafc;   /* slate-50 */
-  --color-text-secondary: #f1f5f9; /* slate-100 */
-  --color-text-muted: #e2e8f0;    /* slate-200 */
+[data-theme='dark'] {
+  --mmp-color-primary: #a99cff;
+  --mmp-color-primary-pressed: #c5bdff;
+  --mmp-color-on-primary: #171421;
+  --mmp-color-canvas: #191919;
+  --mmp-color-surface: #242424;
+  --mmp-color-surface-soft: #202020;
+  --mmp-color-hairline: #3a3a38;
+  --mmp-color-hairline-strong: #4a4a46;
+  --mmp-color-ink: #f4f4f2;
+  --mmp-color-charcoal: #e5e4df;
+  --mmp-color-slate: #c9c6bd;
+  --mmp-color-steel: #aaa79f;
+  --mmp-color-muted: #8f8b82;
+  --mmp-color-success: #44c767;
+  --mmp-color-warning: #ffb86b;
+  --mmp-color-error: #ff6b6b;
+  --mmp-color-info: #7db3ff;
+  --mmp-color-tint-peach: #4a3126;
+  --mmp-color-tint-rose: #4a2638;
+  --mmp-color-tint-mint: #243f31;
+  --mmp-color-tint-lavender: #30294a;
+  --mmp-color-tint-sky: #24384a;
+  --mmp-color-tint-yellow: #473d23;
+  --mmp-color-tag-bg: #30294a;
+  --mmp-color-tag-text: #ded6ff;
+  --mmp-shadow-card: rgba(0, 0, 0, 0.3) 0 8px 24px 0;
+  --mmp-shadow-modal: rgba(0, 0, 0, 0.44) 0 20px 56px -10px;
 
-  /* Accent */
-  --color-accent: #fbbf24;        /* amber-400 */
-  --color-accent-hover: #f59e0b;  /* amber-500 */
-
-  /* Error */
-  --color-error: #f87171;         /* red-400 */
-  --color-error-hover: #ef4444;   /* red-500 */
-
-  /* Success */
-  --color-success: #34d399;       /* emerald-400 */
-  --color-success-hover: #10b981; /* emerald-500 */
-
-  /* Border */
-  --color-border: #334155;        /* slate-700 */
-  --color-border-accent: #fbbf24; /* amber-400 */
+  --color-bg-primary: var(--mmp-color-surface);
+  --color-bg-deep: var(--mmp-color-canvas);
+  --color-surface-primary: var(--mmp-color-surface);
+  --color-surface-elevated: var(--mmp-color-surface-soft);
+  --color-text-primary: var(--mmp-color-ink);
+  --color-text-secondary: var(--mmp-color-charcoal);
+  --color-text-muted: var(--mmp-color-steel);
+  --color-accent: var(--mmp-color-primary);
+  --color-accent-hover: var(--mmp-color-primary-pressed);
+  --color-error: var(--mmp-color-error);
+  --color-error-hover: #ff8787;
+  --color-success: var(--mmp-color-success);
+  --color-success-hover: #6ee787;
+  --color-border: var(--mmp-color-hairline);
+  --color-border-accent: var(--mmp-color-primary);
 }

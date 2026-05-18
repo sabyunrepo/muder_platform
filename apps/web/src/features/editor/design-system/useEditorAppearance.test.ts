@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { APPEARANCE_STORAGE_KEY } from '@/shared/appearance';
 import {
   EDITOR_APPEARANCE_STORAGE_KEY,
   type EditorAppearancePreference,
@@ -26,6 +27,9 @@ beforeEach(() => {
       getItem: vi.fn((key: string) => storageItems[key] ?? null),
       setItem: vi.fn((key: string, value: string) => {
         storageItems[key] = value;
+      }),
+      removeItem: vi.fn((key: string) => {
+        delete storageItems[key];
       }),
       clear: vi.fn(() => {
         storageItems = {};
@@ -113,7 +117,8 @@ describe('useEditorAppearance', () => {
 
       expect(result.current.preference).toBe(mode);
       expect(result.current.resolvedTheme).toBe(mode === 'dark' ? 'dark' : 'light');
-      expect(window.localStorage.getItem(EDITOR_APPEARANCE_STORAGE_KEY)).toBe(mode);
+      expect(window.localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe(mode);
+      expect(window.localStorage.getItem(EDITOR_APPEARANCE_STORAGE_KEY)).toBeNull();
     }
   );
 
@@ -193,7 +198,9 @@ describe('editor appearance helpers', () => {
   ] as const)(
     '%s preference와 system dark=%s 입력을 %s resolved theme으로 해석한다',
     (preference, prefersDark, expectedResolvedTheme) => {
-      expect(resolveEditorAppearancePreference(preference, prefersDark)).toBe(expectedResolvedTheme);
+      expect(resolveEditorAppearancePreference(preference, prefersDark)).toBe(
+        expectedResolvedTheme
+      );
     }
   );
 

@@ -1,85 +1,66 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  readStoredAppearance,
+  readSystemPrefersDark,
+  isAppearancePreference,
+  resolveAppearancePreference,
+  subscribeToSystemAppearance,
+  type AppearancePreference,
+  type ResolvedTheme,
+  writeStoredAppearance,
+} from '@/shared/appearance';
 
 export const EDITOR_APPEARANCE_STORAGE_KEY = 'mmp.editor.appearance';
 
-export type EditorAppearancePreference = 'system' | 'light' | 'dark';
-export type EditorResolvedAppearance = 'light' | 'dark';
+export type EditorAppearancePreference = AppearancePreference;
+export type EditorResolvedAppearance = ResolvedTheme;
 export type EditorSystemAppearanceListener = (resolvedTheme: EditorResolvedAppearance) => void;
 
 type SystemColorSchemeChangeTarget = {
   matches: boolean;
-  addEventListener?: (
-    event: 'change',
-    listener: (event: { matches: boolean }) => void
-  ) => void;
-  removeEventListener?: (
-    event: 'change',
-    listener: (event: { matches: boolean }) => void
-  ) => void;
+  addEventListener?: (event: 'change', listener: (event: { matches: boolean }) => void) => void;
+  removeEventListener?: (event: 'change', listener: (event: { matches: boolean }) => void) => void;
   addListener?: (listener: (event: { matches: boolean }) => void) => void;
   removeListener?: (listener: (event: { matches: boolean }) => void) => void;
 };
 
 type MatchSystemColorScheme = (query: string) => SystemColorSchemeChangeTarget;
 
-const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)';
-
 export function isEditorAppearancePreference(value: unknown): value is EditorAppearancePreference {
-  return value === 'system' || value === 'light' || value === 'dark';
+  return isAppearancePreference(value);
 }
 
 export function resolveEditorAppearancePreference(
   preference: EditorAppearancePreference,
   prefersDark: boolean
 ): EditorResolvedAppearance {
-  if (preference === 'system') {
-    return prefersDark ? 'dark' : 'light';
-  }
-  return preference;
+  return resolveAppearancePreference(preference, prefersDark);
 }
 
 export function readStoredEditorAppearance(
-  storage: Pick<Storage, 'getItem'> | null | undefined = getLocalStorage()
+  storage:
+    | (Pick<Storage, 'getItem' | 'setItem'> & { removeItem?: Storage['removeItem'] })
+    | null
+    | undefined = getLocalStorage()
 ): EditorAppearancePreference {
-  try {
-    const stored = storage?.getItem(EDITOR_APPEARANCE_STORAGE_KEY);
-    return isEditorAppearancePreference(stored) ? stored : 'system';
-  } catch {
-    return 'system';
-  }
+  return readStoredAppearance(storage);
 }
 
 export function writeStoredEditorAppearance(
   preference: EditorAppearancePreference,
-  storage: Pick<Storage, 'setItem'> | null | undefined = getLocalStorage()
+  storage:
+    | (Pick<Storage, 'getItem' | 'setItem'> & { removeItem?: Storage['removeItem'] })
+    | null
+    | undefined = getLocalStorage()
 ): void {
-  try {
-    storage?.setItem(EDITOR_APPEARANCE_STORAGE_KEY, preference);
-  } catch {
-    /* localStorage may be unavailable in private or embedded browsers. */
-  }
+  writeStoredAppearance(preference, storage);
 }
 
 export function subscribeToSystemEditorAppearance(
   listener: EditorSystemAppearanceListener,
   matchSystemColorScheme: MatchSystemColorScheme | null | undefined = getMatchMedia()
 ): () => void {
-  if (!matchSystemColorScheme) {
-    return () => {};
-  }
-
-  const query = matchSystemColorScheme(SYSTEM_DARK_QUERY);
-  const handleChange = (event: { matches: boolean }) => {
-    listener(event.matches ? 'dark' : 'light');
-  };
-
-  if (typeof query.addEventListener === 'function') {
-    query.addEventListener('change', handleChange);
-    return () => query.removeEventListener?.('change', handleChange);
-  }
-
-  query.addListener?.(handleChange);
-  return () => query.removeListener?.(handleChange);
+  return subscribeToSystemAppearance(listener, matchSystemColorScheme);
 }
 
 export function useEditorAppearance() {
@@ -127,12 +108,4 @@ function getMatchMedia(): MatchSystemColorScheme | null {
     return null;
   }
   return window.matchMedia.bind(window);
-}
-
-function readSystemPrefersDark(): boolean {
-  const matchMedia = getMatchMedia();
-  if (!matchMedia) {
-    return false;
-  }
-  return matchMedia(SYSTEM_DARK_QUERY).matches;
 }

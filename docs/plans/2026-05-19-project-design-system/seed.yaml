@@ -1,0 +1,151 @@
+goal: Expand MMP web edit-page-only DESIGN.md into a project-wide design system, implement
+  stable light/dark/system mode, build a reusable shared UI kit, and migrate all web
+  page groups through issue/PR-based rollout with browser screenshot QA evidence.
+task_type: code
+brownfield_context:
+  project_type: brownfield
+  context_references:
+    - path: docs/plans/2026-05-19-project-design-system/context.md
+      role: context
+      description: OOO interview decisions, issue map, and repo facts for the rollout
+    - path: docs/plans/2026-05-19-project-design-system/design.md
+      role: design
+      description: Project-wide design system rollout architecture and merge policy
+    - path: docs/plans/2026-05-19-project-design-system/checklist.md
+      role: checklist
+      description: PR-group execution checklist and screenshot QA gates
+    - path: docs/superpowers/specs/2026-05-01-phase-24-editor-redesign/design.md
+      role: source_of_truth
+      description: Existing editor DESIGN.md visual source of truth to expand globally
+  existing_patterns:
+    - apps/web/src/features/editor/design-system/editorNotionTheme.css
+    - apps/web/src/features/editor/design-system/useEditorAppearance.ts
+    - packages/ui-tokens/src/colors.css
+    - apps/web/src/index.css
+  existing_dependencies:
+    - React 19
+    - Vite
+    - Tailwind CSS 4
+    - TanStack Query
+    - Zustand
+    - lucide-react
+constraints:
+  - Use current MMP editor DESIGN.md tone as the project-wide visual source of truth
+  - All five success criteria are required, not tradeoffs
+  - 'Execution order must follow dependencies: foundation then UI kit then page migration then screenshots then consistency judgment'
+  - Game runtime must be unified with editor/product tone as much as possible
+  - Merge by completed group only
+  - Pages not yet scheduled may remain in old style
+  - Do not merge a migrated group with broken light/dark/system behavior
+  - Do not merge a migrated group with inconsistent UI kit usage
+  - Do not merge a migrated group without required browser screenshot QA evidence
+  - 'Manage rollout through GitHub issues #661 through #668'
+  - Ask user only for human decisions and inspect code for repo facts before implementation
+acceptance_criteria:
+  - Light/dark/system foundation is stable
+  - Expanded DESIGN.md defines the project-wide standard from the editor tone
+  - Shared UI kit includes core modal, table, and form patterns
+  - Shared UI kit is reusable across migrated groups
+  - All pages are migrated gradually by page group
+  - Browser screenshots are captured per migrated page group
+  - Screenshot matrix is used to judge visual consistency and remaining debt
+  - Existing page-specific slate/amber temporary styling is replaced where migrated
+  - Runtime screens are moved toward the expanded editor DESIGN.md visual language
+  - Each PR group is merged only after its own scope is complete and screenshot QA evidence exists
+ontology_schema:
+  name: MMPDesignSystemRollout
+  description: Domain model for planning and executing the MMP web project-wide design
+    system rollout across foundation, shared UI kit, page groups, runtime screens,
+    QA evidence, issues, and PR merge gates.
+  fields:
+    - name: umbrellaIssue
+      type: number
+      description: GitHub umbrella issue tracking the full rollout
+      required: true
+    - name: foundationIssue
+      type: number
+      description: Issue for light/dark/system token and theme foundation
+      required: true
+    - name: uiKitIssue
+      type: number
+      description: Issue for reusable modal table form and shared component kit
+      required: true
+    - name: pageGroupIssues
+      type: array
+      description: Issues for app shell creator admin shop profile lobby room social
+        editor detail and runtime migration groups
+      required: true
+    - name: designSourceOfTruth
+      type: string
+      description: Expanded current editor DESIGN.md tone used as the visual standard
+      required: true
+    - name: successCriteria
+      type: array
+      description: Required rollout success criteria
+      required: true
+    - name: executionOrder
+      type: array
+      description: Dependency-ordered rollout sequence
+      required: true
+    - name: runtimePolicy
+      type: string
+      description: How game runtime aligns with the product-wide design system
+      required: true
+    - name: mergePolicy
+      type: string
+      description: PR grouping and merge gate strategy
+      required: true
+    - name: screenshotEvidence
+      type: array
+      description: Browser screenshots captured for each migrated page group
+      required: true
+    - name: visualDebt
+      type: array
+      description: Remaining inconsistencies found from screenshot matrix
+      required: true
+    - name: acceptanceGates
+      type: array
+      description: Checks required before a group PR can merge
+      required: true
+evaluation_principles:
+  - name: ThemeStability
+    description: Light dark and system mode must work reliably before dependent UI migration
+    weight: 1.0
+  - name: VisualConsistency
+    description: Whole web app should converge on the expanded editor DESIGN.md product tone
+    weight: 1.0
+  - name: UIReuse
+    description: Modal table form and common components should be reused consistently within migrated groups
+    weight: 0.9
+  - name: IncrementalMigration
+    description: Old pages may remain temporarily but each scheduled group must finish cleanly before merge
+    weight: 0.85
+  - name: ScreenshotQA
+    description: Browser screenshot evidence must exist for each migrated page group and drive final consistency judgment
+    weight: 0.9
+  - name: RuntimeCoherence
+    description: Game runtime should align with editor/product tone unless runtime-specific needs require bounded exceptions
+    weight: 0.8
+  - name: PRDiscipline
+    description: Group PRs should merge only when scope completion and QA gates are satisfied
+    weight: 0.85
+exit_conditions:
+  - name: RolloutPlanReady
+    description: Seed can proceed to execution planning
+    criteria: Goal constraints acceptance criteria ontology evaluation principles and issue mapping are complete
+  - name: GroupMergeReady
+    description: A page group PR may merge
+    criteria: Group scope complete light/dark/system works UI kit usage is consistent and browser screenshots are captured
+  - name: RolloutComplete
+    description: Project-wide design rollout is done
+    criteria: Foundation UI kit all page groups runtime migration and screenshot-based visual debt review are complete
+  - name: StopForUserDecision
+    description: Workflow should pause
+    criteria: Runtime-specific conflict or visual direction decision cannot be resolved from repo facts
+metadata:
+  seed_id: seed_f26837299441
+  version: 1.0.0
+  created_at: '2026-05-18T15:27:32.508337Z'
+  ambiguity_score: 0.112
+  interview_id: interview_20260518_152126
+  parent_seed_id: null

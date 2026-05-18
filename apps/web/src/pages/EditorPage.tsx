@@ -4,9 +4,9 @@ import { EditorDashboard } from '@/features/editor/components';
 import { ThemeEditor } from '@/features/editor/components';
 import '@/features/editor/design-system/editorNotionTheme.css';
 import { EDITOR_DESIGN_SCOPE_CLASS } from '@/features/editor/design-system/editorDesignTokens';
-import { useEditorAppearance } from '@/features/editor/design-system/useEditorAppearance';
 import { readEditorTabFromRouteSegment } from '@/features/editor/routeSegments';
 import { useEditorUI } from '@/features/editor/stores/editorUIStore';
+import { useAppearance } from '@/shared/appearance';
 
 export default function EditorPage() {
   const { id } = useParams<{
@@ -35,7 +35,7 @@ function EditorDetailPageFrame({
   themeId: string;
   routeSegment?: string;
 }) {
-  const { preference, resolvedTheme, setPreference } = useEditorAppearance();
+  const { preference, resolvedTheme, setPreference } = useAppearance();
 
   return (
     <div
