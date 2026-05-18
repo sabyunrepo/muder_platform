@@ -73,6 +73,25 @@ describe("MediaCard", () => {
     expect(screen.getByLabelText("이미지")).toBeDefined();
   });
 
+  it("최적화된 thumbnail_url이 있으면 원본 url보다 먼저 사용한다", () => {
+    renderCard({
+      ...baseMedia,
+      id: "image-optimized-1",
+      name: "최적화 단서 사진",
+      type: "IMAGE",
+      url: "https://example.com/original.webp",
+      preview_url: "https://example.com/preview.webp",
+      thumbnail_url: "https://example.com/thumbnail.webp",
+      mime_type: "image/webp",
+    });
+
+    const image = document.querySelector("img") as HTMLImageElement;
+    expect(image).not.toBeNull();
+    expect(image.getAttribute("src")).toBe("https://example.com/thumbnail.webp");
+    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
+    expect(useMediaDownloadUrlMock).not.toHaveBeenCalledWith("image-optimized-1");
+  });
+
   it("업로드 이미지는 임시 다운로드 URL로 preview를 보여준다", () => {
     useMediaDownloadUrlMock.mockReturnValue({
       data: { url: "https://download.example/clue.webp", expires_at: "2026-05-12T00:15:00Z" },

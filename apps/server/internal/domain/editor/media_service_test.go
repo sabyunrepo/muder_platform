@@ -1,10 +1,14 @@
 package editor
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"io"
 	"strings"
 	"testing"
@@ -624,10 +628,26 @@ type fakeStorageProvider struct {
 	deleteObjectsErr    error
 	headErr             error
 	rangeErr            error
+	putErrKeyContains   string
+	putErr              error
 }
 
 func newFakeStorageProvider() *fakeStorageProvider {
 	return &fakeStorageProvider{objects: make(map[string][]byte)}
+}
+
+func tinyPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 2, 2))
+	img.Set(0, 0, color.RGBA{R: 255, A: 255})
+	img.Set(1, 0, color.RGBA{G: 255, A: 255})
+	img.Set(0, 1, color.RGBA{B: 255, A: 255})
+	img.Set(1, 1, color.RGBA{R: 255, G: 255, B: 255, A: 255})
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode tiny png: %v", err)
+	}
+	return buf.Bytes()
 }
 
 func (f *fakeStorageProvider) GenerateUploadURL(_ context.Context, key string, _ string, _ int64, _ time.Duration) (string, error) {
@@ -645,6 +665,9 @@ func (f *fakeStorageProvider) GenerateDownloadURL(_ context.Context, key string,
 }
 
 func (f *fakeStorageProvider) PutObject(_ context.Context, key string, body io.Reader, _ string, _ int64) error {
+	if f.putErr != nil && (f.putErrKeyContains == "" || strings.Contains(key, f.putErrKeyContains)) {
+		return f.putErr
+	}
 	b, err := io.ReadAll(body)
 	if err != nil {
 		return err
@@ -830,6 +853,29 @@ func TestMediaService_ResolveMediaURL_BindsMediaToSessionTheme(t *testing.T) {
 
 	_, _, err = svc.ResolveMediaURL(context.Background(), sessionID, otherMediaID, MediaTypeImage)
 	assertMediaAppCode(t, err, apperror.ErrNotFound)
+}
+
+func TestMediaService_ResolveMediaURL_UsesImagePreviewVariant(t *testing.T) {
+	svc, q, _, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	sessionID := uuid.New()
+	q.sessions[sessionID] = db.GameSession{ID: sessionID, ThemeID: themeID}
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	media := q.media[mediaID]
+	media.StorageKey = pgtype.Text{String: mediaImageVariantKey(themeID, mediaID, imageVariantMaster), Valid: true}
+	q.media[mediaID] = media
+	st.objects[media.StorageKey.String] = []byte("master")
+	previewKey := mediaImageVariantKey(themeID, mediaID, imageVariantPreview)
+	st.objects[previewKey] = []byte("preview")
+
+	url, sourceType, err := svc.ResolveMediaURL(context.Background(), sessionID, mediaID, MediaTypeImage)
+	if err != nil {
+		t.Fatalf("ResolveMediaURL image preview: %v", err)
+	}
+	if sourceType != SourceTypeFile || !strings.Contains(url, previewKey) {
+		t.Fatalf("expected preview variant URL, got url=%q source=%q", url, sourceType)
+	}
 }
 
 // --- DeleteMedia reference-check tests ---
@@ -2232,7 +2278,7 @@ func TestMediaService_ConfirmUpload_ImageMagicBytes(t *testing.T) {
 	svc.storage = st
 	mediaID := uuid.New()
 	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".png"
-	header := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 'b', 'o', 'd', 'y'}
+	header := tinyPNG(t)
 	q.media[mediaID] = db.ThemeMedium{
 		ID:         mediaID,
 		ThemeID:    themeID,
@@ -2250,8 +2296,54 @@ func TestMediaService_ConfirmUpload_ImageMagicBytes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ConfirmUpload IMAGE/png: %v", err)
 	}
-	if resp.Type != MediaTypeImage || resp.MimeType == nil || *resp.MimeType != "image/png" {
+	if resp.Type != MediaTypeImage || resp.MimeType == nil || *resp.MimeType != imageVariantMimeType {
 		t.Fatalf("unexpected response: %#v", resp)
+	}
+	if resp.PreviewURL == nil || resp.ThumbnailURL == nil || resp.URL == nil {
+		t.Fatalf("optimized image response should include variant URLs: %#v", resp)
+	}
+	if _, ok := st.objects[mediaImageVariantKey(themeID, mediaID, imageVariantMaster)]; !ok {
+		t.Fatalf("master variant should be stored")
+	}
+	if _, ok := st.objects[mediaImageVariantKey(themeID, mediaID, imageVariantPreview)]; !ok {
+		t.Fatalf("preview variant should be stored")
+	}
+	if _, ok := st.objects[mediaImageVariantKey(themeID, mediaID, imageVariantThumbnail)]; !ok {
+		t.Fatalf("thumbnail variant should be stored")
+	}
+}
+
+func TestMediaService_ConfirmUpload_ImageVariantFailureCleansPendingRowAndObjects(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	st.putErrKeyContains = imageVariantThumbnail + ".webp"
+	st.putErr = errors.New("storage write failed")
+	svc.storage = st
+	mediaID := uuid.New()
+	storageKey := mediaImageUploadKey(themeID, mediaID, ".png")
+	payload := tinyPNG(t)
+	q.media[mediaID] = db.ThemeMedium{
+		ID:         mediaID,
+		ThemeID:    themeID,
+		Name:       "background.png",
+		Type:       MediaTypeImage,
+		SourceType: SourceTypeFile,
+		StorageKey: pgtype.Text{String: storageKey, Valid: true},
+		FileSize:   pgtype.Int8{Int64: int64(len(payload)), Valid: true},
+		MimeType:   pgtype.Text{String: "image/png", Valid: true},
+		Tags:       []string{},
+	}
+	st.objects[storageKey] = payload
+
+	_, err := svc.ConfirmUpload(context.Background(), creatorID, themeID, ConfirmUploadRequest{UploadID: mediaID})
+	assertMediaAppCode(t, err, apperror.ErrInternal)
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("failed optimized upload should remove pending media row")
+	}
+	for key := range st.objects {
+		if strings.Contains(key, mediaID.String()) {
+			t.Fatalf("failed optimized upload should cleanup related objects, found %s", key)
+		}
 	}
 }
 
@@ -2602,17 +2694,18 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	media := q.media[mediaID]
 	media.Duration = pgtype.Int4{Int32: 123, Valid: true}
 	q.media[mediaID] = media
-	st.objects[oldKey] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	st.objects[oldKey] = tinyPNG(t)
 
+	replacementBody := tinyPNG(t)
 	upload, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
 		MimeType: "image/png",
-		FileSize: 8,
+		FileSize: int64(len(replacementBody)),
 	})
 	if err != nil {
 		t.Fatalf("RequestReplacementUpload: %v", err)
 	}
 	pending := q.replacements[upload.UploadID]
-	st.objects[pending.StorageKey] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	st.objects[pending.StorageKey] = replacementBody
 
 	resp, err := svc.ConfirmReplacementUpload(context.Background(), creatorID, mediaID, ConfirmUploadRequest{UploadID: upload.UploadID})
 	if err != nil {
@@ -2621,7 +2714,7 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	if resp.ID != mediaID {
 		t.Fatalf("replacement must preserve media id: got %s want %s", resp.ID, mediaID)
 	}
-	if q.media[mediaID].StorageKey.String != pending.StorageKey {
+	if q.media[mediaID].StorageKey.String != mediaImageVariantKey(themeID, mediaID, imageVariantMaster) {
 		t.Fatalf("storage key was not replaced")
 	}
 	if q.media[mediaID].Duration.Valid {
@@ -2629,6 +2722,12 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	}
 	if _, ok := st.objects[oldKey]; ok {
 		t.Fatalf("old object should be deleted")
+	}
+	for _, variant := range []string{imageVariantMaster, imageVariantPreview, imageVariantThumbnail} {
+		key := mediaImageVariantKey(themeID, mediaID, variant)
+		if _, ok := st.objects[key]; !ok {
+			t.Fatalf("optimized replacement variant should remain: %s", key)
+		}
 	}
 	if _, ok := q.replacements[upload.UploadID]; ok {
 		t.Fatalf("pending replacement should be deleted")
@@ -2641,7 +2740,7 @@ func TestMediaService_Delete_FileMediaBestEffortStorageCleanup(t *testing.T) {
 	svc.storage = st
 	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
 	key := q.media[mediaID].StorageKey.String
-	st.objects[key] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	st.objects[key] = tinyPNG(t)
 
 	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID, DeleteMediaOptions{DetachReferences: true}); err != nil {
 		t.Fatalf("DeleteMedia: %v", err)
@@ -2651,6 +2750,28 @@ func TestMediaService_Delete_FileMediaBestEffortStorageCleanup(t *testing.T) {
 	}
 	if _, ok := st.objects[key]; ok {
 		t.Fatalf("storage object should be deleted")
+	}
+}
+
+func TestMediaService_Delete_ImageMediaDeletesOptimizedVariants(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	media := q.media[mediaID]
+	media.StorageKey = pgtype.Text{String: mediaImageVariantKey(themeID, mediaID, imageVariantMaster), Valid: true}
+	q.media[mediaID] = media
+	for _, key := range mediaImageVariantKeysFor(media) {
+		st.objects[key] = []byte("variant")
+	}
+
+	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID, DeleteMediaOptions{DetachReferences: true}); err != nil {
+		t.Fatalf("DeleteMedia: %v", err)
+	}
+	for _, key := range mediaImageVariantKeysFor(media) {
+		if _, ok := st.objects[key]; ok {
+			t.Fatalf("optimized variant should be deleted: %s", key)
+		}
 	}
 }
 
@@ -2763,15 +2884,16 @@ func TestMediaService_ConfirmReplacementUpload_ErrorPaths(t *testing.T) {
 	assertMediaAppCode(t, err, apperror.ErrInternal)
 
 	st.headErr = nil
+	replacementBody := tinyPNG(t)
 	upload, err = svc.RequestReplacementUpload(context.Background(), creatorID, otherMediaID, RequestMediaReplacementUploadRequest{
 		MimeType: "image/png",
-		FileSize: 8,
+		FileSize: int64(len(replacementBody)),
 	})
 	if err != nil {
 		t.Fatalf("RequestReplacementUpload for range failure: %v", err)
 	}
 	pending := q.replacements[upload.UploadID]
-	st.objects[pending.StorageKey] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	st.objects[pending.StorageKey] = replacementBody
 	st.rangeErr = errors.New("range failed")
 	_, err = svc.ConfirmReplacementUpload(context.Background(), creatorID, otherMediaID, ConfirmUploadRequest{UploadID: upload.UploadID})
 	assertMediaAppCode(t, err, apperror.ErrInternal)
@@ -2795,7 +2917,7 @@ func TestMediaService_ConfirmUpload_SizeMismatchCleansPendingMedia(t *testing.T)
 	svc.storage = st
 	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
 	key := q.media[mediaID].StorageKey.String
-	st.objects[key] = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	st.objects[key] = tinyPNG(t)
 
 	_, err := svc.ConfirmUpload(context.Background(), creatorID, themeID, ConfirmUploadRequest{UploadID: mediaID})
 	assertMediaAppCode(t, err, apperror.ErrMediaTooLarge)

@@ -209,7 +209,7 @@ func (s *mediaService) ListMedia(ctx context.Context, creatorID, themeID uuid.UU
 
 	out := make([]MediaResponse, 0, len(rows))
 	for _, m := range rows {
-		out = append(out, toMediaResponse(m))
+		out = append(out, s.toMediaResponse(ctx, m))
 	}
 	return out, nil
 }
@@ -270,6 +270,9 @@ func (s *mediaService) RequestUpload(ctx context.Context, creatorID, themeID uui
 
 	mediaID := uuid.New()
 	storageKey := fmt.Sprintf("themes/%s/media/%s%s", themeID.String(), mediaID.String(), ext)
+	if req.Type == MediaTypeImage {
+		storageKey = mediaImageUploadKey(themeID, mediaID, ext)
+	}
 	duration, err := mediaUploadDurationParam(req.Type, req.Duration)
 	if err != nil {
 		return nil, err
@@ -469,7 +472,82 @@ func (s *mediaService) ConfirmUpload(ctx context.Context, creatorID, themeID uui
 		return nil, err
 	}
 
-	resp := toMediaResponse(media)
+	if media.Type == MediaTypeImage {
+		return s.confirmImageUpload(ctx, creatorID, media)
+	}
+
+	resp := s.toMediaResponse(ctx, media)
+	return &resp, nil
+}
+
+func (s *mediaService) confirmImageUpload(ctx context.Context, creatorID uuid.UUID, media db.ThemeMedium) (*MediaResponse, error) {
+	storageKey := media.StorageKey.String
+	declaredSize := media.FileSize.Int64
+	declaredMime := media.MimeType.String
+
+	payload, err := readStorageObject(ctx, s.storage, storageKey, declaredSize)
+	if err != nil {
+		s.logger.Error().Err(err).Str("storage_key", storageKey).Msg("failed to read uploaded image")
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
+		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
+		return nil, apperror.Internal("failed to read uploaded image")
+	}
+	if int64(len(payload)) != declaredSize {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
+		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
+		return nil, apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
+	}
+
+	variants, totalSize, err := optimizeImageVariants(media.ThemeID, media.ID, declaredMime, payload)
+	if err != nil {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
+		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
+		return nil, err
+	}
+
+	writtenKeys := make([]string, 0, len(variants)+1)
+	for _, variant := range variants {
+		if err := s.storage.PutObject(ctx, variant.key, bytes.NewReader(variant.body), variant.contentType, int64(len(variant.body))); err != nil {
+			s.logger.Error().Err(err).Str("storage_key", variant.key).Msg("failed to store optimized image variant")
+			cleanupCtx, cancel := storageCleanupContext(ctx)
+			defer cancel()
+			_ = s.storage.DeleteObjects(cleanupCtx, append(writtenKeys, storageKey))
+			_ = s.q.DeleteMedia(cleanupCtx, media.ID)
+			return nil, apperror.Internal("failed to optimize image")
+		}
+		writtenKeys = append(writtenKeys, variant.key)
+	}
+
+	masterKey := mediaImageVariantKey(media.ThemeID, media.ID, imageVariantMaster)
+	storageParam, sizeParam, mimeParam := imageMediaFileParams(masterKey, totalSize)
+	updated, err := s.q.UpdateMediaFileWithOwner(ctx, db.UpdateMediaFileWithOwnerParams{
+		ID:         media.ID,
+		CreatorID:  creatorID,
+		StorageKey: storageParam,
+		FileSize:   sizeParam,
+		MimeType:   mimeParam,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", media.ID.String()).Msg("failed to finalize optimized image upload")
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObjects(cleanupCtx, append(writtenKeys, storageKey))
+		_ = s.q.DeleteMedia(cleanupCtx, media.ID)
+		return nil, apperror.Internal("failed to create media record")
+	}
+
+	cleanupCtx, cancel := storageCleanupContext(ctx)
+	defer cancel()
+	if storageKey != masterKey {
+		_ = s.storage.DeleteObject(cleanupCtx, storageKey)
+	}
+	resp := s.toMediaResponse(ctx, updated)
 	return &resp, nil
 }
 
@@ -689,9 +767,18 @@ func (s *mediaService) ResolveMediaURL(ctx context.Context, sessionID, mediaID u
 		if err := s.requireStorage(); err != nil {
 			return "", "", err
 		}
-		url, err := s.storage.GenerateDownloadURL(ctx, media.StorageKey.String, 15*time.Minute)
+		storageKey := media.StorageKey.String
+		if media.Type == MediaTypeImage {
+			previewKey := mediaImageVariantKey(media.ThemeID, media.ID, imageVariantPreview)
+			if _, headErr := s.storage.HeadObject(ctx, previewKey); headErr == nil {
+				storageKey = previewKey
+			} else if !errors.Is(headErr, storage.ErrObjectNotFound) {
+				s.logger.Warn().Err(headErr).Str("storage_key", previewKey).Msg("failed to check media preview variant")
+			}
+		}
+		url, err := s.storage.GenerateDownloadURL(ctx, storageKey, 15*time.Minute)
 		if err != nil {
-			s.logger.Error().Err(err).Str("storage_key", media.StorageKey.String).Msg("failed to generate download URL")
+			s.logger.Error().Err(err).Str("storage_key", storageKey).Msg("failed to generate download URL")
 			return "", "", apperror.Internal("failed to generate download URL")
 		}
 		return url, SourceTypeFile, nil
@@ -905,6 +992,25 @@ func toMediaResponse(m db.ThemeMedium) MediaResponse {
 	if m.CategoryID.Valid {
 		categoryID := uuid.UUID(m.CategoryID.Bytes)
 		resp.CategoryID = &categoryID
+	}
+	return resp
+}
+
+func (s *mediaService) toMediaResponse(ctx context.Context, m db.ThemeMedium) MediaResponse {
+	resp := toMediaResponse(m)
+	if m.Type != MediaTypeImage || m.SourceType != SourceTypeFile || !m.StorageKey.Valid || s.storage == nil {
+		return resp
+	}
+	masterURL := s.imageVariantDownloadURL(ctx, m, imageVariantMaster, m.StorageKey.String)
+	previewURL := s.imageVariantDownloadURL(ctx, m, imageVariantPreview, m.StorageKey.String)
+	thumbnailURL := s.imageVariantDownloadURL(ctx, m, imageVariantThumbnail, m.StorageKey.String)
+	resp.MasterURL = masterURL
+	resp.PreviewURL = previewURL
+	resp.ThumbnailURL = thumbnailURL
+	if previewURL != nil {
+		resp.URL = previewURL
+	} else if masterURL != nil {
+		resp.URL = masterURL
 	}
 	return resp
 }

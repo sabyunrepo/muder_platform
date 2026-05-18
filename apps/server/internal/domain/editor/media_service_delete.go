@@ -39,8 +39,12 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 	}
 
 	if media.SourceType == SourceTypeFile && media.StorageKey.Valid && s.storage != nil {
-		if delErr := s.storage.DeleteObject(ctx, media.StorageKey.String); delErr != nil {
-			s.logger.Error().Err(delErr).Str("storage_key", media.StorageKey.String).Msg("failed to delete storage object")
+		keys := mediaImageVariantKeysFor(media)
+		if len(keys) == 0 {
+			keys = []string{media.StorageKey.String}
+		}
+		if delErr := s.storage.DeleteObjects(ctx, keys); delErr != nil {
+			s.logger.Error().Err(delErr).Strs("storage_keys", keys).Msg("failed to delete storage object")
 			return apperror.Internal("failed to delete storage object")
 		}
 	}
