@@ -27,6 +27,7 @@ vi.mock('@/features/editor/components', () => ({
 }));
 
 import EditorPage from '../EditorPage';
+import { EDITOR_DESIGN_SCOPE_CLASS } from '@/features/editor/design-system/editorDesignTokens';
 
 const routeMatrixCases = [
   ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
@@ -103,6 +104,9 @@ describe('EditorPage', () => {
     render(<EditorPage />);
 
     expect(screen.getByText('에디터 대시보드')).toBeDefined();
+    expect(screen.getByText('에디터 대시보드').parentElement?.className).toContain(
+      EDITOR_DESIGN_SCOPE_CLASS
+    );
     expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
   });
 
@@ -113,6 +117,9 @@ describe('EditorPage', () => {
     render(<EditorPage />);
 
     expect(screen.getByText(/테마 에디터 theme-1 characters/)).toBeDefined();
+    expect(screen.getByText(/테마 에디터 theme-1 characters/).parentElement?.className).toContain(
+      EDITOR_DESIGN_SCOPE_CLASS
+    );
     expect(setActiveTabMock).toHaveBeenCalledWith('characters');
   });
 
