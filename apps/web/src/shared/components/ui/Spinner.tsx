@@ -1,6 +1,7 @@
 export interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  label?: string;
 }
 
 const sizeClasses = {
@@ -9,12 +10,12 @@ const sizeClasses = {
   lg: 'h-8 w-8',
 } as const;
 
-export function Spinner({ size = 'md', className = '' }: SpinnerProps) {
+export function Spinner({ size = 'md', className = '', label = 'Loading' }: SpinnerProps) {
   return (
     <div
       role="status"
-      aria-label="Loading"
-      className={`animate-spin rounded-full border-2 border-amber-500 border-t-transparent ${sizeClasses[size]} ${className}`}
+      aria-label={label}
+      className={`animate-spin rounded-full border-2 border-[var(--mmp-color-primary)] border-t-transparent ${sizeClasses[size]} ${className}`}
     />
   );
 }

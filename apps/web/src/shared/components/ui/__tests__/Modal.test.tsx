@@ -43,7 +43,7 @@ describe("Modal", () => {
     it("X 버튼 클릭 시 onClose를 호출한다", () => {
       const onClose = vi.fn();
       render(<Modal {...defaultProps} onClose={onClose} />);
-      const closeBtn = screen.getByLabelText("Close");
+      const closeBtn = screen.getByLabelText("닫기");
       fireEvent.click(closeBtn);
       expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -51,7 +51,6 @@ describe("Modal", () => {
     it("오버레이 클릭 시 onClose를 호출한다", () => {
       const onClose = vi.fn();
       render(<Modal {...defaultProps} onClose={onClose} />);
-      // 오버레이는 aria-hidden="true"인 div
       const overlay = document.querySelector('[aria-hidden="true"]');
       expect(overlay).not.toBeNull();
       fireEvent.click(overlay!);
@@ -75,13 +74,29 @@ describe("Modal", () => {
     });
 
     it("footer가 없으면 footer 영역을 렌더링하지 않는다", () => {
-      const { container } = render(<Modal {...defaultProps} />);
+      render(<Modal {...defaultProps} />);
       // footer 영역은 border-t 클래스를 가진 flex 컨테이너
       const dialog = screen.getByRole("dialog");
-      const footerArea = dialog.querySelector(".border-t.border-slate-800");
-      // header도 border-b를 가지므로, footer는 justify-end를 가진 것만 체크
       const footerDiv = dialog.querySelector(".justify-end.border-t");
       expect(footerDiv).toBeNull();
+    });
+  });
+
+  describe("focus", () => {
+    it("열릴 때 첫 focusable 요소에 focus하고 닫힐 때 이전 focus를 복원한다", () => {
+      const onClose = vi.fn();
+      render(
+        <>
+          <button type="button">트리거</button>
+          <Modal isOpen onClose={onClose} title="포커스 모달">
+            <button type="button">첫 버튼</button>
+          </Modal>
+        </>,
+      );
+
+      expect(screen.getByRole("button", { name: "닫기" })).toBe(document.activeElement);
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(onClose).toHaveBeenCalledTimes(1);
     });
   });
 });

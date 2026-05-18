@@ -44,12 +44,12 @@ describe("Pagination", () => {
       expect(current.getAttribute("aria-current")).toBe("page");
     });
 
-    it("현재 페이지 버튼에 amber 클래스가 적용된다", () => {
+    it("현재 페이지 버튼에 semantic primary 클래스가 적용된다", () => {
       render(
         <Pagination currentPage={2} totalPages={5} onPageChange={vi.fn()} />,
       );
       const current = screen.getByText("2");
-      expect(current.className).toContain("bg-amber-500");
+      expect(current.className).toContain("bg-[var(--mmp-color-primary)]");
     });
   });
 

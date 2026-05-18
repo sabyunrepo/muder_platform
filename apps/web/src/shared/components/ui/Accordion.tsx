@@ -118,7 +118,7 @@ export function Accordion({ items, storageKey, className = '' }: AccordionProps)
         return (
           <section
             key={item.id}
-            className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/80"
+            className="overflow-hidden rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)]"
           >
             <button
               id={buttonId}
@@ -127,24 +127,28 @@ export function Accordion({ items, storageKey, className = '' }: AccordionProps)
               aria-controls={panelId}
               disabled={item.disabled}
               onClick={() => toggle(item.id)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--mmp-color-surface-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)] focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ChevronDown
-                className={`h-4 w-4 shrink-0 text-slate-500 transition-transform ${
+                className={`h-4 w-4 shrink-0 text-[var(--mmp-color-muted)] transition-transform ${
                   isOpen ? 'rotate-0' : '-rotate-90'
                 }`}
               />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-slate-200">
+                <span className="block truncate text-sm font-semibold text-[var(--mmp-color-ink)]">
                   {item.title}
                 </span>
                 {item.subtitle && (
-                  <span className="mt-0.5 block truncate text-xs text-slate-500">
+                  <span className="mt-0.5 block truncate text-xs text-[var(--mmp-color-steel)]">
                     {item.subtitle}
                   </span>
                 )}
               </span>
-              {item.meta && <span className="shrink-0 text-xs text-slate-500">{item.meta}</span>}
+              {item.meta && (
+                <span className="shrink-0 text-xs text-[var(--mmp-color-steel)]">
+                  {item.meta}
+                </span>
+              )}
             </button>
 
             {isOpen && (
@@ -152,7 +156,7 @@ export function Accordion({ items, storageKey, className = '' }: AccordionProps)
                 id={panelId}
                 role="region"
                 aria-labelledby={buttonId}
-                className="border-t border-slate-800 px-4 py-4"
+                className="border-t border-[var(--mmp-color-hairline)] px-4 py-4"
               >
                 {item.children}
               </div>

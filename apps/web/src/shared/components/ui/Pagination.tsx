@@ -36,7 +36,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1}
-        className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 disabled:pointer-events-none"
+        className="rounded-lg p-2 text-[var(--mmp-color-steel)] transition-colors hover:bg-[var(--mmp-color-surface)] hover:text-[var(--mmp-color-ink)] disabled:pointer-events-none disabled:opacity-50"
         aria-label="Previous page"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -44,7 +44,7 @@ export function Pagination({
 
       {pages.map((page, i) =>
         page === '...' ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-sm text-slate-500">
+          <span key={`ellipsis-${i}`} className="px-2 text-sm text-[var(--mmp-color-muted)]">
             ...
           </span>
         ) : (
@@ -54,8 +54,8 @@ export function Pagination({
             disabled={page === currentPage}
             className={`min-w-[2rem] rounded-lg px-2 py-1 text-sm font-medium transition-colors ${
               page === currentPage
-                ? 'bg-amber-500 text-slate-950'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                ? 'bg-[var(--mmp-color-primary)] text-[var(--mmp-color-on-primary)]'
+                : 'text-[var(--mmp-color-steel)] hover:bg-[var(--mmp-color-surface)] hover:text-[var(--mmp-color-ink)]'
             }`}
             aria-current={page === currentPage ? 'page' : undefined}
           >
@@ -67,7 +67,7 @@ export function Pagination({
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage >= totalPages}
-        className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 disabled:pointer-events-none"
+        className="rounded-lg p-2 text-[var(--mmp-color-steel)] transition-colors hover:bg-[var(--mmp-color-surface)] hover:text-[var(--mmp-color-ink)] disabled:pointer-events-none disabled:opacity-50"
         aria-label="Next page"
       >
         <ChevronRight className="h-4 w-4" />

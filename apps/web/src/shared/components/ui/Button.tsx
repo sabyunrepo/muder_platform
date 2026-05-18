@@ -1,29 +1,43 @@
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { Spinner } from './Spinner';
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
+  leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
 }
+
+export interface IconButtonProps extends Omit<ButtonProps, 'children' | 'leftIcon' | 'rightIcon'> {
+  icon: ReactNode;
+  label: string;
+}
+
+const baseClasses =
+  'inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--mmp-color-canvas)] disabled:pointer-events-none disabled:opacity-50';
 
 const variantClasses = {
   primary:
-    'bg-amber-500 text-slate-950 hover:bg-amber-400 focus-visible:ring-amber-500',
+    'bg-[var(--mmp-color-primary)] text-[var(--mmp-color-on-primary)] hover:brightness-105',
   secondary:
-    'bg-slate-800 text-slate-100 hover:bg-slate-700 focus-visible:ring-slate-600',
+    'border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] text-[var(--mmp-color-ink)] hover:bg-[var(--mmp-color-surface-soft)]',
   ghost:
-    'bg-transparent text-slate-300 hover:bg-slate-800 focus-visible:ring-slate-600',
+    'bg-transparent text-[var(--mmp-color-charcoal)] hover:bg-[var(--mmp-color-surface)]',
   danger:
-    'bg-red-600 text-white hover:bg-red-500 focus-visible:ring-red-500',
+    'bg-[var(--mmp-color-error)] text-white hover:brightness-105',
 } as const;
 
 const sizeClasses = {
-  sm: 'px-3 py-1.5 text-sm gap-1.5',
-  md: 'px-4 py-2 text-sm gap-2',
-  lg: 'px-6 py-3 text-base gap-2',
+  sm: 'min-h-8 gap-1.5 px-3 py-1.5 text-sm',
+  md: 'min-h-10 gap-2 px-4 py-2 text-sm',
+  lg: 'min-h-11 gap-2 px-5 py-2.5 text-base',
+} as const;
+
+const iconSizeClasses = {
+  sm: 'h-8 w-8',
+  md: 'h-10 w-10',
+  lg: 'h-11 w-11',
 } as const;
 
 export function Button({
@@ -35,20 +49,42 @@ export function Button({
   disabled,
   children,
   className = '',
+  type = 'button',
   ...rest
 }: ButtonProps) {
   const isDisabled = disabled || isLoading;
 
   return (
     <button
-      type={rest.type ?? 'button'}
+      type={type}
       disabled={isDisabled}
-      className={`inline-flex items-center justify-center rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:opacity-50 disabled:pointer-events-none ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       {...rest}
     >
       {isLoading ? <Spinner size="sm" /> : leftIcon}
       {children}
       {!isLoading && rightIcon}
     </button>
+  );
+}
+
+export function IconButton({
+  icon,
+  label,
+  size = 'md',
+  variant = 'ghost',
+  className = '',
+  ...rest
+}: IconButtonProps) {
+  return (
+    <Button
+      {...rest}
+      variant={variant}
+      size={size}
+      className={`${iconSizeClasses[size]} px-0 py-0 ${className}`}
+      aria-label={label}
+    >
+      {icon}
+    </Button>
   );
 }
