@@ -225,7 +225,7 @@ function ResourceThumbnail({
       <img
         src={thumbnailUrl}
         alt=""
-        className="h-full w-full object-cover"
+        className="h-full w-full object-contain"
         loading="lazy"
         onError={() => setThumbnailFailed(true)}
       />

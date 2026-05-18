@@ -6,8 +6,15 @@ FROM golang:1.25-alpine
 ARG USER_UID=1000
 ARG USER_GID=1000
 
-RUN addgroup -g ${USER_GID} -S appuser \
- && adduser -u ${USER_UID} -G appuser -S -h /home/appuser -s /bin/sh appuser
+RUN apk add --no-cache build-base libwebp-dev
+
+RUN set -eux; \
+    group_name="$(awk -F: -v gid="${USER_GID}" '$3 == gid {print $1; exit}' /etc/group)"; \
+    if [ -z "$group_name" ]; then \
+        group_name=appuser; \
+        addgroup -g "${USER_GID}" -S "$group_name"; \
+    fi; \
+    adduser -u "${USER_UID}" -G "$group_name" -S -h /home/appuser -s /bin/sh appuser
 
 RUN go install github.com/air-verse/air@latest
 WORKDIR /build

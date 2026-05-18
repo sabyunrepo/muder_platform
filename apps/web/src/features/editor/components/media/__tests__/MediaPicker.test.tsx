@@ -283,6 +283,9 @@ describe("MediaPicker", () => {
 
     expect(sources).toContain("https://example.com/evidence.webp");
     expect(sources).toContain("https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg");
+    images.forEach((image) => {
+      expect(image.className).toContain("object-contain");
+    });
   });
 
   it("공개 URL이 없는 파일 이미지도 download URL로 picker thumbnail을 표시한다", () => {
