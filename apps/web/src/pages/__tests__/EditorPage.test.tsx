@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const { locationPathMock, paramsMock, setActiveTabMock } = vi.hoisted(() => ({
   locationPathMock: vi.fn(() => '/editor'),
@@ -19,15 +19,27 @@ vi.mock('@/features/editor/stores/editorUIStore', () => ({
 
 vi.mock('@/features/editor/components', () => ({
   EditorDashboard: () => <div>에디터 대시보드</div>,
-  ThemeEditor: ({ themeId, routeSegment }: { themeId: string; routeSegment?: string }) => (
+  ThemeEditor: ({
+    themeId,
+    routeSegment,
+    appearancePreference,
+    resolvedAppearance,
+  }: {
+    themeId: string;
+    routeSegment?: string;
+    appearancePreference?: string;
+    resolvedAppearance?: string;
+  }) => (
     <div>
-      테마 에디터 {themeId} {routeSegment ?? 'no-segment'}
+      테마 에디터 {themeId} {routeSegment ?? 'no-segment'} {appearancePreference}{' '}
+      {resolvedAppearance}
     </div>
   ),
 }));
 
 import EditorPage from '../EditorPage';
 import { EDITOR_DESIGN_SCOPE_CLASS } from '@/features/editor/design-system/editorDesignTokens';
+import { EDITOR_APPEARANCE_STORAGE_KEY } from '@/features/editor/design-system/useEditorAppearance';
 
 const routeMatrixCases = [
   ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
@@ -90,9 +102,33 @@ const routeMatrixCases = [
   ['직접 URL /editor/:id/endings', { id: 'theme-1', tab: 'endings' }, 'endings', 'endings'],
 ] as const;
 
+function createStorage() {
+  const store = new Map<string, string>();
+  return {
+    getItem: vi.fn((key: string) => store.get(key) ?? null),
+    setItem: vi.fn((key: string, value: string) => {
+      store.set(key, value);
+    }),
+    removeItem: vi.fn((key: string) => {
+      store.delete(key);
+    }),
+    clear: vi.fn(() => {
+      store.clear();
+    }),
+  };
+}
+
+beforeAll(() => {
+  Object.defineProperty(window, 'localStorage', {
+    value: createStorage(),
+    configurable: true,
+  });
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  window.localStorage.clear();
   locationPathMock.mockReturnValue('/editor');
 });
 
@@ -101,12 +137,10 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({});
     locationPathMock.mockReturnValue('/editor');
 
-    render(<EditorPage />);
+    const { container } = render(<EditorPage />);
 
     expect(screen.getByText('에디터 대시보드')).toBeDefined();
-    expect(screen.getByText('에디터 대시보드').parentElement?.className).toContain(
-      EDITOR_DESIGN_SCOPE_CLASS
-    );
+    expect(container.querySelector(`.${EDITOR_DESIGN_SCOPE_CLASS}`)).toBeNull();
     expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
   });
 
@@ -116,11 +150,26 @@ describe('EditorPage', () => {
 
     render(<EditorPage />);
 
-    expect(screen.getByText(/테마 에디터 theme-1 characters/)).toBeDefined();
-    expect(screen.getByText(/테마 에디터 theme-1 characters/).parentElement?.className).toContain(
-      EDITOR_DESIGN_SCOPE_CLASS
-    );
+    const detail = screen.getByText(/테마 에디터 theme-1 characters system light/);
+    expect(detail).toBeDefined();
+    expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
+    expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('light');
+    expect(detail.parentElement?.getAttribute('data-editor-theme-preference')).toBe('system');
     expect(setActiveTabMock).toHaveBeenCalledWith('characters');
+  });
+
+  it('에디터 상세 초기화 시 localStorage에 저장된 valid appearance mode를 복원한다', () => {
+    window.localStorage.setItem(EDITOR_APPEARANCE_STORAGE_KEY, 'dark');
+    paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
+    locationPathMock.mockReturnValue('/editor/theme-1/characters');
+
+    render(<EditorPage />);
+
+    const detail = screen.getByText(/테마 에디터 theme-1 characters dark dark/);
+    expect(detail).toBeDefined();
+    expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
+    expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('dark');
+    expect(detail.parentElement?.getAttribute('data-editor-theme-preference')).toBe('dark');
   });
 
   it.each(routeMatrixCases)(

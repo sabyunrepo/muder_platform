@@ -23,4 +23,13 @@ describe('editorNotionTheme legacy bridge', () => {
     expect(css).toContain('var(--mmp-editor-color-primary)');
     expect(css).toContain('var(--mmp-editor-color-on-primary)');
   });
+
+  it('keeps light and dark mode tokens inside the editor boundary', () => {
+    const css = readFileSync(cssPath, 'utf8');
+
+    expect(css).toContain(".mmp-editor-design-scope[data-editor-theme='dark']");
+    expect(css).toContain('--mmp-editor-color-tag-bg');
+    expect(css).toContain('color-scheme: dark');
+    expect(css).not.toMatch(/(^|\n)\[data-editor-theme='dark'\][,\s{]/);
+  });
 });

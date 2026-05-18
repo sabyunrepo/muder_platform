@@ -1,11 +1,15 @@
-import { useCallback } from "react";
-import { Spinner } from "@/shared/components/ui";
-import { useEditorTheme } from "@/features/editor/api";
-import { useEditorClues } from "@/features/editor/editorClueApi";
-import { validateGameDesign, validateClueGraph } from "@/features/editor/validation";
-import { useClueEdges } from "@/features/editor/clueEdgeApi";
-import { isApiHttpError } from "@/lib/api-error";
-import { EditorLayout } from "./EditorLayout";
+import { useCallback } from 'react';
+import { Spinner } from '@/shared/components/ui';
+import { useEditorTheme } from '@/features/editor/api';
+import { useEditorClues } from '@/features/editor/editorClueApi';
+import { validateGameDesign, validateClueGraph } from '@/features/editor/validation';
+import { useClueEdges } from '@/features/editor/clueEdgeApi';
+import type {
+  EditorAppearancePreference,
+  EditorResolvedAppearance,
+} from '@/features/editor/design-system/useEditorAppearance';
+import { isApiHttpError } from '@/lib/api-error';
+import { EditorLayout } from './EditorLayout';
 
 // ---------------------------------------------------------------------------
 // FullPage helpers
@@ -30,40 +34,41 @@ function FullPageError({ message, detail }: { message: string; detail?: string }
   );
 }
 
-const uuidLikeRe =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidLikeRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function buildThemeLoadError(themeId: string, error?: unknown) {
   if (isApiHttpError(error)) {
     if (error.status === 400) {
       return {
-        message: "테마 주소 형식이 올바르지 않습니다",
-        detail: "주소에는 테마 UUID 또는 영문 소문자, 숫자, 하이픈으로 된 slug만 사용할 수 있습니다.",
+        message: '테마 주소 형식이 올바르지 않습니다',
+        detail:
+          '주소에는 테마 UUID 또는 영문 소문자, 숫자, 하이픈으로 된 slug만 사용할 수 있습니다.',
       };
     }
     if (error.status === 403) {
       return {
-        message: "테마 편집 권한이 없습니다",
-        detail: "현재 로그인한 계정으로는 이 테마를 편집할 수 없습니다. 다른 계정으로 로그인했는지 확인하세요.",
+        message: '테마 편집 권한이 없습니다',
+        detail:
+          '현재 로그인한 계정으로는 이 테마를 편집할 수 없습니다. 다른 계정으로 로그인했는지 확인하세요.',
       };
     }
     if (error.status === 404) {
       return {
-        message: "테마를 찾을 수 없습니다",
-        detail: "삭제됐거나 현재 계정에서 접근할 수 없는 테마일 수 있습니다.",
+        message: '테마를 찾을 수 없습니다',
+        detail: '삭제됐거나 현재 계정에서 접근할 수 없는 테마일 수 있습니다.',
       };
     }
   }
   if (uuidLikeRe.test(themeId)) {
     return {
-      message: "테마를 찾을 수 없습니다",
-      detail: "삭제됐거나 현재 계정에 편집 권한이 없는 테마일 수 있습니다.",
+      message: '테마를 찾을 수 없습니다',
+      detail: '삭제됐거나 현재 계정에 편집 권한이 없는 테마일 수 있습니다.',
     };
   }
   return {
-    message: "샘플 또는 slug 테마를 찾을 수 없습니다",
+    message: '샘플 또는 slug 테마를 찾을 수 없습니다',
     detail:
-      "이 주소는 UUID가 아닌 slug로 열린 주소입니다. 로컬 샘플이라면 e2e-test-theme seed가 적용됐는지 확인하세요.",
+      '이 주소는 UUID가 아닌 slug로 열린 주소입니다. 로컬 샘플이라면 e2e-test-theme seed가 적용됐는지 확인하세요.',
   };
 }
 
@@ -74,11 +79,20 @@ function buildThemeLoadError(themeId: string, error?: unknown) {
 interface ThemeEditorProps {
   themeId: string;
   routeSegment?: string;
+  appearancePreference?: EditorAppearancePreference;
+  resolvedAppearance?: EditorResolvedAppearance;
+  onAppearancePreferenceChange?: (preference: EditorAppearancePreference) => void;
 }
 
-export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
+export function ThemeEditor({
+  themeId,
+  routeSegment,
+  appearancePreference = 'system',
+  resolvedAppearance = 'light',
+  onAppearancePreferenceChange,
+}: ThemeEditorProps) {
   const { data: theme, error, isLoading, isError } = useEditorTheme(themeId);
-  const resolvedThemeId = theme?.id ?? "";
+  const resolvedThemeId = theme?.id ?? '';
   const { data: clues } = useEditorClues(resolvedThemeId);
   const { data: clueEdgeGroups } = useClueEdges(resolvedThemeId);
 
@@ -97,11 +111,11 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
         sourceId: src,
         targetId: g.targetId,
         mode: g.mode,
-      })),
+      }))
     );
     const graphWarnings = validateClueGraph(
       flatRelations,
-      (clues ?? []).map((c) => ({ id: c.id, name: c.name })),
+      (clues ?? []).map((c) => ({ id: c.id, name: c.name }))
     );
     return [...gameWarnings, ...graphWarnings];
   }, [theme, clues, clueEdgeGroups]);
@@ -118,6 +132,9 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
       themeId={resolvedThemeId}
       routeSegment={routeSegment}
       onValidate={handleValidate}
+      appearancePreference={appearancePreference}
+      resolvedAppearance={resolvedAppearance}
+      onAppearancePreferenceChange={onAppearancePreferenceChange}
     />
   );
 }
