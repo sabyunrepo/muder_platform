@@ -228,6 +228,25 @@ WHERE c.theme_id = t.id
   AND c.theme_id = sqlc.arg('theme_id')
   AND c.alias_rules::text ~ ('"display_icon_media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"');
 
+-- name: ClearCharacterImageMediaReferencesWithOwner :execrows
+UPDATE theme_characters c
+SET image_media_id = CASE
+      WHEN c.image_media_id = sqlc.arg('media_id')::uuid THEN NULL
+      ELSE c.image_media_id
+    END,
+    endcard_image_media_id = CASE
+      WHEN c.endcard_image_media_id = sqlc.arg('media_id')::uuid THEN NULL
+      ELSE c.endcard_image_media_id
+    END
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND c.theme_id = sqlc.arg('theme_id')
+  AND (
+    c.image_media_id = sqlc.arg('media_id')::uuid
+    OR c.endcard_image_media_id = sqlc.arg('media_id')::uuid
+  );
+
 -- name: ClearThemeCoverMediaReferencesWithOwner :execrows
 UPDATE themes
 SET cover_image_media_id = NULL,
@@ -244,6 +263,24 @@ WHERE m.theme_id = t.id
   AND t.creator_id = sqlc.arg('creator_id')
   AND m.theme_id = sqlc.arg('theme_id')
   AND m.image_media_id = sqlc.arg('media_id');
+
+-- name: ClearClueMediaReferencesWithOwner :execrows
+UPDATE theme_clues c
+SET image_media_id = NULL
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND c.theme_id = sqlc.arg('theme_id')
+  AND c.image_media_id = sqlc.arg('media_id');
+
+-- name: ClearLocationMediaReferencesWithOwner :execrows
+UPDATE theme_locations l
+SET image_media_id = NULL
+FROM themes t
+WHERE l.theme_id = t.id
+  AND t.creator_id = sqlc.arg('creator_id')
+  AND l.theme_id = sqlc.arg('theme_id')
+  AND l.image_media_id = sqlc.arg('media_id');
 
 -- name: ClearStoryInfoMediaReferencesWithOwner :execrows
 UPDATE story_infos si
@@ -300,6 +337,20 @@ FROM theme_characters
 WHERE theme_id = sqlc.arg('theme_id')
   AND alias_rules::text ~ ('"display_icon_media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"');
 
+-- name: FindCharacterImageReferencesForMedia :many
+SELECT id, name, 'profile'::text AS usage
+FROM theme_characters c
+WHERE c.theme_id = sqlc.arg('theme_id')
+  AND c.image_media_id = sqlc.arg('media_id')::uuid
+
+UNION ALL
+
+SELECT id, name, 'endcard'::text AS usage
+FROM theme_characters c
+WHERE c.theme_id = sqlc.arg('theme_id')
+  AND c.endcard_image_media_id = sqlc.arg('media_id')::uuid
+ORDER BY name, usage;
+
 -- name: FindThemeCoverReferencesForMedia :many
 SELECT id, title
 FROM themes
@@ -309,6 +360,18 @@ WHERE id = sqlc.arg('theme_id')
 -- name: FindMapReferencesForMedia :many
 SELECT id, name
 FROM theme_maps
+WHERE theme_id = sqlc.arg('theme_id')
+  AND image_media_id = sqlc.arg('media_id');
+
+-- name: FindClueReferencesForMedia :many
+SELECT id, name
+FROM theme_clues
+WHERE theme_id = sqlc.arg('theme_id')
+  AND image_media_id = sqlc.arg('media_id');
+
+-- name: FindLocationReferencesForMedia :many
+SELECT id, name
+FROM theme_locations
 WHERE theme_id = sqlc.arg('theme_id')
   AND image_media_id = sqlc.arg('media_id');
 

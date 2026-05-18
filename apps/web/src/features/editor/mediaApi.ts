@@ -88,6 +88,11 @@ export interface MediaDeletePreviewResponse {
   references: MediaReferenceInfo[];
 }
 
+export interface DeleteMediaRequest {
+  id: string;
+  detachReferences?: boolean;
+}
+
 export interface RequestReplacementUploadRequest {
   mime_type: string;
   file_size: number;
@@ -293,8 +298,11 @@ export function useConfirmReplacementUpload(themeId: string, mediaId: string) {
 }
 
 export function useDeleteMedia(themeId: string) {
-  return useMutation<void, Error, string>({
-    mutationFn: (id) => api.deleteVoid(`/v1/editor/media/${id}`),
+  return useMutation<void, Error, DeleteMediaRequest>({
+    mutationFn: ({ id, detachReferences }) => {
+      const qs = detachReferences ? "?detach_references=true" : "";
+      return api.deleteVoid(`/v1/editor/media/${id}${qs}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: mediaKeys.byTheme(themeId) });
     },

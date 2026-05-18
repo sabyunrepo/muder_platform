@@ -422,7 +422,7 @@ describe("useDeleteMedia", () => {
       wrapper: makeWrapper(),
     });
 
-    await result.current.mutateAsync("media-1");
+    await result.current.mutateAsync({ id: "media-1" });
 
     expect(api.deleteVoid).toHaveBeenCalledWith("/v1/editor/media/media-1");
     expect(invalidateSpy).toHaveBeenCalledWith({
@@ -441,12 +441,26 @@ describe("useDeleteMedia", () => {
       wrapper: makeWrapper(),
     });
 
-    await expect(result.current.mutateAsync("media-1")).rejects.toMatchObject({
+    await expect(result.current.mutateAsync({ id: "media-1" })).rejects.toMatchObject({
       status: 409,
       code: "MEDIA_REFERENCE_IN_USE",
     });
     // Invalidation should NOT fire on error.
     expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it("can request reference detach before deleting", async () => {
+    vi.mocked(api.deleteVoid).mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useDeleteMedia(THEME_ID), {
+      wrapper: makeWrapper(),
+    });
+
+    await result.current.mutateAsync({ id: "media-1", detachReferences: true });
+
+    expect(api.deleteVoid).toHaveBeenCalledWith(
+      "/v1/editor/media/media-1?detach_references=true",
+    );
   });
 });
 

@@ -245,7 +245,10 @@ func (h *MediaHandler) DeleteMedia(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.svc.DeleteMedia(r.Context(), creatorID, mediaID); err != nil {
+	opts := DeleteMediaOptions{
+		DetachReferences: r.URL.Query().Get("detach_references") == "true",
+	}
+	if err := h.svc.DeleteMedia(r.Context(), creatorID, mediaID, opts); err != nil {
 		apperror.WriteError(w, r, err)
 		return
 	}

@@ -59,6 +59,8 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const { data: categories = [] } = useMediaCategories(themeId);
   const { data: deletePreview, isLoading: deletePreviewLoading } = useMediaDeletePreview(media.id);
   const references = deletePreview?.references ?? [];
+  const referencesToDetach = references.length > 0 ? references : (referenceWarning ?? []);
+  const hasReferences = referencesToDetach.length > 0;
   const canReplaceFile = media.source_type === 'FILE' && media.type !== 'VIDEO';
   const typeOptions = getEditableMediaTypeOptions(media.type);
   const canChangeMediaType = typeOptions.length > 1;
@@ -94,9 +96,9 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
   const handleDelete = async () => {
     setReferenceWarning(null);
     try {
-      await deleteMutation.mutateAsync(media.id);
+      await deleteMutation.mutateAsync({ id: media.id, detachReferences: hasReferences });
       setDeleteDialogOpen(false);
-      toast.success('미디어가 삭제되었습니다');
+      toast.success(hasReferences ? '연결을 해제하고 미디어를 삭제했습니다' : '미디어가 삭제되었습니다');
       onClose();
     } catch (err) {
       setDeleteDialogOpen(false);
@@ -213,9 +215,9 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             <div className="flex items-start gap-2">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none text-amber-400" />
               <div className="min-w-0 space-y-1">
-                <p className="font-medium">이 미디어는 아직 삭제할 수 없습니다.</p>
+                <p className="font-medium">이 미디어가 아직 사용 중입니다.</p>
                 <p className="text-[11px] text-amber-200/80">
-                  먼저 아래 제작 요소에서 이 미디어 연결을 해제하세요.
+                  삭제를 다시 누르면 아래 연결을 해제한 뒤 삭제할 수 있습니다.
                 </p>
                 {referenceWarning.length > 0 && (
                   <ul className="space-y-1 pt-1">
@@ -276,8 +278,12 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       <ConfirmDialog
         isOpen={deleteDialogOpen}
         title="미디어를 삭제할까요?"
-        description={`"${media.name}" 미디어를 삭제합니다. 사용 중이면 삭제되지 않고 위치가 표시됩니다.`}
-        confirmLabel="미디어 삭제"
+        description={
+          hasReferences
+            ? `"${media.name}" 미디어가 ${referencesToDetach.length}곳에서 사용 중입니다. 삭제하면 해당 연결을 모두 해제합니다.`
+            : `"${media.name}" 미디어를 삭제합니다.`
+        }
+        confirmLabel={hasReferences ? '연결 해제 후 삭제' : '미디어 삭제'}
         isConfirming={deleteMutation.isPending}
         tone="danger"
         onCancel={() => setDeleteDialogOpen(false)}
