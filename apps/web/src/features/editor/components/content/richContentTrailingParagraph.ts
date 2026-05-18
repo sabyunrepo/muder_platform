@@ -30,11 +30,34 @@ export function isCollapsedSelectionAtEndOfElement(element: HTMLElement) {
 
   const range = selection.getRangeAt(0);
   if (!element.contains(range.endContainer)) return false;
+  if (!isSelectionInLastEditableBlock(element, range)) return false;
 
   const afterSelection = range.cloneRange();
   afterSelection.selectNodeContents(element);
   afterSelection.setStart(range.endContainer, range.endOffset);
   return afterSelection.toString().length === 0 && !hasElementContentAfterRange(element, range);
+}
+
+const EDITABLE_BLOCK_SELECTOR = 'p,h1,h2,h3,h4,h5,h6,li';
+
+function isSelectionInLastEditableBlock(element: HTMLElement, range: Range) {
+  if (range.endContainer === element) return true;
+
+  const selectedBlock = findClosestEditableBlock(element, range.endContainer);
+  if (!selectedBlock) return true;
+
+  const editableBlocks = Array.from(
+    element.querySelectorAll<HTMLElement>(EDITABLE_BLOCK_SELECTOR)
+  ).filter((block) => !block.closest('[contenteditable="false"]'));
+  const lastBlock = editableBlocks.at(-1);
+
+  return !lastBlock || selectedBlock === lastBlock;
+}
+
+function findClosestEditableBlock(element: HTMLElement, node: Node) {
+  const candidate = node instanceof HTMLElement ? node : node.parentElement;
+  const block = candidate?.closest<HTMLElement>(EDITABLE_BLOCK_SELECTOR);
+  return block && element.contains(block) ? block : null;
 }
 
 function hasElementContentAfterRange(element: HTMLElement, range: Range) {

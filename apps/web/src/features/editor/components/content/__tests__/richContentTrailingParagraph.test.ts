@@ -77,4 +77,49 @@ describe('richContentTrailingParagraph', () => {
 
     element.remove();
   });
+
+  it('does not treat the end of a middle paragraph as the editable end', () => {
+    const element = document.createElement('div');
+    element.contentEditable = 'true';
+    element.innerHTML =
+      '<p dir="auto"><span data-lexical-text="true">첫 문장</span></p><p dir="auto"><span data-lexical-text="true">둘째 문장</span></p>';
+    document.body.appendChild(element);
+
+    const firstParagraphText = element.querySelector('p')?.textContent;
+    const firstTextNode = element.querySelector('p span')?.firstChild;
+    expect(firstTextNode).not.toBeNull();
+
+    const range = document.createRange();
+    range.setStart(firstTextNode!, firstParagraphText?.length ?? 0);
+    range.collapse(true);
+    document.getSelection()?.removeAllRanges();
+    document.getSelection()?.addRange(range);
+
+    expect(isCollapsedSelectionAtEndOfElement(element)).toBe(false);
+
+    element.remove();
+  });
+
+  it('still detects the end of the last editor paragraph', () => {
+    const element = document.createElement('div');
+    element.contentEditable = 'true';
+    element.innerHTML =
+      '<p dir="auto"><span data-lexical-text="true">첫 문장</span></p><p dir="auto"><span data-lexical-text="true">둘째 문장</span></p>';
+    document.body.appendChild(element);
+
+    const lastParagraph = element.querySelectorAll('p')[1];
+    const lastTextNode = lastParagraph?.querySelector('span')?.firstChild;
+    expect(lastParagraph).not.toBeUndefined();
+    expect(lastTextNode).not.toBeNull();
+
+    const range = document.createRange();
+    range.setStart(lastTextNode!, lastParagraph!.textContent?.length ?? 0);
+    range.collapse(true);
+    document.getSelection()?.removeAllRanges();
+    document.getSelection()?.addRange(range);
+
+    expect(isCollapsedSelectionAtEndOfElement(element)).toBe(true);
+
+    element.remove();
+  });
 });
