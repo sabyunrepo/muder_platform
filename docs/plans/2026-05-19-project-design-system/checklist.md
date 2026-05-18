@@ -99,7 +99,7 @@ Merge gate:
 - [x] Forms/tables/modals use UI kit unless a documented exception remains.
 - [x] Desktop/mobile light/dark screenshots exist.
 
-Note: local E2E account is not an admin/creator, so admin and creator screenshot QA uses protected-route fallback evidence for light/dark while code-level tests cover the migrated surfaces.
+Note: local E2E account is not an admin/creator, so admin and creator screenshot QA uses protected-route fallback evidence for light/dark while code-level tests cover the migrated surfaces. See PR `#672` local validation and `screenshots/design-system/665-*` artifacts for the fallback screenshots.
 
 ## PR-5: Lobby, Room, Social (#666)
 

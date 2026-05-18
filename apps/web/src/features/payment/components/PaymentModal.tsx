@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Coins, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, Button, Modal, Panel } from '@/shared/components/ui';
@@ -20,11 +20,18 @@ export interface PaymentModalProps {
 export function PaymentModal({ pkg, isOpen, onClose }: PaymentModalProps) {
   const [step, setStep] = useState<Step>('confirm');
   const [errorMessage, setErrorMessage] = useState('');
+  const paymentInFlightRef = useRef(false);
 
   const createPayment = useCreatePayment();
   const confirmPayment = useConfirmPayment();
+  const isPaymentPending = createPayment.isPending || confirmPayment.isPending || step === 'processing';
 
   async function handlePay() {
+    if (step !== 'confirm' || isPaymentPending || paymentInFlightRef.current) {
+      return;
+    }
+
+    paymentInFlightRef.current = true;
     setStep('processing');
     setErrorMessage('');
 
@@ -48,10 +55,13 @@ export function PaymentModal({ pkg, isOpen, onClose }: PaymentModalProps) {
       const message = err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.';
       setErrorMessage(message);
       setStep('error');
+    } finally {
+      paymentInFlightRef.current = false;
     }
   }
 
   function handleClose() {
+    paymentInFlightRef.current = false;
     setStep('confirm');
     setErrorMessage('');
     onClose();
@@ -85,7 +95,7 @@ export function PaymentModal({ pkg, isOpen, onClose }: PaymentModalProps) {
           <Button variant="secondary" onClick={handleClose} className="flex-1">
             취소
           </Button>
-          <Button onClick={handlePay} className="flex-1">
+          <Button onClick={handlePay} disabled={isPaymentPending} className="flex-1">
             결제하기
           </Button>
         </div>

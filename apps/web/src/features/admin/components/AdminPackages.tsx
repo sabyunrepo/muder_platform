@@ -124,6 +124,18 @@ export function AdminPackages() {
       toast.error('유효한 가격을 입력해주세요.');
       return;
     }
+    if (Number.isNaN(baseCoins) || baseCoins < 0) {
+      toast.error('유효한 기본 코인 수량을 입력해주세요.');
+      return;
+    }
+    if (Number.isNaN(bonusCoins) || bonusCoins < 0) {
+      toast.error('유효한 보너스 코인 수량을 입력해주세요.');
+      return;
+    }
+    if (Number.isNaN(sortOrder) || sortOrder < 0) {
+      toast.error('유효한 정렬 순서를 입력해주세요.');
+      return;
+    }
 
     if (editingId) {
       // 수정
