@@ -15,11 +15,11 @@
   --mmp-editor-color-hairline-strong: #c8c4be;
   --mmp-editor-color-ink: #1a1a1a;
   --mmp-editor-color-charcoal: #37352f;
-  --mmp-editor-color-slate: #5d5b54;
-  --mmp-editor-color-steel: #787671;
-  --mmp-editor-color-muted: #bbb8b1;
+  --mmp-editor-color-slate: #4f4d47;
+  --mmp-editor-color-steel: #5d5b54;
+  --mmp-editor-color-muted: #8f8a83;
   --mmp-editor-color-success: #1aae39;
-  --mmp-editor-color-warning: #dd5b00;
+  --mmp-editor-color-warning: #a84600;
   --mmp-editor-color-error: #e03131;
   --mmp-editor-color-tint-peach: #ffe8d4;
   --mmp-editor-color-tint-rose: #fde0ec;
@@ -207,6 +207,51 @@
   line-height: 1.4;
 }
 
+.mmp-editor-design-scope .mmp-rich-content-surface {
+  border-color: var(--mmp-editor-color-hairline);
+  background: var(--mmp-editor-color-canvas);
+}
+
+.mmp-editor-design-scope .mmp-mdx-editor {
+  --baseBg: var(--mmp-editor-color-canvas);
+  --baseText: var(--mmp-editor-color-charcoal);
+  --baseTextContrast: var(--mmp-editor-color-ink);
+  --basePageBg: var(--mmp-editor-color-canvas);
+  --baseBgHover: var(--mmp-editor-color-surface);
+  --baseBgSubtle: var(--mmp-editor-color-surface-soft);
+  --accentBase: var(--mmp-editor-color-primary);
+  --accentBgSubtle: color-mix(in srgb, var(--mmp-editor-color-primary) 10%, var(--mmp-editor-color-canvas));
+  --accentText: var(--mmp-editor-color-primary);
+  --accentTextContrast: var(--mmp-editor-color-primary-pressed);
+  --baseBorder: var(--mmp-editor-color-hairline);
+
+  background: var(--mmp-editor-color-canvas);
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar {
+  border-bottom-color: var(--mmp-editor-color-hairline);
+  background: var(--mmp-editor-color-surface-soft);
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar button,
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar select,
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar [role='button'],
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar svg {
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar button:hover,
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-toolbar [role='button']:hover {
+  background: var(--mmp-editor-color-surface);
+}
+
+.mmp-editor-design-scope .mmp-mdx-editor .mdxeditor-root-contenteditable {
+  background: var(--mmp-editor-color-canvas);
+  color: var(--mmp-editor-color-charcoal);
+}
+
 /*
  * Legacy Tailwind bridge for editor-only screens.
  *
@@ -221,10 +266,15 @@
   background-color: var(--mmp-editor-color-canvas);
 }
 
+.mmp-editor-design-scope .bg-slate-900\/80,
 .mmp-editor-design-scope .bg-slate-900\/70,
 .mmp-editor-design-scope .bg-slate-900\/60,
 .mmp-editor-design-scope .bg-slate-900\/55,
 .mmp-editor-design-scope .bg-slate-900\/50,
+.mmp-editor-design-scope .bg-slate-950\/80,
+.mmp-editor-design-scope .bg-slate-950\/70,
+.mmp-editor-design-scope .bg-slate-950\/60,
+.mmp-editor-design-scope .bg-slate-950\/40,
 .mmp-editor-design-scope .bg-slate-800\/90,
 .mmp-editor-design-scope .bg-slate-800\/70,
 .mmp-editor-design-scope .bg-slate-800\/60,
@@ -316,6 +366,21 @@
 
 .mmp-editor-design-scope .bg-amber-500\/10 {
   background-color: color-mix(in srgb, var(--mmp-editor-color-primary) 9%, var(--mmp-editor-color-canvas));
+}
+
+.mmp-editor-design-scope .bg-amber-500\/5,
+.mmp-editor-design-scope .bg-amber-500\/15,
+.mmp-editor-design-scope .bg-amber-500\/20,
+.mmp-editor-design-scope .bg-amber-500\/25,
+.mmp-editor-design-scope .bg-amber-950\/30 {
+  background-color: color-mix(in srgb, var(--mmp-editor-color-primary) 12%, var(--mmp-editor-color-canvas));
+}
+
+.mmp-editor-design-scope .text-amber-100,
+.mmp-editor-design-scope .text-amber-100\/90,
+.mmp-editor-design-scope .text-amber-200,
+.mmp-editor-design-scope .text-amber-200\/70 {
+  color: var(--mmp-editor-color-primary);
 }
 
 .mmp-editor-design-scope .focus\:ring-amber-500\/30:focus,
