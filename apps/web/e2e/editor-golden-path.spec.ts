@@ -156,31 +156,33 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
 
     await page.goto(`${BASE}/editor/${THEME_ID}/clues`);
     await expect(page.getByLabel('단서 상세 영역')).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText('게임 중 사용 효과')).toBeVisible();
+    await expect(page.getByText('단서 사용 설정')).toBeVisible();
     await expect(page.getByText('itemEffects')).toHaveCount(0);
     await expect(page.getByText('grant_clue')).toHaveCount(0);
 
+    await page.getByLabel('사용 가능한 아이템').check();
     await page.getByRole('button', { name: '새 단서 지급' }).click();
     await page.getByLabel('지급할 단서 검색').fill('금고');
-    await page.getByRole('button', { name: '금고 비밀번호', exact: true }).click();
+    await page.getByRole('button', { name: '금고 비밀번호 지급 목록에 추가' }).click();
     await page.getByLabel(/사용하면 내 단서함에서 사라짐/).check();
-    await page.getByRole('button', { name: '효과 저장' }).click();
 
-    await expect.poll(() => state.configPutCalls).toBeGreaterThanOrEqual(1);
-    const modules = state.configJson.modules as Record<
-      string,
-      { config?: Record<string, unknown> }
-    >;
-    const clueInteraction = modules.clue_interaction?.config as
-      | { itemEffects?: Record<string, Record<string, unknown>> }
-      | undefined;
-
-    expect(clueInteraction?.itemEffects?.[CLUE_ID]).toMatchObject({
-      effect: 'grant_clue',
-      target: 'self',
-      consume: true,
-      grantClueIds: [REWARD_CLUE_ID],
-    });
+    await expect
+      .poll(() => {
+        const modules = state.configJson.modules as Record<
+          string,
+          { config?: Record<string, unknown> }
+        >;
+        const clueInteraction = modules.clue_interaction?.config as
+          | { itemEffects?: Record<string, Record<string, unknown>> }
+          | undefined;
+        return clueInteraction?.itemEffects?.[CLUE_ID];
+      })
+      .toMatchObject({
+        effect: 'grant_clue',
+        target: 'self',
+        consume: true,
+        grantClueIds: [REWARD_CLUE_ID],
+      });
     expect(JSON.stringify(state.lastConfigRequestBody)).not.toContain('module_configs');
   });
 
@@ -656,19 +658,14 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
 
     await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('거실').first()).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText('R2~4').first()).toBeVisible({ timeout: 3_000 });
     await expect(page.getByLabel('거실 단서 조사')).toBeVisible({ timeout: 3_000 });
-    await expect(page.getByText(/접근 제한/).first()).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText('배치된 단서').first()).toBeVisible({ timeout: 3_000 });
+    await expect(page.getByText('금고 비밀번호')).toHaveCount(0);
 
-    // UI: 단서 chip/체크박스가 있으면 토글 + 즉시 반영
-    const chip = page.getByRole('checkbox').first();
-    if (await chip.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      const wasChecked = await chip.isChecked().catch(() => false);
-      await chip.click().catch(() => {});
-      await expect(chip)
-        .toBeChecked({ checked: !wasChecked, timeout: 2_000 })
-        .catch(() => {});
-    }
+    await page.getByLabel('배치할 단서 검색').fill('금고');
+    await expect(page.getByRole('button', { name: '금고 비밀번호 추가' })).toBeVisible({
+      timeout: 3_000,
+    });
   });
 
   test('[9] 템플릿 탭 GET /api/v1/templates (network-only)', async ({ page }) => {

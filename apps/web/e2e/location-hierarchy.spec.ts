@@ -79,6 +79,22 @@ async function installLocationHierarchyRoutes(page: Page) {
 }
 
 test.describe('location hierarchy clue placement', () => {
+  test('장소 단서 배치는 선택 항목을 먼저 보이고 검색 후 후보를 보여준다', async ({ page }) => {
+    const commonState = freshState();
+    await mockCommonApis(page, commonState);
+    await installLocationHierarchyRoutes(page);
+    await loginAsE2EUser(page);
+
+    await page.goto(`${BASE}/editor/${THEME_ID}/locations`);
+    await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel('거실 단서 조사')).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText('배치된 단서').first()).toBeVisible();
+    await expect(page.getByText('금고 비밀번호')).toHaveCount(0);
+
+    await page.getByLabel('배치할 단서 검색').fill('금고');
+    await expect(page.getByRole('button', { name: '금고 비밀번호 추가' })).toBeVisible();
+  });
+
   test('모바일 장소관리 탭은 긴 상세 설정을 세로 스크롤로 접근할 수 있다', async ({ page }) => {
     const commonState = freshState();
     await mockCommonApis(page, commonState);

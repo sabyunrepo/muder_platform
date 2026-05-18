@@ -5,6 +5,7 @@ import type {
   InvestigationCostDraft,
   InvestigationTokenDraft,
 } from '@/features/editor/entities/deckInvestigation/locationClueInvestigationCost';
+import { ClueSearchMultiSelect, type ClueSearchSelectItem } from './ClueSearchMultiSelect';
 import { InvestigationCostSelector } from './InvestigationCostSelector';
 
 interface LocationSelectedClueItemProps {
@@ -31,6 +32,15 @@ function roundLabel(clue: ClueResponse) {
   return typeof clue.reveal_round === 'number' ? `R${clue.reveal_round}` : 'CL';
 }
 
+function toClueSearchItem(clue: ClueResponse): ClueSearchSelectItem {
+  return {
+    id: clue.id,
+    name: clue.name,
+    meta: clueMeta(clue),
+    badge: roundLabel(clue),
+  };
+}
+
 export function LocationSelectedClueItem({
   clue,
   discovery,
@@ -45,7 +55,7 @@ export function LocationSelectedClueItem({
   onCostChange,
 }: LocationSelectedClueItemProps) {
   const requiredIds = discovery?.requiredClueIds ?? [];
-  const requiredSet = new Set(requiredIds);
+  const availableItems = availableClues.map(toClueSearchItem);
   const selectedRequiredNames = requiredIds
     .map((id) => clueById.get(id)?.name)
     .filter(Boolean)
@@ -75,34 +85,23 @@ export function LocationSelectedClueItem({
         </button>
       </div>
       <div className="mt-2 rounded-md border border-slate-800 bg-slate-950/80 p-2">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
-          필요 단서
-        </p>
         {availableClues.length === 0 ? (
           <p className="text-[10px] text-slate-600">조건으로 사용할 다른 단서가 없습니다.</p>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {availableClues.map((candidate) => {
-              const selected = requiredSet.has(candidate.id);
-              return (
-                <button
-                  key={candidate.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => onToggleRequired(clue.id, candidate.id)}
-                  aria-pressed={selected}
-                  aria-label={`${clue.name} 발견 조건 ${candidate.name} ${selected ? '해제' : '필요'}`}
-                  className={`rounded-full border px-2 py-1 text-[10px] transition disabled:opacity-50 ${
-                    selected
-                      ? 'border-amber-400/50 bg-amber-500/10 text-amber-200'
-                      : 'border-slate-800 text-slate-500 hover:border-slate-600 hover:text-slate-300'
-                  }`}
-                >
-                  {candidate.name}
-                </button>
-              );
-            })}
-          </div>
+          <ClueSearchMultiSelect
+            title="필요 단서"
+            items={availableItems}
+            selectedIds={requiredIds}
+            disabled={disabled}
+            searchLabel={`${clue.name} 필요 단서 검색`}
+            searchPlaceholder="먼저 보유해야 할 단서 검색"
+            emptySelectedText="조건 없음"
+            idleSearchText="필요 단서를 검색해 추가하세요."
+            getAddAriaLabel={(item) => `${clue.name} 발견 조건 ${item.name} 필요`}
+            getRemoveAriaLabel={(item) => `${clue.name} 발견 조건 ${item.name} 해제`}
+            onAdd={(requiredClueId) => onToggleRequired(clue.id, requiredClueId)}
+            onRemove={(requiredClueId) => onToggleRequired(clue.id, requiredClueId)}
+          />
         )}
         <p className="mt-1.5 text-[10px] text-slate-600">
           {selectedRequiredNames ? `${selectedRequiredNames} 보유 시 발견` : '조건 없음'}

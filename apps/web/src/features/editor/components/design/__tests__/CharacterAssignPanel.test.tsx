@@ -326,7 +326,10 @@ function openHiddenMissionSection() {
 
 function clickFirstClue() {
   openStartingClueSection();
-  fireEvent.click(screen.getByRole('button', { name: /피 묻은 칼/ }));
+  fireEvent.change(screen.getByRole('searchbox', { name: '시작 단서 검색' }), {
+    target: { value: '피 묻은' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '피 묻은 칼 시작 단서 추가' }));
 }
 
 // ---------------------------------------------------------------------------
@@ -657,10 +660,12 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openStartingClueSection();
-    expect(screen.getByText('전체 단서 목록')).toBeDefined();
     expect(screen.getByText('홍길동의 시작 단서')).toBeDefined();
+    expect(screen.getByText('아직 배정된 단서가 없습니다. 단서명으로 검색해 시작 단서를 추가하세요.')).toBeDefined();
+    fireEvent.change(screen.getByRole('searchbox', { name: '시작 단서 검색' }), {
+      target: { value: '서재' },
+    });
     expect(screen.getByText('피 묻은 칼')).toBeDefined();
-    expect(screen.getByText('비밀 편지')).toBeDefined();
   });
 
 
@@ -933,19 +938,19 @@ describe('CharacterAssignPanel', () => {
     );
   });
 
-  it('좌측 단서 목록을 장소/태그로 검색할 수 있다', () => {
+  it('단서 후보를 장소/태그로 검색할 수 있다', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openStartingClueSection();
 
-    fireEvent.change(screen.getByPlaceholderText('단서명, 장소, 태그 검색'), {
+    fireEvent.change(screen.getByRole('searchbox', { name: '시작 단서 검색' }), {
       target: { value: '부엌' },
     });
 
     expect(screen.queryByText('피 묻은 칼')).toBeNull();
     expect(screen.getByText('비밀 편지')).toBeDefined();
 
-    fireEvent.change(screen.getByPlaceholderText('단서명, 장소, 태그 검색'), {
+    fireEvent.change(screen.getByRole('searchbox', { name: '시작 단서 검색' }), {
       target: { value: '문서' },
     });
 
