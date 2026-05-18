@@ -102,6 +102,7 @@ export function EndingEntityDetail({
         <RichContentDocumentField
           key={node.id}
           themeId={themeId}
+          documentIdentity={node.id}
           markdown={data.endingContent ?? ""}
           onChange={(markdown) => handleChange({ endingContent: markdown })}
           previewAriaLabel="결말 본문 보기"

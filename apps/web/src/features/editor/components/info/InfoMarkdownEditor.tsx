@@ -3,6 +3,7 @@ import { RichContentEditor } from '@/features/editor/components/content/RichCont
 
 export function InfoMarkdownEditor({
   themeId,
+  documentIdentity,
   markdown,
   onChange,
   pickerType,
@@ -10,6 +11,7 @@ export function InfoMarkdownEditor({
   onClosePicker,
 }: {
   themeId: string;
+  documentIdentity?: string;
   markdown: string;
   onChange: (markdown: string) => void;
   pickerType: MediaType | null;
@@ -19,6 +21,7 @@ export function InfoMarkdownEditor({
   return (
     <RichContentEditor
       themeId={themeId}
+      documentIdentity={documentIdentity}
       markdown={markdown}
       onChange={onChange}
       pickerType={pickerType}

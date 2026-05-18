@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { forwardRef, useImperativeHandle, type ComponentType } from 'react';
+import { forwardRef, useImperativeHandle, useState, type ComponentType } from 'react';
 
 const {
   useStoryInfosMock,
@@ -63,7 +63,12 @@ vi.mock('sonner', () => ({
 
 vi.mock('@mdxeditor/editor', () => ({
   MDXEditor: forwardRef<
-    { insertMarkdown: (snippet: string) => void },
+    {
+      getMarkdown: () => string;
+      setMarkdown: (nextMarkdown: string) => void;
+      insertMarkdown: (snippet: string) => void;
+      focus: () => void;
+    },
     {
       markdown: string;
       onChange: (markdown: string) => void;
@@ -78,23 +83,41 @@ vi.mock('@mdxeditor/editor', () => ({
       }>;
     }
   >(({ markdown, onChange, plugins = [] }, ref) => {
-    useImperativeHandle(ref, () => ({
-      insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
-    }));
+    const [value, setValue] = useState(markdown);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        getMarkdown: () => value,
+        setMarkdown: (nextMarkdown: string) => {
+          setValue(nextMarkdown);
+        },
+        insertMarkdown: (snippet: string) => {
+          const nextMarkdown = `${value}${snippet}`;
+          setValue(nextMarkdown);
+          onChange(nextMarkdown);
+        },
+        focus: vi.fn(),
+      }),
+      [onChange, value]
+    );
     const hasMarkdownShortcuts = plugins.some((plugin) => plugin.markdownShortcuts);
     const mediaEmbedDescriptor = plugins
       .flatMap((plugin) => plugin.jsxComponentDescriptors ?? [])
       .find((descriptor) => descriptor.name === 'MediaEmbed');
-    const mediaEmbeds = Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
+    const mediaEmbeds = Array.from(value.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
     return (
       <div data-testid="mdx-editor-surface">
         <textarea
           aria-label="editable markdown"
-          value={markdown}
-          onChange={(event) => onChange(event.target.value)}
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value);
+            onChange(event.target.value);
+          }}
         />
-        {hasMarkdownShortcuts && markdown.startsWith('> ') ? (
-          <blockquote>{markdown.slice(2)}</blockquote>
+        {hasMarkdownShortcuts && value.startsWith('> ') ? (
+          <blockquote>{value.slice(2)}</blockquote>
         ) : null}
         {mediaEmbedDescriptor
           ? mediaEmbeds.map((match) => {

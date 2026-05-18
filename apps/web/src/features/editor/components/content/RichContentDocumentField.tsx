@@ -9,6 +9,7 @@ import { hasDisplayableRichContent } from './richContentDisplay';
 
 interface RichContentDocumentFieldProps {
   themeId: string;
+  documentIdentity?: string;
   markdown: string;
   onChange: (markdown: string) => void;
   previewAriaLabel: string;
@@ -20,12 +21,14 @@ interface RichContentDocumentFieldProps {
   videoButtonLabel?: string;
   imagePickerTitle?: string;
   videoPickerTitle?: string;
+  externalResetKey?: string | number;
   onBlurCapture?: (relatedTarget: EventTarget | null) => void;
   onRequestPreview?: () => void;
 }
 
 export function RichContentDocumentField({
   themeId,
+  documentIdentity,
   markdown,
   onChange,
   previewAriaLabel,
@@ -37,6 +40,7 @@ export function RichContentDocumentField({
   videoButtonLabel,
   imagePickerTitle,
   videoPickerTitle,
+  externalResetKey,
   onBlurCapture,
   onRequestPreview,
 }: RichContentDocumentFieldProps) {
@@ -110,6 +114,7 @@ export function RichContentDocumentField({
       >
         <RichContentEditor
           themeId={themeId}
+          documentIdentity={documentIdentity}
           markdown={markdown}
           onChange={onChange}
           pickerType={pickerType}
@@ -120,6 +125,7 @@ export function RichContentDocumentField({
           videoButtonLabel={videoButtonLabel}
           imagePickerTitle={imagePickerTitle}
           videoPickerTitle={videoPickerTitle}
+          externalResetKey={externalResetKey}
           onBlurCapture={onBlurCapture}
         />
       </div>

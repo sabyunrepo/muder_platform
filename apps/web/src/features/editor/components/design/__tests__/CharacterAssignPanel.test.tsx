@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, screen, cleanup, fireEvent, act, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { forwardRef, useImperativeHandle, type ComponentType } from 'react';
+import { forwardRef, useImperativeHandle, useState, type ComponentType } from 'react';
 import { ApiHttpError } from '@/lib/api-error';
 
 // ---------------------------------------------------------------------------
@@ -79,26 +79,45 @@ vi.mock('@/features/editor/mediaApi', () => ({
 
 vi.mock('@mdxeditor/editor', () => ({
   MDXEditor: forwardRef<
-    { insertMarkdown: (snippet: string) => void },
+    {
+      getMarkdown: () => string;
+      setMarkdown: (nextMarkdown: string) => void;
+      insertMarkdown: (snippet: string) => void;
+      focus: () => void;
+    },
     {
       markdown: string;
       onChange: (markdown: string) => void;
       plugins?: Array<{ jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }> }>;
     }
   >(({ markdown, onChange, plugins = [] }, ref) => {
+    const [value, setValue] = useState(markdown);
+
     useImperativeHandle(ref, () => ({
-      insertMarkdown: (snippet: string) => onChange(`${markdown}${snippet}`),
-    }));
+      getMarkdown: () => value,
+      setMarkdown: (nextMarkdown: string) => {
+        setValue(nextMarkdown);
+      },
+      insertMarkdown: (snippet: string) => {
+        const nextMarkdown = `${value}${snippet}`;
+        setValue(nextMarkdown);
+        onChange(nextMarkdown);
+      },
+      focus: vi.fn(),
+    }), [onChange, value]);
     const mediaEmbedDescriptor = plugins
       .flatMap((plugin) => plugin.jsxComponentDescriptors ?? [])
       .find((descriptor) => descriptor.name === 'MediaEmbed');
-    const mediaEmbeds = Array.from(markdown.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
+    const mediaEmbeds = Array.from(value.matchAll(/<MediaEmbed\s+([^>]+)\/>/g));
     return (
       <div data-testid="mdx-editor-surface">
         <textarea
           aria-label="editable markdown"
-          value={markdown}
-          onChange={(event) => onChange(event.currentTarget.value)}
+          value={value}
+          onChange={(event) => {
+            setValue(event.currentTarget.value);
+            onChange(event.currentTarget.value);
+          }}
         />
         {mediaEmbedDescriptor
           ? mediaEmbeds.map((match) => {
