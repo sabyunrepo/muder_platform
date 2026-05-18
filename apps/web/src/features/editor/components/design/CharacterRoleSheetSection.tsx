@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, FileText, FileUp, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, FileUp } from 'lucide-react';
 import { Button } from '@/shared/components/ui/Button';
 import { Spinner } from '@/shared/components/ui/Spinner';
-import { useMediaDownloadUrl, type MediaResponse, type MediaType } from '@/features/editor/mediaApi';
+import { useMediaDownloadUrl, type MediaResponse } from '@/features/editor/mediaApi';
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
-import { RichContentEditor } from '@/features/editor/components/content/RichContentEditor';
+import { RichContentDocumentField } from '@/features/editor/components/content/RichContentDocumentField';
 import { ImageRoleSheetPanel } from './ImageRoleSheetPanel';
 import { useRoleSheetEditorState } from './useRoleSheetEditorState';
 
@@ -100,37 +100,21 @@ export function CharacterRoleSheetSection({
       ) : (
         <MarkdownRoleSheetEditor
           themeId={themeId}
+          documentKey={`${characterId}:${state.roleSheetQuery.data?.format ?? 'missing'}:${state.roleSheetQuery.data?.markdown?.body ?? ''}`}
           draft={state.draft}
           saveStatus={state.saveStatus}
           isMissingDocument={state.isMissingDocument}
-          isPending={state.upsertContent.isPending}
           onDraftChange={(next) => {
             state.setDraft(next);
             state.setSaveStatus('idle');
           }}
           onBlur={(relatedTarget) => {
             if (isSaveButtonTarget(relatedTarget)) {
-              state.manualSaveRef.current = true;
               return;
             }
-            if (state.manualSaveRef.current) return;
             state.saveMarkdown(state.draft);
           }}
-          onSaveMouseDown={() => {
-            state.manualSaveRef.current = true;
-          }}
-          onSaveKeyDown={() => {
-            state.manualSaveRef.current = true;
-          }}
-          onSave={() => {
-            state.saveMarkdown(state.draft);
-            window.setTimeout(() => {
-              state.manualSaveRef.current = false;
-            }, 0);
-          }}
-          onSaveBlur={() => {
-            state.manualSaveRef.current = false;
-          }}
+          onPreview={() => state.saveMarkdown(state.draft)}
         />
       )}
     </section>
@@ -155,7 +139,7 @@ function UnsupportedRoleSheetFormatNotice({ characterName }: { characterName: st
 function isSaveButtonTarget(target: EventTarget | null) {
   return (
     target instanceof HTMLElement &&
-    target.closest('[data-role-sheet-save="true"], [data-rich-content-control="true"]') !== null
+    target.closest('[data-rich-content-control="true"]') !== null
   );
 }
 
@@ -220,49 +204,43 @@ function FormatButton({
 
 function MarkdownRoleSheetEditor({
   themeId,
+  documentKey,
   draft,
   saveStatus,
   isMissingDocument,
-  isPending,
   onDraftChange,
   onBlur,
-  onSaveMouseDown,
-  onSaveKeyDown,
-  onSave,
-  onSaveBlur,
+  onPreview,
 }: {
   themeId: string;
+  documentKey: string;
   draft: string;
   saveStatus: 'idle' | 'saved' | 'failed';
   isMissingDocument: boolean;
-  isPending: boolean;
   onDraftChange: (body: string) => void;
   onBlur: (relatedTarget: EventTarget | null) => void;
-  onSaveMouseDown: () => void;
-  onSaveKeyDown: () => void;
-  onSave: () => void;
-  onSaveBlur: () => void;
+  onPreview: () => void;
 }) {
-  const [pickerType, setPickerType] = useState<MediaType | null>(null);
-
   return (
     <div className="space-y-3">
-      <RichContentEditor
+      <RichContentDocumentField
+        key={documentKey}
         themeId={themeId}
         markdown={draft}
         onChange={onDraftChange}
-        pickerType={pickerType}
-        onOpenPicker={setPickerType}
-        onClosePicker={() => setPickerType(null)}
-        ariaLabel="역할지 Markdown"
+        previewAriaLabel="역할지 본문 보기"
+        editorAriaLabel="역할지 Markdown"
+        editButtonLabel="역할지 수정"
         imageButtonLabel="역할지 이미지 삽입"
         videoButtonLabel="역할지 영상 삽입"
         imagePickerTitle="역할지 이미지 선택"
         videoPickerTitle="역할지 영상 선택"
+        emptyPreviewMessage="아직 저장된 역할지가 없습니다."
+        onRequestPreview={onPreview}
         onBlurCapture={onBlur}
       />
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex items-center justify-start">
         <p
           className={`text-xs ${
             saveStatus === 'failed'
@@ -274,24 +252,12 @@ function MarkdownRoleSheetEditor({
         >
           {saveStatus === 'failed'
             ? '저장하지 못했습니다. 다시 시도해 주세요.'
-            : saveStatus === 'saved'
-              ? '저장되었습니다.'
-              : isMissingDocument
-                ? '아직 저장된 역할지가 없습니다.'
+              : saveStatus === 'saved'
+                ? '저장되었습니다.'
+                : isMissingDocument
+                  ? '아직 저장된 역할지가 없습니다.'
                 : '수정 후 포커스를 벗어나면 자동 저장됩니다.'}
         </p>
-        <Button
-          size="sm"
-          data-role-sheet-save="true"
-          onMouseDown={onSaveMouseDown}
-          onKeyDown={onSaveKeyDown}
-          onClick={onSave}
-          onBlur={onSaveBlur}
-          disabled={isPending}
-        >
-          <Save className="mr-1.5 h-3.5 w-3.5" />
-          역할지 저장
-        </Button>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
   useCharacterRoleSheet,
@@ -31,10 +31,9 @@ export function useRoleSheetEditorState({
   const [selectedFormat, setSelectedFormat] = useState<EditableRoleSheetFormat>('markdown');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [page, setPage] = useState(1);
-  const manualSaveRef = useRef(false);
 
   const sync = useRoleSheetSync({ roleSheet: roleSheetQuery.data, roleSheetError: roleSheetQuery.error });
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(sync.originalBody);
   const [imagePages, setImagePages] = useState<ImageRoleSheetPageDraft[]>([]);
   const [imageDraft, setImageDraft] = useState('');
   const imageUrls = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'url' ? [imagePage.url] : []), [imagePages]);
@@ -99,7 +98,6 @@ export function useRoleSheetEditorState({
     imagePages,
     imageDraft,
     setImageDraft,
-    manualSaveRef,
     isMissingDocument: sync.isMissingDocument,
     isUnsupportedFormat: sync.isUnsupportedFormat,
     pdfMediaId,

@@ -209,6 +209,8 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
     await expect(page.getByRole("region", { name: "캐릭터 목록" })).toBeVisible();
     await page.getByRole("button", { name: "탐정 A 선택" }).click();
     await page.getByRole("button", { name: /^역할지/ }).click();
+    await expect(page.getByRole("region", { name: "역할지 본문 보기" })).toBeVisible();
+    await page.getByRole("button", { name: "역할지 수정" }).click();
 
     const block = page.getByRole("group", { name: "역할지 이미지 미디어 블록" });
     await expect(block).toBeVisible();
@@ -230,7 +232,7 @@ test.describe("Phase 24 에디터 캐릭터 역할 저장", () => {
         request.method() === "PUT" &&
         request.url().includes("/v1/editor/characters/char-1/role-sheet"),
     );
-    await page.getByRole("button", { name: "역할지 저장" }).click();
+    await page.getByRole("button", { name: "미리보기" }).click();
     const roleSheetRequest = await roleSheetRequestPromise;
 
     const body = roleSheetRequest.postDataJSON();
