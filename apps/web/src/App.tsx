@@ -86,6 +86,10 @@ interface UserResponse {
   provider: string;
 }
 
+function normalizeUserRole(role: string): 'user' | 'creator' | 'admin' {
+  return role === 'user' || role === 'creator' || role === 'admin' ? role : 'user';
+}
+
 function useAppInitialize() {
   useEffect(() => {
     const init = async () => {
@@ -108,7 +112,7 @@ function useAppInitialize() {
             nickname: user.nickname,
             email: user.email,
             profileImage: user.avatar_url,
-            role: user.role as 'user' | 'creator' | 'admin',
+            role: normalizeUserRole(user.role),
             provider: user.provider,
           });
         } catch {
@@ -202,9 +206,6 @@ function AppContent() {
       <Toaster
         theme={resolvedTheme}
         position="bottom-right"
-        toastOptions={{
-          className: 'mmp-toast',
-        }}
       />
     </QueryClientProvider>
   );

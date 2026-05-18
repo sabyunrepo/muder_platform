@@ -23,13 +23,12 @@ This does not mean every page becomes an editor. It means every page uses the sa
 
 `packages/ui-tokens` owns semantic design variables:
 
-- background: app, canvas, surface, surface-soft, elevated
-- text: primary, secondary, muted, inverse
-- border: default, strong, focus
+- background: canvas, surface, surface-soft, elevated
+- text: ink, charcoal, slate, steel, muted, inverse
+- border: hairline, hairline-strong, focus
 - accent: primary, pressed, subtle, on-primary
-- status: success, warning, danger, info
+- status: success, warning, error, info
 - overlays and shadows
-- typography and spacing references
 
 `html[data-theme='light']` and `html[data-theme='dark']` provide concrete values. The stored preference may be `system`, but the DOM must only receive a resolved `light` or `dark` theme.
 

@@ -15,7 +15,11 @@ export function readStoredAppearance(
     if (isAppearancePreference(stored)) return stored;
 
     const legacyStored = storage?.getItem(LEGACY_EDITOR_APPEARANCE_STORAGE_KEY);
-    if (isAppearancePreference(legacyStored)) return legacyStored;
+    if (isAppearancePreference(legacyStored)) {
+      storage?.setItem(APPEARANCE_STORAGE_KEY, legacyStored);
+      storage?.removeItem?.(LEGACY_EDITOR_APPEARANCE_STORAGE_KEY);
+      return legacyStored;
+    }
   } catch {
     return 'system';
   }

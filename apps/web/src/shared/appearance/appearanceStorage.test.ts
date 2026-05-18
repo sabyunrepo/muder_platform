@@ -29,12 +29,14 @@ describe('appearanceStorage', () => {
     expect(readStoredAppearance(storage)).toBe('light');
   });
 
-  it('falls back to the legacy editor appearance key during migration', () => {
+  it('migrates the legacy editor appearance key to the project-wide key', () => {
     const storage = createStorage({
       [LEGACY_EDITOR_APPEARANCE_STORAGE_KEY]: 'dark',
     });
 
     expect(readStoredAppearance(storage)).toBe('dark');
+    expect(storage.setItem).toHaveBeenCalledWith(APPEARANCE_STORAGE_KEY, 'dark');
+    expect(storage.removeItem).toHaveBeenCalledWith(LEGACY_EDITOR_APPEARANCE_STORAGE_KEY);
   });
 
   it('returns system for unsupported values', () => {

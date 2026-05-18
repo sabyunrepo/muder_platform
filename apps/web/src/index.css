@@ -39,12 +39,6 @@ body {
   color: var(--mmp-color-ink);
 }
 
-.mmp-toast {
-  border-color: var(--mmp-color-hairline) !important;
-  background: var(--mmp-color-surface) !important;
-  color: var(--mmp-color-ink) !important;
-}
-
 .mmp-rich-content-surface {
   min-width: 0;
   max-width: 100%;
