@@ -3,12 +3,9 @@ import { toast } from 'sonner';
 import { Package, MapPin, X } from 'lucide-react';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { EditorThemeResponse } from '@/features/editor/api';
-import {
-  useEditorClues,
-  useEditorLocations,
-  useUpdateConfigJson,
-} from '@/features/editor/api';
+import { useEditorClues, useEditorLocations, useUpdateConfigJson } from '@/features/editor/api';
 import { readCluePlacement, writeCluePlacement } from '@/features/editor/utils/configShape';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,7 +29,7 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
 
   const unplacedClues = useMemo(
     () => (clues ?? []).filter((c) => !placement[c.id]),
-    [clues, placement],
+    [clues, placement]
   );
 
   const placedByLocation = useMemo(() => {
@@ -49,7 +46,7 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
   function savePlacement(next: Record<string, string>) {
     updateConfig.mutate(writeCluePlacement(theme.config_json, next), {
       onSuccess: () => toast.success('배치가 저장되었습니다'),
-      onError: () => toast.error('배치 저장에 실패했습니다'),
+      onError: (error) => showUnknownErrorToast(error, '배치 저장에 실패했습니다'),
     });
   }
 
@@ -106,15 +103,10 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
         ) : (
           <div className="space-y-2">
             {unplacedClues.map((clue) => (
-              <div
-                key={clue.id}
-                className="rounded-sm border border-slate-800 bg-slate-900 p-2"
-              >
+              <div key={clue.id} className="rounded-sm border border-slate-800 bg-slate-900 p-2">
                 <div className="mb-1.5 flex items-center gap-1.5">
                   <Package className="h-3 w-3 shrink-0 text-slate-600" />
-                  <span className="text-xs font-medium text-slate-300 truncate">
-                    {clue.name}
-                  </span>
+                  <span className="text-xs font-medium text-slate-300 truncate">{clue.name}</span>
                 </div>
                 <select
                   aria-label={`${clue.name} 장소 선택`}
@@ -152,12 +144,8 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
               <div key={loc.id}>
                 <div className="mb-2 flex items-center gap-1.5">
                   <MapPin className="h-3.5 w-3.5 text-amber-500/70" />
-                  <span className="text-xs font-semibold text-slate-400">
-                    {loc.name}
-                  </span>
-                  <span className="ml-1 text-[10px] text-slate-600">
-                    ({placed.length})
-                  </span>
+                  <span className="text-xs font-semibold text-slate-400">{loc.name}</span>
+                  <span className="ml-1 text-[10px] text-slate-600">({placed.length})</span>
                 </div>
 
                 {placed.length === 0 ? (
@@ -172,9 +160,7 @@ export function CluePlacementPanel({ themeId, theme }: CluePlacementPanelProps) 
                         className="group flex items-center gap-2 rounded-sm border border-slate-800 bg-slate-900 px-3 py-1.5"
                       >
                         <Package className="h-3 w-3 shrink-0 text-slate-600" />
-                        <span className="flex-1 truncate text-xs text-slate-300">
-                          {clue.name}
-                        </span>
+                        <span className="flex-1 truncate text-xs text-slate-300">{clue.name}</span>
                         <button
                           type="button"
                           aria-label={`${clue.name} 배치 해제`}

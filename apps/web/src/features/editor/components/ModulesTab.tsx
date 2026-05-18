@@ -1,13 +1,14 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
-import { toast } from "sonner";
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { Button, Badge } from "@/shared/components/ui";
-import type { EditorThemeResponse } from "@/features/editor/api";
-import { useUpdateConfigJson } from "@/features/editor/api";
-import { MODULE_CATEGORIES, REQUIRED_MODULE_IDS } from "@/features/editor/constants";
-import type { ModuleCategory } from "@/features/editor/constants";
-import { readEnabledModuleIds, writeModuleEnabled } from "@/features/editor/utils/configShape";
+import { Button, Badge } from '@/shared/components/ui';
+import type { EditorThemeResponse } from '@/features/editor/api';
+import { useUpdateConfigJson } from '@/features/editor/api';
+import { MODULE_CATEGORIES, REQUIRED_MODULE_IDS } from '@/features/editor/constants';
+import type { ModuleCategory } from '@/features/editor/constants';
+import { readEnabledModuleIds, writeModuleEnabled } from '@/features/editor/utils/configShape';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,9 +43,7 @@ function CategorySection({
   const [expanded, setExpanded] = useState(true);
 
   const categoryModuleIds = category.modules.map((m) => m.id);
-  const selectedCount = categoryModuleIds.filter((id) =>
-    selectedModules.includes(id),
-  ).length;
+  const selectedCount = categoryModuleIds.filter((id) => selectedModules.includes(id)).length;
   const allSelected = selectedCount === category.modules.length;
 
   return (
@@ -64,7 +63,7 @@ function CategorySection({
           <span className="text-sm font-medium uppercase tracking-wider text-slate-300">
             {category.label}
           </span>
-          <Badge variant={selectedCount > 0 ? "warning" : "default"} size="sm">
+          <Badge variant={selectedCount > 0 ? 'warning' : 'default'} size="sm">
             {selectedCount}/{category.modules.length}
           </Badge>
         </div>
@@ -119,15 +118,17 @@ function CategorySection({
                     <span className="block text-sm font-medium text-slate-200">
                       {mod.name}
                       {isRequired && (
-                        <span className="ml-1.5 text-[10px] font-normal text-amber-500/60">(필수)</span>
+                        <span className="ml-1.5 text-[10px] font-normal text-amber-500/60">
+                          (필수)
+                        </span>
                       )}
                       {!mod.supported && !isRequired && (
-                        <span className="ml-1.5 text-[10px] font-normal text-slate-600">(미지원)</span>
+                        <span className="ml-1.5 text-[10px] font-normal text-slate-600">
+                          (미지원)
+                        </span>
                       )}
                     </span>
-                    <span className="block text-xs text-slate-400">
-                      {mod.description}
-                    </span>
+                    <span className="block text-xs text-slate-400">{mod.description}</span>
                   </div>
                 </label>
               );
@@ -147,7 +148,7 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   const configJson = useMemo(() => theme.config_json ?? {}, [theme.config_json]);
   const serverModules = useMemo(
     () => Array.from(new Set([...REQUIRED_MODULE_IDS, ...readEnabledModuleIds(configJson)])),
-    [configJson],
+    [configJson]
   );
 
   const [selectedModules, setSelectedModules] = useState<string[]>(serverModules);
@@ -158,49 +159,37 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
     setSelectedModules(serverModules);
   }, [serverModules]);
 
-  const isDirty = JSON.stringify(selectedModules.slice().sort()) !== JSON.stringify(serverModules.slice().sort());
+  const isDirty =
+    JSON.stringify(selectedModules.slice().sort()) !== JSON.stringify(serverModules.slice().sort());
 
-  const handleToggle = useCallback(
-    (moduleId: string) => {
-      // 필수 모듈은 토글 불가
-      if (REQUIRED_MODULE_IDS.includes(moduleId)) return;
-      setSelectedModules((prev) =>
-        prev.includes(moduleId)
-          ? prev.filter((id) => id !== moduleId)
-          : [...prev, moduleId],
-      );
-    },
-    [],
-  );
+  const handleToggle = useCallback((moduleId: string) => {
+    // 필수 모듈은 토글 불가
+    if (REQUIRED_MODULE_IDS.includes(moduleId)) return;
+    setSelectedModules((prev) =>
+      prev.includes(moduleId) ? prev.filter((id) => id !== moduleId) : [...prev, moduleId]
+    );
+  }, []);
 
-  const handleSelectAll = useCallback(
-    (moduleIds: string[]) => {
-      setSelectedModules((prev) =>
-        Array.from(new Set([...prev, ...moduleIds])),
-      );
-    },
-    [],
-  );
+  const handleSelectAll = useCallback((moduleIds: string[]) => {
+    setSelectedModules((prev) => Array.from(new Set([...prev, ...moduleIds])));
+  }, []);
 
-  const handleDeselectAll = useCallback(
-    (moduleIds: string[]) => {
-      setSelectedModules((prev) =>
-        // 필수 모듈은 해제 불가
-        prev.filter((id) => !moduleIds.includes(id) || REQUIRED_MODULE_IDS.includes(id)),
-      );
-    },
-    [],
-  );
+  const handleDeselectAll = useCallback((moduleIds: string[]) => {
+    setSelectedModules((prev) =>
+      // 필수 모듈은 해제 불가
+      prev.filter((id) => !moduleIds.includes(id) || REQUIRED_MODULE_IDS.includes(id))
+    );
+  }, []);
 
   function handleSave() {
     const allModuleIds = MODULE_CATEGORIES.flatMap((cat) => cat.modules.map((mod) => mod.id));
     const nextConfig = allModuleIds.reduce(
       (acc, moduleId) => writeModuleEnabled(acc, moduleId, selectedModules.includes(moduleId)),
-      configJson,
+      configJson
     );
     updateConfig.mutate(nextConfig, {
-      onSuccess: () => toast.success("모듈 설정이 저장되었습니다"),
-      onError: () => toast.error("모듈 설정 저장에 실패했습니다"),
+      onSuccess: () => toast.success('모듈 설정이 저장되었습니다'),
+      onError: (error) => showUnknownErrorToast(error, '모듈 설정 저장에 실패했습니다'),
     });
   }
 
@@ -209,10 +198,7 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
   }
 
   const totalSelected = selectedModules.length;
-  const totalModules = MODULE_CATEGORIES.reduce(
-    (sum, cat) => sum + cat.modules.length,
-    0,
-  );
+  const totalModules = MODULE_CATEGORIES.reduce((sum, cat) => sum + cat.modules.length, 0);
 
   return (
     <div className="space-y-4">
@@ -220,7 +206,7 @@ export function ModulesTab({ themeId, theme }: ModulesTabProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-100">모듈 선택</h2>
-          <Badge variant={totalSelected > 0 ? "warning" : "default"}>
+          <Badge variant={totalSelected > 0 ? 'warning' : 'default'}>
             {totalSelected}/{totalModules} 모듈 선택됨
           </Badge>
           {isDirty && <Badge variant="warning">변경사항 있음</Badge>}

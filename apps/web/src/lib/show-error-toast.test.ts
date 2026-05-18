@@ -3,7 +3,8 @@ import type { ApiError } from '@mmp/shared';
 import { toast } from 'sonner';
 
 import { captureApiError } from '@/lib/sentry';
-import { getErrorReference, showErrorToast } from '@/lib/show-error-toast';
+import { getErrorReference, showErrorToast, showUnknownErrorToast } from '@/lib/show-error-toast';
+import { ApiHttpError } from '@/lib/api-error';
 
 vi.mock('sonner', () => ({
   toast: {
@@ -116,6 +117,37 @@ describe('showErrorToast', () => {
       {
         description: '오류 ID: request-',
         duration: Infinity,
+      }
+    );
+  });
+
+  it('공통 unknown toast는 ApiHttpError 메시지와 호출자 액션을 함께 표시한다', () => {
+    const retry = vi.fn();
+
+    showUnknownErrorToast(
+      new ApiHttpError(
+        apiError({
+          status: 409,
+          code: 'EDITOR_CONFIG_VERSION_MISMATCH',
+          detail: 'version conflict',
+          request_id: 'request-conflict-1',
+          severity: 'high',
+        })
+      ),
+      '저장에 실패했습니다',
+      {
+        id: 'autosave-toast',
+        action: { label: '재시도', onClick: retry },
+      }
+    );
+
+    expect(toast.error).toHaveBeenCalledWith(
+      '다른 변경사항과 충돌했습니다. 최신 내용으로 새로고침 후 다시 저장해주세요.',
+      {
+        id: 'autosave-toast',
+        description: '오류 ID: request-',
+        duration: 8000,
+        action: { label: '재시도', onClick: retry },
       }
     );
   });

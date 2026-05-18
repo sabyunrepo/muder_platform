@@ -108,7 +108,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
           options.onError(err);
           return;
         }
-        toast.error('단서 설정 저장에 실패했습니다');
+        showUnknownErrorToast(err, '단서 설정 저장에 실패했습니다');
       },
     });
   }
@@ -170,11 +170,7 @@ export function ClueListView({ themeId }: ClueListViewProps) {
         isConfigSaving={updateConfig.isPending}
       />
 
-      <ClueForm
-        themeId={themeId}
-        isOpen={isFormOpen}
-        onClose={handleFormClose}
-      />
+      <ClueForm themeId={themeId} isOpen={isFormOpen} onClose={handleFormClose} />
 
       <Modal
         isOpen={!!deletingClue}

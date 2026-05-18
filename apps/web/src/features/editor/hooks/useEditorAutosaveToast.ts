@@ -1,10 +1,11 @@
-import { useCallback } from "react";
-import { toast } from "sonner";
+import { useCallback } from 'react';
+import { toast } from 'sonner';
 
 import {
   useDebouncedMutation,
   type UseDebouncedMutationReturn,
-} from "@/hooks/useDebouncedMutation";
+} from '@/hooks/useDebouncedMutation';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 const toastWithLoading = toast as typeof toast & {
   loading?: (message: string, options?: Record<string, unknown>) => void;
@@ -22,11 +23,26 @@ interface EditorAutosaveToastOptions<TBody> {
   messages: EditorAutosaveToastMessages;
   mutate: (
     body: TBody,
-    opts: { onError: (error?: unknown) => void; onSuccess?: () => void },
+    opts: { onError: (error?: unknown) => void; onSuccess?: () => void }
   ) => void;
   applyOptimistic?: (body: TBody) => (() => void) | null;
   onSuccess?: (body: TBody) => void;
   onError?: (error?: unknown) => void;
+}
+
+function showAutosaveFailureToast<TBody>(
+  error: unknown,
+  body: TBody,
+  messages: EditorAutosaveToastMessages,
+  retry: (body: TBody) => void
+): void {
+  showUnknownErrorToast(error, messages.error, {
+    id: messages.toastId,
+    action: {
+      label: '재시도',
+      onClick: () => retry(body),
+    },
+  });
 }
 
 export function useEditorAutosaveToast<TBody>({
@@ -47,18 +63,11 @@ export function useEditorAutosaveToast<TBody>({
         },
         onError: (error) => {
           onError?.(error);
-          toast.error(messages.error, {
-            id: messages.toastId,
-            duration: 6000,
-            action: {
-              label: "재시도",
-              onClick: () => retryMutation(body),
-            },
-          });
+          showAutosaveFailureToast(error, body, messages, retryMutation);
         },
       });
     },
-    [messages, mutate, onError, onSuccess],
+    [messages, mutate, onError, onSuccess]
   );
 
   return useDebouncedMutation<TBody>({
@@ -74,14 +83,7 @@ export function useEditorAutosaveToast<TBody>({
     },
     onFailure: (error, body) => {
       onError?.(error);
-      toast.error(messages.error, {
-        id: messages.toastId,
-        duration: 6000,
-        action: {
-          label: "재시도",
-          onClick: () => retryMutation(body),
-        },
-      });
+      showAutosaveFailureToast(error, body, messages, retryMutation);
     },
   });
 }

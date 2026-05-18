@@ -1,37 +1,34 @@
-import { useCallback, type ReactNode } from "react";
-import type { Edge, Node } from "@xyflow/react";
-import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { useEditorMaps } from "../../editorMapApi";
-import { useUpdateConfigJson } from "../../editorConfigApi";
-import { useUpdateFlowNode } from "../../flowApi";
-import type { EditorThemeResponse } from "../../api";
-import { editorKeys } from "../../api";
-import type {
-  FlowGraphResponse,
-  FlowNodeData,
-  PhaseAction,
-} from "../../flowTypes";
-import { flowKeys } from "../../flowTypes";
-import { useEditorAutosaveToast } from "@/features/editor/hooks/useEditorAutosaveToast";
-import { ActionListEditor, hasIncompletePresentationCueActions } from "./ActionListEditor";
-import { PhasePanelBasicInfo } from "./PhasePanelBasicInfo";
-import { normalizePhaseType } from "./phaseTypeOptions";
-import { InvestigationPhasePanel } from "./InvestigationPhasePanel";
-import { DiscussionPhasePanel } from "./DiscussionPhasePanel";
-import { VotingQuestionPhasePanel } from "./VotingQuestionPhasePanel";
-import { ReadingPhasePanel } from "./ReadingPhasePanel";
+import { useCallback, type ReactNode } from 'react';
+import type { Edge, Node } from '@xyflow/react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { useEditorMaps } from '../../editorMapApi';
+import { useUpdateConfigJson } from '../../editorConfigApi';
+import { useUpdateFlowNode } from '../../flowApi';
+import type { EditorThemeResponse } from '../../api';
+import { editorKeys } from '../../api';
+import type { FlowGraphResponse, FlowNodeData, PhaseAction } from '../../flowTypes';
+import { flowKeys } from '../../flowTypes';
+import { useEditorAutosaveToast } from '@/features/editor/hooks/useEditorAutosaveToast';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
+import { ActionListEditor, hasIncompletePresentationCueActions } from './ActionListEditor';
+import { PhasePanelBasicInfo } from './PhasePanelBasicInfo';
+import { normalizePhaseType } from './phaseTypeOptions';
+import { InvestigationPhasePanel } from './InvestigationPhasePanel';
+import { DiscussionPhasePanel } from './DiscussionPhasePanel';
+import { VotingQuestionPhasePanel } from './VotingQuestionPhasePanel';
+import { ReadingPhasePanel } from './ReadingPhasePanel';
 import {
   PLAYER_KILL_MODULE_ID,
   readEnabledModuleIds,
   readPlayerKillConfig,
   writePlayerKillSceneEnabled,
-} from "../../utils/configShape";
+} from '../../utils/configShape';
 import {
   createSceneActionDefaultParams,
   getSceneActionOptions,
-} from "../../entities/sceneAction/sceneActionRegistry";
-import { readDeckInvestigationConfig } from "../../entities/deckInvestigation/deckInvestigationAdapter";
+} from '../../entities/sceneAction/sceneActionRegistry';
+import { readDeckInvestigationConfig } from '../../entities/deckInvestigation/deckInvestigationAdapter';
 
 interface PhaseNodePanelProps {
   node: Node;
@@ -47,12 +44,7 @@ const toastWithLoading = toast as typeof toast & {
   loading?: (message: string, options?: Record<string, unknown>) => void;
 };
 
-export function PhaseNodePanel({
-  node,
-  themeId,
-  onUpdate,
-  headerActions,
-}: PhaseNodePanelProps) {
+export function PhaseNodePanel({ node, themeId, onUpdate, headerActions }: PhaseNodePanelProps) {
   const updateNode = useUpdateFlowNode(themeId);
   const updateConfig = useUpdateConfigJson(themeId);
   const { data: maps = [], isLoading: mapsLoading } = useEditorMaps(themeId);
@@ -70,7 +62,7 @@ export function PhaseNodePanel({
     (type: string) => {
       const params = createSceneActionDefaultParams(type);
       if (
-        (type === "GRANT_INVESTIGATION_TOKEN" || type === "RESET_INVESTIGATION_TOKEN") &&
+        (type === 'GRANT_INVESTIGATION_TOKEN' || type === 'RESET_INVESTIGATION_TOKEN') &&
         params &&
         !params.tokenId &&
         investigationTokens[0]?.id
@@ -79,22 +71,21 @@ export function PhaseNodePanel({
       }
       return params;
     },
-    [investigationTokens],
+    [investigationTokens]
   );
   const playerKillConfig = readPlayerKillConfig(configJson);
   const sceneKillEnabled = playerKillConfig.allowedSceneIds.includes(node.id);
-  const isPhaseSceneNode = node.type === "phase";
+  const isPhaseSceneNode = node.type === 'phase';
 
   const debouncer = useEditorAutosaveToast<FlowNodeData>({
     debounceMs: SAVE_DEBOUNCE_MS,
     messages: {
       toastId: `phase-node-autosave-${node.id}`,
-      loading: "장면 설정을 저장 중입니다",
-      success: "장면 설정이 저장되었습니다",
-      error: "저장에 실패했습니다",
+      loading: '장면 설정을 저장 중입니다',
+      success: '장면 설정이 저장되었습니다',
+      error: '저장에 실패했습니다',
     },
-    mutate: (body, opts) =>
-      updateNode.mutate({ nodeId: node.id, body: { data: body } }, opts),
+    mutate: (body, opts) => updateNode.mutate({ nodeId: node.id, body: { data: body } }, opts),
     applyOptimistic: (body) => {
       const cacheKey = flowKeys.graph(themeId);
       const previous = queryClient.getQueryData<FlowGraphResponse>(cacheKey);
@@ -102,7 +93,7 @@ export function PhaseNodePanel({
       queryClient.setQueryData<FlowGraphResponse>(cacheKey, {
         ...previous,
         nodes: previous.nodes.map((n) =>
-          n.id === node.id ? { ...n, data: { ...n.data, ...body } } : n,
+          n.id === node.id ? { ...n, data: { ...n.data, ...body } } : n
         ),
       });
       return () => queryClient.setQueryData(cacheKey, previous);
@@ -114,45 +105,37 @@ export function PhaseNodePanel({
     onUpdate(node.id, patch);
     const nextData = { ...data, ...patch };
     if (hasIncompleteActionPatch(nextData)) return;
-    debouncer.schedule(
-      nextData,
-      (prev) => ({ ...data, ...(prev ?? {}), ...patch }),
-    );
+    debouncer.schedule(nextData, (prev) => ({ ...data, ...(prev ?? {}), ...patch }));
   };
 
   const handleSceneKillToggle = (enabled: boolean) => {
     if (!theme || updateConfig.isPending || !isPhaseSceneNode) return;
     const nextConfig = writePlayerKillSceneEnabled(configJson, node.id, enabled);
-    toastWithLoading.loading?.("장면 설정을 저장 중입니다", {
+    toastWithLoading.loading?.('장면 설정을 저장 중입니다', {
       id: `phase-kill-autosave-${node.id}`,
     });
     updateConfig.mutate(
       { ...nextConfig, version: theme.version },
       {
         onSuccess: () =>
-          toast.success("장면 설정이 저장되었습니다", {
+          toast.success('장면 설정이 저장되었습니다', {
             id: `phase-kill-autosave-${node.id}`,
             duration: 1200,
           }),
-        onError: () =>
-          toast.error("장면 설정 저장에 실패했습니다", {
+        onError: (error) =>
+          showUnknownErrorToast(error, '장면 설정 저장에 실패했습니다', {
             id: `phase-kill-autosave-${node.id}`,
-            duration: 6000,
           }),
-      },
+      }
     );
   };
 
   return (
     <div className="flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-          장면 설정
-        </h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">장면 설정</h3>
         {headerActions ? (
-          <div className="flex shrink-0 items-center gap-1.5">
-            {headerActions}
-          </div>
+          <div className="flex shrink-0 items-center gap-1.5">{headerActions}</div>
         ) : null}
       </div>
 
@@ -214,7 +197,7 @@ export function PhaseNodePanel({
           />
         </section>
       ) : null}
-      {phaseType === "investigation" ? (
+      {phaseType === 'investigation' ? (
         <>
           <InvestigationMapField
             mapId={data.investigationMapId}
@@ -230,7 +213,7 @@ export function PhaseNodePanel({
           />
         </>
       ) : null}
-      {phaseType === "discussion" ? (
+      {phaseType === 'discussion' ? (
         <DiscussionPhasePanel
           duration={data.duration}
           policy={data.discussionRoomPolicy}
@@ -238,14 +221,14 @@ export function PhaseNodePanel({
           onFlush={flush}
         />
       ) : null}
-      {phaseType === "voting" ? (
+      {phaseType === 'voting' ? (
         <VotingQuestionPhasePanel
           duration={data.duration}
           onChange={handleChange}
           onFlush={flush}
         />
       ) : null}
-      {phaseType === "story_progression" ? (
+      {phaseType === 'story_progression' ? (
         <ReadingPhasePanel
           key={node.id}
           themeId={themeId}
@@ -277,18 +260,14 @@ function InvestigationMapField({
     <label className="flex flex-col gap-1">
       <span className="text-[11px] text-slate-400">사용할 맵</span>
       <select
-        value={mapId ?? ""}
+        value={mapId ?? ''}
         disabled={isLoading}
         aria-label="사용할 맵"
-        onChange={(event) =>
-          onChange({ investigationMapId: event.target.value || undefined })
-        }
+        onChange={(event) => onChange({ investigationMapId: event.target.value || undefined })}
         onBlur={onFlush}
         className="rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <option value="">
-          {maps.length === 0 ? "등록된 맵 없음" : "맵 선택"}
-        </option>
+        <option value="">{maps.length === 0 ? '등록된 맵 없음' : '맵 선택'}</option>
         {maps.map((map) => (
           <option key={map.id} value={map.id}>
             {map.name}

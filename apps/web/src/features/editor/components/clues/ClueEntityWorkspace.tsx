@@ -33,14 +33,10 @@ import type {
   ClueRuntimeEffectDraftState,
 } from './ClueRuntimeEffectCard';
 import { ClueBasicInfoCard } from './ClueBasicInfoCard';
-import type {
-  ClueBasicInfoCardHandle,
-  ClueBasicInfoDraftState,
-} from './ClueBasicInfoCard';
-import {
-  buildProgressNodeRevealOptions,
-} from '@/features/editor/entities/reveal/revealTimingOptions';
+import type { ClueBasicInfoCardHandle, ClueBasicInfoDraftState } from './ClueBasicInfoCard';
+import { buildProgressNodeRevealOptions } from '@/features/editor/entities/reveal/revealTimingOptions';
 import { useDebouncedMutation } from '@/hooks/useDebouncedMutation';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 const CLUE_DETAIL_AUTOSAVE_MS = 1500;
 const CLUE_AUTOSAVE_TOAST_ID = 'clue-detail-autosave';
@@ -102,41 +98,37 @@ export function ClueEntityWorkspace({
     [configJson, clues, locations, characters]
   );
   const sceneOptions = useMemo(
-    () => buildProgressNodeRevealOptions(
-      flowNodes,
-      clues.flatMap((clue) => [
-        clue.reveal_scene_id,
-        clue.hide_scene_id,
-      ]),
-      { scope: 'investigation_phase' },
-    ),
-    [flowNodes, clues],
+    () =>
+      buildProgressNodeRevealOptions(
+        flowNodes,
+        clues.flatMap((clue) => [clue.reveal_scene_id, clue.hide_scene_id]),
+        { scope: 'investigation_phase' }
+      ),
+    [flowNodes, clues]
   );
   const isPlayerKillEnabled = useMemo(
     () => readEnabledModuleIds(configJson).includes(PLAYER_KILL_MODULE_ID),
-    [configJson],
+    [configJson]
   );
   const enabledModuleIds = useMemo(() => readEnabledModuleIds(configJson), [configJson]);
   const isDeckInvestigationEnabled = enabledModuleIds.includes(DECK_INVESTIGATION_MODULE_ID);
   const deckInvestigationDraft = useMemo(
     () => readDeckInvestigationConfig(configJson),
-    [configJson],
+    [configJson]
   );
   const cluePlacement = useMemo(() => readCluePlacement(configJson), [configJson]);
   const locationById = useMemo(
     () => new Map(locations.map((location) => [location.id, location])),
-    [locations],
+    [locations]
   );
   const getClueLocationContext = useCallback(
     (clue: ClueResponse) => {
       const placedLocationId = cluePlacement[clue.id] ?? clue.location_id ?? null;
-      const placedLocation = placedLocationId ? locationById.get(placedLocationId) ?? null : null;
-      const locationName = placedLocation
-        ? getLocationPathLabel(placedLocation, locations)
-        : null;
+      const placedLocation = placedLocationId ? (locationById.get(placedLocationId) ?? null) : null;
+      const locationName = placedLocation ? getLocationPathLabel(placedLocation, locations) : null;
       return { placedLocationId, locationName };
     },
-    [cluePlacement, locationById, locations],
+    [cluePlacement, locationById, locations]
   );
   const buildListBadges = useCallback(
     (clue: ClueResponse) => {
@@ -151,17 +143,22 @@ export function ClueEntityWorkspace({
         if ((effect.defensePower ?? 0) > 0) badges.push(`방어력 ${effect.defensePower}`);
       }
       if (isDeckInvestigationEnabled && placedLocationId) {
-        const cost = readLocationClueInvestigationCost(deckInvestigationDraft, placedLocationId, clue.id);
-        badges.push(cost.mode === 'free' ? '조사권 무료' : `조사권 ${Math.max(1, cost.tokenCost)}개`);
+        const cost = readLocationClueInvestigationCost(
+          deckInvestigationDraft,
+          placedLocationId,
+          clue.id
+        );
+        badges.push(
+          cost.mode === 'free' ? '조사권 무료' : `조사권 ${Math.max(1, cost.tokenCost)}개`
+        );
       }
       return badges;
     },
-    [configJson, deckInvestigationDraft, getClueLocationContext, isDeckInvestigationEnabled],
+    [configJson, deckInvestigationDraft, getClueLocationContext, isDeckInvestigationEnabled]
   );
   const saveDetailBody = useCallback(
     (body: ClueDetailAutosaveBody, opts?: { onError?: (error?: unknown) => void }) => {
-      const saveOperations =
-        (body.rowBody ? 1 : 0) + (body.nextConfig && onConfigChange ? 1 : 0);
+      const saveOperations = (body.rowBody ? 1 : 0) + (body.nextConfig && onConfigChange ? 1 : 0);
       if (saveOperations === 0) return;
 
       toast.loading('단서 자동저장 중...', { id: CLUE_AUTOSAVE_TOAST_ID });
@@ -197,25 +194,27 @@ export function ClueEntityWorkspace({
         });
       }
     },
-    [onConfigChange, onUpdate],
+    [onConfigChange, onUpdate]
   );
 
-  const showFailureToast = useCallback((body: ClueDetailAutosaveBody | null) => {
-    toast.error('단서 자동저장에 실패했습니다', {
-      id: CLUE_AUTOSAVE_TOAST_ID,
-      duration: 6000,
-      action: body
-        ? {
-            label: '재시도',
-            onClick: () => {
-              saveDetailBody(body, {
-                onError: () => showFailureToast(body),
-              });
-            },
-          }
-        : undefined,
-    });
-  }, [saveDetailBody]);
+  const showFailureToast = useCallback(
+    (body: ClueDetailAutosaveBody | null, error?: unknown) => {
+      showUnknownErrorToast(error, '단서 자동저장에 실패했습니다', {
+        id: CLUE_AUTOSAVE_TOAST_ID,
+        action: body
+          ? {
+              label: '재시도',
+              onClick: () => {
+                saveDetailBody(body, {
+                  onError: (retryError) => showFailureToast(body, retryError),
+                });
+              },
+            }
+          : undefined,
+      });
+    },
+    [saveDetailBody]
+  );
 
   const { schedule, flush } = useDebouncedMutation<ClueDetailAutosaveBody>({
     debounceMs: CLUE_DETAIL_AUTOSAVE_MS,
@@ -223,7 +222,7 @@ export function ClueEntityWorkspace({
       saveDetailBody(body, {
         onError: (error) => {
           opts.onError(error);
-          showFailureToast(body);
+          showFailureToast(body, error);
         },
       });
     },
@@ -254,7 +253,7 @@ export function ClueEntityWorkspace({
       };
       return body.rowBody || body.nextConfig ? body : null;
     },
-    [configJson],
+    [configJson]
   );
 
   const scheduleAutosave = useCallback(
@@ -265,7 +264,7 @@ export function ClueEntityWorkspace({
       if (!body) return;
       schedule(body);
     },
-    [basicInfoState, buildAutosaveBody, runtimeEffectState, schedule],
+    [basicInfoState, buildAutosaveBody, runtimeEffectState, schedule]
   );
 
   const selectedClue = clues.find((clue) => clue.id === selectedId) ?? clues[0];
@@ -279,7 +278,7 @@ export function ClueEntityWorkspace({
       flush();
       setSelectedId(id);
     },
-    [flush],
+    [flush]
   );
 
   const handleFlushAutosave = useCallback(() => {
@@ -300,13 +299,13 @@ export function ClueEntityWorkspace({
   const handleBasicInfoStateChange = useCallback((state: ClueBasicInfoDraftState) => {
     setDraftRevision((revision) => revision + 1);
     setBasicInfoState((current) =>
-      current.dirty === state.dirty && current.valid === state.valid ? current : state,
+      current.dirty === state.dirty && current.valid === state.valid ? current : state
     );
   }, []);
   const handleRuntimeEffectStateChange = useCallback((state: ClueRuntimeEffectDraftState) => {
     setDraftRevision((revision) => revision + 1);
     setRuntimeEffectState((current) =>
-      current.dirty === state.dirty && current.valid === state.valid ? current : state,
+      current.dirty === state.dirty && current.valid === state.valid ? current : state
     );
   }, []);
 
@@ -325,7 +324,9 @@ export function ClueEntityWorkspace({
       renderDetail={(clue) => {
         const { placedLocationId, locationName } = getClueLocationContext(clue);
         const discovery = placedLocationId
-          ? readLocationDiscoveries(configJson, placedLocationId).find((item) => item.clueId === clue.id)
+          ? readLocationDiscoveries(configJson, placedLocationId).find(
+              (item) => item.clueId === clue.id
+            )
           : undefined;
         return (
           <div className="space-y-4">
@@ -341,7 +342,11 @@ export function ClueEntityWorkspace({
                 enabled: isDeckInvestigationEnabled,
                 tokens: deckInvestigationDraft.tokens,
                 cost: placedLocationId
-                  ? readLocationClueInvestigationCost(deckInvestigationDraft, placedLocationId, clue.id)
+                  ? readLocationClueInvestigationCost(
+                      deckInvestigationDraft,
+                      placedLocationId,
+                      clue.id
+                    )
                   : null,
                 locationId: placedLocationId,
                 locationName,

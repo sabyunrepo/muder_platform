@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
-import { Button, Badge } from "@/shared/components/ui";
-import type { EditorThemeResponse } from "@/features/editor/api";
-import { useUpdateConfigJson } from "@/features/editor/api";
+import { Button, Badge } from '@/shared/components/ui';
+import type { EditorThemeResponse } from '@/features/editor/api';
+import { useUpdateConfigJson } from '@/features/editor/api';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,17 +47,17 @@ export function ConfigJsonTab({ themeId, theme }: ConfigJsonTabProps) {
     try {
       parsed = JSON.parse(text) as Record<string, unknown>;
     } catch {
-      setParseError("유효하지 않은 JSON 형식입니다");
+      setParseError('유효하지 않은 JSON 형식입니다');
       return;
     }
     setParseError(null);
 
     updateConfig.mutate(parsed, {
       onSuccess: () => {
-        toast.success("설정이 저장되었습니다");
+        toast.success('설정이 저장되었습니다');
       },
-      onError: () => {
-        toast.error("설정 저장에 실패했습니다");
+      onError: (error) => {
+        showUnknownErrorToast(error, '설정 저장에 실패했습니다');
       },
     });
   };
@@ -86,9 +87,7 @@ export function ConfigJsonTab({ themeId, theme }: ConfigJsonTabProps) {
       />
 
       {/* Validation error */}
-      {parseError && (
-        <p className="text-sm text-red-400">{parseError}</p>
-      )}
+      {parseError && <p className="text-sm text-red-400">{parseError}</p>}
 
       {/* Actions */}
       <div className="flex items-center gap-3">

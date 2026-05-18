@@ -24,6 +24,7 @@ import {
   type InvestigationCostDraft,
 } from '@/features/editor/entities/deckInvestigation/locationClueInvestigationCost';
 import { getLocationPathLabel } from '@/features/editor/entities/location/locationHierarchy';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 import { ClueSearchMultiSelect, type ClueSearchSelectItem } from './ClueSearchMultiSelect';
 import { LocationSelectedClueItem } from './LocationSelectedClueItem';
 
@@ -93,7 +94,8 @@ export function LocationClueAssignPanel({
   const assignedSet = useMemo(() => new Set(assignedIds), [assignedIds]);
   const clueById = useMemo(() => new Map(clues.map((clue) => [clue.id, clue])), [clues]);
   const selectedClues = clues.filter((clue) => assignedSet.has(clue.id));
-  const activeClue = selectedClues.find((clue) => clue.id === activeClueId) ?? selectedClues[0] ?? null;
+  const activeClue =
+    selectedClues.find((clue) => clue.id === activeClueId) ?? selectedClues[0] ?? null;
   const clueSearchItems = useMemo(() => clues.map(toClueSearchItem), [clues]);
   const locationPathLabel = useMemo(
     () => getLocationPathLabel(location, allLocations ?? [location]),
@@ -101,14 +103,16 @@ export function LocationClueAssignPanel({
   );
 
   function readLatestConfigJson() {
-    return queryClient.getQueryData<EditorThemeResponse>(editorKeys.theme(themeId))?.config_json
-      ?? theme.config_json;
+    return (
+      queryClient.getQueryData<EditorThemeResponse>(editorKeys.theme(themeId))?.config_json ??
+      theme.config_json
+    );
   }
 
   function commit(
     next: LocationDiscoveryConfig[],
     deckDraft?: typeof investigationDraft,
-    baseConfig = theme.config_json,
+    baseConfig = theme.config_json
   ) {
     const locationConfig = writeLocationDiscoveries(baseConfig, location.id, next);
     const nextConfig = deckDraft
@@ -127,9 +131,9 @@ export function LocationClueAssignPanel({
         toast.success('단서 조사가 저장되었습니다');
         onChange?.(nextIds);
       },
-      onError: () => {
+      onError: (error) => {
         if (previous) queryClient.setQueryData(cacheKey, previous);
-        toast.error('단서 조사 저장에 실패했습니다');
+        showUnknownErrorToast(error, '단서 조사 저장에 실패했습니다');
       },
     });
   }
@@ -263,7 +267,9 @@ export function LocationClueAssignPanel({
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">
         <MapPin className="h-3.5 w-3.5 text-[var(--mmp-editor-color-primary)]" />
-        <h4 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">{locationPathLabel} 단서 조사</h4>
+        <h4 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">
+          {locationPathLabel} 단서 조사
+        </h4>
         <span className="text-xs text-[var(--mmp-editor-color-steel)]">
           ({assignedIds.length}/{clues.length})
         </span>
