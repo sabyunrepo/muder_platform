@@ -1,20 +1,23 @@
-import { useParams } from "react-router";
-import { ThemeStats } from "@/features/creator/components/ThemeStats";
+import { useParams } from 'react-router';
+import { ThemeStats } from '@/features/creator/components/ThemeStats';
+import { Alert, PageShell, Panel, SectionHeader } from '@/shared/components/ui';
 
 export default function CreatorThemeStatsPage() {
   const { id } = useParams<{ id: string }>();
 
   if (!id) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <p className="text-sm text-red-400">테마 ID가 없습니다.</p>
-      </div>
+      <PageShell className="min-h-0">
+        <Panel>
+          <Alert variant="error" title="테마 ID가 없습니다." />
+        </Panel>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell className="min-h-0" header={<SectionHeader title="테마 통계" />}>
       <ThemeStats themeId={id} />
-    </div>
+    </PageShell>
   );
 }

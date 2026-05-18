@@ -1,7 +1,5 @@
+import { PageShell, SectionHeader } from '@/shared/components/ui';
+
 export default function AdminPage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-slate-100">관리자</h1>
-    </div>
-  );
+  return <PageShell className="min-h-0" header={<SectionHeader title="관리자" />} />;
 }

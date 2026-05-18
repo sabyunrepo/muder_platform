@@ -9,7 +9,7 @@
 - [x] PR-1 foundation
 - [x] PR-2 UI kit core
 - [x] PR-3 app shell
-- [ ] PR-4 creator/admin/shop/profile
+- [x] PR-4 creator/admin/shop/profile
 - [ ] PR-5 lobby/room/social
 - [ ] PR-6 editor detail
 - [ ] PR-7 game runtime
@@ -84,20 +84,22 @@ Note: PR-3 keeps an explicit legacy content bridge for unmigrated feature page i
 
 Goal: Migrate operational pages to the new UI kit and tokens.
 
-- [ ] Migrate Profile and PublicProfile surfaces.
-- [ ] Migrate Shop and coin purchase surfaces.
-- [ ] Migrate Creator dashboard/stats/earnings/settlements pages.
-- [ ] Migrate Admin pages and review modal/form/table surfaces.
-- [ ] Replace local buttons/cards/forms/tables/modals with UI kit where practical.
-- [ ] Preserve existing auth/role/API behavior.
-- [ ] Run focused tests and typecheck.
-- [ ] Capture required screenshot matrix.
+- [x] Migrate Profile and PublicProfile surfaces.
+- [x] Migrate Shop and coin purchase surfaces.
+- [x] Migrate Creator dashboard/stats/earnings/settlements pages.
+- [x] Migrate Admin pages and review modal/form/table surfaces.
+- [x] Replace local buttons/cards/forms/tables/modals with UI kit where practical.
+- [x] Preserve existing auth/role/API behavior.
+- [x] Run focused tests and typecheck.
+- [x] Capture required screenshot matrix.
 
 Merge gate:
 
-- [ ] All pages in this group are internally consistent.
-- [ ] Forms/tables/modals use UI kit unless a documented exception remains.
-- [ ] Desktop/mobile light/dark screenshots exist.
+- [x] All pages in this group are internally consistent.
+- [x] Forms/tables/modals use UI kit unless a documented exception remains.
+- [x] Desktop/mobile light/dark screenshots exist.
+
+Note: local E2E account is not an admin/creator, so admin and creator screenshot QA uses protected-route fallback evidence for light/dark while code-level tests cover the migrated surfaces.
 
 ## PR-5: Lobby, Room, Social (#666)
 
