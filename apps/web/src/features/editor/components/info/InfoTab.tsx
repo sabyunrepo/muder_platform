@@ -15,6 +15,7 @@ import { InfoDeliverySettingsCard } from './InfoDeliverySettingsCard';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
 import { useAutosavedDraft } from '@/features/editor/hooks/useAutosavedDraft';
+import { hasDisplayableRichContent } from '@/features/editor/components/content/richContentDisplay';
 import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 interface InfoTabProps {
@@ -328,7 +329,7 @@ function toEditableInfo(info: StoryInfoResponse) {
 }
 
 function hasDisplayableBody(info: StoryInfoResponse) {
-  return info.body.trim().length > 0;
+  return hasDisplayableRichContent(info.body);
 }
 
 function hasEditableChanges(current: StoryInfoResponse, baseline: StoryInfoResponse) {

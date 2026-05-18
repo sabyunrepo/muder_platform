@@ -81,26 +81,29 @@ test.describe("Phase 24 페이즈/결말 entity smoke", () => {
   test("페이즈 흐름 안내와 결말 목록을 볼 수 있다", async ({ page }) => {
     await page.goto(`${BASE}/editor/${THEME_ID}/flow`);
 
-    await expect(page.getByText("페이즈 흐름")).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByText(/페이즈는 게임 진행 순서를 화살표로 연결합니다/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "게임 진행 플로우" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("region", { name: "게임 진행 플로우" })).toBeVisible();
 
-    await page.getByRole("button", { name: /결말/ }).click();
+    await page.getByRole("tab", { name: /결말 관리/ }).click();
 
     await expect(page.getByRole("heading", { name: "결말 목록" })).toBeVisible();
     await expect(page.getByLabel("결말 판정 준비")).toBeVisible();
     await expect(page.getByLabel("결말 판정 준비").getByText("본문 작성", { exact: true })).toBeVisible();
     await expect(page.getByText("진실").first()).toBeVisible();
     await expect(page.getByLabel("결말 이름")).toHaveValue("진실");
-    await expect(page.getByLabel("결말 본문")).toHaveValue("범인은 밝혀졌다.");
+    await expect(page.getByRole("region", { name: "결말 본문 보기" })).toContainText("범인은 밝혀졌다.");
+    await page.getByRole("button", { name: "결말 수정" }).click();
+    await expect(page.getByRole("region", { name: "결말 본문 작성기" })).toBeVisible();
 
     await expect(page.getByRole("heading", { name: "결말 판정 설정" })).toBeVisible();
+    await page.getByRole("tab", { name: "질문 관리" }).click();
+    await expect(page.getByRole("heading", { name: "질문 관리", level: 3 })).toBeVisible();
     await expect(page.getByLabel("질문 1 내용")).toHaveValue("범인은 누구인가?");
-    await page.getByLabel("질문 1 내용").fill("진범은 누구인가?");
 
     const configRequest = page.waitForRequest((request) =>
       request.method() === "PUT" && request.url().includes(`/v1/editor/themes/${THEME_ID}/config`),
     );
-    await page.getByRole("button", { name: "판정 설정 저장" }).click();
+    await page.getByLabel("질문 1 내용").fill("진범은 누구인가?");
     const request = await configRequest;
     expect(request.postDataJSON()).toMatchObject({
       version: 1,

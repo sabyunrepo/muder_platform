@@ -1,9 +1,8 @@
-import { useId, useState, type ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import type { Node } from "@xyflow/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEditorAutosaveToast } from "@/features/editor/hooks/useEditorAutosaveToast";
-import { RichContentEditor } from "@/features/editor/components/content/RichContentEditor";
-import type { MediaType } from "@/features/editor/mediaApi";
+import { RichContentDocumentField } from "@/features/editor/components/content/RichContentDocumentField";
 import { useUpdateFlowNode } from "../../flowApi";
 import {
   flowKeys,
@@ -28,7 +27,6 @@ export function EndingEntityDetail({
   rulesSlot,
 }: EndingEntityDetailProps) {
   const fieldIdPrefix = useId();
-  const [pickerType, setPickerType] = useState<MediaType | null>(null);
   const data = node.data as FlowNodeData;
   const updateNode = useUpdateFlowNode(themeId);
   const queryClient = useQueryClient();
@@ -101,18 +99,19 @@ export function EndingEntityDetail({
         <p className="text-sm font-medium text-[var(--mmp-editor-color-charcoal)]" id={`${fieldIdPrefix}-content-label`}>
           결말 본문
         </p>
-        <RichContentEditor
+        <RichContentDocumentField
+          key={node.id}
           themeId={themeId}
           markdown={data.endingContent ?? ""}
           onChange={(markdown) => handleChange({ endingContent: markdown })}
-          pickerType={pickerType}
-          onOpenPicker={setPickerType}
-          onClosePicker={() => setPickerType(null)}
-          ariaLabel="결말 본문 작성기"
+          previewAriaLabel="결말 본문 보기"
+          editorAriaLabel="결말 본문 작성기"
+          editButtonLabel="결말 수정"
           imageButtonLabel="결말 이미지 삽입"
           videoButtonLabel="결말 영상 삽입"
           imagePickerTitle="결말 이미지 선택"
           videoPickerTitle="결말 영상 선택"
+          onRequestPreview={debouncer.flush}
           onBlurCapture={() => debouncer.flush()}
         />
         <p className="text-xs leading-5 text-[var(--mmp-editor-color-slate)]">

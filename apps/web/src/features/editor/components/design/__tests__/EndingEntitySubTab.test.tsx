@@ -400,6 +400,11 @@ describe("EndingEntitySubTab", () => {
   it("다른 결말을 선택하면 본문 작성기가 선택한 결말의 본문으로 바뀐다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
+    expect(screen.getByRole("region", { name: "결말 본문 보기" })).toHaveProperty(
+      "textContent",
+      expect.stringContaining("범인은 밝혀졌다."),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "결말 수정" }));
     expect((screen.getByLabelText("editable markdown") as HTMLTextAreaElement).value).toBe("범인은 밝혀졌다.");
 
     fireEvent.click(screen.getByRole("button", { name: "오판 선택" }));
@@ -426,6 +431,9 @@ describe("EndingEntitySubTab", () => {
     expect(screen.queryByLabelText("공개 범위")).toBeNull();
     expect(screen.queryByLabelText("스포일러 안내")).toBeNull();
     expect(screen.queryByLabelText("감상 공유 문구")).toBeNull();
+    expect(screen.getByRole("region", { name: "결말 본문 보기" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "결말 수정" })).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: "결말 수정" }));
     expect(screen.getByRole("region", { name: "결말 본문 작성기" })).toBeDefined();
     expect(screen.getByRole("button", { name: "결말 이미지 삽입" })).toBeDefined();
     expect(screen.getByRole("button", { name: "결말 영상 삽입" })).toBeDefined();

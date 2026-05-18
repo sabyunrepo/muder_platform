@@ -680,10 +680,29 @@ describe('CharacterAssignPanel', () => {
     openRoleSheetSection();
 
     const roleSheet = getRoleSheetEditor();
+    fireEvent.pointerDown(roleSheet);
     fireEvent.change(roleSheet, { target: { value: '## 비밀\n범인은 아직 모른다.' } });
-    fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
 
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
+  });
+
+  it('저장된 역할지는 먼저 읽기 미리보기로 표시하고 수정 버튼으로 편집한다', () => {
+    useCharacterRoleSheetMock.mockReturnValue({ data: { format: 'markdown', markdown: { body: '기존 역할지' } }, isLoading: false });
+
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openRoleSheetSection();
+
+    expect(screen.getByRole('region', { name: '역할지 본문 보기' })).toHaveProperty(
+      'textContent',
+      expect.stringContaining('기존 역할지'),
+    );
+    expect(screen.queryByRole('region', { name: '역할지 Markdown' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '역할지 수정' }));
+
+    expect((getRoleSheetEditor() as HTMLTextAreaElement).value).toBe('기존 역할지');
   });
 
   it('역할지 작성기는 미디어 관리 이미지를 mediaId embed로 삽입하고 편집기 안에 표시한다', () => {
@@ -691,6 +710,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
 
+    fireEvent.pointerDown(getRoleSheetEditor());
     fireEvent.click(screen.getByRole('button', { name: '역할지 이미지 삽입' }));
     expect(screen.getByText('filter:IMAGE')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: '캐릭터 이미지 선택' }));
@@ -711,6 +731,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
 
+    fireEvent.pointerDown(getRoleSheetEditor());
     fireEvent.click(screen.getByRole('button', { name: '역할지 영상 삽입' }));
     expect(screen.getByText('filter:VIDEO')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: '역할지 영상 선택' }));
@@ -742,7 +763,7 @@ describe('CharacterAssignPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
 
-    expect(screen.getByText('아직 저장된 역할지가 없습니다.')).toBeDefined();
+    expect(screen.getAllByText('아직 저장된 역할지가 없습니다.').length).toBeGreaterThanOrEqual(1);
     expect((getRoleSheetEditor() as HTMLTextAreaElement).value).toBe('');
   });
 
@@ -776,23 +797,24 @@ describe('CharacterAssignPanel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
-    fireEvent.click(screen.getByRole('button', { name: '역할지 저장' }));
+    fireEvent.click(screen.getByRole('button', { name: '역할지 수정' }));
+    fireEvent.click(screen.getByRole('button', { name: '미리보기' }));
 
     expect(upsertRoleSheetMutateMock).not.toHaveBeenCalled();
     expect(screen.getByText('저장되었습니다.')).toBeDefined();
   });
 
-  it('역할지 저장 버튼 클릭 시 blur 자동 저장과 중복 호출하지 않는다', async () => {
+  it('역할지 미리보기 전환 시 blur 자동 저장과 중복 호출하지 않는다', async () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
     openRoleSheetSection();
 
     const roleSheet = getRoleSheetEditor();
-    const saveButton = screen.getByRole('button', { name: '역할지 저장' });
+    const previewButton = screen.getByRole('button', { name: '미리보기' });
+    fireEvent.pointerDown(roleSheet);
     fireEvent.change(roleSheet, { target: { value: '수정된 역할지' } });
-    fireEvent.mouseDown(saveButton);
-    fireEvent.blur(roleSheet);
-    fireEvent.click(saveButton);
+    fireEvent.blur(roleSheet, { relatedTarget: previewButton });
+    fireEvent.click(previewButton);
 
     expect(upsertRoleSheetMutateMock).toHaveBeenCalledTimes(1);
     await act(async () => { vi.advanceTimersByTime(1500); });
