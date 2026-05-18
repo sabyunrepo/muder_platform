@@ -1,12 +1,8 @@
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, ChevronRight, Monitor, Moon, Sun } from 'lucide-react';
-import { Spinner } from '@/shared/components/ui';
+import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { Spinner, ThemeModeToggle } from '@/shared/components/ui';
 import type { EditorThemeResponse } from '@/features/editor/api';
-import type {
-  EditorAppearancePreference,
-  EditorResolvedAppearance,
-} from '@/features/editor/design-system/useEditorAppearance';
 import { useEditorUI } from '@/features/editor/stores/editorUIStore';
 import { SaveIndicator } from './SaveIndicator';
 import { EditorTabNav } from './EditorTabNav';
@@ -35,9 +31,6 @@ interface EditorLayoutProps {
   onValidate?: () => DesignWarning[];
   validationWarnings?: DesignWarning[];
   routeSegment?: string;
-  appearancePreference?: EditorAppearancePreference;
-  resolvedAppearance?: EditorResolvedAppearance;
-  onAppearancePreferenceChange?: (preference: EditorAppearancePreference) => void;
 }
 
 export function EditorLayout({
@@ -51,9 +44,6 @@ export function EditorLayout({
   onValidate,
   validationWarnings: externalWarnings,
   routeSegment,
-  appearancePreference = 'system',
-  resolvedAppearance = 'light',
-  onAppearancePreferenceChange,
 }: EditorLayoutProps) {
   const navigate = useNavigate();
   const { activeTab } = useEditorUI();
@@ -128,33 +118,7 @@ export function EditorLayout({
 
         <div className="hidden h-5 w-px bg-[var(--mmp-editor-color-hairline)] sm:block" />
 
-        <div
-          role="group"
-          aria-label="에디터 화면 모드"
-          data-editor-resolved-theme={resolvedAppearance}
-          className="flex items-center gap-0.5 rounded-lg border border-[var(--mmp-editor-color-hairline)] bg-[var(--mmp-editor-color-surface-soft)] p-0.5"
-        >
-          {APPEARANCE_OPTIONS.map(({ value, label, Icon }) => {
-            const isActive = appearancePreference === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                aria-label={label}
-                aria-pressed={isActive}
-                title={label}
-                onClick={() => onAppearancePreferenceChange?.(value)}
-                className={`inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-[var(--mmp-editor-color-canvas)] text-[var(--mmp-editor-color-primary)] shadow-sm'
-                    : 'text-[var(--mmp-editor-color-slate)] hover:bg-[var(--mmp-editor-color-surface)] hover:text-[var(--mmp-editor-color-charcoal)]'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            );
-          })}
-        </div>
+        <ThemeModeToggle compact ariaLabel="에디터 화면 모드" className="p-0.5" />
 
         <div className="hidden h-5 w-px bg-[var(--mmp-editor-color-hairline)] sm:block" />
 
@@ -228,13 +192,3 @@ const INTERNAL_SCROLL_TABS = new Set<EditorTab>([
   'locations',
   'media',
 ]);
-
-const APPEARANCE_OPTIONS: Array<{
-  value: EditorAppearancePreference;
-  label: string;
-  Icon: typeof Monitor;
-}> = [
-  { value: 'system', label: '시스템 설정 사용', Icon: Monitor },
-  { value: 'light', label: '라이트 모드', Icon: Sun },
-  { value: 'dark', label: '다크 모드', Icon: Moon },
-];

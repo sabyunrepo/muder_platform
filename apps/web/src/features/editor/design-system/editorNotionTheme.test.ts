@@ -24,11 +24,22 @@ describe('editorNotionTheme legacy bridge', () => {
     expect(css).toContain('var(--mmp-editor-color-on-primary)');
   });
 
-  it('keeps light and dark mode tokens inside the editor boundary', () => {
+  it('aliases editor colors to project-wide semantic tokens', () => {
+    const css = readFileSync(cssPath, 'utf8');
+
+    expect(css).toContain('--mmp-editor-color-primary: var(--mmp-color-primary)');
+    expect(css).toContain('--mmp-editor-color-canvas: var(--mmp-color-canvas)');
+    expect(css).toContain('--mmp-editor-color-surface-soft: var(--mmp-color-surface-soft)');
+    expect(css).toContain('--mmp-editor-color-tag-bg: var(--mmp-color-tag-bg)');
+    expect(css).not.toContain('--mmp-editor-color-primary: #5645d4');
+    expect(css).not.toContain('--mmp-editor-color-primary: #a99cff');
+  });
+
+  it('keeps dark mode scope guards inside the editor boundary', () => {
     const css = readFileSync(cssPath, 'utf8');
 
     expect(css).toContain(".mmp-editor-design-scope[data-editor-theme='dark']");
-    expect(css).toContain('--mmp-editor-color-tag-bg');
+    expect(css).toContain('--mmp-editor-shadow-card');
     expect(css).toContain('color-scheme: dark');
     expect(css).not.toMatch(/(^|\n)\[data-editor-theme='dark'\][,\s{]/);
   });

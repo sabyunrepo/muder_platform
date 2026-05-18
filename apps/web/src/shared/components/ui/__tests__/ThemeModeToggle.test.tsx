@@ -39,4 +39,22 @@ describe('ThemeModeToggle', () => {
     expect(document.documentElement.dataset.themePreference).toBe('dark');
     expect(screen.getByRole('button', { name: /다크/ }).getAttribute('aria-pressed')).toBe('true');
   });
+
+  it('supports compact icon-only usage with a custom group label', () => {
+    render(
+      <AppearanceProvider>
+        <ThemeModeToggle compact ariaLabel="에디터 화면 모드" />
+      </AppearanceProvider>,
+    );
+
+    expect(screen.getByRole('group', { name: '에디터 화면 모드' })).toBeDefined();
+    expect(screen.queryByText('시스템')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '라이트' }));
+
+    expect(document.documentElement.dataset.themePreference).toBe('light');
+    expect(screen.getByRole('button', { name: '라이트' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+  });
 });

@@ -4,10 +4,6 @@ import { useEditorTheme } from '@/features/editor/api';
 import { useEditorClues } from '@/features/editor/editorClueApi';
 import { validateGameDesign, validateClueGraph } from '@/features/editor/validation';
 import { useClueEdges } from '@/features/editor/clueEdgeApi';
-import type {
-  EditorAppearancePreference,
-  EditorResolvedAppearance,
-} from '@/features/editor/design-system/useEditorAppearance';
 import { isApiHttpError } from '@/lib/api-error';
 import { EditorLayout } from './EditorLayout';
 
@@ -79,18 +75,9 @@ function buildThemeLoadError(themeId: string, error?: unknown) {
 interface ThemeEditorProps {
   themeId: string;
   routeSegment?: string;
-  appearancePreference?: EditorAppearancePreference;
-  resolvedAppearance?: EditorResolvedAppearance;
-  onAppearancePreferenceChange?: (preference: EditorAppearancePreference) => void;
 }
 
-export function ThemeEditor({
-  themeId,
-  routeSegment,
-  appearancePreference = 'system',
-  resolvedAppearance = 'light',
-  onAppearancePreferenceChange,
-}: ThemeEditorProps) {
+export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
   const { data: theme, error, isLoading, isError } = useEditorTheme(themeId);
   const resolvedThemeId = theme?.id ?? '';
   const { data: clues } = useEditorClues(resolvedThemeId);
@@ -132,9 +119,6 @@ export function ThemeEditor({
       themeId={resolvedThemeId}
       routeSegment={routeSegment}
       onValidate={handleValidate}
-      appearancePreference={appearancePreference}
-      resolvedAppearance={resolvedAppearance}
-      onAppearancePreferenceChange={onAppearancePreferenceChange}
     />
   );
 }
