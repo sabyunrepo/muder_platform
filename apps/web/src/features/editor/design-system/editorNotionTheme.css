@@ -206,3 +206,130 @@
   font-weight: 600;
   line-height: 1.4;
 }
+
+/*
+ * Legacy Tailwind bridge for editor-only screens.
+ *
+ * PR A/B/C moved the main editor shell and high-traffic tabs onto explicit
+ * DESIGN.md-backed tokens. Some secondary editor modules still carry old
+ * slate/amber utility classes. Keep those modules visually inside the new
+ * editor design language without leaking the palette outside /editor.
+ */
+.mmp-editor-design-scope .bg-slate-950,
+.mmp-editor-design-scope .bg-slate-900,
+.mmp-editor-design-scope .bg-slate-800 {
+  background-color: var(--mmp-editor-color-canvas);
+}
+
+.mmp-editor-design-scope .bg-slate-900\/70,
+.mmp-editor-design-scope .bg-slate-900\/60,
+.mmp-editor-design-scope .bg-slate-900\/55,
+.mmp-editor-design-scope .bg-slate-900\/50,
+.mmp-editor-design-scope .bg-slate-800\/90,
+.mmp-editor-design-scope .bg-slate-800\/70,
+.mmp-editor-design-scope .bg-slate-800\/60,
+.mmp-editor-design-scope .bg-slate-800\/50,
+.mmp-editor-design-scope .bg-white\/5 {
+  background-color: var(--mmp-editor-color-surface-soft);
+}
+
+.mmp-editor-design-scope .bg-slate-700,
+.mmp-editor-design-scope .bg-slate-700\/50 {
+  background-color: var(--mmp-editor-color-surface);
+}
+
+.mmp-editor-design-scope .border-slate-900,
+.mmp-editor-design-scope .border-slate-800,
+.mmp-editor-design-scope .border-slate-700,
+.mmp-editor-design-scope .border-slate-600,
+.mmp-editor-design-scope .border-white\/10 {
+  border-color: var(--mmp-editor-color-hairline);
+}
+
+.mmp-editor-design-scope .border-slate-500,
+.mmp-editor-design-scope .border-slate-500\/30 {
+  border-color: var(--mmp-editor-color-hairline-strong);
+}
+
+.mmp-editor-design-scope .text-slate-50,
+.mmp-editor-design-scope .text-slate-100,
+.mmp-editor-design-scope .text-slate-200 {
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .text-slate-300,
+.mmp-editor-design-scope .text-slate-400 {
+  color: var(--mmp-editor-color-slate);
+}
+
+.mmp-editor-design-scope .text-slate-500,
+.mmp-editor-design-scope .text-slate-600,
+.mmp-editor-design-scope .text-slate-700 {
+  color: var(--mmp-editor-color-steel);
+}
+
+.mmp-editor-design-scope .placeholder-slate-500::placeholder,
+.mmp-editor-design-scope .placeholder-slate-600::placeholder,
+.mmp-editor-design-scope .placeholder\:text-slate-500::placeholder,
+.mmp-editor-design-scope .placeholder\:text-slate-600::placeholder {
+  color: var(--mmp-editor-color-muted);
+}
+
+.mmp-editor-design-scope .hover\:bg-slate-900:hover,
+.mmp-editor-design-scope .hover\:bg-slate-800:hover,
+.mmp-editor-design-scope .hover\:bg-slate-700:hover,
+.mmp-editor-design-scope .hover\:bg-white\/10:hover {
+  background-color: var(--mmp-editor-color-surface);
+}
+
+.mmp-editor-design-scope .hover\:text-slate-100:hover,
+.mmp-editor-design-scope .hover\:text-slate-200:hover,
+.mmp-editor-design-scope .hover\:text-slate-300:hover {
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .hover\:border-slate-700:hover,
+.mmp-editor-design-scope .hover\:border-slate-600:hover {
+  border-color: var(--mmp-editor-color-hairline-strong);
+}
+
+.mmp-editor-design-scope .bg-amber-500,
+.mmp-editor-design-scope .hover\:bg-amber-400:hover {
+  background-color: var(--mmp-editor-color-primary);
+  color: var(--mmp-editor-color-on-primary);
+}
+
+.mmp-editor-design-scope .text-amber-300,
+.mmp-editor-design-scope .text-amber-400,
+.mmp-editor-design-scope .text-amber-500,
+.mmp-editor-design-scope .hover\:text-amber-300:hover,
+.mmp-editor-design-scope .hover\:text-amber-400:hover {
+  color: var(--mmp-editor-color-primary);
+}
+
+.mmp-editor-design-scope .border-amber-500,
+.mmp-editor-design-scope .border-amber-500\/60,
+.mmp-editor-design-scope .hover\:border-amber-500\/60:hover,
+.mmp-editor-design-scope .focus\:border-amber-500:focus {
+  border-color: var(--mmp-editor-color-primary);
+}
+
+.mmp-editor-design-scope .bg-amber-500\/10 {
+  background-color: color-mix(in srgb, var(--mmp-editor-color-primary) 9%, var(--mmp-editor-color-canvas));
+}
+
+.mmp-editor-design-scope .focus\:ring-amber-500\/30:focus,
+.mmp-editor-design-scope .focus-visible\:ring-amber-500\/60:focus-visible {
+  --tw-ring-color: color-mix(in srgb, var(--mmp-editor-color-primary) 32%, transparent);
+}
+
+.mmp-editor-design-scope .rounded-xl,
+.mmp-editor-design-scope .rounded-2xl {
+  border-radius: var(--mmp-editor-radius-lg);
+}
+
+.mmp-editor-design-scope .shadow-lg,
+.mmp-editor-design-scope .shadow-xl,
+.mmp-editor-design-scope .shadow-2xl {
+  box-shadow: var(--mmp-editor-shadow-card);
+}
