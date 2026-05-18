@@ -6,6 +6,7 @@
 # CI checkout cleanup. See apps/server/CLAUDE.md for the canonical command.
 services:
   server:
+    image: mmp-server-dev:preview
     build:
       context: ./apps/server
       dockerfile: Dockerfile.dev
