@@ -29,6 +29,10 @@ while [[ $# -gt 0 ]]; do
         echo "--issue requires a number" >&2
         exit 2
       fi
+      if [[ ! "${2:-}" =~ ^[0-9]+$ ]]; then
+        echo "--issue must be a numeric value" >&2
+        exit 2
+      fi
       issue="${2:-}"
       shift 2
       ;;
@@ -86,7 +90,9 @@ seed_path=""
 if [[ -n "$issue" ]]; then
   seed_path="$git_common_dir/mmp-workflow/seeds/issue-${issue}.json"
   if [[ -f "$seed_path" ]] && command -v jq >/dev/null 2>&1; then
-    seed_status="$(jq -r '.status // "unknown"' "$seed_path")"
+    if ! seed_status="$(jq -r '.status // "unknown"' "$seed_path" 2>/dev/null)"; then
+      seed_status="invalid-json"
+    fi
   elif [[ -f "$seed_path" ]]; then
     seed_status="exists"
   else
@@ -97,7 +103,9 @@ fi
 local_ci_marker="$git_common_dir/mmp-local-ci/last-run.json"
 local_ci_summary="missing"
 if [[ -f "$local_ci_marker" ]] && command -v jq >/dev/null 2>&1; then
-  local_ci_summary="$(jq -r '"\(.mode // "unknown")/\(.status // "unknown") head=\(.head // "unknown") at=\(.finished_at // "unknown")"' "$local_ci_marker")"
+  if ! local_ci_summary="$(jq -r '"\(.mode // "unknown")/\(.status // "unknown") head=\(.head // "unknown") at=\(.finished_at // "unknown")"' "$local_ci_marker" 2>/dev/null)"; then
+    local_ci_summary="invalid-json"
+  fi
 elif [[ -f "$local_ci_marker" ]]; then
   local_ci_summary="exists"
 fi
