@@ -95,6 +95,7 @@ graphify-out/obsidian/
 # graphify-out and Playwright HTML reports are generated artifacts.
 graphify-out/
 apps/web/playwright-report/
+apps/web/test-results/
 
 # ─── Local Codex runtime config ───────────────────────
 .codex/config.toml

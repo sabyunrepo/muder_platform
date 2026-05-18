@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, ListChecks, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog, Modal, Spinner } from "@/shared/components/ui";
@@ -58,6 +58,8 @@ export function MediaTab({ themeId }: MediaTabProps) {
   // Modal state.
   const [uploadOpen, setUploadOpen] = useState(false);
   const [youtubeOpen, setYoutubeOpen] = useState(false);
+  const lastFocusedElementRef = useRef<HTMLElement | null>(null);
+  const isDesktopLayout = useMediaQuery("(min-width: 1024px)", true);
 
   const queryType: MediaType | undefined =
     filter === "all" ? undefined : filter;
@@ -141,6 +143,9 @@ export function MediaTab({ themeId }: MediaTabProps) {
       toggleBulkSelection(item.id);
       return;
     }
+    lastFocusedElementRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
     setSelectedId(item.id);
   };
 
@@ -177,6 +182,10 @@ export function MediaTab({ themeId }: MediaTabProps) {
 
   const handleClose = () => {
     setSelectedId(null);
+    window.requestAnimationFrame(() => {
+      lastFocusedElementRef.current?.focus();
+      lastFocusedElementRef.current = null;
+    });
   };
 
   const handleOpenBulkDelete = () => {
@@ -335,12 +344,18 @@ export function MediaTab({ themeId }: MediaTabProps) {
         </div>
 
         {/* Detail */}
-        {selected && (
+        {selected && isDesktopLayout && (
           <aside className="min-h-0 w-full shrink-0 border-t border-slate-800 pt-4 lg:w-96 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
             <MediaDetail media={selected} themeId={themeId} onClose={handleClose} />
           </aside>
         )}
       </div>
+
+      {!isDesktopLayout && (
+        <MediaMobileDetailSheet open={selected != null} onClose={handleClose}>
+          {selected && <MediaDetail media={selected} themeId={themeId} onClose={handleClose} />}
+        </MediaMobileDetailSheet>
+      )}
 
       <MediaUploadModal
         open={uploadOpen}
@@ -373,6 +388,118 @@ export function MediaTab({ themeId }: MediaTabProps) {
         onConfirm={handleConfirmDeleteCategory}
       />
     </div>
+  );
+}
+
+function MediaMobileDetailSheet({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const firstFocusable = getFocusableElements(dialogRef.current)[0];
+    firstFocusable?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = getFocusableElements(dialogRef.current);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden" aria-labelledby="media-mobile-detail-title">
+      <button
+        type="button"
+        aria-label="미디어 상세 닫기"
+        className="absolute inset-0 h-full w-full cursor-default bg-slate-950/70"
+        onClick={onClose}
+      />
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="media-mobile-detail-title"
+        className="absolute inset-x-0 bottom-0 flex max-h-[80dvh] min-h-[18rem] flex-col rounded-t-2xl border border-slate-800 bg-slate-950 p-4 shadow-2xl shadow-black/60 outline-none"
+      >
+        <h2 id="media-mobile-detail-title" className="sr-only">
+          미디어 상세
+        </h2>
+        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-700" aria-hidden="true" />
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
+      </section>
+    </div>
+  );
+}
+
+function useMediaQuery(query: string, defaultValue: boolean) {
+  const getMatches = () => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+      return defaultValue;
+    }
+    return window.matchMedia(query).matches;
+  };
+  const [matches, setMatches] = useState(getMatches);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQuery = window.matchMedia(query);
+    const handleChange = () => setMatches(mediaQuery.matches);
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [query]);
+
+  return matches;
+}
+
+function getFocusableElements(root: HTMLElement | null): HTMLElement[] {
+  if (!root) return [];
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(
+      [
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "a[href]",
+        "[tabindex]:not([tabindex='-1'])",
+      ].join(","),
+    ),
   );
 }
 
