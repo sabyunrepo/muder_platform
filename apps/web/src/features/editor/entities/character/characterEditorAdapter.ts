@@ -194,6 +194,16 @@ export function buildCharacterRoleUpdatePayload(
   };
 }
 
+export function buildCharacterDescriptionUpdatePayload(
+  character: EditorCharacterResponse,
+  description: string,
+): UpdateCharacterRequest {
+  return {
+    ...buildCharacterBaseUpdatePayload(character),
+    description: description.trim() || undefined,
+  };
+}
+
 export function buildCharacterVisibilityUpdatePayload(
   character: EditorCharacterResponse,
   field: CharacterVisibilityField,

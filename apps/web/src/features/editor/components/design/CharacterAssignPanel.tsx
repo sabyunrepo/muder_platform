@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
 import { Edit3, Trash2 } from "lucide-react";
-import type { CharacterAliasRule, EditorCharacterResponse, EditorThemeResponse, MysteryRole } from "@/features/editor/api";
+import type { CharacterAliasRule, EditorCharacterResponse, EditorThemeResponse, MysteryRole, UpdateCharacterRequest } from "@/features/editor/api";
 import { useEditorCharacters, useEditorClues, useUpdateCharacter } from "@/features/editor/api";
 import { useFlowGraph } from "@/features/editor/flowApi";
 import { useCharacterConfigDebounce } from "@/features/editor/hooks/useCharacterConfigDebounce";
+import { useEditorAutosaveToast } from "@/features/editor/hooks/useEditorAutosaveToast";
 import { CharacterDetailPanel } from "./CharacterDetailPanel";
 import { EntityEditorShell } from "@/features/editor/entities/shell/EntityEditorShell";
 import {
@@ -15,6 +16,7 @@ import {
   writePlayerKillCharacterEnabled,
 } from "@/features/editor/utils/configShape";
 import {
+  buildCharacterDescriptionUpdatePayload,
   buildCharacterAliasRulesUpdatePayload,
   buildCharacterVisibilityUpdatePayload,
   buildCharacterProfileImageMediaUpdatePayload,
@@ -105,13 +107,32 @@ export function CharacterAssignPanel({
   );
 
   const { saveConfig, flush } = useCharacterConfigDebounce(themeId, theme.config_json);
+  const {
+    schedule: scheduleCharacterDescriptionSave,
+    flush: flushCharacterDescriptionSave,
+  } = useEditorAutosaveToast<{
+    characterId: string;
+    body: UpdateCharacterRequest;
+  }>({
+    debounceMs: 1000,
+    messages: {
+      toastId: 'character-description-autosave',
+      loading: '캐릭터 소개를 저장 중입니다',
+      success: '캐릭터 소개가 저장되었습니다',
+      error: '캐릭터 소개 저장에 실패했습니다',
+    },
+    mutate: (payload, opts) => {
+      updateCharacter.mutate(payload, opts);
+    },
+  });
 
   const handleSelectChar = useCallback(
     (id: string) => {
       flush();
+      flushCharacterDescriptionSave();
       setSelectedCharId(id);
     },
-    [flush],
+    [flush, flushCharacterDescriptionSave],
   );
 
   const handleClueToggleForChar = useCallback(
@@ -223,6 +244,19 @@ export function CharacterAssignPanel({
     [characters, updateCharacter],
   );
 
+  const handleDescriptionChangeForChar = useCallback(
+    (characterId: string, description: string) => {
+      const selected = characters?.find((char) => char.id === characterId);
+      if (!selected) return;
+
+      scheduleCharacterDescriptionSave({
+        characterId: selected.id,
+        body: buildCharacterDescriptionUpdatePayload(selected, description),
+      });
+    },
+    [characters, scheduleCharacterDescriptionSave],
+  );
+
   if (charsLoading) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center overflow-hidden">
@@ -254,7 +288,10 @@ export function CharacterAssignPanel({
       onBlur={(e) => {
         // Flush pending config when focus leaves the panel entirely. `relatedTarget`
         // is null when the user clicks outside React's focus tree (e.g. tab switch).
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) flush();
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          flush();
+          flushCharacterDescriptionSave();
+        }
       }}
     >
       <EntityEditorShell
@@ -314,6 +351,8 @@ export function CharacterAssignPanel({
             showPlayerKillSettings={isPlayerKillEnabled}
             isKillable={playerKillConfig.killableCharacterIds.includes(char.id)}
             onKillableChange={(checked) => handleKillableChangeForChar(char.id, checked)}
+            onDescriptionChange={(description) => handleDescriptionChangeForChar(char.id, description)}
+            onDescriptionBlur={flushCharacterDescriptionSave}
             onAliasRulesSave={
               updateCharacter.isPending
                 ? undefined
