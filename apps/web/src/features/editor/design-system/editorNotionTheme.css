@@ -43,6 +43,7 @@
   --mmp-editor-space-xxl: 32px;
   --mmp-editor-shadow-card: rgba(15, 15, 15, 0.08) 0 4px 12px 0;
   --mmp-editor-shadow-modal: rgba(15, 15, 15, 0.16) 0 16px 48px -8px;
+  color-scheme: light;
   font-family:
     'Notion Sans',
     var(
