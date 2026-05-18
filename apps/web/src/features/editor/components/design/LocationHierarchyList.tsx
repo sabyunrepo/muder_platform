@@ -1,6 +1,7 @@
 import { useMemo, useState, type DragEventHandler, type ReactNode } from 'react';
 import { GripVertical, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 import type { EditorThemeResponse, LocationResponse } from '@/features/editor/api';
 import {
   buildLocationHierarchy,
@@ -62,17 +63,17 @@ export function LocationHierarchyList({
   return (
     <section
       aria-label="장소 목록"
-      className="flex min-h-0 flex-col overflow-visible rounded-xl border border-slate-800 bg-slate-950/70 p-3 md:overflow-y-auto"
+      className={`flex min-h-0 flex-col overflow-visible p-3 md:overflow-y-auto ${editorDesignClassNames.panel}`}
     >
       <header className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">장소 목록</h3>
-          <p className="text-xs text-slate-500">부모/하위 장소 모두 단서를 배치할 수 있습니다.</p>
+          <h3 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">장소 목록</h3>
+          <p className="text-xs text-[var(--mmp-editor-color-slate)]">부모/하위 장소 모두 단서를 배치할 수 있습니다.</p>
         </div>
         <button
           type="button"
           onClick={onStartAddTopLevel}
-          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-700 px-2.5 text-xs font-medium text-slate-300 transition hover:border-amber-500/50 hover:text-amber-100"
+          className={`inline-flex h-8 items-center gap-1.5 px-2.5 text-xs ${editorDesignClassNames.secondaryAction}`}
         >
           <Plus className="h-3.5 w-3.5" />
           장소 추가
@@ -91,7 +92,7 @@ export function LocationHierarchyList({
           dropLocation(sourceId, null, tree.length);
           setDraggingId(null);
         }}
-        className="mb-3 rounded-md border border-dashed border-slate-800 px-3 py-2 text-xs text-slate-500"
+        className="mb-3 rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] bg-[var(--mmp-editor-color-surface-soft)] px-3 py-2 text-xs text-[var(--mmp-editor-color-slate)]"
       >
         최상위로 이동
       </div>
@@ -127,14 +128,14 @@ export function LocationHierarchyList({
                 type="button"
                 onClick={() => onStartAddChild(node.location.id)}
                 aria-label={`${node.location.name} 하위장소 추가`}
-                className="ml-2 inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-800 px-2.5 text-xs text-slate-400 transition hover:border-amber-500/50 hover:text-amber-100"
+                className={`ml-2 inline-flex h-8 items-center gap-1.5 px-2.5 text-xs ${editorDesignClassNames.secondaryAction}`}
               >
                 <Plus className="h-3.5 w-3.5" />
                 하위 장소 추가
               </button>
               {renderAddChildInput(node.location.id)}
               {node.children.length > 0 ? (
-                <div className="ml-5 space-y-2 border-l border-slate-800 pl-3">
+                <div className="ml-5 space-y-2 border-l border-[var(--mmp-editor-color-hairline)] pl-3">
                   {node.children.map((child) => (
                     <LocationCard
                       key={child.location.id}
@@ -167,7 +168,7 @@ export function LocationHierarchyList({
           ))}
         </div>
       ) : (
-        <p className="rounded-md border border-dashed border-slate-800 px-3 py-8 text-center text-xs text-slate-500">
+        <p className="rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] px-3 py-8 text-center text-xs text-[var(--mmp-editor-color-slate)]">
           장소 없음
         </p>
       )}
@@ -214,26 +215,24 @@ function LocationCard({
         event.dataTransfer.dropEffect = 'move';
       }}
       onDrop={onDrop}
-      className={`group rounded-lg border transition ${
+      className={`group transition ${
         selected
-          ? 'border-amber-400/60 bg-amber-500/10'
-          : child
-            ? 'border-slate-800 bg-slate-900/70 hover:border-slate-700'
-            : 'border-slate-700 bg-slate-900 hover:border-amber-500/40'
+          ? `${editorDesignClassNames.listItem} ${editorDesignClassNames.listItemActive}`
+          : editorDesignClassNames.listItem
       }`}
     >
       <div className="flex items-start gap-2 p-2.5">
-        <GripVertical className="mt-1 h-3.5 w-3.5 shrink-0 text-slate-600" aria-hidden="true" />
+        <GripVertical className="mt-1 h-3.5 w-3.5 shrink-0 text-[var(--mmp-editor-color-steel)]" aria-hidden="true" />
         <button
           type="button"
           aria-label={`${label} 선택`}
           onClick={onSelect}
           className="min-w-0 flex-1 text-left"
         >
-          <span className={`block truncate font-medium ${child ? 'text-sm' : 'text-base'} text-slate-100`}>
+          <span className={`block truncate font-medium ${child ? 'text-sm' : 'text-base'} text-[var(--mmp-editor-color-charcoal)]`}>
             {location.name}
           </span>
-          <span className="mt-1 block text-xs text-slate-500">
+          <span className="mt-1 block text-xs text-[var(--mmp-editor-color-slate)]">
             {child
               ? `직접 배치 단서 ${directClueCount}개`
               : `직접 배치 단서 ${directClueCount}개 · 하위장소 ${childCount}개`}
@@ -243,7 +242,7 @@ function LocationCard({
           type="button"
           onClick={onDelete}
           aria-label={`${location.name} 삭제`}
-          className="rounded-md p-2 text-slate-600 transition hover:bg-red-950/40 hover:text-red-300"
+          className={`p-2 transition hover:text-[var(--mmp-editor-color-error)] ${editorDesignClassNames.iconButton}`}
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

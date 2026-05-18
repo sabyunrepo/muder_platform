@@ -1,4 +1,5 @@
 import { ListChecks, Plus, Search, Trash2, Upload, Youtube } from "lucide-react";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 import type { MediaCategoryResponse, MediaType } from "@/features/editor/mediaApi";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +57,7 @@ export function MediaToolbar({
 }: MediaToolbarProps) {
   return (
     <div
-      className="flex shrink-0 flex-col gap-3 border-b border-slate-800 bg-slate-950 px-4 py-3"
+      className="flex shrink-0 flex-col gap-3 border-b border-[var(--mmp-editor-color-hairline)] bg-[var(--mmp-editor-color-canvas)] px-4 py-3"
       role="toolbar"
       aria-label="미디어 도구 모음"
     >
@@ -71,10 +72,10 @@ export function MediaToolbar({
               type="button"
               onClick={() => onCategoryChange(null)}
               aria-pressed={categoryId == null}
-              className={`h-7 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
+              className={`h-7 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
                 categoryId == null
-                  ? "border-amber-500 bg-amber-500/10 text-amber-300"
-                  : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                  ? "border-[var(--mmp-editor-color-primary)] bg-[var(--mmp-editor-color-tint-lavender)] text-[var(--mmp-editor-color-primary)]"
+                  : "border-[var(--mmp-editor-color-hairline)] text-[var(--mmp-editor-color-slate)] hover:border-[var(--mmp-editor-color-hairline-strong)] hover:text-[var(--mmp-editor-color-charcoal)]"
               }`}
             >
               전체
@@ -87,10 +88,10 @@ export function MediaToolbar({
                   type="button"
                   onClick={() => onCategoryChange(category.id)}
                   aria-pressed={isActive}
-                  className={`h-7 shrink-0 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
+                  className={`h-7 shrink-0 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
                     isActive
-                      ? "border-amber-500 bg-amber-500/10 text-amber-300"
-                      : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                      ? "border-[var(--mmp-editor-color-primary)] bg-[var(--mmp-editor-color-tint-lavender)] text-[var(--mmp-editor-color-primary)]"
+                      : "border-[var(--mmp-editor-color-hairline)] text-[var(--mmp-editor-color-slate)] hover:border-[var(--mmp-editor-color-hairline-strong)] hover:text-[var(--mmp-editor-color-charcoal)]"
                   }`}
                 >
                   {category.name}
@@ -100,7 +101,7 @@ export function MediaToolbar({
             <button
               type="button"
               onClick={onCreateCategory}
-              className="flex h-7 shrink-0 items-center gap-1 rounded-sm border border-slate-700 px-2.5 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              className={`flex h-7 shrink-0 items-center gap-1 px-2.5 text-xs ${editorDesignClassNames.secondaryAction}`}
             >
               <Plus className="h-3.5 w-3.5" />
               카테고리
@@ -109,7 +110,7 @@ export function MediaToolbar({
               <button
                 type="button"
                 onClick={onDeleteCategory}
-                className="flex h-7 shrink-0 items-center gap-1 rounded-sm border border-rose-900/80 px-2.5 text-xs font-medium text-rose-300 transition-colors hover:border-rose-500 hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                className={`flex h-7 shrink-0 items-center gap-1 px-2.5 text-xs ${editorDesignClassNames.dangerAction}`}
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 카테고리 삭제
@@ -120,14 +121,14 @@ export function MediaToolbar({
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="relative min-w-0 sm:w-64">
-            <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
+            <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-[var(--mmp-editor-color-steel)]" />
             <input
               type="search"
               value={searchQuery}
               onChange={(event) => onSearchQueryChange(event.target.value)}
               placeholder="이름, 태그로 검색"
               aria-label="미디어 검색"
-              className="h-8 w-full rounded-sm border border-slate-700 bg-slate-950 pl-8 pr-2 text-xs text-slate-200 placeholder:text-slate-600 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              className={`h-8 w-full pl-8 pr-2 text-xs ${editorDesignClassNames.input}`}
             />
           </label>
           <div className="flex items-center gap-2">
@@ -135,10 +136,10 @@ export function MediaToolbar({
               type="button"
               onClick={onSelectionModeToggle}
               aria-pressed={selectionMode}
-              className={`flex h-8 items-center gap-1.5 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
+              className={`flex h-8 items-center gap-1.5 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
                 selectionMode
-                  ? "border-amber-500 bg-amber-500/10 text-amber-300"
-                  : "border-slate-700 text-slate-300 hover:border-slate-500 hover:text-slate-100"
+                  ? "border-[var(--mmp-editor-color-primary)] bg-[var(--mmp-editor-color-tint-lavender)] text-[var(--mmp-editor-color-primary)]"
+                  : "border-[var(--mmp-editor-color-hairline)] text-[var(--mmp-editor-color-slate)] hover:border-[var(--mmp-editor-color-hairline-strong)] hover:text-[var(--mmp-editor-color-charcoal)]"
               }`}
             >
               <ListChecks className="h-3.5 w-3.5" />
@@ -147,7 +148,7 @@ export function MediaToolbar({
             <button
               type="button"
               onClick={onUploadClick}
-              className="flex h-8 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              className={`flex h-8 items-center gap-1.5 px-3 text-xs ${editorDesignClassNames.secondaryAction}`}
             >
               <Upload className="h-3.5 w-3.5" />
               파일 업로드
@@ -155,7 +156,7 @@ export function MediaToolbar({
             <button
               type="button"
               onClick={onYouTubeClick}
-              className="flex h-8 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+              className={`flex h-8 items-center gap-1.5 px-3 text-xs ${editorDesignClassNames.secondaryAction}`}
             >
               <Youtube className="h-3.5 w-3.5" />
               YouTube
@@ -177,10 +178,10 @@ export function MediaToolbar({
               type="button"
               onClick={() => onFilterChange(pill.value)}
               aria-pressed={isActive}
-              className={`h-7 shrink-0 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 ${
+              className={`h-7 shrink-0 rounded-sm border px-3 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
                 isActive
-                  ? "border-amber-500 bg-amber-500/10 text-amber-300"
-                  : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                  ? "border-[var(--mmp-editor-color-primary)] bg-[var(--mmp-editor-color-tint-lavender)] text-[var(--mmp-editor-color-primary)]"
+                  : "border-[var(--mmp-editor-color-hairline)] text-[var(--mmp-editor-color-slate)] hover:border-[var(--mmp-editor-color-hairline-strong)] hover:text-[var(--mmp-editor-color-charcoal)]"
               }`}
             >
               {pill.label}

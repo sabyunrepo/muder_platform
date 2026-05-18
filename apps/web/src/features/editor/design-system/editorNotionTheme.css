@@ -105,6 +105,62 @@
   background: color-mix(in srgb, var(--mmp-editor-color-primary) 9%, var(--mmp-editor-color-canvas));
 }
 
+.mmp-editor-design-scope .mmp-editor-subtle-panel {
+  border: 1px solid var(--mmp-editor-color-hairline);
+  border-radius: var(--mmp-editor-radius-md);
+  background: var(--mmp-editor-color-surface-soft);
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-editor-error-panel {
+  border: 1px solid color-mix(in srgb, var(--mmp-editor-color-error) 45%, var(--mmp-editor-color-hairline));
+  border-radius: var(--mmp-editor-radius-md);
+  background: color-mix(in srgb, var(--mmp-editor-color-error) 7%, var(--mmp-editor-color-canvas));
+  color: var(--mmp-editor-color-error);
+}
+
+.mmp-editor-design-scope .mmp-editor-input {
+  border: 1px solid var(--mmp-editor-color-hairline-strong);
+  border-radius: var(--mmp-editor-radius-sm);
+  background: var(--mmp-editor-color-canvas);
+  color: var(--mmp-editor-color-ink);
+}
+
+.mmp-editor-design-scope .mmp-editor-input::placeholder {
+  color: var(--mmp-editor-color-muted);
+}
+
+.mmp-editor-design-scope .mmp-editor-input:focus,
+.mmp-editor-design-scope .mmp-editor-input:focus-visible {
+  border-color: var(--mmp-editor-color-primary);
+  outline: 2px solid color-mix(in srgb, var(--mmp-editor-color-primary) 32%, transparent);
+  outline-offset: 1px;
+}
+
+.mmp-editor-design-scope .mmp-editor-danger-action {
+  border: 1px solid color-mix(in srgb, var(--mmp-editor-color-error) 42%, var(--mmp-editor-color-hairline));
+  border-radius: var(--mmp-editor-radius-md);
+  background: color-mix(in srgb, var(--mmp-editor-color-error) 7%, var(--mmp-editor-color-canvas));
+  color: var(--mmp-editor-color-error);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.mmp-editor-design-scope .mmp-editor-danger-action:hover {
+  background: color-mix(in srgb, var(--mmp-editor-color-error) 12%, var(--mmp-editor-color-canvas));
+}
+
+.mmp-editor-design-scope .mmp-editor-icon-button {
+  border-radius: var(--mmp-editor-radius-sm);
+  color: var(--mmp-editor-color-steel);
+}
+
+.mmp-editor-design-scope .mmp-editor-icon-button:hover {
+  background: var(--mmp-editor-color-surface);
+  color: var(--mmp-editor-color-charcoal);
+}
+
 .mmp-editor-design-scope .mmp-editor-section-header {
   color: var(--mmp-editor-color-charcoal);
   font-size: 18px;

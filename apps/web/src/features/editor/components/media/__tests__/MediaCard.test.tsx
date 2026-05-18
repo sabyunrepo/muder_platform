@@ -169,4 +169,12 @@ describe("MediaCard", () => {
     expect(screen.getAllByText("배경음악").length).toBeGreaterThan(0);
     expect(screen.getByText("2:05")).toBeDefined();
   });
+
+  it("선택 상태는 editor list item 토큰 클래스를 사용한다", () => {
+    renderCard(baseMedia, { selected: true });
+
+    const card = screen.getByRole("button", { name: /오프닝 BGM/ });
+    expect(card.className).toContain("mmp-editor-list-item");
+    expect(card.className).toContain("mmp-editor-list-item-active");
+  });
 });

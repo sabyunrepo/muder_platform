@@ -11,6 +11,7 @@ import {
   type MediaType,
   type UpdateMediaRequest,
 } from '@/features/editor/mediaApi';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 import { ApiHttpError } from '@/lib/api-error';
 import { ConfirmDialog } from '@/shared/components/ui';
 import { MediaReplaceModal } from './MediaReplaceModal';
@@ -115,12 +116,12 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     <div className="flex h-full flex-col gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-slate-500">미디어 상세</h3>
+        <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">미디어 상세</h3>
         <button
           type="button"
           onClick={onClose}
           aria-label="상세 닫기"
-          className="rounded-sm p-1 text-slate-500 transition-colors hover:bg-slate-800 hover:text-slate-200"
+          className={`p-1 transition-colors ${editorDesignClassNames.iconButton}`}
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -129,19 +130,19 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       {/* Form */}
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">
             이름
           </span>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+            className={`h-8 px-2 text-xs ${editorDesignClassNames.input}`}
           />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">
             태그 (쉼표 구분)
           </span>
           <input
@@ -149,7 +150,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             value={tagsText}
             onChange={(e) => setTagsText(e.target.value)}
             placeholder="전투, 긴장감"
-            className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+            className={`h-8 px-2 text-xs ${editorDesignClassNames.input}`}
           />
         </label>
 
@@ -157,13 +158,13 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           <div className="grid grid-cols-2 gap-3">
             {showCategorySelect && (
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">
                   카테고리
                 </span>
                 <select
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
-                  className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+                  className={`h-8 px-2 text-xs ${editorDesignClassNames.input}`}
                 >
                   <option value="">전체</option>
                   {categories.map((category) => (
@@ -176,13 +177,13 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             )}
             {canChangeMediaType && (
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-slate-600">
+                <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">
                   분류
                 </span>
                 <select
                   value={mediaType}
                   onChange={(e) => setMediaType(e.target.value as MediaType)}
-                  className="h-8 rounded-sm border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950"
+                  className={`h-8 px-2 text-xs ${editorDesignClassNames.input}`}
                 >
                   {typeOptions.map((option) => (
                     <option key={option} value={option}>
@@ -195,7 +196,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           </div>
         )}
 
-        <dl className="grid gap-2 rounded-sm border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs">
+        <dl className={`grid gap-2 px-3 py-2 text-xs ${editorDesignClassNames.subtlePanel}`}>
           {!canChangeMediaType && <MediaInfoRow label="분류" value={mediaTypeLabel(media.type)} />}
           {canShowDuration && <MediaInfoRow label="길이" value={formatDurationInfo(media.duration)} />}
           <MediaInfoRow label="출처" value={mediaSourceLabel(media.source_type)} />
@@ -210,13 +211,13 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
         {referenceWarning && (
           <div
             role="alert"
-            className="rounded-sm border border-amber-700/70 bg-amber-950/30 px-3 py-2 text-xs text-amber-100"
+            className="rounded-sm border border-[var(--mmp-editor-color-warning)] bg-[var(--mmp-editor-color-tint-yellow)] px-3 py-2 text-xs text-[var(--mmp-editor-color-charcoal)]"
           >
             <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none text-amber-400" />
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none text-[var(--mmp-editor-color-warning)]" />
               <div className="min-w-0 space-y-1">
                 <p className="font-medium">이 미디어가 아직 사용 중입니다.</p>
-                <p className="text-[11px] text-amber-200/80">
+                <p className="text-[11px] text-[var(--mmp-editor-color-slate)]">
                   삭제를 다시 누르면 아래 연결을 해제한 뒤 삭제할 수 있습니다.
                 </p>
                 {referenceWarning.length > 0 && (
@@ -241,7 +242,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
           type="button"
           onClick={() => setDeleteDialogOpen(true)}
           disabled={deleteMutation.isPending}
-          className="flex h-8 items-center gap-1.5 rounded-sm border border-rose-800 px-3 text-xs font-medium text-rose-400 transition-colors hover:border-rose-500 hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`flex h-8 items-center gap-1.5 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${editorDesignClassNames.dangerAction}`}
         >
           <Trash2 className="h-3.5 w-3.5" />
           삭제
@@ -251,7 +252,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             <button
               type="button"
               onClick={() => setReplaceOpen(true)}
-              className="flex h-8 items-center gap-1.5 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100"
+              className={`flex h-8 items-center gap-1.5 px-3 text-xs ${editorDesignClassNames.secondaryAction}`}
             >
               <RefreshCw className="h-3.5 w-3.5" />
               교체
@@ -261,7 +262,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
             type="button"
             onClick={handleSave}
             disabled={updateMutation.isPending}
-            className="flex h-8 items-center gap-1.5 rounded-sm bg-amber-600 px-3 text-xs font-medium text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className={`flex h-8 items-center gap-1.5 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${editorDesignClassNames.primaryAction}`}
           >
             <Save className="h-3.5 w-3.5" />
             저장
@@ -302,25 +303,25 @@ function MediaReferencesPreview({
 }) {
   if (loading) {
     return (
-      <div className="rounded-sm border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-500">
+      <div className={`px-3 py-2 text-xs ${editorDesignClassNames.subtlePanel}`}>
         사용 위치 확인 중...
       </div>
     );
   }
   if (references.length === 0) {
     return (
-      <div className="rounded-sm border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-500">
+      <div className={`px-3 py-2 text-xs ${editorDesignClassNames.subtlePanel}`}>
         아직 연결된 제작 요소가 없습니다.
       </div>
     );
   }
   return (
-    <div className="rounded-sm border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-100">
+    <div className="rounded-sm border border-[var(--mmp-editor-color-warning)] bg-[var(--mmp-editor-color-tint-yellow)] px-3 py-2 text-xs text-[var(--mmp-editor-color-charcoal)]">
       <div className="flex items-start gap-2">
-        <Link2 className="mt-0.5 h-3.5 w-3.5 flex-none text-amber-400" />
+        <Link2 className="mt-0.5 h-3.5 w-3.5 flex-none text-[var(--mmp-editor-color-warning)]" />
         <div className="min-w-0">
           <p className="font-medium">사용 중인 위치 {references.length}개</p>
-          <p className="mt-1 text-[11px] text-amber-200/80">
+          <p className="mt-1 text-[11px] text-[var(--mmp-editor-color-slate)]">
             삭제하면 아래 연결도 함께 해제됩니다. 교체는 연결을 유지합니다.
           </p>
           <ul className="mt-2 space-y-1">
@@ -339,8 +340,8 @@ function MediaReferencesPreview({
 function MediaInfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right text-slate-300">{value}</dd>
+      <dt className="text-[var(--mmp-editor-color-slate)]">{label}</dt>
+      <dd className="text-right text-[var(--mmp-editor-color-charcoal)]">{value}</dd>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 import type { ClueResponse } from '@/features/editor/api';
 import type { LocationDiscoveryConfig } from '@/features/editor/editorTypes';
 import type {
@@ -62,16 +63,16 @@ export function LocationSelectedClueItem({
     .join(', ');
 
   return (
-    <div className="rounded-lg border border-amber-500/20 bg-slate-950/80 px-2.5 py-2">
+    <div className={`px-2.5 py-2 ${editorDesignClassNames.listItem}`}>
       <div className="flex items-center gap-2">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-amber-500/10 text-[9px] font-semibold text-amber-300">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[var(--mmp-editor-color-tint-yellow)] text-[9px] font-semibold text-[var(--mmp-editor-color-warning)]">
           {roundLabel(clue)}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-xs font-medium text-slate-200">{clue.name}</span>
-          <span className="block truncate text-[10px] text-slate-600">{clueMeta(clue)}</span>
+          <span className="block truncate text-xs font-medium text-[var(--mmp-editor-color-charcoal)]">{clue.name}</span>
+          <span className="block truncate text-[10px] text-[var(--mmp-editor-color-slate)]">{clueMeta(clue)}</span>
         </span>
-        <span className="shrink-0 rounded-full border border-slate-800 px-2 py-0.5 text-[10px] text-slate-500">
+        <span className="shrink-0 rounded-full border border-[var(--mmp-editor-color-hairline)] px-2 py-0.5 text-[10px] text-[var(--mmp-editor-color-steel)]">
           1회 발견
         </span>
         <button
@@ -79,14 +80,14 @@ export function LocationSelectedClueItem({
           disabled={disabled}
           onClick={() => onRemove(clue.id)}
           aria-label={`${clue.name} 제거`}
-          className="rounded-full p-1 text-slate-600 hover:bg-red-950/40 hover:text-red-300 disabled:opacity-50"
+          className={`p-1 hover:text-[var(--mmp-editor-color-error)] disabled:opacity-50 ${editorDesignClassNames.iconButton}`}
         >
           <X className="h-3 w-3" />
         </button>
       </div>
-      <div className="mt-2 rounded-md border border-slate-800 bg-slate-950/80 p-2">
+      <div className={`mt-2 p-2 ${editorDesignClassNames.subtlePanel}`}>
         {availableClues.length === 0 ? (
-          <p className="text-[10px] text-slate-600">조건으로 사용할 다른 단서가 없습니다.</p>
+          <p className="text-[10px] text-[var(--mmp-editor-color-slate)]">조건으로 사용할 다른 단서가 없습니다.</p>
         ) : (
           <ClueSearchMultiSelect
             title="필요 단서"
@@ -103,7 +104,7 @@ export function LocationSelectedClueItem({
             onRemove={(requiredClueId) => onToggleRequired(clue.id, requiredClueId)}
           />
         )}
-        <p className="mt-1.5 text-[10px] text-slate-600">
+        <p className="mt-1.5 text-[10px] text-[var(--mmp-editor-color-slate)]">
           {selectedRequiredNames ? `${selectedRequiredNames} 보유 시 발견` : '조건 없음'}
         </p>
       </div>

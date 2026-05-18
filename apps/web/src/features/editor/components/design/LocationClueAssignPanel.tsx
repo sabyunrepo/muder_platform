@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { MapPin, Package } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/shared/components/ui/Spinner';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 import type { EditorThemeResponse, LocationResponse, ClueResponse } from '@/features/editor/api';
 import { editorKeys, useEditorClues, useUpdateConfigJson } from '@/features/editor/api';
 import {
@@ -241,13 +242,13 @@ export function LocationClueAssignPanel({
     return (
       <section
         aria-label={`${locationPathLabel} 단서 조사`}
-        className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-center text-xs text-red-100"
+        className={`p-3 text-center text-xs ${editorDesignClassNames.errorPanel}`}
       >
         <p>단서 목록을 불러오지 못했습니다.</p>
         <button
           type="button"
           onClick={() => refetch?.()}
-          className="mt-2 rounded-md border border-red-300/30 px-2 py-1 text-red-50 hover:bg-red-500/20"
+          className={`mt-2 px-2 py-1 text-xs ${editorDesignClassNames.dangerAction}`}
         >
           다시 불러오기
         </button>
@@ -258,15 +259,15 @@ export function LocationClueAssignPanel({
   return (
     <section
       aria-label={`${locationPathLabel} 단서 조사`}
-      className="rounded-lg border border-slate-800 bg-slate-950/70 p-3"
+      className={`p-3 ${editorDesignClassNames.panel}`}
     >
       <header className="mb-3 flex flex-wrap items-center gap-2">
-        <MapPin className="h-3.5 w-3.5 text-amber-500/70" />
-        <h4 className="text-sm font-semibold text-slate-200">{locationPathLabel} 단서 조사</h4>
-        <span className="text-xs text-slate-600">
+        <MapPin className="h-3.5 w-3.5 text-[var(--mmp-editor-color-primary)]" />
+        <h4 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">{locationPathLabel} 단서 조사</h4>
+        <span className="text-xs text-[var(--mmp-editor-color-steel)]">
           ({assignedIds.length}/{clues.length})
         </span>
-        <p className="basis-full text-xs text-slate-500">
+        <p className="basis-full text-xs text-[var(--mmp-editor-color-slate)]">
           이 장소를 조사했을 때 얻는 단서와 먼저 필요한 단서를 정합니다.
         </p>
       </header>
@@ -292,17 +293,17 @@ export function LocationClueAssignPanel({
             onRemove={removeClue}
             onSelectSelected={setActiveClueId}
           />
-          <section className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2.5">
+          <section className={`p-2.5 ${editorDesignClassNames.subtlePanel}`}>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
+              <p className="text-xs font-semibold uppercase tracking-widest text-[var(--mmp-editor-color-primary)]">
                 조사 설정
               </p>
-              <span className="text-[10px] text-slate-600">
+              <span className="text-[10px] text-[var(--mmp-editor-color-steel)]">
                 {activeClue ? activeClue.name : '선택 없음'}
               </span>
             </div>
             {!activeClue ? (
-              <p className="rounded-md border border-dashed border-slate-800 px-2.5 py-5 text-center text-xs text-slate-600">
+              <p className="rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] px-2.5 py-5 text-center text-xs text-[var(--mmp-editor-color-slate)]">
                 아직 배정된 단서가 없습니다. 좌측 목록에서 조사 시 발견할 단서를 클릭하세요.
               </p>
             ) : (
@@ -334,9 +335,9 @@ export function LocationClueAssignPanel({
 
 function EmptyClues() {
   return (
-    <div className="rounded-md border border-dashed border-slate-800 py-6 text-center">
-      <Package className="mx-auto mb-2 h-5 w-5 text-slate-800" />
-      <p className="text-[10px] font-mono uppercase tracking-widest text-slate-700">
+    <div className="rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] py-6 text-center">
+      <Package className="mx-auto mb-2 h-5 w-5 text-[var(--mmp-editor-color-muted)]" />
+      <p className="text-[10px] font-mono uppercase tracking-widest text-[var(--mmp-editor-color-steel)]">
         단서가 없습니다
       </p>
     </div>

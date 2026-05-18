@@ -1,5 +1,6 @@
 import { Check, Plus, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 export interface ClueSearchSelectItem {
   id: string;
@@ -74,16 +75,16 @@ export function ClueSearchMultiSelect<T extends ClueSearchSelectItem>({
   }, [items, normalizedQuery, resultLimit]);
 
   return (
-    <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+    <section className={`p-3 ${editorDesignClassNames.subtlePanel}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{title}</p>
-        <span className="text-[10px] text-slate-600">
+        <p className="text-xs font-semibold uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">{title}</p>
+        <span className="text-[10px] text-[var(--mmp-editor-color-steel)]">
           {selectedItems.length}/{items.length}개 선택
         </span>
       </div>
 
       {selectedItems.length === 0 ? (
-        <p className="mb-3 rounded-md border border-dashed border-slate-800 px-3 py-5 text-center text-xs text-slate-600">
+        <p className="mb-3 rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] px-3 py-5 text-center text-xs text-[var(--mmp-editor-color-slate)]">
           {emptySelectedText}
         </p>
       ) : (
@@ -105,24 +106,24 @@ export function ClueSearchMultiSelect<T extends ClueSearchSelectItem>({
 
       <label className="relative block">
         <span className="sr-only">{searchLabel}</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--mmp-editor-color-steel)]" />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={searchPlaceholder}
           aria-label={searchLabel}
-          className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+          className={`w-full py-2 pl-9 pr-3 text-sm ${editorDesignClassNames.input}`}
         />
       </label>
 
       <div className="mt-3">
         {!normalizedQuery ? (
-          <p className="rounded-md border border-dashed border-slate-800 px-3 py-5 text-center text-xs text-slate-600">
+          <p className="rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] px-3 py-5 text-center text-xs text-[var(--mmp-editor-color-slate)]">
             {idleSearchText}
           </p>
         ) : searchResults.length === 0 ? (
-          <p className="rounded-md border border-dashed border-slate-800 px-3 py-5 text-center text-xs text-slate-600">
+          <p className="rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] px-3 py-5 text-center text-xs text-[var(--mmp-editor-color-slate)]">
             {emptySearchText}
           </p>
         ) : (
@@ -146,24 +147,24 @@ export function ClueSearchMultiSelect<T extends ClueSearchSelectItem>({
                     if (selected) onSelectSelected?.(item.id);
                     else onAdd(item.id);
                   }}
-                  className={`group flex w-full items-center gap-3 rounded-md border px-2 py-2 text-left transition hover:border-amber-500/30 hover:bg-slate-800/80 disabled:cursor-default disabled:border-slate-800 disabled:bg-slate-950/40 ${
+                  className={`group flex w-full items-center gap-3 rounded-md border px-2 py-2 text-left transition hover:border-[var(--mmp-editor-color-hairline-strong)] hover:bg-[var(--mmp-editor-color-surface)] disabled:cursor-default disabled:opacity-60 ${
                     selected
-                      ? 'border-amber-500/20 bg-amber-950/10'
+                      ? 'border-[var(--mmp-editor-color-primary)] bg-[var(--mmp-editor-color-tint-lavender)]'
                       : 'border-transparent'
                   }`}
                 >
                   <ClueBadge item={item} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-200">
+                    <span className="block truncate text-sm font-medium text-[var(--mmp-editor-color-charcoal)]">
                       {item.name}
                     </span>
                     {item.meta && (
-                      <span className="mt-0.5 block truncate text-xs text-slate-500">
+                      <span className="mt-0.5 block truncate text-xs text-[var(--mmp-editor-color-slate)]">
                         {item.meta}
                       </span>
                     )}
                   </span>
-                  <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-slate-700 px-2 text-[10px] font-semibold text-slate-500 transition group-hover:border-amber-500 group-hover:text-amber-300">
+                  <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-[var(--mmp-editor-color-hairline)] px-2 text-[10px] font-semibold text-[var(--mmp-editor-color-steel)] transition group-hover:border-[var(--mmp-editor-color-primary)] group-hover:text-[var(--mmp-editor-color-primary)]">
                     {selected ? (
                       <>
                         <Check className="mr-1 h-3.5 w-3.5" />
@@ -206,9 +207,9 @@ function SelectedClueRow<T extends ClueSearchSelectItem>({
     <>
       <ClueBadge item={item} />
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-xs font-medium text-slate-200">{item.name}</span>
+        <span className="block truncate text-xs font-medium text-[var(--mmp-editor-color-charcoal)]">{item.name}</span>
         {item.meta && (
-          <span className="block truncate text-[10px] text-slate-600">{item.meta}</span>
+          <span className="block truncate text-[10px] text-[var(--mmp-editor-color-slate)]">{item.meta}</span>
         )}
       </span>
     </>
@@ -217,7 +218,9 @@ function SelectedClueRow<T extends ClueSearchSelectItem>({
   return (
     <div
       className={`flex items-center gap-2 rounded-lg border px-2.5 py-1.5 ${
-        active ? 'border-amber-400/50 bg-amber-500/10' : 'border-amber-500/20 bg-slate-950/80'
+        active
+          ? 'border-[var(--mmp-editor-color-primary)] bg-[var(--mmp-editor-color-tint-lavender)]'
+          : 'border-[var(--mmp-editor-color-hairline)] bg-[var(--mmp-editor-color-canvas)]'
       }`}
     >
       {onSelect ? (
@@ -237,7 +240,7 @@ function SelectedClueRow<T extends ClueSearchSelectItem>({
         disabled={disabled}
         onClick={() => onRemove(item.id)}
         aria-label={removeLabel}
-        className="rounded-full p-1 text-slate-600 hover:bg-red-950/40 hover:text-red-300 disabled:opacity-50"
+        className={`p-1 hover:text-[var(--mmp-editor-color-error)] disabled:opacity-50 ${editorDesignClassNames.iconButton}`}
       >
         <X className="h-3 w-3" />
       </button>
@@ -247,7 +250,7 @@ function SelectedClueRow<T extends ClueSearchSelectItem>({
 
 function ClueBadge<T extends ClueSearchSelectItem>({ item }: { item: T }) {
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-800 text-[10px] font-semibold text-amber-400">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[var(--mmp-editor-color-tint-yellow)] text-[10px] font-semibold text-[var(--mmp-editor-color-warning)]">
       {item.badge ?? 'CL'}
     </span>
   );
