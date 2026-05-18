@@ -1,10 +1,14 @@
-export const TRAILING_EMPTY_PARAGRAPH_MARKDOWN = '<br />';
+export const TRAILING_EMPTY_PARAGRAPH_MARKDOWN = '\u200B';
 
 export function appendTrailingEmptyParagraph(markdown: string) {
   const body = markdown.replace(/\s+$/, '');
   return body
     ? `${body}\n\n${TRAILING_EMPTY_PARAGRAPH_MARKDOWN}`
     : TRAILING_EMPTY_PARAGRAPH_MARKDOWN;
+}
+
+export function normalizeTrailingEmptyParagraphInput(markdown: string) {
+  return markdown.replace(/(^|\n)\u200B(?=[^\n]*\S)/g, '$1');
 }
 
 export function isPlainEnterKey(

@@ -4,6 +4,7 @@ import {
   appendTrailingEmptyParagraph,
   isCollapsedSelectionAtEndOfElement,
   isPlainEnterKey,
+  normalizeTrailingEmptyParagraphInput,
   TRAILING_EMPTY_PARAGRAPH_MARKDOWN,
 } from '../richContentTrailingParagraph';
 
@@ -14,6 +15,15 @@ describe('richContentTrailingParagraph', () => {
     );
     expect(appendTrailingEmptyParagraph('첫 문장\n\n')).toBe(
       `첫 문장\n\n${TRAILING_EMPTY_PARAGRAPH_MARKDOWN}`
+    );
+  });
+
+  it('removes the empty paragraph marker once the user types real content on that line', () => {
+    expect(normalizeTrailingEmptyParagraphInput(`첫 문장\n\n${TRAILING_EMPTY_PARAGRAPH_MARKDOWN}`)).toBe(
+      `첫 문장\n\n${TRAILING_EMPTY_PARAGRAPH_MARKDOWN}`
+    );
+    expect(normalizeTrailingEmptyParagraphInput(`첫 문장\n\n${TRAILING_EMPTY_PARAGRAPH_MARKDOWN}다음 문장`)).toBe(
+      '첫 문장\n\n다음 문장'
     );
   });
 

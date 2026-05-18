@@ -40,6 +40,7 @@ import {
   appendTrailingEmptyParagraph,
   isCollapsedSelectionAtEndOfElement,
   isPlainEnterKey,
+  normalizeTrailingEmptyParagraphInput,
 } from './richContentTrailingParagraph';
 
 export function RichContentEditor({
@@ -160,6 +161,12 @@ export function RichContentEditor({
     onClosePicker();
   }
 
+  function handleChange(nextMarkdown: string) {
+    const normalizedNextMarkdown = normalizeTrailingEmptyParagraphInput(nextMarkdown);
+    markdownRef.current = normalizedNextMarkdown;
+    onChangeRef.current(normalizedNextMarkdown);
+  }
+
   function handleKeyDownCapture(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (!isPlainEnterKey(event.nativeEvent)) return;
     const editable = findContentEditableElement(event.currentTarget);
@@ -200,7 +207,7 @@ export function RichContentEditor({
         <MDXEditor
           ref={editorRef}
           markdown={normalizedMarkdown}
-          onChange={onChange}
+          onChange={handleChange}
           plugins={plugins}
           className="mmp-mdx-editor"
           contentEditableClassName="text-sm leading-6 text-slate-100"
