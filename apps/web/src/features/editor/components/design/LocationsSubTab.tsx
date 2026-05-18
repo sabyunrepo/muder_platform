@@ -58,7 +58,8 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
         locations?.flatMap((location) => [
           location.appearance_scene_id ?? null,
           location.hide_scene_id ?? null,
-        ]) ?? []
+        ]) ?? [],
+        { scope: 'investigation_phase' },
       ),
     [flowGraph?.nodes, locations]
   );

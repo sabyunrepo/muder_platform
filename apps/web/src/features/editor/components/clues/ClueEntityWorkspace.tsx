@@ -108,6 +108,7 @@ export function ClueEntityWorkspace({
         clue.reveal_scene_id,
         clue.hide_scene_id,
       ]),
+      { scope: 'investigation_phase' },
     ),
     [flowNodes, clues],
   );

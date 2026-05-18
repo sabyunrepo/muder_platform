@@ -17,6 +17,9 @@ describe('LocationsSubTab 장면 공개 시점', () => {
     expect(screen.getAllByText('처음부터 끝까지').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('거실 출현 장면')).toBeDefined();
     expect(screen.getByLabelText('거실 숨김 장면')).toBeDefined();
+    expect(screen.getAllByText('조사 장면 (장면)').length).toBeGreaterThan(0);
+    expect(screen.queryByText('토론 장면 (장면)')).toBeNull();
+    expect(screen.queryByText('진엔딩 (결말)')).toBeNull();
   });
 
   it('출현 장면을 선택하면 useUpdateLocation.mutate 가 호출된다', () => {
