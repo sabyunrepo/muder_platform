@@ -52,22 +52,22 @@ export function SaveIndicator({ status, lastSaved, onRetry }: SaveIndicatorProps
     >
       {status === "dirty" && (
         <>
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
-          <span className="text-amber-400">변경사항 있음</span>
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--mmp-editor-color-warning)]" />
+          <span className="text-[var(--mmp-editor-color-warning)]">변경사항 있음</span>
         </>
       )}
 
       {status === "saving" && (
         <>
-          <span className="h-3.5 w-3.5 animate-spin rounded-full border border-slate-400 border-t-transparent" />
-          <span className="text-slate-400">저장 중...</span>
+          <span className="h-3.5 w-3.5 animate-spin rounded-full border border-[var(--mmp-editor-color-steel)] border-t-transparent" />
+          <span className="text-[var(--mmp-editor-color-slate)]">저장 중...</span>
         </>
       )}
 
       {status === "saved" && (
         <>
-          <span className="text-emerald-500">✓</span>
-          <span className="text-slate-500">
+          <span className="text-[var(--mmp-editor-color-success)]">✓</span>
+          <span className="text-[var(--mmp-editor-color-slate)]">
             저장됨{lastSaved ? ` ${formatTime(lastSaved)}` : ""}
           </span>
         </>
@@ -77,10 +77,10 @@ export function SaveIndicator({ status, lastSaved, onRetry }: SaveIndicatorProps
         <button
           type="button"
           onClick={onRetry}
-          className="flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 transition-colors hover:bg-red-950"
+          className="flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 transition-colors hover:bg-[var(--mmp-editor-color-tint-rose)]"
         >
-          <span className="text-red-400">✗</span>
-          <span className="text-red-400">저장 실패 — 재시도</span>
+          <span className="text-[var(--mmp-editor-color-error)]">✗</span>
+          <span className="text-[var(--mmp-editor-color-error)]">저장 실패 — 재시도</span>
         </button>
       )}
     </div>

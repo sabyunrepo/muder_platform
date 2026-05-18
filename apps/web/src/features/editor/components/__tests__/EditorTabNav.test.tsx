@@ -25,6 +25,7 @@ vi.mock('../../stores/editorUIStore', () => ({
 // ---------------------------------------------------------------------------
 
 import { EditorTabNav } from '../EditorTabNav';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 const originalScrollIntoView = window.HTMLElement.prototype.scrollIntoView;
 
@@ -74,6 +75,8 @@ describe('EditorTabNav dynamic tabs', () => {
 
   it('모듈 미지정 시 always=true 탭만 표시된다', () => {
     render(<EditorTabNav />);
+    expect(screen.getByRole('tablist').parentElement?.className).toContain(editorDesignClassNames.tabBar);
+    expect(screen.getByRole('tab', { name: /스토리 진행/ }).className).toContain(editorDesignClassNames.tabActive);
     expect(screen.getByText('스토리 진행')).toBeDefined();
     expect(screen.getByText('정보 관리')).toBeDefined();
     expect(screen.getByText('읽기 대사')).toBeDefined();

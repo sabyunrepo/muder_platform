@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { EDITOR_TABS, type EditorTab } from "@/features/editor/constants";
 import { buildEditorRouteForTab } from "@/features/editor/routeSegments";
 import { useEditorUI } from "@/features/editor/stores/editorUIStore";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -88,9 +89,9 @@ export function EditorTabNav({
   );
 
   return (
-    <div className="sticky top-12 z-40 h-11 shrink-0 border-b border-slate-800 bg-slate-950">
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-slate-950 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-slate-950 to-transparent" />
+    <div className={`sticky top-12 z-40 h-11 shrink-0 ${editorDesignClassNames.tabBar}`}>
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-[var(--mmp-editor-color-surface-soft)] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-[var(--mmp-editor-color-surface-soft)] to-transparent" />
       <nav
         role="tablist"
         aria-label="에디터 탭"
@@ -104,7 +105,7 @@ export function EditorTabNav({
               {startsNewGroup && (
                 <div
                   aria-hidden="true"
-                  className="my-2 mr-2 w-px bg-slate-800"
+                  className="my-2 mr-2 w-px bg-[var(--mmp-editor-color-hairline)]"
                 />
               )}
               <button
@@ -120,8 +121,8 @@ export function EditorTabNav({
                 onKeyDown={(e) => handleKeyDown(e, index)}
                 className={`relative flex min-h-11 shrink-0 items-center gap-1.5 px-3 text-xs font-medium transition-colors sm:px-4 ${
                   isActive
-                    ? "text-amber-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-amber-500"
-                    : "text-slate-500 hover:bg-slate-900/50 hover:text-slate-300"
+                    ? `${editorDesignClassNames.tab} ${editorDesignClassNames.tabActive} after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5`
+                    : editorDesignClassNames.tab
                 }`}
               >
                 <tab.icon className="h-3.5 w-3.5" />

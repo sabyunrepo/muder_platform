@@ -59,6 +59,52 @@
   color: var(--mmp-editor-color-ink);
 }
 
+.mmp-editor-design-scope .mmp-editor-top-bar {
+  border-bottom: 1px solid var(--mmp-editor-color-hairline);
+  background: color-mix(in srgb, var(--mmp-editor-color-canvas) 94%, var(--mmp-editor-color-surface));
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-editor-tab-bar {
+  border-bottom: 1px solid var(--mmp-editor-color-hairline);
+  background: var(--mmp-editor-color-surface-soft);
+}
+
+.mmp-editor-design-scope .mmp-editor-tab {
+  color: var(--mmp-editor-color-slate);
+  letter-spacing: 0;
+}
+
+.mmp-editor-design-scope .mmp-editor-tab:hover {
+  background: var(--mmp-editor-color-surface);
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-editor-tab-active {
+  color: var(--mmp-editor-color-primary);
+}
+
+.mmp-editor-design-scope .mmp-editor-tab-active::after {
+  background: var(--mmp-editor-color-primary);
+}
+
+.mmp-editor-design-scope .mmp-editor-list-item {
+  border: 1px solid var(--mmp-editor-color-hairline);
+  border-radius: var(--mmp-editor-radius-md);
+  background: var(--mmp-editor-color-canvas);
+  color: var(--mmp-editor-color-charcoal);
+}
+
+.mmp-editor-design-scope .mmp-editor-list-item:hover {
+  border-color: var(--mmp-editor-color-hairline-strong);
+  background: var(--mmp-editor-color-surface-soft);
+}
+
+.mmp-editor-design-scope .mmp-editor-list-item-active {
+  border-color: color-mix(in srgb, var(--mmp-editor-color-primary) 58%, var(--mmp-editor-color-hairline));
+  background: color-mix(in srgb, var(--mmp-editor-color-primary) 9%, var(--mmp-editor-color-canvas));
+}
+
 .mmp-editor-design-scope .mmp-editor-section-header {
   color: var(--mmp-editor-color-charcoal);
   font-size: 18px;
