@@ -169,8 +169,9 @@ Note: #668 documents game runtime as the one scoped exception to app-wide
 light/dark following. Runtime uses `mmp-runtime-boundary` with project semantic
 token names aliased to an immersive dark palette. Browser evidence is stored in
 `screenshots/design-system/668-*`; voice overlay and bottom sheet behavior are
-covered by focused component tests because the current app routes do not mount
-the unused voice preview components directly.
+covered by focused component tests that validate runtime boundary semantics.
+These design-system-migrated components are ready for integration into game
+routes when voice features are activated.
 
 ## Final Review
 
