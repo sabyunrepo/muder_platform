@@ -1,76 +1,59 @@
-import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "sonner";
-import { GlobalErrorBoundary } from "@/components/error";
-import { queryClient } from "@/services/queryClient";
-import { useAuthStore } from "@/stores/authStore";
-import { api } from "@/services/api";
-import { MainLayout } from "@/shared/components/MainLayout";
-import { NetworkBanner } from "@/shared/components/NetworkBanner";
-import ProtectedRoute from "@/shared/components/ProtectedRoute";
-import RoleRoute from "@/shared/components/RoleRoute";
+import { lazy, Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { GlobalErrorBoundary } from '@/components/error';
+import { queryClient } from '@/services/queryClient';
+import { useAuthStore } from '@/stores/authStore';
+import { api } from '@/services/api';
+import { AppearanceProvider, useAppearance } from '@/shared/appearance';
+import { MainLayout } from '@/shared/components/MainLayout';
+import { NetworkBanner } from '@/shared/components/NetworkBanner';
+import ProtectedRoute from '@/shared/components/ProtectedRoute';
+import RoleRoute from '@/shared/components/RoleRoute';
 
 // ---------------------------------------------------------------------------
 // Lazy-loaded 페이지
 // ---------------------------------------------------------------------------
 
 // 퍼블릭
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage"));
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 // OfflinePage는 오프라인에서도 렌더링해야 하므로 eager import
-import OfflinePage from "@/pages/OfflinePage";
-const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
-const AuthCallbackPage = lazy(
-  () => import("@/features/auth/AuthCallbackPage"),
-);
+import OfflinePage from '@/pages/OfflinePage';
+const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
+const AuthCallbackPage = lazy(() => import('@/features/auth/AuthCallbackPage'));
 
 // 인증 필요
-const LobbyPage = lazy(() => import("@/pages/LobbyPage"));
-const ProfilePage = lazy(() => import("@/pages/ProfilePage"));
-const RoomPage = lazy(() => import("@/pages/RoomPage"));
-const EditorPage = lazy(() => import("@/pages/EditorPage"));
-const AdminPage = lazy(() => import("@/pages/AdminPage"));
-const PublicProfilePage = lazy(() => import("@/pages/PublicProfilePage"));
-const GamePage = lazy(() => import("@/pages/GamePage"));
-const SocialPage = lazy(() => import("@/pages/SocialPage"));
-const ReadingScriptEditorMockPage = lazy(
-  () => import("@/pages/ReadingScriptEditorMockPage"),
-);
-const ReadingScriptPlayerMockPage = lazy(
-  () => import("@/pages/ReadingScriptPlayerMockPage"),
-);
+const LobbyPage = lazy(() => import('@/pages/LobbyPage'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const RoomPage = lazy(() => import('@/pages/RoomPage'));
+const EditorPage = lazy(() => import('@/pages/EditorPage'));
+const AdminPage = lazy(() => import('@/pages/AdminPage'));
+const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage'));
+const GamePage = lazy(() => import('@/pages/GamePage'));
+const SocialPage = lazy(() => import('@/pages/SocialPage'));
+const ReadingScriptEditorMockPage = lazy(() => import('@/pages/ReadingScriptEditorMockPage'));
+const ReadingScriptPlayerMockPage = lazy(() => import('@/pages/ReadingScriptPlayerMockPage'));
 
 // Shop
-const ShopPage = lazy(() => import("@/pages/ShopPage"));
-const ShopHistoryPage = lazy(() => import("@/pages/ShopHistoryPage"));
+const ShopPage = lazy(() => import('@/pages/ShopPage'));
+const ShopHistoryPage = lazy(() => import('@/pages/ShopHistoryPage'));
 
 // My Themes
-const MyThemesPage = lazy(() => import("@/pages/MyThemesPage"));
+const MyThemesPage = lazy(() => import('@/pages/MyThemesPage'));
 
 // Creator
-const CreatorDashboardPage = lazy(
-  () => import("@/pages/CreatorDashboardPage"),
-);
-const CreatorThemeStatsPage = lazy(
-  () => import("@/pages/CreatorThemeStatsPage"),
-);
-const CreatorEarningsPage = lazy(
-  () => import("@/pages/CreatorEarningsPage"),
-);
-const CreatorSettlementsPage = lazy(
-  () => import("@/pages/CreatorSettlementsPage"),
-);
+const CreatorDashboardPage = lazy(() => import('@/pages/CreatorDashboardPage'));
+const CreatorThemeStatsPage = lazy(() => import('@/pages/CreatorThemeStatsPage'));
+const CreatorEarningsPage = lazy(() => import('@/pages/CreatorEarningsPage'));
+const CreatorSettlementsPage = lazy(() => import('@/pages/CreatorSettlementsPage'));
 
 // Admin (payment management)
-const AdminSettlementsPage = lazy(
-  () => import("@/pages/AdminSettlementsPage"),
-);
-const AdminRevenuePage = lazy(() => import("@/pages/AdminRevenuePage"));
-const AdminPackagesPage = lazy(() => import("@/pages/AdminPackagesPage"));
-const AdminCoinGrantPage = lazy(
-  () => import("@/pages/AdminCoinGrantPage"),
-);
-const AdminReviewPage = lazy(() => import("@/pages/AdminReviewPage"));
+const AdminSettlementsPage = lazy(() => import('@/pages/AdminSettlementsPage'));
+const AdminRevenuePage = lazy(() => import('@/pages/AdminRevenuePage'));
+const AdminPackagesPage = lazy(() => import('@/pages/AdminPackagesPage'));
+const AdminCoinGrantPage = lazy(() => import('@/pages/AdminCoinGrantPage'));
+const AdminReviewPage = lazy(() => import('@/pages/AdminReviewPage'));
 
 // ---------------------------------------------------------------------------
 // 로딩 폴백
@@ -78,8 +61,8 @@ const AdminReviewPage = lazy(() => import("@/pages/AdminReviewPage"));
 
 function LoadingFallback() {
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-950">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+    <div className="flex h-screen items-center justify-center bg-[var(--mmp-color-canvas)]">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--mmp-color-primary)] border-t-transparent" />
     </div>
   );
 }
@@ -113,19 +96,19 @@ function useAppInitialize() {
       if (refreshToken) {
         try {
           // 토큰 갱신
-          const tokens = await api.post<TokenPair>("/v1/auth/refresh", {
+          const tokens = await api.post<TokenPair>('/v1/auth/refresh', {
             refresh_token: refreshToken,
           });
           useAuthStore.getState().setTokens(tokens.access_token, tokens.refresh_token);
 
           // 유저 정보 가져오기
-          const user = await api.get<UserResponse>("/v1/auth/me");
+          const user = await api.get<UserResponse>('/v1/auth/me');
           setUser({
             id: user.id,
             nickname: user.nickname,
             email: user.email,
             profileImage: user.avatar_url,
-            role: user.role as "user" | "creator" | "admin",
+            role: user.role as 'user' | 'creator' | 'admin',
             provider: user.provider,
           });
         } catch {
@@ -144,100 +127,85 @@ function useAppInitialize() {
 // ---------------------------------------------------------------------------
 
 export function App() {
-  useAppInitialize();
-
   return (
     <GlobalErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <NetworkBanner />
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              {/* 퍼블릭 */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <AppearanceProvider>
+        <AppContent />
+      </AppearanceProvider>
+    </GlobalErrorBoundary>
+  );
+}
 
-              {/* 인증 필요 — 게임/에디터 상세는 전체화면 (MainLayout 밖) */}
-              <Route element={<ProtectedRoute />}>
-                <Route path="/dev/reading-script" element={<ReadingScriptEditorMockPage />} />
-                <Route path="/dev/reading-player" element={<ReadingScriptPlayerMockPage />} />
-                <Route path="/game/:id" element={<GamePage />} />
-                <Route path="/editor/:id" element={<EditorPage />} />
-                <Route path="/editor/:id/:tab" element={<EditorPage />} />
-                <Route path="/editor/:id/design/:designTab" element={<EditorPage />} />
-                <Route element={<MainLayout />}>
-                  <Route path="/" element={<LobbyPage />} />
-                  <Route path="/lobby" element={<LobbyPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/room/:id" element={<RoomPage />} />
-                  <Route path="/editor" element={<EditorPage />} />
-                  <Route path="/social" element={<SocialPage />} />
-                  <Route path="/users/:id" element={<PublicProfilePage />} />
+function AppContent() {
+  useAppInitialize();
+  const { resolvedTheme } = useAppearance();
 
-                  {/* Shop */}
-                  <Route path="/shop" element={<ShopPage />} />
-                  <Route path="/shop/history" element={<ShopHistoryPage />} />
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <NetworkBanner />
+        <Suspense fallback={<LoadingFallback />}>
+          <Routes>
+            {/* 퍼블릭 */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
-                  {/* My Themes */}
-                  <Route path="/my-themes" element={<MyThemesPage />} />
+            {/* 인증 필요 — 게임/에디터 상세는 전체화면 (MainLayout 밖) */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dev/reading-script" element={<ReadingScriptEditorMockPage />} />
+              <Route path="/dev/reading-player" element={<ReadingScriptPlayerMockPage />} />
+              <Route path="/game/:id" element={<GamePage />} />
+              <Route path="/editor/:id" element={<EditorPage />} />
+              <Route path="/editor/:id/:tab" element={<EditorPage />} />
+              <Route path="/editor/:id/design/:designTab" element={<EditorPage />} />
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<LobbyPage />} />
+                <Route path="/lobby" element={<LobbyPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/room/:id" element={<RoomPage />} />
+                <Route path="/editor" element={<EditorPage />} />
+                <Route path="/social" element={<SocialPage />} />
+                <Route path="/users/:id" element={<PublicProfilePage />} />
 
-                  {/* Creator — creator 또는 admin 역할만 접근 가능 */}
-                  <Route element={<RoleRoute roles={["creator", "admin"]} />}>
-                    <Route path="/creator" element={<CreatorDashboardPage />} />
-                    <Route
-                      path="/creator/:id/stats"
-                      element={<CreatorThemeStatsPage />}
-                    />
-                    <Route
-                      path="/creator/earnings"
-                      element={<CreatorEarningsPage />}
-                    />
-                    <Route
-                      path="/creator/settlements"
-                      element={<CreatorSettlementsPage />}
-                    />
-                  </Route>
+                {/* Shop */}
+                <Route path="/shop" element={<ShopPage />} />
+                <Route path="/shop/history" element={<ShopHistoryPage />} />
 
-                  {/* Admin — admin 역할만 접근 가능 */}
-                  <Route element={<RoleRoute roles={["admin"]} />}>
-                    <Route path="/admin" element={<AdminPage />} />
-                    <Route
-                      path="/admin/settlements"
-                      element={<AdminSettlementsPage />}
-                    />
-                    <Route
-                      path="/admin/revenue"
-                      element={<AdminRevenuePage />}
-                    />
-                    <Route
-                      path="/admin/packages"
-                      element={<AdminPackagesPage />}
-                    />
-                    <Route
-                      path="/admin/coins"
-                      element={<AdminCoinGrantPage />}
-                    />
-                    <Route
-                      path="/admin/reviews"
-                      element={<AdminReviewPage />}
-                    />
-                  </Route>
+                {/* My Themes */}
+                <Route path="/my-themes" element={<MyThemesPage />} />
+
+                {/* Creator — creator 또는 admin 역할만 접근 가능 */}
+                <Route element={<RoleRoute roles={['creator', 'admin']} />}>
+                  <Route path="/creator" element={<CreatorDashboardPage />} />
+                  <Route path="/creator/:id/stats" element={<CreatorThemeStatsPage />} />
+                  <Route path="/creator/earnings" element={<CreatorEarningsPage />} />
+                  <Route path="/creator/settlements" element={<CreatorSettlementsPage />} />
+                </Route>
+
+                {/* Admin — admin 역할만 접근 가능 */}
+                <Route element={<RoleRoute roles={['admin']} />}>
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/admin/settlements" element={<AdminSettlementsPage />} />
+                  <Route path="/admin/revenue" element={<AdminRevenuePage />} />
+                  <Route path="/admin/packages" element={<AdminPackagesPage />} />
+                  <Route path="/admin/coins" element={<AdminCoinGrantPage />} />
+                  <Route path="/admin/reviews" element={<AdminReviewPage />} />
                 </Route>
               </Route>
+            </Route>
 
-              <Route path="/offline" element={<OfflinePage />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            className: "!bg-slate-900 !border-slate-700 !text-slate-100",
-          }}
-        />
-      </QueryClientProvider>
-    </GlobalErrorBoundary>
+            <Route path="/offline" element={<OfflinePage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+      <Toaster
+        theme={resolvedTheme}
+        position="bottom-right"
+        toastOptions={{
+          className: 'mmp-toast',
+        }}
+      />
+    </QueryClientProvider>
   );
 }

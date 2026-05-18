@@ -40,6 +40,7 @@ vi.mock('@/features/editor/components', () => ({
 import EditorPage from '../EditorPage';
 import { EDITOR_DESIGN_SCOPE_CLASS } from '@/features/editor/design-system/editorDesignTokens';
 import { EDITOR_APPEARANCE_STORAGE_KEY } from '@/features/editor/design-system/useEditorAppearance';
+import { AppearanceProvider } from '@/shared/appearance';
 
 const routeMatrixCases = [
   ['직접 URL /editor/:id', { id: 'theme-1' }, 'no-segment', 'storyMap'],
@@ -163,15 +164,26 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllGlobals();
   window.localStorage.clear();
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-theme-preference');
+  document.documentElement.style.colorScheme = '';
   locationPathMock.mockReturnValue('/editor');
 });
+
+function renderEditorPage() {
+  return render(
+    <AppearanceProvider>
+      <EditorPage />
+    </AppearanceProvider>
+  );
+}
 
 describe('EditorPage', () => {
   it('id가 없으면 에디터 대시보드를 보여주고 기본 제작 흐름 탭을 활성화한다', () => {
     paramsMock.mockReturnValue({});
     locationPathMock.mockReturnValue('/editor');
 
-    const { container } = render(<EditorPage />);
+    const { container } = renderEditorPage();
 
     expect(screen.getByText('에디터 대시보드')).toBeDefined();
     expect(container.querySelector(`.${EDITOR_DESIGN_SCOPE_CLASS}`)).toBeNull();
@@ -185,21 +197,21 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({});
     locationPathMock.mockReturnValue('/editor');
 
-    const { container } = render(<EditorPage />);
+    const { container } = renderEditorPage();
 
     expect(screen.getByText('에디터 대시보드')).toBeDefined();
     expect(screen.queryByText(/테마 에디터/)).toBeNull();
     expect(container.querySelector(`.${EDITOR_DESIGN_SCOPE_CLASS}`)).toBeNull();
     expect(container.querySelector('[data-editor-theme]')).toBeNull();
     expect(container.querySelector('[data-editor-theme-preference]')).toBeNull();
-    expect(systemTheme.matchMedia).not.toHaveBeenCalled();
+    expect(systemTheme.matchMedia).toHaveBeenCalled();
   });
 
   it('characters 라우트 segment를 characters 탭으로 매핑한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
     locationPathMock.mockReturnValue('/editor/theme-1/characters');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     const detail = screen.getByText(/테마 에디터 theme-1 characters system light/);
     expect(detail).toBeDefined();
@@ -215,7 +227,7 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
     locationPathMock.mockReturnValue('/editor/theme-1/characters');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     const detail = screen.getByText(/테마 에디터 theme-1 characters system dark/);
     expect(detail).toBeDefined();
@@ -238,7 +250,7 @@ describe('EditorPage', () => {
       paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
       locationPathMock.mockReturnValue('/editor/theme-1/characters');
 
-      render(<EditorPage />);
+      renderEditorPage();
 
       const detail = screen.getByText(
         new RegExp(`테마 에디터 theme-1 characters ${storedPreference} ${expectedTheme}`)
@@ -258,7 +270,7 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
     locationPathMock.mockReturnValue('/editor/theme-1/characters');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     let detail = screen.getByText(/테마 에디터 theme-1 characters system light/);
     const editorScope = detail.parentElement;
@@ -279,7 +291,7 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
     locationPathMock.mockReturnValue('/editor/theme-1/characters');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     const detail = screen.getByText(/테마 에디터 theme-1 characters dark dark/);
     expect(detail).toBeDefined();
@@ -298,7 +310,7 @@ describe('EditorPage', () => {
           : `/editor/${params.id}/${expectedSegment}`
       );
 
-      render(<EditorPage />);
+      renderEditorPage();
 
       expect(
         screen.getByText(new RegExp(`테마 에디터 ${params.id} ${expectedSegment}`))
@@ -311,7 +323,7 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'design', designTab: 'flow' });
     locationPathMock.mockReturnValue('/editor/theme-1/design/flow');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     expect(screen.getByText(/테마 에디터 theme-1 design\/flow/)).toBeDefined();
     expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
@@ -321,7 +333,7 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'modules' });
     locationPathMock.mockReturnValue('/editor/theme-1/modules');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     expect(setActiveTabMock).toHaveBeenCalledWith('design');
   });
@@ -330,7 +342,7 @@ describe('EditorPage', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'unknown' });
     locationPathMock.mockReturnValue('/editor/theme-1/unknown');
 
-    render(<EditorPage />);
+    renderEditorPage();
 
     expect(screen.getByText(/테마 에디터 theme-1 unknown/)).toBeDefined();
     expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
