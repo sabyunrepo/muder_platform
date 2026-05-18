@@ -34,6 +34,7 @@ const GamePage = lazy(() => import('@/pages/GamePage'));
 const SocialPage = lazy(() => import('@/pages/SocialPage'));
 const ReadingScriptEditorMockPage = lazy(() => import('@/pages/ReadingScriptEditorMockPage'));
 const ReadingScriptPlayerMockPage = lazy(() => import('@/pages/ReadingScriptPlayerMockPage'));
+const UIKitPreviewPage = lazy(() => import('@/pages/UIKitPreviewPage'));
 
 // Shop
 const ShopPage = lazy(() => import('@/pages/ShopPage'));
@@ -153,6 +154,7 @@ function AppContent() {
             {/* 퍼블릭 */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
+            {import.meta.env.DEV && <Route path="/dev/ui-kit" element={<UIKitPreviewPage />} />}
 
             {/* 인증 필요 — 게임/에디터 상세는 전체화면 (MainLayout 밖) */}
             <Route element={<ProtectedRoute />}>

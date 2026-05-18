@@ -1,14 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { IconButton } from './Button';
 
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  children: React.ReactNode;
-  footer?: React.ReactNode;
+  children: ReactNode;
+  footer?: ReactNode;
   size?: 'sm' | 'md' | 'lg';
+  closeLabel?: string;
 }
 
 const sizeClasses = {
@@ -27,64 +29,63 @@ export function Modal({
   children,
   footer,
   size = 'md',
+  closeLabel = '닫기',
 }: ModalProps) {
+  const titleId = useId();
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Escape 키 + body overflow 잠금
   useEffect(() => {
     if (!isOpen) return;
 
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
     }
 
     document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousOverflow;
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
-  // Focus trap: auto-focus + Tab 순환 + 복귀
   useEffect(() => {
     if (!isOpen) return;
 
     const modalEl = modalRef.current;
     if (!modalEl) return;
 
-    // 이전 포커스 저장
-    const previousFocus = document.activeElement as HTMLElement;
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const firstFocusable = modalEl.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    (firstFocusable ?? modalEl).focus();
 
-    // 첫 focusable 요소에 포커스
-    const focusables = modalEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
+    function handleTabKey(event: KeyboardEvent) {
+      if (event.key !== 'Tab') return;
 
-    first?.focus();
+      const focusables = Array.from(
+        modalEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      ).filter((node) => !node.hasAttribute('disabled'));
 
-    const handleTabKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
-
-      // 현재 시점의 focusable 목록 재조회 (동적 콘텐츠 대응)
-      const currentFocusables =
-        modalEl.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      const currentFirst = currentFocusables[0];
-      const currentLast = currentFocusables[currentFocusables.length - 1];
-
-      if (e.shiftKey) {
-        if (document.activeElement === currentFirst) {
-          e.preventDefault();
-          currentLast?.focus();
-        }
-      } else {
-        if (document.activeElement === currentLast) {
-          e.preventDefault();
-          currentFirst?.focus();
-        }
+      if (focusables.length === 0) {
+        event.preventDefault();
+        modalEl.focus();
+        return;
       }
-    };
+
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
 
     modalEl.addEventListener('keydown', handleTabKey);
     return () => {
@@ -100,31 +101,32 @@ export function Modal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={title}
+      aria-labelledby={titleId}
     >
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 cursor-default bg-black/50"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
         ref={modalRef}
-        className={`relative flex w-full flex-col ${sizeClasses[size]} max-h-[90vh] rounded-xl border border-slate-700 bg-slate-900 shadow-xl`}
+        tabIndex={-1}
+        className={`relative flex max-h-[90vh] w-full flex-col rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] text-[var(--mmp-color-ink)] shadow-[var(--mmp-shadow-modal)] ${sizeClasses[size]}`}
       >
-        <div className="flex flex-shrink-0 items-center justify-between border-b border-slate-800 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
-          <button
-            type="button"
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--mmp-color-hairline)] px-6 py-4">
+          <h2 id={titleId} className="text-lg font-semibold text-[var(--mmp-color-ink)]">
+            {title}
+          </h2>
+          <IconButton
+            icon={<X className="h-5 w-5" />}
+            label={closeLabel}
             onClick={onClose}
-            className="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
+            size="sm"
+          />
         </div>
         <div className="flex-1 overflow-y-auto px-6 py-4">{children}</div>
         {footer && (
-          <div className="flex flex-shrink-0 items-center justify-end gap-3 border-t border-slate-800 px-6 py-4">
+          <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[var(--mmp-color-hairline)] px-6 py-4">
             {footer}
           </div>
         )}

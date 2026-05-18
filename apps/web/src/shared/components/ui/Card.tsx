@@ -1,8 +1,42 @@
-export interface CardProps {
-  children: React.ReactNode;
-  className?: string;
+import type { HTMLAttributes, ReactNode } from 'react';
+
+export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
+  children: ReactNode;
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  interactive?: boolean;
+}
+
+export interface CardProps extends PanelProps {
   hoverable?: boolean;
   onClick?: () => void;
+}
+
+const paddingClasses = {
+  none: '',
+  sm: 'p-3',
+  md: 'p-4',
+  lg: 'p-6',
+} as const;
+
+export function Panel({
+  children,
+  padding = 'md',
+  interactive = false,
+  className = '',
+  ...rest
+}: PanelProps) {
+  const interactiveClasses = interactive
+    ? 'transition hover:border-[var(--mmp-color-hairline-strong)] hover:shadow-[var(--mmp-shadow-card)]'
+    : '';
+
+  return (
+    <div
+      className={`rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] text-[var(--mmp-color-ink)] ${paddingClasses[padding]} ${interactiveClasses} ${className}`}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function Card({
@@ -10,29 +44,30 @@ export function Card({
   className = '',
   hoverable = false,
   onClick,
+  ...rest
 }: CardProps) {
-  const hoverClass = hoverable
-    ? 'hover:border-slate-700 hover:shadow-lg transition cursor-pointer'
-    : '';
-
   return (
-    <div
-      className={`rounded-xl border border-slate-800 bg-slate-900 p-4 ${hoverClass} ${className}`}
+    <Panel
+      {...rest}
+      interactive={hoverable || Boolean(onClick)}
+      className={`${onClick ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)]' : ''} ${className}`}
       onClick={onClick}
-      role={onClick ? 'button' : undefined}
-      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : rest.role}
+      tabIndex={onClick ? 0 : rest.tabIndex}
       onKeyDown={
         onClick
-          ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
+          ? (event) => {
+              rest.onKeyDown?.(event);
+              if (event.defaultPrevented) return;
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
                 onClick();
               }
             }
-          : undefined
+          : rest.onKeyDown
       }
     >
       {children}
-    </div>
+    </Panel>
   );
 }

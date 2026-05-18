@@ -28,8 +28,8 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const iconClasses =
     tone === 'danger'
-      ? 'border-red-500/30 bg-red-500/10 text-red-300'
-      : 'border-amber-500/30 bg-amber-500/10 text-amber-300';
+      ? 'border-[color-mix(in_oklab,var(--mmp-color-error)_35%,transparent)] bg-[color-mix(in_oklab,var(--mmp-color-error)_10%,transparent)] text-[var(--mmp-color-error)]'
+      : 'border-[color-mix(in_oklab,var(--mmp-color-warning)_35%,transparent)] bg-[color-mix(in_oklab,var(--mmp-color-warning)_10%,transparent)] text-[var(--mmp-color-warning)]';
 
   return (
     <Modal
@@ -53,7 +53,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <div className="flex gap-3 text-sm text-slate-300">
+      <div className="flex gap-3 text-sm text-[var(--mmp-color-charcoal)]">
         <div
           className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border ${iconClasses}`}
           aria-hidden="true"

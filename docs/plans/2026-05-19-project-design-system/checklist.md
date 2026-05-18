@@ -7,7 +7,7 @@
 - [x] Umbrella issue created: #661
 - [x] Execution issues created: #662, #663, #664, #665, #666, #667, #668
 - [x] PR-1 foundation
-- [ ] PR-2 UI kit core
+- [x] PR-2 UI kit core
 - [ ] PR-3 app shell
 - [ ] PR-4 creator/admin/shop/profile
 - [ ] PR-5 lobby/room/social
@@ -40,24 +40,24 @@ Merge gate:
 
 Goal: Build the reusable UI kit, including modal/table/form.
 
-- [ ] Inventory existing shared UI components and raw modal/table/form patterns.
-- [ ] Define component API rules and variant naming.
-- [ ] Implement Button and IconButton.
-- [ ] Implement Panel/Card/PageShell/SectionHeader.
-- [ ] Implement Badge/Alert/EmptyState/LoadingState.
-- [ ] Implement Modal/Dialog with keyboard close and focus handling.
-- [ ] Implement Table with empty/loading/error states.
-- [ ] Implement FormField/Input/Textarea/Select/Checkbox/Switch.
-- [ ] Implement ThemeModeToggle using shared appearance.
-- [ ] Add component behavior tests.
-- [ ] Run focused tests and typecheck.
-- [ ] Capture UI kit preview screenshots if a preview surface is created; otherwise document that screenshot QA begins in PR-3.
+- [x] Inventory existing shared UI components and raw modal/table/form patterns.
+- [x] Define component API rules and variant naming.
+- [x] Implement Button and IconButton.
+- [x] Implement Panel/Card/PageShell/SectionHeader.
+- [x] Implement Badge/Alert/EmptyState/LoadingState.
+- [x] Implement Modal/Dialog with keyboard close and focus handling.
+- [x] Implement Table with empty/loading/error states.
+- [x] Implement FormField/Input/Textarea/Select/Checkbox/Switch.
+- [x] Implement ThemeModeToggle using shared appearance.
+- [x] Add component behavior tests.
+- [x] Run focused tests and typecheck.
+- [x] Capture UI kit preview screenshots if a preview surface is created; otherwise document that screenshot QA begins in PR-3.
 
 Merge gate:
 
-- [ ] Modal, table, and form components cover real migration needs.
-- [ ] Components use semantic tokens, not page-specific color utilities.
-- [ ] Accessibility props and focus-visible states are covered.
+- [x] Modal, table, and form components cover real migration needs.
+- [x] Components use semantic tokens, not page-specific color utilities.
+- [x] Accessibility props and focus-visible states are covered.
 
 ## PR-3: App Shell And Feedback Surfaces (#664)
 

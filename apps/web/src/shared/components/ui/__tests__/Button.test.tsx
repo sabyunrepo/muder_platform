@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
-import { Button } from "../Button";
+import { Button, IconButton } from "../Button";
 
 afterEach(() => {
   cleanup();
@@ -20,22 +20,22 @@ describe("Button", () => {
   });
 
   describe("variant별 스타일 클래스", () => {
-    it("primary variant는 amber 클래스를 가진다", () => {
+    it("primary variant는 semantic primary token을 가진다", () => {
       render(<Button variant="primary">Primary</Button>);
       const btn = screen.getByRole("button");
-      expect(btn.className).toContain("bg-amber-500");
+      expect(btn.className).toContain("bg-[var(--mmp-color-primary)]");
     });
 
-    it("secondary variant는 slate 클래스를 가진다", () => {
+    it("secondary variant는 semantic surface token을 가진다", () => {
       render(<Button variant="secondary">Secondary</Button>);
       const btn = screen.getByRole("button");
-      expect(btn.className).toContain("bg-slate-800");
+      expect(btn.className).toContain("bg-[var(--mmp-color-surface)]");
     });
 
-    it("danger variant는 red 클래스를 가진다", () => {
+    it("danger variant는 semantic error token을 가진다", () => {
       render(<Button variant="danger">Danger</Button>);
       const btn = screen.getByRole("button");
-      expect(btn.className).toContain("bg-red-600");
+      expect(btn.className).toContain("bg-[var(--mmp-color-error)]");
     });
 
     it("ghost variant는 bg-transparent 클래스를 가진다", () => {
@@ -117,11 +117,18 @@ describe("Button", () => {
       expect(btn.className).toContain("py-2");
     });
 
-    it("lg 사이즈는 px-6 py-3 클래스를 가진다", () => {
+    it("lg 사이즈는 안정적인 min-height와 padding을 가진다", () => {
       render(<Button size="lg">Large</Button>);
       const btn = screen.getByRole("button");
-      expect(btn.className).toContain("px-6");
-      expect(btn.className).toContain("py-3");
+      expect(btn.className).toContain("min-h-11");
+      expect(btn.className).toContain("px-5");
+    });
+  });
+
+  describe("IconButton", () => {
+    it("아이콘 버튼은 aria-label로 이름을 제공한다", () => {
+      render(<IconButton icon={<span aria-hidden="true">x</span>} label="닫기" />);
+      expect(screen.getByRole("button", { name: "닫기" })).toBeDefined();
     });
   });
 });
