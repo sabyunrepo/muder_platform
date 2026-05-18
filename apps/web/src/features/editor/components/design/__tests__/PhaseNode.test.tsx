@@ -75,18 +75,17 @@ describe("PhaseNode", () => {
     expect(screen.getByText("15분")).toBeDefined();
   });
 
-  it("selected=true 일 때 amber 테두리 클래스를 포함한다", () => {
+  it("selected=true 일 때 editor active list item 클래스를 포함한다", () => {
     const { container } = render(<PhaseNode {...makeProps({}, true)} />);
     const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.className).toContain("border-amber-500");
-    expect(wrapper.className).toContain("ring-1");
+    expect(wrapper.className).toContain("mmp-editor-list-item-active");
   });
 
-  it("selected=false 일 때 기본 테두리 클래스를 사용한다", () => {
+  it("selected=false 일 때 editor list item 클래스를 사용한다", () => {
     const { container } = render(<PhaseNode {...makeProps({}, false)} />);
     const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.className).toContain("border-slate-700");
-    expect(wrapper.className).not.toContain("border-amber-500");
+    expect(wrapper.className).toContain("mmp-editor-list-item");
+    expect(wrapper.className).not.toContain("mmp-editor-list-item-active");
   });
 
   it("입력/출력 핸들을 모두 렌더링한다", () => {

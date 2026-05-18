@@ -7,6 +7,7 @@ import { SceneSelectField } from "@/features/editor/components/SceneSelectField"
 import { OptionList, type OptionItem } from "@/features/editor/components/design/InformationDeliveryOptionList";
 import { useFlowGraph, useUpdateFlowNode } from "@/features/editor/flowApi";
 import type { FlowNodeResponse } from "@/features/editor/flowTypes";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 import {
   normalizeTarget,
   readInfoDeliveryTarget,
@@ -202,11 +203,11 @@ export function InfoDeliverySettingsCard({
   );
 
   return (
-    <section className="rounded border border-slate-800 bg-slate-950 p-4" aria-label="정보 배포 설정">
-      <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className={`p-4 ${editorDesignClassNames.panel}`} aria-label="정보 배포 설정">
+      <div className="flex flex-col gap-2 border-b border-[var(--mmp-editor-color-hairline)] pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-slate-100">장면 시작 배포</h3>
-          <p className="mt-1 text-xs text-slate-400">
+          <h3 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">장면 시작 배포</h3>
+          <p className="mt-1 text-xs text-[var(--mmp-editor-color-slate)]">
             선택한 장면이 시작될 때 이 정보를 누구에게 보여줄지 정합니다.
           </p>
         </div>
@@ -217,7 +218,7 @@ export function InfoDeliverySettingsCard({
               if (flowError) void refetchFlow();
               if (charactersError) void refetchCharacters();
             }}
-            className="self-start rounded border border-slate-700 px-3 py-1.5 text-xs text-slate-200 hover:border-slate-500"
+            className={`self-start px-3 py-1.5 text-xs ${editorDesignClassNames.secondaryAction}`}
           >
             다시 불러오기
           </button>
@@ -225,11 +226,11 @@ export function InfoDeliverySettingsCard({
       </div>
 
       {isLoading ? (
-        <p className="py-4 text-xs text-slate-500">장면과 캐릭터를 불러오는 중입니다.</p>
+        <p className="py-4 text-xs text-[var(--mmp-editor-color-slate)]">장면과 캐릭터를 불러오는 중입니다.</p>
       ) : isError ? (
         <p className="py-4 text-xs text-rose-300">배포 설정을 불러오지 못했습니다.</p>
       ) : phaseOptions.length === 0 ? (
-        <p className="py-4 text-xs text-slate-500">
+        <p className="py-4 text-xs text-[var(--mmp-editor-color-slate)]">
           게임 진행 플로우에 장면을 먼저 추가하면 이 정보를 배포할 수 있습니다.
         </p>
       ) : (
@@ -244,17 +245,17 @@ export function InfoDeliverySettingsCard({
             disabled={updateNode.isPending}
           />
 
-          <div className="rounded-lg border border-slate-800 bg-slate-900/55 p-3">
+          <div className={`p-3 ${editorDesignClassNames.subtlePanel}`}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h4 className="text-sm font-medium text-slate-100">
+                <h4 className="text-sm font-medium text-[var(--mmp-editor-color-charcoal)]">
                   {selectedPhase?.label ?? "장면 선택"}
                 </h4>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="mt-0.5 text-xs text-[var(--mmp-editor-color-slate)]">
                   {targetSummary(normalizedDraft, characters)}
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1 self-start rounded-full border border-slate-700 bg-slate-950 px-2 py-1 text-[11px] text-slate-400">
+              <span className={`inline-flex items-center gap-1 self-start px-2 py-1 text-[11px] ${editorDesignClassNames.tag}`}>
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 변경하면 자동저장
               </span>
@@ -265,13 +266,13 @@ export function InfoDeliverySettingsCard({
                 type="button"
                 onClick={() => updateDraftTarget({ mode: "none", characterIds: [] })}
                 aria-pressed={normalizedDraft.mode === "none"}
-                className={`flex min-h-10 items-center gap-2 rounded border px-3 py-2 text-left text-xs transition-colors ${
+                className={`flex min-h-10 items-center gap-2 px-3 py-2 text-left text-xs transition-colors ${
                   normalizedDraft.mode === "none"
-                    ? "border-slate-600 bg-slate-800 text-slate-100"
-                    : "border-slate-800 bg-slate-950/70 text-slate-300 hover:bg-slate-900"
+                    ? editorDesignClassNames.listItemActive
+                    : editorDesignClassNames.listItem
                 }`}
               >
-                <Users className="h-4 w-4 text-slate-400" />
+                <Users className="h-4 w-4 text-[var(--mmp-editor-color-slate)]" />
                 배포하지 않음
               </button>
               <OptionList

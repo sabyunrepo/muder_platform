@@ -3,6 +3,7 @@ import { Plus, Save, ChevronDown, LayoutTemplate, Play } from "lucide-react";
 import { ConfirmDialog } from "@/shared/components/ui";
 import { FLOW_PRESETS, createPresetFlow } from "../../hooks/flowPresets";
 import type { Node, Edge } from "@xyflow/react";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,11 +55,11 @@ export function FlowToolbar({
   }, []);
 
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 bg-slate-900 px-4 py-2">
+    <div className={`flex shrink-0 items-center gap-2 px-4 py-2 ${editorDesignClassNames.topBar}`}>
       <button
         type="button"
         onClick={onAddScene}
-        className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400"
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs ${editorDesignClassNames.secondaryAction}`}
       >
         <Plus className="h-3.5 w-3.5" />
         장면 추가
@@ -70,7 +71,7 @@ export function FlowToolbar({
           <button
             type="button"
             onClick={() => setPresetOpen((v) => !v)}
-            className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400"
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs ${editorDesignClassNames.secondaryAction}`}
           >
             <LayoutTemplate className="h-3.5 w-3.5" />
             프리셋
@@ -78,7 +79,7 @@ export function FlowToolbar({
           </button>
 
           {presetOpen && (
-            <div className="absolute left-0 top-full z-50 mt-1 w-52 rounded border border-slate-700 bg-slate-800 py-1 shadow-lg">
+            <div className={`absolute left-0 top-full z-50 mt-1 w-52 py-1 ${editorDesignClassNames.panel}`}>
               {FLOW_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
@@ -91,12 +92,12 @@ export function FlowToolbar({
                     }
                     applyPresetFromTemplate(preset);
                   }}
-                  className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-slate-700"
+                  className="flex w-full flex-col px-3 py-2 text-left transition-colors hover:bg-[var(--mmp-editor-color-surface)]"
                 >
-                  <span className="text-xs font-medium text-slate-200">
+                  <span className="text-xs font-medium text-[var(--mmp-editor-color-charcoal)]">
                     {preset.label}
                   </span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-[var(--mmp-editor-color-slate)]">
                     {preset.description}
                   </span>
                 </button>
@@ -111,10 +112,10 @@ export function FlowToolbar({
         <button
           type="button"
           onClick={onToggleOrderReview}
-          className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-xs transition-colors ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition-colors ${
             isOrderReviewing
-              ? "border-amber-600 bg-amber-950/30 text-amber-400"
-              : "border-slate-700 bg-slate-800 text-slate-300 hover:border-amber-500 hover:text-amber-400"
+              ? editorDesignClassNames.listItemActive
+              : editorDesignClassNames.secondaryAction
           }`}
         >
           <Play className="h-3.5 w-3.5" />
@@ -129,7 +130,7 @@ export function FlowToolbar({
         type="button"
         onClick={onSave}
         disabled={isSaving}
-        className="flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 transition-colors hover:border-amber-500 hover:text-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-50 ${editorDesignClassNames.secondaryAction}`}
       >
         <Save className="h-3.5 w-3.5" />
         {isSaving ? "저장 중..." : "저장"}
