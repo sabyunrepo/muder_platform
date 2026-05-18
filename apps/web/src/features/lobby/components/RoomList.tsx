@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { DoorOpen } from 'lucide-react';
-import { Button, Badge, EmptyState, Spinner } from '@/shared/components/ui';
+import { Alert, Button, Badge, EmptyState, LoadingState, Table } from '@/shared/components/ui';
+import type { TableColumn } from '@/shared/components/ui';
 import { useRooms, useJoinRoom } from '../api';
 
 /** 방 상태별 Badge variant */
@@ -30,21 +31,18 @@ export function RoomList() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner size="md" />
-      </div>
-    );
+    return <LoadingState label="공개 방을 불러오는 중" />;
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center gap-3 py-8">
-        <p className="text-sm text-red-400">방 목록을 불러오지 못했습니다.</p>
-        <Button variant="secondary" size="sm" onClick={() => refetch()}>
-          재시도
-        </Button>
-      </div>
+      <Alert tone="error" title="방 목록을 불러오지 못했습니다">
+        <div className="mt-3">
+          <Button variant="secondary" size="sm" onClick={() => refetch()}>
+            재시도
+          </Button>
+        </div>
+      </Alert>
     );
   }
 
@@ -58,58 +56,43 @@ export function RoomList() {
     );
   }
 
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-slate-800 text-slate-400">
-            <th className="px-3 py-2 font-medium">코드</th>
-            <th className="px-3 py-2 font-medium">테마</th>
-            <th className="px-3 py-2 font-medium">호스트</th>
-            <th className="px-3 py-2 font-medium">인원</th>
-            <th className="px-3 py-2 font-medium">상태</th>
-            <th className="px-3 py-2 font-medium" />
-          </tr>
-        </thead>
-        <tbody>
-          {rooms.map((room) => {
-            const isFull = room.player_count >= room.max_players;
-            const effectiveStatus = isFull ? 'full' : room.status;
+  const columns: TableColumn<(typeof rooms)[number]>[] = [
+    { id: 'code', header: '코드', render: (room) => <span className="font-mono text-xs text-[var(--mmp-color-steel)]">{room.code}</span> },
+    { id: 'theme', header: '테마', render: (room) => room.theme_title },
+    { id: 'host', header: '호스트', render: (room) => <span className="text-[var(--mmp-color-charcoal)]">{room.host_nickname}</span> },
+    { id: 'players', header: '인원', render: (room) => `${room.player_count}/${room.max_players}` },
+    {
+      id: 'status',
+      header: '상태',
+      render: (room) => {
+        const effectiveStatus = room.player_count >= room.max_players ? 'full' : room.status;
+        return (
+          <Badge variant={statusVariant[effectiveStatus] ?? 'default'}>
+            {statusLabel[effectiveStatus] ?? effectiveStatus}
+          </Badge>
+        );
+      },
+    },
+    {
+      id: 'action',
+      header: '',
+      align: 'right',
+      render: (room) => {
+        const effectiveStatus = room.player_count >= room.max_players ? 'full' : room.status;
+        return (
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={effectiveStatus !== 'waiting'}
+            isLoading={joinRoom.isPending && joinRoom.variables === room.id}
+            onClick={() => handleJoin(room.id)}
+          >
+            참가
+          </Button>
+        );
+      },
+    },
+  ];
 
-            return (
-              <tr
-                key={room.id}
-                className="border-b border-slate-800/50 text-slate-200 transition-colors hover:bg-slate-800/30"
-              >
-                <td className="px-3 py-3 font-mono text-xs text-slate-400">
-                  {room.code}
-                </td>
-                <td className="px-3 py-3">{room.theme_title}</td>
-                <td className="px-3 py-3 text-slate-300">{room.host_nickname}</td>
-                <td className="px-3 py-3">
-                  {room.player_count}/{room.max_players}
-                </td>
-                <td className="px-3 py-3">
-                  <Badge variant={statusVariant[effectiveStatus] ?? 'default'}>
-                    {statusLabel[effectiveStatus] ?? effectiveStatus}
-                  </Badge>
-                </td>
-                <td className="px-3 py-3">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    disabled={effectiveStatus !== 'waiting'}
-                    isLoading={joinRoom.isPending && joinRoom.variables === room.id}
-                    onClick={() => handleJoin(room.id)}
-                  >
-                    참가
-                  </Button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+  return <Table columns={columns} data={rooms} getRowKey={(room) => room.id} />;
 }

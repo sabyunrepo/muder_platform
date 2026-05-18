@@ -42,7 +42,7 @@ function MessageBubble({ message, isMine }: MessageBubbleProps) {
   // System message
   if (message.message_type === "SYSTEM") {
     return (
-      <div className="py-1 text-center text-xs italic text-slate-500">
+      <div className="py-1 text-center text-xs italic text-[var(--mmp-color-steel)]">
         {message.content}
       </div>
     );
@@ -57,14 +57,14 @@ function MessageBubble({ message, isMine }: MessageBubbleProps) {
             {message.sender_nickname}
           </span>
         )}
-        <div className="max-w-[75%] rounded-xl border border-amber-700/50 bg-amber-900/20 p-3">
-          <div className="flex items-center gap-2 text-amber-400">
+        <div className="max-w-[75%] rounded-lg border border-[color-mix(in_oklab,var(--mmp-color-warning)_45%,transparent)] bg-[color-mix(in_oklab,var(--mmp-color-warning)_12%,transparent)] p-3">
+          <div className="flex items-center gap-2 text-[var(--mmp-color-warning)]">
             <Gamepad2 className="h-4 w-4" />
             <span className="text-sm font-semibold">게임 초대</span>
           </div>
-          <p className="mt-1 text-sm text-slate-300">{message.content}</p>
+          <p className="mt-1 text-sm text-[var(--mmp-color-charcoal)]">{message.content}</p>
         </div>
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-[var(--mmp-color-steel)]">
           {formatMessageTime(message.created_at)}
         </span>
       </div>
@@ -80,14 +80,14 @@ function MessageBubble({ message, isMine }: MessageBubbleProps) {
             {message.sender_nickname}
           </span>
         )}
-        <div className="max-w-[75%] rounded-xl border border-emerald-700/50 bg-emerald-900/20 p-3">
-          <div className="flex items-center gap-2 text-emerald-400">
+        <div className="max-w-[75%] rounded-lg border border-[color-mix(in_oklab,var(--mmp-color-success)_45%,transparent)] bg-[color-mix(in_oklab,var(--mmp-color-success)_12%,transparent)] p-3">
+          <div className="flex items-center gap-2 text-[var(--mmp-color-success)]">
             <Trophy className="h-4 w-4" />
             <span className="text-sm font-semibold">게임 결과</span>
           </div>
-          <p className="mt-1 text-sm text-slate-300">{message.content}</p>
+          <p className="mt-1 text-sm text-[var(--mmp-color-charcoal)]">{message.content}</p>
         </div>
-        <span className="text-[10px] text-slate-600">
+        <span className="text-[10px] text-[var(--mmp-color-steel)]">
           {formatMessageTime(message.created_at)}
         </span>
       </div>
@@ -107,15 +107,16 @@ function MessageBubble({ message, isMine }: MessageBubbleProps) {
       <div
         className={`max-w-[75%] px-3.5 py-2 text-sm ${
           isMine
-            ? "rounded-2xl rounded-br-sm bg-amber-600/20 text-amber-100"
-            : "rounded-2xl rounded-bl-sm bg-slate-800 text-slate-100"
+            ? "rounded-2xl rounded-br-sm bg-[var(--mmp-color-primary)] text-[var(--mmp-color-primary-contrast)]"
+            : "rounded-2xl rounded-bl-sm bg-[var(--mmp-color-surface)] text-[var(--mmp-color-ink)]"
         }`}
+        data-own-message={isMine ? "true" : undefined}
       >
         {message.content}
       </div>
 
       {/* Timestamp */}
-      <span className="text-[10px] text-slate-600">
+      <span className="text-[10px] text-[var(--mmp-color-steel)]">
         {formatMessageTime(message.created_at)}
       </span>
     </div>
@@ -245,19 +246,19 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
       {/* Typing indicator */}
       {typingUsers.length > 0 && (
         <div className="px-4 py-1">
-          <span className="text-xs text-slate-500 animate-pulse">
+          <span className="animate-pulse text-xs text-[var(--mmp-color-steel)]">
             입력 중...
           </span>
         </div>
       )}
 
       {/* Input bar */}
-      <div className="border-t border-slate-700 px-4 py-3">
+      <div className="border-t border-[var(--mmp-color-hairline)] px-4 py-3">
         <div className="flex items-end gap-2">
           <div className="relative flex-1">
             <textarea
               ref={textareaRef}
-              className="w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 transition-colors focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+              className="w-full resize-none rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] px-3 py-2 text-sm text-[var(--mmp-color-ink)] placeholder:text-[var(--mmp-color-steel)] transition-colors focus:border-[var(--mmp-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)]"
               rows={1}
               placeholder="메시지를 입력하세요..."
               value={text}
@@ -268,7 +269,7 @@ export function ChatRoom({ roomId }: ChatRoomProps) {
             {showCharCount && (
               <span
                 className={`absolute bottom-1.5 right-2 text-[10px] ${
-                  charCount >= MAX_MESSAGE_LENGTH ? "text-red-400" : "text-slate-500"
+                  charCount >= MAX_MESSAGE_LENGTH ? "text-[var(--mmp-color-error)]" : "text-[var(--mmp-color-steel)]"
                 }`}
               >
                 {charCount}/{MAX_MESSAGE_LENGTH}

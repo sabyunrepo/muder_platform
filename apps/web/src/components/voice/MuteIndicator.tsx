@@ -27,8 +27,8 @@ export function MuteIndicator() {
       role="status"
       aria-label="마이크 음소거 중"
     >
-      <MicOff size={14} className="text-red-400" />
-      <span className="text-[11px] font-medium text-red-300">음소거</span>
+      <MicOff size={14} className="text-[var(--mmp-color-error)]" />
+      <span className="text-[11px] font-medium text-[var(--mmp-color-error)]">음소거</span>
     </div>
   );
 }

@@ -314,8 +314,7 @@ describe("FriendsList", () => {
     );
 
     const { container } = render(<FriendsList />);
-    // Online indicator: emerald-500 dot adjacent to the avatar of "온라인친구"
-    const onlineDots = container.querySelectorAll(".bg-emerald-500");
+    const onlineDots = container.querySelectorAll('[data-online-indicator="true"]');
     expect(onlineDots.length).toBe(1);
   });
 
@@ -482,8 +481,7 @@ describe("ChatList", () => {
     const { container } = render(
       <ChatList onSelectRoom={onSelectRoom} selectedRoomId="r1" />,
     );
-    // Selected room has amber border class
-    const selectedRoom = container.querySelector(".border-amber-500\\/50");
+    const selectedRoom = container.querySelector('[aria-current="true"]');
     expect(selectedRoom).not.toBeNull();
   });
 
@@ -567,12 +565,10 @@ describe("ChatRoom", () => {
     });
 
     const { container } = render(<ChatRoom roomId="r1" />);
-    // Own message bubble has amber class
-    const amberBubbles = container.querySelectorAll('[class*="bg-amber"]');
-    expect(amberBubbles.length).toBeGreaterThanOrEqual(1);
+    const ownBubbles = container.querySelectorAll('[data-own-message="true"]');
+    expect(ownBubbles.length).toBeGreaterThanOrEqual(1);
 
-    // The own message "반갑습니다" should be in an amber bubble
-    const ownBubble = Array.from(amberBubbles).find((el) =>
+    const ownBubble = Array.from(ownBubbles).find((el) =>
       el.textContent?.includes("반갑습니다"),
     );
     expect(ownBubble).toBeDefined();

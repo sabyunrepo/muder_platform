@@ -16,7 +16,7 @@ interface VolumeSliderProps {
 export function VolumeSlider({ volume, onChange }: VolumeSliderProps) {
   return (
     <div className="flex items-center gap-2 px-2 py-1">
-      <Volume1 size={14} className="text-slate-400 shrink-0" />
+      <Volume1 size={14} className="shrink-0 text-[var(--mmp-color-steel)]" />
       <div className="relative flex-1">
         <input
           type="range"
@@ -27,17 +27,17 @@ export function VolumeSlider({ volume, onChange }: VolumeSliderProps) {
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="
             w-full h-1.5 appearance-none rounded-full cursor-pointer
-            bg-slate-700
+            bg-[var(--mmp-color-muted)]
             [&::-webkit-slider-thumb]:appearance-none
             [&::-webkit-slider-thumb]:w-3
             [&::-webkit-slider-thumb]:h-3
             [&::-webkit-slider-thumb]:rounded-full
-            [&::-webkit-slider-thumb]:bg-amber-500
+            [&::-webkit-slider-thumb]:bg-[var(--mmp-color-primary)]
             [&::-webkit-slider-thumb]:cursor-pointer
             [&::-moz-range-thumb]:w-3
             [&::-moz-range-thumb]:h-3
             [&::-moz-range-thumb]:rounded-full
-            [&::-moz-range-thumb]:bg-amber-500
+            [&::-moz-range-thumb]:bg-[var(--mmp-color-primary)]
             [&::-moz-range-thumb]:border-0
             [&::-moz-range-thumb]:cursor-pointer
           "
@@ -46,7 +46,7 @@ export function VolumeSlider({ volume, onChange }: VolumeSliderProps) {
           }}
         />
       </div>
-      <Volume2 size={14} className="text-slate-400 shrink-0" />
+      <Volume2 size={14} className="shrink-0 text-[var(--mmp-color-steel)]" />
     </div>
   );
 }

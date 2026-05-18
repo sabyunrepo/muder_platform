@@ -19,9 +19,9 @@ export function PendingRow({
   isRejecting,
 }: PendingRowProps) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] px-4 py-3">
       {/* Avatar */}
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-slate-300">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--mmp-color-muted)] text-sm font-bold text-[var(--mmp-color-charcoal)]">
         {request.nickname.charAt(0).toUpperCase()}
       </div>
 
@@ -30,7 +30,7 @@ export function PendingRow({
         <span className={`font-medium ${getNicknameColor(request.nickname)}`}>
           {request.nickname}
         </span>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-[var(--mmp-color-steel)]">
           {new Date(request.created_at).toLocaleDateString("ko-KR")}
         </p>
       </div>
@@ -44,7 +44,7 @@ export function PendingRow({
           disabled={isAccepting || isRejecting}
           aria-label="수락"
         >
-          <Check className="h-4 w-4 text-emerald-400" />
+          <Check className="h-4 w-4 text-[var(--mmp-color-success)]" />
         </Button>
         <Button
           variant="ghost"
@@ -53,7 +53,7 @@ export function PendingRow({
           disabled={isAccepting || isRejecting}
           aria-label="거절"
         >
-          <X className="h-4 w-4 text-red-400" />
+          <X className="h-4 w-4 text-[var(--mmp-color-error)]" />
         </Button>
       </div>
     </div>

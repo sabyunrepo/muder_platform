@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Modal, Button, Input, Select } from '@/shared/components/ui';
+import { Modal, Button, Input, Panel, Select, Switch } from '@/shared/components/ui';
 import { useThemes, useCreateRoom } from '../api';
 import type { ThemeSummary } from '../api';
 
@@ -80,10 +80,10 @@ export function CreateRoomModal({
       <form id="create-room-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         {/* 테마 선택 */}
         {selectedTheme ? (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-300">테마</label>
-            <p className="text-sm text-slate-100">{selectedTheme.title}</p>
-          </div>
+          <Panel padding="sm" className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-[var(--mmp-color-steel)]">테마</label>
+            <p className="text-sm text-[var(--mmp-color-ink)]">{selectedTheme.title}</p>
+          </Panel>
         ) : (
           <Select
             label="테마"
@@ -104,24 +104,11 @@ export function CreateRoomModal({
         )}
 
         {/* 비공개 토글 */}
-        <label className="flex items-center gap-3 cursor-pointer">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isPrivate}
-            onClick={() => setIsPrivate((v) => !v)}
-            className={`relative h-6 w-11 rounded-full transition-colors ${
-              isPrivate ? 'bg-amber-500' : 'bg-slate-700'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                isPrivate ? 'translate-x-5' : ''
-              }`}
-            />
-          </button>
-          <span className="text-sm text-slate-300">비공개 방</span>
-        </label>
+        <Switch
+          label="비공개 방"
+          checked={isPrivate}
+          onChange={(event) => setIsPrivate(event.target.checked)}
+        />
       </form>
     </Modal>
   );

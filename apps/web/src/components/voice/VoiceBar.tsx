@@ -45,15 +45,15 @@ export function VoiceBar({ participants, speaking }: VoiceBarProps) {
       className="
         fixed bottom-0 left-0 right-0 z-40
         flex items-center gap-2 px-4 py-2
-        bg-slate-950/80 backdrop-blur-[12px]
-        border-t border-slate-800/60
+        bg-[color-mix(in_oklab,var(--mmp-color-surface)_86%,transparent)] backdrop-blur-[12px]
+        border-t border-[var(--mmp-color-hairline)]
       "
     >
       {/* Handlebar — swipe area */}
       <button
         type="button"
         onClick={toggleBottomSheet}
-        className="absolute top-1.5 left-1/2 -translate-x-1/2 w-10 h-1 rounded-full bg-slate-700 hover:bg-slate-600 transition-colors duration-150 ease-out"
+        className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-[var(--mmp-color-muted)] transition-colors duration-150 ease-out hover:bg-[var(--mmp-color-hairline-strong)]"
         aria-label="음성 채팅 패널 열기"
       />
 
@@ -86,7 +86,7 @@ export function VoiceBar({ participants, speaking }: VoiceBarProps) {
         })}
 
         {overflow > 0 && (
-          <span className="text-slate-500" style={{ fontSize: 9 }}>
+          <span className="text-[var(--mmp-color-steel)]" style={{ fontSize: 9 }}>
             +{overflow}
           </span>
         )}
@@ -100,7 +100,7 @@ export function VoiceBar({ participants, speaking }: VoiceBarProps) {
           className={`
             flex items-center justify-center rounded-full
             transition-colors duration-150 ease-out
-            ${isMuted ? "bg-red-500/30 text-red-400" : "bg-slate-700/60 text-slate-300"}
+            ${isMuted ? "bg-[color-mix(in_oklab,var(--mmp-color-error)_24%,transparent)] text-[var(--mmp-color-error)]" : "bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)]"}
           `}
           style={{ width: 44, height: 44, padding: 12 }}
           aria-label={isMuted ? "마이크 켜기" : "마이크 끄기"}
@@ -113,7 +113,7 @@ export function VoiceBar({ participants, speaking }: VoiceBarProps) {
           className={`
             flex items-center justify-center rounded-full
             transition-colors duration-150 ease-out
-            ${isSpeakerMuted ? "bg-red-500/30 text-red-400" : "bg-slate-700/60 text-slate-300"}
+            ${isSpeakerMuted ? "bg-[color-mix(in_oklab,var(--mmp-color-error)_24%,transparent)] text-[var(--mmp-color-error)]" : "bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)]"}
           `}
           style={{ width: 44, height: 44, padding: 12 }}
           aria-label={isSpeakerMuted ? "스피커 켜기" : "스피커 끄기"}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Copy, Check, Users } from "lucide-react";
-import { Badge, Button } from "@/shared/components/ui";
+import { Badge, Button, Panel } from "@/shared/components/ui";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -53,12 +53,12 @@ export function RoomHeader({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4">
+    <Panel className="flex flex-wrap items-center justify-between gap-3">
       {/* 왼쪽: 테마 + 방 코드 */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-bold text-slate-100">{themeTitle}</h1>
+        <h1 className="text-lg font-bold text-[var(--mmp-color-ink)]">{themeTitle}</h1>
         <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-slate-400">#{roomCode}</span>
+          <span className="font-mono text-sm text-[var(--mmp-color-steel)]">#{roomCode}</span>
           <Button
             variant="ghost"
             size="sm"
@@ -67,7 +67,7 @@ export function RoomHeader({
             aria-label="방 코드 복사"
           >
             {copied ? (
-              <Check className="h-3.5 w-3.5 text-emerald-400" />
+              <Check className="h-3.5 w-3.5 text-[var(--mmp-color-success)]" />
             ) : (
               <Copy className="h-3.5 w-3.5" />
             )}
@@ -77,7 +77,7 @@ export function RoomHeader({
 
       {/* 오른쪽: 인원 + 상태 */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-sm text-slate-300">
+        <div className="flex items-center gap-1.5 text-sm text-[var(--mmp-color-charcoal)]">
           <Users className="h-4 w-4" />
           <span>
             {playerCount}/{maxPlayers}
@@ -85,6 +85,6 @@ export function RoomHeader({
         </div>
         <Badge variant={variant}>{label}</Badge>
       </div>
-    </div>
+    </Panel>
   );
 }
