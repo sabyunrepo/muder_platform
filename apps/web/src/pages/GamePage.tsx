@@ -103,9 +103,12 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
   // 연결 중 로딩
   if (wsState === WsClientState.CONNECTING) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-slate-950">
+      <div
+        className="mmp-runtime-boundary flex h-screen flex-col items-center justify-center gap-3"
+        data-game-runtime-theme="immersive"
+      >
         <Spinner size="lg" />
-        <p className="text-sm text-slate-400">게임 서버에 연결 중...</p>
+        <p className="text-sm text-[var(--mmp-color-steel)]">게임 서버에 연결 중...</p>
       </div>
     );
   }
@@ -113,9 +116,12 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
   // 연결 실패
   if (wsState === WsClientState.DISCONNECTED) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-950">
-        <AlertTriangle className="h-12 w-12 text-red-400" />
-        <p className="text-sm text-slate-300">서버 연결이 끊어졌습니다</p>
+      <div
+        className="mmp-runtime-boundary flex h-screen flex-col items-center justify-center gap-4"
+        data-game-runtime-theme="immersive"
+      >
+        <AlertTriangle className="h-12 w-12 text-[var(--mmp-color-error)]" />
+        <p className="text-sm text-[var(--mmp-color-charcoal)]">서버 연결이 끊어졌습니다</p>
         <Button variant="primary" onClick={() => window.location.reload()}>
           다시 연결
         </Button>
@@ -151,7 +157,10 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
       </div>
     )}
     <PresentationLayer>
-    <div className="flex h-full flex-col bg-slate-950/90">
+    <div
+      className="mmp-runtime-boundary flex h-full flex-col bg-[var(--mmp-color-canvas)]"
+      data-game-runtime-theme="immersive"
+    >
       {/* 상단: GameHUD */}
       <Suspense fallback={null}>
         <GameHUD />
@@ -159,11 +168,11 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
 
       {/* 미션 토글 버튼 (게임 활성화 중, RESULT 제외) */}
       {isGameActive && phase !== GamePhase.RESULT && (
-        <div className="flex justify-end border-b border-slate-800 bg-slate-900/80 px-4 py-1.5">
+        <div className="flex justify-end border-b border-[var(--mmp-color-hairline)] bg-[color-mix(in_oklab,var(--mmp-color-surface)_86%,transparent)] px-4 py-1.5">
           <button
             type="button"
             onClick={() => setIsMissionOpen((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-amber-400"
+            className="flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium text-[var(--mmp-color-charcoal)] transition-colors hover:bg-[var(--mmp-color-surface-soft)] hover:text-[var(--mmp-color-primary)]"
           >
             <Target className="h-4 w-4" />
             비밀 임무
@@ -189,7 +198,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
 
         {/* 사이드바: 채팅 (데스크탑, investigation/voting 페이즈) */}
         {showSidebarChat && (
-          <aside className="hidden w-80 border-l border-slate-800 lg:block">
+          <aside className="hidden w-80 border-l border-[var(--mmp-color-hairline)] lg:block">
             <Suspense fallback={null}>
               <GameChat send={send} />
             </Suspense>
@@ -201,7 +210,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
       {showSidebarChat && (
         <div className="lg:hidden">
           {isChatOpen && (
-            <div className="h-64 border-t border-slate-800">
+            <div className="h-64 border-t border-[var(--mmp-color-hairline)]">
               <Suspense fallback={null}>
                 <GameChat send={send} />
               </Suspense>
@@ -210,7 +219,7 @@ function GamePageInner({ sessionId, isChatOpen, setIsChatOpen }: GamePageInnerPr
           <button
             type="button"
             onClick={() => setIsChatOpen(!isChatOpen)}
-            className="flex w-full items-center justify-center gap-2 border-t border-slate-800 bg-slate-900 px-4 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-800"
+            className="flex w-full items-center justify-center gap-2 border-t border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] px-4 py-2 text-sm text-[var(--mmp-color-charcoal)] transition-colors hover:bg-[var(--mmp-color-surface-soft)]"
           >
             <MessageSquare className="h-4 w-4" />
             {isChatOpen ? "채팅 닫기" : "채팅 열기"}
@@ -239,7 +248,7 @@ function PhaseContent({ phase, isGameActive, send }: PhaseContentProps) {
   if (!isGameActive || !phase) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-slate-400">게임 상태를 불러오는 중...</p>
+        <p className="text-[var(--mmp-color-steel)]">게임 상태를 불러오는 중...</p>
       </div>
     );
   }
@@ -249,8 +258,8 @@ function PhaseContent({ phase, isGameActive, send }: PhaseContentProps) {
       return (
         <div className="flex h-full items-center justify-center">
           <div className="text-center">
-            <p className="text-lg font-semibold text-slate-200">게임 시작 대기 중...</p>
-            <p className="mt-2 text-sm text-slate-400">호스트가 게임을 시작하면 자동으로 진행됩니다</p>
+            <p className="text-lg font-semibold text-[var(--mmp-color-charcoal)]">게임 시작 대기 중...</p>
+            <p className="mt-2 text-sm text-[var(--mmp-color-steel)]">호스트가 게임을 시작하면 자동으로 진행됩니다</p>
           </div>
         </div>
       );
@@ -290,8 +299,8 @@ function PhaseContent({ phase, isGameActive, send }: PhaseContentProps) {
       return (
         <div className="flex h-full items-center justify-center">
           <div className="text-center">
-            <p className="text-lg font-semibold text-slate-200">결과 공개</p>
-            <p className="mt-2 text-sm text-slate-400">
+            <p className="text-lg font-semibold text-[var(--mmp-color-charcoal)]">결과 공개</p>
+            <p className="mt-2 text-sm text-[var(--mmp-color-steel)]">
               투표 결과와 진실이 밝혀집니다...
             </p>
           </div>

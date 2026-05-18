@@ -68,6 +68,14 @@ Pages migrate by group:
 4. Editor detail
 5. Game runtime
 
+Game runtime uses a scoped `mmp-runtime-boundary` instead of following the app
+shell preference directly. The user-visible rationale is that live play needs
+spoiler-safe contrast, stable real-time status, and cinematic reading/voice
+surfaces. The boundary remains part of the design system: it aliases the same
+semantic token names to an immersive dark palette, so shared voice and status
+components can render consistently without changing WebSocket, auth, or game
+logic.
+
 Unmigrated pages may temporarily keep old styling. Migrated pages must be internally consistent before merge.
 
 ## Issue And PR Map
@@ -110,4 +118,4 @@ For authenticated or backend-dependent pages, the screenshot can use the accessi
 
 - Exact color values are finalized in #662 from the current editor DESIGN.md tokens.
 - Exact UI kit component APIs are finalized in #663 after inventorying existing shared UI and call sites.
-- Game runtime exceptions are allowed only if documented in #668 with user-visible rationale, but the default is full visual unification.
+- Game runtime is the documented exception: #668 keeps it dark/immersive through `mmp-runtime-boundary` while still using project semantic tokens and shared UI behavior.

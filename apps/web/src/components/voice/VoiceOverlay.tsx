@@ -67,7 +67,7 @@ export function VoiceOverlay({
       <div
         className="
           flex flex-col h-full
-          bg-[color-mix(in_oklab,var(--mmp-color-surface)_72%,transparent)] backdrop-blur-[12px]
+          bg-[color-mix(in_oklab,var(--mmp-color-surface)_78%,transparent)] backdrop-blur-[12px]
           border-r border-[var(--mmp-color-hairline)]
           overflow-hidden
           transition-all duration-150 ease-out
@@ -170,7 +170,7 @@ export function VoiceOverlay({
         onClick={togglePanel}
         className="
           self-center w-5 h-10 flex items-center justify-center
-          bg-[color-mix(in_oklab,var(--mmp-color-surface)_72%,transparent)] backdrop-blur-[12px]
+          bg-[color-mix(in_oklab,var(--mmp-color-surface)_78%,transparent)] backdrop-blur-[12px]
           border border-l-0 border-[var(--mmp-color-hairline)]
           rounded-r-md
           text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-ink)]

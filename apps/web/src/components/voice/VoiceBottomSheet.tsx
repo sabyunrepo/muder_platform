@@ -7,7 +7,6 @@ import {
   selectIsSpeakerMuted,
   selectCurrentChannel,
 } from "@/stores/voiceStore";
-import { ParticipantRow } from "./ParticipantRow";
 import type { VoiceChannel } from "./VoiceOverlay";
 
 // ---------------------------------------------------------------------------
@@ -27,7 +26,6 @@ interface VoiceBottomSheetProps {
 
 export function VoiceBottomSheet({
   channels,
-  volumes,
   speaking,
   onChannelSelect,
 }: VoiceBottomSheetProps) {
@@ -145,12 +143,12 @@ export function VoiceBottomSheet({
                         className="relative w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-[14px] font-bold"
                         style={{
                           border: speaking.has(p.identity)
-                            ? "2px solid #34d399"
+                            ? "2px solid var(--mmp-color-success)"
                             : "2px solid transparent",
                           boxShadow: speaking.has(p.identity)
-                            ? "0 0 0 2px #34d39944"
+                            ? "0 0 0 2px color-mix(in oklab, var(--mmp-color-success) 28%, transparent)"
                             : "none",
-                          backgroundColor: "#1e293b",
+                          backgroundColor: "var(--mmp-color-surface-soft)",
                         }}
                       >
                         {p.avatarUrl ? (
@@ -165,7 +163,7 @@ export function VoiceBottomSheet({
                         {p.isSelf && (
                           <span
                             className="absolute bottom-0 left-0 text-[8px] font-bold px-0.5 rounded-sm leading-none"
-                            style={{ backgroundColor: "#f59e0b", color: "#1e293b" }}
+                            style={{ backgroundColor: "var(--mmp-color-primary)", color: "var(--mmp-color-on-primary)" }}
                           >
                             나
                           </span>
@@ -183,7 +181,7 @@ export function VoiceBottomSheet({
                       <span
                         className="text-[10px] text-center truncate max-w-[44px] transition-colors duration-150 ease-out"
                         style={{
-                          color: speaking.has(p.identity) ? "#34d399" : "#94a3b8",
+                          color: speaking.has(p.identity) ? "var(--mmp-color-success)" : "var(--mmp-color-steel)",
                         }}
                       >
                         {p.name}

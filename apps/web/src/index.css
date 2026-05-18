@@ -33,6 +33,36 @@ html[data-theme='dark'] {
   color-scheme: dark;
 }
 
+.mmp-runtime-boundary {
+  color-scheme: dark;
+  --mmp-color-primary: #fbbf24;
+  --mmp-color-primary-pressed: #fcd34d;
+  --mmp-color-on-primary: #111827;
+  --mmp-color-canvas: #020617;
+  --mmp-color-surface: #0f172a;
+  --mmp-color-surface-soft: #111827;
+  --mmp-color-hairline: #1f2937;
+  --mmp-color-hairline-strong: #334155;
+  --mmp-color-ink: #f8fafc;
+  --mmp-color-charcoal: #e2e8f0;
+  --mmp-color-slate: #cbd5e1;
+  --mmp-color-steel: #94a3b8;
+  --mmp-color-muted: #64748b;
+  --mmp-color-success: #34d399;
+  --mmp-color-warning: #fbbf24;
+  --mmp-color-error: #f87171;
+  --mmp-color-info: #60a5fa;
+  --mmp-shadow-card: rgba(0, 0, 0, 0.32) 0 12px 32px -12px;
+  --mmp-shadow-modal: rgba(0, 0, 0, 0.52) 0 24px 64px -16px;
+  background: var(--mmp-color-canvas);
+  color: var(--mmp-color-ink);
+}
+
+.mmp-runtime-boundary [data-runtime-surface='glass'] {
+  background: color-mix(in oklab, var(--mmp-color-surface) 76%, transparent);
+  border-color: color-mix(in oklab, var(--mmp-color-hairline-strong) 70%, transparent);
+}
+
 body {
   font-family: var(--font-sans, 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif);
   background: var(--mmp-color-canvas);
