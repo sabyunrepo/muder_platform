@@ -7,7 +7,7 @@ export default function CreatorThemeStatsPage() {
 
   if (!id) {
     return (
-      <PageShell className="min-h-0">
+      <PageShell>
         <Panel>
           <Alert variant="error" title="테마 ID가 없습니다." />
         </Panel>
@@ -16,7 +16,7 @@ export default function CreatorThemeStatsPage() {
   }
 
   return (
-    <PageShell className="min-h-0" header={<SectionHeader title="테마 통계" />}>
+    <PageShell header={<SectionHeader title="테마 통계" />}>
       <ThemeStats themeId={id} />
     </PageShell>
   );

@@ -4,7 +4,7 @@ import { PageShell, SectionHeader } from '@/shared/components/ui';
 
 export default function ShopPage() {
   return (
-    <PageShell className="min-h-0" header={<SectionHeader title="상점" />}>
+    <PageShell header={<SectionHeader title="상점" />}>
       <section>
         <CoinBalance />
       </section>

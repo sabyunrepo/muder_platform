@@ -58,7 +58,7 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <PageShell className="min-h-0">
+    <PageShell>
       <div className="mx-auto w-full max-w-2xl space-y-8">
         {/* 헤더: 아바타 + 닉네임 + 가입일 */}
         <Card className="flex items-center gap-5 p-6">

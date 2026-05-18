@@ -60,11 +60,12 @@ export function PaymentHistory() {
     {
       id: 'status',
       header: '상태',
-      render: (payment) => (
-        <Badge variant={STATUS_VARIANT[payment.status as PaymentStatus]}>
-          {PAYMENT_STATUS_LABEL[payment.status as PaymentStatus]}
-        </Badge>
-      ),
+      render: (payment) => {
+        const status = payment.status as PaymentStatus;
+        const variant = STATUS_VARIANT[status] ?? 'default';
+        const label = PAYMENT_STATUS_LABEL[status] ?? payment.status;
+        return <Badge variant={variant}>{label}</Badge>;
+      },
     },
     {
       id: 'coins',

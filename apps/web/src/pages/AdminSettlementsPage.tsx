@@ -3,7 +3,7 @@ import { PageShell } from '@/shared/components/ui';
 
 export default function AdminSettlementsPage() {
   return (
-    <PageShell className="min-h-0">
+    <PageShell>
       <AdminSettlements />
     </PageShell>
   );

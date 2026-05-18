@@ -153,7 +153,6 @@ export default function AdminReviewPage() {
 
   return (
     <PageShell
-      className="min-h-0"
       header={<SectionHeader title="테마 심사" description="심사 대기 중인 테마를 검토합니다." />}
     >
       {/* Loading */}

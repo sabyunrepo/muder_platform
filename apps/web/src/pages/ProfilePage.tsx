@@ -52,7 +52,6 @@ export default function ProfilePage() {
 
   return (
     <PageShell
-      className="min-h-0"
       header={
         <div className="flex items-center gap-3">
           <SectionHeader title="프로필" />

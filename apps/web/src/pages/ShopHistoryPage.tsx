@@ -4,7 +4,7 @@ import { PageShell, SectionHeader } from '@/shared/components/ui';
 
 export default function ShopHistoryPage() {
   return (
-    <PageShell className="min-h-0" header={<SectionHeader title="구매 내역" />}>
+    <PageShell header={<SectionHeader title="구매 내역" />}>
       <section>
         <PaymentHistory />
       </section>
