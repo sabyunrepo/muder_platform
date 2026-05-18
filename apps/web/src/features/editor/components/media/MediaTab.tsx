@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, ListChecks, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { ConfirmDialog, Modal, Spinner } from "@/shared/components/ui";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 import {
   useCreateMediaCategory,
   useDeleteMedia,
@@ -247,7 +248,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className={`flex h-full min-h-0 flex-col ${editorDesignClassNames.surface}`}>
       <MediaToolbar
         filter={filter}
         onFilterChange={handleFilterChange}
@@ -269,16 +270,16 @@ export function MediaTab({ themeId }: MediaTabProps) {
         {/* List */}
         <div className="min-h-0 flex-1 overflow-visible lg:overflow-y-auto">
           {selectionMode && (
-            <div className="sticky bottom-0 top-0 z-20 mb-3 flex flex-col gap-2 rounded-sm border border-slate-700 bg-slate-950/95 p-3 shadow-lg shadow-black/30 backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-slate-300">
-                <ListChecks className="h-4 w-4 text-amber-400" />
+            <div className={`sticky bottom-0 top-0 z-20 mb-3 flex flex-col gap-2 p-3 backdrop-blur sm:flex-row sm:items-center sm:justify-between ${editorDesignClassNames.panel}`}>
+              <div className="flex items-center gap-2 text-xs text-[var(--mmp-editor-color-charcoal)]">
+                <ListChecks className="h-4 w-4 text-[var(--mmp-editor-color-primary)]" />
                 <span>선택한 미디어 {selectedIds.size}개</span>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={clearBulkSelection}
-                  className="h-8 rounded-sm border border-slate-700 px-3 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
+                  className={`h-8 px-3 text-xs ${editorDesignClassNames.secondaryAction}`}
                 >
                   취소
                 </button>
@@ -286,7 +287,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
                   type="button"
                   onClick={handleOpenBulkDelete}
                   disabled={selectedIds.size === 0}
-                  className="flex h-8 items-center gap-1.5 rounded-sm border border-rose-800 bg-rose-950/40 px-3 text-xs font-medium text-rose-200 transition-colors hover:border-rose-500 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/60"
+                  className={`flex h-8 items-center gap-1.5 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${editorDesignClassNames.dangerAction}`}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   선택 삭제
@@ -304,16 +305,16 @@ export function MediaTab({ themeId }: MediaTabProps) {
             </div>
           ) : isError ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-xs text-rose-400">미디어 목록을 불러오지 못했습니다</p>
+              <p className="text-xs text-[var(--mmp-editor-color-error)]">미디어 목록을 불러오지 못했습니다</p>
             </div>
           ) : media.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
-                <p className="text-xs font-mono uppercase tracking-widest text-slate-700">
+                <p className="text-xs font-mono uppercase tracking-widest text-[var(--mmp-editor-color-steel)]">
                   미디어 없음
                 </p>
                 {searchQuery.trim() && (
-                  <p className="mt-2 text-xs text-slate-500">검색어나 필터를 조정해 보세요</p>
+                  <p className="mt-2 text-xs text-[var(--mmp-editor-color-slate)]">검색어나 필터를 조정해 보세요</p>
                 )}
               </div>
             </div>
@@ -345,7 +346,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
 
         {/* Detail */}
         {selected && isDesktopLayout && (
-          <aside className="min-h-0 w-full shrink-0 border-t border-slate-800 pt-4 lg:w-96 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
+          <aside className="min-h-0 w-full shrink-0 border-t border-[var(--mmp-editor-color-hairline)] pt-4 lg:w-96 lg:overflow-y-auto lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
             <MediaDetail media={selected} themeId={themeId} onClose={handleClose} />
           </aside>
         )}
@@ -446,7 +447,7 @@ function MediaMobileDetailSheet({
       <button
         type="button"
         aria-label="미디어 상세 닫기"
-        className="absolute inset-0 h-full w-full cursor-default bg-slate-950/70"
+        className="absolute inset-0 h-full w-full cursor-default bg-[rgba(26,26,26,0.42)]"
         onClick={onClose}
       />
       <section
@@ -454,12 +455,12 @@ function MediaMobileDetailSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="media-mobile-detail-title"
-        className="absolute inset-x-0 bottom-0 flex max-h-[80dvh] min-h-[18rem] flex-col rounded-t-2xl border border-slate-800 bg-slate-950 p-4 shadow-2xl shadow-black/60 outline-none"
+        className={`absolute inset-x-0 bottom-0 flex max-h-[80dvh] min-h-[18rem] flex-col rounded-t-2xl p-4 outline-none ${editorDesignClassNames.panel}`}
       >
         <h2 id="media-mobile-detail-title" className="sr-only">
           미디어 상세
         </h2>
-        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-slate-700" aria-hidden="true" />
+        <div className="mx-auto mb-3 h-1 w-12 rounded-full bg-[var(--mmp-editor-color-hairline-strong)]" aria-hidden="true" />
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">{children}</div>
       </section>
     </div>
@@ -530,7 +531,7 @@ function BulkDeleteDialog({
           <button
             type="button"
             onClick={onClose}
-            className="h-9 rounded-sm bg-slate-100 px-4 text-xs font-medium text-slate-950 transition-colors hover:bg-white"
+            className={`h-9 px-4 text-xs ${editorDesignClassNames.primaryAction}`}
           >
             확인
           </button>
@@ -540,7 +541,7 @@ function BulkDeleteDialog({
               type="button"
               onClick={onClose}
               disabled={deleting}
-              className="h-9 rounded-sm border border-slate-700 px-4 text-xs font-medium text-slate-300 transition-colors hover:border-slate-500 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+              className={`h-9 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${editorDesignClassNames.secondaryAction}`}
             >
               취소
             </button>
@@ -548,7 +549,7 @@ function BulkDeleteDialog({
               type="button"
               onClick={onConfirm}
               disabled={deleting || selectedMedia.length === 0}
-              className="flex h-9 items-center gap-1.5 rounded-sm bg-rose-700 px-4 text-xs font-medium text-white transition-colors hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+              className={`flex h-9 items-center gap-1.5 px-4 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${editorDesignClassNames.dangerAction}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
               {deleting ? "삭제 중" : "삭제"}
@@ -560,8 +561,8 @@ function BulkDeleteDialog({
       {hasResult ? (
         <BulkDeleteResultView result={result} />
       ) : (
-        <div className="space-y-4 text-sm text-slate-200">
-          <p className="text-xs text-slate-400">
+        <div className="space-y-4 text-sm text-[var(--mmp-editor-color-charcoal)]">
+          <p className="text-xs text-[var(--mmp-editor-color-slate)]">
             아래 미디어를 삭제합니다. 이미 제작 요소에서 사용 중인 항목은 삭제되지 않고,
             사용 위치가 결과에 표시됩니다.
           </p>
@@ -574,10 +575,10 @@ function BulkDeleteDialog({
 
 function BulkDeleteResultView({ result }: { result: BulkDeleteResult }) {
   return (
-    <div className="space-y-4 text-sm text-slate-200">
+    <div className="space-y-4 text-sm text-[var(--mmp-editor-color-charcoal)]">
       {result.deleted.length > 0 && (
         <ResultSection
-          icon={<CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+          icon={<CheckCircle2 className="h-4 w-4 text-[var(--mmp-editor-color-success)]" />}
           title={`삭제됨 ${result.deleted.length}개`}
         >
           <MediaNameList items={result.deleted} />
@@ -585,15 +586,15 @@ function BulkDeleteResultView({ result }: { result: BulkDeleteResult }) {
       )}
       {result.blocked.length > 0 && (
         <ResultSection
-          icon={<AlertTriangle className="h-4 w-4 text-amber-400" />}
+          icon={<AlertTriangle className="h-4 w-4 text-[var(--mmp-editor-color-warning)]" />}
           title={`참조 중이라 삭제되지 않음 ${result.blocked.length}개`}
         >
           <div className="space-y-3">
             {result.blocked.map((item) => (
-              <div key={item.media.id} className="rounded-sm border border-amber-800/60 bg-amber-950/20 p-3">
-                <p className="text-xs font-medium text-amber-100">{item.media.name}</p>
+              <div key={item.media.id} className="rounded-sm border border-[var(--mmp-editor-color-warning)] bg-[var(--mmp-editor-color-tint-yellow)] p-3">
+                <p className="text-xs font-medium text-[var(--mmp-editor-color-charcoal)]">{item.media.name}</p>
                 {item.references.length > 0 ? (
-                  <ul className="mt-2 space-y-1 text-xs text-amber-100/80">
+                  <ul className="mt-2 space-y-1 text-xs text-[var(--mmp-editor-color-slate)]">
                     {item.references.map((ref, index) => (
                       <li key={`${item.media.id}-${ref.type}-${index}`} className="break-words">
                         <span className="font-medium">{mediaReferenceTypeLabel(ref.type)}</span>:{" "}
@@ -602,7 +603,7 @@ function BulkDeleteResultView({ result }: { result: BulkDeleteResult }) {
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-100/70">
+                  <p className="mt-2 text-xs text-[var(--mmp-editor-color-slate)]">
                     연결 위치를 다시 불러온 뒤 해제하세요.
                   </p>
                 )}
@@ -613,7 +614,7 @@ function BulkDeleteResultView({ result }: { result: BulkDeleteResult }) {
       )}
       {result.failed.length > 0 && (
         <ResultSection
-          icon={<XCircle className="h-4 w-4 text-rose-400" />}
+          icon={<XCircle className="h-4 w-4 text-[var(--mmp-editor-color-error)]" />}
           title={`삭제 실패 ${result.failed.length}개`}
         >
           <MediaNameList items={result.failed} />
@@ -636,7 +637,7 @@ function ResultSection({
     <section className="space-y-2">
       <div className="flex items-center gap-2">
         {icon}
-        <h3 className="text-xs font-semibold text-slate-100">{title}</h3>
+        <h3 className="text-xs font-semibold text-[var(--mmp-editor-color-charcoal)]">{title}</h3>
       </div>
       {children}
     </section>
@@ -649,10 +650,10 @@ function MediaNameList({ items }: { items: MediaResponse[] }) {
       {items.map((item) => (
         <li
           key={item.id}
-          className="flex items-center justify-between gap-3 rounded-sm border border-slate-800 bg-slate-950/70 px-3 py-2"
+          className={`flex items-center justify-between gap-3 px-3 py-2 ${editorDesignClassNames.listItem}`}
         >
-          <span className="min-w-0 truncate text-xs text-slate-200">{item.name}</span>
-          <span className="shrink-0 rounded-sm bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+          <span className="min-w-0 truncate text-xs text-[var(--mmp-editor-color-charcoal)]">{item.name}</span>
+          <span className="shrink-0 rounded-sm bg-[var(--mmp-editor-color-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--mmp-editor-color-slate)]">
             {getMediaTypeBadgeLabel(item.type)}
           </span>
         </li>

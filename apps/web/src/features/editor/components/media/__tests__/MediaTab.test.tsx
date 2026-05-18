@@ -224,6 +224,9 @@ describe('MediaTab', () => {
     expect(screen.getByRole('list', { name: '미디어 목록' }).className).toContain(
       'lg:grid-cols-3',
     );
+    expect(screen.getByRole('toolbar', { name: '미디어 도구 모음' }).className).toContain(
+      'border-[var(--mmp-editor-color-hairline)]',
+    );
     expect(screen.getByText('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('문 닫는 소리')).toBeDefined();
     // Type badges render creator-facing labels on cards.

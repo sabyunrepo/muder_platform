@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pause, Play, Youtube } from "lucide-react";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 import { useMediaDownloadUrl, type MediaResponse } from "@/features/editor/mediaApi";
 import {
   canPlayInlinePreview,
@@ -49,9 +50,9 @@ function getPreviewSurfaceClass(type: MediaResponse["type"]): string {
     case "DOCUMENT":
       return "border-violet-500/25 bg-violet-500/10 text-violet-200";
     case "IMAGE":
-      return "border-teal-500/25 bg-teal-500/10 text-teal-200";
+      return "border-teal-500/25 bg-teal-500/10 text-teal-700";
     default:
-      return "border-slate-600/40 bg-slate-800/70 text-slate-200";
+      return "border-[var(--mmp-editor-color-hairline-strong)] bg-[var(--mmp-editor-color-surface)] text-[var(--mmp-editor-color-slate)]";
   }
 }
 
@@ -102,14 +103,14 @@ export function MediaCard({
         }
       }}
       aria-pressed={selectionMode ? checked : selected}
-      className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-sm border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 ${
+      className={`group relative flex cursor-pointer flex-col overflow-hidden text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
         selected
-          ? "border-amber-500 bg-slate-900"
-          : "border-slate-800 bg-slate-900/50 hover:border-slate-600"
+          ? `${editorDesignClassNames.listItem} ${editorDesignClassNames.listItemActive}`
+          : editorDesignClassNames.listItem
       }`}
     >
       {selectionMode && (
-        <div className="absolute left-2 top-2 z-10 rounded-sm bg-black/70 p-1">
+        <div className="absolute left-2 top-2 z-10 rounded-sm bg-[var(--mmp-editor-color-canvas)] p-1 shadow-[var(--mmp-editor-shadow-card)]">
           <input
             type="checkbox"
             checked={checked}
@@ -119,13 +120,13 @@ export function MediaCard({
             }}
             onClick={(event) => event.stopPropagation()}
             aria-label={`${media.name} 선택`}
-            className="h-4 w-4 rounded-sm border-slate-500 bg-slate-950 text-amber-500 focus:ring-amber-500"
+            className="h-4 w-4 rounded-sm border-[var(--mmp-editor-color-hairline-strong)] bg-[var(--mmp-editor-color-canvas)] text-[var(--mmp-editor-color-primary)] focus:ring-[var(--mmp-editor-color-primary)]"
           />
         </div>
       )}
 
       {/* Thumbnail */}
-      <div className="relative mx-auto mt-2 flex aspect-square w-24 items-center justify-center bg-slate-950/70 p-2 sm:w-28">
+      <div className="relative mx-auto mt-2 flex aspect-square w-24 items-center justify-center rounded-md bg-[var(--mmp-editor-color-surface-soft)] p-2 sm:w-28">
         {shouldRenderImagePreview ? (
           <img
             src={thumbnailUrl}
@@ -163,7 +164,7 @@ export function MediaCard({
               onPreviewToggle();
             }}
             aria-label={isPreviewPlaying ? "프리뷰 정지" : "프리뷰 재생"}
-            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black/90"
+            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--mmp-editor-color-charcoal)] text-white transition-colors hover:bg-[var(--mmp-editor-color-ink)]"
           >
             {isPreviewPlaying ? (
               <Pause className="h-3.5 w-3.5" />
@@ -183,14 +184,14 @@ export function MediaCard({
             {badgeLabel}
           </span>
           {duration && (
-            <span className="text-[10px] font-mono text-slate-500">{duration}</span>
+            <span className="text-[10px] font-mono text-[var(--mmp-editor-color-steel)]">{duration}</span>
           )}
         </div>
-        <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-slate-200">
+        <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-[var(--mmp-editor-color-charcoal)]">
           {media.name}
         </p>
         {media.tags.length > 0 && (
-          <p className="truncate text-[10px] text-slate-500">{media.tags.slice(0, 3).join(", ")}</p>
+          <p className="truncate text-[10px] text-[var(--mmp-editor-color-slate)]">{media.tags.slice(0, 3).join(", ")}</p>
         )}
       </div>
     </div>

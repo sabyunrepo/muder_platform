@@ -159,6 +159,7 @@ describe('LocationClueAssignPanel', () => {
       config_json: { locations: [{ id: 'loc-1', locationClueConfig: { clueIds: ['clue-1'] } }] },
     };
     renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
+    expect(screen.getByLabelText('서재 단서 조사').className).toContain('mmp-editor-panel');
     expect(screen.getByText('(1/2)')).toBeDefined();
   });
 
