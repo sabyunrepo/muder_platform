@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -105,6 +106,9 @@ func (s *mediaService) ConfirmReplacementUpload(ctx context.Context, creatorID, 
 		_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
 		return nil, err
 	}
+	if media.Type == MediaTypeImage {
+		return s.confirmImageReplacementUpload(ctx, creatorID, media, pending)
+	}
 
 	oldStorageKey := ""
 	if media.StorageKey.Valid {
@@ -130,6 +134,73 @@ func (s *mediaService) ConfirmReplacementUpload(ctx context.Context, creatorID, 
 		}
 	}
 	resp := toMediaResponse(updated)
+	return &resp, nil
+}
+
+func (s *mediaService) confirmImageReplacementUpload(ctx context.Context, creatorID uuid.UUID, media db.ThemeMedium, pending db.ThemeMediaReplacementUpload) (*MediaResponse, error) {
+	payload, err := readStorageObject(ctx, s.storage, pending.StorageKey, pending.FileSize)
+	if err != nil {
+		s.logger.Error().Err(err).Str("storage_key", pending.StorageKey).Msg("failed to read replacement image")
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
+		_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
+		return nil, apperror.Internal("failed to read replacement image")
+	}
+	if int64(len(payload)) != pending.FileSize {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
+		_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
+		return nil, apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
+	}
+	variants, totalSize, err := optimizeImageVariants(media.ThemeID, media.ID, pending.MimeType, payload)
+	if err != nil {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
+		_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
+		return nil, err
+	}
+	writtenKeys := make([]string, 0, len(variants))
+	for _, variant := range variants {
+		if err := s.storage.PutObject(ctx, variant.key, bytes.NewReader(variant.body), variant.contentType, int64(len(variant.body))); err != nil {
+			s.logger.Error().Err(err).Str("storage_key", variant.key).Msg("failed to store replacement image variant")
+			cleanupCtx, cancel := storageCleanupContext(ctx)
+			defer cancel()
+			_ = s.storage.DeleteObjects(cleanupCtx, append(writtenKeys, pending.StorageKey))
+			_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
+			return nil, apperror.Internal("failed to optimize image")
+		}
+		writtenKeys = append(writtenKeys, variant.key)
+	}
+	oldKeys := stringsWithout(mediaImageVariantKeysFor(media), writtenKeys)
+	masterKey := mediaImageVariantKey(media.ThemeID, media.ID, imageVariantMaster)
+	storageParam, sizeParam, mimeParam := imageMediaFileParams(masterKey, totalSize)
+	updated, err := s.q.UpdateMediaFileWithOwner(ctx, db.UpdateMediaFileWithOwnerParams{
+		ID:         media.ID,
+		CreatorID:  creatorID,
+		StorageKey: storageParam,
+		FileSize:   sizeParam,
+		MimeType:   mimeParam,
+	})
+	if err != nil {
+		s.logger.Error().Err(err).Str("media_id", media.ID.String()).Msg("failed to replace optimized image")
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObjects(cleanupCtx, append(writtenKeys, pending.StorageKey))
+		return nil, apperror.Internal("failed to replace media file")
+	}
+	cleanupCtx, cancel := storageCleanupContext(ctx)
+	defer cancel()
+	_ = s.q.DeleteMediaReplacementUpload(cleanupCtx, pending.ID)
+	_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
+	if len(oldKeys) > 0 {
+		if delErr := s.storage.DeleteObjects(cleanupCtx, oldKeys); delErr != nil {
+			s.logger.Warn().Err(delErr).Str("media_id", media.ID.String()).Msg("failed to delete old image variants")
+		}
+	}
+	resp := s.toMediaResponse(ctx, updated)
 	return &resp, nil
 }
 

@@ -86,19 +86,22 @@ type UpdateMediaRequest struct {
 }
 
 type MediaResponse struct {
-	ID         uuid.UUID  `json:"id"`
-	ThemeID    uuid.UUID  `json:"theme_id"`
-	Name       string     `json:"name"`
-	Type       string     `json:"type"`
-	SourceType string     `json:"source_type"`
-	URL        *string    `json:"url,omitempty"`
-	Duration   *int32     `json:"duration,omitempty"`
-	FileSize   *int64     `json:"file_size,omitempty"`
-	MimeType   *string    `json:"mime_type,omitempty"`
-	Tags       []string   `json:"tags"`
-	SortOrder  int32      `json:"sort_order"`
-	CategoryID *uuid.UUID `json:"category_id,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	ID           uuid.UUID  `json:"id"`
+	ThemeID      uuid.UUID  `json:"theme_id"`
+	Name         string     `json:"name"`
+	Type         string     `json:"type"`
+	SourceType   string     `json:"source_type"`
+	URL          *string    `json:"url,omitempty"`
+	MasterURL    *string    `json:"master_url,omitempty"`
+	PreviewURL   *string    `json:"preview_url,omitempty"`
+	ThumbnailURL *string    `json:"thumbnail_url,omitempty"`
+	Duration     *int32     `json:"duration,omitempty"`
+	FileSize     *int64     `json:"file_size,omitempty"`
+	MimeType     *string    `json:"mime_type,omitempty"`
+	Tags         []string   `json:"tags"`
+	SortOrder    int32      `json:"sort_order"`
+	CategoryID   *uuid.UUID `json:"category_id,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 type MediaCategoryRequest struct {

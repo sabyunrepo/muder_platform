@@ -18,6 +18,9 @@ export interface MediaResponse {
   type: MediaType;
   source_type: MediaSourceType;
   url?: string;
+  master_url?: string;
+  preview_url?: string;
+  thumbnail_url?: string;
   duration?: number;
   file_size?: number;
   mime_type?: string;
