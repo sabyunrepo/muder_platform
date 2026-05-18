@@ -27,6 +27,8 @@
   --mmp-editor-color-tint-lavender: #e6e0f5;
   --mmp-editor-color-tint-sky: #dcecfa;
   --mmp-editor-color-tint-yellow: #fef7d6;
+  --mmp-editor-color-tag-bg: var(--mmp-editor-color-tint-lavender);
+  --mmp-editor-color-tag-text: #391c57;
   --mmp-editor-radius-xs: 4px;
   --mmp-editor-radius-sm: 6px;
   --mmp-editor-radius-md: 8px;
@@ -42,8 +44,47 @@
   --mmp-editor-shadow-card: rgba(15, 15, 15, 0.08) 0 4px 12px 0;
   --mmp-editor-shadow-modal: rgba(15, 15, 15, 0.16) 0 16px 48px -8px;
   font-family:
-    "Notion Sans", var(--font-sans, "Inter", ui-sans-serif, system-ui, -apple-system,
-    BlinkMacSystemFont, "Segoe UI", sans-serif);
+    'Notion Sans',
+    var(
+      --font-sans,
+      'Inter',
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif
+    );
+}
+
+.mmp-editor-design-scope[data-editor-theme='dark'] {
+  --mmp-editor-color-primary: #a99cff;
+  --mmp-editor-color-primary-pressed: #c5bdff;
+  --mmp-editor-color-on-primary: #171421;
+  --mmp-editor-color-canvas: #191919;
+  --mmp-editor-color-surface: #242424;
+  --mmp-editor-color-surface-soft: #202020;
+  --mmp-editor-color-hairline: #3a3a38;
+  --mmp-editor-color-hairline-strong: #4a4a46;
+  --mmp-editor-color-ink: #f4f4f2;
+  --mmp-editor-color-charcoal: #e5e4df;
+  --mmp-editor-color-slate: #c9c6bd;
+  --mmp-editor-color-steel: #aaa79f;
+  --mmp-editor-color-muted: #8f8b82;
+  --mmp-editor-color-success: #44c767;
+  --mmp-editor-color-warning: #ffb86b;
+  --mmp-editor-color-error: #ff6b6b;
+  --mmp-editor-color-tint-peach: #4a3126;
+  --mmp-editor-color-tint-rose: #4a2638;
+  --mmp-editor-color-tint-mint: #243f31;
+  --mmp-editor-color-tint-lavender: #30294a;
+  --mmp-editor-color-tint-sky: #24384a;
+  --mmp-editor-color-tint-yellow: #473d23;
+  --mmp-editor-color-tag-bg: #30294a;
+  --mmp-editor-color-tag-text: #ded6ff;
+  --mmp-editor-shadow-card: rgba(0, 0, 0, 0.3) 0 8px 24px 0;
+  --mmp-editor-shadow-modal: rgba(0, 0, 0, 0.44) 0 20px 56px -10px;
+  color-scheme: dark;
 }
 
 .mmp-editor-design-scope .mmp-editor-surface {
@@ -61,7 +102,11 @@
 
 .mmp-editor-design-scope .mmp-editor-top-bar {
   border-bottom: 1px solid var(--mmp-editor-color-hairline);
-  background: color-mix(in srgb, var(--mmp-editor-color-canvas) 94%, var(--mmp-editor-color-surface));
+  background: color-mix(
+    in srgb,
+    var(--mmp-editor-color-canvas) 94%,
+    var(--mmp-editor-color-surface)
+  );
   color: var(--mmp-editor-color-charcoal);
 }
 
@@ -101,8 +146,16 @@
 }
 
 .mmp-editor-design-scope .mmp-editor-list-item-active {
-  border-color: color-mix(in srgb, var(--mmp-editor-color-primary) 58%, var(--mmp-editor-color-hairline));
-  background: color-mix(in srgb, var(--mmp-editor-color-primary) 9%, var(--mmp-editor-color-canvas));
+  border-color: color-mix(
+    in srgb,
+    var(--mmp-editor-color-primary) 58%,
+    var(--mmp-editor-color-hairline)
+  );
+  background: color-mix(
+    in srgb,
+    var(--mmp-editor-color-primary) 9%,
+    var(--mmp-editor-color-canvas)
+  );
 }
 
 .mmp-editor-design-scope .mmp-editor-subtle-panel {
@@ -113,7 +166,8 @@
 }
 
 .mmp-editor-design-scope .mmp-editor-error-panel {
-  border: 1px solid color-mix(in srgb, var(--mmp-editor-color-error) 45%, var(--mmp-editor-color-hairline));
+  border: 1px solid
+    color-mix(in srgb, var(--mmp-editor-color-error) 45%, var(--mmp-editor-color-hairline));
   border-radius: var(--mmp-editor-radius-md);
   background: color-mix(in srgb, var(--mmp-editor-color-error) 7%, var(--mmp-editor-color-canvas));
   color: var(--mmp-editor-color-error);
@@ -138,7 +192,8 @@
 }
 
 .mmp-editor-design-scope .mmp-editor-danger-action {
-  border: 1px solid color-mix(in srgb, var(--mmp-editor-color-error) 42%, var(--mmp-editor-color-hairline));
+  border: 1px solid
+    color-mix(in srgb, var(--mmp-editor-color-error) 42%, var(--mmp-editor-color-hairline));
   border-radius: var(--mmp-editor-radius-md);
   background: color-mix(in srgb, var(--mmp-editor-color-error) 7%, var(--mmp-editor-color-canvas));
   color: var(--mmp-editor-color-error);
@@ -200,8 +255,8 @@
 
 .mmp-editor-design-scope .mmp-editor-tag {
   border-radius: var(--mmp-editor-radius-sm);
-  background: var(--mmp-editor-color-tint-lavender);
-  color: #391c57;
+  background: var(--mmp-editor-color-tag-bg);
+  color: var(--mmp-editor-color-tag-text);
   font-size: 13px;
   font-weight: 600;
   line-height: 1.4;
@@ -220,7 +275,11 @@
   --baseBgHover: var(--mmp-editor-color-surface);
   --baseBgSubtle: var(--mmp-editor-color-surface-soft);
   --accentBase: var(--mmp-editor-color-primary);
-  --accentBgSubtle: color-mix(in srgb, var(--mmp-editor-color-primary) 10%, var(--mmp-editor-color-canvas));
+  --accentBgSubtle: color-mix(
+    in srgb,
+    var(--mmp-editor-color-primary) 10%,
+    var(--mmp-editor-color-canvas)
+  );
   --accentText: var(--mmp-editor-color-primary);
   --accentTextContrast: var(--mmp-editor-color-primary-pressed);
   --baseBorder: var(--mmp-editor-color-hairline);
@@ -365,7 +424,11 @@
 }
 
 .mmp-editor-design-scope .bg-amber-500\/10 {
-  background-color: color-mix(in srgb, var(--mmp-editor-color-primary) 9%, var(--mmp-editor-color-canvas));
+  background-color: color-mix(
+    in srgb,
+    var(--mmp-editor-color-primary) 9%,
+    var(--mmp-editor-color-canvas)
+  );
 }
 
 .mmp-editor-design-scope .bg-amber-500\/5,
@@ -373,7 +436,11 @@
 .mmp-editor-design-scope .bg-amber-500\/20,
 .mmp-editor-design-scope .bg-amber-500\/25,
 .mmp-editor-design-scope .bg-amber-950\/30 {
-  background-color: color-mix(in srgb, var(--mmp-editor-color-primary) 12%, var(--mmp-editor-color-canvas));
+  background-color: color-mix(
+    in srgb,
+    var(--mmp-editor-color-primary) 12%,
+    var(--mmp-editor-color-canvas)
+  );
 }
 
 .mmp-editor-design-scope .text-amber-100,
