@@ -14,7 +14,9 @@
 - `DESIGN.md`의 marketing hero, pricing, decorative mesh/wire 패턴은 에디터 운영 UI에는 바로 적용하지 않는다.
 - display typography의 negative letter-spacing은 repo 지침과 충돌하므로 후속 화면 적용 때 0으로 보정한다.
 - pastel cards는 정보 구분용 보조 tint로만 사용하고, 기능 카드 남발은 피한다.
-- 색상은 Notion palette를 유지하되 `/editor` 밖으로 누수되지 않게 namespace로 격리한다.
+- 색상은 project-wide `--mmp-color-*` semantic token을 바라보는 alias로 둔다.
+- 에디터만의 radius, spacing, shadow, density는 `--mmp-editor-*` namespace로 유지한다.
+- `data-editor-theme`는 scoped guard와 테스트 경계이며 실제 색상 source of truth는 `html[data-theme]`다.
 
 ## 사용 방법
 

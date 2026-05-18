@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { EditorThemeResponse } from '@/features/editor/api';
 import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
-import type { EditorAppearancePreference } from '@/features/editor/design-system/useEditorAppearance';
+import { AppearanceProvider } from '@/shared/appearance';
 
 const { mockNavigate, mockSetActiveTab, mockActiveTab } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -78,22 +79,29 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   window.localStorage.clear();
+  document.documentElement.removeAttribute('data-theme');
+  document.documentElement.removeAttribute('data-theme-preference');
+  document.documentElement.style.colorScheme = '';
   mockActiveTab.current = 'storyMap';
 });
+
+function renderEditorLayout(ui: ReactElement) {
+  return render(<AppearanceProvider>{ui}</AppearanceProvider>);
+}
 
 describe('EditorLayout', () => {
   it('헤더에서 핵심 정보와 주요 액션을 유지한다', () => {
     const onValidate = vi.fn(() => []);
     const onPublish = vi.fn();
 
-    render(
+    renderEditorLayout(
       <EditorLayout
         theme={baseTheme}
         themeId="theme-1"
         saveStatus="dirty"
         onValidate={onValidate}
         onPublish={onPublish}
-      />
+      />,
     );
 
     expect(screen.getByText('좁은 모바일 화면용 테스트 테마')).toBeDefined();
@@ -120,56 +128,37 @@ describe('EditorLayout', () => {
     expect(onPublish).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
-    ['시스템 설정 사용', 'system'],
-    ['라이트 모드', 'light'],
-    ['다크 모드', 'dark'],
-  ] as const)(
-    '에디터 상세 화면 모드에서 %s 버튼을 누르면 preference 변경을 요청한다',
-    (label, mode) => {
-      const onAppearancePreferenceChange = vi.fn();
-      render(
-        <EditorLayout
-          theme={baseTheme}
-          themeId="theme-1"
-          appearancePreference="system"
-          onAppearancePreferenceChange={onAppearancePreferenceChange}
-        />
-      );
+  it.each(['시스템', '라이트', '다크'] as const)(
+    '에디터 상세 화면 모드에서 %s 버튼을 누르면 전역 preference를 변경한다',
+    (label) => {
+      renderEditorLayout(<EditorLayout theme={baseTheme} themeId="theme-1" />);
 
       fireEvent.click(screen.getByRole('button', { name: label }));
 
-      expect(onAppearancePreferenceChange).toHaveBeenCalledWith(
-        mode satisfies EditorAppearancePreference
-      );
-    }
+      const expectedPreference =
+        label === '시스템' ? 'system' : label === '라이트' ? 'light' : 'dark';
+      expect(document.documentElement.dataset.themePreference).toBe(expectedPreference);
+    },
   );
 
-  it('에디터 상세 화면 모드 버튼은 현재 선택값과 실제 적용 테마를 표시한다', () => {
-    render(
-      <EditorLayout
-        theme={baseTheme}
-        themeId="theme-1"
-        appearancePreference="dark"
-        resolvedAppearance="dark"
-      />
-    );
+  it('에디터 상세 화면 모드는 공용 compact toggle로 현재 선택값을 표시한다', () => {
+    window.localStorage.setItem('mmp.appearance', 'dark');
 
-    expect(
-      screen
-        .getByRole('group', { name: '에디터 화면 모드' })
-        .getAttribute('data-editor-resolved-theme')
-    ).toBe('dark');
-    expect(screen.getByRole('button', { name: '다크 모드' }).getAttribute('aria-pressed')).toBe(
+    renderEditorLayout(<EditorLayout theme={baseTheme} themeId="theme-1" />);
+
+    expect(screen.getByRole('group', { name: '에디터 화면 모드' })).toBeDefined();
+    expect(screen.getByRole('button', { name: '다크' }).getAttribute('aria-pressed')).toBe(
       'true'
     );
-    expect(screen.getByRole('button', { name: '라이트 모드' }).getAttribute('aria-pressed')).toBe(
+    expect(screen.getByRole('button', { name: '라이트' }).getAttribute('aria-pressed')).toBe(
       'false'
     );
   });
 
   it('뒤로가기와 출판 완료 테마의 비활성 상태를 유지한다', () => {
-    render(<EditorLayout theme={{ ...baseTheme, status: 'PUBLISHED' }} themeId="theme-1" />);
+    renderEditorLayout(
+      <EditorLayout theme={{ ...baseTheme, status: 'PUBLISHED' }} themeId="theme-1" />,
+    );
 
     fireEvent.click(screen.getByLabelText('에디터 목록으로 돌아가기'));
 
@@ -180,20 +169,26 @@ describe('EditorLayout', () => {
 
   it('저장 상태별 표시와 재시도 액션을 헤더 안에서 유지한다', () => {
     const onRetry = vi.fn();
-    const { rerender } = render(
-      <EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="saving" onRetry={onRetry} />
+    const { rerender } = renderEditorLayout(
+      <EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="saving" onRetry={onRetry} />,
     );
 
     expect(screen.getByText('저장 중...')).toBeDefined();
 
     rerender(
-      <EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="error" onRetry={onRetry} />
+      <AppearanceProvider>
+        <EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="error" onRetry={onRetry} />
+      </AppearanceProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: /저장 실패/ }));
     expect(onRetry).toHaveBeenCalledTimes(1);
 
-    rerender(<EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="idle" />);
+    rerender(
+      <AppearanceProvider>
+        <EditorLayout theme={baseTheme} themeId="theme-1" saveStatus="idle" />
+      </AppearanceProvider>,
+    );
     expect(screen.queryByText('저장 중...')).toBeNull();
     expect(screen.queryByRole('button', { name: /저장 실패/ })).toBeNull();
   });
@@ -204,7 +199,9 @@ describe('EditorLayout', () => {
       { type: 'warning' as const, category: 'modules', message: '모듈 설정을 확인하세요' },
     ]);
 
-    render(<EditorLayout theme={baseTheme} themeId="theme-1" onValidate={onValidate} />);
+    renderEditorLayout(
+      <EditorLayout theme={baseTheme} themeId="theme-1" onValidate={onValidate} />,
+    );
 
     fireEvent.click(screen.getByRole('button', { name: '검증' }));
 
@@ -218,7 +215,7 @@ describe('EditorLayout', () => {
   it('Ctrl+S와 Cmd+S 저장 단축키만 저장 액션을 실행한다', () => {
     const onSave = vi.fn();
 
-    render(<EditorLayout theme={baseTheme} themeId="theme-1" onSave={onSave} />);
+    renderEditorLayout(<EditorLayout theme={baseTheme} themeId="theme-1" onSave={onSave} />);
 
     fireEvent.keyDown(window, { key: 'a', ctrlKey: true });
     fireEvent.keyDown(window, { key: 's', ctrlKey: true });
@@ -228,7 +225,7 @@ describe('EditorLayout', () => {
   });
 
   it('스토리 진행 탭 콘텐츠는 검증 패널이 있어도 접근 가능하다', () => {
-    render(<EditorLayout theme={baseTheme} themeId="theme-1" />);
+    renderEditorLayout(<EditorLayout theme={baseTheme} themeId="theme-1" />);
 
     const tabPanel = screen.getByRole('tabpanel');
     const root = tabPanel.parentElement;
@@ -243,7 +240,7 @@ describe('EditorLayout', () => {
     (tab) => {
       mockActiveTab.current = tab;
 
-      render(<EditorLayout theme={baseTheme} themeId="theme-1" />);
+      renderEditorLayout(<EditorLayout theme={baseTheme} themeId="theme-1" />);
 
       const tabPanel = screen.getByRole('tabpanel');
       expect(tabPanel.id).toBe(`tabpanel-${tab}`);

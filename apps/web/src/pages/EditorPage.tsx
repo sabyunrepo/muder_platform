@@ -35,7 +35,7 @@ function EditorDetailPageFrame({
   themeId: string;
   routeSegment?: string;
 }) {
-  const { preference, resolvedTheme, setPreference } = useAppearance();
+  const { preference, resolvedTheme } = useAppearance();
 
   return (
     <div
@@ -43,13 +43,7 @@ function EditorDetailPageFrame({
       data-editor-theme={resolvedTheme}
       data-editor-theme-preference={preference}
     >
-      <ThemeEditor
-        themeId={themeId}
-        routeSegment={routeSegment}
-        appearancePreference={preference}
-        resolvedAppearance={resolvedTheme}
-        onAppearancePreferenceChange={setPreference}
-      />
+      <ThemeEditor themeId={themeId} routeSegment={routeSegment} />
     </div>
   );
 }

@@ -234,7 +234,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   }, [moduleSchemasResp]);
 
   return (
-    <div className="h-full overflow-y-auto p-4 space-y-6">
+    <div className="h-full space-y-6 overflow-y-auto bg-[var(--mmp-editor-color-surface-soft)] p-4 text-[var(--mmp-editor-color-charcoal)]">
       {conflictDraft && !isConflictBannerDismissed && (
         <EditorSaveConflictBanner
           scopeLabel="모듈 설정"
@@ -250,11 +250,11 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
         return (
           <section key={category.key}>
             {/* Category header */}
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[var(--mmp-editor-color-muted)]">
                 {category.label}
               </span>
-              <span className="text-[10px] font-mono text-slate-600">
+              <span className="font-mono text-[10px] text-[var(--mmp-editor-color-muted)]">
                 {activeCount}/{category.modules.length}
               </span>
             </div>
@@ -266,16 +266,23 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                 const schema = schemaMap[mod.id] ?? null;
 
                 return (
-                  <div key={mod.id} className="rounded-lg border border-slate-700 bg-slate-800/50">
+                  <div
+                    key={mod.id}
+                    className="rounded-lg border border-[var(--mmp-editor-color-hairline)] bg-[var(--mmp-editor-color-canvas)]"
+                  >
                     {/* Card header row */}
                     <div className="flex items-center gap-3 p-3">
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p
-                          className={`text-xs font-medium ${isEnabled ? 'text-slate-200' : 'text-slate-500'}`}
+                          className={`text-xs font-medium ${
+                            isEnabled
+                              ? 'text-[var(--mmp-editor-color-charcoal)]'
+                              : 'text-[var(--mmp-editor-color-muted)]'
+                          }`}
                         >
                           {mod.name}
                         </p>
-                        <p className="text-[10px] text-slate-600 mt-0.5 truncate">
+                        <p className="mt-0.5 truncate text-[10px] text-[var(--mmp-editor-color-muted)]">
                           {mod.description}
                         </p>
                       </div>
@@ -287,12 +294,14 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                         aria-label={`${mod.name} ${isEnabled ? '비활성화' : '활성화'}`}
                         onClick={() => handleToggle(mod.id)}
                         disabled={updateConfig.isPending}
-                        className={`relative shrink-0 h-5 w-9 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 ${
-                          isEnabled ? 'bg-amber-500' : 'bg-slate-700'
+                        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
+                          isEnabled
+                            ? 'bg-[var(--mmp-editor-color-primary)]'
+                            : 'bg-[var(--mmp-editor-color-hairline-strong)]'
                         }`}
                       >
                         <span
-                          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                          className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-[var(--mmp-editor-color-canvas)] shadow transition-transform ${
                             isEnabled ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />
@@ -329,7 +338,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                       mod.id !== LOCATION_MODULE_ID &&
                       mod.id !== PLAYER_KILL_MODULE_ID &&
                       schema && (
-                        <div className="border-t border-slate-700 px-3 py-3">
+                        <div className="border-t border-[var(--mmp-editor-color-hairline)] px-3 py-3">
                           <SchemaDrivenForm
                             schema={schema}
                             values={moduleConfigs[mod.id] ?? {}}

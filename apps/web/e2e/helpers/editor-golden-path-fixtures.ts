@@ -11,7 +11,7 @@
  */
 import type { Page } from "@playwright/test";
 
-export const BASE = "http://localhost:3000";
+export const BASE = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 export const THEME_ID = "00000000-0000-0000-0000-000000000184";
 export const CLUE_ID = "cccccccc-0000-0000-0000-000000000001";
 export const REWARD_CLUE_ID = "cccccccc-0000-0000-0000-000000000002";

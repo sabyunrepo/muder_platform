@@ -22,19 +22,10 @@ vi.mock('@/features/editor/components', () => ({
   ThemeEditor: ({
     themeId,
     routeSegment,
-    appearancePreference,
-    resolvedAppearance,
   }: {
     themeId: string;
     routeSegment?: string;
-    appearancePreference?: string;
-    resolvedAppearance?: string;
-  }) => (
-    <div>
-      테마 에디터 {themeId} {routeSegment ?? 'no-segment'} {appearancePreference}{' '}
-      {resolvedAppearance}
-    </div>
-  ),
+  }) => <div>테마 에디터 {themeId} {routeSegment ?? 'no-segment'}</div>,
 }));
 
 import EditorPage from '../EditorPage';
@@ -213,7 +204,7 @@ describe('EditorPage', () => {
 
     renderEditorPage();
 
-    const detail = screen.getByText(/테마 에디터 theme-1 characters system light/);
+    const detail = screen.getByText(/테마 에디터 theme-1 characters/);
     expect(detail).toBeDefined();
     expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
     expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('light');
@@ -229,7 +220,7 @@ describe('EditorPage', () => {
 
     renderEditorPage();
 
-    const detail = screen.getByText(/테마 에디터 theme-1 characters system dark/);
+    const detail = screen.getByText(/테마 에디터 theme-1 characters/);
     expect(detail).toBeDefined();
     expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
     expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('dark');
@@ -252,9 +243,7 @@ describe('EditorPage', () => {
 
       renderEditorPage();
 
-      const detail = screen.getByText(
-        new RegExp(`테마 에디터 theme-1 characters ${storedPreference} ${expectedTheme}`)
-      );
+      const detail = screen.getByText(/테마 에디터 theme-1 characters/);
       expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
       expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe(expectedTheme);
       expect(detail.parentElement?.getAttribute('data-editor-theme')).not.toBe('system');
@@ -272,7 +261,7 @@ describe('EditorPage', () => {
 
     renderEditorPage();
 
-    let detail = screen.getByText(/테마 에디터 theme-1 characters system light/);
+    let detail = screen.getByText(/테마 에디터 theme-1 characters/);
     const editorScope = detail.parentElement;
     expect(editorScope?.getAttribute('data-editor-theme')).toBe('light');
 
@@ -280,7 +269,7 @@ describe('EditorPage', () => {
       systemTheme.setMatches(true);
     });
 
-    detail = screen.getByText(/테마 에디터 theme-1 characters system dark/);
+    detail = screen.getByText(/테마 에디터 theme-1 characters/);
     expect(detail.parentElement).toBe(editorScope);
     expect(editorScope?.getAttribute('data-editor-theme')).toBe('dark');
     expect(editorScope?.getAttribute('data-editor-theme-preference')).toBe('system');
@@ -293,7 +282,7 @@ describe('EditorPage', () => {
 
     renderEditorPage();
 
-    const detail = screen.getByText(/테마 에디터 theme-1 characters dark dark/);
+    const detail = screen.getByText(/테마 에디터 theme-1 characters/);
     expect(detail).toBeDefined();
     expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
     expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('dark');

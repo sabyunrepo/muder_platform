@@ -2,33 +2,37 @@
  * Editor-only Notion-inspired design boundary.
  * Keep every selector under .mmp-editor-design-scope so DESIGN.md tokens do not leak
  * into lobby, runtime, payment, profile, or admin pages.
+ *
+ * Color aliases intentionally point to the project-wide semantic tokens.
+ * The wrapper's data-editor-theme mirrors the resolved global appearance for scoped
+ * editor guards while html[data-theme] remains the source of truth for actual colors.
  */
 
 .mmp-editor-design-scope {
-  --mmp-editor-color-primary: #5645d4;
-  --mmp-editor-color-primary-pressed: #4534b3;
-  --mmp-editor-color-on-primary: #ffffff;
-  --mmp-editor-color-canvas: #ffffff;
-  --mmp-editor-color-surface: #f6f5f4;
-  --mmp-editor-color-surface-soft: #fafaf9;
-  --mmp-editor-color-hairline: #e5e3df;
-  --mmp-editor-color-hairline-strong: #c8c4be;
-  --mmp-editor-color-ink: #1a1a1a;
-  --mmp-editor-color-charcoal: #37352f;
-  --mmp-editor-color-slate: #4f4d47;
-  --mmp-editor-color-steel: #5d5b54;
-  --mmp-editor-color-muted: #8f8a83;
-  --mmp-editor-color-success: #1aae39;
-  --mmp-editor-color-warning: #a84600;
-  --mmp-editor-color-error: #e03131;
-  --mmp-editor-color-tint-peach: #ffe8d4;
-  --mmp-editor-color-tint-rose: #fde0ec;
-  --mmp-editor-color-tint-mint: #d9f3e1;
-  --mmp-editor-color-tint-lavender: #e6e0f5;
-  --mmp-editor-color-tint-sky: #dcecfa;
-  --mmp-editor-color-tint-yellow: #fef7d6;
-  --mmp-editor-color-tag-bg: var(--mmp-editor-color-tint-lavender);
-  --mmp-editor-color-tag-text: #391c57;
+  --mmp-editor-color-primary: var(--mmp-color-primary);
+  --mmp-editor-color-primary-pressed: var(--mmp-color-primary-pressed);
+  --mmp-editor-color-on-primary: var(--mmp-color-on-primary);
+  --mmp-editor-color-canvas: var(--mmp-color-canvas);
+  --mmp-editor-color-surface: var(--mmp-color-surface);
+  --mmp-editor-color-surface-soft: var(--mmp-color-surface-soft);
+  --mmp-editor-color-hairline: var(--mmp-color-hairline);
+  --mmp-editor-color-hairline-strong: var(--mmp-color-hairline-strong);
+  --mmp-editor-color-ink: var(--mmp-color-ink);
+  --mmp-editor-color-charcoal: var(--mmp-color-charcoal);
+  --mmp-editor-color-slate: var(--mmp-color-slate);
+  --mmp-editor-color-steel: var(--mmp-color-steel);
+  --mmp-editor-color-muted: var(--mmp-color-muted);
+  --mmp-editor-color-success: var(--mmp-color-success);
+  --mmp-editor-color-warning: var(--mmp-color-warning);
+  --mmp-editor-color-error: var(--mmp-color-error);
+  --mmp-editor-color-tint-peach: var(--mmp-color-tint-peach);
+  --mmp-editor-color-tint-rose: var(--mmp-color-tint-rose);
+  --mmp-editor-color-tint-mint: var(--mmp-color-tint-mint);
+  --mmp-editor-color-tint-lavender: var(--mmp-color-tint-lavender);
+  --mmp-editor-color-tint-sky: var(--mmp-color-tint-sky);
+  --mmp-editor-color-tint-yellow: var(--mmp-color-tint-yellow);
+  --mmp-editor-color-tag-bg: var(--mmp-color-tag-bg);
+  --mmp-editor-color-tag-text: var(--mmp-color-tag-text);
   --mmp-editor-radius-xs: 4px;
   --mmp-editor-radius-sm: 6px;
   --mmp-editor-radius-md: 8px;
@@ -59,30 +63,6 @@
 }
 
 .mmp-editor-design-scope[data-editor-theme='dark'] {
-  --mmp-editor-color-primary: #a99cff;
-  --mmp-editor-color-primary-pressed: #c5bdff;
-  --mmp-editor-color-on-primary: #171421;
-  --mmp-editor-color-canvas: #191919;
-  --mmp-editor-color-surface: #242424;
-  --mmp-editor-color-surface-soft: #202020;
-  --mmp-editor-color-hairline: #3a3a38;
-  --mmp-editor-color-hairline-strong: #4a4a46;
-  --mmp-editor-color-ink: #f4f4f2;
-  --mmp-editor-color-charcoal: #e5e4df;
-  --mmp-editor-color-slate: #c9c6bd;
-  --mmp-editor-color-steel: #aaa79f;
-  --mmp-editor-color-muted: #8f8b82;
-  --mmp-editor-color-success: #44c767;
-  --mmp-editor-color-warning: #ffb86b;
-  --mmp-editor-color-error: #ff6b6b;
-  --mmp-editor-color-tint-peach: #4a3126;
-  --mmp-editor-color-tint-rose: #4a2638;
-  --mmp-editor-color-tint-mint: #243f31;
-  --mmp-editor-color-tint-lavender: #30294a;
-  --mmp-editor-color-tint-sky: #24384a;
-  --mmp-editor-color-tint-yellow: #473d23;
-  --mmp-editor-color-tag-bg: #30294a;
-  --mmp-editor-color-tag-text: #ded6ff;
   --mmp-editor-shadow-card: rgba(0, 0, 0, 0.3) 0 8px 24px 0;
   --mmp-editor-shadow-modal: rgba(0, 0, 0, 0.44) 0 20px 56px -10px;
   color-scheme: dark;

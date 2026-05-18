@@ -11,7 +11,7 @@
 - [x] PR-3 app shell
 - [x] PR-4 creator/admin/shop/profile
 - [ ] PR-5 lobby/room/social
-- [ ] PR-6 editor detail
+- [x] PR-6 editor detail
 - [ ] PR-7 game runtime
 - [ ] Final screenshot matrix and visual debt review
 
@@ -127,20 +127,24 @@ auth, and backend API contracts were intentionally left unchanged.
 
 Goal: Align `/editor/:id` with the project-wide design system while preserving editor UX decisions.
 
-- [ ] Audit `mmp-editor-color-*` tokens against new semantic tokens.
-- [ ] Replace color tokens that can safely use global semantics.
-- [ ] Keep editor-only density/radius/shadow tokens where they remain editor-specific.
-- [ ] Replace editor appearance toggle with shared appearance UI/API.
-- [ ] Reduce legacy Tailwind bridge coverage where high-traffic tabs are migrated.
-- [ ] Align MDX editor and rich content surfaces with global tokens.
-- [ ] Run focused editor tests and typecheck.
-- [ ] Capture overview, modules, flow, and mobile editor shell screenshots.
+- [x] Audit `mmp-editor-color-*` tokens against new semantic tokens.
+- [x] Replace color tokens that can safely use global semantics.
+- [x] Keep editor-only density/radius/shadow tokens where they remain editor-specific.
+- [x] Replace editor appearance toggle with shared appearance UI/API.
+- [x] Reduce legacy Tailwind bridge coverage where high-traffic tabs are migrated.
+- [x] Align MDX editor and rich content surfaces with global tokens.
+- [x] Run focused editor tests and typecheck.
+- [x] Capture overview, modules, flow, and mobile editor shell screenshots.
 
 Merge gate:
 
-- [ ] Editor appearance no longer conflicts with global appearance.
-- [ ] Phase 24 layout and domain UX decisions are preserved.
-- [ ] Scope-leak guard for editor-only CSS remains.
+- [x] Editor appearance no longer conflicts with global appearance.
+- [x] Phase 24 layout and domain UX decisions are preserved.
+- [x] Scope-leak guard for editor-only CSS remains.
+
+Note: PR-6 keeps the editor-specific radius, spacing, density, and shadow tokens while
+color aliases now resolve through project-wide `--mmp-color-*` semantic tokens. Screenshot
+evidence is stored in `screenshots/design-system/667-*`.
 
 ## PR-7: Game Runtime (#668)
 
