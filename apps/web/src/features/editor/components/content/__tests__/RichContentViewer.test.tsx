@@ -96,14 +96,14 @@ describe('RichContentViewer', () => {
     expect(container.querySelector('code')?.textContent?.trim()).toBe('\\*literal\\*');
   });
 
-  it('renders encoded trailing empty paragraphs as line breaks', () => {
+  it('renders encoded trailing empty paragraphs as an empty paragraph', () => {
     useMediaListMock.mockReturnValue({ data: [] });
 
     const { container } = render(
-      <RichContentViewer themeId="theme-1" markdown={['첫 문장', '', '<br />'].join('\n')} />
+      <RichContentViewer themeId="theme-1" markdown={['첫 문장', '', '\u200B'].join('\n')} />
     );
 
     expect(screen.getByText('첫 문장')).not.toBeNull();
-    expect(container.querySelector('br')).not.toBeNull();
+    expect(container.querySelectorAll('p')).toHaveLength(2);
   });
 });

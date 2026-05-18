@@ -95,6 +95,7 @@ body {
 
 .mmp-mdx-editor [contenteditable='true'] p,
 .mmp-mdx-editor [contenteditable='true'] li {
+  min-height: 1.5em;
   color: rgb(226 232 240);
 }
 
