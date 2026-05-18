@@ -220,8 +220,7 @@ SET alias_rules = regexp_replace(
       '"display_icon_media_id"\s*:\s*"' || sqlc.arg('media_id')::text || '"',
       '"display_icon_media_id":null',
       'g'
-    )::jsonb,
-    updated_at = NOW()
+    )::jsonb
 FROM themes t
 WHERE c.theme_id = t.id
   AND t.creator_id = sqlc.arg('creator_id')
