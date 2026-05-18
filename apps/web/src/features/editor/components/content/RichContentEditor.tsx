@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import {
   BlockTypeSelect,
   BoldItalicUnderlineToggles,
@@ -30,6 +36,11 @@ import {
   type MediaEmbedAttributes,
 } from './mediaEmbedMarkdown';
 import { normalizeLegacyEscapedMarkdown } from './legacyMarkdown';
+import {
+  appendTrailingEmptyParagraph,
+  isCollapsedSelectionAtEndOfElement,
+  isPlainEnterKey,
+} from './richContentTrailingParagraph';
 
 export function RichContentEditor({
   themeId,
@@ -149,12 +160,30 @@ export function RichContentEditor({
     onClosePicker();
   }
 
+  function handleKeyDownCapture(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (!isPlainEnterKey(event.nativeEvent)) return;
+    const editable = findContentEditableElement(event.currentTarget);
+    if (!editable || !isCollapsedSelectionAtEndOfElement(editable)) return;
+
+    event.preventDefault();
+    const currentMarkdown = editorRef.current?.getMarkdown?.() || markdownRef.current;
+    const nextMarkdown = appendTrailingEmptyParagraph(currentMarkdown);
+    markdownRef.current = nextMarkdown;
+    onChangeRef.current(nextMarkdown);
+
+    window.requestAnimationFrame(() => {
+      editorRef.current?.setMarkdown?.(nextMarkdown);
+      editorRef.current?.focus?.(undefined, { defaultSelection: 'rootEnd', preventScroll: true });
+    });
+  }
+
   return (
     <div
       className="space-y-2"
       role="region"
       aria-label={ariaLabel}
       onBlurCapture={(event) => onBlurCapture?.(event.relatedTarget)}
+      onKeyDownCapture={handleKeyDownCapture}
     >
       <MediaEmbedPicker
         themeId={themeId}
@@ -179,6 +208,10 @@ export function RichContentEditor({
       </div>
     </div>
   );
+}
+
+function findContentEditableElement(root: HTMLElement) {
+  return root.querySelector<HTMLElement>('[contenteditable="true"]');
 }
 
 function createMediaEmbedDescriptor(

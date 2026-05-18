@@ -95,4 +95,15 @@ describe('RichContentViewer', () => {
     expect(container.querySelector('blockquote em')?.textContent).toBe('2008년 7월 28일 저녁');
     expect(container.querySelector('code')?.textContent?.trim()).toBe('\\*literal\\*');
   });
+
+  it('renders encoded trailing empty paragraphs as line breaks', () => {
+    useMediaListMock.mockReturnValue({ data: [] });
+
+    const { container } = render(
+      <RichContentViewer themeId="theme-1" markdown={['첫 문장', '', '<br />'].join('\n')} />
+    );
+
+    expect(screen.getByText('첫 문장')).not.toBeNull();
+    expect(container.querySelector('br')).not.toBeNull();
+  });
 });
