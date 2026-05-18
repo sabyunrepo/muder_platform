@@ -257,6 +257,7 @@ describe("EndingEntitySubTab", () => {
   it("Flow의 ending 노드만 결말 목록에 표시한다", () => {
     renderWithClient(<EndingEntitySubTab themeId="theme-1" theme={theme} />);
 
+    expect(screen.getByTestId("ending-entity-panel").className).toContain("mmp-editor-surface");
     expect(screen.getByText("결말 목록")).toBeDefined();
     expect(screen.getAllByText("진실").length).toBeGreaterThan(0);
     expect(screen.getAllByText("오판").length).toBeGreaterThan(0);
@@ -268,6 +269,7 @@ describe("EndingEntitySubTab", () => {
     expect(screen.getByText("복수 선택 반영 기준")).toBeDefined();
     expect(screen.getAllByText("조건 그룹 1개").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("기본 결말").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByLabelText("결말 판정 준비").className).toContain("mmp-editor-panel");
     expect(screen.queryByText("아직 연결 없음")).toBeNull();
     expect(screen.queryByText("참가자에게만 공개")).toBeNull();
     expect(screen.queryByText("캐릭터 결과 카드 1/2명 작성")).toBeNull();

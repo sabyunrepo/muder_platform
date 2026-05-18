@@ -14,6 +14,7 @@ import {
 } from '../../entities/ending/endingEntityAdapter';
 import { readEndingBranchConfig } from '../../entities/ending/endingBranchAdapter';
 import { getDisplayErrorMessage } from '@/lib/display-error';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 interface EndingEntitySubTabProps {
   themeId: string;
@@ -89,7 +90,7 @@ function EndingEntityWorkspace({
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center p-6 text-sm text-slate-400">
+      <div className="flex h-full items-center justify-center p-6 text-sm text-[var(--mmp-editor-color-slate)]">
         결말 목록을 불러오는 중입니다...
       </div>
     );
@@ -97,19 +98,19 @@ function EndingEntityWorkspace({
 
   if (isError) {
     return (
-      <div className="flex h-full items-center justify-center bg-slate-950 p-6 text-center">
-        <div className="max-w-md rounded-2xl border border-rose-500/30 bg-rose-950/20 p-6">
-          <h3 className="text-lg font-semibold text-rose-100">결말 목록을 불러오지 못했습니다</h3>
-          <p className="mt-2 text-sm leading-6 text-rose-200/80">
+      <div className="flex h-full items-center justify-center p-6 text-center">
+        <div className={`max-w-md p-6 ${editorDesignClassNames.errorPanel}`}>
+          <h3 className="text-lg font-semibold">결말 목록을 불러오지 못했습니다</h3>
+          <p className="mt-2 text-sm leading-6">
             네트워크나 권한 문제일 수 있습니다. 잠시 후 다시 시도해 주세요.
           </p>
-          <p className="mt-3 rounded-xl bg-slate-950/60 p-3 text-left text-xs leading-5 text-rose-100/80">
+          <p className="mt-3 rounded-md bg-[var(--mmp-editor-color-canvas)] p-3 text-left text-xs leading-5">
             {getDisplayErrorMessage(error, '결말 목록을 불러오지 못했습니다.')}
           </p>
           <button
             type="button"
             onClick={() => void refetch()}
-            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-rose-300/40 bg-rose-300/10 px-4 text-sm font-medium text-rose-100 transition hover:bg-rose-300/20 focus:outline-none focus:ring-2 focus:ring-rose-300/60"
+            className={`mt-4 inline-flex min-h-11 items-center justify-center px-4 ${editorDesignClassNames.secondaryAction}`}
           >
             다시 불러오기
           </button>
@@ -121,7 +122,7 @@ function EndingEntityWorkspace({
   return (
     <div
       data-testid="ending-entity-panel"
-      className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto bg-slate-950 p-4 lg:p-6"
+      className={`flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 lg:p-6 ${editorDesignClassNames.surface}`}
     >
       {section === 'endings' ? <EndingEntityHeader /> : null}
 
@@ -152,31 +153,31 @@ function EndingEntityWorkspace({
         <EndingEmptyState />
       ) : (
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(220px,320px)_minmax(0,1fr)]">
-          <aside className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-3">
+          <aside className={`flex min-w-0 flex-col gap-3 p-3 ${editorDesignClassNames.panel}`}>
             <button
               type="button"
               onClick={handleAddEnding}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/10 px-3 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 focus:outline-none focus:ring-2 focus:ring-amber-400/60"
+              className={`inline-flex min-h-11 items-center justify-center gap-2 px-3 ${editorDesignClassNames.primaryAction}`}
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               결말 추가
             </button>
 
             <label className="relative block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--mmp-editor-color-slate)]" />
               <input
                 type="search"
                 aria-label="결말 검색"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="결말 검색"
-                className="min-h-11 w-full rounded-xl border border-slate-700 bg-slate-950 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+                className={`min-h-11 w-full pl-9 pr-3 text-sm ${editorDesignClassNames.input}`}
               />
             </label>
 
             <div className="flex min-w-0 flex-col gap-2">
               {filteredNodes.length === 0 ? (
-                <p className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-sm text-slate-400">
+                <p className={`p-4 text-sm ${editorDesignClassNames.subtlePanel}`}>
                   검색 결과가 없습니다.
                 </p>
               ) : (
@@ -199,15 +200,13 @@ function EndingEntityWorkspace({
                       }}
                       aria-pressed={selected}
                       aria-label={`${viewModel.name} 선택`}
-                      className={`cursor-pointer rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-amber-400/60 ${
-                        selected
-                          ? 'border-amber-500/70 bg-amber-500/10'
-                          : 'border-slate-800 bg-slate-950 hover:border-slate-600'
+                      className={`cursor-pointer p-3 text-left transition ${
+                        selected ? editorDesignClassNames.listItemActive : editorDesignClassNames.listItem
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-slate-100">{viewModel.name}</p>
+                          <p className="truncate font-medium text-[var(--mmp-editor-color-charcoal)]">{viewModel.name}</p>
                         </div>
                         <button
                           type="button"
@@ -216,7 +215,7 @@ function EndingEntityWorkspace({
                             deleteNode(node.id);
                             if (selectedId === node.id) setSelectedId(null);
                           }}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-rose-500/10 hover:text-rose-200 focus:outline-none focus:ring-2 focus:ring-rose-300/60"
+                          className={`p-2 transition ${editorDesignClassNames.iconButton}`}
                           aria-label={`${viewModel.name} 삭제`}
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
@@ -226,7 +225,7 @@ function EndingEntityWorkspace({
                         {viewModel.badges.map((badge) => (
                           <span
                             key={badge}
-                            className="rounded-full bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
+                            className={`px-2 py-0.5 text-[11px] ${editorDesignClassNames.tag}`}
                           >
                             {badge}
                           </span>

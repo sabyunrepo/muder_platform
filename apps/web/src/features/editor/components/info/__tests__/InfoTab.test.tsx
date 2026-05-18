@@ -311,6 +311,7 @@ describe('InfoTab', () => {
     expect(screen.getByText('정보 관리')).toBeDefined();
     expect(screen.getAllByText('피해자의 비밀').length).toBeGreaterThanOrEqual(1);
     const selectedInfoButton = screen.getByRole('button', { name: /피해자의 비밀/ });
+    expect(selectedInfoButton.className).toContain('mmp-editor-list-item-active');
     expect(selectedInfoButton.textContent?.replace(/\s+/g, ' ').trim()).toBe('피해자의 비밀');
     expect(screen.getByRole('heading', { name: '피해자의 비밀' })).toBeDefined();
     expect(screen.getByRole('region', { name: '정보 본문 보기' })).toHaveProperty(
@@ -329,6 +330,9 @@ describe('InfoTab', () => {
     expect(screen.getByRole('region', { name: '정보 배포 설정' })).toHaveProperty(
       'textContent',
       expect.stringContaining('오프닝'),
+    );
+    expect(screen.getByRole('region', { name: '정보 배포 설정' }).className).toContain(
+      'mmp-editor-panel',
     );
     expect(screen.getByText('현재 전체 캐릭터에게 공개됩니다.')).toBeDefined();
   });

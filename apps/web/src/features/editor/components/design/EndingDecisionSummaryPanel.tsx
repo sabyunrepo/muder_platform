@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { EndingDecisionSummary } from "../../entities/ending/endingEntityAdapter";
+import { editorDesignClassNames } from "@/features/editor/design-system/editorDesignTokens";
 
 interface EndingDecisionSummaryPanelProps {
   summary: EndingDecisionSummary;
@@ -8,22 +9,22 @@ interface EndingDecisionSummaryPanelProps {
 export function EndingDecisionSummaryPanel({ summary }: EndingDecisionSummaryPanelProps) {
   return (
     <section
-      className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-sm text-slate-300 md:grid-cols-3"
+      className={`grid gap-3 p-4 text-sm md:grid-cols-3 ${editorDesignClassNames.panel}`}
       aria-label="결말 판정 준비"
     >
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">결말 수</p>
-        <p className="mt-1 text-lg font-semibold text-slate-100">{summary.totalCount}개</p>
+        <p className="text-xs font-semibold uppercase text-[var(--mmp-editor-color-slate)]">결말 수</p>
+        <p className="mt-1 text-lg font-semibold text-[var(--mmp-editor-color-charcoal)]">{summary.totalCount}개</p>
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">본문 작성</p>
-        <p className="mt-1 text-lg font-semibold text-slate-100">
+        <p className="text-xs font-semibold uppercase text-[var(--mmp-editor-color-slate)]">본문 작성</p>
+        <p className="mt-1 text-lg font-semibold text-[var(--mmp-editor-color-charcoal)]">
           {summary.readyCount}/{summary.totalCount}
         </p>
       </div>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">기본 결말 후보</p>
-        <p className="mt-1 text-lg font-semibold text-slate-100">
+        <p className="text-xs font-semibold uppercase text-[var(--mmp-editor-color-slate)]">기본 결말 후보</p>
+        <p className="mt-1 text-lg font-semibold text-[var(--mmp-editor-color-charcoal)]">
           {summary.defaultEndingName ?? "아직 없음"}
         </p>
       </div>

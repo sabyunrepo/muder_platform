@@ -15,6 +15,7 @@ import { InfoDeliverySettingsCard } from './InfoDeliverySettingsCard';
 import { InfoBodyPreview } from './InfoBodyPreview';
 import { InfoMarkdownEditor } from './InfoMarkdownEditor';
 import { useAutosavedDraft } from '@/features/editor/hooks/useAutosavedDraft';
+import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 
 interface InfoTabProps {
   themeId: string;
@@ -62,7 +63,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
         <button
           type="button"
           onClick={() => void refetch()}
-          className="rounded border border-rose-500/40 px-3 py-2 text-sm text-rose-200"
+          className={`px-3 py-2 text-sm ${editorDesignClassNames.errorPanel}`}
         >
           정보 목록 다시 불러오기
         </button>
@@ -72,10 +73,10 @@ export function InfoTab({ themeId }: InfoTabProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+      <div className={`flex items-center justify-between px-4 py-3 ${editorDesignClassNames.topBar}`}>
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">정보 관리</h2>
-          <p className="mt-1 text-xs text-slate-400">
+          <h2 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">정보 관리</h2>
+          <p className="mt-1 text-xs text-[var(--mmp-editor-color-slate)]">
             장면에서 공개할 정보를 대사와 분리해 카드로 관리합니다.
           </p>
           {createError && (
@@ -88,7 +89,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
           type="button"
           onClick={() => void handleCreate()}
           disabled={createInfo.isPending}
-          className="flex items-center gap-2 rounded bg-amber-500 px-3 py-2 text-sm font-medium text-slate-950 hover:bg-amber-400 disabled:bg-slate-700 disabled:text-slate-500"
+          className={`flex items-center gap-2 px-3 py-2 disabled:cursor-not-allowed disabled:opacity-60 ${editorDesignClassNames.primaryAction}`}
         >
           <Plus className="h-4 w-4" />
           정보 추가
@@ -98,7 +99,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:flex-row lg:overflow-hidden">
         <aside className="w-full shrink-0 space-y-2 lg:w-80 lg:overflow-y-auto">
           {sortedInfos.length === 0 ? (
-            <p className="rounded border border-dashed border-slate-700 p-4 text-center text-xs text-slate-500">
+            <p className="rounded-md border border-dashed border-[var(--mmp-editor-color-hairline)] p-4 text-center text-xs text-[var(--mmp-editor-color-slate)]">
               공개 정보가 없습니다
             </p>
           ) : (
@@ -108,9 +109,13 @@ export function InfoTab({ themeId }: InfoTabProps) {
                 type="button"
                 onClick={() => setSelectedId(info.id)}
                 aria-pressed={selected?.id === info.id}
-                className="w-full rounded border border-slate-800 bg-slate-900 p-3 text-left transition hover:border-slate-600 aria-pressed:border-amber-400"
+                className={`w-full p-3 text-left transition ${
+                  selected?.id === info.id
+                    ? editorDesignClassNames.listItemActive
+                    : editorDesignClassNames.listItem
+                }`}
               >
-                <span className="block truncate text-sm font-medium text-slate-100">
+                <span className="block truncate text-sm font-medium text-[var(--mmp-editor-color-charcoal)]">
                   {info.title}
                 </span>
               </button>
@@ -122,7 +127,7 @@ export function InfoTab({ themeId }: InfoTabProps) {
           {selected ? (
             <InfoEditor key={selected.id} themeId={themeId} info={selected} />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-slate-500">
+            <div className="flex h-full items-center justify-center text-sm text-[var(--mmp-editor-color-slate)]">
               정보를 추가하면 여기에 편집 화면이 표시됩니다.
             </div>
           )}
@@ -257,10 +262,10 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   return (
     <>
       <section className="min-h-full">
-        <div className="space-y-4 rounded border border-slate-800 bg-slate-950 p-4">
+        <div className={`space-y-4 p-4 ${editorDesignClassNames.panel}`}>
           {error && (
             <div
-              className="flex items-start justify-between gap-3 rounded border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200"
+              className={`flex items-start justify-between gap-3 px-3 py-2 text-xs ${editorDesignClassNames.errorPanel}`}
               role="alert"
             >
               <span>{error}</span>
@@ -268,25 +273,25 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
                 type="button"
                 aria-label="오류 메시지 닫기"
                 onClick={() => setError(null)}
-                className="shrink-0 rounded p-0.5 text-rose-200 hover:bg-rose-500/20"
+                className={`shrink-0 p-0.5 ${editorDesignClassNames.iconButton}`}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
           )}
 
-          <label className="block text-xs text-slate-400">
+          <label className="block text-xs text-[var(--mmp-editor-color-slate)]">
             제목
             <input
               aria-label="정보 제목"
               value={draft.title}
               onChange={(event) => updateDraft({ title: event.target.value })}
-              className="mt-1 w-full rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              className={`mt-1 w-full px-3 py-2 text-sm ${editorDesignClassNames.input}`}
             />
           </label>
 
           <div className="space-y-1">
-            <span className="block text-xs text-slate-400">본문</span>
+            <span className="block text-xs text-[var(--mmp-editor-color-slate)]">본문</span>
             <InfoMarkdownEditor
               themeId={themeId}
               markdown={draft.body}
@@ -297,12 +302,12 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
             />
           </div>
 
-          <div className="flex items-center justify-start border-t border-slate-800 pt-3">
+          <div className="flex items-center justify-start border-t border-[var(--mmp-editor-color-hairline)] pt-3">
             <button
               type="button"
               onClick={() => setDeleteDialogOpen(true)}
               disabled={deleteInfo.isPending}
-              className="flex items-center gap-1 rounded px-2 py-1 text-xs text-rose-400 hover:bg-rose-500/10"
+              className={`flex items-center gap-1 px-2 py-1 text-xs ${editorDesignClassNames.dangerAction}`}
             >
               <Trash2 className="h-3 w-3" />
               정보 삭제
