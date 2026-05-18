@@ -35,8 +35,14 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
     roleSheet: roleSheetQuery.data,
     roleSheetError: roleSheetQuery.error,
   });
+  const currentDocumentIdentity = createRoleSheetDocumentIdentity(
+    characterId,
+    roleSheetQuery.data?.format
+  );
   const [draft, setDraft] = useState(sync.originalBody);
   const draftRef = useRef(sync.originalBody);
+  const serverBaselineRef = useRef(sync.originalBody);
+  const documentIdentityRef = useRef(currentDocumentIdentity);
   const [imagePages, setImagePages] = useState<ImageRoleSheetPageDraft[]>([]);
   const [imageDraft, setImageDraft] = useState('');
   const imageUrls = useMemo(
@@ -51,10 +57,25 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
   const [pdfMediaId, setPdfMediaId] = useState<string | undefined>(sync.pdfMediaId);
 
   useEffect(() => {
-    draftRef.current = sync.originalBody;
-    setDraft(sync.originalBody);
-    setSaveStatus('idle');
-  }, [sync.originalBody, characterId]);
+    const syncDecision = resolveRoleSheetDraftSync({
+      currentDraft: draftRef.current,
+      currentServerBaseline: serverBaselineRef.current,
+      currentDocumentIdentity: documentIdentityRef.current,
+      nextServerBody: sync.originalBody,
+      nextDocumentIdentity: currentDocumentIdentity,
+    });
+
+    serverBaselineRef.current = syncDecision.nextServerBaseline;
+    documentIdentityRef.current = syncDecision.nextDocumentIdentity;
+
+    if (syncDecision.shouldReplaceDraft) {
+      draftRef.current = syncDecision.nextDraft;
+      setDraft(syncDecision.nextDraft);
+      if (syncDecision.shouldResetSaveStatus) {
+        setSaveStatus('idle');
+      }
+    }
+  }, [currentDocumentIdentity, sync.originalBody]);
 
   useEffect(() => {
     setImagePages(sync.imagePages);
@@ -112,6 +133,7 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
     isMissingDocument: sync.isMissingDocument,
     isUnsupportedFormat: sync.isUnsupportedFormat,
     pdfMediaId,
+    documentIdentity: currentDocumentIdentity,
     upsertContent,
     setDraft: (nextDraft: string) => {
       draftRef.current = nextDraft;
@@ -179,6 +201,37 @@ function resolveEditableFormat(format?: string): ResolvedRoleSheetFormat {
   if (!format || format === 'markdown') return 'markdown';
   if (format === 'pdf' || format === 'images') return format;
   return null;
+}
+
+function createRoleSheetDocumentIdentity(characterId: string, format?: string) {
+  return `${characterId}:${format ?? 'missing'}`;
+}
+
+export function resolveRoleSheetDraftSync({
+  currentDraft,
+  currentServerBaseline,
+  currentDocumentIdentity,
+  nextServerBody,
+  nextDocumentIdentity,
+}: {
+  currentDraft: string;
+  currentServerBaseline: string;
+  currentDocumentIdentity: string;
+  nextServerBody: string;
+  nextDocumentIdentity: string;
+}) {
+  const isDifferentDocument = currentDocumentIdentity !== nextDocumentIdentity;
+  const isDirty = currentDraft !== currentServerBaseline;
+  const serverMatchesDraft = currentDraft === nextServerBody;
+  const shouldReplaceDraft = isDifferentDocument || !isDirty || serverMatchesDraft;
+
+  return {
+    nextDraft: shouldReplaceDraft ? nextServerBody : currentDraft,
+    nextServerBaseline: nextServerBody,
+    nextDocumentIdentity,
+    shouldReplaceDraft,
+    shouldResetSaveStatus: isDifferentDocument || !isDirty,
+  };
 }
 
 function useRoleSheetSync({

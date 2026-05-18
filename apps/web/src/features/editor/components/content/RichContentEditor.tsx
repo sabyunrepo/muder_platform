@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -45,6 +46,7 @@ import {
 
 export function RichContentEditor({
   themeId,
+  documentIdentity,
   markdown,
   onChange,
   pickerType,
@@ -55,9 +57,11 @@ export function RichContentEditor({
   videoButtonLabel,
   imagePickerTitle,
   videoPickerTitle,
+  externalResetKey,
   onBlurCapture,
 }: {
   themeId: string;
+  documentIdentity?: string;
   markdown: string;
   onChange: (markdown: string) => void;
   pickerType: MediaType | null;
@@ -68,25 +72,78 @@ export function RichContentEditor({
   videoButtonLabel?: string;
   imagePickerTitle?: string;
   videoPickerTitle?: string;
+  externalResetKey?: string | number;
   onBlurCapture?: (relatedTarget: EventTarget | null) => void;
 }) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const normalizedMarkdown = useMemo(() => normalizeLegacyEscapedMarkdown(markdown), [markdown]);
+  const editorInstanceKey = documentIdentity ?? 'default-rich-content-document';
+  const editorInitialMarkdownRef = useRef({
+    documentIdentity: editorInstanceKey,
+    markdown: normalizedMarkdown,
+  });
+  if (editorInitialMarkdownRef.current.documentIdentity !== editorInstanceKey) {
+    editorInitialMarkdownRef.current = {
+      documentIdentity: editorInstanceKey,
+      markdown: normalizedMarkdown,
+    };
+  }
   const markdownRef = useRef(normalizedMarkdown);
+  const isEditingRef = useRef(false);
+  const documentIdentityRef = useRef(editorInstanceKey);
+  const externalResetKeyRef = useRef(externalResetKey);
   const onChangeRef = useRef(onChange);
   const [replacementTarget, setReplacementTarget] = useState<MediaEmbedAttributes | null>(null);
   const { data: media = [] } = useMediaList(themeId);
 
   useEffect(() => {
-    markdownRef.current = normalizedMarkdown;
     onChangeRef.current = onChange;
-  }, [normalizedMarkdown, onChange]);
+  }, [onChange]);
 
   useEffect(() => {
-    if (editorRef.current?.getMarkdown?.() !== normalizedMarkdown) {
-      editorRef.current?.setMarkdown?.(normalizedMarkdown);
+    if (documentIdentityRef.current !== editorInstanceKey) {
+      documentIdentityRef.current = editorInstanceKey;
+      externalResetKeyRef.current = externalResetKey;
+      isEditingRef.current = false;
+      markdownRef.current = normalizedMarkdown;
+      return;
     }
-  }, [normalizedMarkdown]);
+
+    if (externalResetKeyRef.current !== externalResetKey) {
+      externalResetKeyRef.current = externalResetKey;
+      isEditingRef.current = false;
+      markdownRef.current = normalizedMarkdown;
+      if (editorRef.current?.getMarkdown?.() !== normalizedMarkdown) {
+        editorRef.current?.setMarkdown?.(normalizedMarkdown);
+      }
+      return;
+    }
+
+    const currentMarkdown = editorRef.current?.getMarkdown?.() ?? markdownRef.current;
+
+    if (currentMarkdown === normalizedMarkdown) {
+      markdownRef.current = currentMarkdown;
+      return;
+    }
+
+    if (isEditingRef.current) {
+      return;
+    }
+
+    markdownRef.current = normalizedMarkdown;
+    editorRef.current?.setMarkdown?.(normalizedMarkdown);
+  }, [editorInstanceKey, externalResetKey, normalizedMarkdown]);
+
+  const emitProgrammaticMarkdownChange = useCallback(
+    (nextMarkdown: string, { syncEditor = false }: { syncEditor?: boolean } = {}) => {
+      markdownRef.current = nextMarkdown;
+      onChangeRef.current(nextMarkdown);
+      if (syncEditor && editorRef.current?.getMarkdown?.() !== nextMarkdown) {
+        editorRef.current?.setMarkdown?.(nextMarkdown);
+      }
+    },
+    []
+  );
 
   const plugins = useMemo(
     () => [
@@ -105,16 +162,21 @@ export function RichContentEditor({
             },
             {
               onInsertParagraph: (attrs, position) => {
-                onChangeRef.current(
-                  insertMediaEmbedParagraph(markdownRef.current, attrs, position)
+                emitProgrammaticMarkdownChange(
+                  insertMediaEmbedParagraph(markdownRef.current, attrs, position),
+                  { syncEditor: true }
                 );
               },
               onMove: (attrs, direction) => {
-                onChangeRef.current(moveMediaEmbedBlock(markdownRef.current, attrs, direction));
+                emitProgrammaticMarkdownChange(
+                  moveMediaEmbedBlock(markdownRef.current, attrs, direction),
+                  { syncEditor: true }
+                );
               },
               onDropOn: (source, target, position) => {
-                onChangeRef.current(
-                  moveMediaEmbedBlockTo(markdownRef.current, source, target, position)
+                emitProgrammaticMarkdownChange(
+                  moveMediaEmbedBlockTo(markdownRef.current, source, target, position),
+                  { syncEditor: true }
                 );
               },
             }
@@ -134,7 +196,7 @@ export function RichContentEditor({
       }),
       markdownShortcutPlugin(),
     ],
-    [media, onOpenPicker]
+    [emitProgrammaticMarkdownChange, media, onOpenPicker]
   );
 
   function handleSelectMedia(media: MediaResponse) {
@@ -146,7 +208,10 @@ export function RichContentEditor({
         replacementTarget.align,
         replacementTarget.width
       ).trim();
-      onChange(replaceMediaEmbed(normalizedMarkdown, replacementTarget, snippet));
+      emitProgrammaticMarkdownChange(
+        replaceMediaEmbed(markdownRef.current, replacementTarget, snippet),
+        { syncEditor: true }
+      );
       setReplacementTarget(null);
       onClosePicker();
       return;
@@ -163,6 +228,7 @@ export function RichContentEditor({
 
   function handleChange(nextMarkdown: string) {
     const normalizedNextMarkdown = normalizeTrailingEmptyParagraphInput(nextMarkdown);
+    isEditingRef.current = true;
     markdownRef.current = normalizedNextMarkdown;
     onChangeRef.current(normalizedNextMarkdown);
   }
@@ -175,6 +241,7 @@ export function RichContentEditor({
     event.preventDefault();
     const currentMarkdown = editorRef.current?.getMarkdown?.() || markdownRef.current;
     const nextMarkdown = appendTrailingEmptyParagraph(currentMarkdown);
+    isEditingRef.current = true;
     markdownRef.current = nextMarkdown;
     onChangeRef.current(nextMarkdown);
 
@@ -189,7 +256,15 @@ export function RichContentEditor({
       className="space-y-2"
       role="region"
       aria-label={ariaLabel}
-      onBlurCapture={(event) => onBlurCapture?.(event.relatedTarget)}
+      onBlurCapture={(event) => {
+        if (
+          !(event.relatedTarget instanceof Node) ||
+          !event.currentTarget.contains(event.relatedTarget)
+        ) {
+          isEditingRef.current = false;
+        }
+        onBlurCapture?.(event.relatedTarget);
+      }}
       onKeyDownCapture={handleKeyDownCapture}
     >
       <MediaEmbedPicker
@@ -205,8 +280,9 @@ export function RichContentEditor({
       />
       <div className="mmp-rich-content-surface">
         <MDXEditor
+          key={editorInstanceKey}
           ref={editorRef}
-          markdown={normalizedMarkdown}
+          markdown={editorInitialMarkdownRef.current.markdown}
           onChange={handleChange}
           plugins={plugins}
           className="mmp-mdx-editor"

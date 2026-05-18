@@ -300,6 +300,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
             <span className="block text-xs text-[var(--mmp-editor-color-slate)]">본문</span>
             <InfoMarkdownEditor
               themeId={themeId}
+              documentIdentity={info.id}
               markdown={draft.body}
               onChange={(body) => updateDraft({ body })}
               pickerType={embedPickerType}

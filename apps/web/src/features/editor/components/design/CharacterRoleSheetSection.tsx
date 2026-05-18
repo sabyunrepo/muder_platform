@@ -100,7 +100,7 @@ export function CharacterRoleSheetSection({
       ) : (
         <MarkdownRoleSheetEditor
           themeId={themeId}
-          documentKey={`${characterId}:${state.roleSheetQuery.data?.format ?? 'missing'}:${state.roleSheetQuery.data?.markdown?.body ?? ''}`}
+          documentKey={state.documentIdentity}
           draft={state.draft}
           saveStatus={state.saveStatus}
           isMissingDocument={state.isMissingDocument}
@@ -226,6 +226,7 @@ function MarkdownRoleSheetEditor({
       <RichContentDocumentField
         key={documentKey}
         themeId={themeId}
+        documentIdentity={documentKey}
         markdown={draft}
         onChange={onDraftChange}
         previewAriaLabel="역할지 본문 보기"
