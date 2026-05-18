@@ -42,7 +42,8 @@ function hasElementContentAfterRange(element: HTMLElement, range: Range) {
     acceptNode(node) {
       if (!(node instanceof HTMLElement)) return NodeFilter.FILTER_SKIP;
       if (node === element) return NodeFilter.FILTER_SKIP;
-      if (!node.textContent?.trim() && node.childElementCount === 0) {
+      if (node.contains(range.endContainer)) return NodeFilter.FILTER_SKIP;
+      if (isEmptyEditorParagraph(node)) {
         return NodeFilter.FILTER_SKIP;
       }
       return NodeFilter.FILTER_ACCEPT;
@@ -60,4 +61,10 @@ function hasElementContentAfterRange(element: HTMLElement, range: Range) {
   }
 
   return false;
+}
+
+function isEmptyEditorParagraph(node: HTMLElement) {
+  if (node.textContent?.trim()) return false;
+  if (node.tagName !== 'P') return node.childElementCount === 0;
+  return node.childElementCount === 0 || Array.from(node.children).every((child) => child.tagName === 'BR');
 }

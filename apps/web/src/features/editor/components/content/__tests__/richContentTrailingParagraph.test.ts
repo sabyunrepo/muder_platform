@@ -60,4 +60,21 @@ describe('richContentTrailingParagraph', () => {
 
     element.remove();
   });
+
+  it('treats MDXEditor empty paragraphs as the editable end', () => {
+    const element = document.createElement('div');
+    element.contentEditable = 'true';
+    element.innerHTML = '<p dir="auto"><br></p>';
+    document.body.appendChild(element);
+
+    const range = document.createRange();
+    range.setStart(element, element.childNodes.length);
+    range.collapse(true);
+    document.getSelection()?.removeAllRanges();
+    document.getSelection()?.addRange(range);
+
+    expect(isCollapsedSelectionAtEndOfElement(element)).toBe(true);
+
+    element.remove();
+  });
 });
