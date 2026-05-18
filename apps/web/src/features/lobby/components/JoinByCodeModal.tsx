@@ -79,7 +79,7 @@ export function JoinByCodeModal({ isOpen, onClose }: JoinByCodeModalProps) {
         {statusMessage && (
           <p
             className={`text-sm ${
-              isNotFound ? 'text-red-400' : 'text-slate-400'
+              isNotFound ? 'text-[var(--mmp-color-error)]' : 'text-[var(--mmp-color-steel)]'
             }`}
           >
             {statusMessage}

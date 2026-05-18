@@ -1,5 +1,5 @@
 import { UserPlus, Search, Users } from "lucide-react";
-import { Button, EmptyState, Spinner } from "@/shared/components/ui";
+import { Button, EmptyState, Input, Spinner } from "@/shared/components/ui";
 import type { FriendResponse } from "@/features/social/api";
 import { FriendRow } from "./FriendRow";
 
@@ -29,11 +29,9 @@ export function FriendsTab({
   return (
     <div className="space-y-3">
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-        <input
-          type="text"
-          className="w-full rounded-lg border border-slate-700 bg-slate-800 py-2 pl-9 pr-3 text-sm text-slate-100 placeholder:text-slate-500 transition-colors focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+      <div>
+        <Input
+          leftIcon={<Search className="h-4 w-4" />}
           placeholder="닉네임으로 검색..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}

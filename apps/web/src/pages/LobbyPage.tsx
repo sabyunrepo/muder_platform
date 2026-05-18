@@ -1,6 +1,13 @@
 import { useState, useCallback } from 'react';
 import { Plus, Hash } from 'lucide-react';
-import { Button, Spinner, Pagination } from '@/shared/components/ui';
+import {
+  Alert,
+  Button,
+  LoadingState,
+  PageShell,
+  Pagination,
+  SectionHeader,
+} from '@/shared/components/ui';
 import { useThemes } from '@/features/lobby/api';
 import type { ThemeSummary } from '@/features/lobby/api';
 import {
@@ -60,59 +67,56 @@ export default function LobbyPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      {/* 헤더 */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-slate-100">로비</h1>
-        <div className="flex gap-3">
-          <Button
-            variant="primary"
-            leftIcon={<Plus className="h-4 w-4" />}
-            onClick={() => {
-              setSelectedTheme(null);
-              setIsCreateOpen(true);
-            }}
-          >
-            방 만들기
-          </Button>
-          <Button
-            variant="secondary"
-            leftIcon={<Hash className="h-4 w-4" />}
-            onClick={() => setIsJoinOpen(true)}
-          >
-            코드로 참가
-          </Button>
-        </div>
-      </div>
-
-      {/* 필터 */}
-      <section className="mt-6">
+    <PageShell
+      header={
+        <SectionHeader
+          title="로비"
+          description="플레이할 테마를 고르고 공개 방에 참가하세요."
+          action={
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="primary"
+                leftIcon={<Plus className="h-4 w-4" />}
+                onClick={() => {
+                  setSelectedTheme(null);
+                  setIsCreateOpen(true);
+                }}
+              >
+                방 만들기
+              </Button>
+              <Button
+                variant="secondary"
+                leftIcon={<Hash className="h-4 w-4" />}
+                onClick={() => setIsJoinOpen(true)}
+              >
+                코드로 참가
+              </Button>
+            </div>
+          }
+        />
+      }
+    >
+      <section>
         <ThemeFilter values={filters} onChange={handleFilterChange} />
       </section>
 
-      {/* 테마 그리드 */}
-      <section className="mt-6">
-        {isLoading && (
-          <div className="flex justify-center py-16">
-            <Spinner size="lg" />
-          </div>
-        )}
+      <section>
+        {isLoading && <LoadingState label="테마 목록을 불러오는 중" />}
 
         {isError && (
-          <div className="flex flex-col items-center gap-3 py-16">
-            <p className="text-sm text-red-400">
-              테마 목록을 불러오지 못했습니다.
-            </p>
-            <Button variant="secondary" size="sm" onClick={() => refetch()}>
-              재시도
-            </Button>
-          </div>
+          <Alert tone="error" title="테마 목록을 불러오지 못했습니다">
+            <div className="mt-3">
+              <Button variant="secondary" size="sm" onClick={() => refetch()}>
+                재시도
+              </Button>
+            </div>
+          </Alert>
         )}
 
         {!isLoading && !isError && (
           <>
             {pagedThemes.length === 0 ? (
-              <p className="py-12 text-center text-sm text-slate-400">
+              <p className="py-12 text-center text-sm text-[var(--mmp-color-steel)]">
                 조건에 맞는 테마가 없습니다.
               </p>
             ) : (
@@ -127,7 +131,6 @@ export default function LobbyPage() {
               </div>
             )}
 
-            {/* 페이지네이션 */}
             {totalPages > 1 && (
               <div className="mt-6 flex justify-center">
                 <Pagination
@@ -141,16 +144,11 @@ export default function LobbyPage() {
         )}
       </section>
 
-      {/* 구분선 */}
-      <hr className="my-8 border-slate-800" />
-
-      {/* 공개 방 섹션 */}
-      <section>
-        <h2 className="mb-4 text-xl font-semibold text-slate-100">공개 방</h2>
+      <section className="border-t border-[var(--mmp-color-hairline)] pt-6">
+        <SectionHeader title="공개 방" description="대기 중인 방에 바로 참가할 수 있습니다." />
         <RoomList />
       </section>
 
-      {/* 모달 */}
       <CreateRoomModal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
@@ -160,7 +158,7 @@ export default function LobbyPage() {
         isOpen={isJoinOpen}
         onClose={() => setIsJoinOpen(false)}
       />
-    </div>
+    </PageShell>
   );
 }
 

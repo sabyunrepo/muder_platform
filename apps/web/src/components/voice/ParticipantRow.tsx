@@ -60,8 +60,8 @@ export function ParticipantRow({
         className={`
           flex items-center gap-2 w-full px-2 py-1 rounded-md text-left
           transition-colors duration-150 ease-out
-          hover:bg-slate-800/60
-          ${sliderOpen ? "border-l-2 border-amber-500" : "border-l-2 border-transparent"}
+          hover:bg-[var(--mmp-color-surface-soft)]
+          ${sliderOpen ? "border-l-2 border-[var(--mmp-color-primary)]" : "border-l-2 border-transparent"}
         `}
       >
         {/* Avatar */}

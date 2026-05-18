@@ -8,13 +8,13 @@ interface TabSwitcherProps {
 
 export function TabSwitcher({ activeTab, onChange, pendingCount }: TabSwitcherProps) {
   return (
-    <div className="flex border-b border-slate-700">
+    <div className="flex border-b border-[var(--mmp-color-hairline)]">
       <button
         type="button"
         className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
           activeTab === "friends"
-            ? "border-b-2 border-amber-500 text-amber-400"
-            : "text-slate-400 hover:text-slate-200"
+            ? "border-b-2 border-[var(--mmp-color-primary)] text-[var(--mmp-color-primary)]"
+            : "text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-ink)]"
         }`}
         onClick={() => onChange("friends")}
       >
@@ -24,15 +24,15 @@ export function TabSwitcher({ activeTab, onChange, pendingCount }: TabSwitcherPr
         type="button"
         className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
           activeTab === "pending"
-            ? "border-b-2 border-amber-500 text-amber-400"
-            : "text-slate-400 hover:text-slate-200"
+            ? "border-b-2 border-[var(--mmp-color-primary)] text-[var(--mmp-color-primary)]"
+            : "text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-ink)]"
         }`}
         onClick={() => onChange("pending")}
       >
         <span className="inline-flex items-center gap-1.5">
           대기 중인 요청
           {pendingCount > 0 && (
-            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-bold text-slate-950">
+            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-[var(--mmp-color-primary)] px-1 text-xs font-bold text-[var(--mmp-color-primary-contrast)]">
               {pendingCount}
             </span>
           )}

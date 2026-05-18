@@ -16,14 +16,17 @@ export function FriendRow({ friend, isOnline, onRemove, isRemoving }: FriendRowP
 
   return (
     <>
-      <div className="flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3">
+      <div className="flex items-center gap-3 rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] px-4 py-3">
         {/* Avatar */}
         <div className="relative flex-shrink-0">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-slate-300">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--mmp-color-muted)] text-sm font-bold text-[var(--mmp-color-charcoal)]">
             {friend.nickname.charAt(0).toUpperCase()}
           </div>
           {isOnline && (
-            <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-slate-900 bg-emerald-500" />
+            <span
+              className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[var(--mmp-color-surface)] bg-[var(--mmp-color-success)]"
+              data-online-indicator="true"
+            />
           )}
         </div>
 
@@ -46,7 +49,7 @@ export function FriendRow({ friend, isOnline, onRemove, isRemoving }: FriendRowP
           onClick={() => setShowConfirm(true)}
           aria-label={`${friend.nickname} 삭제`}
         >
-          <Trash2 className="h-4 w-4 text-red-400" />
+          <Trash2 className="h-4 w-4 text-[var(--mmp-color-error)]" />
         </Button>
       </div>
 
@@ -70,8 +73,8 @@ export function FriendRow({ friend, isOnline, onRemove, isRemoving }: FriendRowP
           </>
         }
       >
-        <p className="text-sm text-slate-300">
-          <span className="font-semibold text-slate-100">{friend.nickname}</span>
+        <p className="text-sm text-[var(--mmp-color-charcoal)]">
+          <span className="font-semibold text-[var(--mmp-color-ink)]">{friend.nickname}</span>
           님을 친구 목록에서 삭제하시겠습니까?
         </p>
       </Modal>

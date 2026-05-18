@@ -105,19 +105,23 @@ Note: local E2E account is not an admin/creator, so admin and creator screenshot
 
 Goal: Migrate user-facing lobby, room, and social flows.
 
-- [ ] Migrate Lobby page, theme cards, filters, and create-room flow.
-- [ ] Migrate Room page states and action surfaces.
-- [ ] Migrate Social page tabs/panels.
-- [ ] Migrate voice surfaces that are visible in social/room contexts.
-- [ ] Preserve realtime, auth, and API contracts.
-- [ ] Run focused tests and typecheck.
-- [ ] Capture required screenshot matrix.
+- [x] Migrate Lobby page, theme cards, filters, and create-room flow.
+- [x] Migrate Room page states and action surfaces.
+- [x] Migrate Social page tabs/panels.
+- [x] Migrate voice surfaces that are visible in social/room contexts.
+- [x] Preserve realtime, auth, and API contracts.
+- [x] Run focused tests and typecheck.
+- [x] Capture required screenshot matrix.
 
 Merge gate:
 
-- [ ] Cards, filters, modals, and action buttons are consistent.
-- [ ] Mobile layout has no overlap or horizontal scroll for core flows.
-- [ ] Backend unavailable/auth fallback states are documented if used for screenshots.
+- [x] Cards, filters, modals, and action buttons are consistent.
+- [x] Mobile layout has no overlap or horizontal scroll for core flows.
+- [x] Backend unavailable/auth fallback states are documented if used for screenshots.
+
+Note: #666 screenshot QA uses authenticated lobby/social pages and a `/room/nonexistent`
+fallback state because the local fixture has no active room at capture time. Realtime,
+auth, and backend API contracts were intentionally left unchanged.
 
 ## PR-6: Editor Detail Integration (#667)
 
