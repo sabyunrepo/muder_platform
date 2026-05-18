@@ -88,15 +88,52 @@ set -euo pipefail
 if [ "${MMP_LOCAL_CI_SKIP_INSTALL:-}" != "1" ]; then
   pnpm install --frozen-lockfile
 fi
+capture_git_diff_snapshot() {
+  local target="${1:-}"
+  local snapshot
+  snapshot="$(mktemp)"
+  if [ -n "$target" ]; then
+    git diff --binary -- "$target" > "$snapshot"
+  else
+    git diff --binary > "$snapshot"
+  fi
+  printf "%s" "$snapshot"
+}
+assert_no_new_git_diff() {
+  local before="$1"
+  local label="$2"
+  local target="${3:-}"
+  local after
+  after="$(mktemp)"
+  if [ -n "$target" ]; then
+    git diff --binary -- "$target" > "$after"
+  else
+    git diff --binary > "$after"
+  fi
+  if ! cmp -s "$before" "$after"; then
+    echo "Generated drift detected after ${label}." >&2
+    echo "The command changed tracked files beyond the diff that existed before it ran." >&2
+    if [ -n "$target" ]; then
+      git diff -- "$target" >&2 || true
+    else
+      git diff --stat >&2 || true
+    fi
+    rm -f "$before" "$after"
+    return 1
+  fi
+  rm -f "$before" "$after"
+}
 '
 
 quick_cmd="$bootstrap_cmd"'
 git diff --check
 cd apps/server
+before_go_generate="$(capture_git_diff_snapshot)"
 go generate ./...
-git diff --exit-code
+assert_no_new_git_diff "$before_go_generate" "go generate ./..."
+before_wsgen="$(capture_git_diff_snapshot ../../packages/shared/src/ws/types.generated.ts)"
 go run ./cmd/wsgen
-git diff --exit-code ../../packages/shared/src/ws/types.generated.ts
+assert_no_new_git_diff "$before_wsgen" "go run ./cmd/wsgen" ../../packages/shared/src/ws/types.generated.ts
 cd ../..
 bash scripts/check-playeraware-coverage.sh
 cd apps/server

@@ -631,6 +631,59 @@ describe('CharacterAssignPanel', () => {
     });
   });
 
+  it('기본 정보의 공개 소개를 수정하면 기존 자동저장 로직으로 저장한다', async () => {
+    renderPanel();
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+
+    fireEvent.change(screen.getByLabelText('공개 소개'), {
+      target: { value: '정직하고 내성적인 호텔 직원' },
+    });
+    await act(async () => { vi.advanceTimersByTime(1000); });
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith(
+      {
+        characterId: 'char-1',
+        body: {
+          name: '홍길동',
+          description: '정직하고 내성적인 호텔 직원',
+          image_url: undefined,
+          is_culprit: true,
+          mystery_role: 'culprit',
+          sort_order: 0,
+          is_playable: true,
+          show_in_intro: true,
+          can_speak_in_reading: true,
+          is_voting_candidate: true,
+          is_victim: false,
+          alias_rules: [],
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    );
+  });
+
+  it('공개 소개 입력 후 blur 되면 대기 중인 자동저장을 즉시 실행한다', async () => {
+    renderPanel();
+    const descriptionInput = screen.getByLabelText('공개 소개');
+
+    fireEvent.change(descriptionInput, { target: { value: '성실한 청년' } });
+    fireEvent.blur(descriptionInput);
+
+    expect(updateCharacterMutateMock).toHaveBeenCalledOnce();
+    expect(updateCharacterMutateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        characterId: 'char-1',
+        body: expect.objectContaining({ description: '성실한 청년' }),
+      }),
+      expect.any(Object),
+    );
+    await act(async () => { vi.advanceTimersByTime(1000); });
+    expect(updateCharacterMutateMock).toHaveBeenCalledOnce();
+  });
+
 
   it('선택한 캐릭터가 목록에서 사라지면 현재 상세 캐릭터 ID로 저장한다', async () => {
     let currentCharacters = mockCharacters;

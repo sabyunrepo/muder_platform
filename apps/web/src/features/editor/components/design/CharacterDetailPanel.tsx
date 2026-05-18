@@ -68,6 +68,8 @@ interface CharacterDetailPanelProps {
   showPlayerKillSettings?: boolean;
   isKillable?: boolean;
   onKillableChange?: (value: boolean) => void;
+  onDescriptionChange?: (description: string) => void;
+  onDescriptionBlur?: () => void;
   onAliasRulesSave?: (rules: CharacterAliasRule[]) => void;
   onProfileImageChange?: (imageMediaId: string | null) => void;
 }
@@ -94,16 +96,20 @@ export function CharacterDetailPanel({
   showPlayerKillSettings = false,
   isKillable = false,
   onKillableChange,
+  onDescriptionChange,
+  onDescriptionBlur,
   onAliasRulesSave,
   onProfileImageChange,
 }: CharacterDetailPanelProps) {
   const [aliasDrafts, setAliasDrafts] = useState<CharacterAliasRule[]>([]);
+  const [descriptionDraft, setDescriptionDraft] = useState('');
   const aliasDraftCharacterIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (aliasDraftCharacterIdRef.current === (selectedChar?.id ?? null)) return;
     aliasDraftCharacterIdRef.current = selectedChar?.id ?? null;
     setAliasDrafts(normalizeCharacterAliasRules(selectedChar?.alias_rules));
+    setDescriptionDraft(selectedChar?.description ?? '');
   }, [selectedChar]);
 
   if (!selectedChar) {
@@ -221,10 +227,26 @@ export function CharacterDetailPanel({
                     </div>
                   </div>
                   <div>
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-600">공개 소개</p>
-                    <p className="mt-2 min-h-24 rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs leading-5 text-slate-400">
-                      {selectedChar.description || '공개 소개가 없습니다.'}
-                    </p>
+                    <label
+                      htmlFor={`character-description-${selectedChar.id}`}
+                      className="text-[10px] font-semibold uppercase tracking-widest text-slate-600"
+                    >
+                      공개 소개
+                    </label>
+                    <textarea
+                      id={`character-description-${selectedChar.id}`}
+                      value={descriptionDraft}
+                      maxLength={2000}
+                      disabled={!onDescriptionChange}
+                      placeholder="공개 소개가 없습니다."
+                      onChange={(event) => {
+                        const next = event.currentTarget.value;
+                        setDescriptionDraft(next);
+                        onDescriptionChange?.(next);
+                      }}
+                      onBlur={onDescriptionBlur}
+                      className="mt-2 min-h-24 w-full resize-y rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-xs leading-5 text-slate-300 outline-none transition focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 disabled:cursor-not-allowed disabled:text-slate-500"
+                    />
                   </div>
                 </div>
                 <div>
