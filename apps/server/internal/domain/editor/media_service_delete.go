@@ -3,6 +3,7 @@ package editor
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
@@ -45,7 +46,7 @@ func (s *mediaService) DeleteMedia(ctx context.Context, creatorID, mediaID uuid.
 		}
 		if delErr := s.storage.DeleteObjects(ctx, keys); delErr != nil {
 			s.logger.Error().Err(delErr).Strs("storage_keys", keys).Msg("failed to delete storage object")
-			return apperror.Internal("failed to delete storage object")
+			return apperror.New(apperror.ErrMediaStorageDeleteFailed, http.StatusBadGateway, "failed to delete storage object").Wrap(delErr)
 		}
 	}
 	return nil
@@ -227,7 +228,7 @@ func (s *mediaService) collectMediaReferencesWithQueries(ctx context.Context, q 
 	configRefs, err := findMediaReferencesInThemeConfig(theme.ConfigJson, mediaID)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("media_id", mediaID.String()).Msg("failed to scan theme config media references")
-		return nil, apperror.New(apperror.ErrValidation, 422, "theme config contains invalid media references")
+		return nil, apperror.New(apperror.ErrMediaConfigReferenceInvalid, http.StatusUnprocessableEntity, "theme config contains invalid media references").Wrap(err)
 	}
 	refList = append(refList, configRefs...)
 	return refList, nil
@@ -243,7 +244,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear reading section media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearRoleSheetMediaReferencesWithOwner(ctx, db.ClearRoleSheetMediaReferencesWithOwnerParams{
@@ -252,7 +253,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear role sheet media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearCharacterAliasIconMediaReferencesWithOwner(ctx, db.ClearCharacterAliasIconMediaReferencesWithOwnerParams{
@@ -261,7 +262,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear character alias icon media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearCharacterImageMediaReferencesWithOwner(ctx, db.ClearCharacterImageMediaReferencesWithOwnerParams{
@@ -270,7 +271,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear character image media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearThemeCoverMediaReferencesWithOwner(ctx, db.ClearThemeCoverMediaReferencesWithOwnerParams{
@@ -279,7 +280,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear theme cover media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearMapMediaReferencesWithOwner(ctx, db.ClearMapMediaReferencesWithOwnerParams{
@@ -288,7 +289,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear map media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearClueMediaReferencesWithOwner(ctx, db.ClearClueMediaReferencesWithOwnerParams{
@@ -297,7 +298,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear clue media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearLocationMediaReferencesWithOwner(ctx, db.ClearLocationMediaReferencesWithOwnerParams{
@@ -306,7 +307,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear location media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	if _, err := q.ClearStoryInfoMediaReferencesWithOwner(ctx, db.ClearStoryInfoMediaReferencesWithOwnerParams{
@@ -315,7 +316,7 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to clear story info media references")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 	if _, err := q.DeleteStoryInfoMediaRefsForMediaWithOwner(ctx, db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams{
 		MediaID:   mediaID,
@@ -323,18 +324,18 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 		ThemeID:   media.ThemeID,
 	}); err != nil {
 		s.logger.Error().Err(err).Str("media_id", mediaID.String()).Msg("failed to delete story info media refs")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 
 	theme, err := q.GetTheme(ctx, media.ThemeID)
 	if err != nil {
 		s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to get theme for media reference cleanup")
-		return apperror.Internal("failed to clear media references")
+		return mediaReferenceCleanupFailed(err)
 	}
 	cleaned, changed, err := clearMediaReferencesInThemeConfig(theme.ConfigJson, mediaID)
 	if err != nil {
 		s.logger.Warn().Err(err).Str("media_id", mediaID.String()).Msg("failed to clean theme config media references")
-		return apperror.New(apperror.ErrValidation, 422, "theme config contains invalid media references")
+		return apperror.New(apperror.ErrMediaConfigReferenceInvalid, http.StatusUnprocessableEntity, "theme config contains invalid media references").Wrap(err)
 	}
 	if changed {
 		if _, err := q.UpdateThemeConfigJsonWithOwner(ctx, db.UpdateThemeConfigJsonWithOwnerParams{
@@ -343,10 +344,14 @@ func (s *mediaService) cleanupMediaReferences(ctx context.Context, q mediaQuerie
 			ConfigJson: cleaned,
 		}); err != nil {
 			s.logger.Error().Err(err).Str("theme_id", media.ThemeID.String()).Msg("failed to update theme config after media cleanup")
-			return apperror.Internal("failed to clear media references")
+			return mediaReferenceCleanupFailed(err)
 		}
 	}
 	return nil
+}
+
+func mediaReferenceCleanupFailed(err error) *apperror.AppError {
+	return apperror.New(apperror.ErrMediaReferenceCleanupFailed, http.StatusInternalServerError, "failed to clear media references").Wrap(err)
 }
 
 func roleSheetMediaReferenceType(body string, mediaID uuid.UUID, mediaType string) string {

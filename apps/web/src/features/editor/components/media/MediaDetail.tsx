@@ -13,6 +13,7 @@ import {
 } from '@/features/editor/mediaApi';
 import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
 import { ApiHttpError } from '@/lib/api-error';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 import { ConfirmDialog } from '@/shared/components/ui';
 import { MediaReplaceModal } from './MediaReplaceModal';
 
@@ -89,7 +90,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
       { id: media.id, patch },
       {
         onSuccess: () => toast.success('미디어가 저장되었습니다'),
-        onError: () => toast.error('미디어 저장에 실패했습니다'),
+        onError: (err) => showUnknownErrorToast(err, '미디어 저장에 실패했습니다'),
       }
     );
   };
@@ -99,7 +100,9 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     try {
       await deleteMutation.mutateAsync({ id: media.id, detachReferences: hasReferences });
       setDeleteDialogOpen(false);
-      toast.success(hasReferences ? '연결을 해제하고 미디어를 삭제했습니다' : '미디어가 삭제되었습니다');
+      toast.success(
+        hasReferences ? '연결을 해제하고 미디어를 삭제했습니다' : '미디어가 삭제되었습니다'
+      );
       onClose();
     } catch (err) {
       setDeleteDialogOpen(false);
@@ -108,7 +111,7 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
         setReferenceWarning(refs?.length ? refs : []);
         return;
       }
-      toast.error('미디어 삭제에 실패했습니다');
+      showUnknownErrorToast(err, '미디어 삭제에 실패했습니다');
     }
   };
 
@@ -116,7 +119,9 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
     <div className="flex h-full flex-col gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">미디어 상세</h3>
+        <h3 className="text-xs font-mono uppercase tracking-widest text-[var(--mmp-editor-color-slate)]">
+          미디어 상세
+        </h3>
         <button
           type="button"
           onClick={onClose}
@@ -198,9 +203,13 @@ export function MediaDetail({ media, themeId, onClose }: MediaDetailProps) {
 
         <dl className={`grid gap-2 px-3 py-2 text-xs ${editorDesignClassNames.subtlePanel}`}>
           {!canChangeMediaType && <MediaInfoRow label="분류" value={mediaTypeLabel(media.type)} />}
-          {canShowDuration && <MediaInfoRow label="길이" value={formatDurationInfo(media.duration)} />}
+          {canShowDuration && (
+            <MediaInfoRow label="길이" value={formatDurationInfo(media.duration)} />
+          )}
           <MediaInfoRow label="출처" value={mediaSourceLabel(media.source_type)} />
-          {media.mime_type && <MediaInfoRow label="파일 형식" value={mimeTypeLabel(media.mime_type)} />}
+          {media.mime_type && (
+            <MediaInfoRow label="파일 형식" value={mimeTypeLabel(media.mime_type)} />
+          )}
           {media.file_size != null && (
             <MediaInfoRow label="파일 크기" value={formatFileSize(media.file_size)} />
           )}

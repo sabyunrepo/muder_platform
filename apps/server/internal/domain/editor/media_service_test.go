@@ -1872,7 +1872,7 @@ func TestMediaService_Delete_BlocksMalformedConfigMediaReferenceScan(t *testing.
 	q.themes[themeID] = theme
 
 	err := svc.DeleteMedia(context.Background(), creatorID, mediaID, DeleteMediaOptions{})
-	assertMediaAppCode(t, err, apperror.ErrValidation)
+	assertMediaAppCode(t, err, apperror.ErrMediaConfigReferenceInvalid)
 	if _, ok := q.media[mediaID]; !ok {
 		t.Fatalf("media should not have been deleted")
 	}
@@ -1961,7 +1961,7 @@ func TestMediaService_CollectMediaReferences_QueryErrorsReturnInternal(t *testin
 	}
 }
 
-func TestMediaService_CleanupMediaReferences_QueryErrorsReturnInternal(t *testing.T) {
+func TestMediaService_CleanupMediaReferences_QueryErrorsReturnCleanupFailure(t *testing.T) {
 	tests := []struct {
 		name string
 		mock func(*MockmediaQueries, uuid.UUID, uuid.UUID)
@@ -2076,7 +2076,7 @@ func TestMediaService_CleanupMediaReferences_QueryErrorsReturnInternal(t *testin
 
 			err := svc.cleanupMediaReferences(context.Background(), q, creatorID, db.ThemeMedium{ID: mediaID, ThemeID: themeID}, mediaID)
 
-			assertMediaAppCode(t, err, apperror.ErrInternal)
+			assertMediaAppCode(t, err, apperror.ErrMediaReferenceCleanupFailed)
 		})
 	}
 }
@@ -2778,6 +2778,23 @@ func TestMediaService_Delete_FileMediaBestEffortStorageCleanup(t *testing.T) {
 	}
 	if _, ok := st.objects[key]; ok {
 		t.Fatalf("storage object should be deleted")
+	}
+}
+
+func TestMediaService_Delete_FileMediaStorageFailureReturnsMediaCode(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	st.deleteObjectsErr = errors.New("r2 unavailable")
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	key := q.media[mediaID].StorageKey.String
+	st.objects[key] = tinyPNG(t)
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID, DeleteMediaOptions{DetachReferences: true})
+
+	assertMediaAppCode(t, err, apperror.ErrMediaStorageDeleteFailed)
+	if _, ok := st.objects[key]; !ok {
+		t.Fatalf("storage object should remain when delete fails")
 	}
 }
 

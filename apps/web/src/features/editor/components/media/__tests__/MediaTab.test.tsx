@@ -221,11 +221,9 @@ describe('MediaTab', () => {
     });
 
     render(<MediaTab themeId="theme-1" />);
-    expect(screen.getByRole('list', { name: '미디어 목록' }).className).toContain(
-      'lg:grid-cols-3',
-    );
+    expect(screen.getByRole('list', { name: '미디어 목록' }).className).toContain('lg:grid-cols-3');
     expect(screen.getByRole('toolbar', { name: '미디어 도구 모음' }).className).toContain(
-      'border-[var(--mmp-editor-color-hairline)]',
+      'border-[var(--mmp-editor-color-hairline)]'
     );
     expect(screen.getByText('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('문 닫는 소리')).toBeDefined();
@@ -298,7 +296,9 @@ describe('MediaTab', () => {
 
     expect(mutate).toHaveBeenCalledWith('category-screen', expect.any(Object));
     const categoryGroup = screen.getByRole('group', { name: '미디어 카테고리 필터' });
-    expect(within(categoryGroup).getByRole('button', { name: '전체', pressed: true })).toBeDefined();
+    expect(
+      within(categoryGroup).getByRole('button', { name: '전체', pressed: true })
+    ).toBeDefined();
   });
 
   it('새 카테고리는 기존 sort_order 최댓값 다음 순서로 생성한다', () => {
@@ -366,7 +366,9 @@ describe('MediaTab', () => {
 
     // Detail visible
     expect(screen.getByText('미디어 상세')).toBeDefined();
-    expect(screen.getByText('미디어 상세').closest('aside')?.className).toContain('lg:overflow-y-auto');
+    expect(screen.getByText('미디어 상세').closest('aside')?.className).toContain(
+      'lg:overflow-y-auto'
+    );
     // Editable name input pre-filled
     expect(screen.getByDisplayValue('오프닝 BGM')).toBeDefined();
     expect(screen.getByText('분류')).toBeDefined();
@@ -721,7 +723,57 @@ describe('MediaTab', () => {
     expect(within(resultDialog).getByText('삭제됨 1개')).toBeDefined();
     expect(within(resultDialog).getByText('삭제 실패 1개')).toBeDefined();
     expect(within(resultDialog).getByText('문 닫는 소리')).toBeDefined();
-    expect(screen.getAllByText('문 닫는 소리')[0].closest("[role='button']")?.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen
+        .getAllByText('문 닫는 소리')[0]
+        .closest("[role='button']")
+        ?.getAttribute('aria-pressed')
+    ).toBe('true');
+  });
+
+  it('다중 삭제 실패가 API 오류이면 사용자 메시지와 오류 ID를 결과에 표시한다', async () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    const mutateAsync = vi.fn(({ id }: { id: string }) => {
+      if (id === 'media-2') {
+        return Promise.reject(
+          new ApiHttpError({
+            type: 'about:blank',
+            title: 'Bad Gateway',
+            status: 502,
+            detail: 'r2 delete failed for themes/theme-1/media-2',
+            code: 'MEDIA_STORAGE_DELETE_FAILED',
+            request_id: 'req-storage-delete-1',
+            severity: 'high',
+            retryable: true,
+            user_action: 'retry_later',
+          })
+        );
+      }
+      return Promise.resolve();
+    });
+    useDeleteMediaMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '선택', pressed: false }));
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    fireEvent.click(screen.getByText('문 닫는 소리').closest("[role='button']")!);
+    fireEvent.click(screen.getByRole('button', { name: '선택 삭제' }));
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+
+    const resultDialog = await screen.findByRole('dialog', { name: '미디어 삭제 결과' });
+    expect(within(resultDialog).getByText('삭제 실패 1개')).toBeDefined();
+    expect(resultDialog.textContent).toContain('파일 저장소에서 미디어를 삭제하지 못했습니다.');
+    expect(resultDialog.textContent).toContain('오류 ID: req-stor');
+    expect(resultDialog.textContent).not.toContain('r2 delete failed');
   });
 
   it('참조 중인 미디어 삭제가 차단되면 제작 위치를 상세 패널에 표시한다', async () => {
@@ -768,7 +820,7 @@ describe('MediaTab', () => {
       fireEvent.click(
         within(screen.getByRole('dialog', { name: '미디어를 삭제할까요?' })).getByRole('button', {
           name: '미디어 삭제',
-        }),
+        })
       );
 
       const warning = await screen.findByRole('alert');

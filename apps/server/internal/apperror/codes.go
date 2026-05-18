@@ -85,13 +85,16 @@ const (
 	ErrThemePriceOutOfRange = "THEME_PRICE_OUT_OF_RANGE"
 
 	// Media errors
-	ErrMediaInvalidType   = "MEDIA_INVALID_TYPE"
-	ErrMediaInvalidURL    = "MEDIA_INVALID_URL"
-	ErrMediaTooLarge      = "MEDIA_TOO_LARGE"
-	ErrMediaLimitExceeded = "MEDIA_LIMIT_EXCEEDED"
-	ErrMediaStorageFull   = "MEDIA_STORAGE_FULL"
-	ErrMediaUploadExpired = "MEDIA_UPLOAD_EXPIRED"
-	ErrMediaOEmbedFailed  = "MEDIA_OEMBED_FAILED"
+	ErrMediaInvalidType            = "MEDIA_INVALID_TYPE"
+	ErrMediaInvalidURL             = "MEDIA_INVALID_URL"
+	ErrMediaTooLarge               = "MEDIA_TOO_LARGE"
+	ErrMediaLimitExceeded          = "MEDIA_LIMIT_EXCEEDED"
+	ErrMediaStorageFull            = "MEDIA_STORAGE_FULL"
+	ErrMediaUploadExpired          = "MEDIA_UPLOAD_EXPIRED"
+	ErrMediaOEmbedFailed           = "MEDIA_OEMBED_FAILED"
+	ErrMediaReferenceCleanupFailed = "MEDIA_REFERENCE_CLEANUP_FAILED"
+	ErrMediaStorageDeleteFailed    = "MEDIA_STORAGE_DELETE_FAILED"
+	ErrMediaConfigReferenceInvalid = "MEDIA_CONFIG_REFERENCE_INVALID"
 
 	// Reading errors
 	ErrReadingSectionNotFound  = "READING_SECTION_NOT_FOUND"
