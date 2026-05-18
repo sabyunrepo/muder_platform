@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   useCharacterRoleSheet,
@@ -36,6 +36,7 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
     roleSheetError: roleSheetQuery.error,
   });
   const [draft, setDraft] = useState(sync.originalBody);
+  const draftRef = useRef(sync.originalBody);
   const [imagePages, setImagePages] = useState<ImageRoleSheetPageDraft[]>([]);
   const [imageDraft, setImageDraft] = useState('');
   const imageUrls = useMemo(
@@ -50,6 +51,7 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
   const [pdfMediaId, setPdfMediaId] = useState<string | undefined>(sync.pdfMediaId);
 
   useEffect(() => {
+    draftRef.current = sync.originalBody;
     setDraft(sync.originalBody);
     setSaveStatus('idle');
   }, [sync.originalBody, characterId]);
@@ -73,7 +75,7 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
 
   const saveMarkdown = useRoleSheetMarkdownSaver({
     data: roleSheetQuery.data,
-    draft,
+    getDraft: () => draftRef.current,
     originalBody: sync.originalBody,
     upsertContent,
     setSelectedFormat,
@@ -111,7 +113,10 @@ export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorState
     isUnsupportedFormat: sync.isUnsupportedFormat,
     pdfMediaId,
     upsertContent,
-    setDraft,
+    setDraft: (nextDraft: string) => {
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+    },
     saveMarkdown,
     savePDFMedia,
     addImagePage: () => {
@@ -205,20 +210,20 @@ function useRoleSheetSync({
 
 function useRoleSheetMarkdownSaver({
   data,
-  draft,
+  getDraft,
   originalBody,
   upsertContent,
   setSelectedFormat,
   setSaveStatus,
 }: {
   data?: RoleSheetResponse;
-  draft: string;
+  getDraft: () => string;
   originalBody: string;
   upsertContent: UpsertRoleSheetMutation;
   setSelectedFormat: (format: EditableRoleSheetFormat) => void;
   setSaveStatus: (status: SaveStatus) => void;
 }) {
-  return (nextBody = draft) => {
+  return (nextBody = getDraft()) => {
     if (upsertContent.isPending) return;
     if (originalBody === nextBody && data?.format === 'markdown') {
       setSaveStatus('saved');
