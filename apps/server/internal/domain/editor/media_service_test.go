@@ -1701,6 +1701,34 @@ func TestMediaService_PreviewDelete_ReportsCharacterAliasIconReference(t *testin
 	}
 }
 
+func TestMediaService_Delete_DetachesCharacterAliasIconReference(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	mediaID := seedMedia(q, themeID, MediaTypeImage)
+	charID := uuid.New()
+	q.aliasIconRefs[mediaID] = []db.FindCharacterAliasIconReferencesForMediaRow{
+		{ID: charID, Name: "밤의 목격자"},
+	}
+
+	err := svc.DeleteMedia(context.Background(), creatorID, mediaID, DeleteMediaOptions{})
+	assertMediaAppCode(t, err, apperror.ErrMediaReferenceInUse)
+	if _, ok := q.media[mediaID]; !ok {
+		t.Fatalf("media should remain when alias icon references are not detached")
+	}
+	if refs := q.aliasIconRefs[mediaID]; len(refs) != 1 {
+		t.Fatalf("alias icon reference should remain on blocked delete, got %#v", refs)
+	}
+
+	if err := svc.DeleteMedia(context.Background(), creatorID, mediaID, DeleteMediaOptions{DetachReferences: true}); err != nil {
+		t.Fatalf("DeleteMedia with alias icon detach: %v", err)
+	}
+	if _, ok := q.media[mediaID]; ok {
+		t.Fatalf("media should be deleted after alias icon detach")
+	}
+	if refs := q.aliasIconRefs[mediaID]; len(refs) != 0 {
+		t.Fatalf("alias icon references should be cleared, got %#v", refs)
+	}
+}
+
 func TestMediaService_PreviewDelete_ReportsPhaseOnEnterMediaReference(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	mediaID := seedMedia(q, themeID, MediaTypeBGM)
