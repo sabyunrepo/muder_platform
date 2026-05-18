@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Check, MapPin, Package, Plus, Search, X } from 'lucide-react';
+import { MapPin, Package } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/shared/components/ui/Spinner';
 import type { EditorThemeResponse, LocationResponse, ClueResponse } from '@/features/editor/api';
@@ -23,6 +23,7 @@ import {
   type InvestigationCostDraft,
 } from '@/features/editor/entities/deckInvestigation/locationClueInvestigationCost';
 import { getLocationPathLabel } from '@/features/editor/entities/location/locationHierarchy';
+import { ClueSearchMultiSelect, type ClueSearchSelectItem } from './ClueSearchMultiSelect';
 import { LocationSelectedClueItem } from './LocationSelectedClueItem';
 
 interface LocationClueAssignPanelProps {
@@ -44,6 +45,15 @@ function roundLabel(clue: ClueResponse) {
   return typeof clue.reveal_round === 'number' ? `R${clue.reveal_round}` : 'CL';
 }
 
+function toClueSearchItem(clue: ClueResponse): ClueSearchSelectItem {
+  return {
+    id: clue.id,
+    name: clue.name,
+    meta: clueMeta(clue),
+    badge: roundLabel(clue),
+  };
+}
+
 export function LocationClueAssignPanel({
   themeId,
   theme,
@@ -56,7 +66,6 @@ export function LocationClueAssignPanel({
   const clues = useMemo(() => allClues ?? fetchedClues ?? [], [allClues, fetchedClues]);
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
-  const [query, setQuery] = useState('');
   const [activeClueId, setActiveClueId] = useState<string | null>(null);
 
   const discoveries = useMemo(
@@ -84,21 +93,11 @@ export function LocationClueAssignPanel({
   const clueById = useMemo(() => new Map(clues.map((clue) => [clue.id, clue])), [clues]);
   const selectedClues = clues.filter((clue) => assignedSet.has(clue.id));
   const activeClue = selectedClues.find((clue) => clue.id === activeClueId) ?? selectedClues[0] ?? null;
+  const clueSearchItems = useMemo(() => clues.map(toClueSearchItem), [clues]);
   const locationPathLabel = useMemo(
     () => getLocationPathLabel(location, allLocations ?? [location]),
     [allLocations, location]
   );
-  const visibleClues = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return clues;
-    return clues.filter((clue) =>
-      [clue.name, clue.description, clueMeta(clue), clue.reveal_round?.toString()]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [clues, query]);
 
   function readLatestConfigJson() {
     return queryClient.getQueryData<EditorThemeResponse>(editorKeys.theme(themeId))?.config_json
@@ -275,47 +274,24 @@ export function LocationClueAssignPanel({
         <EmptyClues />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(13rem,0.65fr)]">
-          <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-                전체 단서 목록
-              </p>
-              <span className="text-[10px] text-slate-600">
-                {visibleClues.length}/{clues.length}개 표시
-              </span>
-            </div>
-            <label className="relative mb-3 block">
-              <span className="sr-only">단서 검색</span>
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-600" />
-              <input
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="단서명, 설명, 라운드 검색"
-                aria-label="단서 검색"
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 py-2 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60"
-              />
-            </label>
-            <div className="space-y-1 pr-1 lg:max-h-80 lg:overflow-y-auto">
-              {visibleClues.length === 0 ? (
-                <p className="rounded-md border border-dashed border-slate-800 px-3 py-8 text-center text-xs text-slate-600">
-                  검색 결과가 없습니다.
-                </p>
-              ) : (
-                visibleClues.map((clue) => (
-                  <ClueOption
-                    key={clue.id}
-                    clue={clue}
-                    selected={assignedSet.has(clue.id)}
-                    active={activeClue?.id === clue.id}
-                    unavailable={globallyAssignedClueIds.has(clue.id)}
-                    disabled={updateConfig.isPending}
-                    onSelect={addClue}
-                    onRemove={removeClue}
-                  />
-                ))
-              )}
-            </div>
-          </section>
+          <ClueSearchMultiSelect
+            title="배치된 단서"
+            items={clueSearchItems}
+            selectedIds={assignedIds}
+            activeId={activeClue?.id}
+            disabled={updateConfig.isPending}
+            searchLabel="배치할 단서 검색"
+            searchPlaceholder="단서명, 상태, 라운드 검색"
+            emptySelectedText="아직 배정된 단서가 없습니다. 단서명으로 검색해 이 장소에서 발견할 단서를 추가하세요."
+            idleSearchText="전체 단서를 펼치지 않고 검색 결과만 보여줍니다. 단서명을 입력해 추가하세요."
+            getDisabledReason={(item) => (globallyAssignedClueIds.has(item.id) ? '배치됨' : null)}
+            getAddAriaLabel={(item) => `${item.name} 추가`}
+            getSelectedAriaLabel={(item) => `${item.name} 설정 열기`}
+            getRemoveAriaLabel={(item) => `${item.name} 해제`}
+            onAdd={addClue}
+            onRemove={removeClue}
+            onSelectSelected={setActiveClueId}
+          />
           <section className="rounded-lg border border-amber-500/20 bg-amber-950/10 p-2.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold uppercase tracking-widest text-amber-300/80">
@@ -353,76 +329,6 @@ export function LocationClueAssignPanel({
         </div>
       )}
     </section>
-  );
-}
-
-function ClueOption({
-  clue,
-  selected,
-  active,
-  unavailable,
-  disabled,
-  onSelect,
-  onRemove,
-}: {
-  clue: ClueResponse;
-  selected: boolean;
-  active: boolean;
-  unavailable: boolean;
-  disabled: boolean;
-  onSelect: (id: string) => void;
-  onRemove: (id: string) => void;
-}) {
-  return (
-    <div
-      className={`group flex w-full items-center gap-3 rounded-md border px-2 py-2 text-left transition hover:border-amber-500/30 hover:bg-slate-800/80 disabled:cursor-default disabled:border-slate-800 disabled:bg-slate-950/40 ${
-        active
-          ? 'border-amber-400/50 bg-amber-500/10'
-          : selected
-            ? 'border-amber-500/20 bg-amber-950/10'
-            : 'border-transparent'
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() => onSelect(clue.id)}
-        disabled={disabled || unavailable}
-        aria-label={selected ? `${clue.name} 설정 열기` : `${clue.name} 추가`}
-        className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:cursor-default"
-      >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-slate-800 text-[10px] font-semibold text-amber-400">
-          {roundLabel(clue)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-slate-200">{clue.name}</span>
-          <span className="mt-0.5 block truncate text-xs text-slate-500">{clueMeta(clue)}</span>
-        </span>
-        <span className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-slate-700 px-2 text-[10px] font-semibold text-slate-500 group-hover:border-amber-500 group-hover:text-amber-300">
-          {selected ? (
-            <>
-              <Check className="mr-1 h-3.5 w-3.5" />
-              선택됨
-            </>
-          ) : unavailable ? (
-            '배치됨'
-          ) : (
-            <Plus className="h-3.5 w-3.5" />
-          )}
-        </span>
-      </button>
-      {selected ? (
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={`${clue.name} 해제`}
-          onClick={() => onRemove(clue.id)}
-          className="inline-flex h-7 shrink-0 items-center justify-center rounded-full border border-red-500/20 px-2 text-[10px] font-semibold text-red-300 transition hover:border-red-400/50 hover:bg-red-500/10 disabled:opacity-50"
-        >
-          <X className="mr-1 h-3 w-3" />
-          해제
-        </button>
-      ) : null}
-    </div>
   );
 }
 

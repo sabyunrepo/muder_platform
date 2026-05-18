@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Eye, FileText, Gift, Search, Shuffle, TriangleAlert, X } from 'lucide-react';
+import { Eye, FileText, Gift, Search, Shuffle, TriangleAlert } from 'lucide-react';
 import type { ClueResponse } from '@/features/editor/api';
 import {
   readClueItemEffect,
@@ -8,6 +8,7 @@ import {
   type ClueItemEffectConfig,
   type EditorConfig,
 } from '@/features/editor/utils/configShape';
+import { ClueSearchMultiSelect, type ClueSearchSelectItem } from '@/features/editor/components/design/ClueSearchMultiSelect';
 
 type EffectMode = 'description' | 'reveal' | 'grant' | 'peek' | 'steal' | 'kill';
 
@@ -231,24 +232,22 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
     [configJson, clue.id],
   );
   const [draft, setDraft] = useState<DraftState>(() => draftFromConfig(savedEffect));
-  const [query, setQuery] = useState('');
 
   useEffect(() => {
     setDraft(draftFromConfig(savedEffect));
-    setQuery('');
   }, [savedEffect]);
 
-  const candidates = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return clues
-      .filter((item) => item.id !== clue.id)
-      .filter((item) => (q ? item.name.toLowerCase().includes(q) : true))
-      .slice(0, 8);
-  }, [clue.id, clues, query]);
-
-  const selectedClues = useMemo(
-    () => clues.filter((item) => draft.grantClueIds.includes(item.id)),
-    [clues, draft.grantClueIds],
+  const grantClueItems = useMemo(
+    () =>
+      clues
+        .filter((item) => item.id !== clue.id)
+        .map((item): ClueSearchSelectItem => ({
+          id: item.id,
+          name: item.name,
+          meta: item.is_common ? '공용 단서' : item.location_id ? '장소 단서' : '미배치',
+          badge: typeof item.reveal_round === 'number' ? `R${item.reveal_round}` : 'CL',
+        })),
+    [clue.id, clues],
   );
 
   const draftEffect = useMemo(() => toEffectConfig(draft), [draft]);
@@ -410,11 +409,8 @@ export const ClueRuntimeEffectCard = forwardRef<ClueRuntimeEffectCardHandle, Clu
 
           {draft.mode === 'grant' && (
             <GrantCluePicker
-              candidates={candidates}
-              selectedClues={selectedClues}
-              query={query}
+              items={grantClueItems}
               selectedIds={draft.grantClueIds}
-              onQueryChange={setQuery}
               onToggle={toggleGrantClue}
             />
           )}
@@ -531,86 +527,30 @@ function PowerField({
 }
 
 function GrantCluePicker({
-  candidates,
-  selectedClues,
-  query,
+  items,
   selectedIds,
-  onQueryChange,
   onToggle,
 }: {
-  candidates: ClueResponse[];
-  selectedClues: ClueResponse[];
-  query: string;
+  items: ClueSearchSelectItem[];
   selectedIds: string[];
-  onQueryChange: (value: string) => void;
   onToggle: (clueId: string) => void;
 }) {
   return (
-    <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)]">
-      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
-        <label htmlFor="clue-grant-search" className="text-sm font-semibold text-slate-200">
-          지급할 단서 검색
-        </label>
-        <div className="mt-2 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-          <Search className="h-4 w-4 text-slate-500" />
-          <input
-            id="clue-grant-search"
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="단서 이름으로 검색"
-            className="w-full bg-transparent text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none"
-          />
-        </div>
-        <div className="mt-3 space-y-2">
-          {candidates.map((candidate) => {
-            const selected = selectedIds.includes(candidate.id);
-            return (
-              <button
-                key={candidate.id}
-                type="button"
-                onClick={() => onToggle(candidate.id)}
-                aria-pressed={selected}
-                className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
-                  selected
-                    ? 'border-amber-500/60 bg-amber-500/10 text-amber-100'
-                    : 'border-slate-800 bg-slate-950/70 text-slate-300 hover:border-slate-700'
-                }`}
-              >
-                {candidate.name}
-              </button>
-            );
-          })}
-          {candidates.length === 0 && (
-            <p className="rounded-lg border border-dashed border-slate-800 px-3 py-6 text-center text-xs text-slate-500">
-              검색 결과가 없습니다.
-            </p>
-          )}
-        </div>
-      </div>
-      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
-        <p className="text-sm font-semibold text-slate-200">선택된 지급 단서</p>
-        {selectedClues.length === 0 ? (
-          <p className="mt-3 rounded-lg border border-dashed border-slate-800 px-3 py-6 text-center text-xs text-slate-500">
-            아직 지급할 단서를 고르지 않았습니다.
-          </p>
-        ) : (
-          <ul className="mt-3 space-y-2">
-            {selectedClues.map((selected) => (
-              <li key={selected.id} className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm text-slate-200">
-                <span>{selected.name}</span>
-                <button
-                  type="button"
-                  onClick={() => onToggle(selected.id)}
-                  aria-label={`${selected.name} 지급 목록에서 제거`}
-                  className="rounded-md p-1 text-slate-500 hover:bg-slate-800 hover:text-slate-200"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+    <div className="mt-4">
+      <ClueSearchMultiSelect
+        title="지급할 단서"
+        items={items}
+        selectedIds={selectedIds}
+        searchLabel="지급할 단서 검색"
+        searchPlaceholder="단서 이름으로 검색"
+        emptySelectedText="아직 지급할 단서를 고르지 않았습니다."
+        idleSearchText="전체 단서를 펼치지 않고 검색 결과만 보여줍니다. 단서명을 입력하세요."
+        resultLimit={8}
+        getAddAriaLabel={(item) => `${item.name} 지급 목록에 추가`}
+        getRemoveAriaLabel={(item) => `${item.name} 지급 목록에서 제거`}
+        onAdd={onToggle}
+        onRemove={onToggle}
+      />
     </div>
   );
 }

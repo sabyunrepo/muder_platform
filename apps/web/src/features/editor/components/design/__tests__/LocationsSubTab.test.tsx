@@ -334,18 +334,24 @@ describe('LocationsSubTab', () => {
 
     it('맵 선택 시 장소 선택 picker 가 표시된다', () => {
       renderLocationsSubTab();
-      expect(screen.getByText('전체 단서 목록')).toBeDefined();
+      expect(screen.getByText('배치된 단서')).toBeDefined();
     });
 
     it('location picker 를 통해 선택한 location 에 대해 LocationClueAssignPanel 이 렌더된다', () => {
       renderLocationsSubTab();
       fireEvent.click(screen.getByRole('button', { name: '주방 선택' }));
       expect(screen.getByLabelText('주방 단서 조사')).toBeDefined();
+      fireEvent.change(screen.getByRole('searchbox', { name: '배치할 단서 검색' }), {
+        target: { value: '단검' },
+      });
       expect(screen.getByLabelText('단검 추가')).toBeDefined();
     });
 
     it('chip 토글 시 useUpdateConfigJson.mutate 가 호출된다', () => {
       renderLocationsSubTab();
+      fireEvent.change(screen.getByRole('searchbox', { name: '배치할 단서 검색' }), {
+        target: { value: '단검' },
+      });
       fireEvent.click(screen.getByLabelText('단검 추가'));
       expect(updateConfigMutateMock).toHaveBeenCalledOnce();
       const [config] = updateConfigMutateMock.mock.calls[0] as [Record<string, unknown>];
@@ -434,7 +440,7 @@ describe('LocationsSubTab', () => {
     it('맵이 없으면 단서 배정 picker 가 표시되지 않는다', () => {
       useEditorMapsMock.mockReturnValue({ data: [], isLoading: false });
       renderLocationsSubTab();
-      expect(screen.queryByText('전체 단서 목록')).toBeNull();
+      expect(screen.queryByText('배치된 단서')).toBeNull();
     });
   });
 

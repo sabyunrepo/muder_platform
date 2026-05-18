@@ -131,15 +131,24 @@ function renderQC(ui: ReactElement): { qc: QueryClient } {
   return { qc };
 }
 
+function searchAssignableClue(value = '단검') {
+  fireEvent.change(screen.getByRole('searchbox', { name: '배치할 단서 검색' }), {
+    target: { value },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
 describe('LocationClueAssignPanel', () => {
-  it('모든 clue가 chip으로 렌더링된다', () => {
+  it('검색 전에는 전체 후보를 펼치지 않고 검색 후 후보를 표시한다', () => {
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
+    expect(screen.getByText('배치된 단서')).toBeDefined();
+    expect(screen.queryByText('단검')).toBeNull();
+    searchAssignableClue('미배치');
     expect(screen.getByText('단검')).toBeDefined();
     expect(screen.getByText('편지')).toBeDefined();
   });
@@ -187,6 +196,7 @@ describe('LocationClueAssignPanel', () => {
     };
   renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
     expect(screen.getByLabelText('단검 설정 열기')).toBeDefined();
+    searchAssignableClue('편지');
     expect((screen.getByLabelText('편지 추가') as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getByLabelText('단검 해제')).toBeDefined();
   });
@@ -195,6 +205,7 @@ describe('LocationClueAssignPanel', () => {
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
+    searchAssignableClue();
     fireEvent.click(screen.getByLabelText('단검 추가'));
     expect(mutateMock).toHaveBeenCalledOnce();
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
@@ -279,6 +290,9 @@ describe('LocationClueAssignPanel', () => {
     renderQC(<LocationClueAssignPanel themeId="theme-1" theme={theme} location={mockLocation} />);
 
     expect(screen.getByText('1회 발견')).toBeDefined();
+    fireEvent.change(screen.getByRole('searchbox', { name: '단검 필요 단서 검색' }), {
+      target: { value: '편지' },
+    });
     fireEvent.click(screen.getByLabelText('단검 발견 조건 편지 필요'));
 
     expect(mutateMock).toHaveBeenCalledOnce();
@@ -480,6 +494,7 @@ describe('LocationClueAssignPanel', () => {
         onChange={onChange}
       />
     );
+    searchAssignableClue();
     fireEvent.click(screen.getByLabelText('단검 추가'));
     expect(onChange).toHaveBeenCalledWith(['clue-1']);
   });
@@ -502,6 +517,7 @@ describe('LocationClueAssignPanel', () => {
         allClues={mockClues}
       />
     );
+    searchAssignableClue();
     expect(screen.getByText('단검')).toBeDefined();
   });
 
@@ -510,6 +526,7 @@ describe('LocationClueAssignPanel', () => {
     renderQC(
       <LocationClueAssignPanel themeId="theme-1" theme={baseTheme} location={mockLocation} />
     );
+    searchAssignableClue();
     const chip = screen.getByLabelText('단검 추가') as HTMLButtonElement;
     expect(chip.disabled).toBe(true);
   });
@@ -528,6 +545,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     );
     qc.setQueryData(cacheKey, baseTheme);
 
+    searchAssignableClue();
     fireEvent.click(screen.getByLabelText('단검 추가'));
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
@@ -551,6 +569,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     );
     qc.setQueryData(cacheKey, baseTheme);
 
+    searchAssignableClue();
     fireEvent.click(screen.getByLabelText('단검 추가'));
 
     const cached = qc.getQueryData<EditorThemeResponse>(cacheKey);
@@ -585,6 +604,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     qc.setQueryData(cacheKey, baseTheme);
 
     // 1st toggle: clue-1 추가 → 캐시 optimistic = {locations:[{loc-1,[clue-1]}]}
+    searchAssignableClue('미배치');
     fireEvent.click(screen.getByLabelText('단검 추가'));
 
     // 2nd toggle: 같은 컴포넌트의 `theme` prop 은 불변이므로 여전히 baseTheme 기준이지만,
@@ -611,6 +631,7 @@ describe('LocationClueAssignPanel optimistic update + rollback', () => {
     );
     // no setQueryData
 
+    searchAssignableClue();
     fireEvent.click(screen.getByLabelText('단검 추가'));
 
     expect(mutateMock).toHaveBeenCalledOnce();

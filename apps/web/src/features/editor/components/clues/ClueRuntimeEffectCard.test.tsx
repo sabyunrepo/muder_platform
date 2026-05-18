@@ -107,11 +107,12 @@ describe('ClueRuntimeEffectCard', () => {
     fireEvent.change(screen.getByLabelText('지급할 단서 검색'), {
       target: { value: '금고' },
     });
-    fireEvent.click(screen.getByRole('button', { name: '금고 비밀번호' }));
+    fireEvent.click(screen.getByRole('button', { name: '금고 비밀번호 지급 목록에 추가' }));
     fireEvent.click(screen.getByLabelText('암호 사용'));
     fireEvent.change(screen.getByLabelText('사용 암호'), { target: { value: 'gold' } });
 
-    expect(screen.getByText('선택된 지급 단서')).toBeDefined();
+    expect(screen.getByText('지급할 단서')).toBeDefined();
+    expect(screen.getByRole('button', { name: '금고 비밀번호 지급 목록에서 제거' })).toBeDefined();
 
     const saved = ref.current?.getSaveRequest().writeConfig({}) as EditorConfig;
     expect(readClueItemEffect(saved, 'clue-1')).toMatchObject({
