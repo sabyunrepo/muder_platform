@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-09",
+  "updated_at": "2026-05-18",
   "policy": {
     "read_first": "Read this state file before archive logs.",
     "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
@@ -276,10 +276,40 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Required plans, task instructions, subagent handoffs, and execution ledgers to use Markdown todo checkboxes and mark verified completed items during progress updates."
+    },
+    {
+      "id": "default-workflow-harness-v1",
+      "resolved_at": "2026-05-18",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-workflow-harness/SKILL.md",
+        "scripts/mmp-workflow-preflight.sh",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Added a default request-to-PR workflow harness that connects preflight, diagnosis, interview/seed, scoped implementation, validation evidence, review, PR, and merge while keeping long procedure details in a skill."
+    },
+    {
+      "id": "ooo-run-scope-guard",
+      "resolved_at": "2026-05-18",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-workflow-harness/SKILL.md",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Documented OOO run stop conditions and salvage behavior so over-broad execution is cancelled instead of being applied silently."
+    },
+    {
+      "id": "browser-qa-evidence-format",
+      "resolved_at": "2026-05-18",
+      "applied_to": [
+        ".codex/skills/mmp-workflow-harness/SKILL.md",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Added a reusable browser evidence format for cmux/browser QA reports."
     }
   ],
   "last_review": {
-    "date": "2026-05-09",
-    "summary": "Added MMP headquarter/orchestrator workflow surfaces, then tightened cmux browser QA routing and checkbox-based task ledger rules for plans, handoffs, and subagent execution."
+    "date": "2026-05-18",
+    "summary": "Added MMP workflow harness v1, preflight status script, OOO run scope guard, and browser QA evidence format."
   }
 }
