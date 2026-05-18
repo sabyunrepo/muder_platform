@@ -4,6 +4,23 @@ export const EDITOR_APPEARANCE_STORAGE_KEY = 'mmp.editor.appearance';
 
 export type EditorAppearancePreference = 'system' | 'light' | 'dark';
 export type EditorResolvedAppearance = 'light' | 'dark';
+export type EditorSystemAppearanceListener = (resolvedTheme: EditorResolvedAppearance) => void;
+
+type SystemColorSchemeChangeTarget = {
+  matches: boolean;
+  addEventListener?: (
+    event: 'change',
+    listener: (event: { matches: boolean }) => void
+  ) => void;
+  removeEventListener?: (
+    event: 'change',
+    listener: (event: { matches: boolean }) => void
+  ) => void;
+  addListener?: (listener: (event: { matches: boolean }) => void) => void;
+  removeListener?: (listener: (event: { matches: boolean }) => void) => void;
+};
+
+type MatchSystemColorScheme = (query: string) => SystemColorSchemeChangeTarget;
 
 const SYSTEM_DARK_QUERY = '(prefers-color-scheme: dark)';
 
@@ -43,6 +60,28 @@ export function writeStoredEditorAppearance(
   }
 }
 
+export function subscribeToSystemEditorAppearance(
+  listener: EditorSystemAppearanceListener,
+  matchSystemColorScheme: MatchSystemColorScheme | null | undefined = getMatchMedia()
+): () => void {
+  if (!matchSystemColorScheme) {
+    return () => {};
+  }
+
+  const query = matchSystemColorScheme(SYSTEM_DARK_QUERY);
+  const handleChange = (event: { matches: boolean }) => {
+    listener(event.matches ? 'dark' : 'light');
+  };
+
+  if (typeof query.addEventListener === 'function') {
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener?.('change', handleChange);
+  }
+
+  query.addListener?.(handleChange);
+  return () => query.removeListener?.(handleChange);
+}
+
 export function useEditorAppearance() {
   const [preference, setPreferenceState] = useState<EditorAppearancePreference>(() =>
     readStoredEditorAppearance()
@@ -50,24 +89,9 @@ export function useEditorAppearance() {
   const [prefersDark, setPrefersDark] = useState(readSystemPrefersDark);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-
-    const query = window.matchMedia(SYSTEM_DARK_QUERY);
-    const handleChange = (event: MediaQueryListEvent | MediaQueryList) => {
-      setPrefersDark(event.matches);
-    };
-
-    handleChange(query);
-
-    if (typeof query.addEventListener === 'function') {
-      query.addEventListener('change', handleChange);
-      return () => query.removeEventListener('change', handleChange);
-    }
-
-    query.addListener(handleChange);
-    return () => query.removeListener(handleChange);
+    return subscribeToSystemEditorAppearance((nextResolvedTheme) => {
+      setPrefersDark(nextResolvedTheme === 'dark');
+    });
   }, []);
 
   const setPreference = useCallback((nextPreference: EditorAppearancePreference) => {
@@ -98,9 +122,17 @@ function getLocalStorage(): Storage | null {
   }
 }
 
-function readSystemPrefersDark(): boolean {
+function getMatchMedia(): MatchSystemColorScheme | null {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return null;
+  }
+  return window.matchMedia.bind(window);
+}
+
+function readSystemPrefersDark(): boolean {
+  const matchMedia = getMatchMedia();
+  if (!matchMedia) {
     return false;
   }
-  return window.matchMedia(SYSTEM_DARK_QUERY).matches;
+  return matchMedia(SYSTEM_DARK_QUERY).matches;
 }

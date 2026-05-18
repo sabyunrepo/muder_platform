@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const { locationPathMock, paramsMock, setActiveTabMock } = vi.hoisted(() => ({
@@ -118,6 +118,39 @@ function createStorage() {
   };
 }
 
+function createMatchMediaController(initialMatches = false) {
+  let matches = initialMatches;
+  let listeners: Array<(event: { matches: boolean }) => void> = [];
+  const matchMedia = vi.fn((media: string) => ({
+    matches,
+    media,
+    onchange: null,
+    addEventListener: vi.fn((_event: 'change', listener: (event: { matches: boolean }) => void) => {
+      listeners.push(listener);
+    }),
+    removeEventListener: vi.fn(
+      (_event: 'change', listener: (event: { matches: boolean }) => void) => {
+        listeners = listeners.filter((candidate) => candidate !== listener);
+      }
+    ),
+    addListener: vi.fn((listener: (event: { matches: boolean }) => void) => {
+      listeners.push(listener);
+    }),
+    removeListener: vi.fn((listener: (event: { matches: boolean }) => void) => {
+      listeners = listeners.filter((candidate) => candidate !== listener);
+    }),
+    dispatchEvent: vi.fn(),
+  }));
+
+  return {
+    matchMedia,
+    setMatches(nextMatches: boolean) {
+      matches = nextMatches;
+      listeners.forEach((listener) => listener({ matches: nextMatches }));
+    },
+  };
+}
+
 beforeAll(() => {
   Object.defineProperty(window, 'localStorage', {
     value: createStorage(),
@@ -128,6 +161,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllGlobals();
   window.localStorage.clear();
   locationPathMock.mockReturnValue('/editor');
 });
@@ -144,6 +178,23 @@ describe('EditorPage', () => {
     expect(setActiveTabMock).toHaveBeenCalledWith('storyMap');
   });
 
+  it('/editor dashboard는 저장된 appearance mode와 시스템 dark 설정에도 legacy design으로 남는다', () => {
+    const systemTheme = createMatchMediaController(true);
+    vi.stubGlobal('matchMedia', systemTheme.matchMedia);
+    window.localStorage.setItem(EDITOR_APPEARANCE_STORAGE_KEY, 'dark');
+    paramsMock.mockReturnValue({});
+    locationPathMock.mockReturnValue('/editor');
+
+    const { container } = render(<EditorPage />);
+
+    expect(screen.getByText('에디터 대시보드')).toBeDefined();
+    expect(screen.queryByText(/테마 에디터/)).toBeNull();
+    expect(container.querySelector(`.${EDITOR_DESIGN_SCOPE_CLASS}`)).toBeNull();
+    expect(container.querySelector('[data-editor-theme]')).toBeNull();
+    expect(container.querySelector('[data-editor-theme-preference]')).toBeNull();
+    expect(systemTheme.matchMedia).not.toHaveBeenCalled();
+  });
+
   it('characters 라우트 segment를 characters 탭으로 매핑한다', () => {
     paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
     locationPathMock.mockReturnValue('/editor/theme-1/characters');
@@ -156,6 +207,71 @@ describe('EditorPage', () => {
     expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('light');
     expect(detail.parentElement?.getAttribute('data-editor-theme-preference')).toBe('system');
     expect(setActiveTabMock).toHaveBeenCalledWith('characters');
+  });
+
+  it('에디터 상세 첫 로드에서 system appearance를 운영체제 dark 설정으로 해석한다', () => {
+    const systemTheme = createMatchMediaController(true);
+    vi.stubGlobal('matchMedia', systemTheme.matchMedia);
+    paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
+    locationPathMock.mockReturnValue('/editor/theme-1/characters');
+
+    render(<EditorPage />);
+
+    const detail = screen.getByText(/테마 에디터 theme-1 characters system dark/);
+    expect(detail).toBeDefined();
+    expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
+    expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe('dark');
+    expect(detail.parentElement?.getAttribute('data-editor-theme-preference')).toBe('system');
+  });
+
+  it.each([
+    ['system', false, 'light'],
+    ['system', true, 'dark'],
+    ['light', true, 'light'],
+    ['dark', false, 'dark'],
+  ] as const)(
+    '%s appearance는 editor detail data-editor-theme에 concrete %s 값을 쓴다',
+    (storedPreference, systemPrefersDark, expectedTheme) => {
+      const systemTheme = createMatchMediaController(systemPrefersDark);
+      vi.stubGlobal('matchMedia', systemTheme.matchMedia);
+      window.localStorage.setItem(EDITOR_APPEARANCE_STORAGE_KEY, storedPreference);
+      paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
+      locationPathMock.mockReturnValue('/editor/theme-1/characters');
+
+      render(<EditorPage />);
+
+      const detail = screen.getByText(
+        new RegExp(`테마 에디터 theme-1 characters ${storedPreference} ${expectedTheme}`)
+      );
+      expect(detail.parentElement?.className).toContain(EDITOR_DESIGN_SCOPE_CLASS);
+      expect(detail.parentElement?.getAttribute('data-editor-theme')).toBe(expectedTheme);
+      expect(detail.parentElement?.getAttribute('data-editor-theme')).not.toBe('system');
+      expect(detail.parentElement?.getAttribute('data-editor-theme-preference')).toBe(
+        storedPreference
+      );
+    }
+  );
+
+  it('system appearance는 reload 없이 운영체제 색상 변경을 에디터 상세 wrapper에 반영한다', () => {
+    const systemTheme = createMatchMediaController(false);
+    vi.stubGlobal('matchMedia', systemTheme.matchMedia);
+    paramsMock.mockReturnValue({ id: 'theme-1', tab: 'characters' });
+    locationPathMock.mockReturnValue('/editor/theme-1/characters');
+
+    render(<EditorPage />);
+
+    let detail = screen.getByText(/테마 에디터 theme-1 characters system light/);
+    const editorScope = detail.parentElement;
+    expect(editorScope?.getAttribute('data-editor-theme')).toBe('light');
+
+    act(() => {
+      systemTheme.setMatches(true);
+    });
+
+    detail = screen.getByText(/테마 에디터 theme-1 characters system dark/);
+    expect(detail.parentElement).toBe(editorScope);
+    expect(editorScope?.getAttribute('data-editor-theme')).toBe('dark');
+    expect(editorScope?.getAttribute('data-editor-theme-preference')).toBe('system');
   });
 
   it('에디터 상세 초기화 시 localStorage에 저장된 valid appearance mode를 복원한다', () => {
