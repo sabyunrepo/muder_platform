@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 import {
   BASE,
   THEME_ID,
@@ -44,6 +44,7 @@ async function expectLightEditorTokens(page: Page) {
     return {
       canvas: scopeStyle.getPropertyValue('--mmp-editor-color-canvas').trim(),
       ink: scopeStyle.getPropertyValue('--mmp-editor-color-ink').trim(),
+      colorScheme: scopeStyle.colorScheme,
       surfaceBackground: surfaceStyle?.backgroundColor ?? '',
       surfaceColor: surfaceStyle?.color ?? '',
     };
@@ -53,6 +54,7 @@ async function expectLightEditorTokens(page: Page) {
     expect.objectContaining({
       canvas: '#ffffff',
       ink: '#1a1a1a',
+      colorScheme: 'light',
       surfaceBackground: 'rgb(250, 250, 249)',
       surfaceColor: 'rgb(26, 26, 26)',
     })
@@ -62,7 +64,7 @@ async function expectLightEditorTokens(page: Page) {
 test.describe('editor appearance mode', () => {
   test('/editor 대시보드는 저장된 appearance mode와 무관하게 legacy design으로 남는다', async ({
     page,
-  }) => {
+  }, testInfo: TestInfo) => {
     const state = freshState();
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.emulateMedia({ colorScheme: 'dark' });
@@ -92,7 +94,7 @@ test.describe('editor appearance mode', () => {
 
     const screenshot = await page.screenshot({
       fullPage: true,
-      path: 'test-results/editor-dashboard-legacy-design.png',
+      path: testInfo.outputPath('editor-dashboard-legacy-design.png'),
     });
     expect(screenshot.length).toBeGreaterThan(0);
   });
@@ -157,7 +159,10 @@ test.describe('editor appearance mode', () => {
     await expect(editorScope).toHaveAttribute('data-editor-theme', 'dark');
   });
 
-  test('에디터 상세 화면의 system appearance 스크린샷을 캡처한다', async ({ page }) => {
+  test('에디터 상세 화면의 system appearance 스크린샷을 캡처한다', async (
+    { page },
+    testInfo: TestInfo
+  ) => {
     const state = freshState();
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.emulateMedia({ colorScheme: 'dark' });
@@ -183,12 +188,15 @@ test.describe('editor appearance mode', () => {
 
     const screenshot = await page.screenshot({
       fullPage: true,
-      path: 'test-results/editor-detail-system-appearance.png',
+      path: testInfo.outputPath('editor-detail-system-appearance.png'),
     });
     expect(screenshot.length).toBeGreaterThan(0);
   });
 
-  test('에디터 상세 화면의 light appearance 스크린샷을 캡처한다', async ({ page }) => {
+  test('에디터 상세 화면의 light appearance 스크린샷을 캡처한다', async (
+    { page },
+    testInfo: TestInfo
+  ) => {
     const state = freshState();
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.emulateMedia({ colorScheme: 'dark' });
@@ -214,12 +222,15 @@ test.describe('editor appearance mode', () => {
 
     const screenshot = await page.screenshot({
       fullPage: true,
-      path: 'test-results/editor-detail-light-appearance.png',
+      path: testInfo.outputPath('editor-detail-light-appearance.png'),
     });
     expect(screenshot.length).toBeGreaterThan(0);
   });
 
-  test('에디터 상세 화면의 dark appearance 스크린샷을 캡처한다', async ({ page }) => {
+  test('에디터 상세 화면의 dark appearance 스크린샷을 캡처한다', async (
+    { page },
+    testInfo: TestInfo
+  ) => {
     const state = freshState();
     await page.setViewportSize({ width: 1440, height: 960 });
     await page.emulateMedia({ colorScheme: 'light' });
@@ -245,7 +256,7 @@ test.describe('editor appearance mode', () => {
 
     const screenshot = await page.screenshot({
       fullPage: true,
-      path: 'test-results/editor-detail-dark-appearance.png',
+      path: testInfo.outputPath('editor-detail-dark-appearance.png'),
     });
     expect(screenshot.length).toBeGreaterThan(0);
   });
@@ -318,5 +329,6 @@ test.describe('editor appearance mode', () => {
 
     await expect(editorScope).toHaveAttribute('data-editor-theme-preference', 'system');
     await expect(editorScope).toHaveAttribute('data-editor-theme', 'light');
+    await expectLightEditorTokens(page);
   });
 });
