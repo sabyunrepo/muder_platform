@@ -73,13 +73,16 @@ export default function ReadingScriptPlayerMockPage() {
   }, [index, voiceReady]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+    <div
+      className="mmp-runtime-boundary relative min-h-screen overflow-hidden"
+      data-game-runtime-theme="immersive"
+    >
       {background ? (
         <img className="absolute inset-0 h-full w-full object-cover opacity-45" src={background} alt="" />
       ) : (
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,rgba(30,64,175,0.30),transparent_35%),linear-gradient(180deg,#020617,#0f172a)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_15%,color-mix(in_oklab,var(--mmp-color-info)_26%,transparent),transparent_35%),linear-gradient(180deg,var(--mmp-color-canvas),var(--mmp-color-surface))]" />
       )}
-      <div className="absolute inset-0 bg-slate-950/60" />
+      <div className="absolute inset-0 bg-[color-mix(in_oklab,var(--mmp-color-canvas)_64%,transparent)]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 backdrop-blur md:px-5">
@@ -110,7 +113,7 @@ export default function ReadingScriptPlayerMockPage() {
               <EmptyState />
             ) : (
               <>
-                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto rounded border border-white/10 bg-slate-950/35 p-3 md:p-5">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto rounded border border-[var(--mmp-color-hairline)] bg-[color-mix(in_oklab,var(--mmp-color-canvas)_40%,transparent)] p-3 md:p-5">
                   {visibleBlocks.map((block, visibleIndex) => (
                     <div key={block.id} ref={visibleIndex === visibleBlocks.length - 1 ? latestRef : undefined}>
                       <CurrentBlockView

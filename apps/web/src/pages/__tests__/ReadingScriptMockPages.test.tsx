@@ -71,9 +71,12 @@ describe("ReadingScriptPlayerMockPage", () => {
     vi.useFakeTimers();
     writeMockBlocks(defaultBlocks);
 
-    renderWithRouter(<ReadingScriptPlayerMockPage />);
+    const { container } = renderWithRouter(<ReadingScriptPlayerMockPage />);
 
     expect(screen.getByRole("heading", { name: "읽기 대사 테스트 화면" })).toBeDefined();
+    expect(container.querySelector(".mmp-runtime-boundary")?.getAttribute("data-game-runtime-theme")).toBe(
+      "immersive",
+    );
     expect(screen.getByText("모두 눈을 감아주세요.")).toBeDefined();
     expect(screen.getByRole<HTMLButtonElement>("button", { name: "음성 종료 대기" }).disabled).toBe(true);
 

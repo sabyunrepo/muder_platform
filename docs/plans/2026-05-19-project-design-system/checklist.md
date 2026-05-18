@@ -12,7 +12,7 @@
 - [x] PR-4 creator/admin/shop/profile
 - [ ] PR-5 lobby/room/social
 - [x] PR-6 editor detail
-- [ ] PR-7 game runtime
+- [x] PR-7 game runtime
 - [ ] Final screenshot matrix and visual debt review
 
 ## PR-1: Foundation (#662)
@@ -150,20 +150,28 @@ evidence is stored in `screenshots/design-system/667-*`.
 
 Goal: Fully align game runtime with the project-wide editor/product tone.
 
-- [ ] Audit GamePage runtime states.
-- [ ] Audit voice overlay and bottom sheet states.
-- [ ] Audit reading/player mock pages if still active.
-- [ ] Migrate runtime surfaces toward the product-wide design system.
-- [ ] Document any runtime-specific exceptions with user-visible rationale.
-- [ ] Preserve realtime, WebSocket, auth, and game logic behavior.
-- [ ] Run focused tests and typecheck.
-- [ ] Capture required screenshot matrix.
+- [x] Audit GamePage runtime states.
+- [x] Audit voice overlay and bottom sheet states.
+- [x] Audit reading/player mock pages if still active.
+- [x] Migrate runtime surfaces toward the product-wide design system.
+- [x] Document any runtime-specific exceptions with user-visible rationale.
+- [x] Preserve realtime, WebSocket, auth, and game logic behavior.
+- [x] Run focused tests and typecheck.
+- [x] Capture required screenshot matrix.
 
 Merge gate:
 
-- [ ] Runtime screens feel like the same product UI.
-- [ ] Connection, waiting, error, and result states remain clear.
-- [ ] Mobile voice/game controls do not overlap.
+- [x] Runtime screens feel like the same product UI.
+- [x] Connection, waiting, error, and result states remain clear.
+- [x] Mobile voice/game controls do not overlap.
+
+Note: #668 documents game runtime as the one scoped exception to app-wide
+light/dark following. Runtime uses `mmp-runtime-boundary` with project semantic
+token names aliased to an immersive dark palette. Browser evidence is stored in
+`screenshots/design-system/668-*`; voice overlay and bottom sheet behavior are
+covered by focused component tests that validate runtime boundary semantics.
+These design-system-migrated components are ready for integration into game
+routes when voice features are activated.
 
 ## Final Review
 

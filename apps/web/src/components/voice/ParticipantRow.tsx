@@ -70,9 +70,11 @@ export function ParticipantRow({
             className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold overflow-hidden transition-transform duration-150 ease-out"
             style={{
               backgroundColor: accentColor + "33",
-              border: isSpeaking ? `1.5px solid #34d399` : "1.5px solid transparent",
+              border: isSpeaking ? "1.5px solid var(--mmp-color-success)" : "1.5px solid transparent",
               transform: `scale(${scale})`,
-              boxShadow: isSpeaking ? "0 0 0 1.5px #34d39944" : "none",
+              boxShadow: isSpeaking
+                ? "0 0 0 1.5px color-mix(in oklab, var(--mmp-color-success) 28%, transparent)"
+                : "none",
             }}
           >
             {avatarUrl ? (
@@ -86,7 +88,7 @@ export function ParticipantRow({
           {isSelf && (
             <span
               className="absolute -bottom-0.5 -left-0.5 text-[8px] font-bold px-0.5 rounded-sm leading-none"
-              style={{ backgroundColor: "#f59e0b", color: "#1e293b" }}
+              style={{ backgroundColor: "var(--mmp-color-primary)", color: "var(--mmp-color-on-primary)" }}
             >
               나
             </span>
@@ -106,8 +108,10 @@ export function ParticipantRow({
         <span
           className="flex-1 text-[12px] truncate transition-colors duration-150 ease-out"
           style={{
-            color: isSpeaking ? "#34d399" : "#cbd5e1",
-            textShadow: isSpeaking ? "0 0 6px #34d39966" : "none",
+            color: isSpeaking ? "var(--mmp-color-success)" : "var(--mmp-color-slate)",
+            textShadow: isSpeaking
+              ? "0 0 6px color-mix(in oklab, var(--mmp-color-success) 42%, transparent)"
+              : "none",
           }}
         >
           {name}
