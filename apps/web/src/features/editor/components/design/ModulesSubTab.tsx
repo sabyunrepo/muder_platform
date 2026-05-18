@@ -29,6 +29,7 @@ import {
   type LocationInvestigationMode,
   type PlayerKillConfig,
 } from '@/features/editor/utils/configShape';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,7 +69,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
       nextConfig: Record<string, unknown>,
       successMsg: string,
       errorMsg: string,
-      onRollback?: () => void,
+      onRollback?: () => void
     ) => {
       if (updateConfig.isPending) {
         return;
@@ -83,13 +84,13 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
             setConflictBannerDismissed(false);
             toast.success(successMsg);
           },
-          onError: () => {
+          onError: (error) => {
             if (conflictRef.current) {
               setConflictDraft(nextConfig);
               setConflictBannerDismissed(false);
             } else {
               onRollback?.();
-              toast.error(errorMsg);
+              showUnknownErrorToast(error, errorMsg);
             }
           },
         }
@@ -154,7 +155,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
           writeModuleEnabled(activeConfig, moduleId, enabled),
           '모듈 설정이 저장되었습니다',
           '모듈 설정 저장에 실패했습니다',
-          () => setSelectedModules(prev),
+          () => setSelectedModules(prev)
         );
 
         return next;
@@ -191,10 +192,7 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
   );
 
   const handleLocationInvestigationChange = useCallback(
-    (settings: {
-      investigationMode: LocationInvestigationMode;
-      deckOrder: LocationDeckOrder;
-    }) => {
+    (settings: { investigationMode: LocationInvestigationMode; deckOrder: LocationDeckOrder }) => {
       if (updateConfig.isPending) {
         return;
       }
@@ -331,14 +329,14 @@ export function ModulesSubTab({ themeId, theme }: ModulesSubTabProps) {
                       mod.id !== LOCATION_MODULE_ID &&
                       mod.id !== PLAYER_KILL_MODULE_ID &&
                       schema && (
-                      <div className="border-t border-slate-700 px-3 py-3">
-                        <SchemaDrivenForm
-                          schema={schema}
-                          values={moduleConfigs[mod.id] ?? {}}
-                          onChange={(path, value) => handleConfigChange(mod.id, path, value)}
-                        />
-                      </div>
-                    )}
+                        <div className="border-t border-slate-700 px-3 py-3">
+                          <SchemaDrivenForm
+                            schema={schema}
+                            values={moduleConfigs[mod.id] ?? {}}
+                            onChange={(path, value) => handleConfigChange(mod.id, path, value)}
+                          />
+                        </div>
+                      )}
                   </div>
                 );
               })}
@@ -359,7 +357,11 @@ function PlayerKillSettingsPanel({
   isSaving: boolean;
   onChange: (settings: PlayerKillConfig) => void;
 }) {
-  const modes: Array<{ value: PlayerKillConfig['killResolutionMode']; label: string; description: string }> = [
+  const modes: Array<{
+    value: PlayerKillConfig['killResolutionMode'];
+    label: string;
+    description: string;
+  }> = [
     {
       value: 'all_weapons_vs_all_armor',
       label: '무기 모두 vs 방어구 모두',
@@ -418,9 +420,7 @@ function PlayerKillSettingsPanel({
           aria-label="살해시 마이크 끔"
           checked={settings.muteOnKilled}
           disabled={isSaving}
-          onChange={(event) =>
-            onChange({ ...settings, muteOnKilled: event.currentTarget.checked })
-          }
+          onChange={(event) => onChange({ ...settings, muteOnKilled: event.currentTarget.checked })}
           className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500"
         />
         <span>

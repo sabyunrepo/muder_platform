@@ -7,6 +7,7 @@ import {
 } from '@/features/editor/api';
 import type { MediaResponse } from '@/features/editor/mediaApi';
 import { isApiHttpError } from '@/lib/api-error';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 type EditableRoleSheetFormat = 'markdown' | 'pdf' | 'images';
 type ResolvedRoleSheetFormat = EditableRoleSheetFormat | null;
@@ -23,21 +24,29 @@ interface UseRoleSheetEditorStateParams {
   characterName: string;
 }
 
-export function useRoleSheetEditorState({
-  characterId,
-}: UseRoleSheetEditorStateParams) {
+export function useRoleSheetEditorState({ characterId }: UseRoleSheetEditorStateParams) {
   const roleSheetQuery = useCharacterRoleSheet(characterId);
   const upsertContent = useUpsertCharacterRoleSheet(characterId);
   const [selectedFormat, setSelectedFormat] = useState<EditableRoleSheetFormat>('markdown');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [page, setPage] = useState(1);
 
-  const sync = useRoleSheetSync({ roleSheet: roleSheetQuery.data, roleSheetError: roleSheetQuery.error });
+  const sync = useRoleSheetSync({
+    roleSheet: roleSheetQuery.data,
+    roleSheetError: roleSheetQuery.error,
+  });
   const [draft, setDraft] = useState(sync.originalBody);
   const [imagePages, setImagePages] = useState<ImageRoleSheetPageDraft[]>([]);
   const [imageDraft, setImageDraft] = useState('');
-  const imageUrls = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'url' ? [imagePage.url] : []), [imagePages]);
-  const imageMediaIds = useMemo(() => imagePages.flatMap((imagePage) => imagePage.kind === 'media' ? [imagePage.mediaId] : []), [imagePages]);
+  const imageUrls = useMemo(
+    () => imagePages.flatMap((imagePage) => (imagePage.kind === 'url' ? [imagePage.url] : [])),
+    [imagePages]
+  );
+  const imageMediaIds = useMemo(
+    () =>
+      imagePages.flatMap((imagePage) => (imagePage.kind === 'media' ? [imagePage.mediaId] : [])),
+    [imagePages]
+  );
   const [pdfMediaId, setPdfMediaId] = useState<string | undefined>(sync.pdfMediaId);
 
   useEffect(() => {
@@ -120,7 +129,10 @@ export function useRoleSheetEditorState({
     },
     addImageMediaPage: (mediaId: string) => {
       setImagePages((current) => {
-        if (current.some((imagePage) => imagePage.kind === 'media' && imagePage.mediaId === mediaId)) return current;
+        if (
+          current.some((imagePage) => imagePage.kind === 'media' && imagePage.mediaId === mediaId)
+        )
+          return current;
         setPage(current.length + 1);
         return [...current, { kind: 'media', mediaId }];
       });
@@ -172,13 +184,18 @@ function useRoleSheetSync({
   roleSheetError: unknown;
 }) {
   const isMissingDocument = isApiHttpError(roleSheetError) && roleSheetError.status === 404;
-  const isUnsupportedFormat = Boolean(roleSheet?.format && !resolveEditableFormat(roleSheet.format));
+  const isUnsupportedFormat = Boolean(
+    roleSheet?.format && !resolveEditableFormat(roleSheet.format)
+  );
   const originalBody = isMissingDocument ? '' : (roleSheet?.markdown?.body ?? '');
   const pdfMediaId = roleSheet?.format === 'pdf' ? roleSheet.pdf?.media_id : undefined;
   const imagePages = useMemo<ImageRoleSheetPageDraft[]>(() => {
     if (roleSheet?.format !== 'images') return [];
     return [
-      ...(roleSheet.images?.image_media_ids ?? []).map((mediaId) => ({ kind: 'media' as const, mediaId })),
+      ...(roleSheet.images?.image_media_ids ?? []).map((mediaId) => ({
+        kind: 'media' as const,
+        mediaId,
+      })),
       ...(roleSheet.images?.image_urls ?? []).map((url) => ({ kind: 'url' as const, url })),
     ];
   }, [roleSheet?.format, roleSheet?.images?.image_media_ids, roleSheet?.images?.image_urls]);
@@ -216,11 +233,11 @@ function useRoleSheetMarkdownSaver({
           setSaveStatus('saved');
           toast.success('역할지가 저장되었습니다');
         },
-        onError: () => {
+        onError: (error) => {
           setSaveStatus('failed');
-          toast.error('역할지 저장에 실패했습니다');
+          showUnknownErrorToast(error, '역할지 저장에 실패했습니다');
         },
-      },
+      }
     );
   };
 }
@@ -240,8 +257,12 @@ function useRoleSheetImagesSaver({
 }) {
   return () => {
     if (upsertContent.isPending) return;
-    const imageUrls = imagePages.flatMap((imagePage) => imagePage.kind === 'url' ? [imagePage.url] : []);
-    const imageMediaIds = imagePages.flatMap((imagePage) => imagePage.kind === 'media' ? [imagePage.mediaId] : []);
+    const imageUrls = imagePages.flatMap((imagePage) =>
+      imagePage.kind === 'url' ? [imagePage.url] : []
+    );
+    const imageMediaIds = imagePages.flatMap((imagePage) =>
+      imagePage.kind === 'media' ? [imagePage.mediaId] : []
+    );
     if (imageUrls.length === 0 && imageMediaIds.length === 0) {
       setSaveStatus('failed');
       toast.error('이미지 페이지를 1개 이상 추가해 주세요');
@@ -257,11 +278,11 @@ function useRoleSheetImagesSaver({
           setSaveStatus('saved');
           toast.success('이미지 롤지가 저장되었습니다');
         },
-        onError: () => {
+        onError: (error) => {
           setSaveStatus('failed');
-          toast.error('이미지 롤지 저장에 실패했습니다');
+          showUnknownErrorToast(error, '이미지 롤지 저장에 실패했습니다');
         },
-      },
+      }
     );
   };
 }
@@ -302,10 +323,10 @@ function useRoleSheetPdfMediaSaver({
           setPdfMediaId(media.id);
           toast.success('PDF 역할지가 연결되었습니다');
         },
-        onError: () => {
-          toast.error('PDF 역할지 연결에 실패했습니다');
+        onError: (error) => {
+          showUnknownErrorToast(error, 'PDF 역할지 연결에 실패했습니다');
         },
-      },
+      }
     );
   };
 }

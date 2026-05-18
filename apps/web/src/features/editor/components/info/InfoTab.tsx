@@ -17,6 +17,7 @@ import { InfoMarkdownEditor } from './InfoMarkdownEditor';
 import { useAutosavedDraft } from '@/features/editor/hooks/useAutosavedDraft';
 import { hasDisplayableRichContent } from '@/features/editor/components/content/richContentDisplay';
 import { editorDesignClassNames } from '@/features/editor/design-system/editorDesignTokens';
+import { getDisplayErrorMessage } from '@/lib/display-error';
 
 interface InfoTabProps {
   themeId: string;
@@ -74,9 +75,13 @@ export function InfoTab({ themeId }: InfoTabProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={`flex items-center justify-between px-4 py-3 ${editorDesignClassNames.topBar}`}>
+      <div
+        className={`flex items-center justify-between px-4 py-3 ${editorDesignClassNames.topBar}`}
+      >
         <div>
-          <h2 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">정보 관리</h2>
+          <h2 className="text-sm font-semibold text-[var(--mmp-editor-color-charcoal)]">
+            정보 관리
+          </h2>
           <p className="mt-1 text-xs text-[var(--mmp-editor-color-slate)]">
             장면에서 공개할 정보를 대사와 분리해 카드로 관리합니다.
           </p>
@@ -148,7 +153,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
   const toInfoDraft = useCallback((value: StoryInfoResponse) => toEditableInfo(value), []);
   const isSameInfoDraft = useCallback(
     (left: StoryInfoResponse, right: StoryInfoResponse) => !hasEditableChanges(left, right),
-    [],
+    []
   );
   const saveInfo = useCallback(
     (body: StoryInfoResponse) =>
@@ -165,7 +170,7 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
           version: body.version,
         },
       }),
-    [info.id, updateInfo],
+    [info.id, updateInfo]
   );
   const buildInfoSaveBody = useCallback((current: StoryInfoResponse) => current, []);
   const mergeSavedInfoDraft = useCallback(
@@ -181,13 +186,13 @@ function InfoEditor({ themeId, info }: { themeId: string; info: StoryInfoRespons
       hasEditableChanges(currentDraft, submittedDraft)
         ? { ...currentDraft, version: savedDraft.version }
         : savedDraft,
-    [],
+    []
   );
-  const {
-    draft,
-    setDraft,
-    baseline,
-  } = useAutosavedDraft<StoryInfoResponse, StoryInfoResponse, StoryInfoResponse>({
+  const { draft, setDraft, baseline } = useAutosavedDraft<
+    StoryInfoResponse,
+    StoryInfoResponse,
+    StoryInfoResponse
+  >({
     serverValue: info,
     serverKey: info.id,
     debounceMs: 1000,
@@ -341,5 +346,5 @@ function hasEditableChanges(current: StoryInfoResponse, baseline: StoryInfoRespo
 }
 
 function errorMessage(err: unknown, fallback: string) {
-  return err instanceof Error && err.message ? err.message : fallback;
+  return getDisplayErrorMessage(err, fallback);
 }

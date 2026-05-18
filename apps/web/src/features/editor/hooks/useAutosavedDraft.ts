@@ -6,10 +6,11 @@ import {
   useState,
   type Dispatch,
   type SetStateAction,
-} from "react";
-import { toast } from "sonner";
+} from 'react';
+import { toast } from 'sonner';
 
-import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
+import { useDebouncedMutation } from '@/hooks/useDebouncedMutation';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 const toastWithLoading = toast as typeof toast & {
   loading?: (message: string, options?: Record<string, unknown>) => void;
@@ -65,6 +66,18 @@ function defaultMergeSavedDraft<TDraft>({
   return isEqual(currentDraft, submittedDraft) ? savedDraft : currentDraft;
 }
 
+function showAutosaveFailureToast<TSaveBody, TDraft>(
+  error: unknown,
+  messages: AutosavedDraftToastMessages,
+  payload: { body: TSaveBody; submittedDraft: TDraft },
+  retry: (payload: { body: TSaveBody; submittedDraft: TDraft }) => void
+): void {
+  showUnknownErrorToast(error, messages.error, {
+    id: messages.toastId,
+    action: { label: '재시도', onClick: () => retry(payload) },
+  });
+}
+
 export function useAutosavedDraft<TServer, TDraft, TSaveBody>({
   serverValue,
   serverKey,
@@ -95,9 +108,7 @@ export function useAutosavedDraft<TServer, TDraft, TSaveBody>({
   const setDraft = useCallback<Dispatch<SetStateAction<TDraft>>>((next) => {
     setDraftState((current) => {
       const resolved =
-        typeof next === "function"
-          ? (next as (current: TDraft) => TDraft)(current)
-          : next;
+        typeof next === 'function' ? (next as (current: TDraft) => TDraft)(current) : next;
       draftRef.current = resolved;
       return resolved;
     });
@@ -136,7 +147,7 @@ export function useAutosavedDraft<TServer, TDraft, TSaveBody>({
       });
       onSaved?.(saved);
     },
-    [isEqual, mergeSavedDraft, onSaved, setDraft, toDraft],
+    [isEqual, mergeSavedDraft, onSaved, setDraft, toDraft]
   );
 
   const retrySave = useCallback(
@@ -155,14 +166,10 @@ export function useAutosavedDraft<TServer, TDraft, TSaveBody>({
         })
         .catch((error) => {
           onError?.(error);
-          toast.error(messages.error, {
-            id: messages.toastId,
-            duration: 6000,
-            action: { label: "재시도", onClick: () => retrySave(payload) },
-          });
+          showAutosaveFailureToast(error, messages, payload, retrySave);
         });
     },
-    [acceptSavedValue, messages, onError, save],
+    [acceptSavedValue, messages, onError, save]
   );
 
   const { schedule, flush, cancel } = useDebouncedMutation<{
@@ -189,11 +196,7 @@ export function useAutosavedDraft<TServer, TDraft, TSaveBody>({
     onFailure: (error, payload) => {
       onError?.(error);
       if (!messages) return;
-      toast.error(messages.error, {
-        id: messages.toastId,
-        duration: 6000,
-        action: { label: "재시도", onClick: () => retrySave(payload) },
-      });
+      showAutosaveFailureToast(error, messages, payload, retrySave);
     },
   });
 

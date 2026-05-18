@@ -22,6 +22,7 @@ import { LocationHierarchyList } from './LocationHierarchyList';
 import { LocationImageMediaField } from './LocationImageMediaField';
 import { LocationStructurePanel } from './LocationStructurePanel';
 import { useEditorAutosaveToast } from '@/features/editor/hooks/useEditorAutosaveToast';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 interface LocationDetailPanelProps {
   themeId: string;
@@ -62,8 +63,7 @@ export function LocationDetailPanel({
   onSelectLocation,
   onDeleteLocation,
 }: LocationDetailPanelProps) {
-  const [pendingDeleteLocation, setPendingDeleteLocation] =
-    useState<LocationResponse | null>(null);
+  const [pendingDeleteLocation, setPendingDeleteLocation] = useState<LocationResponse | null>(null);
   const updateLocation = useUpdateLocation(themeId);
 
   if (!selectedMap) return <LocationEmptyState message="좌측에서 맵을 선택하세요" />;
@@ -106,7 +106,7 @@ export function LocationDetailPanel({
       },
       {
         onSuccess: () => toast.success('장소 위치가 저장되었습니다'),
-        onError: () => toast.error('장소 위치 저장에 실패했습니다'),
+        onError: (error) => showUnknownErrorToast(error, '장소 위치 저장에 실패했습니다'),
       }
     );
   }
@@ -259,17 +259,16 @@ function SelectedLocationDetail({
         onError: (error) => {
           options.onError?.(error);
           if (!options.suppressErrorToast) {
-            toast.error(options.onErrorMessage ?? '장소 저장에 실패했습니다');
+            showUnknownErrorToast(error, options.onErrorMessage ?? '장소 저장에 실패했습니다');
           }
         },
       }
     );
   }
 
-  const {
-    schedule: scheduleBasicInfoSave,
-    cancel: cancelBasicInfoSave,
-  } = useEditorAutosaveToast<Partial<LocationResponse>>({
+  const { schedule: scheduleBasicInfoSave, cancel: cancelBasicInfoSave } = useEditorAutosaveToast<
+    Partial<LocationResponse>
+  >({
     debounceMs: 1000,
     messages: {
       toastId: `location-basic-autosave-${location.id}`,
@@ -355,7 +354,7 @@ function SelectedLocationDetail({
     );
     updateConfig.mutate(nextConfig, {
       onSuccess: () => toast.success('장소 단서 순서가 저장되었습니다'),
-      onError: () => toast.error('장소 단서 순서 저장에 실패했습니다'),
+      onError: (error) => showUnknownErrorToast(error, '장소 단서 순서 저장에 실패했습니다'),
     });
   }
 
@@ -368,9 +367,7 @@ function SelectedLocationDetail({
               장소 상세
             </p>
             <h3 className="mt-1 text-xl font-semibold text-slate-100">{viewModel.name}</h3>
-            <p className="mt-1 text-xs text-slate-500">
-              소속 맵: {map.name}
-            </p>
+            <p className="mt-1 text-xs text-slate-500">소속 맵: {map.name}</p>
             <p className="mt-1 text-xs text-slate-400">{viewModel.roundLabel}</p>
           </div>
           <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-3 py-2 text-xs text-slate-400">
@@ -595,8 +592,12 @@ function LocationInvestigationStructurePanel({
 
   function moveDiscovery(sourceClueId: string, targetClueId: string) {
     if (sourceClueId === targetClueId || isSaving) return;
-    const sourceIndex = sortedDiscoveries.findIndex((discovery) => discovery.clueId === sourceClueId);
-    const targetIndex = sortedDiscoveries.findIndex((discovery) => discovery.clueId === targetClueId);
+    const sourceIndex = sortedDiscoveries.findIndex(
+      (discovery) => discovery.clueId === sourceClueId
+    );
+    const targetIndex = sortedDiscoveries.findIndex(
+      (discovery) => discovery.clueId === targetClueId
+    );
     if (sourceIndex < 0 || targetIndex < 0) return;
     const next = [...sortedDiscoveries];
     const [moved] = next.splice(sourceIndex, 1);
@@ -677,8 +678,8 @@ function LocationInvestigationStructurePanel({
         </ol>
       ) : (
         <p className="rounded-md border border-dashed border-slate-800 px-3 py-4 text-xs leading-5 text-slate-500">
-          아직 배치된 단서가 없습니다. 아래 단서 배치에서 단서를 추가하면 이 장소에서
-          획득할 수 있습니다.
+          아직 배치된 단서가 없습니다. 아래 단서 배치에서 단서를 추가하면 이 장소에서 획득할 수
+          있습니다.
         </p>
       )}
     </section>

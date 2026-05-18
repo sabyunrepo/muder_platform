@@ -10,6 +10,7 @@ import {
 } from '@/features/editor/entities/location/locationEntityAdapter';
 import { useEditorCharacters, useUpdateLocation } from '@/features/editor/api';
 import { getDisplayErrorMessage } from '@/lib/display-error';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 interface LocationAccessPolicyPanelProps {
   themeId: string;
@@ -41,7 +42,7 @@ export function LocationAccessPolicyPanel({ themeId, location }: LocationAccessP
           hide_scene_id: location.hide_scene_id ?? null,
         },
       },
-      { onError: () => toast.error('접근 제한 저장에 실패했습니다') }
+      { onError: (error) => showUnknownErrorToast(error, '접근 제한 저장에 실패했습니다') }
     );
   }
 

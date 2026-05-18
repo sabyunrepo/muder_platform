@@ -69,7 +69,12 @@ vi.mock('@mdxeditor/editor', () => ({
       onChange: (markdown: string) => void;
       plugins?: Array<{
         markdownShortcuts?: boolean;
-        jsxComponentDescriptors?: Array<{ name: string; Editor: ComponentType<{ mdastNode: { attributes: Array<{ name: string; value: string }> } }> }>;
+        jsxComponentDescriptors?: Array<{
+          name: string;
+          Editor: ComponentType<{
+            mdastNode: { attributes: Array<{ name: string; value: string }> };
+          }>;
+        }>;
       }>;
     }
   >(({ markdown, onChange, plugins = [] }, ref) => {
@@ -289,10 +294,34 @@ beforeEach(() => {
   });
   useMediaListMock.mockReturnValue({
     data: [
-      { id: 'image-1', name: '기존 이미지', type: 'IMAGE', source_type: 'FILE', url: 'http://localhost:8080/media/image-1.png' },
-      { id: 'image-2', name: '새 이미지', type: 'IMAGE', source_type: 'FILE', url: 'http://localhost:8080/media/image-2.png' },
-      { id: 'video-1', name: 'CCTV', type: 'VIDEO', source_type: 'FILE', url: 'http://localhost:8080/media/video-1.mp4' },
-      { id: 'video-2', name: 'CCTV 후속', type: 'VIDEO', source_type: 'FILE', url: 'http://localhost:8080/media/video-2.mp4' },
+      {
+        id: 'image-1',
+        name: '기존 이미지',
+        type: 'IMAGE',
+        source_type: 'FILE',
+        url: 'http://localhost:8080/media/image-1.png',
+      },
+      {
+        id: 'image-2',
+        name: '새 이미지',
+        type: 'IMAGE',
+        source_type: 'FILE',
+        url: 'http://localhost:8080/media/image-2.png',
+      },
+      {
+        id: 'video-1',
+        name: 'CCTV',
+        type: 'VIDEO',
+        source_type: 'FILE',
+        url: 'http://localhost:8080/media/video-1.mp4',
+      },
+      {
+        id: 'video-2',
+        name: 'CCTV 후속',
+        type: 'VIDEO',
+        source_type: 'FILE',
+        url: 'http://localhost:8080/media/video-2.mp4',
+      },
     ],
   });
   useMediaDownloadUrlMock.mockReturnValue({ data: undefined, isLoading: false, isError: false });
@@ -316,7 +345,7 @@ describe('InfoTab', () => {
     expect(screen.getByRole('heading', { name: '피해자의 비밀' })).toBeDefined();
     expect(screen.getByRole('region', { name: '정보 본문 보기' })).toHaveProperty(
       'textContent',
-      expect.stringContaining('처음 공개되는 정보'),
+      expect.stringContaining('처음 공개되는 정보')
     );
     expect(screen.queryByLabelText('정보 제목')).toBeNull();
     expect(screen.queryByRole('region', { name: '정보 본문 작성기' })).toBeNull();
@@ -329,10 +358,10 @@ describe('InfoTab', () => {
     expect(screen.queryByRole('region', { name: '정보 카드 프리뷰' })).toBeNull();
     expect(screen.getByRole('region', { name: '정보 배포 설정' })).toHaveProperty(
       'textContent',
-      expect.stringContaining('오프닝'),
+      expect.stringContaining('오프닝')
     );
     expect(screen.getByRole('region', { name: '정보 배포 설정' }).className).toContain(
-      'mmp-editor-panel',
+      'mmp-editor-panel'
     );
     expect(screen.getByText('현재 전체 캐릭터에게 공개됩니다.')).toBeDefined();
   });
@@ -380,9 +409,11 @@ describe('InfoTab', () => {
     const preview = screen.getByRole('region', { name: '정보 본문 보기' });
     expect(within(preview).getByRole('img', { name: '증거 사진' })).toHaveProperty(
       'src',
-      'http://localhost:8080/media/evidence.png',
+      'http://localhost:8080/media/evidence.png'
     );
-    expect(within(preview).getByTestId('media-embed-display').querySelector('figcaption')).toBeNull();
+    expect(
+      within(preview).getByTestId('media-embed-display').querySelector('figcaption')
+    ).toBeNull();
     expect(within(preview).queryByText('증거 사진')).toBeNull();
     expect(within(preview).queryByText('이미지 블록')).toBeNull();
   });
@@ -454,7 +485,10 @@ describe('InfoTab', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /정보 추가/ }));
 
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', '서버 오류');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      '정보 생성에 실패했습니다'
+    );
   });
 
   it('saves title/body without exposing image or reference fields', async () => {
@@ -523,8 +557,14 @@ describe('InfoTab', () => {
         },
       },
     });
-    expect(toastLoadingMock).toHaveBeenCalledWith('정보 배포 설정 저장 중...', expect.objectContaining({ id: 'info-delivery-autosave' }));
-    expect(toastSuccessMock).toHaveBeenCalledWith('정보 배포 설정이 자동저장되었습니다', expect.objectContaining({ id: 'info-delivery-autosave' }));
+    expect(toastLoadingMock).toHaveBeenCalledWith(
+      '정보 배포 설정 저장 중...',
+      expect.objectContaining({ id: 'info-delivery-autosave' })
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith(
+      '정보 배포 설정이 자동저장되었습니다',
+      expect.objectContaining({ id: 'info-delivery-autosave' })
+    );
     expect(within(deliverySettings).queryByRole('button', { name: /배포 적용/ })).toBeNull();
   });
 
@@ -553,7 +593,7 @@ describe('InfoTab', () => {
       expect.objectContaining({
         id: 'info-delivery-autosave',
         action: expect.objectContaining({ label: '재시도' }),
-      }),
+      })
     );
     const [, errorOptions] = toastErrorMock.mock.calls[0];
     errorOptions.action.onClick();
@@ -582,7 +622,7 @@ describe('InfoTab', () => {
 
     expect(screen.getByRole('alert')).toHaveProperty(
       'textContent',
-      expect.stringContaining('failed to update story info'),
+      expect.stringContaining('저장에 실패했습니다')
     );
 
     act(() => {
@@ -640,7 +680,9 @@ describe('InfoTab', () => {
 
     expect(getInfoBodyEditor()).toHaveProperty(
       'value',
-      expect.stringContaining('<MediaEmbed mediaId="video-1" type="video" align="center" width="medium" />')
+      expect.stringContaining(
+        '<MediaEmbed mediaId="video-1" type="video" align="center" width="medium" />'
+      )
     );
     const editorSurface = screen.getByTestId('mdx-editor-surface');
     const embedEditor = within(editorSurface).getByTestId('media-embed-editor');
@@ -653,7 +695,9 @@ describe('InfoTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'CCTV 후속 선택' }));
     expect(getInfoBodyEditor()).toHaveProperty(
       'value',
-      expect.stringContaining('<MediaEmbed mediaId="video-2" type="video" align="center" width="medium" />')
+      expect.stringContaining(
+        '<MediaEmbed mediaId="video-2" type="video" align="center" width="medium" />'
+      )
     );
     expect(within(editorSurface).getByLabelText('CCTV 후속 영상')).toBeDefined();
     expect(within(editorSurface).getByRole('button', { name: 'CCTV 후속 교체' })).toBeDefined();
@@ -663,7 +707,9 @@ describe('InfoTab', () => {
     expect(updateMutate).toHaveBeenCalledWith({
       id: 'info-1',
       patch: expect.objectContaining({
-        body: expect.stringContaining('<MediaEmbed mediaId="video-2" type="video" align="center" width="medium" />'),
+        body: expect.stringContaining(
+          '<MediaEmbed mediaId="video-2" type="video" align="center" width="medium" />'
+        ),
       }),
     });
   });

@@ -1,10 +1,11 @@
-import { useCallback, useRef } from "react";
-import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import type { EditorThemeResponse } from "@/features/editor/api";
-import { editorKeys, useUpdateConfigJson } from "@/features/editor/api";
-import { useDebouncedMutation } from "@/hooks/useDebouncedMutation";
-import { normalizeConfigForSave } from "@/features/editor/utils/configShape";
+import { useCallback, useRef } from 'react';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import type { EditorThemeResponse } from '@/features/editor/api';
+import { editorKeys, useUpdateConfigJson } from '@/features/editor/api';
+import { useDebouncedMutation } from '@/hooks/useDebouncedMutation';
+import { normalizeConfigForSave } from '@/features/editor/utils/configShape';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 
 /** Debounce window for config saves (W2 PR-5: 500→1500ms). */
 const SAVE_DEBOUNCE_MS = 1500;
@@ -33,7 +34,7 @@ export interface UseCharacterConfigDebounceReturn {
  */
 export function useCharacterConfigDebounce(
   themeId: string,
-  themeConfigJson: Record<string, unknown> | undefined,
+  themeConfigJson: Record<string, unknown> | undefined
 ): UseCharacterConfigDebounceReturn {
   const updateConfig = useUpdateConfigJson(themeId);
   const queryClient = useQueryClient();
@@ -50,7 +51,7 @@ export function useCharacterConfigDebounce(
     mutate: (body, opts) =>
       updateConfig.mutate(body, {
         onSuccess: () => {
-          toast.success("저장되었습니다");
+          toast.success('저장되었습니다');
           pendingSnapshotRef.current = undefined;
         },
         onError: (err) => {
@@ -64,7 +65,7 @@ export function useCharacterConfigDebounce(
       const cacheKey = editorKeys.theme(themeId);
       return () => queryClient.setQueryData(cacheKey, previous);
     },
-    onError: () => toast.error("저장에 실패했습니다"),
+    onError: (error) => showUnknownErrorToast(error, '저장에 실패했습니다'),
   });
 
   const saveConfig = useCallback(
@@ -72,8 +73,7 @@ export function useCharacterConfigDebounce(
       const cacheKey = editorKeys.theme(themeId);
 
       if (!pendingSnapshotRef.current) {
-        pendingSnapshotRef.current =
-          queryClient.getQueryData<EditorThemeResponse>(cacheKey);
+        pendingSnapshotRef.current = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
       }
 
       const cacheNow = queryClient.getQueryData<EditorThemeResponse>(cacheKey);
@@ -88,8 +88,7 @@ export function useCharacterConfigDebounce(
       // theme.config_json. Prevents loss of earlier edits made within the
       // same debounce window on different keys.
       debouncer.schedule(updates, (prev) => {
-        const cached =
-          queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json;
+        const cached = queryClient.getQueryData<EditorThemeResponse>(cacheKey)?.config_json;
         const basis = prev ?? cached ?? themeConfigJson ?? {};
         return normalizeConfigForSave({ ...basis, ...updates });
       });
@@ -97,7 +96,7 @@ export function useCharacterConfigDebounce(
     // `themeConfigJson` is deliberately in deps as the *last-resort* merge
     // basis — even though pending/cached fallbacks usually win, capturing the
     // latest prop identity keeps the rare cold-start path correct.
-    [debouncer, queryClient, themeConfigJson, themeId],
+    [debouncer, queryClient, themeConfigJson, themeId]
   );
 
   return { saveConfig, flush: debouncer.flush };

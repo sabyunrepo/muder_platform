@@ -14,6 +14,7 @@ import {
 } from '@/features/editor/api';
 import { useFlowGraph } from '@/features/editor/flowApi';
 import { buildProgressNodeRevealOptions } from '@/features/editor/entities/reveal/revealTimingOptions';
+import { showUnknownErrorToast } from '@/lib/show-error-toast';
 import { AddNameInput } from './AddNameInput';
 import { LocationDetailPanel } from './LocationDetailPanel';
 
@@ -73,7 +74,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           setSelectedMapId(newMap.id);
           setSelectedLocationId(null);
         },
-        onError: () => toast.error('맵 추가에 실패했습니다'),
+        onError: (error) => showUnknownErrorToast(error, '맵 추가에 실패했습니다'),
       }
     );
   }
@@ -87,7 +88,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           setSelectedLocationId(null);
         }
       },
-      onError: () => toast.error('맵 삭제에 실패했습니다'),
+      onError: (error) => showUnknownErrorToast(error, '맵 삭제에 실패했습니다'),
     });
   }
 
@@ -101,7 +102,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
           setAddingLocationParentId(null);
           setSelectedLocationId(newLocation.id);
         },
-        onError: () => toast.error('장소 추가에 실패했습니다'),
+        onError: (error) => showUnknownErrorToast(error, '장소 추가에 실패했습니다'),
       }
     );
   }
@@ -112,7 +113,7 @@ export function LocationsSubTab({ themeId, theme }: LocationsSubTabProps) {
         toast.success('장소가 삭제되었습니다');
         if (selectedLocationId === locationId) setSelectedLocationId(null);
       },
-      onError: () => toast.error('장소 삭제에 실패했습니다'),
+      onError: (error) => showUnknownErrorToast(error, '장소 삭제에 실패했습니다'),
     });
   }
 
