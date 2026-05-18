@@ -224,6 +224,7 @@
   --accentText: var(--mmp-editor-color-primary);
   --accentTextContrast: var(--mmp-editor-color-primary-pressed);
   --baseBorder: var(--mmp-editor-color-hairline);
+
   background: var(--mmp-editor-color-canvas);
   color: var(--mmp-editor-color-charcoal);
 }
