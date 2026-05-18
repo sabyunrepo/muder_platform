@@ -9,6 +9,7 @@ import { api } from '@/services/api';
 import { AppearanceProvider, useAppearance } from '@/shared/appearance';
 import { MainLayout } from '@/shared/components/MainLayout';
 import { NetworkBanner } from '@/shared/components/NetworkBanner';
+import { LoadingState } from '@/shared/components/ui';
 import ProtectedRoute from '@/shared/components/ProtectedRoute';
 import RoleRoute from '@/shared/components/RoleRoute';
 
@@ -62,8 +63,8 @@ const AdminReviewPage = lazy(() => import('@/pages/AdminReviewPage'));
 
 function LoadingFallback() {
   return (
-    <div className="flex h-screen items-center justify-center bg-[var(--mmp-color-canvas)]">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[var(--mmp-color-primary)] border-t-transparent" />
+    <div className="flex h-screen items-center justify-center bg-[var(--mmp-color-canvas)] text-[var(--mmp-color-ink)]">
+      <LoadingState label="화면을 불러오는 중" />
     </div>
   );
 }
@@ -208,6 +209,16 @@ function AppContent() {
       <Toaster
         theme={resolvedTheme}
         position="bottom-right"
+        toastOptions={{
+          classNames: {
+            toast:
+              'border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] text-[var(--mmp-color-ink)] shadow-[var(--mmp-shadow-card)]',
+            title: 'text-[var(--mmp-color-ink)]',
+            description: 'text-[var(--mmp-color-steel)]',
+            actionButton: 'bg-[var(--mmp-color-primary)] text-[var(--mmp-color-on-primary)]',
+            cancelButton: 'bg-[var(--mmp-color-surface-soft)] text-[var(--mmp-color-charcoal)]',
+          },
+        }}
       />
     </QueryClientProvider>
   );
