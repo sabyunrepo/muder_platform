@@ -129,6 +129,24 @@ function mutationStub() {
   };
 }
 
+const originalMatchMedia = window.matchMedia;
+
+function mockMediaQuery(matches: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -161,6 +179,11 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: originalMatchMedia,
+  });
+  document.body.style.overflow = '';
 });
 
 // =========================================================================
@@ -360,6 +383,59 @@ describe('MediaTab', () => {
     expect(screen.queryByText('size: 1234567 B')).toBeNull();
     expect(screen.getByText('아직 연결된 제작 요소가 없습니다.')).toBeDefined();
     expect(screen.getByRole('button', { name: '교체' })).toBeDefined();
+  });
+
+  it('모바일에서는 선택 상세를 하단 시트 dialog로 열고 ESC로 닫는다', async () => {
+    mockMediaQuery(false);
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    const card = screen.getByText('오프닝 BGM').closest("[role='button']") as HTMLElement;
+    card.focus();
+    fireEvent.click(card);
+
+    const dialog = screen.getByRole('dialog', { name: '미디어 상세' });
+    expect(dialog.className).toContain('max-h-[80dvh]');
+    expect(dialog.querySelector('.overflow-y-auto')).toBeDefined();
+    expect(screen.getByDisplayValue('오프닝 BGM')).toBeDefined();
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(document.querySelector('aside')).toBeNull();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: '미디어 상세' })).toBeNull();
+    });
+    await waitFor(() => {
+      expect(document.activeElement).toBe(card);
+    });
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  it('모바일 하단 시트는 backdrop 클릭으로 닫힌다', async () => {
+    mockMediaQuery(false);
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    fireEvent.click(screen.getByText('오프닝 BGM').closest("[role='button']")!);
+    expect(screen.getByRole('dialog', { name: '미디어 상세' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: '미디어 상세 닫기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: '미디어 상세' })).toBeNull();
+    });
+    expect(document.body.style.overflow).toBe('');
   });
 
   it('오디오 미디어는 같은 오디오 묶음 안에서만 분류를 바꿔 저장한다', () => {
