@@ -63,6 +63,7 @@ vi.mock('@/features/editor/flowApi', () => ({
       nodes: [
         { id: 'scene-1', type: 'phase', data: { label: '오프닝', rounds: 2 } },
         { id: 'scene-2', type: 'phase', data: { label: '현장 조사', rounds: 3 } },
+        { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
       ],
     },
   }),
@@ -1045,6 +1046,33 @@ describe('CharacterAssignPanel', () => {
     const [config] = mutateMock.mock.calls[0] as [Record<string, unknown>];
     const cm = config.character_missions as Record<string, unknown[]>;
     expect(cm['char-1']).toHaveLength(1);
+  });
+
+  it('미션 공개 장면 선택지에서는 결말을 제외한다', () => {
+    renderPanel({
+      ...baseTheme,
+      config_json: {
+        modules: [],
+        character_missions: {
+          'char-1': [{
+            id: 'mission-1',
+            type: 'secret',
+            description: '비밀 목표',
+            points: 0,
+            verification: 'auto',
+            visibleFrom: 'node_reached',
+            revealNodeId: 'scene-1',
+          }],
+        },
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
+    openHiddenMissionSection();
+
+    expect(screen.getByLabelText('미션 공개 장면')).toBeDefined();
+    expect(screen.getAllByText('오프닝 (장면)').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('현장 조사 (장면)').length).toBeGreaterThan(0);
+    expect(screen.queryByText('진엔딩 (결말)')).toBeNull();
   });
 
   it('다른 캐릭터 선택 시 pending save가 flush된다', async () => {

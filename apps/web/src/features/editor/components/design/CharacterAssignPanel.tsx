@@ -99,6 +99,7 @@ export function CharacterAssignPanel({
         ...missionList.map((mission) => mission.revealNodeId),
         ...aliasRules.map((rule) => readAliasNodeValue(rule.condition)),
       ],
+      { scope: 'phase' },
     ),
     [flowGraph?.nodes, missionList, aliasRules],
   );

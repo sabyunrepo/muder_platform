@@ -22,7 +22,8 @@ vi.mock('@/features/editor/flowApi', () => ({
   useFlowGraph: () => ({
     data: {
       nodes: [
-        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+        { id: 'scene-1', type: 'phase', data: { label: '조사 장면', phase_type: 'investigation' } },
+        { id: 'scene-2', type: 'phase', data: { label: '토론 장면', phase_type: 'discussion' } },
         { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
       ],
     },
@@ -109,9 +110,11 @@ afterEach(() => {
 
 describe('ClueEntityWorkspace', () => {
   const flowNodes = [
-    { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
-    { id: 'scene-2', type: 'phase', data: { label: '정리 장면' } },
+    { id: 'scene-1', type: 'phase', data: { label: '조사 장면', phase_type: 'investigation' } },
+    { id: 'scene-2', type: 'phase', data: { label: '정리 장면', phase_type: 'discussion' } },
+    { id: 'scene-3', type: 'phase', data: { label: '재수사 장면', phase_type: 'investigation' } },
     { id: 'branch-1', type: 'branch', data: { label: '이전 분기' } },
+    { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
   ] as never;
 
   it('선택한 단서의 인라인 편집 상세와 사용 공개 규칙을 제작자 언어로 보여준다', () => {
@@ -375,14 +378,21 @@ describe('ClueEntityWorkspace', () => {
       />,
     );
 
+    expect(screen.getAllByText('계속 획득 가능').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('조사 장면 (장면)').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('재수사 장면 (장면)').length).toBeGreaterThan(0);
+    expect(screen.queryByText('정리 장면 (장면)')).toBeNull();
+    expect(screen.queryByText('진엔딩 (결말)')).toBeNull();
+    expect(screen.getByText(/이미 플레이어가 가진 단서를/)).toBeDefined();
+
     fireEvent.change(screen.getByLabelText('이름'), {
       target: { value: '피 묻은 열쇠 조각' },
     });
     fireEvent.change(screen.getByLabelText('공개 시점'), {
       target: { value: 'scene-1' },
     });
-    fireEvent.change(screen.getByLabelText('숨김 시점'), {
-      target: { value: 'scene-2' },
+    fireEvent.change(screen.getByLabelText('획득 가능 종료'), {
+      target: { value: 'scene-3' },
     });
     fireEvent.click(screen.getByLabelText(/단서 보호/));
 
@@ -403,7 +413,7 @@ describe('ClueEntityWorkspace', () => {
         reveal_round: null,
         hide_round: null,
         reveal_scene_id: 'scene-1',
-        hide_scene_id: 'scene-2',
+        hide_scene_id: 'scene-3',
       }),
       expect.any(Object),
     );

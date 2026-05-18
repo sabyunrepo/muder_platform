@@ -219,7 +219,7 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
   const selectedRevealSceneLabel =
     sceneOptions.find((option) => option.value === draft.revealSceneId)?.label ?? '처음부터';
   const selectedHideSceneLabel =
-    sceneOptions.find((option) => option.value === draft.hideSceneId)?.label ?? '끝까지';
+    sceneOptions.find((option) => option.value === draft.hideSceneId)?.label ?? '계속 획득 가능';
   const investigationCostKey = JSON.stringify(investigationSettings?.cost ?? null);
 
   useEffect(() => {
@@ -388,14 +388,18 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
             onChange={(sceneId) => patch({ revealSceneId: sceneId })}
           />
           <SceneSelectField
-            label="숨김 시점"
+            label="획득 가능 종료"
             selectedId={draft.hideSceneId}
             options={sceneOptions}
-            emptyLabel="끝까지"
+            emptyLabel="계속 획득 가능"
             disabled={saving}
             onChange={(sceneId) => patch({ hideSceneId: sceneId })}
           />
         </div>
+        <p className="-mt-2 text-xs leading-5 text-slate-500">
+          획득 가능 종료는 새로 얻을 수 있는 기간의 끝을 표시합니다. 이미 플레이어가 가진
+          단서를 단서함에서 회수하지는 않습니다.
+        </p>
 
         <div className="grid gap-3 md:grid-cols-2">
           <label className={`flex items-start gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm ${draft.isCommon ? 'text-slate-500' : 'text-slate-300'}`}>
@@ -479,7 +483,7 @@ export const ClueBasicInfoCard = forwardRef<ClueBasicInfoCardHandle, ClueBasicIn
       <div className="mt-5 grid gap-3 md:grid-cols-4">
         <InfoBlock title="공개 범위" value={view.publicScopeLabel} />
         <InfoBlock title="공개 시점" value={selectedRevealSceneLabel} />
-        <InfoBlock title="숨김 시점" value={selectedHideSceneLabel} />
+        <InfoBlock title="획득 가능 종료" value={selectedHideSceneLabel} />
         <InfoBlock title="사용 후 처리" value={formatClueConsumeLabel(clue, runtimeEffect)} />
       </div>
     </article>

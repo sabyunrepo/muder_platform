@@ -68,7 +68,8 @@ vi.mock('@/features/editor/flowApi', () => ({
   useFlowGraph: () => ({
     data: {
       nodes: [
-        { id: 'scene-1', type: 'phase', data: { label: '조사 장면' } },
+        { id: 'scene-1', type: 'phase', data: { label: '조사 장면', phase_type: 'investigation' } },
+        { id: 'scene-2', type: 'phase', data: { label: '토론 장면', phase_type: 'discussion' } },
         { id: 'ending-1', type: 'ending', data: { label: '진엔딩' } },
       ],
     },

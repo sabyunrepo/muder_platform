@@ -146,8 +146,13 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByLabel('단서 목록')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByLabel('단서 상세 영역')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('첫 단서').first()).toBeVisible();
-    await expect(page.getByText('정보 공개하기')).toBeVisible();
-    await expect(page.getByText('사용하면 내 단서함에서 사라짐')).toBeVisible();
+    await expect(page.getByText('단서 사용 설정')).toBeVisible();
+    await expect(page.getByLabel('획득 가능 종료')).toBeVisible();
+    await expect(page.getByText(/이미 플레이어가 가진 단서를/)).toBeVisible();
+    await expect(page.getByLabel('획득 가능 종료').locator('option')).toHaveText([
+      '계속 획득 가능',
+      '조사 단계 (장면)',
+    ]);
     await expect(page.getByText('이 단서가 쓰이는 곳')).toBeVisible();
   });
 
@@ -251,6 +256,10 @@ test.describe('Phase 18.4 에디터 골든패스 (mocked — UI interaction)', (
     await expect(page.getByLabel('장소 목록')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByLabel('거실 단서 조사')).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText('저택 1층').first()).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByLabel('거실 출현 장면').locator('option')).toHaveText([
+      '처음부터 공개',
+      '조사 단계 (장면)',
+    ]);
 
     await page.goto(`${BASE}/editor/${THEME_ID}/endings`);
     await expect(page.getByRole('tab', { name: /게임 설계|게임설계/, selected: true })).toBeVisible({
