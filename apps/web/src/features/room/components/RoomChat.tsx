@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send } from "lucide-react";
-import { Button, Input } from "@/shared/components/ui";
+import { Button, Input, Panel } from "@/shared/components/ui";
 import { useWsEvent } from "@/hooks/useWsEvent";
 
 // ---------------------------------------------------------------------------
@@ -64,11 +64,11 @@ export function RoomChat({ send }: RoomChatProps) {
   };
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-800 bg-slate-900">
+    <Panel padding="none" className="flex h-full flex-col overflow-hidden">
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-500">
+          <p className="py-8 text-center text-sm text-[var(--mmp-color-steel)]">
             아직 메시지가 없습니다.
           </p>
         ) : (
@@ -76,17 +76,17 @@ export function RoomChat({ send }: RoomChatProps) {
             {messages.map((msg, i) => (
               <div key={`${msg.sender}-${msg.ts}-${i}`} className="flex flex-col">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold text-amber-400">
+                  <span className="text-xs font-semibold text-[var(--mmp-color-primary)]">
                     {msg.nickname}
                   </span>
-                  <span className="text-[10px] text-slate-600">
+                  <span className="text-[10px] text-[var(--mmp-color-steel)]">
                     {new Date(msg.ts).toLocaleTimeString("ko-KR", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </span>
                 </div>
-                <p className="text-sm text-slate-200">{msg.text}</p>
+                <p className="text-sm text-[var(--mmp-color-charcoal)]">{msg.text}</p>
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -95,7 +95,7 @@ export function RoomChat({ send }: RoomChatProps) {
       </div>
 
       {/* 입력 폼 */}
-      <div className="flex items-center gap-2 border-t border-slate-800 p-3">
+      <div className="flex items-center gap-2 border-t border-[var(--mmp-color-hairline)] p-3">
         <div className="flex-1">
           <Input
             placeholder="메시지를 입력하세요..."
@@ -114,6 +114,6 @@ export function RoomChat({ send }: RoomChatProps) {
           <Send className="h-4 w-4" />
         </Button>
       </div>
-    </div>
+    </Panel>
   );
 }

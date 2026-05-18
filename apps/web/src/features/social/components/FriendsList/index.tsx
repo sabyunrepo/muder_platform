@@ -75,8 +75,8 @@ export function FriendsList() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-        <h2 className="text-lg font-bold text-slate-100">친구</h2>
+      <div className="flex items-center justify-between border-b border-[var(--mmp-color-hairline)] px-6 py-4">
+        <h2 className="text-lg font-bold text-[var(--mmp-color-ink)]">친구</h2>
         <Button
           size="sm"
           leftIcon={<UserPlus className="h-4 w-4" />}

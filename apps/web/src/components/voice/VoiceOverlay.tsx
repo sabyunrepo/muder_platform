@@ -67,8 +67,8 @@ export function VoiceOverlay({
       <div
         className="
           flex flex-col h-full
-          bg-slate-900/60 backdrop-blur-[12px]
-          border-r border-slate-700/40
+          bg-[color-mix(in_oklab,var(--mmp-color-surface)_72%,transparent)] backdrop-blur-[12px]
+          border-r border-[var(--mmp-color-hairline)]
           overflow-hidden
           transition-all duration-150 ease-out
         "
@@ -78,7 +78,7 @@ export function VoiceOverlay({
           <>
             {/* Header */}
             <div className="px-3 pt-3 pb-2 flex items-center justify-between shrink-0">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <span className="text-[11px] font-semibold text-[var(--mmp-color-steel)] uppercase tracking-wider">
                 음성 채팅
               </span>
               <VoiceConnectionState onRetry={onRetry} />
@@ -92,7 +92,7 @@ export function VoiceOverlay({
                 className={`
                   w-7 h-7 rounded-full flex items-center justify-center
                   transition-colors duration-150 ease-out
-                  ${isMuted ? "bg-red-500/30 text-red-400 hover:bg-red-500/50" : "bg-slate-700/60 text-slate-300 hover:bg-slate-700"}
+                  ${isMuted ? "bg-[color-mix(in_oklab,var(--mmp-color-error)_24%,transparent)] text-[var(--mmp-color-error)] hover:bg-[color-mix(in_oklab,var(--mmp-color-error)_34%,transparent)]" : "bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)] hover:bg-[var(--mmp-color-muted)]"}
                 `}
                 aria-label={isMuted ? "마이크 켜기" : "마이크 끄기"}
               >
@@ -104,7 +104,7 @@ export function VoiceOverlay({
                 className={`
                   w-7 h-7 rounded-full flex items-center justify-center
                   transition-colors duration-150 ease-out
-                  ${isSpeakerMuted ? "bg-red-500/30 text-red-400 hover:bg-red-500/50" : "bg-slate-700/60 text-slate-300 hover:bg-slate-700"}
+                  ${isSpeakerMuted ? "bg-[color-mix(in_oklab,var(--mmp-color-error)_24%,transparent)] text-[var(--mmp-color-error)] hover:bg-[color-mix(in_oklab,var(--mmp-color-error)_34%,transparent)]" : "bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)] hover:bg-[var(--mmp-color-muted)]"}
                 `}
                 aria-label={isSpeakerMuted ? "스피커 켜기" : "스피커 끄기"}
               >
@@ -127,7 +127,7 @@ export function VoiceOverlay({
                       className={`
                         flex items-center gap-1.5 w-full px-2 py-1 rounded-md text-left
                         transition-colors duration-150 ease-out
-                        ${isActive ? "border-l-2 border-amber-500 text-amber-400" : "border-l-2 border-transparent text-slate-400 hover:text-slate-300 hover:bg-slate-800/40"}
+                        ${isActive ? "border-l-2 border-[var(--mmp-color-primary)] text-[var(--mmp-color-primary)]" : "border-l-2 border-transparent text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-charcoal)] hover:bg-[var(--mmp-color-surface-soft)]"}
                       `}
                     >
                       {isWhisper && (
@@ -137,7 +137,7 @@ export function VoiceOverlay({
                         {ch.name}
                       </span>
                       {isWhisper && (
-                        <ChevronRight size={10} className="shrink-0 text-slate-500" />
+                        <ChevronRight size={10} className="shrink-0 text-[var(--mmp-color-steel)]" />
                       )}
                     </button>
 
@@ -170,10 +170,10 @@ export function VoiceOverlay({
         onClick={togglePanel}
         className="
           self-center w-5 h-10 flex items-center justify-center
-          bg-slate-900/60 backdrop-blur-[12px]
-          border border-l-0 border-slate-700/40
+          bg-[color-mix(in_oklab,var(--mmp-color-surface)_72%,transparent)] backdrop-blur-[12px]
+          border border-l-0 border-[var(--mmp-color-hairline)]
           rounded-r-md
-          text-slate-400 hover:text-slate-200
+          text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-ink)]
           transition-colors duration-150 ease-out
         "
         aria-label={isPanelOpen ? "패널 닫기" : "패널 열기"}

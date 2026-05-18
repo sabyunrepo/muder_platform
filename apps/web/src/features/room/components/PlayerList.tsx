@@ -33,7 +33,7 @@ function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
       }
     >
       {/* 아바타 */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-700 text-slate-300">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)]">
         {player.avatar_url ? (
           <img
             src={player.avatar_url}
@@ -49,7 +49,7 @@ function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
 
       {/* 닉네임 + 역할 */}
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-sm font-medium text-slate-100">
+        <span className="truncate text-sm font-medium text-[var(--mmp-color-ink)]">
           {player.nickname}
         </span>
         {player.is_host && (
@@ -62,9 +62,9 @@ function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
 
       {/* 레디 상태 */}
       {player.is_host ? null : player.is_ready ? (
-        <CheckCircle className="h-5 w-5 shrink-0 text-emerald-400" />
+        <CheckCircle className="h-5 w-5 shrink-0 text-[var(--mmp-color-success)]" />
       ) : (
-        <Circle className="h-5 w-5 shrink-0 text-slate-600" />
+        <Circle className="h-5 w-5 shrink-0 text-[var(--mmp-color-muted)]" />
       )}
     </Card>
   );
@@ -76,11 +76,11 @@ function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
 
 function EmptySlot() {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-700 p-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-slate-600">
-        <UserPlus className="h-4 w-4 text-slate-600" />
+    <div className="flex items-center gap-3 rounded-lg border border-dashed border-[var(--mmp-color-hairline-strong)] p-3">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-dashed border-[var(--mmp-color-hairline-strong)]">
+        <UserPlus className="h-4 w-4 text-[var(--mmp-color-steel)]" />
       </div>
-      <span className="text-sm text-slate-500">빈 자리</span>
+      <span className="text-sm text-[var(--mmp-color-steel)]">빈 자리</span>
     </div>
   );
 }

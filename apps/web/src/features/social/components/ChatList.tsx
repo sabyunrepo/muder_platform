@@ -58,13 +58,14 @@ function ChatRoomRow({ room, isSelected, onClick }: ChatRoomRowProps) {
       type="button"
       className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
         isSelected
-          ? "border border-amber-500/50 bg-amber-500/10"
-          : "border border-transparent hover:bg-slate-800"
+          ? "border border-[color-mix(in_oklab,var(--mmp-color-primary)_50%,transparent)] bg-[color-mix(in_oklab,var(--mmp-color-primary)_10%,transparent)]"
+          : "border border-transparent hover:bg-[var(--mmp-color-surface-soft)]"
       }`}
+      aria-current={isSelected ? "true" : undefined}
       onClick={onClick}
     >
       {/* Avatar placeholder */}
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-slate-700 text-sm font-bold text-slate-300">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[var(--mmp-color-muted)] text-sm font-bold text-[var(--mmp-color-charcoal)]">
         {room.type === "GROUP" ? (
           <Users className="h-5 w-5" />
         ) : (
@@ -75,21 +76,21 @@ function ChatRoomRow({ room, isSelected, onClick }: ChatRoomRowProps) {
       {/* Info */}
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between">
-          <span className="truncate text-sm font-medium text-slate-100">
+          <span className="truncate text-sm font-medium text-[var(--mmp-color-ink)]">
             {room.name ?? "채팅방"}
           </span>
           {room.last_message_at && (
-            <span className="flex-shrink-0 text-[10px] text-slate-500">
+            <span className="flex-shrink-0 text-[10px] text-[var(--mmp-color-steel)]">
               {formatTimeAgo(room.last_message_at)}
             </span>
           )}
         </div>
         <div className="flex items-center justify-between">
-          <p className="truncate text-xs text-slate-400">
+          <p className="truncate text-xs text-[var(--mmp-color-steel)]">
             {room.last_message ?? "메시지가 없습니다"}
           </p>
           {unread > 0 && (
-            <span className="ml-2 inline-flex min-w-[1.25rem] flex-shrink-0 items-center justify-center rounded-full bg-amber-500 px-1 text-xs font-bold text-slate-950">
+            <span className="ml-2 inline-flex min-w-[1.25rem] flex-shrink-0 items-center justify-center rounded-full bg-[var(--mmp-color-primary)] px-1 text-xs font-bold text-[var(--mmp-color-primary-contrast)]">
               {unread > 99 ? "99+" : unread}
             </span>
           )}
@@ -181,13 +182,13 @@ function NewChatModal({ isOpen, onClose, onRoomCreated }: NewChatModalProps) {
     <Modal isOpen={isOpen} onClose={resetAndClose} title="새 채팅">
       <div className="flex flex-col gap-4">
         {/* Tab selector */}
-        <div className="flex border-b border-slate-700">
+        <div className="flex border-b border-[var(--mmp-color-hairline)]">
           <button
             type="button"
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
               tab === "dm"
-                ? "border-b-2 border-amber-500 text-amber-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "border-b-2 border-[var(--mmp-color-primary)] text-[var(--mmp-color-primary)]"
+                : "text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-ink)]"
             }`}
             onClick={() => { setTab("dm"); setSelectedFriends(new Set()); }}
           >
@@ -197,8 +198,8 @@ function NewChatModal({ isOpen, onClose, onRoomCreated }: NewChatModalProps) {
             type="button"
             className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
               tab === "group"
-                ? "border-b-2 border-amber-500 text-amber-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "border-b-2 border-[var(--mmp-color-primary)] text-[var(--mmp-color-primary)]"
+                : "text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-ink)]"
             }`}
             onClick={() => setTab("group")}
           >
@@ -218,7 +219,7 @@ function NewChatModal({ isOpen, onClose, onRoomCreated }: NewChatModalProps) {
 
         {/* Friend list */}
         <div className="max-h-60 overflow-y-auto">
-          <p className="mb-2 text-xs font-medium text-slate-400">
+          <p className="mb-2 text-xs font-medium text-[var(--mmp-color-steel)]">
             {tab === "dm" ? "대화할 친구를 선택하세요" : "멤버를 선택하세요"}
           </p>
           {friendsLoading ? (
@@ -226,7 +227,7 @@ function NewChatModal({ isOpen, onClose, onRoomCreated }: NewChatModalProps) {
               <Spinner />
             </div>
           ) : !friends || friends.length === 0 ? (
-            <p className="py-4 text-center text-sm text-slate-500">
+            <p className="py-4 text-center text-sm text-[var(--mmp-color-steel)]">
               친구가 없습니다. 먼저 친구를 추가해주세요.
             </p>
           ) : (
@@ -238,15 +239,15 @@ function NewChatModal({ isOpen, onClose, onRoomCreated }: NewChatModalProps) {
                   disabled={isPending}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
                     selectedFriends.has(friend.id)
-                      ? "bg-amber-500/10 ring-1 ring-amber-500/50"
-                      : "hover:bg-slate-800"
+                      ? "bg-[color-mix(in_oklab,var(--mmp-color-primary)_10%,transparent)] ring-1 ring-[color-mix(in_oklab,var(--mmp-color-primary)_50%,transparent)]"
+                      : "hover:bg-[var(--mmp-color-surface-soft)]"
                   }`}
                   onClick={() => handleSelectFriend(friend.id)}
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-700 text-xs font-bold text-slate-300">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--mmp-color-muted)] text-xs font-bold text-[var(--mmp-color-charcoal)]">
                     {friend.nickname.charAt(0).toUpperCase()}
                   </div>
-                  <span className="text-sm text-slate-100">{friend.nickname}</span>
+                  <span className="text-sm text-[var(--mmp-color-ink)]">{friend.nickname}</span>
                 </button>
               ))}
             </div>
@@ -290,8 +291,8 @@ export function ChatList({ onSelectRoom, selectedRoomId }: ChatListProps) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-700 px-4 py-4">
-        <h2 className="text-lg font-bold text-slate-100">채팅</h2>
+      <div className="flex items-center justify-between border-b border-[var(--mmp-color-hairline)] px-4 py-4">
+        <h2 className="text-lg font-bold text-[var(--mmp-color-ink)]">채팅</h2>
         <Button
           size="sm"
           leftIcon={<MessageSquarePlus className="h-4 w-4" />}

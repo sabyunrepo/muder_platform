@@ -54,8 +54,8 @@ export function VoiceBottomSheet({
       <div
         className={`
           fixed bottom-0 left-0 right-0 z-50
-          bg-slate-900 rounded-t-2xl
-          border-t border-slate-700/60
+          bg-[var(--mmp-color-surface)] rounded-t-2xl
+          border-t border-[var(--mmp-color-hairline)]
           transition-transform duration-150 ease-out
           ${isOpen ? "translate-y-0" : "translate-y-full"}
         `}
@@ -70,12 +70,12 @@ export function VoiceBottomSheet({
           className="w-full flex justify-center pt-3 pb-1"
           aria-label="닫기"
         >
-          <span className="w-10 h-1 rounded-full bg-slate-600 hover:bg-slate-500 transition-colors duration-150 ease-out" />
+          <span className="w-10 h-1 rounded-full bg-[var(--mmp-color-muted)] hover:bg-[var(--mmp-color-hairline-strong)] transition-colors duration-150 ease-out" />
         </button>
 
         {/* Controls */}
         <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-[13px] font-semibold text-slate-200">음성 채팅</span>
+          <span className="text-[13px] font-semibold text-[var(--mmp-color-ink)]">음성 채팅</span>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -83,7 +83,7 @@ export function VoiceBottomSheet({
               className={`
                 flex items-center justify-center rounded-full
                 transition-colors duration-150 ease-out
-                ${isMuted ? "bg-red-500/30 text-red-400" : "bg-slate-700 text-slate-300"}
+                ${isMuted ? "bg-[color-mix(in_oklab,var(--mmp-color-error)_24%,transparent)] text-[var(--mmp-color-error)]" : "bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)]"}
               `}
               style={{ width: 44, height: 44, padding: 12 }}
               aria-label={isMuted ? "마이크 켜기" : "마이크 끄기"}
@@ -96,7 +96,7 @@ export function VoiceBottomSheet({
               className={`
                 flex items-center justify-center rounded-full
                 transition-colors duration-150 ease-out
-                ${isSpeakerMuted ? "bg-red-500/30 text-red-400" : "bg-slate-700 text-slate-300"}
+                ${isSpeakerMuted ? "bg-[color-mix(in_oklab,var(--mmp-color-error)_24%,transparent)] text-[var(--mmp-color-error)]" : "bg-[var(--mmp-color-muted)] text-[var(--mmp-color-charcoal)]"}
               `}
               style={{ width: 44, height: 44, padding: 12 }}
               aria-label={isSpeakerMuted ? "스피커 켜기" : "스피커 끄기"}
@@ -124,7 +124,7 @@ export function VoiceBottomSheet({
                   className={`
                     flex items-center gap-2 w-full py-1.5 text-left
                     transition-colors duration-150 ease-out
-                    ${isActive ? "text-amber-400" : "text-slate-400 hover:text-slate-300"}
+                    ${isActive ? "text-[var(--mmp-color-primary)]" : "text-[var(--mmp-color-steel)] hover:text-[var(--mmp-color-charcoal)]"}
                   `}
                 >
                   {isWhisper && <Lock size={12} className="shrink-0" />}
@@ -132,7 +132,7 @@ export function VoiceBottomSheet({
                     {ch.name}
                   </span>
                   {isWhisper && (
-                    <ChevronRight size={14} className="shrink-0 text-slate-500" />
+                    <ChevronRight size={14} className="shrink-0 text-[var(--mmp-color-steel)]" />
                   )}
                 </button>
 
@@ -156,7 +156,7 @@ export function VoiceBottomSheet({
                         {p.avatarUrl ? (
                           <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" />
                         ) : (
-                          <span className="text-slate-300">
+                          <span className="text-[var(--mmp-color-charcoal)]">
                             {p.name[0]?.toUpperCase() ?? "?"}
                           </span>
                         )}

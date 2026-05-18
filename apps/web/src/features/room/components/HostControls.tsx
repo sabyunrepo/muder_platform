@@ -52,7 +52,7 @@ export function HostControls({
       </Button>
 
       {!canStart && (
-        <p className="text-center text-xs text-slate-500">
+        <p className="text-center text-xs text-[var(--mmp-color-steel)]">
           {!hasMinPlayers
             ? "최소 인원이 충족되지 않았습니다."
             : "모든 참가자가 준비해야 시작할 수 있습니다."}

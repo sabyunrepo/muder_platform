@@ -7,7 +7,7 @@ import { WsEventType } from "@mmp/shared";
 import { useWsClient } from "@/hooks/useWsClient";
 import { useWsEvent } from "@/hooks/useWsEvent";
 import { useAuthStore, selectUser } from "@/stores/authStore";
-import { Button, Spinner } from "@/shared/components/ui";
+import { Alert, Button, LoadingState, PageShell } from "@/shared/components/ui";
 import {
   PlayerList,
   RoomHeader,
@@ -126,27 +126,31 @@ export default function RoomPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
+      <PageShell>
+        <LoadingState label="방 정보를 불러오는 중" />
+      </PageShell>
     );
   }
 
   if (isError || !room) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
-        <p className="text-slate-400">방 정보를 불러올 수 없습니다.</p>
-        <Button variant="secondary" onClick={() => navigate("/lobby")}>
-          로비로 돌아가기
-        </Button>
-      </div>
+      <PageShell>
+        <Alert tone="error" title="방 정보를 불러올 수 없습니다">
+          <div className="mt-3">
+            <Button variant="secondary" onClick={() => navigate("/lobby")}>
+              로비로 돌아가기
+            </Button>
+          </div>
+        </Alert>
+      </PageShell>
     );
   }
 
   // ------ 렌더링 ------
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
+    <PageShell className="min-h-[calc(100vh-4rem)]">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
       {/* 헤더 */}
       <RoomHeader
         themeTitle={room.theme_title}
@@ -207,7 +211,7 @@ export default function RoomPage() {
       </div>
 
       {/* 하단: 레디 + 나가기 */}
-      <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
+      <div className="flex items-center justify-between gap-3 border-t border-[var(--mmp-color-hairline)] pt-4">
         <Button
           variant="ghost"
           leftIcon={<LogOut className="h-4 w-4" />}
@@ -227,6 +231,7 @@ export default function RoomPage() {
           </Button>
         )}
       </div>
-    </div>
+      </div>
+    </PageShell>
   );
 }
