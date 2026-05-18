@@ -1,16 +1,18 @@
-import { useState } from "react";
-import { ArrowUpDown } from "lucide-react";
+import { useState } from 'react';
+import { ArrowUpDown } from 'lucide-react';
 import {
   Badge,
   Pagination,
-  Spinner,
   EmptyState,
-} from "@/shared/components/ui";
-import { useTransactions } from "@/features/coin/api";
-import type { CoinTransaction } from "@/features/coin/api";
-import { TRANSACTION_TYPE_LABEL } from "@/features/coin/constants";
-import type { CoinTransactionType } from "@/features/coin/constants";
-import { formatDateTime } from "@/shared/utils/format";
+  LoadingState,
+  Table,
+  type TableColumn,
+} from '@/shared/components/ui';
+import { useTransactions } from '@/features/coin/api';
+import type { CoinTransaction } from '@/features/coin/api';
+import { TRANSACTION_TYPE_LABEL } from '@/features/coin/constants';
+import type { CoinTransactionType } from '@/features/coin/constants';
+import { formatDateTime } from '@/shared/utils/format';
 
 // ---------------------------------------------------------------------------
 // 코인 이력 (타입별 필터 탭)
@@ -22,52 +24,22 @@ interface FilterTab {
 }
 
 const FILTER_TABS: FilterTab[] = [
-  { label: "전체", value: undefined },
-  { label: "충전", value: "CHARGE" },
-  { label: "구매", value: "PURCHASE" },
-  { label: "환불", value: "REFUND" },
+  { label: '전체', value: undefined },
+  { label: '충전', value: 'CHARGE' },
+  { label: '구매', value: 'PURCHASE' },
+  { label: '환불', value: 'REFUND' },
 ];
 
 const TYPE_VARIANT: Record<
   CoinTransactionType,
-  "success" | "warning" | "danger" | "default" | "info"
+  'success' | 'warning' | 'danger' | 'default' | 'info'
 > = {
-  CHARGE: "success",
-  PURCHASE: "warning",
-  REFUND: "info",
-  ADMIN_GRANT: "success",
-  ADMIN_REVOKE: "danger",
+  CHARGE: 'success',
+  PURCHASE: 'warning',
+  REFUND: 'info',
+  ADMIN_GRANT: 'success',
+  ADMIN_REVOKE: 'danger',
 };
-
-function TransactionRow({ tx }: { tx: CoinTransaction }) {
-  const amount = tx.base_amount + tx.bonus_amount;
-  const isPositive = amount >= 0;
-  const balanceAfter = tx.balance_after_base + tx.balance_after_bonus;
-
-  return (
-    <tr className="border-b border-slate-800 last:border-b-0">
-      <td className="px-4 py-3 text-sm text-slate-300">
-        {formatDateTime(tx.created_at)}
-      </td>
-      <td className="px-4 py-3">
-        <Badge variant={TYPE_VARIANT[tx.type]} size="sm">
-          {TRANSACTION_TYPE_LABEL[tx.type]}
-        </Badge>
-      </td>
-      <td
-        className={`px-4 py-3 text-right text-sm font-medium ${
-          isPositive ? "text-emerald-400" : "text-red-400"
-        }`}
-      >
-        {isPositive ? "+" : ""}
-        {amount.toLocaleString("ko-KR")}
-      </td>
-      <td className="px-4 py-3 text-right text-sm text-slate-400">
-        {balanceAfter.toLocaleString("ko-KR")}
-      </td>
-    </tr>
-  );
-}
 
 export function CoinTransactions() {
   const [filter, setFilter] = useState<string | undefined>(undefined);
@@ -78,11 +50,48 @@ export function CoinTransactions() {
     setFilter(value);
     setPage(1);
   }
+  const columns: TableColumn<CoinTransaction>[] = [
+    { id: 'date', header: '날짜', render: (tx) => formatDateTime(tx.created_at) },
+    {
+      id: 'type',
+      header: '타입',
+      render: (tx) => (
+        <Badge variant={TYPE_VARIANT[tx.type]} size="sm">
+          {TRANSACTION_TYPE_LABEL[tx.type]}
+        </Badge>
+      ),
+    },
+    {
+      id: 'amount',
+      header: '변동',
+      align: 'right',
+      render: (tx) => {
+        const amount = tx.base_amount + tx.bonus_amount;
+        const isPositive = amount >= 0;
+        return (
+          <span
+            className={`font-medium ${
+              isPositive ? 'text-[var(--mmp-color-success)]' : 'text-[var(--mmp-color-error)]'
+            }`}
+          >
+            {isPositive ? '+' : ''}
+            {amount.toLocaleString('ko-KR')}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'balance',
+      header: '잔액',
+      align: 'right',
+      render: (tx) => (tx.balance_after_base + tx.balance_after_bonus).toLocaleString('ko-KR'),
+    },
+  ];
 
   return (
     <div className="flex flex-col gap-4">
       {/* 필터 탭 */}
-      <div className="flex gap-1 rounded-lg bg-slate-800/50 p-1">
+      <div className="flex gap-1 rounded-lg bg-[var(--mmp-color-surface-soft)] p-1">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab.label}
@@ -90,8 +99,8 @@ export function CoinTransactions() {
             onClick={() => handleFilterChange(tab.value)}
             className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               filter === tab.value
-                ? "bg-amber-500 text-slate-950"
-                : "text-slate-400 hover:bg-slate-700 hover:text-slate-200"
+                ? 'bg-[var(--mmp-color-primary)] text-white'
+                : 'text-[var(--mmp-color-steel)] hover:bg-[var(--mmp-color-surface)] hover:text-[var(--mmp-color-ink)]'
             }`}
           >
             {tab.label}
@@ -101,9 +110,7 @@ export function CoinTransactions() {
 
       {/* 테이블 */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Spinner size="lg" />
-        </div>
+        <LoadingState label="거래 내역을 불러오는 중" className="py-20" />
       ) : !data?.data?.length ? (
         <EmptyState
           icon={<ArrowUpDown className="h-10 w-10" />}
@@ -112,31 +119,12 @@ export function CoinTransactions() {
         />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg border border-slate-800">
-            <table className="w-full">
-              <thead className="bg-slate-800/50">
-                <tr>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    날짜
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-400">
-                    타입
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
-                    변동
-                  </th>
-                  <th scope="col" className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-400">
-                    잔액
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.data.map((tx) => (
-                  <TransactionRow key={tx.id} tx={tx} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            columns={columns}
+            data={data.data}
+            getRowKey={(tx) => tx.id}
+            emptyTitle="거래 내역이 없습니다"
+          />
 
           <div className="flex justify-center">
             <Pagination

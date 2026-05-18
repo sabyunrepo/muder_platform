@@ -1,18 +1,18 @@
-import { useState } from "react";
-import { toast } from "sonner";
-import { Send } from "lucide-react";
-import { Button, Input, Card } from "@/shared/components/ui";
-import { useGrantCoins } from "@/features/admin/api";
+import { useState } from 'react';
+import { toast } from 'sonner';
+import { Send } from 'lucide-react';
+import { Button, Input, Card, SectionHeader } from '@/shared/components/ui';
+import { useGrantCoins } from '@/features/admin/api';
 
 // ---------------------------------------------------------------------------
 // AdminCoinGrant
 // ---------------------------------------------------------------------------
 
 export function AdminCoinGrant() {
-  const [userId, setUserId] = useState("");
-  const [baseAmount, setBaseAmount] = useState("");
-  const [bonusAmount, setBonusAmount] = useState("");
-  const [reason, setReason] = useState("");
+  const [userId, setUserId] = useState('');
+  const [baseAmount, setBaseAmount] = useState('');
+  const [bonusAmount, setBonusAmount] = useState('');
+  const [reason, setReason] = useState('');
 
   const grantMutation = useGrantCoins();
 
@@ -23,23 +23,23 @@ export function AdminCoinGrant() {
     const bonus = Number(bonusAmount);
 
     if (!userId.trim()) {
-      toast.error("유저 ID를 입력해주세요.");
+      toast.error('유저 ID를 입력해주세요.');
       return;
     }
     if (Number.isNaN(base) || base < 0) {
-      toast.error("유효한 기본 코인 수량을 입력해주세요.");
+      toast.error('유효한 기본 코인 수량을 입력해주세요.');
       return;
     }
     if (Number.isNaN(bonus) || bonus < 0) {
-      toast.error("유효한 보너스 코인 수량을 입력해주세요.");
+      toast.error('유효한 보너스 코인 수량을 입력해주세요.');
       return;
     }
     if (base === 0 && bonus === 0) {
-      toast.error("지급할 코인 수량을 입력해주세요.");
+      toast.error('지급할 코인 수량을 입력해주세요.');
       return;
     }
     if (!reason.trim()) {
-      toast.error("사유를 입력해주세요.");
+      toast.error('사유를 입력해주세요.');
       return;
     }
 
@@ -52,20 +52,20 @@ export function AdminCoinGrant() {
       },
       {
         onSuccess: () => {
-          toast.success("코인이 지급되었습니다.");
-          setUserId("");
-          setBaseAmount("");
-          setBonusAmount("");
-          setReason("");
+          toast.success('코인이 지급되었습니다.');
+          setUserId('');
+          setBaseAmount('');
+          setBonusAmount('');
+          setReason('');
         },
         onError: (err) => toast.error(`지급 실패: ${err.message}`),
-      },
+      }
     );
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-100">코인 수동 지급</h1>
+      <SectionHeader title="코인 수동 지급" />
 
       <Card className="max-w-lg">
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,9 +1,10 @@
-import { AdminPackages } from "@/features/admin/components/AdminPackages";
+import { AdminPackages } from '@/features/admin/components/AdminPackages';
+import { PageShell } from '@/shared/components/ui';
 
 export default function AdminPackagesPage() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <PageShell>
       <AdminPackages />
-    </div>
+    </PageShell>
   );
 }

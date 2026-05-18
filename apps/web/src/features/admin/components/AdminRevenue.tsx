@@ -1,14 +1,14 @@
-import { Coins, Banknote, CheckCircle, FileText } from "lucide-react";
-import { Card, Spinner } from "@/shared/components/ui";
-import { useAdminRevenue } from "@/features/admin/api";
-import { formatKRW } from "@/shared/utils/format";
+import { Coins, Banknote, CheckCircle, FileText } from 'lucide-react';
+import { Button, Card, LoadingState, SectionHeader } from '@/shared/components/ui';
+import { useAdminRevenue } from '@/features/admin/api';
+import { formatKRW } from '@/shared/utils/format';
 
 // ---------------------------------------------------------------------------
 // 포맷 헬퍼
 // ---------------------------------------------------------------------------
 
 function formatNumber(n: number): string {
-  return new Intl.NumberFormat("ko-KR").format(n);
+  return new Intl.NumberFormat('ko-KR').format(n);
 }
 
 // ---------------------------------------------------------------------------
@@ -22,10 +22,10 @@ interface StatCard {
 }
 
 const STAT_CARDS: StatCard[] = [
-  { label: "총 코인", icon: Coins, color: "text-amber-400" },
-  { label: "총 매출 (KRW)", icon: Banknote, color: "text-emerald-400" },
-  { label: "총 세금", icon: CheckCircle, color: "text-blue-400" },
-  { label: "순수익", icon: FileText, color: "text-rose-400" },
+  { label: '총 코인', icon: Coins, color: 'text-[var(--mmp-color-primary)]' },
+  { label: '총 매출 (KRW)', icon: Banknote, color: 'text-[var(--mmp-color-success)]' },
+  { label: '총 세금', icon: CheckCircle, color: 'text-[var(--mmp-color-info)]' },
+  { label: '순수익', icon: FileText, color: 'text-[var(--mmp-color-error)]' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -36,24 +36,16 @@ export function AdminRevenue() {
   const { data, isLoading, isError, refetch } = useAdminRevenue();
 
   if (isLoading) {
-    return (
-      <div className="flex justify-center py-16">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingState label="매출 정보를 불러오는 중" className="py-16" />;
   }
 
   if (isError || !data) {
     return (
       <Card className="text-center">
-        <p className="text-sm text-red-400">매출 정보를 불러오지 못했습니다.</p>
-        <button
-          type="button"
-          className="mt-3 text-sm text-amber-500 hover:text-amber-400"
-          onClick={() => refetch()}
-        >
+        <p className="text-sm text-[var(--mmp-color-error)]">매출 정보를 불러오지 못했습니다.</p>
+        <Button variant="secondary" size="sm" className="mt-3" onClick={() => refetch()}>
           재시도
-        </button>
+        </Button>
       </Card>
     );
   }
@@ -67,20 +59,20 @@ export function AdminRevenue() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-slate-100">플랫폼 매출</h1>
+      <SectionHeader title="플랫폼 매출" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {STAT_CARDS.map((card, i) => (
           <Card key={card.label}>
             <div className="flex items-center gap-4">
               <div
-                className={`flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800 ${card.color}`}
+                className={`flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--mmp-color-surface-soft)] ${card.color}`}
               >
                 <card.icon className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-sm text-slate-400">{card.label}</p>
-                <p className="text-xl font-bold text-slate-100">{values[i]}</p>
+                <p className="text-sm text-[var(--mmp-color-steel)]">{card.label}</p>
+                <p className="text-xl font-bold text-[var(--mmp-color-ink)]">{values[i]}</p>
               </div>
             </div>
           </Card>

@@ -1,8 +1,8 @@
-import { useMemo } from "react";
-import { BarChart3 } from "lucide-react";
+import { useMemo } from 'react';
+import { BarChart3 } from 'lucide-react';
 
-import { Spinner, EmptyState } from "@/shared/components/ui";
-import { useThemeStats } from "../api";
+import { EmptyState, LoadingState, Panel } from '@/shared/components/ui';
+import { useThemeStats } from '../api';
 
 interface ThemeStatsProps {
   themeId: string;
@@ -24,11 +24,7 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
   const resolvedFrom = from ?? defaults.from;
   const resolvedTo = to ?? defaults.to;
 
-  const { data: stats, isLoading, isError } = useThemeStats(
-    themeId,
-    resolvedFrom,
-    resolvedTo,
-  );
+  const { data: stats, isLoading, isError } = useThemeStats(themeId, resolvedFrom, resolvedTo);
 
   const maxSales = useMemo(() => {
     if (!stats || stats.length === 0) return 1;
@@ -41,16 +37,12 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
   }, [stats]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Spinner size="md" />
-      </div>
-    );
+    return <LoadingState label="테마 통계를 불러오는 중" className="py-12" />;
   }
 
   if (isError) {
     return (
-      <div className="py-8 text-center text-slate-400">
+      <div className="py-8 text-center text-[var(--mmp-color-steel)]">
         통계를 불러오지 못했습니다.
       </div>
     );
@@ -58,20 +50,15 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
 
   if (!stats || stats.length === 0) {
     return (
-      <EmptyState
-        icon={<BarChart3 className="h-8 w-8" />}
-        title="해당 기간 데이터가 없습니다"
-      />
+      <EmptyState icon={<BarChart3 className="h-8 w-8" />} title="해당 기간 데이터가 없습니다" />
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Sales Bar Chart */}
-      <div className="rounded-lg bg-slate-800 p-4">
-        <h3 className="mb-4 text-sm font-medium text-slate-400">
-          일별 판매 수
-        </h3>
+      <Panel>
+        <h3 className="mb-4 text-sm font-medium text-[var(--mmp-color-steel)]">일별 판매 수</h3>
         <div className="flex h-40 items-end gap-1">
           {stats.map((s) => (
             <div
@@ -83,11 +70,11 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
                   style={{
                     height: `${(s.sales_count / maxSales) * 100}%`,
                   }}
-                  className="w-full rounded-t bg-amber-500 transition-colors group-hover:bg-amber-400"
+                  className="w-full rounded-t bg-[var(--mmp-color-primary)] transition-opacity group-hover:opacity-80"
                 />
               </div>
               {/* Tooltip */}
-              <div className="pointer-events-none absolute -top-8 hidden rounded bg-slate-700 px-2 py-1 text-xs text-slate-200 group-hover:block">
+              <div className="pointer-events-none absolute -top-8 hidden rounded bg-[var(--mmp-color-ink)] px-2 py-1 text-xs text-[var(--mmp-color-canvas)] group-hover:block">
                 {s.sales_count}건
               </div>
             </div>
@@ -98,21 +85,17 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
           {stats.map((s, i) => (
             <div
               key={`label-sales-${s.date}`}
-              className="flex-1 text-center text-[10px] text-slate-500"
+              className="flex-1 text-center text-[10px] text-[var(--mmp-color-muted)]"
             >
-              {i % Math.max(1, Math.floor(stats.length / 7)) === 0
-                ? s.date.slice(5)
-                : ""}
+              {i % Math.max(1, Math.floor(stats.length / 7)) === 0 ? s.date.slice(5) : ''}
             </div>
           ))}
         </div>
-      </div>
+      </Panel>
 
       {/* Coins Bar Chart */}
-      <div className="rounded-lg bg-slate-800 p-4">
-        <h3 className="mb-4 text-sm font-medium text-slate-400">
-          일별 수익 코인
-        </h3>
+      <Panel>
+        <h3 className="mb-4 text-sm font-medium text-[var(--mmp-color-steel)]">일별 수익 코인</h3>
         <div className="flex h-40 items-end gap-1">
           {stats.map((s) => (
             <div
@@ -124,11 +107,11 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
                   style={{
                     height: `${(s.daily_earnings / maxCoins) * 100}%`,
                   }}
-                  className="w-full rounded-t bg-emerald-500 transition-colors group-hover:bg-emerald-400"
+                  className="w-full rounded-t bg-[var(--mmp-color-success)] transition-opacity group-hover:opacity-80"
                 />
               </div>
-              <div className="pointer-events-none absolute -top-8 hidden rounded bg-slate-700 px-2 py-1 text-xs text-slate-200 group-hover:block">
-                {s.daily_earnings.toLocaleString("ko-KR")}
+              <div className="pointer-events-none absolute -top-8 hidden rounded bg-[var(--mmp-color-ink)] px-2 py-1 text-xs text-[var(--mmp-color-canvas)] group-hover:block">
+                {s.daily_earnings.toLocaleString('ko-KR')}
               </div>
             </div>
           ))}
@@ -137,15 +120,13 @@ export function ThemeStats({ themeId, from, to }: ThemeStatsProps) {
           {stats.map((s, i) => (
             <div
               key={`label-coins-${s.date}`}
-              className="flex-1 text-center text-[10px] text-slate-500"
+              className="flex-1 text-center text-[10px] text-[var(--mmp-color-muted)]"
             >
-              {i % Math.max(1, Math.floor(stats.length / 7)) === 0
-                ? s.date.slice(5)
-                : ""}
+              {i % Math.max(1, Math.floor(stats.length / 7)) === 0 ? s.date.slice(5) : ''}
             </div>
           ))}
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }

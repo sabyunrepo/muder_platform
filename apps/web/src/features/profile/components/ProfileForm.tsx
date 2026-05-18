@@ -1,10 +1,10 @@
-import { useState, useCallback, useMemo } from "react";
-import { Lock } from "lucide-react";
-import { toast } from "sonner";
-import { Button, Input, Badge } from "@/shared/components/ui";
-import { useUpdateProfile } from "../api";
-import { useAuthStore } from "@/stores/authStore";
-import { AvatarSection } from "@/components/profile/AvatarSection";
+import { useState, useCallback, useMemo } from 'react';
+import { Lock } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button, Input, Badge } from '@/shared/components/ui';
+import { useUpdateProfile } from '../api';
+import { useAuthStore } from '@/stores/authStore';
+import { AvatarSection } from '@/components/profile/AvatarSection';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -14,7 +14,6 @@ interface ProfileFormProps {
   nickname: string;
   email: string;
   profileImage: string | null;
-  role: string;
   provider: string;
 }
 
@@ -27,10 +26,10 @@ const NICKNAME_MAX = 30;
 
 /** OAuth 제공자 표시 이름 */
 const providerLabel: Record<string, string> = {
-  google: "Google",
-  kakao: "Kakao",
-  naver: "Naver",
-  github: "GitHub",
+  google: 'Google',
+  kakao: 'Kakao',
+  naver: 'Naver',
+  github: 'GitHub',
 };
 
 // ---------------------------------------------------------------------------
@@ -41,7 +40,6 @@ export function ProfileForm({
   nickname: initialNickname,
   email,
   profileImage,
-  role,
   provider,
 }: ProfileFormProps) {
   const [nickname, setNickname] = useState(initialNickname);
@@ -54,14 +52,14 @@ export function ProfileForm({
   // 변경 여부 체크
   const hasChanges = useMemo(
     () => nickname.trim() !== initialNickname,
-    [nickname, initialNickname],
+    [nickname, initialNickname]
   );
 
   // 닉네임 유효성 검증
   const validate = useCallback((): boolean => {
     const trimmed = nickname.trim();
     if (trimmed.length === 0) {
-      setNicknameError("닉네임을 입력해주세요.");
+      setNicknameError('닉네임을 입력해주세요.');
       return false;
     }
     if (trimmed.length < NICKNAME_MIN) {
@@ -94,15 +92,15 @@ export function ProfileForm({
                 profileImage: data.avatar_url,
               });
             }
-            toast.success("프로필이 저장되었습니다.");
+            toast.success('프로필이 저장되었습니다.');
           },
           onError: (error) => {
-            toast.error(error.message || "프로필 저장에 실패했습니다.");
+            toast.error(error.message || '프로필 저장에 실패했습니다.');
           },
-        },
+        }
       );
     },
-    [nickname, validate, updateProfile, setUser, currentUser],
+    [nickname, validate, updateProfile, setUser, currentUser]
   );
 
   return (
@@ -135,18 +133,14 @@ export function ProfileForm({
 
       {/* OAuth 제공자 (읽기 전용) */}
       <div className="flex flex-col gap-1.5">
-        <span className="text-sm font-medium text-slate-300">로그인 방식</span>
+        <span className="text-sm font-medium text-[var(--mmp-color-charcoal)]">로그인 방식</span>
         <Badge variant="info" size="md">
           {providerLabel[provider] ?? provider}
         </Badge>
       </div>
 
       {/* 저장 버튼 */}
-      <Button
-        type="submit"
-        disabled={!hasChanges}
-        isLoading={updateProfile.isPending}
-      >
+      <Button type="submit" disabled={!hasChanges} isLoading={updateProfile.isPending}>
         저장
       </Button>
     </form>

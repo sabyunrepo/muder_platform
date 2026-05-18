@@ -1,12 +1,20 @@
-import { AlertCircle, RefreshCw } from "lucide-react";
-import { useProfile } from "@/features/profile/api";
+import { RefreshCw } from 'lucide-react';
+import { useProfile } from '@/features/profile/api';
 import {
   ProfileForm,
   ProfileStats,
   NotificationSettings,
   DangerZone,
-} from "@/features/profile/components";
-import { Button, Spinner, Badge } from "@/shared/components/ui";
+} from '@/features/profile/components';
+import {
+  Alert,
+  Badge,
+  Button,
+  LoadingState,
+  PageShell,
+  Panel,
+  SectionHeader,
+} from '@/shared/components/ui';
 
 // ---------------------------------------------------------------------------
 // ProfilePage — 내 프로필
@@ -17,77 +25,73 @@ export default function ProfilePage() {
 
   // 로딩
   if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <LoadingState label="프로필을 불러오는 중" className="py-20" />;
   }
 
   // 에러
   if (isError || !data) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4 text-slate-400">
-        <AlertCircle className="h-8 w-8 text-red-400" />
-        <p>{error?.message ?? "프로필을 불러올 수 없습니다."}</p>
+      <Panel className="mx-auto max-w-2xl">
+        <Alert
+          variant="error"
+          title="프로필을 불러오지 못했습니다"
+          description={error?.message ?? '잠시 후 다시 시도해주세요.'}
+        />
         <Button
           variant="secondary"
           size="sm"
+          className="mt-4"
           leftIcon={<RefreshCw className="h-4 w-4" />}
           onClick={() => refetch()}
         >
           다시 시도
         </Button>
-      </div>
+      </Panel>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8 py-6">
-      {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold text-slate-100">프로필</h1>
-        <Badge
-          variant={
-            data.role === "admin"
-              ? "danger"
-              : data.role === "creator"
-                ? "warning"
-                : "default"
-          }
-        >
-          {data.role}
-        </Badge>
-      </div>
-
-      {/* 프로필 편집 폼 */}
-      <ProfileForm
-        nickname={data.nickname}
-        email={data.email}
-        profileImage={data.avatar_url}
-        role={data.role}
-        provider={data.provider}
-      />
-
-      {/* 통계 */}
-      <ProfileStats
-        totalGames={data.total_games}
-        winCount={data.win_count}
-        createdAt={data.created_at}
-      />
-
-      {/* 알림 설정 */}
-      <section>
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-6">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
-            알림 설정
-          </h2>
-          <NotificationSettings />
+    <PageShell
+      header={
+        <div className="flex items-center gap-3">
+          <SectionHeader title="프로필" />
+          <Badge
+            variant={
+              data.role === 'admin' ? 'danger' : data.role === 'creator' ? 'warning' : 'default'
+            }
+          >
+            {data.role}
+          </Badge>
         </div>
-      </section>
+      }
+    >
+      <div className="mx-auto w-full max-w-2xl space-y-8">
+        {/* 프로필 편집 폼 */}
+        <ProfileForm
+          nickname={data.nickname}
+          email={data.email}
+          profileImage={data.avatar_url}
+          provider={data.provider}
+        />
 
-      {/* 위험 구역 */}
-      <DangerZone />
-    </div>
+        {/* 통계 */}
+        <ProfileStats
+          totalGames={data.total_games}
+          winCount={data.win_count}
+          createdAt={data.created_at}
+        />
+
+        {/* 알림 설정 */}
+        <section>
+          <Panel padding="lg">
+            <SectionHeader title="알림 설정" className="mb-4" />
+            <NotificationSettings />
+          </Panel>
+        </section>
+
+        {/* 위험 구역 */}
+        <DangerZone />
+      </div>
+    </PageShell>
   );
 }
