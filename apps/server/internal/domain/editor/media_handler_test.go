@@ -157,7 +157,7 @@ func TestMediaHandler_FileAndYouTubeMutations(t *testing.T) {
 		Return(&MediaResponse{ID: mediaID, ThemeID: themeID, Name: "updated", Type: MediaTypeImage, SourceType: SourceTypeFile, Tags: []string{}, CreatedAt: time.Now()}, nil).
 		Times(1)
 	mock.EXPECT().
-		DeleteMedia(gomock.Any(), gomock.Any(), mediaID).
+		DeleteMedia(gomock.Any(), gomock.Any(), mediaID, DeleteMediaOptions{}).
 		Return(nil).
 		Times(1)
 	mock.EXPECT().
@@ -334,6 +334,25 @@ func TestMediaHandler_InvalidJSONBodies(t *testing.T) {
 	}
 }
 
+func TestMediaHandler_DeleteMedia_ParsesDetachReferences(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := NewMockMediaService(ctrl)
+	h := NewMediaHandler(mock)
+	mediaID := uuid.New()
+	mock.EXPECT().
+		DeleteMedia(gomock.Any(), gomock.Any(), mediaID, DeleteMediaOptions{DetachReferences: true}).
+		Return(nil).
+		Times(1)
+
+	req := mediaHandlerRequest(http.MethodDelete, "/editor/media/"+mediaID.String()+"?detach_references=true", nil, map[string]string{"id": mediaID.String()})
+	w := httptest.NewRecorder()
+	h.DeleteMedia(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected delete 204, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestMediaHandler_ServiceErrors(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := NewMockMediaService(ctrl)
@@ -455,7 +474,7 @@ func TestMediaHandler_ServiceErrors(t *testing.T) {
 			path:    "/editor/media/" + mediaID.String(),
 			id:      mediaID,
 			expect: func() {
-				mock.EXPECT().DeleteMedia(gomock.Any(), gomock.Any(), mediaID).Return(serviceErr)
+				mock.EXPECT().DeleteMedia(gomock.Any(), gomock.Any(), mediaID, DeleteMediaOptions{}).Return(serviceErr)
 			},
 		},
 		{

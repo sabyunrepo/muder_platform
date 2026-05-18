@@ -204,7 +204,7 @@ export function MediaTab({ themeId }: MediaTabProps) {
     try {
       for (const item of bulkSelectedMedia) {
         try {
-          await deleteMediaMutation.mutateAsync(item.id);
+          await deleteMediaMutation.mutateAsync({ id: item.id });
           result.deleted.push(item);
         } catch (err) {
           if (err instanceof ApiHttpError && err.apiError.code === "MEDIA_REFERENCE_IN_USE") {

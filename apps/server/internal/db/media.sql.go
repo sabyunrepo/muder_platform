@@ -42,6 +42,88 @@ func (q *Queries) ClearCharacterAliasIconMediaReferencesWithOwner(ctx context.Co
 	return result.RowsAffected(), nil
 }
 
+const clearCharacterImageMediaReferencesWithOwner = `-- name: ClearCharacterImageMediaReferencesWithOwner :execrows
+UPDATE theme_characters c
+SET image_media_id = CASE
+      WHEN c.image_media_id = $1::uuid THEN NULL
+      ELSE c.image_media_id
+    END,
+    endcard_image_media_id = CASE
+      WHEN c.endcard_image_media_id = $1::uuid THEN NULL
+      ELSE c.endcard_image_media_id
+    END
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = $2
+  AND c.theme_id = $3
+  AND (
+    c.image_media_id = $1::uuid
+    OR c.endcard_image_media_id = $1::uuid
+  )
+`
+
+type ClearCharacterImageMediaReferencesWithOwnerParams struct {
+	MediaID   uuid.UUID `json:"media_id"`
+	CreatorID uuid.UUID `json:"creator_id"`
+	ThemeID   uuid.UUID `json:"theme_id"`
+}
+
+func (q *Queries) ClearCharacterImageMediaReferencesWithOwner(ctx context.Context, arg ClearCharacterImageMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearCharacterImageMediaReferencesWithOwner, arg.MediaID, arg.CreatorID, arg.ThemeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearClueMediaReferencesWithOwner = `-- name: ClearClueMediaReferencesWithOwner :execrows
+UPDATE theme_clues c
+SET image_media_id = NULL
+FROM themes t
+WHERE c.theme_id = t.id
+  AND t.creator_id = $1
+  AND c.theme_id = $2
+  AND c.image_media_id = $3
+`
+
+type ClearClueMediaReferencesWithOwnerParams struct {
+	CreatorID uuid.UUID   `json:"creator_id"`
+	ThemeID   uuid.UUID   `json:"theme_id"`
+	MediaID   pgtype.UUID `json:"media_id"`
+}
+
+func (q *Queries) ClearClueMediaReferencesWithOwner(ctx context.Context, arg ClearClueMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearClueMediaReferencesWithOwner, arg.CreatorID, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const clearLocationMediaReferencesWithOwner = `-- name: ClearLocationMediaReferencesWithOwner :execrows
+UPDATE theme_locations l
+SET image_media_id = NULL
+FROM themes t
+WHERE l.theme_id = t.id
+  AND t.creator_id = $1
+  AND l.theme_id = $2
+  AND l.image_media_id = $3
+`
+
+type ClearLocationMediaReferencesWithOwnerParams struct {
+	CreatorID uuid.UUID   `json:"creator_id"`
+	ThemeID   uuid.UUID   `json:"theme_id"`
+	MediaID   pgtype.UUID `json:"media_id"`
+}
+
+func (q *Queries) ClearLocationMediaReferencesWithOwner(ctx context.Context, arg ClearLocationMediaReferencesWithOwnerParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearLocationMediaReferencesWithOwner, arg.CreatorID, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearMapMediaReferencesWithOwner = `-- name: ClearMapMediaReferencesWithOwner :execrows
 UPDATE theme_maps m
 SET image_media_id = NULL
@@ -493,6 +575,126 @@ func (q *Queries) FindCharacterAliasIconReferencesForMedia(ctx context.Context, 
 	items := []FindCharacterAliasIconReferencesForMediaRow{}
 	for rows.Next() {
 		var i FindCharacterAliasIconReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findCharacterImageReferencesForMedia = `-- name: FindCharacterImageReferencesForMedia :many
+SELECT id, name, 'profile'::text AS usage
+FROM theme_characters c
+WHERE c.theme_id = $1
+  AND c.image_media_id = $2::uuid
+
+UNION ALL
+
+SELECT id, name, 'endcard'::text AS usage
+FROM theme_characters c
+WHERE c.theme_id = $1
+  AND c.endcard_image_media_id = $2::uuid
+ORDER BY name, usage
+`
+
+type FindCharacterImageReferencesForMediaParams struct {
+	ThemeID uuid.UUID `json:"theme_id"`
+	MediaID uuid.UUID `json:"media_id"`
+}
+
+type FindCharacterImageReferencesForMediaRow struct {
+	ID    uuid.UUID `json:"id"`
+	Name  string    `json:"name"`
+	Usage string    `json:"usage"`
+}
+
+func (q *Queries) FindCharacterImageReferencesForMedia(ctx context.Context, arg FindCharacterImageReferencesForMediaParams) ([]FindCharacterImageReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findCharacterImageReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindCharacterImageReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindCharacterImageReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Usage); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findClueReferencesForMedia = `-- name: FindClueReferencesForMedia :many
+SELECT id, name
+FROM theme_clues
+WHERE theme_id = $1
+  AND image_media_id = $2
+`
+
+type FindClueReferencesForMediaParams struct {
+	ThemeID uuid.UUID   `json:"theme_id"`
+	MediaID pgtype.UUID `json:"media_id"`
+}
+
+type FindClueReferencesForMediaRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) FindClueReferencesForMedia(ctx context.Context, arg FindClueReferencesForMediaParams) ([]FindClueReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findClueReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindClueReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindClueReferencesForMediaRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findLocationReferencesForMedia = `-- name: FindLocationReferencesForMedia :many
+SELECT id, name
+FROM theme_locations
+WHERE theme_id = $1
+  AND image_media_id = $2
+`
+
+type FindLocationReferencesForMediaParams struct {
+	ThemeID uuid.UUID   `json:"theme_id"`
+	MediaID pgtype.UUID `json:"media_id"`
+}
+
+type FindLocationReferencesForMediaRow struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
+func (q *Queries) FindLocationReferencesForMedia(ctx context.Context, arg FindLocationReferencesForMediaParams) ([]FindLocationReferencesForMediaRow, error) {
+	rows, err := q.db.Query(ctx, findLocationReferencesForMedia, arg.ThemeID, arg.MediaID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindLocationReferencesForMediaRow{}
+	for rows.Next() {
+		var i FindLocationReferencesForMediaRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}

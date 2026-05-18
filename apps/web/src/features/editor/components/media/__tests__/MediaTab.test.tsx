@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, within, waitFor } from '@testing-library/react';
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -550,8 +550,8 @@ describe('MediaTab', () => {
     fireEvent.click(screen.getByRole('button', { name: '삭제' }));
 
     const resultDialog = await screen.findByRole('dialog', { name: '미디어 삭제 결과' });
-    expect(mutateAsync).toHaveBeenCalledWith('media-1');
-    expect(mutateAsync).toHaveBeenCalledWith('media-2');
+    expect(mutateAsync).toHaveBeenCalledWith({ id: 'media-1' });
+    expect(mutateAsync).toHaveBeenCalledWith({ id: 'media-2' });
     expect(within(resultDialog).getByText('삭제됨 2개')).toBeDefined();
     expect(within(resultDialog).getByText('오프닝 BGM')).toBeDefined();
     expect(within(resultDialog).getByText('문 닫는 소리')).toBeDefined();
@@ -566,7 +566,7 @@ describe('MediaTab', () => {
       isLoading: false,
       isError: false,
     });
-    const mutateAsync = vi.fn((id: string) => {
+    const mutateAsync = vi.fn(({ id }: { id: string }) => {
       if (id === 'media-2') {
         return Promise.reject(
           new ApiHttpError({
@@ -618,7 +618,7 @@ describe('MediaTab', () => {
       isLoading: false,
       isError: false,
     });
-    const mutateAsync = vi.fn((id: string) => {
+    const mutateAsync = vi.fn(({ id }: { id: string }) => {
       if (id === 'media-2') {
         return Promise.reject(new Error('delete failed'));
       }
@@ -693,7 +693,7 @@ describe('MediaTab', () => {
       );
 
       const warning = await screen.findByRole('alert');
-      expect(warning.textContent).toContain('이 미디어는 아직 삭제할 수 없습니다.');
+      expect(warning.textContent).toContain('이 미디어가 아직 사용 중입니다.');
       expect(screen.getByText(/단계 연출/)).toBeDefined();
       expect(screen.getByText(/오프닝 시작 트리거에서 BGM으로 사용 중/)).toBeDefined();
       expect(screen.getByText(/트리거 연출/)).toBeDefined();
@@ -707,6 +707,48 @@ describe('MediaTab', () => {
     } finally {
       alertSpy.mockRestore();
     }
+  });
+
+  it('상세 패널에서 참조 중인 미디어는 연결 해제 후 삭제로 요청한다', async () => {
+    useMediaListMock.mockReturnValue({
+      data: mockMedia,
+      isLoading: false,
+      isError: false,
+    });
+    useMediaDeletePreviewMock.mockReturnValue({
+      data: {
+        references: [
+          {
+            type: 'clue_image',
+            id: 'clue-1',
+            name: '우비 및 우산걸이',
+          },
+        ],
+      },
+      isLoading: false,
+    });
+    const mutateAsync = vi.fn().mockResolvedValue(undefined);
+    useDeleteMediaMock.mockReturnValue({
+      mutate: vi.fn(),
+      mutateAsync,
+      isPending: false,
+    });
+
+    render(<MediaTab themeId="theme-1" />);
+
+    const card = screen.getByText('오프닝 BGM').closest("[role='button']") as HTMLElement | null;
+    fireEvent.click(card!);
+    fireEvent.click(screen.getByRole('button', { name: '삭제' }));
+    const dialog = screen.getByRole('dialog', { name: '미디어를 삭제할까요?' });
+    expect(within(dialog).getByText(/1곳에서 사용 중/)).toBeDefined();
+    fireEvent.click(within(dialog).getByRole('button', { name: '연결 해제 후 삭제' }));
+
+    await waitFor(() => {
+      expect(mutateAsync).toHaveBeenCalledWith({
+        id: 'media-1',
+        detachReferences: true,
+      });
+    });
   });
 
   it('업로드와 YouTube 버튼이 렌더링된다', () => {

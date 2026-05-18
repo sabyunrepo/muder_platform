@@ -37,7 +37,7 @@ type MediaService interface {
 	CreateYouTube(ctx context.Context, creatorID, themeID uuid.UUID, req CreateMediaYouTubeRequest) (*MediaResponse, error)
 	UpdateMedia(ctx context.Context, creatorID, mediaID uuid.UUID, req UpdateMediaRequest) (*MediaResponse, error)
 	PreviewDeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDeletePreviewResponse, error)
-	DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) error
+	DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID, opts DeleteMediaOptions) error
 	RequestReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req RequestMediaReplacementUploadRequest) (*UploadURLResponse, error)
 	ConfirmReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req ConfirmUploadRequest) (*MediaResponse, error)
 	GetEditorMediaDownloadURL(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDownloadURLResponse, error)
@@ -77,8 +77,11 @@ type mediaQueries interface {
 	ClearReadingSectionMediaReferencesWithOwner(ctx context.Context, arg db.ClearReadingSectionMediaReferencesWithOwnerParams) (int64, error)
 	ClearRoleSheetMediaReferencesWithOwner(ctx context.Context, arg db.ClearRoleSheetMediaReferencesWithOwnerParams) (int64, error)
 	ClearCharacterAliasIconMediaReferencesWithOwner(ctx context.Context, arg db.ClearCharacterAliasIconMediaReferencesWithOwnerParams) (int64, error)
+	ClearCharacterImageMediaReferencesWithOwner(ctx context.Context, arg db.ClearCharacterImageMediaReferencesWithOwnerParams) (int64, error)
 	ClearThemeCoverMediaReferencesWithOwner(ctx context.Context, arg db.ClearThemeCoverMediaReferencesWithOwnerParams) (int64, error)
 	ClearMapMediaReferencesWithOwner(ctx context.Context, arg db.ClearMapMediaReferencesWithOwnerParams) (int64, error)
+	ClearClueMediaReferencesWithOwner(ctx context.Context, arg db.ClearClueMediaReferencesWithOwnerParams) (int64, error)
+	ClearLocationMediaReferencesWithOwner(ctx context.Context, arg db.ClearLocationMediaReferencesWithOwnerParams) (int64, error)
 	ClearStoryInfoMediaReferencesWithOwner(ctx context.Context, arg db.ClearStoryInfoMediaReferencesWithOwnerParams) (int64, error)
 	DeleteStoryInfoMediaRefsForMediaWithOwner(ctx context.Context, arg db.DeleteStoryInfoMediaRefsForMediaWithOwnerParams) (int64, error)
 	FindThemeCoverReferencesForMedia(ctx context.Context, arg db.FindThemeCoverReferencesForMediaParams) ([]db.FindThemeCoverReferencesForMediaRow, error)
@@ -87,6 +90,9 @@ type mediaQueries interface {
 	FindMediaReferencesInReadingSections(ctx context.Context, arg db.FindMediaReferencesInReadingSectionsParams) ([]db.FindMediaReferencesInReadingSectionsRow, error)
 	FindRoleSheetReferencesForMedia(ctx context.Context, arg db.FindRoleSheetReferencesForMediaParams) ([]db.FindRoleSheetReferencesForMediaRow, error)
 	FindCharacterAliasIconReferencesForMedia(ctx context.Context, arg db.FindCharacterAliasIconReferencesForMediaParams) ([]db.FindCharacterAliasIconReferencesForMediaRow, error)
+	FindCharacterImageReferencesForMedia(ctx context.Context, arg db.FindCharacterImageReferencesForMediaParams) ([]db.FindCharacterImageReferencesForMediaRow, error)
+	FindClueReferencesForMedia(ctx context.Context, arg db.FindClueReferencesForMediaParams) ([]db.FindClueReferencesForMediaRow, error)
+	FindLocationReferencesForMedia(ctx context.Context, arg db.FindLocationReferencesForMediaParams) ([]db.FindLocationReferencesForMediaRow, error)
 }
 
 type mediaService struct {
