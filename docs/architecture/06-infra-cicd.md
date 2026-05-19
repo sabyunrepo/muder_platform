@@ -2,7 +2,7 @@
 file: 06-infra-cicd.md
 purpose: Docker · Nginx · ARC self-hosted runner · CI 정책 — AI가 배포·검증 파이프라인 파악
 audience: design-AI
-last_verified: 2026-05-07
+last_verified: 2026-05-19
 sources_of_truth:
   - docker-compose.yml + docker-compose.dev.yml
   - apps/web/nginx.conf
@@ -18,7 +18,7 @@ related: [07-tech-stack.md, 09-issues-debt.md, 08-roadmap.md]
 
 ## 한 줄 요약 {#tldr}
 
-Docker compose가 dev/prod 모두 단일 진입점 — Nginx:80 외부 노출 + 나머지(server/postgres/redis)는 internal network. CI는 GitHub Actions + ARC self-hosted runner (KT Cloud K8s, runner pool). 현재 PR 기본 게이트는 개발 최소 워커 모드로 운영하며, CodeRabbit + 로컬 컨테이너 검증을 우선한다. 자동 CI/security worker 재활성화 기준은 `docs/ops/ci-security-worker-reactivation.md`가 최신 카논이다.
+Docker compose가 dev/prod 모두 단일 진입점 — Nginx:80 외부 노출 + 나머지(server/postgres/redis)는 internal network. CI는 GitHub Actions + ARC self-hosted runner (KT Cloud K8s, runner pool). 현재 PR 기본 게이트는 개발 최소 워커 모드로 운영하며, Codex review + 로컬 컨테이너 검증을 우선한다. 자동 CI/security worker 재활성화 기준은 `docs/ops/ci-security-worker-reactivation.md`가 최신 카논이다.
 
 ## Docker Compose 구성 {#compose}
 
@@ -81,9 +81,9 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) \
 
 ### 현재 required status checks
 
-> 2026-05-07 기준 `gh api repos/sabyunrepo/muder_platform/branches/main/protection`로 확인.
+> 2026-05-19 기준 `gh api repos/sabyunrepo/muder_platform/branches/main/protection`로 확인.
 
-- Required check: `CodeRabbit`
+- Required check: remove stale `CodeRabbit`. If Codex review emits a stable check on real PR heads, require that check; otherwise use required conversation resolution, non-blocking review decision, and local validation evidence.
 - Strict up-to-date: enabled
 - Required approving review count: 0
 - Stale PR review dismissal: enabled
@@ -119,11 +119,11 @@ HOST_UID=$(id -u) HOST_GID=$(id -g) \
 
 > 출처: `AGENTS.md`, `.codex/skills/mmp-pr-lifecycle/SKILL.md`, `docs/ops/ci-security-worker-reactivation.md`.
 
-### 현 상태 (2026-05-07 기준)
+### 현 상태 (2026-05-19 기준)
 
 - `main` 직접 커밋 금지.
 - feature branch/worktree → PR → merge.
-- PR 기본 게이트는 CodeRabbit clear, unresolved review thread 0, focused local validation evidence.
+- PR 기본 게이트는 Codex review clear, unresolved review thread 0, focused local validation evidence.
 - 기본 PR 처리에서는 `ready-for-ci` 라벨과 `workflow_dispatch`를 사용하지 않는다.
 - GitHub Actions full CI는 위험 PR의 명시적 최종 확인 버튼으로만 사용한다.
 

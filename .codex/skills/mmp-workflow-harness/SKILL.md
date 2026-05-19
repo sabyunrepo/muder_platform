@@ -22,7 +22,7 @@ description: Use when starting or standardizing non-trivial MMP work from user r
    - `narrow-fix`: one focused defect or UI issue.
    - `feature`: product behavior or API/data-model change.
    - `workflow`: AGENTS, skill, hook, script, CI, PR lifecycle, or docs/process change.
-   - `pr-lifecycle`: review, CodeRabbit, local validation, merge.
+   - `pr-lifecycle`: review, Codex review, local validation, merge.
 3. Build an execution ledger with checkboxes:
    - objective
    - scope in/out
@@ -36,7 +36,8 @@ description: Use when starting or standardizing non-trivial MMP work from user r
    - Backend: log, API response, DB state, ownership/auth, error type.
    - Workflow/CI: script path, exit code meaning, marker file, generated diff.
 5. Use interview/seed only where it adds control:
-   - Use `deep-interview` first when goals, scope, exclusions, constraints, or done criteria are materially unclear.
+   - Use `mmp-requirements-interviewer` first when goals, scope, exclusions, constraints, or done criteria are materially unclear and subagent use is approved.
+   - The requirements interviewer must apply `deep-interview` discipline first, then run `ouroboros_interview` as mandatory refinement before final handoff.
    - Use OOO interview/refinement only after the deep-interview brief exists or a safe default is explicit; keep OOO bounded to refining the accepted brief.
    - Use Issue/Seed for trackable multi-step work.
    - Before implementation, ensure the issue/seed captures objective, scope in/out, done criteria, Coverage Plan, validation plan, and E2E/browser QA expectations when UI is involved.
@@ -60,7 +61,7 @@ description: Use when starting or standardizing non-trivial MMP work from user r
 9. Review and PR:
    - Use `mmp-pr-lifecycle` before PR creation or merge.
    - Keep PR title/body in Korean.
-   - Use CodeRabbit and unresolved-thread gates under the repo policy.
+   - Use Codex review and unresolved-thread gates under the repo policy.
    - PR creation and merge remain main Codex owned. `mmp-ci-steward` may steward review wait loops and valid fixes on a handed-off PR, but does not create or merge PRs.
 
 ## Browser Evidence Format

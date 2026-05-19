@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Summarize MMP PR review, label, CodeRabbit, and optional GitHub CI/Codecov state.
+# Summarize MMP PR review, label, Codex review, and optional GitHub CI/Codecov state.
 
 set -euo pipefail
 
@@ -9,14 +9,14 @@ Usage: scripts/mmp-pr-status.sh [options] [PR_NUMBER]
 
 현재 브랜치의 PR 또는 지정한 PR 번호에 대해 다음을 요약합니다.
 - labels / merge state / review decision
-- CodeRabbit 최신 리뷰와 unresolved review thread 수
+- Codex 리뷰 check와 unresolved review thread 수
 - Codecov Report 최신 코멘트 요약. 개발 최소 워커 모드에서는 수동 GitHub CI를 실행한 경우에만 blocker로 봅니다.
 - GitHub checks 상태
 
 반복 조회가 필요하면 30초 이상 간격으로 실행하세요.
 
 Options:
-  --fail-on-blocker  CodeRabbit/review/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
+  --fail-on-blocker  Codex review/review-thread/up-to-date merge gate blocker가 있으면 non-zero로 종료합니다.
   --allow-behind     strict up-to-date + behind 상태를 blocker가 아니라 main Codex merge-decision 대상으로 표시합니다.
   -h, --help         Show help
 MSG
@@ -71,6 +71,8 @@ fi
 
 owner="$(gh repo view --json owner --jq '.owner.login')"
 repo="$(gh repo view --json name --jq '.name')"
+review_check_name="${MMP_PR_REVIEW_CHECK_NAME:-Codex}"
+review_author_regex="${MMP_PR_REVIEW_AUTHOR_REGEX:-codex|openai}"
 
 pr_json="$(gh pr view "$pr_number" --json number,title,url,headRefName,baseRefName,mergeStateStatus,reviewDecision,labels)"
 pull_json="$(gh api "repos/$owner/$repo/pulls/$pr_number")"
@@ -127,8 +129,8 @@ while :; do
   after_cursor="$(printf '%s' "$threads_json" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')"
 done
 
-# shellcheck disable=SC2016
-latest_coderabbit="$(gh pr view "$pr_number" --json reviews,comments --jq '([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login == "coderabbitai") or (.author.login == "coderabbitai[bot]") or (.body | contains("coderabbit.ai")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
+review_json="$(gh pr view "$pr_number" --json reviews,comments)"
+latest_review="$(printf '%s' "$review_json" | jq -r --arg regex "$review_author_regex" '([.reviews[] | select((.author.login | test($regex; "i")) or ((.body // "") | test("Codex"; "i")))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login | test($regex; "i")) or ((.body // "") | test("@codex|Codex"; "i")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
 codecov_body="$(gh pr view "$pr_number" --json comments --jq '[.comments[] | select((.author.login == "codecov-commenter") or (.body | contains("Codecov Report")))] | last | if . then .body else "" end')"
 if [[ -n "$codecov_body" ]]; then
   codecov_summary="$(printf '%s' "$codecov_body" | awk 'NR <= 6 { print }')"
@@ -136,24 +138,26 @@ else
   codecov_summary="없음"
 fi
 checks_json="$(gh pr checks "$pr_number" --json name,bucket,state 2>/dev/null || printf '[]')"
-coderabbit_check_bucket="$(printf '%s' "$checks_json" | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
+review_check_bucket="$(printf '%s' "$checks_json" | jq -r --arg name "$review_check_name" '[.[] | select(.name == $name)] | last | .bucket // "unknown"')"
 ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
 eval "$ci_scope_env"
 
 if [[ "$unresolved_threads" -gt 0 ]]; then
-  coderabbit_action_state="blocker: unresolved review thread가 남아 있습니다"
+  review_action_state="blocker: unresolved review thread가 남아 있습니다"
 elif [[ "$review_decision" == "CHANGES_REQUESTED" ]]; then
-  coderabbit_action_state="blocker: GitHub review decision이 CHANGES_REQUESTED입니다"
-elif [[ "$latest_coderabbit" == CHANGES_REQUESTED* ]]; then
-  coderabbit_action_state="blocker: latest review가 CHANGES_REQUESTED입니다"
-elif [[ "$coderabbit_check_bucket" == "pending" ]]; then
-  coderabbit_action_state="waiting: CodeRabbit check가 아직 진행 중입니다"
-elif [[ "$coderabbit_check_bucket" == "fail" ]]; then
-  coderabbit_action_state="blocker: CodeRabbit check가 실패했습니다"
-elif [[ "$coderabbit_check_bucket" == "pass" && "$unresolved_threads" -eq 0 ]]; then
-  coderabbit_action_state="clear: CodeRabbit check pass + unresolved 0"
+  review_action_state="blocker: GitHub review decision이 CHANGES_REQUESTED입니다"
+elif [[ "$latest_review" == CHANGES_REQUESTED* ]]; then
+  review_action_state="blocker: latest Codex review가 CHANGES_REQUESTED입니다"
+elif [[ "$review_check_bucket" == "pending" ]]; then
+  review_action_state="waiting: ${review_check_name} check가 아직 진행 중입니다"
+elif [[ "$review_check_bucket" == "fail" ]]; then
+  review_action_state="blocker: ${review_check_name} check가 실패했습니다"
+elif [[ "$review_check_bucket" == "pass" && "$unresolved_threads" -eq 0 ]]; then
+  review_action_state="clear: ${review_check_name} check pass + unresolved 0"
+elif [[ "$review_check_bucket" == "unknown" && "$unresolved_threads" -eq 0 ]]; then
+  review_action_state="clear: ${review_check_name} check 없음 + unresolved 0 + non-blocking review decision"
 else
-  coderabbit_action_state="unknown: CodeRabbit 상태를 수동 확인하세요"
+  review_action_state="unknown: ${review_check_name} 상태를 수동 확인하세요"
 fi
 
 codecov_gate_state="not-applicable: development-minimum mode"
@@ -194,8 +198,9 @@ cat <<MSG
 - Review decision: $review_decision
 - CI scope: $CI_SCOPE
 - Former heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
-- CodeRabbit latest review: $latest_coderabbit
-- CodeRabbit actionable state: $coderabbit_action_state
+- Review check name: $review_check_name
+- Codex review latest: $latest_review
+- Codex review actionable state: $review_action_state
 - Codecov gate state: $codecov_gate_state
 - Review threads: unresolved $unresolved_threads / total $total_threads
 
@@ -211,7 +216,7 @@ MSG
 gh pr checks "$pr_number" || true
 
 if [[ "$fail_on_blocker" == "1" ]]; then
-  if [[ "$coderabbit_action_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
+  if [[ "$review_action_state" == blocker:* || "$merge_gate_state" == blocker:* ]]; then
     exit 3
   fi
 fi

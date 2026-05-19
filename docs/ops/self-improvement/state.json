@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-18",
+  "updated_at": "2026-05-19",
   "policy": {
     "read_first": "Read this state file before archive logs.",
     "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
@@ -315,10 +315,41 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Changed local-ci generated drift checks to compare pre/post git diff snapshots around generation commands, so existing dirty worktree changes are not misreported as newly generated drift."
+    },
+    {
+      "id": "requirements-interviewer-agent",
+      "resolved_at": "2026-05-19",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/agents/mmp-requirements-interviewer.toml",
+        ".codex/skills/mmp-agentic-delivery-chain/SKILL.md",
+        ".codex/skills/mmp-subagent-orchestration/SKILL.md",
+        ".codex/skills/mmp-workflow-harness/SKILL.md",
+        ".codex/scripts/mmp-keyword-router.py",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Added a requirements interviewer agent and routed vague planning/interview requests through deep-interview first, mandatory ouroboros_interview refinement, Superpowers-style option/design gates, and handoff-ready Execution Brief output."
+    },
+    {
+      "id": "codex-review-pr-gate-migration",
+      "resolved_at": "2026-05-19",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/agents/mmp-ci-steward.toml",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "scripts/mmp-pr-status.sh",
+        "scripts/mmp-pr-watch.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        "scripts/mmp-pr-ci-scope.sh",
+        "scripts/pr-create-guard.sh",
+        "docs/ops/ci-security-worker-reactivation.md",
+        "docs/architecture/06-infra-cicd.md"
+      ],
+      "resolution": "Migrated the default PR review gate from CodeRabbit-specific policy and scripts to Codex review, including @codex review requests and codex-review-only scope reporting."
     }
   ],
   "last_review": {
-    "date": "2026-05-18",
-    "summary": "Added MMP workflow harness v1, preflight status script, OOO run scope guard, browser QA evidence format, and generated-drift snapshot checks for local-ci."
+    "date": "2026-05-19",
+    "summary": "Added the MMP requirements interviewer agent and migrated default PR review policy from CodeRabbit to Codex review."
   }
 }
