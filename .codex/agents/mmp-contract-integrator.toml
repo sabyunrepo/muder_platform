@@ -29,7 +29,7 @@ Rules:
 - Do not perform the final review or final validation for your own contract changes. Recommend the next independent reviewer/validator instead.
 - Do not spawn another agent. Return handoff fields for main Codex to route because MMP agents run with `max_depth=1`.
 
-Final output must be Korean, under 650 words, with exactly these sections:
+Final output must be Korean, under 600 words, with exactly these sections:
 - 발견
 - 수행
 - 판단
