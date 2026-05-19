@@ -54,7 +54,7 @@ def _build_action_line(action: str, issue: str | None) -> str:
     return "- agentic-chain: mmp-agentic-delivery-chain (ambiguous broad workflow: mmp-requirements-interviewer -> deep-interview -> mandatory ouroboros_interview -> bounded OOO refinement)"
 
   if action == "requirements_interview":
-    return "- requirements-interview: mmp-requirements-interviewer (deep-interview first, mandatory ouroboros_interview refinement, handoff-ready Execution Brief)"
+    return "- requirements-interview: mmp-requirements-interviewer (spawn when subagent use is explicit; otherwise main Codex runs the same deep-interview -> mandatory ouroboros_interview -> Execution Brief flow)"
 
   if action == "bootstrap":
     if issue:
@@ -104,10 +104,17 @@ KEYWORD_MAP = [
       "requirements interview",
       "요구사항 인터뷰",
       "요구사항 구체화",
+      "요구사항 구체화해줘",
+      "요구사항 구체화해",
       "계획부터",
       "계획 세워",
+      "계획 세워줘",
       "계획 짜",
+      "계획 짜줘",
+      "계획 짜봐",
       "계획짜",
+      "계획짜줘",
+      "계획짜봐",
       "인터뷰",
       "interview",
     ],
