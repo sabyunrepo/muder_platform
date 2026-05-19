@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page, TestInfo } from '@playwright/test';
 
@@ -29,6 +30,18 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
   expect(screenshot.length).toBeGreaterThan(0);
 }
 
+async function expectNoA11yViolations(page: Page, include: string) {
+  const results = await new AxeBuilder({ page })
+    .include(include)
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+
+  expect(
+    results.violations,
+    `a11y violations:\n${results.violations.map((violation) => `  - ${violation.id}: ${violation.help}`).join('\n')}`
+  ).toEqual([]);
+}
+
 test.describe('public theme shell', () => {
   test('로그인 페이지에서 light/dark/system 전환 버튼이 보이고 실제 테마가 바뀐다', async ({
     page,
@@ -37,6 +50,7 @@ test.describe('public theme shell', () => {
 
     await expect(page.getByRole('heading', { name: '로그인' })).toBeVisible();
     await expectThemeControls(page);
+    await expectNoA11yViolations(page, 'body');
 
     await page.getByRole('button', { name: '다크' }).click();
     await expectThemePreference(page, 'dark');
@@ -56,6 +70,7 @@ test.describe('public theme shell', () => {
 
     await expect(page.getByRole('heading', { name: '로그인' })).toBeVisible();
     await expectThemeControls(page);
+    await expectNoA11yViolations(page, 'body');
 
     await page.getByRole('button', { name: '다크' }).click();
     await expectThemePreference(page, 'dark');
@@ -68,6 +83,7 @@ test.describe('public theme shell', () => {
     await page.goto('/offline');
     await expect(page.getByRole('heading', { name: '연결이 끊어졌습니다' })).toBeVisible();
     await expectThemeControls(page);
+    await expectNoA11yViolations(page, 'body');
 
     await page.getByRole('button', { name: '다크' }).click();
     await expectThemePreference(page, 'dark');
@@ -77,6 +93,7 @@ test.describe('public theme shell', () => {
     await expect(page.getByText('404')).toBeVisible();
     await expectThemeControls(page);
     await expectThemePreference(page, 'dark');
+    await expectNoA11yViolations(page, 'body');
     await capture(page, testInfo, 'not-found-dark-theme.png');
   });
 });

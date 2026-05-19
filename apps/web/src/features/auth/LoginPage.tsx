@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { Navigate, useNavigate } from "react-router";
-import { LogIn } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
-import { getOAuthUrl } from "@/features/auth/oauth-urls";
-import { api } from "@/services/api";
-import { PublicThemeShell } from "@/shared/components/PublicThemeShell";
-import { Button, Input } from "@/shared/components/ui";
+import { useState } from 'react';
+import { Navigate, useNavigate } from 'react-router';
+import { LogIn } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { getOAuthUrl } from '@/features/auth/oauth-urls';
+import { api } from '@/services/api';
+import { PublicThemeShell } from '@/shared/components/PublicThemeShell';
+import { Button, Input } from '@/shared/components/ui';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,11 +34,11 @@ function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState<"login" | "register">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [error, setError] = useState("");
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   // 이미 로그인 상태면 로비로 이동
@@ -47,40 +47,38 @@ function LoginPage() {
   }
 
   const handleKakaoLogin = () => {
-    window.location.href = getOAuthUrl("kakao");
+    window.location.href = getOAuthUrl('kakao');
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = getOAuthUrl("google");
+    window.location.href = getOAuthUrl('google');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError('');
     setLoading(true);
 
     try {
-      const endpoint = mode === "register" ? "/v1/auth/register" : "/v1/auth/login";
-      const body = mode === "register"
-        ? { email, password, nickname }
-        : { email, password };
+      const endpoint = mode === 'register' ? '/v1/auth/register' : '/v1/auth/login';
+      const body = mode === 'register' ? { email, password, nickname } : { email, password };
 
       const tokens = await api.post<TokenPair>(endpoint, body);
       useAuthStore.getState().setTokens(tokens.access_token, tokens.refresh_token);
 
-      const user = await api.get<UserResponse>("/v1/auth/me");
+      const user = await api.get<UserResponse>('/v1/auth/me');
       useAuthStore.getState().setUser({
         id: user.id,
         nickname: user.nickname,
         email: user.email,
         profileImage: user.avatar_url,
-        role: user.role as "user" | "creator" | "admin",
+        role: user.role as 'user' | 'creator' | 'admin',
         provider: user.provider,
       });
 
-      navigate("/");
+      navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : "로그인에 실패했습니다");
+      setError(err instanceof Error ? err.message : '로그인에 실패했습니다');
     } finally {
       setLoading(false);
     }
@@ -95,7 +93,7 @@ function LoginPage() {
             <LogIn className="h-7 w-7 text-[var(--mmp-color-primary)]" />
           </div>
           <h1 className="text-2xl font-bold text-[var(--mmp-color-ink)]">
-            {mode === "login" ? "로그인" : "회원가입"}
+            {mode === 'login' ? '로그인' : '회원가입'}
           </h1>
           <p className="text-center text-sm text-[var(--mmp-color-steel)]">
             Murder Mystery Platform에 오신 것을 환영합니다
@@ -104,7 +102,7 @@ function LoginPage() {
 
         {/* 이메일/비밀번호 폼 */}
         <form onSubmit={handleSubmit} autoComplete="on" className="mb-6 flex flex-col gap-3">
-          {mode === "register" && (
+          {mode === 'register' && (
             <Input
               id="nickname"
               name="nickname"
@@ -133,42 +131,38 @@ function LoginPage() {
             className="min-h-12 px-4"
           />
           <Input
-            id={mode === "register" ? "new-password" : "current-password"}
+            id={mode === 'register' ? 'new-password' : 'current-password'}
             name="password"
             type="password"
             placeholder="비밀번호"
             aria-label="비밀번호"
-            autoComplete={mode === "register" ? "new-password" : "current-password"}
+            autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={4}
             className="min-h-12 px-4"
           />
-          {error && (
-            <p className="text-sm text-[var(--mmp-color-error)]">{error}</p>
-          )}
-          <Button
-            type="submit"
-            isLoading={loading}
-            className="w-full"
-            size="lg"
-          >
-            {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
+          {error && <p className="text-sm text-[var(--mmp-color-error)]">{error}</p>}
+          <Button type="submit" isLoading={loading} className="w-full" size="lg">
+            {loading ? '처리 중...' : mode === 'login' ? '로그인' : '회원가입'}
           </Button>
           <button
             type="button"
-            onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
+            onClick={() => {
+              setMode(mode === 'login' ? 'register' : 'login');
+              setError('');
+            }}
             className="rounded-md py-1 text-sm text-[var(--mmp-color-steel)] transition hover:text-[var(--mmp-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)]"
           >
-            {mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
+            {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
           </button>
         </form>
 
         {/* 구분선 */}
         <div className="mb-6 flex items-center gap-3">
           <div className="h-px flex-1 bg-[var(--mmp-color-hairline)]" />
-          <span className="text-xs text-[var(--mmp-color-muted)]">또는</span>
+          <span className="text-xs text-[var(--mmp-color-steel)]">또는</span>
           <div className="h-px flex-1 bg-[var(--mmp-color-hairline)]" />
         </div>
 
@@ -180,12 +174,7 @@ function LoginPage() {
             onClick={handleKakaoLogin}
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] px-4 py-3 text-sm font-semibold text-[#191919] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--mmp-color-canvas)]"
           >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 3C6.477 3 2 6.463 2 10.691c0 2.724 1.8 5.117 4.508 6.473-.197.735-.714 2.666-.818 3.08-.128.507.186.5.39.364.16-.106 2.55-1.734 3.58-2.44.77.112 1.562.17 2.34.17 5.523 0 10-3.463 10-7.647C22 6.463 17.523 3 12 3" />
             </svg>
             카카오로 시작하기
@@ -197,11 +186,7 @@ function LoginPage() {
             onClick={handleGoogleLogin}
             className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--mmp-color-hairline)] bg-white px-4 py-3 text-sm font-semibold text-gray-900 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--mmp-color-canvas)]"
           >
-            <svg
-              className="h-5 w-5"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
                 fill="#4285F4"

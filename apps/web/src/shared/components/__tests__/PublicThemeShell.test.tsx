@@ -1,41 +1,15 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
-import { AppearanceProvider } from '@/shared/appearance';
+import { describe, expect, it } from 'vitest';
+import { fireEvent, screen } from '@testing-library/react';
 import { PublicThemeShell } from '@/shared/components/PublicThemeShell';
+import { renderWithAppearanceRouter, setupAppearanceTestEnv } from '@/shared/test-utils/appearance';
 
-const storage = new Map<string, string>();
-
-beforeEach(() => {
-  storage.clear();
-  Object.defineProperty(window, 'localStorage', {
-    configurable: true,
-    value: {
-      getItem: vi.fn((key: string) => storage.get(key) ?? null),
-      setItem: vi.fn((key: string, value: string) => storage.set(key, value)),
-      removeItem: vi.fn((key: string) => storage.delete(key)),
-      clear: vi.fn(() => storage.clear()),
-    },
-  });
-});
-
-afterEach(() => {
-  cleanup();
-  storage.clear();
-  document.documentElement.removeAttribute('data-theme');
-  document.documentElement.removeAttribute('data-theme-preference');
-  document.documentElement.style.colorScheme = '';
-});
+setupAppearanceTestEnv();
 
 function renderShell() {
-  return render(
-    <AppearanceProvider>
-      <MemoryRouter>
-        <PublicThemeShell>
-          <h1>공개 페이지</h1>
-        </PublicThemeShell>
-      </MemoryRouter>
-    </AppearanceProvider>
+  return renderWithAppearanceRouter(
+    <PublicThemeShell>
+      <h1>공개 페이지</h1>
+    </PublicThemeShell>
   );
 }
 
