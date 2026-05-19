@@ -6,13 +6,13 @@ import { Card, Badge } from "@/shared/components/ui";
 // ---------------------------------------------------------------------------
 
 interface RoomPlayer {
-  id: string;
+  id?: string;
   user_id: string;
   nickname: string;
-  avatar_url: string | null;
+  avatar_url?: string | null;
   is_host: boolean;
   is_ready: boolean;
-  joined_at: string;
+  joined_at?: string;
 }
 
 interface PlayerListProps {
@@ -95,7 +95,7 @@ export function PlayerList({ players, maxPlayers }: PlayerListProps) {
   return (
     <div className="flex flex-col gap-2">
       {players.map((player, index) => (
-        <PlayerCard key={player.id} player={player} index={index} />
+        <PlayerCard key={player.id ?? player.user_id} player={player} index={index} />
       ))}
       {Array.from({ length: emptySlots }, (_, i) => (
         <EmptySlot key={`empty-${i}`} />

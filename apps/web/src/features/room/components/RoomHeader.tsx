@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Copy, Check, Users } from "lucide-react";
 import { Badge, Button, Panel } from "@/shared/components/ui";
+import { normalizeRoomStatus } from "@/features/lobby/roomStatus";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,7 +48,8 @@ export function RoomHeader({
     }
   };
 
-  const { label, variant } = statusConfig[status] ?? {
+  const normalizedStatus = normalizeRoomStatus(status);
+  const { label, variant } = statusConfig[normalizedStatus] ?? {
     label: status,
     variant: "info" as const,
   };

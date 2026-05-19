@@ -41,9 +41,9 @@ export interface RoomResponse {
   id: string;
   code: string;
   theme_id: string;
-  theme_title: string;
+  theme_title?: string;
   host_id: string;
-  host_nickname: string;
+  host_nickname?: string;
   status: string;
   player_count: number;
   max_players: number;
@@ -53,22 +53,27 @@ export interface RoomResponse {
 
 export interface RoomDetailResponse extends RoomResponse {
   players: RoomPlayer[];
-  theme: ThemeSummary;
+  theme?: ThemeSummary | null;
 }
 
 export interface RoomPlayer {
-  id: string;
+  id?: string;
   user_id: string;
   nickname: string;
-  avatar_url: string | null;
+  avatar_url?: string | null;
   is_host: boolean;
   is_ready: boolean;
-  joined_at: string;
+  joined_at?: string;
 }
 
 export interface CreateRoomRequest {
   theme_id: string;
   is_private?: boolean;
+}
+
+export interface SetReadyRequest {
+  roomId: string;
+  is_ready: boolean;
 }
 
 export interface PaginationParams {
@@ -166,9 +171,9 @@ export function useCreateRoom() {
 }
 
 export function useJoinRoom() {
-  return useMutation<RoomDetailResponse, Error, string>({
+  return useMutation<unknown, Error, string>({
     mutationFn: (roomId) =>
-      api.post<RoomDetailResponse>(`/v1/rooms/${roomId}/join`),
+      api.post<unknown>(`/v1/rooms/${roomId}/join`),
     onSuccess: (_data, roomId) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
       queryClient.invalidateQueries({ queryKey: roomKeys.list() });
@@ -179,6 +184,27 @@ export function useJoinRoom() {
 export function useLeaveRoom() {
   return useMutation<void, Error, string>({
     mutationFn: (roomId) => api.postVoid(`/v1/rooms/${roomId}/leave`),
+    onSuccess: (_data, roomId) => {
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
+      queryClient.invalidateQueries({ queryKey: roomKeys.list() });
+    },
+  });
+}
+
+export function useSetReady() {
+  return useMutation<unknown, Error, SetReadyRequest>({
+    mutationFn: ({ roomId, is_ready }) =>
+      api.post<unknown>(`/v1/rooms/${roomId}/ready`, { is_ready }),
+    onSuccess: (_data, { roomId }) => {
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
+      queryClient.invalidateQueries({ queryKey: roomKeys.list() });
+    },
+  });
+}
+
+export function useStartRoom() {
+  return useMutation<unknown, Error, string>({
+    mutationFn: (roomId) => api.post<unknown>(`/v1/rooms/${roomId}/start`, {}),
     onSuccess: (_data, roomId) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
       queryClient.invalidateQueries({ queryKey: roomKeys.list() });

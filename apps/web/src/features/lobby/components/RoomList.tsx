@@ -4,6 +4,7 @@ import { Alert, Button, Badge, EmptyState, LoadingState, Table } from '@/shared/
 import type { TableColumn } from '@/shared/components/ui';
 import { useAuthStore } from '@/stores/authStore';
 import { useRooms, useJoinRoom } from '../api';
+import { normalizeRoomStatus } from '../roomStatus';
 
 /** 방 상태별 Badge variant */
 const statusVariant: Record<string, 'success' | 'warning' | 'danger'> = {
@@ -32,8 +33,8 @@ export function RoomList() {
       return;
     }
     joinRoom.mutate(roomId, {
-      onSuccess: (data) => {
-        navigate(`/room/${data.id}`);
+      onSuccess: () => {
+        navigate(`/room/${roomId}`);
       },
     });
   };
@@ -66,14 +67,15 @@ export function RoomList() {
 
   const columns: TableColumn<(typeof rooms)[number]>[] = [
     { id: 'code', header: '코드', render: (room) => <span className="font-mono text-xs text-[var(--mmp-color-steel)]">{room.code}</span> },
-    { id: 'theme', header: '테마', render: (room) => room.theme_title },
-    { id: 'host', header: '호스트', render: (room) => <span className="text-[var(--mmp-color-charcoal)]">{room.host_nickname}</span> },
+    { id: 'theme', header: '테마', render: (room) => room.theme_title ?? '테마 정보 없음' },
+    { id: 'host', header: '호스트', render: (room) => <span className="text-[var(--mmp-color-charcoal)]">{room.host_nickname ?? '호스트'}</span> },
     { id: 'players', header: '인원', render: (room) => `${room.player_count}/${room.max_players}` },
     {
       id: 'status',
       header: '상태',
       render: (room) => {
-        const effectiveStatus = room.player_count >= room.max_players ? 'full' : room.status;
+        const normalizedStatus = normalizeRoomStatus(room.status);
+        const effectiveStatus = room.player_count >= room.max_players ? 'full' : normalizedStatus;
         return (
           <Badge variant={statusVariant[effectiveStatus] ?? 'default'}>
             {statusLabel[effectiveStatus] ?? effectiveStatus}
@@ -86,7 +88,8 @@ export function RoomList() {
       header: '',
       align: 'right',
       render: (room) => {
-        const effectiveStatus = room.player_count >= room.max_players ? 'full' : room.status;
+        const normalizedStatus = normalizeRoomStatus(room.status);
+        const effectiveStatus = room.player_count >= room.max_players ? 'full' : normalizedStatus;
         return (
           <Button
             size="sm"

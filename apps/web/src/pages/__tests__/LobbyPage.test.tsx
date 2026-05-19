@@ -142,4 +142,35 @@ describe('LobbyPage lazy-auth gates', () => {
     expect(joinMutate).not.toHaveBeenCalled();
     expect(navigateMock).not.toHaveBeenCalled();
   });
+
+  it('대문자 WAITING 방도 대기 중으로 표시하고 참가할 수 있다', () => {
+    const joinMutate = mockLobbyData();
+    useRoomsMock.mockReturnValue({
+      data: [{ ...mockRooms[0], status: 'WAITING' }],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    });
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+      isLoading: false,
+    });
+
+    renderLobby();
+
+    expect(screen.getByText('대기 중')).toBeInTheDocument();
+    const joinButton = screen.getByRole('button', { name: '참가' });
+    expect(joinButton).not.toBeDisabled();
+
+    fireEvent.click(joinButton);
+
+    expect(joinMutate).toHaveBeenCalledWith(
+      'room-1',
+      expect.objectContaining({ onSuccess: expect.any(Function) }),
+    );
+    const [, options] = joinMutate.mock.calls[0];
+    options.onSuccess();
+    expect(navigateMock).toHaveBeenCalledWith('/room/room-1');
+  });
 });

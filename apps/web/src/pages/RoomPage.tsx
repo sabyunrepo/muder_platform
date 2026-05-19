@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router";
 import { LogOut, Shield, Users, MessageSquare } from "lucide-react";
 
-import { useRoom, useLeaveRoom } from "@/features/lobby/api";
+import { useRoom, useLeaveRoom, useSetReady, useStartRoom } from "@/features/lobby/api";
 import { WsEventType } from "@mmp/shared";
 import { useWsClient } from "@/hooks/useWsClient";
 import { useWsEvent } from "@/hooks/useWsEvent";
@@ -70,10 +70,12 @@ export default function RoomPage() {
 
   // 방 나가기
   const leaveRoom = useLeaveRoom();
+  const setReady = useSetReady();
+  const startRoom = useStartRoom();
 
   // 로컬 상태
-  const [isReady, setIsReady] = useState(false);
   const [mobileTab, setMobileTab] = useState<MobileTab>("players");
+  const [startErrorMessage, setStartErrorMessage] = useState<string | null>(null);
 
   // ------ WS 이벤트 구독 → 쿼리 갱신 ------
 
@@ -89,6 +91,20 @@ export default function RoomPage() {
     refetch();
   });
 
+  // ------ 파생 상태 ------
+
+  const players = room?.players ?? [];
+  const currentPlayer = currentUser
+    ? players.find((player) => player.user_id === currentUser.id)
+    : undefined;
+  const isReady = currentPlayer?.is_ready ?? false;
+  const isHost = currentUser ? room?.host_id === currentUser.id : false;
+  const nonHostPlayers = players.filter((p) => !p.is_host);
+  const allReady =
+    nonHostPlayers.length > 0 && nonHostPlayers.every((p) => p.is_ready);
+  const minPlayers = room?.theme?.min_players;
+  const hasMinPlayers = minPlayers != null && players.length >= minPlayers;
+
   // ------ 핸들러 ------
 
   const handleLeave = useCallback(() => {
@@ -99,28 +115,35 @@ export default function RoomPage() {
   }, [id, leaveRoom, navigate]);
 
   const handleToggleReady = useCallback(() => {
-    const next = !isReady;
-    setIsReady(next);
-    send(WsEventType.GAME_ACTION, { type: "ready", ready: next });
-  }, [isReady, send]);
+    if (!id) return;
+    setReady.mutate(
+      { roomId: id, is_ready: !isReady },
+      {
+        onSuccess: () => {
+          refetch();
+        },
+      },
+    );
+  }, [id, isReady, refetch, setReady]);
 
   const handleStartGame = useCallback(() => {
-    send(WsEventType.GAME_ACTION, { type: "start" });
-  }, [send]);
+    if (!id) return;
+    setStartErrorMessage(null);
+    startRoom.mutate(id, {
+      onSuccess: () => {
+        navigate(`/game/${id}`);
+      },
+      onError: (error) => {
+        const reason = error instanceof Error ? error.message : "알 수 없는 오류";
+        setStartErrorMessage(`게임 시작에 실패했습니다. ${reason}`);
+      },
+    });
+  }, [id, navigate, startRoom]);
 
   const handleCloseRoom = useCallback(() => {
     send(WsEventType.GAME_ACTION, { type: "close" });
     navigate("/lobby");
   }, [send, navigate]);
-
-  // ------ 파생 상태 ------
-
-  const players = room?.players ?? [];
-  const isHost = currentUser ? room?.host_id === currentUser.id : false;
-  const nonHostPlayers = players.filter((p) => !p.is_host);
-  const allReady =
-    nonHostPlayers.length > 0 && nonHostPlayers.every((p) => p.is_ready);
-  const hasMinPlayers = players.length >= (room?.theme.min_players ?? 2);
 
   // ------ 로딩 / 에러 ------
 
@@ -153,7 +176,7 @@ export default function RoomPage() {
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
       {/* 헤더 */}
       <RoomHeader
-        themeTitle={room.theme_title}
+        themeTitle={room.theme_title ?? room.theme?.title ?? "대기방"}
         roomCode={room.code}
         playerCount={room.player_count}
         maxPlayers={room.max_players}
@@ -197,6 +220,8 @@ export default function RoomPage() {
             hasMinPlayers={hasMinPlayers}
             onStartGame={handleStartGame}
             onCloseRoom={handleCloseRoom}
+            isStarting={startRoom.isPending}
+            startErrorMessage={startErrorMessage}
           />
         </div>
 
@@ -206,7 +231,7 @@ export default function RoomPage() {
             mobileTab !== "chat" ? "hidden md:block" : "block"
           }`}
         >
-          <RoomChat send={send} />
+          <RoomChat roomId={id} send={send} />
         </div>
       </div>
 
@@ -226,6 +251,7 @@ export default function RoomPage() {
             variant={isReady ? "secondary" : "primary"}
             leftIcon={<Shield className="h-4 w-4" />}
             onClick={handleToggleReady}
+            isLoading={setReady.isPending}
           >
             {isReady ? "준비 취소" : "준비 완료"}
           </Button>

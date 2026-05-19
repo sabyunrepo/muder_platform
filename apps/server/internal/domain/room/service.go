@@ -46,6 +46,22 @@ type RoomResponse struct {
 type RoomDetailResponse struct {
 	RoomResponse
 	Players []PlayerInfo `json:"players"`
+	Theme   ThemeSummary `json:"theme"`
+}
+
+// ThemeSummary is the compact theme representation embedded in room detail.
+type ThemeSummary struct {
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Slug        string    `json:"slug"`
+	Description *string   `json:"description,omitempty"`
+	CoverImage  *string   `json:"cover_image,omitempty"`
+	MinPlayers  int32     `json:"min_players"`
+	MaxPlayers  int32     `json:"max_players"`
+	DurationMin int32     `json:"duration_min"`
+	Price       int32     `json:"price"`
+	CoinPrice   int32     `json:"coin_price"`
+	CreatorID   uuid.UUID `json:"creator_id"`
 }
 
 // PlayerInfo is the public representation of a player in a room.
@@ -68,6 +84,11 @@ type StartRoomRequest struct {
 	ConfigJSON []byte `json:"configJson,omitempty"`
 }
 
+// SetReadyRequest is the payload for POST /rooms/:id/ready.
+type SetReadyRequest struct {
+	IsReady bool `json:"is_ready"`
+}
+
 // Service defines the room domain operations.
 type Service interface {
 	CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
@@ -76,6 +97,7 @@ type Service interface {
 	ListWaitingRooms(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
 	JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
+	SetReady(ctx context.Context, roomID, userID uuid.UUID, ready bool) error
 	StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
@@ -103,7 +125,7 @@ type GameStarter interface {
 
 type service struct {
 	pool        *pgxpool.Pool
-	queries     *db.Queries
+	queries     roomQueries
 	logger      zerolog.Logger
 	gameStarter GameStarter // nil → legacy (flag off)
 }
@@ -432,6 +454,40 @@ func (s *service) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	return nil
 }
 
+// SetReady updates a participant's pre-game ready state.
+func (s *service) SetReady(ctx context.Context, roomID, userID uuid.UUID, ready bool) error {
+	room, err := s.queries.GetRoom(ctx, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
+		}
+		s.logger.Error().Err(err).Msg("SetReady: failed to get room")
+		return apperror.Internal("failed to get room")
+	}
+	if room.Status != "WAITING" {
+		return apperror.New(apperror.ErrRoomNotWaiting, http.StatusConflict, "room is not in waiting state")
+	}
+
+	players, err := s.queries.GetRoomPlayers(ctx, roomID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("room_id", roomID).Msg("SetReady: failed to get room players")
+		return apperror.Internal("failed to get room players")
+	}
+	if !hasRoomPlayer(players, userID) {
+		return apperror.New(apperror.ErrPlayerNotInGame, http.StatusForbidden, "player is not in this room")
+	}
+
+	if err := s.queries.SetPlayerReady(ctx, db.SetPlayerReadyParams{
+		RoomID:  roomID,
+		UserID:  userID,
+		IsReady: ready,
+	}); err != nil {
+		s.logger.Error().Err(err).Stringer("room_id", roomID).Stringer("user_id", userID).Msg("SetReady: failed to update ready state")
+		return apperror.Internal("failed to update ready state")
+	}
+	return nil
+}
+
 // buildRoomDetail fetches players (with user JOIN) and assembles a
 // RoomDetailResponse. is_host 는 room.HostID 와 user_id 비교로 결정한다.
 func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetailResponse, error) {
@@ -439,6 +495,11 @@ func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetai
 	if err != nil {
 		s.logger.Error().Err(err).Msg("failed to get room players")
 		return nil, apperror.Internal("failed to get room players")
+	}
+	theme, err := s.queries.GetTheme(ctx, room.ThemeID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("theme_id", room.ThemeID).Msg("failed to get room theme")
+		return nil, apperror.Internal("failed to get room theme")
 	}
 
 	infos := make([]PlayerInfo, len(players))
@@ -455,6 +516,7 @@ func (s *service) buildRoomDetail(ctx context.Context, room db.Room) (*RoomDetai
 	resp := &RoomDetailResponse{
 		RoomResponse: mapRoomResponse(room, len(players)),
 		Players:      infos,
+		Theme:        mapThemeSummary(theme),
 	}
 	return resp, nil
 }
@@ -488,6 +550,23 @@ func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req S
 		return apperror.New(apperror.ErrRoomNotWaiting, http.StatusConflict, "room is not in waiting state")
 	}
 
+	theme, err := s.queries.GetTheme(ctx, room.ThemeID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.New(apperror.ErrNotFound, http.StatusNotFound, "theme not found")
+		}
+		s.logger.Error().Err(err).Stringer("theme_id", room.ThemeID).Msg("StartRoom: failed to get theme")
+		return apperror.Internal("failed to get theme")
+	}
+	playerRows, err := s.queries.GetRoomPlayersWithUser(ctx, room.ID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("room_id", room.ID).Msg("StartRoom: failed to get room players")
+		return apperror.Internal("failed to get room players")
+	}
+	if err := validateStartGateRows(room, theme, playerRows); err != nil {
+		return err
+	}
+
 	if s.gameStarter == nil {
 		// Feature flag off — return 503 so clients get an explicit signal
 		// rather than a false success. (M-9 early fix)
@@ -501,13 +580,26 @@ func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req S
 		)
 	}
 
-	players, err := s.buildGameStartPlayers(ctx, room)
+	startPlayers, err := s.buildGameStartPlayers(ctx, room, playerRows)
 	if err != nil {
 		return err
 	}
 
-	if err := s.gameStarter.Start(ctx, roomID, room.ThemeID, req.ConfigJSON, players); err != nil {
+	if err := s.queries.UpdateRoomStatus(ctx, db.UpdateRoomStatusParams{
+		ID:     roomID,
+		Status: "PLAYING",
+	}); err != nil {
+		s.logger.Error().Err(err).Str("room_id", roomID.String()).Msg("StartRoom: failed to mark room as playing")
+		return apperror.Internal("failed to update room status")
+	}
+	if err := s.gameStarter.Start(ctx, roomID, room.ThemeID, req.ConfigJSON, startPlayers); err != nil {
 		s.logger.Error().Err(err).Str("room_id", roomID.String()).Msg("StartRoom: gameStarter failed")
+		if rollbackErr := s.queries.UpdateRoomStatus(ctx, db.UpdateRoomStatusParams{
+			ID:     roomID,
+			Status: "WAITING",
+		}); rollbackErr != nil {
+			s.logger.Error().Err(rollbackErr).Str("room_id", roomID.String()).Msg("StartRoom: failed to roll back room status after gameStarter failure")
+		}
 		return err
 	}
 
@@ -518,12 +610,46 @@ func (s *service) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req S
 	return nil
 }
 
-func (s *service) buildGameStartPlayers(ctx context.Context, room db.Room) ([]GameStartPlayer, error) {
-	rows, err := s.queries.GetRoomPlayersWithUser(ctx, room.ID)
-	if err != nil {
-		s.logger.Error().Err(err).Stringer("room_id", room.ID).Msg("StartRoom: failed to get room players")
-		return nil, apperror.Internal("failed to get room players")
+func validateStartGate(room db.Room, theme db.Theme, players []db.RoomPlayer) error {
+	if int32(len(players)) < theme.MinPlayers {
+		return apperror.Conflict("not enough players to start")
 	}
+	for _, player := range players {
+		if player.UserID == room.HostID {
+			continue
+		}
+		if !player.IsReady {
+			return apperror.Conflict("all non-host players must be ready")
+		}
+	}
+	return nil
+}
+
+func validateStartGateRows(room db.Room, theme db.Theme, players []db.GetRoomPlayersWithUserRow) error {
+	if int32(len(players)) < theme.MinPlayers {
+		return apperror.Conflict("not enough players to start")
+	}
+	for _, player := range players {
+		if player.UserID == room.HostID {
+			continue
+		}
+		if !player.IsReady {
+			return apperror.Conflict("all non-host players must be ready")
+		}
+	}
+	return nil
+}
+
+func hasRoomPlayer(players []db.RoomPlayer, userID uuid.UUID) bool {
+	for _, player := range players {
+		if player.UserID == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *service) buildGameStartPlayers(ctx context.Context, room db.Room, rows []db.GetRoomPlayersWithUserRow) ([]GameStartPlayer, error) {
 	chars, err := s.queries.GetThemeCharacters(ctx, room.ThemeID)
 	if err != nil {
 		s.logger.Error().Err(err).Stringer("theme_id", room.ThemeID).Msg("StartRoom: failed to get theme characters")
@@ -587,5 +713,21 @@ func mapRoomResponse(r db.Room, playerCount int) RoomResponse {
 		IsPrivate:   r.IsPrivate,
 		PlayerCount: playerCount,
 		CreatedAt:   r.CreatedAt,
+	}
+}
+
+func mapThemeSummary(t db.Theme) ThemeSummary {
+	return ThemeSummary{
+		ID:          t.ID,
+		Title:       t.Title,
+		Slug:        t.Slug,
+		Description: textToPtr(t.Description),
+		CoverImage:  textToPtr(t.CoverImage),
+		MinPlayers:  t.MinPlayers,
+		MaxPlayers:  t.MaxPlayers,
+		DurationMin: t.DurationMin,
+		Price:       t.Price,
+		CoinPrice:   t.CoinPrice,
+		CreatorID:   t.CreatorID,
 	}
 }

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send } from "lucide-react";
+import { WsEventType } from "@mmp/shared";
 import { Button, Input, Panel } from "@/shared/components/ui";
 import { useWsEvent } from "@/hooks/useWsEvent";
 
@@ -16,6 +17,7 @@ interface ChatMessage {
 }
 
 interface RoomChatProps {
+  roomId: string;
   /** WS send 함수 */
   send: <T>(type: string, payload: T) => void;
 }
@@ -24,7 +26,7 @@ interface RoomChatProps {
 // RoomChat
 // ---------------------------------------------------------------------------
 
-export function RoomChat({ send }: RoomChatProps) {
+export function RoomChat({ roomId, send }: RoomChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -39,7 +41,7 @@ export function RoomChat({ send }: RoomChatProps) {
   }, [messages, scrollToBottom]);
 
   // WS 이벤트 구독: 채팅 메시지 수신
-  useWsEvent<ChatMessage>("game", "chat:message", (payload) => {
+  useWsEvent<ChatMessage>("game", WsEventType.CHAT_MESSAGE, (payload) => {
     setMessages((prev) => {
       const next = [...prev, payload];
       return next.length > 500 ? next.slice(-500) : next;
@@ -51,7 +53,7 @@ export function RoomChat({ send }: RoomChatProps) {
     const trimmed = inputText.trim();
     if (!trimmed) return;
 
-    send("chat:message", { text: trimmed });
+    send(WsEventType.CHAT_SEND, { room_id: roomId, text: trimmed });
     setInputText("");
   };
 

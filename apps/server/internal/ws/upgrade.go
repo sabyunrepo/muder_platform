@@ -87,6 +87,9 @@ func JWTPlayerIDExtractor(secret []byte) PlayerIDExtractor {
 		if !ok {
 			return uuid.Nil, ErrQueryAuthNotAllowed
 		}
+		if tokenType, _ := claims["type"].(string); tokenType == "refresh" {
+			return uuid.Nil, ErrQueryAuthNotAllowed
+		}
 
 		sub, _ := claims.GetSubject()
 		return uuid.Parse(sub)

@@ -24,10 +24,12 @@ import (
 type fakeGameStarter struct {
 	called    bool
 	returnErr error
+	players   []GameStartPlayer
 }
 
-func (f *fakeGameStarter) Start(_ context.Context, _, _ uuid.UUID, _ []byte, _ []GameStartPlayer) error {
+func (f *fakeGameStarter) Start(_ context.Context, _, _ uuid.UUID, _ []byte, players []GameStartPlayer) error {
 	f.called = true
+	f.players = players
 	return f.returnErr
 }
 
@@ -213,6 +215,75 @@ func TestNewService_GameStarterNil(t *testing.T) {
 		t.Error("NewServiceWithStarter should set gameStarter")
 	}
 
+}
+
+func TestValidateStartGate_MinPlayersNotMet(t *testing.T) {
+	hostID := uuid.New()
+	room := db.Room{HostID: hostID, Status: "WAITING"}
+	theme := db.Theme{MinPlayers: 3}
+	players := []db.RoomPlayer{
+		{UserID: hostID},
+		{UserID: uuid.New(), IsReady: true},
+	}
+
+	err := validateStartGate(room, theme, players)
+	assertAppError(t, err, http.StatusConflict)
+}
+
+func TestValidateStartGate_NonHostNotReady(t *testing.T) {
+	hostID := uuid.New()
+	room := db.Room{HostID: hostID, Status: "WAITING"}
+	theme := db.Theme{MinPlayers: 2}
+	players := []db.RoomPlayer{
+		{UserID: hostID, IsReady: true},
+		{UserID: uuid.New(), IsReady: false},
+	}
+
+	err := validateStartGate(room, theme, players)
+	assertAppError(t, err, http.StatusConflict)
+}
+
+func TestValidateStartGate_HostReadyIgnored(t *testing.T) {
+	hostID := uuid.New()
+	room := db.Room{HostID: hostID, Status: "WAITING"}
+	theme := db.Theme{MinPlayers: 2}
+	players := []db.RoomPlayer{
+		{UserID: hostID, IsReady: false},
+		{UserID: uuid.New(), IsReady: true},
+	}
+
+	if err := validateStartGate(room, theme, players); err != nil {
+		t.Fatalf("expected host readiness to be ignored, got %v", err)
+	}
+}
+
+func TestValidateStartGate_AllNonHostReadyPasses(t *testing.T) {
+	hostID := uuid.New()
+	room := db.Room{HostID: hostID, Status: "WAITING"}
+	theme := db.Theme{MinPlayers: 3}
+	players := []db.RoomPlayer{
+		{UserID: hostID},
+		{UserID: uuid.New(), IsReady: true},
+		{UserID: uuid.New(), IsReady: true},
+	}
+
+	if err := validateStartGate(room, theme, players); err != nil {
+		t.Fatalf("expected start gate to pass, got %v", err)
+	}
+}
+
+func assertAppError(t *testing.T, err error, status int) {
+	t.Helper()
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	var ae *apperror.AppError
+	if !errors.As(err, &ae) {
+		t.Fatalf("expected *apperror.AppError, got %T", err)
+	}
+	if ae.Status != status {
+		t.Fatalf("status = %d, want %d", ae.Status, status)
+	}
 }
 
 func TestMapGameStartPlayers_UsesAssignedCharacterDisplayMetadata(t *testing.T) {
