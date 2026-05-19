@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Coins, Sparkles } from 'lucide-react';
 import { Badge, Card, LoadingState } from '@/shared/components/ui';
 import { usePackages } from '@/features/payment/api';
 import type { CoinPackage } from '@/features/payment/api';
+import { useAuthStore } from '@/stores/authStore';
 import { PaymentModal } from './PaymentModal';
 
 // ---------------------------------------------------------------------------
@@ -52,8 +54,18 @@ function PackageCard({
 }
 
 export function CoinPackageList() {
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { data: packages, isLoading } = usePackages('WEB');
   const [selected, setSelected] = useState<CoinPackage | null>(null);
+
+  function handleSelect(pkg: CoinPackage) {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    setSelected(pkg);
+  }
 
   if (isLoading) {
     return <LoadingState label="코인 패키지를 불러오는 중" className="py-20" />;
@@ -63,7 +75,7 @@ export function CoinPackageList() {
     <>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {packages?.map((pkg) => (
-          <PackageCard key={pkg.id} pkg={pkg} onSelect={setSelected} />
+          <PackageCard key={pkg.id} pkg={pkg} onSelect={handleSelect} />
         ))}
       </div>
 

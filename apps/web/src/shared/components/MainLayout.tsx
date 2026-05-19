@@ -3,14 +3,17 @@ import { Nav } from '@/shared/components/Nav';
 import { Sidebar } from '@/shared/components/Sidebar';
 import { useWsClient } from '@/hooks/useWsClient';
 import { useSocialSync } from '@/features/social/hooks/useSocialSync';
+import { useAuthStore } from '@/stores/authStore';
 
 // ---------------------------------------------------------------------------
 // 인증된 유저용 메인 레이아웃 (Nav + Sidebar + Outlet)
 // ---------------------------------------------------------------------------
 
 export function MainLayout() {
-  // Social WS: 인증된 모든 페이지에서 자동 연결
-  useWsClient({ endpoint: 'social' });
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+
+  // Social WS: 인증된 shell에서만 자동 연결
+  useWsClient({ endpoint: 'social', autoConnect: isAuthenticated });
   useSocialSync();
 
   return (

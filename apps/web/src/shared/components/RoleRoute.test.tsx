@@ -9,14 +9,20 @@ import { useAuthStore } from "@/stores/authStore";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderWithRouter(roles: Array<"user" | "creator" | "admin"> = ["admin"]) {
+function renderWithRouter({
+  roles = ["admin"],
+  mode,
+}: {
+  roles?: Array<"user" | "creator" | "admin">;
+  mode?: "redirect" | "prompt";
+} = {}) {
   return render(
     <AppearanceProvider>
       <MemoryRouter initialEntries={["/protected"]}>
         <Routes>
           <Route path="/login" element={<div>로그인 페이지</div>} />
           <Route path="/" element={<div>홈 페이지</div>} />
-          <Route element={<RoleRoute roles={roles} />}>
+          <Route element={<RoleRoute roles={roles} mode={mode} />}>
             <Route path="/protected" element={<div>보호된 페이지</div>} />
           </Route>
         </Routes>
@@ -89,7 +95,7 @@ describe("RoleRoute", () => {
       },
     });
 
-    renderWithRouter(["admin"]);
+    renderWithRouter({ roles: ["admin"] });
 
     expect(screen.getByText("홈 페이지")).toBeDefined();
     expect(screen.queryByText("보호된 페이지")).toBeNull();
@@ -109,10 +115,26 @@ describe("RoleRoute", () => {
       },
     });
 
-    renderWithRouter(["admin"]);
+    renderWithRouter({ roles: ["admin"] });
 
     expect(screen.getByText("보호된 페이지")).toBeDefined();
     expect(screen.queryByText("로그인 페이지")).toBeNull();
     expect(screen.queryByText("홈 페이지")).toBeNull();
+  });
+
+  it("shows login prompt instead of redirect when unauthenticated in prompt mode", () => {
+    useAuthStore.setState({
+      isLoading: false,
+      isAuthenticated: false,
+      user: null,
+    });
+
+    renderWithRouter({ mode: "prompt" });
+
+    expect(
+      screen.getByRole("heading", { name: "이 페이지는 로그인 후 이용할 수 있어요" }),
+    ).toBeDefined();
+    expect(screen.queryByText("로그인 페이지")).toBeNull();
+    expect(screen.queryByText("보호된 페이지")).toBeNull();
   });
 });

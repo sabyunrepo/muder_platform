@@ -165,39 +165,42 @@ function AppContent() {
               <Route path="/editor/:id" element={<EditorPage />} />
               <Route path="/editor/:id/:tab" element={<EditorPage />} />
               <Route path="/editor/:id/design/:designTab" element={<EditorPage />} />
-              <Route element={<MainLayout />}>
-                <Route path="/" element={<LobbyPage />} />
-                <Route path="/lobby" element={<LobbyPage />} />
+            </Route>
+
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<LobbyPage />} />
+              <Route path="/lobby" element={<LobbyPage />} />
+              <Route path="/users/:id" element={<PublicProfilePage />} />
+
+              {/* Shop */}
+              <Route path="/shop" element={<ShopPage />} />
+
+              {/* MainLayout 안의 인증 필요 페이지는 shell을 유지하고 안내 패널을 표시한다. */}
+              <Route element={<ProtectedRoute mode="prompt" />}>
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/room/:id" element={<RoomPage />} />
                 <Route path="/editor" element={<EditorPage />} />
                 <Route path="/social" element={<SocialPage />} />
-                <Route path="/users/:id" element={<PublicProfilePage />} />
-
-                {/* Shop */}
-                <Route path="/shop" element={<ShopPage />} />
                 <Route path="/shop/history" element={<ShopHistoryPage />} />
-
-                {/* My Themes */}
                 <Route path="/my-themes" element={<MyThemesPage />} />
+              </Route>
 
-                {/* Creator — creator 또는 admin 역할만 접근 가능 */}
-                <Route element={<RoleRoute roles={['creator', 'admin']} />}>
-                  <Route path="/creator" element={<CreatorDashboardPage />} />
-                  <Route path="/creator/:id/stats" element={<CreatorThemeStatsPage />} />
-                  <Route path="/creator/earnings" element={<CreatorEarningsPage />} />
-                  <Route path="/creator/settlements" element={<CreatorSettlementsPage />} />
-                </Route>
+              {/* Creator — creator 또는 admin 역할만 접근 가능 */}
+              <Route element={<RoleRoute roles={['creator', 'admin']} mode="prompt" />}>
+                <Route path="/creator" element={<CreatorDashboardPage />} />
+                <Route path="/creator/:id/stats" element={<CreatorThemeStatsPage />} />
+                <Route path="/creator/earnings" element={<CreatorEarningsPage />} />
+                <Route path="/creator/settlements" element={<CreatorSettlementsPage />} />
+              </Route>
 
-                {/* Admin — admin 역할만 접근 가능 */}
-                <Route element={<RoleRoute roles={['admin']} />}>
-                  <Route path="/admin" element={<AdminPage />} />
-                  <Route path="/admin/settlements" element={<AdminSettlementsPage />} />
-                  <Route path="/admin/revenue" element={<AdminRevenuePage />} />
-                  <Route path="/admin/packages" element={<AdminPackagesPage />} />
-                  <Route path="/admin/coins" element={<AdminCoinGrantPage />} />
-                  <Route path="/admin/reviews" element={<AdminReviewPage />} />
-                </Route>
+              {/* Admin — admin 역할만 접근 가능 */}
+              <Route element={<RoleRoute roles={['admin']} mode="prompt" />}>
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/admin/settlements" element={<AdminSettlementsPage />} />
+                <Route path="/admin/revenue" element={<AdminRevenuePage />} />
+                <Route path="/admin/packages" element={<AdminPackagesPage />} />
+                <Route path="/admin/coins" element={<AdminCoinGrantPage />} />
+                <Route path="/admin/reviews" element={<AdminReviewPage />} />
               </Route>
             </Route>
 

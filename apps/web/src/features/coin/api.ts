@@ -66,10 +66,11 @@ export const coinKeys = {
 // Queries
 // ---------------------------------------------------------------------------
 
-export function useBalance() {
+export function useBalance({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery<CoinBalance>({
     queryKey: coinKeys.balance(),
     queryFn: () => api.get<CoinBalance>("/v1/coins/balance"),
+    enabled,
   });
 }
 

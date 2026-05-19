@@ -29,6 +29,7 @@ interface MenuItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles?: Array<'user' | 'creator' | 'admin'>;
+  requiresAuth?: boolean;
 }
 
 interface MenuSection {
@@ -41,10 +42,10 @@ const menuSections: MenuSection[] = [
   {
     items: [
       { to: '/lobby', label: '로비', icon: Gamepad2 },
-      { to: '/social', label: '소셜', icon: MessageCircle },
+      { to: '/social', label: '소셜', icon: MessageCircle, requiresAuth: true },
       { to: '/shop', label: '상점', icon: Coins },
-      { to: '/my-themes', label: '내 테마', icon: Library },
-      { to: '/editor', label: '테마 제작', icon: Palette },
+      { to: '/my-themes', label: '내 테마', icon: Library, requiresAuth: true },
+      { to: '/editor', label: '테마 제작', icon: Palette, requiresAuth: true },
     ],
   },
   {
@@ -88,6 +89,7 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
 
 export function Sidebar() {
   const user = useAuthStore((s) => s.user);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
   const totalUnread = useSocialStore(selectTotalUnread);
@@ -99,7 +101,10 @@ export function Sidebar() {
     .filter((section) => !section.roles || section.roles.includes(userRole))
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => !item.roles || item.roles.includes(userRole)),
+      items: section.items.filter((item) => {
+        if (item.requiresAuth && !isAuthenticated) return false;
+        return !item.roles || item.roles.includes(userRole);
+      }),
     }))
     .filter((section) => section.items.length > 0);
 

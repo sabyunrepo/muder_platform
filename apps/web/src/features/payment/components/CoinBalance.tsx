@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router';
 import { Coins } from 'lucide-react';
 import { useBalance } from '@/features/coin/api';
+import { useAuthStore } from '@/stores/authStore';
 
 // ---------------------------------------------------------------------------
 // Nav 삽입용 잔액 위젯
@@ -8,9 +9,23 @@ import { useBalance } from '@/features/coin/api';
 
 export function CoinBalance() {
   const navigate = useNavigate();
-  const { data: balance } = useBalance();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { data: balance } = useBalance({ enabled: isAuthenticated });
 
   const total = balance ? balance.total_coins : 0;
+
+  if (!isAuthenticated) {
+    return (
+      <button
+        type="button"
+        onClick={() => navigate('/login')}
+        className="flex items-center gap-1.5 rounded-lg border border-[var(--mmp-color-hairline)] px-3 py-1.5 text-sm font-medium text-[var(--mmp-color-charcoal)] transition-colors hover:bg-[var(--mmp-color-surface-soft)]"
+      >
+        <Coins className="h-4 w-4 text-[var(--mmp-color-primary)]" />
+        로그인하면 잔액을 볼 수 있어요
+      </button>
+    );
+  }
 
   return (
     <button

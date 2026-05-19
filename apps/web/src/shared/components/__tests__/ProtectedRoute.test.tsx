@@ -9,13 +9,19 @@ import { useAuthStore } from "@/stores/authStore";
 // Helpers
 // ---------------------------------------------------------------------------
 
-function renderWithRouter(initialRoute = "/protected") {
+function renderWithRouter({
+  initialRoute = "/protected",
+  mode,
+}: {
+  initialRoute?: string;
+  mode?: "redirect" | "prompt";
+} = {}) {
   return render(
     <AppearanceProvider>
       <MemoryRouter initialEntries={[initialRoute]}>
         <Routes>
           <Route path="/login" element={<div>로그인 페이지</div>} />
-          <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute mode={mode} />}>
             <Route
               path="/protected"
               element={<div>보호된 페이지</div>}
@@ -131,6 +137,43 @@ describe("ProtectedRoute", () => {
       const spinner = container.querySelector(".animate-spin");
       expect(spinner).not.toBeNull();
       expect(screen.queryByText("보호된 페이지")).toBeNull();
+    });
+  });
+
+  describe("prompt mode", () => {
+    it("미인증이면 로그인 안내 패널을 표시하고 자식 라우트를 숨긴다", () => {
+      renderWithRouter({ mode: "prompt" });
+
+      expect(
+        screen.getByRole("heading", { name: "이 페이지는 로그인 후 이용할 수 있어요" }),
+      ).toBeDefined();
+      expect(screen.getByRole("link", { name: "로그인하러 가기" }).getAttribute("href")).toBe(
+        "/login",
+      );
+      expect(screen.queryByText("보호된 페이지")).toBeNull();
+      expect(screen.queryByText("로그인 페이지")).toBeNull();
+    });
+
+    it("인증 완료 상태면 Outlet(자식 라우트)을 렌더링한다", () => {
+      useAuthStore.setState({
+        refreshToken: "refresh-token",
+        accessToken: "access-token",
+        isAuthenticated: true,
+        isLoading: false,
+        user: {
+          id: "user-1",
+          nickname: "TestUser",
+          email: "test@example.com",
+          profileImage: null,
+          role: "user",
+          provider: "google",
+        },
+      });
+
+      renderWithRouter({ mode: "prompt" });
+
+      expect(screen.getByText("보호된 페이지")).toBeDefined();
+      expect(screen.queryByText("이 페이지는 로그인 후 이용할 수 있어요")).toBeNull();
     });
   });
 });
