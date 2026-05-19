@@ -1,5 +1,7 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuthStore } from "@/stores/authStore";
+import { PublicThemeShell } from "@/shared/components/PublicThemeShell";
+import { Spinner } from "@/shared/components/ui";
 
 // ---------------------------------------------------------------------------
 // 컴포넌트
@@ -23,9 +25,9 @@ function ProtectedRoute() {
   // 초기화 / 토큰 갱신 진행 중
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-      </div>
+      <PublicThemeShell center>
+        <Spinner />
+      </PublicThemeShell>
     );
   }
 

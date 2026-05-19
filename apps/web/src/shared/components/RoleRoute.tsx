@@ -1,6 +1,8 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuthStore } from "@/stores/authStore";
 import type { User } from "@/stores/authStore";
+import { PublicThemeShell } from "@/shared/components/PublicThemeShell";
+import { Spinner } from "@/shared/components/ui";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -32,9 +34,9 @@ function RoleRoute({ roles }: RoleRouteProps) {
   // 아직 사용자 정보 로딩 중
   if (isLoading || (isAuthenticated && !user)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-      </div>
+      <PublicThemeShell center>
+        <Spinner />
+      </PublicThemeShell>
     );
   }
 

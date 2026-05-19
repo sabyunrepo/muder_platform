@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router";
+import { AppearanceProvider } from "@/shared/appearance";
 import RoleRoute from "@/shared/components/RoleRoute";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -10,15 +11,17 @@ import { useAuthStore } from "@/stores/authStore";
 
 function renderWithRouter(roles: Array<"user" | "creator" | "admin"> = ["admin"]) {
   return render(
-    <MemoryRouter initialEntries={["/protected"]}>
-      <Routes>
-        <Route path="/login" element={<div>로그인 페이지</div>} />
-        <Route path="/" element={<div>홈 페이지</div>} />
-        <Route element={<RoleRoute roles={roles} />}>
-          <Route path="/protected" element={<div>보호된 페이지</div>} />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <AppearanceProvider>
+      <MemoryRouter initialEntries={["/protected"]}>
+        <Routes>
+          <Route path="/login" element={<div>로그인 페이지</div>} />
+          <Route path="/" element={<div>홈 페이지</div>} />
+          <Route element={<RoleRoute roles={roles} />}>
+            <Route path="/protected" element={<div>보호된 페이지</div>} />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </AppearanceProvider>,
   );
 }
 
@@ -29,6 +32,9 @@ function renderWithRouter(roles: Array<"user" | "creator" | "admin"> = ["admin"]
 describe("RoleRoute", () => {
   afterEach(() => {
     cleanup();
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("data-theme-preference");
+    document.documentElement.style.colorScheme = "";
   });
 
   beforeEach(() => {

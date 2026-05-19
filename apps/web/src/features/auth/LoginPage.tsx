@@ -4,6 +4,8 @@ import { LogIn } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { getOAuthUrl } from "@/features/auth/oauth-urls";
 import { api } from "@/services/api";
+import { PublicThemeShell } from "@/shared/components/PublicThemeShell";
+import { Button, Input } from "@/shared/components/ui";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -85,17 +87,17 @@ function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-slate-700 bg-slate-900 p-8 shadow-2xl">
+    <PublicThemeShell center>
+      <div className="w-full max-w-sm rounded-xl border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] p-8 shadow-[var(--mmp-shadow-card)]">
         {/* 로고 + 제목 */}
         <div className="mb-6 flex flex-col items-center gap-3">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10">
-            <LogIn className="h-7 w-7 text-amber-500" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--mmp-color-tint-amber)]">
+            <LogIn className="h-7 w-7 text-[var(--mmp-color-primary)]" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-100">
+          <h1 className="text-2xl font-bold text-[var(--mmp-color-ink)]">
             {mode === "login" ? "로그인" : "회원가입"}
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-center text-sm text-[var(--mmp-color-steel)]">
             Murder Mystery Platform에 오신 것을 환영합니다
           </p>
         </div>
@@ -103,7 +105,7 @@ function LoginPage() {
         {/* 이메일/비밀번호 폼 */}
         <form onSubmit={handleSubmit} autoComplete="on" className="mb-6 flex flex-col gap-3">
           {mode === "register" && (
-            <input
+            <Input
               id="nickname"
               name="nickname"
               type="text"
@@ -115,10 +117,10 @@ function LoginPage() {
               required
               minLength={2}
               maxLength={30}
-              className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+              className="min-h-12 px-4"
             />
           )}
-          <input
+          <Input
             id="email"
             name="email"
             type="email"
@@ -128,9 +130,9 @@ function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+            className="min-h-12 px-4"
           />
-          <input
+          <Input
             id={mode === "register" ? "new-password" : "current-password"}
             name="password"
             type="password"
@@ -141,22 +143,23 @@ function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={4}
-            className="w-full rounded-lg border border-slate-600 bg-slate-800 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:border-amber-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-900"
+            className="min-h-12 px-4"
           />
           {error && (
-            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-sm text-[var(--mmp-color-error)]">{error}</p>
           )}
-          <button
+          <Button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-lg bg-amber-500 px-4 py-3 text-sm font-semibold text-slate-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+            isLoading={loading}
+            className="w-full"
+            size="lg"
           >
             {loading ? "처리 중..." : mode === "login" ? "로그인" : "회원가입"}
-          </button>
+          </Button>
           <button
             type="button"
             onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
-            className="text-sm text-slate-400 hover:text-amber-400"
+            className="rounded-md py-1 text-sm text-[var(--mmp-color-steel)] transition hover:text-[var(--mmp-color-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)]"
           >
             {mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인"}
           </button>
@@ -164,9 +167,9 @@ function LoginPage() {
 
         {/* 구분선 */}
         <div className="mb-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-slate-700" />
-          <span className="text-xs text-slate-500">또는</span>
-          <div className="h-px flex-1 bg-slate-700" />
+          <div className="h-px flex-1 bg-[var(--mmp-color-hairline)]" />
+          <span className="text-xs text-[var(--mmp-color-muted)]">또는</span>
+          <div className="h-px flex-1 bg-[var(--mmp-color-hairline)]" />
         </div>
 
         {/* OAuth 버튼 */}
@@ -175,7 +178,7 @@ function LoginPage() {
           <button
             type="button"
             onClick={handleKakaoLogin}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] px-4 py-3 text-sm font-semibold text-[#191919] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#FEE500] px-4 py-3 text-sm font-semibold text-[#191919] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--mmp-color-canvas)]"
           >
             <svg
               className="h-5 w-5"
@@ -192,7 +195,7 @@ function LoginPage() {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-white px-4 py-3 text-sm font-semibold text-gray-900 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-[var(--mmp-color-hairline)] bg-white px-4 py-3 text-sm font-semibold text-gray-900 transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-color-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--mmp-color-canvas)]"
           >
             <svg
               className="h-5 w-5"
@@ -220,7 +223,7 @@ function LoginPage() {
           </button>
         </div>
       </div>
-    </div>
+    </PublicThemeShell>
   );
 }
 

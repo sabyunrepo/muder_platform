@@ -14,6 +14,52 @@
 - [x] PR-6 editor detail
 - [x] PR-7 game runtime
 - [x] Final screenshot matrix and visual debt review
+- [x] Correction #677: public/auth/fallback shell route QA and global theme toggle visibility
+
+## Correction #677: Public/Auth/Fallback Shell QA
+
+Reason: The first rollout treated feature-group screenshots as enough evidence, but
+public and fallback routes still had hardcoded dark styling or lacked visible
+`system | light | dark` controls. The correction starts from `/login` because that is
+the first unauthenticated route users see.
+
+- [x] Re-audit `/login`, `/auth/callback`, `/offline`, `*` fallback, authenticated app shell, and `/dev/ui-kit`.
+- [x] Add `PublicThemeShell` so public/auth/fallback pages share the same brand header and global theme controls.
+- [x] Apply `ThemeModeToggle` to `/login`, `/auth/callback`, `/offline`, and `Layout` fallback pages.
+- [x] Keep authenticated `Nav` theme controls visible on mobile via compact buttons.
+- [x] Tokenize login/offline/auth-callback/404 surfaces away from hardcoded slate/amber dark shell styling.
+- [x] Add focused component tests for public shell and login theme controls.
+- [x] Run focused unit tests, typecheck, and targeted public-shell E2E.
+- [x] Capture desktop/mobile screenshots for `/login`, plus `/offline` and 404 fallback.
+- [ ] Merge PR for #677 and return local `main` to latest.
+
+Correction route matrix:
+
+| Route | Expected theme control | PR #677 status |
+| --- | --- | --- |
+| `/login` | Public header, desktop full toggle, mobile compact toggle | Fixed |
+| `/auth/callback` | Public header while callback is processing | Fixed |
+| `/offline` | Public header and tokenized offline card | Fixed |
+| `*` / 404 | Public header via `Layout` and tokenized 404 body | Fixed |
+| `/dev/ui-kit` | Existing UI kit preview toggle | Already covered |
+| `/lobby`, `/profile`, `/shop`, `/social`, `/editor` | Authenticated `Nav` toggle, including mobile compact toggle | Mobile access fixed |
+| `/editor/:id` | Editor detail shared appearance control | Already covered by #667 |
+| `/game/:id` | Runtime dark boundary exception | Already documented by #668 |
+
+Validation evidence:
+
+- `pnpm --filter @mmp/web test src/features/auth/__tests__/LoginPage.test.tsx src/shared/components/__tests__/PublicThemeShell.test.tsx src/shared/components/__tests__/ShellSurfaces.test.tsx`
+- `pnpm --filter @mmp/web typecheck`
+- `pnpm --filter @mmp/web exec playwright test e2e/public-theme-shell.spec.ts --project=chromium`
+- `scripts/mmp-local-ci.sh quick`
+
+Screenshot evidence:
+
+- `screenshots/design-system/677-login-dark-theme.png`
+- `screenshots/design-system/677-login-light-theme.png`
+- `screenshots/design-system/677-login-mobile-dark-theme.png`
+- `screenshots/design-system/677-offline-dark-theme.png`
+- `screenshots/design-system/677-not-found-dark-theme.png`
 
 ## PR-1: Foundation (#662)
 
