@@ -22,7 +22,7 @@ description: Use when starting or standardizing non-trivial MMP work from user r
    - `narrow-fix`: one focused defect or UI issue.
    - `feature`: product behavior or API/data-model change.
    - `workflow`: AGENTS, skill, hook, script, CI, PR lifecycle, or docs/process change.
-   - `pr-lifecycle`: review, CodeRabbit, local validation, merge.
+   - `pr-lifecycle`: review, Codex review, local validation, merge.
 3. Build an execution ledger with checkboxes:
    - objective
    - scope in/out
@@ -61,7 +61,7 @@ description: Use when starting or standardizing non-trivial MMP work from user r
 9. Review and PR:
    - Use `mmp-pr-lifecycle` before PR creation or merge.
    - Keep PR title/body in Korean.
-   - Use CodeRabbit and unresolved-thread gates under the repo policy.
+   - Use Codex review and unresolved-thread gates under the repo policy.
    - PR creation and merge remain main Codex owned. `mmp-ci-steward` may steward review wait loops and valid fixes on a handed-off PR, but does not create or merge PRs.
 
 ## Browser Evidence Format

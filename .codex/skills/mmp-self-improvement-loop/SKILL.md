@@ -8,7 +8,7 @@ description: Use after repeated MMP work, PR merges, recurring review or CI mist
 ## When
 
 - After 3 merged PRs or a large multi-step session.
-- When the same user correction, CodeRabbit issue, Codecov gap, CI gate problem, or manual command pattern appears 2+ times.
+- When the same user correction, Codex review issue, Codecov gap, CI gate problem, or manual command pattern appears 2+ times.
 - When improving `AGENTS.md`, `.codex/skills`, `.codex/agents`, `.codex/hooks.json`, or workflow scripts.
 
 ## Do

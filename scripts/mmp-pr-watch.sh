@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Watch MMP PR CodeRabbit state until it needs attention or is complete.
+# Watch MMP PR Codex review state until it needs attention or is complete.
 # Intended for CI steward agents, not the main Codex thread.
 
 set -euo pipefail
@@ -21,14 +21,14 @@ Options:
   --update-branch-if-needed
                            If base branch requires strict up-to-date checks and PR is behind,
                            update the PR branch through GitHub and restart latest-head waiting
-  --code-rabbit-only       Stop once CodeRabbit is clear and review threads are resolved
+  --codex-review-only      Stop once Codex review is clear and review threads are resolved
   --no-notify              Do not send macOS notification / terminal bell
   -h, --help               Show help
 
 Stops with:
-  0 when CodeRabbit is clear
+  0 when Codex review is clear
   2 reserved for legacy workflow failures
-  3 when CodeRabbit has unresolved threads or latest review requests changes
+  3 when Codex review has unresolved threads or latest review requests changes
   4 on timeout
 MSG
 }
@@ -131,7 +131,7 @@ workflow_csv="CI,E2E — Stubbed Backend,Security — Fast Feedback"
 notify_enabled=1
 trigger_missing_workflows=0
 update_branch_if_needed=0
-code_rabbit_only=0
+review_only=0
 pr_number=""
 
 while [[ $# -gt 0 ]]; do
@@ -157,8 +157,8 @@ while [[ $# -gt 0 ]]; do
       update_branch_if_needed=1
       shift
       ;;
-    --code-rabbit-only)
-      code_rabbit_only=1
+    --codex-review-only)
+      review_only=1
       workflow_csv=""
       shift
       ;;
@@ -205,12 +205,14 @@ fi
 
 owner="$(gh_retry repo view --json owner --jq '.owner.login')"
 repo="$(gh_retry repo view --json name --jq '.name')"
+review_check_name="${MMP_PR_REVIEW_CHECK_NAME:-Codex}"
+review_author_regex="${MMP_PR_REVIEW_AUTHOR_REGEX:-codex|openai}"
 ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$pr_number" --format env)"
 eval "$ci_scope_env"
-if [[ "$CI_SCOPE" == "code-rabbit-only" && "$code_rabbit_only" != "1" ]]; then
-  echo "🚫 PR #$pr_number 은 code-rabbit-only scope입니다." >&2
+if [[ "$CI_SCOPE" == "codex-review-only" && "$review_only" != "1" ]]; then
+  echo "🚫 PR #$pr_number 은 codex-review-only scope입니다." >&2
   echo "   개발 최소 워커 모드에서는 heavy CI workflow를 PR gate로 실행하지 않습니다." >&2
-  echo "   scripts/mmp-pr-watch.sh $pr_number --code-rabbit-only 로 확인하세요." >&2
+  echo "   scripts/mmp-pr-watch.sh $pr_number --codex-review-only 로 확인하세요." >&2
   echo "   ready-for-ci 라벨이나 --trigger-missing-workflows 를 사용하지 마세요." >&2
   exit 64
 fi
@@ -227,11 +229,12 @@ while :; do
     exit 4
   fi
 
-  if ! pr_json="$(gh_retry pr view "$pr_number" --json headRefName,headRefOid,labels,reviews --jq '{headRefName, headRefOid, labels:[.labels[].name], latestCodeRabbit:([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last | if . then .state else "NONE" end)}')"; then
+  if ! pr_view_json="$(gh_retry pr view "$pr_number" --json headRefName,headRefOid,labels,reviews)"; then
     echo "⚠️ PR 상태 조회 실패; 다음 주기에 재시도합니다." >&2
     sleep "$interval"
     continue
   fi
+  pr_json="$(printf '%s' "$pr_view_json" | jq --arg regex "$review_author_regex" '{headRefName, headRefOid, labels:[.labels[].name], latestReview:([.reviews[] | select((.author.login | test($regex; "i")) or ((.body // "") | test("Codex"; "i")))] | last | if . then .state else "NONE" end)}')"
   if ! pull_json="$(gh_retry api "repos/$owner/$repo/pulls/$pr_number")"; then
     echo "⚠️ PR REST 상태 조회 실패; 다음 주기에 재시도합니다." >&2
     sleep "$interval"
@@ -254,14 +257,14 @@ while :; do
     exit 2
   fi
   labels_csv="$(printf '%s' "$pr_json" | jq -r '.labels | join(",")')"
-  latest_coderabbit="$(printf '%s' "$pr_json" | jq -r '.latestCodeRabbit')"
+  latest_review="$(printf '%s' "$pr_json" | jq -r '.latestReview')"
   checks_json="$(gh_retry pr checks "$pr_number" --json name,bucket || true)"
   if [[ -z "$checks_json" ]]; then
     echo "⚠️ PR checks 조회 실패; 다음 주기에 재시도합니다." >&2
     sleep "$interval"
     continue
   fi
-  coderabbit_bucket="$(printf '%s' "$checks_json" | jq -r '[.[] | select(.name == "CodeRabbit")] | last | .bucket // "unknown"')"
+  review_bucket="$(printf '%s' "$checks_json" | jq -r --arg name "$review_check_name" '[.[] | select(.name == $name)] | last | .bucket // "unknown"')"
   if ! read -r unresolved_threads total_threads < <(review_thread_counts "$owner" "$repo" "$pr_number"); then
     echo "⚠️ review thread 조회 실패; 다음 주기에 재시도합니다." >&2
     sleep "$interval"
@@ -273,26 +276,26 @@ while :; do
     scripts/mmp-pr-status.sh "$pr_number" || true
     exit 3
   fi
-  if [[ "$latest_coderabbit" == "CHANGES_REQUESTED" ]]; then
-    notify "MMP PR CodeRabbit blocker" "PR #$pr_number has CHANGES_REQUESTED"
+  if [[ "$latest_review" == "CHANGES_REQUESTED" ]]; then
+    notify "MMP PR Codex review blocker" "PR #$pr_number has CHANGES_REQUESTED"
     scripts/mmp-pr-status.sh "$pr_number" || true
     exit 3
   fi
-  if [[ "$coderabbit_bucket" == "fail" ]]; then
-    notify "MMP PR CodeRabbit failed" "PR #$pr_number CodeRabbit check failed"
+  if [[ "$review_bucket" == "fail" ]]; then
+    notify "MMP PR Codex review failed" "PR #$pr_number ${review_check_name} check failed"
     scripts/mmp-pr-status.sh "$pr_number" || true
     exit 3
   fi
-  coderabbit_clear=0
-  if [[ "$coderabbit_bucket" == "pass" && "$unresolved_threads" -eq 0 ]]; then
-    coderabbit_clear=1
+  review_clear=0
+  if [[ "$review_bucket" != "pending" && "$review_bucket" != "fail" && "$unresolved_threads" -eq 0 ]]; then
+    review_clear=1
   fi
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-  if [[ "$code_rabbit_only" == "1" ]]; then
-    echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} mergeable_state=$mergeable_state strict=$strict_status_checks CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음}"
-    if [[ "$coderabbit_clear" == "1" ]]; then
-      notify "MMP PR CodeRabbit clear" "PR #$pr_number CodeRabbit clear and review threads resolved"
+  if [[ "$review_only" == "1" ]]; then
+    echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} mergeable_state=$mergeable_state strict=$strict_status_checks CodexReview=$latest_review/$review_bucket check=$review_check_name threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음}"
+    if [[ "$review_clear" == "1" ]]; then
+      notify "MMP PR Codex review clear" "PR #$pr_number Codex review clear and review threads resolved"
       scripts/mmp-pr-status.sh "$pr_number" || true
       exit 0
     fi
@@ -317,7 +320,7 @@ while :; do
     if [[ -z "$latest_row" ]]; then
       all_workflows_done=0
       workflow_summary+=("$workflow_name=missing")
-      if [[ "$trigger_missing_workflows" == "1" && "$coderabbit_clear" == "1" ]]; then
+      if [[ "$trigger_missing_workflows" == "1" && "$review_clear" == "1" ]]; then
         if [[ "$triggered_workflows" != *"|$workflow_name|"* ]]; then
           echo "  → trigger workflow: $workflow_name on $branch ($head_sha)"
           if gh_retry workflow run "$workflow_name" --ref "$branch" >/dev/null; then
@@ -345,7 +348,7 @@ while :; do
   done
 
   timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
-  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} mergeable_state=$mergeable_state strict=$strict_status_checks CodeRabbit=$latest_coderabbit/$coderabbit_bucket threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
+  echo "[$timestamp] PR #$pr_number sha=${head_sha:0:7} mergeable_state=$mergeable_state strict=$strict_status_checks CodexReview=$latest_review/$review_bucket check=$review_check_name threads=$unresolved_threads/$total_threads labels=${labels_csv:-없음} workflows: ${workflow_summary[*]}"
 
   if [[ "$workflow_failure" == "1" ]]; then
     notify "MMP CI failed" "PR #$pr_number has failed CI"
@@ -354,7 +357,7 @@ while :; do
   fi
 
   if [[ "$all_workflows_done" == "1" ]]; then
-    notify "MMP PR ready" "PR #$pr_number CodeRabbit clear and CI passed"
+    notify "MMP PR ready" "PR #$pr_number Codex review clear and CI passed"
     scripts/mmp-pr-status.sh "$pr_number" || true
     exit 0
   fi

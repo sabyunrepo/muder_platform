@@ -1,18 +1,18 @@
 # CI/security worker reactivation policy
 
-Last verified: 2026-05-07
+Last verified: 2026-05-19
 
 ## Current state
 
 MMP is in development-minimum mode.
 
-- Default PR gate: CodeRabbit only.
+- Default PR gate: Codex review only.
 - Local gate before PR: `scripts/mmp-local-ci.sh quick`, or `coverage` / `e2e` / `full` for higher-risk changes.
-- Branch protection on `main`: required status check is `CodeRabbit`; strict up-to-date is enabled.
+- Branch protection on `main`: remove stale `CodeRabbit` as a required status check. If Codex review emits a stable check on real PR heads, use that check; otherwise rely on required conversation resolution, non-blocking review decision, and local validation evidence. Strict up-to-date remains enabled.
 - GitHub Actions workers for CI, E2E, gitleaks, security scans, flaky retry, module isolation, and runner image builds are manual unless noted below.
 - Release workflow still runs only for `v*` tags.
 
-This mode is intentional while active feature work is moving quickly. It avoids burning self-hosted runner minutes on every small PR while still keeping CodeRabbit review and local container validation as the merge evidence.
+This mode is intentional while active feature work is moving quickly. It avoids burning self-hosted runner minutes on every small PR while still keeping Codex review and local container validation as the merge evidence.
 
 ## External basis
 
@@ -31,11 +31,11 @@ References:
 
 ## Cost and failure impact
 
-Worker cost here is mostly self-hosted runner occupancy, not GitHub-hosted billing. The operational symptom of over-enabling checks is that active PRs wait on ARC runner capacity, CodeRabbit fixes get delayed by unrelated workflow queues, and strict branch protection can block merge on checks that were never supposed to run for that PR.
+Worker cost here is mostly self-hosted runner occupancy, not GitHub-hosted billing. The operational symptom of over-enabling checks is that active PRs wait on ARC runner capacity, Codex review fixes get delayed by unrelated workflow queues, and strict branch protection can block merge on checks that were never supposed to run for that PR.
 
 Low-cost checks:
 
-- CodeRabbit review
+- Codex review
 - local focused tests before PR
 - `Gitleaks` on same-repo PRs
 - path-filtered security-fast checks
@@ -69,7 +69,7 @@ Use now.
 
 Keep:
 
-- `CodeRabbit` as the only required branch-protection check.
+- no stale CodeRabbit required check. Require a stable Codex review check only after it is observed on real PR heads.
 - `CI`, `E2E — Stubbed Backend`, `Security — Fast Feedback`, `Gitleaks`, `Security — Deep Scan`, `Flaky Test Report`, `Module Isolation`, and `Build Runner Image` manual.
 - No `ready-for-ci` label in the default PR lifecycle.
 
@@ -116,7 +116,7 @@ Do not restore `ready-for-ci` as a normal workflow trigger. The label made the P
 
 Branch protection:
 
-- Keep `CodeRabbit` required at phase entry.
+- Keep stale CodeRabbit removed. Add a Codex review check only if the check name is stable on real PR heads.
 - Do not add scheduled-only checks to branch protection.
 - Add `Gitleaks Secret Scan / gitleaks (Secret scan)` only after five consecutive same-repo PR runs pass and the check name is stable.
 - Add a CI summary check only if `CI` is restored to PR events and passes five consecutive same-repo PRs without runner flake.
@@ -140,7 +140,7 @@ Branch protection:
 
 - Required checks should be limited to checks that run for every protected PR in this phase.
 - Recommended required set:
-  - `CodeRabbit`
+  - the stable Codex review check, if Codex emits one
   - one CI summary check, if `CI` has a stable summary job
   - `Gitleaks Secret Scan / gitleaks (Secret scan)`, after the five-green rule
 - Do not require matrix shard names directly unless the workflow emits a stable merge/summary check.
@@ -183,9 +183,9 @@ Use this only after the phase criteria above are met and the exact check names h
 gh api \
   --method PATCH \
   repos/sabyunrepo/muder_platform/branches/main/protection/required_status_checks \
-  -f strict=true \
-  -f contexts[]=CodeRabbit \
-  -f contexts[]='<STABLE_CHECK_NAME>'
+  --input - <<'JSON'
+{"strict":true,"contexts":["<STABLE_CODEX_REVIEW_CHECK_NAME_IF_ANY>","<STABLE_CHECK_NAME>"]}
+JSON
 ```
 
 Remove a stale required check:
@@ -194,8 +194,9 @@ Remove a stale required check:
 gh api \
   --method PATCH \
   repos/sabyunrepo/muder_platform/branches/main/protection/required_status_checks \
-  -f strict=true \
-  -f contexts[]=CodeRabbit
+  --input - <<'JSON'
+{"strict":true,"contexts":[]}
+JSON
 ```
 
 ## Workflow trigger changes by file

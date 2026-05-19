@@ -7,10 +7,10 @@ usage() {
   cat <<'MSG'
 Usage: scripts/mmp-pr-ci-scope.sh [--format text|env] [--stdin] [PR_NUMBER]
 
-PR 변경 파일을 보여주되, 기본 정책은 항상 CodeRabbit-only 입니다.
+PR 변경 파일을 보여주되, 기본 정책은 항상 Codex-review-only 입니다.
 
 Modes:
-- code-rabbit-only: GitHub CI/E2E/security worker를 PR 기본 gate로 실행하지 않습니다.
+- codex-review-only: GitHub CI/E2E/security worker를 PR 기본 gate로 실행하지 않습니다.
 
 Examples:
   scripts/mmp-pr-ci-scope.sh 334
@@ -133,7 +133,7 @@ if [[ "${#files[@]}" -gt 0 ]]; then
   done
 fi
 
-scope="code-rabbit-only"
+scope="codex-review-only"
 
 if [[ "$format" == "env" ]]; then
   heavy_files=""

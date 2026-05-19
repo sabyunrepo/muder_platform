@@ -329,10 +329,27 @@
         "docs/ops/self-improvement/candidates.jsonl"
       ],
       "resolution": "Added a requirements interviewer agent and routed vague planning/interview requests through deep-interview first, mandatory ouroboros_interview refinement, Superpowers-style option/design gates, and handoff-ready Execution Brief output."
+    },
+    {
+      "id": "codex-review-pr-gate-migration",
+      "resolved_at": "2026-05-19",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/agents/mmp-ci-steward.toml",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "scripts/mmp-pr-status.sh",
+        "scripts/mmp-pr-watch.sh",
+        "scripts/mmp-ci-steward-handoff.sh",
+        "scripts/mmp-pr-ci-scope.sh",
+        "scripts/pr-create-guard.sh",
+        "docs/ops/ci-security-worker-reactivation.md",
+        "docs/architecture/06-infra-cicd.md"
+      ],
+      "resolution": "Migrated the default PR review gate from CodeRabbit-specific policy and scripts to Codex review, including @codex review requests and codex-review-only scope reporting."
     }
   ],
   "last_review": {
     "date": "2026-05-19",
-    "summary": "Added the MMP requirements interviewer agent and routing so vague planning requests use deep-interview plus mandatory ouroboros_interview refinement before handoff."
+    "summary": "Added the MMP requirements interviewer agent and migrated default PR review policy from CodeRabbit to Codex review."
   }
 }

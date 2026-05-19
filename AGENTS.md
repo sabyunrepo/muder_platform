@@ -123,7 +123,7 @@ Avoid:
 
 When:
 - PR 3개 머지 후 작업 루틴을 점검할 때
-- 같은 사용자 지적, CodeRabbit/Codecov/CI 문제, 수동 명령 반복이 2회 이상 나타날 때
+- 같은 사용자 지적, Codex review/Codecov/CI 문제, 수동 명령 반복이 2회 이상 나타날 때
 - AGENTS.md, `.codex/skills`, `.codex/agents`, hooks, workflow scripts 개선을 요청받았을 때
 
 Do:
@@ -166,7 +166,7 @@ Do:
    - Security 리뷰: `.codex/agents/mmp-security-reviewer.toml`
    - Performance 리뷰: `.codex/agents/mmp-performance-reviewer.toml`
    - 긴 로컬 검증: `.codex/agents/mmp-local-validation-runner.toml`
-   - PR lifecycle/CodeRabbit: `.codex/agents/mmp-ci-steward.toml`
+   - PR lifecycle/Codex review: `.codex/agents/mmp-ci-steward.toml`
    - 세션 wrap-up/자가개선 후보: `.codex/agents/mmp-docs-wrap-steward.toml`
    - 요구사항 인터뷰/계획 전 브리프: `.codex/agents/mmp-requirements-interviewer.toml`
    - 병렬 실행 설계: `.codex/agents/mmp-parallel-coordinator.toml`
@@ -177,13 +177,13 @@ Do:
 8. 병렬 실행 계획이 필요한 경우 `.codex/agents/mmp-parallel-coordinator.toml` 역할을 먼저 사용해 read-heavy audit, write ownership, 중단 조건, 메인 통합 체크리스트를 만든다.
 9. 기본 병렬화 순서는 `parallel-coordinator → 필요한 implementer/reviewer 병렬 실행 → contract-integrator 또는 메인 Codex의 공유 계약 취합 → focused 검증 → PR steward handoff`이다.
 10. 반복 가능한 위임 흐름이 필요하면 `.codex/skills/mmp-subagent-orchestration/SKILL.md`를 사용해 task ledger, 소유권, 중단 조건, 리뷰/검증 gate를 먼저 고정한다.
-11. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 CodeRabbit 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져온다.
-12. 이미 steward가 맡아 CodeRabbit이 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 다만 이 repo의 `main`은 required status checks의 `strict`가 켜져 있어 PR이 base보다 뒤처지면 `mergeable=MERGEABLE`이어도 merge gate에서 막힐 수 있다. 이 behind 상태는 기본적으로 품질 실패가 아니라 merge-batch 판단 대상으로 본다. 최신화는 GitHub가 merge conflict를 보고하거나, 해당 PR이 다음 merge 대상이고 main Codex가 admin merge 대신 branch refresh를 선택하거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, 사용자가 명시적으로 최신화를 요청할 때만 수행한다. CI steward는 strict/behind만 남으면 자동 update 대신 `MERGE_CANDIDATE`로 보고하고, main Codex가 merge 순서에서 admin merge 또는 `gh pr update-branch <PR>`를 결정한다. local rebase, local merge commit, force-push는 금지한다.
+11. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 Codex review 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져온다.
+12. 이미 steward가 맡아 Codex review가 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 다만 이 repo의 `main`은 required status checks의 `strict`가 켜져 있어 PR이 base보다 뒤처지면 `mergeable=MERGEABLE`이어도 merge gate에서 막힐 수 있다. 이 behind 상태는 기본적으로 품질 실패가 아니라 merge-batch 판단 대상으로 본다. 최신화는 GitHub가 merge conflict를 보고하거나, 해당 PR이 다음 merge 대상이고 main Codex가 admin merge 대신 branch refresh를 선택하거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, 사용자가 명시적으로 최신화를 요청할 때만 수행한다. CI steward는 strict/behind만 남으면 자동 update 대신 `MERGE_CANDIDATE`로 보고하고, main Codex가 merge 순서에서 admin merge 또는 `gh pr update-branch <PR>`를 결정한다. local rebase, local merge commit, force-push는 금지한다.
 13. Steward-managed PR에 메인 Codex가 추가 커밋, rebase, merge commit을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
 14. 메인 Codex thread는 `scripts/mmp-pr-watch.sh`를 직접 장시간 실행하지 않는다. `scripts/mmp-pr-status.sh <PR>` 또는 `gh pr view` 같은 단발 조회만 사용하고, 30초 이상 대기가 필요하면 CI steward에 위임한다.
-15. CI steward 최종 보고는 `scripts/mmp-pr-status.sh <PR> --fail-on-blocker --allow-behind`가 최신 head에서 통과해야 유효하다. `CodeRabbit` check pass만으로는 부족하며 unresolved review thread 또는 `CHANGES_REQUESTED` review decision이 남아 있으면 steward가 계속 처리하거나 `BLOCKED`로 보고해야 한다.
+15. CI steward 최종 보고는 `scripts/mmp-pr-status.sh <PR> --fail-on-blocker --allow-behind`가 최신 head에서 통과해야 유효하다. Codex review check pass만으로는 부족하며 unresolved review thread 또는 `CHANGES_REQUESTED` review decision이 남아 있으면 steward가 계속 처리하거나 `BLOCKED`로 보고해야 한다.
 16. CI steward는 안전 규칙 안에서 자율적으로 PR을 마무리한다. 대상 PR의 타당한 review thread를 고치고 검증한 경우 해당 thread resolve까지 수행할 수 있다. `ready-for-ci` 라벨 적용이나 missing workflow dispatch는 하지 않는다.
-17. 같은 base에서 동시에 열린 PR들은 merge batch로 관리한다. CodeRabbit과 unresolved review thread가 clear된 PR들을 후보군으로 보고, main Codex가 우선순위대로 한 PR씩 merge한다. 한 PR이 merge됐다는 이유만으로 나머지 PR을 즉시 최신화하지 않는다. strict behind만 남은 저충돌 PR은 사용자 승인 또는 명확한 운영 판단이 있으면 admin merge로 CI 재소모를 끊을 수 있지만, unresolved review thread, `CHANGES_REQUESTED`, merge conflict는 bypass하지 않는다.
+17. 같은 base에서 동시에 열린 PR들은 merge batch로 관리한다. Codex review와 unresolved review thread가 clear된 PR들을 후보군으로 보고, main Codex가 우선순위대로 한 PR씩 merge한다. 한 PR이 merge됐다는 이유만으로 나머지 PR을 즉시 최신화하지 않는다. strict behind만 남은 저충돌 PR은 사용자 승인 또는 명확한 운영 판단이 있으면 admin merge로 CI 재소모를 끊을 수 있지만, unresolved review thread, `CHANGES_REQUESTED`, merge conflict는 bypass하지 않는다.
 18. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
 
 Done when:
@@ -223,14 +223,14 @@ Avoid:
 - PR 제목과 본문은 기본적으로 한글로 작성한다. 코드 식별자, 명령어, 에러 메시지, 공식 API명은 원문을 유지한다.
 - PR 분할은 CI 비용과 리뷰 비용을 함께 본다. 같은 이슈, 같은 CI scope, 같은 운영/문서/스크립트 원인의 저충돌 변경은 하나의 PR로 묶고, shared contract, migration, runtime behavior, 큰 UI route처럼 실패 영향이 큰 변경만 별도 PR로 분리한다. 너무 작은 PR을 여러 개 만들어 heavy CI를 반복 소모하지 않는다.
 - PR 생성은 `scripts/pr-create-guard.sh` wrapper를 사용한다. 직접 `gh pr create`를 실행하지 않는다.
-- 현재 개발 최소 워커 모드에서는 CodeRabbit을 기본 PR 피드백/merge gate로 둔다. GitHub Actions의 CI/E2E/security 워커는 PR 생성, push, synchronize, label 이벤트로 실행하지 않는다. 필요하면 maintainer가 workflow 화면이나 `gh workflow run`으로 명시 실행하되, 기본 PR 처리에서는 대기하지 않는다.
+- 현재 개발 최소 워커 모드에서는 Codex review를 기본 PR 피드백/merge gate로 둔다. PR에는 `@codex review`를 댓글로 호출할 수 있다. GitHub Actions의 CI/E2E/security 워커는 PR 생성, push, synchronize, label 이벤트로 실행하지 않는다. 필요하면 maintainer가 workflow 화면이나 `gh workflow run`으로 명시 실행하되, 기본 PR 처리에서는 대기하지 않는다.
 - 개발 최소 워커 모드의 기본 품질 게이트는 PR 생성 전 로컬 컨테이너 검증이다. 코드 변경 PR은 최종 커밋 후 `scripts/mmp-local-ci.sh quick` 또는 변경 위험에 맞는 `coverage`/`e2e`/`full`을 실행하고, PR 본문 `Local validation` 섹션에 실행 모드와 결과를 남긴다. GitHub full CI는 DB migration, auth/realtime/runtime engine, Docker/runner/workflow, E2E 흐름처럼 환경 차이가 중요한 PR의 최종 확인 버튼으로만 사용한다.
 - 코드 작성/수정 PR은 구현 시작 전 관련 Issue 또는 작업 계획에 `Coverage Plan`을 명시한다. 변경될 파일/분기/API handler/adapter별로 어떤 unit/integration/E2E 테스트가 덮는지 먼저 매핑하고, PR 생성 전 그 계획이 실제 focused test로 실행됐는지 확인한다.
 - 구현 중 scope를 줄이거나 일부 기능을 제외하면 PR 생성 전 관련 Issue에 `Deferred / Follow-up` 기록을 남긴다. 독립적으로 실행 가능한 작업이면 새 Issue를 만들고 PR 본문에 `Refs #번호`로 연결한다.
-- 수동 GitHub CI를 실행한 경우에만 GitHub Actions 결과와 Codecov Report를 확인한다. 기본 PR 처리에서는 로컬 검증과 CodeRabbit clear를 merge 기준으로 본다.
+- 수동 GitHub CI를 실행한 경우에만 GitHub Actions 결과와 Codecov Report를 확인한다. 기본 PR 처리에서는 로컬 검증과 Codex review clear를 merge 기준으로 본다.
 - 코드 작성/수정 PR은 로컬 focused/unit/integration/E2E 검증으로 변경 파일의 주요 분기를 덮는다. Codecov patch coverage는 수동 GitHub CI를 실행한 경우에만 blocker로 판단한다.
-- PR 생성 후 CodeRabbit 리뷰를 확인한다. 문제 제기 코멘트는 수정 커밋으로 해결하고, GitHub review thread가 unresolved 상태로 남지 않도록 resolve 상태까지 확인한 뒤 merge한다.
-- 기본 PR 처리에서는 `ready-for-ci` 라벨, workflow_dispatch, heavy CI 대기를 하지 않는다. CodeRabbit clear, unresolved thread 0, focused local validation 근거로 main Codex가 merge 판단한다.
+- PR 생성 후 Codex review를 확인한다. 필요하면 `@codex review` 댓글로 수동 검토를 요청한다. 문제 제기 코멘트는 수정 커밋으로 해결하고, GitHub review thread가 unresolved 상태로 남지 않도록 resolve 상태까지 확인한 뒤 merge한다.
+- 기본 PR 처리에서는 `ready-for-ci` 라벨, workflow_dispatch, heavy CI 대기를 하지 않는다. Codex review clear, unresolved thread 0, focused local validation 근거로 main Codex가 merge 판단한다.
 - PR/CI/리뷰 상태 확인을 반복할 때는 GitHub/API 호출을 과도하게 하지 않는다. 기본 폴링 간격은 30초~1분으로 두고, 긴 작업은 `--watch --interval 30` 이상 또는 단발 조회를 사용한다.
 - 4-agent review 정책의 canonical 문서는 `memory/feedback_4agent_review_before_admin_merge.md`다. Codex에서 사용 가능한 도구와 사용자 승인 범위에 맞춰 적용한다.
 
@@ -242,16 +242,16 @@ When:
 Do:
 1. 로컬 구현 후 focused test와 가능한 로컬 리뷰를 먼저 수행한다. 코드 변경 PR은 최종 커밋 기준 `scripts/mmp-local-ci.sh quick`을 기본 실행하고, 변경 위험에 따라 `coverage`, `e2e`, `full`을 선택한다. 이때 PR 본문 또는 작업 메모에 `Coverage Plan`과 `Local validation`을 남겨 변경 파일별 테스트 매핑, 실행 모드, E2E 제외 사유를 기록한다.
 2. PR은 라벨 없이 생성한다.
-3. CodeRabbit 1차 리뷰를 확인한다.
+3. Codex review 1차 리뷰를 확인한다.
 4. 타당한 리뷰만 수정하고 push한다. 타당하지 않은 리뷰는 근거를 남기고 resolve한다.
-5. CodeRabbit 재리뷰를 기다린다.
+5. 필요하면 `@codex review`로 Codex 재리뷰를 요청하고 기다린다.
 6. 추가 타당 리뷰가 있으면 다시 수정하고 push한다.
 7. 마지막 리뷰 대응 push 이후 unresolved review thread가 0인지 확인한다.
 8. `ready-for-ci` 라벨이나 workflow_dispatch 없이 focused local validation 근거를 기록한다.
-9. CodeRabbit clear, unresolved thread 0, 로컬 검증 성공 근거를 확인한 뒤 merge한다.
+9. Codex review clear, unresolved thread 0, 로컬 검증 성공 근거를 확인한 뒤 merge한다.
 
 Done when:
-- CodeRabbit unresolved thread 0
+- Codex review unresolved thread 0
 - 코드 변경 PR: 최종 HEAD 기준 local-ci 성공 marker 또는 명시적 우회 사유
 - 작업 중 제외/최소화한 항목이 있으면 기존 Issue/새 Issue/PR 본문 `Refs`로 추적된다.
 - no ready-for-ci, no workflow dispatch, focused local validation evidence
@@ -259,7 +259,7 @@ Done when:
 
 Avoid:
 - `ready-for-ci` 라벨을 붙이지 않는다.
-- 새 커밋 push 직후 CodeRabbit 재검토 가능성을 무시하고 CI를 먼저 돌리지 않는다.
+- 새 커밋 push 직후 Codex review 재검토 가능성을 무시하고 CI를 먼저 돌리지 않는다.
 - GitHub/API 상태 조회를 30초보다 촘촘히 반복하지 않는다.
 
 ### 코드 작업 테스트 기준

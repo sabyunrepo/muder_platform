@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Safe wrapper around `gh pr create` for MMP.
 # It prevents attaching `ready-for-ci`; development-minimum PRs use
-# CodeRabbit + local validation instead of GitHub CI workers.
+# Codex review + local validation instead of GitHub CI workers.
 
 set -euo pipefail
 
@@ -87,7 +87,7 @@ fail_ready_for_ci() {
 1. PR 생성
 2. Coverage Plan 확인: 변경 파일/분기별 focused test 매핑을 PR 본문 또는 작업 메모에 기록
 3. PR 묶음 확인: 같은 이슈/같은 CI scope의 저충돌 workflow 변경은 하나로 묶고, 실패 영향이 큰 변경만 분리
-4. CodeRabbit 리뷰 이슈 확인
+4. Codex 리뷰 이슈 확인
 5. 수정 커밋 push + review thread resolve
 6. 최신 HEAD 기준 local validation 근거 확인
 7. `ready-for-ci` 라벨이나 workflow_dispatch 없이 merge 판단
@@ -201,7 +201,7 @@ require_issue_seed_for_pr
 
 cat <<'MSG'
 ✅ PR 생성 가드 통과: `ready-for-ci` 라벨 없이 PR을 생성합니다.
-   Coverage Plan과 local validation 근거를 PR 본문에 남긴 뒤, CodeRabbit 리뷰 이슈 해결 후 merge 판단하세요.
+   Coverage Plan과 local validation 근거를 PR 본문에 남긴 뒤, Codex 리뷰 이슈 해결 후 merge 판단하세요.
    같은 CI scope의 저충돌 workflow 변경은 하나의 PR로 묶고, heavy CI를 반복 소모하는 초소형 PR은 피하세요.
 MSG
 

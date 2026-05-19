@@ -22,7 +22,8 @@ Workflow:
    - If a safe default exists, state the default and continue instead of over-questioning.
    - If user input is required, stop with the "If still interviewing" output so main Codex can ask the user and send the answer back.
 3. Mandatory Ouroboros refinement:
-   - Invoke or request `ouroboros_interview` for every non-trivial requirements task.
+   - Invoke the MCP tool `mcp__ouroboros__ouroboros_interview` for every non-trivial requirements task when that tool is available.
+   - If the MCP tool is not available in the current runtime, stop and return a clear blocker/question for main Codex instead of claiming refinement evidence.
    - Use it to challenge ambiguity, missing acceptance criteria, and hidden assumptions.
    - Keep refinement bounded to the accepted deep-interview brief; do not let it expand scope without main Codex approval.
 4. Options and approval:

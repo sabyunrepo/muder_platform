@@ -137,8 +137,13 @@ AGENTIC_CHAIN_PATTERNS = [
   "harness",
   "workflow harness",
   "subagent",
+  "subagent로",
   "sub-agent",
+  "sub-agent로",
   "sub agent",
+  "sub agent로",
+  "서브에이전트",
+  "서브 에이전트",
   "independent validation",
   "independent review",
   "do not review your own work",
@@ -160,14 +165,24 @@ AGENTIC_CHAIN_PATTERNS = [
 
 def detect(text: str) -> str | None:
   for entry in KEYWORD_MAP:
+    if entry["action"] == "requirements_interview":
+      continue
     for pattern in entry["patterns"]:
       if _word_boundary_match(pattern, text):
         return entry["action"]
+
   for pattern in AGENTIC_CHAIN_PATTERNS:
     if re.search(r"[가-힣]", pattern) and pattern in text:
       return "agentic_chain"
     if _word_boundary_match(pattern, text):
       return "agentic_chain"
+
+  for entry in KEYWORD_MAP:
+    if entry["action"] != "requirements_interview":
+      continue
+    for pattern in entry["patterns"]:
+      if _word_boundary_match(pattern, text):
+        return entry["action"]
   return None
 
 

@@ -11,7 +11,7 @@ Usage: scripts/mmp-ci-steward-handoff.sh [PR_NUMBER]
 CI steward handoff prompt를 출력합니다.
 
 Steward의 범위:
-- 단일 PR branch/worktree의 CodeRabbit 리뷰 보정
+- 단일 PR branch/worktree의 Codex review 보정
 - main Codex가 명시한 경우에만 strict up-to-date merge gate 해소용 GitHub PR branch update
 - 해결이 확인된 대상 PR review thread 정리
 - focused validation 및 fix commit push
@@ -92,15 +92,17 @@ labels="$(printf '%s' "$pr_json" | jq -r '[.labels[].name] | if length == 0 then
 
 read -r unresolved_threads total_threads < <(review_thread_counts "$owner" "$repo" "$number")
 
-# shellcheck disable=SC2016
-latest_coderabbit="$(gh pr view "$number" --json reviews,comments --jq '([.reviews[] | select((.author.login == "coderabbitai[bot]") or (.author.login == "coderabbitai"))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login == "coderabbitai") or (.author.login == "coderabbitai[bot]") or (.body | contains("coderabbit.ai")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
+review_check_name="${MMP_PR_REVIEW_CHECK_NAME:-Codex}"
+review_author_regex="${MMP_PR_REVIEW_AUTHOR_REGEX:-codex|openai}"
+review_json="$(gh pr view "$number" --json reviews,comments)"
+latest_review="$(printf '%s' "$review_json" | jq -r --arg regex "$review_author_regex" '([.reviews[] | select((.author.login | test($regex; "i")) or ((.body // "") | test("Codex"; "i")))] | last) as $review | if $review then ($review.state + " @ " + $review.submittedAt) else (([.comments[] | select((.author.login | test($regex; "i")) or ((.body // "") | test("@codex|Codex"; "i")))] | last) as $comment | if $comment then ("comment @ " + $comment.createdAt) else "없음" end) end')"
 checks_summary="$(gh pr checks "$number" --json name,bucket,state,link 2>/dev/null | jq -r 'if length == 0 then "checks 없음" else .[] | "- " + .name + ": " + (.bucket // "unknown") + "/" + (.state // "unknown") + " " + (.link // "") end' || printf 'checks 조회 실패')"
 ci_scope_env="$(scripts/mmp-pr-ci-scope.sh "$number" --format env)"
 eval "$ci_scope_env"
-steward_mode="code-rabbit-only"
-ci_instruction="개발 최소 워커 모드입니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. CodeRabbit clear + unresolved 0 + focused local validation이 완료 조건입니다."
-merge_ready_rule="MERGE_READY 또는 MERGE_CANDIDATE: unresolved thread 0, CodeRabbit clear, focused local validation pass. ready-for-ci 라벨과 required workflow green은 요구하지 않습니다. strict behind만 남으면 MERGE_CANDIDATE로 보고하고 main Codex가 admin merge 또는 update를 결정합니다."
-copy_ready_rule="MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --code-rabbit-only 로 CodeRabbit/threads 상태만 확인하고, ready-for-ci 라벨이나 workflow_dispatch/full CI는 실행하지 마세요. main Codex가 명시하지 않은 branch update는 하지 마세요."
+steward_mode="codex-review-only"
+ci_instruction="개발 최소 워커 모드입니다. ready-for-ci 라벨, workflow_dispatch, full CI 대기를 하지 마세요. Codex review clear + unresolved 0 + focused local validation이 완료 조건입니다."
+merge_ready_rule="MERGE_READY 또는 MERGE_CANDIDATE: unresolved thread 0, Codex review clear, focused local validation pass. ready-for-ci 라벨과 required workflow green은 요구하지 않습니다. strict behind만 남으면 MERGE_CANDIDATE로 보고하고 main Codex가 admin merge 또는 update를 결정합니다."
+copy_ready_rule="MMP_CI_STEWARD=1 scripts/mmp-pr-watch.sh $number --codex-review-only 로 Codex review/threads 상태만 확인하고, ready-for-ci 라벨이나 workflow_dispatch/full CI는 실행하지 마세요. main Codex가 명시하지 않은 branch update는 하지 마세요."
 full_ci_wait_rule="이 PR에서는 full CI required workflow 대기를 하지 마세요. missing heavy-CI context는 개발 최소 워커 정책의 기대 동작입니다."
 state_note=""
 if [[ "$state" != "OPEN" ]]; then
@@ -111,7 +113,7 @@ cat <<MSG
 # MMP CI Steward Handoff
 
 ## 목표
-단일 PR #$number 의 CodeRabbit 리뷰 보정을 steward에게 맡기고, 메인 Codex는 별도 worktree에서 다음 이슈를 계속 진행합니다.
+단일 PR #$number 의 Codex review 보정을 steward에게 맡기고, 메인 Codex는 별도 worktree에서 다음 이슈를 계속 진행합니다.
 $state_note
 
 ## 현재 PR
@@ -125,7 +127,8 @@ $state_note
 - Base requires up-to-date checks: $strict_status_checks
 - Review decision: $review_decision
 - Labels: $labels
-- CodeRabbit latest: $latest_coderabbit
+- Review check name: $review_check_name
+- Codex review latest: $latest_review
 - Review threads: unresolved $unresolved_threads / total $total_threads
 - CI scope: $steward_mode
 - Heavy CI trigger files: ${CI_HEAVY_FILES:-없음}
@@ -140,20 +143,20 @@ $checks_summary
 $ci_instruction
 
 ## Steward 허용 범위
-- 이 PR branch/worktree에서만 CodeRabbit 원인을 확인하고 수정합니다.
+- 이 PR branch/worktree에서만 Codex review 원인을 확인하고 수정합니다.
 - 타당한 리뷰/실패만 고치고 focused validation을 실행한 뒤 fix commit을 push할 수 있습니다.
 - 최종 보고 직전 반드시 scripts/mmp-pr-status.sh $number --fail-on-blocker --allow-behind 를 실행합니다. 이 명령이 실패하면 MERGE_READY/MERGE_CANDIDATE 보고 금지이며, 남은 thread/check를 계속 처리하거나 BLOCKED로 보고합니다.
-- CodeRabbit check pass는 충분 조건이 아닙니다. Review threads unresolved 0, GitHub review decision non-blocking, CodeRabbit actionable state clear를 모두 만족해야 합니다.
+- Codex review check가 있으면 pass만으로는 충분하지 않습니다. Review threads unresolved 0, GitHub review decision non-blocking, Codex review actionable state clear를 모두 만족해야 합니다.
 - Codecov patch coverage는 수동 GitHub CI를 실행한 경우에만 blocker로 판단합니다. 기본 PR 처리에서는 로컬 focused validation을 우선합니다.
-- Coverage Plan 또는 deferred/follow-up 추적이 누락되어 PR/Issue metadata 수정이 필요하면 main Codex로 `NEEDS_FIX` 또는 `BLOCKED`를 보고하세요. steward가 직접 PR 본문이나 Issue checklist를 수정하지 않습니다.
+- Coverage Plan 또는 deferred/follow-up 추적이 누락되어 PR/Issue metadata 수정이 필요하면 main Codex로 NEEDS_FIX 또는 BLOCKED를 보고하세요. steward가 직접 PR 본문이나 Issue checklist를 수정하지 않습니다.
 - 남은 review thread가 현재 코드와 테스트로 해결됐다고 검증되면 steward가 해당 thread만 resolve할 수 있습니다. 애매하거나 사용자-authored thread면 resolve하지 말고 BLOCKED로 보고합니다.
 - Base requires up-to-date checks가 true이고 REST mergeable_state가 behind이면 자동 branch update를 하지 않습니다. 품질 gate가 clear이면 MERGE_CANDIDATE로 보고하고, main Codex가 merge batch 순서에서 admin merge 또는 gh pr update-branch $number 실행을 결정합니다. 단, main Codex가 명시적으로 최신화를 요청했거나 merge conflict/main drift 근거가 있으면 gh pr update-branch $number 를 수행한 뒤 새 Head SHA 기준으로 처음부터 다시 확인합니다.
 - ready-for-ci 라벨과 workflow_dispatch를 실행하지 않습니다.
 - watcher는 CI steward 전용입니다. 메인 Codex thread에서 직접 실행하지 않습니다.
-- 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 CodeRabbit/check 상태를 다시 확인합니다.
+- 이전 보고 이후 메인 Codex가 추가 커밋을 push했다면 최신 Head SHA 기준으로 Codex review/check 상태를 다시 확인합니다.
 - local rebase, local merge commit, force-push는 금지입니다. main Codex가 branch update를 지시한 경우 strict up-to-date gate 해소에는 gh pr update-branch $number 만 사용합니다.
-- pending 상태는 완료가 아닙니다. CodeRabbit이 아직 도는 중이고 watcher가 계속 가능하면 최종 보고하지 말고 계속 진행하세요.
-- 메인 Codex가 상태를 물으면 최신 Head SHA, 현재 phase(CODE_RABBIT/FIXING/BRANCH_UPDATE/BLOCKED), 실행 중이거나 방금 끝난 명령, pending check/thread, 다음 자율 행동을 짧게 보고하세요.
+- pending 상태는 완료가 아닙니다. Codex review가 아직 도는 중이고 watcher가 계속 가능하면 최종 보고하지 말고 계속 진행하세요.
+- 메인 Codex가 상태를 물으면 최신 Head SHA, 현재 phase(CODEX_REVIEW/FIXING/BRANCH_UPDATE/BLOCKED), 실행 중이거나 방금 끝난 명령, pending check/thread, 다음 자율 행동을 짧게 보고하세요.
 - watcher timeout 또는 한 timeout window 동안 상태 변화가 없으면 BLOCKED로 보고하고, 마지막 Head SHA, elapsed time, pending 항목, main Codex가 재실행할 명령을 포함하세요.
 
 ## Steward 금지 범위
@@ -170,7 +173,7 @@ $ci_instruction
 
 대상 PR: #$number $url
 대상 branch: $head
-목표: CodeRabbit 리뷰 상태를 확인하고 타당한 문제를 수정해 PR을 MERGE_READY 상태까지 끌고 가세요.
+목표: Codex review 상태를 확인하고 타당한 문제를 수정해 PR을 MERGE_READY 상태까지 끌고 가세요.
 제약:
 - 이 PR branch/worktree만 수정하세요.
 - PR 생성/Issue 생성/merge/force-push/destructive git/secret 조회는 하지 마세요.

@@ -42,7 +42,7 @@ Use this when the user asks for OOO, subagents, harness engineering, strict role
 7. PR:
    - Main Codex creates PRs, decides scope, and merges.
    - Use `mmp-pr-lifecycle`.
-   - `mmp-ci-steward` may handle CodeRabbit waiting, valid review fixes, and focused validation on a handed-off PR, but does not create or merge PRs.
+   - `mmp-ci-steward` may handle Codex review waiting, valid review fixes, and focused validation on a handed-off PR, but does not create or merge PRs.
 
 ## Required Handoff Fields
 
