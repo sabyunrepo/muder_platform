@@ -102,6 +102,7 @@ def _mark_reported() -> None:
 def _build_context_lines(branch: str, issue: str | None, hooks_enabled: str, strict: str) -> list[str]:
   lines = [
     "MMP 작업 가이드: scripts/mmp-workflow-agent.sh bootstrap/commit/complete 경로로 명령을 줄이면 수동 반복 작업이 줄어듭니다.",
+    "Agentic/OOO/subagent/harness 작업은 mmp-agentic-delivery-chain에서 시작하고, 마지막에는 독립 review/validation + omx cleanup을 확인하세요.",
     f"현재 훅 상태: hooks={hooks_enabled}, strict={strict}",
   ]
 
@@ -127,8 +128,9 @@ def _build_context_lines(branch: str, issue: str | None, hooks_enabled: str, str
     lines.extend([
       "추천 실행 순서:",
       f"  1) scripts/mmp-workflow-agent.sh bootstrap --issue {issue} --auto-approve",
-      f"  2) 코드 변경 후 scripts/mmp-workflow-agent.sh commit --issue {issue} --message \"feat: issue-{issue} ...\" --create-pr -- --title \"feat: issue-{issue}\"",
-      f"  3) scripts/mmp-workflow-agent.sh complete --issue {issue}",
+      f"  2) Agentic 필요 시 mmp-agentic-delivery-chain 적용",
+      f"  3) 코드 변경 후 scripts/mmp-workflow-agent.sh commit --issue {issue} --message \"feat: issue-{issue} ...\" --create-pr -- --title \"feat: issue-{issue}\"",
+      f"  4) 독립 review/validation, omx cleanup 확인 후 scripts/mmp-workflow-agent.sh complete --issue {issue}",
     ])
   else:
     lines.append("현재 브랜치에서 issue 번호를 감지하지 못했습니다.")
