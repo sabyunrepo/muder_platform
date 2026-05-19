@@ -1,13 +1,26 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router";
+import { useAuthStore } from "@/stores/authStore";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
 // ---------------------------------------------------------------------------
 
-const { usePackagesMock } = vi.hoisted(() => ({
+const { usePackagesMock, navigateMock } = vi.hoisted(() => ({
   usePackagesMock: vi.fn(),
+  navigateMock: vi.fn(),
 }));
+
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual<typeof import("react-router")>(
+    "react-router",
+  );
+  return {
+    ...actual,
+    useNavigate: () => navigateMock,
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Mock: @/features/payment/api
@@ -79,6 +92,13 @@ const mockPackages = [
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  useAuthStore.setState({
+    user: null,
+    accessToken: null,
+    refreshToken: null,
+    isAuthenticated: false,
+    isLoading: false,
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -138,12 +158,17 @@ describe("CoinPackageList", () => {
   });
 
   it("카드 클릭 시 결제 모달을 연다", () => {
+    useAuthStore.setState({ isAuthenticated: true });
     usePackagesMock.mockReturnValue({
       data: mockPackages,
       isLoading: false,
     });
 
-    render(<CoinPackageList />);
+    render(
+      <MemoryRouter>
+        <CoinPackageList />
+      </MemoryRouter>,
+    );
 
     // 모달이 아직 없어야 한다
     expect(screen.queryByTestId("payment-modal")).toBeNull();
@@ -154,5 +179,42 @@ describe("CoinPackageList", () => {
     // 모달이 나타나야 한다
     expect(screen.getByTestId("payment-modal")).toBeDefined();
     expect(screen.getByTestId("payment-modal").textContent).toBe("프리미엄 팩");
+  });
+
+  it("비로그인 상태에서 패키지 클릭 시 결제 모달 대신 로그인으로 이동한다", () => {
+    usePackagesMock.mockReturnValue({
+      data: mockPackages,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CoinPackageList />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("프리미엄 팩"));
+
+    expect(navigateMock).toHaveBeenCalledWith("/login");
+    expect(screen.queryByTestId("payment-modal")).toBeNull();
+  });
+
+  it("인증 초기화 중에는 패키지 클릭 시 로그인 이동이나 결제 모달을 열지 않는다", () => {
+    useAuthStore.setState({ isAuthenticated: false, isLoading: true });
+    usePackagesMock.mockReturnValue({
+      data: mockPackages,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CoinPackageList />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("프리미엄 팩"));
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("payment-modal")).toBeNull();
   });
 });

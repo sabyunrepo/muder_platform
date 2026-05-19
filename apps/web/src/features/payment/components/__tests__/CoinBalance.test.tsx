@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
+import { useAuthStore } from "@/stores/authStore";
 
 // ---------------------------------------------------------------------------
 // Hoisted mocks
@@ -30,7 +31,7 @@ vi.mock("react-router", async () => {
 // ---------------------------------------------------------------------------
 
 vi.mock("@/features/coin/api", () => ({
-  useBalance: () => useBalanceMock(),
+  useBalance: (options?: { enabled?: boolean }) => useBalanceMock(options),
 }));
 
 // ---------------------------------------------------------------------------
@@ -46,6 +47,13 @@ import { CoinBalance } from "../CoinBalance";
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  useAuthStore.setState({
+    user: null,
+    accessToken: null,
+    refreshToken: null,
+    isAuthenticated: false,
+    isLoading: false,
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -54,6 +62,7 @@ afterEach(() => {
 
 describe("CoinBalance", () => {
   it("base + bonus 합계를 포매팅하여 렌더링한다", () => {
+    useAuthStore.setState({ isAuthenticated: true });
     useBalanceMock.mockReturnValue({
       data: { base_coins: 1200, bonus_coins: 300, total_coins: 1500 },
     });
@@ -72,6 +81,7 @@ describe("CoinBalance", () => {
   });
 
   it("클릭 시 /shop 으로 네비게이션한다", () => {
+    useAuthStore.setState({ isAuthenticated: true });
     useBalanceMock.mockReturnValue({
       data: { base_coins: 500, bonus_coins: 0, total_coins: 500 },
     });
@@ -84,5 +94,21 @@ describe("CoinBalance", () => {
 
     fireEvent.click(screen.getByText("500"));
     expect(navigateMock).toHaveBeenCalledWith("/shop");
+  });
+
+  it("비로그인 상태에서는 잔액 API를 비활성화하고 로그인 이동을 제공한다", () => {
+    useBalanceMock.mockReturnValue({
+      data: undefined,
+    });
+
+    render(
+      <MemoryRouter>
+        <CoinBalance />
+      </MemoryRouter>,
+    );
+
+    expect(useBalanceMock).toHaveBeenCalledWith({ enabled: false });
+    fireEvent.click(screen.getByText("로그인하면 잔액을 볼 수 있어요"));
+    expect(navigateMock).toHaveBeenCalledWith("/login");
   });
 });

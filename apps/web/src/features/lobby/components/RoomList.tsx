@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { DoorOpen } from 'lucide-react';
 import { Alert, Button, Badge, EmptyState, LoadingState, Table } from '@/shared/components/ui';
 import type { TableColumn } from '@/shared/components/ui';
+import { useAuthStore } from '@/stores/authStore';
 import { useRooms, useJoinRoom } from '../api';
 
 /** 방 상태별 Badge variant */
@@ -19,10 +20,17 @@ const statusLabel: Record<string, string> = {
 
 export function RoomList() {
   const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const { data: rooms, isLoading, isError, refetch } = useRooms({ limit: 20 });
   const joinRoom = useJoinRoom();
 
   const handleJoin = (roomId: string) => {
+    if (isAuthLoading) return;
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
     joinRoom.mutate(roomId, {
       onSuccess: (data) => {
         navigate(`/room/${data.id}`);
@@ -83,7 +91,7 @@ export function RoomList() {
           <Button
             size="sm"
             variant="secondary"
-            disabled={effectiveStatus !== 'waiting'}
+            disabled={effectiveStatus !== 'waiting' || isAuthLoading}
             isLoading={joinRoom.isPending && joinRoom.variables === room.id}
             onClick={() => handleJoin(room.id)}
           >
