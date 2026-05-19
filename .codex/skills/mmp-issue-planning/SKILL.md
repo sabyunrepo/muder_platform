@@ -33,6 +33,7 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 2. Issue 생성/재작성 요청이 모호하면 `deep-interview` skill을 먼저 사용해 실행 브리프를 만든다.
    - 사용자에게 묻기 전에 repo 코드, 기존 Issue/PR, plan 문서, `memory/`에서 직접 확인 가능한 사실을 먼저 확인한다.
    - 인터뷰 대상은 목표, 포함 범위, 제외 범위, 제약, 완료 기준 중 실행을 막는 가장 큰 불확실성 하나로 좁힌다.
+   - OOO interview/refinement는 deep-interview 실행 브리프 또는 명시된 안전 기본값 이후에만 사용하고, accepted scope를 넓히지 않는다.
    - 마지막 실행 브리프의 목표/범위/제외/제약/완료 기준/열린 질문을 Issue 본문에 반영한다.
    - 바로 실행해도 안전한 기본값이 있고 사용자가 자율 진행을 허용한 상황이면 질문으로 멈추지 말고 권장 기본값을 명시해 진행한다.
 3. 각 Issue에는 가능한 한 아래 섹션을 포함한다.
@@ -44,6 +45,7 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - `## 완료 조건`
    - `## Coverage Plan`
    - `## 검증 계획`
+   - `## Agent Handoff Contract`
    - `## PR 묶음 제안`
    - `## 브레인스토밍 필요 여부`
    - `## 순서/의존성`
@@ -59,27 +61,33 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
    - `### 병렬 금지/주의 영역`: shared contract, migration, PR label/merge, 같은 파일 수정 위험을 적는다.
    - `### 취합 방식`: 각 subagent는 `발견 / 수행 / 판단 / 미해결`로 보고하고, 메인 Codex가 중복 제거와 최종 통합을 맡는다고 적는다.
    - `### 실행 체크리스트`: agent별 todo를 `- [ ]`로 적고, 메인 Codex가 취합하면서 완료 항목을 `- [x]`로 갱신한다고 적는다.
+   - `### Agent Handoff Contract`: `.codex/config.toml`의 `max_depth = 1` 제약을 적고, 각 agent가 다음 agent를 직접 부르지 않고 `next_agent / handoff / checklist_delta / evidence`를 반환한다고 적는다.
 6. 가능한 경우 실제 MMP agent 이름을 명시한다.
    - `mmp-parallel-coordinator`
    - `mmp-frontend-editor-reviewer`
    - `mmp-backend-engine-reviewer`
    - `mmp-test-coverage-reviewer`
 7. API DTO, frontend adapter/ViewModel mapping, migration 결정, PR 생성, label, merge는 메인 Codex 소유로 둔다.
+   - `mmp-ci-steward`는 main Codex가 만든 PR의 review/wait/fix stewardship만 맡고, PR 생성/merge 판단은 하지 않는다.
 8. 코드 작성/수정 이슈의 `## Coverage Plan`에는 변경 예상 파일/모듈별 테스트 책임을 적는다.
    - Backend handler/service: 성공 경로, validation, not found, ownership, conflict, delete-blocked 같은 실패 경로를 unit/integration test로 매핑한다.
    - Frontend adapter/hook/component: 저장 payload, dirty state, error UI, empty/loading state, direct URL/tab state를 Vitest/E2E로 매핑한다.
-   - E2E 제외 시에는 왜 E2E가 부적합한지와 대체 테스트를 적는다.
+   - UI 작업에는 E2E 계획과 cmux/browser QA evidence 항목을 넣는다. E2E 제외 시에는 왜 E2E가 부적합한지와 대체 테스트를 적는다.
    - Codecov patch coverage 70%를 PR 끝에서 처음 확인하는 흐름을 피하기 위해, issue 단계에서 미리 테스트 파일 후보를 지정한다.
-8. MVP와 후순위를 분리한다. 범위가 커지거나 구현 중 제외하는 항목이 생기면 `## Deferred / Follow-up`에 남긴다.
+9. 실행 순서에는 독립성 gate를 넣는다.
+   - 구현 agent는 자기 변경의 최종 review/validation owner가 될 수 없다.
+   - fix는 가능하면 구현 agent와 다른 owner에게 맡긴다. 작은 1~2파일 critical fix만 main Codex 예외를 허용한다.
+   - 마지막 fix 이후 독립 validation과 관련 review lane을 다시 실행한다.
+10. MVP와 후순위를 분리한다. 범위가 커지거나 구현 중 제외하는 항목이 생기면 `## Deferred / Follow-up`에 남긴다.
    - 같은 이슈 안에서 이어서 처리할 작은 항목이면 체크리스트로 둔다.
    - 독립 PR이 필요하거나 다른 owner/검증 범위를 갖는 항목이면 새 GitHub Issue를 만든다.
    - PR 본문에는 완료 범위는 `Closes #번호`, 후속/부분 범위는 `Refs #번호`로 연결한다.
-9. `## PR 묶음 제안`은 CI 비용까지 고려한다.
+11. `## PR 묶음 제안`은 CI 비용까지 고려한다.
    - 같은 이슈/같은 CI scope/같은 review surface의 repo-local workflow 변경은 하나의 PR로 묶는 것을 우선한다.
    - shared contract, migration, large UI route, backend API처럼 실패 blast radius가 큰 변경은 별도 PR로 분리한다.
    - “작게 쪼개기”는 기본값이 아니라 충돌·리뷰 위험을 줄일 때만 선택한다. CI를 여러 번 태우는 초소형 PR은 피한다.
-10. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
-11. 계획 문서나 Issue를 만들 때는 `완료 조건 선행` 방식으로 작성한다.
+12. 에디터 이슈는 Uzu docs를 참고할 수 있지만, MMP runtime/gameplay 규칙이 최종 기준이다.
+13. 계획 문서나 Issue를 만들 때는 `완료 조건 선행` 방식으로 작성한다.
    - 먼저 사용자가 체감할 완료 상태, 데이터/계약 완료 상태, 품질/검증 완료 상태를 분리해 적는다.
    - 이후 작업 체크리스트의 각 항목이 어떤 완료 조건을 만족시키는지 연결되게 쓴다.
    - 완료 조건을 만족시키지 않는 작업은 MVP에서 제외하거나 `Deferred / Follow-up`으로 분리한다.
@@ -95,7 +103,8 @@ description: Use when creating, rewriting, prioritizing, or executing MMP GitHub
 - 병렬 가능한 lane과 충돌 금지 영역이 둘 다 적혀 있다.
 - 완료 조건에 테스트 또는 테스트 대체 근거가 있다.
 - 완료 조건이 사용자 경험, 데이터/계약, 품질/검증으로 나뉘어 있고 작업 체크리스트가 그 조건을 만족하도록 구성되어 있다.
-- Coverage Plan에 변경 파일별 테스트 매핑이 있다.
+- Coverage Plan에 변경 파일별 테스트 매핑이 있고, 관련 UI 작업에는 E2E 계획과 cmux/browser QA evidence 요구가 있다.
+- Agent Handoff Contract에 `next_agent / handoff / checklist_delta / evidence`, `max_depth = 1`, 독립 review/validation gate가 보인다.
 - Deferred / Follow-up 판단이 추적 가능하거나, 후속 없음이 명확하다.
 - PR 묶음은 충돌 위험과 CI 비용을 함께 고려했고, 브레인스토밍 필요 여부가 명확하다.
 

@@ -35,6 +35,9 @@ Rules:
 - Keep PR grouping CI-cost aware. Do not recommend many tiny PRs for same-scope changes just because tasks can run in parallel; group related low-conflict work when one validation cycle is enough.
 - Use checkbox task lists for execution order, validation gates, and main-agent integration checkpoints. Checked state (`- [x]`) means verified completion, not merely assigned work.
 - Split PRs when shared contracts, migration, runtime behavior, or review ownership would make one PR hard to verify.
+- Account for `.codex/config.toml` `max_depth=1`: agents must not spawn follow-up agents, so every lane needs `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex.
+- Include independent gates: implementers cannot be final reviewers/validators, and validation/review reruns after the last fix.
+- For relevant UI lanes, require E2E planning and cmux/browser QA evidence.
 - Do not perform code edits, PR creation, label changes, merge, deploy, secret access, or destructive commands.
 - Keep recommendations practical for current MMP Phase 25 issues.
 

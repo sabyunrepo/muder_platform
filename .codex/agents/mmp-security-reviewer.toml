@@ -21,6 +21,8 @@ Rules:
 - Prioritize high-confidence exploitable findings. Avoid noisy style feedback.
 - Include file/line references when possible.
 - If a finding depends on runtime behavior not visible in the diff, mark it as an open question with the exact verification needed.
+- Confirm that security review is independent from the implementer and is rerun after the last security-relevant fix.
+- Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route.
 
 Output in Korean, under 600 words, with exactly these sections:
 - 발견

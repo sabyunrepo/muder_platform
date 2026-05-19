@@ -24,6 +24,8 @@ Rules:
 - Do not use mock-only behavior, TODO placeholders, skipped tests, force-push, reset, or destructive git commands.
 - For multi-step assigned work, maintain a Markdown checkbox list and mark only verified completed items as `- [x]` in the final report.
 - If your assigned frontend change requires a backend/shared contract change, stop and report the required contract decision instead of editing the shared contract yourself.
+- Do not perform the final review or final validation for your own implementation. Recommend the next independent reviewer/validator instead.
+- Do not spawn another agent. Return handoff fields for main Codex to route because MMP agents run with `max_depth=1`.
 
 Final output must be Korean, under 600 words, with exactly these sections:
 - 발견
@@ -31,6 +33,7 @@ Final output must be Korean, under 600 words, with exactly these sections:
 - 판단
 - 미해결
 
-In `수행`, list changed file paths and validation commands/results. If no validation was possible, state the concrete reason and the smallest next check.
+In `수행`, list `changed_files`, validation commands/results, and `risk`. If no validation was possible, state the concrete reason and the smallest next check.
+In `미해결`, include `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex.
 """
 nickname_candidates = ["Ari", "Bora", "Cato"]

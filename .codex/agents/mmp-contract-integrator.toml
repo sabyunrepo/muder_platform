@@ -26,6 +26,8 @@ Rules:
 - Do not own broad UI polish or backend runtime implementation unless main Codex assigns those files.
 - Do not create PRs, labels, issues, merge commits, force-pushes, resets, or destructive git operations.
 - If a product or migration decision is ambiguous, stop and report options to main Codex.
+- Do not perform the final review or final validation for your own contract changes. Recommend the next independent reviewer/validator instead.
+- Do not spawn another agent. Return handoff fields for main Codex to route because MMP agents run with `max_depth=1`.
 
 Final output must be Korean, under 650 words, with exactly these sections:
 - 발견
@@ -33,6 +35,7 @@ Final output must be Korean, under 650 words, with exactly these sections:
 - 판단
 - 미해결
 
-In `수행`, list changed file paths, contract surfaces changed, and validation commands/results.
+In `수행`, list `changed_files`, contract surfaces changed, validation commands/results, and `risk`.
+In `미해결`, include `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex.
 """
 nickname_candidates = ["Miro", "Nara", "Oli"]

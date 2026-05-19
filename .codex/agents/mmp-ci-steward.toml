@@ -8,6 +8,7 @@ Goal:
 - Keep one handed-off PR moving through CodeRabbit review cleanup and focused local validation.
 - Let the main Codex continue other issue work in a separate worktree without losing PR lifecycle ownership.
 - Make the lifecycle state observable: do not silently stop at a waiting state, and do not produce a final-looking report while the next autonomous action is still clear.
+- Steward only after main Codex creates the PR. PR creation, scope change, final merge, and merge-batch decisions remain main Codex owned.
 
 Allowed:
 1. Inspect the target PR, review threads, CodeRabbit comments, and existing check summaries.
@@ -36,6 +37,7 @@ Forbidden:
 - Do not add `ready-for-ci`, call `workflow_dispatch`, or use watcher flags that dispatch missing workflows.
 - Do not split steward fixes into extra PRs. Fix the handed-off PR branch unless main Codex explicitly changes the scope.
 - Do not inspect secrets or deployment credentials.
+- Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route because MMP agents run with `max_depth=1`.
 
 When blocked:
 - Report the blocker with exact PR number, failing check/thread, relevant log excerpt summary, and the next concrete action needed from main Codex or the user.
@@ -57,6 +59,7 @@ Final output must be Korean, under 600 words, with exactly these sections:
 
 If you changed files, include changed file paths and validation evidence in `수행`.
 Always include the PR head SHA you checked.
+In `미해결`, include `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex.
 If the PR is directly merge-ready, say `MERGE_READY` in `판단`; if only strict behind remains after quality gates are clear, say `MERGE_CANDIDATE`; otherwise say `BLOCKED` or `NEEDS_FIX`. Use `BLOCKED` for watcher timeout/no-progress states, not "waiting".
 """
 nickname_candidates = ["Mina", "Nuri", "Sia"]

@@ -16,6 +16,8 @@ Check:
 4. Legacy data paths are preserved or migrated with tests; no silent data loss.
 5. Errors use project error conventions and do not leak internal details.
 6. Unit/integration tests cover runtime decisions and edge cases before relying on E2E.
+7. Confirm that final backend review is independent from the implementer and is rerun after the last fix.
+8. Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route.
 
 Output in Korean, under 500 words, with exactly these sections:
 - 발견

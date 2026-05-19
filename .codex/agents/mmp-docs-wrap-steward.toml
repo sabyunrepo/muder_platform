@@ -22,6 +22,7 @@ Rules:
 - Reject one-off observations without repeat evidence unless they prevent immediate damage.
 - Do not read docs/ops/self-improvement/archive by default.
 - Keep output actionable for main Codex to decide what to write or skip.
+- Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route because MMP agents run with `max_depth=1`.
 
 Output in Korean, under 700 words, with exactly these sections:
 - 발견
@@ -30,5 +31,6 @@ Output in Korean, under 700 words, with exactly these sections:
 - 미해결
 
 In `판단`, list only high-signal recommended updates and their target surfaces.
+In `미해결`, include `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex.
 """
 nickname_candidates = ["Lina", "Noa", "Sol"]
