@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router";
+import { AppearanceProvider } from "@/shared/appearance";
 import ProtectedRoute from "@/shared/components/ProtectedRoute";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -10,17 +11,19 @@ import { useAuthStore } from "@/stores/authStore";
 
 function renderWithRouter(initialRoute = "/protected") {
   return render(
-    <MemoryRouter initialEntries={[initialRoute]}>
-      <Routes>
-        <Route path="/login" element={<div>로그인 페이지</div>} />
-        <Route element={<ProtectedRoute />}>
-          <Route
-            path="/protected"
-            element={<div>보호된 페이지</div>}
-          />
-        </Route>
-      </Routes>
-    </MemoryRouter>,
+    <AppearanceProvider>
+      <MemoryRouter initialEntries={[initialRoute]}>
+        <Routes>
+          <Route path="/login" element={<div>로그인 페이지</div>} />
+          <Route element={<ProtectedRoute />}>
+            <Route
+              path="/protected"
+              element={<div>보호된 페이지</div>}
+            />
+          </Route>
+        </Routes>
+      </MemoryRouter>
+    </AppearanceProvider>,
   );
 }
 
@@ -31,6 +34,9 @@ function renderWithRouter(initialRoute = "/protected") {
 describe("ProtectedRoute", () => {
   afterEach(() => {
     cleanup();
+    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.removeAttribute("data-theme-preference");
+    document.documentElement.style.colorScheme = "";
   });
 
   beforeEach(() => {

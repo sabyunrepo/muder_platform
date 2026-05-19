@@ -4,6 +4,8 @@ import { api } from "@/services/api";
 import { useAuthStore } from "@/stores/authStore";
 import { showErrorToast } from "@/lib/show-error-toast";
 import { isApiHttpError } from "@/lib/api-error";
+import { PublicThemeShell } from "@/shared/components/PublicThemeShell";
+import { Spinner } from "@/shared/components/ui";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,10 +88,12 @@ function AuthCallbackPage() {
   }, [searchParams, navigate, setTokens]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
-      <p className="text-sm text-slate-400">로그인 처리 중...</p>
-    </div>
+    <PublicThemeShell center>
+      <div className="flex flex-col items-center gap-4 rounded-xl border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] px-8 py-7 text-center shadow-[var(--mmp-shadow-card)]">
+        <Spinner />
+        <p className="text-sm text-[var(--mmp-color-steel)]">로그인 처리 중...</p>
+      </div>
+    </PublicThemeShell>
   );
 }
 
