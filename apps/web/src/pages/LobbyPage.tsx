@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Plus, Hash } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import {
   Alert,
   Button,
@@ -18,10 +19,15 @@ import {
   JoinByCodeModal,
 } from '@/features/lobby/components';
 import type { ThemeFilterValues } from '@/features/lobby/components';
+import { useAuthStore } from '@/stores/authStore';
 
 const THEMES_PER_PAGE = 12;
 
 export default function LobbyPage() {
+  const navigate = useNavigate();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
+
   // 페이지네이션
   const [page, setPage] = useState(1);
 
@@ -61,10 +67,35 @@ export default function LobbyPage() {
   }, []);
 
   // 테마 카드 클릭 → 방 생성 모달
-  const handleThemeClick = useCallback((theme: ThemeSummary) => {
-    setSelectedTheme(theme);
-    setIsCreateOpen(true);
-  }, []);
+  const requireAuthenticatedAction = useCallback(() => {
+    if (isAuthLoading) return false;
+    if (!isAuthenticated) {
+      navigate('/login');
+      return false;
+    }
+    return true;
+  }, [isAuthLoading, isAuthenticated, navigate]);
+
+  const handleOpenCreateRoom = useCallback(
+    (theme: ThemeSummary | null = null) => {
+      if (!requireAuthenticatedAction()) return;
+      setSelectedTheme(theme);
+      setIsCreateOpen(true);
+    },
+    [requireAuthenticatedAction],
+  );
+
+  const handleOpenJoinByCode = useCallback(() => {
+    if (!requireAuthenticatedAction()) return;
+    setIsJoinOpen(true);
+  }, [requireAuthenticatedAction]);
+
+  const handleThemeClick = useCallback(
+    (theme: ThemeSummary) => {
+      handleOpenCreateRoom(theme);
+    },
+    [handleOpenCreateRoom],
+  );
 
   return (
     <PageShell
@@ -77,17 +108,16 @@ export default function LobbyPage() {
               <Button
                 variant="primary"
                 leftIcon={<Plus className="h-4 w-4" />}
-                onClick={() => {
-                  setSelectedTheme(null);
-                  setIsCreateOpen(true);
-                }}
+                disabled={isAuthLoading}
+                onClick={() => handleOpenCreateRoom()}
               >
                 방 만들기
               </Button>
               <Button
                 variant="secondary"
                 leftIcon={<Hash className="h-4 w-4" />}
-                onClick={() => setIsJoinOpen(true)}
+                disabled={isAuthLoading}
+                onClick={handleOpenJoinByCode}
               >
                 코드로 참가
               </Button>

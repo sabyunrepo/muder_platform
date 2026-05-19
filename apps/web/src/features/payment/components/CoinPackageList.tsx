@@ -56,10 +56,12 @@ function PackageCard({
 export function CoinPackageList() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
   const { data: packages, isLoading } = usePackages('WEB');
   const [selected, setSelected] = useState<CoinPackage | null>(null);
 
   function handleSelect(pkg: CoinPackage) {
+    if (isAuthLoading) return;
     if (!isAuthenticated) {
       navigate('/login');
       return;

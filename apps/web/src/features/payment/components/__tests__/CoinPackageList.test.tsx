@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { useAuthStore } from "@/stores/authStore";
@@ -196,6 +196,25 @@ describe("CoinPackageList", () => {
     fireEvent.click(screen.getByText("프리미엄 팩"));
 
     expect(navigateMock).toHaveBeenCalledWith("/login");
+    expect(screen.queryByTestId("payment-modal")).toBeNull();
+  });
+
+  it("인증 초기화 중에는 패키지 클릭 시 로그인 이동이나 결제 모달을 열지 않는다", () => {
+    useAuthStore.setState({ isAuthenticated: false, isLoading: true });
+    usePackagesMock.mockReturnValue({
+      data: mockPackages,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <CoinPackageList />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("프리미엄 팩"));
+
+    expect(navigateMock).not.toHaveBeenCalled();
     expect(screen.queryByTestId("payment-modal")).toBeNull();
   });
 });
