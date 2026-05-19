@@ -103,6 +103,8 @@ KEYWORD_MAP = [
     "patterns": [
       "requirements interview",
       "요구사항 인터뷰",
+      "요구사항 인터뷰해줘",
+      "요구사항 인터뷰해",
       "요구사항 구체화",
       "요구사항 구체화해줘",
       "요구사항 구체화해",
@@ -115,8 +117,6 @@ KEYWORD_MAP = [
       "계획짜",
       "계획짜줘",
       "계획짜봐",
-      "인터뷰",
-      "interview",
     ],
     "action": "requirements_interview",
   },
