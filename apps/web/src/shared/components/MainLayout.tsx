@@ -18,7 +18,7 @@ export function MainLayout() {
       <Nav />
       <div className="flex">
         <Sidebar />
-        <main className="min-w-0 flex-1 bg-[var(--mmp-legacy-content-bg)] px-4 py-5 text-[var(--mmp-legacy-content-text)] sm:px-6 lg:ml-64 lg:px-8">
+        <main className="min-w-0 flex-1 bg-[var(--mmp-color-canvas)] px-4 py-5 text-[var(--mmp-color-ink)] sm:px-6 lg:ml-64 lg:px-8">
           <Outlet />
         </main>
       </div>
