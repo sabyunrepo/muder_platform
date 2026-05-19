@@ -62,7 +62,7 @@ export function PurchasedThemes() {
           <Card key={purchase.id} className="flex flex-col gap-3">
             {/* Header: title + status badge */}
             <div className="flex items-start justify-between gap-2">
-              <h3 className="text-base font-semibold text-slate-100 truncate">
+              <h3 className="text-base font-semibold text-[var(--mmp-color-ink)] truncate">
                 {purchase.theme_title}
               </h3>
               {purchase.status === 'REFUNDED' ? (
@@ -73,16 +73,14 @@ export function PurchasedThemes() {
             </div>
 
             {/* Meta */}
-            <div className="space-y-1 text-sm text-slate-400">
+            <div className="space-y-1 text-sm text-[var(--mmp-color-steel)]">
               <div className="flex items-center justify-between">
                 <span>구매일</span>
                 <span>{formatDate(purchase.created_at)}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>가격</span>
-                <span className="text-amber-400">
-                  {purchase.coin_price.toLocaleString()} 코인
-                </span>
+                <span className="text-amber-400">{purchase.coin_price.toLocaleString()} 코인</span>
               </div>
             </div>
 
@@ -106,11 +104,7 @@ export function PurchasedThemes() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex justify-center">
-          <Pagination
-            currentPage={page}
-            totalPages={totalPages}
-            onPageChange={setPage}
-          />
+          <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
         </div>
       )}
 

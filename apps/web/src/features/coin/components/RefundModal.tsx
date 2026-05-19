@@ -87,24 +87,30 @@ export function RefundModal({ purchase, isOpen, onClose }: RefundModalProps) {
       <div className="space-y-4">
         {/* Theme info */}
         <div>
-          <p className="text-sm text-slate-400">테마</p>
-          <p className="text-base font-semibold text-slate-100">{purchase.theme_title}</p>
+          <p className="text-sm text-[var(--mmp-color-steel)]">테마</p>
+          <p className="text-base font-semibold text-[var(--mmp-color-ink)]">
+            {purchase.theme_title}
+          </p>
         </div>
 
         {/* Refund details */}
-        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 space-y-2">
+        <div className="space-y-2 rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface-soft)] p-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">구매 가격</span>
-            <span className="font-medium text-amber-400">
+            <span className="text-[var(--mmp-color-steel)]">구매 가격</span>
+            <span className="font-medium text-[var(--mmp-color-warning)]">
               {purchase.coin_price.toLocaleString()} 코인
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">환불 가능 기간</span>
+            <span className="text-[var(--mmp-color-steel)]">환불 가능 기간</span>
             {isExpired ? (
-              <span className="font-medium text-red-400">만료됨</span>
+              <span className="font-medium text-[var(--mmp-color-error)]">만료됨</span>
             ) : (
-              <span className={`font-medium ${daysLeft <= 3 ? 'text-red-400' : 'text-slate-400'}`}>
+              <span
+                className={`font-medium ${
+                  daysLeft <= 3 ? 'text-[var(--mmp-color-error)]' : 'text-[var(--mmp-color-steel)]'
+                }`}
+              >
                 D-{daysLeft}
               </span>
             )}
@@ -113,23 +119,21 @@ export function RefundModal({ purchase, isOpen, onClose }: RefundModalProps) {
 
         {/* Warnings */}
         {isExpired && (
-          <div className="flex items-start gap-2 rounded-lg bg-red-900/20 p-3 text-sm text-red-400">
+          <div className="flex items-start gap-2 rounded-lg bg-[color-mix(in_oklab,var(--mmp-color-error)_12%,transparent)] p-3 text-sm text-[var(--mmp-color-error)]">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>환불 기간이 만료되었습니다.</span>
           </div>
         )}
 
         {hasPlayed && !isExpired && (
-          <div className="flex items-start gap-2 rounded-lg bg-red-900/20 p-3 text-sm text-red-400">
+          <div className="flex items-start gap-2 rounded-lg bg-[color-mix(in_oklab,var(--mmp-color-error)_12%,transparent)] p-3 text-sm text-[var(--mmp-color-error)]">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>플레이한 테마는 환불할 수 없습니다.</span>
           </div>
         )}
 
         {/* Error from server */}
-        {errorMsg && (
-          <p className="text-sm text-red-400">{errorMsg}</p>
-        )}
+        {errorMsg && <p className="text-sm text-[var(--mmp-color-error)]">{errorMsg}</p>}
       </div>
     </Modal>
   );

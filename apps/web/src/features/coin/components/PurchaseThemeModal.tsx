@@ -94,33 +94,43 @@ export function PurchaseThemeModal({
       <div className="space-y-4">
         {/* Theme info */}
         <div>
-          <p className="text-sm text-slate-400">테마</p>
-          <p className="text-base font-semibold text-slate-100">{themeTitle}</p>
+          <p className="text-sm text-[var(--mmp-color-steel)]">테마</p>
+          <p className="text-base font-semibold text-[var(--mmp-color-ink)]">{themeTitle}</p>
         </div>
 
         {/* Price */}
-        <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3 space-y-2">
+        <div className="space-y-2 rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface-soft)] p-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">가격</span>
-            <span className="font-medium text-amber-400">{coinPrice.toLocaleString()} 코인</span>
+            <span className="text-[var(--mmp-color-steel)]">가격</span>
+            <span className="font-medium text-[var(--mmp-color-warning)]">
+              {coinPrice.toLocaleString()} 코인
+            </span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">보유 코인</span>
-            <span className={`font-medium ${isInsufficient ? 'text-red-400' : 'text-slate-100'}`}>
+            <span className="text-[var(--mmp-color-steel)]">보유 코인</span>
+            <span
+              className={`font-medium ${
+                isInsufficient ? 'text-[var(--mmp-color-error)]' : 'text-[var(--mmp-color-ink)]'
+              }`}
+            >
               {totalCoins.toLocaleString()} 코인
             </span>
           </div>
 
           {!isInsufficient && (
             <>
-              <hr className="border-slate-700" />
+              <hr className="border-[var(--mmp-color-hairline)]" />
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">보너스 코인 사용</span>
-                <span className="text-slate-300">{bonusUsed.toLocaleString()}</span>
+                <span className="text-[var(--mmp-color-steel)]">보너스 코인 사용</span>
+                <span className="text-[var(--mmp-color-charcoal)]">
+                  {bonusUsed.toLocaleString()}
+                </span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-400">기본 코인 사용</span>
-                <span className="text-slate-300">{baseUsed.toLocaleString()}</span>
+                <span className="text-[var(--mmp-color-steel)]">기본 코인 사용</span>
+                <span className="text-[var(--mmp-color-charcoal)]">
+                  {baseUsed.toLocaleString()}
+                </span>
               </div>
             </>
           )}
@@ -128,16 +138,14 @@ export function PurchaseThemeModal({
 
         {/* Insufficient warning */}
         {isInsufficient && (
-          <div className="flex items-start gap-2 rounded-lg bg-red-900/20 p-3 text-sm text-red-400">
+          <div className="flex items-start gap-2 rounded-lg bg-[color-mix(in_oklab,var(--mmp-color-error)_12%,transparent)] p-3 text-sm text-[var(--mmp-color-error)]">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>코인이 부족합니다. 충전 후 다시 시도해주세요.</span>
           </div>
         )}
 
         {/* Error from server */}
-        {errorMsg && (
-          <p className="text-sm text-red-400">{errorMsg}</p>
-        )}
+        {errorMsg && <p className="text-sm text-[var(--mmp-color-error)]">{errorMsg}</p>}
       </div>
     </Modal>
   );

@@ -38,12 +38,7 @@ export function Nav() {
 
       {/* 우측: 코인 잔액 + 유저 메뉴 또는 로그인 링크 */}
       <div className="flex items-center gap-3">
-        <div className="md:hidden">
-          <ThemeModeToggle compact ariaLabel="화면 모드" />
-        </div>
-        <div className="hidden md:block">
-          <ThemeModeToggle />
-        </div>
+        <ThemeModeToggle compact ariaLabel="화면 모드" />
         {isAuthenticated && user && <CoinBalance />}
         <div className="relative">
           {isAuthenticated && user ? (

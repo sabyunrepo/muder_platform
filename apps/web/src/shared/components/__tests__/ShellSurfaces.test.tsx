@@ -64,6 +64,7 @@ describe('Shell surfaces', () => {
     expect(screen.getByText('MMP')).toBeDefined();
     expect(screen.getByText('로비')).toBeDefined();
     expect(screen.getByText('로비 콘텐츠')).toBeDefined();
+    expect(screen.getAllByRole('group', { name: '화면 모드' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: '다크' }).length).toBeGreaterThan(0);
     expect(container.firstElementChild?.className).toContain('var(--mmp-color-canvas)');
   });

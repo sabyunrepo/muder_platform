@@ -77,8 +77,8 @@ body {
 :root,
 [data-theme='light'],
 [data-theme='dark'] {
-  --mmp-legacy-content-bg: #020617;
-  --mmp-legacy-content-text: #f8fafc;
+  --mmp-legacy-content-bg: var(--mmp-color-canvas);
+  --mmp-legacy-content-text: var(--mmp-color-ink);
 }
 
 .mmp-rich-content-surface {
