@@ -3,6 +3,7 @@ package theme
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"testing"
@@ -70,13 +71,27 @@ func (f *themeFixture) createUser(t *testing.T) uuid.UUID {
 
 func (f *themeFixture) createThemeForUser(t *testing.T, creatorID uuid.UUID) uuid.UUID {
 	t.Helper()
+	id, _ := f.createThemeForUserWithStatus(t, creatorID, "DRAFT", json.RawMessage(`{}`))
+	return id
+}
+
+func (f *themeFixture) createThemeForUserWithStatus(t *testing.T, creatorID uuid.UUID, status string, config json.RawMessage) (uuid.UUID, string) {
+	t.Helper()
+	slug := fmt.Sprintf("theme-%s", uuid.New().String()[:8])
 	var id uuid.UUID
 	if err := f.pool.QueryRow(context.Background(), `
-		INSERT INTO themes (creator_id, title, slug, min_players, max_players, duration_min, config_json)
-		VALUES ($1, 'Theme', $2, 2, 6, 60, '{}')
+		INSERT INTO themes (creator_id, title, slug, min_players, max_players, duration_min, status, config_json)
+		VALUES ($1, 'Theme', $2, 2, 6, 60, $3, $4)
 		RETURNING id
-	`, creatorID, fmt.Sprintf("theme-%s", uuid.New().String()[:8])).Scan(&id); err != nil {
+	`, creatorID, slug, status, config).Scan(&id); err != nil {
 		t.Fatalf("create theme: %v", err)
 	}
-	return id
+	if status == "PUBLISHED" {
+		if _, err := f.pool.Exec(context.Background(), `
+			UPDATE themes SET published_at = NOW() WHERE id = $1
+		`, id); err != nil {
+			t.Fatalf("publish theme timestamp: %v", err)
+		}
+	}
+	return id, slug
 }
