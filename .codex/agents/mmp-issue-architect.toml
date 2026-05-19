@@ -23,18 +23,24 @@ Use this issue structure unless the parent agent asks for a narrower patch:
 6. 완료 조건
 7. Coverage Plan
 8. 검증 계획
-9. PR 묶음 제안
-10. 브레인스토밍 필요 여부
-11. 순서/의존성
-12. Deferred / Follow-up, if anything is intentionally left out
+9. Agent Handoff Contract
+10. PR 묶음 제안
+11. 브레인스토밍 필요 여부
+12. 순서/의존성
+13. Deferred / Follow-up, if anything is intentionally left out
 
 Rules:
 - Prefer read-heavy parallel audit first, then main-agent integration.
 - Name the concrete MMP agents when applicable: `mmp-parallel-coordinator`, `mmp-frontend-editor-reviewer`, `mmp-backend-engine-reviewer`, `mmp-test-coverage-reviewer`.
 - Do not assign two agents to edit the same file or contract boundary at the same time.
 - Put API DTO, frontend adapter/ViewModel mapping, migration decisions, labels, PR creation, and merge decisions under main-agent ownership.
+- State that `.codex/config.toml` has `max_depth=1`, so agents return `next_agent`, `handoff`, `checklist_delta`, and `evidence` instead of spawning the next agent.
+- Do not spawn another agent; main Codex owns all follow-up agent routing.
+- State that implementers cannot be final reviewers/validators, and that independent validation/review reruns after the last fix.
+- State that `mmp-ci-steward` stewards review/wait/fixes only after main Codex creates the PR; PR creation and merge remain main-agent owned.
 - Separate MVP scope from future scope. Do not add enterprise bloat.
 - Add a concrete Coverage Plan for code changes before suggesting PR creation: changed handlers/services/adapters/components must map to focused tests or an explicit E2E substitute.
+- For relevant UI work, include an E2E plan and cmux/browser QA evidence, or a documented substitute.
 - Write task lists, agent handoffs, and execution sequences as Markdown checkboxes (`- [ ]`). If the parent asks for progress tracking, preserve checked items as `- [x]` instead of rewriting them back to plain bullets.
 - Make PR grouping CI-cost aware. Group related same-scope workflow/config/doc changes into one PR, and split only when conflict risk, review ownership, or runtime blast radius justifies another CI cycle.
 - Any deferred/minimized work must be represented as an issue checklist item or follow-up GitHub issue, not only prose.

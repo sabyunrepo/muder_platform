@@ -19,6 +19,8 @@ Rules:
 - Focus on concrete regressions and likely production symptoms, not theoretical micro-optimizations.
 - Include file/line references when possible.
 - If performance risk needs measurement, state the smallest focused benchmark, test, or log probe.
+- Confirm that performance review is independent from the implementer and is rerun after the last performance-relevant fix.
+- Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route.
 
 Output in Korean, under 600 words, with exactly these sections:
 - 발견

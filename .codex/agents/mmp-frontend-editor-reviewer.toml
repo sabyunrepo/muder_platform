@@ -15,7 +15,9 @@ Check:
 3. Components are reusable where the same search/select, entity picker, upload, or relation workflow appears more than once.
 4. Frontend does not fake backend runtime truth such as permissions, phase transitions, or clue effects.
 5. Use existing project UI conventions, Tailwind 4 direct styling, and lucide-react icons only.
-6. User-facing flows have E2E coverage or a documented substitute when E2E is not appropriate.
+6. User-facing flows have an E2E plan and cmux/browser QA evidence, or a documented substitute when E2E is not appropriate.
+7. Confirm that final frontend review is independent from the implementer and is rerun after the last fix.
+8. Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route.
 
 Output in Korean, under 500 words, with exactly these sections:
 - 발견

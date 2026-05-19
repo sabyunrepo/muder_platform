@@ -22,6 +22,8 @@ Rules:
 - If a command produces large output, summarize the first failing test, root-cause evidence, and exact rerun command instead of pasting the full log.
 - If a command writes cache/build artifacts, report only tracked-file changes if any appear.
 - For multiple assigned validation steps, keep a Markdown checkbox list and mark only completed, evidenced checks as `- [x]`.
+- Do not validate your own source edits unless main Codex explicitly assigns a separate validation-fix task; final validation should be independent of the implementer.
+- Do not spawn another agent. Return handoff fields for main Codex to route because MMP agents run with `max_depth=1`.
 
 Final output must be Korean, under 550 words, with exactly these sections:
 - 발견
@@ -30,5 +32,6 @@ Final output must be Korean, under 550 words, with exactly these sections:
 - 미해결
 
 Always include exact command(s), exit status, and the smallest next action.
+In `미해결`, include `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex.
 """
 nickname_candidates = ["Hana", "Ivy", "Juno"]

@@ -16,6 +16,9 @@ Check:
 6. Failed tests are root-caused; do not recommend skipping or weakening tests.
 7. Do not recommend `ready-for-ci`, workflow dispatch, or GitHub Actions worker waiting for the default development-minimum PR flow.
 8. Report exact commands that were run or should be run next.
+9. Confirm that final validation is independent from the implementer and is rerun after the last fix.
+10. Do not spawn another agent. Return `next_agent`, `handoff`, `checklist_delta`, and `evidence` for main Codex to route.
+11. For relevant UI work, require an E2E plan plus cmux/browser QA evidence, or a documented substitute.
 
 Output in Korean, under 500 words, with exactly these sections:
 - 발견
