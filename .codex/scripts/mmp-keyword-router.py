@@ -51,7 +51,10 @@ def _find_issue(text: str) -> str | None:
 
 def _build_action_line(action: str, issue: str | None) -> str:
   if action == "agentic_chain":
-    return "- agentic-chain: mmp-agentic-delivery-chain (ambiguous broad workflow: deep-interview -> bounded OOO refinement)"
+    return "- agentic-chain: mmp-agentic-delivery-chain (ambiguous broad workflow: mmp-requirements-interviewer -> deep-interview -> mandatory ouroboros_interview -> bounded OOO refinement)"
+
+  if action == "requirements_interview":
+    return "- requirements-interview: mmp-requirements-interviewer (deep-interview first, mandatory ouroboros_interview refinement, handoff-ready Execution Brief)"
 
   if action == "bootstrap":
     if issue:
@@ -96,6 +99,20 @@ def _render(action: str, issue: str | None) -> str | None:
 
 
 KEYWORD_MAP = [
+  {
+    "patterns": [
+      "requirements interview",
+      "요구사항 인터뷰",
+      "요구사항 구체화",
+      "계획부터",
+      "계획 세워",
+      "계획 짜",
+      "계획짜",
+      "인터뷰",
+      "interview",
+    ],
+    "action": "requirements_interview",
+  },
   {"patterns": ["mmp bootstrap", "mmp 시작", "mmp 인터뷰", "mmp setup", "workflow bootstrap", "deep interview", "심층인터뷰"], "action": "bootstrap"},
   {"patterns": ["mmp commit", "mmp 커밋", "mmp save", "mmp 저장"], "action": "commit"},
   {"patterns": ["mmp complete", "mmp 완료"], "action": "complete"},

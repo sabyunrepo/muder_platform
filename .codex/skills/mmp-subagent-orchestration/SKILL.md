@@ -25,30 +25,33 @@ description: Use when executing MMP work under the user-approved main-Codex-as-o
      - `evidence`: changed files, commands, exit status, browser surface, logs, or review findings
 2. Start with `mmp-parallel-coordinator` for non-trivial work:
    - use it to split read-heavy audits, write ownership, conflict risks, and integration checkpoints.
-3. Delegate implementation by ownership:
+3. Start with `mmp-requirements-interviewer` before planning/implementation when the request is still vague:
+   - use it to run deep-interview style clarification, mandatory `ouroboros_interview` refinement, and a handoff-ready Execution Brief.
+   - keep OOO refinement bounded to the accepted brief; main Codex decides whether to route next to issue planning, parallel coordination, implementation, review, or validation.
+4. Delegate implementation by ownership:
    - frontend UI/adapter/tests -> `mmp-frontend-implementer`
    - backend handler/service/engine/migration/tests -> `mmp-backend-implementer`
    - shared DTO/migration/generated client/adapter contract -> `mmp-contract-integrator`
-4. Delegate review by axis before PR creation:
+5. Delegate review by axis before PR creation:
    - frontend UX/adapter/E2E readiness -> `mmp-frontend-editor-reviewer`
    - backend/runtime/persistence consistency -> `mmp-backend-engine-reviewer`
    - test/coverage/local validation readiness -> `mmp-test-coverage-reviewer`
    - auth/ownership/redaction/secret risks -> `mmp-security-reviewer`
    - concurrency/query/render/flakiness risks -> `mmp-performance-reviewer`
-5. Delegate long checks:
+6. Delegate long checks:
    - use `mmp-local-validation-runner` for focused test/build commands that would flood main context.
    - when local browser QA is explicitly in cmux, instruct validation agents to use the `cmux-browse` skill/CLI first and to report a fallback only if cmux browser control is unavailable.
-6. Delegate PR waiting/fix loop:
+7. Delegate PR waiting/fix loop:
    - use `mmp-ci-steward` for one handed-off PR after main Codex creates the PR.
    - `mmp-ci-steward` owns review waiting and valid fix stewardship only; PR creation, PR scope changes, labels outside policy, and merge remain main Codex decisions.
-7. Delegate wrap-up:
+8. Delegate wrap-up:
    - use `mmp-docs-wrap-steward` after significant work to propose docs, automation, learning, and follow-up candidates.
-8. Main Codex integrates:
+9. Main Codex integrates:
    - review subagent output under `발견 / 수행 / 판단 / 미해결`
    - decide which findings are valid
    - make PR/merge/user-facing decisions
    - close completed subagents after collecting final output
-9. Enforce independence gates:
+10. Enforce independence gates:
    - implementers do not provide the final review or final validation for their own changes.
    - after the final fix, rerun independent validation plus the relevant review lane before PR creation or merge judgment.
    - for relevant UI work, require an E2E plan and browser QA evidence; use cmux first when that is the active or requested browser surface, and record the fallback reason otherwise.

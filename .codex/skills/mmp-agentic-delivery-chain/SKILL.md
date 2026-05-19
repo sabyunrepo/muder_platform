@@ -18,8 +18,10 @@ Use this when the user asks for OOO, subagents, harness engineering, strict role
    - Work on a feature/chore branch or separate worktree.
 2. Requirements:
    - Use `deep-interview` first when goal, scope, exclusions, constraints, or done criteria are unclear.
-   - Run OOO interview/refinement only after the deep-interview brief or an explicit safe default exists.
+   - For non-trivial requirements work, route the interview through `mmp-requirements-interviewer` when subagent use is approved.
+   - Run `ouroboros_interview` as a mandatory OOO refinement step after the deep-interview brief or an explicit safe default exists.
    - Keep OOO bounded to the accepted brief; cancel or salvage if it widens scope.
+   - Borrow only the useful Superpowers brainstorming gates here: compare 2-3 approaches, recommend one, get explicit scope/design approval, and self-review the brief before handoff.
 3. Tracking:
    - Create or update a GitHub issue with `mmp-issue-planning`.
    - Create/approve the local seed when PR guard requires it.
@@ -27,6 +29,7 @@ Use this when the user asks for OOO, subagents, harness engineering, strict role
 4. Delegation:
    - Main Codex owns orchestration. `.codex/config.toml` uses `max_depth = 1`, so subagents must not spawn follow-up agents.
    - Each agent returns `next_agent`, `handoff`, `checklist_delta`, and `evidence`; main Codex decides the next spawn.
+   - Use `mmp-requirements-interviewer` first for vague product, UX, workflow, or implementation requests that need an execution-ready brief.
    - Use `mmp-parallel-coordinator` first for non-trivial splits.
 5. Implementation:
    - Assign explicit file/module ownership.
