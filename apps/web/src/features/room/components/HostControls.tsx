@@ -18,6 +18,8 @@ interface HostControlsProps {
   onCloseRoom: () => void;
   /** 로딩 상태 */
   isStarting?: boolean;
+  /** 시작 실패 메시지 */
+  startErrorMessage?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -31,6 +33,7 @@ export function HostControls({
   onStartGame,
   onCloseRoom,
   isStarting = false,
+  startErrorMessage,
 }: HostControlsProps) {
   // 호스트가 아니면 렌더링하지 않음
   if (!isHost) return null;
@@ -56,6 +59,12 @@ export function HostControls({
           {!hasMinPlayers
             ? "최소 인원이 충족되지 않았습니다."
             : "모든 참가자가 준비해야 시작할 수 있습니다."}
+        </p>
+      )}
+
+      {startErrorMessage && (
+        <p className="text-center text-xs text-[var(--mmp-color-error)]">
+          {startErrorMessage}
         </p>
       )}
 

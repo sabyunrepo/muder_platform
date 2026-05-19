@@ -79,6 +79,7 @@ func registerBaseRoutes(r chi.Router, deps authedDeps) {
 	r.Post("/rooms", deps.room.CreateRoom)
 	r.Post("/rooms/{id}/join", deps.room.JoinRoom)
 	r.Post("/rooms/{id}/leave", deps.room.LeaveRoom)
+	r.Post("/rooms/{id}/ready", deps.room.SetReady)
 	r.Post("/rooms/{id}/start", deps.room.StartRoom)
 
 	// Payment endpoints (authed)

@@ -29,6 +29,7 @@ type mockService struct {
 	listWaitingFn   func(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
 	joinRoomFn      func(ctx context.Context, roomID, userID uuid.UUID) error
 	leaveRoomFn     func(ctx context.Context, roomID, userID uuid.UUID) error
+	setReadyFn      func(ctx context.Context, roomID, userID uuid.UUID, ready bool) error
 	startRoomFn     func(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
@@ -70,6 +71,13 @@ func (m *mockService) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) er
 func (m *mockService) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error {
 	if m.leaveRoomFn != nil {
 		return m.leaveRoomFn(ctx, roomID, userID)
+	}
+	return nil
+}
+
+func (m *mockService) SetReady(ctx context.Context, roomID, userID uuid.UUID, ready bool) error {
+	if m.setReadyFn != nil {
+		return m.setReadyFn(ctx, roomID, userID, ready)
 	}
 	return nil
 }

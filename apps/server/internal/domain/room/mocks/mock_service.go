@@ -130,6 +130,20 @@ func (mr *MockServiceMockRecorder) ListWaitingRooms(ctx, limit, offset any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWaitingRooms", reflect.TypeOf((*MockService)(nil).ListWaitingRooms), ctx, limit, offset)
 }
 
+// SetReady mocks base method.
+func (m *MockService) SetReady(ctx context.Context, roomID, userID uuid.UUID, ready bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetReady", ctx, roomID, userID, ready)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetReady indicates an expected call of SetReady.
+func (mr *MockServiceMockRecorder) SetReady(ctx, roomID, userID, ready any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetReady", reflect.TypeOf((*MockService)(nil).SetReady), ctx, roomID, userID, ready)
+}
+
 // StartRoom mocks base method.
 func (m *MockService) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req room.StartRoomRequest) error {
 	m.ctrl.T.Helper()

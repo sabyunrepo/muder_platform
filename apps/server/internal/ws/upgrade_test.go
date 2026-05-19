@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog"
@@ -32,6 +33,40 @@ func setupTestServer(t *testing.T, cfg UpgradeConfig) (*httptest.Server, *Hub) {
 
 func wsURL(srv *httptest.Server, path string) string {
 	return "ws" + strings.TrimPrefix(srv.URL, "http") + path
+}
+
+func setupJWTTestServer(t *testing.T, secret []byte, cfg UpgradeConfig) (*httptest.Server, *Hub) {
+	t.Helper()
+	logger := zerolog.Nop()
+	router := NewRouter(logger)
+	hub := NewHub(router, NoopPubSub{}, logger)
+	handler := UpgradeHandler(hub, JWTPlayerIDExtractor(secret), cfg, logger)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws/game", handler)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(func() {
+		hub.Stop()
+		srv.Close()
+	})
+	return srv, hub
+}
+
+func mintUpgradeToken(t *testing.T, userID uuid.UUID, secret []byte, tokenType string) string {
+	t.Helper()
+	claims := jwt.MapClaims{
+		"sub": userID.String(),
+		"exp": jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		"iat": jwt.NewNumericDate(time.Now()),
+	}
+	if tokenType != "" {
+		claims["type"] = tokenType
+	}
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(secret)
+	if err != nil {
+		t.Fatalf("mint token: %v", err)
+	}
+	return token
 }
 
 func TestUpgrade_Success(t *testing.T) {
@@ -103,6 +138,45 @@ func TestUpgrade_InvalidPlayerID(t *testing.T) {
 	}
 	if resp != nil && resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestJWTPlayerIDExtractorRejectsRefreshToken(t *testing.T) {
+	secret := []byte("test-secret")
+	srv, _ := setupJWTTestServer(t, secret, UpgradeConfig{DevMode: true})
+
+	refreshToken := mintUpgradeToken(t, uuid.New(), secret, "refresh")
+	url := wsURL(srv, "/ws/game") + "?token=" + refreshToken
+
+	_, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err == nil {
+		t.Fatal("expected dial error for refresh token")
+	}
+	if resp != nil && resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", resp.StatusCode)
+	}
+}
+
+func TestJWTPlayerIDExtractorAcceptsAccessToken(t *testing.T) {
+	secret := []byte("test-secret")
+	srv, hub := setupJWTTestServer(t, secret, UpgradeConfig{DevMode: true})
+
+	playerID := uuid.New()
+	accessToken := mintUpgradeToken(t, playerID, secret, "")
+	url := wsURL(srv, "/ws/game") + "?token=" + accessToken
+
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		t.Fatalf("dial failed: %v", err)
+	}
+	defer conn.Close()
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("expected 101, got %d", resp.StatusCode)
+	}
+
+	time.Sleep(50 * time.Millisecond)
+	if got := hub.ClientCount(); got != 1 {
+		t.Errorf("ClientCount() = %d, want 1", got)
 	}
 }
 

@@ -283,6 +283,8 @@ func main() {
 	gameStarter := session.NewGameStarter(sessionMgr, broadcaster, cfg.GameRuntimeV2, mediaSvc, logger)
 	roomSvc := room.NewServiceWithStarter(pool, queries, logger, gameStarter)
 	roomHandler := room.NewHandler(roomSvc)
+	lobbyChatWSHandler := room.NewLobbyChatWSHandler(queries, wsHub, logger)
+	wsRouter.Handle("chat", lobbyChatWSHandler.HandleChat)
 
 	// 11.3. Sound WS Handler
 	soundWSHandler := sound.NewWSHandler(wsHub, logger)
@@ -390,7 +392,7 @@ func main() {
 		AllowedOrigins: cfg.CORSOrigins,
 		DevMode:        cfg.IsDevelopment(),
 	}
-	gameUpgrade := ws.UpgradeHandler(wsHub, ws.DefaultPlayerIDExtractor, wsCfg, logger)
+	gameUpgrade := ws.UpgradeHandler(wsHub, ws.JWTPlayerIDExtractor([]byte(cfg.JWTSecret)), wsCfg, logger)
 	r.Get("/ws/game", gameUpgrade)
 
 	socialExtractor := ws.JWTPlayerIDExtractor([]byte(cfg.JWTSecret))

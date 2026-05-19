@@ -23,10 +23,10 @@ export function JoinByCodeModal({ isOpen, onClose }: JoinByCodeModalProps) {
   const handleJoin = () => {
     if (!room) return;
     joinRoom.mutate(room.id, {
-      onSuccess: (data) => {
+      onSuccess: () => {
         onClose();
         setCode('');
-        navigate(`/room/${data.id}`);
+        navigate(`/room/${room.id}`);
       },
     });
   };
@@ -43,7 +43,7 @@ export function JoinByCodeModal({ isOpen, onClose }: JoinByCodeModalProps) {
   } else if (isCodeValid && isNotFound) {
     statusMessage = '해당 코드의 방을 찾을 수 없습니다.';
   } else if (room) {
-    statusMessage = `${room.theme_title} — ${room.host_nickname}의 방 (${room.player_count}/${room.max_players})`;
+    statusMessage = `${room.theme_title ?? '테마 정보 없음'} — ${room.host_nickname ?? '호스트'}의 방 (${room.player_count}/${room.max_players})`;
   }
 
   return (

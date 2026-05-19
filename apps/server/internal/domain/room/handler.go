@@ -135,6 +135,34 @@ func (h *Handler) LeaveRoom(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "left"})
 }
 
+// SetReady handles POST /rooms/{id}/ready (authenticated).
+func (h *Handler) SetReady(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	roomID, err := uuid.Parse(idStr)
+	if err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid room ID"))
+		return
+	}
+
+	var req SetReadyRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	if err := h.svc.SetReady(r.Context(), roomID, userID, req.IsReady); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready updated"})
+}
+
 // StartRoom handles POST /rooms/{id}/start (authenticated, host only).
 // It enforces a 256 KiB body limit to protect the configJson trust boundary.
 func (h *Handler) StartRoom(w http.ResponseWriter, r *http.Request) {
