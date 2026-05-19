@@ -50,6 +50,9 @@ def _find_issue(text: str) -> str | None:
 
 
 def _build_action_line(action: str, issue: str | None) -> str:
+  if action == "agentic_chain":
+    return "- agentic-chain: mmp-agentic-delivery-chain (ambiguous broad workflow: deep-interview -> bounded OOO refinement)"
+
   if action == "bootstrap":
     if issue:
       return f"- bootstrap: scripts/mmp-workflow-agent.sh bootstrap --issue {issue} --auto-approve"
@@ -102,11 +105,45 @@ KEYWORD_MAP = [
 ]
 
 
+AGENTIC_CHAIN_PATTERNS = [
+  "ooo",
+  "agentic",
+  "agentic workflow",
+  "agentic chain",
+  "harness",
+  "workflow harness",
+  "subagent",
+  "sub-agent",
+  "sub agent",
+  "independent validation",
+  "independent review",
+  "do not review your own work",
+  "don't review your own work",
+  "do not validate your own work",
+  "don't validate your own work",
+  "독립 검증",
+  "독립 리뷰",
+  "본인이 리뷰 금지",
+  "본인이 검증 금지",
+  "본인이 리뷰하지",
+  "본인이 검증하지",
+  "자기 리뷰 금지",
+  "자기 검증 금지",
+  "자가 리뷰 금지",
+  "자가 검증 금지",
+]
+
+
 def detect(text: str) -> str | None:
   for entry in KEYWORD_MAP:
     for pattern in entry["patterns"]:
       if _word_boundary_match(pattern, text):
         return entry["action"]
+  for pattern in AGENTIC_CHAIN_PATTERNS:
+    if re.search(r"[가-힣]", pattern) and pattern in text:
+      return "agentic_chain"
+    if _word_boundary_match(pattern, text):
+      return "agentic_chain"
   return None
 
 

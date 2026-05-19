@@ -3,6 +3,7 @@
 #
 # 목표:
 # - deep-interview 기반 Seed 상태를 확인/생성/승인하고
+# - 필요하면 source에 deep-interview+ooo-refinement를 기록해 agentic chain 출처를 남기며
 # - issue worktree 분기 생성까지 한 번에 처리
 # - PR 생성 가드 진입을 위한 issue 번호 추적을 자동화
 
@@ -27,7 +28,7 @@ Modes:
 bootstrap options:
   --issue <번호>                Issue 번호 (필수)
   --slug <문자열>               브랜치 slug (옵션)
-  --source <문자열>             Seed source (기본: deep-interview)
+  --source <문자열>             Seed source (기본: deep-interview; 필요 시 deep-interview+ooo-refinement)
   --objective <문자열>          인터뷰에서 정의한 목적
   --scope-in <문자열>           범위(In)
   --scope-out <문자열>          범위(Out)
@@ -59,6 +60,8 @@ Examples:
   scripts/mmp-workflow-agent.sh bootstrap --issue 248 --slug ui-flow-compact \
     --acceptance "요구사항 누락이 없음" --done-criteria "작업 완료 후 테스트 통과" \
     --auto-approve
+  scripts/mmp-workflow-agent.sh bootstrap --issue 684 \
+    --source deep-interview+ooo-refinement --auto-approve
   scripts/mmp-workflow-agent.sh pr --title "feat: issue-248 flow"
   scripts/mmp-workflow-agent.sh commit --issue 248 --message "feat: issue-248 workflow" --create-pr -- \
     --title "feat: issue-248 workflow" --body "요약: Ouroboros 스타일 인터뷰 기준 반영"

@@ -50,7 +50,7 @@ When:
 Do:
 1. 먼저 현재 작업 상태를 확인한다. 가능하면 `scripts/mmp-workflow-preflight.sh`로 branch, dirty worktree, issue/seed, local-ci marker, 로컬 서버 상태를 한 번에 본다.
 2. 화면/로그/네트워크/DB/API 중 요청에 맞는 실제 증거를 잡은 뒤 원인을 설명한다.
-3. 요구사항이 모호하면 `deep-interview` 또는 OOO interview로 실행 브리프를 만든다. 단, 바로 실행해도 안전한 기본값이 있으면 권장 기본값을 명시하고 진행한다.
+3. 넓은 agentic workflow 요청이 모호하면 `deep-interview`로 실행 브리프를 먼저 만든 뒤, 승인된 브리프 안에서만 OOO refinement를 진행한다. 명시적인 OOO/subagent/harness/독립 리뷰·검증/issue-to-PR 루틴은 `mmp-agentic-delivery-chain`을 진입점으로 사용한다. 단, 바로 실행해도 안전한 기본값이 있으면 권장 기본값을 명시하고 진행한다.
 4. 작업이 추적 가능한 단위면 Issue/Seed/작업 원장 중 하나에 목표, 범위, 제외, 완료 조건, Coverage Plan, 검증 계획을 남긴다.
 5. 구현은 feature branch 또는 별도 worktree에서 진행하고, 기존 미커밋 작업과 섞지 않는다.
 6. 검증은 변경 위험에 맞춰 focused test, typecheck, lint, build, `scripts/mmp-local-ci.sh quick`, cmux/browser QA 중 필요한 것을 선택한다.
@@ -102,6 +102,7 @@ Avoid:
 - 사용자가 명시적으로 spike를 요청하지 않는 한 partial 구현, TODO placeholder, mock 동작, 테스트 스킵, 우회성 fix를 남기지 않는다.
 - 실패가 발생하면 코드를 바꾸기 전에 근본 원인을 먼저 파악한다.
 - 작업 지시의 목표, 범위, 제약, 완료 기준이 불명확해 바로 실행하면 위험한 경우 `deep-interview` skill로 한 번에 한 질문씩 요구사항을 구체화한다. 바로 실행해도 안전한 기본값이 있고 사용자가 자율 진행을 허용한 경우에는 질문으로 멈추지 않고 권장 기본값으로 진행한다.
+- OOO, agentic harness, sub-agent orchestration, 독립 리뷰/독립 검증, 또는 "본인이 리뷰/검증 금지"가 명시된 작업은 `mmp-agentic-delivery-chain`을 먼저 확인한다. 모호한 큰 요청은 `deep-interview` 브리프 수락 후 OOO refinement로만 확장하며, 수락된 브리프 밖으로 넓히지 않는다.
 - 워크트리의 사용자 변경을 보존한다. 내가 의도적으로 수정하지 않은 파일은 되돌리지 않는다.
 - 현재 MMP 프로젝트에서는 repo 내부 `AGENTS.md`, `memory/`, `docs/`, `apps/*/AGENTS.md`를 canonical 지시로 본다. repo 외부 문서 경로가 주입되면 현재 repo에 실제 파일이 없는 한 다른 프로젝트 지시로 간주하고 적용하지 않는다.
 - 반복 가능한 작업 하네스가 필요하면 `.codex/skills/mmp-workflow-harness/SKILL.md`를 먼저 확인한다. AGENTS.md에는 항상 알아야 하는 정책만 두고, 긴 실행 절차는 skill/script로 둔다.
@@ -149,11 +150,13 @@ When:
 - 사용자가 위임, 병렬 agent 작업, sub-agent 사용을 명시적으로 승인했을 때
 - 사용자가 이번 headquarter/orchestrator 운영처럼 "메인세션은 지시·판단·계획, 구현·리뷰·검증은 에이전트 위임"을 승인한 범위 안에서 작업할 때
 - 또는 이번 Phase 24처럼 사용자가 MMP subagent 생성/활용 규칙을 명시적으로 요청한 범위 안에서 작업할 때
+- 사용자가 OOO, agentic harness, 독립 리뷰/검증, issue-to-PR chain, 또는 "본인이 리뷰/검증 금지"를 명시했을 때
 
 Do:
 1. 메인 Codex는 의도 파악, scope 결정, 위험 판단, 최종 통합, PR/label/merge 결정을 맡는다.
-2. 위 승인이 적용된 MMP 작업에서는 메인 Codex가 직접 구현을 기본으로 하지 않는다. 구현, 반복 테스트 작성, 긴 검증, PR 대기는 소유권이 분리된 sub-agent에게 맡기고, 메인은 작업 원장과 최종 판단을 유지한다.
-3. Sub-agent는 독립적으로 처리 가능한 탐색, 구현, 리뷰, 테스트 커버리지 점검, 반복 컴포넌트/테스트 작성, 긴 로그 분석에 맡긴다.
+2. 위 조건의 진입점은 `mmp-agentic-delivery-chain`이다. 요구가 넓고 모호하면 `deep-interview`로 먼저 브리프를 확정하고, OOO refinement는 그 브리프 안에서만 수행한다.
+3. 위 승인이 적용된 MMP 작업에서는 메인 Codex가 직접 구현을 기본으로 하지 않는다. 구현, 반복 테스트 작성, 긴 검증, PR 대기는 소유권이 분리된 sub-agent에게 맡기고, 메인은 작업 원장과 최종 판단을 유지한다.
+4. Sub-agent는 독립적으로 처리 가능한 탐색, 구현, 리뷰, 테스트 커버리지 점검, 반복 컴포넌트/테스트 작성, 긴 로그 분석에 맡긴다.
    - Frontend 구현: `.codex/agents/mmp-frontend-implementer.toml`
    - Backend 구현: `.codex/agents/mmp-backend-implementer.toml`
    - 공유 계약 통합: `.codex/agents/mmp-contract-integrator.toml`
@@ -167,20 +170,20 @@ Do:
    - 세션 wrap-up/자가개선 후보: `.codex/agents/mmp-docs-wrap-steward.toml`
    - 병렬 실행 설계: `.codex/agents/mmp-parallel-coordinator.toml`
    - Issue 실행 설계: `.codex/agents/mmp-issue-architect.toml`
-4. 코드 수정 sub-agent에는 소유 파일/모듈을 명확히 지정하고, 다른 작업자가 있을 수 있으니 기존 변경을 되돌리지 말라고 지시한다.
-5. 공유 계약(API DTO, frontend adapter/ViewModel mapping, migration, generated client, route contract)은 `mmp-contract-integrator` 또는 메인 Codex의 순차 통합 소유로 둔다. 여러 구현 에이전트가 같은 계약 파일을 동시에 수정하지 않는다.
-6. 리뷰 sub-agent 결과는 사용자에게 raw output으로 붙이지 말고 `발견 / 수행 / 판단 / 미해결` 4섹션으로 압축한다.
-7. 병렬 실행 계획이 필요한 경우 `.codex/agents/mmp-parallel-coordinator.toml` 역할을 먼저 사용해 read-heavy audit, write ownership, 중단 조건, 메인 통합 체크리스트를 만든다.
-8. 기본 병렬화 순서는 `parallel-coordinator → 필요한 implementer/reviewer 병렬 실행 → contract-integrator 또는 메인 Codex의 공유 계약 취합 → focused 검증 → PR steward handoff`이다.
-9. 반복 가능한 위임 흐름이 필요하면 `.codex/skills/mmp-subagent-orchestration/SKILL.md`를 사용해 task ledger, 소유권, 중단 조건, 리뷰/검증 gate를 먼저 고정한다.
-10. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 CodeRabbit 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져온다.
-11. 이미 steward가 맡아 CodeRabbit이 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 다만 이 repo의 `main`은 required status checks의 `strict`가 켜져 있어 PR이 base보다 뒤처지면 `mergeable=MERGEABLE`이어도 merge gate에서 막힐 수 있다. 이 behind 상태는 기본적으로 품질 실패가 아니라 merge-batch 판단 대상으로 본다. 최신화는 GitHub가 merge conflict를 보고하거나, 해당 PR이 다음 merge 대상이고 main Codex가 admin merge 대신 branch refresh를 선택하거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, 사용자가 명시적으로 최신화를 요청할 때만 수행한다. CI steward는 strict/behind만 남으면 자동 update 대신 `MERGE_CANDIDATE`로 보고하고, main Codex가 merge 순서에서 admin merge 또는 `gh pr update-branch <PR>`를 결정한다. local rebase, local merge commit, force-push는 금지한다.
-12. Steward-managed PR에 메인 Codex가 추가 커밋, rebase, merge commit을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
-13. 메인 Codex thread는 `scripts/mmp-pr-watch.sh`를 직접 장시간 실행하지 않는다. `scripts/mmp-pr-status.sh <PR>` 또는 `gh pr view` 같은 단발 조회만 사용하고, 30초 이상 대기가 필요하면 CI steward에 위임한다.
-14. CI steward 최종 보고는 `scripts/mmp-pr-status.sh <PR> --fail-on-blocker --allow-behind`가 최신 head에서 통과해야 유효하다. `CodeRabbit` check pass만으로는 부족하며 unresolved review thread 또는 `CHANGES_REQUESTED` review decision이 남아 있으면 steward가 계속 처리하거나 `BLOCKED`로 보고해야 한다.
-15. CI steward는 안전 규칙 안에서 자율적으로 PR을 마무리한다. 대상 PR의 타당한 review thread를 고치고 검증한 경우 해당 thread resolve까지 수행할 수 있다. `ready-for-ci` 라벨 적용이나 missing workflow dispatch는 하지 않는다.
-16. 같은 base에서 동시에 열린 PR들은 merge batch로 관리한다. CodeRabbit과 unresolved review thread가 clear된 PR들을 후보군으로 보고, main Codex가 우선순위대로 한 PR씩 merge한다. 한 PR이 merge됐다는 이유만으로 나머지 PR을 즉시 최신화하지 않는다. strict behind만 남은 저충돌 PR은 사용자 승인 또는 명확한 운영 판단이 있으면 admin merge로 CI 재소모를 끊을 수 있지만, unresolved review thread, `CHANGES_REQUESTED`, merge conflict는 bypass하지 않는다.
-17. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
+5. 코드 수정 sub-agent에는 소유 파일/모듈을 명확히 지정하고, 다른 작업자가 있을 수 있으니 기존 변경을 되돌리지 말라고 지시한다.
+6. 공유 계약(API DTO, frontend adapter/ViewModel mapping, migration, generated client, route contract)은 `mmp-contract-integrator` 또는 메인 Codex의 순차 통합 소유로 둔다. 여러 구현 에이전트가 같은 계약 파일을 동시에 수정하지 않는다.
+7. 리뷰 sub-agent 결과는 사용자에게 raw output으로 붙이지 말고 `발견 / 수행 / 판단 / 미해결` 4섹션으로 압축한다.
+8. 병렬 실행 계획이 필요한 경우 `.codex/agents/mmp-parallel-coordinator.toml` 역할을 먼저 사용해 read-heavy audit, write ownership, 중단 조건, 메인 통합 체크리스트를 만든다.
+9. 기본 병렬화 순서는 `parallel-coordinator → 필요한 implementer/reviewer 병렬 실행 → contract-integrator 또는 메인 Codex의 공유 계약 취합 → focused 검증 → PR steward handoff`이다.
+10. 반복 가능한 위임 흐름이 필요하면 `.codex/skills/mmp-subagent-orchestration/SKILL.md`를 사용해 task ledger, 소유권, 중단 조건, 리뷰/검증 gate를 먼저 고정한다.
+11. PR 대기 시간이 다음 이슈 진행을 막을 때는 `.codex/agents/mmp-ci-steward.toml` 역할에 단일 PR의 CodeRabbit 보정만 위임할 수 있다. 메인 Codex는 별도 worktree/branch에서 다음 이슈를 진행하고, steward PR merge 후 `origin/main`을 가져온다.
+12. 이미 steward가 맡아 CodeRabbit이 도는 PR branch는 관성적으로 rebase/merge하지 않는다. 다만 이 repo의 `main`은 required status checks의 `strict`가 켜져 있어 PR이 base보다 뒤처지면 `mergeable=MERGEABLE`이어도 merge gate에서 막힐 수 있다. 이 behind 상태는 기본적으로 품질 실패가 아니라 merge-batch 판단 대상으로 본다. 최신화는 GitHub가 merge conflict를 보고하거나, 해당 PR이 다음 merge 대상이고 main Codex가 admin merge 대신 branch refresh를 선택하거나, merge된 main 변경이 같은 파일/공유 계약/stacked parent에 영향을 주거나, 사용자가 명시적으로 최신화를 요청할 때만 수행한다. CI steward는 strict/behind만 남으면 자동 update 대신 `MERGE_CANDIDATE`로 보고하고, main Codex가 merge 순서에서 admin merge 또는 `gh pr update-branch <PR>`를 결정한다. local rebase, local merge commit, force-push는 금지한다.
+13. Steward-managed PR에 메인 Codex가 추가 커밋, rebase, merge commit을 push한 경우, 메인 thread가 watcher로 반복 대기하지 말고 최신 head 확인을 steward에게 다시 맡긴다. 메인 Codex는 단발 상태 확인과 최종 merge 판단만 맡는다.
+14. 메인 Codex thread는 `scripts/mmp-pr-watch.sh`를 직접 장시간 실행하지 않는다. `scripts/mmp-pr-status.sh <PR>` 또는 `gh pr view` 같은 단발 조회만 사용하고, 30초 이상 대기가 필요하면 CI steward에 위임한다.
+15. CI steward 최종 보고는 `scripts/mmp-pr-status.sh <PR> --fail-on-blocker --allow-behind`가 최신 head에서 통과해야 유효하다. `CodeRabbit` check pass만으로는 부족하며 unresolved review thread 또는 `CHANGES_REQUESTED` review decision이 남아 있으면 steward가 계속 처리하거나 `BLOCKED`로 보고해야 한다.
+16. CI steward는 안전 규칙 안에서 자율적으로 PR을 마무리한다. 대상 PR의 타당한 review thread를 고치고 검증한 경우 해당 thread resolve까지 수행할 수 있다. `ready-for-ci` 라벨 적용이나 missing workflow dispatch는 하지 않는다.
+17. 같은 base에서 동시에 열린 PR들은 merge batch로 관리한다. CodeRabbit과 unresolved review thread가 clear된 PR들을 후보군으로 보고, main Codex가 우선순위대로 한 PR씩 merge한다. 한 PR이 merge됐다는 이유만으로 나머지 PR을 즉시 최신화하지 않는다. strict behind만 남은 저충돌 PR은 사용자 승인 또는 명확한 운영 판단이 있으면 admin merge로 CI 재소모를 끊을 수 있지만, unresolved review thread, `CHANGES_REQUESTED`, merge conflict는 bypass하지 않는다.
+18. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
 
 Done when:
 - 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
