@@ -16,6 +16,8 @@ import (
 	"github.com/mmp-platform/server/internal/engine"
 )
 
+const publishedStatus = "PUBLISHED"
+
 // ThemeSummary is the compact representation used in list endpoints.
 type ThemeSummary struct {
 	ID          uuid.UUID `json:"id"`
@@ -82,7 +84,7 @@ func (s *service) GetTheme(ctx context.Context, themeID uuid.UUID) (*ThemeRespon
 		s.logger.Error().Err(err).Stringer("theme_id", themeID).Msg("failed to get theme")
 		return nil, apperror.Internal("failed to get theme")
 	}
-	return toThemeResponse(theme), nil
+	return toPublicThemeResponse(theme)
 }
 
 func (s *service) GetThemeBySlug(ctx context.Context, slug string) (*ThemeResponse, error) {
@@ -94,7 +96,7 @@ func (s *service) GetThemeBySlug(ctx context.Context, slug string) (*ThemeRespon
 		s.logger.Error().Err(err).Str("slug", slug).Msg("failed to get theme by slug")
 		return nil, apperror.Internal("failed to get theme")
 	}
-	return toThemeResponse(theme), nil
+	return toPublicThemeResponse(theme)
 }
 
 func (s *service) ListPublished(ctx context.Context, limit, offset int32) ([]ThemeSummary, error) {
@@ -115,6 +117,18 @@ func (s *service) ListPublished(ctx context.Context, limit, offset int32) ([]The
 }
 
 func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]CharacterResponse, error) {
+	theme, err := s.queries.GetTheme(ctx, themeID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.NotFound("theme not found")
+		}
+		s.logger.Error().Err(err).Stringer("theme_id", themeID).Msg("failed to get theme")
+		return nil, apperror.Internal("failed to get characters")
+	}
+	if theme.Status != publishedStatus {
+		return nil, apperror.NotFound("theme not found")
+	}
+
 	chars, err := s.queries.GetThemeCharacters(ctx, themeID)
 	if err != nil {
 		s.logger.Error().Err(err).Stringer("theme_id", themeID).Msg("failed to get theme characters")
@@ -174,6 +188,15 @@ func toThemeResponse(t db.Theme) *ThemeResponse {
 		PublishedAt:  timestampToPtr(t.PublishedAt),
 		CreatedAt:    t.CreatedAt,
 	}
+}
+
+func toPublicThemeResponse(t db.Theme) (*ThemeResponse, error) {
+	if t.Status != publishedStatus {
+		return nil, apperror.NotFound("theme not found")
+	}
+	resp := toThemeResponse(t)
+	resp.ConfigJson = nil
+	return resp, nil
 }
 
 func textToPtr(t pgtype.Text) *string {

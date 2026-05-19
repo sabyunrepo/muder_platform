@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	authdomain "github.com/mmp-platform/server/internal/domain/auth"
 	"github.com/mmp-platform/server/internal/middleware"
 )
 
@@ -55,6 +56,37 @@ func TestAuth_ValidToken(t *testing.T) {
 	}
 	if gotRole != "HOST" {
 		t.Fatalf("expected role HOST, got %s", gotRole)
+	}
+}
+
+func TestAuth_RejectsRefreshTokenBearer(t *testing.T) {
+	userID := uuid.New()
+	tokenStr, _, err := authdomain.GenerateRefreshToken(userID, []byte(testSecret))
+	if err != nil {
+		t.Fatalf("generate refresh token: %v", err)
+	}
+
+	handler := middleware.Auth(middleware.JWTConfig{Secret: []byte(testSecret)})(
+		http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			t.Fatal("handler should not be called")
+		}),
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Authorization", "Bearer "+tokenStr)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+
+	var body map[string]any
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode body: %v", err)
+	}
+	if body["code"] != "AUTH_TOKEN_INVALID" {
+		t.Fatalf("expected code AUTH_TOKEN_INVALID, got %v", body["code"])
 	}
 }
 

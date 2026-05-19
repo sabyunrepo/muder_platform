@@ -52,6 +52,10 @@ func Auth(cfg JWTConfig) func(http.Handler) http.Handler {
 				apperror.WriteError(w, r, apperror.Unauthorized("invalid token claims"))
 				return
 			}
+			if tokenType, _ := claims["type"].(string); tokenType == "refresh" {
+				apperror.WriteError(w, r, apperror.New(apperror.ErrAuthTokenInvalid, http.StatusUnauthorized, "refresh token cannot be used for HTTP auth"))
+				return
+			}
 
 			sub, _ := claims.GetSubject()
 			userID, err := uuid.Parse(sub)
