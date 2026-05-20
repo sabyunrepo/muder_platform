@@ -237,7 +237,7 @@ describe('ClueForm', () => {
       <ClueForm themeId="theme-1" clue={existing} isOpen onClose={onClose} />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '제거' }));
+    fireEvent.click(screen.getByRole('button', { name: '단서 이미지 제거' }));
     fireEvent.submit(document.getElementById('clue-form')!);
 
     expect(updateMutate).toHaveBeenCalledTimes(1);
