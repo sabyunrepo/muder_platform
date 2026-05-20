@@ -40,6 +40,28 @@ describe('validateGameDesign', () => {
     expect(err?.type).toBe('error');
   });
 
+  it('저장된 flow graph에 phase node가 있으면 config_json.phases 없이 통과한다', () => {
+    const { phases: _phases, ...config } = fullConfig;
+
+    const result = validateGameDesign(config, 0, 0, {
+      flowNodes: [{ type: 'phase' }],
+    });
+
+    expect(result.find((w) => w.category === 'phases')).toBeUndefined();
+  });
+
+  it('저장된 flow graph에도 phase node가 없으면 phase error를 유지한다', () => {
+    const { phases: _phases, ...config } = fullConfig;
+
+    const result = validateGameDesign(config, 0, 0, {
+      flowNodes: [{ type: 'start' }, { type: 'branch' }],
+    });
+
+    const err = result.find((w) => w.category === 'phases');
+    expect(err?.type).toBe('error');
+    expect(err?.message).toBe('페이즈가 설정되지 않았습니다');
+  });
+
   it('modules가 없으면 error 반환', () => {
     const config = { ...fullConfig, modules: {} };
     const result = validateGameDesign(config, 0, 0);

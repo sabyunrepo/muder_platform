@@ -28,6 +28,7 @@ interface EditorLayoutProps {
   onSave?: () => void;
   onRetry?: () => void;
   onPublish?: () => void;
+  isPublishing?: boolean;
   onValidate?: () => DesignWarning[];
   validationWarnings?: DesignWarning[];
   routeSegment?: string;
@@ -41,6 +42,7 @@ export function EditorLayout({
   onSave,
   onRetry,
   onPublish,
+  isPublishing = false,
   onValidate,
   validationWarnings: externalWarnings,
   routeSegment,
@@ -49,6 +51,7 @@ export function EditorLayout({
   const { activeTab } = useEditorUI();
   const [validationResult, setValidationResult] = useState<DesignWarning[] | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const [publishNotice, setPublishNotice] = useState<string | null>(null);
 
   const activeModules = useMemo(() => readEnabledModuleIds(theme.config_json), [theme.config_json]);
   const routeTab = useMemo(
@@ -58,12 +61,27 @@ export function EditorLayout({
   const effectiveTab = routeTab ?? activeTab;
   const usesInternalScroll = INTERNAL_SCROLL_TABS.has(effectiveTab);
 
+  const runValidation = () => {
+    const result = onValidate ? onValidate() : (externalWarnings ?? []);
+    setValidationResult(result);
+    setDismissed(false);
+    return result;
+  };
+
   const handleValidate = () => {
-    if (onValidate) {
-      const result = onValidate();
-      setValidationResult(result);
-      setDismissed(false);
+    runValidation();
+    setPublishNotice(null);
+  };
+
+  const handlePublish = () => {
+    const result = runValidation();
+    const hasErrors = result.some((warning) => warning.type === 'error');
+    if (hasErrors) {
+      setPublishNotice('검증 오류를 먼저 해결해야 출판할 수 있습니다');
+      return;
     }
+    setPublishNotice(null);
+    onPublish?.();
   };
 
   // Save on Ctrl+S / Cmd+S
@@ -131,13 +149,22 @@ export function EditorLayout({
         </button>
         <button
           type="button"
-          onClick={onPublish}
-          disabled={theme.status === 'PUBLISHED'}
+          onClick={handlePublish}
+          disabled={theme.status === 'PUBLISHED' || isPublishing || !onPublish}
           className={`h-8 px-2 text-xs transition-colors hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40 sm:h-7 sm:px-3 ${editorDesignClassNames.primaryAction}`}
         >
-          출판
+          {isPublishing ? '출판 중...' : '출판'}
         </button>
       </header>
+
+      {publishNotice && (
+        <div
+          role="status"
+          className="shrink-0 border-b border-[var(--mmp-editor-color-hairline)] bg-[var(--mmp-editor-color-tint-rose)] px-4 py-2 text-xs text-[var(--mmp-editor-color-error)]"
+        >
+          {publishNotice}
+        </div>
+      )}
 
       {/* ── Tab nav ── */}
       <EditorTabNav themeId={themeId} activeModules={activeModules} forcedVisibleTab={routeTab} />

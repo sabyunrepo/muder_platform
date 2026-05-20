@@ -3,18 +3,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   useEditorThemeMock,
+  usePublishThemeMock,
   useEditorCluesMock,
   useClueEdgesMock,
+  useFlowGraphMock,
+  validateGameDesignMock,
+  validateClueGraphMock,
   editorLayoutMock,
 } = vi.hoisted(() => ({
   useEditorThemeMock: vi.fn(),
+  usePublishThemeMock: vi.fn(),
   useEditorCluesMock: vi.fn(),
   useClueEdgesMock: vi.fn(),
+  useFlowGraphMock: vi.fn(),
+  validateGameDesignMock: vi.fn(),
+  validateClueGraphMock: vi.fn(),
   editorLayoutMock: vi.fn(),
 }));
 
 vi.mock('@/features/editor/api', () => ({
   useEditorTheme: (themeId: string) => useEditorThemeMock(themeId),
+  usePublishTheme: (themeId: string) => usePublishThemeMock(themeId),
 }));
 
 vi.mock('@/features/editor/editorClueApi', () => ({
@@ -25,9 +34,17 @@ vi.mock('@/features/editor/clueEdgeApi', () => ({
   useClueEdges: (themeId: string) => useClueEdgesMock(themeId),
 }));
 
+vi.mock('@/features/editor/flowApi', () => ({
+  useFlowGraph: (themeId: string) => useFlowGraphMock(themeId),
+}));
+
 vi.mock('@/features/editor/validation', () => ({
-  validateGameDesign: () => ['game-warning'],
-  validateClueGraph: () => ['graph-warning'],
+  validateGameDesign: (...args: unknown[]) => validateGameDesignMock(...args),
+  validateClueGraph: (...args: unknown[]) => validateClueGraphMock(...args),
+}));
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
 }));
 
 vi.mock('../EditorLayout', () => ({
@@ -68,6 +85,15 @@ describe('ThemeEditor', () => {
     useClueEdgesMock.mockReturnValue({
       data: [{ targetId: 'clue-1', mode: 'requires', sources: ['clue-2', 'clue-3'] }],
     });
+    useFlowGraphMock.mockReturnValue({
+      data: {
+        nodes: [{ id: 'phase-1', type: 'phase', data: { label: '1라운드' } }],
+        edges: [],
+      },
+    });
+    usePublishThemeMock.mockReturnValue({ mutate: vi.fn(), isPending: false });
+    validateGameDesignMock.mockReturnValue(['game-warning']);
+    validateClueGraphMock.mockReturnValue(['graph-warning']);
   });
 
   it('로딩 중이면 전체 화면 스피너를 표시한다', () => {
@@ -151,6 +177,32 @@ describe('ThemeEditor', () => {
     expect(props.routeSegment).toBe('modules');
     expect(props.themeId).toBe('theme-1');
     expect(props.onValidate()).toEqual(['game-warning', 'graph-warning']);
+    expect(validateGameDesignMock).toHaveBeenCalledWith(
+      theme.config_json,
+      1,
+      1,
+      expect.objectContaining({
+        flowNodes: [{ id: 'phase-1', type: 'phase', data: { label: '1라운드' } }],
+      })
+    );
+  });
+
+  it('EditorLayout에 direct publish handler와 publish pending 상태를 전달한다', () => {
+    const mutate = vi.fn();
+    usePublishThemeMock.mockReturnValue({ mutate, isPending: true });
+
+    render(<ThemeEditor themeId="theme-1" />);
+
+    const props = editorLayoutMock.mock.calls[0][0] as {
+      onPublish: () => void;
+      isPublishing: boolean;
+    };
+    expect(usePublishThemeMock).toHaveBeenCalledWith('theme-1');
+    expect(props.isPublishing).toBe(true);
+
+    props.onPublish();
+
+    expect(mutate).toHaveBeenCalledWith(undefined, expect.any(Object));
   });
 
   it('slug로 열린 뒤 하위 편집 API에는 응답의 UUID를 사용한다', () => {
@@ -165,6 +217,8 @@ describe('ThemeEditor', () => {
     expect(useEditorThemeMock).toHaveBeenCalledWith('e2e-test-theme');
     expect(useEditorCluesMock).toHaveBeenCalledWith('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
     expect(useClueEdgesMock).toHaveBeenCalledWith('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    expect(useFlowGraphMock).toHaveBeenCalledWith('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    expect(usePublishThemeMock).toHaveBeenCalledWith('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
     const props = editorLayoutMock.mock.calls[0][0] as { themeId: string };
     expect(props.themeId).toBe('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   });

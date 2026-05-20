@@ -13,6 +13,7 @@ func registerEditorThemeRoutes(r chi.Router, deps authedDeps) {
 	r.Post("/themes", deps.editor.CreateTheme)
 	r.Put("/themes/{id}", deps.editor.UpdateTheme)
 	r.Delete("/themes/{id}", deps.editor.DeleteTheme)
+	r.Post("/themes/{id}/publish", deps.editor.PublishTheme)
 	r.Post("/themes/{id}/unpublish", deps.editor.UnpublishTheme)
 	r.Post("/themes/{id}/submit-review", deps.editor.SubmitForReview)
 	r.Put("/themes/{id}/config", deps.editor.UpdateConfigJson)

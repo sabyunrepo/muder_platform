@@ -17,7 +17,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: UpdateThemeStatus :one
-UPDATE themes SET status = $2, published_at = CASE WHEN $2 = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
+UPDATE themes SET status = $2::varchar, published_at = CASE WHEN $2::varchar = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 

@@ -4,10 +4,36 @@ import (
 	"errors"
 	"net/http"
 	"testing"
+	"unicode"
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
 )
+
+func TestGenerateRoomCodeUsesRandomBytesBeforeFirstCode(t *testing.T) {
+	t.Parallel()
+
+	codes := make(map[string]struct{})
+	for range 3 {
+		code, err := generateRoomCode()
+		if err != nil {
+			t.Fatalf("generateRoomCode returned error: %v", err)
+		}
+		if len(code) != 6 {
+			t.Fatalf("code length = %d, want 6", len(code))
+		}
+		for _, r := range code {
+			if !unicode.IsUpper(r) && !unicode.IsDigit(r) {
+				t.Fatalf("code %q contains unsupported character %q", code, r)
+			}
+		}
+		codes[code] = struct{}{}
+	}
+
+	if _, ok := codes["AAAAAA"]; ok && len(codes) == 1 {
+		t.Fatal("generateRoomCode returned only AAAAAA; random bytes were not read before first use")
+	}
+}
 
 // TestResolveMaxPlayers_TableDriven exercises the boundary matrix for the
 // CreateRoom MaxPlayers fallback + range validation helper.

@@ -760,7 +760,7 @@ func (q *Queries) UpdateThemeCoverImage(ctx context.Context, arg UpdateThemeCove
 }
 
 const updateThemeStatus = `-- name: UpdateThemeStatus :one
-UPDATE themes SET status = $2, published_at = CASE WHEN $2 = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
+UPDATE themes SET status = $2::varchar, published_at = CASE WHEN $2::varchar = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
 WHERE id = $1
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `

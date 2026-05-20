@@ -1,9 +1,11 @@
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 import { Spinner } from '@/shared/components/ui';
-import { useEditorTheme } from '@/features/editor/api';
+import { useEditorTheme, usePublishTheme } from '@/features/editor/api';
 import { useEditorClues } from '@/features/editor/editorClueApi';
 import { validateGameDesign, validateClueGraph } from '@/features/editor/validation';
 import { useClueEdges } from '@/features/editor/clueEdgeApi';
+import { useFlowGraph } from '@/features/editor/flowApi';
 import { isApiHttpError } from '@/lib/api-error';
 import { EditorLayout } from './EditorLayout';
 
@@ -82,6 +84,8 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
   const resolvedThemeId = theme?.id ?? '';
   const { data: clues } = useEditorClues(resolvedThemeId);
   const { data: clueEdgeGroups } = useClueEdges(resolvedThemeId);
+  const { data: flowGraph } = useFlowGraph(resolvedThemeId);
+  const publishTheme = usePublishTheme(resolvedThemeId);
 
   const handleValidate = useCallback(() => {
     if (!theme) return [];
@@ -90,7 +94,9 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
     // Character count from config_json.characters array
     const chars = cfg.characters;
     const charCount = Array.isArray(chars) ? chars.length : 0;
-    const gameWarnings = validateGameDesign(cfg, clueCount, charCount);
+    const gameWarnings = validateGameDesign(cfg, clueCount, charCount, {
+      flowNodes: flowGraph?.nodes ?? [],
+    });
     // Phase 20 PR-6: flatten edge groups (N sources × 1 target) into the
     // legacy (sourceId, targetId, mode) shape validateClueGraph still accepts.
     const flatRelations = (clueEdgeGroups ?? []).flatMap((g) =>
@@ -105,7 +111,14 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
       (clues ?? []).map((c) => ({ id: c.id, name: c.name }))
     );
     return [...gameWarnings, ...graphWarnings];
-  }, [theme, clues, clueEdgeGroups]);
+  }, [theme, clues, clueEdgeGroups, flowGraph]);
+
+  const handlePublish = useCallback(() => {
+    publishTheme.mutate(undefined, {
+      onSuccess: () => toast.success('테마가 출판되었습니다'),
+      onError: () => toast.error('테마 출판에 실패했습니다'),
+    });
+  }, [publishTheme]);
 
   if (isLoading) return <FullPageSpinner />;
   if (isError || !theme) {
@@ -119,6 +132,8 @@ export function ThemeEditor({ themeId, routeSegment }: ThemeEditorProps) {
       themeId={resolvedThemeId}
       routeSegment={routeSegment}
       onValidate={handleValidate}
+      onPublish={handlePublish}
+      isPublishing={publishTheme.isPending}
     />
   );
 }
