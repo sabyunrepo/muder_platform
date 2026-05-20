@@ -55,3 +55,12 @@ DELETE FROM room_players WHERE room_id = $1 AND user_id = $2;
 
 -- name: SetPlayerReady :exec
 UPDATE room_players SET is_ready = $3 WHERE room_id = $1 AND user_id = $2;
+
+-- name: SetRoomPlayerCharacter :execrows
+UPDATE room_players
+SET character_id = $3
+FROM rooms
+WHERE room_players.room_id = $1
+  AND room_players.user_id = $2
+  AND rooms.id = room_players.room_id
+  AND rooms.status = 'WAITING';

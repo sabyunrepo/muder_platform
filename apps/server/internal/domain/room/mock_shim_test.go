@@ -23,14 +23,16 @@ import (
 // mockService is a minimal hand-rolled stub for the room.Service interface,
 // used only in service_flag_test.go for white-box flag-dispatch testing.
 type mockService struct {
-	createRoomFn    func(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
-	getRoomFn       func(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error)
-	getRoomByCodeFn func(ctx context.Context, code string) (*RoomDetailResponse, error)
-	listWaitingFn   func(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
-	joinRoomFn      func(ctx context.Context, roomID, userID uuid.UUID) error
-	leaveRoomFn     func(ctx context.Context, roomID, userID uuid.UUID) error
-	setReadyFn      func(ctx context.Context, roomID, userID uuid.UUID, ready bool) error
-	startRoomFn     func(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
+	createRoomFn     func(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
+	getRoomFn        func(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error)
+	getRoomForUserFn func(ctx context.Context, roomID, userID uuid.UUID) (*RoomDetailResponse, error)
+	getRoomByCodeFn  func(ctx context.Context, code string) (*RoomDetailResponse, error)
+	listWaitingFn    func(ctx context.Context, limit, offset int32) ([]RoomResponse, error)
+	joinRoomFn       func(ctx context.Context, roomID, userID uuid.UUID) error
+	leaveRoomFn      func(ctx context.Context, roomID, userID uuid.UUID) error
+	setReadyFn       func(ctx context.Context, roomID, userID uuid.UUID, ready bool) error
+	selectCharFn     func(ctx context.Context, roomID, userID uuid.UUID, req SelectCharacterRequest) error
+	startRoomFn      func(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
 func (m *mockService) CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error) {
@@ -43,6 +45,13 @@ func (m *mockService) CreateRoom(ctx context.Context, hostID uuid.UUID, req Crea
 func (m *mockService) GetRoom(ctx context.Context, roomID uuid.UUID) (*RoomDetailResponse, error) {
 	if m.getRoomFn != nil {
 		return m.getRoomFn(ctx, roomID)
+	}
+	return nil, nil
+}
+
+func (m *mockService) GetRoomForUser(ctx context.Context, roomID, userID uuid.UUID) (*RoomDetailResponse, error) {
+	if m.getRoomForUserFn != nil {
+		return m.getRoomForUserFn(ctx, roomID, userID)
 	}
 	return nil, nil
 }
@@ -78,6 +87,13 @@ func (m *mockService) LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) e
 func (m *mockService) SetReady(ctx context.Context, roomID, userID uuid.UUID, ready bool) error {
 	if m.setReadyFn != nil {
 		return m.setReadyFn(ctx, roomID, userID, ready)
+	}
+	return nil
+}
+
+func (m *mockService) SelectCharacter(ctx context.Context, roomID, userID uuid.UUID, req SelectCharacterRequest) error {
+	if m.selectCharFn != nil {
+		return m.selectCharFn(ctx, roomID, userID, req)
 	}
 	return nil
 }

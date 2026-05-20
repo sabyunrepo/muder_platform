@@ -87,6 +87,21 @@ func (mr *MockServiceMockRecorder) GetRoomByCode(ctx, code any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomByCode", reflect.TypeOf((*MockService)(nil).GetRoomByCode), ctx, code)
 }
 
+// GetRoomForUser mocks base method.
+func (m *MockService) GetRoomForUser(ctx context.Context, roomID, userID uuid.UUID) (*room.RoomDetailResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRoomForUser", ctx, roomID, userID)
+	ret0, _ := ret[0].(*room.RoomDetailResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRoomForUser indicates an expected call of GetRoomForUser.
+func (mr *MockServiceMockRecorder) GetRoomForUser(ctx, roomID, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomForUser", reflect.TypeOf((*MockService)(nil).GetRoomForUser), ctx, roomID, userID)
+}
+
 // JoinRoom mocks base method.
 func (m *MockService) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -128,6 +143,20 @@ func (m *MockService) ListWaitingRooms(ctx context.Context, limit, offset int32)
 func (mr *MockServiceMockRecorder) ListWaitingRooms(ctx, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWaitingRooms", reflect.TypeOf((*MockService)(nil).ListWaitingRooms), ctx, limit, offset)
+}
+
+// SelectCharacter mocks base method.
+func (m *MockService) SelectCharacter(ctx context.Context, roomID, userID uuid.UUID, req room.SelectCharacterRequest) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SelectCharacter", ctx, roomID, userID, req)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SelectCharacter indicates an expected call of SelectCharacter.
+func (mr *MockServiceMockRecorder) SelectCharacter(ctx, roomID, userID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SelectCharacter", reflect.TypeOf((*MockService)(nil).SelectCharacter), ctx, roomID, userID, req)
 }
 
 // SetReady mocks base method.

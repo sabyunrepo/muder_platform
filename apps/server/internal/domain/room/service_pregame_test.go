@@ -1,7 +1,9 @@
 package room
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"testing"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 
 	"github.com/mmp-platform/server/internal/db"
@@ -16,6 +19,7 @@ import (
 
 type fakeRoomQueries struct {
 	room                     db.Room
+	roomAfterCharacterNoRows *db.Room
 	roomErr                  error
 	players                  []db.RoomPlayer
 	playersErr               error
@@ -25,13 +29,19 @@ type fakeRoomQueries struct {
 	playersWithUserErr       error
 	characters               []db.ThemeCharacter
 	charactersErr            error
+	character                db.ThemeCharacter
+	characterErr             error
 	setReadyParams           *db.SetPlayerReadyParams
 	setReadyErr              error
+	setCharacterParams       *db.SetRoomPlayerCharacterParams
+	setCharacterErr          error
+	setCharacterRowsAffected *int64
 	updateRoomStatusParams   *db.UpdateRoomStatusParams
 	statusUpdates            []db.UpdateRoomStatusParams
 	updateRoomStatusErr      error
 	getRoomPlayersCalled     bool
 	getPlayersWithUserCalled bool
+	getRoomForUpdateCalled   bool
 	getThemeCalled           bool
 }
 
@@ -44,6 +54,9 @@ func (f *fakeRoomQueries) CreateRoom(context.Context, db.CreateRoomParams) (db.R
 }
 
 func (f *fakeRoomQueries) GetRoom(context.Context, uuid.UUID) (db.Room, error) {
+	if f.setCharacterParams != nil && f.roomAfterCharacterNoRows != nil {
+		return *f.roomAfterCharacterNoRows, f.roomErr
+	}
 	return f.room, f.roomErr
 }
 
@@ -52,7 +65,8 @@ func (f *fakeRoomQueries) GetRoomByCode(context.Context, string) (db.Room, error
 }
 
 func (f *fakeRoomQueries) GetRoomForUpdate(context.Context, uuid.UUID) (db.Room, error) {
-	panic("unexpected GetRoomForUpdate call")
+	f.getRoomForUpdateCalled = true
+	return f.room, f.roomErr
 }
 
 func (f *fakeRoomQueries) GetRoomPlayerCount(context.Context, uuid.UUID) (int64, error) {
@@ -78,6 +92,10 @@ func (f *fakeRoomQueries) GetThemeCharacters(context.Context, uuid.UUID) ([]db.T
 	return f.characters, f.charactersErr
 }
 
+func (f *fakeRoomQueries) GetThemeCharacter(context.Context, uuid.UUID) (db.ThemeCharacter, error) {
+	return f.character, f.characterErr
+}
+
 func (f *fakeRoomQueries) ListWaitingRoomsWithCount(context.Context, db.ListWaitingRoomsWithCountParams) ([]db.ListWaitingRoomsWithCountRow, error) {
 	panic("unexpected ListWaitingRoomsWithCount call")
 }
@@ -89,6 +107,17 @@ func (f *fakeRoomQueries) RemoveRoomPlayer(context.Context, db.RemoveRoomPlayerP
 func (f *fakeRoomQueries) SetPlayerReady(_ context.Context, arg db.SetPlayerReadyParams) error {
 	f.setReadyParams = &arg
 	return f.setReadyErr
+}
+
+func (f *fakeRoomQueries) SetRoomPlayerCharacter(_ context.Context, arg db.SetRoomPlayerCharacterParams) (int64, error) {
+	f.setCharacterParams = &arg
+	if f.setCharacterErr != nil {
+		return 0, f.setCharacterErr
+	}
+	if f.setCharacterRowsAffected != nil {
+		return *f.setCharacterRowsAffected, nil
+	}
+	return 1, nil
 }
 
 func (f *fakeRoomQueries) UpdateRoomStatus(_ context.Context, arg db.UpdateRoomStatusParams) error {
@@ -187,11 +216,293 @@ func TestSetReadyServiceBranches(t *testing.T) {
 	}
 }
 
+func TestSelectCharacterServiceBranches(t *testing.T) {
+	roomID := uuid.New()
+	themeID := uuid.New()
+	userID := uuid.New()
+	otherUserID := uuid.New()
+	charID := uuid.New()
+	otherCharID := uuid.New()
+	waitingRoom := db.Room{ID: roomID, ThemeID: themeID, Status: "WAITING"}
+	playingRoom := db.Room{ID: roomID, ThemeID: themeID, Status: "PLAYING"}
+	participant := db.RoomPlayer{RoomID: roomID, UserID: userID}
+	playableChar := db.ThemeCharacter{ID: charID, ThemeID: themeID, IsPlayable: true}
+	zeroRows := int64(0)
+
+	tests := []struct {
+		name        string
+		queries     *fakeRoomQueries
+		wantStatus  int
+		wantUpdated bool
+	}{
+		{
+			name:       "room missing",
+			queries:    &fakeRoomQueries{roomErr: pgx.ErrNoRows},
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name:       "room not waiting",
+			queries:    &fakeRoomQueries{room: db.Room{ID: roomID, ThemeID: themeID, Status: "PLAYING"}},
+			wantStatus: http.StatusConflict,
+		},
+		{
+			name: "caller is not participant",
+			queries: &fakeRoomQueries{
+				room:    waitingRoom,
+				players: []db.RoomPlayer{{RoomID: roomID, UserID: otherUserID}},
+			},
+			wantStatus: http.StatusForbidden,
+		},
+		{
+			name: "character missing",
+			queries: &fakeRoomQueries{
+				room:         waitingRoom,
+				players:      []db.RoomPlayer{participant},
+				characterErr: pgx.ErrNoRows,
+			},
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name: "character belongs to another theme",
+			queries: &fakeRoomQueries{
+				room:      waitingRoom,
+				players:   []db.RoomPlayer{participant},
+				character: db.ThemeCharacter{ID: charID, ThemeID: uuid.New(), IsPlayable: true},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "character is not playable",
+			queries: &fakeRoomQueries{
+				room:      waitingRoom,
+				players:   []db.RoomPlayer{participant},
+				character: db.ThemeCharacter{ID: charID, ThemeID: themeID, IsPlayable: false},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "character already selected by another player",
+			queries: &fakeRoomQueries{
+				room: waitingRoom,
+				players: []db.RoomPlayer{
+					participant,
+					{
+						RoomID: roomID,
+						UserID: otherUserID,
+						CharacterID: pgtype.UUID{
+							Bytes: charID,
+							Valid: true,
+						},
+					},
+				},
+				character: playableChar,
+			},
+			wantStatus: http.StatusConflict,
+		},
+		{
+			name: "same player reselecting same character is harmless",
+			queries: &fakeRoomQueries{
+				room: waitingRoom,
+				players: []db.RoomPlayer{{
+					RoomID: roomID,
+					UserID: userID,
+					CharacterID: pgtype.UUID{
+						Bytes: charID,
+						Valid: true,
+					},
+				}},
+				character: playableChar,
+			},
+			wantUpdated: true,
+		},
+		{
+			name: "success changes from previous character",
+			queries: &fakeRoomQueries{
+				room: waitingRoom,
+				players: []db.RoomPlayer{{
+					RoomID: roomID,
+					UserID: userID,
+					CharacterID: pgtype.UUID{
+						Bytes: otherCharID,
+						Valid: true,
+					},
+				}},
+				character: playableChar,
+			},
+			wantUpdated: true,
+		},
+		{
+			name: "update failure",
+			queries: &fakeRoomQueries{
+				room:            waitingRoom,
+				players:         []db.RoomPlayer{participant},
+				character:       playableChar,
+				setCharacterErr: errors.New("db update failed"),
+			},
+			wantStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "room starts before final update",
+			queries: &fakeRoomQueries{
+				room:                     waitingRoom,
+				roomAfterCharacterNoRows: &playingRoom,
+				players:                  []db.RoomPlayer{participant},
+				character:                playableChar,
+				setCharacterRowsAffected: &zeroRows,
+			},
+			wantStatus: http.StatusConflict,
+		},
+		{
+			name: "participant leaves before final update",
+			queries: &fakeRoomQueries{
+				room:                     waitingRoom,
+				players:                  []db.RoomPlayer{participant},
+				character:                playableChar,
+				setCharacterRowsAffected: &zeroRows,
+			},
+			wantStatus: http.StatusForbidden,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := &service{queries: tt.queries, logger: zerolog.Nop()}
+
+			err := svc.SelectCharacter(context.Background(), roomID, userID, SelectCharacterRequest{CharacterID: charID})
+
+			if tt.wantStatus != 0 {
+				assertAppError(t, err, tt.wantStatus)
+				return
+			}
+			if err != nil {
+				t.Fatalf("SelectCharacter returned error: %v", err)
+			}
+			if tt.wantUpdated {
+				if tt.queries.setCharacterParams == nil {
+					t.Fatal("expected SetRoomPlayerCharacter to be called")
+				}
+				if tt.queries.setCharacterParams.RoomID != roomID ||
+					tt.queries.setCharacterParams.UserID != userID ||
+					!tt.queries.setCharacterParams.CharacterID.Valid ||
+					uuid.UUID(tt.queries.setCharacterParams.CharacterID.Bytes) != charID {
+					t.Fatalf("SetRoomPlayerCharacter params mismatch: %+v", tt.queries.setCharacterParams)
+				}
+			}
+		})
+	}
+}
+
+func TestBuildRoomDetailIncludesNullableCharacterID(t *testing.T) {
+	roomID := uuid.New()
+	themeID := uuid.New()
+	hostID := uuid.New()
+	guestID := uuid.New()
+	charID := uuid.New()
+	queries := &fakeRoomQueries{
+		room:  db.Room{ID: roomID, ThemeID: themeID, HostID: hostID, Status: "WAITING"},
+		theme: db.Theme{ID: themeID, Title: "테마", Slug: "theme"},
+		playersWithUser: []db.GetRoomPlayersWithUserRow{
+			{
+				UserID: hostID,
+				CharacterID: pgtype.UUID{
+					Bytes: charID,
+					Valid: true,
+				},
+				Nickname: "호스트",
+			},
+			{
+				UserID:   guestID,
+				Nickname: "게스트",
+			},
+		},
+	}
+	svc := &service{queries: queries, logger: zerolog.Nop()}
+
+	resp, err := svc.buildRoomDetail(context.Background(), queries.room, true)
+	if err != nil {
+		t.Fatalf("buildRoomDetail returned error: %v", err)
+	}
+	if len(resp.Players) != 2 {
+		t.Fatalf("players len = %d, want 2", len(resp.Players))
+	}
+	if resp.Players[0].CharacterID == nil || *resp.Players[0].CharacterID != charID {
+		t.Fatalf("host character_id mismatch: %+v", resp.Players[0])
+	}
+	if resp.Players[1].CharacterID != nil {
+		t.Fatalf("guest character_id should be nil: %+v", resp.Players[1])
+	}
+
+	body, err := json.Marshal(resp.Players[1])
+	if err != nil {
+		t.Fatalf("marshal player: %v", err)
+	}
+	if bytes.Contains(body, []byte(`"character_id"`)) {
+		t.Fatalf("expected empty character_id to be omitted in JSON, got %s", body)
+	}
+}
+
+func TestBuildRoomDetailRedactsCharacterIDForPublicDetail(t *testing.T) {
+	roomID := uuid.New()
+	themeID := uuid.New()
+	hostID := uuid.New()
+	charID := uuid.New()
+	queries := &fakeRoomQueries{
+		room:  db.Room{ID: roomID, ThemeID: themeID, HostID: hostID, Status: "WAITING"},
+		theme: db.Theme{ID: themeID, Title: "테마", Slug: "theme"},
+		playersWithUser: []db.GetRoomPlayersWithUserRow{
+			{
+				UserID: hostID,
+				CharacterID: pgtype.UUID{
+					Bytes: charID,
+					Valid: true,
+				},
+				Nickname: "호스트",
+			},
+		},
+	}
+	svc := &service{queries: queries, logger: zerolog.Nop()}
+
+	resp, err := svc.buildRoomDetail(context.Background(), queries.room, false)
+	if err != nil {
+		t.Fatalf("buildRoomDetail returned error: %v", err)
+	}
+	if resp.Players[0].CharacterID != nil {
+		t.Fatalf("public room detail should redact character_id: %+v", resp.Players[0])
+	}
+	body, err := json.Marshal(resp.Players[0])
+	if err != nil {
+		t.Fatalf("marshal public player: %v", err)
+	}
+	if bytes.Contains(body, []byte(`"character_id"`)) {
+		t.Fatalf("public room detail should omit character_id, got %s", body)
+	}
+}
+
+func TestGetRoomForUserRejectsNonParticipant(t *testing.T) {
+	roomID := uuid.New()
+	themeID := uuid.New()
+	hostID := uuid.New()
+	queries := &fakeRoomQueries{
+		room:  db.Room{ID: roomID, ThemeID: themeID, HostID: hostID, Status: "WAITING"},
+		theme: db.Theme{ID: themeID, Title: "테마", Slug: "theme"},
+		playersWithUser: []db.GetRoomPlayersWithUserRow{
+			{UserID: hostID, Nickname: "호스트"},
+		},
+	}
+	svc := &service{queries: queries, logger: zerolog.Nop()}
+
+	_, err := svc.GetRoomForUser(context.Background(), roomID, uuid.New())
+
+	assertAppError(t, err, http.StatusForbidden)
+}
+
 func TestStartRoomServiceGateWiring(t *testing.T) {
 	roomID := uuid.New()
 	themeID := uuid.New()
 	hostID := uuid.New()
 	guestID := uuid.New()
+	hostCharID := uuid.New()
+	guestCharID := uuid.New()
 	room := db.Room{ID: roomID, ThemeID: themeID, HostID: hostID, Status: "WAITING"}
 	theme := db.Theme{ID: themeID, MinPlayers: 2}
 
@@ -251,8 +562,8 @@ func TestStartRoomServiceGateWiring(t *testing.T) {
 			room:  room,
 			theme: theme,
 			playersWithUser: []db.GetRoomPlayersWithUserRow{
-				{UserID: hostID, Nickname: "호스트", IsReady: false, JoinedAt: joinedAt},
-				{UserID: guestID, Nickname: "참가자", IsReady: true, JoinedAt: joinedAt.Add(time.Second)},
+				{UserID: hostID, CharacterID: pgtype.UUID{Bytes: hostCharID, Valid: true}, Nickname: "호스트", IsReady: false, JoinedAt: joinedAt},
+				{UserID: guestID, CharacterID: pgtype.UUID{Bytes: guestCharID, Valid: true}, Nickname: "참가자", IsReady: true, JoinedAt: joinedAt.Add(time.Second)},
 			},
 		}
 		svc := &service{queries: queries, logger: zerolog.Nop(), gameStarter: starter}
@@ -269,14 +580,23 @@ func TestStartRoomServiceGateWiring(t *testing.T) {
 		if starter.players[0].UserID != hostID || !starter.players[0].IsHost {
 			t.Fatalf("host roster mismatch: %+v", starter.players[0])
 		}
+		if starter.players[0].CharacterID == nil || *starter.players[0].CharacterID != hostCharID {
+			t.Fatalf("host character roster mismatch: %+v", starter.players[0])
+		}
 		if starter.players[1].UserID != guestID || !starter.players[1].IsReady {
 			t.Fatalf("guest roster mismatch: %+v", starter.players[1])
+		}
+		if starter.players[1].CharacterID == nil || *starter.players[1].CharacterID != guestCharID {
+			t.Fatalf("guest character roster mismatch: %+v", starter.players[1])
 		}
 		if queries.updateRoomStatusParams == nil {
 			t.Fatal("expected room status to be updated after successful game start")
 		}
 		if queries.updateRoomStatusParams.ID != roomID || queries.updateRoomStatusParams.Status != "PLAYING" {
 			t.Fatalf("room status update mismatch: %+v", queries.updateRoomStatusParams)
+		}
+		if !queries.getRoomForUpdateCalled {
+			t.Fatal("expected StartRoom to lock room before reading players")
 		}
 	})
 
@@ -286,8 +606,8 @@ func TestStartRoomServiceGateWiring(t *testing.T) {
 			room:  room,
 			theme: theme,
 			playersWithUser: []db.GetRoomPlayersWithUserRow{
-				{UserID: hostID, Nickname: "호스트", IsReady: false},
-				{UserID: guestID, Nickname: "참가자", IsReady: true},
+				{UserID: hostID, CharacterID: pgtype.UUID{Bytes: hostCharID, Valid: true}, Nickname: "호스트", IsReady: false},
+				{UserID: guestID, CharacterID: pgtype.UUID{Bytes: guestCharID, Valid: true}, Nickname: "참가자", IsReady: true},
 			},
 			updateRoomStatusErr: errors.New("status update failed"),
 		}
@@ -310,8 +630,8 @@ func TestStartRoomServiceGateWiring(t *testing.T) {
 			room:  room,
 			theme: theme,
 			playersWithUser: []db.GetRoomPlayersWithUserRow{
-				{UserID: hostID, Nickname: "호스트", IsReady: false},
-				{UserID: guestID, Nickname: "참가자", IsReady: true},
+				{UserID: hostID, CharacterID: pgtype.UUID{Bytes: hostCharID, Valid: true}, Nickname: "호스트", IsReady: false},
+				{UserID: guestID, CharacterID: pgtype.UUID{Bytes: guestCharID, Valid: true}, Nickname: "참가자", IsReady: true},
 			},
 		}
 		svc := &service{queries: queries, logger: zerolog.Nop(), gameStarter: starter}
@@ -326,6 +646,29 @@ func TestStartRoomServiceGateWiring(t *testing.T) {
 		}
 		if queries.statusUpdates[0].Status != "PLAYING" || queries.statusUpdates[1].Status != "WAITING" {
 			t.Fatalf("status update order mismatch: %+v", queries.statusUpdates)
+		}
+	})
+
+	t.Run("missing host character stops before game starter", func(t *testing.T) {
+		starter := &fakeGameStarter{}
+		queries := &fakeRoomQueries{
+			room:  room,
+			theme: theme,
+			playersWithUser: []db.GetRoomPlayersWithUserRow{
+				{UserID: hostID, Nickname: "호스트", IsReady: false},
+				{UserID: guestID, CharacterID: pgtype.UUID{Bytes: guestCharID, Valid: true}, Nickname: "참가자", IsReady: true},
+			},
+		}
+		svc := &service{queries: queries, logger: zerolog.Nop(), gameStarter: starter}
+
+		err := svc.StartRoom(context.Background(), roomID, hostID, StartRoomRequest{})
+
+		assertAppError(t, err, http.StatusConflict)
+		if starter.called {
+			t.Fatal("expected missing character gate to stop before GameStarter.Start")
+		}
+		if queries.updateRoomStatusParams != nil {
+			t.Fatalf("room status should not update when character gate fails: %+v", queries.updateRoomStatusParams)
 		}
 	})
 }

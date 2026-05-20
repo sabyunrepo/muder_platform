@@ -10,8 +10,10 @@ const {
   sendMock,
   useRoomMock,
   useLeaveRoomMock,
+  useSelectRoomCharacterMock,
   useSetReadyMock,
   useStartRoomMock,
+  useThemeCharactersMock,
   useWsEventMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
@@ -19,8 +21,10 @@ const {
   sendMock: vi.fn(),
   useRoomMock: vi.fn(),
   useLeaveRoomMock: vi.fn(),
+  useSelectRoomCharacterMock: vi.fn(),
   useSetReadyMock: vi.fn(),
   useStartRoomMock: vi.fn(),
+  useThemeCharactersMock: vi.fn(),
   useWsEventMock: vi.fn(),
 }));
 
@@ -36,8 +40,10 @@ vi.mock('react-router', async () => {
 vi.mock('@/features/lobby/api', () => ({
   useRoom: () => useRoomMock(),
   useLeaveRoom: () => useLeaveRoomMock(),
+  useSelectRoomCharacter: () => useSelectRoomCharacterMock(),
   useSetReady: () => useSetReadyMock(),
   useStartRoom: () => useStartRoomMock(),
+  useThemeCharacters: (themeId: string) => useThemeCharactersMock(themeId),
 }));
 
 vi.mock('@/hooks/useWsClient', () => ({
@@ -81,6 +87,7 @@ const baseRoom = {
       avatar_url: null,
       is_host: true,
       is_ready: true,
+      character_id: 'character-detective',
       joined_at: '2026-05-19T00:00:00Z',
     },
     {
@@ -90,27 +97,58 @@ const baseRoom = {
       avatar_url: null,
       is_host: false,
       is_ready: true,
+      character_id: 'character-doctor',
       joined_at: '2026-05-19T00:00:00Z',
     },
   ],
 };
 
+const baseCharacters = [
+  {
+    id: 'character-detective',
+    name: '탐정',
+    description: '사건의 진실을 좇는 손님',
+    image_url: null,
+    image_media_id: null,
+    sort_order: 1,
+  },
+  {
+    id: 'character-doctor',
+    name: '의사',
+    description: '저택의 비밀을 알고 있는 인물',
+    image_url: null,
+    image_media_id: null,
+    sort_order: 2,
+  },
+  {
+    id: 'character-chef',
+    name: '요리사',
+    description: '마지막 만찬을 준비한 사람',
+    image_url: null,
+    image_media_id: null,
+    sort_order: 3,
+  },
+];
+
 function renderRoom() {
   return render(
     <MemoryRouter>
       <RoomPage />
-    </MemoryRouter>,
+    </MemoryRouter>
   );
 }
 
-function mockRoomPage(overrides: {
-  room?: typeof baseRoom;
-  readyMutate?: ReturnType<typeof vi.fn>;
-  startMutate?: ReturnType<typeof vi.fn>;
-  leaveMutate?: ReturnType<typeof vi.fn>;
-  readyPending?: boolean;
-  startPending?: boolean;
-} = {}) {
+function mockRoomPage(
+  overrides: {
+    room?: typeof baseRoom;
+    readyMutate?: ReturnType<typeof vi.fn>;
+    selectMutate?: ReturnType<typeof vi.fn>;
+    startMutate?: ReturnType<typeof vi.fn>;
+    leaveMutate?: ReturnType<typeof vi.fn>;
+    readyPending?: boolean;
+    startPending?: boolean;
+  } = {}
+) {
   useRoomMock.mockReturnValue({
     data: overrides.room ?? baseRoom,
     isLoading: false,
@@ -119,6 +157,15 @@ function mockRoomPage(overrides: {
   });
   useLeaveRoomMock.mockReturnValue({
     mutate: overrides.leaveMutate ?? vi.fn(),
+    isPending: false,
+  });
+  useThemeCharactersMock.mockReturnValue({
+    data: baseCharacters,
+    isLoading: false,
+    isError: false,
+  });
+  useSelectRoomCharacterMock.mockReturnValue({
+    mutate: overrides.selectMutate ?? vi.fn(),
     isPending: false,
   });
   useSetReadyMock.mockReturnValue({
@@ -161,7 +208,7 @@ describe('RoomPage pregame controls', () => {
 
     expect(readyMutate).toHaveBeenCalledWith(
       { roomId: 'room-1', is_ready: false },
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
+      expect.objectContaining({ onSuccess: expect.any(Function) })
     );
     await waitFor(() => expect(refetchMock).toHaveBeenCalled());
   });
@@ -175,7 +222,7 @@ describe('RoomPage pregame controls', () => {
       room: {
         ...baseRoom,
         players: baseRoom.players.map((player) =>
-          player.user_id === 'user-1' ? { ...player, is_ready: false } : player,
+          player.user_id === 'user-1' ? { ...player, is_ready: false } : player
         ),
       },
       readyPending: true,
@@ -202,7 +249,7 @@ describe('RoomPage pregame controls', () => {
 
     expect(startMutate).toHaveBeenCalledWith(
       'room-1',
-      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) })
     );
     expect(navigateMock).toHaveBeenCalledWith('/game/room-1');
   });
@@ -279,7 +326,7 @@ describe('RoomPage pregame controls', () => {
     expect(sendMock).toHaveBeenCalledWith('chat:send', { room_id: 'room-1', text: '준비됐어요' });
     expect(leaveMutate).toHaveBeenCalledWith(
       'room-1',
-      expect.objectContaining({ onSuccess: expect.any(Function) }),
+      expect.objectContaining({ onSuccess: expect.any(Function) })
     );
     expect(navigateMock).toHaveBeenCalledWith('/lobby');
   });
@@ -299,7 +346,75 @@ describe('RoomPage pregame controls', () => {
     fireEvent.click(screen.getByRole('button', { name: /게임 시작/ }));
 
     expect(screen.getByText(/게임 시작에 실패했습니다/)).toHaveTextContent(
-      '아직 모든 참가자가 준비하지 않았습니다.',
+      '아직 모든 참가자가 준비하지 않았습니다.'
     );
+  });
+
+  it('대기방에서 테마 캐릭터 목록을 표시하고 현재 선택을 구분한다', () => {
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    expect(useThemeCharactersMock).toHaveBeenCalledWith('theme-1');
+    expect(screen.getByRole('heading', { name: '캐릭터 선택' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /의사/ })).toHaveTextContent('선택됨');
+    expect(screen.getByRole('button', { name: /요리사/ })).toBeEnabled();
+    expect(screen.getAllByText('참가자').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('의사').length).toBeGreaterThan(0);
+  });
+
+  it('다른 참가자가 선택한 캐릭터는 비활성화하고 내 선택 mutation을 보낸다', () => {
+    const selectMutate = vi.fn((_variables, options) => {
+      options?.onSuccess?.();
+    });
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage({ selectMutate });
+
+    renderRoom();
+
+    expect(screen.getByRole('button', { name: /탐정/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /요리사/ }));
+
+    expect(selectMutate).toHaveBeenCalledWith(
+      { roomId: 'room-1', characterId: 'character-chef' },
+      expect.objectContaining({ onSuccess: expect.any(Function) })
+    );
+    expect(refetchMock).toHaveBeenCalled();
+  });
+
+  it('캐릭터를 선택하지 않은 참가자가 있으면 호스트 시작 버튼을 비활성화하고 사유를 표시한다', () => {
+    const startMutate = vi.fn();
+    useAuthStore.setState({
+      user: { id: 'host-1', email: 'host@example.com', nickname: '호스트', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage({
+      room: {
+        ...baseRoom,
+        players: baseRoom.players.map((player) =>
+          player.user_id === 'user-1' ? { ...player, character_id: null } : player
+        ),
+      },
+      startMutate,
+    });
+
+    renderRoom();
+
+    const startButton = screen.getByRole('button', { name: /게임 시작/ });
+    expect(startButton).toBeDisabled();
+    expect(
+      screen.getByText('모든 참가자가 캐릭터를 선택해야 시작할 수 있습니다.')
+    ).toBeInTheDocument();
+
+    fireEvent.click(startButton);
+
+    expect(startMutate).not.toHaveBeenCalled();
   });
 });

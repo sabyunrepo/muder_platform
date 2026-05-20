@@ -270,6 +270,59 @@ func TestGetRoom_Success(t *testing.T) {
 	}
 }
 
+func TestGetRoomForCurrentUser_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockService(ctrl)
+
+	roomID := uuid.New()
+	userID := uuid.New()
+	characterID := uuid.New()
+
+	mock.EXPECT().
+		GetRoomForUser(gomock.Any(), gomock.Eq(roomID), gomock.Eq(userID)).
+		Return(&room.RoomDetailResponse{
+			RoomResponse: room.RoomResponse{ID: roomID, Code: "XYZ789", Status: "WAITING"},
+			Players: []room.PlayerInfo{
+				{UserID: userID, CharacterID: &characterID, IsReady: true},
+			},
+		}, nil).Times(1)
+
+	h := room.NewHandler(mock)
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms/"+roomID.String()+"/me", nil)
+	req = withAuth(req, userID)
+	req = withChiParam(req, "id", roomID.String())
+
+	rec := httptest.NewRecorder()
+	h.GetRoomForCurrentUser(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", rec.Code, rec.Body.String())
+	}
+	var resp room.RoomDetailResponse
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	if resp.Players[0].CharacterID == nil || *resp.Players[0].CharacterID != characterID {
+		t.Fatalf("expected participant character_id, got %+v", resp.Players[0])
+	}
+}
+
+func TestGetRoomForCurrentUser_NoAuth(t *testing.T) {
+	h := room.NewHandler(mocks.NewMockService(gomock.NewController(t)))
+	roomID := uuid.New()
+
+	req := httptest.NewRequest(http.MethodGet, "/rooms/"+roomID.String()+"/me", nil)
+	req = withChiParam(req, "id", roomID.String())
+
+	rec := httptest.NewRecorder()
+	h.GetRoomForCurrentUser(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status 401, got %d: %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestGetRoom_NotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockService(ctrl)
