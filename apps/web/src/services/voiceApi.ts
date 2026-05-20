@@ -10,6 +10,13 @@ export interface TokenResponse {
   livekit_url: string;
 }
 
+export interface VoiceTokenRequest {
+  sessionId?: string;
+  roomId?: string;
+  roomType: "main" | "whisper";
+  roomName?: string;
+}
+
 // ---------------------------------------------------------------------------
 // API
 // ---------------------------------------------------------------------------
@@ -18,6 +25,13 @@ export const voiceApi = {
   getToken: (sessionId: string, roomType: string, roomName?: string) =>
     api.post<TokenResponse>("/v1/voice/token", {
       session_id: sessionId,
+      room_type: roomType,
+      room_name: roomName,
+    }),
+  getTokenForTarget: ({ sessionId, roomId, roomType, roomName }: VoiceTokenRequest) =>
+    api.post<TokenResponse>("/v1/voice/token", {
+      session_id: sessionId,
+      room_id: roomId,
       room_type: roomType,
       room_name: roomName,
     }),

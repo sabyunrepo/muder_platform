@@ -8,7 +8,8 @@ import (
 
 // TokenRequest is the payload for requesting a voice room token.
 type TokenRequest struct {
-	SessionID string `json:"session_id" validate:"required"`
+	SessionID string `json:"session_id" validate:"omitempty"`
+	RoomID    string `json:"room_id"    validate:"omitempty"`
 	RoomType  string `json:"room_type"  validate:"required,oneof=main whisper"`
 	RoomName  string `json:"room_name"  validate:"omitempty,max=64"`
 }
