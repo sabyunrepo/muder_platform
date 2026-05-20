@@ -14,9 +14,15 @@ import (
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
 	"github.com/mmp-platform/server/internal/engine"
+	"github.com/mmp-platform/server/internal/infra/storage"
 )
 
 const publishedStatus = "PUBLISHED"
+const (
+	mediaTypeImage = "IMAGE"
+	sourceTypeFile = "FILE"
+	mediaURLTTL    = 15 * time.Minute
+)
 
 // ThemeSummary is the compact representation used in list endpoints.
 type ThemeSummary struct {
@@ -62,15 +68,30 @@ type Service interface {
 	GetCharacters(ctx context.Context, themeID uuid.UUID) ([]CharacterResponse, error)
 }
 
+type themeQueries interface {
+	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
+	GetThemeBySlug(ctx context.Context, slug string) (db.Theme, error)
+	ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.Theme, error)
+	GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.ThemeCharacter, error)
+	GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error)
+}
+
 type service struct {
-	queries *db.Queries
+	queries themeQueries
+	storage storage.Provider
 	logger  zerolog.Logger
 }
 
 // NewService creates a new theme service.
 func NewService(queries *db.Queries, logger zerolog.Logger) Service {
+	return NewServiceWithStorage(queries, nil, logger)
+}
+
+// NewServiceWithStorage creates a theme service that can resolve public file media URLs.
+func NewServiceWithStorage(queries *db.Queries, storageProvider storage.Provider, logger zerolog.Logger) Service {
 	return &service{
 		queries: queries,
+		storage: storageProvider,
 		logger:  logger.With().Str("domain", "theme").Logger(),
 	}
 }
@@ -135,24 +156,68 @@ func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]Chara
 		return nil, apperror.Internal("failed to get characters")
 	}
 
-	result := make([]CharacterResponse, len(chars))
-	for i, c := range chars {
+	result := make([]CharacterResponse, 0, len(chars))
+	for _, c := range chars {
+		if !c.IsPlayable {
+			continue
+		}
 		display := engine.ResolveCharacterDisplay(engine.CharacterDisplayBase{
 			Name:         c.Name,
 			ImageURL:     textToPtr(c.ImageUrl),
 			ImageMediaID: pgUUIDToStringPtr(c.ImageMediaID),
 			AliasRules:   engine.ParseCharacterAliasRules(c.AliasRules),
 		}, json.RawMessage(`{}`))
-		result[i] = CharacterResponse{
+		display.ImageURL = s.resolveCharacterImageURL(ctx, c.ThemeID, display.ImageURL, c.ImageMediaID)
+		result = append(result, CharacterResponse{
 			ID:           c.ID,
 			Name:         display.Name,
 			Description:  textToPtr(c.Description),
 			ImageURL:     display.ImageURL,
 			ImageMediaID: display.ImageMediaID,
 			SortOrder:    c.SortOrder,
-		}
+		})
 	}
 	return result, nil
+}
+
+func (s *service) resolveCharacterImageURL(ctx context.Context, themeID uuid.UUID, currentURL *string, mediaID pgtype.UUID) *string {
+	if currentURL != nil || !mediaID.Valid || s.storage == nil {
+		return currentURL
+	}
+	id := uuid.UUID(mediaID.Bytes)
+	media, err := s.queries.GetMedia(ctx, id)
+	if err != nil {
+		s.logger.Warn().Err(err).Stringer("media_id", id).Msg("failed to resolve character image media")
+		return currentURL
+	}
+	if media.ThemeID != themeID {
+		s.logger.Warn().
+			Stringer("media_id", id).
+			Stringer("media_theme_id", media.ThemeID).
+			Stringer("character_theme_id", themeID).
+			Msg("character image media belongs to another theme")
+		return currentURL
+	}
+	if media.Type != mediaTypeImage || media.SourceType != sourceTypeFile || !media.StorageKey.Valid {
+		return currentURL
+	}
+	if _, err := s.storage.HeadObject(ctx, media.StorageKey.String); err != nil {
+		if errors.Is(err, storage.ErrObjectNotFound) {
+			s.logger.Warn().Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("character image media object not found")
+			return currentURL
+		}
+		s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("failed to verify character image media")
+		return currentURL
+	}
+	url, err := s.storage.GenerateDownloadURL(ctx, media.StorageKey.String, mediaURLTTL)
+	if err != nil {
+		s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("failed to generate character image URL")
+		return currentURL
+	}
+	if url == "" {
+		return currentURL
+	}
+	return &url
 }
 
 func pgUUIDToStringPtr(value pgtype.UUID) *string {

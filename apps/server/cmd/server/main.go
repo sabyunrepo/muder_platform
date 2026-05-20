@@ -158,7 +158,6 @@ func main() {
 	// authSvc and the WS auth handler.
 	revokeRepo := auth.NewRevokeRepo(queries)
 	profileSvc := profile.NewService(queries, logger)
-	themeSvc := theme.NewService(queries, logger)
 	flowSvc := flow.NewService(pool, logger)
 	flowHandler := flow.NewHandler(flowSvc)
 
@@ -201,6 +200,7 @@ func main() {
 		storageProvider = localStorageProvider
 		logger.Warn().Str("base_dir", cfg.StorageLocalBaseDir).Msg("local file storage provider initialized (dev only — do not use in production)")
 	}
+	themeSvc := theme.NewServiceWithStorage(queries, storageProvider, logger)
 	editorSvc := editor.NewServiceWithStorage(queries, pool, logger, storageProvider)
 	mediaSvc := editor.NewMediaService(queries, pool, storageProvider, logger)
 	mediaHandler := editor.NewMediaHandler(mediaSvc)

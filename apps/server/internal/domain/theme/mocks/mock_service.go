@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	uuid "github.com/google/uuid"
+	db "github.com/mmp-platform/server/internal/db"
 	theme "github.com/mmp-platform/server/internal/domain/theme"
 	gomock "go.uber.org/mock/gomock"
 )
@@ -100,4 +101,103 @@ func (m *MockService) ListPublished(ctx context.Context, limit, offset int32) ([
 func (mr *MockServiceMockRecorder) ListPublished(ctx, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPublished", reflect.TypeOf((*MockService)(nil).ListPublished), ctx, limit, offset)
+}
+
+// MockthemeQueries is a mock of themeQueries interface.
+type MockthemeQueries struct {
+	ctrl     *gomock.Controller
+	recorder *MockthemeQueriesMockRecorder
+	isgomock struct{}
+}
+
+// MockthemeQueriesMockRecorder is the mock recorder for MockthemeQueries.
+type MockthemeQueriesMockRecorder struct {
+	mock *MockthemeQueries
+}
+
+// NewMockthemeQueries creates a new mock instance.
+func NewMockthemeQueries(ctrl *gomock.Controller) *MockthemeQueries {
+	mock := &MockthemeQueries{ctrl: ctrl}
+	mock.recorder = &MockthemeQueriesMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockthemeQueries) EXPECT() *MockthemeQueriesMockRecorder {
+	return m.recorder
+}
+
+// GetMedia mocks base method.
+func (m *MockthemeQueries) GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMedia", ctx, id)
+	ret0, _ := ret[0].(db.ThemeMedium)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMedia indicates an expected call of GetMedia.
+func (mr *MockthemeQueriesMockRecorder) GetMedia(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedia", reflect.TypeOf((*MockthemeQueries)(nil).GetMedia), ctx, id)
+}
+
+// GetTheme mocks base method.
+func (m *MockthemeQueries) GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetTheme", ctx, id)
+	ret0, _ := ret[0].(db.Theme)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetTheme indicates an expected call of GetTheme.
+func (mr *MockthemeQueriesMockRecorder) GetTheme(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTheme", reflect.TypeOf((*MockthemeQueries)(nil).GetTheme), ctx, id)
+}
+
+// GetThemeBySlug mocks base method.
+func (m *MockthemeQueries) GetThemeBySlug(ctx context.Context, slug string) (db.Theme, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetThemeBySlug", ctx, slug)
+	ret0, _ := ret[0].(db.Theme)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetThemeBySlug indicates an expected call of GetThemeBySlug.
+func (mr *MockthemeQueriesMockRecorder) GetThemeBySlug(ctx, slug any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetThemeBySlug", reflect.TypeOf((*MockthemeQueries)(nil).GetThemeBySlug), ctx, slug)
+}
+
+// GetThemeCharacters mocks base method.
+func (m *MockthemeQueries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.ThemeCharacter, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetThemeCharacters", ctx, themeID)
+	ret0, _ := ret[0].([]db.ThemeCharacter)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetThemeCharacters indicates an expected call of GetThemeCharacters.
+func (mr *MockthemeQueriesMockRecorder) GetThemeCharacters(ctx, themeID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetThemeCharacters", reflect.TypeOf((*MockthemeQueries)(nil).GetThemeCharacters), ctx, themeID)
+}
+
+// ListPublishedThemes mocks base method.
+func (m *MockthemeQueries) ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.Theme, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListPublishedThemes", ctx, arg)
+	ret0, _ := ret[0].([]db.Theme)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListPublishedThemes indicates an expected call of ListPublishedThemes.
+func (mr *MockthemeQueriesMockRecorder) ListPublishedThemes(ctx, arg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPublishedThemes", reflect.TypeOf((*MockthemeQueries)(nil).ListPublishedThemes), ctx, arg)
 }
