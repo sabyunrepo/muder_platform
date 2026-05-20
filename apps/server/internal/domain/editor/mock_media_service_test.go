@@ -301,6 +301,20 @@ func (mr *MockMediaServiceMockRecorder) UploadObject(ctx, creatorID, themeID, up
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadObject", reflect.TypeOf((*MockMediaService)(nil).UploadObject), ctx, creatorID, themeID, uploadID, body)
 }
 
+// UploadReplacementObject mocks base method.
+func (m *MockMediaService) UploadReplacementObject(ctx context.Context, creatorID, mediaID, uploadID uuid.UUID, body io.Reader) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UploadReplacementObject", ctx, creatorID, mediaID, uploadID, body)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UploadReplacementObject indicates an expected call of UploadReplacementObject.
+func (mr *MockMediaServiceMockRecorder) UploadReplacementObject(ctx, creatorID, mediaID, uploadID, body any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UploadReplacementObject", reflect.TypeOf((*MockMediaService)(nil).UploadReplacementObject), ctx, creatorID, mediaID, uploadID, body)
+}
+
 // MockmediaQueries is a mock of mediaQueries interface.
 type MockmediaQueries struct {
 	ctrl     *gomock.Controller

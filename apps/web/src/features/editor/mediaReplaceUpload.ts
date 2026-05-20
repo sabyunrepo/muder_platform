@@ -1,14 +1,17 @@
 import {
+  defaultUploadReplacementFileViaServer,
   defaultPutFile,
   type ConfirmUploadRequest,
   type MediaResponse,
   type PutFileParams,
   type RequestReplacementUploadRequest,
+  type ServerReplacementUploadFileParams,
   type UploadUrlResponse,
 } from "@/features/editor/mediaApi";
 
 export interface ReplaceMediaFileParams {
   file: File;
+  mediaId: string;
   requestReplacementUpload: (
     req: RequestReplacementUploadRequest,
   ) => Promise<UploadUrlResponse>;
@@ -18,6 +21,9 @@ export interface ReplaceMediaFileParams {
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
   putFile?: (params: PutFileParams) => Promise<void>;
+  uploadReplacementViaServer?: (
+    params: ServerReplacementUploadFileParams,
+  ) => Promise<void>;
   mimeType?: string;
   maxAttempts?: number;
   retryBaseDelayMs?: number;
@@ -42,9 +48,11 @@ export async function replaceMediaFile(
     onProgress,
     signal,
     putFile = defaultPutFile,
+    uploadReplacementViaServer = defaultUploadReplacementFileViaServer,
     mimeType,
     maxAttempts = 3,
     retryBaseDelayMs = 200,
+    mediaId,
   } = params;
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
     throw new Error("maxAttempts는 1 이상의 정수여야 합니다");
@@ -85,7 +93,14 @@ export async function replaceMediaFile(
     }
   }
   if (lastError) {
-    throw lastError;
+    await uploadReplacementViaServer({
+      mediaId,
+      uploadId: uploadUrl.upload_id,
+      file,
+      contentType: effectiveMimeType,
+      onProgress,
+      signal,
+    });
   }
 
   throwIfAborted(signal);

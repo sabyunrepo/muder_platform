@@ -131,6 +131,7 @@ export function MediaReplaceModal({
     try {
       const replaced = await replaceMediaFile({
         file,
+        mediaId: media.id,
         requestReplacementUpload: requestReplacementMutation.mutateAsync,
         confirmReplacementUpload: confirmReplacementMutation.mutateAsync,
         onProgress: (nextProgress) => {

@@ -333,6 +333,15 @@ export interface ServerUploadFileParams {
   signal?: AbortSignal;
 }
 
+export interface ServerReplacementUploadFileParams {
+  mediaId: string;
+  uploadId: string;
+  file: File;
+  contentType?: string;
+  onProgress?: (percent: number) => void;
+  signal?: AbortSignal;
+}
+
 /** Default putFile implementation using XHR for progress events. */
 export function defaultPutFile(params: PutFileParams): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -379,6 +388,54 @@ export function defaultUploadFileViaServer(params: ServerUploadFileParams): Prom
     xhr.open(
       "PUT",
       `/api/v1/editor/themes/${params.themeId}/media/uploads/${params.uploadId}`,
+      true,
+    );
+    const contentType = params.contentType ?? params.file.type;
+    if (contentType) {
+      xhr.setRequestHeader("Content-Type", contentType);
+    }
+    const accessToken = useAuthStore.getState().accessToken;
+    if (accessToken) {
+      xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+    }
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && params.onProgress) {
+        params.onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`업로드 실패: HTTP ${xhr.status}`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("업로드 네트워크 오류"));
+    xhr.onabort = () => reject(new Error("업로드가 취소되었습니다"));
+
+    if (params.signal) {
+      if (params.signal.aborted) {
+        xhr.abort();
+        reject(new Error("업로드가 취소되었습니다"));
+        return;
+      }
+      params.signal.addEventListener("abort", () => xhr.abort());
+    }
+
+    xhr.send(params.file);
+  });
+}
+
+export function defaultUploadReplacementFileViaServer(
+  params: ServerReplacementUploadFileParams,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(
+      "PUT",
+      `/api/v1/editor/media/${params.mediaId}/replace-uploads/${params.uploadId}`,
       true,
     );
     const contentType = params.contentType ?? params.file.type;

@@ -292,6 +292,28 @@ func (h *MediaHandler) RequestReplacementUpload(w http.ResponseWriter, r *http.R
 	httputil.WriteJSON(w, http.StatusCreated, resp)
 }
 
+// UploadReplacementObject handles PUT /editor/media/{id}/replace-uploads/{uploadID}.
+func (h *MediaHandler) UploadReplacementObject(w http.ResponseWriter, r *http.Request) {
+	creatorID := middleware.UserIDFrom(r.Context())
+	mediaID, err := parseUUID(r, "id")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	uploadID, err := parseUUID(r, "uploadID")
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MaxMediaFileSize+1)
+	if err := h.svc.UploadReplacementObject(r.Context(), creatorID, mediaID, uploadID, r.Body); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // ConfirmReplacementUpload handles POST /editor/media/{id}/replace-confirm.
 func (h *MediaHandler) ConfirmReplacementUpload(w http.ResponseWriter, r *http.Request) {
 	creatorID := middleware.UserIDFrom(r.Context())

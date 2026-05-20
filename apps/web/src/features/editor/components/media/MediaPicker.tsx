@@ -16,7 +16,7 @@ import {
   type MediaResponse,
   type MediaType,
 } from "@/features/editor/mediaApi";
-import { getMediaThumbnailUrl } from "./mediaVisuals";
+import { getMediaThumbnailUrl, hasPublicMediaUrl } from "./mediaVisuals";
 
 export interface MediaPickerProps {
   open: boolean;
@@ -149,5 +149,5 @@ export function MediaPicker({
 }
 
 function needsDownloadUrlThumbnail(media: MediaResponse) {
-  return media.type === "IMAGE" && media.source_type === "FILE" && !media.url;
+  return media.type === "IMAGE" && media.source_type === "FILE" && !hasPublicMediaUrl(media);
 }

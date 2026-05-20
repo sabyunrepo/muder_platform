@@ -3,7 +3,7 @@ import { Image, X } from 'lucide-react';
 
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
 import { useMediaDownloadUrl, useMediaList, type MediaResponse } from '@/features/editor/mediaApi';
-import { getMediaThumbnailUrl, MediaTypeIcon } from './mediaVisuals';
+import { getMediaThumbnailUrl, hasPublicMediaUrl, MediaTypeIcon } from './mediaVisuals';
 
 interface ImageMediaReferenceFieldProps {
   themeId: string;
@@ -36,8 +36,9 @@ export function ImageMediaReferenceField({
   const [previewFailed, setPreviewFailed] = useState(false);
   const { data: images = [] } = useMediaList(themeId, 'IMAGE');
   const selectedImage = images.find((media) => media.id === imageMediaId) ?? null;
+  const hasPublicImageUrl = selectedImage ? hasPublicMediaUrl(selectedImage) : false;
   const shouldLoadFileImagePreview =
-    selectedImage?.type === 'IMAGE' && selectedImage.source_type === 'FILE' && !selectedImage.url;
+    selectedImage?.type === 'IMAGE' && selectedImage.source_type === 'FILE' && !hasPublicImageUrl;
   const { data: fileImagePreview } = useMediaDownloadUrl(
     shouldLoadFileImagePreview ? selectedImage.id : undefined,
   );
@@ -77,25 +78,27 @@ export function ImageMediaReferenceField({
           type="button"
           disabled={disabled}
           onClick={() => setPickerOpen(true)}
-          className="flex w-full items-center justify-between gap-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-2.5 py-2 text-left text-sm text-amber-100 hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-70"
+          aria-label={`${label} 교체`}
+          className={`group relative flex w-full items-center justify-center overflow-hidden rounded-md border border-amber-500/30 bg-slate-950/70 text-left text-sm text-amber-100 hover:border-amber-400/60 disabled:cursor-not-allowed disabled:opacity-70 ${
+            compact ? 'h-24' : 'aspect-[16/10] min-h-32'
+          }`}
         >
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-md border border-amber-500/25 bg-slate-950/70">
-              {shouldRenderPreview ? (
-                <img
-                  src={previewUrl ?? undefined}
-                  alt={`${selectedImage?.name ?? '선택된 이미지'} 미리보기`}
-                  className="h-full w-full object-contain"
-                  loading="lazy"
-                  onError={() => setPreviewFailed(true)}
-                />
-              ) : (
-                <MediaTypeIcon type="IMAGE" size="sm" />
-              )}
+          {shouldRenderPreview ? (
+            <img
+              src={previewUrl ?? undefined}
+              alt={`${selectedImage?.name ?? '선택된 이미지'} 미리보기`}
+              className="h-full w-full object-contain"
+              loading="lazy"
+              onError={() => setPreviewFailed(true)}
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center">
+              <MediaTypeIcon type="IMAGE" size="sm" />
             </span>
-            <span className="truncate">{selectedImage?.name ?? '선택된 이미지'}</span>
+          )}
+          <span className="absolute right-2 top-2 rounded-md bg-slate-950/85 px-2 py-1 text-xs font-medium text-amber-100 shadow-sm ring-1 ring-amber-400/30">
+            교체
           </span>
-          <span className="shrink-0 text-xs text-amber-200/70">교체</span>
         </button>
       ) : (
         <button

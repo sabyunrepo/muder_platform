@@ -20,6 +20,7 @@ func registerEditorMediaRoutes(r chi.Router, deps authedDeps) {
 	r.Get("/media/{id}/download-url", deps.media.GetDownloadURL)
 	r.Get("/media/{id}/references", deps.media.PreviewDeleteMedia)
 	r.Post("/media/{id}/replace-upload-url", deps.media.RequestReplacementUpload)
+	r.Put("/media/{id}/replace-uploads/{uploadID}", deps.media.UploadReplacementObject)
 	r.Post("/media/{id}/replace-confirm", deps.media.ConfirmReplacementUpload)
 	r.Delete("/media/{id}", deps.media.DeleteMedia)
 

@@ -39,6 +39,7 @@ type MediaService interface {
 	PreviewDeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDeletePreviewResponse, error)
 	DeleteMedia(ctx context.Context, creatorID, mediaID uuid.UUID, opts DeleteMediaOptions) error
 	RequestReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req RequestMediaReplacementUploadRequest) (*UploadURLResponse, error)
+	UploadReplacementObject(ctx context.Context, creatorID, mediaID, uploadID uuid.UUID, body io.Reader) error
 	ConfirmReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req ConfirmUploadRequest) (*MediaResponse, error)
 	GetEditorMediaDownloadURL(ctx context.Context, creatorID, mediaID uuid.UUID) (*MediaDownloadURLResponse, error)
 	GetMediaPlayURL(ctx context.Context, sessionID, mediaID uuid.UUID) (string, error)
