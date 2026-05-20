@@ -69,10 +69,18 @@ describe("ImageMediaReferenceField", () => {
     const tile = screen.getByRole("button", { name: "단서 이미지 미리보기" });
     expect(tile.className).toContain("aspect-[16/10]");
     expect(tile.className).toContain("overflow-hidden");
+    expect(tile.className).toContain("focus-visible:ring-2");
+    expect(tile.parentElement?.className).toBe("relative");
+    expect(tile.parentElement?.parentElement?.className).not.toContain("p-3");
+    expect(tile.parentElement?.parentElement?.className).not.toContain("border-slate-800");
     expect(screen.getByText("교체").parentElement?.className).toContain("absolute");
-    expect(screen.getByRole("button", { name: "단서 이미지 교체" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "단서 이미지 교체" }).className).toContain(
+      "focus-visible:ring-2",
+    );
     expect(screen.queryByText(longName)).toBeNull();
-    expect(screen.getByRole("button", { name: "단서 이미지 제거" })).toBeDefined();
+    expect(screen.getByRole("button", { name: "단서 이미지 제거" }).className).toContain(
+      "focus-visible:ring-2",
+    );
     expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
   });
 
@@ -92,6 +100,29 @@ describe("ImageMediaReferenceField", () => {
     fireEvent.click(screen.getByRole("button", { name: "단서 이미지 제거" }));
 
     expect(onClear).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("미디어 선택")).toBeNull();
+  });
+
+  it("disabled 선택 상태는 overlay action을 숨기고 picker를 열지 않는다", () => {
+    render(
+      <ImageMediaReferenceField
+        themeId="theme-1"
+        label="단서 이미지"
+        imageMediaId="image-1"
+        disabled
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />,
+    );
+
+    const tile = screen.getByRole("button", { name: "단서 이미지 미리보기" });
+    expect(tile).toHaveProperty("disabled", true);
+    expect(tile.className).toContain("focus-visible:ring-2");
+    expect(screen.queryByRole("button", { name: "단서 이미지 교체" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "단서 이미지 제거" })).toBeNull();
+
+    fireEvent.click(tile);
+
     expect(screen.queryByText("미디어 선택")).toBeNull();
   });
 

@@ -54,16 +54,28 @@ export function ImageMediaReferenceField({
     setPreviewFailed(false);
   }, [previewUrl, imageMediaId]);
 
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-      {imageMediaId ? (
+  const picker = (
+    <MediaPicker
+      open={pickerOpen}
+      onClose={() => setPickerOpen(false)}
+      onSelect={onSelect}
+      themeId={themeId}
+      filterType="IMAGE"
+      selectedId={imageMediaId}
+      title={pickerTitle ?? `${label} 선택`}
+    />
+  );
+
+  if (imageMediaId) {
+    return (
+      <>
         <div className="relative">
           <button
             type="button"
             disabled={disabled}
             onClick={() => setPickerOpen(true)}
             aria-label={`${label} 미리보기`}
-            className={`group relative flex w-full items-center justify-center overflow-hidden rounded-md border border-amber-500/30 bg-slate-950/70 text-left text-sm text-amber-100 hover:border-amber-400/60 disabled:cursor-not-allowed disabled:opacity-70 ${
+            className={`group relative flex w-full items-center justify-center overflow-hidden rounded-lg bg-slate-950/70 text-left text-sm text-amber-100 ring-1 ring-slate-800/80 transition hover:ring-amber-400/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 disabled:cursor-not-allowed disabled:opacity-70 ${
               compact ? 'h-24' : 'aspect-[16/10] min-h-32'
             }`}
           >
@@ -87,7 +99,7 @@ export function ImageMediaReferenceField({
                 type="button"
                 onClick={() => setPickerOpen(true)}
                 aria-label={`${label} 교체`}
-                className="rounded-sm px-2 py-1 text-xs font-medium text-amber-100 hover:bg-amber-400/15"
+                className="rounded-sm px-2 py-1 text-xs font-medium text-amber-100 hover:bg-amber-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
               >
                 교체
               </button>
@@ -98,7 +110,7 @@ export function ImageMediaReferenceField({
                   onClear();
                 }}
                 aria-label={`${label} 제거`}
-                className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80"
+                className="inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-slate-200 hover:bg-slate-700/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70"
               >
                 <X className="h-3 w-3" />
                 제거
@@ -106,32 +118,29 @@ export function ImageMediaReferenceField({
             </div>
           ) : null}
         </div>
-      ) : (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => setPickerOpen(true)}
-          className={`flex w-full items-center justify-center rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-400 hover:border-amber-500/50 hover:text-slate-200 disabled:cursor-not-allowed disabled:opacity-70 ${
-            compact ? 'min-h-16' : 'aspect-[16/10]'
-          }`}
-        >
-          {emptyLabel}
-        </button>
-      )}
+        {picker}
+      </>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setPickerOpen(true)}
+        className={`flex w-full items-center justify-center rounded-md border border-dashed border-slate-700 bg-slate-950/70 px-3 py-2 text-sm text-slate-400 hover:border-amber-500/50 hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/70 disabled:cursor-not-allowed disabled:opacity-70 ${
+          compact ? 'min-h-16' : 'aspect-[16/10]'
+        }`}
+      >
+        {emptyLabel}
+      </button>
 
       {!imageMediaId && legacyImageUrl ? (
         <p className="mt-2 text-xs leading-5 text-slate-500">{legacyHint}</p>
       ) : null}
 
-      <MediaPicker
-        open={pickerOpen}
-        onClose={() => setPickerOpen(false)}
-        onSelect={onSelect}
-        themeId={themeId}
-        filterType="IMAGE"
-        selectedId={imageMediaId}
-        title={pickerTitle ?? `${label} 선택`}
-      />
+      {picker}
     </div>
   );
 }
