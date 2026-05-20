@@ -60,6 +60,7 @@ description: Use when creating, reviewing, updating, checking, or merging MMP pu
    - If main Codex pushes an additional commit to a steward-managed PR, re-handoff the latest head to the steward for Codex review/check waiting instead of running repeated watcher polling in the main thread.
    - If main Codex asks an active steward for status, the steward should answer with the latest head SHA, phase, current command, pending checks/threads, and next autonomous action. If no state changes before the watcher timeout, the steward reports `BLOCKED` with timeout/no-progress evidence instead of silently staying active.
    - After reading the steward's final result, call `close_agent` for that steward before spawning more agents or moving to the next PR.
+   - If `wait_agent` or `close_agent` itself does not return within a short interactive window, do not block a quality-clear PR or completed merge on cleanup. Record `cleanup-blocked` with the agent id, last known phase, and attempted tool, then continue the main PR workflow. Retry stale cleanup only when a future spawn is actually blocked by slot pressure.
    - After any steward-managed PR is merged, main Codex pulls `origin/main`.
    - In this repo, `main` currently requires strict up-to-date status checks. Therefore `mergeable_state=behind` / `mergeStateStatus=BEHIND` can block normal merge even when `mergeable=MERGEABLE`; this is a merge-batch decision, not automatically a CI failure.
    - Do not automatically update every active PR after one PR merges. Update an active branch only when GitHub reports a merge conflict, the PR is the next merge target and main Codex chooses branch refresh instead of admin merge, the merged main change touches the same files/shared contracts or a stacked parent branch, or the user explicitly asks for the branch refresh.
@@ -81,6 +82,7 @@ description: Use when creating, reviewing, updating, checking, or merging MMP pu
 - No `ready-for-ci`/workflow dispatch was used and light/focused validation evidence is reported before merge.
 - If a CI steward was used, handoff scope, steward result, and main Codex final verification are separated in the report.
 - Completed CI steward agents are closed so agent slots are released.
+- If a completed steward cannot be closed because the agent tool is unresponsive, `cleanup-blocked` is recorded and the PR result is not rolled back or left unreported.
 - Steward final evidence includes `scripts/mmp-pr-status.sh <PR> --fail-on-blocker --allow-behind` passing on the reported head.
 - Steward pending states are observable: active status replies include head SHA, phase, pending checks, elapsed wait/no-progress evidence, and the next autonomous action.
 
