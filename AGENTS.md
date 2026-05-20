@@ -185,11 +185,13 @@ Do:
 16. CI steward는 안전 규칙 안에서 자율적으로 PR을 마무리한다. 대상 PR의 타당한 review thread를 고치고 검증한 경우 해당 thread resolve까지 수행할 수 있다. `ready-for-ci` 라벨 적용이나 missing workflow dispatch는 하지 않는다.
 17. 같은 base에서 동시에 열린 PR들은 merge batch로 관리한다. Codex review와 unresolved review thread가 clear된 PR들을 후보군으로 보고, main Codex가 우선순위대로 한 PR씩 merge한다. 한 PR이 merge됐다는 이유만으로 나머지 PR을 즉시 최신화하지 않는다. strict behind만 남은 저충돌 PR은 사용자 승인 또는 명확한 운영 판단이 있으면 admin merge로 CI 재소모를 끊을 수 있지만, unresolved review thread, `CHANGES_REQUESTED`, merge conflict는 bypass하지 않는다.
 18. 새 sub-agent spawn이 슬롯 제한으로 막히면 먼저 기존 agent들을 `wait_agent`로 상태 확인하고, `completed` 상태인 agent는 즉시 `close_agent`로 해제한다. 앞으로도 sub-agent 최종 결과를 취합한 직후 `close_agent`까지 실행해야 해당 작업이 완료된 것으로 본다.
+19. `wait_agent` 또는 `close_agent`가 10초 이상 응답하지 않거나 사용자 turn을 장시간 붙잡으면 agent cleanup 자체를 feature/PR blocker로 격상하지 않는다. 메인 Codex는 해당 agent id, 마지막 단계, 미응답 도구, 영향도를 작업 원장 또는 최종 보고에 `cleanup-blocked`로 기록하고, PR merge/issue close/검증처럼 이미 완료된 산출물을 되돌리지 않은 채 다음 workflow를 계속한다. 새 agent spawn이 실제로 슬롯 제한에 막힐 때만 stale agent 정리를 다시 시도한다.
 
 Done when:
 - 위임한 범위, sub-agent 결과 요약, 메인 Codex의 최종 판단이 분리되어 보고된다.
 - 병렬화로 줄인 작업과 병렬화하지 않은 이유가 함께 보고된다.
 - 완료된 sub-agent가 `close_agent`로 해제되어 다음 작업 슬롯을 막지 않는다.
+- agent cleanup이 미응답이면 `cleanup-blocked`로 기록되어 있고, feature/PR 완료 판단과 분리되어 있다.
 - 메인 Codex가 직접 구현한 예외가 있으면 이유(슬롯 부족, 도구 제한, 1~2파일 critical fix 등)와 재발 방지 여부가 보고된다.
 
 Avoid:

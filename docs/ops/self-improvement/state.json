@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-05-19",
+  "updated_at": "2026-05-20",
   "policy": {
     "read_first": "Read this state file before archive logs.",
     "archive_rule": "Do not read docs/ops/self-improvement/archive by default; use only for explicit audits.",
@@ -346,10 +346,20 @@
         "docs/architecture/06-infra-cicd.md"
       ],
       "resolution": "Migrated the default PR review gate from CodeRabbit-specific policy and scripts to Codex review, including @codex review requests and codex-review-only scope reporting."
+    },
+    {
+      "id": "subagent-close-timeout-policy",
+      "resolved_at": "2026-05-20",
+      "applied_to": [
+        "AGENTS.md",
+        ".codex/skills/mmp-pr-lifecycle/SKILL.md",
+        "docs/ops/self-improvement/candidates.jsonl"
+      ],
+      "resolution": "Added cleanup-blocked fallback guidance so wait_agent/close_agent non-response is recorded and separated from completed feature, PR, and merge outcomes."
     }
   ],
   "last_review": {
-    "date": "2026-05-19",
-    "summary": "Added the MMP requirements interviewer agent and migrated default PR review policy from CodeRabbit to Codex review."
+    "date": "2026-05-20",
+    "summary": "Added a bounded cleanup-blocked policy for unresponsive sub-agent wait/close operations."
   }
 }
