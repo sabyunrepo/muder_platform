@@ -16,8 +16,9 @@ import { useVoiceStore } from "@/stores/voiceStore";
 export type VoiceParticipant = LocalParticipant | RemoteParticipant;
 
 interface UseVoiceConnectionOptions {
-  sessionId: string;
-  roomType: string;
+  sessionId?: string;
+  roomId?: string;
+  roomType: "main" | "whisper";
   roomName?: string;
   /** mount 시 자동 연결 여부 (기본값: true) */
   autoConnect?: boolean;
@@ -40,16 +41,17 @@ interface UseVoiceConnectionReturn {
 export function useVoiceConnection(
   options: UseVoiceConnectionOptions,
 ): UseVoiceConnectionReturn {
-  const { sessionId, roomType, roomName, autoConnect = true } = options;
+  const { sessionId, roomId, roomType, roomName, autoConnect = true } = options;
 
   const setConnectionState = useVoiceStore((s) => s.setConnectionState);
   const setCurrentChannel = useVoiceStore((s) => s.setCurrentChannel);
   const isMuted = useVoiceStore((s) => s.isMuted);
   const isSpeakerMuted = useVoiceStore((s) => s.isSpeakerMuted);
-  const storToggleMute = useVoiceStore((s) => s.toggleMute);
+  const storeToggleMute = useVoiceStore((s) => s.toggleMute);
   const storeToggleSpeakerMute = useVoiceStore((s) => s.toggleSpeakerMute);
 
   const roomRef = useRef<Room | null>(null);
+  const connectionGenerationRef = useRef(0);
   const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
   const [localParticipant, setLocalParticipant] =
     useState<LocalParticipant | null>(null);
@@ -70,6 +72,9 @@ export function useVoiceConnection(
   };
 
   const connect = useCallback(async () => {
+    const generation = connectionGenerationRef.current + 1;
+    connectionGenerationRef.current = generation;
+
     if (roomRef.current) {
       await roomRef.current.disconnect();
       roomRef.current = null;
@@ -78,19 +83,28 @@ export function useVoiceConnection(
     setConnectionState("connecting");
 
     try {
-      const { sessionId: sid, roomType: rt, roomName: rn } = optsRef.current;
-      const tokenData = await voiceApi.getToken(sid, rt, rn);
+      const { sessionId: sid, roomId: rid, roomType: rt, roomName: rn } = optsRef.current;
+      const tokenData = await voiceApi.getTokenForTarget({
+        sessionId: sid,
+        roomId: rid,
+        roomType: rt,
+        roomName: rn,
+      });
+
+      if (connectionGenerationRef.current !== generation) return;
 
       const room = new Room();
       roomRef.current = room;
 
       room.on(RoomEvent.Connected, () => {
+        if (connectionGenerationRef.current !== generation) return;
         setConnectionState("connected");
         setCurrentChannel(tokenData.room_name);
         syncParticipants(room);
       });
 
       room.on(RoomEvent.Disconnected, () => {
+        if (connectionGenerationRef.current !== generation) return;
         setConnectionState("disconnected");
         setCurrentChannel(null);
         setParticipants([]);
@@ -98,24 +112,37 @@ export function useVoiceConnection(
       });
 
       room.on(RoomEvent.Reconnecting, () => {
+        if (connectionGenerationRef.current !== generation) return;
         setConnectionState("connecting");
       });
 
       room.on(RoomEvent.ParticipantConnected, () => {
+        if (connectionGenerationRef.current !== generation) return;
         syncParticipants(room);
       });
 
       room.on(RoomEvent.ParticipantDisconnected, () => {
+        if (connectionGenerationRef.current !== generation) return;
         syncParticipants(room);
       });
 
       await room.connect(tokenData.livekit_url, tokenData.token);
+
+      if (connectionGenerationRef.current !== generation) {
+        void room.disconnect();
+        if (roomRef.current === room) {
+          roomRef.current = null;
+        }
+      }
     } catch {
-      setConnectionState("error");
+      if (connectionGenerationRef.current === generation) {
+        setConnectionState("error");
+      }
     }
   }, [setConnectionState, setCurrentChannel]);
 
   const disconnect = useCallback(async () => {
+    connectionGenerationRef.current += 1;
     if (roomRef.current) {
       await roomRef.current.disconnect();
       roomRef.current = null;
@@ -130,9 +157,13 @@ export function useVoiceConnection(
     const room = roomRef.current;
     if (!room) return;
     const nextMuted = !isMutedRef.current;
-    await room.localParticipant.setMicrophoneEnabled(!nextMuted);
-    storToggleMute();
-  }, [storToggleMute]);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(!nextMuted);
+      storeToggleMute();
+    } catch {
+      setConnectionState("error");
+    }
+  }, [setConnectionState, storeToggleMute]);
 
   const toggleSpeakerMute = useCallback(() => {
     const room = roomRef.current;
@@ -162,8 +193,13 @@ export function useVoiceConnection(
       setConnectionState("connecting");
 
       try {
-        const { sessionId: sid, roomType: rt, roomName: rn } = optsRef.current;
-        const tokenData = await voiceApi.getToken(sid, rt, rn);
+        const { sessionId: sid, roomId: rid, roomType: rt, roomName: rn } = optsRef.current;
+        const tokenData = await voiceApi.getTokenForTarget({
+          sessionId: sid,
+          roomId: rid,
+          roomType: rt,
+          roomName: rn,
+        });
 
         if (stale) return;
 
@@ -220,7 +256,7 @@ export function useVoiceConnection(
       setConnectionState("disconnected");
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoConnect, sessionId, roomType, roomName]);
+  }, [autoConnect, sessionId, roomId, roomType, roomName]);
 
   return {
     room: roomRef.current,

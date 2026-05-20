@@ -19,6 +19,7 @@ import {
   PlayerList,
   RoomHeader,
   RoomInvitePanel,
+  RoomVoicePanel,
   HostControls,
   RoomChat,
   CharacterSelectionPanel,
@@ -260,6 +261,9 @@ export default function RoomPage() {
             />
             {id && room.status.toLowerCase() === 'waiting' && (
               <RoomInvitePanel roomId={id} isHost={isHost} />
+            )}
+            {id && (
+              <RoomVoicePanel roomId={id} isActive={room.status.toLowerCase() === 'waiting'} />
             )}
             {currentPlayer && (
               <CharacterSelectionPanel

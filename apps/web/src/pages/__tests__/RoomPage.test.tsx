@@ -15,6 +15,7 @@ const {
   useSetReadyMock,
   useStartRoomMock,
   useThemeCharactersMock,
+  useVoiceConnectionMock,
   useWsEventMock,
 } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
@@ -27,6 +28,7 @@ const {
   useSetReadyMock: vi.fn(),
   useStartRoomMock: vi.fn(),
   useThemeCharactersMock: vi.fn(),
+  useVoiceConnectionMock: vi.fn(),
   useWsEventMock: vi.fn(),
 }));
 
@@ -80,6 +82,10 @@ vi.mock('@/hooks/useWsClient', () => ({
 
 vi.mock('@/hooks/useWsEvent', () => ({
   useWsEvent: (...args: unknown[]) => useWsEventMock(...args),
+}));
+
+vi.mock('@/hooks/useVoiceConnection', () => ({
+  useVoiceConnection: (options: unknown) => useVoiceConnectionMock(options),
 }));
 
 import RoomPage from '../RoomPage';
@@ -211,6 +217,14 @@ function mockRoomPage(
   useStartRoomMock.mockReturnValue({
     mutate: overrides.startMutate ?? vi.fn(),
     isPending: overrides.startPending ?? false,
+  });
+  useVoiceConnectionMock.mockReturnValue({
+    participants: [],
+    localParticipant: null,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    toggleMute: vi.fn(),
+    toggleSpeakerMute: vi.fn(),
   });
 }
 
@@ -506,5 +520,32 @@ describe('RoomPage pregame controls', () => {
     renderRoom();
 
     expect(screen.getByText('초대 0명 전송, 0명 건너뜀')).toBeInTheDocument();
+  });
+
+  it('대기방 음성 채팅 패널을 room_id 기반으로 연결한다', () => {
+    const connect = vi.fn();
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+    useVoiceConnectionMock.mockReturnValue({
+      participants: [],
+      localParticipant: null,
+      connect,
+      disconnect: vi.fn(),
+      toggleMute: vi.fn(),
+      toggleSpeakerMute: vi.fn(),
+    });
+
+    renderRoom();
+
+    expect(useVoiceConnectionMock).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      roomType: 'main',
+      autoConnect: false,
+    });
+    fireEvent.click(screen.getByRole('button', { name: '입장' }));
+    expect(connect).toHaveBeenCalled();
   });
 });
