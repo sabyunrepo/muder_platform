@@ -14,6 +14,7 @@ import { WsEventType } from '@mmp/shared';
 import { useWsClient } from '@/hooks/useWsClient';
 import { useWsEvent } from '@/hooks/useWsEvent';
 import { useAuthStore, selectUser } from '@/stores/authStore';
+import { useVoiceStore, selectParticipantVoiceStates } from '@/stores/voiceStore';
 import { Alert, Button, LoadingState, PageShell, Panel } from '@/shared/components/ui';
 import {
   PlayerList,
@@ -68,6 +69,7 @@ export default function RoomPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore(selectUser);
+  const participantVoiceStates = useVoiceStore(selectParticipantVoiceStates);
 
   // 방 정보 쿼리
   const { data: room, isLoading, isError, refetch } = useRoom(id ?? '');
@@ -120,9 +122,32 @@ export default function RoomPage() {
   const allCharactersSelected =
     players.length > 0 && players.every((player) => Boolean(player.character_id));
   const selectedCharacterCount = players.filter((player) => Boolean(player.character_id)).length;
+  const isWaitingRoom = room?.status.toLowerCase() === 'waiting';
   const characterNameById = useMemo(
     () => new Map((themeCharacters.data ?? []).map((character) => [character.id, character.name])),
     [themeCharacters.data]
+  );
+  const playerNameById = useMemo(
+    () => new Map(players.map((player) => [player.user_id, player.nickname])),
+    [players]
+  );
+  const speakingPlayerIds = useMemo(
+    () =>
+      new Set(
+        players
+          .filter((player) => participantVoiceStates[player.user_id]?.isSpeaking)
+          .map((player) => player.user_id)
+      ),
+    [participantVoiceStates, players]
+  );
+  const mutedPlayerIds = useMemo(
+    () =>
+      new Set(
+        players
+          .filter((player) => participantVoiceStates[player.user_id]?.isMuted)
+          .map((player) => player.user_id)
+      ),
+    [participantVoiceStates, players]
   );
   const selectedByOtherPlayerIds = useMemo(
     () =>
@@ -274,6 +299,8 @@ export default function RoomPage() {
                 maxPlayers={room.max_players}
                 characterNameById={characterNameById}
                 currentUserId={currentUser?.id}
+                speakingPlayerIds={speakingPlayerIds}
+                mutedPlayerIds={mutedPlayerIds}
               />
             </Panel>
 
@@ -371,12 +398,22 @@ export default function RoomPage() {
               채팅과 음성
             </h2>
             <div className="h-[420px] lg:h-[560px]">
-              <RoomChat roomId={id} send={send} />
+              <RoomChat
+                roomId={id}
+                send={send}
+                headerActions={
+                  id ? (
+                    <RoomVoicePanel
+                      roomId={id}
+                      isActive={isWaitingRoom}
+                      variant="inline"
+                      playerNameById={playerNameById}
+                    />
+                  ) : null
+                }
+              />
             </div>
-            {id && (
-              <RoomVoicePanel roomId={id} isActive={room.status.toLowerCase() === 'waiting'} />
-            )}
-            {id && room.status.toLowerCase() === 'waiting' && (
+            {id && isWaitingRoom && (
               <RoomInvitePanel roomId={id} isHost={isHost} />
             )}
           </section>

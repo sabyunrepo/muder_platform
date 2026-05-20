@@ -12,6 +12,7 @@ export interface VoiceState {
   isPanelOpen: boolean;
   isBottomSheetOpen: boolean;
   connectionState: "disconnected" | "connecting" | "connected" | "error";
+  participantVoiceStates: Record<string, { isSpeaking: boolean; isMuted: boolean }>;
 }
 
 export interface VoiceActions {
@@ -22,6 +23,8 @@ export interface VoiceActions {
   togglePanel: () => void;
   toggleBottomSheet: () => void;
   setConnectionState: (state: VoiceState["connectionState"]) => void;
+  setParticipantVoiceStates: (states: VoiceState["participantVoiceStates"]) => void;
+  clearParticipantVoiceStates: () => void;
   reset: () => void;
 }
 
@@ -37,6 +40,7 @@ const initialState: VoiceState = {
   isPanelOpen: true,
   isBottomSheetOpen: false,
   connectionState: "disconnected",
+  participantVoiceStates: {},
 };
 
 // ---------------------------------------------------------------------------
@@ -74,6 +78,14 @@ export const useVoiceStore = create<VoiceState & VoiceActions>()((set) => ({
     set({ connectionState: state });
   },
 
+  setParticipantVoiceStates: (states) => {
+    set({ participantVoiceStates: states });
+  },
+
+  clearParticipantVoiceStates: () => {
+    set({ participantVoiceStates: {} });
+  },
+
   reset: () => {
     set(initialState);
   },
@@ -90,3 +102,4 @@ export const selectIsSpeakerMuted = (s: VoiceState) => s.isSpeakerMuted;
 export const selectIsPanelOpen = (s: VoiceState) => s.isPanelOpen;
 export const selectIsBottomSheetOpen = (s: VoiceState) => s.isBottomSheetOpen;
 export const selectVoiceConnectionState = (s: VoiceState) => s.connectionState;
+export const selectParticipantVoiceStates = (s: VoiceState) => s.participantVoiceStates;

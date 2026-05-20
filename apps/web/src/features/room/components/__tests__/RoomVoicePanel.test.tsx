@@ -11,6 +11,8 @@ const {
   liveKitRoomProps,
   microphoneEnabledMock,
   participantsMock,
+  silentParticipantsMock,
+  localParticipantState,
 } = vi.hoisted(() => ({
   liveKitRoomProps: { current: null as null | {
     onConnected?: () => void;
@@ -19,9 +21,22 @@ const {
   } },
   microphoneEnabledMock: vi.fn(),
   participantsMock: [
-    { identity: 'local-user' },
-    { identity: 'remote-user' },
+    { identity: 'local-user', sid: 'local-sid', audioLevel: 0.02, isMicrophoneEnabled: true },
+    {
+      identity: 'remote-user',
+      sid: 'remote-sid',
+      audioLevel: 0.04,
+      audioTrackPublications: new Map([['audio', { isMuted: false }]]),
+    },
   ],
+  silentParticipantsMock: [] as Array<{
+    identity: string;
+    sid: string;
+    audioLevel: number;
+    isMicrophoneEnabled?: boolean;
+    audioTrackPublications?: Map<string, { isMuted: boolean }>;
+  }>,
+  localParticipantState: { audioLevel: 0.02 },
 }));
 
 vi.mock('@livekit/components-react', () => ({
@@ -37,9 +52,13 @@ vi.mock('@livekit/components-react', () => ({
   RoomAudioRenderer: ({ muted }: { muted?: boolean }) => (
     <div data-muted={muted ? 'true' : 'false'} data-testid="room-audio-renderer" />
   ),
-  useParticipants: () => participantsMock,
+  useParticipants: () => (silentParticipantsMock.length > 0 ? silentParticipantsMock : participantsMock),
   useLocalParticipant: () => ({
     localParticipant: {
+      identity: 'local-user',
+      sid: 'local-sid',
+      audioLevel: localParticipantState.audioLevel,
+      isMicrophoneEnabled: true,
       setMicrophoneEnabled: microphoneEnabledMock,
     },
   }),
@@ -55,6 +74,8 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
   liveKitRoomProps.current = null;
+  silentParticipantsMock.length = 0;
+  localParticipantState.audioLevel = 0.02;
   useVoiceStore.getState().reset();
 });
 
@@ -116,5 +137,93 @@ describe('RoomVoicePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /스피커 끄기/ }));
 
     expect(screen.getByTestId('room-audio-renderer')).toHaveAttribute('data-muted', 'true');
+  });
+
+  it('renders compact header controls and a speaking overlay for the communication hub', async () => {
+    vi.mocked(voiceApi.getTokenForTarget).mockResolvedValue({
+      token: 'token-1',
+      room_name: 'room-room-1-main',
+      livekit_url: 'ws://livekit',
+    });
+
+    render(
+      <RoomVoicePanel
+        roomId="room-1"
+        isActive
+        variant="inline"
+        playerNameById={
+          new Map([
+            ['local-user', '나참가자'],
+            ['remote-user', '원격참가자'],
+          ])
+        }
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /입장/ }));
+    await screen.findByTestId('livekit-room');
+
+    act(() => {
+      liveKitRoomProps.current?.onConnected?.();
+    });
+
+    expect(await screen.findByText('말하는 참가자')).toBeInTheDocument();
+    expect(screen.getByText('나참가자')).toBeInTheDocument();
+    expect(screen.getByText('원격참가자')).toBeInTheDocument();
+    expect(useVoiceStore.getState().participantVoiceStates).toMatchObject({
+      'local-user': { isSpeaking: true, isMuted: false },
+      'remote-user': { isSpeaking: true, isMuted: false },
+    });
+    expect(screen.getByRole('button', { name: /마이크 끄기/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /스피커 끄기/ })).toBeEnabled();
+  });
+
+  it('hides the speaking overlay when LiveKit reports no active speakers', async () => {
+    localParticipantState.audioLevel = 0;
+    silentParticipantsMock.push({
+      identity: 'remote-user',
+      sid: 'remote-sid',
+      audioLevel: 0,
+      audioTrackPublications: new Map([['audio', { isMuted: false }]]),
+    });
+    vi.mocked(voiceApi.getTokenForTarget).mockResolvedValue({
+      token: 'token-1',
+      room_name: 'room-room-1-main',
+      livekit_url: 'ws://livekit',
+    });
+
+    render(<RoomVoicePanel roomId="room-1" isActive variant="inline" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /입장/ }));
+    await screen.findByTestId('livekit-room');
+
+    act(() => {
+      liveKitRoomProps.current?.onConnected?.();
+    });
+
+    expect(screen.queryByText('말하는 참가자')).not.toBeInTheDocument();
+  });
+
+  it('clears participant voice state when leaving voice chat', async () => {
+    vi.mocked(voiceApi.getTokenForTarget).mockResolvedValue({
+      token: 'token-1',
+      room_name: 'room-room-1-main',
+      livekit_url: 'ws://livekit',
+    });
+
+    render(<RoomVoicePanel roomId="room-1" isActive variant="inline" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /입장/ }));
+    await screen.findByTestId('livekit-room');
+
+    act(() => {
+      liveKitRoomProps.current?.onConnected?.();
+    });
+
+    expect(useVoiceStore.getState().participantVoiceStates).not.toEqual({});
+
+    fireEvent.click(await screen.findByRole('button', { name: /나가기/ }));
+
+    expect(useVoiceStore.getState().participantVoiceStates).toEqual({});
   });
 });

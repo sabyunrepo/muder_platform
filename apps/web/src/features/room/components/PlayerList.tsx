@@ -1,4 +1,4 @@
-import { Crown, CheckCircle, Circle, UserPlus } from 'lucide-react';
+import { Crown, CheckCircle, Circle, UserPlus, Mic, MicOff } from 'lucide-react';
 import { Badge } from '@/shared/components/ui';
 import type { RoomPlayer } from '@/features/lobby/api';
 
@@ -11,6 +11,8 @@ interface PlayerListProps {
   maxPlayers: number;
   characterNameById?: Map<string, string>;
   currentUserId?: string;
+  speakingPlayerIds?: Set<string>;
+  mutedPlayerIds?: Set<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -22,11 +24,15 @@ function PlayerCard({
   index,
   characterName,
   isCurrentUser,
+  isSpeaking,
+  isMuted,
 }: {
   player: RoomPlayer;
   index: number;
   characterName?: string;
   isCurrentUser?: boolean;
+  isSpeaking?: boolean;
+  isMuted?: boolean;
 }) {
   const readyLabel = player.is_ready ? '준비 완료' : '미준비';
 
@@ -85,6 +91,18 @@ function PlayerCard({
               {readyLabel}
             </Badge>
           )}
+          {isSpeaking && (
+            <Badge variant="success" size="sm">
+              <Mic className="mr-1 h-3 w-3" />
+              말하는 중
+            </Badge>
+          )}
+          {isMuted && (
+            <Badge variant="default" size="sm">
+              <MicOff className="mr-1 h-3 w-3" />
+              음소거
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -128,6 +146,8 @@ export function PlayerList({
   maxPlayers,
   characterNameById,
   currentUserId,
+  speakingPlayerIds,
+  mutedPlayerIds,
 }: PlayerListProps) {
   const emptySlots = Math.max(0, maxPlayers - players.length);
 
@@ -142,6 +162,8 @@ export function PlayerList({
             player.character_id ? characterNameById?.get(player.character_id) : undefined
           }
           isCurrentUser={player.user_id === currentUserId}
+          isSpeaking={speakingPlayerIds?.has(player.user_id) ?? false}
+          isMuted={mutedPlayerIds?.has(player.user_id) ?? false}
         />
       ))}
       {Array.from({ length: emptySlots }, (_, i) => (

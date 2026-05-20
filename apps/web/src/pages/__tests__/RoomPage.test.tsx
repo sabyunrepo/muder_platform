@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
+import { useVoiceStore } from '@/stores/voiceStore';
 
 const {
   navigateMock,
@@ -238,6 +239,7 @@ afterEach(() => {
     isAuthenticated: false,
     isLoading: false,
   });
+  useVoiceStore.getState().reset();
 });
 
 describe('RoomPage pregame controls', () => {
@@ -565,5 +567,36 @@ describe('RoomPage pregame controls', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: '입장' }));
     expect(connect).toHaveBeenCalled();
+  });
+
+  it('채팅 영역 헤더에서 음성 입장 제어를 함께 제공한다', () => {
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    expect(screen.getByRole('heading', { name: '대기방 채팅' })).toBeInTheDocument();
+    expect(screen.getByText('음성 상태를 보면서 메시지를 주고받습니다.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '입장' })).toBeInTheDocument();
+  });
+
+  it('음성 참가자 상태를 참가자 카드 배지에 반영한다', () => {
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    useVoiceStore.getState().setParticipantVoiceStates({
+      'user-1': { isSpeaking: true, isMuted: false },
+      'host-1': { isSpeaking: false, isMuted: true },
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    expect(screen.getByText('말하는 중')).toBeInTheDocument();
+    expect(screen.getByText('음소거')).toBeInTheDocument();
   });
 });

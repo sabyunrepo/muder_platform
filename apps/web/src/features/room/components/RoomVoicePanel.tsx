@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -14,6 +14,19 @@ import { Button, Panel } from '@/shared/components/ui';
 interface RoomVoicePanelProps {
   roomId: string;
   isActive: boolean;
+  variant?: 'panel' | 'inline';
+  playerNameById?: Map<string, string>;
+}
+
+interface VoiceParticipantLike {
+  identity?: string;
+  sid?: string;
+  name?: string;
+  audioLevel?: number;
+  isSpeaking?: boolean;
+  isMicrophoneEnabled?: boolean;
+  setMicrophoneEnabled?: (enabled: boolean) => Promise<void>;
+  audioTrackPublications?: Map<string, { isMuted?: boolean }>;
 }
 
 const stateLabel = {
@@ -23,11 +36,17 @@ const stateLabel = {
   error: '연결 실패',
 } as const;
 
-export function RoomVoicePanel({ roomId, isActive }: RoomVoicePanelProps) {
+export function RoomVoicePanel({
+  roomId,
+  isActive,
+  variant = 'panel',
+  playerNameById,
+}: RoomVoicePanelProps) {
   const connectionState = useVoiceStore(selectVoiceConnectionState);
   const isMuted = useVoiceStore(selectIsMuted);
   const isSpeakerMuted = useVoiceStore(selectIsSpeakerMuted);
   const resetVoice = useVoiceStore((state) => state.reset);
+  const clearParticipantVoiceStates = useVoiceStore((state) => state.clearParticipantVoiceStates);
   const {
     connectionDetails,
     connect,
@@ -45,15 +64,17 @@ export function RoomVoicePanel({ roomId, isActive }: RoomVoicePanelProps) {
   useEffect(() => {
     if (isActive) return;
     void disconnect();
+    clearParticipantVoiceStates();
     resetVoice();
-  }, [disconnect, isActive, resetVoice]);
+  }, [clearParticipantVoiceStates, disconnect, isActive, resetVoice]);
 
   useEffect(() => {
     return () => {
       void disconnect();
+      clearParticipantVoiceStates();
       resetVoice();
     };
-  }, [disconnect, resetVoice]);
+  }, [clearParticipantVoiceStates, disconnect, resetVoice]);
 
   const canDisconnect = connectionState === 'connected' || connectionState === 'connecting';
   const helperText = useMemo(() => {
@@ -62,9 +83,19 @@ export function RoomVoicePanel({ roomId, isActive }: RoomVoicePanelProps) {
     if (connectionState === 'connected') return '음성 채팅에 연결되어 있습니다.';
     return '대기방 참가자만 음성 채팅에 들어갈 수 있습니다.';
   }, [connectionState, isActive]);
+  const handleDisconnect = useCallback(() => {
+    clearParticipantVoiceStates();
+    void disconnect();
+  }, [clearParticipantVoiceStates, disconnect]);
 
-  return (
-    <Panel className="flex flex-col gap-3">
+  const content = (
+    <div
+      className={
+        variant === 'inline'
+          ? 'flex min-w-[220px] flex-col gap-2'
+          : 'flex flex-col gap-3'
+      }
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--mmp-color-ink)]">
@@ -78,7 +109,7 @@ export function RoomVoicePanel({ roomId, isActive }: RoomVoicePanelProps) {
             size="sm"
             variant="secondary"
             leftIcon={<PhoneOff className="h-4 w-4" />}
-            onClick={() => void disconnect()}
+            onClick={handleDisconnect}
           >
             나가기
           </Button>
@@ -119,6 +150,7 @@ export function RoomVoicePanel({ roomId, isActive }: RoomVoicePanelProps) {
         >
           <RoomAudioRenderer muted={isSpeakerMuted} />
           <LiveKitVoiceControls />
+          <LiveKitSpeakingOverlay playerNameById={playerNameById} />
         </LiveKitRoom>
       ) : (
         <div className="flex flex-wrap gap-2">
@@ -140,13 +172,19 @@ export function RoomVoicePanel({ roomId, isActive }: RoomVoicePanelProps) {
           </Button>
         </div>
       )}
-    </Panel>
+    </div>
   );
+
+  if (variant === 'inline') {
+    return content;
+  }
+
+  return <Panel className="flex flex-col gap-3">{content}</Panel>;
 }
 
 function LiveKitVoiceControls() {
   const participants = useParticipants();
-  const { localParticipant } = useLocalParticipant();
+  const { localParticipant } = useLocalParticipant() as { localParticipant: VoiceParticipantLike };
   const connectionState = useVoiceStore(selectVoiceConnectionState);
   const isMuted = useVoiceStore(selectIsMuted);
   const isSpeakerMuted = useVoiceStore(selectIsSpeakerMuted);
@@ -157,7 +195,7 @@ function LiveKitVoiceControls() {
   const handleToggleMute = async () => {
     const nextMuted = !isMuted;
     try {
-      await localParticipant.setMicrophoneEnabled(!nextMuted);
+      await localParticipant.setMicrophoneEnabled?.(!nextMuted);
       toggleStoreMute();
     } catch {
       setConnectionState('error');
@@ -190,6 +228,91 @@ function LiveKitVoiceControls() {
         >
           {isSpeakerMuted ? '스피커 켜기' : '스피커 끄기'}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function LiveKitSpeakingOverlay({ playerNameById }: { playerNameById?: Map<string, string> }) {
+  const participants = useParticipants() as VoiceParticipantLike[];
+  const { localParticipant } = useLocalParticipant() as { localParticipant?: VoiceParticipantLike };
+  const setParticipantVoiceStates = useVoiceStore((state) => state.setParticipantVoiceStates);
+
+  const participantVoiceStates = useMemo(() => {
+    const participantByIdentity = new Map<string, VoiceParticipantLike>();
+    const voiceStates: Record<string, { isSpeaking: boolean; isMuted: boolean }> = {};
+
+    for (const participant of [localParticipant, ...participants]) {
+      const identity = participant?.identity ?? participant?.sid;
+      if (!identity) continue;
+      participantByIdentity.set(identity, participant);
+    }
+
+    for (const participant of participantByIdentity.values()) {
+      const identity = participant.identity ?? participant.sid;
+      if (!identity) continue;
+      const publications = Array.from(participant.audioTrackPublications?.values() ?? []);
+
+      voiceStates[identity] = {
+        isSpeaking: Boolean(participant.isSpeaking) || (participant.audioLevel ?? 0) > 0.01,
+        isMuted:
+          participant.isMicrophoneEnabled === false ||
+          (publications.length > 0 && publications.every((publication) => publication.isMuted)),
+      };
+    }
+
+    return voiceStates;
+  }, [localParticipant, participants]);
+
+  useEffect(() => {
+    setParticipantVoiceStates(participantVoiceStates);
+    return () => {
+      useVoiceStore.getState().clearParticipantVoiceStates();
+    };
+  }, [participantVoiceStates, setParticipantVoiceStates]);
+
+  const speakingParticipants = useMemo(() => {
+    const participantByIdentity = new Map<string, VoiceParticipantLike>();
+
+    for (const participant of [localParticipant, ...participants]) {
+      const identity = participant?.identity ?? participant?.sid;
+      if (!identity) continue;
+      participantByIdentity.set(identity, participant);
+    }
+
+    return Array.from(participantByIdentity.values()).filter((participant) => {
+      const identity = participant.identity ?? participant.sid;
+      return identity ? participantVoiceStates[identity]?.isSpeaking : false;
+    });
+  }, [localParticipant, participantVoiceStates, participants]);
+
+  if (speakingParticipants.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      aria-label="말하는 참가자"
+      className="rounded-md border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-muted)]/50 p-2"
+    >
+      <p className="text-xs font-semibold text-[var(--mmp-color-ink)]">말하는 참가자</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {speakingParticipants.map((participant) => {
+          const identity = participant.identity ?? participant.sid ?? 'unknown';
+          const name = playerNameById?.get(identity) ?? participant.name ?? identity;
+          const isMuted = participantVoiceStates[identity]?.isMuted ?? false;
+
+          return (
+            <span
+              key={identity}
+              className="inline-flex items-center gap-1 rounded-full bg-[var(--mmp-color-surface)] px-2 py-1 text-xs font-medium text-[var(--mmp-color-charcoal)]"
+            >
+              <Mic className="h-3 w-3 text-[var(--mmp-color-primary)]" />
+              {name}
+              {isMuted && <span className="text-[10px] text-[var(--mmp-color-steel)]">음소거</span>}
+            </span>
+          );
+        })}
       </div>
     </div>
   );

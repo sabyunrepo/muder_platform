@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
 import { Send } from "lucide-react";
 import { WsEventType } from "@mmp/shared";
 import { Button, Input, Panel } from "@/shared/components/ui";
@@ -20,13 +20,14 @@ interface RoomChatProps {
   roomId: string;
   /** WS send 함수 */
   send: <T>(type: string, payload: T) => void;
+  headerActions?: ReactNode;
 }
 
 // ---------------------------------------------------------------------------
 // RoomChat
 // ---------------------------------------------------------------------------
 
-export function RoomChat({ roomId, send }: RoomChatProps) {
+export function RoomChat({ roomId, send, headerActions }: RoomChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,6 +68,16 @@ export function RoomChat({ roomId, send }: RoomChatProps) {
 
   return (
     <Panel padding="none" className="flex h-full flex-col overflow-hidden">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--mmp-color-hairline)] p-3">
+        <div>
+          <h2 className="text-base font-semibold text-[var(--mmp-color-ink)]">대기방 채팅</h2>
+          <p className="mt-1 text-xs text-[var(--mmp-color-steel)]">
+            음성 상태를 보면서 메시지를 주고받습니다.
+          </p>
+        </div>
+        {headerActions && <div className="min-w-0">{headerActions}</div>}
+      </div>
+
       {/* 메시지 영역 */}
       <div className="flex-1 overflow-y-auto p-4">
         {messages.length === 0 ? (
