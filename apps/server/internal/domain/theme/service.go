@@ -13,7 +13,6 @@ import (
 
 	"github.com/mmp-platform/server/internal/apperror"
 	"github.com/mmp-platform/server/internal/db"
-	"github.com/mmp-platform/server/internal/engine"
 	"github.com/mmp-platform/server/internal/infra/storage"
 )
 
@@ -69,10 +68,10 @@ type Service interface {
 }
 
 type themeQueries interface {
-	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
-	GetThemeBySlug(ctx context.Context, slug string) (db.Theme, error)
-	ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.Theme, error)
-	GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.ThemeCharacter, error)
+	GetPublishedTheme(ctx context.Context, id uuid.UUID) (db.GetPublishedThemeRow, error)
+	GetPublishedThemeBySlug(ctx context.Context, slug string) (db.GetPublishedThemeBySlugRow, error)
+	ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.ListPublishedThemesRow, error)
+	GetPublishedThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.GetPublishedThemeCharactersRow, error)
 	GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error)
 }
 
@@ -97,7 +96,7 @@ func NewServiceWithStorage(queries *db.Queries, storageProvider storage.Provider
 }
 
 func (s *service) GetTheme(ctx context.Context, themeID uuid.UUID) (*ThemeResponse, error) {
-	theme, err := s.queries.GetTheme(ctx, themeID)
+	theme, err := s.queries.GetPublishedTheme(ctx, themeID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.NotFound("theme not found")
@@ -105,11 +104,11 @@ func (s *service) GetTheme(ctx context.Context, themeID uuid.UUID) (*ThemeRespon
 		s.logger.Error().Err(err).Stringer("theme_id", themeID).Msg("failed to get theme")
 		return nil, apperror.Internal("failed to get theme")
 	}
-	return toPublicThemeResponse(theme)
+	return toThemeResponseFromPublishedTheme(theme), nil
 }
 
 func (s *service) GetThemeBySlug(ctx context.Context, slug string) (*ThemeResponse, error) {
-	theme, err := s.queries.GetThemeBySlug(ctx, slug)
+	theme, err := s.queries.GetPublishedThemeBySlug(ctx, slug)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.NotFound("theme not found")
@@ -117,7 +116,7 @@ func (s *service) GetThemeBySlug(ctx context.Context, slug string) (*ThemeRespon
 		s.logger.Error().Err(err).Str("slug", slug).Msg("failed to get theme by slug")
 		return nil, apperror.Internal("failed to get theme")
 	}
-	return toPublicThemeResponse(theme)
+	return toThemeResponseFromPublishedThemeBySlug(theme), nil
 }
 
 func (s *service) ListPublished(ctx context.Context, limit, offset int32) ([]ThemeSummary, error) {
@@ -132,25 +131,21 @@ func (s *service) ListPublished(ctx context.Context, limit, offset int32) ([]The
 
 	result := make([]ThemeSummary, len(themes))
 	for i, t := range themes {
-		result[i] = toThemeSummary(t)
+		result[i] = toThemeSummaryFromListRow(t)
 	}
 	return result, nil
 }
 
 func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]CharacterResponse, error) {
-	theme, err := s.queries.GetTheme(ctx, themeID)
-	if err != nil {
+	if _, err := s.queries.GetPublishedTheme(ctx, themeID); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, apperror.NotFound("theme not found")
 		}
 		s.logger.Error().Err(err).Stringer("theme_id", themeID).Msg("failed to get theme")
 		return nil, apperror.Internal("failed to get characters")
 	}
-	if theme.Status != publishedStatus {
-		return nil, apperror.NotFound("theme not found")
-	}
 
-	chars, err := s.queries.GetThemeCharacters(ctx, themeID)
+	chars, err := s.queries.GetPublishedThemeCharacters(ctx, themeID)
 	if err != nil {
 		s.logger.Error().Err(err).Stringer("theme_id", themeID).Msg("failed to get theme characters")
 		return nil, apperror.Internal("failed to get characters")
@@ -158,22 +153,13 @@ func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]Chara
 
 	result := make([]CharacterResponse, 0, len(chars))
 	for _, c := range chars {
-		if !c.IsPlayable {
-			continue
-		}
-		display := engine.ResolveCharacterDisplay(engine.CharacterDisplayBase{
-			Name:         c.Name,
-			ImageURL:     textToPtr(c.ImageUrl),
-			ImageMediaID: pgUUIDToStringPtr(c.ImageMediaID),
-			AliasRules:   engine.ParseCharacterAliasRules(c.AliasRules),
-		}, json.RawMessage(`{}`))
-		display.ImageURL = s.resolveCharacterImageURL(ctx, c.ThemeID, display.ImageURL, c.ImageMediaID)
+		imageURL := s.resolveCharacterImageURL(ctx, c.ThemeID, textToPtr(c.ImageUrl), c.ImageMediaID)
 		result = append(result, CharacterResponse{
 			ID:           c.ID,
-			Name:         display.Name,
+			Name:         c.Name,
 			Description:  textToPtr(c.Description),
-			ImageURL:     display.ImageURL,
-			ImageMediaID: display.ImageMediaID,
+			ImageURL:     imageURL,
+			ImageMediaID: pgUUIDToStringPtr(c.ImageMediaID),
 			SortOrder:    c.SortOrder,
 		})
 	}
@@ -228,7 +214,7 @@ func pgUUIDToStringPtr(value pgtype.UUID) *string {
 	return &id
 }
 
-func toThemeSummary(t db.Theme) ThemeSummary {
+func toThemeSummaryFromListRow(t db.ListPublishedThemesRow) ThemeSummary {
 	return ThemeSummary{
 		ID:          t.ID,
 		Title:       t.Title,
@@ -244,24 +230,48 @@ func toThemeSummary(t db.Theme) ThemeSummary {
 	}
 }
 
-func toThemeResponse(t db.Theme) *ThemeResponse {
+func toThemeResponseFromPublishedTheme(t db.GetPublishedThemeRow) *ThemeResponse {
 	return &ThemeResponse{
-		ThemeSummary: toThemeSummary(t),
-		Status:       t.Status,
-		ConfigJson:   t.ConfigJson,
-		Version:      t.Version,
-		PublishedAt:  timestampToPtr(t.PublishedAt),
-		CreatedAt:    t.CreatedAt,
+		ThemeSummary: ThemeSummary{
+			ID:          t.ID,
+			Title:       t.Title,
+			Slug:        t.Slug,
+			Description: textToPtr(t.Description),
+			CoverImage:  textToPtr(t.CoverImage),
+			MinPlayers:  t.MinPlayers,
+			MaxPlayers:  t.MaxPlayers,
+			DurationMin: t.DurationMin,
+			Price:       t.Price,
+			CoinPrice:   t.CoinPrice,
+			CreatorID:   t.CreatorID,
+		},
+		Status:      t.Status,
+		Version:     t.Version,
+		PublishedAt: timestampToPtr(t.PublishedAt),
+		CreatedAt:   t.CreatedAt,
 	}
 }
 
-func toPublicThemeResponse(t db.Theme) (*ThemeResponse, error) {
-	if t.Status != publishedStatus {
-		return nil, apperror.NotFound("theme not found")
+func toThemeResponseFromPublishedThemeBySlug(t db.GetPublishedThemeBySlugRow) *ThemeResponse {
+	return &ThemeResponse{
+		ThemeSummary: ThemeSummary{
+			ID:          t.ID,
+			Title:       t.Title,
+			Slug:        t.Slug,
+			Description: textToPtr(t.Description),
+			CoverImage:  textToPtr(t.CoverImage),
+			MinPlayers:  t.MinPlayers,
+			MaxPlayers:  t.MaxPlayers,
+			DurationMin: t.DurationMin,
+			Price:       t.Price,
+			CoinPrice:   t.CoinPrice,
+			CreatorID:   t.CreatorID,
+		},
+		Status:      t.Status,
+		Version:     t.Version,
+		PublishedAt: timestampToPtr(t.PublishedAt),
+		CreatedAt:   t.CreatedAt,
 	}
-	resp := toThemeResponse(t)
-	resp.ConfigJson = nil
-	return resp, nil
 }
 
 func textToPtr(t pgtype.Text) *string {

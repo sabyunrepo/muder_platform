@@ -181,6 +181,185 @@ func (q *Queries) DeleteThemeCharacter(ctx context.Context, id uuid.UUID) error 
 	return err
 }
 
+const getPublishedTheme = `-- name: GetPublishedTheme :one
+SELECT
+  id,
+  creator_id,
+  title,
+  slug,
+  description,
+  cover_image,
+  min_players,
+  max_players,
+  duration_min,
+  price,
+  status,
+  version,
+  published_at,
+  created_at,
+  coin_price
+FROM themes
+WHERE id = $1 AND status = 'PUBLISHED'
+`
+
+type GetPublishedThemeRow struct {
+	ID          uuid.UUID          `json:"id"`
+	CreatorID   uuid.UUID          `json:"creator_id"`
+	Title       string             `json:"title"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	CoverImage  pgtype.Text        `json:"cover_image"`
+	MinPlayers  int32              `json:"min_players"`
+	MaxPlayers  int32              `json:"max_players"`
+	DurationMin int32              `json:"duration_min"`
+	Price       int32              `json:"price"`
+	Status      string             `json:"status"`
+	Version     int32              `json:"version"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	CoinPrice   int32              `json:"coin_price"`
+}
+
+func (q *Queries) GetPublishedTheme(ctx context.Context, id uuid.UUID) (GetPublishedThemeRow, error) {
+	row := q.db.QueryRow(ctx, getPublishedTheme, id)
+	var i GetPublishedThemeRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.CoverImage,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.DurationMin,
+		&i.Price,
+		&i.Status,
+		&i.Version,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.CoinPrice,
+	)
+	return i, err
+}
+
+const getPublishedThemeBySlug = `-- name: GetPublishedThemeBySlug :one
+SELECT
+  id,
+  creator_id,
+  title,
+  slug,
+  description,
+  cover_image,
+  min_players,
+  max_players,
+  duration_min,
+  price,
+  status,
+  version,
+  published_at,
+  created_at,
+  coin_price
+FROM themes
+WHERE slug = $1 AND status = 'PUBLISHED'
+`
+
+type GetPublishedThemeBySlugRow struct {
+	ID          uuid.UUID          `json:"id"`
+	CreatorID   uuid.UUID          `json:"creator_id"`
+	Title       string             `json:"title"`
+	Slug        string             `json:"slug"`
+	Description pgtype.Text        `json:"description"`
+	CoverImage  pgtype.Text        `json:"cover_image"`
+	MinPlayers  int32              `json:"min_players"`
+	MaxPlayers  int32              `json:"max_players"`
+	DurationMin int32              `json:"duration_min"`
+	Price       int32              `json:"price"`
+	Status      string             `json:"status"`
+	Version     int32              `json:"version"`
+	PublishedAt pgtype.Timestamptz `json:"published_at"`
+	CreatedAt   time.Time          `json:"created_at"`
+	CoinPrice   int32              `json:"coin_price"`
+}
+
+func (q *Queries) GetPublishedThemeBySlug(ctx context.Context, slug string) (GetPublishedThemeBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getPublishedThemeBySlug, slug)
+	var i GetPublishedThemeBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatorID,
+		&i.Title,
+		&i.Slug,
+		&i.Description,
+		&i.CoverImage,
+		&i.MinPlayers,
+		&i.MaxPlayers,
+		&i.DurationMin,
+		&i.Price,
+		&i.Status,
+		&i.Version,
+		&i.PublishedAt,
+		&i.CreatedAt,
+		&i.CoinPrice,
+	)
+	return i, err
+}
+
+const getPublishedThemeCharacters = `-- name: GetPublishedThemeCharacters :many
+SELECT
+  c.id,
+  c.theme_id,
+  c.name,
+  c.description,
+  c.image_url,
+  c.sort_order,
+  c.image_media_id
+FROM theme_characters c
+JOIN themes t ON t.id = c.theme_id
+WHERE c.theme_id = $1
+  AND t.status = 'PUBLISHED'
+  AND c.is_playable = TRUE
+ORDER BY c.sort_order
+`
+
+type GetPublishedThemeCharactersRow struct {
+	ID           uuid.UUID   `json:"id"`
+	ThemeID      uuid.UUID   `json:"theme_id"`
+	Name         string      `json:"name"`
+	Description  pgtype.Text `json:"description"`
+	ImageUrl     pgtype.Text `json:"image_url"`
+	SortOrder    int32       `json:"sort_order"`
+	ImageMediaID pgtype.UUID `json:"image_media_id"`
+}
+
+func (q *Queries) GetPublishedThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]GetPublishedThemeCharactersRow, error) {
+	rows, err := q.db.Query(ctx, getPublishedThemeCharacters, themeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetPublishedThemeCharactersRow{}
+	for rows.Next() {
+		var i GetPublishedThemeCharactersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ThemeID,
+			&i.Name,
+			&i.Description,
+			&i.ImageUrl,
+			&i.SortOrder,
+			&i.ImageMediaID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getTheme = `-- name: GetTheme :one
 SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id FROM themes WHERE id = $1
 `
@@ -413,7 +592,22 @@ func (q *Queries) ListAllThemes(ctx context.Context, arg ListAllThemesParams) ([
 }
 
 const listPublishedThemes = `-- name: ListPublishedThemes :many
-SELECT id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id FROM themes WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT $1 OFFSET $2
+SELECT
+  id,
+  creator_id,
+  title,
+  slug,
+  description,
+  cover_image,
+  min_players,
+  max_players,
+  duration_min,
+  price,
+  coin_price
+FROM themes
+WHERE status = 'PUBLISHED'
+ORDER BY published_at DESC
+LIMIT $1 OFFSET $2
 `
 
 type ListPublishedThemesParams struct {
@@ -421,15 +615,29 @@ type ListPublishedThemesParams struct {
 	Offset int32 `json:"offset"`
 }
 
-func (q *Queries) ListPublishedThemes(ctx context.Context, arg ListPublishedThemesParams) ([]Theme, error) {
+type ListPublishedThemesRow struct {
+	ID          uuid.UUID   `json:"id"`
+	CreatorID   uuid.UUID   `json:"creator_id"`
+	Title       string      `json:"title"`
+	Slug        string      `json:"slug"`
+	Description pgtype.Text `json:"description"`
+	CoverImage  pgtype.Text `json:"cover_image"`
+	MinPlayers  int32       `json:"min_players"`
+	MaxPlayers  int32       `json:"max_players"`
+	DurationMin int32       `json:"duration_min"`
+	Price       int32       `json:"price"`
+	CoinPrice   int32       `json:"coin_price"`
+}
+
+func (q *Queries) ListPublishedThemes(ctx context.Context, arg ListPublishedThemesParams) ([]ListPublishedThemesRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedThemes, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Theme{}
+	items := []ListPublishedThemesRow{}
 	for rows.Next() {
-		var i Theme
+		var i ListPublishedThemesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatorID,
@@ -441,17 +649,7 @@ func (q *Queries) ListPublishedThemes(ctx context.Context, arg ListPublishedThem
 			&i.MaxPlayers,
 			&i.DurationMin,
 			&i.Price,
-			&i.Status,
-			&i.ConfigJson,
-			&i.Version,
-			&i.PublishedAt,
-			&i.CreatedAt,
-			&i.UpdatedAt,
 			&i.CoinPrice,
-			&i.ReviewNote,
-			&i.ReviewedAt,
-			&i.ReviewedBy,
-			&i.CoverImageMediaID,
 		); err != nil {
 			return nil, err
 		}
@@ -760,18 +958,21 @@ func (q *Queries) UpdateThemeCoverImage(ctx context.Context, arg UpdateThemeCove
 }
 
 const updateThemeStatus = `-- name: UpdateThemeStatus :one
-UPDATE themes SET status = $2::varchar, published_at = CASE WHEN $2::varchar = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
-WHERE id = $1
+UPDATE themes
+SET status = $1::varchar,
+    published_at = CASE WHEN $1::varchar = 'PUBLISHED' THEN NOW() ELSE published_at END,
+    updated_at = NOW()
+WHERE id = $2
 RETURNING id, creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, status, config_json, version, published_at, created_at, updated_at, coin_price, review_note, reviewed_at, reviewed_by, cover_image_media_id
 `
 
 type UpdateThemeStatusParams struct {
-	ID     uuid.UUID `json:"id"`
 	Status string    `json:"status"`
+	ID     uuid.UUID `json:"id"`
 }
 
 func (q *Queries) UpdateThemeStatus(ctx context.Context, arg UpdateThemeStatusParams) (Theme, error) {
-	row := q.db.QueryRow(ctx, updateThemeStatus, arg.ID, arg.Status)
+	row := q.db.QueryRow(ctx, updateThemeStatus, arg.Status, arg.ID)
 	var i Theme
 	err := row.Scan(
 		&i.ID,
