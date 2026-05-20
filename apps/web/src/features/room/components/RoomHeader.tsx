@@ -57,21 +57,21 @@ export function RoomHeader({
   return (
     <Panel className="flex flex-wrap items-center justify-between gap-3">
       {/* 왼쪽: 테마 + 방 코드 */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-bold text-[var(--mmp-color-ink)]">{themeTitle}</h1>
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm text-[var(--mmp-color-steel)]">#{roomCode}</span>
+      <div className="flex min-w-0 flex-col gap-1">
+        <h1 className="truncate text-lg font-bold text-[var(--mmp-color-ink)]">{themeTitle}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="min-w-0 truncate font-mono text-sm text-[var(--mmp-color-steel)]">#{roomCode}</span>
           <Button
             variant="ghost"
-            size="sm"
-            className="h-6 w-6 !p-0"
+            size="md"
+            className="h-10 w-10 shrink-0 !p-0"
             onClick={handleCopyCode}
             aria-label="방 코드 복사"
           >
             {copied ? (
-              <Check className="h-3.5 w-3.5 text-[var(--mmp-color-success)]" />
+              <Check className="h-4 w-4 text-[var(--mmp-color-success)]" />
             ) : (
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="h-4 w-4" />
             )}
           </Button>
         </div>

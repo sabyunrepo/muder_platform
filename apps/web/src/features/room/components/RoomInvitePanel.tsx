@@ -38,13 +38,13 @@ export function RoomInvitePanel({ roomId, isHost }: RoomInvitePanelProps) {
 
   return (
     <Panel className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--mmp-color-ink)]">
-            <UserPlus className="h-4 w-4" />
-            친구 초대
+            <UserPlus className="h-4 w-4 shrink-0" />
+            <span className="truncate">친구 초대</span>
           </h2>
-          <p className="mt-1 text-xs text-[var(--mmp-color-steel)]">
+          <p className="mt-1 break-words text-xs text-[var(--mmp-color-steel)]">
             방 코드는 헤더에서 복사할 수 있습니다.
           </p>
         </div>
@@ -74,19 +74,19 @@ export function RoomInvitePanel({ roomId, isHost }: RoomInvitePanelProps) {
           아직 초대할 친구가 없습니다. 친구를 추가한 뒤 다시 시도해 주세요.
         </p>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-[repeat(2,minmax(0,1fr))]">
           {(friends.data ?? []).map((friend) => (
             <label
               key={friend.id}
-              className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--mmp-color-hairline)] px-3 py-2 text-sm text-[var(--mmp-color-charcoal)]"
+              className="flex min-h-10 min-w-0 items-center gap-2 rounded-md border border-[var(--mmp-color-hairline)] px-3 py-2 text-sm text-[var(--mmp-color-charcoal)]"
             >
               <input
                 type="checkbox"
                 checked={selectedFriendIds.includes(friend.id)}
                 onChange={() => toggleFriend(friend.id)}
-                className="h-4 w-4 accent-[var(--mmp-color-primary)]"
+                className="h-4 w-4 shrink-0 accent-[var(--mmp-color-primary)]"
               />
-              <span className="font-medium text-[var(--mmp-color-ink)]">{friend.nickname}</span>
+              <span className="min-w-0 truncate font-medium text-[var(--mmp-color-ink)]">{friend.nickname}</span>
             </label>
           ))}
         </div>

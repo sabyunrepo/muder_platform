@@ -178,6 +178,58 @@ describe('RoomVoicePanel', () => {
     expect(screen.getByRole('button', { name: /스피커 끄기/ })).toBeEnabled();
   });
 
+  it('does not clear synced participant voice state during LiveKit activity updates', async () => {
+    vi.mocked(voiceApi.getTokenForTarget).mockResolvedValue({
+      token: 'token-1',
+      room_name: 'room-room-1-main',
+      livekit_url: 'ws://livekit',
+    });
+    const clearVoiceStatesSpy = vi.spyOn(
+      useVoiceStore.getState(),
+      'clearParticipantVoiceStates'
+    );
+
+    const { rerender } = render(<RoomVoicePanel roomId="room-1" isActive variant="inline" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /입장/ }));
+    await screen.findByTestId('livekit-room');
+
+    act(() => {
+      liveKitRoomProps.current?.onConnected?.();
+    });
+
+    expect(useVoiceStore.getState().participantVoiceStates).not.toEqual({});
+    clearVoiceStatesSpy.mockClear();
+
+    localParticipantState.audioLevel = 0.04;
+    rerender(<RoomVoicePanel roomId="room-1" isActive variant="inline" />);
+
+    expect(clearVoiceStatesSpy).not.toHaveBeenCalled();
+    expect(useVoiceStore.getState().participantVoiceStates).not.toEqual({});
+  });
+
+  it('uses a safe display label when LiveKit participant names cannot be mapped', async () => {
+    vi.mocked(voiceApi.getTokenForTarget).mockResolvedValue({
+      token: 'token-1',
+      room_name: 'room-room-1-main',
+      livekit_url: 'ws://livekit',
+    });
+
+    render(<RoomVoicePanel roomId="room-1" isActive variant="inline" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /입장/ }));
+    await screen.findByTestId('livekit-room');
+
+    act(() => {
+      liveKitRoomProps.current?.onConnected?.();
+    });
+
+    expect(await screen.findByText('말하는 참가자')).toBeInTheDocument();
+    expect(screen.getAllByText(/음성 참가자/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('local-user')).not.toBeInTheDocument();
+    expect(screen.queryByText('remote-user')).not.toBeInTheDocument();
+  });
+
   it('hides the speaking overlay when LiveKit reports no active speakers', async () => {
     localParticipantState.audioLevel = 0;
     silentParticipantsMock.push({
@@ -222,7 +274,7 @@ describe('RoomVoicePanel', () => {
 
     expect(useVoiceStore.getState().participantVoiceStates).not.toEqual({});
 
-    fireEvent.click(await screen.findByRole('button', { name: /나가기/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /음성 채팅 나가기/ }));
 
     expect(useVoiceStore.getState().participantVoiceStates).toEqual({});
   });

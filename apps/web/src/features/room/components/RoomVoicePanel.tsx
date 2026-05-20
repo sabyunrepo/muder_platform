@@ -92,15 +92,15 @@ export function RoomVoicePanel({
     <div
       className={
         variant === 'inline'
-          ? 'flex min-w-[220px] flex-col gap-2'
-          : 'flex flex-col gap-3'
+          ? 'flex min-w-0 flex-col gap-2 sm:min-w-[220px]'
+          : 'flex min-w-0 flex-col gap-3'
       }
     >
       <div className="flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--mmp-color-ink)]">
-            <Mic className="h-4 w-4" />
-            음성 채팅
+            <Mic className="h-4 w-4 shrink-0" />
+            <span className="truncate">음성 채팅</span>
           </h2>
           <p className="mt-1 text-xs text-[var(--mmp-color-steel)]">{stateLabel[connectionState]}</p>
         </div>
@@ -110,6 +110,7 @@ export function RoomVoicePanel({
             variant="secondary"
             leftIcon={<PhoneOff className="h-4 w-4" />}
             onClick={handleDisconnect}
+            aria-label="음성 채팅 나가기"
           >
             나가기
           </Button>
@@ -127,7 +128,7 @@ export function RoomVoicePanel({
       </div>
 
       <p
-        className={`text-sm ${
+        className={`break-words text-sm ${
           connectionState === 'error'
             ? 'font-medium text-[var(--mmp-color-error)]'
             : 'text-[var(--mmp-color-steel)]'
@@ -266,10 +267,13 @@ function LiveKitSpeakingOverlay({ playerNameById }: { playerNameById?: Map<strin
 
   useEffect(() => {
     setParticipantVoiceStates(participantVoiceStates);
+  }, [participantVoiceStates, setParticipantVoiceStates]);
+
+  useEffect(() => {
     return () => {
       useVoiceStore.getState().clearParticipantVoiceStates();
     };
-  }, [participantVoiceStates, setParticipantVoiceStates]);
+  }, []);
 
   const speakingParticipants = useMemo(() => {
     const participantByIdentity = new Map<string, VoiceParticipantLike>();
@@ -299,16 +303,16 @@ function LiveKitSpeakingOverlay({ playerNameById }: { playerNameById?: Map<strin
       <div className="mt-2 flex flex-wrap gap-1.5">
         {speakingParticipants.map((participant) => {
           const identity = participant.identity ?? participant.sid ?? 'unknown';
-          const name = playerNameById?.get(identity) ?? participant.name ?? identity;
+          const name = playerNameById?.get(identity) ?? participant.name ?? '음성 참가자';
           const isMuted = participantVoiceStates[identity]?.isMuted ?? false;
 
           return (
             <span
               key={identity}
-              className="inline-flex items-center gap-1 rounded-full bg-[var(--mmp-color-surface)] px-2 py-1 text-xs font-medium text-[var(--mmp-color-charcoal)]"
+              className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-full bg-[var(--mmp-color-surface)] px-2 py-1 text-xs font-medium text-[var(--mmp-color-charcoal)]"
             >
-              <Mic className="h-3 w-3 text-[var(--mmp-color-primary)]" />
-              {name}
+              <Mic className="h-3 w-3 shrink-0 text-[var(--mmp-color-primary)]" />
+              <span className="min-w-0 truncate">{name}</span>
               {isMuted && <span className="text-[10px] text-[var(--mmp-color-steel)]">음소거</span>}
             </span>
           );

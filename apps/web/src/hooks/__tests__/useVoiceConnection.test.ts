@@ -103,6 +103,26 @@ describe("useVoiceConnection", () => {
     expect(useVoiceStore.getState().currentChannel).toBe("room-room-1-main");
   });
 
+  it("sets error state when voice token request fails", async () => {
+    vi.mocked(voiceApi.getTokenForTarget).mockRejectedValue(new Error("token denied"));
+
+    const { result } = renderHook(() =>
+      useVoiceConnection({
+        roomId: "room-1",
+        roomType: "main",
+        autoConnect: false,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(result.current.connectionDetails).toBeNull();
+    expect(useVoiceStore.getState().connectionState).toBe("error");
+    expect(useVoiceStore.getState().currentChannel).toBeNull();
+  });
+
   it("ignores stale LiveKit callbacks after a user disconnect", async () => {
     vi.mocked(voiceApi.getTokenForTarget).mockResolvedValue({
       token: "token-1",

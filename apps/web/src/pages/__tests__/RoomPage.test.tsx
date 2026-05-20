@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
+import { WsEventType } from '@mmp/shared';
 import { useAuthStore } from '@/stores/authStore';
 import { useVoiceStore } from '@/stores/voiceStore';
 
@@ -261,6 +262,63 @@ describe('RoomPage pregame controls', () => {
     expect(screen.getAllByText('준비 완료').length).toBeGreaterThan(0);
   });
 
+  it('방 코드 복사 버튼은 클립보드에 현재 방 코드를 쓴다', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    fireEvent.click(screen.getByRole('button', { name: '방 코드 복사' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('ABC123');
+    });
+  });
+
+  it('1024px 근처에서는 데스크톱 대기방을 2열로 유지하고 3열은 넓은 화면에서만 사용한다', () => {
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    const roomGrid = screen.getByRole('heading', { name: '참가자 상태' }).closest('section')
+      ?.parentElement;
+
+    expect(roomGrid?.className).toContain('lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)]');
+    expect(roomGrid?.className).toContain('xl:grid-cols-[minmax(260px,0.85fr)_minmax(360px,1.15fr)_minmax(320px,1fr)]');
+  });
+
+  it('음성 참가자 상태가 바뀌어도 RoomPage 전체를 다시 렌더링하지 않는다', () => {
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+    const callsAfterInitialRender = useRoomMock.mock.calls.length;
+
+    act(() => {
+      useVoiceStore.getState().setParticipantVoiceStates({
+        'user-1': { isSpeaking: true, isMuted: false },
+      });
+    });
+
+    expect(useRoomMock).toHaveBeenCalledTimes(callsAfterInitialRender);
+    expect(screen.getByText('말하는 중')).toBeInTheDocument();
+  });
+
   it('현재 사용자의 준비 상태를 room.players에서 읽고 HTTP ready mutation에 is_ready를 보낸다', async () => {
     const readyMutate = vi.fn((_variables, options) => {
       options?.onSuccess?.();
@@ -366,12 +424,15 @@ describe('RoomPage pregame controls', () => {
     renderRoom();
 
     const startButton = screen.getByRole('button', { name: /게임 시작/ });
-    expect(startButton).toBeDisabled();
+    expect(startButton).toBeEnabled();
     expect(screen.getByText('최소 인원이 충족되지 않았습니다.')).toBeInTheDocument();
 
     fireEvent.click(startButton);
 
-    expect(startMutate).not.toHaveBeenCalled();
+    expect(startMutate).toHaveBeenCalledWith(
+      'room-1',
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) })
+    );
   });
 
   it('기존 채팅 탭과 나가기 동작을 유지한다', () => {
@@ -391,7 +452,7 @@ describe('RoomPage pregame controls', () => {
       target: { value: '준비됐어요' },
     });
     fireEvent.click(screen.getByRole('button', { name: /메시지 전송/ }));
-    fireEvent.click(screen.getByRole('button', { name: /나가기/ }));
+    fireEvent.click(screen.getByRole('button', { name: /방 나가기/ }));
 
     expect(sendMock).toHaveBeenCalledWith('chat:send', { room_id: 'room-1', text: '준비됐어요' });
     expect(leaveMutate).toHaveBeenCalledWith(
@@ -399,6 +460,33 @@ describe('RoomPage pregame controls', () => {
       expect.objectContaining({ onSuccess: expect.any(Function) })
     );
     expect(navigateMock).toHaveBeenCalledWith('/lobby');
+  });
+
+  it('대기방 채팅 수신 메시지를 렌더링한다', () => {
+    HTMLElement.prototype.scrollIntoView = vi.fn();
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    const chatHandler = useWsEventMock.mock.calls.find(
+      ([channel, eventType]) => channel === 'game' && eventType === WsEventType.CHAT_MESSAGE
+    )?.[2] as ((payload: { sender: string; nickname: string; text: string; ts: number }) => void) | undefined;
+
+    act(() => {
+      chatHandler?.({
+        sender: 'user-2',
+        nickname: '긴닉네임참가자',
+        text: '수신된 채팅 메시지입니다.',
+        ts: Date.parse('2026-05-20T05:00:00Z'),
+      });
+    });
+
+    expect(screen.getByText('긴닉네임참가자')).toBeInTheDocument();
+    expect(screen.getByText('수신된 채팅 메시지입니다.')).toBeInTheDocument();
   });
 
   it('호스트 게임 시작 실패 사유를 컨트롤 근처에 표시한다', () => {
@@ -478,14 +566,17 @@ describe('RoomPage pregame controls', () => {
     renderRoom();
 
     const startButton = screen.getByRole('button', { name: /게임 시작/ });
-    expect(startButton).toBeDisabled();
+    expect(startButton).toBeEnabled();
     expect(
       screen.getByText('모든 참가자가 캐릭터를 선택해야 시작할 수 있습니다.')
     ).toBeInTheDocument();
 
     fireEvent.click(startButton);
 
-    expect(startMutate).not.toHaveBeenCalled();
+    expect(startMutate).toHaveBeenCalledWith(
+      'room-1',
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) })
+    );
   });
 
   it('호스트는 대기방에서 친구를 선택해 방 초대를 보낼 수 있다', () => {
