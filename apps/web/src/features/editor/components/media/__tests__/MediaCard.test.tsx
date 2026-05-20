@@ -66,7 +66,7 @@ describe("MediaCard", () => {
     expect(image).not.toBeNull();
     expect(image.getAttribute("src")).toBe("https://example.com/clue.webp");
     expect(image.className).toContain("object-contain");
-    expect(image.parentElement?.className).toContain("h-32");
+    expect(image.parentElement?.className).toContain("h-full");
     expect(image.parentElement?.className).toContain("w-full");
     expect(screen.getByRole("button", { name: /단서 사진/ }).className).toContain("h-56");
 
@@ -146,7 +146,7 @@ describe("MediaCard", () => {
     });
 
     expect(screen.getByTestId("media-preview-face")).toBeDefined();
-    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("h-32");
+    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("h-full");
     expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("w-full");
     expect(screen.getByLabelText("영상")).toBeDefined();
     expect(screen.getAllByText("영상").length).toBeGreaterThan(0);
@@ -197,7 +197,7 @@ describe("MediaCard", () => {
     expect(card.className).toContain("mmp-editor-list-item-active");
   });
 
-  it("긴 이름과 긴 태그도 고정 카드/하단 영역 안에 제한한다", () => {
+  it("긴 이름과 긴 태그도 고정 카드/하단 gradient overlay 안에 제한한다", () => {
     renderCard({
       ...baseMedia,
       name: "매우 긴 미디어 이름이 여러 줄로 들어와도 카드 전체 높이를 바꾸면 안 됩니다",
@@ -209,6 +209,6 @@ describe("MediaCard", () => {
     expect(card.className).toContain("min-w-0");
     expect(screen.getByText(/매우 긴 미디어 이름/).className).toContain("line-clamp-2");
     expect(screen.getByText(/긴태그/).className).toContain("truncate");
-    expect(screen.getByText(/긴태그/).parentElement?.className).toContain("h-24");
+    expect(screen.getByText(/긴태그/).parentElement?.className).toContain("bg-gradient-to-t");
   });
 });

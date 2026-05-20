@@ -105,7 +105,7 @@ export function MediaCard({
         }
       }}
       aria-pressed={selectionMode ? checked : selected}
-      className={`group relative flex h-56 min-h-56 w-full min-w-0 cursor-pointer flex-col overflow-hidden text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
+      className={`group relative flex h-56 min-h-56 w-full min-w-0 cursor-pointer overflow-hidden text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
         selected
           ? `${editorDesignClassNames.listItem} ${editorDesignClassNames.listItemActive}`
           : editorDesignClassNames.listItem
@@ -127,8 +127,8 @@ export function MediaCard({
         </div>
       )}
 
-      {/* Thumbnail */}
-      <div className="relative flex h-32 w-full shrink-0 items-center justify-center bg-[var(--mmp-editor-color-surface-soft)] p-2">
+      {/* Preview surface */}
+      <div className="relative flex h-full w-full items-center justify-center bg-[var(--mmp-editor-color-surface-soft)]">
         {shouldRenderImagePreview ? (
           <img
             src={thumbnailUrl}
@@ -140,7 +140,7 @@ export function MediaCard({
         ) : (
           <div
             data-testid="media-preview-face"
-            className={`flex h-full w-full flex-col items-center justify-center gap-1 rounded-sm border ${getPreviewSurfaceClass(
+            className={`flex h-full w-full flex-col items-center justify-center gap-1 border ${getPreviewSurfaceClass(
               media.type,
             )}`}
           >
@@ -175,26 +175,24 @@ export function MediaCard({
             )}
           </button>
         )}
-      </div>
 
-      {/* Body */}
-      <div className="flex h-24 min-h-0 flex-col gap-1.5 px-2.5 py-2">
-        <div className="flex h-5 shrink-0 items-center justify-between gap-2">
-          <span
-            className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase ${badgeClass}`}
-          >
-            {badgeLabel}
-          </span>
-          {duration && (
-            <span className="text-[10px] font-mono text-[var(--mmp-editor-color-steel)]">{duration}</span>
-          )}
+        {/* Metadata gradient overlay */}
+        <div className="absolute inset-x-0 bottom-0 flex min-h-24 flex-col justify-end gap-1.5 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-2.5 pb-2 pt-10 text-white">
+          <div className="flex min-h-5 items-center justify-between gap-2">
+            <span
+              className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase ${badgeClass}`}
+            >
+              {badgeLabel}
+            </span>
+            {duration && <span className="text-[10px] font-mono text-white/75">{duration}</span>}
+          </div>
+          <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-white">
+            {media.name}
+          </p>
+          <p className="h-4 truncate text-[10px] text-white/65">
+            {media.tags.length > 0 ? media.tags.slice(0, 3).join(", ") : ""}
+          </p>
         </div>
-        <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-[var(--mmp-editor-color-charcoal)]">
-          {media.name}
-        </p>
-        <p className="h-4 truncate text-[10px] text-[var(--mmp-editor-color-slate)]">
-          {media.tags.length > 0 ? media.tags.slice(0, 3).join(", ") : ""}
-        </p>
       </div>
     </div>
   );

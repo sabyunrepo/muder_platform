@@ -618,7 +618,7 @@ describe('CharacterAssignPanel', () => {
 
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: '홍길동 선택' }));
-    fireEvent.click(screen.getByRole('button', { name: '제거' }));
+    fireEvent.click(screen.getByRole('button', { name: '프로필 이미지 제거' }));
 
     expect(updateCharacterMutateMock).toHaveBeenCalledWith({
       characterId: 'char-1',

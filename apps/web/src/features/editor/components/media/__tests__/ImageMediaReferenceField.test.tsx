@@ -48,7 +48,7 @@ beforeEach(() => {
 afterEach(() => cleanup());
 
 describe("ImageMediaReferenceField", () => {
-  it("선택 상태는 고정 이미지 타일과 이미지 위 교체 배지를 사용한다", () => {
+  it("선택 상태는 이미지 타일 위 overlay group에 교체와 제거를 항상 표시한다", () => {
     const longName = "아주 긴 파일 이름이 레이아웃을 밀어내면 안 되는 단서 이미지 파일.webp";
     useMediaListMock.mockReturnValue({
       data: [{ ...imageMedia, name: longName, preview_url: "https://cdn.example/preview.webp" }],
@@ -66,13 +66,33 @@ describe("ImageMediaReferenceField", () => {
       />,
     );
 
-    const tile = screen.getByRole("button", { name: "단서 이미지 교체" });
+    const tile = screen.getByRole("button", { name: "단서 이미지 미리보기" });
     expect(tile.className).toContain("aspect-[16/10]");
     expect(tile.className).toContain("overflow-hidden");
-    expect(screen.getByText("교체").className).toContain("absolute");
+    expect(screen.getByText("교체").parentElement?.className).toContain("absolute");
+    expect(screen.getByRole("button", { name: "단서 이미지 교체" })).toBeDefined();
     expect(screen.queryByText(longName)).toBeNull();
-    expect(screen.getByRole("button", { name: /제거/ })).toBeDefined();
+    expect(screen.getByRole("button", { name: "단서 이미지 제거" })).toBeDefined();
     expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
+  });
+
+  it("overlay 제거 버튼은 picker를 열지 않고 onClear만 호출한다", () => {
+    const onClear = vi.fn();
+
+    render(
+      <ImageMediaReferenceField
+        themeId="theme-1"
+        label="단서 이미지"
+        imageMediaId="image-1"
+        onSelect={vi.fn()}
+        onClear={onClear}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "단서 이미지 제거" }));
+
+    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("미디어 선택")).toBeNull();
   });
 
   it("공개 master_url이 있으면 다운로드 URL 없이 선택 이미지 프리뷰를 보여준다", () => {
