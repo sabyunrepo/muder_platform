@@ -21,6 +21,10 @@ type roomQueries interface {
 	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
 	GetThemeCharacter(ctx context.Context, id uuid.UUID) (db.ThemeCharacter, error)
 	GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.ThemeCharacter, error)
+	GetUser(ctx context.Context, id uuid.UUID) (db.User, error)
+	GetFriendshipBetween(ctx context.Context, arg db.GetFriendshipBetweenParams) (db.Friendship, error)
+	GetNotificationPrefs(ctx context.Context, userID uuid.UUID) (db.NotificationPreference, error)
+	IsBlocked(ctx context.Context, arg db.IsBlockedParams) (bool, error)
 	ListWaitingRoomsWithCount(ctx context.Context, arg db.ListWaitingRoomsWithCountParams) ([]db.ListWaitingRoomsWithCountRow, error)
 	RemoveRoomPlayer(ctx context.Context, arg db.RemoveRoomPlayerParams) error
 	SetRoomPlayerCharacter(ctx context.Context, arg db.SetRoomPlayerCharacterParams) (int64, error)

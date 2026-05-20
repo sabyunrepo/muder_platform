@@ -281,8 +281,6 @@ func main() {
 	// 11.2. GameStarter for room service.
 	broadcaster := &hubBroadcaster{hub: wsHub}
 	gameStarter := session.NewGameStarter(sessionMgr, broadcaster, cfg.GameRuntimeV2, mediaSvc, logger)
-	roomSvc := room.NewServiceWithStarter(pool, queries, logger, gameStarter)
-	roomHandler := room.NewHandler(roomSvc)
 	lobbyChatWSHandler := room.NewLobbyChatWSHandler(queries, wsHub, logger)
 	wsRouter.Handle("chat", lobbyChatWSHandler.HandleChat)
 
@@ -302,6 +300,15 @@ func main() {
 	socialRouter.Handle("chat", socialWSHandler.HandleChat)
 	socialRouter.Handle("friend", socialWSHandler.HandleFriend)
 	socialRouter.Handle("presence", socialWSHandler.HandlePresence)
+
+	roomSvc := room.NewServiceWithStarterAndInviteNotifier(
+		pool,
+		queries,
+		logger,
+		gameStarter,
+		&roomInviteNotifier{hub: socialHub},
+	)
+	roomHandler := room.NewHandler(roomSvc)
 
 	// 11.6. PR-9 WS Auth Protocol wiring.
 	//

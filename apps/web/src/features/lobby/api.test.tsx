@@ -22,6 +22,7 @@ vi.mock('@/services/queryClient', () => ({
 import { api } from '@/services/api';
 import {
   roomKeys,
+  useInviteRoomFriends,
   useRoom,
   useSelectRoomCharacter,
   useSetReady,
@@ -144,6 +145,25 @@ describe('lobby pregame mutations', () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: roomKeys.list(),
+    });
+  });
+
+  it('useInviteRoomFriends posts friend_ids to room invites endpoint', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({
+      sent: [{ friend_id: 'friend-1', nickname: '민재', online: true }],
+      skipped: [{ friend_id: 'friend-2', reason: 'already_invited' }],
+    });
+    const { result } = renderHook(() => useInviteRoomFriends(), { wrapper: makeWrapper() });
+
+    await act(async () => {
+      await result.current.mutateAsync({
+        roomId: 'room-1',
+        friend_ids: ['friend-1', 'friend-2'],
+      });
+    });
+
+    expect(api.post).toHaveBeenCalledWith('/v1/rooms/room-1/invites', {
+      friend_ids: ['friend-1', 'friend-2'],
     });
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { WsClient } from "@mmp/ws-client";
+import { toast } from "sonner";
 
 import { useConnectionStore } from "@/stores/connectionStore";
 import { useSocialStore } from "@/stores/socialStore";
@@ -23,13 +24,17 @@ interface ChatMessagePayload {
   sender_id: string;
 }
 
-interface ChatReadPayload {
-  chat_room_id: string;
-}
-
 interface ChatTypingPayload {
   room_id: string;
   user_id: string;
+}
+
+interface RoomInvitePayload {
+  room_id: string;
+  code: string;
+  theme_title: string;
+  inviter_id: string;
+  inviter_nickname: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +49,7 @@ const SOCIAL_EVENT = {
   CHAT_MESSAGE: "chat:message",
   CHAT_READ_RECEIPT: "chat:read_receipt",
   CHAT_TYPING_INDICATOR: "chat:typing_indicator",
+  ROOM_INVITE: "room:invite",
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -118,10 +124,10 @@ export function useSocialSync(): void {
     );
 
     // chat:read_receipt → invalidate room queries
-    subscribe<ChatReadPayload>(
+    subscribe<Record<string, never>>(
       client,
       SOCIAL_EVENT.CHAT_READ_RECEIPT,
-      (payload) => {
+      () => {
         queryClient.invalidateQueries({
           queryKey: socialKeys.chatRooms(),
         });
@@ -163,6 +169,27 @@ export function useSocialSync(): void {
         queryClient.invalidateQueries({
           queryKey: socialKeys.friends(),
         });
+      },
+    );
+
+    // room:invite → surface a direct room entry action
+    subscribe<RoomInvitePayload>(
+      client,
+      SOCIAL_EVENT.ROOM_INVITE,
+      (payload) => {
+        toast(
+          `${payload.inviter_nickname}님이 ${payload.theme_title} 방에 초대했습니다.`,
+          {
+            description: `방 코드 ${payload.code}`,
+            action: {
+              label: "입장",
+              onClick: () => {
+                window.history.pushState({}, "", `/room/${payload.room_id}`);
+                window.dispatchEvent(new Event("popstate"));
+              },
+            },
+          },
+        );
       },
     );
 

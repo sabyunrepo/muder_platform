@@ -95,6 +95,27 @@ export interface SelectRoomCharacterRequest {
   characterId: string;
 }
 
+export interface InviteRoomFriendsRequest {
+  roomId: string;
+  friend_ids: string[];
+}
+
+export interface RoomInviteSent {
+  friend_id: string;
+  nickname: string;
+  online: boolean;
+}
+
+export interface RoomInviteSkipped {
+  friend_id: string;
+  reason: string;
+}
+
+export interface InviteRoomFriendsResponse {
+  sent: RoomInviteSent[];
+  skipped: RoomInviteSkipped[];
+}
+
 export interface PaginationParams {
   limit?: number;
   offset?: number;
@@ -246,5 +267,12 @@ export function useStartRoom() {
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
       queryClient.invalidateQueries({ queryKey: roomKeys.list() });
     },
+  });
+}
+
+export function useInviteRoomFriends() {
+  return useMutation<InviteRoomFriendsResponse, Error, InviteRoomFriendsRequest>({
+    mutationFn: ({ roomId, friend_ids }) =>
+      api.post<InviteRoomFriendsResponse>(`/v1/rooms/${roomId}/invites`, { friend_ids }),
   });
 }

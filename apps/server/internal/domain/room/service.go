@@ -96,6 +96,42 @@ type SelectCharacterRequest struct {
 	CharacterID uuid.UUID `json:"character_id"`
 }
 
+// RoomInviteRequest is the payload for POST /rooms/:id/invites.
+type RoomInviteRequest struct {
+	FriendIDs []uuid.UUID `json:"friend_ids"`
+}
+
+// RoomInviteSent reports a target that passed all validation and was eligible
+// for realtime delivery.
+type RoomInviteSent struct {
+	FriendID uuid.UUID `json:"friend_id"`
+	Nickname string    `json:"nickname"`
+	Online   bool      `json:"online"`
+}
+
+// RoomInviteSkipped reports a target that could not receive this invite.
+type RoomInviteSkipped struct {
+	FriendID uuid.UUID `json:"friend_id"`
+	Reason   string    `json:"reason"`
+}
+
+// RoomInviteResponse is the room invite MVP response. No durable invite row is
+// written; callers should treat Sent.Online=false as "eligible but no online
+// realtime delivery was confirmed".
+type RoomInviteResponse struct {
+	Sent    []RoomInviteSent    `json:"sent"`
+	Skipped []RoomInviteSkipped `json:"skipped"`
+}
+
+// RoomInviteNotification is the payload handed to the online social notifier.
+type RoomInviteNotification struct {
+	RoomID          uuid.UUID `json:"room_id"`
+	Code            string    `json:"code"`
+	ThemeTitle      string    `json:"theme_title"`
+	InviterID       uuid.UUID `json:"inviter_id"`
+	InviterNickname string    `json:"inviter_nickname"`
+}
+
 // Service defines the room domain operations.
 type Service interface {
 	CreateRoom(ctx context.Context, hostID uuid.UUID, req CreateRoomRequest) (*RoomResponse, error)
@@ -107,6 +143,7 @@ type Service interface {
 	LeaveRoom(ctx context.Context, roomID, userID uuid.UUID) error
 	SetReady(ctx context.Context, roomID, userID uuid.UUID, ready bool) error
 	SelectCharacter(ctx context.Context, roomID, userID uuid.UUID, req SelectCharacterRequest) error
+	InviteFriends(ctx context.Context, roomID, inviterID uuid.UUID, req RoomInviteRequest) (*RoomInviteResponse, error)
 	StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
@@ -132,11 +169,18 @@ type GameStarter interface {
 	Start(ctx context.Context, roomID, themeID uuid.UUID, configJSON []byte, players []GameStartPlayer) error
 }
 
+// RoomInviteNotifier is intentionally tiny so main wiring can adapt the social
+// WebSocket hub without coupling room service to ws/social packages.
+type RoomInviteNotifier interface {
+	NotifyRoomInvite(ctx context.Context, userID uuid.UUID, payload RoomInviteNotification) (online bool, err error)
+}
+
 type service struct {
-	pool        *pgxpool.Pool
-	queries     roomQueries
-	logger      zerolog.Logger
-	gameStarter GameStarter // nil → legacy (flag off)
+	pool           *pgxpool.Pool
+	queries        roomQueries
+	logger         zerolog.Logger
+	gameStarter    GameStarter // nil → legacy (flag off)
+	inviteNotifier RoomInviteNotifier
 }
 
 // NewService creates a new room service.
@@ -156,6 +200,29 @@ func NewServiceWithStarter(pool *pgxpool.Pool, queries *db.Queries, logger zerol
 		queries:     queries,
 		logger:      logger.With().Str("domain", "room").Logger(),
 		gameStarter: starter,
+	}
+}
+
+// NewServiceWithInviteNotifier creates a room service with realtime invite
+// delivery enabled. Kept separate from NewService so existing wiring remains
+// unchanged until main Codex wires the social hub adapter.
+func NewServiceWithInviteNotifier(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logger, notifier RoomInviteNotifier) Service {
+	return &service{
+		pool:           pool,
+		queries:        queries,
+		logger:         logger.With().Str("domain", "room").Logger(),
+		inviteNotifier: notifier,
+	}
+}
+
+// NewServiceWithStarterAndInviteNotifier wires both optional runtime adapters.
+func NewServiceWithStarterAndInviteNotifier(pool *pgxpool.Pool, queries *db.Queries, logger zerolog.Logger, starter GameStarter, notifier RoomInviteNotifier) Service {
+	return &service{
+		pool:           pool,
+		queries:        queries,
+		logger:         logger.With().Str("domain", "room").Logger(),
+		gameStarter:    starter,
+		inviteNotifier: notifier,
 	}
 }
 
@@ -595,6 +662,153 @@ func (s *service) SelectCharacter(ctx context.Context, roomID, userID uuid.UUID,
 		return apperror.New(apperror.ErrPlayerNotInGame, http.StatusForbidden, "player is not in this room")
 	}
 	return nil
+}
+
+// InviteFriends validates friend targets for a waiting-room participant and
+// pushes online notifications. This MVP deliberately does not persist invites;
+// when no notifier is wired, eligible targets are returned as sent with
+// online=false so the API stays usable during staged integration.
+func (s *service) InviteFriends(ctx context.Context, roomID, inviterID uuid.UUID, req RoomInviteRequest) (*RoomInviteResponse, error) {
+	if len(req.FriendIDs) == 0 {
+		return nil, apperror.BadRequest("friend_ids is required")
+	}
+
+	room, err := s.queries.GetRoom(ctx, roomID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(apperror.ErrRoomNotFound, http.StatusNotFound, "room not found")
+		}
+		s.logger.Error().Err(err).Msg("InviteFriends: failed to get room")
+		return nil, apperror.Internal("failed to get room")
+	}
+	if room.Status != "WAITING" {
+		return nil, apperror.New(apperror.ErrRoomNotWaiting, http.StatusConflict, "room is not in waiting state")
+	}
+	if room.HostID != inviterID {
+		return nil, apperror.New(apperror.ErrForbidden, http.StatusForbidden, "only the host can invite friends")
+	}
+
+	players, err := s.queries.GetRoomPlayers(ctx, roomID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("room_id", roomID).Msg("InviteFriends: failed to get room players")
+		return nil, apperror.Internal("failed to get room players")
+	}
+	if !hasRoomPlayer(players, inviterID) {
+		return nil, apperror.New(apperror.ErrPlayerNotInGame, http.StatusForbidden, "player is not in this room")
+	}
+
+	theme, err := s.queries.GetTheme(ctx, room.ThemeID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(apperror.ErrNotFound, http.StatusNotFound, "theme not found")
+		}
+		s.logger.Error().Err(err).Stringer("theme_id", room.ThemeID).Msg("InviteFriends: failed to get theme")
+		return nil, apperror.Internal("failed to get theme")
+	}
+	inviter, err := s.queries.GetUser(ctx, inviterID)
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("inviter_id", inviterID).Msg("InviteFriends: failed to get inviter")
+		return nil, apperror.Internal("failed to invite friends")
+	}
+
+	resp := &RoomInviteResponse{
+		Sent:    []RoomInviteSent{},
+		Skipped: []RoomInviteSkipped{},
+	}
+	participantIDs := make(map[uuid.UUID]struct{}, len(players))
+	for _, player := range players {
+		participantIDs[player.UserID] = struct{}{}
+	}
+	seen := make(map[uuid.UUID]struct{}, len(req.FriendIDs))
+	payload := RoomInviteNotification{
+		RoomID:          room.ID,
+		Code:            room.Code,
+		ThemeTitle:      theme.Title,
+		InviterID:       inviterID,
+		InviterNickname: inviter.Nickname,
+	}
+
+	for _, friendID := range req.FriendIDs {
+		if friendID == uuid.Nil {
+			resp.Skipped = append(resp.Skipped, RoomInviteSkipped{FriendID: friendID, Reason: "invalid_friend_id"})
+			continue
+		}
+		if _, exists := seen[friendID]; exists {
+			resp.Skipped = append(resp.Skipped, RoomInviteSkipped{FriendID: friendID, Reason: "duplicate"})
+			continue
+		}
+		seen[friendID] = struct{}{}
+		if _, inRoom := participantIDs[friendID]; inRoom {
+			resp.Skipped = append(resp.Skipped, RoomInviteSkipped{FriendID: friendID, Reason: "already_participant"})
+			continue
+		}
+
+		target, skipReason, err := s.validateInviteTarget(ctx, inviterID, friendID)
+		if err != nil {
+			return nil, err
+		}
+		if skipReason != "" {
+			resp.Skipped = append(resp.Skipped, RoomInviteSkipped{FriendID: friendID, Reason: skipReason})
+			continue
+		}
+
+		online := false
+		if s.inviteNotifier != nil {
+			online, err = s.inviteNotifier.NotifyRoomInvite(ctx, friendID, payload)
+			if err != nil {
+				s.logger.Error().Err(err).Stringer("friend_id", friendID).Msg("InviteFriends: notifier failed")
+				resp.Skipped = append(resp.Skipped, RoomInviteSkipped{FriendID: friendID, Reason: "notification_failed"})
+				continue
+			}
+		}
+		resp.Sent = append(resp.Sent, RoomInviteSent{FriendID: friendID, Nickname: target.Nickname, Online: online})
+	}
+	return resp, nil
+}
+
+func (s *service) validateInviteTarget(ctx context.Context, inviterID, friendID uuid.UUID) (db.User, string, error) {
+	friendship, err := s.queries.GetFriendshipBetween(ctx, db.GetFriendshipBetweenParams{
+		RequesterID: inviterID,
+		AddresseeID: friendID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, "not_friend", nil
+		}
+		s.logger.Error().Err(err).Stringer("friend_id", friendID).Msg("InviteFriends: failed to get friendship")
+		return db.User{}, "", apperror.Internal("failed to validate invite target")
+	}
+	if friendship.Status != "ACCEPTED" {
+		return db.User{}, "not_friend", nil
+	}
+
+	blocked, err := s.queries.IsBlocked(ctx, db.IsBlockedParams{BlockerID: inviterID, BlockedID: friendID})
+	if err != nil {
+		s.logger.Error().Err(err).Stringer("friend_id", friendID).Msg("InviteFriends: failed to check block")
+		return db.User{}, "", apperror.Internal("failed to validate invite target")
+	}
+	if blocked {
+		return db.User{}, "blocked", nil
+	}
+
+	prefs, err := s.queries.GetNotificationPrefs(ctx, friendID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.logger.Error().Err(err).Stringer("friend_id", friendID).Msg("InviteFriends: failed to get notification prefs")
+		return db.User{}, "", apperror.Internal("failed to validate invite target")
+	}
+	if err == nil && !prefs.GameInvite {
+		return db.User{}, "notification_disabled", nil
+	}
+
+	target, err := s.queries.GetUser(ctx, friendID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.User{}, "not_friend", nil
+		}
+		s.logger.Error().Err(err).Stringer("friend_id", friendID).Msg("InviteFriends: failed to get target user")
+		return db.User{}, "", apperror.Internal("failed to validate invite target")
+	}
+	return target, "", nil
 }
 
 // buildRoomDetail fetches players (with user JOIN) and assembles a

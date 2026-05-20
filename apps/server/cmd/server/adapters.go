@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/mmp-platform/server/internal/domain/room"
 	"github.com/mmp-platform/server/internal/session"
 	"github.com/mmp-platform/server/internal/ws"
 )
@@ -62,4 +64,17 @@ func (b *hubBroadcaster) BroadcastToSession(sessionID uuid.UUID, env session.Bro
 		Payload: env.Payload,
 	}
 	b.hub.BroadcastToSession(sessionID, wsEnv)
+}
+
+// roomInviteNotifier adapts the social websocket hub to room.Service without
+// coupling the room domain package to ws internals.
+type roomInviteNotifier struct {
+	hub *ws.SocialHub
+}
+
+func (n *roomInviteNotifier) NotifyRoomInvite(_ context.Context, userID uuid.UUID, payload room.RoomInviteNotification) (bool, error) {
+	if n == nil || n.hub == nil {
+		return false, nil
+	}
+	return n.hub.SendToUser(userID, ws.MustEnvelope("room:invite", payload)), nil
 }
