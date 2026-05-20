@@ -1,12 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  LocalParticipant,
-  RemoteParticipant,
-  Room,
-  RoomEvent,
-} from "livekit-client";
+import type { LocalParticipant, RemoteParticipant } from "livekit-client";
 
-import { voiceApi } from "@/services/voiceApi";
+import { voiceApi, type TokenResponse } from "@/services/voiceApi";
 import { useVoiceStore } from "@/stores/voiceStore";
 
 // ---------------------------------------------------------------------------
@@ -14,6 +9,12 @@ import { useVoiceStore } from "@/stores/voiceStore";
 // ---------------------------------------------------------------------------
 
 export type VoiceParticipant = LocalParticipant | RemoteParticipant;
+
+export interface VoiceConnectionDetails {
+  token: string;
+  roomName: string;
+  serverUrl: string;
+}
 
 interface UseVoiceConnectionOptions {
   sessionId?: string;
@@ -25,13 +26,16 @@ interface UseVoiceConnectionOptions {
 }
 
 interface UseVoiceConnectionReturn {
-  room: Room | null;
+  connectionDetails: VoiceConnectionDetails | null;
   participants: RemoteParticipant[];
   localParticipant: LocalParticipant | null;
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
   toggleMute: () => Promise<void>;
   toggleSpeakerMute: () => void;
+  handleConnected: () => void;
+  handleDisconnected: () => void;
+  handleError: (error: Error) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,13 +49,12 @@ export function useVoiceConnection(
 
   const setConnectionState = useVoiceStore((s) => s.setConnectionState);
   const setCurrentChannel = useVoiceStore((s) => s.setCurrentChannel);
-  const isMuted = useVoiceStore((s) => s.isMuted);
-  const isSpeakerMuted = useVoiceStore((s) => s.isSpeakerMuted);
-  const storeToggleMute = useVoiceStore((s) => s.toggleMute);
-  const storeToggleSpeakerMute = useVoiceStore((s) => s.toggleSpeakerMute);
 
-  const roomRef = useRef<Room | null>(null);
   const connectionGenerationRef = useRef(0);
+  const activeConnectionRef = useRef(false);
+  const pendingRoomNameRef = useRef<string | null>(null);
+  const [connectionDetails, setConnectionDetails] =
+    useState<VoiceConnectionDetails | null>(null);
   const [participants, setParticipants] = useState<RemoteParticipant[]>([]);
   const [localParticipant, setLocalParticipant] =
     useState<LocalParticipant | null>(null);
@@ -60,26 +63,13 @@ export function useVoiceConnection(
   const optsRef = useRef(options);
   optsRef.current = options;
 
-  // Keep latest mute state accessible in callbacks
-  const isMutedRef = useRef(isMuted);
-  isMutedRef.current = isMuted;
-  const isSpeakerMutedRef = useRef(isSpeakerMuted);
-  isSpeakerMutedRef.current = isSpeakerMuted;
-
-  const syncParticipants = (room: Room) => {
-    setParticipants(Array.from(room.remoteParticipants.values()));
-    setLocalParticipant(room.localParticipant);
-  };
-
   const connect = useCallback(async () => {
     const generation = connectionGenerationRef.current + 1;
     connectionGenerationRef.current = generation;
 
-    if (roomRef.current) {
-      await roomRef.current.disconnect();
-      roomRef.current = null;
-    }
-
+    activeConnectionRef.current = false;
+    setConnectionDetails(null);
+    pendingRoomNameRef.current = null;
     setConnectionState("connecting");
 
     try {
@@ -93,60 +83,21 @@ export function useVoiceConnection(
 
       if (connectionGenerationRef.current !== generation) return;
 
-      const room = new Room();
-      roomRef.current = room;
-
-      room.on(RoomEvent.Connected, () => {
-        if (connectionGenerationRef.current !== generation) return;
-        setConnectionState("connected");
-        setCurrentChannel(tokenData.room_name);
-        syncParticipants(room);
-      });
-
-      room.on(RoomEvent.Disconnected, () => {
-        if (connectionGenerationRef.current !== generation) return;
-        setConnectionState("disconnected");
-        setCurrentChannel(null);
-        setParticipants([]);
-        setLocalParticipant(null);
-      });
-
-      room.on(RoomEvent.Reconnecting, () => {
-        if (connectionGenerationRef.current !== generation) return;
-        setConnectionState("connecting");
-      });
-
-      room.on(RoomEvent.ParticipantConnected, () => {
-        if (connectionGenerationRef.current !== generation) return;
-        syncParticipants(room);
-      });
-
-      room.on(RoomEvent.ParticipantDisconnected, () => {
-        if (connectionGenerationRef.current !== generation) return;
-        syncParticipants(room);
-      });
-
-      await room.connect(tokenData.livekit_url, tokenData.token);
-
-      if (connectionGenerationRef.current !== generation) {
-        void room.disconnect();
-        if (roomRef.current === room) {
-          roomRef.current = null;
-        }
-      }
+      pendingRoomNameRef.current = tokenData.room_name;
+      activeConnectionRef.current = true;
+      setConnectionDetails(toConnectionDetails(tokenData));
     } catch {
       if (connectionGenerationRef.current === generation) {
         setConnectionState("error");
       }
     }
-  }, [setConnectionState, setCurrentChannel]);
+  }, [setConnectionState]);
 
   const disconnect = useCallback(async () => {
     connectionGenerationRef.current += 1;
-    if (roomRef.current) {
-      await roomRef.current.disconnect();
-      roomRef.current = null;
-    }
+    activeConnectionRef.current = false;
+    pendingRoomNameRef.current = null;
+    setConnectionDetails(null);
     setConnectionState("disconnected");
     setCurrentChannel(null);
     setParticipants([]);
@@ -154,117 +105,69 @@ export function useVoiceConnection(
   }, [setConnectionState, setCurrentChannel]);
 
   const toggleMute = useCallback(async () => {
-    const room = roomRef.current;
-    if (!room) return;
-    const nextMuted = !isMutedRef.current;
-    try {
-      await room.localParticipant.setMicrophoneEnabled(!nextMuted);
-      storeToggleMute();
-    } catch {
-      setConnectionState("error");
-    }
-  }, [setConnectionState, storeToggleMute]);
+    // Media control is handled by components rendered under LiveKitRoom.
+  }, []);
 
   const toggleSpeakerMute = useCallback(() => {
-    const room = roomRef.current;
-    if (!room) return;
-    const nextSpeakerMuted = !isSpeakerMutedRef.current;
-    for (const participant of room.remoteParticipants.values()) {
-      for (const pub of participant.audioTrackPublications.values()) {
-        if (pub.audioTrack) {
-          pub.audioTrack.setMuted(nextSpeakerMuted);
-        }
-      }
-    }
-    storeToggleSpeakerMute();
-  }, [storeToggleSpeakerMute]);
+    // Speaker mute is handled by RoomAudioRenderer in the room component tree.
+  }, []);
+
+  const handleConnected = useCallback(() => {
+    if (!activeConnectionRef.current) return;
+    setConnectionState("connected");
+    setCurrentChannel(pendingRoomNameRef.current);
+  }, [setConnectionState, setCurrentChannel]);
+
+  const handleDisconnected = useCallback(() => {
+    if (!activeConnectionRef.current) return;
+    activeConnectionRef.current = false;
+    pendingRoomNameRef.current = null;
+    setConnectionDetails(null);
+    setConnectionState("disconnected");
+    setCurrentChannel(null);
+    setParticipants([]);
+    setLocalParticipant(null);
+  }, [setConnectionState, setCurrentChannel]);
+
+  const handleError = useCallback(
+    (_error: Error) => {
+      if (!activeConnectionRef.current) return;
+      activeConnectionRef.current = false;
+      setConnectionDetails(null);
+      pendingRoomNameRef.current = null;
+      setConnectionState("error");
+      setCurrentChannel(null);
+    },
+    [setConnectionState, setCurrentChannel],
+  );
 
   useEffect(() => {
     if (!autoConnect) return;
-
-    let stale = false;
-
-    const run = async () => {
-      if (roomRef.current) {
-        await roomRef.current.disconnect();
-        roomRef.current = null;
-      }
-
-      setConnectionState("connecting");
-
-      try {
-        const { sessionId: sid, roomId: rid, roomType: rt, roomName: rn } = optsRef.current;
-        const tokenData = await voiceApi.getTokenForTarget({
-          sessionId: sid,
-          roomId: rid,
-          roomType: rt,
-          roomName: rn,
-        });
-
-        if (stale) return;
-
-        const room = new Room();
-        roomRef.current = room;
-
-        room.on(RoomEvent.Connected, () => {
-          if (stale) return;
-          setConnectionState("connected");
-          setCurrentChannel(tokenData.room_name);
-          syncParticipants(room);
-        });
-
-        room.on(RoomEvent.Disconnected, () => {
-          setConnectionState("disconnected");
-          setCurrentChannel(null);
-          setParticipants([]);
-          setLocalParticipant(null);
-        });
-
-        room.on(RoomEvent.Reconnecting, () => {
-          setConnectionState("connecting");
-        });
-
-        room.on(RoomEvent.ParticipantConnected, () => {
-          syncParticipants(room);
-        });
-
-        room.on(RoomEvent.ParticipantDisconnected, () => {
-          syncParticipants(room);
-        });
-
-        await room.connect(tokenData.livekit_url, tokenData.token);
-
-        if (stale) {
-          void room.disconnect();
-          roomRef.current = null;
-        }
-      } catch {
-        if (!stale) {
-          setConnectionState("error");
-        }
-      }
-    };
-
-    void run();
+    void connect();
 
     return () => {
-      stale = true;
-      if (roomRef.current) {
-        void roomRef.current.disconnect();
-        roomRef.current = null;
-      }
-      setConnectionState("disconnected");
+      void disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoConnect, sessionId, roomId, roomType, roomName]);
+  }, [autoConnect, connect, disconnect, sessionId, roomId, roomType, roomName]);
 
   return {
-    room: roomRef.current,
+    connectionDetails,
     participants,
     localParticipant,
     connect,
     disconnect,
     toggleMute,
     toggleSpeakerMute,
+    handleConnected,
+    handleDisconnected,
+    handleError,
+  };
+}
+
+function toConnectionDetails(tokenData: TokenResponse): VoiceConnectionDetails {
+  return {
+    token: tokenData.token,
+    roomName: tokenData.room_name,
+    serverUrl: tokenData.livekit_url,
   };
 }
