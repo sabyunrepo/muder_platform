@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,11 @@ const (
 	mediaTypeImage = "IMAGE"
 	sourceTypeFile = "FILE"
 	mediaURLTTL    = 15 * time.Minute
+)
+const (
+	imageVariantMaster    = "master"
+	imageVariantPreview   = "preview"
+	imageVariantThumbnail = "thumbnail"
 )
 
 // ThemeSummary is the compact representation used in list endpoints.
@@ -187,23 +193,61 @@ func (s *service) resolveCharacterImageURL(ctx context.Context, themeID uuid.UUI
 	if media.Type != mediaTypeImage || media.SourceType != sourceTypeFile || !media.StorageKey.Valid {
 		return currentURL
 	}
-	if _, err := s.storage.HeadObject(ctx, media.StorageKey.String); err != nil {
-		if errors.Is(err, storage.ErrObjectNotFound) {
-			s.logger.Warn().Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("character image media object not found")
+
+	for _, key := range characterImageCandidateKeys(media.ThemeID, media.ID, media.StorageKey.String) {
+		if _, err := s.storage.HeadObject(ctx, key); err != nil {
+			if errors.Is(err, storage.ErrObjectNotFound) {
+				continue
+			}
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", key).Msg("character image media verification cancelled")
+				return currentURL
+			}
+			s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", key).Msg("failed to verify character image media")
+			continue
+		}
+		url, err := s.storage.GenerateDownloadURL(ctx, key, mediaURLTTL)
+		if err != nil {
+			s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", key).Msg("failed to generate character image URL")
 			return currentURL
 		}
-		s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("failed to verify character image media")
-		return currentURL
+		if url == "" {
+			return currentURL
+		}
+		return &url
 	}
-	url, err := s.storage.GenerateDownloadURL(ctx, media.StorageKey.String, mediaURLTTL)
-	if err != nil {
-		s.logger.Warn().Err(err).Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("failed to generate character image URL")
-		return currentURL
+
+	s.logger.Warn().Stringer("media_id", id).Str("storage_key", media.StorageKey.String).Msg("character image media object not found")
+	return currentURL
+}
+
+func characterImageCandidateKeys(themeID, mediaID uuid.UUID, storageKey string) []string {
+	return dedupeStrings([]string{
+		characterImageVariantKey(themeID, mediaID, imageVariantPreview),
+		characterImageVariantKey(themeID, mediaID, imageVariantMaster),
+		characterImageVariantKey(themeID, mediaID, imageVariantThumbnail),
+		storageKey,
+	})
+}
+
+func characterImageVariantKey(themeID, mediaID uuid.UUID, variant string) string {
+	return fmt.Sprintf("themes/%s/media/%s/%s.webp", themeID.String(), mediaID.String(), variant)
+}
+
+func dedupeStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if value == "" {
+			continue
+		}
+		if _, ok := seen[value]; ok {
+			continue
+		}
+		seen[value] = struct{}{}
+		out = append(out, value)
 	}
-	if url == "" {
-		return currentURL
-	}
-	return &url
+	return out
 }
 
 func pgUUIDToStringPtr(value pgtype.UUID) *string {
