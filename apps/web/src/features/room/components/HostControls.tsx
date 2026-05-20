@@ -111,16 +111,17 @@ export function HostControls({
         variant="primary"
         size="lg"
         leftIcon={<Play className="h-5 w-5" />}
-        disabled={!canStart}
+        disabled={isStarting}
         isLoading={isStarting}
         onClick={onStartGame}
         className="w-full"
+        aria-describedby={!canStart ? 'host-start-client-checks' : undefined}
       >
         게임 시작
       </Button>
 
       {!canStart && (
-        <p className="text-center text-xs text-[var(--mmp-color-steel)]">
+        <p id="host-start-client-checks" className="text-center text-xs text-[var(--mmp-color-steel)]">
           {!hasMinPlayers
             ? '최소 인원이 충족되지 않았습니다.'
             : !allCharactersSelected

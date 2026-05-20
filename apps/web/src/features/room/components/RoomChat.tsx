@@ -68,14 +68,14 @@ export function RoomChat({ roomId, send, headerActions }: RoomChatProps) {
 
   return (
     <Panel padding="none" className="flex h-full flex-col overflow-hidden">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--mmp-color-hairline)] p-3">
-        <div>
+      <div className="flex flex-col items-stretch gap-3 border-b border-[var(--mmp-color-hairline)] p-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 sm:flex-1">
           <h2 className="text-base font-semibold text-[var(--mmp-color-ink)]">대기방 채팅</h2>
-          <p className="mt-1 text-xs text-[var(--mmp-color-steel)]">
+          <p className="mt-1 break-words text-xs text-[var(--mmp-color-steel)]">
             음성 상태를 보면서 메시지를 주고받습니다.
           </p>
         </div>
-        {headerActions && <div className="min-w-0">{headerActions}</div>}
+        {headerActions && <div className="min-w-0 max-w-full sm:w-auto">{headerActions}</div>}
       </div>
 
       {/* 메시지 영역 */}
@@ -87,19 +87,19 @@ export function RoomChat({ roomId, send, headerActions }: RoomChatProps) {
         ) : (
           <div className="flex flex-col gap-2">
             {messages.map((msg, i) => (
-              <div key={`${msg.sender}-${msg.ts}-${i}`} className="flex flex-col">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold text-[var(--mmp-color-primary)]">
+              <div key={`${msg.sender}-${msg.ts}-${i}`} className="flex min-w-0 flex-col">
+                <div className="flex min-w-0 items-baseline gap-2">
+                  <span className="min-w-0 max-w-[70%] truncate text-xs font-semibold text-[var(--mmp-color-primary)]">
                     {msg.nickname}
                   </span>
-                  <span className="text-[10px] text-[var(--mmp-color-steel)]">
+                  <span className="shrink-0 text-[10px] text-[var(--mmp-color-steel)]">
                     {new Date(msg.ts).toLocaleTimeString("ko-KR", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
                   </span>
                 </div>
-                <p className="text-sm text-[var(--mmp-color-charcoal)]">{msg.text}</p>
+                <p className="break-words text-sm text-[var(--mmp-color-charcoal)]">{msg.text}</p>
               </div>
             ))}
             <div ref={messagesEndRef} />
@@ -109,7 +109,7 @@ export function RoomChat({ roomId, send, headerActions }: RoomChatProps) {
 
       {/* 입력 폼 */}
       <div className="flex items-center gap-2 border-t border-[var(--mmp-color-hairline)] p-3">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Input
             placeholder="메시지를 입력하세요..."
             value={inputText}

@@ -69,7 +69,6 @@ export default function RoomPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore(selectUser);
-  const participantVoiceStates = useVoiceStore(selectParticipantVoiceStates);
 
   // 방 정보 쿼리
   const { data: room, isLoading, isError, refetch } = useRoom(id ?? '');
@@ -130,24 +129,6 @@ export default function RoomPage() {
   const playerNameById = useMemo(
     () => new Map(players.map((player) => [player.user_id, player.nickname])),
     [players]
-  );
-  const speakingPlayerIds = useMemo(
-    () =>
-      new Set(
-        players
-          .filter((player) => participantVoiceStates[player.user_id]?.isSpeaking)
-          .map((player) => player.user_id)
-      ),
-    [participantVoiceStates, players]
-  );
-  const mutedPlayerIds = useMemo(
-    () =>
-      new Set(
-        players
-          .filter((player) => participantVoiceStates[player.user_id]?.isMuted)
-          .map((player) => player.user_id)
-      ),
-    [participantVoiceStates, players]
   );
   const selectedByOtherPlayerIds = useMemo(
     () =>
@@ -276,7 +257,7 @@ export default function RoomPage() {
         </div>
 
         {/* 데스크톱 3영역 레이아웃 / 모바일 탭 전환 */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(260px,0.85fr)_minmax(360px,1.15fr)_minmax(320px,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(280px,0.9fr)_minmax(0,1.1fr)] xl:grid-cols-[minmax(260px,0.85fr)_minmax(360px,1.15fr)_minmax(320px,1fr)]">
           {/* 참가자 상태 */}
           <section
             aria-labelledby="room-participants-heading"
@@ -294,13 +275,11 @@ export default function RoomPage() {
                   준비 상태와 캐릭터 선택을 한 번에 확인합니다.
                 </p>
               </div>
-              <PlayerList
+              <VoiceAwarePlayerList
                 players={players}
                 maxPlayers={room.max_players}
                 characterNameById={characterNameById}
                 currentUserId={currentUser?.id}
-                speakingPlayerIds={speakingPlayerIds}
-                mutedPlayerIds={mutedPlayerIds}
               />
             </Panel>
 
@@ -332,6 +311,7 @@ export default function RoomPage() {
                   leftIcon={<LogOut className="h-4 w-4" />}
                   onClick={handleLeave}
                   isLoading={leaveRoom.isPending}
+                  aria-label="방 나가기"
                 >
                   나가기
                 </Button>
@@ -390,14 +370,14 @@ export default function RoomPage() {
           {/* 채팅 + 음성 */}
           <section
             aria-labelledby="room-communication-heading"
-            className={`flex flex-col gap-4 ${
+            className={`flex flex-col gap-4 lg:col-span-2 xl:col-span-1 ${
               mobileTab !== 'chat' ? 'hidden md:flex' : 'flex'
             }`}
           >
             <h2 id="room-communication-heading" className="sr-only">
               채팅과 음성
             </h2>
-            <div className="h-[420px] lg:h-[560px]">
+            <div className="h-[560px] md:h-[420px] lg:h-[460px] xl:h-[560px]">
               <RoomChat
                 roomId={id}
                 send={send}
@@ -420,5 +400,48 @@ export default function RoomPage() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+function VoiceAwarePlayerList({
+  players,
+  maxPlayers,
+  characterNameById,
+  currentUserId,
+}: {
+  players: Parameters<typeof PlayerList>[0]['players'];
+  maxPlayers: number;
+  characterNameById: Map<string, string>;
+  currentUserId?: string;
+}) {
+  const participantVoiceStates = useVoiceStore(selectParticipantVoiceStates);
+  const speakingPlayerIds = useMemo(
+    () =>
+      new Set(
+        players
+          .filter((player) => participantVoiceStates[player.user_id]?.isSpeaking)
+          .map((player) => player.user_id)
+      ),
+    [participantVoiceStates, players]
+  );
+  const mutedPlayerIds = useMemo(
+    () =>
+      new Set(
+        players
+          .filter((player) => participantVoiceStates[player.user_id]?.isMuted)
+          .map((player) => player.user_id)
+      ),
+    [participantVoiceStates, players]
+  );
+
+  return (
+    <PlayerList
+      players={players}
+      maxPlayers={maxPlayers}
+      characterNameById={characterNameById}
+      currentUserId={currentUserId}
+      speakingPlayerIds={speakingPlayerIds}
+      mutedPlayerIds={mutedPlayerIds}
+    />
   );
 }

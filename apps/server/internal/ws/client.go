@@ -44,6 +44,7 @@ type Client struct {
 	conn       *websocket.Conn
 	hub        ClientHub
 	send       chan []byte
+	sendMu     sync.RWMutex
 	seq        uint64 // monotonic server sequence number (atomic)
 	closed     atomic.Bool
 	logger     zerolog.Logger
@@ -216,6 +217,9 @@ func (c *Client) SendMessage(env *Envelope) {
 	}
 
 	// Double-check after marshal — Close() may have fired in the meantime.
+	c.sendMu.RLock()
+	defer c.sendMu.RUnlock()
+
 	if c.closed.Load() {
 		return
 	}
@@ -239,6 +243,8 @@ func (c *Client) Close() {
 		if c.cancel != nil {
 			c.cancel()
 		}
+		c.sendMu.Lock()
+		defer c.sendMu.Unlock()
 		close(c.send)
 		if c.conn != nil {
 			_ = c.conn.Close()
