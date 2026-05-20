@@ -3,6 +3,7 @@ package theme
 import (
 	"context"
 	"io"
+	"reflect"
 	"testing"
 	"time"
 
@@ -76,6 +77,8 @@ type fakePublicThemeStorage struct {
 	urls       map[string]string
 	existing   map[string]bool
 	headErrors map[string]error
+	headKeys   []string
+	urlKeys    []string
 	headCalls  int
 	urlCalls   int
 }
@@ -86,6 +89,7 @@ func (f fakePublicThemeStorage) GenerateUploadURL(context.Context, string, strin
 
 func (f *fakePublicThemeStorage) GenerateDownloadURL(_ context.Context, key string, _ time.Duration) (string, error) {
 	f.urlCalls++
+	f.urlKeys = append(f.urlKeys, key)
 	return f.urls[key], nil
 }
 
@@ -95,6 +99,7 @@ func (*fakePublicThemeStorage) PutObject(context.Context, string, io.Reader, str
 
 func (f *fakePublicThemeStorage) HeadObject(_ context.Context, key string) (*storage.ObjectMeta, error) {
 	f.headCalls++
+	f.headKeys = append(f.headKeys, key)
 	if err := f.headErrors[key]; err != nil {
 		return nil, err
 	}
@@ -114,6 +119,59 @@ func (*fakePublicThemeStorage) DeleteObject(context.Context, string) error {
 
 func (*fakePublicThemeStorage) DeleteObjects(context.Context, []string) error {
 	return nil
+}
+
+func TestGetCharactersResolvesImageMediaPreviewVariantURL(t *testing.T) {
+	themeID := uuid.New()
+	mediaID := uuid.New()
+	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".png"
+	previewKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + "/preview.webp"
+	downloadURL := "https://cdn.example.test/" + previewKey
+
+	q := &fakePublicThemeQueries{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{{
+			ID:           uuid.New(),
+			ThemeID:      themeID,
+			Name:         "Playable",
+			ImageMediaID: pgUUID(mediaID),
+		}},
+		media: map[uuid.UUID]db.ThemeMedium{
+			mediaID: {
+				ID:         mediaID,
+				ThemeID:    themeID,
+				Type:       "IMAGE",
+				SourceType: "FILE",
+				StorageKey: pgtype.Text{String: storageKey, Valid: true},
+			},
+		},
+	}
+	fakeStorage := &fakePublicThemeStorage{
+		urls:     map[string]string{previewKey: downloadURL},
+		existing: map[string]bool{previewKey: true},
+	}
+	svc := &service{
+		queries: q,
+		storage: fakeStorage,
+		logger:  zerolog.Nop(),
+	}
+
+	chars, err := svc.GetCharacters(context.Background(), themeID)
+	if err != nil {
+		t.Fatalf("GetCharacters returned error: %v", err)
+	}
+	if len(chars) != 1 {
+		t.Fatalf("len(chars) = %d, want 1", len(chars))
+	}
+	if chars[0].ImageURL == nil || *chars[0].ImageURL != downloadURL {
+		t.Fatalf("image_url = %v, want preview variant %q", chars[0].ImageURL, downloadURL)
+	}
+	if fakeStorage.urlCalls != 1 || fakeStorage.urlKeys[0] != previewKey {
+		t.Fatalf("GenerateDownloadURL calls=%d keys=%v, want once for preview", fakeStorage.urlCalls, fakeStorage.urlKeys)
+	}
+	if !reflect.DeepEqual(fakeStorage.headKeys, []string{previewKey}) {
+		t.Fatalf("HeadObject keys = %v, want preview only", fakeStorage.headKeys)
+	}
 }
 
 func TestGetCharactersResolvesImageMediaURL(t *testing.T) {
@@ -167,11 +225,20 @@ func TestGetCharactersResolvesImageMediaURL(t *testing.T) {
 	if chars[0].ImageURL == nil || *chars[0].ImageURL != downloadURL {
 		t.Fatalf("image_url = %v, want %q", chars[0].ImageURL, downloadURL)
 	}
-	if fakeStorage.headCalls != 1 {
-		t.Fatalf("HeadObject calls = %d, want 1", fakeStorage.headCalls)
+	if fakeStorage.headCalls != 4 {
+		t.Fatalf("HeadObject calls = %d, want 4", fakeStorage.headCalls)
 	}
 	if fakeStorage.urlCalls != 1 {
 		t.Fatalf("GenerateDownloadURL calls = %d, want 1", fakeStorage.urlCalls)
+	}
+	expectedHeadKeys := []string{
+		"themes/" + themeID.String() + "/media/" + mediaID.String() + "/preview.webp",
+		"themes/" + themeID.String() + "/media/" + mediaID.String() + "/master.webp",
+		"themes/" + themeID.String() + "/media/" + mediaID.String() + "/thumbnail.webp",
+		storageKey,
+	}
+	if !reflect.DeepEqual(fakeStorage.headKeys, expectedHeadKeys) {
+		t.Fatalf("HeadObject keys = %v, want %v", fakeStorage.headKeys, expectedHeadKeys)
 	}
 }
 
@@ -298,8 +365,58 @@ func TestGetCharactersFallsBackWhenImageObjectMissing(t *testing.T) {
 	if chars[0].ImageURL != nil {
 		t.Fatalf("image_url = %v, want nil fallback for missing object", *chars[0].ImageURL)
 	}
-	if fakeStorage.headCalls != 1 {
-		t.Fatalf("HeadObject calls = %d, want 1", fakeStorage.headCalls)
+	if fakeStorage.headCalls != 4 {
+		t.Fatalf("HeadObject calls = %d, want 4", fakeStorage.headCalls)
+	}
+	if fakeStorage.urlCalls != 0 {
+		t.Fatalf("GenerateDownloadURL calls = %d, want 0", fakeStorage.urlCalls)
+	}
+}
+
+func TestGetCharactersStopsResolvingImageMediaOnRequestCancellation(t *testing.T) {
+	themeID := uuid.New()
+	mediaID := uuid.New()
+	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".png"
+	previewKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + "/preview.webp"
+	q := &fakePublicThemeQueries{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{{
+			ID:           uuid.New(),
+			ThemeID:      themeID,
+			Name:         "Playable",
+			ImageMediaID: pgUUID(mediaID),
+		}},
+		media: map[uuid.UUID]db.ThemeMedium{
+			mediaID: {
+				ID:         mediaID,
+				ThemeID:    themeID,
+				Type:       "IMAGE",
+				SourceType: "FILE",
+				StorageKey: pgtype.Text{String: storageKey, Valid: true},
+			},
+		},
+	}
+	fakeStorage := &fakePublicThemeStorage{
+		headErrors: map[string]error{previewKey: context.Canceled},
+	}
+	svc := &service{
+		queries: q,
+		storage: fakeStorage,
+		logger:  zerolog.Nop(),
+	}
+
+	chars, err := svc.GetCharacters(context.Background(), themeID)
+	if err != nil {
+		t.Fatalf("GetCharacters returned error: %v", err)
+	}
+	if len(chars) != 1 {
+		t.Fatalf("len(chars) = %d, want 1", len(chars))
+	}
+	if chars[0].ImageURL != nil {
+		t.Fatalf("image_url = %v, want nil fallback for cancelled request", *chars[0].ImageURL)
+	}
+	if !reflect.DeepEqual(fakeStorage.headKeys, []string{previewKey}) {
+		t.Fatalf("HeadObject keys = %v, want cancellation to stop after preview", fakeStorage.headKeys)
 	}
 	if fakeStorage.urlCalls != 0 {
 		t.Fatalf("GenerateDownloadURL calls = %d, want 0", fakeStorage.urlCalls)
