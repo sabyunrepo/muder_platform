@@ -31,6 +31,14 @@ type fakeRoomQueries struct {
 	charactersErr            error
 	character                db.ThemeCharacter
 	characterErr             error
+	users                    map[uuid.UUID]db.User
+	userErr                  error
+	friendships              map[uuid.UUID]db.Friendship
+	friendshipErr            error
+	blockedUsers             map[uuid.UUID]bool
+	blockErr                 error
+	gameInvitePrefs          map[uuid.UUID]bool
+	notificationPrefsErr     error
 	setReadyParams           *db.SetPlayerReadyParams
 	setReadyErr              error
 	setCharacterParams       *db.SetRoomPlayerCharacterParams
@@ -94,6 +102,52 @@ func (f *fakeRoomQueries) GetThemeCharacters(context.Context, uuid.UUID) ([]db.T
 
 func (f *fakeRoomQueries) GetThemeCharacter(context.Context, uuid.UUID) (db.ThemeCharacter, error) {
 	return f.character, f.characterErr
+}
+
+func (f *fakeRoomQueries) GetUser(_ context.Context, id uuid.UUID) (db.User, error) {
+	if f.userErr != nil {
+		return db.User{}, f.userErr
+	}
+	if f.users != nil {
+		if user, ok := f.users[id]; ok {
+			return user, nil
+		}
+	}
+	return db.User{}, pgx.ErrNoRows
+}
+
+func (f *fakeRoomQueries) GetFriendshipBetween(_ context.Context, arg db.GetFriendshipBetweenParams) (db.Friendship, error) {
+	if f.friendshipErr != nil {
+		return db.Friendship{}, f.friendshipErr
+	}
+	if f.friendships != nil {
+		if friendship, ok := f.friendships[arg.AddresseeID]; ok {
+			return friendship, nil
+		}
+		if friendship, ok := f.friendships[arg.RequesterID]; ok {
+			return friendship, nil
+		}
+	}
+	return db.Friendship{}, pgx.ErrNoRows
+}
+
+func (f *fakeRoomQueries) IsBlocked(_ context.Context, arg db.IsBlockedParams) (bool, error) {
+	if f.blockErr != nil {
+		return false, f.blockErr
+	}
+	return f.blockedUsers[arg.BlockedID], nil
+}
+
+func (f *fakeRoomQueries) GetNotificationPrefs(_ context.Context, userID uuid.UUID) (db.NotificationPreference, error) {
+	if f.notificationPrefsErr != nil {
+		return db.NotificationPreference{}, f.notificationPrefsErr
+	}
+	if f.gameInvitePrefs != nil {
+		if enabled, ok := f.gameInvitePrefs[userID]; ok {
+			return db.NotificationPreference{UserID: userID, GameInvite: enabled}, nil
+		}
+	}
+	return db.NotificationPreference{}, pgx.ErrNoRows
 }
 
 func (f *fakeRoomQueries) ListWaitingRoomsWithCount(context.Context, db.ListWaitingRoomsWithCountParams) ([]db.ListWaitingRoomsWithCountRow, error) {

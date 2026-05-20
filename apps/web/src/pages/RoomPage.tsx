@@ -18,6 +18,7 @@ import { Alert, Button, LoadingState, PageShell } from '@/shared/components/ui';
 import {
   PlayerList,
   RoomHeader,
+  RoomInvitePanel,
   HostControls,
   RoomChat,
   CharacterSelectionPanel,
@@ -257,6 +258,9 @@ export default function RoomPage() {
               maxPlayers={room.max_players}
               characterNameById={characterNameById}
             />
+            {id && room.status.toLowerCase() === 'waiting' && (
+              <RoomInvitePanel roomId={id} isHost={isHost} />
+            )}
             {currentPlayer && (
               <CharacterSelectionPanel
                 characters={themeCharacters.data ?? []}

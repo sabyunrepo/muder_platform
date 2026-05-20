@@ -9,6 +9,7 @@ const {
   refetchMock,
   sendMock,
   useRoomMock,
+  useInviteRoomFriendsMock,
   useLeaveRoomMock,
   useSelectRoomCharacterMock,
   useSetReadyMock,
@@ -20,6 +21,7 @@ const {
   refetchMock: vi.fn(),
   sendMock: vi.fn(),
   useRoomMock: vi.fn(),
+  useInviteRoomFriendsMock: vi.fn(),
   useLeaveRoomMock: vi.fn(),
   useSelectRoomCharacterMock: vi.fn(),
   useSetReadyMock: vi.fn(),
@@ -39,11 +41,37 @@ vi.mock('react-router', async () => {
 
 vi.mock('@/features/lobby/api', () => ({
   useRoom: () => useRoomMock(),
+  useInviteRoomFriends: () => useInviteRoomFriendsMock(),
   useLeaveRoom: () => useLeaveRoomMock(),
   useSelectRoomCharacter: () => useSelectRoomCharacterMock(),
   useSetReady: () => useSetReadyMock(),
   useStartRoom: () => useStartRoomMock(),
   useThemeCharacters: (themeId: string) => useThemeCharactersMock(themeId),
+}));
+
+vi.mock('@/features/social/api', () => ({
+  useFriends: () => ({
+    data: [
+      {
+        id: 'friend-1',
+        nickname: '민재',
+        avatar_url: null,
+        role: 'user',
+        friendship_id: 'friendship-1',
+        since: '2026-05-19T00:00:00Z',
+      },
+      {
+        id: 'friend-2',
+        nickname: '하윤',
+        avatar_url: null,
+        role: 'user',
+        friendship_id: 'friendship-2',
+        since: '2026-05-19T00:00:00Z',
+      },
+    ],
+    isLoading: false,
+    isError: false,
+  }),
 }));
 
 vi.mock('@/hooks/useWsClient', () => ({
@@ -145,6 +173,9 @@ function mockRoomPage(
     selectMutate?: ReturnType<typeof vi.fn>;
     startMutate?: ReturnType<typeof vi.fn>;
     leaveMutate?: ReturnType<typeof vi.fn>;
+    inviteMutate?: ReturnType<typeof vi.fn>;
+    inviteData?: unknown;
+    invitePending?: boolean;
     readyPending?: boolean;
     startPending?: boolean;
   } = {}
@@ -158,6 +189,11 @@ function mockRoomPage(
   useLeaveRoomMock.mockReturnValue({
     mutate: overrides.leaveMutate ?? vi.fn(),
     isPending: false,
+  });
+  useInviteRoomFriendsMock.mockReturnValue({
+    mutate: overrides.inviteMutate ?? vi.fn(),
+    data: overrides.inviteData,
+    isPending: overrides.invitePending ?? false,
   });
   useThemeCharactersMock.mockReturnValue({
     data: baseCharacters,
@@ -416,5 +452,59 @@ describe('RoomPage pregame controls', () => {
     fireEvent.click(startButton);
 
     expect(startMutate).not.toHaveBeenCalled();
+  });
+
+  it('호스트는 대기방에서 친구를 선택해 방 초대를 보낼 수 있다', () => {
+    const inviteMutate = vi.fn();
+    useAuthStore.setState({
+      user: { id: 'host-1', email: 'host@example.com', nickname: '호스트', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage({ inviteMutate });
+
+    renderRoom();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /민재/ }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /하윤/ }));
+    fireEvent.click(screen.getByRole('button', { name: /선택한 친구 초대/ }));
+
+    expect(inviteMutate).toHaveBeenCalledWith({
+      roomId: 'room-1',
+      friend_ids: ['friend-1', 'friend-2'],
+    });
+  });
+
+  it('초대 성공 후 전송/건너뜀 결과 수를 표시한다', () => {
+    useAuthStore.setState({
+      user: { id: 'host-1', email: 'host@example.com', nickname: '호스트', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage({
+      inviteData: {
+        sent: [{ friend_id: 'friend-1', nickname: '민재', online: true }],
+        skipped: [{ friend_id: 'friend-2', reason: 'already_in_room' }],
+      },
+    });
+
+    renderRoom();
+
+    expect(screen.getByText('초대 1명 전송, 1명 건너뜀')).toBeInTheDocument();
+  });
+
+  it('초대 응답의 sent/skipped가 null이어도 결과 영역이 깨지지 않는다', () => {
+    useAuthStore.setState({
+      user: { id: 'host-1', email: 'host@example.com', nickname: '호스트', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage({
+      inviteData: {
+        sent: null,
+        skipped: null,
+      },
+    });
+
+    renderRoom();
+
+    expect(screen.getByText('초대 0명 전송, 0명 건너뜀')).toBeInTheDocument();
   });
 });

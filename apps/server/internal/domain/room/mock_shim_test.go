@@ -32,6 +32,7 @@ type mockService struct {
 	leaveRoomFn      func(ctx context.Context, roomID, userID uuid.UUID) error
 	setReadyFn       func(ctx context.Context, roomID, userID uuid.UUID, ready bool) error
 	selectCharFn     func(ctx context.Context, roomID, userID uuid.UUID, req SelectCharacterRequest) error
+	inviteFriendsFn  func(ctx context.Context, roomID, inviterID uuid.UUID, req RoomInviteRequest) (*RoomInviteResponse, error)
 	startRoomFn      func(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error
 }
 
@@ -96,6 +97,13 @@ func (m *mockService) SelectCharacter(ctx context.Context, roomID, userID uuid.U
 		return m.selectCharFn(ctx, roomID, userID, req)
 	}
 	return nil
+}
+
+func (m *mockService) InviteFriends(ctx context.Context, roomID, inviterID uuid.UUID, req RoomInviteRequest) (*RoomInviteResponse, error) {
+	if m.inviteFriendsFn != nil {
+		return m.inviteFriendsFn(ctx, roomID, inviterID, req)
+	}
+	return &RoomInviteResponse{}, nil
 }
 
 func (m *mockService) StartRoom(ctx context.Context, roomID, hostID uuid.UUID, req StartRoomRequest) error {

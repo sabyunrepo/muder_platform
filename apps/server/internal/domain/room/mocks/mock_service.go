@@ -102,6 +102,21 @@ func (mr *MockServiceMockRecorder) GetRoomForUser(ctx, roomID, userID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRoomForUser", reflect.TypeOf((*MockService)(nil).GetRoomForUser), ctx, roomID, userID)
 }
 
+// InviteFriends mocks base method.
+func (m *MockService) InviteFriends(ctx context.Context, roomID, inviterID uuid.UUID, req room.RoomInviteRequest) (*room.RoomInviteResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InviteFriends", ctx, roomID, inviterID, req)
+	ret0, _ := ret[0].(*room.RoomInviteResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// InviteFriends indicates an expected call of InviteFriends.
+func (mr *MockServiceMockRecorder) InviteFriends(ctx, roomID, inviterID, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InviteFriends", reflect.TypeOf((*MockService)(nil).InviteFriends), ctx, roomID, inviterID, req)
+}
+
 // JoinRoom mocks base method.
 func (m *MockService) JoinRoom(ctx context.Context, roomID, userID uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -223,4 +238,43 @@ func (m *MockGameStarter) Start(ctx context.Context, roomID, themeID uuid.UUID, 
 func (mr *MockGameStarterMockRecorder) Start(ctx, roomID, themeID, configJSON, players any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockGameStarter)(nil).Start), ctx, roomID, themeID, configJSON, players)
+}
+
+// MockRoomInviteNotifier is a mock of RoomInviteNotifier interface.
+type MockRoomInviteNotifier struct {
+	ctrl     *gomock.Controller
+	recorder *MockRoomInviteNotifierMockRecorder
+	isgomock struct{}
+}
+
+// MockRoomInviteNotifierMockRecorder is the mock recorder for MockRoomInviteNotifier.
+type MockRoomInviteNotifierMockRecorder struct {
+	mock *MockRoomInviteNotifier
+}
+
+// NewMockRoomInviteNotifier creates a new mock instance.
+func NewMockRoomInviteNotifier(ctrl *gomock.Controller) *MockRoomInviteNotifier {
+	mock := &MockRoomInviteNotifier{ctrl: ctrl}
+	mock.recorder = &MockRoomInviteNotifierMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRoomInviteNotifier) EXPECT() *MockRoomInviteNotifierMockRecorder {
+	return m.recorder
+}
+
+// NotifyRoomInvite mocks base method.
+func (m *MockRoomInviteNotifier) NotifyRoomInvite(ctx context.Context, userID uuid.UUID, payload room.RoomInviteNotification) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NotifyRoomInvite", ctx, userID, payload)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NotifyRoomInvite indicates an expected call of NotifyRoomInvite.
+func (mr *MockRoomInviteNotifierMockRecorder) NotifyRoomInvite(ctx, userID, payload any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NotifyRoomInvite", reflect.TypeOf((*MockRoomInviteNotifier)(nil).NotifyRoomInvite), ctx, userID, payload)
 }
