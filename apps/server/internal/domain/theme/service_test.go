@@ -117,7 +117,38 @@ func TestGetThemeBySlug_ReturnsPublishedThemeWithoutConfigJson(t *testing.T) {
 	}
 }
 
-func TestGetCharacters_UsesBackendDisplayResolverWithoutLeakingAliasRules(t *testing.T) {
+func TestListPublished_ReturnsPublishedThemesWithoutConfigJson(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupThemeFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID, _ := f.createThemeForUserWithStatus(t, creatorID, "PUBLISHED", json.RawMessage(`{"private":"published-runtime-config"}`))
+	f.createThemeForUserWithStatus(t, creatorID, "DRAFT", json.RawMessage(`{"private":"draft-runtime-config"}`))
+
+	svc := NewService(f.q, zerolog.Nop())
+	got, err := svc.ListPublished(ctx, 20, 0)
+	if err != nil {
+		t.Fatalf("ListPublished: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("published themes len = %d, want 1: %+v", len(got), got)
+	}
+	if got[0].ID != themeID {
+		t.Fatalf("theme id = %s, want %s", got[0].ID, themeID)
+	}
+
+	raw, err := json.Marshal(got)
+	if err != nil {
+		t.Fatalf("marshal themes: %v", err)
+	}
+	if jsonContainsKey(t, raw, "config_json") {
+		t.Fatalf("public theme list leaked config_json: %s", string(raw))
+	}
+}
+
+func TestGetCharacters_KeepsBaseDisplayWithoutAliasContextAndDoesNotLeakPrivateFields(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -151,6 +182,30 @@ func TestGetCharacters_UsesBackendDisplayResolverWithoutLeakingAliasRules(t *tes
 	}
 	if jsonContainsKey(t, raw, "alias_rules") || jsonContainsKey(t, raw, "mystery_role") || jsonContainsKey(t, raw, "is_culprit") {
 		t.Fatalf("public characters leaked private fields: %s", string(raw))
+	}
+}
+
+func TestGetCharacters_FiltersNonPlayableCharacters(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+	f := setupThemeFixture(t)
+	ctx := context.Background()
+	creatorID := f.createUser(t)
+	themeID, _ := f.createThemeForUserWithStatus(t, creatorID, "PUBLISHED", json.RawMessage(`{}`))
+	playableID := f.createCharacter(t, themeID, "플레이어 캐릭터", json.RawMessage(`[]`))
+	f.createCharacterWithPlayable(t, themeID, "NPC 캐릭터", false, json.RawMessage(`[]`))
+
+	svc := NewService(f.q, zerolog.Nop())
+	got, err := svc.GetCharacters(ctx, themeID)
+	if err != nil {
+		t.Fatalf("GetCharacters: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("characters len = %d, want 1: %+v", len(got), got)
+	}
+	if got[0].ID != playableID {
+		t.Fatalf("character id = %s, want %s", got[0].ID, playableID)
 	}
 }
 
@@ -209,10 +264,15 @@ func assertNotFound(t *testing.T, err error) {
 
 func (f *themeFixture) createCharacter(t *testing.T, themeID uuid.UUID, name string, aliasRules json.RawMessage) uuid.UUID {
 	t.Helper()
+	return f.createCharacterWithPlayable(t, themeID, name, true, aliasRules)
+}
+
+func (f *themeFixture) createCharacterWithPlayable(t *testing.T, themeID uuid.UUID, name string, isPlayable bool, aliasRules json.RawMessage) uuid.UUID {
+	t.Helper()
 	row, err := f.pool.Exec(context.Background(), `
-		INSERT INTO theme_characters (theme_id, name, alias_rules)
-		VALUES ($1, $2, $3)
-	`, themeID, name, aliasRules)
+		INSERT INTO theme_characters (theme_id, name, is_playable, alias_rules)
+		VALUES ($1, $2, $3, $4)
+	`, themeID, name, isPlayable, aliasRules)
 	if err != nil {
 		t.Fatalf("create character: %v", err)
 	}

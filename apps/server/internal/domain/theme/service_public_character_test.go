@@ -16,24 +16,52 @@ import (
 )
 
 type fakePublicThemeQueries struct {
-	theme      db.Theme
-	characters []db.ThemeCharacter
+	theme      db.GetPublishedThemeRow
+	characters []db.GetPublishedThemeCharactersRow
 	media      map[uuid.UUID]db.ThemeMedium
 }
 
-func (f *fakePublicThemeQueries) GetTheme(context.Context, uuid.UUID) (db.Theme, error) {
+func (f *fakePublicThemeQueries) GetPublishedTheme(context.Context, uuid.UUID) (db.GetPublishedThemeRow, error) {
 	return f.theme, nil
 }
 
-func (f *fakePublicThemeQueries) GetThemeBySlug(context.Context, string) (db.Theme, error) {
-	return f.theme, nil
+func (f *fakePublicThemeQueries) GetPublishedThemeBySlug(context.Context, string) (db.GetPublishedThemeBySlugRow, error) {
+	return db.GetPublishedThemeBySlugRow{
+		ID:          f.theme.ID,
+		CreatorID:   f.theme.CreatorID,
+		Title:       f.theme.Title,
+		Slug:        f.theme.Slug,
+		Description: f.theme.Description,
+		CoverImage:  f.theme.CoverImage,
+		MinPlayers:  f.theme.MinPlayers,
+		MaxPlayers:  f.theme.MaxPlayers,
+		DurationMin: f.theme.DurationMin,
+		Price:       f.theme.Price,
+		Status:      f.theme.Status,
+		Version:     f.theme.Version,
+		PublishedAt: f.theme.PublishedAt,
+		CreatedAt:   f.theme.CreatedAt,
+		CoinPrice:   f.theme.CoinPrice,
+	}, nil
 }
 
-func (f *fakePublicThemeQueries) ListPublishedThemes(context.Context, db.ListPublishedThemesParams) ([]db.Theme, error) {
-	return []db.Theme{f.theme}, nil
+func (f *fakePublicThemeQueries) ListPublishedThemes(context.Context, db.ListPublishedThemesParams) ([]db.ListPublishedThemesRow, error) {
+	return []db.ListPublishedThemesRow{{
+		ID:          f.theme.ID,
+		CreatorID:   f.theme.CreatorID,
+		Title:       f.theme.Title,
+		Slug:        f.theme.Slug,
+		Description: f.theme.Description,
+		CoverImage:  f.theme.CoverImage,
+		MinPlayers:  f.theme.MinPlayers,
+		MaxPlayers:  f.theme.MaxPlayers,
+		DurationMin: f.theme.DurationMin,
+		Price:       f.theme.Price,
+		CoinPrice:   f.theme.CoinPrice,
+	}}, nil
 }
 
-func (f *fakePublicThemeQueries) GetThemeCharacters(context.Context, uuid.UUID) ([]db.ThemeCharacter, error) {
+func (f *fakePublicThemeQueries) GetPublishedThemeCharacters(context.Context, uuid.UUID) ([]db.GetPublishedThemeCharactersRow, error) {
 	return f.characters, nil
 }
 
@@ -88,31 +116,22 @@ func (*fakePublicThemeStorage) DeleteObjects(context.Context, []string) error {
 	return nil
 }
 
-func TestGetCharactersFiltersNonPlayableAndResolvesImageMediaURL(t *testing.T) {
+func TestGetCharactersResolvesImageMediaURL(t *testing.T) {
 	themeID := uuid.New()
 	playableID := uuid.New()
-	npcID := uuid.New()
 	mediaID := uuid.New()
 	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".png"
 	downloadURL := "https://cdn.example.test/" + storageKey
 
 	q := &fakePublicThemeQueries{
-		theme: db.Theme{ID: themeID, Status: publishedStatus},
-		characters: []db.ThemeCharacter{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{
 			{
 				ID:           playableID,
 				ThemeID:      themeID,
 				Name:         "Playable",
-				IsPlayable:   true,
 				SortOrder:    1,
 				ImageMediaID: pgUUID(mediaID),
-			},
-			{
-				ID:         npcID,
-				ThemeID:    themeID,
-				Name:       "NPC",
-				IsPlayable: false,
-				SortOrder:  2,
 			},
 		},
 		media: map[uuid.UUID]db.ThemeMedium{
@@ -161,12 +180,11 @@ func TestGetCharactersPreservesExistingImageURL(t *testing.T) {
 	mediaID := uuid.New()
 	existingURL := "https://static.example.test/character.png"
 	q := &fakePublicThemeQueries{
-		theme: db.Theme{ID: themeID, Status: publishedStatus},
-		characters: []db.ThemeCharacter{{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{{
 			ID:           uuid.New(),
 			ThemeID:      themeID,
 			Name:         "Playable",
-			IsPlayable:   true,
 			ImageUrl:     pgtype.Text{String: existingURL, Valid: true},
 			ImageMediaID: pgUUID(mediaID),
 		}},
@@ -212,12 +230,11 @@ func TestGetCharactersKeepsCharacterWhenImageMediaMissing(t *testing.T) {
 	themeID := uuid.New()
 	mediaID := uuid.New()
 	q := &fakePublicThemeQueries{
-		theme: db.Theme{ID: themeID, Status: publishedStatus},
-		characters: []db.ThemeCharacter{{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{{
 			ID:           uuid.New(),
 			ThemeID:      themeID,
 			Name:         "Playable",
-			IsPlayable:   true,
 			ImageMediaID: pgUUID(mediaID),
 		}},
 		media: map[uuid.UUID]db.ThemeMedium{},
@@ -245,12 +262,11 @@ func TestGetCharactersFallsBackWhenImageObjectMissing(t *testing.T) {
 	mediaID := uuid.New()
 	storageKey := "themes/" + themeID.String() + "/media/" + mediaID.String() + ".png"
 	q := &fakePublicThemeQueries{
-		theme: db.Theme{ID: themeID, Status: publishedStatus},
-		characters: []db.ThemeCharacter{{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{{
 			ID:           uuid.New(),
 			ThemeID:      themeID,
 			Name:         "Playable",
-			IsPlayable:   true,
 			ImageMediaID: pgUUID(mediaID),
 		}},
 		media: map[uuid.UUID]db.ThemeMedium{
@@ -296,12 +312,11 @@ func TestGetCharactersFallsBackWhenImageMediaBelongsToAnotherTheme(t *testing.T)
 	mediaID := uuid.New()
 	storageKey := "themes/" + otherThemeID.String() + "/media/" + mediaID.String() + ".png"
 	q := &fakePublicThemeQueries{
-		theme: db.Theme{ID: themeID, Status: publishedStatus},
-		characters: []db.ThemeCharacter{{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{{
 			ID:           uuid.New(),
 			ThemeID:      themeID,
 			Name:         "Playable",
-			IsPlayable:   true,
 			ImageMediaID: pgUUID(mediaID),
 		}},
 		media: map[uuid.UUID]db.ThemeMedium{

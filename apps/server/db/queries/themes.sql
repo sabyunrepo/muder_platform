@@ -1,15 +1,70 @@
 -- name: GetTheme :one
 SELECT * FROM themes WHERE id = $1;
 
+-- name: GetPublishedTheme :one
+SELECT
+  id,
+  creator_id,
+  title,
+  slug,
+  description,
+  cover_image,
+  min_players,
+  max_players,
+  duration_min,
+  price,
+  status,
+  version,
+  published_at,
+  created_at,
+  coin_price
+FROM themes
+WHERE id = $1 AND status = 'PUBLISHED';
+
 -- name: GetThemeBySlug :one
 SELECT * FROM themes WHERE slug = $1;
+
+-- name: GetPublishedThemeBySlug :one
+SELECT
+  id,
+  creator_id,
+  title,
+  slug,
+  description,
+  cover_image,
+  min_players,
+  max_players,
+  duration_min,
+  price,
+  status,
+  version,
+  published_at,
+  created_at,
+  coin_price
+FROM themes
+WHERE slug = $1 AND status = 'PUBLISHED';
 
 -- name: ListThemesByCreator :many
 SELECT id, title, status, min_players, max_players, coin_price, version, created_at
 FROM themes WHERE creator_id = $1 ORDER BY created_at DESC;
 
 -- name: ListPublishedThemes :many
-SELECT * FROM themes WHERE status = 'PUBLISHED' ORDER BY published_at DESC LIMIT $1 OFFSET $2;
+SELECT
+  id,
+  creator_id,
+  title,
+  slug,
+  description,
+  cover_image,
+  min_players,
+  max_players,
+  duration_min,
+  price,
+  coin_price
+FROM themes
+WHERE status = 'PUBLISHED'
+ORDER BY published_at DESC
+LIMIT $1 OFFSET $2;
 
 -- name: CreateTheme :one
 INSERT INTO themes (creator_id, title, slug, description, cover_image, min_players, max_players, duration_min, price, coin_price, config_json)
@@ -17,12 +72,31 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING *;
 
 -- name: UpdateThemeStatus :one
-UPDATE themes SET status = $2::varchar, published_at = CASE WHEN $2::varchar = 'PUBLISHED' THEN NOW() ELSE published_at END, updated_at = NOW()
-WHERE id = $1
+UPDATE themes
+SET status = sqlc.arg('status')::varchar,
+    published_at = CASE WHEN sqlc.arg('status')::varchar = 'PUBLISHED' THEN NOW() ELSE published_at END,
+    updated_at = NOW()
+WHERE id = sqlc.arg('id')
 RETURNING *;
 
 -- name: GetThemeCharacters :many
 SELECT * FROM theme_characters WHERE theme_id = $1 ORDER BY sort_order;
+
+-- name: GetPublishedThemeCharacters :many
+SELECT
+  c.id,
+  c.theme_id,
+  c.name,
+  c.description,
+  c.image_url,
+  c.sort_order,
+  c.image_media_id
+FROM theme_characters c
+JOIN themes t ON t.id = c.theme_id
+WHERE c.theme_id = $1
+  AND t.status = 'PUBLISHED'
+  AND c.is_playable = TRUE
+ORDER BY c.sort_order;
 
 -- name: CreateThemeCharacter :one
 INSERT INTO theme_characters (

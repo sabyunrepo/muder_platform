@@ -142,56 +142,56 @@ func (mr *MockthemeQueriesMockRecorder) GetMedia(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedia", reflect.TypeOf((*MockthemeQueries)(nil).GetMedia), ctx, id)
 }
 
-// GetTheme mocks base method.
-func (m *MockthemeQueries) GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error) {
+// GetPublishedTheme mocks base method.
+func (m *MockthemeQueries) GetPublishedTheme(ctx context.Context, id uuid.UUID) (db.GetPublishedThemeRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTheme", ctx, id)
-	ret0, _ := ret[0].(db.Theme)
+	ret := m.ctrl.Call(m, "GetPublishedTheme", ctx, id)
+	ret0, _ := ret[0].(db.GetPublishedThemeRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetTheme indicates an expected call of GetTheme.
-func (mr *MockthemeQueriesMockRecorder) GetTheme(ctx, id any) *gomock.Call {
+// GetPublishedTheme indicates an expected call of GetPublishedTheme.
+func (mr *MockthemeQueriesMockRecorder) GetPublishedTheme(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTheme", reflect.TypeOf((*MockthemeQueries)(nil).GetTheme), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublishedTheme", reflect.TypeOf((*MockthemeQueries)(nil).GetPublishedTheme), ctx, id)
 }
 
-// GetThemeBySlug mocks base method.
-func (m *MockthemeQueries) GetThemeBySlug(ctx context.Context, slug string) (db.Theme, error) {
+// GetPublishedThemeBySlug mocks base method.
+func (m *MockthemeQueries) GetPublishedThemeBySlug(ctx context.Context, slug string) (db.GetPublishedThemeBySlugRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetThemeBySlug", ctx, slug)
-	ret0, _ := ret[0].(db.Theme)
+	ret := m.ctrl.Call(m, "GetPublishedThemeBySlug", ctx, slug)
+	ret0, _ := ret[0].(db.GetPublishedThemeBySlugRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetThemeBySlug indicates an expected call of GetThemeBySlug.
-func (mr *MockthemeQueriesMockRecorder) GetThemeBySlug(ctx, slug any) *gomock.Call {
+// GetPublishedThemeBySlug indicates an expected call of GetPublishedThemeBySlug.
+func (mr *MockthemeQueriesMockRecorder) GetPublishedThemeBySlug(ctx, slug any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetThemeBySlug", reflect.TypeOf((*MockthemeQueries)(nil).GetThemeBySlug), ctx, slug)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublishedThemeBySlug", reflect.TypeOf((*MockthemeQueries)(nil).GetPublishedThemeBySlug), ctx, slug)
 }
 
-// GetThemeCharacters mocks base method.
-func (m *MockthemeQueries) GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.ThemeCharacter, error) {
+// GetPublishedThemeCharacters mocks base method.
+func (m *MockthemeQueries) GetPublishedThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.GetPublishedThemeCharactersRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetThemeCharacters", ctx, themeID)
-	ret0, _ := ret[0].([]db.ThemeCharacter)
+	ret := m.ctrl.Call(m, "GetPublishedThemeCharacters", ctx, themeID)
+	ret0, _ := ret[0].([]db.GetPublishedThemeCharactersRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetThemeCharacters indicates an expected call of GetThemeCharacters.
-func (mr *MockthemeQueriesMockRecorder) GetThemeCharacters(ctx, themeID any) *gomock.Call {
+// GetPublishedThemeCharacters indicates an expected call of GetPublishedThemeCharacters.
+func (mr *MockthemeQueriesMockRecorder) GetPublishedThemeCharacters(ctx, themeID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetThemeCharacters", reflect.TypeOf((*MockthemeQueries)(nil).GetThemeCharacters), ctx, themeID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublishedThemeCharacters", reflect.TypeOf((*MockthemeQueries)(nil).GetPublishedThemeCharacters), ctx, themeID)
 }
 
 // ListPublishedThemes mocks base method.
-func (m *MockthemeQueries) ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.Theme, error) {
+func (m *MockthemeQueries) ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.ListPublishedThemesRow, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListPublishedThemes", ctx, arg)
-	ret0, _ := ret[0].([]db.Theme)
+	ret0, _ := ret[0].([]db.ListPublishedThemesRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
