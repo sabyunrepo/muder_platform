@@ -75,6 +75,29 @@ func (h *Handler) GetRoom(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, resp)
 }
 
+// GetRoomForCurrentUser handles GET /rooms/{id}/me (authenticated participant).
+func (h *Handler) GetRoomForCurrentUser(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	roomID, err := uuid.Parse(idStr)
+	if err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid room ID"))
+		return
+	}
+
+	resp, err := h.svc.GetRoomForUser(r.Context(), roomID, userID)
+	if err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, resp)
+}
+
 // GetRoomByCode handles GET /rooms/code/{code} (public).
 func (h *Handler) GetRoomByCode(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
@@ -161,6 +184,34 @@ func (h *Handler) SetReady(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready updated"})
+}
+
+// SelectCharacter handles PUT /rooms/{id}/character (authenticated).
+func (h *Handler) SelectCharacter(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.UserIDFrom(r.Context())
+	if userID == uuid.Nil {
+		apperror.WriteError(w, r, apperror.Unauthorized("authentication required"))
+		return
+	}
+
+	idStr := chi.URLParam(r, "id")
+	roomID, err := uuid.Parse(idStr)
+	if err != nil {
+		apperror.WriteError(w, r, apperror.BadRequest("invalid room ID"))
+		return
+	}
+
+	var req SelectCharacterRequest
+	if err := httputil.ReadJSON(r, &req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+
+	if err := h.svc.SelectCharacter(r.Context(), roomID, userID, req); err != nil {
+		apperror.WriteError(w, r, err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]string{"status": "character selected"})
 }
 
 // StartRoom handles POST /rooms/{id}/start (authenticated, host only).

@@ -19,9 +19,11 @@ type roomQueries interface {
 	GetRoomPlayers(ctx context.Context, roomID uuid.UUID) ([]db.RoomPlayer, error)
 	GetRoomPlayersWithUser(ctx context.Context, roomID uuid.UUID) ([]db.GetRoomPlayersWithUserRow, error)
 	GetTheme(ctx context.Context, id uuid.UUID) (db.Theme, error)
+	GetThemeCharacter(ctx context.Context, id uuid.UUID) (db.ThemeCharacter, error)
 	GetThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.ThemeCharacter, error)
 	ListWaitingRoomsWithCount(ctx context.Context, arg db.ListWaitingRoomsWithCountParams) ([]db.ListWaitingRoomsWithCountRow, error)
 	RemoveRoomPlayer(ctx context.Context, arg db.RemoveRoomPlayerParams) error
+	SetRoomPlayerCharacter(ctx context.Context, arg db.SetRoomPlayerCharacterParams) (int64, error)
 	SetPlayerReady(ctx context.Context, arg db.SetPlayerReadyParams) error
 	UpdateRoomStatus(ctx context.Context, arg db.UpdateRoomStatusParams) error
 	WithTx(tx pgx.Tx) *db.Queries

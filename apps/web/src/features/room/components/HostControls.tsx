@@ -1,5 +1,5 @@
-import { Play, XCircle } from "lucide-react";
-import { Button } from "@/shared/components/ui";
+import { Play, XCircle } from 'lucide-react';
+import { Button } from '@/shared/components/ui';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,6 +12,8 @@ interface HostControlsProps {
   allReady: boolean;
   /** 최소 인원 충족 여부 */
   hasMinPlayers: boolean;
+  /** 전원 캐릭터 선택 여부 */
+  allCharactersSelected: boolean;
   /** 게임 시작 핸들러 */
   onStartGame: () => void;
   /** 방 닫기 핸들러 */
@@ -30,6 +32,7 @@ export function HostControls({
   isHost,
   allReady,
   hasMinPlayers,
+  allCharactersSelected,
   onStartGame,
   onCloseRoom,
   isStarting = false,
@@ -38,7 +41,7 @@ export function HostControls({
   // 호스트가 아니면 렌더링하지 않음
   if (!isHost) return null;
 
-  const canStart = allReady && hasMinPlayers;
+  const canStart = allReady && hasMinPlayers && allCharactersSelected;
 
   return (
     <div className="flex flex-col gap-2 pt-2">
@@ -57,15 +60,15 @@ export function HostControls({
       {!canStart && (
         <p className="text-center text-xs text-[var(--mmp-color-steel)]">
           {!hasMinPlayers
-            ? "최소 인원이 충족되지 않았습니다."
-            : "모든 참가자가 준비해야 시작할 수 있습니다."}
+            ? '최소 인원이 충족되지 않았습니다.'
+            : !allCharactersSelected
+              ? '모든 참가자가 캐릭터를 선택해야 시작할 수 있습니다.'
+              : '모든 참가자가 준비해야 시작할 수 있습니다.'}
         </p>
       )}
 
       {startErrorMessage && (
-        <p className="text-center text-xs text-[var(--mmp-color-error)]">
-          {startErrorMessage}
-        </p>
+        <p className="text-center text-xs text-[var(--mmp-color-error)]">{startErrorMessage}</p>
       )}
 
       <Button

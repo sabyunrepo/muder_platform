@@ -232,11 +232,13 @@ func TestValidateStartGate_MinPlayersNotMet(t *testing.T) {
 
 func TestValidateStartGate_NonHostNotReady(t *testing.T) {
 	hostID := uuid.New()
+	hostCharID := uuid.New()
+	guestCharID := uuid.New()
 	room := db.Room{HostID: hostID, Status: "WAITING"}
 	theme := db.Theme{MinPlayers: 2}
 	players := []db.RoomPlayer{
-		{UserID: hostID, IsReady: true},
-		{UserID: uuid.New(), IsReady: false},
+		{UserID: hostID, CharacterID: pgtype.UUID{Bytes: hostCharID, Valid: true}, IsReady: true},
+		{UserID: uuid.New(), CharacterID: pgtype.UUID{Bytes: guestCharID, Valid: true}, IsReady: false},
 	}
 
 	err := validateStartGate(room, theme, players)
@@ -245,11 +247,13 @@ func TestValidateStartGate_NonHostNotReady(t *testing.T) {
 
 func TestValidateStartGate_HostReadyIgnored(t *testing.T) {
 	hostID := uuid.New()
+	hostCharID := uuid.New()
+	guestCharID := uuid.New()
 	room := db.Room{HostID: hostID, Status: "WAITING"}
 	theme := db.Theme{MinPlayers: 2}
 	players := []db.RoomPlayer{
-		{UserID: hostID, IsReady: false},
-		{UserID: uuid.New(), IsReady: true},
+		{UserID: hostID, CharacterID: pgtype.UUID{Bytes: hostCharID, Valid: true}, IsReady: false},
+		{UserID: uuid.New(), CharacterID: pgtype.UUID{Bytes: guestCharID, Valid: true}, IsReady: true},
 	}
 
 	if err := validateStartGate(room, theme, players); err != nil {
@@ -262,14 +266,27 @@ func TestValidateStartGate_AllNonHostReadyPasses(t *testing.T) {
 	room := db.Room{HostID: hostID, Status: "WAITING"}
 	theme := db.Theme{MinPlayers: 3}
 	players := []db.RoomPlayer{
-		{UserID: hostID},
-		{UserID: uuid.New(), IsReady: true},
-		{UserID: uuid.New(), IsReady: true},
+		{UserID: hostID, CharacterID: pgtype.UUID{Bytes: uuid.New(), Valid: true}},
+		{UserID: uuid.New(), CharacterID: pgtype.UUID{Bytes: uuid.New(), Valid: true}, IsReady: true},
+		{UserID: uuid.New(), CharacterID: pgtype.UUID{Bytes: uuid.New(), Valid: true}, IsReady: true},
 	}
 
 	if err := validateStartGate(room, theme, players); err != nil {
 		t.Fatalf("expected start gate to pass, got %v", err)
 	}
+}
+
+func TestValidateStartGate_AllPlayersNeedCharacter(t *testing.T) {
+	hostID := uuid.New()
+	room := db.Room{HostID: hostID, Status: "WAITING"}
+	theme := db.Theme{MinPlayers: 2}
+	players := []db.RoomPlayer{
+		{UserID: hostID, IsReady: false},
+		{UserID: uuid.New(), CharacterID: pgtype.UUID{Bytes: uuid.New(), Valid: true}, IsReady: true},
+	}
+
+	err := validateStartGate(room, theme, players)
+	assertAppError(t, err, http.StatusConflict)
 }
 
 func assertAppError(t *testing.T, err error, status int) {

@@ -1,35 +1,39 @@
-import { Crown, CheckCircle, Circle, UserPlus } from "lucide-react";
-import { Card, Badge } from "@/shared/components/ui";
+import { Crown, CheckCircle, Circle, UserPlus } from 'lucide-react';
+import { Card, Badge } from '@/shared/components/ui';
+import type { RoomPlayer } from '@/features/lobby/api';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-interface RoomPlayer {
-  id?: string;
-  user_id: string;
-  nickname: string;
-  avatar_url?: string | null;
-  is_host: boolean;
-  is_ready: boolean;
-  joined_at?: string;
-}
-
 interface PlayerListProps {
   players: RoomPlayer[];
   maxPlayers: number;
+  characterNameById?: Map<string, string>;
 }
 
 // ---------------------------------------------------------------------------
 // 플레이어 카드
 // ---------------------------------------------------------------------------
 
-function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
+function PlayerCard({
+  player,
+  index,
+  characterName,
+}: {
+  player: RoomPlayer;
+  index: number;
+  characterName?: string;
+}) {
   return (
     <Card
       className="motion-safe:animate-fade-slide-up flex items-center gap-3 p-3"
       style={
-        { "--stagger-index": index, animationDelay: `calc(var(--stagger-index) * 50ms)`, animationFillMode: "backwards" } as React.CSSProperties
+        {
+          '--stagger-index': index,
+          animationDelay: `calc(var(--stagger-index) * 50ms)`,
+          animationFillMode: 'backwards',
+        } as React.CSSProperties
       }
     >
       {/* 아바타 */}
@@ -41,9 +45,7 @@ function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
             className="h-full w-full rounded-full object-cover"
           />
         ) : (
-          <span className="text-sm font-bold">
-            {player.nickname.charAt(0).toUpperCase()}
-          </span>
+          <span className="text-sm font-bold">{player.nickname.charAt(0).toUpperCase()}</span>
         )}
       </div>
 
@@ -56,6 +58,11 @@ function PlayerCard({ player, index }: { player: RoomPlayer; index: number }) {
           <Badge variant="warning" size="sm">
             <Crown className="mr-1 h-3 w-3" />
             호스트
+          </Badge>
+        )}
+        {characterName && (
+          <Badge variant="info" size="sm">
+            {characterName}
           </Badge>
         )}
       </div>
@@ -89,13 +96,20 @@ function EmptySlot() {
 // PlayerList
 // ---------------------------------------------------------------------------
 
-export function PlayerList({ players, maxPlayers }: PlayerListProps) {
+export function PlayerList({ players, maxPlayers, characterNameById }: PlayerListProps) {
   const emptySlots = Math.max(0, maxPlayers - players.length);
 
   return (
     <div className="flex flex-col gap-2">
       {players.map((player, index) => (
-        <PlayerCard key={player.id ?? player.user_id} player={player} index={index} />
+        <PlayerCard
+          key={player.id ?? player.user_id}
+          player={player}
+          index={index}
+          characterName={
+            player.character_id ? characterNameById?.get(player.character_id) : undefined
+          }
+        />
       ))}
       {Array.from({ length: emptySlots }, (_, i) => (
         <EmptySlot key={`empty-${i}`} />

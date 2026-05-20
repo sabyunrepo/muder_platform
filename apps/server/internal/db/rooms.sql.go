@@ -348,6 +348,30 @@ func (q *Queries) SetPlayerReady(ctx context.Context, arg SetPlayerReadyParams) 
 	return err
 }
 
+const setRoomPlayerCharacter = `-- name: SetRoomPlayerCharacter :execrows
+UPDATE room_players
+SET character_id = $3
+FROM rooms
+WHERE room_players.room_id = $1
+  AND room_players.user_id = $2
+  AND rooms.id = room_players.room_id
+  AND rooms.status = 'WAITING'
+`
+
+type SetRoomPlayerCharacterParams struct {
+	RoomID      uuid.UUID   `json:"room_id"`
+	UserID      uuid.UUID   `json:"user_id"`
+	CharacterID pgtype.UUID `json:"character_id"`
+}
+
+func (q *Queries) SetRoomPlayerCharacter(ctx context.Context, arg SetRoomPlayerCharacterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRoomPlayerCharacter, arg.RoomID, arg.UserID, arg.CharacterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateRoomStatus = `-- name: UpdateRoomStatus :exec
 UPDATE rooms SET status = $2, updated_at = NOW() WHERE id = $1
 `

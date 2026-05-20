@@ -1,6 +1,6 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { api } from "@/services/api";
-import { queryClient } from "@/services/queryClient";
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { api } from '@/services/api';
+import { queryClient } from '@/services/queryClient';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +37,15 @@ export interface ThemeRole {
   is_murderer: boolean;
 }
 
+export interface ThemeCharacterSummary {
+  id: string;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  image_media_id?: string | null;
+  sort_order: number;
+}
+
 export interface RoomResponse {
   id: string;
   code: string;
@@ -56,6 +65,10 @@ export interface RoomDetailResponse extends RoomResponse {
   theme?: ThemeSummary | null;
 }
 
+export interface PublicRoomLookupResponse extends RoomResponse {
+  theme?: ThemeSummary | null;
+}
+
 export interface RoomPlayer {
   id?: string;
   user_id: string;
@@ -63,6 +76,7 @@ export interface RoomPlayer {
   avatar_url?: string | null;
   is_host: boolean;
   is_ready: boolean;
+  character_id?: string | null;
   joined_at?: string;
 }
 
@@ -76,6 +90,11 @@ export interface SetReadyRequest {
   is_ready: boolean;
 }
 
+export interface SelectRoomCharacterRequest {
+  roomId: string;
+  characterId: string;
+}
+
 export interface PaginationParams {
   limit?: number;
   offset?: number;
@@ -86,18 +105,17 @@ export interface PaginationParams {
 // ---------------------------------------------------------------------------
 
 export const themeKeys = {
-  all: ["themes"] as const,
-  list: (params?: PaginationParams) =>
-    [...themeKeys.all, "list", params ?? {}] as const,
+  all: ['themes'] as const,
+  list: (params?: PaginationParams) => [...themeKeys.all, 'list', params ?? {}] as const,
   detail: (id: string) => [...themeKeys.all, id] as const,
+  characters: (id: string) => [...themeKeys.all, id, 'characters'] as const,
 };
 
 export const roomKeys = {
-  all: ["rooms"] as const,
-  list: (params?: PaginationParams) =>
-    [...roomKeys.all, "list", params ?? {}] as const,
+  all: ['rooms'] as const,
+  list: (params?: PaginationParams) => [...roomKeys.all, 'list', params ?? {}] as const,
   detail: (id: string) => [...roomKeys.all, id] as const,
-  byCode: (code: string) => [...roomKeys.all, "code", code] as const,
+  byCode: (code: string) => [...roomKeys.all, 'code', code] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -106,13 +124,13 @@ export const roomKeys = {
 
 export function useThemes(params?: PaginationParams) {
   const searchParams = new URLSearchParams();
-  if (params?.limit != null) searchParams.set("limit", String(params.limit));
-  if (params?.offset != null) searchParams.set("offset", String(params.offset));
+  if (params?.limit != null) searchParams.set('limit', String(params.limit));
+  if (params?.offset != null) searchParams.set('offset', String(params.offset));
   const qs = searchParams.toString();
 
   return useQuery<ThemeSummary[]>({
     queryKey: themeKeys.list(params),
-    queryFn: () => api.get<ThemeSummary[]>(`/v1/themes${qs ? `?${qs}` : ""}`),
+    queryFn: () => api.get<ThemeSummary[]>(`/v1/themes${qs ? `?${qs}` : ''}`),
   });
 }
 
@@ -124,34 +142,42 @@ export function useTheme(id: string) {
   });
 }
 
+export function useThemeCharacters(themeId: string) {
+  return useQuery<ThemeCharacterSummary[]>({
+    queryKey: themeKeys.characters(themeId),
+    queryFn: () => api.get<ThemeCharacterSummary[]>(`/v1/themes/${themeId}/characters`),
+    enabled: !!themeId,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Room Queries
 // ---------------------------------------------------------------------------
 
 export function useRooms(params?: PaginationParams) {
   const searchParams = new URLSearchParams();
-  if (params?.limit != null) searchParams.set("limit", String(params.limit));
-  if (params?.offset != null) searchParams.set("offset", String(params.offset));
+  if (params?.limit != null) searchParams.set('limit', String(params.limit));
+  if (params?.offset != null) searchParams.set('offset', String(params.offset));
   const qs = searchParams.toString();
 
   return useQuery<RoomResponse[]>({
     queryKey: roomKeys.list(params),
-    queryFn: () => api.get<RoomResponse[]>(`/v1/rooms${qs ? `?${qs}` : ""}`),
+    queryFn: () => api.get<RoomResponse[]>(`/v1/rooms${qs ? `?${qs}` : ''}`),
   });
 }
 
 export function useRoom(id: string) {
   return useQuery<RoomDetailResponse>({
     queryKey: roomKeys.detail(id),
-    queryFn: () => api.get<RoomDetailResponse>(`/v1/rooms/${id}`),
+    queryFn: () => api.get<RoomDetailResponse>(`/v1/rooms/${id}/me`),
     enabled: !!id,
   });
 }
 
 export function useRoomByCode(code: string) {
-  return useQuery<RoomDetailResponse>({
+  return useQuery<PublicRoomLookupResponse>({
     queryKey: roomKeys.byCode(code),
-    queryFn: () => api.get<RoomDetailResponse>(`/v1/rooms/code/${code}`),
+    queryFn: () => api.get<PublicRoomLookupResponse>(`/v1/rooms/code/${code}`),
     enabled: !!code,
   });
 }
@@ -162,8 +188,7 @@ export function useRoomByCode(code: string) {
 
 export function useCreateRoom() {
   return useMutation<RoomDetailResponse, Error, CreateRoomRequest>({
-    mutationFn: (body) =>
-      api.post<RoomDetailResponse>("/v1/rooms", body),
+    mutationFn: (body) => api.post<RoomDetailResponse>('/v1/rooms', body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: roomKeys.all });
     },
@@ -172,8 +197,7 @@ export function useCreateRoom() {
 
 export function useJoinRoom() {
   return useMutation<unknown, Error, string>({
-    mutationFn: (roomId) =>
-      api.post<unknown>(`/v1/rooms/${roomId}/join`),
+    mutationFn: (roomId) => api.post<unknown>(`/v1/rooms/${roomId}/join`),
     onSuccess: (_data, roomId) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
       queryClient.invalidateQueries({ queryKey: roomKeys.list() });
@@ -195,6 +219,19 @@ export function useSetReady() {
   return useMutation<unknown, Error, SetReadyRequest>({
     mutationFn: ({ roomId, is_ready }) =>
       api.post<unknown>(`/v1/rooms/${roomId}/ready`, { is_ready }),
+    onSuccess: (_data, { roomId }) => {
+      queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
+      queryClient.invalidateQueries({ queryKey: roomKeys.list() });
+    },
+  });
+}
+
+export function useSelectRoomCharacter() {
+  return useMutation<unknown, Error, SelectRoomCharacterRequest>({
+    mutationFn: ({ roomId, characterId }) =>
+      api.put<unknown>(`/v1/rooms/${roomId}/character`, {
+        character_id: characterId,
+      }),
     onSuccess: (_data, { roomId }) => {
       queryClient.invalidateQueries({ queryKey: roomKeys.detail(roomId) });
       queryClient.invalidateQueries({ queryKey: roomKeys.list() });
