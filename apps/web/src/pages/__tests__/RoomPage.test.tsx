@@ -241,6 +241,24 @@ afterEach(() => {
 });
 
 describe('RoomPage pregame controls', () => {
+  it('데스크톱 대기방을 참가자 상태, 준비 설정, 채팅과 음성 영역으로 나눈다', () => {
+    useAuthStore.setState({
+      user: { id: 'user-1', email: 'user@example.com', nickname: '참가자', role: 'user' },
+      isAuthenticated: true,
+    });
+    mockRoomPage();
+
+    renderRoom();
+
+    expect(screen.getByRole('heading', { name: '참가자 상태' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '준비 설정' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '채팅과 음성' })).toBeInTheDocument();
+    expect(screen.getByText('준비 상태와 캐릭터 선택을 한 번에 확인합니다.')).toBeInTheDocument();
+    expect(screen.getAllByText('2/6').length).toBeGreaterThan(0);
+    expect(screen.getByText('2/2')).toBeInTheDocument();
+    expect(screen.getAllByText('준비 완료').length).toBeGreaterThan(0);
+  });
+
   it('현재 사용자의 준비 상태를 room.players에서 읽고 HTTP ready mutation에 is_ready를 보낸다', async () => {
     const readyMutate = vi.fn((_variables, options) => {
       options?.onSuccess?.();

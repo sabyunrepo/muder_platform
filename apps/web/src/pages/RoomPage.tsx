@@ -14,7 +14,7 @@ import { WsEventType } from '@mmp/shared';
 import { useWsClient } from '@/hooks/useWsClient';
 import { useWsEvent } from '@/hooks/useWsEvent';
 import { useAuthStore, selectUser } from '@/stores/authStore';
-import { Alert, Button, LoadingState, PageShell } from '@/shared/components/ui';
+import { Alert, Button, LoadingState, PageShell, Panel } from '@/shared/components/ui';
 import {
   PlayerList,
   RoomHeader,
@@ -114,10 +114,12 @@ export default function RoomPage() {
   const isHost = currentUser ? room?.host_id === currentUser.id : false;
   const nonHostPlayers = players.filter((p) => !p.is_host);
   const allReady = nonHostPlayers.length > 0 && nonHostPlayers.every((p) => p.is_ready);
+  const readyPlayerCount = nonHostPlayers.filter((p) => p.is_ready).length;
   const minPlayers = room?.theme?.min_players;
   const hasMinPlayers = minPlayers != null && players.length >= minPlayers;
   const allCharactersSelected =
     players.length > 0 && players.every((player) => Boolean(player.character_id));
+  const selectedCharacterCount = players.filter((player) => Boolean(player.character_id)).length;
   const characterNameById = useMemo(
     () => new Map((themeCharacters.data ?? []).map((character) => [character.id, character.name])),
     [themeCharacters.data]
@@ -216,7 +218,7 @@ export default function RoomPage() {
 
   return (
     <PageShell className="min-h-[calc(100vh-4rem)]">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
         {/* 헤더 */}
         <RoomHeader
           themeTitle={room.theme_title ?? room.theme?.title ?? '대기방'}
@@ -248,23 +250,87 @@ export default function RoomPage() {
           </Button>
         </div>
 
-        {/* 2컬럼 레이아웃 (데스크탑) / 탭 전환 (모바일) */}
-        <div className="grid gap-4 md:grid-cols-[1fr_1fr]">
-          {/* 왼쪽: 참가자 + 호스트 컨트롤 */}
-          <div
+        {/* 데스크톱 3영역 레이아웃 / 모바일 탭 전환 */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(260px,0.85fr)_minmax(360px,1.15fr)_minmax(320px,1fr)]">
+          {/* 참가자 상태 */}
+          <section
+            aria-labelledby="room-participants-heading"
             className={`flex flex-col gap-4 ${mobileTab !== 'players' ? 'hidden md:flex' : 'flex'}`}
           >
-            <PlayerList
-              players={players}
-              maxPlayers={room.max_players}
-              characterNameById={characterNameById}
-            />
-            {id && room.status.toLowerCase() === 'waiting' && (
-              <RoomInvitePanel roomId={id} isHost={isHost} />
-            )}
-            {id && (
-              <RoomVoicePanel roomId={id} isActive={room.status.toLowerCase() === 'waiting'} />
-            )}
+            <Panel className="flex flex-col gap-3">
+              <div>
+                <h2
+                  id="room-participants-heading"
+                  className="text-base font-semibold text-[var(--mmp-color-ink)]"
+                >
+                  참가자 상태
+                </h2>
+                <p className="mt-1 text-xs text-[var(--mmp-color-steel)]">
+                  준비 상태와 캐릭터 선택을 한 번에 확인합니다.
+                </p>
+              </div>
+              <PlayerList
+                players={players}
+                maxPlayers={room.max_players}
+                characterNameById={characterNameById}
+                currentUserId={currentUser?.id}
+              />
+            </Panel>
+
+            <Panel className="flex flex-col gap-3">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md border border-[var(--mmp-color-hairline)] px-2 py-2">
+                  <p className="text-xs text-[var(--mmp-color-steel)]">인원</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--mmp-color-ink)]">
+                    {players.length}/{room.max_players}
+                  </p>
+                </div>
+                <div className="rounded-md border border-[var(--mmp-color-hairline)] px-2 py-2">
+                  <p className="text-xs text-[var(--mmp-color-steel)]">준비</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--mmp-color-ink)]">
+                    {readyPlayerCount}/{nonHostPlayers.length}
+                  </p>
+                </div>
+                <div className="rounded-md border border-[var(--mmp-color-hairline)] px-2 py-2">
+                  <p className="text-xs text-[var(--mmp-color-steel)]">캐릭터</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--mmp-color-ink)]">
+                    {selectedCharacterCount}/{players.length}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  variant="ghost"
+                  leftIcon={<LogOut className="h-4 w-4" />}
+                  onClick={handleLeave}
+                  isLoading={leaveRoom.isPending}
+                >
+                  나가기
+                </Button>
+
+                {!isHost && (
+                  <Button
+                    variant={isReady ? 'secondary' : 'primary'}
+                    leftIcon={<Shield className="h-4 w-4" />}
+                    onClick={handleToggleReady}
+                    isLoading={setReady.isPending}
+                  >
+                    {isReady ? '준비 취소' : '준비 완료'}
+                  </Button>
+                )}
+              </div>
+            </Panel>
+          </section>
+
+          {/* 준비 설정 */}
+          <section
+            aria-labelledby="room-setup-heading"
+            className={`flex flex-col gap-4 ${mobileTab !== 'players' ? 'hidden md:flex' : 'flex'}`}
+          >
+            <h2 id="room-setup-heading" className="sr-only">
+              준비 설정
+            </h2>
             {currentPlayer && (
               <CharacterSelectionPanel
                 characters={themeCharacters.data ?? []}
@@ -285,40 +351,35 @@ export default function RoomPage() {
               onCloseRoom={handleCloseRoom}
               isStarting={startRoom.isPending}
               startErrorMessage={startErrorMessage}
+              playerCount={players.length}
+              minPlayers={minPlayers}
+              readyPlayerCount={readyPlayerCount}
+              readyTargetCount={nonHostPlayers.length}
+              selectedCharacterCount={selectedCharacterCount}
+              characterTargetCount={players.length}
             />
-          </div>
+          </section>
 
-          {/* 오른쪽: 채팅 */}
-          <div
-            className={`h-[400px] md:h-[500px] ${
-              mobileTab !== 'chat' ? 'hidden md:block' : 'block'
+          {/* 채팅 + 음성 */}
+          <section
+            aria-labelledby="room-communication-heading"
+            className={`flex flex-col gap-4 ${
+              mobileTab !== 'chat' ? 'hidden md:flex' : 'flex'
             }`}
           >
-            <RoomChat roomId={id} send={send} />
-          </div>
-        </div>
-
-        {/* 하단: 레디 + 나가기 */}
-        <div className="flex items-center justify-between gap-3 border-t border-[var(--mmp-color-hairline)] pt-4">
-          <Button
-            variant="ghost"
-            leftIcon={<LogOut className="h-4 w-4" />}
-            onClick={handleLeave}
-            isLoading={leaveRoom.isPending}
-          >
-            나가기
-          </Button>
-
-          {!isHost && (
-            <Button
-              variant={isReady ? 'secondary' : 'primary'}
-              leftIcon={<Shield className="h-4 w-4" />}
-              onClick={handleToggleReady}
-              isLoading={setReady.isPending}
-            >
-              {isReady ? '준비 취소' : '준비 완료'}
-            </Button>
-          )}
+            <h2 id="room-communication-heading" className="sr-only">
+              채팅과 음성
+            </h2>
+            <div className="h-[420px] lg:h-[560px]">
+              <RoomChat roomId={id} send={send} />
+            </div>
+            {id && (
+              <RoomVoicePanel roomId={id} isActive={room.status.toLowerCase() === 'waiting'} />
+            )}
+            {id && room.status.toLowerCase() === 'waiting' && (
+              <RoomInvitePanel roomId={id} isHost={isHost} />
+            )}
+          </section>
         </div>
       </div>
     </PageShell>

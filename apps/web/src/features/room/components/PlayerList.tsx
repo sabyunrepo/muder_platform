@@ -1,5 +1,5 @@
 import { Crown, CheckCircle, Circle, UserPlus } from 'lucide-react';
-import { Card, Badge } from '@/shared/components/ui';
+import { Badge } from '@/shared/components/ui';
 import type { RoomPlayer } from '@/features/lobby/api';
 
 // ---------------------------------------------------------------------------
@@ -10,6 +10,7 @@ interface PlayerListProps {
   players: RoomPlayer[];
   maxPlayers: number;
   characterNameById?: Map<string, string>;
+  currentUserId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -20,14 +21,18 @@ function PlayerCard({
   player,
   index,
   characterName,
+  isCurrentUser,
 }: {
   player: RoomPlayer;
   index: number;
   characterName?: string;
+  isCurrentUser?: boolean;
 }) {
+  const readyLabel = player.is_ready ? '준비 완료' : '미준비';
+
   return (
-    <Card
-      className="motion-safe:animate-fade-slide-up flex items-center gap-3 p-3"
+    <div
+      className="motion-safe:animate-fade-slide-up flex items-center gap-3 rounded-lg border border-[var(--mmp-color-hairline)] bg-[var(--mmp-color-surface)] p-3"
       style={
         {
           '--stagger-index': index,
@@ -49,31 +54,53 @@ function PlayerCard({
         )}
       </div>
 
-      {/* 닉네임 + 역할 */}
-      <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="truncate text-sm font-medium text-[var(--mmp-color-ink)]">
-          {player.nickname}
-        </span>
-        {player.is_host && (
-          <Badge variant="warning" size="sm">
-            <Crown className="mr-1 h-3 w-3" />
-            호스트
-          </Badge>
-        )}
-        {characterName && (
-          <Badge variant="info" size="sm">
-            {characterName}
-          </Badge>
-        )}
+      {/* 닉네임 + 상태 */}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-medium text-[var(--mmp-color-ink)]">
+            {player.nickname}
+          </span>
+          {isCurrentUser && (
+            <span className="text-[10px] font-medium text-[var(--mmp-color-primary)]">나</span>
+          )}
+          {player.is_host && (
+            <Badge variant="warning" size="sm">
+              <Crown className="mr-1 h-3 w-3" />
+              호스트
+            </Badge>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {characterName ? (
+            <Badge variant="info" size="sm">
+              {characterName}
+            </Badge>
+          ) : (
+            <Badge variant="default" size="sm">
+              캐릭터 미선택
+            </Badge>
+          )}
+          {!player.is_host && (
+            <Badge variant={player.is_ready ? 'success' : 'default'} size="sm">
+              {readyLabel}
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* 레디 상태 */}
       {player.is_host ? null : player.is_ready ? (
-        <CheckCircle className="h-5 w-5 shrink-0 text-[var(--mmp-color-success)]" />
+        <CheckCircle
+          aria-label={readyLabel}
+          className="h-5 w-5 shrink-0 text-[var(--mmp-color-success)]"
+        />
       ) : (
-        <Circle className="h-5 w-5 shrink-0 text-[var(--mmp-color-muted)]" />
+        <Circle
+          aria-label={readyLabel}
+          className="h-5 w-5 shrink-0 text-[var(--mmp-color-muted)]"
+        />
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -96,7 +123,12 @@ function EmptySlot() {
 // PlayerList
 // ---------------------------------------------------------------------------
 
-export function PlayerList({ players, maxPlayers, characterNameById }: PlayerListProps) {
+export function PlayerList({
+  players,
+  maxPlayers,
+  characterNameById,
+  currentUserId,
+}: PlayerListProps) {
   const emptySlots = Math.max(0, maxPlayers - players.length);
 
   return (
@@ -109,6 +141,7 @@ export function PlayerList({ players, maxPlayers, characterNameById }: PlayerLis
           characterName={
             player.character_id ? characterNameById?.get(player.character_id) : undefined
           }
+          isCurrentUser={player.user_id === currentUserId}
         />
       ))}
       {Array.from({ length: emptySlots }, (_, i) => (
