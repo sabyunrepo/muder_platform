@@ -72,4 +72,18 @@ describe('PlayerList', () => {
     expect(screen.queryByText('음소거')).not.toBeInTheDocument();
     expect(screen.queryByText('말하는 중')).not.toBeInTheDocument();
   });
+
+  it('renders voice speaking and mute states only when live voice state is supplied', () => {
+    render(
+      <PlayerList
+        players={players}
+        maxPlayers={3}
+        speakingPlayerIds={new Set(['user-1'])}
+        mutedPlayerIds={new Set(['user-2'])}
+      />
+    );
+
+    expect(screen.getByText('말하는 중')).toBeInTheDocument();
+    expect(screen.getByText('음소거')).toBeInTheDocument();
+  });
 });
