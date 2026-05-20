@@ -234,7 +234,7 @@ func generateRoomCode() (string, error) {
 	const maxValid = 248                             // 256 - (256 % 31) = 248, largest unbiased value
 	result := make([]byte, 6)
 	buf := make([]byte, 12) // over-provision to reduce Read calls
-	idx := 0
+	idx := len(buf)
 	for i := 0; i < len(result); {
 		if idx >= len(buf) {
 			if _, err := rand.Read(buf); err != nil {

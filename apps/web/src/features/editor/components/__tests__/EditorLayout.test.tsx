@@ -124,7 +124,7 @@ describe('EditorLayout', () => {
     fireEvent.click(screen.getByRole('button', { name: '검증' }));
     fireEvent.click(screen.getByRole('button', { name: '출판' }));
 
-    expect(onValidate).toHaveBeenCalledTimes(1);
+    expect(onValidate).toHaveBeenCalledTimes(2);
     expect(onPublish).toHaveBeenCalledTimes(1);
   });
 
@@ -210,6 +210,49 @@ describe('EditorLayout', () => {
 
     expect(mockSetActiveTab).toHaveBeenCalledWith('clues');
     expect(screen.queryByText('검증 결과: 1개 오류, 1개 경고')).toBeNull();
+  });
+
+  it('출판 클릭 시 검증 오류가 있으면 안내를 표시하고 출판을 호출하지 않는다', () => {
+    const onValidate = vi.fn(() => [
+      { type: 'error' as const, category: 'phases', message: '페이즈가 설정되지 않았습니다' },
+    ]);
+    const onPublish = vi.fn();
+
+    renderEditorLayout(
+      <EditorLayout
+        theme={baseTheme}
+        themeId="theme-1"
+        onValidate={onValidate}
+        onPublish={onPublish}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '출판' }));
+
+    expect(onValidate).toHaveBeenCalledTimes(1);
+    expect(onPublish).not.toHaveBeenCalled();
+    expect(screen.getByText('검증 결과: 1개 오류')).toBeDefined();
+    expect(screen.getByText('검증 오류를 먼저 해결해야 출판할 수 있습니다')).toBeDefined();
+  });
+
+  it('출판 클릭 시 검증 오류가 없으면 출판을 호출한다', () => {
+    const onValidate = vi.fn(() => []);
+    const onPublish = vi.fn();
+
+    renderEditorLayout(
+      <EditorLayout
+        theme={baseTheme}
+        themeId="theme-1"
+        onValidate={onValidate}
+        onPublish={onPublish}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '출판' }));
+
+    expect(onValidate).toHaveBeenCalledTimes(1);
+    expect(onPublish).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('검증 오류를 먼저 해결해야 출판할 수 있습니다')).toBeNull();
   });
 
   it('Ctrl+S와 Cmd+S 저장 단축키만 저장 액션을 실행한다', () => {

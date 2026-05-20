@@ -7,11 +7,22 @@ import {
   readCluePlacement,
   readEnabledModuleIds,
 } from '@/features/editor/utils/configShape';
+import type { FlowNodeResponse, FlowNodeType } from './flowTypes';
 
 export interface DesignWarning {
   type: 'warning' | 'error';
   category: 'phases' | 'clues' | 'characters' | 'modules' | 'clue_graph';
   message: string;
+}
+
+type FlowNodePhaseInput =
+  | Pick<FlowNodeResponse, 'type'>
+  | {
+      type?: FlowNodeType | string;
+    };
+
+export interface ValidateGameDesignOptions {
+  flowNodes?: FlowNodePhaseInput[];
 }
 
 /**
@@ -25,12 +36,15 @@ export function validateGameDesign(
   configJson: Record<string, unknown>,
   clueCount: number,
   characterCount: number,
+  options: ValidateGameDesignOptions = {},
 ): DesignWarning[] {
   const warnings: DesignWarning[] = [];
 
   // ── Phases ──────────────────────────────────────────────────────────────
   const phases = configJson['phases'];
-  if (!Array.isArray(phases) || phases.length === 0) {
+  const hasLegacyPhases = Array.isArray(phases) && phases.length > 0;
+  const hasSavedFlowPhase = (options.flowNodes ?? []).some((node) => node.type === 'phase');
+  if (!hasLegacyPhases && !hasSavedFlowPhase) {
     warnings.push({
       type: 'error',
       category: 'phases',

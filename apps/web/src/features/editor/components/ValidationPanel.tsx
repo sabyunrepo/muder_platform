@@ -9,11 +9,19 @@ import { editorDesignClassNames } from "@/features/editor/design-system/editorDe
 // ---------------------------------------------------------------------------
 
 const ERROR_TAB_MAP: Record<string, EditorTab> = {
-  phases: "design",
+  phases: "storyMap",
   modules: "design",
   clues: "clues",
   characters: "characters",
   clue_graph: "clues",
+};
+
+const ERROR_TAB_LABEL_MAP: Record<string, string> = {
+  phases: "스토리 진행",
+  modules: "게임 설계",
+  clues: "단서 관리",
+  characters: "등장인물 관리",
+  clue_graph: "단서 관리",
 };
 
 // ---------------------------------------------------------------------------
@@ -87,7 +95,7 @@ export function ValidationPanel({ warnings, onClose }: ValidationPanelProps) {
               <div className="flex flex-col">
                 <span className="text-xs text-[var(--mmp-editor-color-charcoal)]">{w.message}</span>
                 <span className="text-[10px] text-[var(--mmp-editor-color-steel)]">
-                  클릭하여 {ERROR_TAB_MAP[w.category] ?? w.category} 탭으로 이동
+                  클릭하여 {ERROR_TAB_LABEL_MAP[w.category] ?? w.category} 탭으로 이동
                 </span>
               </div>
             </button>

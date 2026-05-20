@@ -26,12 +26,12 @@ describe("ValidationPanel", () => {
     expect(screen.getByText(/검증 통과/)).toBeDefined();
   });
 
-  it("에러 클릭 시 해당 탭으로 이동한다", () => {
+  it("phase 에러 클릭 시 스토리 진행 탭으로 이동한다", () => {
     const onClose = vi.fn();
     const warnings = [makeWarning("error", "phases", "페이즈 없음")];
     render(<ValidationPanel warnings={warnings} onClose={onClose} />);
     fireEvent.click(screen.getByText("페이즈 없음"));
-    expect(mockSetActiveTab).toHaveBeenCalledWith("design");
+    expect(mockSetActiveTab).toHaveBeenCalledWith("storyMap");
     expect(onClose).toHaveBeenCalled();
   });
 
