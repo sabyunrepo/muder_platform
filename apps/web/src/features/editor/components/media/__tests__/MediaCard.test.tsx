@@ -66,8 +66,9 @@ describe("MediaCard", () => {
     expect(image).not.toBeNull();
     expect(image.getAttribute("src")).toBe("https://example.com/clue.webp");
     expect(image.className).toContain("object-contain");
-    expect(image.parentElement?.className).toContain("aspect-square");
-    expect(image.parentElement?.className).toContain("w-24");
+    expect(image.parentElement?.className).toContain("h-32");
+    expect(image.parentElement?.className).toContain("w-full");
+    expect(screen.getByRole("button", { name: /단서 사진/ }).className).toContain("h-56");
 
     fireEvent.error(image);
     expect(screen.getByLabelText("이미지")).toBeDefined();
@@ -90,6 +91,24 @@ describe("MediaCard", () => {
     expect(image.getAttribute("src")).toBe("https://example.com/thumbnail.webp");
     expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
     expect(useMediaDownloadUrlMock).not.toHaveBeenCalledWith("image-optimized-1");
+  });
+
+  it("master_url만 있는 이미지는 다운로드 fallback 없이 master 이미지를 사용한다", () => {
+    renderCard({
+      ...baseMedia,
+      id: "image-master-1",
+      name: "마스터 단서 사진",
+      type: "IMAGE",
+      url: undefined,
+      master_url: "https://example.com/master.webp",
+      mime_type: "image/webp",
+    });
+
+    const image = document.querySelector("img") as HTMLImageElement;
+    expect(image).not.toBeNull();
+    expect(image.getAttribute("src")).toBe("https://example.com/master.webp");
+    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
+    expect(useMediaDownloadUrlMock).not.toHaveBeenCalledWith("image-master-1");
   });
 
   it("업로드 이미지는 임시 다운로드 URL로 preview를 보여준다", () => {
@@ -127,8 +146,8 @@ describe("MediaCard", () => {
     });
 
     expect(screen.getByTestId("media-preview-face")).toBeDefined();
-    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("aspect-square");
-    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("w-24");
+    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("h-32");
+    expect(screen.getByTestId("media-preview-face").parentElement?.className).toContain("w-full");
     expect(screen.getByLabelText("영상")).toBeDefined();
     expect(screen.getAllByText("영상").length).toBeGreaterThan(0);
     expect(document.querySelector("img")).toBeNull();
@@ -176,5 +195,20 @@ describe("MediaCard", () => {
     const card = screen.getByRole("button", { name: /오프닝 BGM/ });
     expect(card.className).toContain("mmp-editor-list-item");
     expect(card.className).toContain("mmp-editor-list-item-active");
+  });
+
+  it("긴 이름과 긴 태그도 고정 카드/하단 영역 안에 제한한다", () => {
+    renderCard({
+      ...baseMedia,
+      name: "매우 긴 미디어 이름이 여러 줄로 들어와도 카드 전체 높이를 바꾸면 안 됩니다",
+      tags: ["긴태그".repeat(12), "두번째태그".repeat(8), "세번째태그".repeat(8), "숨겨질태그"],
+    });
+
+    const card = screen.getByRole("button", { name: /매우 긴 미디어 이름/ });
+    expect(card.className).toContain("h-56");
+    expect(card.className).toContain("min-w-0");
+    expect(screen.getByText(/매우 긴 미디어 이름/).className).toContain("line-clamp-2");
+    expect(screen.getByText(/긴태그/).className).toContain("truncate");
+    expect(screen.getByText(/긴태그/).parentElement?.className).toContain("h-24");
   });
 });

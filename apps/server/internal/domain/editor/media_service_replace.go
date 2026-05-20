@@ -69,6 +69,55 @@ func (s *mediaService) RequestReplacementUpload(ctx context.Context, creatorID, 
 	return &UploadURLResponse{UploadID: pending.ID, UploadURL: uploadURL, ExpiresAt: time.Now().Add(expiry)}, nil
 }
 
+func (s *mediaService) UploadReplacementObject(ctx context.Context, creatorID, mediaID, uploadID uuid.UUID, body io.Reader) error {
+	if err := s.requireStorage(); err != nil {
+		return err
+	}
+	pending, err := s.q.GetMediaReplacementUploadWithOwner(ctx, db.GetMediaReplacementUploadWithOwnerParams{
+		ID:        uploadID,
+		CreatorID: creatorID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return apperror.NotFound("replacement upload not found")
+		}
+		s.logger.Error().Err(err).Str("upload_id", uploadID.String()).Msg("failed to get replacement upload")
+		return apperror.Internal("failed to get replacement upload")
+	}
+	if pending.MediaID != mediaID {
+		return apperror.NotFound("replacement upload not found")
+	}
+	if pending.FileSize <= 0 || pending.FileSize > MaxMediaFileSize {
+		return apperror.New(apperror.ErrMediaTooLarge, 422, "file exceeds maximum size")
+	}
+	payload, err := io.ReadAll(io.LimitReader(body, pending.FileSize+1))
+	if err != nil {
+		return apperror.Internal("failed to read upload body")
+	}
+	if int64(len(payload)) != pending.FileSize {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
+		return apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
+	}
+	if err := s.storage.PutObject(ctx, pending.StorageKey, bytes.NewReader(payload), pending.MimeType, pending.FileSize); err != nil {
+		s.logger.Error().Err(err).Str("storage_key", pending.StorageKey).Msg("failed to upload replacement object through server")
+		return apperror.Internal("failed to upload replacement object")
+	}
+	meta, err := s.storage.HeadObject(ctx, pending.StorageKey)
+	if err != nil {
+		s.logger.Error().Err(err).Str("storage_key", pending.StorageKey).Msg("failed to verify server-uploaded replacement object")
+		return apperror.Internal("failed to verify upload")
+	}
+	if meta.Size != pending.FileSize {
+		cleanupCtx, cancel := storageCleanupContext(ctx)
+		defer cancel()
+		_ = s.storage.DeleteObject(cleanupCtx, pending.StorageKey)
+		return apperror.New(apperror.ErrMediaTooLarge, 422, "uploaded file size mismatch")
+	}
+	return nil
+}
+
 func (s *mediaService) ConfirmReplacementUpload(ctx context.Context, creatorID, mediaID uuid.UUID, req ConfirmUploadRequest) (*MediaResponse, error) {
 	if err := s.requireStorage(); err != nil {
 		return nil, err

@@ -230,6 +230,10 @@ func TestMediaHandler_DeletePreviewAndReplacementUpload(t *testing.T) {
 		Return(&UploadURLResponse{UploadID: uploadID, UploadURL: "https://upload.example/replacement", ExpiresAt: time.Now()}, nil).
 		Times(1)
 	mock.EXPECT().
+		UploadReplacementObject(gomock.Any(), gomock.Any(), mediaID, uploadID, gomock.Any()).
+		Return(nil).
+		Times(1)
+	mock.EXPECT().
 		ConfirmReplacementUpload(gomock.Any(), gomock.Any(), mediaID, ConfirmUploadRequest{UploadID: uploadID}).
 		Return(&MediaResponse{ID: mediaID, ThemeID: uuid.New(), Name: "replaced", Type: MediaTypeImage, SourceType: SourceTypeFile, Tags: []string{}, CreatedAt: time.Now()}, nil).
 		Times(1)
@@ -250,6 +254,13 @@ func TestMediaHandler_DeletePreviewAndReplacementUpload(t *testing.T) {
 	h.RequestReplacementUpload(replaceW, replace)
 	if replaceW.Code != http.StatusCreated {
 		t.Fatalf("expected replacement request 201, got %d: %s", replaceW.Code, replaceW.Body.String())
+	}
+
+	replaceObject := mediaHandlerRequest(http.MethodPut, "/editor/media/"+mediaID.String()+"/replace-uploads/"+uploadID.String(), []byte("png-body"), map[string]string{"id": mediaID.String(), "uploadID": uploadID.String()})
+	replaceObjectW := httptest.NewRecorder()
+	h.UploadReplacementObject(replaceObjectW, replaceObject)
+	if replaceObjectW.Code != http.StatusNoContent {
+		t.Fatalf("expected replacement object upload 204, got %d: %s", replaceObjectW.Code, replaceObjectW.Body.String())
 	}
 
 	confirm := mediaHandlerRequest(http.MethodPost, "/editor/media/"+mediaID.String()+"/replace-confirm", []byte(`{"upload_id":"`+uploadID.String()+`"}`), map[string]string{"id": mediaID.String()})

@@ -2762,6 +2762,53 @@ func TestMediaService_ReplacementUpload_PreservesMediaIDAndDeletesOldObject(t *t
 	}
 }
 
+func TestMediaService_UploadReplacementObject_StoresPendingReplacementBody(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	body := tinyPNG(t)
+	upload, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: int64(len(body)),
+	})
+	if err != nil {
+		t.Fatalf("RequestReplacementUpload: %v", err)
+	}
+	pending := q.replacements[upload.UploadID]
+
+	if err := svc.UploadReplacementObject(context.Background(), creatorID, mediaID, upload.UploadID, bytes.NewReader(body)); err != nil {
+		t.Fatalf("UploadReplacementObject: %v", err)
+	}
+
+	if got := string(st.objects[pending.StorageKey]); got != string(body) {
+		t.Fatalf("replacement object body mismatch")
+	}
+}
+
+func TestMediaService_UploadReplacementObject_SizeMismatchCleansObject(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	mediaID := seedFileMedia(q, themeID, MediaTypeImage)
+	body := tinyPNG(t)
+	upload, err := svc.RequestReplacementUpload(context.Background(), creatorID, mediaID, RequestMediaReplacementUploadRequest{
+		MimeType: "image/png",
+		FileSize: int64(len(body)),
+	})
+	if err != nil {
+		t.Fatalf("RequestReplacementUpload: %v", err)
+	}
+	pending := q.replacements[upload.UploadID]
+
+	err = svc.UploadReplacementObject(context.Background(), creatorID, mediaID, upload.UploadID, strings.NewReader("too-small"))
+
+	assertMediaAppCode(t, err, apperror.ErrMediaTooLarge)
+	if _, ok := st.objects[pending.StorageKey]; ok {
+		t.Fatalf("mismatched replacement object should be cleaned")
+	}
+}
+
 func TestMediaService_Delete_FileMediaBestEffortStorageCleanup(t *testing.T) {
 	svc, q, creatorID, themeID := newMediaTestService(t)
 	st := newFakeStorageProvider()

@@ -1,4 +1,4 @@
-import { FileAudio, FileText, Film, Image, Mic, Music, Sparkles, Volume2 } from "lucide-react";
+import { FileAudio, FileText, Film, Image, Mic, Music, Volume2 } from "lucide-react";
 
 import { extractYouTubeVideoId } from "@/features/audio/YouTubePlayer";
 import type { MediaResponse, MediaType } from "@/features/editor/mediaApi";
@@ -29,20 +29,32 @@ export function getMediaTypeBadgeLabel(type: MediaType): string {
   return TYPE_LABEL[type] ?? type;
 }
 
-export function getMediaThumbnailUrl(media: Pick<MediaResponse, "source_type" | "type" | "url" | "thumbnail_url" | "preview_url">): string | null {
+export function hasPublicMediaUrl(
+  media: Pick<MediaResponse, "url" | "master_url" | "preview_url" | "thumbnail_url">,
+): boolean {
+  return Boolean(media.thumbnail_url || media.preview_url || media.master_url || media.url);
+}
+
+export function getMediaThumbnailUrl(
+  media: Pick<MediaResponse, "source_type" | "type" | "url" | "master_url" | "thumbnail_url" | "preview_url">,
+): string | null {
   if (media.source_type === "YOUTUBE" && media.url) {
     const youtubeId = extractYouTubeVideoId(media.url);
     return youtubeId ? `https://img.youtube.com/vi/${youtubeId}/mqdefault.jpg` : null;
   }
   if (media.type === "IMAGE" && media.thumbnail_url) return media.thumbnail_url;
   if (media.type === "IMAGE" && media.preview_url) return media.preview_url;
+  if (media.type === "IMAGE" && media.master_url) return media.master_url;
   if (media.type === "IMAGE" && media.url) return media.url;
   return null;
 }
 
-export function getMediaPreviewUrl(media: Pick<MediaResponse, "source_type" | "type" | "url" | "preview_url" | "thumbnail_url">): string | null {
+export function getMediaPreviewUrl(
+  media: Pick<MediaResponse, "source_type" | "type" | "url" | "master_url" | "preview_url" | "thumbnail_url">,
+): string | null {
   if (media.source_type === "YOUTUBE" && media.url) return getMediaThumbnailUrl(media);
   if (media.type === "IMAGE" && media.preview_url) return media.preview_url;
+  if (media.type === "IMAGE" && media.master_url) return media.master_url;
   if (media.type === "IMAGE" && media.url) return media.url;
   if (media.type === "IMAGE" && media.thumbnail_url) return media.thumbnail_url;
   return null;

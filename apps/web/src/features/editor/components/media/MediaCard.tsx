@@ -7,6 +7,7 @@ import {
   getMediaThumbnailUrl,
   getMediaTypeBadgeClass,
   getMediaTypeBadgeLabel,
+  hasPublicMediaUrl,
   MediaTypeIcon,
 } from "./mediaVisuals";
 
@@ -72,8 +73,9 @@ export function MediaCard({
 }: MediaCardProps) {
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const isYouTube = media.source_type === "YOUTUBE";
+  const hasPublicImageUrl = hasPublicMediaUrl(media);
   const shouldLoadFileImagePreview =
-    media.type === "IMAGE" && media.source_type === "FILE" && !media.url;
+    media.type === "IMAGE" && media.source_type === "FILE" && !hasPublicImageUrl;
   const { data: fileImagePreview } = useMediaDownloadUrl(
     shouldLoadFileImagePreview ? media.id : undefined,
   );
@@ -103,7 +105,7 @@ export function MediaCard({
         }
       }}
       aria-pressed={selectionMode ? checked : selected}
-      className={`group relative flex cursor-pointer flex-col overflow-hidden text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
+      className={`group relative flex h-56 min-h-56 w-full min-w-0 cursor-pointer flex-col overflow-hidden text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--mmp-editor-color-primary)] ${
         selected
           ? `${editorDesignClassNames.listItem} ${editorDesignClassNames.listItemActive}`
           : editorDesignClassNames.listItem
@@ -126,7 +128,7 @@ export function MediaCard({
       )}
 
       {/* Thumbnail */}
-      <div className="relative mx-auto mt-2 flex aspect-square w-24 items-center justify-center rounded-md bg-[var(--mmp-editor-color-surface-soft)] p-2 sm:w-28">
+      <div className="relative flex h-32 w-full shrink-0 items-center justify-center bg-[var(--mmp-editor-color-surface-soft)] p-2">
         {shouldRenderImagePreview ? (
           <img
             src={thumbnailUrl}
@@ -176,8 +178,8 @@ export function MediaCard({
       </div>
 
       {/* Body */}
-      <div className="flex flex-col gap-1.5 px-2.5 py-2">
-        <div className="flex items-center justify-between gap-2">
+      <div className="flex h-24 min-h-0 flex-col gap-1.5 px-2.5 py-2">
+        <div className="flex h-5 shrink-0 items-center justify-between gap-2">
           <span
             className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-mono font-semibold uppercase ${badgeClass}`}
           >
@@ -190,9 +192,9 @@ export function MediaCard({
         <p className="line-clamp-2 min-h-[2rem] text-xs font-medium leading-4 text-[var(--mmp-editor-color-charcoal)]">
           {media.name}
         </p>
-        {media.tags.length > 0 && (
-          <p className="truncate text-[10px] text-[var(--mmp-editor-color-slate)]">{media.tags.slice(0, 3).join(", ")}</p>
-        )}
+        <p className="h-4 truncate text-[10px] text-[var(--mmp-editor-color-slate)]">
+          {media.tags.length > 0 ? media.tags.slice(0, 3).join(", ") : ""}
+        </p>
       </div>
     </div>
   );

@@ -24,6 +24,7 @@ describe("replaceMediaFile", () => {
 
     const result = await replaceMediaFile({
       file,
+      mediaId: "media-1",
       requestReplacementUpload,
       confirmReplacementUpload,
       putFile,
@@ -71,6 +72,7 @@ describe("replaceMediaFile", () => {
 
     await replaceMediaFile({
       file,
+      mediaId: "media-2",
       requestReplacementUpload,
       confirmReplacementUpload,
       putFile,
@@ -79,6 +81,51 @@ describe("replaceMediaFile", () => {
 
     expect(putFile).toHaveBeenCalledTimes(2);
     expect(confirmReplacementUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it("PUT 재시도가 모두 실패하면 서버 경유 replacement upload 후 confirm한다", async () => {
+    const file = new File(["image"], "evidence.png", { type: "image/png" });
+    const requestReplacementUpload = vi.fn().mockResolvedValue({
+      upload_id: "replace-upload-fallback",
+      upload_url: "https://upload.example.com/fallback",
+      expires_at: "2026-05-07T00:00:00Z",
+    });
+    const putFile = vi.fn().mockRejectedValue(new Error("업로드 네트워크 오류"));
+    const uploadReplacementViaServer = vi.fn().mockResolvedValue(undefined);
+    const confirmReplacementUpload = vi.fn().mockResolvedValue({
+      id: "media-1",
+      name: "증거 사진",
+      type: "IMAGE",
+      source_type: "FILE",
+      tags: [],
+      sort_order: 1,
+      created_at: "2026-05-07T00:00:00Z",
+    });
+    const onProgress = vi.fn();
+
+    await replaceMediaFile({
+      file,
+      mediaId: "media-1",
+      requestReplacementUpload,
+      confirmReplacementUpload,
+      putFile,
+      uploadReplacementViaServer,
+      onProgress,
+      maxAttempts: 2,
+      retryBaseDelayMs: 0,
+    });
+
+    expect(putFile).toHaveBeenCalledTimes(2);
+    expect(uploadReplacementViaServer).toHaveBeenCalledWith({
+      mediaId: "media-1",
+      uploadId: "replace-upload-fallback",
+      file,
+      contentType: "image/png",
+      onProgress,
+    });
+    expect(confirmReplacementUpload).toHaveBeenCalledWith({
+      upload_id: "replace-upload-fallback",
+    });
   });
 
   it("취소된 PUT 실패는 재시도하지 않고 confirm도 호출하지 않는다", async () => {
@@ -99,6 +146,7 @@ describe("replaceMediaFile", () => {
     await expect(
       replaceMediaFile({
         file,
+        mediaId: "media-abort",
         requestReplacementUpload,
         confirmReplacementUpload,
         putFile,
@@ -122,6 +170,7 @@ describe("replaceMediaFile", () => {
     await expect(
       replaceMediaFile({
         file,
+        mediaId: "media-cancelled",
         requestReplacementUpload,
         confirmReplacementUpload,
         putFile,
@@ -151,6 +200,7 @@ describe("replaceMediaFile", () => {
     await expect(
       replaceMediaFile({
         file,
+        mediaId: "media-cancel-before-confirm",
         requestReplacementUpload,
         confirmReplacementUpload,
         putFile,
@@ -171,6 +221,7 @@ describe("replaceMediaFile", () => {
     await expect(
       replaceMediaFile({
         file,
+        mediaId: "media-invalid-attempts",
         requestReplacementUpload,
         confirmReplacementUpload,
         putFile,
