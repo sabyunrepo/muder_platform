@@ -17,9 +17,12 @@ import (
 )
 
 type fakePublicThemeQueries struct {
-	theme      db.GetPublishedThemeRow
-	characters []db.GetPublishedThemeCharactersRow
-	media      map[uuid.UUID]db.ThemeMedium
+	theme               db.GetPublishedThemeRow
+	characters          []db.GetPublishedThemeCharactersRow
+	media               map[uuid.UUID]db.ThemeMedium
+	getMediaCalls       int
+	listMediaByIDsCalls int
+	listMediaByIDsIDs   []uuid.UUID
 }
 
 func (f *fakePublicThemeQueries) GetPublishedTheme(context.Context, uuid.UUID) (db.GetPublishedThemeRow, error) {
@@ -67,10 +70,23 @@ func (f *fakePublicThemeQueries) GetPublishedThemeCharacters(context.Context, uu
 }
 
 func (f *fakePublicThemeQueries) GetMedia(_ context.Context, mediaID uuid.UUID) (db.ThemeMedium, error) {
+	f.getMediaCalls++
 	if _, ok := f.media[mediaID]; !ok {
 		return db.ThemeMedium{}, pgx.ErrNoRows
 	}
 	return f.media[mediaID], nil
+}
+
+func (f *fakePublicThemeQueries) ListMediaByIDs(_ context.Context, mediaIDs []uuid.UUID) ([]db.ThemeMedium, error) {
+	f.listMediaByIDsCalls++
+	f.listMediaByIDsIDs = append([]uuid.UUID(nil), mediaIDs...)
+	out := make([]db.ThemeMedium, 0, len(mediaIDs))
+	for _, mediaID := range mediaIDs {
+		if media, ok := f.media[mediaID]; ok {
+			out = append(out, media)
+		}
+	}
+	return out, nil
 }
 
 type fakePublicThemeStorage struct {
@@ -239,6 +255,72 @@ func TestGetCharactersResolvesImageMediaURL(t *testing.T) {
 	}
 	if !reflect.DeepEqual(fakeStorage.headKeys, expectedHeadKeys) {
 		t.Fatalf("HeadObject keys = %v, want %v", fakeStorage.headKeys, expectedHeadKeys)
+	}
+}
+
+func TestGetCharactersBatchLoadsImageMedia(t *testing.T) {
+	themeID := uuid.New()
+	firstMediaID := uuid.New()
+	secondMediaID := uuid.New()
+	firstStorageKey := "themes/" + themeID.String() + "/media/" + firstMediaID.String() + ".png"
+	secondStorageKey := "themes/" + themeID.String() + "/media/" + secondMediaID.String() + ".png"
+	q := &fakePublicThemeQueries{
+		theme: db.GetPublishedThemeRow{ID: themeID, Status: publishedStatus},
+		characters: []db.GetPublishedThemeCharactersRow{
+			{ID: uuid.New(), ThemeID: themeID, Name: "First", ImageMediaID: pgUUID(firstMediaID)},
+			{ID: uuid.New(), ThemeID: themeID, Name: "Second", ImageMediaID: pgUUID(secondMediaID)},
+		},
+		media: map[uuid.UUID]db.ThemeMedium{
+			firstMediaID: {
+				ID:         firstMediaID,
+				ThemeID:    themeID,
+				Type:       "IMAGE",
+				SourceType: "FILE",
+				StorageKey: pgtype.Text{String: firstStorageKey, Valid: true},
+			},
+			secondMediaID: {
+				ID:         secondMediaID,
+				ThemeID:    themeID,
+				Type:       "IMAGE",
+				SourceType: "FILE",
+				StorageKey: pgtype.Text{String: secondStorageKey, Valid: true},
+			},
+		},
+	}
+	fakeStorage := &fakePublicThemeStorage{
+		urls: map[string]string{
+			firstStorageKey:  "https://cdn.example.test/" + firstStorageKey,
+			secondStorageKey: "https://cdn.example.test/" + secondStorageKey,
+		},
+		existing: map[string]bool{
+			firstStorageKey:  true,
+			secondStorageKey: true,
+		},
+	}
+	svc := &service{
+		queries: q,
+		storage: fakeStorage,
+		logger:  zerolog.Nop(),
+	}
+
+	chars, err := svc.GetCharacters(context.Background(), themeID)
+	if err != nil {
+		t.Fatalf("GetCharacters returned error: %v", err)
+	}
+	if len(chars) != 2 {
+		t.Fatalf("len(chars) = %d, want 2", len(chars))
+	}
+	if q.getMediaCalls != 0 {
+		t.Fatalf("GetMedia calls = %d, want 0", q.getMediaCalls)
+	}
+	if q.listMediaByIDsCalls != 1 {
+		t.Fatalf("ListMediaByIDs calls = %d, want 1", q.listMediaByIDsCalls)
+	}
+	if !reflect.DeepEqual(q.listMediaByIDsIDs, []uuid.UUID{firstMediaID, secondMediaID}) {
+		t.Fatalf("ListMediaByIDs ids = %v, want first and second media ids", q.listMediaByIDsIDs)
+	}
+	if chars[0].ImageURL == nil || chars[1].ImageURL == nil {
+		t.Fatalf("expected both image URLs to resolve: %#v", chars)
 	}
 }
 

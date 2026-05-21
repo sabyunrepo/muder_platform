@@ -78,7 +78,7 @@ type themeQueries interface {
 	GetPublishedThemeBySlug(ctx context.Context, slug string) (db.GetPublishedThemeBySlugRow, error)
 	ListPublishedThemes(ctx context.Context, arg db.ListPublishedThemesParams) ([]db.ListPublishedThemesRow, error)
 	GetPublishedThemeCharacters(ctx context.Context, themeID uuid.UUID) ([]db.GetPublishedThemeCharactersRow, error)
-	GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error)
+	ListMediaByIDs(ctx context.Context, ids []uuid.UUID) ([]db.ThemeMedium, error)
 }
 
 type service struct {
@@ -157,9 +157,10 @@ func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]Chara
 		return nil, apperror.Internal("failed to get characters")
 	}
 
+	imageMedia := s.listCharacterImageMedia(ctx, chars)
 	result := make([]CharacterResponse, 0, len(chars))
 	for _, c := range chars {
-		imageURL := s.resolveCharacterImageURL(ctx, c.ThemeID, textToPtr(c.ImageUrl), c.ImageMediaID)
+		imageURL := s.resolveCharacterImageURL(ctx, c.ThemeID, textToPtr(c.ImageUrl), c.ImageMediaID, imageMedia)
 		result = append(result, CharacterResponse{
 			ID:           c.ID,
 			Name:         c.Name,
@@ -172,14 +173,46 @@ func (s *service) GetCharacters(ctx context.Context, themeID uuid.UUID) ([]Chara
 	return result, nil
 }
 
-func (s *service) resolveCharacterImageURL(ctx context.Context, themeID uuid.UUID, currentURL *string, mediaID pgtype.UUID) *string {
+func (s *service) listCharacterImageMedia(ctx context.Context, chars []db.GetPublishedThemeCharactersRow) map[uuid.UUID]db.ThemeMedium {
+	if s.storage == nil {
+		return nil
+	}
+	seen := make(map[uuid.UUID]struct{})
+	ids := make([]uuid.UUID, 0, len(chars))
+	for _, c := range chars {
+		if textToPtr(c.ImageUrl) != nil || !c.ImageMediaID.Valid {
+			continue
+		}
+		id := uuid.UUID(c.ImageMediaID.Bytes)
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	mediaRows, err := s.queries.ListMediaByIDs(ctx, ids)
+	if err != nil {
+		s.logger.Warn().Err(err).Int("media_count", len(ids)).Msg("failed to list character image media")
+		return nil
+	}
+	mediaByID := make(map[uuid.UUID]db.ThemeMedium, len(mediaRows))
+	for _, media := range mediaRows {
+		mediaByID[media.ID] = media
+	}
+	return mediaByID
+}
+
+func (s *service) resolveCharacterImageURL(ctx context.Context, themeID uuid.UUID, currentURL *string, mediaID pgtype.UUID, mediaByID map[uuid.UUID]db.ThemeMedium) *string {
 	if currentURL != nil || !mediaID.Valid || s.storage == nil {
 		return currentURL
 	}
 	id := uuid.UUID(mediaID.Bytes)
-	media, err := s.queries.GetMedia(ctx, id)
-	if err != nil {
-		s.logger.Warn().Err(err).Stringer("media_id", id).Msg("failed to resolve character image media")
+	media, ok := mediaByID[id]
+	if !ok {
+		s.logger.Warn().Stringer("media_id", id).Msg("failed to resolve character image media")
 		return currentURL
 	}
 	if media.ThemeID != themeID {

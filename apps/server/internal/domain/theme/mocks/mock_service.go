@@ -127,21 +127,6 @@ func (m *MockthemeQueries) EXPECT() *MockthemeQueriesMockRecorder {
 	return m.recorder
 }
 
-// GetMedia mocks base method.
-func (m *MockthemeQueries) GetMedia(ctx context.Context, id uuid.UUID) (db.ThemeMedium, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetMedia", ctx, id)
-	ret0, _ := ret[0].(db.ThemeMedium)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetMedia indicates an expected call of GetMedia.
-func (mr *MockthemeQueriesMockRecorder) GetMedia(ctx, id any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMedia", reflect.TypeOf((*MockthemeQueries)(nil).GetMedia), ctx, id)
-}
-
 // GetPublishedTheme mocks base method.
 func (m *MockthemeQueries) GetPublishedTheme(ctx context.Context, id uuid.UUID) (db.GetPublishedThemeRow, error) {
 	m.ctrl.T.Helper()
@@ -185,6 +170,21 @@ func (m *MockthemeQueries) GetPublishedThemeCharacters(ctx context.Context, them
 func (mr *MockthemeQueriesMockRecorder) GetPublishedThemeCharacters(ctx, themeID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPublishedThemeCharacters", reflect.TypeOf((*MockthemeQueries)(nil).GetPublishedThemeCharacters), ctx, themeID)
+}
+
+// ListMediaByIDs mocks base method.
+func (m *MockthemeQueries) ListMediaByIDs(ctx context.Context, ids []uuid.UUID) ([]db.ThemeMedium, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMediaByIDs", ctx, ids)
+	ret0, _ := ret[0].([]db.ThemeMedium)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMediaByIDs indicates an expected call of ListMediaByIDs.
+func (mr *MockthemeQueriesMockRecorder) ListMediaByIDs(ctx, ids any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMediaByIDs", reflect.TypeOf((*MockthemeQueries)(nil).ListMediaByIDs), ctx, ids)
 }
 
 // ListPublishedThemes mocks base method.

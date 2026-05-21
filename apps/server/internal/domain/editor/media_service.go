@@ -210,7 +210,7 @@ func (s *mediaService) ListMedia(ctx context.Context, creatorID, themeID uuid.UU
 
 	out := make([]MediaResponse, 0, len(rows))
 	for _, m := range rows {
-		out = append(out, s.toMediaResponse(ctx, m))
+		out = append(out, s.toMediaListResponse(ctx, m))
 	}
 	return out, nil
 }
@@ -1014,6 +1014,40 @@ func (s *mediaService) toMediaResponse(ctx context.Context, m db.ThemeMedium) Me
 		resp.URL = masterURL
 	}
 	return resp
+}
+
+func (s *mediaService) toMediaListResponse(ctx context.Context, m db.ThemeMedium) MediaResponse {
+	resp := toMediaResponse(m)
+	if m.SourceType != SourceTypeFile || !m.StorageKey.Valid || s.storage == nil {
+		return resp
+	}
+
+	key := m.StorageKey.String
+	if m.Type == MediaTypeImage {
+		key = mediaListImageDownloadKey(m)
+	}
+	url, err := s.storage.GenerateDownloadURL(ctx, key, 15*time.Minute)
+	if err != nil {
+		s.logger.Warn().Err(err).Str("media_id", m.ID.String()).Str("storage_key", key).Msg("failed to generate media list URL")
+		return resp
+	}
+	resp.URL = &url
+	if m.Type == MediaTypeImage {
+		resp.ThumbnailURL = &url
+	}
+	return resp
+}
+
+func mediaListImageDownloadKey(m db.ThemeMedium) string {
+	if !m.StorageKey.Valid {
+		return ""
+	}
+	for _, variant := range []string{imageVariantMaster, imageVariantPreview, imageVariantThumbnail} {
+		if m.StorageKey.String == mediaImageVariantKey(m.ThemeID, m.ID, variant) {
+			return mediaImageVariantKey(m.ThemeID, m.ID, imageVariantThumbnail)
+		}
+	}
+	return m.StorageKey.String
 }
 
 func toMediaCategoryResponse(c db.ThemeMediaCategory) MediaCategoryResponse {
