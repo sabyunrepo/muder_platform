@@ -630,6 +630,9 @@ type fakeStorageProvider struct {
 	rangeErr            error
 	putErrKeyContains   string
 	putErr              error
+	headCalls           int
+	downloadCalls       int
+	downloadKeys        []string
 }
 
 func newFakeStorageProvider() *fakeStorageProvider {
@@ -658,6 +661,8 @@ func (f *fakeStorageProvider) GenerateUploadURL(_ context.Context, key string, _
 }
 
 func (f *fakeStorageProvider) GenerateDownloadURL(_ context.Context, key string, _ time.Duration) (string, error) {
+	f.downloadCalls++
+	f.downloadKeys = append(f.downloadKeys, key)
 	if f.generateDownloadErr != nil {
 		return "", f.generateDownloadErr
 	}
@@ -677,6 +682,7 @@ func (f *fakeStorageProvider) PutObject(_ context.Context, key string, body io.R
 }
 
 func (f *fakeStorageProvider) HeadObject(_ context.Context, key string) (*storage.ObjectMeta, error) {
+	f.headCalls++
 	if f.headErr != nil {
 		return nil, f.headErr
 	}
@@ -2512,6 +2518,56 @@ func TestMediaService_ListMedia_FilterVariants(t *testing.T) {
 	}
 	if len(byCategory) != 1 || byCategory[0].ID != imageID {
 		t.Fatalf("unexpected category-filtered media: %#v", byCategory)
+	}
+}
+
+func TestMediaService_ListMedia_UsesLightweightImageURLs(t *testing.T) {
+	svc, q, creatorID, themeID := newMediaTestService(t)
+	st := newFakeStorageProvider()
+	svc.storage = st
+	imageID := seedFileMedia(q, themeID, MediaTypeImage)
+	media := q.media[imageID]
+	media.StorageKey = pgtype.Text{String: mediaImageVariantKey(themeID, imageID, imageVariantMaster), Valid: true}
+	q.media[imageID] = media
+	fileID := seedFileMedia(q, themeID, MediaTypeDocument)
+	fileMedia := q.media[fileID]
+	fileMedia.StorageKey = pgtype.Text{String: "themes/" + themeID.String() + "/media/" + fileID.String() + ".pdf", Valid: true}
+	fileMedia.MimeType = pgtype.Text{String: "application/pdf", Valid: true}
+	q.media[fileID] = fileMedia
+
+	mediaList, err := svc.ListMedia(context.Background(), creatorID, themeID, "", nil)
+	if err != nil {
+		t.Fatalf("ListMedia: %v", err)
+	}
+	if len(mediaList) != 2 {
+		t.Fatalf("len(mediaList) = %d, want 2", len(mediaList))
+	}
+	if st.headCalls != 0 {
+		t.Fatalf("HeadObject calls = %d, want 0 for list response", st.headCalls)
+	}
+	if st.downloadCalls != 2 {
+		t.Fatalf("GenerateDownloadURL calls = %d, want one per file-backed row", st.downloadCalls)
+	}
+
+	byID := map[uuid.UUID]MediaResponse{}
+	for _, item := range mediaList {
+		byID[item.ID] = item
+	}
+	imageResp := byID[imageID]
+	thumbnailKey := mediaImageVariantKey(themeID, imageID, imageVariantThumbnail)
+	if imageResp.URL == nil || *imageResp.URL != "https://download.example/"+thumbnailKey {
+		t.Fatalf("image url = %v, want thumbnail URL", imageResp.URL)
+	}
+	if imageResp.ThumbnailURL == nil || *imageResp.ThumbnailURL != *imageResp.URL {
+		t.Fatalf("thumbnail_url = %v, want same lightweight URL as url", imageResp.ThumbnailURL)
+	}
+	if imageResp.MasterURL != nil || imageResp.PreviewURL != nil {
+		t.Fatalf("list response should not generate full variant URLs: %#v", imageResp)
+	}
+
+	fileResp := byID[fileID]
+	if fileResp.URL == nil || *fileResp.URL != "https://download.example/"+fileMedia.StorageKey.String {
+		t.Fatalf("file url = %v, want storage key URL", fileResp.URL)
 	}
 }
 
