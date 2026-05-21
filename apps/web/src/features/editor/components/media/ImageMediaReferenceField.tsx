@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 
 import { MediaPicker } from '@/features/editor/components/media/MediaPicker';
-import { useMediaDownloadUrl, useMediaList, type MediaResponse } from '@/features/editor/mediaApi';
-import { getMediaThumbnailUrl, hasPublicMediaUrl, MediaTypeIcon } from './mediaVisuals';
+import { useMediaDownloadUrl, type MediaResponse } from '@/features/editor/mediaApi';
+import { MediaTypeIcon } from './mediaVisuals';
 
 interface ImageMediaReferenceFieldProps {
   themeId: string;
@@ -34,27 +34,15 @@ export function ImageMediaReferenceField({
 }: ImageMediaReferenceFieldProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [previewFailed, setPreviewFailed] = useState(false);
-  const { data: images = [] } = useMediaList(themeId, 'IMAGE');
-  const selectedImage = images.find((media) => media.id === imageMediaId) ?? null;
-  const hasPublicImageUrl = selectedImage ? hasPublicMediaUrl(selectedImage) : false;
-  const shouldLoadFileImagePreview =
-    selectedImage?.type === 'IMAGE' && selectedImage.source_type === 'FILE' && !hasPublicImageUrl;
-  const { data: fileImagePreview } = useMediaDownloadUrl(
-    shouldLoadFileImagePreview ? selectedImage.id : undefined,
-  );
-  const previewUrl = selectedImage
-    ? getMediaThumbnailUrl({
-        ...selectedImage,
-        url: selectedImage.url ?? fileImagePreview?.url,
-      })
-    : null;
+  const { data: fileImagePreview } = useMediaDownloadUrl(imageMediaId ?? undefined);
+  const previewUrl = fileImagePreview?.url ?? null;
   const shouldRenderPreview = Boolean(previewUrl) && !previewFailed;
 
   useEffect(() => {
     setPreviewFailed(false);
   }, [previewUrl, imageMediaId]);
 
-  const picker = (
+  const picker = pickerOpen ? (
     <MediaPicker
       open={pickerOpen}
       onClose={() => setPickerOpen(false)}
@@ -64,7 +52,7 @@ export function ImageMediaReferenceField({
       selectedId={imageMediaId}
       title={pickerTitle ?? `${label} 선택`}
     />
-  );
+  ) : null;
 
   if (imageMediaId) {
     return (
@@ -82,7 +70,7 @@ export function ImageMediaReferenceField({
             {shouldRenderPreview ? (
               <img
                 src={previewUrl ?? undefined}
-                alt={`${selectedImage?.name ?? '선택된 이미지'} 미리보기`}
+                alt={`${label} 미리보기`}
                 className="h-full w-full object-contain"
                 loading="lazy"
                 onError={() => setPreviewFailed(true)}

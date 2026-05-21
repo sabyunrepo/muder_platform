@@ -49,13 +49,6 @@ afterEach(() => cleanup());
 
 describe("ImageMediaReferenceField", () => {
   it("선택 상태는 이미지 타일 위 overlay group에 교체와 제거를 항상 표시한다", () => {
-    const longName = "아주 긴 파일 이름이 레이아웃을 밀어내면 안 되는 단서 이미지 파일.webp";
-    useMediaListMock.mockReturnValue({
-      data: [{ ...imageMedia, name: longName, preview_url: "https://cdn.example/preview.webp" }],
-      isLoading: false,
-      isError: false,
-    });
-
     render(
       <ImageMediaReferenceField
         themeId="theme-1"
@@ -77,11 +70,11 @@ describe("ImageMediaReferenceField", () => {
     expect(screen.getByRole("button", { name: "단서 이미지 교체" }).className).toContain(
       "focus-visible:ring-2",
     );
-    expect(screen.queryByText(longName)).toBeNull();
     expect(screen.getByRole("button", { name: "단서 이미지 제거" }).className).toContain(
       "focus-visible:ring-2",
     );
-    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
+    expect(useMediaListMock).not.toHaveBeenCalled();
+    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith("image-1");
   });
 
   it("overlay 제거 버튼은 picker를 열지 않고 onClear만 호출한다", () => {
@@ -126,13 +119,7 @@ describe("ImageMediaReferenceField", () => {
     expect(screen.queryByText("미디어 선택")).toBeNull();
   });
 
-  it("공개 master_url이 있으면 다운로드 URL 없이 선택 이미지 프리뷰를 보여준다", () => {
-    useMediaListMock.mockReturnValue({
-      data: [{ ...imageMedia, master_url: "https://cdn.example/master.webp" }],
-      isLoading: false,
-      isError: false,
-    });
-
+  it("선택된 이미지는 전체 IMAGE 목록 없이 단건 다운로드 URL로 프리뷰를 보여준다", () => {
     render(
       <ImageMediaReferenceField
         themeId="theme-1"
@@ -143,27 +130,10 @@ describe("ImageMediaReferenceField", () => {
       />,
     );
 
-    const preview = screen.getByAltText("우산걸이 미리보기") as HTMLImageElement;
-    expect(preview.getAttribute("src")).toBe("https://cdn.example/master.webp");
-    expect(useMediaDownloadUrlMock).toHaveBeenCalledWith(undefined);
-    expect(useMediaDownloadUrlMock).not.toHaveBeenCalledWith("image-1");
-  });
-
-  it("선택된 FILE 이미지는 다운로드 URL로 프리뷰를 보여준다", () => {
-    render(
-      <ImageMediaReferenceField
-        themeId="theme-1"
-        label="단서 이미지"
-        imageMediaId="image-1"
-        onSelect={vi.fn()}
-        onClear={vi.fn()}
-      />,
-    );
-
-    expect(useMediaListMock).toHaveBeenCalledWith("theme-1", "IMAGE");
+    expect(useMediaListMock).not.toHaveBeenCalled();
     expect(useMediaDownloadUrlMock).toHaveBeenCalledWith("image-1");
 
-    const preview = screen.getByAltText("우산걸이 미리보기") as HTMLImageElement;
+    const preview = screen.getByAltText("단서 이미지 미리보기") as HTMLImageElement;
     expect(preview.getAttribute("src")).toBe("https://download.example/umbrella.webp");
   });
 
@@ -178,9 +148,9 @@ describe("ImageMediaReferenceField", () => {
       />,
     );
 
-    fireEvent.error(screen.getByAltText("우산걸이 미리보기"));
+    fireEvent.error(screen.getByAltText("단서 이미지 미리보기"));
 
     screen.getByLabelText("이미지");
-    expect(screen.queryByAltText("우산걸이 미리보기")).toBeNull();
+    expect(screen.queryByAltText("단서 이미지 미리보기")).toBeNull();
   });
 });

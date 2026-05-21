@@ -140,6 +140,9 @@ describe("MediaPicker", () => {
       />,
     );
     expect(container.firstChild).toBeNull();
+    expect(useMediaListMock).toHaveBeenCalledWith("", undefined, undefined);
+    expect(useMediaCategoriesMock).toHaveBeenCalledWith("");
+    expect(useMediaDownloadUrlsMock).toHaveBeenCalledWith([]);
   });
 
   it("열렸을 때 미디어 목록을 렌더링한다", () => {

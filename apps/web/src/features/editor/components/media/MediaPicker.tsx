@@ -51,12 +51,13 @@ export function MediaPicker({
     [useCase],
   );
   const queryType = filterType ?? (allowedTypes.length === 1 ? allowedTypes[0] : undefined);
+  const activeThemeId = open ? themeId : "";
   const { data: media = [], isLoading } = useMediaList(
-    themeId,
+    activeThemeId,
     queryType,
     categoryId ?? undefined,
   );
-  const { data: categories = [] } = useMediaCategories(themeId);
+  const { data: categories = [] } = useMediaCategories(activeThemeId);
 
   useEffect(() => {
     if (!open) {
